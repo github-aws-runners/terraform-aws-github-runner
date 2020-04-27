@@ -1,23 +1,14 @@
 {
-    "Version": "2012-10-17",
-    "Statement": [
-      {
-        "Effect": "Allow",
-        "Action": [
-          "sqs:ReceiveMessage",
-          "sqs:DeleteMessage",
-          "sqs:GetQueueAttributes"
-        ],
-        "Resource": "${lambda_orchestrator_arn}"
-      },
-      {
-        "Effect": "Allow",
-        "Action": [
-          "s3:GetObject"
-        ],
-        "Resource": "arn:aws:s3:::${var.program_s3_bucket["id"]}/*"
-      }
-    ]
-  }
-  
-  
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "sqs:ReceiveMessage",
+        "sqs:DeleteMessage",
+        "sqs:GetQueueAttributes"
+      ],
+      "Resource": "${sqs_webhook_event_arn}"
+    }
+  ]
+}
