@@ -11,3 +11,9 @@ variable "environment" {
 variable "github_app_webhook_secret" {
   type = string
 }
+
+variable "tags" {
+  description = "Map of tags that will be added to created resources. By default resources will be tagged with name and environment."
+  type        = map(string)
+  default     = {}
+}
