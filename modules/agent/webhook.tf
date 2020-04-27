@@ -14,6 +14,13 @@ resource "aws_apigatewayv2_route" "webhook" {
 }
 
 resource "aws_apigatewayv2_stage" "webhook" {
+  lifecycle {
+    ignore_changes = [
+      // see bug https://github.com/terraform-providers/terraform-provider-aws/issues/12893
+      default_route_settings
+    ]
+  }
+
   api_id      = aws_apigatewayv2_api.webhook.id
   name        = "$default"
   auto_deploy = true
@@ -48,7 +55,7 @@ resource "aws_lambda_permission" "webhook" {
   statement_id  = "AllowExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.webhook.function_name
-  principal     = "events.amazonaws.com"
+  principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.webhook.execution_arn}/*/*/${local.webhook_endpoint}"
 }
 
