@@ -47,6 +47,7 @@ resource "aws_lambda_function" "webhook" {
   environment {
     variables = {
       GITHUB_APP_WEBHOOK_SECRET = var.github_app_webhook_secret
+      WEBHOOK_SQS_URL           = aws_sqs_queue.webhook_events.id
     }
   }
 }
@@ -64,7 +65,7 @@ resource "aws_iam_role" "webhook_lambda" {
   assume_role_policy = data.aws_iam_policy_document.lambda_assume_role_policy.json
 }
 
-resource "aws_iam_policy_attachment" "webhook_lambda" {
+resource "aws_iam_policy_attachment" "webhook_logging" {
   name       = "${var.environment}-logging"
   roles      = [aws_iam_role.webhook_lambda.name]
   policy_arn = aws_iam_policy.lambda_logging.arn
@@ -77,6 +78,12 @@ resource "aws_iam_policy" "webhook" {
   policy = templatefile("${path.module}/policies/lambda-webhook.json", {
     sqs_webhook_event_arn = aws_sqs_queue.webhook_events.arn
   })
+}
+
+resource "aws_iam_policy_attachment" "webhook" {
+  name       = "${var.environment}-webhook"
+  roles      = [aws_iam_role.webhook_lambda.name]
+  policy_arn = aws_iam_policy.webhook.arn
 }
 
 
