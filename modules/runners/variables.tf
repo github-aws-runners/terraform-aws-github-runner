@@ -28,8 +28,8 @@ variable "environment" {
   type        = string
 }
 
-variable "distribution_bucket_name" {
-  description = "Bucket for storing the action runner distribution."
+variable "s3_location_runner_distribution" {
+  description = "S3 location of runner distribution."
   type        = string
 }
 
@@ -49,11 +49,6 @@ variable "instance_type" {
   description = "Default instance type for the action runner."
   type        = string
   default     = "m5.large"
-}
-
-variable "action_runner_dist_bucket_location" {
-  description = "Default location action runner distribution."
-  default     = "actions-runner-linux.tar.gz"
 }
 
 variable "ami_filter" {

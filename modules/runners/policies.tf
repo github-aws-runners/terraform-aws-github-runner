@@ -29,23 +29,6 @@ resource "aws_iam_role_policy_attachment" "runner_session_manager_aws_managed" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
-resource "aws_iam_policy" "dist_bucket" {
-  name        = "${var.environment}-gh-distribution-bucket"
-  path        = "/"
-  description = "Policy for the runner to download the github action runner."
-
-  policy = templatefile("${path.module}/policies/instance-runner-s3-policy.json",
-    {
-      s3_arn = aws_s3_bucket.action_dist.arn
-    }
-  )
-}
-
-resource "aws_iam_role_policy_attachment" "dist_bucket" {
-  role       = aws_iam_role.runner.name
-  policy_arn = aws_iam_policy.dist_bucket.arn
-}
-
 resource "aws_iam_policy" "ssm_parameters" {
   name        = "${var.environment}-runner-ssm-parameters"
   path        = "/"

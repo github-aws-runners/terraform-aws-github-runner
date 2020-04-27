@@ -1,6 +1,5 @@
 locals {
-  name_sg                         = var.overrides["name_sg"] == "" ? local.tags["Name"] : var.overrides["name_sg"]
-  s3_location_runner_distribution = "s3://${aws_s3_bucket.action_dist.id}/${var.action_runner_dist_bucket_location}"
+  name_sg = var.overrides["name_sg"] == "" ? local.tags["Name"] : var.overrides["name_sg"]
 
   tags = merge(
     {
@@ -69,7 +68,7 @@ resource "aws_launch_template" "runner" {
     environment                     = var.environment
     pre_install                     = var.userdata_pre_install
     post_install                    = var.userdata_post_install
-    s3_location_runner_distribution = local.s3_location_runner_distribution
+    s3_location_runner_distribution = var.s3_location_runner_distribution
   }))
 }
 
