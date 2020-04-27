@@ -63,6 +63,14 @@ resource "aws_iam_policy_attachment" "webhook_lambda" {
   policy_arn = aws_iam_policy.lambda_logging.arn
 }
 
+resource "aws_iam_policy" "webhook" {
+  name        = "${var.environment}-lamda-webhook-sqs-publish-policy"
+  description = "Lambda webhook policy"
+
+  policy = templatefile("${path.module}/policies/lambda-webhook.json", {
+    sqs_webhook_event_arn = aws_sqs_queue.webhook_events.arn
+  })
+}
 
 
 
