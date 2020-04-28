@@ -1,7 +1,7 @@
 {
-  "name": "gitlab-runner",
+  "name": "github-runner-lambda-agent-webhook",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "lambda.ts",
   "license": "MIT",
   "scripts": {
     "start": "ts-node-dev src/local.ts",
