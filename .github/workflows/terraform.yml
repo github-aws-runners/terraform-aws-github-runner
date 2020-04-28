@@ -1,10 +1,13 @@
 name: "Terraform root module checks"
 on:
-  - pull_request
+  pull_request:
+    paths-ignore:
+      - "modules/*/lambdas/**"
 
 env:
   tf_version: "0.12.24"
   tf_working_dir: "."
+  AWS_REGION: eu-west-1
 jobs:
   terraform:
     name: "Terraform"
