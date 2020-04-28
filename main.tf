@@ -11,7 +11,7 @@ module "dsitrubtion_cache" {
   environment = var.environment
   tags        = var.tags
 
-  distribution_bucket_name = random_string.random.result
+  distribution_bucket_name = "${var.environment}-dist-${random_string.random.result}"
 }
 
 module "runners" {
@@ -41,4 +41,24 @@ resource "aws_iam_policy" "dist_bucket" {
 resource "aws_iam_role_policy_attachment" "dist_bucket" {
   role       = module.runners.role.name
   policy_arn = aws_iam_policy.dist_bucket.arn
+}
+
+resource "aws_resourcegroups_group" "resourcegroups_group" {
+  name = "${var.environment}-group"
+
+  resource_query {
+    query = <<-JSON
+{
+  "ResourceTypeFilters": [
+    "AWS::AllSupported"
+  ],
+  "TagFilters": [
+    {
+      "Key": "Environment",
+      "Values": ["${var.environment}"]
+    }
+  ]
+}
+  JSON
+  }
 }
