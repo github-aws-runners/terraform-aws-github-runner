@@ -1,0 +1,41 @@
+name: "Terraform root module checks"
+on:
+  - pull_request
+
+env:
+  tf_version: "0.12.24"
+  tf_working_dir: "."
+jobs:
+  terraform:
+    name: "Terraform"
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v2
+      - name: "Terraform Format"
+        uses: hashicorp/terraform-github-actions@master
+        with:
+          tf_actions_version: ${{ env.tf_version }}
+          tf_actions_subcommand: "fmt"
+          tf_actions_working_dir: ${{ env.tf_working_dir }}
+          tf_actions_comment: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: "Terraform Init"
+        uses: hashicorp/terraform-github-actions@master
+        with:
+          tf_actions_version: ${{ env.tf_version }}
+          tf_actions_subcommand: "init"
+          tf_actions_working_dir: ${{ env.tf_working_dir }}
+          tf_actions_comment: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: "Terraform Validate"
+        uses: hashicorp/terraform-github-actions@master
+        with:
+          tf_actions_version: ${{ env.tf_version }}
+          tf_actions_subcommand: "validate"
+          tf_actions_working_dir: ${{ env.tf_working_dir }}
+          tf_actions_comment: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
