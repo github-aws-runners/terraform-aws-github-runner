@@ -8,10 +8,11 @@ function signRequestBody(key: string, body: any) {
 }
 
 export const handle = async (headers: IncomingHttpHeaders, payload: any): Promise<number> => {
-  // ensure header keys lower case
+  // ensure header keys lower case since github headers can contain capitals.
   for (const key in headers) {
     headers[key.toLowerCase()] = headers[key];
   }
+
   const secret = process.env.GITHUB_APP_WEBHOOK_SECRET as string;
   const signature = headers['x-hub-signature'];
   if (!signature) {
