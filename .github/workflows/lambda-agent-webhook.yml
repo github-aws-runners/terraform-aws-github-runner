@@ -1,6 +1,8 @@
 name: Lambda Agent Webhook
-on:
   push:
+    branches:
+      - master
+  pull_request:
     paths:
       - .github/workflows/lambda-agent-webhook.yml
       - "modules/agent/lambdas/webhook/**"

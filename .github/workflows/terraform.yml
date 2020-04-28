@@ -1,5 +1,8 @@
 name: "Terraform root module checks"
 on:
+  push:
+    branches:
+      - master
   pull_request:
     paths-ignore:
       - "modules/*/lambdas/**"
