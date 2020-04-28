@@ -1,0 +1,21 @@
+name: "build-test"
+on:
+  push:
+    paths:
+      - modules/agent/lambdas/webhook
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: node:12
+    env:
+      MODULE_PATH: modules/agent/lambdas/webhook
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install dependencies
+        run: cd $MODULE_PATH && yarn install
+      - name: Run tests
+        run: cd $MODULE_PATH && yarn test
+      - name: Build distribution
+        run: cd $MODULE_PATH && yarn run dist
