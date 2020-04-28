@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Install dependencies
-        working-directory: $MODULE_PATH
+        working-directory: modules/agent/lambdas/webhook
         run: yarn install
       - name: Run tests
         working-directory: $MODULE_PATH
