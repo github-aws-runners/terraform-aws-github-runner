@@ -7,12 +7,7 @@
     "start": "ts-node-dev src/local.ts",
     "watch": "ts-node-dev --respawn --exit-child src/local.ts",
     "build": "tsc",
-    "dist": "yarn build && cd build && cp ../package.json . && yarn --production && zip -r  ../webhook.zip .",
-    "test": "NODE_ENV=test jest",
-    "clean:build": "rimraf build",
-    "clean:all": "rimraf build node_modules",
-    "lint": "echo Add linting here...",
-    "cli": "yarn build && ./bin/parse.js"
+    "dist": "yarn build && cd build && cp ../package.json . && yarn --production && zip -r  ../webhook.zip ."
   },
   "devDependencies": {
     "@types/express": "^4.17.3",
