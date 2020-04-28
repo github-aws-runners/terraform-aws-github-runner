@@ -1,8 +1,8 @@
 name: Lambda Agent Webhook
 on:
   push:
-    # paths:
-    #   - modules/agent/lambdas/webhook
+    paths:
+      - "modules/agent/lambdas/webhook/*"
 
 jobs:
   build:
