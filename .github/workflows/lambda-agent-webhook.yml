@@ -1,8 +1,8 @@
 name: Lambda Agent Webhook
 on:
   push:
-    # paths:
-    #   - modules/agent/lambdas/webhook
+    paths:
+      - modules/agent/lambdas/webhook
 
 jobs:
   build:
@@ -18,4 +18,4 @@ jobs:
       - name: Run tests
         run: cd $MODULE_PATH && yarn test
       - name: Build distribution
-        run: cd $MODULE_PATH && yarn run dist
+        run: cd $MODULE_PATH && yarn run build
