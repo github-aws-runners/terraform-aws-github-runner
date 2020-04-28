@@ -15,8 +15,11 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Install dependencies
-        run: cd $MODULE_PATH && yarn install
+        working-directory: $MODULE_PATH
+        run: yarn install
       - name: Run tests
-        run: cd $MODULE_PATH && yarn test
+        working-directory: $MODULE_PATH
+        run: yarn test
       - name: Build distribution
-        run: cd $MODULE_PATH && yarn run build
+        working-directory: $MODULE_PATH
+        run: yarn build
