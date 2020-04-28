@@ -1,4 +1,4 @@
-name: "build-test"
+name: Lambda Agent Webhook
 on:
   push:
     # paths:
