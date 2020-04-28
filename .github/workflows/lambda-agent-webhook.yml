@@ -9,17 +9,15 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container: node:12
-    env:
-      MODULE_PATH: modules/agent/lambdas/webhook
+    defaults:
+      run:
+        working-directory: modules/agent/lambdas/webhook
 
     steps:
       - uses: actions/checkout@v2
       - name: Install dependencies
-        working-directory: modules/agent/lambdas/webhook
         run: yarn install
       - name: Run tests
-        working-directory: $MODULE_PATH
         run: yarn test
       - name: Build distribution
-        working-directory: $MODULE_PATH
         run: yarn build
