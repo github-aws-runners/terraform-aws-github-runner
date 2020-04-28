@@ -4,10 +4,10 @@
   "main": "index.js",
   "license": "MIT",
   "scripts": {
-    "start": "ts-node-dev src/index.ts",
-    "watch": "ts-node-dev --respawn --exit-child src/index.ts",
+    "start": "ts-node-dev src/local.ts",
+    "watch": "ts-node-dev --respawn --exit-child src/local.ts",
     "build": "tsc",
-    "dist": "mkdir -p dist && mv node_modules build dist/ && cp package.json defaultConfig.yaml dist/ && cp -r bin dist/",
+    "dist": "yarn build && cd build && cp ../package.json . && yarn --production && zip -r  ../webhook.zip .",
     "test": "NODE_ENV=test jest",
     "clean:build": "rimraf build",
     "clean:all": "rimraf build node_modules",
