@@ -1,4 +1,3 @@
-import express from 'express';
 import { IncomingHttpHeaders } from 'http';
 import crypto from 'crypto';
 import { sendActionRequest, ActionRequestMessage } from '../sqs';
