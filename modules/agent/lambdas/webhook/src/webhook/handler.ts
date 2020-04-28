@@ -1,6 +1,8 @@
 import { IncomingHttpHeaders } from 'http';
 import crypto from 'crypto';
-import { sendActionRequest, ActionRequestMessage } from '../sqs';
+import { sendActionRequest } from '../sqs';
+import { WebhookPayloadCheckRun } from '@octokit/webhooks';
+
 function signRequestBody(key: string, body: any) {
   return `sha1=${crypto.createHmac('sha1', key).update(body, 'utf8').digest('hex')}`;
 }
@@ -12,29 +14,34 @@ export const handle = async (headers: IncomingHttpHeaders, payload: any): Promis
   }
   const secret = process.env.GITHUB_APP_WEBHOOK_SECRET as string;
   const signature = headers['x-hub-signature'];
-  const githubEvent = headers['x-github-event'];
-  const id = headers['x-github-delivery'];
-  const calculatedSig = signRequestBody(secret, payload);
+  if (!signature) {
+    console.error("Github event doesn't have signature. This webhook requires a secret to be configured.");
+    return 500;
+  }
 
+  const calculatedSig = signRequestBody(secret, payload);
   if (signature !== calculatedSig) {
-    console.log('signature invalid.');
+    console.error('Unable to verify signature!');
     return 401;
   }
 
-  const body = JSON.parse(payload);
+  const githubEvent = headers['x-github-event'];
 
-  console.log(`Github-Event: "${githubEvent}" with action: "${body.action}"`);
+  console.debug(`Received Github event: "${githubEvent}"`);
 
-  if (githubEvent === 'check_run' && body.action === 'created' && body.check_run.status === 'queued') {
-    await sendActionRequest({
-      id: body.check_run.id,
-      repositoryName: body.repository.name,
-      repositoryOwner: body.repository.owner.login,
-      eventType: githubEvent,
-      installationId: body.installation.id,
-    });
+  if (githubEvent === 'check_run') {
+    const body = JSON.parse(payload) as WebhookPayloadCheckRun;
+    if (body.action === 'created' && body.check_run.status === 'queued') {
+      await sendActionRequest({
+        id: body.check_run.id,
+        repositoryName: body.repository.name,
+        repositoryOwner: body.repository.owner.login,
+        eventType: githubEvent,
+        installationId: body.installation!.id,
+      });
+    }
   } else {
-    console.log('ignore event ' + githubEvent);
+    console.debug('Ignore event ' + githubEvent);
   }
 
   return 200;

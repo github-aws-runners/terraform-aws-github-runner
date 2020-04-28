@@ -4,10 +4,11 @@ import AWS from 'aws-sdk';
 AWS.config.update({
   region: process.env.AWS_REGION,
 });
+
 const sqs = new SQS();
 
 export interface ActionRequestMessage {
-  id: string;
+  id: number;
   eventType: string;
   repositoryName: string;
   repositoryOwner: string;
