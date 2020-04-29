@@ -1,0 +1,24 @@
+name: Lambda Runner Distribution Syncer
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    paths:
+      - .github/workflows/lambda-agent-webhook.yml
+      - "modules/action-runner-binary-cache/lambdas/syncer/**"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: node:12
+    defaults:
+      run:
+        working-directory: modules/action-runner-binary-cache/lambdas/syncer
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install dependencies
+        run: yarn install
+      - name: Build distribution
+        run: yarn build

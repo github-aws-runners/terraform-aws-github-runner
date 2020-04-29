@@ -1,0 +1,25 @@
+{
+  "name": "github-runner-lambda-syncer",
+  "version": "1.0.0",
+  "main": "lambda.ts",
+  "license": "MIT",
+  "scripts": {
+    "start": "ts-node-dev src/local.ts",
+    "test": "NODE_ENV=test jest",
+    "watch": "ts-node-dev --respawn --exit-child src/local.ts",
+    "build": "ncc build src/lambda.ts -o dist",
+    "dist": "yarn build && cd dist && zip ../lambda.zip index.js"
+  },
+  "devDependencies": {
+    "@octokit/rest": "^17.6.0",
+    "@types/jest": "^25.2.1",
+    "@types/node": "^13.13.4",
+    "@types/request": "^2.48.4",
+    "@zeit/ncc": "^0.22.1",
+    "aws-sdk": "^2.645.0",
+    "jest": "^25.4.0",
+    "ts-jest": "^25.4.0",
+    "ts-node-dev": "^1.0.0-pre.44",
+    "typescript": "^3.8.3"
+  }
+}

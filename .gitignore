@@ -13,3 +13,6 @@
 *.out
 example/*.secrets*.tfvars
 .envrc
+*.zip
+*.gz
+*.tgz
