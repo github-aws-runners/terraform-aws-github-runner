@@ -3,7 +3,12 @@
   "Statement": [
     {
       "Effect": "Allow",
-      "Action": ["s3:*", "s3:PutObject*", "s3:RequestObjectTagKeys"],
+      "Action": [
+        "s3:GetObjectTagging",
+        "s3:GetObjectVersionTagging",
+        "s3:PutObject*",
+        "s3:RequestObjectTag*"
+      ],
       "Resource": ["${s3_resource_arn}"]
     }
   ]

@@ -27,7 +27,6 @@ async function getCachedVersion(): Promise<string | undefined> {
     const versions = objectTagging.TagSet?.filter((t: any) => t.Key === versionKey);
     return versions.length === 1 ? versions[0].Value : undefined;
   } catch (e) {
-    console.error(e);
     console.debug('No tags found');
     return undefined;
   }

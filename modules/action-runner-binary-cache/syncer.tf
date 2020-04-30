@@ -54,7 +54,7 @@ resource "aws_iam_policy" "syncer" {
     s3_resource_arn = "${aws_s3_bucket.action_dist.arn}/${local.action_runner_distribution_object_key}"
   })
 }
-# s3_resource_arn = "${aws_s3_bucket.action_dist.arn}/${local.action_runner_distribution_object_key}"
+
 resource "aws_iam_policy_attachment" "syncer" {
   name       = "${var.environment}-syncer"
   roles      = [aws_iam_role.syncer_lambda.name]
