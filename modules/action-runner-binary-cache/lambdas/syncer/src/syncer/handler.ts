@@ -12,6 +12,9 @@ const s3 = new S3();
 const versionKey: string = 'name';
 const bucketName = process.env.S3_BUCKET_NAME as string;
 const bucketObjectKey = process.env.S3_OBJECT_KEY as string;
+if (!bucketName || !bucketObjectKey) {
+  throw new Error('Please check all mandatory variables are set.');
+}
 
 const uploadStream = ({ Bucket, Key, Tagging }: any) => {
   const pass = new PassThrough();
@@ -22,20 +25,20 @@ const uploadStream = ({ Bucket, Key, Tagging }: any) => {
 };
 
 async function getCachedVersion(): Promise<string | undefined> {
-  return await s3
-    .getObjectTagging({
-      Bucket: bucketName,
-      Key: bucketObjectKey,
-    })
-    .promise()
-    .then((r) => {
-      const versions = r.TagSet?.filter((t: any) => t.Key === versionKey);
-      return versions.length === 1 ? versions[0].Value : undefined;
-    })
-    .catch(() => {
-      console.log('No tags found');
-      return undefined;
-    });
+  try {
+    const objectTagging = await s3
+      .getObjectTagging({
+        Bucket: bucketName,
+        Key: bucketObjectKey,
+      })
+      .promise();
+    const versions = objectTagging.TagSet?.filter((t: any) => t.Key === versionKey);
+    return versions.length === 1 ? versions[0].Value : undefined;
+  } catch (e) {
+    console.error(e);
+    console.debug('No tags found');
+    return undefined;
+  }
 }
 
 interface ReleaseAsset {
@@ -74,7 +77,7 @@ export const handle = async (): Promise<number> => {
 
     await new Promise((resolve, reject) => {
       console.debug('Start downloading %s and uploading to S3.', actionRunnerReleaseAsset.name);
-      let stream = request
+      request
         .get(actionRunnerReleaseAsset.downloadUrl)
         .pipe(writeStream)
         .on('finish', () => {
