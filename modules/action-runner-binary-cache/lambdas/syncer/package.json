@@ -6,6 +6,7 @@
   "scripts": {
     "start": "ts-node-dev src/local.ts",
     "test": "NODE_ENV=test jest",
+    "test:watch": "NODE_ENV=test jest --watch",
     "watch": "ts-node-dev --respawn --exit-child src/local.ts",
     "build": "ncc build src/lambda.ts -o dist",
     "dist": "yarn build && cd dist && zip ../lambda.zip index.js"

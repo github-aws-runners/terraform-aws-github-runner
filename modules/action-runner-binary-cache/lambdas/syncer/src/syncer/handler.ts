@@ -9,7 +9,11 @@ AWS.config.update({
 });
 const s3 = new S3();
 
-const uploadStream = ({ Bucket, Key, Tagging }) => {
+const versionKey: string = 'name';
+const bucketName = process.env.S3_BUCKET_NAME as string;
+const bucketObjectKey = process.env.S3_OBJECT_KEY as string;
+
+const uploadStream = ({ Bucket, Key, Tagging }: any) => {
   const pass = new PassThrough();
   return {
     writeStream: pass,
@@ -17,38 +21,64 @@ const uploadStream = ({ Bucket, Key, Tagging }) => {
   };
 };
 
-export const handle = async (): Promise<number> => {
+async function getCachedVersion(): Promise<string | undefined> {
+  return await s3
+    .getObjectTagging({
+      Bucket: bucketName,
+      Key: bucketObjectKey,
+    })
+    .promise()
+    .then((r) => {
+      const versions = r.TagSet?.filter((t: any) => t.Key === versionKey);
+      return versions.length === 1 ? versions[0].Value : undefined;
+    })
+    .catch(() => {
+      console.log('No tags found');
+      return undefined;
+    });
+}
+
+interface ReleaseAsset {
+  name: string;
+  downloadUrl: string;
+}
+
+async function getLinuxReleaseAsset(): Promise<ReleaseAsset | undefined> {
   const githubClient = new Octokit();
-  const assets = (
+  const linuxAssets = (
     await githubClient.repos.getLatestRelease({
       owner: 'actions',
       repo: 'runner',
     })
-  ).data.assets;
+  ).data.assets.filter((a) => a.name?.includes('actions-runner-linux-x64-'));
+  return linuxAssets?.length === 1
+    ? { name: linuxAssets[0].name, downloadUrl: linuxAssets[0].browser_download_url }
+    : undefined;
+}
 
-  const objectTag = await s3
-    .getObjectTagging({
-      Bucket: '551dd065-baae-47c7-9c38-7600efd12e9c2',
-      Key: 'runner.tgz',
-    })
-    .promise()
-    .catch(() => console.debug('no tags found.'));
+export const handle = async (): Promise<number> => {
+  const actionRunnerReleaseAsset = await getLinuxReleaseAsset();
+  if (actionRunnerReleaseAsset === undefined) {
+    console.error('Cannot find github release asset.');
+    return 500;
+  }
 
-  const versions = objectTag?.TagSet?.filter((t) => t.Key === 'updated_at');
-  if (versions?.length != 1 || versions[0].Value != assets[0].updated_at) {
+  const currentVersion = await getCachedVersion();
+  console.log('latest: ' + currentVersion);
+  if (currentVersion === undefined || currentVersion != actionRunnerReleaseAsset.name) {
     const { writeStream, promise } = uploadStream({
-      Bucket: '551dd065-baae-47c7-9c38-7600efd12e9c2',
-      Key: 'runner.tgz',
-      Tagging: 'updated_at=' + assets[0].updated_at,
+      Bucket: bucketName,
+      Key: bucketObjectKey,
+      Tagging: versionKey + '=' + actionRunnerReleaseAsset.name,
     });
 
     await new Promise((resolve, reject) => {
-      console.debug('Start downloading action runner and uploading to S3.');
+      console.debug('Start downloading %s and uploading to S3.', actionRunnerReleaseAsset.name);
       let stream = request
-        .get(assets[0].browser_download_url)
+        .get(actionRunnerReleaseAsset.downloadUrl)
         .pipe(writeStream)
         .on('finish', () => {
-          console.info(`The new distribution is uploaded to s3.`);
+          console.info(`The new distribution is uploaded to S3.`);
           resolve();
         })
         .on('error', (error) => {
