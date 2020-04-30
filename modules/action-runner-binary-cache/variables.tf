@@ -20,7 +20,7 @@ variable "distribution_bucket_name" {
 }
 
 variable "lambda_schedule_expression" {
-  description = ""
+  description = "Scheduler expression for action distributio syncer."
   type        = string
   default     = "cron(27 * * * ? *)"
 }
