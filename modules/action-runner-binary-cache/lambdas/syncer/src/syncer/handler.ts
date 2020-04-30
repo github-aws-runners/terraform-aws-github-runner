@@ -16,14 +16,6 @@ if (!bucketName || !bucketObjectKey) {
   throw new Error('Please check all mandatory variables are set.');
 }
 
-const uploadStream = ({ Bucket, Key, Tagging }: any) => {
-  const pass = new PassThrough();
-  return {
-    writeStream: pass,
-    promise: s3.upload({ Bucket, Key, Tagging, Body: pass }).promise(),
-  };
-};
-
 async function getCachedVersion(): Promise<string | undefined> {
   try {
     const objectTagging = await s3
@@ -59,6 +51,38 @@ async function getLinuxReleaseAsset(): Promise<ReleaseAsset | undefined> {
     : undefined;
 }
 
+const uploadStream = ({ Bucket, Key, Tagging }: any) => {
+  const pass = new PassThrough();
+  return {
+    writeStream: pass,
+    promise: s3.upload({ Bucket, Key, Tagging, Body: pass }).promise(),
+  };
+};
+
+async function uploadToS3(actionRunnerReleaseAsset: ReleaseAsset) {
+  const { writeStream, promise } = uploadStream({
+    Bucket: bucketName,
+    Key: bucketObjectKey,
+    Tagging: versionKey + '=' + actionRunnerReleaseAsset.name,
+  });
+
+  await new Promise((resolve, reject) => {
+    console.debug('Start downloading %s and uploading to S3.', actionRunnerReleaseAsset.name);
+    request
+      .get(actionRunnerReleaseAsset.downloadUrl)
+      .pipe(writeStream)
+      .on('finish', () => {
+        console.info(`The new distribution is uploaded to S3.`);
+        resolve();
+      })
+      .on('error', (error) => {
+        reject(error);
+      });
+  }).catch((error) => {
+    console.error(`Exception: ${error}`);
+  });
+}
+
 export const handle = async (): Promise<number> => {
   const actionRunnerReleaseAsset = await getLinuxReleaseAsset();
   if (actionRunnerReleaseAsset === undefined) {
@@ -69,27 +93,7 @@ export const handle = async (): Promise<number> => {
   const currentVersion = await getCachedVersion();
   console.log('latest: ' + currentVersion);
   if (currentVersion === undefined || currentVersion != actionRunnerReleaseAsset.name) {
-    const { writeStream, promise } = uploadStream({
-      Bucket: bucketName,
-      Key: bucketObjectKey,
-      Tagging: versionKey + '=' + actionRunnerReleaseAsset.name,
-    });
-
-    await new Promise((resolve, reject) => {
-      console.debug('Start downloading %s and uploading to S3.', actionRunnerReleaseAsset.name);
-      request
-        .get(actionRunnerReleaseAsset.downloadUrl)
-        .pipe(writeStream)
-        .on('finish', () => {
-          console.info(`The new distribution is uploaded to S3.`);
-          resolve();
-        })
-        .on('error', (error) => {
-          reject(error);
-        });
-    }).catch((error) => {
-      console.error(`Exception: ${error}`);
-    });
+    uploadToS3(actionRunnerReleaseAsset);
   } else {
     console.debug('Distribution is up-to-date, no action.');
   }
