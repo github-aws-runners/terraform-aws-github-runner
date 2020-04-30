@@ -22,5 +22,7 @@ jobs:
         run: yarn install
       - name: Run tests
         run: yarn test
+      - name: Run linter
+        run: yarn lint
       - name: Build distribution
         run: yarn build

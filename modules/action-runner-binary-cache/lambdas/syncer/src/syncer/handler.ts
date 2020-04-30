@@ -9,7 +9,7 @@ AWS.config.update({
 });
 const s3 = new S3();
 
-const versionKey: string = 'name';
+const versionKey = 'name';
 const bucketName = process.env.S3_BUCKET_NAME as string;
 const bucketObjectKey = process.env.S3_OBJECT_KEY as string;
 if (!bucketName || !bucketObjectKey) {
@@ -24,7 +24,7 @@ async function getCachedVersion(): Promise<string | undefined> {
         Key: bucketObjectKey,
       })
       .promise();
-    const versions = objectTagging.TagSet?.filter((t: any) => t.Key === versionKey);
+    const versions = objectTagging.TagSet?.filter((t: S3.Tag) => t.Key === versionKey);
     return versions.length === 1 ? versions[0].Value : undefined;
   } catch (e) {
     console.debug('No tags found');
@@ -50,20 +50,14 @@ async function getLinuxReleaseAsset(): Promise<ReleaseAsset | undefined> {
     : undefined;
 }
 
-const uploadStream = ({ Bucket, Key, Tagging }: any) => {
-  const pass = new PassThrough();
-  return {
-    writeStream: pass,
-    promise: s3.upload({ Bucket, Key, Tagging, Body: pass }).promise(),
-  };
-};
-
-async function uploadToS3(actionRunnerReleaseAsset: ReleaseAsset) {
-  const { writeStream, promise } = uploadStream({
+async function uploadToS3(actionRunnerReleaseAsset: ReleaseAsset): Promise<void> {
+  const writeStream = new PassThrough();
+  s3.upload({
     Bucket: bucketName,
     Key: bucketObjectKey,
     Tagging: versionKey + '=' + actionRunnerReleaseAsset.name,
-  });
+    Body: writeStream,
+  }).promise();
 
   await new Promise((resolve, reject) => {
     console.debug('Start downloading %s and uploading to S3.', actionRunnerReleaseAsset.name);
