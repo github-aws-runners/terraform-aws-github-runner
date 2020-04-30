@@ -19,3 +19,8 @@ variable "distribution_bucket_name" {
   type        = string
 }
 
+variable "lambda_schedule_expression" {
+  description = ""
+  type        = string
+  default     = "cron(27 * * * ? *)"
+}

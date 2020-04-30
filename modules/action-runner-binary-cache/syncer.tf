@@ -61,5 +61,20 @@ resource "aws_iam_policy_attachment" "syncer" {
   policy_arn = aws_iam_policy.syncer.arn
 }
 
+resource "aws_cloudwatch_event_rule" "syncer" {
+  schedule_expression = var.lambda_schedule_expression
+}
 
+resource "aws_cloudwatch_event_target" "syncer" {
+  rule = aws_cloudwatch_event_rule.syncer.name
+  arn  = aws_lambda_function.syncer.arn
+}
+
+resource "aws_lambda_permission" "allow_cloudwatch_to_call_check_foo" {
+  statement_id  = "AllowExecutionFromCloudWatch"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.syncer.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.syncer.arn
+}
 
