@@ -18,6 +18,11 @@ jobs:
     steps:
       - name: "Checkout"
         uses: actions/checkout@v2
+      - name: "Fake zip files" # Validate will fail if it cannot find the zip files
+        run: |
+          touch modules/action-runner-binary-cache/lambdas/syncer/syncer.zip
+          touch modules/agent/lambdas/webhook/webhook.zip
+          touch modules/runners/lambdas/scale-runners/scale-runners.zip
       - name: "Terraform Format"
         uses: hashicorp/terraform-github-actions@master
         with:
