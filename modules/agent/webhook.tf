@@ -38,11 +38,12 @@ resource "aws_apigatewayv2_integration" "webhook" {
 
 
 resource "aws_lambda_function" "webhook" {
-  filename      = "webhook.zip"
-  function_name = "${var.environment}-webhook"
-  role          = aws_iam_role.webhook_lambda.arn
-  handler       = "lambda.githubWebhook"
-  runtime       = "nodejs12.x"
+  filename         = "${path.module}/lambdas/webhook/webhook.zip"
+  source_code_hash = filebase64sha256("${path.module}/lambdas/webhook/webhook.zip")
+  function_name    = "${var.environment}-webhook"
+  role             = aws_iam_role.webhook_lambda.arn
+  handler          = "lambda.githubWebhook"
+  runtime          = "nodejs12.x"
 
   environment {
     variables = {

@@ -19,3 +19,7 @@ variable "environment" {
   type        = string
 }
 
+variable "github_app_webhook_secret" {
+  description = "Secret for the GitHub App webhook"
+  type        = string
+}

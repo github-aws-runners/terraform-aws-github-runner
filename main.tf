@@ -26,6 +26,17 @@ module "runners" {
 }
 
 
+module "agent" {
+  source = "./modules/agent"
+
+  aws_region  = var.aws_region
+  environment = var.environment
+  tags        = var.tags
+
+  github_app_webhook_secret = var.github_app_webhook_secret
+}
+
+
 resource "aws_iam_policy" "dist_bucket" {
   name        = "${var.environment}-gh-distribution-bucket"
   path        = "/"
