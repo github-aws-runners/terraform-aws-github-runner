@@ -9,7 +9,7 @@
     "test:watch": "NODE_ENV=test jest --watch",
     "watch": "ts-node-dev --respawn --exit-child src/local.ts",
     "build": "ncc build src/lambda.ts -o dist",
-    "dist": "yarn build && cd dist && zip ../lambda.zip index.js"
+    "dist": "yarn build && cd dist && zip ../syncer.zip index.js"
   },
   "devDependencies": {
     "@octokit/rest": "^17.6.0",
