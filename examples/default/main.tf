@@ -24,16 +24,4 @@ module "runners" {
 
 }
 
-resource "null_resource" "trigger_syncLambda" {
-  # Trigger the sync lambda after creation to ensure an action runner distribution is available
-  triggers = {
-    function_name = module.runners.lambda_s3_action_runner_dist_syncer.id
-  }
-
-  provisioner "local-exec" {
-    when       = create
-    on_failure = continue
-    command    = "sleep 30 && aws lambda invoke --function-name ${self.triggers.function_name} response.json"
-  }
-}
 
