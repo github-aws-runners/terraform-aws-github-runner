@@ -76,11 +76,10 @@ async function uploadToS3(actionRunnerReleaseAsset: ReleaseAsset): Promise<void>
   });
 }
 
-export const handle = async (): Promise<number> => {
+export const handle = async (): Promise<void> => {
   const actionRunnerReleaseAsset = await getLinuxReleaseAsset();
   if (actionRunnerReleaseAsset === undefined) {
-    console.error('Cannot find github release asset.');
-    return 500;
+    throw Error('Cannot find github release asset.');
   }
 
   const currentVersion = await getCachedVersion();
@@ -90,6 +89,4 @@ export const handle = async (): Promise<number> => {
   } else {
     console.debug('Distribution is up-to-date, no action.');
   }
-
-  return 200;
 };
