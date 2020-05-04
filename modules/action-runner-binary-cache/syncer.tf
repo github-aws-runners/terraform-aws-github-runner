@@ -14,11 +14,14 @@ resource "aws_lambda_function" "syncer" {
       S3_OBJECT_KEY  = local.action_runner_distribution_object_key
     }
   }
+
+  tags = var.tags
 }
 
 resource "aws_iam_role" "syncer_lambda" {
   name               = "${var.environment}-action-syncer-lambda-role"
   assume_role_policy = data.aws_iam_policy_document.lambda_assume_role_policy.json
+  tags               = var.tags
 }
 
 data "aws_iam_policy_document" "lambda_assume_role_policy" {
@@ -63,6 +66,7 @@ resource "aws_iam_policy_attachment" "syncer" {
 
 resource "aws_cloudwatch_event_rule" "syncer" {
   schedule_expression = var.lambda_schedule_expression
+  tags                = var.tags
 }
 
 resource "aws_cloudwatch_event_target" "syncer" {
