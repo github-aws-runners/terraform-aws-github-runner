@@ -6,19 +6,19 @@ This modules create the required infra structure needed to host GitHub Action se
 
 ## Motivation
 
-GitHub action runners `self hosted` runners provide you with a flexible option to run you build load on compute of your choice. Currently there is no option provided to automate the creation, and scaling of the runners. Besides required AWS infra structure definition the module provides the logic to handle GitHub `check_events` for queued builds and scale up and down runners on Org and Repo level.
+GitHub action runners `self hosted` runners provides you with a flexible option to run you CI workloads on compute of your choice. Currently there is no option provided to automate the creation, and scaling of action runners. This module takes care of creating the AWS infra structure and provides lambda modules ot orchestrate the the life cycle of the action runners.
 
-Lambda is chooses as runtime for two major reasons. First is allows us to create small components with minimal access to AWS cloud and GitHub. Secondly is provides a scalable setup for minimal costs that could work on repo level and could scale to Org level.
+Lambda is chooses as runtime for two major reasons. First is allows to create small components with minimal access to AWS and GitHub. Secondly is provides a scalable setup for minimal costs that works on repo level and scales to Org level setup. The lambda's will create linux based EC2 instances with Docker to serve CI workloads that can run on linux and or Docker. The main goal is here to support Docker based wark loads.
 
-A logical question would why not Kubernetes? In the current approach we stay very close to the the way the GitHub action runners are available today. A agent will run on its own dedicated instances during a workflow run. Another logical choice could be AWS Auto Scaling groups. This choice would require typically much more permission on instance level to GitHub. And besides that scaling up and down is not that trivial which requires custom logic as well.
+A logical question would why not Kubernetes? In the current approach we stay close to the way the GitHub action runners are available today. The approach is to install the runner on a host where the required software is available. With this setup we stay quite close to th GitHub approach. Another logical choice could be AWS Auto Scaling groups. This choice would require typically much more permission on instance level to GitHub. And besides that, scaling up and down is not trivial.
 
 ## Overview
 
-The process of scaling runners on demand starts by registering a GitHub App which delivers via a webhook protected a check run event at the API Gateway. The Gateway will trigger a Lambda which will verify the messages signature and filter for queued build events. Accepted events are posted on a queue. Messages on this queue will be delayed for x seconds to give available runners the time to take up the build event.
+The process of scaling runners on demand starts by registering a GitHub App which delivers via a webhook a check run event to the API Gateway. The Gateway triggers a Lambda which will verify the signature and filter for queued build events. Accepted events are posted on a queue. Messages on this queue will be delayed for x seconds to give available runners the time to start a build.
 
-In case the build is not started and yet, and no limits are reach the lambda will create a new spot instances is via a launch template. The lambda will request a registration token on GitHub and store this in SSM. The EC2 instances will install required software via a `user_data` script, fetch and delete the registration token from SSM.
+In case the build is not started yet, and no limits are reach. The lambda requests a registration token for a new runner at GitHub, stores the token in SSM and starts an EC2 instance via a launch template. The EC2 instances installs the required software via a `user_data` script, fetch and delete the registration token from SSM.
 
-Stopping the instances is at the moment brute forced, every x minutes a Lambda is checking if a runner (instance) is not busy. In case the runner is not busy it will be removed from GitHub and AWS.
+Scaling down the runners is at the moment brute forced, every x minutes a Lambda is checking if a runner (instance) is not busy. In case the runner is not busy it will be removed from GitHub and AWS. At the moment there seems no other option to scale down more smooth.
 
 Downloading the GitHub action distribution can be occasionally slow, up to 10 more minutes. Therefore a lambda is introduced that synchronize based on a schedule the binary from GitHub to a cache in S3. The EC2 will fetch the distribution form the cache instead of internet.
 
@@ -41,7 +41,7 @@ Examples are provided in [the example directory](examples/). Please ensure you h
 - TODO: building lambda ?
 - AWS cli
 
-Before you start the setup you have to choose if you are planning to run the runners on repo level on or Org level. Running on repo level a runner will be dedicated to one repo only, no other repo can use the runner. On Org level you can use the runner(s) for all the org repo's.
+The module support twe main scenario's for running tha action runners. Running on repo level a runner will be dedicated to one repo only, no other repo can use the runner. On Org level you can use the runner(s) for all the org repo's. Before starting the deployment you have to choose one option.
 
 The setup consists of running Terraform to create all AWS resources and configure the GitHub app. The problem here is that our Terraform module requires configuration parameters from the GitHub app and our GitHub app requires output parameters of Terraform. So first create the app, configure the basics, run terraform finalize the app configuration.
 
