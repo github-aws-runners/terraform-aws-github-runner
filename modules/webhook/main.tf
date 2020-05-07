@@ -50,7 +50,7 @@ resource "aws_lambda_function" "webhook" {
   environment {
     variables = {
       GITHUB_APP_WEBHOOK_SECRET = var.github_app_webhook_secret
-      SQS_URL_WEBHOOK           = aws_sqs_queue.webhook_events.id
+      SQS_URL_WEBHOOK           = var.sqs_build_queue.id
     }
   }
 
@@ -65,31 +65,53 @@ resource "aws_lambda_permission" "webhook" {
   source_arn    = "${aws_apigatewayv2_api.webhook.execution_arn}/*/*/${local.webhook_endpoint}"
 }
 
+data "aws_iam_policy_document" "lambda_assume_role_policy" {
+  statement {
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["lambda.amazonaws.com"]
+    }
+  }
+}
+
 resource "aws_iam_role" "webhook_lambda" {
   name               = "${var.environment}-action-webhook-lambda-role"
   assume_role_policy = data.aws_iam_policy_document.lambda_assume_role_policy.json
   tags               = var.tags
 }
 
+resource "aws_iam_policy" "webhook_logging" {
+  name        = "${var.environment}-lamda-logging-policy"
+  description = "Lambda logging policy"
+
+  policy = templatefile("${path.module}/policies/lambda-cloudwatch.json", {})
+}
+
 resource "aws_iam_policy_attachment" "webhook_logging" {
   name       = "${var.environment}-logging"
   roles      = [aws_iam_role.webhook_lambda.name]
-  policy_arn = aws_iam_policy.lambda_logging.arn
+  policy_arn = aws_iam_policy.webhook_logging.arn
 }
 
 resource "aws_iam_policy" "webhook" {
+  count = var.create_sqs_publish_policy ? 1 : 0
+
   name        = "${var.environment}-lamda-webhook-sqs-publish-policy"
   description = "Lambda webhook policy"
 
   policy = templatefile("${path.module}/policies/lambda-webhook.json", {
-    sqs_webhook_event_arn = aws_sqs_queue.webhook_events.arn
+    sqs_resource_arn = var.sqs_build_queue.arn
   })
 }
 
 resource "aws_iam_policy_attachment" "webhook" {
+  count = var.create_sqs_publish_policy ? 1 : 0
+
   name       = "${var.environment}-webhook"
   roles      = [aws_iam_role.webhook_lambda.name]
-  policy_arn = aws_iam_policy.webhook.arn
+  policy_arn = aws_iam_policy.webhook[0].arn
 }
 
 

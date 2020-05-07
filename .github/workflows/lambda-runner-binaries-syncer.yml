@@ -1,4 +1,4 @@
-name: Lambda Runner Distribution Syncer
+name: Lambda Runner Binaries Syncer
 on:
   push:
     branches:
@@ -6,7 +6,7 @@ on:
   pull_request:
     paths:
       - .github/workflows/lambda-agent-webhook.yml
-      - "modules/action-runner-binary-cache/lambdas/syncer/**"
+      - "modules/runner-binaries-syncer/lambdas/runner-binaries-syncer/**"
 
 jobs:
   build:
@@ -14,7 +14,7 @@ jobs:
     container: node:12
     defaults:
       run:
-        working-directory: modules/action-runner-binary-cache/lambdas/syncer
+        working-directory: modules/runner-binaries-syncer/lambdas/runner-binaries-syncer
 
     steps:
       - uses: actions/checkout@v2

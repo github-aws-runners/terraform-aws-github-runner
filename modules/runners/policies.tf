@@ -45,3 +45,20 @@ resource "aws_iam_role_policy_attachment" "ssm_parameters" {
   role       = aws_iam_role.runner.name
   policy_arn = aws_iam_policy.ssm_parameters.arn
 }
+
+resource "aws_iam_policy" "dist_bucket" {
+  name        = "${var.environment}-gh-distribution-bucket"
+  path        = "/"
+  description = "Policy for the runner to download the github action runner."
+
+  policy = templatefile("${path.module}/policies/instance-s3-policy.json",
+    {
+      s3_arn = var.s3_bucket_runner_binaries.arn
+    }
+  )
+}
+
+resource "aws_iam_role_policy_attachment" "dist_bucket" {
+  role       = aws_iam_role.runner.name
+  policy_arn = aws_iam_policy.dist_bucket.arn
+}

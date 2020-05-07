@@ -4,7 +4,7 @@
     {
       "Effect": "Allow",
       "Action": ["sqs:SendMessage", "sqs:GetQueueAttributes"],
-      "Resource": "${sqs_webhook_event_arn}"
+      "Resource": "${sqs_resource_arn}"
     }
   ]
 }

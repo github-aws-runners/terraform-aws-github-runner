@@ -8,4 +8,3 @@ resource "aws_s3_bucket" "action_dist" {
   force_destroy = true
   tags          = var.tags
 }
-

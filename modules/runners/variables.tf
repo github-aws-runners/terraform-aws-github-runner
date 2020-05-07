@@ -28,7 +28,14 @@ variable "environment" {
   type        = string
 }
 
-variable "s3_location_runner_distribution" {
+variable "s3_bucket_runner_binaries" {
+  type = object({
+    arn = string
+  })
+}
+
+
+variable "s3_location_runner_binaries" {
   description = "S3 location of runner distribution."
   type        = string
 }

@@ -1,0 +1,11 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "githubActionDist",
+      "Effect": "Allow",
+      "Action": ["s3:GetObject", "s3:GetObjectAcl"],
+      "Resource": ["${s3_arn}/*"]
+    }
+  ]
+}

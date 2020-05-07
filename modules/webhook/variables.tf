@@ -17,3 +17,15 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "sqs_build_queue" {
+  type = object({
+    id  = string
+    arn = string
+  })
+}
+
+variable "create_sqs_publish_policy" {
+  type    = bool
+  default = true
+}

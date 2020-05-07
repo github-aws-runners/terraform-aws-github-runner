@@ -3,21 +3,34 @@ locals {
     Environment = var.environment
   })
 
+  s3_action_runner_url = "s3://${module.runner_binaries.bucket.id}/${module.runner_binaries.runner_distribution_object_key}"
 }
+
 resource "random_string" "random" {
   length  = 24
   special = false
   upper   = false
 }
 
-module "dsitrubtion_cache" {
-  source = "./modules/action-runner-binary-cache"
+resource "aws_sqs_queue" "queued_builds" {
+  name                        = "${var.environment}-queued-builds.fifo"
+  delay_seconds               = 30
+  fifo_queue                  = true
+  receive_wait_time_seconds   = 10
+  content_based_deduplication = true
+
+  tags = var.tags
+}
+
+module "webhook" {
+  source = "./modules/webhook"
 
   aws_region  = var.aws_region
   environment = var.environment
   tags        = local.tags
 
-  distribution_bucket_name = "${var.environment}-dist-${random_string.random.result}"
+  sqs_build_queue           = aws_sqs_queue.queued_builds
+  github_app_webhook_secret = var.github_app_webhook_secret
 }
 
 module "runners" {
@@ -28,36 +41,18 @@ module "runners" {
   environment = var.environment
   tags        = local.tags
 
-  s3_location_runner_distribution = module.dsitrubtion_cache.s3_location_runner_distribution
+  s3_bucket_runner_binaries   = module.runner_binaries.bucket
+  s3_location_runner_binaries = local.s3_action_runner_url
 }
 
-
-module "agent" {
-  source = "./modules/agent"
+module "runner_binaries" {
+  source = "./modules/runner-binaries-syncer"
 
   aws_region  = var.aws_region
   environment = var.environment
   tags        = local.tags
 
-  github_app_webhook_secret = var.github_app_webhook_secret
-}
-
-
-resource "aws_iam_policy" "dist_bucket" {
-  name        = "${var.environment}-gh-distribution-bucket"
-  path        = "/"
-  description = "Policy for the runner to download the github action runner."
-
-  policy = templatefile("${path.module}/policies/action-runner-s3-policy.json",
-    {
-      s3_arn = module.dsitrubtion_cache.distribution_bucket.arn
-    }
-  )
-}
-
-resource "aws_iam_role_policy_attachment" "dist_bucket" {
-  role       = module.runners.role.name
-  policy_arn = aws_iam_policy.dist_bucket.arn
+  distribution_bucket_name = "${var.environment}-dist-${random_string.random.result}"
 }
 
 resource "aws_resourcegroups_group" "resourcegroups_group" {

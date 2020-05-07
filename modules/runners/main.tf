@@ -68,7 +68,7 @@ resource "aws_launch_template" "runner" {
     environment                     = var.environment
     pre_install                     = var.userdata_pre_install
     post_install                    = var.userdata_post_install
-    s3_location_runner_distribution = var.s3_location_runner_distribution
+    s3_location_runner_distribution = var.s3_location_runner_binaries
   }))
 }
 

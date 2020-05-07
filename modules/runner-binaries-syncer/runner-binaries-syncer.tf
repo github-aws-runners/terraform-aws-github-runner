@@ -1,6 +1,6 @@
 resource "aws_lambda_function" "syncer" {
-  filename         = "${path.module}/lambdas/syncer/syncer.zip"
-  source_code_hash = filebase64sha256("${path.module}/lambdas/syncer/syncer.zip")
+  filename         = "${path.module}/lambdas/runner-binaries-syncer/runner-binaries-syncer.zip"
+  source_code_hash = filebase64sha256("${path.module}/lambdas/runner-binaries-syncer/runner-binaries-syncer.zip")
   function_name    = "${var.environment}-syncer"
   role             = aws_iam_role.syncer_lambda.arn
   handler          = "index.handler"
