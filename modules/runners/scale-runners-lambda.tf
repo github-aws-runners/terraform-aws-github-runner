@@ -59,17 +59,34 @@ resource "aws_iam_policy_attachment" "scale_runners_lambda_logging" {
   policy_arn = aws_iam_policy.lambda_logging.arn
 }
 
-resource "aws_iam_policy" "scale_runners_lambda" {
+resource "aws_iam_policy" "scale_runners_lambda_sqs" {
   name        = "${var.environment}-lamda-scale-runners-sqs-receive-policy"
-  description = "Lambda webhook policy"
+  description = "Lambda scale up sqs policy"
 
   policy = templatefile("${path.module}/policies/lambda-scale-runners.json", {
     sqs_arn = var.sqs.arn
   })
 }
 
+resource "aws_iam_policy_attachment" "scale_runners_lambda_sqs" {
+  name       = "${var.environment}-scale-up-sqs"
+  roles      = [aws_iam_role.scale_runners_lambda.name]
+  policy_arn = aws_iam_policy.scale_runners_lambda_sqs.arn
+}
+
+
+resource "aws_iam_policy" "scale_runners_lambda" {
+  name        = "${var.environment}-lamda-scale-up-policy"
+  description = "Lambda scale up policy"
+
+  policy = templatefile("${path.module}/policies/lambda-scale-up.json", {
+    arn_runner_instance_role = aws_iam_role.runner.arn
+  })
+}
+
 resource "aws_iam_policy_attachment" "scale_runners_lambda" {
-  name       = "${var.environment}-scale-runners"
+  name       = "${var.environment}-scale-up"
   roles      = [aws_iam_role.scale_runners_lambda.name]
   policy_arn = aws_iam_policy.scale_runners_lambda.arn
 }
+

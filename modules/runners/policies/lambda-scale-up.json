@@ -1,0 +1,16 @@
+{
+    "Effect": "Allow",
+    "Action": [
+      "ec2:DescribeInstances",
+      "ec2:DescribeTags",
+      "ec2:CreateTags",
+      "ec2:RunInstances",
+    ],
+    "Resource": ["*"]
+  },
+  {
+    "Effect": "Allow",
+    "Action": "iam:PassRole",
+    "Resource": "${arn_runner_instance_role}"
+  }
+}
