@@ -5,8 +5,8 @@ on:
       - master
   pull_request:
     paths:
-      - .github/workflows/lambda-agent-webhook.yml
-      - "modules/agent/lambdas/webhook/**"
+      - .github/workflows/lambda-webhook.yml
+      - "modules/webhook/lambdas/webhook/**"
 
 jobs:
   build:
@@ -14,7 +14,7 @@ jobs:
     container: node:12
     defaults:
       run:
-        working-directory: modules/agent/lambdas/webhook
+        working-directory: modules/webhook/lambdas/webhook
 
     steps:
       - uses: actions/checkout@v2
