@@ -28,10 +28,10 @@ usermod -a -G docker ec2-user
 yum install -y curl jq git
 
 cd /home/ec2-user
-mkdir actions-runner && cd actions-runner
+mkdir -p actions-runner && cd actions-runner
 aws s3 cp ${s3_location_runner_distribution} actions-runner.tar.gz
 tar xzf ./actions-runner.tar.gz
-rm actions-runner.tar.gz
+rm -rf actions-runner.tar.gz
 
 INSTANCE_ID=$(wget -q -O - http://169.254.169.254/latest/meta-data/instance-id)
 REGION=$(curl -s 169.254.169.254/latest/dynamic/instance-identity/document | jq -r .region)
