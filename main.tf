@@ -38,6 +38,7 @@ module "runners" {
 
   aws_region  = var.aws_region
   vpc_id      = var.vpc_id
+  subnet_ids  = var.subnet_ids
   environment = var.environment
   tags        = local.tags
 

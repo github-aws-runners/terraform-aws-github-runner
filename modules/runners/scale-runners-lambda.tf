@@ -5,6 +5,7 @@ resource "aws_lambda_function" "scale_runners_lambda" {
   role             = aws_iam_role.scale_runners_lambda.arn
   handler          = "index.handler"
   runtime          = "nodejs12.x"
+  timeout          = 60
 
   environment {
     variables = {
@@ -13,6 +14,10 @@ resource "aws_lambda_function" "scale_runners_lambda" {
       GITHUB_APP_ID               = var.github_app_id
       GITHUB_APP_CLIENT_ID        = var.github_app_client_id
       GITHUB_APP_CLIENT_SECRET    = var.github_app_client_secret
+      SUBNET_IDS                  = join(",", var.subnet_ids)
+      LAUNCH_TEMPLATE_NAME        = aws_launch_template.runner.name
+      LAUNCH_TEMPLATE_VERSION     = aws_launch_template.runner.latest_version
+      ENVIRONMENT                 = var.environment
     }
   }
 }

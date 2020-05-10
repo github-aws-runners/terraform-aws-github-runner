@@ -1,7 +1,7 @@
 import { createAppAuth } from '@octokit/auth-app';
 import { Octokit } from '@octokit/rest';
 import { AppAuth } from '@octokit/auth-app/dist-types/types';
-import { listRunners } from './runners';
+import { listRunners, createRunner } from './runners';
 import yn from 'yn';
 
 export interface ActionRequestMessage {
@@ -34,8 +34,9 @@ async function createInstallationClient(githubAppAuth: AppAuth): Promise<Octokit
 
 export const handle = async (eventSource: string, payload: ActionRequestMessage): Promise<void> => {
   if (eventSource !== 'aws:sqs') throw Error('Cannot handle non-SQS events!');
-  const enableOrgLevel = yn(process.env.ENABLE_ORGANIZATION_RUNNERS);
+  const enableOrgLevel = yn(process.env.ENABLE_ORGANIZATION_RUNNERS, { default: true });
   const maximumRunners = parseInt(process.env.RUNNERS_MAXIMUM_COUNT || '3');
+  const environment = process.env.ENVIRONMENT as string;
   const githubAppAuth = createGithubAppAuth(payload.installationId);
   const githubInstallationClient = await createInstallationClient(githubAppAuth);
   const queuedWorkflows = await githubInstallationClient.actions.listRepoWorkflowRuns({
@@ -70,7 +71,17 @@ export const handle = async (eventSource: string, payload: ActionRequestMessage)
             repo: payload.repositoryName,
           });
       const token = registrationToken.data.token;
-      // create runner
+
+      await createRunner({
+        environment: environment,
+        runnerConfig: enableOrgLevel
+          ? `--url https://github.com/${payload.repositoryOwner} --token ${token}`
+          : `--url https://github.com/${payload.repositoryOwner}/${payload.repositoryName} --token ${token}`,
+        orgName: enableOrgLevel ? payload.repositoryOwner : undefined,
+        repoName: enableOrgLevel ? undefined : `${payload.repositoryOwner}/${payload.repositoryName}`,
+      });
+    } else {
+      console.info('No runner will be created, maximum number of runners reached.');
     }
   }
 };

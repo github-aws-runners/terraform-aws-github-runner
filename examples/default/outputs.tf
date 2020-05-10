@@ -4,14 +4,9 @@ output "runners" {
   }
 }
 
-# output "binaries_syncer" {
-#   value = {
-#     binaries_syncer = module.runners.binaries_syncer
-#   }
-# }
-
 output "webhook" {
   value = {
+    secret  = random_password.random.result
     gateway = module.runners.webhook.gateway
   }
 }

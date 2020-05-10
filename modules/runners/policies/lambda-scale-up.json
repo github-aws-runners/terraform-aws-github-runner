@@ -15,6 +15,11 @@
       "Effect": "Allow",
       "Action": "iam:PassRole",
       "Resource": "${arn_runner_instance_role}"
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["ssm:PutParameter"],
+      "Resource": "*"
     }
   ]
 }
