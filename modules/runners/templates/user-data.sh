@@ -8,27 +8,14 @@ amazon-linux-extras install docker
 service docker start
 usermod -a -G docker ec2-user
 
-# Install runner
 yum install -y curl jq git
-cd /home/ec2-user
-mkdir actions-runner && cd actions-runner
-#!/bin/bash -ex
-exec > >(tee /var/log/user-data.log | logger -t user-data -s 2>/dev/console) 2>&1
-
-yum update -y
 
 ${pre_install}
 
-# Install docker
-amazon-linux-extras install docker
-service docker start
-usermod -a -G docker ec2-user
-
 # Install runner
-yum install -y curl jq git
-
 cd /home/ec2-user
-mkdir -p actions-runner && cd actions-runner
+mkdir actions-runner && cd actions-runner
+
 aws s3 cp ${s3_location_runner_distribution} actions-runner.tar.gz
 tar xzf ./actions-runner.tar.gz
 rm -rf actions-runner.tar.gz

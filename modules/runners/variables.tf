@@ -13,7 +13,8 @@ variable "overrides" {
   type        = map(string)
 
   default = {
-    name_sg = ""
+    name_runner = ""
+    name_sg     = ""
   }
 }
 

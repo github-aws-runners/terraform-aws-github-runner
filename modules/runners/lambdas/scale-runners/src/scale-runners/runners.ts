@@ -46,21 +46,21 @@ export async function listRunners(filters: ListRunnerFilters | undefined = undef
 }
 
 export interface RunnerInputParameters {
+  runnerName: string;
   runnerConfig: string;
+  environment: string;
   repoName?: string;
   orgName?: string;
 }
 
-export async function creatRunner(runnerParameters: RunnerInputParameters): Promise<void> {
+async function createEC2Runner(runnerParameters: RunnerInputParameters): Promise<void> {
   const launchTemplateName = process.env.LAUNCH_TEMPLATE_NAME as string;
   const launchTemplateVersion = process.env.LAUNCH_TEMPLATE_VERSION as string;
-  const environment = process.env.ENVIRONMENT as string;
 
   const subnets = (process.env.SUBNET_IDS as string).split(',');
   const randomSubnet = subnets[Math.floor(Math.random() * (subnets.length + 1))];
+
   const ec2 = new EC2();
-  console.log(runnerParameters);
-  console.log(runnerParameters.orgName ? 'Org' : 'Repo');
   const runInstancesResponse = await ec2
     .runInstances({
       MaxCount: 1,
@@ -89,10 +89,20 @@ export async function creatRunner(runnerParameters: RunnerInputParameters): Prom
   runInstancesResponse.Instances?.forEach((i: EC2.Instance) => {
     ssm
       .putParameter({
-        Name: (environment + '-' + i.InstanceId) as string,
+        Name: runnerParameters.environment + '-' + (i.InstanceId as string),
         Value: runnerParameters.runnerConfig,
         Type: 'SecureString',
       })
       .promise();
   });
+}
+
+export async function createRunner(runnerParameters: RunnerInputParameters): Promise<void> {
+  const runners = await listRunners({ repoName: runnerParameters.repoName, orgName: runnerParameters.orgName });
+
+  if (runners?.length < 1) {
+    await createEC2Runner(runnerParameters);
+  } else {
+    console.info('No runner will be created, maximum number of runners reached.');
+  }
 }

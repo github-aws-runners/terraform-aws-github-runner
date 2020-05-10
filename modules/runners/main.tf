@@ -1,15 +1,18 @@
 locals {
-  name_sg = var.overrides["name_sg"] == "" ? local.tags["Name"] : var.overrides["name_sg"]
 
   tags = merge(
     {
-      "Name" = format("%s", var.environment)
+      "Name" = format("%s-action-runner", var.environment)
     },
     {
       "Environment" = format("%s", var.environment)
     },
     var.tags,
   )
+
+  name_sg     = var.overrides["name_sg"] == "" ? local.tags["Name"] : var.overrides["name_sg"]
+  name_runner = var.overrides["name_runner"] == "" ? local.tags["Name"] : var.overrides["name_runner"]
+
 }
 
 data "aws_ami" "runner" {
