@@ -10,6 +10,7 @@ export interface RunnerInfo {
 export interface ListRunnerFilters {
   repoName?: string;
   orgName?: string;
+  environment?: string;
 }
 
 export async function listRunners(filters: ListRunnerFilters | undefined = undefined): Promise<RunnerInfo[]> {
@@ -19,6 +20,9 @@ export async function listRunners(filters: ListRunnerFilters | undefined = undef
     { Name: 'instance-state-name', Values: ['running', 'pending'] },
   ];
   if (filters) {
+    if (filters.environment !== undefined) {
+      ec2Filters.push({ Name: 'tag:Environment', Values: [filters.environment] });
+    }
     if (filters.repoName !== undefined) {
       ec2Filters.push({ Name: 'tag:Repo', Values: [filters.repoName] });
     }

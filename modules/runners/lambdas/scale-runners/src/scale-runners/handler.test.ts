@@ -72,6 +72,7 @@ describe('handler', () => {
     expect(mockOctokit.actions.listRepoWorkflowRuns).toBeCalledWith({
       owner: TEST_DATA.repositoryOwner,
       repo: TEST_DATA.repositoryName,
+      environment: 'unit-test-environment',
       status: 'queued',
     });
   });
