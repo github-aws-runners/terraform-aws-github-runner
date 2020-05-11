@@ -2,11 +2,11 @@
 
 > WIP: Module is in development
 
-This modules create the required infra structure needed to host GitHub Action self hosted runners on AWS spot instances. All logic required to handle the life cycle for an action runners are implemented in AWS Lambda functions.
+This [Terraform](https://www.terraform.io/) modules create the required infra structure needed to host [GitHub Action](https://github.com/features/actions) self hosted runners on [AWS spot instances](https://aws.amazon.com/ec2/spot/). All logic required to handle the life cycle for an action runners are implemented in AWS Lambda functions.
 
 ## Motivation
 
-GitHub action runners `self hosted` runners provides you with a flexible option to run you CI workloads on compute of your choice. Currently there is no option provided to automate the creation, and scaling of action runners. This module takes care of creating the AWS infra structure and provides lambda modules ot orchestrate the the life cycle of the action runners.
+GitHub action runners `self hosted` runners provides you with a flexible option to run you CI workloads on compute of your choice. Currently there is no option provided to automate the creation, and scaling of action runners. This module takes care of creating the AWS infra structure to host action runners on spot instances. And provides lambda modules to orchestrate the life cycle of the action runners.
 
 Lambda is chooses as runtime for two major reasons. First is allows to create small components with minimal access to AWS and GitHub. Secondly is provides a scalable setup for minimal costs that works on repo level and scales to Org level setup. The lambda's will create linux based EC2 instances with Docker to serve CI workloads that can run on linux and or Docker. The main goal is here to support Docker based wark loads.
 
@@ -14,9 +14,9 @@ A logical question would why not Kubernetes? In the current approach we stay clo
 
 ## Overview
 
-The process of scaling runners on demand starts by registering a GitHub App which delivers via a webhook a check run event to the API Gateway. The Gateway triggers a Lambda which will verify the signature and filter for queued build events. Accepted events are posted on a queue. Messages on this queue will be delayed for x seconds to give available runners the time to start a build.
+The process of scaling runners on demand starts by registering a GitHub App which delivers via a webhook a [check run event](https://developer.github.com/v3/activity/events/types/#checkrunevent) to the API Gateway. The Gateway triggers a Lambda which will verify the signature and filter for queued build events. Accepted events are posted on a queue. Messages on this queue will be delayed for x seconds to give available runners the time to start a build.
 
-In case the build is not started yet, and no limits are reach. The lambda requests a registration token for a new runner at GitHub, stores the token in SSM and starts an EC2 instance via a launch template. The EC2 instances installs the required software via a `user_data` script, fetch and delete the registration token from SSM.
+In case the build is not started yet, and no limits are reach. The lambda requests a registration token for a new runner at GitHub, stores the token in SSM parameter store and starts an EC2 instance via a launch template. The EC2 instances installs the required software via a [`user_data`](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/user-data.html) script, fetch and delete the registration token from SSM.
 
 Scaling down the runners is at the moment brute forced, every x minutes a Lambda is checking if a runner (instance) is not busy. In case the runner is not busy it will be removed from GitHub and AWS. At the moment there seems no other option to scale down more smooth.
 
@@ -58,19 +58,51 @@ The module requires a GitHub app. Go to GitHub and create a new app. Be-aware yo
 7. _Only for Org level runner!_ - Organization permissions, `Administration` - Read and Write (to register runner)
 8. Save the new app.
 9. Next generate a private key on the General page.
-10. Make a note of the following app parameters: App Id and Client ID
+10. Make a note of the following app parameters: app id , client ID, and client secret
 
 ### Setup terraform module
 
-TODO
+Create a terraform workspace and initiate the module, see the examples for more details.
+
+```terraform
+module "runners" {
+  source = "git::https://github.com/philips-labs/terraform-aws-github-runner/"
+
+  aws_region = "eu-west-1"
+  vpc_id     = "vpc-123"
+  subnet_ids = ["subnet-123", "subnet-456"]
+
+  environment = "gh-ci"
+
+  github_app = {
+    key_base64     = "base64string"
+    id             = "1"
+    client_id      = "c-123"
+    client_secret  = "secret"
+    webhook_secret = "secret"
+  }
+
+  enable_organization_runners = true
+}
+```
+
+Next run
+
+```bash
+terraform init
+terrafrom apply
+```
+
+Check the terraform output for the API gateway url, which you need in the next step.
 
 ### Setup GitHub App (part 12
 
 Go back to the GitHub App and update the following settings.
 
 1. Enable the webhook.
-2. Provide the webhook secret.
-3. Enable the `Check` event for the webhook.
+2. Provide the webhook url, see output previous step.
+3. Provide the webhook secret.
+4. Enable the `Check` event for the webhook.
 
 ## Examples
 
