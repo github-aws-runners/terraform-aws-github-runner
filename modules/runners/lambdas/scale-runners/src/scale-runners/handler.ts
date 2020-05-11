@@ -42,7 +42,6 @@ export const handle = async (eventSource: string, payload: ActionRequestMessage)
   const queuedWorkflows = await githubInstallationClient.actions.listRepoWorkflowRuns({
     owner: payload.repositoryOwner,
     repo: payload.repositoryName,
-    environment: environment,
     // @ts-ignore (typing of the 'status' field is incorrect)
     status: 'queued',
   });
@@ -52,6 +51,7 @@ export const handle = async (eventSource: string, payload: ActionRequestMessage)
 
   if (queuedWorkflows.data.total_count > 0) {
     const currentRunners = await listRunners({
+      environment: environment,
       repoName: enableOrgLevel ? undefined : `${payload.repositoryOwner}/${payload.repositoryName}`,
     });
     console.info(

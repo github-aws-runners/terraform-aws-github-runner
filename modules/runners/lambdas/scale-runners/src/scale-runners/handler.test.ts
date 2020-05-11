@@ -72,7 +72,6 @@ describe('handler', () => {
     expect(mockOctokit.actions.listRepoWorkflowRuns).toBeCalledWith({
       owner: TEST_DATA.repositoryOwner,
       repo: TEST_DATA.repositoryName,
-      environment: 'unit-test-environment',
       status: 'queued',
     });
   });
@@ -92,7 +91,10 @@ describe('handler', () => {
 
     it('gets the current org level runners', async () => {
       await handle('aws:sqs', TEST_DATA);
-      expect(listRunners).toBeCalledWith({ repoName: undefined });
+      expect(listRunners).toBeCalledWith({
+        environment: 'unit-test-environment',
+        repoName: undefined,
+      });
     });
 
     it('does not create a token when maximum runners has been reached', async () => {
@@ -127,7 +129,10 @@ describe('handler', () => {
 
     it('gets the current repo level runners', async () => {
       await handle('aws:sqs', TEST_DATA);
-      expect(listRunners).toBeCalledWith({ repoName: `${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName}` });
+      expect(listRunners).toBeCalledWith({
+        environment: 'unit-test-environment',
+        repoName: `${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName}`,
+      });
     });
 
     it('does not create a token when maximum runners has been reached', async () => {
