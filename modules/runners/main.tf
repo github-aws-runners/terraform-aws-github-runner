@@ -65,7 +65,12 @@ resource "aws_launch_template" "runner" {
 
   tag_specifications {
     resource_type = "instance"
-    tags          = local.tags
+    tags = merge(
+      local.tags,
+      {
+        "Name" = format("%s", local.name_runner)
+      },
+    )
   }
 
   user_data = base64encode(templatefile("${path.module}/templates/user-data.sh", {
