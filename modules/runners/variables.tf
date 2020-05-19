@@ -173,3 +173,9 @@ variable "runner_as_root" {
   type        = bool
   default     = false
 }
+
+variable "runners_maxiumum_count" {
+  description = "The maxiumum number of runners tha will be created."
+  type        = number
+  default     = 3
+}

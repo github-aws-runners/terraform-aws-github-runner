@@ -59,6 +59,7 @@ module "runners" {
   minimum_running_time_in_minutes = var.minimum_running_time_in_minutes
   runner_extra_labels             = var.runner_extra_labels
   runner_as_root                  = var.runner_as_root
+  runners_maxiumum_count          = var.runners_maxiumum_count
 
   lambda_zip                = var.runners_lambda_zip
   lambda_timeout_scale_up   = var.runners_scale_up_lambda_timeout

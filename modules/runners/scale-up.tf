@@ -13,6 +13,7 @@ resource "aws_lambda_function" "scale_up" {
     variables = {
       ENABLE_ORGANIZATION_RUNNERS = var.enable_organization_runners
       RUNNER_EXTRA_LABELS         = var.runner_extra_labels
+      RUNNERS_MAXIMUM_COUNT       = var.runners_maxiumum_count
       GITHUB_APP_KEY_BASE64       = var.github_app.key_base64
       GITHUB_APP_ID               = var.github_app.id
       GITHUB_APP_CLIENT_ID        = var.github_app.client_id
