@@ -1,4 +1,4 @@
-name: Lambda Runner Binaries Syncer
+name: Lambda Syncer
 env:
   lambda_name: runner-binaries-syncer
   lambda_path: modules/runner-binaries-syncer/lambdas/runner-binaries-syncer

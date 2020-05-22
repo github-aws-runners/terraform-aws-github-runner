@@ -1,4 +1,4 @@
-name: Lambda Agent Webhook
+name: Lambda Webhook
 on:
   push:
     branches:

@@ -1,4 +1,4 @@
-name: "Terraform root module checks"
+name: "Terraform checks"
 on:
   push:
     branches:
