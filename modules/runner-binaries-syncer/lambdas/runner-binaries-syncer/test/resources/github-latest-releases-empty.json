@@ -1,0 +1,8 @@
+{
+  "status": 200,
+  "url": "https://api.github.com/repos/actions/runner/releases/latest",
+  "data": {
+    "tag_name": "v2.262.1",
+    "name": "v2.262.1"
+  }
+}
