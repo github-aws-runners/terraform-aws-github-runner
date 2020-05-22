@@ -1,8 +1,22 @@
 [![Terraform registry](https://img.shields.io/github/v/release/philips-labs/terraform-aws-github-runner?label=Terraform%20Registry)](https://registry.terraform.io/modules/philips-labs/github-runner/aws/) ![Terraform checks](https://github.com/philips-labs/terraform-aws-github-runner/workflows/Terraform%20root%20module%20checks/badge.svg) ![Lambda Webhook](https://github.com/philips-labs/terraform-aws-github-runner/workflows/Lambda%20Agent%20Webhook/badge.svg) ![Lambda Runners](https://github.com/philips-labs/terraform-aws-github-runner/workflows/Lambda%20Runners/badge.svg) ![Lambda Syncer](https://github.com/philips-labs/terraform-aws-github-runner/workflows/Lambda%20Runner%20Binaries%20Syncer/badge.svg)
 
-# Terraform module for scalable self hosted GitHub action runners
+# Terraform module for scalable self hosted GitHub action runners <!-- omit in toc -->
 
 This [Terraform](https://www.terraform.io/) modules create the required infra structure needed to host [GitHub Actions](https://github.com/features/actions) self hosted auto scaling runners on [AWS spot instances](https://aws.amazon.com/ec2/spot/). By default the GitHub action runner, runs on a single host and does provide scaling. This module also provide the required logic to handle the life cycle for scaling up and down by a set of AWS Lambda functions. The module scaled the runners back to zero to avoid any costs when no workflows are active.
+
+- [Motivation](#motivation)
+- [Overview](#overview)
+- [Usages](#usages)
+  - [Setup GitHub App (part 1)](#setup-github-app-part-1)
+  - [Setup terraform module](#setup-terraform-module)
+  - [Setup GitHub App (part 2)](#setup-github-app-part-2)
+- [Examples](#examples)
+- [Sub modules](#sub-modules)
+- [Requirements](#requirements)
+- [Providers](#providers)
+- [Inputs](#inputs)
+- [Outputs](#outputs)
+- [Philips Forest](#philips-forest)
 
 ## Motivation
 
@@ -156,55 +170,68 @@ Examples are located in the [examples](./dexamples) directory. The following exa
 
 - _[Default](examples/default/README.md)_: The default example of the module
 - _[Permissions boundary](exampls/../examples/permissions-boundary/README.md)_: Example usages of permissions boundaries.
--
+
+## Sub modules
+
+The module contains several sub modules, you can use the module via the main module or assemble your own setup by initializing the sub modules your self.
+
+The following sub modules are defining the core of the module, the modules are mandatory.
+
+- _[runner-binaries-sycer](./modules/runner-binaries-syncer/README.md)_ - Syncs the action runner distribution.
+- _[runners](./modules/runners/README.md)_ - Scales up and down the action runners
+- _[webhook](./modules/webhook/README.md)_ - Handle the the GitHub web hook event
+
+The following sub modules are optional, and are provided as example or utility
+
+- _[download-lambda](./modules/download-lambda/REAME.md)_ - Utility module to download lambda artifacts from GitHub Release
+- _[setup-iam-permissions](./modules/setup-iam-permissions/README.md)_ - Example module to setup permission boundaries
 
 <!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
-
 ## Requirements
 
 No requirements.
 
 ## Providers
 
-| Name   | Version |
-| ------ | ------- |
-| aws    | n/a     |
-| random | n/a     |
+| Name | Version |
+|------|---------|
+| aws | n/a |
+| random | n/a |
 
 ## Inputs
 
-| Name                                  | Description                                                                                                         | Type                                                                                                                                             | Default                 | Required |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------- | :------: |
-| aws_region                            | AWS region.                                                                                                         | `string`                                                                                                                                         | n/a                     |   yes    |
-| enable_organization_runners           | n/a                                                                                                                 | `bool`                                                                                                                                           | n/a                     |   yes    |
-| environment                           | A name that identifies the environment, used as prefix and for tagging.                                             | `string`                                                                                                                                         | n/a                     |   yes    |
-| github_app                            | GitHub app parameters, see your github aapp. Ensure the key is base64 encoded.                                      | <pre>object({<br> key_base64 = string<br> id = string<br> client_id = string<br> client_secret = string<br> webhook_secret = string<br> })</pre> | n/a                     |   yes    |
-| instance_profile_path                 | The path that will be added to the instance_profile, if not set the environment name will be used.                  | `string`                                                                                                                                         | `null`                  |    no    |
-| minimum_running_time_in_minutes       | The time an ec2 action runner should be running at minium before terminated if non busy.                            | `number`                                                                                                                                         | `5`                     |    no    |
-| role_path                             | The path that will be added to role path for created roles, if not set the environment name will be used.           | `string`                                                                                                                                         | `null`                  |    no    |
-| role_permissions_boundary             | Permissions boundary that will be added to the created roles.                                                       | `string`                                                                                                                                         | `null`                  |    no    |
-| runner_as_root                        | Run the action runner under the root user.                                                                          | `bool`                                                                                                                                           | `false`                 |    no    |
-| runner_binaries_syncer_lambda_timeout | Time out of the binaries sync lambda in seconds.                                                                    | `number`                                                                                                                                         | `300`                   |    no    |
-| runner_binaries_syncer_lambda_zip     | File location of the binaries sync lambda zip file.                                                                 | `string`                                                                                                                                         | `null`                  |    no    |
-| runner_extra_labels                   | Extra labels for the runners (GitHub). Separate each label by a comma                                               | `string`                                                                                                                                         | `""`                    |    no    |
-| runners_lambda_zip                    | File location of the lambda zip file for scaling runners.                                                           | `string`                                                                                                                                         | `null`                  |    no    |
-| runners_maxiumum_count                | The maxiumum number of runners tha will be created.                                                                 | `number`                                                                                                                                         | `3`                     |    no    |
-| runners_scale_down_lambda_timeout     | Time out for the scale up lambda in seconds.                                                                        | `number`                                                                                                                                         | `60`                    |    no    |
-| runners_scale_up_lambda_timeout       | Time out for the scale down lambda in seconds.                                                                      | `number`                                                                                                                                         | `60`                    |    no    |
-| scale_down_schedule_expression        | Scheduler expression to check every x for scale down.                                                               | `string`                                                                                                                                         | `"cron(*/5 * * * ? *)"` |    no    |
-| subnet_ids                            | List of subnets in which the action runners will be launched, the subnets needs to be subnets in the `vpc_id`.      | `list(string)`                                                                                                                                   | n/a                     |   yes    |
-| tags                                  | Map of tags that will be added to created resources. By default resources will be tagged with name and environment. | `map(string)`                                                                                                                                    | `{}`                    |    no    |
-| vpc_id                                | The VPC for security groups of the action runners.                                                                  | `string`                                                                                                                                         | n/a                     |   yes    |
-| webhook_lambda_timeout                | Time out of the webhook lambda in seconds.                                                                          | `number`                                                                                                                                         | `10`                    |    no    |
-| webhook_lambda_zip                    | File location of the wehbook lambda zip file.                                                                       | `string`                                                                                                                                         | `null`                  |    no    |
+| Name | Description | Type | Default | Required |
+|------|-------------|------|---------|:--------:|
+| aws\_region | AWS region. | `string` | n/a | yes |
+| enable\_organization\_runners | n/a | `bool` | n/a | yes |
+| environment | A name that identifies the environment, used as prefix and for tagging. | `string` | n/a | yes |
+| github\_app | GitHub app parameters, see your github aapp. Ensure the key is base64 encoded. | <pre>object({<br>    key_base64     = string<br>    id             = string<br>    client_id      = string<br>    client_secret  = string<br>    webhook_secret = string<br>  })</pre> | n/a | yes |
+| instance\_profile\_path | The path that will be added to the instance\_profile, if not set the environment name will be used. | `string` | `null` | no |
+| minimum\_running\_time\_in\_minutes | The time an ec2 action runner should be running at minium before terminated if non busy. | `number` | `5` | no |
+| role\_path | The path that will be added to role path for created roles, if not set the environment name will be used. | `string` | `null` | no |
+| role\_permissions\_boundary | Permissions boundary that will be added to the created roles. | `string` | `null` | no |
+| runner\_as\_root | Run the action runner under the root user. | `bool` | `false` | no |
+| runner\_binaries\_syncer\_lambda\_timeout | Time out of the binaries sync lambda in seconds. | `number` | `300` | no |
+| runner\_binaries\_syncer\_lambda\_zip | File location of the binaries sync lambda zip file. | `string` | `null` | no |
+| runner\_extra\_labels | Extra labels for the runners (GitHub). Separate each label by a comma | `string` | `""` | no |
+| runners\_lambda\_zip | File location of the lambda zip file for scaling runners. | `string` | `null` | no |
+| runners\_maxiumum\_count | The maxiumum number of runners tha will be created. | `number` | `3` | no |
+| runners\_scale\_down\_lambda\_timeout | Time out for the scale up lambda in seconds. | `number` | `60` | no |
+| runners\_scale\_up\_lambda\_timeout | Time out for the scale down lambda in seconds. | `number` | `60` | no |
+| scale\_down\_schedule\_expression | Scheduler expression to check every x for scale down. | `string` | `"cron(*/5 * * * ? *)"` | no |
+| subnet\_ids | List of subnets in which the action runners will be launched, the subnets needs to be subnets in the `vpc_id`. | `list(string)` | n/a | yes |
+| tags | Map of tags that will be added to created resources. By default resources will be tagged with name and environment. | `map(string)` | `{}` | no |
+| vpc\_id | The VPC for security groups of the action runners. | `string` | n/a | yes |
+| webhook\_lambda\_timeout | Time out of the webhook lambda in seconds. | `number` | `10` | no |
+| webhook\_lambda\_zip | File location of the wehbook lambda zip file. | `string` | `null` | no |
 
 ## Outputs
 
-| Name            | Description |
-| --------------- | ----------- |
-| binaries_syncer | n/a         |
-| runners         | n/a         |
-| webhook         | n/a         |
+| Name | Description |
+|------|-------------|
+| binaries\_syncer | n/a |
+| runners | n/a |
+| webhook | n/a |
 
 <!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 
