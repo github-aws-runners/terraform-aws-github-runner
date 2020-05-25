@@ -181,7 +181,7 @@ The following submodules are the core of the module and are mandatory:
 - _[runners](./modules/runners/README.md)_ - Scales the action runners up and down
 - _[webhook](./modules/webhook/README.md)_ - Handles GitHub webhooks
 
-The following sub modules are optional, and are provided as example or utility
+The following sub modules are optional and are provided as example or utility:
 
 - _[download-lambda](./modules/download-lambda/README.md)_ - Utility module to download lambda artifacts from GitHub Release
 - _[setup-iam-permissions](./modules/setup-iam-permissions/README.md)_ - Example module to setup permission boundaries
