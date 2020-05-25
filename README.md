@@ -26,8 +26,6 @@ Lambda is chosen as runtime for two major reasons. First it allows to create sma
 
 A logical question would be why not Kubernetes? In the current approach we stay close to the way the GitHub action runners are available today. The approach is to install the runner on a host where the required software is available. With this setup we stay quite close to the current GitHub approach. Another logical choice would be AWS Auto Scaling groups. This choice would typically require much more permissions on instance level to GitHub. And besides that, scaling up and down is not trivial.
 
-https://help.github.com/en/actions/hosting-your-own-runners/removing-self-hosted-runners
-
 ## Overview
 
 The moment a GitHub action workflow requiring a `self-hosted` runner is triggered, GitHub will try to find a runner which can execute the workload. This is the moment this module hooks in. GitHub created a [check run event](https://developer.github.com/v3/activity/events/types/#checkrunevent) for the triggered workflow. This is the event that is used to decide if the creation of a new runner is necessary.
