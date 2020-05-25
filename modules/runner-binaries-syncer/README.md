@@ -1,6 +1,6 @@
 # Module - Runner binaries syncer
 
-This module creates a lambda that will sync GitHub action binary to a S3 bucket, the lambda will be triggered via a Cloud Watch event. The distribution is cached to avoid the latency of downloading the distribution during the setup.
+This module creates a lambda that will sync GitHub action binary to a S3 bucket, the lambda will be triggered via a CloudWatch event. The distribution is cached to avoid the latency of downloading the distribution during the setup.
 
 ## Usages
 
