@@ -24,7 +24,6 @@ async function getCachedVersion(s3: S3, cacheObject: CacheObject): Promise<strin
     return versions.length === 1 ? versions[0].Value : undefined;
   } catch (e) {
     console.debug('No tags found');
-    console.log(e);
     return undefined;
   }
 }
