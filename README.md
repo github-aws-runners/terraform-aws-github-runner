@@ -173,7 +173,7 @@ Examples are located in the [examples](./examples) directory. The following exam
 
 ## Sub modules
 
-The module contains several sub modules, you can use the module via the main module or assemble your own setup by initializing the sub modules your self.
+The module contains several submodules, you can use the module via the main module or assemble your own setup by initializing the submodules yourself.
 
 The following sub modules are defining the core of the module, the modules are mandatory.
 
