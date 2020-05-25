@@ -175,7 +175,7 @@ Examples are located in the [examples](./examples) directory. The following exam
 
 The module contains several submodules, you can use the module via the main module or assemble your own setup by initializing the submodules yourself.
 
-The following sub modules are defining the core of the module, the modules are mandatory.
+The following submodules are the core of the module and are mandatory:
 
 - _[runner-binaries-sycer](./modules/runner-binaries-syncer/README.md)_ - Syncs the action runner distribution.
 - _[runners](./modules/runners/README.md)_ - Scales up and down the action runners
