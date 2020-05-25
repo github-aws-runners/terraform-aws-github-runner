@@ -20,7 +20,7 @@ This [Terraform](https://www.terraform.io/) modules create the required infra st
 
 ## Motivation
 
-GitHub Actions `self hosted` runners provides you with a flexible option to run your CI workloads on compute of your choice. Currently there is no option provided to automate the creation, and scaling of action runners. This module takes care of creating the AWS infra structure to host action runners on spot instances. And provides lambda modules to orchestrate the life cycle of the action runners.
+GitHub Actions `self hosted` runners provides you with a flexible option to run your CI workloads on compute of your choice. Currently there is no option provided to automate the creation and scaling of action runners. This module takes care of creating the AWS infra structure to host action runners on spot instances. And provides lambda modules to orchestrate the life cycle of the action runners.
 
 Lambda is chosen as runtime for two major reasons. First it allows to create small components with minimal access to AWS and GitHub. Secondly it provides a scalable setup for minimal costs that works on repo level and scales to organization level. The lambdas will create Linux based EC2 instances with Docker to serve CI workloads that can run on Linux and/or Docker. The main goal is here to support Docker based workloads.
 
