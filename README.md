@@ -166,7 +166,7 @@ You are now ready to run action workloads on self hosted runner, remember builds
 
 ## Examples
 
-Examples are located in the [examples](./dexamples) directory. The following examples are provided.
+Examples are located in the [examples](./examples) directory. The following examples are provided:
 
 - _[Default](examples/default/README.md)_: The default example of the module
 - _[Permissions boundary](exampls/../examples/permissions-boundary/README.md)_: Example usages of permissions boundaries.
