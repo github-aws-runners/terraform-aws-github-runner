@@ -4,7 +4,7 @@ This module creates a lambda that will sync GitHub action binary to a S3 bucket,
 
 ## Usages
 
-Usages examples are available in the root module. By default the module will assume the local zip file containing the lambda distribution is used.
+Usage examples are available in the root module. By default the root module will assume local zip files containing the lambda distribution are available. See the [download lambda module](../download-lambda/README.md) for more information.
 
 ## Lambda Function
 
