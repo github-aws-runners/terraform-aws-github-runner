@@ -178,7 +178,7 @@ The module contains several submodules, you can use the module via the main modu
 The following submodules are the core of the module and are mandatory:
 
 - _[runner-binaries-syncer](./modules/runner-binaries-syncer/README.md)_ - Syncs the action runner distribution.
-- _[runners](./modules/runners/README.md)_ - Scales up and down the action runners
+- _[runners](./modules/runners/README.md)_ - Scales the action runners up and down
 - _[webhook](./modules/webhook/README.md)_ - Handles GitHub webhooks
 
 The following sub modules are optional, and are provided as example or utility
