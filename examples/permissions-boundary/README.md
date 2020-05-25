@@ -24,15 +24,6 @@ terraform apply
 cd ..
 ```
 
-Download the lambda releases.
-
-```bash
-cd lambdas-download
-terraform init
-terraform apply
-cd ..
-```
-
 Now you can deploy the module.
 
 ```bash
