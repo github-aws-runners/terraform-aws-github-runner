@@ -1,6 +1,6 @@
 # Module - GitHub App web hook
 
-This module creates an API gateway endpoint and lambda function to handle GitHub App web hook events.
+This module creates an API gateway endpoint and lambda function to handle GitHub App webhook events.
 
 ## Usages
 
