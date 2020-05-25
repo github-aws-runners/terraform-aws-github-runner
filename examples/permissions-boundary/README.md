@@ -13,7 +13,7 @@ terraform apply
 cd ..
 ```
 
-After the apply a new role and policies are created, the state of the first step is imported in this workspace to load the role and policy. The deployment of the runner module is first assuming the new role before creating all resources. Before running Terraform, ensure the GitHub app is configured.
+Now a new role and policies should be created. The output of the previous step is imported in this workspace to load the role and policy. The deployment of the runner module assumes the new role before creating all resources (https://www.terraform.io/docs/providers/aws/index.html#assume-role). Before running Terraform, ensure the GitHub app is configured.
 
 Download the lambda releases.
 
