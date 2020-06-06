@@ -92,6 +92,7 @@ export async function createRunner(runnerParameters: RunnerInputParameters): Pro
               Key: runnerParameters.orgName ? 'Org' : 'Repo',
               Value: runnerParameters.orgName ? runnerParameters.orgName : runnerParameters.repoName,
             },
+            { Key: 'Environment', Value: runnerParameters.environment },
           ],
         },
       ],
