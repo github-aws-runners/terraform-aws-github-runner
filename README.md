@@ -10,6 +10,10 @@ This [Terraform](https://www.terraform.io/) modules create the required infra st
   - [Setup GitHub App (part 1)](#setup-github-app-part-1)
   - [Setup terraform module](#setup-terraform-module)
   - [Setup GitHub App (part 2)](#setup-github-app-part-2)
+  - [Encryption](#encryption)
+    - [Encrypted via a module managed KMS key (default)](#encrypted-via-a-module-managed-kms-key-default)
+    - [Encrypted via a provided KMS key](#encrypted-via-a-provided-kms-key)
+    - [No encryption](#no-encryption)
 - [Examples](#examples)
 - [Sub modules](#sub-modules)
 - [Requirements](#requirements)
@@ -41,6 +45,8 @@ The Lambda first requests a registration token from GitHub, the token is needed 
 Scaling down the runners is at the moment brute-forced, every configurable amount of minutes a lambda will check every runner (instance) if it is busy. In case the runner is not busy it will be removed from GitHub and the instance terminated in AWS. At the moment there seems no other option to scale down more smoothly.
 
 Downloading the GitHub Action Runner distribution can be occasionally slow (more than 10 minutes). Therefore a lambda is introduced that synchronizes the action runner binary from GitHub to an S3 bucket. The EC2 instance will fetch the distribution from the S3 bucket instead of the internet.
+
+Secrets and private keys which are passed the Lambda's as environment variables are encrypted by default by a KMS key managed by the module. Alternatively you can pass your own KMS key. Encryption via KMS can be complete disabled by setting `encrypt_secrets` to `false`.
 
 ![Architecture](docs/component-overview.svg)
 
@@ -164,6 +170,37 @@ Go back to the GitHub App and update the following settings.
 4. Enable the `Check run` event for the webhook.
 
 You are now ready to run action workloads on self hosted runner, remember builds will fail if there is no (offline) runner available with matching labels.
+
+### Encryption
+
+The module support 3 scenario's to manage environment secrets and private key of the Lambda functions.
+
+#### Encrypted via a module managed KMS key (default)
+
+This is the default, no additional configuration is required.
+
+#### Encrypted via a provided KMS key
+
+You have to create an configure you KMS key. The module will use the context with key: `Environment` and value `var.environment` as encryption context.
+
+```HCL
+resource "aws_kms_key" "github" {
+  is_enabled = true
+}
+
+module "runners" {
+
+  ...
+  manage_kms_key = false
+  kms_key_id     = aws_kms_key.github.key_id
+  ...
+
+```
+
+#### No encryption
+
+Not advised but you can disable the encryption as by setting the variable `encrypt_secrets` to `false`.
+
 
 ## Examples
 

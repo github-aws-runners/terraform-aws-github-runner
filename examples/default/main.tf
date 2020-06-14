@@ -32,6 +32,9 @@ module "runners" {
   runners_lambda_zip                = "lambdas-download/runners.zip"
   enable_organization_runners       = false
   runner_extra_labels               = "default,example"
+
+  # disable KMS and ecnryption
+  # encrypt_secrets = false
 }
 
 

@@ -29,6 +29,10 @@ module "webhook" {
   aws_region  = var.aws_region
   environment = var.environment
   tags        = local.tags
+  encryption = {
+    kms_key_id = local.kms_key_id
+    encrypt    = var.encrypt_secrets
+  }
 
   sqs_build_queue           = aws_sqs_queue.queued_builds
   github_app_webhook_secret = var.github_app.webhook_secret
@@ -48,6 +52,10 @@ module "runners" {
   subnet_ids  = var.subnet_ids
   environment = var.environment
   tags        = local.tags
+  encryption = {
+    kms_key_id = local.kms_key_id
+    encrypt    = var.encrypt_secrets
+  }
 
   s3_bucket_runner_binaries   = module.runner_binaries.bucket
   s3_location_runner_binaries = local.s3_action_runner_url

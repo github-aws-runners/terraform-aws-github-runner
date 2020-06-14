@@ -2,6 +2,8 @@ import { IncomingHttpHeaders } from 'http';
 import crypto from 'crypto';
 import { sendActionRequest } from '../sqs';
 import { WebhookPayloadCheckRun } from '@octokit/webhooks';
+import { KMS } from 'aws-sdk';
+import { decrypt } from '../kms';
 
 function signRequestBody(key: string, body: any) {
   return `sha1=${crypto.createHmac('sha1', key).update(body, 'utf8').digest('hex')}`;
@@ -13,10 +15,19 @@ export const handle = async (headers: IncomingHttpHeaders, payload: any): Promis
     headers[key.toLowerCase()] = headers[key];
   }
 
-  const secret = process.env.GITHUB_APP_WEBHOOK_SECRET as string;
   const signature = headers['x-hub-signature'];
   if (!signature) {
     console.error("Github event doesn't have signature. This webhook requires a secret to be configured.");
+    return 500;
+  }
+
+  const secret = await decrypt(
+    process.env.GITHUB_APP_WEBHOOK_SECRET as string,
+    process.env.KMS_KEY_ID as string,
+    process.env.ENVIRONMENT as string,
+  );
+  if (secret === undefined) {
+    console.error('Cannot decrypt secret.');
     return 500;
   }
 

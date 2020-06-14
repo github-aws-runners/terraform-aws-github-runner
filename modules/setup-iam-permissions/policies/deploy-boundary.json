@@ -92,7 +92,8 @@
         "sqs:*",
         "ssm:*",
         "apigateway:*",
-        "resource-groups:*"
+        "resource-groups:*",
+        "kms:*"
       ],
       "Resource": "*"
     }

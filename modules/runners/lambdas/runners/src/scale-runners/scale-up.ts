@@ -3,6 +3,7 @@ import { Octokit } from '@octokit/rest';
 import { AppAuth } from '@octokit/auth-app/dist-types/types';
 import { listRunners, createRunner } from './runners';
 import yn from 'yn';
+import { decrypt } from './kms';
 
 export interface ActionRequestMessage {
   id: number;
@@ -12,11 +13,26 @@ export interface ActionRequestMessage {
   installationId: number;
 }
 
-export function createGithubAppAuth(installationId: number | undefined): AppAuth {
-  const privateKey = Buffer.from(process.env.GITHUB_APP_KEY_BASE64 as string, 'base64').toString();
+export async function createGithubAppAuth(installationId: number | undefined): Promise<AppAuth> {
+  //const privateKey = Buffer.from(process.env.GITHUB_APP_KEY_BASE64 as string, 'base64').toString();
+  const clientSecret = await decrypt(
+    process.env.GITHUB_APP_CLIENT_SECRET as string,
+    process.env.KMS_KEY_ID as string,
+    process.env.ENVIRONMENT as string,
+  );
+  const privateKeyBase64 = await decrypt(
+    process.env.GITHUB_APP_KEY_BASE64 as string,
+    process.env.KMS_KEY_ID as string,
+    process.env.ENVIRONMENT as string,
+  );
+  if (clientSecret === undefined || privateKeyBase64 === undefined) {
+    throw Error('Cannot decrypt.');
+  }
+
+  const privateKey = Buffer.from(privateKeyBase64, 'base64').toString();
+
   const appId: number = parseInt(process.env.GITHUB_APP_ID as string);
   const clientId = process.env.GITHUB_APP_CLIENT_ID as string;
-  const clientSecret = process.env.GITHUB_APP_CLIENT_SECRET as string;
 
   return createAppAuth({
     id: appId,
@@ -38,7 +54,7 @@ export const scaleUp = async (eventSource: string, payload: ActionRequestMessage
   const maximumRunners = parseInt(process.env.RUNNERS_MAXIMUM_COUNT || '3');
   const runnerExtraLabels = process.env.RUNNER_EXTRA_LABELS;
   const environment = process.env.ENVIRONMENT as string;
-  const githubAppAuth = createGithubAppAuth(payload.installationId);
+  const githubAppAuth = await createGithubAppAuth(payload.installationId);
   const githubInstallationClient = await createInstallationClient(githubAppAuth);
   const queuedWorkflows = await githubInstallationClient.actions.listRepoWorkflowRuns({
     owner: payload.repositoryOwner,

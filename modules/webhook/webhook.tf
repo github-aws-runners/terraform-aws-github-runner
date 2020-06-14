@@ -1,3 +1,31 @@
+locals {
+  github_app_webhook_secret = var.encryption.encrypt ? aws_kms_ciphertext.github_app_webhook_secret[0].ciphertext_blob : var.github_app_webhook_secret
+}
+
+resource "aws_kms_ciphertext" "github_app_webhook_secret" {
+  count     = var.encryption.encrypt ? 1 : 0
+  key_id    = var.encryption.kms_key_id
+  plaintext = var.github_app_webhook_secret
+
+  context = {
+    Environment = var.environment
+  }
+}
+
+resource "aws_kms_grant" "webhook" {
+  count             = var.encryption.encrypt ? 1 : 0
+  name              = "${var.environment}-webhook"
+  key_id            = var.encryption.kms_key_id
+  grantee_principal = aws_iam_role.webhook_lambda.arn
+  operations        = ["Decrypt"]
+
+  constraints {
+    encryption_context_equals = {
+      Environment = var.environment
+    }
+  }
+}
+
 resource "aws_lambda_function" "webhook" {
   filename         = local.lambda_zip
   source_code_hash = filebase64sha256(local.lambda_zip)
@@ -9,7 +37,9 @@ resource "aws_lambda_function" "webhook" {
 
   environment {
     variables = {
-      GITHUB_APP_WEBHOOK_SECRET = var.github_app_webhook_secret
+      ENVIRONMENT               = var.environment
+      KMS_KEY_ID                = var.encryption.kms_key_id
+      GITHUB_APP_WEBHOOK_SECRET = local.github_app_webhook_secret
       SQS_URL_WEBHOOK           = var.sqs_build_queue.id
     }
   }

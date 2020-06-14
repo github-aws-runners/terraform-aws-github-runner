@@ -22,7 +22,7 @@ function getRepo(runner: RunnerInfo, orgLevel: boolean): Repo {
 }
 
 async function createGitHubClientForRunner(runner: RunnerInfo, orgLevel: boolean): Promise<Octokit> {
-  const githubClient = await createAppClient(createGithubAppAuth(undefined));
+  const githubClient = await createAppClient(await createGithubAppAuth(undefined));
   const repo = getRepo(runner, orgLevel);
 
   const installationId = orgLevel
@@ -38,7 +38,7 @@ async function createGitHubClientForRunner(runner: RunnerInfo, orgLevel: boolean
         })
       ).data.id;
 
-  return createInstallationClient(createGithubAppAuth(installationId));
+  return createInstallationClient(await createGithubAppAuth(installationId));
 }
 
 function runnerMinimumTimeExceeded(runner: RunnerInfo, minimumRunningTimeInMinutes: string): boolean {

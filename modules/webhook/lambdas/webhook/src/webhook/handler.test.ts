@@ -4,6 +4,11 @@ import check_run_event from '../../test/resources/github_check_run_event.json';
 import { sendActionRequest } from '../sqs';
 
 jest.mock('../sqs');
+jest.mock('../kms', () => ({
+  decrypt: jest.fn().mockImplementation((value) => {
+    return Promise.resolve(value);
+  }),
+}));
 
 describe('handler', () => {
   let originalError: Console['error'];

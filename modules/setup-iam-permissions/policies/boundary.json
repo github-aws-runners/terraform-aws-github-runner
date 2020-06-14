@@ -22,6 +22,12 @@
       "Effect": "Allow",
       "Action": ["iam:PassRole"],
       "Resource": "arn:aws:iam::${account_id}:role/${role_namespace}/*"
+    },
+    {
+      "Sid": "Decrypt",
+      "Effect": "Allow",
+      "Action": ["kms:Decrypt"],
+      "Resource": "*"
     }
   ]
 }

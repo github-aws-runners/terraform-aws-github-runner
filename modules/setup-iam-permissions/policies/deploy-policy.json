@@ -14,7 +14,8 @@
         "ssm:*",
         "logs:*",
         "apigateway:*",
-        "resource-groups:*"
+        "resource-groups:*",
+        "kms:*"
       ],
       "Resource": "*"
     }
