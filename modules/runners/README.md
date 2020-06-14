@@ -67,6 +67,7 @@ No requirements.
 | aws\_region | AWS region. | `string` | n/a | yes |
 | block\_device\_mappings | The EC2 instance block device configuration. Takes the following keys: `delete_on_termination`, `volume_type`, `volume_size`, `encrypted`, `iops` | `map(string)` | `{}` | no |
 | enable\_organization\_runners | n/a | `bool` | n/a | yes |
+| encryption | KMS key to encrypted lambda environment secrets. Either provide a key and `ecnrypt` set to `true`. Or set the key to `null` and encrypt to `false`. | <pre>object({<br>    kms_key_id = string<br>    encrypt    = bool<br>  })</pre> | n/a | yes |
 | environment | A name that identifies the environment, used as prefix and for tagging. | `string` | n/a | yes |
 | github\_app | GitHub app parameters, see your github aapp. Ensure the key is base64 encoded. | <pre>object({<br>    key_base64    = string<br>    id            = string<br>    client_id     = string<br>    client_secret = string<br>  })</pre> | n/a | yes |
 | instance\_profile\_path | The path that will be added to the instance\_profile, if not set the environment name will be used. | `string` | `null` | no |

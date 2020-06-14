@@ -49,6 +49,7 @@ No requirements.
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | aws\_region | AWS region. | `string` | n/a | yes |
+| encryption | KMS key to encrypted lambda environment secrets. Either provide a key and `ecnrypt` set to `true`. Or set the key to `null` and encrypt to `false`. | <pre>object({<br>    kms_key_id = string<br>    encrypt    = bool<br>  })</pre> | n/a | yes |
 | environment | A name that identifies the environment, used as prefix and for tagging. | `string` | n/a | yes |
 | github\_app\_webhook\_secret | n/a | `string` | n/a | yes |
 | lambda\_timeout | Time out of the lambda in seconds. | `number` | `10` | no |
