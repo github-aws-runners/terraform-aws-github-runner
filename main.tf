@@ -60,6 +60,8 @@ module "runners" {
   s3_bucket_runner_binaries   = module.runner_binaries.bucket
   s3_location_runner_binaries = local.s3_action_runner_url
 
+  instance_type = var.instance_type
+
   sqs_build_queue                 = aws_sqs_queue.queued_builds
   github_app                      = var.github_app
   enable_organization_runners     = var.enable_organization_runners

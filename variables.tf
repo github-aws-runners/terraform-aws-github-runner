@@ -120,6 +120,12 @@ variable "instance_profile_path" {
   default     = null
 }
 
+variable "instance_type" {
+  description = "Instance type for the action runner."
+  type        = string
+  default     = "m5.large"
+}
+
 variable "runner_as_root" {
   description = "Run the action runner under the root user."
   type        = bool
