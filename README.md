@@ -128,7 +128,7 @@ Next create a second terraform workspace and initiate the module, see the exampl
 ```terraform
 module "github-runner" {
   source  = "philips-labs/github-runner/aws"
-  version = "0.1.0"
+  version = "0.2.0"
 
   aws_region = "eu-west-1"
   vpc_id     = "vpc-123"
@@ -145,7 +145,7 @@ module "github-runner" {
   }
 
   webhook_lambda_zip                = "lambdas-download/webhook.zip"
-  runner_binaries_syncer_lambda_zip = "lambdas-download/runner-binaries-syncer.zip.zip"
+  runner_binaries_syncer_lambda_zip = "lambdas-download/runner-binaries-syncer.zip"
   runners_lambda_zip                = "lambdas-download/runners.zip"
   enable_organization_runners = true
 }
