@@ -11,3 +11,18 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+
+  - package-ecosystem: "npm"
+    directory: "/modules/runner-binaries-syncer/lambdas/runner-binaries-syncer"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "npm"
+    directory: "/modules/webhook/lambdas/webhook"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "npm"
+    directory: "/modules/runners/lambdas/runners"
+    schedule:
+      interval: "weekly"
