@@ -21,7 +21,7 @@
     "express": "^4.17.1",
     "jest": "^25.4.0",
     "ts-jest": "^25.4.0",
-    "ts-node-dev": "^1.0.0-pre.44",
+    "ts-node-dev": "^1.0.0-pre.51",
     "typescript": "^3.9.6"
   },
   "dependencies": {
