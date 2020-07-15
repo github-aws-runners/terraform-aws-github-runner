@@ -449,10 +449,10 @@
     "@types/yargs" "^15.0.0"
     chalk "^3.0.0"
 
-"@octokit/webhooks@7.5.0":
-  version "7.5.0"
-  resolved "https://registry.yarnpkg.com/@octokit/webhooks/-/webhooks-7.5.0.tgz#2e070d832999d49e755e290652d39f3d64becaa1"
-  integrity sha512-J2lU8sVn0I72t0XGJtaKL3QQWmJnPyIaXdJD90hZQzzrKeQFVPUMUBUbHjj17ICkizQIrsRSBvR4eh3d2MadMA==
+"@octokit/webhooks@7.6.5":
+  version "7.6.5"
+  resolved "https://registry.yarnpkg.com/@octokit/webhooks/-/webhooks-7.6.5.tgz#30e5032ec8f468b87e5e16f4840ea10e780c6e07"
+  integrity sha512-FoVtLSNVaQ2lWZosDLtAn2mdIGsQlmr2BarlNp3owg1C77LRqfWtGLNHnHyyzgPHCDZHk2g/zGwAKW0qj7VktA==
   dependencies:
     debug "^4.0.0"
 
