@@ -40,7 +40,6 @@ variable "s3_bucket_runner_binaries" {
   })
 }
 
-
 variable "s3_location_runner_binaries" {
   description = "S3 location of runner distribution."
   type        = string
@@ -79,7 +78,6 @@ variable "ami_owners" {
   default     = ["amazon"]
 }
 
-
 variable "userdata_pre_install" {
   description = "User-data script snippet to insert before GitHub acton runner install"
   type        = string
@@ -112,7 +110,6 @@ variable "github_app" {
     client_secret = string
   })
 }
-
 
 variable "scale_down_schedule_expression" {
   description = "Scheduler expression to check every x for scale down."

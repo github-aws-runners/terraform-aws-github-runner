@@ -27,4 +27,3 @@ output "webhook" {
     endpoint    = "${module.webhook.gateway.api_endpoint}/${module.webhook.endpoint_relative_path}"
   }
 }
-

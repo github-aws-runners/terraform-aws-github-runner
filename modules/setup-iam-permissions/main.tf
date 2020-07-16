@@ -46,5 +46,3 @@ resource "aws_iam_policy" "deploy_boundary" {
     permission_boundary        = aws_iam_policy.boundary.arn
   })
 }
-
-

@@ -5,4 +5,3 @@ module "vpc" {
   aws_region                 = local.aws_region
   create_private_hosted_zone = false
 }
-

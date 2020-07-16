@@ -15,7 +15,6 @@ data "terraform_remote_state" "iam" {
   }
 }
 
-
 resource "aws_kms_key" "github" {
   is_enabled = true
 }
@@ -60,5 +59,3 @@ module "runners" {
   role_path                 = "/runners/"
   role_permissions_boundary = data.terraform_remote_state.iam.outputs.boundary
 }
-
-

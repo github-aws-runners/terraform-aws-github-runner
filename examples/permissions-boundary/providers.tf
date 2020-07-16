@@ -6,4 +6,3 @@ provider "aws" {
     role_arn = data.terraform_remote_state.iam.outputs.role
   }
 }
-

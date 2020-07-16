@@ -48,4 +48,3 @@ variable "role_path" {
   type        = string
   default     = null
 }
-

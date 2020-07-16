@@ -13,7 +13,6 @@ variable "subnet_ids" {
   type        = list(string)
 }
 
-
 variable "tags" {
   description = "Map of tags that will be added to created resources. By default resources will be tagged with name and environment."
   type        = map(string)
@@ -57,8 +56,6 @@ variable "runner_extra_labels" {
   type        = string
   default     = ""
 }
-
-
 
 variable "webhook_lambda_zip" {
   description = "File location of the wehbook lambda zip file."

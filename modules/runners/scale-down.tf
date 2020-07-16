@@ -73,6 +73,3 @@ resource "aws_iam_role_policy" "scale_down_logging" {
   role   = aws_iam_role.scale_down.name
   policy = templatefile("${path.module}/policies/lambda-cloudwatch.json", {})
 }
-
-
-

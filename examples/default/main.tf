@@ -36,5 +36,3 @@ module "runners" {
   # disable KMS and ecnryption
   # encrypt_secrets = false
 }
-
-
