@@ -257,8 +257,8 @@ No requirements.
 | runner\_extra\_labels | Extra labels for the runners (GitHub). Separate each label by a comma | `string` | `""` | no |
 | runners\_lambda\_zip | File location of the lambda zip file for scaling runners. | `string` | `null` | no |
 | runners\_maximum\_count | The maximum number of runners tha will be created. | `number` | `3` | no |
-| runners\_scale\_down\_lambda\_timeout | Time out for the scale up lambda in seconds. | `number` | `60` | no |
-| runners\_scale\_up\_lambda\_timeout | Time out for the scale down lambda in seconds. | `number` | `60` | no |
+| runners\_scale\_down\_lambda\_timeout | Time out for the scale down lambda in seconds. | `number` | `60` | no |
+| runners\_scale\_up\_lambda\_timeout | Time out for the scale up lambda in seconds. | `number` | `60` | no |
 | scale\_down\_schedule\_expression | Scheduler expression to check every x for scale down. | `string` | `"cron(*/5 * * * ? *)"` | no |
 | subnet\_ids | List of subnets in which the action runners will be launched, the subnets needs to be subnets in the `vpc_id`. | `list(string)` | n/a | yes |
 | tags | Map of tags that will be added to created resources. By default resources will be tagged with name and environment. | `map(string)` | `{}` | no |
