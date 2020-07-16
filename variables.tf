@@ -132,8 +132,8 @@ variable "runner_as_root" {
   default     = false
 }
 
-variable "runners_maxiumum_count" {
-  description = "The maxiumum number of runners tha will be created."
+variable "runners_maximum_count" {
+  description = "The maximum number of runners tha will be created."
   type        = number
   default     = 3
 }

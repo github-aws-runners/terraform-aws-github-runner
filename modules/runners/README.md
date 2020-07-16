@@ -82,7 +82,7 @@ No requirements.
 | role\_permissions\_boundary | Permissions boundary that will be added to the created role for the lambda. | `string` | `null` | no |
 | runner\_as\_root | Run the action runner under the root user. | `bool` | `false` | no |
 | runner\_extra\_labels | Extra labels for the runners (GitHub). Separate each label by a comma | `string` | `""` | no |
-| runners\_maxiumum\_count | The maxiumum number of runners tha will be created. | `number` | `3` | no |
+| runners\_maximum\_count | The maximum number of runners tha will be created. | `number` | `3` | no |
 | s3\_bucket\_runner\_binaries | n/a | <pre>object({<br>    arn = string<br>  })</pre> | n/a | yes |
 | s3\_location\_runner\_binaries | S3 location of runner distribution. | `string` | n/a | yes |
 | scale\_down\_schedule\_expression | Scheduler expression to check every x for scale down. | `string` | `"cron(*/5 * * * ? *)"` | no |

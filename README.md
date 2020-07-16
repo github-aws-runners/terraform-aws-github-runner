@@ -256,7 +256,7 @@ No requirements.
 | runner\_binaries\_syncer\_lambda\_zip | File location of the binaries sync lambda zip file. | `string` | `null` | no |
 | runner\_extra\_labels | Extra labels for the runners (GitHub). Separate each label by a comma | `string` | `""` | no |
 | runners\_lambda\_zip | File location of the lambda zip file for scaling runners. | `string` | `null` | no |
-| runners\_maxiumum\_count | The maxiumum number of runners tha will be created. | `number` | `3` | no |
+| runners\_maximum\_count | The maximum number of runners tha will be created. | `number` | `3` | no |
 | runners\_scale\_down\_lambda\_timeout | Time out for the scale up lambda in seconds. | `number` | `60` | no |
 | runners\_scale\_up\_lambda\_timeout | Time out for the scale down lambda in seconds. | `number` | `60` | no |
 | scale\_down\_schedule\_expression | Scheduler expression to check every x for scale down. | `string` | `"cron(*/5 * * * ? *)"` | no |

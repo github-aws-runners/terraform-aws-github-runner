@@ -29,7 +29,7 @@ resource "aws_lambda_function" "scale_up" {
       KMS_KEY_ID                  = var.encryption.kms_key_id
       ENABLE_ORGANIZATION_RUNNERS = var.enable_organization_runners
       RUNNER_EXTRA_LABELS         = var.runner_extra_labels
-      RUNNERS_MAXIMUM_COUNT       = var.runners_maxiumum_count
+      RUNNERS_MAXIMUM_COUNT       = var.runners_maximum_count
       GITHUB_APP_KEY_BASE64       = local.github_app_key_base64
       GITHUB_APP_ID               = var.github_app.id
       GITHUB_APP_CLIENT_ID        = var.github_app.client_id
