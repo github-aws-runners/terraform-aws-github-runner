@@ -32,6 +32,7 @@ export interface TestData {
 }
 
 const environment = 'unit-test-environment';
+const minimumRunningTimeInMinutes = 15;
 const TEST_DATA: TestData = {
   repositoryName: 'hello-world',
   repositoryOwner: 'Codertocat',
@@ -58,7 +59,17 @@ const DEFAULT_RUNNERS = [
   },
   {
     instanceId: 'i-not-registered-104',
-    launchTime: moment(new Date()).subtract(5, 'minutes').toDate(),
+    launchTime: moment(new Date())
+      .subtract(minimumRunningTimeInMinutes - 1, 'minutes')
+      .toDate(),
+    repo: `doe/another-repo`,
+    org: undefined,
+  },
+  {
+    instanceId: 'i-not-registered-105',
+    launchTime: moment(new Date())
+      .subtract(minimumRunningTimeInMinutes + 5, 'minutes')
+      .toDate(),
     repo: `doe/another-repo`,
     org: undefined,
   },
@@ -73,7 +84,7 @@ const DEFAULT_REGISTERED_RUNNERS: any = {
       },
       {
         id: 102,
-        name: 'i-idle-101',
+        name: 'i-idle-102',
       },
       {
         id: 103,
@@ -91,8 +102,7 @@ describe('scaleDown', () => {
     process.env.GITHUB_APP_CLIENT_SECRET = 'TEST_CLIENT_SECRET';
     process.env.RUNNERS_MAXIMUM_COUNT = '3';
     process.env.ENVIRONMENT = environment;
-    const minimumRunningTimeInMinutes = '15';
-    process.env.MINIMUM_RUNNING_TIME_IN_MINUTES = minimumRunningTimeInMinutes;
+    process.env.MINIMUM_RUNNING_TIME_IN_MINUTES = minimumRunningTimeInMinutes.toString();
     jest.clearAllMocks();
     mockOctokit.apps.getOrgInstallation.mockImplementation(() => ({
       data: {
@@ -166,15 +176,17 @@ describe('scaleDown', () => {
       });
     });
 
-    it('Terminate 2 of 4 runners for repo.', async () => {
+    it('Terminate 3 of 5 runners for repo.', async () => {
       await scaleDown();
       expect(listRunners).toBeCalledWith({
         environment: environment,
       });
 
       expect(mockOctokit.apps.getRepoInstallation).toBeCalled();
-
-      expect(terminateRunner).toBeCalledTimes(2);
+      expect(terminateRunner).toBeCalledTimes(3);
+      for (const toTerminate of [DEFAULT_RUNNERS[0], DEFAULT_RUNNERS[1], DEFAULT_RUNNERS[4]]) {
+        expect(terminateRunner).toHaveBeenCalledWith(toTerminate);
+      }
     });
   });
 
@@ -187,15 +199,17 @@ describe('scaleDown', () => {
       });
     });
 
-    it('Terminate 2 of 4 runners for org.', async () => {
+    it('Terminate 3 of 5 runners for org.', async () => {
       await scaleDown();
       expect(listRunners).toBeCalledWith({
         environment: environment,
       });
 
       expect(mockOctokit.apps.getOrgInstallation).toBeCalled();
-
-      expect(terminateRunner).toBeCalledTimes(2);
+      expect(terminateRunner).toBeCalledTimes(3);
+      for (const toTerminate of [DEFAULT_RUNNERS[0], DEFAULT_RUNNERS[1], DEFAULT_RUNNERS[4]]) {
+        expect(terminateRunner).toHaveBeenCalledWith(toTerminate);
+      }
     });
   });
 });

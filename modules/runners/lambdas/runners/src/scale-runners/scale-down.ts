@@ -74,9 +74,11 @@ export async function scaleDown(): Promise<void> {
           repo: repo.repoName,
         });
 
+    let orphanEc2Runner = true;
     for (const ghRunner of registered.data.runners) {
       const runnerName = ghRunner.name as string;
       if (runnerName === ec2runner.instanceId && runnerMinimumTimeExceeded(ec2runner, minimumRunningTimeInMinutes)) {
+        orphanEc2Runner = false;
         try {
           const result = enableOrgLevel
             ? await githubAppClient.actions.deleteSelfHostedRunnerFromOrg({
@@ -98,6 +100,16 @@ export async function scaleDown(): Promise<void> {
         } catch (e) {
           console.debug(`Runner '${runnerName}' cannot be de-registered, most likely the runner is active.`);
         }
+      }
+    }
+
+    // Remove orphan AWS runners.
+    if (orphanEc2Runner && runnerMinimumTimeExceeded(ec2runner, minimumRunningTimeInMinutes)) {
+      console.info(`Runner '${ec2runner.instanceId}' is orphan, and will be removed.`);
+      try {
+        await terminateRunner(ec2runner);
+      } catch (e) {
+        console.debug(`Orphan runner '${ec2runner.instanceId}' cannot be removed.`);
       }
     }
   }
