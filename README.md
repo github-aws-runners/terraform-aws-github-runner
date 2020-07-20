@@ -94,7 +94,7 @@ Go to GitHub and create a new app. Beware you can create apps your organization 
 First you need to download the lambda releases. The lambda code is available as a GitHub release asset. Downloading can be done with the provided terraform module for example. Note that this requires `curl` to be installed on your machine. Create an empty workspace with the following terraform code:
 
 ```terraform
-module "github-runner_download-lambda" {
+module "lambdas" {
   source  = "philips-labs/github-runner/aws//modules/download-lambda"
   version = "0.1.0"
 
