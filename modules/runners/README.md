@@ -57,6 +57,7 @@ No requirements.
 | Name | Version |
 |------|---------|
 | aws | n/a |
+| template | n/a |
 
 ## Inputs
 
@@ -80,8 +81,9 @@ No requirements.
 | overrides | This maps provides the possibility to override some defaults. The following attributes are supported: `name_sg` overwrite the `Name` tag for all security groups created by this module. `name_runner_agent_instance` override the `Name` tag for the ec2 instance defined in the auto launch configuration. `name_docker_machine_runners` override the `Name` tag spot instances created by the runner agent. | `map(string)` | <pre>{<br>  "name_runner": "",<br>  "name_sg": ""<br>}</pre> | no |
 | role\_path | The path that will be added to the role, if not set the environment name will be used. | `string` | `null` | no |
 | role\_permissions\_boundary | Permissions boundary that will be added to the created role for the lambda. | `string` | `null` | no |
-| runner\_as\_root | Run the action runner under the root user. | `bool` | `false` | no |
 | runner\_extra\_labels | Extra labels for the runners (GitHub). Separate each label by a comma | `string` | `""` | no |
+| runner\_user | The user to run the action runner under when using the default provided user\_data (see var.runner\_user\_data). | `string` | `"ec2-user"` | no |
+| runner\_user\_data | User data to provide when launching the instance. Defaults to a user data for setting up the runner on Amazon Linux. | `string` | n/a | yes |
 | runners\_maximum\_count | The maximum number of runners that will be created. | `number` | `3` | no |
 | s3\_bucket\_runner\_binaries | n/a | <pre>object({<br>    arn = string<br>  })</pre> | n/a | yes |
 | s3\_location\_runner\_binaries | S3 location of runner distribution. | `string` | n/a | yes |
@@ -89,8 +91,8 @@ No requirements.
 | sqs\_build\_queue | SQS queue to consume accepted build events. | <pre>object({<br>    arn = string<br>  })</pre> | n/a | yes |
 | subnet\_ids | List of subnets in which the action runners will be launched, the subnets needs to be subnets in the `vpc_id`. | `list(string)` | n/a | yes |
 | tags | Map of tags that will be added to created resources. By default resources will be tagged with name and environment. | `map(string)` | `{}` | no |
-| userdata\_post\_install | User-data script snippet to insert after GitHub acton runner install | `string` | `""` | no |
-| userdata\_pre\_install | User-data script snippet to insert before GitHub acton runner install | `string` | `""` | no |
+| userdata\_post\_install | Script to be ran after the GitHub Actions runner is installed on the EC2 instances. Only used if the default var.runner\_user\_data is not set. | `string` | `""` | no |
+| userdata\_pre\_install | Script to be ran before the GitHub Actions runner is installed on the EC2 instances. Only used if the default var.runner\_user\_data is not set. | `string` | `""` | no |
 | vpc\_id | The VPC for the security groups. | `string` | n/a | yes |
 
 ## Outputs

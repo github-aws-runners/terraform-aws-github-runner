@@ -123,10 +123,31 @@ variable "instance_type" {
   default     = "m5.large"
 }
 
-variable "runner_as_root" {
-  description = "Run the action runner under the root user."
-  type        = bool
-  default     = false
+variable "ami_filter" {
+  description = "List of maps used to create the AMI filter for the action runner AMI."
+  type        = map(list(string))
+
+  default = {
+    name = ["amzn2-ami-hvm-2.*-x86_64-ebs"]
+  }
+}
+
+variable "ami_owners" {
+  description = "The list of owners used to select the AMI of action runner instances."
+  type        = list(string)
+  default     = ["amazon"]
+}
+
+variable "runner_user_data" {
+  description = "User data to provide when launching the instance. Defaults to a user data for setting up the runner on Amazon Linux."
+  type        = string
+  default     = null
+}
+
+variable "runner_user" {
+  description = "The user to run the action runner under when using the default provided user_data (see var.runner_user_data)."
+  type        = string
+  default     = "ec2-user"
 }
 
 variable "runners_maximum_count" {
@@ -152,13 +173,15 @@ variable "kms_key_id" {
   type        = string
   default     = null
 }
+
 variable "userdata_pre_install" {
+  description = "Script to be ran before the GitHub Actions runner is installed on the EC2 instances. Only used if the default var.runner_user_data is not set."
   type        = string
   default     = ""
-  description = "Script to be ran before the GitHub Actions runner is installed on the EC2 instances"
 }
+
 variable "userdata_post_install" {
+  description = "Script to be ran after the GitHub Actions runner is installed on the EC2 instances. Only used if the default var.runner_user_data is not set."
   type        = string
   default     = ""
-  description = "Script to be ran after the GitHub Actions runner is installed on the EC2 instances"
 }

@@ -14,6 +14,7 @@ locals {
   role_path             = var.role_path == null ? "/${var.environment}/" : var.role_path
   instance_profile_path = var.instance_profile_path == null ? "/${var.environment}/" : var.instance_profile_path
   lambda_zip            = var.lambda_zip == null ? "${path.module}/lambdas/runners/runners.zip" : var.lambda_zip
+  user_data             = var.runner_user_data == null ? data.template_file.user_data.rendered : var.runner_user_data
 }
 
 data "aws_ami" "runner" {
@@ -73,15 +74,22 @@ resource "aws_launch_template" "runner" {
     )
   }
 
-  user_data = base64encode(templatefile("${path.module}/templates/user-data.sh", {
-    environment                     = var.environment
-    pre_install                     = var.userdata_pre_install
-    post_install                    = var.userdata_post_install
-    s3_location_runner_distribution = var.s3_location_runner_binaries
-    service_user                    = var.runner_as_root ? "root" : "ec2-user"
-  }))
+  user_data = base64encode(local.user_data)
 
   tags = local.tags
+}
+
+data "template_file" "user_data" {
+  template = file("${path.module}/templates/user-data.sh")
+
+  vars = {
+    environment                     = var.environment
+    s3_location_runner_distribution = var.s3_location_runner_binaries
+    runner_user                     = var.runner_user
+    pre_install                     = var.userdata_pre_install
+    post_install                    = var.userdata_post_install
+  }
+
 }
 
 resource "aws_security_group" "runner_sg" {

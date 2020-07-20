@@ -79,13 +79,13 @@ variable "ami_owners" {
 }
 
 variable "userdata_pre_install" {
-  description = "User-data script snippet to insert before GitHub acton runner install"
+  description = "Script to be ran before the GitHub Actions runner is installed on the EC2 instances. Only used if the default var.runner_user_data is not set."
   type        = string
   default     = ""
 }
 
 variable "userdata_post_install" {
-  description = "User-data script snippet to insert after GitHub acton runner install"
+  description = "Script to be ran after the GitHub Actions runner is installed on the EC2 instances. Only used if the default var.runner_user_data is not set."
   type        = string
   default     = ""
 }
@@ -165,10 +165,15 @@ variable "instance_profile_path" {
   default     = null
 }
 
-variable "runner_as_root" {
-  description = "Run the action runner under the root user."
-  type        = bool
-  default     = false
+variable "runner_user_data" {
+  description = "User data to provide when launching the instance. Defaults to a user data for setting up the runner on Amazon Linux."
+  type        = string
+}
+
+variable "runner_user" {
+  description = "The user to run the action runner under when using the default provided user_data (see var.runner_user_data)."
+  type        = string
+  default     = "ec2-user"
 }
 
 variable "runners_maximum_count" {

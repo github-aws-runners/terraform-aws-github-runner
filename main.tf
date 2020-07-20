@@ -68,7 +68,8 @@ module "runners" {
   scale_down_schedule_expression  = var.scale_down_schedule_expression
   minimum_running_time_in_minutes = var.minimum_running_time_in_minutes
   runner_extra_labels             = var.runner_extra_labels
-  runner_as_root                  = var.runner_as_root
+  runner_user_data                = var.runner_user_data
+  runner_user                     = var.runner_user
   runners_maximum_count           = var.runners_maximum_count
 
   lambda_zip                = var.runners_lambda_zip

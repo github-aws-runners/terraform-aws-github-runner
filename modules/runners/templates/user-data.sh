@@ -35,7 +35,7 @@ export RUNNER_ALLOW_RUNASROOT=1
 ./config.sh --unattended --name $INSTANCE_ID --work "_work" $CONFIG
 
 chown -R ec2-user:ec2-user .
-./svc.sh install ${service_user}
+./svc.sh install ${runner_user}
 
 ${post_install}
 
