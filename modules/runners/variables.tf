@@ -4,7 +4,7 @@ variable "aws_region" {
 }
 
 variable "vpc_id" {
-  description = "The VPC for the security groupss."
+  description = "The VPC for the security groups."
   type        = string
 }
 
@@ -14,7 +14,7 @@ variable "subnet_ids" {
 }
 
 variable "overrides" {
-  description = "This maps provides the possibility to override some defaults. The following attributes are supported: `name_sg` overwrite the `Name` tag for all security groups created by this module. `name_runner_agent_instance` override the `Name` tag for the ec2 instance defined in the auto launch configuration. `name_docker_machine_runners` ovverrid the `Name` tag spot instances created by the runner agent."
+  description = "This maps provides the possibility to override some defaults. The following attributes are supported: `name_sg` overwrite the `Name` tag for all security groups created by this module. `name_runner_agent_instance` override the `Name` tag for the ec2 instance defined in the auto launch configuration. `name_docker_machine_runners` override the `Name` tag spot instances created by the runner agent."
   type        = map(string)
 
   default = {
@@ -104,7 +104,7 @@ variable "enable_organization_runners" {
 }
 
 variable "github_app" {
-  description = "GitHub app parameters, see your github aapp. Ensure the key is base64 encoded."
+  description = "GitHub app parameters, see your github app. Ensure the key is base64 encoded."
   type = object({
     key_base64    = string
     id            = string
@@ -121,7 +121,7 @@ variable "scale_down_schedule_expression" {
 }
 
 variable "minimum_running_time_in_minutes" {
-  description = "The time an ec2 action runner should be running at minium before terminated if non busy."
+  description = "The time an ec2 action runner should be running at minimum before terminated if non busy."
   type        = number
   default     = 5
 }
@@ -181,7 +181,7 @@ variable "runners_maximum_count" {
 }
 
 variable "encryption" {
-  description = "KMS key to encrypted lambda environment secrets. Either provide a key and `ecnrypt` set to `true`. Or set the key to `null` and encrypt to `false`."
+  description = "KMS key to encrypted lambda environment secrets. Either provide a key and `encrypt` set to `true`. Or set the key to `null` and encrypt to `false`."
   type = object({
     kms_key_id = string
     encrypt    = bool

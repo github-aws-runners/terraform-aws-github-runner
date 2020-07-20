@@ -51,9 +51,9 @@ No requirements.
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| account\_id | The module allows to switch to te crateed role from the provided account id. | `string` | n/a | yes |
+| account\_id | The module allows to switch to the created role from the provided account id. | `string` | n/a | yes |
 | environment | A name that identifies the environment, used as prefix and for tagging. | `string` | n/a | yes |
-| namespaces | The role will be only allowed to crated rolo, policies and instance profiles in the gevin namespace / path. All policies in the boundaries namespace cannot be modified by this role. | <pre>object({<br>    boundary_namespace         = string<br>    role_namespace             = string<br>    policy_namespace           = string<br>    instance_profile_namespace = string<br>  })</pre> | n/a | yes |
+| namespaces | The role will be only allowed to create roles, policies and instance profiles in the given namespace / path. All policies in the boundaries namespace cannot be modified by this role. | <pre>object({<br>    boundary_namespace         = string<br>    role_namespace             = string<br>    policy_namespace           = string<br>    instance_profile_namespace = string<br>  })</pre> | n/a | yes |
 
 ## Outputs
 

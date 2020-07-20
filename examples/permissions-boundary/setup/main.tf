@@ -7,7 +7,7 @@ module "iam" {
   account_id  = data.aws_caller_identity.current.account_id
 
   namespaces = {
-    boundary_namespace         = "bounaries"
+    boundary_namespace         = "boundaries"
     role_namespace             = "runners"
     policy_namespace           = "runners"
     instance_profile_namespace = "runners"

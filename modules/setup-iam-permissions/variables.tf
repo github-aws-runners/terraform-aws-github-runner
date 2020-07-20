@@ -4,7 +4,7 @@ variable "environment" {
 }
 
 variable "namespaces" {
-  description = "The role will be only allowed to crated rolo, policies and instance profiles in the gevin namespace / path. All policies in the boundaries namespace cannot be modified by this role."
+  description = "The role will be only allowed to create roles, policies and instance profiles in the given namespace / path. All policies in the boundaries namespace cannot be modified by this role."
   type = object({
     boundary_namespace         = string
     role_namespace             = string
@@ -14,7 +14,7 @@ variable "namespaces" {
 }
 
 variable "account_id" {
-  description = "The module allows to switch to te crateed role from the provided account id."
+  description = "The module allows to switch to the created role from the provided account id."
   type        = string
 
 }

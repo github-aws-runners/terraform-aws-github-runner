@@ -51,7 +51,7 @@ variable "role_path" {
 }
 
 variable "encryption" {
-  description = "KMS key to encrypted lambda environment secrets. Either provide a key and `ecnrypt` set to `true`. Or set the key to `null` and encrypt to `false`."
+  description = "KMS key to encrypted lambda environment secrets. Either provide a key and `encrypt` set to `true`. Or set the key to `null` and encrypt to `false`."
   type = object({
     kms_key_id = string
     encrypt    = bool

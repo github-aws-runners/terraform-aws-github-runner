@@ -4,7 +4,7 @@ This modules shows how to create GitHub action runners. Lambda release will be d
 
 ## Usages
 
-Steps for the full setup, such as creating a GitHub app can be found in the root module's [README](../../README.md). First download the Lambda releases from GitHub. Alternatively you can build the lamdas locally with Node or Docker, there is a simple build script in `<root>/.ci/build.sh`. In the `main.tf` you can simple remove the location of the lambda zip files, the default location will work in this case.
+Steps for the full setup, such as creating a GitHub app can be found in the root module's [README](../../README.md). First download the Lambda releases from GitHub. Alternatively you can build the lambdas locally with Node or Docker, there is a simple build script in `<root>/.ci/build.sh`. In the `main.tf` you can simple remove the location of the lambda zip files, the default location will work in this case.
 
 ```bash
 cd lambdas-download

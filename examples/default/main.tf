@@ -33,7 +33,7 @@ module "runners" {
   enable_organization_runners       = false
   runner_extra_labels               = "default,example"
 
-  # disable KMS and ecnryption
+  # disable KMS and encryption
   # encrypt_secrets = false
 }
 

@@ -30,7 +30,7 @@ variable "enable_organization_runners" {
 }
 
 variable "github_app" {
-  description = "GitHub app parameters, see your github aapp. Ensure the key is base64 encoded."
+  description = "GitHub app parameters, see your github app. Ensure the key is base64 encoded."
   type = object({
     key_base64     = string
     id             = string
@@ -47,7 +47,7 @@ variable "scale_down_schedule_expression" {
 }
 
 variable "minimum_running_time_in_minutes" {
-  description = "The time an ec2 action runner should be running at minium before terminated if non busy."
+  description = "The time an ec2 action runner should be running at minimum before terminated if non busy."
   type        = number
   default     = 5
 }
@@ -61,7 +61,7 @@ variable "runner_extra_labels" {
 
 
 variable "webhook_lambda_zip" {
-  description = "File location of the wehbook lambda zip file."
+  description = "File location of the webhook lambda zip file."
   type        = string
   default     = null
 }

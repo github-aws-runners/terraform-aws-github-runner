@@ -75,7 +75,7 @@ resource "aws_iam_role" "webhook_lambda" {
 }
 
 resource "aws_iam_role_policy" "webhook_logging" {
-  name   = "${var.environment}-lamda-logging-policy"
+  name   = "${var.environment}-lambda-logging-policy"
   role   = aws_iam_role.webhook_lambda.name
   policy = templatefile("${path.module}/policies/lambda-cloudwatch.json", {})
 }
