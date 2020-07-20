@@ -96,7 +96,7 @@ First you need to download the lambda releases. The lambda code is available as 
 ```terraform
 module "lambdas" {
   source  = "philips-labs/github-runner/aws//modules/download-lambda"
-  version = "0.1.0"
+  version = "0.2.0"
 
   lambdas = [
     {
