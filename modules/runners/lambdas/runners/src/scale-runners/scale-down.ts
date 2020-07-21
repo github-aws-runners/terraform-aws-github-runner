@@ -62,8 +62,11 @@ export async function scaleDown(): Promise<void> {
   }
 
   for (const ec2runner of runners) {
-    const githubAppClient = await createGitHubClientForRunner(ec2runner, enableOrgLevel);
+    if (!runnerMinimumTimeExceeded(ec2runner, minimumRunningTimeInMinutes)) {
+      continue;
+    }
 
+    const githubAppClient = await createGitHubClientForRunner(ec2runner, enableOrgLevel);
     const repo = getRepo(ec2runner, enableOrgLevel);
     const registered = enableOrgLevel
       ? await githubAppClient.actions.listSelfHostedRunnersForOrg({
@@ -77,7 +80,7 @@ export async function scaleDown(): Promise<void> {
     let orphanEc2Runner = true;
     for (const ghRunner of registered.data.runners) {
       const runnerName = ghRunner.name as string;
-      if (runnerName === ec2runner.instanceId && runnerMinimumTimeExceeded(ec2runner, minimumRunningTimeInMinutes)) {
+      if (runnerName === ec2runner.instanceId) {
         orphanEc2Runner = false;
         try {
           const result = enableOrgLevel
@@ -104,7 +107,7 @@ export async function scaleDown(): Promise<void> {
     }
 
     // Remove orphan AWS runners.
-    if (orphanEc2Runner && runnerMinimumTimeExceeded(ec2runner, minimumRunningTimeInMinutes)) {
+    if (orphanEc2Runner) {
       console.info(`Runner '${ec2runner.instanceId}' is orphan, and will be removed.`);
       try {
         await terminateRunner(ec2runner);
