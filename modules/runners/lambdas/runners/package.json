@@ -24,7 +24,7 @@
   },
   "dependencies": {
     "@octokit/auth-app": "^2.4.5",
-    "@octokit/rest": "^17.6.0",
+    "@octokit/rest": "^18.0.3",
     "moment": "^2.25.3",
     "yn": "^4.0.0"
   }
