@@ -11,7 +11,7 @@ jest.mock('@octokit/auth-app', () => ({
 const mockOctokit = {
   checks: { get: jest.fn() },
   actions: {
-    listRepoWorkflowRuns: jest.fn(),
+    listWorkflowRunsForRepo: jest.fn(),
     createRegistrationTokenForOrg: jest.fn(),
     createRegistrationTokenForRepo: jest.fn(),
   },
@@ -40,7 +40,7 @@ describe('scaleUp', () => {
     process.env.ENVIRONMENT = 'unit-test-environment';
 
     jest.clearAllMocks();
-    mockOctokit.actions.listRepoWorkflowRuns.mockImplementation(() => ({
+    mockOctokit.actions.listWorkflowRunsForRepo.mockImplementation(() => ({
       data: {
         total_count: 1,
       },
@@ -70,7 +70,7 @@ describe('scaleUp', () => {
 
   it('checks queued workflows', async () => {
     await scaleUp('aws:sqs', TEST_DATA);
-    expect(mockOctokit.actions.listRepoWorkflowRuns).toBeCalledWith({
+    expect(mockOctokit.actions.listWorkflowRunsForRepo).toBeCalledWith({
       owner: TEST_DATA.repositoryOwner,
       repo: TEST_DATA.repositoryName,
       status: 'queued',
@@ -78,7 +78,7 @@ describe('scaleUp', () => {
   });
 
   it('does not list runners when no workflows are queued', async () => {
-    mockOctokit.actions.listRepoWorkflowRuns.mockImplementation(() => ({
+    mockOctokit.actions.listWorkflowRunsForRepo.mockImplementation(() => ({
       data: { total_count: 0, runners: [] },
     }));
     await scaleUp('aws:sqs', TEST_DATA);

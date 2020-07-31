@@ -56,7 +56,7 @@ export const scaleUp = async (eventSource: string, payload: ActionRequestMessage
   const environment = process.env.ENVIRONMENT as string;
   const githubAppAuth = await createGithubAppAuth(payload.installationId);
   const githubInstallationClient = await createInstallationClient(githubAppAuth);
-  const queuedWorkflows = await githubInstallationClient.actions.listRepoWorkflowRuns({
+  const queuedWorkflows = await githubInstallationClient.actions.listWorkflowRunsForRepo({
     owner: payload.repositoryOwner,
     repo: payload.repositoryName,
     // @ts-ignore (typing of the 'status' field is incorrect)
