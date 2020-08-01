@@ -4,7 +4,7 @@ locals {
 }
 
 resource "random_password" "random" {
-  length = 32
+  length = 28
 }
 
 module "runners" {
@@ -27,12 +27,14 @@ module "runners" {
     webhook_secret = random_password.random.result
   }
 
-  webhook_lambda_zip                = "lambdas-download/webhook.zip"
-  runner_binaries_syncer_lambda_zip = "lambdas-download/runner-binaries-syncer.zip"
-  runners_lambda_zip                = "lambdas-download/runners.zip"
-  enable_organization_runners       = false
-  runner_extra_labels               = "default,example"
+  # webhook_lambda_zip                = "lambdas-download/webhook.zip"
+  # runner_binaries_syncer_lambda_zip = "lambdas-download/runner-binaries-syncer.zip"
+  # runners_lambda_zip                = "lambdas-download/runners.zip"
+  enable_organization_runners = false
+  runner_extra_labels         = "default,example"
+
+  # instance_type = "a1.large"
 
   # disable KMS and encryption
-  # encrypt_secrets = false
+  # encrypt_secrets = true
 }
