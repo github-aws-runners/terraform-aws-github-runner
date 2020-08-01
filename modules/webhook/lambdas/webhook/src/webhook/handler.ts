@@ -1,7 +1,7 @@
 import { IncomingHttpHeaders } from 'http';
 import crypto from 'crypto';
 import { sendActionRequest } from '../sqs';
-import { WebhookPayloadCheckRun } from '@octokit/webhooks';
+import { EventPayloads } from '@octokit/webhooks';
 import { KMS } from 'aws-sdk';
 import { decrypt } from '../kms';
 
@@ -42,7 +42,7 @@ export const handle = async (headers: IncomingHttpHeaders, payload: any): Promis
   console.debug(`Received Github event: "${githubEvent}"`);
 
   if (githubEvent === 'check_run') {
-    const body = JSON.parse(payload) as WebhookPayloadCheckRun;
+    const body = JSON.parse(payload) as EventPayloads.WebhookPayloadCheckRun;
     if (body.action === 'created' && body.check_run.status === 'queued') {
       await sendActionRequest({
         id: body.check_run.id,
