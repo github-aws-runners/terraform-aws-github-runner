@@ -153,6 +153,12 @@ variable "kms_key_id" {
   default     = null
 }
 
+variable "userdata_template" {
+  description = "Alternative user-data template, replacing the default template"
+  type        = string
+  default     = null
+}
+
 variable "userdata_pre_install" {
   type        = string
   default     = ""

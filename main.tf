@@ -87,6 +87,7 @@ module "runners" {
   role_path                 = var.role_path
   role_permissions_boundary = var.role_permissions_boundary
 
+  userdata_template     = var.userdata_template
   userdata_pre_install  = var.userdata_pre_install
   userdata_post_install = var.userdata_post_install
 }

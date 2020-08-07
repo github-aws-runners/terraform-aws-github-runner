@@ -78,6 +78,12 @@ variable "ami_owners" {
   default     = ["amazon"]
 }
 
+variable "userdata_template" {
+  description = "Alternative user-data template, replacing the default template"
+  type        = string
+  default     = null
+}
+
 variable "userdata_pre_install" {
   description = "User-data script snippet to insert before GitHub acton runner install"
   type        = string
