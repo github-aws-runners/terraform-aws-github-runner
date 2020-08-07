@@ -5,6 +5,9 @@ locals {
 
   s3_action_runner_url = "s3://${module.runner_binaries.bucket.id}/${module.runner_binaries.runner_distribution_object_key}"
   runner_architecture  = substr(var.instance_type, 0, 2) == "a1" || substr(var.instance_type, 1, 2) == "6g" ? "arm64" : "x64"
+
+  ami_filters_exist = length(var.ami_filter) > 0
+  ami_filter = local.ami_filters_exist ? var.ami_filter : local.runner_architecture == "arm64" ? { name = ["amzn2-ami-hvm-2*-arm64-gp2"] } : { name = ["amzn2-ami-hvm-2.*-x86_64-ebs"] }
 }
 
 resource "random_string" "random" {
@@ -66,7 +69,8 @@ module "runners" {
   block_device_mappings = var.block_device_mappings
 
   runner_architecture = local.runner_architecture
-  ami_filter          = local.runner_architecture == "arm64" ? { name = ["amzn2-ami-hvm-2*-arm64-gp2"] } : { name = ["amzn2-ami-hvm-2.*-x86_64-ebs"] }
+  ami_filter          = local.ami_filter
+  ami_owners          = var.ami_owners
 
   sqs_build_queue                 = aws_sqs_queue.queued_builds
   github_app                      = var.github_app
