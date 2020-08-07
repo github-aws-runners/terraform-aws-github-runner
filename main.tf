@@ -74,6 +74,7 @@ module "runners" {
   runner_extra_labels             = var.runner_extra_labels
   runner_as_root                  = var.runner_as_root
   runners_maximum_count           = var.runners_maximum_count
+  idle_config                     = var.idle_config
 
   lambda_zip                = var.runners_lambda_zip
   lambda_timeout_scale_up   = var.runners_scale_up_lambda_timeout
@@ -100,7 +101,6 @@ module "runner_binaries" {
 
   lambda_zip     = var.runner_binaries_syncer_lambda_zip
   lambda_timeout = var.runner_binaries_syncer_lambda_timeout
-
 
   role_path                 = var.role_path
   role_permissions_boundary = var.role_permissions_boundary

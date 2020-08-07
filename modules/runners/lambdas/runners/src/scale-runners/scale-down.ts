@@ -125,7 +125,7 @@ export async function scaleDown(): Promise<void> {
         orphanEc2Runner = false;
         if (idleCounter > 0) {
           idleCounter--;
-          console.info(`Runner '${ec2runner.instanceId}' will kept idle.`);
+          console.debug(`Runner '${ec2runner.instanceId}' will kept idle.`);
         } else {
           await removeRunner(ec2runner, ghRunner.id, repo, enableOrgLevel, githubAppClient);
         }

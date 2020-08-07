@@ -33,8 +33,13 @@ module "runners" {
   enable_organization_runners = false
   runner_extra_labels         = "default,example"
 
-  # instance_type = "a1.large"
+  # Uncommet idle config to have idle runners from 9 to 5 in time zone Amsterdam
+  # idle_config = [{
+  #   cron      = "* * 9-17 * * *"
+  #   timeZone  = "Europe/Amsterdam"
+  #   idleCount = 1
+  # }]
 
   # disable KMS and encryption
-  # encrypt_secrets = true
+  # encrypt_secrets = false
 }

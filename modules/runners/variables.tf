@@ -191,12 +191,11 @@ variable "runner_architecture" {
   default     = "x64"
 }
 
-
 variable "idle_config" {
   description = "List of time period that can be defined as cron expression to keep a minimum amount of runners active instead of scaling down to 0. By defining this list you can ensure that in time periods that match the cron expression within 5 seconds a runner is kept idle."
   type = list(object({
     cron      = string
-    timeZone  = number
+    timeZone  = string
     idleCount = number
   }))
   default = []
