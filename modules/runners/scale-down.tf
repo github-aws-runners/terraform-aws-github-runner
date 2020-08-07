@@ -38,6 +38,7 @@ resource "aws_lambda_function" "scale_down" {
 }
 
 resource "aws_cloudwatch_event_rule" "scale_down" {
+  name                = "${var.environment}-scale-down-rule"
   schedule_expression = var.scale_down_schedule_expression
   tags                = var.tags
 }

@@ -60,6 +60,7 @@ resource "aws_iam_role_policy" "syncer" {
 }
 
 resource "aws_cloudwatch_event_rule" "syncer" {
+  name                = "${var.environment}-syncer-rule"
   schedule_expression = var.lambda_schedule_expression
   tags                = var.tags
 }

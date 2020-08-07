@@ -34,29 +34,39 @@ yarn run dist
 ```
 
 <!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
+## Requirements
+
+No requirements.
+
+## Providers
+
+| Name | Version |
+|------|---------|
+| aws | n/a |
+
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-|------|-------------|:----:|:-----:|:-----:|
-| aws\_region | AWS region. | string | n/a | yes |
-| distribution\_bucket\_name | Bucket for storing the action runner distribution. | string | n/a | yes |
-| environment | A name that identifies the environment, used as prefix and for tagging. | string | n/a | yes |
-| lambda\_schedule\_expression | Scheduler expression for action runner binary syncer. | string | `"cron(27 * * * ? *)"` | no |
-| lambda\_timeout | Time out of the lambda in seconds. | number | `"300"` | no |
-| lambda\_zip | File location of the lambda zip file. | string | `"null"` | no |
-| role\_path | The path that will be added to the role, if not set the environment name will be used. | string | `"null"` | no |
-| role\_permissions\_boundary | Permissions boundary that will be added to the created role for the lambda. | string | `"null"` | no |
-| runner\_architecture | The platform architecture for the runner instance \(x64, arm64\), defaults to 'x64' | string | `"x64"` | no |
-| tags | Map of tags that will be added to created resources. By default resources will be tagged with name and environment. | map(string) | `{}` | no |
+|------|-------------|------|---------|:--------:|
+| aws\_region | AWS region. | `string` | n/a | yes |
+| distribution\_bucket\_name | Bucket for storing the action runner distribution. | `string` | n/a | yes |
+| environment | A name that identifies the environment, used as prefix and for tagging. | `string` | n/a | yes |
+| lambda\_schedule\_expression | Scheduler expression for action runner binary syncer. | `string` | `"cron(27 * * * ? *)"` | no |
+| lambda\_timeout | Time out of the lambda in seconds. | `number` | `300` | no |
+| lambda\_zip | File location of the lambda zip file. | `string` | `null` | no |
+| role\_path | The path that will be added to the role, if not set the environment name will be used. | `string` | `null` | no |
+| role\_permissions\_boundary | Permissions boundary that will be added to the created role for the lambda. | `string` | `null` | no |
+| runner\_architecture | The platform architecture for the runner instance (x64, arm64), defaults to 'x64' | `string` | `"x64"` | no |
+| tags | Map of tags that will be added to created resources. By default resources will be tagged with name and environment. | `map(string)` | `{}` | no |
 
 ## Outputs
 
 | Name | Description |
 |------|-------------|
-| bucket |  |
-| lambda |  |
-| lambda\_role |  |
-| runner\_distribution\_object\_key |  |
+| bucket | n/a |
+| lambda | n/a |
+| lambda\_role | n/a |
+| runner\_distribution\_object\_key | n/a |
 
 <!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 
