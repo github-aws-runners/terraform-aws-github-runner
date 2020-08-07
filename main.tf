@@ -63,6 +63,7 @@ module "runners" {
   s3_location_runner_binaries = local.s3_action_runner_url
 
   instance_type = var.instance_type
+  block_device_mappings = var.block_device_mappings
 
   runner_architecture = local.runner_architecture
   ami_filter          = local.runner_architecture == "arm64" ? { name = ["amzn2-ami-hvm-2*-arm64-gp2"] } : { name = ["amzn2-ami-hvm-2.*-x86_64-ebs"] }

@@ -46,7 +46,7 @@ variable "s3_location_runner_binaries" {
 }
 
 variable "block_device_mappings" {
-  description = "The EC2 instance block device configuration. Takes the following keys: `delete_on_termination`, `volume_type`, `volume_size`, `encrypted`, `iops`"
+  description = "The EC2 instance block device configuration. Takes the following keys: `device_name`, `delete_on_termination`, `volume_type`, `volume_size`, `encrypted`, `iops`"
   type        = map(string)
   default     = {}
 }

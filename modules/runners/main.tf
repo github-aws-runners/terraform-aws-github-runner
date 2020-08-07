@@ -37,7 +37,7 @@ resource "aws_launch_template" "runner" {
   dynamic "block_device_mappings" {
     for_each = [var.block_device_mappings]
     content {
-      device_name = "/dev/xvda"
+      device_name = lookup(block_device_mappings.value, "device_name", "/dev/xvda")
 
       ebs {
         delete_on_termination = lookup(block_device_mappings.value, "delete_on_termination", true)
