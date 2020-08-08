@@ -12,10 +12,8 @@ This [Terraform](https://www.terraform.io/) modules create the required infra st
   - [Setup terraform module](#setup-terraform-module)
   - [Setup GitHub App (part 2)](#setup-github-app-part-2)
   - [Encryption](#encryption)
-    - [Encrypted via a module managed KMS key (default)](#encrypted-via-a-module-managed-kms-key-default)
-    - [Encrypted via a provided KMS key](#encrypted-via-a-provided-kms-key)
-    - [No encryption](#no-encryption)
 - [Examples](#examples)
+  - [Idle runners](#idle-runners)
 - [Sub modules](#sub-modules)
   - [ARM64 configuration for submodules](#arm64-configuration-for-submodules)
 - [Requirements](#requirements)
@@ -183,11 +181,11 @@ You are now ready to run action workloads on self hosted runner, remember builds
 
 The module support 3 scenario's to manage environment secrets and private key of the Lambda functions.
 
-#### Encrypted via a module managed KMS key (default)
+#### Encrypted via a module managed KMS key (default) <!-- omit in toc -->
 
 This is the default, no additional configuration is required.
 
-#### Encrypted via a provided KMS key
+#### Encrypted via a provided KMS key <!-- omit in toc -->
 
 You have to create an configure you KMS key. The module will use the context with key: `Environment` and value `var.environment` as encryption context.
 
@@ -205,7 +203,7 @@ module "runners" {
 
 ```
 
-#### No encryption
+#### No encryption <!-- omit in toc -->
 
 Not advised but you can disable the encryption as by setting the variable `encrypt_secrets` to `false`.
 
@@ -215,6 +213,36 @@ Examples are located in the [examples](./examples) directory. The following exam
 
 - _[Default](examples/default/README.md)_: The default example of the module
 - _[Permissions boundary](examples/permissions-boundary/README.md)_: Example usages of permissions boundaries.
+
+### Idle runners
+
+The module will scale down to zero runners be default, by specifying a `idle_config` config idle runners can be kept active. Scale down lambda checks if any of the cron expressions matches the current time with a marge of 5 seconds. When there is a match the number of runners specified in in the idle config will be kept active. In case multiple cron expressions matches only the first one is taken in to account. Below a idle configuration for keeping runners active from 9 to 5 on working days.
+
+```hcl
+idle_config = [{
+   cron      = "* * 9-17 * * 1-5"
+   timeZone  = "Europe/Amsterdam"
+   idleCount = 2
+}]
+```
+
+#### Supported config <!-- omit in toc -->
+
+Cron expressions are parsed by [cron-parser](https://github.com/harrisiirak/cron-parser#readme). The supported syntax.
+
+```
+*    *    *    *    *    *
+┬    ┬    ┬    ┬    ┬    ┬
+│    │    │    │    │    |
+│    │    │    │    │    └ day of week (0 - 7) (0 or 7 is Sun)
+│    │    │    │    └───── month (1 - 12)
+│    │    │    └────────── day of month (1 - 31)
+│    │    └─────────────── hour (0 - 23)
+│    └──────────────────── minute (0 - 59)
+└───────────────────────── second (0 - 59, optional)
+```
+
+For time zones please check [TZ database name column](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) for the supported values.
 
 ## Sub modules
 
@@ -305,6 +333,7 @@ No requirements.
 This module is part of the Philips Forest.
 
 ```
+
                                                      ___                   _
                                                     / __\__  _ __ ___  ___| |_
                                                    / _\/ _ \| '__/ _ \/ __| __|
@@ -312,8 +341,13 @@ This module is part of the Philips Forest.
                                                   \/   \___/|_|  \___||___/\__|
 
                                                                  Infrastructure
+
 ```
 
 Talk to the forestkeepers in the `forest`-channel on Slack.
 
 [![Slack](https://philips-software-slackin.now.sh/badge.svg)](https://philips-software-slackin.now.sh)
+
+```
+
+```
