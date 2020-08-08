@@ -209,7 +209,7 @@ Not advised but you can disable the encryption as by setting the variable `encry
 
 ### Idle runners
 
-The module will scale down to zero runners be default, by specifying a `idle_config` config idle runners can be kept active. Scale down lambda checks if any of the cron expressions matches the current time with a marge of 5 seconds. When there is a match the number of runners specified in in the idle config will be kept active. In case multiple cron expressions matches only the first one is taken in to account. Below a idle configuration for keeping runners active from 9 to 5 on working days.
+The module will scale down to zero runners be default, by specifying a `idle_config` config idle runners can be kept active. The scale down lambda checks if any of the cron expressions matches the current time with a marge of 5 seconds. When there is a match the number of runners specified in the idle config will be kept active. In case multiple cron expressions matches only the first one is taken in to account. Below a idle configuration for keeping runners active from 9 to 5 on working days.
 
 ```hcl
 idle_config = [{
