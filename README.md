@@ -12,8 +12,8 @@ This [Terraform](https://www.terraform.io/) modules create the required infra st
   - [Setup terraform module](#setup-terraform-module)
   - [Setup GitHub App (part 2)](#setup-github-app-part-2)
   - [Encryption](#encryption)
-- [Examples](#examples)
   - [Idle runners](#idle-runners)
+- [Examples](#examples)
 - [Sub modules](#sub-modules)
   - [ARM64 configuration for submodules](#arm64-configuration-for-submodules)
 - [Requirements](#requirements)
@@ -207,13 +207,6 @@ module "runners" {
 
 Not advised but you can disable the encryption as by setting the variable `encrypt_secrets` to `false`.
 
-## Examples
-
-Examples are located in the [examples](./examples) directory. The following examples are provided:
-
-- _[Default](examples/default/README.md)_: The default example of the module
-- _[Permissions boundary](examples/permissions-boundary/README.md)_: Example usages of permissions boundaries.
-
 ### Idle runners
 
 The module will scale down to zero runners be default, by specifying a `idle_config` config idle runners can be kept active. Scale down lambda checks if any of the cron expressions matches the current time with a marge of 5 seconds. When there is a match the number of runners specified in in the idle config will be kept active. In case multiple cron expressions matches only the first one is taken in to account. Below a idle configuration for keeping runners active from 9 to 5 on working days.
@@ -243,6 +236,13 @@ Cron expressions are parsed by [cron-parser](https://github.com/harrisiirak/cron
 ```
 
 For time zones please check [TZ database name column](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) for the supported values.
+
+## Examples
+
+Examples are located in the [examples](./examples) directory. The following examples are provided:
+
+- _[Default](examples/default/README.md)_: The default example of the module
+- _[Permissions boundary](examples/permissions-boundary/README.md)_: Example usages of permissions boundaries.
 
 ## Sub modules
 
