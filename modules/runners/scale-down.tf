@@ -37,6 +37,12 @@ resource "aws_lambda_function" "scale_down" {
   }
 }
 
+resource "aws_cloudwatch_log_group" "scale_down" {
+  name              = "/aws/lambda/${aws_lambda_function.scale_down.function_name}"
+  retention_in_days = var.logging_retention_in_days
+  tags              = var.tags
+}
+
 resource "aws_cloudwatch_event_rule" "scale_down" {
   name                = "${var.environment}-scale-down-rule"
   schedule_expression = var.scale_down_schedule_expression
@@ -71,7 +77,9 @@ resource "aws_iam_role_policy" "scale_down" {
 }
 
 resource "aws_iam_role_policy" "scale_down_logging" {
-  name   = "${var.environment}-lambda-logging"
-  role   = aws_iam_role.scale_down.name
-  policy = templatefile("${path.module}/policies/lambda-cloudwatch.json", {})
+  name = "${var.environment}-lambda-logging"
+  role = aws_iam_role.scale_down.name
+  policy = templatefile("${path.module}/policies/lambda-cloudwatch.json", {
+    log_group_arn = aws_cloudwatch_log_group.scale_down.arn
+  })
 }

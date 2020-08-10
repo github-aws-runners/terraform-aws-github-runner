@@ -47,6 +47,12 @@ resource "aws_lambda_function" "webhook" {
   tags = var.tags
 }
 
+resource "aws_cloudwatch_log_group" "webhook" {
+  name              = "/aws/lambda/${aws_lambda_function.webhook.function_name}"
+  retention_in_days = var.logging_retention_in_days
+  tags              = var.tags
+}
+
 resource "aws_lambda_permission" "webhook" {
   statement_id  = "AllowExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"
@@ -75,9 +81,11 @@ resource "aws_iam_role" "webhook_lambda" {
 }
 
 resource "aws_iam_role_policy" "webhook_logging" {
-  name   = "${var.environment}-lambda-logging-policy"
-  role   = aws_iam_role.webhook_lambda.name
-  policy = templatefile("${path.module}/policies/lambda-cloudwatch.json", {})
+  name = "${var.environment}-lambda-logging-policy"
+  role = aws_iam_role.webhook_lambda.name
+  policy = templatefile("${path.module}/policies/lambda-cloudwatch.json", {
+    log_group_arn = aws_cloudwatch_log_group.webhook.arn
+  })
 }
 
 resource "aws_iam_role_policy" "webhook_sqs" {

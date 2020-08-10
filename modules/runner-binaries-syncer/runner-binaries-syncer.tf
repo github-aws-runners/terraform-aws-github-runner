@@ -23,6 +23,12 @@ resource "aws_lambda_function" "syncer" {
   tags = var.tags
 }
 
+resource "aws_cloudwatch_log_group" "syncer" {
+  name              = "/aws/lambda/${aws_lambda_function.syncer.function_name}"
+  retention_in_days = var.logging_retention_in_days
+  tags              = var.tags
+}
+
 resource "aws_iam_role" "syncer_lambda" {
   name                 = "${var.environment}-action-syncer-lambda-role"
   assume_role_policy   = data.aws_iam_policy_document.lambda_assume_role_policy.json
@@ -47,7 +53,9 @@ resource "aws_iam_role_policy" "lambda_logging" {
   name = "${var.environment}-lambda-logging-policy-syncer"
   role = aws_iam_role.syncer_lambda.id
 
-  policy = templatefile("${path.module}/policies/lambda-cloudwatch.json", {})
+  policy = templatefile("${path.module}/policies/lambda-cloudwatch.json", {
+    log_group_arn = aws_cloudwatch_log_group.syncer.arn
+  })
 }
 
 resource "aws_iam_role_policy" "syncer" {

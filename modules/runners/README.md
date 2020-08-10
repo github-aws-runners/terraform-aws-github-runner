@@ -76,6 +76,7 @@ No requirements.
 | lambda\_timeout\_scale\_down | Time out for the scale down lambda in seconds. | `number` | `60` | no |
 | lambda\_timeout\_scale\_up | Time out for the scale up lambda in seconds. | `number` | `60` | no |
 | lambda\_zip | File location of the lambda zip file. | `string` | `null` | no |
+| logging\_retention\_in\_days | Specifies the number of days you want to retain log events for the lambda log group. Possible values are: 0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, and 3653. | `number` | `7` | no |
 | market\_options | Market options for the action runner instances. | `string` | `"spot"` | no |
 | minimum\_running\_time\_in\_minutes | The time an ec2 action runner should be running at minimum before terminated if non busy. | `number` | `5` | no |
 | overrides | This maps provides the possibility to override some defaults. The following attributes are supported: `name_sg` overwrite the `Name` tag for all security groups created by this module. `name_runner_agent_instance` override the `Name` tag for the ec2 instance defined in the auto launch configuration. `name_docker_machine_runners` override the `Name` tag spot instances created by the runner agent. | `map(string)` | <pre>{<br>  "name_runner": "",<br>  "name_sg": ""<br>}</pre> | no |
