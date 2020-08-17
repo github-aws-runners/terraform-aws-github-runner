@@ -19,6 +19,7 @@ terraform import module.runners.module.runners.aws_cloudwatch_log_group.scale_up
 terraform import module.runners.module.runners.aws_cloudwatch_log_group.scale_down "/aws/lambda/default-scale-down"
 terraform import module.runners.module.webhook.aws_cloudwatch_log_group.webhook "/aws/lambda/default-webhook"
 ```
+- feat: Expose ami-filters and user-data template file location to users to allow use of custom AMIs
 
 - feat: Added option to binaries syncer to upgrade to pre-releases, preventing any auto-updating on startup. Option `runner_allow_prerelease_binaries` is disabled by default. (#141, #165) @sjagoe
 
