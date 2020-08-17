@@ -206,3 +206,8 @@ variable "logging_retention_in_days" {
   type        = number
   default     = 7
 }
+
+variable "enable_ssm_on_runners" {
+  description = "Enable to allow access the runner instances for debugging purposes via SSM. Note that this adds additional permissions to the runner instances."
+  type        = bool
+}

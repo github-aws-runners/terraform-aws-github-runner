@@ -21,6 +21,7 @@ resource "aws_iam_role_policy" "runner_session_manager_policy" {
 }
 
 resource "aws_iam_role_policy_attachment" "runner_session_manager_aws_managed" {
+  count      = var.enable_ssm_on_runners ? 1 : 0
   role       = aws_iam_role.runner.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }

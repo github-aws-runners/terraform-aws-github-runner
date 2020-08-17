@@ -317,7 +317,7 @@ No requirements.
 | vpc\_id | The VPC for security groups of the action runners. | `string` | n/a | yes |
 | webhook\_lambda\_timeout | Time out of the webhook lambda in seconds. | `number` | `10` | no |
 | webhook\_lambda\_zip | File location of the webhook lambda zip file. | `string` | `null` | no |
-
+| enable\_ssm\_on\_runners | Enable to allow access the runner instances for debugging purposes via SSM. Note that this adds additional permissions to the runner instances. | `bool` | `false` | no |
 ## Outputs
 
 | Name | Description |
