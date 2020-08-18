@@ -4,7 +4,7 @@
     {
       "Effect": "Allow",
       "Action": ["logs:CreateLogStream", "logs:PutLogEvents"],
-      "Resource": "${log_group_arn}"
+      "Resource": "${log_group_arn}*"
     }
   ]
 }
