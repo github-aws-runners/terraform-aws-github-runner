@@ -100,7 +100,7 @@ First you need to download the lambda releases. The lambda code is available as 
 ```terraform
 module "lambdas" {
   source  = "philips-labs/github-runner/aws//modules/download-lambda"
-  version = "0.2.0"
+  version = "0.4.0"
 
   lambdas = [
     {
@@ -132,7 +132,7 @@ Next create a second terraform workspace and initiate the module, see the exampl
 ```terraform
 module "github-runner" {
   source  = "philips-labs/github-runner/aws"
-  version = "0.2.0"
+  version = "0.4.0"
 
   aws_region = "eu-west-1"
   vpc_id     = "vpc-123"
