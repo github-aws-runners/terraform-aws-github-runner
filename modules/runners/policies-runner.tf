@@ -14,12 +14,6 @@ resource "aws_iam_instance_profile" "runner" {
   path = local.instance_profile_path
 }
 
-resource "aws_iam_role_policy" "runner_session_manager_policy" {
-  name   = "session-manager"
-  role   = aws_iam_role.runner.name
-  policy = templatefile("${path.module}/policies/instance-session-manager-policy.json", {})
-}
-
 resource "aws_iam_role_policy_attachment" "runner_session_manager_aws_managed" {
   count      = var.enable_ssm_on_runners ? 1 : 0
   role       = aws_iam_role.runner.name
