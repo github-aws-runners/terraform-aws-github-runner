@@ -14,7 +14,7 @@
     "@octokit/webhooks": "^7.11.0",
     "@types/express": "^4.17.3",
     "@types/jest": "^26.0.9",
-    "@types/node": "^14.0.23",
+    "@types/node": "^14.6.0",
     "@zeit/ncc": "^0.22.1",
     "aws-sdk": "^2.734.0",
     "body-parser": "^1.19.0",
