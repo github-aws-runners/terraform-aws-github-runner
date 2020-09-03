@@ -25,7 +25,7 @@
     "typescript": "^3.9.6"
   },
   "dependencies": {
-    "@octokit/rest": "^18.0.3",
+    "@octokit/rest": "^18.0.4",
     "crypto": "^1.0.1"
   }
 }
