@@ -5,11 +5,21 @@
       "Effect": "Allow",
       "Action": [
         "ec2:DescribeInstances*",
-        "ec2:DescribeTags",
-        "ec2:DeleteTags",
-        "ec2:TerminateInstances"
+        "ec2:DescribeTags"
       ],
       "Resource": ["*"]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ec2:TerminateInstances"
+      ],
+      "Resource": ["*"],
+      "Condition": {
+        "StringEquals": {
+          "ec2:ResourceTag/Application": "github-action-runner"
+        }
+      }
     }
   ]
 }
