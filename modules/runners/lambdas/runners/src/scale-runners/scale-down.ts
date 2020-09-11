@@ -1,10 +1,10 @@
-import { Octokit } from '@octokit/rest';
 import { AppAuth } from '@octokit/auth-app/dist-types/types';
-import { listRunners, terminateRunner, RunnerInfo } from './runners';
-import { createGithubAppAuth, createInstallationClient } from './scale-up';
-import { getIdleRunnerCount, ScalingDownConfig } from './scale-down-config';
-import yn from 'yn';
+import { Octokit } from '@octokit/rest';
 import moment from 'moment';
+import yn from 'yn';
+import { listRunners, RunnerInfo, terminateRunner } from './runners';
+import { getIdleRunnerCount, ScalingDownConfig } from './scale-down-config';
+import { createGithubAppAuth, createInstallationClient } from './scale-up';
 
 async function createAppClient(githubAppAuth: AppAuth): Promise<Octokit> {
   const auth = await githubAppAuth({ type: 'app' });
@@ -25,7 +25,6 @@ function getRepo(runner: RunnerInfo, orgLevel: boolean): Repo {
 async function createGitHubClientForRunner(runner: RunnerInfo, orgLevel: boolean): Promise<Octokit> {
   const githubClient = await createAppClient(await createGithubAppAuth(undefined));
   const repo = getRepo(runner, orgLevel);
-
   const installationId = orgLevel
     ? (
         await githubClient.apps.getOrgInstallation({
@@ -109,17 +108,17 @@ export async function scaleDown(): Promise<void> {
 
     const githubAppClient = await createGitHubClientForRunner(ec2runner, enableOrgLevel);
     const repo = getRepo(ec2runner, enableOrgLevel);
-    const registered = enableOrgLevel
-      ? await githubAppClient.actions.listSelfHostedRunnersForOrg({
+    const runners = enableOrgLevel
+      ? await githubAppClient.paginate(githubAppClient.actions.listSelfHostedRunnersForOrg, {
           org: repo.repoOwner,
         })
-      : await githubAppClient.actions.listSelfHostedRunnersForRepo({
+      : await githubAppClient.paginate(githubAppClient.actions.listSelfHostedRunnersForRepo, {
           owner: repo.repoOwner,
           repo: repo.repoName,
         });
 
     let orphanEc2Runner = true;
-    for (const ghRunner of registered.data.runners) {
+    for (const ghRunner of runners) {
       const runnerName = ghRunner.name as string;
       if (runnerName === ec2runner.instanceId) {
         orphanEc2Runner = false;

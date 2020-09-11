@@ -1,11 +1,7 @@
-import { mocked } from 'ts-jest/utils';
-import { scaleDown } from './scale-down';
 import moment from 'moment';
-import { createAppAuth } from '@octokit/auth-app';
-import { Octokit } from '@octokit/rest';
+import { mocked } from 'ts-jest/utils';
 import { listRunners, terminateRunner } from './runners';
-import { stringify } from 'querystring';
-import { ScalingDownConfig } from './scale-down-config';
+import { scaleDown } from './scale-down';
 
 jest.mock('@octokit/auth-app', () => ({
   createAppAuth: jest.fn().mockImplementation(() => jest.fn().mockImplementation(() => ({ token: 'Blaat' }))),
@@ -21,6 +17,7 @@ const mockOctokit = {
     deleteSelfHostedRunnerFromOrg: jest.fn(),
     deleteSelfHostedRunnerFromRepo: jest.fn(),
   },
+  paginate: jest.fn(),
 };
 jest.mock('@octokit/rest', () => ({
   Octokit: jest.fn().mockImplementation(() => mockOctokit),
@@ -91,24 +88,20 @@ const RUNNERS_WITH_AUTO_SCALING_CONFIG = DEFAULT_RUNNERS.filter(
 
 const RUNNERS_TO_BE_REMOVED_WITH_AUTO_SCALING_CONFIG = DEFAULT_RUNNERS.filter((r) => r.instanceId.includes('oldest'));
 
-const DEFAULT_REGISTERED_RUNNERS: any = {
-  data: {
-    runners: [
-      {
-        id: 101,
-        name: 'i-idle-101',
-      },
-      {
-        id: 102,
-        name: 'i-oldest-idle-102',
-      },
-      {
-        id: 103,
-        name: 'i-running-103',
-      },
-    ],
+const DEFAULT_REGISTERED_RUNNERS: any = [
+  {
+    id: 101,
+    name: 'i-idle-101',
   },
-};
+  {
+    id: 102,
+    name: 'i-oldest-idle-102',
+  },
+  {
+    id: 103,
+    name: 'i-running-103',
+  },
+];
 
 describe('scaleDown', () => {
   beforeEach(() => {
@@ -131,10 +124,7 @@ describe('scaleDown', () => {
       },
     }));
 
-    mockOctokit.actions.listSelfHostedRunnersForOrg.mockImplementation(() => {
-      return DEFAULT_REGISTERED_RUNNERS;
-    });
-    mockOctokit.actions.listSelfHostedRunnersForRepo.mockImplementation(() => {
+    mockOctokit.paginate.mockImplementation(() => {
       return DEFAULT_REGISTERED_RUNNERS;
     });
 
