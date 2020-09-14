@@ -24,7 +24,7 @@
   },
   "dependencies": {
     "@octokit/auth-app": "^2.4.14",
-    "@octokit/rest": "^18.0.4",
+    "@octokit/rest": "^18.0.6",
     "cron-parser": "^2.16.3",
     "moment": "^2.28.0",
     "yn": "^4.0.0"
