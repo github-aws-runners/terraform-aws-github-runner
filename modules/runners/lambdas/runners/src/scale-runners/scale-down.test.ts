@@ -124,11 +124,10 @@ describe('scaleDown', () => {
       },
     }));
 
-    mockOctokit.paginate.mockImplementation(() => {
+    mockOctokit.paginate.mockImplementationOnce(() => {
       return DEFAULT_REGISTERED_RUNNERS;
     });
 
-    function deRegisterRunnerGithub(id: number): any {}
     mockOctokit.actions.deleteSelfHostedRunnerFromRepo.mockImplementation((repo) => {
       if (repo.runner_id === 103) {
         throw Error();
