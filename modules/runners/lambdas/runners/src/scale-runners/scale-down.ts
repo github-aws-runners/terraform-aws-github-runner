@@ -22,23 +22,75 @@ function getRepo(runner: RunnerInfo, orgLevel: boolean): Repo {
     : { repoOwner: runner.repo?.split('/')[0] as string, repoName: runner.repo?.split('/')[1] as string };
 }
 
-async function createGitHubClientForRunner(runner: RunnerInfo, orgLevel: boolean): Promise<Octokit> {
-  const githubClient = await createAppClient(await createGithubAppAuth(undefined));
-  const repo = getRepo(runner, orgLevel);
-  const installationId = orgLevel
-    ? (
-        await githubClient.apps.getOrgInstallation({
+function createGitHubClientForRunnerFactory(): (runner: RunnerInfo, orgLevel: boolean) => Promise<Octokit> {
+  const cache: Map<string, Octokit> = new Map();
+
+  return async (runner: RunnerInfo, orgLevel: boolean) => {
+    const githubClient = await createAppClient(await createGithubAppAuth(undefined));
+    const repo = getRepo(runner, orgLevel);
+    const key = orgLevel ? repo.repoOwner : repo.repoOwner + repo.repoName;
+    const cachedOctokit = cache.get(key);
+
+    if (cachedOctokit) {
+      console.debug(`[createGitHubClientForRunner] Cache hit for ${key}`);
+      return cachedOctokit;
+    }
+
+    console.debug(`[createGitHubClientForRunner] Cache miss for ${key}`);
+    const installationId = orgLevel
+      ? (
+          await githubClient.apps.getOrgInstallation({
+            org: repo.repoOwner,
+          })
+        ).data.id
+      : (
+          await githubClient.apps.getRepoInstallation({
+            owner: repo.repoOwner,
+            repo: repo.repoName,
+          })
+        ).data.id;
+    const octokit = await createInstallationClient(await createGithubAppAuth(installationId));
+    cache.set(key, octokit);
+
+    return octokit;
+  };
+}
+
+/**
+ * Extract the inner type of a promise if any
+ */
+export type UnboxPromise<T> = T extends Promise<infer U> ? U : T;
+
+type GhRunners = UnboxPromise<ReturnType<Octokit['actions']['listSelfHostedRunnersForRepo']>>['data']['runners'];
+
+function listGithubRunnersFactory(): (
+  client: Octokit,
+  runner: RunnerInfo,
+  enableOrgLevel: boolean,
+) => Promise<GhRunners> {
+  const cache: Map<string, GhRunners> = new Map();
+  return async (client: Octokit, runner: RunnerInfo, enableOrgLevel: boolean) => {
+    const repo = getRepo(runner, enableOrgLevel);
+    const key = enableOrgLevel ? repo.repoOwner : repo.repoOwner + repo.repoName;
+    const cachedRunners = cache.get(key);
+    if (cachedRunners) {
+      console.debug(`[listGithubRunners] Cache hit for ${key}`);
+      return cachedRunners;
+    }
+
+    console.debug(`[listGithubRunners] Cache miss for ${key}`);
+    const runners = enableOrgLevel
+      ? await client.paginate(client.actions.listSelfHostedRunnersForOrg, {
           org: repo.repoOwner,
         })
-      ).data.id
-    : (
-        await githubClient.apps.getRepoInstallation({
+      : await client.paginate(client.actions.listSelfHostedRunnersForRepo, {
           owner: repo.repoOwner,
           repo: repo.repoName,
-        })
-      ).data.id;
+        });
+    cache.set(key, runners);
 
-  return createInstallationClient(await createGithubAppAuth(installationId));
+    return runners;
+  };
 }
 
 function runnerMinimumTimeExceeded(runner: RunnerInfo, minimumRunningTimeInMinutes: string): boolean {
@@ -101,24 +153,20 @@ export async function scaleDown(): Promise<void> {
     return;
   }
 
+  const createGitHubClientForRunner = createGitHubClientForRunnerFactory();
+  const listGithubRunners = listGithubRunnersFactory();
+
   for (const ec2runner of runners) {
     if (!runnerMinimumTimeExceeded(ec2runner, minimumRunningTimeInMinutes)) {
       continue;
     }
 
     const githubAppClient = await createGitHubClientForRunner(ec2runner, enableOrgLevel);
-    const repo = getRepo(ec2runner, enableOrgLevel);
-    const runners = enableOrgLevel
-      ? await githubAppClient.paginate(githubAppClient.actions.listSelfHostedRunnersForOrg, {
-          org: repo.repoOwner,
-        })
-      : await githubAppClient.paginate(githubAppClient.actions.listSelfHostedRunnersForRepo, {
-          owner: repo.repoOwner,
-          repo: repo.repoName,
-        });
 
+    const repo = getRepo(ec2runner, enableOrgLevel);
+    const ghRunners = await listGithubRunners(githubAppClient, ec2runner, enableOrgLevel);
     let orphanEc2Runner = true;
-    for (const ghRunner of runners) {
+    for (const ghRunner of ghRunners) {
       const runnerName = ghRunner.name as string;
       if (runnerName === ec2runner.instanceId) {
         orphanEc2Runner = false;
