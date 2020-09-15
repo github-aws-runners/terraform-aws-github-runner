@@ -37,10 +37,12 @@ module "runners" {
   enable_ssm_on_runners = true
 
   userdata_template = "./templates/user-data.sh"
-  ami_owners = ["099720109477"]  # Canonical's Amazon account ID
+  ami_owners        = ["099720109477"] # Canonical's Amazon account ID
+
   ami_filter = {
     name = ["ubuntu/images/hvm-ssd/ubuntu-focal-20.04-amd64-server-*"]
   }
+
   block_device_mappings = {
     # Set the block device name for Ubuntu root device
     device_name = "/dev/sda1"
