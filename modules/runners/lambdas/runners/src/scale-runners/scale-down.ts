@@ -1,4 +1,5 @@
 import { Octokit } from '@octokit/rest';
+import { OctokitResponse, ActionsListSelfHostedRunnersForRepoResponseData } from '@octokit/types';
 import { AppAuth } from '@octokit/auth-app/dist-types/types';
 import { listRunners, terminateRunner, RunnerInfo } from './runners';
 import { createGithubAppAuth, createInstallationClient } from './scale-up';
@@ -76,6 +77,52 @@ async function removeRunner(
   }
 }
 
+async function getRegisteredRunners(
+  client: Octokit,
+  enableOrgLevel: boolean,
+  owner: string,
+  repo?: string,
+): Promise<OctokitResponse<ActionsListSelfHostedRunnersForRepoResponseData>> {
+  const max_per_page = 100;
+  let current_page = 1;
+  let runners: OctokitResponse<ActionsListSelfHostedRunnersForRepoResponseData>;
+
+  if (!enableOrgLevel) {
+    runners = (await client.actions.listSelfHostedRunnersForRepo({
+      owner: owner,
+      repo: repo as string,
+      per_page: max_per_page,
+      page: current_page,
+    })) as OctokitResponse<ActionsListSelfHostedRunnersForRepoResponseData>;
+    while (runners.data.total_count > current_page * max_per_page) {
+      current_page++;
+      const tmp_runners = (await client.actions.listSelfHostedRunnersForRepo({
+        owner: owner,
+        repo: repo as string,
+        per_page: max_per_page,
+        page: current_page,
+      })) as OctokitResponse<ActionsListSelfHostedRunnersForRepoResponseData>;
+      runners.data.runners = runners.data.runners.concat(tmp_runners.data.runners);
+    }
+  } else {
+    runners = (await client.actions.listSelfHostedRunnersForOrg({
+      org: owner,
+      per_page: max_per_page,
+      page: current_page,
+    })) as OctokitResponse<ActionsListSelfHostedRunnersForRepoResponseData>;
+    while (runners.data.total_count > current_page * max_per_page) {
+      current_page++;
+      const tmp_runners = (await client.actions.listSelfHostedRunnersForOrg({
+        org: owner,
+        per_page: max_per_page,
+        page: current_page,
+      })) as OctokitResponse<ActionsListSelfHostedRunnersForRepoResponseData>;
+      runners.data.runners = runners.data.runners.concat(tmp_runners.data.runners);
+    }
+  }
+  return runners;
+}
+
 export async function scaleDown(): Promise<void> {
   const scaleDownConfigs = JSON.parse(process.env.SCALE_DOWN_CONFIG as string) as [ScalingDownConfig];
 
@@ -109,14 +156,7 @@ export async function scaleDown(): Promise<void> {
 
     const githubAppClient = await createGitHubClientForRunner(ec2runner, enableOrgLevel);
     const repo = getRepo(ec2runner, enableOrgLevel);
-    const registered = enableOrgLevel
-      ? await githubAppClient.actions.listSelfHostedRunnersForOrg({
-          org: repo.repoOwner,
-        })
-      : await githubAppClient.actions.listSelfHostedRunnersForRepo({
-          owner: repo.repoOwner,
-          repo: repo.repoName,
-        });
+    const registered = await getRegisteredRunners(githubAppClient, enableOrgLevel, repo.repoOwner, repo.repoName);
 
     let orphanEc2Runner = true;
     for (const ghRunner of registered.data.runners) {
