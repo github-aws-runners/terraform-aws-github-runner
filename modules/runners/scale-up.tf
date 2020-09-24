@@ -85,3 +85,9 @@ resource "aws_iam_role_policy" "scale_up_logging" {
     log_group_arn = aws_cloudwatch_log_group.scale_up.arn
   })
 }
+
+resource "aws_iam_role_policy" "service_linked_role" {
+  name = "${var.environment}-service_linked_role"
+  role = aws_iam_role.scale_up.name
+  policy = templatefile("${path.module}/policies/service-linked-role-create-policy.json", {})
+}
