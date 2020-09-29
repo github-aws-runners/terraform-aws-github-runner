@@ -1,17 +1,13 @@
 import { scaleUp } from './scale-runners/scale-up';
 import { scaleDown } from './scale-runners/scale-down';
-import { SQSEvent } from 'aws-lambda';
 
-module.exports.scaleUp = async (event: SQSEvent, context: any, callback: any) => {
-  console.dir(event, { depth: 5 });
+module.exports.scaleUp = async (event: any, context: any, callback: any) => {
   try {
-    for (const e of event.Records) {
-      await scaleUp(e.eventSource, JSON.parse(e.body));
-    }
+    await scaleUp();
     return callback(null);
   } catch (e) {
     console.error(e);
-    return callback('Failed handling SQS event');
+    return callback('Failed to scale up');
   }
 };
 
@@ -21,6 +17,6 @@ module.exports.scaleDown = async (event: any, context: any, callback: any) => {
     return callback(null);
   } catch (e) {
     console.error(e);
-    return callback('Failed');
+    return callback('Failed to scale down');
   }
 };

@@ -1,0 +1,72 @@
+# Module - Scale runners
+
+This module creates resources required to run the GitHub action runner on AWS EC2 spot instances. The life cycle of the runners on AWS is managed by two lambda functions. One function will handle scaling up, the other scaling down.
+
+## Overview
+
+### Action runners on EC2
+
+The action runners are created via a launch template, on launch template only the subnet needs to be provided. During launch the installation is handled via a user data script. The configuration is fetched from SSM parameter store.
+
+### Lambda scale up
+
+The scale up lambda is triggered by events on a SQS queue. Events on this queued are delayed, which will will give the workflow some time to start running on available runners. For each event the lambda will check the workflow is still queued and no other limits are reached. In that case the lambda will create a new EC2 instance. The lambda only needs to know which launch template to use and which subnets are available. From the available subnets a random one will be chosen. Once the instance is created the event is assumed as handled, and we assume the workflow wil start at some moment once the created instance is ready.
+
+### Lambda scale down
+
+The scale down lambda is triggered via a CloudWatch event. The event is triggered by a cron expression defined in the variable `scale_down_schedule_expression` (https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html). For scaling down GitHub does not provide a good API yet, therefore we run the scaling down based on this event every x minutes. Each time the lambda is triggered it tries to remove all runners older than x minutes (configurable) managed in this deployment. In case the runner can be removed from GitHub, which means it is not executing a workflow, the lambda will terminate the EC2 instance.
+
+## Usages
+
+Usage examples are available in the root module. By default the root module will assume local zip files containing the lambda distribution are available. See the [download lambda module](../download-lambda/README.md) for more information.
+
+## Lambda Function
+
+The Lambda function is written in [TypeScript](https://www.typescriptlang.org/) and requires Node 12.x and yarn. Sources are located in [./lambdas/runners]. Two lambda functions share the same sources, there is one entry point for `scaleDown` and another one for `scaleUp`.
+
+### Install
+
+```bash
+cd lambdas/runners
+yarn install
+```
+
+### Test
+
+Test are implemented with [Jest](https://jestjs.io/), calls to AWS and GitHub are mocked.
+
+```bash
+yarn run test
+```
+
+### Package
+
+To compile all TypeScript/JavaScript sources in a single file [ncc](https://github.com/zeit/ncc) is used.
+
+```bash
+yarn run dist
+```
+
+<!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
+I_WANT_TO_BE_REPLACED
+<!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
+
+## Philips Forest
+
+This module is part of the Philips Forest.
+
+```
+
+                                                     ___                   _
+                                                    / __\__  _ __ ___  ___| |_
+                                                   / _\/ _ \| '__/ _ \/ __| __|
+                                                  / / | (_) | | |  __/\__ \ |_
+                                                  \/   \___/|_|  \___||___/\__|
+
+                                                                 Infrastructure
+
+```
+
+Talk to the forestkeepers in the `forest`-channel on Slack.
+
+[![Slack](https://philips-software-slackin.now.sh/badge.svg)](https://philips-software-slackin.now.sh)

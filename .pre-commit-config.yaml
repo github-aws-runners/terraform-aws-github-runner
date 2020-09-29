@@ -1,11 +1,8 @@
 repos:
-  - repo: git://github.com/antonbabenko/pre-commit-terraform
-    rev: v1.30.0
+  - repo: git://github.com/santander-digital-assets/pre-commit-terraform
+    rev: v1.31.1
     hooks:
       - id: terraform_fmt
-      - id: terraform_tflint
       - id: terraform_docs
-  - repo: git://github.com/pre-commit/pre-commit-hooks
-    rev: v2.5.0
-    hooks:
-      - id: check-merge-conflict
+      - id: terraform_validate
+      - id: terraform_tflint

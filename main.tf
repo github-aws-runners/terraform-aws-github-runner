@@ -13,47 +13,15 @@ resource "random_string" "random" {
   upper   = false
 }
 
-resource "aws_sqs_queue" "queued_builds" {
-  name                        = "${var.environment}-queued-builds.fifo"
-  delay_seconds               = 30
-  visibility_timeout_seconds  = 60
-  fifo_queue                  = true
-  receive_wait_time_seconds   = 10
-  content_based_deduplication = true
-
-  tags = var.tags
-}
-
-module "webhook" {
-  source = "./modules/webhook"
-
-  aws_region  = var.aws_region
-  environment = var.environment
-  tags        = local.tags
-  encryption = {
-    kms_key_id = local.kms_key_id
-    encrypt    = var.encrypt_secrets
-  }
-
-  sqs_build_queue           = aws_sqs_queue.queued_builds
-  github_app_webhook_secret = var.github_app.webhook_secret
-
-  lambda_zip                = var.webhook_lambda_zip
-  lambda_timeout            = var.webhook_lambda_timeout
-  logging_retention_in_days = var.logging_retention_in_days
-
-  role_path                 = var.role_path
-  role_permissions_boundary = var.role_permissions_boundary
-}
-
 module "runners" {
   source = "./modules/runners"
 
-  aws_region  = var.aws_region
-  vpc_id      = var.vpc_id
-  subnet_ids  = var.subnet_ids
-  environment = var.environment
-  tags        = local.tags
+  aws_region               = var.aws_region
+  vpc_id                   = var.vpc_id
+  subnet_ids               = var.subnet_ids
+  runner_security_group_id = var.runner_security_group_id
+  environment              = var.environment
+  tags                     = local.tags
   encryption = {
     kms_key_id = local.kms_key_id
     encrypt    = var.encrypt_secrets
@@ -62,15 +30,16 @@ module "runners" {
   s3_bucket_runner_binaries   = module.runner_binaries.bucket
   s3_location_runner_binaries = local.s3_action_runner_url
 
-  instance_type = var.instance_type
+  instance_type  = var.instance_type
+  market_options = var.market_options
 
   runner_architecture = local.runner_architecture
   ami_filter          = local.runner_architecture == "arm64" ? { name = ["amzn2-ami-hvm-2*-arm64-gp2"] } : { name = ["amzn2-ami-hvm-2.*-x86_64-ebs"] }
 
-  sqs_build_queue                 = aws_sqs_queue.queued_builds
   github_app                      = var.github_app
   enable_organization_runners     = var.enable_organization_runners
   scale_down_schedule_expression  = var.scale_down_schedule_expression
+  scale_up_schedule_expression    = var.scale_up_schedule_expression
   minimum_running_time_in_minutes = var.minimum_running_time_in_minutes
   runner_extra_labels             = var.runner_extra_labels
   runner_as_root                  = var.runner_as_root

@@ -13,6 +13,12 @@ variable "subnet_ids" {
   type        = list(string)
 }
 
+variable "runner_security_group_id" {
+  description = "If provided, the runners will be attached to this security group. If not given, a security group will be created with necessary ingress/egress to work with"
+  type        = string
+  default     = ""
+}
+
 variable "tags" {
   description = "Map of tags that will be added to created resources. By default resources will be tagged with name and environment."
   type        = map(string)
@@ -31,16 +37,21 @@ variable "enable_organization_runners" {
 variable "github_app" {
   description = "GitHub app parameters, see your github app. Ensure the key is base64 encoded."
   type = object({
-    key_base64     = string
-    id             = string
-    client_id      = string
-    client_secret  = string
-    webhook_secret = string
+    key_base64    = string
+    id            = string
+    client_id     = string
+    client_secret = string
   })
 }
 
 variable "scale_down_schedule_expression" {
   description = "Scheduler expression to check every x for scale down."
+  type        = string
+  default     = "cron(*/5 * * * ? *)"
+}
+
+variable "scale_up_schedule_expression" {
+  description = "Scheduler expression to check every x for scale up."
   type        = string
   default     = "cron(*/5 * * * ? *)"
 }
@@ -55,18 +66,6 @@ variable "runner_extra_labels" {
   description = "Extra labels for the runners (GitHub). Separate each label by a comma"
   type        = string
   default     = ""
-}
-
-variable "webhook_lambda_zip" {
-  description = "File location of the webhook lambda zip file."
-  type        = string
-  default     = null
-}
-
-variable "webhook_lambda_timeout" {
-  description = "Time out of the webhook lambda in seconds."
-  type        = number
-  default     = 10
 }
 
 variable "runners_lambda_zip" {
@@ -121,6 +120,12 @@ variable "instance_type" {
   description = "Instance type for the action runner."
   type        = string
   default     = "m5.large"
+}
+
+variable "market_options" {
+  description = "Market options for the action runner instances."
+  type        = string
+  default     = "spot"
 }
 
 variable "runner_as_root" {

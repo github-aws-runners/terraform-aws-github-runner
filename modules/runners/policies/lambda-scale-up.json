@@ -23,12 +23,8 @@
     },
     {
       "Effect": "Allow",
-      "Action": [
-        "sqs:ReceiveMessage",
-        "sqs:GetQueueAttributes",
-        "sqs:DeleteMessage"
-      ],
-      "Resource": "${sqs_arn}"
+      "Action": "iam:CreateServiceLinkedRole",
+      "Resource": "arn:aws:iam::*:role/aws-service-role/*"
     }
   ]
 }

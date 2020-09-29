@@ -14,7 +14,7 @@ yum install -y curl jq git
 
 # Install runner
 cd /home/ec2-user
-mkdir actions-runner && cd actions-runner
+mkdir -p actions-runner && cd actions-runner
 
 aws s3 cp ${s3_location_runner_distribution} actions-runner.tar.gz
 tar xzf ./actions-runner.tar.gz

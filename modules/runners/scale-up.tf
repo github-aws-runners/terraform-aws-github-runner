@@ -28,7 +28,6 @@ resource "aws_lambda_function" "scale_up" {
       ENVIRONMENT                 = var.environment
       KMS_KEY_ID                  = var.encryption.kms_key_id
       ENABLE_ORGANIZATION_RUNNERS = var.enable_organization_runners
-      RUNNER_EXTRA_LABELS         = var.runner_extra_labels
       RUNNERS_MAXIMUM_COUNT       = var.runners_maximum_count
       GITHUB_APP_KEY_BASE64       = local.github_app_key_base64
       GITHUB_APP_ID               = var.github_app.id
@@ -36,7 +35,7 @@ resource "aws_lambda_function" "scale_up" {
       GITHUB_APP_CLIENT_SECRET    = local.github_app_client_secret
       SUBNET_IDS                  = join(",", var.subnet_ids)
       LAUNCH_TEMPLATE_NAME        = aws_launch_template.runner.name
-      LAUNCH_TEMPLATE_VERSION     = aws_launch_template.runner.latest_version
+      SCALE_DOWN_CONFIG           = jsonencode(var.idle_config)
     }
   }
 }
@@ -47,17 +46,23 @@ resource "aws_cloudwatch_log_group" "scale_up" {
   tags              = var.tags
 }
 
-resource "aws_lambda_event_source_mapping" "scale_up" {
-  event_source_arn = var.sqs_build_queue.arn
-  function_name    = aws_lambda_function.scale_up.arn
+resource "aws_cloudwatch_event_rule" "scale_up" {
+  name                = "${var.environment}-scale-up-rule"
+  schedule_expression = var.scale_up_schedule_expression
+  tags                = var.tags
 }
 
-resource "aws_lambda_permission" "scale_runners_lambda" {
-  statement_id  = "AllowExecutionFromSQS"
+resource "aws_cloudwatch_event_target" "scale_up" {
+  rule = aws_cloudwatch_event_rule.scale_up.name
+  arn  = aws_lambda_function.scale_up.arn
+}
+
+resource "aws_lambda_permission" "scale_up" {
+  statement_id  = "AllowExecutionFromCloudWatch"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.scale_up.function_name
-  principal     = "sqs.amazonaws.com"
-  source_arn    = var.sqs_build_queue.arn
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.scale_up.arn
 }
 
 resource "aws_iam_role" "scale_up" {
@@ -69,12 +74,10 @@ resource "aws_iam_role" "scale_up" {
 }
 
 resource "aws_iam_role_policy" "scale_up" {
-  name = "${var.environment}-lambda-scale-up-policy"
+  name = "${var.environment}-lambda-scale-down-policy"
   role = aws_iam_role.scale_up.name
-
   policy = templatefile("${path.module}/policies/lambda-scale-up.json", {
     arn_runner_instance_role = aws_iam_role.runner.arn
-    sqs_arn                  = var.sqs_build_queue.arn
   })
 }
 

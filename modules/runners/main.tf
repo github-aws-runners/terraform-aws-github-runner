@@ -9,11 +9,12 @@ locals {
     var.tags,
   )
 
-  name_sg               = var.overrides["name_sg"] == "" ? local.tags["Name"] : var.overrides["name_sg"]
-  name_runner           = var.overrides["name_runner"] == "" ? local.tags["Name"] : var.overrides["name_runner"]
-  role_path             = var.role_path == null ? "/${var.environment}/" : var.role_path
-  instance_profile_path = var.instance_profile_path == null ? "/${var.environment}/" : var.instance_profile_path
-  lambda_zip            = var.lambda_zip == null ? "${path.module}/lambdas/runners/runners.zip" : var.lambda_zip
+  name_sg                  = var.overrides["name_sg"] == "" ? local.tags["Name"] : var.overrides["name_sg"]
+  name_runner              = var.overrides["name_runner"] == "" ? local.tags["Name"] : var.overrides["name_runner"]
+  role_path                = var.role_path == null ? "/${var.environment}/" : var.role_path
+  instance_profile_path    = var.instance_profile_path == null ? "/${var.environment}/" : var.instance_profile_path
+  lambda_zip               = var.lambda_zip == null ? "${path.module}/lambdas/runners/runners.zip" : var.lambda_zip
+  runner_security_group_id = var.runner_security_group_id == "" ? join("", aws_security_group.runner_sg.*.id) : var.runner_security_group_id
 }
 
 data "aws_ami" "runner" {
@@ -31,7 +32,9 @@ data "aws_ami" "runner" {
 }
 
 resource "aws_launch_template" "runner" {
-  name = "${var.environment}-action-runner"
+  name                   = "${var.environment}-action-runner"
+  update_default_version = true
+  key_name               = "delete-me-mz"
 
   dynamic "block_device_mappings" {
     for_each = [var.block_device_mappings]
@@ -54,14 +57,17 @@ resource "aws_launch_template" "runner" {
 
   instance_initiated_shutdown_behavior = "terminate"
 
-  instance_market_options {
-    market_type = var.market_options
+  dynamic "instance_market_options" {
+    for_each = var.market_options == "spot" ? [var.market_options] : []
+    content {
+      market_type = var.market_options
+    }
   }
 
   image_id      = data.aws_ami.runner.id
   instance_type = var.instance_type
 
-  vpc_security_group_ids = [aws_security_group.runner_sg.id]
+  vpc_security_group_ids = compact([local.runner_security_group_id])
 
   tag_specifications {
     resource_type = "instance"
@@ -86,6 +92,7 @@ resource "aws_launch_template" "runner" {
 }
 
 resource "aws_security_group" "runner_sg" {
+  count       = var.runner_security_group_id == "" ? 1 : 0
   name_prefix = "${var.environment}-github-actions-runner-sg"
   description = "Github Actions Runner security group"
 

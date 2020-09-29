@@ -13,6 +13,12 @@ variable "subnet_ids" {
   type        = list(string)
 }
 
+variable "runner_security_group_id" {
+  description = "If provided, the runners will be attached to this security group. If not given, a security group will be created with necessary ingress/egress to work with"
+  type        = string
+  default     = ""
+}
+
 variable "overrides" {
   description = "This maps provides the possibility to override some defaults. The following attributes are supported: `name_sg` overwrite the `Name` tag for all security groups created by this module. `name_runner_agent_instance` override the `Name` tag for the ec2 instance defined in the auto launch configuration. `name_docker_machine_runners` override the `Name` tag spot instances created by the runner agent."
   type        = map(string)
@@ -90,13 +96,6 @@ variable "userdata_post_install" {
   default     = ""
 }
 
-variable "sqs_build_queue" {
-  description = "SQS queue to consume accepted build events."
-  type = object({
-    arn = string
-  })
-}
-
 variable "enable_organization_runners" {
   type = bool
 }
@@ -113,6 +112,12 @@ variable "github_app" {
 
 variable "scale_down_schedule_expression" {
   description = "Scheduler expression to check every x for scale down."
+  type        = string
+  default     = "cron(*/5 * * * ? *)"
+}
+
+variable "scale_up_schedule_expression" {
+  description = "Scheduler expression to check every x for scale up."
   type        = string
   default     = "cron(*/5 * * * ? *)"
 }

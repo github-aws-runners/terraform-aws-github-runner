@@ -48,7 +48,7 @@ Downloading the GitHub Action Runner distribution can be occasionally slow (more
 
 Secrets and private keys which are passed the Lambda's as environment variables are encrypted by default by a KMS key managed by the module. Alternatively you can pass your own KMS key. Encryption via KMS can be complete disabled by setting `encrypt_secrets` to `false`.
 
-![Architecture](docs/component-overview.svg)
+![Architecture](docs/architecture_pulling.png)
 
 Permission are managed on several places. Below the most important ones. For details check the Terraform sources.
 
@@ -274,13 +274,16 @@ When configuring `runners`
 <!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 ## Requirements
 
-No requirements.
+| Name | Version |
+|------|---------|
+| terraform | >= 0.12.9 |
+| aws | >= 3.0 |
 
 ## Providers
 
 | Name | Version |
 |------|---------|
-| aws | n/a |
+| aws | >= 3.0 |
 | random | n/a |
 
 ## Inputs
@@ -291,13 +294,14 @@ No requirements.
 | enable\_organization\_runners | n/a | `bool` | n/a | yes |
 | encrypt\_secrets | Encrypt secret variables for lambda's such as secrets and private keys. | `bool` | `true` | no |
 | environment | A name that identifies the environment, used as prefix and for tagging. | `string` | n/a | yes |
-| github\_app | GitHub app parameters, see your github app. Ensure the key is base64 encoded. | <pre>object({<br>    key_base64     = string<br>    id             = string<br>    client_id      = string<br>    client_secret  = string<br>    webhook_secret = string<br>  })</pre> | n/a | yes |
+| github\_app | GitHub app parameters, see your github app. Ensure the key is base64 encoded. | <pre>object({<br>    key_base64    = string<br>    id            = string<br>    client_id     = string<br>    client_secret = string<br>  })</pre> | n/a | yes |
 | idle\_config | List of time period that can be defined as cron expression to keep a minimum amount of runners active instead of scaling down to 0. By defining this list you can ensure that in time periods that match the cron expression within 5 seconds a runner is kept idle. | <pre>list(object({<br>    cron      = string<br>    timeZone  = string<br>    idleCount = number<br>  }))</pre> | `[]` | no |
 | instance\_profile\_path | The path that will be added to the instance\_profile, if not set the environment name will be used. | `string` | `null` | no |
 | instance\_type | Instance type for the action runner. | `string` | `"m5.large"` | no |
 | kms\_key\_id | Custom KMS key to encrypted lambda secrets, if not provided and `encrypt_secrets` = `true` a KMS key will be created by the module. Secrets will be encrypted with a context `Environment = var.environment`. | `string` | `null` | no |
 | logging\_retention\_in\_days | Specifies the number of days you want to retain log events for the lambda log group. Possible values are: 0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, and 3653. | `number` | `7` | no |
 | manage\_kms\_key | Let the module manage the KMS key. | `bool` | `true` | no |
+| market\_options | Market options for the action runner instances. | `string` | `"spot"` | no |
 | minimum\_running\_time\_in\_minutes | The time an ec2 action runner should be running at minimum before terminated if non busy. | `number` | `5` | no |
 | role\_path | The path that will be added to role path for created roles, if not set the environment name will be used. | `string` | `null` | no |
 | role\_permissions\_boundary | Permissions boundary that will be added to the created roles. | `string` | `null` | no |
@@ -305,18 +309,18 @@ No requirements.
 | runner\_binaries\_syncer\_lambda\_timeout | Time out of the binaries sync lambda in seconds. | `number` | `300` | no |
 | runner\_binaries\_syncer\_lambda\_zip | File location of the binaries sync lambda zip file. | `string` | `null` | no |
 | runner\_extra\_labels | Extra labels for the runners (GitHub). Separate each label by a comma | `string` | `""` | no |
+| runner\_security\_group\_id | If provided, the runners will be attached to this security group. If not given, a security group will be created with necessary ingress/egress to work with | `string` | `""` | no |
 | runners\_lambda\_zip | File location of the lambda zip file for scaling runners. | `string` | `null` | no |
 | runners\_maximum\_count | The maximum number of runners that will be created. | `number` | `3` | no |
 | runners\_scale\_down\_lambda\_timeout | Time out for the scale up lambda in seconds. | `number` | `60` | no |
 | runners\_scale\_up\_lambda\_timeout | Time out for the scale down lambda in seconds. | `number` | `60` | no |
 | scale\_down\_schedule\_expression | Scheduler expression to check every x for scale down. | `string` | `"cron(*/5 * * * ? *)"` | no |
+| scale\_up\_schedule\_expression | Scheduler expression to check every x for scale up. | `string` | `"cron(*/5 * * * ? *)"` | no |
 | subnet\_ids | List of subnets in which the action runners will be launched, the subnets needs to be subnets in the `vpc_id`. | `list(string)` | n/a | yes |
 | tags | Map of tags that will be added to created resources. By default resources will be tagged with name and environment. | `map(string)` | `{}` | no |
 | userdata\_post\_install | Script to be ran after the GitHub Actions runner is installed on the EC2 instances | `string` | `""` | no |
 | userdata\_pre\_install | Script to be ran before the GitHub Actions runner is installed on the EC2 instances | `string` | `""` | no |
 | vpc\_id | The VPC for security groups of the action runners. | `string` | n/a | yes |
-| webhook\_lambda\_timeout | Time out of the webhook lambda in seconds. | `number` | `10` | no |
-| webhook\_lambda\_zip | File location of the webhook lambda zip file. | `string` | `null` | no |
 
 ## Outputs
 
@@ -324,7 +328,6 @@ No requirements.
 |------|-------------|
 | binaries\_syncer | n/a |
 | runners | n/a |
-| webhook | n/a |
 
 <!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 

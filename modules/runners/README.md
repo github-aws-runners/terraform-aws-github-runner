@@ -85,11 +85,12 @@ No requirements.
 | runner\_architecture | The platform architecture of the runner instance\_type. | `string` | `"x64"` | no |
 | runner\_as\_root | Run the action runner under the root user. | `bool` | `false` | no |
 | runner\_extra\_labels | Extra labels for the runners (GitHub). Separate each label by a comma | `string` | `""` | no |
+| runner\_security\_group\_id | If provided, the runners will be attached to this security group. If not given, a security group will be created with necessary ingress/egress to work with | `string` | `""` | no |
 | runners\_maximum\_count | The maximum number of runners that will be created. | `number` | `3` | no |
 | s3\_bucket\_runner\_binaries | n/a | <pre>object({<br>    arn = string<br>  })</pre> | n/a | yes |
 | s3\_location\_runner\_binaries | S3 location of runner distribution. | `string` | n/a | yes |
 | scale\_down\_schedule\_expression | Scheduler expression to check every x for scale down. | `string` | `"cron(*/5 * * * ? *)"` | no |
-| sqs\_build\_queue | SQS queue to consume accepted build events. | <pre>object({<br>    arn = string<br>  })</pre> | n/a | yes |
+| scale\_up\_schedule\_expression | Scheduler expression to check every x for scale up. | `string` | `"cron(*/5 * * * ? *)"` | no |
 | subnet\_ids | List of subnets in which the action runners will be launched, the subnets needs to be subnets in the `vpc_id`. | `list(string)` | n/a | yes |
 | tags | Map of tags that will be added to created resources. By default resources will be tagged with name and environment. | `map(string)` | `{}` | no |
 | userdata\_post\_install | User-data script snippet to insert after GitHub acton runner install | `string` | `""` | no |

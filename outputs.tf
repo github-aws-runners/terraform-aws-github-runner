@@ -18,12 +18,3 @@ output "binaries_syncer" {
     location    = local.s3_action_runner_url
   }
 }
-
-output "webhook" {
-  value = {
-    gateway     = module.webhook.gateway
-    lambda      = module.webhook.lambda
-    lambda_role = module.webhook.role
-    endpoint    = "${module.webhook.gateway.api_endpoint}/${module.webhook.endpoint_relative_path}"
-  }
-}

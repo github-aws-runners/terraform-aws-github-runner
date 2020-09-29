@@ -4,9 +4,9 @@
   "main": "lambda.ts",
   "license": "MIT",
   "scripts": {
-    "start": "ts-node-dev src/local.ts",
+    "start": "ts-node-dev src/lambda.ts",
     "test": "NODE_ENV=test jest",
-    "watch": "ts-node-dev --respawn --exit-child src/local.ts",
+    "watch": "ts-node-dev --respawn --exit-child src/lambda.ts",
     "build": "ncc build src/lambda.ts -o dist",
     "dist": "yarn build && cd dist && zip ../runners.zip index.js"
   },
