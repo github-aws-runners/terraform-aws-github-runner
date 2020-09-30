@@ -21,7 +21,6 @@ jobs:
         uses: actions/checkout@v2
       - name: "Fake zip files" # Validate will fail if it cannot find the zip files
         run: |
-          touch modules/webhook/lambdas/webhook/webhook.zip
           touch modules/runners/lambdas/runners/runners.zip
           touch modules/runner-binaries-syncer/lambdas/runner-binaries-syncer/runner-binaries-syncer.zip
       - name: "Terraform Format"

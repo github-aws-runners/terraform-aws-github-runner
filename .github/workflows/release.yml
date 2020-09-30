@@ -11,7 +11,6 @@ jobs:
     runs-on: ubuntu-latest
     container: node:12
     env:
-      lambda_webhook_name: webhook
       lambda_runners_name: runners
       lambda_syncer_name: runner-binaries-syncer
     steps:
@@ -31,19 +30,6 @@ jobs:
       - uses: actions/checkout@v2
       - name: Add zip
         run: apt update && apt install zip
-
-      - name: Lambda webhook - build
-        working-directory: modules/webhook/lambdas/webhook
-        run: yarn install && yarn dist
-      - name: Lambda webhook - Upload asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: modules/${{ env.lambda_webhook_name }}/lambdas/${{ env.lambda_webhook_name }}/${{ env.lambda_webhook_name }}.zip
-          asset_name: ${{ env.lambda_webhook_name }}-${{ steps.tag_name.outputs.TAG }}.zip
-          asset_content_type: application/zip
 
       - name: Lambda syncer - build
         working-directory: modules/runner-binaries-syncer/lambdas/runner-binaries-syncer
