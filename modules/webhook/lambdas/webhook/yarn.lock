@@ -615,10 +615,10 @@
   dependencies:
     "@types/node" ">= 8"
 
-"@octokit/webhooks@^7.11.2":
-  version "7.11.2"
-  resolved "https://registry.yarnpkg.com/@octokit/webhooks/-/webhooks-7.11.2.tgz#dac23cc371201c92f27ab7d7a08f05be61b68264"
-  integrity sha512-5sYNoh7E40UDK2wrma0LiwBPtOg8Rq0g3G58cUYyZmwV2EdwSeZoIrJF/sanWrRsNPIxwEKkRvb7VruXkmeCWg==
+"@octokit/webhooks@^7.12.2":
+  version "7.12.2"
+  resolved "https://registry.yarnpkg.com/@octokit/webhooks/-/webhooks-7.12.2.tgz#056066ead179432b22d5f117e6511383fb4cd541"
+  integrity sha512-mkNeIdXsSr5do5ISSiGGYceWJ3K73kABPBeOwgWc+bKIi7oqU7oPvl6Ij5F8KxW1LL84tHaGPhVRfYOHxsCKsA==
   dependencies:
     "@octokit/request-error" "^2.0.2"
     "@pika/plugin-ts-standard-pkg" "^0.9.2"
