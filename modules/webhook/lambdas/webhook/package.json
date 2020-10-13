@@ -19,7 +19,7 @@
     "aws-sdk": "^2.767.0",
     "body-parser": "^1.19.0",
     "express": "^4.17.1",
-    "jest": "^26.4.2",
+    "jest": "^26.5.3",
     "ts-jest": "^26.4.1",
     "ts-node-dev": "^1.0.0-pre.62",
     "typescript": "^3.9.6"
