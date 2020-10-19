@@ -154,7 +154,7 @@ variable "kms_key_id" {
 }
 
 variable "userdata_template" {
-  description = "Alternative user-data template, replacing the default template"
+  description = "Alternative user-data template, replacing the default template. By providing your own user_data you have to take care of installing all required software, including the action runner. Variables userdata_pre/post_install are ignored."
   type        = string
   default     = null
 }
@@ -206,7 +206,7 @@ variable "block_device_mappings" {
 }
 
 variable "ami_filter" {
-  description = "List of maps used to create the AMI filter for the action runner AMI."
+  description = "List of maps used to create the AMI filter for the action runner AMI. By default amazon linux 2 is used."
   type        = map(list(string))
 
   default = {}
