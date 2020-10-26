@@ -4,13 +4,16 @@ locals {
 }
 
 resource "aws_lambda_function" "syncer" {
-  filename         = local.lambda_zip
-  source_code_hash = filebase64sha256(local.lambda_zip)
-  function_name    = "${var.environment}-syncer"
-  role             = aws_iam_role.syncer_lambda.arn
-  handler          = "index.handler"
-  runtime          = "nodejs12.x"
-  timeout          = var.lambda_timeout
+  s3_bucket         = var.lambda_s3_bucket != null ? var.lambda_s3_bucket : null
+  s3_key            = var.syncer_lambda_s3_key != null ? var.syncer_lambda_s3_key : null
+  s3_object_version = var.syncer_lambda_s3_object_version != null ? var.syncer_lambda_s3_object_version : null
+  filename          = var.lambda_s3_bucket == null ? local.lambda_zip : null
+  source_code_hash  = var.lambda_s3_bucket == null ? filebase64sha256(local.lambda_zip) : null
+  function_name     = "${var.environment}-syncer"
+  role              = aws_iam_role.syncer_lambda.arn
+  handler           = "index.handler"
+  runtime           = "nodejs12.x"
+  timeout           = var.lambda_timeout
 
   environment {
     variables = {

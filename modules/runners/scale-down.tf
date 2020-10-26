@@ -13,14 +13,17 @@ resource "aws_kms_grant" "scale_down" {
 }
 
 resource "aws_lambda_function" "scale_down" {
-  filename         = local.lambda_zip
-  source_code_hash = filebase64sha256(local.lambda_zip)
-  function_name    = "${var.environment}-scale-down"
-  role             = aws_iam_role.scale_down.arn
-  handler          = "index.scaleDown"
-  runtime          = "nodejs12.x"
-  timeout          = var.lambda_timeout_scale_down
-  tags             = local.tags
+  s3_bucket         = var.lambda_s3_bucket != null ? var.lambda_s3_bucket : null
+  s3_key            = var.runners_lambda_s3_key != null ? var.runners_lambda_s3_key : null
+  s3_object_version = var.runners_lambda_s3_object_version != null ? var.runners_lambda_s3_object_version : null
+  filename          = var.lambda_s3_bucket == null ? local.lambda_zip : null
+  source_code_hash  = var.lambda_s3_bucket == null ? filebase64sha256(local.lambda_zip) : null
+  function_name     = "${var.environment}-scale-down"
+  role              = aws_iam_role.scale_down.arn
+  handler           = "index.scaleDown"
+  runtime           = "nodejs12.x"
+  timeout           = var.lambda_timeout_scale_down
+  tags              = local.tags
 
   environment {
     variables = {

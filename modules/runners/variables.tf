@@ -217,3 +217,19 @@ variable "enable_ssm_on_runners" {
   description = "Enable to allow access the runner instances for debugging purposes via SSM. Note that this adds additional permissions to the runner instances."
   type        = bool
 }
+
+variable "lambda_s3_bucket" {
+  description = "S3 bucket from which to specify lambda functions. This is an alternative to providing local files directly."
+  default = null
+}
+
+variable "runners_lambda_s3_key" {
+  description = "S3 key for runners lambda function. Required if using S3 bucket to specify lambdas."
+  default = null
+}
+
+variable "runners_lambda_s3_object_version" {
+  description = "S3 object version for runners lambda function. Useful if S3 versioning is enabled on source bucket."
+  default = null
+}
+
