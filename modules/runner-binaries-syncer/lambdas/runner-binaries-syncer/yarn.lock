@@ -591,10 +591,10 @@
     once "^1.4.0"
     universal-user-agent "^6.0.0"
 
-"@octokit/rest@^18.0.6":
-  version "18.0.6"
-  resolved "https://registry.yarnpkg.com/@octokit/rest/-/rest-18.0.6.tgz#76c274f1a68f40741a131768ef483f041e7b98b6"
-  integrity sha512-ES4lZBKPJMX/yUoQjAZiyFjei9pJ4lTTfb9k7OtYoUzKPDLl/M8jiHqt6qeSauyU4eZGLw0sgP1WiQl9FYeM5w==
+"@octokit/rest@^18.0.8":
+  version "18.0.8"
+  resolved "https://registry.yarnpkg.com/@octokit/rest/-/rest-18.0.8.tgz#c49792e4f02fea6510216d1cecc98075add7db53"
+  integrity sha512-crYqQWFS/75o+FSE2Ejpt0Tk9FgkQ4aGvToptqbnvlfViE/C4hVAtmn/X0emQ8Q3wg1tYXYNIcuG1XXSOEeARg==
   dependencies:
     "@octokit/core" "^3.0.0"
     "@octokit/plugin-paginate-rest" "^2.2.0"

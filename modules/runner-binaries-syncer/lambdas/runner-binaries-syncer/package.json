@@ -13,7 +13,7 @@
     "dist": "yarn build && cd dist && zip ../runner-binaries-syncer.zip index.js"
   },
   "devDependencies": {
-    "@octokit/rest": "^18.0.6",
+    "@octokit/rest": "^18.0.8",
     "@types/jest": "^26.0.15",
     "@types/node": "^14.11.11",
     "@types/request": "^2.48.4",
