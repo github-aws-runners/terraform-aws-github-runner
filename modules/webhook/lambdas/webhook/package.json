@@ -11,7 +11,7 @@
     "dist": "yarn build && cd dist && zip ../webhook.zip index.js"
   },
   "devDependencies": {
-    "@octokit/webhooks": "^7.15.0",
+    "@octokit/webhooks": "^7.15.1",
     "@types/express": "^4.17.8",
     "@types/jest": "^26.0.15",
     "@types/node": "^14.14.3",
