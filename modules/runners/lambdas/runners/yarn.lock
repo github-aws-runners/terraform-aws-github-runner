@@ -466,15 +466,16 @@
     "@types/yargs" "^15.0.0"
     chalk "^4.0.0"
 
-"@octokit/auth-app@^2.7.0":
-  version "2.7.0"
-  resolved "https://registry.yarnpkg.com/@octokit/auth-app/-/auth-app-2.7.0.tgz#a1bec2f0da80c4435cdd3213020e7f7c4364c688"
-  integrity sha512-znx092EpYmtEr5UjRXrFGGinA3jWJNriKT/N3CZFbx53JfXNsHqKW8UogyuJwob55JAgEzwhRTra/yy6e+AcfQ==
+"@octokit/auth-app@^2.10.1":
+  version "2.10.1"
+  resolved "https://registry.yarnpkg.com/@octokit/auth-app/-/auth-app-2.10.1.tgz#187fe2432e6089f919fff8f5574dd2154c673962"
+  integrity sha512-WQAbhPtr+cuMcMCt0cu9NgY0XjEEEqeR3/A5hJK3KNdYglxRRf3+uKwNxcK9B3SgpS8Igi6UvatTmGow88w+cA==
   dependencies:
     "@octokit/request" "^5.3.0"
     "@octokit/request-error" "^2.0.0"
     "@octokit/types" "^5.0.0"
     "@types/lru-cache" "^5.1.0"
+    deprecation "^2.3.1"
     lru-cache "^6.0.0"
     universal-github-app-jwt "^1.0.1"
     universal-user-agent "^6.0.0"
