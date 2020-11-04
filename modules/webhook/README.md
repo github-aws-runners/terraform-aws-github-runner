@@ -52,6 +52,7 @@ No requirements.
 | encryption | KMS key to encrypted lambda environment secrets. Either provide a key and `encrypt` set to `true`. Or set the key to `null` and encrypt to `false`. | <pre>object({<br>    kms_key_id = string<br>    encrypt    = bool<br>  })</pre> | n/a | yes |
 | environment | A name that identifies the environment, used as prefix and for tagging. | `string` | n/a | yes |
 | github\_app\_webhook\_secret | n/a | `string` | n/a | yes |
+| lambda\_s3\_bucket | S3 bucket from which to specify lambda functions. This is an alternative to providing local files directly. | `any` | `null` | no |
 | lambda\_timeout | Time out of the lambda in seconds. | `number` | `10` | no |
 | lambda\_zip | File location of the lambda zip file. | `string` | `null` | no |
 | logging\_retention\_in\_days | Specifies the number of days you want to retain log events for the lambda log group. Possible values are: 0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, and 3653. | `number` | `7` | no |
@@ -59,6 +60,8 @@ No requirements.
 | role\_permissions\_boundary | Permissions boundary that will be added to the created role for the lambda. | `string` | `null` | no |
 | sqs\_build\_queue | SQS queue to publish accepted build events. | <pre>object({<br>    id  = string<br>    arn = string<br>  })</pre> | n/a | yes |
 | tags | Map of tags that will be added to created resources. By default resources will be tagged with name and environment. | `map(string)` | `{}` | no |
+| webhook\_lambda\_s3\_key | S3 key for webhook lambda function. Required if using S3 bucket to specify lambdas. | `any` | `null` | no |
+| webhook\_lambda\_s3\_object\_version | S3 object version for webhook lambda function. Useful if S3 versioning is enabled on source bucket. | `any` | `null` | no |
 
 ## Outputs
 

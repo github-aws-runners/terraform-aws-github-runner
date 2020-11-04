@@ -52,6 +52,7 @@ If your issue appears to be a bug, and hasn't been reported, open a new issue. H
 **If you get help, help others. Good karma rulez!**
 
 ### Submitting a Merge Request
+
 Before you submit your merge request consider the following guidelines:
 
 * Make your changes in a new git branch:
@@ -63,6 +64,7 @@ Before you submit your merge request consider the following guidelines:
 * Create your patch, **including appropriate test cases**.
 * Run the test suite and ensure that all tests pass.
 * Add a line in the CHANGELOG.md under Unreleased. This will be used form generating the release notes.
+* Install [pre-commit hooks](https://pre-commit.com/). The hooks runs some basic checks and update the docs. The commit will run the hooks, you can invoke the hooks manually `pre-commit run --all-files` as well.
 * Commit your changes using a descriptive commit message.
 
     ```shell
