@@ -66,6 +66,7 @@ No requirements.
 | ami\_owners | The list of owners used to select the AMI of action runner instances. | `list(string)` | <pre>[<br>  "amazon"<br>]</pre> | no |
 | aws\_region | AWS region. | `string` | n/a | yes |
 | block\_device\_mappings | The EC2 instance block device configuration. Takes the following keys: `device_name`, `delete_on_termination`, `volume_type`, `volume_size`, `encrypted`, `iops` | `map(string)` | `{}` | no |
+| create\_service\_linked\_role\_spot | (optional) create the serviced linked role for spot instances that is required by the scale-up lambda. | `bool` | `false` | no |
 | enable\_organization\_runners | n/a | `bool` | n/a | yes |
 | enable\_ssm\_on\_runners | Enable to allow access the runner instances for debugging purposes via SSM. Note that this adds additional permissions to the runner instances. | `bool` | n/a | yes |
 | encryption | KMS key to encrypted lambda environment secrets. Either provide a key and `encrypt` set to `true`. Or set the key to `null` and encrypt to `false`. | <pre>object({<br>    kms_key_id = string<br>    encrypt    = bool<br>  })</pre> | n/a | yes |
