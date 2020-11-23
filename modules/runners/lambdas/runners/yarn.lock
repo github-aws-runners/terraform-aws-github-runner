@@ -466,10 +466,10 @@
     "@types/yargs" "^15.0.0"
     chalk "^4.0.0"
 
-"@octokit/auth-app@^2.10.1":
-  version "2.10.1"
-  resolved "https://registry.yarnpkg.com/@octokit/auth-app/-/auth-app-2.10.1.tgz#187fe2432e6089f919fff8f5574dd2154c673962"
-  integrity sha512-WQAbhPtr+cuMcMCt0cu9NgY0XjEEEqeR3/A5hJK3KNdYglxRRf3+uKwNxcK9B3SgpS8Igi6UvatTmGow88w+cA==
+"@octokit/auth-app@^2.10.2":
+  version "2.10.2"
+  resolved "https://registry.yarnpkg.com/@octokit/auth-app/-/auth-app-2.10.2.tgz#5cfdc69c8866d1acc353688421e85851f55aac11"
+  integrity sha512-3PLyDISHtdCxQx0LS0Ut2E+zy2PVfDFCxDnFJ+QRvABHow/Zqj2Im7GF8zYYn8nwI1tgaoewwwd0unfXuPi48Q==
   dependencies:
     "@octokit/request" "^5.3.0"
     "@octokit/request-error" "^2.0.0"
