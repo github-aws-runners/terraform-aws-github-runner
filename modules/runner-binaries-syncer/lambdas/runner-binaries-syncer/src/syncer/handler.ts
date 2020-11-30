@@ -11,6 +11,10 @@ interface CacheObject {
   bucket: string;
   key: string;
 }
+interface CacheObjectwindows {
+  bucket: string;
+  key: string;
+}
 
 async function getCachedVersion(s3: S3, cacheObject: CacheObject): Promise<string | undefined> {
   try {
@@ -57,11 +61,44 @@ async function getLinuxReleaseAsset(
     return undefined;
   }
   const linuxAssets = asset.assets?.filter((a) => a.name?.includes(`actions-runner-linux-${runnerArch}-`));
-
+  
   return linuxAssets?.length === 1
     ? { name: linuxAssets[0].name, downloadUrl: linuxAssets[0].browser_download_url }
     : undefined;
 }
+
+
+async function getWindowsReleaseAsset(
+  runnerArch = 'x64',
+  fetchPrereleaseBinaries = false,
+): Promise<ReleaseAsset | undefined> {
+  const githubClient = new Octokit();
+  const assetsList = await githubClient.repos.listReleases({
+    owner: 'actions',
+    repo: 'runner',
+  });
+  if (assetsList.data?.length === 0) {
+    return undefined;
+  }
+
+  const latestPrereleaseIndex = assetsList.data.findIndex((a) => a.prerelease === true);
+  const latestReleaseIndex = assetsList.data.findIndex((a) => a.prerelease === false);
+
+  let asset = undefined;
+  if (fetchPrereleaseBinaries && latestPrereleaseIndex < latestReleaseIndex) {
+    asset = assetsList.data[latestPrereleaseIndex];
+  } else if (latestReleaseIndex != -1) {
+    asset = assetsList.data[latestReleaseIndex];
+  } else {
+    return undefined;
+  }
+
+  const windowsAssets = asset.assets?.filter((a) => a.name?.includes(`actions-runner-win-${runnerArch}-`));
+  return windowsAssets?.length === 1
+    ? { name: windowsAssets[0].name, downloadUrl: windowsAssets[0].browser_download_url }
+    : undefined;
+}
+
 
 async function uploadToS3(s3: S3, cacheObject: CacheObject, actionRunnerReleaseAsset: ReleaseAsset): Promise<void> {
   const writeStream = new PassThrough();
@@ -104,10 +141,11 @@ export const handle = async (): Promise<void> => {
   }
 
   const actionRunnerReleaseAsset = await getLinuxReleaseAsset(runnerArch, fetchPrereleaseBinaries);
+
   if (actionRunnerReleaseAsset === undefined) {
     throw Error('Cannot find GitHub release asset.');
   }
-
+ 
   const currentVersion = await getCachedVersion(s3, cacheObject);
   console.debug('latest: ' + currentVersion);
   if (currentVersion === undefined || currentVersion != actionRunnerReleaseAsset.name) {
@@ -115,4 +153,19 @@ export const handle = async (): Promise<void> => {
   } else {
     console.debug('Distribution is up-to-date, no action.');
   }
+
+ 
+
+ const actionRunnerReleaseAssetwindows = await getWindowsReleaseAsset(runnerArch, fetchPrereleaseBinaries);
+  if (actionRunnerReleaseAssetwindows === undefined) {
+    throw Error('Cannot find GitHub release asset.');
+  }
+ const currentVersionwindows = await getCachedVersion(s3, cacheObjectwindows);
+  console.debug('latest: ' + currentVersionwindows);
+  if (currentVersionwindows === undefined || currentVersionwindows != actionRunnerReleaseAsset.name) {
+    uploadToS3(s3, cacheObjectwindows, actionRunnerReleaseAssetwindows);
+  } else {
+    console.debug('Distribution is up-to-date, no action.');
+  }
+
 };
