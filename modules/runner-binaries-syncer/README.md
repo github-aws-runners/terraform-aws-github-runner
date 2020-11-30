@@ -91,6 +91,6 @@ This module is part of the Philips Forest.
 
 ```
 
-Talk to the forestkeepers in the `forest`-channel on Slack.
+Talk to the forestkeepers in the `forest`-channel on Slack..
 
 [![Slack](https://philips-software-slackin.now.sh/badge.svg)](https://philips-software-slackin.now.sh)
