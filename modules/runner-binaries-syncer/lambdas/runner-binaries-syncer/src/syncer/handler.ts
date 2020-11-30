@@ -11,10 +11,7 @@ interface CacheObject {
   bucket: string;
   key: string;
 }
-interface CacheObjectwindows {
-  bucket: string;
-  key: string;
-}
+
 
 async function getCachedVersion(s3: S3, cacheObject: CacheObject): Promise<string | undefined> {
   try {
@@ -31,6 +28,26 @@ async function getCachedVersion(s3: S3, cacheObject: CacheObject): Promise<strin
     return undefined;
   }
 }
+
+
+
+async function getCachedVersionwindows(s3: S3, cacheObjectwindows: CacheObject): Promise<string | undefined> {
+  try {
+    const objectTagging = await s3
+      .getObjectTagging({
+        Bucket: cacheObjectwindows.bucket,
+        Key: cacheObjectwindows.key,
+      })
+      .promise();
+    const versions = objectTagging.TagSet?.filter((t: S3.Tag) => t.Key === versionKey);
+    return versions.length === 1 ? versions[0].Value : undefined;
+  } catch (e) {
+    console.debug('No tags found');
+    return undefined;
+  }
+}
+
+
 interface ReleaseAsset {
   name: string;
   downloadUrl: string;
@@ -140,6 +157,17 @@ export const handle = async (): Promise<void> => {
     throw Error('Please check all mandatory variables are set.');
   }
 
+
+const cacheObjectwindows: CacheObject = {
+    bucket: process.env.S3_BUCKET_NAME as string,
+    key: process.env.S3_OBJECT_KEY as string,
+  };
+  if (!cacheObjectwindows.bucket || !cacheObjectwidnows.key) {
+    throw Error('Please check all mandatory variables are set.');
+  }
+
+
+
   const actionRunnerReleaseAsset = await getLinuxReleaseAsset(runnerArch, fetchPrereleaseBinaries);
 
   if (actionRunnerReleaseAsset === undefined) {
@@ -160,9 +188,9 @@ export const handle = async (): Promise<void> => {
   if (actionRunnerReleaseAssetwindows === undefined) {
     throw Error('Cannot find GitHub release asset.');
   }
- const currentVersionwindows = await getCachedVersion(s3, cacheObjectwindows);
+ const currentVersionwindows = await getCachedVersionwindows(s3, cacheObjectwindows);
   console.debug('latest: ' + currentVersionwindows);
-  if (currentVersionwindows === undefined || currentVersionwindows != actionRunnerReleaseAsset.name) {
+  if (currentVersionwindows === undefined || currentVersionwindows != actionRunnerReleaseAssetwindows.name) {
     uploadToS3(s3, cacheObjectwindows, actionRunnerReleaseAssetwindows);
   } else {
     console.debug('Distribution is up-to-date, no action.');
