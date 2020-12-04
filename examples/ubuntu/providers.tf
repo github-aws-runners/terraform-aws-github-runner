@@ -1,4 +1,4 @@
 provider "aws" {
   region  = local.aws_region
-  version = "3.0"
+  version = "3.20"
 }
