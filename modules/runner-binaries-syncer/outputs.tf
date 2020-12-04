@@ -5,6 +5,10 @@ output "bucket" {
 output "runner_distribution_object_key" {
   value = local.action_runner_distribution_object_key
 }
+output "runner_distribution_object_key_windows" {
+  value = local.action_runner_distribution_object_key_windows
+}
+
 
 output "lambda" {
   value = aws_lambda_function.syncer
