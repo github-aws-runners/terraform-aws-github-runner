@@ -5,23 +5,37 @@ import { S3 } from 'aws-sdk';
 import AWS from 'aws-sdk';
 import yn from 'yn';
 
-const versionKey = 'name';
+const DEFAULTS = {
+  method: "GET",
+  baseUrl: "https://github-reh.azc.ext.hp.com/api/v3",
+ headers: {
+    accept: "application/vnd.github.v3+json",
+    "user-agent": "octokit/endpoint.js v1.2.3"
+  },
+  mediaType: {
+    format: "",
+    previews: []
+ }
+};
+
+
+const versionKeyW = 'name';
 
 interface CacheObject {
   bucket: string;
   key: string;
 }
 
-async function getCachedVersion(s3: S3, cacheObject: CacheObject): Promise<string | undefined> {
+async function getCachedVersion(s3: S3, cacheObjectW: CacheObject): Promise<string | undefined> {
   try {
-    const objectTagging = await s3
+    const objectTaggingW = await s3
       .getObjectTagging({
-        Bucket: cacheObject.bucket,
-        Key: cacheObject.key,
+        Bucket: cacheObjectW.bucket,
+        Key: cacheObjectW.key,
       })
       .promise();
-    const versions = objectTagging.TagSet?.filter((t: S3.Tag) => t.Key === versionKey);
-    return versions.length === 1 ? versions[0].Value : undefined;
+    const versionsW = objectTaggingW.TagSet?.filter((t: S3.Tag) => t.Key === versionKeyW);
+    return versionsW.length === 1 ? versionsW[0].Value : undefined;
   } catch (e) {
     console.debug('No tags found');
     return undefined;
@@ -37,22 +51,22 @@ async function getWindowsReleaseAsset(
   fetchPrereleaseBinaries = false,
 ): Promise<ReleaseAsset | undefined> {
   const githubClient = new Octokit();
-  const assetsList = await githubClient.repos.listReleases({
+  const assetsListW = await githubClient.repos.listReleases({
     owner: 'actions',
     repo: 'runner',
   });
-  if (assetsList.data?.length === 0) {
+  if (assetsListW.data?.length === 0) {
     return undefined;
   }
 
-  const latestPrereleaseIndex = assetsList.data.findIndex((a) => a.prerelease === true);
-  const latestReleaseIndex = assetsList.data.findIndex((a) => a.prerelease === false);
+  const latestPrereleaseIndexW = assetsListW.data.findIndex((a) => a.prerelease === true);
+  const latestReleaseIndexW = assetsListW.data.findIndex((a) => a.prerelease === false);
 
   let asset = undefined;
-  if (fetchPrereleaseBinaries && latestPrereleaseIndex < latestReleaseIndex) {
-    asset = assetsList.data[latestPrereleaseIndex];
-  } else if (latestReleaseIndex != -1) {
-    asset = assetsList.data[latestReleaseIndex];
+  if (fetchPrereleaseBinaries && latestPrereleaseIndexW < latestReleaseIndexW) {
+    asset = assetsListW.data[latestPrereleaseIndexW];
+  } else if (latestReleaseIndexW != -1) {
+    asset = assetsListW.data[latestReleaseIndexW];
   } else {
     return undefined;
   }
@@ -63,20 +77,20 @@ async function getWindowsReleaseAsset(
     : undefined;
 }
 
-async function uploadToS3(s3: S3, cacheObject: CacheObject, actionRunnerReleaseAsset: ReleaseAsset): Promise<void> {
-  const writeStream = new PassThrough();
+async function uploadToS3(s3: S3, cacheObjectW: CacheObject, actionRunnerReleaseAssetW: ReleaseAsset): Promise<void> {
+  const writeStreamW = new PassThrough();
   s3.upload({
-    Bucket: cacheObject.bucket,
-    Key: cacheObject.key,
-    Tagging: versionKey + '=' + actionRunnerReleaseAsset.name,
-    Body: writeStream,
+    Bucket: cacheObjectW.bucket,
+    Key: cacheObjectW.key,
+    Tagging: versionKeyW + '=' + actionRunnerReleaseAssetW.name,
+    Body: writeStreamW,
   }).promise();
 
   await new Promise<void>((resolve, reject) => {
-    console.debug('Start downloading %s and uploading to S3.', actionRunnerReleaseAsset.name);
+    console.debug('Start downloading Windows %s and uploading to S3.', actionRunnerReleaseAssetW.name);
     request
-      .get(actionRunnerReleaseAsset.downloadUrl)
-      .pipe(writeStream)
+      .get(actionRunnerReleaseAssetW.downloadUrl)
+      .pipe(writeStreamW)
       .on('finish', () => {
         console.info(`The new Windows distribution is uploaded to S3.`);
         resolve();
@@ -95,23 +109,23 @@ export const handleforwin = async (): Promise<void> => {
   const runnerArch = process.env.GITHUB_RUNNER_ARCHITECTURE || 'x64';
   const fetchPrereleaseBinaries = yn(process.env.GITHUB_RUNNER_ALLOW_PRERELEASE_BINARIES, { default: false });
 
-  const cacheObject: CacheObject = {
+  const cacheObjectW: CacheObject = {
     bucket: process.env.S3_BUCKET_NAME as string,
-    key: process.env.S3_OBJECT_KEY as string,
+    key: process.env.S3_OBJECT_KEY_windows as string,
   };
-  if (!cacheObject.bucket || !cacheObject.key) {
+  if (!cacheObjectW.bucket || !cacheObjectW.key) {
     throw Error('Please check all mandatory variables are set.');
   }
 
-  const actionRunnerReleaseAsset = await getWindowsReleaseAsset(runnerArch, fetchPrereleaseBinaries);
-  if (actionRunnerReleaseAsset === undefined) {
+  const actionRunnerReleaseAssetW = await getWindowsReleaseAsset(runnerArch, fetchPrereleaseBinaries);
+  if (actionRunnerReleaseAssetW === undefined) {
     throw Error('Cannot find GitHub release asset.');
   }
 
-  const currentVersion = await getCachedVersion(s3, cacheObject);
-  console.debug('latest: ' + currentVersion);
-  if (currentVersion === undefined || currentVersion != actionRunnerReleaseAsset.name) {
-    uploadToS3(s3, cacheObject, actionRunnerReleaseAsset);
+  const currentVersionW = await getCachedVersion(s3, cacheObjectW);
+  console.debug('latest: ' + currentVersionW);
+  if (currentVersionW === undefined || currentVersionW != actionRunnerReleaseAssetW.name) {
+    uploadToS3(s3, cacheObjectW, actionRunnerReleaseAssetW);
   } else {
     console.debug('Distribution for Windows is up-to-date, no action.');
   }

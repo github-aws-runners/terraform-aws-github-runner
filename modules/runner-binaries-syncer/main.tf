@@ -1,5 +1,6 @@
 locals {
   action_runner_distribution_object_key = "actions-runner-linux.tar.gz"
+  action_runner_distribution_object_key_windows = "actions-runner-win-x64.zip"
 }
 
 resource "aws_s3_bucket" "action_dist" {
