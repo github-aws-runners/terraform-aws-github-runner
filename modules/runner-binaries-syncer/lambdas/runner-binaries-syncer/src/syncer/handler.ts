@@ -196,7 +196,7 @@ const cacheObjectwindows: CacheObject = {
     bucket: process.env.S3_BUCKET_NAME as string,
     key: process.env.S3_OBJECT_KEY_windows as string,
   };
-  if (!cacheObjectwindows.bucket || !cacheObjectwidnows.key) {
+  if (!cacheObjectwindows.bucket || !cacheObjectwindows.key) {
     throw Error('Please check all mandatory variables are set.');
   }
 
