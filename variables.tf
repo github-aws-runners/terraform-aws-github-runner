@@ -262,3 +262,9 @@ variable "runner_iam_role_managed_policy_arns" {
   type        = list(string)
   default     = []
 }
+
+variable "cloudwatch_config_template" {
+  description = "(optional) template to replace the module default cloudwatch log template. See https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-Configuration-File-Details.html for details."
+  type        = string
+  default     = null
+}

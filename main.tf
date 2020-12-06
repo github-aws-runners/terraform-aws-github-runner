@@ -92,6 +92,7 @@ module "runners" {
   lambda_timeout_scale_up          = var.runners_scale_up_lambda_timeout
   lambda_timeout_scale_down        = var.runners_scale_down_lambda_timeout
   logging_retention_in_days        = var.logging_retention_in_days
+  cloudwatch_config_template       = var.cloudwatch_config_template
 
   instance_profile_path     = var.instance_profile_path
   role_path                 = var.role_path
