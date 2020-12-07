@@ -23,7 +23,7 @@
     "typescript": "^3.8.3"
   },
   "dependencies": {
-    "@octokit/auth-app": "^2.10.2",
+    "@octokit/auth-app": "^2.10.4",
     "@octokit/rest": "^18.0.12",
     "cron-parser": "^2.18.0",
     "moment": "^2.29.1",

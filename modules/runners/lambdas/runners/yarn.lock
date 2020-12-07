@@ -466,14 +466,14 @@
     "@types/yargs" "^15.0.0"
     chalk "^4.0.0"
 
-"@octokit/auth-app@^2.10.2":
-  version "2.10.2"
-  resolved "https://registry.yarnpkg.com/@octokit/auth-app/-/auth-app-2.10.2.tgz#5cfdc69c8866d1acc353688421e85851f55aac11"
-  integrity sha512-3PLyDISHtdCxQx0LS0Ut2E+zy2PVfDFCxDnFJ+QRvABHow/Zqj2Im7GF8zYYn8nwI1tgaoewwwd0unfXuPi48Q==
+"@octokit/auth-app@^2.10.4":
+  version "2.10.4"
+  resolved "https://registry.yarnpkg.com/@octokit/auth-app/-/auth-app-2.10.4.tgz#f070357184920971e0fab9f0a78a0781f391c015"
+  integrity sha512-J3fdCVvuBuCa+pNbtDzU3Nc+appg/r6Ii1ekQtHnpPkpP0PVUjn+4FAXHmIhSiiWW+El/9ymlWVum6zbWIln5A==
   dependencies:
-    "@octokit/request" "^5.3.0"
+    "@octokit/request" "^5.4.11"
     "@octokit/request-error" "^2.0.0"
-    "@octokit/types" "^5.0.0"
+    "@octokit/types" "^6.0.3"
     "@types/lru-cache" "^5.1.0"
     deprecation "^2.3.1"
     lru-cache "^6.0.0"
@@ -551,21 +551,7 @@
     deprecation "^2.0.0"
     once "^1.4.0"
 
-"@octokit/request@^5.3.0":
-  version "5.4.7"
-  resolved "https://registry.yarnpkg.com/@octokit/request/-/request-5.4.7.tgz#fd703ee092e0463ceba49ff7a3e61cb4cf8a0fde"
-  integrity sha512-FN22xUDP0i0uF38YMbOfx6TotpcENP5W8yJM1e/LieGXn6IoRxDMnBf7tx5RKSW4xuUZ/1P04NFZy5iY3Rax1A==
-  dependencies:
-    "@octokit/endpoint" "^6.0.1"
-    "@octokit/request-error" "^2.0.0"
-    "@octokit/types" "^5.0.0"
-    deprecation "^2.0.0"
-    is-plain-object "^4.0.0"
-    node-fetch "^2.3.0"
-    once "^1.4.0"
-    universal-user-agent "^6.0.0"
-
-"@octokit/request@^5.4.12":
+"@octokit/request@^5.3.0", "@octokit/request@^5.4.11", "@octokit/request@^5.4.12":
   version "5.4.12"
   resolved "https://registry.yarnpkg.com/@octokit/request/-/request-5.4.12.tgz#b04826fa934670c56b135a81447be2c1723a2ffc"
   integrity sha512-MvWYdxengUWTGFpfpefBBpVmmEYfkwMoxonIB3sUGp5rhdgwjXL1ejo6JbgzG/QD9B/NYt/9cJX1pxXeSIUCkg==
@@ -3108,7 +3094,7 @@ nice-try@^1.0.4:
   resolved "https://registry.yarnpkg.com/nice-try/-/nice-try-1.0.5.tgz#a3378a7696ce7d223e88fc9b764bd7ef1089e366"
   integrity sha512-1nh45deeb5olNY7eX82BkPO7SSxR5SSYJiPTrTdFUVYwAl8CKMA5N9PjTYkHiRjisVcxcQ1HXdLhx2qxxJzLNQ==
 
-node-fetch@^2.3.0, node-fetch@^2.6.1:
+node-fetch@^2.6.1:
   version "2.6.1"
   resolved "https://registry.yarnpkg.com/node-fetch/-/node-fetch-2.6.1.tgz#045bd323631f76ed2e2b55573394416b639a0052"
   integrity sha512-V4aYg89jEoVRxRb2fJdAg8FHvI7cEyYdVAh94HH0UIK8oJxUfkjlDQN9RbMx+bEjP7+ggMiFRprSti032Oipxw==
