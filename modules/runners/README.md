@@ -66,9 +66,9 @@ No requirements.
 | ami\_owners | The list of owners used to select the AMI of action runner instances. | `list(string)` | <pre>[<br>  "amazon"<br>]</pre> | no |
 | aws\_region | AWS region. | `string` | n/a | yes |
 | block\_device\_mappings | The EC2 instance block device configuration. Takes the following keys: `device_name`, `delete_on_termination`, `volume_type`, `volume_size`, `encrypted`, `iops` | `map(string)` | `{}` | no |
-| cloudwatch\_config | (optional) to replace the module default cloudwatch log config. See https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-Configuration-File-Details.html for details. | `string` | `null` | no |
+| cloudwatch\_config | (optional) Replaces the module default cloudwatch log config. See https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-Configuration-File-Details.html for details. | `string` | `null` | no |
 | create\_service\_linked\_role\_spot | (optional) create the serviced linked role for spot instances that is required by the scale-up lambda. | `bool` | `false` | no |
-| enable\_cloudwatch\_agent | Enabling the cloudwatch agent on the ec2 runner instances, the runner contains default config. Configuration can be overrided via `cloudwatch_config`. | `bool` | `true` | no |
+| enable\_cloudwatch\_agent | Enabling the cloudwatch agent on the ec2 runner instances, the runner contains default config. Configuration can be overridden via `cloudwatch_config`. | `bool` | `true` | no |
 | enable\_organization\_runners | n/a | `bool` | n/a | yes |
 | enable\_ssm\_on\_runners | Enable to allow access the runner instances for debugging purposes via SSM. Note that this adds additional permissions to the runner instances. | `bool` | n/a | yes |
 | encryption | KMS key to encrypted lambda environment secrets. Either provide a key and `encrypt` set to `true`. Or set the key to `null` and encrypt to `false`. | <pre>object({<br>    kms_key_id = string<br>    encrypt    = bool<br>  })</pre> | n/a | yes |
@@ -91,7 +91,7 @@ No requirements.
 | runner\_as\_root | Run the action runner under the root user. | `bool` | `false` | no |
 | runner\_extra\_labels | Extra labels for the runners (GitHub). Separate each label by a comma | `string` | `""` | no |
 | runner\_iam\_role\_managed\_policy\_arns | Attach AWS or customer-managed IAM policies (by ARN) to the runner IAM role | `list(string)` | `[]` | no |
-| runner\_log\_files | (optional) List of logfiles to sent to cloudwatch. | <pre>list(object({<br>    file_path       = string<br>    log_stream_name = string<br>  }))</pre> | <pre>[<br>  {<br>    "file_path": "/var/log/messages",<br>    "log_stream_name": "{instance_id}/messages"<br>  },<br>  {<br>    "file_path": "/var/log/user-data.log",<br>    "log_stream_name": "{instance_id}/user_data"<br>  },<br>  {<br>    "file_path": "/home/ec2-user/actions-runner/_diag/Runner_**.log",<br>    "log_stream_name": "{instance_id}/runner"<br>  }<br>]</pre> | no |
+| runner\_log\_files | (optional) List of logfiles to send to cloudwatch. | <pre>list(object({<br>    file_path       = string<br>    log_stream_name = string<br>  }))</pre> | <pre>[<br>  {<br>    "file_path": "/var/log/messages",<br>    "log_stream_name": "{instance_id}/messages"<br>  },<br>  {<br>    "file_path": "/var/log/user-data.log",<br>    "log_stream_name": "{instance_id}/user_data"<br>  },<br>  {<br>    "file_path": "/home/ec2-user/actions-runner/_diag/Runner_**.log",<br>    "log_stream_name": "{instance_id}/runner"<br>  }<br>]</pre> | no |
 | runners\_lambda\_s3\_key | S3 key for runners lambda function. Required if using S3 bucket to specify lambdas. | `any` | `null` | no |
 | runners\_lambda\_s3\_object\_version | S3 object version for runners lambda function. Useful if S3 versioning is enabled on source bucket. | `any` | `null` | no |
 | runners\_maximum\_count | The maximum number of runners that will be created. | `number` | `3` | no |
