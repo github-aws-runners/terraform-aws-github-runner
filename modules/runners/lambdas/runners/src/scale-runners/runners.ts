@@ -79,8 +79,8 @@ export async function createRunner(runnerParameters: RunnerInputParameters): Pro
       MaxCount: 1,
       MinCount: 1,
       LaunchTemplate: {
-        LaunchTemplateName: launchTemplateName,
-        Version: launchTemplateVersion,
+       LaunchTemplateName: launchTemplateName,
+       Version: launchTemplateVersion,
       },
       SubnetId: randomSubnet,
       TagSpecifications: [

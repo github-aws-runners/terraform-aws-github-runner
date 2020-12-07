@@ -84,6 +84,12 @@ variable "userdata_template" {
   default     = null
 }
 
+variable "userdata_template_windows" {
+  description = "Alternative user-data template, replacing the default template. By providing your own user_data you have to take care of installing all required software, including the action runner. Variables userdata_pre/post_install are ignored."
+  type        = string
+  default     = null
+}
+
 variable "userdata_pre_install" {
   description = "User-data script snippet to insert before GitHub acton runner install"
   type        = string
@@ -235,6 +241,27 @@ variable "runners_lambda_s3_object_version" {
 
 variable "create_service_linked_role_spot" {
   description = "(optional) create the serviced linked role for spot instances that is required by the scale-up lambda."
+  type        = bool
+  default     = false
+}
+
+variable amilabels {
+  description = "Map of ami and labels for the runners."
+  type        = map
+  default     = {
+    Windows2019 = {
+      AMIID  = "ami-0fa8b2da7cef73d37",
+      customlabels =2019,BBB     
+    },
+    Windows2016 = {
+     AMIID  = "ami-f95e5486",
+      customlabels = 2016,CCC   
+    }
+  }
+}
+
+variable "runner_windows" {
+  description = "Run the action runner in windows box."
   type        = bool
   default     = false
 }

@@ -5,18 +5,7 @@ import { S3 } from 'aws-sdk';
 import AWS from 'aws-sdk';
 import yn from 'yn';
 
-const DEFAULTS = {
-  method: "GET",
-  baseUrl: "https://github-reh.azc.ext.hp.com/api/v3",
- headers: {
-    accept: "application/vnd.github.v3+json",
-    "user-agent": "octokit/endpoint.js v1.2.3"
-  },
-  mediaType: {
-    format: "",
-    previews: []
- }
-};
+
 
 
 const versionKeyW = 'name';

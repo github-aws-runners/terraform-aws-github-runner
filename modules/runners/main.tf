@@ -15,6 +15,7 @@ locals {
   instance_profile_path = var.instance_profile_path == null ? "/${var.environment}/" : var.instance_profile_path
   lambda_zip            = var.lambda_zip == null ? "${path.module}/lambdas/runners/runners.zip" : var.lambda_zip
   userdata_template     = var.userdata_template == null ? "${path.module}/templates/user-data.sh" : var.userdata_template
+  userdata_template_windows     = var.userdata_template_windows == null ? "${path.module}/templates/user-data-windows.ps1" : var.userdata_template_windows
 }
 
 data "aws_ami" "runner" {
@@ -32,7 +33,9 @@ data "aws_ami" "runner" {
 }
 
 resource "aws_launch_template" "runner" {
-  name = "${var.environment}-action-runner"
+
+for_each = var.amilabels
+  name = "${var.environment}-action-runner${each.value.AMIID}"
 
   dynamic "block_device_mappings" {
     for_each = [var.block_device_mappings]
@@ -59,7 +62,7 @@ resource "aws_launch_template" "runner" {
     market_type = var.market_options
   }
 
-  image_id      = data.aws_ami.runner.id
+  image_id      = each.value.AMIID
   instance_type = var.instance_type
 
   vpc_security_group_ids = [aws_security_group.runner_sg.id]
@@ -73,8 +76,8 @@ resource "aws_launch_template" "runner" {
       },
     )
   }
-
-  user_data = base64encode(templatefile(local.userdata_template, {
+  
+  user_data = base64encode(templatefile(var.runner_windows ? local.userdata_template_windows : local.userdata_template, {
     environment                     = var.environment
     pre_install                     = var.userdata_pre_install
     post_install                    = var.userdata_post_install
