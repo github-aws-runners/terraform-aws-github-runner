@@ -251,11 +251,11 @@ variable amilabels {
   default     = {
     Windows2019 = {
       AMIID  = "ami-0fa8b2da7cef73d37",
-      customlabels =2019,BBB     
+      customlabels ="2019,BBB"     
     },
     Windows2016 = {
      AMIID  = "ami-f95e5486",
-      customlabels = 2016,CCC   
+      customlabels = "2016,CCC"   
     }
   }
 }
