@@ -5,9 +5,10 @@ ${pre_install}
 
 yum update -y
 
-# install cloudwatch agent for sending logging and metric to cloudwath
+%{ if enable_cloudwatch_agent ~}
 yum install amazon-cloudwatch-agent -y
 amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c ssm:${ssm_key_cloudwatch_agent_config}
+%{ endif ~}
 
 # Install docker
 amazon-linux-extras install docker

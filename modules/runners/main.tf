@@ -9,13 +9,12 @@ locals {
     var.tags,
   )
 
-  name_sg                    = var.overrides["name_sg"] == "" ? local.tags["Name"] : var.overrides["name_sg"]
-  name_runner                = var.overrides["name_runner"] == "" ? local.tags["Name"] : var.overrides["name_runner"]
-  role_path                  = var.role_path == null ? "/${var.environment}/" : var.role_path
-  instance_profile_path      = var.instance_profile_path == null ? "/${var.environment}/" : var.instance_profile_path
-  lambda_zip                 = var.lambda_zip == null ? "${path.module}/lambdas/runners/runners.zip" : var.lambda_zip
-  userdata_template          = var.userdata_template == null ? "${path.module}/templates/user-data.sh" : var.userdata_template
-  cloudwatch_config_template = var.cloudwatch_config_template == null ? "${path.module}/templates/cloudwatch_config.json" : var.cloudwatch_config_template
+  name_sg               = var.overrides["name_sg"] == "" ? local.tags["Name"] : var.overrides["name_sg"]
+  name_runner           = var.overrides["name_runner"] == "" ? local.tags["Name"] : var.overrides["name_runner"]
+  role_path             = var.role_path == null ? "/${var.environment}/" : var.role_path
+  instance_profile_path = var.instance_profile_path == null ? "/${var.environment}/" : var.instance_profile_path
+  lambda_zip            = var.lambda_zip == null ? "${path.module}/lambdas/runners/runners.zip" : var.lambda_zip
+  userdata_template     = var.userdata_template == null ? "${path.module}/templates/user-data.sh" : var.userdata_template
 }
 
 data "aws_ami" "runner" {
@@ -82,19 +81,11 @@ resource "aws_launch_template" "runner" {
     s3_location_runner_distribution = var.s3_location_runner_binaries
     service_user                    = var.runner_as_root ? "root" : "ec2-user"
     runner_architecture             = var.runner_architecture
-    ssm_key_cloudwatch_agent_config = aws_ssm_parameter.cloudwatch_agent_config_runner.name
+    enable_cloudwatch_agent         = var.enable_cloudwatch_agent
+    ssm_key_cloudwatch_agent_config = var.enable_cloudwatch_agent ? aws_ssm_parameter.cloudwatch_agent_config_runner[0].name : ""
   }))
 
   tags = local.tags
-}
-
-
-resource "aws_ssm_parameter" "cloudwatch_agent_config_runner" {
-  name = "${var.environment}-cloudwatch_agent_config_runner"
-  type = "String"
-  value = templatefile(local.cloudwatch_config_template, {
-    log_group_name = "${var.environment}-runners"
-  })
 }
 
 resource "aws_security_group" "runner_sg" {
