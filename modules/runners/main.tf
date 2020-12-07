@@ -1,4 +1,5 @@
 locals {
+
   tags = merge(
     {
       "Name" = format("%s-action-runner", var.environment)
@@ -61,7 +62,7 @@ for_each = var.amilabels
   instance_market_options {
     market_type = var.market_options
   }
-
+  
   image_id      = each.value.AMIID
   instance_type = var.instance_type
 
@@ -76,7 +77,7 @@ for_each = var.amilabels
       },
     )
   }
-  
+
   user_data = base64encode(templatefile(var.runner_windows ? local.userdata_template_windows : local.userdata_template, {
     environment                     = var.environment
     pre_install                     = var.userdata_pre_install

@@ -38,8 +38,7 @@ resource "aws_lambda_function" "scale_up" {
       GITHUB_APP_CLIENT_ID        = var.github_app.client_id
       GITHUB_APP_CLIENT_SECRET    = local.github_app_client_secret
       SUBNET_IDS                  = join(",", var.subnet_ids)
-      LAUNCH_TEMPLATE_NAME        = aws_launch_template.runner[each.key].name
-      LAUNCH_TEMPLATE_VERSION     = aws_launch_template.runner[each.key].latest_version
+    
     }
   }
 }
