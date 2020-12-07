@@ -258,7 +258,7 @@ variable "cloudwatch_config" {
 }
 
 variable "runner_log_files" {
-  description = "(optional) List of logfiles to sent to cloudwatch."
+  description = "(optional) List of logfiles to send to cloudwatch."
   type = list(object({
     file_path       = string
     log_stream_name = string
