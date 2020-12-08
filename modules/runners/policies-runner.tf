@@ -45,3 +45,5 @@ resource "aws_iam_role_policy_attachment" "managed_policies" {
   role       = aws_iam_role.runner.name
   policy_arn = element(var.runner_iam_role_managed_policy_arns, count.index)
 }
+
+// see also logging.tf for logging and metrics policies

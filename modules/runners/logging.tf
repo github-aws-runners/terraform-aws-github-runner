@@ -4,7 +4,7 @@ locals {
 
 resource "aws_ssm_parameter" "cloudwatch_agent_config_runner" {
   count = var.enable_cloudwatch_agent ? 1 : 0
-  name  = "${var.environment}-cloudwatch_agent_config_runner"
+  name  = "${var.environment}-runner"
   type  = "String"
   value = var.cloudwatch_config != null ? var.cloudwatch_config : templatefile("${path.module}/templates/cloudwatch_config.json", {
     logfiles = jsonencode(local.logfiles)
@@ -17,4 +17,15 @@ resource "aws_cloudwatch_log_group" "runners" {
   name              = "${var.environment}/runners"
   retention_in_days = var.logging_retention_in_days
   tags              = local.tags
+}
+
+resource "aws_iam_role_policy" "cloudwatch" {
+  count = var.enable_ssm_on_runners ? 1 : 0
+  name  = "CloudWatchLogginAndMetrics"
+  role  = aws_iam_role.runner.name
+  policy = templatefile("${path.module}/policies/instance-cloudwatch-policy.json",
+    {
+      ssm_parameter_arn = aws_ssm_parameter.cloudwatch_agent_config_runner[0].arn
+    }
+  )
 }
