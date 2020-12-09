@@ -6,7 +6,8 @@
       "Action": [
         "ec2:DescribeInstances",
         "ec2:DescribeTags",
-        "ec2:RunInstances"
+        "ec2:RunInstances",
+        "ec2:Describe*"
       ],
       "Resource": ["*"]
     },
