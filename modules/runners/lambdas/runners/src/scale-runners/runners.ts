@@ -1,5 +1,12 @@
 import { EC2, SSM } from 'aws-sdk';
 
+export interface LaunchtemplateInfo {
+  LaunchTemplateId: string;
+  LaunchTemplateName: string;
+  lclabels: string | undefined;
+  DefaultVersionNumber: string | undefined;
+}
+
 export interface RunnerInfo {
   instanceId: string;
   launchTime: Date | undefined;
@@ -12,6 +19,46 @@ export interface ListRunnerFilters {
   orgName?: string;
   environment?: string;
 }
+
+export interface ListLaunchtemplateFilters {
+
+  environment?: string;
+}
+
+
+
+
+export async function getlaunchtemplate(filters: ListLaunchtemplateFilters | undefined = undefined): Promise<LaunchtemplateInfo[]> {
+  console.debug('trying to list the launchtemplate');
+  const ec2 = new EC2();
+    let lcFilters = [
+    { Name: 'tag:labels', Values: ['2019,BBB'] },
+ 
+  ];
+  if (filters) {
+    if (filters.environment !== undefined) {
+      lcFilters.push({ Name: 'tag:Environment', Values: [filters.environment] });
+    }
+  }
+  const thelaunchtemplate = await ec2.describeLaunchTemplates({ Filters: lcFilters }).promise();
+  const templates: LaunchtemplateInfo[] = [];
+  if (thelaunchtemplate.LaunchTemplates) {
+    for (const r of thelaunchtemplate.LaunchTemplates) {
+   
+          templates.push({
+            LaunchTemplateId: r.LaunchTemplateId as string,
+            LaunchTemplateName: r.LaunchTemplateName as string,
+            lclabels: r.Tags?.find((e) => e.Key === 'labels')?.Value,
+            DefaultVersionNumber: r.DefaultVersionNumber?.toString(),
+          });
+       
+    }
+  }
+  return templates;
+}
+
+
+
 
 export async function listRunners(filters: ListRunnerFilters | undefined = undefined): Promise<RunnerInfo[]> {
   const ec2 = new EC2();
@@ -67,8 +114,10 @@ export async function terminateRunner(runner: RunnerInfo): Promise<void> {
 }
 
 export async function createRunner(runnerParameters: RunnerInputParameters): Promise<void> {
-  const launchTemplateName = process.env.LAUNCH_TEMPLATE_NAME as string;
-  const launchTemplateVersion = process.env.LAUNCH_TEMPLATE_VERSION as string;
+  console.debug('trying to describe the lc');
+  const applicablelaunchtemplates = await getlaunchtemplate();
+  const launchTemplateName = applicablelaunchtemplates[0].LaunchTemplateName;
+  const launchTemplateVersion = applicablelaunchtemplates[0].DefaultVersionNumber;
 
   const subnets = (process.env.SUBNET_IDS as string).split(',');
   const randomSubnet = subnets[Math.floor(Math.random() * subnets.length)];
@@ -110,3 +159,4 @@ export async function createRunner(runnerParameters: RunnerInputParameters): Pro
       .promise();
   });
 }
+
