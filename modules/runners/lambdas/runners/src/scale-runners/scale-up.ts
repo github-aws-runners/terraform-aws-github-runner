@@ -35,17 +35,19 @@ export async function createGithubAppAuth(installationId: number | undefined): P
   const clientId = process.env.GITHUB_APP_CLIENT_ID as string;
 
   return createAppAuth({
-    id: appId,
+    appId: appId,
     privateKey: privateKey,
     installationId: installationId,
     clientId: clientId,
     clientSecret: clientSecret,
+    baseUrl: 'https://githubtenterprise.com/api/v3'
   });
 }
 
 export async function createInstallationClient(githubAppAuth: AppAuth): Promise<Octokit> {
   const auth = await githubAppAuth({ type: 'installation' });
-  return new Octokit({ auth: auth.token });
+
+  return new  Octokit({ auth: auth.token });
 }
 
 export const scaleUp = async (eventSource: string, payload: ActionRequestMessage): Promise<void> => {
@@ -81,6 +83,7 @@ export const scaleUp = async (eventSource: string, payload: ActionRequestMessage
 
     if (currentRunners.length < maximumRunners) {
       // create token
+      console.debug('trying to create token to register runner');
       const registrationToken = enableOrgLevel
         ? await githubInstallationClient.actions.createRegistrationTokenForOrg({ org: payload.repositoryOwner })
         : await githubInstallationClient.actions.createRegistrationTokenForRepo({
@@ -93,8 +96,8 @@ export const scaleUp = async (eventSource: string, payload: ActionRequestMessage
       await createRunner({
         environment: environment,
         runnerConfig: enableOrgLevel
-          ? `--url https://github.com/${payload.repositoryOwner} --token ${token} ${labelsArgument}`
-          : `--url https://github.com/${payload.repositoryOwner}/${payload.repositoryName} --token ${token} ${labelsArgument}`,
+          ? `--url https://github.enterprise.com/${payload.repositoryOwner} --token ${token} ${labelsArgument}`
+          : `--url https://github.enterprise.com/${payload.repositoryOwner}/${payload.repositoryName} --token ${token} ${labelsArgument}`,
         orgName: enableOrgLevel ? payload.repositoryOwner : undefined,
         repoName: enableOrgLevel ? undefined : `${payload.repositoryOwner}/${payload.repositoryName}`,
       });
@@ -103,3 +106,4 @@ export const scaleUp = async (eventSource: string, payload: ActionRequestMessage
     }
   }
 };
+
