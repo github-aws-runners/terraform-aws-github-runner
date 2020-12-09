@@ -19,6 +19,9 @@ locals {
   userdata_template_windows     = var.userdata_template_windows == null ? "${path.module}/templates/user-data-windows.ps1" : var.userdata_template_windows
 }
 
+
+
+
 data "aws_ami" "runner" {
   most_recent = "true"
 
@@ -36,7 +39,7 @@ data "aws_ami" "runner" {
 resource "aws_launch_template" "runner" {
 
 for_each = var.amilabels
-  name = "${var.environment}-action-runner${each.value.AMIID}"
+  name = "${var.environment}-action-runner-${each.value.AMIID}"
 
   dynamic "block_device_mappings" {
     for_each = [var.block_device_mappings]
@@ -73,10 +76,28 @@ for_each = var.amilabels
     tags = merge(
       local.tags,
       {
+        "labels" = format("%s", each.value.customlabels)
+      },
+      {
         "Name" = format("%s", local.name_runner)
       },
     )
   }
+
+
+
+
+  tags = merge(
+    local.tags,
+    {
+      "Name" = format("%s", local.name_sg)
+    },
+      {
+        "labels" = format("%s", each.value.customlabels)
+      },
+  )
+
+
 
   user_data = base64encode(templatefile(var.runner_windows ? local.userdata_template_windows : local.userdata_template, {
     environment                     = var.environment
@@ -87,7 +108,6 @@ for_each = var.amilabels
     runner_architecture             = var.runner_architecture
   }))
 
-  tags = local.tags
 }
 
 resource "aws_security_group" "runner_sg" {
