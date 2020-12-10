@@ -19,13 +19,13 @@ echo "wait for configuration"
 $CONFIG=$null
 
 do{
-$CONFIG=(aws ssm get-parameters --names ${environment}"-"$INSTANCE_ID --with-decryption --region $REGION | jq -r ".Parameters | .[0] | .Value")
+$CONFIG=(aws ssm get-parameters --names ${environment}-$INSTANCE_ID --with-decryption --region $REGION | jq -r ".Parameters | .[0] | .Value")
      echo Waiting for configuration ...
     sleep 1
 }
 while ($CONFIG = $null)
 
-$CONFIG=(aws ssm get-parameters --names ${environment}"-"$INSTANCE_ID --with-decryption --region $REGION | jq -r ".Parameters | .[0] | .Value")
+$CONFIG=(aws ssm get-parameters --names ${environment}-$INSTANCE_ID --with-decryption --region $REGION | jq -r ".Parameters | .[0] | .Value")
 
 
 ./config.cmd --unattended --name $INSTANCE_ID --work "_work" $CONFIG 
