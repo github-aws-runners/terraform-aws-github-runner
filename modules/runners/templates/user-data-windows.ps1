@@ -1,4 +1,3 @@
-
 $ErrorActionPreference="SilentlyContinue"
 Stop-Transcript | out-null
 $ErrorActionPreference = "Continue"
@@ -16,19 +15,20 @@ $REGION = $availability_zone.Substring(0,$availability_zone.Length-1)
 
 
 echo "wait for configuration"
-$CONFIG=$null
+$CONFIG="null"
 
 do{
-$CONFIG=(aws ssm get-parameters --names ${environment}-$INSTANCE_ID --with-decryption --region $REGION | jq -r ".Parameters | .[0] | .Value")
+$CONFIG=(aws ssm get-parameters --names gh-ci-$INSTANCE_ID --with-decryption --region $REGION | jq -r ".Parameters | .[0] | .Value")
      echo Waiting for configuration ...
     sleep 1
 }
-while ($CONFIG = $null)
+while ($CONFIG = "null")
+echo "the parameter"$CONFIG
 
-$CONFIG=(aws ssm get-parameters --names ${environment}-$INSTANCE_ID --with-decryption --region $REGION | jq -r ".Parameters | .[0] | .Value")
+$CONFIG=(aws ssm get-parameters --names gh-ci-$INSTANCE_ID --with-decryption --region $REGION | jq -r ".Parameters | .[0] | .Value")
+aws ssm delete-parameter --name ${environment}-$INSTANCE_ID --region $REGION
 
-
-./config.cmd --unattended --name $INSTANCE_ID --work "_work" $CONFIG 
+./config.cmd --name $INSTANCE_ID --work "_work" $CONFIG --unattended
 ./run.cmd
 
 Stop-Transcript
