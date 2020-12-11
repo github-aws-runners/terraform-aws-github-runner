@@ -65,6 +65,8 @@ for_each = var.amilabels
   instance_market_options {
     market_type = var.market_options
   }
+
+  update_default_version = true
   
   image_id      = each.value.AMIID
   instance_type = var.instance_type
