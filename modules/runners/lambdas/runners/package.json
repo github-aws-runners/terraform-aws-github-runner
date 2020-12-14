@@ -11,7 +11,7 @@
     "dist": "yarn build && cd dist && zip ../runners.zip index.js"
   },
   "devDependencies": {
-    "@types/aws-lambda": "^8.10.64",
+    "@types/aws-lambda": "^8.10.66",
     "@types/express": "^4.17.9",
     "@types/jest": "^26.0.19",
     "@types/node": "^14.14.13",
