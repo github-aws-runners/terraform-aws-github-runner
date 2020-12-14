@@ -14,7 +14,7 @@
   },
   "devDependencies": {
     "@octokit/rest": "^18.0.12",
-    "@types/jest": "^26.0.16",
+    "@types/jest": "^26.0.19",
     "@types/node": "^14.14.10",
     "@types/request": "^2.48.4",
     "@typescript-eslint/eslint-plugin": "^4.0.0",
