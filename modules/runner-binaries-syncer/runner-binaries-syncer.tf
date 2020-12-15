@@ -14,6 +14,7 @@ resource "aws_lambda_function" "syncer" {
   handler           = "index.handler"
   runtime           = "nodejs12.x"
   timeout           = var.lambda_timeout
+  memory_size       = 256
 
   environment {
     variables = {

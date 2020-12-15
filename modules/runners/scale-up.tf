@@ -38,6 +38,7 @@ resource "aws_lambda_function" "scale_up" {
       GITHUB_APP_CLIENT_ID        = var.github_app.client_id
       GITHUB_APP_CLIENT_SECRET    = local.github_app_client_secret
       SUBNET_IDS                  = join(",", var.subnet_ids)
+      ENTERPRISE_URL              = var.enterpriseURL != null ? var.enterpriseURL : "github.com"
     
     }
   }

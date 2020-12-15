@@ -251,11 +251,13 @@ variable amilabels {
   default     = {
     Windows2019 = {
       AMIID  = "ami-0fa8b2da7cef73d37",
-      customlabels ="2019,BBB"     
+      customlabels ="2019,BBB",
+      OSPlatform = "Windows"     
     },
     Windows2016 = {
      AMIID  = "ami-f95e5486",
-      customlabels = "2016,CCC"   
+      customlabels = "2016,CCC",
+      OSPlatform = "Windows"      
     }
   }
 }
@@ -264,4 +266,12 @@ variable "runner_windows" {
   description = "Run the action runner in windows box."
   type        = bool
   default     = false
+}
+
+
+
+variable "enterpriseURL" {
+  description = "entperise github URL to replace the action action runner URL."
+  type        = string
+  default     = null
 }

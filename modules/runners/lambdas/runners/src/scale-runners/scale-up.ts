@@ -13,6 +13,8 @@ export interface ActionRequestMessage {
   installationId: number;
 }
 
+const getfqdn= process.env.ENTERPRISE_URL as string;
+
 export async function createGithubAppAuth(installationId: number | undefined): Promise<AppAuth> {
   //const privateKey = Buffer.from(process.env.GITHUB_APP_KEY_BASE64 as string, 'base64').toString();
   const clientSecret = await decrypt(
@@ -33,6 +35,14 @@ export async function createGithubAppAuth(installationId: number | undefined): P
 
   const appId: number = parseInt(process.env.GITHUB_APP_ID as string);
   const clientId = process.env.GITHUB_APP_CLIENT_ID as string;
+  
+  if (getfqdn === 'github.com'){
+    var githubapiurl= 'https://api.github.com'
+  }
+  else{
+        githubapiurl= 'https://'+getfqdn+'/api/v3'
+
+  }
 
   return createAppAuth({
     appId: appId,
@@ -40,7 +50,7 @@ export async function createGithubAppAuth(installationId: number | undefined): P
     installationId: installationId,
     clientId: clientId,
     clientSecret: clientSecret,
-    baseUrl: 'https://githubtenterprise.com/api/v3'
+    baseUrl: githubapiurl
   });
 }
 
@@ -92,12 +102,12 @@ export const scaleUp = async (eventSource: string, payload: ActionRequestMessage
           });
       const token = registrationToken.data.token;
 
-      const labelsArgument = runnerExtraLabels !== undefined ? `--labels ${runnerExtraLabels}` : '';
+   const labelsArgument = runnerExtraLabels !== undefined ? `--labels ${runnerExtraLabels}` : '';
       await createRunner({
         environment: environment,
         runnerConfig: enableOrgLevel
-          ? `--url https://github.enterprise.com/${payload.repositoryOwner} --token ${token} ${labelsArgument}`
-          : `--url https://github.enterprise.com/${payload.repositoryOwner}/${payload.repositoryName} --token ${token} ${labelsArgument}`,
+          ? `--url https://${getfqdn}/${payload.repositoryOwner} --token ${token}`
+          : `--url https://${getfqdn}/${payload.repositoryOwner}/${payload.repositoryName} --token ${token}`,
         orgName: enableOrgLevel ? payload.repositoryOwner : undefined,
         repoName: enableOrgLevel ? undefined : `${payload.repositoryOwner}/${payload.repositoryName}`,
       });

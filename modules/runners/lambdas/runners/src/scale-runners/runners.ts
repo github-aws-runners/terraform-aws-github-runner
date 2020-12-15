@@ -32,7 +32,7 @@ export async function getlaunchtemplate(filters: ListLaunchtemplateFilters | und
   console.debug('trying to list the launchtemplate');
   const ec2 = new EC2();
     let lcFilters = [
-    { Name: 'tag:labels', Values: ['2019,BBB'] },
+    { Name: 'tag:OSPlatform', Values: ['Windows'] },
  
   ];
   if (filters) {
@@ -113,9 +113,14 @@ export async function terminateRunner(runner: RunnerInfo): Promise<void> {
   console.debug('Runner terminated.' + runner.instanceId);
 }
 
+
+
+
 export async function createRunner(runnerParameters: RunnerInputParameters): Promise<void> {
   console.debug('trying to describe the lc');
   const applicablelaunchtemplates = await getlaunchtemplate();
+ 
+
   const launchTemplateName = applicablelaunchtemplates[0].LaunchTemplateName;
   const launchTemplateVersion = applicablelaunchtemplates[0].DefaultVersionNumber;
 
@@ -123,13 +128,16 @@ export async function createRunner(runnerParameters: RunnerInputParameters): Pro
   const randomSubnet = subnets[Math.floor(Math.random() * subnets.length)];
   console.debug('Runner configuration: ' + JSON.stringify(runnerParameters));
   const ec2 = new EC2();
-  const runInstancesResponse = await ec2
+
+
+for (const lt of applicablelaunchtemplates) {
+    const runInstancesResponse = await ec2
     .runInstances({
       MaxCount: 1,
       MinCount: 1,
       LaunchTemplate: {
-       LaunchTemplateName: launchTemplateName,
-       Version: launchTemplateVersion,
+       LaunchTemplateName: lt.LaunchTemplateName as string,
+       Version: lt.DefaultVersionNumber as string,
       },
       SubnetId: randomSubnet,
       TagSpecifications: [
@@ -146,17 +154,25 @@ export async function createRunner(runnerParameters: RunnerInputParameters): Pro
       ],
     })
     .promise();
-  console.info('Created instance(s): ', runInstancesResponse.Instances?.map((i) => i.InstanceId).join(','));
+
+console.info('Created instance(s): ', runInstancesResponse.Instances?.map((i) => i.InstanceId).join(','));
 
   const ssm = new SSM();
+  
   runInstancesResponse.Instances?.forEach(async (i: EC2.Instance) => {
     await ssm
       .putParameter({
         Name: runnerParameters.environment + '-' + (i.InstanceId as string),
-        Value: runnerParameters.runnerConfig,
+        Value: runnerParameters.runnerConfig+ ' --labels ' + lt.lclabels,
         Type: 'SecureString',
       })
       .promise();
-  });
+   });
+
+  }
 }
+
+ 
+  
+
 

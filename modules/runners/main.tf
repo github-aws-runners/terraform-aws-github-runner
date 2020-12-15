@@ -95,7 +95,10 @@ for_each = var.amilabels
       "Name" = format("%s", local.name_sg)
     },
       {
-        "labels" = format("%s", each.value.customlabels)
+        "actionrunnerlabels" = format("%s", each.value.customlabels)
+      },
+      {
+        "OSPlatform" = format("%s", each.value.OSPlatform)
       },
   )
 
@@ -108,7 +111,8 @@ for_each = var.amilabels
     s3_location_runner_distribution = var.s3_location_runner_binaries
     service_user                    = var.runner_as_root ? "root" : "ec2-user"
     runner_architecture             = var.runner_architecture
-  }))
+
+      }))
 
 }
 

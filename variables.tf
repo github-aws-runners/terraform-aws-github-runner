@@ -165,6 +165,14 @@ variable "userdata_template_windows" {
   default     = null
 }
 
+
+variable "enterpriseURL" {
+  description = "entperise github URL to replace the action action runner URL."
+  type        = string
+  default     = null
+}
+
+
 variable "userdata_pre_install" {
   type        = string
   default     = ""
