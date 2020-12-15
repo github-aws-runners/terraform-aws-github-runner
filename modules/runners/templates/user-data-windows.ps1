@@ -67,7 +67,7 @@ iex $runconfig
 Write-Host $(date) '----------------upload the logs before running run.cmd, check if can be done sooner------------------------'
 .\run.cmd
 Write-Host $(date) '----------------upload the logs before transcript stops, check if can be done sooner------------------------'
-aws s3 cp C:\tmp\"$todaytime"_output.txt s3://gh-ci-dist-zl4xxrw76zxsjsaz87jitvng/"$todaytime"_output.txt
+
 Stop-Transcript
 Write-Host $(date) '----------------upload the logs------------------------'
 
