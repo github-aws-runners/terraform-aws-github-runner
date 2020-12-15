@@ -342,7 +342,8 @@ No requirements.
 | webhook\_lambda\_s3\_object\_version | S3 object version for webhook lambda function. Useful if S3 versioning is enabled on source bucket. | `any` | `null` | no |
 | webhook\_lambda\_timeout | Time out of the webhook lambda in seconds. | `number` | `10` | no |
 | webhook\_lambda\_zip | File location of the webhook lambda zip file. | `string` | `null` | no |
-
+| enterpriseURL | entperise github URL if specifed to replace the action action runner URL | `string` | `null` | no |
+| runner_windows | un the action runner in windows box. | `bool` | `false` | no |
 ## Outputs
 
 | Name | Description |
