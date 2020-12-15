@@ -35,7 +35,7 @@ export async function createGithubAppAuth(installationId: number | undefined): P
   const clientId = process.env.GITHUB_APP_CLIENT_ID as string;
 
   return createAppAuth({
-    id: appId,
+    appId: appId,
     privateKey: privateKey,
     installationId: installationId,
     clientId: clientId,
