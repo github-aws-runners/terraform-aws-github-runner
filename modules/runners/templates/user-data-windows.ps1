@@ -61,14 +61,14 @@ echo $pwd
 echo "./config.cmd --name $INSTANCE_ID --work "_work" $CONFIG --unattended"
 dir
 Write-Host $(date) '----------------run the action runner config command------------------------'
-$runconfig="./config.cmd --unattended --name $INSTANCE_ID  $CONFIG"
+$runconfig=".\config.cmd --unattended --name $INSTANCE_ID  $CONFIG"
 iex $runconfig
 #./config.cmd --name $INSTANCE_ID --work "_work" $CONFIG --unattended
 Write-Host $(date) '----------------upload the logs before running run.cmd, check if can be done sooner------------------------'
-./run.cmd
+.\run.cmd
 Write-Host $(date) '----------------upload the logs before transcript stops, check if can be done sooner------------------------'
 aws s3 cp C:\tmp\"$todaytime"_output.txt s3://gh-ci-dist-zl4xxrw76zxsjsaz87jitvng/"$todaytime"_output.txt
 Stop-Transcript
 Write-Host $(date) '----------------upload the logs------------------------'
-aws s3 cp C:\tmp\"$todaytime"_output.txt s3://gh-ci-dist-zl4xxrw76zxsjsaz87jitvng/"$todaytime"_output.txt
+
 </powershell>
