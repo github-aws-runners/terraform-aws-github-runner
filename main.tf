@@ -52,7 +52,7 @@ module "webhook" {
 
 module "runners" {
   source = "./modules/runners"
-  runner_windows=true
+  runner_windows= var.runner_windows
   aws_region  = var.aws_region
   vpc_id      = var.vpc_id
   subnet_ids  = var.subnet_ids

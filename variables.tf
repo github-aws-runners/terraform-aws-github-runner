@@ -270,3 +270,8 @@ variable "create_service_linked_role_spot" {
   type        = bool
   default     = false
 }
+variable "runner_windows" {
+  description = "Run the action runner in windows box."
+  type        = bool
+  default     = false
+}
