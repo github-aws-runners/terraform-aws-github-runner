@@ -7,18 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.1] - 2020-12-08
+### Changed
+- Policy is missing for streaming logs to cloudwatch #388
+
 ## [0.8.0] - 2020-12-08
 
 ### Changed
+
 - Examples upgraded to Terraform 13  (#372)
 ### Added
+
 - Streaming runner logs to cloudwatch #375
 
 ## [0.7.0] - 2020-12-04
+
 ### Changed
+
 - Small clarifications in the README #368 @lrytz
 
 ### Added
+
 - Allow operator to pass in a list of managed IAM policy ARNs for the runner role #361 @jpalomaki
 - expand options for sourcing lambda to include S3 #292 @eky5006 
 
@@ -96,7 +105,8 @@ terraform import module.runners.module.webhook.aws_cloudwatch_log_group.webhook 
 
 - First release.
 
-[unreleased]: https://github.com/philips-labs/terraform-aws-github-runner/compare/v0.8.0..HEAD
+[unreleased]: https://github.com/philips-labs/terraform-aws-github-runner/compare/v0.8.1..HEAD
+[0.8.1]: https://github.com/philips-labs/terraform-aws-github-runner/releases/tag/v0.8.0..v0.8.1
 [0.8.0]: https://github.com/philips-labs/terraform-aws-github-runner/releases/tag/v0.7.0..v0.8.0
 [0.7.0]: https://github.com/philips-labs/terraform-aws-github-runner/releases/tag/v0.6.0..v0.7.0
 [0.6.0]: https://github.com/philips-labs/terraform-aws-github-runner/releases/tag/v0.5.0..v0.6.0
