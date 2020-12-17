@@ -82,3 +82,14 @@ variable "syncer_lambda_s3_object_version" {
   default     = null
 }
 
+variable "lambda_subnet_ids" {
+  description = "List of subnets in which the action runners will be launched, the subnets needs to be subnets in the `vpc_id`."
+  type        = list(string)
+  default     = []
+}
+
+variable "lambda_security_group_ids" {
+  description = "List of subnets in which the action runners will be launched, the subnets needs to be subnets in the `vpc_id`."
+  type        = list(string)
+  default     = []
+}

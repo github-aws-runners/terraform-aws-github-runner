@@ -8,7 +8,10 @@
     },
     {
       "Effect": "Allow",
-      "Action": ["ssm:GetParameters"],
+      "Action": [
+        "ssm:GetParameters",
+        "ssm:GetParameter"
+      ],
       "Resource": "${arn_ssm_parameters}"
     }
   ]

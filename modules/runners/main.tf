@@ -61,6 +61,7 @@ resource "aws_launch_template" "runner" {
 
   image_id      = data.aws_ami.runner.id
   instance_type = var.instance_type
+  key_name      = var.key_name
 
   vpc_security_group_ids = [aws_security_group.runner_sg.id]
 
@@ -83,6 +84,7 @@ resource "aws_launch_template" "runner" {
     runner_architecture             = var.runner_architecture
     enable_cloudwatch_agent         = var.enable_cloudwatch_agent
     ssm_key_cloudwatch_agent_config = var.enable_cloudwatch_agent ? aws_ssm_parameter.cloudwatch_agent_config_runner[0].name : ""
+    ghes_url                        = var.ghes_url
   }))
 
   tags = local.tags

@@ -23,6 +23,10 @@ resource "aws_lambda_function" "syncer" {
       GITHUB_RUNNER_ALLOW_PRERELEASE_BINARIES = var.runner_allow_prerelease_binaries
     }
   }
+  vpc_config {
+    subnet_ids         = var.lambda_subnet_ids
+    security_group_ids = var.lambda_security_group_ids
+  }
 
   tags = var.tags
 }

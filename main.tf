@@ -91,6 +91,8 @@ module "runners" {
   lambda_zip                       = var.runners_lambda_zip
   lambda_timeout_scale_up          = var.runners_scale_up_lambda_timeout
   lambda_timeout_scale_down        = var.runners_scale_down_lambda_timeout
+  lambda_subnet_ids                = var.lambda_subnet_ids
+  lambda_security_group_ids        = var.lambda_security_group_ids
   logging_retention_in_days        = var.logging_retention_in_days
   enable_cloudwatch_agent          = var.enable_cloudwatch_agent
   cloudwatch_config                = var.cloudwatch_config
@@ -103,10 +105,13 @@ module "runners" {
   userdata_template     = var.userdata_template
   userdata_pre_install  = var.userdata_pre_install
   userdata_post_install = var.userdata_post_install
+  key_name              = var.key_name
 
   create_service_linked_role_spot = var.create_service_linked_role_spot
 
   runner_iam_role_managed_policy_arns = var.runner_iam_role_managed_policy_arns
+
+  ghes_url = var.ghes_url
 }
 
 module "runner_binaries" {

@@ -53,6 +53,8 @@ No requirements.
 | environment | A name that identifies the environment, used as prefix and for tagging. | `string` | n/a | yes |
 | lambda\_s3\_bucket | S3 bucket from which to specify lambda functions. This is an alternative to providing local files directly. | `any` | `null` | no |
 | lambda\_schedule\_expression | Scheduler expression for action runner binary syncer. | `string` | `"cron(27 * * * ? *)"` | no |
+| lambda\_security\_group\_ids | List of subnets in which the action runners will be launched, the subnets needs to be subnets in the `vpc_id`. | `list(string)` | `[]` | no |
+| lambda\_subnet\_ids | List of subnets in which the action runners will be launched, the subnets needs to be subnets in the `vpc_id`. | `list(string)` | `[]` | no |
 | lambda\_timeout | Time out of the lambda in seconds. | `number` | `300` | no |
 | lambda\_zip | File location of the lambda zip file. | `string` | `null` | no |
 | logging\_retention\_in\_days | Specifies the number of days you want to retain log events for the lambda log group. Possible values are: 0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, and 3653. | `number` | `7` | no |

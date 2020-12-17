@@ -36,7 +36,12 @@ resource "aws_lambda_function" "scale_down" {
       GITHUB_APP_CLIENT_ID            = var.github_app.client_id
       GITHUB_APP_CLIENT_SECRET        = local.github_app_client_secret
       SCALE_DOWN_CONFIG               = jsonencode(var.idle_config)
+      GHES_URL                        = var.ghes_url
     }
+  }
+  vpc_config {
+    subnet_ids         = var.lambda_subnet_ids
+    security_group_ids = var.lambda_security_group_ids
   }
 }
 
@@ -85,4 +90,10 @@ resource "aws_iam_role_policy" "scale_down_logging" {
   policy = templatefile("${path.module}/policies/lambda-cloudwatch.json", {
     log_group_arn = aws_cloudwatch_log_group.scale_down.arn
   })
+}
+
+resource "aws_iam_role_policy_attachment" "scale_down_vpc_execution_role" {
+  count      = length(var.lambda_subnet_ids) > 0 ? 1 : 0
+  role       = aws_iam_role.scale_down.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }

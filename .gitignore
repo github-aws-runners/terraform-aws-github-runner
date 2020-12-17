@@ -17,3 +17,6 @@ example/*.secrets*.tfvars
 *.gz
 *.tgz
 *.env
+.vscode
+
+**/coverage/*

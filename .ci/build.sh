@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -e
 
 lambdaSrcDirs=("modules/runner-binaries-syncer/lambdas/runner-binaries-syncer" "modules/runners/lambdas/runners" "modules/webhook/lambdas/webhook")
 repoRoot=$(dirname $(dirname $(realpath ${BASH_SOURCE[0]})))

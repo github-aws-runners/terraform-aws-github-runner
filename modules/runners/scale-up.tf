@@ -40,7 +40,12 @@ resource "aws_lambda_function" "scale_up" {
       SUBNET_IDS                  = join(",", var.subnet_ids)
       LAUNCH_TEMPLATE_NAME        = aws_launch_template.runner.name
       LAUNCH_TEMPLATE_VERSION     = aws_launch_template.runner.latest_version
+      GHES_URL                    = var.ghes_url
     }
+  }
+  vpc_config {
+    subnet_ids         = var.lambda_subnet_ids
+    security_group_ids = var.lambda_security_group_ids
   }
 }
 
@@ -94,4 +99,10 @@ resource "aws_iam_role_policy" "service_linked_role" {
   name   = "${var.environment}-service_linked_role"
   role   = aws_iam_role.scale_up.name
   policy = templatefile("${path.module}/policies/service-linked-role-create-policy.json", {})
+}
+
+resource "aws_iam_role_policy_attachment" "scale_up_vpc_execution_role" {
+  count      = length(var.lambda_subnet_ids) > 0 ? 1 : 0
+  role       = aws_iam_role.scale_up.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }

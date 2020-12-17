@@ -1,15 +1,10 @@
-import { AppAuth } from '@octokit/auth-app/dist-types/types';
 import { Octokit } from '@octokit/rest';
 import moment from 'moment';
 import yn from 'yn';
 import { listRunners, RunnerInfo, terminateRunner } from './runners';
 import { getIdleRunnerCount, ScalingDownConfig } from './scale-down-config';
-import { createGithubAppAuth, createInstallationClient } from './scale-up';
+import { createOctoClient, createGithubAuth } from './gh-auth'
 
-async function createAppClient(githubAppAuth: AppAuth): Promise<Octokit> {
-  const auth = await githubAppAuth({ type: 'app' });
-  return new Octokit({ auth: auth.token });
-}
 
 interface Repo {
   repoName: string;
@@ -26,7 +21,13 @@ function createGitHubClientForRunnerFactory(): (runner: RunnerInfo, orgLevel: bo
   const cache: Map<string, Octokit> = new Map();
 
   return async (runner: RunnerInfo, orgLevel: boolean) => {
-    const githubClient = await createAppClient(await createGithubAppAuth(undefined));
+    const ghesBaseUrl = process.env.GHES_URL as string;
+    let ghesApiUrl: string = ''
+    if (ghesBaseUrl) {
+      ghesApiUrl = `${ghesBaseUrl}/api/v3`
+    }
+    const ghAuth = await createGithubAuth(undefined, 'app', ghesApiUrl)
+    const githubClient = await createOctoClient(ghAuth.token, ghesApiUrl);
     const repo = getRepo(runner, orgLevel);
     const key = orgLevel ? repo.repoOwner : repo.repoOwner + repo.repoName;
     const cachedOctokit = cache.get(key);
@@ -49,7 +50,8 @@ function createGitHubClientForRunnerFactory(): (runner: RunnerInfo, orgLevel: bo
             repo: repo.repoName,
           })
         ).data.id;
-    const octokit = await createInstallationClient(await createGithubAppAuth(installationId));
+    const ghAuth2 = await createGithubAuth(installationId, 'installation', ghesApiUrl)
+    const octokit = await createOctoClient(ghAuth2.token, ghesApiUrl);
     cache.set(key, octokit);
 
     return octokit;

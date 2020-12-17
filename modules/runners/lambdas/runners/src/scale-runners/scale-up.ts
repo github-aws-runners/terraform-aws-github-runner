@@ -1,9 +1,6 @@
-import { createAppAuth } from '@octokit/auth-app';
-import { Octokit } from '@octokit/rest';
-import { AppAuth } from '@octokit/auth-app/dist-types/types';
 import { listRunners, createRunner } from './runners';
+import { createOctoClient, createGithubAuth } from './gh-auth'
 import yn from 'yn';
-import { decrypt } from './kms';
 
 export interface ActionRequestMessage {
   id: number;
@@ -13,49 +10,21 @@ export interface ActionRequestMessage {
   installationId: number;
 }
 
-export async function createGithubAppAuth(installationId: number | undefined): Promise<AppAuth> {
-  //const privateKey = Buffer.from(process.env.GITHUB_APP_KEY_BASE64 as string, 'base64').toString();
-  const clientSecret = await decrypt(
-    process.env.GITHUB_APP_CLIENT_SECRET as string,
-    process.env.KMS_KEY_ID as string,
-    process.env.ENVIRONMENT as string,
-  );
-  const privateKeyBase64 = await decrypt(
-    process.env.GITHUB_APP_KEY_BASE64 as string,
-    process.env.KMS_KEY_ID as string,
-    process.env.ENVIRONMENT as string,
-  );
-  if (clientSecret === undefined || privateKeyBase64 === undefined) {
-    throw Error('Cannot decrypt.');
-  }
-
-  const privateKey = Buffer.from(privateKeyBase64, 'base64').toString();
-
-  const appId: number = parseInt(process.env.GITHUB_APP_ID as string);
-  const clientId = process.env.GITHUB_APP_CLIENT_ID as string;
-
-  return createAppAuth({
-    id: appId,
-    privateKey: privateKey,
-    installationId: installationId,
-    clientId: clientId,
-    clientSecret: clientSecret,
-  });
-}
-
-export async function createInstallationClient(githubAppAuth: AppAuth): Promise<Octokit> {
-  const auth = await githubAppAuth({ type: 'installation' });
-  return new Octokit({ auth: auth.token });
-}
-
 export const scaleUp = async (eventSource: string, payload: ActionRequestMessage): Promise<void> => {
   if (eventSource !== 'aws:sqs') throw Error('Cannot handle non-SQS events!');
   const enableOrgLevel = yn(process.env.ENABLE_ORGANIZATION_RUNNERS, { default: true });
   const maximumRunners = parseInt(process.env.RUNNERS_MAXIMUM_COUNT || '3');
   const runnerExtraLabels = process.env.RUNNER_EXTRA_LABELS;
   const environment = process.env.ENVIRONMENT as string;
-  const githubAppAuth = await createGithubAppAuth(payload.installationId);
-  const githubInstallationClient = await createInstallationClient(githubAppAuth);
+  const ghesBaseUrl = process.env.GHES_URL as string;
+  
+  let ghesApiUrl: string = ''
+  if (ghesBaseUrl) {
+    ghesApiUrl = `${ghesBaseUrl}/api/v3`
+  }
+
+  const ghAuth = await createGithubAuth(payload.installationId, 'installation', ghesApiUrl)
+  const githubInstallationClient = await createOctoClient(ghAuth.token, ghesApiUrl);
   const queuedWorkflows = await githubInstallationClient.actions.listWorkflowRunsForRepo({
     owner: payload.repositoryOwner,
     repo: payload.repositoryName,
@@ -66,10 +35,13 @@ export const scaleUp = async (eventSource: string, payload: ActionRequestMessage
     `Repo ${payload.repositoryOwner}/${payload.repositoryName} has ${queuedWorkflows.data.total_count} queued workflow runs`,
   );
 
+  const repoName = enableOrgLevel ? undefined : `${payload.repositoryOwner}/${payload.repositoryName}`
+  const orgName = enableOrgLevel ? payload.repositoryOwner : undefined
+
   if (queuedWorkflows.data.total_count > 0) {
     const currentRunners = await listRunners({
       environment: environment,
-      repoName: enableOrgLevel ? undefined : `${payload.repositoryOwner}/${payload.repositoryName}`,
+      repoName: repoName
     });
     console.info(
       `${
@@ -90,13 +62,14 @@ export const scaleUp = async (eventSource: string, payload: ActionRequestMessage
       const token = registrationToken.data.token;
 
       const labelsArgument = runnerExtraLabels !== undefined ? `--labels ${runnerExtraLabels}` : '';
+      const configBaseUrl = ghesBaseUrl ? ghesBaseUrl : "https://github.com"
       await createRunner({
         environment: environment,
         runnerConfig: enableOrgLevel
-          ? `--url https://github.com/${payload.repositoryOwner} --token ${token} ${labelsArgument}`
-          : `--url https://github.com/${payload.repositoryOwner}/${payload.repositoryName} --token ${token} ${labelsArgument}`,
-        orgName: enableOrgLevel ? payload.repositoryOwner : undefined,
-        repoName: enableOrgLevel ? undefined : `${payload.repositoryOwner}/${payload.repositoryName}`,
+          ? `--url ${configBaseUrl}/${payload.repositoryOwner} --token ${token} ${labelsArgument}`
+          : `--url ${configBaseUrl}/${payload.repositoryOwner}/${payload.repositoryName} --token ${token} ${labelsArgument}`,
+        orgName: orgName,
+        repoName: repoName,
       });
     } else {
       console.info('No runner will be created, maximum number of runners reached.');

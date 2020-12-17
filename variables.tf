@@ -296,3 +296,27 @@ variable "runner_log_files" {
     }
   ]
 }
+
+variable "ghes_url" {
+  description = "GitHub Enterprise Server URL. Example: https://github.internal.co - DO NOT SET IF USING PUBLIC GITHUB"
+  type        = string
+  default     = ""
+}
+
+variable "lambda_subnet_ids" {
+  description = "List of subnets in which the action runners will be launched, the subnets needs to be subnets in the `vpc_id`."
+  type        = list(string)
+  default     = []
+}
+
+variable "lambda_security_group_ids" {
+  description = "List of subnets in which the action runners will be launched, the subnets needs to be subnets in the `vpc_id`."
+  type        = list(string)
+  default     = []
+}
+
+variable "key_name" {
+  description = "Key pair name"
+  type        = string
+  default     = ""
+}
