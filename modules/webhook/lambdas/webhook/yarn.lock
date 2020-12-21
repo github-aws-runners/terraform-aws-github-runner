@@ -589,10 +589,10 @@
     "@octokit/openapi-types" "^2.0.0"
     "@types/node" ">= 8"
 
-"@octokit/webhooks@^7.20.0":
-  version "7.20.0"
-  resolved "https://registry.yarnpkg.com/@octokit/webhooks/-/webhooks-7.20.0.tgz#28c08b523727c9ecf9d8ca12f6d7d9e41598f6de"
-  integrity sha512-SVz4SRxHHvI0Whojcl/J9HnWVk3cKX+LmARJMEQBxTWGt2Cf94fcDlTExqWPLg6SzPyC62JT3OaCA2V4NJOwzQ==
+"@octokit/webhooks@^7.21.0":
+  version "7.21.0"
+  resolved "https://registry.yarnpkg.com/@octokit/webhooks/-/webhooks-7.21.0.tgz#2aee3404aa311740a5f4ea37b070268752e21b02"
+  integrity sha512-Mj7Pa6JZgSjfzQfYF3Bf5KpyhzEBv4kHbj2EjCB/vMQiZCiiW30j5rS6t/d0ZN0FBrlSOuJIT+YU8IJt30VyWA==
   dependencies:
     "@octokit/request-error" "^2.0.2"
     aggregate-error "^3.1.0"
