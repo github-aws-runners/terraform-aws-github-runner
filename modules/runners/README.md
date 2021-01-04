@@ -80,8 +80,8 @@ No requirements.
 | instance\_type | Default instance type for the action runner. | `string` | `"m5.large"` | no |
 | key\_name | Key pair name | `string` | `""` | no |
 | lambda\_s3\_bucket | S3 bucket from which to specify lambda functions. This is an alternative to providing local files directly. | `any` | `null` | no |
-| lambda\_security\_group\_ids | List of subnets in which the action runners will be launched, the subnets needs to be subnets in the `vpc_id`. | `list(string)` | `[]` | no |
-| lambda\_subnet\_ids | List of subnets in which the action runners will be launched, the subnets needs to be subnets in the `vpc_id`. | `list(string)` | `[]` | no |
+| lambda\_security\_group\_ids | List of subnets in which the lambda will be launched, the subnets needs to be subnets in the `vpc_id`. | `list(string)` | `[]` | no |
+| lambda\_subnet\_ids | List of subnets in which the lambda will be launched, the subnets needs to be subnets in the `vpc_id`. | `list(string)` | `[]` | no |
 | lambda\_timeout\_scale\_down | Time out for the scale down lambda in seconds. | `number` | `60` | no |
 | lambda\_timeout\_scale\_up | Time out for the scale up lambda in seconds. | `number` | `60` | no |
 | lambda\_zip | File location of the lambda zip file. | `string` | `null` | no |

@@ -286,13 +286,13 @@ variable "ghes_url" {
 }
 
 variable "lambda_subnet_ids" {
-  description = "List of subnets in which the action runners will be launched, the subnets needs to be subnets in the `vpc_id`."
+  description = "List of subnets in which the lambda will be launched, the subnets needs to be subnets in the `vpc_id`."
   type        = list(string)
   default     = []
 }
 
 variable "lambda_security_group_ids" {
-  description = "List of subnets in which the action runners will be launched, the subnets needs to be subnets in the `vpc_id`."
+  description = "List of subnets in which the lambda will be launched, the subnets needs to be subnets in the `vpc_id`."
   type        = list(string)
   default     = []
 }

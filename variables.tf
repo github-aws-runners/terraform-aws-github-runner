@@ -318,5 +318,5 @@ variable "lambda_security_group_ids" {
 variable "key_name" {
   description = "Key pair name"
   type        = string
-  default     = ""
+  default     = null
 }
