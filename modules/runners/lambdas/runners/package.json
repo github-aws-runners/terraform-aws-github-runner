@@ -21,7 +21,7 @@
     "jest-mock-extended": "^1.0.10",
     "nock": "^13.0.5",
     "ts-jest": "^26.4.4",
-    "ts-node-dev": "^1.1.1",
+    "ts-node-dev": "^1.1.1"
   },
   "dependencies": {
     "@octokit/auth-app": "^2.10.5",
