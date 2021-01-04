@@ -91,6 +91,7 @@ No requirements.
 | overrides | This maps provides the possibility to override some defaults. The following attributes are supported: `name_sg` overwrite the `Name` tag for all security groups created by this module. `name_runner_agent_instance` override the `Name` tag for the ec2 instance defined in the auto launch configuration. `name_docker_machine_runners` override the `Name` tag spot instances created by the runner agent. | `map(string)` | <pre>{<br>  "name_runner": "",<br>  "name_sg": ""<br>}</pre> | no |
 | role\_path | The path that will be added to the role, if not set the environment name will be used. | `string` | `null` | no |
 | role\_permissions\_boundary | Permissions boundary that will be added to the created role for the lambda. | `string` | `null` | no |
+| runner\_additional\_security\_group\_ids | (optional) List of additional security groups IDs to apply to the runner | `list(string)` | `[]` | no |
 | runner\_architecture | The platform architecture of the runner instance\_type. | `string` | `"x64"` | no |
 | runner\_as\_root | Run the action runner under the root user. | `bool` | `false` | no |
 | runner\_extra\_labels | Extra labels for the runners (GitHub). Separate each label by a comma | `string` | `""` | no |

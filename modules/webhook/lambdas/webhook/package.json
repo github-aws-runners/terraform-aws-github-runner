@@ -11,12 +11,12 @@
     "dist": "yarn build && cd dist && zip ../webhook.zip index.js"
   },
   "devDependencies": {
-    "@octokit/webhooks": "^7.20.0",
+    "@octokit/webhooks": "^7.21.0",
     "@types/express": "^4.17.9",
     "@types/jest": "^26.0.19",
-    "@types/node": "^14.14.10",
+    "@types/node": "^14.14.16",
     "@zeit/ncc": "^0.22.1",
-    "aws-sdk": "^2.809.0",
+    "aws-sdk": "^2.819.0",
     "body-parser": "^1.19.0",
     "express": "^4.17.1",
     "jest": "^26.6.3",

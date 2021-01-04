@@ -300,5 +300,11 @@ variable "lambda_security_group_ids" {
 variable "key_name" {
   description = "Key pair name"
   type        = string
-  default     = ""
+  default     = null
+}
+
+variable "runner_additional_security_group_ids" {
+  description = "(optional) List of additional security groups IDs to apply to the runner"
+  type        = list(string)
+  default     = []
 }

@@ -320,3 +320,9 @@ variable "key_name" {
   type        = string
   default     = null
 }
+
+variable "runner_additional_security_group_ids" {
+  description = "(optional) List of additional security groups IDs to apply to the runner"
+  type        = list(string)
+  default     = []
+}

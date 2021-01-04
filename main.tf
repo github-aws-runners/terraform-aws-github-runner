@@ -74,16 +74,17 @@ module "runners" {
   ami_filter          = local.ami_filter
   ami_owners          = var.ami_owners
 
-  sqs_build_queue                 = aws_sqs_queue.queued_builds
-  github_app                      = var.github_app
-  enable_organization_runners     = var.enable_organization_runners
-  scale_down_schedule_expression  = var.scale_down_schedule_expression
-  minimum_running_time_in_minutes = var.minimum_running_time_in_minutes
-  runner_extra_labels             = var.runner_extra_labels
-  runner_as_root                  = var.runner_as_root
-  runners_maximum_count           = var.runners_maximum_count
-  idle_config                     = var.idle_config
-  enable_ssm_on_runners           = var.enable_ssm_on_runners
+  sqs_build_queue                      = aws_sqs_queue.queued_builds
+  github_app                           = var.github_app
+  enable_organization_runners          = var.enable_organization_runners
+  scale_down_schedule_expression       = var.scale_down_schedule_expression
+  minimum_running_time_in_minutes      = var.minimum_running_time_in_minutes
+  runner_extra_labels                  = var.runner_extra_labels
+  runner_as_root                       = var.runner_as_root
+  runners_maximum_count                = var.runners_maximum_count
+  idle_config                          = var.idle_config
+  enable_ssm_on_runners                = var.enable_ssm_on_runners
+  runner_additional_security_group_ids = var.runner_additional_security_group_ids
 
   lambda_s3_bucket                 = var.lambda_s3_bucket
   runners_lambda_s3_key            = var.runners_lambda_s3_key

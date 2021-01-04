@@ -63,7 +63,10 @@ resource "aws_launch_template" "runner" {
   instance_type = var.instance_type
   key_name      = var.key_name
 
-  vpc_security_group_ids = [aws_security_group.runner_sg.id]
+  vpc_security_group_ids = compact(concat(
+    [aws_security_group.runner_sg.id],
+    var.runner_additional_security_group_ids,
+  ))
 
   tag_specifications {
     resource_type = "instance"

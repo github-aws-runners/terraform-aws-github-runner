@@ -325,11 +325,14 @@ No requirements.
 | lambda\_s3\_bucket | S3 bucket from which to specify lambda functions. This is an alternative to providing local files directly. | `any` | `null` | no |
 | lambda\_security\_group\_ids | List of subnets in which the action runners will be launched, the subnets needs to be subnets in the `vpc_id`. | `list(string)` | `[]` | no |
 | lambda\_subnet\_ids | List of subnets in which the action runners will be launched, the subnets needs to be subnets in the `vpc_id`. | `list(string)` | `[]` | no |
+| kms\_key\_id | Custom KMS key to encrypted lambda secrets, if not provided and `encrypt_secrets` = `true` a KMS key will be created by the module. Secrets will be encrypted with a context `Environment = var.environment`. | `string` | `null` | no |
+| lambda\_s3\_bucket | S3 bucket from which to specify lambda functions. This is an alternative to providing local files directly. | `any` | `null` | no |
 | logging\_retention\_in\_days | Specifies the number of days you want to retain log events for the lambda log group. Possible values are: 0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, and 3653. | `number` | `7` | no |
 | manage\_kms\_key | Let the module manage the KMS key. | `bool` | `true` | no |
 | minimum\_running\_time\_in\_minutes | The time an ec2 action runner should be running at minimum before terminated if non busy. | `number` | `5` | no |
 | role\_path | The path that will be added to role path for created roles, if not set the environment name will be used. | `string` | `null` | no |
 | role\_permissions\_boundary | Permissions boundary that will be added to the created roles. | `string` | `null` | no |
+| runner\_additional\_security\_group\_ids | (optional) List of additional security groups IDs to apply to the runner | `list(string)` | `[]` | no |
 | runner\_allow\_prerelease\_binaries | Allow the runners to update to prerelease binaries. | `bool` | `false` | no |
 | runner\_as\_root | Run the action runner under the root user. | `bool` | `false` | no |
 | runner\_binaries\_syncer\_lambda\_timeout | Time out of the binaries sync lambda in seconds. | `number` | `300` | no |
