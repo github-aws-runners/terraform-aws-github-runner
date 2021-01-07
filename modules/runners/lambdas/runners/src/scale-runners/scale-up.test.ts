@@ -41,9 +41,9 @@ beforeEach(() => {
   process.env.RUNNERS_MAXIMUM_COUNT = '3';
   process.env.ENVIRONMENT = 'unit-test-environment';
 
-  mockOctokit.actions.listWorkflowRunsForRepo.mockImplementation(() => ({
+  mockOctokit.checks.get.mockImplementation(() => ({
     data: {
-      total_count: 1,
+      status: 'queued',
     },
   }));
   const mockTokenReturnValue = {
@@ -76,20 +76,16 @@ describe('scaleUp with GHES', () => {
 
   it('checks queued workflows', async () => {
     await scaleUp('aws:sqs', TEST_DATA);
-    expect(mockOctokit.actions.listWorkflowRunsForRepo).toBeCalledWith({
+    expect(mockOctokit.checks.get).toBeCalledWith({
+      check_run_id: TEST_DATA.id,
       owner: TEST_DATA.repositoryOwner,
       repo: TEST_DATA.repositoryName,
-      status: 'queued',
     });
   });
 
   it('does not list runners when no workflows are queued', async () => {
-    mockOctokit.actions.listWorkflowRunsForRepo.mockImplementation(() => ({
-      data: { total_count: 0, runners: [] },
     mockOctokit.checks.get.mockImplementation(() => ({
-      data: {
-        status: 'queued',
-      },
+      data: { total_count: 0, runners: [] },
     }));
     await scaleUp('aws:sqs', TEST_DATA);
     expect(listRunners).not.toBeCalled();

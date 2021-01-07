@@ -27,7 +27,7 @@
     "@octokit/auth-app": "^2.10.5",
     "@octokit/rest": "^18.0.12",
     "@octokit/types": "^6.1.1",
-    "@types/aws-lambda": "^8.10.66",
+    "@types/aws-lambda": "^8.10.68",
     "@types/express": "^4.17.9",
     "@types/node": "^14.14.16",
     "aws-sdk": "^2.817.0",

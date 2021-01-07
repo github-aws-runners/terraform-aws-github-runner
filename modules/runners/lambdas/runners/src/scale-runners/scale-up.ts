@@ -25,8 +25,6 @@ export const scaleUp = async (eventSource: string, payload: ActionRequestMessage
 
   const ghAuth = await createGithubAuth(payload.installationId, 'installation', ghesApiUrl)
   const githubInstallationClient = await createOctoClient(ghAuth.token, ghesApiUrl);
-  const queuedWorkflows = await githubInstallationClient.actions.listWorkflowRunsForRepo({
-
   const checkRun = await githubInstallationClient.checks.get({
     check_run_id: payload.id,
     owner: payload.repositoryOwner,
