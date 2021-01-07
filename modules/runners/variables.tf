@@ -282,7 +282,7 @@ variable "runner_log_files" {
 variable "ghes_url" {
   description = "GitHub Enterprise Server URL. DO NOT SET IF USING PUBLIC GITHUB"
   type        = string
-  default     = ""
+  default     = null
 }
 
 variable "lambda_subnet_ids" {

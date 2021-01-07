@@ -315,7 +315,7 @@ No requirements.
 | enable\_ssm\_on\_runners | Enable to allow access the runner instances for debugging purposes via SSM. Note that this adds additional permissions to the runner instances. | `bool` | `false` | no |
 | encrypt\_secrets | Encrypt secret variables for lambda's such as secrets and private keys. | `bool` | `true` | no |
 | environment | A name that identifies the environment, used as prefix and for tagging. | `string` | n/a | yes |
-| ghes\_url | GitHub Enterprise Server URL. Example: https://github.internal.co - DO NOT SET IF USING PUBLIC GITHUB | `string` | `""` | no |
+| ghes\_url | GitHub Enterprise Server URL. Example: https://github.internal.co - DO NOT SET IF USING PUBLIC GITHUB | `string` | `null` | no |
 | github\_app | GitHub app parameters, see your github app. Ensure the key is the base64-encoded `.pem` file (the output of `base64 app.private-key.pem`, not the content of `private-key.pem`). | <pre>object({<br>    key_base64     = string<br>    id             = string<br>    client_id      = string<br>    client_secret  = string<br>    webhook_secret = string<br>  })</pre> | n/a | yes |
 | idle\_config | List of time period that can be defined as cron expression to keep a minimum amount of runners active instead of scaling down to 0. By defining this list you can ensure that in time periods that match the cron expression within 5 seconds a runner is kept idle. | <pre>list(object({<br>    cron      = string<br>    timeZone  = string<br>    idleCount = number<br>  }))</pre> | `[]` | no |
 | instance\_profile\_path | The path that will be added to the instance\_profile, if not set the environment name will be used. | `string` | `null` | no |
@@ -325,8 +325,6 @@ No requirements.
 | lambda\_s3\_bucket | S3 bucket from which to specify lambda functions. This is an alternative to providing local files directly. | `any` | `null` | no |
 | lambda\_security\_group\_ids | List of subnets in which the action runners will be launched, the subnets needs to be subnets in the `vpc_id`. | `list(string)` | `[]` | no |
 | lambda\_subnet\_ids | List of subnets in which the action runners will be launched, the subnets needs to be subnets in the `vpc_id`. | `list(string)` | `[]` | no |
-| kms\_key\_id | Custom KMS key to encrypted lambda secrets, if not provided and `encrypt_secrets` = `true` a KMS key will be created by the module. Secrets will be encrypted with a context `Environment = var.environment`. | `string` | `null` | no |
-| lambda\_s3\_bucket | S3 bucket from which to specify lambda functions. This is an alternative to providing local files directly. | `any` | `null` | no |
 | logging\_retention\_in\_days | Specifies the number of days you want to retain log events for the lambda log group. Possible values are: 0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, and 3653. | `number` | `7` | no |
 | manage\_kms\_key | Let the module manage the KMS key. | `bool` | `true` | no |
 | minimum\_running\_time\_in\_minutes | The time an ec2 action runner should be running at minimum before terminated if non busy. | `number` | `5` | no |
@@ -345,7 +343,7 @@ No requirements.
 | runners\_lambda\_zip | File location of the lambda zip file for scaling runners. | `string` | `null` | no |
 | runners\_maximum\_count | The maximum number of runners that will be created. | `number` | `3` | no |
 | runners\_scale\_down\_lambda\_timeout | Time out for the scale up lambda in seconds. | `number` | `60` | no |
-| runners\_scale\_up\_lambda\_timeout | Time out for the scale down lambda in seconds. | `number` | `60` | no |
+| runners\_scale\_up\_lambda\_timeout | Time out for the scale down lambda in seconds. | `number` | `180` | no |
 | scale\_down\_schedule\_expression | Scheduler expression to check every x for scale down. | `string` | `"cron(*/5 * * * ? *)"` | no |
 | subnet\_ids | List of subnets in which the action runners will be launched, the subnets needs to be subnets in the `vpc_id`. | `list(string)` | n/a | yes |
 | syncer\_lambda\_s3\_key | S3 key for syncer lambda function. Required if using S3 bucket to specify lambdas. | `any` | `null` | no |

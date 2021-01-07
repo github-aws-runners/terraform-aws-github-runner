@@ -78,7 +78,7 @@ variable "runners_lambda_zip" {
 variable "runners_scale_up_lambda_timeout" {
   description = "Time out for the scale down lambda in seconds."
   type        = number
-  default     = 60
+  default     = 180
 }
 
 variable "runners_scale_down_lambda_timeout" {
@@ -300,7 +300,7 @@ variable "runner_log_files" {
 variable "ghes_url" {
   description = "GitHub Enterprise Server URL. Example: https://github.internal.co - DO NOT SET IF USING PUBLIC GITHUB"
   type        = string
-  default     = ""
+  default     = null
 }
 
 variable "lambda_subnet_ids" {

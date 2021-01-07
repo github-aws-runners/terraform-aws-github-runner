@@ -3,7 +3,7 @@ import nock from 'nock'
 import { createAppAuth } from '@octokit/auth-app'
 import { StrategyOptions } from '@octokit/auth-app/dist-types/types'
 import { decrypt } from './kms'
-import { RequestInterface, RequestParameters } from '@octokit/types'
+import { RequestInterface } from '@octokit/types'
 import { mock, MockProxy } from 'jest-mock-extended'
 import { request } from '@octokit/request'
 
