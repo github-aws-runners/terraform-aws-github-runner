@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Fix missing permissions for CloudWatch Agent #445 @bennettp123
+
 ## [0.8.1] - 2020-12-08
 ### Changed
 - Policy is missing for streaming logs to cloudwatch #388
