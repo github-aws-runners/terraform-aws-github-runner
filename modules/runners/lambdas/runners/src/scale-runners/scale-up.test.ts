@@ -1,7 +1,7 @@
 import { mocked } from 'ts-jest/utils';
 import { ActionRequestMessage, scaleUp } from './scale-up';
 import { listRunners, createRunner } from './runners';
-import nock from 'nock'
+import nock from 'nock';
 
 jest.mock('@octokit/auth-app', () => ({
   createAppAuth: jest.fn().mockImplementation(() => jest.fn().mockImplementation(() => ({ token: 'Blaat' }))),
@@ -27,13 +27,13 @@ const TEST_DATA: ActionRequestMessage = {
   installationId: 2,
 };
 
-const cleanEnv = process.env
+const cleanEnv = process.env;
 
 beforeEach(() => {
-  nock.disableNetConnect()
-  jest.resetModules()
+  nock.disableNetConnect();
+  jest.resetModules();
   jest.clearAllMocks();
-  process.env = {...cleanEnv}
+  process.env = { ...cleanEnv };
   process.env.GITHUB_APP_KEY_BASE64 = 'TEST_CERTIFICATE_DATA';
   process.env.GITHUB_APP_ID = '1337';
   process.env.GITHUB_APP_CLIENT_ID = 'TEST_CLIENT_ID';
@@ -62,12 +62,12 @@ beforeEach(() => {
       org: TEST_DATA.repositoryOwner,
     },
   ]);
-})
+});
 
 describe('scaleUp with GHES', () => {
   beforeEach(() => {
-    process.env.GHES_URL = 'https://github.enterprise.something'
-  })
+    process.env.GHES_URL = 'https://github.enterprise.something';
+  });
 
   it('ignores non-sqs events', async () => {
     expect.assertions(1);
@@ -170,7 +170,6 @@ describe('scaleUp with GHES', () => {
 });
 
 describe('scaleUp with public GH', () => {
-
   it('ignores non-sqs events', async () => {
     expect.assertions(1);
     expect(scaleUp('aws:s3', TEST_DATA)).rejects.toEqual(Error('Cannot handle non-SQS events!'));

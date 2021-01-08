@@ -1,5 +1,5 @@
 import { listRunners, createRunner } from './runners';
-import { createOctoClient, createGithubAuth } from './gh-auth'
+import { createOctoClient, createGithubAuth } from './gh-auth';
 import yn from 'yn';
 
 export interface ActionRequestMessage {
@@ -17,13 +17,13 @@ export const scaleUp = async (eventSource: string, payload: ActionRequestMessage
   const runnerExtraLabels = process.env.RUNNER_EXTRA_LABELS;
   const environment = process.env.ENVIRONMENT as string;
   const ghesBaseUrl = process.env.GHES_URL as string;
-  
-  let ghesApiUrl: string = ''
+
+  let ghesApiUrl: string = '';
   if (ghesBaseUrl) {
-    ghesApiUrl = `${ghesBaseUrl}/api/v3`
+    ghesApiUrl = `${ghesBaseUrl}/api/v3`;
   }
 
-  const ghAuth = await createGithubAuth(payload.installationId, 'installation', ghesApiUrl)
+  const ghAuth = await createGithubAuth(payload.installationId, 'installation', ghesApiUrl);
   const githubInstallationClient = await createOctoClient(ghAuth.token, ghesApiUrl);
   const checkRun = await githubInstallationClient.checks.get({
     check_run_id: payload.id,
@@ -31,13 +31,13 @@ export const scaleUp = async (eventSource: string, payload: ActionRequestMessage
     repo: payload.repositoryName,
   });
 
-  const repoName = enableOrgLevel ? undefined : `${payload.repositoryOwner}/${payload.repositoryName}`
-  const orgName = enableOrgLevel ? payload.repositoryOwner : undefined
+  const repoName = enableOrgLevel ? undefined : `${payload.repositoryOwner}/${payload.repositoryName}`;
+  const orgName = enableOrgLevel ? payload.repositoryOwner : undefined;
 
   if (checkRun.data.status === 'queued') {
     const currentRunners = await listRunners({
       environment: environment,
-      repoName: repoName
+      repoName: repoName,
     });
     console.info(
       `${
@@ -58,7 +58,7 @@ export const scaleUp = async (eventSource: string, payload: ActionRequestMessage
       const token = registrationToken.data.token;
 
       const labelsArgument = runnerExtraLabels !== undefined ? `--labels ${runnerExtraLabels}` : '';
-      const configBaseUrl = ghesBaseUrl ? ghesBaseUrl : "https://github.com"
+      const configBaseUrl = ghesBaseUrl ? ghesBaseUrl : 'https://github.com';
       await createRunner({
         environment: environment,
         runnerConfig: enableOrgLevel

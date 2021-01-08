@@ -10,7 +10,9 @@
     "lint": "yarn eslint --ext ts,tsx src",
     "watch": "ts-node-dev --respawn --exit-child src/local.ts",
     "build": "ncc build src/lambda.ts -o dist",
-    "dist": "yarn build && cd dist && zip ../runner-binaries-syncer.zip index.js"
+    "dist": "yarn build && cd dist && zip ../runner-binaries-syncer.zip index.js",
+    "format": "prettier --write \"**/*.ts\"",
+    "format-check": "prettier --check \"**/*.ts\""
   },
   "devDependencies": {
     "@octokit/rest": "^18.0.12",

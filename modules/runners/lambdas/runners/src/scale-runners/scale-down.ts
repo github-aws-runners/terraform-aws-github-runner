@@ -3,8 +3,7 @@ import moment from 'moment';
 import yn from 'yn';
 import { listRunners, RunnerInfo, terminateRunner } from './runners';
 import { getIdleRunnerCount, ScalingDownConfig } from './scale-down-config';
-import { createOctoClient, createGithubAuth } from './gh-auth'
-
+import { createOctoClient, createGithubAuth } from './gh-auth';
 
 interface Repo {
   repoName: string;
@@ -22,11 +21,11 @@ function createGitHubClientForRunnerFactory(): (runner: RunnerInfo, orgLevel: bo
 
   return async (runner: RunnerInfo, orgLevel: boolean) => {
     const ghesBaseUrl = process.env.GHES_URL as string;
-    let ghesApiUrl: string = ''
+    let ghesApiUrl: string = '';
     if (ghesBaseUrl) {
-      ghesApiUrl = `${ghesBaseUrl}/api/v3`
+      ghesApiUrl = `${ghesBaseUrl}/api/v3`;
     }
-    const ghAuth = await createGithubAuth(undefined, 'app', ghesApiUrl)
+    const ghAuth = await createGithubAuth(undefined, 'app', ghesApiUrl);
     const githubClient = await createOctoClient(ghAuth.token, ghesApiUrl);
     const repo = getRepo(runner, orgLevel);
     const key = orgLevel ? repo.repoOwner : repo.repoOwner + repo.repoName;
@@ -50,7 +49,7 @@ function createGitHubClientForRunnerFactory(): (runner: RunnerInfo, orgLevel: bo
             repo: repo.repoName,
           })
         ).data.id;
-    const ghAuth2 = await createGithubAuth(installationId, 'installation', ghesApiUrl)
+    const ghAuth2 = await createGithubAuth(installationId, 'installation', ghesApiUrl);
     const octokit = await createOctoClient(ghAuth2.token, ghesApiUrl);
     cache.set(key, octokit);
 

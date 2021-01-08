@@ -326,7 +326,7 @@ describe('scaleDown ghes', () => {
     process.env.RUNNERS_MAXIMUM_COUNT = '3';
     process.env.ENVIRONMENT = environment;
     process.env.MINIMUM_RUNNING_TIME_IN_MINUTES = minimumRunningTimeInMinutes.toString();
-    process.env.GHES_URL = 'https://github.enterprise.something'
+    process.env.GHES_URL = 'https://github.enterprise.something';
     jest.clearAllMocks();
     mockOctokit.apps.getOrgInstallation.mockImplementation(() => ({
       data: {
