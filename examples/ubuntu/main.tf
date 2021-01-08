@@ -27,9 +27,9 @@ module "runners" {
     webhook_secret = random_password.random.result
   }
 
-  webhook_lambda_zip                = "lambdas-download/webhook.zip"
-  runner_binaries_syncer_lambda_zip = "lambdas-download/runner-binaries-syncer.zip"
-  runners_lambda_zip                = "lambdas-download/runners.zip"
+  # webhook_lambda_zip                = "lambdas-download/webhook.zip"
+  # runner_binaries_syncer_lambda_zip = "lambdas-download/runner-binaries-syncer.zip"
+  # runners_lambda_zip                = "lambdas-download/runners.zip"
 
   enable_organization_runners = false
   runner_extra_labels         = "ubuntu,example"
@@ -48,6 +48,17 @@ module "runners" {
     # Set the block device name for Ubuntu root device
     device_name = "/dev/sda1"
   }
+
+  runner_log_files = [
+    {
+      "file_path" : "/var/log/user-data.log",
+      "log_stream_name" : "{instance_id}/user_data"
+    },
+    {
+      "file_path" : "/home/runners/actions-runner/_diag/Runner_**.log",
+      "log_stream_name" : "{instance_id}/runner"
+    }
+  ]
 
   # Uncommet idle config to have idle runners from 9 to 5 in time zone Amsterdam
   # idle_config = [{

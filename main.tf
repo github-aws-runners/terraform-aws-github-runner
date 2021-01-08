@@ -119,7 +119,7 @@ module "runner_binaries" {
 
   distribution_bucket_name = "${var.environment}-dist-${random_string.random.result}"
 
-  runner_architecture              = substr(var.instance_type, 0, 2) == "a1" || substr(var.instance_type, 1, 2) == "6g" ? "arm64" : "x64"
+  runner_architecture              = local.runner_architecture
   runner_allow_prerelease_binaries = var.runner_allow_prerelease_binaries
 
   lambda_s3_bucket                = var.lambda_s3_bucket
