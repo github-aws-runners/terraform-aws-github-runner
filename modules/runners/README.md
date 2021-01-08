@@ -73,7 +73,7 @@ No requirements.
 | enable\_ssm\_on\_runners | Enable to allow access the runner instances for debugging purposes via SSM. Note that this adds additional permissions to the runner instances. | `bool` | n/a | yes |
 | encryption | KMS key to encrypted lambda environment secrets. Either provide a key and `encrypt` set to `true`. Or set the key to `null` and encrypt to `false`. | <pre>object({<br>    kms_key_id = string<br>    encrypt    = bool<br>  })</pre> | n/a | yes |
 | environment | A name that identifies the environment, used as prefix and for tagging. | `string` | n/a | yes |
-| ghes\_url | GitHub Enterprise Server URL. DO NOT SET IF USING PUBLIC GITHUB | `string` | `""` | no |
+| ghes\_url | GitHub Enterprise Server URL. DO NOT SET IF USING PUBLIC GITHUB | `string` | `null` | no |
 | github\_app | GitHub app parameters, see your github app. Ensure the key is the base64-encoded `.pem` file (the output of `base64 app.private-key.pem`, not the content of `private-key.pem`). | <pre>object({<br>    key_base64    = string<br>    id            = string<br>    client_id     = string<br>    client_secret = string<br>  })</pre> | n/a | yes |
 | idle\_config | List of time period that can be defined as cron expression to keep a minimum amount of runners active instead of scaling down to 0. By defining this list you can ensure that in time periods that match the cron expression within 5 seconds a runner is kept idle. | <pre>list(object({<br>    cron      = string<br>    timeZone  = string<br>    idleCount = number<br>  }))</pre> | `[]` | no |
 | instance\_profile\_path | The path that will be added to the instance\_profile, if not set the environment name will be used. | `string` | `null` | no |

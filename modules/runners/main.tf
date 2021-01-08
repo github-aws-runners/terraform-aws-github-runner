@@ -9,12 +9,14 @@ locals {
     var.tags,
   )
 
-  name_sg               = var.overrides["name_sg"] == "" ? local.tags["Name"] : var.overrides["name_sg"]
-  name_runner           = var.overrides["name_runner"] == "" ? local.tags["Name"] : var.overrides["name_runner"]
-  role_path             = var.role_path == null ? "/${var.environment}/" : var.role_path
-  instance_profile_path = var.instance_profile_path == null ? "/${var.environment}/" : var.instance_profile_path
-  lambda_zip            = var.lambda_zip == null ? "${path.module}/lambdas/runners/runners.zip" : var.lambda_zip
-  userdata_template     = var.userdata_template == null ? "${path.module}/templates/user-data.sh" : var.userdata_template
+  name_sg                        = var.overrides["name_sg"] == "" ? local.tags["Name"] : var.overrides["name_sg"]
+  name_runner                    = var.overrides["name_runner"] == "" ? local.tags["Name"] : var.overrides["name_runner"]
+  role_path                      = var.role_path == null ? "/${var.environment}/" : var.role_path
+  instance_profile_path          = var.instance_profile_path == null ? "/${var.environment}/" : var.instance_profile_path
+  lambda_zip                     = var.lambda_zip == null ? "${path.module}/lambdas/runners/runners.zip" : var.lambda_zip
+  userdata_template              = var.userdata_template == null ? "${path.module}/templates/user-data.sh" : var.userdata_template
+  userdata_arm_patch             = "${path.module}/templates/arm-runner-patch.tpl"
+  userdata_install_config_runner = "${path.module}/templates/install-config-runner.sh"
 }
 
 data "aws_ami" "runner" {
@@ -82,15 +84,23 @@ resource "aws_launch_template" "runner" {
     environment                     = var.environment
     pre_install                     = var.userdata_pre_install
     post_install                    = var.userdata_post_install
-    s3_location_runner_distribution = var.s3_location_runner_binaries
-    service_user                    = var.runner_as_root ? "root" : "ec2-user"
-    runner_architecture             = var.runner_architecture
     enable_cloudwatch_agent         = var.enable_cloudwatch_agent
     ssm_key_cloudwatch_agent_config = var.enable_cloudwatch_agent ? aws_ssm_parameter.cloudwatch_agent_config_runner[0].name : ""
     ghes_url                        = var.ghes_url
+    install_config_runner           = local.install_config_runner
   }))
 
   tags = local.tags
+}
+
+locals {
+  arm_patch = var.runner_architecture == "arm64" ? templatefile(local.userdata_arm_patch, {}) : ""
+  install_config_runner = templatefile(local.userdata_install_config_runner, {
+    environment                     = var.environment
+    s3_location_runner_distribution = var.s3_location_runner_binaries
+    run_as_root_user                = var.runner_as_root ? "root" : ""
+    arm_patch                       = local.arm_patch
+  })
 }
 
 resource "aws_security_group" "runner_sg" {
