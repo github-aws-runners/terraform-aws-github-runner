@@ -1,13 +1,9 @@
 import { IncomingHttpHeaders } from 'http';
-import crypto from 'crypto';
+import { Webhooks } from '@octokit/webhooks';
 import { sendActionRequest } from '../sqs';
 import { EventPayloads } from '@octokit/webhooks';
 import { KMS } from 'aws-sdk';
 import { decrypt } from '../kms';
-
-function signRequestBody(key: string, body: any) {
-  return `sha1=${crypto.createHmac('sha1', key).update(body, 'utf8').digest('hex')}`;
-}
 
 export const handle = async (headers: IncomingHttpHeaders, payload: any): Promise<number> => {
   // ensure header keys lower case since github headers can contain capitals.
@@ -15,7 +11,7 @@ export const handle = async (headers: IncomingHttpHeaders, payload: any): Promis
     headers[key.toLowerCase()] = headers[key];
   }
 
-  const signature = headers['x-hub-signature'];
+  const signature = headers['x-hub-signature'] as string;
   if (!signature) {
     console.error("Github event doesn't have signature. This webhook requires a secret to be configured.");
     return 500;
@@ -31,13 +27,15 @@ export const handle = async (headers: IncomingHttpHeaders, payload: any): Promis
     return 500;
   }
 
-  const calculatedSig = signRequestBody(secret, payload);
-  if (signature !== calculatedSig) {
+  const webhooks = new Webhooks({
+    secret: secret,
+  });
+  if (!webhooks.verify(payload, signature)) {
     console.error('Unable to verify signature!');
     return 401;
   }
 
-  const githubEvent = headers['x-github-event'];
+  const githubEvent = headers['x-github-event'] as string;
 
   console.debug(`Received Github event: "${githubEvent}"`);
 
