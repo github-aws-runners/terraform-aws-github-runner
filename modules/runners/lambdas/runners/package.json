@@ -15,7 +15,7 @@
     "@types/express": "^4.17.9",
     "@types/jest": "^26.0.19",
     "@types/node": "^14.14.16",
-    "@vercel/ncc": "^0.26.1",
+    "@vercel/ncc": "^0.26.2",
     "aws-sdk": "^2.817.0",
     "jest": "^26.6.3",
     "ts-jest": "^26.4.4",
