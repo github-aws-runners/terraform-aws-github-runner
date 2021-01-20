@@ -51,6 +51,7 @@ export async function createGithubAuth(
   if (ghesApiUrl) {
     authOptions.request = request.defaults({
       baseUrl: ghesApiUrl,
+      mediaType: { previews: ['antiope'] }
     });
   }
   return await createAppAuth(authOptions)({ type: authType });
