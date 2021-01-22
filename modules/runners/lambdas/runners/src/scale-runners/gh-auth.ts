@@ -11,6 +11,7 @@ export async function createOctoClient(token: string, ghesApiUrl: string = ''): 
   };
   if (ghesApiUrl) {
     ocktokitOptions.baseUrl = ghesApiUrl;
+    ocktokitOptions.previews = ['antiope'];
   }
   return new Octokit(ocktokitOptions);
 }
@@ -51,7 +52,6 @@ export async function createGithubAuth(
   if (ghesApiUrl) {
     authOptions.request = request.defaults({
       baseUrl: ghesApiUrl,
-      mediaType: { previews: ['antiope'] }
     });
   }
   return await createAppAuth(authOptions)({ type: authType });
