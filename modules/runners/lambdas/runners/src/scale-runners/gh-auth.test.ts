@@ -41,7 +41,7 @@ describe('Test createGithubAuth', () => {
 
     // Assert
     expect(result.request.endpoint.DEFAULTS.baseUrl).toBe(enterpriseServer);
-    expect(result.request.endpoint.DEFAULTS.mediaType.previews).toBe(['antiope']);
+    expect(result.request.endpoint.DEFAULTS.mediaType.previews).toStrictEqual(['antiope']);
   });
 });
 
