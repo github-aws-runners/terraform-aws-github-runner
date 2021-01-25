@@ -25,7 +25,7 @@
   },
   "dependencies": {
     "@octokit/auth-app": "^2.10.5",
-    "@octokit/rest": "^18.0.12",
+    "@octokit/rest": "^18.0.14",
     "@octokit/types": "^6.3.2",
     "@types/aws-lambda": "^8.10.70",
     "@types/express": "^4.17.11",
