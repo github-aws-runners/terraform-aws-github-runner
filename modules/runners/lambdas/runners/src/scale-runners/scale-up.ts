@@ -24,7 +24,26 @@ export const scaleUp = async (eventSource: string, payload: ActionRequestMessage
     ghesApiUrl = `${ghesBaseUrl}/api/v3`;
   }
 
-  const ghAuth = await createGithubAuth(payload.installationId, 'installation', ghesApiUrl);
+  let installationId = payload.installationId;
+  if (installationId == 0) {
+    const ghAuth = await createGithubAuth(undefined, 'app', ghesApiUrl);
+    const githubClient = await createOctoClient(ghAuth.token, ghesApiUrl);
+    installationId = enableOrgLevel
+      ? (
+          await githubClient.apps.getOrgInstallation({
+            org: payload.repositoryOwner,
+          })
+        ).data.id
+      : (
+          await githubClient.apps.getRepoInstallation({
+            owner: payload.repositoryOwner,
+            repo: payload.repositoryName,
+          })
+        ).data.id;
+  }
+
+
+  const ghAuth = await createGithubAuth(installationId, 'installation', ghesApiUrl);
   const githubInstallationClient = await createOctoClient(ghAuth.token, ghesApiUrl);
   const checkRun = await githubInstallationClient.checks.get({
     check_run_id: payload.id,
