@@ -5,7 +5,7 @@ import { Authentication, StrategyOptions } from '@octokit/auth-app/dist-types/ty
 import { OctokitOptions } from '@octokit/core/dist-types/types';
 import { decrypt } from './kms';
 
-export async function createOctoClient(token: string, ghesApiUrl: string = ''): Promise<Octokit> {
+export async function createOctoClient(token: string, ghesApiUrl = ''): Promise<Octokit> {
   const ocktokitOptions: OctokitOptions = {
     auth: token,
   };
@@ -19,7 +19,7 @@ export async function createOctoClient(token: string, ghesApiUrl: string = ''): 
 export async function createGithubAuth(
   installationId: number | undefined,
   authType: 'app' | 'installation',
-  ghesApiUrl: string = '',
+  ghesApiUrl = '',
 ): Promise<Authentication> {
   const clientSecret = await decrypt(
     process.env.GITHUB_APP_CLIENT_SECRET as string,

@@ -17,7 +17,8 @@ function inPeriod(period: ScalingDownConfig): boolean {
   return Math.abs(next.diff(now, 'seconds')) < 5; // we keep a range of 5 seconds
 }
 
-export function getIdleRunnerCount(scalingDownConfigs: ScalingDownConfigList) {
+export function getIdleRunnerCount(scalingDownConfigs: ScalingDownConfigList): number {
+  // This is not an empty function
   for (const scalingDownConfig of scalingDownConfigs) {
     if (inPeriod(scalingDownConfig)) return scalingDownConfig.idleCount;
   }
