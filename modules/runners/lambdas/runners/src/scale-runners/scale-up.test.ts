@@ -134,7 +134,8 @@ describe('scaleUp with GHES', () => {
       await scaleUp('aws:sqs', TEST_DATA);
       expect(createRunner).toBeCalledWith({
         environment: 'unit-test-environment',
-        runnerConfig: `--url https://github.enterprise.something/${TEST_DATA.repositoryOwner} --token 1234abcd --labels label1,label2 --runnergroup TEST_GROUP`,
+        runnerConfig: `--url https://github.enterprise.something/${TEST_DATA.repositoryOwner} ` +
+          `--token 1234abcd --labels label1,label2 --runnergroup TEST_GROUP`,
         orgName: TEST_DATA.repositoryOwner,
         repoName: undefined,
       });
@@ -173,7 +174,9 @@ describe('scaleUp with GHES', () => {
       await scaleUp('aws:sqs', TEST_DATA);
       expect(createRunner).toBeCalledWith({
         environment: 'unit-test-environment',
-        runnerConfig: `--url https://github.enterprise.something/${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName} --token 1234abcd --labels label1,label2`,
+        runnerConfig: `--url ` +
+          `https://github.enterprise.something/${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName} ` +
+          `--token 1234abcd --labels label1,label2`,
         orgName: undefined,
         repoName: `${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName}`,
       });
@@ -185,7 +188,9 @@ describe('scaleUp with GHES', () => {
       await scaleUp('aws:sqs', TEST_DATA);
       expect(createRunner).toBeCalledWith({
         environment: 'unit-test-environment',
-        runnerConfig: `--url https://github.enterprise.something/${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName} --token 1234abcd --labels label1,label2`,
+        runnerConfig: `--url ` +
+          `https://github.enterprise.something/${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName} ` +
+          `--token 1234abcd --labels label1,label2`,
         orgName: undefined,
         repoName: `${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName}`,
       });
@@ -259,7 +264,8 @@ describe('scaleUp with public GH', () => {
       await scaleUp('aws:sqs', TEST_DATA);
       expect(createRunner).toBeCalledWith({
         environment: 'unit-test-environment',
-        runnerConfig: `--url https://github.com/${TEST_DATA.repositoryOwner} --token 1234abcd --labels label1,label2 --runnergroup TEST_GROUP`,
+        runnerConfig: `--url https://github.com/${TEST_DATA.repositoryOwner} ` +
+          `--token 1234abcd --labels label1,label2 --runnergroup TEST_GROUP`,
         orgName: TEST_DATA.repositoryOwner,
         repoName: undefined,
       });
@@ -298,7 +304,8 @@ describe('scaleUp with public GH', () => {
       await scaleUp('aws:sqs', TEST_DATA);
       expect(createRunner).toBeCalledWith({
         environment: 'unit-test-environment',
-        runnerConfig: `--url https://github.com/${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName} --token 1234abcd --labels label1,label2`,
+        runnerConfig: `--url https://github.com/${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName} ` +
+          `--token 1234abcd --labels label1,label2`,
         orgName: undefined,
         repoName: `${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName}`,
       });
@@ -310,7 +317,8 @@ describe('scaleUp with public GH', () => {
       await scaleUp('aws:sqs', TEST_DATA);
       expect(createRunner).toBeCalledWith({
         environment: 'unit-test-environment',
-        runnerConfig: `--url https://github.com/${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName} --token 1234abcd --labels label1,label2`,
+        runnerConfig: `--url https://github.com/${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName} ` +
+          `--token 1234abcd --labels label1,label2`,
         orgName: undefined,
         repoName: `${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName}`,
       });

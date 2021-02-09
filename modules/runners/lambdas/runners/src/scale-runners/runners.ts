@@ -58,7 +58,7 @@ export interface RunnerInputParameters {
 
 export async function terminateRunner(runner: RunnerInfo): Promise<void> {
   const ec2 = new EC2();
-  const result = await ec2
+  await ec2
     .terminateInstances({
       InstanceIds: [runner.instanceId],
     })

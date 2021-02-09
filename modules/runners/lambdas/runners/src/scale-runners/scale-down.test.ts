@@ -88,7 +88,7 @@ const RUNNERS_WITH_AUTO_SCALING_CONFIG = DEFAULT_RUNNERS.filter(
 
 const RUNNERS_TO_BE_REMOVED_WITH_AUTO_SCALING_CONFIG = DEFAULT_RUNNERS.filter((r) => r.instanceId.includes('oldest'));
 
-const DEFAULT_REGISTERED_RUNNERS: any = [
+const DEFAULT_REGISTERED_RUNNERS = [
   {
     id: 101,
     name: 'i-idle-101',

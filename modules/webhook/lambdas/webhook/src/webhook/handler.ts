@@ -2,7 +2,6 @@ import { IncomingHttpHeaders } from 'http';
 import { Webhooks } from '@octokit/webhooks';
 import { sendActionRequest } from '../sqs';
 import { EventPayloads } from '@octokit/webhooks';
-import { KMS } from 'aws-sdk';
 import { decrypt } from '../kms';
 
 export const handle = async (headers: IncomingHttpHeaders, payload: any): Promise<number> => {

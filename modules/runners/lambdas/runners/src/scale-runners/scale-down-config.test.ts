@@ -1,5 +1,5 @@
 import moment from 'moment-timezone';
-import { getIdleRunnerCount, ScalingDownConfig, ScalingDownConfigList } from './scale-down-config';
+import { getIdleRunnerCount, ScalingDownConfigList } from './scale-down-config';
 
 const DEFAULT_TIMEZONE = 'America/Los_Angeles';
 const DEFAULT_IDLE_COUNT = 1;
@@ -18,7 +18,6 @@ function getConfig(cronTabs: string[]): ScalingDownConfigList {
 }
 
 describe('scaleDownConfig', () => {
-  beforeEach(() => {});
 
   describe('Check runners that should be kept idle based on config.', () => {
     it('One active cron configuration', async () => {
