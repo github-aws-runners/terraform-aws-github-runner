@@ -40,9 +40,9 @@ export const handle = async (headers: IncomingHttpHeaders, payload: any): Promis
 
   if (githubEvent === 'check_run') {
     const body = JSON.parse(payload) as EventPayloads.WebhookPayloadCheckRun;
-    let installationId = body.installation?.id
+    let installationId = body.installation?.id;
     if (installationId == null) {
-      installationId = 0
+      installationId = 0;
     }
     if (body.action === 'created' && body.check_run.status === 'queued') {
       await sendActionRequest({
