@@ -8,7 +8,7 @@ resource "aws_s3_bucket" "action_dist" {
   force_destroy = true
   tags          = var.tags
 
-  lifecycle {
+  lifecycle_rule {
     abort_incomplete_multipart_upload_days = 7
 
     transition {
