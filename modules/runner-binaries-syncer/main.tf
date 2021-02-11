@@ -9,6 +9,7 @@ resource "aws_s3_bucket" "action_dist" {
   tags          = var.tags
 
   lifecycle_rule {
+    enabled                                = true
     abort_incomplete_multipart_upload_days = 7
 
     transition {
@@ -18,7 +19,7 @@ resource "aws_s3_bucket" "action_dist" {
   }
 }
 
-resource "aws_s3_buckt_public_access_block" "action_dist" {
+resource "aws_s3_bucket_public_access_block" "action_dist" {
   bucket                  = aws_s3_bucket.action_dist.id
   block_public_acls       = true
   block_public_policy     = true
