@@ -15,7 +15,7 @@
     "format-check": "prettier --check \"**/*.ts\""
   },
   "devDependencies": {
-    "@octokit/rest": "^18.0.15",
+    "@octokit/rest": "^18.1.1",
     "@types/jest": "^26.0.20",
     "@types/node": "^14.14.28",
     "@types/request": "^2.48.4",
