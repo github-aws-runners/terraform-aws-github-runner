@@ -502,10 +502,10 @@
     "@nodelib/fs.scandir" "2.1.4"
     fastq "^1.6.0"
 
-"@octokit/auth-app@^2.10.6":
-  version "2.10.6"
-  resolved "https://registry.yarnpkg.com/@octokit/auth-app/-/auth-app-2.10.6.tgz#3f84b7fc80ecc40b0cfcd3aad5c8269abcff1208"
-  integrity sha512-o0aLU7XZ+HBTeDNv85GTA57APPchYEqA8muBDn3wnC40yGOevlAhR2IdpnLwjZhy0eaARkV/D6a66BPQzsT5yA==
+"@octokit/auth-app@^2.11.0":
+  version "2.11.0"
+  resolved "https://registry.yarnpkg.com/@octokit/auth-app/-/auth-app-2.11.0.tgz#7dce17adf3b30a722aea5bf239396418151034eb"
+  integrity sha512-tC0BjqyTEjReIBHogOjLjF3rc2n4xwjZcpOaUUhybDnqkrp7Gxj5n91aGUcIFgJ3MDYf+f3XZehQd2B4ijG+4w==
   dependencies:
     "@octokit/request" "^5.4.11"
     "@octokit/request-error" "^2.0.0"
