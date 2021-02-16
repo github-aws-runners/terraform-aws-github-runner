@@ -31,7 +31,7 @@
     "typescript": "^4.1.5"
   },
   "dependencies": {
-    "@octokit/rest": "^18.0.14",
+    "@octokit/rest": "^18.1.1",
     "@octokit/webhooks": "^7.21.0"
   }
 }
