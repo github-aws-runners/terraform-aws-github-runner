@@ -638,12 +638,18 @@
   dependencies:
     "@octokit/openapi-types" "^5.1.0"
 
-"@octokit/webhooks@^7.21.0":
-  version "7.21.0"
-  resolved "https://registry.yarnpkg.com/@octokit/webhooks/-/webhooks-7.21.0.tgz#2aee3404aa311740a5f4ea37b070268752e21b02"
-  integrity sha512-Mj7Pa6JZgSjfzQfYF3Bf5KpyhzEBv4kHbj2EjCB/vMQiZCiiW30j5rS6t/d0ZN0FBrlSOuJIT+YU8IJt30VyWA==
+"@octokit/webhooks-definitions@3.61.0":
+  version "3.61.0"
+  resolved "https://registry.yarnpkg.com/@octokit/webhooks-definitions/-/webhooks-definitions-3.61.0.tgz#78ac9821f9122d3d9e8b099ba6033e47f755e885"
+  integrity sha512-Iu2rMpCU0y25T4rIMoAKyQRWf/YJZnJKbIzzrKQMQJRIiORe4AGev1GLgf5zUcnz9twQ23DYEFLpDLVHViwTDQ==
+
+"@octokit/webhooks@^8.4.1":
+  version "8.4.1"
+  resolved "https://registry.yarnpkg.com/@octokit/webhooks/-/webhooks-8.4.1.tgz#4490ded72e76988c02f99cdf2300ab5499f09a21"
+  integrity sha512-XV7VWuV13ltfuYREWX+3yrHFjBGalHrkzba5ht2q92s3RzFQH28NU+ZJADwbozFf5rY9fLtrVuhEsHPnaPxGrg==
   dependencies:
     "@octokit/request-error" "^2.0.2"
+    "@octokit/webhooks-definitions" "3.61.0"
     aggregate-error "^3.1.0"
     debug "^4.0.0"
 
