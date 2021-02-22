@@ -643,6 +643,11 @@
   resolved "https://registry.yarnpkg.com/@octokit/webhooks-definitions/-/webhooks-definitions-3.61.0.tgz#78ac9821f9122d3d9e8b099ba6033e47f755e885"
   integrity sha512-Iu2rMpCU0y25T4rIMoAKyQRWf/YJZnJKbIzzrKQMQJRIiORe4AGev1GLgf5zUcnz9twQ23DYEFLpDLVHViwTDQ==
 
+"@octokit/webhooks-definitions@^3.61.1":
+  version "3.61.1"
+  resolved "https://registry.yarnpkg.com/@octokit/webhooks-definitions/-/webhooks-definitions-3.61.1.tgz#2dd13aa7562a191f5474a983d4d5622e29c72a2e"
+  integrity sha512-Zse9eUHz4dzQic1CSxhN5tpUh3mjfc9Nl5GMOo6c6ZDTgpreOscBWD4cMQ9Rc689rt+Zb1bbplPrR8rsF6WbBw==
+
 "@octokit/webhooks@^8.4.1":
   version "8.4.1"
   resolved "https://registry.yarnpkg.com/@octokit/webhooks/-/webhooks-8.4.1.tgz#4490ded72e76988c02f99cdf2300ab5499f09a21"
