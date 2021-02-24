@@ -114,7 +114,7 @@ export async function createRunner(runnerParameters: RunnerInputParameters): Pro
         ],
       },
     ],
-  }
+  };
 
   const ec2 = new EC2();
   try {
@@ -122,9 +122,9 @@ export async function createRunner(runnerParameters: RunnerInputParameters): Pro
       .runInstances(instanceParams, 
         async function(err, data) {
           if (err) {
-            console.info(err)
+            console.info(err);
             instanceParams.InstanceType = process.env.SECONDARY_INSTANCE_TYPE as string;
-            return await ec2.runInstances(instanceParams)
+            return await ec2.runInstances(instanceParams);
           }
           return data;
       })
