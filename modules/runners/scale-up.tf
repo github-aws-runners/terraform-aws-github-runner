@@ -42,6 +42,7 @@ resource "aws_lambda_function" "scale_up" {
       LAUNCH_TEMPLATE_NAME        = aws_launch_template.runner.name
       LAUNCH_TEMPLATE_VERSION     = aws_launch_template.runner.latest_version
       SUBNET_IDS                  = join(",", var.subnet_ids)
+      SECONDARY_INSTANCE_TYPE     = var.secondary_instance_type
     }
   }
 

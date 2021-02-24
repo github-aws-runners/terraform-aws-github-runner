@@ -63,6 +63,12 @@ variable "instance_type" {
   default     = "m5.large"
 }
 
+variable "secondary_instance_type" {
+  description = "(optional) Secondary instance type to avoid no Spot capacity available error"
+  type        = string
+  default     = "m5.xlarge"
+}
+
 variable "ami_filter" {
   description = "List of maps used to create the AMI filter for the action runner AMI."
   type        = map(list(string))
