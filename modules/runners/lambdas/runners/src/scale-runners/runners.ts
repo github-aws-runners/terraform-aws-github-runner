@@ -86,6 +86,25 @@ export async function terminateRunner(runner: RunnerInfo): Promise<void> {
   console.debug('Runner terminated.' + runner.instanceId);
 }
 
+function launchInstance(params: instanceParams): Promise<EC2.Reservation> {
+  const ec2 = new EC2();
+  return ec2.runInstances(params).promise();
+}
+
+async function putSSMparameter(runInstancesResponse:EC2.Reservation, runnerParameters:RunnerInputParameters) {
+  console.info('Created instance(s): ', runInstancesResponse.Instances?.map((i) => i.InstanceId).join(','));
+  const ssm = new SSM();
+  runInstancesResponse.Instances?.forEach(async (i: EC2.Instance) => {
+    await ssm
+      .putParameter({
+        Name: runnerParameters.environment + '-' + (i.InstanceId as string),
+        Value: runnerParameters.runnerConfig,
+        Type: 'SecureString',
+      })
+      .promise();
+  });
+}
+
 export async function createRunner(runnerParameters: RunnerInputParameters): Promise<void> {
   const launchTemplateName = process.env.LAUNCH_TEMPLATE_NAME as string;
   const launchTemplateVersion = process.env.LAUNCH_TEMPLATE_VERSION as string;
@@ -116,34 +135,17 @@ export async function createRunner(runnerParameters: RunnerInputParameters): Pro
     ],
   };
 
-  const ec2 = new EC2();
-  try {
-    const runInstancesResponse = await ec2
-      .runInstances(instanceParams, 
-        async function(err, data) {
-          if (err) {
-            console.info(err);
-            instanceParams.InstanceType = process.env.SECONDARY_INSTANCE_TYPE as string;
-            return await ec2.runInstances(instanceParams);
-          }
-          return data;
-      })
-      .promise();
-      
+  launchInstance(instanceParams)
+  .then(async function (runInstancesResponse) {
+    putSSMparameter(runInstancesResponse, runnerParameters);
+    })
+  .catch( async function (err) {
+    console.info(err);
+    instanceParams.InstanceType = process.env.SECONDARY_INSTANCE_TYPE as string;
+    return launchInstance(instanceParams).then(runInstancesResponse => {
       console.info('Created instance(s): ', runInstancesResponse.Instances?.map((i) => i.InstanceId).join(','));
-      const ssm = new SSM();
-      runInstancesResponse.Instances?.forEach(async (i: EC2.Instance) => {
-        await ssm
-          .putParameter({
-            Name: runnerParameters.environment + '-' + (i.InstanceId as string),
-            Value: runnerParameters.runnerConfig,
-            Type: 'SecureString',
-          })
-          .promise();
-      });
-  }
-  catch (e) {
-    console.error(e);
-  }
-
+      putSSMparameter(runInstancesResponse, runnerParameters);
+    })
+  })
+  .catch(e => console.error(e));
 }
