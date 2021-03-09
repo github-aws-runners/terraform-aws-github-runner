@@ -5,7 +5,6 @@ env:
 on:
   push:
     branches:
-      - master
       - develop
   pull_request:
     paths:

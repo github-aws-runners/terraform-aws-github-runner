@@ -1,17 +1,21 @@
+locals {
+  version = "<REPLACE_BY_GITHUB_RELEASE_VERSION>"
+}
+
 module "lambdas" {
   source = "../../../modules/download-lambda"
   lambdas = [
     {
       name = "webhook"
-      tag  = "v0.5.0"
+      tag  = local.version
     },
     {
       name = "runners"
-      tag  = "v0.5.0"
+      tag  = local.version
     },
     {
       name = "runner-binaries-syncer"
-      tag  = "v0.5.0"
+      tag  = local.version
     }
   ]
 }

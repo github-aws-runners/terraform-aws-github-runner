@@ -32,21 +32,30 @@ No requirements.
 ## Providers
 
 | Name | Version |
-| ---- | ------- |
-| null | n/a     |
+|------|---------|
+| null | n/a |
+
+## Modules
+
+No Modules.
+
+## Resources
+
+| Name |
+|------|
+| [null_resource](https://registry.terraform.io/providers/hashicorp/null/latest/docs/resources/resource) |
 
 ## Inputs
 
-| Name    | Description                           | Type                                                                        | Default | Required |
-| ------- | ------------------------------------- | --------------------------------------------------------------------------- | ------- | :------: |
-| lambdas | Name and tag for lambdas to download. | <pre>list(object({<br>    name = string<br>    tag  = string<br>  }))</pre> | n/a     |   yes    |
+| Name | Description | Type | Default | Required |
+|------|-------------|------|---------|:--------:|
+| lambdas | Name and tag for lambdas to download. | <pre>list(object({<br>    name = string<br>    tag  = string<br>  }))</pre> | n/a | yes |
 
 ## Outputs
 
-| Name  | Description |
-| ----- | ----------- |
-| files | n/a         |
-
+| Name | Description |
+|------|-------------|
+| files | n/a |
 <!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 
 ## Philips Forest

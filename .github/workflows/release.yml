@@ -2,73 +2,80 @@ name: Release build
 
 on:
   push:
-    tags:
-      - v*
+    branches:
+      - master
+      - develop
 
 jobs:
-  release:
-    name: Build runners distribution
+  prepare:
+    name: Create dist
     runs-on: ubuntu-latest
     container: node:12
-    env:
-      lambda_webhook_name: webhook
-      lambda_runners_name: runners
-      lambda_syncer_name: runner-binaries-syncer
+    strategy:
+      matrix: 
+        lambda: ["modules/webhook/lambdas/webhook", "modules/runner-binaries-syncer/lambdas/runner-binaries-syncer", "modules/runners/lambdas/runners"]
     steps:
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@latest
+      - name: Extract lambda name
+        id: lambda
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          draft: true
-          prerelease: true
-      - name: Extract tag name
-        id: tag_name
-        run: echo ::set-output name=TAG::${GITHUB_REF##*/}
+          LAMBDA: ${{ matrix.lambda }}
+        run: echo ::set-output name=name::${LAMBDA##*/}
       - uses: actions/checkout@v2
       - name: Add zip
         run: apt update && apt install zip
-
-      - name: Lambda webhook - build
-        working-directory: modules/webhook/lambdas/webhook
-        run: yarn install && yarn dist
-      - name: Lambda webhook - Upload asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build dist
+        working-directory: ${{ matrix.lambda }}
+        run: yarn install && yarn run test && yarn dist
+      - uses: actions/upload-artifact@v2
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: modules/${{ env.lambda_webhook_name }}/lambdas/${{ env.lambda_webhook_name }}/${{ env.lambda_webhook_name }}.zip
-          asset_name: ${{ env.lambda_webhook_name }}-${{ steps.tag_name.outputs.TAG }}.zip
-          asset_content_type: application/zip
+          name: ${{ steps.lambda.outputs.name }}
+          path: ${{ matrix.lambda }}/${{ steps.lambda.outputs.name }}.zip
+          retention-days: 1
 
-      - name: Lambda syncer - build
-        working-directory: modules/runner-binaries-syncer/lambdas/runner-binaries-syncer
-        run: yarn install && yarn dist
-      - name: Lambda syncer - Upload asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  release:
+    runs-on: ubuntu-latest
+    needs:
+      prepare
+    steps:
+      - uses: actions/checkout@v2
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: modules/${{ env.lambda_syncer_name }}/lambdas/${{ env.lambda_syncer_name }}/${{ env.lambda_syncer_name }}.zip
-          asset_name: ${{ env.lambda_syncer_name }}-${{ steps.tag_name.outputs.TAG }}.zip
-          asset_content_type: application/zip
+          fetch-depth: 0
+      - uses: actions/download-artifact@v2
+        with:
+          name: webhook
+          path: artifacts
+      - uses: actions/download-artifact@v2
+        with:
+          name: runners
+          path: artifacts
+      - uses: actions/download-artifact@v2
+        with:
+          name: runner-binaries-syncer
+          path: artifacts
 
-      - name: Lambda runners - build
-        env:
-          lambda_path: modules/runners/lambdas/runners
-        working-directory: modules/runners/lambdas/runners
-        run: yarn install && yarn dist
-      - name: Lambda runners - Upload asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Get installation token
+        uses: npalm/action-app-token@v1.0.0
+        id: app-token
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: modules/${{ env.lambda_runners_name }}/lambdas/${{ env.lambda_runners_name }}/${{ env.lambda_runners_name }}.zip
-          asset_name: ${{ env.lambda_runners_name }}-${{ steps.tag_name.outputs.TAG }}.zip
-          asset_content_type: application/zip
+          appId: ${{ secrets.FOREST_RELEASER_APP_ID }}
+          appPrivateKeyBase64: ${{ secrets.FOREST_RELEASER_APP_PRIVATE_KEY_BASE64 }}
+          appInstallationType: repo
+          appInstallationValue: ${{ github.repository }}
+
+      - name: Release
+        if: github.event_name != 'pull_request' && contains('refs/heads/master', github.ref)
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          cp .release/* .
+          yarn
+          yarn release -d --repositoryUrl https://x-access-token:$GITHUB_TOKEN@github.com/$GITHUB_REPOSITORY.git
+
+      - name: Dry run release
+        if: github.event_name != 'pull_request' 
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          cp .release/* .
+          yarn
+          yarn release -d --repositoryUrl https://x-access-token:$GITHUB_TOKEN@github.com/$GITHUB_REPOSITORY.git
