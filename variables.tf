@@ -340,3 +340,9 @@ variable "runner_additional_security_group_ids" {
   type        = list(string)
   default     = []
 }
+
+variable "market_options" {
+  description = "Market options for the action runner instances."
+  type        = string
+  default     = "spot"
+}
