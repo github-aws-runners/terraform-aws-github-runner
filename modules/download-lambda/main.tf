@@ -3,7 +3,7 @@ resource "null_resource" "download" {
 
   triggers = {
     name = var.lambdas[count.index].name
-    file = "${var.lambdas[count.index].name}.zip"
+    file = "${path.module}/${var.lambdas[count.index].name}.zip"
     tag  = var.lambdas[count.index].tag
   }
 
