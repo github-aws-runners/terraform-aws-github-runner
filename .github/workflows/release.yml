@@ -62,15 +62,6 @@ jobs:
           appInstallationType: repo
           appInstallationValue: ${{ github.repository }}
 
-      - name: Release
-        if: github.event_name != 'pull_request' && contains('refs/heads/master', github.ref)
-        env:
-          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
-        run: |
-          cp .release/* .
-          yarn
-          yarn release -d --repositoryUrl https://x-access-token:$GITHUB_TOKEN@github.com/$GITHUB_REPOSITORY.git
-
       - name: Dry run release
         if: github.event_name != 'pull_request' 
         env:
@@ -79,3 +70,12 @@ jobs:
           cp .release/* .
           yarn
           yarn release -d --repositoryUrl https://x-access-token:$GITHUB_TOKEN@github.com/$GITHUB_REPOSITORY.git
+          
+      - name: Release
+        if: github.event_name != 'pull_request' && contains('refs/heads/master', github.ref)
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          cp .release/* .
+          yarn
+          yarn release --repositoryUrl https://x-access-token:$GITHUB_TOKEN@github.com/$GITHUB_REPOSITORY.git
