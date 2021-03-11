@@ -759,10 +759,10 @@
   resolved "https://registry.yarnpkg.com/@types/mime/-/mime-2.0.3.tgz#c893b73721db73699943bfc3653b1deb7faa4a3a"
   integrity sha512-Jus9s4CDbqwocc5pOAnh8ShfrnMcPHuJYzVcSUU7lrh8Ni5HuIqX3oilL86p3dlTrk0LzHRCgA/GQ7uNCw6l2Q==
 
-"@types/node@*", "@types/node@^14.14.32":
-  version "14.14.32"
-  resolved "https://registry.yarnpkg.com/@types/node/-/node-14.14.32.tgz#90c5c4a8d72bbbfe53033f122341343249183448"
-  integrity sha512-/Ctrftx/zp4m8JOujM5ZhwzlWLx22nbQJiVqz8/zE15gOeEW+uly3FSX4fGFpcfEvFzXcMCJwq9lGVWgyARXhg==
+"@types/node@*", "@types/node@^14.14.33":
+  version "14.14.33"
+  resolved "https://registry.yarnpkg.com/@types/node/-/node-14.14.33.tgz#9e4f8c64345522e4e8ce77b334a8aaa64e2b6c78"
+  integrity sha512-oJqcTrgPUF29oUP8AsUqbXGJNuPutsetaa9kTQAQce5Lx5dTYWV02ScBiT/k1BX/Z7pKeqedmvp39Wu4zR7N7g==
 
 "@types/normalize-package-data@^2.4.0":
   version "2.4.0"
@@ -3462,10 +3462,10 @@ nice-try@^1.0.4:
   resolved "https://registry.yarnpkg.com/nice-try/-/nice-try-1.0.5.tgz#a3378a7696ce7d223e88fc9b764bd7ef1089e366"
   integrity sha512-1nh45deeb5olNY7eX82BkPO7SSxR5SSYJiPTrTdFUVYwAl8CKMA5N9PjTYkHiRjisVcxcQ1HXdLhx2qxxJzLNQ==
 
-nock@^13.0.10:
-  version "13.0.10"
-  resolved "https://registry.yarnpkg.com/nock/-/nock-13.0.10.tgz#a9a015269408d56ec9ac57fe3ede86b0a83ecc6a"
-  integrity sha512-AvUO/tbiWVBjlC3WsuIutPXltPbPmHWfcLwDSYzykKBJhOeo9eZPczo8n9aV4AHHCgpeL70zBXLwiSE+mzx89g==
+nock@^13.0.11:
+  version "13.0.11"
+  resolved "https://registry.yarnpkg.com/nock/-/nock-13.0.11.tgz#ba733252e720897ca50033205c39db0c7470f331"
+  integrity sha512-sKZltNkkWblkqqPAsjYW0bm3s9DcHRPiMOyKO/PkfJ+ANHZ2+LA2PLe22r4lLrKgXaiSaDQwW3qGsJFtIpQIeQ==
   dependencies:
     debug "^4.1.0"
     json-stringify-safe "^5.0.1"
