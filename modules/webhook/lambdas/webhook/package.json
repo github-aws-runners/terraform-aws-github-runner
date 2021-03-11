@@ -18,7 +18,7 @@
     "@octokit/webhooks-definitions": "^3.62.5",
     "@types/express": "^4.17.11",
     "@types/jest": "^26.0.20",
-    "@types/node": "^14.14.31",
+    "@types/node": "^14.14.33",
     "@typescript-eslint/eslint-plugin": "^4.16.1",
     "@typescript-eslint/parser": "^4.16.1",
     "@zeit/ncc": "^0.22.1",
