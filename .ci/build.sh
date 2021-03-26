@@ -1,14 +1,21 @@
 #!/usr/bin/env bash
 set -e
 
-lambdaSrcDirs=("modules/runner-binaries-syncer/lambdas/runner-binaries-syncer" "modules/runners/lambdas/runners" "modules/webhook/lambdas/webhook")
-repoRoot=$(dirname $(dirname $(realpath ${BASH_SOURCE[0]})))
+# NOTE: This build requires docker buildkit integration which was introduced
+#       in Docker v19.03+
 
-for lambdaDir in ${lambdaSrcDirs[@]}; do
-    cd "$repoRoot/${lambdaDir}"
-    docker build -t lambda -f ../../../../.ci/Dockerfile .
-    docker create --name lambda lambda
-    zipName=$(basename "$PWD")
-    docker cp lambda:/lambda/${zipName}.zip ${zipName}.zip
-    docker rm lambda
-done
+set -eou pipefail
+
+TOP_DIR=$(git rev-parse --show-toplevel)
+OUTPUT_DIR=${OUTPUT_DIR:-${TOP_DIR}/lambda_output}
+
+mkdir -p "${OUTPUT_DIR}"
+
+(
+    set -x
+    DOCKER_BUILDKIT=1 docker build \
+        --target=final \
+        --output=type=local,dest="${OUTPUT_DIR}" \
+        -f "${TOP_DIR}/.ci/Dockerfile" \
+        "${TOP_DIR}"
+)
