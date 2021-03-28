@@ -2,7 +2,8 @@
 set -e
 
 # NOTE: This build requires docker buildkit integration which was introduced
-#       in Docker v19.03+
+#       in Docker v19.03+ and at least 4GB of memory available to the 
+#       docker daemon
 
 set -eou pipefail
 
