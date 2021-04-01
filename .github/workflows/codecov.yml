@@ -1,6 +1,8 @@
 name: Code Coverage
 
-on: [pull_request]
+on:
+  push:
+    branches: [ develop ]
 
 jobs:
   base_branch_cov:
