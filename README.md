@@ -180,7 +180,7 @@ Go back to the GitHub App and update the following settings.
 1. Enable the webhook.
 2. Provide the webhook url, should be part of the output of terraform.
 3. Provide the webhook secret.
-4. Enable the `check_run` event for the webhook.
+4. In the "Permissions & Events" section and then "Subscribe to Events" subsection, check "Check Run".
 5. In the "Install App" section, install the App in your organization, either in all or in selected repositories.
 
 You are now ready to run action workloads on self hosted runner. Remember that builds will fail if there is no (offline) runner available with matching labels.
