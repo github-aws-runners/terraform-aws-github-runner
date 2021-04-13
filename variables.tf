@@ -342,7 +342,7 @@ variable "runner_additional_security_group_ids" {
 }
 
 variable "market_options" {
-  description = "Market options for the action runner instances. Setting the value to `null` let the scaler create on-demand instances instead of spot instanes."
+  description = "Market options for the action runner instances. Setting the value to `null` let the scaler create on-demand instances instead of spot instances."
   type        = string
   default     = "spot"
 }
