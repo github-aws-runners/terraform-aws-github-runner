@@ -8,6 +8,6 @@ resource "null_resource" "download" {
   }
 
   provisioner "local-exec" {
-    command = "curl -o ${self.triggers.file} -L https://github.com/philips-labs/terraform-aws-github-runner/releases/download/${self.triggers.tag}/${self.triggers.name}.zip"
+    command = "curl -o ${self.triggers.file} -L https://github.com/fac/terraform-aws-github-runner/releases/download/${self.triggers.tag}/${self.triggers.name}.zip"
   }
 }
