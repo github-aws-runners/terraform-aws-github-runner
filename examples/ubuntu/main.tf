@@ -51,9 +51,9 @@ module "runners" {
 
   runner_log_files = [
     {
-      "log_group_name" : "messages",
+      "log_group_name" : "syslog",
       "prefix_log_group" : true,
-      "file_path" : "/var/log/messages",
+      "file_path" : "/var/log/syslog",
       "log_stream_name" : "{instance_id}"
     },
     {
