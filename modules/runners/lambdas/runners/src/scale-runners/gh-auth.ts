@@ -1,7 +1,12 @@
 import { Octokit } from '@octokit/rest';
 import { request } from '@octokit/request';
 import { createAppAuth } from '@octokit/auth-app';
-import { Authentication, StrategyOptions } from '@octokit/auth-app/dist-types/types';
+import {
+  Authentication,
+  StrategyOptions,
+  AppAuthentication,
+  InstallationAccessTokenAuthentication,
+} from '@octokit/auth-app/dist-types/types';
 import { OctokitOptions } from '@octokit/core/dist-types/types';
 import { decrypt } from './kms';
 
@@ -20,7 +25,7 @@ export async function createGithubAuth(
   installationId: number | undefined,
   authType: 'app' | 'installation',
   ghesApiUrl = '',
-): Promise<Authentication> {
+): Promise<AppAuthentication> {
   const clientSecret = await decrypt(
     process.env.GITHUB_APP_CLIENT_SECRET as string,
     process.env.KMS_KEY_ID as string,
@@ -54,5 +59,11 @@ export async function createGithubAuth(
       baseUrl: ghesApiUrl,
     });
   }
-  return await createAppAuth(authOptions)({ type: authType });
+  const result = (await createAppAuth(authOptions)({ type: authType })) as AppAuthentication;
+  return result;
+  // if (result.type == 'oauth-app') {
+  //   return result;
+  // } else {
+  //   throw Error(`Authentication type ${authType} is not`);
+  // }
 }
