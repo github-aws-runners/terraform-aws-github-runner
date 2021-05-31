@@ -22,7 +22,7 @@
     "@typescript-eslint/eslint-plugin": "^4.22.0",
     "@typescript-eslint/parser": "^4.17.0",
     "@zeit/ncc": "^0.22.1",
-    "aws-sdk": "^2.888.0",
+    "aws-sdk": "^2.918.0",
     "eslint": "^7.24.0",
     "jest": "^26.6.3",
     "ts-jest": "^26.5.5",
