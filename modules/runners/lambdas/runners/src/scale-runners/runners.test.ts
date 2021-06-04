@@ -68,7 +68,7 @@ describe('list instances', () => {
   });
 
   it('filters instances on repo name', async () => {
-    await listRunners({ runnerType: 'Repo', runnerOwner: REPO_NAME });
+    await listRunners({ runnerType: 'Repo', runnerOwner: REPO_NAME, environment: undefined });
     expect(mockEC2.describeInstances).toBeCalledWith({
       Filters: [
         { Name: 'tag:Application', Values: ['github-action-runner'] },
@@ -79,7 +79,7 @@ describe('list instances', () => {
   });
 
   it('filters instances on org name', async () => {
-    await listRunners({ runnerType: 'Org', runnerOwner: ORG_NAME });
+    await listRunners({ runnerType: 'Org', runnerOwner: ORG_NAME, environment: undefined });
     expect(mockEC2.describeInstances).toBeCalledWith({
       Filters: [
         { Name: 'tag:Application', Values: ['github-action-runner'] },

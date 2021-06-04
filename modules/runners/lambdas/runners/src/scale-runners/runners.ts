@@ -10,7 +10,7 @@ export interface RunnerInfo {
 export interface ListRunnerFilters {
   runnerType?: 'Org' | 'Repo';
   runnerOwner?: string;
-  environment?: string | undefined;
+  environment: string | undefined;
 }
 
 export async function listRunners(filters: ListRunnerFilters | undefined = undefined): Promise<RunnerInfo[]> {
