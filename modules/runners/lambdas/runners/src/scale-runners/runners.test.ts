@@ -1,5 +1,4 @@
-import { listRunners, RunnerInfo, createRunner } from './runners';
-import { EC2, SSM } from 'aws-sdk';
+import { listRunners, createRunner } from './runners';
 
 const mockEC2 = { describeInstances: jest.fn(), runInstances: jest.fn() };
 const mockSSM = { putParameter: jest.fn() };
@@ -7,6 +6,10 @@ jest.mock('aws-sdk', () => ({
   EC2: jest.fn().mockImplementation(() => mockEC2),
   SSM: jest.fn().mockImplementation(() => mockSSM),
 }));
+
+const ORG_NAME = 'SomeAwesomeCoder';
+const REPO_NAME = `${ORG_NAME}/some-amazing-library`;
+const ENVIRONMENT = 'unit-test-environment';
 
 describe('list instances', () => {
   const mockDescribeInstances = { promise: jest.fn() };
@@ -30,8 +33,8 @@ describe('list instances', () => {
               LaunchTime: new Date('2020-10-11T14:48:00.000+09:00'),
               InstanceId: 'i-5678',
               Tags: [
-                { Key: 'Repo', Value: 'SomeAwesomeCoder/some-amazing-library' },
-                { Key: 'Org', Value: 'SomeAwesomeCoder' },
+                { Key: 'Repo', Value: REPO_NAME },
+                { Key: 'Org', Value: ORG_NAME },
                 { Key: 'Application', Value: 'github-action-runner' },
               ],
             },
@@ -54,8 +57,8 @@ describe('list instances', () => {
     expect(resp).toContainEqual({
       instanceId: 'i-5678',
       launchTime: new Date('2020-10-11T14:48:00.000+09:00'),
-      repo: 'SomeAwesomeCoder/some-amazing-library',
-      org: 'SomeAwesomeCoder',
+      repo: REPO_NAME,
+      org: ORG_NAME,
     });
   });
 
@@ -65,46 +68,34 @@ describe('list instances', () => {
   });
 
   it('filters instances on repo name', async () => {
-    await listRunners({ repoName: 'SomeAwesomeCoder/some-amazing-library' });
+    await listRunners({ runnerType: 'Repo', runnerOwner: REPO_NAME });
     expect(mockEC2.describeInstances).toBeCalledWith({
       Filters: [
         { Name: 'tag:Application', Values: ['github-action-runner'] },
         { Name: 'instance-state-name', Values: ['running', 'pending'] },
-        { Name: 'tag:Repo', Values: ['SomeAwesomeCoder/some-amazing-library'] },
+        { Name: 'tag:Repo', Values: [REPO_NAME] },
       ],
     });
   });
 
   it('filters instances on org name', async () => {
-    await listRunners({ orgName: 'SomeAwesomeCoder' });
+    await listRunners({ runnerType: 'Org', runnerOwner: ORG_NAME });
     expect(mockEC2.describeInstances).toBeCalledWith({
       Filters: [
         { Name: 'tag:Application', Values: ['github-action-runner'] },
         { Name: 'instance-state-name', Values: ['running', 'pending'] },
-        { Name: 'tag:Org', Values: ['SomeAwesomeCoder'] },
+        { Name: 'tag:Org', Values: [ORG_NAME] },
       ],
     });
   });
 
   it('filters instances on org name', async () => {
-    await listRunners({ environment: 'unit-test-environment' });
+    await listRunners({ environment: ENVIRONMENT });
     expect(mockEC2.describeInstances).toBeCalledWith({
       Filters: [
         { Name: 'tag:Application', Values: ['github-action-runner'] },
         { Name: 'instance-state-name', Values: ['running', 'pending'] },
-        { Name: 'tag:Environment', Values: ['unit-test-environment'] },
-      ],
-    });
-  });
-
-  it('filters instances on both org name and repo name', async () => {
-    await listRunners({ orgName: 'SomeAwesomeCoder', repoName: 'SomeAwesomeCoder/some-amazing-library' });
-    expect(mockEC2.describeInstances).toBeCalledWith({
-      Filters: [
-        { Name: 'tag:Application', Values: ['github-action-runner'] },
-        { Name: 'instance-state-name', Values: ['running', 'pending'] },
-        { Name: 'tag:Repo', Values: ['SomeAwesomeCoder/some-amazing-library'] },
-        { Name: 'tag:Org', Values: ['SomeAwesomeCoder'] },
+        { Name: 'tag:Environment', Values: [ENVIRONMENT] },
       ],
     });
   });
@@ -132,9 +123,9 @@ describe('create runner', () => {
   it('calls run instances with the correct config for repo', async () => {
     await createRunner({
       runnerConfig: 'bla',
-      environment: 'unit-test-env',
-      repoName: 'SomeAwesomeCoder/some-amazing-library',
-      orgName: undefined,
+      environment: ENVIRONMENT,
+      runnerType: 'Repo',
+      runnerOwner: REPO_NAME
     });
     expect(mockEC2.runInstances).toBeCalledWith({
       MaxCount: 1,
@@ -146,7 +137,7 @@ describe('create runner', () => {
           ResourceType: 'instance',
           Tags: [
             { Key: 'Application', Value: 'github-action-runner' },
-            { Key: 'Repo', Value: 'SomeAwesomeCoder/some-amazing-library' },
+            { Key: 'Repo', Value: REPO_NAME },
           ],
         },
       ],
@@ -156,9 +147,9 @@ describe('create runner', () => {
   it('calls run instances with the correct config for org', async () => {
     await createRunner({
       runnerConfig: 'bla',
-      environment: 'unit-test-env',
-      repoName: undefined,
-      orgName: 'SomeAwesomeCoder',
+      environment: ENVIRONMENT,
+      runnerType: 'Org',
+      runnerOwner: ORG_NAME,
     });
     expect(mockEC2.runInstances).toBeCalledWith({
       MaxCount: 1,
@@ -170,7 +161,7 @@ describe('create runner', () => {
           ResourceType: 'instance',
           Tags: [
             { Key: 'Application', Value: 'github-action-runner' },
-            { Key: 'Org', Value: 'SomeAwesomeCoder' },
+            { Key: 'Org', Value: ORG_NAME },
           ],
         },
       ],
@@ -180,12 +171,12 @@ describe('create runner', () => {
   it('creates ssm parameters for each created instance', async () => {
     await createRunner({
       runnerConfig: 'bla',
-      environment: 'unit-test-env',
-      repoName: undefined,
-      orgName: 'SomeAwesomeCoder',
+      environment: ENVIRONMENT,
+      runnerType: 'Org',
+      runnerOwner: ORG_NAME,
     });
     expect(mockSSM.putParameter).toBeCalledWith({
-      Name: 'unit-test-env-i-1234',
+      Name: `${ENVIRONMENT}-i-1234`,
       Value: 'bla',
       Type: 'SecureString',
     });
@@ -197,9 +188,9 @@ describe('create runner', () => {
     });
     await createRunner({
       runnerConfig: 'bla',
-      environment: 'unit-test-env',
-      repoName: undefined,
-      orgName: 'SomeAwesomeCoder',
+      environment: ENVIRONMENT,
+      runnerType: 'Org',
+      runnerOwner: ORG_NAME,
     });
     expect(mockSSM.putParameter).not.toBeCalled();
   });

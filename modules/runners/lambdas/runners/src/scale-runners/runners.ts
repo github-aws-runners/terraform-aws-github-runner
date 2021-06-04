@@ -8,9 +8,9 @@ export interface RunnerInfo {
 }
 
 export interface ListRunnerFilters {
-  repoName?: string;
-  orgName?: string;
-  environment?: string;
+  runnerType?: 'Org' | 'Repo';
+  runnerOwner?: string;
+  environment?: string | undefined;
 }
 
 export async function listRunners(filters: ListRunnerFilters | undefined = undefined): Promise<RunnerInfo[]> {
@@ -23,11 +23,8 @@ export async function listRunners(filters: ListRunnerFilters | undefined = undef
     if (filters.environment !== undefined) {
       ec2Filters.push({ Name: 'tag:Environment', Values: [filters.environment] });
     }
-    if (filters.repoName !== undefined) {
-      ec2Filters.push({ Name: 'tag:Repo', Values: [filters.repoName] });
-    }
-    if (filters.orgName !== undefined) {
-      ec2Filters.push({ Name: 'tag:Org', Values: [filters.orgName] });
+    if (filters.runnerType && filters.runnerOwner) {
+      ec2Filters.push({ Name: `tag:${filters.runnerType}`, Values: [filters.runnerOwner] });
     }
   }
   const runningInstances = await ec2.describeInstances({ Filters: ec2Filters }).promise();
@@ -52,8 +49,8 @@ export async function listRunners(filters: ListRunnerFilters | undefined = undef
 export interface RunnerInputParameters {
   runnerConfig: string;
   environment: string;
-  repoName?: string;
-  orgName?: string;
+  runnerType: 'Org' | 'Repo';
+  runnerOwner: string;
 }
 
 export async function terminateRunner(runner: RunnerInfo): Promise<void> {
@@ -89,8 +86,8 @@ export async function createRunner(runnerParameters: RunnerInputParameters): Pro
           Tags: [
             { Key: 'Application', Value: 'github-action-runner' },
             {
-              Key: runnerParameters.orgName ? 'Org' : 'Repo',
-              Value: runnerParameters.orgName ? runnerParameters.orgName : runnerParameters.repoName,
+              Key: runnerParameters.runnerType,
+              Value: runnerParameters.runnerOwner
             },
           ],
         },

@@ -139,7 +139,7 @@ export async function scaleDown(): Promise<void> {
   // list and sort runners, newest first. This ensure we keep the newest runners longer.
   const runners = (
     await listRunners({
-      environment: environment,
+      environment
     })
   ).sort((a, b): number => {
     if (a.launchTime === undefined) return 1;
