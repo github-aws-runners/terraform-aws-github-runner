@@ -1,6 +1,7 @@
 import { mocked } from 'ts-jest/utils';
-import { ActionRequestMessage, scaleUp } from './scale-up';
-import { listRunners, createRunner } from './runners';
+import { ActionRequestMessage, scaleUp, createRunnerLoop } from './scale-up';
+import * as scaleUpModule from './scale-up';
+import { listRunners, createRunner, RunnerInputParameters } from './runners';
 import * as ghAuth from './gh-auth';
 import nock from 'nock';
 
@@ -40,7 +41,16 @@ const TEST_DATA_WITHOUT_INSTALL_ID: ActionRequestMessage = {
   installationId: 0,
 };
 
+const LAUNCH_TEMPLATE = 'lt-1';
+
 const cleanEnv = process.env;
+
+const expectedRunnerParams: RunnerInputParameters = {
+  environment: 'unit-test-environment',
+  runnerServiceConfig: `--url https://github.enterprise.something/${TEST_DATA.repositoryOwner} --token 1234abcd `,
+  runnerType: 'Org',
+  runnerOwner: TEST_DATA.repositoryOwner
+};
 
 beforeEach(() => {
   nock.disableNetConnect();
@@ -53,6 +63,7 @@ beforeEach(() => {
   process.env.GITHUB_APP_CLIENT_SECRET = 'TEST_CLIENT_SECRET';
   process.env.RUNNERS_MAXIMUM_COUNT = '3';
   process.env.ENVIRONMENT = 'unit-test-environment';
+  process.env.LAUNCH_TEMPLATE_NAME = 'lt-1,lt-2';
 
   mockOctokit.checks.get.mockImplementation(() => ({
     data: {
@@ -171,26 +182,26 @@ describe('scaleUp with GHES', () => {
     });
 
     it('creates a runner with correct config', async () => {
+      //const createRunnerLoopSpy = jest.spyOn(scaleUpModule, 'createRunnerLoop');
       await scaleUp('aws:sqs', TEST_DATA);
-      expect(createRunner).toBeCalledWith({
-        environment: 'unit-test-environment',
-        runnerConfig: `--url https://github.enterprise.something/${TEST_DATA.repositoryOwner} --token 1234abcd `,
-        runnerType: 'Org',
-        runnerOwner: TEST_DATA.repositoryOwner,
-      });
+      //expect(createRunnerLoopSpy).toBeCalledWith(expectedRunnerParams);
+      expect(createRunner).toBeCalledWith(expectedRunnerParams, 'lt-1');
     });
 
     it('creates a runner with labels in s specific group', async () => {
       process.env.RUNNER_EXTRA_LABELS = 'label1,label2';
       process.env.RUNNER_GROUP_NAME = 'TEST_GROUP';
       await scaleUp('aws:sqs', TEST_DATA);
-      expect(createRunner).toBeCalledWith({
-        environment: 'unit-test-environment',
-        runnerConfig: `--url https://github.enterprise.something/${TEST_DATA.repositoryOwner} ` +
-          `--token 1234abcd --labels label1,label2 --runnergroup TEST_GROUP`,
-        runnerType: 'Org',
-        runnerOwner: TEST_DATA.repositoryOwner,
-      });
+      expectedRunnerParams.runnerServiceConfig = `--url ` +
+        `https://github.enterprise.something/${TEST_DATA.repositoryOwner} ` +
+        `--token 1234abcd --labels label1,label2 --runnergroup TEST_GROUP`;
+      expect(createRunner).toBeCalledWith(expectedRunnerParams, 'lt-1');
+    });
+
+    it('attempts next launch template if first fails', async () => {
+      const createRunnerLoopSpy = jest.spyOn(scaleUpModule, 'createRunnerLoop');
+      await scaleUp('aws:sqs', TEST_DATA);
+      expect(createRunnerLoopSpy).toBeCalledWith(expectedRunnerParams);
     });
   });
 
@@ -250,28 +261,23 @@ describe('scaleUp with GHES', () => {
     it('creates a runner with correct config and labels', async () => {
       process.env.RUNNER_EXTRA_LABELS = 'label1,label2';
       await scaleUp('aws:sqs', TEST_DATA);
-      expect(createRunner).toBeCalledWith({
-        environment: 'unit-test-environment',
-        runnerConfig: `--url ` +
-          `https://github.enterprise.something/${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName} ` +
-          `--token 1234abcd --labels label1,label2`,
-        runnerType: 'Repo',
-        runnerOwner: `${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName}`,
-      });
+      expectedRunnerParams.runnerServiceConfig = `--url ` +
+        `https://github.enterprise.something/${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName} ` +
+        `--token 1234abcd --labels label1,label2`;
+      expectedRunnerParams.runnerType = 'Repo';
+      expectedRunnerParams.runnerOwner = `${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName}`;
+      expect(createRunner).toBeCalledWith(expectedRunnerParams, 'lt-1');
     });
 
     it('creates a runner and ensure the group argument is ignored', async () => {
       process.env.RUNNER_EXTRA_LABELS = 'label1,label2';
       process.env.RUNNER_GROUP_NAME = 'TEST_GROUP_IGNORED';
       await scaleUp('aws:sqs', TEST_DATA);
-      expect(createRunner).toBeCalledWith({
-        environment: 'unit-test-environment',
-        runnerConfig: `--url ` +
-          `https://github.enterprise.something/${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName} ` +
-          `--token 1234abcd --labels label1,label2`,
-        runnerType: 'Repo',
-        runnerOwner: `${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName}`,
-      });
+      expectedRunnerParams.runnerServiceConfig = `--url ` +
+        `https://github.enterprise.something/${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName} ` +
+        `--token 1234abcd --labels label1,label2`;
+      expectedRunnerParams.runnerOwner = `${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName}`;
+      expect(createRunner).toBeCalledWith(expectedRunnerParams, 'lt-1');
     });
   });
 });
@@ -347,10 +353,10 @@ describe('scaleUp with public GH', () => {
       await scaleUp('aws:sqs', TEST_DATA);
       expect(createRunner).toBeCalledWith({
         environment: 'unit-test-environment',
-        runnerConfig: `--url https://github.com/${TEST_DATA.repositoryOwner} --token 1234abcd `,
+        runnerServiceConfig: `--url https://github.com/${TEST_DATA.repositoryOwner} --token 1234abcd `,
         runnerType: 'Org',
         runnerOwner: TEST_DATA.repositoryOwner
-      });
+      }, LAUNCH_TEMPLATE);
     });
 
     it('creates a runner with labels in s specific group', async () => {
@@ -359,11 +365,11 @@ describe('scaleUp with public GH', () => {
       await scaleUp('aws:sqs', TEST_DATA);
       expect(createRunner).toBeCalledWith({
         environment: 'unit-test-environment',
-        runnerConfig: `--url https://github.com/${TEST_DATA.repositoryOwner} ` +
+        runnerServiceConfig: `--url https://github.com/${TEST_DATA.repositoryOwner} ` +
           `--token 1234abcd --labels label1,label2 --runnergroup TEST_GROUP`,
         runnerType: 'Org',
         runnerOwner: TEST_DATA.repositoryOwner
-      });
+      }, LAUNCH_TEMPLATE);
     });
   });
 
@@ -416,11 +422,11 @@ describe('scaleUp with public GH', () => {
       await scaleUp('aws:sqs', TEST_DATA);
       expect(createRunner).toBeCalledWith({
         environment: 'unit-test-environment',
-        runnerConfig: `--url https://github.com/${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName} ` +
+        runnerServiceConfig: `--url https://github.com/${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName} ` +
           `--token 1234abcd --labels label1,label2`,
         runnerType: 'Repo',
         runnerOwner: `${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName}`,
-      });
+      }, LAUNCH_TEMPLATE);
     });
 
     it('creates a runner and ensure the group argument is ignored', async () => {
@@ -429,11 +435,11 @@ describe('scaleUp with public GH', () => {
       await scaleUp('aws:sqs', TEST_DATA);
       expect(createRunner).toBeCalledWith({
         environment: 'unit-test-environment',
-        runnerConfig: `--url https://github.com/${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName} ` +
+        runnerServiceConfig: `--url https://github.com/${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName} ` +
           `--token 1234abcd --labels label1,label2`,
         runnerType: 'Repo',
         runnerOwner: `${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName}`,
-      });
+      }, LAUNCH_TEMPLATE);
     });
   });
 });

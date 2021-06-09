@@ -7,6 +7,7 @@ jest.mock('aws-sdk', () => ({
   SSM: jest.fn().mockImplementation(() => mockSSM),
 }));
 
+const LAUNCH_TEMPLATE = 'lt-1';
 const ORG_NAME = 'SomeAwesomeCoder';
 const REPO_NAME = `${ORG_NAME}/some-amazing-library`;
 const ENVIRONMENT = 'unit-test-environment';
@@ -115,22 +116,20 @@ describe('create runner', () => {
       ],
     });
     mockSSM.putParameter.mockImplementation(() => mockPutParameter);
-    process.env.LAUNCH_TEMPLATE_NAME = 'launch-template-name';
-    process.env.LAUNCH_TEMPLATE_VERSION = '1';
     process.env.SUBNET_IDS = 'sub-1234';
   });
 
   it('calls run instances with the correct config for repo', async () => {
     await createRunner({
-      runnerConfig: 'bla',
+      runnerServiceConfig: 'bla',
       environment: ENVIRONMENT,
       runnerType: 'Repo',
       runnerOwner: REPO_NAME
-    });
+    }, LAUNCH_TEMPLATE);
     expect(mockEC2.runInstances).toBeCalledWith({
       MaxCount: 1,
       MinCount: 1,
-      LaunchTemplate: { LaunchTemplateName: 'launch-template-name', Version: '1' },
+      LaunchTemplate: { LaunchTemplateName: LAUNCH_TEMPLATE, Version: '$Default' },
       SubnetId: 'sub-1234',
       TagSpecifications: [
         {
@@ -146,15 +145,15 @@ describe('create runner', () => {
 
   it('calls run instances with the correct config for org', async () => {
     await createRunner({
-      runnerConfig: 'bla',
+      runnerServiceConfig: 'bla',
       environment: ENVIRONMENT,
       runnerType: 'Org',
       runnerOwner: ORG_NAME,
-    });
+    }, LAUNCH_TEMPLATE);
     expect(mockEC2.runInstances).toBeCalledWith({
       MaxCount: 1,
       MinCount: 1,
-      LaunchTemplate: { LaunchTemplateName: 'launch-template-name', Version: '1' },
+      LaunchTemplate: { LaunchTemplateName: LAUNCH_TEMPLATE, Version: '$Default' },
       SubnetId: 'sub-1234',
       TagSpecifications: [
         {
@@ -170,11 +169,11 @@ describe('create runner', () => {
 
   it('creates ssm parameters for each created instance', async () => {
     await createRunner({
-      runnerConfig: 'bla',
+      runnerServiceConfig: 'bla',
       environment: ENVIRONMENT,
       runnerType: 'Org',
       runnerOwner: ORG_NAME,
-    });
+    }, LAUNCH_TEMPLATE);
     expect(mockSSM.putParameter).toBeCalledWith({
       Name: `${ENVIRONMENT}-i-1234`,
       Value: 'bla',
@@ -187,11 +186,11 @@ describe('create runner', () => {
       Instances: [],
     });
     await createRunner({
-      runnerConfig: 'bla',
+      runnerServiceConfig: 'bla',
       environment: ENVIRONMENT,
       runnerType: 'Org',
       runnerOwner: ORG_NAME,
-    });
+    }, LAUNCH_TEMPLATE);
     expect(mockSSM.putParameter).not.toBeCalled();
   });
 });

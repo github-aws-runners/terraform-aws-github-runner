@@ -17,6 +17,8 @@ locals {
   userdata_template              = var.userdata_template == null ? "${path.module}/templates/user-data.sh" : var.userdata_template
   userdata_arm_patch             = "${path.module}/templates/arm-runner-patch.tpl"
   userdata_install_config_runner = "${path.module}/templates/install-config-runner.sh"
+
+  instance_types = var.instance_types == null ? [var.instance_type] : var.instance_types
 }
 
 data "aws_ami" "runner" {
@@ -34,7 +36,9 @@ data "aws_ami" "runner" {
 }
 
 resource "aws_launch_template" "runner" {
-  name = "${var.environment}-action-runner"
+  for_each = local.instance_types
+
+  name = "${var.environment}-action-runner-${each.value}"
 
   dynamic "block_device_mappings" {
     for_each = [var.block_device_mappings]
@@ -62,7 +66,7 @@ resource "aws_launch_template" "runner" {
   }
 
   image_id      = data.aws_ami.runner.id
-  instance_type = var.instance_type
+  instance_type = each.value
   key_name      = var.key_name
 
   vpc_security_group_ids = compact(concat(
@@ -102,6 +106,8 @@ resource "aws_launch_template" "runner" {
   }))
 
   tags = local.tags
+
+  update_default_version = true
 }
 
 locals {

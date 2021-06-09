@@ -63,6 +63,12 @@ variable "instance_type" {
   default     = "m5.large"
 }
 
+variable "instance_types" {
+  description = "List of instance types for the action runner."
+  type        = set(string)
+  default     = null
+}
+
 variable "ami_filter" {
   description = "List of maps used to create the AMI filter for the action runner AMI."
   type        = map(list(string))

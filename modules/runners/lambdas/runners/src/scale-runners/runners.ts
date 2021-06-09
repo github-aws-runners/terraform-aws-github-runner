@@ -13,6 +13,13 @@ export interface ListRunnerFilters {
   environment: string | undefined;
 }
 
+export interface RunnerInputParameters {
+  runnerServiceConfig: string;
+  environment: string;
+  runnerType: 'Org' | 'Repo';
+  runnerOwner: string;
+}
+
 export async function listRunners(filters: ListRunnerFilters | undefined = undefined): Promise<RunnerInfo[]> {
   const ec2 = new EC2();
   const ec2Filters = [
@@ -46,13 +53,6 @@ export async function listRunners(filters: ListRunnerFilters | undefined = undef
   return runners;
 }
 
-export interface RunnerInputParameters {
-  runnerConfig: string;
-  environment: string;
-  runnerType: 'Org' | 'Repo';
-  runnerOwner: string;
-}
-
 export async function terminateRunner(runner: RunnerInfo): Promise<void> {
   const ec2 = new EC2();
   await ec2
@@ -63,47 +63,53 @@ export async function terminateRunner(runner: RunnerInfo): Promise<void> {
   console.debug('Runner terminated.' + runner.instanceId);
 }
 
-export async function createRunner(runnerParameters: RunnerInputParameters): Promise<void> {
-  const launchTemplateName = process.env.LAUNCH_TEMPLATE_NAME as string;
-  const launchTemplateVersion = process.env.LAUNCH_TEMPLATE_VERSION as string;
-
-  const subnets = (process.env.SUBNET_IDS as string).split(',');
-  const randomSubnet = subnets[Math.floor(Math.random() * subnets.length)];
+export async function createRunner(runnerParameters: RunnerInputParameters, launchTemplateName: string): Promise<void> {
   console.debug('Runner configuration: ' + JSON.stringify(runnerParameters));
   const ec2 = new EC2();
   const runInstancesResponse = await ec2
-    .runInstances({
-      MaxCount: 1,
-      MinCount: 1,
-      LaunchTemplate: {
-        LaunchTemplateName: launchTemplateName,
-        Version: launchTemplateVersion,
-      },
-      SubnetId: randomSubnet,
-      TagSpecifications: [
-        {
-          ResourceType: 'instance',
-          Tags: [
-            { Key: 'Application', Value: 'github-action-runner' },
-            {
-              Key: runnerParameters.runnerType,
-              Value: runnerParameters.runnerOwner
-            },
-          ],
-        },
-      ],
-    })
+    .runInstances(getInstanceParams(launchTemplateName, runnerParameters))
     .promise();
   console.info('Created instance(s): ', runInstancesResponse.Instances?.map((i) => i.InstanceId).join(','));
-
   const ssm = new SSM();
   runInstancesResponse.Instances?.forEach(async (i: EC2.Instance) => {
     await ssm
       .putParameter({
         Name: runnerParameters.environment + '-' + (i.InstanceId as string),
-        Value: runnerParameters.runnerConfig,
+        Value: runnerParameters.runnerServiceConfig,
         Type: 'SecureString',
       })
       .promise();
   });
+}
+
+function getInstanceParams(
+  launchTemplateName: string,
+  runnerParameters: RunnerInputParameters
+): EC2.RunInstancesRequest {
+  return {
+    MaxCount: 1,
+    MinCount: 1,
+    LaunchTemplate: {
+      LaunchTemplateName: launchTemplateName,
+      Version: '$Default',
+    },
+    SubnetId: getSubnet(),
+    TagSpecifications: [
+      {
+        ResourceType: 'instance',
+        Tags: [
+          { Key: 'Application', Value: 'github-action-runner' },
+          {
+            Key: runnerParameters.runnerType,
+            Value: runnerParameters.runnerOwner
+          },
+        ],
+      },
+    ],
+  };
+}
+
+function getSubnet(): string {
+  const subnets = (process.env.SUBNET_IDS as string).split(',');
+  return subnets[Math.floor(Math.random() * subnets.length)];
 }

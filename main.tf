@@ -68,6 +68,7 @@ module "runners" {
   s3_location_runner_binaries = local.s3_action_runner_url
 
   instance_type         = var.instance_type
+  instance_types        = var.instance_types
   market_options        = var.market_options
   block_device_mappings = var.block_device_mappings
 

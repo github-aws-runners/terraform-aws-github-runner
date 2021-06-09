@@ -1,4 +1,4 @@
-import { listRunners, createRunner } from './runners';
+import { listRunners, createRunner, RunnerInputParameters } from './runners';
 import { createOctoClient, createGithubAuth } from './gh-auth';
 import yn from 'yn';
 
@@ -77,16 +77,33 @@ export const scaleUp = async (eventSource: string, payload: ActionRequestMessage
       const labelsArgument = runnerExtraLabels !== undefined ? `--labels ${runnerExtraLabels}` : '';
       const runnerGroupArgument = runnerGroup !== undefined ? ` --runnergroup ${runnerGroup}` : '';
       const configBaseUrl = ghesBaseUrl ? ghesBaseUrl : 'https://github.com';
-      await createRunner({
-        environment: environment,
-        runnerConfig: enableOrgLevel
-          ? `--url ${configBaseUrl}/${runnerOwner} --token ${token} ${labelsArgument}${runnerGroupArgument}`
-          : `--url ${configBaseUrl}/${runnerOwner} --token ${token} ${labelsArgument}`,
-        runnerType,
+
+      await createRunnerLoop({
+        environment,
+        runnerServiceConfig: enableOrgLevel
+          ? `--url ${configBaseUrl}/${payload.repositoryOwner} --token ${token} ${labelsArgument}${runnerGroupArgument}`
+          : `--url ${configBaseUrl}/${payload.repositoryOwner}/${payload.repositoryName} ` +
+          `--token ${token} ${labelsArgument}`,
         runnerOwner,
+        runnerType
+
       });
     } else {
       console.info('No runner will be created, maximum number of runners reached.');
     }
   }
 };
+
+export async function createRunnerLoop(runnerParameters: RunnerInputParameters): Promise<void> {
+  const launchTemplateNames = process.env.LAUNCH_TEMPLATE_NAME?.split(',') as string[];
+  for (const launchTemplateName of launchTemplateNames) {
+    console.info(`Attempting to launch instance using ${launchTemplateName}.`);
+    try {
+      await createRunner(runnerParameters, launchTemplateName);
+      break;
+    } catch (error) {
+      console.error(error.message);
+      throw error;
+    }
+  }
+}

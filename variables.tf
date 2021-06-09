@@ -354,3 +354,9 @@ variable "volume_size" {
   type        = number
   default     = 30
 }
+
+variable "instance_types" {
+  description = "List of instance types for the action runner."
+  type        = set(string)
+  default     = null
+}
