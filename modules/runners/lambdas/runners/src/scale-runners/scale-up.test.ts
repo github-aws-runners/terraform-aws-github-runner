@@ -203,6 +203,17 @@ describe('scaleUp with GHES', () => {
       expect(createRunner).toBeCalledTimes(2);
       expect(createRunner).toHaveBeenNthCalledWith(1, expectedRunnerParams, 'lt-1');
       expect(createRunner).toHaveBeenNthCalledWith(2, expectedRunnerParams, 'lt-2');
+      mockCreateRunners.mockReset();
+    });
+
+    it('all launch templates fail', async () => {
+      const mockCreateRunners = mocked(createRunner);
+      mockCreateRunners.mockRejectedValue(new Error('All launch templates failed'));
+      await expect(scaleUpModule.scaleUp('aws:sqs', TEST_DATA)).rejects.toThrow('All launch templates failed');
+      expect(createRunner).toBeCalledTimes(2);
+      expect(createRunner).toHaveBeenNthCalledWith(1, expectedRunnerParams, 'lt-1');
+      expect(createRunner).toHaveBeenNthCalledWith(2, expectedRunnerParams, 'lt-2');
+      mockCreateRunners.mockReset();
     });
   });
 
