@@ -96,14 +96,18 @@ export const scaleUp = async (eventSource: string, payload: ActionRequestMessage
 
 export async function createRunnerLoop(runnerParameters: RunnerInputParameters): Promise<void> {
   const launchTemplateNames = process.env.LAUNCH_TEMPLATE_NAME?.split(',') as string[];
+  let launched = false;
   for (const launchTemplateName of launchTemplateNames) {
     console.info(`Attempting to launch instance using ${launchTemplateName}.`);
     try {
       await createRunner(runnerParameters, launchTemplateName);
+      launched = true;
       break;
     } catch (error) {
-      console.error(error.message);
-      throw error;
+      console.error(error);
     }
+  }
+  if (launched == false) {
+    throw Error('All launch templates failed');
   }
 }
