@@ -58,7 +58,7 @@ variable "market_options" {
 }
 
 variable "instance_type" {
-  description = "Default instance type for the action runner."
+  description = "[DEPRECATED] See instance_types."
   type        = string
   default     = "m5.large"
 }

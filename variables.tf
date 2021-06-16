@@ -126,7 +126,7 @@ variable "instance_profile_path" {
 }
 
 variable "instance_type" {
-  description = "Instance type for the action runner."
+  description = "[DEPRECATED] See instance_types."
   type        = string
   default     = "m5.large"
 }
