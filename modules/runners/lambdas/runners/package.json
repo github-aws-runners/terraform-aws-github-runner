@@ -30,7 +30,7 @@
     "ts-node-dev": "^1.1.6"
   },
   "dependencies": {
-    "@octokit/auth-app": "^3.0.0",
+    "@octokit/auth-app": "3.4.0",
     "@octokit/rest": "^18.3.5",
     "@octokit/types": "^6.13.0",
     "@types/aws-lambda": "^8.10.75",
