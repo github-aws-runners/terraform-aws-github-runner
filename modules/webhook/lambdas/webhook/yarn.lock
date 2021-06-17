@@ -634,20 +634,30 @@
   dependencies:
     "@octokit/openapi-types" "^7.3.2"
 
-"@octokit/webhooks-definitions@3.67.3", "@octokit/webhooks-definitions@^3.67.3":
+"@octokit/webhooks-definitions@^3.67.3":
   version "3.67.3"
   resolved "https://registry.yarnpkg.com/@octokit/webhooks-definitions/-/webhooks-definitions-3.67.3.tgz#d2a905a90b04af8111982d0c13658a49fc4eecb9"
   integrity sha512-do4Z1r2OVhuI0ihJhQ8Hg+yPWnBYEBNuFNCrvtPKoYT1w81jD7pBXgGe86lYuuNirkDHb0Nxt+zt4O5GiFJfgA==
 
-"@octokit/webhooks@^8.5.4":
-  version "8.12.3"
-  resolved "https://registry.yarnpkg.com/@octokit/webhooks/-/webhooks-8.12.3.tgz#8e30ac3534bbc65be39995664ee25ca6922f9e44"
-  integrity sha512-rbzBG0XmzYtaLoeXZ2F4wyY3AaBbvnHT5OkSXxaF+OJTJLEdAKE6dtJsNYzB2mr2XYpe9pb198SrTeutKQeiQA==
+"@octokit/webhooks-methods@^1.0.0":
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/@octokit/webhooks-methods/-/webhooks-methods-1.0.0.tgz#274799138725c89a3466e3af2026afe755f28c4b"
+  integrity sha512-pVceMQcj9SZ5p2RkemL0TuuPdGULNQj9F3Pq1cNM1xH+Kst1VNt0dj3PEGZRZV473njrDnYdi/OG4wWY9TLbbA==
+
+"@octokit/webhooks-types@3.77.1":
+  version "3.77.1"
+  resolved "https://registry.yarnpkg.com/@octokit/webhooks-types/-/webhooks-types-3.77.1.tgz#7ca41ab925adc0015728ad47547e4ba72c3bf62d"
+  integrity sha512-6V2KdgvUler6ANmWt05p0jzOoZWvG36IHmcYmMqwYNNCu9asL2HjQgj3aP3EVf2foBzzRjp+1j0BKz48C6kohw==
+
+"@octokit/webhooks@^9.7.0":
+  version "9.7.0"
+  resolved "https://registry.yarnpkg.com/@octokit/webhooks/-/webhooks-9.7.0.tgz#a46291a9a15f8fff4ba88d8883cc4a42280bbb4c"
+  integrity sha512-lMU4K2lIu+K9y+CnLW7y13P3hREP9TJ30gpDs6+tBxn8tojDUT0l+9OKqd7kwFFLZ/6Gxf0aTLVUPS1Nfa/A3g==
   dependencies:
     "@octokit/request-error" "^2.0.2"
-    "@octokit/webhooks-definitions" "3.67.3"
+    "@octokit/webhooks-methods" "^1.0.0"
+    "@octokit/webhooks-types" "3.77.1"
     aggregate-error "^3.1.0"
-    debug "^4.0.0"
 
 "@sinonjs/commons@^1.7.0":
   version "1.8.3"
@@ -1611,7 +1621,7 @@ debug@2.6.9, debug@^2.2.0, debug@^2.3.3:
   dependencies:
     ms "2.0.0"
 
-debug@4, debug@^4.0.0, debug@^4.0.1, debug@^4.1.0, debug@^4.1.1, debug@^4.3.1:
+debug@4, debug@^4.0.1, debug@^4.1.0, debug@^4.1.1, debug@^4.3.1:
   version "4.3.1"
   resolved "https://registry.yarnpkg.com/debug/-/debug-4.3.1.tgz#f0d229c505e0c6d8c49ac553d1b13dc183f6b2ee"
   integrity sha512-doEwdvm4PCeK4K3RQN2ZC2BYUBaxwLARCqZmMjtF8a51J2Rb0xpVloFRnCODwqjpwnAoao4pelN8l3RJdv3gRQ==
