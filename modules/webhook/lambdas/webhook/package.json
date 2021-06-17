@@ -33,6 +33,6 @@
   },
   "dependencies": {
     "@octokit/rest": "^18.3.5",
-    "@octokit/webhooks": "^8.5.4"
+    "@octokit/webhooks": "^9.8.0"
   }
 }
