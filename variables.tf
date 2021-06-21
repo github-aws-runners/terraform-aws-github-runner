@@ -360,3 +360,9 @@ variable "instance_types" {
   type        = set(string)
   default     = null
 }
+
+variable "repository_white_list" {
+  description = "List of repositories allowed to use the github app"
+  type        = list(string)
+  default     = []
+}

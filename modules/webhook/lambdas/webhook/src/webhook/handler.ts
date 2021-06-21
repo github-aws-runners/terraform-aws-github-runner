@@ -40,6 +40,18 @@ export const handle = async (headers: IncomingHttpHeaders, payload: any): Promis
 
   if (githubEvent === 'check_run') {
     const body = JSON.parse(payload) as CheckRunEvent;
+
+    const repositoryWhiteListEnv = process.env.REPOSITORY_WHITE_LIST as string || "[]";
+    const repositoryWhiteList = JSON.parse(repositoryWhiteListEnv) as Array<string>;
+
+    if (repositoryWhiteList.length > 0) {
+      const repositoryFullName = body.repository.full_name;
+      if (!repositoryWhiteList.includes(repositoryFullName)) {
+        console.error(`Received event from unauthorized repository ${repositoryFullName}`);
+        return 500;
+      }
+    }
+
     let installationId = body.installation?.id;
     if (installationId == null) {
       installationId = 0;

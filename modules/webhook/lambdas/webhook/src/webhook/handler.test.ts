@@ -14,6 +14,7 @@ describe('handler', () => {
   let originalError: Console['error'];
 
   beforeEach(() => {
+    process.env.REPOSITORY_WHITE_LIST = '[]';
     process.env.GITHUB_APP_WEBHOOK_SECRET = 'TEST_SECRET';
     originalError = console.error;
     console.error = jest.fn();
@@ -71,4 +72,5 @@ describe('handler', () => {
     expect(resp).toBe(200);
     expect(sendActionRequest).not.toBeCalled();
   });
+
 });

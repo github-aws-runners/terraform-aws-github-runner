@@ -49,6 +49,7 @@ module "webhook" {
 
   role_path                 = var.role_path
   role_permissions_boundary = var.role_permissions_boundary
+  repository_white_list     = var.webhook_repository_white_list
 }
 
 module "runners" {
