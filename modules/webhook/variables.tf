@@ -79,7 +79,7 @@ variable "webhook_lambda_s3_object_version" {
   default     = null
 }
 
-variable "webhook_repository_white_list" {
+variable "repository_white_list" {
   description = "List of repositories allowed to use the github app"
   type        = list(string)
   default     = []
