@@ -20,7 +20,7 @@
     "@types/jest": "^26.0.22",
     "@types/node": "^15.12.2",
     "@typescript-eslint/eslint-plugin": "^4.22.0",
-    "@typescript-eslint/parser": "^4.22.0",
+    "@typescript-eslint/parser": "^4.28.0",
     "@zeit/ncc": "^0.22.1",
     "aws-sdk": "^2.888.0",
     "body-parser": "^1.19.0",
