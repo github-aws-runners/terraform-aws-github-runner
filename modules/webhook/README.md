@@ -56,6 +56,7 @@ No requirements.
 | lambda\_timeout | Time out of the lambda in seconds. | `number` | `10` | no |
 | lambda\_zip | File location of the lambda zip file. | `string` | `null` | no |
 | logging\_retention\_in\_days | Specifies the number of days you want to retain log events for the lambda log group. Possible values are: 0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, and 3653. | `number` | `7` | no |
+| repository\_white\_list | List of github repository full names (owner/repo_name) that will be allowed to call the runners. Leave empty for no filtering | `list(string)` | `[]` | no |
 | role\_path | The path that will be added to the role, if not set the environment name will be used. | `string` | `null` | no |
 | role\_permissions\_boundary | Permissions boundary that will be added to the created role for the lambda. | `string` | `null` | no |
 | sqs\_build\_queue | SQS queue to publish accepted build events. | <pre>object({<br>    id  = string<br>    arn = string<br>  })</pre> | n/a | yes |

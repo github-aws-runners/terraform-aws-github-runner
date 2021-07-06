@@ -19,6 +19,8 @@ This [Terraform](https://www.terraform.io/) module creates the required infrastr
 - [Debugging](#debugging)
 - [Requirements](#requirements)
 - [Providers](#providers)
+- [Modules](#modules)
+- [Resources](#resources)
 - [Inputs](#inputs)
 - [Outputs](#outputs)
 - [Contribution](#contribution)
@@ -366,6 +368,7 @@ No requirements.
 | manage\_kms\_key | Let the module manage the KMS key. | `bool` | `true` | no |
 | market\_options | Market options for the action runner instances. Setting the value to `null` let the scaler create on-demand instances instead of spot instances. | `string` | `"spot"` | no |
 | minimum\_running\_time\_in\_minutes | The time an ec2 action runner should be running at minimum before terminated if non busy. | `number` | `5` | no |
+| repository\_white\_list | (optional) List of github repository full names (owner/repo_name) that will be allowed to call the runners. Leave empty for no filtering | `list(string)` | `[]` | no |
 | role\_path | The path that will be added to role path for created roles, if not set the environment name will be used. | `string` | `null` | no |
 | role\_permissions\_boundary | Permissions boundary that will be added to the created roles. | `string` | `null` | no |
 | runner\_additional\_security\_group\_ids | (optional) List of additional security groups IDs to apply to the runner | `list(string)` | `[]` | no |
