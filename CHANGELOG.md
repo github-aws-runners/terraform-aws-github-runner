@@ -7,7 +7,14 @@
 * Use consistent reporting back to caller in the Webhook lambda
 * In runners lambda wait for scaleDown to have finished before calling callback
 * In runner-binary-syncer support a runner binary having releases but no prereleases
-* When the runner-binary-syncer encounters an error report that back up to the lambda.ts so that it can report that back to the caller. 
+* When the runner-binary-syncer encounters an error report that back up to the lambda.ts so that it can report that back to the caller.
+
+### [0.15.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v0.15.0...v0.15.1) (2021-07-13)
+
+
+### Bug Fixes
+
+* apply patch for broken scale up lambda [#980](https://github.com/philips-labs/terraform-aws-github-runner/issues/980) ([b957e26](https://github.com/philips-labs/terraform-aws-github-runner/commit/b957e263b6dbc3d299eab3236b479b9113b1fecb))
 
 ## [0.15.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v0.14.0...v0.15.0) (2021-07-07)
 
