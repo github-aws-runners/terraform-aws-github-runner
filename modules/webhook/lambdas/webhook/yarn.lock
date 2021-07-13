@@ -909,10 +909,10 @@
     "@typescript-eslint/types" "4.27.0"
     eslint-visitor-keys "^2.0.0"
 
-"@zeit/ncc@^0.22.1":
-  version "0.22.3"
-  resolved "https://registry.yarnpkg.com/@zeit/ncc/-/ncc-0.22.3.tgz#fca6b86b4454ce7a7e1e7e755165ec06457f16cd"
-  integrity sha512-jnCLpLXWuw/PAiJiVbLjA8WBC0IJQbFeUwF4I9M+23MvIxTxk5pD4Q8byQBSPmHQjz5aBoA7AKAElQxMpjrCLQ==
+"@vercel/ncc@0.27.0":
+  version "0.27.0"
+  resolved "https://registry.yarnpkg.com/@vercel/ncc/-/ncc-0.27.0.tgz#c0cfeebb0bebb56052719efa4a0ecc090a932c76"
+  integrity sha512-DllIJQapnU2YwewIhh/4dYesmMQw3h2cFtabECc/zSJHqUbNa0eJuEkRa6DXbZvh1YPWBtYQoPV17NlDpBw1Vw==
 
 abab@^2.0.3, abab@^2.0.5:
   version "2.0.5"
@@ -1104,10 +1104,10 @@ atob@^2.1.2:
   resolved "https://registry.yarnpkg.com/atob/-/atob-2.1.2.tgz#6d9517eb9e030d2436666651e86bd9f6f13533c9"
   integrity sha512-Wm6ukoaOGJi/73p/cl2GvLjTI5JM1k/O14isD73YML8StrH/7/lRFgmg8nICZgD3bZZvjwCGxtMOD3wWNAu8cg==
 
-aws-sdk@^2.888.0:
-  version "2.930.0"
-  resolved "https://registry.yarnpkg.com/aws-sdk/-/aws-sdk-2.930.0.tgz#f98871a790ffdbfae5439e50db99f6d4635afe19"
-  integrity sha512-g8fPOy7Skh2Pqpz2SaDI+M9re2rjTWBQUirAMgtUD/6I/Lf6CR1Q0amsjtQU8WqRQH06kNGwuLtc8Tt6wAux3Q==
+aws-sdk@^2.945.0:
+  version "2.945.0"
+  resolved "https://registry.yarnpkg.com/aws-sdk/-/aws-sdk-2.945.0.tgz#ebd90832a664a192b12edf755af31be70dc18909"
+  integrity sha512-tkcoFAUol7c+9ZBnXsBTKfsj9bNckJ7uzj7FdD/a8AMt/6/18LlEISCiuHFl9qr8MItcON7UgnphJdFCTV7zBw==
   dependencies:
     buffer "4.9.2"
     events "1.1.1"
