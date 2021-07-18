@@ -1,5 +1,4 @@
-import { SQS } from 'aws-sdk';
-import AWS from 'aws-sdk';
+import AWS, { SQS } from 'aws-sdk';
 
 AWS.config.update({
   region: process.env.AWS_REGION,

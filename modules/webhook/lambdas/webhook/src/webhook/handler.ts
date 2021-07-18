@@ -27,7 +27,7 @@ export interface WorkflowJob {
   };
 }
 
-export const handle = async (headers: IncomingHttpHeaders, payload: any): Promise<number> => {
+export const handle = async (headers: IncomingHttpHeaders, payload: string): Promise<number> => {
   // ensure header keys lower case since github headers can contain capitals.
   for (const key in headers) {
     headers[key.toLowerCase()] = headers[key];
