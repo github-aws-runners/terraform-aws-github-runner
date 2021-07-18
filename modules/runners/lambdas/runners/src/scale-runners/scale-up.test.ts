@@ -168,14 +168,15 @@ describe('scaleUp with GHES', () => {
       process.env.RUNNERS_MAXIMUM_COUNT = '1';
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
       expect(mockOctokit.actions.createRegistrationTokenForOrg).not.toBeCalled();
+      expect(mockOctokit.actions.createRegistrationTokenForRepo).not.toBeCalled();
     });
 
     it('creates a token when maximum runners has not been reached', async () => {
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
-      expect(mockOctokit.actions.createRegistrationTokenForOrg).toBeCalled();
       expect(mockOctokit.actions.createRegistrationTokenForOrg).toBeCalledWith({
         org: TEST_DATA.repositoryOwner,
       });
+      expect(mockOctokit.actions.createRegistrationTokenForRepo).not.toBeCalled();
     });
 
     it('does not retrieve installation id if already set', async () => {
@@ -267,11 +268,13 @@ describe('scaleUp with GHES', () => {
     it('does not create a token when maximum runners has been reached', async () => {
       process.env.RUNNERS_MAXIMUM_COUNT = '1';
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
+      expect(mockOctokit.actions.createRegistrationTokenForOrg).not.toBeCalled();
       expect(mockOctokit.actions.createRegistrationTokenForRepo).not.toBeCalled();
     });
-
+    
     it('creates a token when maximum runners has not been reached', async () => {
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
+      expect(mockOctokit.actions.createRegistrationTokenForOrg).not.toBeCalled();
       expect(mockOctokit.actions.createRegistrationTokenForRepo).toBeCalledWith({
         owner: TEST_DATA.repositoryOwner,
         repo: TEST_DATA.repositoryName,
@@ -303,6 +306,10 @@ describe('scaleUp with GHES', () => {
       const spy = jest.spyOn(ghAuth, 'createGithubAuth');
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA_WITH_ZERO_INSTALL_ID);
       expect(mockOctokit.apps.getOrgInstallation).not.toBeCalled();
+      expect(mockOctokit.apps.getRepoInstallation).toBeCalledWith({
+        owner: TEST_DATA.repositoryOwner,
+        repo: TEST_DATA.repositoryName,
+      });
       expect(spy).toHaveBeenNthCalledWith(1, undefined, 'app', 'https://github.enterprise.something/api/v3');
       expect(spy).toHaveBeenNthCalledWith(
         2,
@@ -316,8 +323,6 @@ describe('scaleUp with GHES', () => {
       process.env.RUNNER_EXTRA_LABELS = 'label1,label2';
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
       expectedRunnerParams.runnerServiceConfig = expectedRunnerParams.runnerServiceConfig + `--labels label1,label2`;
-      expectedRunnerParams.runnerType = 'Repo';
-      expectedRunnerParams.runnerOwner = `${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName}`;
       expect(createRunner).toBeCalledWith(expectedRunnerParams, 'lt-1');
     });
 
@@ -325,11 +330,7 @@ describe('scaleUp with GHES', () => {
       process.env.RUNNER_EXTRA_LABELS = 'label1,label2';
       process.env.RUNNER_GROUP_NAME = 'TEST_GROUP_IGNORED';
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
-      expectedRunnerParams.runnerServiceConfig =
-        `--url ` +
-        `https://github.enterprise.something/${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName} ` +
-        `--token 1234abcd --labels label1,label2`;
-      expectedRunnerParams.runnerOwner = `${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName}`;
+      expectedRunnerParams.runnerServiceConfig = expectedRunnerParams.runnerServiceConfig + `--labels label1,label2`;
       expect(createRunner).toBeCalledWith(expectedRunnerParams, 'lt-1');
     });
 
@@ -340,6 +341,16 @@ describe('scaleUp with GHES', () => {
       expect(createRunner).toBeCalledTimes(2);
       expect(createRunner).toHaveBeenNthCalledWith(1, expectedRunnerParams, 'lt-1');
       expect(createRunner).toHaveBeenNthCalledWith(2, expectedRunnerParams, 'lt-2');
+    });
+
+    it('all launch templates fail', async () => {
+      const mockCreateRunners = mocked(createRunner);
+      mockCreateRunners.mockRejectedValue(new Error('All launch templates failed'));
+      await expect(scaleUpModule.scaleUp('aws:sqs', TEST_DATA)).rejects.toThrow('All launch templates failed');
+      expect(createRunner).toBeCalledTimes(2);
+      expect(createRunner).toHaveBeenNthCalledWith(1, expectedRunnerParams, 'lt-1');
+      expect(createRunner).toHaveBeenNthCalledWith(2, expectedRunnerParams, 'lt-2');
+      mockCreateRunners.mockReset();
     });
   });
 });
@@ -370,6 +381,7 @@ describe('scaleUp with public GH', () => {
   it('retrieves installation id if not set', async () => {
     const spy = jest.spyOn(ghAuth, 'createGithubAuth');
     await scaleUpModule.scaleUp('aws:sqs', TEST_DATA_WITH_ZERO_INSTALL_ID);
+    expect(mockOctokit.apps.getOrgInstallation).toBeCalled();
     expect(mockOctokit.apps.getRepoInstallation).not.toBeCalled();
     expect(spy).toHaveBeenNthCalledWith(1, undefined, 'app', '');
     expect(spy).toHaveBeenNthCalledWith(2, TEST_DATA.installationId, 'installation', '');
@@ -404,14 +416,15 @@ describe('scaleUp with public GH', () => {
       process.env.RUNNERS_MAXIMUM_COUNT = '1';
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
       expect(mockOctokit.actions.createRegistrationTokenForOrg).not.toBeCalled();
+      expect(mockOctokit.actions.createRegistrationTokenForRepo).not.toBeCalled();
     });
 
     it('creates a token when maximum runners has not been reached', async () => {
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
-      expect(mockOctokit.actions.createRegistrationTokenForOrg).toBeCalled();
       expect(mockOctokit.actions.createRegistrationTokenForOrg).toBeCalledWith({
         org: TEST_DATA.repositoryOwner,
       });
+      expect(mockOctokit.actions.createRegistrationTokenForRepo).not.toBeCalled();
     });
 
     it('creates a runner with correct config', async () => {
@@ -465,11 +478,13 @@ describe('scaleUp with public GH', () => {
     it('does not create a token when maximum runners has been reached', async () => {
       process.env.RUNNERS_MAXIMUM_COUNT = '1';
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
+      expect(mockOctokit.actions.createRegistrationTokenForOrg).not.toBeCalled();
       expect(mockOctokit.actions.createRegistrationTokenForRepo).not.toBeCalled();
     });
-
+    
     it('creates a token when maximum runners has not been reached', async () => {
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
+      expect(mockOctokit.actions.createRegistrationTokenForOrg).not.toBeCalled();
       expect(mockOctokit.actions.createRegistrationTokenForRepo).toBeCalledWith({
         owner: TEST_DATA.repositoryOwner,
         repo: TEST_DATA.repositoryName,
@@ -488,6 +503,7 @@ describe('scaleUp with public GH', () => {
       const spy = jest.spyOn(ghAuth, 'createGithubAuth');
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA_WITH_ZERO_INSTALL_ID);
       expect(mockOctokit.apps.getOrgInstallation).not.toBeCalled();
+      expect(mockOctokit.apps.getRepoInstallation).toBeCalled();
       expect(spy).toHaveBeenNthCalledWith(1, undefined, 'app', '');
       expect(spy).toHaveBeenNthCalledWith(2, TEST_DATA.installationId, 'installation', '');
     });

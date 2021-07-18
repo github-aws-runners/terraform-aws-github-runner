@@ -1,3 +1,4 @@
+// import { mocked } from 'ts-jest/utils';
 import { handle } from './handler';
 import { mocked } from 'ts-jest/utils';
 import { Webhooks } from '@octokit/webhooks';
@@ -7,6 +8,7 @@ import workflowjob_event from '../../test/resources/github_workflowjob_event.jso
 import checkrun_event from '../../test/resources/github_check_run_event.json';
 import nock from 'nock';
 
+const mockDecrypt = jest.fn();
 jest.mock('../sqs');
 jest.mock('../ssm');
 
