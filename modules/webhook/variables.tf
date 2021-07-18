@@ -45,7 +45,7 @@ variable "role_permissions_boundary" {
 }
 
 variable "role_path" {
-  description = "The path that will be added to the role, if not set the environment name will be used."
+  description = "The path that will be added to the role; if not set, the environment name will be used."
   type        = string
   default     = null
 }
