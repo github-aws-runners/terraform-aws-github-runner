@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Bug fixes
+
+* In runner-binary-syncer support a runner binary having releases but no prereleases
+* When the runner-binary-syncer encounters an error report that back up to the lambda.ts so that it can report that back to the caller. 
+
 ## [0.15.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v0.14.0...v0.15.0) (2021-07-07)
 
 

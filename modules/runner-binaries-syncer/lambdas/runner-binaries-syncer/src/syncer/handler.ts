@@ -49,7 +49,7 @@ async function getLinuxReleaseAsset(
   const latestReleaseIndex = assetsList.data.findIndex((a) => a.prerelease === false);
 
   let asset = undefined;
-  if (fetchPrereleaseBinaries && latestPrereleaseIndex < latestReleaseIndex) {
+  if (fetchPrereleaseBinaries && latestPrereleaseIndex != -1 && latestPrereleaseIndex < latestReleaseIndex) {
     asset = assetsList.data[latestPrereleaseIndex];
   } else if (latestReleaseIndex != -1) {
     asset = assetsList.data[latestReleaseIndex];
@@ -86,6 +86,7 @@ async function uploadToS3(s3: S3, cacheObject: CacheObject, actionRunnerReleaseA
       });
   }).catch((error) => {
     console.error(`Exception: ${error}`);
+    throw error;
   });
 }
 
