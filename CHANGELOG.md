@@ -4,6 +4,7 @@
 
 ### Bug fixes
 
+* Use consistent reporting back to caller in the Webhook lambda
 * In runners lambda wait for scaleDown to have finished before calling callback
 * In runner-binary-syncer support a runner binary having releases but no prereleases
 * When the runner-binary-syncer encounters an error report that back up to the lambda.ts so that it can report that back to the caller. 
