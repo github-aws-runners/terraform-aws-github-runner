@@ -18,7 +18,7 @@ export const scaleUp = async (event: SQSEvent, context: Context, callback: any):
 
 export const scaleDown = async (event: ScheduledEvent, context: Context, callback: any): Promise<void> => {
   try {
-    scaleDownAction();
+    await scaleDownAction();
     callback(null);
   } catch (e) {
     console.error(e);
