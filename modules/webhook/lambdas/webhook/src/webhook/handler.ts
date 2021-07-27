@@ -1,7 +1,7 @@
 import { IncomingHttpHeaders } from 'http';
 import { Webhooks } from '@octokit/webhooks';
 import { sendActionRequest } from '../sqs';
-import { CheckRunEvent } from '@octokit/webhooks-definitions/schema';
+import { CheckRunEvent } from '@octokit/webhooks-types';
 import { getParameterValue } from '../ssm';
 
 export const handle = async (headers: IncomingHttpHeaders, payload: string | null): Promise<number> => {
@@ -21,7 +21,7 @@ export const handle = async (headers: IncomingHttpHeaders, payload: string | nul
   const webhooks = new Webhooks({
     secret: secret,
   });
-  if (!(await webhooks.verify(payload, signature))) {
+  if (!(await webhooks.verify(payload as string, signature))) {
     console.error('Unable to verify signature!');
     return 401;
   }
