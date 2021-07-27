@@ -1197,20 +1197,30 @@
   dependencies:
     "@octokit/openapi-types" "^7.3.2"
 
-"@octokit/webhooks-definitions@3.67.3", "@octokit/webhooks-definitions@^3.67.3":
+"@octokit/webhooks-definitions@^3.67.3":
   version "3.67.3"
   resolved "https://registry.yarnpkg.com/@octokit/webhooks-definitions/-/webhooks-definitions-3.67.3.tgz#d2a905a90b04af8111982d0c13658a49fc4eecb9"
   integrity sha512-do4Z1r2OVhuI0ihJhQ8Hg+yPWnBYEBNuFNCrvtPKoYT1w81jD7pBXgGe86lYuuNirkDHb0Nxt+zt4O5GiFJfgA==
 
-"@octokit/webhooks@^8.5.4":
-  version "8.12.3"
-  resolved "https://registry.yarnpkg.com/@octokit/webhooks/-/webhooks-8.12.3.tgz#8e30ac3534bbc65be39995664ee25ca6922f9e44"
-  integrity sha512-rbzBG0XmzYtaLoeXZ2F4wyY3AaBbvnHT5OkSXxaF+OJTJLEdAKE6dtJsNYzB2mr2XYpe9pb198SrTeutKQeiQA==
+"@octokit/webhooks-methods@^2.0.0":
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/@octokit/webhooks-methods/-/webhooks-methods-2.0.0.tgz#1108b9ea661ca6c81e4a8bfa63a09eb27d5bc2db"
+  integrity sha512-35cfQ4YWlnZnmZKmIxlGPUPLtbkF8lr/A/1Sk1eC0ddLMwQN06dOuLc+dI3YLQS+T+MoNt3DIQ0NynwgKPilig==
+
+"@octokit/webhooks-types@4.2.0":
+  version "4.2.0"
+  resolved "https://registry.yarnpkg.com/@octokit/webhooks-types/-/webhooks-types-4.2.0.tgz#7c3798fe2c469eb62c5fc3440301e34bf288e6b7"
+  integrity sha512-BbWkXK0ZLE2BXF7OKlrK5B7nCqgawEiZ7orzLls5rLZlepHy1LtFlh2DSe3McqJznlBh0JRk+/eUowgXfmKmIw==
+
+"@octokit/webhooks@^9.10.0":
+  version "9.11.0"
+  resolved "https://registry.yarnpkg.com/@octokit/webhooks/-/webhooks-9.11.0.tgz#e2f491243dd2d0091a4aa24f683ac0958aa040e5"
+  integrity sha512-0pgBcPtpSIfvJX4COVQbbAL2kndKYLC0kHxnqOEschoVUClLaU7f8xkNX9royJF4vg9dc2AVHVvd9QC8yVrdVw==
   dependencies:
     "@octokit/request-error" "^2.0.2"
-    "@octokit/webhooks-definitions" "3.67.3"
+    "@octokit/webhooks-methods" "^2.0.0"
+    "@octokit/webhooks-types" "4.2.0"
     aggregate-error "^3.1.0"
-    debug "^4.0.0"
 
 "@sinonjs/commons@^1.7.0":
   version "1.8.3"
@@ -1477,10 +1487,10 @@
     "@typescript-eslint/types" "4.27.0"
     eslint-visitor-keys "^2.0.0"
 
-"@vercel/ncc@0.27.0":
-  version "0.27.0"
-  resolved "https://registry.yarnpkg.com/@vercel/ncc/-/ncc-0.27.0.tgz#c0cfeebb0bebb56052719efa4a0ecc090a932c76"
-  integrity sha512-DllIJQapnU2YwewIhh/4dYesmMQw3h2cFtabECc/zSJHqUbNa0eJuEkRa6DXbZvh1YPWBtYQoPV17NlDpBw1Vw==
+"@vercel/ncc@0.29.0":
+  version "0.29.0"
+  resolved "https://registry.yarnpkg.com/@vercel/ncc/-/ncc-0.29.0.tgz#ac23fc23f1593b05c72360108bcf6d849d2f317a"
+  integrity sha512-p+sB835wOSDdgm2mgFgSOcXJF84AqZ+vBEnnGS0sm8veA92Hia7sqH0qEnqeFilPl+cXtxbdh2er+WdlfbVCZA==
 
 abab@^2.0.3, abab@^2.0.5:
   version "2.0.5"
@@ -2209,7 +2219,7 @@ debug@2.6.9, debug@^2.2.0, debug@^2.3.3:
   dependencies:
     ms "2.0.0"
 
-debug@4, debug@^4.0.0, debug@^4.0.1, debug@^4.1.0, debug@^4.1.1, debug@^4.3.1:
+debug@4, debug@^4.0.1, debug@^4.1.0, debug@^4.1.1, debug@^4.3.1:
   version "4.3.1"
   resolved "https://registry.yarnpkg.com/debug/-/debug-4.3.1.tgz#f0d229c505e0c6d8c49ac553d1b13dc183f6b2ee"
   integrity sha512-doEwdvm4PCeK4K3RQN2ZC2BYUBaxwLARCqZmMjtF8a51J2Rb0xpVloFRnCODwqjpwnAoao4pelN8l3RJdv3gRQ==
