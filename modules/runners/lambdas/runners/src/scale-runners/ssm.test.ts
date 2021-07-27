@@ -5,7 +5,6 @@ import { SSM, GetParameterCommandOutput } from '@aws-sdk/client-ssm';
 jest.mock('@aws-sdk/client-ssm');
 
 const cleanEnv = process.env;
-const ENVIRONMENT = 'dev';
 
 beforeEach(() => {
   jest.resetModules();
@@ -33,7 +32,7 @@ describe('Test createGithubAuth', () => {
     SSM.prototype.getParameter = jest.fn().mockResolvedValue(output);
 
     // Act
-    const result = await getParameterValue(ENVIRONMENT, parameterName);
+    const result = await getParameterValue(parameterName);
 
     // Assert
     expect(result).toBe(parameterValue);

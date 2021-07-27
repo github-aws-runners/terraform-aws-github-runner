@@ -16,8 +16,8 @@ export const scaleUp = async (eventSource: string, payload: ActionRequestMessage
   const maximumRunners = parseInt(process.env.RUNNERS_MAXIMUM_COUNT || '3');
   const runnerExtraLabels = process.env.RUNNER_EXTRA_LABELS;
   const runnerGroup = process.env.RUNNER_GROUP_NAME;
-  const environment = process.env.ENVIRONMENT as string;
-  const ghesBaseUrl = process.env.GHES_URL as string;
+  const environment = process.env.ENVIRONMENT;
+  const ghesBaseUrl = process.env.GHES_URL;
 
   let ghesApiUrl = '';
   if (ghesBaseUrl) {
@@ -81,7 +81,7 @@ export const scaleUp = async (eventSource: string, payload: ActionRequestMessage
         runnerServiceConfig: enableOrgLevel
           ? `--url ${configBaseUrl}/${payload.repositoryOwner} --token ${token} ${labelsArgument}${runnerGroupArgument}`
           : `--url ${configBaseUrl}/${payload.repositoryOwner}/${payload.repositoryName} ` +
-            `--token ${token} ${labelsArgument}`,
+          `--token ${token} ${labelsArgument}`,
         runnerOwner,
         runnerType,
       });

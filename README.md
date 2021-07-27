@@ -50,7 +50,7 @@ Scaling down the runners is at the moment brute-forced, every configurable amoun
 
 Downloading the GitHub Action Runner distribution can be occasionally slow (more than 10 minutes). Therefore a lambda is introduced that synchronizes the action runner binary from GitHub to an S3 bucket. The EC2 instance will fetch the distribution from the S3 bucket instead of the internet.
 
-Secrets and private keys which are passed to the lambdas as environment variables are encrypted by default by a KMS key managed by the module. Alternatively you can pass your own KMS key. Encryption via KMS can be complete disabled by setting `encrypt_secrets` to `false`.
+Secrets and private keys are stored in SSM Parameter Store. These values are encrypted using the default KMS key for SSM or passing in a custom KMS key.
 
 ![Architecture](docs/component-overview.svg)
 
@@ -325,6 +325,7 @@ No requirements.
 |------|--------|---------|
 | runner_binaries | ./modules/runner-binaries-syncer |  |
 | runners | ./modules/runners |  |
+| ssm | ./modules/ssm |  |
 | webhook | ./modules/webhook |  |
 
 ## Resources
@@ -334,7 +335,6 @@ No requirements.
 | [aws_kms_key](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/kms_key) |
 | [aws_resourcegroups_group](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/resourcegroups_group) |
 | [aws_sqs_queue](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sqs_queue) |
-| [aws_ssm_parameter](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_parameter) |
 | [random_string](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/string) |
 
 ## Inputs
@@ -404,6 +404,7 @@ No requirements.
 |------|-------------|
 | binaries\_syncer | n/a |
 | runners | n/a |
+| ssm\_parameters | n/a |
 | webhook | n/a |
 <!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 

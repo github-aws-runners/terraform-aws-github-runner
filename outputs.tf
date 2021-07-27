@@ -27,3 +27,7 @@ output "webhook" {
     endpoint    = "${module.webhook.gateway.api_endpoint}/${module.webhook.endpoint_relative_path}"
   }
 }
+
+output "ssm_parameters" {
+  value = module.ssm.parameters
+}

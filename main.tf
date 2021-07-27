@@ -11,10 +11,10 @@ locals {
   kms_key_arn = var.kms_key_id != null ? data.aws_kms_key.cmk[0].arn : null
 
   github_app_parameters = {
-    client_id_arn     = aws_ssm_parameter.github_app_client_id.arn
-    client_secret_arn = aws_ssm_parameter.github_app_client_secret.arn
-    id_arn            = aws_ssm_parameter.github_app_id.arn
-    key_base64_arn    = aws_ssm_parameter.github_app_key_base64.arn
+    client_id     = module.ssm.parameters.github_app_client_id
+    client_secret = module.ssm.parameters.github_app_client_secret
+    id            = module.ssm.parameters.github_app_id
+    key_base64    = module.ssm.parameters.github_app_key_base64
   }
 }
 
@@ -35,6 +35,15 @@ resource "aws_sqs_queue" "queued_builds" {
   tags = var.tags
 }
 
+module "ssm" {
+  source = "./modules/ssm"
+
+  kms_key_arn = local.kms_key_arn
+  environment = var.environment
+  github_app  = var.github_app
+  tags        = local.tags
+}
+
 module "webhook" {
   source = "./modules/webhook"
 
@@ -44,7 +53,7 @@ module "webhook" {
   kms_key_arn = local.kms_key_arn
 
   sqs_build_queue               = aws_sqs_queue.queued_builds
-  github_app_webhook_secret_arn = aws_ssm_parameter.github_app_webhook_secret.arn
+  github_app_webhook_secret_arn = module.ssm.parameters.github_app_webhook_secret.arn
 
   lambda_s3_bucket                 = var.lambda_s3_bucket
   webhook_lambda_s3_key            = var.webhook_lambda_s3_key

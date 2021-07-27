@@ -16,11 +16,22 @@ const ENVIRONMENT = 'dev';
 const GITHUB_APP_ID = '1';
 const GITHUB_APP_CLIENT_ID = '1';
 const GITHUB_APP_CLIENT_SECRET = 'client_secret';
+const PARAMETER_GITHUB_APP_ID_NAME = `/actions-runner/${ENVIRONMENT}/github_app_id`;
+const PARAMETER_GITHUB_APP_KEY_BASE64_NAME = `/actions-runner/${ENVIRONMENT}/github_app_key_base64`;
+const PARAMETER_GITHUB_APP_CLIENT_ID_NAME = `/actions-runner/${ENVIRONMENT}/github_app_client_id`;
+const PARAMETER_GITHUB_APP_CLIENT_SECRET_NAME = `/actions-runner/${ENVIRONMENT}/github_app_client_secret`;
+
+const mockedGet = mocked(getParameterValue);
+
 
 beforeEach(() => {
   jest.resetModules();
   jest.clearAllMocks();
   process.env = { ...cleanEnv };
+  process.env.PARAMETER_GITHUB_APP_ID_NAME = PARAMETER_GITHUB_APP_ID_NAME;
+  process.env.PARAMETER_GITHUB_APP_KEY_BASE64_NAME = PARAMETER_GITHUB_APP_KEY_BASE64_NAME;
+  process.env.PARAMETER_GITHUB_APP_CLIENT_ID_NAME = PARAMETER_GITHUB_APP_CLIENT_ID_NAME;
+  process.env.PARAMETER_GITHUB_APP_CLIENT_SECRET_NAME = PARAMETER_GITHUB_APP_CLIENT_SECRET_NAME;
   nock.disableNetConnect();
 });
 
@@ -74,13 +85,12 @@ describe('Test createGithubAuth', () => {
       clientId: GITHUB_APP_CLIENT_ID,
       clientSecret: GITHUB_APP_CLIENT_SECRET,
     };
-
-    const mockedGet = mocked(getParameterValue);
     mockedGet
       .mockResolvedValueOnce(GITHUB_APP_ID)
       .mockResolvedValueOnce(b64)
       .mockResolvedValueOnce(GITHUB_APP_CLIENT_ID)
       .mockResolvedValueOnce(GITHUB_APP_CLIENT_SECRET);
+
     const mockedAuth = jest.fn();
     mockedAuth.mockResolvedValue({ token });
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -92,10 +102,10 @@ describe('Test createGithubAuth', () => {
     const result = await createGithubAuth(installationId, authType);
 
     // Assert
-    expect(getParameterValue).toBeCalledWith(ENVIRONMENT, 'github_app_id');
-    expect(getParameterValue).toBeCalledWith(ENVIRONMENT, 'github_app_key_base64');
-    expect(getParameterValue).toBeCalledWith(ENVIRONMENT, 'github_app_client_id');
-    expect(getParameterValue).toBeCalledWith(ENVIRONMENT, 'github_app_client_secret');
+    expect(getParameterValue).toBeCalledWith(PARAMETER_GITHUB_APP_ID_NAME);
+    expect(getParameterValue).toBeCalledWith(PARAMETER_GITHUB_APP_KEY_BASE64_NAME);
+    expect(getParameterValue).toBeCalledWith(PARAMETER_GITHUB_APP_CLIENT_ID_NAME);
+    expect(getParameterValue).toBeCalledWith(PARAMETER_GITHUB_APP_CLIENT_SECRET_NAME);
 
     expect(mockedCreatAppAuth).toBeCalledTimes(1);
     expect(mockedCreatAppAuth).toBeCalledWith(authOptions);
@@ -121,7 +131,6 @@ describe('Test createGithubAuth', () => {
       request: mockedRequestInterface.defaults({ baseUrl: githubServerUrl }),
     };
 
-    const mockedGet = mocked(getParameterValue);
     mockedGet
       .mockResolvedValueOnce(GITHUB_APP_ID)
       .mockResolvedValueOnce(b64)
@@ -138,10 +147,10 @@ describe('Test createGithubAuth', () => {
     const result = await createGithubAuth(installationId, authType, githubServerUrl);
 
     // Assert
-    expect(getParameterValue).toBeCalledWith(ENVIRONMENT, 'github_app_id');
-    expect(getParameterValue).toBeCalledWith(ENVIRONMENT, 'github_app_key_base64');
-    expect(getParameterValue).toBeCalledWith(ENVIRONMENT, 'github_app_client_id');
-    expect(getParameterValue).toBeCalledWith(ENVIRONMENT, 'github_app_client_secret');
+    expect(getParameterValue).toBeCalledWith(PARAMETER_GITHUB_APP_ID_NAME);
+    expect(getParameterValue).toBeCalledWith(PARAMETER_GITHUB_APP_KEY_BASE64_NAME);
+    expect(getParameterValue).toBeCalledWith(PARAMETER_GITHUB_APP_CLIENT_ID_NAME);
+    expect(getParameterValue).toBeCalledWith(PARAMETER_GITHUB_APP_CLIENT_SECRET_NAME);
 
     expect(mockedCreatAppAuth).toBeCalledTimes(1);
     expect(mockedCreatAppAuth).toBeCalledWith(authOptions);
@@ -168,7 +177,6 @@ describe('Test createGithubAuth', () => {
       request: mockedRequestInterface.defaults({ baseUrl: githubServerUrl }),
     };
 
-    const mockedGet = mocked(getParameterValue);
     mockedGet
       .mockResolvedValueOnce(GITHUB_APP_ID)
       .mockResolvedValueOnce(b64)
@@ -185,10 +193,10 @@ describe('Test createGithubAuth', () => {
     const result = await createGithubAuth(installationId, authType, githubServerUrl);
 
     // Assert
-    expect(getParameterValue).toBeCalledWith(ENVIRONMENT, 'github_app_id');
-    expect(getParameterValue).toBeCalledWith(ENVIRONMENT, 'github_app_key_base64');
-    expect(getParameterValue).toBeCalledWith(ENVIRONMENT, 'github_app_client_id');
-    expect(getParameterValue).toBeCalledWith(ENVIRONMENT, 'github_app_client_secret');
+    expect(getParameterValue).toBeCalledWith(PARAMETER_GITHUB_APP_ID_NAME);
+    expect(getParameterValue).toBeCalledWith(PARAMETER_GITHUB_APP_KEY_BASE64_NAME);
+    expect(getParameterValue).toBeCalledWith(PARAMETER_GITHUB_APP_CLIENT_ID_NAME);
+    expect(getParameterValue).toBeCalledWith(PARAMETER_GITHUB_APP_CLIENT_SECRET_NAME);
 
     expect(mockedCreatAppAuth).toBeCalledTimes(1);
     expect(mockedCreatAppAuth).toBeCalledWith(authOptions);

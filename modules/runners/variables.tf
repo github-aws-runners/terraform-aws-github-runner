@@ -114,12 +114,12 @@ variable "enable_organization_runners" {
 }
 
 variable "github_app_parameters" {
-  description = "Parameter Store ARNs for GitHub App Parameters."
+  description = "Parameter Store for GitHub App Parameters."
   type = object({
-    key_base64_arn    = string
-    id_arn            = string
-    client_id_arn     = string
-    client_secret_arn = string
+    key_base64    = map(string)
+    id            = map(string)
+    client_id     = map(string)
+    client_secret = map(string)
   })
 }
 

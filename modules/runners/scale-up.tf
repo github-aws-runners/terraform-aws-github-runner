@@ -14,14 +14,18 @@ resource "aws_lambda_function" "scale_up" {
 
   environment {
     variables = {
-      ENABLE_ORGANIZATION_RUNNERS = var.enable_organization_runners
-      ENVIRONMENT                 = var.environment
-      GHES_URL                    = var.ghes_url
-      RUNNER_EXTRA_LABELS         = var.runner_extra_labels
-      RUNNER_GROUP_NAME           = var.runner_group_name
-      RUNNERS_MAXIMUM_COUNT       = var.runners_maximum_count
-      LAUNCH_TEMPLATE_NAME        = join(",", [for template in aws_launch_template.runner : template.name])
-      SUBNET_IDS                  = join(",", var.subnet_ids)
+      ENABLE_ORGANIZATION_RUNNERS             = var.enable_organization_runners
+      ENVIRONMENT                             = var.environment
+      GHES_URL                                = var.ghes_url
+      RUNNER_EXTRA_LABELS                     = var.runner_extra_labels
+      RUNNER_GROUP_NAME                       = var.runner_group_name
+      RUNNERS_MAXIMUM_COUNT                   = var.runners_maximum_count
+      LAUNCH_TEMPLATE_NAME                    = join(",", [for template in aws_launch_template.runner : template.name])
+      SUBNET_IDS                              = join(",", var.subnet_ids)
+      PARAMETER_GITHUB_APP_CLIENT_ID_NAME     = var.github_app_parameters.client_id.name
+      PARAMETER_GITHUB_APP_CLIENT_SECRET_NAME = var.github_app_parameters.client_secret.name
+      PARAMETER_GITHUB_APP_ID_NAME            = var.github_app_parameters.id.name
+      PARAMETER_GITHUB_APP_KEY_BASE64_NAME    = var.github_app_parameters.key_base64.name
     }
   }
 
@@ -67,11 +71,11 @@ resource "aws_iam_role_policy" "scale_up" {
   policy = templatefile("${path.module}/policies/lambda-scale-up.json", {
     arn_runner_instance_role     = aws_iam_role.runner.arn
     sqs_arn                      = var.sqs_build_queue.arn
-    github_app_client_id_arn     = var.github_app_parameters.client_id_arn,
-    github_app_client_secret_arn = var.github_app_parameters.client_secret_arn,
-    github_app_id_arn            = var.github_app_parameters.id_arn,
-    github_app_key_base64_arn    = var.github_app_parameters.key_base64_arn
-    kms_key_arn                  = var.kms_key_arn != null ? var.kms_key_arn : ""
+    github_app_client_id_arn     = var.github_app_parameters.client_id.arn
+    github_app_client_secret_arn = var.github_app_parameters.client_secret.arn
+    github_app_id_arn            = var.github_app_parameters.id.arn
+    github_app_key_base64_arn    = var.github_app_parameters.key_base64.arn
+    kms_key_arn                  = local.kms_key_arn
   })
 }
 
