@@ -143,8 +143,8 @@ variable "runners_maximum_count" {
   default     = 3
 }
 
-variable "kms_key_id" {
-  description = "Optional CMK Key ID/ARN to be used for Parameter Store."
+variable "kms_key_arn" {
+  description = "Optional CMK Key ARN to be used for Parameter Store. This key must be in the current account."
   type        = string
   default     = null
 }

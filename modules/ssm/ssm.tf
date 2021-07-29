@@ -2,7 +2,7 @@ resource "aws_ssm_parameter" "github_app_client_id" {
   name   = "/actions_runner/${var.environment}/github_app_client_id"
   type   = "SecureString"
   value  = var.github_app.client_id
-  key_id = var.kms_key_arn
+  key_id = local.kms_key_arn
   tags   = var.tags
 }
 

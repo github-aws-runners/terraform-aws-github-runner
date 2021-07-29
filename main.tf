@@ -8,8 +8,6 @@ locals {
 
   ami_filter = length(var.ami_filter) > 0 ? var.ami_filter : local.runner_architecture == "arm64" ? { name = ["amzn2-ami-hvm-2*-arm64-gp2"] } : { name = ["amzn2-ami-hvm-2.*-x86_64-ebs"] }
 
-  kms_key_arn = var.kms_key_id != null ? data.aws_kms_key.cmk[0].arn : null
-
   github_app_parameters = {
     client_id     = module.ssm.parameters.github_app_client_id
     client_secret = module.ssm.parameters.github_app_client_secret
@@ -38,7 +36,7 @@ resource "aws_sqs_queue" "queued_builds" {
 module "ssm" {
   source = "./modules/ssm"
 
-  kms_key_arn = local.kms_key_arn
+  kms_key_arn = var.kms_key_arn
   environment = var.environment
   github_app  = var.github_app
   tags        = local.tags
@@ -50,7 +48,7 @@ module "webhook" {
   aws_region  = var.aws_region
   environment = var.environment
   tags        = local.tags
-  kms_key_arn = local.kms_key_arn
+  kms_key_arn = var.kms_key_arn
 
   sqs_build_queue               = aws_sqs_queue.queued_builds
   github_app_webhook_secret_arn = module.ssm.parameters.github_app_webhook_secret.arn
@@ -130,7 +128,7 @@ module "runners" {
 
   ghes_url = var.ghes_url
 
-  kms_key_arn = local.kms_key_arn
+  kms_key_arn = var.kms_key_arn
 }
 
 module "runner_binaries" {

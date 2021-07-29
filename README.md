@@ -332,7 +332,6 @@ No requirements.
 
 | Name |
 |------|
-| [aws_kms_key](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/kms_key) |
 | [aws_resourcegroups_group](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/resourcegroups_group) |
 | [aws_sqs_queue](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sqs_queue) |
 | [random_string](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/string) |
@@ -359,7 +358,7 @@ No requirements.
 | instance\_type | [DEPRECATED] See instance\_types. | `string` | `"m5.large"` | no |
 | instance\_types | List of instance types for the action runner. | `set(string)` | `null` | no |
 | key\_name | Key pair name | `string` | `null` | no |
-| kms\_key\_id | Optional CMK Key ID/ARN to be used for Parameter Store. | `string` | `null` | no |
+| kms\_key\_arn | Optional CMK Key ARN to be used for Parameter Store. This key must be in the current account. | `string` | `null` | no |
 | lambda\_s3\_bucket | S3 bucket from which to specify lambda functions. This is an alternative to providing local files directly. | `any` | `null` | no |
 | lambda\_security\_group\_ids | List of security group IDs associated with the Lambda function. | `list(string)` | `[]` | no |
 | lambda\_subnet\_ids | List of subnets in which the action runners will be launched, the subnets needs to be subnets in the `vpc_id`. | `list(string)` | `[]` | no |
