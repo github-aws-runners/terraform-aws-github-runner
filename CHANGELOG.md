@@ -8,6 +8,7 @@
 * In runners lambda wait for scaleDown to have finished before calling callback
 * In runner-binary-syncer support a runner binary having releases but no prereleases
 * When the runner-binary-syncer encounters an error report that back up to the lambda.ts so that it can report that back to the caller.
+* Fix incorrect or incomplete tests, and remove duplicate tests
 
 ### [0.15.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v0.15.0...v0.15.1) (2021-07-13)
 
