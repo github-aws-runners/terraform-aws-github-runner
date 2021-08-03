@@ -1,8 +1,8 @@
-import { handle as githubWebhook } from './webhook/handler';
+import { handle } from './webhook/handler';
 
-module.exports.githubWebhook = async (event: any, context: any, callback: any) => {
-  const statusCode = await githubWebhook(event.headers, event.body);
-  return callback(null, {
+export const githubWebhook = async (event: any, context: any, callback: any): Promise<void> => {
+  const statusCode = await handle(event.headers, event.body);
+  callback(null, {
     statusCode: statusCode,
   });
 };

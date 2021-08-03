@@ -1,7 +1,7 @@
 import { IncomingHttpHeaders } from 'http';
 import { Webhooks } from '@octokit/webhooks';
 import { sendActionRequest } from '../sqs';
-import { CheckRunEvent } from '@octokit/webhooks-definitions/schema';
+import { CheckRunEvent } from '@octokit/webhooks-types';
 import { decrypt } from '../kms';
 
 export const handle = async (headers: IncomingHttpHeaders, payload: any): Promise<number> => {
@@ -29,7 +29,7 @@ export const handle = async (headers: IncomingHttpHeaders, payload: any): Promis
   const webhooks = new Webhooks({
     secret: secret,
   });
-  if (!webhooks.verify(payload, signature)) {
+  if (!(await webhooks.verify(payload, signature))) {
     console.error('Unable to verify signature!');
     return 401;
   }
@@ -41,7 +41,7 @@ export const handle = async (headers: IncomingHttpHeaders, payload: any): Promis
   if (githubEvent === 'check_run') {
     const body = JSON.parse(payload) as CheckRunEvent;
 
-    const repositoryWhiteListEnv = process.env.REPOSITORY_WHITE_LIST as string || "[]";
+    const repositoryWhiteListEnv = (process.env.REPOSITORY_WHITE_LIST as string) || '[]';
     const repositoryWhiteList = JSON.parse(repositoryWhiteListEnv) as Array<string>;
 
     if (repositoryWhiteList.length > 0) {

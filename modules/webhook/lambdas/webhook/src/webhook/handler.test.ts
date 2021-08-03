@@ -92,5 +92,4 @@ describe('handler', () => {
     expect(resp).toBe(200);
     expect(sendActionRequest).toBeCalled();
   });
-
 });

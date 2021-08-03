@@ -118,7 +118,6 @@ Go to GitHub and [create a new app](https://docs.github.com/en/developers/apps/c
      - `Administration`: Read & write (to register runner)
 7. _Permissions for organization level runners only_:
    - Organization
-     - `Administration`: Read & write (to register runner)
      - `Self-hosted runners`: Read & write (to register runner)
 8. Save the new app.
 9. On the General page, make a note of the "App ID" and "Client ID" parameters.
@@ -348,6 +347,7 @@ No requirements.
 | block\_device\_mappings | The EC2 instance block device configuration. Takes the following keys: `device_name`, `delete_on_termination`, `volume_type`, `volume_size`, `encrypted`, `iops` | `map(string)` | `{}` | no |
 | cloudwatch\_config | (optional) Replaces the module default cloudwatch log config. See https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-Configuration-File-Details.html for details. | `string` | `null` | no |
 | create\_service\_linked\_role\_spot | (optional) create the serviced linked role for spot instances that is required by the scale-up lambda. | `bool` | `false` | no |
+| delay\_webhook\_event | The number of seconds the event accepted by the webhook is invisible on the queue before the scale up lambda will receive the event. | `number` | `30` | no |
 | enable\_cloudwatch\_agent | Enabling the cloudwatch agent on the ec2 runner instances, the runner contains default config. Configuration can be overridden via `cloudwatch_config`. | `bool` | `true` | no |
 | enable\_organization\_runners | Register runners to organization, instead of repo level | `bool` | `false` | no |
 | enable\_ssm\_on\_runners | Enable to allow access the runner instances for debugging purposes via SSM. Note that this adds additional permissions to the runner instances. | `bool` | `false` | no |
@@ -368,7 +368,7 @@ No requirements.
 | manage\_kms\_key | Let the module manage the KMS key. | `bool` | `true` | no |
 | market\_options | Market options for the action runner instances. Setting the value to `null` let the scaler create on-demand instances instead of spot instances. | `string` | `"spot"` | no |
 | minimum\_running\_time\_in\_minutes | The time an ec2 action runner should be running at minimum before terminated if non busy. | `number` | `5` | no |
-| repository\_white\_list | (optional) List of github repository full names (owner/repo_name) that will be allowed to call the runners. Leave empty for no filtering | `list(string)` | `[]` | no |
+| repository\_white\_list | List of repositories allowed to use the github app | `list(string)` | `[]` | no |
 | role\_path | The path that will be added to role path for created roles, if not set the environment name will be used. | `string` | `null` | no |
 | role\_permissions\_boundary | Permissions boundary that will be added to the created roles. | `string` | `null` | no |
 | runner\_additional\_security\_group\_ids | (optional) List of additional security groups IDs to apply to the runner | `list(string)` | `[]` | no |

@@ -15,9 +15,17 @@ terraform apply
 cd ..
 ```
 
-Before running Terraform, ensure the GitHub app is configured.
+Before running Terraform, ensure the GitHub app is configured. See the [configuration details](../../README.md#usages) for more details.
 
 ```bash
 terraform init
 terraform apply
 ```
+
+You can receive the webhook details by running:
+
+```bash
+terraform output -raw webhook_secret
+```
+
+Be-aware some shells will print some end of line character `%`. 
