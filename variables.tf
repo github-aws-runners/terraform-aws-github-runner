@@ -366,3 +366,9 @@ variable "repository_white_list" {
   type        = list(string)
   default     = []
 }
+
+variable "delay_webhook_event" {
+  description = "The number of seconds the event accepted by the webhook is invisible on the queue before the scale up lambda will receive the event."
+  type        = number
+  default     = 30
+}

@@ -4,9 +4,12 @@ output "runners" {
   }
 }
 
-output "webhook" {
-  value = {
-    secret   = random_password.random.result
-    endpoint = module.runners.webhook.endpoint
-  }
+output "webhook_endpoint" {
+  value = module.runners.webhook.endpoint
 }
+
+output "webhook_secret" {
+  sensitive = true
+  value     = random_password.random.result
+}
+
