@@ -1,10 +1,11 @@
 import { listRunners, createRunner, RunnerInputParameters } from './runners';
 import { createOctoClient, createGithubAuth } from './gh-auth';
 import yn from 'yn';
+import { Octokit } from '@octokit/rest';
 
 export interface ActionRequestMessage {
   id: number;
-  eventType: string;
+  eventType: 'check_run' | 'workflow_job';
   repositoryName: string;
   repositoryOwner: string;
   installationId: number;
@@ -30,31 +31,27 @@ export const scaleUp = async (eventSource: string, payload: ActionRequestMessage
     const githubClient = await createOctoClient(ghAuth.token, ghesApiUrl);
     installationId = enableOrgLevel
       ? (
-        await githubClient.apps.getOrgInstallation({
-          org: payload.repositoryOwner,
-        })
-      ).data.id
+          await githubClient.apps.getOrgInstallation({
+            org: payload.repositoryOwner,
+          })
+        ).data.id
       : (
-        await githubClient.apps.getRepoInstallation({
-          owner: payload.repositoryOwner,
-          repo: payload.repositoryName,
-        })
-      ).data.id;
+          await githubClient.apps.getRepoInstallation({
+            owner: payload.repositoryOwner,
+            repo: payload.repositoryName,
+          })
+        ).data.id;
   }
 
   const ghAuth = await createGithubAuth(installationId, 'installation', ghesApiUrl);
 
   const githubInstallationClient = await createOctoClient(ghAuth.token, ghesApiUrl);
-  const checkRun = await githubInstallationClient.checks.get({
-    check_run_id: payload.id,
-    owner: payload.repositoryOwner,
-    repo: payload.repositoryName,
-  });
 
   const runnerType = enableOrgLevel ? 'Org' : 'Repo';
   const runnerOwner = enableOrgLevel ? payload.repositoryOwner : `${payload.repositoryOwner}/${payload.repositoryName}`;
 
-  if (checkRun.data.status === 'queued') {
+  const isQueued = await getJobStatus(githubInstallationClient, payload);
+  if (isQueued) {
     const currentRunners = await listRunners({
       environment,
       runnerType,
@@ -67,9 +64,9 @@ export const scaleUp = async (eventSource: string, payload: ActionRequestMessage
       const registrationToken = enableOrgLevel
         ? await githubInstallationClient.actions.createRegistrationTokenForOrg({ org: payload.repositoryOwner })
         : await githubInstallationClient.actions.createRegistrationTokenForRepo({
-          owner: payload.repositoryOwner,
-          repo: payload.repositoryName,
-        });
+            owner: payload.repositoryOwner,
+            repo: payload.repositoryName,
+          });
       const token = registrationToken.data.token;
 
       const labelsArgument = runnerExtraLabels !== undefined ? `--labels ${runnerExtraLabels}` : '';
@@ -81,7 +78,7 @@ export const scaleUp = async (eventSource: string, payload: ActionRequestMessage
         runnerServiceConfig: enableOrgLevel
           ? `--url ${configBaseUrl}/${payload.repositoryOwner} --token ${token} ${labelsArgument}${runnerGroupArgument}`
           : `--url ${configBaseUrl}/${payload.repositoryOwner}/${payload.repositoryName} ` +
-          `--token ${token} ${labelsArgument}`,
+            `--token ${token} ${labelsArgument}`,
         runnerOwner,
         runnerType,
       });
@@ -90,6 +87,29 @@ export const scaleUp = async (eventSource: string, payload: ActionRequestMessage
     }
   }
 };
+
+async function getJobStatus(githubInstallationClient: Octokit, payload: ActionRequestMessage): Promise<boolean> {
+  let isQueued = false;
+  if (payload.eventType === 'workflow_job') {
+    const jobForWorkflowRun = await githubInstallationClient.actions.getJobForWorkflowRun({
+      job_id: payload.id,
+      owner: payload.repositoryOwner,
+      repo: payload.repositoryName,
+    });
+    isQueued = jobForWorkflowRun.data.status === 'queued';
+  } else if (payload.eventType === 'check_run') {
+    const checkRun = await githubInstallationClient.checks.get({
+      check_run_id: payload.id,
+      owner: payload.repositoryOwner,
+      repo: payload.repositoryName,
+    });
+    isQueued = checkRun.data.status === 'queued';
+  } else {
+    throw Error(`Event ${payload.eventType} is not supported`);
+  }
+
+  return isQueued;
+}
 
 export async function createRunnerLoop(runnerParameters: RunnerInputParameters): Promise<void> {
   const launchTemplateNames = process.env.LAUNCH_TEMPLATE_NAME?.split(',') as string[];

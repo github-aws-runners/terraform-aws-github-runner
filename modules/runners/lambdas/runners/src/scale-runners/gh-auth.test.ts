@@ -1,8 +1,10 @@
 import { createOctoClient, createGithubAuth } from './gh-auth';
 import nock from 'nock';
 import { createAppAuth } from '@octokit/auth-app';
+
 import { StrategyOptions } from '@octokit/auth-app/dist-types/types';
 import { getParameterValue } from './ssm';
+
 import { RequestInterface } from '@octokit/types';
 import { mock, MockProxy } from 'jest-mock-extended';
 import { request } from '@octokit/request';
@@ -22,7 +24,6 @@ const PARAMETER_GITHUB_APP_CLIENT_ID_NAME = `/actions-runner/${ENVIRONMENT}/gith
 const PARAMETER_GITHUB_APP_CLIENT_SECRET_NAME = `/actions-runner/${ENVIRONMENT}/github_app_client_secret`;
 
 const mockedGet = mocked(getParameterValue);
-
 
 beforeEach(() => {
   jest.resetModules();
@@ -93,8 +94,7 @@ describe('Test createGithubAuth', () => {
 
     const mockedAuth = jest.fn();
     mockedAuth.mockResolvedValue({ token });
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    mockedCreatAppAuth.mockImplementation((authOptions: StrategyOptions) => {
+    mockedCreatAppAuth.mockImplementation(() => {
       return mockedAuth;
     });
 
@@ -184,8 +184,7 @@ describe('Test createGithubAuth', () => {
       .mockResolvedValueOnce(GITHUB_APP_CLIENT_SECRET);
     const mockedAuth = jest.fn();
     mockedAuth.mockResolvedValue({ token });
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    mockedCreatAppAuth.mockImplementation((authOptions: StrategyOptions) => {
+    mockedCreatAppAuth.mockImplementation(() => {
       return mockedAuth;
     });
 

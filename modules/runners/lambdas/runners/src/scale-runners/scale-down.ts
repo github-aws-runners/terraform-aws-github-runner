@@ -39,16 +39,16 @@ function createGitHubClientForRunnerFactory(): (runner: RunnerInfo, orgLevel: bo
     console.debug(`[createGitHubClientForRunner] Cache miss for ${key}`);
     const installationId = orgLevel
       ? (
-        await githubClient.apps.getOrgInstallation({
-          org: repo.repoOwner,
-        })
-      ).data.id
+          await githubClient.apps.getOrgInstallation({
+            org: repo.repoOwner,
+          })
+        ).data.id
       : (
-        await githubClient.apps.getRepoInstallation({
-          owner: repo.repoOwner,
-          repo: repo.repoName,
-        })
-      ).data.id;
+          await githubClient.apps.getRepoInstallation({
+            owner: repo.repoOwner,
+            repo: repo.repoName,
+          })
+        ).data.id;
     const ghAuth2 = await createGithubAuth(installationId, 'installation', ghesApiUrl);
     const octokit = await createOctoClient(ghAuth2.token, ghesApiUrl);
     cache.set(key, octokit);
@@ -82,12 +82,12 @@ function listGithubRunnersFactory(): (
     console.debug(`[listGithubRunners] Cache miss for ${key}`);
     const runners = enableOrgLevel
       ? await client.paginate(client.actions.listSelfHostedRunnersForOrg, {
-        org: repo.repoOwner,
-      })
+          org: repo.repoOwner,
+        })
       : await client.paginate(client.actions.listSelfHostedRunnersForRepo, {
-        owner: repo.repoOwner,
-        repo: repo.repoName,
-      });
+          owner: repo.repoOwner,
+          repo: repo.repoName,
+        });
     cache.set(key, runners);
 
     return runners;
@@ -110,14 +110,14 @@ async function removeRunner(
   try {
     const result = enableOrgLevel
       ? await githubAppClient.actions.deleteSelfHostedRunnerFromOrg({
-        runner_id: ghRunnerId,
-        org: repo.repoOwner,
-      })
+          runner_id: ghRunnerId,
+          org: repo.repoOwner,
+        })
       : await githubAppClient.actions.deleteSelfHostedRunnerFromRepo({
-        runner_id: ghRunnerId,
-        owner: repo.repoOwner,
-        repo: repo.repoName,
-      });
+          runner_id: ghRunnerId,
+          owner: repo.repoOwner,
+          repo: repo.repoName,
+        });
 
     if (result.status == 204) {
       await terminateRunner(ec2runner);

@@ -110,6 +110,6 @@ function getInstanceParams(
 }
 
 function getSubnet(): string {
-  const subnets = (process.env.SUBNET_IDS).split(',');
+  const subnets = process.env.SUBNET_IDS.split(',');
   return subnets[Math.floor(Math.random() * subnets.length)];
 }

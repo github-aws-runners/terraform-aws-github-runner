@@ -78,6 +78,7 @@ No Modules.
 | repository\_white\_list | List of repositories allowed to use the github app | `list(string)` | `[]` | no |
 | role\_path | The path that will be added to the role, if not set the environment name will be used. | `string` | `null` | no |
 | role\_permissions\_boundary | Permissions boundary that will be added to the created role for the lambda. | `string` | `null` | no |
+| runner\_extra\_labels | Extra labels for the runners (GitHub). Separate each label by a comma | `string` | `""` | no |
 | sqs\_build\_queue | SQS queue to publish accepted build events. | <pre>object({<br>    id  = string<br>    arn = string<br>  })</pre> | n/a | yes |
 | tags | Map of tags that will be added to created resources. By default resources will be tagged with name and environment. | `map(string)` | `{}` | no |
 | webhook\_lambda\_s3\_key | S3 key for webhook lambda function. Required if using S3 bucket to specify lambdas. | `any` | `null` | no |

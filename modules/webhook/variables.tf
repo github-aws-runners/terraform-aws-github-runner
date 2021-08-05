@@ -82,3 +82,9 @@ variable "kms_key_arn" {
   type        = string
   default     = null
 }
+
+variable "runner_extra_labels" {
+  description = "Extra labels for the runners (GitHub). Separate each label by a comma"
+  type        = string
+  default     = ""
+}

@@ -59,6 +59,7 @@ module "webhook" {
   lambda_zip                       = var.webhook_lambda_zip
   lambda_timeout                   = var.webhook_lambda_timeout
   logging_retention_in_days        = var.logging_retention_in_days
+  runner_extra_labels              = var.runner_extra_labels
 
   role_path                 = var.role_path
   role_permissions_boundary = var.role_permissions_boundary

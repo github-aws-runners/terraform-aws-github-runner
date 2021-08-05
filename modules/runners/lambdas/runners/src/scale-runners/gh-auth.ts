@@ -21,13 +21,12 @@ export async function createGithubAuth(
   authType: 'app' | 'installation',
   ghesApiUrl = '',
 ): Promise<AppAuthentication> {
-
   let authOptions: StrategyOptions = {
     appId: parseInt(await getParameterValue(process.env.PARAMETER_GITHUB_APP_ID_NAME)),
     privateKey: Buffer.from(
       await getParameterValue(process.env.PARAMETER_GITHUB_APP_KEY_BASE64_NAME),
-      'base64')
-      .toString(),
+      'base64',
+    ).toString(),
     clientId: await getParameterValue(process.env.PARAMETER_GITHUB_APP_CLIENT_ID_NAME),
     clientSecret: await getParameterValue(process.env.PARAMETER_GITHUB_APP_CLIENT_SECRET_NAME),
   };
