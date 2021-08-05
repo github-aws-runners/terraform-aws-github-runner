@@ -8,7 +8,7 @@ variable "environment" {
   type        = string
 }
 
-variable "github_app_webhook_secret" {
+variable "github_app_webhook_secret_arn" {
   type = string
 }
 
@@ -50,14 +50,6 @@ variable "role_path" {
   default     = null
 }
 
-variable "encryption" {
-  description = "KMS key to encrypted lambda environment secrets. Either provide a key and `encrypt` set to `true`. Or set the key to `null` and encrypt to `false`."
-  type = object({
-    kms_key_id = string
-    encrypt    = bool
-  })
-}
-
 variable "logging_retention_in_days" {
   description = "Specifies the number of days you want to retain log events for the lambda log group. Possible values are: 0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, and 3653."
   type        = number
@@ -83,4 +75,16 @@ variable "repository_white_list" {
   description = "List of repositories allowed to use the github app"
   type        = list(string)
   default     = []
+}
+
+variable "kms_key_arn" {
+  description = "Optional CMK Key ARN to be used for Parameter Store."
+  type        = string
+  default     = null
+}
+
+variable "runner_extra_labels" {
+  description = "Extra labels for the runners (GitHub). Separate each label by a comma"
+  type        = string
+  default     = ""
 }

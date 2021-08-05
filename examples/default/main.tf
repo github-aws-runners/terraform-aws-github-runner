@@ -7,12 +7,17 @@ resource "random_password" "random" {
   length = 28
 }
 
-module "runners" {
-  source = "../../"
 
-  aws_region = local.aws_region
-  vpc_id     = module.vpc.vpc_id
-  subnet_ids = module.vpc.private_subnets
+################################################################################
+### Hybrid acccount
+################################################################################
+
+module "runners" {
+  source                          = "../../"
+  create_service_linked_role_spot = true
+  aws_region                      = local.aws_region
+  vpc_id                          = module.vpc.vpc_id
+  subnet_ids                      = module.vpc.private_subnets
 
   environment = local.environment
   tags = {

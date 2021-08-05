@@ -15,7 +15,7 @@ export interface ActionRequestMessage {
   installationId: number;
 }
 
-export const sendActionRequest = async (message: ActionRequestMessage) => {
+export const sendActionRequest = async (message: ActionRequestMessage): Promise<void> => {
   await sqs
     .sendMessage({
       QueueUrl: String(process.env.SQS_URL_WEBHOOK),

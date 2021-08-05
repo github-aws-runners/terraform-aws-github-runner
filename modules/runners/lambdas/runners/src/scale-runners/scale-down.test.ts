@@ -2,10 +2,10 @@ import moment from 'moment';
 import { mocked } from 'ts-jest/utils';
 import { listRunners, terminateRunner } from './runners';
 import { scaleDown } from './scale-down';
+import * as ghAuth from './gh-auth';
+import nock from 'nock';
+import { Octokit } from '@octokit/rest';
 
-jest.mock('@octokit/auth-app', () => ({
-  createAppAuth: jest.fn().mockImplementation(() => jest.fn().mockImplementation(() => ({ token: 'Blaat' }))),
-}));
 const mockOctokit = {
   apps: {
     getOrgInstallation: jest.fn(),
@@ -24,6 +24,11 @@ jest.mock('@octokit/rest', () => ({
 }));
 
 jest.mock('./runners');
+jest.mock('./gh-auth');
+
+const mocktokit = Octokit as jest.MockedClass<typeof Octokit>;
+const mockedAuth = mocked(ghAuth.createGithubAuth, true);
+const mockCreateClient = mocked(ghAuth.createOctoClient, true);
 
 export interface TestData {
   repositoryName: string;
@@ -112,6 +117,7 @@ describe('scaleDown', () => {
     process.env.RUNNERS_MAXIMUM_COUNT = '3';
     process.env.ENVIRONMENT = environment;
     process.env.MINIMUM_RUNNING_TIME_IN_MINUTES = minimumRunningTimeInMinutes.toString();
+    nock.disableNetConnect();
     jest.clearAllMocks();
     mockOctokit.apps.getOrgInstallation.mockImplementation(() => ({
       data: {
@@ -147,6 +153,13 @@ describe('scaleDown', () => {
 
   describe('no runners running', () => {
     beforeAll(() => {
+      mockedAuth.mockResolvedValue({
+        type: 'app',
+        token: 'token',
+        appId: 1,
+        expiresAt: 'some-date',
+      });
+      mockCreateClient.mockResolvedValue(new mocktokit());
       const mockListRunners = mocked(listRunners);
       mockListRunners.mockImplementation(async () => []);
     });

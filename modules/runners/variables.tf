@@ -113,13 +113,13 @@ variable "enable_organization_runners" {
   type = bool
 }
 
-variable "github_app" {
-  description = "GitHub app parameters, see your github app. Ensure the key is the base64-encoded `.pem` file (the output of `base64 app.private-key.pem`, not the content of `private-key.pem`)."
+variable "github_app_parameters" {
+  description = "Parameter Store for GitHub App Parameters."
   type = object({
-    key_base64    = string
-    id            = string
-    client_id     = string
-    client_secret = string
+    key_base64    = map(string)
+    id            = map(string)
+    client_id     = map(string)
+    client_secret = map(string)
   })
 }
 
@@ -193,14 +193,6 @@ variable "runners_maximum_count" {
   description = "The maximum number of runners that will be created."
   type        = number
   default     = 3
-}
-
-variable "encryption" {
-  description = "KMS key to encrypted lambda environment secrets. Either provide a key and `encrypt` set to `true`. Or set the key to `null` and encrypt to `false`."
-  type = object({
-    kms_key_id = string
-    encrypt    = bool
-  })
 }
 
 variable "runner_architecture" {
@@ -333,4 +325,10 @@ variable "volume_size" {
   description = "Size of runner volume"
   type        = number
   default     = 30
+}
+
+variable "kms_key_arn" {
+  description = "Optional CMK Key ARN to be used for Parameter Store."
+  type        = string
+  default     = null
 }

@@ -18,7 +18,6 @@ function getConfig(cronTabs: string[]): ScalingDownConfigList {
 }
 
 describe('scaleDownConfig', () => {
-
   describe('Check runners that should be kept idle based on config.', () => {
     it('One active cron configuration', async () => {
       const scaleDownConfig = getConfig(['* * * * * *']);

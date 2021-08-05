@@ -143,20 +143,8 @@ variable "runners_maximum_count" {
   default     = 3
 }
 
-variable "encrypt_secrets" {
-  description = "Encrypt secret variables for lambda's such as secrets and private keys."
-  type        = bool
-  default     = true
-}
-
-variable "manage_kms_key" {
-  description = "Let the module manage the KMS key."
-  type        = bool
-  default     = true
-}
-
-variable "kms_key_id" {
-  description = "Custom KMS key to encrypted lambda secrets, if not provided and `encrypt_secrets` = `true` a KMS key will be created by the module. Secrets will be encrypted with a context `Environment = var.environment`."
+variable "kms_key_arn" {
+  description = "Optional CMK Key ARN to be used for Parameter Store. This key must be in the current account."
   type        = string
   default     = null
 }

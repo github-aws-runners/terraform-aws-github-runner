@@ -1,14 +1,9 @@
 import { Octokit } from '@octokit/rest';
 import { request } from '@octokit/request';
 import { createAppAuth } from '@octokit/auth-app';
-import {
-  Authentication,
-  StrategyOptions,
-  AppAuthentication,
-  InstallationAccessTokenAuthentication,
-} from '@octokit/auth-app/dist-types/types';
+import { StrategyOptions, AppAuthentication } from '@octokit/auth-app/dist-types/types';
 import { OctokitOptions } from '@octokit/core/dist-types/types';
-import { decrypt } from './kms';
+import { getParameterValue } from './ssm';
 
 export async function createOctoClient(token: string, ghesApiUrl = ''): Promise<Octokit> {
   const ocktokitOptions: OctokitOptions = {
@@ -26,31 +21,14 @@ export async function createGithubAuth(
   authType: 'app' | 'installation',
   ghesApiUrl = '',
 ): Promise<AppAuthentication> {
-  const clientSecret = await decrypt(
-    process.env.GITHUB_APP_CLIENT_SECRET as string,
-    process.env.KMS_KEY_ID as string,
-    process.env.ENVIRONMENT as string,
-  );
-  const privateKeyBase64 = await decrypt(
-    process.env.GITHUB_APP_KEY_BASE64 as string,
-    process.env.KMS_KEY_ID as string,
-    process.env.ENVIRONMENT as string,
-  );
-
-  if (clientSecret === undefined || privateKeyBase64 === undefined) {
-    throw Error('Cannot decrypt.');
-  }
-
-  const privateKey = Buffer.from(privateKeyBase64, 'base64').toString();
-
-  const appId: number = parseInt(process.env.GITHUB_APP_ID as string);
-  const clientId = process.env.GITHUB_APP_CLIENT_ID as string;
-
   let authOptions: StrategyOptions = {
-    appId,
-    privateKey,
-    clientId,
-    clientSecret,
+    appId: parseInt(await getParameterValue(process.env.PARAMETER_GITHUB_APP_ID_NAME)),
+    privateKey: Buffer.from(
+      await getParameterValue(process.env.PARAMETER_GITHUB_APP_KEY_BASE64_NAME),
+      'base64',
+    ).toString(),
+    clientId: await getParameterValue(process.env.PARAMETER_GITHUB_APP_CLIENT_ID_NAME),
+    clientSecret: await getParameterValue(process.env.PARAMETER_GITHUB_APP_CLIENT_SECRET_NAME),
   };
   if (installationId) authOptions = { ...authOptions, installationId };
 

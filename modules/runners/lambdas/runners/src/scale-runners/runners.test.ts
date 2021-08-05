@@ -120,12 +120,15 @@ describe('create runner', () => {
   });
 
   it('calls run instances with the correct config for repo', async () => {
-    await createRunner({
-      runnerServiceConfig: 'bla',
-      environment: ENVIRONMENT,
-      runnerType: 'Repo',
-      runnerOwner: REPO_NAME
-    }, LAUNCH_TEMPLATE);
+    await createRunner(
+      {
+        runnerServiceConfig: 'bla',
+        environment: ENVIRONMENT,
+        runnerType: 'Repo',
+        runnerOwner: REPO_NAME,
+      },
+      LAUNCH_TEMPLATE,
+    );
     expect(mockEC2.runInstances).toBeCalledWith({
       MaxCount: 1,
       MinCount: 1,
@@ -144,12 +147,15 @@ describe('create runner', () => {
   });
 
   it('calls run instances with the correct config for org', async () => {
-    await createRunner({
-      runnerServiceConfig: 'bla',
-      environment: ENVIRONMENT,
-      runnerType: 'Org',
-      runnerOwner: ORG_NAME,
-    }, LAUNCH_TEMPLATE);
+    await createRunner(
+      {
+        runnerServiceConfig: 'bla',
+        environment: ENVIRONMENT,
+        runnerType: 'Org',
+        runnerOwner: ORG_NAME,
+      },
+      LAUNCH_TEMPLATE,
+    );
     expect(mockEC2.runInstances).toBeCalledWith({
       MaxCount: 1,
       MinCount: 1,
@@ -168,12 +174,15 @@ describe('create runner', () => {
   });
 
   it('creates ssm parameters for each created instance', async () => {
-    await createRunner({
-      runnerServiceConfig: 'bla',
-      environment: ENVIRONMENT,
-      runnerType: 'Org',
-      runnerOwner: ORG_NAME,
-    }, LAUNCH_TEMPLATE);
+    await createRunner(
+      {
+        runnerServiceConfig: 'bla',
+        environment: ENVIRONMENT,
+        runnerType: 'Org',
+        runnerOwner: ORG_NAME,
+      },
+      LAUNCH_TEMPLATE,
+    );
     expect(mockSSM.putParameter).toBeCalledWith({
       Name: `${ENVIRONMENT}-i-1234`,
       Value: 'bla',
@@ -185,12 +194,15 @@ describe('create runner', () => {
     mockRunInstances.promise.mockReturnValue({
       Instances: [],
     });
-    await createRunner({
-      runnerServiceConfig: 'bla',
-      environment: ENVIRONMENT,
-      runnerType: 'Org',
-      runnerOwner: ORG_NAME,
-    }, LAUNCH_TEMPLATE);
+    await createRunner(
+      {
+        runnerServiceConfig: 'bla',
+        environment: ENVIRONMENT,
+        runnerType: 'Org',
+        runnerOwner: ORG_NAME,
+      },
+      LAUNCH_TEMPLATE,
+    );
     expect(mockSSM.putParameter).not.toBeCalled();
   });
 });

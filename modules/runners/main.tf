@@ -19,6 +19,8 @@ locals {
   userdata_install_config_runner = "${path.module}/templates/install-config-runner.sh"
 
   instance_types = var.instance_types == null ? [var.instance_type] : var.instance_types
+
+  kms_key_arn = var.kms_key_arn != null ? var.kms_key_arn : ""
 }
 
 data "aws_ami" "runner" {

@@ -1,31 +1,3 @@
-locals {
-  github_app_webhook_secret = var.encryption.encrypt ? aws_kms_ciphertext.github_app_webhook_secret[0].ciphertext_blob : var.github_app_webhook_secret
-}
-
-resource "aws_kms_ciphertext" "github_app_webhook_secret" {
-  count     = var.encryption.encrypt ? 1 : 0
-  key_id    = var.encryption.kms_key_id
-  plaintext = var.github_app_webhook_secret
-
-  context = {
-    Environment = var.environment
-  }
-}
-
-resource "aws_kms_grant" "webhook" {
-  count             = var.encryption.encrypt ? 1 : 0
-  name              = "${var.environment}-webhook"
-  key_id            = var.encryption.kms_key_id
-  grantee_principal = aws_iam_role.webhook_lambda.arn
-  operations        = ["Decrypt"]
-
-  constraints {
-    encryption_context_equals = {
-      Environment = var.environment
-    }
-  }
-}
-
 resource "aws_lambda_function" "webhook" {
   s3_bucket         = var.lambda_s3_bucket != null ? var.lambda_s3_bucket : null
   s3_key            = var.webhook_lambda_s3_key != null ? var.webhook_lambda_s3_key : null
@@ -40,11 +12,10 @@ resource "aws_lambda_function" "webhook" {
 
   environment {
     variables = {
-      ENVIRONMENT               = var.environment
-      KMS_KEY_ID                = var.encryption.kms_key_id
-      GITHUB_APP_WEBHOOK_SECRET = local.github_app_webhook_secret
-      SQS_URL_WEBHOOK           = var.sqs_build_queue.id
-      REPOSITORY_WHITE_LIST     = jsonencode(var.repository_white_list)
+      ENVIRONMENT           = var.environment
+      SQS_URL_WEBHOOK       = var.sqs_build_queue.id
+      REPOSITORY_WHITE_LIST = jsonencode(var.repository_white_list)
+      RUNNER_LABELS         = jsonencode(var.runner_extra_labels)
     }
   }
 
@@ -98,5 +69,15 @@ resource "aws_iam_role_policy" "webhook_sqs" {
 
   policy = templatefile("${path.module}/policies/lambda-publish-sqs-policy.json", {
     sqs_resource_arn = var.sqs_build_queue.arn
+  })
+}
+
+resource "aws_iam_role_policy" "webhook_ssm" {
+  name = "${var.environment}-lambda-webhook-publish-ssm-policy"
+  role = aws_iam_role.webhook_lambda.name
+
+  policy = templatefile("${path.module}/policies/lambda-ssm.json", {
+    github_app_webhook_secret_arn = var.github_app_webhook_secret_arn,
+    kms_key_arn                   = var.kms_key_arn != null ? var.kms_key_arn : ""
   })
 }

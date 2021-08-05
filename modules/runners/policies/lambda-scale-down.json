@@ -1,25 +1,50 @@
 {
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "ec2:DescribeInstances*",
-        "ec2:DescribeTags"
-      ],
-      "Resource": ["*"]
-    },
-    {
-      "Effect": "Allow",
-      "Action": [
-        "ec2:TerminateInstances"
-      ],
-      "Resource": ["*"],
-      "Condition": {
-        "StringEquals": {
-          "ec2:ResourceTag/Application": "github-action-runner"
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ec2:DescribeInstances*",
+                "ec2:DescribeTags"
+            ],
+            "Resource": [
+                "*"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ec2:TerminateInstances"
+            ],
+            "Resource": [
+                "*"
+            ],
+            "Condition": {
+                "StringEquals": {
+                    "ec2:ResourceTag/Application": "github-action-runner"
+                }
+            }
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ssm:GetParameter"
+            ],
+            "Resource": [
+                "${github_app_key_base64_arn}",
+                "${github_app_client_secret_arn}",
+                "${github_app_client_id_arn}",
+                "${github_app_id_arn}"
+            ]
+%{ if kms_key_arn != "" ~}
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "kms:Decrypt"
+            ],
+            "Resource": "${kms_key_arn}"
+%{ endif ~}
         }
-      }
-    }
-  ]
+    ]
 }
