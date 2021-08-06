@@ -35,14 +35,21 @@ export async function listRunners(filters: ListRunnerFilters | undefined = undef
     }
   }
   const runningInstances = await ec2.describeInstances({ Filters: ec2Filters }).promise();
-  const runners = runningInstances.Reservations?.flatMap((r) => (
-    r.Instances?.map((i) => ({
-        instanceId: i.InstanceId as string,
-        launchTime: i.LaunchTime,
-        repo: i.Tags?.find((e) => e.Key === 'Repo')?.Value,
-        org: i.Tags?.find((e) => e.Key === 'Org')?.Value,
-      })) ?? []
-  )) ?? [];
+  const runners: RunnerInfo[] = [];
+  if (runningInstances.Reservations) {
+    for (const r of runningInstances.Reservations) {
+      if (r.Instances) {
+        for (const i of r.Instances) {
+          runners.push({
+            instanceId: i.InstanceId as string,
+            launchTime: i.LaunchTime,
+            repo: i.Tags?.find((e) => e.Key === 'Repo')?.Value,
+            org: i.Tags?.find((e) => e.Key === 'Org')?.Value,
+          });
+        }
+      }
+    }
+  }
   return runners;
 }
 

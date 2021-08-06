@@ -63,7 +63,6 @@ Before you submit your merge request consider the following guidelines:
 
 * Create your patch, **including appropriate test cases**.
 * Run the test suite and ensure that all tests pass.
-* Add a line in the CHANGELOG.md under Unreleased. This will be used form generating the release notes.
 * Install [pre-commit hooks](https://pre-commit.com/). The hooks runs some basic checks and update the docs. The commit will run the hooks, you can invoke the hooks manually `pre-commit run --all-files` as well.
 * Commit your changes using a descriptive commit message.
 
@@ -137,5 +136,5 @@ Use the badge to sign-up.
 [![Slack](https://philips-software-slackin.now.sh/badge.svg)](https://philips-software-slackin.now.sh)
 
 [contribute]: CONTRIBUTING.md
-[github]: https://github.com/philips-lam/terraform-aws-github-runner/issues
+[github]: https://github.com/philips-labs/terraform-aws-github-runner/issues
 [slack]: https://philips-software.slack.com/home
