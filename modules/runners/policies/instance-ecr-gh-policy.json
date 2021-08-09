@@ -1,0 +1,28 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "githubActionEcr",
+      "Effect": "Allow",
+      "Action": [
+        "ecr:DescribeImageScanFindings",
+        "ecr:StartImageScan",
+        "ecr:GetDownloadUrlForLayer",
+        "ecr:DescribeRegistry",
+        "ecr:GetAuthorizationToken",
+        "ecr:ListTagsForResource",
+        "ecr:UploadLayerPart",
+        "ecr:BatchDeleteImage",
+        "ecr:ListImages",
+        "ecr:PutImage",
+        "ecr:BatchGetImage",
+        "ecr:CompleteLayerUpload",
+        "ecr:DescribeImages",
+        "ecr:DescribeRepositories",
+        "ecr:InitiateLayerUpload",
+        "ecr:BatchCheckLayerAvailability"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

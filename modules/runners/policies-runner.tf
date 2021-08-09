@@ -71,3 +71,29 @@ resource "aws_iam_role_policy" "ec2" {
 }
 
 # see also logging.tf for logging and metrics policies
+
+resource "aws_iam_role_policy" "gh_artifacts_bucket" {
+  name = "github-ci-loop-artifacts-bucket"
+  role = aws_iam_role.runner.name
+  policy = templatefile("${path.module}/policies/instance-s3-gh-policy.json",
+    {
+      s3_arn = "arn:aws:s3:::github-ci-loop-artifacts"
+    }
+  )
+}
+
+resource "aws_iam_role_policy" "runner_ecr_scan_push_access" {
+  name = "ecr-scan-push-access"
+  role       = aws_iam_role.runner.name
+  policy = file("${path.module}/policies/instance-ecr-gh-policy.json")
+}
+
+resource "aws_iam_role_policy_attachment" "runner_code_artifact_admin_access" {
+  role       = aws_iam_role.runner.name
+  policy_arn = "arn:aws:iam::aws:policy/AWSCodeArtifactAdminAccess"
+}
+
+resource "aws_iam_role_policy_attachment" "runner_basic_ecr_access" {
+  role       = aws_iam_role.runner.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSAppRunnerServicePolicyForECRAccess"
+}
