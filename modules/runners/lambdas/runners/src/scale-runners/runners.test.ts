@@ -26,7 +26,7 @@ describe('list instances', () => {
               InstanceId: 'i-1234',
               Tags: [
                 { Key: 'Application', Value: 'github-action-runner' },
-                { Key: 'Type', Value: 'Org'},
+                { Key: 'Type', Value: 'Org' },
                 { Key: 'Owner', Value: 'CoderToCat' },
               ],
             },
