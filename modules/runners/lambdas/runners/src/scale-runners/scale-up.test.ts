@@ -107,8 +107,8 @@ beforeEach(() => {
     {
       instanceId: 'i-1234',
       launchTime: new Date(),
-      repo: `${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName}`,
-      org: TEST_DATA.repositoryOwner,
+      type: 'Org',
+      owner: TEST_DATA.repositoryOwner,
     },
   ]);
 });

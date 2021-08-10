@@ -5,21 +5,11 @@ import { listRunners, RunnerInfo, terminateRunner } from './runners';
 import { getIdleRunnerCount, ScalingDownConfig } from './scale-down-config';
 import { createOctoClient, createGithubAuth } from './gh-auth';
 
-interface Repo {
-  repoName: string;
-  repoOwner: string;
-}
 
-function getRepo(runner: RunnerInfo, orgLevel: boolean): Repo {
-  return orgLevel
-    ? { repoOwner: runner.org as string, repoName: '' }
-    : { repoOwner: runner.repo?.split('/')[0] as string, repoName: runner.repo?.split('/')[1] as string };
-}
-
-function createGitHubClientForRunnerFactory(): (runner: RunnerInfo, orgLevel: boolean) => Promise<Octokit> {
+function createGitHubClientForRunnerFactory(): (runner: RunnerInfo) => Promise<Octokit> {
   const cache: Map<string, Octokit> = new Map();
 
-  return async (runner: RunnerInfo, orgLevel: boolean) => {
+  return async (runner: RunnerInfo) => {
     const ghesBaseUrl = process.env.GHES_URL;
     let ghesApiUrl = '';
     if (ghesBaseUrl) {
@@ -27,8 +17,7 @@ function createGitHubClientForRunnerFactory(): (runner: RunnerInfo, orgLevel: bo
     }
     const ghAuth = await createGithubAuth(undefined, 'app', ghesApiUrl);
     const githubClient = await createOctoClient(ghAuth.token, ghesApiUrl);
-    const repo = getRepo(runner, orgLevel);
-    const key = orgLevel ? repo.repoOwner : repo.repoOwner + repo.repoName;
+    const key = runner.owner;
     const cachedOctokit = cache.get(key);
 
     if (cachedOctokit) {
@@ -37,16 +26,16 @@ function createGitHubClientForRunnerFactory(): (runner: RunnerInfo, orgLevel: bo
     }
 
     console.debug(`[createGitHubClientForRunner] Cache miss for ${key}`);
-    const installationId = orgLevel
+    const installationId = runner.type === 'Org'
       ? (
           await githubClient.apps.getOrgInstallation({
-            org: repo.repoOwner,
+            org: runner.owner,
           })
         ).data.id
       : (
           await githubClient.apps.getRepoInstallation({
-            owner: repo.repoOwner,
-            repo: repo.repoName,
+            owner: runner.owner.split('/')[0],
+            repo: runner.owner.split('/')[1],
           })
         ).data.id;
     const ghAuth2 = await createGithubAuth(installationId, 'installation', ghesApiUrl);
@@ -66,13 +55,11 @@ type GhRunners = UnboxPromise<ReturnType<Octokit['actions']['listSelfHostedRunne
 
 function listGithubRunnersFactory(): (
   client: Octokit,
-  runner: RunnerInfo,
-  enableOrgLevel: boolean,
+  runner: RunnerInfo
 ) => Promise<GhRunners> {
   const cache: Map<string, GhRunners> = new Map();
-  return async (client: Octokit, runner: RunnerInfo, enableOrgLevel: boolean) => {
-    const repo = getRepo(runner, enableOrgLevel);
-    const key = enableOrgLevel ? repo.repoOwner : repo.repoOwner + repo.repoName;
+  return async (client: Octokit, runner: RunnerInfo) => {
+    const key = runner.owner as string;
     const cachedRunners = cache.get(key);
     if (cachedRunners) {
       console.debug(`[listGithubRunners] Cache hit for ${key}`);
@@ -80,13 +67,13 @@ function listGithubRunnersFactory(): (
     }
 
     console.debug(`[listGithubRunners] Cache miss for ${key}`);
-    const runners = enableOrgLevel
+    const runners = runner.type === 'Org'
       ? await client.paginate(client.actions.listSelfHostedRunnersForOrg, {
-          org: repo.repoOwner,
+          org: runner.owner,
         })
       : await client.paginate(client.actions.listSelfHostedRunnersForRepo, {
-          owner: repo.repoOwner,
-          repo: repo.repoName,
+          owner: runner.owner.split('/')[0],
+          repo: runner.owner.split('/')[1],
         });
     cache.set(key, runners);
 
@@ -103,20 +90,18 @@ function runnerMinimumTimeExceeded(runner: RunnerInfo, minimumRunningTimeInMinut
 async function removeRunner(
   ec2runner: RunnerInfo,
   ghRunnerId: number,
-  repo: Repo,
-  enableOrgLevel: boolean,
   githubAppClient: Octokit,
 ): Promise<void> {
   try {
-    const result = enableOrgLevel
+    const result = ec2runner.type === 'Org'
       ? await githubAppClient.actions.deleteSelfHostedRunnerFromOrg({
           runner_id: ghRunnerId,
-          org: repo.repoOwner,
+          org: ec2runner.owner,
         })
       : await githubAppClient.actions.deleteSelfHostedRunnerFromRepo({
           runner_id: ghRunnerId,
-          owner: repo.repoOwner,
-          repo: repo.repoName,
+          owner: ec2runner.owner.split('/')[0],
+          repo: ec2runner.owner.split('/')[1],
         });
 
     if (result.status == 204) {
@@ -136,7 +121,7 @@ export async function scaleDown(): Promise<void> {
   let idleCounter = getIdleRunnerCount(scaleDownConfigs);
 
   // list and sort runners, newest first. This ensure we keep the newest runners longer.
-  const runners = (
+  const ec2Runners = (
     await listRunners({
       environment,
     })
@@ -148,7 +133,7 @@ export async function scaleDown(): Promise<void> {
     return 0;
   });
 
-  if (runners.length === 0) {
+  if (ec2Runners.length === 0) {
     console.debug(`No active runners found for environment: '${environment}'`);
     return;
   }
@@ -156,36 +141,43 @@ export async function scaleDown(): Promise<void> {
   const createGitHubClientForRunner = createGitHubClientForRunnerFactory();
   const listGithubRunners = listGithubRunnersFactory();
 
-  for (const ec2runner of runners) {
-    if (!runnerMinimumTimeExceeded(ec2runner, minimumRunningTimeInMinutes)) {
-      continue;
-    }
+  const ownerTags = new Set(ec2Runners.map(runner => runner.owner));
 
-    const githubAppClient = await createGitHubClientForRunner(ec2runner, enableOrgLevel);
-
-    const repo = getRepo(ec2runner, enableOrgLevel);
-    const ghRunners = await listGithubRunners(githubAppClient, ec2runner, enableOrgLevel);
-    let orphanEc2Runner = true;
-    for (const ghRunner of ghRunners) {
-      const runnerName = ghRunner.name as string;
-      if (runnerName === ec2runner.instanceId) {
-        orphanEc2Runner = false;
-        if (idleCounter > 0) {
-          idleCounter--;
-          console.debug(`Runner '${ec2runner.instanceId}' will kept idle.`);
-        } else {
-          await removeRunner(ec2runner, ghRunner.id, repo, enableOrgLevel, githubAppClient);
+  for (const ownerTag of ownerTags) {
+    const ec2RunnersFiltered = ec2Runners.filter(runner => runner.owner === ownerTag);
+    for (const ec2runner of ec2RunnersFiltered) {
+      // TODO: This is a bug. Orphaned runners should be terminated no matter how long they have been running.
+      if (runnerMinimumTimeExceeded(ec2runner, minimumRunningTimeInMinutes)) {
+        const githubAppClient = await createGitHubClientForRunner(ec2runner);
+        const ghRunners = await listGithubRunners(githubAppClient, ec2runner);
+        let orphanEc2Runner = true;
+        for (const ghRunner of ghRunners) {
+          const runnerName = ghRunner.name as string;
+          if (runnerName === ec2runner.instanceId) {
+            orphanEc2Runner = false;
+            if (idleCounter > 0) {
+              idleCounter--;
+              console.debug(`Runner '${ec2runner.instanceId}' will kept idle.`);
+            } else {
+              await removeRunner(ec2runner, ghRunner.id, githubAppClient);
+              const instanceIndex = ec2Runners.findIndex(runner => runner.instanceId === ec2runner.instanceId);
+              ec2Runners.splice(instanceIndex, 1);
+            }
+            break;
+          }
         }
-      }
-    }
 
-    // Remove orphan AWS runners.
-    if (orphanEc2Runner) {
-      console.info(`Runner '${ec2runner.instanceId}' is orphan, and will be removed.`);
-      try {
-        await terminateRunner(ec2runner);
-      } catch (e) {
-        console.debug(`Orphan runner '${ec2runner.instanceId}' cannot be removed.`);
+        // Remove orphan AWS runners.
+        if (orphanEc2Runner) {
+          console.info(`Runner '${ec2runner.instanceId}' is orphan, and will be removed.`);
+          try {
+            await terminateRunner(ec2runner);
+            const instanceIndex = ec2Runners.findIndex(runner => runner.instanceId === ec2runner.instanceId);
+            ec2Runners.splice(instanceIndex, 1);
+          } catch (e) {
+            console.debug(`Orphan runner '${ec2runner.instanceId}' cannot be removed.`);
+          }
+        }
       }
     }
   }

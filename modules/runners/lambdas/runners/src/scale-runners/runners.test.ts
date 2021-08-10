@@ -25,17 +25,17 @@ describe('list instances', () => {
               LaunchTime: new Date('2020-10-10T14:48:00.000+09:00'),
               InstanceId: 'i-1234',
               Tags: [
-                { Key: 'Repo', Value: 'CoderToCat/hello-world' },
-                { Key: 'Org', Value: 'CoderToCat' },
                 { Key: 'Application', Value: 'github-action-runner' },
+                { Key: 'Type', Value: 'Org'},
+                { Key: 'Owner', Value: 'CoderToCat' },
               ],
             },
             {
               LaunchTime: new Date('2020-10-11T14:48:00.000+09:00'),
               InstanceId: 'i-5678',
               Tags: [
-                { Key: 'Repo', Value: REPO_NAME },
-                { Key: 'Org', Value: ORG_NAME },
+                { Key: 'Owner', Value: REPO_NAME },
+                { Key: 'Type', Value: 'Repo' },
                 { Key: 'Application', Value: 'github-action-runner' },
               ],
             },
@@ -52,14 +52,14 @@ describe('list instances', () => {
     expect(resp).toContainEqual({
       instanceId: 'i-1234',
       launchTime: new Date('2020-10-10T14:48:00.000+09:00'),
-      repo: 'CoderToCat/hello-world',
-      org: 'CoderToCat',
+      type: 'Org',
+      owner: 'CoderToCat',
     });
     expect(resp).toContainEqual({
       instanceId: 'i-5678',
       launchTime: new Date('2020-10-11T14:48:00.000+09:00'),
-      repo: REPO_NAME,
-      org: ORG_NAME,
+      type: 'Repo',
+      owner: REPO_NAME,
     });
   });
 
@@ -74,7 +74,8 @@ describe('list instances', () => {
       Filters: [
         { Name: 'tag:Application', Values: ['github-action-runner'] },
         { Name: 'instance-state-name', Values: ['running', 'pending'] },
-        { Name: 'tag:Repo', Values: [REPO_NAME] },
+        { Name: 'tag:Type', Values: ['Repo'] },
+        { Name: 'tag:Owner', Values: [REPO_NAME] },
       ],
     });
   });
@@ -85,12 +86,13 @@ describe('list instances', () => {
       Filters: [
         { Name: 'tag:Application', Values: ['github-action-runner'] },
         { Name: 'instance-state-name', Values: ['running', 'pending'] },
-        { Name: 'tag:Org', Values: [ORG_NAME] },
+        { Name: 'tag:Type', Values: ['Org'] },
+        { Name: 'tag:Owner', Values: [ORG_NAME] },
       ],
     });
   });
 
-  it('filters instances on org name', async () => {
+  it('filters instances on environment', async () => {
     await listRunners({ environment: ENVIRONMENT });
     expect(mockEC2.describeInstances).toBeCalledWith({
       Filters: [
@@ -139,7 +141,8 @@ describe('create runner', () => {
           ResourceType: 'instance',
           Tags: [
             { Key: 'Application', Value: 'github-action-runner' },
-            { Key: 'Repo', Value: REPO_NAME },
+            { Key: 'Type', Value: 'Repo' },
+            { Key: 'Owner', Value: REPO_NAME },
           ],
         },
       ],
@@ -166,7 +169,8 @@ describe('create runner', () => {
           ResourceType: 'instance',
           Tags: [
             { Key: 'Application', Value: 'github-action-runner' },
-            { Key: 'Org', Value: ORG_NAME },
+            { Key: 'Type', Value: 'Org' },
+            { Key: 'Owner', Value: ORG_NAME },
           ],
         },
       ],

@@ -3,8 +3,8 @@ import { EC2, SSM } from 'aws-sdk';
 export interface RunnerInfo {
   instanceId: string;
   launchTime: Date | undefined;
-  repo: string | undefined;
-  org: string | undefined;
+  owner: string;
+  type: string;
 }
 
 export interface ListRunnerFilters {
@@ -31,7 +31,8 @@ export async function listRunners(filters: ListRunnerFilters | undefined = undef
       ec2Filters.push({ Name: 'tag:Environment', Values: [filters.environment] });
     }
     if (filters.runnerType && filters.runnerOwner) {
-      ec2Filters.push({ Name: `tag:${filters.runnerType}`, Values: [filters.runnerOwner] });
+      ec2Filters.push({ Name: `tag:Type`, Values: [filters.runnerType] });
+      ec2Filters.push({ Name: `tag:Owner`, Values: [filters.runnerOwner] });
     }
   }
   const runningInstances = await ec2.describeInstances({ Filters: ec2Filters }).promise();
@@ -43,8 +44,8 @@ export async function listRunners(filters: ListRunnerFilters | undefined = undef
           runners.push({
             instanceId: i.InstanceId as string,
             launchTime: i.LaunchTime,
-            repo: i.Tags?.find((e) => e.Key === 'Repo')?.Value,
-            org: i.Tags?.find((e) => e.Key === 'Org')?.Value,
+            owner: i.Tags?.find((e) => e.Key === 'Owner')?.Value as string,
+            type: i.Tags?.find((e) => e.Key === 'Type')?.Value as string,
           });
         }
       }
@@ -99,10 +100,8 @@ function getInstanceParams(
         ResourceType: 'instance',
         Tags: [
           { Key: 'Application', Value: 'github-action-runner' },
-          {
-            Key: runnerParameters.runnerType,
-            Value: runnerParameters.runnerOwner,
-          },
+          { Key: 'Type', Value: runnerParameters.runnerType },
+          { Key: 'Owner', Value: runnerParameters.runnerOwner },
         ],
       },
     ],
