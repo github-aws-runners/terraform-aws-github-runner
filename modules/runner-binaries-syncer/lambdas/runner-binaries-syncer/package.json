@@ -19,7 +19,7 @@
     "@types/jest": "^26.0.22",
     "@types/node": "^16.4.12",
     "@types/request": "^2.48.4",
-    "@typescript-eslint/eslint-plugin": "^4.28.0",
+    "@typescript-eslint/eslint-plugin": "^4.29.1",
     "@typescript-eslint/parser": "^4.17.0",
     "@vercel/ncc": "^0.29.0",
     "aws-sdk": "^2.965.0",
