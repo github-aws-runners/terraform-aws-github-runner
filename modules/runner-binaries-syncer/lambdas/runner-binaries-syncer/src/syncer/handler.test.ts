@@ -70,7 +70,7 @@ describe('Synchronize action distribution.', () => {
         },
       };
     });
-    
+
     await handle();
     expect(mockOctokit.repos.listReleases).toBeCalledTimes(1);
     expect(mockS3.getObjectTagging).toBeCalledWith({
