@@ -271,7 +271,7 @@ describe('scaleUp with GHES', () => {
       expect(mockOctokit.actions.createRegistrationTokenForOrg).not.toBeCalled();
       expect(mockOctokit.actions.createRegistrationTokenForRepo).not.toBeCalled();
     });
-    
+
     it('creates a token when maximum runners has not been reached', async () => {
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
       expect(mockOctokit.actions.createRegistrationTokenForOrg).not.toBeCalled();
@@ -481,7 +481,7 @@ describe('scaleUp with public GH', () => {
       expect(mockOctokit.actions.createRegistrationTokenForOrg).not.toBeCalled();
       expect(mockOctokit.actions.createRegistrationTokenForRepo).not.toBeCalled();
     });
-    
+
     it('creates a token when maximum runners has not been reached', async () => {
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
       expect(mockOctokit.actions.createRegistrationTokenForOrg).not.toBeCalled();
