@@ -1,5 +1,5 @@
 import { listRunners, createRunner, RunnerInputParameters } from './runners';
-import { createOctoClient, createGithubAuth } from './gh-auth';
+import { createOctoClient, createGithubAppAuth, createGithubInstallationAuth } from './gh-auth';
 import yn from 'yn';
 import { Octokit } from '@octokit/rest';
 
@@ -27,7 +27,7 @@ export const scaleUp = async (eventSource: string, payload: ActionRequestMessage
 
   let installationId = payload.installationId;
   if (installationId == 0) {
-    const ghAuth = await createGithubAuth(undefined, 'app', ghesApiUrl);
+    const ghAuth = await createGithubAppAuth(undefined, ghesApiUrl);
     const githubClient = await createOctoClient(ghAuth.token, ghesApiUrl);
     installationId = enableOrgLevel
       ? (
@@ -43,10 +43,8 @@ export const scaleUp = async (eventSource: string, payload: ActionRequestMessage
         ).data.id;
   }
 
-  const ghAuth = await createGithubAuth(installationId, 'installation', ghesApiUrl);
-
+  const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl);
   const githubInstallationClient = await createOctoClient(ghAuth.token, ghesApiUrl);
-
   const runnerType = enableOrgLevel ? 'Org' : 'Repo';
   const runnerOwner = enableOrgLevel ? payload.repositoryOwner : `${payload.repositoryOwner}/${payload.repositoryName}`;
 

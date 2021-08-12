@@ -1,4 +1,4 @@
-import { createOctoClient, createGithubAuth } from './gh-auth';
+import { createOctoClient, createGithubAppAuth, createGithubInstallationAuth } from './gh-auth';
 import nock from 'nock';
 import { createAppAuth } from '@octokit/auth-app';
 
@@ -36,7 +36,7 @@ beforeEach(() => {
   nock.disableNetConnect();
 });
 
-describe('Test createGithubAuth', () => {
+describe('Test createOctoClient', () => {
   test('Creates app client to GitHub public', async () => {
     // Arrange
     const token = '123456';
@@ -62,7 +62,7 @@ describe('Test createGithubAuth', () => {
   });
 });
 
-describe('Test createGithubAuth', () => {
+describe('Test createGithubAppAuth', () => {
   const mockedCreatAppAuth = createAppAuth as unknown as jest.Mock;
   const mockedDefaults = jest.spyOn(request, 'defaults');
   let mockedRequestInterface: MockProxy<RequestInterface>;
@@ -99,7 +99,7 @@ describe('Test createGithubAuth', () => {
     });
 
     // Act
-    const result = await createGithubAuth(installationId, authType);
+    const result = await createGithubAppAuth(installationId);
 
     // Assert
     expect(getParameterValue).toBeCalledWith(PARAMETER_GITHUB_APP_ID_NAME);
@@ -144,7 +144,7 @@ describe('Test createGithubAuth', () => {
     });
 
     // Act
-    const result = await createGithubAuth(installationId, authType, githubServerUrl);
+    const result = await createGithubAppAuth(installationId, githubServerUrl);
 
     // Assert
     expect(getParameterValue).toBeCalledWith(PARAMETER_GITHUB_APP_ID_NAME);
@@ -189,7 +189,7 @@ describe('Test createGithubAuth', () => {
     });
 
     // Act
-    const result = await createGithubAuth(installationId, authType, githubServerUrl);
+    const result = await createGithubAppAuth(installationId, githubServerUrl);
 
     // Assert
     expect(getParameterValue).toBeCalledWith(PARAMETER_GITHUB_APP_ID_NAME);

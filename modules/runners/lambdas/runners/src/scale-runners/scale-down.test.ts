@@ -27,7 +27,8 @@ jest.mock('./runners');
 jest.mock('./gh-auth');
 
 const mocktokit = Octokit as jest.MockedClass<typeof Octokit>;
-const mockedAuth = mocked(ghAuth.createGithubAuth, true);
+const mockedAppAuth = mocked(ghAuth.createGithubAppAuth, true);
+const mockedInstallationAuth = mocked(ghAuth.createGithubInstallationAuth, true);
 const mockCreateClient = mocked(ghAuth.createOctoClient, true);
 
 export interface TestData {
@@ -153,11 +154,20 @@ describe('scaleDown', () => {
 
   describe('no runners running', () => {
     beforeAll(() => {
-      mockedAuth.mockResolvedValue({
+      mockedAppAuth.mockResolvedValue({
         type: 'app',
         token: 'token',
         appId: 1,
         expiresAt: 'some-date',
+      });
+      mockedInstallationAuth.mockResolvedValue({
+        type: 'token',
+        tokenType: 'installation',
+        token: 'token',
+        createdAt: 'some-date',
+        expiresAt: 'some-date',
+        permissions: {},
+        repositorySelection: 'all',
       });
       mockCreateClient.mockResolvedValue(new mocktokit());
       const mockListRunners = mocked(listRunners);

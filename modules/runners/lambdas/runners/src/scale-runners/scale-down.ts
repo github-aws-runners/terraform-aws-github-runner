@@ -3,7 +3,7 @@ import moment from 'moment';
 import yn from 'yn';
 import { listRunners, RunnerInfo, terminateRunner } from './runners';
 import { getIdleRunnerCount, ScalingDownConfig } from './scale-down-config';
-import { createOctoClient, createGithubAuth } from './gh-auth';
+import { createOctoClient, createGithubAppAuth, createGithubInstallationAuth } from './gh-auth';
 
 interface Repo {
   repoName: string;
@@ -35,7 +35,7 @@ function createGitHubClientForRunnerFactory(): (runner: RunnerInfo, orgLevel: bo
     if (ghesBaseUrl) {
       ghesApiUrl = `${ghesBaseUrl}/api/v3`;
     }
-    const ghAuth = await createGithubAuth(undefined, 'app', ghesApiUrl);
+    const ghAuth = await createGithubAppAuth(undefined, ghesApiUrl);
     const githubClient = await createOctoClient(ghAuth.token, ghesApiUrl);
     const installationId = orgLevel
       ? (
@@ -49,7 +49,7 @@ function createGitHubClientForRunnerFactory(): (runner: RunnerInfo, orgLevel: bo
             repo: repo.repoName,
           })
         ).data.id;
-    const ghAuth2 = await createGithubAuth(installationId, 'installation', ghesApiUrl);
+    const ghAuth2 = await createGithubInstallationAuth(installationId, ghesApiUrl);
     const octokit = await createOctoClient(ghAuth2.token, ghesApiUrl);
     cache.set(key, octokit);
 

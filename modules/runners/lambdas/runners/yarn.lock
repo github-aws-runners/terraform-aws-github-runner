@@ -1141,15 +1141,15 @@
     "@nodelib/fs.scandir" "2.1.5"
     fastq "^1.6.0"
 
-"@octokit/auth-app@3.4.0":
-  version "3.4.0"
-  resolved "https://registry.yarnpkg.com/@octokit/auth-app/-/auth-app-3.4.0.tgz#af9f68512e7b8dd071b49e1470a1ddf88ff6a3a3"
-  integrity sha512-zBVgTnLJb0uoNMGCpcDkkAbPeavHX7oAjJkaDv2nqMmsXSsCw4AbUhjl99EtJQG/JqFY/kLFHM9330Wn0k70+g==
+"@octokit/auth-app@3.6.0":
+  version "3.6.0"
+  resolved "https://registry.yarnpkg.com/@octokit/auth-app/-/auth-app-3.6.0.tgz#79fc6f652d2362ce0bd3122f6f764a87cc813dea"
+  integrity sha512-A+tLuHEMXw+Xz9dmKO7Ho9i4EmMr4tThrwYTlmMNu8y93JxvvRjKFFElpCTS+Z0NlbfuyNdaTlJnAinFbVKm7g==
   dependencies:
-    "@octokit/auth-oauth-app" "^4.1.0"
+    "@octokit/auth-oauth-app" "^4.3.0"
     "@octokit/auth-oauth-user" "^1.2.3"
-    "@octokit/request" "^5.4.11"
-    "@octokit/request-error" "^2.0.0"
+    "@octokit/request" "^5.6.0"
+    "@octokit/request-error" "^2.1.0"
     "@octokit/types" "^6.0.3"
     "@types/lru-cache" "^5.1.0"
     deprecation "^2.3.1"
@@ -1157,7 +1157,7 @@
     universal-github-app-jwt "^1.0.1"
     universal-user-agent "^6.0.0"
 
-"@octokit/auth-oauth-app@^4.1.0":
+"@octokit/auth-oauth-app@^4.3.0":
   version "4.3.0"
   resolved "https://registry.yarnpkg.com/@octokit/auth-oauth-app/-/auth-oauth-app-4.3.0.tgz#de02f184360ffd7cfccef861053784fc4410e7ea"
   integrity sha512-cETmhmOQRHCz6cLP7StThlJROff3A/ln67Q961GuIr9zvyFXZ4lIJy9RE6Uw5O7D8IXWPU3jhDnG47FTSGQr8Q==
@@ -1271,7 +1271,7 @@
     "@octokit/types" "^6.24.0"
     deprecation "^2.3.1"
 
-"@octokit/request-error@^2.0.0", "@octokit/request-error@^2.0.5", "@octokit/request-error@^2.1.0":
+"@octokit/request-error@^2.0.5", "@octokit/request-error@^2.1.0":
   version "2.1.0"
   resolved "https://registry.yarnpkg.com/@octokit/request-error/-/request-error-2.1.0.tgz#9e150357831bfc788d13a4fd4b1913d60c74d677"
   integrity sha512-1VIvgXxs9WHSjicsRwq8PlR2LR2x6DwsJAaFgzdi0JfJoGSO8mYI/cHJQ+9FbN21aa+DrgNLnwObmyeSC8Rmpg==
@@ -1280,7 +1280,7 @@
     deprecation "^2.0.0"
     once "^1.4.0"
 
-"@octokit/request@^5.3.0", "@octokit/request@^5.4.11", "@octokit/request@^5.4.14", "@octokit/request@^5.6.0":
+"@octokit/request@^5.3.0", "@octokit/request@^5.4.14", "@octokit/request@^5.6.0":
   version "5.6.0"
   resolved "https://registry.yarnpkg.com/@octokit/request/-/request-5.6.0.tgz#6084861b6e4fa21dc40c8e2a739ec5eff597e672"
   integrity sha512-4cPp/N+NqmaGQwbh3vUsYqokQIzt7VjsgTYVXiwpUP2pxd5YiZB2XuTedbb0SPtv9XS7nzAKjAuQxmY8/aZkiA==

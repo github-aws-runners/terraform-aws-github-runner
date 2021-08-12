@@ -1,7 +1,14 @@
 import { Octokit } from '@octokit/rest';
 import { request } from '@octokit/request';
 import { createAppAuth } from '@octokit/auth-app';
-import { StrategyOptions, AppAuthentication } from '@octokit/auth-app/dist-types/types';
+import {
+  StrategyOptions,
+  AppAuthentication,
+  AppAuthOptions,
+  InstallationAuthOptions,
+  InstallationAccessTokenAuthentication,
+  AuthInterface,
+} from '@octokit/auth-app/dist-types/types';
 import { OctokitOptions } from '@octokit/core/dist-types/types';
 import { getParameterValue } from './ssm';
 
@@ -16,13 +23,28 @@ export async function createOctoClient(token: string, ghesApiUrl = ''): Promise<
   return new Octokit(ocktokitOptions);
 }
 
-export async function createGithubAuth(
+export async function createGithubAppAuth(
   installationId: number | undefined,
-  authType: 'app' | 'installation',
   ghesApiUrl = '',
 ): Promise<AppAuthentication> {
+  const auth = await createAuth(installationId, ghesApiUrl);
+  const appAuthOptions: AppAuthOptions = { type: 'app' };
+  return await auth(appAuthOptions);
+}
+
+export async function createGithubInstallationAuth(
+  installationId: number | undefined,
+  ghesApiUrl = '',
+): Promise<InstallationAccessTokenAuthentication> {
+  const auth = await createAuth(installationId, ghesApiUrl);
+  const installationAuthOptions: InstallationAuthOptions = { type: 'installation', installationId };
+  return await auth(installationAuthOptions);
+}
+
+async function createAuth(installationId: number | undefined, ghesApiUrl: string): Promise<AuthInterface> {
+  const appId = parseInt(await getParameterValue(process.env.PARAMETER_GITHUB_APP_ID_NAME));
   let authOptions: StrategyOptions = {
-    appId: parseInt(await getParameterValue(process.env.PARAMETER_GITHUB_APP_ID_NAME)),
+    appId,
     privateKey: Buffer.from(
       await getParameterValue(process.env.PARAMETER_GITHUB_APP_KEY_BASE64_NAME),
       'base64',
@@ -38,6 +60,5 @@ export async function createGithubAuth(
       baseUrl: ghesApiUrl,
     });
   }
-  const result = (await createAppAuth(authOptions)({ type: authType })) as AppAuthentication;
-  return result;
+  return createAppAuth(authOptions);
 }
