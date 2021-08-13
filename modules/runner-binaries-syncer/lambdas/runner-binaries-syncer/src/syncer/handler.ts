@@ -1,6 +1,6 @@
 import { Octokit } from '@octokit/rest';
 import { PassThrough } from 'stream';
-import request from 'request';
+import fetch from 'node-fetch';
 import { S3 } from 'aws-sdk';
 import AWS from 'aws-sdk';
 import yn from 'yn';
@@ -65,29 +65,32 @@ async function getLinuxReleaseAsset(
 
 async function uploadToS3(s3: S3, cacheObject: CacheObject, actionRunnerReleaseAsset: ReleaseAsset): Promise<void> {
   const writeStream = new PassThrough();
-  s3.upload({
-    Bucket: cacheObject.bucket,
-    Key: cacheObject.key,
-    Tagging: versionKey + '=' + actionRunnerReleaseAsset.name,
-    Body: writeStream,
-  }).promise();
+  const writePromise = s3
+    .upload({
+      Bucket: cacheObject.bucket,
+      Key: cacheObject.key,
+      Tagging: versionKey + '=' + actionRunnerReleaseAsset.name,
+      Body: writeStream,
+    })
+    .promise();
 
-  await new Promise<void>((resolve, reject) => {
-    console.debug('Start downloading %s and uploading to S3.', actionRunnerReleaseAsset.name);
-    request
-      .get(actionRunnerReleaseAsset.downloadUrl)
-      .pipe(writeStream)
-      .on('finish', () => {
-        console.info(`The new distribution is uploaded to S3.`);
-        resolve();
-      })
-      .on('error', (error) => {
-        reject(error);
-      });
-  }).catch((error) => {
-    console.error(`Exception: ${error}`);
-    throw error;
+  console.debug('Start downloading %s and uploading to S3.', actionRunnerReleaseAsset.name);
+  const readPromise = new Promise<void>((resolve, reject) => {
+    fetch(actionRunnerReleaseAsset.downloadUrl)
+      .then((res) =>
+        res.body
+          .pipe(writeStream)
+          .on('finish', () => resolve())
+          .on('error', (error) => reject(error)),
+      )
+      .catch((error) => reject(error));
   });
+  await Promise.all([readPromise, writePromise])
+    .then(() => console.info(`The new distribution is uploaded to S3.`))
+    .catch((error) => {
+      console.error(`Uploading of the new distribution to S3 failed: ${error}`);
+      throw error;
+    });
 }
 
 export const handle = async (): Promise<void> => {
