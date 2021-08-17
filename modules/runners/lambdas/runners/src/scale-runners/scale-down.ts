@@ -2,7 +2,7 @@ import { Octokit } from '@octokit/rest';
 import moment from 'moment';
 import { listEC2Runners, RunnerInfo, terminateRunner } from './runners';
 import { getIdleRunnerCount, ScalingDownConfig } from './scale-down-config';
-import { createOctoClient, createGithubAuth, createGithubInstallationAuth } from './gh-auth';
+import { createOctoClient, createGithubAppAuth, createGithubInstallationAuth } from './gh-auth';
 import { githubCache, GhRunners } from './cache';
 
 async function getOrCreateOctokit(runner: RunnerInfo): Promise<Octokit> {
@@ -20,7 +20,7 @@ async function getOrCreateOctokit(runner: RunnerInfo): Promise<Octokit> {
   if (ghesBaseUrl) {
     ghesApiUrl = `${ghesBaseUrl}/api/v3`;
   }
-  const ghAuth = await createGithubAuth(undefined, 'app', ghesApiUrl);
+  const ghAuth = await createGithubAppAuth(undefined, ghesApiUrl);
   const githubClient = await createOctoClient(ghAuth.token, ghesApiUrl);
 
   const installationId =

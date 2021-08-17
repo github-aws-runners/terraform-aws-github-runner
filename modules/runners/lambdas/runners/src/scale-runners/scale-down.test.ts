@@ -198,11 +198,20 @@ describe('scaleDown', () => {
     mockTerminateRunners.mockImplementation(async () => {
       return;
     });
-    mockedAuth.mockResolvedValue({
+    mockedAppAuth.mockResolvedValue({
       type: 'app',
       token: 'token',
       appId: 1,
       expiresAt: 'some-date',
+    });
+    mockedInstallationAuth.mockResolvedValue({
+      type: 'token',
+      tokenType: 'installation',
+      token: 'token',
+      createdAt: 'some-date',
+      expiresAt: 'some-date',
+      permissions: {},
+      repositorySelection: 'all',
     });
     mockCreateClient.mockResolvedValue(new mocktokit());
     DEFAULT_RUNNERS = JSON.parse(JSON.stringify(DEFAULT_RUNNERS_ORIGINAL));

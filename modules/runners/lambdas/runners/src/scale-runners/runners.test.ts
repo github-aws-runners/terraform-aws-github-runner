@@ -114,8 +114,10 @@ describe('terminate runner', () => {
   it('calls terminate instances with the right instance ids', async () => {
     const runner: RunnerInfo = {
       instanceId: 'instance-2',
+      owner: 'owner-2',
+      type: 'Repo',
     };
-    await terminateRunner(runner);
+    await terminateRunner(runner.instanceId);
 
     expect(mockEC2.terminateInstances).toBeCalledWith({ InstanceIds: [runner.instanceId] });
   });
