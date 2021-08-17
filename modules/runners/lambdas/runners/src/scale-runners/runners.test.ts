@@ -1,6 +1,6 @@
-import { listEC2Runners, createRunner } from './runners';
+import { listEC2Runners, createRunner, terminateRunner, RunnerInfo } from './runners';
 
-const mockEC2 = { describeInstances: jest.fn(), runInstances: jest.fn() };
+const mockEC2 = { describeInstances: jest.fn(), runInstances: jest.fn(), terminateInstances: jest.fn() };
 const mockSSM = { putParameter: jest.fn() };
 jest.mock('aws-sdk', () => ({
   EC2: jest.fn().mockImplementation(() => mockEC2),
@@ -101,6 +101,23 @@ describe('list instances', () => {
         { Name: 'tag:Environment', Values: [ENVIRONMENT] },
       ],
     });
+  });
+});
+
+describe('terminate runner', () => {
+  const mockTerminateInstances = { promise: jest.fn() };
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockEC2.terminateInstances.mockImplementation(() => mockTerminateInstances);
+    mockTerminateInstances.promise.mockReturnThis();
+  });
+  it('calls terminate instances with the right instance ids', async () => {
+    const runner: RunnerInfo = {
+      instanceId: 'instance-2',
+    };
+    await terminateRunner(runner);
+
+    expect(mockEC2.terminateInstances).toBeCalledWith({ InstanceIds: [runner.instanceId] });
   });
 });
 

@@ -233,7 +233,7 @@ You are now ready to run action workloads on self hosted runner. Remember that b
 
 ### Encryption
 
-The module support 3 scenario's to manage environment secrets and private key of the Lambda functions.
+The module support 2 scenarios to manage environment secrets and private key of the Lambda functions.
 
 #### Encrypted via a module managed KMS key (default) <!-- omit in toc -->
 
@@ -256,10 +256,6 @@ module "runners" {
   ...
 
 ```
-
-#### No encryption <!-- omit in toc -->
-
-Not advised but you can disable the encryption as by setting the variable `encrypt_secrets` to `false`.
 
 ### Idle runners
 

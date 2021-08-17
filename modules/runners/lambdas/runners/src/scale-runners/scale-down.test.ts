@@ -29,7 +29,8 @@ jest.mock('./gh-auth');
 jest.mock('./cache');
 
 const mocktokit = Octokit as jest.MockedClass<typeof Octokit>;
-const mockedAuth = mocked(ghAuth.createGithubAuth, true);
+const mockedAppAuth = mocked(ghAuth.createGithubAppAuth, true);
+const mockedInstallationAuth = mocked(ghAuth.createGithubInstallationAuth, true);
 const mockCreateClient = mocked(ghAuth.createOctoClient, true);
 const mockListRunners = mocked(listEC2Runners);
 
@@ -182,7 +183,6 @@ describe('scaleDown', () => {
     }));
 
     mockOctokit.paginate.mockResolvedValue(DEFAULT_REGISTERED_RUNNERS);
-
     mockOctokit.actions.deleteSelfHostedRunnerFromRepo.mockImplementation((repo) => {
       if (repo.runner_id === 105) {
         throw Error();

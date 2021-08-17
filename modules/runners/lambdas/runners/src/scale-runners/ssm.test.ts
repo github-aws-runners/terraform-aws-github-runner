@@ -13,7 +13,7 @@ beforeEach(() => {
   nock.disableNetConnect();
 });
 
-describe('Test createGithubAuth', () => {
+describe('Test getParameterValue', () => {
   test('Gets parameters and returns string', async () => {
     // Arrange
     const parameterValue = 'test';

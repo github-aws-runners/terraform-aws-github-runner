@@ -56,6 +56,30 @@ describe('Synchronize action distribution.', () => {
     expect(mockS3.upload).toBeCalledTimes(0);
   });
 
+  it('Distribution is up-to-date with latest release when there are no prereleases.', async () => {
+    process.env.GITHUB_RUNNER_ALLOW_PRERELEASE_BINARIES = 'true';
+    const releases = listReleases.slice(1);
+
+    mockOctokit.repos.listReleases.mockImplementation(() => ({
+      data: releases,
+    }));
+    mockS3.getObjectTagging.mockImplementation(() => {
+      return {
+        promise() {
+          return Promise.resolve({ TagSet: [{ Key: 'name', Value: 'actions-runner-linux-x64-2.272.0.tar.gz' }] });
+        },
+      };
+    });
+
+    await handle();
+    expect(mockOctokit.repos.listReleases).toBeCalledTimes(1);
+    expect(mockS3.getObjectTagging).toBeCalledWith({
+      Bucket: bucketName,
+      Key: bucketObjectKey,
+    });
+    expect(mockS3.upload).toBeCalledTimes(0);
+  });
+
   it('Distribution is up-to-date with latest prerelease.', async () => {
     process.env.GITHUB_RUNNER_ALLOW_PRERELEASE_BINARIES = 'true';
     mockS3.getObjectTagging.mockImplementation(() => {
@@ -76,6 +100,32 @@ describe('Synchronize action distribution.', () => {
   });
 
   it('Distribution should update to release.', async () => {
+    mockS3.getObjectTagging.mockImplementation(() => {
+      return {
+        promise() {
+          return Promise.resolve({ TagSet: [{ Key: 'name', Value: 'actions-runner-linux-x64-0.tar.gz' }] });
+        },
+      };
+    });
+
+    await handle();
+    expect(mockOctokit.repos.listReleases).toBeCalledTimes(1);
+    expect(mockS3.getObjectTagging).toBeCalledWith({
+      Bucket: bucketName,
+      Key: bucketObjectKey,
+    });
+    expect(mockS3.upload).toBeCalledTimes(1);
+    const s3JsonBody = mockS3.upload.mock.calls[0][0];
+    expect(s3JsonBody['Tagging']).toEqual('name=actions-runner-linux-x64-2.272.0.tar.gz');
+  });
+
+  it('Distribution should update to release if there are no pre-releases.', async () => {
+    process.env.GITHUB_RUNNER_ALLOW_PRERELEASE_BINARIES = 'true';
+    const releases = listReleases.slice(1);
+
+    mockOctokit.repos.listReleases.mockImplementation(() => ({
+      data: releases,
+    }));
     mockS3.getObjectTagging.mockImplementation(() => {
       return {
         promise() {

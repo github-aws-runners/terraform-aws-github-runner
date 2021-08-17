@@ -14,7 +14,7 @@ variable "subnet_ids" {
 }
 
 variable "overrides" {
-  description = "This maps provides the possibility to override some defaults. The following attributes are supported: `name_sg` overwrite the `Name` tag for all security groups created by this module. `name_runner_agent_instance` override the `Name` tag for the ec2 instance defined in the auto launch configuration. `name_docker_machine_runners` override the `Name` tag spot instances created by the runner agent."
+  description = "This map provides the possibility to override some defaults. The following attributes are supported: `name_sg` overrides the `Name` tag for all security groups created by this module. `name_runner_agent_instance` overrides the `Name` tag for the ec2 instance defined in the auto launch configuration. `name_docker_machine_runners` overrides the `Name` tag spot instances created by the runner agent."
   type        = map(string)
 
   default = {
@@ -70,7 +70,7 @@ variable "instance_types" {
 }
 
 variable "ami_filter" {
-  description = "List of maps used to create the AMI filter for the action runner AMI."
+  description = "Map of lists used to create the AMI filter for the action runner AMI."
   type        = map(list(string))
 
   default = {
@@ -91,13 +91,13 @@ variable "userdata_template" {
 }
 
 variable "userdata_pre_install" {
-  description = "User-data script snippet to insert before GitHub acton runner install"
+  description = "User-data script snippet to insert before GitHub action runner install"
   type        = string
   default     = ""
 }
 
 variable "userdata_post_install" {
-  description = "User-data script snippet to insert after GitHub acton runner install"
+  description = "User-data script snippet to insert after GitHub action runner install"
   type        = string
   default     = ""
 }
@@ -172,7 +172,7 @@ variable "role_permissions_boundary" {
 }
 
 variable "role_path" {
-  description = "The path that will be added to the role, if not set the environment name will be used."
+  description = "The path that will be added to the role; if not set, the environment name will be used."
   type        = string
   default     = null
 }
@@ -218,7 +218,7 @@ variable "logging_retention_in_days" {
 }
 
 variable "enable_ssm_on_runners" {
-  description = "Enable to allow access the runner instances for debugging purposes via SSM. Note that this adds additional permissions to the runner instances."
+  description = "Enable to allow access to the runner instances for debugging purposes via SSM. Note that this adds additional permissions to the runner instances."
   type        = bool
 }
 
@@ -238,7 +238,7 @@ variable "runners_lambda_s3_object_version" {
 }
 
 variable "create_service_linked_role_spot" {
-  description = "(optional) create the serviced linked role for spot instances that is required by the scale-up lambda."
+  description = "(optional) create the service linked role for spot instances that is required by the scale-up lambda."
   type        = bool
   default     = false
 }
@@ -262,7 +262,7 @@ variable "cloudwatch_config" {
 }
 
 variable "runner_log_files" {
-  description = "(optional) List of logfiles to send to cloudwatch, will only be used if `enable_cloudwatch_agent` is set to true. Object description: `log_group_name`: Name of the log group, `prefix_log_group`: If true, the log group name will be prefixed with `/github-self-hosted-runners/<var.environment>`, `file_path`: path to the log file, `log_stream_name`: name of the log stream."
+  description = "(optional) List of logfiles to send to CloudWatch, will only be used if `enable_cloudwatch_agent` is set to true. Object description: `log_group_name`: Name of the log group, `prefix_log_group`: If true, the log group name will be prefixed with `/github-self-hosted-runners/<var.environment>`, `file_path`: path to the log file, `log_stream_name`: name of the log stream."
   type = list(object({
     log_group_name   = string
     prefix_log_group = bool

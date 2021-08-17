@@ -6,11 +6,11 @@ This module creates resources required to run the GitHub action runner on AWS EC
 
 ### Action runners on EC2
 
-The action runners are created via a launch template, on launch template only the subnet needs to be provided. During launch the installation is handled via a user data script. The configuration is fetched from SSM parameter store.
+The action runners are created via a launch template; in the launch template only the subnet needs to be provided. During launch the installation is handled via a user data script. The configuration is fetched from SSM parameter store.
 
 ### Lambda scale up
 
-The scale up lambda is triggered by events on a SQS queue. Events on this queued are delayed, which will will give the workflow some time to start running on available runners. For each event the lambda will check the workflow is still queued and no other limits are reached. In that case the lambda will create a new EC2 instance. The lambda only needs to know which launch template to use and which subnets are available. From the available subnets a random one will be chosen. Once the instance is created the event is assumed as handled, and we assume the workflow wil start at some moment once the created instance is ready.
+The scale up lambda is triggered by events on a SQS queue. Events on this queue are delayed, which will give the workflow some time to start running on available runners. For each event the lambda will check if the workflow is still queued and no other limits are reached. In that case the lambda will create a new EC2 instance. The lambda only needs to know which launch template to use and which subnets are available. From the available subnets a random one will be chosen. Once the instance is created the event is assumed as handled, and we assume the workflow wil start at some moment once the created instance is ready.
 
 ### Lambda scale down
 
