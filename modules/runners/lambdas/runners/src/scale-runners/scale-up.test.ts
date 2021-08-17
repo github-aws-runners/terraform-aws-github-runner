@@ -1,6 +1,6 @@
 import { mocked } from 'ts-jest/utils';
 import * as scaleUpModule from './scale-up';
-import { listRunners, createRunner, RunnerInputParameters } from './runners';
+import { listEC2Runners, createRunner, RunnerInputParameters } from './runners';
 import * as ghAuth from './gh-auth';
 import nock from 'nock';
 import { Octokit } from '@octokit/rest';
@@ -102,7 +102,7 @@ beforeEach(() => {
   mockOctokit.actions.createRegistrationTokenForRepo.mockImplementation(() => mockTokenReturnValue);
   mockOctokit.apps.getOrgInstallation.mockImplementation(() => mockInstallationIdReturnValueOrgs);
   mockOctokit.apps.getRepoInstallation.mockImplementation(() => mockInstallationIdReturnValueRepos);
-  const mockListRunners = mocked(listRunners);
+  const mockListRunners = mocked(listEC2Runners);
   mockListRunners.mockImplementation(async () => [
     {
       instanceId: 'i-1234',
@@ -146,7 +146,7 @@ describe('scaleUp with GHES', () => {
       data: { total_count: 0 },
     }));
     await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
-    expect(listRunners).not.toBeCalled();
+    expect(listEC2Runners).not.toBeCalled();
   });
 
   describe('on org level', () => {
@@ -157,7 +157,7 @@ describe('scaleUp with GHES', () => {
 
     it('gets the current org level runners', async () => {
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
-      expect(listRunners).toBeCalledWith({
+      expect(listEC2Runners).toBeCalledWith({
         environment: 'unit-test-environment',
         runnerType: 'Org',
         runnerOwner: TEST_DATA.repositoryOwner,
@@ -257,7 +257,7 @@ describe('scaleUp with GHES', () => {
 
     it('gets the current repo level runners', async () => {
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
-      expect(listRunners).toBeCalledWith({
+      expect(listEC2Runners).toBeCalledWith({
         environment: 'unit-test-environment',
         runnerType: 'Repo',
         runnerOwner: `${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName}`,
@@ -380,7 +380,7 @@ describe('scaleUp with public GH', () => {
       data: { status: 'completed' },
     }));
     await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
-    expect(listRunners).not.toBeCalled();
+    expect(listEC2Runners).not.toBeCalled();
   });
 
   describe('on org level', () => {
@@ -393,7 +393,7 @@ describe('scaleUp with public GH', () => {
 
     it('gets the current org level runners', async () => {
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
-      expect(listRunners).toBeCalledWith({
+      expect(listEC2Runners).toBeCalledWith({
         environment: 'unit-test-environment',
         runnerType: 'Org',
         runnerOwner: TEST_DATA.repositoryOwner,
@@ -455,7 +455,7 @@ describe('scaleUp with public GH', () => {
 
     it('gets the current repo level runners', async () => {
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
-      expect(listRunners).toBeCalledWith({
+      expect(listEC2Runners).toBeCalledWith({
         environment: 'unit-test-environment',
         runnerType: 'Repo',
         runnerOwner: `${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName}`,

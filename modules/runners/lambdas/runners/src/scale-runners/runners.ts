@@ -20,7 +20,7 @@ export interface RunnerInputParameters {
   runnerOwner: string;
 }
 
-export async function listRunners(filters: ListRunnerFilters | undefined = undefined): Promise<RunnerInfo[]> {
+export async function listEC2Runners(filters: ListRunnerFilters | undefined = undefined): Promise<RunnerInfo[]> {
   const ec2 = new EC2();
   const ec2Filters = [
     { Name: 'tag:Application', Values: ['github-action-runner'] },
@@ -54,14 +54,14 @@ export async function listRunners(filters: ListRunnerFilters | undefined = undef
   return runners;
 }
 
-export async function terminateRunner(runner: RunnerInfo): Promise<void> {
+export async function terminateRunner(instanceId: string): Promise<void> {
   const ec2 = new EC2();
   await ec2
     .terminateInstances({
-      InstanceIds: [runner.instanceId],
+      InstanceIds: [instanceId],
     })
     .promise();
-  console.debug('Runner terminated.' + runner.instanceId);
+  console.debug(`Runner ${instanceId} has been terminated.`);
 }
 
 export async function createRunner(runnerParameters: RunnerInputParameters, launchTemplateName: string): Promise<void> {

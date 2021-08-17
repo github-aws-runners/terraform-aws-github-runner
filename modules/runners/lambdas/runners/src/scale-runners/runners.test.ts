@@ -1,4 +1,4 @@
-import { listRunners, createRunner } from './runners';
+import { listEC2Runners, createRunner } from './runners';
 
 const mockEC2 = { describeInstances: jest.fn(), runInstances: jest.fn() };
 const mockSSM = { putParameter: jest.fn() };
@@ -47,7 +47,7 @@ describe('list instances', () => {
   });
 
   it('returns a list of instances', async () => {
-    const resp = await listRunners();
+    const resp = await listEC2Runners();
     expect(resp.length).toBe(2);
     expect(resp).toContainEqual({
       instanceId: 'i-1234',
@@ -64,12 +64,12 @@ describe('list instances', () => {
   });
 
   it('calls EC2 describe instances', async () => {
-    await listRunners();
+    await listEC2Runners();
     expect(mockEC2.describeInstances).toBeCalled();
   });
 
   it('filters instances on repo name', async () => {
-    await listRunners({ runnerType: 'Repo', runnerOwner: REPO_NAME, environment: undefined });
+    await listEC2Runners({ runnerType: 'Repo', runnerOwner: REPO_NAME, environment: undefined });
     expect(mockEC2.describeInstances).toBeCalledWith({
       Filters: [
         { Name: 'tag:Application', Values: ['github-action-runner'] },
@@ -81,7 +81,7 @@ describe('list instances', () => {
   });
 
   it('filters instances on org name', async () => {
-    await listRunners({ runnerType: 'Org', runnerOwner: ORG_NAME, environment: undefined });
+    await listEC2Runners({ runnerType: 'Org', runnerOwner: ORG_NAME, environment: undefined });
     expect(mockEC2.describeInstances).toBeCalledWith({
       Filters: [
         { Name: 'tag:Application', Values: ['github-action-runner'] },
@@ -93,7 +93,7 @@ describe('list instances', () => {
   });
 
   it('filters instances on environment', async () => {
-    await listRunners({ environment: ENVIRONMENT });
+    await listEC2Runners({ environment: ENVIRONMENT });
     expect(mockEC2.describeInstances).toBeCalledWith({
       Filters: [
         { Name: 'tag:Application', Values: ['github-action-runner'] },
