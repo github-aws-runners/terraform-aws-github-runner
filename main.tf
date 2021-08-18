@@ -97,6 +97,7 @@ module "runners" {
   runners_maximum_count                = var.runners_maximum_count
   idle_config                          = var.idle_config
   enable_ssm_on_runners                = var.enable_ssm_on_runners
+  egress_rules                         = var.runner_egress_rules
   runner_additional_security_group_ids = var.runner_additional_security_group_ids
   volume_size                          = var.volume_size
 
