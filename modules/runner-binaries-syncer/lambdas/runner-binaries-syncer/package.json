@@ -16,7 +16,7 @@
   },
   "devDependencies": {
     "@octokit/rest": "^18.5.2",
-    "@types/jest": "^26.0.22",
+    "@types/jest": "^27.0.1",
     "@types/node": "^16.6.1",
     "@types/node-fetch": "^2.5.12",
     "@types/request": "^2.48.4",
