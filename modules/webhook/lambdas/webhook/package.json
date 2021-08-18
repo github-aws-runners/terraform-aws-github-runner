@@ -22,7 +22,7 @@
     "@types/jest": "^27.0.1",
     "@types/node": "^16.4.13",
     "@typescript-eslint/eslint-plugin": "^4.29.1",
-    "@typescript-eslint/parser": "^4.29.1",
+    "@typescript-eslint/parser": "^4.29.2",
     "@vercel/ncc": "0.29.1",
     "aws-sdk": "^2.970.0",
     "body-parser": "^1.19.0",
