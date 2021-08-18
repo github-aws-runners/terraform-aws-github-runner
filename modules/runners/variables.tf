@@ -346,4 +346,15 @@ variable "egress_rules" {
     to_port          = number
     description      = string
   }))
+  default = [{
+    cidr_blocks      = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
+    prefix_list_ids  = null
+    from_port        = 0
+    protocol         = "-1"
+    security_groups  = null
+    self             = null
+    to_port          = 0
+    description      = null
+  }]
 }
