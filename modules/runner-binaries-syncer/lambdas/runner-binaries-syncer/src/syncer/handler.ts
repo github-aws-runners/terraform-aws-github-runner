@@ -3,7 +3,6 @@ import { PassThrough } from 'stream';
 import fetch from 'node-fetch';
 import { S3 } from 'aws-sdk';
 import AWS from 'aws-sdk';
-import yn from 'yn';
 
 const versionKey = 'name';
 
@@ -97,7 +96,7 @@ export const handle = async (): Promise<void> => {
   const s3 = new AWS.S3();
 
   const runnerArch = process.env.GITHUB_RUNNER_ARCHITECTURE || 'x64';
-  const fetchPrereleaseBinaries = yn(process.env.GITHUB_RUNNER_ALLOW_PRERELEASE_BINARIES, { default: false });
+  const fetchPrereleaseBinaries = JSON.parse(process.env.GITHUB_RUNNER_ALLOW_PRERELEASE_BINARIES || 'false');
 
   const cacheObject: CacheObject = {
     bucket: process.env.S3_BUCKET_NAME as string,
