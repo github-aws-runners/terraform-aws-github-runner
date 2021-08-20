@@ -1,6 +1,6 @@
 import moment from 'moment';
 import { mocked } from 'ts-jest/utils';
-import { listEC2Runners, terminateRunner, RunnerInfo } from './runners';
+import { listEC2Runners, terminateRunner, RunnerInfo, RunnerList } from './runners';
 import { scaleDown } from './scale-down';
 import * as ghAuth from './gh-auth';
 import nock from 'nock';
@@ -48,7 +48,7 @@ const TEST_DATA: TestData = {
   repositoryOwner: 'Codertocat',
 };
 
-let DEFAULT_RUNNERS: RunnerInfo[];
+let DEFAULT_RUNNERS: RunnerList[];
 let RUNNERS_ALL_REMOVED: RunnerInfo[];
 let DEFAULT_RUNNERS_REPO_TO_BE_REMOVED: RunnerInfo[];
 let RUNNERS_ORG_TO_BE_REMOVED_WITH_AUTO_SCALING_CONFIG: RunnerInfo[];
@@ -57,6 +57,9 @@ let RUNNERS_ORG_WITH_AUTO_SCALING_CONFIG: RunnerInfo[];
 let DEFAULT_RUNNERS_REPO: RunnerInfo[];
 let DEFAULT_RUNNERS_ORG: RunnerInfo[];
 let DEFAULT_RUNNERS_ORG_TO_BE_REMOVED: RunnerInfo[];
+let DEFAULT_RUNNERS_ORPHANED: RunnerInfo[];
+let DEFAULT_REPO_RUNNERS_ORPHANED: RunnerInfo[];
+let DEFAULT_ORG_RUNNERS_ORPHANED: RunnerInfo[];
 const DEFAULT_RUNNERS_ORIGINAL = [
   {
     instanceId: 'i-idle-101',
@@ -125,6 +128,13 @@ const DEFAULT_RUNNERS_ORIGINAL = [
       .toDate(),
     type: 'Org',
     owner: TEST_DATA.repositoryOwner,
+  },
+  {
+    instanceId: 'i-legacy-110',
+    launchTime: moment(new Date())
+      .subtract(minimumRunningTimeInMinutes + 5, 'minutes')
+      .toDate(),
+    Repo: `${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName}`,
   },
 ];
 
@@ -215,8 +225,8 @@ describe('scaleDown', () => {
     });
     mockCreateClient.mockResolvedValue(new mocktokit());
     DEFAULT_RUNNERS = JSON.parse(JSON.stringify(DEFAULT_RUNNERS_ORIGINAL));
-    DEFAULT_RUNNERS_REPO = DEFAULT_RUNNERS.filter((r) => r.type === 'Repo');
-    DEFAULT_RUNNERS_ORG = DEFAULT_RUNNERS.filter((r) => r.type === 'Org');
+    DEFAULT_RUNNERS_REPO = DEFAULT_RUNNERS.filter((r) => r.type === 'Repo') as RunnerInfo[];
+    DEFAULT_RUNNERS_ORG = DEFAULT_RUNNERS.filter((r) => r.type === 'Org') as RunnerInfo[];
     DEFAULT_RUNNERS_REPO_TO_BE_REMOVED = DEFAULT_RUNNERS_REPO.filter(
       (r) => r.instanceId.includes('idle') || r.instanceId.includes('orphan'),
     );
@@ -239,6 +249,15 @@ describe('scaleDown', () => {
     RUNNERS_ALL_REMOVED = DEFAULT_RUNNERS_ORG.filter(
       (r) => !r.instanceId.includes('running') && !r.instanceId.includes('registered'),
     );
+    DEFAULT_RUNNERS_ORPHANED = DEFAULT_RUNNERS_ORIGINAL.filter(
+      (r) => r.instanceId.includes('orphan') && !r.instanceId.includes('not-registered'),
+    ) as RunnerInfo[];
+    DEFAULT_REPO_RUNNERS_ORPHANED = DEFAULT_RUNNERS_REPO.filter(
+      (r) => r.instanceId.includes('orphan') && !r.instanceId.includes('not-registered'),
+    );
+    DEFAULT_ORG_RUNNERS_ORPHANED = DEFAULT_RUNNERS_ORG.filter(
+      (r) => r.instanceId.includes('orphan') && !r.instanceId.includes('not-registered'),
+    );
   });
 
   describe('github.com', () => {
@@ -258,8 +277,7 @@ describe('scaleDown', () => {
       });
     });
 
-    it('Terminates 3 of 5 runners owned by repos.', async () => {
-      // This will not terminate the orphan runners that have not yet reached their minimum running time.
+    it('Terminates 3 of 5 runners owned by repos and all orphaned', async () => {
       mockListRunners.mockResolvedValue(DEFAULT_RUNNERS_REPO);
       await scaleDown();
       expect(listEC2Runners).toBeCalledWith({
@@ -268,14 +286,16 @@ describe('scaleDown', () => {
 
       expect(mockOctokit.apps.getRepoInstallation).toBeCalled();
 
-      expect(terminateRunner).toBeCalledTimes(3);
+      expect(terminateRunner).toBeCalledTimes(4);
       for (const toTerminate of DEFAULT_RUNNERS_REPO_TO_BE_REMOVED) {
+        expect(terminateRunner).toHaveBeenCalledWith(toTerminate.instanceId);
+      }
+      for (const toTerminate of DEFAULT_REPO_RUNNERS_ORPHANED) {
         expect(terminateRunner).toHaveBeenCalledWith(toTerminate.instanceId);
       }
     });
 
-    it('Terminates 2 of 3 runners owned by orgs.', async () => {
-      // This will not terminate the orphan runners that have not yet reached their minimum running time.
+    it('Terminates 2 of 3 runners owned by orgs and all orphaned', async () => {
       mockListRunners.mockResolvedValue(DEFAULT_RUNNERS_ORG);
       await scaleDown();
       expect(listEC2Runners).toBeCalledWith({
@@ -283,8 +303,11 @@ describe('scaleDown', () => {
       });
 
       expect(mockOctokit.apps.getOrgInstallation).toBeCalled();
-      expect(terminateRunner).toBeCalledTimes(2);
+      expect(terminateRunner).toBeCalledTimes(3);
       for (const toTerminate of DEFAULT_RUNNERS_ORG_TO_BE_REMOVED) {
+        expect(terminateRunner).toHaveBeenCalledWith(toTerminate.instanceId);
+      }
+      for (const toTerminate of DEFAULT_ORG_RUNNERS_ORPHANED) {
         expect(terminateRunner).toHaveBeenCalledWith(toTerminate.instanceId);
       }
     });
@@ -329,7 +352,7 @@ describe('scaleDown', () => {
       });
     });
 
-    it('Terminates 6 runners amongst all owners', async () => {
+    it('Terminates 6 runners amongst all owners and all orphaned', async () => {
       mockListRunners.mockResolvedValue(DEFAULT_RUNNERS);
       await scaleDown();
 
@@ -339,8 +362,11 @@ describe('scaleDown', () => {
 
       expect(mockOctokit.apps.getRepoInstallation).toBeCalledTimes(2);
       expect(mockOctokit.apps.getOrgInstallation).toBeCalledTimes(1);
-      expect(terminateRunner).toBeCalledTimes(5);
+      expect(terminateRunner).toBeCalledTimes(8);
       for (const toTerminate of RUNNERS_ALL_REMOVED) {
+        expect(terminateRunner).toHaveBeenCalledWith(toTerminate.instanceId);
+      }
+      for (const toTerminate of DEFAULT_RUNNERS_ORPHANED) {
         expect(terminateRunner).toHaveBeenCalledWith(toTerminate.instanceId);
       }
     });
@@ -366,8 +392,7 @@ describe('scaleDown', () => {
       });
     });
 
-    it('Terminates 3 of 5 runners owned by repos.', async () => {
-      // This will not terminate the orphan runners that have not yet reached their minimum running time.
+    it('Terminates 3 of 5 runners owned by repos and all orphaned', async () => {
       mockListRunners.mockResolvedValue(DEFAULT_RUNNERS_REPO);
       await scaleDown();
       expect(listEC2Runners).toBeCalledWith({
@@ -375,13 +400,16 @@ describe('scaleDown', () => {
       });
 
       expect(mockOctokit.apps.getRepoInstallation).toBeCalled();
-      expect(terminateRunner).toBeCalledTimes(3);
+      expect(terminateRunner).toBeCalledTimes(4);
       for (const toTerminate of DEFAULT_RUNNERS_REPO_TO_BE_REMOVED) {
+        expect(terminateRunner).toHaveBeenCalledWith(toTerminate.instanceId);
+      }
+      for (const toTerminate of DEFAULT_REPO_RUNNERS_ORPHANED) {
         expect(terminateRunner).toHaveBeenCalledWith(toTerminate.instanceId);
       }
     });
 
-    it('Terminates 2 of 3 runners owned by orgs.', async () => {
+    it('Terminates 2 of 3 runners owned by orgs and all orphaned', async () => {
       // This will not terminate the orphan runners that have not yet reached their minimum running time.
       mockListRunners.mockResolvedValue(DEFAULT_RUNNERS_ORG);
       await scaleDown();
@@ -390,8 +418,11 @@ describe('scaleDown', () => {
       });
 
       expect(mockOctokit.apps.getOrgInstallation).toBeCalled();
-      expect(terminateRunner).toBeCalledTimes(2);
+      expect(terminateRunner).toBeCalledTimes(3);
       for (const toTerminate of DEFAULT_RUNNERS_ORG_TO_BE_REMOVED) {
+        expect(terminateRunner).toHaveBeenCalledWith(toTerminate.instanceId);
+      }
+      for (const toTerminate of DEFAULT_ORG_RUNNERS_ORPHANED) {
         expect(terminateRunner).toHaveBeenCalledWith(toTerminate.instanceId);
       }
     });
@@ -436,7 +467,7 @@ describe('scaleDown', () => {
       });
     });
 
-    it('Terminates 6 runners amongst all owners', async () => {
+    it('Terminates 6 runners amongst all owners and all orphaned', async () => {
       mockListRunners.mockResolvedValue(DEFAULT_RUNNERS);
       await scaleDown();
 
@@ -446,8 +477,11 @@ describe('scaleDown', () => {
 
       expect(mockOctokit.apps.getRepoInstallation).toBeCalledTimes(2);
       expect(mockOctokit.apps.getOrgInstallation).toBeCalledTimes(1);
-      expect(terminateRunner).toBeCalledTimes(5);
+      expect(terminateRunner).toBeCalledTimes(8);
       for (const toTerminate of RUNNERS_ALL_REMOVED) {
+        expect(terminateRunner).toHaveBeenCalledWith(toTerminate.instanceId);
+      }
+      for (const toTerminate of DEFAULT_RUNNERS_ORPHANED) {
         expect(terminateRunner).toHaveBeenCalledWith(toTerminate.instanceId);
       }
     });

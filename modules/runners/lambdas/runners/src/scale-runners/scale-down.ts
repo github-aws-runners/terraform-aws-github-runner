@@ -1,6 +1,6 @@
 import { Octokit } from '@octokit/rest';
 import moment from 'moment';
-import { listEC2Runners, RunnerInfo, terminateRunner } from './runners';
+import { listEC2Runners, RunnerInfo, RunnerList, terminateRunner } from './runners';
 import { getIdleRunnerCount, ScalingDownConfig } from './scale-down-config';
 import { createOctoClient, createGithubAppAuth, createGithubInstallationAuth } from './gh-auth';
 import { githubCache, GhRunners } from './cache';
@@ -97,6 +97,10 @@ async function removeRunner(ec2runner: RunnerInfo, ghRunnerId: number): Promise<
   }
 }
 
+function getIndex(ec2Runners: RunnerInfo[], ec2Runner: RunnerInfo): number {
+  return ec2Runners.findIndex((runner) => runner.instanceId === ec2Runner.instanceId);
+}
+
 async function evaluateAndRemoveRunners(
   ec2Runners: RunnerInfo[],
   scaleDownConfigs: ScalingDownConfig[],
@@ -107,28 +111,32 @@ async function evaluateAndRemoveRunners(
 
   for (const ownerTag of ownerTags) {
     const ec2RunnersFiltered = ec2Runners.filter((runner) => runner.owner === ownerTag);
-    for (const ec2runner of ec2RunnersFiltered) {
-      // TODO: This is a bug. Orphaned runners should be terminated no matter how long they have been running.
-      if (runnerMinimumTimeExceeded(ec2runner, minimumRunningTimeInMinutes)) {
-        const ghRunners = await listGitHubRunners(ec2runner);
-        const ghRunner = ghRunners.find((runner) => runner.name === ec2runner.instanceId);
+    for (const ec2Runner of ec2RunnersFiltered) {
+      if (runnerMinimumTimeExceeded(ec2Runner, minimumRunningTimeInMinutes)) {
+        const ghRunners = await listGitHubRunners(ec2Runner);
+        const ghRunner = ghRunners.find((runner) => runner.name === ec2Runner.instanceId);
         if (ghRunner) {
           if (idleCounter > 0) {
             idleCounter--;
-            console.debug(`Runner '${ec2runner.instanceId}' will kept idle.`);
+            console.debug(`Runner '${ec2Runner.instanceId}' will kept idle.`);
+            ec2Runners.splice(getIndex(ec2Runners, ec2Runner), 1);
           } else {
-            await removeRunner(ec2runner, ghRunner.id);
-            const instanceIndex = ec2Runners.findIndex((runner) => runner.instanceId === ec2runner.instanceId);
-            ec2Runners.splice(instanceIndex, 1);
+            await removeRunner(ec2Runner, ghRunner.id);
+            ec2Runners.splice(getIndex(ec2Runners, ec2Runner), 1);
           }
         } else {
-          console.debug(`Runner '${ec2runner.instanceId}' is orphaned and will be removed.`);
-          terminateOrphan(ec2runner.instanceId);
-          const instanceIndex = ec2Runners.findIndex((runner) => runner.instanceId === ec2runner.instanceId);
-          ec2Runners.splice(instanceIndex, 1);
+          console.debug(`Runner '${ec2Runner.instanceId}' is orphaned and will be removed.`);
+          terminateOrphan(ec2Runner.instanceId);
+          ec2Runners.splice(getIndex(ec2Runners, ec2Runner), 1);
         }
       }
     }
+  }
+  if (!(ec2Runners.length === 0)) {
+    console.info(`${ec2Runners.length} runners identified as orphans.`);
+    ec2Runners.forEach((runner) => {
+      terminateOrphan(runner.instanceId);
+    });
   }
 }
 
@@ -154,6 +162,14 @@ async function listAndSortRunners(environment: string) {
   });
 }
 
+function filterLegacyRunners(ec2runners: RunnerList[]): RunnerList[] {
+  return ec2runners.filter((ec2Runner) => ec2Runner.Repo || ec2Runner.Org) as RunnerList[];
+}
+
+function filterNewRunners(ec2runners: RunnerList[]): RunnerInfo[] {
+  return ec2runners.filter((ec2Runner) => ec2Runner.type) as RunnerInfo[];
+}
+
 export async function scaleDown(): Promise<void> {
   const scaleDownConfigs = JSON.parse(process.env.SCALE_DOWN_CONFIG) as [ScalingDownConfig];
   const environment = process.env.ENVIRONMENT;
@@ -166,6 +182,11 @@ export async function scaleDown(): Promise<void> {
     console.debug(`No active runners found for environment: '${environment}'`);
     return;
   }
+  const legacyRunners = filterLegacyRunners(ec2Runners);
+  const newRunners = filterNewRunners(ec2Runners);
 
-  await evaluateAndRemoveRunners(ec2Runners, scaleDownConfigs, minimumRunningTimeInMinutes);
+  await evaluateAndRemoveRunners(newRunners, scaleDownConfigs, minimumRunningTimeInMinutes);
+  legacyRunners.forEach((runner) => {
+    terminateOrphan(runner.instanceId);
+  });
 }

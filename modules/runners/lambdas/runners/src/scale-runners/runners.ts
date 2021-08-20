@@ -1,5 +1,14 @@
 import { EC2, SSM } from 'aws-sdk';
 
+export interface RunnerList {
+  instanceId: string;
+  launchTime?: Date;
+  owner?: string;
+  type?: string;
+  Repo?: string;
+  Org?: string;
+}
+
 export interface RunnerInfo {
   instanceId: string;
   launchTime?: Date;
@@ -20,7 +29,7 @@ export interface RunnerInputParameters {
   runnerOwner: string;
 }
 
-export async function listEC2Runners(filters: ListRunnerFilters | undefined = undefined): Promise<RunnerInfo[]> {
+export async function listEC2Runners(filters: ListRunnerFilters | undefined = undefined): Promise<RunnerList[]> {
   const ec2 = new EC2();
   const ec2Filters = [
     { Name: 'tag:Application', Values: ['github-action-runner'] },
@@ -36,7 +45,7 @@ export async function listEC2Runners(filters: ListRunnerFilters | undefined = un
     }
   }
   const runningInstances = await ec2.describeInstances({ Filters: ec2Filters }).promise();
-  const runners: RunnerInfo[] = [];
+  const runners: RunnerList[] = [];
   if (runningInstances.Reservations) {
     for (const r of runningInstances.Reservations) {
       if (r.Instances) {
@@ -46,6 +55,8 @@ export async function listEC2Runners(filters: ListRunnerFilters | undefined = un
             launchTime: i.LaunchTime,
             owner: i.Tags?.find((e) => e.Key === 'Owner')?.Value as string,
             type: i.Tags?.find((e) => e.Key === 'Type')?.Value as string,
+            Repo: i.Tags?.find((e) => e.Key === 'Repo')?.Value as string,
+            Org: i.Tags?.find((e) => e.Key === 'Org')?.Value as string,
           });
         }
       }
