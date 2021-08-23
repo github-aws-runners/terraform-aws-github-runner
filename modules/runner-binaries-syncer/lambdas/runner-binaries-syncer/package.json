@@ -22,7 +22,7 @@
     "@types/request": "^2.48.4",
     "@typescript-eslint/eslint-plugin": "^4.29.2",
     "@typescript-eslint/parser": "^4.29.2",
-    "@vercel/ncc": "^0.29.1",
+    "@vercel/ncc": "^0.29.2",
     "aws-sdk": "^2.970.0",
     "eslint": "^7.32.0",
     "eslint-plugin-prettier": "3.4.0",
