@@ -97,10 +97,6 @@ async function removeRunner(ec2runner: RunnerInfo, ghRunnerId: number): Promise<
   }
 }
 
-function getIndex(ec2Runners: RunnerInfo[], ec2Runner: RunnerInfo): number {
-  return ec2Runners.findIndex((runner) => runner.instanceId === ec2Runner.instanceId);
-}
-
 async function evaluateAndRemoveRunners(
   ec2Runners: RunnerInfo[],
   scaleDownConfigs: ScalingDownConfig[],
@@ -122,12 +118,10 @@ async function evaluateAndRemoveRunners(
           } else {
             await removeRunner(ec2Runner, ghRunner.id);
           }
-          ec2Runners.splice(getIndex(ec2Runners, ec2Runner), 1);
         }
       } else {
         console.debug(`Runner '${ec2Runner.instanceId}' is orphaned and will be removed.`);
         terminateOrphan(ec2Runner.instanceId);
-        ec2Runners.splice(getIndex(ec2Runners, ec2Runner), 1);
       }
     }
   }
