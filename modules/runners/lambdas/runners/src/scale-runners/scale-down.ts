@@ -20,24 +20,24 @@ async function getOrCreateOctokit(runner: RunnerInfo): Promise<Octokit> {
   if (ghesBaseUrl) {
     ghesApiUrl = `${ghesBaseUrl}/api/v3`;
   }
-  const ghAuth = await createGithubAppAuth(undefined, ghesApiUrl);
-  const githubClient = await createOctoClient(ghAuth.token, ghesApiUrl);
+  const ghAuthPre = await createGithubAppAuth(undefined, ghesApiUrl);
+  const githubClientPre = await createOctoClient(ghAuthPre.token, ghesApiUrl);
 
   const installationId =
     runner.type === 'Org'
       ? (
-          await githubClient.apps.getOrgInstallation({
+          await githubClientPre.apps.getOrgInstallation({
             org: runner.owner,
           })
         ).data.id
       : (
-          await githubClient.apps.getRepoInstallation({
+          await githubClientPre.apps.getRepoInstallation({
             owner: runner.owner.split('/')[0],
             repo: runner.owner.split('/')[1],
           })
         ).data.id;
-  const ghAuth2 = await createGithubInstallationAuth(installationId, ghesApiUrl);
-  const octokit = await createOctoClient(ghAuth2.token, ghesApiUrl);
+  const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl);
+  const octokit = await createOctoClient(ghAuth.token, ghesApiUrl);
   githubCache.clients.set(key, octokit);
 
   return octokit;
@@ -112,31 +112,24 @@ async function evaluateAndRemoveRunners(
   for (const ownerTag of ownerTags) {
     const ec2RunnersFiltered = ec2Runners.filter((runner) => runner.owner === ownerTag);
     for (const ec2Runner of ec2RunnersFiltered) {
-      if (runnerMinimumTimeExceeded(ec2Runner, minimumRunningTimeInMinutes)) {
-        const ghRunners = await listGitHubRunners(ec2Runner);
-        const ghRunner = ghRunners.find((runner) => runner.name === ec2Runner.instanceId);
-        if (ghRunner) {
+      const ghRunners = await listGitHubRunners(ec2Runner);
+      const ghRunner = ghRunners.find((runner) => runner.name === ec2Runner.instanceId);
+      if (ghRunner) {
+        if (runnerMinimumTimeExceeded(ec2Runner, minimumRunningTimeInMinutes)) {
           if (idleCounter > 0) {
             idleCounter--;
             console.debug(`Runner '${ec2Runner.instanceId}' will kept idle.`);
-            ec2Runners.splice(getIndex(ec2Runners, ec2Runner), 1);
           } else {
             await removeRunner(ec2Runner, ghRunner.id);
-            ec2Runners.splice(getIndex(ec2Runners, ec2Runner), 1);
           }
-        } else {
-          console.debug(`Runner '${ec2Runner.instanceId}' is orphaned and will be removed.`);
-          terminateOrphan(ec2Runner.instanceId);
           ec2Runners.splice(getIndex(ec2Runners, ec2Runner), 1);
         }
+      } else {
+        console.debug(`Runner '${ec2Runner.instanceId}' is orphaned and will be removed.`);
+        terminateOrphan(ec2Runner.instanceId);
+        ec2Runners.splice(getIndex(ec2Runners, ec2Runner), 1);
       }
     }
-  }
-  if (!(ec2Runners.length === 0)) {
-    console.info(`${ec2Runners.length} runners identified as orphans.`);
-    ec2Runners.forEach((runner) => {
-      terminateOrphan(runner.instanceId);
-    });
   }
 }
 
@@ -166,11 +159,18 @@ async function listAndSortRunners(environment: string) {
  * We are moving to a new strategy to find and remove runners, this function will ensure
  * during migration runners tagged in the old way are removed.
  */
-function filterLegacyRunners(ec2runners: RunnerList[]): RunnerList[] {
-  return ec2runners.filter((ec2Runner) => ec2Runner.Repo || ec2Runner.Org) as RunnerList[];
+function filterLegacyRunners(ec2runners: RunnerList[]): RunnerInfo[] {
+  return ec2runners
+    .filter((ec2Runner) => ec2Runner.repo || ec2Runner.org)
+    .map((ec2Runner) => ({
+      instanceId: ec2Runner.instanceId,
+      launchTime: ec2Runner.launchTime,
+      type: ec2Runner.org ? 'org' : 'repo',
+      owner: ec2Runner.org ? (ec2Runner.org as string) : (ec2Runner.repo as string),
+    }));
 }
 
-function filterNewRunners(ec2runners: RunnerList[]): RunnerInfo[] {
+function filterRunners(ec2runners: RunnerList[]): RunnerInfo[] {
   return ec2runners.filter((ec2Runner) => ec2Runner.type) as RunnerInfo[];
 }
 
@@ -187,10 +187,9 @@ export async function scaleDown(): Promise<void> {
     return;
   }
   const legacyRunners = filterLegacyRunners(ec2Runners);
-  const newRunners = filterNewRunners(ec2Runners);
+  console.log(JSON.stringify(legacyRunners));
+  const runners = filterRunners(ec2Runners);
 
-  await evaluateAndRemoveRunners(newRunners, scaleDownConfigs, minimumRunningTimeInMinutes);
-  legacyRunners.forEach((runner) => {
-    terminateOrphan(runner.instanceId);
-  });
+  await evaluateAndRemoveRunners(runners, scaleDownConfigs, minimumRunningTimeInMinutes);
+  await evaluateAndRemoveRunners(legacyRunners, scaleDownConfigs, minimumRunningTimeInMinutes);
 }

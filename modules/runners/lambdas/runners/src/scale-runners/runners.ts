@@ -5,8 +5,8 @@ export interface RunnerList {
   launchTime?: Date;
   owner?: string;
   type?: string;
-  Repo?: string;
-  Org?: string;
+  repo?: string;
+  org?: string;
 }
 
 export interface RunnerInfo {
@@ -55,8 +55,8 @@ export async function listEC2Runners(filters: ListRunnerFilters | undefined = un
             launchTime: i.LaunchTime,
             owner: i.Tags?.find((e) => e.Key === 'Owner')?.Value as string,
             type: i.Tags?.find((e) => e.Key === 'Type')?.Value as string,
-            Repo: i.Tags?.find((e) => e.Key === 'Repo')?.Value as string,
-            Org: i.Tags?.find((e) => e.Key === 'Org')?.Value as string,
+            repo: i.Tags?.find((e) => e.Key === 'Repo')?.Value as string,
+            org: i.Tags?.find((e) => e.Key === 'Org')?.Value as string,
           });
         }
       }

@@ -134,7 +134,7 @@ const DEFAULT_RUNNERS_ORIGINAL = [
     launchTime: moment(new Date())
       .subtract(minimumRunningTimeInMinutes + 5, 'minutes')
       .toDate(),
-    Repo: `${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName}`,
+    repo: `${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName}`,
   },
 ];
 
@@ -410,7 +410,6 @@ describe('scaleDown', () => {
     });
 
     it('Terminates 2 of 3 runners owned by orgs and all orphaned', async () => {
-      // This will not terminate the orphan runners that have not yet reached their minimum running time.
       mockListRunners.mockResolvedValue(DEFAULT_RUNNERS_ORG);
       await scaleDown();
       expect(listEC2Runners).toBeCalledWith({
