@@ -162,6 +162,10 @@ async function listAndSortRunners(environment: string) {
   });
 }
 
+/**
+ * We are moving to a new strategy to find and remove runners, this function will ensure
+ * during migration runners tagged in the old way are removed.
+ */
 function filterLegacyRunners(ec2runners: RunnerList[]): RunnerList[] {
   return ec2runners.filter((ec2Runner) => ec2Runner.Repo || ec2Runner.Org) as RunnerList[];
 }
