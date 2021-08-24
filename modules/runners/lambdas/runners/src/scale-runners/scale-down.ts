@@ -159,7 +159,7 @@ function filterLegacyRunners(ec2runners: RunnerList[]): RunnerInfo[] {
     .map((ec2Runner) => ({
       instanceId: ec2Runner.instanceId,
       launchTime: ec2Runner.launchTime,
-      type: ec2Runner.org ? 'org' : 'repo',
+      type: ec2Runner.org ? 'Org' : 'Repo',
       owner: ec2Runner.org ? (ec2Runner.org as string) : (ec2Runner.repo as string),
     }));
 }
