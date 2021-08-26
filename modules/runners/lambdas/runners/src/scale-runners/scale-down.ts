@@ -67,10 +67,17 @@ async function listGitHubRunners(runner: RunnerInfo): Promise<GhRunners> {
   return runners;
 }
 
-function runnerMinimumTimeExceeded(runner: RunnerInfo, minimumRunningTimeInMinutes: string): boolean {
+function runnerMinimumTimeExceeded(runner: RunnerInfo): boolean {
+  const minimumRunningTimeInMinutes = process.env.MINIMUM_RUNNING_TIME_IN_MINUTES;
   const launchTimePlusMinimum = moment(runner.launchTime).utc().add(minimumRunningTimeInMinutes, 'minutes');
   const now = moment(new Date()).utc();
   return launchTimePlusMinimum < now;
+}
+
+function bootTimeExceeded(ec2Runner: RunnerInfo): boolean {
+  const runnerBootTimeInMinutes = process.env.RUNNER_BOOT_TIME_IN_MINUTES;
+  const launchTimePlusBootTime = moment(ec2Runner.launchTime).utc().add(runnerBootTimeInMinutes, 'minutes');
+  return launchTimePlusBootTime < moment(new Date()).utc();
 }
 
 async function removeRunner(ec2runner: RunnerInfo, ghRunnerId: number): Promise<void> {
@@ -91,6 +98,8 @@ async function removeRunner(ec2runner: RunnerInfo, ghRunnerId: number): Promise<
     if (result.status == 204) {
       await terminateRunner(ec2runner.instanceId);
       console.info(`AWS runner instance '${ec2runner.instanceId}' is terminated and GitHub runner is de-registered.`);
+    } else {
+      console.error(`Failed to de-register GitHub runner: ${result.status}`);
     }
   } catch (e) {
     console.debug(`Runner '${ec2runner.instanceId}' cannot be de-registered, most likely the runner is active.`);
@@ -100,7 +109,6 @@ async function removeRunner(ec2runner: RunnerInfo, ghRunnerId: number): Promise<
 async function evaluateAndRemoveRunners(
   ec2Runners: RunnerInfo[],
   scaleDownConfigs: ScalingDownConfig[],
-  minimumRunningTimeInMinutes: string,
 ): Promise<void> {
   let idleCounter = getIdleRunnerCount(scaleDownConfigs);
   const ownerTags = new Set(ec2Runners.map((runner) => runner.owner));
@@ -111,17 +119,22 @@ async function evaluateAndRemoveRunners(
       const ghRunners = await listGitHubRunners(ec2Runner);
       const ghRunner = ghRunners.find((runner) => runner.name === ec2Runner.instanceId);
       if (ghRunner) {
-        if (runnerMinimumTimeExceeded(ec2Runner, minimumRunningTimeInMinutes)) {
+        if (runnerMinimumTimeExceeded(ec2Runner)) {
           if (idleCounter > 0) {
             idleCounter--;
             console.debug(`Runner '${ec2Runner.instanceId}' will kept idle.`);
           } else {
+            console.debug(`Runner '${ec2Runner.instanceId}' will be terminated.`);
             await removeRunner(ec2Runner, ghRunner.id);
           }
         }
       } else {
-        console.debug(`Runner '${ec2Runner.instanceId}' is orphaned and will be removed.`);
-        terminateOrphan(ec2Runner.instanceId);
+        if (bootTimeExceeded(ec2Runner)) {
+          console.debug(`Runner '${ec2Runner.instanceId}' is orphaned and will be removed.`);
+          terminateOrphan(ec2Runner.instanceId);
+        } else {
+          console.debug(`Runner ${ec2Runner.instanceId} has not yet booted.`);
+        }
       }
     }
   }
@@ -171,7 +184,6 @@ function filterRunners(ec2runners: RunnerList[]): RunnerInfo[] {
 export async function scaleDown(): Promise<void> {
   const scaleDownConfigs = JSON.parse(process.env.SCALE_DOWN_CONFIG) as [ScalingDownConfig];
   const environment = process.env.ENVIRONMENT;
-  const minimumRunningTimeInMinutes = process.env.MINIMUM_RUNNING_TIME_IN_MINUTES;
 
   // list and sort runners, newest first. This ensure we keep the newest runners longer.
   const ec2Runners = await listAndSortRunners(environment);
@@ -184,6 +196,6 @@ export async function scaleDown(): Promise<void> {
   console.log(JSON.stringify(legacyRunners));
   const runners = filterRunners(ec2Runners);
 
-  await evaluateAndRemoveRunners(runners, scaleDownConfigs, minimumRunningTimeInMinutes);
-  await evaluateAndRemoveRunners(legacyRunners, scaleDownConfigs, minimumRunningTimeInMinutes);
+  await evaluateAndRemoveRunners(runners, scaleDownConfigs);
+  await evaluateAndRemoveRunners(legacyRunners, scaleDownConfigs);
 }

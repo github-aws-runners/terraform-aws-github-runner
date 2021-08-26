@@ -135,6 +135,12 @@ variable "minimum_running_time_in_minutes" {
   default     = 5
 }
 
+variable "runner_boot_time_in_minutes" {
+  description = "The minimum time for an EC2 runner to boot and register as a runner."
+  type        = number
+  default     = 5
+}
+
 variable "runner_extra_labels" {
   description = "Extra labels for the runners (GitHub). Separate each label by a comma"
   type        = string

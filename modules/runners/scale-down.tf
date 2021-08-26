@@ -15,6 +15,7 @@ resource "aws_lambda_function" "scale_down" {
     variables = {
       ENVIRONMENT                             = var.environment
       MINIMUM_RUNNING_TIME_IN_MINUTES         = var.minimum_running_time_in_minutes
+      RUNNER_BOOT_TIME_IN_MINUTES             = var.runner_boot_time_in_minutes
       SCALE_DOWN_CONFIG                       = jsonencode(var.idle_config)
       GHES_URL                                = var.ghes_url
       PARAMETER_GITHUB_APP_CLIENT_ID_NAME     = var.github_app_parameters.client_id.name

@@ -43,6 +43,7 @@ const cleanEnv = process.env;
 
 const environment = 'unit-test-environment';
 const minimumRunningTimeInMinutes = 15;
+const runnerBootTimeInMinutes = 5;
 const TEST_DATA: TestData = {
   repositoryName: 'hello-world',
   repositoryOwner: 'Codertocat',
@@ -136,6 +137,11 @@ const DEFAULT_RUNNERS_ORIGINAL = [
       .toDate(),
     repo: `${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName}`,
   },
+  {
+    instanceId: 'i-new-111',
+    launchTime: moment(new Date()).toDate(),
+    repo: `${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName}`,
+  },
 ];
 
 const DEFAULT_REGISTERED_RUNNERS = [
@@ -176,6 +182,7 @@ describe('scaleDown', () => {
     process.env.SCALE_DOWN_CONFIG = '[]';
     process.env.ENVIRONMENT = environment;
     process.env.MINIMUM_RUNNING_TIME_IN_MINUTES = minimumRunningTimeInMinutes.toString();
+    process.env.RUNNER_BOOT_TIME_IN_MINUTES = runnerBootTimeInMinutes.toString();
     nock.disableNetConnect();
     jest.clearAllMocks();
     jest.resetModules();
@@ -201,7 +208,11 @@ describe('scaleDown', () => {
       }
     });
     mockOctokit.actions.deleteSelfHostedRunnerFromOrg.mockImplementation((repo) => {
-      return repo.runner_id === 106 ? { status: 500 } : { status: 204 };
+      if (repo.runner_id === 106) {
+        throw Error();
+      } else {
+        return { status: 204 };
+      }
     });
 
     const mockTerminateRunners = mocked(terminateRunner);
