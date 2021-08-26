@@ -131,8 +131,8 @@ function isRunnerNotAllowed(job: WorkflowJob): boolean {
 
   console.debug(
     `Received workflow job event with labels: '${JSON.stringify(job.workflow_job.labels)}'. The event does ${
-      runnerMatch ? '' : 'NOT'
-    } match the configured labels: '${JSON.stringify(runnerLabels)}'`,
+      runnerMatch ? '' : 'NOT '
+    }match the configured labels: '${Array.from(runnerLabels).join(',')}'`,
   );
   return !runnerMatch;
 }
