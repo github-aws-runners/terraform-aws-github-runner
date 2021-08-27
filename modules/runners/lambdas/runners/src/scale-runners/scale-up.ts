@@ -107,7 +107,7 @@ async function getJobStatus(githubInstallationClient: Octokit, payload: ActionRe
   } else {
     throw Error(`Event ${payload.eventType} is not supported`);
   }
-
+  console.debug(`Job ${payload.id} is ${isQueued ? 'queued' : 'not queued'}`);
   return isQueued;
 }
 

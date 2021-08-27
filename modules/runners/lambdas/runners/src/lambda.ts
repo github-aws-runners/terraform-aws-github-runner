@@ -3,7 +3,7 @@ import { scaleDown as scaleDownAction } from './scale-runners/scale-down';
 import { SQSEvent, ScheduledEvent, Context } from 'aws-lambda';
 
 export const scaleUp = async (event: SQSEvent, context: Context, callback: any): Promise<void> => {
-  console.dir(event, { depth: 5 });
+  console.debug(JSON.stringify(event));
   try {
     for (const e of event.Records) {
       await scaleUpAction(e.eventSource, JSON.parse(e.body));
