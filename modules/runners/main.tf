@@ -18,7 +18,7 @@ locals {
   userdata_arm_patch             = "${path.module}/templates/arm-runner-patch.tpl"
   userdata_install_config_runner = "${path.module}/templates/install-config-runner.sh"
 
-  instance_types = var.instance_types == null ? [var.instance_type] : var.instance_types
+  instance_types = distinct(var.instance_types == null ? [var.instance_type] : var.instance_types)
 
   kms_key_arn = var.kms_key_arn != null ? var.kms_key_arn : ""
 }

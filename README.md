@@ -343,23 +343,6 @@ No requirements.
 | aws | n/a |
 | random | n/a |
 
-## Modules
-
-| Name | Source | Version |
-|------|--------|---------|
-| runner_binaries | ./modules/runner-binaries-syncer |  |
-| runners | ./modules/runners |  |
-| ssm | ./modules/ssm |  |
-| webhook | ./modules/webhook |  |
-
-## Resources
-
-| Name |
-|------|
-| [aws_resourcegroups_group](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/resourcegroups_group) |
-| [aws_sqs_queue](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sqs_queue) |
-| [random_string](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/string) |
-
 ## Inputs
 
 | Name | Description | Type | Default | Required |
@@ -380,7 +363,7 @@ No requirements.
 | idle\_config | List of time period that can be defined as cron expression to keep a minimum amount of runners active instead of scaling down to 0. By defining this list you can ensure that in time periods that match the cron expression within 5 seconds a runner is kept idle. | <pre>list(object({<br>    cron      = string<br>    timeZone  = string<br>    idleCount = number<br>  }))</pre> | `[]` | no |
 | instance\_profile\_path | The path that will be added to the instance\_profile, if not set the environment name will be used. | `string` | `null` | no |
 | instance\_type | [DEPRECATED] See instance\_types. | `string` | `"m5.large"` | no |
-| instance\_types | List of instance types for the action runner. | `set(string)` | `null` | no |
+| instance\_types | List of instance types for the action runner. | `list(string)` | `null` | no |
 | key\_name | Key pair name | `string` | `null` | no |
 | kms\_key\_arn | Optional CMK Key ARN to be used for Parameter Store. This key must be in the current account. | `string` | `null` | no |
 | lambda\_s3\_bucket | S3 bucket from which to specify lambda functions. This is an alternative to providing local files directly. | `any` | `null` | no |
@@ -398,6 +381,7 @@ No requirements.
 | runner\_binaries\_syncer\_lambda\_timeout | Time out of the binaries sync lambda in seconds. | `number` | `300` | no |
 | runner\_binaries\_syncer\_lambda\_zip | File location of the binaries sync lambda zip file. | `string` | `null` | no |
 | runner\_boot\_time\_in\_minutes | The minimum time for an EC2 runner to boot and register as a runner. | `number` | `5` | no |
+| runner\_egress\_rules | List of egress rules for the GitHub runner instances. | <pre>list(object({<br>    cidr_blocks      = list(string)<br>    ipv6_cidr_blocks = list(string)<br>    prefix_list_ids  = list(string)<br>    from_port        = number<br>    protocol         = string<br>    security_groups  = list(string)<br>    self             = bool<br>    to_port          = number<br>    description      = string<br>  }))</pre> | <pre>[<br>  {<br>    "cidr_blocks": [<br>      "0.0.0.0/0"<br>    ],<br>    "description": null,<br>    "from_port": 0,<br>    "ipv6_cidr_blocks": [<br>      "::/0"<br>    ],<br>    "prefix_list_ids": null,<br>    "protocol": "-1",<br>    "security_groups": null,<br>    "self": null,<br>    "to_port": 0<br>  }<br>]</pre> | no |
 | runner\_extra\_labels | Extra labels for the runners (GitHub). Separate each label by a comma | `string` | `""` | no |
 | runner\_group\_name | Name of the runner group. | `string` | `"Default"` | no |
 | runner\_iam\_role\_managed\_policy\_arns | Attach AWS or customer-managed IAM policies (by ARN) to the runner IAM role | `list(string)` | `[]` | no |
@@ -431,6 +415,7 @@ No requirements.
 | runners | n/a |
 | ssm\_parameters | n/a |
 | webhook | n/a |
+
 <!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 
 ## Contribution
