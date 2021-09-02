@@ -37,10 +37,14 @@ data "aws_ami" "runner" {
   owners = var.ami_owners
 }
 
+locals {
+  runner_launch_template_prefix = "${var.environment}-action-runner-"
+}
+
 resource "aws_launch_template" "runner" {
   count = length(local.instance_types)
 
-  name = "${var.environment}-action-runner-${local.instance_types[count.index]}"
+  name = "${local.runner_launch_template_prefix}-${local.instance_types[count.index]}"
 
   dynamic "block_device_mappings" {
     for_each = [var.block_device_mappings]
