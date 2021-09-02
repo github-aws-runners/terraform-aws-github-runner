@@ -38,7 +38,7 @@ data "aws_ami" "runner" {
 }
 
 locals {
-  runner_launch_template_prefix = "${var.environment}-action-runner-"
+  runner_launch_template_prefix = "${var.environment}-action-runner"
 }
 
 resource "aws_launch_template" "runner" {

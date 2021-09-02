@@ -20,7 +20,7 @@ resource "aws_lambda_function" "scale_up" {
       RUNNER_EXTRA_LABELS                     = var.runner_extra_labels
       RUNNER_GROUP_NAME                       = var.runner_group_name
       RUNNERS_MAXIMUM_COUNT                   = var.runners_maximum_count
-      LAUNCH_TEMPLATE_NAME                    = join(",", formatlist("${local.runner_launch_template_prefix}%s", local.instance_types))
+      LAUNCH_TEMPLATE_NAME                    = join(",", formatlist("${local.runner_launch_template_prefix}-%s", local.instance_types))
       SUBNET_IDS                              = join(",", var.subnet_ids)
       PARAMETER_GITHUB_APP_CLIENT_ID_NAME     = var.github_app_parameters.client_id.name
       PARAMETER_GITHUB_APP_CLIENT_SECRET_NAME = var.github_app_parameters.client_secret.name
