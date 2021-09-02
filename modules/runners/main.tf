@@ -68,7 +68,7 @@ resource "aws_launch_template" "runner" {
   }
 
   image_id      = data.aws_ami.runner.id
-  instance_type = each.value
+  instance_type = local.instance_types[count.index]
   key_name      = var.key_name
 
   vpc_security_group_ids = compact(concat(
