@@ -78,7 +78,7 @@ No requirements.
 | idle\_config | List of time period that can be defined as cron expression to keep a minimum amount of runners active instead of scaling down to 0. By defining this list you can ensure that in time periods that match the cron expression within 5 seconds a runner is kept idle. | <pre>list(object({<br>    cron      = string<br>    timeZone  = string<br>    idleCount = number<br>  }))</pre> | `[]` | no |
 | instance\_profile\_path | The path that will be added to the instance\_profile, if not set the environment name will be used. | `string` | `null` | no |
 | instance\_type | [DEPRECATED] See instance\_types. | `string` | `"m5.large"` | no |
-| instance\_types | List of instance types for the action runner. | `set(string)` | `null` | no |
+| instance\_types | List of instance types for the action runner. | `list(string)` | `null` | no |
 | key\_name | Key pair name | `string` | `null` | no |
 | kms\_key\_arn | Optional CMK Key ARN to be used for Parameter Store. | `string` | `null` | no |
 | lambda\_s3\_bucket | S3 bucket from which to specify lambda functions. This is an alternative to providing local files directly. | `any` | `null` | no |
