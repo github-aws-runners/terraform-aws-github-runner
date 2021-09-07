@@ -119,7 +119,6 @@ async function evaluateAndRemoveRunners(
     const ec2RunnersFiltered = ec2Runners.filter((runner) => runner.owner === ownerTag);
     for (const ec2Runner of ec2RunnersFiltered) {
       const ghRunners = await listGitHubRunners(ec2Runner);
-      console.debug(ghRunners);
       const ghRunner = ghRunners.find((runner) => runner.name === ec2Runner.instanceId);
       if (ghRunner) {
         if (runnerMinimumTimeExceeded(ec2Runner)) {
