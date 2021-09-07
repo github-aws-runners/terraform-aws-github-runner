@@ -57,10 +57,12 @@ async function listGitHubRunners(runner: RunnerInfo): Promise<GhRunners> {
     runner.type === 'Org'
       ? await client.paginate(client.actions.listSelfHostedRunnersForOrg, {
           org: runner.owner,
+          per_page: 100,
         })
       : await client.paginate(client.actions.listSelfHostedRunnersForRepo, {
           owner: runner.owner.split('/')[0],
           repo: runner.owner.split('/')[1],
+          per_page: 100,
         });
   githubCache.runners.set(key, runners);
 
@@ -117,6 +119,7 @@ async function evaluateAndRemoveRunners(
     const ec2RunnersFiltered = ec2Runners.filter((runner) => runner.owner === ownerTag);
     for (const ec2Runner of ec2RunnersFiltered) {
       const ghRunners = await listGitHubRunners(ec2Runner);
+      console.debug(ghRunners);
       const ghRunner = ghRunners.find((runner) => runner.name === ec2Runner.instanceId);
       if (ghRunner) {
         if (runnerMinimumTimeExceeded(ec2Runner)) {
@@ -182,6 +185,7 @@ function filterRunners(ec2runners: RunnerList[]): RunnerInfo[] {
 }
 
 export async function scaleDown(): Promise<void> {
+  githubCache.reset();
   const scaleDownConfigs = JSON.parse(process.env.SCALE_DOWN_CONFIG) as [ScalingDownConfig];
   const environment = process.env.ENVIRONMENT;
 

@@ -7,4 +7,9 @@ export type GhRunners = UnboxPromise<ReturnType<Octokit['actions']['listSelfHost
 export class githubCache {
   static clients: Map<string, Octokit> = new Map();
   static runners: Map<string, GhRunners> = new Map();
+
+  public static reset(): void {
+    githubCache.clients.clear();
+    githubCache.runners.clear();
+  }
 }
