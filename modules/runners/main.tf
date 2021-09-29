@@ -63,8 +63,12 @@ resource "aws_launch_template" "runner" {
 
   instance_initiated_shutdown_behavior = "terminate"
 
-  instance_market_options {
-    market_type = var.market_options
+  dynamic "instance_market_options" {
+    for_each = var.market_options != null ? [var.market_options] : []
+
+    content {
+      market_type = instance_market_options.value
+    }
   }
 
   image_id      = data.aws_ami.runner.id
