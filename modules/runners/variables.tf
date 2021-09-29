@@ -303,6 +303,12 @@ variable "ghes_url" {
   default     = null
 }
 
+variable "ghes_ssl_verify" {
+  description = "GitHub Enterprise SSL verification. Set to 'false' when custom certificate (chains) is used for GitHub Enterprise Server (insecure)."
+  type        = bool
+  default     = true
+}
+
 variable "lambda_subnet_ids" {
   description = "List of subnets in which the lambda will be launched, the subnets needs to be subnets in the `vpc_id`."
   type        = list(string)

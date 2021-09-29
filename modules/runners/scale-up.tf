@@ -17,6 +17,7 @@ resource "aws_lambda_function" "scale_up" {
       ENABLE_ORGANIZATION_RUNNERS             = var.enable_organization_runners
       ENVIRONMENT                             = var.environment
       GHES_URL                                = var.ghes_url
+      NODE_TLS_REJECT_UNAUTHORIZED            = var.ghes_url != null && !var.ghes_ssl_verify ? 0 : 1
       RUNNER_EXTRA_LABELS                     = var.runner_extra_labels
       RUNNER_GROUP_NAME                       = var.runner_group_name
       RUNNERS_MAXIMUM_COUNT                   = var.runners_maximum_count
