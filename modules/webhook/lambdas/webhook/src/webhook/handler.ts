@@ -39,7 +39,7 @@ export const handle = async (headers: IncomingHttpHeaders, payload: any): Promis
     return 500;
   }
 
-  const secret = await getParameterValue(process.env.ENVIRONMENT as string, 'github_app_webhook_secret');
+  const secret = await getParameterValue(process.env.ENVIRONMENT, 'github_app_webhook_secret');
 
   const webhooks = new Webhooks({
     secret: secret,
@@ -115,14 +115,14 @@ async function handleCheckRun(body: CheckRunEvent, githubEvent: string): Promise
 }
 
 function isRepoNotAllowed(body: WorkflowJob | CheckRunEvent): boolean {
-  const repositoryWhiteListEnv = (process.env.REPOSITORY_WHITE_LIST as string) || '[]';
+  const repositoryWhiteListEnv = process.env.REPOSITORY_WHITE_LIST || '[]';
   const repositoryWhiteList = JSON.parse(repositoryWhiteListEnv) as Array<string>;
 
   return repositoryWhiteList.length > 0 && !repositoryWhiteList.includes(body.repository.full_name);
 }
 
 function isRunnerNotAllowed(job: WorkflowJob): boolean {
-  const runnerLabelsEnv = (process.env.RUNNER_LABELS as string) || '[]';
+  const runnerLabelsEnv = process.env.RUNNER_LABELS || '[]';
   const runnerLabels = new Set(JSON.parse(runnerLabelsEnv) as Array<string>);
 
   // ensure the self-hosted label is in the list.

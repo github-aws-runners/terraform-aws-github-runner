@@ -13,6 +13,7 @@ resource "aws_lambda_function" "webhook" {
   environment {
     variables = {
       ENVIRONMENT           = var.environment
+      LOG_TYPE              = var.log_type
       SQS_URL_WEBHOOK       = var.sqs_build_queue.id
       REPOSITORY_WHITE_LIST = jsonencode(var.repository_white_list)
       RUNNER_LABELS         = jsonencode(split(",", var.runner_extra_labels))

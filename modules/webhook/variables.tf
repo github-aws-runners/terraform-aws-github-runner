@@ -88,3 +88,9 @@ variable "runner_extra_labels" {
   type        = string
   default     = ""
 }
+
+variable "log_type" {
+  description = "Logging format for lambda logging. Valid values are 'json', 'pretty', 'hidden'. "
+  type        = string
+  default     = "pretty"
+}

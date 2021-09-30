@@ -17,15 +17,16 @@ resource "aws_lambda_function" "scale_up" {
       ENABLE_ORGANIZATION_RUNNERS             = var.enable_organization_runners
       ENVIRONMENT                             = var.environment
       GHES_URL                                = var.ghes_url
-      RUNNER_EXTRA_LABELS                     = var.runner_extra_labels
-      RUNNER_GROUP_NAME                       = var.runner_group_name
-      RUNNERS_MAXIMUM_COUNT                   = var.runners_maximum_count
       LAUNCH_TEMPLATE_NAME                    = join(",", [for template in aws_launch_template.runner : template.name])
-      SUBNET_IDS                              = join(",", var.subnet_ids)
+      LOG_TYPE                                = var.log_type
       PARAMETER_GITHUB_APP_CLIENT_ID_NAME     = var.github_app_parameters.client_id.name
       PARAMETER_GITHUB_APP_CLIENT_SECRET_NAME = var.github_app_parameters.client_secret.name
       PARAMETER_GITHUB_APP_ID_NAME            = var.github_app_parameters.id.name
       PARAMETER_GITHUB_APP_KEY_BASE64_NAME    = var.github_app_parameters.key_base64.name
+      RUNNER_EXTRA_LABELS                     = var.runner_extra_labels
+      RUNNER_GROUP_NAME                       = var.runner_group_name
+      RUNNERS_MAXIMUM_COUNT                   = var.runners_maximum_count
+      SUBNET_IDS                              = join(",", var.subnet_ids)
     }
   }
 

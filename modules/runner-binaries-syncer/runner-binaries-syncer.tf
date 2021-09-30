@@ -22,6 +22,7 @@ resource "aws_lambda_function" "syncer" {
       S3_OBJECT_KEY                           = local.action_runner_distribution_object_key
       GITHUB_RUNNER_ARCHITECTURE              = var.runner_architecture
       GITHUB_RUNNER_ALLOW_PRERELEASE_BINARIES = var.runner_allow_prerelease_binaries
+      LOG_TYPE                                = var.log_type
     }
   }
   dynamic "vpc_config" {

@@ -93,3 +93,9 @@ variable "lambda_security_group_ids" {
   type        = list(string)
   default     = []
 }
+
+variable "log_type" {
+  description = "Logging format for lambda logging. Valid values are 'json', 'pretty', 'hidden'. "
+  type        = string
+  default     = "pretty"
+}

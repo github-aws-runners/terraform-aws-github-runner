@@ -364,3 +364,9 @@ variable "egress_rules" {
     description      = null
   }]
 }
+
+variable "log_type" {
+  description = "Logging format for lambda logging. Valid values are 'json', 'pretty', 'hidden'. "
+  type        = string
+  default     = "pretty"
+}
