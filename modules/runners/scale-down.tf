@@ -13,16 +13,14 @@ resource "aws_lambda_function" "scale_down" {
 
   environment {
     variables = {
-      ENVIRONMENT                             = var.environment
-      MINIMUM_RUNNING_TIME_IN_MINUTES         = var.minimum_running_time_in_minutes
-      RUNNER_BOOT_TIME_IN_MINUTES             = var.runner_boot_time_in_minutes
-      SCALE_DOWN_CONFIG                       = jsonencode(var.idle_config)
-      GHES_URL                                = var.ghes_url
-      NODE_TLS_REJECT_UNAUTHORIZED            = var.ghes_url != null && ! var.ghes_ssl_verify ? 0 : 1
-      PARAMETER_GITHUB_APP_CLIENT_ID_NAME     = var.github_app_parameters.client_id.name
-      PARAMETER_GITHUB_APP_CLIENT_SECRET_NAME = var.github_app_parameters.client_secret.name
-      PARAMETER_GITHUB_APP_ID_NAME            = var.github_app_parameters.id.name
-      PARAMETER_GITHUB_APP_KEY_BASE64_NAME    = var.github_app_parameters.key_base64.name
+      ENVIRONMENT                          = var.environment
+      MINIMUM_RUNNING_TIME_IN_MINUTES      = var.minimum_running_time_in_minutes
+      RUNNER_BOOT_TIME_IN_MINUTES          = var.runner_boot_time_in_minutes
+      SCALE_DOWN_CONFIG                    = jsonencode(var.idle_config)
+      GHES_URL                             = var.ghes_url
+      NODE_TLS_REJECT_UNAUTHORIZED         = var.ghes_url != null && ! var.ghes_ssl_verify ? 0 : 1
+      PARAMETER_GITHUB_APP_ID_NAME         = var.github_app_parameters.id.name
+      PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.github_app_parameters.key_base64.name
     }
   }
 
@@ -72,11 +70,9 @@ resource "aws_iam_role_policy" "scale_down" {
   name = "${var.environment}-lambda-scale-down-policy"
   role = aws_iam_role.scale_down.name
   policy = templatefile("${path.module}/policies/lambda-scale-down.json", {
-    github_app_client_id_arn     = var.github_app_parameters.client_id.arn
-    github_app_client_secret_arn = var.github_app_parameters.client_secret.arn
-    github_app_id_arn            = var.github_app_parameters.id.arn
-    github_app_key_base64_arn    = var.github_app_parameters.key_base64.arn
-    kms_key_arn                  = local.kms_key_arn
+    github_app_id_arn         = var.github_app_parameters.id.arn
+    github_app_key_base64_arn = var.github_app_parameters.key_base64.arn
+    kms_key_arn               = local.kms_key_arn
   })
 }
 

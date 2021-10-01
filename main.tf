@@ -9,10 +9,8 @@ locals {
   ami_filter = length(var.ami_filter) > 0 ? var.ami_filter : local.runner_architecture == "arm64" ? { name = ["amzn2-ami-hvm-2*-arm64-gp2"] } : { name = ["amzn2-ami-hvm-2.*-x86_64-ebs"] }
 
   github_app_parameters = {
-    client_id     = module.ssm.parameters.github_app_client_id
-    client_secret = module.ssm.parameters.github_app_client_secret
-    id            = module.ssm.parameters.github_app_id
-    key_base64    = module.ssm.parameters.github_app_key_base64
+    id         = module.ssm.parameters.github_app_id
+    key_base64 = module.ssm.parameters.github_app_key_base64
   }
 }
 

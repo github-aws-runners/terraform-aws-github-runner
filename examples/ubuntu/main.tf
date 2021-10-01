@@ -22,8 +22,6 @@ module "runners" {
   github_app = {
     key_base64     = var.github_app_key_base64
     id             = var.github_app_id
-    client_id      = var.github_app_client_id
-    client_secret  = var.github_app_client_secret
     webhook_secret = random_password.random.result
   }
 
