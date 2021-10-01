@@ -64,6 +64,8 @@ module "webhook" {
   role_path                 = var.role_path
   role_permissions_boundary = var.role_permissions_boundary
   repository_white_list     = var.repository_white_list
+
+  log_type = var.log_type
 }
 
 module "runners" {
@@ -156,6 +158,8 @@ module "runner_binaries" {
 
   role_path                 = var.role_path
   role_permissions_boundary = var.role_permissions_boundary
+
+  log_type = var.log_type
 }
 
 resource "aws_resourcegroups_group" "resourcegroups_group" {
