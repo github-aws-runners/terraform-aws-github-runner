@@ -2,7 +2,7 @@ resource "null_resource" "download" {
   count = length(var.lambdas)
 
   triggers = {
-    name = var.lambdas[count.index].name
+    name = basename(var.lambdas[count.index].name)
     file = "${var.lambdas[count.index].name}.zip"
     tag  = var.lambdas[count.index].tag
   }
