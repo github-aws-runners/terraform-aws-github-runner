@@ -370,3 +370,19 @@ variable "egress_rules" {
     description      = null
   }]
 }
+
+variable "ingress_rules" {
+  description = "List of ingress rules for the GitHub runner instances."
+  type = list(object({
+    cidr_blocks      = list(string)
+    ipv6_cidr_blocks = list(string)
+    prefix_list_ids  = list(string)
+    from_port        = number
+    protocol         = string
+    security_groups  = list(string)
+    self             = bool
+    to_port          = number
+    description      = string
+  }))
+  default = []
+}
