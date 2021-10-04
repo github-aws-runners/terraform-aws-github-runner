@@ -18,7 +18,7 @@ locals {
   userdata_arm_patch             = "${path.module}/templates/arm-runner-patch.tpl"
   userdata_install_config_runner = "${path.module}/templates/install-config-runner.sh"
 
-  instance_types = var.instance_types == null ? [var.instance_type] : var.instance_types
+  instance_types = distinct(var.instance_types == null ? [var.instance_type] : var.instance_types)
 
   kms_key_arn = var.kms_key_arn != null ? var.kms_key_arn : ""
 }
@@ -38,9 +38,9 @@ data "aws_ami" "runner" {
 }
 
 resource "aws_launch_template" "runner" {
-  for_each = local.instance_types
+  count = length(local.instance_types)
 
-  name = "${var.environment}-action-runner-${each.value}"
+  name = "${var.environment}-action-runner-${local.instance_types[count.index]}"
 
   dynamic "block_device_mappings" {
     for_each = [var.block_device_mappings]
@@ -63,12 +63,16 @@ resource "aws_launch_template" "runner" {
 
   instance_initiated_shutdown_behavior = "terminate"
 
-  instance_market_options {
-    market_type = var.market_options
+  dynamic "instance_market_options" {
+    for_each = var.market_options != null ? [var.market_options] : []
+
+    content {
+      market_type = instance_market_options.value
+    }
   }
 
   image_id      = data.aws_ami.runner.id
-  instance_type = each.value
+  instance_type = local.instance_types[count.index]
   key_name      = var.key_name
 
   vpc_security_group_ids = compact(concat(
@@ -104,6 +108,7 @@ resource "aws_launch_template" "runner" {
     enable_cloudwatch_agent         = var.enable_cloudwatch_agent
     ssm_key_cloudwatch_agent_config = var.enable_cloudwatch_agent ? aws_ssm_parameter.cloudwatch_agent_config_runner[0].name : ""
     ghes_url                        = var.ghes_url
+    ghes_ssl_verify                 = var.ghes_ssl_verify
     install_config_runner           = local.install_config_runner
   }))
 
