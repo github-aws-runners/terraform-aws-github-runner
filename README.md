@@ -251,8 +251,7 @@ resource "aws_kms_key" "github" {
 module "runners" {
 
   ...
-  manage_kms_key = false
-  kms_key_id     = aws_kms_key.github.key_id
+  kms_key_arn = aws_kms_key.github.arn
   ...
 
 ```
