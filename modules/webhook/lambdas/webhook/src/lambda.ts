@@ -18,6 +18,6 @@ export const githubWebhook = async (event: APIGatewayEvent, context: Context, ca
       statusCode: statusCode,
     });
   } catch (e) {
-    callback(e);
+    callback(e as Error);
   }
 };
