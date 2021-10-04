@@ -313,6 +313,12 @@ variable "ghes_url" {
   default     = null
 }
 
+variable "ghes_ssl_verify" {
+  description = "GitHub Enterprise SSL verification. Set to 'false' when custom certificate (chains) is used for GitHub Enterprise Server (insecure)."
+  type        = bool
+  default     = true
+}
+
 variable "lambda_subnet_ids" {
   description = "List of subnets in which the action runners will be launched, the subnets needs to be subnets in the `vpc_id`."
   type        = list(string)
@@ -351,7 +357,7 @@ variable "volume_size" {
 
 variable "instance_types" {
   description = "List of instance types for the action runner."
-  type        = set(string)
+  type        = list(string)
   default     = null
 }
 

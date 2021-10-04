@@ -130,7 +130,8 @@ module "runners" {
 
   runner_iam_role_managed_policy_arns = var.runner_iam_role_managed_policy_arns
 
-  ghes_url = var.ghes_url
+  ghes_url        = var.ghes_url
+  ghes_ssl_verify = var.ghes_ssl_verify
 
   kms_key_arn = var.kms_key_arn
 

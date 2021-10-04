@@ -112,13 +112,14 @@ async function getJobStatus(githubInstallationClient: Octokit, payload: ActionRe
 export async function createRunnerLoop(runnerParameters: RunnerInputParameters): Promise<void> {
   const launchTemplateNames = process.env.LAUNCH_TEMPLATE_NAME?.split(',') as string[];
   let launched = false;
-  for (const launchTemplateName of launchTemplateNames) {
-    console.info(`Attempting to launch instance using ${launchTemplateName}.`);
+  for (let i = 0; i < launchTemplateNames.length; i++) {
+    console.info(`Attempt '${i}' to launch instance using ${launchTemplateNames[i]}.`);
     try {
-      await createRunner(runnerParameters, launchTemplateName);
+      await createRunner(runnerParameters, launchTemplateNames[i]);
       launched = true;
       break;
     } catch (error) {
+      console.debug(`Attempt '${i}' to launch instance using ${launchTemplateNames[i]} FAILED.`);
       console.error(error);
     }
   }

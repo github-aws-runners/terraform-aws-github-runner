@@ -17,6 +17,7 @@ resource "aws_lambda_function" "scale_up" {
       ENABLE_ORGANIZATION_RUNNERS             = var.enable_organization_runners
       ENVIRONMENT                             = var.environment
       GHES_URL                                = var.ghes_url
+      NODE_TLS_REJECT_UNAUTHORIZED            = var.ghes_url != null && ! var.ghes_ssl_verify ? 0 : 1
       LAUNCH_TEMPLATE_NAME                    = join(",", [for template in aws_launch_template.runner : template.name])
       LOG_TYPE                                = var.log_type
       PARAMETER_GITHUB_APP_CLIENT_ID_NAME     = var.github_app_parameters.client_id.name

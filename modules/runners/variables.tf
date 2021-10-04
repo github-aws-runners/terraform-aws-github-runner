@@ -65,7 +65,7 @@ variable "instance_type" {
 
 variable "instance_types" {
   description = "List of instance types for the action runner."
-  type        = set(string)
+  type        = list(string)
   default     = null
 }
 
@@ -301,6 +301,12 @@ variable "ghes_url" {
   description = "GitHub Enterprise Server URL. DO NOT SET IF USING PUBLIC GITHUB"
   type        = string
   default     = null
+}
+
+variable "ghes_ssl_verify" {
+  description = "GitHub Enterprise SSL verification. Set to 'false' when custom certificate (chains) is used for GitHub Enterprise Server (insecure)."
+  type        = bool
+  default     = true
 }
 
 variable "lambda_subnet_ids" {
