@@ -398,3 +398,9 @@ variable "runner_egress_rules" {
     description      = null
   }]
 }
+
+variable "disable_check_wokflow_job_labels" {
+  description = "Disable the the check of workflow labels for received workflow job events."
+  type        = bool
+  default     = false
+}
