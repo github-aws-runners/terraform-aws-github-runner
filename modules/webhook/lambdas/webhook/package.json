@@ -38,7 +38,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-ssm": "^3.26.0",
-    "@octokit/rest": "^18.9.1",
+    "@octokit/rest": "^18.11.4",
     "@octokit/webhooks": "^9.12.0",
     "aws-lambda": "^1.0.6"
   }
