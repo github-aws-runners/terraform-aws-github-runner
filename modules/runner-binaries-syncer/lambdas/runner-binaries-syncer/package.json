@@ -15,17 +15,16 @@
     "format-check": "prettier --check \"**/*.ts\""
   },
   "devDependencies": {
-    "@octokit/rest": "^18.9.1",
+    "@octokit/rest": "^18.11.4",
     "@types/jest": "^27.0.1",
-    "@types/node": "^16.6.1",
-    "@types/node-fetch": "^2.5.12",
+    "@types/node": "^16.10.3",
     "@types/request": "^2.48.4",
-    "@typescript-eslint/eslint-plugin": "^4.29.2",
+    "@typescript-eslint/eslint-plugin": "^4.33.0",
     "@typescript-eslint/parser": "^4.29.2",
     "@vercel/ncc": "^0.31.1",
-    "aws-sdk": "^2.970.0",
+    "aws-sdk": "^2.1002.0",
     "eslint": "^7.32.0",
-    "eslint-plugin-prettier": "3.4.0",
+    "eslint-plugin-prettier": "4.0.0",
     "jest": "^27.2.4",
     "prettier": "2.4.1",
     "ts-jest": "^27.0.5",
@@ -35,5 +34,6 @@
   "dependencies": {
     "node-fetch": "^2.6.1",
     "tslog": "^3.2.2"
+    "axios": "^0.22.0"
   }
 }
