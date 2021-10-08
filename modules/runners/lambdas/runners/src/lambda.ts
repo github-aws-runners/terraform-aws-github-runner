@@ -4,15 +4,19 @@ import { SQSEvent, ScheduledEvent, Context, Callback } from 'aws-lambda';
 import { Logger } from 'tslog';
 import 'source-map-support/register';
 
+export const rootLogger = new Logger({
+  colorizePrettyLogs: false,
+  displayInstanceName: false,
+  maskAnyRegEx: ['--token [A-Z0-9]*'],
+  minLevel: process.env.LOG_LEVEL || 'info',
+  name: 'scale-up',
+  overwriteConsole: true,
+  type: process.env.LOG_TYPE || 'pretty',
+});
+
 export const scaleUp = async (event: SQSEvent, context: Context, callback: Callback): Promise<void> => {
-  const logger = new Logger({
-    name: 'scale-up',
-    requestId: context.awsRequestId,
-    overwriteConsole: true,
-    type: process.env.LOG_TYPE || 'pretty',
-    displayInstanceName: false,
-  });
-  logger.debug(JSON.stringify(event));
+  rootLogger.setSettings({ requestId: context.awsRequestId });
+  rootLogger.debug(JSON.stringify(event));
   try {
     for (const e of event.Records) {
       await scaleUpAction(e.eventSource, JSON.parse(e.body));
@@ -20,23 +24,18 @@ export const scaleUp = async (event: SQSEvent, context: Context, callback: Callb
 
     callback(null);
   } catch (e) {
-    logger.error(e);
+    rootLogger.error(e);
     callback('Failed handling SQS event');
   }
 };
 
 export const scaleDown = async (event: ScheduledEvent, context: Context, callback: Callback): Promise<void> => {
-  const logger = new Logger({
-    name: 'scale-down',
-    overwriteConsole: true,
-    type: process.env.LOG_TYPE || 'pretty',
-    displayInstanceName: false,
-  });
+  rootLogger.setSettings({ requestId: context.awsRequestId });
   try {
     await scaleDownAction();
     callback(null);
   } catch (e) {
-    logger.error(e);
+    rootLogger.error(e);
     callback('Failed');
   }
 };

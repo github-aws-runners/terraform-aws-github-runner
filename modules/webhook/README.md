@@ -74,6 +74,7 @@ No Modules.
 | lambda\_s3\_bucket | S3 bucket from which to specify lambda functions. This is an alternative to providing local files directly. | `any` | `null` | no |
 | lambda\_timeout | Time out of the lambda in seconds. | `number` | `10` | no |
 | lambda\_zip | File location of the lambda zip file. | `string` | `null` | no |
+| log\_level | Logging level for lambda logging. Valid values are  'silly', 'trace', 'debug', 'info', 'warn', 'error', 'fatal'. | `string` | `"info"` | no |
 | log\_type | Logging format for lambda logging. Valid values are 'json', 'pretty', 'hidden'. | `string` | `"pretty"` | no |
 | logging\_retention\_in\_days | Specifies the number of days you want to retain log events for the lambda log group. Possible values are: 0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, and 3653. | `number` | `7` | no |
 | repository\_white\_list | List of repositories allowed to use the github app | `list(string)` | `[]` | no |

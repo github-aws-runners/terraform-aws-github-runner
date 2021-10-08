@@ -10,6 +10,7 @@ resource "aws_lambda_function" "scale_up" {
   runtime                        = "nodejs12.x"
   timeout                        = var.lambda_timeout_scale_up
   reserved_concurrent_executions = 1
+  memory_size                    = 512
   tags                           = local.tags
 
   environment {
@@ -17,9 +18,10 @@ resource "aws_lambda_function" "scale_up" {
       ENABLE_ORGANIZATION_RUNNERS             = var.enable_organization_runners
       ENVIRONMENT                             = var.environment
       GHES_URL                                = var.ghes_url
-      NODE_TLS_REJECT_UNAUTHORIZED            = var.ghes_url != null && ! var.ghes_ssl_verify ? 0 : 1
       LAUNCH_TEMPLATE_NAME                    = join(",", [for template in aws_launch_template.runner : template.name])
+      LOG_LEVEL                               = var.log_level
       LOG_TYPE                                = var.log_type
+      NODE_TLS_REJECT_UNAUTHORIZED            = var.ghes_url != null && !var.ghes_ssl_verify ? 0 : 1
       PARAMETER_GITHUB_APP_CLIENT_ID_NAME     = var.github_app_parameters.client_id.name
       PARAMETER_GITHUB_APP_CLIENT_SECRET_NAME = var.github_app_parameters.client_secret.name
       PARAMETER_GITHUB_APP_ID_NAME            = var.github_app_parameters.id.name

@@ -10,14 +10,16 @@ resource "aws_lambda_function" "scale_down" {
   runtime           = "nodejs12.x"
   timeout           = var.lambda_timeout_scale_down
   tags              = local.tags
+  memory_size       = 512
 
   environment {
     variables = {
       ENVIRONMENT                             = var.environment
       GHES_URL                                = var.ghes_url
+      LOG_LEVEL                               = var.log_level
       LOG_TYPE                                = var.log_type
       MINIMUM_RUNNING_TIME_IN_MINUTES         = var.minimum_running_time_in_minutes
-      NODE_TLS_REJECT_UNAUTHORIZED            = var.ghes_url != null && ! var.ghes_ssl_verify ? 0 : 1
+      NODE_TLS_REJECT_UNAUTHORIZED            = var.ghes_url != null && !var.ghes_ssl_verify ? 0 : 1
       PARAMETER_GITHUB_APP_CLIENT_ID_NAME     = var.github_app_parameters.client_id.name
       PARAMETER_GITHUB_APP_CLIENT_SECRET_NAME = var.github_app_parameters.client_secret.name
       PARAMETER_GITHUB_APP_ID_NAME            = var.github_app_parameters.id.name
