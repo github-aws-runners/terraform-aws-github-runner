@@ -33,7 +33,7 @@
   },
   "dependencies": {
     "node-fetch": "^2.6.1",
-    "tslog": "^3.2.2"
+    "tslog": "^3.2.2",
     "axios": "^0.22.0"
   }
 }
