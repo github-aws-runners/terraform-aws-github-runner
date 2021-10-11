@@ -16,7 +16,7 @@
     "all": "yarn build && yarn format && yarn lint && yarn test"
   },
   "devDependencies": {
-    "@types/aws-lambda": "^8.10.82",
+    "@types/aws-lambda": "^8.10.84",
     "@types/express": "^4.17.11",
     "@types/jest": "^27.0.1",
     "@typescript-eslint/eslint-plugin": "^4.33.0",
@@ -38,7 +38,7 @@
     "@octokit/auth-app": "3.6.0",
     "@octokit/rest": "^18.11.4",
     "@octokit/types": "^6.31.3",
-    "@types/aws-lambda": "^8.10.82",
+    "@types/aws-lambda": "^8.10.84",
     "@types/express": "^4.17.11",
     "@types/node": "^16.6.1",
     "aws-sdk": "^2.1002.0",
