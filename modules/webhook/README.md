@@ -36,13 +36,16 @@ yarn run dist
 <!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 ## Requirements
 
-No requirements.
+| Name | Version |
+|------|---------|
+| terraform | >= 0.14.1 |
+| aws | >= 3.38 |
 
 ## Providers
 
 | Name | Version |
 |------|---------|
-| aws | n/a |
+| aws | >= 3.38 |
 
 ## Modules
 
@@ -68,6 +71,7 @@ No Modules.
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | aws\_region | AWS region. | `string` | n/a | yes |
+| disable\_check\_wokflow\_job\_labels | Disable the the check of workflow labels. | `bool` | `false` | no |
 | environment | A name that identifies the environment, used as prefix and for tagging. | `string` | n/a | yes |
 | github\_app\_webhook\_secret\_arn | n/a | `string` | n/a | yes |
 | kms\_key\_arn | Optional CMK Key ARN to be used for Parameter Store. | `string` | `null` | no |

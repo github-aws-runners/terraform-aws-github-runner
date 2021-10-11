@@ -15,21 +15,19 @@ resource "aws_lambda_function" "scale_up" {
 
   environment {
     variables = {
-      ENABLE_ORGANIZATION_RUNNERS             = var.enable_organization_runners
-      ENVIRONMENT                             = var.environment
-      GHES_URL                                = var.ghes_url
-      LAUNCH_TEMPLATE_NAME                    = join(",", [for template in aws_launch_template.runner : template.name])
-      LOG_LEVEL                               = var.log_level
-      LOG_TYPE                                = var.log_type
-      NODE_TLS_REJECT_UNAUTHORIZED            = var.ghes_url != null && !var.ghes_ssl_verify ? 0 : 1
-      PARAMETER_GITHUB_APP_CLIENT_ID_NAME     = var.github_app_parameters.client_id.name
-      PARAMETER_GITHUB_APP_CLIENT_SECRET_NAME = var.github_app_parameters.client_secret.name
-      PARAMETER_GITHUB_APP_ID_NAME            = var.github_app_parameters.id.name
-      PARAMETER_GITHUB_APP_KEY_BASE64_NAME    = var.github_app_parameters.key_base64.name
-      RUNNER_EXTRA_LABELS                     = var.runner_extra_labels
-      RUNNER_GROUP_NAME                       = var.runner_group_name
-      RUNNERS_MAXIMUM_COUNT                   = var.runners_maximum_count
-      SUBNET_IDS                              = join(",", var.subnet_ids)
+      ENABLE_ORGANIZATION_RUNNERS          = var.enable_organization_runners
+      ENVIRONMENT                          = var.environment
+      GHES_URL                             = var.ghes_url
+      LAUNCH_TEMPLATE_NAME                 = join(",", [for template in aws_launch_template.runner : template.name])
+      LOG_LEVEL                            = var.log_level
+      LOG_TYPE                             = var.log_type
+      NODE_TLS_REJECT_UNAUTHORIZED         = var.ghes_url != null && !var.ghes_ssl_verify ? 0 : 1
+      PARAMETER_GITHUB_APP_ID_NAME         = var.github_app_parameters.id.name
+      PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.github_app_parameters.key_base64.name
+      RUNNER_EXTRA_LABELS                  = var.runner_extra_labels
+      RUNNER_GROUP_NAME                    = var.runner_group_name
+      RUNNERS_MAXIMUM_COUNT                = var.runners_maximum_count
+      SUBNET_IDS                           = join(",", var.subnet_ids)
     }
   }
 
@@ -73,13 +71,11 @@ resource "aws_iam_role_policy" "scale_up" {
   name = "${var.environment}-lambda-scale-up-policy"
   role = aws_iam_role.scale_up.name
   policy = templatefile("${path.module}/policies/lambda-scale-up.json", {
-    arn_runner_instance_role     = aws_iam_role.runner.arn
-    sqs_arn                      = var.sqs_build_queue.arn
-    github_app_client_id_arn     = var.github_app_parameters.client_id.arn
-    github_app_client_secret_arn = var.github_app_parameters.client_secret.arn
-    github_app_id_arn            = var.github_app_parameters.id.arn
-    github_app_key_base64_arn    = var.github_app_parameters.key_base64.arn
-    kms_key_arn                  = local.kms_key_arn
+    arn_runner_instance_role  = aws_iam_role.runner.arn
+    sqs_arn                   = var.sqs_build_queue.arn
+    github_app_id_arn         = var.github_app_parameters.id.arn
+    github_app_key_base64_arn = var.github_app_parameters.key_base64.arn
+    kms_key_arn               = local.kms_key_arn
   })
 }
 

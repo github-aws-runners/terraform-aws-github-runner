@@ -27,8 +27,6 @@ module "runners" {
   github_app = {
     key_base64     = var.github_app_key_base64
     id             = var.github_app_id
-    client_id      = var.github_app_client_id
-    client_secret  = var.github_app_client_secret
     webhook_secret = random_password.random.result
   }
 
@@ -48,9 +46,14 @@ module "runners" {
   #   idleCount = 1
   # }]
 
-  # disable KMS and encryption
-  # encrypt_secrets = false
-
   # Let the module manage the service linked role
   # create_service_linked_role_spot = true
+
+  instance_types = ["m5.large", "c5.large"]
+
+  # override delay of events in seconds
+  delay_webhook_event = 5
+
+  # override scaling down
+  scale_down_schedule_expression = "cron(* * * * ? *)"
 }

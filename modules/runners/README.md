@@ -50,13 +50,16 @@ yarn run dist
 <!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 ## Requirements
 
-No requirements.
+| Name | Version |
+|------|---------|
+| terraform | >= 0.14.1 |
+| aws | >= 3.38 |
 
 ## Providers
 
 | Name | Version |
 |------|---------|
-| aws | n/a |
+| aws | >= 3.38 |
 
 ## Modules
 
@@ -100,7 +103,7 @@ No Modules.
 | environment | A name that identifies the environment, used as prefix and for tagging. | `string` | n/a | yes |
 | ghes\_ssl\_verify | GitHub Enterprise SSL verification. Set to 'false' when custom certificate (chains) is used for GitHub Enterprise Server (insecure). | `bool` | `true` | no |
 | ghes\_url | GitHub Enterprise Server URL. DO NOT SET IF USING PUBLIC GITHUB | `string` | `null` | no |
-| github\_app\_parameters | Parameter Store for GitHub App Parameters. | <pre>object({<br>    key_base64    = map(string)<br>    id            = map(string)<br>    client_id     = map(string)<br>    client_secret = map(string)<br>  })</pre> | n/a | yes |
+| github\_app\_parameters | Parameter Store for GitHub App Parameters. | <pre>object({<br>    key_base64 = map(string)<br>    id         = map(string)<br>  })</pre> | n/a | yes |
 | idle\_config | List of time period that can be defined as cron expression to keep a minimum amount of runners active instead of scaling down to 0. By defining this list you can ensure that in time periods that match the cron expression within 5 seconds a runner is kept idle. | <pre>list(object({<br>    cron      = string<br>    timeZone  = string<br>    idleCount = number<br>  }))</pre> | `[]` | no |
 | instance\_profile\_path | The path that will be added to the instance\_profile, if not set the environment name will be used. | `string` | `null` | no |
 | instance\_type | [DEPRECATED] See instance\_types. | `string` | `"m5.large"` | no |

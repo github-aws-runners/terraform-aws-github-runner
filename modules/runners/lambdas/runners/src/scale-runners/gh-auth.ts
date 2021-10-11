@@ -49,8 +49,6 @@ async function createAuth(installationId: number | undefined, ghesApiUrl: string
       await getParameterValue(process.env.PARAMETER_GITHUB_APP_KEY_BASE64_NAME),
       'base64',
     ).toString(),
-    clientId: await getParameterValue(process.env.PARAMETER_GITHUB_APP_CLIENT_ID_NAME),
-    clientSecret: await getParameterValue(process.env.PARAMETER_GITHUB_APP_CLIENT_SECRET_NAME),
   };
   if (installationId) authOptions = { ...authOptions, installationId };
 

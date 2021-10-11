@@ -35,8 +35,6 @@ variable "github_app" {
   type = object({
     key_base64     = string
     id             = string
-    client_id      = string
-    client_secret  = string
     webhook_secret = string
   })
 }
@@ -429,4 +427,10 @@ variable "log_level" {
     ])
     error_message = "`log_level` value not valid. Valid values are 'silly', 'trace', 'debug', 'info', 'warn', 'error', 'fatal'."
   }
+}
+
+variable "disable_check_wokflow_job_labels" {
+  description = "Disable the the check of workflow labels for received workflow job events."
+  type        = bool
+  default     = false
 }

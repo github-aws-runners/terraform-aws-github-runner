@@ -62,7 +62,7 @@ Before you submit your merge request consider the following guidelines:
     ```
 
 * Create your patch, **including appropriate test cases**.
-* Run the test suite and ensure that all tests pass.
+* Install [Terraform](https://www.terraform.io/). We lock the version with [tvenv](https://github.com/tfutils/tfenv), check `.terraform-version` for the current development version of the module.
 * Install [pre-commit hooks](https://pre-commit.com/). The hooks runs some basic checks and update the docs. The commit will run the hooks, you can invoke the hooks manually `pre-commit run --all-files` as well.
 * Commit your changes using a descriptive commit message.
 
@@ -79,7 +79,7 @@ Before you submit your merge request consider the following guidelines:
     git push origin my-fix-branch
     ```
 
-In Github, send a pull request to original develop branch: f.e. `terraform-aws-vpc:develop`.
+In Github, send a pull request to original develop branch: f.e. `terraform-aws-github-runner:develop`.
 If we suggest changes, then:
 
 * Make the required updates.

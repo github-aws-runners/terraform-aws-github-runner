@@ -9,13 +9,19 @@ on:
       - "modules/*/lambdas/**"
 
 env:
-  tf_version: "0.13.5"
+  tf_version: "1.0."
   tf_working_dir: "."
   AWS_REGION: eu-west-1
 jobs:
-  terraform:
-    name: "Terraform"
+
+  verify_module:
+    name: Verify module
+    strategy:
+      matrix:
+        terraform: [1.0.8]    
     runs-on: ubuntu-latest
+    container:
+      image: hashicorp/terraform:${{ matrix.terraform }}
     steps:
       - name: "Checkout"
         uses: actions/checkout@v2
@@ -24,30 +30,36 @@ jobs:
           touch modules/webhook/lambdas/webhook/webhook.zip
           touch modules/runners/lambdas/runners/runners.zip
           touch modules/runner-binaries-syncer/lambdas/runner-binaries-syncer/runner-binaries-syncer.zip
-      - name: "Terraform Format"
-        uses: hashicorp/terraform-github-actions@master
-        with:
-          tf_actions_version: ${{ env.tf_version }}
-          tf_actions_subcommand: "fmt"
-          tf_actions_working_dir: ${{ env.tf_working_dir }}
-          tf_actions_comment: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: "Terraform Init"
-        uses: hashicorp/terraform-github-actions@master
-        with:
-          tf_actions_version: ${{ env.tf_version }}
-          tf_actions_subcommand: "init"
-          tf_actions_working_dir: ${{ env.tf_working_dir }}
-          tf_actions_comment: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: "Terraform Validate"
-        uses: hashicorp/terraform-github-actions@master
-        with:
-          tf_actions_version: ${{ env.tf_version }}
-          tf_actions_subcommand: "validate"
-          tf_actions_working_dir: ${{ env.tf_working_dir }}
-          tf_actions_comment: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: terraform init
+        run: terraform init -get -backend=false -input=false
+      - name: check terraform formatting
+        run: terraform fmt -recursive -check=true -write=false
+        continue-on-error: true
+      - name: validate terraform
+        run: terraform validate
+
+  verify_examples:
+    name: Verify examples
+    strategy:
+      fail-fast: false
+      matrix:
+        terraform: [0.14.1, 0.15.0, 1.0.8]
+        example: ["default", "ubuntu"]
+    defaults:
+      run:
+        working-directory: examples/${{ matrix.example }}
+    runs-on: ubuntu-latest
+    container:
+      image: hashicorp/terraform:${{ matrix.terraform }}
+    steps:   
+      - uses: actions/checkout@v2
+      - name: terraform init
+        run: terraform init -get -backend=false -input=false
+      - if: contains(matrix.terraform, '1.0.')
+        name: check terraform formatting
+        run: terraform fmt -recursive -check=true -write=false
+        continue-on-error: true
+      - name: validate terraform
+        run: terraform validate
+
+

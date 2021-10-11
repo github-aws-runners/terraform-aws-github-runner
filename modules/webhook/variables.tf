@@ -120,3 +120,9 @@ variable "log_level" {
     error_message = "`log_level` value not valid. Valid values are 'silly', 'trace', 'debug', 'info', 'warn', 'error', 'fatal'."
   }
 }
+
+variable "disable_check_wokflow_job_labels" {
+  description = "Disable the the check of workflow labels."
+  type        = bool
+  default     = false
+}

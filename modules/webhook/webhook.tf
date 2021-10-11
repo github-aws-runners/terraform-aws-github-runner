@@ -12,12 +12,13 @@ resource "aws_lambda_function" "webhook" {
 
   environment {
     variables = {
-      ENVIRONMENT           = var.environment
-      LOG_LEVEL             = var.log_level
-      LOG_TYPE              = var.log_type
-      REPOSITORY_WHITE_LIST = jsonencode(var.repository_white_list)
-      RUNNER_LABELS         = jsonencode(split(",", var.runner_extra_labels))
-      SQS_URL_WEBHOOK       = var.sqs_build_queue.id
+      DISABLE_CHECK_WORKFLOW_JOB_LABELS = var.disable_check_wokflow_job_labels
+      ENVIRONMENT                       = var.environment
+      LOG_LEVEL                         = var.log_level
+      LOG_TYPE                          = var.log_type
+      REPOSITORY_WHITE_LIST             = jsonencode(var.repository_white_list)
+      RUNNER_LABELS                     = jsonencode(split(",", var.runner_extra_labels))
+      SQS_URL_WEBHOOK                   = var.sqs_build_queue.id
     }
   }
 

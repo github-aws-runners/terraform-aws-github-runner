@@ -1,19 +1,3 @@
-resource "aws_ssm_parameter" "github_app_client_id" {
-  name   = "/actions_runner/${var.environment}/github_app_client_id"
-  type   = "SecureString"
-  value  = var.github_app.client_id
-  key_id = local.kms_key_arn
-  tags   = var.tags
-}
-
-resource "aws_ssm_parameter" "github_app_client_secret" {
-  name   = "/actions_runner/${var.environment}/github_app_client_secret"
-  type   = "SecureString"
-  value  = var.github_app.client_secret
-  key_id = local.kms_key_arn
-  tags   = var.tags
-}
-
 resource "aws_ssm_parameter" "github_app_id" {
   name   = "/actions_runner/${var.environment}/github_app_id"
   type   = "SecureString"

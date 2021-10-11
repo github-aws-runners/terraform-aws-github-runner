@@ -32,8 +32,6 @@
             ],
             "Resource": [
                 "${github_app_key_base64_arn}",
-                "${github_app_client_secret_arn}",
-                "${github_app_client_id_arn}",
                 "${github_app_id_arn}"
             ]
 %{ if kms_key_arn != "" ~}

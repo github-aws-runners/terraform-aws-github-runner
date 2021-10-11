@@ -9,10 +9,8 @@ locals {
   ami_filter = length(var.ami_filter) > 0 ? var.ami_filter : local.runner_architecture == "arm64" ? { name = ["amzn2-ami-hvm-2*-arm64-gp2"] } : { name = ["amzn2-ami-hvm-2.*-x86_64-ebs"] }
 
   github_app_parameters = {
-    client_id     = module.ssm.parameters.github_app_client_id
-    client_secret = module.ssm.parameters.github_app_client_secret
-    id            = module.ssm.parameters.github_app_id
-    key_base64    = module.ssm.parameters.github_app_key_base64
+    id         = module.ssm.parameters.github_app_id
+    key_base64 = module.ssm.parameters.github_app_key_base64
   }
 }
 
@@ -60,6 +58,7 @@ module "webhook" {
   lambda_timeout                   = var.webhook_lambda_timeout
   logging_retention_in_days        = var.logging_retention_in_days
   runner_extra_labels              = var.runner_extra_labels
+  disable_check_wokflow_job_labels = var.disable_check_wokflow_job_labels
 
   role_path                 = var.role_path
   role_permissions_boundary = var.role_permissions_boundary
