@@ -46,6 +46,9 @@ describe('handler', () => {
   });
 
   describe('Test for workflowjob event: ', () => {
+    beforeEach(() => {
+      process.env.DISABLE_CHECK_WORKFLOW_JOB_LABELS = 'false';
+    });
     it('handles workflow job events', async () => {
       const event = JSON.stringify(workflowjob_event);
       const resp = await handle(
@@ -139,8 +142,8 @@ describe('handler', () => {
       expect(sendActionRequest).toBeCalled();
     });
 
-    it('Check runner a runner with multiple labels accept a job with a subset of labels.', async () => {
-      process.env.RUNNER_LABELS = '["test", "linux"]';
+    it('Check runner a self hosted runner will run a job marked with only self-hosted', async () => {
+      process.env.RUNNER_LABELS = '["test", "test2"]';
       const event = JSON.stringify({
         ...workflowjob_event,
         workflow_job: {
@@ -156,13 +159,13 @@ describe('handler', () => {
       expect(sendActionRequest).toBeCalled();
     });
 
-    it('Check runner labels in mixed order', async () => {
-      process.env.RUNNER_LABELS = '["test", "linux"]';
+    it('Check runner labels for a strict job (2 labels should match)', async () => {
+      process.env.RUNNER_LABELS = '["test", "test2"]';
       const event = JSON.stringify({
         ...workflowjob_event,
         workflow_job: {
           ...workflowjob_event.workflow_job,
-          labels: ['self-hosted', 'linux', 'test'],
+          labels: ['self-hosted', 'linux', 'test', 'test2'],
         },
       });
       const resp = await handle(
@@ -173,8 +176,25 @@ describe('handler', () => {
       expect(sendActionRequest).toBeCalled();
     });
 
+    it('Check event is accepted for disabled workflow check', async () => {
+      process.env.DISABLE_CHECK_WORKFLOW_JOB_LABELS = 'true';
+      process.env.RUNNER_LABELS = '["test", "no-check"]';
+      const event = JSON.stringify({
+        ...workflowjob_event,
+        workflow_job: {
+          ...workflowjob_event.workflow_job,
+          labels: ['self-hosted', 'linux', 'test', 'test2'],
+        },
+      });
+      const resp = await handle(
+        { 'X-Hub-Signature': await webhooks.sign(event), 'X-GitHub-Event': 'workflow_job' },
+        event,
+      );
+      expect(resp).toBe(200);
+      expect(sendActionRequest).toBeCalled();
+    });
     it('Check not allowed runner label is declined', async () => {
-      process.env.RUNNER_LABELS = '["test", "linux"]';
+      process.env.RUNNER_LABELS = '["test"]';
       const event = JSON.stringify({
         ...workflowjob_event,
         workflow_job: {

@@ -14,7 +14,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: node:12
+    container: node:14
     defaults:
       run:
         working-directory: ${{ env.lambda_path }}

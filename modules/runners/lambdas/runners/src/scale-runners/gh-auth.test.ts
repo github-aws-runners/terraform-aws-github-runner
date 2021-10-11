@@ -1,4 +1,4 @@
-import { createOctoClient, createGithubAppAuth, createGithubInstallationAuth } from './gh-auth';
+import { createOctoClient, createGithubAppAuth } from './gh-auth';
 import nock from 'nock';
 import { createAppAuth } from '@octokit/auth-app';
 

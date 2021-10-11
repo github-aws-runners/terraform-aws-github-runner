@@ -7,7 +7,7 @@ resource "aws_lambda_function" "scale_up" {
   function_name                  = "${var.environment}-scale-up"
   role                           = aws_iam_role.scale_up.arn
   handler                        = "index.scaleUp"
-  runtime                        = "nodejs12.x"
+  runtime                        = "nodejs14.x"
   timeout                        = var.lambda_timeout_scale_up
   reserved_concurrent_executions = 1
   tags                           = local.tags

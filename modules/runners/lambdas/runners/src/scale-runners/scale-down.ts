@@ -117,6 +117,7 @@ async function evaluateAndRemoveRunners(
 
   for (const ownerTag of ownerTags) {
     const ec2RunnersFiltered = ec2Runners.filter((runner) => runner.owner === ownerTag);
+    console.debug(`Found: '${ec2RunnersFiltered.length}' active GitHub runners with owner tag: '${ownerTag}'`);
     for (const ec2Runner of ec2RunnersFiltered) {
       const ghRunners = await listGitHubRunners(ec2Runner);
       const ghRunner = ghRunners.find((runner) => runner.name === ec2Runner.instanceId);
@@ -190,15 +191,20 @@ export async function scaleDown(): Promise<void> {
 
   // list and sort runners, newest first. This ensure we keep the newest runners longer.
   const ec2Runners = await listAndSortRunners(environment);
+  const activeEc2RunnersCount = ec2Runners.length;
+  console.info(`Found: '${activeEc2RunnersCount}' active GitHub EC2 runner instances before clean-up.`);
 
-  if (ec2Runners.length === 0) {
+  if (activeEc2RunnersCount === 0) {
     console.debug(`No active runners found for environment: '${environment}'`);
     return;
   }
   const legacyRunners = filterLegacyRunners(ec2Runners);
-  console.log(JSON.stringify(legacyRunners));
+  console.debug(JSON.stringify(legacyRunners));
   const runners = filterRunners(ec2Runners);
 
   await evaluateAndRemoveRunners(runners, scaleDownConfigs);
   await evaluateAndRemoveRunners(legacyRunners, scaleDownConfigs);
+
+  const activeEc2RunnersCountAfter = (await listAndSortRunners(environment)).length;
+  console.info(`Found: '${activeEc2RunnersCountAfter}' active GitHub EC2 runners instances after clean-up.`);
 }

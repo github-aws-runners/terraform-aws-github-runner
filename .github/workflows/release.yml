@@ -10,9 +10,9 @@ jobs:
   prepare:
     name: Create dist
     runs-on: ubuntu-latest
-    container: node:12
+    container: node:14
     strategy:
-      matrix: 
+      matrix:
         lambda: ["modules/webhook/lambdas/webhook", "modules/runner-binaries-syncer/lambdas/runner-binaries-syncer", "modules/runners/lambdas/runners"]
     steps:
       - name: Extract lambda name
@@ -64,14 +64,14 @@ jobs:
           appInstallationValue: ${{ github.repository }}
 
       - name: Dry run release
-        if: github.event_name != 'pull_request' 
+        if: github.event_name != 'pull_request'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Read only token
         run: |
           cp .release/* .
           yarn
           yarn release -d --repositoryUrl https://x-access-token:$GITHUB_TOKEN@github.com/$GITHUB_REPOSITORY.git
-          
+
       - name: Release
         if: github.event_name != 'pull_request' && contains('refs/heads/master', github.ref)
         env:

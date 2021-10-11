@@ -88,3 +88,9 @@ variable "runner_extra_labels" {
   type        = string
   default     = ""
 }
+
+variable "disable_check_wokflow_job_labels" {
+  description = "Disable the the check of workflow labels."
+  type        = bool
+  default     = false
+}

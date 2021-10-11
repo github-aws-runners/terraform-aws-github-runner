@@ -1,8 +1,8 @@
 import { Octokit } from '@octokit/rest';
 import { PassThrough } from 'stream';
-import fetch from 'node-fetch';
 import { S3 } from 'aws-sdk';
 import AWS from 'aws-sdk';
+import axios from 'axios';
 
 const versionKey = 'name';
 
@@ -74,16 +74,24 @@ async function uploadToS3(s3: S3, cacheObject: CacheObject, actionRunnerReleaseA
     .promise();
 
   console.debug('Start downloading %s and uploading to S3.', actionRunnerReleaseAsset.name);
+
   const readPromise = new Promise<void>((resolve, reject) => {
-    fetch(actionRunnerReleaseAsset.downloadUrl)
-      .then((res) =>
-        res.body
+    axios
+      .request<NodeJS.ReadableStream>({
+        method: 'get',
+        url: actionRunnerReleaseAsset.downloadUrl,
+        responseType: 'stream',
+      })
+      .then((res) => {
+        res.data
           .pipe(writeStream)
+
           .on('finish', () => resolve())
-          .on('error', (error) => reject(error)),
-      )
+          .on('error', (error) => reject(error));
+      })
       .catch((error) => reject(error));
   });
+
   await Promise.all([readPromise, writePromise])
     .then(() => console.info(`The new distribution is uploaded to S3.`))
     .catch((error) => {
