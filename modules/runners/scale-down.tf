@@ -18,7 +18,7 @@ resource "aws_lambda_function" "scale_down" {
       RUNNER_BOOT_TIME_IN_MINUTES          = var.runner_boot_time_in_minutes
       SCALE_DOWN_CONFIG                    = jsonencode(var.idle_config)
       GHES_URL                             = var.ghes_url
-      NODE_TLS_REJECT_UNAUTHORIZED         = var.ghes_url != null && ! var.ghes_ssl_verify ? 0 : 1
+      NODE_TLS_REJECT_UNAUTHORIZED         = var.ghes_url != null && !var.ghes_ssl_verify ? 0 : 1
       PARAMETER_GITHUB_APP_ID_NAME         = var.github_app_parameters.id.name
       PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.github_app_parameters.key_base64.name
     }
