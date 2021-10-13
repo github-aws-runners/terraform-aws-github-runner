@@ -42,7 +42,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        terraform: [0.14.11, 0.15.5, 1.0.8]
+        terraform: [0.14.3, 0.15.5, 1.0.8]
         example: ["default", "ubuntu"]
     defaults:
       run:
