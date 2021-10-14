@@ -36,6 +36,11 @@ jobs:
         continue-on-error: true
       - name: validate terraform
         run: terraform validate
+      - name: Terraform Docs
+        uses: terraform-docs/gh-actions@v0.11.0
+        with:
+          working-dir: .
+          git-push: true
 
   verify_examples:
     name: Verify examples
@@ -60,9 +65,3 @@ jobs:
         continue-on-error: true
       - name: validate terraform
         run: terraform validate
-      - name: Terraform Docs
-        uses: terraform-docs/gh-actions@v0.11.0
-        with:
-          working-dir: .
-          git-push: true
-          output-file: README.md
