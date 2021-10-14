@@ -36,6 +36,13 @@ jobs:
         continue-on-error: true
       - name: validate terraform
         run: terraform validate
+  docs:
+    needs: verify_module
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
       - name: Terraform Docs
         uses: terraform-docs/gh-actions@v0.11.0
         with:
