@@ -72,7 +72,7 @@ export async function terminateRunner(instanceId: string): Promise<void> {
       InstanceIds: [instanceId],
     })
     .promise();
-  console.debug(`Runner ${instanceId} has been terminated.`);
+  console.info(`Runner ${instanceId} has been terminated.`);
 }
 
 export async function createRunner(runnerParameters: RunnerInputParameters, launchTemplateName: string): Promise<void> {

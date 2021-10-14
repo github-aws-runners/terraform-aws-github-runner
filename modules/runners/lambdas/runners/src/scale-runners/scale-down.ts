@@ -51,8 +51,8 @@ async function listGitHubRunners(runner: RunnerInfo): Promise<GhRunners> {
     return cachedRunners;
   }
 
-  const client = await getOrCreateOctokit(runner);
   console.debug(`[listGithubRunners] Cache miss for ${key}`);
+  const client = await getOrCreateOctokit(runner);
   const runners =
     runner.type === 'Org'
       ? await client.paginate(client.actions.listSelfHostedRunnersForOrg, {
@@ -104,7 +104,7 @@ async function removeRunner(ec2runner: RunnerInfo, ghRunnerId: number): Promise<
       console.error(`Failed to de-register GitHub runner: ${result.status}`);
     }
   } catch (e) {
-    console.debug(`Runner '${ec2runner.instanceId}' cannot be de-registered, most likely the runner is active.`);
+    console.info(`Runner '${ec2runner.instanceId}' cannot be de-registered, most likely the runner is active.`);
   }
 }
 
@@ -117,7 +117,7 @@ async function evaluateAndRemoveRunners(
 
   for (const ownerTag of ownerTags) {
     const ec2RunnersFiltered = ec2Runners.filter((runner) => runner.owner === ownerTag);
-    console.debug(`Found: '${ec2RunnersFiltered.length}' active GitHub runners with owner tag: '${ownerTag}'`);
+    console.info(`Found: '${ec2RunnersFiltered.length}' active GitHub runners with owner tag: '${ownerTag}'`);
     for (const ec2Runner of ec2RunnersFiltered) {
       const ghRunners = await listGitHubRunners(ec2Runner);
       const ghRunner = ghRunners.find((runner) => runner.name === ec2Runner.instanceId);
@@ -125,15 +125,15 @@ async function evaluateAndRemoveRunners(
         if (runnerMinimumTimeExceeded(ec2Runner)) {
           if (idleCounter > 0) {
             idleCounter--;
-            console.debug(`Runner '${ec2Runner.instanceId}' will kept idle.`);
+            console.info(`Runner '${ec2Runner.instanceId}' will kept idle.`);
           } else {
-            console.debug(`Runner '${ec2Runner.instanceId}' will be terminated.`);
+            console.info(`Runner '${ec2Runner.instanceId}' will be terminated.`);
             await removeRunner(ec2Runner, ghRunner.id);
           }
         }
       } else {
         if (bootTimeExceeded(ec2Runner)) {
-          console.debug(`Runner '${ec2Runner.instanceId}' is orphaned and will be removed.`);
+          console.info(`Runner '${ec2Runner.instanceId}' is orphaned and will be removed.`);
           terminateOrphan(ec2Runner.instanceId);
         } else {
           console.debug(`Runner ${ec2Runner.instanceId} has not yet booted.`);

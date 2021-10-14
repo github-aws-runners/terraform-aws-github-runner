@@ -20,6 +20,8 @@ export const scaleUp = async (eventSource: string, payload: ActionRequestMessage
   const environment = process.env.ENVIRONMENT;
   const ghesBaseUrl = process.env.GHES_URL;
 
+  console.info(`Received ${payload.eventType} from ${payload.repositoryOwner}/${payload.repositoryName}`);
+
   let ghesApiUrl = '';
   if (ghesBaseUrl) {
     ghesApiUrl = `${ghesBaseUrl}/api/v3`;
@@ -58,6 +60,7 @@ export const scaleUp = async (eventSource: string, payload: ActionRequestMessage
     console.info(`${runnerType} ${runnerOwner} has ${currentRunners.length}/${maximumRunners} runners`);
 
     if (currentRunners.length < maximumRunners) {
+      console.info(`Attempting to launch a new runner`);
       // create token
       const registrationToken = enableOrgLevel
         ? await githubInstallationClient.actions.createRegistrationTokenForOrg({ org: payload.repositoryOwner })
@@ -81,7 +84,7 @@ export const scaleUp = async (eventSource: string, payload: ActionRequestMessage
         runnerType,
       });
     } else {
-      console.info('No runner will be created, maximum number of runners reached.');
+      console.warn('No runner created: maximum number of runners reached.');
     }
   }
 };
@@ -105,7 +108,7 @@ async function getJobStatus(githubInstallationClient: Octokit, payload: ActionRe
   } else {
     throw Error(`Event ${payload.eventType} is not supported`);
   }
-  console.debug(`Job ${payload.id} is ${isQueued ? 'queued' : 'not queued'}`);
+  console.info(`Job ${payload.id} is ${isQueued ? 'queued' : 'not queued'}`);
   return isQueued;
 }
 
@@ -119,7 +122,7 @@ export async function createRunnerLoop(runnerParameters: RunnerInputParameters):
       launched = true;
       break;
     } catch (error) {
-      console.debug(`Attempt '${i}' to launch instance using ${launchTemplateNames[i]} FAILED.`);
+      console.warn(`Attempt '${i}' to launch instance using ${launchTemplateNames[i]} FAILED.`);
       console.error(error);
     }
   }

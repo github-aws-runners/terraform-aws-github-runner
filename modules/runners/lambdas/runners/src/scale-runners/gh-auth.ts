@@ -52,7 +52,6 @@ async function createAuth(installationId: number | undefined, ghesApiUrl: string
   };
   if (installationId) authOptions = { ...authOptions, installationId };
 
-  console.debug(ghesApiUrl);
   if (ghesApiUrl) {
     authOptions.request = request.defaults({
       baseUrl: ghesApiUrl,
