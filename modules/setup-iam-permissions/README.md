@@ -36,7 +36,7 @@ output "boundary" {
 
 Next execute the created Terraform code `terraform init && terraform apply` The module will. You can use the created role in your terraform provider with assume role and the boundary as well the namespace needs to be set to the root module.
 
-<!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
+<!-- BEGIN_TF_DOCS -->
 ## Requirements
 
 No requirements.
@@ -76,7 +76,7 @@ No modules.
 |------|-------------|
 | <a name="output_boundary"></a> [boundary](#output\_boundary) | n/a |
 | <a name="output_role"></a> [role](#output\_role) | n/a |
-<!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
+<!-- END_TF_DOCS -->
 
 ## Philips Forest
 

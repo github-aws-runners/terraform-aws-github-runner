@@ -47,7 +47,7 @@ To compile all TypeScript/JavaScript sources in a single file [ncc](https://gith
 yarn run dist
 ```
 
-<!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
+<!-- BEGIN_TF_DOCS -->
 ## Requirements
 
 | Name | Version |
@@ -171,7 +171,7 @@ No modules.
 | <a name="output_role_runner"></a> [role\_runner](#output\_role\_runner) | n/a |
 | <a name="output_role_scale_down"></a> [role\_scale\_down](#output\_role\_scale\_down) | n/a |
 | <a name="output_role_scale_up"></a> [role\_scale\_up](#output\_role\_scale\_up) | n/a |
-<!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
+<!-- END_TF_DOCS -->
 
 ## Philips Forest
 

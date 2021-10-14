@@ -1,0 +1,11 @@
+formatter: md table
+
+output:
+  file: README.md
+
+recursive:
+  enabled: true
+
+settings:
+  anchor: false
+  html: false

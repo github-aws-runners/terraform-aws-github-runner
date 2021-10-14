@@ -24,7 +24,7 @@ module "lambdas" {
 }
 ```
 
-<!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
+<!-- BEGIN_TF_DOCS -->
 ## Requirements
 
 No requirements.
@@ -56,7 +56,7 @@ No modules.
 | Name | Description |
 |------|-------------|
 | <a name="output_files"></a> [files](#output\_files) | n/a |
-<!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
+<!-- END_TF_DOCS -->
 
 ## Philips Forest
 
