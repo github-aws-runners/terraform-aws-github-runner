@@ -35,7 +35,7 @@ export const handle = async (headers: IncomingHttpHeaders, payload: any): Promis
 
   const githubEvent = headers['x-github-event'] as string;
 
-  console.info(`Received Github event ${githubEvent} from ${payload.repository.owner}/${payload.repository.repo}`);
+  console.info(`Received Github event ${githubEvent} from ${payload.repository.full_name}`);
 
   const signature = headers['x-hub-signature'] as string;
   if (!signature) {
