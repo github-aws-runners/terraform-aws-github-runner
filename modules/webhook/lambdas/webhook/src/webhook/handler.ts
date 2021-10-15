@@ -33,6 +33,10 @@ export const handle = async (headers: IncomingHttpHeaders, payload: any): Promis
     headers[key.toLowerCase()] = headers[key];
   }
 
+  const githubEvent = headers['x-github-event'] as string;
+
+  console.info(`Received Github event ${githubEvent} from ${payload.repository.owner}/${payload.repository.repo}`);
+
   const signature = headers['x-hub-signature'] as string;
   if (!signature) {
     console.error("Github event doesn't have signature. This webhook requires a secret to be configured.");
@@ -49,17 +53,13 @@ export const handle = async (headers: IncomingHttpHeaders, payload: any): Promis
     return 401;
   }
 
-  const githubEvent = headers['x-github-event'] as string;
-
-  console.debug(`Received Github event: "${githubEvent}"`);
-
   let status = 200;
   if (githubEvent == 'workflow_job') {
     status = await handleWorkflowJob(JSON.parse(payload) as WorkflowJob, githubEvent);
   } else if (githubEvent == 'check_run') {
     status = await handleCheckRun(JSON.parse(payload) as CheckRunEvent, githubEvent);
   } else {
-    console.debug('Ignore event ' + githubEvent);
+    console.warn(`Ignoring unsupported event ${githubEvent}`);
   }
 
   return status;
