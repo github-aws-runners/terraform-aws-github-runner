@@ -1,33 +1,10 @@
 import { IncomingHttpHeaders } from 'http';
 import { Webhooks } from '@octokit/webhooks';
 import { sendActionRequest } from '../sqs';
-import { CheckRunEvent } from '@octokit/webhooks-types';
+import { CheckRunEvent, WorkflowJobEvent } from '@octokit/webhooks-types';
 import { getParameterValue } from '../ssm';
 
-// Event type not available yet in SDK
-export interface WorkflowJob {
-  action: 'queued' | 'created' | 'completed';
-  workflow_job: {
-    id: number;
-    labels: [string];
-  };
-  repository: {
-    id: number;
-    name: string;
-    full_name: string;
-    owner: {
-      login: string;
-    };
-  };
-  organization: {
-    login: string;
-  };
-  installation?: {
-    id?: number;
-  };
-}
-
-export const handle = async (headers: IncomingHttpHeaders, payload: any): Promise<number> => {
+export const handle = async (headers: IncomingHttpHeaders, body: string): Promise<number> => {
   // ensure header keys lower case since github headers can contain capitals.
   for (const key in headers) {
     headers[key.toLowerCase()] = headers[key];
@@ -35,9 +12,30 @@ export const handle = async (headers: IncomingHttpHeaders, payload: any): Promis
 
   const githubEvent = headers['x-github-event'] as string;
 
+  let status = await verifySignature(githubEvent, headers['x-hub-signature'] as string, body);
+  if (status != 200) {
+    return status;
+  }
+  const payload = JSON.parse(body);
   console.info(`Received Github event ${githubEvent} from ${payload.repository.full_name}`);
 
-  const signature = headers['x-hub-signature'] as string;
+  if (isRepoNotAllowed(payload.repository.full_name)) {
+    console.error(`Received event from unauthorized repository ${payload.repository.full_name}`);
+    return 403;
+  }
+
+  if (githubEvent == 'workflow_job') {
+    status = await handleWorkflowJob(payload as WorkflowJobEvent, githubEvent);
+  } else if (githubEvent == 'check_run') {
+    status = await handleCheckRun(payload as CheckRunEvent, githubEvent);
+  } else {
+    console.warn(`Ignoring unsupported event ${githubEvent}`);
+  }
+
+  return status;
+};
+
+async function verifySignature(githubEvent: string, signature: string, body: string): Promise<number> {
   if (!signature) {
     console.error("Github event doesn't have signature. This webhook requires a secret to be configured.");
     return 500;
@@ -48,29 +46,14 @@ export const handle = async (headers: IncomingHttpHeaders, payload: any): Promis
   const webhooks = new Webhooks({
     secret: secret,
   });
-  if (!(await webhooks.verify(payload as string, signature))) {
+  if (!(await webhooks.verify(body, signature))) {
     console.error('Unable to verify signature!');
     return 401;
   }
+  return 200;
+}
 
-  let status = 200;
-  if (githubEvent == 'workflow_job') {
-    status = await handleWorkflowJob(JSON.parse(payload) as WorkflowJob, githubEvent);
-  } else if (githubEvent == 'check_run') {
-    status = await handleCheckRun(JSON.parse(payload) as CheckRunEvent, githubEvent);
-  } else {
-    console.warn(`Ignoring unsupported event ${githubEvent}`);
-  }
-
-  return status;
-};
-
-async function handleWorkflowJob(body: WorkflowJob, githubEvent: string): Promise<number> {
-  if (isRepoNotAllowed(body)) {
-    console.error(`Received event from unauthorized repository ${body.repository.full_name}`);
-    return 403;
-  }
-
+async function handleWorkflowJob(body: WorkflowJobEvent, githubEvent: string): Promise<number> {
   const disableCheckWorkflowJobLabelsEnv = process.env.DISABLE_CHECK_WORKFLOW_JOB_LABELS || 'false';
   const disableCheckWorkflowJobLabels = JSON.parse(disableCheckWorkflowJobLabelsEnv) as boolean;
   if (!disableCheckWorkflowJobLabels && !canRunJob(body)) {
@@ -91,15 +74,11 @@ async function handleWorkflowJob(body: WorkflowJob, githubEvent: string): Promis
       installationId: installationId,
     });
   }
+  console.info(`Successfully queued job for ${body.repository.full_name}`);
   return 200;
 }
 
 async function handleCheckRun(body: CheckRunEvent, githubEvent: string): Promise<number> {
-  if (isRepoNotAllowed(body)) {
-    console.error(`Received event from unauthorized repository ${body.repository.full_name}`);
-    return 403;
-  }
-
   let installationId = body.installation?.id;
   if (installationId == null) {
     installationId = 0;
@@ -113,17 +92,18 @@ async function handleCheckRun(body: CheckRunEvent, githubEvent: string): Promise
       installationId: installationId,
     });
   }
+  console.info(`Successfully queued job for ${body.repository.full_name}`);
   return 200;
 }
 
-function isRepoNotAllowed(body: WorkflowJob | CheckRunEvent): boolean {
+function isRepoNotAllowed(repo_full_name: string): boolean {
   const repositoryWhiteListEnv = process.env.REPOSITORY_WHITE_LIST || '[]';
   const repositoryWhiteList = JSON.parse(repositoryWhiteListEnv) as Array<string>;
 
-  return repositoryWhiteList.length > 0 && !repositoryWhiteList.includes(body.repository.full_name);
+  return repositoryWhiteList.length > 0 && !repositoryWhiteList.includes(repo_full_name);
 }
 
-function canRunJob(job: WorkflowJob): boolean {
+function canRunJob(job: WorkflowJobEvent): boolean {
   const runnerLabelsEnv = process.env.RUNNER_LABELS || '[]';
   const runnerLabels = new Set(JSON.parse(runnerLabelsEnv) as Array<string>);
 
