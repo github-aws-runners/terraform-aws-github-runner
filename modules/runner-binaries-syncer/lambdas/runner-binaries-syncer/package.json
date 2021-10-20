@@ -25,7 +25,7 @@
     "aws-sdk": "^2.1010.0",
     "eslint": "^7.32.0",
     "eslint-plugin-prettier": "4.0.0",
-    "jest": "^27.2.5",
+    "jest": "^27.3.1",
     "prettier": "2.4.1",
     "ts-jest": "^27.0.5",
     "ts-node-dev": "^1.1.6",
