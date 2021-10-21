@@ -43,6 +43,7 @@ jobs:
       - uses: actions/checkout@v2
         with:
           ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{github.event.pull_request.head.repo.full_name}}
       - name: Terraform Docs
         uses: terraform-docs/gh-actions@v0.11.0
         with:
