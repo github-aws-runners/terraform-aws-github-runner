@@ -6,7 +6,7 @@ export const githubWebhook = async (event: APIGatewayEvent, context: Context, ca
   logger.setSettings({ requestId: context.awsRequestId });
   logger.debug(JSON.stringify(event));
   try {
-    const statusCode = await handle(event.headers, event.body);
+    const statusCode = await handle(event.headers, event.body as string);
     callback(null, {
       statusCode: statusCode,
     });

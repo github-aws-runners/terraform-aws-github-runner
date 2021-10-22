@@ -23,6 +23,8 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
   const environment = process.env.ENVIRONMENT;
   const ghesBaseUrl = process.env.GHES_URL;
 
+  console.info(`Received ${payload.eventType} from ${payload.repositoryOwner}/${payload.repositoryName}`);
+
   let ghesApiUrl = '';
   if (ghesBaseUrl) {
     ghesApiUrl = `${ghesBaseUrl}/api/v3`;
@@ -61,6 +63,7 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
     logger.info(`${runnerType} ${runnerOwner} has ${currentRunners.length}/${maximumRunners} runners`);
 
     if (currentRunners.length < maximumRunners) {
+      console.info(`Attempting to launch a new runner`);
       // create token
       const registrationToken = enableOrgLevel
         ? await githubInstallationClient.actions.createRegistrationTokenForOrg({ org: payload.repositoryOwner })

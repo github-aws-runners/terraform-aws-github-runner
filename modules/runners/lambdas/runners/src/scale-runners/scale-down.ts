@@ -54,8 +54,8 @@ async function listGitHubRunners(runner: RunnerInfo): Promise<GhRunners> {
     return cachedRunners;
   }
 
-  const client = await getOrCreateOctokit(runner);
   logger.debug(`[listGithubRunners] Cache miss for ${key}`);
+  const client = await getOrCreateOctokit(runner);
   const runners =
     runner.type === 'Org'
       ? await client.paginate(client.actions.listSelfHostedRunnersForOrg, {
@@ -107,7 +107,7 @@ async function removeRunner(ec2runner: RunnerInfo, ghRunnerId: number): Promise<
       logger.error(`Failed to de-register GitHub runner: ${result.status}`);
     }
   } catch (e) {
-    logger.debug(`Runner '${ec2runner.instanceId}' cannot be de-registered, most likely the runner is active.`);
+    logger.info(`Runner '${ec2runner.instanceId}' cannot be de-registered, most likely the runner is active.`);
   }
 }
 
@@ -128,15 +128,15 @@ async function evaluateAndRemoveRunners(
         if (runnerMinimumTimeExceeded(ec2Runner)) {
           if (idleCounter > 0) {
             idleCounter--;
-            logger.debug(`Runner '${ec2Runner.instanceId}' will kept idle.`);
+            logger.info(`Runner '${ec2Runner.instanceId}' will kept idle.`);
           } else {
-            logger.debug(`Runner '${ec2Runner.instanceId}' will be terminated.`);
+            logger.info(`Runner '${ec2Runner.instanceId}' will be terminated.`);
             await removeRunner(ec2Runner, ghRunner.id);
           }
         }
       } else {
         if (bootTimeExceeded(ec2Runner)) {
-          logger.debug(`Runner '${ec2Runner.instanceId}' is orphaned and will be removed.`);
+          logger.info(`Runner '${ec2Runner.instanceId}' is orphaned and will be removed.`);
           terminateOrphan(ec2Runner.instanceId);
         } else {
           logger.debug(`Runner ${ec2Runner.instanceId} has not yet booted.`);
