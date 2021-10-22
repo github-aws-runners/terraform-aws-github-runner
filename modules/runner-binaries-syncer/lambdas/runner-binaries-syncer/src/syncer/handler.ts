@@ -3,6 +3,9 @@ import { PassThrough } from 'stream';
 import { S3 } from 'aws-sdk';
 import AWS from 'aws-sdk';
 import axios from 'axios';
+import { logger as rootLogger } from './logger';
+
+const logger = rootLogger.getChildLogger();
 
 const versionKey = 'name';
 
@@ -22,7 +25,7 @@ async function getCachedVersion(s3: S3, cacheObject: CacheObject): Promise<strin
     const versions = objectTagging.TagSet?.filter((t: S3.Tag) => t.Key === versionKey);
     return versions.length === 1 ? versions[0].Value : undefined;
   } catch (e) {
-    console.debug('No tags found');
+    logger.debug('No tags found');
     return undefined;
   }
 }
@@ -73,7 +76,7 @@ async function uploadToS3(s3: S3, cacheObject: CacheObject, actionRunnerReleaseA
     })
     .promise();
 
-  console.debug('Start downloading %s and uploading to S3.', actionRunnerReleaseAsset.name);
+  logger.debug('Start downloading %s and uploading to S3.', actionRunnerReleaseAsset.name);
 
   const readPromise = new Promise<void>((resolve, reject) => {
     axios
@@ -93,9 +96,9 @@ async function uploadToS3(s3: S3, cacheObject: CacheObject, actionRunnerReleaseA
   });
 
   await Promise.all([readPromise, writePromise])
-    .then(() => console.info(`The new distribution is uploaded to S3.`))
+    .then(() => logger.info(`The new distribution is uploaded to S3.`))
     .catch((error) => {
-      console.error(`Uploading of the new distribution to S3 failed: ${error}`);
+      logger.error(`Uploading of the new distribution to S3 failed: ${error}`);
       throw error;
     });
 }
@@ -120,10 +123,10 @@ export const handle = async (): Promise<void> => {
   }
 
   const currentVersion = await getCachedVersion(s3, cacheObject);
-  console.debug('latest: ' + currentVersion);
+  logger.debug('latest: ' + currentVersion);
   if (currentVersion === undefined || currentVersion != actionRunnerReleaseAsset.name) {
     uploadToS3(s3, cacheObject, actionRunnerReleaseAsset);
   } else {
-    console.debug('Distribution is up-to-date, no action.');
+    logger.debug('Distribution is up-to-date, no action.');
   }
 };
