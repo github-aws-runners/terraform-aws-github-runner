@@ -7,7 +7,7 @@ import { logger as rootLogger } from './logger';
 
 const logger = rootLogger.getChildLogger();
 
-export async function handle(headers: IncomingHttpHeaders, payload: any): Promise<number> {
+export async function handle(headers: IncomingHttpHeaders, body: string): Promise<number> {
   // ensure header keys lower case since github headers can contain capitals.
   for (const key in headers) {
     headers[key.toLowerCase()] = headers[key];
@@ -37,7 +37,6 @@ export async function handle(headers: IncomingHttpHeaders, payload: any): Promis
 
   return status;
 }
-
 
 async function verifySignature(githubEvent: string, signature: string, body: string): Promise<number> {
   if (!signature) {
