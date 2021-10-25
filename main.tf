@@ -1,7 +1,5 @@
 locals {
-  tags = merge(var.tags, {
-    Environment = var.environment
-  })
+  tags = merge(var.tags, var.tag_with_environment_var == true ? { Environment = var.environment } : null)
 
   s3_action_runner_url = "s3://${module.runner_binaries.bucket.id}/${module.runner_binaries.runner_distribution_object_key}"
   runner_architecture  = substr(var.instance_type, 0, 2) == "a1" || substr(var.instance_type, 1, 2) == "6g" ? "arm64" : "x64"

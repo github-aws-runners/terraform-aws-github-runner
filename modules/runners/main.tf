@@ -3,9 +3,7 @@ locals {
     {
       "Name" = format("%s-action-runner", var.environment)
     },
-    {
-      "Environment" = format("%s", var.environment)
-    },
+    var.tag_with_environment_var == true ? { "Environment" = format("%s", var.environment) } : null,
     var.tags,
   )
 

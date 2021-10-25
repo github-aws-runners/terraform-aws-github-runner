@@ -34,6 +34,12 @@ variable "environment" {
   type        = string
 }
 
+variable "tag_with_environment_var" {
+  description = "Should the `environment` variable be added as an Environment tag to resouces"
+  type        = bool
+  default     = true
+}
+
 variable "s3_bucket_runner_binaries" {
   type = object({
     arn = string

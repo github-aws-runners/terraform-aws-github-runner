@@ -24,6 +24,12 @@ variable "environment" {
   type        = string
 }
 
+variable "tag_with_environment_var" {
+  description = "Should the `environment` variable be added as an Environment tag to resouces"
+  type        = bool
+  default     = true
+}
+
 variable "enable_organization_runners" {
   description = "Register runners to organization, instead of repo level"
   type        = bool
