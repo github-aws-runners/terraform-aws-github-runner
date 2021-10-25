@@ -30,7 +30,7 @@
     "eslint-plugin-prettier": "4.0.0",
     "express": "^4.17.1",
     "jest": "^27.3.1",
-    "nock": "^13.1.1",
+    "nock": "^13.1.4",
     "prettier": "2.4.1",
     "ts-jest": "^27.0.7",
     "ts-node-dev": "^1.1.6",
