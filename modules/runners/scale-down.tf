@@ -6,7 +6,7 @@ resource "aws_lambda_function" "scale_down" {
   source_code_hash  = var.lambda_s3_bucket == null ? filebase64sha256(local.lambda_zip) : null
   function_name     = "${var.environment}-scale-down"
   role              = aws_iam_role.scale_down.arn
-  handler           = "index.scaleDown"
+  handler           = "index.scaleDownHandler"
   runtime           = "nodejs14.x"
   timeout           = var.lambda_timeout_scale_down
   tags              = local.tags
