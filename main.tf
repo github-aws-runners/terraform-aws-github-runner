@@ -155,6 +155,7 @@ module "runner_binaries" {
 }
 
 resource "aws_resourcegroups_group" "resourcegroups_group" {
+  count = var.tag_with_environment_var == true ? 1 : 0
   name = "${var.environment}-group"
   resource_query {
     query = templatefile("${path.module}/templates/resource-group.json", {
