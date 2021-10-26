@@ -45,7 +45,7 @@ module "webhook" {
 
   aws_region  = var.aws_region
   environment = var.environment
-  tags        = local.tags
+  tags        = var.tags
   kms_key_arn = var.kms_key_arn
 
   sqs_build_queue               = aws_sqs_queue.queued_builds
@@ -72,7 +72,7 @@ module "runners" {
   vpc_id      = var.vpc_id
   subnet_ids  = var.subnet_ids
   environment = var.environment
-  tags        = local.tags
+  tags        = var.tags
 
   s3_bucket_runner_binaries   = module.runner_binaries.bucket
   s3_location_runner_binaries = local.s3_action_runner_url
@@ -138,7 +138,7 @@ module "runner_binaries" {
 
   aws_region  = var.aws_region
   environment = var.environment
-  tags        = local.tags
+  tags        = var.tags
 
   distribution_bucket_name = "${var.environment}-dist-${random_string.random.result}"
 

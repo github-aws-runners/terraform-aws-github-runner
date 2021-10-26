@@ -5,7 +5,7 @@ resource "aws_iam_role" "runner" {
   assume_role_policy   = templatefile("${path.module}/policies/instance-role-trust-policy.json", {})
   path                 = local.role_path
   permissions_boundary = var.role_permissions_boundary
-  tags                 = local.tags
+  tags                 = var.tags
 }
 
 resource "aws_iam_instance_profile" "runner" {

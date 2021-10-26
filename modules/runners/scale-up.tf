@@ -61,7 +61,7 @@ resource "aws_iam_role" "scale_up" {
   assume_role_policy   = data.aws_iam_policy_document.lambda_assume_role_policy.json
   path                 = local.role_path
   permissions_boundary = var.role_permissions_boundary
-  tags                 = local.tags
+  tags                 = var.tags
 }
 
 resource "aws_iam_role_policy" "scale_up" {
