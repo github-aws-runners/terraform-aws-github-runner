@@ -21,7 +21,7 @@ variable "distribution_bucket_name" {
   # Make sure the bucket name only contains legal characters
   validation {
     error_message = "Only lowercase alphanumeric characters and hyphens allowed in the bucket name."
-    condition = can(regex("^[-a-z0-9]$", var.distribution_bucket_name))
+    condition = can(regex("^[a-z0-9-]*$", var.distribution_bucket_name))
   }
 }
 
