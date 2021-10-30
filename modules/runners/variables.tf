@@ -368,3 +368,9 @@ variable "egress_rules" {
     description      = null
   }]
 }
+
+variable "runner_ec2_tags" {
+  description = "Map of tags that will be added to the launch template instance tag specificatons."
+  type        = map(string)
+  default     = {}
+}
