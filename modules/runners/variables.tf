@@ -400,3 +400,9 @@ variable "log_level" {
     error_message = "`log_level` value not valid. Valid values are 'silly', 'trace', 'debug', 'info', 'warn', 'error', 'fatal'."
   }
 }
+
+variable "runner_ec2_tags" {
+  description = "Map of tags that will be added to the launch template instance tag specificatons."
+  type        = map(string)
+  default     = {}
+}

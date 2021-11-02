@@ -17,8 +17,13 @@ variable "environment" {
 variable "distribution_bucket_name" {
   description = "Bucket for storing the action runner distribution."
   type        = string
+  
+  # Make sure the bucket name only contains legal characters
+  validation {
+    error_message = "Only lowercase alphanumeric characters and hyphens allowed in the bucket name."
+    condition = can(regex("^[a-z0-9-]*$", var.distribution_bucket_name))
+  }
 }
-
 variable "lambda_schedule_expression" {
   description = "Scheduler expression for action runner binary syncer."
   type        = string

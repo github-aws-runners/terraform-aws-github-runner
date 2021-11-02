@@ -17,12 +17,12 @@
   "devDependencies": {
     "@octokit/rest": "^18.12.0",
     "@types/jest": "^27.0.1",
-    "@types/node": "^16.10.3",
+    "@types/node": "^16.11.6",
     "@types/request": "^2.48.4",
     "@typescript-eslint/eslint-plugin": "^4.33.0",
     "@typescript-eslint/parser": "^4.33.0",
     "@vercel/ncc": "^0.31.1",
-    "aws-sdk": "^2.1010.0",
+    "aws-sdk": "^2.1019.0",
     "eslint": "^7.32.0",
     "eslint-plugin-prettier": "4.0.0",
     "jest": "^27.3.1",
@@ -33,6 +33,6 @@
   },
   "dependencies": {
     "tslog": "^3.2.2",
-    "axios": "^0.23.0"
+    "axios": "^0.24.0"
   }
 }
