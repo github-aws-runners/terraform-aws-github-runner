@@ -27,9 +27,8 @@ export async function handle(headers: IncomingHttpHeaders, body: string): Promis
     return status;
   }
 
-  if (bodyParsed[githubEvent].name) {
-    logFields += ` name=${bodyParsed[githubEvent].name}`;
-  }
+  logFields += ` name=${bodyParsed[githubEvent].name} status=${bodyParsed[githubEvent].status}`;
+
   if (bodyParsed[githubEvent].started_at) {
     logFields += ` started_at=${bodyParsed[githubEvent].started_at}`;
   }
