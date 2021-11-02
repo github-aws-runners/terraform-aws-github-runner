@@ -19,27 +19,27 @@ export async function handle(headers: IncomingHttpHeaders, body: string): Promis
   if (status != 200) {
     return status;
   }
-  const bodyParsed = JSON.parse(body);
-  logFields = `event=${githubEvent} repository=${bodyParsed.repository.full_name} action=${bodyParsed.action}`;
+  const payload = JSON.parse(body);
+  logFields = `event=${githubEvent} repository=${payload.repository.full_name} action=${payload.action}`;
 
   if (!supportedEvents.includes(githubEvent)) {
     console.error(`${logFields} Unsupported event type.`);
     return status;
   }
 
-  logFields += ` name=${bodyParsed[githubEvent].name} status=${bodyParsed[githubEvent].status}`;
+  logFields += ` name=${payload[githubEvent].name} status=${payload[githubEvent].status}`;
 
-  if (bodyParsed[githubEvent].started_at) {
-    logFields += ` started_at=${bodyParsed[githubEvent].started_at}`;
+  if (payload[githubEvent].started_at) {
+    logFields += ` started_at=${payload[githubEvent].started_at}`;
   }
-  if (bodyParsed[githubEvent].completed_at) {
-    logFields += ` completed_at=${bodyParsed[githubEvent].completed_at}`;
+  if (payload[githubEvent].completed_at) {
+    logFields += ` completed_at=${payload[githubEvent].completed_at}`;
   }
-  if (bodyParsed[githubEvent].conclusion) {
-    logFields += ` completed_at=${bodyParsed[githubEvent].conclusion}`;
+  if (payload[githubEvent].conclusion) {
+    logFields += ` completed_at=${payload[githubEvent].conclusion}`;
   }
 
-  if (isRepoNotAllowed(bodyParsed.repository.full_name)) {
+  if (isRepoNotAllowed(payload.repository.full_name)) {
     console.error(`${logFields} Received event from unauthorized repository`);
     return 403;
   }
@@ -47,9 +47,9 @@ export async function handle(headers: IncomingHttpHeaders, body: string): Promis
   console.info(`${logFields} Received Github event`);
 
   if (githubEvent == 'workflow_job') {
-    status = await handleWorkflowJob(bodyParsed, githubEvent);
+    status = await handleWorkflowJob(payload as WorkflowJobEvent, githubEvent);
   } else if (githubEvent == 'check_run') {
-    status = await handleCheckRun(bodyParsed as CheckRunEvent, githubEvent);
+    status = await handleCheckRun(payload as CheckRunEvent, githubEvent);
   }
 
   return status;
