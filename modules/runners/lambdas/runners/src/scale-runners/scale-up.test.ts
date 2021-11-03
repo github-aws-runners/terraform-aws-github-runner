@@ -326,7 +326,7 @@ describe('scaleUp with GHES', () => {
     it('creates a runner with correct config and labels', async () => {
       process.env.RUNNER_EXTRA_LABELS = 'label1,label2';
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
-      expectedRunnerParams.runnerServiceConfig = expectedRunnerParams.runnerServiceConfig + `--labels label1,label2`;
+      expectedRunnerParams.runnerServiceConfig = expectedRunnerParams.runnerServiceConfig + ` --labels label1,label2`;
       expect(createRunner).toBeCalledWith(expectedRunnerParams, 'lt-1');
     });
 
@@ -334,7 +334,7 @@ describe('scaleUp with GHES', () => {
       process.env.RUNNER_EXTRA_LABELS = 'label1,label2';
       process.env.RUNNER_GROUP_NAME = 'TEST_GROUP_IGNORED';
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
-      expectedRunnerParams.runnerServiceConfig = expectedRunnerParams.runnerServiceConfig + `--labels label1,label2`;
+      expectedRunnerParams.runnerServiceConfig = expectedRunnerParams.runnerServiceConfig + ` --labels label1,label2`;
       expect(createRunner).toBeCalledWith(expectedRunnerParams, 'lt-1');
     });
 
