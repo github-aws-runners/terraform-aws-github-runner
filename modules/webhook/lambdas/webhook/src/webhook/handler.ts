@@ -32,11 +32,16 @@ export async function handle(headers: IncomingHttpHeaders, body: string): Promis
   if (payload[githubEvent].started_at) {
     logFields += ` started_at=${payload[githubEvent].started_at}`;
   }
+
+  /*
+  The app subscribes to all `check_run` and `workflow_job` events.
+  If the event status is `completed`, log the data for workflow metrics.
+  */
   if (payload[githubEvent].completed_at) {
     logFields += ` completed_at=${payload[githubEvent].completed_at}`;
   }
   if (payload[githubEvent].conclusion) {
-    logFields += ` completed_at=${payload[githubEvent].conclusion}`;
+    logFields += ` conclusion=${payload[githubEvent].conclusion}`;
   }
 
   if (isRepoNotAllowed(payload.repository.full_name)) {
