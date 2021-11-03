@@ -11,6 +11,9 @@ import {
 } from '@octokit/auth-app/dist-types/types';
 import { OctokitOptions } from '@octokit/core/dist-types/types';
 import { getParameterValue } from './ssm';
+import { logger as rootLogger } from './logger';
+
+const logger = rootLogger.getChildLogger();
 
 export async function createOctoClient(token: string, ghesApiUrl = ''): Promise<Octokit> {
   const ocktokitOptions: OctokitOptions = {
@@ -52,6 +55,7 @@ async function createAuth(installationId: number | undefined, ghesApiUrl: string
   };
   if (installationId) authOptions = { ...authOptions, installationId };
 
+  logger.debug(`GHES API URL: ${ghesApiUrl}`);
   if (ghesApiUrl) {
     authOptions.request = request.defaults({
       baseUrl: ghesApiUrl,

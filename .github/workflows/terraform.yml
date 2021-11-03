@@ -13,12 +13,11 @@ env:
   tf_working_dir: "."
   AWS_REGION: eu-west-1
 jobs:
-
   verify_module:
     name: Verify module
     strategy:
       matrix:
-        terraform: [1.0.8]    
+        terraform: [1.0.8]
     runs-on: ubuntu-latest
     container:
       image: hashicorp/terraform:${{ matrix.terraform }}
@@ -43,7 +42,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        terraform: [0.14.1, 0.15.0, 1.0.8]
+        terraform: [0.14.3, 0.15.5, 1.0.8]
         example: ["default", "ubuntu"]
     defaults:
       run:
@@ -51,7 +50,7 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: hashicorp/terraform:${{ matrix.terraform }}
-    steps:   
+    steps:
       - uses: actions/checkout@v2
       - name: terraform init
         run: terraform init -get -backend=false -input=false
@@ -61,5 +60,3 @@ jobs:
         continue-on-error: true
       - name: validate terraform
         run: terraform validate
-
-

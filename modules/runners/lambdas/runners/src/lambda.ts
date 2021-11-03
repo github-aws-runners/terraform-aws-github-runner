@@ -1,27 +1,31 @@
-import { scaleUp as scaleUpAction } from './scale-runners/scale-up';
-import { scaleDown as scaleDownAction } from './scale-runners/scale-down';
-import { SQSEvent, ScheduledEvent, Context } from 'aws-lambda';
+import { scaleUp } from './scale-runners/scale-up';
+import { scaleDown } from './scale-runners/scale-down';
+import { SQSEvent, ScheduledEvent, Context, Callback } from 'aws-lambda';
+import { logger } from './scale-runners/logger';
+import 'source-map-support/register';
 
-export const scaleUp = async (event: SQSEvent, context: Context, callback: any): Promise<void> => {
-  console.debug(JSON.stringify(event));
+export async function scaleUpHandler(event: SQSEvent, context: Context, callback: Callback): Promise<void> {
+  logger.setSettings({ requestId: context.awsRequestId });
+  logger.debug(JSON.stringify(event));
   try {
     for (const e of event.Records) {
-      await scaleUpAction(e.eventSource, JSON.parse(e.body));
+      await scaleUp(e.eventSource, JSON.parse(e.body));
     }
 
     callback(null);
   } catch (e) {
-    console.error(e);
+    logger.error(e);
     callback('Failed handling SQS event');
   }
-};
+}
 
-export const scaleDown = async (event: ScheduledEvent, context: Context, callback: any): Promise<void> => {
+export async function scaleDownHandler(event: ScheduledEvent, context: Context, callback: Callback): Promise<void> {
+  logger.setSettings({ requestId: context.awsRequestId });
   try {
-    await scaleDownAction();
+    await scaleDown();
     callback(null);
   } catch (e) {
-    console.error(e);
+    logger.error(e);
     callback('Failed');
   }
-};
+}

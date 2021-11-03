@@ -1,4 +1,7 @@
 import { EC2, SSM } from 'aws-sdk';
+import { logger as rootLogger } from './logger';
+
+const logger = rootLogger.getChildLogger();
 
 export interface RunnerList {
   instanceId: string;
@@ -72,16 +75,16 @@ export async function terminateRunner(instanceId: string): Promise<void> {
       InstanceIds: [instanceId],
     })
     .promise();
-  console.info(`Runner ${instanceId} has been terminated.`);
+  logger.info(`Runner ${instanceId} has been terminated.`);
 }
 
 export async function createRunner(runnerParameters: RunnerInputParameters, launchTemplateName: string): Promise<void> {
-  console.debug('Runner configuration: ' + JSON.stringify(runnerParameters));
+  logger.debug('Runner configuration: ' + JSON.stringify(runnerParameters));
   const ec2 = new EC2();
   const runInstancesResponse = await ec2
     .runInstances(getInstanceParams(launchTemplateName, runnerParameters))
     .promise();
-  console.info('Created instance(s): ', runInstancesResponse.Instances?.map((i) => i.InstanceId).join(','));
+  logger.info('Created instance(s): ', runInstancesResponse.Instances?.map((i) => i.InstanceId).join(','));
   const ssm = new SSM();
   runInstancesResponse.Instances?.forEach(async (i: EC2.Instance) => {
     await ssm

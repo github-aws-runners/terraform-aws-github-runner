@@ -26,6 +26,7 @@ describe('handler', () => {
     originalError = console.error;
     console.error = jest.fn();
     jest.clearAllMocks();
+    jest.resetAllMocks();
 
     const mockedGet = mocked(getParameterValue);
     mockedGet.mockResolvedValueOnce(GITHUB_APP_WEBHOOK_SECRET);

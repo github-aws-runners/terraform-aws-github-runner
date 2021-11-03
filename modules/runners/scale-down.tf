@@ -6,21 +6,24 @@ resource "aws_lambda_function" "scale_down" {
   source_code_hash  = var.lambda_s3_bucket == null ? filebase64sha256(local.lambda_zip) : null
   function_name     = "${var.environment}-scale-down"
   role              = aws_iam_role.scale_down.arn
-  handler           = "index.scaleDown"
+  handler           = "index.scaleDownHandler"
   runtime           = "nodejs14.x"
   timeout           = var.lambda_timeout_scale_down
   tags              = local.tags
+  memory_size       = 512
 
   environment {
     variables = {
       ENVIRONMENT                          = var.environment
-      MINIMUM_RUNNING_TIME_IN_MINUTES      = var.minimum_running_time_in_minutes
-      RUNNER_BOOT_TIME_IN_MINUTES          = var.runner_boot_time_in_minutes
-      SCALE_DOWN_CONFIG                    = jsonencode(var.idle_config)
       GHES_URL                             = var.ghes_url
+      LOG_LEVEL                            = var.log_level
+      LOG_TYPE                             = var.log_type
+      MINIMUM_RUNNING_TIME_IN_MINUTES      = var.minimum_running_time_in_minutes
       NODE_TLS_REJECT_UNAUTHORIZED         = var.ghes_url != null && !var.ghes_ssl_verify ? 0 : 1
       PARAMETER_GITHUB_APP_ID_NAME         = var.github_app_parameters.id.name
       PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.github_app_parameters.key_base64.name
+      RUNNER_BOOT_TIME_IN_MINUTES          = var.runner_boot_time_in_minutes
+      SCALE_DOWN_CONFIG                    = jsonencode(var.idle_config)
     }
   }
 

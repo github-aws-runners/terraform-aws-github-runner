@@ -64,6 +64,9 @@ module "webhook" {
   role_path                 = var.role_path
   role_permissions_boundary = var.role_permissions_boundary
   repository_white_list     = var.repository_white_list
+
+  log_type  = var.log_type
+  log_level = var.log_level
 }
 
 module "runners" {
@@ -133,6 +136,9 @@ module "runners" {
   ghes_ssl_verify = var.ghes_ssl_verify
 
   kms_key_arn = var.kms_key_arn
+
+  log_type  = var.log_type
+  log_level = var.log_level
 }
 
 module "runner_binaries" {
@@ -156,6 +162,9 @@ module "runner_binaries" {
 
   role_path                 = var.role_path
   role_permissions_boundary = var.role_permissions_boundary
+
+  log_type  = var.log_type
+  log_level = var.log_level
 }
 
 resource "aws_resourcegroups_group" "resourcegroups_group" {

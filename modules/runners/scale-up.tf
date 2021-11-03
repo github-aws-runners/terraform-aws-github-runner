@@ -6,10 +6,11 @@ resource "aws_lambda_function" "scale_up" {
   source_code_hash               = var.lambda_s3_bucket == null ? filebase64sha256(local.lambda_zip) : null
   function_name                  = "${var.environment}-scale-up"
   role                           = aws_iam_role.scale_up.arn
-  handler                        = "index.scaleUp"
+  handler                        = "index.scaleUpHandler"
   runtime                        = "nodejs14.x"
   timeout                        = var.lambda_timeout_scale_up
   reserved_concurrent_executions = 1
+  memory_size                    = 512
   tags                           = local.tags
 
   environment {
@@ -17,14 +18,16 @@ resource "aws_lambda_function" "scale_up" {
       ENABLE_ORGANIZATION_RUNNERS          = var.enable_organization_runners
       ENVIRONMENT                          = var.environment
       GHES_URL                             = var.ghes_url
+      LAUNCH_TEMPLATE_NAME                 = join(",", [for template in aws_launch_template.runner : template.name])
+      LOG_LEVEL                            = var.log_level
+      LOG_TYPE                             = var.log_type
       NODE_TLS_REJECT_UNAUTHORIZED         = var.ghes_url != null && !var.ghes_ssl_verify ? 0 : 1
+      PARAMETER_GITHUB_APP_ID_NAME         = var.github_app_parameters.id.name
+      PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.github_app_parameters.key_base64.name
       RUNNER_EXTRA_LABELS                  = var.runner_extra_labels
       RUNNER_GROUP_NAME                    = var.runner_group_name
       RUNNERS_MAXIMUM_COUNT                = var.runners_maximum_count
-      LAUNCH_TEMPLATE_NAME                 = join(",", [for template in aws_launch_template.runner : template.name])
       SUBNET_IDS                           = join(",", var.subnet_ids)
-      PARAMETER_GITHUB_APP_ID_NAME         = var.github_app_parameters.id.name
-      PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.github_app_parameters.key_base64.name
     }
   }
 
