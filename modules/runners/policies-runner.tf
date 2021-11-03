@@ -1,7 +1,7 @@
 data "aws_caller_identity" "current" {}
 
 resource "aws_iam_role" "runner" {
-  name                 = "${var.environment}-github-action-runners-runner-role"
+  name                 = "${var.environment}-runner-role"
   assume_role_policy   = templatefile("${path.module}/policies/instance-role-trust-policy.json", {})
   path                 = local.role_path
   permissions_boundary = var.role_permissions_boundary
@@ -9,7 +9,7 @@ resource "aws_iam_role" "runner" {
 }
 
 resource "aws_iam_instance_profile" "runner" {
-  name = "${var.environment}-github-action-runners-profile"
+  name = "${var.environment}-runner-profile"
   role = aws_iam_role.runner.name
   path = local.instance_profile_path
 }
