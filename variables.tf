@@ -111,6 +111,12 @@ variable "runner_binaries_syncer_lambda_timeout" {
   default     = 300
 }
 
+variable "runner_binaries_s3_sse_configuration" {
+  description = "Map containing server-side encryption configuration for runner-binaries S3 bucket."
+  type        = any
+  default     = {}
+}
+
 variable "role_permissions_boundary" {
   description = "Permissions boundary that will be added to the created roles."
   type        = string

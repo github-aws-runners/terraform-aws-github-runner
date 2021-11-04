@@ -39,6 +39,15 @@ module "runners" {
   # enable access to the runners via SSM
   enable_ssm_on_runners = true
 
+  # use S3 or KMS SSE to runners S3 bucket
+  # runner_binaries_s3_sse_configuration = {
+  #   rule = {
+  #     apply_server_side_encryption_by_default = {
+  #       sse_algorithm = "AES256"
+  #     }
+  #   }
+  # }
+
   # Uncommet idle config to have idle runners from 9 to 5 in time zone Amsterdam
   # idle_config = [{
   #   cron      = "* * 9-17 * * *"

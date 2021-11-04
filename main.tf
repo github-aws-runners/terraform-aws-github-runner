@@ -160,6 +160,8 @@ module "runner_binaries" {
   lambda_timeout                  = var.runner_binaries_syncer_lambda_timeout
   logging_retention_in_days       = var.logging_retention_in_days
 
+  server_side_encryption_configuration = var.runner_binaries_s3_sse_configuration
+
   role_path                 = var.role_path
   role_permissions_boundary = var.role_permissions_boundary
 

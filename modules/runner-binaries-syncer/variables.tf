@@ -17,11 +17,11 @@ variable "environment" {
 variable "distribution_bucket_name" {
   description = "Bucket for storing the action runner distribution."
   type        = string
-  
+
   # Make sure the bucket name only contains legal characters
   validation {
     error_message = "Only lowercase alphanumeric characters and hyphens allowed in the bucket name."
-    condition = can(regex("^[a-z0-9-]*$", var.distribution_bucket_name))
+    condition     = can(regex("^[a-z0-9-]*$", var.distribution_bucket_name))
   }
 }
 variable "lambda_schedule_expression" {
@@ -129,4 +129,10 @@ variable "log_level" {
     ])
     error_message = "`log_level` value not valid. Valid values are 'silly', 'trace', 'debug', 'info', 'warn', 'error', 'fatal'."
   }
+}
+
+variable "server_side_encryption_configuration" {
+  description = "Map containing server-side encryption configuration."
+  type        = any
+  default     = {}
 }
