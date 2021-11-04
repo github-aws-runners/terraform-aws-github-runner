@@ -450,3 +450,14 @@ variable "runner_ec2_tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "runner_metadata_options" {
+  description = "Metadata options for the ec2 runner instances."
+  type        = map(any)
+  default = {
+    http_endpoint               = "enabled"
+    http_tokens                 = "optional"
+    http_put_response_hop_limit = 1
+  }
+
+}
