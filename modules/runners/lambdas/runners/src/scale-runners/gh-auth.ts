@@ -53,7 +53,7 @@ async function createAuth(installationId: number | undefined, ghesApiUrl: string
       // processes private keys to retain compatibility between the projects
     )
       .toString()
-      .replace('/[\\n]/g', String.fromCharCode(13)),
+      .replace('/[\\n]/g', String.fromCharCode(10)),
   };
   if (installationId) authOptions = { ...authOptions, installationId };
 
