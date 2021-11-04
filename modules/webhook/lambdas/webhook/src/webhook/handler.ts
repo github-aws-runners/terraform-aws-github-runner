@@ -5,7 +5,12 @@ import { CheckRunEvent, WorkflowJobEvent } from '@octokit/webhooks-types';
 import { getParameterValue } from '../ssm';
 import { logger as rootLogger } from './logger';
 
-let logFields: string;
+interface LogFields {
+  [key: string]: string;
+}
+
+const logFields: LogFields = {};
+
 const supportedEvents = ['check_run', 'workflow_job'];
 const logger = rootLogger.getChildLogger();
 
@@ -22,17 +27,21 @@ export async function handle(headers: IncomingHttpHeaders, body: string): Promis
     return status;
   }
   const payload = JSON.parse(body);
-  logFields = `event=${githubEvent} repository=${payload.repository.full_name} action=${payload.action}`;
+
+  logFields.event = githubEvent;
+  logFields.repository = payload.repository.full_name;
+  logFields.action = payload.action;
 
   if (!supportedEvents.includes(githubEvent)) {
-    logger.error(`${logFields} Unsupported event type.`);
+    logger.error(logFields, `Unsupported event type.`);
     return status;
   }
 
-  logFields += ` name=${payload[githubEvent].name} status=${payload[githubEvent].status}`;
+  logFields.name = payload[githubEvent].name;
+  logFields.status = payload[githubEvent].status;
 
   if (payload[githubEvent].started_at) {
-    logFields += ` started_at=${payload[githubEvent].started_at}`;
+    logFields.started_at = payload[githubEvent].started_at;
   }
 
   /*
@@ -40,18 +49,18 @@ export async function handle(headers: IncomingHttpHeaders, body: string): Promis
   If the event status is `completed`, log the data for workflow metrics.
   */
   if (payload[githubEvent].completed_at) {
-    logFields += ` completed_at=${payload[githubEvent].completed_at}`;
+    logFields.completed_at = payload[githubEvent].completed_at;
   }
   if (payload[githubEvent].conclusion) {
-    logFields += ` conclusion=${payload[githubEvent].conclusion}`;
+    logFields.conclusion = payload[githubEvent].conclusion;
   }
 
   if (isRepoNotAllowed(payload.repository.full_name)) {
-    logger.error(`${logFields} Received event from unauthorized repository`);
+    logger.error(logFields, `Received event from unauthorized repository`);
     return 403;
   }
 
-  logger.info(`${logFields} Received Github event`);
+  logger.info(logFields, `Received Github event`);
 
   if (githubEvent == 'workflow_job') {
     status = await handleWorkflowJob(payload as WorkflowJobEvent, githubEvent);
@@ -64,7 +73,7 @@ export async function handle(headers: IncomingHttpHeaders, body: string): Promis
 
 async function verifySignature(githubEvent: string, signature: string, body: string): Promise<number> {
   if (!signature) {
-    logger.error(`${logFields} Github event doesn't have signature. This webhook requires a secret to be configured.`);
+    logger.error(logFields, `Github event doesn't have signature. This webhook requires a secret to be configured.`);
     return 500;
   }
 
@@ -74,7 +83,7 @@ async function verifySignature(githubEvent: string, signature: string, body: str
     secret: secret,
   });
   if (!(await webhooks.verify(body, signature))) {
-    logger.error(`${logFields} Unable to verify signature!`);
+    logger.error(logFields, `Unable to verify signature!`);
     return 401;
   }
   return 200;
@@ -84,7 +93,10 @@ async function handleWorkflowJob(body: WorkflowJobEvent, githubEvent: string): P
   const disableCheckWorkflowJobLabelsEnv = process.env.DISABLE_CHECK_WORKFLOW_JOB_LABELS || 'false';
   const disableCheckWorkflowJobLabels = JSON.parse(disableCheckWorkflowJobLabelsEnv) as boolean;
   if (!disableCheckWorkflowJobLabels && !canRunJob(body)) {
-    logger.error(`${logFields} Received event contains runner labels that are not accepted.`);
+    logger.error(
+      logFields,
+      `Received event contains runner labels '${body.workflow_job.labels}' that are not accepted.`,
+    );
     return 403;
   }
 
@@ -100,7 +112,7 @@ async function handleWorkflowJob(body: WorkflowJobEvent, githubEvent: string): P
       eventType: githubEvent,
       installationId: installationId,
     });
-    logger.info(`${logFields} Successfully queued job`);
+    logger.info(logFields, `Successfully queued job`);
   }
   return 200;
 }
@@ -118,7 +130,7 @@ async function handleCheckRun(body: CheckRunEvent, githubEvent: string): Promise
       eventType: githubEvent,
       installationId: installationId,
     });
-    logger.info(`${logFields} Successfully queued job`);
+    logger.info(logFields, `Successfully queued job`);
   }
   return 200;
 }
@@ -147,11 +159,10 @@ function canRunJob(job: WorkflowJobEvent): boolean {
   const runnerMatch = customWorkflowJobLabels.every((l) => runnerLabels.has(l));
 
   logger.debug(
-    `${logFields} Received workflow job event with labels: '${JSON.stringify(
-      job.workflow_job.labels,
-    )}'. The event does ${runnerMatch ? '' : 'NOT '}match the configured labels: '${Array.from(runnerLabels).join(
-      ',',
-    )}'`,
+    logFields,
+    `Received workflow job event with labels: '${JSON.stringify(job.workflow_job.labels)}'. The event does ${
+      runnerMatch ? '' : 'NOT '
+    }match the configured labels: '${Array.from(runnerLabels).join(',')}'`,
   );
   return runnerMatch;
 }
