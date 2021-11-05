@@ -38,12 +38,12 @@ describe('handler', () => {
 
   it('returns 500 if no signature available', async () => {
     const resp = await handle({}, '');
-    expect(resp).toBe(500);
+    expect(resp.statusCode).toBe(500);
   });
 
   it('returns 401 if signature is invalid', async () => {
     const resp = await handle({ 'X-Hub-Signature': 'bbb' }, 'aaaa');
-    expect(resp).toBe(401);
+    expect(resp.statusCode).toBe(401);
   });
 
   describe('Test for workflowjob event: ', () => {
@@ -56,14 +56,14 @@ describe('handler', () => {
         { 'X-Hub-Signature': await webhooks.sign(event), 'X-GitHub-Event': 'workflow_job' },
         event,
       );
-      expect(resp).toBe(200);
+      expect(resp.statusCode).toBe(201);
       expect(sendActionRequest).toBeCalled();
     });
 
     it('does not handle other events', async () => {
       const event = JSON.stringify(workflowjob_event);
       const resp = await handle({ 'X-Hub-Signature': await webhooks.sign(event), 'X-GitHub-Event': 'push' }, event);
-      expect(resp).toBe(200);
+      expect(resp.statusCode).toBe(202);
       expect(sendActionRequest).not.toBeCalled();
     });
 
@@ -73,7 +73,7 @@ describe('handler', () => {
         { 'X-Hub-Signature': await webhooks.sign(event), 'X-GitHub-Event': 'workflow_job' },
         event,
       );
-      expect(resp).toBe(200);
+      expect(resp.statusCode).toBe(201);
       expect(sendActionRequest).not.toBeCalled();
     });
 
@@ -83,7 +83,7 @@ describe('handler', () => {
         { 'X-Hub-Signature': await webhooks.sign(event), 'X-GitHub-Event': 'workflow_job' },
         event,
       );
-      expect(resp).toBe(200);
+      expect(resp.statusCode).toBe(201);
       expect(sendActionRequest).not.toBeCalled();
     });
 
@@ -94,7 +94,7 @@ describe('handler', () => {
         { 'X-Hub-Signature': await webhooks.sign(event), 'X-GitHub-Event': 'workflow_job' },
         event,
       );
-      expect(resp).toBe(403);
+      expect(resp.statusCode).toBe(403);
       expect(sendActionRequest).not.toBeCalled();
     });
 
@@ -105,7 +105,7 @@ describe('handler', () => {
         { 'X-Hub-Signature': await webhooks.sign(event), 'X-GitHub-Event': 'workflow_job' },
         event,
       );
-      expect(resp).toBe(200);
+      expect(resp.statusCode).toBe(201);
       expect(sendActionRequest).toBeCalled();
     });
 
@@ -122,7 +122,7 @@ describe('handler', () => {
         { 'X-Hub-Signature': await webhooks.sign(event), 'X-GitHub-Event': 'workflow_job' },
         event,
       );
-      expect(resp).toBe(200);
+      expect(resp.statusCode).toBe(201);
       expect(sendActionRequest).toBeCalled();
     });
 
@@ -139,7 +139,7 @@ describe('handler', () => {
         { 'X-Hub-Signature': await webhooks.sign(event), 'X-GitHub-Event': 'workflow_job' },
         event,
       );
-      expect(resp).toBe(200);
+      expect(resp.statusCode).toBe(201);
       expect(sendActionRequest).toBeCalled();
     });
 
@@ -156,7 +156,7 @@ describe('handler', () => {
         { 'X-Hub-Signature': await webhooks.sign(event), 'X-GitHub-Event': 'workflow_job' },
         event,
       );
-      expect(resp).toBe(200);
+      expect(resp.statusCode).toBe(201);
       expect(sendActionRequest).toBeCalled();
     });
 
@@ -173,7 +173,7 @@ describe('handler', () => {
         { 'X-Hub-Signature': await webhooks.sign(event), 'X-GitHub-Event': 'workflow_job' },
         event,
       );
-      expect(resp).toBe(200);
+      expect(resp.statusCode).toBe(201);
       expect(sendActionRequest).toBeCalled();
     });
 
@@ -191,7 +191,7 @@ describe('handler', () => {
         { 'X-Hub-Signature': await webhooks.sign(event), 'X-GitHub-Event': 'workflow_job' },
         event,
       );
-      expect(resp).toBe(200);
+      expect(resp.statusCode).toBe(201);
       expect(sendActionRequest).toBeCalled();
     });
     it('Check not allowed runner label is declined', async () => {
@@ -207,7 +207,7 @@ describe('handler', () => {
         { 'X-Hub-Signature': await webhooks.sign(event), 'X-GitHub-Event': 'workflow_job' },
         event,
       );
-      expect(resp).toBe(403);
+      expect(resp.statusCode).toBe(202);
       expect(sendActionRequest).not.toBeCalled();
     });
   });
@@ -219,7 +219,7 @@ describe('handler', () => {
         { 'X-Hub-Signature': await webhooks.sign(event), 'X-GitHub-Event': 'check_run' },
         event,
       );
-      expect(resp).toBe(200);
+      expect(resp.statusCode).toBe(201);
       expect(sendActionRequest).toBeCalled();
     });
 
@@ -229,7 +229,7 @@ describe('handler', () => {
         { 'X-Hub-Signature': await webhooks.sign(event), 'X-GitHub-Event': 'check_run' },
         event,
       );
-      expect(resp).toBe(200);
+      expect(resp.statusCode).toBe(201);
       expect(sendActionRequest).not.toBeCalled();
     });
 
@@ -239,7 +239,7 @@ describe('handler', () => {
         { 'X-Hub-Signature': await webhooks.sign(event), 'X-GitHub-Event': 'check_run' },
         event,
       );
-      expect(resp).toBe(200);
+      expect(resp.statusCode).toBe(201);
       expect(sendActionRequest).not.toBeCalled();
     });
 
@@ -250,7 +250,7 @@ describe('handler', () => {
         { 'X-Hub-Signature': await webhooks.sign(event), 'X-GitHub-Event': 'check_run' },
         event,
       );
-      expect(resp).toBe(403);
+      expect(resp.statusCode).toBe(403);
       expect(sendActionRequest).not.toBeCalled();
     });
 
@@ -261,7 +261,7 @@ describe('handler', () => {
         { 'X-Hub-Signature': await webhooks.sign(event), 'X-GitHub-Event': 'check_run' },
         event,
       );
-      expect(resp).toBe(200);
+      expect(resp.statusCode).toBe(201);
       expect(sendActionRequest).toBeCalled();
     });
   });
