@@ -4,20 +4,20 @@ import { listEC2Runners, RunnerInfo, RunnerList, terminateRunner } from './runne
 import { getIdleRunnerCount, ScalingDownConfig } from './scale-down-config';
 import { createOctoClient, createGithubAppAuth, createGithubInstallationAuth } from './gh-auth';
 import { githubCache, GhRunners } from './cache';
-import { logger as rootLogger } from './logger';
+import { logger as rootLogger, LogFields } from './logger';
 
-const logger = rootLogger.getChildLogger();
+const logger = rootLogger.getChildLogger({ name: 'scale-down' });
 
 async function getOrCreateOctokit(runner: RunnerInfo): Promise<Octokit> {
   const key = runner.owner;
   const cachedOctokit = githubCache.clients.get(key);
 
   if (cachedOctokit) {
-    logger.debug(`[createGitHubClientForRunner] Cache hit for ${key}`);
+    logger.debug(LogFields.fields, `[createGitHubClientForRunner] Cache hit for ${key}`);
     return cachedOctokit;
   }
 
-  logger.debug(`[createGitHubClientForRunner] Cache miss for ${key}`);
+  logger.debug(LogFields.fields, `[createGitHubClientForRunner] Cache miss for ${key}`);
   const ghesBaseUrl = process.env.GHES_URL;
   let ghesApiUrl = '';
   if (ghesBaseUrl) {
@@ -50,11 +50,11 @@ async function listGitHubRunners(runner: RunnerInfo): Promise<GhRunners> {
   const key = runner.owner as string;
   const cachedRunners = githubCache.runners.get(key);
   if (cachedRunners) {
-    logger.debug(`[listGithubRunners] Cache hit for ${key}`);
+    logger.debug(LogFields.fields, `[listGithubRunners] Cache hit for ${key}`);
     return cachedRunners;
   }
 
-  logger.debug(`[listGithubRunners] Cache miss for ${key}`);
+  logger.debug(LogFields.fields, `[listGithubRunners] Cache miss for ${key}`);
   const client = await getOrCreateOctokit(runner);
   const runners =
     runner.type === 'Org'
@@ -102,12 +102,18 @@ async function removeRunner(ec2runner: RunnerInfo, ghRunnerId: number): Promise<
 
     if (result.status == 204) {
       await terminateRunner(ec2runner.instanceId);
-      logger.info(`AWS runner instance '${ec2runner.instanceId}' is terminated and GitHub runner is de-registered.`);
+      logger.info(
+        LogFields.fields,
+        `AWS runner instance '${ec2runner.instanceId}' is terminated and GitHub runner is de-registered.`,
+      );
     } else {
-      logger.error(`Failed to de-register GitHub runner: ${result.status}`);
+      logger.error(LogFields.fields, `Failed to de-register GitHub runner: ${result.status}`);
     }
   } catch (e) {
-    logger.info(`Runner '${ec2runner.instanceId}' cannot be de-registered, most likely the runner is active.`);
+    logger.info(
+      LogFields.fields,
+      `Runner '${ec2runner.instanceId}' cannot be de-registered, most likely the runner is active.`,
+    );
   }
 }
 
@@ -120,7 +126,10 @@ async function evaluateAndRemoveRunners(
 
   for (const ownerTag of ownerTags) {
     const ec2RunnersFiltered = ec2Runners.filter((runner) => runner.owner === ownerTag);
-    logger.debug(`Found: '${ec2RunnersFiltered.length}' active GitHub runners with owner tag: '${ownerTag}'`);
+    logger.debug(
+      LogFields.fields,
+      `Found: '${ec2RunnersFiltered.length}' active GitHub runners with owner tag: '${ownerTag}'`,
+    );
     for (const ec2Runner of ec2RunnersFiltered) {
       const ghRunners = await listGitHubRunners(ec2Runner);
       const ghRunner = ghRunners.find((runner) => runner.name === ec2Runner.instanceId);
@@ -128,18 +137,18 @@ async function evaluateAndRemoveRunners(
         if (runnerMinimumTimeExceeded(ec2Runner)) {
           if (idleCounter > 0) {
             idleCounter--;
-            logger.info(`Runner '${ec2Runner.instanceId}' will kept idle.`);
+            logger.info(LogFields.fields, `Runner '${ec2Runner.instanceId}' will kept idle.`);
           } else {
-            logger.info(`Runner '${ec2Runner.instanceId}' will be terminated.`);
+            logger.info(LogFields.fields, `Runner '${ec2Runner.instanceId}' will be terminated.`);
             await removeRunner(ec2Runner, ghRunner.id);
           }
         }
       } else {
         if (bootTimeExceeded(ec2Runner)) {
-          logger.info(`Runner '${ec2Runner.instanceId}' is orphaned and will be removed.`);
+          logger.info(LogFields.fields, `Runner '${ec2Runner.instanceId}' is orphaned and will be removed.`);
           terminateOrphan(ec2Runner.instanceId);
         } else {
-          logger.debug(`Runner ${ec2Runner.instanceId} has not yet booted.`);
+          logger.debug(LogFields.fields, `Runner ${ec2Runner.instanceId} has not yet booted.`);
         }
       }
     }

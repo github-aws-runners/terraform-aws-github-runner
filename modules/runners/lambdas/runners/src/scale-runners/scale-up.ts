@@ -2,9 +2,9 @@ import { listEC2Runners, createRunner, RunnerInputParameters } from './runners';
 import { createOctoClient, createGithubAppAuth, createGithubInstallationAuth } from './gh-auth';
 import yn from 'yn';
 import { Octokit } from '@octokit/rest';
-import { logger as rootLogger } from './logger';
+import { logger as rootLogger, LogFields } from './logger';
 
-const logger = rootLogger.getChildLogger();
+const logger = rootLogger.getChildLogger({ name: 'scale-up' });
 
 export interface ActionRequestMessage {
   id: number;
@@ -23,7 +23,16 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
   const environment = process.env.ENVIRONMENT;
   const ghesBaseUrl = process.env.GHES_URL;
 
-  console.info(`Received ${payload.eventType} from ${payload.repositoryOwner}/${payload.repositoryName}`);
+  const runnerType = enableOrgLevel ? 'Org' : 'Repo';
+  const runnerOwner = enableOrgLevel ? payload.repositoryOwner : `${payload.repositoryOwner}/${payload.repositoryName}`;
+
+  LogFields.fields = {};
+  LogFields.fields.runnerType = runnerType;
+  LogFields.fields.runnerOwner = runnerOwner;
+  LogFields.fields.event = payload.eventType;
+  LogFields.fields.id = payload.id.toString();
+
+  console.info(LogFields.fields, `Received event`);
 
   let ghesApiUrl = '';
   if (ghesBaseUrl) {
@@ -50,8 +59,6 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
 
   const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl);
   const githubInstallationClient = await createOctoClient(ghAuth.token, ghesApiUrl);
-  const runnerType = enableOrgLevel ? 'Org' : 'Repo';
-  const runnerOwner = enableOrgLevel ? payload.repositoryOwner : `${payload.repositoryOwner}/${payload.repositoryName}`;
 
   const isQueued = await getJobStatus(githubInstallationClient, payload);
   if (isQueued) {
@@ -60,7 +67,7 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
       runnerType,
       runnerOwner,
     });
-    logger.info(`${runnerType} ${runnerOwner} has ${currentRunners.length}/${maximumRunners} runners`);
+    logger.info(LogFields.fields, `Current runners: ${currentRunners.length} of ${maximumRunners}`);
 
     if (currentRunners.length < maximumRunners) {
       console.info(`Attempting to launch a new runner`);
@@ -87,7 +94,7 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
         runnerType,
       });
     } else {
-      logger.info('No runner will be created, maximum number of runners reached.');
+      logger.info(LogFields.fields, 'No runner will be created, maximum number of runners reached.');
     }
   }
 }
@@ -112,7 +119,7 @@ async function getJobStatus(githubInstallationClient: Octokit, payload: ActionRe
     throw Error(`Event ${payload.eventType} is not supported`);
   }
   if (!isQueued) {
-    logger.info(`Job ${payload.id} is not queued`);
+    logger.info(LogFields.fields, `Job not queued`);
   }
   return isQueued;
 }
@@ -121,13 +128,13 @@ export async function createRunnerLoop(runnerParameters: RunnerInputParameters):
   const launchTemplateNames = process.env.LAUNCH_TEMPLATE_NAME?.split(',') as string[];
   let launched = false;
   for (let i = 0; i < launchTemplateNames.length; i++) {
-    logger.info(`Attempt '${i}' to launch instance using ${launchTemplateNames[i]}.`);
+    logger.info(LogFields.fields, `Attempt '${i}' to launch instance using ${launchTemplateNames[i]}.`);
     try {
       await createRunner(runnerParameters, launchTemplateNames[i]);
       launched = true;
       break;
     } catch (error) {
-      logger.debug(`Attempt '${i}' to launch instance using ${launchTemplateNames[i]} FAILED.`);
+      logger.debug(LogFields.fields, `Attempt '${i}' to launch instance using ${launchTemplateNames[i]} FAILED.`);
       logger.error(error);
     }
   }
