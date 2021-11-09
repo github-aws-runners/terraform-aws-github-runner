@@ -71,6 +71,34 @@ describe('Test createGithubAppAuth', () => {
     process.env.ENVIRONMENT = ENVIRONMENT;
   });
 
+  test('Creates auth object with line breaks in SSH key.', async () => {
+    // Arrange
+    const authOptions = {
+      appId: parseInt(GITHUB_APP_ID),
+      privateKey: `${decryptedValue}
+${decryptedValue}`,
+      installationId,
+    };
+
+    const b64PrivateKeyWithLineBreaks = Buffer.from(decryptedValue + '\n' + decryptedValue, 'binary').toString(
+      'base64',
+    );
+    mockedGet.mockResolvedValueOnce(GITHUB_APP_ID).mockResolvedValueOnce(b64PrivateKeyWithLineBreaks);
+
+    const mockedAuth = jest.fn();
+    mockedAuth.mockResolvedValue({ token });
+    mockedCreatAppAuth.mockImplementation(() => {
+      return mockedAuth;
+    });
+
+    // Act
+    await createGithubAppAuth(installationId);
+
+    // Assert
+    expect(mockedCreatAppAuth).toBeCalledTimes(1);
+    expect(mockedCreatAppAuth).toBeCalledWith(authOptions);
+  });
+
   test('Creates auth object for public GitHub', async () => {
     // Arrange
     const authOptions = {
