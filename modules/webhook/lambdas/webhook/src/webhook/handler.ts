@@ -4,6 +4,7 @@ import { sendActionRequest } from '../sqs';
 import { CheckRunEvent, WorkflowJobEvent } from '@octokit/webhooks-types';
 import { getParameterValue } from '../ssm';
 import { logger as rootLogger } from './logger';
+import { Response } from '../lambda';
 
 interface LogFields {
   [key: string]: string;
@@ -14,7 +15,7 @@ const logFields: LogFields = {};
 const supportedEvents = ['check_run', 'workflow_job'];
 const logger = rootLogger.getChildLogger();
 
-export async function handle(headers: IncomingHttpHeaders, body: string): Promise<number> {
+export async function handle(headers: IncomingHttpHeaders, body: string): Promise<Response> {
   // ensure header keys lower case since github headers can contain capitals.
   for (const key in headers) {
     headers[key.toLowerCase()] = headers[key];
@@ -22,9 +23,12 @@ export async function handle(headers: IncomingHttpHeaders, body: string): Promis
 
   const githubEvent = headers['x-github-event'] as string;
 
-  let status = await verifySignature(githubEvent, headers['x-hub-signature'] as string, body);
-  if (status != 200) {
-    return status;
+  let response: Response = {
+    statusCode: await verifySignature(githubEvent, headers['x-hub-signature'] as string, body),
+  };
+
+  if (response.statusCode != 200) {
+    return response;
   }
   const payload = JSON.parse(body);
 
@@ -34,7 +38,10 @@ export async function handle(headers: IncomingHttpHeaders, body: string): Promis
 
   if (!supportedEvents.includes(githubEvent)) {
     logger.error(logFields, `Unsupported event type.`);
-    return status;
+    return {
+      statusCode: 202,
+      body: `Ignoring unsupported event ${githubEvent}`,
+    };
   }
 
   logFields.name = payload[githubEvent].name;
@@ -57,18 +64,20 @@ export async function handle(headers: IncomingHttpHeaders, body: string): Promis
 
   if (isRepoNotAllowed(payload.repository.full_name)) {
     logger.error(logFields, `Received event from unauthorized repository`);
-    return 403;
+    return {
+      statusCode: 403,
+    };
   }
 
   logger.info(logFields, `Received Github event`);
 
   if (githubEvent == 'workflow_job') {
-    status = await handleWorkflowJob(payload as WorkflowJobEvent, githubEvent);
+    response = await handleWorkflowJob(payload as WorkflowJobEvent, githubEvent);
   } else if (githubEvent == 'check_run') {
-    status = await handleCheckRun(payload as CheckRunEvent, githubEvent);
+    response = await handleCheckRun(payload as CheckRunEvent, githubEvent);
   }
 
-  return status;
+  return response;
 }
 
 async function verifySignature(githubEvent: string, signature: string, body: string): Promise<number> {
@@ -89,7 +98,7 @@ async function verifySignature(githubEvent: string, signature: string, body: str
   return 200;
 }
 
-async function handleWorkflowJob(body: WorkflowJobEvent, githubEvent: string): Promise<number> {
+async function handleWorkflowJob(body: WorkflowJobEvent, githubEvent: string): Promise<Response> {
   const disableCheckWorkflowJobLabelsEnv = process.env.DISABLE_CHECK_WORKFLOW_JOB_LABELS || 'false';
   const disableCheckWorkflowJobLabels = JSON.parse(disableCheckWorkflowJobLabelsEnv) as boolean;
   if (!disableCheckWorkflowJobLabels && !canRunJob(body)) {
@@ -97,7 +106,10 @@ async function handleWorkflowJob(body: WorkflowJobEvent, githubEvent: string): P
       logFields,
       `Received event contains runner labels '${body.workflow_job.labels}' that are not accepted.`,
     );
-    return 403;
+    return {
+      statusCode: 202,
+      body: `Received event contains runner labels '${body.workflow_job.labels}' that are not accepted.`,
+    };
   }
 
   let installationId = body.installation?.id;
@@ -114,10 +126,10 @@ async function handleWorkflowJob(body: WorkflowJobEvent, githubEvent: string): P
     });
     logger.info(logFields, `Successfully queued job`);
   }
-  return 200;
+  return { statusCode: 201 };
 }
 
-async function handleCheckRun(body: CheckRunEvent, githubEvent: string): Promise<number> {
+async function handleCheckRun(body: CheckRunEvent, githubEvent: string): Promise<Response> {
   let installationId = body.installation?.id;
   if (installationId == null) {
     installationId = 0;
@@ -132,7 +144,7 @@ async function handleCheckRun(body: CheckRunEvent, githubEvent: string): Promise
     });
     logger.info(logFields, `Successfully queued job`);
   }
-  return 200;
+  return { statusCode: 201 };
 }
 
 function isRepoNotAllowed(repo_full_name: string): boolean {
