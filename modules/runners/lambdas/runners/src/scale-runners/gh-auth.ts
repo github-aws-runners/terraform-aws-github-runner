@@ -51,7 +51,12 @@ async function createAuth(installationId: number | undefined, ghesApiUrl: string
     privateKey: Buffer.from(
       await getParameterValue(process.env.PARAMETER_GITHUB_APP_KEY_BASE64_NAME),
       'base64',
-    ).toString(),
+      // replace literal \n characters with new lines to allow the key to be stored as a
+      // single line variable. This logic should match how the GitHub Terraform provider
+      // processes private keys to retain compatibility between the projects
+    )
+      .toString()
+      .replace('/[\\n]/g', String.fromCharCode(10)),
   };
   if (installationId) authOptions = { ...authOptions, installationId };
 
