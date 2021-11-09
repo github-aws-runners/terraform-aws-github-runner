@@ -93,9 +93,12 @@ async function verifySignature(githubEvent: string, signature: string, body: str
   });
   if (!(await webhooks.verify(body, signature))) {
     logger.error(logFields, `Unable to verify signature!`);
-    return 401;
+    return {
+      statusCode: 401,
+      body: `Unable to verify signature`,
+    };
   }
-  return 200;
+  return {statusCode: 201};
 }
 
 async function handleWorkflowJob(body: WorkflowJobEvent, githubEvent: string): Promise<Response> {
