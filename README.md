@@ -24,8 +24,6 @@ This [Terraform](https://www.terraform.io/) module creates the required infrastr
 - [Providers](#providers)
 - [Modules](#modules)
 - [Resources](#resources)
-- [Modules](#modules-1)
-- [Resources](#resources-1)
 - [Inputs](#inputs)
 - [Outputs](#outputs)
 - [Contribution](#contribution)
