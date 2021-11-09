@@ -1,4 +1,4 @@
-import { Logger, ISettingsParam } from 'tslog';
+import { Logger } from 'tslog';
 
 export const logger = new Logger({
   colorizePrettyLogs: false,
