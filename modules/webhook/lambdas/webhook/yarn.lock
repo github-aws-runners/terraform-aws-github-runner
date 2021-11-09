@@ -3664,10 +3664,10 @@ negotiator@0.6.2:
   resolved "https://registry.yarnpkg.com/negotiator/-/negotiator-0.6.2.tgz#feacf7ccf525a77ae9634436a64883ffeca346fb"
   integrity sha512-hZXc7K2e+PgeI1eDBe/10Ard4ekbfrrqG8Ep+8Jmf4JID2bNg7NvCPOZN+kfF574pFQI7mum2AUqDidoKqcTOw==
 
-nock@^13.1.4:
-  version "13.1.4"
-  resolved "https://registry.yarnpkg.com/nock/-/nock-13.1.4.tgz#367c917d4c532a889404b85ade92762c29e80262"
-  integrity sha512-hr5+mknLpIbTOXifB13lx9mAKF1zQPUCMh53Galx79ic5opvNOd55jiB0iGCp2xqh+hwnFbNE/ddBKHsJNQrbw==
+nock@^13.2.0:
+  version "13.2.0"
+  resolved "https://registry.yarnpkg.com/nock/-/nock-13.2.0.tgz#1da976e809cb082e3acb65de9ea7839cdd115d3e"
+  integrity sha512-j7xjoMU9ZnvkTeoLnD2gIXNlwmLb+GNCPbnqtx7IwlNvdBBqU5aaQPK4Nw6lNmqIJkBubyka6rvrZuDNz1L7Ew==
   dependencies:
     debug "^4.1.0"
     json-stringify-safe "^5.0.1"
