@@ -39,21 +39,14 @@ export async function handle(headers: IncomingHttpHeaders, body: string): Promis
 
   LogFields.fields.name = payload[githubEvent].name;
   LogFields.fields.status = payload[githubEvent].status;
-
-  if (payload[githubEvent].started_at) {
-    LogFields.fields.started_at = payload[githubEvent].started_at;
-  }
+  LogFields.fields.started_at = payload[githubEvent]?.started_at;
 
   /*
   The app subscribes to all `check_run` and `workflow_job` events.
   If the event status is `completed`, log the data for workflow metrics.
   */
-  if (payload[githubEvent].completed_at) {
-    LogFields.fields.completed_at = payload[githubEvent].completed_at;
-  }
-  if (payload[githubEvent].conclusion) {
-    LogFields.fields.conclusion = payload[githubEvent].conclusion;
-  }
+  LogFields.fields.completed_at = payload[githubEvent]?.completed_at;
+  LogFields.fields.conclusion = payload[githubEvent]?.conclusion;
 
   if (isRepoNotAllowed(payload.repository.full_name)) {
     logger.error(LogFields.fields, `Received event from unauthorized repository ${payload.repository.full_name}`);
