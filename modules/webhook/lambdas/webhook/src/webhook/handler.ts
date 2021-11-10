@@ -30,7 +30,7 @@ export async function handle(headers: IncomingHttpHeaders, body: string): Promis
   LogFields.fields.action = payload.action;
 
   if (!supportedEvents.includes(githubEvent)) {
-    logger.error(LogFields.fields, `Unsupported event type.`);
+    logger.warn(LogFields.fields, `Unsupported event type.`);
     return {
       statusCode: 202,
       body: `Ignoring unsupported event ${githubEvent}`,
