@@ -62,7 +62,7 @@ export async function handle(headers: IncomingHttpHeaders, body: string): Promis
     };
   }
 
-  logger.info(LogFields.fields, `Received Github event`);
+  logger.info(LogFields.fields, `Processing Github event`);
 
   if (githubEvent == 'workflow_job') {
     response = await handleWorkflowJob(payload as WorkflowJobEvent, githubEvent);
