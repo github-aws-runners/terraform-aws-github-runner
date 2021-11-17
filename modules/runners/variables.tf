@@ -163,6 +163,12 @@ variable "lambda_timeout_scale_down" {
   default     = 60
 }
 
+variable "scale_up_reserved_concurrent_executions" {
+  description = "Amount of reserved concurrent executions for the scale-up lambda function. A value of 0 disables lambda from being triggered and -1 removes any concurrency limitations."
+  type        = number
+  default     = 1
+}
+
 variable "lambda_timeout_scale_up" {
   description = "Time out for the scale up lambda in seconds."
   type        = number

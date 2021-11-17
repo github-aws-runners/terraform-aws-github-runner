@@ -69,6 +69,12 @@ variable "runner_group_name" {
   default     = "Default"
 }
 
+variable "scale_up_reserved_concurrent_executions" {
+  description = "Amount of reserved concurrent executions for the scale-up lambda function. A value of 0 disables lambda from being triggered and -1 removes any concurrency limitations."
+  type        = number
+  default     = 1
+}
+
 variable "webhook_lambda_zip" {
   description = "File location of the webhook lambda zip file."
   type        = string

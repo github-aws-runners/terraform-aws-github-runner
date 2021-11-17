@@ -119,6 +119,8 @@ module "runners" {
   runner_log_files                 = var.runner_log_files
   runner_group_name                = var.runner_group_name
 
+  scale_up_reserved_concurrent_executions = var.scale_up_reserved_concurrent_executions
+
   instance_profile_path     = var.instance_profile_path
   role_path                 = var.role_path
   role_permissions_boundary = var.role_permissions_boundary
