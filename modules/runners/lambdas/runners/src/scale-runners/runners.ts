@@ -75,19 +75,19 @@ export async function terminateRunner(instanceId: string): Promise<void> {
       InstanceIds: [instanceId],
     })
     .promise();
-  logger.info(LogFields.fields, `Runner ${instanceId} has been terminated.`);
+  logger.info(`Runner ${instanceId} has been terminated.`, LogFields.print());
 }
 
 export async function createRunner(runnerParameters: RunnerInputParameters, launchTemplateName: string): Promise<void> {
-  logger.debug(LogFields.fields, 'Runner configuration: ' + JSON.stringify(runnerParameters));
+  logger.debug('Runner configuration: ' + JSON.stringify(runnerParameters), LogFields.print());
   const ec2 = new EC2();
   const runInstancesResponse = await ec2
     .runInstances(getInstanceParams(launchTemplateName, runnerParameters))
     .promise();
   logger.info(
-    LogFields.fields,
     'Created instance(s): ',
     runInstancesResponse.Instances?.map((i) => i.InstanceId).join(','),
+    LogFields.print(),
   );
   const ssm = new SSM();
   runInstancesResponse.Instances?.forEach(async (i: EC2.Instance) => {

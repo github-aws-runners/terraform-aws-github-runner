@@ -13,11 +13,11 @@ async function getOrCreateOctokit(runner: RunnerInfo): Promise<Octokit> {
   const cachedOctokit = githubCache.clients.get(key);
 
   if (cachedOctokit) {
-    logger.debug(LogFields.fields, `[createGitHubClientForRunner] Cache hit for ${key}`);
+    logger.debug(`[createGitHubClientForRunner] Cache hit for ${key}`, LogFields.print());
     return cachedOctokit;
   }
 
-  logger.debug(LogFields.fields, `[createGitHubClientForRunner] Cache miss for ${key}`);
+  logger.debug(`[createGitHubClientForRunner] Cache miss for ${key}`, LogFields.print());
   const ghesBaseUrl = process.env.GHES_URL;
   let ghesApiUrl = '';
   if (ghesBaseUrl) {
@@ -50,11 +50,11 @@ async function listGitHubRunners(runner: RunnerInfo): Promise<GhRunners> {
   const key = runner.owner as string;
   const cachedRunners = githubCache.runners.get(key);
   if (cachedRunners) {
-    logger.debug(LogFields.fields, `[listGithubRunners] Cache hit for ${key}`);
+    logger.debug(`[listGithubRunners] Cache hit for ${key}`, LogFields.print());
     return cachedRunners;
   }
 
-  logger.debug(LogFields.fields, `[listGithubRunners] Cache miss for ${key}`);
+  logger.debug(`[listGithubRunners] Cache miss for ${key}`, LogFields.print());
   const client = await getOrCreateOctokit(runner);
   const runners =
     runner.type === 'Org'
@@ -103,16 +103,16 @@ async function removeRunner(ec2runner: RunnerInfo, ghRunnerId: number): Promise<
     if (result.status == 204) {
       await terminateRunner(ec2runner.instanceId);
       logger.info(
-        LogFields.fields,
         `AWS runner instance '${ec2runner.instanceId}' is terminated and GitHub runner is de-registered.`,
+        LogFields.print(),
       );
     } else {
-      logger.error(LogFields.fields, `Failed to de-register GitHub runner: ${result.status}`);
+      logger.error(`Failed to de-register GitHub runner: ${result.status}`, LogFields.print());
     }
   } catch (e) {
     logger.info(
-      LogFields.fields,
       `Runner '${ec2runner.instanceId}' cannot be de-registered, most likely the runner is active.`,
+      LogFields.print(),
     );
   }
 }
@@ -127,8 +127,8 @@ async function evaluateAndRemoveRunners(
   for (const ownerTag of ownerTags) {
     const ec2RunnersFiltered = ec2Runners.filter((runner) => runner.owner === ownerTag);
     logger.debug(
-      LogFields.fields,
       `Found: '${ec2RunnersFiltered.length}' active GitHub runners with owner tag: '${ownerTag}'`,
+      LogFields.print(),
     );
     for (const ec2Runner of ec2RunnersFiltered) {
       const ghRunners = await listGitHubRunners(ec2Runner);
@@ -137,18 +137,18 @@ async function evaluateAndRemoveRunners(
         if (runnerMinimumTimeExceeded(ec2Runner)) {
           if (idleCounter > 0) {
             idleCounter--;
-            logger.info(LogFields.fields, `Runner '${ec2Runner.instanceId}' will kept idle.`);
+            logger.info(`Runner '${ec2Runner.instanceId}' will kept idle.`, LogFields.print());
           } else {
-            logger.info(LogFields.fields, `Runner '${ec2Runner.instanceId}' will be terminated.`);
+            logger.info(`Runner '${ec2Runner.instanceId}' will be terminated.`, LogFields.print());
             await removeRunner(ec2Runner, ghRunner.id);
           }
         }
       } else {
         if (bootTimeExceeded(ec2Runner)) {
-          logger.info(LogFields.fields, `Runner '${ec2Runner.instanceId}' is orphaned and will be removed.`);
+          logger.info(`Runner '${ec2Runner.instanceId}' is orphaned and will be removed.`, LogFields.print());
           terminateOrphan(ec2Runner.instanceId);
         } else {
-          logger.debug(LogFields.fields, `Runner ${ec2Runner.instanceId} has not yet booted.`);
+          logger.debug(`Runner ${ec2Runner.instanceId} has not yet booted.`, LogFields.print());
         }
       }
     }
@@ -159,7 +159,7 @@ async function terminateOrphan(instanceId: string): Promise<void> {
   try {
     await terminateRunner(instanceId);
   } catch (e) {
-    logger.debug(`Orphan runner '${instanceId}' cannot be removed.`);
+    logger.debug(`Orphan runner '${instanceId}' cannot be removed.`, LogFields.print());
   }
 }
 
@@ -204,19 +204,25 @@ export async function scaleDown(): Promise<void> {
   // list and sort runners, newest first. This ensure we keep the newest runners longer.
   const ec2Runners = await listAndSortRunners(environment);
   const activeEc2RunnersCount = ec2Runners.length;
-  logger.info(`Found: '${activeEc2RunnersCount}' active GitHub EC2 runner instances before clean-up.`);
+  logger.info(
+    `Found: '${activeEc2RunnersCount}' active GitHub EC2 runner instances before clean-up.`,
+    LogFields.print(),
+  );
 
   if (activeEc2RunnersCount === 0) {
-    logger.debug(`No active runners found for environment: '${environment}'`);
+    logger.debug(`No active runners found for environment: '${environment}'`, LogFields.print());
     return;
   }
   const legacyRunners = filterLegacyRunners(ec2Runners);
-  logger.debug(JSON.stringify(legacyRunners));
+  logger.debug(JSON.stringify(legacyRunners), LogFields.print());
   const runners = filterRunners(ec2Runners);
 
   await evaluateAndRemoveRunners(runners, scaleDownConfigs);
   await evaluateAndRemoveRunners(legacyRunners, scaleDownConfigs);
 
   const activeEc2RunnersCountAfter = (await listAndSortRunners(environment)).length;
-  logger.info(`Found: '${activeEc2RunnersCountAfter}' active GitHub EC2 runners instances after clean-up.`);
+  logger.info(
+    `Found: '${activeEc2RunnersCountAfter}' active GitHub EC2 runners instances after clean-up.`,
+    LogFields.print(),
+  );
 }

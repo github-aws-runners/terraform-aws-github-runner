@@ -32,7 +32,7 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
   LogFields.fields.event = payload.eventType;
   LogFields.fields.id = payload.id.toString();
 
-  console.info(LogFields.fields, `Received event`);
+  logger.info(`Received event`, LogFields.print());
 
   let ghesApiUrl = '';
   if (ghesBaseUrl) {
@@ -67,10 +67,10 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
       runnerType,
       runnerOwner,
     });
-    logger.info(LogFields.fields, `Current runners: ${currentRunners.length} of ${maximumRunners}`);
+    logger.info(`Current runners: ${currentRunners.length} of ${maximumRunners}`, LogFields.print());
 
     if (currentRunners.length < maximumRunners) {
-      console.info(`Attempting to launch a new runner`);
+      logger.info(`Attempting to launch a new runner`, LogFields.print());
       // create token
       const registrationToken = enableOrgLevel
         ? await githubInstallationClient.actions.createRegistrationTokenForOrg({ org: payload.repositoryOwner })
@@ -94,7 +94,7 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
         runnerType,
       });
     } else {
-      logger.info(LogFields.fields, 'No runner will be created, maximum number of runners reached.');
+      logger.info('No runner will be created, maximum number of runners reached.', LogFields.print());
     }
   }
 }
@@ -119,7 +119,7 @@ async function getJobStatus(githubInstallationClient: Octokit, payload: ActionRe
     throw Error(`Event ${payload.eventType} is not supported`);
   }
   if (!isQueued) {
-    logger.info(LogFields.fields, `Job not queued`);
+    logger.info(`Job not queued`, LogFields.print());
   }
   return isQueued;
 }
@@ -128,14 +128,14 @@ export async function createRunnerLoop(runnerParameters: RunnerInputParameters):
   const launchTemplateNames = process.env.LAUNCH_TEMPLATE_NAME?.split(',') as string[];
   let launched = false;
   for (let i = 0; i < launchTemplateNames.length; i++) {
-    logger.info(LogFields.fields, `Attempt '${i}' to launch instance using ${launchTemplateNames[i]}.`);
+    logger.info(`Attempt '${i}' to launch instance using ${launchTemplateNames[i]}.`, LogFields.print());
     try {
       await createRunner(runnerParameters, launchTemplateNames[i]);
       launched = true;
       break;
     } catch (error) {
-      logger.debug(LogFields.fields, `Attempt '${i}' to launch instance using ${launchTemplateNames[i]} FAILED.`);
-      logger.error(error);
+      logger.debug(`Attempt '${i}' to launch instance using ${launchTemplateNames[i]} FAILED.`, LogFields.print());
+      logger.error(error, LogFields.print());
     }
   }
   if (launched == false) {
