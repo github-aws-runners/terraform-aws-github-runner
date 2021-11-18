@@ -11,4 +11,8 @@ export const logger = new Logger({
 
 export class LogFields {
   static fields: { [key: string]: string } = {};
+
+  public static print(): string {
+    return JSON.stringify(LogFields.fields);
+  }
 }
