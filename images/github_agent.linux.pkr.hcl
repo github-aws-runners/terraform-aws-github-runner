@@ -8,7 +8,7 @@ packer {
 }
 
 source "amazon-ebs" "githubrunner" {
-  ami_name      = "github-runner-amzn2-${ formatdate("YYYY-MM-DDhhmmssZ", timestamp()) }"
+  ami_name      = "github-runner-amzn2-${formatdate("YYYYMMDDhhmm", timestamp())}"
   instance_type = "m3.medium"
   region        = "eu-west-1"
   source_ami_filter {
@@ -22,9 +22,9 @@ source "amazon-ebs" "githubrunner" {
   }
   ssh_username = "ec2-user"
   tags = {
-      OS_Version = "amzn2"
-      Release = "Latest"
-      Base_AMI_Name = "{{ .SourceAMIName }}"      
+    OS_Version    = "amzn2"
+    Release       = "Latest"
+    Base_AMI_Name = "{{ .SourceAMIName }}"
   }
 }
 
@@ -33,20 +33,32 @@ build {
   sources = [
     "source.amazon-ebs.githubrunner"
   ]
-  provisioner "shell" {    
+  provisioner "shell" {
     environment_vars = []
-    inline = [      
+    inline = [
       "sudo yum update -y",
       "sudo yum install -y amazon-cloudwatch-agent curl jq git",
       "sudo amazon-linux-extras install docker",
       "sudo service docker start",
       "sudo usermod -a -G docker ec2-user",
     ]
-  } 
+  }
 
   provisioner "shell" {
     environment_vars = []
-    script = "./install-runner.sh"
-  } 
+    script           = "./install-runner.sh"
+  }
+
+  provisioner "file" {
+    source      = "startup.sh"
+    destination = "/tmp/startup.sh"
+  }
+
+  provisioner "shell" {
+    inline = [
+      "sudo mv /tmp/startup.sh /var/lib/cloud/scripts/per-boot/startup.sh",
+      "sudo chmod +x /var/lib/cloud/scripts/per-boot/startup.sh",
+    ]
+  }
 
 }

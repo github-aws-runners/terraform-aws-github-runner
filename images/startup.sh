@@ -1,40 +1,53 @@
 #!/bin/bash -e
 
-%{ if enable_cloudwatch_agent ~}
-amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c ssm:${ssm_key_cloudwatch_agent_config}
-%{ endif ~}
+user_name=ec2-user
 
-
-cd /home/$USER_NAME/actions-runner
-
-TOKEN=$(curl -f -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 180")
-REGION=$(curl -f -H "X-aws-ec2-metadata-token: $TOKEN" -v http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r .region)
-INSTANCE_ID=$(curl -f -H "X-aws-ec2-metadata-token: $TOKEN" -v http://169.254.169.254/latest/meta-data/instance-id)
-
-echo wait for configuration
-while [[ $(aws ssm get-parameters --names ${environment}-$INSTANCE_ID --with-decryption --region $REGION | jq -r ".Parameters | .[0] | .Value") == null ]]; do
-    echo Waiting for configuration ...
-    sleep 1
-done
-CONFIG=$(aws ssm get-parameters --names ${environment}-$INSTANCE_ID --with-decryption --region $REGION | jq -r ".Parameters | .[0] | .Value")
-aws ssm delete-parameter --name ${environment}-$INSTANCE_ID --region $REGION
-
-export RUNNER_ALLOW_RUNASROOT=1
-os_id=$(awk -F= '/^ID/{print $2}' /etc/os-release)
-if [[ "$os_id" =~ ^ubuntu.* ]]; then
-    ./bin/installdependencies.sh
+if [[ -z "$ENVIRONMENT" ]]; then
+  echo "ENVIRONMENT is not set"
+  exit 1
 fi
 
-./config.sh --unattended --name $INSTANCE_ID --work "_work" $CONFIG
+if [[ -n "$ENABLE_CLOUDWATCH_AGENT" ]]; then
+  if [[ -z "$SSM_KEY_CLOUDWATCH_AGENT_CONFIG" ]]; then
+    echo "Cloudwatch is enabled with ENABLE_CLOUDWATCH_AGENT but SSM_KEY_CLOUDWATCH_AGENT_CONFIG is not set"
+    exit 1
+  fi
+  echo "Cloudwatch is enabled"
+  amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c ssm:"$SSM_KEY_CLOUDWATCH_AGENT_CONFIG"
+fi
 
-chown -R $USER_NAME:$USER_NAME .
-OVERWRITE_SERVICE_USER=${run_as_root_user}
-SERVICE_USER=$${OVERWRITE_SERVICE_USER:-$USER_NAME}
+cd /home/$user_name/actions-runner
 
+echo "Retrieving TOKEN from AWS API"
+token=$(curl -f -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 180")
 
+echo "Retrieving REGION from AWS API"
+region=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r .region)
 
-# TODO: svc.sh start replaced by run.sh and once stopped / exitted the instance terminated
-sudo -u $SERVICE_USER -- ./run.sh
+echo "Retrieving INSTANCE_ID from AWS API"
+instance_id=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/meta-data/instance-id)
+
+echo "Get GH Runner token from AWS SSM"
+config=$(aws ssm get-parameters --names "$ENVIRONMENT"-"$instance_id" --with-decryption --region "$region" | jq -r ".Parameters | .[0] | .Value")
+
+while [[ -z "$config" ]]; do
+  echo "Waiting for GH Runner token to become available in AWS SSM"
+  sleep 1
+  config=$(aws ssm get-parameters --names "$ENVIRONMENT"-"$instance_id" --with-decryption --region "$region" | jq -r ".Parameters | .[0] | .Value")
+done
+
+echo "Delete GH Runner token from AWS SSM"
+aws ssm delete-parameter --name "$ENVIRONMENT"-"$instance_id" --region "$region"
+
+echo "Configure GH Runner"
+./config.sh --unattended --name "$instance_id" --work "_work" "$config"
+
+service_user=${RUN_AGENT_AS_USER:-$user_name}
+
+echo "Start the runner as user $service_user"
+sudo -u "$service_user" -- ./run.sh
+echo "Runner has finished"
+
 #service awslogsd stop
-
-aws ec2 terminate-instances --instance-ids $INSTANCE_ID --region $REGION
+echo "Terminating instance"
+aws ec2 terminate-instances --instance-ids "$instance_id" --region "$region"
