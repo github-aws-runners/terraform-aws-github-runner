@@ -1,17 +1,21 @@
 #!/bin/bash -e
 set -e
 
-USER_NAME=ec2-user
+if [[ -z "$RUNNER_TARBALL_URL" ]]; then
+  echo "RUNNER_TARBALL_URL is not set"
+  exit 1
+fi
+
+user_name=ec2-user
+file_name="actions-runner.tar.gz"
 
 echo "Creating actions-runner directory for the GH Action installtion"
-cd /home/"$USER_NAME"
+cd /home/"$user_name"
 mkdir actions-runner && cd actions-runner
 
-file_name="actions-runner.tar.gz"
-echo "Downloading the GH Action runner to $file_name"
-curl -o $file_name -L https://github.com/actions/runner/releases/download/v2.284.0/actions-runner-linux-x64-2.284.0.tar.gz
+echo "Downloading the GH Action runner from $RUNNER_TARBALL_URL to $file_name"
+curl -o $file_name -L "$RUNNER_TARBALL_URL"
 
-# echo "1ddfd7bbd3f2b8f5684a7d88d6ecb6de3cb2281a2a359543a018cc6e177067fc  actions-runner-linux-x64-2.284.0.tar.gz" | shasum -a 256 -c
 echo "Un-tar action runner"
 tar xzf ./$file_name
 echo "Delete tar file"
@@ -27,4 +31,4 @@ if [[ "$os_id" =~ ^ubuntu.* ]]; then
 fi
 
 echo "Set file ownership of action runner"
-chown -R "$USER_NAME":"$USER_NAME" .
+chown -R "$user_name":"$user_name" .

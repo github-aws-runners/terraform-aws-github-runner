@@ -7,6 +7,12 @@ packer {
   }
 }
 
+variable "action_runner_url" {
+  description = "The URL to the tarball of the action runner"
+  type = string
+  default = "https://github.com/actions/runner/releases/download/v2.284.0/actions-runner-linux-x64-2.284.0.tar.gz"
+}
+
 source "amazon-ebs" "githubrunner" {
   ami_name      = "github-runner-amzn2-${formatdate("YYYYMMDDhhmm", timestamp())}"
   instance_type = "m3.medium"
@@ -45,7 +51,9 @@ build {
   }
 
   provisioner "shell" {
-    environment_vars = []
+    environment_vars = [
+      "RUNNER_TARBALL_URL=${var.action_runner_url}"
+    ]
     script           = "./install-runner.sh"
   }
 
