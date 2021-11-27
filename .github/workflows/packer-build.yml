@@ -11,23 +11,26 @@ on:
 
 env:  
   AWS_REGION: eu-west-1
-  
+
 jobs:
   verify_packer:
     name: Verify image    
     runs-on: ubuntu-latest
     container:
       image: hashicorp/packer:1.7.8
+    defaults:
+      run:
+        working-directory: images/
     steps:
       - name: "Checkout"
         uses: actions/checkout@v2
       
       - name: packer init
-        run: packer init
+        run: packer init .
 
       - name: check terraform formatting
-        run: packer fmt -recursive -check=true
+        run: packer fmt -recursive -check=true .
         continue-on-error: true
 
       - name: packer validate
-        run: packer validate
+        run: packer validate .
