@@ -9,8 +9,8 @@ packer {
 
 variable "action_runner_url" {
   description = "The URL to the tarball of the action runner"
-  type = string
-  default = "https://github.com/actions/runner/releases/download/v2.284.0/actions-runner-linux-x64-2.284.0.tar.gz"
+  type        = string
+  default     = "https://github.com/actions/runner/releases/download/v2.284.0/actions-runner-linux-x64-2.284.0.tar.gz"
 }
 
 source "amazon-ebs" "githubrunner" {
@@ -54,7 +54,7 @@ build {
     environment_vars = [
       "RUNNER_TARBALL_URL=${var.action_runner_url}"
     ]
-    script           = "./install-runner.sh"
+    script = "./install-runner.sh"
   }
 
   provisioner "file" {
