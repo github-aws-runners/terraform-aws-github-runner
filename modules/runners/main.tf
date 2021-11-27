@@ -6,6 +6,9 @@ locals {
     {
       "Environment" = format("%s", var.environment)
     },
+    {
+      "enable_cloudwatch_agent" = var.enable_cloudwatch_agent
+    },
     var.tags,
   )
 
@@ -113,10 +116,12 @@ resource "aws_launch_template" "runner" {
 
 
   user_data = base64encode(templatefile(local.userdata_template, {
-    environment                     = var.environment
-    pre_install                     = var.userdata_pre_install
-    post_install                    = var.userdata_post_install
-    enable_cloudwatch_agent         = var.enable_cloudwatch_agent
+    environment = var.environment
+    ## TODO I think we can still provide this tailoring functionality in this way but should make it more generic
+    pre_install             = var.userdata_pre_install
+    post_install            = var.userdata_post_install
+    enable_cloudwatch_agent = var.enable_cloudwatch_agent
+    # TODO Figure out if we need these here. We can pass them via Tags to the instance so we dont have to do trickey with env
     ssm_key_cloudwatch_agent_config = var.enable_cloudwatch_agent ? aws_ssm_parameter.cloudwatch_agent_config_runner[0].name : ""
     ghes_url                        = var.ghes_url
     ghes_ssl_verify                 = var.ghes_ssl_verify
