@@ -20,7 +20,7 @@ jobs:
       image: hashicorp/packer:1.7.8
     defaults:
       run:
-        working-directory: images/
+        working-directory: images/linux-amzn2
     steps:
       - name: "Checkout"
         uses: actions/checkout@v2
