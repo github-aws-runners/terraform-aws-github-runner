@@ -62,14 +62,14 @@ build {
     ]
     inline = [templatefile("../install-runner.sh", {
       install_runner = templatefile("../../modules/runners/templates/install-runner.sh", {
-        ARM_PATCH = ""
+        ARM_PATCH                       = ""
         S3_LOCATION_RUNNER_DISTRIBUTION = ""
       })
     })]
   }
 
   provisioner "file" {
-      content      = templatefile("../start-runner.sh", {
+    content = templatefile("../start-runner.sh", {
       start_runner = file("../../modules/runners/templates/start-runner.sh")
     })
     destination = "/tmp/start-runner.sh"
