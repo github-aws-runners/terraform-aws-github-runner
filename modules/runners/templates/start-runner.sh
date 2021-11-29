@@ -50,12 +50,15 @@ echo "Configure GH Runner"
 
 ## Start the runner
 
-service_user=${run_as:-ec2-user}
-echo "Starting the runner as user $service_user"
+
+if [ -z "$run_as" ]; then
+    run_as="ec2-user"
+fi
+echo "Starting the runner as user $run_as"
 
 if [[ $agent_mode = "ephemeral" ]]; then  
   echo "Starting the runner in ephemeral mode"
-  sudo -u "$service_user" -- ./run.sh
+  sudo -u "$run_as" -- ./run.sh
   echo "Runner has finished"
 
   #TODO is this line needed?
@@ -64,7 +67,7 @@ if [[ $agent_mode = "ephemeral" ]]; then
   aws ec2 terminate-instances --instance-ids "$instance_id" --region "$region"
 else 
   echp "Installing the runner as a service"
-  ./svc.sh install "$service_user"
+  ./svc.sh install "$run_as"
   echo "Starting the runner in persistent mode"
   ./svc.sh start
 fi
