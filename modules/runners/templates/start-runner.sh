@@ -1,9 +1,4 @@
-#!/bin/bash -e
-exec > >(tee /var/log/runner-startup.log | logger -t user-data -s 2>/dev/console) 2>&1
-
-user_name=ec2-user
-
-cd /home/$user_name/actions-runner
+## Retrieve instance metadata
 
 echo "Retrieving TOKEN from AWS API"
 token=$(curl -f -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 180")
@@ -17,16 +12,25 @@ echo "Reteieved INSTANCE_ID from AWS API ($instance_id)"
 tags=$(aws ec2 describe-tags --region "$region" --filters "Name=resource-id,Values=$instance_id")
 echo "Retrieved tags from AWS API ($tags)"
 
-environment=$(echo "$tags" | jq '.Tags[]  | select(.Key == "Environment") | .Value')
-echo "Reteieved environment tag - ($environment)"
+environment=$(echo "$tags" | jq '.Tags[]  | select(.Key == "ghr:environment") | .Value')
+echo "Reteieved ghr:environment tag - ($environment)"
 
-enable_cloudwatch_agent=$(echo "$tags" | jq '.Tags[]  | select(.Key == "enable_cloudwatch_agent") | .Value')
-echo "Reteieved enable_cloudwatch_agent tag - ($enable_cloudwatch_agent)"
+enable_cloudwatch_agent=$(echo "$tags" | jq '.Tags[]  | select(.Key == "ghr:enable_cloudwatch") | .Value')
+echo "Reteieved ghr:enable_cloudwatch tag - ($enable_cloudwatch_agent)"
+
+run_as=$(echo "$tags" | jq '.Tags[]  | select(.Key == "ghr:_run_as") | .Value')
+echo "Reteieved ghr:run_as tag - ($run_as)"
+
+agent_mode=$(echo "$tags" | jq '.Tags[]  | select(.Key == "ghr:agent_mode") | .Value')
+echo "Reteieved ghr:agent_mode tag - ($agent_mode)"
 
 if [[ -n "$enable_cloudwatch_agent" ]]; then  
   echo "Cloudwatch is enabled"  
   amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c ssm:"$environment-cloudwatch_agent_config_runner"
 fi
+
+
+## Configure the runner
 
 echo "Get GH Runner token from AWS SSM"
 config=$(aws ssm get-parameters --names "$environment"-"$instance_id" --with-decryption --region "$region" | jq -r ".Parameters | .[0] | .Value")
@@ -43,13 +47,24 @@ aws ssm delete-parameter --name "$environment"-"$instance_id" --region "$region"
 echo "Configure GH Runner"
 ./config.sh --unattended --name "$instance_id" --work "_work" "$config"
 
-# TODO this should also be passed via tags
-service_user=${RUN_AGENT_AS_USER:-$user_name}
 
-echo "Start the runner as user $service_user"
-sudo -u "$service_user" -- ./run.sh
-echo "Runner has finished"
+## Start the runner
 
-#service awslogsd stop
-echo "Terminating instance"
-aws ec2 terminate-instances --instance-ids "$instance_id" --region "$region"
+service_user=${run_as:-ec2-user}
+echo "Starting the runner as user $service_user"
+
+if [[ $agent_mode = "ephemeral" ]]; then  
+  echo "Starting the runner in ephemeral mode"
+  sudo -u "$service_user" -- ./run.sh
+  echo "Runner has finished"
+
+  #TODO is this line needed?
+  #service awslogsd stop
+  echo "Terminating instance"
+  aws ec2 terminate-instances --instance-ids "$instance_id" --region "$region"
+else 
+  echp "Installing the runner as a service"
+  ./svc.sh install "$service_user"
+  echo "Starting the runner in persistent mode"
+  ./svc.sh start
+fi

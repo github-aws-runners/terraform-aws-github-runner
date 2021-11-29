@@ -13,10 +13,16 @@ variable "action_runner_url" {
   default     = "https://github.com/actions/runner/releases/download/v2.284.0/actions-runner-linux-x64-2.284.0.tar.gz"
 }
 
+variable "region" {
+  description = "The region to build the image in"
+  type        = string
+  default     = "eu-west-1"
+}
+
 source "amazon-ebs" "githubrunner" {
   ami_name      = "github-runner-amzn2-${formatdate("YYYYMMDDhhmm", timestamp())}"
   instance_type = "m3.medium"
-  region        = "eu-west-1"
+  region        = var.region
   source_ami_filter {
     filters = {
       name                = "amzn2-ami-hvm-2.*-x86_64-ebs"
@@ -54,18 +60,25 @@ build {
     environment_vars = [
       "RUNNER_TARBALL_URL=${var.action_runner_url}"
     ]
-    script = "./install-runner.sh"
+    inline = [templatefile("../install-runner.sh", {
+      install_runner = templatefile("../../modules/runners/templates/install-runner.sh", {
+        ARM_PATCH = ""
+        S3_LOCATION_RUNNER_DISTRIBUTION = ""
+      })
+    })]
   }
 
   provisioner "file" {
-    source      = "startup.sh"
-    destination = "/tmp/startup.sh"
+      content      = templatefile("../start-runner.sh", {
+      start_runner = file("../../modules/runners/templates/start-runner.sh")
+    })
+    destination = "/tmp/start-runner.sh"
   }
 
   provisioner "shell" {
     inline = [
-      "sudo mv /tmp/startup.sh /var/lib/cloud/scripts/per-boot/startup.sh",
-      "sudo chmod +x /var/lib/cloud/scripts/per-boot/startup.sh",
+      "sudo mv /tmp/startup.sh /var/lib/cloud/scripts/per-boot/start-runner.sh",
+      "sudo chmod +x /var/lib/cloud/scripts/per-boot/start-runner.sh",
     ]
   }
 
