@@ -1,3 +1,5 @@
+# shellcheck shell=bash
+
 ## install the runner
 
 s3_location=${S3_LOCATION_RUNNER_DISTRIBUTION}

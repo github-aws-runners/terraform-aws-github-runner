@@ -1,5 +1,4 @@
 #!/bin/bash -e
-set -e
 
 user_name=ec2-user
 

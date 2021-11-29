@@ -77,7 +77,7 @@ build {
 
   provisioner "shell" {
     inline = [
-      "sudo mv /tmp/startup.sh /var/lib/cloud/scripts/per-boot/start-runner.sh",
+      "sudo mv /tmp/start-runner.sh /var/lib/cloud/scripts/per-boot/start-runner.sh",
       "sudo chmod +x /var/lib/cloud/scripts/per-boot/start-runner.sh",
     ]
   }

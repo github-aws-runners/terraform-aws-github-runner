@@ -1,3 +1,5 @@
+# shellcheck shell=bash
+
 ## Retrieve instance metadata
 
 echo "Retrieving TOKEN from AWS API"
