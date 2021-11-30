@@ -28,7 +28,7 @@ resource "aws_cloudwatch_log_group" "gh_runners" {
 }
 
 resource "aws_iam_role_policy" "cloudwatch" {
-  count = var.enable_ssm_on_runners ? 1 : 0
+  count = var.enable_cloudwatch_agent ? 1 : 0
   name  = "CloudWatchLogginAndMetrics"
   role  = aws_iam_role.runner.name
   policy = templatefile("${path.module}/policies/instance-cloudwatch-policy.json",

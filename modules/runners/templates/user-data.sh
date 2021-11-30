@@ -10,7 +10,7 @@ amazon-linux-extras install docker
 service docker start
 usermod -a -G docker ec2-user
 
-yum install -y curl jq git
+yum install -y amazon-cloudwatch-agent curl jq git
 
 user_name=ec2-user
 

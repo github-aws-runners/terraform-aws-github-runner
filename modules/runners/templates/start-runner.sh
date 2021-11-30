@@ -14,21 +14,21 @@ echo "Reteieved INSTANCE_ID from AWS API ($instance_id)"
 tags=$(aws ec2 describe-tags --region "$region" --filters "Name=resource-id,Values=$instance_id")
 echo "Retrieved tags from AWS API ($tags)"
 
-environment=$(echo "$tags" | jq '.Tags[]  | select(.Key == "ghr:environment") | .Value')
+environment=$(echo "$tags" | jq -r '.Tags[]  | select(.Key == "ghr:environment") | .Value')
 echo "Reteieved ghr:environment tag - ($environment)"
 
-enable_cloudwatch_agent=$(echo "$tags" | jq '.Tags[]  | select(.Key == "ghr:enable_cloudwatch") | .Value')
+enable_cloudwatch_agent=$(echo "$tags" | jq -r '.Tags[]  | select(.Key == "ghr:enable_cloudwatch") | .Value')
 echo "Reteieved ghr:enable_cloudwatch tag - ($enable_cloudwatch_agent)"
 
-run_as=$(echo "$tags" | jq '.Tags[]  | select(.Key == "ghr:_run_as") | .Value')
+run_as=$(echo "$tags" | jq -r '.Tags[]  | select(.Key == "ghr:_run_as") | .Value')
 echo "Reteieved ghr:run_as tag - ($run_as)"
 
-agent_mode=$(echo "$tags" | jq '.Tags[]  | select(.Key == "ghr:agent_mode") | .Value')
+agent_mode=$(echo "$tags" | jq -r '.Tags[]  | select(.Key == "ghr:agent_mode") | .Value')
 echo "Reteieved ghr:agent_mode tag - ($agent_mode)"
 
 if [[ -n "$enable_cloudwatch_agent" ]]; then  
   echo "Cloudwatch is enabled"  
-  amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c ssm:"$environment-cloudwatch_agent_config_runner"
+  amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c "ssm:$environment-cloudwatch_agent_config_runner"
 fi
 
 
@@ -46,16 +46,15 @@ done
 echo "Delete GH Runner token from AWS SSM"
 aws ssm delete-parameter --name "$environment"-"$instance_id" --region "$region"
 
-echo "Configure GH Runner"
-./config.sh --unattended --name "$instance_id" --work "_work" "$config"
-
-
-## Start the runner
-
-
 if [ -z "$run_as" ]; then
     run_as="ec2-user"
 fi
+
+echo "Configure GH Runner as user $run_as"
+sudo -u "$run_as" -- ./config.sh --unattended --name "$instance_id" --work "_work" $${config}
+
+
+## Start the runner
 echo "Starting the runner as user $run_as"
 
 if [[ $agent_mode = "ephemeral" ]]; then  
@@ -64,11 +63,12 @@ if [[ $agent_mode = "ephemeral" ]]; then
   echo "Runner has finished"
 
   #TODO is this line needed?
-  #service awslogsd stop
+  echo "Stopping cloudwatch service"
+  service awslogsd stop
   echo "Terminating instance"
   aws ec2 terminate-instances --instance-ids "$instance_id" --region "$region"
 else 
-  echp "Installing the runner as a service"
+  echo "Installing the runner as a service"
   ./svc.sh install "$run_as"
   echo "Starting the runner in persistent mode"
   ./svc.sh start
