@@ -52,7 +52,7 @@ build {
       "sudo yum install -y amazon-cloudwatch-agent curl jq git",
       "sudo amazon-linux-extras install docker",
       "sudo systemctl enable docker.service",
-      "sudo systemctl enable containerd.service",      
+      "sudo systemctl enable containerd.service",
       "sudo service docker start",
       "sudo usermod -a -G docker ec2-user",
     ]
