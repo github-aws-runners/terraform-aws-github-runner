@@ -51,6 +51,8 @@ build {
       "sudo yum update -y",
       "sudo yum install -y amazon-cloudwatch-agent curl jq git",
       "sudo amazon-linux-extras install docker",
+      "sudo systemctl enable docker.service",
+      "sudo systemctl enable containerd.service",      
       "sudo service docker start",
       "sudo usermod -a -G docker ec2-user",
     ]
@@ -70,7 +72,7 @@ build {
 
   provisioner "file" {
     content = templatefile("../start-runner.sh", {
-      start_runner = file("../../modules/runners/templates/start-runner.sh")
+      start_runner = templatefile("../../modules/runners/templates/start-runner.sh", {})
     })
     destination = "/tmp/start-runner.sh"
   }
