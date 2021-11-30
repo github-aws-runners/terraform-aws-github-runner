@@ -293,6 +293,12 @@ variable "runner_log_files" {
       "log_stream_name" : "{instance_id}"
     },
     {
+      "log_group_name" : "runner-startup",
+      "prefix_log_group" : true,
+      "file_path" : "/var/log/runner-startup.log",
+      "log_stream_name" : "{instance_id}"
+    },
+    {
       "log_group_name" : "runner",
       "prefix_log_group" : true,
       "file_path" : "/home/ec2-user/actions-runner/_diag/Runner_**.log",
