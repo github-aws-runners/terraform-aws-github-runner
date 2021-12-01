@@ -4,6 +4,7 @@ import { listEC2Runners, createRunner, RunnerInputParameters } from './runners';
 import * as ghAuth from './gh-auth';
 import nock from 'nock';
 import { Octokit } from '@octokit/rest';
+import ScaleError from './ScaleError';
 
 const mockOctokit = {
   checks: { get: jest.fn() },
@@ -540,6 +541,19 @@ describe('scaleUp with public GH', () => {
       expect(createRunner).toBeCalledTimes(2);
       expect(createRunner).toHaveBeenNthCalledWith(1, expectedRunnerParams, 'lt-1');
       expect(createRunner).toHaveBeenNthCalledWith(2, expectedRunnerParams, 'lt-2');
+    });
+
+    it('creates a ephemeral runner.', async () => {
+      process.env.ENABLE_EPHEMERAL_RUNNERS = 'true';
+      await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
+      expectedRunnerParams.runnerServiceConfig = expectedRunnerParams.runnerServiceConfig + `  --ephemeral`;
+      expect(createRunner).toBeCalledWith(expectedRunnerParams, LAUNCH_TEMPLATE);
+    });
+
+    it('Scaling error should cause reject so retry can be triggered.', async () => {
+      process.env.RUNNERS_MAXIMUM_COUNT = '1';
+      process.env.ENABLE_EPHEMERAL_RUNNERS = 'true';
+      await expect(scaleUpModule.scaleUp('aws:sqs', TEST_DATA)).rejects.toBeInstanceOf(ScaleError);
     });
   });
 });
