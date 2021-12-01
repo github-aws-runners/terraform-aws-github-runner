@@ -8,7 +8,6 @@ import 'source-map-support/register';
 export async function scaleUpHandler(event: SQSEvent, context: Context): Promise<void> {
   logger.setSettings({ requestId: context.awsRequestId });
   logger.debug(JSON.stringify(event));
-  // TODO find the a more elegant way :(
   if (event.Records.length != 1) {
     logger.warn('Event ignored, only on record at the time can be handled, ensure the lambda batch size is set to 1.');
     return new Promise((resolve) => resolve());
@@ -27,13 +26,15 @@ export async function scaleUpHandler(event: SQSEvent, context: Context): Promise
   });
 }
 
-export async function scaleDownHandler(event: ScheduledEvent, context: Context, callback: Callback): Promise<void> {
+export async function scaleDownHandler(event: ScheduledEvent, context: Context): Promise<void> {
   logger.setSettings({ requestId: context.awsRequestId });
-  try {
-    await scaleDown();
-    callback(null);
-  } catch (e) {
-    logger.error(e);
-    callback('Failed');
-  }
+
+  return new Promise((resolve) => {
+    scaleDown()
+      .then(() => resolve())
+      .catch((e) => {
+        logger.error(e);
+        resolve();
+      });
+  });
 }

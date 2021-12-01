@@ -5,6 +5,7 @@ import { scaleUpHandler } from './lambda';
 import { ActionRequestMessage, scaleUp } from './scale-runners/scale-up';
 import ScaleError from './scale-runners/ScaleError';
 import { logger } from './scale-runners/logger';
+import { scaleDown } from './scale-runners/scale-down';
 
 const body: ActionRequestMessage = {
   eventType: 'workflow_job',
@@ -57,6 +58,7 @@ const context: Context = {
 };
 
 jest.mock('./scale-runners/scale-up');
+jest.mock('./scale-runners/scale-down');
 jest.mock('./scale-runners/logger');
 
 describe('Test scale up lambda wrapper.', () => {
@@ -112,3 +114,22 @@ async function testInvalidRecords(sqsRecords: SQSRecord[]) {
     'Event ignored, only on record at the time can be handled, ensure the lambda batch size is set to 1.',
   );
 }
+
+describe('Test scale down lambda wrapper.', () => {
+  it('Scaling down no error.', async () => {
+    const mock = mocked(scaleDown);
+    mock.mockImplementation(() => {
+      return new Promise((resolve) => {
+        resolve();
+      });
+    });
+    await expect(scaleDown()).resolves;
+  });
+
+  it('Scaling down with error.', async () => {
+    const error = new Error('some error');
+    const mock = mocked(scaleDown);
+    mock.mockRejectedValue(error);
+    await expect(scaleDown()).resolves;
+  });
+});
