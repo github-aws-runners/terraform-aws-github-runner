@@ -15,6 +15,7 @@ mkdir -p "${OUTPUT_DIR}"
 (
     set -x
     DOCKER_BUILDKIT=1 docker build \
+        --no-cache \
         --target=final \
         --output=type=local,dest="${OUTPUT_DIR}" \
         -f "${TOP_DIR}/.ci/Dockerfile" \

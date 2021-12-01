@@ -35,8 +35,6 @@ variable "github_app" {
   type = object({
     key_base64     = string
     id             = string
-    client_id      = string
-    client_secret  = string
     webhook_secret = string
   })
 }
@@ -48,9 +46,15 @@ variable "scale_down_schedule_expression" {
 }
 
 variable "minimum_running_time_in_minutes" {
-  description = "The time an ec2 action runner should be running at minimum before terminated if non busy. Defaults to 5m for linux runners and 15m for windows runners"
+  description = "The time an ec2 action runner should be running at minimum before terminated if non busy."
   type        = number
   default     = null
+}
+
+variable "runner_boot_time_in_minutes" {
+  description = "The minimum time for an EC2 runner to boot and register as a runner."
+  type        = number
+  default     = 5
 }
 
 variable "runner_extra_labels" {
@@ -63,6 +67,12 @@ variable "runner_group_name" {
   description = "Name of the runner group."
   type        = string
   default     = "Default"
+}
+
+variable "scale_up_reserved_concurrent_executions" {
+  description = "Amount of reserved concurrent executions for the scale-up lambda function. A value of 0 disables lambda from being triggered and -1 removes any concurrency limitations."
+  type        = number
+  default     = 1
 }
 
 variable "webhook_lambda_zip" {
@@ -107,6 +117,12 @@ variable "runner_binaries_syncer_lambda_timeout" {
   default     = 300
 }
 
+variable "runner_binaries_s3_sse_configuration" {
+  description = "Map containing server-side encryption configuration for runner-binaries S3 bucket."
+  type        = any
+  default     = {}
+}
+
 variable "role_permissions_boundary" {
   description = "Permissions boundary that will be added to the created roles."
   type        = string
@@ -143,20 +159,8 @@ variable "runners_maximum_count" {
   default     = 3
 }
 
-variable "encrypt_secrets" {
-  description = "Encrypt secret variables for lambda's such as secrets and private keys."
-  type        = bool
-  default     = true
-}
-
-variable "manage_kms_key" {
-  description = "Let the module manage the KMS key."
-  type        = bool
-  default     = true
-}
-
-variable "kms_key_id" {
-  description = "Custom KMS key to encrypted lambda secrets, if not provided and `encrypt_secrets` = `true` a KMS key will be created by the module. Secrets will be encrypted with a context `Environment = var.environment`."
+variable "kms_key_arn" {
+  description = "Optional CMK Key ARN to be used for Parameter Store. This key must be in the current account."
   type        = string
   default     = null
 }
@@ -300,6 +304,12 @@ variable "ghes_url" {
   default     = null
 }
 
+variable "ghes_ssl_verify" {
+  description = "GitHub Enterprise SSL verification. Set to 'false' when custom certificate (chains) is used for GitHub Enterprise Server (insecure)."
+  type        = bool
+  default     = true
+}
+
 variable "lambda_subnet_ids" {
   description = "List of subnets in which the action runners will be launched, the subnets needs to be subnets in the `vpc_id`."
   type        = list(string)
@@ -338,12 +348,110 @@ variable "volume_size" {
 
 variable "instance_types" {
   description = "List of instance types for the action runner."
-  type        = set(string)
+  type        = list(string)
   default     = null
+}
+
+variable "repository_white_list" {
+  description = "List of repositories allowed to use the github app"
+  type        = list(string)
+  default     = []
+}
+
+variable "delay_webhook_event" {
+  description = "The number of seconds the event accepted by the webhook is invisible on the queue before the scale up lambda will receive the event."
+  type        = number
+  default     = 30
+}
+variable "job_queue_retention_in_seconds" {
+  description = "The number of seconds the job is held in the queue before it is purged"
+  type        = number
+  default     = 86400
+}
+variable "runner_egress_rules" {
+  description = "List of egress rules for the GitHub runner instances."
+  type = list(object({
+    cidr_blocks      = list(string)
+    ipv6_cidr_blocks = list(string)
+    prefix_list_ids  = list(string)
+    from_port        = number
+    protocol         = string
+    security_groups  = list(string)
+    self             = bool
+    to_port          = number
+    description      = string
+  }))
+  default = [{
+    cidr_blocks      = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
+    prefix_list_ids  = null
+    from_port        = 0
+    protocol         = "-1"
+    security_groups  = null
+    self             = null
+    to_port          = 0
+    description      = null
+  }]
+}
+
+variable "log_type" {
+  description = "Logging format for lambda logging. Valid values are 'json', 'pretty', 'hidden'. "
+  type        = string
+  default     = "pretty"
+  validation {
+    condition = anytrue([
+      var.log_type == "json",
+      var.log_type == "pretty",
+      var.log_type == "hidden",
+    ])
+    error_message = "`log_type` value not valid. Valid values are 'json', 'pretty', 'hidden'."
+  }
+}
+
+variable "log_level" {
+  description = "Logging level for lambda logging. Valid values are  'silly', 'trace', 'debug', 'info', 'warn', 'error', 'fatal'."
+  type        = string
+  default     = "info"
+  validation {
+    condition = anytrue([
+      var.log_level == "silly",
+      var.log_level == "trace",
+      var.log_level == "debug",
+      var.log_level == "info",
+      var.log_level == "warn",
+      var.log_level == "error",
+      var.log_level == "fatal",
+    ])
+    error_message = "`log_level` value not valid. Valid values are 'silly', 'trace', 'debug', 'info', 'warn', 'error', 'fatal'."
+  }
+}
+
+variable "disable_check_wokflow_job_labels" {
+  description = "Disable the the check of workflow labels for received workflow job events."
+  type        = bool
+  default     = false
+}
+
+variable "runner_ec2_tags" {
+  description = "Map of tags that will be added to the launch template instance tag specificatons."
+  type        = map(string)
+  default     = {}
+}
+
+variable "runner_metadata_options" {
+  description = "Metadata options for the ec2 runner instances."
+  type        = map(any)
+  default = {
+    http_endpoint               = "enabled"
+    http_tokens                 = "optional"
+    http_put_response_hop_limit = 1
+  }
+
 }
 
 variable "runner_os" {
   description = "The Operating System to use for GitHub Actions Runners (linux,win)"
   type        = string
   default     = "linux"
+
 }

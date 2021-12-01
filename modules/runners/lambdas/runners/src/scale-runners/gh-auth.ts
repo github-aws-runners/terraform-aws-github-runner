@@ -2,13 +2,18 @@ import { Octokit } from '@octokit/rest';
 import { request } from '@octokit/request';
 import { createAppAuth } from '@octokit/auth-app';
 import {
-  Authentication,
   StrategyOptions,
   AppAuthentication,
+  AppAuthOptions,
+  InstallationAuthOptions,
   InstallationAccessTokenAuthentication,
+  AuthInterface,
 } from '@octokit/auth-app/dist-types/types';
 import { OctokitOptions } from '@octokit/core/dist-types/types';
-import { decrypt } from './kms';
+import { getParameterValue } from './ssm';
+import { logger as rootLogger } from './logger';
+
+const logger = rootLogger.getChildLogger();
 
 export async function createOctoClient(token: string, ghesApiUrl = ''): Promise<Octokit> {
   const ocktokitOptions: OctokitOptions = {
@@ -21,45 +26,45 @@ export async function createOctoClient(token: string, ghesApiUrl = ''): Promise<
   return new Octokit(ocktokitOptions);
 }
 
-export async function createGithubAuth(
+export async function createGithubAppAuth(
   installationId: number | undefined,
-  authType: 'app' | 'installation',
   ghesApiUrl = '',
 ): Promise<AppAuthentication> {
-  const clientSecret = await decrypt(
-    process.env.GITHUB_APP_CLIENT_SECRET as string,
-    process.env.KMS_KEY_ID as string,
-    process.env.ENVIRONMENT as string,
-  );
-  const privateKeyBase64 = await decrypt(
-    process.env.GITHUB_APP_KEY_BASE64 as string,
-    process.env.KMS_KEY_ID as string,
-    process.env.ENVIRONMENT as string,
-  );
+  const auth = await createAuth(installationId, ghesApiUrl);
+  const appAuthOptions: AppAuthOptions = { type: 'app' };
+  return await auth(appAuthOptions);
+}
 
-  if (clientSecret === undefined || privateKeyBase64 === undefined) {
-    throw Error('Cannot decrypt.');
-  }
+export async function createGithubInstallationAuth(
+  installationId: number | undefined,
+  ghesApiUrl = '',
+): Promise<InstallationAccessTokenAuthentication> {
+  const auth = await createAuth(installationId, ghesApiUrl);
+  const installationAuthOptions: InstallationAuthOptions = { type: 'installation', installationId };
+  return await auth(installationAuthOptions);
+}
 
-  const privateKey = Buffer.from(privateKeyBase64, 'base64').toString();
-
-  const appId: number = parseInt(process.env.GITHUB_APP_ID as string);
-  const clientId = process.env.GITHUB_APP_CLIENT_ID as string;
-
+async function createAuth(installationId: number | undefined, ghesApiUrl: string): Promise<AuthInterface> {
+  const appId = parseInt(await getParameterValue(process.env.PARAMETER_GITHUB_APP_ID_NAME));
   let authOptions: StrategyOptions = {
     appId,
-    privateKey,
-    clientId,
-    clientSecret,
+    privateKey: Buffer.from(
+      await getParameterValue(process.env.PARAMETER_GITHUB_APP_KEY_BASE64_NAME),
+      'base64',
+      // replace literal \n characters with new lines to allow the key to be stored as a
+      // single line variable. This logic should match how the GitHub Terraform provider
+      // processes private keys to retain compatibility between the projects
+    )
+      .toString()
+      .replace('/[\\n]/g', String.fromCharCode(10)),
   };
   if (installationId) authOptions = { ...authOptions, installationId };
 
-  console.debug(ghesApiUrl);
+  logger.debug(`GHES API URL: ${ghesApiUrl}`);
   if (ghesApiUrl) {
     authOptions.request = request.defaults({
       baseUrl: ghesApiUrl,
     });
   }
-  const result = (await createAppAuth(authOptions)({ type: authType })) as AppAuthentication;
-  return result;
+  return createAppAuth(authOptions);
 }

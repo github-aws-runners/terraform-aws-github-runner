@@ -12,17 +12,19 @@ resource "aws_lambda_function" "syncer" {
   function_name     = "${var.environment}-syncer"
   role              = aws_iam_role.syncer_lambda.arn
   handler           = "index.handler"
-  runtime           = "nodejs12.x"
+  runtime           = "nodejs14.x"
   timeout           = var.lambda_timeout
   memory_size       = 256
 
   environment {
     variables = {
+      GITHUB_RUNNER_ARCHITECTURE              = var.runner_architecture
+      GITHUB_RUNNER_ALLOW_PRERELEASE_BINARIES = var.runner_allow_prerelease_binaries
+      LOG_LEVEL                               = var.log_level
+      LOG_TYPE                                = var.log_type
       S3_BUCKET_NAME                          = aws_s3_bucket.action_dist.id
       S3_OBJECT_KEY                           = local.action_runner_distribution_object_key
       GITHUB_RUNNER_OS                        = var.runner_os
-      GITHUB_RUNNER_ARCHITECTURE              = var.runner_architecture
-      GITHUB_RUNNER_ALLOW_PRERELEASE_BINARIES = var.runner_allow_prerelease_binaries
     }
   }
   dynamic "vpc_config" {

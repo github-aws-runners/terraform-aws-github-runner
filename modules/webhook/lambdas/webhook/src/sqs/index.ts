@@ -1,5 +1,4 @@
-import { SQS } from 'aws-sdk';
-import AWS from 'aws-sdk';
+import AWS, { SQS } from 'aws-sdk';
 
 AWS.config.update({
   region: process.env.AWS_REGION,
@@ -15,7 +14,7 @@ export interface ActionRequestMessage {
   installationId: number;
 }
 
-export const sendActionRequest = async (message: ActionRequestMessage) => {
+export const sendActionRequest = async (message: ActionRequestMessage): Promise<void> => {
   await sqs
     .sendMessage({
       QueueUrl: String(process.env.SQS_URL_WEBHOOK),

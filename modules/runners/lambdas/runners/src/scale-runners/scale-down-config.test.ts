@@ -6,19 +6,14 @@ const DEFAULT_IDLE_COUNT = 1;
 const now = moment.tz(new Date(), 'America/Los_Angeles');
 
 function getConfig(cronTabs: string[]): ScalingDownConfigList {
-  const result: ScalingDownConfigList = [];
-  for (const cron of cronTabs) {
-    result.push({
-      cron: cron,
-      idleCount: DEFAULT_IDLE_COUNT,
-      timeZone: DEFAULT_TIMEZONE,
-    });
-  }
-  return result;
+  return cronTabs.map((cron) => ({
+    cron: cron,
+    idleCount: DEFAULT_IDLE_COUNT,
+    timeZone: DEFAULT_TIMEZONE,
+  }));
 }
 
 describe('scaleDownConfig', () => {
-
   describe('Check runners that should be kept idle based on config.', () => {
     it('One active cron configuration', async () => {
       const scaleDownConfig = getConfig(['* * * * * *']);

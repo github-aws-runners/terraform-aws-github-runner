@@ -8,7 +8,7 @@ app.use(bodyParser.json());
 
 app.post('/event_handler', (req, res) => {
   handle(req.headers, JSON.stringify(req.body))
-    .then((c) => res.status(c).end())
+    .then((c) => res.status(c.statusCode).end())
     .catch((e) => {
       console.log(e);
       res.status(404);

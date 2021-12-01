@@ -14,7 +14,7 @@ variable "subnet_ids" {
 }
 
 variable "overrides" {
-  description = "This maps provides the possibility to override some defaults. The following attributes are supported: `name_sg` overwrite the `Name` tag for all security groups created by this module. `name_runner_agent_instance` override the `Name` tag for the ec2 instance defined in the auto launch configuration. `name_docker_machine_runners` override the `Name` tag spot instances created by the runner agent."
+  description = "This map provides the possibility to override some defaults. The following attributes are supported: `name_sg` overrides the `Name` tag for all security groups created by this module. `name_runner_agent_instance` overrides the `Name` tag for the ec2 instance defined in the auto launch configuration. `name_docker_machine_runners` overrides the `Name` tag spot instances created by the runner agent."
   type        = map(string)
 
   default = {
@@ -71,12 +71,12 @@ variable "instance_type" {
 
 variable "instance_types" {
   description = "List of instance types for the action runner."
-  type        = set(string)
+  type        = list(string)
   default     = null
 }
 
 variable "ami_filter" {
-  description = "List of maps used to create the AMI filter for the action runner AMI."
+  description = "Map of lists used to create the AMI filter for the action runner AMI."
   type        = map(list(string))
   default     = null
 }
@@ -94,13 +94,13 @@ variable "userdata_template" {
 }
 
 variable "userdata_pre_install" {
-  description = "User-data script snippet to insert before GitHub acton runner install"
+  description = "User-data script snippet to insert before GitHub action runner install"
   type        = string
   default     = ""
 }
 
 variable "userdata_post_install" {
-  description = "User-data script snippet to insert after GitHub acton runner install"
+  description = "User-data script snippet to insert after GitHub action runner install"
   type        = string
   default     = ""
 }
@@ -116,13 +116,11 @@ variable "enable_organization_runners" {
   type = bool
 }
 
-variable "github_app" {
-  description = "GitHub app parameters, see your github app. Ensure the key is the base64-encoded `.pem` file (the output of `base64 app.private-key.pem`, not the content of `private-key.pem`)."
+variable "github_app_parameters" {
+  description = "Parameter Store for GitHub App Parameters."
   type = object({
-    key_base64    = string
-    id            = string
-    client_id     = string
-    client_secret = string
+    key_base64 = map(string)
+    id         = map(string)
   })
 }
 
@@ -136,6 +134,12 @@ variable "minimum_running_time_in_minutes" {
   description = "The time an ec2 action runner should be running at minimum before terminated if non busy. Defaults to 5m for linux runners and 15m for windows runners"
   type        = number
   default     = null
+}
+
+variable "runner_boot_time_in_minutes" {
+  description = "The minimum time for an EC2 runner to boot and register as a runner."
+  type        = number
+  default     = 5
 }
 
 variable "runner_extra_labels" {
@@ -162,6 +166,12 @@ variable "lambda_timeout_scale_down" {
   default     = 60
 }
 
+variable "scale_up_reserved_concurrent_executions" {
+  description = "Amount of reserved concurrent executions for the scale-up lambda function. A value of 0 disables lambda from being triggered and -1 removes any concurrency limitations."
+  type        = number
+  default     = 1
+}
+
 variable "lambda_timeout_scale_up" {
   description = "Time out for the scale up lambda in seconds."
   type        = number
@@ -175,7 +185,7 @@ variable "role_permissions_boundary" {
 }
 
 variable "role_path" {
-  description = "The path that will be added to the role, if not set the environment name will be used."
+  description = "The path that will be added to the role; if not set, the environment name will be used."
   type        = string
   default     = null
 }
@@ -196,14 +206,6 @@ variable "runners_maximum_count" {
   description = "The maximum number of runners that will be created."
   type        = number
   default     = 3
-}
-
-variable "encryption" {
-  description = "KMS key to encrypted lambda environment secrets. Either provide a key and `encrypt` set to `true`. Or set the key to `null` and encrypt to `false`."
-  type = object({
-    kms_key_id = string
-    encrypt    = bool
-  })
 }
 
 variable "runner_architecture" {
@@ -229,7 +231,7 @@ variable "logging_retention_in_days" {
 }
 
 variable "enable_ssm_on_runners" {
-  description = "Enable to allow access the runner instances for debugging purposes via SSM. Note that this adds additional permissions to the runner instances."
+  description = "Enable to allow access to the runner instances for debugging purposes via SSM. Note that this adds additional permissions to the runner instances."
   type        = bool
 }
 
@@ -249,7 +251,7 @@ variable "runners_lambda_s3_object_version" {
 }
 
 variable "create_service_linked_role_spot" {
-  description = "(optional) create the serviced linked role for spot instances that is required by the scale-up lambda."
+  description = "(optional) create the service linked role for spot instances that is required by the scale-up lambda."
   type        = bool
   default     = false
 }
@@ -273,7 +275,7 @@ variable "cloudwatch_config" {
 }
 
 variable "runner_log_files" {
-  description = "(optional) List of logfiles to send to cloudwatch, will only be used if `enable_cloudwatch_agent` is set to true. Object description: `log_group_name`: Name of the log group, `prefix_log_group`: If true, the log group name will be prefixed with `/github-self-hosted-runners/<var.environment>`, `file_path`: path to the log file, `log_stream_name`: name of the log stream."
+  description = "(optional) List of logfiles to send to CloudWatch, will only be used if `enable_cloudwatch_agent` is set to true. Object description: `log_group_name`: Name of the log group, `prefix_log_group`: If true, the log group name will be prefixed with `/github-self-hosted-runners/<var.environment>`, `file_path`: path to the log file, `log_stream_name`: name of the log stream."
   type = list(object({
     log_group_name   = string
     prefix_log_group = bool
@@ -287,6 +289,12 @@ variable "ghes_url" {
   description = "GitHub Enterprise Server URL. DO NOT SET IF USING PUBLIC GITHUB"
   type        = string
   default     = null
+}
+
+variable "ghes_ssl_verify" {
+  description = "GitHub Enterprise SSL verification. Set to 'false' when custom certificate (chains) is used for GitHub Enterprise Server (insecure)."
+  type        = bool
+  default     = true
 }
 
 variable "lambda_subnet_ids" {
@@ -317,4 +325,85 @@ variable "volume_size" {
   description = "Size of runner volume"
   type        = number
   default     = 30
+}
+
+variable "kms_key_arn" {
+  description = "Optional CMK Key ARN to be used for Parameter Store."
+  type        = string
+  default     = null
+}
+
+variable "egress_rules" {
+  description = "List of egress rules for the GitHub runner instances."
+  type = list(object({
+    cidr_blocks      = list(string)
+    ipv6_cidr_blocks = list(string)
+    prefix_list_ids  = list(string)
+    from_port        = number
+    protocol         = string
+    security_groups  = list(string)
+    self             = bool
+    to_port          = number
+    description      = string
+  }))
+  default = [{
+    cidr_blocks      = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
+    prefix_list_ids  = null
+    from_port        = 0
+    protocol         = "-1"
+    security_groups  = null
+    self             = null
+    to_port          = 0
+    description      = null
+  }]
+}
+
+variable "log_type" {
+  description = "Logging format for lambda logging. Valid values are 'json', 'pretty', 'hidden'. "
+  type        = string
+  default     = "pretty"
+  validation {
+    condition = anytrue([
+      var.log_type == "json",
+      var.log_type == "pretty",
+      var.log_type == "hidden",
+    ])
+    error_message = "`log_type` value not valid. Valid values are 'json', 'pretty', 'hidden'."
+  }
+}
+
+variable "log_level" {
+  description = "Logging level for lambda logging. Valid values are  'silly', 'trace', 'debug', 'info', 'warn', 'error', 'fatal'."
+  type        = string
+  default     = "info"
+  validation {
+    condition = anytrue([
+      var.log_level == "silly",
+      var.log_level == "trace",
+      var.log_level == "debug",
+      var.log_level == "info",
+      var.log_level == "warn",
+      var.log_level == "error",
+      var.log_level == "fatal",
+    ])
+    error_message = "`log_level` value not valid. Valid values are 'silly', 'trace', 'debug', 'info', 'warn', 'error', 'fatal'."
+  }
+}
+
+variable "runner_ec2_tags" {
+  description = "Map of tags that will be added to the launch template instance tag specificatons."
+  type        = map(string)
+  default     = {}
+}
+
+variable "metadata_options" {
+  description = "Metadata options for the ec2 runner instances."
+  type        = map(any)
+  default = {
+    http_endpoint               = "enabled"
+    http_tokens                 = "optional"
+    http_put_response_hop_limit = 1
+  }
+
 }

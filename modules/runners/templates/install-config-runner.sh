@@ -1,14 +1,16 @@
 cd /home/$USER_NAME
 mkdir actions-runner && cd actions-runner
 
-aws s3 cp ${s3_location_runner_distribution} actions-runner.tar.gz
+TOKEN=$(curl -f -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 180")
+REGION=$(curl -f -H "X-aws-ec2-metadata-token: $TOKEN" -v http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r .region)
+
+aws s3 cp ${s3_location_runner_distribution} actions-runner.tar.gz --region $REGION
 tar xzf ./actions-runner.tar.gz
 rm -rf actions-runner.tar.gz
 
 ${arm_patch}
 
-INSTANCE_ID=$(wget -q -O - http://169.254.169.254/latest/meta-data/instance-id)
-REGION=$(curl -s 169.254.169.254/latest/dynamic/instance-identity/document | jq -r .region)
+INSTANCE_ID=$(curl -f -H "X-aws-ec2-metadata-token: $TOKEN" -v http://169.254.169.254/latest/meta-data/instance-id)
 
 echo wait for configuration
 while [[ $(aws ssm get-parameters --names ${environment}-$INSTANCE_ID --with-decryption --region $REGION | jq -r ".Parameters | .[0] | .Value") == null ]]; do

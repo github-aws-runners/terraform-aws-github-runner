@@ -1,16 +1,28 @@
 import { EC2, SSM } from 'aws-sdk';
+import { logger as rootLogger } from './logger';
+
+const logger = rootLogger.getChildLogger();
+
+export interface RunnerList {
+  instanceId: string;
+  launchTime?: Date;
+  owner?: string;
+  type?: string;
+  repo?: string;
+  org?: string;
+}
 
 export interface RunnerInfo {
   instanceId: string;
-  launchTime: Date | undefined;
-  repo: string | undefined;
-  org: string | undefined;
+  launchTime?: Date;
+  owner: string;
+  type: string;
 }
 
 export interface ListRunnerFilters {
   runnerType?: 'Org' | 'Repo';
   runnerOwner?: string;
-  environment: string | undefined;
+  environment?: string;
 }
 
 export interface RunnerInputParameters {
@@ -20,7 +32,7 @@ export interface RunnerInputParameters {
   runnerOwner: string;
 }
 
-export async function listRunners(filters: ListRunnerFilters | undefined = undefined): Promise<RunnerInfo[]> {
+export async function listEC2Runners(filters: ListRunnerFilters | undefined = undefined): Promise<RunnerList[]> {
   const ec2 = new EC2();
   const ec2Filters = [
     { Name: 'tag:Application', Values: ['github-action-runner'] },
@@ -31,11 +43,12 @@ export async function listRunners(filters: ListRunnerFilters | undefined = undef
       ec2Filters.push({ Name: 'tag:Environment', Values: [filters.environment] });
     }
     if (filters.runnerType && filters.runnerOwner) {
-      ec2Filters.push({ Name: `tag:${filters.runnerType}`, Values: [filters.runnerOwner] });
+      ec2Filters.push({ Name: `tag:Type`, Values: [filters.runnerType] });
+      ec2Filters.push({ Name: `tag:Owner`, Values: [filters.runnerOwner] });
     }
   }
   const runningInstances = await ec2.describeInstances({ Filters: ec2Filters }).promise();
-  const runners: RunnerInfo[] = [];
+  const runners: RunnerList[] = [];
   if (runningInstances.Reservations) {
     for (const r of runningInstances.Reservations) {
       if (r.Instances) {
@@ -43,8 +56,10 @@ export async function listRunners(filters: ListRunnerFilters | undefined = undef
           runners.push({
             instanceId: i.InstanceId as string,
             launchTime: i.LaunchTime,
-            repo: i.Tags?.find((e) => e.Key === 'Repo')?.Value,
-            org: i.Tags?.find((e) => e.Key === 'Org')?.Value,
+            owner: i.Tags?.find((e) => e.Key === 'Owner')?.Value as string,
+            type: i.Tags?.find((e) => e.Key === 'Type')?.Value as string,
+            repo: i.Tags?.find((e) => e.Key === 'Repo')?.Value as string,
+            org: i.Tags?.find((e) => e.Key === 'Org')?.Value as string,
           });
         }
       }
@@ -53,23 +68,23 @@ export async function listRunners(filters: ListRunnerFilters | undefined = undef
   return runners;
 }
 
-export async function terminateRunner(runner: RunnerInfo): Promise<void> {
+export async function terminateRunner(instanceId: string): Promise<void> {
   const ec2 = new EC2();
   await ec2
     .terminateInstances({
-      InstanceIds: [runner.instanceId],
+      InstanceIds: [instanceId],
     })
     .promise();
-  console.debug('Runner terminated.' + runner.instanceId);
+  logger.info(`Runner ${instanceId} has been terminated.`);
 }
 
 export async function createRunner(runnerParameters: RunnerInputParameters, launchTemplateName: string): Promise<void> {
-  console.debug('Runner configuration: ' + JSON.stringify(runnerParameters));
+  logger.debug('Runner configuration: ' + JSON.stringify(runnerParameters));
   const ec2 = new EC2();
   const runInstancesResponse = await ec2
     .runInstances(getInstanceParams(launchTemplateName, runnerParameters))
     .promise();
-  console.info('Created instance(s): ', runInstancesResponse.Instances?.map((i) => i.InstanceId).join(','));
+  logger.info('Created instance(s): ', runInstancesResponse.Instances?.map((i) => i.InstanceId).join(','));
   const ssm = new SSM();
   runInstancesResponse.Instances?.forEach(async (i: EC2.Instance) => {
     await ssm
@@ -84,7 +99,7 @@ export async function createRunner(runnerParameters: RunnerInputParameters, laun
 
 function getInstanceParams(
   launchTemplateName: string,
-  runnerParameters: RunnerInputParameters
+  runnerParameters: RunnerInputParameters,
 ): EC2.RunInstancesRequest {
   return {
     MaxCount: 1,
@@ -99,10 +114,8 @@ function getInstanceParams(
         ResourceType: 'instance',
         Tags: [
           { Key: 'Application', Value: 'github-action-runner' },
-          {
-            Key: runnerParameters.runnerType,
-            Value: runnerParameters.runnerOwner
-          },
+          { Key: 'Type', Value: runnerParameters.runnerType },
+          { Key: 'Owner', Value: runnerParameters.runnerOwner },
         ],
       },
     ],
@@ -110,6 +123,6 @@ function getInstanceParams(
 }
 
 function getSubnet(): string {
-  const subnets = (process.env.SUBNET_IDS as string).split(',');
+  const subnets = process.env.SUBNET_IDS.split(',');
   return subnets[Math.floor(Math.random() * subnets.length)];
 }

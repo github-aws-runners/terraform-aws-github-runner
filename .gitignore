@@ -16,7 +16,7 @@ secrets.auto.tfvars
 *.zip
 *.gz
 *.tgz
-*.env
+*.env*
 .vscode
 
 **/coverage/*

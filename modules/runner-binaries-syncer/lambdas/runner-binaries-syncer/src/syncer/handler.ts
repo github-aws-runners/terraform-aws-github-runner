@@ -1,9 +1,11 @@
 import { Octokit } from '@octokit/rest';
 import { PassThrough } from 'stream';
-import request from 'request';
 import { S3 } from 'aws-sdk';
 import AWS from 'aws-sdk';
-import yn from 'yn';
+import axios from 'axios';
+import { logger as rootLogger } from './logger';
+
+const logger = rootLogger.getChildLogger();
 
 const versionKey = 'name';
 
@@ -23,7 +25,7 @@ async function getCachedVersion(s3: S3, cacheObject: CacheObject): Promise<strin
     const versions = objectTagging.TagSet?.filter((t: S3.Tag) => t.Key === versionKey);
     return versions.length === 1 ? versions[0].Value : undefined;
   } catch (e) {
-    console.debug('No tags found');
+    logger.debug('No tags found');
     return undefined;
   }
 }
@@ -50,7 +52,7 @@ async function getReleaseAsset(
   const latestReleaseIndex = assetsList.data.findIndex((a) => a.prerelease === false);
 
   let asset = undefined;
-  if (fetchPrereleaseBinaries && latestPrereleaseIndex < latestReleaseIndex) {
+  if (fetchPrereleaseBinaries && latestPrereleaseIndex != -1 && latestPrereleaseIndex < latestReleaseIndex) {
     asset = assetsList.data[latestPrereleaseIndex];
   } else if (latestReleaseIndex != -1) {
     asset = assetsList.data[latestReleaseIndex];
@@ -67,28 +69,40 @@ async function getReleaseAsset(
 
 async function uploadToS3(s3: S3, cacheObject: CacheObject, actionRunnerReleaseAsset: ReleaseAsset): Promise<void> {
   const writeStream = new PassThrough();
-  s3.upload({
-    Bucket: cacheObject.bucket,
-    Key: cacheObject.key,
-    Tagging: versionKey + '=' + actionRunnerReleaseAsset.name,
-    Body: writeStream,
-  }).promise();
+  const writePromise = s3
+    .upload({
+      Bucket: cacheObject.bucket,
+      Key: cacheObject.key,
+      Tagging: versionKey + '=' + actionRunnerReleaseAsset.name,
+      Body: writeStream,
+    })
+    .promise();
 
-  await new Promise<void>((resolve, reject) => {
-    console.debug('Start downloading %s and uploading to S3.', actionRunnerReleaseAsset.name);
-    request
-      .get(actionRunnerReleaseAsset.downloadUrl)
-      .pipe(writeStream)
-      .on('finish', () => {
-        console.info(`The new distribution is uploaded to S3.`);
-        resolve();
+  logger.debug('Start downloading %s and uploading to S3.', actionRunnerReleaseAsset.name);
+
+  const readPromise = new Promise<void>((resolve, reject) => {
+    axios
+      .request<NodeJS.ReadableStream>({
+        method: 'get',
+        url: actionRunnerReleaseAsset.downloadUrl,
+        responseType: 'stream',
       })
-      .on('error', (error) => {
-        reject(error);
-      });
-  }).catch((error) => {
-    console.error(`Exception: ${error}`);
+      .then((res) => {
+        res.data
+          .pipe(writeStream)
+
+          .on('finish', () => resolve())
+          .on('error', (error) => reject(error));
+      })
+      .catch((error) => reject(error));
   });
+
+  await Promise.all([readPromise, writePromise])
+    .then(() => logger.info(`The new distribution is uploaded to S3.`))
+    .catch((error) => {
+      logger.error(`Uploading of the new distribution to S3 failed: ${error}`);
+      throw error;
+    });
 }
 
 export const handle = async (): Promise<void> => {
@@ -96,7 +110,7 @@ export const handle = async (): Promise<void> => {
 
   const runnerOs = process.env.GITHUB_RUNNER_OS || 'linux';
   const runnerArch = process.env.GITHUB_RUNNER_ARCHITECTURE || 'x64';
-  const fetchPrereleaseBinaries = yn(process.env.GITHUB_RUNNER_ALLOW_PRERELEASE_BINARIES, { default: false });
+  const fetchPrereleaseBinaries = JSON.parse(process.env.GITHUB_RUNNER_ALLOW_PRERELEASE_BINARIES || 'false');
 
   const cacheObject: CacheObject = {
     bucket: process.env.S3_BUCKET_NAME as string,
@@ -111,10 +125,10 @@ export const handle = async (): Promise<void> => {
   }
 
   const currentVersion = await getCachedVersion(s3, cacheObject);
-  console.debug('latest: ' + currentVersion);
-  if (currentVersion === undefined || currentVersion != runnerAsset.name) {
-    uploadToS3(s3, cacheObject, runnerAsset);
+  logger.debug('latest: ' + currentVersion);
+  if (currentVersion === undefined || currentVersion != actionRunnerReleaseAsset.name) {
+    uploadToS3(s3, cacheObject, actionRunnerReleaseAsset);
   } else {
-    console.debug('Distribution is up-to-date, no action.');
+    logger.debug('Distribution is up-to-date, no action.');
   }
 };

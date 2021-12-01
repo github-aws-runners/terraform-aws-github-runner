@@ -19,7 +19,9 @@ function inPeriod(period: ScalingDownConfig): boolean {
 
 export function getIdleRunnerCount(scalingDownConfigs: ScalingDownConfigList): number {
   for (const scalingDownConfig of scalingDownConfigs) {
-    if (inPeriod(scalingDownConfig)) { return scalingDownConfig.idleCount; }
+    if (inPeriod(scalingDownConfig)) {
+      return scalingDownConfig.idleCount;
+    }
   }
   return 0;
 }

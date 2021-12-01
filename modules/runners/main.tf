@@ -18,13 +18,15 @@ locals {
   userdata_template              = var.userdata_template == null ? local.default_userdata_template : var.userdata_template
   userdata_arm_patch             = "${path.module}/templates/arm-runner-patch.tpl"
   instance_types                 = var.instance_types == null ? [var.instance_type] : var.instance_types
+  instance_types = distinct(var.instance_types == null ? [var.instance_type] : var.instance_types)
   userdata_install_config_runner = var.runner_os == "win" ? "${path.module}/templates/install-config-runner.ps1" : "${path.module}/templates/install-config-runner.sh"
+  kms_key_arn = var.kms_key_arn != null ? var.kms_key_arn : ""
 
   # see also: ../../main.tf
   ami_filter = (
+    : var.runner_architecture == "arm64"
     length(var.ami_filter) > 0
     ? var.ami_filter
-    : var.runner_architecture == "arm64"
     ? { name = ["amzn2-ami-hvm-2*-arm64-gp2"] }
     : var.runner_os == "win"
     ? { name = ["Windows_Server-20H2-English-Core-ContainersLatest-*"] }
@@ -36,9 +38,9 @@ locals {
     ? var.runner_log_files
     : [
       {
-        "log_group_name" : "messages",
         "prefix_log_group" : true,
         "file_path" : "/var/log/messages",
+        "log_group_name" : "messages",
         "log_stream_name" : "{instance_id}"
       },
       {
@@ -72,9 +74,9 @@ data "aws_ami" "runner" {
 }
 
 resource "aws_launch_template" "runner" {
-  for_each = local.instance_types
+  count = length(local.instance_types)
 
-  name = "${var.environment}-action-runner-${each.value}"
+  name = "${var.environment}-action-runner-${local.instance_types[count.index]}"
 
   dynamic "block_device_mappings" {
     for_each = [var.block_device_mappings]
@@ -91,18 +93,32 @@ resource "aws_launch_template" "runner" {
     }
   }
 
+  dynamic "metadata_options" {
+    for_each = var.metadata_options != null ? [var.metadata_options] : []
+
+    content {
+      http_endpoint               = metadata_options.value.http_endpoint
+      http_tokens                 = metadata_options.value.http_tokens
+      http_put_response_hop_limit = metadata_options.value.http_put_response_hop_limit
+    }
+  }
+
   iam_instance_profile {
     name = aws_iam_instance_profile.runner.name
   }
 
   instance_initiated_shutdown_behavior = "terminate"
 
-  instance_market_options {
-    market_type = var.market_options
+  dynamic "instance_market_options" {
+    for_each = var.market_options != null ? [var.market_options] : []
+
+    content {
+      market_type = instance_market_options.value
+    }
   }
 
   image_id      = data.aws_ami.runner.id
-  instance_type = each.value
+  instance_type = local.instance_types[count.index]
   key_name      = var.key_name
 
   vpc_security_group_ids = compact(concat(
@@ -117,6 +133,7 @@ resource "aws_launch_template" "runner" {
       {
         "Name" = format("%s", local.name_runner)
       },
+      var.runner_ec2_tags
     )
   }
 
@@ -138,6 +155,7 @@ resource "aws_launch_template" "runner" {
     enable_cloudwatch_agent         = var.enable_cloudwatch_agent
     ssm_key_cloudwatch_agent_config = var.enable_cloudwatch_agent ? aws_ssm_parameter.cloudwatch_agent_config_runner[0].name : ""
     ghes_url                        = var.ghes_url
+    ghes_ssl_verify                 = var.ghes_ssl_verify
     install_config_runner           = local.install_config_runner
   }))
 
@@ -162,12 +180,23 @@ resource "aws_security_group" "runner_sg" {
 
   vpc_id = var.vpc_id
 
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+  dynamic "egress" {
+    for_each = var.egress_rules
+    iterator = each
+
+    content {
+      cidr_blocks      = each.value.cidr_blocks
+      ipv6_cidr_blocks = each.value.ipv6_cidr_blocks
+      prefix_list_ids  = each.value.prefix_list_ids
+      from_port        = each.value.from_port
+      protocol         = each.value.protocol
+      security_groups  = each.value.security_groups
+      self             = each.value.self
+      to_port          = each.value.to_port
+      description      = each.value.description
+    }
   }
+
   tags = merge(
     local.tags,
     {
