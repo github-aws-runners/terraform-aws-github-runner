@@ -24,7 +24,7 @@
     "@typescript-eslint/eslint-plugin": "^4.33.0",
     "@typescript-eslint/parser": "^4.33.0",
     "@vercel/ncc": "0.31.1",
-    "aws-sdk": "^2.1028.0",
+    "aws-sdk": "^2.1040.0",
     "body-parser": "^1.19.0",
     "eslint": "^7.32.0",
     "eslint-plugin-prettier": "4.0.0",
@@ -41,6 +41,6 @@
     "@octokit/rest": "^18.12.0",
     "@octokit/webhooks": "^9.20.0",
     "aws-lambda": "^1.0.7",
-    "tslog": "^3.2.2"
+    "tslog": "^3.3.0"
   }
 }
