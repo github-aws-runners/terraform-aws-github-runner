@@ -112,28 +112,28 @@ beforeEach(() => {
       owner: TEST_DATA.repositoryOwner,
     },
   ]);
+
+  mockedAppAuth.mockResolvedValue({
+    type: 'app',
+    token: 'token',
+    appId: TEST_DATA.installationId,
+    expiresAt: 'some-date',
+  });
+  mockedInstallationAuth.mockResolvedValue({
+    type: 'token',
+    tokenType: 'installation',
+    token: 'token',
+    createdAt: 'some-date',
+    expiresAt: 'some-date',
+    permissions: {},
+    repositorySelection: 'all',
+  });
+
+  mockCreateClient.mockResolvedValue(new mocktokit());
 });
 
 describe('scaleUp with GHES', () => {
   beforeEach(() => {
-    mockedAppAuth.mockResolvedValue({
-      type: 'app',
-      token: 'token',
-      appId: TEST_DATA.installationId,
-      expiresAt: 'some-date',
-    });
-    mockedInstallationAuth.mockResolvedValue({
-      type: 'token',
-      tokenType: 'installation',
-      token: 'token',
-      createdAt: 'some-date',
-      expiresAt: 'some-date',
-      permissions: {},
-      repositorySelection: 'all',
-    });
-
-    mockCreateClient.mockResolvedValue(new mocktokit());
-
     process.env.GHES_URL = 'https://github.enterprise.something';
   });
 
@@ -360,6 +360,8 @@ describe('scaleUp with GHES', () => {
 });
 
 describe('scaleUp with public GH', () => {
+  beforeEach(() => {});
+
   it('ignores non-sqs events', async () => {
     expect.assertions(1);
     expect(scaleUpModule.scaleUp('aws:s3', TEST_DATA)).rejects.toEqual(Error('Cannot handle non-SQS events!'));
