@@ -6,15 +6,16 @@
       "Action": [
         "ssm:DeleteParameter"
       ],
-      "Resource": "${arn_ssm_parameters}"
+      "Resource": ${arn_ssm_parameters}
     },
     {
       "Effect": "Allow",
       "Action": [
+        "ssm:GetParameter",
         "ssm:GetParameters",
-        "ssm:GetParameter"
+        "ssm:GetParametersByPath"
       ],
-      "Resource": "${arn_ssm_parameters}"
+      "Resource": ${arn_ssm_parameters}
     }
   ]
 }

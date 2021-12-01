@@ -3,19 +3,6 @@ locals {
     {
       "Name" = format("%s-action-runner", var.environment)
     },
-    {
-      "ghr:environment" = format("%s", var.environment)
-    },
-    {
-      "ghr:enable_cloudwatch" = var.enable_cloudwatch_agent
-    },
-    {
-      "ghr:run_as" = var.runner_as_root ? "root" : "ec2-user"
-    },
-    {
-      # TODO: Update this to allow for ephemeral runners
-      "ghr:agent_mode" = "persistent"
-    },
     var.tags,
   )
 

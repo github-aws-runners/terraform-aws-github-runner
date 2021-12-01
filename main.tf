@@ -1,6 +1,7 @@
 locals {
   tags = merge(var.tags, {
-    Environment = var.environment
+    Environment       = var.environment,
+    "ghr:environment" = format("%s", var.environment)
   })
 
   s3_action_runner_url = "s3://${module.runner_binaries.bucket.id}/${module.runner_binaries.runner_distribution_object_key}"

@@ -17,14 +17,17 @@ echo "Retrieved tags from AWS API ($tags)"
 environment=$(echo "$tags" | jq -r '.Tags[]  | select(.Key == "ghr:environment") | .Value')
 echo "Reteieved ghr:environment tag - ($environment)"
 
-enable_cloudwatch_agent=$(echo "$tags" | jq -r '.Tags[]  | select(.Key == "ghr:enable_cloudwatch") | .Value')
-echo "Reteieved ghr:enable_cloudwatch tag - ($enable_cloudwatch_agent)"
+parameters=$(aws ssm get-parameters-by-path --path "/$environment/runner" --region "$region" --query "Parameters[*].{Name:Name,Value:Value}")
+echo "Retrieved parameters from AWS SSM ($parameters)"
 
-run_as=$(echo "$tags" | jq -r '.Tags[]  | select(.Key == "ghr:_run_as") | .Value')
-echo "Reteieved ghr:run_as tag - ($run_as)"
+run_as=$(echo "$parameters" | jq --arg environment "$environment" -r '.[] | select(.Name == "/\($environment)/runner/run-as") | .Value')
+echo "Retrieved /$environment/runner/run-as parameter - ($run_as)"
 
-agent_mode=$(echo "$tags" | jq -r '.Tags[]  | select(.Key == "ghr:agent_mode") | .Value')
-echo "Reteieved ghr:agent_mode tag - ($agent_mode)"
+enable_cloudwatch_agent=$(echo "$parameters" | jq --arg environment "$environment" -r '.[] | select(.Name == "/\($environment)/runner/enable-cloudwatch") | .Value')
+echo "Retrieved /$environment/runner/enable-cloudwatch parameter - ($enable_cloudwatch_agent)"
+
+agent_mode=$(echo "$parameters" | jq --arg environment "$environment" -r '.[] | select(.Name == "/\($environment)/runner/agent-mode") | .Value')
+echo "Retrieved /$environment/runner/agent-mode parameter - ($agent_mode)"
 
 if [[ -n "$enable_cloudwatch_agent" ]]; then  
   echo "Cloudwatch is enabled"  
