@@ -360,8 +360,6 @@ describe('scaleUp with GHES', () => {
 });
 
 describe('scaleUp with public GH', () => {
-  beforeEach(() => {});
-
   it('ignores non-sqs events', async () => {
     expect.assertions(1);
     expect(scaleUpModule.scaleUp('aws:s3', TEST_DATA)).rejects.toEqual(Error('Cannot handle non-SQS events!'));
