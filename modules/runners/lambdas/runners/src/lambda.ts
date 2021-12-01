@@ -5,7 +5,7 @@ import { logger } from './scale-runners/logger';
 import ScaleError from './scale-runners/ScaleError';
 import 'source-map-support/register';
 
-export async function scaleUpHandler(event: SQSEvent, context: Context, callback: Callback): Promise<void> {
+export async function scaleUpHandler(event: SQSEvent, context: Context): Promise<void> {
   logger.setSettings({ requestId: context.awsRequestId });
   logger.debug(JSON.stringify(event));
   // TODO find the a more elegant way :(
