@@ -3104,18 +3104,10 @@ slice-ansi@^4.0.0:
     astral-regex "^2.0.0"
     is-fullwidth-code-point "^3.0.0"
 
-source-map-support@^0.5.12, source-map-support@^0.5.17:
-  version "0.5.19"
-  resolved "https://registry.yarnpkg.com/source-map-support/-/source-map-support-0.5.19.tgz#a98b62f86dcaf4f67399648c085291ab9e8fed61"
-  integrity sha512-Wonm7zOCIJzBGQdB+thsPar0kYuCIzYvxZwlBa87yi/Mdjv7Tip2cyVbLj5o0cFPN4EVkuTwb3GDDyUx2DGnGw==
-  dependencies:
-    buffer-from "^1.0.0"
-    source-map "^0.6.0"
-
-source-map-support@^0.5.19, source-map-support@^0.5.6:
-  version "0.5.20"
-  resolved "https://registry.yarnpkg.com/source-map-support/-/source-map-support-0.5.20.tgz#12166089f8f5e5e8c56926b377633392dd2cb6c9"
-  integrity sha1-EhZgifj15ejFaSazd2Mzkt0stsk=
+source-map-support@^0.5.12, source-map-support@^0.5.17, source-map-support@^0.5.21, source-map-support@^0.5.6:
+  version "0.5.21"
+  resolved "https://registry.yarnpkg.com/source-map-support/-/source-map-support-0.5.21.tgz#04fe7c7f9e1ed2d662233c28cb2b35b9f63f6e4f"
+  integrity sha512-uBHU3L3czsIyYXKX88fdrGovxdSCoTGDRZ6SYXtSRxLZUzHg5P/66Ht6uoUlHu9EZod+inXhKo3qQgwXUT/y1w==
   dependencies:
     buffer-from "^1.0.0"
     source-map "^0.6.0"
@@ -3385,12 +3377,12 @@ tslib@^1.8.1:
   resolved "https://registry.yarnpkg.com/tslib/-/tslib-1.14.1.tgz#cf2d38bdc34a134bcaf1091c41f6619e2f672d00"
   integrity sha512-Xni35NKzjgMrwevysHTCArtLDpPvye8zV/0E4EyYn43P7/7qvQwPh9BGkHewbMulVntbigmcT7rdX3BNo9wRJg==
 
-tslog@^3.2.2:
-  version "3.2.2"
-  resolved "https://registry.yarnpkg.com/tslog/-/tslog-3.2.2.tgz#5bbaa1fab685c4273e59b38064227321a69a0694"
-  integrity sha1-W7qh+raFxCc+WbOAZCJzIaaaBpQ=
+tslog@^3.3.0:
+  version "3.3.0"
+  resolved "https://registry.yarnpkg.com/tslog/-/tslog-3.3.0.tgz#868d90a80b915087de18d810d942a6f763bd6cd1"
+  integrity sha512-NP/9xDON5rv8zCS/jDpvi1V+Oplpwd86BBscdEbK6STWRxsSuott33tqly+RCSkFrLVrCuF9qAJKZTPDaR+HbQ==
   dependencies:
-    source-map-support "^0.5.19"
+    source-map-support "^0.5.21"
 
 tsutils@^3.21.0:
   version "3.21.0"
