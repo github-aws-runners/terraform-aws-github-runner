@@ -104,6 +104,7 @@ module "runners" {
   enable_organization_runners          = var.enable_organization_runners
   scale_down_schedule_expression       = var.scale_down_schedule_expression
   minimum_running_time_in_minutes      = var.minimum_running_time_in_minutes
+  runner_boot_time_in_minutes          = var.runner_boot_time_in_minutes
   runner_extra_labels                  = var.runner_extra_labels
   runner_as_root                       = var.runner_as_root
   runners_maximum_count                = var.runners_maximum_count
