@@ -4,7 +4,12 @@
       {          
           "Effect": "Allow",
           "Action": "ec2:DescribeTags",
-          "Resource": "*"
+          "Resource": "*",
+          "Condition": {
+            "ArnEquals": {
+                "aws:SourceArn": "${ec2:SourceInstanceARN}"
+            }
+        }
       }
   ]
 }
