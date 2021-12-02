@@ -45,7 +45,7 @@ resource "aws_iam_role_policy" "dist_bucket" {
 resource "aws_iam_role_policy" "describe_tags" {
   name   = "runner-describe-tags"
   role   = aws_iam_role.runner.name
-  policy = templatefile("${path.module}/policies/instance-describe-tags-policy.json", {})
+  policy = file("${path.module}/policies/instance-describe-tags-policy.json")
 }
 
 resource "aws_iam_role_policy_attachment" "managed_policies" {
