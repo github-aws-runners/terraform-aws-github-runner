@@ -1,6 +1,6 @@
 locals {
   environment = "windows"
-  aws_region  = "us-east-1"
+  aws_region  = "eu-west-1"
 }
 
 resource "random_password" "random" {
@@ -23,17 +23,15 @@ module "runners" {
   github_app = {
     key_base64     = var.github_app_key_base64
     id             = var.github_app_id
-    client_id      = var.github_app_client_id
-    client_secret  = var.github_app_client_secret
     webhook_secret = random_password.random.result
   }
 
-  # webhook_lambda_zip                = "lambdas-download/webhook.zip"
-  # runner_binaries_syncer_lambda_zip = "lambdas-download/runner-binaries-syncer.zip"
-  # runners_lambda_zip                = "lambdas-download/runners.zip"
+  webhook_lambda_zip                = "../../lambda_output/webhook.zip"
+  runner_binaries_syncer_lambda_zip = "../../lambda_output/runner-binaries-syncer.zip"
+  runners_lambda_zip                = "../../lambda_output/runners.zip"
+  enable_organization_runners       = true
 
-  enable_organization_runners = false
-  runner_extra_labels         = "windows,example"
+  runner_extra_labels = "default,example"
 
   # enable access to the runners via SSM
   enable_ssm_on_runners = true
@@ -46,22 +44,22 @@ module "runners" {
     {
       "log_group_name" : "user_data",
       "prefix_log_group" : true,
-      "file_path" : var.runner_os == "linux" ? "/var/log/user-data.log" : "C:/UserData.log",
+      "file_path" : "C:/UserData.log",
       "log_stream_name" : "{instance_id}"
     },
     {
       "log_group_name" : "runner",
       "prefix_log_group" : true,
-      "file_path" : var.runner_os == "linux" ? "/home/runners/actions-runner/_diag/Runner_**.log" : "C:/actions-runner/_diag/Runner_**.log",
+      "file_path" : "C:/actions-runner/_diag/Runner_**.log",
       "log_stream_name" : "{instance_id}"
     }
   ]
 
-  # Uncommet idle config to have idle runners from 9 to 5 in time zone Amsterdam
-  # Idling is recommended as Windows runners can take some time to spin up
-  # idle_config = [{
-  #   cron      = "* * 9-17 * * *"
-  #   timeZone  = "Europe/Amsterdam"
-  #   idleCount = 1
-  # }]
+  instance_types = ["m5.large", "c5.large"]
+
+  # override delay of events in seconds
+  delay_webhook_event = 5
+
+  # override scaling down
+  scale_down_schedule_expression = "cron(* * * * ? *)"
 }
