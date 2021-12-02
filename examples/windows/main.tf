@@ -31,7 +31,8 @@ module "runners" {
   runners_lambda_zip                = "../../lambda_output/runners.zip"
   enable_organization_runners       = true
 
-  runner_extra_labels = "default,example"
+  runner_extra_labels         = "default,example"
+  runner_boot_time_in_minutes = 20
 
   # enable access to the runners via SSM
   enable_ssm_on_runners = true
