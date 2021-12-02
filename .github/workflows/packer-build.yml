@@ -14,7 +14,7 @@ env:
 
 jobs:
   verify_packer:
-    name: Verify image    
+    name: Verify packer    
     runs-on: ubuntu-latest
     container:
       image: hashicorp/packer:1.7.8
