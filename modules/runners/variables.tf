@@ -61,6 +61,11 @@ variable "runner_os" {
   description = "The EC2 Operating System type to use for action runner instances (linux,win)."
   type        = string
   default     = "linux"
+
+  validation {
+    condition     = contains(["linux", "win"], var.runner_os)
+    error_message = "Valid values for runner_os are (linux, win)."
+  }
 }
 
 variable "instance_type" {
