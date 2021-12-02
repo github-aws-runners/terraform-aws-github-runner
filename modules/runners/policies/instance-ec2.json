@@ -7,7 +7,7 @@
       "Resource": "*",
       "Condition": {
         "StringEquals": {
-          "ec2:ResourceTag/Application": "github-action-runner"
+          "aws:ARN": "$${ec2:SourceInstanceARN}"
         }
       }
     }
