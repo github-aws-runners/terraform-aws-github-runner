@@ -16,6 +16,7 @@ This [Terraform](https://www.terraform.io/) module creates the required infrastr
     - [Install app](#install-app)
   - [Encryption](#encryption)
   - [Idle runners](#idle-runners)
+  - [Prebuilt Images](#prebuilt-images)
 - [Examples](#examples)
 - [Sub modules](#sub-modules)
   - [ARM64 configuration for submodules](#arm64-configuration-for-submodules)
@@ -264,6 +265,10 @@ idle_config = [{
    idleCount = 2
 }]
 ```
+
+### Prebuilt Images
+
+This module also allows you to run agents from a prebuilt AMI to gain faster startup times. You can find more information in [the image README.md](/images/README.md)
 
 #### Supported config <!-- omit in toc -->
 
