@@ -19,7 +19,13 @@ terraform apply
 cd ..
 ```
 
-Alternatively you can build the lambdas locally with Node or Docker, there is a simple build script in `<root>/.ci/build.sh`. In the `main.tf` you can simply remove the location of the lambda zip files, the default location will work in this case.
+Alternatively you can build the lambdas locally with Node or Docker, there is a simple build script in `<root>/.ci/build.sh`. In the `main.tf` you need to specify the build location for all of the zip files.
+
+```hcl
+  webhook_lambda_zip                = "../../lambda_output/webhook.zip"
+  runner_binaries_syncer_lambda_zip = "../../lambda_output/runner-binaries-syncer.zip"
+  runners_lambda_zip                = "../../lambda_output/runners.zip"
+```
 
 ### GitHub App Configuration
 
