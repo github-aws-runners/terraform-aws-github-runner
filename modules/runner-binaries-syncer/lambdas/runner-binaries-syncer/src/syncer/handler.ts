@@ -59,12 +59,11 @@ async function getReleaseAsset(
   } else {
     return undefined;
   }
-  const assets = asset.assets
-    ?.filter((a: { name?: string }) => a.name?.includes(`actions-runner-${runnerOs}-${runnerArch}-`));
+  const assets = asset.assets?.filter((a: { name?: string }) =>
+    a.name?.includes(`actions-runner-${runnerOs}-${runnerArch}-`),
+  );
 
-  return assets?.length === 1
-    ? { name: assets[0].name, downloadUrl: assets[0].browser_download_url }
-    : undefined;
+  return assets?.length === 1 ? { name: assets[0].name, downloadUrl: assets[0].browser_download_url } : undefined;
 }
 
 async function uploadToS3(s3: S3, cacheObject: CacheObject, actionRunnerReleaseAsset: ReleaseAsset): Promise<void> {

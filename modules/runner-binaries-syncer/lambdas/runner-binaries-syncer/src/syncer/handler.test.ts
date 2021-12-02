@@ -301,9 +301,9 @@ describe('Synchronize action distribution for windows.', () => {
 
   it('No win asset.', async () => {
     mockOctokit.repos.listReleases.mockImplementation(() => ({
-      data: listReleases.map(release => ({
+      data: listReleases.map((release) => ({
         ...release,
-        assets: release.assets.filter(asset => !asset.name.includes('win'))
+        assets: release.assets.filter((asset) => !asset.name.includes('win')),
       })),
     }));
 
