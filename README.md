@@ -292,7 +292,7 @@ Examples are located in the [examples](./examples) directory. The following exam
 - _[Default](examples/default/README.md)_: The default example of the module
 - _[Permissions boundary](examples/permissions-boundary/README.md)_: Example usages of permissions boundaries.
 - _[Ubuntu](examples/ubuntu/README.md)_: Example usage of creating a runner using Ubuntu AMIs.
-- _[Ubuntu](examples/windows/README.md)_: Example usage of creating a runner using Windows as the OS.
+- _[Windows](examples/windows/README.md)_: Example usage of creating a runner using Windows as the OS.
 
 ## Sub modules
 
