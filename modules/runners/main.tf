@@ -17,45 +17,19 @@ locals {
   default_userdata_template      = var.runner_os == "linux" ? "${path.module}/templates/user-data.sh" : "${path.module}/templates/user-data.ps1"
   userdata_template              = var.userdata_template == null ? local.default_userdata_template : var.userdata_template
   userdata_arm_patch             = "${path.module}/templates/arm-runner-patch.tpl"
-  instance_types                 = var.instance_types == null ? [var.instance_type] : var.instance_types
-  instance_types = distinct(var.instance_types == null ? [var.instance_type] : var.instance_types)
+  instance_types                 = distinct(var.instance_types == null ? [var.instance_type] : var.instance_types)
   userdata_install_config_runner = var.runner_os == "win" ? "${path.module}/templates/install-config-runner.ps1" : "${path.module}/templates/install-config-runner.sh"
   kms_key_arn = var.kms_key_arn != null ? var.kms_key_arn : ""
 
   # see also: ../../main.tf
   ami_filter = (
-    : var.runner_architecture == "arm64"
     length(var.ami_filter) > 0
     ? var.ami_filter
+    : var.runner_architecture == "arm64"
     ? { name = ["amzn2-ami-hvm-2*-arm64-gp2"] }
     : var.runner_os == "win"
     ? { name = ["Windows_Server-20H2-English-Core-ContainersLatest-*"] }
     : { name = ["amzn2-ami-hvm-2.*-x86_64-ebs"] }
-  )
-
-  runner_log_files = (
-    var.runner_log_files != null
-    ? var.runner_log_files
-    : [
-      {
-        "prefix_log_group" : true,
-        "file_path" : "/var/log/messages",
-        "log_group_name" : "messages",
-        "log_stream_name" : "{instance_id}"
-      },
-      {
-        "log_group_name" : "user_data",
-        "prefix_log_group" : true,
-        "file_path" : var.runner_os == "win" ? "C:/UserData.log" : "/var/log/user-data.log",
-        "log_stream_name" : "{instance_id}"
-      },
-      {
-        "log_group_name" : "runner",
-        "prefix_log_group" : true,
-        "file_path" : var.runner_os == "win" ? "C:/actions-runner/_diag/Runner_*.log" : "/home/runners/actions-runner/_diag/Runner_**.log",
-        "log_stream_name" : "{instance_id}"
-      }
-    ]
   )
 }
 

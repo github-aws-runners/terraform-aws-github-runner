@@ -131,9 +131,9 @@ variable "scale_down_schedule_expression" {
 }
 
 variable "minimum_running_time_in_minutes" {
-  description = "The time an ec2 action runner should be running at minimum before terminated if non busy. Defaults to 5m for linux runners and 15m for windows runners"
+  description = "The time an ec2 action runner should be running at minimum before terminated if non busy."
   type        = number
-  default     = null
+  default     = 5
 }
 
 variable "runner_boot_time_in_minutes" {
@@ -282,7 +282,7 @@ variable "runner_log_files" {
     file_path        = string
     log_stream_name  = string
   }))
-  default = null
+  default = []
 }
 
 variable "ghes_url" {

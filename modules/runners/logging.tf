@@ -1,4 +1,28 @@
 locals {
+  runner_log_files = (
+    var.runner_log_files != null
+    ? var.runner_log_files
+    : [
+      {
+        "prefix_log_group" : true,
+        "file_path" : "/var/log/messages",
+        "log_group_name" : "messages",
+        "log_stream_name" : "{instance_id}"
+      },
+      {
+        "log_group_name" : "user_data",
+        "prefix_log_group" : true,
+        "file_path" : var.runner_os == "win" ? "C:/UserData.log" : "/var/log/user-data.log",
+        "log_stream_name" : "{instance_id}"
+      },
+      {
+        "log_group_name" : "runner",
+        "prefix_log_group" : true,
+        "file_path" : var.runner_os == "win" ? "C:/actions-runner/_diag/Runner_*.log" : "/home/runners/actions-runner/_diag/Runner_**.log",
+        "log_stream_name" : "{instance_id}"
+      }
+    ]
+  )
   logfiles = var.enable_cloudwatch_agent ? [for l in local.runner_log_files : {
     "log_group_name" : l.prefix_log_group ? "/github-self-hosted-runners/${var.environment}/${l.log_group_name}" : "/${l.log_group_name}"
     "log_stream_name" : l.log_stream_name
