@@ -220,8 +220,7 @@ variable "block_device_mappings" {
 variable "ami_filter" {
   description = "List of maps used to create the AMI filter for the action runner AMI. By default amazon linux 2 is used."
   type        = map(list(string))
-
-  default = {}
+  default     = null
 }
 variable "ami_owners" {
   description = "The list of owners used to select the AMI of action runner instances."

@@ -19,18 +19,14 @@ locals {
   userdata_arm_patch             = "${path.module}/templates/arm-runner-patch.tpl"
   instance_types                 = distinct(var.instance_types == null ? [var.instance_type] : var.instance_types)
   userdata_install_config_runner = var.runner_os == "win" ? "${path.module}/templates/install-config-runner.ps1" : "${path.module}/templates/install-config-runner.sh"
-  kms_key_arn = var.kms_key_arn != null ? var.kms_key_arn : ""
+  kms_key_arn                    = var.kms_key_arn != null ? var.kms_key_arn : ""
 
-  # see also: ../../main.tf
-  ami_filter = (
-    length(var.ami_filter) > 0
-    ? var.ami_filter
-    : var.runner_architecture == "arm64"
-    ? { name = ["amzn2-ami-hvm-2*-arm64-gp2"] }
-    : var.runner_os == "win"
-    ? { name = ["Windows_Server-20H2-English-Core-ContainersLatest-*"] }
-    : { name = ["amzn2-ami-hvm-2.*-x86_64-ebs"] }
-  )
+  default_ami = {
+    "win"   = { name = ["Windows_Server-20H2-English-Core-ContainersLatest-*"] }
+    "linux" = var.runner_architecture == "arm64" ? { name = ["amzn2-ami-hvm-2*-arm64-gp2"] } : { name = ["amzn2-ami-hvm-2.*-x86_64-ebs"] }
+  }
+
+  ami_filter = coalesce(var.ami_filter, local.default_ami[var.runner_os])
 }
 
 data "aws_ami" "runner" {
