@@ -46,7 +46,7 @@ variable "scale_down_schedule_expression" {
 }
 
 variable "minimum_running_time_in_minutes" {
-  description = "The time an ec2 action runner should be running at minimum before terminated if non busy."
+  description = "The time an ec2 action runner should be running at minimum before terminated if not busy."
   type        = number
   default     = null
 }

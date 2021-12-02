@@ -126,8 +126,8 @@ export const handle = async (): Promise<void> => {
 
   const currentVersion = await getCachedVersion(s3, cacheObject);
   logger.debug('latest: ' + currentVersion);
-  if (currentVersion === undefined || currentVersion != actionRunnerReleaseAsset.name) {
-    uploadToS3(s3, cacheObject, actionRunnerReleaseAsset);
+  if (currentVersion === undefined || currentVersion != runnerAsset.name) {
+    uploadToS3(s3, cacheObject, runnerAsset);
   } else {
     logger.debug('Distribution is up-to-date, no action.');
   }
