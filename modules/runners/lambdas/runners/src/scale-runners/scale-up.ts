@@ -36,16 +36,16 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
     const githubClient = await createOctoClient(ghAuth.token, ghesApiUrl);
     installationId = enableOrgLevel
       ? (
-        await githubClient.apps.getOrgInstallation({
-          org: payload.repositoryOwner,
-        })
-      ).data.id
+          await githubClient.apps.getOrgInstallation({
+            org: payload.repositoryOwner,
+          })
+        ).data.id
       : (
-        await githubClient.apps.getRepoInstallation({
-          owner: payload.repositoryOwner,
-          repo: payload.repositoryName,
-        })
-      ).data.id;
+          await githubClient.apps.getRepoInstallation({
+            owner: payload.repositoryOwner,
+            repo: payload.repositoryName,
+          })
+        ).data.id;
   }
 
   const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl);
@@ -68,9 +68,9 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
       const registrationToken = enableOrgLevel
         ? await githubInstallationClient.actions.createRegistrationTokenForOrg({ org: payload.repositoryOwner })
         : await githubInstallationClient.actions.createRegistrationTokenForRepo({
-          owner: payload.repositoryOwner,
-          repo: payload.repositoryName,
-        });
+            owner: payload.repositoryOwner,
+            repo: payload.repositoryName,
+          });
       const token = registrationToken.data.token;
 
       const labelsArgument = runnerExtraLabels !== undefined ? `--labels ${runnerExtraLabels}` : '';
