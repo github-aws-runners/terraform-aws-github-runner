@@ -25,11 +25,11 @@ Your image will then begin to build inside AWS and when finished you will be pro
 
 To use your image in the terraform modules you will need to set some values on the module.
 
-Assuming you have built the `linux-amzn2` image which has a pre-defined AMI name in the following format `github-runner-amzn2-YYYYMMDDhhmm` you can use the following values.
+Assuming you have built the `linux-amzn2` image which has a pre-defined AMI name in the following format `github-runner-amzn2-x86_64-YYYYMMDDhhmm` you can use the following values.
 
 ```hcl
 # set the name of the ami to use
-ami_filter        = { name = ["github-runner-amzn2-2021*"] }
+ami_filter        = { name = ["github-runner-amzn2-x86_64-2021*"] }
 # provide the owner id of 
 ami_owners        = ["<your owner id>"]
 

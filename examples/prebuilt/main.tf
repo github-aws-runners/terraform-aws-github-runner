@@ -32,7 +32,7 @@ module "runners" {
 
   # configure your pre-built AMI
   userdata_enabled = false
-  ami_filter       = { name = ["github-runner-amzn2-2021*"] }
+  ami_filter       = { name = ["github-runner-amzn2-x86_64-2021*"] }
   ami_owners       = [data.aws_caller_identity.current.account_id]
 
   # enable access to the runners via SSM
