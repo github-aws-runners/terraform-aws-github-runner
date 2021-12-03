@@ -37,6 +37,36 @@ You will need to build your image. This example deployment uses the image exampl
 
 ## Deploy
 
+To use your image in the terraform modules you will need to set some values on the module.
+
+Assuming you have built the `linux-amzn2` image which has a pre-defined AMI name in the following format `github-runner-amzn2-x86_64-YYYYMMDDhhmm` you can use the following values.
+
+```hcl
+
+module "runners" {
+  ...
+  # set the name of the ami to use
+  ami_filter        = { name = ["github-runner-amzn2-x86_64-2021*"] }
+  # provide the owner id of 
+  ami_owners        = ["<your owner id>"]
+
+  userdata_enabled = false
+  ...
+}
+```
+
+If your owner is the same as the account you are logging into then you can use `aws_caller_identity` to retrieve it dynamically.
+
+```hcl
+data "aws_caller_identity" "current" {}
+
+module "runners" {
+  ...
+  ami_owners       = [data.aws_caller_identity.current.account_id]
+  ...
+}
+```
+
 You can then deploy the terraform
 
 ```bash
