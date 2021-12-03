@@ -8,3 +8,11 @@ export const logger = new Logger({
   overwriteConsole: true,
   type: process.env.LOG_TYPE || 'pretty',
 });
+
+export class LogFields {
+  static fields: { [key: string]: string } = {};
+
+  public static print(): string {
+    return JSON.stringify(LogFields.fields);
+  }
+}

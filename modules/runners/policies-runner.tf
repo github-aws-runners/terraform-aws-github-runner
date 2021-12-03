@@ -26,7 +26,8 @@ resource "aws_iam_role_policy" "ssm_parameters" {
   role = aws_iam_role.runner.name
   policy = templatefile("${path.module}/policies/instance-ssm-parameters-policy.json",
     {
-      arn_ssm_parameters = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${var.environment}-*"
+      arn_ssm_parameters_prefix= "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${var.environment}-*"
+      arn_ssm_parameters_path ="arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${var.environment}/*"      
     }
   )
 }
@@ -39,6 +40,12 @@ resource "aws_iam_role_policy" "dist_bucket" {
       s3_arn = var.s3_bucket_runner_binaries.arn
     }
   )
+}
+
+resource "aws_iam_role_policy" "describe_tags" {
+  name   = "runner-describe-tags"
+  role   = aws_iam_role.runner.name
+  policy = file("${path.module}/policies/instance-describe-tags-policy.json")
 }
 
 resource "aws_iam_role_policy_attachment" "managed_policies" {

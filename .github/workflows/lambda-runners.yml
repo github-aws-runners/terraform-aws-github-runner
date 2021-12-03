@@ -26,5 +26,9 @@ jobs:
         run: yarn lint
       - name: Run tests
         run: yarn test
+      - name: Run two tests in isolation
+        run: |
+           yarn run test src/scale-runners/scale-up.test.ts -t 'scaleUp with GHES on org level creates a runner with labels in s specific group' --coverage=false
+           yarn run test src/scale-runners/scale-up.test.ts -t 'scaleUp with public GH on org level creates a runner with labels in s specific group' --coverage=false
       - name: Build distribution
         run: yarn build

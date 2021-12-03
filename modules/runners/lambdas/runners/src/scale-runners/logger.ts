@@ -5,7 +5,14 @@ export const logger = new Logger({
   displayInstanceName: false,
   maskAnyRegEx: ['--token [A-Z0-9]*'],
   minLevel: process.env.LOG_LEVEL || 'info',
-  name: 'scale-up',
+  name: 'scale-runners',
   overwriteConsole: true,
   type: process.env.LOG_TYPE || 'pretty',
 });
+export class LogFields {
+  static fields: { [key: string]: string } = {};
+
+  public static print(): string {
+    return JSON.stringify(LogFields.fields);
+  }
+}

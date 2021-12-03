@@ -16,6 +16,7 @@ output "binaries_syncer" {
     lambda      = module.runner_binaries.lambda
     lambda_role = module.runner_binaries.lambda_role
     location    = local.s3_action_runner_url
+    bucket      = module.runner_binaries.bucket
   }
 }
 
