@@ -39,7 +39,7 @@ module "runners" {
   enable_ssm_on_runners = true
 
   # override delay of events in seconds
-  delay_webhook_event = 0
+  delay_webhook_event = 5
 
   # override scaling down
   scale_down_schedule_expression = "cron(* * * * ? *)"
