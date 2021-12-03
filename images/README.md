@@ -33,5 +33,5 @@ ami_filter        = { name = ["github-runner-amzn2-x86_64-2021*"] }
 # provide the owner id of 
 ami_owners        = ["<your owner id>"]
 
-userdata_enabled = false
+enabled_userdata = false
 ```

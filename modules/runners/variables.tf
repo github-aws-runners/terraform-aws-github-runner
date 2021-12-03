@@ -84,7 +84,7 @@ variable "ami_owners" {
   default     = ["amazon"]
 }
 
-variable "userdata_enabled" {
+variable "enabled_userdata" {
   description = "Should the userdata script be enabled for the runner. Set this to false if you are using your own prebuilt AMI"
   type        = bool
   default     = true

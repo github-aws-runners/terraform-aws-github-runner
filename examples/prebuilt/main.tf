@@ -24,14 +24,14 @@ module "runners" {
     webhook_secret = random_password.random.result
   }
 
-  webhook_lambda_zip                = "lambdas-download/webhook.zip"
-  runner_binaries_syncer_lambda_zip = "lambdas-download/runner-binaries-syncer.zip"
-  runners_lambda_zip                = "lambdas-download/runners.zip"
+  webhook_lambda_zip                = "../../lambda_output/webhook.zip"
+  runner_binaries_syncer_lambda_zip = "../../lambda_output/runner-binaries-syncer.zip"
+  runners_lambda_zip                = "../../lambda_output/runners.zip"
 
   runner_extra_labels = "default,example"
 
   # configure your pre-built AMI
-  userdata_enabled = false
+  enabled_userdata = false
   ami_filter       = { name = ["github-runner-amzn2-x86_64-2021*"] }
   ami_owners       = [data.aws_caller_identity.current.account_id]
 

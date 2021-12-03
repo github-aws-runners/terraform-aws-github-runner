@@ -110,7 +110,7 @@ resource "aws_launch_template" "runner" {
   }
 
 
-  user_data = var.userdata_enabled ? base64encode(templatefile(local.userdata_template, {
+  user_data = var.enabled_userdata ? base64encode(templatefile(local.userdata_template, {
     pre_install = var.userdata_pre_install
     install_runner = templatefile(local.userdata_install_runner, {
       S3_LOCATION_RUNNER_DISTRIBUTION = var.s3_location_runner_binaries
