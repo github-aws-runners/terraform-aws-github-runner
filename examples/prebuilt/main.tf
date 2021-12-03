@@ -7,6 +7,8 @@ resource "random_password" "random" {
   length = 28
 }
 
+data "aws_caller_identity" "current" {}
+
 module "runners" {
   source                          = "../../"
   create_service_linked_role_spot = true
@@ -31,7 +33,7 @@ module "runners" {
   # configure your pre-built AMI
   userdata_enabled = false
   ami_filter       = { name = ["github-runner-amzn2-2021*"] }
-  ami_owners       = [var.ami_owner]
+  ami_owners       = [data.aws_caller_identity.current.account_id]
 
   # enable access to the runners via SSM
   enable_ssm_on_runners = true
