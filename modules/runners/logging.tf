@@ -20,6 +20,12 @@ locals {
         "prefix_log_group" : true,
         "file_path" : var.runner_os == "win" ? "C:/actions-runner/_diag/Runner_*.log" : "/home/runners/actions-runner/_diag/Runner_**.log",
         "log_stream_name" : "{instance_id}"
+      },
+      {
+        "log_group_name" : "runner-startup",
+        "prefix_log_group" : true,
+        "file_path" : var.runner_os == "win" ? "C:/runner-startup.log" : "/var/log/runner-startup.log",
+        "log_stream_name" : "{instance_id}"
       }
     ]
   )
