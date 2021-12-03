@@ -1,6 +1,6 @@
-import { handle } from './syncer/handler';
+import { sync } from './syncer/syncer';
 
-handle()
+sync()
   .then()
   .catch((e) => {
     console.log(e);
