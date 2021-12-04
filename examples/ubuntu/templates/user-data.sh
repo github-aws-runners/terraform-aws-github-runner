@@ -59,7 +59,7 @@ echo export PATH=/home/$USER_NAME/bin:$PATH >>/home/$USER_NAME/.profile
 loginctl enable-linger $USER_NAME
 su -l $USER_NAME -c "systemctl --user enable docker"
 
-${install_config_runner}
+${install_runner}
 
 # config runner for rootless docker
 cd /home/$USER_NAME/actions-runner/
