@@ -50,8 +50,9 @@ Write-Host "Installing additional development tools"
 choco install git jq awscli archiver -y
 refreshenv
 
-${install_config_runner}
+${install_runner}
 ${post_install}
+${start_runner}
 
 Stop-Transcript
 </powershell>

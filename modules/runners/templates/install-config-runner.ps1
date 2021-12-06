@@ -1,12 +1,15 @@
 Write-Host "Installing GitHub Actions runner..."
 New-Item -ItemType Directory -Path C:\actions-runner ; Set-Location C:\actions-runner
 
-aws s3 cp ${s3_location_runner_distribution} actions-runner.zip
+aws s3 cp ${S3_LOCATION_RUNNER_DISTRIBUTION} actions-runner.zip
 arc -folder-safe=false unarchive actions-runner.zip
 Remove-Item actions-runner.zip
 
 $InstanceId = Get-EC2InstanceMetadata -Category InstanceId
 $Region = Get-EC2InstanceMetadata -Category IdentityDocument | ConvertFrom-Json | Select-Object -ExpandProperty region
+
+$tags = Get-EC2Tag -Filter @{Name="resource-type";Values="instance"},@{Name="resourceId";Values="$InstanceId"}
+## TODO get environment from tags
 
 Write-Host "Waiting for configuration..."
 
