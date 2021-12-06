@@ -14,7 +14,6 @@ locals {
   userdata_template     = var.userdata_template == null ? local.default_userdata_template[var.runner_os] : var.userdata_template
   userdata_arm_patch    = "${path.module}/templates/arm-runner-patch.tpl"
   instance_types        = distinct(var.instance_types == null ? [var.instance_type] : var.instance_types)
-  userdata_start_runner = "${path.module}/templates/start-runner.sh"
   kms_key_arn           = var.kms_key_arn != null ? var.kms_key_arn : ""
 
   default_ami = {
@@ -27,9 +26,14 @@ locals {
     "linux" = "${path.module}/templates/user-data.sh"
   }
 
-  default_userdata_install_runner = {
+  userdata_install_runner = {
     "win"   = "${path.module}/templates/install-config-runner.ps1"
     "linux" = "${path.module}/templates/install-runner.sh"
+  }
+
+  userdata_start_runner = {
+    "win"   = "${path.module}/templates/start-runner.ps1"
+    "linux" = "${path.module}/templates/start-runner.sh"
   }
 
   ami_filter = coalesce(var.ami_filter, local.default_ami[var.runner_os])
@@ -126,13 +130,13 @@ resource "aws_launch_template" "runner" {
 
   user_data = var.enabled_userdata ? base64encode(templatefile(local.userdata_template, {
     pre_install = var.userdata_pre_install
-    install_runner = templatefile(local.default_userdata_install_runner[var.runner_os], {
+    install_runner = templatefile(local.userdata_install_runner[var.runner_os], {
       S3_LOCATION_RUNNER_DISTRIBUTION = var.s3_location_runner_binaries
       ARM_PATCH                       = var.runner_architecture == "arm64" ? templatefile(local.userdata_arm_patch, {}) : ""
       environment                     = var.environment
     })
     post_install    = var.userdata_post_install
-    start_runner    = templatefile(local.userdata_start_runner, {})
+    start_runner    = templatefile(local.userdata_start_runner[var.runner_os], {})
     ghes_url        = var.ghes_url
     ghes_ssl_verify = var.ghes_ssl_verify
     ## retain these for backwards compatibility
