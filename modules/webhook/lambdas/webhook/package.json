@@ -37,7 +37,7 @@
     "typescript": "^4.5.2"
   },
   "dependencies": {
-    "@aws-sdk/client-ssm": "^3.43.0",
+    "@aws-sdk/client-ssm": "^3.44.0",
     "@octokit/rest": "^18.12.0",
     "@octokit/webhooks": "^9.20.0",
     "aws-lambda": "^1.0.7",
