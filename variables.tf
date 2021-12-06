@@ -459,4 +459,8 @@ variable "runner_os" {
   type        = string
   default     = "linux"
 
+  validation {
+    condition     = contains(["linux", "win"], var.runner_os)
+    error_message = "Valid values for runner_os are (linux, win)."
+  }
 }
