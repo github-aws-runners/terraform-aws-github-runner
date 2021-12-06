@@ -68,4 +68,4 @@ echo PATH=/home/$USER_NAME/bin:$PATH >>.env
 
 ${post_install}
 
-./svc.sh start
+${start_runner}
