@@ -17,7 +17,7 @@
   },
   "devDependencies": {
     "@octokit/webhooks-definitions": "^3.67.3",
-    "@types/aws-lambda": "^8.10.85",
+    "@types/aws-lambda": "^8.10.86",
     "@types/express": "^4.17.11",
     "@types/jest": "^27.0.3",
     "@types/node": "^16.11.11",
