@@ -24,7 +24,7 @@
     "@typescript-eslint/eslint-plugin": "^4.33.0",
     "@typescript-eslint/parser": "^4.33.0",
     "@vercel/ncc": "0.32.0",
-    "aws-sdk": "^2.1040.0",
+    "aws-sdk": "^2.1043.0",
     "body-parser": "^1.19.0",
     "eslint": "^7.32.0",
     "eslint-plugin-prettier": "4.0.0",
