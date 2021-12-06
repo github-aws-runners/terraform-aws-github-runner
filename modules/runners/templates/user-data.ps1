@@ -54,5 +54,6 @@ ${install_runner}
 ${post_install}
 ${start_runner}
 
+Write-Host "Starting runner after $((get-uptime).tostring("dd' days 'hh' hours 'mm' minutes 'ss' seconds'"))"
 Stop-Transcript
 </powershell>
