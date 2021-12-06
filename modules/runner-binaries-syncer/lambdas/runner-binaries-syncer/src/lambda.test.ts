@@ -12,13 +12,13 @@ describe('Test scale up lambda wrapper.', () => {
         resolve();
       });
     });
-    await expect(handler({}, {})).resolves;
+    await expect(handler({}, {}, {})).resolves;
   });
 
   it('Scale without error should resolve2 . ', async () => {
     const mock = mocked(sync);
     mock.mockRejectedValue(new Error(''));
 
-    await expect(handler({}, {})).resolves;
+    await expect(handler({}, {}, {})).resolves;
   });
 });
