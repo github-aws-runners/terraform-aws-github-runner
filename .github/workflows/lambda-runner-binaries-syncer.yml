@@ -1,7 +1,4 @@
 name: Lambda Syncer
-env:
-  lambda_name: runner-binaries-syncer
-  lambda_path: modules/runner-binaries-syncer/lambdas/runner-binaries-syncer
 on:
   push:
     branches:
@@ -17,7 +14,8 @@ jobs:
     container: node:14
     defaults:
       run:
-        working-directory: ${{ env.lambda_path }}
+        working-directory: modules/runner-binaries-syncer/lambdas/runner-binaries-syncer
+
     steps:
       - uses: actions/checkout@v2
       - name: Install dependencies

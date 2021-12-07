@@ -1,4 +1,4 @@
-import { handle } from './handler';
+import { sync } from './syncer';
 import listReleases from '../../test/resources/github-list-releases.json';
 import listReleasesEmpty from '../../test/resources/github-list-releases-empty-assets.json';
 import listReleasesNoLinux from '../../test/resources/github-list-releases-no-linux.json';
@@ -47,7 +47,7 @@ describe('Synchronize action distribution.', () => {
       };
     });
 
-    await handle();
+    await sync();
     expect(mockOctokit.repos.listReleases).toBeCalledTimes(1);
     expect(mockS3.getObjectTagging).toBeCalledWith({
       Bucket: bucketName,
@@ -71,7 +71,7 @@ describe('Synchronize action distribution.', () => {
       };
     });
 
-    await handle();
+    await sync();
     expect(mockOctokit.repos.listReleases).toBeCalledTimes(1);
     expect(mockS3.getObjectTagging).toBeCalledWith({
       Bucket: bucketName,
@@ -90,7 +90,7 @@ describe('Synchronize action distribution.', () => {
       };
     });
 
-    await handle();
+    await sync();
     expect(mockOctokit.repos.listReleases).toBeCalledTimes(1);
     expect(mockS3.getObjectTagging).toBeCalledWith({
       Bucket: bucketName,
@@ -108,7 +108,7 @@ describe('Synchronize action distribution.', () => {
       };
     });
 
-    await handle();
+    await sync();
     expect(mockOctokit.repos.listReleases).toBeCalledTimes(1);
     expect(mockS3.getObjectTagging).toBeCalledWith({
       Bucket: bucketName,
@@ -134,7 +134,7 @@ describe('Synchronize action distribution.', () => {
       };
     });
 
-    await handle();
+    await sync();
     expect(mockOctokit.repos.listReleases).toBeCalledTimes(1);
     expect(mockS3.getObjectTagging).toBeCalledWith({
       Bucket: bucketName,
@@ -155,7 +155,7 @@ describe('Synchronize action distribution.', () => {
       };
     });
 
-    await handle();
+    await sync();
     expect(mockOctokit.repos.listReleases).toBeCalledTimes(1);
     expect(mockS3.getObjectTagging).toBeCalledWith({
       Bucket: bucketName,
@@ -183,7 +183,7 @@ describe('Synchronize action distribution.', () => {
       };
     });
 
-    await handle();
+    await sync();
     expect(mockOctokit.repos.listReleases).toBeCalledTimes(1);
     expect(mockS3.getObjectTagging).toBeCalledWith({
       Bucket: bucketName,
@@ -203,7 +203,7 @@ describe('Synchronize action distribution.', () => {
       };
     });
 
-    await handle();
+    await sync();
     expect(mockOctokit.repos.listReleases).toBeCalledTimes(1);
     expect(mockS3.getObjectTagging).toBeCalledWith({
       Bucket: bucketName,
@@ -221,7 +221,7 @@ describe('Synchronize action distribution.', () => {
       };
     });
 
-    await handle();
+    await sync();
     expect(mockOctokit.repos.listReleases).toBeCalledTimes(1);
     expect(mockS3.getObjectTagging).toBeCalledWith({
       Bucket: bucketName,
@@ -243,7 +243,7 @@ describe('No release assets found.', () => {
       data: listReleasesEmpty,
     }));
 
-    await expect(handle()).rejects.toThrow(errorMessage);
+    await expect(sync()).rejects.toThrow(errorMessage);
   });
 
   it('No linux x64 asset.', async () => {
@@ -251,7 +251,7 @@ describe('No release assets found.', () => {
       data: [listReleasesNoLinux],
     }));
 
-    await expect(handle()).rejects.toThrow(errorMessage);
+    await expect(sync()).rejects.toThrow(errorMessage);
   });
 });
 
@@ -260,17 +260,17 @@ describe('Invalid config', () => {
   it('No bucket and object key.', async () => {
     delete process.env.S3_OBJECT_KEY;
     delete process.env.S3_BUCKET_NAME;
-    await expect(handle()).rejects.toThrow(errorMessage);
+    await expect(sync()).rejects.toThrow(errorMessage);
   });
   it('No bucket.', async () => {
     delete process.env.S3_BUCKET_NAME;
     process.env.S3_OBJECT_KEY = bucketObjectKey;
-    await expect(handle()).rejects.toThrow(errorMessage);
+    await expect(sync()).rejects.toThrow(errorMessage);
   });
   it('No object key.', async () => {
     delete process.env.S3_OBJECT_KEY;
     process.env.S3_BUCKET_NAME = bucketName;
-    await expect(handle()).rejects.toThrow(errorMessage);
+    await expect(sync()).rejects.toThrow(errorMessage);
   });
 });
 
@@ -287,7 +287,7 @@ describe('Synchronize action distribution for arm64.', () => {
       data: [listReleasesNoArm64],
     }));
 
-    await expect(handle()).rejects.toThrow(errorMessage);
+    await expect(sync()).rejects.toThrow(errorMessage);
   });
 });
 

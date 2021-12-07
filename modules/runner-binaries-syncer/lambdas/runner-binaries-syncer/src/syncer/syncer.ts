@@ -104,7 +104,7 @@ async function uploadToS3(s3: S3, cacheObject: CacheObject, actionRunnerReleaseA
     });
 }
 
-export const handle = async (): Promise<void> => {
+export async function sync(): Promise<void> {
   const s3 = new AWS.S3();
 
   const runnerOs = process.env.GITHUB_RUNNER_OS || 'linux';
@@ -130,4 +130,4 @@ export const handle = async (): Promise<void> => {
   } else {
     logger.debug('Distribution is up-to-date, no action.');
   }
-};
+}
