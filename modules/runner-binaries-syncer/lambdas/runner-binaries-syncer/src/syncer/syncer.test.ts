@@ -31,9 +31,6 @@ mockedAxios.request.mockResolvedValue({
 
 const mockS3 = {
   getObjectTagging: jest.fn(),
-  // upload: jest.fn(() => {
-  //   promise: jest.fn();
-  // }),
   upload: jest.fn().mockImplementation(() => {
     return { promise: jest.fn(() => Promise.resolve()) };
   }),
@@ -213,8 +210,8 @@ describe('Synchronize action distribution.', () => {
       Key: bucketObjectKey,
     });
     expect(mockS3.upload).toBeCalledTimes(1);
-    //const s3JsonBody = mockS3.upload.mock.calls[0][0];
-    //expect(s3JsonBody['Tagging']).toEqual('name=actions-runner-linux-x64-2.273.0.tar.gz');
+    const s3JsonBody = mockS3.upload.mock.calls[0][0];
+    expect(s3JsonBody['Tagging']).toEqual('name=actions-runner-linux-x64-2.273.0.tar.gz');
   });
 
   it('No tag in S3, distribution should update.', async () => {
