@@ -9,7 +9,7 @@ Remove-Item actions-runner.zip
 Write-Host  "Retrieving TOKEN from AWS API"
 $token=Invoke-RestMethod -Method PUT -Uri "http://169.254.169.254/latest/api/token" -Headers @{"X-aws-ec2-metadata-token-ttl-seconds" = "180"}
 
-$metadata=Invoke-RestMethod -Uri "http://169.254.169.254/latest/dynamic/instance-identity/document" -Headers @{"X-aws-ec2-metadata-token" = $token} | ConvertFrom-Json
+$metadata=Invoke-RestMethod -Uri "http://169.254.169.254/latest/dynamic/instance-identity/document" -Headers @{"X-aws-ec2-metadata-token" = $token}
 
 $Region = $metadata.region
 Write-Host  "Reteieved REGION from AWS API ($Region)"
@@ -17,7 +17,7 @@ Write-Host  "Reteieved REGION from AWS API ($Region)"
 $InstanceId = $metadata.instanceId
 Write-Host  "Reteieved InstanceId from AWS API ($InstanceId)"
 
-$tags=$(aws ec2 describe-tags --region "$Region" --filters "Name=resource-id,Values=$InstanceId") | ConvertFrom-Json
+$tags=aws ec2 describe-tags --region "$Region" --filters "Name=resource-id,Values=$InstanceId" | ConvertFrom-Json
 Write-Host  "Retrieved tags from AWS API ($tags)"
 
 $environment=$tags.Tags.where( {$_.Key -eq 'ghr:environment'}).value
