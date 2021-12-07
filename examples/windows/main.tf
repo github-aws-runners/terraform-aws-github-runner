@@ -27,11 +27,12 @@ module "runners" {
   runners_lambda_zip                = "../../lambda_output/runners.zip"
 
   enable_organization_runners = true
-  runner_extra_labels         = "default,example"
+  # no need to add extra windows tag here as it is automatically added by GitHub
+  runner_extra_labels = "default,example"
 
   # Set the OS to Windows
   runner_os = "win"
-  # no need to add extra windows tag here as it is automatically added by GitHub
+  # we need to give the runner time to start because this is windows.
   runner_boot_time_in_minutes = 20
 
   # enable access to the runners via SSM

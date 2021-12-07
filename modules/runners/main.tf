@@ -133,7 +133,6 @@ resource "aws_launch_template" "runner" {
     install_runner = templatefile(local.userdata_install_runner[var.runner_os], {
       S3_LOCATION_RUNNER_DISTRIBUTION = var.s3_location_runner_binaries
       ARM_PATCH                       = var.runner_architecture == "arm64" ? templatefile(local.userdata_arm_patch, {}) : ""
-      environment                     = var.environment
     })
     post_install    = var.userdata_post_install
     start_runner    = templatefile(local.userdata_start_runner[var.runner_os], {})
