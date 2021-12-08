@@ -42,7 +42,7 @@ Write-Host "Get GH Runner config from AWS SSM"
 $config = $null
 $i = 0
 do {
-    $config = aws ssm get-parameters --names "$environment-$InstanceId" --with-decryption --region $Region | jq -r ".Parameters | .[0] | .Value"
+    $config = (aws ssm get-parameters --names "$environment-$InstanceId" --with-decryption --region $Region  --query "Parameters[*].{Name:Name,Value:Value}" | ConvertFrom-Json)[0].value    
     Write-Host "Waiting for GH Runner config to become available in AWS SSM ($i/30)"
     Start-Sleep 1
     $i++
