@@ -4,8 +4,8 @@ import { mocked } from 'ts-jest/utils';
 
 jest.mock('./syncer/syncer');
 
-describe('Test scale up lambda wrapper.', () => {
-  it('Scale without error should resolve.', async () => {
+describe('Test download sync wrapper.', () => {
+  it('Test successful download.', async () => {
     const mock = mocked(sync);
     mock.mockImplementation(() => {
       return new Promise((resolve) => {
@@ -15,7 +15,7 @@ describe('Test scale up lambda wrapper.', () => {
     await expect(handler({}, {})).resolves;
   });
 
-  it('Scale without error should resolve2 . ', async () => {
+  it('Test wrapper with returning an error. ', async () => {
     const mock = mocked(sync);
     mock.mockRejectedValue(new Error(''));
 

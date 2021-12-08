@@ -126,7 +126,7 @@ export async function sync(): Promise<void> {
   const currentVersion = await getCachedVersion(s3, cacheObject);
   logger.debug('latest: ' + currentVersion);
   if (currentVersion === undefined || currentVersion != runnerAsset.name) {
-    uploadToS3(s3, cacheObject, runnerAsset);
+    await uploadToS3(s3, cacheObject, actionRunnerReleaseAsset);
   } else {
     logger.debug('Distribution is up-to-date, no action.');
   }

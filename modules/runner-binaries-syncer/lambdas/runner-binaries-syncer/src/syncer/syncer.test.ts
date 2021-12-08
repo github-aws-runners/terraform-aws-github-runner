@@ -3,6 +3,10 @@ import listReleases from '../../test/resources/github-list-releases.json';
 import listReleasesEmpty from '../../test/resources/github-list-releases-empty-assets.json';
 import listReleasesNoLinux from '../../test/resources/github-list-releases-no-linux.json';
 import listReleasesNoArm64 from '../../test/resources/github-list-releases-no-arm64.json';
+import { S3 } from 'aws-sdk';
+import axios from 'axios';
+import { request } from 'http';
+import { EventEmitter, PassThrough, Readable } from 'stream';
 
 const mockOctokit = {
   repos: {
@@ -13,9 +17,23 @@ jest.mock('@octokit/rest', () => ({
   Octokit: jest.fn().mockImplementation(() => mockOctokit),
 }));
 
+// mock stream for Axios
+const mockResponse = `{"data": 123}`;
+const mockStream = new PassThrough();
+mockStream.push(mockResponse);
+mockStream.end();
+
+jest.mock('axios');
+const mockedAxios = axios as jest.Mocked<typeof axios>;
+mockedAxios.request.mockResolvedValue({
+  data: mockStream,
+});
+
 const mockS3 = {
   getObjectTagging: jest.fn(),
-  upload: jest.fn(),
+  upload: jest.fn().mockImplementation(() => {
+    return { promise: jest.fn(() => Promise.resolve()) };
+  }),
 };
 jest.mock('aws-sdk', () => ({
   S3: jest.fn().mockImplementation(() => mockS3),
@@ -26,6 +44,8 @@ const bucketObjectKey = 'actions-runner-linux.tar.gz';
 beforeEach(() => {
   jest.clearAllMocks();
 });
+
+jest.setTimeout(60 * 1000);
 
 describe('Synchronize action distribution.', () => {
   beforeEach(() => {
