@@ -118,14 +118,14 @@ export async function sync(): Promise<void> {
   if (!cacheObject.bucket || !cacheObject.key) {
     throw Error('Please check all mandatory variables are set.');
   }
-  const runnerAsset = await getReleaseAsset(runnerOs, runnerArch, fetchPrereleaseBinaries);
-  if (runnerAsset === undefined) {
+  const actionRunnerReleaseAsset = await getReleaseAsset(runnerOs, runnerArch, fetchPrereleaseBinaries);
+  if (actionRunnerReleaseAsset === undefined) {
     throw Error('Cannot find GitHub release asset.');
   }
 
   const currentVersion = await getCachedVersion(s3, cacheObject);
   logger.debug('latest: ' + currentVersion);
-  if (currentVersion === undefined || currentVersion != runnerAsset.name) {
+  if (currentVersion === undefined || currentVersion != actionRunnerReleaseAsset.name) {
     await uploadToS3(s3, cacheObject, actionRunnerReleaseAsset);
   } else {
     logger.debug('Distribution is up-to-date, no action.');

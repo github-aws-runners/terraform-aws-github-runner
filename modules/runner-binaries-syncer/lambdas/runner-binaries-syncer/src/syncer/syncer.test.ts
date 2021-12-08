@@ -327,6 +327,6 @@ describe('Synchronize action distribution for windows.', () => {
       })),
     }));
 
-    await expect(handle()).rejects.toThrow(errorMessage);
+    await expect(sync()).rejects.toThrow(errorMessage);
   });
 });
