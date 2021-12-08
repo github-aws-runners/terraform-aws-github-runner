@@ -27,7 +27,7 @@ locals {
   }
 
   userdata_install_runner = {
-    "win"   = "${path.module}/templates/install-config-runner.ps1"
+    "win"   = "${path.module}/templates/install-runner.ps1"
     "linux" = "${path.module}/templates/install-runner.sh"
   }
 
