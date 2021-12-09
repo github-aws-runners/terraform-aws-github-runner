@@ -4,7 +4,7 @@ locals {
 }
 
 resource "random_id" "random" {
-  byte_length = 16
+  byte_length = 20
 }
 
 data "aws_caller_identity" "current" {}
