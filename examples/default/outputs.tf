@@ -10,6 +10,6 @@ output "webhook_endpoint" {
 
 output "webhook_secret" {
   sensitive = true
-  value     = random_password.random.result
+  value     = random_id.random.hex
 }
 

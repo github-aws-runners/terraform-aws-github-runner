@@ -6,7 +6,7 @@ output "runners" {
 
 output "webhook" {
   value = {
-    secret   = random_password.random.result
+    secret   = random_id.random.hex
     endpoint = module.runners.webhook.endpoint
   }
 }

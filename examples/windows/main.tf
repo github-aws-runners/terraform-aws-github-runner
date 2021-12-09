@@ -3,8 +3,8 @@ locals {
   aws_region  = "eu-west-1"
 }
 
-resource "random_password" "random" {
-  length = 28
+resource "random_id" "random" {
+  byte_length = 16
 }
 
 module "runners" {
@@ -18,7 +18,7 @@ module "runners" {
   github_app = {
     key_base64     = var.github_app_key_base64
     id             = var.github_app_id
-    webhook_secret = random_password.random.result
+    webhook_secret = random_id.random.hex
   }
 
   # Grab the lambda packages from local directory. Must run /.ci/build.sh first

@@ -3,8 +3,8 @@ locals {
   aws_region  = "eu-west-1"
 }
 
-resource "random_password" "random" {
-  length = 32
+resource "random_id" "random" {
+  byte_length = 16
 }
 
 data "terraform_remote_state" "iam" {
@@ -46,7 +46,7 @@ module "runners" {
     id             = var.github_app_id
     client_id      = var.github_app_client_id
     client_secret  = var.github_app_client_secret
-    webhook_secret = random_password.random.result
+    webhook_secret = random_id.random.hex
   }
 
   webhook_lambda_zip                = "lambdas-download/webhook.zip"
