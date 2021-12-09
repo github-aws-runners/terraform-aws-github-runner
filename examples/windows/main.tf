@@ -26,7 +26,7 @@ module "runners" {
   runner_binaries_syncer_lambda_zip = "../../lambda_output/runner-binaries-syncer.zip"
   runners_lambda_zip                = "../../lambda_output/runners.zip"
 
-  enable_organization_runners = true
+  enable_organization_runners = false
   # no need to add extra windows tag here as it is automatically added by GitHub
   runner_extra_labels = "default,example"
 

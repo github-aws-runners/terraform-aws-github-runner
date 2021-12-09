@@ -78,7 +78,7 @@ foreach ($group in @("Administrators", "docker-users")) {
 }
 
 # Disable User Access Control (UAC)
-# TODO investigate if this is needed or if its overkill
+# TODO investigate if this is needed or if its overkill - https://github.com/philips-labs/terraform-aws-github-runner/issues/1505
 Set-ItemProperty HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -Name ConsentPromptBehaviorAdmin -Value 0 -Force
 Write-Host "Disabled User Access Control (UAC)"
 

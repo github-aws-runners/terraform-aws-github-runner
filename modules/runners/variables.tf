@@ -75,7 +75,7 @@ variable "instance_type" {
 }
 
 variable "instance_types" {
-  description = "List of instance types for the action runner."
+  description = "List of instance types for the action runner. Defaults are based on runner_os (amzn2 for linux and Windows Server Core for win)."
   type        = list(string)
   default     = null
 }
