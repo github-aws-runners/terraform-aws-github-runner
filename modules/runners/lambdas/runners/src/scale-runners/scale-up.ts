@@ -46,17 +46,6 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
 
   logger.info(`Received event`, LogFields.print());
 
-  const runnerType = enableOrgLevel ? 'Org' : 'Repo';
-  const runnerOwner = enableOrgLevel ? payload.repositoryOwner : `${payload.repositoryOwner}/${payload.repositoryName}`;
-
-  LogFields.fields = {};
-  LogFields.fields.runnerType = runnerType;
-  LogFields.fields.runnerOwner = runnerOwner;
-  LogFields.fields.event = payload.eventType;
-  LogFields.fields.id = payload.id.toString();
-
-  logger.info(`Received event`, LogFields.print());
-
   let ghesApiUrl = '';
   if (ghesBaseUrl) {
     ghesApiUrl = `${ghesBaseUrl}/api/v3`;
