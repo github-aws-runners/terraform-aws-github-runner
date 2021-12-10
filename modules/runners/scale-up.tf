@@ -50,6 +50,7 @@ resource "aws_cloudwatch_log_group" "scale_up" {
 resource "aws_lambda_event_source_mapping" "scale_up" {
   event_source_arn = var.sqs_build_queue.arn
   function_name    = aws_lambda_function.scale_up.arn
+  batch_size       = 1
 }
 
 resource "aws_lambda_permission" "scale_runners_lambda" {

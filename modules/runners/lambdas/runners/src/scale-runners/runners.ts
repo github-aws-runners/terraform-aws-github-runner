@@ -90,15 +90,17 @@ export async function createRunner(runnerParameters: RunnerInputParameters, laun
     LogFields.print(),
   );
   const ssm = new SSM();
-  runInstancesResponse.Instances?.forEach(async (i: EC2.Instance) => {
-    await ssm
-      .putParameter({
-        Name: runnerParameters.environment + '-' + (i.InstanceId as string),
-        Value: runnerParameters.runnerServiceConfig,
-        Type: 'SecureString',
-      })
-      .promise();
-  });
+  if (runInstancesResponse.Instances != undefined) {
+    for (let i = 0; i < runInstancesResponse.Instances?.length; i++) {
+      await ssm
+        .putParameter({
+          Name: runnerParameters.environment + '-' + (runInstancesResponse.Instances[i].InstanceId as string),
+          Value: runnerParameters.runnerServiceConfig,
+          Type: 'SecureString',
+        })
+        .promise();
+    }
+  }
 }
 
 function getInstanceParams(

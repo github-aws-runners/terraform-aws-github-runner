@@ -3,6 +3,7 @@ import { createOctoClient, createGithubAppAuth, createGithubInstallationAuth } f
 import yn from 'yn';
 import { Octokit } from '@octokit/rest';
 import { logger as rootLogger, LogFields } from './logger';
+import ScaleError from './ScaleError';
 
 const logger = rootLogger.getChildLogger({ name: 'scale-up' });
 
@@ -64,9 +65,7 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
   const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl);
   const githubInstallationClient = await createOctoClient(ghAuth.token, ghesApiUrl);
 
-  const isQueued = await getJobStatus(githubInstallationClient, payload);
-  // ephemeral runners should be created on every event, will only work with `workflow_job` events.
-  if (ephemeral || isQueued) {
+  if (ephemeral || (await getJobStatus(githubInstallationClient, payload))) {
     const currentRunners = await listEC2Runners({
       environment,
       runnerType,
@@ -74,7 +73,6 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
     });
     logger.info(`Current runners: ${currentRunners.length} of ${maximumRunners}`, LogFields.print());
 
-    // TODO: how to handle the event if the max is reached in case of ephemeral runners
     if (currentRunners.length < maximumRunners) {
       logger.info(`Attempting to launch a new runner`, LogFields.print());
       // create token
@@ -102,6 +100,9 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
       });
     } else {
       logger.info('No runner will be created, maximum number of runners reached.', LogFields.print());
+      if (ephemeral) {
+        throw new ScaleError('No runners create: maximum of runners reached.');
+      }
     }
   }
 }
@@ -146,6 +147,6 @@ export async function createRunnerLoop(runnerParameters: RunnerInputParameters):
     }
   }
   if (launched == false) {
-    throw Error('All launch templates failed');
+    throw new ScaleError('All launch templates failed');
   }
 }
