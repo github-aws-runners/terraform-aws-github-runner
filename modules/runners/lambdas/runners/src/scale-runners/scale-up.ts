@@ -30,7 +30,7 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
   if (ephemeralEnabled && payload.eventType != 'workflow_job') {
     logger.warn(`${payload.eventType} event is not supported in combination with ephemeral runners.`);
     throw Error(
-      `The workflow_job type ${payload.eventType} is not supported in combination with ephemeral runners.` +
+      `The event type ${payload.eventType} is not supported in combination with ephemeral runners.` +
         `Please ensure you have enabled workflow_job events.`,
     );
   }
