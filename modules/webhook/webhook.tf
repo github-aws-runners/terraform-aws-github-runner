@@ -19,6 +19,7 @@ resource "aws_lambda_function" "webhook" {
       REPOSITORY_WHITE_LIST             = jsonencode(var.repository_white_list)
       RUNNER_LABELS                     = jsonencode(split(",", var.runner_extra_labels))
       SQS_URL_WEBHOOK                   = var.sqs_build_queue.id
+      SQS_IS_FIFO                       = var.sqs_build_queue_fifo
     }
   }
 

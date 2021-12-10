@@ -126,3 +126,9 @@ variable "disable_check_wokflow_job_labels" {
   type        = bool
   default     = false
 }
+
+variable "sqs_build_queue_fifo" {
+  description = "Enable a FIFO queue to remain the order of events received by the webhook. Suggest to set to true for repo level runners."
+  type        = bool
+  default     = false
+}

@@ -12,7 +12,7 @@ export interface ActionRequestMessage {
 export const sendActionRequest = async (message: ActionRequestMessage): Promise<void> => {
   const sqs = new SQS({ region: process.env.AWS_REGION });
 
-  const useFifoQueueEnv = process.env.USE_FIFO_QUEUE || 'false';
+  const useFifoQueueEnv = process.env.SQS_IS_FIFO || 'false';
   const useFifoQueue = JSON.parse(useFifoQueueEnv) as boolean;
 
   const sqsMessage: SQS.Types.SendMessageRequest = {

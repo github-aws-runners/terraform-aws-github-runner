@@ -40,7 +40,7 @@ describe('Test sending message to SQS.', () => {
   it('no fifo queue', async () => {
     // Arrange
     process.env.SQS_URL_WEBHOOK = sqsMessage.QueueUrl;
-    process.env.USE_FIFO_QUEUE = 'false';
+    process.env.SQS_IS_FIFO = 'false';
 
     // Act
     const result = await sendActionRequest(message);
@@ -53,7 +53,7 @@ describe('Test sending message to SQS.', () => {
   it('use a fifo queue', async () => {
     // Arrange
     process.env.SQS_URL_WEBHOOK = sqsMessage.QueueUrl;
-    process.env.USE_FIFO_QUEUE = 'true';
+    process.env.SQS_IS_FIFO = 'true';
 
     // Act
     const result = await sendActionRequest(message);
