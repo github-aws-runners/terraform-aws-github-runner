@@ -63,7 +63,7 @@ module "runners" {
   instance_types = ["m5.large", "c5.large"]
 
   # override delay of events in seconds
-  delay_webhook_event   = 10
+  delay_webhook_event   = 5
   runners_maximum_count = 1
 
   # set up a fifo queue to remain order
