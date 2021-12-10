@@ -91,7 +91,6 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
     });
     logger.info(`Current runners: ${currentRunners.length} of ${maximumRunners}`, LogFields.print());
 
-    // TODO: how to handle the event if the max is reached in case of ephemeral runners
     if (currentRunners.length < maximumRunners) {
       logger.info(`Attempting to launch a new runner`, LogFields.print());
       // create token
