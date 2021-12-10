@@ -543,7 +543,7 @@ describe('scaleUp with public GH', () => {
       expect(createRunner).toHaveBeenNthCalledWith(2, expectedRunnerParams, 'lt-2');
     });
 
-    it('ephemeral runners cannot only run with workflow_job event, others should fail.', async () => {
+    it('ephemeral runners only run with workflow_job event, others should fail.', async () => {
       process.env.ENABLE_EPHEMERAL_RUNNERS = 'true';
       await expect(
         scaleUpModule.scaleUp('aws:sqs', {
