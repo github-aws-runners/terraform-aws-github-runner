@@ -54,4 +54,11 @@ resource "aws_iam_role_policy_attachment" "managed_policies" {
   policy_arn = element(var.runner_iam_role_managed_policy_arns, count.index)
 }
 
+
+resource "aws_iam_role_policy" "ec2" {
+  name   = "ec2"
+  role   = aws_iam_role.runner.name
+  policy = templatefile("${path.module}/policies/instance-ec2.json", {})
+}
+
 // see also logging.tf for logging and metrics policies

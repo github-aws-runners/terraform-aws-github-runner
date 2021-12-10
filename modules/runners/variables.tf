@@ -416,5 +416,10 @@ variable "metadata_options" {
     http_tokens                 = "optional"
     http_put_response_hop_limit = 1
   }
+}
 
+variable "enable_ephemeral_runners" {
+  description = "Enable ephemeral runners, runners will only be used once."
+  type        = bool
+  default     = false
 }

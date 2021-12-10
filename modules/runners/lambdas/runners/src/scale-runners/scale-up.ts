@@ -22,6 +22,10 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
   const runnerGroup = process.env.RUNNER_GROUP_NAME;
   const environment = process.env.ENVIRONMENT;
   const ghesBaseUrl = process.env.GHES_URL;
+  const ephemeralEnabled = yn(process.env.ENABLE_EPHEMERAL_RUNNERS, { default: false });
+
+  // TODO: handle case event is check_run and ephemeralEnabled = true
+  const ephemeral = ephemeralEnabled && payload.eventType === 'workflow_job';
 
   const runnerType = enableOrgLevel ? 'Org' : 'Repo';
   const runnerOwner = enableOrgLevel ? payload.repositoryOwner : `${payload.repositoryOwner}/${payload.repositoryName}`;
@@ -61,7 +65,8 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
   const githubInstallationClient = await createOctoClient(ghAuth.token, ghesApiUrl);
 
   const isQueued = await getJobStatus(githubInstallationClient, payload);
-  if (isQueued) {
+  // ephemeral runners should be created on every event, will only work with `workflow_job` events.
+  if (ephemeral || isQueued) {
     const currentRunners = await listEC2Runners({
       environment,
       runnerType,
@@ -69,6 +74,7 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
     });
     logger.info(`Current runners: ${currentRunners.length} of ${maximumRunners}`, LogFields.print());
 
+    // TODO: how to handle the event if the max is reached in case of ephemeral runners
     if (currentRunners.length < maximumRunners) {
       logger.info(`Attempting to launch a new runner`, LogFields.print());
       // create token
@@ -81,15 +87,16 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
       const token = registrationToken.data.token;
 
       const labelsArgument = runnerExtraLabels !== undefined ? `--labels ${runnerExtraLabels}` : '';
-      const runnerGroupArgument = runnerGroup !== undefined ? ` --runnergroup ${runnerGroup}` : '';
+      const runnerGroupArgument = runnerGroup !== undefined ? `--runnergroup ${runnerGroup}` : '';
       const configBaseUrl = ghesBaseUrl ? ghesBaseUrl : 'https://github.com';
+      const ephemeralArgument = ephemeral ? '--ephemeral' : '';
+      const runnerArgs = `--token ${token} ${labelsArgument} ${ephemeralArgument}`.trim();
 
       await createRunnerLoop({
         environment,
         runnerServiceConfig: enableOrgLevel
-          ? `--url ${configBaseUrl}/${payload.repositoryOwner} --token ${token} ${labelsArgument}${runnerGroupArgument}`
-          : `--url ${configBaseUrl}/${payload.repositoryOwner}/${payload.repositoryName} ` +
-            `--token ${token} ${labelsArgument}`,
+          ? `--url ${configBaseUrl}/${payload.repositoryOwner} ${runnerArgs} ${runnerGroupArgument}`.trim()
+          : `--url ${configBaseUrl}/${payload.repositoryOwner}/${payload.repositoryName} ${runnerArgs}`.trim(),
         runnerOwner,
         runnerType,
       });

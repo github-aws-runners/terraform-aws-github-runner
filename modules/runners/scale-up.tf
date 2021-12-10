@@ -28,6 +28,7 @@ resource "aws_lambda_function" "scale_up" {
       RUNNER_GROUP_NAME                    = var.runner_group_name
       RUNNERS_MAXIMUM_COUNT                = var.runners_maximum_count
       SUBNET_IDS                           = join(",", var.subnet_ids)
+      ENABLE_EPHEMERAL_RUNNERS             = var.enable_ephemeral_runners
     }
   }
 
