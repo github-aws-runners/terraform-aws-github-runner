@@ -2,7 +2,7 @@ import { listEC2Runners, createRunner, RunnerInputParameters } from './runners';
 import { createOctoClient, createGithubAppAuth, createGithubInstallationAuth } from './gh-auth';
 import yn from 'yn';
 import { Octokit } from '@octokit/rest';
-import { logger as rootLogger, LogFields } from './logger';
+import { LogFields, logger as rootLogger } from './logger';
 import ScaleError from './ScaleError';
 
 const logger = rootLogger.getChildLogger({ name: 'scale-up' });
@@ -27,7 +27,6 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
   const ghesBaseUrl = process.env.GHES_URL;
   const ephemeralEnabled = yn(process.env.ENABLE_EPHEMERAL_RUNNERS, { default: false });
 
-  // TODO: handle case event is check_run and ephemeralEnabled = true
   if (ephemeralEnabled && payload.eventType != 'workflow_job') {
     logger.warn(`${payload.eventType} even is not supported in combination with ephemeral runners.`);
     throw Error(
@@ -36,6 +35,16 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
     );
   }
   const ephemeral = ephemeralEnabled && payload.eventType === 'workflow_job';
+  const runnerType = enableOrgLevel ? 'Org' : 'Repo';
+  const runnerOwner = enableOrgLevel ? payload.repositoryOwner : `${payload.repositoryOwner}/${payload.repositoryName}`;
+
+  LogFields.fields = {};
+  LogFields.fields.runnerType = runnerType;
+  LogFields.fields.runnerOwner = runnerOwner;
+  LogFields.fields.event = payload.eventType;
+  LogFields.fields.id = payload.id.toString();
+
+  logger.info(`Received event`, LogFields.print());
 
   const runnerType = enableOrgLevel ? 'Org' : 'Repo';
   const runnerOwner = enableOrgLevel ? payload.repositoryOwner : `${payload.repositoryOwner}/${payload.repositoryName}`;
