@@ -27,7 +27,7 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
   const ghesBaseUrl = process.env.GHES_URL;
   const ephemeralEnabled = yn(process.env.ENABLE_EPHEMERAL_RUNNERS, { default: false });
 
-  if (ephemeralEnabled && payload.eventType != 'workflow_job') {
+  if (ephemeralEnabled && payload.eventType !== 'workflow_job') {
     logger.warn(`${payload.eventType} event is not supported in combination with ephemeral runners.`);
     throw Error(
       `The event type ${payload.eventType} is not supported in combination with ephemeral runners.` +

@@ -111,7 +111,7 @@ async function testInvalidRecords(sqsRecords: SQSRecord[]) {
   await expect(scaleUpHandler(sqsEventMultipleRecords, context)).resolves;
 
   expect(logWarnSpy).toHaveBeenCalledWith(
-    'Event ignored, only on record at the time can be handled, ensure the lambda batch size is set to 1.',
+    'Event ignored, only one record at the time can be handled, ensure the lambda batch size is set to 1.',
   );
 }
 

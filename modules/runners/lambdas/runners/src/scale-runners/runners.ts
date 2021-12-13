@@ -90,7 +90,7 @@ export async function createRunner(runnerParameters: RunnerInputParameters, laun
     LogFields.print(),
   );
   const ssm = new SSM();
-  if (runInstancesResponse.Instances != undefined) {
+  if (runInstancesResponse.Instances) {
     for (let i = 0; i < runInstancesResponse.Instances?.length; i++) {
       await ssm
         .putParameter({

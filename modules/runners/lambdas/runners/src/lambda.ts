@@ -8,7 +8,7 @@ import 'source-map-support/register';
 export async function scaleUpHandler(event: SQSEvent, context: Context): Promise<void> {
   logger.setSettings({ requestId: context.awsRequestId });
   logger.debug(JSON.stringify(event));
-  if (event.Records.length != 1) {
+  if (event.Records.length !== 1) {
     logger.warn('Event ignored, only one record at the time can be handled, ensure the lambda batch size is set to 1.');
     return new Promise((resolve) => resolve());
   }
