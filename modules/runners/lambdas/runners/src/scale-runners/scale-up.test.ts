@@ -556,7 +556,7 @@ describe('scaleUp with public GH', () => {
     it('creates a ephemeral runner.', async () => {
       process.env.ENABLE_EPHEMERAL_RUNNERS = 'true';
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
-      expectedRunnerParams.runnerServiceConfig = expectedRunnerParams.runnerServiceConfig + `  --ephemeral`;
+      expectedRunnerParams.runnerServiceConfig = expectedRunnerParams.runnerServiceConfig + ` --ephemeral`;
       expect(createRunner).toBeCalledWith(expectedRunnerParams, LAUNCH_TEMPLATE);
     });
 

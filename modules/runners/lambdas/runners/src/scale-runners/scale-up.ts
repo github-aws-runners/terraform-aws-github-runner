@@ -91,16 +91,16 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
           });
       const token = registrationToken.data.token;
 
-      const labelsArgument = runnerExtraLabels !== undefined ? `--labels ${runnerExtraLabels}` : '';
-      const runnerGroupArgument = runnerGroup !== undefined ? `--runnergroup ${runnerGroup}` : '';
+      const labelsArgument = runnerExtraLabels !== undefined ? `--labels ${runnerExtraLabels} ` : '';
+      const runnerGroupArgument = runnerGroup !== undefined ? `--runnergroup ${runnerGroup} ` : '';
       const configBaseUrl = ghesBaseUrl ? ghesBaseUrl : 'https://github.com';
-      const ephemeralArgument = ephemeral ? '--ephemeral' : '';
-      const runnerArgs = `--token ${token} ${labelsArgument} ${ephemeralArgument}`.trim();
+      const ephemeralArgument = ephemeral ? '--ephemeral ' : '';
+      const runnerArgs = `--token ${token} ${labelsArgument}${ephemeralArgument}`;
 
       await createRunnerLoop({
         environment,
         runnerServiceConfig: enableOrgLevel
-          ? `--url ${configBaseUrl}/${payload.repositoryOwner} ${runnerArgs} ${runnerGroupArgument}`.trim()
+          ? `--url ${configBaseUrl}/${payload.repositoryOwner} ${runnerArgs}${runnerGroupArgument}`.trim()
           : `--url ${configBaseUrl}/${payload.repositoryOwner}/${payload.repositoryName} ${runnerArgs}`.trim(),
         runnerOwner,
         runnerType,
