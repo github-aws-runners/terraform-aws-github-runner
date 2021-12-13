@@ -20,7 +20,7 @@ export async function scaleUpHandler(event: SQSEvent, context: Context): Promise
         if (e instanceof ScaleError) {
           reject(e);
         } else {
-          logger.warn('Ignoring error: ', e);
+          logger.warn(`Ignoring error: ${e.message}`);
         }
       });
   });
