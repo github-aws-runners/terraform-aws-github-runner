@@ -34,6 +34,10 @@ output "ssm_parameters" {
 }
 
 
-output "name" {
-  value = aws_sqs_queue.queued_builds_dlq.*
+output "queues" {
+  description = "SQS queues."
+  value = {
+    build_queue_arn     = aws_sqs_queue.queued_builds.arn
+    build_queue_dlq_arn = var.redrive_build_queue.enabled ? aws_sqs_queue.queued_builds_dlq[0].arn : null
+  }
 }

@@ -18,10 +18,6 @@ resource "random_string" "random" {
   upper   = false
 }
 
-locals {
-  build_queue_dead_letter_arn = var.redrive_build_queue.enabled && var.redrive_build_queue.deadLetterTargetArn == null ? aws_sqs_queue.queued_builds_dlq[0].arn : var.redrive_build_queue.deadLetterTargetArn
-  redrive_policy              = var.redrive_build_queue.enabled ? { deadLetterTargetArn = local.build_queue_dead_letter_arn, maxReceiveCount = var.redrive_build_queue.maxReceiveCount } : null
-}
 resource "aws_sqs_queue" "queued_builds" {
   name                        = "${var.environment}-queued-builds${var.fifo_build_queue ? ".fifo" : ""}"
   delay_seconds               = var.delay_webhook_event
@@ -30,13 +26,16 @@ resource "aws_sqs_queue" "queued_builds" {
   fifo_queue                  = var.fifo_build_queue
   receive_wait_time_seconds   = 0
   content_based_deduplication = var.fifo_build_queue
-  redrive_policy              = local.redrive_policy == null ? null : jsonencode(local.redrive_policy)
+  redrive_policy = var.redrive_build_queue.enabled ? jsonencode({
+    deadLetterTargetArn = aws_sqs_queue.queued_builds_dlq[0].arn,
+    maxReceiveCount     = var.redrive_build_queue.maxReceiveCount
+  }) : null
 
   tags = var.tags
 }
 
 resource "aws_sqs_queue" "queued_builds_dlq" {
-  count = var.redrive_build_queue.enabled && var.redrive_build_queue.deadLetterTargetArn == null ? 1 : 0
+  count = var.redrive_build_queue.enabled ? 1 : 0
   name  = "${var.environment}-queued-builds_dead_letter"
 
   tags = var.tags

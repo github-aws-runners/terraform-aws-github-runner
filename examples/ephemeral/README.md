@@ -1,7 +1,6 @@
 # Action runners deployment ephemeral example
 
-This module shows how to create GitHub action runners. Lambda release will be downloaded from GitHub.
-
+This example is essential based on the default setup. But shows how you can use runners with the ephemeral flag enabled. Once you enable ephemeral a runner will used once, only for one job. This requires that each job needs a fresh instance. To feature should be used in combination with event `workflow_job`, see your GitHub webhook endpoint configuration. We also suggest to use the feature with a pre-build AMI, to optimize the creation time of a runner.
 ## Usages
 
 Steps for the full setup, such as creating a GitHub app can be found in the root module's [README](../../README.md). First download the Lambda releases from GitHub. Alternatively you can build the lambdas locally with Node or Docker, there is a simple build script in `<root>/.ci/build.sh`. In the `main.tf` you can simply remove the location of the lambda zip files, the default location will work in this case.

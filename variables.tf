@@ -486,16 +486,14 @@ variable "fifo_build_queue" {
 }
 
 variable "redrive_build_queue" {
-  description = "Set options to attach (optional) a dead letter queue to the build queue, the queue between the webhook and the scale up lambda. You have the following options. 1. Disable by setting, `enalbed' to false. 2. Enable by setting `enabled` to `true`, `maxReceiveCount` to a number of max retries, and `deadLetterTargetArn` to null for letting the module create a queue. Or otherwise provide you own queue by setting an ARN."
+  description = "Set options to attach (optional) a dead letter queue to the build queue, the queue between the webhook and the scale up lambda. You have the following options. 1. Disable by setting, `enalbed' to false. 2. Enable by setting `enabled` to `true`, `maxReceiveCount` to a number of max retries."
   type = object({
-    enabled             = bool
-    maxReceiveCount     = number
-    deadLetterTargetArn = string
+    enabled         = bool
+    maxReceiveCount = number
   })
   default = {
-    enabled             = false
-    maxReceiveCount     = null
-    deadLetterTargetArn = null
+    enabled         = false
+    maxReceiveCount = null
   }
   validation {
     condition     = var.redrive_build_queue.enabled && var.redrive_build_queue.maxReceiveCount != null || !var.redrive_build_queue.enabled
