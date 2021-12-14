@@ -112,6 +112,7 @@ async function testInvalidRecords(sqsRecords: SQSRecord[]) {
 
   expect(logWarnSpy).toHaveBeenCalledWith(
     'Event ignored, only one record at the time can be handled, ensure the lambda batch size is set to 1.',
+    undefined,
   );
 }
 

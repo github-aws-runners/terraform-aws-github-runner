@@ -16,7 +16,10 @@ export interface ActionRequestMessage {
 }
 
 export async function scaleUp(eventSource: string, payload: ActionRequestMessage): Promise<void> {
-  logger.info(`Received ${payload.eventType} from ${payload.repositoryOwner}/${payload.repositoryName}`);
+  logger.info(
+    `Received ${payload.eventType} from ${payload.repositoryOwner}/${payload.repositoryName}`,
+    LogFields.print(),
+  );
 
   if (eventSource !== 'aws:sqs') throw Error('Cannot handle non-SQS events!');
   const enableOrgLevel = yn(process.env.ENABLE_ORGANIZATION_RUNNERS, { default: true });
@@ -28,7 +31,10 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
   const ephemeralEnabled = yn(process.env.ENABLE_EPHEMERAL_RUNNERS, { default: false });
 
   if (ephemeralEnabled && payload.eventType !== 'workflow_job') {
-    logger.warn(`${payload.eventType} event is not supported in combination with ephemeral runners.`);
+    logger.warn(
+      `${payload.eventType} event is not supported in combination with ephemeral runners.`,
+      LogFields.print(),
+    );
     throw Error(
       `The event type ${payload.eventType} is not supported in combination with ephemeral runners.` +
         `Please ensure you have enabled workflow_job events.`,
