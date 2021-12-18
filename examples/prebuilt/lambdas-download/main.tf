@@ -1,5 +1,5 @@
 locals {
-  version = "<REPLACE_BY_GITHUB_RELEASE_VERSION>"
+  version = "v0.27.0"
 }
 
 module "lambdas" {

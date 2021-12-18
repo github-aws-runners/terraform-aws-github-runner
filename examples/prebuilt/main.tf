@@ -1,6 +1,5 @@
 locals {
   environment = "prebuilt"
-  aws_region  = "eu-west-1"
 }
 
 resource "random_id" "random" {
@@ -12,7 +11,7 @@ data "aws_caller_identity" "current" {}
 module "runners" {
   source                          = "../../"
   create_service_linked_role_spot = true
-  aws_region                      = local.aws_region
+  aws_region                      = var.aws_region
   vpc_id                          = module.vpc.vpc_id
   subnet_ids                      = module.vpc.private_subnets
 
@@ -24,15 +23,17 @@ module "runners" {
     webhook_secret = random_id.random.hex
   }
 
-  webhook_lambda_zip                = "../../lambda_output/webhook.zip"
-  runner_binaries_syncer_lambda_zip = "../../lambda_output/runner-binaries-syncer.zip"
-  runners_lambda_zip                = "../../lambda_output/runners.zip"
+  webhook_lambda_zip                = "lambdas-download/webhook.zip"
+  runner_binaries_syncer_lambda_zip = "lambdas-download/runner-binaries-syncer.zip"
+  runners_lambda_zip                = "lambdas-download/runners.zip"
 
   runner_extra_labels = "default,example"
 
+  runner_os = var.runner_os
+
   # configure your pre-built AMI
   enabled_userdata = false
-  ami_filter       = { name = ["github-runner-amzn2-x86_64-2021*"] }
+  ami_filter       = { name = [var.ami_name_filter] }
   ami_owners       = [data.aws_caller_identity.current.account_id]
 
   # enable access to the runners via SSM
