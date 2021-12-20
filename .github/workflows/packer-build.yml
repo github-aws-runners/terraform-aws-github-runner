@@ -31,7 +31,7 @@ jobs:
       - name: packer init
         run: packer init .
 
-      - name: check terraform formatting
+      - name: check packer formatting
         run: packer fmt -recursive -check=true .        
 
       - name: packer validate
