@@ -4,7 +4,7 @@ The images inside this folder are pre-built images designed to shorten the boot 
 
 These images share the same scripting as used in the user-data mechanism in `/modules/runners/templates/`. We use a `tempaltefile` mechanism to insert the relevant script fragments into the scripts used for provisioning the images.
 
-The examples in `linux-amzn2` and `windows-core-2019` also uploads a `start-runner` script that uses the exact same startup process as used in the user-data mechanism. This means that the image created here does not need any extra scripts injected or changes to boot up and connect to GH.
+The examples in `linux-amzn2` and `windows-core-2019` also upload a `start-runner` script that uses the exact same startup process as used in the user-data mechanism. This means that the image created here does not need any extra scripts injected or changes to boot up and connect to GH.
 
 ## Building your own
 

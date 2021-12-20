@@ -1,7 +1,7 @@
 <powershell>
 
-write-output "Running User Data Script"
-write-host "(host) Running User Data Script"
+Write-Output "Running User Data Script"
+Write-Host "(host) Running User Data Script"
 
 Set-ExecutionPolicy Unrestricted -Scope LocalMachine -Force -ErrorAction Ignore
 
@@ -16,9 +16,10 @@ $Cert = New-SelfSignedCertificate -CertstoreLocation Cert:\LocalMachine\My -DnsN
 New-Item -Path WSMan:\LocalHost\Listener -Transport HTTPS -Address * -CertificateThumbPrint $Cert.Thumbprint -Force
 
 # WinRM
-write-output "Setting up WinRM"
-write-host "(host) setting up WinRM"
+Write-Output "Setting up WinRM"
+Write-Host "(host) setting up WinRM"
 
+# I'm not really sure why we need the cmd.exe wrapper, but it works with it and doesn't work without it
 cmd.exe /c winrm quickconfig -q
 cmd.exe /c winrm set "winrm/config" '@{MaxTimeoutms="1800000"}'
 cmd.exe /c winrm set "winrm/config/winrs" '@{MaxMemoryPerShellMB="1024"}'

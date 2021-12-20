@@ -26,7 +26,7 @@ source "amazon-ebs" "githubrunner" {
   region        = var.region
   source_ami_filter {
     filters = {
-      name                = "Windows_Server-2019-English-Core-Base-*"
+      name                = "Windows_Server-2019-English-Core-ContainersLatest-*"
       root-device-type    = "ebs"
       virtualization-type = "hvm"
     }
@@ -38,7 +38,7 @@ source "amazon-ebs" "githubrunner" {
     Release       = "Latest"
     Base_AMI_Name = "{{ .SourceAMIName }}"
   }
-  user_data_file = "./bootstrap_win.txt"
+  user_data_file = "./bootstrap_win.ps1"
   winrm_insecure = true
   winrm_port     = 5986
   winrm_use_ssl  = true
@@ -52,7 +52,9 @@ build {
   ]
 
   provisioner "file" {
-    content = templatefile("../../modules/runners/templates/start-runner.ps1", {})
+    content     = templatefile("../start-runner.ps1", {
+      start_runner = templatefile("../../modules/runners/templates/start-runner.ps1", {})
+    })
     destination = "C:\\start-runner.ps1"
   }
 
