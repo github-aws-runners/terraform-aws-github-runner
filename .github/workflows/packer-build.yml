@@ -18,9 +18,12 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: hashicorp/packer:1.7.8
+    strategy:
+      matrix:
+        image: ["linux-amzn2", "windows-core-2019"]
     defaults:
       run:
-        working-directory: images/linux-amzn2
+        working-directory: images/${{ matrix.image }}
     steps:
       - name: "Checkout"
         uses: actions/checkout@v2
