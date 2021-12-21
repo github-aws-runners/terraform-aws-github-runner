@@ -50,12 +50,13 @@ echo "Delete GH Runner token from AWS SSM"
 aws ssm delete-parameter --name "$environment"-"$instance_id" --region "$region"
 
 if [ -z "$run_as" ]; then
-    echo "No user specified, using default ec2-user account"
-    run_as="ec2-user"
+  echo "No user specified, using default ec2-user account"
+  run_as="ec2-user"
 fi
 
 if [[ "$run_as" == "root" ]]; then
-    export RUNNER_ALLOW_RUNASROOT=1
+  echo "run_as is set to root - export RUNNER_ALLOW_RUNASROOT=1"
+  export RUNNER_ALLOW_RUNASROOT=1
 fi
 
 echo "Configure GH Runner as user $run_as"
