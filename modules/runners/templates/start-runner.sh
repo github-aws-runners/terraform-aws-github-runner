@@ -54,8 +54,12 @@ if [ -z "$run_as" ]; then
     run_as="ec2-user"
 fi
 
+if [[ "$run_as" == "root" ]]; then
+    export RUNNER_ALLOW_RUNASROOT=1
+fi
+
 echo "Configure GH Runner as user $run_as"
-sudo -u "$run_as" -- ./config.sh --unattended --name "$instance_id" --work "_work" $${config}
+sudo --preserve-env=RUNNER_ALLOW_RUNASROOT -u "$run_as" -- ./config.sh --unattended --name "$instance_id" --work "_work" $${config}
 
 ## Start the runner
 echo "Starting runner after $(awk '{print int($1/3600)":"int(($1%3600)/60)":"int($1%60)}' /proc/uptime)"
@@ -63,7 +67,7 @@ echo "Starting the runner as user $run_as"
 
 if [[ $agent_mode = "ephemeral" ]]; then  
   echo "Starting the runner in ephemeral mode"
-  sudo -u "$run_as" -- ./run.sh
+  sudo --preserve-env=RUNNER_ALLOW_RUNASROOT -u "$run_as" -- ./run.sh
   echo "Runner has finished"
   
   echo "Stopping cloudwatch service"
