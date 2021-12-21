@@ -37,9 +37,6 @@ rm -rf $file_name
 
 ${ARM_PATCH}
 
-echo "export RUNNER_ALLOW_RUNASROOT=1"
-export RUNNER_ALLOW_RUNASROOT=1
-
 os_id=$(awk -F= '/^ID/{print $2}' /etc/os-release)
 if [[ "$os_id" =~ ^ubuntu.* ]]; then
     echo "Installing dependencies"
