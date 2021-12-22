@@ -62,7 +62,7 @@ describe('Synchronize action distribution.', () => {
     mockS3.getObjectTagging.mockImplementation(() => {
       return {
         promise() {
-          return Promise.resolve({ TagSet: [{ Key: 'name', Value: 'actions-runner-linux-x64-2.272.0.tar.gz' }] });
+          return Promise.resolve({ TagSet: [{ Key: 'name', Value: 'actions-runner-linux-x64-2.286.0.tar.gz' }] });
         },
       };
     });
@@ -86,7 +86,7 @@ describe('Synchronize action distribution.', () => {
     mockS3.getObjectTagging.mockImplementation(() => {
       return {
         promise() {
-          return Promise.resolve({ TagSet: [{ Key: 'name', Value: 'actions-runner-linux-x64-2.272.0.tar.gz' }] });
+          return Promise.resolve({ TagSet: [{ Key: 'name', Value: 'actions-runner-linux-x64-2.285.1.tar.gz' }] });
         },
       };
     });
@@ -105,7 +105,7 @@ describe('Synchronize action distribution.', () => {
     mockS3.getObjectTagging.mockImplementation(() => {
       return {
         promise() {
-          return Promise.resolve({ TagSet: [{ Key: 'name', Value: 'actions-runner-linux-x64-2.273.0.tar.gz' }] });
+          return Promise.resolve({ TagSet: [{ Key: 'name', Value: 'actions-runner-linux-x64-2.286.0.tar.gz' }] });
         },
       };
     });
@@ -136,7 +136,7 @@ describe('Synchronize action distribution.', () => {
     });
     expect(mockS3.upload).toBeCalledTimes(1);
     const s3JsonBody = mockS3.upload.mock.calls[0][0];
-    expect(s3JsonBody['Tagging']).toEqual('name=actions-runner-linux-x64-2.272.0.tar.gz');
+    expect(s3JsonBody['Tagging']).toEqual('name=actions-runner-linux-x64-2.286.0.tar.gz');
   });
 
   it('Distribution should update to release if there are no pre-releases.', async () => {
@@ -162,7 +162,7 @@ describe('Synchronize action distribution.', () => {
     });
     expect(mockS3.upload).toBeCalledTimes(1);
     const s3JsonBody = mockS3.upload.mock.calls[0][0];
-    expect(s3JsonBody['Tagging']).toEqual('name=actions-runner-linux-x64-2.272.0.tar.gz');
+    expect(s3JsonBody['Tagging']).toEqual('name=actions-runner-linux-x64-2.285.1.tar.gz');
   });
 
   it('Distribution should update to prerelease.', async () => {
@@ -183,7 +183,7 @@ describe('Synchronize action distribution.', () => {
     });
     expect(mockS3.upload).toBeCalledTimes(1);
     const s3JsonBody = mockS3.upload.mock.calls[0][0];
-    expect(s3JsonBody['Tagging']).toEqual('name=actions-runner-linux-x64-2.273.0.tar.gz');
+    expect(s3JsonBody['Tagging']).toEqual('name=actions-runner-linux-x64-2.286.0.tar.gz');
   });
 
   it('Distribution should not update to prerelease if there is a newer release.', async () => {
@@ -211,7 +211,7 @@ describe('Synchronize action distribution.', () => {
     });
     expect(mockS3.upload).toBeCalledTimes(1);
     const s3JsonBody = mockS3.upload.mock.calls[0][0];
-    expect(s3JsonBody['Tagging']).toEqual('name=actions-runner-linux-x64-2.273.0.tar.gz');
+    expect(s3JsonBody['Tagging']).toEqual('name=actions-runner-linux-x64-2.286.0.tar.gz');
   });
 
   it('No tag in S3, distribution should update.', async () => {
