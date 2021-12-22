@@ -4,9 +4,16 @@
 
 This [Terraform](https://www.terraform.io/) module creates the required infrastructure needed to host [GitHub Actions](https://github.com/features/actions) self hosted, auto scaling runners on [AWS spot instances](https://aws.amazon.com/ec2/spot/). It provides the required logic to handle the life cycle for scaling up and down using a set of AWS Lambda functions. Runners are scaled down to zero to avoid costs when no workflows are active.
 
+> NEW: Ephemeral runners available as beta feature.
+
+> NEW: Windows runners are available.
+
+> NEW: Examples for custom AMI are available.
+
 - [Motivation](#motivation)
 - [Overview](#overview)
-  - [ARM64 support via Graviton/Graviton2 instance-types](#arm64-support-via-gravitongraviton2-instance-types)
+  - [Major configuration options.](#major-configuration-options)
+    - [ARM64 support via Graviton/Graviton2 instance-types](#arm64-support-via-gravitongraviton2-instance-types)
 - [Usages](#usages)
   - [Setup GitHub App (part 1)](#setup-github-app-part-1)
   - [Setup terraform module](#setup-terraform-module)
@@ -16,6 +23,7 @@ This [Terraform](https://www.terraform.io/) module creates the required infrastr
     - [Install app](#install-app)
   - [Encryption](#encryption)
   - [Idle runners](#idle-runners)
+  - [Ephemeral runners](#ephemeral-runners)
   - [Prebuilt Images](#prebuilt-images)
 - [Examples](#examples)
 - [Sub modules](#sub-modules)
@@ -48,7 +56,6 @@ For receiving the `check_run` or `workflow_job` event by the webhook (lambda) a 
 - `check_run`: create a webhook on enterprise, org, repo or app level. When using the app option, the app needs to be installed to repo's are using the self-hosted runners.
 -  a Webhook needs to be created. The webhook hook can be defined on enterprise, org, repo, or app level. 
 
-
 In AWS a [API gateway](https://docs.aws.amazon.com/apigateway/index.html) endpoint is created that is able to receive the GitHub webhook events via HTTP post. The gateway triggers the webhook lambda which will verify the signature of the event. This check guarantees the event is sent by the GitHub App. The lambda only handles `workflow_job` or `check_run` events with status `queued` and matching the runner labels (only for `workflow_job`). The accepted events are posted on a SQS queue. Messages on this queue will be delayed for a configurable amount of seconds (default 30 seconds) to give the available runners time to pick up this build.
 
 The "scale up runner" lambda is listening to the SQS queue and picks up events. The lambda runs various checks to decide whether a new EC2 spot instance needs to be created. For example, the instance is not created if the build is already started by an existing runner, or the maximum number of runners is reached.
@@ -71,7 +78,18 @@ Permission are managed on several places. Below the most important ones. For det
 
 Besides these permissions, the lambdas also need permission to CloudWatch (for logging and scheduling), SSM and S3. For more details about the required permissions see the [documentation](./modules/setup-iam-permissions/README.md) of the IAM module which uses permission boundaries.
 
-### ARM64 support via Graviton/Graviton2 instance-types
+### Major configuration options.
+
+To be able to support a number of use-cases the module has quite a lot configuration options. We try to choose reasonable defaults. The several examples also shows for the main cases how to configure the runners.
+
+- Org vs Repo level. You can configure the module to connect the runners in GitHub on a org level and share the runners in your org. Or set the runners on repo level. The module will install the runner to the repo. This can be multiple repo's but runners are not shared between repo's.
+- Checkrun vs Workflow job event. You can configure the webhook in GitHub to send checkrun or workflow job events to the webhook. Workflow job events are introduced by GitHub in September 2021 and are designed to support scalable runners. We advise when possible to use the workflow job event, you can set `disable_check_wokflow_job_labels = true` to disable the label check. 
+- Linux vs Windows. you can configure the os types linux and win. Linux will be used by default.
+- Re-use vs Ephemeral. By default runners are re-used for till detected idle, once idle they will be removed from the pool. To improve security we are introducing ephemeral runners. Those runners are only used for one job. Ephemeral runners are only working in combination with the workflow job event. We also suggest to use a pre-build AMI to improve the start time of jobs.
+- GitHub cloud vs GitHub enterprise server (GHES). The runner support GitHub cloud as well GitHub enterprise service. For GHES we rely on our community to test and support. We have no possibility to test ourselves on GHES.
+
+
+#### ARM64 support via Graviton/Graviton2 instance-types
 
 When using the default example or top-level module, specifying an `instance_type` that matches a Graviton/Graviton 2 (ARM64) architecture (e.g. a1 or any 6th-gen `g` or `gd` type), the sub-modules will be automatically configured to provision with ARM64 AMIs and leverage GitHub's ARM64 action runner. See below for more details.
 
@@ -268,6 +286,16 @@ idle_config = [{
 
 _**Note**_: When using Windows runners it's recommended to keep a few runners warmed up due to the minutes-long cold start time.
 
+### Ephemeral runners
+
+Currently a beta feature! You can configure runners to be ephemeral, runners will be used only for one job. The feature should be used in conjunction with listening for the workflow job event. Please consider the following:
+
+- The scale down lambda is still active, and should only remove orphan instances. But there is no strict check in place. So ensure you configure the `minimum_running_time_in_minutes` to a value that is high enough to got your runner booted and connected to avoid it got terminated before executing a job.
+- The messages sent from the webhook lambda to scale-up lambda are by default delayed delayed by SQS, to give available runners to option to start the job before the decision is made to scale more runners. For ephemeral runners there is no need to wait. Set `delay_webhook_event` to `0`
+- Error related to scaling should be retried via SQS. You can configure `job_queue_retention_in_seconds` `redrive_build_queue` to tune the behavior. We have no mechanism to avoid events will never processed, which means potential no runner could be created and the job in GitHub can time out in 6 hours. 
+ 
+The example for [ephemeral runners](./examples/ephemeral) is based on the [default example](./examples/default). Have look on the diff to see the major configuration differences.
+
 ### Prebuilt Images
 
 This module also allows you to run agents from a prebuilt AMI to gain faster startup times. You can find more information in [the image README.md](/images/README.md)
@@ -295,10 +323,11 @@ For time zones please check [TZ database name column](https://en.wikipedia.org/w
 Examples are located in the [examples](./examples) directory. The following examples are provided:
 
 - _[Default](examples/default/README.md)_: The default example of the module
-- _[Permissions boundary](examples/permissions-boundary/README.md)_: Example usages of permissions boundaries.
 - _[Ubuntu](examples/ubuntu/README.md)_: Example usage of creating a runner using Ubuntu AMIs.
-- _[Prebuilt Images](examples/prebuilt/README.md)_: Example usages of deploying runners with a custom prebuilt image.
 - _[Windows](examples/windows/README.md)_: Example usage of creating a runner using Windows as the OS.
+- _[Ephemeral](examples/ephemeral/README.md) : Example usages of ephemeral runners based on the default example.
+- _[Prebuilt Images](examples/prebuilt/README.md)_: Example usages of deploying runners with a custom prebuilt image.
+- _[Permissions boundary](examples/permissions-boundary/README.md)_: Example usages of permissions boundaries.
 
 ## Sub modules
 
