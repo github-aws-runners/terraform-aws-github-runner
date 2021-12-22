@@ -1638,10 +1638,10 @@
     "@typescript-eslint/types" "4.33.0"
     eslint-visitor-keys "^2.0.0"
 
-"@vercel/ncc@^0.33.0":
-  version "0.33.0"
-  resolved "https://registry.yarnpkg.com/@vercel/ncc/-/ncc-0.33.0.tgz#538d73ad4be1b259830d249d83f857432edd8967"
-  integrity sha512-m21HzXD+L/YHoJTwyCCyGBXD0O2L4KR/Y6SSsS4qvRlz3NAYsiiYahzOsgfWEt4PJxpPVCMGiuWzsvb2tycmyA==
+"@vercel/ncc@^0.33.1":
+  version "0.33.1"
+  resolved "https://registry.yarnpkg.com/@vercel/ncc/-/ncc-0.33.1.tgz#b240080a3c1ded9446a30955a06a79851bb38f71"
+  integrity sha512-Mlsps/P0PLZwsCFtSol23FGqT3FhBGb4B1AuGQ52JTAtXhak+b0Fh/4T55r0/SVQPeRiX9pNItOEHwakGPmZYA==
 
 abab@^2.0.3, abab@^2.0.5:
   version "2.0.5"
@@ -4236,10 +4236,10 @@ ts-essentials@^7.0.3:
   resolved "https://registry.yarnpkg.com/ts-essentials/-/ts-essentials-7.0.3.tgz#686fd155a02133eedcc5362dc8b5056cde3e5a38"
   integrity sha512-8+gr5+lqO3G84KdiTSMRLtuyJ+nTBVRKuCrK4lidMPdVeEp0uqC875uE5NMcaA7YYMN7XsNiFQuMvasF8HT/xQ==
 
-ts-jest@^27.1.1:
-  version "27.1.1"
-  resolved "https://registry.yarnpkg.com/ts-jest/-/ts-jest-27.1.1.tgz#5a54aca96db1dac37c681f3029dd10f3a8c36192"
-  integrity sha512-Ds0VkB+cB+8g2JUmP/GKWndeZcCKrbe6jzolGrVWdqVUFByY/2KDHqxJ7yBSon7hDB1TA4PXxjfZ+JjzJisvgA==
+ts-jest@^27.1.2:
+  version "27.1.2"
+  resolved "https://registry.yarnpkg.com/ts-jest/-/ts-jest-27.1.2.tgz#5991d6eb3fd8e1a8d4b8f6de3ec0a3cc567f3151"
+  integrity sha512-eSOiJOWq6Hhs6Khzk5wKC5sgWIXgXqOCiIl1+3lfnearu58Hj4QpE5tUhQcA3xtZrELbcvAGCsd6HB8OsaVaTA==
   dependencies:
     bs-logger "0.x"
     fast-json-stable-stringify "2.x"
