@@ -291,7 +291,8 @@ _**Note**_: When using Windows runners it's recommended to keep a few runners wa
 Currently a beta feature! You can configure runners to be ephemeral, runners will be used only for one job. The feature should be used in conjunction with listening for the workflow job event. Please consider the following:
 
 - The scale down lambda is still active, and should only remove orphan instances. But there is no strict check in place. So ensure you configure the `minimum_running_time_in_minutes` to a value that is high enough to got your runner booted and connected to avoid it got terminated before executing a job.
-- The messages sent from the webhook lambda to scale-up lambda are by default delayed delayed by SQS, to give available runners to option to start the job before the decision is made to scale more runners. For ephemeral runners there is no need to wait. Set `delay_webhook_event` to `0`
+- The messages sent from the webhook lambda to scale-up lambda are by default delayed delayed by SQS, to give available runners to option to start the job before the decision is made to scale more runners. For ephemeral runners there is no need to wait. Set `delay_webhook_event` to `0`.
+- To ensure runners are created in the same order GitHub sends the events we use by default a FIFO queue, this is mainly relevant for repo level runners. For ephemeral runners you can set `fifo_build_queue` to `false`.
 - Error related to scaling should be retried via SQS. You can configure `job_queue_retention_in_seconds` `redrive_build_queue` to tune the behavior. We have no mechanism to avoid events will never processed, which means potential no runner could be created and the job in GitHub can time out in 6 hours. 
  
 The example for [ephemeral runners](./examples/ephemeral) is based on the [default example](./examples/default). Have look on the diff to see the major configuration differences.
