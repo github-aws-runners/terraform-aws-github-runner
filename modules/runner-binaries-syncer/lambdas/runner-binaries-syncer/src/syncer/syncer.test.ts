@@ -62,7 +62,7 @@ describe('Synchronize action distribution.', () => {
     mockS3.getObjectTagging.mockImplementation(() => {
       return {
         promise() {
-          return Promise.resolve({ TagSet: [{ Key: 'name', Value: 'actions-runner-linux-x64-2.286.0.tar.gz' }] });
+          return Promise.resolve({ TagSet: [{ Key: 'name', Value: 'actions-runner-linux-x64-2.285.1.tar.gz' }] });
         },
       };
     });
@@ -136,7 +136,7 @@ describe('Synchronize action distribution.', () => {
     });
     expect(mockS3.upload).toBeCalledTimes(1);
     const s3JsonBody = mockS3.upload.mock.calls[0][0];
-    expect(s3JsonBody['Tagging']).toEqual('name=actions-runner-linux-x64-2.286.0.tar.gz');
+    expect(s3JsonBody['Tagging']).toEqual('name=actions-runner-linux-x64-2.285.1.tar.gz');
   });
 
   it('Distribution should update to release if there are no pre-releases.', async () => {
@@ -269,6 +269,14 @@ describe('No release assets found.', () => {
   it('No linux x64 asset.', async () => {
     mockOctokit.repos.listReleases.mockImplementation(() => ({
       data: [listReleasesNoLinux],
+    }));
+
+    await expect(sync()).rejects.toThrow(errorMessage);
+  });
+
+  it('Empty asset list.', async () => {
+    mockOctokit.repos.listReleases.mockImplementation(() => ({
+      data: [],
     }));
 
     await expect(sync()).rejects.toThrow(errorMessage);

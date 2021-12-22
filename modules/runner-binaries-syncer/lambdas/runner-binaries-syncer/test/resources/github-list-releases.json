@@ -30,7 +30,7 @@
     "target_commitish": "f1ddeb0d06bdbe3182a4f01c44ef622ec0c13437",
     "name": "v2.286.0",
     "draft": false,
-    "prerelease": false,
+    "prerelease": true,
     "created_at": "2021-12-21T15:51:03Z",
     "published_at": "2021-12-21T16:09:06Z",
     "assets": [
