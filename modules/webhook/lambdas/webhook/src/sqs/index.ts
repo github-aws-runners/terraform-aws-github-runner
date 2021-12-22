@@ -1,5 +1,5 @@
 import { SQS } from 'aws-sdk';
-import { logger as logger } from '../webhook/logger';
+import { LogFields, logger as logger } from '../webhook/logger';
 
 export interface ActionRequestMessage {
   id: number;
@@ -20,7 +20,7 @@ export const sendActionRequest = async (message: ActionRequestMessage): Promise<
     MessageBody: JSON.stringify(message),
   };
 
-  logger.debug(`sending message to SQS: ${JSON.stringify(sqsMessage)}`);
+  logger.debug(`sending message to SQS: ${JSON.stringify(sqsMessage)}`, LogFields.print());
   if (useFifoQueue) {
     sqsMessage.MessageGroupId = String(message.id);
   }
