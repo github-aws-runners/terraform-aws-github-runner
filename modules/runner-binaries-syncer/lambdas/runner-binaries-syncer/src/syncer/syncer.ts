@@ -61,9 +61,9 @@ async function getReleaseAsset(
     return undefined;
   }
 
-  const releaseName = asset.tag_name.replace('v', '');
+  const releaseVersion = asset.tag_name.replace('v', '');
   const assets = asset.assets?.filter((a: { name?: string }) =>
-    a.name?.includes(`actions-runner-${runnerOs}-${runnerArch}-${releaseName}.`),
+    a.name?.includes(`actions-runner-${runnerOs}-${runnerArch}-${releaseVersion}.`),
   );
 
   return assets?.length === 1 ? { name: assets[0].name, downloadUrl: assets[0].browser_download_url } : undefined;
