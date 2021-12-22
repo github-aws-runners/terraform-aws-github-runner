@@ -6,10 +6,9 @@ resource "aws_ssm_parameter" "runner_config_run_as" {
 }
 
 resource "aws_ssm_parameter" "runner_agent_mode" {
-  name = "/${var.environment}/runner/agent-mode"
-  type = "String"
-  # TODO: Update this to allow for ephemeral runners
-  value = "persistent"
+  name  = "/${var.environment}/runner/agent-mode"
+  type  = "String"
+  value = var.enable_ephemeral_runners ? "ephemeral" : "persistent"
   tags  = local.tags
 }
 

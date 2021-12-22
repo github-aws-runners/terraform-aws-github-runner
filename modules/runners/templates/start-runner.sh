@@ -71,7 +71,7 @@ if [[ $agent_mode = "ephemeral" ]]; then
   echo "Runner has finished"
 
   echo "Stopping cloudwatch service"
-  service awslogsd stop
+  systemctl stop amazon-cloudwatch-agent.service
   echo "Terminating instance"
   aws ec2 terminate-instances --instance-ids "$instance_id" --region "$region"
 else

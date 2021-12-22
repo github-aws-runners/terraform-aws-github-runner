@@ -98,6 +98,17 @@ describe('handler', () => {
       expect(sendActionRequest).not.toBeCalled();
     });
 
+    it('handles workflow_job events without installation id', async () => {
+      const event = JSON.stringify({ ...workflowjob_event, installation: null });
+      process.env.REPOSITORY_WHITE_LIST = '["philips-labs/terraform-aws-github-runner"]';
+      const resp = await handle(
+        { 'X-Hub-Signature': await webhooks.sign(event), 'X-GitHub-Event': 'workflow_job' },
+        event,
+      );
+      expect(resp.statusCode).toBe(201);
+      expect(sendActionRequest).toBeCalled();
+    });
+
     it('handles workflow_job events from whitelisted repositories', async () => {
       const event = JSON.stringify(workflowjob_event);
       process.env.REPOSITORY_WHITE_LIST = '["philips-labs/terraform-aws-github-runner"]';
@@ -257,6 +268,16 @@ describe('handler', () => {
     it('handles check_run events from whitelisted repositories', async () => {
       const event = JSON.stringify(checkrun_event);
       process.env.REPOSITORY_WHITE_LIST = '["Codertocat/Hello-World"]';
+      const resp = await handle(
+        { 'X-Hub-Signature': await webhooks.sign(event), 'X-GitHub-Event': 'check_run' },
+        event,
+      );
+      expect(resp.statusCode).toBe(201);
+      expect(sendActionRequest).toBeCalled();
+    });
+
+    it('handles check_run events with no installation id.', async () => {
+      const event = JSON.stringify({ ...checkrun_event, installation: { id: null } });
       const resp = await handle(
         { 'X-Hub-Signature': await webhooks.sign(event), 'X-GitHub-Event': 'check_run' },
         event,

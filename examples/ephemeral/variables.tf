@@ -7,6 +7,3 @@ variable "github_app_client_id" {}
 
 variable "github_app_client_secret" {}
 
-variable "owner" {
-
-}

@@ -32,3 +32,8 @@ output "webhook" {
 output "ssm_parameters" {
   value = module.ssm.parameters
 }
+
+
+output "name" {
+  value = aws_sqs_queue.queued_builds_dlq.*
+}

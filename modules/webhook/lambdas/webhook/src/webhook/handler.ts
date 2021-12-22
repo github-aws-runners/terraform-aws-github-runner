@@ -101,10 +101,7 @@ async function handleWorkflowJob(body: WorkflowJobEvent, githubEvent: string): P
     };
   }
 
-  let installationId = body.installation?.id;
-  if (installationId == null) {
-    installationId = 0;
-  }
+  const installationId = getInstallationId(body);
   if (body.action === 'queued') {
     await sendActionRequest({
       id: body.workflow_job.id,
@@ -119,10 +116,7 @@ async function handleWorkflowJob(body: WorkflowJobEvent, githubEvent: string): P
 }
 
 async function handleCheckRun(body: CheckRunEvent, githubEvent: string): Promise<Response> {
-  let installationId = body.installation?.id;
-  if (installationId == null) {
-    installationId = 0;
-  }
+  const installationId = getInstallationId(body);
   if (body.action === 'created' && body.check_run.status === 'queued') {
     await sendActionRequest({
       id: body.check_run.id,
@@ -134,6 +128,14 @@ async function handleCheckRun(body: CheckRunEvent, githubEvent: string): Promise
   }
   logger.info(`Successfully queued job for ${body.repository.full_name}`, LogFields.print());
   return { statusCode: 201 };
+}
+
+function getInstallationId(body: WorkflowJobEvent | CheckRunEvent) {
+  let installationId = body.installation?.id;
+  if (installationId == null) {
+    installationId = 0;
+  }
+  return installationId;
 }
 
 function isRepoNotAllowed(repo_full_name: string): boolean {
