@@ -299,6 +299,7 @@ Examples are located in the [examples](./examples) directory. The following exam
 - _[Ubuntu](examples/ubuntu/README.md)_: Example usage of creating a runner using Ubuntu AMIs.
 - _[Prebuilt Images](examples/prebuilt/README.md)_: Example usages of deploying runners with a custom prebuilt image.
 - _[Windows](examples/windows/README.md)_: Example usage of creating a runner using Windows as the OS.
+- _[Prebuilt Images](examples/prebuilt/README.md)_: Example usages of deploying runners with a custom prebuilt image.
 
 ## Sub modules
 
@@ -340,34 +341,34 @@ In case the setup does not work as intended follow the trace of events:
 <!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 ## Requirements
 
-| Name | Version |
-|------|---------|
+| Name                                                                      | Version   |
+| ------------------------------------------------------------------------- | --------- |
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 0.14.1 |
-| <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 3.38 |
+| <a name="requirement_aws"></a> [aws](#requirement\_aws)                   | >= 3.38   |
 
 ## Providers
 
-| Name | Version |
-|------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | >= 3.38 |
-| <a name="provider_random"></a> [random](#provider\_random) | n/a |
+| Name                                                       | Version |
+| ---------------------------------------------------------- | ------- |
+| <a name="provider_aws"></a> [aws](#provider\_aws)          | >= 3.38 |
+| <a name="provider_random"></a> [random](#provider\_random) | n/a     |
 
 ## Modules
 
-| Name | Source | Version |
-|------|--------|---------|
-| <a name="module_runner_binaries"></a> [runner\_binaries](#module\_runner\_binaries) | ./modules/runner-binaries-syncer | n/a |
-| <a name="module_runners"></a> [runners](#module\_runners) | ./modules/runners | n/a |
-| <a name="module_ssm"></a> [ssm](#module\_ssm) | ./modules/ssm | n/a |
-| <a name="module_webhook"></a> [webhook](#module\_webhook) | ./modules/webhook | n/a |
+| Name                                                                                | Source                           | Version |
+| ----------------------------------------------------------------------------------- | -------------------------------- | ------- |
+| <a name="module_runner_binaries"></a> [runner\_binaries](#module\_runner\_binaries) | ./modules/runner-binaries-syncer | n/a     |
+| <a name="module_runners"></a> [runners](#module\_runners)                           | ./modules/runners                | n/a     |
+| <a name="module_ssm"></a> [ssm](#module\_ssm)                                       | ./modules/ssm                    | n/a     |
+| <a name="module_webhook"></a> [webhook](#module\_webhook)                           | ./modules/webhook                | n/a     |
 
 ## Resources
 
-| Name | Type |
-|------|------|
+| Name                                                                                                                                              | Type     |
+| ------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
 | [aws_resourcegroups_group.resourcegroups_group](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/resourcegroups_group) | resource |
-| [aws_sqs_queue.queued_builds](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sqs_queue) | resource |
-| [random_string.random](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/string) | resource |
+| [aws_sqs_queue.queued_builds](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sqs_queue)                              | resource |
+| [random_string.random](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/string)                                     | resource |
 
 ## Inputs
 
@@ -448,12 +449,12 @@ In case the setup does not work as intended follow the trace of events:
 
 ## Outputs
 
-| Name | Description |
-|------|-------------|
-| <a name="output_binaries_syncer"></a> [binaries\_syncer](#output\_binaries\_syncer) | n/a |
-| <a name="output_runners"></a> [runners](#output\_runners) | n/a |
-| <a name="output_ssm_parameters"></a> [ssm\_parameters](#output\_ssm\_parameters) | n/a |
-| <a name="output_webhook"></a> [webhook](#output\_webhook) | n/a |
+| Name                                                                                | Description |
+| ----------------------------------------------------------------------------------- | ----------- |
+| <a name="output_binaries_syncer"></a> [binaries\_syncer](#output\_binaries\_syncer) | n/a         |
+| <a name="output_runners"></a> [runners](#output\_runners)                           | n/a         |
+| <a name="output_ssm_parameters"></a> [ssm\_parameters](#output\_ssm\_parameters)    | n/a         |
+| <a name="output_webhook"></a> [webhook](#output\_webhook)                           | n/a         |
 <!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 
 ## Contribution

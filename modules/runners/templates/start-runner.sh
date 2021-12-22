@@ -29,11 +29,10 @@ echo "Retrieved /$environment/runner/enable-cloudwatch parameter - ($enable_clou
 agent_mode=$(echo "$parameters" | jq --arg environment "$environment" -r '.[] | select(.Name == "/\($environment)/runner/agent-mode") | .Value')
 echo "Retrieved /$environment/runner/agent-mode parameter - ($agent_mode)"
 
-if [[ -n "$enable_cloudwatch_agent" ]]; then  
-  echo "Cloudwatch is enabled"  
+if [[ -n "$enable_cloudwatch_agent" ]]; then
+  echo "Cloudwatch is enabled"
   amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c "ssm:$environment-cloudwatch_agent_config_runner"
 fi
-
 
 ## Configure the runner
 
@@ -66,16 +65,16 @@ sudo --preserve-env=RUNNER_ALLOW_RUNASROOT -u "$run_as" -- ./config.sh --unatten
 echo "Starting runner after $(awk '{print int($1/3600)":"int(($1%3600)/60)":"int($1%60)}' /proc/uptime)"
 echo "Starting the runner as user $run_as"
 
-if [[ $agent_mode = "ephemeral" ]]; then  
+if [[ $agent_mode = "ephemeral" ]]; then
   echo "Starting the runner in ephemeral mode"
   sudo --preserve-env=RUNNER_ALLOW_RUNASROOT -u "$run_as" -- ./run.sh
   echo "Runner has finished"
-  
+
   echo "Stopping cloudwatch service"
   service awslogsd stop
   echo "Terminating instance"
   aws ec2 terminate-instances --instance-ids "$instance_id" --region "$region"
-else 
+else
   echo "Installing the runner as a service"
   ./svc.sh install "$run_as"
   echo "Starting the runner in persistent mode"
