@@ -1,4 +1,3 @@
-import { fail } from 'assert';
 import { Context, SQSEvent, SQSRecord } from 'aws-lambda';
 import { mocked } from 'ts-jest/utils';
 import { scaleUpHandler } from './lambda';
@@ -73,7 +72,7 @@ describe('Test scale up lambda wrapper.', () => {
   it('Scale without error should resolve.', async () => {
     const mock = mocked(scaleUp);
     mock.mockImplementation(() => {
-      return new Promise((resolve, reject) => {
+      return new Promise((resolve) => {
         resolve();
       });
     });

@@ -1,5 +1,6 @@
 import { EC2, SSM } from 'aws-sdk';
 import { logger as rootLogger, LogFields } from './logger';
+import ScaleError from './ScaleError';
 
 const logger = rootLogger.getChildLogger({ name: 'runners' });
 
@@ -30,6 +31,12 @@ export interface RunnerInputParameters {
   environment: string;
   runnerType: 'Org' | 'Repo';
   runnerOwner: string;
+  subnets: string[];
+  launchTemplateName: string;
+  ec2instanceCriteria: {
+    instanceTypes: string[];
+    targetCapacityType: 'spot' | 'on-demand';
+  };
 }
 
 export async function listEC2Runners(filters: ListRunnerFilters | undefined = undefined): Promise<RunnerList[]> {
@@ -78,57 +85,102 @@ export async function terminateRunner(instanceId: string): Promise<void> {
   logger.info(`Runner ${instanceId} has been terminated.`, LogFields.print());
 }
 
-export async function createRunner(runnerParameters: RunnerInputParameters, launchTemplateName: string): Promise<void> {
+function generateFleeOverrides(
+  subnetIds: string[],
+  instancesTypes: string[],
+): EC2.FleetLaunchTemplateOverridesListRequest {
+  const result: EC2.FleetLaunchTemplateOverridesListRequest = [];
+  subnetIds.forEach((s) => {
+    instancesTypes.forEach((i) => {
+      result.push({
+        SubnetId: s,
+        InstanceType: i,
+      });
+    });
+  });
+  return result;
+}
+
+export async function createRunner(runnerParameters: RunnerInputParameters): Promise<void> {
   logger.debug('Runner configuration: ' + JSON.stringify(runnerParameters), LogFields.print());
+
   const ec2 = new EC2();
-  const runInstancesResponse = await ec2
-    .runInstances(getInstanceParams(launchTemplateName, runnerParameters))
-    .promise();
-  logger.info(
-    'Created instance(s): ',
-    runInstancesResponse.Instances?.map((i) => i.InstanceId).join(','),
-    LogFields.print(),
-  );
-  const ssm = new SSM();
-  if (runInstancesResponse.Instances) {
-    for (let i = 0; i < runInstancesResponse.Instances?.length; i++) {
-      await ssm
-        .putParameter({
-          Name: runnerParameters.environment + '-' + (runInstancesResponse.Instances[i].InstanceId as string),
-          Value: runnerParameters.runnerServiceConfig,
-          Type: 'SecureString',
-        })
-        .promise();
+
+  let fleet: AWS.EC2.CreateFleetResult;
+  try {
+    fleet = await ec2
+      .createFleet({
+        LaunchTemplateConfigs: [
+          {
+            LaunchTemplateSpecification: {
+              LaunchTemplateName: runnerParameters.launchTemplateName,
+              Version: '$Default',
+            },
+            Overrides: generateFleeOverrides(
+              runnerParameters.subnets,
+              runnerParameters.ec2instanceCriteria.instanceTypes,
+            ),
+          },
+        ],
+        TargetCapacitySpecification: {
+          TotalTargetCapacity: 1,
+          DefaultTargetCapacityType: runnerParameters.ec2instanceCriteria.targetCapacityType,
+        },
+        TagSpecifications: [
+          {
+            ResourceType: 'instance',
+            Tags: [
+              { Key: 'Application', Value: 'github-action-runner' },
+              { Key: 'Type', Value: runnerParameters.runnerType },
+              { Key: 'Owner', Value: runnerParameters.runnerOwner },
+            ],
+          },
+        ],
+        Type: 'instant',
+      })
+      .promise();
+  } catch (e) {
+    logger.warn('Create fleet request failed.', e);
+    throw e;
+  }
+
+  const instances: string[] = fleet.Instances?.flatMap((i) => i.InstanceIds?.flatMap((j) => j) || []) || [];
+
+  if (instances.length === 0) {
+    logger.warn(`No instances created by fleet request. Check configuration! Response:`, fleet);
+    const errors = fleet.Errors?.flatMap((e) => e.ErrorCode || '') || [];
+
+    // Educated guess of errors that would make sense to retry based on the list
+    // https://docs.aws.amazon.com/AWSEC2/latest/APIReference/errors-overview.html
+    const scaleErrors = [
+      'UnfulfillableCapacity',
+      'MaxSpotInstanceCountExceeded',
+      'TargetCapacityLimitExceededException',
+      'ResourceLimitExceeded',
+      'MaxSpotInstanceCountExceeded',
+      'MaxSpotFleetRequestCountExceeded',
+    ];
+
+    if (errors.some((e) => scaleErrors.includes(e))) {
+      logger.warn('Create fleet failed, ScaleError will be thrown to trigger retry for ephemeral runners.');
+      logger.debug('Create fleet failed.', fleet);
+      throw new ScaleError('Failed to create instance, create fleet failed.');
+    } else {
+      logger.warn('Create fleet failed', fleet);
+      throw Error('Creat flee failed, no instance created.');
     }
   }
-}
 
-function getInstanceParams(
-  launchTemplateName: string,
-  runnerParameters: RunnerInputParameters,
-): EC2.RunInstancesRequest {
-  return {
-    MaxCount: 1,
-    MinCount: 1,
-    LaunchTemplate: {
-      LaunchTemplateName: launchTemplateName,
-      Version: '$Default',
-    },
-    SubnetId: getSubnet(),
-    TagSpecifications: [
-      {
-        ResourceType: 'instance',
-        Tags: [
-          { Key: 'Application', Value: 'github-action-runner' },
-          { Key: 'Type', Value: runnerParameters.runnerType },
-          { Key: 'Owner', Value: runnerParameters.runnerOwner },
-        ],
-      },
-    ],
-  };
-}
+  logger.info('Created instance(s): ', instances.join(','), LogFields.print());
 
-function getSubnet(): string {
-  const subnets = process.env.SUBNET_IDS.split(',');
-  return subnets[Math.floor(Math.random() * subnets.length)];
+  const ssm = new SSM();
+  for (const instance of instances) {
+    await ssm
+      .putParameter({
+        Name: `${runnerParameters.environment}-${instance}`,
+        Value: runnerParameters.runnerServiceConfig,
+        Type: 'SecureString',
+      })
+      .promise();
+  }
 }

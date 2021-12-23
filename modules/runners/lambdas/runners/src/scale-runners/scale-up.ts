@@ -1,4 +1,4 @@
-import { listEC2Runners, createRunner, RunnerInputParameters } from './runners';
+import { listEC2Runners, createRunner } from './runners';
 import { createOctoClient, createGithubAppAuth, createGithubInstallationAuth } from './gh-auth';
 import yn from 'yn';
 import { Octokit } from '@octokit/rest';
@@ -28,7 +28,11 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
   const runnerGroup = process.env.RUNNER_GROUP_NAME;
   const environment = process.env.ENVIRONMENT;
   const ghesBaseUrl = process.env.GHES_URL;
+  const subnets = process.env.SUBNET_IDS.split(',');
+  const instanceTypes = process.env.INSTANCE_TYPES.split(',');
+  const instanceTargetTargetCapacityType = process.env.INSTANCE_TARGET_CAPACITY_TYPE;
   const ephemeralEnabled = yn(process.env.ENABLE_EPHEMERAL_RUNNERS, { default: false });
+  const launchTemplateName = process.env.LAUNCH_TEMPLATE_NAME;
 
   if (ephemeralEnabled && payload.eventType !== 'workflow_job') {
     logger.warn(
@@ -103,13 +107,19 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
       const ephemeralArgument = ephemeral ? '--ephemeral ' : '';
       const runnerArgs = `--token ${token} ${labelsArgument}${ephemeralArgument}`;
 
-      await createRunnerLoop({
+      await createRunner({
         environment,
         runnerServiceConfig: enableOrgLevel
           ? `--url ${configBaseUrl}/${payload.repositoryOwner} ${runnerArgs}${runnerGroupArgument}`.trim()
           : `--url ${configBaseUrl}/${payload.repositoryOwner}/${payload.repositoryName} ${runnerArgs}`.trim(),
         runnerOwner,
         runnerType,
+        subnets,
+        launchTemplateName,
+        ec2instanceCriteria: {
+          instanceTypes,
+          targetCapacityType: instanceTargetTargetCapacityType,
+        },
       });
     } else {
       logger.info('No runner will be created, maximum number of runners reached.', LogFields.print());
@@ -143,23 +153,4 @@ async function getJobStatus(githubInstallationClient: Octokit, payload: ActionRe
     logger.info(`Job not queued`, LogFields.print());
   }
   return isQueued;
-}
-
-export async function createRunnerLoop(runnerParameters: RunnerInputParameters): Promise<void> {
-  const launchTemplateNames = process.env.LAUNCH_TEMPLATE_NAME?.split(',') as string[];
-  let launched = false;
-  for (let i = 0; i < launchTemplateNames.length; i++) {
-    logger.info(`Attempt '${i}' to launch instance using ${launchTemplateNames[i]}.`, LogFields.print());
-    try {
-      await createRunner(runnerParameters, launchTemplateNames[i]);
-      launched = true;
-      break;
-    } catch (error) {
-      logger.debug(`Attempt '${i}' to launch instance using ${launchTemplateNames[i]} FAILED.`, LogFields.print());
-      logger.error(error, LogFields.print());
-    }
-  }
-  if (launched == false) {
-    throw new ScaleError('All launch templates failed');
-  }
 }

@@ -1,6 +1,6 @@
 import { scaleUp } from './scale-runners/scale-up';
 import { scaleDown } from './scale-runners/scale-down';
-import { SQSEvent, ScheduledEvent, Context, Callback } from 'aws-lambda';
+import { SQSEvent, ScheduledEvent, Context } from 'aws-lambda';
 import { LogFields, logger } from './scale-runners/logger';
 import ScaleError from './scale-runners/ScaleError';
 import 'source-map-support/register';

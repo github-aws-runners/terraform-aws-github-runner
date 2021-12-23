@@ -48,8 +48,6 @@ const TEST_DATA_WITH_ZERO_INSTALL_ID: scaleUpModule.ActionRequestMessage = {
   installationId: 0,
 };
 
-const LAUNCH_TEMPLATE = 'lt-1';
-
 const cleanEnv = process.env;
 
 const EXPECTED_RUNNER_PARAMS: RunnerInputParameters = {
@@ -57,6 +55,12 @@ const EXPECTED_RUNNER_PARAMS: RunnerInputParameters = {
   runnerServiceConfig: `--url https://github.enterprise.something/${TEST_DATA.repositoryOwner} --token 1234abcd`,
   runnerType: 'Org',
   runnerOwner: TEST_DATA.repositoryOwner,
+  launchTemplateName: 'lt-1',
+  ec2instanceCriteria: {
+    instanceTypes: ['m5.large'],
+    targetCapacityType: 'spot',
+  },
+  subnets: ['subnet-123'],
 };
 let expectedRunnerParams: RunnerInputParameters;
 
@@ -71,7 +75,10 @@ beforeEach(() => {
   process.env.GITHUB_APP_CLIENT_SECRET = 'TEST_CLIENT_SECRET';
   process.env.RUNNERS_MAXIMUM_COUNT = '3';
   process.env.ENVIRONMENT = 'unit-test-environment';
-  process.env.LAUNCH_TEMPLATE_NAME = 'lt-1,lt-2';
+  process.env.LAUNCH_TEMPLATE_NAME = 'lt-1';
+  process.env.SUBNET_IDS = 'subnet-123';
+  process.env.INSTANCE_TYPES = 'm5.large';
+  process.env.INSTANCE_TARGET_CAPACITY_TYPE = 'spot';
 
   mockOctokit.actions.getJobForWorkflowRun.mockImplementation(() => ({
     data: {
@@ -214,12 +221,12 @@ describe('scaleUp with GHES', () => {
 
     it('creates a runner with correct config', async () => {
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
-      expect(createRunner).toBeCalledWith(expectedRunnerParams, 'lt-1');
+      expect(createRunner).toBeCalledWith(expectedRunnerParams);
     });
 
     it('creates a runner with legacy event check_run', async () => {
       await scaleUpModule.scaleUp('aws:sqs', { ...TEST_DATA, eventType: 'check_run' });
-      expect(createRunner).toBeCalledWith(expectedRunnerParams, 'lt-1');
+      expect(createRunner).toBeCalledWith(expectedRunnerParams);
     });
 
     it('creates a runner with labels in a specific group', async () => {
@@ -228,27 +235,7 @@ describe('scaleUp with GHES', () => {
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
       expectedRunnerParams.runnerServiceConfig =
         expectedRunnerParams.runnerServiceConfig + ` --labels label1,label2 --runnergroup TEST_GROUP`;
-      expect(createRunner).toBeCalledWith(expectedRunnerParams, 'lt-1');
-    });
-
-    it('attempts next launch template if first fails', async () => {
-      const mockCreateRunners = mocked(createRunner);
-      mockCreateRunners.mockRejectedValueOnce(new Error('no capactiy'));
-      await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
-      expect(createRunner).toBeCalledTimes(2);
-      expect(createRunner).toHaveBeenNthCalledWith(1, expectedRunnerParams, 'lt-1');
-      expect(createRunner).toHaveBeenNthCalledWith(2, expectedRunnerParams, 'lt-2');
-      mockCreateRunners.mockReset();
-    });
-
-    it('all launch templates fail', async () => {
-      const mockCreateRunners = mocked(createRunner);
-      mockCreateRunners.mockRejectedValue(new Error('All launch templates failed'));
-      await expect(scaleUpModule.scaleUp('aws:sqs', TEST_DATA)).rejects.toThrow('All launch templates failed');
-      expect(createRunner).toBeCalledTimes(2);
-      expect(createRunner).toHaveBeenNthCalledWith(1, expectedRunnerParams, 'lt-1');
-      expect(createRunner).toHaveBeenNthCalledWith(2, expectedRunnerParams, 'lt-2');
-      mockCreateRunners.mockReset();
+      expect(createRunner).toBeCalledWith(expectedRunnerParams);
     });
   });
 
@@ -328,7 +315,7 @@ describe('scaleUp with GHES', () => {
       process.env.RUNNER_EXTRA_LABELS = 'label1,label2';
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
       expectedRunnerParams.runnerServiceConfig = expectedRunnerParams.runnerServiceConfig + ` --labels label1,label2`;
-      expect(createRunner).toBeCalledWith(expectedRunnerParams, 'lt-1');
+      expect(createRunner).toBeCalledWith(expectedRunnerParams);
     });
 
     it('creates a runner and ensure the group argument is ignored', async () => {
@@ -336,25 +323,13 @@ describe('scaleUp with GHES', () => {
       process.env.RUNNER_GROUP_NAME = 'TEST_GROUP_IGNORED';
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
       expectedRunnerParams.runnerServiceConfig = expectedRunnerParams.runnerServiceConfig + ` --labels label1,label2`;
-      expect(createRunner).toBeCalledWith(expectedRunnerParams, 'lt-1');
+      expect(createRunner).toBeCalledWith(expectedRunnerParams);
     });
 
-    it('attempts next launch template if first fails', async () => {
+    it('Check error is thrown', async () => {
       const mockCreateRunners = mocked(createRunner);
-      mockCreateRunners.mockRejectedValueOnce(new Error('no capactiy'));
-      await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
-      expect(createRunner).toBeCalledTimes(2);
-      expect(createRunner).toHaveBeenNthCalledWith(1, expectedRunnerParams, 'lt-1');
-      expect(createRunner).toHaveBeenNthCalledWith(2, expectedRunnerParams, 'lt-2');
-    });
-
-    it('all launch templates fail', async () => {
-      const mockCreateRunners = mocked(createRunner);
-      mockCreateRunners.mockRejectedValue(new Error('All launch templates failed'));
-      await expect(scaleUpModule.scaleUp('aws:sqs', TEST_DATA)).rejects.toThrow('All launch templates failed');
-      expect(createRunner).toBeCalledTimes(2);
-      expect(createRunner).toHaveBeenNthCalledWith(1, expectedRunnerParams, 'lt-1');
-      expect(createRunner).toHaveBeenNthCalledWith(2, expectedRunnerParams, 'lt-2');
+      mockCreateRunners.mockRejectedValue(new Error('no retry'));
+      await expect(scaleUpModule.scaleUp('aws:sqs', TEST_DATA)).rejects.toThrow('no retry');
       mockCreateRunners.mockReset();
     });
   });
@@ -437,12 +412,12 @@ describe('scaleUp with public GH', () => {
 
     it('creates a runner with correct config', async () => {
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
-      expect(createRunner).toBeCalledWith(expectedRunnerParams, LAUNCH_TEMPLATE);
+      expect(createRunner).toBeCalledWith(expectedRunnerParams);
     });
 
     it('creates a runner with legacy event check_run', async () => {
       await scaleUpModule.scaleUp('aws:sqs', { ...TEST_DATA, eventType: 'check_run' });
-      expect(createRunner).toBeCalledWith(expectedRunnerParams, LAUNCH_TEMPLATE);
+      expect(createRunner).toBeCalledWith(expectedRunnerParams);
     });
 
     it('creates a runner with labels in s specific group', async () => {
@@ -451,16 +426,7 @@ describe('scaleUp with public GH', () => {
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
       expectedRunnerParams.runnerServiceConfig =
         expectedRunnerParams.runnerServiceConfig + ` --labels label1,label2 --runnergroup TEST_GROUP`;
-      expect(createRunner).toBeCalledWith(expectedRunnerParams, LAUNCH_TEMPLATE);
-    });
-
-    it('attempts next launch template if first fails', async () => {
-      const mockCreateRunners = mocked(createRunner);
-      mockCreateRunners.mockRejectedValueOnce(new Error('no capactiy'));
-      await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
-      expect(createRunner).toBeCalledTimes(2);
-      expect(createRunner).toHaveBeenNthCalledWith(1, expectedRunnerParams, 'lt-1');
-      expect(createRunner).toHaveBeenNthCalledWith(2, expectedRunnerParams, 'lt-2');
+      expect(createRunner).toBeCalledWith(expectedRunnerParams);
     });
   });
 
@@ -523,7 +489,7 @@ describe('scaleUp with public GH', () => {
       process.env.RUNNER_EXTRA_LABELS = 'label1,label2';
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
       expectedRunnerParams.runnerServiceConfig = expectedRunnerParams.runnerServiceConfig + ` --labels label1,label2`;
-      expect(createRunner).toBeCalledWith(expectedRunnerParams, LAUNCH_TEMPLATE);
+      expect(createRunner).toBeCalledWith(expectedRunnerParams);
     });
 
     it('creates a runner and ensure the group argument is ignored', async () => {
@@ -531,16 +497,7 @@ describe('scaleUp with public GH', () => {
       process.env.RUNNER_GROUP_NAME = 'TEST_GROUP_IGNORED';
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
       expectedRunnerParams.runnerServiceConfig = expectedRunnerParams.runnerServiceConfig + ` --labels label1,label2`;
-      expect(createRunner).toBeCalledWith(expectedRunnerParams, LAUNCH_TEMPLATE);
-    });
-
-    it('attempts next launch template if first fails', async () => {
-      const mockCreateRunners = mocked(createRunner);
-      mockCreateRunners.mockRejectedValueOnce(new Error('no capactiy'));
-      await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
-      expect(createRunner).toBeCalledTimes(2);
-      expect(createRunner).toHaveBeenNthCalledWith(1, expectedRunnerParams, 'lt-1');
-      expect(createRunner).toHaveBeenNthCalledWith(2, expectedRunnerParams, 'lt-2');
+      expect(createRunner).toBeCalledWith(expectedRunnerParams);
     });
 
     it('ephemeral runners only run with workflow_job event, others should fail.', async () => {
@@ -557,7 +514,7 @@ describe('scaleUp with public GH', () => {
       process.env.ENABLE_EPHEMERAL_RUNNERS = 'true';
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
       expectedRunnerParams.runnerServiceConfig = expectedRunnerParams.runnerServiceConfig + ` --ephemeral`;
-      expect(createRunner).toBeCalledWith(expectedRunnerParams, LAUNCH_TEMPLATE);
+      expect(createRunner).toBeCalledWith(expectedRunnerParams);
     });
 
     it('Scaling error should cause reject so retry can be triggered.', async () => {

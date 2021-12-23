@@ -1,6 +1,7 @@
-import { listEC2Runners, createRunner, terminateRunner, RunnerInfo } from './runners';
+import { listEC2Runners, createRunner, terminateRunner, RunnerInfo, RunnerInputParameters } from './runners';
+import ScaleError from './ScaleError';
 
-const mockEC2 = { describeInstances: jest.fn(), runInstances: jest.fn(), terminateInstances: jest.fn() };
+const mockEC2 = { describeInstances: jest.fn(), createFleet: jest.fn(), terminateInstances: jest.fn() };
 const mockSSM = { putParameter: jest.fn() };
 jest.mock('aws-sdk', () => ({
   EC2: jest.fn().mockImplementation(() => mockEC2),
@@ -124,88 +125,36 @@ describe('terminate runner', () => {
 });
 
 describe('create runner', () => {
-  const mockRunInstances = { promise: jest.fn() };
+  const mockCreateFleet = { promise: jest.fn() };
   const mockPutParameter = { promise: jest.fn() };
   beforeEach(() => {
     jest.clearAllMocks();
-    mockEC2.runInstances.mockImplementation(() => mockRunInstances);
-    mockRunInstances.promise.mockReturnValue({
-      Instances: [
-        {
-          InstanceId: 'i-1234',
-        },
-      ],
+
+    mockEC2.createFleet.mockImplementation(() => mockCreateFleet);
+
+    mockCreateFleet.promise.mockReturnValue({
+      Instances: [{ InstanceIds: ['i-1234'] }],
     });
     mockSSM.putParameter.mockImplementation(() => mockPutParameter);
-    process.env.SUBNET_IDS = 'sub-1234';
   });
 
   it('calls run instances with the correct config for repo', async () => {
-    await createRunner(
-      {
-        runnerServiceConfig: 'bla',
-        environment: ENVIRONMENT,
-        runnerType: 'Repo',
-        runnerOwner: REPO_NAME,
-      },
-      LAUNCH_TEMPLATE,
-    );
-    expect(mockEC2.runInstances).toBeCalledWith({
-      MaxCount: 1,
-      MinCount: 1,
-      LaunchTemplate: { LaunchTemplateName: LAUNCH_TEMPLATE, Version: '$Default' },
-      SubnetId: 'sub-1234',
-      TagSpecifications: [
-        {
-          ResourceType: 'instance',
-          Tags: [
-            { Key: 'Application', Value: 'github-action-runner' },
-            { Key: 'Type', Value: 'Repo' },
-            { Key: 'Owner', Value: REPO_NAME },
-          ],
-        },
-      ],
-    });
+    await createRunner(createRunnerConfig('Repo'));
+    expect(mockEC2.createFleet).toBeCalledWith(expectedCreateFleetRequest('Repo'));
   });
 
   it('calls run instances with the correct config for org', async () => {
-    await createRunner(
-      {
-        runnerServiceConfig: 'bla',
-        environment: ENVIRONMENT,
-        runnerType: 'Org',
-        runnerOwner: ORG_NAME,
-      },
-      LAUNCH_TEMPLATE,
-    );
-    expect(mockEC2.runInstances).toBeCalledWith({
-      MaxCount: 1,
-      MinCount: 1,
-      LaunchTemplate: { LaunchTemplateName: LAUNCH_TEMPLATE, Version: '$Default' },
-      SubnetId: 'sub-1234',
-      TagSpecifications: [
-        {
-          ResourceType: 'instance',
-          Tags: [
-            { Key: 'Application', Value: 'github-action-runner' },
-            { Key: 'Type', Value: 'Org' },
-            { Key: 'Owner', Value: ORG_NAME },
-          ],
-        },
-      ],
-    });
+    await createRunner(createRunnerConfig('Org'));
+    expect(mockEC2.createFleet).toBeCalledWith(expectedCreateFleetRequest('Org'));
+  });
+
+  it('calls run instances with the on-demand capacity', async () => {
+    await createRunner(createRunnerConfig('Org', 'on-demand'));
+    expect(mockEC2.createFleet).toBeCalledWith(expectedCreateFleetRequest('Org', 'on-demand'));
   });
 
   it('creates ssm parameters for each created instance', async () => {
-    await createRunner(
-      {
-        runnerServiceConfig: 'bla',
-        environment: ENVIRONMENT,
-        runnerType: 'Org',
-        runnerOwner: ORG_NAME,
-      },
-      LAUNCH_TEMPLATE,
-    );
+    await createRunner(createRunnerConfig('Org'));
     expect(mockSSM.putParameter).toBeCalledWith({
       Name: `${ENVIRONMENT}-i-1234`,
       Value: 'bla',
@@ -214,18 +163,151 @@ describe('create runner', () => {
   });
 
   it('does not create ssm parameters when no instance is created', async () => {
-    mockRunInstances.promise.mockReturnValue({
+    mockCreateFleet.promise.mockReturnValue({
       Instances: [],
     });
-    await createRunner(
-      {
-        runnerServiceConfig: 'bla',
-        environment: ENVIRONMENT,
-        runnerType: 'Org',
-        runnerOwner: ORG_NAME,
-      },
-      LAUNCH_TEMPLATE,
-    );
+    await expect(createRunner(createRunnerConfig('Org'))).rejects;
     expect(mockSSM.putParameter).not.toBeCalled();
   });
 });
+
+describe('create runner with errors', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    const mockPutParameter = { promise: jest.fn() };
+
+    mockSSM.putParameter.mockImplementation(() => mockPutParameter);
+  });
+
+  it('test ScaleError with one error.', async () => {
+    createFleetMockWithErrors(['UnfulfillableCapacity']);
+
+    await expect(createRunner(createRunnerConfig('Repo'))).rejects.toBeInstanceOf(ScaleError);
+    expect(mockEC2.createFleet).toBeCalledWith(expectedCreateFleetRequest('Repo'));
+    expect(mockSSM.putParameter).not.toBeCalled();
+  });
+
+  it('test ScaleError with multiple error.', async () => {
+    createFleetMockWithErrors(['UnfulfillableCapacity', 'SomeError']);
+
+    await expect(createRunner(createRunnerConfig('Repo'))).rejects.toBeInstanceOf(ScaleError);
+    expect(mockEC2.createFleet).toBeCalledWith(expectedCreateFleetRequest('Repo'));
+    expect(mockSSM.putParameter).not.toBeCalled();
+  });
+
+  it('test default Error', async () => {
+    createFleetMockWithErrors(['NonMappedError']);
+
+    await expect(createRunner(createRunnerConfig('Org'))).rejects.toBeInstanceOf(Error);
+    expect(mockEC2.createFleet).toBeCalledWith(expectedCreateFleetRequest('Org'));
+    expect(mockSSM.putParameter).not.toBeCalled();
+  });
+
+  it('test now error is thrown if an instance is created', async () => {
+    createFleetMockWithErrors(['NonMappedError'], ['i-123']);
+
+    expect(await createRunner(createRunnerConfig('Repo'))).resolves;
+    expect(mockEC2.createFleet).toBeCalledWith(expectedCreateFleetRequest('Repo'));
+    expect(mockSSM.putParameter).toBeCalled();
+  });
+
+  it('test error by create fleet call is thrown.', async () => {
+    mockEC2.createFleet.mockImplementation(() => {
+      return {
+        promise: jest.fn().mockImplementation(() => {
+          throw Error('');
+        }),
+      };
+    });
+
+    await expect(createRunner(createRunnerConfig('Repo'))).rejects.toBeInstanceOf(Error);
+    expect(mockEC2.createFleet).toBeCalledWith(expectedCreateFleetRequest('Repo'));
+    expect(mockSSM.putParameter).not.toBeCalled();
+  });
+});
+
+function createFleetMockWithErrors(errors: string[], instances?: string[]) {
+  let result: AWS.EC2.CreateFleetResult = {
+    Errors: errors.map((e) => ({ ErrorCode: e })),
+  };
+
+  if (instances) {
+    result = {
+      ...result,
+      Instances: [
+        {
+          InstanceIds: instances.map((i) => i),
+        },
+      ],
+    };
+  }
+
+  mockEC2.createFleet.mockImplementation(() => {
+    return { promise: jest.fn().mockReturnValue(result) };
+  });
+}
+
+function createRunnerConfig(type: 'Repo' | 'Org', capacityType: 'spot' | 'on-demand' = 'spot'): RunnerInputParameters {
+  return {
+    runnerServiceConfig: 'bla',
+    environment: ENVIRONMENT,
+    runnerType: type,
+    runnerOwner: REPO_NAME,
+    launchTemplateName: LAUNCH_TEMPLATE,
+    ec2instanceCriteria: {
+      instanceTypes: ['m5.large', 'c5.large'],
+      targetCapacityType: capacityType,
+    },
+    subnets: ['subnet-123', 'subnet-456'],
+  };
+}
+
+function expectedCreateFleetRequest(
+  type: 'Repo' | 'Org',
+  capacityType: 'spot' | 'on-demand' = 'spot',
+): AWS.EC2.CreateFleetRequest {
+  return {
+    LaunchTemplateConfigs: [
+      {
+        LaunchTemplateSpecification: {
+          LaunchTemplateName: 'lt-1',
+          Version: '$Default',
+        },
+        Overrides: [
+          {
+            InstanceType: 'm5.large',
+            SubnetId: 'subnet-123',
+          },
+          {
+            InstanceType: 'c5.large',
+            SubnetId: 'subnet-123',
+          },
+          {
+            InstanceType: 'm5.large',
+            SubnetId: 'subnet-456',
+          },
+          {
+            InstanceType: 'c5.large',
+            SubnetId: 'subnet-456',
+          },
+        ],
+      },
+    ],
+    TagSpecifications: [
+      {
+        ResourceType: 'instance',
+        Tags: [
+          { Key: 'Application', Value: 'github-action-runner' },
+          { Key: 'Type', Value: type },
+          { Key: 'Owner', Value: REPO_NAME },
+        ],
+      },
+    ],
+    TargetCapacitySpecification: {
+      DefaultTargetCapacityType: capacityType,
+      TotalTargetCapacity: 1,
+    },
+    Type: 'instant',
+  };
+}

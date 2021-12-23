@@ -1,3 +1,4 @@
+import { logger } from './scale-runners/logger';
 import { scaleUp, ActionRequestMessage } from './scale-runners/scale-up';
 
 const sqsEvent = {
@@ -31,8 +32,13 @@ const sqsEvent = {
     },
   ],
 };
+
 export function run(): void {
-  scaleUp(sqsEvent.Records[0].eventSource, sqsEvent.Records[0].body as ActionRequestMessage);
+  scaleUp(sqsEvent.Records[0].eventSource, sqsEvent.Records[0].body as ActionRequestMessage)
+    .then()
+    .catch((e) => {
+      logger.error(e);
+    });
 }
 
 run();

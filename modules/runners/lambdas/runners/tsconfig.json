@@ -62,5 +62,9 @@
   },
   "include": [
     "src/**/*"
-  ]
+  ],
+  // required to process types defined in module.d.ts
+  "ts-node": {
+    "files": true
+  }
 }
