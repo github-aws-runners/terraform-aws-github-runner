@@ -24,7 +24,7 @@
     "@vercel/ncc": "^0.33.1",
     "eslint": "^7.32.0",
     "eslint-plugin-prettier": "4.0.0",
-    "jest": "27.4.3",
+    "jest": "27.4.5",
     "jest-mock-extended": "^2.0.1",
     "moment-timezone": "^0.5.34",
     "nock": "^13.2.1",
