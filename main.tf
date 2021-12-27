@@ -5,7 +5,7 @@ locals {
   })
 
   s3_action_runner_url = "s3://${module.runner_binaries.bucket.id}/${module.runner_binaries.runner_distribution_object_key}"
-  runner_architecture  = substr(var.instance_type, 0, 2) == "a1" || substr(var.instance_type, 1, 2) == "6g" ? "arm64" : "x64"
+  runner_architecture  = substr(var.instance_type, 0, 2) == "a1" || substr(var.instance_type, 0, 3) == "t4g" || substr(var.instance_type, 1, 2) == "6g" ? "arm64" : "x64"
   github_app_parameters = {
     id         = module.ssm.parameters.github_app_id
     key_base64 = module.ssm.parameters.github_app_key_base64

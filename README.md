@@ -91,7 +91,7 @@ To be able to support a number of use-cases the module has quite a lot configura
 
 #### ARM64 support via Graviton/Graviton2 instance-types
 
-When using the default example or top-level module, specifying an `instance_type` that matches a Graviton/Graviton 2 (ARM64) architecture (e.g. a1 or any 6th-gen `g` or `gd` type), the sub-modules will be automatically configured to provision with ARM64 AMIs and leverage GitHub's ARM64 action runner. See below for more details.
+When using the default example or top-level module, specifying an `instance_type` that matches a Graviton/Graviton 2 (ARM64) architecture (e.g. a1, t4g or any 6th-gen `g` or `gd` type), the sub-modules will be automatically configured to provision with ARM64 AMIs and leverage GitHub's ARM64 action runner. See below for more details.
 
 ## Usages
 
@@ -202,7 +202,7 @@ module "github-runner" {
 }
 ```
 
-**ARM64** support: Specify an `a1` or `*6g*` (6th-gen Graviton2) instance type to stand up an ARM64 runner, otherwise the default is x86_64.
+**ARM64** support: Specify an `a1`, `t4g` or `*6g*` (6th-gen Graviton2) instance type to stand up an ARM64 runner, otherwise the default is x86_64.
 
 Run terraform by using the following commands
 
@@ -347,7 +347,7 @@ The following sub modules are optional and are provided as example or utility:
 
 ### ARM64 configuration for submodules
 
-When not using the top-level module and specifying an `a1` or `*6g*` (6th-gen Graviton2) `instance_type`, the `runner-binaries-syncer` and `runners` submodules need to be configured appropriately for pulling the ARM64 GitHub action runner binary and leveraging the arm64 AMI for the runners.
+When not using the top-level module and specifying an `a1`, `t4g` or `*6g*` (6th-gen Graviton2) `instance_type`, the `runner-binaries-syncer` and `runners` submodules need to be configured appropriately for pulling the ARM64 GitHub action runner binary and leveraging the arm64 AMI for the runners.
 
 When configuring `runner-binaries-syncer`
 
