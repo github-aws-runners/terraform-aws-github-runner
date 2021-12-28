@@ -58,6 +58,8 @@ if [[ "$run_as" == "root" ]]; then
   export RUNNER_ALLOW_RUNASROOT=1
 fi
 
+chown -R $run_as .
+
 echo "Configure GH Runner as user $run_as"
 sudo --preserve-env=RUNNER_ALLOW_RUNASROOT -u "$run_as" -- ./config.sh --unattended --name "$instance_id" --work "_work" $${config}
 

@@ -208,9 +208,15 @@ variable "instance_profile_path" {
 }
 
 variable "runner_as_root" {
-  description = "Run the action runner under the root user."
+  description = "Run the action runner under the root user. Variable `runner_run_as` will be ingored."
   type        = bool
   default     = false
+}
+
+variable "runner_run_as" {
+  description = "Run the GitHub actions agent as user."
+  type        = string
+  default     = "ec2-user"
 }
 
 variable "runners_maximum_count" {

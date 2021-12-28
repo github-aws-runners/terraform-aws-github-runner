@@ -62,10 +62,12 @@ su -l $USER_NAME -c "systemctl --user enable docker"
 ${install_runner}
 
 # config runner for rootless docker
-cd /home/$USER_NAME/actions-runner/
+cd /opt/actions-runner/
 echo DOCKER_HOST=unix:///run/user/$USER_ID/docker.sock >>.env
 echo PATH=/home/$USER_NAME/bin:$PATH >>.env
 
 ${post_install}
+
+cd /opt/actions-runner
 
 ${start_runner}

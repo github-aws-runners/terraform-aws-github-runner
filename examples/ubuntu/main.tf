@@ -35,6 +35,7 @@ module "runners" {
   # enable access to the runners via SSM
   enable_ssm_on_runners = true
 
+  runner_run_as     = "runners"
   userdata_template = "./templates/user-data.sh"
   ami_owners        = ["099720109477"] # Canonical's Amazon account ID
 
@@ -75,6 +76,4 @@ module "runners" {
   #   idleCount = 1
   # }]
 
-  # disable KMS and encryption
-  # encrypt_secrets = false
 }

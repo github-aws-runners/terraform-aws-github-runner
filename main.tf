@@ -110,6 +110,7 @@ module "runners" {
   runner_boot_time_in_minutes          = var.runner_boot_time_in_minutes
   runner_extra_labels                  = var.runner_extra_labels
   runner_as_root                       = var.runner_as_root
+  runner_run_as                        = var.runner_run_as
   runners_maximum_count                = var.runners_maximum_count
   idle_config                          = var.idle_config
   enable_ssm_on_runners                = var.enable_ssm_on_runners
