@@ -3,14 +3,14 @@ import nock from 'nock';
 import { createAppAuth } from '@octokit/auth-app';
 
 import { StrategyOptions } from '@octokit/auth-app/dist-types/types';
-import { getParameterValue } from './ssm';
+import { getParameterValue } from './../aws/ssm';
 
 import { RequestInterface } from '@octokit/types';
 import { mock, MockProxy } from 'jest-mock-extended';
 import { request } from '@octokit/request';
 import { mocked } from 'ts-jest/utils';
 
-jest.mock('./ssm');
+jest.mock('./../aws/ssm');
 jest.mock('@octokit/auth-app');
 
 const cleanEnv = process.env;

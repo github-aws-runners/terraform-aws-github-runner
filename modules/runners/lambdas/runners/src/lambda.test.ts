@@ -3,7 +3,7 @@ import { mocked } from 'ts-jest/utils';
 import { scaleUpHandler } from './lambda';
 import { ActionRequestMessage, scaleUp } from './scale-runners/scale-up';
 import ScaleError from './scale-runners/ScaleError';
-import { logger } from './scale-runners/logger';
+import { logger } from './logger';
 import { scaleDown } from './scale-runners/scale-down';
 
 const body: ActionRequestMessage = {
@@ -58,7 +58,7 @@ const context: Context = {
 
 jest.mock('./scale-runners/scale-up');
 jest.mock('./scale-runners/scale-down');
-jest.mock('./scale-runners/logger');
+jest.mock('./logger');
 
 describe('Test scale up lambda wrapper.', () => {
   it('Do not handle multiple record sets.', async () => {

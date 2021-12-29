@@ -1,4 +1,4 @@
-import { logger } from './scale-runners/logger';
+import { logger } from './logger';
 import { scaleUp, ActionRequestMessage } from './scale-runners/scale-up';
 
 const sqsEvent = {

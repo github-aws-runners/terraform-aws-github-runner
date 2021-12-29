@@ -1,8 +1,8 @@
 import moment from 'moment';
 import { mocked } from 'ts-jest/utils';
-import { listEC2Runners, terminateRunner, RunnerInfo, RunnerList } from './runners';
+import { listEC2Runners, terminateRunner, RunnerInfo, RunnerList } from './../aws/runners';
 import { scaleDown } from './scale-down';
-import * as ghAuth from './gh-auth';
+import * as ghAuth from '../gh-auth/gh-auth';
 import nock from 'nock';
 import { Octokit } from '@octokit/rest';
 import { githubCache } from './cache';
@@ -24,8 +24,8 @@ jest.mock('@octokit/rest', () => ({
   Octokit: jest.fn().mockImplementation(() => mockOctokit),
 }));
 
-jest.mock('./runners');
-jest.mock('./gh-auth');
+jest.mock('./../aws/runners');
+jest.mock('./../gh-auth/gh-auth');
 jest.mock('./cache');
 
 const mocktokit = Octokit as jest.MockedClass<typeof Octokit>;

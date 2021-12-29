@@ -1,10 +1,10 @@
 import { Octokit } from '@octokit/rest';
 import moment from 'moment';
-import { listEC2Runners, RunnerInfo, RunnerList, terminateRunner } from './runners';
+import { listEC2Runners, RunnerInfo, RunnerList, terminateRunner } from './../aws/runners';
 import { getIdleRunnerCount, ScalingDownConfig } from './scale-down-config';
-import { createOctoClient, createGithubAppAuth, createGithubInstallationAuth } from './gh-auth';
+import { createOctoClient, createGithubAppAuth, createGithubInstallationAuth } from '../gh-auth/gh-auth';
 import { githubCache, GhRunners } from './cache';
-import { logger as rootLogger, LogFields } from './logger';
+import { logger as rootLogger, LogFields } from '../logger';
 
 const logger = rootLogger.getChildLogger({ name: 'scale-down' });
 
