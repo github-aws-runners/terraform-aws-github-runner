@@ -136,6 +136,7 @@ beforeEach(() => {
     expiresAt: 'some-date',
     permissions: {},
     repositorySelection: 'all',
+    installationId: 0,
   });
 
   mockCreateClient.mockResolvedValue(new mocktokit());

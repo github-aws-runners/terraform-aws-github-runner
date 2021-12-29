@@ -233,6 +233,7 @@ describe('scaleDown', () => {
       expiresAt: 'some-date',
       permissions: {},
       repositorySelection: 'all',
+      installationId: 0,
     });
     mockCreateClient.mockResolvedValue(new mocktokit());
     DEFAULT_RUNNERS = JSON.parse(JSON.stringify(DEFAULT_RUNNERS_ORIGINAL));
