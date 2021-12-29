@@ -1,8 +1,8 @@
-import { listEC2Runners, createRunner } from './runners';
-import { createOctoClient, createGithubAppAuth, createGithubInstallationAuth } from './gh-auth';
+import { listEC2Runners, createRunner } from './../aws/runners';
+import { createOctoClient, createGithubAppAuth, createGithubInstallationAuth } from '../gh-auth/gh-auth';
 import yn from 'yn';
 import { Octokit } from '@octokit/rest';
-import { LogFields, logger as rootLogger } from './logger';
+import { LogFields, logger as rootLogger } from '../logger';
 import ScaleError from './ScaleError';
 
 const logger = rootLogger.getChildLogger({ name: 'scale-up' });
@@ -13,6 +13,86 @@ export interface ActionRequestMessage {
   repositoryName: string;
   repositoryOwner: string;
   installationId: number;
+}
+
+function generateRunnerServiceConfig(
+  runnerExtraLabels: string | undefined,
+  runnerGroup: string | undefined,
+  ghesBaseUrl: string,
+  ephemeral: boolean,
+  token: any,
+  enableOrgLevel: boolean,
+  payload: ActionRequestMessage,
+) {
+  const labelsArgument = runnerExtraLabels !== undefined ? `--labels ${runnerExtraLabels} ` : '';
+  const runnerGroupArgument = runnerGroup !== undefined ? `--runnergroup ${runnerGroup} ` : '';
+  const configBaseUrl = ghesBaseUrl ? ghesBaseUrl : 'https://github.com';
+  const ephemeralArgument = ephemeral ? '--ephemeral ' : '';
+  const runnerArgs = `--token ${token} ${labelsArgument}${ephemeralArgument}`;
+  return enableOrgLevel
+    ? `--url ${configBaseUrl}/${payload.repositoryOwner} ${runnerArgs}${runnerGroupArgument}`.trim()
+    : `--url ${configBaseUrl}/${payload.repositoryOwner}/${payload.repositoryName} ${runnerArgs}`.trim();
+}
+
+async function getGithubRunnerRegistrationToken(
+  enableOrgLevel: boolean,
+  githubInstallationClient: Octokit,
+  payload: ActionRequestMessage,
+) {
+  const registrationToken = enableOrgLevel
+    ? await githubInstallationClient.actions.createRegistrationTokenForOrg({ org: payload.repositoryOwner })
+    : await githubInstallationClient.actions.createRegistrationTokenForRepo({
+        owner: payload.repositoryOwner,
+        repo: payload.repositoryName,
+      });
+  const token = registrationToken.data.token;
+  return token;
+}
+
+async function getInstallationId(ghesApiUrl: string, enableOrgLevel: boolean, payload: ActionRequestMessage) {
+  if (payload.installationId !== 0) {
+    return payload.installationId;
+  }
+
+  const ghAuth = await createGithubAppAuth(undefined, ghesApiUrl);
+  const githubClient = await createOctoClient(ghAuth.token, ghesApiUrl);
+  return enableOrgLevel
+    ? (
+        await githubClient.apps.getOrgInstallation({
+          org: payload.repositoryOwner,
+        })
+      ).data.id
+    : (
+        await githubClient.apps.getRepoInstallation({
+          owner: payload.repositoryOwner,
+          repo: payload.repositoryName,
+        })
+      ).data.id;
+}
+
+async function isJobQueued(githubInstallationClient: Octokit, payload: ActionRequestMessage): Promise<boolean> {
+  let isQueued = false;
+  if (payload.eventType === 'workflow_job') {
+    const jobForWorkflowRun = await githubInstallationClient.actions.getJobForWorkflowRun({
+      job_id: payload.id,
+      owner: payload.repositoryOwner,
+      repo: payload.repositoryName,
+    });
+    isQueued = jobForWorkflowRun.data.status === 'queued';
+  } else if (payload.eventType === 'check_run') {
+    const checkRun = await githubInstallationClient.checks.get({
+      check_run_id: payload.id,
+      owner: payload.repositoryOwner,
+      repo: payload.repositoryName,
+    });
+    isQueued = checkRun.data.status === 'queued';
+  } else {
+    throw Error(`Event ${payload.eventType} is not supported`);
+  }
+  if (!isQueued) {
+    logger.info(`Job not queued`, LogFields.print());
+  }
+  return isQueued;
 }
 
 export async function scaleUp(eventSource: string, payload: ActionRequestMessage): Promise<void> {
@@ -63,28 +143,11 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
     ghesApiUrl = `${ghesBaseUrl}/api/v3`;
   }
 
-  let installationId = payload.installationId;
-  if (installationId == 0) {
-    const ghAuth = await createGithubAppAuth(undefined, ghesApiUrl);
-    const githubClient = await createOctoClient(ghAuth.token, ghesApiUrl);
-    installationId = enableOrgLevel
-      ? (
-          await githubClient.apps.getOrgInstallation({
-            org: payload.repositoryOwner,
-          })
-        ).data.id
-      : (
-          await githubClient.apps.getRepoInstallation({
-            owner: payload.repositoryOwner,
-            repo: payload.repositoryName,
-          })
-        ).data.id;
-  }
-
+  const installationId = await getInstallationId(ghesApiUrl, enableOrgLevel, payload);
   const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl);
   const githubInstallationClient = await createOctoClient(ghAuth.token, ghesApiUrl);
 
-  if (ephemeral || (await getJobStatus(githubInstallationClient, payload))) {
+  if (ephemeral || (await isJobQueued(githubInstallationClient, payload))) {
     const currentRunners = await listEC2Runners({
       environment,
       runnerType,
@@ -94,26 +157,22 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
 
     if (currentRunners.length < maximumRunners) {
       logger.info(`Attempting to launch a new runner`, LogFields.print());
-      // create token
-      const registrationToken = enableOrgLevel
-        ? await githubInstallationClient.actions.createRegistrationTokenForOrg({ org: payload.repositoryOwner })
-        : await githubInstallationClient.actions.createRegistrationTokenForRepo({
-            owner: payload.repositoryOwner,
-            repo: payload.repositoryName,
-          });
-      const token = registrationToken.data.token;
 
-      const labelsArgument = runnerExtraLabels !== undefined ? `--labels ${runnerExtraLabels} ` : '';
-      const runnerGroupArgument = runnerGroup !== undefined ? `--runnergroup ${runnerGroup} ` : '';
-      const configBaseUrl = ghesBaseUrl ? ghesBaseUrl : 'https://github.com';
-      const ephemeralArgument = ephemeral ? '--ephemeral ' : '';
-      const runnerArgs = `--token ${token} ${labelsArgument}${ephemeralArgument}`;
+      const token = await getGithubRunnerRegistrationToken(enableOrgLevel, githubInstallationClient, payload);
+
+      const runnerServiceConfig = generateRunnerServiceConfig(
+        runnerExtraLabels,
+        runnerGroup,
+        ghesBaseUrl,
+        ephemeral,
+        token,
+        enableOrgLevel,
+        payload,
+      );
 
       await createRunner({
         environment,
-        runnerServiceConfig: enableOrgLevel
-          ? `--url ${configBaseUrl}/${payload.repositoryOwner} ${runnerArgs}${runnerGroupArgument}`.trim()
-          : `--url ${configBaseUrl}/${payload.repositoryOwner}/${payload.repositoryName} ${runnerArgs}`.trim(),
+        runnerServiceConfig,
         runnerOwner,
         runnerType,
         subnets,
@@ -132,29 +191,4 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
       }
     }
   }
-}
-
-async function getJobStatus(githubInstallationClient: Octokit, payload: ActionRequestMessage): Promise<boolean> {
-  let isQueued = false;
-  if (payload.eventType === 'workflow_job') {
-    const jobForWorkflowRun = await githubInstallationClient.actions.getJobForWorkflowRun({
-      job_id: payload.id,
-      owner: payload.repositoryOwner,
-      repo: payload.repositoryName,
-    });
-    isQueued = jobForWorkflowRun.data.status === 'queued';
-  } else if (payload.eventType === 'check_run') {
-    const checkRun = await githubInstallationClient.checks.get({
-      check_run_id: payload.id,
-      owner: payload.repositoryOwner,
-      repo: payload.repositoryName,
-    });
-    isQueued = checkRun.data.status === 'queued';
-  } else {
-    throw Error(`Event ${payload.eventType} is not supported`);
-  }
-  if (!isQueued) {
-    logger.info(`Job not queued`, LogFields.print());
-  }
-  return isQueued;
 }

@@ -28,12 +28,13 @@ module "runners" {
   }
 
   # Grab the lambda packages from local directory. Must run /.ci/build.sh first
-  webhook_lambda_zip                = "../../lambda_output/webhook.zip"
-  runner_binaries_syncer_lambda_zip = "../../lambda_output/runner-binaries-syncer.zip"
-  runners_lambda_zip                = "../../lambda_output/runners.zip"
+  # webhook_lambda_zip                = "../../lambda_output/webhook.zip"
+  # runner_binaries_syncer_lambda_zip = "../../lambda_output/runner-binaries-syncer.zip"
+  # runners_lambda_zip                = "../../lambda_output/runners.zip"
 
-  enable_organization_runners = true
-  runner_extra_labels         = "default,example"
+  enable_organization_runners      = true
+  disable_check_wokflow_job_labels = true
+  #runner_extra_labels         = "default,example"
 
   # enable access to the runners via SSM
   enable_ssm_on_runners = true
@@ -47,7 +48,7 @@ module "runners" {
   delay_webhook_event = 0
 
   # Ensure you set the number not too low, each build require a new instance
-  runners_maximum_count = 20
+  runners_maximum_count = 50
 
   # override scaling down
   scale_down_schedule_expression = "cron(* * * * ? *)"
@@ -55,12 +56,12 @@ module "runners" {
   enable_ephemeral_runners = true
 
   # configure your pre-built AMI
-  # enabled_userdata = false
-  # ami_filter       = { name = ["github-runner-amzn2-x86_64-2021*"] }
-  # ami_owners       = [data.aws_caller_identity.current.account_id]
+  enabled_userdata = false
+  ami_filter       = { name = ["github-runner-amzn2-x86_64-2021*"] }
+  ami_owners       = [data.aws_caller_identity.current.account_id]
 
   # Enable logging
-  # log_level                        = "debug"
+  log_level = "debug"
 
   # Setup a dead letter queue, by default scale up lambda will kepp retrying to process event in case of scaling error.
   # redrive_policy_build_queue = {

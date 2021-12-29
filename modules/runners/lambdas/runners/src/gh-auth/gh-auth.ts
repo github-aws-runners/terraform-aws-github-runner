@@ -10,8 +10,8 @@ import {
   AuthInterface,
 } from '@octokit/auth-app/dist-types/types';
 import { OctokitOptions } from '@octokit/core/dist-types/types';
-import { getParameterValue } from './ssm';
-import { logger as rootLogger, LogFields } from './logger';
+import { getParameterValue } from '../aws/ssm';
+import { logger as rootLogger, LogFields } from '../logger';
 
 const logger = rootLogger.getChildLogger({ name: 'gh-auth' });
 
