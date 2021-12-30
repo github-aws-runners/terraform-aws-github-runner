@@ -61,9 +61,16 @@ variable "runner_os" {
 }
 
 variable "runner_architecture" {
-  description = "The platform architecture for the runner instance (x64, arm64), defaults to 'x64'"
+  description = "The platform architecture of the runner instance_type."
   type        = string
   default     = "x64"
+  validation {
+    condition = anytrue([
+      var.runner_architecture == "x64",
+      var.runner_architecture == "arm64",
+    ])
+    error_message = "`runner_architecture` value not valid, valid values are: `x64` and `arm64`."
+  }
 }
 
 variable "logging_retention_in_days" {
