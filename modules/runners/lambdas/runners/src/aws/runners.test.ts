@@ -126,6 +126,25 @@ describe('list instances', () => {
     const resp = await listEC2Runners();
     expect(resp.length).toBe(0);
   });
+
+  it('Instances with no tags.', async () => {
+    const noInstances: AWS.EC2.DescribeInstancesResult = {
+      Reservations: [
+        {
+          Instances: [
+            {
+              LaunchTime: new Date('2020-10-11T14:48:00.000+09:00'),
+              InstanceId: 'i-5678',
+              Tags: undefined,
+            },
+          ],
+        },
+      ],
+    };
+    mockDescribeInstances.promise.mockReturnValue(noInstances);
+    const resp = await listEC2Runners();
+    expect(resp.length).toBe(1);
+  });
 });
 
 describe('terminate runner', () => {
@@ -159,6 +178,7 @@ describe('create runner', () => {
     type: 'Org',
     capacityType: 'spot',
     allocationStrategy: 'capacity-optimized',
+    totalTargetCapacity: 1,
   };
 
   beforeEach(() => {
@@ -172,23 +192,47 @@ describe('create runner', () => {
     mockSSM.putParameter.mockImplementation(() => mockPutParameter);
   });
 
-  it('calls run instances with the correct config for repo', async () => {
+  it('calls create fleet of 1 instance with the correct config for repo', async () => {
     await createRunner(createRunnerConfig({ ...defaultRunnerConfig, type: 'Repo' }));
     expect(mockEC2.createFleet).toBeCalledWith(
       expectedCreateFleetRequest({ ...defaultExpectedFleetRequestValues, type: 'Repo' }),
     );
+    expect(mockSSM.putParameter).toBeCalledTimes(1);
   });
 
-  it('calls run instances with the correct config for org', async () => {
+  it('calls create fleet of 2 instances with the correct config for org ', async () => {
+    const instances = [{ InstanceIds: ['i-1234', 'i-5678'] }];
+    mockCreateFleet.promise.mockReturnValue({
+      Instances: instances,
+    });
+
+    await createRunner({ ...createRunnerConfig(defaultRunnerConfig), numberOfRunners: 2 });
+
+    expect(mockEC2.createFleet).toBeCalledWith(
+      expectedCreateFleetRequest({ ...defaultExpectedFleetRequestValues, totalTargetCapacity: 2 }),
+    );
+    expect(mockSSM.putParameter).toBeCalledTimes(2);
+    for (const instance of instances[0].InstanceIds) {
+      expect(mockSSM.putParameter).toBeCalledWith({
+        Name: `unit-test-environment-${instance}`,
+        Type: 'SecureString',
+        Value: 'bla',
+      });
+    }
+  });
+
+  it('calls create fleet of 1 instance with the correct config for org', async () => {
     await createRunner(createRunnerConfig(defaultRunnerConfig));
     expect(mockEC2.createFleet).toBeCalledWith(expectedCreateFleetRequest(defaultExpectedFleetRequestValues));
+    expect(mockSSM.putParameter).toBeCalledTimes(1);
   });
 
-  it('calls run instances with the on-demand capacity', async () => {
+  it('calls create fleet of 1 instance with the on-demand capacity', async () => {
     await createRunner(createRunnerConfig({ ...defaultRunnerConfig, capacityType: 'on-demand' }));
     expect(mockEC2.createFleet).toBeCalledWith(
       expectedCreateFleetRequest({ ...defaultExpectedFleetRequestValues, capacityType: 'on-demand' }),
     );
+    expect(mockSSM.putParameter).toBeCalledTimes(1);
   });
 
   it('calls run instances with the on-demand capacity', async () => {
@@ -226,6 +270,7 @@ describe('create runner with errors', () => {
     type: 'Repo',
     capacityType: 'spot',
     allocationStrategy: 'capacity-optimized',
+    totalTargetCapacity: 1,
   };
   beforeEach(() => {
     jest.clearAllMocks();
@@ -332,6 +377,7 @@ interface ExpectedFleetRequestValues {
   capacityType: EC2.DefaultTargetCapacityType;
   allocationStrategy: EC2.AllocationStrategy;
   maxSpotPrice?: string;
+  totalTargetCapacity: number;
 }
 
 function expectedCreateFleetRequest(expectedValues: ExpectedFleetRequestValues): AWS.EC2.CreateFleetRequest {
@@ -378,7 +424,7 @@ function expectedCreateFleetRequest(expectedValues: ExpectedFleetRequestValues):
     ],
     TargetCapacitySpecification: {
       DefaultTargetCapacityType: expectedValues.capacityType,
-      TotalTargetCapacity: 1,
+      TotalTargetCapacity: expectedValues.totalTargetCapacity,
     },
     Type: 'instant',
   };

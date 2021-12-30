@@ -39,6 +39,7 @@ export interface RunnerInputParameters {
     maxSpotPrice?: string;
     instanceAllocationStrategy: EC2.SpotAllocationStrategy;
   };
+  numberOfRunners?: number;
 }
 
 export async function listEC2Runners(filters: ListRunnerFilters | undefined = undefined): Promise<RunnerList[]> {
@@ -107,6 +108,7 @@ export async function createRunner(runnerParameters: RunnerInputParameters): Pro
   logger.debug('Runner configuration: ' + JSON.stringify(runnerParameters), LogFields.print());
 
   const ec2 = new EC2();
+  const numberOfRunners = runnerParameters.numberOfRunners ? runnerParameters.numberOfRunners : 1;
 
   let fleet: AWS.EC2.CreateFleetResult;
   try {
@@ -130,7 +132,7 @@ export async function createRunner(runnerParameters: RunnerInputParameters): Pro
           AllocationStrategy: 'capacity-optimized',
         },
         TargetCapacitySpecification: {
-          TotalTargetCapacity: 1,
+          TotalTargetCapacity: numberOfRunners,
           DefaultTargetCapacityType: runnerParameters.ec2instanceCriteria.targetCapacityType,
         },
         TagSpecifications: [

@@ -1,4 +1,4 @@
-import { listEC2Runners, createRunner } from './../aws/runners';
+import { listEC2Runners, createRunner, RunnerInputParameters } from './../aws/runners';
 import { createOctoClient, createGithubAppAuth, createGithubInstallationAuth } from '../gh-auth/gh-auth';
 import yn from 'yn';
 import { Octokit } from '@octokit/rest';
@@ -95,6 +95,44 @@ async function isJobQueued(githubInstallationClient: Octokit, payload: ActionReq
   return isQueued;
 }
 
+async function createRunners(
+  enableOrgLevel: boolean,
+  githubInstallationClient: Octokit,
+  payload: ActionRequestMessage,
+  runnerExtraLabels: string | undefined,
+  runnerGroup: string | undefined,
+  ghesBaseUrl: string,
+  ephemeral: boolean,
+  runnerType: 'Org' | 'Repo',
+  environment: string,
+  runnerOwner: string,
+  subnets: string[],
+  launchTemplateName: string,
+  ec2instanceCriteria: RunnerInputParameters['ec2instanceCriteria'],
+): Promise<void> {
+  const token = await getGithubRunnerRegistrationToken(enableOrgLevel, githubInstallationClient, payload);
+
+  const runnerServiceConfig = generateRunnerServiceConfig(
+    runnerExtraLabels,
+    runnerGroup,
+    ghesBaseUrl,
+    ephemeral,
+    token,
+    runnerType,
+    payload,
+  );
+
+  await createRunner({
+    environment,
+    runnerServiceConfig,
+    runnerOwner,
+    runnerType,
+    subnets,
+    launchTemplateName,
+    ec2instanceCriteria,
+  });
+}
+
 export async function scaleUp(eventSource: string, payload: ActionRequestMessage): Promise<void> {
   logger.info(
     `Received ${payload.eventType} from ${payload.repositoryOwner}/${payload.repositoryName}`,
@@ -158,32 +196,26 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
     if (currentRunners.length < maximumRunners) {
       logger.info(`Attempting to launch a new runner`, LogFields.print());
 
-      const token = await getGithubRunnerRegistrationToken(enableOrgLevel, githubInstallationClient, payload);
-
-      const runnerServiceConfig = generateRunnerServiceConfig(
+      await createRunners(
+        enableOrgLevel,
+        githubInstallationClient,
+        payload,
         runnerExtraLabels,
         runnerGroup,
         ghesBaseUrl,
         ephemeral,
-        token,
         runnerType,
-        payload,
-      );
-
-      await createRunner({
         environment,
-        runnerServiceConfig,
         runnerOwner,
-        runnerType,
         subnets,
         launchTemplateName,
-        ec2instanceCriteria: {
+        {
           instanceTypes,
           targetCapacityType: instanceTargetTargetCapacityType,
           maxSpotPrice: instanceMaxSpotPrice,
           instanceAllocationStrategy: instanceAllocationStrategy,
         },
-      });
+      );
     } else {
       logger.info('No runner will be created, maximum number of runners reached.', LogFields.print());
       if (ephemeral) {
