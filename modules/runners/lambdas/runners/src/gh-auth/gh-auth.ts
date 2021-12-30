@@ -32,7 +32,7 @@ export async function createGithubAppAuth(
 ): Promise<AppAuthentication> {
   const auth = await createAuth(installationId, ghesApiUrl);
   const appAuthOptions: AppAuthOptions = { type: 'app' };
-  return await auth(appAuthOptions);
+  return auth(appAuthOptions);
 }
 
 export async function createGithubInstallationAuth(
@@ -41,7 +41,7 @@ export async function createGithubInstallationAuth(
 ): Promise<InstallationAccessTokenAuthentication> {
   const auth = await createAuth(installationId, ghesApiUrl);
   const installationAuthOptions: InstallationAuthOptions = { type: 'installation', installationId };
-  return await auth(installationAuthOptions);
+  return auth(installationAuthOptions);
 }
 
 async function createAuth(installationId: number | undefined, ghesApiUrl: string): Promise<AuthInterface> {
