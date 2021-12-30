@@ -1,11 +1,9 @@
 import { scaleUp } from './scale-runners/scale-up';
 import { scaleDown } from './scale-runners/scale-down';
 import { SQSEvent, ScheduledEvent, Context } from 'aws-lambda';
-import { LogFields, logger as rootLogger } from './logger';
+import { LogFields, logger } from './logger';
 import ScaleError from './scale-runners/ScaleError';
 import 'source-map-support/register';
-
-const logger = rootLogger.getChildLogger({ name: 'lambda' });
 
 export async function scaleUpHandler(event: SQSEvent, context: Context): Promise<void> {
   logger.setSettings({ requestId: context.awsRequestId });
