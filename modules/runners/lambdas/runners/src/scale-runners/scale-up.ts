@@ -21,7 +21,7 @@ function generateRunnerServiceConfig(
   ghesBaseUrl: string,
   ephemeral: boolean,
   token: any,
-  enableOrgLevel: boolean,
+  runnerType: 'Org' | 'Repo',
   payload: ActionRequestMessage,
 ) {
   const labelsArgument = runnerExtraLabels !== undefined ? `--labels ${runnerExtraLabels} ` : '';
@@ -29,7 +29,7 @@ function generateRunnerServiceConfig(
   const configBaseUrl = ghesBaseUrl ? ghesBaseUrl : 'https://github.com';
   const ephemeralArgument = ephemeral ? '--ephemeral ' : '';
   const runnerArgs = `--token ${token} ${labelsArgument}${ephemeralArgument}`;
-  return enableOrgLevel
+  return runnerType === 'Org'
     ? `--url ${configBaseUrl}/${payload.repositoryOwner} ${runnerArgs}${runnerGroupArgument}`.trim()
     : `--url ${configBaseUrl}/${payload.repositoryOwner}/${payload.repositoryName} ${runnerArgs}`.trim();
 }
@@ -166,7 +166,7 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
         ghesBaseUrl,
         ephemeral,
         token,
-        enableOrgLevel,
+        runnerType,
         payload,
       );
 
