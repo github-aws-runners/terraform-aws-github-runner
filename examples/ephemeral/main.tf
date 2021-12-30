@@ -28,9 +28,9 @@ module "runners" {
   }
 
   # Grab the lambda packages from local directory. Must run /.ci/build.sh first
-  # webhook_lambda_zip                = "../../lambda_output/webhook.zip"
-  # runner_binaries_syncer_lambda_zip = "../../lambda_output/runner-binaries-syncer.zip"
-  # runners_lambda_zip                = "../../lambda_output/runners.zip"
+  webhook_lambda_zip                = "../../lambda_output/webhook.zip"
+  runner_binaries_syncer_lambda_zip = "../../lambda_output/runner-binaries-syncer.zip"
+  runners_lambda_zip                = "../../lambda_output/runners.zip"
 
   enable_organization_runners = true
   runner_extra_labels         = "default,example"
