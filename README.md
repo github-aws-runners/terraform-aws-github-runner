@@ -348,15 +348,7 @@ The following sub modules are optional and are provided as example or utility:
 
 ### ARM64 configuration for submodules
 
-When not using the top-level module and specifying an `a1`, `t4g` or `*6g*` (6th-gen Graviton2) `instance_type`, the `runner-binaries-syncer` and `runners` submodules need to be configured appropriately for pulling the ARM64 GitHub action runner binary and leveraging the arm64 AMI for the runners.
-
-When configuring `runner-binaries-syncer`
-
-- _runner_architecture_ - set to `arm64`, defaults to `x64`
-
-When configuring `runners`
-
-- _ami_filter_ - set to `["amzn2-ami-hvm-2*-arm64-gp2"]`, defaults to `["amzn2-ami-hvm-2.*-x86_64-ebs"]`
+When using the top level module configure `runner_architecture = arm64` and insure the list of `instance_types` matches. When not using the top-level ensure the bot properties are set on the submodules. 
 
 ## Debugging
 
