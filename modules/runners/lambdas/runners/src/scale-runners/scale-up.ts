@@ -15,38 +15,44 @@ export interface ActionRequestMessage {
   installationId: number;
 }
 
-function generateRunnerServiceConfig(
-  runnerExtraLabels: string | undefined,
-  runnerGroup: string | undefined,
-  ghesBaseUrl: string,
-  ephemeral: boolean,
-  token: any,
-  runnerType: 'Org' | 'Repo',
-  payload: ActionRequestMessage,
-) {
-  const labelsArgument = runnerExtraLabels !== undefined ? `--labels ${runnerExtraLabels} ` : '';
-  const runnerGroupArgument = runnerGroup !== undefined ? `--runnergroup ${runnerGroup} ` : '';
-  const configBaseUrl = ghesBaseUrl ? ghesBaseUrl : 'https://github.com';
-  const ephemeralArgument = ephemeral ? '--ephemeral ' : '';
-  const runnerArgs = `--token ${token} ${labelsArgument}${ephemeralArgument}`;
-  return runnerType === 'Org'
-    ? `--url ${configBaseUrl}/${payload.repositoryOwner} ${runnerArgs}${runnerGroupArgument}`.trim()
-    : `--url ${configBaseUrl}/${payload.repositoryOwner}/${payload.repositoryName} ${runnerArgs}`.trim();
+interface CreateGitHubRunnerConfig {
+  ephemeral: boolean;
+  ghesBaseUrl: string;
+  runnerExtraLabels: string | undefined;
+  runnerGroup: string | undefined;
+  runnerOwner: string;
+  runnerType: 'Org' | 'Repo';
 }
 
-async function getGithubRunnerRegistrationToken(
-  enableOrgLevel: boolean,
-  githubInstallationClient: Octokit,
-  payload: ActionRequestMessage,
-) {
-  const registrationToken = enableOrgLevel
-    ? await githubInstallationClient.actions.createRegistrationTokenForOrg({ org: payload.repositoryOwner })
-    : await githubInstallationClient.actions.createRegistrationTokenForRepo({
-        owner: payload.repositoryOwner,
-        repo: payload.repositoryName,
-      });
-  const token = registrationToken.data.token;
-  return token;
+interface CreateEC2RunnerConfig {
+  environment: string;
+  subnets: string[];
+  launchTemplateName: string;
+  ec2instanceCriteria: RunnerInputParameters['ec2instanceCriteria'];
+}
+
+function generateRunnerServiceConfig(githubRunnerConfig: CreateGitHubRunnerConfig, token: any) {
+  const labelsArgument =
+    githubRunnerConfig.runnerExtraLabels !== undefined ? `--labels ${githubRunnerConfig.runnerExtraLabels} ` : '';
+  const runnerGroupArgument =
+    githubRunnerConfig.runnerGroup !== undefined ? `--runnergroup ${githubRunnerConfig.runnerGroup} ` : '';
+  const configBaseUrl = githubRunnerConfig.ghesBaseUrl ? githubRunnerConfig.ghesBaseUrl : 'https://github.com';
+  const ephemeralArgument = githubRunnerConfig.ephemeral ? '--ephemeral ' : '';
+  const runnerArgs = `--token ${token} ${labelsArgument}${ephemeralArgument}`;
+  return githubRunnerConfig.runnerType === 'Org'
+    ? `--url ${configBaseUrl}/${githubRunnerConfig.runnerOwner} ${runnerArgs}${runnerGroupArgument}`.trim()
+    : `--url ${configBaseUrl}/${githubRunnerConfig.runnerOwner} ${runnerArgs}`.trim();
+}
+
+async function getGithubRunnerRegistrationToken(githubRunnerConfig: CreateGitHubRunnerConfig, ghClient: Octokit) {
+  const registrationToken =
+    githubRunnerConfig.runnerType === 'Org'
+      ? await ghClient.actions.createRegistrationTokenForOrg({ org: githubRunnerConfig.runnerOwner })
+      : await ghClient.actions.createRegistrationTokenForRepo({
+          owner: githubRunnerConfig.runnerOwner.split('/')[0],
+          repo: githubRunnerConfig.runnerOwner.split('/')[1],
+        });
+  return registrationToken.data.token;
 }
 
 async function getInstallationId(ghesApiUrl: string, enableOrgLevel: boolean, payload: ActionRequestMessage) {
@@ -95,41 +101,20 @@ async function isJobQueued(githubInstallationClient: Octokit, payload: ActionReq
   return isQueued;
 }
 
-async function createRunners(
-  enableOrgLevel: boolean,
-  githubInstallationClient: Octokit,
-  payload: ActionRequestMessage,
-  runnerExtraLabels: string | undefined,
-  runnerGroup: string | undefined,
-  ghesBaseUrl: string,
-  ephemeral: boolean,
-  runnerType: 'Org' | 'Repo',
-  environment: string,
-  runnerOwner: string,
-  subnets: string[],
-  launchTemplateName: string,
-  ec2instanceCriteria: RunnerInputParameters['ec2instanceCriteria'],
+export async function createRunners(
+  githubRunnerConfig: CreateGitHubRunnerConfig,
+  ec2RunnerConfig: CreateEC2RunnerConfig,
+  ghClient: Octokit,
 ): Promise<void> {
-  const token = await getGithubRunnerRegistrationToken(enableOrgLevel, githubInstallationClient, payload);
+  const token = await getGithubRunnerRegistrationToken(githubRunnerConfig, ghClient);
 
-  const runnerServiceConfig = generateRunnerServiceConfig(
-    runnerExtraLabels,
-    runnerGroup,
-    ghesBaseUrl,
-    ephemeral,
-    token,
-    runnerType,
-    payload,
-  );
+  const runnerServiceConfig = generateRunnerServiceConfig(githubRunnerConfig, token);
 
   await createRunner({
-    environment,
     runnerServiceConfig,
-    runnerOwner,
-    runnerType,
-    subnets,
-    launchTemplateName,
-    ec2instanceCriteria,
+    runnerType: githubRunnerConfig.runnerType,
+    runnerOwner: githubRunnerConfig.runnerOwner,
+    ...ec2RunnerConfig,
   });
 }
 
@@ -197,24 +182,26 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
       logger.info(`Attempting to launch a new runner`, LogFields.print());
 
       await createRunners(
-        enableOrgLevel,
-        githubInstallationClient,
-        payload,
-        runnerExtraLabels,
-        runnerGroup,
-        ghesBaseUrl,
-        ephemeral,
-        runnerType,
-        environment,
-        runnerOwner,
-        subnets,
-        launchTemplateName,
         {
-          instanceTypes,
-          targetCapacityType: instanceTargetTargetCapacityType,
-          maxSpotPrice: instanceMaxSpotPrice,
-          instanceAllocationStrategy: instanceAllocationStrategy,
+          ephemeral,
+          ghesBaseUrl,
+          runnerExtraLabels,
+          runnerGroup,
+          runnerOwner,
+          runnerType,
         },
+        {
+          ec2instanceCriteria: {
+            instanceTypes,
+            targetCapacityType: instanceTargetTargetCapacityType,
+            maxSpotPrice: instanceMaxSpotPrice,
+            instanceAllocationStrategy: instanceAllocationStrategy,
+          },
+          environment,
+          launchTemplateName,
+          subnets,
+        },
+        githubInstallationClient,
       );
     } else {
       logger.info('No runner will be created, maximum number of runners reached.', LogFields.print());
