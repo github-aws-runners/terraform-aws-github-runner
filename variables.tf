@@ -355,10 +355,7 @@ variable "instance_targeet_capacity_type" {
   type        = string
   default     = "spot"
   validation {
-    condition = anytrue([
-      var.instance_targeet_capacity_type == "spot",
-      var.instance_targeet_capacity_type == "on-demand",
-    ])
+    condition     = contains(["spot", "on-demand"], var.instance_targeet_capacity_type)
     error_message = "The instance target capacity should be either spot or on-demand."
   }
 }
@@ -368,13 +365,8 @@ variable "instance_allocation_strategy" {
   type        = string
   default     = "lowest-price"
   validation {
-    condition = anytrue([
-      var.instance_allocation_strategy == "lowest-price",
-      var.instance_allocation_strategy == "diversified",
-      var.instance_allocation_strategy == "capacity-optimized",
-      var.instance_allocation_strategy == "capacity-optimized-prioritized",
-    ])
-    error_message = "The instance allocation strategy does not matched the allowed values."
+    condition     = contains(["lowest-price", "diversified", "capacity-optimized", "capacity-optimized-prioritized"], var.instance_allocation_strategy)
+    error_message = "The instance allocation strategy does not match the allowed values."
   }
 }
 
@@ -557,11 +549,7 @@ variable "runner_architecture" {
   type        = string
   default     = "x64"
   validation {
-    condition = anytrue([
-      var.runner_architecture == "x64",
-      var.runner_architecture == "arm64",
-    ])
+    condition     = contains(["x64", "arm64"], var.runner_architecture)
     error_message = "`runner_architecture` value not valid, valid values are: `x64` and `arm64`."
   }
-
 }

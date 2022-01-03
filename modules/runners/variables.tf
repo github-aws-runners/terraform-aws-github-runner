@@ -66,11 +66,9 @@ variable "instance_target_capacity_type" {
   description = "Default lifecyle used runner instances, can be either `spot` or `on-demand`."
   type        = string
   default     = "spot"
+
   validation {
-    condition = anytrue([
-      var.instance_targeet_capacity_type == "spot",
-      var.instance_targeet_capacity_type == "on-demand",
-    ])
+    condition     = contains(["spot", "on-demand"], var.instance_target_capacity_type)
     error_message = "The instance target capacity should be either spot or on-demand."
   }
 }
@@ -79,13 +77,9 @@ variable "instance_allocation_strategy" {
   description = "The allocation strategy for spot instances. AWS recommends to use `capacity-optimized` however the AWS default is `lowest-price`."
   type        = string
   default     = "lowest-price"
+
   validation {
-    condition = anytrue([
-      var.instance_allocation_strategy == "lowest-price",
-      var.instance_allocation_strategy == "diversified",
-      var.instance_allocation_strategy == "capacity-optimized",
-      var.instance_allocation_strategy == "capacity-optimized-prioritized",
-    ])
+    condition     = contains(["lowest-price", "diversified", "capacity-optimized", "capacity-optimized-prioritized"], var.instance_allocation_strategy)
     error_message = "The instance allocation strategy does not match the allowed values."
   }
 }
