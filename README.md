@@ -326,7 +326,7 @@ The following sub modules are optional and are provided as example or utility:
 
 ### ARM64 configuration for submodules
 
-When using the top level module configure `runner_architecture = arm64` and insure the list of `instance_types` matches. When not using the top-level ensure the bot properties are set on the submodules. 
+When using the top-level module configure `runner_architecture = arm64` and ensure the list of `instance_types` matches. When not using the top-level ensure the bot properties are set on the submodules. 
 
 ## Debugging
 
