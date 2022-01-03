@@ -30,7 +30,7 @@ resource "aws_lambda_function" "scale_up" {
       SUBNET_IDS                           = join(",", var.subnet_ids)
       ENABLE_EPHEMERAL_RUNNERS             = var.enable_ephemeral_runners
       INSTANCE_TYPES                       = join(",", var.instance_types)
-      INSTANCE_TARGET_CAPACITY_TYPE        = var.instance_targeet_capacity_type
+      INSTANCE_TARGET_CAPACITY_TYPE        = var.instance_target_capacity_type
       INSTANCE_MAX_SPOT_PRICE              = var.instance_max_spot_price
       INSTANCE_ALLOCATION_STRATEGY         = var.instance_allocation_strategy
     }
