@@ -86,7 +86,7 @@ variable "instance_allocation_strategy" {
       var.instance_allocation_strategy == "capacity-optimized",
       var.instance_allocation_strategy == "capacity-optimized-prioritized",
     ])
-    error_message = "The instance allocation strategy does not matched the allowed values."
+    error_message = "The instance allocation strategy does not match the allowed values."
   }
 }
 
