@@ -177,7 +177,7 @@ export async function createRunner(runnerParameters: RunnerInputParameters): Pro
       throw new ScaleError('Failed to create instance, create fleet failed.');
     } else {
       logger.warn('Create fleet failed, error not recognized as scaling error.', fleet.Errors);
-      throw Error('Create flee failed, no instance created.');
+      throw Error('Create fleet failed, no instance created.');
     }
   }
 

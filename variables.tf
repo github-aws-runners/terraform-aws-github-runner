@@ -340,22 +340,22 @@ variable "runner_additional_security_group_ids" {
 }
 
 variable "market_options" {
-  description = "DEPCRECATED: Replaced by `instance_targeet_capacity_type`."
+  description = "DEPCRECATED: Replaced by `instance_target_capacity_type`."
   type        = string
   default     = null
 
   validation {
     condition     = anytrue([var.market_options == null])
-    error_message = "Deprecated, replaced by `instance_targeet_capacity_type`."
+    error_message = "Deprecated, replaced by `instance_target_capacity_type`."
   }
 }
 
-variable "instance_targeet_capacity_type" {
+variable "instance_target_capacity_type" {
   description = "Default lifecycle used for runner instances, can be either `spot` or `on-demand`."
   type        = string
   default     = "spot"
   validation {
-    condition     = contains(["spot", "on-demand"], var.instance_targeet_capacity_type)
+    condition     = contains(["spot", "on-demand"], var.instance_target_capacity_type)
     error_message = "The instance target capacity should be either spot or on-demand."
   }
 }

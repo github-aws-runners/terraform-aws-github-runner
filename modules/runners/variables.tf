@@ -52,13 +52,13 @@ variable "block_device_mappings" {
 }
 
 variable "market_options" {
-  description = "DEPCRECATED: Replaced by `instance_targeet_capacity_type`."
+  description = "DEPCRECATED: Replaced by `instance_target_capacity_type`."
   type        = string
   default     = null
 
   validation {
     condition     = anytrue([var.market_options == null])
-    error_message = "Deprecated, replaced by `instance_targeet_capacity_type`."
+    error_message = "Deprecated, replaced by `instance_target_capacity_type`."
   }
 }
 

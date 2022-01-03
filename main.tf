@@ -90,12 +90,12 @@ module "runners" {
   s3_bucket_runner_binaries   = module.runner_binaries.bucket
   s3_location_runner_binaries = local.s3_action_runner_url
 
-  runner_os                      = var.runner_os
-  instance_types                 = var.instance_types
-  instance_targeet_capacity_type = var.instance_targeet_capacity_type
-  instance_allocation_strategy   = var.instance_allocation_strategy
-  instance_max_spot_price        = var.instance_max_spot_price
-  block_device_mappings          = var.block_device_mappings
+  runner_os                     = var.runner_os
+  instance_types                = var.instance_types
+  instance_target_capacity_type = var.instance_target_capacity_type
+  instance_allocation_strategy  = var.instance_allocation_strategy
+  instance_max_spot_price       = var.instance_max_spot_price
+  block_device_mappings         = var.block_device_mappings
 
   runner_architecture = var.runner_architecture
   ami_filter          = var.ami_filter
