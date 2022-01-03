@@ -351,7 +351,7 @@ variable "market_options" {
 }
 
 variable "instance_targeet_capacity_type" {
-  description = "Default lifecyle used runner instances, can be either `spot` or `on-demand`."
+  description = "Default lifecycle used for runner instances, can be either `spot` or `on-demand`."
   type        = string
   default     = "spot"
   validation {
