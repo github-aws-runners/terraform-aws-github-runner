@@ -13,7 +13,6 @@ locals {
   lambda_zip            = var.lambda_zip == null ? "${path.module}/lambdas/runners/runners.zip" : var.lambda_zip
   userdata_template     = var.userdata_template == null ? local.default_userdata_template[var.runner_os] : var.userdata_template
   userdata_arm_patch    = "${path.module}/templates/arm-runner-patch.tpl"
-  instance_types        = distinct(var.instance_types == null ? [var.instance_type] : var.instance_types)
   kms_key_arn           = var.kms_key_arn != null ? var.kms_key_arn : ""
 
   default_ami = {
@@ -54,9 +53,7 @@ data "aws_ami" "runner" {
 }
 
 resource "aws_launch_template" "runner" {
-  count = length(local.instance_types)
-
-  name = "${var.environment}-action-runner-${local.instance_types[count.index]}"
+  name = "${var.environment}-action-runner"
 
   dynamic "block_device_mappings" {
     for_each = [var.block_device_mappings]
@@ -88,18 +85,8 @@ resource "aws_launch_template" "runner" {
   }
 
   instance_initiated_shutdown_behavior = "terminate"
-
-  dynamic "instance_market_options" {
-    for_each = var.market_options != null ? [var.market_options] : []
-
-    content {
-      market_type = instance_market_options.value
-    }
-  }
-
-  image_id      = data.aws_ami.runner.id
-  instance_type = local.instance_types[count.index]
-  key_name      = var.key_name
+  image_id                             = data.aws_ami.runner.id
+  key_name                             = var.key_name
 
   vpc_security_group_ids = compact(concat(
     [aws_security_group.runner_sg.id],

@@ -59,6 +59,7 @@ const EXPECTED_RUNNER_PARAMS: RunnerInputParameters = {
   ec2instanceCriteria: {
     instanceTypes: ['m5.large'],
     targetCapacityType: 'spot',
+    instanceAllocationStrategy: 'lowest-price',
   },
   subnets: ['subnet-123'],
 };

@@ -5,7 +5,6 @@ locals {
   })
 
   s3_action_runner_url = "s3://${module.runner_binaries.bucket.id}/${module.runner_binaries.runner_distribution_object_key}"
-  runner_architecture  = substr(var.instance_type, 0, 2) == "a1" || substr(var.instance_type, 0, 3) == "t4g" || substr(var.instance_type, 1, 2) == "6g" ? "arm64" : "x64"
   github_app_parameters = {
     id         = module.ssm.parameters.github_app_id
     key_base64 = module.ssm.parameters.github_app_key_base64
@@ -91,13 +90,14 @@ module "runners" {
   s3_bucket_runner_binaries   = module.runner_binaries.bucket
   s3_location_runner_binaries = local.s3_action_runner_url
 
-  runner_os             = var.runner_os
-  instance_type         = var.instance_type
-  instance_types        = var.instance_types
-  market_options        = var.market_options
-  block_device_mappings = var.block_device_mappings
+  runner_os                      = var.runner_os
+  instance_types                 = var.instance_types
+  instance_targeet_capacity_type = var.instance_targeet_capacity_type
+  instance_allocation_strategy   = var.instance_allocation_strategy
+  instance_max_spot_price        = var.instance_max_spot_price
+  block_device_mappings          = var.block_device_mappings
 
-  runner_architecture = local.runner_architecture
+  runner_architecture = var.runner_architecture
   ami_filter          = var.ami_filter
   ami_owners          = var.ami_owners
 
@@ -169,7 +169,7 @@ module "runner_binaries" {
   distribution_bucket_name = "${var.environment}-dist-${random_string.random.result}"
 
   runner_os                        = var.runner_os
-  runner_architecture              = local.runner_architecture
+  runner_architecture              = var.runner_architecture
   runner_allow_prerelease_binaries = var.runner_allow_prerelease_binaries
 
   lambda_s3_bucket                = var.lambda_s3_bucket

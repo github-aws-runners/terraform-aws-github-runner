@@ -1,3 +1,4 @@
+import { EC2 } from 'aws-sdk';
 import { listEC2Runners, createRunner, terminateRunner, RunnerInfo, RunnerInputParameters } from './runners';
 import ScaleError from './ScaleError';
 
@@ -103,6 +104,28 @@ describe('list instances', () => {
       ],
     });
   });
+
+  it('No instances, undefined reservations list.', async () => {
+    const noInstances: AWS.EC2.DescribeInstancesResult = {
+      Reservations: undefined,
+    };
+    mockDescribeInstances.promise.mockReturnValue(noInstances);
+    const resp = await listEC2Runners();
+    expect(resp.length).toBe(0);
+  });
+
+  it('No instances, undefined instance list.', async () => {
+    const noInstances: AWS.EC2.DescribeInstancesResult = {
+      Reservations: [
+        {
+          Instances: undefined,
+        },
+      ],
+    };
+    mockDescribeInstances.promise.mockReturnValue(noInstances);
+    const resp = await listEC2Runners();
+    expect(resp.length).toBe(0);
+  });
 });
 
 describe('terminate runner', () => {
@@ -127,6 +150,17 @@ describe('terminate runner', () => {
 describe('create runner', () => {
   const mockCreateFleet = { promise: jest.fn() };
   const mockPutParameter = { promise: jest.fn() };
+  const defaultRunnerConfig: RunnerConfig = {
+    allocationStrategy: 'capacity-optimized',
+    capacityType: 'spot',
+    type: 'Org',
+  };
+  const defaultExpectedFleetRequestValues: ExpectedFleetRequestValues = {
+    type: 'Org',
+    capacityType: 'spot',
+    allocationStrategy: 'capacity-optimized',
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
 
@@ -139,22 +173,33 @@ describe('create runner', () => {
   });
 
   it('calls run instances with the correct config for repo', async () => {
-    await createRunner(createRunnerConfig('Repo'));
-    expect(mockEC2.createFleet).toBeCalledWith(expectedCreateFleetRequest('Repo'));
+    await createRunner(createRunnerConfig({ ...defaultRunnerConfig, type: 'Repo' }));
+    expect(mockEC2.createFleet).toBeCalledWith(
+      expectedCreateFleetRequest({ ...defaultExpectedFleetRequestValues, type: 'Repo' }),
+    );
   });
 
   it('calls run instances with the correct config for org', async () => {
-    await createRunner(createRunnerConfig('Org'));
-    expect(mockEC2.createFleet).toBeCalledWith(expectedCreateFleetRequest('Org'));
+    await createRunner(createRunnerConfig(defaultRunnerConfig));
+    expect(mockEC2.createFleet).toBeCalledWith(expectedCreateFleetRequest(defaultExpectedFleetRequestValues));
   });
 
   it('calls run instances with the on-demand capacity', async () => {
-    await createRunner(createRunnerConfig('Org', 'on-demand'));
-    expect(mockEC2.createFleet).toBeCalledWith(expectedCreateFleetRequest('Org', 'on-demand'));
+    await createRunner(createRunnerConfig({ ...defaultRunnerConfig, capacityType: 'on-demand' }));
+    expect(mockEC2.createFleet).toBeCalledWith(
+      expectedCreateFleetRequest({ ...defaultExpectedFleetRequestValues, capacityType: 'on-demand' }),
+    );
+  });
+
+  it('calls run instances with the on-demand capacity', async () => {
+    await createRunner(createRunnerConfig({ ...defaultRunnerConfig, maxSpotPrice: '0.1' }));
+    expect(mockEC2.createFleet).toBeCalledWith(
+      expectedCreateFleetRequest({ ...defaultExpectedFleetRequestValues, maxSpotPrice: '0.1' }),
+    );
   });
 
   it('creates ssm parameters for each created instance', async () => {
-    await createRunner(createRunnerConfig('Org'));
+    await createRunner(createRunnerConfig(defaultRunnerConfig));
     expect(mockSSM.putParameter).toBeCalledWith({
       Name: `${ENVIRONMENT}-i-1234`,
       Value: 'bla',
@@ -166,12 +211,22 @@ describe('create runner', () => {
     mockCreateFleet.promise.mockReturnValue({
       Instances: [],
     });
-    await expect(createRunner(createRunnerConfig('Org'))).rejects;
+    await expect(createRunner(createRunnerConfig(defaultRunnerConfig))).rejects;
     expect(mockSSM.putParameter).not.toBeCalled();
   });
 });
 
 describe('create runner with errors', () => {
+  const defaultRunnerConfig: RunnerConfig = {
+    allocationStrategy: 'capacity-optimized',
+    capacityType: 'spot',
+    type: 'Repo',
+  };
+  const defaultExpectedFleetRequestValues: ExpectedFleetRequestValues = {
+    type: 'Repo',
+    capacityType: 'spot',
+    allocationStrategy: 'capacity-optimized',
+  };
   beforeEach(() => {
     jest.clearAllMocks();
 
@@ -183,32 +238,32 @@ describe('create runner with errors', () => {
   it('test ScaleError with one error.', async () => {
     createFleetMockWithErrors(['UnfulfillableCapacity']);
 
-    await expect(createRunner(createRunnerConfig('Repo'))).rejects.toBeInstanceOf(ScaleError);
-    expect(mockEC2.createFleet).toBeCalledWith(expectedCreateFleetRequest('Repo'));
+    await expect(createRunner(createRunnerConfig(defaultRunnerConfig))).rejects.toBeInstanceOf(ScaleError);
+    expect(mockEC2.createFleet).toBeCalledWith(expectedCreateFleetRequest(defaultExpectedFleetRequestValues));
     expect(mockSSM.putParameter).not.toBeCalled();
   });
 
   it('test ScaleError with multiple error.', async () => {
     createFleetMockWithErrors(['UnfulfillableCapacity', 'SomeError']);
 
-    await expect(createRunner(createRunnerConfig('Repo'))).rejects.toBeInstanceOf(ScaleError);
-    expect(mockEC2.createFleet).toBeCalledWith(expectedCreateFleetRequest('Repo'));
+    await expect(createRunner(createRunnerConfig(defaultRunnerConfig))).rejects.toBeInstanceOf(ScaleError);
+    expect(mockEC2.createFleet).toBeCalledWith(expectedCreateFleetRequest(defaultExpectedFleetRequestValues));
     expect(mockSSM.putParameter).not.toBeCalled();
   });
 
   it('test default Error', async () => {
     createFleetMockWithErrors(['NonMappedError']);
 
-    await expect(createRunner(createRunnerConfig('Org'))).rejects.toBeInstanceOf(Error);
-    expect(mockEC2.createFleet).toBeCalledWith(expectedCreateFleetRequest('Org'));
+    await expect(createRunner(createRunnerConfig(defaultRunnerConfig))).rejects.toBeInstanceOf(Error);
+    expect(mockEC2.createFleet).toBeCalledWith(expectedCreateFleetRequest(defaultExpectedFleetRequestValues));
     expect(mockSSM.putParameter).not.toBeCalled();
   });
 
   it('test now error is thrown if an instance is created', async () => {
     createFleetMockWithErrors(['NonMappedError'], ['i-123']);
 
-    expect(await createRunner(createRunnerConfig('Repo'))).resolves;
-    expect(mockEC2.createFleet).toBeCalledWith(expectedCreateFleetRequest('Repo'));
+    expect(await createRunner(createRunnerConfig(defaultRunnerConfig))).resolves;
+    expect(mockEC2.createFleet).toBeCalledWith(expectedCreateFleetRequest(defaultExpectedFleetRequestValues));
     expect(mockSSM.putParameter).toBeCalled();
   });
 
@@ -221,8 +276,8 @@ describe('create runner with errors', () => {
       };
     });
 
-    await expect(createRunner(createRunnerConfig('Repo'))).rejects.toBeInstanceOf(Error);
-    expect(mockEC2.createFleet).toBeCalledWith(expectedCreateFleetRequest('Repo'));
+    await expect(createRunner(createRunnerConfig(defaultRunnerConfig))).rejects.toBeInstanceOf(Error);
+    expect(mockEC2.createFleet).toBeCalledWith(expectedCreateFleetRequest(defaultExpectedFleetRequestValues));
     expect(mockSSM.putParameter).not.toBeCalled();
   });
 });
@@ -248,25 +303,38 @@ function createFleetMockWithErrors(errors: string[], instances?: string[]) {
   });
 }
 
-function createRunnerConfig(type: 'Repo' | 'Org', capacityType: 'spot' | 'on-demand' = 'spot'): RunnerInputParameters {
+interface RunnerConfig {
+  type: 'Repo' | 'Org';
+  capacityType: EC2.DefaultTargetCapacityType;
+  allocationStrategy: EC2.AllocationStrategy;
+  maxSpotPrice?: string;
+}
+
+function createRunnerConfig(runnerConfig: RunnerConfig): RunnerInputParameters {
   return {
     runnerServiceConfig: 'bla',
     environment: ENVIRONMENT,
-    runnerType: type,
+    runnerType: runnerConfig.type,
     runnerOwner: REPO_NAME,
     launchTemplateName: LAUNCH_TEMPLATE,
     ec2instanceCriteria: {
       instanceTypes: ['m5.large', 'c5.large'],
-      targetCapacityType: capacityType,
+      targetCapacityType: runnerConfig.capacityType,
+      maxSpotPrice: runnerConfig.maxSpotPrice,
+      instanceAllocationStrategy: runnerConfig.allocationStrategy,
     },
     subnets: ['subnet-123', 'subnet-456'],
   };
 }
 
-function expectedCreateFleetRequest(
-  type: 'Repo' | 'Org',
-  capacityType: 'spot' | 'on-demand' = 'spot',
-): AWS.EC2.CreateFleetRequest {
+interface ExpectedFleetRequestValues {
+  type: 'Repo' | 'Org';
+  capacityType: EC2.DefaultTargetCapacityType;
+  allocationStrategy: EC2.AllocationStrategy;
+  maxSpotPrice?: string;
+}
+
+function expectedCreateFleetRequest(expectedValues: ExpectedFleetRequestValues): AWS.EC2.CreateFleetRequest {
   return {
     LaunchTemplateConfigs: [
       {
@@ -294,18 +362,22 @@ function expectedCreateFleetRequest(
         ],
       },
     ],
+    SpotOptions: {
+      AllocationStrategy: expectedValues.allocationStrategy,
+      MaxTotalPrice: expectedValues.maxSpotPrice,
+    },
     TagSpecifications: [
       {
         ResourceType: 'instance',
         Tags: [
           { Key: 'Application', Value: 'github-action-runner' },
-          { Key: 'Type', Value: type },
+          { Key: 'Type', Value: expectedValues.type },
           { Key: 'Owner', Value: REPO_NAME },
         ],
       },
     ],
     TargetCapacitySpecification: {
-      DefaultTargetCapacityType: capacityType,
+      DefaultTargetCapacityType: expectedValues.capacityType,
       TotalTargetCapacity: 1,
     },
     Type: 'instant',

@@ -6,25 +6,13 @@
             "Action": [
                 "ec2:DescribeInstances",
                 "ec2:DescribeTags",
-                "ec2:RunInstances"
-            ],
-            "Resource": [
-                "*"
-            ]
-        },
-        {
-            "Effect": "Allow",
-            "Action": [
+                "ec2:RunInstances",
+                "ec2:CreateFleet",
                 "ec2:CreateTags"
             ],
             "Resource": [
                 "*"
-            ],
-            "Condition": {
-                "StringEquals": {
-                    "ec2:CreateAction": "RunInstances"
-                }
-            }
+            ]
         },
         {
             "Effect": "Allow",

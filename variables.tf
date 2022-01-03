@@ -141,12 +141,6 @@ variable "instance_profile_path" {
   default     = null
 }
 
-variable "instance_type" {
-  description = "[DEPRECATED] See instance_types."
-  type        = string
-  default     = "m5.large"
-}
-
 variable "runner_as_root" {
   description = "Run the action runner under the root user. Variable `runner_run_as` will be ingored."
   type        = bool
@@ -346,9 +340,48 @@ variable "runner_additional_security_group_ids" {
 }
 
 variable "market_options" {
-  description = "Market options for the action runner instances. Setting the value to `null` let the scaler create on-demand instances instead of spot instances."
+  description = "DEPCRECATED: Replaced by `instance_targeet_capacity_type`."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = anytrue([var.market_options == null])
+    error_message = "Deprecated, replaced by `instance_targeet_capacity_type`."
+  }
+}
+
+variable "instance_targeet_capacity_type" {
+  description = "Default lifecyle used runner instances, can be either `spot` or `on-demand`."
   type        = string
   default     = "spot"
+  validation {
+    condition = anytrue([
+      var.instance_targeet_capacity_type == "spot",
+      var.instance_targeet_capacity_type == "on-demand",
+    ])
+    error_message = "The instance target capacity should be either spot or on-demand."
+  }
+}
+
+variable "instance_allocation_strategy" {
+  description = "The allocation strategy for spot instances. AWS recommends to use `capacity-optimized` however the AWS default is `lowest-price`."
+  type        = string
+  default     = "lowest-price"
+  validation {
+    condition = anytrue([
+      var.instance_allocation_strategy == "lowest-price",
+      var.instance_allocation_strategy == "diversified",
+      var.instance_allocation_strategy == "capacity-optimized",
+      var.instance_allocation_strategy == "capacity-optimized-prioritized",
+    ])
+    error_message = "The instance allocation strategy does not matched the allowed values."
+  }
+}
+
+variable "instance_max_spot_price" {
+  description = "Max price price for spot intances per hour. This variable will be passed to the create fleet as max spot price for the fleet."
+  type        = string
+  default     = null
 }
 
 variable "volume_size" {
@@ -357,10 +390,21 @@ variable "volume_size" {
   default     = 30
 }
 
+variable "instance_type" {
+  description = "[DEPRECATED] See instance_types."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = anytrue([var.instance_type == null])
+    error_message = "Deprecated, replaced by `instance_types`."
+  }
+}
+
 variable "instance_types" {
   description = "List of instance types for the action runner. Defaults are based on runner_os (amzn2 for linux and Windows Server Core for win)."
   type        = list(string)
-  default     = null
+  default     = ["m5.large", "c5.large"]
 }
 
 variable "repository_white_list" {
@@ -505,4 +549,19 @@ variable "redrive_build_queue" {
     condition     = var.redrive_build_queue.enabled && var.redrive_build_queue.maxReceiveCount != null || !var.redrive_build_queue.enabled
     error_message = "Ensure you have set the maxReceiveCount when enabled."
   }
+}
+
+
+variable "runner_architecture" {
+  description = "The platform architecture of the runner instance_type."
+  type        = string
+  default     = "x64"
+  validation {
+    condition = anytrue([
+      var.runner_architecture == "x64",
+      var.runner_architecture == "arm64",
+    ])
+    error_message = "`runner_architecture` value not valid, valid values are: `x64` and `arm64`."
+  }
+
 }

@@ -33,6 +33,8 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
   const instanceTargetTargetCapacityType = process.env.INSTANCE_TARGET_CAPACITY_TYPE;
   const ephemeralEnabled = yn(process.env.ENABLE_EPHEMERAL_RUNNERS, { default: false });
   const launchTemplateName = process.env.LAUNCH_TEMPLATE_NAME;
+  const instanceMaxSpotPrice = process.env.INSTANCE_MAX_SPOT_PRICE;
+  const instanceAllocationStrategy = process.env.INSTANCE_ALLOCATION_STRATEGY || 'lowest-price'; // same as AWS default
 
   if (ephemeralEnabled && payload.eventType !== 'workflow_job') {
     logger.warn(
@@ -119,6 +121,8 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
         ec2instanceCriteria: {
           instanceTypes,
           targetCapacityType: instanceTargetTargetCapacityType,
+          maxSpotPrice: instanceMaxSpotPrice,
+          instanceAllocationStrategy: instanceAllocationStrategy,
         },
       });
     } else {

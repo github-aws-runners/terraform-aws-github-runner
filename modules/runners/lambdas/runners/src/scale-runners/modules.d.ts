@@ -15,5 +15,11 @@ declare namespace NodeJS {
     SUBNET_IDS: string;
     INSTANCE_TYPES: string;
     INSTANCE_TARGET_CAPACITY_TYPE: 'on-demand' | 'spot';
+    INSTANCE_MAX_SPOT_PRICE: string | undefined;
+    INSTANCE_ALLOCATION_STRATEGY:
+      | 'lowest-price'
+      | 'diversified'
+      | 'capacity-optimized'
+      | 'capacity-optimized-prioritized';
   }
 }

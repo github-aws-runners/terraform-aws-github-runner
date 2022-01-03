@@ -9,11 +9,11 @@ const sqsEvent = {
         // eslint-disable-next-line max-len
         'AQEBCpLYzDEKq4aKSJyFQCkJduSKZef8SJVOperbYyNhXqqnpFG5k74WygVAJ4O0+9nybRyeOFThvITOaS21/jeHiI5fgaM9YKuI0oGYeWCIzPQsluW5CMDmtvqv1aA8sXQ5n2x0L9MJkzgdIHTC3YWBFLQ2AxSveOyIHwW+cHLIFCAcZlOaaf0YtaLfGHGkAC4IfycmaijV8NSlzYgDuxrC9sIsWJ0bSvk5iT4ru/R4+0cjm7qZtGlc04k9xk5Fu6A+wRxMaIyiFRY+Ya19ykcevQldidmEjEWvN6CRToLgclk=',
       body: {
-        id: 19072,
-        repositoryName: 'ErrBud',
-        repositoryOwner: 'ActionsTest',
-        eventType: 'check_run',
-        installationId: 5,
+        repositoryName: 'self-hosted',
+        repositoryOwner: 'test-runners',
+        eventType: 'workflow_job',
+        id: 987654,
+        installationId: 123456789,
       },
       attributes: {
         ApproximateReceiveCount: '1',

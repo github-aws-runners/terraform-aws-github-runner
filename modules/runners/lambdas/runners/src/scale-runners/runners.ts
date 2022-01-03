@@ -35,7 +35,9 @@ export interface RunnerInputParameters {
   launchTemplateName: string;
   ec2instanceCriteria: {
     instanceTypes: string[];
-    targetCapacityType: 'spot' | 'on-demand';
+    targetCapacityType: EC2.DefaultTargetCapacityType;
+    maxSpotPrice?: string;
+    instanceAllocationStrategy: EC2.SpotAllocationStrategy;
   };
 }
 
@@ -108,6 +110,7 @@ export async function createRunner(runnerParameters: RunnerInputParameters): Pro
 
   let fleet: AWS.EC2.CreateFleetResult;
   try {
+    // see for spec https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_CreateFleet.html
     fleet = await ec2
       .createFleet({
         LaunchTemplateConfigs: [
@@ -122,6 +125,10 @@ export async function createRunner(runnerParameters: RunnerInputParameters): Pro
             ),
           },
         ],
+        SpotOptions: {
+          MaxTotalPrice: runnerParameters.ec2instanceCriteria.maxSpotPrice,
+          AllocationStrategy: 'capacity-optimized',
+        },
         TargetCapacitySpecification: {
           TotalTargetCapacity: 1,
           DefaultTargetCapacityType: runnerParameters.ec2instanceCriteria.targetCapacityType,
