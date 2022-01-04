@@ -4275,10 +4275,10 @@ tslib@^2.3.0:
   resolved "https://registry.yarnpkg.com/tslib/-/tslib-2.3.1.tgz#e8a335add5ceae51aa261d32a490158ef042ef01"
   integrity sha512-77EbyPPpMz+FRFRuAFlWMtmgUWGe9UOG2Z25NqCwiIjRhOf5iKGuzSe5P2w1laq+FkRy4p+PCuVkJSGkzTEKVw==
 
-tslog@^3.3.0:
-  version "3.3.0"
-  resolved "https://registry.yarnpkg.com/tslog/-/tslog-3.3.0.tgz#868d90a80b915087de18d810d942a6f763bd6cd1"
-  integrity sha512-NP/9xDON5rv8zCS/jDpvi1V+Oplpwd86BBscdEbK6STWRxsSuott33tqly+RCSkFrLVrCuF9qAJKZTPDaR+HbQ==
+tslog@^3.3.1:
+  version "3.3.1"
+  resolved "https://registry.yarnpkg.com/tslog/-/tslog-3.3.1.tgz#cf5b236772c05c59e183dc1d088e4dbf5bcd8f85"
+  integrity sha512-An3uyXX95uU/X7v5H6G9OKW6ip/gVOpvsERGJ/nR4Or5TP5GwoI9nUjhNWEc8mJOWC7uhPMg2UzkrVDUtadELg==
   dependencies:
     source-map-support "^0.5.21"
 
