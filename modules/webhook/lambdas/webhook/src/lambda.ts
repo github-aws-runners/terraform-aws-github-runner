@@ -6,14 +6,12 @@ export interface Response {
   statusCode: number;
   body?: string;
 }
-
-export const githubWebhook = async (event: APIGatewayEvent, context: Context, callback: Callback): Promise<void> => {
+export async function githubWebhook(event: APIGatewayEvent, context: Context): Promise<void> {
   logger.setSettings({ requestId: context.awsRequestId });
   logger.debug(JSON.stringify(event));
   try {
-    const response = await handle(event.headers, event.body as string);
-    callback(null, response);
+    await handle(event.headers, event.body as string);
   } catch (e) {
-    callback(e as Error);
+    logger.error(e);
   }
-};
+}

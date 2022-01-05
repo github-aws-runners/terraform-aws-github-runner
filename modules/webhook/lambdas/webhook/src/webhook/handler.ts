@@ -88,9 +88,9 @@ async function verifySignature(githubEvent: string, signature: string, body: str
 }
 
 async function handleWorkflowJob(body: WorkflowJobEvent, githubEvent: string): Promise<Response> {
-  const disableCheckWorkflowJobLabelsEnv = process.env.DISABLE_CHECK_WORKFLOW_JOB_LABELS || 'false';
-  const disableCheckWorkflowJobLabels = JSON.parse(disableCheckWorkflowJobLabelsEnv) as boolean;
-  if (!disableCheckWorkflowJobLabels && !canRunJob(body)) {
+  const enableWorkflowStrictLabelCheckEnv = process.env.ENABLE_WORKFLOW_JOB_LABELS_CHECK || 'false';
+  const enableWorkflowStrictLabelCheck = JSON.parse(enableWorkflowStrictLabelCheckEnv) as boolean;
+  if (enableWorkflowStrictLabelCheck && !canRunJob(body)) {
     logger.warn(
       `Received event contains runner labels '${body.workflow_job.labels}' that are not accepted.`,
       LogFields.print(),
@@ -138,28 +138,20 @@ function getInstallationId(body: WorkflowJobEvent | CheckRunEvent) {
   return installationId;
 }
 
-function isRepoNotAllowed(repo_full_name: string): boolean {
+function isRepoNotAllowed(repoFullName: string): boolean {
+  // reading environment vars
   const repositoryWhiteListEnv = process.env.REPOSITORY_WHITE_LIST || '[]';
   const repositoryWhiteList = JSON.parse(repositoryWhiteListEnv) as Array<string>;
 
-  return repositoryWhiteList.length > 0 && !repositoryWhiteList.includes(repo_full_name);
+  return repositoryWhiteList.length > 0 && !repositoryWhiteList.includes(repoFullName);
 }
 
 function canRunJob(job: WorkflowJobEvent): boolean {
   const runnerLabelsEnv = process.env.RUNNER_LABELS || '[]';
   const runnerLabels = new Set(JSON.parse(runnerLabelsEnv) as Array<string>);
 
-  // ensure the self-hosted label is in the list.
-  runnerLabels.add('self-hosted');
   const workflowJobLabels = job.workflow_job.labels;
-
-  // eslint-disable-next-line max-len
-  // GitHub managed labels: https://docs.github.com/en/actions/hosting-your-own-runners/using-self-hosted-runners-in-a-workflow#using-default-labels-to-route-jobs
-  const githubManagedLabels = ['self-hosted', 'linux', 'macOS', 'windows', 'x64', 'ARM', 'ARM64'];
-  // Remove GitHub managed labels
-  const customWorkflowJobLabels = workflowJobLabels.filter((l) => githubManagedLabels.indexOf(l) < 0);
-
-  const runnerMatch = customWorkflowJobLabels.every((l) => runnerLabels.has(l));
+  const runnerMatch = workflowJobLabels.every((l) => runnerLabels.has(l));
 
   logger.debug(
     `Received workflow job event with labels: '${JSON.stringify(job.workflow_job.labels)}'. The event does ${
