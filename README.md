@@ -87,7 +87,7 @@ To be able to support a number of use-cases the module has quite a lot configura
 - Linux vs Windows. you can configure the os types linux and win. Linux will be used by default.
 - Re-use vs Ephemeral. By default runners are re-used for till detected idle, once idle they will be removed from the pool. To improve security we are introducing ephemeral runners. Those runners are only used for one job. Ephemeral runners are only working in combination with the workflow job event. We also suggest to use a pre-build AMI to improve the start time of jobs.
 - GitHub cloud vs GitHub enterprise server (GHES). The runner support GitHub cloud as well GitHub enterprise service. For GHES we rely on our community to test and support. We have no possibility to test ourselves on GHES.
-- Spot vs on-demand. The runners using either the EC2 spot or on-demand life cycle. Runners will be created via the AWS [CreateFleet API](https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_CreateFleet.html). The module (scale up lambda) will request an instance via the create fleet API in one of the subnets and matching one of the specified instance types.
+- Spot vs on-demand. The runners using either the EC2 spot or on-demand life cycle. Runners will be created via the AWC [CreateFLeet API](https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_CreateFleet.html). THe module (scale up lambda) will request via the create fleet API aan instance in one of the subnets and matching one of the specified instances types.
 
 
 #### ARM64 support via Graviton/Graviton2 instance-types
@@ -326,7 +326,7 @@ The following sub modules are optional and are provided as example or utility:
 
 ### ARM64 configuration for submodules
 
-When using the top-level module configure `runner_architecture = arm64` and ensure the list of `instance_types` matches. When not using the top-level ensure the bot properties are set on the submodules. 
+When using the top level module configure `runner_architecture = arm64` and insure the list of `instance_types` matches. When not using the top-level ensure the bot properties are set on the submodules. 
 
 ## Debugging
 
