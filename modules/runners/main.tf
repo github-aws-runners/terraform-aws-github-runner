@@ -16,23 +16,23 @@ locals {
   kms_key_arn           = var.kms_key_arn != null ? var.kms_key_arn : ""
 
   default_ami = {
-    "win"   = { name = ["Windows_Server-20H2-English-Core-ContainersLatest-*"] }
-    "linux" = var.runner_architecture == "arm64" ? { name = ["amzn2-ami-hvm-2*-arm64-gp2"] } : { name = ["amzn2-ami-hvm-2.*-x86_64-ebs"] }
+    "windows" = { name = ["Windows_Server-20H2-English-Core-ContainersLatest-*"] }
+    "linux"   = var.runner_architecture == "arm64" ? { name = ["amzn2-ami-hvm-2*-arm64-gp2"] } : { name = ["amzn2-ami-hvm-2.*-x86_64-ebs"] }
   }
 
   default_userdata_template = {
-    "win"   = "${path.module}/templates/user-data.ps1"
-    "linux" = "${path.module}/templates/user-data.sh"
+    "windows" = "${path.module}/templates/user-data.ps1"
+    "linux"   = "${path.module}/templates/user-data.sh"
   }
 
   userdata_install_runner = {
-    "win"   = "${path.module}/templates/install-runner.ps1"
-    "linux" = "${path.module}/templates/install-runner.sh"
+    "windows" = "${path.module}/templates/install-runner.ps1"
+    "linux"   = "${path.module}/templates/install-runner.sh"
   }
 
   userdata_start_runner = {
-    "win"   = "${path.module}/templates/start-runner.ps1"
-    "linux" = "${path.module}/templates/start-runner.sh"
+    "windows" = "${path.module}/templates/start-runner.ps1"
+    "linux"   = "${path.module}/templates/start-runner.sh"
   }
 
   ami_filter = coalesce(var.ami_filter, local.default_ami[var.runner_os])

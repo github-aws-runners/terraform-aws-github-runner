@@ -67,8 +67,10 @@ module "webhook" {
   lambda_zip                       = var.webhook_lambda_zip
   lambda_timeout                   = var.webhook_lambda_timeout
   logging_retention_in_days        = var.logging_retention_in_days
-  runner_extra_labels              = var.runner_extra_labels
-  disable_check_wokflow_job_labels = var.disable_check_wokflow_job_labels
+
+  # labels
+  enable_workflow_job_labels_check = var.runner_enable_workflow_job_labels_check
+  runner_labels                    = "self-hosted,${var.runner_os},${var.runner_architecture},${var.runner_extra_labels}"
 
   role_path                 = var.role_path
   role_permissions_boundary = var.role_permissions_boundary

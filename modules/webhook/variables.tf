@@ -83,10 +83,16 @@ variable "kms_key_arn" {
   default     = null
 }
 
-variable "runner_extra_labels" {
-  description = "Extra labels for the runners (GitHub). Separate each label by a comma"
+variable "runner_labels" {
+  description = "Labels for the runners (GitHub). Separate each label by a comma. Labels are used to check events when `runner_enable_workflow_job_labels_check` is set to `true`."
   type        = string
   default     = ""
+}
+
+variable "enable_workflow_job_labels_check" {
+  description = "If set to true all labels in the workflow job even are matched agaist the custom labels and GitHub labels (os, architecture and `self-hosted`). When the labels are not matching the event is dropped at the webhook."
+  type        = bool
+  default     = false
 }
 
 variable "log_type" {

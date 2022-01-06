@@ -157,7 +157,7 @@ describe('handler', () => {
     });
 
     it('Check runner a self hosted runner will NOT accept a job marked with only self-hosted', async () => {
-      process.env.RUNNER_LABELS = '["test", "test2"]';
+      process.env.RUNNER_LABELS = '["self-hosted", "test", "test2"]';
       process.env.ENABLE_WORKFLOW_JOB_LABELS_CHECK = 'true';
       const event = JSON.stringify({
         ...workflowjob_event,

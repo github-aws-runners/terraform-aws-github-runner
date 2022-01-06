@@ -1,8 +1,8 @@
 locals {
   # Windows Runners can take their sweet time to do anything
   min_runtime_defaults = {
-    "win"   = 15
-    "linux" = 5
+    "windows" = 15
+    "linux"   = 5
   }
 }
 resource "aws_lambda_function" "scale_down" {

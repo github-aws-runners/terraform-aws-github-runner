@@ -473,11 +473,12 @@ variable "log_level" {
   }
 }
 
-variable "disable_check_wokflow_job_labels" {
-  description = "Disable the the check of workflow labels for received workflow job events."
+variable "runner_enable_workflow_job_labels_check" {
+  description = "If set to true all labels in the workflow job even are matched agaist the custom labels and GitHub labels (os, architecture and `self-hosted`). When the labels are not matching the event is dropped at the webhook."
   type        = bool
   default     = false
 }
+
 
 variable "runner_ec2_tags" {
   description = "Map of tags that will be added to the launch template instance tag specificatons."
@@ -507,7 +508,7 @@ variable "runner_os" {
   default     = "linux"
 
   validation {
-    condition     = contains(["linux", "win"], var.runner_os)
+    condition     = contains(["linux", "windows"], var.runner_os)
     error_message = "Valid values for runner_os are (linux, win)."
   }
 }

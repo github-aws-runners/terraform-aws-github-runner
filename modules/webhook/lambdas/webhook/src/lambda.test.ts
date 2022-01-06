@@ -74,14 +74,35 @@ jest.mock('./webhook/handler');
 
 describe('Test scale up lambda wrapper.', () => {
   it('Happy flow, resolve.', async () => {
-    expect(await githubWebhook(event, context)).resolves;
+    const mock = mocked(handle);
+    mock.mockImplementation(() => {
+      return new Promise((resolve) => {
+        resolve({ statusCode: 200 });
+      });
+    });
+
+    const result = await githubWebhook(event, context);
+    expect(result).toEqual({ statusCode: 200 });
+  });
+
+  it('An expected error, resolve.', async () => {
+    const mock = mocked(handle);
+    mock.mockImplementation(() => {
+      return new Promise((resolve) => {
+        resolve({ statusCode: 400 });
+      });
+    });
+
+    const result = await githubWebhook(event, context);
+    expect(result).toEqual({ statusCode: 400 });
   });
 
   it('Errors are not thrown.', async () => {
     const mock = mocked(handle);
     const logSpy = jest.spyOn(logger, 'error');
     mock.mockRejectedValue(new Error('some error'));
-    expect(await githubWebhook(event, context)).not.toThrow;
+    const result = await githubWebhook(event, context);
+    expect(result).toMatchObject({ statusCode: 500 });
     expect(logSpy).toBeCalledTimes(1);
   });
 });

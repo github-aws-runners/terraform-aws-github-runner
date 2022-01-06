@@ -31,7 +31,7 @@ module "runners" {
   runner_extra_labels = "default,example"
 
   # Set the OS to Windows
-  runner_os = "win"
+  runner_os = "windows"
   # we need to give the runner time to start because this is windows.
   runner_boot_time_in_minutes = 20
 
