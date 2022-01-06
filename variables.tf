@@ -58,7 +58,7 @@ variable "runner_boot_time_in_minutes" {
 }
 
 variable "runner_extra_labels" {
-  description = "Extra labels for the runners (GitHub). Separate each label by a comma"
+  description = "Extra (custom) labels for the runners (GitHub). Separate each label by a comma. Labels checks on the webhook can be enforced by setting `enable_workflow_job_labels_check`. GitHub read-only labels should not be provided."
   type        = string
   default     = ""
 }
@@ -478,7 +478,6 @@ variable "runner_enable_workflow_job_labels_check" {
   type        = bool
   default     = false
 }
-
 
 variable "runner_ec2_tags" {
   description = "Map of tags that will be added to the launch template instance tag specificatons."
