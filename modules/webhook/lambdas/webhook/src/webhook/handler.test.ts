@@ -156,7 +156,7 @@ describe('handler', () => {
       expect(sendActionRequest).toBeCalled();
     });
 
-    it('Check runner a self hosted runner will NOT accept a job marked with only self-hosted', async () => {
+    it('Check webhook does not accept jobs where not all labels are provided in job.', async () => {
       process.env.RUNNER_LABELS = '["self-hosted", "test", "test2"]';
       process.env.ENABLE_WORKFLOW_JOB_LABELS_CHECK = 'true';
       const event = JSON.stringify({
@@ -164,6 +164,24 @@ describe('handler', () => {
         workflow_job: {
           ...workflowjob_event.workflow_job,
           labels: ['self-hosted'],
+        },
+      });
+      const resp = await handle(
+        { 'X-Hub-Signature': await webhooks.sign(event), 'X-GitHub-Event': 'workflow_job' },
+        event,
+      );
+      expect(resp.statusCode).toBe(202);
+      expect(sendActionRequest).not.toBeCalled;
+    });
+
+    it('Check webhook does not accept jobs where not all labels are supported by the runner.', async () => {
+      process.env.RUNNER_LABELS = '["self-hosted", "x64", "linux", "test"]';
+      process.env.ENABLE_WORKFLOW_JOB_LABELS_CHECK = 'true';
+      const event = JSON.stringify({
+        ...workflowjob_event,
+        workflow_job: {
+          ...workflowjob_event.workflow_job,
+          labels: ['self-hosted', 'linux', 'x64', 'test', 'gpu'],
         },
       });
       const resp = await handle(

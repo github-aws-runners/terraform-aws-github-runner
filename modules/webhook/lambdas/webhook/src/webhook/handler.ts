@@ -173,12 +173,14 @@ function isRepoNotAllowed(repoFullName: string, repositoryWhiteList: string[]): 
 function canRunJob(job: WorkflowJobEvent, runnerLabels: string[]): boolean {
   const workflowJobLabels = job.workflow_job.labels;
   const runnerMatch = runnerLabels.every((l) => workflowJobLabels.includes(l));
+  const jobMatch = workflowJobLabels.every((l) => runnerLabels.includes(l));
+  const match = jobMatch && runnerMatch;
 
   logger.debug(
-    `Received workflow job event with labels: '${JSON.stringify(job.workflow_job.labels)}'. The event does ${
-      runnerMatch ? '' : 'NOT '
-    }match the configured labels: '${Array.from(runnerLabels).join(',')}'`,
+    `Received workflow job event with labels: '${JSON.stringify(workflowJobLabels)}'. The event does ${
+      match ? '' : 'NOT '
+    }match the runner labels: '${Array.from(runnerLabels).join(',')}'`,
     LogFields.print(),
   );
-  return runnerMatch;
+  return match;
 }
