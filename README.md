@@ -256,7 +256,7 @@ module "runners" {
 
 The module basically supports two options for keeping a pool of runners. One is via a simple pool which only supports org-level runners, the second option is [keeping runners idle](#idle-runners). 
 
-The simple pool is introduced in combination with the ephemeral runners and is primary meant to ensure if any event is unexpected dropped, and no runner was created the pool can pick up the job. THe pool is maintained by a lambda. Each time the lambda is triggered a check is preformed if the number of idler runners managed by the module are meeting the expected pool size. If not, the pool will be adjusted. Keep in mind that the scale down function is still active and will terminate instances that are detected to long as idle.
+The simple pool is introduced in combination with the ephemeral runners and is primary meant to ensure if any event is unexpected dropped, and no runner was created the pool can pick up the job. The pool is maintained by a lambda. Each time the lambda is triggered a check is preformed if the number of idler runners managed by the module are meeting the expected pool size. If not, the pool will be adjusted. Keep in mind that the scale down function is still active and will terminate instances that are detected to long as idle.
 
 The simple pool is NOT enabled by default can can be enabled by setting the the size of the pool greater then 0. The [ephemeral example](./examples/ephemeral/README.md) contains a configuration options (commented out).
 
