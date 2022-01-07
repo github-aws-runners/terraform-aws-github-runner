@@ -84,7 +84,7 @@ variable "kms_key_arn" {
 }
 
 variable "runner_labels" {
-  description = "Labels for the runners (GitHub). Separate each label by a comma. Labels are used to check events when `runner_enable_workflow_job_labels_check` is set to `true`."
+  description = "Extra (custom) labels for the runners (GitHub). Separate each label by a comma. Labels checks on the webhook can be enforced by setting `enable_workflow_job_labels_check`. GitHub read-only labels should not be provided."
   type        = string
   default     = ""
 }
