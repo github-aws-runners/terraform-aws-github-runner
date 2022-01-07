@@ -11,7 +11,7 @@ export interface SimplePoolEvent {
 }
 
 export async function adjust(event: SimplePoolEvent): Promise<void> {
-  logger.info(`Adjusting simple pool of size: ${event.simplePoolSize}`);
+  logger.info(`Checking current pool size against simple pool of size: ${event.simplePoolSize}`);
   const runnerExtraLabels = process.env.RUNNER_EXTRA_LABELS;
   const runnerGroup = process.env.RUNNER_GROUP_NAME;
   const environment = process.env.ENVIRONMENT;
