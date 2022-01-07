@@ -32,9 +32,11 @@ module "runners" {
   runner_binaries_syncer_lambda_zip = "../../lambda_output/runner-binaries-syncer.zip"
   runners_lambda_zip                = "../../lambda_output/runners.zip"
 
-  enable_organization_runners             = true
-  runner_extra_labels                     = "default,example"
-  runner_enable_workflow_job_labels_check = true
+  enable_organization_runners = true
+  runner_extra_labels         = "default,example"
+
+  # enable workflow labels check
+  # runner_enable_workflow_job_labels_check = true
 
   # enable access to the runners via SSM
   enable_ssm_on_runners = true
