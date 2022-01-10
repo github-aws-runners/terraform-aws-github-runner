@@ -61,10 +61,8 @@ export async function listEC2Runners(filters: ListRunnerFilters | undefined = un
     }
   }
 
-  //  const runningInstances = [];
-
   const runners: RunnerList[] = [];
-  let nextToken = undefined;
+  let nextToken;
   let hasNext = true;
   while (hasNext) {
     const runningInstances: EC2.DescribeInstancesResult = await ec2
