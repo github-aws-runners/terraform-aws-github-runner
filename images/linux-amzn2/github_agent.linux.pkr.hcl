@@ -42,7 +42,7 @@ source "amazon-ebs" "githubrunner" {
   instance_type     = var.instance_type
   region            = var.region
   security_group_id = var.security_group_id
-  subnet_id = var.subnet_id
+  subnet_id         = var.subnet_id
   source_ami_filter {
     filters = {
       name                = "amzn2-ami-hvm-2.*-x86_64-ebs"
