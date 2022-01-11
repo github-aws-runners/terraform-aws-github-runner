@@ -13,7 +13,7 @@ file_name="actions-runner.tar.gz"
 
 echo "Creating actions-runner directory for the GH Action installtion"
 cd /opt/
-mkdir actions-runner && cd actions-runner
+sudo mkdir actions-runner && sudo chown -R "$(whoami)" actions-runner && cd actions-runner
 
 if [[ -n "$RUNNER_TARBALL_URL" ]]; then
   echo "Downloading the GH Action runner from $RUNNER_TARBALL_URL to $file_name"
