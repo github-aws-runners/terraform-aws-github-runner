@@ -7,10 +7,10 @@ packer {
   }
 }
 
-variable "action_runner_url" {
-  description = "The URL to the tarball of the action runner"
+variable "runner_version" {
+  description = "The version (no v prefix) of the runner software to install https://github.com/actions/runner/releases"
   type        = string
-  default     = "https://github.com/actions/runner/releases/download/v2.284.0/actions-runner-linux-x64-2.284.0.tar.gz"
+  default     = "2.286.0"
 }
 
 variable "region" {
@@ -19,10 +19,17 @@ variable "region" {
   default     = "eu-west-1"
 }
 
+variable "security_group_id" {
+  description = "The id of the security group to allow access to the packer builder"
+  type        = string
+  default     = null
+}
+
 source "amazon-ebs" "githubrunner" {
-  ami_name      = "github-runner-amzn2-x86_64-${formatdate("YYYYMMDDhhmm", timestamp())}"
-  instance_type = "m3.medium"
-  region        = var.region
+  ami_name          = "github-runner-amzn2-x86_64-${formatdate("YYYYMMDDhhmm", timestamp())}"
+  instance_type     = "m3.medium"
+  region            = var.region
+  security_group_id = var.security_group_id
   source_ami_filter {
     filters = {
       name                = "amzn2-ami-hvm-2.*-x86_64-ebs"
@@ -60,7 +67,7 @@ build {
 
   provisioner "shell" {
     environment_vars = [
-      "RUNNER_TARBALL_URL=${var.action_runner_url}"
+      "RUNNER_TARBALL_URL=https://github.com/actions/runner/releases/download/v${var.runner_version}/actions-runner-linux-x64-${var.runner_version}.tar.gz"
     ]
     inline = [templatefile("../install-runner.sh", {
       install_runner = templatefile("../../modules/runners/templates/install-runner.sh", {
