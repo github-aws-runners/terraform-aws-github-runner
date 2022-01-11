@@ -5,7 +5,7 @@ import { ActionRequestMessage, scaleUp } from './scale-runners/scale-up';
 import ScaleError from './scale-runners/ScaleError';
 import { logger } from './logger';
 import { scaleDown } from './scale-runners/scale-down';
-import { adjust } from './simple-pool/simple-pool';
+import { adjust } from './pool/pool';
 
 const body: ActionRequestMessage = {
   eventType: 'workflow_job',
@@ -59,7 +59,7 @@ const context: Context = {
 
 jest.mock('./scale-runners/scale-up');
 jest.mock('./scale-runners/scale-down');
-jest.mock('./simple-pool/simple-pool');
+jest.mock('./pool/pool');
 jest.mock('./logger');
 
 describe('Test scale up lambda wrapper.', () => {
@@ -144,7 +144,7 @@ describe('Adjust pool.', () => {
         resolve();
       });
     });
-    expect(await adjustPool({ simplePoolSize: 2 }, context)).resolves;
+    expect(await adjustPool({ poolSize: 2 }, context)).resolves;
   });
 
   it('Handle error for adjusting pool.', async () => {
@@ -152,7 +152,7 @@ describe('Adjust pool.', () => {
     const error = new Error('errorXYX');
     mock.mockRejectedValue(error);
     const logSpy = jest.spyOn(logger, 'error');
-    expect(await adjustPool({ simplePoolSize: 0 }, context)).resolves;
+    expect(await adjustPool({ poolSize: 0 }, context)).resolves;
     expect(logSpy).lastCalledWith(error);
   });
 });

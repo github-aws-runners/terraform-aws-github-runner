@@ -4,7 +4,7 @@ import { SQSEvent, Context } from 'aws-lambda';
 import { LogFields, logger } from './logger';
 import ScaleError from './scale-runners/ScaleError';
 import 'source-map-support/register';
-import { adjust, SimplePoolEvent } from './simple-pool/simple-pool';
+import { adjust, PoolEvent } from './pool/pool';
 
 export async function scaleUpHandler(event: SQSEvent, context: Context): Promise<void> {
   logger.setSettings({ requestId: context.awsRequestId });
@@ -38,7 +38,7 @@ export async function scaleDownHandler(context: Context): Promise<void> {
   }
 }
 
-export async function adjustPool(event: SimplePoolEvent, context: Context): Promise<void> {
+export async function adjustPool(event: PoolEvent, context: Context): Promise<void> {
   logger.setSettings({ requestId: context.awsRequestId });
 
   try {

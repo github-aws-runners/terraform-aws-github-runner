@@ -160,11 +160,10 @@ module "runners" {
   log_type  = var.log_type
   log_level = var.log_level
 
-  simple_pool_config                         = var.simple_pool_config
-  simple_pool_lambda_timeout                 = var.simple_pool_lambda_timeout
-  simple_pool_runner_owner                   = var.simple_pool_runner_owner
-  simple_pool_reserved_concurrent_executions = var.simple_pool_reserved_concurrent_executions
-
+  pool_config                                = var.pool_config
+  pool_lambda_timeout                        = var.pool_lambda_timeout
+  pool_runner_owner                          = var.pool_runner_owner
+  pool_lambda_reserved_concurrent_executions = var.pool_lambda_reserved_concurrent_executions
 }
 
 module "runner_binaries" {

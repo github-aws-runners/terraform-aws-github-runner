@@ -1,17 +1,17 @@
 import yn from 'yn';
-import { logger as rootLogger } from './../logger';
+import { logger as rootLogger } from '../logger';
 import { createRunners } from '../scale-runners/scale-up';
 import { createGithubAppAuth, createGithubInstallationAuth, createOctoClient } from '../gh-auth/gh-auth';
 import { listEC2Runners } from '../aws/runners';
 
-const logger = rootLogger.getChildLogger({ name: 'simple-pool' });
+const logger = rootLogger.getChildLogger({ name: 'pool' });
 
-export interface SimplePoolEvent {
-  simplePoolSize: number;
+export interface PoolEvent {
+  poolSize: number;
 }
 
-export async function adjust(event: SimplePoolEvent): Promise<void> {
-  logger.info(`Checking current pool size against simple pool of size: ${event.simplePoolSize}`);
+export async function adjust(event: PoolEvent): Promise<void> {
+  logger.info(`Checking current pool size against pool of size: ${event.poolSize}`);
   const runnerExtraLabels = process.env.RUNNER_EXTRA_LABELS;
   const runnerGroup = process.env.RUNNER_GROUP_NAME;
   const environment = process.env.ENVIRONMENT;
@@ -55,7 +55,7 @@ export async function adjust(event: SimplePoolEvent): Promise<void> {
   ).map((r) => r.instanceId);
 
   const managedIdleRunners = ec2runners.filter((r) => idleRunners.includes(r));
-  const topUp = event.simplePoolSize - managedIdleRunners.length;
+  const topUp = event.poolSize - managedIdleRunners.length;
   if (topUp > 0) {
     logger.info(`The pool will be topped up with ${topUp} runners.`);
     await createRunners(

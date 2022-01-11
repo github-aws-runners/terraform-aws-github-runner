@@ -1,5 +1,5 @@
 import { mocked } from 'ts-jest/utils';
-import { adjust } from './simple-pool';
+import { adjust } from './pool';
 import * as ghAuth from '../gh-auth/gh-auth';
 import * as scale from '../scale-runners/scale-up';
 import nock from 'nock';
@@ -153,13 +153,13 @@ describe('Test simple pool.', () => {
   describe('With GitHub Cloud', () => {
     it('Top up pool with pool size 2.', async () => {
       const spy = jest.spyOn(scale, 'createRunners');
-      expect(await adjust({ simplePoolSize: 2 })).resolves;
+      expect(await adjust({ poolSize: 2 })).resolves;
       expect(spy).toBeCalled;
     });
 
     it('Should not top up if pool size is reached.', async () => {
       const spy = jest.spyOn(scale, 'createRunners');
-      expect(await adjust({ simplePoolSize: 1 })).resolves;
+      expect(await adjust({ poolSize: 1 })).resolves;
       expect(spy).not.toHaveBeenCalled;
     });
   });
@@ -171,7 +171,7 @@ describe('Test simple pool.', () => {
 
     it('Top up if the pool size is set to 5', async () => {
       const spy = jest.spyOn(scale, 'createRunners');
-      expect(await adjust({ simplePoolSize: 5 })).resolves;
+      expect(await adjust({ poolSize: 5 })).resolves;
       expect(spy).toBeCalled;
     });
   });

@@ -1,7 +1,7 @@
-import { adjust } from './simple-pool/simple-pool';
+import { adjust } from './pool/pool';
 
 export function run(): void {
-  adjust({ simplePoolSize: 1 })
+  adjust({ poolSize: 1 })
     .then()
     .catch((e) => {
       console.log(e);

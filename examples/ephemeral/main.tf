@@ -58,16 +58,16 @@ module "runners" {
   enable_ephemeral_runners = true
 
   # # Example of simple pool usages
-  # simple_pool_runner_owner = "my-org"
-  # simple_pool_config = [{
-  #   pool_size           = 2
-  #   schedule_expression = "cron(*/2 * * * ? *)"
+  # pool_runner_owner = "my-org"
+  # pool_config = [{
+  #   size                = 20
+  #   schedule_expression = "cron(* * * * ? *)"
   # }]
 
   # configure your pre-built AMI
   # enabled_userdata = false
-  # ami_filter = { name = ["github-runner-amzn2-x86_64-2021*"] }
-  # ami_owners = [data.aws_caller_identity.current.account_id]
+  # ami_filter       = { name = ["github-runner-amzn2-x86_64-2021*"] }
+  # ami_owners       = [data.aws_caller_identity.current.account_id]
 
   # Enable logging
   log_level = "debug"
