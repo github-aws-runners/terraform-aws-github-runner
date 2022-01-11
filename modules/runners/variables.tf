@@ -470,7 +470,7 @@ variable "pool_lambda_timeout" {
 }
 
 variable "pool_runner_owner" {
-  description = "The pool wil deploy runners to an GitHub org, set this value to the org to which you want the runners deployed. Repo level is not supported."
+  description = "The pool will deploy runners to the GitHub org ID, set this value to the org to which you want the runners deployed. Repo level is not supported."
   type        = string
   default     = null
 }
