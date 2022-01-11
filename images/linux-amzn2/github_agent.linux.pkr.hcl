@@ -20,16 +20,29 @@ variable "region" {
 }
 
 variable "security_group_id" {
-  description = "The id of the security group to allow access to the packer builder"
+  description = "The ID of the security group Packer will associate with the builder to enable access"
   type        = string
   default     = null
 }
 
+variable "subnet_id" {
+  description = "If using VPC, the ID of the subnet, such as subnet-12345def, where Packer will launch the EC2 instance. This field is required if you are using an non-default VPC"
+  type        = string
+  default     = null
+}
+
+variable "instance_type" {
+  description = "The instance type Packer will use for the builder"
+  type        = string
+  default     = "m3.medium"
+}
+
 source "amazon-ebs" "githubrunner" {
   ami_name          = "github-runner-amzn2-x86_64-${formatdate("YYYYMMDDhhmm", timestamp())}"
-  instance_type     = "m3.medium"
+  instance_type     = var.instance_type
   region            = var.region
   security_group_id = var.security_group_id
+  subnet_id = var.subnet_id
   source_ami_filter {
     filters = {
       name                = "amzn2-ami-hvm-2.*-x86_64-ebs"
