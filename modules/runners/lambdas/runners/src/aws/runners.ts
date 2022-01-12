@@ -24,6 +24,7 @@ export interface ListRunnerFilters {
   runnerType?: 'Org' | 'Repo';
   runnerOwner?: string;
   environment?: string;
+  statuses?: string[];
 }
 
 export interface RunnerInputParameters {
@@ -43,11 +44,13 @@ export interface RunnerInputParameters {
 }
 
 export async function listEC2Runners(filters: ListRunnerFilters | undefined = undefined): Promise<RunnerList[]> {
+  const ec2Statuses = filters?.statuses ? filters.statuses : ['running', 'pending'];
   const ec2 = new EC2();
   const ec2Filters = [
     { Name: 'tag:Application', Values: ['github-action-runner'] },
-    { Name: 'instance-state-name', Values: ['running', 'pending'] },
+    { Name: 'instance-state-name', Values: ec2Statuses },
   ];
+
   if (filters) {
     if (filters.environment !== undefined) {
       ec2Filters.push({ Name: 'tag:Environment', Values: [filters.environment] });
@@ -57,7 +60,24 @@ export async function listEC2Runners(filters: ListRunnerFilters | undefined = un
       ec2Filters.push({ Name: `tag:Owner`, Values: [filters.runnerOwner] });
     }
   }
-  const runningInstances = await ec2.describeInstances({ Filters: ec2Filters }).promise();
+
+  //  const runningInstances = [];
+
+  const runners: RunnerList[] = [];
+  let nextToken = undefined;
+  let hasNext = true;
+  while (hasNext) {
+    const runningInstances: EC2.DescribeInstancesResult = await ec2
+      .describeInstances({ Filters: ec2Filters, NextToken: nextToken })
+      .promise();
+    hasNext = runningInstances.NextToken ? true : false;
+    nextToken = runningInstances.NextToken;
+    runners.push(...getRunnerInfo(runningInstances));
+  }
+  return runners;
+}
+
+function getRunnerInfo(runningInstances: EC2.DescribeInstancesResult) {
   const runners: RunnerList[] = [];
   if (runningInstances.Reservations) {
     for (const r of runningInstances.Reservations) {

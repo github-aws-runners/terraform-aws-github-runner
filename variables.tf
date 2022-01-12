@@ -543,7 +543,6 @@ variable "redrive_build_queue" {
   }
 }
 
-
 variable "runner_architecture" {
   description = "The platform architecture of the runner instance_type."
   type        = string
@@ -552,4 +551,31 @@ variable "runner_architecture" {
     condition     = contains(["x64", "arm64"], var.runner_architecture)
     error_message = "`runner_architecture` value not valid, valid values are: `x64` and `arm64`."
   }
+}
+
+variable "simple_pool_lambda_timeout" {
+  description = "Time out for the simple pool lambda lambda in seconds."
+  type        = number
+  default     = 60
+}
+
+variable "simple_pool_runner_owner" {
+  description = "The simple pool wil deploy runners to an GitHub org, set this value to the org to which you want the runners deployed. Repo level is not supported."
+  type        = string
+  default     = null
+}
+
+variable "simple_pool_reserved_concurrent_executions" {
+  description = "Amount of reserved concurrent executions for the scale-up lambda function. A value of 0 disables lambda from being triggered and -1 removes any concurrency limitations."
+  type        = number
+  default     = 1
+}
+
+variable "simple_pool_config" {
+  description = "The configuration for updating the pool. The `pool_size` to adjust to by the events triggered by the the `schedule_expression. For example you can configure a cron expression for week days to adjust the pool to 10 and another expression for the weekend to adjust the pool to 1."
+  type = list(object({
+    schedule_expression = string
+    pool_size           = number
+  }))
+  default = []
 }

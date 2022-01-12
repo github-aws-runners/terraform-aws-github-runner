@@ -29,9 +29,10 @@ interface CreateEC2RunnerConfig {
   subnets: string[];
   launchTemplateName: string;
   ec2instanceCriteria: RunnerInputParameters['ec2instanceCriteria'];
+  numberOfRunners?: number;
 }
 
-function generateRunnerServiceConfig(githubRunnerConfig: CreateGitHubRunnerConfig, token: any) {
+function generateRunnerServiceConfig(githubRunnerConfig: CreateGitHubRunnerConfig, token: string) {
   const labelsArgument =
     githubRunnerConfig.runnerExtraLabels !== undefined ? `--labels ${githubRunnerConfig.runnerExtraLabels} ` : '';
   const runnerGroupArgument =
@@ -55,7 +56,11 @@ async function getGithubRunnerRegistrationToken(githubRunnerConfig: CreateGitHub
   return registrationToken.data.token;
 }
 
-async function getInstallationId(ghesApiUrl: string, enableOrgLevel: boolean, payload: ActionRequestMessage) {
+async function getInstallationId(
+  ghesApiUrl: string,
+  enableOrgLevel: boolean,
+  payload: ActionRequestMessage,
+): Promise<number> {
   if (payload.installationId !== 0) {
     return payload.installationId;
   }

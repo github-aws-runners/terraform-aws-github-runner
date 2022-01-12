@@ -1,10 +1,11 @@
 import { Context, SQSEvent, SQSRecord } from 'aws-lambda';
 import { mocked } from 'ts-jest/utils';
-import { scaleUpHandler } from './lambda';
+import { adjustPool, scaleDownHandler, scaleUpHandler } from './lambda';
 import { ActionRequestMessage, scaleUp } from './scale-runners/scale-up';
 import ScaleError from './scale-runners/ScaleError';
 import { logger } from './logger';
 import { scaleDown } from './scale-runners/scale-down';
+import { adjust } from './simple-pool/simple-pool';
 
 const body: ActionRequestMessage = {
   eventType: 'workflow_job',
@@ -58,6 +59,7 @@ const context: Context = {
 
 jest.mock('./scale-runners/scale-up');
 jest.mock('./scale-runners/scale-down');
+jest.mock('./simple-pool/simple-pool');
 jest.mock('./logger');
 
 describe('Test scale up lambda wrapper.', () => {
@@ -76,14 +78,14 @@ describe('Test scale up lambda wrapper.', () => {
         resolve();
       });
     });
-    await expect(scaleUpHandler(sqsEvent, context)).resolves;
+    expect(await scaleUpHandler(sqsEvent, context)).resolves;
   });
 
   it('Non scale should resolve.', async () => {
     const error = new Error('some error');
     const mock = mocked(scaleUp);
     mock.mockRejectedValue(error);
-    await expect(scaleUpHandler(sqsEvent, context)).resolves;
+    expect(await scaleUpHandler(sqsEvent, context)).resolves;
   });
 
   it('Scale should be rejected', async () => {
@@ -91,7 +93,7 @@ describe('Test scale up lambda wrapper.', () => {
     const mock = mocked(scaleUp);
 
     mock.mockRejectedValue(error);
-    await expect(scaleUpHandler(sqsEvent, context)).rejects.toThrow(error);
+    expect(scaleUpHandler(sqsEvent, context)).rejects.toThrow(error);
   });
 });
 
@@ -107,7 +109,7 @@ async function testInvalidRecords(sqsRecords: SQSRecord[]) {
     Records: sqsRecords,
   };
 
-  await expect(scaleUpHandler(sqsEventMultipleRecords, context)).resolves;
+  expect(await scaleUpHandler(sqsEventMultipleRecords, context)).resolves;
 
   expect(logWarnSpy).toHaveBeenCalledWith(
     'Event ignored, only one record at the time can be handled, ensure the lambda batch size is set to 1.',
@@ -123,13 +125,34 @@ describe('Test scale down lambda wrapper.', () => {
         resolve();
       });
     });
-    await expect(scaleDown()).resolves;
+    expect(await scaleDownHandler(context)).resolves;
   });
 
   it('Scaling down with error.', async () => {
     const error = new Error('some error');
     const mock = mocked(scaleDown);
     mock.mockRejectedValue(error);
-    await expect(scaleDown()).resolves;
+    expect(await scaleDownHandler(context)).resolves;
+  });
+});
+
+describe('Adjust pool.', () => {
+  it('Receive message to adjust pool.', async () => {
+    const mock = mocked(adjust);
+    mock.mockImplementation(() => {
+      return new Promise((resolve) => {
+        resolve();
+      });
+    });
+    expect(await adjustPool({ simplePoolSize: 2 }, context)).resolves;
+  });
+
+  it('Handle error for adjusting pool.', async () => {
+    const mock = mocked(adjust);
+    const error = new Error('errorXYX');
+    mock.mockRejectedValue(error);
+    const logSpy = jest.spyOn(logger, 'error');
+    expect(await adjustPool({ simplePoolSize: 0 }, context)).resolves;
+    expect(logSpy).lastCalledWith(error);
   });
 });

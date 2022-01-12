@@ -1,7 +1,7 @@
-import { scaleDown } from './scale-runners/scale-down';
+import { adjust } from './simple-pool/simple-pool';
 
 export function run(): void {
-  scaleDown()
+  adjust({ simplePoolSize: 1 })
     .then()
     .catch((e) => {
       console.log(e);
