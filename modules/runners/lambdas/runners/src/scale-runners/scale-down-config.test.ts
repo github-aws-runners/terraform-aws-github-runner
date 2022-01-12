@@ -1,5 +1,6 @@
 import moment from 'moment-timezone';
-import { getIdleRunnerCount, ScalingDownConfigList } from './scale-down-config';
+
+import { ScalingDownConfigList, getIdleRunnerCount } from './scale-down-config';
 
 const DEFAULT_TIMEZONE = 'America/Los_Angeles';
 const DEFAULT_IDLE_COUNT = 1;

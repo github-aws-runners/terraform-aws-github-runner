@@ -1,14 +1,13 @@
-import { createOctoClient, createGithubAppAuth } from './gh-auth';
-import nock from 'nock';
 import { createAppAuth } from '@octokit/auth-app';
-
 import { StrategyOptions } from '@octokit/auth-app/dist-types/types';
-import { getParameterValue } from './../aws/ssm';
-
-import { RequestInterface } from '@octokit/types';
-import { mock, MockProxy } from 'jest-mock-extended';
 import { request } from '@octokit/request';
-import { mocked } from 'ts-jest/utils';
+import { RequestInterface } from '@octokit/types';
+import { mocked } from 'jest-mock';
+import { MockProxy, mock } from 'jest-mock-extended';
+import nock from 'nock';
+
+import { getParameterValue } from './../aws/ssm';
+import { createGithubAppAuth, createOctoClient } from './gh-auth';
 
 jest.mock('./../aws/ssm');
 jest.mock('@octokit/auth-app');

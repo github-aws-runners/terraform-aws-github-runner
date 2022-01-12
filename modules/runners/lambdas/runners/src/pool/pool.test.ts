@@ -1,10 +1,11 @@
-import { mocked } from 'ts-jest/utils';
-import { adjust } from './pool';
+import { Octokit } from '@octokit/rest';
+import { mocked } from 'jest-mock';
+import nock from 'nock';
+
+import { listEC2Runners } from '../aws/runners';
 import * as ghAuth from '../gh-auth/gh-auth';
 import * as scale from '../scale-runners/scale-up';
-import nock from 'nock';
-import { Octokit } from '@octokit/rest';
-import { listEC2Runners } from '../aws/runners';
+import { adjust } from './pool';
 
 const mockOctokit = {
   paginate: jest.fn(),
@@ -153,13 +154,13 @@ describe('Test simple pool.', () => {
   describe('With GitHub Cloud', () => {
     it('Top up pool with pool size 2.', async () => {
       const spy = jest.spyOn(scale, 'createRunners');
-      expect(await adjust({ poolSize: 2 })).resolves;
+      await expect(adjust({ poolSize: 2 })).resolves;
       expect(spy).toBeCalled;
     });
 
     it('Should not top up if pool size is reached.', async () => {
       const spy = jest.spyOn(scale, 'createRunners');
-      expect(await adjust({ poolSize: 1 })).resolves;
+      await expect(adjust({ poolSize: 1 })).resolves;
       expect(spy).not.toHaveBeenCalled;
     });
   });
@@ -171,7 +172,7 @@ describe('Test simple pool.', () => {
 
     it('Top up if the pool size is set to 5', async () => {
       const spy = jest.spyOn(scale, 'createRunners');
-      expect(await adjust({ poolSize: 5 })).resolves;
+      await expect(adjust({ poolSize: 5 })).resolves;
       expect(spy).toBeCalled;
     });
   });

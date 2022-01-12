@@ -1,6 +1,7 @@
+import { GetParameterCommandOutput, SSM } from '@aws-sdk/client-ssm';
 import nock from 'nock';
+
 import { getParameterValue } from './ssm';
-import { SSM, GetParameterCommandOutput } from '@aws-sdk/client-ssm';
 
 jest.mock('@aws-sdk/client-ssm');
 

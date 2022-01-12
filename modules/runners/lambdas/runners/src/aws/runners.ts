@@ -1,5 +1,6 @@
 import { EC2, SSM } from 'aws-sdk';
-import { logger as rootLogger, LogFields } from '../logger';
+
+import { LogFields, logger as rootLogger } from '../logger';
 import ScaleError from './../scale-runners/ScaleError';
 
 const logger = rootLogger.getChildLogger({ name: 'runners' });

@@ -1,8 +1,9 @@
-import { listEC2Runners, createRunner, RunnerInputParameters } from './../aws/runners';
-import { createOctoClient, createGithubAppAuth, createGithubInstallationAuth } from '../gh-auth/gh-auth';
-import yn from 'yn';
 import { Octokit } from '@octokit/rest';
+import yn from 'yn';
+
+import { createGithubAppAuth, createGithubInstallationAuth, createOctoClient } from '../gh-auth/gh-auth';
 import { LogFields, logger as rootLogger } from '../logger';
+import { RunnerInputParameters, createRunner, listEC2Runners } from './../aws/runners';
 import ScaleError from './ScaleError';
 
 const logger = rootLogger.getChildLogger({ name: 'scale-up' });

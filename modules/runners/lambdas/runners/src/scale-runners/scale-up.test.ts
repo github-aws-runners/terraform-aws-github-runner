@@ -1,10 +1,11 @@
-import { mocked } from 'ts-jest/utils';
-import * as scaleUpModule from './scale-up';
-import { listEC2Runners, createRunner, RunnerInputParameters } from './../aws/runners';
-import * as ghAuth from '../gh-auth/gh-auth';
-import nock from 'nock';
 import { Octokit } from '@octokit/rest';
+import { mocked } from 'jest-mock';
+import nock from 'nock';
+
+import * as ghAuth from '../gh-auth/gh-auth';
+import { RunnerInputParameters, createRunner, listEC2Runners } from './../aws/runners';
 import ScaleError from './ScaleError';
+import * as scaleUpModule from './scale-up';
 
 const mockOctokit = {
   checks: { get: jest.fn() },
@@ -149,7 +150,7 @@ describe('scaleUp with GHES', () => {
 
   it('ignores non-sqs events', async () => {
     expect.assertions(1);
-    expect(scaleUpModule.scaleUp('aws:s3', TEST_DATA)).rejects.toEqual(Error('Cannot handle non-SQS events!'));
+    await expect(scaleUpModule.scaleUp('aws:s3', TEST_DATA)).rejects.toEqual(Error('Cannot handle non-SQS events!'));
   });
 
   it('checks queued workflows', async () => {
@@ -340,7 +341,7 @@ describe('scaleUp with GHES', () => {
 describe('scaleUp with public GH', () => {
   it('ignores non-sqs events', async () => {
     expect.assertions(1);
-    expect(scaleUpModule.scaleUp('aws:s3', TEST_DATA)).rejects.toEqual(Error('Cannot handle non-SQS events!'));
+    await expect(scaleUpModule.scaleUp('aws:s3', TEST_DATA)).rejects.toEqual(Error('Cannot handle non-SQS events!'));
   });
 
   it('checks queued workflows', async () => {

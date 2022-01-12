@@ -1,8 +1,9 @@
 import yn from 'yn';
+
+import { listEC2Runners } from '../aws/runners';
+import { createGithubAppAuth, createGithubInstallationAuth, createOctoClient } from '../gh-auth/gh-auth';
 import { logger as rootLogger } from '../logger';
 import { createRunners } from '../scale-runners/scale-up';
-import { createGithubAppAuth, createGithubInstallationAuth, createOctoClient } from '../gh-auth/gh-auth';
-import { listEC2Runners } from '../aws/runners';
 
 const logger = rootLogger.getChildLogger({ name: 'pool' });
 

@@ -3,4 +3,10 @@
   "singleQuote": true,
   "trailingComma": "all",
   "semi": true,
+  "importOrderSeparation": true,
+  "importOrderSortSpecifiers": true,
+  "importOrder": [
+    "<THIRD_PARTY_MODULES>",
+    "^[./]"
+  ]
 }

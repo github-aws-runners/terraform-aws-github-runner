@@ -1,17 +1,18 @@
-import { Octokit } from '@octokit/rest';
-import { request } from '@octokit/request';
 import { createAppAuth } from '@octokit/auth-app';
 import {
-  StrategyOptions,
-  AppAuthentication,
   AppAuthOptions,
-  InstallationAuthOptions,
-  InstallationAccessTokenAuthentication,
+  AppAuthentication,
   AuthInterface,
+  InstallationAccessTokenAuthentication,
+  InstallationAuthOptions,
+  StrategyOptions,
 } from '@octokit/auth-app/dist-types/types';
 import { OctokitOptions } from '@octokit/core/dist-types/types';
+import { request } from '@octokit/request';
+import { Octokit } from '@octokit/rest';
+
 import { getParameterValue } from '../aws/ssm';
-import { logger as rootLogger, LogFields } from '../logger';
+import { LogFields, logger as rootLogger } from '../logger';
 
 const logger = rootLogger.getChildLogger({ name: 'gh-auth' });
 

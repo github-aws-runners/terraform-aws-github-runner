@@ -1,11 +1,12 @@
-import moment from 'moment';
-import { mocked } from 'ts-jest/utils';
-import { listEC2Runners, terminateRunner, RunnerInfo, RunnerList } from './../aws/runners';
-import { scaleDown } from './scale-down';
-import * as ghAuth from '../gh-auth/gh-auth';
-import nock from 'nock';
 import { Octokit } from '@octokit/rest';
+import { mocked } from 'jest-mock';
+import moment from 'moment';
+import nock from 'nock';
+
+import * as ghAuth from '../gh-auth/gh-auth';
+import { RunnerInfo, RunnerList, listEC2Runners, terminateRunner } from './../aws/runners';
 import { githubCache } from './cache';
+import { scaleDown } from './scale-down';
 
 const mockOctokit = {
   apps: {
@@ -350,7 +351,7 @@ describe('scaleDown', () => {
         }
       });
 
-      it('Terminates 0 runners owned by repos', async () => {
+      it('Terminates 0 runners owned by org', async () => {
         mockListRunners.mockResolvedValue(RUNNERS_REPO_WITH_AUTO_SCALING_CONFIG);
         process.env.ENABLE_ORGANIZATION_RUNNERS = 'false';
         await scaleDown();
@@ -362,6 +363,22 @@ describe('scaleDown', () => {
         expect(mockOctokit.apps.getRepoInstallation).toBeCalled();
         expect(terminateRunner).not.toBeCalled();
       });
+    });
+
+    it('No instances terminates when delete runner in github results in a non 204 status.', async () => {
+      mockListRunners.mockResolvedValue(DEFAULT_RUNNERS);
+      mockOctokit.actions.deleteSelfHostedRunnerFromOrg.mockImplementation(() => {
+        return { status: 500 };
+      });
+
+      await scaleDown();
+
+      expect(listEC2Runners).toBeCalledWith({
+        environment: environment,
+      });
+
+      expect(mockOctokit.apps.getOrgInstallation).toBeCalled();
+      expect(terminateRunner).not.toBeCalled;
     });
 
     it('Terminates 6 runners amongst all owners and all orphaned', async () => {

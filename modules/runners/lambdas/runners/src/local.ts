@@ -1,5 +1,5 @@
 import { logger } from './logger';
-import { scaleUp, ActionRequestMessage } from './scale-runners/scale-up';
+import { ActionRequestMessage, scaleUp } from './scale-runners/scale-up';
 
 const sqsEvent = {
   Records: [
