@@ -125,6 +125,7 @@ resource "aws_launch_template" "runner" {
     start_runner    = templatefile(local.userdata_start_runner[var.runner_os], {})
     ghes_url        = var.ghes_url
     ghes_ssl_verify = var.ghes_ssl_verify
+    http_proxy      = var.http_proxy
     ## retain these for backwards compatibility
     environment                     = var.environment
     enable_cloudwatch_agent         = var.enable_cloudwatch_agent

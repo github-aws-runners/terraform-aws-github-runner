@@ -327,6 +327,12 @@ variable "lambda_security_group_ids" {
   default     = []
 }
 
+variable "http_proxy" {
+  description = "Http(s) proxy used by scale up/down runners Lambda to interact with AWS APIs (SSM, EC2), and usable in user data template. To use when `vpc_id` has no direct internet connection."
+  type        = string
+  default     = null
+}
+
 variable "key_name" {
   description = "Key pair name"
   type        = string

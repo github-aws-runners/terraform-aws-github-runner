@@ -129,6 +129,7 @@ module "runners" {
   lambda_timeout_scale_down        = var.runners_scale_down_lambda_timeout
   lambda_subnet_ids                = var.lambda_subnet_ids
   lambda_security_group_ids        = var.lambda_security_group_ids
+  http_proxy                       = var.http_proxy
   logging_retention_in_days        = var.logging_retention_in_days
   enable_cloudwatch_agent          = var.enable_cloudwatch_agent
   cloudwatch_config                = var.cloudwatch_config

@@ -18,5 +18,7 @@ secrets.auto.tfvars
 *.tgz
 *.env*
 .vscode
+.project
+.settings/
 
 **/coverage/*

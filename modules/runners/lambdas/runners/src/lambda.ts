@@ -1,4 +1,6 @@
 import { Context, SQSEvent } from 'aws-lambda';
+import { config } from 'aws-sdk';
+import proxy from 'proxy-agent';
 import 'source-map-support/register';
 
 import { LogFields, logger } from './logger';
@@ -19,6 +21,7 @@ export async function scaleUpHandler(event: SQSEvent, context: Context): Promise
   }
 
   try {
+    configureProxyAwsSdkV2Only();
     await scaleUp(event.Records[0].eventSource, JSON.parse(event.Records[0].body));
   } catch (e) {
     if (e instanceof ScaleError) {
@@ -33,6 +36,7 @@ export async function scaleDownHandler(context: Context): Promise<void> {
   logger.setSettings({ requestId: context.awsRequestId });
 
   try {
+    configureProxyAwsSdkV2Only();
     await scaleDown();
   } catch (e) {
     logger.error(e);
@@ -46,5 +50,19 @@ export async function adjustPool(event: PoolEvent, context: Context): Promise<vo
     await adjust(event);
   } catch (e) {
     logger.error(e);
+  }
+}
+
+/**
+ * Proxy with aws-sdk v2
+ * configured globally for all aws client(s) => SSM & EC2 in 'runners.ts' file ('ssm.ts' is already in aws-sdk v3)
+ * https://docs.aws.amazon.com/sdk-for-javascript/v2/developer-guide/node-configuring-proxies.html
+ */
+export function configureProxyAwsSdkV2Only() {
+  const httpsProxy = process.env.HTTPS_PROXY;
+  if (httpsProxy != null && httpsProxy.startsWith('http')) {
+    config.update({
+      httpOptions: { agent: proxy(httpsProxy) },
+    });
   }
 }

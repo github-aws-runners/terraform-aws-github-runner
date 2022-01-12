@@ -31,6 +31,7 @@ resource "aws_lambda_function" "scale_down" {
       PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.github_app_parameters.key_base64.name
       RUNNER_BOOT_TIME_IN_MINUTES          = var.runner_boot_time_in_minutes
       SCALE_DOWN_CONFIG                    = jsonencode(var.idle_config)
+      HTTPS_PROXY                          = var.http_proxy
     }
   }
 

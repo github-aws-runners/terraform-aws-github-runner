@@ -1,3 +1,4 @@
+import { configureProxyAwsSdkV2Only } from './lambda';
 import { logger } from './logger';
 import { ActionRequestMessage, scaleUp } from './scale-runners/scale-up';
 
@@ -41,4 +42,5 @@ export function run(): void {
     });
 }
 
+configureProxyAwsSdkV2Only();
 run();

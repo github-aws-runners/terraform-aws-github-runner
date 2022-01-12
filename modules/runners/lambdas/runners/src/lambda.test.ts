@@ -1,12 +1,15 @@
 import { Context, SQSEvent, SQSRecord } from 'aws-lambda';
+import { config } from 'aws-sdk';
 import { mocked } from 'jest-mock';
 
-import { adjustPool, scaleDownHandler, scaleUpHandler } from './lambda';
+import { adjustPool, configureProxyAwsSdkV2Only, scaleDownHandler, scaleUpHandler } from './lambda';
 import { logger } from './logger';
 import { adjust } from './pool/pool';
 import ScaleError from './scale-runners/ScaleError';
 import { scaleDown } from './scale-runners/scale-down';
 import { ActionRequestMessage, scaleUp } from './scale-runners/scale-up';
+
+const cleanEnv = process.env;
 
 const body: ActionRequestMessage = {
   eventType: 'workflow_job',
@@ -62,6 +65,10 @@ jest.mock('./scale-runners/scale-up');
 jest.mock('./scale-runners/scale-down');
 jest.mock('./pool/pool');
 jest.mock('./logger');
+
+beforeEach(() => {
+  process.env = { ...cleanEnv };
+});
 
 // Docs for testing async with jest: https://jestjs.io/docs/tutorial-async
 describe('Test scale up lambda wrapper.', () => {
@@ -155,5 +162,57 @@ describe('Adjust pool.', () => {
     const logSpy = jest.spyOn(logger, 'error');
     await adjustPool({ poolSize: 0 }, context);
     expect(logSpy).lastCalledWith(error);
+  });
+});
+
+describe('Test proxy configuration for AWS SDK v2', () => {
+  afterEach(() => {
+    process.env = { ...cleanEnv };
+
+    // Reset potential agent in AWS config
+    delete config.httpOptions?.agent;
+  });
+
+  it('Proxy configured', async () => {
+    process.env.HTTPS_PROXY = 'http://proxy.company.com';
+    configureProxyAwsSdkV2Only();
+    const agent = config.httpOptions?.agent;
+    expect(agent).toBeDefined();
+    expect(JSON.stringify(agent)).toContain(process.env.HTTPS_PROXY);
+  });
+
+  it('Proxy not configured', async () => {
+    // No 'https_proxy' environment variable should exist, not really testable otherwise
+    if (process.env.https_proxy != null) {
+      throw new Error('Please remove "https_proxy" environment variable, not testable otherwise');
+    }
+    configureProxyAwsSdkV2Only();
+    expect(config.httpOptions?.agent).toBeUndefined();
+  });
+});
+
+describe('Test proxy configuration for AWS SDK v2', () => {
+  afterEach(() => {
+    process.env = { ...cleanEnv };
+
+    // Reset potential agent in AWS config
+    delete config.httpOptions?.agent;
+  });
+
+  it('Proxy configured', async () => {
+    process.env.HTTPS_PROXY = 'http://proxy.company.com';
+    configureProxyAwsSdkV2Only();
+    const agent = config.httpOptions?.agent;
+    expect(agent).toBeDefined();
+    expect(JSON.stringify(agent)).toContain(process.env.HTTPS_PROXY);
+  });
+
+  it('Proxy not configured', async () => {
+    // No 'https_proxy' environment variable should exist, not really testable otherwise
+    if (process.env.https_proxy != null) {
+      throw new Error('Please remove "https_proxy" environment variable, not testable otherwise');
+    }
+    configureProxyAwsSdkV2Only();
+    expect(config.httpOptions?.agent).toBeUndefined();
   });
 });

@@ -28,6 +28,7 @@ resource "aws_lambda_function" "scale_up" {
       RUNNER_GROUP_NAME                    = var.runner_group_name
       RUNNERS_MAXIMUM_COUNT                = var.runners_maximum_count
       SUBNET_IDS                           = join(",", var.subnet_ids)
+      HTTPS_PROXY                          = var.http_proxy
       ENABLE_EPHEMERAL_RUNNERS             = var.enable_ephemeral_runners
       INSTANCE_TYPES                       = join(",", var.instance_types)
       INSTANCE_TARGET_CAPACITY_TYPE        = var.instance_target_capacity_type
