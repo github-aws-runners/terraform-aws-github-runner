@@ -118,7 +118,7 @@ resource "aws_cloudwatch_event_target" "pool" {
 resource "aws_lambda_permission" "pool" {
   count = length(var.config.pool)
 
-  statement_id  = "AllowExecutionFromCloudWatch"
+  statement_id  = "AllowExecutionFromCloudWatch-${count.index}"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.pool.function_name
   principal     = "events.amazonaws.com"
