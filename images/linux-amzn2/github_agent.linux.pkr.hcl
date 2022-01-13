@@ -37,6 +37,12 @@ variable "instance_type" {
   default     = "m3.medium"
 }
 
+variable "tags" {
+  description = "Additional tags to add globally"
+  type        = map(string)
+    default     = {}
+}
+
 source "amazon-ebs" "githubrunner" {
   ami_name          = "github-runner-amzn2-x86_64-${formatdate("YYYYMMDDhhmm", timestamp())}"
   instance_type     = var.instance_type
@@ -53,11 +59,13 @@ source "amazon-ebs" "githubrunner" {
     owners      = ["137112412989"]
   }
   ssh_username = "ec2-user"
-  tags = {
-    OS_Version    = "amzn2"
-    Release       = "Latest"
-    Base_AMI_Name = "{{ .SourceAMIName }}"
-  }
+  tags = merge(
+    var.tags,
+    {
+      OS_Version    = "amzn2"
+      Release       = "Latest"
+      Base_AMI_Name = "{{ .SourceAMIName }}"
+  })
 }
 
 build {
@@ -78,16 +86,24 @@ build {
     ]
   }
 
-  provisioner "shell" {
-    environment_vars = [
-      "RUNNER_TARBALL_URL=https://github.com/actions/runner/releases/download/v${var.runner_version}/actions-runner-linux-x64-${var.runner_version}.tar.gz"
-    ]
-    inline = [templatefile("../install-runner.sh", {
+  provisioner "file" {
+    content = templatefile("../install-runner.sh", {
       install_runner = templatefile("../../modules/runners/templates/install-runner.sh", {
         ARM_PATCH                       = ""
         S3_LOCATION_RUNNER_DISTRIBUTION = ""
       })
-    })]
+    })
+    destination = "/tmp/install-runner.sh"
+  }
+
+  provisioner "shell" {
+    environment_vars = [
+      "RUNNER_TARBALL_URL=https://github.com/actions/runner/releases/download/v${var.runner_version}/actions-runner-linux-x64-${var.runner_version}.tar.gz"
+    ]
+    inline = [
+      "sudo chmod +x /tmp/install-runner.sh",
+      "sudo RUNNER_TARBALL_URL=$RUNNER_TARBALL_URL /tmp/install-runner.sh"
+    ]
   }
 
   provisioner "file" {
