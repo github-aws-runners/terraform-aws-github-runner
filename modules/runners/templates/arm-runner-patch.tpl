@@ -8,8 +8,8 @@ diff -Naur a/bin/Runner.Listener.runtimeconfig.json b/bin/Runner.Listener.runtim
        }
      ],
      "configProperties": {
--      "System.Runtime.TieredCompilation.QuickJit": true
-+      "System.Runtime.TieredCompilation.QuickJit": true,
+-      "System.Reflection.Metadata.MetadataUpdater.IsSupported": false
++      "System.Reflection.Metadata.MetadataUpdater.IsSupported": false,
 +      "System.Globalization.Invariant": true
      }
    }
@@ -23,8 +23,8 @@ diff -Naur a/bin/Runner.PluginHost.runtimeconfig.json b/bin/Runner.PluginHost.ru
        }
      ],
      "configProperties": {
--      "System.Runtime.TieredCompilation.QuickJit": true
-+      "System.Runtime.TieredCompilation.QuickJit": true,
+-      "System.Reflection.Metadata.MetadataUpdater.IsSupported": false
++      "System.Reflection.Metadata.MetadataUpdater.IsSupported": false,
 +      "System.Globalization.Invariant": true
      }
    }
@@ -38,8 +38,8 @@ diff -Naur a/bin/Runner.Worker.runtimeconfig.json b/bin/Runner.Worker.runtimecon
        }
      ],
      "configProperties": {
--      "System.Runtime.TieredCompilation.QuickJit": true
-+      "System.Runtime.TieredCompilation.QuickJit": true,
+-      "System.Reflection.Metadata.MetadataUpdater.IsSupported": false
++      "System.Reflection.Metadata.MetadataUpdater.IsSupported": false,
 +      "System.Globalization.Invariant": true
      }
    }
