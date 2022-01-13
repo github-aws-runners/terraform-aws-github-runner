@@ -99,7 +99,7 @@ data "aws_iam_policy_document" "lambda_assume_role_policy" {
 resource "aws_cloudwatch_event_rule" "pool" {
   count = length(var.config.pool)
 
-  name                = "${var.config.environment}-${[count.index]}-pool-rule"
+  name                = "${var.config.environment}-pool-${count.index}-rule"
   schedule_expression = var.config.pool[count.index].schedule_expression
   tags                = var.config.tags
 }
