@@ -38,7 +38,7 @@ variable "instance_type" {
 }
 
 variable "root_volume_size_gb" {
-  type = number
+  type    = number
   default = 8
 }
 
