@@ -37,10 +37,15 @@ variable "instance_type" {
   default     = "m3.medium"
 }
 
+variable "root_volume_size_gb" {
+  type = number
+  default = 8
+}
+
 variable "tags" {
   description = "Additional tags to add globally"
   type        = map(string)
-    default     = {}
+  default     = {}
 }
 
 source "amazon-ebs" "githubrunner" {
@@ -66,6 +71,12 @@ source "amazon-ebs" "githubrunner" {
       Release       = "Latest"
       Base_AMI_Name = "{{ .SourceAMIName }}"
   })
+
+  launch_block_device_mappings {
+    device_name = "/dev/xvda"
+    volume_size = "${var.root_volume_size_gb}"
+    volume_type = "gp3"
+  }
 }
 
 build {
