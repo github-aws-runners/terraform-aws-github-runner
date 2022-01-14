@@ -8,6 +8,7 @@ import { PoolEvent, adjust } from './pool/pool';
 import ScaleError from './scale-runners/ScaleError';
 import { scaleDown } from './scale-runners/scale-down';
 import { scaleUp } from './scale-runners/scale-up';
+import { hideUrlPassword } from './utils/url';
 
 export async function scaleUpHandler(event: SQSEvent, context: Context): Promise<void> {
   logger.setSettings({ requestId: context.awsRequestId });
@@ -21,7 +22,7 @@ export async function scaleUpHandler(event: SQSEvent, context: Context): Promise
   }
 
   try {
-    configureProxyAwsSdkV2Only();
+    configureProxyAwsSdkV2Only(config);
     await scaleUp(event.Records[0].eventSource, JSON.parse(event.Records[0].body));
   } catch (e) {
     if (e instanceof ScaleError) {
@@ -36,7 +37,7 @@ export async function scaleDownHandler(context: Context): Promise<void> {
   logger.setSettings({ requestId: context.awsRequestId });
 
   try {
-    configureProxyAwsSdkV2Only();
+    configureProxyAwsSdkV2Only(config);
     await scaleDown();
   } catch (e) {
     logger.error(e);
@@ -57,12 +58,17 @@ export async function adjustPool(event: PoolEvent, context: Context): Promise<vo
  * Proxy with aws-sdk v2
  * configured globally for all aws client(s) => SSM & EC2 in 'runners.ts' file ('ssm.ts' is already in aws-sdk v3)
  * https://docs.aws.amazon.com/sdk-for-javascript/v2/developer-guide/node-configuring-proxies.html
+ *
+ * Configure proxy for AWS config in parameter, return true if updated.
  */
-export function configureProxyAwsSdkV2Only() {
+export function configureProxyAwsSdkV2Only(awsConfig: AWS.Config) {
   const httpsProxy = process.env.HTTPS_PROXY;
-  if (httpsProxy != null && httpsProxy.startsWith('http')) {
-    config.update({
+  if (httpsProxy?.startsWith('http')) {
+    logger.debug('Http proxy for AWS SDK (v2): ' + hideUrlPassword(httpsProxy));
+    awsConfig.update({
       httpOptions: { agent: proxy(httpsProxy) },
     });
+    return true;
   }
+  return false;
 }

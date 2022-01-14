@@ -14,6 +14,8 @@ beforeEach(() => {
   jest.clearAllMocks();
   process.env = { ...cleanEnv };
   nock.disableNetConnect();
+  // Remove any proxy if existing (from user/execution 'clean' env or from previous test)
+  process.env.HTTPS_PROXY = undefined;
 });
 
 describe('Test getParameterValue', () => {
@@ -59,12 +61,18 @@ describe('Test getParameterValue', () => {
     expect(result).toBe(undefined);
   });
 
-  test('Check that proxy is used', async () => {
-    // No 'https_proxy' environment variable should exist, not really testable otherwise
-    if (process.env.https_proxy != null) {
-      throw new Error('Please remove "https_proxy" environment variable, not testable otherwise');
-    }
+  test('Check that proxy is not used if not defined', async () => {
+    // Mock it
+    const mockedProxy = proxy as unknown as jest.Mock;
 
+    // Act
+    await getParameterValue('testParam');
+
+    // Assert not called
+    expect(mockedProxy).not.toHaveBeenCalled();
+  });
+
+  test('Check that proxy is used', async () => {
     // Define fake proxy
     process.env.HTTPS_PROXY = 'http://proxy.company.com';
 
@@ -76,5 +84,33 @@ describe('Test getParameterValue', () => {
 
     // Assert correctly called
     expect(mockedProxy).toBeCalledWith(process.env.HTTPS_PROXY);
+  });
+
+  test('Check that invalid proxy is not used', async () => {
+    // Define fake invalid proxy
+    process.env.HTTPS_PROXY = 'invalidPrefix://proxy.company.com';
+
+    // Mock it
+    const mockedProxy = proxy as unknown as jest.Mock;
+
+    // Act
+    await getParameterValue('testParam');
+
+    // Assert not called
+    expect(mockedProxy).not.toHaveBeenCalled();
+  });
+
+  test('Check proxy unknown host', async () => {
+    // Define proxy which is unknown
+    process.env.HTTPS_PROXY = 'http://unknown.company.com';
+
+    // Mock it
+    const mockedProxy = proxy as unknown as jest.Mock;
+    mockedProxy.mockImplementation(() => {
+      throw new Error('Unknown host');
+    });
+
+    // Assert exception
+    await expect(getParameterValue('testParam')).rejects.toHaveProperty('message', 'Unknown host');
   });
 });

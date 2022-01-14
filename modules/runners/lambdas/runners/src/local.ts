@@ -1,3 +1,5 @@
+import { config } from 'aws-sdk';
+
 import { configureProxyAwsSdkV2Only } from './lambda';
 import { logger } from './logger';
 import { ActionRequestMessage, scaleUp } from './scale-runners/scale-up';
@@ -35,6 +37,7 @@ const sqsEvent = {
 };
 
 export function run(): void {
+  configureProxyAwsSdkV2Only(config);
   scaleUp(sqsEvent.Records[0].eventSource, sqsEvent.Records[0].body as ActionRequestMessage)
     .then()
     .catch((e) => {
@@ -42,5 +45,4 @@ export function run(): void {
     });
 }
 
-configureProxyAwsSdkV2Only();
 run();
