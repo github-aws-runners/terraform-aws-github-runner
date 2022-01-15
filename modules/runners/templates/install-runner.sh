@@ -34,8 +34,6 @@ tar xzf ./$file_name
 echo "Delete tar file"
 rm -rf $file_name
 
-${ARM_PATCH}
-
 os_id=$(awk -F= '/^ID/{print $2}' /etc/os-release)
 if [[ "$os_id" =~ ^ubuntu.* ]]; then
     echo "Installing dependencies"
