@@ -18,7 +18,7 @@ mkdir -p actions-runner && cd actions-runner
 if [[ -n "$RUNNER_TARBALL_URL" ]]; then
   echo "Downloading the GH Action runner from $RUNNER_TARBALL_URL to $file_name"
   curl -o $file_name -L "$RUNNER_TARBALL_URL"
-else  
+else
   echo "Retrieving TOKEN from AWS API"
   token=$(curl -f -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 180")
 
