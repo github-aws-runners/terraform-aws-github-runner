@@ -30,12 +30,13 @@ module "runners" {
     webhook_secret = random_id.random.hex
   }
 
-  # Grab zip files via lambda_download
+  # Grab zip files via lambda_download, will automatically get the ARM64 build
   webhook_lambda_zip                = "lambdas-download/webhook.zip"
   runner_binaries_syncer_lambda_zip = "lambdas-download/runner-binaries-syncer.zip"
   runners_lambda_zip                = "lambdas-download/runners.zip"
 
   enable_organization_runners = false
+  # Runners will automatically get the "arm64" label
   runner_extra_labels         = "default,example"
 
   # enable access to the runners via SSM
@@ -60,7 +61,9 @@ module "runners" {
   # Let the module manage the service linked role
   # create_service_linked_role_spot = true
 
-  instance_types = ["m5.large", "c5.large"]
+  runner_architecture = "arm64"
+  # Ensure all instance types have ARM64 architecture (ie. AWS Graviton processors)
+  instance_types = ["t4g.large", "c6g.large"]
 
   # override delay of events in seconds
   delay_webhook_event   = 5

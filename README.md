@@ -93,7 +93,7 @@ To be able to support a number of use-cases the module has quite a lot configura
 
 #### ARM64 support via Graviton/Graviton2 instance-types
 
-When using the default example or top-level module, specifying an `instance_type` that matches a Graviton/Graviton 2 (ARM64) architecture (e.g. a1, t4g or any 6th-gen `g` or `gd` type), the sub-modules will be automatically configured to provision with ARM64 AMIs and leverage GitHub's ARM64 action runner. See below for more details.
+When using the default example or top-level module, specifying `instance_types` that match a Graviton/Graviton 2 (ARM64) architecture (e.g. a1, t4g or any 6th-gen `g` or `gd` type), you must also specify `runner_architecture = "arm64"` and the sub-modules will be automatically configured to provision with ARM64 AMIs and leverage GitHub's ARM64 action runner. See below for more details.
 
 ## Usages
 
@@ -183,8 +183,6 @@ module "github-runner" {
   enable_organization_runners = true
 }
 ```
-
-**ARM64** support: Specify an `a1`, `t4g` or `*6g*` (6th-gen Graviton2) instance type to stand up an ARM64 runner, otherwise the default is x86_64.
 
 Run terraform by using the following commands
 
@@ -322,9 +320,10 @@ This module also allows you to run agents from a prebuilt AMI to gain faster sta
 Examples are located in the [examples](./examples) directory. The following examples are provided:
 
 - _[Default](examples/default/README.md)_: The default example of the module
+- _[ARM64](examples/arm64/README.md)_: Example usage with ARM64 architecture
 - _[Ubuntu](examples/ubuntu/README.md)_: Example usage of creating a runner using Ubuntu AMIs.
 - _[Windows](examples/windows/README.md)_: Example usage of creating a runner using Windows as the OS.
-- _[Ephemeral](examples/ephemeral/README.md) : Example usages of ephemeral runners based on the default example.
+- _[Ephemeral](examples/ephemeral/README.md)_: Example usages of ephemeral runners based on the default example.
 - _[Prebuilt Images](examples/prebuilt/README.md)_: Example usages of deploying runners with a custom prebuilt image.
 - _[Permissions boundary](examples/permissions-boundary/README.md)_: Example usages of permissions boundaries.
 
@@ -345,7 +344,7 @@ The following sub modules are optional and are provided as example or utility:
 
 ### ARM64 configuration for submodules
 
-When using the top level module configure `runner_architecture = arm64` and insure the list of `instance_types` matches. When not using the top-level ensure the bot properties are set on the submodules. 
+When using the top level module configure `runner_architecture = "arm64"` and ensure the list of `instance_types` matches. When not using the top-level, ensure these properties are set on the submodules. 
 
 ## Debugging
 
@@ -354,7 +353,7 @@ In case the setup does not work as intended follow the trace of events:
 - In the GitHub App configuration, the Advanced page displays all webhook events that were sent.
 - In AWS CloudWatch, every lambda has a log group. Look at the logs of the `webhook` and `scale-up` lambdas.
 - In AWS SQS you can see messages available or in flight.
-- Once an EC2 instance is running, you can connect to it in the EC2 user interface using Session Manager. Check the user data script using `cat /var/log/user-data.log`. By default several log files of the instances are streamed to AWS CloudWatch, look for a log group named `<environment>/runners`. In the log group you should see at least the log streams for the user data installation and runner agent.
+- Once an EC2 instance is running, you can connect to it in the EC2 user interface using Session Manager (use `enable_ssm_on_runners = true`). Check the user data script using `cat /var/log/user-data.log`. By default several log files of the instances are streamed to AWS CloudWatch, look for a log group named `<environment>/runners`. In the log group you should see at least the log streams for the user data installation and runner agent.
 - Registered instances should show up in the Settings - Actions page of the repository or organization (depending on the installation mode).
 
 <!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
