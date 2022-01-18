@@ -35,7 +35,7 @@ module "runners" {
   # enable access to the runners via SSM
   enable_ssm_on_runners = true
 
-  runner_run_as     = "runners"
+  runner_run_as     = "ubuntu"
   userdata_template = "./templates/user-data.sh"
   ami_owners        = ["099720109477"] # Canonical's Amazon account ID
 
@@ -64,7 +64,7 @@ module "runners" {
     {
       "log_group_name" : "runner",
       "prefix_log_group" : true,
-      "file_path" : "/home/runners/actions-runner/_diag/Runner_**.log",
+      "file_path" : "/opt/actions-runner/_diag/Runner_**.log",
       "log_stream_name" : "{instance_id}/runner"
     }
   ]
