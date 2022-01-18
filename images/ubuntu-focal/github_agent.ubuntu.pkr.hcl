@@ -18,7 +18,7 @@ variable "runner_version" {
 variable "region" {
   description = "The region to build the image in"
   type        = string
-  default     = "eu-west-2"
+  default     = "eu-west-1"
 }
 
 variable "security_group_id" {
@@ -57,7 +57,7 @@ variable "ami_tags" {
 }
 
 variable "snapshot_tags" {
-  description = "Tags to apply to snapshot"
+  description = "Tags to apply to the snapshot"
   type        = map(string)
   default     = {}
 }
