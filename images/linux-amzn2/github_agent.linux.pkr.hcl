@@ -42,8 +42,20 @@ variable "root_volume_size_gb" {
   default = 8
 }
 
-variable "tags" {
-  description = "Additional tags to add globally"
+variable "global_tags" {
+  description = "Tags to apply to everything"
+  type        = map(string)
+  default     = {}
+}
+
+variable "ami_tags" {
+  description = "Tags to apply to the AMI"
+  type        = map(string)
+  default     = {}
+}
+
+variable "snapshot_tags" {
+  description = "Tags to apply to the snapshot"
   type        = map(string)
   default     = {}
 }
@@ -65,12 +77,18 @@ source "amazon-ebs" "githubrunner" {
   }
   ssh_username = "ec2-user"
   tags = merge(
-    var.tags,
+    var.global_tags,
+    var.ami_tags,
     {
       OS_Version    = "amzn2"
       Release       = "Latest"
       Base_AMI_Name = "{{ .SourceAMIName }}"
   })
+  snapshot_tags = merge(
+    var.global_tags,
+    var.snapshot_tags,
+  )
+
 
   launch_block_device_mappings {
     device_name = "/dev/xvda"
