@@ -43,7 +43,7 @@ jobs:
       fail-fast: false
       matrix:
         terraform: [0.14.3, 0.15.5, 1.0.8]
-        example: ["default", "ubuntu", "prebuilt"]
+        example: ["default", "ubuntu", "prebuilt", "arm64", "ephemeral", "windows"]
     defaults:
       run:
         working-directory: examples/${{ matrix.example }}
