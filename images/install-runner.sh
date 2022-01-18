@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-user_name=ec2-user
+user_name=$(cat /tmp/install-user.txt)
 
 ## This wrapper file re-uses scripts in the /modules/runners/templates directory
 ## of this repo. These are the same that are used by the user_data functionality 

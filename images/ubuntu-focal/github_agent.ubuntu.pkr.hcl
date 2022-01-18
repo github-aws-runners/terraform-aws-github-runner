@@ -1,3 +1,5 @@
+# TODO: Sort out cloudwatch agent
+
 packer {
   required_plugins {
     amazon = {
@@ -16,7 +18,7 @@ variable "runner_version" {
 variable "region" {
   description = "The region to build the image in"
   type        = string
-  default     = "eu-west-1"
+  default     = "eu-west-2"
 }
 
 variable "security_group_id" {
@@ -34,7 +36,7 @@ variable "subnet_id" {
 variable "instance_type" {
   description = "The instance type Packer will use for the builder"
   type        = string
-  default     = "m3.medium"
+  default     = "t3.medium"
 }
 
 variable "root_volume_size_gb" {
@@ -42,35 +44,52 @@ variable "root_volume_size_gb" {
   default = 8
 }
 
-variable "tags" {
-  description = "Additional tags to add globally"
+variable "global_tags" {
+  description = "Tags to apply to everything"
+  type        = map(string)
+  default     = {}
+}
+
+variable "ami_tags" {
+  description = "Tags to apply to the AMI"
+  type        = map(string)
+  default     = {}
+}
+
+variable "snapshot_tags" {
+  description = "Tags to apply to snapshot"
   type        = map(string)
   default     = {}
 }
 
 source "amazon-ebs" "githubrunner" {
-  ami_name          = "github-runner-amzn2-x86_64-${formatdate("YYYYMMDDhhmm", timestamp())}"
+  ami_name          = "github-runner-ubuntu-focal-amd64-${formatdate("YYYYMMDDhhmm", timestamp())}"
   instance_type     = var.instance_type
   region            = var.region
   security_group_id = var.security_group_id
   subnet_id         = var.subnet_id
   source_ami_filter {
     filters = {
-      name                = "amzn2-ami-hvm-2.*-x86_64-ebs"
+      name                = "ubuntu/images/hvm-ssd/ubuntu-focal-20.04-amd64-server-*"
       root-device-type    = "ebs"
       virtualization-type = "hvm"
     }
     most_recent = true
-    owners      = ["137112412989"]
+    owners      = ["099720109477"]
   }
-  ssh_username = "ec2-user"
+  ssh_username = "ubuntu"
   tags = merge(
-    var.tags,
+    var.global_tags,
+    var.ami_tags,
     {
-      OS_Version    = "amzn2"
-      Release       = "Latest"
+      OS_Version    = "ubuntu"
+      Release       = "focal"
       Base_AMI_Name = "{{ .SourceAMIName }}"
   })
+  snapshot_tags = merge(
+    var.global_tags,
+    var.snapshot_tags,
+  )
 
   launch_block_device_mappings {
     device_name = "/dev/xvda"
@@ -87,13 +106,15 @@ build {
   provisioner "shell" {
     environment_vars = []
     inline = [
-      "sudo yum update -y",
-      "sudo yum install -y amazon-cloudwatch-agent curl jq git",
-      "sudo amazon-linux-extras install docker",
-      "sudo systemctl enable docker.service",
+      "sudo apt -y update",
+      "sudo apt -y install ca-certificates curl gnupg lsb-release",
+      "sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg",
+      "echo deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null",
+      "sudo apt -y update",
+      "sudo apt -y install docker-ce docker-ce-cli containerd.io jq git",
       "sudo systemctl enable containerd.service",
       "sudo service docker start",
-      "sudo usermod -a -G docker ec2-user",
+      "sudo usermod -a -G docker ubuntu",
     ]
   }
 
@@ -113,7 +134,7 @@ build {
     ]
     inline = [
       "sudo chmod +x /tmp/install-runner.sh",
-      "echo ec2-user > /tmp/install-user.txt",
+      "echo ubuntu > /tmp/install-user.txt",
       "sudo RUNNER_TARBALL_URL=$RUNNER_TARBALL_URL /tmp/install-runner.sh"
     ]
   }

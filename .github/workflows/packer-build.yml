@@ -20,7 +20,7 @@ jobs:
       image: hashicorp/packer:1.7.8
     strategy:
       matrix:
-        image: ["linux-amzn2", "windows-core-2019"]
+        image: ["linux-amzn2", "windows-core-2019", "ubuntu-focal"]
     defaults:
       run:
         working-directory: images/${{ matrix.image }}
