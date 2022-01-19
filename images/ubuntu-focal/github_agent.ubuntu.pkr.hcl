@@ -127,6 +127,7 @@ build {
       install_runner = templatefile("../../modules/runners/templates/install-runner.sh", {
         ARM_PATCH                       = ""
         S3_LOCATION_RUNNER_DISTRIBUTION = ""
+        RUNNER_ARCHITECTURE             = "x64"
       })
     })
     destination = "/tmp/install-runner.sh"
@@ -139,7 +140,7 @@ build {
     inline = [
       "sudo chmod +x /tmp/install-runner.sh",
       "echo ubuntu | tee -a /tmp/install-user.txt",
-      "sudo RUNNER_TARBALL_URL=$RUNNER_TARBALL_URL /tmp/install-runner.sh",
+      "sudo RUNNER_ARCHITECTURE=x64 RUNNER_TARBALL_URL=$RUNNER_TARBALL_URL /tmp/install-runner.sh",
       "echo ImageOS=ubuntu20 | tee -a /opt/actions-runner/.env"
     ]
   }
