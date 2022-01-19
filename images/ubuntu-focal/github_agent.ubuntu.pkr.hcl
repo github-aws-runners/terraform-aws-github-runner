@@ -90,7 +90,7 @@ source "amazon-ebs" "githubrunner" {
   )
 
   launch_block_device_mappings {
-    device_name = "/dev/xvda"
+    device_name = "/dev/sda1"
     volume_size = "${var.root_volume_size_gb}"
     volume_type = "gp3"
   }
