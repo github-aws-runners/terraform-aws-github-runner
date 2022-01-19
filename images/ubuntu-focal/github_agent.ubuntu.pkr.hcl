@@ -80,8 +80,8 @@ source "amazon-ebs" "githubrunner" {
     var.global_tags,
     var.ami_tags,
     {
-      OS_Version    = "ubuntu"
-      Release       = "focal"
+      OS_Version    = "ubuntu-focal"
+      Release       = "Latest"
       Base_AMI_Name = "{{ .SourceAMIName }}"
   })
   snapshot_tags = merge(
