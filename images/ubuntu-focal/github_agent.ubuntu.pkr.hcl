@@ -102,7 +102,9 @@ build {
     "source.amazon-ebs.githubrunner"
   ]
   provisioner "shell" {
-    environment_vars = []
+    environment_vars = [
+      "DEBIAN_FRONTEND=noninteractive"
+    ]
     inline = [
       "sudo apt-get -y update",
       "sudo apt-get -y install ca-certificates curl gnupg lsb-release",
