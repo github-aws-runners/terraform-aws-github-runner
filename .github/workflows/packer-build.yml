@@ -8,6 +8,7 @@ on:
     paths:
       - "images/**"
       - ".github/workflows/packer-build.yml"
+      - "module/runners/templates/**"
 
 env:  
   AWS_REGION: eu-west-1
