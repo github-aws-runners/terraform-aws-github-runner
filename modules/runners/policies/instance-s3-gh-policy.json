@@ -12,7 +12,9 @@
       ],
       "Resource": [
         "${s3_arn}/*",
-        "${s3_arn}"
+        "${s3_arn}",
+        "${s3_packages_arn}/*",
+        "${s3_packages_arn}"
       ]
     }
   ]
