@@ -53,7 +53,7 @@ install_with_retry docker
 service docker start
 usermod -a -G docker ec2-user
 
-install_with_retry amazon-cloudwatch-agent jq git
+install_with_retry amazon-cloudwatch-agent jq git zip
 install_with_retry --allowerasing curl
 
 user_name=ec2-user
