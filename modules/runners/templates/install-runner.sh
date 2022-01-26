@@ -15,6 +15,7 @@ file_name="actions-runner.tar.gz"
 echo "Setting up GH Actions runner tool cache"
 # Required for various */setup-* actions to work, location is also know by various environment
 # variable names in the actions/runner software : RUNNER_TOOL_CACHE / RUNNER_TOOLSDIRECTORY / AGENT_TOOLSDIRECTORY
+# Warning, not all setup actions support the env vars and so this specific path must be created regardless
 mkdir -p /opt/hostedtoolcache
 
 echo "Creating actions-runner directory for the GH Action installation"
