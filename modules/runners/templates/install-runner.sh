@@ -3,6 +3,7 @@
 ## install the runner
 
 s3_location=${S3_LOCATION_RUNNER_DISTRIBUTION}
+architecture=${RUNNER_ARCHITECTURE}
 
 if [ -z "$RUNNER_TARBALL_URL" ] && [ -z "$s3_location" ]; then
   echo "Neither RUNNER_TARBALL_URL or s3_location are set"
@@ -18,7 +19,7 @@ mkdir -p actions-runner && cd actions-runner
 if [[ -n "$RUNNER_TARBALL_URL" ]]; then
   echo "Downloading the GH Action runner from $RUNNER_TARBALL_URL to $file_name"
   curl -o $file_name -L "$RUNNER_TARBALL_URL"
-else  
+else
   echo "Retrieving TOKEN from AWS API"
   token=$(curl -f -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 180")
 
@@ -34,7 +35,9 @@ tar xzf ./$file_name
 echo "Delete tar file"
 rm -rf $file_name
 
-${ARM_PATCH}
+if [[ "$architecture" == "arm64" ]]; then
+  yum install -y libicu60
+fi
 
 os_id=$(awk -F= '/^ID/{print $2}' /etc/os-release)
 if [[ "$os_id" =~ ^ubuntu.* ]]; then
