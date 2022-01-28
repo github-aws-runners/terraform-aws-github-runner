@@ -2,6 +2,10 @@ output "launch_template" {
   value = aws_launch_template.runner
 }
 
+output "image_id" {
+  value data.aws_ami.runner.id
+}
+
 output "role_runner" {
   value = aws_iam_role.runner
 }
