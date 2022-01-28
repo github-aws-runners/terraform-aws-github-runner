@@ -56,12 +56,5 @@ jobs:
       - uses: actions/checkout@v2
       - name: terraform init
         run: terraform init -get -backend=false -input=false
-      - if: contains(matrix.terraform, '1.1.')
-        name: check terraform formatting
-        run: terraform fmt -recursive -check=true -write=false
-      - if: contains(matrix.terraform, 'latest') # check formatting for the latest release but avoid failing the build
-        name: check terraform formatting
-        run: terraform fmt -recursive -check=true -write=false
-        continue-on-error: true
       - name: validate terraform011
         run: terraform validate
