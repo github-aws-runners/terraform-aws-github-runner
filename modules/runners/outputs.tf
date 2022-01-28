@@ -3,7 +3,7 @@ output "launch_template" {
 }
 
 output "image_id" {
-  value data.aws_ami.runner.id
+  value = data.aws_ami.runner.id
 }
 
 output "role_runner" {
