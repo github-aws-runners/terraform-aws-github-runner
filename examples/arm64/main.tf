@@ -37,7 +37,7 @@ module "runners" {
 
   enable_organization_runners = false
   # Runners will automatically get the "arm64" label
-  runner_extra_labels         = "default,example"
+  runner_extra_labels = "default,example"
 
   # enable access to the runners via SSM
   enable_ssm_on_runners = true
