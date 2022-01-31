@@ -1584,10 +1584,10 @@
     javascript-natural-sort "0.7.1"
     lodash "4.17.21"
 
-"@types/aws-lambda@^8.10.91":
-  version "8.10.91"
-  resolved "https://registry.yarnpkg.com/@types/aws-lambda/-/aws-lambda-8.10.91.tgz#25508037c0027d1233922c5a8d0a7d9d842d912e"
-  integrity sha512-vUmJGUqhwZTcrSLE3i9nNJp1gYa83KNv7AX/K30DJKWE31TWw1swdJopOyccttdBqhG3e8SIAqw3q+5ZYxfz0g==
+"@types/aws-lambda@^8.10.92":
+  version "8.10.92"
+  resolved "https://registry.yarnpkg.com/@types/aws-lambda/-/aws-lambda-8.10.92.tgz#645f769ff88b8eba1acd35542695ac322c7757c4"
+  integrity sha512-dB14TltT1SNq73z3MaZfKyyBZ37NAgAFl8jze59bisR4fJ6pB6AYGxItHFkooZbN7UcVJX/cFudM4p8wp1W4rA==
 
 "@types/babel__core@^7.0.0", "@types/babel__core@^7.1.14":
   version "7.1.16"
