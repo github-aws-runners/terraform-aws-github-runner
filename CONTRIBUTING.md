@@ -89,10 +89,10 @@ If we suggest changes, then:
 
 If the PR gets too outdated we may ask you to rebase and force push to update the PR:
 
-    ```shell
-    git rebase develop -i
-    git push origin my-fix-branch -f
-    ```
+```shell
+git rebase develop -i
+git push origin my-fix-branch -f
+```
 
 _WARNING: Squashing or reverting commits and force-pushing thereafter may remove Github comments on code that were previously made by you or others in your commits. Avoid any form of rebasing unless necessary._
 
