@@ -31,7 +31,7 @@ else
   token=$(curl -f -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 180")
 
   region=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r .region)
-  echo "Reteieved REGION from AWS API ($region)"
+  echo "Retrieved REGION from AWS API ($region)"
 
   echo "Downloading the GH Action runner from s3 bucket $s3_location"
   aws s3 cp "$s3_location" "$file_name" --region "$region"
