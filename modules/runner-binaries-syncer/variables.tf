@@ -55,9 +55,14 @@ variable "role_path" {
 }
 
 variable "runner_os" {
-  description = "The operating system for the runner instance (linux, win), defaults to 'linux'"
+  description = "The Operating System to use for GitHub Actions Runners (linux,win)"
   type        = string
   default     = "linux"
+
+  validation {
+    condition     = contains(["linux", "windows"], var.runner_os)
+    error_message = "Valid values for runner_os are (linux, win)."
+  }
 }
 
 variable "runner_architecture" {

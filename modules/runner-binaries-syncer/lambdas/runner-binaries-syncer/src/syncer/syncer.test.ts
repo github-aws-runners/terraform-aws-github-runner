@@ -325,7 +325,7 @@ describe('Synchronize action distribution for windows.', () => {
   beforeEach(() => {
     process.env.S3_BUCKET_NAME = bucketName;
     process.env.S3_OBJECT_KEY = bucketObjectKey;
-    process.env.GITHUB_RUNNER_OS = 'win';
+    process.env.GITHUB_RUNNER_OS = 'windows';
   });
 
   it('No win asset.', async () => {
