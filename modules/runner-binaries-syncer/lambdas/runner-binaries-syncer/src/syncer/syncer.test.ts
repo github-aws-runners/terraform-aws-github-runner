@@ -69,10 +69,8 @@ jest.setTimeout(60 * 1000);
 
 describe('Synchronize action distribution.', () => {
   beforeEach(() => {
-    process.env.S3_BUCKET_NAME = bucketName;
-    process.env.S3_OBJECT_KEY = bucketObjectKey("linux");
+    process.env.S3_BUCKET_NAME = bucketName;  
     process.env.GITHUB_RUNNER_ALLOW_PRERELEASE_BINARIES = 'false';
-    process.env.GITHUB_RUNNER_OS = 'linux';  
 
     mockOctokit.repos.listReleases.mockImplementation(() => ({
       data: listReleases,
