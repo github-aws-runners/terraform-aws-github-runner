@@ -46,20 +46,17 @@ interface IDictionary<TValue> {
 
 const bucketName = 'my-bucket';
 const objectExtension: IDictionary<string> = {
-  'linux': '.tar.gz',
-  'win': '.zip',
+  linux: '.tar.gz',
+  win: '.zip',
 };
 const bucketObjectNames: IDictionary<string> = {
-  'linux': `actions-runner-linux${objectExtension['linux']}`,
-  'win': `actions-runner-win${objectExtension['win']}`,
+  linux: `actions-runner-linux${objectExtension['linux']}`,
+  win: `actions-runner-win${objectExtension['win']}`,
 };
 
 const bucketObjectKey = (os: string) => bucketObjectNames[os];
 
-const runnerOs =[
-  ["linux"],
-  ["win"]
-];
+const runnerOs = [['linux'], ['win']];
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -69,7 +66,7 @@ jest.setTimeout(60 * 1000);
 
 describe('Synchronize action distribution.', () => {
   beforeEach(() => {
-    process.env.S3_BUCKET_NAME = bucketName;  
+    process.env.S3_BUCKET_NAME = bucketName;
     process.env.GITHUB_RUNNER_ALLOW_PRERELEASE_BINARIES = 'false';
 
     mockOctokit.repos.listReleases.mockImplementation(() => ({
@@ -83,8 +80,8 @@ describe('Synchronize action distribution.', () => {
     mockS3.getObjectTagging.mockImplementation(() => {
       return {
         promise() {
-          return Promise.resolve({ 
-            TagSet: [{ Key: 'name', Value: `actions-runner-${os}-x64-2.285.1${objectExtension[os]}` }] 
+          return Promise.resolve({
+            TagSet: [{ Key: 'name', Value: `actions-runner-${os}-x64-2.285.1${objectExtension[os]}` }],
           });
         },
       };
@@ -99,34 +96,36 @@ describe('Synchronize action distribution.', () => {
     expect(mockS3.upload).toBeCalledTimes(0);
   });
 
-  test.each(runnerOs)('%p Distribution is up-to-date with latest release when there are no prereleases.', async (os) => {
-    process.env.S3_OBJECT_KEY = bucketObjectKey(os);
-    process.env.GITHUB_RUNNER_OS = os;
-    process.env.GITHUB_RUNNER_ALLOW_PRERELEASE_BINARIES = 'true';
-    const releases = listReleases.slice(1);
+  test.each(runnerOs)(
+    '%p Distribution is up-to-date with latest release when there are no prereleases.',
+    async (os) => {
+      process.env.S3_OBJECT_KEY = bucketObjectKey(os);
+      process.env.GITHUB_RUNNER_OS = os;
+      process.env.GITHUB_RUNNER_ALLOW_PRERELEASE_BINARIES = 'true';
+      const releases = listReleases.slice(1);
 
-    mockOctokit.repos.listReleases.mockImplementation(() => ({
-      data: releases,
-    }));
-    mockS3.getObjectTagging.mockImplementation(() => {
-      return {
-        promise() {
-          return Promise.resolve({ 
-            TagSet: [{ Key: 'name', Value: `actions-runner-${os}-x64-2.285.1${objectExtension[os]}` }] 
-          });
-        },
-      };
-    });
+      mockOctokit.repos.listReleases.mockImplementation(() => ({
+        data: releases,
+      }));
+      mockS3.getObjectTagging.mockImplementation(() => {
+        return {
+          promise() {
+            return Promise.resolve({
+              TagSet: [{ Key: 'name', Value: `actions-runner-${os}-x64-2.285.1${objectExtension[os]}` }],
+            });
+          },
+        };
+      });
 
-
-    await sync();
-    expect(mockOctokit.repos.listReleases).toBeCalledTimes(1);
-    expect(mockS3.getObjectTagging).toBeCalledWith({
-      Bucket: bucketName,
-      Key: bucketObjectKey(os),
-    });
-    expect(mockS3.upload).toBeCalledTimes(0);
-  });
+      await sync();
+      expect(mockOctokit.repos.listReleases).toBeCalledTimes(1);
+      expect(mockS3.getObjectTagging).toBeCalledWith({
+        Bucket: bucketName,
+        Key: bucketObjectKey(os),
+      });
+      expect(mockS3.upload).toBeCalledTimes(0);
+    },
+  );
 
   test.each(runnerOs)('%p Distribution is up-to-date with latest prerelease.', async (os) => {
     process.env.S3_OBJECT_KEY = bucketObjectKey(os);
@@ -135,8 +134,8 @@ describe('Synchronize action distribution.', () => {
     mockS3.getObjectTagging.mockImplementation(() => {
       return {
         promise() {
-          return Promise.resolve({             
-            TagSet: [{ Key: 'name', Value: `actions-runner-${os}-x64-2.286.0${objectExtension[os]}` }] 
+          return Promise.resolve({
+            TagSet: [{ Key: 'name', Value: `actions-runner-${os}-x64-2.286.0${objectExtension[os]}` }],
           });
         },
       };
@@ -157,10 +156,9 @@ describe('Synchronize action distribution.', () => {
     mockS3.getObjectTagging.mockImplementation(() => {
       return {
         promise() {
-          return Promise.resolve({             
-            TagSet: [{ Key: 'name', Value: `actions-runner-${os}-x64-0${objectExtension[os]}` }] 
+          return Promise.resolve({
+            TagSet: [{ Key: 'name', Value: `actions-runner-${os}-x64-0${objectExtension[os]}` }],
           });
-          
         },
       };
     });
@@ -188,8 +186,8 @@ describe('Synchronize action distribution.', () => {
     mockS3.getObjectTagging.mockImplementation(() => {
       return {
         promise() {
-          return Promise.resolve({ 
-            TagSet: [{ Key: 'name', Value: `actions-runner-${os}-x64-0${objectExtension[os]}` }]
+          return Promise.resolve({
+            TagSet: [{ Key: 'name', Value: `actions-runner-${os}-x64-0${objectExtension[os]}` }],
           });
         },
       };
@@ -202,7 +200,7 @@ describe('Synchronize action distribution.', () => {
       Key: bucketObjectKey(os),
     });
     expect(mockS3.upload).toBeCalledTimes(1);
-    const s3JsonBody = mockS3.upload.mock.calls[0][0];    
+    const s3JsonBody = mockS3.upload.mock.calls[0][0];
     expect(s3JsonBody['Tagging']).toEqual(`name=actions-runner-${os}-x64-2.285.1${objectExtension[os]}`);
   });
 
@@ -213,8 +211,8 @@ describe('Synchronize action distribution.', () => {
     mockS3.getObjectTagging.mockImplementation(() => {
       return {
         promise() {
-          return Promise.resolve({             
-            TagSet: [{ Key: 'name', Value: `actions-runner-${os}-x64-0${objectExtension[os]}` }]
+          return Promise.resolve({
+            TagSet: [{ Key: 'name', Value: `actions-runner-${os}-x64-0${objectExtension[os]}` }],
           });
         },
       };
@@ -227,7 +225,7 @@ describe('Synchronize action distribution.', () => {
       Key: bucketObjectKey(os),
     });
     expect(mockS3.upload).toBeCalledTimes(1);
-    const s3JsonBody = mockS3.upload.mock.calls[0][0];    
+    const s3JsonBody = mockS3.upload.mock.calls[0][0];
     expect(s3JsonBody['Tagging']).toEqual(`name=actions-runner-${os}-x64-2.286.0${objectExtension[os]}`);
   });
 
@@ -245,8 +243,8 @@ describe('Synchronize action distribution.', () => {
     mockS3.getObjectTagging.mockImplementation(() => {
       return {
         promise() {
-          return Promise.resolve({             
-            TagSet: [{ Key: 'name', Value: `actions-runner-${os}-x64-0${objectExtension[os]}` }]
+          return Promise.resolve({
+            TagSet: [{ Key: 'name', Value: `actions-runner-${os}-x64-0${objectExtension[os]}` }],
           });
         },
       };
@@ -259,7 +257,7 @@ describe('Synchronize action distribution.', () => {
       Key: bucketObjectKey(os),
     });
     expect(mockS3.upload).toBeCalledTimes(1);
-    const s3JsonBody = mockS3.upload.mock.calls[0][0];    
+    const s3JsonBody = mockS3.upload.mock.calls[0][0];
     expect(s3JsonBody['Tagging']).toEqual(`name=actions-runner-${os}-x64-2.286.0${objectExtension[os]}`);
   });
 
@@ -308,7 +306,7 @@ describe('No release assets found.', () => {
   const errorMessage = 'Cannot find GitHub release asset.';
   beforeEach(() => {
     process.env.S3_BUCKET_NAME = bucketName;
-    process.env.S3_OBJECT_KEY = bucketObjectKey("linux");
+    process.env.S3_OBJECT_KEY = bucketObjectKey('linux');
   });
 
   it('Empty list of assets.', async () => {
@@ -347,7 +345,7 @@ describe('Invalid config', () => {
   });
   it('No bucket.', async () => {
     delete process.env.S3_BUCKET_NAME;
-    process.env.S3_OBJECT_KEY = bucketObjectKey("linux");
+    process.env.S3_OBJECT_KEY = bucketObjectKey('linux');
     await expect(sync()).rejects.toThrow(errorMessage);
   });
   it('No object key.', async () => {
@@ -360,7 +358,7 @@ describe('Invalid config', () => {
 describe('Synchronize action distribution for arm64.', () => {
   const errorMessage = 'Cannot find GitHub release asset.';
   beforeEach(() => {
-    process.env.S3_BUCKET_NAME = bucketName;    
+    process.env.S3_BUCKET_NAME = bucketName;
     process.env.GITHUB_RUNNER_ARCHITECTURE = 'arm64';
   });
 
