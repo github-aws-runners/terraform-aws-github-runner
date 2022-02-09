@@ -40,16 +40,12 @@ jest.mock('aws-sdk', () => ({
   S3: jest.fn().mockImplementation(() => mockS3),
 }));
 
-interface IDictionary<TValue> {
-  [id: string]: TValue;
-}
-
 const bucketName = 'my-bucket';
-const objectExtension: IDictionary<string> = {
+const objectExtension: Record<string, string> = {
   linux: '.tar.gz',
   win: '.zip',
 };
-const bucketObjectNames: IDictionary<string> = {
+const bucketObjectNames: Record<string, string> = {
   linux: `actions-runner-linux${objectExtension['linux']}`,
   win: `actions-runner-win${objectExtension['win']}`,
 };
