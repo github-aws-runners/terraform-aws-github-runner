@@ -34,7 +34,7 @@ variable "subnet_id" {
 variable "instance_type" {
   description = "The instance type Packer will use for the builder"
   type        = string
-  default     = "m3.medium"
+  default     = "t3.medium"
 }
 
 variable "root_volume_size_gb" {
@@ -61,26 +61,26 @@ variable "snapshot_tags" {
 }
 
 source "amazon-ebs" "githubrunner" {
-  ami_name          = "github-runner-amzn2-x86_64-${formatdate("YYYYMMDDhhmm", timestamp())}"
+  ami_name          = "github-runner-ubuntu-focal-amd64-${formatdate("YYYYMMDDhhmm", timestamp())}"
   instance_type     = var.instance_type
   region            = var.region
   security_group_id = var.security_group_id
   subnet_id         = var.subnet_id
   source_ami_filter {
     filters = {
-      name                = "amzn2-ami-hvm-2.*-x86_64-ebs"
+      name                = "*/ubuntu-focal-20.04-amd64-server-*"
       root-device-type    = "ebs"
       virtualization-type = "hvm"
     }
     most_recent = true
-    owners      = ["137112412989"]
+    owners      = ["099720109477"]
   }
-  ssh_username = "ec2-user"
+  ssh_username = "ubuntu"
   tags = merge(
     var.global_tags,
     var.ami_tags,
     {
-      OS_Version    = "amzn2"
+      OS_Version    = "ubuntu-focal"
       Release       = "Latest"
       Base_AMI_Name = "{{ .SourceAMIName }}"
   })
@@ -89,9 +89,8 @@ source "amazon-ebs" "githubrunner" {
     var.snapshot_tags,
   )
 
-
   launch_block_device_mappings {
-    device_name = "/dev/xvda"
+    device_name = "/dev/sda1"
     volume_size = "${var.root_volume_size_gb}"
     volume_type = "gp3"
   }
@@ -103,15 +102,25 @@ build {
     "source.amazon-ebs.githubrunner"
   ]
   provisioner "shell" {
-    environment_vars = []
+    environment_vars = [
+      "DEBIAN_FRONTEND=noninteractive"
+    ]
     inline = [
-      "sudo yum update -y",
-      "sudo yum install -y amazon-cloudwatch-agent curl jq git",
-      "sudo amazon-linux-extras install docker",
-      "sudo systemctl enable docker.service",
+      "sudo apt-get -y update",
+      "sudo apt-get -y install ca-certificates curl gnupg lsb-release",
+      "sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg",
+      "echo deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null",
+      "sudo apt-get -y update",
+      "sudo apt-get -y install docker-ce docker-ce-cli containerd.io jq git unzip",
       "sudo systemctl enable containerd.service",
       "sudo service docker start",
-      "sudo usermod -a -G docker ec2-user",
+      "sudo usermod -a -G docker ubuntu",
+      "sudo curl -f https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb -o amazon-cloudwatch-agent.deb",
+      "sudo dpkg -i amazon-cloudwatch-agent.deb",
+      "sudo systemctl restart amazon-cloudwatch-agent",
+      "sudo curl -f https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o awscliv2.zip",
+      "unzip awscliv2.zip",
+      "sudo ./aws/install",
     ]
   }
 
@@ -132,8 +141,9 @@ build {
     ]
     inline = [
       "sudo chmod +x /tmp/install-runner.sh",
-      "echo ec2-user > /tmp/install-user.txt",
-      "sudo RUNNER_ARCHITECTURE=x64 RUNNER_TARBALL_URL=$RUNNER_TARBALL_URL /tmp/install-runner.sh"
+      "echo ubuntu | tee -a /tmp/install-user.txt",
+      "sudo RUNNER_ARCHITECTURE=x64 RUNNER_TARBALL_URL=$RUNNER_TARBALL_URL /tmp/install-runner.sh",
+      "echo ImageOS=ubuntu20 | tee -a /opt/actions-runner/.env"
     ]
   }
 

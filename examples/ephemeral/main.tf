@@ -66,7 +66,7 @@ module "runners" {
 
   # configure your pre-built AMI
   # enabled_userdata = false
-  # ami_filter       = { name = ["github-runner-amzn2-x86_64-2021*"] }
+  # ami_filter       = { name = ["github-runner-amzn2-x86_64-*"] }
   # ami_owners       = [data.aws_caller_identity.current.account_id]
 
   # Enable logging

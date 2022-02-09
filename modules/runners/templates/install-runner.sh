@@ -12,9 +12,16 @@ fi
 
 file_name="actions-runner.tar.gz"
 
-echo "Creating actions-runner directory for the GH Action installtion"
+echo "Setting up GH Actions runner tool cache"
+# Required for various */setup-* actions to work, location is also know by various environment
+# variable names in the actions/runner software : RUNNER_TOOL_CACHE / RUNNER_TOOLSDIRECTORY / AGENT_TOOLSDIRECTORY
+# Warning, not all setup actions support the env vars and so this specific path must be created regardless
+mkdir -p /opt/hostedtoolcache
+
+echo "Creating actions-runner directory for the GH Action installation"
 cd /opt/
 mkdir -p actions-runner && cd actions-runner
+
 
 if [[ -n "$RUNNER_TARBALL_URL" ]]; then
   echo "Downloading the GH Action runner from $RUNNER_TARBALL_URL to $file_name"
@@ -24,7 +31,7 @@ else
   token=$(curl -f -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 180")
 
   region=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r .region)
-  echo "Reteieved REGION from AWS API ($region)"
+  echo "Retrieved REGION from AWS API ($region)"
 
   echo "Downloading the GH Action runner from s3 bucket $s3_location"
   aws s3 cp "$s3_location" "$file_name" --region "$region"
@@ -47,3 +54,4 @@ fi
 
 echo "Set file ownership of action runner"
 chown -R "$user_name":"$user_name" .
+chown -R "$user_name":"$user_name" /opt/hostedtoolcache

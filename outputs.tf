@@ -3,6 +3,7 @@ output "runners" {
     launch_template_name    = module.runners.launch_template.name
     launch_template_id      = module.runners.launch_template.id
     launch_template_version = module.runners.launch_template.latest_version
+    launch_template_ami_id  = module.runners.launch_template.image_id
     lambda_up               = module.runners.lambda_scale_up
     lambda_down             = module.runners.lambda_scale_down
     role_runner             = module.runners.role_runner

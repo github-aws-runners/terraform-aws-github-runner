@@ -10,7 +10,7 @@ variable "runner_os" {
 
 variable "ami_name_filter" {
   type    = string
-  default = "github-runner-amzn2-x86_64-2021*"
+  default = "github-runner-amzn2-x86_64-*"
 }
 
 variable "aws_region" {

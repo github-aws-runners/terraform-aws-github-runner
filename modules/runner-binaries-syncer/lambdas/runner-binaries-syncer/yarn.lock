@@ -997,10 +997,10 @@
   resolved "https://registry.yarnpkg.com/@types/json-schema/-/json-schema-7.0.9.tgz#97edc9037ea0c38585320b28964dde3b39e4660d"
   integrity sha512-qcUXuemtEu+E5wZSJHNxUXeCZhAfXKQ41D+duX+VYPde7xyEVZci+/oXKJL13tnRs9lR2pr4fod59GT6/X1/yQ==
 
-"@types/node@*", "@types/node@^17.0.12":
-  version "17.0.12"
-  resolved "https://registry.yarnpkg.com/@types/node/-/node-17.0.12.tgz#f7aa331b27f08244888c47b7df126184bc2339c5"
-  integrity sha512-4YpbAsnJXWYK/fpTVFlMIcUIho2AYCi4wg5aNPrG1ng7fn/1/RZfCIpRCiBX+12RVa34RluilnvCqD+g3KiSiA==
+"@types/node@*", "@types/node@^17.0.13":
+  version "17.0.13"
+  resolved "https://registry.yarnpkg.com/@types/node/-/node-17.0.13.tgz#5ed7ed7c662948335fcad6c412bb42d99ea754e3"
+  integrity sha512-Y86MAxASe25hNzlDbsviXl8jQHb0RDvKt4c40ZJQ1Don0AAL0STLZSs4N+6gLEO55pedy7r2cLwS+ZDxPm/2Bw==
 
 "@types/prettier@^2.1.5":
   version "2.4.2"
@@ -1255,10 +1255,10 @@ asynckit@^0.4.0:
   resolved "https://registry.yarnpkg.com/asynckit/-/asynckit-0.4.0.tgz#c79ed97f7f34cb8f2ba1bc9790bcc366474b4b79"
   integrity sha1-x57Zf380y48robyXkLzDZkdLS3k=
 
-aws-sdk@^2.1063.0:
-  version "2.1063.0"
-  resolved "https://registry.yarnpkg.com/aws-sdk/-/aws-sdk-2.1063.0.tgz#ab5e7f69955358a48be345ee3d76667a68f61dd6"
-  integrity sha512-UonfKdsDChKEmAkFuDOQ8zeilvR5v7d5dEcWDy+fnKBs+6HGjDThMf7EofhOiKxOXWnFhrAsFKCsKDcfeA6NBg==
+aws-sdk@^2.1066.0:
+  version "2.1066.0"
+  resolved "https://registry.yarnpkg.com/aws-sdk/-/aws-sdk-2.1066.0.tgz#2a9b00d983f3c740a7adda18d4e9a5c34d4d3887"
+  integrity sha512-9BZPdJgIvau8Jf2l3PxInNqQd733uKLqGGDywMV71duxNTLgdBZe2zvCkbgl22+ldC8R2LVMdS64DzchfQIxHg==
   dependencies:
     buffer "4.9.2"
     events "1.1.1"
