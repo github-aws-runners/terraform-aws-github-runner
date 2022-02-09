@@ -40,8 +40,27 @@ jest.mock('aws-sdk', () => ({
   S3: jest.fn().mockImplementation(() => mockS3),
 }));
 
+interface IDictionary<TValue> {
+  [id: string]: TValue;
+}
+
 const bucketName = 'my-bucket';
-const bucketObjectKey = 'actions-runner-linux.tar.gz';
+const objectExtension: IDictionary<string> = {
+  'linux': '.tar.gz',
+  'win': '.zip',
+};
+const bucketObjectNames: IDictionary<string> = {
+  'linux': `actions-runner-linux${objectExtension['linux']}`,
+  'win': `actions-runner-win${objectExtension['win']}`,
+};
+
+const bucketObjectKey = (os: string) => bucketObjectNames[os];
+
+const runnerOs =[
+  ["linux"],
+  ["win"]
+];
+
 beforeEach(() => {
   jest.clearAllMocks();
 });
@@ -51,19 +70,24 @@ jest.setTimeout(60 * 1000);
 describe('Synchronize action distribution.', () => {
   beforeEach(() => {
     process.env.S3_BUCKET_NAME = bucketName;
-    process.env.S3_OBJECT_KEY = bucketObjectKey;
+    process.env.S3_OBJECT_KEY = bucketObjectKey("linux");
     process.env.GITHUB_RUNNER_ALLOW_PRERELEASE_BINARIES = 'false';
+    process.env.GITHUB_RUNNER_OS = 'linux';  
 
     mockOctokit.repos.listReleases.mockImplementation(() => ({
       data: listReleases,
     }));
   });
 
-  it('Distribution is up-to-date with latest release.', async () => {
+  test.each(runnerOs)('%p Distribution is up-to-date with latest release.', async (os) => {
+    process.env.S3_OBJECT_KEY = bucketObjectKey(os);
+    process.env.GITHUB_RUNNER_OS = os;
     mockS3.getObjectTagging.mockImplementation(() => {
       return {
         promise() {
-          return Promise.resolve({ TagSet: [{ Key: 'name', Value: 'actions-runner-linux-x64-2.285.1.tar.gz' }] });
+          return Promise.resolve({ 
+            TagSet: [{ Key: 'name', Value: `actions-runner-${os}-x64-2.285.1${objectExtension[os]}` }] 
+          });
         },
       };
     });
@@ -72,12 +96,14 @@ describe('Synchronize action distribution.', () => {
     expect(mockOctokit.repos.listReleases).toBeCalledTimes(1);
     expect(mockS3.getObjectTagging).toBeCalledWith({
       Bucket: bucketName,
-      Key: bucketObjectKey,
+      Key: bucketObjectKey(os),
     });
     expect(mockS3.upload).toBeCalledTimes(0);
   });
 
-  it('Distribution is up-to-date with latest release when there are no prereleases.', async () => {
+  test.each(runnerOs)('%p Distribution is up-to-date with latest release when there are no prereleases.', async (os) => {
+    process.env.S3_OBJECT_KEY = bucketObjectKey(os);
+    process.env.GITHUB_RUNNER_OS = os;
     process.env.GITHUB_RUNNER_ALLOW_PRERELEASE_BINARIES = 'true';
     const releases = listReleases.slice(1);
 
@@ -87,26 +113,33 @@ describe('Synchronize action distribution.', () => {
     mockS3.getObjectTagging.mockImplementation(() => {
       return {
         promise() {
-          return Promise.resolve({ TagSet: [{ Key: 'name', Value: 'actions-runner-linux-x64-2.285.1.tar.gz' }] });
+          return Promise.resolve({ 
+            TagSet: [{ Key: 'name', Value: `actions-runner-${os}-x64-2.285.1${objectExtension[os]}` }] 
+          });
         },
       };
     });
+
 
     await sync();
     expect(mockOctokit.repos.listReleases).toBeCalledTimes(1);
     expect(mockS3.getObjectTagging).toBeCalledWith({
       Bucket: bucketName,
-      Key: bucketObjectKey,
+      Key: bucketObjectKey(os),
     });
     expect(mockS3.upload).toBeCalledTimes(0);
   });
 
-  it('Distribution is up-to-date with latest prerelease.', async () => {
+  test.each(runnerOs)('%p Distribution is up-to-date with latest prerelease.', async (os) => {
+    process.env.S3_OBJECT_KEY = bucketObjectKey(os);
+    process.env.GITHUB_RUNNER_OS = os;
     process.env.GITHUB_RUNNER_ALLOW_PRERELEASE_BINARIES = 'true';
     mockS3.getObjectTagging.mockImplementation(() => {
       return {
         promise() {
-          return Promise.resolve({ TagSet: [{ Key: 'name', Value: 'actions-runner-linux-x64-2.286.0.tar.gz' }] });
+          return Promise.resolve({             
+            TagSet: [{ Key: 'name', Value: `actions-runner-${os}-x64-2.286.0${objectExtension[os]}` }] 
+          });
         },
       };
     });
@@ -115,16 +148,21 @@ describe('Synchronize action distribution.', () => {
     expect(mockOctokit.repos.listReleases).toBeCalledTimes(1);
     expect(mockS3.getObjectTagging).toBeCalledWith({
       Bucket: bucketName,
-      Key: bucketObjectKey,
+      Key: bucketObjectKey(os),
     });
     expect(mockS3.upload).toBeCalledTimes(0);
   });
 
-  it('Distribution should update to release.', async () => {
+  test.each(runnerOs)('%p Distribution should update to release.', async (os) => {
+    process.env.S3_OBJECT_KEY = bucketObjectKey(os);
+    process.env.GITHUB_RUNNER_OS = os;
     mockS3.getObjectTagging.mockImplementation(() => {
       return {
         promise() {
-          return Promise.resolve({ TagSet: [{ Key: 'name', Value: 'actions-runner-linux-x64-0.tar.gz' }] });
+          return Promise.resolve({             
+            TagSet: [{ Key: 'name', Value: `actions-runner-${os}-x64-0${objectExtension[os]}` }] 
+          });
+          
         },
       };
     });
@@ -133,14 +171,16 @@ describe('Synchronize action distribution.', () => {
     expect(mockOctokit.repos.listReleases).toBeCalledTimes(1);
     expect(mockS3.getObjectTagging).toBeCalledWith({
       Bucket: bucketName,
-      Key: bucketObjectKey,
+      Key: bucketObjectKey(os),
     });
     expect(mockS3.upload).toBeCalledTimes(1);
     const s3JsonBody = mockS3.upload.mock.calls[0][0];
-    expect(s3JsonBody['Tagging']).toEqual('name=actions-runner-linux-x64-2.285.1.tar.gz');
+    expect(s3JsonBody['Tagging']).toEqual(`name=actions-runner-${os}-x64-2.285.1${objectExtension[os]}`);
   });
 
-  it('Distribution should update to release if there are no pre-releases.', async () => {
+  test.each(runnerOs)('%p Distribution should update to release if there are no pre-releases.', async (os) => {
+    process.env.S3_OBJECT_KEY = bucketObjectKey(os);
+    process.env.GITHUB_RUNNER_OS = os;
     process.env.GITHUB_RUNNER_ALLOW_PRERELEASE_BINARIES = 'true';
     const releases = listReleases.slice(1);
 
@@ -150,7 +190,9 @@ describe('Synchronize action distribution.', () => {
     mockS3.getObjectTagging.mockImplementation(() => {
       return {
         promise() {
-          return Promise.resolve({ TagSet: [{ Key: 'name', Value: 'actions-runner-linux-x64-0.tar.gz' }] });
+          return Promise.resolve({ 
+            TagSet: [{ Key: 'name', Value: `actions-runner-${os}-x64-0${objectExtension[os]}` }]
+          });
         },
       };
     });
@@ -159,19 +201,23 @@ describe('Synchronize action distribution.', () => {
     expect(mockOctokit.repos.listReleases).toBeCalledTimes(1);
     expect(mockS3.getObjectTagging).toBeCalledWith({
       Bucket: bucketName,
-      Key: bucketObjectKey,
+      Key: bucketObjectKey(os),
     });
     expect(mockS3.upload).toBeCalledTimes(1);
-    const s3JsonBody = mockS3.upload.mock.calls[0][0];
-    expect(s3JsonBody['Tagging']).toEqual('name=actions-runner-linux-x64-2.285.1.tar.gz');
+    const s3JsonBody = mockS3.upload.mock.calls[0][0];    
+    expect(s3JsonBody['Tagging']).toEqual(`name=actions-runner-${os}-x64-2.285.1${objectExtension[os]}`);
   });
 
-  it('Distribution should update to prerelease.', async () => {
+  test.each(runnerOs)('%p Distribution should update to prerelease.', async (os) => {
+    process.env.S3_OBJECT_KEY = bucketObjectKey(os);
+    process.env.GITHUB_RUNNER_OS = os;
     process.env.GITHUB_RUNNER_ALLOW_PRERELEASE_BINARIES = 'true';
     mockS3.getObjectTagging.mockImplementation(() => {
       return {
         promise() {
-          return Promise.resolve({ TagSet: [{ Key: 'name', Value: 'actions-runner-linux-x64-0.tar.gz' }] });
+          return Promise.resolve({             
+            TagSet: [{ Key: 'name', Value: `actions-runner-${os}-x64-0${objectExtension[os]}` }]
+          });
         },
       };
     });
@@ -180,14 +226,16 @@ describe('Synchronize action distribution.', () => {
     expect(mockOctokit.repos.listReleases).toBeCalledTimes(1);
     expect(mockS3.getObjectTagging).toBeCalledWith({
       Bucket: bucketName,
-      Key: bucketObjectKey,
+      Key: bucketObjectKey(os),
     });
     expect(mockS3.upload).toBeCalledTimes(1);
-    const s3JsonBody = mockS3.upload.mock.calls[0][0];
-    expect(s3JsonBody['Tagging']).toEqual('name=actions-runner-linux-x64-2.286.0.tar.gz');
+    const s3JsonBody = mockS3.upload.mock.calls[0][0];    
+    expect(s3JsonBody['Tagging']).toEqual(`name=actions-runner-${os}-x64-2.286.0${objectExtension[os]}`);
   });
 
-  it('Distribution should not update to prerelease if there is a newer release.', async () => {
+  test.each(runnerOs)('%p Distribution should not update to prerelease if there is a newer release.', async (os) => {
+    process.env.S3_OBJECT_KEY = bucketObjectKey(os);
+    process.env.GITHUB_RUNNER_OS = os;
     process.env.GITHUB_RUNNER_ALLOW_PRERELEASE_BINARIES = 'true';
     const releases = listReleases;
     releases[0].prerelease = false;
@@ -199,7 +247,9 @@ describe('Synchronize action distribution.', () => {
     mockS3.getObjectTagging.mockImplementation(() => {
       return {
         promise() {
-          return Promise.resolve({ TagSet: [{ Key: 'name', Value: 'actions-runner-linux-x64-0.tar.gz' }] });
+          return Promise.resolve({             
+            TagSet: [{ Key: 'name', Value: `actions-runner-${os}-x64-0${objectExtension[os]}` }]
+          });
         },
       };
     });
@@ -208,14 +258,16 @@ describe('Synchronize action distribution.', () => {
     expect(mockOctokit.repos.listReleases).toBeCalledTimes(1);
     expect(mockS3.getObjectTagging).toBeCalledWith({
       Bucket: bucketName,
-      Key: bucketObjectKey,
+      Key: bucketObjectKey(os),
     });
     expect(mockS3.upload).toBeCalledTimes(1);
-    const s3JsonBody = mockS3.upload.mock.calls[0][0];
-    expect(s3JsonBody['Tagging']).toEqual('name=actions-runner-linux-x64-2.286.0.tar.gz');
+    const s3JsonBody = mockS3.upload.mock.calls[0][0];    
+    expect(s3JsonBody['Tagging']).toEqual(`name=actions-runner-${os}-x64-2.286.0${objectExtension[os]}`);
   });
 
-  it('No tag in S3, distribution should update.', async () => {
+  test.each(runnerOs)('%p No tag in S3, distribution should update.', async (os) => {
+    process.env.S3_OBJECT_KEY = bucketObjectKey(os);
+    process.env.GITHUB_RUNNER_OS = os;
     mockS3.getObjectTagging.mockImplementation(() => {
       return {
         promise() {
@@ -228,12 +280,14 @@ describe('Synchronize action distribution.', () => {
     expect(mockOctokit.repos.listReleases).toBeCalledTimes(1);
     expect(mockS3.getObjectTagging).toBeCalledWith({
       Bucket: bucketName,
-      Key: bucketObjectKey,
+      Key: bucketObjectKey(os),
     });
     expect(mockS3.upload).toBeCalledTimes(1);
   });
 
-  it('Tags, but no version, distribution should update.', async () => {
+  test.each(runnerOs)('%p Tags, but no version, distribution should update.', async (os) => {
+    process.env.S3_OBJECT_KEY = bucketObjectKey(os);
+    process.env.GITHUB_RUNNER_OS = os;
     mockS3.getObjectTagging.mockImplementation(() => {
       return {
         promise() {
@@ -246,7 +300,7 @@ describe('Synchronize action distribution.', () => {
     expect(mockOctokit.repos.listReleases).toBeCalledTimes(1);
     expect(mockS3.getObjectTagging).toBeCalledWith({
       Bucket: bucketName,
-      Key: bucketObjectKey,
+      Key: bucketObjectKey(os),
     });
     expect(mockS3.upload).toBeCalledTimes(1);
   });
@@ -256,7 +310,7 @@ describe('No release assets found.', () => {
   const errorMessage = 'Cannot find GitHub release asset.';
   beforeEach(() => {
     process.env.S3_BUCKET_NAME = bucketName;
-    process.env.S3_OBJECT_KEY = bucketObjectKey;
+    process.env.S3_OBJECT_KEY = bucketObjectKey("linux");
   });
 
   it('Empty list of assets.', async () => {
@@ -267,7 +321,9 @@ describe('No release assets found.', () => {
     await expect(sync()).rejects.toThrow(errorMessage);
   });
 
-  it('No linux x64 asset.', async () => {
+  test.each(runnerOs)('No %p x64 asset.', async (os) => {
+    process.env.S3_OBJECT_KEY = bucketObjectKey(os);
+    process.env.GITHUB_RUNNER_OS = os;
     mockOctokit.repos.listReleases.mockImplementation(() => ({
       data: [listReleasesNoLinux],
     }));
@@ -293,7 +349,7 @@ describe('Invalid config', () => {
   });
   it('No bucket.', async () => {
     delete process.env.S3_BUCKET_NAME;
-    process.env.S3_OBJECT_KEY = bucketObjectKey;
+    process.env.S3_OBJECT_KEY = bucketObjectKey("linux");
     await expect(sync()).rejects.toThrow(errorMessage);
   });
   it('No object key.', async () => {
@@ -306,34 +362,15 @@ describe('Invalid config', () => {
 describe('Synchronize action distribution for arm64.', () => {
   const errorMessage = 'Cannot find GitHub release asset.';
   beforeEach(() => {
-    process.env.S3_BUCKET_NAME = bucketName;
-    process.env.S3_OBJECT_KEY = bucketObjectKey;
+    process.env.S3_BUCKET_NAME = bucketName;    
     process.env.GITHUB_RUNNER_ARCHITECTURE = 'arm64';
   });
 
-  it('No linux arm64 asset.', async () => {
+  test.each(runnerOs)('No %p arm64 asset.', async (os) => {
+    process.env.S3_OBJECT_KEY = bucketObjectKey(os);
+    process.env.GITHUB_RUNNER_OS = os;
     mockOctokit.repos.listReleases.mockImplementation(() => ({
       data: [listReleasesNoArm64],
-    }));
-
-    await expect(sync()).rejects.toThrow(errorMessage);
-  });
-});
-
-describe('Synchronize action distribution for windows.', () => {
-  const errorMessage = 'Cannot find GitHub release asset.';
-  beforeEach(() => {
-    process.env.S3_BUCKET_NAME = bucketName;
-    process.env.S3_OBJECT_KEY = bucketObjectKey;
-    process.env.GITHUB_RUNNER_OS = 'windows';
-  });
-
-  it('No win asset.', async () => {
-    mockOctokit.repos.listReleases.mockImplementation(() => ({
-      data: listReleases.map((release) => ({
-        ...release,
-        assets: release.assets.filter((asset) => !asset.name.includes('win')),
-      })),
     }));
 
     await expect(sync()).rejects.toThrow(errorMessage);
