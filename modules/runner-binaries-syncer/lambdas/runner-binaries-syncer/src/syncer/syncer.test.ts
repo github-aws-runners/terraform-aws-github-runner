@@ -54,8 +54,8 @@ const bucketObjectKey = (os: string) => bucketObjectNames[os];
 
 const runnerOs = [['linux'], ['win']];
 
-const latestRelease = "2.287.0";
-const latestPreRelease = "2.287.1";
+const latestRelease = '2.287.0';
+const latestPreRelease = '2.287.1';
 
 beforeEach(() => {
   jest.clearAllMocks();
