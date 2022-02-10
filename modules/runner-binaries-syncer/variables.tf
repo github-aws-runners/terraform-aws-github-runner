@@ -55,13 +55,13 @@ variable "role_path" {
 }
 
 variable "runner_os" {
-  description = "The Operating System to use for GitHub Actions Runners (linux,win)"
+  description = "The EC2 Operating System type to use for action runner instances (linux,windows)."
   type        = string
   default     = "linux"
 
   validation {
     condition     = contains(["linux", "windows"], var.runner_os)
-    error_message = "Valid values for runner_os are (linux, win)."
+    error_message = "Valid values for runner_os are (linux, windows)."
   }
 }
 
