@@ -47,12 +47,15 @@ const objectExtension: Record<string, string> = {
 };
 const bucketObjectNames: Record<string, string> = {
   linux: `actions-runner-linux${objectExtension['linux']}`,
-  win: `actions-runner-win${objectExtension['win']}`,
+  win: `actions-runner-windows${objectExtension['win']}`,
 };
 
 const bucketObjectKey = (os: string) => bucketObjectNames[os];
 
 const runnerOs = [['linux'], ['win']];
+
+const latestRelease = "2.287.0";
+const latestPreRelease = "2.287.1";
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -77,7 +80,7 @@ describe('Synchronize action distribution.', () => {
       return {
         promise() {
           return Promise.resolve({
-            TagSet: [{ Key: 'name', Value: `actions-runner-${os}-x64-2.285.1${objectExtension[os]}` }],
+            TagSet: [{ Key: 'name', Value: `actions-runner-${os}-x64-${latestRelease}${objectExtension[os]}` }],
           });
         },
       };
@@ -107,7 +110,7 @@ describe('Synchronize action distribution.', () => {
         return {
           promise() {
             return Promise.resolve({
-              TagSet: [{ Key: 'name', Value: `actions-runner-${os}-x64-2.285.1${objectExtension[os]}` }],
+              TagSet: [{ Key: 'name', Value: `actions-runner-${os}-x64-${latestRelease}${objectExtension[os]}` }],
             });
           },
         };
@@ -131,7 +134,7 @@ describe('Synchronize action distribution.', () => {
       return {
         promise() {
           return Promise.resolve({
-            TagSet: [{ Key: 'name', Value: `actions-runner-${os}-x64-2.286.0${objectExtension[os]}` }],
+            TagSet: [{ Key: 'name', Value: `actions-runner-${os}-x64-${latestPreRelease}${objectExtension[os]}` }],
           });
         },
       };
@@ -167,7 +170,7 @@ describe('Synchronize action distribution.', () => {
     });
     expect(mockS3.upload).toBeCalledTimes(1);
     const s3JsonBody = mockS3.upload.mock.calls[0][0];
-    expect(s3JsonBody['Tagging']).toEqual(`name=actions-runner-${os}-x64-2.285.1${objectExtension[os]}`);
+    expect(s3JsonBody['Tagging']).toEqual(`name=actions-runner-${os}-x64-${latestRelease}${objectExtension[os]}`);
   });
 
   test.each(runnerOs)('%p Distribution should update to release if there are no pre-releases.', async (os) => {
@@ -197,7 +200,7 @@ describe('Synchronize action distribution.', () => {
     });
     expect(mockS3.upload).toBeCalledTimes(1);
     const s3JsonBody = mockS3.upload.mock.calls[0][0];
-    expect(s3JsonBody['Tagging']).toEqual(`name=actions-runner-${os}-x64-2.285.1${objectExtension[os]}`);
+    expect(s3JsonBody['Tagging']).toEqual(`name=actions-runner-${os}-x64-${latestRelease}${objectExtension[os]}`);
   });
 
   test.each(runnerOs)('%p Distribution should update to prerelease.', async (os) => {
@@ -222,7 +225,7 @@ describe('Synchronize action distribution.', () => {
     });
     expect(mockS3.upload).toBeCalledTimes(1);
     const s3JsonBody = mockS3.upload.mock.calls[0][0];
-    expect(s3JsonBody['Tagging']).toEqual(`name=actions-runner-${os}-x64-2.286.0${objectExtension[os]}`);
+    expect(s3JsonBody['Tagging']).toEqual(`name=actions-runner-${os}-x64-${latestPreRelease}${objectExtension[os]}`);
   });
 
   test.each(runnerOs)('%p Distribution should not update to prerelease if there is a newer release.', async (os) => {
@@ -254,7 +257,7 @@ describe('Synchronize action distribution.', () => {
     });
     expect(mockS3.upload).toBeCalledTimes(1);
     const s3JsonBody = mockS3.upload.mock.calls[0][0];
-    expect(s3JsonBody['Tagging']).toEqual(`name=actions-runner-${os}-x64-2.286.0${objectExtension[os]}`);
+    expect(s3JsonBody['Tagging']).toEqual(`name=actions-runner-${os}-x64-${latestPreRelease}${objectExtension[os]}`);
   });
 
   test.each(runnerOs)('%p No tag in S3, distribution should update.', async (os) => {
