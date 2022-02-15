@@ -19,6 +19,12 @@ variable "region" {
   default     = "eu-west-1"
 }
 
+variable "ebs_delete_on_termination" {
+  description = "Indicates whether the EBS volume is deleted on instance termination."
+  type        = bool
+  default     = true
+}
+
 source "amazon-ebs" "githubrunner" {
   ami_name      = "github-runner-windows-core-2019-${formatdate("YYYYMMDDhhmm", timestamp())}"
   communicator  = "winrm"
@@ -43,6 +49,11 @@ source "amazon-ebs" "githubrunner" {
   winrm_port     = 5986
   winrm_use_ssl  = true
   winrm_username = "Administrator"
+
+  launch_block_device_mappings {
+    device_name           = "/dev/sda1"
+    delete_on_termination = "${var.ebs_delete_on_termination}"
+  }
 }
 
 build {
