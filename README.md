@@ -53,7 +53,7 @@ The moment a GitHub action workflow requiring a `self-hosted` runner is triggere
 
 For receiving the `check_run` or `workflow_job` event by the webhook (lambda), a webhook needs to be created in GitHub. The `workflow_job` is the preferred option, and the `check_run` option will be maintained for backward compatibility. The advantage of the `workflow_job` event is that the runner checks if the received event can run on the configured runners by matching the labels, which avoid instances being scaled up and never used. The following options are available:
 
-- `workflow_job`: **(preferred option)** create a webhook on enterprise, org or app level.
+- `workflow_job`: **(preferred option)** create a webhook on enterprise, org or app level. Select this option for ephemeral runners.
 - `check_run`: create a webhook on enterprise, org, repo or app level. When using the app option, the app needs to be installed to repo's are using the self-hosted runners.
 -  a Webhook needs to be created. The webhook hook can be defined on enterprise, org, repo, or app level. 
 
