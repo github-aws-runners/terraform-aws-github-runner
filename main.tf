@@ -83,11 +83,12 @@ module "webhook" {
 module "runners" {
   source = "./modules/runners"
 
-  aws_region  = var.aws_region
-  vpc_id      = var.vpc_id
-  subnet_ids  = var.subnet_ids
-  environment = var.environment
-  tags        = local.tags
+  aws_region    = var.aws_region
+  aws_partition = var.aws_partition
+  vpc_id        = var.vpc_id
+  subnet_ids    = var.subnet_ids
+  environment   = var.environment
+  tags          = local.tags
 
   s3_bucket_runner_binaries   = module.runner_binaries.bucket
   s3_location_runner_binaries = local.s3_action_runner_url
