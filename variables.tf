@@ -585,3 +585,9 @@ variable "pool_config" {
   }))
   default = []
 }
+
+variable "aws_partition" {
+  descrdescription = "(optiona) partition in the arn namespace to use if not 'aws'"
+  type             = string
+  default          = "aws"
+}

@@ -43,4 +43,6 @@ module "pool" {
     tags       = local.tags
   }
 
+  aws_partition = var.aws_partition
+
 }
