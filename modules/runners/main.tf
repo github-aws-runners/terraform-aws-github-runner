@@ -88,7 +88,7 @@ resource "aws_launch_template" "runner" {
   key_name                             = var.key_name
 
   vpc_security_group_ids = compact(concat(
-    [aws_security_group.runner_sg.id],
+    var.enable_managed_runner_security_group ? [aws_security_group.runner_sg[0].id] : [],
     var.runner_additional_security_group_ids,
   ))
 
@@ -137,6 +137,7 @@ resource "aws_launch_template" "runner" {
 }
 
 resource "aws_security_group" "runner_sg" {
+  count       = var.enable_managed_runner_security_group ? 1 : 0
   name_prefix = "${var.environment}-github-actions-runner-sg"
   description = "Github Actions Runner security group"
 

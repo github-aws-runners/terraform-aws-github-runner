@@ -1,6 +1,10 @@
 locals {
   lambda_zip = var.lambda_zip == null ? "${path.module}/lambdas/runner-binaries-syncer/runner-binaries-syncer.zip" : var.lambda_zip
   role_path  = var.role_path == null ? "/${var.environment}/" : var.role_path
+  gh_binary_os_label = {
+    windows = "win",
+    linux   = "linux"
+  }
 }
 
 resource "aws_lambda_function" "syncer" {
@@ -20,7 +24,7 @@ resource "aws_lambda_function" "syncer" {
     variables = {
       GITHUB_RUNNER_ALLOW_PRERELEASE_BINARIES = var.runner_allow_prerelease_binaries
       GITHUB_RUNNER_ARCHITECTURE              = var.runner_architecture
-      GITHUB_RUNNER_OS                        = var.runner_os
+      GITHUB_RUNNER_OS                        = local.gh_binary_os_label[var.runner_os]
       LOG_LEVEL                               = var.log_level
       LOG_TYPE                                = var.log_type
       S3_BUCKET_NAME                          = aws_s3_bucket.action_dist.id

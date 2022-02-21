@@ -42,6 +42,12 @@ variable "root_volume_size_gb" {
   default = 8
 }
 
+variable "ebs_delete_on_termination" {
+  description = "Indicates whether the EBS volume is deleted on instance termination."
+  type        = bool
+  default     = true
+}
+
 variable "global_tags" {
   description = "Tags to apply to everything"
   type        = map(string)
@@ -91,9 +97,10 @@ source "amazon-ebs" "githubrunner" {
 
 
   launch_block_device_mappings {
-    device_name = "/dev/xvda"
-    volume_size = "${var.root_volume_size_gb}"
-    volume_type = "gp3"
+    device_name           = "/dev/xvda"
+    volume_size           = "${var.root_volume_size_gb}"
+    volume_type           = "gp3"
+    delete_on_termination = "${var.ebs_delete_on_termination}"
   }
 }
 

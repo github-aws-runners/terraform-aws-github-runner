@@ -6,16 +6,16 @@ echo "Retrieving TOKEN from AWS API"
 token=$(curl -f -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 180")
 
 region=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r .region)
-echo "Reteieved REGION from AWS API ($region)"
+echo "Retrieved REGION from AWS API ($region)"
 
 instance_id=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/meta-data/instance-id)
-echo "Reteieved INSTANCE_ID from AWS API ($instance_id)"
+echo "Retrieved INSTANCE_ID from AWS API ($instance_id)"
 
 tags=$(aws ec2 describe-tags --region "$region" --filters "Name=resource-id,Values=$instance_id")
 echo "Retrieved tags from AWS API ($tags)"
 
 environment=$(echo "$tags" | jq -r '.Tags[]  | select(.Key == "ghr:environment") | .Value')
-echo "Reteieved ghr:environment tag - ($environment)"
+echo "Retrieved ghr:environment tag - ($environment)"
 
 parameters=$(aws ssm get-parameters-by-path --path "/$environment/runner" --region "$region" --query "Parameters[*].{Name:Name,Value:Value}")
 echo "Retrieved parameters from AWS SSM ($parameters)"
@@ -29,7 +29,7 @@ echo "Retrieved /$environment/runner/enable-cloudwatch parameter - ($enable_clou
 agent_mode=$(echo "$parameters" | jq --arg environment "$environment" -r '.[] | select(.Name == "/\($environment)/runner/agent-mode") | .Value')
 echo "Retrieved /$environment/runner/agent-mode parameter - ($agent_mode)"
 
-if [[ -n "$enable_cloudwatch_agent" ]]; then
+if [[ "$enable_cloudwatch_agent" == "true" ]]; then
   echo "Cloudwatch is enabled"
   amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c "ssm:$environment-cloudwatch_agent_config_runner"
 fi

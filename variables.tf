@@ -507,14 +507,20 @@ variable "enable_ephemeral_runners" {
   default     = false
 }
 
+variable "enable_managed_runner_security_group" {
+  description = "Enabling the default managed security group creation. Unmanaged security groups can be specified via `runner_additional_security_group_ids`."
+  type        = bool
+  default     = true
+}
+
 variable "runner_os" {
-  description = "The Operating System to use for GitHub Actions Runners (linux,win)"
+  description = "The EC2 Operating System type to use for action runner instances (linux,windows)."
   type        = string
   default     = "linux"
 
   validation {
     condition     = contains(["linux", "windows"], var.runner_os)
-    error_message = "Valid values for runner_os are (linux, win)."
+    error_message = "Valid values for runner_os are (linux, windows)."
   }
 }
 
