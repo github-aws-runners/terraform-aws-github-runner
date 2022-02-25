@@ -528,6 +528,13 @@ describe('scaleUp with public GH', () => {
       expect(createRunner).toBeCalledWith(expectedRunnerParams);
     });
 
+    it('disable auto update on the runner.', async () => {
+      process.env.DISABLE_UPDATE_RUNNERS = 'true';
+      await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
+      expectedRunnerParams.runnerServiceConfig = expectedRunnerParams.runnerServiceConfig + ` --disableupdate`;
+      expect(createRunner).toBeCalledWith(expectedRunnerParams);
+    });
+
     it('Scaling error should cause reject so retry can be triggered.', async () => {
       process.env.RUNNERS_MAXIMUM_COUNT = '1';
       process.env.ENABLE_EPHEMERAL_RUNNERS = 'true';

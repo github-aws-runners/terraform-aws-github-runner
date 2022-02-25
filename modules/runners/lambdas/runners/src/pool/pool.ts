@@ -60,7 +60,7 @@ export async function adjust(event: PoolEvent): Promise<void> {
   if (topUp > 0) {
     logger.info(`The pool will be topped up with ${topUp} runners.`);
     await createRunners(
-      { ephemeral, ghesBaseUrl, runnerExtraLabels, runnerGroup, runnerOwner, runnerType: 'Org' },
+      { ephemeral, ghesBaseUrl, runnerExtraLabels, runnerGroup, runnerOwner, runnerType: 'Org', disableUpdate: false },
       {
         ec2instanceCriteria: {
           instanceTypes,
