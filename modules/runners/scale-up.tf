@@ -15,7 +15,7 @@ resource "aws_lambda_function" "scale_up" {
 
   environment {
     variables = {
-      DISABLE_UPDATE_RUNNERS               = var.disable_update_runners
+      DISABLE_RUNNER_AUTOUPDATE            = var.disable_runner_autoupdate
       ENABLE_EPHEMERAL_RUNNERS             = var.enable_ephemeral_runners
       ENABLE_ORGANIZATION_RUNNERS          = var.enable_organization_runners
       ENVIRONMENT                          = var.environment

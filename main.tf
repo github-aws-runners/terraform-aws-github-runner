@@ -107,7 +107,7 @@ module "runners" {
   github_app_parameters                = local.github_app_parameters
   enable_organization_runners          = var.enable_organization_runners
   enable_ephemeral_runners             = var.enable_ephemeral_runners
-  disable_update_runners               = var.disable_update_runners
+  disable_runner_autoupdate            = var.disable_runner_autoupdate
   enable_managed_runner_security_group = var.enable_managed_runner_security_group
   scale_down_schedule_expression       = var.scale_down_schedule_expression
   minimum_running_time_in_minutes      = var.minimum_running_time_in_minutes

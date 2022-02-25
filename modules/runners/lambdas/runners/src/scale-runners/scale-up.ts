@@ -143,7 +143,7 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
   const instanceTypes = process.env.INSTANCE_TYPES.split(',');
   const instanceTargetTargetCapacityType = process.env.INSTANCE_TARGET_CAPACITY_TYPE;
   const ephemeralEnabled = yn(process.env.ENABLE_EPHEMERAL_RUNNERS, { default: false });
-  const disableUpdate = yn(process.env.DISABLE_UPDATE_RUNNERS, { default: false });
+  const disableUpdate = yn(process.env.DISABLE_RUNNER_AUTOUPDATE, { default: false });
   const launchTemplateName = process.env.LAUNCH_TEMPLATE_NAME;
   const instanceMaxSpotPrice = process.env.INSTANCE_MAX_SPOT_PRICE;
   const instanceAllocationStrategy = process.env.INSTANCE_ALLOCATION_STRATEGY || 'lowest-price'; // same as AWS default

@@ -529,7 +529,7 @@ describe('scaleUp with public GH', () => {
     });
 
     it('disable auto update on the runner.', async () => {
-      process.env.DISABLE_UPDATE_RUNNERS = 'true';
+      process.env.DISABLE_RUNNER_AUTOUPDATE = 'true';
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
       expectedRunnerParams.runnerServiceConfig = expectedRunnerParams.runnerServiceConfig + ` --disableupdate`;
       expect(createRunner).toBeCalledWith(expectedRunnerParams);
