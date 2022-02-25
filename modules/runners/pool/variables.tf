@@ -24,8 +24,9 @@ variable "config" {
     })
     subnet_ids = list(string)
     runner = object({
-      ephemeral    = bool
-      extra_labels = string
+      disable_runner_autoupdate = bool
+      ephemeral                 = bool
+      extra_labels              = string
       launch_template = object({
         name = string
       })

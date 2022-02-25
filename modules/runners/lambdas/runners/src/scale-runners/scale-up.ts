@@ -23,7 +23,7 @@ interface CreateGitHubRunnerConfig {
   runnerGroup: string | undefined;
   runnerOwner: string;
   runnerType: 'Org' | 'Repo';
-  disableUpdate: boolean;
+  disableAutoUpdate: boolean;
 }
 
 interface CreateEC2RunnerConfig {
@@ -41,7 +41,7 @@ function generateRunnerServiceConfig(githubRunnerConfig: CreateGitHubRunnerConfi
     githubRunnerConfig.runnerGroup !== undefined ? `--runnergroup ${githubRunnerConfig.runnerGroup} ` : '';
   const configBaseUrl = githubRunnerConfig.ghesBaseUrl ? githubRunnerConfig.ghesBaseUrl : 'https://github.com';
   const ephemeralArgument = githubRunnerConfig.ephemeral ? '--ephemeral ' : '';
-  const disableUpdateArgument = githubRunnerConfig.disableUpdate ? '--disableupdate ' : '';
+  const disableUpdateArgument = githubRunnerConfig.disableAutoUpdate ? '--disableupdate ' : '';
   const runnerArgs = `--token ${token} ${labelsArgument}${ephemeralArgument}${disableUpdateArgument}`;
   return githubRunnerConfig.runnerType === 'Org'
     ? `--url ${configBaseUrl}/${githubRunnerConfig.runnerOwner} ${runnerArgs}${runnerGroupArgument}`.trim()
@@ -143,7 +143,7 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
   const instanceTypes = process.env.INSTANCE_TYPES.split(',');
   const instanceTargetTargetCapacityType = process.env.INSTANCE_TARGET_CAPACITY_TYPE;
   const ephemeralEnabled = yn(process.env.ENABLE_EPHEMERAL_RUNNERS, { default: false });
-  const disableUpdate = yn(process.env.DISABLE_RUNNER_AUTOUPDATE, { default: false });
+  const disableAutoUpdate = yn(process.env.DISABLE_RUNNER_AUTOUPDATE, { default: false });
   const launchTemplateName = process.env.LAUNCH_TEMPLATE_NAME;
   const instanceMaxSpotPrice = process.env.INSTANCE_MAX_SPOT_PRICE;
   const instanceAllocationStrategy = process.env.INSTANCE_ALLOCATION_STRATEGY || 'lowest-price'; // same as AWS default
@@ -198,7 +198,7 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
           runnerGroup,
           runnerOwner,
           runnerType,
-          disableUpdate,
+          disableAutoUpdate,
         },
         {
           ec2instanceCriteria: {

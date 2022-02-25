@@ -21,6 +21,7 @@ export async function adjust(event: PoolEvent): Promise<void> {
   const instanceTypes = process.env.INSTANCE_TYPES.split(',');
   const instanceTargetTargetCapacityType = process.env.INSTANCE_TARGET_CAPACITY_TYPE;
   const ephemeral = yn(process.env.ENABLE_EPHEMERAL_RUNNERS, { default: false });
+  const disableAutoUpdate = yn(process.env.DISABLE_RUNNER_AUTOUPDATE, { default: false });
   const launchTemplateName = process.env.LAUNCH_TEMPLATE_NAME;
   const instanceMaxSpotPrice = process.env.INSTANCE_MAX_SPOT_PRICE;
   const instanceAllocationStrategy = process.env.INSTANCE_ALLOCATION_STRATEGY || 'lowest-price'; // same as AWS default
@@ -60,7 +61,15 @@ export async function adjust(event: PoolEvent): Promise<void> {
   if (topUp > 0) {
     logger.info(`The pool will be topped up with ${topUp} runners.`);
     await createRunners(
-      { ephemeral, ghesBaseUrl, runnerExtraLabels, runnerGroup, runnerOwner, runnerType: 'Org', disableUpdate: false },
+      {
+        ephemeral,
+        ghesBaseUrl,
+        runnerExtraLabels,
+        runnerGroup,
+        runnerOwner,
+        runnerType: 'Org',
+        disableAutoUpdate: disableAutoUpdate,
+      },
       {
         ec2instanceCriteria: {
           instanceTypes,

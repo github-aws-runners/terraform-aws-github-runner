@@ -32,12 +32,13 @@ module "pool" {
     role_path                 = local.role_path
     role_permissions_boundary = var.role_permissions_boundary
     runner = {
-      ephemeral       = var.enable_ephemeral_runners
-      extra_labels    = var.runner_extra_labels
-      launch_template = aws_launch_template.runner
-      group_name      = var.runner_group_name
-      pool_owner      = var.pool_runner_owner
-      role            = aws_iam_role.runner
+      disable_runner_autoupdate = var.disable_runner_autoupdate
+      ephemeral                 = var.enable_ephemeral_runners
+      extra_labels              = var.runner_extra_labels
+      launch_template           = aws_launch_template.runner
+      group_name                = var.runner_group_name
+      pool_owner                = var.pool_runner_owner
+      role                      = aws_iam_role.runner
     }
     subnet_ids = var.subnet_ids
     tags       = local.tags
