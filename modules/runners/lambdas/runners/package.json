@@ -36,14 +36,14 @@
     "ts-node-dev": "^1.1.6"
   },
   "dependencies": {
-    "@aws-sdk/client-ssm": "^3.51.0",
+    "@aws-sdk/client-ssm": "^3.52.0",
     "@octokit/auth-app": "3.6.1",
     "@octokit/rest": "^18.12.0",
     "@octokit/types": "^6.34.0",
     "@types/aws-lambda": "^8.10.92",
     "@types/express": "^4.17.11",
-    "@types/node": "^17.0.17",
-    "aws-sdk": "^2.1075.0",
+    "@types/node": "^17.0.19",
+    "aws-sdk": "^2.1080.0",
     "proxy-agent": "^5.0.0",  
     "cron-parser": "^4.2.1",
     "tslog": "^3.3.2",
