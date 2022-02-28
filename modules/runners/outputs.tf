@@ -21,3 +21,7 @@ output "lambda_scale_down" {
 output "role_scale_down" {
   value = aws_iam_role.scale_down
 }
+
+output "block_device_mappings" {
+  value = aws_launch_template.runner.block_device_mappings
+}

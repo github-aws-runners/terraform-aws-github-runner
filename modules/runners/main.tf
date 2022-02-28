@@ -55,16 +55,17 @@ resource "aws_launch_template" "runner" {
   name = "${var.environment}-action-runner"
 
   dynamic "block_device_mappings" {
+    #for_each = var.block_device_mappings != null ? [var.block_device_mappings] : []
     for_each = [var.block_device_mappings]
     content {
-      device_name = lookup(block_device_mappings.value, "device_name", "/dev/xvda")
+      device_name = length(var.block_device_mappings) > 0 ? lookup(block_device_mappings.value, "device_name", "/dev/xvda") : null
 
       ebs {
-        delete_on_termination = lookup(block_device_mappings.value, "delete_on_termination", true)
-        volume_type           = lookup(block_device_mappings.value, "volume_type", "gp3")
-        volume_size           = lookup(block_device_mappings.value, "volume_size", var.volume_size)
-        encrypted             = lookup(block_device_mappings.value, "encrypted", true)
-        iops                  = lookup(block_device_mappings.value, "iops", null)
+        delete_on_termination = length(var.block_device_mappings) > 0 ? lookup(block_device_mappings.value, "delete_on_termination", true) : null
+        volume_type           = length(var.block_device_mappings) > 0 ? lookup(block_device_mappings.value, "volume_type", "gp3") : null
+        volume_size           = length(var.block_device_mappings) > 0 ? lookup(block_device_mappings.value, "volume_size", var.volume_size) : null
+        encrypted             = length(var.block_device_mappings) > 0 ? lookup(block_device_mappings.value, "encrypted", true) : null
+        iops                  = length(var.block_device_mappings) > 0 ? lookup(block_device_mappings.value, "iops", null) : null
       }
     }
   }

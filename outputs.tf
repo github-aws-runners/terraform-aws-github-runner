@@ -34,6 +34,10 @@ output "ssm_parameters" {
   value = module.ssm.parameters
 }
 
+output "block_device_mappings" {
+  value = module.runners.block_device_mappings
+}
+
 
 output "queues" {
   description = "SQS queues."
