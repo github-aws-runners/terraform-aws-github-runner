@@ -15,9 +15,15 @@ resource "aws_lambda_function" "scale_up" {
 
   environment {
     variables = {
+      DISABLE_RUNNER_AUTOUPDATE            = var.disable_runner_autoupdate
+      ENABLE_EPHEMERAL_RUNNERS             = var.enable_ephemeral_runners
       ENABLE_ORGANIZATION_RUNNERS          = var.enable_organization_runners
       ENVIRONMENT                          = var.environment
       GHES_URL                             = var.ghes_url
+      INSTANCE_ALLOCATION_STRATEGY         = var.instance_allocation_strategy
+      INSTANCE_MAX_SPOT_PRICE              = var.instance_max_spot_price
+      INSTANCE_TARGET_CAPACITY_TYPE        = var.instance_target_capacity_type
+      INSTANCE_TYPES                       = join(",", var.instance_types)
       LAUNCH_TEMPLATE_NAME                 = aws_launch_template.runner.name
       LOG_LEVEL                            = var.log_level
       LOG_TYPE                             = var.log_type
@@ -28,11 +34,6 @@ resource "aws_lambda_function" "scale_up" {
       RUNNER_GROUP_NAME                    = var.runner_group_name
       RUNNERS_MAXIMUM_COUNT                = var.runners_maximum_count
       SUBNET_IDS                           = join(",", var.subnet_ids)
-      ENABLE_EPHEMERAL_RUNNERS             = var.enable_ephemeral_runners
-      INSTANCE_TYPES                       = join(",", var.instance_types)
-      INSTANCE_TARGET_CAPACITY_TYPE        = var.instance_target_capacity_type
-      INSTANCE_MAX_SPOT_PRICE              = var.instance_max_spot_price
-      INSTANCE_ALLOCATION_STRATEGY         = var.instance_allocation_strategy
     }
   }
 

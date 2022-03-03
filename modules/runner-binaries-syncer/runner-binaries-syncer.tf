@@ -119,10 +119,10 @@ resource "aws_lambda_permission" "syncer" {
 ###################################################################################
 
 resource "aws_s3_bucket_object" "trigger" {
-  bucket = aws_s3_bucket.action_dist.id
-  key    = "triggers/${aws_lambda_function.syncer.id}-trigger.json"
-  source = "${path.module}/trigger.json"
-  etag   = filemd5("${path.module}/trigger.json")
+  bucket      = aws_s3_bucket.action_dist.id
+  key         = "triggers/${aws_lambda_function.syncer.id}-trigger.json"
+  source      = "${path.module}/trigger.json"
+  source_hash = filemd5("${path.module}/trigger.json")
 
   depends_on = [aws_s3_bucket_notification.on_deploy]
 }
