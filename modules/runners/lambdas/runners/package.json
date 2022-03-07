@@ -43,7 +43,7 @@
     "@types/aws-lambda": "^8.10.92",
     "@types/express": "^4.17.11",
     "@types/node": "^17.0.19",
-    "aws-sdk": "^2.1080.0",
+    "aws-sdk": "^2.1087.0",
     "cron-parser": "^4.2.1",
     "tslog": "^3.3.2",
     "typescript": "^4.5.5"
