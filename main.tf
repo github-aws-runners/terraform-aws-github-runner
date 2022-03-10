@@ -67,6 +67,7 @@ resource "aws_sqs_queue" "queued_builds" {
 
 
 resource "aws_sqs_queue_policy" "build_queue_dlq_policy" {
+  count     = var.redrive_build_queue.enabled ? 1 : 0
   queue_url = aws_sqs_queue.queued_builds.id
   policy    = data.aws_iam_policy_document.deny_unsecure_transport.json
 }
