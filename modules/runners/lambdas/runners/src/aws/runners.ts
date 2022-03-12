@@ -203,13 +203,19 @@ export async function createRunner(runnerParameters: RunnerInputParameters): Pro
   logger.info('Created instance(s): ', instances.join(','), LogFields.print());
 
   const ssm = new SSM();
+  const delayIncrement = 25;
+  let delay = 0;
+  
   for (const instance of instances) {
-    await ssm
-      .putParameter({
-        Name: `${runnerParameters.environment}-${instance}`,
-        Value: runnerParameters.runnerServiceConfig,
-        Type: 'SecureString',
-      })
-      .promise();
+    setTimeout(async () => {
+      await ssm
+        .putParameter({
+          Name: `${runnerParameters.environment}-${instance}`,
+          Value: runnerParameters.runnerServiceConfig,
+          Type: 'SecureString',
+        })
+        .promise()
+    }, delay)
+    delay += delayIncrement
   }
 }
