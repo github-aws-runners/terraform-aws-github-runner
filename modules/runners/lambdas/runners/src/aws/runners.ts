@@ -203,19 +203,17 @@ export async function createRunner(runnerParameters: RunnerInputParameters): Pro
   logger.info('Created instance(s): ', instances.join(','), LogFields.print());
 
   const ssm = new SSM();
-  const delayIncrement = 25;
-  let delay = 0;
+  const delay = async (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
   
   for (const instance of instances) {
-    setTimeout(async () => {
-      await ssm
-        .putParameter({
-          Name: `${runnerParameters.environment}-${instance}`,
-          Value: runnerParameters.runnerServiceConfig,
-          Type: 'SecureString',
-        })
-        .promise()
-    }, delay)
-    delay += delayIncrement
+    await ssm
+      .putParameter({
+        Name: `${runnerParameters.environment}-${instance}`,
+        Value: runnerParameters.runnerServiceConfig,
+        Type: 'SecureString',
+      })
+      .promise();
+    // Delay to prevent AWS ssm rate limits by being within the default throughput limit
+    await delay(25);
   }
 }
