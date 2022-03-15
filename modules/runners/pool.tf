@@ -19,7 +19,7 @@ module "pool" {
       log_level                      = var.log_level
       log_type                       = var.log_type
       logging_retention_in_days      = var.logging_retention_in_days
-      logging_kms_key_id             = var.logging_retention_in_days
+      logging_kms_key_id             = var.logging_kms_key_id
       reserved_concurrent_executions = var.pool_lambda_reserved_concurrent_executions
       s3_bucket                      = var.lambda_s3_bucket
       s3_key                         = var.runners_lambda_s3_key
