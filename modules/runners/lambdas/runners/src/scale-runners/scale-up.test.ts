@@ -362,6 +362,12 @@ describe('scaleUp with public GH', () => {
     });
   });
 
+  it('not checking queued workflows', async () => {
+    process.env.ENABLE_JOB_QUEUED_CHECK = 'false';
+    await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
+    expect(mockOctokit.actions.getJobForWorkflowRun).not.toBeCalled();
+  });
+
   it('does not retrieve installation id if already set', async () => {
     const appSpy = jest.spyOn(ghAuth, 'createGithubAppAuth');
     const installationSpy = jest.spyOn(ghAuth, 'createGithubInstallationAuth');
@@ -535,6 +541,7 @@ describe('scaleUp with public GH', () => {
 
     it('ephemeral runners only run with workflow_job event, others should fail.', async () => {
       process.env.ENABLE_EPHEMERAL_RUNNERS = 'true';
+      process.env.ENABLE_JOB_QUEUED_CHECK = 'false';
       await expect(
         scaleUpModule.scaleUp('aws:sqs', {
           ...TEST_DATA,
@@ -545,7 +552,18 @@ describe('scaleUp with public GH', () => {
 
     it('creates a ephemeral runner.', async () => {
       process.env.ENABLE_EPHEMERAL_RUNNERS = 'true';
+      process.env.ENABLE_JOB_QUEUED_CHECK = 'false';
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
+      expectedRunnerParams.runnerServiceConfig = [...expectedRunnerParams.runnerServiceConfig, `--ephemeral`];
+      expect(mockOctokit.actions.getJobForWorkflowRun).not.toBeCalled();
+      expect(createRunner).toBeCalledWith(expectedRunnerParams);
+    });
+
+    it('creates a ephemeral runner after checking job is queued.', async () => {
+      process.env.ENABLE_EPHEMERAL_RUNNERS = 'true';
+      process.env.ENABLE_JOB_QUEUED_CHECK = 'true';
+      await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
+      expect(mockOctokit.actions.getJobForWorkflowRun).toBeCalled();
       expectedRunnerParams.runnerServiceConfig = [...expectedRunnerParams.runnerServiceConfig, `--ephemeral`];
       expect(createRunner).toBeCalledWith(expectedRunnerParams);
     });

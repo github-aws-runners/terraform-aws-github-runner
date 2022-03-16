@@ -158,6 +158,7 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
   const launchTemplateName = process.env.LAUNCH_TEMPLATE_NAME;
   const instanceMaxSpotPrice = process.env.INSTANCE_MAX_SPOT_PRICE;
   const instanceAllocationStrategy = process.env.INSTANCE_ALLOCATION_STRATEGY || 'lowest-price'; // same as AWS default
+  const enableJobQueuedCheck = yn(process.env.ENABLE_JOB_QUEUED_CHECK, { default: true });
 
   if (ephemeralEnabled && payload.eventType !== 'workflow_job') {
     logger.warn(
@@ -190,7 +191,7 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
   const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl);
   const githubInstallationClient = await createOctoClient(ghAuth.token, ghesApiUrl);
 
-  if (ephemeral || (await isJobQueued(githubInstallationClient, payload))) {
+  if (!enableJobQueuedCheck || (await isJobQueued(githubInstallationClient, payload))) {
     const currentRunners = await listEC2Runners({
       environment,
       runnerType,

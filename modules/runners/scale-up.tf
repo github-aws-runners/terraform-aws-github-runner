@@ -17,6 +17,7 @@ resource "aws_lambda_function" "scale_up" {
     variables = {
       DISABLE_RUNNER_AUTOUPDATE            = var.disable_runner_autoupdate
       ENABLE_EPHEMERAL_RUNNERS             = var.enable_ephemeral_runners
+      ENABLE_JOB_QUEUED_CHECK              = local.enable_job_queued_check
       ENABLE_ORGANIZATION_RUNNERS          = var.enable_organization_runners
       ENVIRONMENT                          = var.environment
       GHES_URL                             = var.ghes_url

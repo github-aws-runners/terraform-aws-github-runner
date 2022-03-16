@@ -481,6 +481,12 @@ variable "enable_ephemeral_runners" {
   default     = false
 }
 
+variable "enable_job_queued_check" {
+  description = "Only scale if the job event received by the scale up lambda is is in the state queued. By default enabled for non ephemeral runners and disabled for ephemeral. Set this variable to overwrite the default behavior."
+  type        = bool
+  default     = null
+}
+
 variable "pool_lambda_timeout" {
   description = "Time out for the pool lambda lambda in seconds."
   type        = number
