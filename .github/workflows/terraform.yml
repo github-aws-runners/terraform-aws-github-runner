@@ -21,7 +21,7 @@ jobs:
       image: hashicorp/terraform:${{ matrix.terraform }}
     steps:
       - name: "Checkout"
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: "Fake zip files" # Validate will fail if it cannot find the zip files
         run: |
           touch modules/webhook/lambdas/webhook/webhook.zip
@@ -53,7 +53,7 @@ jobs:
     container:
       image: hashicorp/terraform:${{ matrix.terraform }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: terraform init
         run: terraform init -get -backend=false -input=false
       - if: contains(matrix.terraform, '1.1.')

@@ -217,7 +217,7 @@ describe('create runner', () => {
       expect(mockSSM.putParameter).toBeCalledWith({
         Name: `unit-test-environment-${instance}`,
         Type: 'SecureString',
-        Value: 'bla',
+        Value: '--token foo --url http://github.com',
       });
     }
   });
@@ -247,7 +247,7 @@ describe('create runner', () => {
     await createRunner(createRunnerConfig(defaultRunnerConfig));
     expect(mockSSM.putParameter).toBeCalledWith({
       Name: `${ENVIRONMENT}-i-1234`,
-      Value: 'bla',
+      Value: '--token foo --url http://github.com',
       Type: 'SecureString',
     });
   });
@@ -358,7 +358,7 @@ interface RunnerConfig {
 
 function createRunnerConfig(runnerConfig: RunnerConfig): RunnerInputParameters {
   return {
-    runnerServiceConfig: 'bla',
+    runnerServiceConfig: ['--token foo', '--url http://github.com'],
     environment: ENVIRONMENT,
     runnerType: runnerConfig.type,
     runnerOwner: REPO_NAME,

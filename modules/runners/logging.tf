@@ -54,6 +54,7 @@ resource "aws_cloudwatch_log_group" "gh_runners" {
   count             = length(local.loggroups_names)
   name              = local.loggroups_names[count.index]
   retention_in_days = var.logging_retention_in_days
+  kms_key_id        = var.logging_kms_key_id
   tags              = local.tags
 }
 

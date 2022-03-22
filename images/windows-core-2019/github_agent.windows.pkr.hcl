@@ -25,11 +25,25 @@ variable "ebs_delete_on_termination" {
   default     = true
 }
 
+variable "associate_public_ip_address" {
+  description = "If using a non-default VPC, there is no public IP address assigned to the EC2 instance. If you specified a public subnet, you probably want to set this to true. Otherwise the EC2 instance won't have access to the internet"
+  type        = string
+  default     = null
+}
+
+variable "custom_shell_commands" {
+  description = "Additional commands to run on the EC2 instance, to customize the instance, like installing packages"
+  type        = list(string)
+  default     = []
+}
+
 source "amazon-ebs" "githubrunner" {
-  ami_name      = "github-runner-windows-core-2019-${formatdate("YYYYMMDDhhmm", timestamp())}"
-  communicator  = "winrm"
-  instance_type = "t3a.medium"
-  region        = var.region
+  ami_name                    = "github-runner-windows-core-2019-${formatdate("YYYYMMDDhhmm", timestamp())}"
+  communicator                = "winrm"
+  instance_type               = "t3a.medium"
+  region                      = var.region
+  associate_public_ip_address = var.associate_public_ip_address
+
   source_ami_filter {
     filters = {
       name                = "Windows_Server-2019-English-Core-ContainersLatest-*"
@@ -70,8 +84,10 @@ build {
   }
 
   provisioner "powershell" {
-    inline = [templatefile("./windows-provisioner.ps1", {
-      action_runner_url = var.action_runner_url
-    })]
+    inline = concat([
+      templatefile("./windows-provisioner.ps1", {
+        action_runner_url = var.action_runner_url
+      })
+    ], var.custom_shell_commands)
   }
 }

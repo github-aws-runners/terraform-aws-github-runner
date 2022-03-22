@@ -63,6 +63,9 @@ module "runners" {
   #   size                = 20
   #   schedule_expression = "cron(* * * * ? *)"
   # }]
+  #
+  #
+  enable_job_queued_check = true
 
   # configure your pre-built AMI
   # enabled_userdata = false

@@ -27,7 +27,7 @@ jobs:
         working-directory: images/${{ matrix.image }}
     steps:
       - name: "Checkout"
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       
       - name: packer init
         run: packer init .

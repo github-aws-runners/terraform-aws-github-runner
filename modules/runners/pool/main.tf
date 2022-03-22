@@ -49,6 +49,7 @@ resource "aws_lambda_function" "pool" {
 resource "aws_cloudwatch_log_group" "pool" {
   name              = "/aws/lambda/${aws_lambda_function.pool.function_name}"
   retention_in_days = var.config.lambda.logging_retention_in_days
+  kms_key_id        = var.config.lambda.logging_kms_key_id
   tags              = var.config.tags
 }
 
@@ -82,7 +83,7 @@ resource "aws_iam_role_policy" "pool_logging" {
 resource "aws_iam_role_policy_attachment" "pool_vpc_execution_role" {
   count      = length(var.config.lambda.subnet_ids) > 0 ? 1 : 0
   role       = aws_iam_role.pool.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+  policy_arn = "arn:${var.aws_partition}:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }
 
 data "aws_iam_policy_document" "lambda_assume_role_policy" {

@@ -17,6 +17,38 @@ resource "random_string" "random" {
   upper   = false
 }
 
+data "aws_iam_policy_document" "deny_unsecure_transport" {
+  statement {
+    sid = "DenyUnsecureTransport"
+
+    effect = "Deny"
+
+    principals {
+      type        = "AWS"
+      identifiers = ["*"]
+    }
+
+    actions = [
+      "sqs:*"
+    ]
+
+    resources = [
+      "*"
+    ]
+
+    condition {
+      test     = "Bool"
+      variable = "aws:SecureTransport"
+      values   = ["false"]
+    }
+  }
+}
+
+resource "aws_sqs_queue_policy" "build_queue_policy" {
+  queue_url = aws_sqs_queue.queued_builds.id
+  policy    = data.aws_iam_policy_document.deny_unsecure_transport.json
+}
+
 resource "aws_sqs_queue" "queued_builds" {
   name                        = "${var.environment}-queued-builds${var.fifo_build_queue ? ".fifo" : ""}"
   delay_seconds               = var.delay_webhook_event
@@ -31,6 +63,13 @@ resource "aws_sqs_queue" "queued_builds" {
   }) : null
 
   tags = var.tags
+}
+
+
+resource "aws_sqs_queue_policy" "build_queue_dlq_policy" {
+  count     = var.redrive_build_queue.enabled ? 1 : 0
+  queue_url = aws_sqs_queue.queued_builds.id
+  policy    = data.aws_iam_policy_document.deny_unsecure_transport.json
 }
 
 resource "aws_sqs_queue" "queued_builds_dlq" {
@@ -67,6 +106,7 @@ module "webhook" {
   lambda_zip                       = var.webhook_lambda_zip
   lambda_timeout                   = var.webhook_lambda_timeout
   logging_retention_in_days        = var.logging_retention_in_days
+  logging_kms_key_id               = var.logging_kms_key_id
 
   # labels
   enable_workflow_job_labels_check = var.runner_enable_workflow_job_labels_check
@@ -83,11 +123,12 @@ module "webhook" {
 module "runners" {
   source = "./modules/runners"
 
-  aws_region  = var.aws_region
-  vpc_id      = var.vpc_id
-  subnet_ids  = var.subnet_ids
-  environment = var.environment
-  tags        = local.tags
+  aws_region    = var.aws_region
+  aws_partition = var.aws_partition
+  vpc_id        = var.vpc_id
+  subnet_ids    = var.subnet_ids
+  environment   = var.environment
+  tags          = local.tags
 
   s3_bucket_runner_binaries   = module.runner_binaries.bucket
   s3_location_runner_binaries = local.s3_action_runner_url
@@ -107,6 +148,7 @@ module "runners" {
   github_app_parameters                = local.github_app_parameters
   enable_organization_runners          = var.enable_organization_runners
   enable_ephemeral_runners             = var.enable_ephemeral_runners
+  enable_job_queued_check              = var.enable_job_queued_check
   disable_runner_autoupdate            = var.disable_runner_autoupdate
   enable_managed_runner_security_group = var.enable_managed_runner_security_group
   scale_down_schedule_expression       = var.scale_down_schedule_expression
@@ -133,6 +175,7 @@ module "runners" {
   lambda_security_group_ids        = var.lambda_security_group_ids
   http_proxy                       = var.http_proxy
   logging_retention_in_days        = var.logging_retention_in_days
+  logging_kms_key_id               = var.logging_kms_key_id
   enable_cloudwatch_agent          = var.enable_cloudwatch_agent
   cloudwatch_config                = var.cloudwatch_config
   runner_log_files                 = var.runner_log_files
@@ -188,6 +231,7 @@ module "runner_binaries" {
   lambda_zip                      = var.runner_binaries_syncer_lambda_zip
   lambda_timeout                  = var.runner_binaries_syncer_lambda_timeout
   logging_retention_in_days       = var.logging_retention_in_days
+  logging_kms_key_id              = var.logging_kms_key_id
 
   server_side_encryption_configuration = var.runner_binaries_s3_sse_configuration
 

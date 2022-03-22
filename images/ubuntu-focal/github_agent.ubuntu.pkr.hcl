@@ -31,6 +31,12 @@ variable "subnet_id" {
   default     = null
 }
 
+variable "associate_public_ip_address" {
+  description = "If using a non-default VPC, there is no public IP address assigned to the EC2 instance. If you specified a public subnet, you probably want to set this to true. Otherwise the EC2 instance won't have access to the internet"
+  type        = string
+  default     = null
+}
+
 variable "instance_type" {
   description = "The instance type Packer will use for the builder"
   type        = string
@@ -66,12 +72,20 @@ variable "snapshot_tags" {
   default     = {}
 }
 
+variable "custom_shell_commands" {
+  description = "Additional commands to run on the EC2 instance, to customize the instance, like installing packages"
+  type        = list(string)
+  default     = []
+}
+
 source "amazon-ebs" "githubrunner" {
-  ami_name          = "github-runner-ubuntu-focal-amd64-${formatdate("YYYYMMDDhhmm", timestamp())}"
-  instance_type     = var.instance_type
-  region            = var.region
-  security_group_id = var.security_group_id
-  subnet_id         = var.subnet_id
+  ami_name                    = "github-runner-ubuntu-focal-amd64-${formatdate("YYYYMMDDhhmm", timestamp())}"
+  instance_type               = var.instance_type
+  region                      = var.region
+  security_group_id           = var.security_group_id
+  subnet_id                   = var.subnet_id
+  associate_public_ip_address = var.associate_public_ip_address
+
   source_ami_filter {
     filters = {
       name                = "*/ubuntu-focal-20.04-amd64-server-*"
@@ -112,7 +126,7 @@ build {
     environment_vars = [
       "DEBIAN_FRONTEND=noninteractive"
     ]
-    inline = [
+    inline = concat([
       "sudo apt-get -y update",
       "sudo apt-get -y install ca-certificates curl gnupg lsb-release",
       "sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg",
@@ -128,7 +142,7 @@ build {
       "sudo curl -f https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o awscliv2.zip",
       "unzip awscliv2.zip",
       "sudo ./aws/install",
-    ]
+    ], var.custom_shell_commands)
   }
 
   provisioner "file" {

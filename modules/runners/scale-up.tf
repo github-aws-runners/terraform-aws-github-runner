@@ -17,6 +17,7 @@ resource "aws_lambda_function" "scale_up" {
     variables = {
       DISABLE_RUNNER_AUTOUPDATE            = var.disable_runner_autoupdate
       ENABLE_EPHEMERAL_RUNNERS             = var.enable_ephemeral_runners
+      ENABLE_JOB_QUEUED_CHECK              = local.enable_job_queued_check
       ENABLE_ORGANIZATION_RUNNERS          = var.enable_organization_runners
       ENVIRONMENT                          = var.environment
       GHES_URL                             = var.ghes_url
@@ -50,6 +51,7 @@ resource "aws_lambda_function" "scale_up" {
 resource "aws_cloudwatch_log_group" "scale_up" {
   name              = "/aws/lambda/${aws_lambda_function.scale_up.function_name}"
   retention_in_days = var.logging_retention_in_days
+  kms_key_id        = var.logging_kms_key_id
   tags              = var.tags
 }
 
@@ -100,11 +102,11 @@ resource "aws_iam_role_policy" "service_linked_role" {
   count  = var.create_service_linked_role_spot ? 1 : 0
   name   = "${var.environment}-service_linked_role"
   role   = aws_iam_role.scale_up.name
-  policy = templatefile("${path.module}/policies/service-linked-role-create-policy.json", {})
+  policy = templatefile("${path.module}/policies/service-linked-role-create-policy.json", { aws_partition = var.aws_partition })
 }
 
 resource "aws_iam_role_policy_attachment" "scale_up_vpc_execution_role" {
   count      = length(var.lambda_subnet_ids) > 0 ? 1 : 0
   role       = aws_iam_role.scale_up.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+  policy_arn = "arn:${var.aws_partition}:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }

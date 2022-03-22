@@ -29,7 +29,7 @@ export interface ListRunnerFilters {
 }
 
 export interface RunnerInputParameters {
-  runnerServiceConfig: string;
+  runnerServiceConfig: string[];
   environment: string;
   runnerType: 'Org' | 'Repo';
   runnerOwner: string;
@@ -207,7 +207,7 @@ export async function createRunner(runnerParameters: RunnerInputParameters): Pro
     await ssm
       .putParameter({
         Name: `${runnerParameters.environment}-${instance}`,
-        Value: runnerParameters.runnerServiceConfig,
+        Value: runnerParameters.runnerServiceConfig.join(' '),
         Type: 'SecureString',
       })
       .promise();

@@ -10,7 +10,7 @@
         "iam:PutRolePermissionsBoundary",
         "iam:PutRolePolicy"
       ],
-      "Resource": "arn:aws:iam::${account_id}:role/${role_namespace}/*",
+      "Resource": "arn:${aws_partition}:iam::${account_id}:role/${role_namespace}/*",
       "Condition": {
         "StringEquals": {
           "iam:PermissionsBoundary": "${permission_boundary}"
@@ -29,7 +29,7 @@
         "iam:DetachRolePolicy",
         "iam:DeleteRolePolicy"
       ],
-      "Resource": "arn:aws:iam::${account_id}:role/${role_namespace}/*"
+      "Resource": "arn:${aws_partition}:iam::${account_id}:role/${role_namespace}/*"
     },
     {
       "Sid": "PolicyInNamespace",
@@ -42,7 +42,7 @@
         "iam:GetPolicyVersion",
         "iam:SetDefaultPolicyVersion"
       ],
-      "Resource": "arn:aws:iam::${account_id}:policy/${policy_namespace}/*"
+      "Resource": "arn:${aws_partition}:iam::${account_id}:policy/${policy_namespace}/*"
     },
     {
       "Sid": "InstanceProfileInNamespace",
@@ -54,7 +54,7 @@
         "iam:AddRoleToInstanceProfile",
         "iam:GetInstanceProfile"
       ],
-      "Resource": "arn:aws:iam::${account_id}:instance-profile/${instance_profile_namespace}/*"
+      "Resource": "arn:${aws_partition}:iam::${account_id}:instance-profile/${instance_profile_namespace}/*"
     },
     {
       "Sid": "IamListActions",
@@ -78,7 +78,7 @@
         "iam:DeletePolicyVersion",
         "iam:SetDefaultPolicyVersion"
       ],
-      "Resource": "arn:aws:iam::${account_id}:policy/${boundary_namespace}/*"
+      "Resource": "arn:${aws_partition}:iam::${account_id}:policy/${boundary_namespace}/*"
     },
     {
       "Sid": "Services",

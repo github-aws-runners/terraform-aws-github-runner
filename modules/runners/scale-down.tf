@@ -47,6 +47,7 @@ resource "aws_lambda_function" "scale_down" {
 resource "aws_cloudwatch_log_group" "scale_down" {
   name              = "/aws/lambda/${aws_lambda_function.scale_down.function_name}"
   retention_in_days = var.logging_retention_in_days
+  kms_key_id        = var.logging_kms_key_id
   tags              = var.tags
 }
 
@@ -98,5 +99,5 @@ resource "aws_iam_role_policy" "scale_down_logging" {
 resource "aws_iam_role_policy_attachment" "scale_down_vpc_execution_role" {
   count      = length(var.lambda_subnet_ids) > 0 ? 1 : 0
   role       = aws_iam_role.scale_down.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+  policy_arn = "arn:${var.aws_partition}:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }

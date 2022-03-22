@@ -18,3 +18,9 @@ variable "account_id" {
   type        = string
 
 }
+
+variable "aws_partition" {
+  description = "(optional) partition in the arn namespace if not aws"
+  type        = string
+  default     = "aws"
+}

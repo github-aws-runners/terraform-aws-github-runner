@@ -31,6 +31,12 @@ variable "subnet_id" {
   default     = null
 }
 
+variable "associate_public_ip_address" {
+  description = "If using a non-default VPC, there is no public IP address assigned to the EC2 instance. If you specified a public subnet, you probably want to set this to true. Otherwise the EC2 instance won't have access to the internet"
+  type        = string
+  default     = null
+}
+
 variable "instance_type" {
   description = "The instance type Packer will use for the builder"
   type        = string
@@ -66,15 +72,22 @@ variable "snapshot_tags" {
   default     = {}
 }
 
+variable "custom_shell_commands" {
+  description = "Additional commands to run on the EC2 instance, to customize the instance, like installing packages"
+  type        = list(string)
+  default     = []
+}
+
 source "amazon-ebs" "githubrunner" {
-  ami_name          = "github-runner-amzn2-x86_64-${formatdate("YYYYMMDDhhmm", timestamp())}"
-  instance_type     = var.instance_type
-  region            = var.region
-  security_group_id = var.security_group_id
-  subnet_id         = var.subnet_id
+  ami_name                    = "github-runner-amzn2-x86_64-${formatdate("YYYYMMDDhhmm", timestamp())}"
+  instance_type               = var.instance_type
+  region                      = var.region
+  security_group_id           = var.security_group_id
+  subnet_id                   = var.subnet_id
+  associate_public_ip_address = var.associate_public_ip_address
   source_ami_filter {
     filters = {
-      name                = "amzn2-ami-hvm-2.*-x86_64-ebs"
+      name                = "amzn2-ami-kernel-5.*-hvm-*-x86_64-gp2"
       root-device-type    = "ebs"
       virtualization-type = "hvm"
     }
@@ -111,7 +124,7 @@ build {
   ]
   provisioner "shell" {
     environment_vars = []
-    inline = [
+    inline = concat([
       "sudo yum update -y",
       "sudo yum install -y amazon-cloudwatch-agent curl jq git",
       "sudo amazon-linux-extras install docker",
@@ -119,7 +132,7 @@ build {
       "sudo systemctl enable containerd.service",
       "sudo service docker start",
       "sudo usermod -a -G docker ec2-user",
-    ]
+    ], var.custom_shell_commands)
   }
 
   provisioner "file" {

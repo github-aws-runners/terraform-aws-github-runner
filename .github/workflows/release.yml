@@ -21,7 +21,7 @@ jobs:
         env:
           LAMBDA: ${{ matrix.lambda }}
         run: echo ::set-output name=name::${LAMBDA##*/}
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Add zip
         run: apt update && apt install zip
       - name: Build dist
@@ -39,7 +39,7 @@ jobs:
     needs:
       prepare
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
           persist-credentials: false

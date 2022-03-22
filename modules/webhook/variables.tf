@@ -56,6 +56,12 @@ variable "logging_retention_in_days" {
   default     = 7
 }
 
+variable "logging_kms_key_id" {
+  description = "Specifies the kms key id to encrypt the logs with"
+  type        = string
+  default     = null
+}
+
 variable "lambda_s3_bucket" {
   description = "S3 bucket from which to specify lambda functions. This is an alternative to providing local files directly."
   default     = null
