@@ -308,7 +308,7 @@ describe('create runner with errors', () => {
   it('test now error is thrown if an instance is created', async () => {
     createFleetMockWithErrors(['NonMappedError'], ['i-123']);
 
-    expect(await createRunner(createRunnerConfig(defaultRunnerConfig))).resolves;
+    await expect(createRunner(createRunnerConfig(defaultRunnerConfig))).resolves;
     expect(mockEC2.createFleet).toBeCalledWith(expectedCreateFleetRequest(defaultExpectedFleetRequestValues));
     expect(mockSSM.putParameter).toBeCalled();
   });
