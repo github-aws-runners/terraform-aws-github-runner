@@ -57,7 +57,7 @@ resource "aws_launch_template" "runner" {
   name = "${var.environment}-action-runner"
 
   dynamic "block_device_mappings" {
-    for_each = var.block_device_mappings != null ? [var.block_device_mappings] : []
+    for_each = var.block_device_mappings != null ? var.block_device_mappings : []
     content {
       device_name = lookup(block_device_mappings.value, "device_name", "/dev/xvda")
 

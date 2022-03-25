@@ -111,10 +111,7 @@ async function removeRunner(ec2runner: RunnerInfo, ghRunnerId: number): Promise<
       logger.error(`Failed to de-register GitHub runner: ${result.status}`, LogFields.print());
     }
   } catch (e) {
-    logger.info(
-      `Runner '${ec2runner.instanceId}' cannot be de-registered, most likely the runner is active.`,
-      LogFields.print(),
-    );
+    logger.error(`Runner '${ec2runner.instanceId}' cannot be de-registered. Error: ${e}`, LogFields.print());
   }
 }
 
@@ -135,10 +132,10 @@ async function evaluateAndRemoveRunners(
       const ghRunners = await listGitHubRunners(ec2Runner);
       const ghRunner = ghRunners.find((runner) => runner.name === ec2Runner.instanceId);
       if (ghRunner) {
-        if (runnerMinimumTimeExceeded(ec2Runner)) {
+        if (!ghRunner.busy && runnerMinimumTimeExceeded(ec2Runner)) {
           if (idleCounter > 0) {
             idleCounter--;
-            logger.info(`Runner '${ec2Runner.instanceId}' will kept idle.`, LogFields.print());
+            logger.info(`Runner '${ec2Runner.instanceId}' will be kept idle.`, LogFields.print());
           } else {
             logger.info(`Runner '${ec2Runner.instanceId}' will be terminated.`, LogFields.print());
             await removeRunner(ec2Runner, ghRunner.id);
