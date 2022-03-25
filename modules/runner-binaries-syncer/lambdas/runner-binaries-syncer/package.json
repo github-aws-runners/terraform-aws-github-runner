@@ -35,6 +35,6 @@
   },
   "dependencies": {
     "axios": "^0.26.1",
-    "tslog": "^3.3.2"
+    "tslog": "^3.3.3"
   }
 }
