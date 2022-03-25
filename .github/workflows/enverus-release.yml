@@ -1,4 +1,4 @@
-name: Release build
+name: Enverus Release build
 
 on:
   push:
@@ -20,7 +20,7 @@ jobs:
         id: lambda
         env:
           LAMBDA: ${{ matrix.lambda }}
-        run: echo ::set-output name=name::${LAMBDA##*/}-enverus
+        run: echo ::set-output name=name::${LAMBDA##*/}
       - uses: actions/checkout@v3
       - name: Add zip
         run: apt update && apt install zip
@@ -45,15 +45,15 @@ jobs:
           persist-credentials: false
       - uses: actions/download-artifact@v2
         with:
-          name: webhook-enverus
+          name: webhook
           path: artifacts
       - uses: actions/download-artifact@v2
         with:
-          name: runners-enverus
+          name: runners
           path: artifacts
       - uses: actions/download-artifact@v2
         with:
-          name: runner-binaries-syncer-enverus
+          name: runner-binaries-syncer
           path: artifacts
 
       - name: Get installation token
