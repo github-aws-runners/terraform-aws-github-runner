@@ -1,0 +1,84 @@
+name: Release build
+
+on:
+  push:
+    branches:
+      - master
+      - develop
+  workflow_dispatch:
+
+jobs:
+  prepare:
+    name: Create dist
+    runs-on: ubuntu-latest
+    container: node:14
+    strategy:
+      matrix:
+        lambda: ["modules/webhook/lambdas/webhook", "modules/runner-binaries-syncer/lambdas/runner-binaries-syncer", "modules/runners/lambdas/runners"]
+    steps:
+      - name: Extract lambda name
+        id: lambda
+        env:
+          LAMBDA: ${{ matrix.lambda }}
+        run: echo ::set-output name=name::${LAMBDA##*/}-enverus
+      - uses: actions/checkout@v3
+      - name: Add zip
+        run: apt update && apt install zip
+      - name: Build dist
+        working-directory: ${{ matrix.lambda }}
+        run: yarn install && yarn run test && yarn dist
+      - uses: actions/upload-artifact@v2
+        with:
+          name: ${{ steps.lambda.outputs.name }}
+          path: ${{ matrix.lambda }}/${{ steps.lambda.outputs.name }}.zip
+          retention-days: 1
+
+  release:
+    name: release
+    runs-on: ubuntu-latest
+    needs:
+      prepare
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/download-artifact@v2
+        with:
+          name: webhook-enverus
+          path: artifacts
+      - uses: actions/download-artifact@v2
+        with:
+          name: runners-enverus
+          path: artifacts
+      - uses: actions/download-artifact@v2
+        with:
+          name: runner-binaries-syncer-enverus
+          path: artifacts
+
+      - name: Get installation token
+        uses: npalm/action-app-token@v1.0.0
+        id: app-token
+        with:
+          appId: ${{ secrets.FOREST_RELEASER_APP_ID }}
+          appPrivateKeyBase64: ${{ secrets.FOREST_RELEASER_APP_PRIVATE_KEY_BASE64 }}
+          appInstallationType: repo
+          appInstallationValue: ${{ github.repository }}
+
+      - name: Dry run release
+        if: github.event_name != 'pull_request'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Read only token
+        run: |
+          cp .release/* .
+          yarn
+          yarn release -d --repositoryUrl https://x-access-token:$GITHUB_TOKEN@github.com/$GITHUB_REPOSITORY.git
+
+      - name: Release
+        if: github.event_name != 'pull_request' && contains('refs/heads/master', github.ref)
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          cp .release/* .
+          yarn
+          yarn release --repositoryUrl https://x-access-token:$GITHUB_TOKEN@github.com/$GITHUB_REPOSITORY.git
