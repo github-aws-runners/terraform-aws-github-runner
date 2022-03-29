@@ -1,5 +1,37 @@
 # Changelog
 
+## [0.33.0](https://github.com/enverus-cts/terraform-aws-github-runner/compare/v0.32.0...v0.33.0) (2022-03-29)
+
+
+### Features
+
+*  Add associate_public_ip_address variable to windows AMI too ([#1819](https://github.com/enverus-cts/terraform-aws-github-runner/issues/1819)) ([0b8e1fc](https://github.com/enverus-cts/terraform-aws-github-runner/commit/0b8e1fc6ce0308c925f33ab5b118215259392359)), closes [/github.com/philips-labs/terraform-aws-github-runner/pull/1816#issuecomment-1060650668](https://github.com/enverus-cts//github.com/philips-labs/terraform-aws-github-runner/pull/1816/issues/issuecomment-1060650668)
+* Add associate_public_ip_address variable ([#1816](https://github.com/enverus-cts/terraform-aws-github-runner/issues/1816)) ([052e9f8](https://github.com/enverus-cts/terraform-aws-github-runner/commit/052e9f861ea718be9c579aa1d52bc52237aea320))
+* Add option for ephemeral to check builds status before scaling ([#1854](https://github.com/enverus-cts/terraform-aws-github-runner/issues/1854)) ([7eb0bda](https://github.com/enverus-cts/terraform-aws-github-runner/commit/7eb0bdad62d77fa418ddf5db16bdddec2cb92875))
+* Add option for KMS encryption for cloudwatch log groups ([#1833](https://github.com/enverus-cts/terraform-aws-github-runner/issues/1833)) ([3f1a67f](https://github.com/enverus-cts/terraform-aws-github-runner/commit/3f1a67ff2135880b2fe217bf3403170012c304a2))
+* Add output image id used in launch template ([#1676](https://github.com/enverus-cts/terraform-aws-github-runner/issues/1676)) ([a49fab4](https://github.com/enverus-cts/terraform-aws-github-runner/commit/a49fab4703dc6eec88d83b457af268a0f802eef5))
+* Add possibility to create multiple ebs ([#1845](https://github.com/enverus-cts/terraform-aws-github-runner/issues/1845)) ([7a2ca0d](https://github.com/enverus-cts/terraform-aws-github-runner/commit/7a2ca0deb0d874a1ff2460f1108f56dde8c683b8))
+* Add SQS queue resource policy to improve security ([#1798](https://github.com/enverus-cts/terraform-aws-github-runner/issues/1798)) ([96def9a](https://github.com/enverus-cts/terraform-aws-github-runner/commit/96def9a2150e3aa253b9f24884097eef2a84bc99))
+* Add Support for Alternative Partitions in ARNs (like govcloud) ([#1815](https://github.com/enverus-cts/terraform-aws-github-runner/issues/1815)) ([0ba06c8](https://github.com/enverus-cts/terraform-aws-github-runner/commit/0ba06c87cd393db7caa91f603051011de6a13c46))
+* Add variable to specify custom commands while building the AMI ([#1838](https://github.com/enverus-cts/terraform-aws-github-runner/issues/1838)) ([8f9c342](https://github.com/enverus-cts/terraform-aws-github-runner/commit/8f9c34236adc74e4ccb46a06bdd4d946a2bee9a7))
+* **images:** Added ubuntu-focual example packer configuration ([#1644](https://github.com/enverus-cts/terraform-aws-github-runner/issues/1644)) ([997b171](https://github.com/enverus-cts/terraform-aws-github-runner/commit/997b17174b1c59476d1e7ff5ca8b6a9b1e1b8528))
+* Parameterise delete_on_termination ([#1758](https://github.com/enverus-cts/terraform-aws-github-runner/issues/1758)) ([6282351](https://github.com/enverus-cts/terraform-aws-github-runner/commit/628235135d4e01dd1a1bde5b8f5a063eff73c05e)), closes [#1745](https://github.com/enverus-cts/terraform-aws-github-runner/issues/1745)
+* **runner:** Ability to disable default runner security group creation ([#1718](https://github.com/enverus-cts/terraform-aws-github-runner/issues/1718)) ([94779f8](https://github.com/enverus-cts/terraform-aws-github-runner/commit/94779f8aa217edfebfba57da73a246f7497dc793))
+* **runner:** Add option to disable auto update ([#1791](https://github.com/enverus-cts/terraform-aws-github-runner/issues/1791)) ([c2a834f](https://github.com/enverus-cts/terraform-aws-github-runner/commit/c2a834fa324016a18227327c262203791478b394))
+
+
+### Bug Fixes
+
+* Autoupdate should be disabled by default ([#1797](https://github.com/enverus-cts/terraform-aws-github-runner/issues/1797)) ([828bed6](https://github.com/enverus-cts/terraform-aws-github-runner/commit/828bed6f021439e5a1cff690e29b6e322cb4d304))
+* Create SQS DLQ policy only if DLQ is created ([#1839](https://github.com/enverus-cts/terraform-aws-github-runner/issues/1839)) ([c88a005](https://github.com/enverus-cts/terraform-aws-github-runner/commit/c88a0054bb00f64c69a4aef08a6258ab98ee0b9d))
+* Don't delete busy runners ([#1832](https://github.com/enverus-cts/terraform-aws-github-runner/issues/1832)) ([0e9b083](https://github.com/enverus-cts/terraform-aws-github-runner/commit/0e9b083ec99b228037acca4477e680deb6343bb7))
+* **examples:** Update AMI filter ([#1673](https://github.com/enverus-cts/terraform-aws-github-runner/issues/1673)) ([39c019c](https://github.com/enverus-cts/terraform-aws-github-runner/commit/39c019cb30aca306ba330a8613222f011436faec))
+* Limit AWS Terraform Provider to 3.* ([#1741](https://github.com/enverus-cts/terraform-aws-github-runner/issues/1741)) ([0cf2b5d](https://github.com/enverus-cts/terraform-aws-github-runner/commit/0cf2b5d751600c716aaf2c222ea24721611f16a2))
+* Retention days was used instead of kms key id for pool ([#1855](https://github.com/enverus-cts/terraform-aws-github-runner/issues/1855)) ([aa29d93](https://github.com/enverus-cts/terraform-aws-github-runner/commit/aa29d9385753e3a578fb681363f022129dc501c2))
+* **runner:** Cannot disable cloudwatch agent ([#1738](https://github.com/enverus-cts/terraform-aws-github-runner/issues/1738)) ([0f798ca](https://github.com/enverus-cts/terraform-aws-github-runner/commit/0f798caf923d0be86713b36273c5b53510a57def))
+* **syncer:** Fix for windows binaries in action runner syncer ([#1716](https://github.com/enverus-cts/terraform-aws-github-runner/issues/1716)) ([63e0e27](https://github.com/enverus-cts/terraform-aws-github-runner/commit/63e0e27d4ed4d93f060153d3eb706ce7b5750bd1))
+* Upgrade Amazon base AMI to Amazon Linux 2 kernel 5x ([#1812](https://github.com/enverus-cts/terraform-aws-github-runner/issues/1812)) ([9aa5532](https://github.com/enverus-cts/terraform-aws-github-runner/commit/9aa5532e6e9d7fab7ea2f1e9995e608cf063ca5e))
+
 ## [0.39.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v0.38.0...v0.39.0) (2022-03-25)
 
 
