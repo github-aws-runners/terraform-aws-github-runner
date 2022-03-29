@@ -1,4 +1,4 @@
-name: Lambda Syncer
+name: Enverus Lambda Syncer
 on:
   push:
     branches:
