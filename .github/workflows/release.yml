@@ -27,7 +27,7 @@ jobs:
       - name: Build dist
         working-directory: ${{ matrix.lambda }}
         run: yarn install && yarn run test && yarn dist
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: ${{ steps.lambda.outputs.name }}
           path: ${{ matrix.lambda }}/${{ steps.lambda.outputs.name }}.zip
