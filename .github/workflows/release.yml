@@ -43,15 +43,15 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: webhook
           path: artifacts
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: runners
           path: artifacts
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: runner-binaries-syncer
           path: artifacts
