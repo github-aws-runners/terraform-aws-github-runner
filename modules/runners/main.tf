@@ -39,6 +39,30 @@ locals {
   enable_job_queued_check = var.enable_job_queued_check == null ? !var.enable_ephemeral_runners : var.enable_job_queued_check
 }
 
+data "template_cloudinit_config" "userdata" {
+  gzip          = true
+  base64_encode = true
+  part {
+    filename     = "00-init"
+    content_type = "text/x-shellscript"
+    content = templatefile(local.userdata_template, {
+      pre_install = var.userdata_pre_install
+      install_runner = templatefile(local.userdata_install_runner[var.runner_os], {
+        S3_LOCATION_RUNNER_DISTRIBUTION = var.s3_location_runner_binaries
+        RUNNER_ARCHITECTURE             = var.runner_architecture
+      })
+      post_install    = var.userdata_post_install
+      start_runner    = templatefile(local.userdata_start_runner[var.runner_os], {})
+      ghes_url        = var.ghes_url
+      ghes_ssl_verify = var.ghes_ssl_verify
+      ## retain these for backwards compatibility
+      environment                     = var.environment
+      enable_cloudwatch_agent         = var.enable_cloudwatch_agent
+      ssm_key_cloudwatch_agent_config = var.enable_cloudwatch_agent ? aws_ssm_parameter.cloudwatch_agent_config_runner[0].name : ""
+    })
+  }
+}
+
 data "aws_ami" "runner" {
   most_recent = "true"
 
@@ -116,21 +140,7 @@ resource "aws_launch_template" "runner" {
   }
 
 
-  user_data = var.enabled_userdata ? base64encode(templatefile(local.userdata_template, {
-    pre_install = var.userdata_pre_install
-    install_runner = templatefile(local.userdata_install_runner[var.runner_os], {
-      S3_LOCATION_RUNNER_DISTRIBUTION = var.s3_location_runner_binaries
-      RUNNER_ARCHITECTURE             = var.runner_architecture
-    })
-    post_install    = var.userdata_post_install
-    start_runner    = templatefile(local.userdata_start_runner[var.runner_os], {})
-    ghes_url        = var.ghes_url
-    ghes_ssl_verify = var.ghes_ssl_verify
-    ## retain these for backwards compatibility
-    environment                     = var.environment
-    enable_cloudwatch_agent         = var.enable_cloudwatch_agent
-    ssm_key_cloudwatch_agent_config = var.enable_cloudwatch_agent ? aws_ssm_parameter.cloudwatch_agent_config_runner[0].name : ""
-  })) : ""
+  user_data = var.enabled_userdata ? data.template_cloudinit_config.userdata.rendered : ""
 
   tags = local.tags
 
