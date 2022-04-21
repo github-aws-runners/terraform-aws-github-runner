@@ -40,7 +40,7 @@ locals {
 }
 
 data "template_cloudinit_config" "userdata" {
-  gzip          = false
+  gzip          = true
   base64_encode = true
   part {
     filename     = "00-init"
