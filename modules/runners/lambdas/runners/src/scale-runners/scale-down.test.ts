@@ -18,6 +18,8 @@ const mockOctokit = {
     listSelfHostedRunnersForOrg: jest.fn(),
     deleteSelfHostedRunnerFromOrg: jest.fn(),
     deleteSelfHostedRunnerFromRepo: jest.fn(),
+    getSelfHostedRunnerForOrg: jest.fn(),
+    getSelfHostedRunnerForRepo: jest.fn(),
   },
   paginate: jest.fn(),
 };
@@ -144,10 +146,14 @@ const DEFAULT_RUNNERS_ORIGINAL = [
     repo: `${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName}`,
   },
   {
-    instanceId: 'i-busy-112',
-    launchTime: moment(new Date())
-      .subtract(minimumRunningTimeInMinutes + 27, 'minutes')
-      .toDate(),
+    instanceId: 'i-running-112',
+    launchTime: moment(new Date()).subtract(25, 'minutes').toDate(),
+    type: 'Repo',
+    owner: `doe/another-repo`,
+  },
+  {
+    instanceId: 'i-running-113',
+    launchTime: moment(new Date()).subtract(25, 'minutes').toDate(),
     type: 'Org',
     owner: TEST_DATA.repositoryOwner,
   },
@@ -157,37 +163,42 @@ const DEFAULT_REGISTERED_RUNNERS = [
   {
     id: 101,
     name: 'i-idle-101',
-    busy: false,
   },
   {
     id: 102,
     name: 'i-idle-102',
-    busy: false,
   },
   {
     id: 103,
     name: 'i-oldest-idle-103',
-    busy: false,
   },
   {
     id: 104,
     name: 'i-oldest-idle-104',
-    busy: false,
   },
   {
     id: 105,
     name: 'i-running-105',
-    busy: false,
   },
   {
     id: 106,
     name: 'i-running-106',
-    busy: false,
   },
   {
-    id: 112,
-    name: 'i-busy-112',
-    busy: true,
+    id: 1121,
+    name: 'i-running-112-1',
+  },
+  {
+    id: 1122,
+    name: 'i-running-112-2',
+  },
+  {
+    id: 1131,
+    name: 'i-running-113-1',
+  },
+  {
+    id: 1132,
+    name: 'i-running-113-2',
   },
 ];
 
@@ -235,6 +246,29 @@ describe('scaleDown', () => {
       }
     });
 
+    mockOctokit.actions.getSelfHostedRunnerForRepo.mockImplementation((repo) => {
+      if (repo.runner_id === 1121) {
+        return {
+          data: { busy: true },
+        };
+      } else {
+        return {
+          data: { busy: false },
+        };
+      }
+    });
+    mockOctokit.actions.getSelfHostedRunnerForOrg.mockImplementation((repo) => {
+      if (repo.runner_id === 1131) {
+        return {
+          data: { busy: true },
+        };
+      } else {
+        return {
+          data: { busy: false },
+        };
+      }
+    });
+
     const mockTerminateRunners = mocked(terminateRunner);
     mockTerminateRunners.mockImplementation(async () => {
       return;
@@ -279,8 +313,7 @@ describe('scaleDown', () => {
     );
 
     RUNNERS_ALL_REMOVED = DEFAULT_RUNNERS_ORG.filter(
-      (r) =>
-        !r.instanceId.includes('running') && !r.instanceId.includes('registered') && !r.instanceId.includes('busy'),
+      (r) => !r.instanceId.includes('running') && !r.instanceId.includes('registered'),
     );
     DEFAULT_RUNNERS_ORPHANED = DEFAULT_RUNNERS_ORIGINAL.filter(
       (r) => r.instanceId.includes('orphan') && !r.instanceId.includes('not-registered'),
@@ -349,7 +382,7 @@ describe('scaleDown', () => {
       beforeEach(() => {
         process.env.SCALE_DOWN_CONFIG = JSON.stringify([
           {
-            idleCount: 2,
+            idleCount: 3,
             cron: '* * * * * *',
             timeZone: 'Europe/Amsterdam',
           },
@@ -479,7 +512,7 @@ describe('scaleDown', () => {
       beforeEach(() => {
         process.env.SCALE_DOWN_CONFIG = JSON.stringify([
           {
-            idleCount: 2,
+            idleCount: 3,
             cron: '* * * * * *',
             timeZone: 'Europe/Amsterdam',
           },
