@@ -142,7 +142,7 @@ resource "aws_launch_template" "runner" {
   }
 
 
-  user_data = var.enabled_userdata ? data.template_cloudinit_config.userdata.rendered : ""
+  user_data = var.enabled_userdata ? data.template_cloudinit_config.userdata[0].rendered : ""
 
   tags = local.tags
 
