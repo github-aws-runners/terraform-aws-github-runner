@@ -40,6 +40,8 @@ locals {
 }
 
 data "template_cloudinit_config" "userdata" {
+  count = var.enabled_userdata ? 1 : 0
+
   gzip          = true
   base64_encode = true
   part {
