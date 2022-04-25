@@ -25,4 +25,4 @@ jobs:
         with:
           requireScope: false
           validateSingleCommit: true
-          ignoreLabels: release
+          ignoreLabels: release merge
