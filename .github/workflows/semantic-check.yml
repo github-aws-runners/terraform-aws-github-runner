@@ -1,4 +1,4 @@
-ame: "Semantic Check"
+name: "Semantic Check"
 
 on:
   pull_request_target:
@@ -25,3 +25,4 @@ jobs:
         with:
           requireScope: false
           validateSingleCommit: true
+          ignoreLabels: release
