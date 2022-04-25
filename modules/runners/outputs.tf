@@ -23,5 +23,5 @@ output "role_scale_down" {
 }
 
 output "role_pool" {
-  value = length(var.pool_config) == 0 ? {} : module.pool.role_pool
+  value = length(var.pool_config) == 0 ? null : module.pool[0].role_pool
 }
