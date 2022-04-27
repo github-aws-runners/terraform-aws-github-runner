@@ -536,6 +536,13 @@
     terminal-link "^2.0.0"
     v8-to-istanbul "^8.1.0"
 
+"@jest/schemas@^28.0.0":
+  version "28.0.0"
+  resolved "https://registry.yarnpkg.com/@jest/schemas/-/schemas-28.0.0.tgz#55cf5fcc82440a2a39b717bb949570c501fd5410"
+  integrity sha512-Pap9Jvwr8KYFvDgkya/p0FCVya+jZkWt57lHpwBylfjgmwi/gtXfhyAO/Cw+jKuMafHcXY0beNf2XV2pkcu9vA==
+  dependencies:
+    "@sinclair/typebox" "^0.23.3"
+
 "@jest/source-map@^27.5.1":
   version "27.5.1"
   resolved "https://registry.yarnpkg.com/@jest/source-map/-/source-map-27.5.1.tgz#6608391e465add4205eae073b55e7f279e04e8cf"
@@ -595,6 +602,18 @@
     "@types/istanbul-reports" "^3.0.0"
     "@types/node" "*"
     "@types/yargs" "^16.0.0"
+    chalk "^4.0.0"
+
+"@jest/types@^28.0.0":
+  version "28.0.0"
+  resolved "https://registry.yarnpkg.com/@jest/types/-/types-28.0.0.tgz#1818a07d26b204c1c34a5b22474d0a32f4b02a8d"
+  integrity sha512-4rxVTiBbSjsl8V9sXkspfxW+t2Tdcmmc3fX7AU49gVrRpjXMjEDurSx/iruXnOSor4PTL0fwO61/2+n1XQ/RgA==
+  dependencies:
+    "@jest/schemas" "^28.0.0"
+    "@types/istanbul-lib-coverage" "^2.0.0"
+    "@types/istanbul-reports" "^3.0.0"
+    "@types/node" "*"
+    "@types/yargs" "^17.0.8"
     chalk "^4.0.0"
 
 "@nodelib/fs.scandir@2.1.5":
@@ -719,6 +738,11 @@
   dependencies:
     "@octokit/openapi-types" "^11.2.0"
 
+"@sinclair/typebox@^0.23.3":
+  version "0.23.4"
+  resolved "https://registry.yarnpkg.com/@sinclair/typebox/-/typebox-0.23.4.tgz#6ff93fd2585ce44f7481c9ff6af610fbb5de98a4"
+  integrity sha512-0/WqSvpVbCBAV1yPeko7eAczKbs78dNVAaX14quVlwOb2wxfKuXCx91h4NrEfkYK9zEnyVSW4JVI/trP3iS+Qg==
+
 "@sinonjs/commons@^1.7.0":
   version "1.8.3"
   resolved "https://registry.yarnpkg.com/@sinonjs/commons/-/commons-1.8.3.tgz#3802ddd21a50a949b6721ddd72da36e67e7f1b2d"
@@ -828,10 +852,10 @@
   resolved "https://registry.yarnpkg.com/@types/json-schema/-/json-schema-7.0.9.tgz#97edc9037ea0c38585320b28964dde3b39e4660d"
   integrity sha512-qcUXuemtEu+E5wZSJHNxUXeCZhAfXKQ41D+duX+VYPde7xyEVZci+/oXKJL13tnRs9lR2pr4fod59GT6/X1/yQ==
 
-"@types/node@*", "@types/node@^17.0.23":
-  version "17.0.23"
-  resolved "https://registry.yarnpkg.com/@types/node/-/node-17.0.23.tgz#3b41a6e643589ac6442bdbd7a4a3ded62f33f7da"
-  integrity sha512-UxDxWn7dl97rKVeVS61vErvw086aCYhDLyvRQZ5Rk65rZKepaFdm53GeqXaKBuOhED4e9uWq34IC3TdSdJJ2Gw==
+"@types/node@*", "@types/node@^17.0.27":
+  version "17.0.27"
+  resolved "https://registry.yarnpkg.com/@types/node/-/node-17.0.27.tgz#f4df3981ae8268c066e8f49995639f855469081e"
+  integrity sha512-4/Ke7bbWOasuT3kceBZFGakP1dYN2XFd8v2l9bqF2LNWrmeU07JLpp56aEeG6+Q3olqO5TvXpW0yaiYnZJ5CXg==
 
 "@types/prettier@^2.1.5":
   version "2.4.2"
@@ -877,6 +901,13 @@
   version "16.0.4"
   resolved "https://registry.yarnpkg.com/@types/yargs/-/yargs-16.0.4.tgz#26aad98dd2c2a38e421086ea9ad42b9e51642977"
   integrity sha512-T8Yc9wt/5LbJyCaLiHPReJa0kApcIgJ7Bn735GjItUfh08Z1pJvu8QZqb9s+mMvKV6WUQRV7K2R46YbjMXTTJw==
+  dependencies:
+    "@types/yargs-parser" "*"
+
+"@types/yargs@^17.0.8":
+  version "17.0.10"
+  resolved "https://registry.yarnpkg.com/@types/yargs/-/yargs-17.0.10.tgz#591522fce85d8739bca7b8bb90d048e4478d186a"
+  integrity sha512-gmEaFwpj/7f/ROdtIlci1R1VYU1J4j95m8T+Tj3iBgiBFKg1foE/PSl93bBd5T9LDXNPo8UlNN6W0qwD8O5OaA==
   dependencies:
     "@types/yargs-parser" "*"
 
@@ -950,10 +981,10 @@
     "@typescript-eslint/types" "4.33.0"
     eslint-visitor-keys "^2.0.0"
 
-"@vercel/ncc@^0.33.3":
-  version "0.33.3"
-  resolved "https://registry.yarnpkg.com/@vercel/ncc/-/ncc-0.33.3.tgz#aacc6b3ea9f7b175e0c9a18c9b97e4005a2f4fcc"
-  integrity sha512-JGZ11QV+/ZcfudW2Cz2JVp54/pJNXbsuWRgSh2ZmmZdQBKXqBtIGrwI1Wyx8nlbzAiEFe7FHi4K1zX4//jxTnQ==
+"@vercel/ncc@^0.33.4":
+  version "0.33.4"
+  resolved "https://registry.yarnpkg.com/@vercel/ncc/-/ncc-0.33.4.tgz#e44a87511f583b7ba88e4b9ae90eeb7ba252b872"
+  integrity sha512-ln18hs7dMffelP47tpkaR+V5Tj6coykNyxJrlcmCormPqRQjB/Gv4cu2FfBG+PMzIfdZp2CLDsrrB1NPU22Qhg==
 
 abab@^2.0.3, abab@^2.0.5:
   version "2.0.5"
@@ -1086,10 +1117,10 @@ asynckit@^0.4.0:
   resolved "https://registry.yarnpkg.com/asynckit/-/asynckit-0.4.0.tgz#c79ed97f7f34cb8f2ba1bc9790bcc366474b4b79"
   integrity sha1-x57Zf380y48robyXkLzDZkdLS3k=
 
-aws-sdk@^2.1116.0:
-  version "2.1116.0"
-  resolved "https://registry.yarnpkg.com/aws-sdk/-/aws-sdk-2.1116.0.tgz#1187ab943e6bf730db282afe7950dd2af409cb5b"
-  integrity sha512-36JFrxPPh/fRQWsgGrZZbzTxRu7dq4KyCKKXPxgVMXylEJsG/KEAVMB1f3eq4PiI5eGxYrpt2OkKoMQZQZLjPA==
+aws-sdk@^2.1121.0:
+  version "2.1121.0"
+  resolved "https://registry.yarnpkg.com/aws-sdk/-/aws-sdk-2.1121.0.tgz#381510f7216f1d177b01620612f60014fa48e562"
+  integrity sha512-SEbPk0cFxiqhx8s2n9ozPafWyoIH944fg8Tpy9AxqZlq/tSCphWNE0CgKATnNAKoltWdVHBTKeLwnOAK/7OX7A==
   dependencies:
     buffer "4.9.2"
     events "1.1.1"
@@ -2369,6 +2400,14 @@ jest-mock@^27.5.1:
   integrity sha512-K4jKbY1d4ENhbrG2zuPWaQBvDly+iZ2yAW+T1fATN78hc0sInwn7wZB8XtlNnvHug5RMwV897Xm4LqmPM4e2Og==
   dependencies:
     "@jest/types" "^27.5.1"
+    "@types/node" "*"
+
+jest-mock@^28.0.0:
+  version "28.0.0"
+  resolved "https://registry.yarnpkg.com/jest-mock/-/jest-mock-28.0.0.tgz#f3ed57e1308fd827dcc68f60d84d3569281d43d3"
+  integrity sha512-C8xBtHuokPvmyX4ajh/TaenKGSbcu4pcIwjucD6ZZ7WznfSnMkLI/gzOh/YhUNr60tvBnxNsN+A0ECLG8pprTg==
+  dependencies:
+    "@jest/types" "^28.0.0"
     "@types/node" "*"
 
 jest-pnp-resolver@^1.2.2:

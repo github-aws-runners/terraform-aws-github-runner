@@ -55,7 +55,7 @@ For receiving the `check_run` or `workflow_job` event by the webhook (lambda), a
 
 - `workflow_job`: **(preferred option)** create a webhook on enterprise, org or app level. Select this option for ephemeral runners.
 - `check_run`: create a webhook on enterprise, org, repo or app level. When using the app option, the app needs to be installed to repo's are using the self-hosted runners.
--  a Webhook needs to be created. The webhook hook can be defined on enterprise, org, repo, or app level. 
+-  a Webhook needs to be created. The webhook hook can be defined on enterprise, org, repo, or app level.
 
 In AWS a [API gateway](https://docs.aws.amazon.com/apigateway/index.html) endpoint is created that is able to receive the GitHub webhook events via HTTP post. The gateway triggers the webhook lambda which will verify the signature of the event. This check guarantees the event is sent by the GitHub App. The lambda only handles `workflow_job` or `check_run` events with status `queued` and matching the runner labels (only for `workflow_job`). The accepted events are posted on a SQS queue. Messages on this queue will be delayed for a configurable amount of seconds (default 30 seconds) to give the available runners time to pick up this build.
 
@@ -197,17 +197,18 @@ The lambda for syncing the GitHub distribution to S3 is triggered via CloudWatch
 
 ### Setup the webhook / GitHub App (part 2)
 
-At this point you have 2 options. Either create a separate webhook (enterprise, 
-org, or repo), or create webhook in the App. 
+At this point you have 2 options. Either create a separate webhook (enterprise,
+org, or repo), or create webhook in the App.
 
 #### Option 1: Webhook
 
 1. Create a new webhook on repo level for repo level for repo level runner, or org (or enterprise level) for an org level runner.
 2. Provide the webhook url, should be part of the output of terraform.
 3. Provide the webhook secret (`terraform output -raw <NAME_OUTPUT_VAR>`).
-4. In the "Permissions & Events" section and then "Subscribe to Events" subsection, check either "Workflow Job" or "Check Run" (choose only 1 option!!!).
-5. In the "Install App" section, install the App in your organization, either in all or in selected repositories.
- 
+4. Ensure content type as `application/json`.
+5. In the "Permissions & Events" section and then "Subscribe to Events" subsection, check either "Workflow Job" or "Check Run" (choose only 1 option!!!).
+6. In the "Install App" section, install the App in your organization, either in all or in selected repositories.
+
 #### Option 2: App
 
 Go back to the GitHub App and update the following settings.
@@ -252,7 +253,7 @@ module "runners" {
 
 ### Pool
 
-The module basically supports two options for keeping a pool of runners. One is via a pool which only supports org-level runners, the second option is [keeping runners idle](#idle-runners). 
+The module basically supports two options for keeping a pool of runners. One is via a pool which only supports org-level runners, the second option is [keeping runners idle](#idle-runners).
 
 The pool is introduced in combination with the ephemeral runners and is primary meant to ensure if any event is unexpected dropped, and no runner was created the pool can pick up the job. The pool is maintained by a lambda. Each time the lambda is triggered a check is preformed if the number of idler runners managed by the module are meeting the expected pool size. If not, the pool will be adjusted. Keep in mind that the scale down function is still active and will terminate instances that are detected as idle.
 
@@ -304,10 +305,10 @@ For time zones please check [TZ database name column](https://en.wikipedia.org/w
 Currently a beta feature! You can configure runners to be ephemeral, runners will be used only for one job. The feature should be used in conjunction with listening for the workflow job event. Please consider the following:
 
 - The scale down lambda is still active, and should only remove orphan instances. But there is no strict check in place. So ensure you configure the `minimum_running_time_in_minutes` to a value that is high enough to got your runner booted and connected to avoid it got terminated before executing a job.
-- The messages sent from the webhook lambda to scale-up lambda are by default delayed delayed by SQS, to give available runners to option to start the job before the decision is made to scale more runners. For ephemeral runners there is no need to wait. Set `delay_webhook_event` to `0`. 
+- The messages sent from the webhook lambda to scale-up lambda are by default delayed delayed by SQS, to give available runners to option to start the job before the decision is made to scale more runners. For ephemeral runners there is no need to wait. Set `delay_webhook_event` to `0`.
 - All events on the queue will lead to a new runner crated by the lambda. By setting `enable_job_queued_check` to `true` you can enforce only create a runner if the event has a correlated queued job. Setting this can avoid creating useless runners, for example whn jobs got cancelled before a runner is created. We suggest to use this in combination with a pool.
 - To ensure runners are created in the same order GitHub sends the events we use by default a FIFO queue, this is mainly relevant for repo level runners. For ephemeral runners you can set `fifo_build_queue` to `false`.
-- Error related to scaling should be retried via SQS. You can configure `job_queue_retention_in_seconds` `redrive_build_queue` to tune the behavior. We have no mechanism to avoid events will never processed, which means potential no runner could be created and the job in GitHub can time out in 6 hours. 
+- Error related to scaling should be retried via SQS. You can configure `job_queue_retention_in_seconds` `redrive_build_queue` to tune the behavior. We have no mechanism to avoid events will never processed, which means potential no runner could be created and the job in GitHub can time out in 6 hours.
 
 The example for [ephemeral runners](./examples/ephemeral) is based on the [default example](./examples/default). Have look on the diff to see the major configuration differences.
 
@@ -345,7 +346,7 @@ The following sub modules are optional and are provided as example or utility:
 
 ### ARM64 configuration for submodules
 
-When using the top level module configure `runner_architecture = "arm64"` and ensure the list of `instance_types` matches. When not using the top-level, ensure these properties are set on the submodules. 
+When using the top level module configure `runner_architecture = "arm64"` and ensure the list of `instance_types` matches. When not using the top-level, ensure these properties are set on the submodules.
 
 ## Debugging
 
