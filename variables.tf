@@ -233,7 +233,14 @@ variable "block_device_mappings" {
     encrypted             = bool
     iops                  = number
   }))
-  default = []
+  default = [{
+    device_name           = "/dev/xvd"
+    delete_on_termination = true
+    volume_type           = "gp3"
+    volume_size           = 30
+    encrypted             = true
+    iops                  = null
+  }]
 }
 
 variable "ami_filter" {
@@ -390,9 +397,9 @@ variable "instance_max_spot_price" {
 }
 
 variable "volume_size" {
-  description = "Size of runner volume"
+  description = "(Deprecaated, use block_device_mappings. Size of runner volume, if set it overrides the value provide via block_device_mappings."
   type        = number
-  default     = 30
+  default     = null
 }
 
 variable "instance_type" {
