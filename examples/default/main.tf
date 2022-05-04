@@ -29,7 +29,7 @@ module "runners" {
     id             = var.github_app_id
     webhook_secret = random_id.random.hex
   }
-  
+
   block_device_mappings = []
 
   # Grab zip files via lambda_download
