@@ -56,7 +56,7 @@ variable "block_device_mappings" {
     iops                  = number
   }))
   default = [{
-    device_name           = "/dev/xvd"
+    device_name           = "/dev/xvda"
     delete_on_termination = true
     volume_type           = "gp3"
     volume_size           = 30
