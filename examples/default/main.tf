@@ -30,14 +30,22 @@ module "runners" {
     webhook_secret = random_id.random.hex
   }
 
-  block_device_mappings = []
+  # configure the block device mappings, default for Amazon Linux2
+  # block_device_mappings = [{
+  #   device_name           = "/dev/xvda"
+  #   delete_on_termination = true
+  #   volume_type           = "gp3"
+  #   volume_size           = 10
+  #   encrypted             = true
+  #   iops                  = null
+  # }]
 
   # Grab zip files via lambda_download
-  # webhook_lambda_zip                = "lambdas-download/webhook.zip"
-  # runner_binaries_syncer_lambda_zip = "lambdas-download/runner-binaries-syncer.zip"
-  # runners_lambda_zip                = "lambdas-download/runners.zip"
+  webhook_lambda_zip                = "lambdas-download/webhook.zip"
+  runner_binaries_syncer_lambda_zip = "lambdas-download/runner-binaries-syncer.zip"
+  runners_lambda_zip                = "lambdas-download/runners.zip"
 
-  enable_organization_runners = true
+  enable_organization_runners = false
   runner_extra_labels         = "default,example"
 
   # enable access to the runners via SSM
