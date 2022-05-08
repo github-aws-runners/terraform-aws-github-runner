@@ -26,3 +26,8 @@ updates:
     directory: "/modules/runners/lambdas/runners"
     schedule:
       interval: "weekly"
+
+  - package-ecosystem: "npm"
+    directory: "/.release"
+    schedule:
+      interval: "weekly"
