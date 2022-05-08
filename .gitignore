@@ -20,3 +20,5 @@ secrets.auto.tfvars
 .vscode
 
 **/coverage/*
+
+node_modules/
