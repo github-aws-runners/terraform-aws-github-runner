@@ -1847,10 +1847,10 @@ aws-lambda@^1.0.7:
     js-yaml "^3.14.1"
     watchpack "^2.0.0-beta.10"
 
-aws-sdk@^2.1127.0, aws-sdk@^2.814.0:
-  version "2.1127.0"
-  resolved "https://registry.yarnpkg.com/aws-sdk/-/aws-sdk-2.1127.0.tgz#c5dc814bb876ea896eddcbc7891ab6493f1a5153"
-  integrity sha512-jtP0CV89m2XNfgi1SnomrK798QqLmR+340w4KOMF0vBkY9kvGzPLV9GBNcg3JPj45tML1H4hSIonYkUUFSLkYw==
+aws-sdk@^2.1130.0, aws-sdk@^2.814.0:
+  version "2.1130.0"
+  resolved "https://registry.yarnpkg.com/aws-sdk/-/aws-sdk-2.1130.0.tgz#3aeeceaf1cfe82a8400295e7c2c6642a16a6a4fc"
+  integrity sha512-bkLXuOpHphKvaMAbbmqaHQtYsGICmoyEJdLlNOTCq7dH0uKxARcZEj01ebCifsJJ/fOrPt8EbNUHPu4/DOueDA==
   dependencies:
     buffer "4.9.2"
     events "1.1.1"
