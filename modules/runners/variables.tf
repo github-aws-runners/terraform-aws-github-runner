@@ -415,6 +415,12 @@ variable "kms_key_arn" {
   default     = null
 }
 
+variable "enable_runner_detailed_monitoring" {
+  description = "Enable detailed monitoring for runners"
+  type        = bool
+  default     = false
+}
+
 variable "egress_rules" {
   description = "List of egress rules for the GitHub runner instances."
   type = list(object({

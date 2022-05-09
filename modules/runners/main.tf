@@ -81,6 +81,10 @@ resource "aws_launch_template" "runner" {
     }
   }
 
+  monitoring {
+    enabled = var.enable_runner_detailed_monitoring
+  }
+
   iam_instance_profile {
     name = aws_iam_instance_profile.runner.name
   }

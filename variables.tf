@@ -165,8 +165,14 @@ variable "kms_key_arn" {
   default     = null
 }
 
+variable "enable_runner_detailed_monitoring" {
+  description = "Should detailed monitoring be enabled for the runner. Set this to true if you want to use default monitoring."
+  type        = bool
+  default     = false
+}
+
 variable "enabled_userdata" {
-  description = "Should the userdata script be enabled for the runner. Set this to false if you are using your own prebuilt AMI"
+  description = "Should the userdata script be enabled for the runner. Set this to false if you are using your own prebuilt AMI."
   type        = bool
   default     = true
 }
