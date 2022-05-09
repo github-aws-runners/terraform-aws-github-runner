@@ -166,7 +166,7 @@ variable "kms_key_arn" {
 }
 
 variable "enable_runner_detailed_monitoring" {
-  description = "Should detailed monitoring be enabled for the runner. Set this to true if you want to use default monitoring."
+  description = "Should detailed monitoring be enabled for the runner. Set this to true if you want to use detailed monitoring. See https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-cloudwatch-new.html for details."
   type        = bool
   default     = false
 }
