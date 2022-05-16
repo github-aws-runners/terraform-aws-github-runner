@@ -183,8 +183,8 @@ variable "userdata_template" {
   default     = null
 }
 
-variable "userdata_string" {
-  description = "Alternative user-data as string, replacing the default template. By providing your own user_data you have to take care of installing all required software, including the action runner. Variables userdata_pre/post_install and userdata_template are ignored."
+variable "userdata" {
+  description = "Alternative to userdata_template to pass userdata as string. Note: Usage of this variable overrides all templates in place by this module. You are responsible for the setup and installation of all software, including the action runner. Use with caution. Variables userdata_pre/post_install and userdata_template are ignored."
   type = string
   default = null
 }
