@@ -8,6 +8,7 @@
 *id_rsa*
 
 # other
+node_modules/
 .idea
 .DS_Store
 *.out
@@ -22,3 +23,5 @@ secrets.auto.tfvars
 .settings/
 
 **/coverage/*
+
+node_modules/

@@ -151,6 +151,7 @@ module "runners" {
   enable_job_queued_check              = var.enable_job_queued_check
   disable_runner_autoupdate            = var.disable_runner_autoupdate
   enable_managed_runner_security_group = var.enable_managed_runner_security_group
+  enable_runner_detailed_monitoring    = var.enable_runner_detailed_monitoring
   scale_down_schedule_expression       = var.scale_down_schedule_expression
   minimum_running_time_in_minutes      = var.minimum_running_time_in_minutes
   runner_boot_time_in_minutes          = var.runner_boot_time_in_minutes
@@ -162,7 +163,6 @@ module "runners" {
   enable_ssm_on_runners                = var.enable_ssm_on_runners
   egress_rules                         = var.runner_egress_rules
   runner_additional_security_group_ids = var.runner_additional_security_group_ids
-  volume_size                          = var.volume_size
   metadata_options                     = var.runner_metadata_options
 
   lambda_s3_bucket                 = var.lambda_s3_bucket

@@ -165,8 +165,14 @@ variable "kms_key_arn" {
   default     = null
 }
 
+variable "enable_runner_detailed_monitoring" {
+  description = "Should detailed monitoring be enabled for the runner. Set this to true if you want to use detailed monitoring. See https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-cloudwatch-new.html for details."
+  type        = bool
+  default     = false
+}
+
 variable "enabled_userdata" {
-  description = "Should the userdata script be enabled for the runner. Set this to false if you are using your own prebuilt AMI"
+  description = "Should the userdata script be enabled for the runner. Set this to false if you are using your own prebuilt AMI."
   type        = bool
   default     = true
 }
@@ -233,7 +239,14 @@ variable "block_device_mappings" {
     encrypted             = bool
     iops                  = number
   }))
-  default = []
+  default = [{
+    device_name           = "/dev/xvda"
+    delete_on_termination = true
+    volume_type           = "gp3"
+    volume_size           = 30
+    encrypted             = true
+    iops                  = null
+  }]
 }
 
 variable "ami_filter" {
@@ -393,12 +406,6 @@ variable "instance_max_spot_price" {
   description = "Max price price for spot intances per hour. This variable will be passed to the create fleet as max spot price for the fleet."
   type        = string
   default     = null
-}
-
-variable "volume_size" {
-  description = "Size of runner volume"
-  type        = number
-  default     = 30
 }
 
 variable "instance_type" {

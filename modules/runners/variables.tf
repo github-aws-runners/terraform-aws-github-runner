@@ -55,7 +55,14 @@ variable "block_device_mappings" {
     encrypted             = bool
     iops                  = number
   }))
-  default = []
+  default = [{
+    device_name           = "/dev/xvda"
+    delete_on_termination = true
+    volume_type           = "gp3"
+    volume_size           = 30
+    encrypted             = true
+    iops                  = null
+  }]
 }
 
 variable "market_options" {
@@ -402,16 +409,16 @@ variable "runner_additional_security_group_ids" {
   default     = []
 }
 
-variable "volume_size" {
-  description = "Size of runner volume"
-  type        = number
-  default     = 30
-}
-
 variable "kms_key_arn" {
   description = "Optional CMK Key ARN to be used for Parameter Store."
   type        = string
   default     = null
+}
+
+variable "enable_runner_detailed_monitoring" {
+  description = "Enable detailed monitoring for runners"
+  type        = bool
+  default     = false
 }
 
 variable "egress_rules" {

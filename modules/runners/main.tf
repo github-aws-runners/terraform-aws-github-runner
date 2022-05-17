@@ -59,14 +59,14 @@ resource "aws_launch_template" "runner" {
   dynamic "block_device_mappings" {
     for_each = var.block_device_mappings != null ? var.block_device_mappings : []
     content {
-      device_name = lookup(block_device_mappings.value, "device_name", "/dev/xvda")
+      device_name = block_device_mappings.value.device_name
 
       ebs {
-        delete_on_termination = lookup(block_device_mappings.value, "delete_on_termination", true)
-        volume_type           = lookup(block_device_mappings.value, "volume_type", "gp3")
-        volume_size           = lookup(block_device_mappings.value, "volume_size", var.volume_size)
-        encrypted             = lookup(block_device_mappings.value, "encrypted", true)
-        iops                  = lookup(block_device_mappings.value, "iops", null)
+        delete_on_termination = block_device_mappings.value.delete_on_termination
+        volume_type           = block_device_mappings.value.volume_type
+        volume_size           = block_device_mappings.value.volume_size
+        encrypted             = block_device_mappings.value.encrypted
+        iops                  = block_device_mappings.value.iops
       }
     }
   }
@@ -79,6 +79,10 @@ resource "aws_launch_template" "runner" {
       http_tokens                 = metadata_options.value.http_tokens
       http_put_response_hop_limit = metadata_options.value.http_put_response_hop_limit
     }
+  }
+
+  monitoring {
+    enabled = var.enable_runner_detailed_monitoring
   }
 
   iam_instance_profile {
