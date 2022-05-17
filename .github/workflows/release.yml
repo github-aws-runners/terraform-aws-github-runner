@@ -3,7 +3,7 @@ name: Release build
 on:
   push:
     branches:
-      - master
+      - main
       - develop
   workflow_dispatch:
 
@@ -75,7 +75,7 @@ jobs:
           yarn release -d --repositoryUrl https://x-access-token:$GITHUB_TOKEN@github.com/$GITHUB_REPOSITORY.git
 
       - name: Release
-        if: github.event_name != 'pull_request' && contains('refs/heads/master', github.ref)
+        if: github.event_name != 'pull_request' && contains('refs/heads/main', github.ref)
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
