@@ -188,7 +188,7 @@ module "runners" {
 
   enabled_userdata      = var.enabled_userdata
   userdata_template     = var.userdata_template
-  userdata              = var.userdata
+  userdata_override     = var.userdata_override
   userdata_pre_install  = var.userdata_pre_install
   userdata_post_install = var.userdata_post_install
   key_name              = var.key_name
