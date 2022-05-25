@@ -3,7 +3,7 @@ name: Enverus Release build
 on:
   push:
     branches:
-      - master
+      - main
       - develop
   workflow_dispatch:
 
