@@ -101,7 +101,7 @@ describe('list instances', () => {
       Filters: [
         { Name: 'tag:Application', Values: ['github-action-runner'] },
         { Name: 'instance-state-name', Values: ['running', 'pending'] },
-        { Name: 'tag:Environment', Values: [ENVIRONMENT] },
+        { Name: 'tag:ghr:environment', Values: [ENVIRONMENT] },
       ],
     });
   });
@@ -256,7 +256,7 @@ describe('create runner', () => {
     mockCreateFleet.promise.mockReturnValue({
       Instances: [],
     });
-    await expect(createRunner(createRunnerConfig(defaultRunnerConfig))).rejects;
+    await expect(createRunner(createRunnerConfig(defaultRunnerConfig))).rejects.toThrowError(Error);
     expect(mockSSM.putParameter).not.toBeCalled();
   });
 });

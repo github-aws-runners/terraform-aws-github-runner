@@ -62,7 +62,7 @@ Before you submit your merge request consider the following guidelines:
     ```
 
 * Create your patch, **including appropriate test cases**.
-* Install [Terraform](https://www.terraform.io/). We lock the version with [tvenv](https://github.com/tfutils/tfenv), check `.terraform-version` for the current development version of the module.
+* Install [Terraform](https://www.terraform.io/). We lock the version with [tvenv](https://github.com/tfutils/tfenv), check `required_version` in `versions.tf` for the current development version of the module.
 * Install [pre-commit hooks](https://pre-commit.com/). The hooks runs some basic checks and update the docs. The commit will run the hooks, you can invoke the hooks manually `pre-commit run --all-files` as well.
 * Commit your changes using a descriptive commit message.
 

@@ -1,7 +1,6 @@
 locals {
   tags = merge(var.tags, {
-    Environment       = var.environment,
-    "ghr:environment" = format("%s", var.environment)
+    "ghr:environment" = var.prefix
   })
 
   s3_action_runner_url = "s3://${module.runner_binaries.bucket.id}/${module.runner_binaries.runner_distribution_object_key}"
@@ -50,7 +49,7 @@ resource "aws_sqs_queue_policy" "build_queue_policy" {
 }
 
 resource "aws_sqs_queue" "queued_builds" {
-  name                        = "${var.environment}-queued-builds${var.fifo_build_queue ? ".fifo" : ""}"
+  name                        = "${var.prefix}-queued-builds${var.fifo_build_queue ? ".fifo" : ""}"
   delay_seconds               = var.delay_webhook_event
   visibility_timeout_seconds  = var.runners_scale_up_lambda_timeout
   message_retention_seconds   = var.job_queue_retention_in_seconds
@@ -74,7 +73,7 @@ resource "aws_sqs_queue_policy" "build_queue_dlq_policy" {
 
 resource "aws_sqs_queue" "queued_builds_dlq" {
   count = var.redrive_build_queue.enabled ? 1 : 0
-  name  = "${var.environment}-queued-builds_dead_letter"
+  name  = "${var.prefix}-queued-builds_dead_letter"
 
   tags = var.tags
 }
@@ -83,7 +82,7 @@ module "ssm" {
   source = "./modules/ssm"
 
   kms_key_arn = var.kms_key_arn
-  environment = var.environment
+  prefix      = var.prefix
   github_app  = var.github_app
   tags        = local.tags
 }
@@ -92,7 +91,7 @@ module "webhook" {
   source = "./modules/webhook"
 
   aws_region  = var.aws_region
-  environment = var.environment
+  prefix      = var.prefix
   tags        = local.tags
   kms_key_arn = var.kms_key_arn
 
@@ -103,6 +102,7 @@ module "webhook" {
   lambda_s3_bucket                 = var.lambda_s3_bucket
   webhook_lambda_s3_key            = var.webhook_lambda_s3_key
   webhook_lambda_s3_object_version = var.webhook_lambda_s3_object_version
+  lambda_runtime                   = var.lambda_runtime
   lambda_zip                       = var.webhook_lambda_zip
   lambda_timeout                   = var.webhook_lambda_timeout
   logging_retention_in_days        = var.logging_retention_in_days
@@ -127,7 +127,7 @@ module "runners" {
   aws_partition = var.aws_partition
   vpc_id        = var.vpc_id
   subnet_ids    = var.subnet_ids
-  environment   = var.environment
+  prefix        = var.prefix
   tags          = local.tags
 
   s3_bucket_runner_binaries   = module.runner_binaries.bucket
@@ -151,6 +151,7 @@ module "runners" {
   enable_job_queued_check              = var.enable_job_queued_check
   disable_runner_autoupdate            = var.disable_runner_autoupdate
   enable_managed_runner_security_group = var.enable_managed_runner_security_group
+  enable_runner_detailed_monitoring    = var.enable_runner_detailed_monitoring
   scale_down_schedule_expression       = var.scale_down_schedule_expression
   minimum_running_time_in_minutes      = var.minimum_running_time_in_minutes
   runner_boot_time_in_minutes          = var.runner_boot_time_in_minutes
@@ -162,12 +163,12 @@ module "runners" {
   enable_ssm_on_runners                = var.enable_ssm_on_runners
   egress_rules                         = var.runner_egress_rules
   runner_additional_security_group_ids = var.runner_additional_security_group_ids
-  volume_size                          = var.volume_size
   metadata_options                     = var.runner_metadata_options
 
   lambda_s3_bucket                 = var.lambda_s3_bucket
   runners_lambda_s3_key            = var.runners_lambda_s3_key
   runners_lambda_s3_object_version = var.runners_lambda_s3_object_version
+  lambda_runtime                   = var.lambda_runtime
   lambda_zip                       = var.runners_lambda_zip
   lambda_timeout_scale_up          = var.runners_scale_up_lambda_timeout
   lambda_timeout_scale_down        = var.runners_scale_down_lambda_timeout
@@ -214,11 +215,11 @@ module "runners" {
 module "runner_binaries" {
   source = "./modules/runner-binaries-syncer"
 
-  aws_region  = var.aws_region
-  environment = var.environment
-  tags        = local.tags
+  aws_region = var.aws_region
+  prefix     = var.prefix
+  tags       = local.tags
 
-  distribution_bucket_name = "${var.environment}-dist-${random_string.random.result}"
+  distribution_bucket_name = "${var.prefix}-dist-${random_string.random.result}"
 
   runner_os                        = var.runner_os
   runner_architecture              = var.runner_architecture
@@ -227,6 +228,7 @@ module "runner_binaries" {
   lambda_s3_bucket                = var.lambda_s3_bucket
   syncer_lambda_s3_key            = var.syncer_lambda_s3_key
   syncer_lambda_s3_object_version = var.syncer_lambda_s3_object_version
+  lambda_runtime                  = var.lambda_runtime
   lambda_zip                      = var.runner_binaries_syncer_lambda_zip
   lambda_timeout                  = var.runner_binaries_syncer_lambda_timeout
   logging_retention_in_days       = var.logging_retention_in_days
@@ -244,10 +246,10 @@ module "runner_binaries" {
 }
 
 resource "aws_resourcegroups_group" "resourcegroups_group" {
-  name = "${var.environment}-group"
+  name = "${var.prefix}-group"
   resource_query {
     query = templatefile("${path.module}/templates/resource-group.json", {
-      environment = var.environment
+      environment = var.prefix
     })
   }
 }

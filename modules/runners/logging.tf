@@ -30,7 +30,7 @@ locals {
     ]
   )
   logfiles = var.enable_cloudwatch_agent ? [for l in local.runner_log_files : {
-    "log_group_name" : l.prefix_log_group ? "/github-self-hosted-runners/${var.environment}/${l.log_group_name}" : "/${l.log_group_name}"
+    "log_group_name" : l.prefix_log_group ? "/github-self-hosted-runners/${var.prefix}/${l.log_group_name}" : "/${l.log_group_name}"
     "log_stream_name" : l.log_stream_name
     "file_path" : l.file_path
   }] : []
@@ -42,7 +42,7 @@ locals {
 
 resource "aws_ssm_parameter" "cloudwatch_agent_config_runner" {
   count = var.enable_cloudwatch_agent ? 1 : 0
-  name  = "${var.environment}-cloudwatch_agent_config_runner"
+  name  = "${var.prefix}-cloudwatch_agent_config_runner"
   type  = "String"
   value = var.cloudwatch_config != null ? var.cloudwatch_config : templatefile("${path.module}/templates/cloudwatch_config.json", {
     logfiles = jsonencode(local.logfiles)

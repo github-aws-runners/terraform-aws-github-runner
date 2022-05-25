@@ -1,15 +1,15 @@
 locals {
   tags = merge(
     {
-      "Name" = format("%s-action-runner", var.environment)
+      "Name" = format("%s-action-runner", var.prefix)
     },
     var.tags,
   )
 
   name_sg               = var.overrides["name_sg"] == "" ? local.tags["Name"] : var.overrides["name_sg"]
   name_runner           = var.overrides["name_runner"] == "" ? local.tags["Name"] : var.overrides["name_runner"]
-  role_path             = var.role_path == null ? "/${var.environment}/" : var.role_path
-  instance_profile_path = var.instance_profile_path == null ? "/${var.environment}/" : var.instance_profile_path
+  role_path             = var.role_path == null ? "/${var.prefix}/" : var.role_path
+  instance_profile_path = var.instance_profile_path == null ? "/${var.prefix}/" : var.instance_profile_path
   lambda_zip            = var.lambda_zip == null ? "${path.module}/lambdas/runners/runners.zip" : var.lambda_zip
   userdata_template     = var.userdata_template == null ? local.default_userdata_template[var.runner_os] : var.userdata_template
   kms_key_arn           = var.kms_key_arn != null ? var.kms_key_arn : ""
@@ -54,19 +54,19 @@ data "aws_ami" "runner" {
 }
 
 resource "aws_launch_template" "runner" {
-  name = "${var.environment}-action-runner"
+  name = "${var.prefix}-action-runner"
 
   dynamic "block_device_mappings" {
     for_each = var.block_device_mappings != null ? var.block_device_mappings : []
     content {
-      device_name = lookup(block_device_mappings.value, "device_name", "/dev/xvda")
+      device_name = block_device_mappings.value.device_name
 
       ebs {
-        delete_on_termination = lookup(block_device_mappings.value, "delete_on_termination", true)
-        volume_type           = lookup(block_device_mappings.value, "volume_type", "gp3")
-        volume_size           = lookup(block_device_mappings.value, "volume_size", var.volume_size)
-        encrypted             = lookup(block_device_mappings.value, "encrypted", true)
-        iops                  = lookup(block_device_mappings.value, "iops", null)
+        delete_on_termination = block_device_mappings.value.delete_on_termination
+        volume_type           = block_device_mappings.value.volume_type
+        volume_size           = block_device_mappings.value.volume_size
+        encrypted             = block_device_mappings.value.encrypted
+        iops                  = block_device_mappings.value.iops
       }
     }
   }
@@ -79,6 +79,10 @@ resource "aws_launch_template" "runner" {
       http_tokens                 = metadata_options.value.http_tokens
       http_put_response_hop_limit = metadata_options.value.http_put_response_hop_limit
     }
+  }
+
+  monitoring {
+    enabled = var.enable_runner_detailed_monitoring
   }
 
   iam_instance_profile {
@@ -127,7 +131,7 @@ resource "aws_launch_template" "runner" {
     ghes_url        = var.ghes_url
     ghes_ssl_verify = var.ghes_ssl_verify
     ## retain these for backwards compatibility
-    environment                     = var.environment
+    environment                     = var.prefix
     enable_cloudwatch_agent         = var.enable_cloudwatch_agent
     ssm_key_cloudwatch_agent_config = var.enable_cloudwatch_agent ? aws_ssm_parameter.cloudwatch_agent_config_runner[0].name : ""
   })) : ""
@@ -139,7 +143,7 @@ resource "aws_launch_template" "runner" {
 
 resource "aws_security_group" "runner_sg" {
   count       = var.enable_managed_runner_security_group ? 1 : 0
-  name_prefix = "${var.environment}-github-actions-runner-sg"
+  name_prefix = "${var.prefix}-github-actions-runner-sg"
   description = "Github Actions Runner security group"
 
   vpc_id = var.vpc_id
