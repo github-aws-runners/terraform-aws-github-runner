@@ -1,5 +1,37 @@
 # Changelog
 
+## [1.0.0](https://github.com/enverus-cts/terraform-aws-github-runner/compare/v0.33.0...v1.0.0) (2022-05-25)
+
+
+### ⚠ BREAKING CHANGES
+
+* var.volume_size replaced by var.block_device_mappings
+* The module is upgraded to AWS Terraform provider 4.x
+
+### Features
+
+* Add option to enable detailed monitoring for runner launch template ([#2024](https://github.com/enverus-cts/terraform-aws-github-runner/issues/2024)) ([e73a267](https://github.com/enverus-cts/terraform-aws-github-runner/commit/e73a267c63444a3ff07db549f9cee05fd94fc2f2))
+* change master branch to main ([76ba9d2](https://github.com/enverus-cts/terraform-aws-github-runner/commit/76ba9d2b191f1e1fd5772cea9b6551bfd28983ed))
+* Improve syncer s3 kms encryption ([38ed5be](https://github.com/enverus-cts/terraform-aws-github-runner/commit/38ed5be5db8af92c5e182cd83cffb6451c330970))
+* Remove var.volume_size in favour of var.block_device_mappings ([4e97048](https://github.com/enverus-cts/terraform-aws-github-runner/commit/4e9704892f8f008cb467342ae5e8c565f4c68e39))
+* Replace environment variable by prefix ([#1858](https://github.com/enverus-cts/terraform-aws-github-runner/issues/1858)) ([e2f9a27](https://github.com/enverus-cts/terraform-aws-github-runner/commit/e2f9a2764f3c404cd2f8649db64253c9e886e2e7))
+* Support AWS 4.x Terraform provider ([#1739](https://github.com/enverus-cts/terraform-aws-github-runner/issues/1739)) ([cfb6da2](https://github.com/enverus-cts/terraform-aws-github-runner/commit/cfb6da212e1d481a39427188fc1dd49a18e45cf4))
+* Support multi runner process support for runner scale down. ([#1859](https://github.com/enverus-cts/terraform-aws-github-runner/issues/1859)) ([3658d6a](https://github.com/enverus-cts/terraform-aws-github-runner/commit/3658d6a8a8b119133f66572fa090b720d5132f5a))
+* Support Node16 for AWS Lambda ([#2073](https://github.com/enverus-cts/terraform-aws-github-runner/issues/2073)) ([68a2014](https://github.com/enverus-cts/terraform-aws-github-runner/commit/68a2014db5e909bbf0c09bb6880f1eff2441ea7e))
+* trigger release ([6e1602e](https://github.com/enverus-cts/terraform-aws-github-runner/commit/6e1602eb763400fad7e3154cfb83bd5decc821ac))
+* update release trigger ([05da49a](https://github.com/enverus-cts/terraform-aws-github-runner/commit/05da49ab94571c1100b798a99f2f6c9c401391df))
+
+
+### Bug Fixes
+
+* Avoid non semantic commontes can be merged. ([#1969](https://github.com/enverus-cts/terraform-aws-github-runner/issues/1969)) ([ad1c872](https://github.com/enverus-cts/terraform-aws-github-runner/commit/ad1c872601148d4c32b67735a4c6935c6e5e234f))
+* Outputs for pool need to account for complexity ([#1970](https://github.com/enverus-cts/terraform-aws-github-runner/issues/1970)) ([2d92906](https://github.com/enverus-cts/terraform-aws-github-runner/commit/2d92906c54675b502d9bee7012f031db9f3e2943))
+* **runner:** Don't treat the string "false" as true. ([#2051](https://github.com/enverus-cts/terraform-aws-github-runner/issues/2051)) ([b67c7dc](https://github.com/enverus-cts/terraform-aws-github-runner/commit/b67c7dcbee7618f830b2365a73a2bc25f20b52b5))
+* Set the minimal AWS provider to 3.50 ([#1937](https://github.com/enverus-cts/terraform-aws-github-runner/issues/1937)) ([16095d8](https://github.com/enverus-cts/terraform-aws-github-runner/commit/16095d86b848c26e93a5576302ffba8f43c12c28))
+* Volume size is ingored ([#2014](https://github.com/enverus-cts/terraform-aws-github-runner/issues/2014)) ([b733248](https://github.com/enverus-cts/terraform-aws-github-runner/commit/b7332489f637ad94bcdceef1e0c7c46149f1e6a7)), closes [#1954](https://github.com/enverus-cts/terraform-aws-github-runner/issues/1954)
+* Wrong block device mapping ([#2019](https://github.com/enverus-cts/terraform-aws-github-runner/issues/2019)) ([185ef20](https://github.com/enverus-cts/terraform-aws-github-runner/commit/185ef20301229ffbdc81874cee2c13f296256036))
+* Wrong block device mapping ([#2019](https://github.com/enverus-cts/terraform-aws-github-runner/issues/2019)) ([c42a467](https://github.com/enverus-cts/terraform-aws-github-runner/commit/c42a467164f6ad5ea7e7a0e5d22653b938cdeaf0))
+
 ## [0.33.0](https://github.com/enverus-cts/terraform-aws-github-runner/compare/v0.32.0...v0.33.0) (2022-03-29)
 
 
