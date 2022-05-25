@@ -1,7 +1,7 @@
 data "aws_caller_identity" "current" {}
 
 resource "aws_iam_role" "runner" {
-  name                 = "${var.environment}-runner-role"
+  name                 = "${var.prefix}-runner-role"
   assume_role_policy   = templatefile("${path.module}/policies/instance-role-trust-policy.json", {})
   path                 = local.role_path
   permissions_boundary = var.role_permissions_boundary
@@ -9,7 +9,7 @@ resource "aws_iam_role" "runner" {
 }
 
 resource "aws_iam_instance_profile" "runner" {
-  name = "${var.environment}-runner-profile"
+  name = "${var.prefix}-runner-profile"
   role = aws_iam_role.runner.name
   path = local.instance_profile_path
 }
@@ -26,8 +26,8 @@ resource "aws_iam_role_policy" "ssm_parameters" {
   role = aws_iam_role.runner.name
   policy = templatefile("${path.module}/policies/instance-ssm-parameters-policy.json",
     {
-      arn_ssm_parameters_prefix = "arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${var.environment}-*"
-      arn_ssm_parameters_path   = "arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${var.environment}/*"
+      arn_ssm_parameters_prefix = "arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${var.prefix}-*"
+      arn_ssm_parameters_path   = "arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${var.prefix}/*"
     }
   )
 }

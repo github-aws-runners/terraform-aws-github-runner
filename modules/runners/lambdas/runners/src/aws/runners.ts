@@ -54,7 +54,7 @@ export async function listEC2Runners(filters: ListRunnerFilters | undefined = un
 
   if (filters) {
     if (filters.environment !== undefined) {
-      ec2Filters.push({ Name: 'tag:Environment', Values: [filters.environment] });
+      ec2Filters.push({ Name: 'tag:ghr:environment', Values: [filters.environment] });
     }
     if (filters.runnerType && filters.runnerOwner) {
       ec2Filters.push({ Name: `tag:Type`, Values: [filters.runnerType] });

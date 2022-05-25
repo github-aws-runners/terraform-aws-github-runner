@@ -1,7 +1,7 @@
 data "aws_caller_identity" "current" {}
 
 resource "aws_iam_role" "deploy" {
-  name = "${var.environment}-terraform"
+  name = "${var.prefix}-terraform"
 
   permissions_boundary = aws_iam_policy.deploy_boundary.arn
   assume_role_policy = templatefile("${path.module}/policies/assume-role-for-account.json", {
@@ -11,7 +11,7 @@ resource "aws_iam_role" "deploy" {
 }
 
 resource "aws_iam_policy" "boundary" {
-  name = "${var.environment}-boundary"
+  name = "${var.prefix}-boundary"
   path = "/${var.namespaces.boundary_namespace}/"
 
   policy = templatefile("${path.module}/policies/boundary.json", {
@@ -22,7 +22,7 @@ resource "aws_iam_policy" "boundary" {
 }
 
 resource "aws_iam_policy" "deploy" {
-  name = "${var.environment}-terraform"
+  name = "${var.prefix}-terraform"
   path = "/"
 
   policy = templatefile("${path.module}/policies/deploy-policy.json", {
@@ -36,7 +36,7 @@ resource "aws_iam_role_policy_attachment" "deploy" {
 }
 
 resource "aws_iam_policy" "deploy_boundary" {
-  name = "${var.environment}-terraform-boundary"
+  name = "${var.prefix}-terraform-boundary"
   path = "/${var.namespaces.boundary_namespace}/"
 
   policy = templatefile("${path.module}/policies/deploy-boundary.json", {

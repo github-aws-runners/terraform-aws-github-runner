@@ -30,13 +30,12 @@ module "runners" {
     aws = aws.terraform_role
   }
 
-  aws_region     = local.aws_region
-  vpc_id         = module.vpc.vpc_id
-  subnet_ids     = module.vpc.private_subnets
-  manage_kms_key = false
-  kms_key_id     = aws_kms_key.github.key_id
+  aws_region  = local.aws_region
+  vpc_id      = module.vpc.vpc_id
+  subnet_ids  = module.vpc.private_subnets
+  kms_key_arn = aws_kms_key.github.key_id
 
-  environment = local.environment
+  prefix = local.environment
   tags = {
     Project = "ProjectX"
   }

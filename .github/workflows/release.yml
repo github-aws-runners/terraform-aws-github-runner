@@ -3,7 +3,7 @@ name: Release build
 on:
   push:
     branches:
-      - master
+      - main
       - develop
   workflow_dispatch:
 
@@ -27,7 +27,7 @@ jobs:
       - name: Build dist
         working-directory: ${{ matrix.lambda }}
         run: yarn install && yarn run test && yarn dist
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: ${{ steps.lambda.outputs.name }}
           path: ${{ matrix.lambda }}/${{ steps.lambda.outputs.name }}.zip
@@ -43,15 +43,15 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: webhook
           path: artifacts
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: runners
           path: artifacts
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: runner-binaries-syncer
           path: artifacts
@@ -75,7 +75,7 @@ jobs:
           yarn release -d --repositoryUrl https://x-access-token:$GITHUB_TOKEN@github.com/$GITHUB_REPOSITORY.git
 
       - name: Release
-        if: github.event_name != 'pull_request' && contains('refs/heads/master', github.ref)
+        if: github.event_name != 'pull_request' && contains('refs/heads/main', github.ref)
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |

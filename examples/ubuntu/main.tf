@@ -16,7 +16,7 @@ module "runners" {
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets
 
-  environment = local.environment
+  prefix = local.environment
   tags = {
     Project = "ProjectX"
   }

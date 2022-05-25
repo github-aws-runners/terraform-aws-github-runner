@@ -4,16 +4,16 @@ resource "aws_lambda_function" "webhook" {
   s3_object_version = var.webhook_lambda_s3_object_version != null ? var.webhook_lambda_s3_object_version : null
   filename          = var.lambda_s3_bucket == null ? local.lambda_zip : null
   source_code_hash  = var.lambda_s3_bucket == null ? filebase64sha256(local.lambda_zip) : null
-  function_name     = "${var.environment}-webhook"
+  function_name     = "${var.prefix}-webhook"
   role              = aws_iam_role.webhook_lambda.arn
   handler           = "index.githubWebhook"
-  runtime           = "nodejs14.x"
+  runtime           = var.lambda_runtime
   timeout           = var.lambda_timeout
 
   environment {
     variables = {
       ENABLE_WORKFLOW_JOB_LABELS_CHECK = var.enable_workflow_job_labels_check
-      ENVIRONMENT                      = var.environment
+      ENVIRONMENT                      = var.prefix
       LOG_LEVEL                        = var.log_level
       LOG_TYPE                         = var.log_type
       REPOSITORY_WHITE_LIST            = jsonencode(var.repository_white_list)
@@ -53,7 +53,7 @@ data "aws_iam_policy_document" "lambda_assume_role_policy" {
 }
 
 resource "aws_iam_role" "webhook_lambda" {
-  name                 = "${var.environment}-action-webhook-lambda-role"
+  name                 = "${var.prefix}-action-webhook-lambda-role"
   assume_role_policy   = data.aws_iam_policy_document.lambda_assume_role_policy.json
   path                 = local.role_path
   permissions_boundary = var.role_permissions_boundary
@@ -61,7 +61,7 @@ resource "aws_iam_role" "webhook_lambda" {
 }
 
 resource "aws_iam_role_policy" "webhook_logging" {
-  name = "${var.environment}-lambda-logging-policy"
+  name = "${var.prefix}-lambda-logging-policy"
   role = aws_iam_role.webhook_lambda.name
   policy = templatefile("${path.module}/policies/lambda-cloudwatch.json", {
     log_group_arn = aws_cloudwatch_log_group.webhook.arn
@@ -69,7 +69,7 @@ resource "aws_iam_role_policy" "webhook_logging" {
 }
 
 resource "aws_iam_role_policy" "webhook_sqs" {
-  name = "${var.environment}-lambda-webhook-publish-sqs-policy"
+  name = "${var.prefix}-lambda-webhook-publish-sqs-policy"
   role = aws_iam_role.webhook_lambda.name
 
   policy = templatefile("${path.module}/policies/lambda-publish-sqs-policy.json", {
@@ -78,7 +78,7 @@ resource "aws_iam_role_policy" "webhook_sqs" {
 }
 
 resource "aws_iam_role_policy" "webhook_ssm" {
-  name = "${var.environment}-lambda-webhook-publish-ssm-policy"
+  name = "${var.prefix}-lambda-webhook-publish-ssm-policy"
   role = aws_iam_role.webhook_lambda.name
 
   policy = templatefile("${path.module}/policies/lambda-ssm.json", {

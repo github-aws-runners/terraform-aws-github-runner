@@ -78,6 +78,8 @@ async function uploadToS3(s3: S3, cacheObject: CacheObject, actionRunnerReleaseA
       Key: cacheObject.key,
       Tagging: versionKey + '=' + actionRunnerReleaseAsset.name,
       Body: writeStream,
+      ServerSideEncryption: process.env.S3_SSE_ALGORITHM,
+      SSEKMSKeyId: process.env.S3_SSE_KMS_KEY_ID,
     })
     .promise();
 

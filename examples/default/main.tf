@@ -19,7 +19,7 @@ module "runners" {
   vpc_id                          = module.vpc.vpc_id
   subnet_ids                      = module.vpc.private_subnets
 
-  environment = local.environment
+  prefix = local.environment
   tags = {
     Project = "ProjectX"
   }
@@ -29,6 +29,16 @@ module "runners" {
     id             = var.github_app_id
     webhook_secret = random_id.random.hex
   }
+
+  # configure the block device mappings, default for Amazon Linux2
+  # block_device_mappings = [{
+  #   device_name           = "/dev/xvda"
+  #   delete_on_termination = true
+  #   volume_type           = "gp3"
+  #   volume_size           = 10
+  #   encrypted             = true
+  #   iops                  = null
+  # }]
 
   # Grab zip files via lambda_download
   webhook_lambda_zip                = "lambdas-download/webhook.zip"
