@@ -187,3 +187,9 @@ variable "lambda_runtime" {
   type        = string
   default     = "nodejs14.x"
 }
+
+variable "lambda_architecture" {
+  description = "AWS Lambda architecture."
+  type        = string
+  default     = "arm64"
+}

@@ -12,6 +12,7 @@ resource "aws_lambda_function" "scale_up" {
   reserved_concurrent_executions = var.scale_up_reserved_concurrent_executions
   memory_size                    = 512
   tags                           = local.tags
+  architectures                  = [var.lambda_architecture]
 
   environment {
     variables = {

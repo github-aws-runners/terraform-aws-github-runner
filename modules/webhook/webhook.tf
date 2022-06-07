@@ -9,6 +9,7 @@ resource "aws_lambda_function" "webhook" {
   handler           = "index.githubWebhook"
   runtime           = var.lambda_runtime
   timeout           = var.lambda_timeout
+  architectures     = [var.lambda_architecture]
 
   environment {
     variables = {
