@@ -645,5 +645,5 @@ variable "lambda_runtime" {
 variable "lambda_architecture" {
   description = "AWS Lambda architecture."
   type        = string
-  default     = "arm64"
+  default     = "x86_64"
 }
