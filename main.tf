@@ -231,7 +231,7 @@ module "runner_binaries" {
   syncer_lambda_s3_key            = var.syncer_lambda_s3_key
   syncer_lambda_s3_object_version = var.syncer_lambda_s3_object_version
   lambda_runtime                  = var.lambda_runtime
-  lambda_architecture              = var.lambda_architecture
+  lambda_architecture             = var.lambda_architecture
   lambda_zip                      = var.runner_binaries_syncer_lambda_zip
   lambda_timeout                  = var.runner_binaries_syncer_lambda_timeout
   logging_retention_in_days       = var.logging_retention_in_days
