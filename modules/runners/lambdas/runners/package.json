@@ -29,14 +29,14 @@
     "jest-mock": "^28.1.0",
     "jest-mock-extended": "^2.0.6",
     "moment-timezone": "^0.5.34",
-    "nock": "^13.2.4",
+    "nock": "^13.2.6",
     "prettier": "2.6.2",
     "ts-jest": "^27.1.4",
     "ts-node": "^10.7.0",
     "ts-node-dev": "^1.1.6"
   },
   "dependencies": {
-    "@aws-sdk/client-ssm": "^3.92.0",
+    "@aws-sdk/client-ssm": "^3.105.0",
     "@octokit/auth-app": "3.6.1",
     "@octokit/rest": "^18.12.0",
     "@octokit/types": "^6.34.0",
