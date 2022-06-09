@@ -22,18 +22,18 @@
     "@types/jest": "^27.5.0",
     "@typescript-eslint/eslint-plugin": "^4.33.0",
     "@typescript-eslint/parser": "^4.33.0",
-    "@vercel/ncc": "^0.33.4",
+    "@vercel/ncc": "^0.34.0",
     "eslint": "^7.32.0",
     "eslint-plugin-prettier": "4.0.0",
     "jest": "27.5.1",
-    "jest-mock": "^28.1.0",
+    "jest-mock": "^28.1.1",
     "jest-mock-extended": "^2.0.6",
     "moment-timezone": "^0.5.34",
     "nock": "^13.2.6",
     "prettier": "2.6.2",
     "ts-jest": "^27.1.4",
     "ts-node": "^10.7.0",
-    "ts-node-dev": "^1.1.6"
+    "ts-node-dev": "^2.0.0"
   },
   "dependencies": {
     "@aws-sdk/client-ssm": "^3.105.0",
