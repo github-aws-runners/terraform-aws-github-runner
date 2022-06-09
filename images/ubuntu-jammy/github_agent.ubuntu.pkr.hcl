@@ -164,7 +164,7 @@ build {
       "sudo chmod +x /tmp/install-runner.sh",
       "echo ubuntu | tee -a /tmp/install-user.txt",
       "sudo RUNNER_ARCHITECTURE=x64 RUNNER_TARBALL_URL=$RUNNER_TARBALL_URL /tmp/install-runner.sh",
-      "echo ImageOS=ubuntu20 | tee -a /opt/actions-runner/.env"
+      "echo ImageOS=ubuntu22 | tee -a /opt/actions-runner/.env"
     ]
   }
 
