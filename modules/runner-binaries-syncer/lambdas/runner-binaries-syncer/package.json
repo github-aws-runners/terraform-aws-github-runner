@@ -23,7 +23,7 @@
     "@typescript-eslint/eslint-plugin": "^4.33.0",
     "@typescript-eslint/parser": "^4.33.0",
     "@vercel/ncc": "^0.34.0",
-    "aws-sdk": "^2.1136.0",
+    "aws-sdk": "^2.1151.0",
     "eslint": "^7.32.0",
     "eslint-plugin-prettier": "4.0.0",
     "jest": "^27.5.1",
@@ -31,7 +31,7 @@
     "prettier": "2.6.2",
     "ts-jest": "^27.1.4",
     "ts-node-dev": "^1.1.6",
-    "typescript": "^4.6.4"
+    "typescript": "^4.7.3"
   },
   "dependencies": {
     "axios": "^0.27.2",
