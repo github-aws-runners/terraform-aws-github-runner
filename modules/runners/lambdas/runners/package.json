@@ -42,7 +42,7 @@
     "@octokit/types": "^6.34.0",
     "@types/aws-lambda": "^8.10.99",
     "@types/express": "^4.17.11",
-    "@types/node": "^17.0.34",
+    "@types/node": "^17.0.41",
     "aws-sdk": "^2.1151.0",
     "cron-parser": "^4.4.0",
     "tslog": "^3.3.3",
