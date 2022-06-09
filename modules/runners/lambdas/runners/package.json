@@ -32,7 +32,7 @@
     "nock": "^13.2.6",
     "prettier": "2.6.2",
     "ts-jest": "^27.1.4",
-    "ts-node": "^10.7.0",
+    "ts-node": "^10.8.1",
     "ts-node-dev": "^1.1.6"
   },
   "dependencies": {
