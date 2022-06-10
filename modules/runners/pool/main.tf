@@ -8,7 +8,7 @@ resource "aws_lambda_function" "pool" {
   function_name                  = "${var.config.prefix}-pool"
   role                           = aws_iam_role.pool.arn
   handler                        = "index.adjustPool"
-  architectures                  = [var.config.lambda_architecture]
+  architectures                  = [var.config.lambda.architecture]
   runtime                        = var.config.lambda.runtime
   timeout                        = var.config.lambda.timeout
   reserved_concurrent_executions = var.config.lambda.reserved_concurrent_executions
