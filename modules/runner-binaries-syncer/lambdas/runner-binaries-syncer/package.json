@@ -27,7 +27,7 @@
     "eslint": "^7.32.0",
     "eslint-plugin-prettier": "4.0.0",
     "jest": "^27.5.1",
-    "jest-mock": "^28.1.0",
+    "jest-mock": "^28.1.1",
     "prettier": "2.6.2",
     "ts-jest": "^27.1.4",
     "ts-node-dev": "^2.0.0",
