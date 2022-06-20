@@ -5,10 +5,11 @@ resource "aws_lambda_function" "pool" {
   s3_object_version              = var.config.lambda.s3_object_version != null ? var.config.lambda.s3_object_version : null
   filename                       = var.config.lambda.s3_bucket == null ? var.config.lambda.zip : null
   source_code_hash               = var.config.lambda.s3_bucket == null ? filebase64sha256(var.config.lambda.zip) : null
-  function_name                  = "${var.config.environment}-pool"
+  function_name                  = "${var.config.prefix}-pool"
   role                           = aws_iam_role.pool.arn
   handler                        = "index.adjustPool"
-  runtime                        = "nodejs14.x"
+  architectures                  = [var.config.lambda.architecture]
+  runtime                        = var.config.lambda.runtime
   timeout                        = var.config.lambda.timeout
   reserved_concurrent_executions = var.config.lambda.reserved_concurrent_executions
   memory_size                    = 512
@@ -18,7 +19,7 @@ resource "aws_lambda_function" "pool" {
     variables = {
       DISABLE_RUNNER_AUTOUPDATE            = var.config.runner.disable_runner_autoupdate
       ENABLE_EPHEMERAL_RUNNERS             = var.config.runner.ephemeral
-      ENVIRONMENT                          = var.config.environment
+      ENVIRONMENT                          = var.config.prefix
       GHES_URL                             = var.config.ghes.url
       INSTANCE_ALLOCATION_STRATEGY         = var.config.instance_allocation_strategy
       INSTANCE_MAX_SPOT_PRICE              = var.config.instance_max_spot_price
@@ -54,7 +55,7 @@ resource "aws_cloudwatch_log_group" "pool" {
 }
 
 resource "aws_iam_role" "pool" {
-  name                 = "${var.config.environment}-action-pool-lambda-role"
+  name                 = "${var.config.prefix}-action-pool-lambda-role"
   assume_role_policy   = data.aws_iam_policy_document.lambda_assume_role_policy.json
   path                 = var.config.role_path
   permissions_boundary = var.config.role_permissions_boundary
@@ -62,7 +63,7 @@ resource "aws_iam_role" "pool" {
 }
 
 resource "aws_iam_role_policy" "pool" {
-  name = "${var.config.environment}-lambda-pool-policy"
+  name = "${var.config.prefix}-lambda-pool-policy"
   role = aws_iam_role.pool.name
   policy = templatefile("${path.module}/policies/lambda-pool.json", {
     arn_runner_instance_role  = var.config.runner.role.arn
@@ -73,7 +74,7 @@ resource "aws_iam_role_policy" "pool" {
 }
 
 resource "aws_iam_role_policy" "pool_logging" {
-  name = "${var.config.environment}-lambda-logging"
+  name = "${var.config.prefix}-lambda-logging"
   role = aws_iam_role.pool.name
   policy = templatefile("${path.module}/../policies/lambda-cloudwatch.json", {
     log_group_arn = aws_cloudwatch_log_group.pool.arn
@@ -101,7 +102,7 @@ data "aws_iam_policy_document" "lambda_assume_role_policy" {
 resource "aws_cloudwatch_event_rule" "pool" {
   count = length(var.config.pool)
 
-  name                = "${var.config.environment}-pool-${count.index}-rule"
+  name                = "${var.config.prefix}-pool-${count.index}-rule"
   schedule_expression = var.config.pool[count.index].schedule_expression
   tags                = var.config.tags
 }

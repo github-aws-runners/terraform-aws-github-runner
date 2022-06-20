@@ -11,17 +11,18 @@ resource "aws_lambda_function" "scale_down" {
   s3_object_version = var.runners_lambda_s3_object_version != null ? var.runners_lambda_s3_object_version : null
   filename          = var.lambda_s3_bucket == null ? local.lambda_zip : null
   source_code_hash  = var.lambda_s3_bucket == null ? filebase64sha256(local.lambda_zip) : null
-  function_name     = "${var.environment}-scale-down"
+  function_name     = "${var.prefix}-scale-down"
   role              = aws_iam_role.scale_down.arn
   handler           = "index.scaleDownHandler"
-  runtime           = "nodejs14.x"
+  runtime           = var.lambda_runtime
   timeout           = var.lambda_timeout_scale_down
   tags              = local.tags
   memory_size       = 512
+  architectures     = [var.lambda_architecture]
 
   environment {
     variables = {
-      ENVIRONMENT                          = var.environment
+      ENVIRONMENT                          = var.prefix
       GHES_URL                             = var.ghes_url
       LOG_LEVEL                            = var.log_level
       LOG_TYPE                             = var.log_type
@@ -52,7 +53,7 @@ resource "aws_cloudwatch_log_group" "scale_down" {
 }
 
 resource "aws_cloudwatch_event_rule" "scale_down" {
-  name                = "${var.environment}-scale-down-rule"
+  name                = "${var.prefix}-scale-down-rule"
   schedule_expression = var.scale_down_schedule_expression
   tags                = var.tags
 }
@@ -71,7 +72,7 @@ resource "aws_lambda_permission" "scale_down" {
 }
 
 resource "aws_iam_role" "scale_down" {
-  name                 = "${var.environment}-action-scale-down-lambda-role"
+  name                 = "${var.prefix}-action-scale-down-lambda-role"
   assume_role_policy   = data.aws_iam_policy_document.lambda_assume_role_policy.json
   path                 = local.role_path
   permissions_boundary = var.role_permissions_boundary
@@ -79,7 +80,7 @@ resource "aws_iam_role" "scale_down" {
 }
 
 resource "aws_iam_role_policy" "scale_down" {
-  name = "${var.environment}-lambda-scale-down-policy"
+  name = "${var.prefix}-lambda-scale-down-policy"
   role = aws_iam_role.scale_down.name
   policy = templatefile("${path.module}/policies/lambda-scale-down.json", {
     github_app_id_arn         = var.github_app_parameters.id.arn
@@ -89,7 +90,7 @@ resource "aws_iam_role_policy" "scale_down" {
 }
 
 resource "aws_iam_role_policy" "scale_down_logging" {
-  name = "${var.environment}-lambda-logging"
+  name = "${var.prefix}-lambda-logging"
   role = aws_iam_role.scale_down.name
   policy = templatefile("${path.module}/policies/lambda-cloudwatch.json", {
     log_group_arn = aws_cloudwatch_log_group.scale_down.arn

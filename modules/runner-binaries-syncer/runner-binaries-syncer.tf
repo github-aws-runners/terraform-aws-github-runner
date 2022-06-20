@@ -1,6 +1,6 @@
 locals {
   lambda_zip = var.lambda_zip == null ? "${path.module}/lambdas/runner-binaries-syncer/runner-binaries-syncer.zip" : var.lambda_zip
-  role_path  = var.role_path == null ? "/${var.environment}/" : var.role_path
+  role_path  = var.role_path == null ? "/${var.prefix}/" : var.role_path
   gh_binary_os_label = {
     windows = "win",
     linux   = "linux"
@@ -13,12 +13,13 @@ resource "aws_lambda_function" "syncer" {
   s3_object_version = var.syncer_lambda_s3_object_version != null ? var.syncer_lambda_s3_object_version : null
   filename          = var.lambda_s3_bucket == null ? local.lambda_zip : null
   source_code_hash  = var.lambda_s3_bucket == null ? filebase64sha256(local.lambda_zip) : null
-  function_name     = "${var.environment}-syncer"
+  function_name     = "${var.prefix}-syncer"
   role              = aws_iam_role.syncer_lambda.arn
   handler           = "index.handler"
-  runtime           = "nodejs14.x"
+  runtime           = var.lambda_runtime
   timeout           = var.lambda_timeout
   memory_size       = 256
+  architectures     = [var.lambda_architecture]
 
   environment {
     variables = {
@@ -47,7 +48,7 @@ resource "aws_lambda_function" "syncer" {
 
 resource "aws_iam_role_policy" "lambda_kms" {
   count = try(var.server_side_encryption_configuration.rule.apply_server_side_encryption_by_default.kms_master_key_id, null) != null ? 1 : 0
-  name  = "${var.environment}-lambda-kms-policy-syncer"
+  name  = "${var.prefix}-lambda-kms-policy-syncer"
   role  = aws_iam_role.syncer_lambda.id
 
   policy = templatefile("${path.module}/policies/lambda-kms.json", {
@@ -63,7 +64,7 @@ resource "aws_cloudwatch_log_group" "syncer" {
 }
 
 resource "aws_iam_role" "syncer_lambda" {
-  name                 = "${var.environment}-action-syncer-lambda-role"
+  name                 = "${var.prefix}-action-syncer-lambda-role"
   assume_role_policy   = data.aws_iam_policy_document.lambda_assume_role_policy.json
   path                 = local.role_path
   permissions_boundary = var.role_permissions_boundary
@@ -92,7 +93,7 @@ data "aws_iam_policy_document" "lambda_assume_role_policy" {
 }
 
 resource "aws_iam_role_policy" "lambda_logging" {
-  name = "${var.environment}-lambda-logging-policy-syncer"
+  name = "${var.prefix}-lambda-logging-policy-syncer"
   role = aws_iam_role.syncer_lambda.id
 
   policy = templatefile("${path.module}/policies/lambda-cloudwatch.json", {
@@ -101,7 +102,7 @@ resource "aws_iam_role_policy" "lambda_logging" {
 }
 
 resource "aws_iam_role_policy" "syncer" {
-  name = "${var.environment}-lambda-syncer-s3-policy"
+  name = "${var.prefix}-lambda-syncer-s3-policy"
   role = aws_iam_role.syncer_lambda.id
 
   policy = templatefile("${path.module}/policies/lambda-syncer.json", {
@@ -110,7 +111,7 @@ resource "aws_iam_role_policy" "syncer" {
 }
 
 resource "aws_cloudwatch_event_rule" "syncer" {
-  name                = "${var.environment}-syncer-rule"
+  name                = "${var.prefix}-syncer-rule"
   schedule_expression = var.lambda_schedule_expression
   tags                = var.tags
 }
@@ -133,10 +134,11 @@ resource "aws_lambda_permission" "syncer" {
 ###################################################################################
 
 resource "aws_s3_object" "trigger" {
-  bucket = aws_s3_bucket.action_dist.id
-  key    = "triggers/${aws_lambda_function.syncer.id}-trigger.json"
-  source = "${path.module}/trigger.json"
-  etag   = filemd5("${path.module}/trigger.json")
+  bucket     = aws_s3_bucket.action_dist.id
+  key        = "triggers/${aws_lambda_function.syncer.id}-trigger.json"
+  source     = "${path.module}/trigger.json"
+  etag       = try(var.server_side_encryption_configuration.rule.apply_server_side_encryption_by_default.kms_master_key_id, null) == null ? filemd5("${path.module}/trigger.json") : null
+  kms_key_id = try(var.server_side_encryption_configuration.rule.apply_server_side_encryption_by_default.kms_master_key_id, null)
 
   depends_on = [aws_s3_bucket_notification.on_deploy]
 }

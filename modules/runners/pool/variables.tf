@@ -10,6 +10,8 @@ variable "config" {
       s3_key                         = string
       s3_object_version              = string
       security_group_ids             = list(string)
+      runtime                        = string
+      architecture                   = string
       timeout                        = number
       zip                            = string
       subnet_ids                     = list(string)
@@ -41,7 +43,7 @@ variable "config" {
     instance_target_capacity_type = string
     instance_allocation_strategy  = string
     instance_max_spot_price       = string
-    environment                   = string
+    prefix                        = string
     pool = list(object({
       schedule_expression = string
       size                = number

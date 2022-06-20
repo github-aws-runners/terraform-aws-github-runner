@@ -4,14 +4,15 @@ resource "aws_lambda_function" "scale_up" {
   s3_object_version              = var.runners_lambda_s3_object_version != null ? var.runners_lambda_s3_object_version : null
   filename                       = var.lambda_s3_bucket == null ? local.lambda_zip : null
   source_code_hash               = var.lambda_s3_bucket == null ? filebase64sha256(local.lambda_zip) : null
-  function_name                  = "${var.environment}-scale-up"
+  function_name                  = "${var.prefix}-scale-up"
   role                           = aws_iam_role.scale_up.arn
   handler                        = "index.scaleUpHandler"
-  runtime                        = "nodejs14.x"
+  runtime                        = var.lambda_runtime
   timeout                        = var.lambda_timeout_scale_up
   reserved_concurrent_executions = var.scale_up_reserved_concurrent_executions
   memory_size                    = 512
   tags                           = local.tags
+  architectures                  = [var.lambda_architecture]
 
   environment {
     variables = {
@@ -19,7 +20,7 @@ resource "aws_lambda_function" "scale_up" {
       ENABLE_EPHEMERAL_RUNNERS             = var.enable_ephemeral_runners
       ENABLE_JOB_QUEUED_CHECK              = local.enable_job_queued_check
       ENABLE_ORGANIZATION_RUNNERS          = var.enable_organization_runners
-      ENVIRONMENT                          = var.environment
+      ENVIRONMENT                          = var.prefix
       GHES_URL                             = var.ghes_url
       HTTPS_PROXY                          = var.http_proxy
       INSTANCE_ALLOCATION_STRATEGY         = var.instance_allocation_strategy
@@ -70,7 +71,7 @@ resource "aws_lambda_permission" "scale_runners_lambda" {
 }
 
 resource "aws_iam_role" "scale_up" {
-  name                 = "${var.environment}-action-scale-up-lambda-role"
+  name                 = "${var.prefix}-action-scale-up-lambda-role"
   assume_role_policy   = data.aws_iam_policy_document.lambda_assume_role_policy.json
   path                 = local.role_path
   permissions_boundary = var.role_permissions_boundary
@@ -78,7 +79,7 @@ resource "aws_iam_role" "scale_up" {
 }
 
 resource "aws_iam_role_policy" "scale_up" {
-  name = "${var.environment}-lambda-scale-up-policy"
+  name = "${var.prefix}-lambda-scale-up-policy"
   role = aws_iam_role.scale_up.name
   policy = templatefile("${path.module}/policies/lambda-scale-up.json", {
     arn_runner_instance_role  = aws_iam_role.runner.arn
@@ -91,7 +92,7 @@ resource "aws_iam_role_policy" "scale_up" {
 
 
 resource "aws_iam_role_policy" "scale_up_logging" {
-  name = "${var.environment}-lambda-logging"
+  name = "${var.prefix}-lambda-logging"
   role = aws_iam_role.scale_up.name
   policy = templatefile("${path.module}/policies/lambda-cloudwatch.json", {
     log_group_arn = aws_cloudwatch_log_group.scale_up.arn
@@ -100,7 +101,7 @@ resource "aws_iam_role_policy" "scale_up_logging" {
 
 resource "aws_iam_role_policy" "service_linked_role" {
   count  = var.create_service_linked_role_spot ? 1 : 0
-  name   = "${var.environment}-service_linked_role"
+  name   = "${var.prefix}-service_linked_role"
   role   = aws_iam_role.scale_up.name
   policy = templatefile("${path.module}/policies/service-linked-role-create-policy.json", { aws_partition = var.aws_partition })
 }

@@ -35,7 +35,7 @@ module "runners" {
   subnet_ids  = module.vpc.private_subnets
   kms_key_arn = aws_kms_key.github.key_id
 
-  environment = local.environment
+  prefix = local.environment
   tags = {
     Project = "ProjectX"
   }
