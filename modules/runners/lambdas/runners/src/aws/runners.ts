@@ -48,7 +48,7 @@ export async function listEC2Runners(filters: ListRunnerFilters | undefined = un
   const ec2Statuses = filters?.statuses ? filters.statuses : ['running', 'pending'];
   const ec2 = new EC2();
   const ec2Filters = [
-    { Name: 'tag:Application', Values: ['github-action-runner'] },
+    { Name: 'tag:ghr:Application', Values: ['github-action-runner'] },
     { Name: 'instance-state-name', Values: ec2Statuses },
   ];
 
@@ -158,7 +158,7 @@ export async function createRunner(runnerParameters: RunnerInputParameters): Pro
           {
             ResourceType: 'instance',
             Tags: [
-              { Key: 'Application', Value: 'github-action-runner' },
+              { Key: 'ghr:Application', Value: 'github-action-runner' },
               { Key: 'Type', Value: runnerParameters.runnerType },
               { Key: 'Owner', Value: runnerParameters.runnerOwner },
             ],
