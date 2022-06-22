@@ -21,7 +21,7 @@
             ],
             "Condition": {
                 "StringEquals": {
-                    "ec2:ResourceTag/Application": "github-action-runner"
+                    "ec2:ResourceTag/ghr:Application": "github-action-runner"
                 }
             }
         },
@@ -34,7 +34,8 @@
                 "${github_app_key_base64_arn}",
                 "${github_app_id_arn}"
             ]
-%{ if kms_key_arn != "" ~}
+%{ if kms_key_arn != "" ~
+            }
         },
         {
             "Effect": "Allow",
@@ -42,7 +43,8 @@
                 "kms:Decrypt"
             ],
             "Resource": "${kms_key_arn}"
-%{ endif ~}
+%{ endif ~
+            }
         }
     ]
 }

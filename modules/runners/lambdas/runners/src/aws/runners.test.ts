@@ -28,7 +28,7 @@ describe('list instances', () => {
               LaunchTime: new Date('2020-10-10T14:48:00.000+09:00'),
               InstanceId: 'i-1234',
               Tags: [
-                { Key: 'Application', Value: 'github-action-runner' },
+                { Key: 'ghr:Application', Value: 'github-action-runner' },
                 { Key: 'Type', Value: 'Org' },
                 { Key: 'Owner', Value: 'CoderToCat' },
               ],
@@ -39,7 +39,7 @@ describe('list instances', () => {
               Tags: [
                 { Key: 'Owner', Value: REPO_NAME },
                 { Key: 'Type', Value: 'Repo' },
-                { Key: 'Application', Value: 'github-action-runner' },
+                { Key: 'ghr:Application', Value: 'github-action-runner' },
               ],
             },
           ],
@@ -75,7 +75,7 @@ describe('list instances', () => {
     await listEC2Runners({ runnerType: 'Repo', runnerOwner: REPO_NAME, environment: undefined });
     expect(mockEC2.describeInstances).toBeCalledWith({
       Filters: [
-        { Name: 'tag:Application', Values: ['github-action-runner'] },
+        { Name: 'tag:ghr:Application', Values: ['github-action-runner'] },
         { Name: 'instance-state-name', Values: ['running', 'pending'] },
         { Name: 'tag:Type', Values: ['Repo'] },
         { Name: 'tag:Owner', Values: [REPO_NAME] },
@@ -87,7 +87,7 @@ describe('list instances', () => {
     await listEC2Runners({ runnerType: 'Org', runnerOwner: ORG_NAME, environment: undefined });
     expect(mockEC2.describeInstances).toBeCalledWith({
       Filters: [
-        { Name: 'tag:Application', Values: ['github-action-runner'] },
+        { Name: 'tag:ghr:Application', Values: ['github-action-runner'] },
         { Name: 'instance-state-name', Values: ['running', 'pending'] },
         { Name: 'tag:Type', Values: ['Org'] },
         { Name: 'tag:Owner', Values: [ORG_NAME] },
@@ -99,7 +99,7 @@ describe('list instances', () => {
     await listEC2Runners({ environment: ENVIRONMENT });
     expect(mockEC2.describeInstances).toBeCalledWith({
       Filters: [
-        { Name: 'tag:Application', Values: ['github-action-runner'] },
+        { Name: 'tag:ghr:Application', Values: ['github-action-runner'] },
         { Name: 'instance-state-name', Values: ['running', 'pending'] },
         { Name: 'tag:ghr:environment', Values: [ENVIRONMENT] },
       ],
@@ -417,7 +417,7 @@ function expectedCreateFleetRequest(expectedValues: ExpectedFleetRequestValues):
       {
         ResourceType: 'instance',
         Tags: [
-          { Key: 'Application', Value: 'github-action-runner' },
+          { Key: 'ghr:Application', Value: 'github-action-runner' },
           { Key: 'Type', Value: expectedValues.type },
           { Key: 'Owner', Value: REPO_NAME },
         ],
