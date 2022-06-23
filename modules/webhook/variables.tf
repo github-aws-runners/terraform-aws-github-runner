@@ -113,6 +113,12 @@ variable "enable_workflow_job_labels_check" {
   default     = false
 }
 
+variable "workflow_job_labels_check_all" {
+  description = "If set to true all labels in the workflow job must match the GitHub labels (os, architecture and `self-hosted`). When false if __any__ label matches it will trigger the webhook. `enable_workflow_job_labels_check` must be true for this to take effect."
+  type        = bool
+  default     = true
+}
+
 variable "log_type" {
   description = "Logging format for lambda logging. Valid values are 'json', 'pretty', 'hidden'. "
   type        = string
