@@ -11,7 +11,8 @@ const supportedEvents = ['check_run', 'workflow_job'];
 const logger = rootLogger.getChildLogger();
 
 export async function handle(headers: IncomingHttpHeaders, body: string): Promise<Response> {
-  const { environment, repositoryWhiteList, enableWorkflowLabelCheck, runnerLabels } = readEnvironmentVariables();
+  const { environment, repositoryWhiteList, enableWorkflowLabelCheck, workflowLabelCheckAll, runnerLabels } =
+    readEnvironmentVariables();
 
   // ensure header keys lower case since github headers can contain capitals.
   for (const key in headers) {
@@ -66,6 +67,7 @@ export async function handle(headers: IncomingHttpHeaders, body: string): Promis
       payload as WorkflowJobEvent,
       githubEvent,
       enableWorkflowLabelCheck,
+      workflowLabelCheckAll,
       runnerLabels,
     );
   } else if (githubEvent == 'check_run') {
@@ -79,11 +81,13 @@ function readEnvironmentVariables() {
   const environment = process.env.ENVIRONMENT;
   const enableWorkflowLabelCheckEnv = process.env.ENABLE_WORKFLOW_JOB_LABELS_CHECK || 'false';
   const enableWorkflowLabelCheck = JSON.parse(enableWorkflowLabelCheckEnv) as boolean;
+  const workflowLabelCheckAllEnv = process.env.WORKFLOW_JOB_LABELS_CHECK_ALL || 'false';
+  const workflowLabelCheckAll = JSON.parse(workflowLabelCheckAllEnv) as boolean;
   const repositoryWhiteListEnv = process.env.REPOSITORY_WHITE_LIST || '[]';
   const repositoryWhiteList = JSON.parse(repositoryWhiteListEnv) as Array<string>;
   const runnerLabelsEnv = process.env.RUNNER_LABELS || '[]';
   const runnerLabels = JSON.parse(runnerLabelsEnv) as Array<string>;
-  return { environment, repositoryWhiteList, enableWorkflowLabelCheck, runnerLabels };
+  return { environment, repositoryWhiteList, enableWorkflowLabelCheck, workflowLabelCheckAll, runnerLabels };
 }
 
 async function verifySignature(
@@ -117,9 +121,10 @@ async function handleWorkflowJob(
   body: WorkflowJobEvent,
   githubEvent: string,
   enableWorkflowLabelCheck: boolean,
+  workflowLabelCheckAll: boolean,
   runnerLabels: string[],
 ): Promise<Response> {
-  if (enableWorkflowLabelCheck && !canRunJob(body, runnerLabels)) {
+  if (enableWorkflowLabelCheck && !canRunJob(body, runnerLabels, workflowLabelCheckAll)) {
     logger.warn(
       `Received event contains runner labels '${body.workflow_job.labels}' that are not accepted.`,
       LogFields.print(),
@@ -171,10 +176,17 @@ function isRepoNotAllowed(repoFullName: string, repositoryWhiteList: string[]): 
   return repositoryWhiteList.length > 0 && !repositoryWhiteList.includes(repoFullName);
 }
 
-function canRunJob(job: WorkflowJobEvent, runnerLabels: string[]): boolean {
+function canRunJob(job: WorkflowJobEvent, runnerLabels: string[], workflowLabelCheckAll: boolean): boolean {
   const workflowJobLabels = job.workflow_job.labels;
-  const runnerMatch = runnerLabels.every((l) => workflowJobLabels.includes(l));
-  const jobMatch = workflowJobLabels.every((l) => runnerLabels.includes(l));
+  let runnerMatch;
+  let jobMatch;
+  if (workflowLabelCheckAll) {
+    runnerMatch = runnerLabels.every((l) => workflowJobLabels.includes(l));
+    jobMatch = workflowJobLabels.every((l) => runnerLabels.includes(l));
+  } else {
+    runnerMatch = runnerLabels.some((l) => workflowJobLabels.includes(l));
+    jobMatch = workflowJobLabels.some((l) => runnerLabels.includes(l));
+  }
   const match = jobMatch && runnerMatch;
 
   logger.debug(
