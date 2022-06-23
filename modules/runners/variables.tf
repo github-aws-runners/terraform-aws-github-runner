@@ -549,7 +549,7 @@ variable "disable_runner_autoupdate" {
 variable "lambda_runtime" {
   description = "AWS Lambda runtime."
   type        = string
-  default     = "nodejs14.x"
+  default     = "nodejs16.x"
 }
 
 variable "lambda_architecture" {
