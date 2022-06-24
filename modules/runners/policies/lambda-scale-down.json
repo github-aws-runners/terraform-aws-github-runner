@@ -34,8 +34,7 @@
                 "${github_app_key_base64_arn}",
                 "${github_app_id_arn}"
             ]
-%{ if kms_key_arn != "" ~
-            }
+%{ if kms_key_arn != "" ~}
         },
         {
             "Effect": "Allow",
@@ -43,8 +42,7 @@
                 "kms:Decrypt"
             ],
             "Resource": "${kms_key_arn}"
-%{ endif ~
-            }
+%{ endif ~}
         }
     ]
 }
