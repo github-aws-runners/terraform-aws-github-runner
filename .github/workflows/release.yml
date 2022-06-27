@@ -92,7 +92,7 @@ jobs:
 
     steps:
       - name: Generate provenance for release
-        uses: philips-labs/slsa-provenance-action@v0.7.2
+        uses: philips-labs/slsa-provenance-action@v0.8.0
         with:
           artifact_path: release-assets
           output_path: 'build.provenance'
