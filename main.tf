@@ -8,6 +8,8 @@ locals {
     id         = module.ssm.parameters.github_app_id
     key_base64 = module.ssm.parameters.github_app_key_base64
   }
+
+  default_runner_labels = "self-hosted,${var.runner_os},${var.runner_architecture}"
 }
 
 resource "random_string" "random" {
@@ -111,7 +113,8 @@ module "webhook" {
 
   # labels
   enable_workflow_job_labels_check = var.runner_enable_workflow_job_labels_check
-  runner_labels                    = "self-hosted,${var.runner_os},${var.runner_architecture},${var.runner_extra_labels}"
+  workflow_job_labels_check_all    = var.runner_enable_workflow_job_labels_check_all
+  runner_labels                    = var.runner_extra_labels != "" ? "${local.default_runner_labels},${var.runner_extra_labels}" : local.default_runner_labels
 
   role_path                 = var.role_path
   role_permissions_boundary = var.role_permissions_boundary

@@ -517,6 +517,12 @@ variable "runner_enable_workflow_job_labels_check" {
   default     = false
 }
 
+variable "runner_enable_workflow_job_labels_check_all" {
+  description = "If set to true all labels in the workflow job must match the GitHub labels (os, architecture and `self-hosted`). When false if __any__ label matches it will trigger the webhook. `runner_enable_workflow_job_labels_check` must be true for this to take effect."
+  type        = bool
+  default     = true
+}
+
 variable "runner_ec2_tags" {
   description = "Map of tags that will be added to the launch template instance tag specificatons."
   type        = map(string)
