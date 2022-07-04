@@ -25,7 +25,7 @@
     "@vercel/ncc": "^0.34.0",
     "aws-sdk": "^2.1163.0",
     "eslint": "^7.32.0",
-    "eslint-plugin-prettier": "4.1.0",
+    "eslint-plugin-prettier": "4.2.1",
     "jest": "^27.5.1",
     "jest-mock": "^28.1.1",
     "prettier": "2.7.1",
