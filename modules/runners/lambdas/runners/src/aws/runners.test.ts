@@ -15,41 +15,53 @@ const ORG_NAME = 'SomeAwesomeCoder';
 const REPO_NAME = `${ORG_NAME}/some-amazing-library`;
 const ENVIRONMENT = 'unit-test-environment';
 
-describe('list instances', () => {
-  const mockDescribeInstances = { promise: jest.fn() };
-  beforeEach(() => {
-    jest.clearAllMocks();
-    mockEC2.describeInstances.mockImplementation(() => mockDescribeInstances);
-    const mockRunningInstances: AWS.EC2.DescribeInstancesResult = {
-      Reservations: [
+const mockDescribeInstances = { promise: jest.fn() };
+mockEC2.describeInstances.mockImplementation(() => mockDescribeInstances);
+const mockRunningInstances: AWS.EC2.DescribeInstancesResult = {
+  Reservations: [
+    {
+      Instances: [
         {
-          Instances: [
-            {
-              LaunchTime: new Date('2020-10-10T14:48:00.000+09:00'),
-              InstanceId: 'i-1234',
-              Tags: [
-                { Key: 'ghr:Application', Value: 'github-action-runner' },
-                { Key: 'Type', Value: 'Org' },
-                { Key: 'Owner', Value: 'CoderToCat' },
-              ],
-            },
-            {
-              LaunchTime: new Date('2020-10-11T14:48:00.000+09:00'),
-              InstanceId: 'i-5678',
-              Tags: [
-                { Key: 'Owner', Value: REPO_NAME },
-                { Key: 'Type', Value: 'Repo' },
-                { Key: 'ghr:Application', Value: 'github-action-runner' },
-              ],
-            },
+          LaunchTime: new Date('2020-10-10T14:48:00.000+09:00'),
+          InstanceId: 'i-1234',
+          Tags: [
+            { Key: 'ghr:Application', Value: 'github-action-runner' },
+            { Key: 'Type', Value: 'Org' },
+            { Key: 'Owner', Value: 'CoderToCat' },
           ],
         },
       ],
-    };
-    mockDescribeInstances.promise.mockReturnValue(mockRunningInstances);
+    },
+  ],
+};
+const mockRunningInstancesLegacy: AWS.EC2.DescribeInstancesResult = {
+  Reservations: [
+    {
+      Instances: [
+        {
+          LaunchTime: new Date('2020-10-11T14:48:00.000+09:00'),
+          InstanceId: 'i-5678',
+          Tags: [
+            { Key: 'Owner', Value: REPO_NAME },
+            { Key: 'Type', Value: 'Repo' },
+            { Key: 'Application', Value: 'github-action-runner' },
+          ],
+        },
+      ],
+    },
+  ],
+};
+
+describe('list instances', () => {
+  beforeEach(() => {
+    jest.resetModules();
+    jest.clearAllMocks();
   });
 
   it('returns a list of instances', async () => {
+    mockDescribeInstances.promise
+      .mockReturnValueOnce(mockRunningInstances)
+      .mockReturnValueOnce(mockRunningInstancesLegacy);
     const resp = await listEC2Runners();
     expect(resp.length).toBe(2);
     expect(resp).toContainEqual({
@@ -67,41 +79,61 @@ describe('list instances', () => {
   });
 
   it('calls EC2 describe instances', async () => {
+    mockDescribeInstances.promise
+      .mockReturnValueOnce(mockRunningInstances)
+      .mockReturnValueOnce(mockRunningInstancesLegacy);
     await listEC2Runners();
     expect(mockEC2.describeInstances).toBeCalled();
   });
 
   it('filters instances on repo name', async () => {
+    mockDescribeInstances.promise
+      .mockReturnValueOnce(mockRunningInstances)
+      .mockReturnValueOnce(mockRunningInstancesLegacy);
     await listEC2Runners({ runnerType: 'Repo', runnerOwner: REPO_NAME, environment: undefined });
     expect(mockEC2.describeInstances).toBeCalledWith({
       Filters: [
-        { Name: 'tag:ghr:Application', Values: ['github-action-runner'] },
         { Name: 'instance-state-name', Values: ['running', 'pending'] },
         { Name: 'tag:Type', Values: ['Repo'] },
         { Name: 'tag:Owner', Values: [REPO_NAME] },
+        { Name: 'tag:ghr:Application', Values: ['github-action-runner'] },
+      ],
+    });
+    expect(mockEC2.describeInstances).toBeCalledWith({
+      Filters: [
+        { Name: 'instance-state-name', Values: ['running', 'pending'] },
+        { Name: 'tag:Type', Values: ['Repo'] },
+        { Name: 'tag:Owner', Values: [REPO_NAME] },
+        { Name: 'tag:Application', Values: ['github-action-runner'] },
       ],
     });
   });
 
   it('filters instances on org name', async () => {
+    mockDescribeInstances.promise
+      .mockReturnValueOnce(mockRunningInstances)
+      .mockReturnValueOnce(mockRunningInstancesLegacy);
     await listEC2Runners({ runnerType: 'Org', runnerOwner: ORG_NAME, environment: undefined });
     expect(mockEC2.describeInstances).toBeCalledWith({
       Filters: [
-        { Name: 'tag:ghr:Application', Values: ['github-action-runner'] },
         { Name: 'instance-state-name', Values: ['running', 'pending'] },
         { Name: 'tag:Type', Values: ['Org'] },
         { Name: 'tag:Owner', Values: [ORG_NAME] },
+        { Name: 'tag:ghr:Application', Values: ['github-action-runner'] },
       ],
     });
   });
 
   it('filters instances on environment', async () => {
+    mockDescribeInstances.promise
+      .mockReturnValueOnce(mockRunningInstances)
+      .mockReturnValueOnce(mockRunningInstancesLegacy);
     await listEC2Runners({ environment: ENVIRONMENT });
     expect(mockEC2.describeInstances).toBeCalledWith({
       Filters: [
-        { Name: 'tag:ghr:Application', Values: ['github-action-runner'] },
         { Name: 'instance-state-name', Values: ['running', 'pending'] },
         { Name: 'tag:ghr:environment', Values: [ENVIRONMENT] },
+        { Name: 'tag:ghr:Application', Values: ['github-action-runner'] },
       ],
     });
   });
@@ -110,7 +142,7 @@ describe('list instances', () => {
     const noInstances: AWS.EC2.DescribeInstancesResult = {
       Reservations: undefined,
     };
-    mockDescribeInstances.promise.mockReturnValue(noInstances);
+    mockDescribeInstances.promise.mockReturnValueOnce(noInstances).mockReturnValueOnce(noInstances);
     const resp = await listEC2Runners();
     expect(resp.length).toBe(0);
   });
@@ -123,7 +155,7 @@ describe('list instances', () => {
         },
       ],
     };
-    mockDescribeInstances.promise.mockReturnValue(noInstances);
+    mockDescribeInstances.promise.mockReturnValueOnce(noInstances).mockReturnValueOnce(noInstances);
     const resp = await listEC2Runners();
     expect(resp.length).toBe(0);
   });
@@ -142,7 +174,7 @@ describe('list instances', () => {
         },
       ],
     };
-    mockDescribeInstances.promise.mockReturnValue(noInstances);
+    mockDescribeInstances.promise.mockReturnValueOnce(noInstances).mockReturnValue({});
     const resp = await listEC2Runners();
     expect(resp.length).toBe(1);
   });

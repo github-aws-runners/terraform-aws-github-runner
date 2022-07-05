@@ -44,24 +44,47 @@ export interface RunnerInputParameters {
   numberOfRunners?: number;
 }
 
-export async function listEC2Runners(filters: ListRunnerFilters | undefined = undefined): Promise<RunnerList[]> {
-  const ec2Statuses = filters?.statuses ? filters.statuses : ['running', 'pending'];
-  const ec2 = new EC2();
-  const ec2Filters = [
-    { Name: 'tag:ghr:Application', Values: ['github-action-runner'] },
-    { Name: 'instance-state-name', Values: ec2Statuses },
-  ];
+interface Ec2Filter {
+  Name: string;
+  Values: string[];
+}
 
+export async function listEC2Runners(filters: ListRunnerFilters | undefined = undefined): Promise<RunnerList[]> {
+  const ec2Filters = constructFilters(filters);
+  const runners: RunnerList[] = [];
+  for (const filter of ec2Filters) {
+    runners.push(...(await getRunners(filter)));
+  }
+  return runners;
+}
+
+function constructFilters(filters?: ListRunnerFilters): Ec2Filter[][] {
+  const ec2Statuses = filters?.statuses ? filters.statuses : ['running', 'pending'];
+  const ec2Filters: Ec2Filter[][] = [];
+  const ec2FiltersBase = [{ Name: 'instance-state-name', Values: ec2Statuses }];
   if (filters) {
     if (filters.environment !== undefined) {
-      ec2Filters.push({ Name: 'tag:ghr:environment', Values: [filters.environment] });
+      ec2FiltersBase.push({ Name: 'tag:ghr:environment', Values: [filters.environment] });
     }
     if (filters.runnerType && filters.runnerOwner) {
-      ec2Filters.push({ Name: `tag:Type`, Values: [filters.runnerType] });
-      ec2Filters.push({ Name: `tag:Owner`, Values: [filters.runnerOwner] });
+      ec2FiltersBase.push({ Name: `tag:Type`, Values: [filters.runnerType] });
+      ec2FiltersBase.push({ Name: `tag:Owner`, Values: [filters.runnerOwner] });
     }
   }
 
+  // ***Deprecation Notice***
+  // Support for legacy `Application` tag keys
+  // will be removed in next major release.
+  for (const key of ['tag:ghr:Application', 'tag:Application']) {
+    const filter = [...ec2FiltersBase];
+    filter.push({ Name: key, Values: ['github-action-runner'] });
+    ec2Filters.push(filter);
+  }
+  return ec2Filters;
+}
+
+async function getRunners(ec2Filters: Ec2Filter[]): Promise<RunnerList[]> {
+  const ec2 = new EC2();
   const runners: RunnerList[] = [];
   let nextToken;
   let hasNext = true;
