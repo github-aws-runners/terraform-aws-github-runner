@@ -1,6 +1,6 @@
 locals {
   environment = "ubuntu"
-  aws_region = "us-east-1"
+  aws_region  = "us-east-1"
   # aws_region  = "eu-west-1"
 
   userdata = templatefile("${path.module}/scripts/user-data.sh", {
@@ -32,7 +32,7 @@ locals {
       "log_stream_name" : "{instance_id}/runner"
     }
   ]
-  loggroups_names = distinct([for l in local.logfiles : l.log_group_name])
+  loggroups_names     = distinct([for l in local.logfiles : l.log_group_name])
   log_ssm_config_name = "${local.environment}-cloudwatch_agent_config_runner"
 
   key = filebase64("private-key.pem")
@@ -61,9 +61,9 @@ module "runners" {
     id             = var.github_app_id
     webhook_secret = random_id.random.hex
   }
-  webhook_lambda_zip = "./lambdas-download/webhook.zip"
+  webhook_lambda_zip                = "./lambdas-download/webhook.zip"
   runner_binaries_syncer_lambda_zip = "./lambdas-download/runner-binaries-syncer.zip"
-  runners_lambda_zip = "./lambdas-download/runners.zip"
+  runners_lambda_zip                = "./lambdas-download/runners.zip"
   # webhook_lambda_zip                = "lambdas-download/webhook.zip"
   # runner_binaries_syncer_lambda_zip = "lambdas-download/runner-binaries-syncer.zip"
   # runners_lambda_zip                = "lambdas-download/runners.zip"
@@ -130,8 +130,8 @@ module "runners" {
 }
 
 resource "aws_ssm_parameter" "cloudwatch_agent_config_runner" {
-  name  = "${local.environment}-cloudwatch_agent_config_runner"
-  type  = "String"
+  name = "${local.environment}-cloudwatch_agent_config_runner"
+  type = "String"
   value = templatefile("${path.module}/scripts/cloudwatch_config.json", {
     logfiles = jsonencode(local.logfiles)
   })
@@ -144,6 +144,6 @@ resource "aws_cloudwatch_log_group" "gh_runners" {
 }
 
 resource "aws_iam_policy" "runner" {
-  name = "github-runner-${local.environment}-access"
+  name   = "github-runner-${local.environment}-access"
   policy = data.aws_iam_policy_document.runner.json
 }

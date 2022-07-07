@@ -185,8 +185,8 @@ variable "userdata_template" {
 
 variable "userdata_override" {
   description = "Alternative to userdata_template to pass userdata as string. Note: Usage of this variable overrides all templates in place by this module. You are responsible for the installation and configuration of all software, including the action runner. Use with caution. Variables userdata_pre/post_install and userdata_template are ignored."
-  type = string
-  default = null
+  type        = string
+  default     = null
 }
 
 variable "userdata_pre_install" {
