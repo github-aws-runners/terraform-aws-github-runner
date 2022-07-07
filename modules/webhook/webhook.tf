@@ -14,6 +14,7 @@ resource "aws_lambda_function" "webhook" {
   environment {
     variables = {
       ENABLE_WORKFLOW_JOB_LABELS_CHECK = var.enable_workflow_job_labels_check
+      WORKFLOW_JOB_LABELS_CHECK_ALL    = var.workflow_job_labels_check_all
       ENVIRONMENT                      = var.prefix
       LOG_LEVEL                        = var.log_level
       LOG_TYPE                         = var.log_type
