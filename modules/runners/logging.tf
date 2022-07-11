@@ -18,7 +18,7 @@ locals {
       {
         "log_group_name" : "runner",
         "prefix_log_group" : true,
-        "file_path" : var.runner_os == "windows" ? "C:/actions-runner/_diag/Runner_*.log" : "/home/runners/actions-runner/_diag/Runner_**.log",
+        "file_path" : var.runner_os == "windows" ? "C:/actions-runner/_diag/Runner_*.log" : "/opt/actions-runner/_diag/Runner_**.log",
         "log_stream_name" : "{instance_id}"
       },
       {
