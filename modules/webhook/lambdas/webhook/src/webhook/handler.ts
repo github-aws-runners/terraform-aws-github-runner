@@ -3,7 +3,7 @@ import { CheckRunEvent, WorkflowJobEvent } from '@octokit/webhooks-types';
 import { IncomingHttpHeaders } from 'http';
 
 import { Response } from '../lambda';
-import { sendActionRequest } from '../sqs';
+import { sendActionRequest, sendMonitorGHWorkflowEvent } from '../sqs';
 import { getParameterValue } from '../ssm';
 import { LogFields, logger as rootLogger } from './logger';
 
@@ -73,8 +73,24 @@ export async function handle(headers: IncomingHttpHeaders, body: string): Promis
   } else if (githubEvent == 'check_run') {
     response = await handleCheckRun(payload as CheckRunEvent, githubEvent);
   }
-
+  await monitorWorkflowEvents(githubEvent, payload);
   return response;
+}
+
+async function monitorWorkflowEvents(githubEvent: string, payload: any){
+  const monitor_ghaction_events = process.env.SQS_MONITORED_BUILD_EVENTS || 'false';
+  logger.debug("Monitoring events queue name: ", monitor_ghaction_events)
+  if (monitor_ghaction_events != "false") {
+    if (githubEvent == 'workflow_job') {
+      let workflowEventPayload = payload as WorkflowJobEvent;
+      logger.debug("Sending monitoring events to the queue: ", monitor_ghaction_events)
+      await sendMonitorGHWorkflowEvent({
+        id: workflowEventPayload.workflow_job.id,
+        eventType: githubEvent,
+        jobEvent: workflowEventPayload
+      });
+    }
+  }
 }
 
 function readEnvironmentVariables() {
