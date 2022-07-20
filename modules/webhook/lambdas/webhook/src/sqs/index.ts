@@ -1,7 +1,6 @@
 import { SQS } from 'aws-sdk';
 
 import { LogFields, logger } from '../webhook/logger';
-import { WorkflowJobEvent } from '@octokit/webhooks-types';
 
 export interface ActionRequestMessage {
   id: number;
@@ -13,10 +12,10 @@ export interface ActionRequestMessage {
 export interface GithubWorkflowEvent {
   id: number;
   eventType: string;
-  jobEvent: WorkflowJobEvent
+  jobEvent: any;
 }
 
-export const sendActionRequest = async(message: ActionRequestMessage): Promise<void> => {
+export const sendActionRequest = async (message: ActionRequestMessage): Promise<void> => {
   const sqs = new SQS({ region: process.env.AWS_REGION });
 
   const useFifoQueueEnv = process.env.SQS_IS_FIFO || 'false';
@@ -35,7 +34,7 @@ export const sendActionRequest = async(message: ActionRequestMessage): Promise<v
   await sqs.sendMessage(sqsMessage).promise();
 };
 
-export const sendMonitorGHWorkflowEvent = async(message: GithubWorkflowEvent): Promise<void> => {
+export const sendMonitorGHWorkflowEvent = async (message: GithubWorkflowEvent): Promise<void> => {
   const sqs = new SQS({ region: process.env.AWS_REGION });
 
   const sqsMessage: SQS.Types.SendMessageRequest = {

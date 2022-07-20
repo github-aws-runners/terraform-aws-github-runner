@@ -81,8 +81,8 @@ resource "aws_iam_role_policy" "webhook_sqs" {
 }
 resource "aws_iam_role_policy" "webhook_sqs_1" {
   count = try(var.sqs_monitored_build_events, null) != null ? 1 : 0
-  name = "${var.prefix}-lambda-webhook-publish-sqs-policy-1"
-  role = aws_iam_role.webhook_lambda.name
+  name  = "${var.prefix}-lambda-webhook-publish-sqs-policy-1"
+  role  = aws_iam_role.webhook_lambda.name
 
   policy = templatefile("${path.module}/policies/lambda-publish-sqs-policy.json", {
     sqs_resource_arn = var.sqs_monitored_build_events.arn

@@ -658,7 +658,7 @@ variable "lambda_architecture" {
   }
 }
 
-variable "monitor_ghaction_events" { 
+variable "monitor_ghaction_events" {
   description = "Monitoring for github action webhook events"
   type        = bool
   default     = true

@@ -77,17 +77,17 @@ export async function handle(headers: IncomingHttpHeaders, body: string): Promis
   return response;
 }
 
-async function monitorWorkflowEvents(githubEvent: string, payload: any){
+async function monitorWorkflowEvents(githubEvent: string, payload: any) {
   const monitor_ghaction_events = process.env.SQS_MONITORED_BUILD_EVENTS || 'false';
-  logger.debug("Monitoring events queue name: ", monitor_ghaction_events)
-  if (monitor_ghaction_events != "false") {
+  logger.debug('Monitoring events queue name: ', monitor_ghaction_events);
+  if (monitor_ghaction_events != 'false') {
     if (githubEvent == 'workflow_job') {
       let workflowEventPayload = payload as WorkflowJobEvent;
-      logger.debug("Sending monitoring events to the queue: ", monitor_ghaction_events)
+      logger.debug('Sending monitoring events to the queue: ', monitor_ghaction_events);
       await sendMonitorGHWorkflowEvent({
         id: workflowEventPayload.workflow_job.id,
         eventType: githubEvent,
-        jobEvent: workflowEventPayload
+        jobEvent: workflowEventPayload,
       });
     }
   }
