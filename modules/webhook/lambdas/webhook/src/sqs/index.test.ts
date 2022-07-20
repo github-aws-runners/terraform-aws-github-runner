@@ -1,7 +1,7 @@
 import { SQS } from 'aws-sdk';
 
-import { ActionRequestMessage, sendActionRequest } from '.';
-
+import { ActionRequestMessage, sendActionRequest, GithubWorkflowEvent, sendMonitorGHWorkflowEvent } from '.';
+import { WorkflowJobEvent } from '@octokit/webhooks-types';
 const mockSQS = {
   sendMessage: jest.fn(() => {
     {
@@ -63,4 +63,30 @@ describe('Test sending message to SQS.', () => {
     expect(mockSQS.sendMessage).toBeCalledWith({ ...sqsMessage, MessageGroupId: String(message.id) });
     expect(result).resolves;
   });
+});
+
+
+describe('Test sending message to monitoring SQS.', () => {
+  const message: GithubWorkflowEvent = {
+    eventType: 'type',
+    id: 0,
+    jobEvent: <WorkflowJobEvent> {}
+  }
+  const sqsMessage: SQS.Types.SendMessageRequest = {
+    QueueUrl: 'https://sqs.eu-west-1.amazonaws.com/123456789/monitored-build-events',
+    MessageBody: JSON.stringify(message),
+  };
+
+  it('no fifo queue, based on defaults', async () => {
+    // Arrange
+    process.env.SQS_MONITORED_BUILD_EVENTS = sqsMessage.QueueUrl;
+
+    // Act
+    const result = await sendMonitorGHWorkflowEvent(message);
+
+    // Assert
+    expect(mockSQS.sendMessage).toBeCalledWith(sqsMessage);
+    expect(result).resolves;
+  });
+
 });

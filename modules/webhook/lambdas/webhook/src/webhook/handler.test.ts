@@ -4,7 +4,7 @@ import nock from 'nock';
 
 import checkrun_event from '../../test/resources/github_check_run_event.json';
 import workflowjob_event from '../../test/resources/github_workflowjob_event.json';
-import { sendActionRequest } from '../sqs';
+import { sendActionRequest, sendMonitorGHWorkflowEvent } from '../sqs';
 import { getParameterValue } from '../ssm';
 import { handle } from './handler';
 
@@ -297,6 +297,31 @@ describe('handler', () => {
       );
       expect(resp.statusCode).toBe(201);
       expect(sendActionRequest).toBeCalled();
+    });
+  });
+
+  describe('Test for monitoring github action events: ', () => {
+    beforeEach(() => {
+      process.env.SQS_MONITORED_BUILD_EVENTS = 'https://sqs.eu-west-1.amazonaws.com/123456789/monitored-build-events';
+    });
+    it('sends monitoring events', async () => {
+      const event = JSON.stringify(workflowjob_event);
+      const resp = await handle(
+        { 'X-Hub-Signature': await webhooks.sign(event), 'X-GitHub-Event': 'workflow_job' },
+        event,
+      );
+      expect(resp.statusCode).toBe(201);
+      expect(sendMonitorGHWorkflowEvent).toBeCalled();
+    });
+    it('Doesnt sends monitoring events', async () => {
+      process.env.SQS_MONITORED_BUILD_EVENTS = '';
+      const event = JSON.stringify(workflowjob_event);
+      const resp = await handle(
+        { 'X-Hub-Signature': await webhooks.sign(event), 'X-GitHub-Event': 'workflow_job' },
+        event,
+      );
+      expect(resp.statusCode).toBe(201);
+      expect(sendMonitorGHWorkflowEvent).not.toBeCalled();
     });
   });
 });
