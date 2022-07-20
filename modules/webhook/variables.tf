@@ -37,7 +37,13 @@ variable "sqs_build_queue" {
     arn = string
   })
 }
-
+variable "sqs_monitored_build_events" {
+  description = "SQS queue to monitor github events."
+  type = object({
+    id  = string
+    arn = string
+  })
+}
 variable "lambda_zip" {
   description = "File location of the lambda zip file."
   type        = string
