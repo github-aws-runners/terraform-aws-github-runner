@@ -496,7 +496,7 @@ variable "metadata_options" {
   type        = map(any)
   default = {
     http_endpoint               = "enabled"
-    http_tokens                 = "required"
+    http_tokens                 = "optional"
     http_put_response_hop_limit = 1
   }
 }
