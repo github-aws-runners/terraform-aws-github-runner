@@ -77,7 +77,7 @@ describe('Test sending message to monitoring SQS.', () => {
     MessageBody: JSON.stringify(message),
   };
 
-  it('no fifo queue, based on defaults', async () => {
+  it('based on defaults', async () => {
     // Arrange
     process.env.SQS_MONITORED_BUILD_EVENTS = sqsMessage.QueueUrl;
 
