@@ -50,6 +50,12 @@ resource "aws_sqs_queue_policy" "build_queue_policy" {
   policy    = data.aws_iam_policy_document.deny_unsecure_transport.json
 }
 
+resource "aws_sqs_queue_policy" "monitored_build_events_policy" {
+  count     = var.monitor_ghaction_events ? 1: 0
+  queue_url = aws_sqs_queue.monitored_build_events[0].id
+  policy    = data.aws_iam_policy_document.deny_unsecure_transport.json
+}
+
 resource "aws_sqs_queue" "queued_builds" {
   name                        = "${var.prefix}-queued-builds${var.fifo_build_queue ? ".fifo" : ""}"
   delay_seconds               = var.delay_webhook_event
@@ -63,6 +69,19 @@ resource "aws_sqs_queue" "queued_builds" {
     maxReceiveCount     = var.redrive_build_queue.maxReceiveCount
   }) : null
 
+  tags = var.tags
+}
+
+resource "aws_sqs_queue" "monitored_build_events" {
+  count                       = var.monitor_ghaction_events ? 1: 0
+  name                        = "${var.prefix}-monitored-build-events"
+  delay_seconds               = 0
+  visibility_timeout_seconds  = var.runners_scale_up_lambda_timeout
+  message_retention_seconds   = var.job_queue_retention_in_seconds
+  fifo_queue                  = false
+  receive_wait_time_seconds   = 0
+  content_based_deduplication = false
+  redrive_policy = null
   tags = var.tags
 }
 
@@ -99,6 +118,7 @@ module "webhook" {
 
   sqs_build_queue               = aws_sqs_queue.queued_builds
   sqs_build_queue_fifo          = var.fifo_build_queue
+  sqs_monitored_build_events    = length(aws_sqs_queue.monitored_build_events) > 0 ? aws_sqs_queue.monitored_build_events[0]: null
   github_app_webhook_secret_arn = module.ssm.parameters.github_app_webhook_secret.arn
 
   lambda_s3_bucket                 = var.lambda_s3_bucket
