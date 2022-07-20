@@ -41,6 +41,6 @@ output "queues" {
   value = {
     build_queue_arn     = aws_sqs_queue.queued_builds.arn
     build_queue_dlq_arn = var.redrive_build_queue.enabled ? aws_sqs_queue.queued_builds_dlq[0].arn : null
-    webhook_secondary_queue = aws_sqs_queue.monitored_build_events.arn
+    webhook_secondary_queue = try(aws_sqs_queue.monitored_build_events[0], null) != null ? aws_sqs_queue.monitored_build_events[0].arn : ""
   }
 }
