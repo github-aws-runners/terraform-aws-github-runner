@@ -78,12 +78,12 @@ export async function handle(headers: IncomingHttpHeaders, body: string): Promis
 }
 
 async function monitorWorkflowEvents(githubEvent: string, payload: any) {
-  const monitor_ghaction_events = process.env.SQS_MONITORED_BUILD_EVENTS || 'false';
-  logger.debug('Monitoring events queue name: ', monitor_ghaction_events);
-  if (monitor_ghaction_events != 'false') {
+  const webhook_events_secondary_queue = process.env.SQS_MONITORED_BUILD_EVENTS || 'false';
+  logger.debug('Webhook events secondary queue name: ', webhook_events_secondary_queue);
+  if (webhook_events_secondary_queue != 'false') {
     if (githubEvent == 'workflow_job') {
       let workflowEventPayload = payload as WorkflowJobEvent;
-      logger.debug('Sending monitoring events to the queue: ', monitor_ghaction_events);
+      logger.debug('Sending Webhook events to the secondary queue: ', webhook_events_secondary_queue);
       await sendMonitorGHWorkflowEvent({
         id: workflowEventPayload.workflow_job.id,
         eventType: githubEvent,

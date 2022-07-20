@@ -658,8 +658,8 @@ variable "lambda_architecture" {
   }
 }
 
-variable "monitor_ghaction_events" {
-  description = "Monitoring for github action webhook events"
+variable "webhook_events_secondary_queue" {
+  description = "Enabling this feature will create a secondory sqs queue to wich a copy of the event will be delivered."
   type        = bool
-  default     = true
+  default     = false
 }
