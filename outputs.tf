@@ -39,8 +39,8 @@ output "ssm_parameters" {
 output "queues" {
   description = "SQS queues."
   value = {
-    build_queue_arn     = aws_sqs_queue.queued_builds.arn
-    build_queue_dlq_arn = var.redrive_build_queue.enabled ? aws_sqs_queue.queued_builds_dlq[0].arn : null
+    build_queue_arn         = aws_sqs_queue.queued_builds.arn
+    build_queue_dlq_arn     = var.redrive_build_queue.enabled ? aws_sqs_queue.queued_builds_dlq[0].arn : null
     webhook_secondary_queue = try(aws_sqs_queue.monitored_build_events[0], null) != null ? aws_sqs_queue.monitored_build_events[0].arn : ""
   }
 }

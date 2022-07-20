@@ -111,15 +111,15 @@ module "ssm" {
 module "webhook" {
   source = "./modules/webhook"
 
-  aws_region  = var.aws_region
-  prefix      = var.prefix
-  tags        = local.tags
-  kms_key_arn = var.kms_key_arn
-
-  sqs_build_queue               = aws_sqs_queue.queued_builds
-  sqs_build_queue_fifo          = var.fifo_build_queue
-  sqs_monitored_build_events    = length(aws_sqs_queue.monitored_build_events) > 0 ? aws_sqs_queue.monitored_build_events[0] : null
-  github_app_webhook_secret_arn = module.ssm.parameters.github_app_webhook_secret.arn
+  aws_region                     = var.aws_region
+  prefix                         = var.prefix
+  tags                           = local.tags
+  kms_key_arn                    = var.kms_key_arn
+  webhook_events_secondary_queue = var.webhook_events_secondary_queue
+  sqs_build_queue                = aws_sqs_queue.queued_builds
+  sqs_build_queue_fifo           = var.fifo_build_queue
+  sqs_monitored_build_events     = length(aws_sqs_queue.monitored_build_events) > 0 ? aws_sqs_queue.monitored_build_events[0] : null
+  github_app_webhook_secret_arn  = module.ssm.parameters.github_app_webhook_secret.arn
 
   lambda_s3_bucket                 = var.lambda_s3_bucket
   webhook_lambda_s3_key            = var.webhook_lambda_s3_key

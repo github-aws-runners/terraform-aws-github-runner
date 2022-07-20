@@ -184,3 +184,9 @@ variable "lambda_architecture" {
     error_message = "`lambda_architecture` value is not valid, valid values are: `arm64` and `x86_64`."
   }
 }
+
+variable "webhook_events_secondary_queue" {
+  description = "Enabling this feature will create a secondory sqs queue to wich a copy of the event will be delivered."
+  type        = bool
+  default     = false
+}
