@@ -37,7 +37,7 @@ variable "sqs_build_queue" {
     arn = string
   })
 }
-variable "sqs_monitored_build_events" {
+variable "sqs_secondary_queue" {
   description = "SQS queue to monitor github events."
   type = object({
     id  = string
@@ -183,10 +183,4 @@ variable "lambda_architecture" {
     condition     = contains(["arm64", "x86_64"], var.lambda_architecture)
     error_message = "`lambda_architecture` value is not valid, valid values are: `arm64` and `x86_64`."
   }
-}
-
-variable "webhook_events_secondary_queue" {
-  description = "Enabling this feature will create a secondory sqs queue to wich a copy of the event will be delivered."
-  type        = bool
-  default     = false
 }

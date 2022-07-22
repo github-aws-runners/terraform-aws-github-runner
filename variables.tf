@@ -663,3 +663,21 @@ variable "webhook_events_secondary_queue" {
   type        = bool
   default     = false
 }
+
+variable "delay_webhook_event_secondary_queue" {
+  description = "The number of seconds the event accepted by the webhook is invisible on the secondary queue before the secondary queue lambda will receive the event."
+  type        = number
+  default     = 0
+}
+
+variable "secondary_queue_lambda_timeout" {
+  description = "Time out for the secondary queue lambda in seconds."
+  type        = number
+  default     = 30
+}
+
+variable "secondary_queue_retention_in_seconds" {
+  description = "The number of seconds the job is held in the secondary queue before it is purged"
+  type        = number
+  default     = 60
+}

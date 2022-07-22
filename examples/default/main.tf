@@ -14,8 +14,6 @@ resource "random_id" "random" {
 
 module "runners" {
   source = "../../"
-  # enable this flag to publish webhook events to secondary queue
-  # webhook_events_secondary_queue  = true
   create_service_linked_role_spot = true
   aws_region                      = local.aws_region
   vpc_id                          = module.vpc.vpc_id
@@ -83,4 +81,6 @@ module "runners" {
 
   # override scaling down
   scale_down_schedule_expression = "cron(* * * * ? *)"
+  # enable this flag to publish webhook events to secondary queue
+  # webhook_events_secondary_queue  = true
 }

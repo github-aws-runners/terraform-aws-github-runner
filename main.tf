@@ -50,9 +50,9 @@ resource "aws_sqs_queue_policy" "build_queue_policy" {
   policy    = data.aws_iam_policy_document.deny_unsecure_transport.json
 }
 
-resource "aws_sqs_queue_policy" "monitored_build_events_policy" {
+resource "aws_sqs_queue_policy" "webhook_events_secondary_queue_policy" {
   count     = var.webhook_events_secondary_queue ? 1 : 0
-  queue_url = aws_sqs_queue.monitored_build_events[0].id
+  queue_url = aws_sqs_queue.webhook_events_secondary_queue[0].id
   policy    = data.aws_iam_policy_document.deny_unsecure_transport.json
 }
 
@@ -72,12 +72,12 @@ resource "aws_sqs_queue" "queued_builds" {
   tags = var.tags
 }
 
-resource "aws_sqs_queue" "monitored_build_events" {
+resource "aws_sqs_queue" "webhook_events_secondary_queue" {
   count                       = var.webhook_events_secondary_queue ? 1 : 0
-  name                        = "${var.prefix}-monitored-build-events"
-  delay_seconds               = 0
-  visibility_timeout_seconds  = var.runners_scale_up_lambda_timeout
-  message_retention_seconds   = var.job_queue_retention_in_seconds
+  name                        = "${var.prefix}-webhook_events_secondary_queue"
+  delay_seconds               = var.delay_webhook_event_secondary_queue
+  visibility_timeout_seconds  = var.secondary_queue_lambda_timeout
+  message_retention_seconds   = var.secondary_queue_retention_in_seconds
   fifo_queue                  = false
   receive_wait_time_seconds   = 0
   content_based_deduplication = false
@@ -111,15 +111,14 @@ module "ssm" {
 module "webhook" {
   source = "./modules/webhook"
 
-  aws_region                     = var.aws_region
-  prefix                         = var.prefix
-  tags                           = local.tags
-  kms_key_arn                    = var.kms_key_arn
-  webhook_events_secondary_queue = var.webhook_events_secondary_queue
-  sqs_build_queue                = aws_sqs_queue.queued_builds
-  sqs_build_queue_fifo           = var.fifo_build_queue
-  sqs_monitored_build_events     = length(aws_sqs_queue.monitored_build_events) > 0 ? aws_sqs_queue.monitored_build_events[0] : null
-  github_app_webhook_secret_arn  = module.ssm.parameters.github_app_webhook_secret.arn
+  aws_region  = var.aws_region
+  prefix      = var.prefix
+  tags        = local.tags
+  kms_key_arn = var.kms_key_arn
+  sqs_build_queue               = aws_sqs_queue.queued_builds
+  sqs_build_queue_fifo          = var.fifo_build_queue
+  sqs_secondary_queue           = length(aws_sqs_queue.webhook_events_secondary_queue) > 0 ? aws_sqs_queue.webhook_events_secondary_queue[0] : null
+  github_app_webhook_secret_arn = module.ssm.parameters.github_app_webhook_secret.arn
 
   lambda_s3_bucket                 = var.lambda_s3_bucket
   webhook_lambda_s3_key            = var.webhook_lambda_s3_key

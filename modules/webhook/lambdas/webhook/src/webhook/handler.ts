@@ -3,7 +3,7 @@ import { CheckRunEvent, WorkflowJobEvent } from '@octokit/webhooks-types';
 import { IncomingHttpHeaders } from 'http';
 
 import { Response } from '../lambda';
-import { sendActionRequest, sendMonitorGHWorkflowEvent } from '../sqs';
+import { sendActionRequest, sendWebhookEventToSecondaryQueue } from '../sqs';
 import { getParameterValue } from '../ssm';
 import { LogFields, logger as rootLogger } from './logger';
 
@@ -63,34 +63,27 @@ export async function handle(headers: IncomingHttpHeaders, body: string): Promis
   logger.info(`Processing Github event`, LogFields.print());
 
   if (githubEvent == 'workflow_job') {
+    let workflowEventPayload = payload as WorkflowJobEvent;
     response = await handleWorkflowJob(
-      payload as WorkflowJobEvent,
+      workflowEventPayload,
       githubEvent,
       enableWorkflowLabelCheck,
       workflowLabelCheckAll,
       runnerLabels,
     );
+    await monitorWorkflowEvents(githubEvent, workflowEventPayload);
   } else if (githubEvent == 'check_run') {
     response = await handleCheckRun(payload as CheckRunEvent, githubEvent);
   }
-  await monitorWorkflowEvents(githubEvent, payload);
+
   return response;
 }
-
-async function monitorWorkflowEvents(githubEvent: string, payload: any) {
-  const webhook_events_secondary_queue = process.env.SQS_MONITORED_BUILD_EVENTS || 'false';
-  logger.debug('Webhook events secondary queue name: ', webhook_events_secondary_queue);
-  if (webhook_events_secondary_queue != 'false') {
-    if (githubEvent == 'workflow_job') {
-      let workflowEventPayload = payload as WorkflowJobEvent;
-      logger.debug('Sending Webhook events to the secondary queue: ', webhook_events_secondary_queue);
-      await sendMonitorGHWorkflowEvent({
-        id: workflowEventPayload.workflow_job.id,
-        eventType: githubEvent,
-        jobEvent: workflowEventPayload,
-      });
-    }
-  }
+async function monitorWorkflowEvents(githubEvent: string, workflowEventPayload: WorkflowJobEvent) {
+  await sendWebhookEventToSecondaryQueue({
+    id: workflowEventPayload.workflow_job.id,
+    eventType: githubEvent,
+    jobEvent: workflowEventPayload,
+  });
 }
 
 function readEnvironmentVariables() {

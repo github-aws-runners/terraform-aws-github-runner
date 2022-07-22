@@ -1,6 +1,7 @@
 import { SQS } from 'aws-sdk';
 
 import { LogFields, logger } from '../webhook/logger';
+import { WorkflowJobEvent } from '@octokit/webhooks-types';
 
 export interface ActionRequestMessage {
   id: number;
@@ -12,7 +13,7 @@ export interface ActionRequestMessage {
 export interface GithubWorkflowEvent {
   id: number;
   eventType: string;
-  jobEvent: any;
+  jobEvent: WorkflowJobEvent;
 }
 
 export const sendActionRequest = async (message: ActionRequestMessage): Promise<void> => {
@@ -34,14 +35,22 @@ export const sendActionRequest = async (message: ActionRequestMessage): Promise<
   await sqs.sendMessage(sqsMessage).promise();
 };
 
-export const sendMonitorGHWorkflowEvent = async (message: GithubWorkflowEvent): Promise<void> => {
-  const sqs = new SQS({ region: process.env.AWS_REGION });
-
-  const sqsMessage: SQS.Types.SendMessageRequest = {
-    QueueUrl: String(process.env.SQS_MONITORED_BUILD_EVENTS),
-    MessageBody: JSON.stringify(message),
-  };
-
-  logger.debug(`sending message to monitoring SQS: ${JSON.stringify(sqsMessage)}`, LogFields.print());
-  await sqs.sendMessage(sqsMessage).promise();
+export const sendWebhookEventToSecondaryQueue = async (message: GithubWorkflowEvent): Promise<void> => {
+  const webhook_events_secondary_queue = process.env.SQS_SECONDARY_QUEUE || 'empty';
+  
+  logger.debug(`Webhook events secondary queue: ${webhook_events_secondary_queue}`, LogFields.print());
+  
+  if (webhook_events_secondary_queue != 'empty') {
+    const sqs = new SQS({ region: process.env.AWS_REGION });
+    const sqsMessage: SQS.Types.SendMessageRequest = {
+      QueueUrl: String(process.env.SQS_SECONDARY_QUEUE),
+      MessageBody: JSON.stringify(message),
+    };
+    logger.debug(`Sending Webhook events to the secondary queue: ${webhook_events_secondary_queue}`, LogFields.print());
+    try {
+      await sqs.sendMessage(sqsMessage).promise();
+    } catch (e) {
+      logger.warn(`Error in sending webhook events to secondary queue: ${(e as Error).message}`, LogFields.print());
+    }
+  }
 };

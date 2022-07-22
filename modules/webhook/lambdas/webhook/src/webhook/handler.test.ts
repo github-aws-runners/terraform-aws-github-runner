@@ -4,7 +4,7 @@ import nock from 'nock';
 
 import checkrun_event from '../../test/resources/github_check_run_event.json';
 import workflowjob_event from '../../test/resources/github_workflowjob_event.json';
-import { sendActionRequest, sendMonitorGHWorkflowEvent } from '../sqs';
+import { sendActionRequest, sendWebhookEventToSecondaryQueue } from '../sqs';
 import { getParameterValue } from '../ssm';
 import { handle } from './handler';
 
@@ -300,28 +300,18 @@ describe('handler', () => {
     });
   });
 
-  describe('Test for monitoring github action events: ', () => {
+  describe('Test for webhook events to be sent to secondary queue: ', () => {
     beforeEach(() => {
-      process.env.SQS_MONITORED_BUILD_EVENTS = 'https://sqs.eu-west-1.amazonaws.com/123456789/monitored-build-events';
+      process.env.SQS_SECONDARY_QUEUE = 'https://sqs.eu-west-1.amazonaws.com/123456789/sqs-secondary-queue';
     });
-    it('sends monitoring events', async () => {
+    it('sends webhook events to secondary queue', async () => {
       const event = JSON.stringify(workflowjob_event);
       const resp = await handle(
         { 'X-Hub-Signature': await webhooks.sign(event), 'X-GitHub-Event': 'workflow_job' },
         event,
       );
       expect(resp.statusCode).toBe(201);
-      expect(sendMonitorGHWorkflowEvent).toBeCalled();
-    });
-    it('Doesnt sends monitoring events', async () => {
-      process.env.SQS_MONITORED_BUILD_EVENTS = '';
-      const event = JSON.stringify(workflowjob_event);
-      const resp = await handle(
-        { 'X-Hub-Signature': await webhooks.sign(event), 'X-GitHub-Event': 'workflow_job' },
-        event,
-      );
-      expect(resp.statusCode).toBe(201);
-      expect(sendMonitorGHWorkflowEvent).not.toBeCalled();
+      expect(sendWebhookEventToSecondaryQueue).toBeCalled();
     });
   });
 });

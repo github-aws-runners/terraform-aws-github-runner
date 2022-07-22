@@ -22,7 +22,7 @@ resource "aws_lambda_function" "webhook" {
       RUNNER_LABELS                    = jsonencode(split(",", var.runner_labels))
       SQS_URL_WEBHOOK                  = var.sqs_build_queue.id
       SQS_IS_FIFO                      = var.sqs_build_queue_fifo
-      SQS_MONITORED_BUILD_EVENTS       = try(var.sqs_monitored_build_events, null) != null ? var.sqs_monitored_build_events.id : ""
+      SQS_SECONDARY_QUEUE              = try(var.sqs_secondary_queue, null) != null ? var.sqs_secondary_queue.id : ""
     }
   }
 
@@ -79,13 +79,13 @@ resource "aws_iam_role_policy" "webhook_sqs" {
     sqs_resource_arn = var.sqs_build_queue.arn
   })
 }
-resource "aws_iam_role_policy" "webhook_sqs_1" {
-  count = var.webhook_events_secondary_queue ? 1 : 0
-  name  = "${var.prefix}-lambda-webhook-publish-sqs-policy-1"
+resource "aws_iam_role_policy" "webhook_secondary_sqs" {
+  count = var.sqs_secondary_queue != null ? 1 : 0
+  name  = "${var.prefix}-lambda-webhook-publish-secondary-sqs-policy"
   role  = aws_iam_role.webhook_lambda.name
 
   policy = templatefile("${path.module}/policies/lambda-publish-sqs-policy.json", {
-    sqs_resource_arn = var.sqs_monitored_build_events.arn
+    sqs_resource_arn = var.sqs_secondary_queue.arn
   })
 }
 
