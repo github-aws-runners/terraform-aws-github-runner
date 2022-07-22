@@ -22,6 +22,8 @@ This [Terraform](https://www.terraform.io/) module creates the required infrastr
   - [Idle runners](#idle-runners)
   - [Ephemeral runners](#ephemeral-runners)
   - [Prebuilt Images](#prebuilt-images)
+  - [Secondary Queue](#secondary-queue)
+  
 - [Examples](#examples)
 - [Sub modules](#sub-modules)
   - [ARM64 configuration for submodules](#arm64-configuration-for-submodules)
@@ -312,6 +314,9 @@ The example for [ephemeral runners](./examples/ephemeral) is based on the [defau
 
 This module also allows you to run agents from a prebuilt AMI to gain faster startup times. You can find more information in [the image README.md](/images/README.md)
 
+### Secondary Queue
+
+As per the solution architecture, the web hook events for workflow jobs are sent to a primary queue, from where they are consumed by scale up lambda. In addition to that primary queue, this module allows you to send the webhook events to another secondary queue as well where the webhook event can be processed to get useful insights about the workflow jobs. You can configure `webhook_events_secondary_queue` to enable this feature. 
 
 ## Examples
 
