@@ -666,10 +666,14 @@ variable "webhook_events_secondary_queue" {
 
 variable "secondary_queue_configuration" {
   description = "Configuration options for secondary queue."
-  type        = map(any)
-  default     = {
-    "delay_webhook_event_queue": 0,
-    "queue_lambda_timeout": 30,
-    "queue_retention_in_seconds": 60
+  type = object({
+    delay_webhook_event_queue  = number
+    queue_lambda_timeout       = number
+    queue_retention_in_seconds = number
+  })
+  default = {
+    "delay_webhook_event_queue" : 0,
+    "queue_lambda_timeout" : 30,
+    "queue_retention_in_seconds" : 60
   }
 }
