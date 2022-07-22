@@ -69,7 +69,7 @@ describe('Test sending message to SQS.', () => {
   const message: GithubWorkflowEvent = {
     eventType: 'type',
     id: 0,
-    jobEvent: JSON.parse(JSON.stringify(workflowjob_event))
+    jobEvent: JSON.parse(JSON.stringify(workflowjob_event)),
   };
   const sqsMessage: SQS.Types.SendMessageRequest = {
     QueueUrl: 'https://sqs.eu-west-1.amazonaws.com/123456789/sqs-secondary-queue',
