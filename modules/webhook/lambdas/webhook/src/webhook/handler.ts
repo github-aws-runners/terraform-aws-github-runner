@@ -63,7 +63,7 @@ export async function handle(headers: IncomingHttpHeaders, body: string): Promis
   logger.info(`Processing Github event`, LogFields.print());
 
   if (githubEvent == 'workflow_job') {
-    let workflowEventPayload = payload as WorkflowJobEvent;
+    const workflowEventPayload = payload as WorkflowJobEvent;
     response = await handleWorkflowJob(
       workflowEventPayload,
       githubEvent,
