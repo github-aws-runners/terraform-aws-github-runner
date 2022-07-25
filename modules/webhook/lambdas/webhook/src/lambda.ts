@@ -1,4 +1,4 @@
-import { APIGatewayEvent, Callback, Context } from 'aws-lambda';
+import { APIGatewayEvent, Context } from 'aws-lambda';
 
 import { handle } from './webhook/handler';
 import { logger } from './webhook/logger';
