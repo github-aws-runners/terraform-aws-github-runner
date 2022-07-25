@@ -1,6 +1,8 @@
 import { SQS } from 'aws-sdk';
+
 import { ActionRequestMessage, GithubWorkflowEvent, sendActionRequest, sendWebhookEventToSecondaryQueue } from '.';
 import workflowjob_event from '../../test/resources/github_workflowjob_event.json';
+
 const mockSQS = {
   sendMessage: jest.fn(() => {
     {

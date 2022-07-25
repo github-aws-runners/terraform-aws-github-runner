@@ -1,7 +1,7 @@
+import { WorkflowJobEvent } from '@octokit/webhooks-types';
 import { SQS } from 'aws-sdk';
 
 import { LogFields, logger } from '../webhook/logger';
-import { WorkflowJobEvent } from '@octokit/webhooks-types';
 
 export interface ActionRequestMessage {
   id: number;
