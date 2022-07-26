@@ -29,11 +29,6 @@ export async function handle(headers: IncomingHttpHeaders, body: string): Promis
     return response;
   }
 
-  const payload = JSON.parse(body);
-  LogFields.fields.event = githubEvent;
-  LogFields.fields.repository = payload.repository.full_name;
-  LogFields.fields.action = payload.action;
-
   if (!supportedEvents.includes(githubEvent)) {
     logger.warn(`Unsupported event type.`, LogFields.print());
     return {
@@ -42,6 +37,10 @@ export async function handle(headers: IncomingHttpHeaders, body: string): Promis
     };
   }
 
+  const payload = JSON.parse(body);
+  LogFields.fields.event = githubEvent;
+  LogFields.fields.repository = payload.repository.full_name;
+  LogFields.fields.action = payload.action;
   LogFields.fields.name = payload[githubEvent].name;
   LogFields.fields.status = payload[githubEvent].status;
   LogFields.fields.started_at = payload[githubEvent]?.started_at;
