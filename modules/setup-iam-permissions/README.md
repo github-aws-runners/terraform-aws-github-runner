@@ -9,7 +9,7 @@ This module will create an AWS IAM role that is required to use permission bound
 See below or check out [this example](../../examples/permissions-boundary/README.md)
 Create a workspace and add the following terraform code.
 
-```
+```hcl
 module "iam" {
   source = "../../"
 
@@ -31,7 +31,6 @@ output "role" {
 output "boundary" {
   value = module.iam.boundary
 }
-
 ```
 
 Next execute the created Terraform code `terraform init && terraform apply` The module will. You can use the created role in your terraform provider with assume role and the boundary as well the namespace needs to be set to the root module.

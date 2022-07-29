@@ -4,7 +4,7 @@ This module is optional and provides an option to download via Terraform the Lam
 
 ## Usages
 
-```
+```hcl
 module "lambdas" {
   source = "<source location>"
   lambdas = [

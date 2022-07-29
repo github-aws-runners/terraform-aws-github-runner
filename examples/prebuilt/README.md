@@ -52,7 +52,6 @@ To use your image in the terraform modules you will need to set some values on t
 Assuming you have built the `linux-amzn2` image which has a pre-defined AMI name in the following format `github-runner-amzn2-x86_64-YYYYMMDDhhmm` you can use the following values.
 
 ```hcl
-
 module "runners" {
   ...
   # set the name of the ami to use

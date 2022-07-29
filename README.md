@@ -156,7 +156,7 @@ Next create a second terraform workspace and initiate the module, or adapt one o
 
 Note that `github_app.key_base64` needs to be a base64-encoded string of the `.pem` file i.e. the output of `base64 app.private-key.pem`. The decoded string can either be a multiline value or a single line value with new lines represented with literal `\n` characters.
 
-```terraform
+```hcl
 module "github-runner" {
   source  = "philips-labs/github-runner/aws"
   version = "REPLACE_WITH_VERSION"
@@ -244,7 +244,6 @@ module "runners" {
   ...
   kms_key_arn = aws_kms_key.github.arn
   ...
-
 ```
 
 ### Pool
