@@ -36,7 +36,7 @@
     "ts-node-dev": "^2.0.0"
   },
   "dependencies": {
-    "@aws-sdk/client-ssm": "^3.131.0",
+    "@aws-sdk/client-ssm": "^3.138.0",
     "@octokit/auth-app": "4.0.4",
     "@octokit/rest": "^19.0.3",
     "@octokit/types": "^6.40.0",
