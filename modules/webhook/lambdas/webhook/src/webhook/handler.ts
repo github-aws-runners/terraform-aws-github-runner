@@ -144,8 +144,8 @@ async function handleWorkflowJob(
       eventType: githubEvent,
       installationId: installationId,
     });
+    logger.info(`Successfully queued job for ${body.repository.full_name}`, LogFields.print());
   }
-  logger.info(`Successfully queued job for ${body.repository.full_name}`, LogFields.print());
   return { statusCode: 201 };
 }
 
