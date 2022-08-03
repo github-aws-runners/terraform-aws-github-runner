@@ -199,7 +199,7 @@ variable "lambda_architecture" {
 }
 
 variable "s3_block_public_access" {
-  description = "Use this object to control the behaviour of S3 buckets Block public access configuration."
+  description = "Use this object to control the behaviour of S3 buckets block-public-access configuration."
   type = object({
     block_public_acls       = bool
     block_public_policy     = bool
