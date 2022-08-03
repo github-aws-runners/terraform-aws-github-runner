@@ -33,6 +33,8 @@ resource "aws_iam_role_policy" "ssm_parameters" {
 }
 
 resource "aws_iam_role_policy" "dist_bucket" {
+  count = var.enable_runner_binaries_syncer ? 1 : 0
+
   name = "distribution-bucket"
   role = aws_iam_role.runner.name
   policy = templatefile("${path.module}/policies/instance-s3-policy.json",
