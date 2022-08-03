@@ -197,3 +197,19 @@ variable "lambda_architecture" {
     error_message = "`lambda_architecture` value is not valid, valid values are: `arm64` and `x86_64`."
   }
 }
+
+variable "s3_block_public_access" {
+  description = "Use this object to control the behaviour of S3 buckets Block public access configuration."
+  type = object({
+    block_public_acls       = bool
+    block_public_policy     = bool
+    ignore_public_acls      = bool
+    restrict_public_buckets = bool
+  })
+  default = {
+    block_public_acls = true
+    block_public_policy = true
+    ignore_public_acls = true
+    restrict_public_buckets = true
+  }
+}

@@ -58,10 +58,10 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "action_dist" {
 
 resource "aws_s3_bucket_public_access_block" "action_dist" {
   bucket                  = aws_s3_bucket.action_dist.id
-  block_public_acls       = true
-  block_public_policy     = true
-  ignore_public_acls      = true
-  restrict_public_buckets = true
+  block_public_acls       = var.s3_block_public_access.block_public_acls
+  block_public_policy     = var.s3_block_public_access.block_public_policy
+  ignore_public_acls      = var.s3_block_public_access.ignore_public_acls
+  restrict_public_buckets = var.s3_block_public_access.restrict_public_buckets
 }
 
 
