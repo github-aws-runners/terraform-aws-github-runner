@@ -84,7 +84,7 @@ function readEnvironmentVariables() {
   const workflowLabelCheckAll = JSON.parse(workflowLabelCheckAllEnv) as boolean;
   const repositoryWhiteListEnv = process.env.REPOSITORY_WHITE_LIST || '[]';
   const repositoryWhiteList = JSON.parse(repositoryWhiteListEnv) as Array<string>;
-  const runnerLabelsEnv = process.env.RUNNER_LABELS || '[]';
+  const runnerLabelsEnv = (process.env.RUNNER_LABELS || '[]').toLowerCase();;
   const runnerLabels = JSON.parse(runnerLabelsEnv) as Array<string>;
   return { environment, repositoryWhiteList, enableWorkflowLabelCheck, workflowLabelCheckAll, runnerLabels };
 }
@@ -178,8 +178,8 @@ function isRepoNotAllowed(repoFullName: string, repositoryWhiteList: string[]): 
 function canRunJob(job: WorkflowJobEvent, runnerLabels: string[], workflowLabelCheckAll: boolean): boolean {
   const workflowJobLabels = job.workflow_job.labels;
   const match = workflowLabelCheckAll
-    ? workflowJobLabels.every((l) => runnerLabels.includes(l))
-    : workflowJobLabels.some((l) => runnerLabels.includes(l));
+    ? workflowJobLabels.every((l) => runnerLabels.includes(l.toLowerCase()))
+    : workflowJobLabels.some((l) => runnerLabels.includes(l.toLowerCase()));
 
   logger.debug(
     `Received workflow job event with labels: '${JSON.stringify(workflowJobLabels)}'. The event does ${

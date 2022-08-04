@@ -129,7 +129,7 @@ describe('handler', () => {
         ...workflowjob_event,
         workflow_job: {
           ...workflowjob_event.workflow_job,
-          labels: ['self-hosted', 'test'],
+          labels: ['self-hosted', 'Test'],
         },
       });
       const resp = await handle(
@@ -141,7 +141,7 @@ describe('handler', () => {
     });
 
     it('Check runner labels accept job with mixed order.', async () => {
-      process.env.RUNNER_LABELS = '["linux", "test", "self-hosted"]';
+      process.env.RUNNER_LABELS = '["linux", "TEST", "self-hosted"]';
       process.env.ENABLE_WORKFLOW_JOB_LABELS_CHECK = 'true';
       process.env.WORKFLOW_JOB_LABELS_CHECK_ALL = 'true';
       const event = JSON.stringify({
