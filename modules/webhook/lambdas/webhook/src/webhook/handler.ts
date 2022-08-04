@@ -84,7 +84,7 @@ function readEnvironmentVariables() {
   const workflowLabelCheckAll = JSON.parse(workflowLabelCheckAllEnv) as boolean;
   const repositoryWhiteListEnv = process.env.REPOSITORY_WHITE_LIST || '[]';
   const repositoryWhiteList = JSON.parse(repositoryWhiteListEnv) as Array<string>;
-  const runnerLabelsEnv = (process.env.RUNNER_LABELS || '[]').toLowerCase();;
+  const runnerLabelsEnv = (process.env.RUNNER_LABELS || '[]').toLowerCase();
   const runnerLabels = JSON.parse(runnerLabelsEnv) as Array<string>;
   return { environment, repositoryWhiteList, enableWorkflowLabelCheck, workflowLabelCheckAll, runnerLabels };
 }
