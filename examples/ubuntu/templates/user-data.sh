@@ -7,13 +7,14 @@ ${pre_install}
 apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get install -y \
     awscli \
-    jq \
-    curl \
-    wget \
-    git \
-    uidmap \
     build-essential \
-    unzip
+    curl \
+    git \
+    iptables \
+    jq \
+    uidmap \
+    unzip \
+    wget
 
 user_name=ubuntu
 user_id=$(id -ru $user_name)
