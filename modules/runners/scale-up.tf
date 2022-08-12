@@ -32,7 +32,7 @@ resource "aws_lambda_function" "scale_up" {
       NODE_TLS_REJECT_UNAUTHORIZED         = var.ghes_url != null && !var.ghes_ssl_verify ? 0 : 1
       PARAMETER_GITHUB_APP_ID_NAME         = var.github_app_parameters.id.name
       PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.github_app_parameters.key_base64.name
-      RUNNER_EXTRA_LABELS                  = var.runner_extra_labels
+      RUNNER_EXTRA_LABELS                  = lower(var.runner_extra_labels)
       RUNNER_GROUP_NAME                    = var.runner_group_name
       RUNNERS_MAXIMUM_COUNT                = var.runners_maximum_count
       SUBNET_IDS                           = join(",", var.subnet_ids)
