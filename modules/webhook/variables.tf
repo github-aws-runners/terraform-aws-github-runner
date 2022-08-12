@@ -37,7 +37,7 @@ variable "sqs_build_queue" {
     arn = string
   })
 }
-variable "sqs_secondary_queue" {
+variable "sqs_workflow_job_queue" {
   description = "SQS queue to monitor github events."
   type = object({
     id  = string

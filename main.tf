@@ -50,9 +50,9 @@ resource "aws_sqs_queue_policy" "build_queue_policy" {
   policy    = data.aws_iam_policy_document.deny_unsecure_transport.json
 }
 
-resource "aws_sqs_queue_policy" "webhook_events_secondary_queue_policy" {
-  count     = var.webhook_events_secondary_queue ? 1 : 0
-  queue_url = aws_sqs_queue.webhook_events_secondary_queue[0].id
+resource "aws_sqs_queue_policy" "webhook_events_workflow_job_queue_policy" {
+  count     = var.webhook_events_workflow_job_queue ? 1 : 0
+  queue_url = aws_sqs_queue.webhook_events_workflow_job_queue[0].id
   policy    = data.aws_iam_policy_document.deny_unsecure_transport.json
 }
 
@@ -72,12 +72,12 @@ resource "aws_sqs_queue" "queued_builds" {
   tags = var.tags
 }
 
-resource "aws_sqs_queue" "webhook_events_secondary_queue" {
-  count                       = var.webhook_events_secondary_queue ? 1 : 0
-  name                        = "${var.prefix}-webhook_events_secondary_queue"
-  delay_seconds               = var.secondary_queue_configuration.delay_webhook_event_queue
-  visibility_timeout_seconds  = var.secondary_queue_configuration.queue_lambda_timeout
-  message_retention_seconds   = var.secondary_queue_configuration.queue_retention_in_seconds
+resource "aws_sqs_queue" "webhook_events_workflow_job_queue" {
+  count                       = var.webhook_events_workflow_job_queue ? 1 : 0
+  name                        = "${var.prefix}-webhook_events_workflow_job_queue"
+  delay_seconds               = var.workflow_job_queue_configuration.delay_webhook_event_queue
+  visibility_timeout_seconds  = var.workflow_job_queue_configuration.queue_lambda_timeout
+  message_retention_seconds   = var.workflow_job_queue_configuration.queue_retention_in_seconds
   fifo_queue                  = false
   receive_wait_time_seconds   = 0
   content_based_deduplication = false
@@ -117,7 +117,7 @@ module "webhook" {
   kms_key_arn                   = var.kms_key_arn
   sqs_build_queue               = aws_sqs_queue.queued_builds
   sqs_build_queue_fifo          = var.fifo_build_queue
-  sqs_secondary_queue           = length(aws_sqs_queue.webhook_events_secondary_queue) > 0 ? aws_sqs_queue.webhook_events_secondary_queue[0] : null
+  sqs_workflow_job_queue           = length(aws_sqs_queue.webhook_events_workflow_job_queue) > 0 ? aws_sqs_queue.webhook_events_workflow_job_queue[0] : null
   github_app_webhook_secret_arn = module.ssm.parameters.github_app_webhook_secret.arn
 
   lambda_s3_bucket                 = var.lambda_s3_bucket

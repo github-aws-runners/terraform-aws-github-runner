@@ -658,13 +658,13 @@ variable "lambda_architecture" {
   }
 }
 
-variable "webhook_events_secondary_queue" {
+variable "webhook_events_workflow_job_queue" {
   description = "Enabling this feature will create a secondory sqs queue to wich a copy of the event will be delivered."
   type        = bool
   default     = false
 }
 
-variable "secondary_queue_configuration" {
+variable "workflow_job_queue_configuration" {
   description = "Configuration options for secondary queue."
   type = object({
     delay_webhook_event_queue  = number

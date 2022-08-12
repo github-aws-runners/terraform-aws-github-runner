@@ -82,7 +82,7 @@ describe('Test sending message to SQS.', () => {
   });
   it('sends webhook events to secondary queue', async () => {
     // Arrange
-    process.env.SQS_SECONDARY_QUEUE = sqsMessage.QueueUrl;
+    process.env.SQS_WORKFLOW_JOB_QUEUE = sqsMessage.QueueUrl;
 
     // Act
     const result = await sendWebhookEventToSecondaryQueue(message);
@@ -93,7 +93,7 @@ describe('Test sending message to SQS.', () => {
   });
   it('Does not send webhook events to secondary queue', async () => {
     // Arrange
-    process.env.SQS_SECONDARY_QUEUE = '';
+    process.env.SQS_WORKFLOW_JOB_QUEUE = '';
     // Act
     await sendWebhookEventToSecondaryQueue(message);
 

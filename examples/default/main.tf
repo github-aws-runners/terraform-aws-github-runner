@@ -82,5 +82,5 @@ module "runners" {
   # override scaling down
   scale_down_schedule_expression = "cron(* * * * ? *)"
   # enable this flag to publish webhook events to secondary queue
-  # webhook_events_secondary_queue  = true
+  # webhook_events_workflow_job_queue  = true
 }

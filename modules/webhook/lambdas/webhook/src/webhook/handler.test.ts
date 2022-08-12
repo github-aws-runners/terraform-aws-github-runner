@@ -302,7 +302,7 @@ describe('handler', () => {
 
   describe('Test for webhook events to be sent to secondary queue: ', () => {
     beforeEach(() => {
-      process.env.SQS_SECONDARY_QUEUE = 'https://sqs.eu-west-1.amazonaws.com/123456789/sqs-secondary-queue';
+      process.env.SQS_WORKFLOW_JOB_QUEUE = 'https://sqs.eu-west-1.amazonaws.com/123456789/sqs-secondary-queue';
     });
     it('sends webhook events to secondary queue', async () => {
       const event = JSON.stringify(workflowjob_event);
