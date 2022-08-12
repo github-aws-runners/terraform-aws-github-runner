@@ -46,7 +46,10 @@ export const sendWebhookEventToSecondaryQueue = async (message: GithubWorkflowEv
       QueueUrl: String(process.env.SQS_WORKFLOW_JOB_QUEUE),
       MessageBody: JSON.stringify(message),
     };
-    logger.debug(`Sending Webhook events to the secondary queue: ${webhook_events_workflow_job_queue}`, LogFields.print());
+    logger.debug(
+      `Sending Webhook events to the secondary queue: ${webhook_events_workflow_job_queue}`,
+      LogFields.print(),
+    );
     try {
       await sqs.sendMessage(sqsMessage).promise();
     } catch (e) {
