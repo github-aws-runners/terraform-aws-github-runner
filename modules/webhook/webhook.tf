@@ -22,7 +22,7 @@ resource "aws_lambda_function" "webhook" {
       RUNNER_LABELS                    = jsonencode(split(",", var.runner_labels))
       SQS_URL_WEBHOOK                  = var.sqs_build_queue.id
       SQS_IS_FIFO                      = var.sqs_build_queue_fifo
-      SQS_WORKFLOW_JOB_QUEUE              = try(var.sqs_workflow_job_queue, null) != null ? var.sqs_workflow_job_queue.id : ""
+      SQS_WORKFLOW_JOB_QUEUE           = try(var.sqs_workflow_job_queue, null) != null ? var.sqs_workflow_job_queue.id : ""
     }
   }
 

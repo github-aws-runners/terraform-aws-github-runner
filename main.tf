@@ -117,7 +117,7 @@ module "webhook" {
   kms_key_arn                   = var.kms_key_arn
   sqs_build_queue               = aws_sqs_queue.queued_builds
   sqs_build_queue_fifo          = var.fifo_build_queue
-  sqs_workflow_job_queue           = length(aws_sqs_queue.webhook_events_workflow_job_queue) > 0 ? aws_sqs_queue.webhook_events_workflow_job_queue[0] : null
+  sqs_workflow_job_queue        = length(aws_sqs_queue.webhook_events_workflow_job_queue) > 0 ? aws_sqs_queue.webhook_events_workflow_job_queue[0] : null
   github_app_webhook_secret_arn = module.ssm.parameters.github_app_webhook_secret.arn
 
   lambda_s3_bucket                 = var.lambda_s3_bucket
