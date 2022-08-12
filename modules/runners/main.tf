@@ -63,10 +63,13 @@ resource "aws_launch_template" "runner" {
 
       ebs {
         delete_on_termination = block_device_mappings.value.delete_on_termination
-        volume_type           = block_device_mappings.value.volume_type
-        volume_size           = block_device_mappings.value.volume_size
         encrypted             = block_device_mappings.value.encrypted
         iops                  = block_device_mappings.value.iops
+        kms_key_id            = block_device_mappings.value.kms_key_id
+        snapshot_id           = block_device_mappings.value.snapshot_id
+        throughput            = block_device_mappings.value.throughput
+        volume_size           = block_device_mappings.value.volume_size
+        volume_type           = block_device_mappings.value.volume_type
       }
     }
   }

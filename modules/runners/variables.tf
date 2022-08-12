@@ -58,22 +58,28 @@ variable "s3_location_runner_binaries" {
 }
 
 variable "block_device_mappings" {
-  description = "The EC2 instance block device configuration. Takes the following keys: `device_name`, `delete_on_termination`, `volume_type`, `volume_size`, `encrypted`, `iops`"
+  description = "The EC2 instance block device configuration. Takes the following keys: `device_name`, `delete_on_termination`, `volume_type`, `volume_size`, `encrypted`, `iops`, `throughput`, `kms_key_id`, `snapshot_id`."
   type = list(object({
-    device_name           = string
     delete_on_termination = bool
-    volume_type           = string
-    volume_size           = number
+    device_name           = string
     encrypted             = bool
     iops                  = number
+    kms_key_id            = string
+    snapshot_id           = string
+    throughput            = number
+    volume_size           = number
+    volume_type           = string
   }))
   default = [{
-    device_name           = "/dev/xvda"
     delete_on_termination = true
-    volume_type           = "gp3"
-    volume_size           = 30
+    device_name           = "/dev/xvda"
     encrypted             = true
     iops                  = null
+    kms_key_id            = null
+    snapshot_id           = null
+    throughput            = null
+    volume_size           = 30
+    volume_type           = "gp3"
   }]
 }
 
