@@ -3,7 +3,6 @@ locals {
     "ghr:environment" = var.prefix
   })
 
-  s3_action_runner_url = var.enable_runner_binaries_syncer ? "s3://${module.runner_binaries[0].bucket.id}/${module.runner_binaries[0].runner_distribution_object_key}" : null
   github_app_parameters = {
     id         = module.ssm.parameters.github_app_id
     key_base64 = module.ssm.parameters.github_app_key_base64
@@ -134,8 +133,14 @@ module "runners" {
   prefix        = var.prefix
   tags          = local.tags
 
-  s3_bucket_runner_binaries   = var.enable_runner_binaries_syncer ? module.runner_binaries[0].bucket : null
-  s3_location_runner_binaries = local.s3_action_runner_url
+  # s3_bucket_runner_binaries   = var.enable_runner_binaries_syncer ? module.runner_binaries[0].bucket : null
+  # s3_location_runner_binaries = local.s3_action_runner_url
+  # var.enable_runner_binaries_syncer ? "s3://${module.runner_binaries[0].bucket.id}/${module.runner_binaries[0].runner_distribution_object_key}" : null
+  s3_runner_binaries = var.enable_runner_binaries_syncer ? {
+    arn = module.runner_binaries[0].bucket.arn
+    id  = module.runner_binaries[0].bucket.id
+    key = module.runner_binaries[0].runner_distribution_object_key
+  } : null
 
   runner_os                     = var.runner_os
   instance_types                = var.instance_types

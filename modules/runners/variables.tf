@@ -46,15 +46,13 @@ variable "prefix" {
   default     = "github-actions"
 }
 
-variable "s3_bucket_runner_binaries" {
+variable "s3_runner_binaries" {
+  description = "Bucket details for cached GitHub binary."
   type = object({
     arn = string
+    id  = string
+    key = string
   })
-}
-
-variable "s3_location_runner_binaries" {
-  description = "S3 location of runner distribution."
-  type        = string
 }
 
 variable "block_device_mappings" {
