@@ -8,6 +8,8 @@ locals {
     id         = module.ssm.parameters.github_app_id
     key_base64 = module.ssm.parameters.github_app_key_base64
   }
+
+  default_runner_labels = "self-hosted,${var.runner_os},${var.runner_architecture}"
 }
 
 resource "random_string" "random" {
@@ -103,6 +105,7 @@ module "webhook" {
   webhook_lambda_s3_key            = var.webhook_lambda_s3_key
   webhook_lambda_s3_object_version = var.webhook_lambda_s3_object_version
   lambda_runtime                   = var.lambda_runtime
+  lambda_architecture              = var.lambda_architecture
   lambda_zip                       = var.webhook_lambda_zip
   lambda_timeout                   = var.webhook_lambda_timeout
   logging_retention_in_days        = var.logging_retention_in_days
@@ -110,7 +113,8 @@ module "webhook" {
 
   # labels
   enable_workflow_job_labels_check = var.runner_enable_workflow_job_labels_check
-  runner_labels                    = "self-hosted,${var.runner_os},${var.runner_architecture},${var.runner_extra_labels}"
+  workflow_job_labels_check_all    = var.runner_enable_workflow_job_labels_check_all
+  runner_labels                    = var.runner_extra_labels != "" ? "${local.default_runner_labels},${var.runner_extra_labels}" : local.default_runner_labels
 
   role_path                 = var.role_path
   role_permissions_boundary = var.role_permissions_boundary
@@ -169,6 +173,7 @@ module "runners" {
   runners_lambda_s3_key            = var.runners_lambda_s3_key
   runners_lambda_s3_object_version = var.runners_lambda_s3_object_version
   lambda_runtime                   = var.lambda_runtime
+  lambda_architecture              = var.lambda_architecture
   lambda_zip                       = var.runners_lambda_zip
   lambda_timeout_scale_up          = var.runners_scale_up_lambda_timeout
   lambda_timeout_scale_down        = var.runners_scale_down_lambda_timeout
@@ -229,6 +234,7 @@ module "runner_binaries" {
   syncer_lambda_s3_key            = var.syncer_lambda_s3_key
   syncer_lambda_s3_object_version = var.syncer_lambda_s3_object_version
   lambda_runtime                  = var.lambda_runtime
+  lambda_architecture             = var.lambda_architecture
   lambda_zip                      = var.runner_binaries_syncer_lambda_zip
   lambda_timeout                  = var.runner_binaries_syncer_lambda_timeout
   logging_retention_in_days       = var.logging_retention_in_days

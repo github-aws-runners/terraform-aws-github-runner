@@ -9,7 +9,7 @@ This module will create an AWS IAM role that is required to use permission bound
 See below or check out [this example](../../examples/permissions-boundary/README.md)
 Create a workspace and add the following terraform code.
 
-```
+```hcl
 module "iam" {
   source = "../../"
 
@@ -31,7 +31,6 @@ output "role" {
 output "boundary" {
   value = module.iam.boundary
 }
-
 ```
 
 Next execute the created Terraform code `terraform init && terraform apply` The module will. You can use the created role in your terraform provider with assume role and the boundary as well the namespace needs to be set to the root module.
@@ -71,8 +70,9 @@ No modules.
 |------|-------------|------|---------|:--------:|
 | <a name="input_account_id"></a> [account\_id](#input\_account\_id) | The module allows to switch to the created role from the provided account id. | `string` | n/a | yes |
 | <a name="input_aws_partition"></a> [aws\_partition](#input\_aws\_partition) | (optional) partition in the arn namespace if not aws | `string` | `"aws"` | no |
-| <a name="input_environment"></a> [environment](#input\_environment) | A name that identifies the environment, used as prefix and for tagging. | `string` | n/a | yes |
+| <a name="input_environment"></a> [environment](#input\_environment) | A name that identifies the environment, used as prefix and for tagging. | `string` | `null` | no |
 | <a name="input_namespaces"></a> [namespaces](#input\_namespaces) | The role will be only allowed to create roles, policies and instance profiles in the given namespace / path. All policies in the boundaries namespace cannot be modified by this role. | <pre>object({<br>    boundary_namespace         = string<br>    role_namespace             = string<br>    policy_namespace           = string<br>    instance_profile_namespace = string<br>  })</pre> | n/a | yes |
+| <a name="input_prefix"></a> [prefix](#input\_prefix) | The prefix used for naming resources | `string` | `"github-actions"` | no |
 
 ## Outputs
 
@@ -86,8 +86,7 @@ No modules.
 
 This module is part of the Philips Forest.
 
-```
-
+```plain
                                                      ___                   _
                                                     / __\__  _ __ ___  ___| |_
                                                    / _\/ _ \| '__/ _ \/ __| __|
@@ -95,7 +94,6 @@ This module is part of the Philips Forest.
                                                   \/   \___/|_|  \___||___/\__|
 
                                                                  Infrastructure
-
 ```
 
 Talk to the forestkeepers in the `forest`-channel on Slack.

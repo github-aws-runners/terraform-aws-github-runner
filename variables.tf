@@ -242,22 +242,28 @@ variable "runner_allow_prerelease_binaries" {
 }
 
 variable "block_device_mappings" {
-  description = "The EC2 instance block device configuration. Takes the following keys: `device_name`, `delete_on_termination`, `volume_type`, `volume_size`, `encrypted`, `iops`"
+  description = "The EC2 instance block device configuration. Takes the following keys: `device_name`, `delete_on_termination`, `volume_type`, `volume_size`, `encrypted`, `iops`, `throughput`, `kms_key_id`, `snapshot_id`."
   type = list(object({
-    device_name           = string
     delete_on_termination = bool
-    volume_type           = string
-    volume_size           = number
+    device_name           = string
     encrypted             = bool
     iops                  = number
+    kms_key_id            = string
+    snapshot_id           = string
+    throughput            = number
+    volume_size           = number
+    volume_type           = string
   }))
   default = [{
-    device_name           = "/dev/xvda"
     delete_on_termination = true
-    volume_type           = "gp3"
-    volume_size           = 30
+    device_name           = "/dev/xvda"
     encrypted             = true
     iops                  = null
+    kms_key_id            = null
+    snapshot_id           = null
+    throughput            = null
+    volume_size           = 30
+    volume_type           = "gp3"
   }]
 }
 
@@ -511,6 +517,12 @@ variable "runner_enable_workflow_job_labels_check" {
   default     = false
 }
 
+variable "runner_enable_workflow_job_labels_check_all" {
+  description = "If set to true all labels in the workflow job must match the GitHub labels (os, architecture and `self-hosted`). When false if __any__ label matches it will trigger the webhook. `runner_enable_workflow_job_labels_check` must be true for this to take effect."
+  type        = bool
+  default     = true
+}
+
 variable "runner_ec2_tags" {
   description = "Map of tags that will be added to the launch template instance tag specificatons."
   type        = map(string)
@@ -639,5 +651,15 @@ variable "disable_runner_autoupdate" {
 variable "lambda_runtime" {
   description = "AWS Lambda runtime."
   type        = string
-  default     = "nodejs14.x"
+  default     = "nodejs16.x"
+}
+
+variable "lambda_architecture" {
+  description = "AWS Lambda architecture. Lambda functions using Graviton processors ('arm64') tend to have better price/performance than 'x86_64' functions. "
+  type        = string
+  default     = "x86_64"
+  validation {
+    condition     = contains(["arm64", "x86_64"], var.lambda_architecture)
+    error_message = "`lambda_architecture` value is not valid, valid values are: `arm64` and `x86_64`."
+  }
 }

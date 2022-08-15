@@ -26,6 +26,7 @@ module "pool" {
       s3_object_version              = var.runners_lambda_s3_object_version
       security_group_ids             = var.lambda_security_group_ids
       subnet_ids                     = var.lambda_subnet_ids
+      architecture                   = var.lambda_architecture
       runtime                        = var.lambda_runtime
       timeout                        = var.pool_lambda_timeout
       zip                            = local.lambda_zip

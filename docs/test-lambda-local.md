@@ -38,7 +38,8 @@ output "development" {
   value = {
     lambda_syncer = module.runners.binaries_syncer.lambda
   }
-}```
+}
+```
 
 Once you have updated your Terraform deployment you need to read the lambda configuration into your environment. Run the commands below in your Terraform workspace folder.
 
@@ -60,7 +61,7 @@ role_arn=<ARN_CHECK_TF_OUTPUT>
 
 Now you can set the profile and region as environment variables or pass as argument to SAM.
 
-```
+```bash
 export AWS_REGION=<region>
 export AWS_PROFILE=gh-development
 ```
@@ -75,7 +76,6 @@ Instead of using SAM you can use Node with `ts-node-dev` to test the code locall
 The AWS SDK does not seem to handle environment variables for profiles, the only option to pass the role is via credentials. You can get credentials via STS for the role.
 
 ```bash
-
 role=$(aws sts assume-role \
     --role-arn "<ROLE>" \
     --duration-seconds 3600 --role-session-name "dev")
