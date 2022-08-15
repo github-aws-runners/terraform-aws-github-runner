@@ -683,3 +683,9 @@ variable "workflow_job_queue_configuration" {
     "queue_retention_in_seconds" : 60
   }
 }
+variable "enable_runner_binaries_syncer" {
+  description = "Option to disable the lambda to sync GitHub runner distribution, usefull when using a pre-build AMI."
+  type        = bool
+  default     = true
+}
+

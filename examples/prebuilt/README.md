@@ -1,6 +1,9 @@
 # Action runners deployment with prebuilt image
 
-This module shows how to create GitHub action runners using a prebuilt AMI for the runners
+This module shows how to create GitHub action runners using a prebuilt AMI for the runners.
+
+- Configured to run with org level runners.
+- GitHub runner binary syncer is not deployed.
 
 ## Usages
 
@@ -56,7 +59,7 @@ module "runners" {
   ...
   # set the name of the ami to use
   ami_filter        = { name = ["github-runner-amzn2-x86_64-2021*"] }
-  # provide the owner id of 
+  # provide the owner id of
   ami_owners        = ["<your owner id>"]
 
   enabled_userdata = false

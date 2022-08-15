@@ -15,7 +15,8 @@ module "runners" {
   vpc_id                          = module.vpc.vpc_id
   subnet_ids                      = module.vpc.private_subnets
 
-  prefix = local.environment
+  prefix                      = local.environment
+  enable_organization_runners = false
 
   github_app = {
     key_base64     = var.github_app_key_base64
@@ -35,6 +36,9 @@ module "runners" {
   enabled_userdata = false
   ami_filter       = { name = [var.ami_name_filter] }
   ami_owners       = [data.aws_caller_identity.current.account_id]
+
+  # disable binary syncer since github agent is already installed in the AMI.
+  enable_runner_binaries_syncer = false
 
   # enable access to the runners via SSM
   enable_ssm_on_runners = true
