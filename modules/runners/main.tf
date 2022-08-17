@@ -81,6 +81,15 @@ resource "aws_launch_template" "runner" {
       http_endpoint               = metadata_options.value.http_endpoint
       http_tokens                 = metadata_options.value.http_tokens
       http_put_response_hop_limit = metadata_options.value.http_put_response_hop_limit
+      instance_metadata_tags      = "enabled"
+    }
+  }
+
+  dynamic "metadata_options" {
+    for_each = var.metadata_options != null ? [] : [0]
+
+    content {
+      instance_metadata_tags = "enabled"
     }
   }
 
