@@ -108,7 +108,7 @@ variable "runner_labels" {
 }
 
 variable "enable_workflow_job_labels_check" {
-  description = "If set to true all labels in the workflow job even are matched agaist the custom labels and GitHub labels (os, architecture and `self-hosted`). When the labels are not matching the event is dropped at the webhook."
+  description = "If set to true all labels in the workflow job even are matched against the custom labels and GitHub labels (os, architecture and `self-hosted`). When the labels are not matching the event is dropped at the webhook."
   type        = bool
   default     = false
 }
@@ -152,7 +152,7 @@ variable "log_level" {
 }
 
 variable "disable_check_wokflow_job_labels" {
-  description = "Disable the the check of workflow labels."
+  description = "Disable the check of workflow labels."
   type        = bool
   default     = false
 }
