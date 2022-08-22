@@ -1,6 +1,6 @@
 import { SQS } from 'aws-sdk';
 
-import { ActionRequestMessage, GithubWorkflowEvent, sendActionRequest, sendWebhookEventToSecondaryQueue } from '.';
+import { ActionRequestMessage, GithubWorkflowEvent, sendActionRequest, sendWebhookEventToWorkflowJobQueue } from '.';
 import workflowjob_event from '../../test/resources/github_workflowjob_event.json';
 
 const mockSQS = {
@@ -74,28 +74,28 @@ describe('Test sending message to SQS.', () => {
     jobEvent: JSON.parse(JSON.stringify(workflowjob_event)),
   };
   const sqsMessage: SQS.Types.SendMessageRequest = {
-    QueueUrl: 'https://sqs.eu-west-1.amazonaws.com/123456789/sqs-secondary-queue',
+    QueueUrl: 'https://sqs.eu-west-1.amazonaws.com/123456789/webhook_events_workflow_job_queue',
     MessageBody: JSON.stringify(message),
   };
   afterEach(() => {
     jest.clearAllMocks();
   });
-  it('sends webhook events to secondary queue', async () => {
+  it('sends webhook events to workflow job queue', async () => {
     // Arrange
     process.env.SQS_WORKFLOW_JOB_QUEUE = sqsMessage.QueueUrl;
 
     // Act
-    const result = await sendWebhookEventToSecondaryQueue(message);
+    const result = await sendWebhookEventToWorkflowJobQueue(message);
 
     // Assert
     expect(mockSQS.sendMessage).toBeCalledWith(sqsMessage);
     expect(result).resolves;
   });
-  it('Does not send webhook events to secondary queue', async () => {
+  it('Does not send webhook events to workflow job event copy queue', async () => {
     // Arrange
     process.env.SQS_WORKFLOW_JOB_QUEUE = '';
     // Act
-    await sendWebhookEventToSecondaryQueue(message);
+    await sendWebhookEventToWorkflowJobQueue(message);
 
     // Assert
     expect(mockSQS.sendMessage).not.toBeCalledWith(sqsMessage);

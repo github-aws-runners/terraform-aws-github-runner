@@ -671,7 +671,7 @@ variable "webhook_events_workflow_job_queue" {
 }
 
 variable "workflow_job_queue_configuration" {
-  description = "Configuration options for secondary queue."
+  description = "Configuration options for workflow job queue."
   type = object({
     delay_webhook_event_queue  = number
     queue_lambda_timeout       = number

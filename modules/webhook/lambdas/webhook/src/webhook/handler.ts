@@ -3,7 +3,7 @@ import { CheckRunEvent, WorkflowJobEvent } from '@octokit/webhooks-types';
 import { IncomingHttpHeaders } from 'http';
 
 import { Response } from '../lambda';
-import { sendActionRequest, sendWebhookEventToSecondaryQueue } from '../sqs';
+import { sendActionRequest, sendWebhookEventToWorkflowJobQueue } from '../sqs';
 import { getParameterValue } from '../ssm';
 import { LogFields, logger as rootLogger } from './logger';
 
@@ -70,15 +70,15 @@ export async function handle(headers: IncomingHttpHeaders, body: string): Promis
       workflowLabelCheckAll,
       runnerLabels,
     );
-    await monitorWorkflowEvents(githubEvent, workflowEventPayload);
+    await sendWorkflowJobEvents(githubEvent, workflowEventPayload);
   } else if (githubEvent == 'check_run') {
     response = await handleCheckRun(payload as CheckRunEvent, githubEvent);
   }
 
   return response;
 }
-async function monitorWorkflowEvents(githubEvent: string, workflowEventPayload: WorkflowJobEvent) {
-  await sendWebhookEventToSecondaryQueue({
+async function sendWorkflowJobEvents(githubEvent: string, workflowEventPayload: WorkflowJobEvent) {
+  await sendWebhookEventToWorkflowJobQueue({
     id: workflowEventPayload.workflow_job.id,
     eventType: githubEvent,
     jobEvent: workflowEventPayload,

@@ -43,6 +43,7 @@ variable "sqs_workflow_job_queue" {
     id  = string
     arn = string
   })
+  default = null
 }
 variable "lambda_zip" {
   description = "File location of the lambda zip file."

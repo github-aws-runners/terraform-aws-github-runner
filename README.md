@@ -315,7 +315,7 @@ This module also allows you to run agents from a prebuilt AMI to gain faster sta
 
 ### Secondary Queue
 
-As per the solution architecture, the web hook events for workflow jobs are sent to a primary queue, from where they are consumed by scale up lambda. In addition to that primary queue, this module allows you to send the webhook events to another secondary queue as well where the webhook event can be processed to get useful insights about the workflow jobs. You can configure `webhook_events_workflow_job_queue` to enable this feature. 
+The standard queue is an internal queue used by the scale-up lambda, the format we use here is an internal format. On the second queue we just forward the incoming github event. Which can be used for metrics. You can configure `webhook_events_workflow_job_queue` to enable this experimental feature.
 
 ## Examples
 

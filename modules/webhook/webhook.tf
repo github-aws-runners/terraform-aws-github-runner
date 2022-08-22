@@ -79,9 +79,9 @@ resource "aws_iam_role_policy" "webhook_sqs" {
     sqs_resource_arn = var.sqs_build_queue.arn
   })
 }
-resource "aws_iam_role_policy" "webhook_secondary_sqs" {
+resource "aws_iam_role_policy" "webhook_workflow_job_sqs" {
   count = var.sqs_workflow_job_queue != null ? 1 : 0
-  name  = "${var.prefix}-lambda-webhook-publish-secondary-sqs-policy"
+  name  = "${var.prefix}-lambda-webhook-publish-workflow-job-sqs-policy"
   role  = aws_iam_role.webhook_lambda.name
 
   policy = templatefile("${path.module}/policies/lambda-publish-sqs-policy.json", {
