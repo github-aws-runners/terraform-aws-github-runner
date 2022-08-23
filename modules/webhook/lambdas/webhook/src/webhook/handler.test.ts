@@ -302,7 +302,8 @@ describe('handler', () => {
 
   describe('Test for webhook events to be sent to workflow job queue: ', () => {
     beforeEach(() => {
-      process.env.SQS_WORKFLOW_JOB_QUEUE = 'https://sqs.eu-west-1.amazonaws.com/123456789/webhook_events_workflow_job_queue';
+      process.env.SQS_WORKFLOW_JOB_QUEUE =
+        'https://sqs.eu-west-1.amazonaws.com/123456789/webhook_events_workflow_job_queue';
     });
     it('sends webhook events to workflow job queue', async () => {
       const event = JSON.stringify(workflowjob_event);
