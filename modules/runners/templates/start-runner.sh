@@ -45,6 +45,10 @@ while [[ -z "$config" ]]; do
   config=$(aws ssm get-parameters --names "$environment"-"$instance_id" --with-decryption --region "$region" | jq -r ".Parameters | .[0] | .Value")
 done
 
+if [ -z "$RUNNER_WORK_DIR" ]; then
+  RUNNER_WORK_DIR=_work
+fi
+
 echo "Delete GH Runner token from AWS SSM"
 aws ssm delete-parameter --name "$environment"-"$instance_id" --region "$region"
 
@@ -61,7 +65,7 @@ fi
 chown -R $run_as .
 
 echo "Configure GH Runner as user $run_as"
-sudo --preserve-env=RUNNER_ALLOW_RUNASROOT -u "$run_as" -- ./config.sh --unattended --name "$instance_id" --work "_work" $${config}
+sudo --preserve-env=RUNNER_ALLOW_RUNASROOT -u "$run_as" -- ./config.sh --unattended --name "$instance_id" --work "$RUNNER_WORK_DIR" $${config}
 
 ## Start the runner
 echo "Starting runner after $(awk '{print int($1/3600)":"int(($1%3600)/60)":"int($1%60)}' /proc/uptime)"
