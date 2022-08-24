@@ -19,6 +19,12 @@ variable "region" {
   default     = "eu-west-1"
 }
 
+variable "instance_type" {
+  description = "The instance type Packer will use for the builder"
+  type        = string
+  default     = "t3a.medium"
+}
+
 variable "ebs_delete_on_termination" {
   description = "Indicates whether the EBS volume is deleted on instance termination."
   type        = bool
@@ -40,7 +46,7 @@ variable "custom_shell_commands" {
 source "amazon-ebs" "githubrunner" {
   ami_name                    = "github-runner-windows-core-2019-${formatdate("YYYYMMDDhhmm", timestamp())}"
   communicator                = "winrm"
-  instance_type               = "t3a.medium"
+  instance_type               = var.instance_type
   region                      = var.region
   associate_public_ip_address = var.associate_public_ip_address
 
