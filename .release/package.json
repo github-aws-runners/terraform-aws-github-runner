@@ -13,6 +13,6 @@
     "@semantic-release/github": "^8.0.5",
     "@semantic-release/release-notes-generator": "^10.0.3",
     "conventional-changelog-conventionalcommits": "^5.0.0",
-    "semantic-release": "^19.0.3"
+    "semantic-release": "^19.0.5"
   }
 }
