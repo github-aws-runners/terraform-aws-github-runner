@@ -100,15 +100,16 @@ module "webhook" {
   sqs_build_queue_fifo          = var.fifo_build_queue
   github_app_webhook_secret_arn = module.ssm.parameters.github_app_webhook_secret.arn
 
-  lambda_s3_bucket                 = var.lambda_s3_bucket
-  webhook_lambda_s3_key            = var.webhook_lambda_s3_key
-  webhook_lambda_s3_object_version = var.webhook_lambda_s3_object_version
-  lambda_runtime                   = var.lambda_runtime
-  lambda_architecture              = var.lambda_architecture
-  lambda_zip                       = var.webhook_lambda_zip
-  lambda_timeout                   = var.webhook_lambda_timeout
-  logging_retention_in_days        = var.logging_retention_in_days
-  logging_kms_key_id               = var.logging_kms_key_id
+  lambda_s3_bucket                              = var.lambda_s3_bucket
+  webhook_lambda_s3_key                         = var.webhook_lambda_s3_key
+  webhook_lambda_s3_object_version              = var.webhook_lambda_s3_object_version
+  webhook_lambda_apigateway_access_log_settings = var.webhook_lambda_apigateway_access_log_settings
+  lambda_runtime                                = var.lambda_runtime
+  lambda_architecture                           = var.lambda_architecture
+  lambda_zip                                    = var.webhook_lambda_zip
+  lambda_timeout                                = var.webhook_lambda_timeout
+  logging_retention_in_days                     = var.logging_retention_in_days
+  logging_kms_key_id                            = var.logging_kms_key_id
 
   # labels
   enable_workflow_job_labels_check = var.runner_enable_workflow_job_labels_check
