@@ -5,7 +5,7 @@
       "Sid": "githubActionDist",
       "Effect": "Allow",
       "Action": ["s3:GetObject", "s3:GetObjectAcl"],
-      "Resource": ["${s3_arn}/*"]
+      "Resource": ["${s3_arn}"]
     }
   ]
 }

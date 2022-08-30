@@ -156,7 +156,7 @@ Next create a second terraform workspace and initiate the module, or adapt one o
 
 Note that `github_app.key_base64` needs to be a base64-encoded string of the `.pem` file i.e. the output of `base64 app.private-key.pem`. The decoded string can either be a multiline value or a single line value with new lines represented with literal `\n` characters.
 
-```terraform
+```hcl
 module "github-runner" {
   source  = "philips-labs/github-runner/aws"
   version = "REPLACE_WITH_VERSION"
@@ -244,7 +244,6 @@ module "runners" {
   ...
   kms_key_arn = aws_kms_key.github.arn
   ...
-
 ```
 
 ### Pool
@@ -310,8 +309,7 @@ The example for [ephemeral runners](./examples/ephemeral) is based on the [defau
 
 ### Prebuilt Images
 
-This module also allows you to run agents from a prebuilt AMI to gain faster startup times. You can find more information in [the image README.md](/images/README.md)
-
+This module also allows you to run agents from a prebuilt AMI to gain faster startup times. You can find more information in [the image README.md](/images/README.md). When the GitHub runner is part of the AMI you can disable the binary syncer by setting `enable_runner_binaries_syncer = false`.
 
 ## Examples
 
@@ -408,6 +406,7 @@ In case the setup does not work as intended follow the trace of events:
 | <a name="input_enable_job_queued_check"></a> [enable\_job\_queued\_check](#input\_enable\_job\_queued\_check) | Only scale if the job event received by the scale up lambda is is in the state queued. By default enabled for non ephemeral runners and disabled for ephemeral. Set this variable to overwrite the default behavior. | `bool` | `null` | no |
 | <a name="input_enable_managed_runner_security_group"></a> [enable\_managed\_runner\_security\_group](#input\_enable\_managed\_runner\_security\_group) | Enabling the default managed security group creation. Unmanaged security groups can be specified via `runner_additional_security_group_ids`. | `bool` | `true` | no |
 | <a name="input_enable_organization_runners"></a> [enable\_organization\_runners](#input\_enable\_organization\_runners) | Register runners to organization, instead of repo level | `bool` | `false` | no |
+| <a name="input_enable_runner_binaries_syncer"></a> [enable\_runner\_binaries\_syncer](#input\_enable\_runner\_binaries\_syncer) | Option to disable the lambda to sync GitHub runner distribution, usefull when using a pre-build AMI. | `bool` | `true` | no |
 | <a name="input_enable_runner_detailed_monitoring"></a> [enable\_runner\_detailed\_monitoring](#input\_enable\_runner\_detailed\_monitoring) | Should detailed monitoring be enabled for the runner. Set this to true if you want to use detailed monitoring. See https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-cloudwatch-new.html for details. | `bool` | `false` | no |
 | <a name="input_enable_ssm_on_runners"></a> [enable\_ssm\_on\_runners](#input\_enable\_ssm\_on\_runners) | Enable to allow access the runner instances for debugging purposes via SSM. Note that this adds additional permissions to the runner instances. | `bool` | `false` | no |
 | <a name="input_enabled_userdata"></a> [enabled\_userdata](#input\_enabled\_userdata) | Should the userdata script be enabled for the runner. Set this to false if you are using your own prebuilt AMI. | `bool` | `true` | no |
@@ -507,8 +506,7 @@ We welcome contribution, please checkout the [contribution guide](CONTRIBUTING.m
 
 This module is part of the Philips Forest.
 
-```bash
-
+```plain
                                                      ___                   _
                                                     / __\__  _ __ ___  ___| |_
                                                    / _\/ _ \| '__/ _ \/ __| __|
@@ -516,7 +514,6 @@ This module is part of the Philips Forest.
                                                   \/   \___/|_|  \___||___/\__|
 
                                                                  Infrastructure
-
 ```
 
 Talk to the forestkeepers in the `runners`-channel on Slack.

@@ -29,11 +29,6 @@ export async function handle(headers: IncomingHttpHeaders, body: string): Promis
     return response;
   }
 
-  const payload = JSON.parse(body);
-  LogFields.fields.event = githubEvent;
-  LogFields.fields.repository = payload.repository.full_name;
-  LogFields.fields.action = payload.action;
-
   if (!supportedEvents.includes(githubEvent)) {
     logger.warn(`Unsupported event type.`, LogFields.print());
     return {
@@ -42,6 +37,10 @@ export async function handle(headers: IncomingHttpHeaders, body: string): Promis
     };
   }
 
+  const payload = JSON.parse(body);
+  LogFields.fields.event = githubEvent;
+  LogFields.fields.repository = payload.repository.full_name;
+  LogFields.fields.action = payload.action;
   LogFields.fields.name = payload[githubEvent].name;
   LogFields.fields.status = payload[githubEvent].status;
   LogFields.fields.started_at = payload[githubEvent]?.started_at;
@@ -85,7 +84,7 @@ function readEnvironmentVariables() {
   const workflowLabelCheckAll = JSON.parse(workflowLabelCheckAllEnv) as boolean;
   const repositoryWhiteListEnv = process.env.REPOSITORY_WHITE_LIST || '[]';
   const repositoryWhiteList = JSON.parse(repositoryWhiteListEnv) as Array<string>;
-  const runnerLabelsEnv = process.env.RUNNER_LABELS || '[]';
+  const runnerLabelsEnv = (process.env.RUNNER_LABELS || '[]').toLowerCase();
   const runnerLabels = JSON.parse(runnerLabelsEnv) as Array<string>;
   return { environment, repositoryWhiteList, enableWorkflowLabelCheck, workflowLabelCheckAll, runnerLabels };
 }
@@ -144,8 +143,8 @@ async function handleWorkflowJob(
       eventType: githubEvent,
       installationId: installationId,
     });
+    logger.info(`Successfully queued job for ${body.repository.full_name}`, LogFields.print());
   }
-  logger.info(`Successfully queued job for ${body.repository.full_name}`, LogFields.print());
   return { statusCode: 201 };
 }
 
@@ -178,16 +177,9 @@ function isRepoNotAllowed(repoFullName: string, repositoryWhiteList: string[]): 
 
 function canRunJob(job: WorkflowJobEvent, runnerLabels: string[], workflowLabelCheckAll: boolean): boolean {
   const workflowJobLabels = job.workflow_job.labels;
-  let runnerMatch;
-  let jobMatch;
-  if (workflowLabelCheckAll) {
-    runnerMatch = runnerLabels.every((l) => workflowJobLabels.includes(l));
-    jobMatch = workflowJobLabels.every((l) => runnerLabels.includes(l));
-  } else {
-    runnerMatch = runnerLabels.some((l) => workflowJobLabels.includes(l));
-    jobMatch = workflowJobLabels.some((l) => runnerLabels.includes(l));
-  }
-  const match = jobMatch && runnerMatch;
+  const match = workflowLabelCheckAll
+    ? workflowJobLabels.every((l) => runnerLabels.includes(l.toLowerCase()))
+    : workflowJobLabels.some((l) => runnerLabels.includes(l.toLowerCase()));
 
   logger.debug(
     `Received workflow job event with labels: '${JSON.stringify(workflowJobLabels)}'. The event does ${
