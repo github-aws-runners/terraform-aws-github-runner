@@ -171,7 +171,7 @@ export async function createRunner(runnerParameters: RunnerInputParameters): Pro
         ],
         SpotOptions: {
           MaxTotalPrice: runnerParameters.ec2instanceCriteria.maxSpotPrice,
-          AllocationStrategy: 'capacity-optimized',
+          AllocationStrategy: runnerParameters.ec2instanceCriteria.instanceAllocationStrategy,
         },
         TargetCapacitySpecification: {
           TotalTargetCapacity: numberOfRunners,

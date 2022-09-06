@@ -46,34 +46,38 @@ variable "prefix" {
   default     = "github-actions"
 }
 
-variable "s3_bucket_runner_binaries" {
+variable "s3_runner_binaries" {
+  description = "Bucket details for cached GitHub binary."
   type = object({
     arn = string
+    id  = string
+    key = string
   })
 }
 
-variable "s3_location_runner_binaries" {
-  description = "S3 location of runner distribution."
-  type        = string
-}
-
 variable "block_device_mappings" {
-  description = "The EC2 instance block device configuration. Takes the following keys: `device_name`, `delete_on_termination`, `volume_type`, `volume_size`, `encrypted`, `iops`"
+  description = "The EC2 instance block device configuration. Takes the following keys: `device_name`, `delete_on_termination`, `volume_type`, `volume_size`, `encrypted`, `iops`, `throughput`, `kms_key_id`, `snapshot_id`."
   type = list(object({
-    device_name           = string
     delete_on_termination = bool
-    volume_type           = string
-    volume_size           = number
+    device_name           = string
     encrypted             = bool
     iops                  = number
+    kms_key_id            = string
+    snapshot_id           = string
+    throughput            = number
+    volume_size           = number
+    volume_type           = string
   }))
   default = [{
-    device_name           = "/dev/xvda"
     delete_on_termination = true
-    volume_type           = "gp3"
-    volume_size           = 30
+    device_name           = "/dev/xvda"
     encrypted             = true
     iops                  = null
+    kms_key_id            = null
+    snapshot_id           = null
+    throughput            = null
+    volume_size           = 30
+    volume_type           = "gp3"
   }]
 }
 
@@ -549,7 +553,7 @@ variable "disable_runner_autoupdate" {
 variable "lambda_runtime" {
   description = "AWS Lambda runtime."
   type        = string
-  default     = "nodejs14.x"
+  default     = "nodejs16.x"
 }
 
 variable "lambda_architecture" {
@@ -560,4 +564,10 @@ variable "lambda_architecture" {
     condition     = contains(["arm64", "x86_64"], var.lambda_architecture)
     error_message = "`lambda_architecture` value is not valid, valid values are: `arm64` and `x86_64`."
   }
+}
+
+variable "enable_runner_binaries_syncer" {
+  description = "Option to disable the lambda to sync GitHub runner distribution, usefull when using a pre-build AMI."
+  type        = bool
+  default     = true
 }

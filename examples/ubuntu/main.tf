@@ -46,7 +46,7 @@ module "runners" {
   ami_owners        = ["099720109477"] # Canonical's Amazon account ID
 
   ami_filter = {
-    name = ["ubuntu/images/hvm-ssd/ubuntu-focal-20.04-amd64-server-*"]
+    name = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"]
   }
 
   # Custom build AMI, no custom userdata needed.
@@ -64,6 +64,9 @@ module "runners" {
     volume_size           = 30
     encrypted             = true
     iops                  = null
+    throughput            = null
+    kms_key_id            = null
+    snapshot_id           = null
   }]
 
   runner_log_files = [

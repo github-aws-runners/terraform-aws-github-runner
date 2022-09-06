@@ -134,13 +134,13 @@ resource "aws_lambda_permission" "syncer" {
 ###################################################################################
 
 resource "aws_s3_object" "trigger" {
-  bucket     = aws_s3_bucket.action_dist.id
-  key        = "triggers/${aws_lambda_function.syncer.id}-trigger.json"
-  source     = "${path.module}/trigger.json"
-  etag       = try(var.server_side_encryption_configuration.rule.apply_server_side_encryption_by_default.kms_master_key_id, null) == null ? filemd5("${path.module}/trigger.json") : null
-  kms_key_id = try(var.server_side_encryption_configuration.rule.apply_server_side_encryption_by_default.kms_master_key_id, null)
-
-  depends_on = [aws_s3_bucket_notification.on_deploy]
+  bucket                 = aws_s3_bucket.action_dist.id
+  key                    = "triggers/${aws_lambda_function.syncer.id}-trigger.json"
+  source                 = "${path.module}/trigger.json"
+  etag                   = try(var.server_side_encryption_configuration.rule.apply_server_side_encryption_by_default.kms_master_key_id, null) == null ? filemd5("${path.module}/trigger.json") : null
+  kms_key_id             = try(var.server_side_encryption_configuration.rule.apply_server_side_encryption_by_default.kms_master_key_id, null)
+  server_side_encryption = try(var.server_side_encryption_configuration.rule.apply_server_side_encryption_by_default.sse_algorithm, null)
+  depends_on             = [aws_s3_bucket_notification.on_deploy]
 }
 
 resource "aws_s3_bucket_notification" "on_deploy" {

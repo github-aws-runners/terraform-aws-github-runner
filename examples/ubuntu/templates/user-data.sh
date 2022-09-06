@@ -7,17 +7,17 @@ ${pre_install}
 apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get install -y \
     awscli \
-    jq \
-    curl \
-    wget \
-    git \
-    uidmap \
     build-essential \
-    unzip
+    curl \
+    git \
+    iptables \
+    jq \
+    uidmap \
+    unzip \
+    wget
 
-USER_NAME=runners
-useradd -m -s /bin/bash $USER_NAME
-USER_ID=$(id -ru $USER_NAME)
+user_name=ubuntu
+user_id=$(id -ru $user_name)
 
 # install and configure cloudwatch logging agent
 wget https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb
@@ -44,27 +44,27 @@ WantedBy=default.target
 
 EOF
 
-echo export XDG_RUNTIME_DIR=/run/user/$USER_ID >>/home/$USER_NAME/.profile
+echo export XDG_RUNTIME_DIR=/run/user/$user_id >>/home/$user_name/.bashrc
 
 systemctl daemon-reload
 systemctl enable user@UID.service
 systemctl start user@UID.service
 
 curl -fsSL https://get.docker.com/rootless >>/opt/rootless.sh && chmod 755 /opt/rootless.sh
-su -l $USER_NAME -c /opt/rootless.sh
-echo export DOCKER_HOST=unix:///run/user/$USER_ID/docker.sock >>/home/$USER_NAME/.profile
-echo export PATH=/home/$USER_NAME/bin:$PATH >>/home/$USER_NAME/.profile
+su -l $user_name -c /opt/rootless.sh
+echo export DOCKER_HOST=unix:///run/user/$user_id/docker.sock >>/home/$user_name/.bashrc
+echo export PATH=/home/$user_name/bin:$PATH >>/home/$user_name/.bashrc
 
 # Run docker service by default
-loginctl enable-linger $USER_NAME
-su -l $USER_NAME -c "systemctl --user enable docker"
+loginctl enable-linger $user_name
+su -l $user_name -c "systemctl --user enable docker"
 
 ${install_runner}
 
 # config runner for rootless docker
 cd /opt/actions-runner/
-echo DOCKER_HOST=unix:///run/user/$USER_ID/docker.sock >>.env
-echo PATH=/home/$USER_NAME/bin:$PATH >>.env
+echo DOCKER_HOST=unix:///run/user/$user_id/docker.sock >>.env
+echo PATH=/home/$user_name/bin:$PATH >>.env
 
 ${post_install}
 

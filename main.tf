@@ -3,7 +3,6 @@ locals {
     "ghr:environment" = var.prefix
   })
 
-  s3_action_runner_url = "s3://${module.runner_binaries.bucket.id}/${module.runner_binaries.runner_distribution_object_key}"
   github_app_parameters = {
     id         = module.ssm.parameters.github_app_id
     key_base64 = module.ssm.parameters.github_app_key_base64
@@ -134,8 +133,11 @@ module "runners" {
   prefix        = var.prefix
   tags          = local.tags
 
-  s3_bucket_runner_binaries   = module.runner_binaries.bucket
-  s3_location_runner_binaries = local.s3_action_runner_url
+  s3_runner_binaries = var.enable_runner_binaries_syncer ? {
+    arn = module.runner_binaries[0].bucket.arn
+    id  = module.runner_binaries[0].bucket.id
+    key = module.runner_binaries[0].runner_distribution_object_key
+  } : null
 
   runner_os                     = var.runner_os
   instance_types                = var.instance_types
@@ -169,6 +171,7 @@ module "runners" {
   runner_additional_security_group_ids = var.runner_additional_security_group_ids
   metadata_options                     = var.runner_metadata_options
 
+  enable_runner_binaries_syncer    = var.enable_runner_binaries_syncer
   lambda_s3_bucket                 = var.lambda_s3_bucket
   runners_lambda_s3_key            = var.runners_lambda_s3_key
   runners_lambda_s3_object_version = var.runners_lambda_s3_object_version
@@ -218,6 +221,8 @@ module "runners" {
 }
 
 module "runner_binaries" {
+  count = var.enable_runner_binaries_syncer ? 1 : 0
+
   source = "./modules/runner-binaries-syncer"
 
   aws_region = var.aws_region

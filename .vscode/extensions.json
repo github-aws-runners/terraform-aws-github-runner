@@ -5,7 +5,6 @@
     // Extension identifier format: ${publisher}.${name}. Example: vscode.csharp
     "editorconfig.editorconfig",
     "yzhang.markdown-all-in-one",
-    "sonarsource.sonarlint-vscode",
     "hashicorp.terraform"
   ]
 }

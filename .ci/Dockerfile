@@ -1,5 +1,5 @@
 #syntax=docker/dockerfile:1.2
-FROM node:14 as build
+FROM node:16 as build
 WORKDIR /lambda
 RUN apt-get update \
         && apt-get install -y zip \
