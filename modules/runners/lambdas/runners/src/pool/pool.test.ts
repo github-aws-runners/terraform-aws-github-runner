@@ -27,10 +27,10 @@ jest.mock('./../gh-auth/gh-auth');
 
 const mocktokit = Octokit as jest.MockedClass<typeof Octokit>;
 const mockedAppAuth = mocked(ghAuth.createGithubAppAuth, {
-  shallow: false
+  shallow: false,
 });
 const mockedInstallationAuth = mocked(ghAuth.createGithubInstallationAuth, { shallow: false });
-const mockCreateClient = mocked(ghAuth.createOctoClient, { shallow: false});
+const mockCreateClient = mocked(ghAuth.createOctoClient, { shallow: false });
 const mockListRunners = mocked(listEC2Runners);
 
 const cleanEnv = process.env;
