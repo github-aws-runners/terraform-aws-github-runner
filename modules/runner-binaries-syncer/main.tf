@@ -28,8 +28,6 @@ resource "aws_s3_bucket_lifecycle_configuration" "bucket-config" {
       days          = 35
       storage_class = "INTELLIGENT_TIERING"
     }
-
-
   }
 }
 
@@ -64,7 +62,13 @@ resource "aws_s3_bucket_public_access_block" "action_dist" {
   restrict_public_buckets = true
 }
 
+resource "aws_s3_bucket_logging" "action_dist_logging" {
+  count = var.s3_logging_bucket != null ? 1 : 0
 
+  bucket        = aws_s3_bucket.action_dist.id
+  target_bucket = var.s3_logging_bucket
+  target_prefix = var.s3_logging_bucket_prefix != null ? var.s3_logging_bucket_prefix : var.distribution_bucket_name
+}
 
 data "aws_iam_policy_document" "action_dist_sse_policy" {
   count = try(var.server_side_encryption_configuration.rule.apply_server_side_encryption_by_default, null) != null ? 1 : 0

@@ -135,6 +135,31 @@ variable "runner_binaries_s3_sse_configuration" {
   default     = {}
 }
 
+variable "runner_binaries_s3_logging_bucket" {
+  description = "Bucket for action runner distribution bucket access logging."
+  type        = string
+  default     = null
+
+  # Make sure the bucket name only contains legal characters
+  validation {
+    error_message = "Only lowercase alphanumeric characters and hyphens allowed in the bucket name."
+    condition     = var.runner_binaries_s3_logging_bucket == null || can(regex("^[a-z0-9-]*$", var.runner_binaries_s3_logging_bucket))
+  }
+}
+
+variable "runner_binaries_s3_logging_bucket_prefix" {
+  description = "Bucket prefix for action runner distribution bucket access logging."
+  type        = string
+  default     = null
+
+  # Make sure the bucket name only contains legal characters
+  validation {
+    error_message = "Only lowercase alphanumeric characters and hyphens allowed in the bucket name."
+    condition     = var.runner_binaries_s3_logging_bucket_prefix == null || can(regex("^[a-z0-9-]*$", var.runner_binaries_s3_logging_bucket_prefix))
+  }
+}
+
+
 variable "role_permissions_boundary" {
   description = "Permissions boundary that will be added to the created roles."
   type        = string
