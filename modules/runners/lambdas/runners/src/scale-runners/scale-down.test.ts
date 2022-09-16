@@ -32,9 +32,9 @@ jest.mock('./../gh-auth/gh-auth');
 jest.mock('./cache');
 
 const mocktokit = Octokit as jest.MockedClass<typeof Octokit>;
-const mockedAppAuth = mocked(ghAuth.createGithubAppAuth, true);
-const mockedInstallationAuth = mocked(ghAuth.createGithubInstallationAuth, true);
-const mockCreateClient = mocked(ghAuth.createOctoClient, true);
+const mockedAppAuth = mocked(ghAuth.createGithubAppAuth, { shallow: false });
+const mockedInstallationAuth = mocked(ghAuth.createGithubInstallationAuth, { shallow: false });
+const mockCreateClient = mocked(ghAuth.createOctoClient, { shallow: false });
 const mockListRunners = mocked(listEC2Runners);
 
 export interface TestData {

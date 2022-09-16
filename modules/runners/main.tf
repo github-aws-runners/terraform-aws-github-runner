@@ -15,7 +15,7 @@ locals {
   kms_key_arn           = var.kms_key_arn != null ? var.kms_key_arn : ""
 
   default_ami = {
-    "windows" = { name = ["Windows_Server-20H2-English-Core-ContainersLatest-*"] }
+    "windows" = { name = ["Windows_Server-2022-English-Core-ContainersLatest-*"] }
     "linux"   = var.runner_architecture == "arm64" ? { name = ["amzn2-ami-kernel-5.*-hvm-*-arm64-gp2"] } : { name = ["amzn2-ami-kernel-5.*-hvm-*-x86_64-gp2"] }
   }
 
