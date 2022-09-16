@@ -669,3 +669,22 @@ variable "enable_runner_binaries_syncer" {
   type        = bool
   default     = true
 }
+
+variable "queue_encryption" {
+  description = "Configure how data on queues managed by the modules in ecrypted at REST. Options are encryped via SSE, non encrypted and via KMSS. By default encryptes via SSE is enabled. See for more details the Terraform `aws_sqs_queue` resource https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sqs_queue."
+  type = object({
+    kms_data_key_reuse_period_seconds = number
+    kms_master_key_id                 = string
+    sqs_managed_sse_enabled           = bool
+  })
+  default = {
+    kms_data_key_reuse_period_seconds = null
+    kms_master_key_id                 = null
+    sqs_managed_sse_enabled           = true
+  }
+  validation {
+    condition     = var.queue_encryption == null || var.queue_encryption.sqs_managed_sse_enabled != null && var.queue_encryption.kms_master_key_id == null && var.queue_encryption.kms_data_key_reuse_period_seconds == null || var.queue_encryption.sqs_managed_sse_enabled == null && var.queue_encryption.kms_master_key_id != null
+    error_message = "Invalid configuration for `queue_encryption`. Valid configurations are encryption disabled, enabled via SSE. Or encryption via KMS."
+  }
+}
+

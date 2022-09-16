@@ -62,9 +62,12 @@ resource "aws_sqs_queue" "queued_builds" {
     maxReceiveCount     = var.redrive_build_queue.maxReceiveCount
   }) : null
 
+  sqs_managed_sse_enabled           = var.queue_encryption.sqs_managed_sse_enabled
+  kms_master_key_id                 = var.queue_encryption.kms_master_key_id
+  kms_data_key_reuse_period_seconds = var.queue_encryption.kms_data_key_reuse_period_seconds
+
   tags = var.tags
 }
-
 
 resource "aws_sqs_queue_policy" "build_queue_dlq_policy" {
   count     = var.redrive_build_queue.enabled ? 1 : 0
@@ -75,6 +78,10 @@ resource "aws_sqs_queue_policy" "build_queue_dlq_policy" {
 resource "aws_sqs_queue" "queued_builds_dlq" {
   count = var.redrive_build_queue.enabled ? 1 : 0
   name  = "${var.prefix}-queued-builds_dead_letter"
+
+  sqs_managed_sse_enabled           = var.queue_encryption.sqs_managed_sse_enabled
+  kms_master_key_id                 = var.queue_encryption.kms_master_key_id
+  kms_data_key_reuse_period_seconds = var.queue_encryption.kms_data_key_reuse_period_seconds
 
   tags = var.tags
 }
