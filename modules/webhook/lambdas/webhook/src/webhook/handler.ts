@@ -95,9 +95,11 @@ async function verifySignature(
   body: string,
   environment: string,
 ): Promise<number> {
-  let signature = headers['x-hub-signature'] as string;
+  let signature;
   if ('x-hub-signature-256' in headers) {
     signature = headers['x-hub-signature-256'] as string;
+  } else {
+    signature = headers['x-hub-signature'] as string;
   }
   if (!signature) {
     logger.error(
