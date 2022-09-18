@@ -95,7 +95,10 @@ async function verifySignature(
   body: string,
   environment: string,
 ): Promise<number> {
-  const signature = headers['x-hub-signature'] as string;
+  let signature = headers['x-hub-signature'] as string;
+  if ('x-hub-signature-256' in headers) {
+    signature = headers['x-hub-signature-256'] as string;
+  }
   if (!signature) {
     logger.error(
       "Github event doesn't have signature. This webhook requires a secret to be configured.",

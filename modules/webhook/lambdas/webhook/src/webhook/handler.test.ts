@@ -61,6 +61,16 @@ describe('handler', () => {
       expect(sendActionRequest).toBeCalled();
     });
 
+    it('handles workflow job events with 256 hash signature', async () => {
+      const event = JSON.stringify(workflowjob_event);
+      const resp = await handle(
+        { 'X-Hub-Signature-256': await webhooks.sign(event), 'X-GitHub-Event': 'workflow_job' },
+        event,
+      );
+      expect(resp.statusCode).toBe(201);
+      expect(sendActionRequest).toBeCalled();
+    });
+
     it('does not handle other events', async () => {
       const event = JSON.stringify(workflowjob_event);
       const resp = await handle({ 'X-Hub-Signature': await webhooks.sign(event), 'X-GitHub-Event': 'push' }, event);
