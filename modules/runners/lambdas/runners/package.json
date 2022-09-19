@@ -39,7 +39,7 @@
     "@aws-sdk/client-ssm": "^3.171.0",
     "@octokit/auth-app": "4.0.5",
     "@octokit/rest": "^19.0.4",
-    "@octokit/types": "^7.3.1",
+    "@octokit/types": "^7.5.0",
     "@types/aws-lambda": "^8.10.102",
     "@types/express": "^4.17.11",
     "@types/node": "^18.7.18",
