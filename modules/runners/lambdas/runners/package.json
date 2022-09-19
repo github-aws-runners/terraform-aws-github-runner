@@ -27,7 +27,7 @@
     "eslint-plugin-prettier": "4.2.1",
     "jest": "27.5.1",
     "jest-mock": "^29.0.3",
-    "jest-mock-extended": "^2.0.7",
+    "jest-mock-extended": "^3.0.1",
     "moment-timezone": "^0.5.37",
     "nock": "^13.2.9",
     "prettier": "2.7.1",
