@@ -17,7 +17,7 @@
   },
   "devDependencies": {
     "@trivago/prettier-plugin-sort-imports": "^3.3.0",
-    "@types/aws-lambda": "^8.10.102",
+    "@types/aws-lambda": "^8.10.104",
     "@types/express": "^4.17.11",
     "@types/jest": "^27.5.0",
     "@typescript-eslint/eslint-plugin": "^4.33.0",
@@ -40,7 +40,7 @@
     "@octokit/auth-app": "4.0.5",
     "@octokit/rest": "^19.0.4",
     "@octokit/types": "^7.5.0",
-    "@types/aws-lambda": "^8.10.102",
+    "@types/aws-lambda": "^8.10.104",
     "@types/express": "^4.17.11",
     "@types/node": "^18.7.18",
     "aws-sdk": "^2.1221.0",
