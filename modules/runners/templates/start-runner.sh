@@ -5,6 +5,8 @@
 echo "Retrieving TOKEN from AWS API"
 token=$(curl -f -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 180")
 
+ami_id=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/meta-data/ami-id)
+
 region=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r .region)
 echo "Retrieved REGION from AWS API ($region)"
 
@@ -59,6 +61,16 @@ chown -R $run_as .
 
 echo "Configure GH Runner as user $run_as"
 sudo --preserve-env=RUNNER_ALLOW_RUNASROOT -u "$run_as" -- ./config.sh --unattended --name "$instance_id" --work "_work" $${config}
+
+tee /opt/actions-runner/.setup_info <<EOL
+[
+  {
+    "group": "",
+    "detail": "$ami_id"
+  }
+]
+EOL
+
 
 ## Start the runner
 echo "Starting runner after $(awk '{print int($1/3600)":"int(($1%3600)/60)":"int($1%60)}' /proc/uptime)"
