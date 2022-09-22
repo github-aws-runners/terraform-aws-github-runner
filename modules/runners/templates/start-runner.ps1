@@ -4,6 +4,8 @@
 Write-Host  "Retrieving TOKEN from AWS API"
 $token=Invoke-RestMethod -Method PUT -Uri "http://169.254.169.254/latest/api/token" -Headers @{"X-aws-ec2-metadata-token-ttl-seconds" = "180"}
 
+$ami_id=Invoke-RestMethod -Uri "http://169.254.169.254/latest/meta-data/ami-id" -Headers @{"X-aws-ec2-metadata-token" = $token}
+
 $metadata=Invoke-RestMethod -Uri "http://169.254.169.254/latest/dynamic/instance-identity/document" -Headers @{"X-aws-ec2-metadata-token" = $token}
 
 $Region = $metadata.region
@@ -87,6 +89,17 @@ Write-Host "Configure GH Runner as user $run_as"
 Invoke-Expression $configCmd
 
 Write-Host "Starting the runner as user $run_as"
+
+$contentToAdd = @"
+[
+  {
+    "group": "",
+    "detail": "$ami_id"
+  }
+]
+"@
+
+Add-Content "$pwd\.setup_info" $contentToAdd
 
 Write-Host  "Installing the runner as a service"
 
