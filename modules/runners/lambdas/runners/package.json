@@ -46,6 +46,6 @@
     "aws-sdk": "^2.1221.0",
     "cron-parser": "^4.6.0",
     "tslog": "^3.3.4",
-    "typescript": "^4.7.4"
+    "typescript": "^4.8.3"
   }
 }
