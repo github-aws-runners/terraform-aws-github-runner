@@ -236,9 +236,14 @@ variable "logging_kms_key_id" {
 }
 
 variable "runner_allow_prerelease_binaries" {
-  description = "Allow the runners to update to prerelease binaries."
+  description = "(Deprecated, no longer used), allow the runners to update to prerelease binaries."
   type        = bool
-  default     = false
+  default     = null
+
+  validation {
+    condition     = var.runner_allow_prerelease_binaries == null
+    error_message = "The \"runner_allow_prerelease_binaries\" variable is no longer used. GitHub runners are not released as pre-release, only releases should be used."
+  }
 }
 
 variable "block_device_mappings" {
