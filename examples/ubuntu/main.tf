@@ -1,5 +1,5 @@
 locals {
-  environment = "niek"
+  environment = "ubuntu"
   aws_region  = "eu-west-1"
 }
 
@@ -31,8 +31,8 @@ module "runners" {
   # runner_binaries_syncer_lambda_zip = "lambdas-download/runner-binaries-syncer.zip"
   # runners_lambda_zip                = "lambdas-download/runners.zip"
 
-  enable_organization_runners = true
-  runner_extra_labels         = "default,example"
+  enable_organization_runners = false
+  runner_extra_labels         = "ubuntu,example"
 
   # enable access to the runners via SSM
   enable_ssm_on_runners = true
@@ -92,8 +92,8 @@ module "runners" {
 
   # Uncomment to enable ephemeral runners
   # delay_webhook_event      = 0
-  enable_ephemeral_runners = true
-  enabled_userdata         = true
+  # enable_ephemeral_runners = true
+  # enabled_userdata         = true
 
   # Uncommet idle config to have idle runners from 9 to 5 in time zone Amsterdam
   # idle_config = [{
