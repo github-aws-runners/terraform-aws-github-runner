@@ -25,7 +25,7 @@ module "runners" {
   ami_filter          = var.ami_filter
   ami_owners          = var.ami_owners
 
-  sqs_build_queue                      = local.queues_by_runner_os[count.index]["arn"]
+  sqs_build_queue                      = { "arn": local.queues_by_runner_os[count.index]["arn"] }
   github_app_parameters                = local.github_app_parameters
   enable_organization_runners          = var.enable_organization_runners
   enable_ephemeral_runners             = var.enable_ephemeral_runners

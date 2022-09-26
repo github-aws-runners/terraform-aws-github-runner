@@ -1,13 +1,13 @@
 module "runner_binaries" {
   source   = "../runner-binaries-syncer"
-  for_each = distinct({ for index, config in local.queues_by_runner_os : "${config["os_config"]["runner_os_type"]}-${config["os_config"]["runner_architecture"]}" => { "os_type" : config["os_config"]["runner_os_type"], "architecture" : config["os_config"]["runner_architecture"] } if config["enable_runner_binaries_syncer"] })
+  count = length(local.unique_os_types)
   prefix   = var.prefix
   tags     = local.tags
 
   distribution_bucket_name = "${var.prefix}-dist-${random_string.random.result}"
 
-  runner_os                        = each.value["os_type"]
-  runner_architecture              = each.value["architecture"]
+  runner_os                        = local.unique_os_types[count.index]("os_type") 
+  runner_architecture              = local.unique_os_types[count.index]("archiecture")
   runner_allow_prerelease_binaries = var.runner_allow_prerelease_binaries
 
   lambda_s3_bucket                = var.lambda_s3_bucket
