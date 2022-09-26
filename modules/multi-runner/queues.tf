@@ -1,6 +1,6 @@
 
 locals {
-  queues_by_runner_os = [for index, queue in var.sqs_build_queue_by_runner_os : merge(aws_sqs_queue.queued_builds[index], queue)]
+  queues_by_runner_os = tolist([for index, queue in var.sqs_build_queue_by_runner_os : merge(aws_sqs_queue.queued_builds[index], queue)])
 }
 data "aws_iam_policy_document" "deny_unsecure_transport" {
   statement {
