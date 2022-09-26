@@ -1,6 +1,6 @@
 module "runner_binaries" {
   source   = "../runner-binaries-syncer"
-  for_each = distinct({ for config in local.queues_by_runner_os : "${config["os_config"]["runner_os_type"]}-${config["os_config"]["runner_architecture"]}" => { "os_type" : config["os_config"]["runner_os_type"], "architecture" : config["os_config"]["runner_architecture"] } if config["enable_runner_binaries_syncer"] })
+  for_each = distinct({ for index, config in local.queues_by_runner_os : "${config["os_config"]["runner_os_type"]}-${config["os_config"]["runner_architecture"]}" => { "os_type" : config["os_config"]["runner_os_type"], "architecture" : config["os_config"]["runner_architecture"] } if config["enable_runner_binaries_syncer"] })
   prefix   = var.prefix
   tags     = local.tags
 

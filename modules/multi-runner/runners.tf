@@ -1,6 +1,6 @@
 module "runners" {
   source = "../runners"
-  for_each = local.queues_by_runner_os
+  count = local.queues_by_runner_os
   aws_region    = var.aws_region
   aws_partition = var.aws_partition
   vpc_id        = var.vpc_id
@@ -8,24 +8,24 @@ module "runners" {
   prefix        = var.prefix
   tags          = local.tags
 
-  s3_runner_binaries = each.value["enable_runner_binaries_syncer"] ? {
+  s3_runner_binaries = local.queues_by_runner_os[count.index]["enable_runner_binaries_syncer"] ? {
     arn = module.runner_binaries[0].bucket.arn
     id  = module.runner_binaries[0].bucket.id
     key = module.runner_binaries[0].runner_distribution_object_key
   } : null
 
-  runner_os                     = each.value["os-config"]["runner_os_type"]
+  runner_os                     = local.queues_by_runner_os[count.index]["os-config"]["runner_os_type"]
   instance_types                = var.instance_types
   instance_target_capacity_type = var.instance_target_capacity_type
   instance_allocation_strategy  = var.instance_allocation_strategy
   instance_max_spot_price       = var.instance_max_spot_price
   block_device_mappings         = var.block_device_mappings
 
-  runner_architecture = each.value["os-config"]["runner_architecture"]
+  runner_architecture = local.queues_by_runner_os[count.index]["os-config"]["runner_architecture"]
   ami_filter          = var.ami_filter
   ami_owners          = var.ami_owners
 
-  sqs_build_queue                      = each.value["arn"]
+  sqs_build_queue                      = local.queues_by_runner_os[count.index]["arn"]
   github_app_parameters                = local.github_app_parameters
   enable_organization_runners          = var.enable_organization_runners
   enable_ephemeral_runners             = var.enable_ephemeral_runners
@@ -46,7 +46,7 @@ module "runners" {
   runner_additional_security_group_ids = var.runner_additional_security_group_ids
   metadata_options                     = var.runner_metadata_options
 
-  enable_runner_binaries_syncer    = each.value["enable_runner_binaries_syncer"]
+  enable_runner_binaries_syncer    = local.queues_by_runner_os[count.index]["enable_runner_binaries_syncer"]
   lambda_s3_bucket                 = var.lambda_s3_bucket
   runners_lambda_s3_key            = var.runners_lambda_s3_key
   runners_lambda_s3_object_version = var.runners_lambda_s3_object_version

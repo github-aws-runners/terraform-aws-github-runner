@@ -31,17 +31,17 @@ data "aws_iam_policy_document" "deny_unsecure_transport" {
 
 
 resource "aws_sqs_queue" "queued_builds" {
-  for_each                    = var.sqs_build_queue_by_runner_os
-  name                        = "${var.prefix}-${each.value["os_config"]["runner_os_type"]}-${each.value["os_config"]["runner_os_distribution"]}-queued-builds${each.value["fifo"] ? ".fifo" : ""}"
+  count                       = length(var.sqs_build_queue_by_runner_os)
+  name                        = "${var.prefix}-${var.sqs_build_queue_by_runner_os[count.index]["os_config"]["runner_os_type"]}-${var.sqs_build_queue_by_runner_os[count.index]["os_config"]["runner_os_distribution"]}-queued-builds${var.sqs_build_queue_by_runner_os[count.index]["fifo"] ? ".fifo" : ""}"
   delay_seconds               = var.delay_webhook_event
   visibility_timeout_seconds  = var.runners_scale_up_lambda_timeout
   message_retention_seconds   = var.job_queue_retention_in_seconds
-  fifo_queue                  = each.value["fifo"]
+  fifo_queue                  = var.sqs_build_queue_by_runner_os[count.index]["fifo"]
   receive_wait_time_seconds   = 0
-  content_based_deduplication = each.value["fifo"]
-  redrive_policy = each.value["redrive_build_queue"]["enabled"] ? jsonencode({
+  content_based_deduplication = var.sqs_build_queue_by_runner_os[count.index]["fifo"]
+  redrive_policy = var.sqs_build_queue_by_runner_os[count.index]["redrive_build_queue"]["enabled"] ? jsonencode({
     deadLetterTargetArn = aws_sqs_queue.queued_builds_dlq[0].arn,
-    maxReceiveCount     = each.value["redrive_build_queue"]["maxReceiveCount"]
+    maxReceiveCount     = var.sqs_build_queue_by_runner_os[count.index]["redrive_build_queue"]["maxReceiveCount"]
   }) : null
 
   sqs_managed_sse_enabled           = var.queue_encryption.sqs_managed_sse_enabled
@@ -52,14 +52,14 @@ resource "aws_sqs_queue" "queued_builds" {
 }
 
 resource "aws_sqs_queue_policy" "build_queue_policy" {
-  for_each  = aws_sqs_queue.queued_builds
-  queue_url = each.value["id"]
+  count  = length(aws_sqs_queue.queued_builds)
+  queue_url = aws_sqs_queue.queued_builds[count.index]["id"]
   policy    = data.aws_iam_policy_document.deny_unsecure_transport.json
 }
 
 resource "aws_sqs_queue" "queued_builds_dlq" {
-  for_each = var.sqs_build_queue_by_runner_os
-  name     = "${var.prefix}-${each.value["os_config"]["runner_os_type"]}-${each.value["os_config"]["runner_os_distribution"]}-queued-builds_dead_letter"
+  count    = length(var.sqs_build_queue_by_runner_os)
+  name     = "${var.prefix}-${var.sqs_build_queue_by_runner_os[count.index]["os_config"]["runner_os_type"]}-${var.sqs_build_queue_by_runner_os[count.index]["os_config"]["runner_os_distribution"]}-queued-builds_dead_letter"
 
   sqs_managed_sse_enabled           = var.queue_encryption.sqs_managed_sse_enabled
   kms_master_key_id                 = var.queue_encryption.kms_master_key_id
@@ -69,7 +69,7 @@ resource "aws_sqs_queue" "queued_builds_dlq" {
 }
 
 resource "aws_sqs_queue_policy" "build_queue_dlq_policy" {
-  for_each  = aws_sqs_queue.queued_builds_dlq
-  queue_url = each.value["id"]
+  count     = length(aws_sqs_queue.queued_builds_dlq)
+  queue_url = aws_sqs_queue.queued_builds_dlq[count.index]["id"]
   policy    = data.aws_iam_policy_document.deny_unsecure_transport.json
 }
