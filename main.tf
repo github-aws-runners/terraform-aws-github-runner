@@ -233,8 +233,7 @@ module "runner_binaries" {
   count = var.enable_runner_binaries_syncer ? 1 : 0
 
   source = "./modules/runner-binaries-syncer"
-
-  aws_region = var.aws_region
+  
   prefix     = var.prefix
   tags       = local.tags
 
