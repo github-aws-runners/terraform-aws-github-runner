@@ -1,6 +1,6 @@
 module "runners" {
   source = "../runners"
-  count = local.queues_by_runner_os
+  count = length(local.queues_by_runner_os)
   aws_region    = var.aws_region
   aws_partition = var.aws_partition
   vpc_id        = var.vpc_id
@@ -14,14 +14,14 @@ module "runners" {
     key = module.runner_binaries[0].runner_distribution_object_key
   } : null
 
-  runner_os                     = local.queues_by_runner_os[count.index]["os-config"]["runner_os_type"]
+  runner_os                     = local.queues_by_runner_os[count.index]["os_config"]["runner_os_type"]
   instance_types                = var.instance_types
   instance_target_capacity_type = var.instance_target_capacity_type
   instance_allocation_strategy  = var.instance_allocation_strategy
   instance_max_spot_price       = var.instance_max_spot_price
   block_device_mappings         = var.block_device_mappings
 
-  runner_architecture = local.queues_by_runner_os[count.index]["os-config"]["runner_architecture"]
+  runner_architecture = local.queues_by_runner_os[count.index]["os_config"]["runner_architecture"]
   ami_filter          = var.ami_filter
   ami_owners          = var.ami_owners
 
