@@ -107,6 +107,12 @@ variable "sqs_build_queue_by_runner_os" {
   }))
 }
 
+variable "runners_scale_up_lambda_timeout" {
+  description = "Time out for the scale up lambda in seconds."
+  type        = number
+  default     = 30
+}
+
 variable "webhook_lambda_zip" {
   description = "File location of the webhook lambda zip file."
   type        = string

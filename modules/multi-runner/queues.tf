@@ -1,7 +1,7 @@
 
 locals {
   queues_by_runner_os = tolist([for index, queue in var.sqs_build_queue_by_runner_os : merge(aws_sqs_queue.queued_builds[index], queue)])
-  unique_os_types = distinct([for index, config in local.queues_by_runner_os : { "os_type": config["os_config"]["runner_os_type"], "architecture": config["os_config"]["runner_architecture"] } if config["enable_runner_binaries_syncer"])
+  unique_os_types = distinct([for index, config in local.queues_by_runner_os : { "os_type": config["os_config"]["runner_os_type"], "architecture": config["os_config"]["runner_architecture"] } if config["enable_runner_binaries_syncer"]])
 }
 data "aws_iam_policy_document" "deny_unsecure_transport" {
   statement {
