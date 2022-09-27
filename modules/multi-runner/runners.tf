@@ -5,7 +5,7 @@ module "runners" {
   aws_partition = var.aws_partition
   vpc_id        = var.vpc_id
   subnet_ids    = var.subnet_ids
-  prefix        = var.prefix
+  prefix        = "${var.prefix}-${local.queues_by_runner_os[count.index]["os_config"]["runner_os_type"]}-${local.queues_by_runner_os[count.index]["os_config"]["runner_os_distribution"]}-${local.queues_by_runner_os[count.index]["os_config"]["runner_architecture"]}"
   tags          = local.tags
 
   s3_runner_binaries = local.queues_by_runner_os[count.index]["enable_runner_binaries_syncer"] ? {

@@ -6,8 +6,8 @@ module "runner_binaries" {
 
   distribution_bucket_name = "${var.prefix}-dist-${random_string.random.result}"
 
-  runner_os                        = local.unique_os_types[count.index]("os_type") 
-  runner_architecture              = local.unique_os_types[count.index]("archiecture")
+  runner_os                        = local.unique_os_types[count.index]["os_type"]
+  runner_architecture              = local.unique_os_types[count.index]["archiecture"]
   runner_allow_prerelease_binaries = var.runner_allow_prerelease_binaries
 
   lambda_s3_bucket                = var.lambda_s3_bucket
