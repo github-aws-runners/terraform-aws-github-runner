@@ -35,7 +35,27 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+variable "delay_webhook_event" {
+  description = "The number of seconds the event accepted by the webhook is invisible on the queue before the scale up lambda will receive the event."
+  type        = number
+  default     = 30
+}
+variable "runner_enable_workflow_job_labels_check" {
+  description = "If set to true all labels in the workflow job even are matched against the custom labels and GitHub labels (os, architecture and `self-hosted`). When the labels are not matching the event is dropped at the webhook."
+  type        = bool
+  default     = false
+}
 
+variable "runner_enable_workflow_job_labels_check_all" {
+  description = "If set to true all labels in the workflow job must match the GitHub labels (os, architecture and `self-hosted`). When false if __any__ label matches it will trigger the webhook. `runner_enable_workflow_job_labels_check` must be true for this to take effect."
+  type        = bool
+  default     = true
+}
+variable "runner_extra_labels" {
+  description = "Extra (custom) labels for the runners (GitHub). Separate each label by a comma. Labels checks on the webhook can be enforced by setting `enable_workflow_job_labels_check`. GitHub read-only labels should not be provided."
+  type        = string
+  default     = ""
+}
 variable "sqs_build_queue_by_runner_os" {
   description = "SQS queue to publish accepted build events based on the runner type."
   type = list(object({
@@ -44,6 +64,40 @@ variable "sqs_build_queue_by_runner_os" {
       runner_os_type = string
       runner_os_distribution = string
       runner_architecture = string
+    })
+    runner_config = object({
+      create_service_linked_role_spot = bool
+      disable_runner_autoupdate = bool
+      enable_ephemeral_runners = bool
+      enable_ssm_on_runners = bool
+      instance_types = list(string)
+      runner_group_name = string
+      runners_maximum_count = number
+      scale_down_schedule_expression = string
+      minimum_running_time_in_minutes = number
+      runner_as_root = bool
+      runner_boot_time_in_minutes = number
+      block_device_mappings = list(object({
+                                  delete_on_termination = bool
+                                  device_name           = string
+                                  encrypted             = bool
+                                  iops                  = number
+                                  kms_key_id            = string
+                                  snapshot_id           = string
+                                  throughput            = number
+                                  volume_size           = number
+                                  volume_type           = string
+                                }))
+      ami_filter = map(list(string))
+      ami_owners = list(string)
+      userdata_template = string
+      enable_job_queued_check = bool
+      pool_config = list(object({
+                          schedule_expression = string
+                          size                = number
+                        }))
+      runners_scale_up_lambda_timeout = number
+      runners_scale_down_lambda_timeout = number
     })
     fifo = bool
     redrive_build_queue = object({
@@ -119,19 +173,6 @@ variable "repository_white_list" {
   default     = []
 }
 
-variable "runner_enable_workflow_job_labels_check" {
-  description = "If set to true all labels in the workflow job even are matched against the custom labels and GitHub labels (os, architecture and `self-hosted`). When the labels are not matching the event is dropped at the webhook."
-  type        = bool
-  default     = false
-}
-
-variable "runner_enable_workflow_job_labels_check_all" {
-  description = "If set to true all labels in the workflow job must match the GitHub labels (os, architecture and `self-hosted`). When false if __any__ label matches it will trigger the webhook. `runner_enable_workflow_job_labels_check` must be true for this to take effect."
-  type        = bool
-  default     = true
-}
-
-
 variable "log_type" {
   description = "Logging format for lambda logging. Valid values are 'json', 'pretty', 'hidden'. "
   type        = string
@@ -178,12 +219,6 @@ variable "lambda_architecture" {
     condition     = contains(["arm64", "x86_64"], var.lambda_architecture)
     error_message = "`lambda_architecture` value is not valid, valid values are: `arm64` and `x86_64`."
   }
-}
-
-variable "runner_extra_labels" {
-  description = "Extra (custom) labels for the runners (GitHub). Separate each label by a comma. Labels checks on the webhook can be enforced by setting `enable_workflow_job_labels_check`. GitHub read-only labels should not be provided."
-  type        = string
-  default     = ""
 }
 
 variable "runner_allow_prerelease_binaries" {
@@ -247,18 +282,6 @@ variable "queue_encryption" {
   }
 }
 
-variable "delay_webhook_event" {
-  description = "The number of seconds the event accepted by the webhook is invisible on the queue before the scale up lambda will receive the event."
-  type        = number
-  default     = 30
-}
-
-variable "runners_scale_up_lambda_timeout" {
-  description = "Time out for the scale up lambda in seconds."
-  type        = number
-  default     = 30
-}
-
 variable "job_queue_retention_in_seconds" {
   description = "The number of seconds the job is held in the queue before it is purged"
   type        = number
@@ -284,12 +307,6 @@ variable "vpc_id" {
 variable "subnet_ids" {
   description = "List of subnets in which the action runners will be launched, the subnets needs to be subnets in the `vpc_id`."
   type        = list(string)
-}
-
-variable "instance_types" {
-  description = "List of instance types for the action runner. Defaults are based on runner_os (amzn2 for linux and Windows Server Core for win)."
-  type        = list(string)
-  default     = ["m5.large", "c5.large"]
 }
 
 variable "instance_target_capacity_type" {
@@ -318,63 +335,8 @@ variable "instance_max_spot_price" {
   default     = null
 }
 
-variable "block_device_mappings" {
-  description = "The EC2 instance block device configuration. Takes the following keys: `device_name`, `delete_on_termination`, `volume_type`, `volume_size`, `encrypted`, `iops`, `throughput`, `kms_key_id`, `snapshot_id`."
-  type = list(object({
-    delete_on_termination = bool
-    device_name           = string
-    encrypted             = bool
-    iops                  = number
-    kms_key_id            = string
-    snapshot_id           = string
-    throughput            = number
-    volume_size           = number
-    volume_type           = string
-  }))
-  default = [{
-    delete_on_termination = true
-    device_name           = "/dev/xvda"
-    encrypted             = true
-    iops                  = null
-    kms_key_id            = null
-    snapshot_id           = null
-    throughput            = null
-    volume_size           = 30
-    volume_type           = "gp3"
-  }]
-}
-
-variable "ami_filter" {
-  description = "List of maps used to create the AMI filter for the action runner AMI. By default amazon linux 2 is used."
-  type        = map(list(string))
-  default     = null
-}
-variable "ami_owners" {
-  description = "The list of owners used to select the AMI of action runner instances."
-  type        = list(string)
-  default     = ["amazon"]
-}
-
 variable "enable_organization_runners" {
   description = "Register runners to organization, instead of repo level"
-  type        = bool
-  default     = false
-}
-
-variable "enable_ephemeral_runners" {
-  description = "Enable ephemeral runners, runners will only be used once."
-  type        = bool
-  default     = false
-}
-
-variable "enable_job_queued_check" {
-  description = "Only scale if the job event received by the scale up lambda is is in the state queued. By default enabled for non ephemeral runners and disabled for ephemeral. Set this variable to overwrite the default behavior."
-  type        = bool
-  default     = null
-}
-
-variable "disable_runner_autoupdate" {
-  description = "Disable the auto update of the github runner agent. Be-aware there is a grace period of 30 days, see also the [GitHub article](https://github.blog/changelog/2022-02-01-github-actions-self-hosted-runners-can-now-disable-automatic-updates/)"
   type        = bool
   default     = false
 }
@@ -391,40 +353,10 @@ variable "enable_runner_detailed_monitoring" {
   default     = false
 }
 
-variable "scale_down_schedule_expression" {
-  description = "Scheduler expression to check every x for scale down."
-  type        = string
-  default     = "cron(*/5 * * * ? *)"
-}
-
-variable "minimum_running_time_in_minutes" {
-  description = "The time an ec2 action runner should be running at minimum before terminated if not busy."
-  type        = number
-  default     = null
-}
-
-variable "runner_boot_time_in_minutes" {
-  description = "The minimum time for an EC2 runner to boot and register as a runner."
-  type        = number
-  default     = 5
-}
-
-variable "runner_as_root" {
-  description = "Run the action runner under the root user. Variable `runner_run_as` will be ignored."
-  type        = bool
-  default     = false
-}
-
 variable "runner_run_as" {
   description = "Run the GitHub actions agent as user."
   type        = string
   default     = "ec2-user"
-}
-
-variable "runners_maximum_count" {
-  description = "The maximum number of runners that will be created."
-  type        = number
-  default     = 3
 }
 
 variable "idle_config" {
@@ -435,12 +367,6 @@ variable "idle_config" {
     idleCount = number
   }))
   default = []
-}
-
-variable "enable_ssm_on_runners" {
-  description = "Enable to allow access the runner instances for debugging purposes via SSM. Note that this adds additional permissions to the runner instances."
-  type        = bool
-  default     = false
 }
 
 variable "runner_egress_rules" {
@@ -501,11 +427,6 @@ variable "runners_lambda_zip" {
   default     = null
 }
 
-variable "runners_scale_down_lambda_timeout" {
-  description = "Time out for the scale down lambda in seconds."
-  type        = number
-  default     = 60
-}
 
 variable "lambda_subnet_ids" {
   description = "List of subnets in which the action runners will be launched, the subnets needs to be subnets in the `vpc_id`."
@@ -542,12 +463,6 @@ variable "runner_log_files" {
   default = null
 }
 
-variable "runner_group_name" {
-  description = "Name of the runner group."
-  type        = string
-  default     = "Default"
-}
-
 variable "scale_up_reserved_concurrent_executions" {
   description = "Amount of reserved concurrent executions for the scale-up lambda function. A value of 0 disables lambda from being triggered and -1 removes any concurrency limitations."
   type        = number
@@ -564,12 +479,6 @@ variable "enabled_userdata" {
   description = "Should the userdata script be enabled for the runner. Set this to false if you are using your own prebuilt AMI."
   type        = bool
   default     = true
-}
-
-variable "userdata_template" {
-  description = "Alternative user-data template, replacing the default template. By providing your own user_data you have to take care of installing all required software, including the action runner. Variables userdata_pre/post_install are ignored."
-  type        = string
-  default     = null
 }
 
 variable "userdata_pre_install" {
@@ -637,13 +546,3 @@ variable "pool_lambda_reserved_concurrent_executions" {
   type        = number
   default     = 1
 }
-
-variable "pool_config" {
-  description = "The configuration for updating the pool. The `pool_size` to adjust to by the events triggered by the `schedule_expression`. For example you can configure a cron expression for week days to adjust the pool to 10 and another expression for the weekend to adjust the pool to 1."
-  type = list(object({
-    schedule_expression = string
-    size                = number
-  }))
-  default = []
-}
-

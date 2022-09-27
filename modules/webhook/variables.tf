@@ -30,7 +30,6 @@ variable "sqs_build_queue_by_runner_os" {
   type = list(object({
     id   = string
     arn  = string
-    enable_runner_binaries_syncer = bool
     os_config = object({
       runner_os_type = string
       runner_os_distribution = string

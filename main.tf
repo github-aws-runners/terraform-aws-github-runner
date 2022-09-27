@@ -98,13 +98,23 @@ module "ssm" {
 module "webhook" {
   source = "./modules/webhook"
 
-  aws_region  = var.aws_region
   prefix      = var.prefix
   tags        = local.tags
   kms_key_arn = var.kms_key_arn
 
-  sqs_build_queue               = aws_sqs_queue.queued_builds
-  sqs_build_queue_fifo          = var.fifo_build_queue
+  sqs_build_queue_by_runner_os = [
+    {
+      "id": aws_sqs_queue.queued_builds.id,
+      "arn": aws_sqs_queue.queued_builds.arn,
+      "os_config" : {
+        "runner_os_type": var.runner_os
+        "runner_os_distribution" : "latest"
+        "runner_architecture": var.runner_architecture
+      },
+      "fifo": var.fifo_build_queue
+      "redrive_build_queue": var.redrive_build_queue
+    }
+  ]
   github_app_webhook_secret_arn = module.ssm.parameters.github_app_webhook_secret.arn
 
   lambda_s3_bucket                              = var.lambda_s3_bucket
@@ -233,7 +243,7 @@ module "runner_binaries" {
   count = var.enable_runner_binaries_syncer ? 1 : 0
 
   source = "./modules/runner-binaries-syncer"
-  
+
   prefix     = var.prefix
   tags       = local.tags
 
