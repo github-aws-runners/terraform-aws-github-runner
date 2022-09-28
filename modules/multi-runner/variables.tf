@@ -61,49 +61,49 @@ variable "sqs_build_queue_by_runner_os" {
   type = list(object({
     enable_runner_binaries_syncer = bool
     os_config = object({
-      runner_os_type = string
+      runner_os_type         = string
       runner_os_distribution = string
-      runner_architecture = string
+      runner_architecture    = string
     })
     runner_config = object({
       create_service_linked_role_spot = bool
-      disable_runner_autoupdate = bool
-      enable_ephemeral_runners = bool
-      enable_organization_runners = bool
-      enable_ssm_on_runners = bool
-      instance_types = list(string)
-      runner_group_name = string
-      runner_extra_labels = string
-      runners_maximum_count = number
-      scale_down_schedule_expression = string
+      disable_runner_autoupdate       = bool
+      enable_ephemeral_runners        = bool
+      enable_organization_runners     = bool
+      enable_ssm_on_runners           = bool
+      instance_types                  = list(string)
+      runner_group_name               = string
+      runner_extra_labels             = string
+      runners_maximum_count           = number
+      scale_down_schedule_expression  = string
       minimum_running_time_in_minutes = number
-      runner_as_root = bool
-      runner_boot_time_in_minutes = number
+      runner_as_root                  = bool
+      runner_boot_time_in_minutes     = number
       block_device_mappings = list(object({
-                                  delete_on_termination = bool
-                                  device_name           = string
-                                  encrypted             = bool
-                                  iops                  = number
-                                  kms_key_id            = string
-                                  snapshot_id           = string
-                                  throughput            = number
-                                  volume_size           = number
-                                  volume_type           = string
-                                }))
-      ami_filter = map(list(string))
-      ami_owners = list(string)
-      userdata_template = string
+        delete_on_termination = bool
+        device_name           = string
+        encrypted             = bool
+        iops                  = number
+        kms_key_id            = string
+        snapshot_id           = string
+        throughput            = number
+        volume_size           = number
+        volume_type           = string
+      }))
+      ami_filter              = map(list(string))
+      ami_owners              = list(string)
+      userdata_template       = string
       enable_job_queued_check = bool
       pool_config = list(object({
-                          schedule_expression = string
-                          size                = number
-                        }))
-      runners_scale_up_lambda_timeout = number
+        schedule_expression = string
+        size                = number
+      }))
+      runners_scale_up_lambda_timeout   = number
       runners_scale_down_lambda_timeout = number
     })
     fifo = bool
     redrive_build_queue = object({
-      enabled = bool
+      enabled         = bool
       maxReceiveCount = number
     })
   }))

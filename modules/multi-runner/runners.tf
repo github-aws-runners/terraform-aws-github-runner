@@ -1,14 +1,14 @@
 module "runners" {
-  source = "../runners"
-  count = length(local.queues_by_runner_os)
+  source        = "../runners"
+  count         = length(local.queues_by_runner_os)
   aws_region    = var.aws_region
   aws_partition = var.aws_partition
   vpc_id        = var.vpc_id
   subnet_ids    = var.subnet_ids
   prefix        = "${var.prefix}-${local.queues_by_runner_os[count.index]["os_config"]["runner_os_type"]}-${local.queues_by_runner_os[count.index]["os_config"]["runner_os_distribution"]}-${local.queues_by_runner_os[count.index]["os_config"]["runner_architecture"]}"
-  tags          = merge(local.tags, {
-                      "ghr:environment" = "${var.prefix}-${local.queues_by_runner_os[count.index]["os_config"]["runner_os_type"]}-${local.queues_by_runner_os[count.index]["os_config"]["runner_os_distribution"]}-${local.queues_by_runner_os[count.index]["os_config"]["runner_architecture"]}"
-                  })
+  tags = merge(local.tags, {
+    "ghr:environment" = "${var.prefix}-${local.queues_by_runner_os[count.index]["os_config"]["runner_os_type"]}-${local.queues_by_runner_os[count.index]["os_config"]["runner_os_distribution"]}-${local.queues_by_runner_os[count.index]["os_config"]["runner_architecture"]}"
+  })
 
   s3_runner_binaries = local.queues_by_runner_os[count.index]["enable_runner_binaries_syncer"] ? {
     arn = module.runner_binaries[0].bucket.arn
@@ -27,7 +27,7 @@ module "runners" {
   ami_filter          = local.queues_by_runner_os[count.index]["runner_config"]["ami_filter"]
   ami_owners          = local.queues_by_runner_os[count.index]["runner_config"]["ami_owners"]
 
-  sqs_build_queue                      = { "arn": local.queues_by_runner_os[count.index]["arn"] }
+  sqs_build_queue                      = { "arn" : local.queues_by_runner_os[count.index]["arn"] }
   github_app_parameters                = local.github_app_parameters
   enable_organization_runners          = local.queues_by_runner_os[count.index]["runner_config"]["enable_organization_runners"]
   enable_ephemeral_runners             = local.queues_by_runner_os[count.index]["runner_config"]["enable_ephemeral_runners"]

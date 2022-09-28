@@ -1,5 +1,5 @@
 output "runners" {
-  value = [for runner in module.runners: {
+  value = [for runner in module.runners : {
     launch_template_name    = runner.launch_template.name
     launch_template_id      = runner.launch_template.id
     launch_template_version = runner.launch_template.latest_version

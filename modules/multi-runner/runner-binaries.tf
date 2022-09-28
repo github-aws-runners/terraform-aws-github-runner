@@ -1,8 +1,8 @@
 module "runner_binaries" {
-  source   = "../runner-binaries-syncer"
-  count = length(local.unique_os_types)
-  prefix   = var.prefix
-  tags     = local.tags
+  source = "../runner-binaries-syncer"
+  count  = length(local.unique_os_types)
+  prefix = var.prefix
+  tags   = local.tags
 
   distribution_bucket_name = "${var.prefix}-dist-${random_string.random.result}"
 
