@@ -7,7 +7,7 @@ module "runners" {
   subnet_ids    = var.subnet_ids
   prefix        = "${var.prefix}-${local.queues_by_runner_os[count.index]["os_config"]["runner_os_type"]}-${local.queues_by_runner_os[count.index]["os_config"]["runner_os_distribution"]}-${local.queues_by_runner_os[count.index]["os_config"]["runner_architecture"]}"
   tags          = merge(local.tags, {
-                      "ghr:environment" = var.prefix
+                      "ghr:environment" = "${var.prefix}-${local.queues_by_runner_os[count.index]["os_config"]["runner_os_type"]}-${local.queues_by_runner_os[count.index]["os_config"]["runner_os_distribution"]}-${local.queues_by_runner_os[count.index]["os_config"]["runner_architecture"]}"
                   })
 
   s3_runner_binaries = local.queues_by_runner_os[count.index]["enable_runner_binaries_syncer"] ? {
@@ -29,7 +29,7 @@ module "runners" {
 
   sqs_build_queue                      = { "arn": local.queues_by_runner_os[count.index]["arn"] }
   github_app_parameters                = local.github_app_parameters
-  enable_organization_runners          = var.enable_organization_runners
+  enable_organization_runners          = local.queues_by_runner_os[count.index]["runner_config"]["enable_organization_runners"]
   enable_ephemeral_runners             = local.queues_by_runner_os[count.index]["runner_config"]["enable_ephemeral_runners"]
   enable_job_queued_check              = local.queues_by_runner_os[count.index]["runner_config"]["enable_job_queued_check"]
   disable_runner_autoupdate            = local.queues_by_runner_os[count.index]["runner_config"]["disable_runner_autoupdate"]
@@ -38,7 +38,7 @@ module "runners" {
   scale_down_schedule_expression       = local.queues_by_runner_os[count.index]["runner_config"]["scale_down_schedule_expression"]
   minimum_running_time_in_minutes      = local.queues_by_runner_os[count.index]["runner_config"]["minimum_running_time_in_minutes"]
   runner_boot_time_in_minutes          = local.queues_by_runner_os[count.index]["runner_config"]["runner_boot_time_in_minutes"]
-  runner_extra_labels                  = var.runner_extra_labels
+  runner_extra_labels                  = local.queues_by_runner_os[count.index]["runner_config"]["runner_extra_labels"]
   runner_as_root                       = local.queues_by_runner_os[count.index]["runner_config"]["runner_as_root"]
   runner_run_as                        = var.runner_run_as
   runners_maximum_count                = local.queues_by_runner_os[count.index]["runner_config"]["runners_maximum_count"]

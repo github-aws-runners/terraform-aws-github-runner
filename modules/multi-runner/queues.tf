@@ -33,7 +33,7 @@ data "aws_iam_policy_document" "deny_unsecure_transport" {
 
 resource "aws_sqs_queue" "queued_builds" {
   count                       = length(var.sqs_build_queue_by_runner_os)
-  name                        = "${var.prefix}-${var.sqs_build_queue_by_runner_os[count.index]["os_config"]["runner_os_type"]}-${var.sqs_build_queue_by_runner_os[count.index]["os_config"]["runner_os_distribution"]}-queued-builds${var.sqs_build_queue_by_runner_os[count.index]["fifo"] ? ".fifo" : ""}"
+  name                        = "${var.prefix}-${var.sqs_build_queue_by_runner_os[count.index]["os_config"]["runner_os_type"]}-${var.sqs_build_queue_by_runner_os[count.index]["os_config"]["runner_os_distribution"]}-${var.sqs_build_queue_by_runner_os[count.index]["os_config"]["runner_architecture"]}queued-builds${var.sqs_build_queue_by_runner_os[count.index]["fifo"] ? ".fifo" : ""}"
   delay_seconds               = var.delay_webhook_event
   visibility_timeout_seconds  = var.runners_scale_up_lambda_timeout
   message_retention_seconds   = var.job_queue_retention_in_seconds

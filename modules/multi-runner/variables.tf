@@ -69,9 +69,11 @@ variable "sqs_build_queue_by_runner_os" {
       create_service_linked_role_spot = bool
       disable_runner_autoupdate = bool
       enable_ephemeral_runners = bool
+      enable_organization_runners = bool
       enable_ssm_on_runners = bool
       instance_types = list(string)
       runner_group_name = string
+      runner_extra_labels = string
       runners_maximum_count = number
       scale_down_schedule_expression = string
       minimum_running_time_in_minutes = number
@@ -339,12 +341,6 @@ variable "instance_max_spot_price" {
   description = "Max price price for spot intances per hour. This variable will be passed to the create fleet as max spot price for the fleet."
   type        = string
   default     = null
-}
-
-variable "enable_organization_runners" {
-  description = "Register runners to organization, instead of repo level"
-  type        = bool
-  default     = false
 }
 
 variable "enable_managed_runner_security_group" {
