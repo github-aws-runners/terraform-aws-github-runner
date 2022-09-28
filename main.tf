@@ -104,15 +104,15 @@ module "webhook" {
 
   sqs_build_queue_by_runner_os = [
     {
-      "id": aws_sqs_queue.queued_builds.id,
-      "arn": aws_sqs_queue.queued_builds.arn,
+      "id" : aws_sqs_queue.queued_builds.id,
+      "arn" : aws_sqs_queue.queued_builds.arn,
       "os_config" : {
-        "runner_os_type": var.runner_os
+        "runner_os_type" : var.runner_os
         "runner_os_distribution" : "latest"
-        "runner_architecture": var.runner_architecture
+        "runner_architecture" : var.runner_architecture
       },
-      "fifo": var.fifo_build_queue
-      "redrive_build_queue": var.redrive_build_queue
+      "fifo" : var.fifo_build_queue
+      "redrive_build_queue" : var.redrive_build_queue
     }
   ]
   github_app_webhook_secret_arn = module.ssm.parameters.github_app_webhook_secret.arn
@@ -244,8 +244,8 @@ module "runner_binaries" {
 
   source = "./modules/runner-binaries-syncer"
 
-  prefix     = var.prefix
-  tags       = local.tags
+  prefix = var.prefix
+  tags   = local.tags
 
   distribution_bucket_name = "${var.prefix}-dist-${random_string.random.result}"
   s3_logging_bucket        = var.runner_binaries_s3_logging_bucket
