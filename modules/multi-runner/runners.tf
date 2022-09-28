@@ -55,8 +55,8 @@ module "runners" {
   lambda_runtime                   = var.lambda_runtime
   lambda_architecture              = var.lambda_architecture
   lambda_zip                       = var.runners_lambda_zip
-  lambda_timeout_scale_up          = local.queues_by_runner_os[count.index]["runner_config"]["runners_scale_up_lambda_timeout"]
-  lambda_timeout_scale_down        = local.queues_by_runner_os[count.index]["runner_config"]["runners_scale_down_lambda_timeout"]
+  lambda_timeout_scale_up          = var.runners_scale_up_lambda_timeout
+  lambda_timeout_scale_down        = var.runners_scale_down_lambda_timeout
   lambda_subnet_ids                = var.lambda_subnet_ids
   lambda_security_group_ids        = var.lambda_security_group_ids
   logging_retention_in_days        = var.logging_retention_in_days

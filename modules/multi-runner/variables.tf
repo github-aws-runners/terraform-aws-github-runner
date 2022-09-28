@@ -98,8 +98,6 @@ variable "sqs_build_queue_by_runner_os" {
         schedule_expression = string
         size                = number
       }))
-      runners_scale_up_lambda_timeout   = number
-      runners_scale_down_lambda_timeout = number
     })
     fifo = bool
     redrive_build_queue = object({
@@ -113,6 +111,12 @@ variable "runners_scale_up_lambda_timeout" {
   description = "Time out for the scale up lambda in seconds."
   type        = number
   default     = 30
+}
+
+variable "runners_scale_down_lambda_timeout" {
+  description = "Time out for the scale down lambda in seconds."
+  type        = number
+  default     = 60
 }
 
 variable "webhook_lambda_zip" {
