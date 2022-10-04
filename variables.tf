@@ -684,16 +684,16 @@ variable "webhook_events_workflow_job_queue" {
 }
 
 variable "workflow_job_queue_configuration" {
-  description = "Configuration options for workflow job queue."
+  description = "Configuration options for workflow job queue which is only applicable if the flag webhook_events_workflow_job_queue is set to true."
   type = object({
-    delay_webhook_event_queue  = number
-    queue_lambda_timeout       = number
-    queue_retention_in_seconds = number
+    delay_seconds  = number
+    visibility_timeout_seconds      = number
+    message_retention_seconds = number
   })
   default = {
-    "delay_webhook_event_queue" : 0,
-    "queue_lambda_timeout" : 30,
-    "queue_retention_in_seconds" : 60
+    "delay_seconds" : 0,
+    "visibility_timeout_seconds" : 30,
+    "message_retention_seconds" : 345600 # Terraform default for the resource
   }
 }
 variable "enable_runner_binaries_syncer" {

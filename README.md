@@ -23,7 +23,36 @@ This [Terraform](https://www.terraform.io/) module creates the required infrastr
   - [Ephemeral runners](#ephemeral-runners)
   - [Prebuilt Images](#prebuilt-images)
   - [Secondary Queue](#secondary-queue)
-  
+- [Examples](#examples)
+- [Sub modules](#sub-modules)
+  - [ARM64 configuration for submodules](#arm64-configuration-for-submodules)
+- [Debugging](#debugging)
+- [Requirements](#requirements)
+- [Providers](#providers)
+- [Modules](#modules)
+- [Resources](#resources)
+- [Inputs](#inputs)
+- [Outputs](#outputs)
+- [Contribution](#contribution)
+- [Philips Forest](#philips-forest)
+
+- [Motivation](#motivation)
+- [Overview](#overview)
+  - [Major configuration options.](#major-configuration-options)
+    - [ARM64 support via Graviton/Graviton2 instance-types](#arm64-support-via-gravitongraviton2-instance-types)
+- [Usages](#usages)
+  - [Setup GitHub App (part 1)](#setup-github-app-part-1)
+  - [Setup terraform module](#setup-terraform-module)
+  - [Setup the webhook / GitHub App (part 2)](#setup-the-webhook--github-app-part-2)
+    - [Option 1: Webhook](#option-1-webhook)
+    - [Option 2: App](#option-2-app)
+    - [Install app](#install-app)
+  - [Encryption](#encryption)
+  - [Pool](#pool)
+  - [Idle runners](#idle-runners)
+  - [Ephemeral runners](#ephemeral-runners)
+  - [Prebuilt Images](#prebuilt-images)
+  - [Secondary Queue](#secondary-queue)
 - [Examples](#examples)
 - [Sub modules](#sub-modules)
   - [ARM64 configuration for submodules](#arm64-configuration-for-submodules)
@@ -315,7 +344,14 @@ This module also allows you to run agents from a prebuilt AMI to gain faster sta
 
 ### Secondary Queue
 
-The standard queue is an internal queue used by the scale-up lambda, the format we use here is an internal format. On the second queue we just forward the incoming github event. Which can be used for metrics. You can configure `webhook_events_workflow_job_queue` to enable this experimental feature.
+The standard queue is an internal queue used by the scale-up lambda, the format we use here is an internal format.
+```
+export interface GithubWorkflowEvent {
+  workflowJobEvent: WorkflowJobEvent;
+}
+```
+which is extendible format to add more fields to be published along with the workflow job event.
+On the second queue we just forward the incoming github event. Which can be used for metrics. You can configure `webhook_events_workflow_job_queue` to enable this experimental feature.
 
 ## Examples
 

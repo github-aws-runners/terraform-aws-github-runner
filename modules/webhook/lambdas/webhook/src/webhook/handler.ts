@@ -79,9 +79,7 @@ export async function handle(headers: IncomingHttpHeaders, body: string): Promis
 }
 async function sendWorkflowJobEvents(githubEvent: string, workflowEventPayload: WorkflowJobEvent) {
   await sendWebhookEventToWorkflowJobQueue({
-    id: workflowEventPayload.workflow_job.id,
-    eventType: githubEvent,
-    jobEvent: workflowEventPayload,
+    workflowJobEvent: workflowEventPayload,
   });
 }
 

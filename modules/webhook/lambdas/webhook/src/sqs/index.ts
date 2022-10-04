@@ -11,9 +11,7 @@ export interface ActionRequestMessage {
   installationId: number;
 }
 export interface GithubWorkflowEvent {
-  id: number;
-  eventType: string;
-  jobEvent: WorkflowJobEvent;
+  workflowJobEvent: WorkflowJobEvent;
 }
 
 export const sendActionRequest = async (message: ActionRequestMessage): Promise<void> => {

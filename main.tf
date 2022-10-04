@@ -78,9 +78,9 @@ resource "aws_sqs_queue" "queued_builds" {
 resource "aws_sqs_queue" "webhook_events_workflow_job_queue" {
   count                       = var.webhook_events_workflow_job_queue ? 1 : 0
   name                        = "${var.prefix}-webhook_events_workflow_job_queue"
-  delay_seconds               = var.workflow_job_queue_configuration.delay_webhook_event_queue
-  visibility_timeout_seconds  = var.workflow_job_queue_configuration.queue_lambda_timeout
-  message_retention_seconds   = var.workflow_job_queue_configuration.queue_retention_in_seconds
+  delay_seconds               = var.workflow_job_queue_configuration.delay_seconds
+  visibility_timeout_seconds  = var.workflow_job_queue_configuration.visibility_timeout_seconds
+  message_retention_seconds   = var.workflow_job_queue_configuration.message_retention_seconds
   fifo_queue                  = false
   receive_wait_time_seconds   = 0
   content_based_deduplication = false
