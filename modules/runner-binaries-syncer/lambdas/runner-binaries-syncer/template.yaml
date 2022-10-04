@@ -9,7 +9,6 @@ Resources:
       Timeout: 300
       Environment:
         Variables:
-          GITHUB_RUNNER_ALLOW_PRERELEASE_BINARIES:
           GITHUB_RUNNER_ARCHITECTURE:
           GITHUB_RUNNER_OS:
           LOG_LEVEL:

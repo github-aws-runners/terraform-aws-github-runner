@@ -7,13 +7,14 @@ ${pre_install}
 apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get install -y \
     awscli \
-    jq \
-    curl \
-    wget \
-    git \
-    uidmap \
     build-essential \
-    unzip
+    curl \
+    git \
+    iptables \
+    jq \
+    uidmap \
+    unzip \
+    wget
 
 user_name=ubuntu
 user_id=$(id -ru $user_name)
@@ -43,7 +44,7 @@ WantedBy=default.target
 
 EOF
 
-echo export XDG_RUNTIME_DIR=/run/user/$user_id >>/home/$user_name/.profile
+echo export XDG_RUNTIME_DIR=/run/user/$user_id >>/home/$user_name/.bashrc
 
 systemctl daemon-reload
 systemctl enable user@UID.service
@@ -51,8 +52,8 @@ systemctl start user@UID.service
 
 curl -fsSL https://get.docker.com/rootless >>/opt/rootless.sh && chmod 755 /opt/rootless.sh
 su -l $user_name -c /opt/rootless.sh
-echo export DOCKER_HOST=unix:///run/user/$user_id/docker.sock >>/home/$user_name/.profile
-echo export PATH=/home/$user_name/bin:$PATH >>/home/$user_name/.profile
+echo export DOCKER_HOST=unix:///run/user/$user_id/docker.sock >>/home/$user_name/.bashrc
+echo export PATH=/home/$user_name/bin:$PATH >>/home/$user_name/.bashrc
 
 # Run docker service by default
 loginctl enable-linger $user_name
