@@ -686,9 +686,9 @@ variable "webhook_events_workflow_job_queue" {
 variable "workflow_job_queue_configuration" {
   description = "Configuration options for workflow job queue which is only applicable if the flag webhook_events_workflow_job_queue is set to true."
   type = object({
-    delay_seconds  = number
-    visibility_timeout_seconds      = number
-    message_retention_seconds = number
+    delay_seconds              = number
+    visibility_timeout_seconds = number
+    message_retention_seconds  = number
   })
   default = {
     "delay_seconds" : 0,
