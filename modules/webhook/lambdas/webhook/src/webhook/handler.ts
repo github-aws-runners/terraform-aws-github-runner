@@ -199,9 +199,3 @@ function canRunJob(workflowLabels: string[], runnerLabels: string[], workflowLab
   return match;
 }
 
-function findLabel(workflowLabels: string[], labels: string[]): string {
-  const filteredArray = workflowLabels.filter((wfLabel) =>
-    labels.some((label) => label.toLowerCase() == wfLabel.toLowerCase()),
-  );
-  return filteredArray.length > 0 ? filteredArray[0] : '';
-}

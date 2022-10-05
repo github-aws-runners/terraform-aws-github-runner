@@ -2,7 +2,6 @@ import { Webhooks } from '@octokit/webhooks';
 import { mocked } from 'jest-mock';
 import nock from 'nock';
 
-import checkrun_event from '../../test/resources/github_check_run_event.json';
 import workflowjob_event from '../../test/resources/github_workflowjob_event.json';
 import queues_config from '../../test/resources/support_os_types.json';
 import { sendActionRequest } from '../sqs';
