@@ -50,7 +50,7 @@ resource "aws_sqs_queue_policy" "build_queue_policy" {
 }
 
 resource "aws_sqs_queue_policy" "webhook_events_workflow_job_queue_policy" {
-  count     = var.webhook_events_workflow_job_queue ? 1 : 0
+  count     = var.enable_workflow_job_events_queue ? 1 : 0
   queue_url = aws_sqs_queue.webhook_events_workflow_job_queue[0].id
   policy    = data.aws_iam_policy_document.deny_unsecure_transport.json
 }
@@ -76,7 +76,7 @@ resource "aws_sqs_queue" "queued_builds" {
 }
 
 resource "aws_sqs_queue" "webhook_events_workflow_job_queue" {
-  count                       = var.webhook_events_workflow_job_queue ? 1 : 0
+  count                       = var.enable_workflow_job_events_queue ? 1 : 0
   name                        = "${var.prefix}-webhook_events_workflow_job_queue"
   delay_seconds               = var.workflow_job_queue_configuration.delay_seconds
   visibility_timeout_seconds  = var.workflow_job_queue_configuration.visibility_timeout_seconds

@@ -34,11 +34,9 @@ export const sendActionRequest = async (message: ActionRequestMessage): Promise<
 };
 
 export const sendWebhookEventToWorkflowJobQueue = async (message: GithubWorkflowEvent): Promise<void> => {
-  const webhook_events_workflow_job_queue = process.env.SQS_WORKFLOW_JOB_QUEUE || 'empty';
+  const webhook_events_workflow_job_queue = process.env.SQS_WORKFLOW_JOB_QUEUE || undefined;
 
-  logger.debug(`Webhook events workflow job queue: ${webhook_events_workflow_job_queue}`, LogFields.print());
-
-  if (webhook_events_workflow_job_queue != 'empty') {
+  if (webhook_events_workflow_job_queue != undefined) {
     const sqs = new SQS({ region: process.env.AWS_REGION });
     const sqsMessage: SQS.Types.SendMessageRequest = {
       QueueUrl: String(process.env.SQS_WORKFLOW_JOB_QUEUE),

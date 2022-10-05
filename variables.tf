@@ -677,14 +677,14 @@ variable "lambda_architecture" {
   }
 }
 
-variable "webhook_events_workflow_job_queue" {
+variable "enable_workflow_job_events_queue" {
   description = "Enabling this experimental feature will create a secondory sqs queue to wich a copy of the workflow_job event will be delivered."
   type        = bool
   default     = false
 }
 
 variable "workflow_job_queue_configuration" {
-  description = "Configuration options for workflow job queue which is only applicable if the flag webhook_events_workflow_job_queue is set to true."
+  description = "Configuration options for workflow job queue which is only applicable if the flag enable_workflow_job_events_queue is set to true."
   type = object({
     delay_seconds              = number
     visibility_timeout_seconds = number
