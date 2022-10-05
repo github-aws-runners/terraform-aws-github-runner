@@ -95,7 +95,7 @@ module "multi-runner" {
         "instance_types" : ["t4g.large", "c6g.large"]
         "minimum_running_time_in_minutes" : 30
         "runner_as_root" : true
-        "runner_group_name" : "default-windows"
+        "runner_group_name" : "default-arm64"
         "runners_maximum_count" : 10
         "scale_down_schedule_expression" : "cron(* * * * ? *)"
         "runner_boot_time_in_minutes" : 20
