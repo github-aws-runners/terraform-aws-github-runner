@@ -64,7 +64,7 @@ export async function handle(headers: IncomingHttpHeaders, body: string): Promis
 
   if (githubEvent == 'workflow_job') {
     const workflowJobEvent = payload as WorkflowJobEvent;
-    const { queue_details } = filterQueueDetails(workflowJobEvent.workflow_job.labels);
+    const queue_details = matchLabels(workflowJobEvent.workflow_job.labels);
     response = await handleWorkflowJob(
       workflowJobEvent,
       githubEvent,
@@ -126,25 +126,15 @@ async function verifySignature(
   }
   return 200;
 }
-function filterQueueDetails(workflowLabels: string[]) {
-  const queuesConfig = process.env.SQS_URL_WEBHOOK || '[]';
+function matchLabels(workflowLabels: string[]) {
+  const queuesConfig = process.env.MULTI_RUNNER_QUEUES_CONFIG || '[]';
   const queue_configs = JSON.parse(queuesConfig) as Array<QueueConfig>;
-  // get all available OS configurations
-  const osTypes = new Set(queue_configs.map((config) => config.os_config.runner_os_type));
-  const osDistributions = new Set(queue_configs.map((config) => config.os_config.runner_os_distribution));
-  const architectures = new Set(queue_configs.map((config) => config.os_config.runner_architecture));
-  // try to find the corresponding labels in workflow labels
-  const workflowOSType = findLabel(workflowLabels, Array.from(osTypes.values())) || 'linux';
-  const workflowOSDistribution = findLabel(workflowLabels, Array.from(osDistributions.values())) || 'latest';
-  const workflowArchitecture = findLabel(workflowLabels, Array.from(architectures.values())) || 'x64';
-  // find queue corresponding to the workflow labels/defaults
-  const queue_details = queue_configs.filter(
-    (config) =>
-      config.os_config.runner_os_type == workflowOSType &&
-      config.os_config.runner_os_distribution == workflowOSDistribution &&
-      config.os_config.runner_architecture == workflowArchitecture,
-  );
-  return { queue_details };
+  for (let queue of queue_configs) {
+    if (canRunJob(queue.labelMatchers, workflowLabels, queue.exactMatch)) {
+      return [queue] as QueueConfig[];
+    }
+  }
+  return [] as QueueConfig[];
 }
 
 async function handleWorkflowJob(
@@ -155,7 +145,7 @@ async function handleWorkflowJob(
   runnerLabels: string[],
   queueConfig: Array<QueueConfig>,
 ): Promise<Response> {
-  if (enableWorkflowLabelCheck && !canRunJob(body, runnerLabels, workflowLabelCheckAll)) {
+  if (enableWorkflowLabelCheck && !canRunJob(body.workflow_job.labels, runnerLabels, workflowLabelCheckAll)) {
     logger.warn(
       `Received event contains runner labels '${body.workflow_job.labels}' that are not accepted.`,
       LogFields.print(),
@@ -194,8 +184,8 @@ function isRepoNotAllowed(repoFullName: string, repositoryWhiteList: string[]): 
   return repositoryWhiteList.length > 0 && !repositoryWhiteList.includes(repoFullName);
 }
 
-function canRunJob(job: WorkflowJobEvent, runnerLabels: string[], workflowLabelCheckAll: boolean): boolean {
-  const workflowJobLabels = job.workflow_job.labels;
+function canRunJob(workflowLabels: string[], runnerLabels: string[], workflowLabelCheckAll: boolean): boolean {
+  const workflowJobLabels = workflowLabels;
   const match = workflowLabelCheckAll
     ? workflowJobLabels.every((l) => runnerLabels.includes(l.toLowerCase()))
     : workflowJobLabels.some((l) => runnerLabels.includes(l.toLowerCase()));

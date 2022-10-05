@@ -102,15 +102,12 @@ module "webhook" {
   tags        = local.tags
   kms_key_arn = var.kms_key_arn
 
-  sqs_build_queue_by_runner_os = [
+  multi_runner_queues_config = [
     {
       "id" : aws_sqs_queue.queued_builds.id,
       "arn" : aws_sqs_queue.queued_builds.arn,
-      "os_config" : {
-        "runner_os_type" : var.runner_os
-        "runner_os_distribution" : "latest"
-        "runner_architecture" : var.runner_architecture
-      },
+      "labelMatchers" : split(",", local.default_runner_labels),
+      "exactMatch" : false
       "fifo" : var.fifo_build_queue
       "redrive_build_queue" : var.redrive_build_queue
     }

@@ -1,54 +1,50 @@
 module "runners" {
   source        = "../runners"
-  count         = length(local.queues_by_runner_os)
+  count         = length(local.multi_runner_queues_config)
   aws_region    = var.aws_region
   aws_partition = var.aws_partition
   vpc_id        = var.vpc_id
   subnet_ids    = var.subnet_ids
-  prefix        = "${var.prefix}-${local.queues_by_runner_os[count.index]["os_config"]["runner_os_type"]}-${local.queues_by_runner_os[count.index]["os_config"]["runner_os_distribution"]}-${local.queues_by_runner_os[count.index]["os_config"]["runner_architecture"]}"
+  prefix        = "${var.prefix}-${local.multi_runner_queues_config[count.index]["runner_config"]["id"]}"
   tags = merge(local.tags, {
-    "ghr:environment" = "${var.prefix}-${local.queues_by_runner_os[count.index]["os_config"]["runner_os_type"]}-${local.queues_by_runner_os[count.index]["os_config"]["runner_os_distribution"]}-${local.queues_by_runner_os[count.index]["os_config"]["runner_architecture"]}"
+    "ghr:environment" = "${var.prefix}-${local.multi_runner_queues_config[count.index]["runner_config"]["id"]}"
   })
 
-  s3_runner_binaries = local.queues_by_runner_os[count.index]["enable_runner_binaries_syncer"] ? {
-    arn = module.runner_binaries[0].bucket.arn
-    id  = module.runner_binaries[0].bucket.id
-    key = module.runner_binaries[0].runner_distribution_object_key
-  } : null
+  s3_runner_binaries = local.multi_runner_queues_config[count.index]["runner_config"]["enable_runner_binaries_syncer"] ? local.runner_binaries_by_os_and_arch_map["${local.multi_runner_queues_config[count.index]["runner_config"]["runner_os"]}_${local.multi_runner_queues_config[count.index]["runner_config"]["runner_architecture"]}"] : {}
 
-  runner_os                     = local.queues_by_runner_os[count.index]["os_config"]["runner_os_type"]
-  instance_types                = local.queues_by_runner_os[count.index]["runner_config"]["instance_types"]
+  runner_os                     = local.multi_runner_queues_config[count.index]["runner_config"]["runner_os"]
+  instance_types                = local.multi_runner_queues_config[count.index]["runner_config"]["instance_types"]
   instance_target_capacity_type = var.instance_target_capacity_type
   instance_allocation_strategy  = var.instance_allocation_strategy
   instance_max_spot_price       = var.instance_max_spot_price
-  block_device_mappings         = local.queues_by_runner_os[count.index]["runner_config"]["block_device_mappings"]
+  block_device_mappings         = local.multi_runner_queues_config[count.index]["runner_config"]["block_device_mappings"]
 
-  runner_architecture = local.queues_by_runner_os[count.index]["os_config"]["runner_architecture"]
-  ami_filter          = local.queues_by_runner_os[count.index]["runner_config"]["ami_filter"]
-  ami_owners          = local.queues_by_runner_os[count.index]["runner_config"]["ami_owners"]
+  runner_architecture = local.multi_runner_queues_config[count.index]["runner_config"]["runner_architecture"]
+  ami_filter          = local.multi_runner_queues_config[count.index]["runner_config"]["ami_filter"]
+  ami_owners          = local.multi_runner_queues_config[count.index]["runner_config"]["ami_owners"]
 
-  sqs_build_queue                      = { "arn" : local.queues_by_runner_os[count.index]["arn"] }
+  sqs_build_queue                      = { "arn" : local.multi_runner_queues_config[count.index]["arn"] }
   github_app_parameters                = local.github_app_parameters
-  enable_organization_runners          = local.queues_by_runner_os[count.index]["runner_config"]["enable_organization_runners"]
-  enable_ephemeral_runners             = local.queues_by_runner_os[count.index]["runner_config"]["enable_ephemeral_runners"]
-  enable_job_queued_check              = local.queues_by_runner_os[count.index]["runner_config"]["enable_job_queued_check"]
-  disable_runner_autoupdate            = local.queues_by_runner_os[count.index]["runner_config"]["disable_runner_autoupdate"]
+  enable_organization_runners          = local.multi_runner_queues_config[count.index]["runner_config"]["enable_organization_runners"]
+  enable_ephemeral_runners             = local.multi_runner_queues_config[count.index]["runner_config"]["enable_ephemeral_runners"]
+  enable_job_queued_check              = local.multi_runner_queues_config[count.index]["runner_config"]["enable_job_queued_check"]
+  disable_runner_autoupdate            = local.multi_runner_queues_config[count.index]["runner_config"]["disable_runner_autoupdate"]
   enable_managed_runner_security_group = var.enable_managed_runner_security_group
   enable_runner_detailed_monitoring    = var.enable_runner_detailed_monitoring
-  scale_down_schedule_expression       = local.queues_by_runner_os[count.index]["runner_config"]["scale_down_schedule_expression"]
-  minimum_running_time_in_minutes      = local.queues_by_runner_os[count.index]["runner_config"]["minimum_running_time_in_minutes"]
-  runner_boot_time_in_minutes          = local.queues_by_runner_os[count.index]["runner_config"]["runner_boot_time_in_minutes"]
-  runner_extra_labels                  = local.queues_by_runner_os[count.index]["runner_config"]["runner_extra_labels"]
-  runner_as_root                       = local.queues_by_runner_os[count.index]["runner_config"]["runner_as_root"]
+  scale_down_schedule_expression       = local.multi_runner_queues_config[count.index]["runner_config"]["scale_down_schedule_expression"]
+  minimum_running_time_in_minutes      = local.multi_runner_queues_config[count.index]["runner_config"]["minimum_running_time_in_minutes"]
+  runner_boot_time_in_minutes          = local.multi_runner_queues_config[count.index]["runner_config"]["runner_boot_time_in_minutes"]
+  runner_extra_labels                  = local.multi_runner_queues_config[count.index]["runner_config"]["runner_extra_labels"]
+  runner_as_root                       = local.multi_runner_queues_config[count.index]["runner_config"]["runner_as_root"]
   runner_run_as                        = var.runner_run_as
-  runners_maximum_count                = local.queues_by_runner_os[count.index]["runner_config"]["runners_maximum_count"]
+  runners_maximum_count                = local.multi_runner_queues_config[count.index]["runner_config"]["runners_maximum_count"]
   idle_config                          = var.idle_config
-  enable_ssm_on_runners                = local.queues_by_runner_os[count.index]["runner_config"]["enable_ssm_on_runners"]
+  enable_ssm_on_runners                = local.multi_runner_queues_config[count.index]["runner_config"]["enable_ssm_on_runners"]
   egress_rules                         = var.runner_egress_rules
   runner_additional_security_group_ids = var.runner_additional_security_group_ids
-  metadata_options                     = var.runner_metadata_options
+  metadata_options                     = local.multi_runner_queues_config[count.index]["runner_config"]["runner_metadata_options"]
 
-  enable_runner_binaries_syncer    = local.queues_by_runner_os[count.index]["enable_runner_binaries_syncer"]
+  enable_runner_binaries_syncer    = local.multi_runner_queues_config[count.index]["runner_config"]["enable_runner_binaries_syncer"]
   lambda_s3_bucket                 = var.lambda_s3_bucket
   runners_lambda_s3_key            = var.runners_lambda_s3_key
   runners_lambda_s3_object_version = var.runners_lambda_s3_object_version
@@ -64,7 +60,7 @@ module "runners" {
   enable_cloudwatch_agent          = var.enable_cloudwatch_agent
   cloudwatch_config                = var.cloudwatch_config
   runner_log_files                 = var.runner_log_files
-  runner_group_name                = local.queues_by_runner_os[count.index]["runner_config"]["runner_group_name"]
+  runner_group_name                = local.multi_runner_queues_config[count.index]["runner_config"]["runner_group_name"]
 
   scale_up_reserved_concurrent_executions = var.scale_up_reserved_concurrent_executions
 
@@ -73,13 +69,13 @@ module "runners" {
   role_permissions_boundary = var.role_permissions_boundary
 
   enabled_userdata      = var.enabled_userdata
-  userdata_template     = local.queues_by_runner_os[count.index]["runner_config"]["userdata_template"]
+  userdata_template     = local.multi_runner_queues_config[count.index]["runner_config"]["userdata_template"]
   userdata_pre_install  = var.userdata_pre_install
   userdata_post_install = var.userdata_post_install
   key_name              = var.key_name
   runner_ec2_tags       = var.runner_ec2_tags
 
-  create_service_linked_role_spot = local.queues_by_runner_os[count.index]["runner_config"]["create_service_linked_role_spot"]
+  create_service_linked_role_spot = local.multi_runner_queues_config[count.index]["runner_config"]["create_service_linked_role_spot"]
 
   runner_iam_role_managed_policy_arns = var.runner_iam_role_managed_policy_arns
 
@@ -91,8 +87,8 @@ module "runners" {
   log_type  = var.log_type
   log_level = var.log_level
 
-  pool_config                                = local.queues_by_runner_os[count.index]["runner_config"]["pool_config"]
+  pool_config                                = local.multi_runner_queues_config[count.index]["runner_config"]["pool_config"]
   pool_lambda_timeout                        = var.pool_lambda_timeout
-  pool_runner_owner                          = var.pool_runner_owner
+  pool_runner_owner                          = local.multi_runner_queues_config[count.index]["runner_config"]["pool_runner_owner"]
   pool_lambda_reserved_concurrent_executions = var.pool_lambda_reserved_concurrent_executions
 }

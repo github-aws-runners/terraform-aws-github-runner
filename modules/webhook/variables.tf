@@ -25,21 +25,18 @@ variable "tags" {
   default     = {}
 }
 
-variable "sqs_build_queue_by_runner_os" {
+variable "multi_runner_queues_config" {
   description = "SQS queue to publish accepted build events based on the runner type."
   type = list(object({
-    id  = string
-    arn = string
-    os_config = object({
-      runner_os_type         = string
-      runner_os_distribution = string
-      runner_architecture    = string
-    })
+    id   = string
+    arn  = string
     fifo = bool
     redrive_build_queue = object({
       enabled         = bool
       maxReceiveCount = number
     })
+    labelMatchers = list(string)
+    exactMatch    = bool
   }))
 }
 

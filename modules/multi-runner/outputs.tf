@@ -17,7 +17,7 @@ output "binaries_syncer" {
   value = [for runner_binary in module.runner_binaries : {
     lambda      = runner_binary.lambda
     lambda_role = runner_binary.lambda_role
-    location    = "s3://runner_binary.bucket.id}/module.runner_binaries[0].bucket.key"
+    location    = "s3://runner_binary.bucket.id}/runner_binary.bucket.key"
     bucket      = runner_binary.bucket
   }]
 }

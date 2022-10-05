@@ -62,7 +62,7 @@ describe('handler', () => {
   describe('Test for workflowjob event: ', () => {
     beforeEach(() => {
       process.env.DISABLE_CHECK_WORKFLOW_JOB_LABELS = 'false';
-      process.env.SQS_URL_WEBHOOK = JSON.stringify(queues_config);
+      process.env.MULTI_RUNNER_QUEUES_CONFIG = JSON.stringify(queues_config);
     });
     it('handles workflow job events', async () => {
       const event = JSON.stringify(workflowjob_event);
@@ -265,7 +265,7 @@ describe('handler', () => {
         ...workflowjob_event,
         workflow_job: {
           ...workflowjob_event.workflow_job,
-          labels: ['self-hosted', 'ubuntu', 'x64'],
+          labels: ['self-hosted', 'ubuntu', 'x64', 'linux'],
         },
       });
       const resp = await handle(

@@ -1,7 +1,7 @@
 
 locals {
-  queues_by_runner_os = tolist([for index, queue in var.sqs_build_queue_by_runner_os : merge(aws_sqs_queue.queued_builds[index], queue)])
-  unique_os_types     = distinct([for index, config in local.queues_by_runner_os : { "os_type" : config["os_config"]["runner_os_type"], "architecture" : config["os_config"]["runner_architecture"] } if config["enable_runner_binaries_syncer"]])
+  multi_runner_queues_config = tolist([for index, queue in var.multi_runner_config : merge(aws_sqs_queue.queued_builds[index], queue)])
+  unique_os_and_arch         = distinct([for index, config in local.multi_runner_queues_config : { "os_type" : config["runner_config"]["runner_os"], "architecture" : config["runner_config"]["runner_architecture"] } if config["runner_config"]["enable_runner_binaries_syncer"]])
 }
 data "aws_iam_policy_document" "deny_unsecure_transport" {
   statement {
@@ -32,17 +32,17 @@ data "aws_iam_policy_document" "deny_unsecure_transport" {
 
 
 resource "aws_sqs_queue" "queued_builds" {
-  count                       = length(var.sqs_build_queue_by_runner_os)
-  name                        = "${var.prefix}-${var.sqs_build_queue_by_runner_os[count.index]["os_config"]["runner_os_type"]}-${var.sqs_build_queue_by_runner_os[count.index]["os_config"]["runner_os_distribution"]}-${var.sqs_build_queue_by_runner_os[count.index]["os_config"]["runner_architecture"]}queued-builds${var.sqs_build_queue_by_runner_os[count.index]["fifo"] ? ".fifo" : ""}"
+  count                       = length(var.multi_runner_config)
+  name                        = "${var.prefix}-${var.multi_runner_config[count.index]["runner_config"]["id"]}-queued-builds${var.multi_runner_config[count.index]["fifo"] ? ".fifo" : ""}"
   delay_seconds               = var.delay_webhook_event
   visibility_timeout_seconds  = var.runners_scale_up_lambda_timeout
   message_retention_seconds   = var.job_queue_retention_in_seconds
-  fifo_queue                  = var.sqs_build_queue_by_runner_os[count.index]["fifo"]
+  fifo_queue                  = var.multi_runner_config[count.index]["fifo"]
   receive_wait_time_seconds   = 0
-  content_based_deduplication = var.sqs_build_queue_by_runner_os[count.index]["fifo"]
-  redrive_policy = var.sqs_build_queue_by_runner_os[count.index]["redrive_build_queue"]["enabled"] ? jsonencode({
+  content_based_deduplication = var.multi_runner_config[count.index]["fifo"]
+  redrive_policy = var.multi_runner_config[count.index]["redrive_build_queue"]["enabled"] ? jsonencode({
     deadLetterTargetArn = aws_sqs_queue.queued_builds_dlq[0].arn,
-    maxReceiveCount     = var.sqs_build_queue_by_runner_os[count.index]["redrive_build_queue"]["maxReceiveCount"]
+    maxReceiveCount     = var.multi_runner_config[count.index]["redrive_build_queue"]["maxReceiveCount"]
   }) : null
 
   sqs_managed_sse_enabled           = var.queue_encryption.sqs_managed_sse_enabled
@@ -59,8 +59,8 @@ resource "aws_sqs_queue_policy" "build_queue_policy" {
 }
 
 resource "aws_sqs_queue" "queued_builds_dlq" {
-  count = length(var.sqs_build_queue_by_runner_os)
-  name  = "${var.prefix}-${var.sqs_build_queue_by_runner_os[count.index]["os_config"]["runner_os_type"]}-${var.sqs_build_queue_by_runner_os[count.index]["os_config"]["runner_os_distribution"]}-queued-builds_dead_letter"
+  count = length(var.multi_runner_config)
+  name  = "${var.prefix}-${var.multi_runner_config[count.index]["runner_config"]["id"]}-queued-builds_dead_letter"
 
   sqs_managed_sse_enabled           = var.queue_encryption.sqs_managed_sse_enabled
   kms_master_key_id                 = var.queue_encryption.kms_master_key_id

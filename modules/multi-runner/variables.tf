@@ -56,16 +56,16 @@ variable "runner_extra_labels" {
   type        = string
   default     = ""
 }
-variable "sqs_build_queue_by_runner_os" {
-  description = "SQS queue to publish accepted build events based on the runner type."
+variable "multi_runner_config" {
+  description = "Configuration for all supported runners."
   type = list(object({
-    enable_runner_binaries_syncer = bool
-    os_config = object({
-      runner_os_type         = string
-      runner_os_distribution = string
-      runner_architecture    = string
-    })
     runner_config = object({
+      id : string
+      enable_runner_binaries_syncer   = bool
+      runner_os                       = string
+      runner_architecture             = string
+      runner_metadata_options         = map(any)
+      pool_runner_owner               = string
       create_service_linked_role_spot = bool
       disable_runner_autoupdate       = bool
       enable_ephemeral_runners        = bool
@@ -99,7 +99,9 @@ variable "sqs_build_queue_by_runner_os" {
         size                = number
       }))
     })
-    fifo = bool
+    labelMatchers = list(string)
+    exactMatch    = bool
+    fifo          = bool
     redrive_build_queue = object({
       enabled         = bool
       maxReceiveCount = number
@@ -407,16 +409,6 @@ variable "runner_additional_security_group_ids" {
   default     = []
 }
 
-variable "runner_metadata_options" {
-  description = "Metadata options for the ec2 runner instances."
-  type        = map(any)
-  default = {
-    http_endpoint               = "enabled"
-    http_tokens                 = "optional"
-    http_put_response_hop_limit = 1
-  }
-}
-
 variable "runners_lambda_s3_key" {
   description = "S3 key for runners lambda function. Required if using S3 bucket to specify lambdas."
   default     = null
@@ -539,12 +531,6 @@ variable "pool_lambda_timeout" {
   description = "Time out for the pool lambda in seconds."
   type        = number
   default     = 60
-}
-
-variable "pool_runner_owner" {
-  description = "The pool will deploy runners to the GitHub org ID, set this value to the org to which you want the runners deployed. Repo level is not supported."
-  type        = string
-  default     = null
 }
 
 variable "pool_lambda_reserved_concurrent_executions" {

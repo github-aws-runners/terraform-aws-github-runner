@@ -4,7 +4,7 @@ module "webhook" {
   tags        = local.tags
   kms_key_arn = var.kms_key_arn
 
-  sqs_build_queue_by_runner_os  = local.queues_by_runner_os
+  multi_runner_queues_config    = local.multi_runner_queues_config
   github_app_webhook_secret_arn = module.ssm.parameters.github_app_webhook_secret.arn
 
   lambda_s3_bucket                              = var.lambda_s3_bucket

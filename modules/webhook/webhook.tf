@@ -20,7 +20,7 @@ resource "aws_lambda_function" "webhook" {
       LOG_TYPE                         = var.log_type
       REPOSITORY_WHITE_LIST            = jsonencode(var.repository_white_list)
       RUNNER_LABELS                    = jsonencode(split(",", lower(var.runner_labels)))
-      SQS_URL_WEBHOOK                  = jsonencode(var.sqs_build_queue_by_runner_os)
+      MULTI_RUNNER_QUEUES_CONFIG       = jsonencode(var.multi_runner_queues_config)
     }
   }
 
@@ -74,7 +74,7 @@ resource "aws_iam_role_policy" "webhook_sqs" {
   role = aws_iam_role.webhook_lambda.name
 
   policy = templatefile("${path.module}/policies/lambda-publish-sqs-policy.json", {
-    sqs_resource_arns = jsonencode([for k, v in var.sqs_build_queue_by_runner_os : v["arn"]])
+    sqs_resource_arns = jsonencode([for k, v in var.multi_runner_queues_config : v["arn"]])
   })
 }
 

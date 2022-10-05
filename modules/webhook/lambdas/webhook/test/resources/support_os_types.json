@@ -1,30 +1,23 @@
-[{
-    "id": "latest-queue-id",
-    "arn": "queueARN",
-    "os_config": {
-        "runner_os_type": "linux",
-        "runner_os_distribution": "latest",
-        "runner_architecture": "x64"
-    },
-    "fifo": false,
-    "redriveBuildQueue":{
-        "enabled" : true,
-        "maxReceiveCount": 10
-    },
-    "enable_runner_binaries_syncer": true
+[
+  {
+  "id": "ubuntu-queue-id",
+  "arn": "queueARN",
+  "labelMatchers": ["self-hosted","linux", "x64", "ubuntu"],
+  "exactMatch": true,
+  "fifo": false,
+  "redriveBuildQueue":{
+      "enabled" : true,
+      "maxReceiveCount": 10
+  }
 },
 {
-    "id": "ubuntu-queue-id",
-    "arn": "queueARN",
-    "os_config": {
-        "runner_os_type": "linux",
-        "runner_os_distribution": "ubuntu",
-        "runner_architecture": "x64"
-    },
-    "fifo": false,
-    "redriveBuildQueue":{
-        "enabled" : true,
-        "maxReceiveCount": 10
-    },
-    "enable_runner_binaries_syncer": true
+  "id": "latest-queue-id",
+  "arn": "queueARN",
+  "labelMatchers": ["self-hosted", "linux", "x64", "latest"],
+  "exactMatch": false,
+  "fifo": false,
+  "redriveBuildQueue":{
+      "enabled" : true,
+      "maxReceiveCount": 10
+  }
 }]

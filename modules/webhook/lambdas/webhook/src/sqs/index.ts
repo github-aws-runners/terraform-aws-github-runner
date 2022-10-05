@@ -12,19 +12,14 @@ export interface ActionRequestMessage {
   queueId: string;
   queueFifo: bool;
 }
-export interface OSConfig {
-  runner_os_type: string;
-  runner_os_distribution: string;
-  runner_architecture: string;
-}
 export interface RedriveBuildQueue {
   enabled: bool;
   maxReceiveCount: number;
 }
 export interface QueueConfig {
-  os_config: OSConfig;
+  labelMatchers: string[];
+  exactMatch: bool;
   redriveBuildQueue: RedriveBuildQueue;
-  enable_runner_binaries_syncer: bool;
   id: string;
   arn: string;
   fifo: bool;
