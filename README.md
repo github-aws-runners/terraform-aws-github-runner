@@ -326,7 +326,7 @@ export interface GithubWorkflowEvent {
 }
 ```
 This extendible format allows to add more fields to be added if needed.
-On the second queue we just forward the incoming github event. Which can be used for metrics. You can configure `webhook_events_workflow_job_queue` to enable this experimental feature.
+You can configure the queue by setting properties to `workflow_job_events_queue_config`
 
 ## Examples
 
