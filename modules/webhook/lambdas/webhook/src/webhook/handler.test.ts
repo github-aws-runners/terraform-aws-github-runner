@@ -304,7 +304,7 @@ describe('handler', () => {
         repositoryOwner: workflowjob_event.repository.owner.login,
         eventType: 'workflow_job',
         installationId: 0,
-        queueId: 'latest-queue-id',
+        queueId: 'ubuntu-queue-id',
         queueFifo: false,
       });
     });

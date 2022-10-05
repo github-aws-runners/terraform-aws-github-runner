@@ -130,7 +130,7 @@ function matchLabels(workflowLabels: string[]) {
   const queuesConfig = process.env.MULTI_RUNNER_QUEUES_CONFIG || '[]';
   const queue_configs = JSON.parse(queuesConfig) as Array<QueueConfig>;
   for (let queue of queue_configs) {
-    if (canRunJob(queue.labelMatchers, workflowLabels, queue.exactMatch)) {
+    if (canRunJob(workflowLabels, queue.labelMatchers, queue.exactMatch)) {
       return [queue] as QueueConfig[];
     }
   }
