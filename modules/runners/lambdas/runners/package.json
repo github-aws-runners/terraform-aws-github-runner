@@ -26,7 +26,7 @@
     "eslint": "^7.32.0",
     "eslint-plugin-prettier": "4.2.1",
     "jest": "27.5.1",
-    "jest-mock": "^29.0.3",
+    "jest-mock": "^29.1.2",
     "jest-mock-extended": "^3.0.1",
     "moment-timezone": "^0.5.37",
     "nock": "^13.2.9",
@@ -37,7 +37,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-ssm": "^3.183.0",
-    "@octokit/auth-app": "4.0.5",
+    "@octokit/auth-app": "4.0.6",
     "@octokit/rest": "^19.0.4",
     "@octokit/types": "^7.5.0",
     "@types/aws-lambda": "^8.10.104",
