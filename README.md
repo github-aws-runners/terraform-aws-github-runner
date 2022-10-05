@@ -314,7 +314,12 @@ This module also allows you to run agents from a prebuilt AMI to gain faster sta
 
 ### Experimental - Optional queue to publish GitHub workflow job events
 
-The standard queue is an internal queue used by the scale-up lambda, the format we use here is an internal format.
+This queue is an experimental feature to allow you to receive a copy of the wokflow_jobs events sent by the GItHub App. For example to calculate matrix or monitor the system. 
+
+To enable the feature set `enable_workflow_job_events_queue = true`. Be-aware the feature in experimental!
+
+Messages received on the queue are using the same format as published by GitHub wrapped in a property `workflowJobEvent`.
+
 ```
 export interface GithubWorkflowEvent {
   workflowJobEvent: WorkflowJobEvent;
