@@ -312,7 +312,7 @@ The example for [ephemeral runners](./examples/ephemeral) is based on the [defau
 
 This module also allows you to run agents from a prebuilt AMI to gain faster startup times. You can find more information in [the image README.md](/images/README.md)
 
-### Secondary Queue
+### Experimental - Optional queue to publish GitHub workflow job events
 
 The standard queue is an internal queue used by the scale-up lambda, the format we use here is an internal format.
 ```
