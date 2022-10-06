@@ -113,9 +113,6 @@ async function verifySignature(
   }
   return 200;
 }
-function matchLabels(workflowLabels: string[]) {
-  return [] as QueueConfig[];
-}
 
 async function handleWorkflowJob(
   body: WorkflowJobEvent,
@@ -123,7 +120,7 @@ async function handleWorkflowJob(
   queuesConfig: Array<QueueConfig>,
 ): Promise<Response> {
   const installationId = getInstallationId(body);
-  for (let queue of queuesConfig) {
+  for (const queue of queuesConfig) {
     if (canRunJob(body.workflow_job.labels, queue.labelMatchers, queue.exactMatch)) {
       if (body.action === 'queued') {
         await sendActionRequest({
