@@ -13,11 +13,11 @@ resource "aws_lambda_function" "webhook" {
 
   environment {
     variables = {
-      ENVIRONMENT                      = var.prefix
-      LOG_LEVEL                        = var.log_level
-      LOG_TYPE                         = var.log_type
-      REPOSITORY_WHITE_LIST            = jsonencode(var.repository_white_list)
-      MULTI_RUNNER_QUEUES_CONFIG       = jsonencode(var.multi_runner_queues_config)
+      ENVIRONMENT                = var.prefix
+      LOG_LEVEL                  = var.log_level
+      LOG_TYPE                   = var.log_type
+      REPOSITORY_WHITE_LIST      = jsonencode(var.repository_white_list)
+      MULTI_RUNNER_QUEUES_CONFIG = jsonencode(var.multi_runner_queues_config)
     }
   }
 

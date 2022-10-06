@@ -25,7 +25,7 @@ module "multi-runner" {
         "runner_os" : "linux",
         "runner_architecture" : "x64",
         "create_service_linked_role_spot" : true,
-        "enable_ssm_on_runners" : true,      # enable access to the runners via SSM
+        "enable_ssm_on_runners" : true,                              # enable access to the runners via SSM
         "instance_types" : ["m5ad.large", "m5a.large", "c5.xlarge"], # c5.xlarge is backup, we select based on price
         "runner_extra_labels" : "staging"
         "runners_maximum_count" : 1

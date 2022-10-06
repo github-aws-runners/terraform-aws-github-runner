@@ -51,14 +51,14 @@ variable "multi_runner_config" {
   type = list(object({
     runner_config = object({
       id : string
-      enable_runner_binaries_syncer   = optional(bool, true)
-      runner_os                       = string
-      runner_architecture             = string
-      runner_metadata_options         = optional(map(any), {
-    http_endpoint               = "enabled"
-    http_tokens                 = "optional"
-    http_put_response_hop_limit = 1
-  })
+      enable_runner_binaries_syncer = optional(bool, true)
+      runner_os                     = string
+      runner_architecture           = string
+      runner_metadata_options = optional(map(any), {
+        http_endpoint               = "enabled"
+        http_tokens                 = "optional"
+        http_put_response_hop_limit = 1
+      })
       pool_runner_owner               = optional(string, null)
       create_service_linked_role_spot = optional(bool, false)
       disable_runner_autoupdate       = optional(bool, false)
@@ -83,17 +83,17 @@ variable "multi_runner_config" {
         throughput            = number
         volume_size           = number
         volume_type           = string
-      })), [{
-    delete_on_termination = true
-    device_name           = "/dev/xvda"
-    encrypted             = true
-    iops                  = null
-    kms_key_id            = null
-    snapshot_id           = null
-    throughput            = null
-    volume_size           = 30
-    volume_type           = "gp3"
-  }])
+        })), [{
+        delete_on_termination = true
+        device_name           = "/dev/xvda"
+        encrypted             = true
+        iops                  = null
+        kms_key_id            = null
+        snapshot_id           = null
+        throughput            = null
+        volume_size           = 30
+        volume_type           = "gp3"
+      }])
       ami_filter              = optional(map(list(string)), null)
       ami_owners              = optional(list(string), ["amazon"])
       userdata_template       = optional(string, null)
@@ -109,10 +109,10 @@ variable "multi_runner_config" {
     redrive_build_queue = optional(object({
       enabled         = bool
       maxReceiveCount = number
-    }), {
-    enabled         = false
-    maxReceiveCount = null
-  })
+      }), {
+      enabled         = false
+      maxReceiveCount = null
+    })
   }))
 }
 
