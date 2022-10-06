@@ -34,7 +34,7 @@ Write-Host  "Retrieved /$environment/runner/agent-mode parameter - ($agent_mode)
 
 if ($enable_cloudwatch_agent -eq "true")
 {
-    Write-Host  "Enabling CloudWatch Agent"    
+    Write-Host  "Enabling CloudWatch Agent"
     & 'C:\Program Files\Amazon\AmazonCloudWatchAgent\amazon-cloudwatch-agent-ctl.ps1' -a fetch-config -m ec2 -s -c "ssm:$environment-cloudwatch_agent_config_runner"
 }
 
@@ -44,7 +44,7 @@ Write-Host "Get GH Runner config from AWS SSM"
 $config = $null
 $i = 0
 do {
-    $config = (aws ssm get-parameters --names "$environment-$InstanceId" --with-decryption --region $Region  --query "Parameters[*].{Name:Name,Value:Value}" | ConvertFrom-Json)[0].value    
+    $config = (aws ssm get-parameters --names "$environment-$InstanceId" --with-decryption --region $Region  --query "Parameters[*].{Name:Name,Value:Value}" | ConvertFrom-Json)[0].value
     Write-Host "Waiting for GH Runner config to become available in AWS SSM ($i/30)"
     Start-Sleep 1
     $i++
@@ -90,16 +90,13 @@ Invoke-Expression $configCmd
 
 Write-Host "Starting the runner as user $run_as"
 
-$contentToAdd = @"
-[
-  {
-    "group": "",
-    "detail": "$ami_id"
-  }
-]
-"@
-
-Add-Content "$pwd\.setup_info" $contentToAdd
+$jsonBody = @(
+    @{
+        group='Machine AMI Id'
+        details="$ami_id"
+    }
+)
+ConvertTo-Json -InputObject $jsonBody > "$pwd\.setup_info"
 
 Write-Host  "Installing the runner as a service"
 

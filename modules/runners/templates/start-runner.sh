@@ -65,7 +65,7 @@ sudo --preserve-env=RUNNER_ALLOW_RUNASROOT -u "$run_as" -- ./config.sh --unatten
 tee /opt/actions-runner/.setup_info <<EOL
 [
   {
-    "group": "",
+    "group": "Machine AMI Id",
     "detail": "$ami_id"
   }
 ]
