@@ -691,9 +691,9 @@ variable "workflow_job_queue_configuration" {
     message_retention_seconds  = number
   })
   default = {
-    "delay_seconds" : 0,
-    "visibility_timeout_seconds" : 30,
-    "message_retention_seconds" : 345600 # Terraform default for the resource
+    "delay_seconds" : null,
+    "visibility_timeout_seconds" : null,
+    "message_retention_seconds" : null 
   }
 }
 variable "enable_runner_binaries_syncer" {
