@@ -19,7 +19,7 @@ resource "aws_lambda_function" "webhook" {
       LOG_LEVEL                        = var.log_level
       LOG_TYPE                         = var.log_type
       REPOSITORY_WHITE_LIST            = jsonencode(var.repository_white_list)
-      RUNNER_LABELS                    = jsonencode(split(",", var.runner_labels))
+      RUNNER_LABELS                    = jsonencode(split(",", lower(var.runner_labels)))
       SQS_URL_WEBHOOK                  = var.sqs_build_queue.id
       SQS_IS_FIFO                      = var.sqs_build_queue_fifo
     }

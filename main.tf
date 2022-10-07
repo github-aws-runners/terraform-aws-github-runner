@@ -3,7 +3,6 @@ locals {
     "ghr:environment" = var.prefix
   })
 
-  s3_action_runner_url = "s3://${module.runner_binaries.bucket.id}/${module.runner_binaries.runner_distribution_object_key}"
   github_app_parameters = {
     id         = module.ssm.parameters.github_app_id
     key_base64 = module.ssm.parameters.github_app_key_base64
@@ -63,9 +62,12 @@ resource "aws_sqs_queue" "queued_builds" {
     maxReceiveCount     = var.redrive_build_queue.maxReceiveCount
   }) : null
 
+  sqs_managed_sse_enabled           = var.queue_encryption.sqs_managed_sse_enabled
+  kms_master_key_id                 = var.queue_encryption.kms_master_key_id
+  kms_data_key_reuse_period_seconds = var.queue_encryption.kms_data_key_reuse_period_seconds
+
   tags = var.tags
 }
-
 
 resource "aws_sqs_queue_policy" "build_queue_dlq_policy" {
   count     = var.redrive_build_queue.enabled ? 1 : 0
@@ -76,6 +78,10 @@ resource "aws_sqs_queue_policy" "build_queue_dlq_policy" {
 resource "aws_sqs_queue" "queued_builds_dlq" {
   count = var.redrive_build_queue.enabled ? 1 : 0
   name  = "${var.prefix}-queued-builds_dead_letter"
+
+  sqs_managed_sse_enabled           = var.queue_encryption.sqs_managed_sse_enabled
+  kms_master_key_id                 = var.queue_encryption.kms_master_key_id
+  kms_data_key_reuse_period_seconds = var.queue_encryption.kms_data_key_reuse_period_seconds
 
   tags = var.tags
 }
@@ -101,15 +107,16 @@ module "webhook" {
   sqs_build_queue_fifo          = var.fifo_build_queue
   github_app_webhook_secret_arn = module.ssm.parameters.github_app_webhook_secret.arn
 
-  lambda_s3_bucket                 = var.lambda_s3_bucket
-  webhook_lambda_s3_key            = var.webhook_lambda_s3_key
-  webhook_lambda_s3_object_version = var.webhook_lambda_s3_object_version
-  lambda_runtime                   = var.lambda_runtime
-  lambda_architecture              = var.lambda_architecture
-  lambda_zip                       = var.webhook_lambda_zip
-  lambda_timeout                   = var.webhook_lambda_timeout
-  logging_retention_in_days        = var.logging_retention_in_days
-  logging_kms_key_id               = var.logging_kms_key_id
+  lambda_s3_bucket                              = var.lambda_s3_bucket
+  webhook_lambda_s3_key                         = var.webhook_lambda_s3_key
+  webhook_lambda_s3_object_version              = var.webhook_lambda_s3_object_version
+  webhook_lambda_apigateway_access_log_settings = var.webhook_lambda_apigateway_access_log_settings
+  lambda_runtime                                = var.lambda_runtime
+  lambda_architecture                           = var.lambda_architecture
+  lambda_zip                                    = var.webhook_lambda_zip
+  lambda_timeout                                = var.webhook_lambda_timeout
+  logging_retention_in_days                     = var.logging_retention_in_days
+  logging_kms_key_id                            = var.logging_kms_key_id
 
   # labels
   enable_workflow_job_labels_check = var.runner_enable_workflow_job_labels_check
@@ -134,8 +141,11 @@ module "runners" {
   prefix        = var.prefix
   tags          = local.tags
 
-  s3_bucket_runner_binaries   = module.runner_binaries.bucket
-  s3_location_runner_binaries = local.s3_action_runner_url
+  s3_runner_binaries = var.enable_runner_binaries_syncer ? {
+    arn = module.runner_binaries[0].bucket.arn
+    id  = module.runner_binaries[0].bucket.id
+    key = module.runner_binaries[0].runner_distribution_object_key
+  } : null
 
   runner_os                     = var.runner_os
   instance_types                = var.instance_types
@@ -169,6 +179,7 @@ module "runners" {
   runner_additional_security_group_ids = var.runner_additional_security_group_ids
   metadata_options                     = var.runner_metadata_options
 
+  enable_runner_binaries_syncer    = var.enable_runner_binaries_syncer
   lambda_s3_bucket                 = var.lambda_s3_bucket
   runners_lambda_s3_key            = var.runners_lambda_s3_key
   runners_lambda_s3_object_version = var.runners_lambda_s3_object_version
@@ -218,6 +229,8 @@ module "runners" {
 }
 
 module "runner_binaries" {
+  count = var.enable_runner_binaries_syncer ? 1 : 0
+
   source = "./modules/runner-binaries-syncer"
 
   aws_region = var.aws_region
@@ -225,6 +238,8 @@ module "runner_binaries" {
   tags       = local.tags
 
   distribution_bucket_name = "${var.prefix}-dist-${random_string.random.result}"
+  s3_logging_bucket        = var.runner_binaries_s3_logging_bucket
+  s3_logging_bucket_prefix = var.runner_binaries_s3_logging_bucket_prefix
 
   runner_os                        = var.runner_os
   runner_architecture              = var.runner_architecture

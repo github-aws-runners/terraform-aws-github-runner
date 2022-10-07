@@ -46,15 +46,13 @@ variable "prefix" {
   default     = "github-actions"
 }
 
-variable "s3_bucket_runner_binaries" {
+variable "s3_runner_binaries" {
+  description = "Bucket details for cached GitHub binary."
   type = object({
     arn = string
+    id  = string
+    key = string
   })
-}
-
-variable "s3_location_runner_binaries" {
-  description = "S3 location of runner distribution."
-  type        = string
 }
 
 variable "block_device_mappings" {
@@ -273,7 +271,7 @@ variable "instance_profile_path" {
 }
 
 variable "runner_as_root" {
-  description = "Run the action runner under the root user. Variable `runner_run_as` will be ingored."
+  description = "Run the action runner under the root user. Variable `runner_run_as` will be ignored."
   type        = bool
   default     = false
 }
@@ -492,7 +490,7 @@ variable "log_level" {
 }
 
 variable "runner_ec2_tags" {
-  description = "Map of tags that will be added to the launch template instance tag specificatons."
+  description = "Map of tags that will be added to the launch template instance tag specifications."
   type        = map(string)
   default     = {}
 }
@@ -520,7 +518,7 @@ variable "enable_job_queued_check" {
 }
 
 variable "pool_lambda_timeout" {
-  description = "Time out for the pool lambda lambda in seconds."
+  description = "Time out for the pool lambda in seconds."
   type        = number
   default     = 60
 }
@@ -538,7 +536,7 @@ variable "pool_lambda_reserved_concurrent_executions" {
 }
 
 variable "pool_config" {
-  description = "The configuration for updating the pool. The `pool_size` to adjust to by the events triggered by the the `schedule_expression. For example you can configure a cron expression for week days to adjust the pool to 10 and another expression for the weekend to adjust the pool to 1."
+  description = "The configuration for updating the pool. The `pool_size` to adjust to by the events triggered by the `schedule_expression`. For example you can configure a cron expression for week days to adjust the pool to 10 and another expression for the weekend to adjust the pool to 1."
   type = list(object({
     schedule_expression = string
     size                = number
@@ -566,4 +564,10 @@ variable "lambda_architecture" {
     condition     = contains(["arm64", "x86_64"], var.lambda_architecture)
     error_message = "`lambda_architecture` value is not valid, valid values are: `arm64` and `x86_64`."
   }
+}
+
+variable "enable_runner_binaries_syncer" {
+  description = "Option to disable the lambda to sync GitHub runner distribution, useful when using a pre-build AMI."
+  type        = bool
+  default     = true
 }

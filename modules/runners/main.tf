@@ -6,16 +6,17 @@ locals {
     var.tags,
   )
 
-  name_sg               = var.overrides["name_sg"] == "" ? local.tags["Name"] : var.overrides["name_sg"]
-  name_runner           = var.overrides["name_runner"] == "" ? local.tags["Name"] : var.overrides["name_runner"]
-  role_path             = var.role_path == null ? "/${var.prefix}/" : var.role_path
-  instance_profile_path = var.instance_profile_path == null ? "/${var.prefix}/" : var.instance_profile_path
-  lambda_zip            = var.lambda_zip == null ? "${path.module}/lambdas/runners/runners.zip" : var.lambda_zip
-  userdata_template     = var.userdata_template == null ? local.default_userdata_template[var.runner_os] : var.userdata_template
-  kms_key_arn           = var.kms_key_arn != null ? var.kms_key_arn : ""
+  name_sg                         = var.overrides["name_sg"] == "" ? local.tags["Name"] : var.overrides["name_sg"]
+  name_runner                     = var.overrides["name_runner"] == "" ? local.tags["Name"] : var.overrides["name_runner"]
+  role_path                       = var.role_path == null ? "/${var.prefix}/" : var.role_path
+  instance_profile_path           = var.instance_profile_path == null ? "/${var.prefix}/" : var.instance_profile_path
+  lambda_zip                      = var.lambda_zip == null ? "${path.module}/lambdas/runners/runners.zip" : var.lambda_zip
+  userdata_template               = var.userdata_template == null ? local.default_userdata_template[var.runner_os] : var.userdata_template
+  kms_key_arn                     = var.kms_key_arn != null ? var.kms_key_arn : ""
+  s3_location_runner_distribution = var.enable_runner_binaries_syncer ? "s3://${var.s3_runner_binaries.id}/${var.s3_runner_binaries.key}" : ""
 
   default_ami = {
-    "windows" = { name = ["Windows_Server-20H2-English-Core-ContainersLatest-*"] }
+    "windows" = { name = ["Windows_Server-2022-English-Core-ContainersLatest-*"] }
     "linux"   = var.runner_architecture == "arm64" ? { name = ["amzn2-ami-kernel-5.*-hvm-*-arm64-gp2"] } : { name = ["amzn2-ami-kernel-5.*-hvm-*-x86_64-gp2"] }
   }
 
@@ -81,6 +82,15 @@ resource "aws_launch_template" "runner" {
       http_endpoint               = metadata_options.value.http_endpoint
       http_tokens                 = metadata_options.value.http_tokens
       http_put_response_hop_limit = metadata_options.value.http_put_response_hop_limit
+      instance_metadata_tags      = "enabled"
+    }
+  }
+
+  dynamic "metadata_options" {
+    for_each = var.metadata_options != null ? [] : [0]
+
+    content {
+      instance_metadata_tags = "enabled"
     }
   }
 
@@ -122,17 +132,18 @@ resource "aws_launch_template" "runner" {
     )
   }
 
-
   user_data = var.enabled_userdata ? base64encode(templatefile(local.userdata_template, {
-    pre_install = var.userdata_pre_install
+    s3_location_runner_distribution = local.s3_location_runner_distribution
+    pre_install                     = var.userdata_pre_install
     install_runner = templatefile(local.userdata_install_runner[var.runner_os], {
-      S3_LOCATION_RUNNER_DISTRIBUTION = var.s3_location_runner_binaries
+      S3_LOCATION_RUNNER_DISTRIBUTION = local.s3_location_runner_distribution
       RUNNER_ARCHITECTURE             = var.runner_architecture
     })
     post_install    = var.userdata_post_install
     start_runner    = templatefile(local.userdata_start_runner[var.runner_os], {})
     ghes_url        = var.ghes_url
     ghes_ssl_verify = var.ghes_ssl_verify
+
     ## retain these for backwards compatibility
     environment                     = var.prefix
     enable_cloudwatch_agent         = var.enable_cloudwatch_agent

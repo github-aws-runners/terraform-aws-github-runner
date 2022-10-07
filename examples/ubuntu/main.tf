@@ -46,7 +46,7 @@ module "runners" {
   ami_owners        = ["099720109477"] # Canonical's Amazon account ID
 
   ami_filter = {
-    name = ["ubuntu/images/hvm-ssd/ubuntu-focal-20.04-amd64-server-*"]
+    name = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"]
   }
 
   # Custom build AMI, no custom userdata needed.
@@ -93,7 +93,7 @@ module "runners" {
   # Uncomment to enable ephemeral runners
   # delay_webhook_event      = 0
   # enable_ephemeral_runners = true
-  # enabled_userdata         = false
+  # enabled_userdata         = true
 
   # Uncommet idle config to have idle runners from 9 to 5 in time zone Amsterdam
   # idle_config = [{
