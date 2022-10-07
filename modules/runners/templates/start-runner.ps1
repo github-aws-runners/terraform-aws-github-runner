@@ -96,7 +96,7 @@ $jsonBody = @(
         details="AMI id: $ami_id"
     }
 )
-ConvertTo-Json -InputObject $jsonBody > "$pwd\.setup_info"
+ConvertTo-Json -InputObject $jsonBody | Set-Content -Path "$pwd\.setup_info"
 
 Write-Host  "Installing the runner as a service"
 
