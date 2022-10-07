@@ -135,6 +135,31 @@ variable "runner_binaries_s3_sse_configuration" {
   default     = {}
 }
 
+variable "runner_binaries_s3_logging_bucket" {
+  description = "Bucket for action runner distribution bucket access logging."
+  type        = string
+  default     = null
+
+  # Make sure the bucket name only contains legal characters
+  validation {
+    error_message = "Only lowercase alphanumeric characters and hyphens allowed in the bucket name."
+    condition     = var.runner_binaries_s3_logging_bucket == null || can(regex("^[a-z0-9-]*$", var.runner_binaries_s3_logging_bucket))
+  }
+}
+
+variable "runner_binaries_s3_logging_bucket_prefix" {
+  description = "Bucket prefix for action runner distribution bucket access logging."
+  type        = string
+  default     = null
+
+  # Make sure the bucket prefix only contains legal characters
+  validation {
+    error_message = "Only alphanumeric characters, hyphens followed by single slashes allowed in the bucket prefix."
+    condition     = var.runner_binaries_s3_logging_bucket_prefix == null || can(regex("^(([a-zA-Z0-9-])+(\\/?))*$", var.runner_binaries_s3_logging_bucket_prefix))
+  }
+}
+
+
 variable "role_permissions_boundary" {
   description = "Permissions boundary that will be added to the created roles."
   type        = string
@@ -236,9 +261,14 @@ variable "logging_kms_key_id" {
 }
 
 variable "runner_allow_prerelease_binaries" {
-  description = "Allow the runners to update to prerelease binaries."
+  description = "(Deprecated, no longer used), allow the runners to update to prerelease binaries."
   type        = bool
-  default     = false
+  default     = null
+
+  validation {
+    condition     = var.runner_allow_prerelease_binaries == null
+    error_message = "The \"runner_allow_prerelease_binaries\" variable is no longer used. GitHub runners are not released as pre-release, only releases should be used."
+  }
 }
 
 variable "block_device_mappings" {

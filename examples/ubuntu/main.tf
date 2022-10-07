@@ -93,7 +93,7 @@ module "runners" {
   # Uncomment to enable ephemeral runners
   # delay_webhook_event      = 0
   # enable_ephemeral_runners = true
-  # enabled_userdata         = false
+  # enabled_userdata         = true
 
   # Uncommet idle config to have idle runners from 9 to 5 in time zone Amsterdam
   # idle_config = [{

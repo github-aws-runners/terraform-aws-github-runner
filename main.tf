@@ -238,6 +238,8 @@ module "runner_binaries" {
   tags       = local.tags
 
   distribution_bucket_name = "${var.prefix}-dist-${random_string.random.result}"
+  s3_logging_bucket        = var.runner_binaries_s3_logging_bucket
+  s3_logging_bucket_prefix = var.runner_binaries_s3_logging_bucket_prefix
 
   runner_os                        = var.runner_os
   runner_architecture              = var.runner_architecture
