@@ -210,18 +210,18 @@ export async function createRunner(runnerParameters: RunnerInputParameters): Pro
   if (instances.length >= ssmParameterStoreMaxThroughput) {
     isDelay = true;
   }
-
+  let throttled = throttle(
+    async (instance) =>
+      await ssm
+        .putParameter({
+          Name: `${runnerParameters.environment}-${instance}`,
+          Value: runnerParameters.runnerServiceConfig.join(' '),
+          Type: 'SecureString',
+        })
+        .promise(),
+    isDelay ? 25 : 0,
+  );
   for (const instance of instances) {
-    throttle(
-      async () =>
-        await ssm
-          .putParameter({
-            Name: `${runnerParameters.environment}-${instance}`,
-            Value: runnerParameters.runnerServiceConfig.join(' '),
-            Type: 'SecureString',
-          })
-          .promise(),
-      isDelay ? 25 : 0,
-    );
+    throttled(instance);
   }
 }
