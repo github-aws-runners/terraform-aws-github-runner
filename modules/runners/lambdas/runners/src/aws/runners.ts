@@ -1,8 +1,9 @@
 import { EC2, SSM } from 'aws-sdk';
+import throttle from 'lodash/throttle';
 
 import { LogFields, logger as rootLogger } from '../logger';
 import ScaleError from './../scale-runners/ScaleError';
-import throttle from 'lodash/throttle';
+
 const logger = rootLogger.getChildLogger({ name: 'runners' });
 
 export interface RunnerList {
