@@ -92,8 +92,8 @@ Write-Host "Starting the runner as user $run_as"
 
 $jsonBody = @(
     @{
-        group='Machine AMI Id'
-        details="$ami_id"
+        group='Runner Image'
+        details="AMI id: $ami_id"
     }
 )
 ConvertTo-Json -InputObject $jsonBody > "$pwd\.setup_info"
