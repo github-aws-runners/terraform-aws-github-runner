@@ -210,7 +210,7 @@ export async function createRunner(runnerParameters: RunnerInputParameters): Pro
   if (instances.length >= ssmParameterStoreMaxThroughput) {
     isDelay = true;
   }
-  let throttled = throttle(
+  const throttled = throttle(
     async (instance) =>
       await ssm
         .putParameter({
