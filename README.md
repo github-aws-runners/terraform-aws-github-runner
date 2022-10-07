@@ -22,7 +22,7 @@ This [Terraform](https://www.terraform.io/) module creates the required infrastr
   - [Idle runners](#idle-runners)
   - [Ephemeral runners](#ephemeral-runners)
   - [Prebuilt Images](#prebuilt-images)
-  - [Secondary Queue](#secondary-queue)
+  - [Experimental - Optional queue to publish GitHub workflow job events](#experimental---optional-queue-to-publish-github-workflow-job-events)
 - [Examples](#examples)
 - [Sub modules](#sub-modules)
   - [ARM64 configuration for submodules](#arm64-configuration-for-submodules)
@@ -314,7 +314,7 @@ This module also allows you to run agents from a prebuilt AMI to gain faster sta
 
 ### Experimental - Optional queue to publish GitHub workflow job events
 
-This queue is an experimental feature to allow you to receive a copy of the wokflow_jobs events sent by the GItHub App. For example to calculate matrix or monitor the system. 
+This queue is an experimental feature to allow you to receive a copy of the wokflow_jobs events sent by the GItHub App. For example to calculate matrix or monitor the system.
 
 To enable the feature set `enable_workflow_job_events_queue = true`. Be-aware the feature in experimental!
 
