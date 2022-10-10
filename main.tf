@@ -85,11 +85,11 @@ resource "aws_sqs_queue" "webhook_events_workflow_job_queue" {
   receive_wait_time_seconds   = 0
   content_based_deduplication = false
   redrive_policy              = null
-  
+
   sqs_managed_sse_enabled           = var.queue_encryption.sqs_managed_sse_enabled
   kms_master_key_id                 = var.queue_encryption.kms_master_key_id
   kms_data_key_reuse_period_seconds = var.queue_encryption.kms_data_key_reuse_period_seconds
-  
+
   tags = var.tags
 }
 
