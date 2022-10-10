@@ -265,12 +265,3 @@ module "runner_binaries" {
 
   lambda_principals = var.lambda_principals
 }
-
-resource "aws_resourcegroups_group" "resourcegroups_group" {
-  name = "${var.prefix}-group"
-  resource_query {
-    query = templatefile("${path.module}/templates/resource-group.json", {
-      environment = var.prefix
-    })
-  }
-}
