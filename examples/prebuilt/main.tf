@@ -1,5 +1,5 @@
 locals {
-  environment = "npalm"
+  environment = "prebuilt"
   aws_region  = "eu-west-1"
 }
 
