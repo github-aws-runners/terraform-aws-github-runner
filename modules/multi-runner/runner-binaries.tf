@@ -8,7 +8,6 @@ module "runner_binaries" {
 
   runner_os                        = local.unique_os_and_arch[count.index]["os_type"]
   runner_architecture              = local.unique_os_and_arch[count.index]["architecture"]
-  runner_allow_prerelease_binaries = var.runner_allow_prerelease_binaries
 
   lambda_s3_bucket                = var.lambda_s3_bucket
   syncer_lambda_s3_key            = var.syncer_lambda_s3_key
