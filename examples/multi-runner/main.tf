@@ -1,5 +1,5 @@
 locals {
-  environment = "default"
+  environment = "multi-runner"
   aws_region  = "eu-west-1"
 }
 
@@ -17,52 +17,101 @@ module "multi-runner" {
   source = "../../modules/multi-runner"
   multi_runner_config = [
     {
-      "fifo" : true,
-      "labelMatchers" : ["self-hosted", "linux", "x64", "staging"]
-      "exactMatch" : true,
-      "runner_config" : {
-        "id" : "linux-x64",
-        "runner_os" : "linux",
-        "runner_architecture" : "x64",
-        "create_service_linked_role_spot" : true,
-        "enable_ssm_on_runners" : true,                              # enable access to the runners via SSM
-        "instance_types" : ["m5ad.large", "m5a.large", "c5.xlarge"], # c5.xlarge is backup, we select based on price
-        "runner_extra_labels" : "staging"
-        "runners_maximum_count" : 1
-        "scale_down_schedule_expression" : "cron(* * * * ? *)"
-        # "block_device_mappings" : [{
-        #   "device_name" : "/dev/xvda"
-        #   "delete_on_termination" : true
-        #   "volume_type" : "gp3"
-        #   "volume_size" : 25
-        #   "encrypted" : true
-        #   "iops" : null
-        #   "kms_key_id" : null
-        #   "snapshot_id" : null
-        #   "throughput" : null
-        # }]
-        # pool config
-        // https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html#RateExpressions
+      labelMatchers = ["self-hosted", "linux", "arm64", "arm"]
+      exactMatch    = true
+      fifo          = true
+      redrive_build_queue = {
+        enabled         = false
+        maxReceiveCount = null
+      }
+      runner_config = {
+        id                             = "linux-arm64"
+        runner_os                      = "linux"
+        runner_architecture            = "arm64"
+        runner_extra_labels            = "arm"
+        enable_ssm_on_runners          = true
+        instance_types                 = ["t4g.large", "c6g.large"]
+        runners_maximum_count          = 1
+        scale_down_schedule_expression = "cron(* * * * ? *)"
       }
     },
     {
-      "labelMatchers" : ["self-hosted", "linux", "arm64", "staging"]
-      "exactMatch" : true
-      "fifo" : true,
-      "redrive_build_queue" : {
-        "enabled" : false,
-        "maxReceiveCount" : null
-      },
-      "runner_config" : {
-        "id" : "linux-arm64",
-        "runner_os" : "linux",
-        "runner_architecture" : "arm64",
-        "runner_extra_labels" : "staging" #TODO disable see #19
-        "instance_types" : ["t4g.large", "c6g.large"]
-        "runners_maximum_count" : 1
-        "scale_down_schedule_expression" : "cron(* * * * ? *)"
+      labelMatchers = ["self-hosted", "linux", "x64", "ubuntu"]
+      exactMatch    = true
+      fifo          = true
+      redrive_build_queue = {
+        enabled         = false
+        maxReceiveCount = null
+      }
+      runner_config = {
+        id                             = "linux-ubuntu"
+        runner_os                      = "linux"
+        runner_architecture            = "x64"
+        runner_extra_labels            = "ubuntu"
+        enable_ssm_on_runners          = true
+        instance_types                 = ["m5ad.large", "m5a.large"]
+        runners_maximum_count          = 1
+        scale_down_schedule_expression = "cron(* * * * ? *)"
+        runner_run_as                  = "ubuntu"
+        userdata_template              = "./templates/user-data.sh"
+        ami_owners                     = ["099720109477"] # Canonical's Amazon account ID
+
+        ami_filter = {
+          name = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"]
+        }
+        block_device_mappings = [{
+          # Set the block device name for Ubuntu root device
+          device_name           = "/dev/sda1"
+          delete_on_termination = true
+          volume_type           = "gp3"
+          volume_size           = 30
+          encrypted             = true
+          iops                  = null
+          throughput            = null
+          kms_key_id            = null
+          snapshot_id           = null
+        }]
+        runner_log_files = [
+          {
+            log_group_name   = "syslog"
+            prefix_log_group = true
+            file_path        = "/var/log/syslog"
+            log_stream_name  = "{instance_id}"
+          },
+          {
+            log_group_name   = "user_data"
+            prefix_log_group = true
+            file_path        = "/var/log/user-data.log"
+            log_stream_name  = "{instance_id}/user_data"
+          },
+          {
+            log_group_name   = "runner"
+            prefix_log_group = true
+            file_path        = "/opt/actions-runner/_diag/Runner_**.log",
+            log_stream_name  = "{instance_id}/runner"
+          }
+        ]
+
+
+      }
+    },
+    {
+      fifo          = true
+      labelMatchers = ["self-hosted", "linux", "x64", "amazon"]
+      exactMatch    = false
+      runner_config = {
+        id                              = "linux-x64"
+        runner_os                       = "linux"
+        runner_architecture             = "x64"
+        create_service_linked_role_spot = true
+        enable_ssm_on_runners           = true
+        instance_types                  = ["m5ad.large", "m5a.large"]
+        runner_extra_labels             = "amazon"
+        runners_maximum_count           = 1
+        scale_down_schedule_expression  = "cron(* * * * ? *)"
       }
     }
+
   ]
   aws_region                        = local.aws_region
   vpc_id                            = module.vpc.vpc_id
@@ -79,9 +128,9 @@ module "multi-runner" {
     webhook_secret = random_id.random.hex
   }
   # Grab zip files via lambda_download
-  webhook_lambda_zip                = "lambdas-download/webhook.zip"
-  runner_binaries_syncer_lambda_zip = "lambdas-download/runner-binaries-syncer.zip"
-  runners_lambda_zip                = "lambdas-download/runners.zip"
+  # webhook_lambda_zip                = "lambdas-download/webhook.zip"
+  # runner_binaries_syncer_lambda_zip = "lambdas-download/runner-binaries-syncer.zip"
+  # runners_lambda_zip                = "lambdas-download/runners.zip"
 
   # override delay of events in seconds
   delay_webhook_event = 0

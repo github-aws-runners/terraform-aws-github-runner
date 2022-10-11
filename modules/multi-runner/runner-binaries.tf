@@ -6,8 +6,8 @@ module "runner_binaries" {
 
   distribution_bucket_name = "${var.prefix}-${local.unique_os_and_arch[count.index]["os_type"]}-${local.unique_os_and_arch[count.index]["architecture"]}-dist-${random_string.random.result}"
 
-  runner_os                        = local.unique_os_and_arch[count.index]["os_type"]
-  runner_architecture              = local.unique_os_and_arch[count.index]["architecture"]
+  runner_os           = local.unique_os_and_arch[count.index]["os_type"]
+  runner_architecture = local.unique_os_and_arch[count.index]["architecture"]
 
   lambda_s3_bucket                = var.lambda_s3_bucket
   syncer_lambda_s3_key            = var.syncer_lambda_s3_key

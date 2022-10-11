@@ -35,6 +35,7 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
 variable "delay_webhook_event" {
   description = "The number of seconds the event accepted by the webhook is invisible on the queue before the scale up lambda will receive the event."
   type        = number
@@ -46,6 +47,7 @@ variable "runner_extra_labels" {
   type        = string
   default     = ""
 }
+
 variable "multi_runner_config" {
   description = "Configuration for all supported runners."
   type = list(object({
@@ -69,10 +71,17 @@ variable "multi_runner_config" {
       runner_group_name               = optional(string, "Default")
       runner_extra_labels             = string
       runners_maximum_count           = number
+      runner_run_as                   = optional(string, "ec2-user")
       scale_down_schedule_expression  = optional(string, "cron(*/5 * * * ? *)")
       minimum_running_time_in_minutes = optional(number, null)
       runner_as_root                  = optional(bool, false)
       runner_boot_time_in_minutes     = optional(number, 5)
+      runner_log_files = optional(list(object({
+        log_group_name   = string
+        prefix_log_group = bool
+        file_path        = string
+        log_stream_name  = string
+      })), null)
       block_device_mappings = optional(list(object({
         delete_on_termination = bool
         device_name           = string
@@ -368,12 +377,6 @@ variable "enable_runner_detailed_monitoring" {
   default     = false
 }
 
-variable "runner_run_as" {
-  description = "Run the GitHub actions agent as user."
-  type        = string
-  default     = "ec2-user"
-}
-
 variable "idle_config" {
   description = "List of time period that can be defined as cron expression to keep a minimum amount of runners active instead of scaling down to 0. By defining this list you can ensure that in time periods that match the cron expression within 5 seconds a runner is kept idle."
   type = list(object({
@@ -455,17 +458,6 @@ variable "cloudwatch_config" {
   description = "(optional) Replaces the module default cloudwatch log config. See https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-Configuration-File-Details.html for details."
   type        = string
   default     = null
-}
-
-variable "runner_log_files" {
-  description = "(optional) Replaces the module default cloudwatch log config. See https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-Configuration-File-Details.html for details."
-  type = list(object({
-    log_group_name   = string
-    prefix_log_group = bool
-    file_path        = string
-    log_stream_name  = string
-  }))
-  default = null
 }
 
 variable "scale_up_reserved_concurrent_executions" {

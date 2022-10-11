@@ -36,7 +36,7 @@ module "runners" {
   runner_boot_time_in_minutes          = local.multi_runner_queues_config[count.index]["runner_config"]["runner_boot_time_in_minutes"]
   runner_extra_labels                  = local.multi_runner_queues_config[count.index]["runner_config"]["runner_extra_labels"]
   runner_as_root                       = local.multi_runner_queues_config[count.index]["runner_config"]["runner_as_root"]
-  runner_run_as                        = var.runner_run_as
+  runner_run_as                        = local.multi_runner_queues_config[count.index]["runner_config"]["runner_run_as"]
   runners_maximum_count                = local.multi_runner_queues_config[count.index]["runner_config"]["runners_maximum_count"]
   idle_config                          = var.idle_config
   enable_ssm_on_runners                = local.multi_runner_queues_config[count.index]["runner_config"]["enable_ssm_on_runners"]
@@ -59,7 +59,7 @@ module "runners" {
   logging_kms_key_id               = var.logging_kms_key_id
   enable_cloudwatch_agent          = var.enable_cloudwatch_agent
   cloudwatch_config                = var.cloudwatch_config
-  runner_log_files                 = var.runner_log_files
+  runner_log_files                 = local.multi_runner_queues_config[count.index]["runner_config"]["runner_log_files"]
   runner_group_name                = local.multi_runner_queues_config[count.index]["runner_config"]["runner_group_name"]
 
   scale_up_reserved_concurrent_executions = var.scale_up_reserved_concurrent_executions
