@@ -726,3 +726,8 @@ variable "queue_encryption" {
   }
 }
 
+variable "enable_user_data_debug_logging_runner" {
+  description = "Option to enable debug logging for user-data, this logs all secrets as well."
+  type        = bool
+  default     = false
+}

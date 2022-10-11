@@ -571,3 +571,9 @@ variable "enable_runner_binaries_syncer" {
   type        = bool
   default     = true
 }
+
+variable "enable_user_data_debug_logging" {
+  description = "Option to enable debug logging for user-data, this logs all secrets as well."
+  type        = bool
+  default     = false
+}
