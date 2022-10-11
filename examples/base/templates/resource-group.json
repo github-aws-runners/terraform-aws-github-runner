@@ -1,0 +1,9 @@
+{
+  "ResourceTypeFilters": ["AWS::AllSupported"],
+  "TagFilters": [
+    {
+      "Key": "Example",
+      "Values": ["${example}"]
+    }
+  ]
+}
