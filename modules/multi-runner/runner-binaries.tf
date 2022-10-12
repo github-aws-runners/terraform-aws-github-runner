@@ -1,13 +1,13 @@
 module "runner_binaries" {
   source = "../runner-binaries-syncer"
-  count  = length(local.unique_os_and_arch)
-  prefix = "${var.prefix}-${local.unique_os_and_arch[count.index]["os_type"]}-${local.unique_os_and_arch[count.index]["architecture"]}"
+  for_each = local.unique_os_and_arch
+  prefix = "${var.prefix}-${each.value.os_type}-${each.value.architecture}"
   tags   = local.tags
 
-  distribution_bucket_name = "${var.prefix}-${local.unique_os_and_arch[count.index]["os_type"]}-${local.unique_os_and_arch[count.index]["architecture"]}-dist-${random_string.random.result}"
+  distribution_bucket_name = "${var.prefix}-${each.value.os_type}-${each.value.architecture}-dist-${random_string.random.result}"
 
-  runner_os           = local.unique_os_and_arch[count.index]["os_type"]
-  runner_architecture = local.unique_os_and_arch[count.index]["architecture"]
+  runner_os           = each.value.os_type
+  runner_architecture = each.value.architecture
 
   lambda_s3_bucket                = var.lambda_s3_bucket
   syncer_lambda_s3_key            = var.syncer_lambda_s3_key
@@ -30,9 +30,7 @@ module "runner_binaries" {
   lambda_principals = var.lambda_principals
 }
 locals {
-  runner_binaries_by_os_and_arch = tolist([for index, os_type in local.unique_os_and_arch : merge(module.runner_binaries[index], os_type)])
-  runner_binaries_by_os_and_arch_map = { # outside map with "prop" key and map value
-    for obj in local.runner_binaries_by_os_and_arch :
-    "${obj["os_type"]}_${obj["architecture"]}" => { "arn" : obj["bucket"]["arn"], "id" : obj["bucket"]["id"], "key" : obj["runner_distribution_object_key"] }
+  runner_binaries_by_os_and_arch_map = {
+    for k, v in module.runner_binaries: k => { arn = v.bucket.arn, id = v.bucket.id, key = v.runner_distribution_object_key}
   }
 }
