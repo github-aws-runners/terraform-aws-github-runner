@@ -1,8 +1,8 @@
 module "runner_binaries" {
-  source = "../runner-binaries-syncer"
+  source   = "../runner-binaries-syncer"
   for_each = local.unique_os_and_arch
-  prefix = "${var.prefix}-${each.value.os_type}-${each.value.architecture}"
-  tags   = local.tags
+  prefix   = "${var.prefix}-${each.value.os_type}-${each.value.architecture}"
+  tags     = local.tags
 
   distribution_bucket_name = "${var.prefix}-${each.value.os_type}-${each.value.architecture}-dist-${random_string.random.result}"
 
@@ -31,6 +31,6 @@ module "runner_binaries" {
 }
 locals {
   runner_binaries_by_os_and_arch_map = {
-    for k, v in module.runner_binaries: k => { arn = v.bucket.arn, id = v.bucket.id, key = v.runner_distribution_object_key}
+    for k, v in module.runner_binaries : k => { arn = v.bucket.arn, id = v.bucket.id, key = v.runner_distribution_object_key }
   }
 }

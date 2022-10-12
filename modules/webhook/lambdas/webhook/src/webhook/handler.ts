@@ -120,9 +120,9 @@ async function handleWorkflowJob(
   queuesConfig: Array<QueueConfig>,
 ): Promise<Response> {
   const installationId = getInstallationId(body);
-  for (const queue of queuesConfig) {
-    if (canRunJob(body.workflow_job.labels, queue.labelMatchers, queue.exactMatch)) {
-      if (body.action === 'queued') {
+  if (body.action === 'queued') {
+    for (const queue of queuesConfig) {
+      if (canRunJob(body.workflow_job.labels, queue.labelMatchers, queue.exactMatch)) {
         await sendActionRequest({
           id: body.workflow_job.id,
           repositoryName: body.repository.name,
@@ -132,19 +132,23 @@ async function handleWorkflowJob(
           queueId: queue.id,
           queueFifo: queue.fifo,
         });
-        logger.info(`Successfully queued job for ${body.repository.full_name}`, LogFields.print());
+        logger.info(
+          `Successfully queued job for ${body.repository.full_name} to the queue ${queue.id}`,
+          LogFields.print(),
+        );
+        return { statusCode: 201 };
       }
-      return { statusCode: 201 };
     }
+    logger.warn(
+      `Received event contains runner labels '${body.workflow_job.labels}' that are not accepted.`,
+      LogFields.print(),
+    );
+    return {
+      statusCode: 202,
+      body: `Received event contains runner labels '${body.workflow_job.labels}' that are not accepted.`,
+    };
   }
-  logger.warn(
-    `Received event contains runner labels '${body.workflow_job.labels}' that are not accepted.`,
-    LogFields.print(),
-  );
-  return {
-    statusCode: 202,
-    body: `Received event contains runner labels '${body.workflow_job.labels}' that are not accepted.`,
-  };
+  return { statusCode: 201 };
 }
 
 function getInstallationId(body: WorkflowJobEvent | CheckRunEvent) {

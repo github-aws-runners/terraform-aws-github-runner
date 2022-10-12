@@ -30,7 +30,7 @@ data "aws_iam_policy_document" "deny_unsecure_transport" {
 resource "aws_sqs_queue" "queued_builds" {
   for_each                    = var.multi_runner_config
   name                        = "${var.prefix}-${each.key}-queued-builds${each.value.fifo ? ".fifo" : ""}"
-  delay_seconds               = var.delay_webhook_event
+  delay_seconds               = each.value.delay_webhook_event
   visibility_timeout_seconds  = var.runners_scale_up_lambda_timeout
   message_retention_seconds   = var.job_queue_retention_in_seconds
   fifo_queue                  = each.value.fifo

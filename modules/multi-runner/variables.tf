@@ -60,21 +60,28 @@ variable "multi_runner_config" {
         http_tokens                 = "optional"
         http_put_response_hop_limit = 1
       })
-      pool_runner_owner               = optional(string, null)
-      create_service_linked_role_spot = optional(bool, false)
-      disable_runner_autoupdate       = optional(bool, false)
-      enable_ephemeral_runners        = optional(bool, false)
-      enable_organization_runners     = optional(bool, false)
-      enable_ssm_on_runners           = optional(bool, false)
-      instance_types                  = list(string)
-      runner_group_name               = optional(string, "Default")
-      runner_extra_labels             = string
-      runners_maximum_count           = number
-      runner_run_as                   = optional(string, "ec2-user")
-      scale_down_schedule_expression  = optional(string, "cron(*/5 * * * ? *)")
-      minimum_running_time_in_minutes = optional(number, null)
-      runner_as_root                  = optional(bool, false)
-      runner_boot_time_in_minutes     = optional(number, 5)
+      pool_runner_owner                       = optional(string, null)
+      create_service_linked_role_spot         = optional(bool, false)
+      disable_runner_autoupdate               = optional(bool, false)
+      enable_ephemeral_runners                = optional(bool, false)
+      enable_organization_runners             = optional(bool, false)
+      enable_ssm_on_runners                   = optional(bool, false)
+      instance_types                          = list(string)
+      runner_group_name                       = optional(string, "Default")
+      runner_extra_labels                     = string
+      runners_maximum_count                   = number
+      runner_run_as                           = optional(string, "ec2-user")
+      scale_down_schedule_expression          = optional(string, "cron(*/5 * * * ? *)")
+      minimum_running_time_in_minutes         = optional(number, null)
+      runner_as_root                          = optional(bool, false)
+      runner_boot_time_in_minutes             = optional(number, 5)
+      delay_webhook_event                     = optional(number, 30)
+      instance_target_capacity_type           = optional(string, "spot")
+      instance_allocation_strategy            = optional(string, "lowest-price")
+      instance_max_spot_price                 = optional(string, null)
+      idle_config                             = optional(list(string), [])
+      scale_up_reserved_concurrent_executions = optional(number, 1)
+      enabled_userdata                        = optional(bool, true)
       runner_log_files = optional(list(object({
         log_group_name   = string
         prefix_log_group = bool
@@ -122,6 +129,7 @@ variable "multi_runner_config" {
       maxReceiveCount = null
     })
   }))
+
 }
 
 variable "runners_scale_up_lambda_timeout" {
@@ -338,32 +346,6 @@ variable "subnet_ids" {
   type        = list(string)
 }
 
-variable "instance_target_capacity_type" {
-  description = "Default lifecycle used for runner instances, can be either `spot` or `on-demand`."
-  type        = string
-  default     = "spot"
-  validation {
-    condition     = contains(["spot", "on-demand"], var.instance_target_capacity_type)
-    error_message = "The instance target capacity should be either spot or on-demand."
-  }
-}
-
-variable "instance_allocation_strategy" {
-  description = "The allocation strategy for spot instances. AWS recommends to use `capacity-optimized` however the AWS default is `lowest-price`."
-  type        = string
-  default     = "lowest-price"
-  validation {
-    condition     = contains(["lowest-price", "diversified", "capacity-optimized", "capacity-optimized-prioritized"], var.instance_allocation_strategy)
-    error_message = "The instance allocation strategy does not match the allowed values."
-  }
-}
-
-variable "instance_max_spot_price" {
-  description = "Max price price for spot intances per hour. This variable will be passed to the create fleet as max spot price for the fleet."
-  type        = string
-  default     = null
-}
-
 variable "enable_managed_runner_security_group" {
   description = "Enabling the default managed security group creation. Unmanaged security groups can be specified via `runner_additional_security_group_ids`."
   type        = bool
@@ -374,16 +356,6 @@ variable "enable_runner_detailed_monitoring" {
   description = "Should detailed monitoring be enabled for the runner. Set this to true if you want to use detailed monitoring. See https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-cloudwatch-new.html for details."
   type        = bool
   default     = false
-}
-
-variable "idle_config" {
-  description = "List of time period that can be defined as cron expression to keep a minimum amount of runners active instead of scaling down to 0. By defining this list you can ensure that in time periods that match the cron expression within 5 seconds a runner is kept idle."
-  type = list(object({
-    cron      = string
-    timeZone  = string
-    idleCount = number
-  }))
-  default = []
 }
 
 variable "runner_egress_rules" {
@@ -459,22 +431,10 @@ variable "cloudwatch_config" {
   default     = null
 }
 
-variable "scale_up_reserved_concurrent_executions" {
-  description = "Amount of reserved concurrent executions for the scale-up lambda function. A value of 0 disables lambda from being triggered and -1 removes any concurrency limitations."
-  type        = number
-  default     = 1
-}
-
 variable "instance_profile_path" {
   description = "The path that will be added to the instance_profile, if not set the environment name will be used."
   type        = string
   default     = null
-}
-
-variable "enabled_userdata" {
-  description = "Should the userdata script be enabled for the runner. Set this to false if you are using your own prebuilt AMI."
-  type        = bool
-  default     = true
 }
 
 variable "userdata_pre_install" {
