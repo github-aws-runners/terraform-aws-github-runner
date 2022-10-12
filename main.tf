@@ -103,8 +103,8 @@ module "webhook" {
   tags        = local.tags
   kms_key_arn = var.kms_key_arn
 
-  runner_config = [
-    {
+  runner_config = {
+    "${aws_sqs_queue.queued_builds.id}" = {
       "id" : aws_sqs_queue.queued_builds.id,
       "arn" : aws_sqs_queue.queued_builds.arn,
       "labelMatchers" : split(",", local.runner_labels),
@@ -112,7 +112,7 @@ module "webhook" {
       "fifo" : var.fifo_build_queue
       "redrive_build_queue" : var.redrive_build_queue
     }
-  ]
+  }
   github_app_webhook_secret_arn = module.ssm.parameters.github_app_webhook_secret.arn
 
   lambda_s3_bucket                              = var.lambda_s3_bucket

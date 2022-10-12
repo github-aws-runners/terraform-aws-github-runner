@@ -12,14 +12,10 @@ export interface ActionRequestMessage {
   queueId: string;
   queueFifo: bool;
 }
-export interface RedriveBuildQueue {
-  enabled: bool;
-  maxReceiveCount: number;
-}
+
 export interface QueueConfig {
   labelMatchers: string[];
   exactMatch: bool;
-  redriveBuildQueue: RedriveBuildQueue;
   id: string;
   arn: string;
   fifo: bool;
