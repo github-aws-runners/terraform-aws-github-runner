@@ -322,7 +322,7 @@ Examples are located in the [examples](./examples) directory. The following exam
 - _[Ephemeral](examples/ephemeral/README.md)_: Example usages of ephemeral runners based on the default example.
 - _[Prebuilt Images](examples/prebuilt/README.md)_: Example usages of deploying runners with a custom prebuilt image.
 - _[Permissions boundary](examples/permissions-boundary/README.md)_: Example usages of permissions boundaries.
-
+- _[Multi Runner](examples/multi-runner/README.md)_ : Example usage of creating a multi runner which creates multiple runners/ configurations with a single deployment
 ## Sub modules
 
 The module contains several submodules, you can use the module via the main module or assemble your own setup by initializing the submodules yourself.
