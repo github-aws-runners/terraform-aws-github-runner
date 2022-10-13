@@ -1,5 +1,4 @@
 import { EC2, SSM } from 'aws-sdk';
-import throttle from 'lodash/throttle';
 
 import { LogFields, logger as rootLogger } from '../logger';
 import ScaleError from './../scale-runners/ScaleError';
@@ -204,24 +203,26 @@ export async function createRunner(runnerParameters: RunnerInputParameters): Pro
   logger.info('Created instance(s): ', instances.join(','), LogFields.print());
 
   const ssm = new SSM();
+  const delay = async (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
   const ssmParameterStoreMaxThroughput = 40;
   let isDelay = false;
 
   if (instances.length >= ssmParameterStoreMaxThroughput) {
     isDelay = true;
   }
-  const throttled = throttle(
-    async (instance) =>
-      await ssm
-        .putParameter({
-          Name: `${runnerParameters.environment}-${instance}`,
-          Value: runnerParameters.runnerServiceConfig.join(' '),
-          Type: 'SecureString',
-        })
-        .promise(),
-    isDelay ? 25 : 0,
-  );
+
   for (const instance of instances) {
-    throttled(instance);
+    await ssm
+      .putParameter({
+        Name: `${runnerParameters.environment}-${instance}`,
+        Value: runnerParameters.runnerServiceConfig.join(' '),
+        Type: 'SecureString',
+      })
+      .promise();
+
+    if (isDelay) {
+      // Delay to prevent AWS ssm rate limits by being within the max throughput limit
+      await delay(25);
+    }
   }
 }
