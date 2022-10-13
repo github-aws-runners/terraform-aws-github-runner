@@ -32,6 +32,7 @@ interface CreateEC2RunnerConfig {
   launchTemplateName: string;
   ec2instanceCriteria: RunnerInputParameters['ec2instanceCriteria'];
   numberOfRunners?: number;
+  amiIdSsmParam?: string;
 }
 
 function generateRunnerServiceConfig(githubRunnerConfig: CreateGitHubRunnerConfig, token: string) {
@@ -159,6 +160,7 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
   const instanceMaxSpotPrice = process.env.INSTANCE_MAX_SPOT_PRICE;
   const instanceAllocationStrategy = process.env.INSTANCE_ALLOCATION_STRATEGY || 'lowest-price'; // same as AWS default
   const enableJobQueuedCheck = yn(process.env.ENABLE_JOB_QUEUED_CHECK, { default: true });
+  const amiIdSsmParam = process.env.AMI_ID_SSM_PARAM;
 
   if (ephemeralEnabled && payload.eventType !== 'workflow_job') {
     logger.warn(
@@ -222,6 +224,7 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
           environment,
           launchTemplateName,
           subnets,
+          amiIdSsmParam,
         },
         githubInstallationClient,
       );

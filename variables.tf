@@ -302,11 +302,19 @@ variable "ami_filter" {
   type        = map(list(string))
   default     = null
 }
+
 variable "ami_owners" {
   description = "The list of owners used to select the AMI of action runner instances."
   type        = list(string)
   default     = ["amazon"]
 }
+
+variable "ami_id_ssm_param" {
+  description = "SSM parameter (data type aws:ec2:image) that contains the AMI ID to launch instances from. Overrides ami_filter"
+  type        = string
+  default     = null
+}
+
 variable "lambda_s3_bucket" {
   description = "S3 bucket from which to specify lambda functions. This is an alternative to providing local files directly."
   default     = null
