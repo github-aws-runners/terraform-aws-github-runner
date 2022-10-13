@@ -329,6 +329,7 @@ variable "enable_managed_runner_security_group" {
   default     = true
 }
 
+# TODO move to runner_config
 variable "enable_runner_detailed_monitoring" {
   description = "Should detailed monitoring be enabled for the runner. Set this to true if you want to use detailed monitoring. See https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-cloudwatch-new.html for details."
   type        = bool
@@ -396,6 +397,7 @@ variable "lambda_security_group_ids" {
   default     = []
 }
 
+# TODO: move to runner config
 variable "enable_cloudwatch_agent" {
   description = "Enabling the cloudwatch agent on the ec2 runner instances, the runner contains default config. Configuration can be overridden via `cloudwatch_config`."
   type        = bool
@@ -414,12 +416,14 @@ variable "instance_profile_path" {
   default     = null
 }
 
+# TODO: move to runner config
 variable "userdata_pre_install" {
   type        = string
   default     = ""
   description = "Script to be ran before the GitHub Actions runner is installed on the EC2 instances"
 }
 
+# TODO: move to runner config
 variable "userdata_post_install" {
   type        = string
   default     = ""
@@ -432,6 +436,7 @@ variable "key_name" {
   default     = null
 }
 
+# TODO: move to runner config
 variable "runner_ec2_tags" {
   description = "Map of tags that will be added to the launch template instance tag specifications."
   type        = map(string)
@@ -444,6 +449,7 @@ variable "create_service_linked_role_spot" {
   default     = false
 }
 
+# TODO: move to runner config
 variable "runner_iam_role_managed_policy_arns" {
   description = "Attach AWS or customer-managed IAM policies (by ARN) to the runner IAM role"
   type        = list(string)

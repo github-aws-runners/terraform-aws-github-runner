@@ -93,6 +93,7 @@ module "multi-runner" {
         ]
       }
     },
+    # TODO: make ephemeral
     "linux-x64" = {
       fifo                = true
       delay_webhook_event = 0
@@ -108,6 +109,7 @@ module "multi-runner" {
         runners_maximum_count           = 1
         scale_down_schedule_expression  = "cron(* * * * ? *)"
       }
+      # TODO: add windows
     }
 
   }
