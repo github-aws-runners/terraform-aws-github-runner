@@ -113,9 +113,9 @@ resource "aws_iam_role_policy_attachment" "scale_up_vpc_execution_role" {
 }
 
 resource "aws_iam_role_policy" "ami_id_ssm_param_read" {
-  count = var.ami_id_ssm_param != null ? 1 : 0
-  name  = "${var.prefix}-ami-id-ssm-param-read"
-  role  = aws_iam_role.scale_up.name
+  count  = var.ami_id_ssm_param != null ? 1 : 0
+  name   = "${var.prefix}-ami-id-ssm-param-read"
+  role   = aws_iam_role.scale_up.name
   policy = <<-JSON
     {
       "Version": "2012-10-17",
