@@ -32,7 +32,7 @@ resource "aws_sqs_queue" "queued_builds" {
   name                        = "${var.prefix}-${each.key}-queued-builds${each.value.fifo ? ".fifo" : ""}"
   delay_seconds               = each.value.runner_config.delay_webhook_event
   visibility_timeout_seconds  = var.runners_scale_up_lambda_timeout
-  message_retention_seconds   = var.job_queue_retention_in_seconds
+  message_retention_seconds   = each.value.runner_config.job_queue_retention_in_seconds
   fifo_queue                  = each.value.fifo
   receive_wait_time_seconds   = 0
   content_based_deduplication = each.value.fifo

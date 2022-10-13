@@ -1,5 +1,5 @@
 locals {
-  environment = "multi-runner"
+  environment = var.environment != null ? var.environment : "multi-runner"
   aws_region  = "eu-west-1"
 }
 
@@ -17,9 +17,10 @@ module "multi-runner" {
   source = "../../modules/multi-runner"
   multi_runner_config = {
     "linux" = {
-      labelMatchers = ["self-hosted", "linux", "arm64", "arm"]
-      exactMatch    = true
-      fifo          = true
+      labelMatchers       = ["self-hosted", "linux", "arm64", "arm"]
+      exactMatch          = true
+      fifo                = true
+      delay_webhook_event = 0
       redrive_build_queue = {
         enabled         = false
         maxReceiveCount = null
@@ -35,9 +36,10 @@ module "multi-runner" {
       }
     },
     "linux-ubuntu" = {
-      labelMatchers = ["self-hosted", "linux", "x64", "ubuntu"]
-      exactMatch    = true
-      fifo          = true
+      labelMatchers       = ["self-hosted", "linux", "x64", "ubuntu"]
+      exactMatch          = true
+      fifo                = true
+      delay_webhook_event = 0
       redrive_build_queue = {
         enabled         = false
         maxReceiveCount = null
@@ -92,9 +94,10 @@ module "multi-runner" {
       }
     },
     "linux-x64" = {
-      fifo          = true
-      labelMatchers = ["self-hosted", "linux", "x64", "amazon"]
-      exactMatch    = false
+      fifo                = true
+      delay_webhook_event = 0
+      labelMatchers       = ["self-hosted", "linux", "x64", "amazon"]
+      exactMatch          = false
       runner_config = {
         runner_os                       = "linux"
         runner_architecture             = "x64"
@@ -128,6 +131,6 @@ module "multi-runner" {
   # runners_lambda_zip                = "lambdas-download/runners.zip"
 
   # override delay of events in seconds
-  delay_webhook_event = 0
-  log_level           = "debug"
+
+  log_level = "debug"
 }

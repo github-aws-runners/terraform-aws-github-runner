@@ -7,17 +7,6 @@ variable "github_app" {
   })
 }
 
-variable "environment" {
-  description = "A name that identifies the environment, used as prefix and for tagging."
-  type        = string
-  default     = null
-
-  validation {
-    condition     = var.environment == null
-    error_message = "The \"environment\" variable is no longer used. To migrate, set the \"prefix\" variable to the original value of \"environment\" and optionally, add \"Environment\" to the \"tags\" variable map with the same value."
-  }
-}
-
 variable "prefix" {
   description = "The prefix used for naming resources"
   type        = string
@@ -36,12 +25,6 @@ variable "tags" {
   default     = {}
 }
 
-variable "delay_webhook_event" {
-  description = "The number of seconds the event accepted by the webhook is invisible on the queue before the scale up lambda will receive the event."
-  type        = number
-  default     = 30
-}
-
 variable "runner_extra_labels" {
   description = "Extra (custom) labels for the runners (GitHub). Separate each label by a comma. Labels checks on the webhook can be enforced by setting `enable_workflow_job_labels_check`. GitHub read-only labels should not be provided."
   type        = string
@@ -52,40 +35,45 @@ variable "multi_runner_config" {
   description = "Configuration for all supported runners."
   type = map(object({
     runner_config = object({
-      enable_runner_binaries_syncer = optional(bool, true)
-      runner_os                     = string
-      runner_architecture           = string
+      runner_os           = string
+      runner_architecture = string
       runner_metadata_options = optional(map(any), {
         http_endpoint               = "enabled"
         http_tokens                 = "optional"
         http_put_response_hop_limit = 1
       })
-      pool_runner_owner               = optional(string, null)
-      create_service_linked_role_spot = optional(bool, false)
-      disable_runner_autoupdate       = optional(bool, false)
-      enable_ephemeral_runners        = optional(bool, false)
-      enable_organization_runners     = optional(bool, false)
-      enable_ssm_on_runners           = optional(bool, false)
-      instance_types                  = list(string)
-      runner_group_name               = optional(string, "Default")
-      runner_extra_labels             = string
-      runners_maximum_count           = number
-      runner_run_as                   = optional(string, "ec2-user")
-      scale_down_schedule_expression  = optional(string, "cron(*/5 * * * ? *)")
-      minimum_running_time_in_minutes = optional(number, null)
-      runner_as_root                  = optional(bool, false)
-      runner_boot_time_in_minutes     = optional(number, 5)
-      delay_webhook_event             = optional(number, 30)
-      instance_target_capacity_type   = optional(string, "spot")
-      instance_allocation_strategy    = optional(string, "lowest-price")
-      instance_max_spot_price         = optional(string, null)
+      ami_filter                              = optional(map(list(string)), null)
+      ami_owners                              = optional(list(string), ["amazon"])
+      create_service_linked_role_spot         = optional(bool, false)
+      delay_webhook_event                     = optional(number, 30)
+      disable_runner_autoupdate               = optional(bool, false)
+      enable_ephemeral_runners                = optional(bool, false)
+      enable_job_queued_check                 = optional(bool, null)
+      enable_organization_runners             = optional(bool, false)
+      enable_runner_binaries_syncer           = optional(bool, true)
+      enable_ssm_on_runners                   = optional(bool, false)
+      enabled_userdata                        = optional(bool, true)
+      instance_allocation_strategy            = optional(string, "lowest-price")
+      instance_max_spot_price                 = optional(string, null)
+      instance_target_capacity_type           = optional(string, "spot")
+      instance_types                          = list(string)
+      job_queue_retention_in_seconds          = optional(number, 86400)
+      minimum_running_time_in_minutes         = optional(number, null)
+      pool_runner_owner                       = optional(string, null)
+      runner_as_root                          = optional(bool, false)
+      runner_boot_time_in_minutes             = optional(number, 5)
+      runner_extra_labels                     = string
+      runner_group_name                       = optional(string, "Default")
+      runner_run_as                           = optional(string, "ec2-user")
+      runners_maximum_count                   = number
+      scale_down_schedule_expression          = optional(string, "cron(*/5 * * * ? *)")
+      scale_up_reserved_concurrent_executions = optional(number, 1)
+      userdata_template                       = optional(string, null)
       idle_config = optional(list(object({
         cron      = string
         timeZone  = string
         idleCount = number
       })), [])
-      scale_up_reserved_concurrent_executions = optional(number, 1)
-      enabled_userdata                        = optional(bool, true)
       runner_log_files = optional(list(object({
         log_group_name   = string
         prefix_log_group = bool
@@ -113,15 +101,12 @@ variable "multi_runner_config" {
         volume_size           = 30
         volume_type           = "gp3"
       }])
-      ami_filter              = optional(map(list(string)), null)
-      ami_owners              = optional(list(string), ["amazon"])
-      userdata_template       = optional(string, null)
-      enable_job_queued_check = optional(bool, null)
       pool_config = optional(list(object({
         schedule_expression = string
         size                = number
       })), [])
     })
+
     labelMatchers = list(string)
     exactMatch    = optional(bool, false)
     fifo          = optional(bool, false)
@@ -262,12 +247,6 @@ variable "lambda_architecture" {
   }
 }
 
-variable "runner_allow_prerelease_binaries" {
-  description = "Allow the runners to update to prerelease binaries."
-  type        = bool
-  default     = false
-}
-
 variable "syncer_lambda_s3_key" {
   description = "S3 key for syncer lambda function. Required if using S3 bucket to specify lambdas."
   default     = null
@@ -321,12 +300,6 @@ variable "queue_encryption" {
     condition     = var.queue_encryption == null || var.queue_encryption.sqs_managed_sse_enabled != null && var.queue_encryption.kms_master_key_id == null && var.queue_encryption.kms_data_key_reuse_period_seconds == null || var.queue_encryption.sqs_managed_sse_enabled == null && var.queue_encryption.kms_master_key_id != null
     error_message = "Invalid configuration for `queue_encryption`. Valid configurations are encryption disabled, enabled via SSE. Or encryption via KMS."
   }
-}
-
-variable "job_queue_retention_in_seconds" {
-  description = "The number of seconds the job is held in the queue before it is purged"
-  type        = number
-  default     = 86400
 }
 
 variable "aws_partition" {
