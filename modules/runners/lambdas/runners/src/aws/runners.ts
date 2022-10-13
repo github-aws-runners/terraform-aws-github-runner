@@ -145,7 +145,9 @@ export async function createRunner(runnerParameters: RunnerInputParameters): Pro
   if (runnerParameters.amiIdSsmParam) {
     logger.debug(`Looking up runner AMI ID from SSM parameter: ${runnerParameters.amiIdSsmParam}`);
     try {
-      const result: AWS.SSM.GetParameterResult = await ssm.getParameter({Name: runnerParameters.amiIdSsmParam}).promise();
+      const result: AWS.SSM.GetParameterResult = await ssm
+        .getParameter({ Name: runnerParameters.amiIdSsmParam })
+        .promise();
       amiIdFromSsm = result.Parameter?.Value;
     } catch (e) {
       logger.error(`Failed to lookup runner AMI ID from SSM parameter: ${runnerParameters.amiIdSsmParam}`, e);
