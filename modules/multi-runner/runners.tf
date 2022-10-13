@@ -14,9 +14,9 @@ module "runners" {
 
   runner_os                     = each.value.runner_config.runner_os
   instance_types                = each.value.runner_config.instance_types
-  instance_target_capacity_type = each.value.instance_target_capacity_type
-  instance_allocation_strategy  = each.value.instance_allocation_strategy
-  instance_max_spot_price       = each.value.instance_max_spot_price
+  instance_target_capacity_type = each.value.runner_config.instance_target_capacity_type
+  instance_allocation_strategy  = each.value.runner_config.instance_allocation_strategy
+  instance_max_spot_price       = each.value.runner_config.instance_max_spot_price
   block_device_mappings         = each.value.runner_config.block_device_mappings
 
   runner_architecture = each.value.runner_config.runner_architecture
@@ -38,7 +38,7 @@ module "runners" {
   runner_as_root                       = each.value.runner_config.runner_as_root
   runner_run_as                        = each.value.runner_config.runner_run_as
   runners_maximum_count                = each.value.runner_config.runners_maximum_count
-  idle_config                          = each.value.idle_config
+  idle_config                          = each.value.runner_config.idle_config
   enable_ssm_on_runners                = each.value.runner_config.enable_ssm_on_runners
   egress_rules                         = var.runner_egress_rules
   runner_additional_security_group_ids = var.runner_additional_security_group_ids
@@ -62,13 +62,13 @@ module "runners" {
   runner_log_files                 = each.value.runner_config.runner_log_files
   runner_group_name                = each.value.runner_config.runner_group_name
 
-  scale_up_reserved_concurrent_executions = each.value.scale_up_reserved_concurrent_executions
+  scale_up_reserved_concurrent_executions = each.value.runner_config.scale_up_reserved_concurrent_executions
 
   instance_profile_path     = var.instance_profile_path
   role_path                 = var.role_path
   role_permissions_boundary = var.role_permissions_boundary
 
-  enabled_userdata      = each.value.enabled_userdata
+  enabled_userdata      = each.value.runner_config.enabled_userdata
   userdata_template     = each.value.runner_config.userdata_template
   userdata_pre_install  = var.userdata_pre_install
   userdata_post_install = var.userdata_post_install
