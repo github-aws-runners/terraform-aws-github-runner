@@ -2,8 +2,8 @@
   "ResourceTypeFilters": ["AWS::AllSupported"],
   "TagFilters": [
     {
-      "Key": "Environment",
-      "Values": ["${environment}"]
+      "Key": "Example",
+      "Values": ["${example}"]
     }
   ]
 }

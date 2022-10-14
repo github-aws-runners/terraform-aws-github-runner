@@ -36,6 +36,31 @@ variable "distribution_bucket_name" {
     condition     = can(regex("^[a-z0-9-]*$", var.distribution_bucket_name))
   }
 }
+
+variable "s3_logging_bucket" {
+  description = "Bucket for action runner distribution bucket access logging."
+  type        = string
+  default     = null
+
+  # Make sure the bucket name only contains legal characters
+  validation {
+    error_message = "Only lowercase alphanumeric characters and hyphens allowed in the bucket name."
+    condition     = var.s3_logging_bucket == null || can(regex("^[a-z0-9-]*$", var.s3_logging_bucket))
+  }
+}
+
+variable "s3_logging_bucket_prefix" {
+  description = "Bucket prefix for action runner distribution bucket access logging."
+  type        = string
+  default     = null
+
+  # Make sure the bucket name only contains legal characters
+  validation {
+    error_message = "Only lowercase alphanumeric characters and hyphens allowed in the bucket name."
+    condition     = var.s3_logging_bucket_prefix == null || can(regex("^[a-z0-9-]*$", var.s3_logging_bucket_prefix))
+  }
+}
+
 variable "lambda_schedule_expression" {
   description = "Scheduler expression for action runner binary syncer."
   type        = string

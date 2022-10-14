@@ -1,5 +1,6 @@
 locals {
   environment = "prebuilt"
+  aws_region  = "eu-west-1"
 }
 
 resource "random_id" "random" {
@@ -8,12 +9,19 @@ resource "random_id" "random" {
 
 data "aws_caller_identity" "current" {}
 
+module "base" {
+  source = "../base"
+
+  prefix     = local.environment
+  aws_region = local.aws_region
+}
+
 module "runners" {
   source                          = "../../"
   create_service_linked_role_spot = true
-  aws_region                      = var.aws_region
-  vpc_id                          = module.vpc.vpc_id
-  subnet_ids                      = module.vpc.private_subnets
+  aws_region                      = local.aws_region
+  vpc_id                          = module.base.vpc.vpc_id
+  subnet_ids                      = module.base.vpc.private_subnets
 
   prefix                      = local.environment
   enable_organization_runners = false

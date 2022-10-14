@@ -5,6 +5,8 @@
 echo "Retrieving TOKEN from AWS API"
 token=$(curl -f -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 180")
 
+ami_id=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/meta-data/ami-id)
+
 region=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r .region)
 echo "Retrieved REGION from AWS API ($region)"
 
@@ -60,11 +62,30 @@ chown -R $run_as .
 echo "Configure GH Runner as user $run_as"
 sudo --preserve-env=RUNNER_ALLOW_RUNASROOT -u "$run_as" -- ./config.sh --unattended --name "$instance_id" --work "_work" $${config}
 
+info_arch=$(uname -p)
+info_os=$(( lsb_release -ds || cat /etc/*release || uname -om ) 2>/dev/null | head -n1 | cut -d "=" -f2- | tr -d '"')
+
+tee /opt/actions-runner/.setup_info <<EOL
+[
+  {
+    "group": "Operating System",
+    "detail": "Distribution: $info_os\nArchitecture: $info_arch"
+  },
+  {
+    "group": "Runner Image",
+    "detail": "AMI id: $ami_id"
+  }
+]
+EOL
+
+
 ## Start the runner
 echo "Starting runner after $(awk '{print int($1/3600)":"int(($1%3600)/60)":"int($1%60)}' /proc/uptime)"
 echo "Starting the runner as user $run_as"
 
 if [[ $agent_mode = "ephemeral" ]]; then
+
+cat >/opt/start-runner-service.sh <<-EOF
   echo "Starting the runner in ephemeral mode"
   sudo --preserve-env=RUNNER_ALLOW_RUNASROOT -u "$run_as" -- ./run.sh
   echo "Runner has finished"
@@ -73,6 +94,11 @@ if [[ $agent_mode = "ephemeral" ]]; then
   systemctl stop amazon-cloudwatch-agent.service
   echo "Terminating instance"
   aws ec2 terminate-instances --instance-ids "$instance_id" --region "$region"
+EOF
+  chmod 755 /opt/start-runner-service.sh
+  # Starting the runner via a own process to ensure this process terminates
+  nohup /opt/start-runner-service.sh &
+
 else
   echo "Installing the runner as a service"
   ./svc.sh install "$run_as"

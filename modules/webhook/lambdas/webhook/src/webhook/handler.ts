@@ -43,6 +43,7 @@ export async function handle(headers: IncomingHttpHeaders, body: string): Promis
   LogFields.fields.action = payload.action;
   LogFields.fields.name = payload[githubEvent].name;
   LogFields.fields.status = payload[githubEvent].status;
+  LogFields.fields.workflowJobId = payload[githubEvent].id;
   LogFields.fields.started_at = payload[githubEvent]?.started_at;
 
   /*

@@ -1,5 +1,91 @@
 # Changelog
 
+=======
+## [1.11.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v1.10.0...v1.11.0) (2022-10-06)
+
+
+### Features
+
+* Support s3 bucket logging for distribution cache bucket ([#2430](https://github.com/philips-labs/terraform-aws-github-runner/issues/2430)) ([69578e0](https://github.com/philips-labs/terraform-aws-github-runner/commit/69578e0d1d381a11e359ea68957b5a3b27fad5a5))
+
+## [1.10.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v1.9.1...v1.10.0) (2022-09-24)
+
+
+### Features
+
+* Download runner release via latest release API ([#2455](https://github.com/philips-labs/terraform-aws-github-runner/issues/2455)) ([e75e092](https://github.com/philips-labs/terraform-aws-github-runner/commit/e75e092f328dcba40f2d970a090dd6d16b5dd9d7))
+
+## [1.9.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v1.9.0...v1.9.1) (2022-09-18)
+
+
+### Bug Fixes
+
+* **webhook:** Use `x-hub-signature-256` header as default ([#2434](https://github.com/philips-labs/terraform-aws-github-runner/issues/2434)) ([9c3e495](https://github.com/philips-labs/terraform-aws-github-runner/commit/9c3e495295e6fbd34e655bd3853b6bf631436925))
+
+## [1.9.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v1.8.1...v1.9.0) (2022-09-16)
+
+
+### Features
+
+* Add option to enable access log for API gateway ([#2387](https://github.com/philips-labs/terraform-aws-github-runner/issues/2387)) ([fcd9fba](https://github.com/philips-labs/terraform-aws-github-runner/commit/fcd9fbace1df963a7b86862ecfbbae7b33a867b4))
+* add s3_location_runner_distribution var as expandable for userdata ([#2371](https://github.com/philips-labs/terraform-aws-github-runner/issues/2371)) ([05fe737](https://github.com/philips-labs/terraform-aws-github-runner/commit/05fe737375da38d4779af5acdc5c8256718109c4))
+* Encrypted data at REST on SQS by default ([#2431](https://github.com/philips-labs/terraform-aws-github-runner/issues/2431)) ([7f3f4bf](https://github.com/philips-labs/terraform-aws-github-runner/commit/7f3f4bf53673afcde2335bf763f7d40912880e44))
+* **images:** Allow passing instance type when building windows image ([#2369](https://github.com/philips-labs/terraform-aws-github-runner/issues/2369)) ([eca23bf](https://github.com/philips-labs/terraform-aws-github-runner/commit/eca23bffe9a219d3dc66028149f5cb2d8c7eca35))
+
+
+### Bug Fixes
+
+* **runners:** Fetch instance environment tag though metadata ([#2346](https://github.com/philips-labs/terraform-aws-github-runner/issues/2346)) ([27db290](https://github.com/philips-labs/terraform-aws-github-runner/commit/27db29046f3a23240a6a28c255cc9354d7c1804d))
+* **runners:** Set the default Windows AMI to Server 2022 ([#2325](https://github.com/philips-labs/terraform-aws-github-runner/issues/2325)) ([78e99d1](https://github.com/philips-labs/terraform-aws-github-runner/commit/78e99d1c80587b8cfebedde5c5f2d615300d417d))
+
+## [1.8.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v1.8.0...v1.8.1) (2022-08-17)
+
+
+### Bug Fixes
+
+* **runners:** Pass allocation strategy ([#2345](https://github.com/philips-labs/terraform-aws-github-runner/issues/2345)) ([68d3445](https://github.com/philips-labs/terraform-aws-github-runner/commit/68d3445036babd5efa2e3077597b6ab6b958128e))
+
+## [1.8.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v1.7.0...v1.8.0) (2022-08-15)
+
+
+### Features
+
+* Add option to disable lambda to sync runner binaries ([#2314](https://github.com/philips-labs/terraform-aws-github-runner/issues/2314)) ([9f7d32d](https://github.com/philips-labs/terraform-aws-github-runner/commit/9f7d32d7edd724ee015a053dc1914a4b871aafe1))
+
+
+### Bug Fixes
+
+* **examples:** Upgrading ubuntu example to 22.04 ([#2250](https://github.com/philips-labs/terraform-aws-github-runner/issues/2250)) ([d4b7650](https://github.com/philips-labs/terraform-aws-github-runner/commit/d4b7650312274594a0f5274abccf99c66b594966)), closes [#2103](https://github.com/philips-labs/terraform-aws-github-runner/issues/2103)
+
+## [1.7.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v1.6.0...v1.7.0) (2022-08-04)
+
+
+### Features
+
+* Webhook accept jobs where not all labels are provided in job. ([#2209](https://github.com/philips-labs/terraform-aws-github-runner/issues/2209)) ([6d9116f](https://github.com/philips-labs/terraform-aws-github-runner/commit/6d9116fe9a8b8620691d4af8aa6c6d6e0003b502))
+
+
+### Bug Fixes
+
+* Ignore case for runner labels. ([#2315](https://github.com/philips-labs/terraform-aws-github-runner/issues/2315)) ([014985a](https://github.com/philips-labs/terraform-aws-github-runner/commit/014985a567e05e74713126fe7913d1ce0a66250e))
+
+## [1.6.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v1.5.0...v1.6.0) (2022-08-03)
+
+
+### Features
+
+* Add options extra option to ebs block device mapping ([#2052](https://github.com/philips-labs/terraform-aws-github-runner/issues/2052)) ([7cd2524](https://github.com/philips-labs/terraform-aws-github-runner/commit/7cd2524ed0dba38849ac1e0e477cffda24bf21a3))
+* Enable node16 default ([#2074](https://github.com/philips-labs/terraform-aws-github-runner/issues/2074)) ([58aa5ed](https://github.com/philips-labs/terraform-aws-github-runner/commit/58aa5ed8a3f09a09b459122b5e7265f98777d59b))
+
+
+### Bug Fixes
+
+* Incorrect path of Runner logs ([#2233](https://github.com/philips-labs/terraform-aws-github-runner/issues/2233)) ([98eff98](https://github.com/philips-labs/terraform-aws-github-runner/commit/98eff98158381bd57d59e9a54efc3ee5db294110))
+* Preventing that lambda webhook fails when it tries to process an installation_repositories event ([#2288](https://github.com/philips-labs/terraform-aws-github-runner/issues/2288)) ([8656c83](https://github.com/philips-labs/terraform-aws-github-runner/commit/8656c83ec250e461062a2f4415c31f7c5186bef9))
+* Update ubuntu example to fix /opt/hostedtoolcache ([#2302](https://github.com/philips-labs/terraform-aws-github-runner/issues/2302)) ([8eea748](https://github.com/philips-labs/terraform-aws-github-runner/commit/8eea74817a9817ca386b77f1b90ae9ef721e250e))
+* Webhook lambda misleading log ([#2291](https://github.com/philips-labs/terraform-aws-github-runner/issues/2291)) ([c6275f9](https://github.com/philips-labs/terraform-aws-github-runner/commit/c6275f9d5a68c962e32596e4abf77b1fda6dd18f))
+
+
 ## [1.5.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v1.4.1...v1.5.0) (2022-07-08)
 
 

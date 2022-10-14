@@ -227,12 +227,13 @@ module "runners" {
   role_path                 = var.role_path
   role_permissions_boundary = var.role_permissions_boundary
 
-  enabled_userdata      = var.enabled_userdata
-  userdata_template     = var.userdata_template
-  userdata_pre_install  = var.userdata_pre_install
-  userdata_post_install = var.userdata_post_install
-  key_name              = var.key_name
-  runner_ec2_tags       = var.runner_ec2_tags
+  enabled_userdata               = var.enabled_userdata
+  enable_user_data_debug_logging = var.enable_user_data_debug_logging_runner
+  userdata_template              = var.userdata_template
+  userdata_pre_install           = var.userdata_pre_install
+  userdata_post_install          = var.userdata_post_install
+  key_name                       = var.key_name
+  runner_ec2_tags                = var.runner_ec2_tags
 
   create_service_linked_role_spot = var.create_service_linked_role_spot
 
@@ -262,6 +263,8 @@ module "runner_binaries" {
   tags       = local.tags
 
   distribution_bucket_name = "${var.prefix}-dist-${random_string.random.result}"
+  s3_logging_bucket        = var.runner_binaries_s3_logging_bucket
+  s3_logging_bucket_prefix = var.runner_binaries_s3_logging_bucket_prefix
 
   runner_os                        = var.runner_os
   runner_architecture              = var.runner_architecture
@@ -286,13 +289,4 @@ module "runner_binaries" {
   log_level = var.log_level
 
   lambda_principals = var.lambda_principals
-}
-
-resource "aws_resourcegroups_group" "resourcegroups_group" {
-  name = "${var.prefix}-group"
-  resource_query {
-    query = templatefile("${path.module}/templates/resource-group.json", {
-      environment = var.prefix
-    })
-  }
 }
