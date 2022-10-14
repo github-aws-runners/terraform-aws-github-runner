@@ -4,6 +4,7 @@ import nock from 'nock';
 
 import checkrun_event from '../../test/resources/github_check_run_event.json';
 import workflowjob_event from '../../test/resources/github_workflowjob_event.json';
+import queues_config from '../../test/resources/support_os_types.json';
 import { sendActionRequest } from '../sqs';
 import { getParameterValue } from '../ssm';
 import { handle } from './handler';
@@ -17,6 +18,17 @@ const secret = 'TEST_SECRET';
 const webhooks = new Webhooks({
   secret: secret,
 });
+
+const mockSQS = {
+  sendMessage: jest.fn(() => {
+    {
+      return { promise: jest.fn() };
+    }
+  }),
+};
+jest.mock('aws-sdk', () => ({
+  SQS: jest.fn().mockImplementation(() => mockSQS),
+}));
 
 describe('handler', () => {
   let originalError: Console['error'];
@@ -50,6 +62,7 @@ describe('handler', () => {
   describe('Test for workflowjob event: ', () => {
     beforeEach(() => {
       process.env.DISABLE_CHECK_WORKFLOW_JOB_LABELS = 'false';
+      process.env.SQS_URL_WEBHOOK = JSON.stringify(queues_config);
     });
     it('handles workflow job events', async () => {
       const event = JSON.stringify(workflowjob_event);
@@ -243,6 +256,54 @@ describe('handler', () => {
       );
       expect(resp.statusCode).toBe(202);
       expect(sendActionRequest).not.toBeCalled;
+    });
+    it('Check webhook will accept jobs for specific labels if workflow labels are specific', async () => {
+      process.env.RUNNER_LABELS = '["self-hosted"]';
+      process.env.ENABLE_WORKFLOW_JOB_LABELS_CHECK = 'true';
+      process.env.WORKFLOW_JOB_LABELS_CHECK_ALL = 'false';
+      const event = JSON.stringify({
+        ...workflowjob_event,
+        workflow_job: {
+          ...workflowjob_event.workflow_job,
+          labels: ['self-hosted', 'ubuntu', 'x64'],
+        },
+      });
+      const resp = await handle(
+        { 'X-Hub-Signature': await webhooks.sign(event), 'X-GitHub-Event': 'workflow_job' },
+        event,
+      );
+      expect(resp.statusCode).toBe(201);
+      expect(sendActionRequest).toBeCalledWith({id: workflowjob_event.workflow_job.id,
+        repositoryName: workflowjob_event.repository.name,
+        repositoryOwner: workflowjob_event.repository.owner.login,
+        eventType: 'workflow_job',
+        installationId: 0,
+        queueId: 'ubuntu-queue-id',
+        queueFifo: false});
+    });
+    it('Check webhook will accept jobs for latest labels if workflow labels are not specific', async () => {
+      process.env.RUNNER_LABELS = '["self-hosted"]';
+      process.env.ENABLE_WORKFLOW_JOB_LABELS_CHECK = 'true';
+      process.env.WORKFLOW_JOB_LABELS_CHECK_ALL = 'false';
+      const event = JSON.stringify({
+        ...workflowjob_event,
+        workflow_job: {
+          ...workflowjob_event.workflow_job,
+          labels: ['self-hosted', 'linux', 'x64'],
+        },
+      });
+      const resp = await handle(
+        { 'X-Hub-Signature': await webhooks.sign(event), 'X-GitHub-Event': 'workflow_job' },
+        event,
+      );
+      expect(resp.statusCode).toBe(201);
+      expect(sendActionRequest).toBeCalledWith({id: workflowjob_event.workflow_job.id,
+        repositoryName: workflowjob_event.repository.name,
+        repositoryOwner: workflowjob_event.repository.owner.login,
+        eventType: 'workflow_job',
+        installationId: 0,
+        queueId: 'latest-queue-id',
+        queueFifo: false});
     });
   });
 

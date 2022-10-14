@@ -1,8 +1,3 @@
-variable "aws_region" {
-  description = "AWS region."
-  type        = string
-}
-
 variable "environment" {
   description = "A name that identifies the environment, used as prefix and for tagging."
   type        = string
@@ -30,12 +25,23 @@ variable "tags" {
   default     = {}
 }
 
-variable "sqs_build_queue" {
-  description = "SQS queue to publish accepted build events."
-  type = object({
-    id  = string
-    arn = string
-  })
+variable "sqs_build_queue_by_runner_os" {
+  description = "SQS queue to publish accepted build events based on the runner type."
+  type = list(object({
+    id   = string
+    arn  = string
+    enable_runner_binaries_syncer = bool
+    os_config = object({
+      runner_os_type = string
+      runner_os_distribution = string
+      runner_architecture = string
+    })
+    fifo = bool
+    redrive_build_queue = object({
+      enabled = bool
+      maxReceiveCount = number
+    })
+  }))
 }
 
 variable "lambda_zip" {
@@ -162,12 +168,6 @@ variable "log_level" {
 
 variable "disable_check_wokflow_job_labels" {
   description = "Disable the check of workflow labels."
-  type        = bool
-  default     = false
-}
-
-variable "sqs_build_queue_fifo" {
-  description = "Enable a FIFO queue to remain the order of events received by the webhook. Suggest to set to true for repo level runners."
   type        = bool
   default     = false
 }

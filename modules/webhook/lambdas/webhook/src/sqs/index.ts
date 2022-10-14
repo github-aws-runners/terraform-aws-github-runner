@@ -1,4 +1,5 @@
 import { SQS } from 'aws-sdk';
+import { bool } from 'aws-sdk/clients/signer';
 
 import { LogFields, logger } from '../webhook/logger';
 
@@ -8,21 +9,37 @@ export interface ActionRequestMessage {
   repositoryName: string;
   repositoryOwner: string;
   installationId: number;
+  queueId: string;
+  queueFifo: bool;
+}
+export interface OSConfig { 
+  runner_os_type : string
+  runner_os_distribution : string
+  runner_architecture : string
+}
+export interface RedriveBuildQueue {
+  enabled: bool
+  maxReceiveCount: number
+}
+export interface QueueConfig { 
+  os_config: OSConfig
+  redriveBuildQueue: RedriveBuildQueue
+  enable_runner_binaries_syncer: bool
+  id: string
+  arn: string
+  fifo : bool
 }
 
 export const sendActionRequest = async (message: ActionRequestMessage): Promise<void> => {
   const sqs = new SQS({ region: process.env.AWS_REGION });
 
-  const useFifoQueueEnv = process.env.SQS_IS_FIFO || 'false';
-  const useFifoQueue = JSON.parse(useFifoQueueEnv) as boolean;
-
   const sqsMessage: SQS.Types.SendMessageRequest = {
-    QueueUrl: String(process.env.SQS_URL_WEBHOOK),
+    QueueUrl: message.queueId,
     MessageBody: JSON.stringify(message),
   };
 
   logger.debug(`sending message to SQS: ${JSON.stringify(sqsMessage)}`, LogFields.print());
-  if (useFifoQueue) {
+  if (message.queueFifo) {
     sqsMessage.MessageGroupId = String(message.id);
   }
 

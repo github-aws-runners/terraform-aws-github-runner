@@ -3,7 +3,7 @@ import { CheckRunEvent, WorkflowJobEvent } from '@octokit/webhooks-types';
 import { IncomingHttpHeaders } from 'http';
 
 import { Response } from '../lambda';
-import { sendActionRequest } from '../sqs';
+import { QueueConfig, sendActionRequest } from '../sqs';
 import { getParameterValue } from '../ssm';
 import { LogFields, logger as rootLogger } from './logger';
 
@@ -63,12 +63,15 @@ export async function handle(headers: IncomingHttpHeaders, body: string): Promis
   logger.info(`Processing Github event`, LogFields.print());
 
   if (githubEvent == 'workflow_job') {
+    const workflowJobEvent = payload as WorkflowJobEvent;
+    const { queue_details } = filterQueueDetails(workflowJobEvent.workflow_job.labels)
     response = await handleWorkflowJob(
-      payload as WorkflowJobEvent,
+      workflowJobEvent,
       githubEvent,
       enableWorkflowLabelCheck,
       workflowLabelCheckAll,
       runnerLabels,
+      queue_details
     );
   } else {
     response = {
@@ -76,7 +79,6 @@ export async function handle(headers: IncomingHttpHeaders, body: string): Promis
       body: `Received event '${githubEvent}' ignored.`,
     };
   }
-
   return response;
 }
 
@@ -124,6 +126,23 @@ async function verifySignature(
   }
   return 200;
 }
+function filterQueueDetails(workflowLabels: string[]){
+  const queuesConfig = process.env.SQS_URL_WEBHOOK || '[]';
+  const queue_configs = JSON.parse(queuesConfig) as Array<QueueConfig>;
+  // get all available OS configurations
+  const osTypes = new Set(queue_configs.map(config => config.os_config.runner_os_type));
+  const osDistributions = new Set(queue_configs.map(config => config.os_config.runner_os_distribution));
+  const architectures = new Set(queue_configs.map(config => config.os_config.runner_architecture));
+  // try to find the corresponding labels in workflow labels
+  const workflowOSType = findLabel(workflowLabels, Array.from(osTypes.values())) || 'linux';
+  const workflowOSDistribution = findLabel(workflowLabels, Array.from(osDistributions.values())) || 'latest';
+  const workflowArchitecture = findLabel(workflowLabels, Array.from(architectures.values())) || 'x64';
+  // find queue corresponding to the workflow labels/defaults
+  const queue_details = queue_configs.filter(config => (config.os_config.runner_os_type == workflowOSType &&
+                                                        config.os_config.runner_os_distribution == workflowOSDistribution &&
+                                                        config.os_config.runner_architecture == workflowArchitecture));
+  return { queue_details };
+}
 
 async function handleWorkflowJob(
   body: WorkflowJobEvent,
@@ -131,6 +150,7 @@ async function handleWorkflowJob(
   enableWorkflowLabelCheck: boolean,
   workflowLabelCheckAll: boolean,
   runnerLabels: string[],
+  queueConfig: Array<QueueConfig>
 ): Promise<Response> {
   if (enableWorkflowLabelCheck && !canRunJob(body, runnerLabels, workflowLabelCheckAll)) {
     logger.warn(
@@ -144,13 +164,15 @@ async function handleWorkflowJob(
   }
 
   const installationId = getInstallationId(body);
-  if (body.action === 'queued') {
+  if (body.action === 'queued' && queueConfig.length > 0) {
     await sendActionRequest({
       id: body.workflow_job.id,
       repositoryName: body.repository.name,
       repositoryOwner: body.repository.owner.login,
       eventType: githubEvent,
       installationId: installationId,
+      queueId: queueConfig[0].id,
+      queueFifo: queueConfig[0].fifo
     });
     logger.info(`Successfully queued job for ${body.repository.full_name}`, LogFields.print());
   }
@@ -182,4 +204,9 @@ function canRunJob(job: WorkflowJobEvent, runnerLabels: string[], workflowLabelC
     LogFields.print(),
   );
   return match;
+}
+
+function findLabel(workflowLabels: string[], labels: string[]) : string {
+  const filteredArray = workflowLabels.filter(wfLabel => labels.some(label => label.toLowerCase() == wfLabel.toLowerCase()));
+  return filteredArray.length > 0 ? filteredArray[0] : ""
 }

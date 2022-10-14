@@ -14,37 +14,28 @@ jest.mock('aws-sdk', () => ({
 }));
 
 describe('Test sending message to SQS.', () => {
-  const message: ActionRequestMessage = {
+  const queueUrl = 'https://sqs.eu-west-1.amazonaws.com/123456789/queued-builds'
+  const message = {
     eventType: 'type',
     id: 0,
     installationId: 0,
     repositoryName: 'test',
     repositoryOwner: 'owner',
+    queueId: queueUrl
   };
-  const sqsMessage: SQS.Types.SendMessageRequest = {
-    QueueUrl: 'https://sqs.eu-west-1.amazonaws.com/123456789/queued-builds',
-    MessageBody: JSON.stringify(message),
-  };
-
-  it('no fifo queue, based on defaults', async () => {
-    // Arrange
-    process.env.SQS_URL_WEBHOOK = sqsMessage.QueueUrl;
-
-    // Act
-    const result = await sendActionRequest(message);
-
-    // Assert
-    expect(mockSQS.sendMessage).toBeCalledWith(sqsMessage);
-    expect(result).resolves;
-  });
 
   it('no fifo queue', async () => {
     // Arrange
-    process.env.SQS_URL_WEBHOOK = sqsMessage.QueueUrl;
-    process.env.SQS_IS_FIFO = 'false';
-
+    const no_fifo_message: ActionRequestMessage = {
+      ...message,
+      queueFifo: false
+    };
+    const sqsMessage: SQS.Types.SendMessageRequest = {
+      QueueUrl: queueUrl,
+      MessageBody: JSON.stringify(no_fifo_message),
+    };
     // Act
-    const result = await sendActionRequest(message);
+    const result = await sendActionRequest(no_fifo_message);
 
     // Assert
     expect(mockSQS.sendMessage).toBeCalledWith(sqsMessage);
@@ -53,11 +44,16 @@ describe('Test sending message to SQS.', () => {
 
   it('use a fifo queue', async () => {
     // Arrange
-    process.env.SQS_URL_WEBHOOK = sqsMessage.QueueUrl;
-    process.env.SQS_IS_FIFO = 'true';
-
+    const fifo_message: ActionRequestMessage = {
+      ...message,
+      queueFifo: true
+    };
+    const sqsMessage: SQS.Types.SendMessageRequest = {
+      QueueUrl: queueUrl,
+      MessageBody: JSON.stringify(fifo_message),
+    };
     // Act
-    const result = await sendActionRequest(message);
+    const result = await sendActionRequest(fifo_message);
 
     // Assert
     expect(mockSQS.sendMessage).toBeCalledWith({ ...sqsMessage, MessageGroupId: String(message.id) });
