@@ -273,13 +273,15 @@ describe('handler', () => {
         event,
       );
       expect(resp.statusCode).toBe(201);
-      expect(sendActionRequest).toBeCalledWith({id: workflowjob_event.workflow_job.id,
+      expect(sendActionRequest).toBeCalledWith({
+        id: workflowjob_event.workflow_job.id,
         repositoryName: workflowjob_event.repository.name,
         repositoryOwner: workflowjob_event.repository.owner.login,
         eventType: 'workflow_job',
         installationId: 0,
         queueId: 'ubuntu-queue-id',
-        queueFifo: false});
+        queueFifo: false,
+      });
     });
     it('Check webhook will accept jobs for latest labels if workflow labels are not specific', async () => {
       process.env.RUNNER_LABELS = '["self-hosted"]';
@@ -297,13 +299,15 @@ describe('handler', () => {
         event,
       );
       expect(resp.statusCode).toBe(201);
-      expect(sendActionRequest).toBeCalledWith({id: workflowjob_event.workflow_job.id,
+      expect(sendActionRequest).toBeCalledWith({
+        id: workflowjob_event.workflow_job.id,
         repositoryName: workflowjob_event.repository.name,
         repositoryOwner: workflowjob_event.repository.owner.login,
         eventType: 'workflow_job',
         installationId: 0,
         queueId: 'latest-queue-id',
-        queueFifo: false});
+        queueFifo: false,
+      });
     });
   });
 

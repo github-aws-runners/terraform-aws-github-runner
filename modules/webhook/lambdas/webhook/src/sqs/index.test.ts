@@ -14,21 +14,21 @@ jest.mock('aws-sdk', () => ({
 }));
 
 describe('Test sending message to SQS.', () => {
-  const queueUrl = 'https://sqs.eu-west-1.amazonaws.com/123456789/queued-builds'
+  const queueUrl = 'https://sqs.eu-west-1.amazonaws.com/123456789/queued-builds';
   const message = {
     eventType: 'type',
     id: 0,
     installationId: 0,
     repositoryName: 'test',
     repositoryOwner: 'owner',
-    queueId: queueUrl
+    queueId: queueUrl,
   };
 
   it('no fifo queue', async () => {
     // Arrange
     const no_fifo_message: ActionRequestMessage = {
       ...message,
-      queueFifo: false
+      queueFifo: false,
     };
     const sqsMessage: SQS.Types.SendMessageRequest = {
       QueueUrl: queueUrl,
@@ -46,7 +46,7 @@ describe('Test sending message to SQS.', () => {
     // Arrange
     const fifo_message: ActionRequestMessage = {
       ...message,
-      queueFifo: true
+      queueFifo: true,
     };
     const sqsMessage: SQS.Types.SendMessageRequest = {
       QueueUrl: queueUrl,
