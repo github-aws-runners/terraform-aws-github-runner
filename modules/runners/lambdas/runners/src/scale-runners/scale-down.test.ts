@@ -444,7 +444,7 @@ describe('scaleDown', () => {
 
       expect(mockOctokit.apps.getRepoInstallation).toBeCalledTimes(2);
       expect(mockOctokit.apps.getOrgInstallation).toBeCalledTimes(1);
-      expect(terminateRunner).toBeCalledTimes(8);
+      expect(terminateRunner).toBeCalledTimes(7);
       for (const toTerminate of RUNNERS_ALL_REMOVED) {
         expect(terminateRunner).toHaveBeenCalledWith(toTerminate.instanceId);
       }
@@ -558,7 +558,7 @@ describe('scaleDown', () => {
 
       expect(mockOctokit.apps.getRepoInstallation).toBeCalledTimes(2);
       expect(mockOctokit.apps.getOrgInstallation).toBeCalledTimes(1);
-      expect(terminateRunner).toBeCalledTimes(8);
+      expect(terminateRunner).toBeCalledTimes(7);
       for (const toTerminate of RUNNERS_ALL_REMOVED) {
         expect(terminateRunner).toHaveBeenCalledWith(toTerminate.instanceId);
       }
