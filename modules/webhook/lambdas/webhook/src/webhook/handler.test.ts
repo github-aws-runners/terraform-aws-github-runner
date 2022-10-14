@@ -2,8 +2,9 @@ import { Webhooks } from '@octokit/webhooks';
 import { mocked } from 'jest-mock';
 import nock from 'nock';
 
+import checkrun_event from '../../test/resources/github_check_run_event.json';
 import workflowjob_event from '../../test/resources/github_workflowjob_event.json';
-import queues_config from '../../test/resources/support_os_types.json';
+import queuesConfig from '../../test/resources/support_os_types.json';
 import { sendActionRequest } from '../sqs';
 import { getParameterValue } from '../ssm';
 import { handle } from './handler';
@@ -60,8 +61,7 @@ describe('handler', () => {
 
   describe('Test for workflowjob event: ', () => {
     beforeEach(() => {
-      process.env.DISABLE_CHECK_WORKFLOW_JOB_LABELS = 'false';
-      process.env.MULTI_RUNNER_QUEUES_CONFIG = JSON.stringify(queues_config);
+      process.env.MULTI_RUNNER_QUEUES_CONFIG = JSON.stringify(queuesConfig);
     });
     it('handles workflow job events', async () => {
       const event = JSON.stringify(workflowjob_event);
@@ -144,9 +144,18 @@ describe('handler', () => {
     });
 
     it('Check runner labels accept test job', async () => {
-      process.env.RUNNER_LABELS = '["self-hosted",  "test"]';
-      process.env.ENABLE_WORKFLOW_JOB_LABELS_CHECK = 'true';
-      process.env.WORKFLOW_JOB_LABELS_CHECK_ALL = 'true';
+      process.env.MULTI_RUNNER_QUEUES_CONFIG = JSON.stringify([
+        {
+          ...queuesConfig[0],
+          labelMatchers: ['self-hosted', 'test'],
+          exactMatch: true,
+        },
+        {
+          ...queuesConfig[1],
+          labelMatchers: ['self-hosted', 'test1'],
+          exactMatch: true,
+        },
+      ]);
       const event = JSON.stringify({
         ...workflowjob_event,
         workflow_job: {
@@ -163,9 +172,18 @@ describe('handler', () => {
     });
 
     it('Check runner labels accept job with mixed order.', async () => {
-      process.env.RUNNER_LABELS = '["linux", "TEST", "self-hosted"]';
-      process.env.ENABLE_WORKFLOW_JOB_LABELS_CHECK = 'true';
-      process.env.WORKFLOW_JOB_LABELS_CHECK_ALL = 'true';
+      process.env.MULTI_RUNNER_QUEUES_CONFIG = JSON.stringify([
+        {
+          ...queuesConfig[0],
+          labelMatchers: ['linux', 'TEST', 'self-hosted'],
+          exactMatch: true,
+        },
+        {
+          ...queuesConfig[1],
+          labelMatchers: ['self-hosted', 'test1'],
+          exactMatch: true,
+        },
+      ]);
       const event = JSON.stringify({
         ...workflowjob_event,
         workflow_job: {
@@ -182,9 +200,18 @@ describe('handler', () => {
     });
 
     it('Check webhook accept jobs where not all labels are provided in job.', async () => {
-      process.env.RUNNER_LABELS = '["self-hosted", "test", "test2"]';
-      process.env.ENABLE_WORKFLOW_JOB_LABELS_CHECK = 'true';
-      process.env.WORKFLOW_JOB_LABELS_CHECK_ALL = 'true';
+      process.env.MULTI_RUNNER_QUEUES_CONFIG = JSON.stringify([
+        {
+          ...queuesConfig[0],
+          labelMatchers: ['self-hosted', 'test', 'test2'],
+          exactMatch: true,
+        },
+        {
+          ...queuesConfig[1],
+          labelMatchers: ['self-hosted', 'test1'],
+          exactMatch: true,
+        },
+      ]);
       const event = JSON.stringify({
         ...workflowjob_event,
         workflow_job: {
@@ -201,9 +228,18 @@ describe('handler', () => {
     });
 
     it('Check webhook does not accept jobs where not all labels are supported by the runner.', async () => {
-      process.env.RUNNER_LABELS = '["self-hosted", "x64", "linux", "test"]';
-      process.env.ENABLE_WORKFLOW_JOB_LABELS_CHECK = 'true';
-      process.env.WORKFLOW_JOB_LABELS_CHECK_ALL = 'true';
+      process.env.MULTI_RUNNER_QUEUES_CONFIG = JSON.stringify([
+        {
+          ...queuesConfig[0],
+          labelMatchers: ['self-hosted', 'x64', 'linux', 'test'],
+          exactMatch: true,
+        },
+        {
+          ...queuesConfig[1],
+          labelMatchers: ['self-hosted', 'x64', 'linux', 'test1'],
+          exactMatch: true,
+        },
+      ]);
       const event = JSON.stringify({
         ...workflowjob_event,
         workflow_job: {
@@ -220,9 +256,18 @@ describe('handler', () => {
     });
 
     it('Check webhook will accept jobs with a single acceptable label.', async () => {
-      process.env.RUNNER_LABELS = '["self-hosted", "x64", "linux", "test"]';
-      process.env.ENABLE_WORKFLOW_JOB_LABELS_CHECK = 'true';
-      process.env.WORKFLOW_JOB_LABELS_CHECK_ALL = 'false';
+      process.env.MULTI_RUNNER_QUEUES_CONFIG = JSON.stringify([
+        {
+          ...queuesConfig[0],
+          labelMatchers: ['self-hosted', 'test', 'test2'],
+          exactMatch: true,
+        },
+        {
+          ...queuesConfig[1],
+          labelMatchers: ['self-hosted', 'x64'],
+          exactMatch: false,
+        },
+      ]);
       const event = JSON.stringify({
         ...workflowjob_event,
         workflow_job: {
@@ -239,9 +284,18 @@ describe('handler', () => {
     });
 
     it('Check webhook will not accept jobs without correct label when job label check all is false.', async () => {
-      process.env.RUNNER_LABELS = '["self-hosted", "x64", "linux", "test"]';
-      process.env.ENABLE_WORKFLOW_JOB_LABELS_CHECK = 'true';
-      process.env.WORKFLOW_JOB_LABELS_CHECK_ALL = 'false';
+      process.env.MULTI_RUNNER_QUEUES_CONFIG = JSON.stringify([
+        {
+          ...queuesConfig[0],
+          labelMatchers: ['self-hosted', 'x64', 'linux', 'test'],
+          exactMatch: false,
+        },
+        {
+          ...queuesConfig[1],
+          labelMatchers: ['self-hosted', 'x64', 'linux', 'test1'],
+          exactMatch: false,
+        },
+      ]);
       const event = JSON.stringify({
         ...workflowjob_event,
         workflow_job: {
@@ -257,9 +311,20 @@ describe('handler', () => {
       expect(sendActionRequest).not.toBeCalled;
     });
     it('Check webhook will accept jobs for specific labels if workflow labels are specific', async () => {
-      process.env.RUNNER_LABELS = '["self-hosted"]';
-      process.env.ENABLE_WORKFLOW_JOB_LABELS_CHECK = 'true';
-      process.env.WORKFLOW_JOB_LABELS_CHECK_ALL = 'false';
+      process.env.MULTI_RUNNER_QUEUES_CONFIG = JSON.stringify([
+        {
+          ...queuesConfig[0],
+          labelMatchers: ['self-hosted'],
+          exactMatch: false,
+          id: 'ubuntu-queue-id',
+        },
+        {
+          ...queuesConfig[1],
+          labelMatchers: ['self-hosted'],
+          exactMatch: false,
+          id: 'default-queue-id',
+        },
+      ]);
       const event = JSON.stringify({
         ...workflowjob_event,
         workflow_job: {
@@ -283,9 +348,20 @@ describe('handler', () => {
       });
     });
     it('Check webhook will accept jobs for latest labels if workflow labels are not specific', async () => {
-      process.env.RUNNER_LABELS = '["self-hosted"]';
-      process.env.ENABLE_WORKFLOW_JOB_LABELS_CHECK = 'true';
-      process.env.WORKFLOW_JOB_LABELS_CHECK_ALL = 'false';
+      process.env.MULTI_RUNNER_QUEUES_CONFIG = JSON.stringify([
+        {
+          ...queuesConfig[0],
+          labelMatchers: ['self-hosted'],
+          exactMatch: false,
+          id: 'ubuntu-queue-id',
+        },
+        {
+          ...queuesConfig[1],
+          labelMatchers: ['self-hosted'],
+          exactMatch: false,
+          id: 'default-queue-id',
+        },
+      ]);
       const event = JSON.stringify({
         ...workflowjob_event,
         workflow_job: {

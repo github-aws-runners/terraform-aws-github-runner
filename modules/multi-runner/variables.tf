@@ -40,17 +40,7 @@ variable "delay_webhook_event" {
   type        = number
   default     = 30
 }
-variable "runner_enable_workflow_job_labels_check" {
-  description = "If set to true all labels in the workflow job even are matched against the custom labels and GitHub labels (os, architecture and `self-hosted`). When the labels are not matching the event is dropped at the webhook."
-  type        = bool
-  default     = false
-}
 
-variable "runner_enable_workflow_job_labels_check_all" {
-  description = "If set to true all labels in the workflow job must match the GitHub labels (os, architecture and `self-hosted`). When false if __any__ label matches it will trigger the webhook. `runner_enable_workflow_job_labels_check` must be true for this to take effect."
-  type        = bool
-  default     = true
-}
 variable "runner_extra_labels" {
   description = "Extra (custom) labels for the runners (GitHub). Separate each label by a comma. Labels checks on the webhook can be enforced by setting `enable_workflow_job_labels_check`. GitHub read-only labels should not be provided."
   type        = string
@@ -61,25 +51,29 @@ variable "multi_runner_config" {
   type = list(object({
     runner_config = object({
       id : string
-      enable_runner_binaries_syncer   = bool
+      enable_runner_binaries_syncer   = optional(bool, true)
       runner_os                       = string
       runner_architecture             = string
-      runner_metadata_options         = map(any)
-      pool_runner_owner               = string
-      create_service_linked_role_spot = bool
-      disable_runner_autoupdate       = bool
-      enable_ephemeral_runners        = bool
-      enable_organization_runners     = bool
-      enable_ssm_on_runners           = bool
+      runner_metadata_options         = optional(map(any), {
+    http_endpoint               = "enabled"
+    http_tokens                 = "optional"
+    http_put_response_hop_limit = 1
+  })
+      pool_runner_owner               = optional(string, null)
+      create_service_linked_role_spot = optional(bool, false)
+      disable_runner_autoupdate       = optional(bool, false)
+      enable_ephemeral_runners        = optional(bool, false)
+      enable_organization_runners     = optional(bool, false)
+      enable_ssm_on_runners           = optional(bool, false)
       instance_types                  = list(string)
-      runner_group_name               = string
+      runner_group_name               = optional(string, "Default")
       runner_extra_labels             = string
       runners_maximum_count           = number
-      scale_down_schedule_expression  = string
-      minimum_running_time_in_minutes = number
-      runner_as_root                  = bool
-      runner_boot_time_in_minutes     = number
-      block_device_mappings = list(object({
+      scale_down_schedule_expression  = optional(string, "cron(*/5 * * * ? *)")
+      minimum_running_time_in_minutes = optional(number, null)
+      runner_as_root                  = optional(bool, false)
+      runner_boot_time_in_minutes     = optional(number, 5)
+      block_device_mappings = optional(list(object({
         delete_on_termination = bool
         device_name           = string
         encrypted             = bool
@@ -89,23 +83,36 @@ variable "multi_runner_config" {
         throughput            = number
         volume_size           = number
         volume_type           = string
-      }))
-      ami_filter              = map(list(string))
-      ami_owners              = list(string)
-      userdata_template       = string
-      enable_job_queued_check = bool
-      pool_config = list(object({
+      })), [{
+    delete_on_termination = true
+    device_name           = "/dev/xvda"
+    encrypted             = true
+    iops                  = null
+    kms_key_id            = null
+    snapshot_id           = null
+    throughput            = null
+    volume_size           = 30
+    volume_type           = "gp3"
+  }])
+      ami_filter              = optional(map(list(string)), null)
+      ami_owners              = optional(list(string), ["amazon"])
+      userdata_template       = optional(string, null)
+      enable_job_queued_check = optional(bool, null)
+      pool_config = optional(list(object({
         schedule_expression = string
         size                = number
-      }))
+      })), [])
     })
     labelMatchers = list(string)
-    exactMatch    = bool
-    fifo          = bool
-    redrive_build_queue = object({
+    exactMatch    = optional(bool, false)
+    fifo          = optional(bool, false)
+    redrive_build_queue = optional(object({
       enabled         = bool
       maxReceiveCount = number
-    })
+    }), {
+    enabled         = false
+    maxReceiveCount = null
+  })
   }))
 }
 

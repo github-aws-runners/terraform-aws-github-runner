@@ -112,24 +112,6 @@ variable "kms_key_arn" {
   default     = null
 }
 
-variable "runner_labels" {
-  description = "Extra (custom) labels for the runners (GitHub). Separate each label by a comma. Labels checks on the webhook can be enforced by setting `enable_workflow_job_labels_check`. GitHub read-only labels should not be provided."
-  type        = string
-  default     = ""
-}
-
-variable "enable_workflow_job_labels_check" {
-  description = "If set to true all labels in the workflow job even are matched against the custom labels and GitHub labels (os, architecture and `self-hosted`). When the labels are not matching the event is dropped at the webhook."
-  type        = bool
-  default     = false
-}
-
-variable "workflow_job_labels_check_all" {
-  description = "If set to true all labels in the workflow job must match the GitHub labels (os, architecture and `self-hosted`). When false if __any__ label matches it will trigger the webhook. `enable_workflow_job_labels_check` must be true for this to take effect."
-  type        = bool
-  default     = true
-}
-
 variable "log_type" {
   description = "Logging format for lambda logging. Valid values are 'json', 'pretty', 'hidden'. "
   type        = string
