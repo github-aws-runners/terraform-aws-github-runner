@@ -256,6 +256,5 @@ describe('handler', () => {
       expect(resp.statusCode).toBe(202);
       expect(sendActionRequest).toBeCalledTimes(0);
     });
-
   });
 });
