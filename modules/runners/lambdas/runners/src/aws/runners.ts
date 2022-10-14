@@ -113,7 +113,7 @@ function generateFleetOverrides(
   instancesTypes: string[],
   amiId?: string,
 ): EC2.FleetLaunchTemplateOverridesListRequest {
-  type Spec = {
+  type Override = {
     SubnetId: string;
     InstanceType: string;
     ImageId?: string;
@@ -121,7 +121,7 @@ function generateFleetOverrides(
   const result: EC2.FleetLaunchTemplateOverridesListRequest = [];
   subnetIds.forEach((s) => {
     instancesTypes.forEach((i) => {
-      const item: Spec = {
+      const item: Override = {
         SubnetId: s,
         InstanceType: i,
       };
