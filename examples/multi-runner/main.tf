@@ -17,8 +17,11 @@ module "multi-runner" {
   source = "../../modules/multi-runner"
   multi_runner_config = {
     "linux" = {
-      labelMatchers       = ["self-hosted", "linux", "arm64", "arm"]
-      exactMatch          = true
+      matcherConfig : {
+        labelMatchers = ["self-hosted", "linux", "arm64", "arm"]
+        exactMatch    = true
+        weight        = 500
+      }
       fifo                = true
       delay_webhook_event = 0
       redrive_build_queue = {
@@ -36,8 +39,11 @@ module "multi-runner" {
       }
     },
     "linux-ubuntu" = {
-      labelMatchers       = ["self-hosted", "linux", "x64", "ubuntu"]
-      exactMatch          = true
+      matcherConfig : {
+        labelMatchers = ["self-hosted", "linux", "x64", "ubuntu"]
+        exactMatch    = true
+        weight        = 500
+      }
       fifo                = true
       delay_webhook_event = 0
       redrive_build_queue = {
@@ -93,12 +99,36 @@ module "multi-runner" {
         ]
       }
     },
-    # TODO: make ephemeral
+    "windows-x64" = {
+      matcherConfig : {
+        labelMatchers = ["self-hosted", "windows", "x64", "servercore-2022"]
+        exactMatch    = true
+        weight        = 500
+      }
+      fifo                = true
+      delay_webhook_event = 5
+      runner_config = {
+        runner_os                      = "windows"
+        runner_architecture            = "x64"
+        enable_ssm_on_runners          = true
+        instance_types                 = ["m5.large", "c5.large"]
+        runner_extra_labels            = "servercore-2022"
+        runners_maximum_count          = 1
+        scale_down_schedule_expression = "cron(* * * * ? *)"
+        runner_boot_time_in_minutes    = 20
+        ami_filter = {
+          name = ["Windows_Server-2022-English-Core-ContainersLatest-*"]
+        }
+      }
+    },
     "linux-x64" = {
+      matcherConfig : {
+        labelMatchers = ["self-hosted", "linux", "x64", "amazon"]
+        exactMatch    = false
+        weight        = 100
+      }
       fifo                = true
       delay_webhook_event = 0
-      labelMatchers       = ["self-hosted", "linux", "x64", "amazon"]
-      exactMatch          = false
       runner_config = {
         runner_os                       = "linux"
         runner_architecture             = "x64"
@@ -107,11 +137,10 @@ module "multi-runner" {
         instance_types                  = ["m5ad.large", "m5a.large"]
         runner_extra_labels             = "amazon"
         runners_maximum_count           = 1
+        enable_ephemeral_runners        = true
         scale_down_schedule_expression  = "cron(* * * * ? *)"
       }
-      # TODO: add windows
     }
-
   }
   aws_region                        = local.aws_region
   vpc_id                            = module.vpc.vpc_id

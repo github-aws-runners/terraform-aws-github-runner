@@ -13,9 +13,13 @@ export interface ActionRequestMessage {
   queueFifo: bool;
 }
 
-export interface QueueConfig {
+export interface MatcherConfig {
   labelMatchers: string[];
   exactMatch: bool;
+  weight: number;
+}
+export interface QueueConfig {
+  matcherConfig: MatcherConfig;
   id: string;
   arn: string;
   fifo: bool;

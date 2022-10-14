@@ -32,7 +32,6 @@ variable "runner_extra_labels" {
 }
 
 variable "multi_runner_config" {
-  description = "Configuration for all supported runners."
   type = map(object({
     runner_config = object({
       runner_os           = string
@@ -69,6 +68,12 @@ variable "multi_runner_config" {
       scale_down_schedule_expression          = optional(string, "cron(*/5 * * * ? *)")
       scale_up_reserved_concurrent_executions = optional(number, 1)
       userdata_template                       = optional(string, null)
+      enable_runner_detailed_monitoring       = optional(bool, false)
+      enable_cloudwatch_agent                 = optional(bool, true)
+      userdata_pre_install                    = optional(string, "")
+      userdata_post_install                   = optional(string, "")
+      runner_ec2_tags                         = optional(map(string), {})
+      runner_iam_role_managed_policy_arns     = optional(list(string), [])
       idle_config = optional(list(object({
         cron      = string
         timeZone  = string
@@ -107,9 +112,12 @@ variable "multi_runner_config" {
       })), [])
     })
 
-    labelMatchers = list(string)
-    exactMatch    = optional(bool, false)
-    fifo          = optional(bool, false)
+    matcherConfig = object({
+      labelMatchers = list(string)
+      exactMatch    = optional(bool, false)
+      weight        = optional(number, 100)
+    })
+    fifo = optional(bool, false)
     redrive_build_queue = optional(object({
       enabled         = bool
       maxReceiveCount = number
@@ -118,7 +126,59 @@ variable "multi_runner_config" {
       maxReceiveCount = null
     })
   }))
-
+  description = <<EOT
+    multi_runner_config = {
+      runner_config: {
+        runner_os: "The EC2 Operating System type to use for action runner instances (linux,windows)."
+        runner_architecture: "The platform architecture of the runner instance_type."
+        runner_metadata_options: "(Optional) Metadata options for the ec2 runner instances."
+        ami_filter: "(Optional) List of maps used to create the AMI filter for the action runner AMI. By default amazon linux 2 is used."
+        ami_owners: "(Optional) The list of owners used to select the AMI of action runner instances."
+        create_service_linked_role_spot: (Optional) create the serviced linked role for spot instances that is required by the scale-up lambda.
+        delay_webhook_event: "The number of seconds the event accepted by the webhook is invisible on the queue before the scale up lambda will receive the event."
+        disable_runner_autoupdate: "Disable the auto update of the github runner agent. Be-aware there is a grace period of 30 days, see also the [GitHub article](https://github.blog/changelog/2022-02-01-github-actions-self-hosted-runners-can-now-disable-automatic-updates/)"
+        enable_ephemeral_runners: "Enable ephemeral runners, runners will only be used once."
+        enable_job_queued_check: "Only scale if the job event received by the scale up lambda is is in the state queued. By default enabled for non ephemeral runners and disabled for ephemeral. Set this variable to overwrite the default behavior."                 = optional(bool, null)
+        enable_organization_runners: "Register runners to organization, instead of repo level"
+        enable_runner_binaries_syncer: "Option to disable the lambda to sync GitHub runner distribution, useful when using a pre-build AMI."
+        enable_ssm_on_runners: "Enable to allow access the runner instances for debugging purposes via SSM. Note that this adds additional permissions to the runner instances."
+        enabled_userdata: "Should the userdata script be enabled for the runner. Set this to false if you are using your own prebuilt AMI."
+        instance_allocation_strategy: "The allocation strategy for spot instances. AWS recommends to use `capacity-optimized` however the AWS default is `lowest-price`."
+        instance_max_spot_price: "Max price price for spot intances per hour. This variable will be passed to the create fleet as max spot price for the fleet."
+        instance_target_capacity_type: "Default lifecycle used for runner instances, can be either `spot` or `on-demand`."
+        instance_types: "List of instance types for the action runner. Defaults are based on runner_os (amzn2 for linux and Windows Server Core for win)."
+        job_queue_retention_in_seconds: "The number of seconds the job is held in the queue before it is purged"
+        minimum_running_time_in_minutes: "The time an ec2 action runner should be running at minimum before terminated if not busy."
+        pool_runner_owner: "The pool will deploy runners to the GitHub org ID, set this value to the org to which you want the runners deployed. Repo level is not supported."
+        runner_as_root: "Run the action runner under the root user. Variable `runner_run_as` will be ignored."
+        runner_boot_time_in_minutes: "The minimum time for an EC2 runner to boot and register as a runner."
+        runner_extra_labels: "Extra (custom) labels for the runners (GitHub). Separate each label by a comma. Labels checks on the webhook can be enforced by setting `enable_workflow_job_labels_check`. GitHub read-only labels should not be provided."
+        runner_group_name: "Name of the runner group."
+        runner_run_as: "Run the GitHub actions agent as user."
+        runners_maximum_count: "The maximum number of runners that will be created."
+        scale_down_schedule_expression: "Scheduler expression to check every x for scale down."
+        scale_up_reserved_concurrent_executions: "Amount of reserved concurrent executions for the scale-up lambda function. A value of 0 disables lambda from being triggered and -1 removes any concurrency limitations."
+        userdata_template: "Alternative user-data template, replacing the default template. By providing your own user_data you have to take care of installing all required software, including the action runner. Variables userdata_pre/post_install are ignored."
+        enable_runner_detailed_monitoring: "Should detailed monitoring be enabled for the runner. Set this to true if you want to use detailed monitoring. See https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-cloudwatch-new.html for details."
+        enable_cloudwatch_agent: "Enabling the cloudwatch agent on the ec2 runner instances, the runner contains default config. Configuration can be overridden via `cloudwatch_config`."
+        userdata_pre_install: "Script to be ran before the GitHub Actions runner is installed on the EC2 instances"
+        userdata_post_install: "Script to be ran after the GitHub Actions runner is installed on the EC2 instances"
+        runner_ec2_tags: "Map of tags that will be added to the launch template instance tag specifications."
+        runner_iam_role_managed_policy_arns: "Attach AWS or customer-managed IAM policies (by ARN) to the runner IAM role"
+        idle_config: "List of time period that can be defined as cron expression to keep a minimum amount of runners active instead of scaling down to 0. By defining this list you can ensure that in time periods that match the cron expression within 5 seconds a runner is kept idle."
+        runner_log_files: "(optional) Replaces the module default cloudwatch log config. See https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-Configuration-File-Details.html for details."
+        block_device_mappings: "The EC2 instance block device configuration. Takes the following keys: `device_name`, `delete_on_termination`, `volume_type`, `volume_size`, `encrypted`, `iops`, `throughput`, `kms_key_id`, `snapshot_id`."
+        pool_config: "The configuration for updating the pool. The `pool_size` to adjust to by the events triggered by the `schedule_expression`. For example you can configure a cron expression for week days to adjust the pool to 10 and another expression for the weekend to adjust the pool to 1."
+      }
+      matcherConfig: {
+        labelMatchers: "The list of labels supported by the runner configuration."
+        exactMatch: "If set to true all labels in the workflow job must match the GitHub labels (os, architecture and `self-hosted`). When false if __any__ workflow label matches it will trigger the webhook."
+        weight: "The weight assigned to a runner configuration compared to another runner configuration. The higher weights are lined up earlier for a match, specific runner configurations should be assigned a higher weight."
+      }
+      fifo: "Enable a FIFO queue to remain the order of events received by the webhook. Suggest to set to true for repo level runners."
+      redrive_build_queue: "Set options to attach (optional) a dead letter queue to the build queue, the queue between the webhook and the scale up lambda. You have the following options. 1. Disable by setting `enabled` to false. 2. Enable by setting `enabled` to `true`, `maxReceiveCount` to a number of max retries."
+    }
+  EOT
 }
 
 variable "runners_scale_up_lambda_timeout" {
@@ -329,13 +389,6 @@ variable "enable_managed_runner_security_group" {
   default     = true
 }
 
-# TODO move to runner_config
-variable "enable_runner_detailed_monitoring" {
-  description = "Should detailed monitoring be enabled for the runner. Set this to true if you want to use detailed monitoring. See https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-cloudwatch-new.html for details."
-  type        = bool
-  default     = false
-}
-
 variable "runner_egress_rules" {
   description = "List of egress rules for the GitHub runner instances."
   type = list(object({
@@ -397,13 +450,6 @@ variable "lambda_security_group_ids" {
   default     = []
 }
 
-# TODO: move to runner config
-variable "enable_cloudwatch_agent" {
-  description = "Enabling the cloudwatch agent on the ec2 runner instances, the runner contains default config. Configuration can be overridden via `cloudwatch_config`."
-  type        = bool
-  default     = true
-}
-
 variable "cloudwatch_config" {
   description = "(optional) Replaces the module default cloudwatch log config. See https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-Configuration-File-Details.html for details."
   type        = string
@@ -416,44 +462,10 @@ variable "instance_profile_path" {
   default     = null
 }
 
-# TODO: move to runner config
-variable "userdata_pre_install" {
-  type        = string
-  default     = ""
-  description = "Script to be ran before the GitHub Actions runner is installed on the EC2 instances"
-}
-
-# TODO: move to runner config
-variable "userdata_post_install" {
-  type        = string
-  default     = ""
-  description = "Script to be ran after the GitHub Actions runner is installed on the EC2 instances"
-}
-
 variable "key_name" {
   description = "Key pair name"
   type        = string
   default     = null
-}
-
-# TODO: move to runner config
-variable "runner_ec2_tags" {
-  description = "Map of tags that will be added to the launch template instance tag specifications."
-  type        = map(string)
-  default     = {}
-}
-
-variable "create_service_linked_role_spot" {
-  description = "(optional) create the serviced linked role for spot instances that is required by the scale-up lambda."
-  type        = bool
-  default     = false
-}
-
-# TODO: move to runner config
-variable "runner_iam_role_managed_policy_arns" {
-  description = "Attach AWS or customer-managed IAM policies (by ARN) to the runner IAM role"
-  type        = list(string)
-  default     = []
 }
 
 variable "ghes_url" {

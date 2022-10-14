@@ -4,7 +4,7 @@ import nock from 'nock';
 
 import checkrun_event from '../../test/resources/github_check_run_event.json';
 import workflowjob_event from '../../test/resources/github_workflowjob_event.json';
-import queuesConfig from '../../test/resources/support_os_types.json';
+import queuesConfig from '../../test/resources/multi_runner_configurations.json';
 import { sendActionRequest } from '../sqs';
 import { getParameterValue } from '../ssm';
 import { handle } from './handler';
@@ -147,13 +147,17 @@ describe('handler', () => {
       process.env.RUNNER_CONFIG = JSON.stringify([
         {
           ...queuesConfig[0],
-          labelMatchers: ['self-hosted', 'test'],
-          exactMatch: true,
+          matcherConfig: {
+            labelMatchers: ['self-hosted', 'test'],
+            exactMatch: true,
+          },
         },
         {
           ...queuesConfig[1],
-          labelMatchers: ['self-hosted', 'test1'],
-          exactMatch: true,
+          matcherConfig: {
+            labelMatchers: ['self-hosted', 'test1'],
+            exactMatch: true,
+          },
         },
       ]);
       const event = JSON.stringify({
@@ -175,13 +179,17 @@ describe('handler', () => {
       process.env.RUNNER_CONFIG = JSON.stringify([
         {
           ...queuesConfig[0],
-          labelMatchers: ['linux', 'TEST', 'self-hosted'],
-          exactMatch: true,
+          matcherConfig: {
+            labelMatchers: ['linux', 'TEST', 'self-hosted'],
+            exactMatch: true,
+          },
         },
         {
           ...queuesConfig[1],
-          labelMatchers: ['self-hosted', 'test1'],
-          exactMatch: true,
+          matcherConfig: {
+            labelMatchers: ['self-hosted', 'test1'],
+            exactMatch: true,
+          },
         },
       ]);
       const event = JSON.stringify({
@@ -203,13 +211,17 @@ describe('handler', () => {
       process.env.RUNNER_CONFIG = JSON.stringify([
         {
           ...queuesConfig[0],
-          labelMatchers: ['self-hosted', 'test', 'test2'],
-          exactMatch: true,
+          matcherConfig: {
+            labelMatchers: ['self-hosted', 'test', 'test2'],
+            exactMatch: true,
+          },
         },
         {
           ...queuesConfig[1],
-          labelMatchers: ['self-hosted', 'test1'],
-          exactMatch: true,
+          matcherConfig: {
+            labelMatchers: ['self-hosted', 'test1'],
+            exactMatch: true,
+          },
         },
       ]);
       const event = JSON.stringify({
@@ -231,13 +243,17 @@ describe('handler', () => {
       process.env.RUNNER_CONFIG = JSON.stringify([
         {
           ...queuesConfig[0],
-          labelMatchers: ['self-hosted', 'x64', 'linux', 'test'],
-          exactMatch: true,
+          matcherConfig: {
+            labelMatchers: ['self-hosted', 'x64', 'linux', 'test'],
+            exactMatch: true,
+          },
         },
         {
           ...queuesConfig[1],
-          labelMatchers: ['self-hosted', 'x64', 'linux', 'test1'],
-          exactMatch: true,
+          matcherConfig: {
+            labelMatchers: ['self-hosted', 'x64', 'linux', 'test1'],
+            exactMatch: true,
+          },
         },
       ]);
       const event = JSON.stringify({
@@ -259,13 +275,17 @@ describe('handler', () => {
       process.env.RUNNER_CONFIG = JSON.stringify([
         {
           ...queuesConfig[0],
-          labelMatchers: ['self-hosted', 'test', 'test2'],
-          exactMatch: true,
+          matcherConfig: {
+            labelMatchers: ['self-hosted', 'test', 'test2'],
+            exactMatch: true,
+          },
         },
         {
           ...queuesConfig[1],
-          labelMatchers: ['self-hosted', 'x64'],
-          exactMatch: false,
+          matcherConfig: {
+            labelMatchers: ['self-hosted', 'x64'],
+            exactMatch: false,
+          },
         },
       ]);
       const event = JSON.stringify({
@@ -287,13 +307,17 @@ describe('handler', () => {
       process.env.RUNNER_CONFIG = JSON.stringify([
         {
           ...queuesConfig[0],
-          labelMatchers: ['self-hosted', 'x64', 'linux', 'test'],
-          exactMatch: false,
+          matcherConfig: {
+            labelMatchers: ['self-hosted', 'x64', 'linux', 'test'],
+            exactMatch: false,
+          },
         },
         {
           ...queuesConfig[1],
-          labelMatchers: ['self-hosted', 'x64', 'linux', 'test1'],
-          exactMatch: false,
+          matcherConfig: {
+            labelMatchers: ['self-hosted', 'x64', 'linux', 'test1'],
+            exactMatch: false,
+          },
         },
       ]);
       const event = JSON.stringify({
@@ -314,14 +338,18 @@ describe('handler', () => {
       process.env.RUNNER_CONFIG = JSON.stringify([
         {
           ...queuesConfig[0],
-          labelMatchers: ['self-hosted'],
-          exactMatch: false,
+          matcherConfig: {
+            labelMatchers: ['self-hosted'],
+            exactMatch: false,
+          },
           id: 'ubuntu-queue-id',
         },
         {
           ...queuesConfig[1],
-          labelMatchers: ['self-hosted'],
-          exactMatch: false,
+          matcherConfig: {
+            labelMatchers: ['self-hosted'],
+            exactMatch: false,
+          },
           id: 'default-queue-id',
         },
       ]);
@@ -351,14 +379,18 @@ describe('handler', () => {
       process.env.RUNNER_CONFIG = JSON.stringify([
         {
           ...queuesConfig[0],
-          labelMatchers: ['self-hosted'],
-          exactMatch: false,
+          matcherConfig: {
+            labelMatchers: ['self-hosted'],
+            exactMatch: false,
+          },
           id: 'ubuntu-queue-id',
         },
         {
           ...queuesConfig[1],
-          labelMatchers: ['self-hosted'],
-          exactMatch: false,
+          matcherConfig: {
+            labelMatchers: ['self-hosted'],
+            exactMatch: false,
+          },
           id: 'default-queue-id',
         },
       ]);

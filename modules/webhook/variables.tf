@@ -28,11 +28,14 @@ variable "tags" {
 variable "runner_config" {
   description = "SQS queue to publish accepted build events based on the runner type."
   type = map(object({
-    arn           = string
-    id            = string
-    fifo          = bool
-    labelMatchers = list(string)
-    exactMatch    = bool
+    arn  = string
+    id   = string
+    fifo = bool
+    matcherConfig = object({
+      labelMatchers = list(string)
+      exactMatch    = bool
+      weight        = number
+    })
   }))
 }
 

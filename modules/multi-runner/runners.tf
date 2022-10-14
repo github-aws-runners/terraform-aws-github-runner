@@ -30,7 +30,7 @@ module "runners" {
   enable_job_queued_check              = each.value.runner_config.enable_job_queued_check
   disable_runner_autoupdate            = each.value.runner_config.disable_runner_autoupdate
   enable_managed_runner_security_group = var.enable_managed_runner_security_group
-  enable_runner_detailed_monitoring    = var.enable_runner_detailed_monitoring
+  enable_runner_detailed_monitoring    = each.value.runner_config.enable_runner_detailed_monitoring
   scale_down_schedule_expression       = each.value.runner_config.scale_down_schedule_expression
   minimum_running_time_in_minutes      = each.value.runner_config.minimum_running_time_in_minutes
   runner_boot_time_in_minutes          = each.value.runner_config.runner_boot_time_in_minutes
@@ -57,7 +57,7 @@ module "runners" {
   lambda_security_group_ids        = var.lambda_security_group_ids
   logging_retention_in_days        = var.logging_retention_in_days
   logging_kms_key_id               = var.logging_kms_key_id
-  enable_cloudwatch_agent          = var.enable_cloudwatch_agent
+  enable_cloudwatch_agent          = each.value.runner_config.enable_cloudwatch_agent
   cloudwatch_config                = var.cloudwatch_config
   runner_log_files                 = each.value.runner_config.runner_log_files
   runner_group_name                = each.value.runner_config.runner_group_name
@@ -70,14 +70,14 @@ module "runners" {
 
   enabled_userdata      = each.value.runner_config.enabled_userdata
   userdata_template     = each.value.runner_config.userdata_template
-  userdata_pre_install  = var.userdata_pre_install
-  userdata_post_install = var.userdata_post_install
+  userdata_pre_install  = each.value.runner_config.userdata_pre_install
+  userdata_post_install = each.value.runner_config.userdata_post_install
   key_name              = var.key_name
-  runner_ec2_tags       = var.runner_ec2_tags
+  runner_ec2_tags       = each.value.runner_config.runner_ec2_tags
 
   create_service_linked_role_spot = each.value.runner_config.create_service_linked_role_spot
 
-  runner_iam_role_managed_policy_arns = var.runner_iam_role_managed_policy_arns
+  runner_iam_role_managed_policy_arns = each.value.runner_config.runner_iam_role_managed_policy_arns
 
   ghes_url        = var.ghes_url
   ghes_ssl_verify = var.ghes_ssl_verify

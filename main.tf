@@ -107,9 +107,12 @@ module "webhook" {
     "${aws_sqs_queue.queued_builds.id}" = {
       id : aws_sqs_queue.queued_builds.id
       arn : aws_sqs_queue.queued_builds.arn
-      labelMatchers : split(",", local.runner_labels)
-      exactMatch : false
       fifo : var.fifo_build_queue
+      matcherConfig : {
+        labelMatchers : split(",", local.runner_labels)
+        exactMatch : false
+        weight : 100
+      }
     }
   }
   github_app_webhook_secret_arn = module.ssm.parameters.github_app_webhook_secret.arn

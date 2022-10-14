@@ -121,8 +121,10 @@ async function handleWorkflowJob(
 ): Promise<Response> {
   const installationId = getInstallationId(body);
   if (body.action === 'queued') {
+    // sort the queuesConfig by order of weight in descending order
+    queuesConfig.sort((a, b) => b.matcherConfig.weight - a.matcherConfig.weight);
     for (const queue of queuesConfig) {
-      if (canRunJob(body.workflow_job.labels, queue.labelMatchers, queue.exactMatch)) {
+      if (canRunJob(body.workflow_job.labels, queue.matcherConfig.labelMatchers, queue.matcherConfig.exactMatch)) {
         await sendActionRequest({
           id: body.workflow_job.id,
           repositoryName: body.repository.name,

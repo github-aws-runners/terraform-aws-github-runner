@@ -1,0 +1,32 @@
+[
+  {
+    "id": "ubuntu-queue-id",
+    "arn": "queueARN",
+    "fifo": false,
+    "matcherConfig": {
+      "labelMatchers": [
+        "self-hosted",
+        "linux",
+        "x64",
+        "ubuntu"
+      ],
+      "exactMatch": true,
+      "weight": 100
+    }
+  },
+  {
+    "id": "latest-queue-id",
+    "arn": "queueARN",
+    "fifo": false,
+    "matcherConfig": {
+      "labelMatchers": [
+        "self-hosted",
+        "linux",
+        "x64",
+        "latest"
+      ],
+      "exactMatch": false,
+      "weight": 100
+    }
+  }
+]
