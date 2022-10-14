@@ -36,6 +36,31 @@ variable "distribution_bucket_name" {
     condition     = can(regex("^[a-z0-9-]*$", var.distribution_bucket_name))
   }
 }
+
+variable "s3_logging_bucket" {
+  description = "Bucket for action runner distribution bucket access logging."
+  type        = string
+  default     = null
+
+  # Make sure the bucket name only contains legal characters
+  validation {
+    error_message = "Only lowercase alphanumeric characters and hyphens allowed in the bucket name."
+    condition     = var.s3_logging_bucket == null || can(regex("^[a-z0-9-]*$", var.s3_logging_bucket))
+  }
+}
+
+variable "s3_logging_bucket_prefix" {
+  description = "Bucket prefix for action runner distribution bucket access logging."
+  type        = string
+  default     = null
+
+  # Make sure the bucket name only contains legal characters
+  validation {
+    error_message = "Only lowercase alphanumeric characters and hyphens allowed in the bucket name."
+    condition     = var.s3_logging_bucket_prefix == null || can(regex("^[a-z0-9-]*$", var.s3_logging_bucket_prefix))
+  }
+}
+
 variable "lambda_schedule_expression" {
   description = "Scheduler expression for action runner binary syncer."
   type        = string
@@ -103,9 +128,14 @@ variable "logging_kms_key_id" {
 }
 
 variable "runner_allow_prerelease_binaries" {
-  description = "Allow the runners to update to prerelease binaries."
+  description = "(Deprecated, no longer used), allow the runners to update to prerelease binaries."
   type        = bool
-  default     = false
+  default     = null
+
+  validation {
+    condition     = var.runner_allow_prerelease_binaries == null
+    error_message = "The \"runner_allow_prerelease_binaries\" variable is no longer used. GitHub runners are not released as pre-release, only releases should be used."
+  }
 }
 
 variable "lambda_s3_bucket" {

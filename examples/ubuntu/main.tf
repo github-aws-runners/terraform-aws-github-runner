@@ -9,12 +9,20 @@ resource "random_id" "random" {
 
 data "aws_caller_identity" "current" {}
 
+
+module "base" {
+  source = "../base"
+
+  prefix     = local.environment
+  aws_region = local.aws_region
+}
+
 module "runners" {
   source = "../../"
 
   aws_region = local.aws_region
-  vpc_id     = module.vpc.vpc_id
-  subnet_ids = module.vpc.private_subnets
+  vpc_id     = module.base.vpc.vpc_id
+  subnet_ids = module.base.vpc.private_subnets
 
   prefix = local.environment
   tags = {
@@ -32,7 +40,7 @@ module "runners" {
   # runners_lambda_zip                = "lambdas-download/runners.zip"
 
   enable_organization_runners = false
-  runner_extra_labels         = "ubuntu,example"
+  runner_extra_labels         = "default,example"
 
   # enable access to the runners via SSM
   enable_ssm_on_runners = true
@@ -93,7 +101,7 @@ module "runners" {
   # Uncomment to enable ephemeral runners
   # delay_webhook_event      = 0
   # enable_ephemeral_runners = true
-  # enabled_userdata         = false
+  # enabled_userdata         = true
 
   # Uncommet idle config to have idle runners from 9 to 5 in time zone Amsterdam
   # idle_config = [{
@@ -102,4 +110,6 @@ module "runners" {
   #   idleCount = 1
   # }]
 
+  # Enable logging all commands of user_data, secrets will be logged!!!
+  # enable_user_data_debug_logging_runner = true
 }

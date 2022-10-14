@@ -89,6 +89,15 @@ variable "webhook_lambda_s3_object_version" {
   default     = null
 }
 
+variable "webhook_lambda_apigateway_access_log_settings" {
+  description = "Access log settings for webhook API gateway."
+  type = object({
+    destination_arn = string
+    format          = string
+  })
+  default = null
+}
+
 variable "repository_white_list" {
   description = "List of repositories allowed to use the github app"
   type        = list(string)

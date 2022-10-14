@@ -62,9 +62,12 @@ resource "aws_sqs_queue" "queued_builds" {
     maxReceiveCount     = var.redrive_build_queue.maxReceiveCount
   }) : null
 
+  sqs_managed_sse_enabled           = var.queue_encryption.sqs_managed_sse_enabled
+  kms_master_key_id                 = var.queue_encryption.kms_master_key_id
+  kms_data_key_reuse_period_seconds = var.queue_encryption.kms_data_key_reuse_period_seconds
+
   tags = var.tags
 }
-
 
 resource "aws_sqs_queue_policy" "build_queue_dlq_policy" {
   count     = var.redrive_build_queue.enabled ? 1 : 0
@@ -75,6 +78,10 @@ resource "aws_sqs_queue_policy" "build_queue_dlq_policy" {
 resource "aws_sqs_queue" "queued_builds_dlq" {
   count = var.redrive_build_queue.enabled ? 1 : 0
   name  = "${var.prefix}-queued-builds_dead_letter"
+
+  sqs_managed_sse_enabled           = var.queue_encryption.sqs_managed_sse_enabled
+  kms_master_key_id                 = var.queue_encryption.kms_master_key_id
+  kms_data_key_reuse_period_seconds = var.queue_encryption.kms_data_key_reuse_period_seconds
 
   tags = var.tags
 }
@@ -100,15 +107,16 @@ module "webhook" {
   sqs_build_queue_fifo          = var.fifo_build_queue
   github_app_webhook_secret_arn = module.ssm.parameters.github_app_webhook_secret.arn
 
-  lambda_s3_bucket                 = var.lambda_s3_bucket
-  webhook_lambda_s3_key            = var.webhook_lambda_s3_key
-  webhook_lambda_s3_object_version = var.webhook_lambda_s3_object_version
-  lambda_runtime                   = var.lambda_runtime
-  lambda_architecture              = var.lambda_architecture
-  lambda_zip                       = var.webhook_lambda_zip
-  lambda_timeout                   = var.webhook_lambda_timeout
-  logging_retention_in_days        = var.logging_retention_in_days
-  logging_kms_key_id               = var.logging_kms_key_id
+  lambda_s3_bucket                              = var.lambda_s3_bucket
+  webhook_lambda_s3_key                         = var.webhook_lambda_s3_key
+  webhook_lambda_s3_object_version              = var.webhook_lambda_s3_object_version
+  webhook_lambda_apigateway_access_log_settings = var.webhook_lambda_apigateway_access_log_settings
+  lambda_runtime                                = var.lambda_runtime
+  lambda_architecture                           = var.lambda_architecture
+  lambda_zip                                    = var.webhook_lambda_zip
+  lambda_timeout                                = var.webhook_lambda_timeout
+  logging_retention_in_days                     = var.logging_retention_in_days
+  logging_kms_key_id                            = var.logging_kms_key_id
 
   # labels
   enable_workflow_job_labels_check = var.runner_enable_workflow_job_labels_check
@@ -195,12 +203,13 @@ module "runners" {
   role_path                 = var.role_path
   role_permissions_boundary = var.role_permissions_boundary
 
-  enabled_userdata      = var.enabled_userdata
-  userdata_template     = var.userdata_template
-  userdata_pre_install  = var.userdata_pre_install
-  userdata_post_install = var.userdata_post_install
-  key_name              = var.key_name
-  runner_ec2_tags       = var.runner_ec2_tags
+  enabled_userdata               = var.enabled_userdata
+  enable_user_data_debug_logging = var.enable_user_data_debug_logging_runner
+  userdata_template              = var.userdata_template
+  userdata_pre_install           = var.userdata_pre_install
+  userdata_post_install          = var.userdata_post_install
+  key_name                       = var.key_name
+  runner_ec2_tags                = var.runner_ec2_tags
 
   create_service_linked_role_spot = var.create_service_linked_role_spot
 
@@ -230,6 +239,8 @@ module "runner_binaries" {
   tags       = local.tags
 
   distribution_bucket_name = "${var.prefix}-dist-${random_string.random.result}"
+  s3_logging_bucket        = var.runner_binaries_s3_logging_bucket
+  s3_logging_bucket_prefix = var.runner_binaries_s3_logging_bucket_prefix
 
   runner_os                        = var.runner_os
   runner_architecture              = var.runner_architecture
@@ -254,13 +265,4 @@ module "runner_binaries" {
   log_level = var.log_level
 
   lambda_principals = var.lambda_principals
-}
-
-resource "aws_resourcegroups_group" "resourcegroups_group" {
-  name = "${var.prefix}-group"
-  resource_query {
-    query = templatefile("${path.module}/templates/resource-group.json", {
-      environment = var.prefix
-    })
-  }
 }

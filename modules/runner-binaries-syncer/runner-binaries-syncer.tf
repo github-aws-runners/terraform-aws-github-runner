@@ -23,15 +23,14 @@ resource "aws_lambda_function" "syncer" {
 
   environment {
     variables = {
-      GITHUB_RUNNER_ALLOW_PRERELEASE_BINARIES = var.runner_allow_prerelease_binaries
-      GITHUB_RUNNER_ARCHITECTURE              = var.runner_architecture
-      GITHUB_RUNNER_OS                        = local.gh_binary_os_label[var.runner_os]
-      LOG_LEVEL                               = var.log_level
-      LOG_TYPE                                = var.log_type
-      S3_BUCKET_NAME                          = aws_s3_bucket.action_dist.id
-      S3_OBJECT_KEY                           = local.action_runner_distribution_object_key
-      S3_SSE_ALGORITHM                        = try(var.server_side_encryption_configuration.rule.apply_server_side_encryption_by_default.sse_algorithm, null)
-      S3_SSE_KMS_KEY_ID                       = try(var.server_side_encryption_configuration.rule.apply_server_side_encryption_by_default.kms_master_key_id, null)
+      GITHUB_RUNNER_ARCHITECTURE = var.runner_architecture
+      GITHUB_RUNNER_OS           = local.gh_binary_os_label[var.runner_os]
+      LOG_LEVEL                  = var.log_level
+      LOG_TYPE                   = var.log_type
+      S3_BUCKET_NAME             = aws_s3_bucket.action_dist.id
+      S3_OBJECT_KEY              = local.action_runner_distribution_object_key
+      S3_SSE_ALGORITHM           = try(var.server_side_encryption_configuration.rule.apply_server_side_encryption_by_default.sse_algorithm, null)
+      S3_SSE_KMS_KEY_ID          = try(var.server_side_encryption_configuration.rule.apply_server_side_encryption_by_default.kms_master_key_id, null)
     }
   }
 

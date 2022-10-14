@@ -7,10 +7,10 @@ packer {
   }
 }
 
-variable "action_runner_url" {
-  description = "The URL to the tarball of the action runner"
+variable "runner_version" {
+  description = "The version (no v prefix) of the runner software to install https://github.com/actions/runner/releases"
   type        = string
-  default     = "https://github.com/actions/runner/releases/download/v2.285.1/actions-runner-win-x64-2.285.1.zip"
+  default     = "2.286.1"
 }
 
 variable "region" {
@@ -19,10 +19,21 @@ variable "region" {
   default     = "eu-west-1"
 }
 
-variable "instance_type" {
-  description = "The instance type Packer will use for the builder"
+variable "security_group_id" {
+  description = "The ID of the security group Packer will associate with the builder to enable access"
   type        = string
-  default     = "t3a.medium"
+  default     = null
+}
+
+variable "subnet_id" {
+  description = "If using VPC, the ID of the subnet, such as subnet-12345def, where Packer will launch the EC2 instance. This field is required if you are using an non-default VPC"
+  type        = string
+  default     = null
+}
+
+variable "root_volume_size_gb" {
+  type    = number
+  default = 30
 }
 
 variable "ebs_delete_on_termination" {
@@ -44,15 +55,17 @@ variable "custom_shell_commands" {
 }
 
 source "amazon-ebs" "githubrunner" {
-  ami_name                    = "github-runner-windows-core-2019-${formatdate("YYYYMMDDhhmm", timestamp())}"
+  ami_name                    = "github-runner-windows-core-2022-${formatdate("YYYYMMDDhhmm", timestamp())}"
   communicator                = "winrm"
-  instance_type               = var.instance_type
+  instance_type               = "m4.xlarge"
   region                      = var.region
+  security_group_id           = var.security_group_id
+  subnet_id                   = var.subnet_id
   associate_public_ip_address = var.associate_public_ip_address
 
   source_ami_filter {
     filters = {
-      name                = "Windows_Server-2019-English-Core-ContainersLatest-*"
+      name                = "Windows_Server-2022-English-Core-ContainersLatest-**"
       root-device-type    = "ebs"
       virtualization-type = "hvm"
     }
@@ -60,7 +73,7 @@ source "amazon-ebs" "githubrunner" {
     owners      = ["amazon"]
   }
   tags = {
-    OS_Version    = "windows-core-2019"
+    OS_Version    = "windows-core-2022"
     Release       = "Latest"
     Base_AMI_Name = "{{ .SourceAMIName }}"
   }
@@ -72,6 +85,7 @@ source "amazon-ebs" "githubrunner" {
 
   launch_block_device_mappings {
     device_name           = "/dev/sda1"
+    volume_size           = "${var.root_volume_size_gb}"
     delete_on_termination = "${var.ebs_delete_on_termination}"
   }
 }
@@ -92,7 +106,7 @@ build {
   provisioner "powershell" {
     inline = concat([
       templatefile("./windows-provisioner.ps1", {
-        action_runner_url = var.action_runner_url
+        action_runner_url = "https://github.com/actions/runner/releases/download/v${var.runner_version}/actions-runner-win-x64-${var.runner_version}.zip"
       })
     ], var.custom_shell_commands)
   }
