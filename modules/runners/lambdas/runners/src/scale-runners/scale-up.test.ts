@@ -227,11 +227,6 @@ describe('scaleUp with GHES', () => {
       expect(createRunner).toBeCalledWith(expectedRunnerParams);
     });
 
-    it('creates a runner with legacy event check_run', async () => {
-      await scaleUpModule.scaleUp('aws:sqs', { ...TEST_DATA, eventType: 'check_run' });
-      expect(createRunner).toBeCalledWith(expectedRunnerParams);
-    });
-
     it('creates a runner with labels in a specific group', async () => {
       process.env.RUNNER_EXTRA_LABELS = 'label1,label2';
       process.env.RUNNER_GROUP_NAME = 'TEST_GROUP';
@@ -396,14 +391,6 @@ describe('scaleUp with public GH', () => {
     expect(listEC2Runners).not.toBeCalled();
   });
 
-  it('does not list runners when no workflows are queued (check_run)', async () => {
-    mockOctokit.checks.get.mockImplementation(() => ({
-      data: { status: 'completed' },
-    }));
-    await scaleUpModule.scaleUp('aws:sqs', { ...TEST_DATA, eventType: 'check_run' });
-    expect(listEC2Runners).not.toBeCalled();
-  });
-
   describe('on org level', () => {
     beforeEach(() => {
       process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
@@ -440,11 +427,6 @@ describe('scaleUp with public GH', () => {
 
     it('creates a runner with correct config', async () => {
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
-      expect(createRunner).toBeCalledWith(expectedRunnerParams);
-    });
-
-    it('creates a runner with legacy event check_run', async () => {
-      await scaleUpModule.scaleUp('aws:sqs', { ...TEST_DATA, eventType: 'check_run' });
       expect(createRunner).toBeCalledWith(expectedRunnerParams);
     });
 
