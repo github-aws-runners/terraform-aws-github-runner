@@ -50,9 +50,8 @@ variable "runner_extra_labels" {
 
 variable "multi_runner_config" {
   description = "Configuration for all supported runners."
-  type = list(object({
+  type = map(object({
     runner_config = object({
-      id : string
       enable_runner_binaries_syncer = optional(bool, true)
       runner_os                     = string
       runner_architecture           = string

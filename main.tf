@@ -103,7 +103,7 @@ module "webhook" {
   tags        = local.tags
   kms_key_arn = var.kms_key_arn
 
-  multi_runner_queues_config = [
+  runner_config = [
     {
       "id" : aws_sqs_queue.queued_builds.id,
       "arn" : aws_sqs_queue.queued_builds.arn,

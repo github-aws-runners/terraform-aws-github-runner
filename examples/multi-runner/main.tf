@@ -15,8 +15,8 @@ data "aws_caller_identity" "current" {}
 
 module "multi-runner" {
   source = "../../modules/multi-runner"
-  multi_runner_config = [
-    {
+  multi_runner_config = {
+    "linux" = {
       labelMatchers = ["self-hosted", "linux", "arm64", "arm"]
       exactMatch    = true
       fifo          = true
@@ -25,7 +25,6 @@ module "multi-runner" {
         maxReceiveCount = null
       }
       runner_config = {
-        id                             = "linux-arm64"
         runner_os                      = "linux"
         runner_architecture            = "arm64"
         runner_extra_labels            = "arm"
@@ -35,7 +34,7 @@ module "multi-runner" {
         scale_down_schedule_expression = "cron(* * * * ? *)"
       }
     },
-    {
+    "linux-ubuntu" = {
       labelMatchers = ["self-hosted", "linux", "x64", "ubuntu"]
       exactMatch    = true
       fifo          = true
@@ -44,7 +43,6 @@ module "multi-runner" {
         maxReceiveCount = null
       }
       runner_config = {
-        id                             = "linux-ubuntu"
         runner_os                      = "linux"
         runner_architecture            = "x64"
         runner_extra_labels            = "ubuntu"
@@ -91,16 +89,13 @@ module "multi-runner" {
             log_stream_name  = "{instance_id}/runner"
           }
         ]
-
-
       }
     },
-    {
+    "linux-x64" = {
       fifo          = true
       labelMatchers = ["self-hosted", "linux", "x64", "amazon"]
       exactMatch    = false
       runner_config = {
-        id                              = "linux-x64"
         runner_os                       = "linux"
         runner_architecture             = "x64"
         create_service_linked_role_spot = true
@@ -112,7 +107,7 @@ module "multi-runner" {
       }
     }
 
-  ]
+  }
   aws_region                        = local.aws_region
   vpc_id                            = module.vpc.vpc_id
   subnet_ids                        = module.vpc.private_subnets
@@ -134,4 +129,5 @@ module "multi-runner" {
 
   # override delay of events in seconds
   delay_webhook_event = 0
+  log_level           = "debug"
 }

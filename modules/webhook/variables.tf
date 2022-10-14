@@ -25,11 +25,11 @@ variable "tags" {
   default     = {}
 }
 
-variable "multi_runner_queues_config" {
+variable "runner_config" {
   description = "SQS queue to publish accepted build events based on the runner type."
-  type = list(object({
-    id   = string
+  type = map(object({
     arn  = string
+    id   = string
     fifo = bool
     redrive_build_queue = object({
       enabled         = bool

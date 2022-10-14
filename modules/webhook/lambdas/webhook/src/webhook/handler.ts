@@ -51,7 +51,6 @@ export async function handle(headers: IncomingHttpHeaders, body: string): Promis
   */
   LogFields.fields.completed_at = payload[githubEvent]?.completed_at;
   LogFields.fields.conclusion = payload[githubEvent]?.conclusion;
-
   if (isRepoNotAllowed(payload.repository.full_name, repositoryWhiteList)) {
     logger.error(`Received event from unauthorized repository ${payload.repository.full_name}`, LogFields.print());
     return {
@@ -60,6 +59,7 @@ export async function handle(headers: IncomingHttpHeaders, body: string): Promis
   }
 
   logger.info(`Processing Github event`, LogFields.print());
+  logger.debug(`Queue configuration: ${queuesConfig}`, LogFields.print());
 
   if (githubEvent == 'workflow_job') {
     const workflowJobEvent = payload as WorkflowJobEvent;
@@ -77,7 +77,7 @@ function readEnvironmentVariables() {
   const environment = process.env.ENVIRONMENT;
   const repositoryWhiteListEnv = process.env.REPOSITORY_WHITE_LIST || '[]';
   const repositoryWhiteList = JSON.parse(repositoryWhiteListEnv) as Array<string>;
-  const queuesConfigEnv = process.env.MULTI_RUNNER_QUEUES_CONFIG || '[]';
+  const queuesConfigEnv = process.env.RUNNER_CONFIG || '[]';
   const queuesConfig = JSON.parse(queuesConfigEnv) as Array<QueueConfig>;
   return { environment, repositoryWhiteList, queuesConfig };
 }
