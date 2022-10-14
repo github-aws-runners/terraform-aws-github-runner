@@ -104,13 +104,6 @@ async function isJobQueued(githubInstallationClient: Octokit, payload: ActionReq
       repo: payload.repositoryName,
     });
     isQueued = jobForWorkflowRun.data.status === 'queued';
-  } else if (payload.eventType === 'check_run') {
-    const checkRun = await githubInstallationClient.checks.get({
-      check_run_id: payload.id,
-      owner: payload.repositoryOwner,
-      repo: payload.repositoryName,
-    });
-    isQueued = checkRun.data.status === 'queued';
   } else {
     throw Error(`Event ${payload.eventType} is not supported`);
   }
