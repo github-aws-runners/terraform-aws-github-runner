@@ -122,7 +122,9 @@ async function handleWorkflowJob(
   const installationId = getInstallationId(body);
   if (body.action === 'queued') {
     // sort the queuesConfig by order of matcher config exact match, with all true matches lined up ahead.
-    queuesConfig.sort((a, b) => { return (a.matcherConfig.exactMatch === b.matcherConfig.exactMatch)? 0 : a.matcherConfig.exactMatch ? -1 : 1; } );
+    queuesConfig.sort((a, b) => {
+      return a.matcherConfig.exactMatch === b.matcherConfig.exactMatch ? 0 : a.matcherConfig.exactMatch ? -1 : 1;
+    });
     for (const queue of queuesConfig) {
       if (canRunJob(body.workflow_job.labels, queue.matcherConfig.labelMatchers, queue.matcherConfig.exactMatch)) {
         await sendActionRequest({
