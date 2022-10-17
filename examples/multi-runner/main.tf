@@ -20,7 +20,6 @@ module "multi-runner" {
       matcherConfig : {
         labelMatchers = ["self-hosted", "linux", "arm64", "arm"]
         exactMatch    = true
-        weight        = 500
       }
       fifo                = true
       delay_webhook_event = 0
@@ -42,7 +41,6 @@ module "multi-runner" {
       matcherConfig : {
         labelMatchers = ["self-hosted", "linux", "x64", "ubuntu"]
         exactMatch    = true
-        weight        = 500
       }
       fifo                = true
       delay_webhook_event = 0
@@ -103,7 +101,6 @@ module "multi-runner" {
       matcherConfig : {
         labelMatchers = ["self-hosted", "windows", "x64", "servercore-2022"]
         exactMatch    = true
-        weight        = 500
       }
       fifo                = true
       delay_webhook_event = 5
@@ -125,7 +122,6 @@ module "multi-runner" {
       matcherConfig : {
         labelMatchers = ["self-hosted", "linux", "x64", "amazon"]
         exactMatch    = false
-        weight        = 100
       }
       fifo                = true
       delay_webhook_event = 0

@@ -10,8 +10,7 @@
         "x64",
         "ubuntu"
       ],
-      "exactMatch": true,
-      "weight": 100
+      "exactMatch": true
     }
   },
   {
@@ -25,8 +24,7 @@
         "x64",
         "latest"
       ],
-      "exactMatch": false,
-      "weight": 100
+      "exactMatch": false
     }
   }
 ]

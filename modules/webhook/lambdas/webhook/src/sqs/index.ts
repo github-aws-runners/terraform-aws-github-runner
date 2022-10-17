@@ -16,7 +16,6 @@ export interface ActionRequestMessage {
 export interface MatcherConfig {
   labelMatchers: string[];
   exactMatch: bool;
-  weight: number;
 }
 export interface QueueConfig {
   matcherConfig: MatcherConfig;

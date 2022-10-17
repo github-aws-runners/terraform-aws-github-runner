@@ -34,7 +34,6 @@ variable "runner_config" {
     matcherConfig = object({
       labelMatchers = list(string)
       exactMatch    = bool
-      weight        = number
     })
   }))
 }

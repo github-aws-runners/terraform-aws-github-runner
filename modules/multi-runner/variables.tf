@@ -115,7 +115,6 @@ variable "multi_runner_config" {
     matcherConfig = object({
       labelMatchers = list(string)
       exactMatch    = optional(bool, false)
-      weight        = optional(number, 100)
     })
     fifo = optional(bool, false)
     redrive_build_queue = optional(object({
@@ -173,7 +172,6 @@ variable "multi_runner_config" {
       matcherConfig: {
         labelMatchers: "The list of labels supported by the runner configuration."
         exactMatch: "If set to true all labels in the workflow job must match the GitHub labels (os, architecture and `self-hosted`). When false if __any__ workflow label matches it will trigger the webhook."
-        weight: "The weight assigned to a runner configuration compared to another runner configuration. The higher weights are lined up earlier for a match, specific runner configurations should be assigned a higher weight."
       }
       fifo: "Enable a FIFO queue to remain the order of events received by the webhook. Suggest to set to true for repo level runners."
       redrive_build_queue: "Set options to attach (optional) a dead letter queue to the build queue, the queue between the webhook and the scale up lambda. You have the following options. 1. Disable by setting `enabled` to false. 2. Enable by setting `enabled` to `true`, `maxReceiveCount` to a number of max retries."

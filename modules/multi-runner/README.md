@@ -1,6 +1,6 @@
 # Module - Multi runner
 
-> This module replaces the top-level module to make it easy to crate with one deployment multiple type of runners.
+> This module replaces the top-level module to make it easy to create with one deployment multiple type of runners.
 
 This module create many runners with a single GitHub app. The module utiliazed the internal modules and deploys parts of the stack for each runner defined.
 
@@ -14,14 +14,15 @@ For each configuration:
 
 ## Matching
 
-Matching of the configuration is done based on the labels. The webhook is processing the event and matchted this against a set of rules based ...
+Matching of the configuration is done based on the labels specified in labelMatchers configuration. The webhook is processing the workflow_job event and match the labels against the labels specified in labelMatchers configuration in the order of configuration with exact-match true first, followed by all exact matches false.
 
 
 ## The catch
 
-Controlling which event is taken up by which runner is not to this module. It is completly done by GitHub. This means when potentially different runners can run the same job there is nothing that can be done to guarantee a certain runner will take up the job.
+Controlling which event is taken up by which runner is not to this module. It is completely done by GitHub. This means when potentially different runners can run the same job there is nothing that can be done to guarantee a certain runner will take up the job.
 
-An example, gevine you have two runners one with the labels. `self-hosted, linux, x64, large` and one with the labels `self-hosted, linux, x64, small`. Once you define a subset of the labels in the worklfow, for example `self-hosted, linux, x64`. Both runners can take the job potentially. You can define to scale one of ther unners for the event, but still there is no guarantee that the scaled runner take the job. This can casue that a runner is used for workflows that specify all the labels. And you end up with a job that is hanging. The only mitigation that is available right now is use a small pool of runners. Pool instances can also exists for a short amount of time and only created once in x time based on a cron expressions.
+An example, given you have two runners one with the labels. `self-hosted, linux, x64, large` and one with the labels `self-hosted, linux, x64, small`. Once you define a subset of the labels in the worklfow, for example `self-hosted, linux, x64`. Both runners can take the job potentially. You can define to scale one of the runners for the event, but still there is no guarantee that the scaled runner take the job. The workflow with subset of labels (`self-hosted, linux, x64`) can take up runner with specific labels (`self-hosted, linux, x64, large`) and leave the workflow with labels (`self-hosted, linux, x64, large`) be without the runner.
+The only mitigation that is available right now is to use a small pool of runners. Pool instances can also exists for a short amount of time and only created once in x time based on a cron expressions.
 
 
 ## Usages
@@ -43,7 +44,6 @@ module "multi-runner" {
       matcherConfig : {
         labelMatchers = ["self-hosted", "linux", "arm64", "arm"]
         exactMatch    = true
-        weight        = 500
       }
       runner_config = {
         runner_os                      = "linux"
@@ -59,7 +59,6 @@ module "multi-runner" {
       matcherConfig : {
         labelMatchers = ["self-hosted", "linux", "x64"]
         exactMatch    = false
-        weight        = 100
       }
       runner_config = {
         runner_os                       = "linux"
