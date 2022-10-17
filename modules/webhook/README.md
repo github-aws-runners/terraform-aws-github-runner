@@ -1,5 +1,7 @@
 # Module - GitHub App web hook
 
+> This module is treated as internal module, breaking changes will not trigger a major release bump.
+
 This module creates an API gateway endpoint and lambda function to handle GitHub App webhook events.
 
 ## Usages
@@ -109,21 +111,3 @@ No modules.
 | <a name="output_lambda"></a> [lambda](#output\_lambda) | n/a |
 | <a name="output_role"></a> [role](#output\_role) | n/a |
 <!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
-
-## Philips Forest
-
-This module is part of the Philips Forest.
-
-```plain
-                                                     ___                   _
-                                                    / __\__  _ __ ___  ___| |_
-                                                   / _\/ _ \| '__/ _ \/ __| __|
-                                                  / / | (_) | | |  __/\__ \ |_
-                                                  \/   \___/|_|  \___||___/\__|
-
-                                                                 Infrastructure
-```
-
-Talk to the forestkeepers in the `forest`-channel on Slack.
-
-[![Slack](https://philips-software-slackin.now.sh/badge.svg)](https://philips-software-slackin.now.sh)
