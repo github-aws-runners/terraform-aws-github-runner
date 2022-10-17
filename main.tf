@@ -110,7 +110,7 @@ module "webhook" {
       fifo : var.fifo_build_queue
       matcherConfig : {
         labelMatchers : split(",", local.runner_labels)
-        exactMatch : false
+        exactMatch : var.runner_enable_workflow_job_labels_check_all
         weight : 100
       }
     }
