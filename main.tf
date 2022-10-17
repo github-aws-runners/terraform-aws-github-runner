@@ -111,7 +111,6 @@ module "webhook" {
       matcherConfig : {
         labelMatchers : split(",", local.runner_labels)
         exactMatch : var.runner_enable_workflow_job_labels_check_all
-        weight : 100
       }
     }
   }
