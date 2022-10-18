@@ -1,6 +1,6 @@
 locals {
   environment = var.environment != null ? var.environment : "multi-runner"
-  aws_region  = "eu-west-1"
+  aws_region  = "eu-central-1"
 }
 
 resource "random_id" "random" {
@@ -16,7 +16,7 @@ data "aws_caller_identity" "current" {}
 module "multi-runner" {
   source = "../../modules/multi-runner"
   multi_runner_config = {
-    "linux" = {
+    "linux-arm64" = {
       matcherConfig : {
         labelMatchers = ["self-hosted", "linux", "arm64", "arm"]
         exactMatch    = true
