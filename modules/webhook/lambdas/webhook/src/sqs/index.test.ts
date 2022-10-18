@@ -23,25 +23,15 @@ describe('Test sending message to SQS.', () => {
     repositoryName: 'test',
     repositoryOwner: 'owner',
     queueId: queueUrl,
+    queueFifo: false,
   };
 
   const sqsMessage: SQS.Types.SendMessageRequest = {
-    QueueUrl: 'https://sqs.eu-west-1.amazonaws.com/123456789/queued-builds',
+    QueueUrl: queueUrl,
     MessageBody: JSON.stringify(message),
   };
   afterEach(() => {
     jest.clearAllMocks();
-  });
-  it('no fifo queue, based on defaults', async () => {
-    // Arrange
-    process.env.SQS_URL_WEBHOOK = sqsMessage.QueueUrl;
-
-    // Act
-    const result = await sendActionRequest(message);
-
-    // Assert
-    expect(mockSQS.sendMessage).toBeCalledWith(sqsMessage);
-    expect(result).resolves;
   });
 
   it('no fifo queue', async () => {
@@ -110,5 +100,19 @@ describe('Test sending message to SQS.', () => {
 
     // Assert
     expect(mockSQS.sendMessage).not.toBeCalledWith(sqsMessage);
+  });
+  it('Catch the exception when even copy queue throws exception', async () => {
+    // Arrange
+    process.env.SQS_WORKFLOW_JOB_QUEUE = sqsMessage.QueueUrl;
+    const mockSQS = {
+      sendMessage: jest.fn(() => {
+        throw new Error();
+      }),
+    };
+    jest.mock('aws-sdk', () => ({
+      SQS: jest.fn().mockImplementation(() => mockSQS),
+    }));
+    await expect(mockSQS.sendMessage).toThrowError();
+    await expect(sendWebhookEventToWorkflowJobQueue(message)).resolves.not.toThrowError();
   });
 });
