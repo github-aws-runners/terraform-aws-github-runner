@@ -61,15 +61,8 @@ export async function handle(headers: IncomingHttpHeaders, body: string): Promis
   logger.info(`Processing Github event`, LogFields.print());
   logger.debug(`Queue configuration: ${queuesConfig}`, LogFields.print());
 
-  if (githubEvent == 'workflow_job') {
-    const workflowJobEvent = payload as WorkflowJobEvent;
-    response = await handleWorkflowJob(workflowJobEvent, githubEvent, queuesConfig);
-  } else {
-    response = {
-      statusCode: 202,
-      body: `Received event '${githubEvent}' ignored.`,
-    };
-  }
+  const workflowJobEvent = payload as WorkflowJobEvent;
+  response = await handleWorkflowJob(workflowJobEvent, githubEvent, queuesConfig);
   return response;
 }
 
