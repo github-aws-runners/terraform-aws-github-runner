@@ -81,7 +81,7 @@ resource "aws_iam_role_policy" "webhook_workflow_job_sqs" {
   role  = aws_iam_role.webhook_lambda.name
 
   policy = templatefile("${path.module}/policies/lambda-publish-sqs-policy.json", {
-    sqs_resource_arn = var.sqs_workflow_job_queue.arn
+    sqs_resource_arns = jsonencode([var.sqs_workflow_job_queue.arn])
   })
 }
 
