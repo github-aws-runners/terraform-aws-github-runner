@@ -1519,16 +1519,16 @@
     "@nodelib/fs.scandir" "2.1.5"
     fastq "^1.6.0"
 
-"@octokit/auth-app@4.0.6":
-  version "4.0.6"
-  resolved "https://registry.yarnpkg.com/@octokit/auth-app/-/auth-app-4.0.6.tgz#d5e8f10fc5c277c89f8b317fede9b68cbc00dca5"
-  integrity sha512-zFWDWZ2b1YH9EohhJFswSGzhXdO6al+DPt99ipYUwC81CsFP3wsC4g4WNxpLj8+CIQrGURa8sIcedq2QALNRAw==
+"@octokit/auth-app@4.0.7":
+  version "4.0.7"
+  resolved "https://registry.yarnpkg.com/@octokit/auth-app/-/auth-app-4.0.7.tgz#417c327e6a7ada1e6e9651db681146f8c12728e3"
+  integrity sha512-hjjVCoI/+1oLminVHJPPexguYb9FP4Q60hEHExgy1uAKMMJ5Zf8iJIeRJlIIqneTb4vt7NvUTEj4YDxBLZ1FLg==
   dependencies:
     "@octokit/auth-oauth-app" "^5.0.0"
     "@octokit/auth-oauth-user" "^2.0.0"
     "@octokit/request" "^6.0.0"
     "@octokit/request-error" "^3.0.0"
-    "@octokit/types" "^7.0.0"
+    "@octokit/types" "^8.0.0"
     "@types/lru-cache" "^5.1.0"
     deprecation "^2.3.1"
     lru-cache "^6.0.0"
@@ -1643,6 +1643,11 @@
   resolved "https://registry.yarnpkg.com/@octokit/openapi-types/-/openapi-types-13.12.0.tgz#cd49f28127ee06ee3edc6f2b5f5648c7332f6014"
   integrity sha512-1QYzZrwnn3rTQE7ZoSxXrO8lhu0aIbac1c+qIPOPEaVXBWSaUyLV1x9yt4uDQOwmu6u5ywVS8OJgs+ErDLf6vQ==
 
+"@octokit/openapi-types@^14.0.0":
+  version "14.0.0"
+  resolved "https://registry.yarnpkg.com/@octokit/openapi-types/-/openapi-types-14.0.0.tgz#949c5019028c93f189abbc2fb42f333290f7134a"
+  integrity sha512-HNWisMYlR8VCnNurDU6os2ikx0s0VyEjDYHNS/h4cgb8DeOxQ0n72HyinUtdDVxJhFy3FWLGl0DJhfEWk3P5Iw==
+
 "@octokit/plugin-paginate-rest@^4.0.0":
   version "4.0.0"
   resolved "https://registry.yarnpkg.com/@octokit/plugin-paginate-rest/-/plugin-paginate-rest-4.0.0.tgz#859a168262b657d46a8f1243ded66c87cee964b9"
@@ -1728,6 +1733,13 @@
   integrity sha512-Zk4OUMLCSpXNI8KZZn47lVLJSsgMyCimsWWQI5hyjZg7hdYm0kjotaIkbG0Pp8SfU2CofMBzonboTqvzn3FrJA==
   dependencies:
     "@octokit/openapi-types" "^13.11.0"
+
+"@octokit/types@^8.0.0":
+  version "8.0.0"
+  resolved "https://registry.yarnpkg.com/@octokit/types/-/types-8.0.0.tgz#93f0b865786c4153f0f6924da067fe0bb7426a9f"
+  integrity sha512-65/TPpOJP1i3K4lBJMnWqPUJ6zuOtzhtagDvydAWbEXpbFYA0oMKKyLb95NFZZP0lSh/4b6K+DQlzvYQJQQePg==
+  dependencies:
+    "@octokit/openapi-types" "^14.0.0"
 
 "@sinclair/typebox@^0.24.1":
   version "0.24.20"
