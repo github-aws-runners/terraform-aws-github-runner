@@ -1,6 +1,6 @@
 locals {
   environment = var.environment != null ? var.environment : "multi-runner"
-  aws_region  = "eu-central-1"
+  aws_region  = "eu-west-1"
 }
 
 resource "random_id" "random" {
