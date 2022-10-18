@@ -74,6 +74,15 @@ resource "aws_iam_role_policy" "webhook_sqs" {
     sqs_resource_arns = jsonencode([for k, v in var.runner_config : v.arn])
   })
 }
+resource "aws_iam_role_policy" "webhook_workflow_job_sqs" {
+  count = var.sqs_workflow_job_queue != null ? 1 : 0
+  name  = "${var.prefix}-lambda-webhook-publish-workflow-job-sqs-policy"
+  role  = aws_iam_role.webhook_lambda.name
+
+  policy = templatefile("${path.module}/policies/lambda-publish-sqs-policy.json", {
+    sqs_resource_arn = var.sqs_workflow_job_queue.arn
+  })
+}
 
 resource "aws_iam_role_policy" "webhook_ssm" {
   name = "${var.prefix}-lambda-webhook-publish-ssm-policy"

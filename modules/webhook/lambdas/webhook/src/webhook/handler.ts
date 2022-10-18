@@ -3,7 +3,7 @@ import { CheckRunEvent, WorkflowJobEvent } from '@octokit/webhooks-types';
 import { IncomingHttpHeaders } from 'http';
 
 import { Response } from '../lambda';
-import { QueueConfig, sendActionRequest } from '../sqs';
+import { QueueConfig, sendActionRequest, sendWebhookEventToWorkflowJobQueue } from '../sqs';
 import { getParameterValue } from '../ssm';
 import { LogFields, logger as rootLogger } from './logger';
 
@@ -64,6 +64,11 @@ export async function handle(headers: IncomingHttpHeaders, body: string): Promis
   const workflowJobEvent = payload as WorkflowJobEvent;
   response = await handleWorkflowJob(workflowJobEvent, githubEvent, queuesConfig);
   return response;
+}
+async function sendWorkflowJobEvents(githubEvent: string, workflowEventPayload: WorkflowJobEvent) {
+  await sendWebhookEventToWorkflowJobQueue({
+    workflowJobEvent: workflowEventPayload,
+  });
 }
 
 function readEnvironmentVariables() {

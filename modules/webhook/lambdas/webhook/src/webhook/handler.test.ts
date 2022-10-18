@@ -5,7 +5,7 @@ import nock from 'nock';
 import checkrun_event from '../../test/resources/github_check_run_event.json';
 import workflowjob_event from '../../test/resources/github_workflowjob_event.json';
 import queuesConfig from '../../test/resources/multi_runner_configurations.json';
-import { sendActionRequest } from '../sqs';
+import { sendActionRequest sendWebhookEventToWorkflowJobQueue } from '../sqs';
 import { getParameterValue } from '../ssm';
 import { handle } from './handler';
 
@@ -422,7 +422,7 @@ describe('handler', () => {
     it('handles check_run events', async () => {
       const event = JSON.stringify(checkrun_event);
       const resp = await handle(
-        { 'X-Hub-Signature': await webhooks.sign(event), 'X-GitHub-Event': 'check_run' },
+        { 'X-Hub-Signature': await webhooks.sign(event), 'X-GitHub-Event': 'workflow_job' },
         event,
       );
       expect(resp.statusCode).toBe(202);

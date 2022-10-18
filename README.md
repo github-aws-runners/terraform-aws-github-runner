@@ -21,6 +21,7 @@ This [Terraform](https://www.terraform.io/) module creates the required infrastr
   - [Idle runners](#idle-runners)
   - [Ephemeral runners](#ephemeral-runners)
   - [Prebuilt Images](#prebuilt-images)
+  - [Experimental - Optional queue to publish GitHub workflow job events](#experimental---optional-queue-to-publish-github-workflow-job-events)
 - [Examples](#examples)
 - [Sub modules](#sub-modules)
 - [Debugging](#debugging)
@@ -304,7 +305,23 @@ The example for [ephemeral runners](./examples/ephemeral) is based on the [defau
 
 ### Prebuilt Images
 
-This module also allows you to run agents from a prebuilt AMI to gain faster startup times. You can find more information in [the image README.md](/images/README.md). When the GitHub runner is part of the AMI you can disable the binary syncer by setting `enable_runner_binaries_syncer = false`.
+This module also allows you to run agents from a prebuilt AMI to gain faster startup times. You can find more information in [the image README.md](/images/README.md)
+
+### Experimental - Optional queue to publish GitHub workflow job events
+
+This queue is an experimental feature to allow you to receive a copy of the wokflow_jobs events sent by the GItHub App. For example to calculate matrix or monitor the system.
+
+To enable the feature set `enable_workflow_job_events_queue = true`. Be-aware the feature in experimental!
+
+Messages received on the queue are using the same format as published by GitHub wrapped in a property `workflowJobEvent`.
+
+```
+export interface GithubWorkflowEvent {
+  workflowJobEvent: WorkflowJobEvent;
+}
+```
+This extendible format allows to add more fields to be added if needed.
+You can configure the queue by setting properties to `workflow_job_events_queue_config`
 
 ## Examples
 
