@@ -15,7 +15,7 @@
     "format-check": "prettier --check \"**/*.ts\""
   },
   "devDependencies": {
-    "@octokit/rest": "^19.0.4",
+    "@octokit/rest": "^19.0.5",
     "@trivago/prettier-plugin-sort-imports": "^3.3.0",
     "@types/jest": "^29.1.2",
     "@types/node": "^18.8.4",
