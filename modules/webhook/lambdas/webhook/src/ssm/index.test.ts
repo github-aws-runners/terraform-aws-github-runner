@@ -41,8 +41,6 @@ describe('Test getParameterValue', () => {
     expect(result).toBe(parameterValue);
   });
 
-
-
   test('Gets parameters and returns value undefined', async () => {
     // Arrange
     const parameterValue = undefined;
