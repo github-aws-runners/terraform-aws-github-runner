@@ -1,28 +1,23 @@
 # Action runners deployment of Multiple-Runner-Configurations-Together example
 
-This module shows how to create GitHub action runners with multiple runner configuration together in one deployment.
-This example has the configurations for the following runner types with the relevant labels supported by them as matchers:
-- Linux ARM64 (["self-hosted", "linux", "arm64", "arm"])
-- Linux Ubuntu (["self-hosted", "linux", "x64", "ubuntu"])
-- Linux X64 (["self-hosted", "linux", "x64", "amazon"])
+This module shows how to create GitHub action runners with multiple runner configuration together in one deployment. This example has the configurations for the following runner types with the relevant labels supported by them as matchers:
 
-The module will decide the runner for the workflow job based on the match in the labels defined in the workflow job and runner configuration. Also the runner configuration allows the match to be exact or non-exact match.
+- Linux ARM64 `["self-hosted", "linux", "arm64", "amazon"]`
+- Linux Ubuntu `["self-hosted", "linux", "x64", "ubuntu"]`
+- Linux X64 `["self-hosted", "linux", "x64", "amazon"]`
+- Windows X64 `["self-hosted", "windows", "x64", "servercore-2022"]`
 
-For exact match, all the labels defined in the workflow should be present in the runner configuration matchers and for non-exact match, some of the labels in the workflow, when present in runner configuration, shall be enough for the runner configuration to be used for the job.
+The module will decide the runner for the workflow job based on the match in the labels defined in the workflow job and runner configuration. Also the runner configuration allows the match to be exact or non-exact match. We recommend to use only exact matches.
 
-The workflow jobs are matched against the runner configurationn in the order in which they are provided in the configuration. Hence, for all provided runner configurations, its necessary to order them from most-precise match to least-precise match. For example:
-
-Available configurations
-- Linux Ubuntu
-- Linux x64
-
-Its important to keep the specific configuration (Linux Ubuntu) before the generic configuration (Linux x64) in order to let the workflow find the specific configuration first if the workflow demands specific configuration.
+For exact match, all the labels defined in the workflow should be present in the runner configuration matchers and for non-exact match, some of the labels in the workflow, when present in runner configuration, shall be enough for the runner configuration to be used for the job. First the exact matchers are applied, next the non exact ones.
 
 ## Webhook
-For the list of provided runner configurations, there will be a single webhook and only a single Github app to receive the notifications for all types of workflow triggers.
+
+For the list of provided runner configurations, there will be a single webhook and only a single Github App to receive the notifications for all types of workflow triggers.
 
 ## Lambda distribution
-Lambda distribution for all the lambda's will be downloaded from GitHub.
+
+Per combination of OS and architecture a lambda distribution syncer will be created. For this example there will be three instances (windows X64, linux X64, linux ARM).
 
 ## Usages
 
