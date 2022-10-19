@@ -6,6 +6,10 @@
     {
       "name": "develop",
       "prerelease": true
+    },
+    {
+      "name": "next",
+      "prerelease": true
     }
   ],
   "tagFormat": "v${version}",
