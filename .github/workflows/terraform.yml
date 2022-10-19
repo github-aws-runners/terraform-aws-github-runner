@@ -4,6 +4,7 @@ on:
     branches:
       - main
       - develop
+      - next
   pull_request:
     paths-ignore:
       - "modules/*/lambdas/**"

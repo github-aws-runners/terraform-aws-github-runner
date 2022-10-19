@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - develop
+      - next
   workflow_dispatch:
 
 jobs:
