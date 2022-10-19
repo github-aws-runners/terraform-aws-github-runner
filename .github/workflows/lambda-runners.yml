@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - develop
+      - next
   pull_request:
     paths:
       - .github/workflows/lambda-runners.yml
