@@ -81,11 +81,7 @@ function readEnvironmentVariables() {
   return { environment, repositoryWhiteList, queuesConfig };
 }
 
-async function verifySignature(
-  githubEvent: string,
-  headers: IncomingHttpHeaders,
-  body: string
-): Promise<number> {
+async function verifySignature(githubEvent: string, headers: IncomingHttpHeaders, body: string): Promise<number> {
   let signature;
   if ('x-hub-signature-256' in headers) {
     signature = headers['x-hub-signature-256'] as string;
