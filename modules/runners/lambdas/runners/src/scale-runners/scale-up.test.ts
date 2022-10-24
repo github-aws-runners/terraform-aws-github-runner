@@ -243,6 +243,12 @@ describe('scaleUp with GHES', () => {
       ];
       expect(createRunner).toBeCalledWith(expectedRunnerParams);
     });
+
+    it('creates a runner with ami id override from ssm parameter', async () => {
+      process.env.AMI_ID_SSM_PARAMETER_NAME = 'my-ami-id-param';
+      await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
+      expect(createRunner).toBeCalledWith({ ...expectedRunnerParams, amiIdSsmParameterName: 'my-ami-id-param' });
+    });
   });
 
   describe('on repo level', () => {
