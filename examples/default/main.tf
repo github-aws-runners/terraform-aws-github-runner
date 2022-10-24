@@ -1,5 +1,5 @@
 locals {
-  environment = "default"
+  environment = var.environment != null ? var.environment : "default"
   aws_region  = "eu-west-1"
 }
 
@@ -85,4 +85,6 @@ module "runners" {
   scale_down_schedule_expression = "cron(* * * * ? *)"
   # enable this flag to publish webhook events to workflow job queue
   # enable_workflow_job_events_queue  = true
+
+  enable_user_data_debug_logging_runner = true
 }

@@ -14,6 +14,8 @@ locals {
 
   tmp_distinct_list_unique_os_and_arch = distinct([for i, config in local.runner_config : { "os_type" : config.runner_config.runner_os, "architecture" : config.runner_config.runner_architecture } if config.runner_config.enable_runner_binaries_syncer])
   unique_os_and_arch                   = { for i, v in local.tmp_distinct_list_unique_os_and_arch : "${v.os_type}_${v.architecture}" => v }
+
+  ssm_root_path = "/${var.ssm_paths.root}"
 }
 
 resource "random_string" "random" {

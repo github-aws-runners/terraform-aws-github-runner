@@ -23,16 +23,16 @@ echo "Retrieved ghr:ssm_config_path tag - ($ssm_config_path)"
 parameters=$(aws ssm get-parameters-by-path --path "$ssm_config_path" --region "$region" --query "Parameters[*].{Name:Name,Value:Value}")
 echo "Retrieved parameters from AWS SSM ($parameters)"
 
-run_as=$(echo "$parameters" | jq -r '.[] | select(.Name == "($ssm_config_path)/run-as") | .Value')
+run_as=$(echo "$parameters" | jq -r '.[] | select(.Name == "'$ssm_config_path'/run-as") | .Value')
 echo "Retrieved /$ssm_config_path/run-as parameter - ($run_as)"
 
-enable_cloudwatch_agent=$(echo "$parameters" | jq --arg ssm_config_path "$ssm_config_path" -r '.[] | select(.Name == "\($ssm_config_path)/enable-cloudwatch") | .Value')
+enable_cloudwatch_agent=$(echo "$parameters" | jq --arg ssm_config_path "$ssm_config_path" -r '.[] | select(.Name == "'$ssm_config_path'/enable-cloudwatch") | .Value')
 echo "Retrieved /$ssm_config_path/enable-cloudwatch parameter - ($enable_cloudwatch_agent)"
 
-agent_mode=$(echo "$parameters" | jq --arg ssm_config_path "$ssm_config_path" -r '.[] | select(.Name == "\($ssm_config_path)/agent-mode") | .Value')
+agent_mode=$(echo "$parameters" | jq --arg ssm_config_path "$ssm_config_path" -r '.[] | select(.Name == "'$ssm_config_path'/agent-mode") | .Value')
 echo "Retrieved /$ssm_config_path/agent-mode parameter - ($agent_mode)"
 
-token_path=$(echo "$parameters" | jq --arg ssm_config_path "$ssm_config_path" -r '.[] | select(.Name == "\($ssm_config_path)/token_path") | .Value')
+token_path=$(echo "$parameters" | jq --arg ssm_config_path "$ssm_config_path" -r '.[] | select(.Name == "'$ssm_config_path'/token_path") | .Value')
 echo "Retrieved /$ssm_config_path/token_path parameter - ($token_path)"
 
 if [[ "$enable_cloudwatch_agent" == "true" ]]; then

@@ -510,3 +510,16 @@ variable "workflow_job_queue_configuration" {
   }
 }
 
+variable "ssm_paths" {
+  description = "The root path used in SSM to store configuration and secreets."
+  type = object({
+    root    = string
+    app     = string
+    runners = string
+  })
+  default = {
+    root    = "github-action-runners"
+    runners = "runners"
+    app     = "app"
+  }
+}
