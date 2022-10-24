@@ -182,7 +182,7 @@ describe('delete parameter', () => {
     mockSSM.deleteParameter.mockImplementation(() => mockDeleteParameter);
     mockDeleteParameter.promise.mockReturnThis();
   });
-  it('calls delete parameters with instance id and environment', async () => {
+  it('calls delete parameter with instance id and environment', async () => {
     const runner: RunnerInfo = {
       instanceId: 'instance-2',
       owner: 'owner-2',
