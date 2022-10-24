@@ -150,7 +150,8 @@ export async function createRunner(runnerParameters: RunnerInputParameters): Pro
         .promise();
       amiIdFromSsm = result.Parameter?.Value;
     } catch (e) {
-      logger.error(`Failed to lookup runner AMI ID from SSM parameter: ${runnerParameters.amiIdSsmParam}`, e);
+      logger.error(`Failed to lookup runner AMI ID from SSM parameter: ${runnerParameters.amiIdSsmParam}. ` +
+        'Please ensure that the given parameter exists on this region and contains a valid runner AMI ID', e);
       throw e;
     }
   }
