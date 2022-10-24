@@ -6,6 +6,7 @@ module "webhook" {
 
   runner_config                 = local.runner_config
   github_app_webhook_secret_arn = module.ssm.parameters.github_app_webhook_secret.arn
+  sqs_workflow_job_queue        = length(aws_sqs_queue.webhook_events_workflow_job_queue) > 0 ? aws_sqs_queue.webhook_events_workflow_job_queue[0] : null
 
   lambda_s3_bucket                              = var.lambda_s3_bucket
   webhook_lambda_s3_key                         = var.webhook_lambda_s3_key
