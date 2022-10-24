@@ -36,7 +36,7 @@ resource "aws_lambda_function" "scale_up" {
       RUNNER_GROUP_NAME                    = var.runner_group_name
       RUNNERS_MAXIMUM_COUNT                = var.runners_maximum_count
       SUBNET_IDS                           = join(",", var.subnet_ids)
-      AMI_ID_SSM_PARAMETER_NAME                     = var.ami_id_ssm_parameter_name
+      AMI_ID_SSM_PARAMETER_NAME            = var.ami_id_ssm_parameter_name
     }
   }
 
