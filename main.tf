@@ -154,10 +154,10 @@ module "runners" {
   instance_max_spot_price       = var.instance_max_spot_price
   block_device_mappings         = var.block_device_mappings
 
-  runner_architecture = var.runner_architecture
-  ami_filter          = var.ami_filter
-  ami_owners          = var.ami_owners
-  ami_id_ssm_parameter_name    = var.ami_id_ssm_parameter_name
+  runner_architecture       = var.runner_architecture
+  ami_filter                = var.ami_filter
+  ami_owners                = var.ami_owners
+  ami_id_ssm_parameter_name = var.ami_id_ssm_parameter_name
 
   sqs_build_queue                      = aws_sqs_queue.queued_builds
   github_app_parameters                = local.github_app_parameters
