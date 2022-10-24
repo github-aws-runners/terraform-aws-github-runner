@@ -42,7 +42,7 @@ export interface RunnerInputParameters {
     instanceAllocationStrategy: EC2.SpotAllocationStrategy;
   };
   numberOfRunners?: number;
-  amiIdSsmParam?: string;
+  amiIdSsmParameterName?: string;
 }
 
 export async function listEC2Runners(filters: ListRunnerFilters | undefined = undefined): Promise<RunnerList[]> {
@@ -140,18 +140,21 @@ export async function createRunner(runnerParameters: RunnerInputParameters): Pro
   const ec2 = new EC2();
   const ssm = new SSM();
 
-  let amiIdFromSsm = undefined;
+  let amiIdOverride = undefined;
 
-  if (runnerParameters.amiIdSsmParam) {
-    logger.debug(`Looking up runner AMI ID from SSM parameter: ${runnerParameters.amiIdSsmParam}`);
+  if (runnerParameters.amiIdSsmParameterName) {
+    logger.debug(`Looking up runner AMI ID from SSM parameter: ${runnerParameters.amiIdSsmParameterName}`);
     try {
       const result: AWS.SSM.GetParameterResult = await ssm
-        .getParameter({ Name: runnerParameters.amiIdSsmParam })
+        .getParameter({ Name: runnerParameters.amiIdSsmParameterName })
         .promise();
-      amiIdFromSsm = result.Parameter?.Value;
+      amiIdOverride = result.Parameter?.Value;
     } catch (e) {
-      logger.error(`Failed to lookup runner AMI ID from SSM parameter: ${runnerParameters.amiIdSsmParam}. ` +
-        'Please ensure that the given parameter exists on this region and contains a valid runner AMI ID', e);
+      logger.error(
+        `Failed to lookup runner AMI ID from SSM parameter: ${runnerParameters.amiIdSsmParameterName}. ` +
+          'Please ensure that the given parameter exists on this region and contains a valid runner AMI ID',
+        e,
+      );
       throw e;
     }
   }
@@ -172,7 +175,7 @@ export async function createRunner(runnerParameters: RunnerInputParameters): Pro
             Overrides: generateFleetOverrides(
               runnerParameters.subnets,
               runnerParameters.ec2instanceCriteria.instanceTypes,
-              amiIdFromSsm,
+              amiIdOverride,
             ),
           },
         ],

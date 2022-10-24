@@ -36,7 +36,7 @@ resource "aws_lambda_function" "scale_up" {
       RUNNER_GROUP_NAME                    = var.runner_group_name
       RUNNERS_MAXIMUM_COUNT                = var.runners_maximum_count
       SUBNET_IDS                           = join(",", var.subnet_ids)
-      AMI_ID_SSM_PARAM                     = var.ami_id_ssm_param
+      AMI_ID_SSM_PARAMETER_NAME                     = var.ami_id_ssm_parameter_name
     }
   }
 
@@ -112,8 +112,8 @@ resource "aws_iam_role_policy_attachment" "scale_up_vpc_execution_role" {
   policy_arn = "arn:${var.aws_partition}:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }
 
-resource "aws_iam_role_policy" "ami_id_ssm_param_read" {
-  count  = var.ami_id_ssm_param != null ? 1 : 0
+resource "aws_iam_role_policy" "ami_id_ssm_parameter_name_read" {
+  count  = var.ami_id_ssm_parameter_name != null ? 1 : 0
   name   = "${var.prefix}-ami-id-ssm-param-read"
   role   = aws_iam_role.scale_up.name
   policy = <<-JSON
@@ -126,7 +126,7 @@ resource "aws_iam_role_policy" "ami_id_ssm_param_read" {
             "ssm:GetParameter"
           ],
           "Resource": [
-            "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${trimprefix(var.ami_id_ssm_param, "/")}"
+            "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${trimprefix(var.ami_id_ssm_parameter_name, "/")}"
           ]
         }
       ]

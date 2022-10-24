@@ -271,7 +271,7 @@ describe('create runner', () => {
       },
     };
     mockGetParameter.promise.mockReturnValue(paramValue);
-    await createRunner(createRunnerConfig({ ...defaultRunnerConfig, amiIdSsmParam: 'my-ami-id-param' }));
+    await createRunner(createRunnerConfig({ ...defaultRunnerConfig, amiIdSsmParameterName: 'my-ami-id-param' }));
     const expectedRequest = expectedCreateFleetRequest({ ...defaultExpectedFleetRequestValues, imageId: 'ami-123' });
     expect(mockEC2.createFleet).toBeCalledWith(expectedRequest);
     expect(mockSSM.getParameter).toBeCalledWith({
@@ -360,7 +360,7 @@ describe('create runner with errors', () => {
     });
 
     await expect(
-      createRunner(createRunnerConfig({ ...defaultRunnerConfig, amiIdSsmParam: 'my-ami-id-param' })),
+      createRunner(createRunnerConfig({ ...defaultRunnerConfig, amiIdSsmParameterName: 'my-ami-id-param' })),
     ).rejects.toBeInstanceOf(Error);
     expect(mockEC2.createFleet).not.toBeCalled();
     expect(mockSSM.putParameter).not.toBeCalled();
@@ -393,7 +393,7 @@ interface RunnerConfig {
   capacityType: EC2.DefaultTargetCapacityType;
   allocationStrategy: EC2.AllocationStrategy;
   maxSpotPrice?: string;
-  amiIdSsmParam?: string;
+  amiIdSsmParameterName?: string;
 }
 
 function createRunnerConfig(runnerConfig: RunnerConfig): RunnerInputParameters {
@@ -410,7 +410,7 @@ function createRunnerConfig(runnerConfig: RunnerConfig): RunnerInputParameters {
       instanceAllocationStrategy: runnerConfig.allocationStrategy,
     },
     subnets: ['subnet-123', 'subnet-456'],
-    amiIdSsmParam: runnerConfig.amiIdSsmParam,
+    amiIdSsmParameterName: runnerConfig.amiIdSsmParameterName,
   };
 }
 

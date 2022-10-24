@@ -155,7 +155,7 @@ variable "ami_owners" {
   default     = ["amazon"]
 }
 
-variable "ami_id_ssm_param" {
+variable "ami_id_ssm_parameter_name" {
   description = "SSM parameter (data type aws:ec2:image) that contains the AMI ID to launch instances from. Overrides ami_filter"
   type        = string
   default     = null
