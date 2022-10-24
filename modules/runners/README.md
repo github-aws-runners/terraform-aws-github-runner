@@ -65,7 +65,7 @@ yarn run dist
 
 | Name | Source | Version |
 |------|--------|---------|
-| <a name="module_pool"></a> [pool](#module\_pool) | ./pool | n/a |
+| <a name="module_pool"></a> [pool](#module\_pool) | ./pool |  |
 
 ## Resources
 

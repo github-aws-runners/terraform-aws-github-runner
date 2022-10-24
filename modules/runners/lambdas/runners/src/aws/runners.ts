@@ -107,6 +107,16 @@ export async function terminateRunner(instanceId: string): Promise<void> {
   logger.info(`Runner ${instanceId} has been terminated.`, LogFields.print());
 }
 
+export async function deleteParameter(instanceId: string, environment: string): Promise<void> {
+  const ssm = new SSM();
+  await ssm
+    .deleteParameter({
+      Name: `${environment}-${instanceId}`,
+    })
+    .promise();
+  logger.info(`SSM Parameter ${environment}-${instanceId} has been deleted.`, LogFields.print());
+}
+
 function generateFleeOverrides(
   subnetIds: string[],
   instancesTypes: string[],

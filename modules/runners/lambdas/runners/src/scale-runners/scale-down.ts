@@ -3,7 +3,7 @@ import moment from 'moment';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctoClient } from '../gh-auth/gh-auth';
 import { LogFields, logger as rootLogger } from '../logger';
-import { RunnerInfo, RunnerList, listEC2Runners, terminateRunner } from './../aws/runners';
+import { RunnerInfo, RunnerList, deleteParameter, listEC2Runners, terminateRunner } from './../aws/runners';
 import { GhRunners, githubCache } from './cache';
 import { ScalingDownConfig, getIdleRunnerCount } from './scale-down-config';
 
@@ -109,6 +109,7 @@ function bootTimeExceeded(ec2Runner: RunnerInfo): boolean {
 
 async function removeRunner(ec2runner: RunnerInfo, ghRunnerIds: number[]): Promise<void> {
   const githubAppClient = await getOrCreateOctokit(ec2runner);
+  const environment = process.env.ENVIRONMENT;
   try {
     const states = await Promise.all(
       ghRunnerIds.map(async (ghRunnerId) => {
@@ -137,6 +138,7 @@ async function removeRunner(ec2runner: RunnerInfo, ghRunnerIds: number[]): Promi
 
       if (statuses.every((status) => status == 204)) {
         await terminateRunner(ec2runner.instanceId);
+        await deleteParameter(ec2runner.instanceId, environment);
         logger.info(
           `AWS runner instance '${ec2runner.instanceId}' is terminated and GitHub runner is de-registered.`,
           LogFields.print(),
@@ -199,8 +201,10 @@ async function evaluateAndRemoveRunners(
 }
 
 async function terminateOrphan(instanceId: string): Promise<void> {
+  const environment = process.env.ENVIRONMENT;
   try {
     await terminateRunner(instanceId);
+    await deleteParameter(instanceId, environment);
   } catch (e) {
     logger.debug(`Orphan runner '${instanceId}' cannot be removed.`, LogFields.print());
   }

@@ -1,10 +1,17 @@
 import { EC2 } from 'aws-sdk';
 
 import ScaleError from './../scale-runners/ScaleError';
-import { RunnerInfo, RunnerInputParameters, createRunner, listEC2Runners, terminateRunner } from './runners';
+import {
+  RunnerInfo,
+  RunnerInputParameters,
+  createRunner,
+  deleteParameter,
+  listEC2Runners,
+  terminateRunner,
+} from './runners';
 
 const mockEC2 = { describeInstances: jest.fn(), createFleet: jest.fn(), terminateInstances: jest.fn() };
-const mockSSM = { putParameter: jest.fn() };
+const mockSSM = { putParameter: jest.fn(), deleteParameter: jest.fn() };
 jest.mock('aws-sdk', () => ({
   EC2: jest.fn().mockImplementation(() => mockEC2),
   SSM: jest.fn().mockImplementation(() => mockSSM),
@@ -164,6 +171,26 @@ describe('terminate runner', () => {
     await terminateRunner(runner.instanceId);
 
     expect(mockEC2.terminateInstances).toBeCalledWith({ InstanceIds: [runner.instanceId] });
+  });
+});
+
+describe('delete parameter', () => {
+  const mockDeleteParameter = { promise: jest.fn() };
+  const environment = ENVIRONMENT;
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockSSM.deleteParameter.mockImplementation(() => mockDeleteParameter);
+    mockDeleteParameter.promise.mockReturnThis();
+  });
+  it('calls delete parameters with instance id and environment', async () => {
+    const runner: RunnerInfo = {
+      instanceId: 'instance-2',
+      owner: 'owner-2',
+      type: 'Repo',
+    };
+    await deleteParameter(runner.instanceId, environment);
+
+    expect(mockSSM.deleteParameter).toBeCalledWith({ Name: `${environment}-${runner.instanceId}` });
   });
 });
 
