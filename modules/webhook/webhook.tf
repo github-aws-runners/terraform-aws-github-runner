@@ -22,6 +22,7 @@ resource "aws_lambda_function" "webhook" {
       RUNNER_LABELS                    = jsonencode(split(",", lower(var.runner_labels)))
       SQS_URL_WEBHOOK                  = var.sqs_build_queue.id
       SQS_IS_FIFO                      = var.sqs_build_queue_fifo
+      SQS_WORKFLOW_JOB_QUEUE           = try(var.sqs_workflow_job_queue, null) != null ? var.sqs_workflow_job_queue.id : ""
     }
   }
 
@@ -76,6 +77,15 @@ resource "aws_iam_role_policy" "webhook_sqs" {
 
   policy = templatefile("${path.module}/policies/lambda-publish-sqs-policy.json", {
     sqs_resource_arn = var.sqs_build_queue.arn
+  })
+}
+resource "aws_iam_role_policy" "webhook_workflow_job_sqs" {
+  count = var.sqs_workflow_job_queue != null ? 1 : 0
+  name  = "${var.prefix}-lambda-webhook-publish-workflow-job-sqs-policy"
+  role  = aws_iam_role.webhook_lambda.name
+
+  policy = templatefile("${path.module}/policies/lambda-publish-sqs-policy.json", {
+    sqs_resource_arn = var.sqs_workflow_job_queue.arn
   })
 }
 
