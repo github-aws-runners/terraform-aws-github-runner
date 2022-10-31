@@ -16,7 +16,7 @@
   },
   "devDependencies": {
     "@octokit/rest": "^19.0.5",
-    "@trivago/prettier-plugin-sort-imports": "^3.3.1",
+    "@trivago/prettier-plugin-sort-imports": "^3.4.0",
     "@types/jest": "^29.1.2",
     "@types/node": "^18.11.2",
     "@types/request": "^2.48.8",
