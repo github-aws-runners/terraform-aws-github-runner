@@ -57,7 +57,7 @@ jobs:
           path: artifacts
 
       - name: Get installation token
-        uses: npalm/action-app-token@v1.0.0
+        uses: npalm/action-app-token@v1.1.0
         id: app-token
         with:
           appId: ${{ secrets.FOREST_RELEASER_APP_ID }}
