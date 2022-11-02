@@ -14,12 +14,12 @@ output "runners" {
 }
 
 output "binaries_syncer" {
-  value = {
-    lambda      = module.runner_binaries.lambda
-    lambda_role = module.runner_binaries.lambda_role
-    location    = local.s3_action_runner_url
-    bucket      = module.runner_binaries.bucket
-  }
+  value = var.enable_runner_binaries_syncer ? {
+    lambda      = module.runner_binaries[0].lambda
+    lambda_role = module.runner_binaries[0].lambda_role
+    location    = "s3://${module.runner_binaries[0].bucket.id}/module.runner_binaries[0].bucket.key"
+    bucket      = module.runner_binaries[0].bucket
+  } : null
 }
 
 output "webhook" {
@@ -39,7 +39,8 @@ output "ssm_parameters" {
 output "queues" {
   description = "SQS queues."
   value = {
-    build_queue_arn     = aws_sqs_queue.queued_builds.arn
-    build_queue_dlq_arn = var.redrive_build_queue.enabled ? aws_sqs_queue.queued_builds_dlq[0].arn : null
+    build_queue_arn            = aws_sqs_queue.queued_builds.arn
+    build_queue_dlq_arn        = var.redrive_build_queue.enabled ? aws_sqs_queue.queued_builds_dlq[0].arn : null
+    webhook_workflow_job_queue = try(aws_sqs_queue.webhook_events_workflow_job_queue[0], null) != null ? aws_sqs_queue.webhook_events_workflow_job_queue[0].arn : ""
   }
 }

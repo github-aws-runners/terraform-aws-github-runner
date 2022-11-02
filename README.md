@@ -4,8 +4,8 @@
 
 This [Terraform](https://www.terraform.io/) module creates the required infrastructure needed to host [GitHub Actions](https://github.com/features/actions) self-hosted, auto-scaling runners on [AWS spot instances](https://aws.amazon.com/ec2/spot/). It provides the required logic to handle the life cycle for scaling up and down using a set of AWS Lambda functions. Runners are scaled down to zero to avoid costs when no workflows are active.
 
-> BREAKING CHANGE: The module is upgraded to Terraform AWS provider 4.x. All new development will only support the new AWS Terraform provider. We keep a branch `terraform-aws-provider-3` to witch we welcome backports to AWS Terraform 3.x provider. Besides reviewing PR's we will do not any active checking on maintance on this branch. We strongly advise to update your deployment to the new provider version. For more details about upgrading see the [upgrade guide](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/guides/version-4-upgrade).
- 
+> 📢 HELP WANTED: We are running the AWS self-hosted GitHub runners OS project in Philips Labs for over two years! And we are incredibly happy with all the feedback and contribution of the open-source community. In the next months we will speak at some conferences to share the solution and story of running this open-source project. Via [this questionaire](https://forms.office.com/r/j03CUzdLFp) we would like to gather  feedback from the community to use in our talks.
+
 - [Motivation](#motivation)
 - [Overview](#overview)
   - [Major configuration options.](#major-configuration-options)
@@ -22,10 +22,12 @@ This [Terraform](https://www.terraform.io/) module creates the required infrastr
   - [Idle runners](#idle-runners)
   - [Ephemeral runners](#ephemeral-runners)
   - [Prebuilt Images](#prebuilt-images)
+  - [Experimental - Optional queue to publish GitHub workflow job events](#experimental---optional-queue-to-publish-github-workflow-job-events)
 - [Examples](#examples)
 - [Sub modules](#sub-modules)
   - [ARM64 configuration for submodules](#arm64-configuration-for-submodules)
 - [Debugging](#debugging)
+- [Security Consideration](#security-consideration)
 - [Requirements](#requirements)
 - [Providers](#providers)
 - [Modules](#modules)
@@ -142,7 +144,7 @@ For local development you can build all the lambdas at once using `.ci/build.sh`
 
 #### Service-linked role <!-- omit in toc -->
 
-To create spot instances the `AWSServiceRoleForEC2Spot` role needs to be added to your account. You can do that manually by following the [AWS docs](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-requests.html#service-linked-roles-spot-instance-requests). To use terraform for creating the role, either add the following resource or let the module manage the the service linked role by setting `create_service_linked_role_spot` to `true`. Be aware this is an account global role, so maybe you don't want to manage it via a specific deployment.
+To create spot instances the `AWSServiceRoleForEC2Spot` role needs to be added to your account. You can do that manually by following the [AWS docs](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-requests.html#service-linked-roles-spot-instance-requests). To use terraform for creating the role, either add the following resource or let the module manage the service linked role by setting `create_service_linked_role_spot` to `true`. Be aware this is an account global role, so maybe you don't want to manage it via a specific deployment.
 
 ```hcl
 resource "aws_iam_service_linked_role" "spot" {
@@ -156,7 +158,7 @@ Next create a second terraform workspace and initiate the module, or adapt one o
 
 Note that `github_app.key_base64` needs to be a base64-encoded string of the `.pem` file i.e. the output of `base64 app.private-key.pem`. The decoded string can either be a multiline value or a single line value with new lines represented with literal `\n` characters.
 
-```terraform
+```hcl
 module "github-runner" {
   source  = "philips-labs/github-runner/aws"
   version = "REPLACE_WITH_VERSION"
@@ -232,7 +234,7 @@ This is the default, no additional configuration is required.
 
 #### Encrypted via a provided KMS key <!-- omit in toc -->
 
-You have to create an configure you KMS key. The module will use the context with key: `Environment` and value `var.environment` as encryption context.
+You have to create and configure you KMS key. The module will use the context with key: `Environment` and value `var.environment` as encryption context.
 
 ```hcl
 resource "aws_kms_key" "github" {
@@ -244,7 +246,6 @@ module "runners" {
   ...
   kms_key_arn = aws_kms_key.github.arn
   ...
-
 ```
 
 ### Pool
@@ -312,6 +313,23 @@ The example for [ephemeral runners](./examples/ephemeral) is based on the [defau
 
 This module also allows you to run agents from a prebuilt AMI to gain faster startup times. You can find more information in [the image README.md](/images/README.md)
 
+### Experimental - Optional queue to publish GitHub workflow job events
+
+This queue is an experimental feature to allow you to receive a copy of the wokflow_jobs events sent by the GItHub App. For example to calculate matrix or monitor the system.
+
+To enable the feature set `enable_workflow_job_events_queue = true`. Be-aware the feature in experimental!
+
+Messages received on the queue are using the same format as published by GitHub wrapped in a property `workflowJobEvent`.
+
+```
+export interface GithubWorkflowEvent {
+  workflowJobEvent: WorkflowJobEvent;
+}
+```
+This extendible format allows to add more fields to be added if needed.
+You can configure the queue by setting properties to `workflow_job_events_queue_config`
+
+NOTE: By default, a runner AMI update requires a re-apply of this terraform config (the runner AMI ID is looked up by a terraform data source). To avoid this, you can use `ami_id_ssm_parameter_name` to have the scale-up lambda dynamically lookup the runner AMI ID from an SSM parameter at instance launch time. Said SSM parameter is managed outside of this module (e.g. by a runner AMI build workflow).
 
 ## Examples
 
@@ -354,19 +372,27 @@ In case the setup does not work as intended follow the trace of events:
 - Once an EC2 instance is running, you can connect to it in the EC2 user interface using Session Manager (use `enable_ssm_on_runners = true`). Check the user data script using `cat /var/log/user-data.log`. By default several log files of the instances are streamed to AWS CloudWatch, look for a log group named `<environment>/runners`. In the log group you should see at least the log streams for the user data installation and runner agent.
 - Registered instances should show up in the Settings - Actions page of the repository or organization (depending on the installation mode).
 
+## Security Consideration
+
+This module creates resources in your AWS infrastructure, and EC2 instances for hosting the self-hosted runners on-demand. IAM permissions are set to a minimal level, and could be further limit by using permission boundaries. Instances permissions are limit to retrieve and delete the registration token, access the instance own tags, and terminate the instance itself.
+
+The examples are using standard AMI's for different operation systems. Instances are not hardened, and sudo operation are not blocked. To provide an out of the box working expierence by default the module installs and configure the runner. However secrets are not hard coded, they finally end up in the memory of the instances. You can harden the instance by providing your own AMI and overwriting the cloud-init script.
+
+We welcome any improvement to the standard module to make the default as secure as possible, in the end it remains your responsibility to keep your environment secure.
+
 <!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 ## Requirements
 
 | Name | Version |
 |------|---------|
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 0.14.1 |
-| <a name="requirement_aws"></a> [aws](#requirement\_aws) | ~> 4.0 |
+| <a name="requirement_aws"></a> [aws](#requirement\_aws) | ~> 4.15 |
 
 ## Providers
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | ~> 4.0 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | ~> 4.15 |
 | <a name="provider_random"></a> [random](#provider\_random) | n/a |
 
 ## Modules
@@ -382,7 +408,6 @@ In case the setup does not work as intended follow the trace of events:
 
 | Name | Type |
 |------|------|
-| [aws_resourcegroups_group.resourcegroups_group](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/resourcegroups_group) | resource |
 | [aws_sqs_queue.queued_builds](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sqs_queue) | resource |
 | [aws_sqs_queue.queued_builds_dlq](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sqs_queue) | resource |
 | [aws_sqs_queue_policy.build_queue_dlq_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sqs_queue_policy) | resource |
@@ -396,9 +421,10 @@ In case the setup does not work as intended follow the trace of events:
 |------|-------------|------|---------|:--------:|
 | <a name="input_ami_filter"></a> [ami\_filter](#input\_ami\_filter) | List of maps used to create the AMI filter for the action runner AMI. By default amazon linux 2 is used. | `map(list(string))` | `null` | no |
 | <a name="input_ami_owners"></a> [ami\_owners](#input\_ami\_owners) | The list of owners used to select the AMI of action runner instances. | `list(string)` | <pre>[<br>  "amazon"<br>]</pre> | no |
+| <a name="input_ami_id_ssm_parameter_name"></a> [ami\_id\_ssm\_parameter\_name](#input\_ami\_id\_ssm\_parameter\_name) | Optional SSM parameter that contains the runner AMI ID to launch instances from. Overrides `ami_filter`. The parameter value is managed outside of this module (e.g. in a runner AMI build workflow). This allows for AMI updates without having to re-apply this terraform config. | `string` | `null` | no |
 | <a name="input_aws_partition"></a> [aws\_partition](#input\_aws\_partition) | (optiona) partition in the arn namespace to use if not 'aws' | `string` | `"aws"` | no |
 | <a name="input_aws_region"></a> [aws\_region](#input\_aws\_region) | AWS region. | `string` | n/a | yes |
-| <a name="input_block_device_mappings"></a> [block\_device\_mappings](#input\_block\_device\_mappings) | The EC2 instance block device configuration. Takes the following keys: `device_name`, `delete_on_termination`, `volume_type`, `volume_size`, `encrypted`, `iops` | <pre>list(object({<br>    device_name           = string<br>    delete_on_termination = bool<br>    volume_type           = string<br>    volume_size           = number<br>    encrypted             = bool<br>    iops                  = number<br>  }))</pre> | <pre>[<br>  {<br>    "delete_on_termination": true,<br>    "device_name": "/dev/xvda",<br>    "encrypted": true,<br>    "iops": null,<br>    "volume_size": 30,<br>    "volume_type": "gp3"<br>  }<br>]</pre> | no |
+| <a name="input_block_device_mappings"></a> [block\_device\_mappings](#input\_block\_device\_mappings) | The EC2 instance block device configuration. Takes the following keys: `device_name`, `delete_on_termination`, `volume_type`, `volume_size`, `encrypted`, `iops`, `throughput`, `kms_key_id`, `snapshot_id`. | <pre>list(object({<br>    delete_on_termination = bool<br>    device_name           = string<br>    encrypted             = bool<br>    iops                  = number<br>    kms_key_id            = string<br>    snapshot_id           = string<br>    throughput            = number<br>    volume_size           = number<br>    volume_type           = string<br>  }))</pre> | <pre>[<br>  {<br>    "delete_on_termination": true,<br>    "device_name": "/dev/xvda",<br>    "encrypted": true,<br>    "iops": null,<br>    "kms_key_id": null,<br>    "snapshot_id": null,<br>    "throughput": null,<br>    "volume_size": 30,<br>    "volume_type": "gp3"<br>  }<br>]</pre> | no |
 | <a name="input_cloudwatch_config"></a> [cloudwatch\_config](#input\_cloudwatch\_config) | (optional) Replaces the module default cloudwatch log config. See https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-Configuration-File-Details.html for details. | `string` | `null` | no |
 | <a name="input_create_service_linked_role_spot"></a> [create\_service\_linked\_role\_spot](#input\_create\_service\_linked\_role\_spot) | (optional) create the serviced linked role for spot instances that is required by the scale-up lambda. | `bool` | `false` | no |
 | <a name="input_delay_webhook_event"></a> [delay\_webhook\_event](#input\_delay\_webhook\_event) | The number of seconds the event accepted by the webhook is invisible on the queue before the scale up lambda will receive the event. | `number` | `30` | no |
@@ -408,8 +434,10 @@ In case the setup does not work as intended follow the trace of events:
 | <a name="input_enable_job_queued_check"></a> [enable\_job\_queued\_check](#input\_enable\_job\_queued\_check) | Only scale if the job event received by the scale up lambda is is in the state queued. By default enabled for non ephemeral runners and disabled for ephemeral. Set this variable to overwrite the default behavior. | `bool` | `null` | no |
 | <a name="input_enable_managed_runner_security_group"></a> [enable\_managed\_runner\_security\_group](#input\_enable\_managed\_runner\_security\_group) | Enabling the default managed security group creation. Unmanaged security groups can be specified via `runner_additional_security_group_ids`. | `bool` | `true` | no |
 | <a name="input_enable_organization_runners"></a> [enable\_organization\_runners](#input\_enable\_organization\_runners) | Register runners to organization, instead of repo level | `bool` | `false` | no |
+| <a name="input_enable_runner_binaries_syncer"></a> [enable\_runner\_binaries\_syncer](#input\_enable\_runner\_binaries\_syncer) | Option to disable the lambda to sync GitHub runner distribution, useful when using a pre-build AMI. | `bool` | `true` | no |
 | <a name="input_enable_runner_detailed_monitoring"></a> [enable\_runner\_detailed\_monitoring](#input\_enable\_runner\_detailed\_monitoring) | Should detailed monitoring be enabled for the runner. Set this to true if you want to use detailed monitoring. See https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-cloudwatch-new.html for details. | `bool` | `false` | no |
 | <a name="input_enable_ssm_on_runners"></a> [enable\_ssm\_on\_runners](#input\_enable\_ssm\_on\_runners) | Enable to allow access the runner instances for debugging purposes via SSM. Note that this adds additional permissions to the runner instances. | `bool` | `false` | no |
+| <a name="input_enable_user_data_debug_logging_runner"></a> [enable\_user\_data\_debug\_logging\_runner](#input\_enable\_user\_data\_debug\_logging\_runner) | Option to enable debug logging for user-data, this logs all secrets as well. | `bool` | `false` | no |
 | <a name="input_enabled_userdata"></a> [enabled\_userdata](#input\_enabled\_userdata) | Should the userdata script be enabled for the runner. Set this to false if you are using your own prebuilt AMI. | `bool` | `true` | no |
 | <a name="input_environment"></a> [environment](#input\_environment) | A name that identifies the environment, used as prefix and for tagging. | `string` | `null` | no |
 | <a name="input_fifo_build_queue"></a> [fifo\_build\_queue](#input\_fifo\_build\_queue) | Enable a FIFO queue to remain the order of events received by the webhook. Suggest to set to true for repo level runners. | `bool` | `false` | no |
@@ -426,8 +454,9 @@ In case the setup does not work as intended follow the trace of events:
 | <a name="input_job_queue_retention_in_seconds"></a> [job\_queue\_retention\_in\_seconds](#input\_job\_queue\_retention\_in\_seconds) | The number of seconds the job is held in the queue before it is purged | `number` | `86400` | no |
 | <a name="input_key_name"></a> [key\_name](#input\_key\_name) | Key pair name | `string` | `null` | no |
 | <a name="input_kms_key_arn"></a> [kms\_key\_arn](#input\_kms\_key\_arn) | Optional CMK Key ARN to be used for Parameter Store. This key must be in the current account. | `string` | `null` | no |
+| <a name="input_lambda_architecture"></a> [lambda\_architecture](#input\_lambda\_architecture) | AWS Lambda architecture. Lambda functions using Graviton processors ('arm64') tend to have better price/performance than 'x86\_64' functions. | `string` | `"x86_64"` | no |
 | <a name="input_lambda_principals"></a> [lambda\_principals](#input\_lambda\_principals) | (Optional) add extra principals to the role created for execution of the lambda, e.g. for local testing. | <pre>list(object({<br>    type        = string<br>    identifiers = list(string)<br>  }))</pre> | `[]` | no |
-| <a name="input_lambda_runtime"></a> [lambda\_runtime](#input\_lambda\_runtime) | AWS Lambda runtime. | `string` | `"nodejs14.x"` | no |
+| <a name="input_lambda_runtime"></a> [lambda\_runtime](#input\_lambda\_runtime) | AWS Lambda runtime. | `string` | `"nodejs16.x"` | no |
 | <a name="input_lambda_s3_bucket"></a> [lambda\_s3\_bucket](#input\_lambda\_s3\_bucket) | S3 bucket from which to specify lambda functions. This is an alternative to providing local files directly. | `any` | `null` | no |
 | <a name="input_lambda_security_group_ids"></a> [lambda\_security\_group\_ids](#input\_lambda\_security\_group\_ids) | List of security group IDs associated with the Lambda function. | `list(string)` | `[]` | no |
 | <a name="input_lambda_subnet_ids"></a> [lambda\_subnet\_ids](#input\_lambda\_subnet\_ids) | List of subnets in which the action runners will be launched, the subnets needs to be subnets in the `vpc_id`. | `list(string)` | `[]` | no |
@@ -437,26 +466,30 @@ In case the setup does not work as intended follow the trace of events:
 | <a name="input_logging_retention_in_days"></a> [logging\_retention\_in\_days](#input\_logging\_retention\_in\_days) | Specifies the number of days you want to retain log events for the lambda log group. Possible values are: 0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, and 3653. | `number` | `180` | no |
 | <a name="input_market_options"></a> [market\_options](#input\_market\_options) | DEPCRECATED: Replaced by `instance_target_capacity_type`. | `string` | `null` | no |
 | <a name="input_minimum_running_time_in_minutes"></a> [minimum\_running\_time\_in\_minutes](#input\_minimum\_running\_time\_in\_minutes) | The time an ec2 action runner should be running at minimum before terminated if not busy. | `number` | `null` | no |
-| <a name="input_pool_config"></a> [pool\_config](#input\_pool\_config) | The configuration for updating the pool. The `pool_size` to adjust to by the events triggered by the the `schedule_expression. For example you can configure a cron expression for week days to adjust the pool to 10 and another expression for the weekend to adjust the pool to 1.` | <pre>list(object({<br>    schedule_expression = string<br>    size                = number<br>  }))</pre> | `[]` | no |
+| <a name="input_pool_config"></a> [pool\_config](#input\_pool\_config) | The configuration for updating the pool. The `pool_size` to adjust to by the events triggered by the `schedule_expression`. For example you can configure a cron expression for week days to adjust the pool to 10 and another expression for the weekend to adjust the pool to 1. | <pre>list(object({<br>    schedule_expression = string<br>    size                = number<br>  }))</pre> | `[]` | no |
 | <a name="input_pool_lambda_reserved_concurrent_executions"></a> [pool\_lambda\_reserved\_concurrent\_executions](#input\_pool\_lambda\_reserved\_concurrent\_executions) | Amount of reserved concurrent executions for the scale-up lambda function. A value of 0 disables lambda from being triggered and -1 removes any concurrency limitations. | `number` | `1` | no |
-| <a name="input_pool_lambda_timeout"></a> [pool\_lambda\_timeout](#input\_pool\_lambda\_timeout) | Time out for the pool lambda lambda in seconds. | `number` | `60` | no |
+| <a name="input_pool_lambda_timeout"></a> [pool\_lambda\_timeout](#input\_pool\_lambda\_timeout) | Time out for the pool lambda in seconds. | `number` | `60` | no |
 | <a name="input_pool_runner_owner"></a> [pool\_runner\_owner](#input\_pool\_runner\_owner) | The pool will deploy runners to the GitHub org ID, set this value to the org to which you want the runners deployed. Repo level is not supported. | `string` | `null` | no |
 | <a name="input_prefix"></a> [prefix](#input\_prefix) | The prefix used for naming resources | `string` | `"github-actions"` | no |
-| <a name="input_redrive_build_queue"></a> [redrive\_build\_queue](#input\_redrive\_build\_queue) | Set options to attach (optional) a dead letter queue to the build queue, the queue between the webhook and the scale up lambda. You have the following options. 1. Disable by setting, `enalbed' to false. 2. Enable by setting `enabled` to `true`, `maxReceiveCount` to a number of max retries.` | <pre>object({<br>    enabled         = bool<br>    maxReceiveCount = number<br>  })</pre> | <pre>{<br>  "enabled": false,<br>  "maxReceiveCount": null<br>}</pre> | no |
+| <a name="input_queue_encryption"></a> [queue\_encryption](#input\_queue\_encryption) | Configure how data on queues managed by the modules in ecrypted at REST. Options are encryped via SSE, non encrypted and via KMSS. By default encryptes via SSE is enabled. See for more details the Terraform `aws_sqs_queue` resource https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sqs_queue. | <pre>object({<br>    kms_data_key_reuse_period_seconds = number<br>    kms_master_key_id                 = string<br>    sqs_managed_sse_enabled           = bool<br>  })</pre> | <pre>{<br>  "kms_data_key_reuse_period_seconds": null,<br>  "kms_master_key_id": null,<br>  "sqs_managed_sse_enabled": true<br>}</pre> | no |
+| <a name="input_redrive_build_queue"></a> [redrive\_build\_queue](#input\_redrive\_build\_queue) | Set options to attach (optional) a dead letter queue to the build queue, the queue between the webhook and the scale up lambda. You have the following options. 1. Disable by setting `enabled` to false. 2. Enable by setting `enabled` to `true`, `maxReceiveCount` to a number of max retries. | <pre>object({<br>    enabled         = bool<br>    maxReceiveCount = number<br>  })</pre> | <pre>{<br>  "enabled": false,<br>  "maxReceiveCount": null<br>}</pre> | no |
 | <a name="input_repository_white_list"></a> [repository\_white\_list](#input\_repository\_white\_list) | List of repositories allowed to use the github app | `list(string)` | `[]` | no |
 | <a name="input_role_path"></a> [role\_path](#input\_role\_path) | The path that will be added to role path for created roles, if not set the environment name will be used. | `string` | `null` | no |
 | <a name="input_role_permissions_boundary"></a> [role\_permissions\_boundary](#input\_role\_permissions\_boundary) | Permissions boundary that will be added to the created roles. | `string` | `null` | no |
 | <a name="input_runner_additional_security_group_ids"></a> [runner\_additional\_security\_group\_ids](#input\_runner\_additional\_security\_group\_ids) | (optional) List of additional security groups IDs to apply to the runner | `list(string)` | `[]` | no |
-| <a name="input_runner_allow_prerelease_binaries"></a> [runner\_allow\_prerelease\_binaries](#input\_runner\_allow\_prerelease\_binaries) | Allow the runners to update to prerelease binaries. | `bool` | `false` | no |
+| <a name="input_runner_allow_prerelease_binaries"></a> [runner\_allow\_prerelease\_binaries](#input\_runner\_allow\_prerelease\_binaries) | (Deprecated, no longer used), allow the runners to update to prerelease binaries. | `bool` | `null` | no |
 | <a name="input_runner_architecture"></a> [runner\_architecture](#input\_runner\_architecture) | The platform architecture of the runner instance\_type. | `string` | `"x64"` | no |
-| <a name="input_runner_as_root"></a> [runner\_as\_root](#input\_runner\_as\_root) | Run the action runner under the root user. Variable `runner_run_as` will be ingored. | `bool` | `false` | no |
+| <a name="input_runner_as_root"></a> [runner\_as\_root](#input\_runner\_as\_root) | Run the action runner under the root user. Variable `runner_run_as` will be ignored. | `bool` | `false` | no |
+| <a name="input_runner_binaries_s3_logging_bucket"></a> [runner\_binaries\_s3\_logging\_bucket](#input\_runner\_binaries\_s3\_logging\_bucket) | Bucket for action runner distribution bucket access logging. | `string` | `null` | no |
+| <a name="input_runner_binaries_s3_logging_bucket_prefix"></a> [runner\_binaries\_s3\_logging\_bucket\_prefix](#input\_runner\_binaries\_s3\_logging\_bucket\_prefix) | Bucket prefix for action runner distribution bucket access logging. | `string` | `null` | no |
 | <a name="input_runner_binaries_s3_sse_configuration"></a> [runner\_binaries\_s3\_sse\_configuration](#input\_runner\_binaries\_s3\_sse\_configuration) | Map containing server-side encryption configuration for runner-binaries S3 bucket. | `any` | `{}` | no |
 | <a name="input_runner_binaries_syncer_lambda_timeout"></a> [runner\_binaries\_syncer\_lambda\_timeout](#input\_runner\_binaries\_syncer\_lambda\_timeout) | Time out of the binaries sync lambda in seconds. | `number` | `300` | no |
 | <a name="input_runner_binaries_syncer_lambda_zip"></a> [runner\_binaries\_syncer\_lambda\_zip](#input\_runner\_binaries\_syncer\_lambda\_zip) | File location of the binaries sync lambda zip file. | `string` | `null` | no |
 | <a name="input_runner_boot_time_in_minutes"></a> [runner\_boot\_time\_in\_minutes](#input\_runner\_boot\_time\_in\_minutes) | The minimum time for an EC2 runner to boot and register as a runner. | `number` | `5` | no |
-| <a name="input_runner_ec2_tags"></a> [runner\_ec2\_tags](#input\_runner\_ec2\_tags) | Map of tags that will be added to the launch template instance tag specificatons. | `map(string)` | `{}` | no |
+| <a name="input_runner_ec2_tags"></a> [runner\_ec2\_tags](#input\_runner\_ec2\_tags) | Map of tags that will be added to the launch template instance tag specifications. | `map(string)` | `{}` | no |
 | <a name="input_runner_egress_rules"></a> [runner\_egress\_rules](#input\_runner\_egress\_rules) | List of egress rules for the GitHub runner instances. | <pre>list(object({<br>    cidr_blocks      = list(string)<br>    ipv6_cidr_blocks = list(string)<br>    prefix_list_ids  = list(string)<br>    from_port        = number<br>    protocol         = string<br>    security_groups  = list(string)<br>    self             = bool<br>    to_port          = number<br>    description      = string<br>  }))</pre> | <pre>[<br>  {<br>    "cidr_blocks": [<br>      "0.0.0.0/0"<br>    ],<br>    "description": null,<br>    "from_port": 0,<br>    "ipv6_cidr_blocks": [<br>      "::/0"<br>    ],<br>    "prefix_list_ids": null,<br>    "protocol": "-1",<br>    "security_groups": null,<br>    "self": null,<br>    "to_port": 0<br>  }<br>]</pre> | no |
-| <a name="input_runner_enable_workflow_job_labels_check"></a> [runner\_enable\_workflow\_job\_labels\_check](#input\_runner\_enable\_workflow\_job\_labels\_check) | If set to true all labels in the workflow job even are matched agaist the custom labels and GitHub labels (os, architecture and `self-hosted`). When the labels are not matching the event is dropped at the webhook. | `bool` | `false` | no |
+| <a name="input_runner_enable_workflow_job_labels_check"></a> [runner\_enable\_workflow\_job\_labels\_check](#input\_runner\_enable\_workflow\_job\_labels\_check) | If set to true all labels in the workflow job even are matched against the custom labels and GitHub labels (os, architecture and `self-hosted`). When the labels are not matching the event is dropped at the webhook. | `bool` | `false` | no |
+| <a name="input_runner_enable_workflow_job_labels_check_all"></a> [runner\_enable\_workflow\_job\_labels\_check\_all](#input\_runner\_enable\_workflow\_job\_labels\_check\_all) | If set to true all labels in the workflow job must match the GitHub labels (os, architecture and `self-hosted`). When false if __any__ label matches it will trigger the webhook. `runner_enable_workflow_job_labels_check` must be true for this to take effect. | `bool` | `true` | no |
 | <a name="input_runner_extra_labels"></a> [runner\_extra\_labels](#input\_runner\_extra\_labels) | Extra (custom) labels for the runners (GitHub). Separate each label by a comma. Labels checks on the webhook can be enforced by setting `enable_workflow_job_labels_check`. GitHub read-only labels should not be provided. | `string` | `""` | no |
 | <a name="input_runner_group_name"></a> [runner\_group\_name](#input\_runner\_group\_name) | Name of the runner group. | `string` | `"Default"` | no |
 | <a name="input_runner_iam_role_managed_policy_arns"></a> [runner\_iam\_role\_managed\_policy\_arns](#input\_runner\_iam\_role\_managed\_policy\_arns) | Attach AWS or customer-managed IAM policies (by ARN) to the runner IAM role | `list(string)` | `[]` | no |
@@ -480,6 +513,7 @@ In case the setup does not work as intended follow the trace of events:
 | <a name="input_userdata_pre_install"></a> [userdata\_pre\_install](#input\_userdata\_pre\_install) | Script to be ran before the GitHub Actions runner is installed on the EC2 instances | `string` | `""` | no |
 | <a name="input_userdata_template"></a> [userdata\_template](#input\_userdata\_template) | Alternative user-data template, replacing the default template. By providing your own user\_data you have to take care of installing all required software, including the action runner. Variables userdata\_pre/post\_install are ignored. | `string` | `null` | no |
 | <a name="input_vpc_id"></a> [vpc\_id](#input\_vpc\_id) | The VPC for security groups of the action runners. | `string` | n/a | yes |
+| <a name="input_webhook_lambda_apigateway_access_log_settings"></a> [webhook\_lambda\_apigateway\_access\_log\_settings](#input\_webhook\_lambda\_apigateway\_access\_log\_settings) | n/a | <pre>object({<br>    destination_arn = string<br>    format          = string<br>  })</pre> | `null` | no |
 | <a name="input_webhook_lambda_s3_key"></a> [webhook\_lambda\_s3\_key](#input\_webhook\_lambda\_s3\_key) | S3 key for webhook lambda function. Required if using S3 bucket to specify lambdas. | `any` | `null` | no |
 | <a name="input_webhook_lambda_s3_object_version"></a> [webhook\_lambda\_s3\_object\_version](#input\_webhook\_lambda\_s3\_object\_version) | S3 object version for webhook lambda function. Useful if S3 versioning is enabled on source bucket. | `any` | `null` | no |
 | <a name="input_webhook_lambda_timeout"></a> [webhook\_lambda\_timeout](#input\_webhook\_lambda\_timeout) | Time out of the webhook lambda in seconds. | `number` | `10` | no |
@@ -504,8 +538,7 @@ We welcome contribution, please checkout the [contribution guide](CONTRIBUTING.m
 
 This module is part of the Philips Forest.
 
-```bash
-
+```plain
                                                      ___                   _
                                                     / __\__  _ __ ___  ___| |_
                                                    / _\/ _ \| '__/ _ \/ __| __|
@@ -513,7 +546,6 @@ This module is part of the Philips Forest.
                                                   \/   \___/|_|  \___||___/\__|
 
                                                                  Infrastructure
-
 ```
 
 Talk to the forestkeepers in the `runners`-channel on Slack.

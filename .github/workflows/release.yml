@@ -11,7 +11,7 @@ jobs:
   prepare:
     name: Create dist
     runs-on: ubuntu-latest
-    container: node:14
+    container: node:16
     strategy:
       matrix:
         lambda: ["modules/webhook/lambdas/webhook", "modules/runner-binaries-syncer/lambdas/runner-binaries-syncer", "modules/runners/lambdas/runners"]
@@ -20,7 +20,7 @@ jobs:
         id: lambda
         env:
           LAMBDA: ${{ matrix.lambda }}
-        run: echo ::set-output name=name::${LAMBDA##*/}
+        run: echo "name=${LAMBDA##*/}" >> $GITHUB_OUTPUT
       - uses: actions/checkout@v3
       - name: Add zip
         run: apt update && apt install zip
@@ -92,7 +92,7 @@ jobs:
 
     steps:
       - name: Generate provenance for release
-        uses: philips-labs/slsa-provenance-action@v0.7.2
+        uses: philips-labs/slsa-provenance-action@v0.8.0
         with:
           artifact_path: release-assets
           output_path: 'build.provenance'

@@ -1,6 +1,9 @@
 # Action runners deployment with prebuilt image
 
-This module shows how to create GitHub action runners using a prebuilt AMI for the runners
+This module shows how to create GitHub action runners using a prebuilt AMI for the runners.
+
+- Configured to run with org level runners.
+- GitHub runner binary syncer is not deployed.
 
 ## Usages
 
@@ -10,7 +13,7 @@ Steps for the full setup, such as creating a GitHub app can be found in the root
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_ami_filter"></a> [ami\_filter](#input\_ami\_filter) | The amis to search.  Use the default for the provided amazon linux image, `github-runner-windows-core-2019-*` for the provided widnows image | `string` | `github-runner-amzn2-x86_64-2021*` | no |
+| <a name="input_ami_filter"></a> [ami\_filter](#input\_ami\_filter) | The amis to search.  Use the default for the provided amazon linux image, `github-runner-windows-core-2019-*` for the provided Windows image | `string` | `github-runner-amzn2-x86_64-2021*` | no |
 | <a name="input_github_app_key_base64"></a> [github\_app\_key\_base64](#input\_github\_app\_key\_base64) | The base64 encoded private key you downloaded from GitHub when creating the app | `string` | | yes |
 | <a name="input_github_app_id"></a> [github\_app\_id](#input\_github\_app\_id) | The id of the app you created on GitHub | `string` | | yes |
 | <a name="input_region"></a> [region](#input\_region) | The target aws region | `string` | `eu-west-1` | no |
@@ -52,12 +55,11 @@ To use your image in the terraform modules you will need to set some values on t
 Assuming you have built the `linux-amzn2` image which has a pre-defined AMI name in the following format `github-runner-amzn2-x86_64-YYYYMMDDhhmm` you can use the following values.
 
 ```hcl
-
 module "runners" {
   ...
   # set the name of the ami to use
   ami_filter        = { name = ["github-runner-amzn2-x86_64-2021*"] }
-  # provide the owner id of 
+  # provide the owner id of
   ami_owners        = ["<your owner id>"]
 
   enabled_userdata = false

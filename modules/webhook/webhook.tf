@@ -9,17 +9,20 @@ resource "aws_lambda_function" "webhook" {
   handler           = "index.githubWebhook"
   runtime           = var.lambda_runtime
   timeout           = var.lambda_timeout
+  architectures     = [var.lambda_architecture]
 
   environment {
     variables = {
       ENABLE_WORKFLOW_JOB_LABELS_CHECK = var.enable_workflow_job_labels_check
+      WORKFLOW_JOB_LABELS_CHECK_ALL    = var.workflow_job_labels_check_all
       ENVIRONMENT                      = var.prefix
       LOG_LEVEL                        = var.log_level
       LOG_TYPE                         = var.log_type
       REPOSITORY_WHITE_LIST            = jsonencode(var.repository_white_list)
-      RUNNER_LABELS                    = jsonencode(split(",", var.runner_labels))
+      RUNNER_LABELS                    = jsonencode(split(",", lower(var.runner_labels)))
       SQS_URL_WEBHOOK                  = var.sqs_build_queue.id
       SQS_IS_FIFO                      = var.sqs_build_queue_fifo
+      SQS_WORKFLOW_JOB_QUEUE           = try(var.sqs_workflow_job_queue, null) != null ? var.sqs_workflow_job_queue.id : ""
     }
   }
 
@@ -74,6 +77,15 @@ resource "aws_iam_role_policy" "webhook_sqs" {
 
   policy = templatefile("${path.module}/policies/lambda-publish-sqs-policy.json", {
     sqs_resource_arn = var.sqs_build_queue.arn
+  })
+}
+resource "aws_iam_role_policy" "webhook_workflow_job_sqs" {
+  count = var.sqs_workflow_job_queue != null ? 1 : 0
+  name  = "${var.prefix}-lambda-webhook-publish-workflow-job-sqs-policy"
+  role  = aws_iam_role.webhook_lambda.name
+
+  policy = templatefile("${path.module}/policies/lambda-publish-sqs-policy.json", {
+    sqs_resource_arn = var.sqs_workflow_job_queue.arn
   })
 }
 

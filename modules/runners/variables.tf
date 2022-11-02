@@ -46,34 +46,38 @@ variable "prefix" {
   default     = "github-actions"
 }
 
-variable "s3_bucket_runner_binaries" {
+variable "s3_runner_binaries" {
+  description = "Bucket details for cached GitHub binary."
   type = object({
     arn = string
+    id  = string
+    key = string
   })
 }
 
-variable "s3_location_runner_binaries" {
-  description = "S3 location of runner distribution."
-  type        = string
-}
-
 variable "block_device_mappings" {
-  description = "The EC2 instance block device configuration. Takes the following keys: `device_name`, `delete_on_termination`, `volume_type`, `volume_size`, `encrypted`, `iops`"
+  description = "The EC2 instance block device configuration. Takes the following keys: `device_name`, `delete_on_termination`, `volume_type`, `volume_size`, `encrypted`, `iops`, `throughput`, `kms_key_id`, `snapshot_id`."
   type = list(object({
-    device_name           = string
     delete_on_termination = bool
-    volume_type           = string
-    volume_size           = number
+    device_name           = string
     encrypted             = bool
     iops                  = number
+    kms_key_id            = string
+    snapshot_id           = string
+    throughput            = number
+    volume_size           = number
+    volume_type           = string
   }))
   default = [{
-    device_name           = "/dev/xvda"
     delete_on_termination = true
-    volume_type           = "gp3"
-    volume_size           = 30
+    device_name           = "/dev/xvda"
     encrypted             = true
     iops                  = null
+    kms_key_id            = null
+    snapshot_id           = null
+    throughput            = null
+    volume_size           = 30
+    volume_type           = "gp3"
   }]
 }
 
@@ -149,6 +153,12 @@ variable "ami_owners" {
   description = "The list of owners used to select the AMI of action runner instances."
   type        = list(string)
   default     = ["amazon"]
+}
+
+variable "ami_id_ssm_parameter_name" {
+  description = "Externally managed SSM parameter (of data type aws:ec2:image) that contains the AMI ID to launch runner instances from. Overrides ami_filter"
+  type        = string
+  default     = null
 }
 
 variable "enabled_userdata" {
@@ -267,7 +277,7 @@ variable "instance_profile_path" {
 }
 
 variable "runner_as_root" {
-  description = "Run the action runner under the root user. Variable `runner_run_as` will be ingored."
+  description = "Run the action runner under the root user. Variable `runner_run_as` will be ignored."
   type        = bool
   default     = false
 }
@@ -486,7 +496,7 @@ variable "log_level" {
 }
 
 variable "runner_ec2_tags" {
-  description = "Map of tags that will be added to the launch template instance tag specificatons."
+  description = "Map of tags that will be added to the launch template instance tag specifications."
   type        = map(string)
   default     = {}
 }
@@ -514,7 +524,7 @@ variable "enable_job_queued_check" {
 }
 
 variable "pool_lambda_timeout" {
-  description = "Time out for the pool lambda lambda in seconds."
+  description = "Time out for the pool lambda in seconds."
   type        = number
   default     = 60
 }
@@ -532,7 +542,7 @@ variable "pool_lambda_reserved_concurrent_executions" {
 }
 
 variable "pool_config" {
-  description = "The configuration for updating the pool. The `pool_size` to adjust to by the events triggered by the the `schedule_expression. For example you can configure a cron expression for week days to adjust the pool to 10 and another expression for the weekend to adjust the pool to 1."
+  description = "The configuration for updating the pool. The `pool_size` to adjust to by the events triggered by the `schedule_expression`. For example you can configure a cron expression for week days to adjust the pool to 10 and another expression for the weekend to adjust the pool to 1."
   type = list(object({
     schedule_expression = string
     size                = number
@@ -549,5 +559,26 @@ variable "disable_runner_autoupdate" {
 variable "lambda_runtime" {
   description = "AWS Lambda runtime."
   type        = string
-  default     = "nodejs14.x"
+  default     = "nodejs16.x"
+}
+
+variable "lambda_architecture" {
+  description = "AWS Lambda architecture. Lambda functions using Graviton processors ('arm64') tend to have better price/performance than 'x86_64' functions. "
+  type        = string
+  default     = "x86_64"
+  validation {
+    condition     = contains(["arm64", "x86_64"], var.lambda_architecture)
+    error_message = "`lambda_architecture` value is not valid, valid values are: `arm64` and `x86_64`."
+  }
+}
+variable "enable_runner_binaries_syncer" {
+  description = "Option to disable the lambda to sync GitHub runner distribution, useful when using a pre-build AMI."
+  type        = bool
+  default     = true
+}
+
+variable "enable_user_data_debug_logging" {
+  description = "Option to enable debug logging for user-data, this logs all secrets as well."
+  type        = bool
+  default     = false
 }

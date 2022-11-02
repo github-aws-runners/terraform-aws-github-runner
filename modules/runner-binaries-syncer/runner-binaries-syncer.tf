@@ -19,18 +19,18 @@ resource "aws_lambda_function" "syncer" {
   runtime           = var.lambda_runtime
   timeout           = var.lambda_timeout
   memory_size       = 256
+  architectures     = [var.lambda_architecture]
 
   environment {
     variables = {
-      GITHUB_RUNNER_ALLOW_PRERELEASE_BINARIES = var.runner_allow_prerelease_binaries
-      GITHUB_RUNNER_ARCHITECTURE              = var.runner_architecture
-      GITHUB_RUNNER_OS                        = local.gh_binary_os_label[var.runner_os]
-      LOG_LEVEL                               = var.log_level
-      LOG_TYPE                                = var.log_type
-      S3_BUCKET_NAME                          = aws_s3_bucket.action_dist.id
-      S3_OBJECT_KEY                           = local.action_runner_distribution_object_key
-      S3_SSE_ALGORITHM                        = try(var.server_side_encryption_configuration.rule.apply_server_side_encryption_by_default.sse_algorithm, null)
-      S3_SSE_KMS_KEY_ID                       = try(var.server_side_encryption_configuration.rule.apply_server_side_encryption_by_default.kms_master_key_id, null)
+      GITHUB_RUNNER_ARCHITECTURE = var.runner_architecture
+      GITHUB_RUNNER_OS           = local.gh_binary_os_label[var.runner_os]
+      LOG_LEVEL                  = var.log_level
+      LOG_TYPE                   = var.log_type
+      S3_BUCKET_NAME             = aws_s3_bucket.action_dist.id
+      S3_OBJECT_KEY              = local.action_runner_distribution_object_key
+      S3_SSE_ALGORITHM           = try(var.server_side_encryption_configuration.rule.apply_server_side_encryption_by_default.sse_algorithm, null)
+      S3_SSE_KMS_KEY_ID          = try(var.server_side_encryption_configuration.rule.apply_server_side_encryption_by_default.kms_master_key_id, null)
     }
   }
 
@@ -47,7 +47,7 @@ resource "aws_lambda_function" "syncer" {
 
 resource "aws_iam_role_policy" "lambda_kms" {
   count = try(var.server_side_encryption_configuration.rule.apply_server_side_encryption_by_default.kms_master_key_id, null) != null ? 1 : 0
-  name  = "${var.environment}-lambda-kms-policy-syncer"
+  name  = "${var.prefix}-lambda-kms-policy-syncer"
   role  = aws_iam_role.syncer_lambda.id
 
   policy = templatefile("${path.module}/policies/lambda-kms.json", {
@@ -133,12 +133,13 @@ resource "aws_lambda_permission" "syncer" {
 ###################################################################################
 
 resource "aws_s3_object" "trigger" {
-  bucket = aws_s3_bucket.action_dist.id
-  key    = "triggers/${aws_lambda_function.syncer.id}-trigger.json"
-  source = "${path.module}/trigger.json"
-  etag   = filemd5("${path.module}/trigger.json")
-
-  depends_on = [aws_s3_bucket_notification.on_deploy]
+  bucket                 = aws_s3_bucket.action_dist.id
+  key                    = "triggers/${aws_lambda_function.syncer.id}-trigger.json"
+  source                 = "${path.module}/trigger.json"
+  etag                   = try(var.server_side_encryption_configuration.rule.apply_server_side_encryption_by_default.kms_master_key_id, null) == null ? filemd5("${path.module}/trigger.json") : null
+  kms_key_id             = try(var.server_side_encryption_configuration.rule.apply_server_side_encryption_by_default.kms_master_key_id, null)
+  server_side_encryption = try(var.server_side_encryption_configuration.rule.apply_server_side_encryption_by_default.sse_algorithm, null)
+  depends_on             = [aws_s3_bucket_notification.on_deploy]
 }
 
 resource "aws_s3_bucket_notification" "on_deploy" {

@@ -6,8 +6,8 @@
       "Action": [
         "s3:GetObjectTagging",
         "s3:GetObjectVersionTagging",
-        "s3:PutObject*",
-        "s3:RequestObjectTag*"
+        "s3:PutObject",
+        "s3:PutObjectTagging"
       ],
       "Resource": ["${s3_resource_arn}"]
     }

@@ -35,35 +35,18 @@ interface ReleaseAsset {
   downloadUrl: string;
 }
 
-async function getReleaseAsset(
-  runnerOs = 'linux',
-  runnerArch = 'x64',
-  fetchPrereleaseBinaries = false,
-): Promise<ReleaseAsset | undefined> {
+async function getReleaseAsset(runnerOs = 'linux', runnerArch = 'x64'): Promise<ReleaseAsset | undefined> {
   const githubClient = new Octokit();
-  const assetsList = await githubClient.repos.listReleases({
+  const latestRelease = await githubClient.repos.getLatestRelease({
     owner: 'actions',
     repo: 'runner',
   });
-  if (assetsList.data?.length === 0) {
+  if (!latestRelease || !latestRelease.data) {
     return undefined;
   }
 
-  const latestPrereleaseIndex = assetsList.data.findIndex((a) => a.prerelease === true);
-  const latestReleaseIndex = assetsList.data.findIndex((a) => a.prerelease === false);
-
-  let asset = undefined;
-  if (fetchPrereleaseBinaries && latestPrereleaseIndex != -1 && latestPrereleaseIndex < latestReleaseIndex) {
-    asset = assetsList.data[latestPrereleaseIndex];
-  } else if (latestReleaseIndex != -1) {
-    asset = assetsList.data[latestReleaseIndex];
-  } else {
-    logger.warn('Cannot find either a release or pre release.');
-    return undefined;
-  }
-
-  const releaseVersion = asset.tag_name.replace('v', '');
-  const assets = asset.assets?.filter((a: { name?: string }) =>
+  const releaseVersion = latestRelease.data.tag_name.replace('v', '');
+  const assets = latestRelease.data.assets?.filter((a: { name?: string }) =>
     a.name?.includes(`actions-runner-${runnerOs}-${runnerArch}-${releaseVersion}.`),
   );
 
@@ -115,7 +98,6 @@ export async function sync(): Promise<void> {
 
   const runnerOs = process.env.GITHUB_RUNNER_OS || 'linux';
   const runnerArch = process.env.GITHUB_RUNNER_ARCHITECTURE || 'x64';
-  const fetchPrereleaseBinaries = JSON.parse(process.env.GITHUB_RUNNER_ALLOW_PRERELEASE_BINARIES || 'false');
 
   const cacheObject: CacheObject = {
     bucket: process.env.S3_BUCKET_NAME as string,
@@ -124,7 +106,7 @@ export async function sync(): Promise<void> {
   if (!cacheObject.bucket || !cacheObject.key) {
     throw Error('Please check all mandatory variables are set.');
   }
-  const actionRunnerReleaseAsset = await getReleaseAsset(runnerOs, runnerArch, fetchPrereleaseBinaries);
+  const actionRunnerReleaseAsset = await getReleaseAsset(runnerOs, runnerArch);
   if (actionRunnerReleaseAsset === undefined) {
     throw Error('Cannot find GitHub release asset.');
   }

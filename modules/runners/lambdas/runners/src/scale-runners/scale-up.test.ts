@@ -28,9 +28,9 @@ jest.mock('./../aws/runners');
 jest.mock('./../gh-auth/gh-auth');
 
 const mocktokit = Octokit as jest.MockedClass<typeof Octokit>;
-const mockedAppAuth = mocked(ghAuth.createGithubAppAuth, true);
-const mockedInstallationAuth = mocked(ghAuth.createGithubInstallationAuth, true);
-const mockCreateClient = mocked(ghAuth.createOctoClient, true);
+const mockedAppAuth = mocked(ghAuth.createGithubAppAuth, { shallow: false });
+const mockedInstallationAuth = mocked(ghAuth.createGithubInstallationAuth, { shallow: false });
+const mockCreateClient = mocked(ghAuth.createOctoClient, { shallow: false });
 
 const TEST_DATA: scaleUpModule.ActionRequestMessage = {
   id: 1,
@@ -242,6 +242,12 @@ describe('scaleUp with GHES', () => {
         '--runnergroup TEST_GROUP',
       ];
       expect(createRunner).toBeCalledWith(expectedRunnerParams);
+    });
+
+    it('creates a runner with ami id override from ssm parameter', async () => {
+      process.env.AMI_ID_SSM_PARAMETER_NAME = 'my-ami-id-param';
+      await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
+      expect(createRunner).toBeCalledWith({ ...expectedRunnerParams, amiIdSsmParameterName: 'my-ami-id-param' });
     });
   });
 

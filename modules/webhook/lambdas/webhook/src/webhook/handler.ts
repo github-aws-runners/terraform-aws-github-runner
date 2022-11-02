@@ -3,7 +3,7 @@ import { CheckRunEvent, WorkflowJobEvent } from '@octokit/webhooks-types';
 import { IncomingHttpHeaders } from 'http';
 
 import { Response } from '../lambda';
-import { sendActionRequest } from '../sqs';
+import { sendActionRequest, sendWebhookEventToWorkflowJobQueue } from '../sqs';
 import { getParameterValue } from '../ssm';
 import { LogFields, logger as rootLogger } from './logger';
 
@@ -11,7 +11,8 @@ const supportedEvents = ['check_run', 'workflow_job'];
 const logger = rootLogger.getChildLogger();
 
 export async function handle(headers: IncomingHttpHeaders, body: string): Promise<Response> {
-  const { environment, repositoryWhiteList, enableWorkflowLabelCheck, runnerLabels } = readEnvironmentVariables();
+  const { environment, repositoryWhiteList, enableWorkflowLabelCheck, workflowLabelCheckAll, runnerLabels } =
+    readEnvironmentVariables();
 
   // ensure header keys lower case since github headers can contain capitals.
   for (const key in headers) {
@@ -28,11 +29,6 @@ export async function handle(headers: IncomingHttpHeaders, body: string): Promis
     return response;
   }
 
-  const payload = JSON.parse(body);
-  LogFields.fields.event = githubEvent;
-  LogFields.fields.repository = payload.repository.full_name;
-  LogFields.fields.action = payload.action;
-
   if (!supportedEvents.includes(githubEvent)) {
     logger.warn(`Unsupported event type.`, LogFields.print());
     return {
@@ -41,8 +37,13 @@ export async function handle(headers: IncomingHttpHeaders, body: string): Promis
     };
   }
 
+  const payload = JSON.parse(body);
+  LogFields.fields.event = githubEvent;
+  LogFields.fields.repository = payload.repository.full_name;
+  LogFields.fields.action = payload.action;
   LogFields.fields.name = payload[githubEvent].name;
   LogFields.fields.status = payload[githubEvent].status;
+  LogFields.fields.workflowJobId = payload[githubEvent].id;
   LogFields.fields.started_at = payload[githubEvent]?.started_at;
 
   /*
@@ -62,28 +63,38 @@ export async function handle(headers: IncomingHttpHeaders, body: string): Promis
   logger.info(`Processing Github event`, LogFields.print());
 
   if (githubEvent == 'workflow_job') {
+    const workflowEventPayload = payload as WorkflowJobEvent;
     response = await handleWorkflowJob(
-      payload as WorkflowJobEvent,
+      workflowEventPayload,
       githubEvent,
       enableWorkflowLabelCheck,
+      workflowLabelCheckAll,
       runnerLabels,
     );
+    await sendWorkflowJobEvents(githubEvent, workflowEventPayload);
   } else if (githubEvent == 'check_run') {
     response = await handleCheckRun(payload as CheckRunEvent, githubEvent);
   }
 
   return response;
 }
+async function sendWorkflowJobEvents(githubEvent: string, workflowEventPayload: WorkflowJobEvent) {
+  await sendWebhookEventToWorkflowJobQueue({
+    workflowJobEvent: workflowEventPayload,
+  });
+}
 
 function readEnvironmentVariables() {
   const environment = process.env.ENVIRONMENT;
   const enableWorkflowLabelCheckEnv = process.env.ENABLE_WORKFLOW_JOB_LABELS_CHECK || 'false';
   const enableWorkflowLabelCheck = JSON.parse(enableWorkflowLabelCheckEnv) as boolean;
+  const workflowLabelCheckAllEnv = process.env.WORKFLOW_JOB_LABELS_CHECK_ALL || 'false';
+  const workflowLabelCheckAll = JSON.parse(workflowLabelCheckAllEnv) as boolean;
   const repositoryWhiteListEnv = process.env.REPOSITORY_WHITE_LIST || '[]';
   const repositoryWhiteList = JSON.parse(repositoryWhiteListEnv) as Array<string>;
-  const runnerLabelsEnv = process.env.RUNNER_LABELS || '[]';
+  const runnerLabelsEnv = (process.env.RUNNER_LABELS || '[]').toLowerCase();
   const runnerLabels = JSON.parse(runnerLabelsEnv) as Array<string>;
-  return { environment, repositoryWhiteList, enableWorkflowLabelCheck, runnerLabels };
+  return { environment, repositoryWhiteList, enableWorkflowLabelCheck, workflowLabelCheckAll, runnerLabels };
 }
 
 async function verifySignature(
@@ -92,7 +103,12 @@ async function verifySignature(
   body: string,
   environment: string,
 ): Promise<number> {
-  const signature = headers['x-hub-signature'] as string;
+  let signature;
+  if ('x-hub-signature-256' in headers) {
+    signature = headers['x-hub-signature-256'] as string;
+  } else {
+    signature = headers['x-hub-signature'] as string;
+  }
   if (!signature) {
     logger.error(
       "Github event doesn't have signature. This webhook requires a secret to be configured.",
@@ -117,9 +133,10 @@ async function handleWorkflowJob(
   body: WorkflowJobEvent,
   githubEvent: string,
   enableWorkflowLabelCheck: boolean,
+  workflowLabelCheckAll: boolean,
   runnerLabels: string[],
 ): Promise<Response> {
-  if (enableWorkflowLabelCheck && !canRunJob(body, runnerLabels)) {
+  if (enableWorkflowLabelCheck && !canRunJob(body, runnerLabels, workflowLabelCheckAll)) {
     logger.warn(
       `Received event contains runner labels '${body.workflow_job.labels}' that are not accepted.`,
       LogFields.print(),
@@ -139,8 +156,8 @@ async function handleWorkflowJob(
       eventType: githubEvent,
       installationId: installationId,
     });
+    logger.info(`Successfully queued job for ${body.repository.full_name}`, LogFields.print());
   }
-  logger.info(`Successfully queued job for ${body.repository.full_name}`, LogFields.print());
   return { statusCode: 201 };
 }
 
@@ -171,11 +188,11 @@ function isRepoNotAllowed(repoFullName: string, repositoryWhiteList: string[]): 
   return repositoryWhiteList.length > 0 && !repositoryWhiteList.includes(repoFullName);
 }
 
-function canRunJob(job: WorkflowJobEvent, runnerLabels: string[]): boolean {
+function canRunJob(job: WorkflowJobEvent, runnerLabels: string[], workflowLabelCheckAll: boolean): boolean {
   const workflowJobLabels = job.workflow_job.labels;
-  const runnerMatch = runnerLabels.every((l) => workflowJobLabels.includes(l));
-  const jobMatch = workflowJobLabels.every((l) => runnerLabels.includes(l));
-  const match = jobMatch && runnerMatch;
+  const match = workflowLabelCheckAll
+    ? workflowJobLabels.every((l) => runnerLabels.includes(l.toLowerCase()))
+    : workflowJobLabels.some((l) => runnerLabels.includes(l.toLowerCase()));
 
   logger.debug(
     `Received workflow job event with labels: '${JSON.stringify(workflowJobLabels)}'. The event does ${
