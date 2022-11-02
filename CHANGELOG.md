@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.14.0-develop.1](https://github.com/enverus-cts/terraform-aws-github-runner/compare/v1.13.0...v1.14.0-develop.1) (2022-11-02)
+
+
+### Features
+
+* Experimental feature - Duplicate workflow job event to extra queue ([#2268](https://github.com/enverus-cts/terraform-aws-github-runner/issues/2268)) ([ac046b8](https://github.com/enverus-cts/terraform-aws-github-runner/commit/ac046b8eb2a0d2d5e2219ae9ee0023fd8bdf7460))
+* **runners:** Add support for looking up runner AMI ID from an SSM parameter at instance launch time ([#2520](https://github.com/enverus-cts/terraform-aws-github-runner/issues/2520)) ([68e2381](https://github.com/enverus-cts/terraform-aws-github-runner/commit/68e238196877896332d36e264a64ca61a0af7ade))
+
+
+### Bug Fixes
+
+* replacing deprecated set-output in workflow ([#2564](https://github.com/enverus-cts/terraform-aws-github-runner/issues/2564)) ([aa0afdd](https://github.com/enverus-cts/terraform-aws-github-runner/commit/aa0afddda56ab92e37fc20b5a4448cc999786023))
+
 ## [1.0.0-develop.1](https://github.com/enverus-cts/terraform-aws-github-runner/compare/v0.32.0...v1.0.0-develop.1) (2022-11-02)
 
 
