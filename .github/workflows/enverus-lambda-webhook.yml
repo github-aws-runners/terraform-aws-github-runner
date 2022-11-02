@@ -1,4 +1,4 @@
-name: Lambda Webhook
+name: Enverus Lambda Webhook
 on:
   push:
     branches:

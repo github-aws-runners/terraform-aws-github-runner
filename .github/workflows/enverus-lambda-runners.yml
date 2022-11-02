@@ -1,4 +1,4 @@
-name: Lambda Runners
+name: Enverus Lambda Runners
 on:
   push:
     branches:
