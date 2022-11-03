@@ -126,7 +126,7 @@ resource "aws_iam_role_policy" "ami_id_ssm_parameter_read" {
             "ssm:GetParameter"
           ],
           "Resource": [
-            "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${trimprefix(var.ami_id_ssm_parameter_name, "/")}"
+            "arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${trimprefix(var.ami_id_ssm_parameter_name, "/")}"
           ]
         }
       ]
