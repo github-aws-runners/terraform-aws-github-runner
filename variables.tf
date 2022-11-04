@@ -568,7 +568,7 @@ variable "runner_ec2_tags" {
 }
 
 variable "runner_metadata_options" {
-  description = "Metadata options for the ec2 runner instances."
+  description = "Metadata options for the ec2 runner instances. By default, the module uses metadata tags for bootstrapping the runner, only disable `instance_metadata_tags` when using custom scripts for starting the runner."
   type        = map(any)
   default = {
     instance_metadata_tags      = "enabled"
