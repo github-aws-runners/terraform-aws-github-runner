@@ -1,11 +1,23 @@
 # Changelog
 
-## [1.13.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v1.12.0...v1.13.0) (2022-10-14)
+## [2.0.0-next.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v1.12.0...v2.0.0-next.1) (2022-10-19)
 
+
+### ⚠ BREAKING CHANGES
+
+* **ci:**
 
 ### Features
 
-* Experimental feature - Duplicate workflow job event to extra queue ([#2268](https://github.com/philips-labs/terraform-aws-github-runner/issues/2268)) ([985e722](https://github.com/philips-labs/terraform-aws-github-runner/commit/985e722229ce464235d206484df3d989db03e143))
+* Add multi-runner capability ([#2472](https://github.com/philips-labs/terraform-aws-github-runner/issues/2472)) ([c08b335](https://github.com/philips-labs/terraform-aws-github-runner/commit/c08b335ade4e16a89d6e1068d7226c16b1eb1450)), closes [#2521](https://github.com/philips-labs/terraform-aws-github-runner/issues/2521) [#2519](https://github.com/philips-labs/terraform-aws-github-runner/issues/2519)
+* Experimental feature - Duplicate workflow job event to extra queue ([#2268](https://github.com/philips-labs/terraform-aws-github-runner/issues/2268)) ([ac046b8](https://github.com/philips-labs/terraform-aws-github-runner/commit/ac046b8eb2a0d2d5e2219ae9ee0023fd8bdf7460))
+* Remove old scale down mechanism (< 0.19.0) ([#2519](https://github.com/philips-labs/terraform-aws-github-runner/issues/2519)) ([721d7c3](https://github.com/philips-labs/terraform-aws-github-runner/commit/721d7c3287fd3e0caa57942d0d830b072d90c433))
+* Remove support check_run ([#2521](https://github.com/philips-labs/terraform-aws-github-runner/issues/2521)) ([272a293](https://github.com/philips-labs/terraform-aws-github-runner/commit/272a293613d3a1da360f0d61bff92d16ea64216c))
+
+
+### Miscellaneous Chores
+
+* **ci:** Enable ci for next branch ([48769ca](https://github.com/philips-labs/terraform-aws-github-runner/commit/48769cacc53657ac740537a9dc63d4628b8c2562)), closes [#2472](https://github.com/philips-labs/terraform-aws-github-runner/issues/2472) [#2517](https://github.com/philips-labs/terraform-aws-github-runner/issues/2517) [#2521](https://github.com/philips-labs/terraform-aws-github-runner/issues/2521) [#2517](https://github.com/philips-labs/terraform-aws-github-runner/issues/2517) [#2519](https://github.com/philips-labs/terraform-aws-github-runner/issues/2519) [#2517](https://github.com/philips-labs/terraform-aws-github-runner/issues/2517)
 
 ## [1.12.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v1.11.0...v1.12.0) (2022-10-12)
 
