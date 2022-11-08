@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.15.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v1.14.0...v1.15.0) (2022-11-08)
+
+
+### Features
+
+* Allow to toggle access to EC2 instance tags ([#2592](https://github.com/philips-labs/terraform-aws-github-runner/issues/2592)) ([55fba22](https://github.com/philips-labs/terraform-aws-github-runner/commit/55fba22474fa802f781d46e5f3e1513c354d3a38))
+
+
+### Bug Fixes
+
+* Use aws_partition for govcloud users in ami_id_ssm_parameter_read policy definition ([#2614](https://github.com/philips-labs/terraform-aws-github-runner/issues/2614)) ([7ac65e5](https://github.com/philips-labs/terraform-aws-github-runner/commit/7ac65e589b1283f832bbe7e1264a45e00e9c8340))
+
 ## [1.14.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v1.13.0...v1.14.0) (2022-10-31)
 
 
