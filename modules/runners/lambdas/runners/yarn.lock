@@ -1389,6 +1389,18 @@
     slash "^3.0.0"
     write-file-atomic "^4.0.1"
 
+"@jest/types@^29.1.2":
+  version "29.3.1"
+  resolved "https://registry.yarnpkg.com/@jest/types/-/types-29.3.1.tgz#7c5a80777cb13e703aeec6788d044150341147e3"
+  integrity sha512-d0S0jmmTpjnhCmNpApgX3jrUZgZ22ivKJRvL2lli5hpCRoNnp1f85r2/wpKfXuYu8E7Jjh1hGfhPyup1NM5AmA==
+  dependencies:
+    "@jest/schemas" "^29.0.0"
+    "@types/istanbul-lib-coverage" "^2.0.0"
+    "@types/istanbul-reports" "^3.0.0"
+    "@types/node" "*"
+    "@types/yargs" "^17.0.8"
+    chalk "^4.0.0"
+
 "@jest/types@^29.2.1":
   version "29.2.1"
   resolved "https://registry.yarnpkg.com/@jest/types/-/types-29.2.1.tgz#ec9c683094d4eb754e41e2119d8bdaef01cf6da0"
@@ -3710,18 +3722,6 @@ jest-util@^29.0.0:
   integrity sha512-vPCk9F353i0Ymx3WQq3+a4lZ07NXu9Ca8wya6o4Fe4/aO1e1awMMprZ3woPFpKwghEOW+UXgd15vVotuNN9ONQ==
   dependencies:
     "@jest/types" "^29.1.2"
-    "@types/node" "*"
-    chalk "^4.0.0"
-    ci-info "^3.2.0"
-    graceful-fs "^4.2.9"
-    picomatch "^2.2.3"
-
-jest-util@^29.2.0:
-  version "29.2.0"
-  resolved "https://registry.yarnpkg.com/jest-util/-/jest-util-29.2.0.tgz#797935697e83a5722aeba401ed6cd01264295566"
-  integrity sha512-8M1dx12ujkBbnhwytrezWY0Ut79hbflwodE+qZKjxSRz5qt4xDp6dQQJaOCFvCmE0QJqp9KyEK33lpPNjnhevw==
-  dependencies:
-    "@jest/types" "^29.2.0"
     "@types/node" "*"
     chalk "^4.0.0"
     ci-info "^3.2.0"

@@ -1,4 +1,4 @@
-import { EC2, SMS } from 'aws-sdk';
+import { EC2 } from 'aws-sdk';
 
 import ScaleError from './../scale-runners/ScaleError';
 import { RunnerInfo, RunnerInputParameters, createRunner, listEC2Runners, terminateRunner } from './runners';
