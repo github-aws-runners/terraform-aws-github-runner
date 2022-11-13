@@ -43,8 +43,12 @@ jobs:
         continue-on-error: true
       - name: validate terraform
         run: terraform validate
-      - if: contains(matrix.terraform, '1.3.')
-        name: tflint
+
+  tflint:
+    name: runner / tflint
+    runs-on: ubuntu-latest
+    steps:
+      - name: tflint
         uses: reviewdog/action-tflint@master
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
