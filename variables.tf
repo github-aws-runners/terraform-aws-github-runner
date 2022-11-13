@@ -355,11 +355,13 @@ variable "webhook_lambda_apigateway_access_log_settings" {
 
 variable "runners_lambda_s3_key" {
   description = "S3 key for runners lambda function. Required if using S3 bucket to specify lambdas."
+  type        = string
   default     = null
 }
 
 variable "runners_lambda_s3_object_version" {
   description = "S3 object version for runners lambda function. Useful if S3 versioning is enabled on source bucket."
+  type        = string
   default     = null
 }
 

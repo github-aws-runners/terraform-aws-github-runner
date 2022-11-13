@@ -52,20 +52,6 @@ jobs:
         name: Run TFLint
         run: tflint -f compact
 
-  # tflint:
-  #   name: tflint
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: "Checkout"
-  #       uses: actions/checkout@v3
-  #     - name: tflint
-  #       uses: reviewdog/action-tflint@master
-  #       with:
-  #         github_token: ${{ secrets.GITHUB_TOKEN }}
-  #         fail_on_error: "true" # Optional. Fail action if errors are found
-  #         filter_mode: "nofilter" # Optional. Check all files, not just the diff
-
-
   verify_examples:
     name: Verify examples
     strategy:
