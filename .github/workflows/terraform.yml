@@ -44,11 +44,18 @@ jobs:
       - name: validate terraform
         run: terraform validate
       - if: contains(matrix.terraform, '1.3.')
-        name: Setup TFLint
-        uses: terraform-linters/setup-tflint@v2
-      - if: contains(matrix.terraform, '1.3.')
-        name: Run TFLint
-        run: tflint -f compact
+      - name: tflint
+        uses: reviewdog/action-tflint@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          fail_on_error: "true" # Optional. Fail action if errors are found
+          filter_mode: "nofilter" # Optional. Check all files, not just the diff
+
+      #   name: Setup TFLint
+      #   uses: terraform-linters/setup-tflint@v2
+      # - if: contains(matrix.terraform, '1.3.')
+      #   name: Run TFLint
+      #   run: tflint -f compact
 
   verify_examples:
     name: Verify examples
