@@ -44,7 +44,7 @@ jobs:
       - name: validate terraform
         run: terraform validate
       - if: contains(matrix.terraform, '1.3.')
-      - name: tflint
+        name: tflint
         uses: reviewdog/action-tflint@master
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
