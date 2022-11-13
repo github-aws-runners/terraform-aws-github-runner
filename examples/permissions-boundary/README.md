@@ -21,10 +21,10 @@ Now a new role and policies should be created. The output of the previous step i
 Download the lambda releases.
 
 ```bash
-cd lambdas-download
+cd ../lambdas-download
 terraform init
-terraform apply
-cd ..
+terraform apply -var=module_version=<VERSION>
+cd -
 ```
 
 Now you can deploy the module.

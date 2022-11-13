@@ -6,7 +6,6 @@ locals {
 resource "random_id" "random" {
   byte_length = 20
 }
-data "aws_caller_identity" "current" {}
 
 
 ################################################################################
@@ -148,16 +147,16 @@ module "multi-runner" {
     Project = "ProjectX"
   }
   github_app = {
-    key_base64     = var.github_app_key_base64
-    id             = var.github_app_id
+    key_base64     = var.github_app.key_base64
+    id             = var.github_app.id
     webhook_secret = random_id.random.hex
   }
 
   # Assuming local build lambda's to use pre build ones, uncomment the lines below and download the
   # lambda zip files lambda_download
-  # webhook_lambda_zip                = "lambdas-download/webhook.zip"
-  # runner_binaries_syncer_lambda_zip = "lambdas-download/runner-binaries-syncer.zip"
-  # runners_lambda_zip                = "lambdas-download/runners.zip"
+  # webhook_lambda_zip                = "../lambdas-download/webhook.zip"
+  # runner_binaries_syncer_lambda_zip = "../lambdas-download/runner-binaries-syncer.zip"
+  # runners_lambda_zip                = "../lambdas-download/runners.zip"
 
   # enable_workflow_job_events_queue = true
   # override delay of events in seconds

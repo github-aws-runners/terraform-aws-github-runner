@@ -130,7 +130,7 @@ module "webhook" {
   kms_key_arn = var.kms_key_arn
 
   runner_config = {
-    "${aws_sqs_queue.queued_builds.id}" = {
+    (aws_sqs_queue.queued_builds.id) = {
       id : aws_sqs_queue.queued_builds.id
       arn : aws_sqs_queue.queued_builds.arn
       fifo : var.fifo_build_queue
