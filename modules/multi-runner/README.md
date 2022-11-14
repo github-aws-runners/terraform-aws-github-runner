@@ -103,6 +103,7 @@ No requirements.
 |------|------|
 | [aws_sqs_queue.queued_builds](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sqs_queue) | resource |
 | [aws_sqs_queue.queued_builds_dlq](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sqs_queue) | resource |
+| [aws_sqs_queue.webhook_events_workflow_job_queue](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sqs_queue) | resource |
 | [aws_sqs_queue_policy.build_queue_dlq_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sqs_queue_policy) | resource |
 | [aws_sqs_queue_policy.build_queue_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sqs_queue_policy) | resource |
 | [random_string.random](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/string) | resource |
@@ -116,6 +117,7 @@ No requirements.
 | <a name="input_aws_region"></a> [aws\_region](#input\_aws\_region) | AWS region. | `string` | n/a | yes |
 | <a name="input_cloudwatch_config"></a> [cloudwatch\_config](#input\_cloudwatch\_config) | (optional) Replaces the module default cloudwatch log config. See https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-Configuration-File-Details.html for details. | `string` | `null` | no |
 | <a name="input_enable_managed_runner_security_group"></a> [enable\_managed\_runner\_security\_group](#input\_enable\_managed\_runner\_security\_group) | Enabling the default managed security group creation. Unmanaged security groups can be specified via `runner_additional_security_group_ids`. | `bool` | `true` | no |
+| <a name="input_enable_workflow_job_events_queue"></a> [enable\_workflow\_job\_events\_queue](#input\_enable\_workflow\_job\_events\_queue) | Enabling this experimental feature will create a secondory sqs queue to wich a copy of the workflow\_job event will be delivered. | `bool` | `false` | no |
 | <a name="input_ghes_ssl_verify"></a> [ghes\_ssl\_verify](#input\_ghes\_ssl\_verify) | GitHub Enterprise SSL verification. Set to 'false' when custom certificate (chains) is used for GitHub Enterprise Server (insecure). | `bool` | `true` | no |
 | <a name="input_ghes_url"></a> [ghes\_url](#input\_ghes\_url) | GitHub Enterprise Server URL. Example: https://github.internal.co - DO NOT SET IF USING PUBLIC GITHUB | `string` | `null` | no |
 | <a name="input_github_app"></a> [github\_app](#input\_github\_app) | GitHub app parameters, see your github app. Ensure the key is the base64-encoded `.pem` file (the output of `base64 app.private-key.pem`, not the content of `private-key.pem`). | <pre>object({<br>    key_base64     = string<br>    id             = string<br>    webhook_secret = string<br>  })</pre> | n/a | yes |
@@ -161,6 +163,7 @@ No requirements.
 | <a name="input_webhook_lambda_s3_object_version"></a> [webhook\_lambda\_s3\_object\_version](#input\_webhook\_lambda\_s3\_object\_version) | S3 object version for webhook lambda function. Useful if S3 versioning is enabled on source bucket. | `any` | `null` | no |
 | <a name="input_webhook_lambda_timeout"></a> [webhook\_lambda\_timeout](#input\_webhook\_lambda\_timeout) | Time out of the lambda in seconds. | `number` | `10` | no |
 | <a name="input_webhook_lambda_zip"></a> [webhook\_lambda\_zip](#input\_webhook\_lambda\_zip) | File location of the webhook lambda zip file. | `string` | `null` | no |
+| <a name="input_workflow_job_queue_configuration"></a> [workflow\_job\_queue\_configuration](#input\_workflow\_job\_queue\_configuration) | Configuration options for workflow job queue which is only applicable if the flag enable\_workflow\_job\_events\_queue is set to true. | <pre>object({<br>    delay_seconds              = number<br>    visibility_timeout_seconds = number<br>    message_retention_seconds  = number<br>  })</pre> | <pre>{<br>  "delay_seconds": null,<br>  "message_retention_seconds": null,<br>  "visibility_timeout_seconds": null<br>}</pre> | no |
 
 ## Outputs
 
