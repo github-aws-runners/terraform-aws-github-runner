@@ -56,13 +56,13 @@ resource "aws_sqs_queue_policy" "build_queue_policy" {
 
 resource "aws_sqs_queue" "queued_builds_dlq" {
   for_each = var.multi_runner_config
-  name     = "${var.prefix}-${each.key}-queued-builds_dead_letter"
+  name     = "${var.prefix}-${each.key}-queued-builds_dead_letter${each.value.fifo ? ".fifo" : ""}"
 
   sqs_managed_sse_enabled           = var.queue_encryption.sqs_managed_sse_enabled
   kms_master_key_id                 = var.queue_encryption.kms_master_key_id
   kms_data_key_reuse_period_seconds = var.queue_encryption.kms_data_key_reuse_period_seconds
-
-  tags = var.tags
+  fifo_queue                        = each.value.fifo
+  tags                              = var.tags
 }
 
 resource "aws_sqs_queue_policy" "build_queue_dlq_policy" {
