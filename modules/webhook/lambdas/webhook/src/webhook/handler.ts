@@ -3,7 +3,7 @@ import { CheckRunEvent, WorkflowJobEvent } from '@octokit/webhooks-types';
 import { IncomingHttpHeaders } from 'http';
 
 import { Response } from '../lambda';
-import { sendActionRequest } from '../sqs';
+import { sendActionRequest, sendWebhookEventToWorkflowJobQueue } from '../sqs';
 import { getParameterValue } from '../ssm';
 import { LogFields, logger as rootLogger } from './logger';
 
@@ -63,18 +63,25 @@ export async function handle(headers: IncomingHttpHeaders, body: string): Promis
   logger.info(`Processing Github event`, LogFields.print());
 
   if (githubEvent == 'workflow_job') {
+    const workflowEventPayload = payload as WorkflowJobEvent;
     response = await handleWorkflowJob(
-      payload as WorkflowJobEvent,
+      workflowEventPayload,
       githubEvent,
       enableWorkflowLabelCheck,
       workflowLabelCheckAll,
       runnerLabels,
     );
+    await sendWorkflowJobEvents(githubEvent, workflowEventPayload);
   } else if (githubEvent == 'check_run') {
     response = await handleCheckRun(payload as CheckRunEvent, githubEvent);
   }
 
   return response;
+}
+async function sendWorkflowJobEvents(githubEvent: string, workflowEventPayload: WorkflowJobEvent) {
+  await sendWebhookEventToWorkflowJobQueue({
+    workflowJobEvent: workflowEventPayload,
+  });
 }
 
 function readEnvironmentVariables() {

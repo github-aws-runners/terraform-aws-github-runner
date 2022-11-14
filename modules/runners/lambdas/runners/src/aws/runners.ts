@@ -42,6 +42,7 @@ export interface RunnerInputParameters {
     instanceAllocationStrategy: EC2.SpotAllocationStrategy;
   };
   numberOfRunners?: number;
+  amiIdSsmParameterName?: string;
 }
 
 interface Ec2Filter {
@@ -130,17 +131,27 @@ export async function terminateRunner(instanceId: string): Promise<void> {
   logger.info(`Runner ${instanceId} has been terminated.`, LogFields.print());
 }
 
-function generateFleeOverrides(
+function generateFleetOverrides(
   subnetIds: string[],
   instancesTypes: string[],
+  amiId?: string,
 ): EC2.FleetLaunchTemplateOverridesListRequest {
+  type Override = {
+    SubnetId: string;
+    InstanceType: string;
+    ImageId?: string;
+  };
   const result: EC2.FleetLaunchTemplateOverridesListRequest = [];
   subnetIds.forEach((s) => {
     instancesTypes.forEach((i) => {
-      result.push({
+      const item: Override = {
         SubnetId: s,
         InstanceType: i,
-      });
+      };
+      if (amiId) {
+        item.ImageId = amiId;
+      }
+      result.push(item);
     });
   });
   return result;
@@ -150,6 +161,27 @@ export async function createRunner(runnerParameters: RunnerInputParameters): Pro
   logger.debug('Runner configuration: ' + JSON.stringify(runnerParameters), LogFields.print());
 
   const ec2 = new EC2();
+  const ssm = new SSM();
+
+  let amiIdOverride = undefined;
+
+  if (runnerParameters.amiIdSsmParameterName) {
+    logger.debug(`Looking up runner AMI ID from SSM parameter: ${runnerParameters.amiIdSsmParameterName}`);
+    try {
+      const result: AWS.SSM.GetParameterResult = await ssm
+        .getParameter({ Name: runnerParameters.amiIdSsmParameterName })
+        .promise();
+      amiIdOverride = result.Parameter?.Value;
+    } catch (e) {
+      logger.error(
+        `Failed to lookup runner AMI ID from SSM parameter: ${runnerParameters.amiIdSsmParameterName}. ` +
+          'Please ensure that the given parameter exists on this region and contains a valid runner AMI ID',
+        e,
+      );
+      throw e;
+    }
+  }
+
   const numberOfRunners = runnerParameters.numberOfRunners ? runnerParameters.numberOfRunners : 1;
 
   let fleet: AWS.EC2.CreateFleetResult;
@@ -163,9 +195,10 @@ export async function createRunner(runnerParameters: RunnerInputParameters): Pro
               LaunchTemplateName: runnerParameters.launchTemplateName,
               Version: '$Default',
             },
-            Overrides: generateFleeOverrides(
+            Overrides: generateFleetOverrides(
               runnerParameters.subnets,
               runnerParameters.ec2instanceCriteria.instanceTypes,
+              amiIdOverride,
             ),
           },
         ],
@@ -225,7 +258,6 @@ export async function createRunner(runnerParameters: RunnerInputParameters): Pro
 
   logger.info('Created instance(s): ', instances.join(','), LogFields.print());
 
-  const ssm = new SSM();
   for (const instance of instances) {
     await ssm
       .putParameter({

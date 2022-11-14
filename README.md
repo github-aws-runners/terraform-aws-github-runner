@@ -22,6 +22,7 @@ This [Terraform](https://www.terraform.io/) module creates the required infrastr
   - [Idle runners](#idle-runners)
   - [Ephemeral runners](#ephemeral-runners)
   - [Prebuilt Images](#prebuilt-images)
+  - [Experimental - Optional queue to publish GitHub workflow job events](#experimental---optional-queue-to-publish-github-workflow-job-events)
 - [Examples](#examples)
 - [Sub modules](#sub-modules)
   - [ARM64 configuration for submodules](#arm64-configuration-for-submodules)
@@ -298,7 +299,7 @@ For time zones please check [TZ database name column](https://en.wikipedia.org/w
 
 ### Ephemeral runners
 
-Currently a beta feature! You can configure runners to be ephemeral, runners will be used only for one job. The feature should be used in conjunction with listening for the workflow job event. Please consider the following:
+You can configure runners to be ephemeral, runners will be used only for one job. The feature should be used in conjunction with listening for the workflow job event. Please consider the following:
 
 - The scale down lambda is still active, and should only remove orphan instances. But there is no strict check in place. So ensure you configure the `minimum_running_time_in_minutes` to a value that is high enough to got your runner booted and connected to avoid it got terminated before executing a job.
 - The messages sent from the webhook lambda to scale-up lambda are by default delayed delayed by SQS, to give available runners to option to start the job before the decision is made to scale more runners. For ephemeral runners there is no need to wait. Set `delay_webhook_event` to `0`.
@@ -310,7 +311,25 @@ The example for [ephemeral runners](./examples/ephemeral) is based on the [defau
 
 ### Prebuilt Images
 
-This module also allows you to run agents from a prebuilt AMI to gain faster startup times. You can find more information in [the image README.md](/images/README.md). When the GitHub runner is part of the AMI you can disable the binary syncer by setting `enable_runner_binaries_syncer = false`.
+This module also allows you to run agents from a prebuilt AMI to gain faster startup times. You can find more information in [the image README.md](/images/README.md)
+
+### Experimental - Optional queue to publish GitHub workflow job events
+
+This queue is an experimental feature to allow you to receive a copy of the wokflow_jobs events sent by the GItHub App. For example to calculate matrix or monitor the system.
+
+To enable the feature set `enable_workflow_job_events_queue = true`. Be-aware the feature in experimental!
+
+Messages received on the queue are using the same format as published by GitHub wrapped in a property `workflowJobEvent`.
+
+```
+export interface GithubWorkflowEvent {
+  workflowJobEvent: WorkflowJobEvent;
+}
+```
+This extendible format allows to add more fields to be added if needed.
+You can configure the queue by setting properties to `workflow_job_events_queue_config`
+
+NOTE: By default, a runner AMI update requires a re-apply of this terraform config (the runner AMI ID is looked up by a terraform data source). To avoid this, you can use `ami_id_ssm_parameter_name` to have the scale-up lambda dynamically lookup the runner AMI ID from an SSM parameter at instance launch time. Said SSM parameter is managed outside of this module (e.g. by a runner AMI build workflow).
 
 ## Examples
 
@@ -402,6 +421,7 @@ We welcome any improvement to the standard module to make the default as secure 
 |------|-------------|------|---------|:--------:|
 | <a name="input_ami_filter"></a> [ami\_filter](#input\_ami\_filter) | List of maps used to create the AMI filter for the action runner AMI. By default amazon linux 2 is used. | `map(list(string))` | `null` | no |
 | <a name="input_ami_owners"></a> [ami\_owners](#input\_ami\_owners) | The list of owners used to select the AMI of action runner instances. | `list(string)` | <pre>[<br>  "amazon"<br>]</pre> | no |
+| <a name="input_ami_id_ssm_parameter_name"></a> [ami\_id\_ssm\_parameter\_name](#input\_ami\_id\_ssm\_parameter\_name) | Optional SSM parameter that contains the runner AMI ID to launch instances from. Overrides `ami_filter`. The parameter value is managed outside of this module (e.g. in a runner AMI build workflow). This allows for AMI updates without having to re-apply this terraform config. | `string` | `null` | no |
 | <a name="input_aws_partition"></a> [aws\_partition](#input\_aws\_partition) | (optiona) partition in the arn namespace to use if not 'aws' | `string` | `"aws"` | no |
 | <a name="input_aws_region"></a> [aws\_region](#input\_aws\_region) | AWS region. | `string` | n/a | yes |
 | <a name="input_block_device_mappings"></a> [block\_device\_mappings](#input\_block\_device\_mappings) | The EC2 instance block device configuration. Takes the following keys: `device_name`, `delete_on_termination`, `volume_type`, `volume_size`, `encrypted`, `iops`, `throughput`, `kms_key_id`, `snapshot_id`. | <pre>list(object({<br>    delete_on_termination = bool<br>    device_name           = string<br>    encrypted             = bool<br>    iops                  = number<br>    kms_key_id            = string<br>    snapshot_id           = string<br>    throughput            = number<br>    volume_size           = number<br>    volume_type           = string<br>  }))</pre> | <pre>[<br>  {<br>    "delete_on_termination": true,<br>    "device_name": "/dev/xvda",<br>    "encrypted": true,<br>    "iops": null,<br>    "kms_key_id": null,<br>    "snapshot_id": null,<br>    "throughput": null,<br>    "volume_size": 30,<br>    "volume_type": "gp3"<br>  }<br>]</pre> | no |

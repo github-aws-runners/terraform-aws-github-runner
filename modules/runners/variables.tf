@@ -155,6 +155,12 @@ variable "ami_owners" {
   default     = ["amazon"]
 }
 
+variable "ami_id_ssm_parameter_name" {
+  description = "Externally managed SSM parameter (of data type aws:ec2:image) that contains the AMI ID to launch runner instances from. Overrides ami_filter"
+  type        = string
+  default     = null
+}
+
 variable "enabled_userdata" {
   description = "Should the userdata script be enabled for the runner. Set this to false if you are using your own prebuilt AMI"
   type        = bool
@@ -496,9 +502,10 @@ variable "runner_ec2_tags" {
 }
 
 variable "metadata_options" {
-  description = "Metadata options for the ec2 runner instances."
+  description = "Metadata options for the ec2 runner instances. By default, the module uses metadata tags for bootstrapping the runner, only disable `instance_metadata_tags` when using custom scripts for starting the runner."
   type        = map(any)
   default = {
+    instance_metadata_tags      = "enabled"
     http_endpoint               = "enabled"
     http_tokens                 = "optional"
     http_put_response_hop_limit = 1
@@ -565,7 +572,6 @@ variable "lambda_architecture" {
     error_message = "`lambda_architecture` value is not valid, valid values are: `arm64` and `x86_64`."
   }
 }
-
 variable "enable_runner_binaries_syncer" {
   description = "Option to disable the lambda to sync GitHub runner distribution, useful when using a pre-build AMI."
   type        = bool

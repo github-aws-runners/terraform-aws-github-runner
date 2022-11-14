@@ -302,11 +302,19 @@ variable "ami_filter" {
   type        = map(list(string))
   default     = null
 }
+
 variable "ami_owners" {
   description = "The list of owners used to select the AMI of action runner instances."
   type        = list(string)
   default     = ["amazon"]
 }
+
+variable "ami_id_ssm_parameter_name" {
+  description = "Externally managed SSM parameter (of data type aws:ec2:image) that contains the AMI ID to launch runner instances from. Overrides ami_filter"
+  type        = string
+  default     = null
+}
+
 variable "lambda_s3_bucket" {
   description = "S3 bucket from which to specify lambda functions. This is an alternative to providing local files directly."
   default     = null
@@ -568,9 +576,10 @@ variable "runner_ec2_tags" {
 }
 
 variable "runner_metadata_options" {
-  description = "Metadata options for the ec2 runner instances."
+  description = "Metadata options for the ec2 runner instances. By default, the module uses metadata tags for bootstrapping the runner, only disable `instance_metadata_tags` when using custom scripts for starting the runner."
   type        = map(any)
   default = {
+    instance_metadata_tags      = "enabled"
     http_endpoint               = "enabled"
     http_tokens                 = "optional"
     http_put_response_hop_limit = 1
@@ -702,6 +711,25 @@ variable "lambda_architecture" {
   }
 }
 
+variable "enable_workflow_job_events_queue" {
+  description = "Enabling this experimental feature will create a secondory sqs queue to wich a copy of the workflow_job event will be delivered."
+  type        = bool
+  default     = false
+}
+
+variable "workflow_job_queue_configuration" {
+  description = "Configuration options for workflow job queue which is only applicable if the flag enable_workflow_job_events_queue is set to true."
+  type = object({
+    delay_seconds              = number
+    visibility_timeout_seconds = number
+    message_retention_seconds  = number
+  })
+  default = {
+    "delay_seconds" : null,
+    "visibility_timeout_seconds" : null,
+    "message_retention_seconds" : null
+  }
+}
 variable "enable_runner_binaries_syncer" {
   description = "Option to disable the lambda to sync GitHub runner distribution, useful when using a pre-build AMI."
   type        = bool
