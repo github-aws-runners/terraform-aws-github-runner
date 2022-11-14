@@ -3806,15 +3806,6 @@ jest-message-util@^29.3.1:
     slash "^3.0.0"
     stack-utils "^2.0.3"
 
-jest-mock@^29.3.0:
-  version "29.3.0"
-  resolved "https://registry.yarnpkg.com/jest-mock/-/jest-mock-29.3.0.tgz#aa6f1d5118fd4b9d007df782e0624e6efab6d33d"
-  integrity sha512-BRKfsAaeP3pTWeog+1D0ILeJF96SzB6y3k0JDxY63kssxiUy9nDLHmNUoVkBGILjMbpHULhbzVTsb3harPXuUQ==
-  dependencies:
-    "@jest/types" "^29.2.1"
-    "@types/node" "*"
-    jest-util "^29.2.1"
-
 jest-mock@^29.3.1:
   version "29.3.1"
   resolved "https://registry.yarnpkg.com/jest-mock/-/jest-mock-29.3.1.tgz#60287d92e5010979d01f218c6b215b688e0f313e"
@@ -3942,19 +3933,7 @@ jest-snapshot@^29.3.1:
     pretty-format "^29.3.1"
     semver "^7.3.5"
 
-jest-util@^29.0.0, jest-util@^29.2.1:
-  version "29.2.1"
-  resolved "https://registry.yarnpkg.com/jest-util/-/jest-util-29.2.1.tgz#f26872ba0dc8cbefaba32c34f98935f6cf5fc747"
-  integrity sha512-P5VWDj25r7kj7kl4pN2rG/RN2c1TLfYYYZYULnS/35nFDjBai+hBeo3MDrYZS7p6IoY3YHZnt2vq4L6mKnLk0g==
-  dependencies:
-    "@jest/types" "^29.2.1"
-    "@types/node" "*"
-    chalk "^4.0.0"
-    ci-info "^3.2.0"
-    graceful-fs "^4.2.9"
-    picomatch "^2.2.3"
-
-jest-util@^29.3.1:
+jest-util@^29.0.0, jest-util@^29.2.1, jest-util@^29.3.1:
   version "29.3.1"
   resolved "https://registry.yarnpkg.com/jest-util/-/jest-util-29.3.1.tgz#1dda51e378bbcb7e3bc9d8ab651445591ed373e1"
   integrity sha512-7YOVZaiX7RJLv76ZfHt4nbNEzzTRiMW/IiOG7ZOKmTXmoGBxUDefgMAxQubu6WPVqP5zSzAdZG0FfLcC7HOIFQ==
