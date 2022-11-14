@@ -88,3 +88,4 @@ resource "aws_sqs_queue" "webhook_events_workflow_job_queue" {
 
   tags = var.tags
 }
+

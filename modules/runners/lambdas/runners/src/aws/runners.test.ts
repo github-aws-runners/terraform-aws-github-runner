@@ -4,7 +4,7 @@ import ScaleError from './../scale-runners/ScaleError';
 import { RunnerInfo, RunnerInputParameters, createRunner, listEC2Runners, terminateRunner } from './runners';
 
 const mockEC2 = { describeInstances: jest.fn(), createFleet: jest.fn(), terminateInstances: jest.fn() };
-const mockSSM = { putParameter: jest.fn() };
+const mockSSM = { putParameter: jest.fn(), getParameter: jest.fn() };
 jest.mock('aws-sdk', () => ({
   EC2: jest.fn().mockImplementation(() => mockEC2),
   SSM: jest.fn().mockImplementation(() => mockSSM),
@@ -170,6 +170,8 @@ describe('terminate runner', () => {
 describe('create runner', () => {
   const mockCreateFleet = { promise: jest.fn() };
   const mockPutParameter = { promise: jest.fn() };
+  const mockGetParameter = { promise: jest.fn() };
+
   const defaultRunnerConfig: RunnerConfig = {
     allocationStrategy: 'capacity-optimized',
     capacityType: 'spot',
@@ -191,6 +193,8 @@ describe('create runner', () => {
       Instances: [{ InstanceIds: ['i-1234'] }],
     });
     mockSSM.putParameter.mockImplementation(() => mockPutParameter);
+
+    mockSSM.getParameter.mockImplementation(() => mockGetParameter);
   });
 
   it('calls create fleet of 1 instance with the correct config for repo', async () => {
@@ -259,6 +263,21 @@ describe('create runner', () => {
     await expect(createRunner(createRunnerConfig(defaultRunnerConfig))).rejects.toThrowError(Error);
     expect(mockSSM.putParameter).not.toBeCalled();
   });
+
+  it('uses ami id from ssm parameter when ami id ssm param is specified', async () => {
+    const paramValue: AWS.SSM.GetParameterResult = {
+      Parameter: {
+        Value: 'ami-123',
+      },
+    };
+    mockGetParameter.promise.mockReturnValue(paramValue);
+    await createRunner(createRunnerConfig({ ...defaultRunnerConfig, amiIdSsmParameterName: 'my-ami-id-param' }));
+    const expectedRequest = expectedCreateFleetRequest({ ...defaultExpectedFleetRequestValues, imageId: 'ami-123' });
+    expect(mockEC2.createFleet).toBeCalledWith(expectedRequest);
+    expect(mockSSM.getParameter).toBeCalledWith({
+      Name: 'my-ami-id-param',
+    });
+  });
 });
 
 describe('create runner with errors', () => {
@@ -279,6 +298,10 @@ describe('create runner with errors', () => {
     const mockPutParameter = { promise: jest.fn() };
 
     mockSSM.putParameter.mockImplementation(() => mockPutParameter);
+
+    const mockGetParameter = { promise: jest.fn() };
+
+    mockSSM.getParameter.mockImplementation(() => mockGetParameter);
   });
 
   it('test ScaleError with one error.', async () => {
@@ -326,6 +349,22 @@ describe('create runner with errors', () => {
     expect(mockEC2.createFleet).toBeCalledWith(expectedCreateFleetRequest(defaultExpectedFleetRequestValues));
     expect(mockSSM.putParameter).not.toBeCalled();
   });
+
+  it('test error in ami id lookup from ssm parameter', async () => {
+    mockSSM.getParameter.mockImplementation(() => {
+      return {
+        promise: jest.fn().mockImplementation(() => {
+          throw Error('Wow, such transient');
+        }),
+      };
+    });
+
+    await expect(
+      createRunner(createRunnerConfig({ ...defaultRunnerConfig, amiIdSsmParameterName: 'my-ami-id-param' })),
+    ).rejects.toBeInstanceOf(Error);
+    expect(mockEC2.createFleet).not.toBeCalled();
+    expect(mockSSM.putParameter).not.toBeCalled();
+  });
 });
 
 function createFleetMockWithErrors(errors: string[], instances?: string[]) {
@@ -354,6 +393,7 @@ interface RunnerConfig {
   capacityType: EC2.DefaultTargetCapacityType;
   allocationStrategy: EC2.AllocationStrategy;
   maxSpotPrice?: string;
+  amiIdSsmParameterName?: string;
 }
 
 function createRunnerConfig(runnerConfig: RunnerConfig): RunnerInputParameters {
@@ -370,6 +410,7 @@ function createRunnerConfig(runnerConfig: RunnerConfig): RunnerInputParameters {
       instanceAllocationStrategy: runnerConfig.allocationStrategy,
     },
     subnets: ['subnet-123', 'subnet-456'],
+    amiIdSsmParameterName: runnerConfig.amiIdSsmParameterName,
   };
 }
 
@@ -379,10 +420,11 @@ interface ExpectedFleetRequestValues {
   allocationStrategy: EC2.AllocationStrategy;
   maxSpotPrice?: string;
   totalTargetCapacity: number;
+  imageId?: string;
 }
 
 function expectedCreateFleetRequest(expectedValues: ExpectedFleetRequestValues): AWS.EC2.CreateFleetRequest {
-  return {
+  const request: AWS.EC2.CreateFleetRequest = {
     LaunchTemplateConfigs: [
       {
         LaunchTemplateSpecification: {
@@ -429,4 +471,16 @@ function expectedCreateFleetRequest(expectedValues: ExpectedFleetRequestValues):
     },
     Type: 'instant',
   };
+
+  if (expectedValues.imageId) {
+    for (const config of request.LaunchTemplateConfigs) {
+      if (config.Overrides) {
+        for (const override of config.Overrides) {
+          override.ImageId = expectedValues.imageId;
+        }
+      }
+    }
+  }
+
+  return request;
 }
