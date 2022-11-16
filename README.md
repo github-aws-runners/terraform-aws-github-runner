@@ -9,6 +9,7 @@ This [Terraform](https://www.terraform.io/) module creates the required infrastr
 - [Motivation](#motivation)
 - [Overview](#overview)
   - [Major configuration options.](#major-configuration-options)
+  - [AWS SSM Parameters](#aws-ssm-parameters)
 - [Usages](#usages)
   - [Setup GitHub App (part 1)](#setup-github-app-part-1)
   - [Setup terraform module](#setup-terraform-module)
@@ -86,6 +87,26 @@ To be able to support a number of use-cases the module has quite a lot of config
 - GitHub Cloud vs GitHub Enterprise Server (GHES). The runner support GitHub Cloud as well GitHub Enterprise Server. For GHES we rely on our community to test and support. We have no possibility to test ourselves on GHES.
 - Spot vs on-demand. The runners use either the EC2 spot or on-demand life cycle. Runners will be created via the AWS [CreateFleet API](https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_CreateFleet.html). The module (scale up lambda) will request via the CreateFleet API to create instances in one of the subnets and of the specified instance types.
 - ARM64 support via Graviton/Graviton2 instance-types. When using the default example or top-level module, specifying `instance_types` that match a Graviton/Graviton 2 (ARM64) architecture (e.g. a1, t4g or any 6th-gen `g` or `gd` type), you must also specify `runner_architecture = "arm64"` and the sub-modules will be automatically configured to provision with ARM64 AMIs and leverage GitHub's ARM64 action runner. See below for more details.
+
+### AWS SSM Parameters
+
+The module uses the AWS System Manager Parameter store to store configuration for the runners, registration tokens and secrets for the Lambda's. Via the variable `ssm_paths` paths for the parameters can be configured. The location of the configuration parameters is retrieved buy the runners via the instance tag `ghr:ssm_config_path`. The following default paths will be used.
+
+| Path      | Description |
+| ----------- | ----------- |
+| `ssm_paths.root`/`var.prefix`?/app/     | App secrets used by Lambda's       |
+| `ssm_paths.root`/`var.prefix`?/runners/config/`<name>`     | Configuration parameters used by runner start script       |
+| `ssm_paths.root`/`var.prefix`?/runners/tokens/`<ec2-instance-id>` | Registration tokens for the runners generate by the scale-up lambda, consumed by the start script on the runner.       |
+
+Available configuration parameters:
+
+| Parameter name      | Description |
+| ----------- | ----------- |
+| `agent_mode` | Indicates if the agent is running in ephemeral mode or not. |
+| `enable_cloudwatch` | Configuration for the cloudwatch agent to stream logging. |
+| `run_as` | The user used for running the GitHub action runner agent. |
+| `token_path` | The path where tokens are stored. |
+
 
 ## Usages
 

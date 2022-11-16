@@ -26,14 +26,14 @@ Write-Host  "Reteieved ghr:ssm_config_path tag - ($ssm_config_path)"
 $parameters=$(aws ssm get-parameters-by-path --path "/$ssm_config_path" --region "$Region" --query "Parameters[*].{Name:Name,Value:Value}") | ConvertFrom-Json
 Write-Host  "Retrieved parameters from AWS SSM"
 
-$run_as=$parameters.where( {$_.Name -eq "/$ssm_config_path/run-as"}).value
-Write-Host  "Retrieved /$ssm_config_path/run-as parameter - ($run_as)"
+$run_as=$parameters.where( {$_.Name -eq "/$ssm_config_path/run_as"}).value
+Write-Host  "Retrieved /$ssm_config_path/run_as parameter - ($run_as)"
 
-$enable_cloudwatch_agent=$parameters.where( {$_.Name -eq "/$ssm_config_pathr/enable-cloudwatch"}).value
-Write-Host  "Retrieved /$ssm_config_path/enable-cloudwatch parameter - ($enable_cloudwatch_agent)"
+$enable_cloudwatch_agent=$parameters.where( {$_.Name -eq "/$ssm_config_pathr/enable_cloudwatch"}).value
+Write-Host  "Retrieved /$ssm_config_path/enable_cloudwatch parameter - ($enable_cloudwatch_agent)"
 
-$agent_mode=$parameters.where( {$_.Name -eq "/$ssm_config_path/agent-mode"}).value
-Write-Host  "Retrieved /$ssm_config_path/agent-mode parameter - ($agent_mode)"
+$agent_mode=$parameters.where( {$_.Name -eq "/$ssm_config_path/agent_mode"}).value
+Write-Host  "Retrieved /$ssm_config_path/agent_mode parameter - ($agent_mode)"
 
 $token_path=$parameters.where( {$_.Name -eq "/$ssm_config_path/token_path"}).value
 Write-Host  "Retrieved /$ssm_config_path/token_path parameter - ($token_path)"
