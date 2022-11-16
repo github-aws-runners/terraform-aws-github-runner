@@ -582,3 +582,12 @@ variable "enable_user_data_debug_logging" {
   type        = bool
   default     = false
 }
+
+variable "ssm_paths" {
+  description = "The root path used in SSM to store configuration and secreets."
+  type = object({
+    root   = string
+    tokens = string
+    config = string
+  })
+}

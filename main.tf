@@ -10,6 +10,8 @@ locals {
 
   default_runner_labels = "self-hosted,${var.runner_os},${var.runner_architecture}"
   runner_labels         = var.runner_extra_labels != "" ? "${local.default_runner_labels},${var.runner_extra_labels}" : local.default_runner_labels
+
+  ssm_root_path = var.ssm_paths.use_prefix ? "/${var.ssm_paths.root}/${var.prefix}" : "/${var.ssm_paths.root}"
 }
 
 resource "random_string" "random" {
@@ -115,7 +117,7 @@ module "ssm" {
   source = "./modules/ssm"
 
   kms_key_arn = var.kms_key_arn
-  prefix      = var.prefix
+  path_prefix = local.ssm_root_path
   github_app  = var.github_app
   tags        = local.tags
 }
@@ -138,8 +140,11 @@ module "webhook" {
       }
     }
   }
-  sqs_workflow_job_queue        = length(aws_sqs_queue.webhook_events_workflow_job_queue) > 0 ? aws_sqs_queue.webhook_events_workflow_job_queue[0] : null
-  github_app_webhook_secret_arn = module.ssm.parameters.github_app_webhook_secret.arn
+  sqs_workflow_job_queue = length(aws_sqs_queue.webhook_events_workflow_job_queue) > 0 ? aws_sqs_queue.webhook_events_workflow_job_queue[0] : null
+
+  github_app_parameters = {
+    webhook_secret = module.ssm.parameters.github_app_webhook_secret
+  }
 
   lambda_s3_bucket                              = var.lambda_s3_bucket
   webhook_lambda_s3_key                         = var.webhook_lambda_s3_key
@@ -169,6 +174,12 @@ module "runners" {
   subnet_ids    = var.subnet_ids
   prefix        = var.prefix
   tags          = local.tags
+
+  ssm_paths = {
+    root   = local.ssm_root_path
+    tokens = "${var.ssm_paths.runners}/tokens"
+    config = "${var.ssm_paths.runners}/config"
+  }
 
   s3_runner_binaries = var.enable_runner_binaries_syncer ? {
     arn = module.runner_binaries[0].bucket.arn

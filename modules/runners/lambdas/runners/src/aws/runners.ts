@@ -33,6 +33,7 @@ export interface RunnerInputParameters {
   environment: string;
   runnerType: 'Org' | 'Repo';
   runnerOwner: string;
+  ssmTokenPath: string;
   subnets: string[];
   launchTemplateName: string;
   ec2instanceCriteria: {
@@ -238,7 +239,7 @@ export async function createRunner(runnerParameters: RunnerInputParameters): Pro
   for (const instance of instances) {
     await ssm
       .putParameter({
-        Name: `${runnerParameters.environment}-${instance}`,
+        Name: `${runnerParameters.ssmTokenPath}/${instance}`,
         Value: runnerParameters.runnerServiceConfig.join(' '),
         Type: 'SecureString',
       })

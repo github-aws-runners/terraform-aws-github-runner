@@ -21,7 +21,7 @@ export async function handle(headers: IncomingHttpHeaders, body: string): Promis
   const githubEvent = headers['x-github-event'] as string;
 
   let response: Response = {
-    statusCode: await verifySignature(githubEvent, headers, body, environment),
+    statusCode: await verifySignature(githubEvent, headers, body),
   };
 
   if (response.statusCode != 200) {
@@ -84,8 +84,7 @@ function readEnvironmentVariables() {
 async function verifySignature(
   githubEvent: string,
   headers: IncomingHttpHeaders,
-  body: string,
-  environment: string,
+  body: string
 ): Promise<number> {
   let signature;
   if ('x-hub-signature-256' in headers) {
@@ -101,7 +100,7 @@ async function verifySignature(
     return 500;
   }
 
-  const secret = await getParameterValue(environment, 'github_app_webhook_secret');
+  const secret = await getParameterValue(process.env.PARAMETER_GITHUB_APP_WEBHOOK_SECRET);
 
   const webhooks = new Webhooks({
     secret: secret,

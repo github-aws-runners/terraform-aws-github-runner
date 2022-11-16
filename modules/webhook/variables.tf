@@ -15,10 +15,6 @@ variable "prefix" {
   default     = "github-actions"
 }
 
-variable "github_app_webhook_secret_arn" {
-  type = string
-}
-
 variable "tags" {
   description = "Map of tags that will be added to created resources. By default resources will be tagged with name and environment."
   type        = map(string)
@@ -169,4 +165,11 @@ variable "lambda_architecture" {
     condition     = contains(["arm64", "x86_64"], var.lambda_architecture)
     error_message = "`lambda_architecture` value is not valid, valid values are: `arm64` and `x86_64`."
   }
+}
+
+variable "github_app_parameters" {
+  description = "Parameter Store for GitHub App Parameters."
+  type = object({
+    webhook_secret = map(string)
+  })
 }
