@@ -27,10 +27,10 @@
 
 ## [1.13.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v1.12.0...v1.13.0) (2022-10-14)
 
-
 ### Features
 
 * Experimental feature - Duplicate workflow job event to extra queue ([#2268](https://github.com/philips-labs/terraform-aws-github-runner/issues/2268)) ([985e722](https://github.com/philips-labs/terraform-aws-github-runner/commit/985e722229ce464235d206484df3d989db03e143))
+
 
 ## [1.12.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v1.11.0...v1.12.0) (2022-10-12)
 
@@ -733,7 +733,7 @@
 - Fix missing permissions for CloudWatch Agent #445 @bennettp123
 - Swap scale up/scale down timeout description #468 @jonico
 - Fix for invalid configuration #466 @jonico
-- Add ssm:GetParameter to runner-ssm-parameters #446 @bennettp123  
+- Add ssm:GetParameter to runner-ssm-parameters #446 @bennettp123
 - Replace crypto #429
 - Scale up lambda deprecated attribute #410
 
@@ -770,17 +770,17 @@ terraform state rm $RESOURCE
 ### Added
 
 - Allow operator to pass in a list of managed IAM policy ARNs for the runner role #361 @jpalomaki
-- expand options for sourcing lambda to include S3 #292 @eky5006 
+- expand options for sourcing lambda to include S3 #292 @eky5006
 
 ## [0.6.0] - 2020-10-10
 
 ### Added
 
-- Only allow tagging and termination of runner instances #201 @jpalomaki 
+- Only allow tagging and termination of runner instances #201 @jpalomaki
 
 ### Fixed
 
-- Fix pagination with listing self-hosted runners #202 @HenryNguyen5 
+- Fix pagination with listing self-hosted runners #202 @HenryNguyen5
 
 
 ## [0.5.0] - 2020-08-25
