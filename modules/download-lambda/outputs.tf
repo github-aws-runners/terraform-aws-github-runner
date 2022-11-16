@@ -1,3 +1,3 @@
 output "files" {
-  value = null_resource.download.*.triggers.file
+  value = null_resource.download[*].triggers.file
 }

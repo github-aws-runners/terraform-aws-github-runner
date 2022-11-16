@@ -10,10 +10,10 @@ Steps for the full setup, such as creating a GitHub app can be found in the root
 
 
 ```bash
-cd lambdas-download
+cd ../lambdas-download
 terraform init
-terraform apply
-cd ..
+terraform apply -var=module_version=<VERSION>
+cd -
 ```
 
 Before running Terraform, ensure the GitHub app is configured.

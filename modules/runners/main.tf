@@ -3,6 +3,9 @@ locals {
     {
       "Name" = format("%s-action-runner", var.prefix)
     },
+    {
+      "ghr:ssm_config_path" = "${var.ssm_paths.root}/${var.ssm_paths.config}"
+    },
     var.tags,
   )
 

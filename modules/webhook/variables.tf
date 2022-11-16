@@ -15,10 +15,6 @@ variable "prefix" {
   default     = "github-actions"
 }
 
-variable "github_app_webhook_secret_arn" {
-  type = string
-}
-
 variable "tags" {
   description = "Map of tags that will be added to created resources. By default resources will be tagged with name and environment."
   type        = map(string)
@@ -83,16 +79,19 @@ variable "logging_kms_key_id" {
 
 variable "lambda_s3_bucket" {
   description = "S3 bucket from which to specify lambda functions. This is an alternative to providing local files directly."
+  type        = string
   default     = null
 }
 
 variable "webhook_lambda_s3_key" {
   description = "S3 key for webhook lambda function. Required if using S3 bucket to specify lambdas."
+  type        = string
   default     = null
 }
 
 variable "webhook_lambda_s3_object_version" {
   description = "S3 object version for webhook lambda function. Useful if S3 versioning is enabled on source bucket."
+  type        = string
   default     = null
 }
 
@@ -149,12 +148,6 @@ variable "log_level" {
   }
 }
 
-variable "disable_check_wokflow_job_labels" {
-  description = "Disable the check of workflow labels."
-  type        = bool
-  default     = false
-}
-
 variable "lambda_runtime" {
   description = "AWS Lambda runtime."
   type        = string
@@ -169,4 +162,11 @@ variable "lambda_architecture" {
     condition     = contains(["arm64", "x86_64"], var.lambda_architecture)
     error_message = "`lambda_architecture` value is not valid, valid values are: `arm64` and `x86_64`."
   }
+}
+
+variable "github_app_parameters" {
+  description = "Parameter Store for GitHub App Parameters."
+  type = object({
+    webhook_secret = map(string)
+  })
 }

@@ -18,10 +18,9 @@ variable "environment" {
   }
 }
 
-variable "prefix" {
-  description = "The prefix used for naming resources"
+variable "path_prefix" {
+  description = "The path prefix used for naming resources"
   type        = string
-  default     = "github-actions"
 }
 
 variable "kms_key_arn" {

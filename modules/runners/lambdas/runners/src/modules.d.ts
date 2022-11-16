@@ -13,6 +13,7 @@ declare namespace NodeJS {
     PARAMETER_GITHUB_APP_KEY_BASE64_NAME: string;
     RUNNER_OWNER: string;
     SCALE_DOWN_CONFIG: string;
+    SSM_TOKEN_PATH: string;
     SUBNET_IDS: string;
     INSTANCE_TYPES: string;
     INSTANCE_TARGET_CAPACITY_TYPE: 'on-demand' | 'spot';

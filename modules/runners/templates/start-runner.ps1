@@ -20,17 +20,24 @@ Write-Host  "Retrieved tags from AWS API"
 $environment=$tags.Tags.where( {$_.Key -eq 'ghr:environment'}).value
 Write-Host  "Reteieved ghr:environment tag - ($environment)"
 
-$parameters=$(aws ssm get-parameters-by-path --path "/$environment/runner" --region "$Region" --query "Parameters[*].{Name:Name,Value:Value}") | ConvertFrom-Json
+$ssm_config_path=$tags.Tags.where( {$_.Key -eq 'ghr:ssm_config_path'}).value
+Write-Host  "Reteieved ghr:ssm_config_path tag - ($ssm_config_path)"
+
+$parameters=$(aws ssm get-parameters-by-path --path "/$ssm_config_path" --region "$Region" --query "Parameters[*].{Name:Name,Value:Value}") | ConvertFrom-Json
 Write-Host  "Retrieved parameters from AWS SSM"
 
-$run_as=$parameters.where( {$_.Name -eq "/$environment/runner/run-as"}).value
-Write-Host  "Retrieved /$environment/runner/run-as parameter - ($run_as)"
+$run_as=$parameters.where( {$_.Name -eq "/$ssm_config_path/run_as"}).value
+Write-Host  "Retrieved /$ssm_config_path/run_as parameter - ($run_as)"
 
-$enable_cloudwatch_agent=$parameters.where( {$_.Name -eq "/$environment/runner/enable-cloudwatch"}).value
-Write-Host  "Retrieved /$environment/runner/enable-cloudwatch parameter - ($enable_cloudwatch_agent)"
+$enable_cloudwatch_agent=$parameters.where( {$_.Name -eq "/$ssm_config_pathr/enable_cloudwatch"}).value
+Write-Host  "Retrieved /$ssm_config_path/enable_cloudwatch parameter - ($enable_cloudwatch_agent)"
 
-$agent_mode=$parameters.where( {$_.Name -eq "/$environment/runner/agent-mode"}).value
-Write-Host  "Retrieved /$environment/runner/agent-mode parameter - ($agent_mode)"
+$agent_mode=$parameters.where( {$_.Name -eq "/$ssm_config_path/agent_mode"}).value
+Write-Host  "Retrieved /$ssm_config_path/agent_mode parameter - ($agent_mode)"
+
+$token_path=$parameters.where( {$_.Name -eq "/$ssm_config_path/token_path"}).value
+Write-Host  "Retrieved /$ssm_config_path/token_path parameter - ($token_path)"
+
 
 if ($enable_cloudwatch_agent -eq "true")
 {
@@ -44,14 +51,14 @@ Write-Host "Get GH Runner config from AWS SSM"
 $config = $null
 $i = 0
 do {
-    $config = (aws ssm get-parameters --names "$environment-$InstanceId" --with-decryption --region $Region  --query "Parameters[*].{Name:Name,Value:Value}" | ConvertFrom-Json)[0].value
+    $config = (aws ssm get-parameters --names "$token_path/$InstanceId" --with-decryption --region $Region  --query "Parameters[*].{Name:Name,Value:Value}" | ConvertFrom-Json)[0].value
     Write-Host "Waiting for GH Runner config to become available in AWS SSM ($i/30)"
     Start-Sleep 1
     $i++
 } while (($null -eq $config) -and ($i -lt 30))
 
 Write-Host "Delete GH Runner token from AWS SSM"
-aws ssm delete-parameter --name "$environment-$InstanceId" --region $Region
+aws ssm delete-parameter --name "$token_path/$InstanceId" --region $Region
 
 # Create or update user
 if (-not($run_as)) {

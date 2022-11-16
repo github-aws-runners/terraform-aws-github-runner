@@ -3,6 +3,10 @@
 ## [1.15.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v1.14.0...v1.15.0) (2022-11-08)
 
 
+### ⚠ BREAKING CHANGES
+
+* **ci:**
+
 ### Features
 
 * Allow to toggle access to EC2 instance tags ([#2592](https://github.com/philips-labs/terraform-aws-github-runner/issues/2592)) ([55fba22](https://github.com/philips-labs/terraform-aws-github-runner/commit/55fba22474fa802f781d46e5f3e1513c354d3a38))
