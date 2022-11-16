@@ -758,3 +758,11 @@ variable "enable_user_data_debug_logging_runner" {
   type        = bool
   default     = false
 }
+
+##### Enverus Variables
+
+variable "monitor_lambda_zip" {
+  description = "File location of the lambda zip file for monitor runners."
+  type        = string
+  default     = null
+}

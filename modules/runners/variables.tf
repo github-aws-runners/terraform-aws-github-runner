@@ -582,3 +582,11 @@ variable "enable_user_data_debug_logging" {
   type        = bool
   default     = false
 }
+
+
+###### Enverus Variables
+variable "monitor_lambda_zip" {
+  description = "File location of the lambda zip file."
+  type        = string
+  default     = null
+}
