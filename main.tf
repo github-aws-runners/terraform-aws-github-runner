@@ -9,6 +9,7 @@ locals {
   }
 
   default_runner_labels = "self-hosted,${var.runner_os},${var.runner_architecture}"
+  runner_labels         = var.runner_extra_labels != "" ? "${local.default_runner_labels},${var.runner_extra_labels}" : local.default_runner_labels
 }
 
 resource "random_string" "random" {
@@ -122,12 +123,21 @@ module "ssm" {
 module "webhook" {
   source = "./modules/webhook"
 
-  aws_region                    = var.aws_region
-  prefix                        = var.prefix
-  tags                          = local.tags
-  kms_key_arn                   = var.kms_key_arn
-  sqs_build_queue               = aws_sqs_queue.queued_builds
-  sqs_build_queue_fifo          = var.fifo_build_queue
+  prefix      = var.prefix
+  tags        = local.tags
+  kms_key_arn = var.kms_key_arn
+
+  runner_config = {
+    "${aws_sqs_queue.queued_builds.id}" = {
+      id : aws_sqs_queue.queued_builds.id
+      arn : aws_sqs_queue.queued_builds.arn
+      fifo : var.fifo_build_queue
+      matcherConfig : {
+        labelMatchers : split(",", local.runner_labels)
+        exactMatch : var.runner_enable_workflow_job_labels_check_all
+      }
+    }
+  }
   sqs_workflow_job_queue        = length(aws_sqs_queue.webhook_events_workflow_job_queue) > 0 ? aws_sqs_queue.webhook_events_workflow_job_queue[0] : null
   github_app_webhook_secret_arn = module.ssm.parameters.github_app_webhook_secret.arn
 
@@ -141,11 +151,6 @@ module "webhook" {
   lambda_timeout                                = var.webhook_lambda_timeout
   logging_retention_in_days                     = var.logging_retention_in_days
   logging_kms_key_id                            = var.logging_kms_key_id
-
-  # labels
-  enable_workflow_job_labels_check = var.runner_enable_workflow_job_labels_check
-  workflow_job_labels_check_all    = var.runner_enable_workflow_job_labels_check_all
-  runner_labels                    = var.runner_extra_labels != "" ? "${local.default_runner_labels},${var.runner_extra_labels}" : local.default_runner_labels
 
   role_path                 = var.role_path
   role_permissions_boundary = var.role_permissions_boundary
@@ -259,9 +264,8 @@ module "runner_binaries" {
 
   source = "./modules/runner-binaries-syncer"
 
-  aws_region = var.aws_region
-  prefix     = var.prefix
-  tags       = local.tags
+  prefix = var.prefix
+  tags   = local.tags
 
   distribution_bucket_name = "${var.prefix}-dist-${random_string.random.result}"
   s3_logging_bucket        = var.runner_binaries_s3_logging_bucket

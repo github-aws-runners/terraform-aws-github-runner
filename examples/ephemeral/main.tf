@@ -43,9 +43,6 @@ module "runners" {
   enable_organization_runners = true
   runner_extra_labels         = "default,example"
 
-  # enable workflow labels check
-  # runner_enable_workflow_job_labels_check = true
-
   # enable access to the runners via SSM
   enable_ssm_on_runners = true
 

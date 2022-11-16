@@ -4,7 +4,8 @@ import nock from 'nock';
 
 import checkrun_event from '../../test/resources/github_check_run_event.json';
 import workflowjob_event from '../../test/resources/github_workflowjob_event.json';
-import { sendActionRequest, sendWebhookEventToWorkflowJobQueue } from '../sqs';
+import queuesConfig from '../../test/resources/multi_runner_configurations.json';
+import { sendActionRequest } from '../sqs';
 import { getParameterValue } from '../ssm';
 import { handle } from './handler';
 
@@ -17,6 +18,17 @@ const secret = 'TEST_SECRET';
 const webhooks = new Webhooks({
   secret: secret,
 });
+
+const mockSQS = {
+  sendMessage: jest.fn(() => {
+    {
+      return { promise: jest.fn() };
+    }
+  }),
+};
+jest.mock('aws-sdk', () => ({
+  SQS: jest.fn().mockImplementation(() => mockSQS),
+}));
 
 describe('handler', () => {
   let originalError: Console['error'];
@@ -49,7 +61,7 @@ describe('handler', () => {
 
   describe('Test for workflowjob event: ', () => {
     beforeEach(() => {
-      process.env.DISABLE_CHECK_WORKFLOW_JOB_LABELS = 'false';
+      process.env.RUNNER_CONFIG = JSON.stringify(queuesConfig);
     });
     it('handles workflow job events', async () => {
       const event = JSON.stringify(workflowjob_event);
@@ -132,9 +144,22 @@ describe('handler', () => {
     });
 
     it('Check runner labels accept test job', async () => {
-      process.env.RUNNER_LABELS = '["self-hosted",  "test"]';
-      process.env.ENABLE_WORKFLOW_JOB_LABELS_CHECK = 'true';
-      process.env.WORKFLOW_JOB_LABELS_CHECK_ALL = 'true';
+      process.env.RUNNER_CONFIG = JSON.stringify([
+        {
+          ...queuesConfig[0],
+          matcherConfig: {
+            labelMatchers: ['self-hosted', 'test'],
+            exactMatch: true,
+          },
+        },
+        {
+          ...queuesConfig[1],
+          matcherConfig: {
+            labelMatchers: ['self-hosted', 'test1'],
+            exactMatch: true,
+          },
+        },
+      ]);
       const event = JSON.stringify({
         ...workflowjob_event,
         workflow_job: {
@@ -151,9 +176,22 @@ describe('handler', () => {
     });
 
     it('Check runner labels accept job with mixed order.', async () => {
-      process.env.RUNNER_LABELS = '["linux", "TEST", "self-hosted"]';
-      process.env.ENABLE_WORKFLOW_JOB_LABELS_CHECK = 'true';
-      process.env.WORKFLOW_JOB_LABELS_CHECK_ALL = 'true';
+      process.env.RUNNER_CONFIG = JSON.stringify([
+        {
+          ...queuesConfig[0],
+          matcherConfig: {
+            labelMatchers: ['linux', 'TEST', 'self-hosted'],
+            exactMatch: true,
+          },
+        },
+        {
+          ...queuesConfig[1],
+          matcherConfig: {
+            labelMatchers: ['self-hosted', 'test1'],
+            exactMatch: true,
+          },
+        },
+      ]);
       const event = JSON.stringify({
         ...workflowjob_event,
         workflow_job: {
@@ -170,9 +208,22 @@ describe('handler', () => {
     });
 
     it('Check webhook accept jobs where not all labels are provided in job.', async () => {
-      process.env.RUNNER_LABELS = '["self-hosted", "test", "test2"]';
-      process.env.ENABLE_WORKFLOW_JOB_LABELS_CHECK = 'true';
-      process.env.WORKFLOW_JOB_LABELS_CHECK_ALL = 'true';
+      process.env.RUNNER_CONFIG = JSON.stringify([
+        {
+          ...queuesConfig[0],
+          matcherConfig: {
+            labelMatchers: ['self-hosted', 'test', 'test2'],
+            exactMatch: true,
+          },
+        },
+        {
+          ...queuesConfig[1],
+          matcherConfig: {
+            labelMatchers: ['self-hosted', 'test1'],
+            exactMatch: true,
+          },
+        },
+      ]);
       const event = JSON.stringify({
         ...workflowjob_event,
         workflow_job: {
@@ -189,9 +240,22 @@ describe('handler', () => {
     });
 
     it('Check webhook does not accept jobs where not all labels are supported by the runner.', async () => {
-      process.env.RUNNER_LABELS = '["self-hosted", "x64", "linux", "test"]';
-      process.env.ENABLE_WORKFLOW_JOB_LABELS_CHECK = 'true';
-      process.env.WORKFLOW_JOB_LABELS_CHECK_ALL = 'true';
+      process.env.RUNNER_CONFIG = JSON.stringify([
+        {
+          ...queuesConfig[0],
+          matcherConfig: {
+            labelMatchers: ['self-hosted', 'x64', 'linux', 'test'],
+            exactMatch: true,
+          },
+        },
+        {
+          ...queuesConfig[1],
+          matcherConfig: {
+            labelMatchers: ['self-hosted', 'x64', 'linux', 'test1'],
+            exactMatch: true,
+          },
+        },
+      ]);
       const event = JSON.stringify({
         ...workflowjob_event,
         workflow_job: {
@@ -208,9 +272,22 @@ describe('handler', () => {
     });
 
     it('Check webhook will accept jobs with a single acceptable label.', async () => {
-      process.env.RUNNER_LABELS = '["self-hosted", "x64", "linux", "test"]';
-      process.env.ENABLE_WORKFLOW_JOB_LABELS_CHECK = 'true';
-      process.env.WORKFLOW_JOB_LABELS_CHECK_ALL = 'false';
+      process.env.RUNNER_CONFIG = JSON.stringify([
+        {
+          ...queuesConfig[0],
+          matcherConfig: {
+            labelMatchers: ['self-hosted', 'test', 'test2'],
+            exactMatch: true,
+          },
+        },
+        {
+          ...queuesConfig[1],
+          matcherConfig: {
+            labelMatchers: ['self-hosted', 'x64'],
+            exactMatch: false,
+          },
+        },
+      ]);
       const event = JSON.stringify({
         ...workflowjob_event,
         workflow_job: {
@@ -227,9 +304,22 @@ describe('handler', () => {
     });
 
     it('Check webhook will not accept jobs without correct label when job label check all is false.', async () => {
-      process.env.RUNNER_LABELS = '["self-hosted", "x64", "linux", "test"]';
-      process.env.ENABLE_WORKFLOW_JOB_LABELS_CHECK = 'true';
-      process.env.WORKFLOW_JOB_LABELS_CHECK_ALL = 'false';
+      process.env.RUNNER_CONFIG = JSON.stringify([
+        {
+          ...queuesConfig[0],
+          matcherConfig: {
+            labelMatchers: ['self-hosted', 'x64', 'linux', 'test'],
+            exactMatch: false,
+          },
+        },
+        {
+          ...queuesConfig[1],
+          matcherConfig: {
+            labelMatchers: ['self-hosted', 'x64', 'linux', 'test1'],
+            exactMatch: false,
+          },
+        },
+      ]);
       const event = JSON.stringify({
         ...workflowjob_event,
         workflow_job: {
@@ -244,6 +334,88 @@ describe('handler', () => {
       expect(resp.statusCode).toBe(202);
       expect(sendActionRequest).not.toBeCalled;
     });
+    it('Check webhook will accept jobs for specific labels if workflow labels are specific', async () => {
+      process.env.RUNNER_CONFIG = JSON.stringify([
+        {
+          ...queuesConfig[0],
+          matcherConfig: {
+            labelMatchers: ['self-hosted'],
+            exactMatch: false,
+          },
+          id: 'ubuntu-queue-id',
+        },
+        {
+          ...queuesConfig[1],
+          matcherConfig: {
+            labelMatchers: ['self-hosted'],
+            exactMatch: false,
+          },
+          id: 'default-queue-id',
+        },
+      ]);
+      const event = JSON.stringify({
+        ...workflowjob_event,
+        workflow_job: {
+          ...workflowjob_event.workflow_job,
+          labels: ['self-hosted', 'ubuntu', 'x64', 'linux'],
+        },
+      });
+      const resp = await handle(
+        { 'X-Hub-Signature': await webhooks.sign(event), 'X-GitHub-Event': 'workflow_job' },
+        event,
+      );
+      expect(resp.statusCode).toBe(201);
+      expect(sendActionRequest).toBeCalledWith({
+        id: workflowjob_event.workflow_job.id,
+        repositoryName: workflowjob_event.repository.name,
+        repositoryOwner: workflowjob_event.repository.owner.login,
+        eventType: 'workflow_job',
+        installationId: 0,
+        queueId: 'ubuntu-queue-id',
+        queueFifo: false,
+      });
+    });
+    it('Check webhook will accept jobs for latest labels if workflow labels are not specific', async () => {
+      process.env.RUNNER_CONFIG = JSON.stringify([
+        {
+          ...queuesConfig[0],
+          matcherConfig: {
+            labelMatchers: ['self-hosted'],
+            exactMatch: false,
+          },
+          id: 'ubuntu-queue-id',
+        },
+        {
+          ...queuesConfig[1],
+          matcherConfig: {
+            labelMatchers: ['self-hosted'],
+            exactMatch: false,
+          },
+          id: 'default-queue-id',
+        },
+      ]);
+      const event = JSON.stringify({
+        ...workflowjob_event,
+        workflow_job: {
+          ...workflowjob_event.workflow_job,
+          labels: ['self-hosted', 'linux', 'x64'],
+        },
+      });
+      const resp = await handle(
+        { 'X-Hub-Signature': await webhooks.sign(event), 'X-GitHub-Event': 'workflow_job' },
+        event,
+      );
+      expect(resp.statusCode).toBe(201);
+      expect(sendActionRequest).toBeCalledWith({
+        id: workflowjob_event.workflow_job.id,
+        repositoryName: workflowjob_event.repository.name,
+        repositoryOwner: workflowjob_event.repository.owner.login,
+        eventType: 'workflow_job',
+        installationId: 0,
+        queueId: 'ubuntu-queue-id',
+        queueFifo: false,
+      });
+    });
   });
 
   describe('Test for check_run is ignored.', () => {
@@ -255,22 +427,6 @@ describe('handler', () => {
       );
       expect(resp.statusCode).toBe(202);
       expect(sendActionRequest).toBeCalledTimes(0);
-    });
-  });
-
-  describe('Test for webhook events to be sent to workflow job queue: ', () => {
-    beforeEach(() => {
-      process.env.SQS_WORKFLOW_JOB_QUEUE =
-        'https://sqs.eu-west-1.amazonaws.com/123456789/webhook_events_workflow_job_queue';
-    });
-    it('sends webhook events to workflow job queue', async () => {
-      const event = JSON.stringify(workflowjob_event);
-      const resp = await handle(
-        { 'X-Hub-Signature': await webhooks.sign(event), 'X-GitHub-Event': 'workflow_job' },
-        event,
-      );
-      expect(resp.statusCode).toBe(201);
-      expect(sendWebhookEventToWorkflowJobQueue).toBeCalled();
     });
   });
 });

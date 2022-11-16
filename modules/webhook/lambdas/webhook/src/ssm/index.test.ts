@@ -11,6 +11,7 @@ const ENVIRONMENT = 'dev';
 beforeEach(() => {
   jest.resetModules();
   jest.clearAllMocks();
+  jest.resetAllMocks();
   process.env = { ...cleanEnv };
   nock.disableNetConnect();
 });
@@ -38,5 +39,46 @@ describe('Test getParameterValue', () => {
 
     // Assert
     expect(result).toBe(parameterValue);
+  });
+
+  test('Gets parameters and returns value undefined', async () => {
+    // Arrange
+    const parameterValue = undefined;
+    const parameterName = 'testParam';
+    const output: GetParameterCommandOutput = {
+      Parameter: {
+        Name: parameterName,
+        Type: 'SecureString',
+        Value: parameterValue,
+      },
+      $metadata: {
+        httpStatusCode: 200,
+      },
+    };
+    SSM.prototype.getParameter = jest.fn().mockResolvedValue(output);
+
+    // Act
+    const result = await getParameterValue(ENVIRONMENT, parameterName);
+
+    // Assert
+    expect(result).toBe(undefined);
+  });
+
+  test('Gets parameters and returns undefined', async () => {
+    // Arrange
+    const parameterName = 'testParam';
+    const output: GetParameterCommandOutput = {
+      $metadata: {
+        httpStatusCode: 200,
+      },
+    };
+
+    SSM.prototype.getParameter = jest.fn().mockResolvedValue(output);
+
+    // Act
+    const result = await getParameterValue(ENVIRONMENT, parameterName);
+
+    // Assert
+    expect(result).toBe(undefined);
   });
 });

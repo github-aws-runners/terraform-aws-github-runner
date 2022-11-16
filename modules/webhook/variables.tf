@@ -1,8 +1,3 @@
-variable "aws_region" {
-  description = "AWS region."
-  type        = string
-}
-
 variable "environment" {
   description = "A name that identifies the environment, used as prefix and for tagging."
   type        = string
@@ -30,12 +25,17 @@ variable "tags" {
   default     = {}
 }
 
-variable "sqs_build_queue" {
-  description = "SQS queue to publish accepted build events."
-  type = object({
-    id  = string
-    arn = string
-  })
+variable "runner_config" {
+  description = "SQS queue to publish accepted build events based on the runner type."
+  type = map(object({
+    arn  = string
+    id   = string
+    fifo = bool
+    matcherConfig = object({
+      labelMatchers = list(string)
+      exactMatch    = bool
+    })
+  }))
 }
 variable "sqs_workflow_job_queue" {
   description = "SQS queue to monitor github events."
@@ -117,24 +117,6 @@ variable "kms_key_arn" {
   default     = null
 }
 
-variable "runner_labels" {
-  description = "Extra (custom) labels for the runners (GitHub). Separate each label by a comma. Labels checks on the webhook can be enforced by setting `enable_workflow_job_labels_check`. GitHub read-only labels should not be provided."
-  type        = string
-  default     = ""
-}
-
-variable "enable_workflow_job_labels_check" {
-  description = "If set to true all labels in the workflow job even are matched against the custom labels and GitHub labels (os, architecture and `self-hosted`). When the labels are not matching the event is dropped at the webhook."
-  type        = bool
-  default     = false
-}
-
-variable "workflow_job_labels_check_all" {
-  description = "If set to true all labels in the workflow job must match the GitHub labels (os, architecture and `self-hosted`). When false if __any__ label matches it will trigger the webhook. `enable_workflow_job_labels_check` must be true for this to take effect."
-  type        = bool
-  default     = true
-}
-
 variable "log_type" {
   description = "Logging format for lambda logging. Valid values are 'json', 'pretty', 'hidden'. "
   type        = string
@@ -169,12 +151,6 @@ variable "log_level" {
 
 variable "disable_check_wokflow_job_labels" {
   description = "Disable the check of workflow labels."
-  type        = bool
-  default     = false
-}
-
-variable "sqs_build_queue_fifo" {
-  description = "Enable a FIFO queue to remain the order of events received by the webhook. Suggest to set to true for repo level runners."
   type        = bool
   default     = false
 }
