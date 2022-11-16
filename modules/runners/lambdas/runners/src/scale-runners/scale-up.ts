@@ -28,6 +28,7 @@ interface CreateGitHubRunnerConfig {
 
 interface CreateEC2RunnerConfig {
   environment: string;
+  ssmTokenPath: string;
   subnets: string[];
   launchTemplateName: string;
   ec2instanceCriteria: RunnerInputParameters['ec2instanceCriteria'];
@@ -144,6 +145,7 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
   const runnerGroup = process.env.RUNNER_GROUP_NAME;
   const environment = process.env.ENVIRONMENT;
   const ghesBaseUrl = process.env.GHES_URL;
+  const ssmTokenPath = process.env.SSM_TOKEN_PATH;
   const subnets = process.env.SUBNET_IDS.split(',');
   const instanceTypes = process.env.INSTANCE_TYPES.split(',');
   const instanceTargetTargetCapacityType = process.env.INSTANCE_TARGET_CAPACITY_TYPE;
@@ -216,6 +218,7 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
           },
           environment,
           launchTemplateName,
+          ssmTokenPath,
           subnets,
           amiIdSsmParameterName,
         },

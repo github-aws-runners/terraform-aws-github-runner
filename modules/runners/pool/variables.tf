@@ -51,6 +51,7 @@ variable "config" {
     role_permissions_boundary = string
     kms_key_arn               = string
     role_path                 = string
+    ssm_token_path            = string
   })
 }
 

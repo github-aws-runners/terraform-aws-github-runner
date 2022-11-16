@@ -12,6 +12,12 @@ module "runners" {
 
   s3_runner_binaries = each.value.runner_config.enable_runner_binaries_syncer ? local.runner_binaries_by_os_and_arch_map["${each.value.runner_config.runner_os}_${each.value.runner_config.runner_architecture}"] : {}
 
+  ssm_paths = {
+    root   = "${local.ssm_root_path}/${var.prefix}-${each.key}"
+    tokens = "${var.ssm_paths.runners}/tokens"
+    config = "${var.ssm_paths.runners}/config"
+  }
+
   runner_os                     = each.value.runner_config.runner_os
   instance_types                = each.value.runner_config.instance_types
   instance_target_capacity_type = each.value.runner_config.instance_target_capacity_type

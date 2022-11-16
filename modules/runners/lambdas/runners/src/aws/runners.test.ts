@@ -14,6 +14,7 @@ const LAUNCH_TEMPLATE = 'lt-1';
 const ORG_NAME = 'SomeAwesomeCoder';
 const REPO_NAME = `${ORG_NAME}/some-amazing-library`;
 const ENVIRONMENT = 'unit-test-environment';
+const SSM_TOKEN_PATH = '/github-action-runners/default/runners/tokens';
 
 const mockDescribeInstances = { promise: jest.fn() };
 mockEC2.describeInstances.mockImplementation(() => mockDescribeInstances);
@@ -251,7 +252,7 @@ describe('create runner', () => {
     expect(mockSSM.putParameter).toBeCalledTimes(2);
     for (const instance of instances[0].InstanceIds) {
       expect(mockSSM.putParameter).toBeCalledWith({
-        Name: `unit-test-environment-${instance}`,
+        Name: `${SSM_TOKEN_PATH}/${instance}`,
         Type: 'SecureString',
         Value: '--token foo --url http://github.com',
       });
@@ -282,7 +283,7 @@ describe('create runner', () => {
   it('creates ssm parameters for each created instance', async () => {
     await createRunner(createRunnerConfig(defaultRunnerConfig));
     expect(mockSSM.putParameter).toBeCalledWith({
-      Name: `${ENVIRONMENT}-i-1234`,
+      Name: `${SSM_TOKEN_PATH}/i-1234`,
       Value: '--token foo --url http://github.com',
       Type: 'SecureString',
     });
@@ -434,6 +435,7 @@ function createRunnerConfig(runnerConfig: RunnerConfig): RunnerInputParameters {
     environment: ENVIRONMENT,
     runnerType: runnerConfig.type,
     runnerOwner: REPO_NAME,
+    ssmTokenPath: SSM_TOKEN_PATH,
     launchTemplateName: LAUNCH_TEMPLATE,
     ec2instanceCriteria: {
       instanceTypes: ['m5.large', 'c5.large'],
