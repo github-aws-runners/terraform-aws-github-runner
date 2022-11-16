@@ -246,67 +246,15 @@ describe('handler', () => {
     });
   });
 
-  describe('Test for check_run event (legacy): ', () => {
+  describe('Test for check_run is ignored.', () => {
     it('handles check_run events', async () => {
       const event = JSON.stringify(checkrun_event);
       const resp = await handle(
         { 'X-Hub-Signature': await webhooks.sign(event), 'X-GitHub-Event': 'check_run' },
         event,
       );
-      expect(resp.statusCode).toBe(201);
-      expect(sendActionRequest).toBeCalled();
-    });
-
-    it('does not handle check_run events with actions other than queued (action = started)', async () => {
-      const event = JSON.stringify({ ...checkrun_event, action: 'started' });
-      const resp = await handle(
-        { 'X-Hub-Signature': await webhooks.sign(event), 'X-GitHub-Event': 'check_run' },
-        event,
-      );
-      expect(resp.statusCode).toBe(201);
-      expect(sendActionRequest).not.toBeCalled();
-    });
-
-    it('does not handle check_run events with actions other than queued (action = completed)', async () => {
-      const event = JSON.stringify({ ...checkrun_event, action: 'completed' });
-      const resp = await handle(
-        { 'X-Hub-Signature': await webhooks.sign(event), 'X-GitHub-Event': 'check_run' },
-        event,
-      );
-      expect(resp.statusCode).toBe(201);
-      expect(sendActionRequest).not.toBeCalled();
-    });
-
-    it('does not handle check_run events from unlisted repositories', async () => {
-      const event = JSON.stringify(checkrun_event);
-      process.env.REPOSITORY_WHITE_LIST = '["NotCodertocat/Hello-World"]';
-      const resp = await handle(
-        { 'X-Hub-Signature': await webhooks.sign(event), 'X-GitHub-Event': 'check_run' },
-        event,
-      );
-      expect(resp.statusCode).toBe(403);
-      expect(sendActionRequest).not.toBeCalled();
-    });
-
-    it('handles check_run events from whitelisted repositories', async () => {
-      const event = JSON.stringify(checkrun_event);
-      process.env.REPOSITORY_WHITE_LIST = '["Codertocat/Hello-World"]';
-      const resp = await handle(
-        { 'X-Hub-Signature': await webhooks.sign(event), 'X-GitHub-Event': 'check_run' },
-        event,
-      );
-      expect(resp.statusCode).toBe(201);
-      expect(sendActionRequest).toBeCalled();
-    });
-
-    it('handles check_run events with no installation id.', async () => {
-      const event = JSON.stringify({ ...checkrun_event, installation: { id: null } });
-      const resp = await handle(
-        { 'X-Hub-Signature': await webhooks.sign(event), 'X-GitHub-Event': 'check_run' },
-        event,
-      );
-      expect(resp.statusCode).toBe(201);
-      expect(sendActionRequest).toBeCalled();
+      expect(resp.statusCode).toBe(202);
+      expect(sendActionRequest).toBeCalledTimes(0);
     });
   });
 

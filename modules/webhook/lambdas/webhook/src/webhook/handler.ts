@@ -7,7 +7,7 @@ import { sendActionRequest, sendWebhookEventToWorkflowJobQueue } from '../sqs';
 import { getParameterValue } from '../ssm';
 import { LogFields, logger as rootLogger } from './logger';
 
-const supportedEvents = ['check_run', 'workflow_job'];
+const supportedEvents = ['workflow_job'];
 const logger = rootLogger.getChildLogger();
 
 export async function handle(headers: IncomingHttpHeaders, body: string): Promise<Response> {
@@ -71,9 +71,11 @@ export async function handle(headers: IncomingHttpHeaders, body: string): Promis
       workflowLabelCheckAll,
       runnerLabels,
     );
-    await sendWorkflowJobEvents(githubEvent, workflowEventPayload);
-  } else if (githubEvent == 'check_run') {
-    response = await handleCheckRun(payload as CheckRunEvent, githubEvent);
+  } else {
+    response = {
+      statusCode: 202,
+      body: `Received event '${githubEvent}' ignored.`,
+    };
   }
 
   return response;
@@ -158,21 +160,6 @@ async function handleWorkflowJob(
     });
     logger.info(`Successfully queued job for ${body.repository.full_name}`, LogFields.print());
   }
-  return { statusCode: 201 };
-}
-
-async function handleCheckRun(body: CheckRunEvent, githubEvent: string): Promise<Response> {
-  const installationId = getInstallationId(body);
-  if (body.action === 'created' && body.check_run.status === 'queued') {
-    await sendActionRequest({
-      id: body.check_run.id,
-      repositoryName: body.repository.name,
-      repositoryOwner: body.repository.owner.login,
-      eventType: githubEvent,
-      installationId: installationId,
-    });
-  }
-  logger.info(`Successfully queued job for ${body.repository.full_name}`, LogFields.print());
   return { statusCode: 201 };
 }
 
