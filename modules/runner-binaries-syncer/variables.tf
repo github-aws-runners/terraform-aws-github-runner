@@ -1,8 +1,3 @@
-variable "aws_region" {
-  description = "AWS region."
-  type        = string
-}
-
 variable "tags" {
   description = "Map of tags that will be added to created resources. By default resources will be tagged with name and environment."
   type        = map(string)

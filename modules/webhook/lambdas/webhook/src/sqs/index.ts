@@ -1,5 +1,6 @@
 import { WorkflowJobEvent } from '@octokit/webhooks-types';
 import { SQS } from 'aws-sdk';
+import { bool } from 'aws-sdk/clients/signer';
 
 import { LogFields, logger } from '../webhook/logger';
 
@@ -9,6 +10,19 @@ export interface ActionRequestMessage {
   repositoryName: string;
   repositoryOwner: string;
   installationId: number;
+  queueId: string;
+  queueFifo: bool;
+}
+
+export interface MatcherConfig {
+  labelMatchers: string[];
+  exactMatch: bool;
+}
+export interface QueueConfig {
+  matcherConfig: MatcherConfig;
+  id: string;
+  arn: string;
+  fifo: bool;
 }
 export interface GithubWorkflowEvent {
   workflowJobEvent: WorkflowJobEvent;
@@ -17,16 +31,13 @@ export interface GithubWorkflowEvent {
 export const sendActionRequest = async (message: ActionRequestMessage): Promise<void> => {
   const sqs = new SQS({ region: process.env.AWS_REGION });
 
-  const useFifoQueueEnv = process.env.SQS_IS_FIFO || 'false';
-  const useFifoQueue = JSON.parse(useFifoQueueEnv) as boolean;
-
   const sqsMessage: SQS.Types.SendMessageRequest = {
-    QueueUrl: String(process.env.SQS_URL_WEBHOOK),
+    QueueUrl: message.queueId,
     MessageBody: JSON.stringify(message),
   };
 
   logger.debug(`sending message to SQS: ${JSON.stringify(sqsMessage)}`, LogFields.print());
-  if (useFifoQueue) {
+  if (message.queueFifo) {
     sqsMessage.MessageGroupId = String(message.id);
   }
 
