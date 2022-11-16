@@ -10,6 +10,7 @@ const cleanEnv = process.env;
 beforeEach(() => {
   jest.resetModules();
   jest.clearAllMocks();
+  jest.resetAllMocks();
   process.env = { ...cleanEnv };
   nock.disableNetConnect();
 });
