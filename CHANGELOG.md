@@ -31,7 +31,6 @@
 
 * Experimental feature - Duplicate workflow job event to extra queue ([#2268](https://github.com/philips-labs/terraform-aws-github-runner/issues/2268)) ([985e722](https://github.com/philips-labs/terraform-aws-github-runner/commit/985e722229ce464235d206484df3d989db03e143))
 
-
 ## [1.12.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v1.11.0...v1.12.0) (2022-10-12)
 
 

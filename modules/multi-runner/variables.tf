@@ -489,3 +489,24 @@ variable "pool_lambda_reserved_concurrent_executions" {
   type        = number
   default     = 1
 }
+
+variable "enable_workflow_job_events_queue" {
+  description = "Enabling this experimental feature will create a secondory sqs queue to wich a copy of the workflow_job event will be delivered."
+  type        = bool
+  default     = false
+}
+
+variable "workflow_job_queue_configuration" {
+  description = "Configuration options for workflow job queue which is only applicable if the flag enable_workflow_job_events_queue is set to true."
+  type = object({
+    delay_seconds              = number
+    visibility_timeout_seconds = number
+    message_retention_seconds  = number
+  })
+  default = {
+    "delay_seconds" : null,
+    "visibility_timeout_seconds" : null,
+    "message_retention_seconds" : null
+  }
+}
+
