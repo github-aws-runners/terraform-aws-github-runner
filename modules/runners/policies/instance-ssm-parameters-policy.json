@@ -4,9 +4,11 @@
     {
       "Effect": "Allow",
       "Action": [
-        "ssm:DeleteParameter"
+        "ssm:DeleteParameter",
+        "ssm:GetParameters",
+        "ssm:GetParameter"
       ],
-      "Resource": "${arn_ssm_parameters_prefix}"
+      "Resource": "${arn_ssm_parameters_path_tokens}*"
     },
     {
       "Effect": "Allow",
@@ -16,9 +18,9 @@
         "ssm:GetParametersByPath"
       ],
       "Resource": [
-        "${arn_ssm_parameters_prefix}",
-        "${arn_ssm_parameters_path}"
-      ]      
+        "${arn_ssm_parameters_path_config}",
+        "${arn_ssm_parameters_path_config}/*"
+      ]
     }
   ]
 }

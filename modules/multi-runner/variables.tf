@@ -25,12 +25,6 @@ variable "tags" {
   default     = {}
 }
 
-variable "runner_extra_labels" {
-  description = "Extra (custom) labels for the runners (GitHub). Separate each label by a comma. Labels checks on the webhook can be enforced by setting `enable_workflow_job_labels_check`. GitHub read-only labels should not be provided."
-  type        = string
-  default     = ""
-}
-
 variable "multi_runner_config" {
   type = map(object({
     runner_config = object({
@@ -229,16 +223,19 @@ variable "logging_kms_key_id" {
 
 variable "lambda_s3_bucket" {
   description = "S3 bucket from which to specify lambda functions. This is an alternative to providing local files directly."
+  type        = string
   default     = null
 }
 
 variable "webhook_lambda_s3_key" {
   description = "S3 key for webhook lambda function. Required if using S3 bucket to specify lambdas."
+  type        = string
   default     = null
 }
 
 variable "webhook_lambda_s3_object_version" {
   description = "S3 object version for webhook lambda function. Useful if S3 versioning is enabled on source bucket."
+  type        = string
   default     = null
 }
 
@@ -307,6 +304,7 @@ variable "lambda_architecture" {
 
 variable "syncer_lambda_s3_key" {
   description = "S3 key for syncer lambda function. Required if using S3 bucket to specify lambdas."
+  type        = string
   default     = null
 }
 
@@ -339,6 +337,7 @@ variable "runner_binaries_syncer_lambda_zip" {
 
 variable "syncer_lambda_s3_object_version" {
   description = "S3 object version for syncer lambda function. Useful if S3 versioning is enabled on source bucket."
+  type        = string
   default     = null
 }
 
@@ -421,11 +420,13 @@ variable "runner_additional_security_group_ids" {
 
 variable "runners_lambda_s3_key" {
   description = "S3 key for runners lambda function. Required if using S3 bucket to specify lambdas."
+  type        = string
   default     = null
 }
 
 variable "runners_lambda_s3_object_version" {
   description = "S3 object version for runners lambda function. Useful if S3 versioning is enabled on source bucket."
+  type        = string
   default     = null
 }
 
@@ -510,3 +511,16 @@ variable "workflow_job_queue_configuration" {
   }
 }
 
+variable "ssm_paths" {
+  description = "The root path used in SSM to store configuration and secreets."
+  type = object({
+    root    = string
+    app     = string
+    runners = string
+  })
+  default = {
+    root    = "github-action-runners"
+    runners = "runners"
+    app     = "app"
+  }
+}

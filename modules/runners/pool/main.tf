@@ -34,6 +34,7 @@ resource "aws_lambda_function" "pool" {
       RUNNER_EXTRA_LABELS                  = var.config.runner.extra_labels
       RUNNER_GROUP_NAME                    = var.config.runner.group_name
       RUNNER_OWNER                         = var.config.runner.pool_owner
+      SSM_TOKEN_PATH                       = var.config.ssm_token_path
       SUBNET_IDS                           = join(",", var.config.subnet_ids)
     }
   }

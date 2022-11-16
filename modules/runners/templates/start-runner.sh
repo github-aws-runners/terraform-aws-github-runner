@@ -16,36 +16,42 @@ echo "Retrieved INSTANCE_ID from AWS API ($instance_id)"
 environment=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/meta-data/tags/instance/ghr:environment)
 echo "Retrieved ghr:environment tag - ($environment)"
 
-parameters=$(aws ssm get-parameters-by-path --path "/$environment/runner" --region "$region" --query "Parameters[*].{Name:Name,Value:Value}")
+ssm_config_path=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/meta-data/tags/instance/ghr:ssm_config_path)
+echo "Retrieved ghr:ssm_config_path tag - ($ssm_config_path)"
+
+
+parameters=$(aws ssm get-parameters-by-path --path "$ssm_config_path" --region "$region" --query "Parameters[*].{Name:Name,Value:Value}")
 echo "Retrieved parameters from AWS SSM ($parameters)"
 
-run_as=$(echo "$parameters" | jq --arg environment "$environment" -r '.[] | select(.Name == "/\($environment)/runner/run-as") | .Value')
-echo "Retrieved /$environment/runner/run-as parameter - ($run_as)"
+run_as=$(echo "$parameters" | jq -r '.[] | select(.Name == "'$ssm_config_path'/run_as") | .Value')
+echo "Retrieved /$ssm_config_path/run_as parameter - ($run_as)"
 
-enable_cloudwatch_agent=$(echo "$parameters" | jq --arg environment "$environment" -r '.[] | select(.Name == "/\($environment)/runner/enable-cloudwatch") | .Value')
-echo "Retrieved /$environment/runner/enable-cloudwatch parameter - ($enable_cloudwatch_agent)"
+enable_cloudwatch_agent=$(echo "$parameters" | jq --arg ssm_config_path "$ssm_config_path" -r '.[] | select(.Name == "'$ssm_config_path'/enable_cloudwatch") | .Value')
+echo "Retrieved /$ssm_config_path/enable_cloudwatch parameter - ($enable_cloudwatch_agent)"
 
-agent_mode=$(echo "$parameters" | jq --arg environment "$environment" -r '.[] | select(.Name == "/\($environment)/runner/agent-mode") | .Value')
-echo "Retrieved /$environment/runner/agent-mode parameter - ($agent_mode)"
+agent_mode=$(echo "$parameters" | jq --arg ssm_config_path "$ssm_config_path" -r '.[] | select(.Name == "'$ssm_config_path'/agent_mode") | .Value')
+echo "Retrieved /$ssm_config_path/agent_mode parameter - ($agent_mode)"
+
+token_path=$(echo "$parameters" | jq --arg ssm_config_path "$ssm_config_path" -r '.[] | select(.Name == "'$ssm_config_path'/token_path") | .Value')
+echo "Retrieved /$ssm_config_path/token_path parameter - ($token_path)"
 
 if [[ "$enable_cloudwatch_agent" == "true" ]]; then
   echo "Cloudwatch is enabled"
-  amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c "ssm:$environment-cloudwatch_agent_config_runner"
+  amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c "ssm:$ssm_config_path/cloudwatch_agent_config_runner"
 fi
 
 ## Configure the runner
 
 echo "Get GH Runner config from AWS SSM"
-config=$(aws ssm get-parameters --names "$environment"-"$instance_id" --with-decryption --region "$region" | jq -r ".Parameters | .[0] | .Value")
-
+config=$(aws ssm get-parameter --name "$token_path"/"$instance_id" --with-decryption --region "$region" | jq -r ".Parameter | .Value")
 while [[ -z "$config" ]]; do
   echo "Waiting for GH Runner config to become available in AWS SSM"
   sleep 1
-  config=$(aws ssm get-parameters --names "$environment"-"$instance_id" --with-decryption --region "$region" | jq -r ".Parameters | .[0] | .Value")
+  config=$(aws ssm get-parameter --name "$token_path"/"$instance_id" --with-decryption --region "$region" | jq -r ".Parameter | .Value")
 done
 
 echo "Delete GH Runner token from AWS SSM"
-aws ssm delete-parameter --name "$environment"-"$instance_id" --region "$region"
+aws ssm delete-parameter --name "$token_path"/"$instance_id" --region "$region"
 
 if [ -z "$run_as" ]; then
   echo "No user specified, using default ec2-user account"

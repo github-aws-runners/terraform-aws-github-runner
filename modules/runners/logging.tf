@@ -42,7 +42,7 @@ locals {
 
 resource "aws_ssm_parameter" "cloudwatch_agent_config_runner" {
   count = var.enable_cloudwatch_agent ? 1 : 0
-  name  = "${var.prefix}-cloudwatch_agent_config_runner"
+  name  = "${var.ssm_paths.root}/${var.ssm_paths.config}/cloudwatch_agent_config_runner"
   type  = "String"
   value = var.cloudwatch_config != null ? var.cloudwatch_config : templatefile("${path.module}/templates/cloudwatch_config.json", {
     logfiles = jsonencode(local.logfiles)

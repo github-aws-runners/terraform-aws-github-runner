@@ -62,6 +62,7 @@ const EXPECTED_RUNNER_PARAMS: RunnerInputParameters = {
     targetCapacityType: 'spot',
     instanceAllocationStrategy: 'lowest-price',
   },
+  ssmTokenPath: '/github-action-runners/default/runners/config',
   subnets: ['subnet-123'],
 };
 let expectedRunnerParams: RunnerInputParameters;
@@ -76,8 +77,9 @@ beforeEach(() => {
   process.env.GITHUB_APP_CLIENT_ID = 'TEST_CLIENT_ID';
   process.env.GITHUB_APP_CLIENT_SECRET = 'TEST_CLIENT_SECRET';
   process.env.RUNNERS_MAXIMUM_COUNT = '3';
-  process.env.ENVIRONMENT = 'unit-test-environment';
+  process.env.ENVIRONMENT = EXPECTED_RUNNER_PARAMS.environment;
   process.env.LAUNCH_TEMPLATE_NAME = 'lt-1';
+  process.env.SSM_TOKEN_PATH = EXPECTED_RUNNER_PARAMS.ssmTokenPath;
   process.env.SUBNET_IDS = 'subnet-123';
   process.env.INSTANCE_TYPES = 'm5.large';
   process.env.INSTANCE_TARGET_CAPACITY_TYPE = 'spot';

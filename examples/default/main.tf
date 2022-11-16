@@ -1,5 +1,5 @@
 locals {
-  environment = "default"
+  environment = var.environment != null ? var.environment : "default"
   aws_region  = "eu-west-1"
 }
 
@@ -27,8 +27,8 @@ module "runners" {
   }
 
   github_app = {
-    key_base64     = var.github_app_key_base64
-    id             = var.github_app_id
+    key_base64     = var.github_app.key_base64
+    id             = var.github_app.id
     webhook_secret = random_id.random.hex
   }
 
@@ -43,9 +43,9 @@ module "runners" {
   # }]
 
   # Grab zip files via lambda_download
-  # webhook_lambda_zip                = "lambdas-download/webhook.zip"
-  # runner_binaries_syncer_lambda_zip = "lambdas-download/runner-binaries-syncer.zip"
-  # runners_lambda_zip                = "lambdas-download/runners.zip"
+  # webhook_lambda_zip                = "../lambdas-download/webhook.zip"
+  # runner_binaries_syncer_lambda_zip = "../lambdas-download/runner-binaries-syncer.zip"
+  # runners_lambda_zip                = "../lambdas-download/runners.zip"
 
   enable_organization_runners = true
   runner_extra_labels         = "default,example"
@@ -85,4 +85,6 @@ module "runners" {
   scale_down_schedule_expression = "cron(* * * * ? *)"
   # enable this flag to publish webhook events to workflow job queue
   # enable_workflow_job_events_queue  = true
+
+  enable_user_data_debug_logging_runner = true
 }

@@ -131,7 +131,7 @@ variable "runner_os" {
   }
 }
 
-variable "instance_type" {
+variable "instance_type" { # tflint-ignore: terraform_unused_declarations
   description = "[DEPRECATED] See instance_types."
   type        = string
   default     = "m5.large"
@@ -329,16 +329,19 @@ variable "enable_ssm_on_runners" {
 
 variable "lambda_s3_bucket" {
   description = "S3 bucket from which to specify lambda functions. This is an alternative to providing local files directly."
+  type        = string
   default     = null
 }
 
 variable "runners_lambda_s3_key" {
   description = "S3 key for runners lambda function. Required if using S3 bucket to specify lambdas."
+  type        = string
   default     = null
 }
 
 variable "runners_lambda_s3_object_version" {
   description = "S3 object version for runners lambda function. Useful if S3 versioning is enabled on source bucket."
+  type        = string
   default     = null
 }
 
@@ -582,4 +585,13 @@ variable "enable_user_data_debug_logging" {
   description = "Option to enable debug logging for user-data, this logs all secrets as well."
   type        = bool
   default     = false
+}
+
+variable "ssm_paths" {
+  description = "The root path used in SSM to store configuration and secreets."
+  type = object({
+    root   = string
+    tokens = string
+    config = string
+  })
 }
