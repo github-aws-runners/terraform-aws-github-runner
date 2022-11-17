@@ -96,3 +96,22 @@ resource "aws_iam_role_policy" "monitor_ami_id_ssm_parameter_read" {
     }
   JSON
 }
+
+resource "aws_cloudwatch_event_rule" "run_monitor" {
+  name                = "run-monitor"
+  description         = "Check for jobs in orgs with no runners"
+  schedule_expression = var.runner_monitor_chron
+}
+
+resource "aws_cloudwatch_event_target" "run_monitor" {
+  rule = aws_cloudwatch_event_rule.run_monitor.name
+  arn  = aws_lambda_function.runner_monitor.arn
+}
+
+resource "aws_lambda_permission" "allow_cloudwatch_to_lambda" {
+  statement_id  = "AllowExecutionFromCloudWatch"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.runner_monitor.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.run_monitor.arn
+}

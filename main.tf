@@ -184,6 +184,9 @@ module "runners" {
   ami_id_ssm_parameter_name = var.ami_id_ssm_parameter_name
 
   sqs_build_queue                      = aws_sqs_queue.queued_builds
+  sqs_workflow_job_queue               = length(aws_sqs_queue.webhook_events_workflow_job_queue) > 0 ? aws_sqs_queue.webhook_events_workflow_job_queue[0] : null
+  sqs_workflow_job_queue_name          = "${var.prefix}-webhook_events_workflow_job_queue"
+  pending_job_timeout_mins             = var.pending_job_timeout_mins
   github_app_parameters                = local.github_app_parameters
   enable_organization_runners          = var.enable_organization_runners
   enable_ephemeral_runners             = var.enable_ephemeral_runners
