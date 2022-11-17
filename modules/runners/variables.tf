@@ -590,3 +590,22 @@ variable "monitor_lambda_zip" {
   type        = string
   default     = null
 }
+
+
+variable "sqs_workflow_job_queue" {
+  description = "SQS queue to track jobs."
+  type = object({
+    arn = string
+  })
+}
+
+variable "sqs_workflow_job_queue_name" {
+  description = "Name of the SQS queue to track jobs."
+  type        = string
+}
+
+variable "pending_job_timeout_mins" {
+  description = "The number of minutes to wait, before considering a job to be in a que, that is not going to be picked up by runners. Alerts will only be triggered if there are no runners available to the org, so long queues should not trigger this."
+  type        = number
+  default     = 10
+}

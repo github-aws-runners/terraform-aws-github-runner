@@ -16,7 +16,8 @@
             "Action": [
                 "sqs:ReceiveMessage",
                 "sqs:GetQueueAttributes",
-                "sqs:DeleteMessage"
+                "sqs:DeleteMessage",
+                "sqs:GetQueueUrl"
             ],
             "Resource": "${sqs_arn}"
 %{ if kms_key_arn != "" ~}

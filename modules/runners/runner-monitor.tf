@@ -1,23 +1,24 @@
 resource "aws_lambda_function" "runner_monitor" {
-  s3_bucket                      = var.lambda_s3_bucket != null ? var.lambda_s3_bucket : null
-  s3_key                         = var.runners_lambda_s3_key != null ? var.runners_lambda_s3_key : null
-  s3_object_version              = var.runners_lambda_s3_object_version != null ? var.runners_lambda_s3_object_version : null
-  filename                       = var.lambda_s3_bucket == null ? local.monitor_lambda_zip : null
-  source_code_hash               = var.lambda_s3_bucket == null ? filebase64sha256(local.monitor_lambda_zip) : null
-  function_name                  = "${var.prefix}-scale-up"
-  role                           = aws_iam_role.runner_monitor.arn
-  handler                        = "lambda_function.lambda_handler"
-  runtime                        = var.lambda_runtime
-  timeout                        = 180
-  memory_size                    = 512
-  tags                           = local.tags
-  architectures                  = [var.lambda_architecture]
+  s3_bucket         = var.lambda_s3_bucket != null ? var.lambda_s3_bucket : null
+  s3_key            = var.runners_lambda_s3_key != null ? var.runners_lambda_s3_key : null
+  s3_object_version = var.runners_lambda_s3_object_version != null ? var.runners_lambda_s3_object_version : null
+  filename          = var.lambda_s3_bucket == null ? local.monitor_lambda_zip : null
+  source_code_hash  = var.lambda_s3_bucket == null ? filebase64sha256(local.monitor_lambda_zip) : null
+  function_name     = "${var.prefix}-runner-monitor"
+  role              = aws_iam_role.runner_monitor.arn
+  handler           = "lambda_function.lambda_handler"
+  runtime           = "python3.9"
+  timeout           = 180
+  memory_size       = 512
+  tags              = local.tags
+  architectures     = [var.lambda_architecture]
 
   environment {
     variables = {
       PARAMETER_GITHUB_APP_ID_NAME         = var.github_app_parameters.id.name
       PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.github_app_parameters.key_base64.name
-      SQS_QUEUE_NAME = var.var.sqs_workflow_job_queue.name
+      SQS_QUEUE_NAME                       = var.sqs_workflow_job_queue_name
+      PENDING_JOB_TIMEOUT_MINS             = var.pending_job_timeout_mins
     }
   }
 
@@ -51,7 +52,7 @@ resource "aws_iam_role_policy" "runner_monitor" {
   role = aws_iam_role.runner_monitor.name
   policy = templatefile("${path.module}/policies/lambda-runner-monitor.json", {
     arn_runner_instance_role  = aws_iam_role.runner.arn
-    sqs_arn                   = var.var.sqs_workflow_job_queue.arn
+    sqs_arn                   = var.sqs_workflow_job_queue.arn
     github_app_id_arn         = var.github_app_parameters.id.arn
     github_app_key_base64_arn = var.github_app_parameters.key_base64.arn
     kms_key_arn               = local.kms_key_arn
@@ -74,9 +75,9 @@ resource "aws_iam_role_policy_attachment" "runner_monitor_vpc_execution_role" {
   policy_arn = "arn:${var.aws_partition}:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }
 
-resource "aws_iam_role_policy" "ami_id_ssm_parameter_read" {
+resource "aws_iam_role_policy" "monitor_ami_id_ssm_parameter_read" {
   count  = var.ami_id_ssm_parameter_name != null ? 1 : 0
-  name   = "${var.prefix}-ami-id-ssm-parameter-read"
+  name   = "monitor-${var.prefix}-ami-id-ssm-parameter-read"
   role   = aws_iam_role.runner_monitor.name
   policy = <<-JSON
     {
