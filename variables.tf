@@ -758,3 +758,23 @@ variable "enable_user_data_debug_logging_runner" {
   type        = bool
   default     = false
 }
+
+##### Enverus Variables
+
+variable "monitor_lambda_zip" {
+  description = "File location of the lambda zip file for monitor runners."
+  type        = string
+  default     = null
+}
+
+variable "pending_job_timeout_mins" {
+  description = "The number of minutes to wait, before considering a job to be in a que, that is not going to be picked up by runners. Alerts will only be triggered if there are no runners available to the org, so long queues should not trigger this."
+  type        = number
+  default     = 10
+}
+
+variable "runner_monitor_chron" {
+  type = string
+  description = "Chron schedule for excecuting runner monitor"
+  default = "cron(0/10 * * * ? *)"
+}

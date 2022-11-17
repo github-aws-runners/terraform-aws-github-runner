@@ -184,6 +184,9 @@ module "runners" {
   ami_id_ssm_parameter_name = var.ami_id_ssm_parameter_name
 
   sqs_build_queue                      = aws_sqs_queue.queued_builds
+  sqs_workflow_job_queue               = length(aws_sqs_queue.webhook_events_workflow_job_queue) > 0 ? aws_sqs_queue.webhook_events_workflow_job_queue[0] : null
+  sqs_workflow_job_queue_name          = "${var.prefix}-webhook_events_workflow_job_queue"
+  pending_job_timeout_mins             = var.pending_job_timeout_mins
   github_app_parameters                = local.github_app_parameters
   enable_organization_runners          = var.enable_organization_runners
   enable_ephemeral_runners             = var.enable_ephemeral_runners
@@ -211,6 +214,7 @@ module "runners" {
   lambda_runtime                   = var.lambda_runtime
   lambda_architecture              = var.lambda_architecture
   lambda_zip                       = var.runners_lambda_zip
+  monitor_lambda_zip               = var.monitor_lambda_zip
   lambda_timeout_scale_up          = var.runners_scale_up_lambda_timeout
   lambda_timeout_scale_down        = var.runners_scale_down_lambda_timeout
   lambda_subnet_ids                = var.lambda_subnet_ids
