@@ -776,5 +776,5 @@ variable "pending_job_timeout_mins" {
 variable "runner_monitor_chron" {
   type = string
   description = "Chron schedule for excecuting runner monitor"
-  default = "cron(10 * * * * *)"
+  default = "cron(0/10 * * * ? *)"
 }
