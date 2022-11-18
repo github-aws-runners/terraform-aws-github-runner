@@ -9,6 +9,7 @@ locals {
   }
 
   default_runner_labels = "self-hosted,${var.runner_os},${var.runner_architecture}"
+  runner_labels         = var.runner_extra_labels != "" ? "${local.default_runner_labels},${var.runner_extra_labels}" : local.default_runner_labels
 }
 
 resource "random_string" "random" {
@@ -145,11 +146,10 @@ module "webhook" {
   # labels
   enable_workflow_job_labels_check = var.runner_enable_workflow_job_labels_check
   workflow_job_labels_check_all    = var.runner_enable_workflow_job_labels_check_all
-  runner_labels                    = var.runner_extra_labels != "" ? "${local.default_runner_labels},${var.runner_extra_labels}" : local.default_runner_labels
-
-  role_path                 = var.role_path
-  role_permissions_boundary = var.role_permissions_boundary
-  repository_white_list     = var.repository_white_list
+  runner_labels                    = local.runner_labels
+  role_path                        = var.role_path
+  role_permissions_boundary        = var.role_permissions_boundary
+  repository_white_list            = var.repository_white_list
 
   log_type  = var.log_type
   log_level = var.log_level
