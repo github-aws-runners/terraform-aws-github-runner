@@ -142,7 +142,7 @@ describe('list instances', () => {
     const noInstances: AWS.EC2.DescribeInstancesResult = {
       Reservations: undefined,
     };
-    mockDescribeInstances.promise.mockReturnValueOnce(noInstances).mockReturnValueOnce(noInstances);
+    mockDescribeInstances.promise.mockReturnValue(noInstances);
     const resp = await listEC2Runners();
     expect(resp.length).toBe(0);
   });
