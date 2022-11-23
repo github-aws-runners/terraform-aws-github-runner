@@ -109,7 +109,7 @@ The setup consists of running Terraform to create all AWS resources and manually
 
 ### Setup GitHub App (part 1)
 
-Go to GitHub and [create a new app](https://docs.github.com/en/developers/apps/creating-a-github-app). Beware you can create apps your organization or for a user. For now we support only organization level apps.
+Go to GitHub and [create a new app](https://docs.github.com/en/developers/apps/creating-a-github-app). Beware you can create apps for your organization or for a user. For now we support only organization level apps.
 
 1. Create app in Github
 2. Choose a name
