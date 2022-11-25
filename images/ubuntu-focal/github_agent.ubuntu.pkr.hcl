@@ -78,6 +78,12 @@ variable "custom_shell_commands" {
   default     = []
 }
 
+variable "instance_profile" {
+  description = "IAM instance profile for the builder to tun as"
+  type        = string
+  default     = ""
+}
+
 source "amazon-ebs" "githubrunner" {
   ami_name                    = "github-runner-ubuntu-focal-amd64-${formatdate("YYYYMMDDhhmm", timestamp())}"
   instance_type               = var.instance_type
@@ -95,6 +101,7 @@ source "amazon-ebs" "githubrunner" {
     most_recent = true
     owners      = ["099720109477"]
   }
+  iam_instance_profile = var.instance_profile
   ssh_username = "ubuntu"
   tags = merge(
     var.global_tags,
