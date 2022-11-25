@@ -79,7 +79,7 @@ variable "custom_shell_commands" {
 }
 
 variable "instance_profile" {
-  description = "IAM instance profile for the builder to tun as"
+  description = "IAM instance profile for the builder to run as"
   type        = string
   default     = ""
 }
