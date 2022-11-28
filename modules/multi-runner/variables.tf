@@ -31,6 +31,7 @@ variable "multi_runner_config" {
       runner_os           = string
       runner_architecture = string
       runner_metadata_options = optional(map(any), {
+        instance_metadata_tags      = "enabled"
         http_endpoint               = "enabled"
         http_tokens                 = "optional"
         http_put_response_hop_limit = 1
