@@ -10,7 +10,7 @@ module "runners" {
     "ghr:environment" = "${var.prefix}-${each.key}"
   })
 
-  s3_runner_binaries = each.value.runner_config.enable_runner_binaries_syncer ? local.runner_binaries_by_os_and_arch_map["${each.value.runner_config.runner_os}_${each.value.runner_config.runner_architecture}"] : {}
+  s3_runner_binaries = each.value.runner_config.enable_runner_binaries_syncer ? local.runner_binaries_by_os_and_arch_map["${each.value.runner_config.runner_os}_${each.value.runner_config.runner_architecture}"] : null
 
   ssm_paths = {
     root   = "${local.ssm_root_path}/${var.prefix}-${each.key}"
