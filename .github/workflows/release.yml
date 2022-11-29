@@ -37,6 +37,7 @@ jobs:
 
   release:
     name: release
+    needs: prepare
     runs-on: ubuntu-latest
     needs:
       prepare
@@ -51,7 +52,6 @@ jobs:
           app_id: ${{ secrets.FOREST_RELEASER_APP_ID }}
           app_base64_private_key: ${{ secrets.FOREST_RELEASER_APP_PRIVATE_KEY_BASE64 }}
           auth_type: installation
-
 
       - name: Extract branch name
         id: branch
