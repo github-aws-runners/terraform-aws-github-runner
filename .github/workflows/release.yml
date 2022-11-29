@@ -37,6 +37,7 @@ jobs:
 
   release:
     name: release
+    needs: prepare
     runs-on: ubuntu-latest
     needs:
       prepare
