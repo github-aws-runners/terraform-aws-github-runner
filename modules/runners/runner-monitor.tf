@@ -98,7 +98,7 @@ resource "aws_iam_role_policy" "monitor_ami_id_ssm_parameter_read" {
 }
 
 resource "aws_cloudwatch_event_rule" "run_monitor" {
-  name                = "run-monitor"
+  name                = "${var.prefix}-run-monitor"
   description         = "Check for jobs in orgs with no runners"
   schedule_expression = var.runner_monitor_chron
 }
