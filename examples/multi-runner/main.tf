@@ -7,11 +7,6 @@ resource "random_id" "random" {
   byte_length = 20
 }
 
-
-################################################################################
-### Hybrid account
-################################################################################
-
 module "multi-runner" {
   source = "../../modules/multi-runner"
   multi_runner_config = {
