@@ -20,12 +20,12 @@
     "@trivago/prettier-plugin-sort-imports": "^3.4.0",
     "@types/aws-lambda": "^8.10.108",
     "@types/express": "^4.17.14",
-    "@types/jest": "^29.2.2",
+    "@types/jest": "^29.2.3",
     "@types/node": "^18.11.9",
     "@typescript-eslint/eslint-plugin": "^4.33.0",
     "@typescript-eslint/parser": "^4.33.0",
     "@vercel/ncc": "0.34.0",
-    "aws-sdk": "^2.1255.0",
+    "aws-sdk": "^2.1262.0",
     "body-parser": "^1.20.0",
     "eslint": "^7.32.0",
     "eslint-plugin-prettier": "4.2.1",
@@ -36,10 +36,10 @@
     "prettier": "2.7.1",
     "ts-jest": "^29.0.3",
     "ts-node-dev": "^2.0.0",
-    "typescript": "^4.8.4"
+    "typescript": "^4.9.3"
   },
   "dependencies": {
-    "@aws-sdk/client-ssm": "^3.209.0",
+    "@aws-sdk/client-ssm": "^3.218.0",
     "@octokit/rest": "^19.0.5",
     "@octokit/webhooks": "^10.3.1",
     "aws-lambda": "^1.0.7",
