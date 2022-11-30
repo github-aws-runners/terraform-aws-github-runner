@@ -97,6 +97,7 @@ resource "aws_iam_role_policy" "monitor_ami_id_ssm_parameter_read" {
   JSON
 }
 
+# create an eventbridge rule to trigger runner monitor lambda on a timer
 resource "aws_cloudwatch_event_rule" "run_monitor" {
   name                = "run-${var.prefix}-runner-monitor"
   description         = "Check for jobs in orgs with no runners"
