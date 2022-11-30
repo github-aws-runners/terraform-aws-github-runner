@@ -43,8 +43,7 @@ describe('list instances', () => {
   });
 
   it('returns a list of instances', async () => {
-    mockDescribeInstances.promise
-      .mockReturnValue(mockRunningInstances);
+    mockDescribeInstances.promise.mockReturnValue(mockRunningInstances);
     const resp = await listEC2Runners();
     expect(resp.length).toBe(1);
     expect(resp).toContainEqual({
@@ -56,15 +55,13 @@ describe('list instances', () => {
   });
 
   it('calls EC2 describe instances', async () => {
-    mockDescribeInstances.promise
-      .mockReturnValueOnce(mockRunningInstances);
+    mockDescribeInstances.promise.mockReturnValueOnce(mockRunningInstances);
     await listEC2Runners();
     expect(mockEC2.describeInstances).toBeCalled();
   });
 
   it('filters instances on repo name', async () => {
-    mockDescribeInstances.promise
-      .mockReturnValueOnce(mockRunningInstances);
+    mockDescribeInstances.promise.mockReturnValueOnce(mockRunningInstances);
     await listEC2Runners({ runnerType: 'Repo', runnerOwner: REPO_NAME, environment: undefined });
     expect(mockEC2.describeInstances).toBeCalledWith({
       Filters: [
@@ -77,8 +74,7 @@ describe('list instances', () => {
   });
 
   it('filters instances on org name', async () => {
-    mockDescribeInstances.promise
-      .mockReturnValueOnce(mockRunningInstances);
+    mockDescribeInstances.promise.mockReturnValueOnce(mockRunningInstances);
     await listEC2Runners({ runnerType: 'Org', runnerOwner: ORG_NAME, environment: undefined });
     expect(mockEC2.describeInstances).toBeCalledWith({
       Filters: [
@@ -91,8 +87,7 @@ describe('list instances', () => {
   });
 
   it('filters instances on environment', async () => {
-    mockDescribeInstances.promise
-      .mockReturnValueOnce(mockRunningInstances);
+    mockDescribeInstances.promise.mockReturnValueOnce(mockRunningInstances);
     await listEC2Runners({ environment: ENVIRONMENT });
     expect(mockEC2.describeInstances).toBeCalledWith({
       Filters: [
