@@ -756,15 +756,10 @@ variable "enable_user_data_debug_logging_runner" {
 variable "ssm_paths" {
   description = "The root path used in SSM to store configuration and secreets."
   type = object({
-    root       = string
-    use_prefix = bool
-    app        = string
-    runners    = string
+    root       = optional(string, "github-action-runners")
+    app        = optional(string, "app")
+    runners    = optional(string, "runners")
+    use_prefix = optional(bool, true)
   })
-  default = {
-    root       = "github-action-runners"
-    use_prefix = true
-    runners    = "runners"
-    app        = "app"
-  }
+  default = {}
 }
