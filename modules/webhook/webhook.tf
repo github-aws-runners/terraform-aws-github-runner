@@ -22,6 +22,14 @@ resource "aws_lambda_function" "webhook" {
       SQS_WORKFLOW_JOB_QUEUE              = try(var.sqs_workflow_job_queue, null) != null ? var.sqs_workflow_job_queue.id : ""
     }
   }
+  
+  dynamic "vpc_config" {
+    for_each = var.lambda_subnet_ids != null && var.lambda_security_group_ids != null ? [true] : []
+    content {
+      security_group_ids = var.lambda_security_group_ids
+      subnet_ids         = var.lambda_subnet_ids
+    }
+  }
 
   tags = var.tags
 }
@@ -66,6 +74,12 @@ resource "aws_iam_role_policy" "webhook_logging" {
   policy = templatefile("${path.module}/policies/lambda-cloudwatch.json", {
     log_group_arn = aws_cloudwatch_log_group.webhook.arn
   })
+}
+
+resource "aws_iam_role_policy_attachment" "webhook_vpc_execution_role" {
+  count      = length(var.lambda_subnet_ids) > 0 ? 1 : 0
+  role       = aws_iam_role.webhook_lambda.name
+  policy_arn = "arn:${var.aws_partition}:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }
 
 resource "aws_iam_role_policy" "webhook_sqs" {
