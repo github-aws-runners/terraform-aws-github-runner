@@ -35,11 +35,13 @@ jobs:
     name: release
     needs: prepare
     runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.release.outputs.upload_url }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
       - name: Create Release
-        id: create_release
+        id: release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
