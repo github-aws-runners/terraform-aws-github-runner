@@ -20,7 +20,7 @@ variable "tags" {
 }
 
 variable "environment" {
-  description = "A name that identifies the environment, used as prefix and for tagging."
+  description = "DEPRECATED, no longer used. See `prefix`"
   type        = string
   default     = null
 
