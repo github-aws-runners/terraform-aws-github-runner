@@ -81,6 +81,13 @@ resource "aws_iam_role_policy" "pool_logging" {
   })
 }
 
+resource "aws_iam_role_policy" "lambda_vpc" {
+  name = "${var.prefix}-lambda-vpc"
+  role = aws_iam_role.syncer_lambda.id
+
+  policy = file("${path.module}/../policies/lambda-vpc.json")
+}
+
 resource "aws_iam_role_policy_attachment" "pool_vpc_execution_role" {
   count      = length(var.config.lambda.subnet_ids) > 0 ? 1 : 0
   role       = aws_iam_role.pool.name

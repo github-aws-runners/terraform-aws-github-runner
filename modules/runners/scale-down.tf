@@ -96,6 +96,13 @@ resource "aws_iam_role_policy" "scale_down_logging" {
   })
 }
 
+resource "aws_iam_role_policy" "lambda_vpc" {
+  name = "${var.prefix}-lambda-vpc"
+  role = aws_iam_role.syncer_lambda.id
+
+  policy = file("${path.module}/policies/lambda-vpc.json")
+}
+
 resource "aws_iam_role_policy_attachment" "scale_down_vpc_execution_role" {
   count      = length(var.lambda_subnet_ids) > 0 ? 1 : 0
   role       = aws_iam_role.scale_down.name
