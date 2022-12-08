@@ -101,8 +101,9 @@ resource "aws_iam_role_policy" "lambda_logging" {
 }
 
 resource "aws_iam_role_policy" "lambda_syncer_vpc" {
-  name = "${var.prefix}-lambda-syncer-vpc"
-  role = aws_iam_role.syncer_lambda.id
+  count = var.lambda_subnet_ids != null && var.lambda_security_group_ids != null ? 1 : 0
+  name  = "${var.prefix}-lambda-syncer-vpc"
+  role  = aws_iam_role.syncer_lambda.id
 
   policy = file("${path.module}/policies/lambda-vpc.json")
 }

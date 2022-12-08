@@ -97,8 +97,9 @@ resource "aws_iam_role_policy" "scale_down_logging" {
 }
 
 resource "aws_iam_role_policy" "lambda_scale_down_vpc" {
-  name = "${var.prefix}-lambda-scale-down-vpc"
-  role = aws_iam_role.scale_down.id
+  count = var.lambda_subnet_ids != null && var.lambda_security_group_ids != null ? 1 : 0
+  name  = "${var.prefix}-lambda-scale-down-vpc"
+  role  = aws_iam_role.scale_down.id
 
   policy = file("${path.module}/policies/lambda-vpc.json")
 }

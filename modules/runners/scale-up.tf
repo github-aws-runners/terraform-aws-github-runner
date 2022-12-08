@@ -107,8 +107,9 @@ resource "aws_iam_role_policy" "service_linked_role" {
 }
 
 resource "aws_iam_role_policy" "lambda_scale_up_vpc" {
-  name = "${var.prefix}-lambda-scale-up-vpc"
-  role = aws_iam_role.scale_up.id
+  count = var.lambda_subnet_ids != null && var.lambda_security_group_ids != null ? 1 : 0
+  name  = "${var.prefix}-lambda-scale-up-vpc"
+  role  = aws_iam_role.scale_up.id
 
   policy = file("${path.module}/policies/lambda-vpc.json")
 }

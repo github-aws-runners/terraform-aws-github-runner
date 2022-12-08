@@ -82,8 +82,9 @@ resource "aws_iam_role_policy" "pool_logging" {
 }
 
 resource "aws_iam_role_policy" "lambda_pool_vpc" {
-  name = "${var.config.prefix}-lambda-pool-vpc"
-  role = aws_iam_role.pool.id
+  count = var.config.lambda.subnet_ids != null && var.config.lambda.security_group_ids != null ? 1 : 0
+  name  = "${var.config.prefix}-lambda-pool-vpc"
+  role  = aws_iam_role.pool.id
 
   policy = file("${path.module}/../policies/lambda-vpc.json")
 }

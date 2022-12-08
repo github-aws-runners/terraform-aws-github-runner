@@ -80,13 +80,6 @@ resource "aws_iam_role_policy" "webhook_sqs" {
   })
 }
 
-resource "aws_iam_role_policy" "lambda_webhook_vpc" {
-  name = "${var.prefix}-lambda-webhook-vpc"
-  role = aws_iam_role.webhook_lambda.id
-
-  policy = file("${path.module}/policies/lambda-vpc.json")
-}
-
 resource "aws_iam_role_policy" "webhook_workflow_job_sqs" {
   count = var.sqs_workflow_job_queue != null ? 1 : 0
   name  = "${var.prefix}-lambda-webhook-publish-workflow-job-sqs-policy"
