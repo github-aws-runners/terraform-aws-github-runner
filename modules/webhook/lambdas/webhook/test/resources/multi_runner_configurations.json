@@ -4,12 +4,12 @@
     "arn": "queueARN",
     "fifo": false,
     "matcherConfig": {
-      "labelMatchers": [
+      "labelMatchers": [[
         "self-hosted",
         "linux",
         "x64",
         "ubuntu"
-      ],
+      ]],
       "exactMatch": true
     }
   },
