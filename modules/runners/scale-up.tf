@@ -106,9 +106,9 @@ resource "aws_iam_role_policy" "service_linked_role" {
   policy = templatefile("${path.module}/policies/service-linked-role-create-policy.json", { aws_partition = var.aws_partition })
 }
 
-resource "aws_iam_role_policy" "lambda_vpc" {
-  name = "${var.prefix}-lambda-vpc"
-  role = aws_iam_role.syncer_lambda.id
+resource "aws_iam_role_policy" "lambda_scale_up_vpc" {
+  name = "${var.prefix}-lambda-scale-up-vpc"
+  role = aws_iam_role.scale_up.id
 
   policy = file("${path.module}/policies/lambda-vpc.json")
 }

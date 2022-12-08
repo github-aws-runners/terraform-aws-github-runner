@@ -80,9 +80,9 @@ resource "aws_iam_role_policy" "webhook_sqs" {
   })
 }
 
-resource "aws_iam_role_policy" "lambda_vpc" {
-  name = "${var.prefix}-lambda-vpc"
-  role = aws_iam_role.syncer_lambda.id
+resource "aws_iam_role_policy" "lambda_webhook_vpc" {
+  name = "${var.prefix}-lambda-webhook-vpc"
+  role = aws_iam_role.webhook_lambda.id
 
   policy = file("${path.module}/policies/lambda-vpc.json")
 }
