@@ -92,7 +92,7 @@ module "multi-runner" {
     },
     "windows-x64" = {
       matcherConfig : {
-        labelMatchers = ["self-hosted", "windows", "x64", "servercore-2022"]
+        labelMatchers = [["self-hosted", "windows", "x64", "servercore-2022"]]
         exactMatch    = true
       }
       fifo                = true
