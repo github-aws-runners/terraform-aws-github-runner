@@ -113,7 +113,7 @@ module "multi-runner" {
     },
     "linux-x64" = {
       matcherConfig : {
-        labelMatchers = ["self-hosted", "linux", "x64", "amazon"]
+        labelMatchers = [["self-hosted", "linux", "x64", "amazon"]]
         exactMatch    = false
       }
       fifo                = true
