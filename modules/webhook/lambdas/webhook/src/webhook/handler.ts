@@ -161,7 +161,11 @@ function isRepoNotAllowed(repoFullName: string, repositoryWhiteList: string[]): 
   return repositoryWhiteList.length > 0 && !repositoryWhiteList.includes(repoFullName);
 }
 
-function canRunJob(workflowJobLabels: string[], runnerLabelsMatchers: string[][], workflowLabelCheckAll: boolean): boolean {
+function canRunJob(
+  workflowJobLabels: string[],
+  runnerLabelsMatchers: string[][],
+  workflowLabelCheckAll: boolean,
+): boolean {
   runnerLabelsMatchers = runnerLabelsMatchers.map((runnerLabel) => {
     return runnerLabel.map((label) => label.toLowerCase());
   });

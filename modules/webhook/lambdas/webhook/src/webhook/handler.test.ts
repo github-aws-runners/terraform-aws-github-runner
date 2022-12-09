@@ -460,7 +460,6 @@ describe('handler', () => {
     });
   });
 
-
   describe('Test for check_run is ignored.', () => {
     it('handles check_run events', async () => {
       const event = JSON.stringify(checkrun_event);
