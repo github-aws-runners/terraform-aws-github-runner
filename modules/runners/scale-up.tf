@@ -107,7 +107,7 @@ resource "aws_iam_role_policy" "service_linked_role" {
 }
 
 resource "aws_iam_role_policy" "lambda_scale_up_vpc" {
-  count = var.lambda_subnet_ids != null && var.lambda_security_group_ids != null ? 1 : 0
+  count = length(var.lambda_subnet_ids) > 0 && length(var.lambda_security_group_ids) > 0 ? 1 : 0
   name  = "${var.prefix}-lambda-scale-up-vpc"
   role  = aws_iam_role.scale_up.id
 

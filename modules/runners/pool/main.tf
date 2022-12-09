@@ -82,7 +82,7 @@ resource "aws_iam_role_policy" "pool_logging" {
 }
 
 resource "aws_iam_role_policy" "lambda_pool_vpc" {
-  count = var.config.lambda.subnet_ids != null && var.config.lambda.security_group_ids != null ? 1 : 0
+  count = length(var.config.lambda.subnet_ids) > 0 && length(var.config.lambda.security_group_ids) > 0 ? 1 : 0
   name  = "${var.config.prefix}-lambda-pool-vpc"
   role  = aws_iam_role.pool.id
 
