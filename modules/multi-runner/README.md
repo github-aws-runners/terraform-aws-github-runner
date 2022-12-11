@@ -42,7 +42,7 @@ module "multi-runner" {
   multi_runner_config = {
     "linux-arm" = {
       matcherConfig : {
-        labelMatchers = ["self-hosted", "linux", "arm64", "arm"]
+        labelMatchers = [["self-hosted", "linux", "arm64", "arm"]]
         exactMatch    = true
       }
       runner_config = {
@@ -57,7 +57,7 @@ module "multi-runner" {
     },
     "linux-x64" = {
       matcherConfig : {
-        labelMatchers = ["self-hosted", "linux", "x64"]
+        labelMatchers = [["self-hosted", "linux", "x64"]]
         exactMatch    = false
       }
       runner_config = {
