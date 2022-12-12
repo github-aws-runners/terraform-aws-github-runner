@@ -30,7 +30,7 @@
     "jest-mock-extended": "^3.0.1",
     "moment-timezone": "^0.5.39",
     "nock": "^13.2.9",
-    "prettier": "2.7.1",
+    "prettier": "2.8.1",
     "ts-jest": "^29.0.3",
     "ts-node": "^10.9.1",
     "ts-node-dev": "^2.0.0"
