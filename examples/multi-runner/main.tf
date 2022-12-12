@@ -45,7 +45,8 @@ module "multi-runner" {
       runner_config = {
         runner_os                      = "linux"
         runner_architecture            = "x64"
-        runner_extra_labels            = "ubuntu"
+        runner_extra_labels            = "ubuntu-latest,ubuntu-2204"
+        runner_run_as                  = "ubuntu"
         enable_ssm_on_runners          = true
         instance_types                 = ["m5ad.large", "m5a.large"]
         runners_maximum_count          = 1
