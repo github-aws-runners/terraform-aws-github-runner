@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env bash -e
 
 # Build all the lambda's, output on the default place (inside the lambda module)
 
@@ -7,5 +7,5 @@ repoRoot=$(dirname $(dirname $(realpath ${BASH_SOURCE[0]})))
 
 for lambdaDir in ${lambdaSrcDirs[@]}; do
     cd "$repoRoot/${lambdaDir}"
-    yarn && yarn run dist
+    yarn && yarn run all && yarn run dist
 done
