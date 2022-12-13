@@ -423,19 +423,11 @@ describe('handler', () => {
       {
         ...queuesConfig[0],
         matcherConfig: {
-          labelMatchers: [['self-hosted', 'arm64', 'linux', 'ubuntu-latest']],
+          labelMatchers: [['self-hosted', 'arm64', 'linux', 'ubuntu-latest'], ['self-hosted', 'arm64', 'linux', 'ubuntu-2204']],
           exactMatch: false,
         },
         id: 'ubuntu-queue-id',
-      },
-      {
-        ...queuesConfig[1],
-        matcherConfig: {
-          labelMatchers: [['self-hosted', 'arm64', 'linux', 'ubuntu-2204']],
-          exactMatch: false,
-        },
-        id: 'default-queue-id',
-      },
+      }
     ]);
     const event = JSON.stringify({
       ...workflowjob_event,
