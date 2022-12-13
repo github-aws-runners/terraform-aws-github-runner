@@ -16,6 +16,7 @@
     "all": "yarn build && yarn format && yarn lint && yarn test"
   },
   "devDependencies": {
+    "@babel/helper-get-function-arity": "^7.16.7",
     "@octokit/webhooks-definitions": "^3.67.3",
     "@trivago/prettier-plugin-sort-imports": "^4.0.0",
     "@types/aws-lambda": "^8.10.109",
