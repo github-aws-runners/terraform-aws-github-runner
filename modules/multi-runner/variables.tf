@@ -108,7 +108,7 @@ variable "multi_runner_config" {
     })
 
     matcherConfig = object({
-      labelMatchers = list(string)
+      labelMatchers = list(list(string))
       exactMatch    = optional(bool, false)
     })
     fifo = optional(bool, false)
@@ -165,7 +165,7 @@ variable "multi_runner_config" {
         pool_config: "The configuration for updating the pool. The `pool_size` to adjust to by the events triggered by the `schedule_expression`. For example you can configure a cron expression for week days to adjust the pool to 10 and another expression for the weekend to adjust the pool to 1."
       }
       matcherConfig: {
-        labelMatchers: "The list of labels supported by the runner configuration."
+        labelMatchers: "The list of list of labels supported by the runner configuration. `[[self-hosted, linux, x64, example]]`"
         exactMatch: "If set to true all labels in the workflow job must match the GitHub labels (os, architecture and `self-hosted`). When false if __any__ workflow label matches it will trigger the webhook."
       }
       fifo: "Enable a FIFO queue to remain the order of events received by the webhook. Suggest to set to true for repo level runners."

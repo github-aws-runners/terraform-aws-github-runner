@@ -15,9 +15,10 @@ export interface ActionRequestMessage {
 }
 
 export interface MatcherConfig {
-  labelMatchers: string[];
+  labelMatchers: string[][];
   exactMatch: bool;
 }
+
 export interface QueueConfig {
   matcherConfig: MatcherConfig;
   id: string;

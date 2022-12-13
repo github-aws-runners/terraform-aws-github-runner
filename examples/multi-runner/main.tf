@@ -12,7 +12,7 @@ module "multi-runner" {
   multi_runner_config = {
     "linux-arm64" = {
       matcherConfig : {
-        labelMatchers = ["self-hosted", "linux", "arm64", "amazon"]
+        labelMatchers = [["self-hosted", "linux", "arm64", "amazon"]]
         exactMatch    = true
       }
       fifo                = true
@@ -33,7 +33,7 @@ module "multi-runner" {
     },
     "linux-ubuntu" = {
       matcherConfig : {
-        labelMatchers = ["self-hosted", "linux", "x64", "ubuntu"]
+        labelMatchers = [["self-hosted", "linux", "x64", "ubuntu-latest"], ["self-hosted", "linux", "x64", "ubuntu-2204"]]
         exactMatch    = true
       }
       fifo                = true
@@ -45,12 +45,12 @@ module "multi-runner" {
       runner_config = {
         runner_os                      = "linux"
         runner_architecture            = "x64"
-        runner_extra_labels            = "ubuntu"
+        runner_extra_labels            = "ubuntu-latest,ubuntu-2204"
+        runner_run_as                  = "ubuntu"
         enable_ssm_on_runners          = true
         instance_types                 = ["m5ad.large", "m5a.large"]
         runners_maximum_count          = 1
         scale_down_schedule_expression = "cron(* * * * ? *)"
-        runner_run_as                  = "ubuntu"
         userdata_template              = "./templates/user-data.sh"
         ami_owners                     = ["099720109477"] # Canonical's Amazon account ID
 
@@ -93,7 +93,7 @@ module "multi-runner" {
     },
     "windows-x64" = {
       matcherConfig : {
-        labelMatchers = ["self-hosted", "windows", "x64", "servercore-2022"]
+        labelMatchers = [["self-hosted", "windows", "x64", "servercore-2022"]]
         exactMatch    = true
       }
       fifo                = true
@@ -114,7 +114,7 @@ module "multi-runner" {
     },
     "linux-x64" = {
       matcherConfig : {
-        labelMatchers = ["self-hosted", "linux", "x64", "amazon"]
+        labelMatchers = [["self-hosted", "linux", "x64", "amazon"]]
         exactMatch    = false
       }
       fifo                = true

@@ -28,7 +28,7 @@ variable "runner_config" {
     id   = string
     fifo = bool
     matcherConfig = object({
-      labelMatchers = list(string)
+      labelMatchers = list(list(string))
       exactMatch    = bool
     })
   }))
