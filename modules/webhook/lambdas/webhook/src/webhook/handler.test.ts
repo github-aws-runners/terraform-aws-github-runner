@@ -148,14 +148,14 @@ describe('handler', () => {
         {
           ...queuesConfig[0],
           matcherConfig: {
-            labelMatchers: ['self-hosted', 'test'],
+            labelMatchers: [['self-hosted', 'test']],
             exactMatch: true,
           },
         },
         {
           ...queuesConfig[1],
           matcherConfig: {
-            labelMatchers: ['self-hosted', 'test1'],
+            labelMatchers: [['self-hosted', 'test1']],
             exactMatch: true,
           },
         },
@@ -180,14 +180,14 @@ describe('handler', () => {
         {
           ...queuesConfig[0],
           matcherConfig: {
-            labelMatchers: ['linux', 'TEST', 'self-hosted'],
+            labelMatchers: [['linux', 'TEST', 'self-hosted']],
             exactMatch: true,
           },
         },
         {
           ...queuesConfig[1],
           matcherConfig: {
-            labelMatchers: ['self-hosted', 'test1'],
+            labelMatchers: [['self-hosted', 'test1']],
             exactMatch: true,
           },
         },
@@ -212,14 +212,14 @@ describe('handler', () => {
         {
           ...queuesConfig[0],
           matcherConfig: {
-            labelMatchers: ['self-hosted', 'test', 'test2'],
+            labelMatchers: [['self-hosted', 'test', 'test2']],
             exactMatch: true,
           },
         },
         {
           ...queuesConfig[1],
           matcherConfig: {
-            labelMatchers: ['self-hosted', 'test1'],
+            labelMatchers: [['self-hosted', 'test1']],
             exactMatch: true,
           },
         },
@@ -244,14 +244,14 @@ describe('handler', () => {
         {
           ...queuesConfig[0],
           matcherConfig: {
-            labelMatchers: ['self-hosted', 'x64', 'linux', 'test'],
+            labelMatchers: [['self-hosted', 'x64', 'linux', 'test']],
             exactMatch: true,
           },
         },
         {
           ...queuesConfig[1],
           matcherConfig: {
-            labelMatchers: ['self-hosted', 'x64', 'linux', 'test1'],
+            labelMatchers: [['self-hosted', 'x64', 'linux', 'test1']],
             exactMatch: true,
           },
         },
@@ -276,14 +276,14 @@ describe('handler', () => {
         {
           ...queuesConfig[0],
           matcherConfig: {
-            labelMatchers: ['self-hosted', 'test', 'test2'],
+            labelMatchers: [['self-hosted', 'test', 'test2']],
             exactMatch: true,
           },
         },
         {
           ...queuesConfig[1],
           matcherConfig: {
-            labelMatchers: ['self-hosted', 'x64'],
+            labelMatchers: [['self-hosted', 'x64']],
             exactMatch: false,
           },
         },
@@ -308,14 +308,14 @@ describe('handler', () => {
         {
           ...queuesConfig[0],
           matcherConfig: {
-            labelMatchers: ['self-hosted', 'x64', 'linux', 'test'],
+            labelMatchers: [['self-hosted', 'x64', 'linux', 'test']],
             exactMatch: false,
           },
         },
         {
           ...queuesConfig[1],
           matcherConfig: {
-            labelMatchers: ['self-hosted', 'x64', 'linux', 'test1'],
+            labelMatchers: [['self-hosted', 'x64', 'linux', 'test1']],
             exactMatch: false,
           },
         },
@@ -339,7 +339,7 @@ describe('handler', () => {
         {
           ...queuesConfig[0],
           matcherConfig: {
-            labelMatchers: ['self-hosted'],
+            labelMatchers: [['self-hosted']],
             exactMatch: false,
           },
           id: 'ubuntu-queue-id',
@@ -347,7 +347,7 @@ describe('handler', () => {
         {
           ...queuesConfig[1],
           matcherConfig: {
-            labelMatchers: ['self-hosted'],
+            labelMatchers: [['self-hosted']],
             exactMatch: false,
           },
           id: 'default-queue-id',
@@ -380,7 +380,7 @@ describe('handler', () => {
         {
           ...queuesConfig[0],
           matcherConfig: {
-            labelMatchers: ['self-hosted'],
+            labelMatchers: [['self-hosted']],
             exactMatch: false,
           },
           id: 'ubuntu-queue-id',
@@ -388,7 +388,7 @@ describe('handler', () => {
         {
           ...queuesConfig[1],
           matcherConfig: {
-            labelMatchers: ['self-hosted'],
+            labelMatchers: [['self-hosted']],
             exactMatch: false,
           },
           id: 'default-queue-id',
@@ -415,6 +415,43 @@ describe('handler', () => {
         queueId: 'ubuntu-queue-id',
         queueFifo: false,
       });
+    });
+  });
+
+  it('Check webhook will accept jobs when matchers accepts multiple labels.', async () => {
+    process.env.RUNNER_CONFIG = JSON.stringify([
+      {
+        ...queuesConfig[0],
+        matcherConfig: {
+          labelMatchers: [
+            ['self-hosted', 'arm64', 'linux', 'ubuntu-latest'],
+            ['self-hosted', 'arm64', 'linux', 'ubuntu-2204'],
+          ],
+          exactMatch: false,
+        },
+        id: 'ubuntu-queue-id',
+      },
+    ]);
+    const event = JSON.stringify({
+      ...workflowjob_event,
+      workflow_job: {
+        ...workflowjob_event.workflow_job,
+        labels: ['self-hosted', 'linux', 'arm64', 'ubuntu-latest'],
+      },
+    });
+    const resp = await handle(
+      { 'X-Hub-Signature': await webhooks.sign(event), 'X-GitHub-Event': 'workflow_job' },
+      event,
+    );
+    expect(resp.statusCode).toBe(201);
+    expect(sendActionRequest).toBeCalledWith({
+      id: workflowjob_event.workflow_job.id,
+      repositoryName: workflowjob_event.repository.name,
+      repositoryOwner: workflowjob_event.repository.owner.login,
+      eventType: 'workflow_job',
+      installationId: 0,
+      queueId: 'ubuntu-queue-id',
+      queueFifo: false,
     });
   });
 

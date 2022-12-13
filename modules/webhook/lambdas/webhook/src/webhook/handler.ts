@@ -161,18 +161,22 @@ function isRepoNotAllowed(repoFullName: string, repositoryWhiteList: string[]): 
   return repositoryWhiteList.length > 0 && !repositoryWhiteList.includes(repoFullName);
 }
 
-function canRunJob(workflowJobLabels: string[], runnerLabels: string[], workflowLabelCheckAll: boolean): boolean {
-  runnerLabels = runnerLabels.map((element) => {
-    return element.toLowerCase();
+function canRunJob(
+  workflowJobLabels: string[],
+  runnerLabelsMatchers: string[][],
+  workflowLabelCheckAll: boolean,
+): boolean {
+  runnerLabelsMatchers = runnerLabelsMatchers.map((runnerLabel) => {
+    return runnerLabel.map((label) => label.toLowerCase());
   });
   const match = workflowLabelCheckAll
-    ? workflowJobLabels.every((l) => runnerLabels.includes(l.toLowerCase()))
-    : workflowJobLabels.some((l) => runnerLabels.includes(l.toLowerCase()));
+    ? workflowJobLabels.every((wl) => runnerLabelsMatchers.some((rl) => rl.includes(wl.toLowerCase())))
+    : workflowJobLabels.some((wl) => runnerLabelsMatchers.some((rl) => rl.includes(wl.toLowerCase())));
 
   logger.debug(
     `Received workflow job event with labels: '${JSON.stringify(workflowJobLabels)}'. The event does ${
       match ? '' : 'NOT '
-    }match the runner labels: '${Array.from(runnerLabels).join(',')}'`,
+    }match the runner labels: '${Array.from(runnerLabelsMatchers).join(',')}'`,
     LogFields.print(),
   );
   return match;
