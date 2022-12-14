@@ -147,7 +147,7 @@ resource "aws_launch_template" "runner" {
     start_runner    = templatefile(local.userdata_start_runner[var.runner_os], {})
     ghes_url        = var.ghes_url
     ghes_ssl_verify = var.ghes_ssl_verify
-    metadata_tags   = var.metadata_options != null ? var.metadata_options[0].instance_metadata_tags : "enabled"
+    metadata_tags   = var.metadata_options != null ? var.metadata_options.instance_metadata_tags : "enabled"
 
     ## retain these for backwards compatibility
     environment                     = var.prefix
