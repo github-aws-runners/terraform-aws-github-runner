@@ -428,17 +428,6 @@ variable "runner_additional_security_group_ids" {
   default     = []
 }
 
-variable "market_options" {
-  description = "DEPCRECATED: Replaced by `instance_target_capacity_type`."
-  type        = string
-  default     = null
-
-  validation {
-    condition     = anytrue([var.market_options == null])
-    error_message = "Deprecated, replaced by `instance_target_capacity_type`."
-  }
-}
-
 variable "instance_target_capacity_type" {
   description = "Default lifecycle used for runner instances, can be either `spot` or `on-demand`."
   type        = string
@@ -463,17 +452,6 @@ variable "instance_max_spot_price" {
   description = "Max price price for spot intances per hour. This variable will be passed to the create fleet as max spot price for the fleet."
   type        = string
   default     = null
-}
-
-variable "instance_type" {
-  description = "[DEPRECATED] See instance_types."
-  type        = string
-  default     = null
-
-  validation {
-    condition     = anytrue([var.instance_type == null])
-    error_message = "Deprecated, replaced by `instance_types`."
-  }
 }
 
 variable "instance_types" {
