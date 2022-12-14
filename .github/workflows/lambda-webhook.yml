@@ -10,25 +10,6 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node: [16]
-    container:
-      image: node:${{ matrix.node }}
-    defaults:
-      run:
-        working-directory: modules/webhook/lambdas/webhook
-
-    steps:
-      - uses: actions/checkout@v3
-      - name: Install dependencies
-        run: yarn install
-      - name: Run prettier
-        run: yarn format-check
-      - name: Run linter
-        run: yarn lint
-      - name: Run tests
-        run: yarn test
-      - name: Build distribution
-        run: yarn build
+    uses: ./.github/workflows/lambda-template.yml
+    with:
+      working-directory: modules/webhook/lambdas/webhook
