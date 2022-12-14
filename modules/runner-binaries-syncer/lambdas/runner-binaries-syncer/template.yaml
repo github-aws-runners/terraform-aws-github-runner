@@ -3,7 +3,7 @@ Resources:
   Syncer:
     Type: AWS::Serverless::Function
     Properties:
-      Runtime: nodejs16.x
+      Runtime: nodejs18.x
       Handler: dist/index.handler
       MemorySize: 256
       Timeout: 300

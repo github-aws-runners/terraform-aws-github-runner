@@ -9,7 +9,7 @@ jobs:
   prepare:
     name: Create dist
     runs-on: ubuntu-latest
-    container: node:16
+    container: node:18
     strategy:
       matrix:
         lambda: ["modules/webhook/lambdas/webhook", "modules/runner-binaries-syncer/lambdas/runner-binaries-syncer", "modules/runners/lambdas/runners"]
