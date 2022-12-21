@@ -46,7 +46,7 @@ variable "multi_runner_config" {
       enable_organization_runners             = optional(bool, false)
       enable_runner_binaries_syncer           = optional(bool, true)
       enable_ssm_on_runners                   = optional(bool, false)
-      enable_userdata                        = optional(bool, true)
+      enable_userdata                         = optional(bool, true)
       instance_allocation_strategy            = optional(string, "lowest-price")
       instance_max_spot_price                 = optional(string, null)
       instance_target_capacity_type           = optional(string, "spot")

@@ -42,8 +42,8 @@ module "runners" {
 
   # configure your pre-built AMI
   enable_userdata = false
-  ami_filter       = { name = [var.ami_name_filter] }
-  ami_owners       = [data.aws_caller_identity.current.account_id]
+  ami_filter      = { name = [var.ami_name_filter] }
+  ami_owners      = [data.aws_caller_identity.current.account_id]
 
   # Look up runner AMI ID from an AWS SSM parameter (overrides ami_filter at instance launch time)
   # NOTE: the parameter must be managed outside of this module (e.g. in a runner AMI build workflow)
