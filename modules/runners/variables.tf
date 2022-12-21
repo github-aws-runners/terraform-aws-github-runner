@@ -142,7 +142,7 @@ variable "ami_id_ssm_parameter_name" {
   default     = null
 }
 
-variable "enabled_userdata" {
+variable "enable_userdata" {
   description = "Should the userdata script be enabled for the runner. Set this to false if you are using your own prebuilt AMI"
   type        = bool
   default     = true

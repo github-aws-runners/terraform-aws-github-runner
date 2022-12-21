@@ -46,7 +46,7 @@ variable "multi_runner_config" {
       enable_organization_runners             = optional(bool, false)
       enable_runner_binaries_syncer           = optional(bool, true)
       enable_ssm_on_runners                   = optional(bool, false)
-      enabled_userdata                        = optional(bool, true)
+      enable_userdata                        = optional(bool, true)
       instance_allocation_strategy            = optional(string, "lowest-price")
       instance_max_spot_price                 = optional(string, null)
       instance_target_capacity_type           = optional(string, "spot")
@@ -136,7 +136,7 @@ variable "multi_runner_config" {
         enable_organization_runners: "Register runners to organization, instead of repo level"
         enable_runner_binaries_syncer: "Option to disable the lambda to sync GitHub runner distribution, useful when using a pre-build AMI."
         enable_ssm_on_runners: "Enable to allow access the runner instances for debugging purposes via SSM. Note that this adds additional permissions to the runner instances."
-        enabled_userdata: "Should the userdata script be enabled for the runner. Set this to false if you are using your own prebuilt AMI."
+        enable_userdata: "Should the userdata script be enabled for the runner. Set this to false if you are using your own prebuilt AMI."
         instance_allocation_strategy: "The allocation strategy for spot instances. AWS recommends to use `capacity-optimized` however the AWS default is `lowest-price`."
         instance_max_spot_price: "Max price price for spot intances per hour. This variable will be passed to the create fleet as max spot price for the fleet."
         instance_target_capacity_type: "Default lifecycle used for runner instances, can be either `spot` or `on-demand`."

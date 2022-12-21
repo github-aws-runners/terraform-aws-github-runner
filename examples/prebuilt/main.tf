@@ -41,7 +41,7 @@ module "runners" {
   runner_os = var.runner_os
 
   # configure your pre-built AMI
-  enabled_userdata = false
+  enable_userdata = false
   ami_filter       = { name = [var.ami_name_filter] }
   ami_owners       = [data.aws_caller_identity.current.account_id]
 
