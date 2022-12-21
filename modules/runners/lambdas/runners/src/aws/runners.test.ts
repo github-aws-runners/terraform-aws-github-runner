@@ -35,23 +35,6 @@ const mockRunningInstances: AWS.EC2.DescribeInstancesResult = {
     },
   ],
 };
-const mockRunningInstancesLegacy: AWS.EC2.DescribeInstancesResult = {
-  Reservations: [
-    {
-      Instances: [
-        {
-          LaunchTime: new Date('2020-10-11T14:48:00.000+09:00'),
-          InstanceId: 'i-5678',
-          Tags: [
-            { Key: 'Owner', Value: REPO_NAME },
-            { Key: 'Type', Value: 'Repo' },
-            { Key: 'Application', Value: 'github-action-runner' },
-          ],
-        },
-      ],
-    },
-  ],
-};
 
 describe('list instances', () => {
   beforeEach(() => {
@@ -60,37 +43,25 @@ describe('list instances', () => {
   });
 
   it('returns a list of instances', async () => {
-    mockDescribeInstances.promise
-      .mockReturnValueOnce(mockRunningInstances)
-      .mockReturnValueOnce(mockRunningInstancesLegacy);
+    mockDescribeInstances.promise.mockReturnValue(mockRunningInstances);
     const resp = await listEC2Runners();
-    expect(resp.length).toBe(2);
+    expect(resp.length).toBe(1);
     expect(resp).toContainEqual({
       instanceId: 'i-1234',
       launchTime: new Date('2020-10-10T14:48:00.000+09:00'),
       type: 'Org',
       owner: 'CoderToCat',
     });
-    expect(resp).toContainEqual({
-      instanceId: 'i-5678',
-      launchTime: new Date('2020-10-11T14:48:00.000+09:00'),
-      type: 'Repo',
-      owner: REPO_NAME,
-    });
   });
 
   it('calls EC2 describe instances', async () => {
-    mockDescribeInstances.promise
-      .mockReturnValueOnce(mockRunningInstances)
-      .mockReturnValueOnce(mockRunningInstancesLegacy);
+    mockDescribeInstances.promise.mockReturnValueOnce(mockRunningInstances);
     await listEC2Runners();
     expect(mockEC2.describeInstances).toBeCalled();
   });
 
   it('filters instances on repo name', async () => {
-    mockDescribeInstances.promise
-      .mockReturnValueOnce(mockRunningInstances)
-      .mockReturnValueOnce(mockRunningInstancesLegacy);
+    mockDescribeInstances.promise.mockReturnValueOnce(mockRunningInstances);
     await listEC2Runners({ runnerType: 'Repo', runnerOwner: REPO_NAME, environment: undefined });
     expect(mockEC2.describeInstances).toBeCalledWith({
       Filters: [
@@ -100,20 +71,10 @@ describe('list instances', () => {
         { Name: 'tag:ghr:Application', Values: ['github-action-runner'] },
       ],
     });
-    expect(mockEC2.describeInstances).toBeCalledWith({
-      Filters: [
-        { Name: 'instance-state-name', Values: ['running', 'pending'] },
-        { Name: 'tag:Type', Values: ['Repo'] },
-        { Name: 'tag:Owner', Values: [REPO_NAME] },
-        { Name: 'tag:Application', Values: ['github-action-runner'] },
-      ],
-    });
   });
 
   it('filters instances on org name', async () => {
-    mockDescribeInstances.promise
-      .mockReturnValueOnce(mockRunningInstances)
-      .mockReturnValueOnce(mockRunningInstancesLegacy);
+    mockDescribeInstances.promise.mockReturnValueOnce(mockRunningInstances);
     await listEC2Runners({ runnerType: 'Org', runnerOwner: ORG_NAME, environment: undefined });
     expect(mockEC2.describeInstances).toBeCalledWith({
       Filters: [
@@ -126,9 +87,7 @@ describe('list instances', () => {
   });
 
   it('filters instances on environment', async () => {
-    mockDescribeInstances.promise
-      .mockReturnValueOnce(mockRunningInstances)
-      .mockReturnValueOnce(mockRunningInstancesLegacy);
+    mockDescribeInstances.promise.mockReturnValueOnce(mockRunningInstances);
     await listEC2Runners({ environment: ENVIRONMENT });
     expect(mockEC2.describeInstances).toBeCalledWith({
       Filters: [
@@ -156,7 +115,7 @@ describe('list instances', () => {
         },
       ],
     };
-    mockDescribeInstances.promise.mockReturnValueOnce(noInstances).mockReturnValueOnce(noInstances);
+    mockDescribeInstances.promise.mockReturnValueOnce(noInstances);
     const resp = await listEC2Runners();
     expect(resp.length).toBe(0);
   });
@@ -175,7 +134,7 @@ describe('list instances', () => {
         },
       ],
     };
-    mockDescribeInstances.promise.mockReturnValueOnce(noInstances).mockReturnValue({});
+    mockDescribeInstances.promise.mockReturnValueOnce(noInstances);
     const resp = await listEC2Runners();
     expect(resp.length).toBe(1);
   });

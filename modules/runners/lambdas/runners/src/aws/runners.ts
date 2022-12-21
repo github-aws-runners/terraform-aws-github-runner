@@ -74,10 +74,7 @@ function constructFilters(filters?: ListRunnerFilters): Ec2Filter[][] {
     }
   }
 
-  // ***Deprecation Notice***
-  // Support for legacy `Application` tag keys
-  // will be removed in next major release.
-  for (const key of ['tag:ghr:Application', 'tag:Application']) {
+  for (const key of ['tag:ghr:Application']) {
     const filter = [...ec2FiltersBase];
     filter.push({ Name: key, Values: ['github-action-runner'] });
     ec2Filters.push(filter);
