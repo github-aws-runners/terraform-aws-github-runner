@@ -20,7 +20,7 @@ jobs:
         id: lambda
         env:
           LAMBDA: ${{ matrix.lambda }}
-        run: echo ::set-output name=name::${LAMBDA##*/}
+        run: echo "name=${LAMBDA##*/}" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v3
       - name: Add zip
         run: apt update && apt install zip
