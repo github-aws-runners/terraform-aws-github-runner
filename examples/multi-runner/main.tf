@@ -147,11 +147,17 @@ module "multi-runner" {
     webhook_secret = random_id.random.hex
   }
 
-  # Assuming local build lambda's to use pre build ones, uncomment the lines below and download the
-  # lambda zip files lambda_download
+  # Lambda zip files will be consumed by default via the the local dist folder in the lambda of the module.
+  # You can set the location exaplicitly by uncommenting the following lines.
+  #
+  # Grab zip files via lambda_download
   # webhook_lambda_zip                = "../lambdas-download/webhook.zip"
   # runner_binaries_syncer_lambda_zip = "../lambdas-download/runner-binaries-syncer.zip"
   # runners_lambda_zip                = "../lambdas-download/runners.zip"
+  # Grab zip files via `./.ci/builds.sh`
+  # webhook_lambda_zip                = "../../lambda_output/webhook.zip"
+  # runner_binaries_syncer_lambda_zip = "../../lambda_output/runner-binaries-syncer.zip"
+  # runners_lambda_zip                = "../../lambda_output/runners.zip"
 
   # enable_workflow_job_events_queue = true
   # override delay of events in seconds
