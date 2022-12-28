@@ -9,7 +9,6 @@
 * Drop deprecated terraform variables ([#2761](https://github.com/philips-labs/terraform-aws-github-runner/issues/2761))
 * use optional in variable block_device_mappings ([#2664](https://github.com/philips-labs/terraform-aws-github-runner/issues/2664))
 * Organise SSM paramamters by path ([#2569](https://github.com/philips-labs/terraform-aws-github-runner/issues/2569))
-* 
 * Add multi-runner capability ([#2472](https://github.com/philips-labs/terraform-aws-github-runner/issues/2472))
 * Remove old scale down mechanism (< 0.19.0) ([#2519](https://github.com/philips-labs/terraform-aws-github-runner/issues/2519))
 * Remove support check_run ([#2521](https://github.com/philips-labs/terraform-aws-github-runner/issues/2521))
