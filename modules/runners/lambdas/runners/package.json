@@ -41,7 +41,7 @@
     "@octokit/auth-app": "4.0.7",
     "@octokit/rest": "^19.0.5",
     "@octokit/types": "^8.0.0",
-    "aws-sdk": "^2.1283.0",
+    "aws-sdk": "^2.1284.0",
     "cron-parser": "^4.7.0",
     "tslog": "^3.3.4",
     "typescript": "^4.9.4"
