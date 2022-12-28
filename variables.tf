@@ -208,7 +208,7 @@ variable "enable_runner_detailed_monitoring" {
   default     = false
 }
 
-variable "enabled_userdata" {
+variable "enable_userdata" {
   description = "Should the userdata script be enabled for the runner. Set this to false if you are using your own prebuilt AMI."
   type        = bool
   default     = true

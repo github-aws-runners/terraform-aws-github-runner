@@ -244,7 +244,7 @@ module "runners" {
   role_path                 = var.role_path
   role_permissions_boundary = var.role_permissions_boundary
 
-  enabled_userdata               = var.enabled_userdata
+  enable_userdata                = var.enable_userdata
   enable_user_data_debug_logging = var.enable_user_data_debug_logging_runner
   userdata_template              = var.userdata_template
   userdata_pre_install           = var.userdata_pre_install

@@ -70,7 +70,7 @@ module "runners" {
   enable_job_queued_check = true
 
   # configure your pre-built AMI
-  # enabled_userdata = false
+  # enable_userdata = false
   # ami_filter       = { name = ["github-runner-amzn2-x86_64-*"] }
   # data "aws_caller_identity" "current" {}
   # ami_owners       = [data.aws_caller_identity.current.account_id]

@@ -62,7 +62,7 @@ module "runners" {
   # provide the owner id of
   ami_owners        = ["<your owner id>"]
 
-  enabled_userdata = false
+  enable_userdata = false
   ...
 }
 ```
