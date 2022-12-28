@@ -1,5 +1,48 @@
 # Changelog
 
+## [2.0.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v1.18.2...v2.0.0) (2022-12-28)
+
+
+### ⚠ BREAKING CHANGES
+
+* Set default lambda node runtime to 18x on arm64 ([#2763](https://github.com/philips-labs/terraform-aws-github-runner/issues/2763))
+* Drop deprecated terraform variables ([#2761](https://github.com/philips-labs/terraform-aws-github-runner/issues/2761))
+* use optional in variable block_device_mappings ([#2664](https://github.com/philips-labs/terraform-aws-github-runner/issues/2664))
+* Organise SSM paramamters by path ([#2569](https://github.com/philips-labs/terraform-aws-github-runner/issues/2569))
+* 
+* Add multi-runner capability ([#2472](https://github.com/philips-labs/terraform-aws-github-runner/issues/2472))
+* Remove old scale down mechanism (< 0.19.0) ([#2519](https://github.com/philips-labs/terraform-aws-github-runner/issues/2519))
+* Remove support check_run ([#2521](https://github.com/philips-labs/terraform-aws-github-runner/issues/2521))
+
+### Features
+
+* Add multi-runner capability ([#2472](https://github.com/philips-labs/terraform-aws-github-runner/issues/2472)) ([fef8d65](https://github.com/philips-labs/terraform-aws-github-runner/commit/fef8d6517cb545d0909f287f23a2df665afdfc43))
+* Added publishing to workflow_job event queue for multi runner module. ([#2570](https://github.com/philips-labs/terraform-aws-github-runner/issues/2570)) ([a8b33b5](https://github.com/philips-labs/terraform-aws-github-runner/commit/a8b33b59b43d830aa96ac3d042dae088789cca10))
+* Organise SSM paramamters by path ([#2569](https://github.com/philips-labs/terraform-aws-github-runner/issues/2569)) ([b912bb8](https://github.com/philips-labs/terraform-aws-github-runner/commit/b912bb891963517cf3c102a3bb9e37e40f09497f))
+* Remove old scale down mechanism (&lt; 0.19.0) ([#2519](https://github.com/philips-labs/terraform-aws-github-runner/issues/2519)) ([7506e9d](https://github.com/philips-labs/terraform-aws-github-runner/commit/7506e9d71e204dbb2b2a79fda5d2d50d07b96382))
+* Remove support check_run ([#2521](https://github.com/philips-labs/terraform-aws-github-runner/issues/2521)) ([4677619](https://github.com/philips-labs/terraform-aws-github-runner/commit/467761963af041b72cf10edc8a55a652311261af))
+* Set default lambda node runtime to 18x on arm64 ([#2763](https://github.com/philips-labs/terraform-aws-github-runner/issues/2763)) ([2fd1e16](https://github.com/philips-labs/terraform-aws-github-runner/commit/2fd1e163e9d11a71ffc128deb33714e505948924))
+* **webhook:** Support multiple arrays of tags is matchers. ([#2736](https://github.com/philips-labs/terraform-aws-github-runner/issues/2736)) ([d17f441](https://github.com/philips-labs/terraform-aws-github-runner/commit/d17f441c0ce115cf59cab1a8eebb679d9e4a4bdf))
+
+
+### Bug Fixes
+
+* Apply SSM changes for multi-runner ([c0051f6](https://github.com/philips-labs/terraform-aws-github-runner/commit/c0051f66f1398819c985ddef115a08a288932a17))
+* Drop deprecated terraform variables ([#2761](https://github.com/philips-labs/terraform-aws-github-runner/issues/2761)) ([955bd1d](https://github.com/philips-labs/terraform-aws-github-runner/commit/955bd1d4de50b3356ac29ac2459915fad26f1062))
+* Main module broken after supporting multiple labels  ([#2802](https://github.com/philips-labs/terraform-aws-github-runner/issues/2802)) ([df054e8](https://github.com/philips-labs/terraform-aws-github-runner/commit/df054e84a27d2f72820755252bd45257433636e4))
+* Main module broken after supporting multiple labels for multi-runnes ([df054e8](https://github.com/philips-labs/terraform-aws-github-runner/commit/df054e84a27d2f72820755252bd45257433636e4))
+* **multi-runner:** Add missing default for runner_metadata_options ([#2690](https://github.com/philips-labs/terraform-aws-github-runner/issues/2690)) ([910b91c](https://github.com/philips-labs/terraform-aws-github-runner/commit/910b91c89f9a8c3fc8601773235632b663f54592))
+* **multi-runner:** Default value validation error ([#2685](https://github.com/philips-labs/terraform-aws-github-runner/issues/2685)) ([448a3a7](https://github.com/philips-labs/terraform-aws-github-runner/commit/448a3a7e25c8db8bb4f0e85b10e49c76c5c76778))
+* Multiirunner dl queue. ([#2644](https://github.com/philips-labs/terraform-aws-github-runner/issues/2644)) ([0823d47](https://github.com/philips-labs/terraform-aws-github-runner/commit/0823d47ce1988ecdb8ddb771c9c2539a7f76e0ba))
+* Remove extraneous slashes from SSM paths, other typos ([#2765](https://github.com/philips-labs/terraform-aws-github-runner/issues/2765)) ([7cdef21](https://github.com/philips-labs/terraform-aws-github-runner/commit/7cdef212c601cc8ba6ac3311b2b991852967279b))
+* **runners:** Remove Application legacy tag ([#2705](https://github.com/philips-labs/terraform-aws-github-runner/issues/2705)) ([96ced8a](https://github.com/philips-labs/terraform-aws-github-runner/commit/96ced8a11f7e8885efaf50afbcc71a50f1a8c0d4))
+* **webhook:** Add missing test dependency ([086a2e1](https://github.com/philips-labs/terraform-aws-github-runner/commit/086a2e17dc61851ecf1f3cf2bb9ce0465cd2199b))
+
+
+### Code Refactoring
+
+* use optional in variable block_device_mappings ([#2664](https://github.com/philips-labs/terraform-aws-github-runner/issues/2664)) ([08c484c](https://github.com/philips-labs/terraform-aws-github-runner/commit/08c484c3cda0bced87174857c0643eb26dc81317))
+
 ## [1.18.2](https://github.com/philips-labs/terraform-aws-github-runner/compare/v1.18.1...v1.18.2) (2022-12-28)
 
 
