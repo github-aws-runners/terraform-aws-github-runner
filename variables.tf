@@ -19,17 +19,6 @@ variable "tags" {
   default     = {}
 }
 
-variable "environment" {
-  description = "DEPRECATED, no longer used. See `prefix`"
-  type        = string
-  default     = null
-
-  validation {
-    condition     = var.environment == null
-    error_message = "The \"environment\" variable is no longer used. To migrate, set the \"prefix\" variable to the original value of \"environment\" and optionally, add \"Environment\" to the \"tags\" variable map with the same value."
-  }
-}
-
 variable "prefix" {
   description = "The prefix used for naming resources"
   type        = string
@@ -471,11 +460,13 @@ variable "delay_webhook_event" {
   type        = number
   default     = 30
 }
+
 variable "job_queue_retention_in_seconds" {
   description = "The number of seconds the job is held in the queue before it is purged"
   type        = number
   default     = 86400
 }
+
 variable "runner_egress_rules" {
   description = "List of egress rules for the GitHub runner instances."
   type = list(object({
@@ -534,7 +525,7 @@ variable "log_level" {
   }
 }
 
-variable "runner_enable_workflow_job_labels_check_all" {
+variable "enable_runner_workflow_job_labels_check_all" {
   description = "If set to true all labels in the workflow job must match the GitHub labels (os, architecture and `self-hosted`). When false if __any__ label matches it will trigger the webhook. `runner_enable_workflow_job_labels_check` must be true for this to take effect."
   type        = bool
   default     = true
@@ -595,7 +586,7 @@ variable "lambda_principals" {
   default = []
 }
 
-variable "fifo_build_queue" {
+variable "enable_fifo_build_queue" {
   description = "Enable a FIFO queue to remain the order of events received by the webhook. Suggest to set to true for repo level runners."
   type        = bool
   default     = false
