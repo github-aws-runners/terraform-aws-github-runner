@@ -25,6 +25,8 @@ jobs:
           LAMBDA: ${{ matrix.lambda }}
         run: echo "name=${LAMBDA##*/}" >> $GITHUB_OUTPUT
       - uses: actions/checkout@v3
+      - name: Add zip
+        run: apt update && apt install zip
       - name: Build dist
         working-directory: ${{ matrix.lambda }}
         run: yarn install && yarn run test && yarn dist
