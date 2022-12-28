@@ -5,7 +5,7 @@ on:
     branches:
       - main
       - v1
-      - refactor/release-cleanup
+      - release-cleanup
 
 jobs:
   prepare:
