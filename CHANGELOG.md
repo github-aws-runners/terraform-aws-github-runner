@@ -2,6 +2,8 @@
 
 ## [2.0.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v1.18.2...v2.0.0) (2022-12-28)
 
+## Migrations direction
+See the [GitHub release](https://github.com/philips-labs/terraform-aws-github-runner/releases/tag/v2.0.0) for migration directions
 
 ### ⚠ BREAKING CHANGES
 
