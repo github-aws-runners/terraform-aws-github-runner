@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.14.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v1.13.0...v1.14.0) (2022-12-28)
+
+
+### Features
+
+* Allow to toggle access to EC2 instance tags ([#2592](https://github.com/philips-labs/terraform-aws-github-runner/issues/2592)) ([55fba22](https://github.com/philips-labs/terraform-aws-github-runner/commit/55fba22474fa802f781d46e5f3e1513c354d3a38))
+* **runners:** Add support for looking up runner AMI ID from an SSM parameter at instance launch time ([#2520](https://github.com/philips-labs/terraform-aws-github-runner/issues/2520)) ([68e2381](https://github.com/philips-labs/terraform-aws-github-runner/commit/68e238196877896332d36e264a64ca61a0af7ade))
+* **runners:** Namespace `Application` tag ([#2182](https://github.com/philips-labs/terraform-aws-github-runner/issues/2182)) ([a1a47a4](https://github.com/philips-labs/terraform-aws-github-runner/commit/a1a47a4a18fe500ea58481dd29cbd95ce45c9bb5))
+* Support price-capacity-optimized strategy ([#2718](https://github.com/philips-labs/terraform-aws-github-runner/issues/2718)) ([ef08afb](https://github.com/philips-labs/terraform-aws-github-runner/commit/ef08afb2b5594b9f60b15dbb60687ba91c27d668))
+
+
+### Bug Fixes
+
+* added permissions for lambda to attach lambda to the VPC. ([#2734](https://github.com/philips-labs/terraform-aws-github-runner/issues/2734)) ([fb72ee8](https://github.com/philips-labs/terraform-aws-github-runner/commit/fb72ee8f6751ebe22f7453a58373f4a983b7ba3c))
+* added runner labels to output. ([#2669](https://github.com/philips-labs/terraform-aws-github-runner/issues/2669)) ([4726c1a](https://github.com/philips-labs/terraform-aws-github-runner/commit/4726c1a2bd074e4018e2b9d0652a8ce1881ae0aa))
+* Adding missing input lambda vpc vars to syncer module ([#2701](https://github.com/philips-labs/terraform-aws-github-runner/issues/2701)) ([c91a96b](https://github.com/philips-labs/terraform-aws-github-runner/commit/c91a96bcc95defa0dc1e6bff71b3f607b5523bb5))
+* adding missing input vars to syncer module ([c91a96b](https://github.com/philips-labs/terraform-aws-github-runner/commit/c91a96bcc95defa0dc1e6bff71b3f607b5523bb5))
+* replacing deprecated set-output in workflow ([#2564](https://github.com/philips-labs/terraform-aws-github-runner/issues/2564)) ([aa0afdd](https://github.com/philips-labs/terraform-aws-github-runner/commit/aa0afddda56ab92e37fc20b5a4448cc999786023))
+* Update dependencies ([#2804](https://github.com/philips-labs/terraform-aws-github-runner/issues/2804)) ([1cce2ab](https://github.com/philips-labs/terraform-aws-github-runner/commit/1cce2abe16284915ba88e6295448f4906eb05c56))
+* Updated the fifo flag for deadletter queue. ([#2641](https://github.com/philips-labs/terraform-aws-github-runner/issues/2641)) ([a8b1645](https://github.com/philips-labs/terraform-aws-github-runner/commit/a8b1645bea0d5ef05f5eb65651eeea99bcf49ade))
+* Upgrade all non-breaking node dependencies ([#2759](https://github.com/philips-labs/terraform-aws-github-runner/issues/2759)) ([801e01f](https://github.com/philips-labs/terraform-aws-github-runner/commit/801e01f290407975aea11b85e44ac9743f9173cb))
+* Use aws_partition for govcloud users in ami_id_ssm_parameter_read policy definition ([#2614](https://github.com/philips-labs/terraform-aws-github-runner/issues/2614)) ([7ac65e5](https://github.com/philips-labs/terraform-aws-github-runner/commit/7ac65e589b1283f832bbe7e1264a45e00e9c8340))
+
 ## [1.13.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v1.12.0...v1.13.0) (2022-10-14)
 
 
