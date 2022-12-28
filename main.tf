@@ -135,7 +135,7 @@ module "webhook" {
       arn : aws_sqs_queue.queued_builds.arn
       fifo : var.fifo_build_queue
       matcherConfig : {
-        labelMatchers : split(",", local.runner_labels)
+        labelMatchers : [split(",", local.runner_labels)]
         exactMatch : var.runner_enable_workflow_job_labels_check_all
       }
     }
