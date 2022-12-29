@@ -224,6 +224,34 @@ describe('create runner', () => {
     expect(mockSSM.putParameter).toBeCalledTimes(1);
   });
 
+  it('calls create fleet of 40 instances (ssm rate limit condition) with the correct config for org', async () => {
+    const instances = [{
+      InstanceIds: [
+        'i-1234', 'i-5678', 'i-5567', 'i-5569', 'i-5561', 'i-5560', 'i-5566', 'i-5536', 'i-5526', 'i-5516',
+        'i-122', 'i-123', 'i-124', 'i-125', 'i-126', 'i-127', 'i-128', 'i-129', 'i-130', 'i-131',
+        'i-132', 'i-133', 'i-134', 'i-135', 'i-136', 'i-137', 'i-138', 'i-139', 'i-140', 'i-141',
+        'i-142', 'i-143', 'i-144', 'i-145', 'i-146', 'i-147', 'i-148', 'i-149', 'i-150', 'i-151'
+      ]
+    }];
+    mockCreateFleet.promise.mockReturnValue({
+      Instances: instances,
+    });
+
+    await createRunner({ ...createRunnerConfig(defaultRunnerConfig), numberOfRunners: 40 });
+
+    expect(mockEC2.createFleet).toBeCalledWith(
+      expectedCreateFleetRequest({ ...defaultExpectedFleetRequestValues, totalTargetCapacity: 40 }),
+    );
+    expect(mockSSM.putParameter).toBeCalledTimes(40);
+    for (const instance of instances[0].InstanceIds) {
+      expect(mockSSM.putParameter).toBeCalledWith({
+        Name: `${SSM_TOKEN_PATH}/${instance}`,
+        Type: 'SecureString',
+        Value: '--token foo --url http://github.com',
+      });
+    }
+  });
+
   it('calls create fleet of 1 instance with the on-demand capacity', async () => {
     await createRunner(createRunnerConfig({ ...defaultRunnerConfig, capacityType: 'on-demand' }));
     expect(mockEC2.createFleet).toBeCalledWith(
