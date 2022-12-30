@@ -173,7 +173,7 @@ export async function createRunner(runnerParameters: RunnerInputParameters): Pro
     } catch (e) {
       logger.error(
         `Failed to lookup runner AMI ID from SSM parameter: ${runnerParameters.amiIdSsmParameterName}. ` +
-        'Please ensure that the given parameter exists on this region and contains a valid runner AMI ID',
+          'Please ensure that the given parameter exists on this region and contains a valid runner AMI ID',
         e,
       );
       throw e;

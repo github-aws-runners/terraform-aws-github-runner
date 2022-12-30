@@ -3,6 +3,8 @@ import { EC2 } from 'aws-sdk';
 import ScaleError from './../scale-runners/ScaleError';
 import { RunnerInfo, RunnerInputParameters, createRunner, listEC2Runners, terminateRunner } from './runners';
 
+const { performance } = require('perf_hooks');
+
 const mockEC2 = { describeInstances: jest.fn(), createFleet: jest.fn(), terminateInstances: jest.fn() };
 const mockSSM = { putParameter: jest.fn(), getParameter: jest.fn() };
 jest.mock('aws-sdk', () => ({
@@ -224,21 +226,62 @@ describe('create runner', () => {
     expect(mockSSM.putParameter).toBeCalledTimes(1);
   });
 
-  it('calls create fleet of 40 instances (ssm rate limit condition) with the correct config for org', async () => {
-    const instances = [{
-      InstanceIds: [
-        'i-1234', 'i-5678', 'i-5567', 'i-5569', 'i-5561', 'i-5560', 'i-5566', 'i-5536', 'i-5526', 'i-5516',
-        'i-122', 'i-123', 'i-124', 'i-125', 'i-126', 'i-127', 'i-128', 'i-129', 'i-130', 'i-131',
-        'i-132', 'i-133', 'i-134', 'i-135', 'i-136', 'i-137', 'i-138', 'i-139', 'i-140', 'i-141',
-        'i-142', 'i-143', 'i-144', 'i-145', 'i-146', 'i-147', 'i-148', 'i-149', 'i-150', 'i-151'
-      ]
-    }];
+  it('calls create fleet of 40 instances (ssm rate limit condition) to test time delay ', async () => {
+    const startTime = performance.now();
+    const instances = [
+      {
+        InstanceIds: [
+          'i-1234',
+          'i-5678',
+          'i-5567',
+          'i-5569',
+          'i-5561',
+          'i-5560',
+          'i-5566',
+          'i-5536',
+          'i-5526',
+          'i-5516',
+          'i-122',
+          'i-123',
+          'i-124',
+          'i-125',
+          'i-126',
+          'i-127',
+          'i-128',
+          'i-129',
+          'i-130',
+          'i-131',
+          'i-132',
+          'i-133',
+          'i-134',
+          'i-135',
+          'i-136',
+          'i-137',
+          'i-138',
+          'i-139',
+          'i-140',
+          'i-141',
+          'i-142',
+          'i-143',
+          'i-144',
+          'i-145',
+          'i-146',
+          'i-147',
+          'i-148',
+          'i-149',
+          'i-150',
+          'i-151',
+        ],
+      },
+    ];
     mockCreateFleet.promise.mockReturnValue({
       Instances: instances,
     });
 
     await createRunner({ ...createRunnerConfig(defaultRunnerConfig), numberOfRunners: 40 });
+    const endTime = performance.now();
 
+    expect(endTime - startTime).toBeGreaterThan(1000);
     expect(mockEC2.createFleet).toBeCalledWith(
       expectedCreateFleetRequest({ ...defaultExpectedFleetRequestValues, totalTargetCapacity: 40 }),
     );
