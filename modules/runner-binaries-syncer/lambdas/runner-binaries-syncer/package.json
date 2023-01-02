@@ -19,7 +19,7 @@
     "@babel/helper-get-function-arity": "^7.16.7",
     "@octokit/rest": "^19.0.5",
     "@trivago/prettier-plugin-sort-imports": "^4.0.0",
-    "@types/jest": "^29.2.4",
+    "@types/jest": "^29.2.5",
     "@types/node": "^18.11.18",
     "@types/request": "^2.48.8",
     "@typescript-eslint/eslint-plugin": "^5.47.1",
