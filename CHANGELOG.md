@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v2.0.0...v2.0.1) (2023-01-03)
+
+
+### Bug Fixes
+
+* Restore lost changes during merging next ([#2824](https://github.com/philips-labs/terraform-aws-github-runner/issues/2824)) ([219cb9b](https://github.com/philips-labs/terraform-aws-github-runner/commit/219cb9b55bf7300f45d6870a8dfe8ed8c799f9db))
+
 ## [2.0.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v1.18.2...v2.0.0) (2022-12-28)
 
 ## Migrations direction
