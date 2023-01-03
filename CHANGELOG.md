@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.0.2](https://github.com/philips-labs/terraform-aws-github-runner/compare/v2.0.1...v2.0.2) (2023-01-03)
+
+
+### Bug Fixes
+
+* **runners:** Bump json5 from 2.2.1 to 2.2.3 in /modules/runners/lambdas/runners ([#2842](https://github.com/philips-labs/terraform-aws-github-runner/issues/2842)) ([d3169c2](https://github.com/philips-labs/terraform-aws-github-runner/commit/d3169c2a1c9782f408d0a2eb2a0a45e40ceb0650))
+* **syncer:** Bump json5 from 2.2.1 to 2.2.3 in /modules/runner-binaries-syncer/lambdas/runner-binaries-syncer ([#2841](https://github.com/philips-labs/terraform-aws-github-runner/issues/2841)) ([b2816f7](https://github.com/philips-labs/terraform-aws-github-runner/commit/b2816f758b364cb41bc4a1839ea188f8c0bc035e))
+* **webhook:** Bump json5 from 2.2.1 to 2.2.3 in /modules/webhook/lambdas/webhook ([#2840](https://github.com/philips-labs/terraform-aws-github-runner/issues/2840)) ([68ff414](https://github.com/philips-labs/terraform-aws-github-runner/commit/68ff4149706b6610410f398b2ceaa8d593d48544))
+
 ## [2.0.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v2.0.0...v2.0.1) (2023-01-03)
 
 
