@@ -3,6 +3,10 @@
 # Please see the documentation for all configuration options:
 # https://help.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
 
+# NPM production dependencies are part of the generated Lambda JavaScript.
+# Therefore updates on production are prefixed with fix(component) to trigger releases.
+# Development updates are prefixed with chore, and not triggering a release.
+
 version: 2
 updates:
   - package-ecosystem: "github-actions"
@@ -16,13 +20,22 @@ updates:
     directory: "/modules/runner-binaries-syncer/lambdas/runner-binaries-syncer"
     schedule:
       interval: "weekly"
+    commit-message:
+      prefix: "fix(syncer)"
+      prefix-development: "chore(syncer)"
 
   - package-ecosystem: "npm"
     directory: "/modules/webhook/lambdas/webhook"
     schedule:
       interval: "weekly"
+    commit-message:
+      prefix: "fix(webhook)"
+      prefix-development: "chore(webhook)"
 
   - package-ecosystem: "npm"
     directory: "/modules/runners/lambdas/runners"
     schedule:
       interval: "weekly"
+    commit-message:
+      prefix: "fix(runners)"
+      prefix-development: "chore(runners)"

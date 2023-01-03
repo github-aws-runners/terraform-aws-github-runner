@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v2.0.0...v2.0.1) (2023-01-03)
+
+
+### Bug Fixes
+
+* Restore lost changes during merging next ([#2824](https://github.com/philips-labs/terraform-aws-github-runner/issues/2824)) ([219cb9b](https://github.com/philips-labs/terraform-aws-github-runner/commit/219cb9b55bf7300f45d6870a8dfe8ed8c799f9db))
+
 ## [2.0.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v1.18.2...v2.0.0) (2022-12-28)
 
 ## Migrations direction
@@ -129,7 +136,6 @@ See the [GitHub release](https://github.com/philips-labs/terraform-aws-github-ru
 * replacing deprecated set-output in workflow ([#2564](https://github.com/philips-labs/terraform-aws-github-runner/issues/2564)) ([aa0afdd](https://github.com/philips-labs/terraform-aws-github-runner/commit/aa0afddda56ab92e37fc20b5a4448cc999786023))
 
 ## [1.13.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v1.12.0...v1.13.0) (2022-10-14)
-
 
 ### Features
 
@@ -836,7 +842,7 @@ See the [GitHub release](https://github.com/philips-labs/terraform-aws-github-ru
 - Fix missing permissions for CloudWatch Agent #445 @bennettp123
 - Swap scale up/scale down timeout description #468 @jonico
 - Fix for invalid configuration #466 @jonico
-- Add ssm:GetParameter to runner-ssm-parameters #446 @bennettp123  
+- Add ssm:GetParameter to runner-ssm-parameters #446 @bennettp123
 - Replace crypto #429
 - Scale up lambda deprecated attribute #410
 
@@ -873,17 +879,17 @@ terraform state rm $RESOURCE
 ### Added
 
 - Allow operator to pass in a list of managed IAM policy ARNs for the runner role #361 @jpalomaki
-- expand options for sourcing lambda to include S3 #292 @eky5006 
+- expand options for sourcing lambda to include S3 #292 @eky5006
 
 ## [0.6.0] - 2020-10-10
 
 ### Added
 
-- Only allow tagging and termination of runner instances #201 @jpalomaki 
+- Only allow tagging and termination of runner instances #201 @jpalomaki
 
 ### Fixed
 
-- Fix pagination with listing self-hosted runners #202 @HenryNguyen5 
+- Fix pagination with listing self-hosted runners #202 @HenryNguyen5
 
 
 ## [0.5.0] - 2020-08-25
