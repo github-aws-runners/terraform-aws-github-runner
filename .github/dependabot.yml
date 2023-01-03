@@ -20,6 +20,7 @@ updates:
     directory: "/modules/runner-binaries-syncer/lambdas/runner-binaries-syncer"
     schedule:
       interval: "weekly"
+    commit-message:
       prefix: "fix(syncer)"
       prefix-development: "chore(syncer)"
 
@@ -27,6 +28,7 @@ updates:
     directory: "/modules/webhook/lambdas/webhook"
     schedule:
       interval: "weekly"
+    commit-message:
       prefix: "fix(webhook)"
       prefix-development: "chore(webhook)"
 
@@ -34,5 +36,6 @@ updates:
     directory: "/modules/runners/lambdas/runners"
     schedule:
       interval: "weekly"
+    commit-message:
       prefix: "fix(runners)"
       prefix-development: "chore(runners)"
