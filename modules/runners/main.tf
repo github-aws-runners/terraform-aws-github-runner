@@ -143,11 +143,12 @@ resource "aws_launch_template" "runner" {
       S3_LOCATION_RUNNER_DISTRIBUTION = local.s3_location_runner_distribution
       RUNNER_ARCHITECTURE             = var.runner_architecture
     })
-    post_install    = var.userdata_post_install
-    start_runner    = templatefile(local.userdata_start_runner[var.runner_os], {})
+    post_install = var.userdata_post_install
+    start_runner = templatefile(local.userdata_start_runner[var.runner_os], {
+      metadata_tags = var.metadata_options != null ? var.metadata_options.instance_metadata_tags : "enabled"
+    })
     ghes_url        = var.ghes_url
     ghes_ssl_verify = var.ghes_ssl_verify
-    metadata_tags   = var.metadata_options != null ? var.metadata_options.instance_metadata_tags : "enabled"
 
     ## retain these for backwards compatibility
     environment                     = var.prefix
