@@ -13,9 +13,9 @@ updates:
       interval: "weekly"
 
 
-  # NPM production dependencies are part of the generated Lambda JavaScript.
-  # Therefore updates on production are prefixed with fix(component) to trigger releases.
-  # Development updates are prefixed with chore, and not triggering a release.
+# NPM production dependencies are part of the generated Lambda JavaScript.
+# Therefore updates on production are prefixed with fix(component) to trigger releases.
+# Development updates are prefixed with chore, and not triggering a release.
   - package-ecosystem: "npm"
     directory: "/modules/runner-binaries-syncer/lambdas/runner-binaries-syncer"
     schedule:
