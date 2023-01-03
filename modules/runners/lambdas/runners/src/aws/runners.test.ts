@@ -1,9 +1,8 @@
 import { EC2 } from 'aws-sdk';
+import { performance } from 'perf_hooks';
 
 import ScaleError from './../scale-runners/ScaleError';
 import { RunnerInfo, RunnerInputParameters, createRunner, listEC2Runners, terminateRunner } from './runners';
-
-import { performance } from 'perf_hooks';
 
 const mockEC2 = { describeInstances: jest.fn(), createFleet: jest.fn(), terminateInstances: jest.fn() };
 const mockSSM = { putParameter: jest.fn(), getParameter: jest.fn() };
