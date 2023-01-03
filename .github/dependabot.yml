@@ -16,13 +16,19 @@ updates:
     directory: "/modules/runner-binaries-syncer/lambdas/runner-binaries-syncer"
     schedule:
       interval: "weekly"
+      prefix: "fix(syncer)"
+      prefix-development: "chore(syncer)"
 
   - package-ecosystem: "npm"
     directory: "/modules/webhook/lambdas/webhook"
     schedule:
       interval: "weekly"
+      prefix: "fix(webhook)"
+      prefix-development: "chore(webhook)"
 
   - package-ecosystem: "npm"
     directory: "/modules/runners/lambdas/runners"
     schedule:
       interval: "weekly"
+      prefix: "fix(runners)"
+      prefix-development: "chore(runners)"
