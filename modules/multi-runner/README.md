@@ -14,7 +14,7 @@ For each configuration:
 
 ## Matching
 
-Matching of the configuration is done based on the labels specified in labelMatchers configuration. The webhook is processing the workflow _job event and match the labels against the labels specified in labelMatchers configuration in the order of configuration with exact-match true first, followed by all exact matches false.
+Matching of the configuration is done based on the labels specified in labelMatchers configuration. The webhook is processing the `workflow_job` event and match the labels against the labels specified in labelMatchers configuration in the order of configuration with exact-match true first, followed by all exact matches false.
 
 
 ## The catch
