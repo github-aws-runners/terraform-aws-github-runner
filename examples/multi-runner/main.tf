@@ -24,7 +24,7 @@ module "multi-runner" {
       runner_config = {
         runner_os                      = "linux"
         runner_architecture            = "arm64"
-        runner_extra_labels            = "arm"
+        runner_extra_labels            = "amazon"
         enable_ssm_on_runners          = true
         instance_types                 = ["t4g.large", "c6g.large"]
         runners_maximum_count          = 1
