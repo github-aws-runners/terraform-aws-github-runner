@@ -595,7 +595,7 @@ variable "lambda_principals" {
   default = []
 }
 
-variable "enable_enable_fifo_build_queue" {
+variable "enable_fifo_build_queue" {
   description = "Enable a FIFO queue to remain the order of events received by the webhook. Suggest to set to true for repo level runners."
   type        = bool
   default     = false

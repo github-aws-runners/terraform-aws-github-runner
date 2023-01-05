@@ -30,3 +30,14 @@ variable "fifo_build_queue" {
     error_message = "DEPCRECATED, replaced by `enable_fifo_build_queue`."
   }
 }
+
+variable "enable_enable_fifo_build_queue" {
+  description = "DEPCRECATED: Replaced by `enable_fifo_build_queue` / `fifo_build_queue`."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = anytrue([var.enable_enable_fifo_build_queue == null])
+    error_message = "DEPCRECATED, replaced by `enable_fifo_build_queue`."
+  }
+}
