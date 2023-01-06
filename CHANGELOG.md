@@ -1,5 +1,23 @@
 # Changelog
 
+## [2.1.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v2.0.2...v2.1.0) (2023-01-06)
+
+
+### Features
+
+* **runners:** Add delay to prevent ssm rate limits using setTimeout ([#2823](https://github.com/philips-labs/terraform-aws-github-runner/issues/2823)) ([1461efd](https://github.com/philips-labs/terraform-aws-github-runner/commit/1461efd925b1f13d0a2be7e8fc9b3fa8138d40fa))
+
+
+### Bug Fixes
+
+* Correction enable_enable_fifo_build_queue ([#2857](https://github.com/philips-labs/terraform-aws-github-runner/issues/2857)) ([455e272](https://github.com/philips-labs/terraform-aws-github-runner/commit/455e272b81052ad1b60b4d51aeeb1e6b84c5bdd2))
+* multi runner runner label ([2840d5e](https://github.com/philips-labs/terraform-aws-github-runner/commit/2840d5e8e76b7d03259027a7ea44119cc9f3ff60))
+* **runners:** Bump @aws-sdk/client-ssm from 3.238.0 to 3.241.0 in /modules/runners/lambdas/runners ([#2838](https://github.com/philips-labs/terraform-aws-github-runner/issues/2838)) ([89b1839](https://github.com/philips-labs/terraform-aws-github-runner/commit/89b18395e41d02b1ce51339cc20dad3781ab7019))
+* **runners:** Bump aws-sdk from 2.1284.0 to 2.1289.0 in /modules/runners/lambdas/runners ([#2855](https://github.com/philips-labs/terraform-aws-github-runner/issues/2855)) ([402e5ac](https://github.com/philips-labs/terraform-aws-github-runner/commit/402e5ac1515729140bc4d5c8e213219cf576c7b3))
+* Variable enable_enable_fifo_build_queue -&gt; enable_enable_fifo_build_queue ([455e272](https://github.com/philips-labs/terraform-aws-github-runner/commit/455e272b81052ad1b60b4d51aeeb1e6b84c5bdd2))
+* **webhook:** Bump aws-sdk from 2.1284.0 to 2.1289.0 in /modules/webhook/lambdas/webhook ([#2856](https://github.com/philips-labs/terraform-aws-github-runner/issues/2856)) ([5d6dd37](https://github.com/philips-labs/terraform-aws-github-runner/commit/5d6dd3797b5dfe5374345c838bc2bfc4f2819569))
+* **webhook:** Bump axios from 1.2.1 to 1.2.2 in /modules/runner-binaries-syncer/lambdas/runner-binaries-syncer ([#2827](https://github.com/philips-labs/terraform-aws-github-runner/issues/2827)) ([686624a](https://github.com/philips-labs/terraform-aws-github-runner/commit/686624a6acb638fd62febc9b41abe67b00010a47))
+
 ## [2.0.2](https://github.com/philips-labs/terraform-aws-github-runner/compare/v2.0.1...v2.0.2) (2023-01-03)
 
 
