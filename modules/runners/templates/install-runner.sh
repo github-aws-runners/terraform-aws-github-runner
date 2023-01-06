@@ -53,5 +53,24 @@ if [[ "$os_id" =~ ^ubuntu.* ]]; then
 fi
 
 echo "Set file ownership of action runner"
-chown -R "$user_name":"$user_name" .
-chown -R "$user_name":"$user_name" /opt/hostedtoolcache
+chown -R "$run_as":"$run_as" .
+chown -R "$run_as":"$run_as" /opt/hostedtoolcache
+
+echo "Configure GH Runner as user $run_as"
+sudo --preserve-env=RUNNER_ALLOW_RUNASROOT -u "$run_as" -- ./config.sh --unattended --name "$instance_id" --work "_work" $${config}
+
+info_arch=$(uname -p)
+info_os=$(( lsb_release -ds || cat /etc/*release || uname -om ) 2>/dev/null | head -n1 | cut -d "=" -f2- | tr -d '"')
+
+tee /opt/actions-runner/.setup_info <<EOL
+[
+  {
+    "group": "Operating System",
+    "detail": "Distribution: $info_os\nArchitecture: $info_arch"
+  },
+  {
+    "group": "Runner Image",
+    "detail": "AMI id: $ami_id"
+  }
+]
+EOL

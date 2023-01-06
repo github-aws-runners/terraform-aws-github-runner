@@ -62,24 +62,3 @@ if [[ "$run_as" == "root" ]]; then
   echo "run_as is set to root - export RUNNER_ALLOW_RUNASROOT=1"
   export RUNNER_ALLOW_RUNASROOT=1
 fi
-
-chown -R $run_as .
-
-echo "Configure GH Runner as user $run_as"
-sudo --preserve-env=RUNNER_ALLOW_RUNASROOT -u "$run_as" -- ./config.sh --unattended --name "$instance_id" --work "_work" $${config}
-
-info_arch=$(uname -p)
-info_os=$(( lsb_release -ds || cat /etc/*release || uname -om ) 2>/dev/null | head -n1 | cut -d "=" -f2- | tr -d '"')
-
-tee /opt/actions-runner/.setup_info <<EOL
-[
-  {
-    "group": "Operating System",
-    "detail": "Distribution: $info_os\nArchitecture: $info_arch"
-  },
-  {
-    "group": "Runner Image",
-    "detail": "AMI id: $ami_id"
-  }
-]
-EOL

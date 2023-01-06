@@ -15,18 +15,16 @@ set -x
 
 ${pre_install}
 
-${setup_runner}
-
 yum update -y
+
+yum install -y amazon-cloudwatch-agent curl jq git
+
+${setup_runner}
 
 # Install docker
 amazon-linux-extras install docker
 service docker start
-usermod -a -G docker $runas
-
-yum install -y amazon-cloudwatch-agent curl jq git
-
-user_name=$runas
+usermod -a -G docker $run_as
 
 ${install_runner}
 
