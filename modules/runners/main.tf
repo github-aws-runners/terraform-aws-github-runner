@@ -28,6 +28,11 @@ locals {
     "linux"   = "${path.module}/templates/user-data.sh"
   }
 
+  userdata_setup_runner = {
+    "windows" = "${path.module}/templates/setup-runner.ps1"
+    "linux"   = "${path.module}/templates/setup-runner.sh"
+  }
+
   userdata_install_runner = {
     "windows" = "${path.module}/templates/install-runner.ps1"
     "linux"   = "${path.module}/templates/install-runner.sh"
@@ -144,6 +149,7 @@ resource "aws_launch_template" "runner" {
       RUNNER_ARCHITECTURE             = var.runner_architecture
     })
     post_install    = var.userdata_post_install
+    setup_runner    = templatefile(local.userdata_setup_runner[var.runner_os], {})
     start_runner    = templatefile(local.userdata_start_runner[var.runner_os], {})
     ghes_url        = var.ghes_url
     ghes_ssl_verify = var.ghes_ssl_verify

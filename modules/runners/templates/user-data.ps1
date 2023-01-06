@@ -5,6 +5,8 @@ Start-Transcript -Path "C:\UserData.log" -Append
 
 ${pre_install}
 
+${setup_runner}
+
 # Install Chocolatey
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
 $env:chocolateyUseWindowsCompression = 'true'
