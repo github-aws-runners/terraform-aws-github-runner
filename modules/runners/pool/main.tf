@@ -31,6 +31,7 @@ resource "aws_lambda_function" "pool" {
       NODE_TLS_REJECT_UNAUTHORIZED         = var.config.ghes.url != null && !var.config.ghes.ssl_verify ? 0 : 1
       PARAMETER_GITHUB_APP_ID_NAME         = var.config.github_app_parameters.id.name
       PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.config.github_app_parameters.key_base64.name
+      RUNNER_BOOT_TIME_IN_MINUTES          = var.config.runner.boot_time_in_minutes
       RUNNER_EXTRA_LABELS                  = var.config.runner.extra_labels
       RUNNER_GROUP_NAME                    = var.config.runner.group_name
       RUNNER_OWNER                         = var.config.runner.pool_owner
