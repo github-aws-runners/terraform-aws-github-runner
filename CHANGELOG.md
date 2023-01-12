@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.1.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v2.1.0...v2.1.1) (2023-01-12)
+
+
+### Bug Fixes
+
+* Honnor booting instance in runner pool ([#2801](https://github.com/philips-labs/terraform-aws-github-runner/issues/2801)) ([9f841f7](https://github.com/philips-labs/terraform-aws-github-runner/commit/9f841f7ffc0b1d3bb805bedaeb12e462eb74f835))
+* **runners:** Bump @aws-sdk/client-ssm from 3.241.0 to 3.245.0 in /modules/runners/lambdas/runners ([#2866](https://github.com/philips-labs/terraform-aws-github-runner/issues/2866)) ([ca6a0bb](https://github.com/philips-labs/terraform-aws-github-runner/commit/ca6a0bbc84d0168f9bc6dbe66a9d75de3339caf4))
+* **runners:** Bump @octokit/auth-app from 4.0.7 to 4.0.8 in /modules/runners/lambdas/runners ([#2870](https://github.com/philips-labs/terraform-aws-github-runner/issues/2870)) ([755796f](https://github.com/philips-labs/terraform-aws-github-runner/commit/755796f62a13a910e15281d08a15903df797a699))
+* **runners:** Bump luxon from 3.1.1 to 3.2.1 in /modules/runners/lambdas/runners ([#2860](https://github.com/philips-labs/terraform-aws-github-runner/issues/2860)) ([159a1ef](https://github.com/philips-labs/terraform-aws-github-runner/commit/159a1ef42e17a15907ca12a3f5fb1d9d2900f69a))
+* **syncer:** Bump aws-sdk from 2.1284.0 to 2.1290.0 in /modules/runner-binaries-syncer/lambdas/runner-binaries-syncer ([#2871](https://github.com/philips-labs/terraform-aws-github-runner/issues/2871)) ([f8c027d](https://github.com/philips-labs/terraform-aws-github-runner/commit/f8c027def8c21094a171f804cf03f832ba913ad2))
+* **webhook:** Bump @aws-sdk/client-ssm from 3.238.0 to 3.245.0 in /modules/webhook/lambdas/webhook ([#2872](https://github.com/philips-labs/terraform-aws-github-runner/issues/2872)) ([c50a773](https://github.com/philips-labs/terraform-aws-github-runner/commit/c50a773cfdeb81ad7bc39f85ea4fe075aab727ce))
+* **webhook:** Bump aws-sdk from 2.1289.0 to 2.1292.0 in /modules/webhook/lambdas/webhook ([#2876](https://github.com/philips-labs/terraform-aws-github-runner/issues/2876)) ([b3507af](https://github.com/philips-labs/terraform-aws-github-runner/commit/b3507af2f285f86e6435d43eed75c378fb8e43b9))
+
 ## [2.1.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v2.0.2...v2.1.0) (2023-01-06)
 
 
