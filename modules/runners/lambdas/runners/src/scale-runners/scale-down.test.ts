@@ -27,7 +27,11 @@ jest.mock('@octokit/rest', () => ({
   Octokit: jest.fn().mockImplementation(() => mockOctokit),
 }));
 
-jest.mock('./../aws/runners');
+jest.mock('./../aws/runners', () => ({
+  ...jest.requireActual('./../aws/runners'),
+  terminateRunner: jest.fn(),
+  listEC2Runners: jest.fn(),
+}));
 jest.mock('./../gh-auth/gh-auth');
 jest.mock('./cache');
 
