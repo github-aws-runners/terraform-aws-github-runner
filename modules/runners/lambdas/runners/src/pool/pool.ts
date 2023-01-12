@@ -1,7 +1,6 @@
-import moment from 'moment';
 import yn from 'yn';
 
-import { RunnerList, listEC2Runners } from '../aws/runners';
+import { bootTimeExceeded, listEC2Runners } from '../aws/runners';
 import { createGithubAppAuth, createGithubInstallationAuth, createOctoClient } from '../gh-auth/gh-auth';
 import { logger as rootLogger } from '../logger';
 import { createRunners } from '../scale-runners/scale-up';
@@ -127,10 +126,4 @@ async function getInstallationId(ghesApiUrl: string, org: string): Promise<numbe
       org,
     })
   ).data.id;
-}
-
-function bootTimeExceeded(ec2Runner: RunnerList): boolean {
-  const runnerBootTimeInMinutes = process.env.RUNNER_BOOT_TIME_IN_MINUTES;
-  const launchTimePlusBootTime = moment(ec2Runner.launchTime).utc().add(runnerBootTimeInMinutes, 'minutes');
-  return launchTimePlusBootTime < moment(new Date()).utc();
 }

@@ -1,4 +1,5 @@
 import { EC2, SSM } from 'aws-sdk';
+import moment from 'moment';
 
 import { LogFields, logger as rootLogger } from '../logger';
 import ScaleError from './../scale-runners/ScaleError';
@@ -274,4 +275,11 @@ export async function createRunner(runnerParameters: RunnerInputParameters): Pro
       await delay(25);
     }
   }
+}
+
+// If launchTime is undefined, this will return false
+export function bootTimeExceeded(ec2Runner: { launchTime?: Date }): boolean {
+  const runnerBootTimeInMinutes = process.env.RUNNER_BOOT_TIME_IN_MINUTES;
+  const launchTimePlusBootTime = moment(ec2Runner.launchTime).utc().add(runnerBootTimeInMinutes, 'minutes');
+  return launchTimePlusBootTime < moment(new Date()).utc();
 }
