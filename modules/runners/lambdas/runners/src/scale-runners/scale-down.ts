@@ -3,7 +3,7 @@ import moment from 'moment';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctoClient } from '../gh-auth/gh-auth';
 import { LogFields, logger as rootLogger } from '../logger';
-import { RunnerInfo, RunnerList, listEC2Runners, terminateRunner } from './../aws/runners';
+import { RunnerInfo, RunnerList, bootTimeExceeded, listEC2Runners, terminateRunner } from './../aws/runners';
 import { GhRunners, githubCache } from './cache';
 import { ScalingDownConfig, getIdleRunnerCount } from './scale-down-config';
 
@@ -99,12 +99,6 @@ function runnerMinimumTimeExceeded(runner: RunnerInfo): boolean {
   const launchTimePlusMinimum = moment(runner.launchTime).utc().add(minimumRunningTimeInMinutes, 'minutes');
   const now = moment(new Date()).utc();
   return launchTimePlusMinimum < now;
-}
-
-function bootTimeExceeded(ec2Runner: RunnerInfo): boolean {
-  const runnerBootTimeInMinutes = process.env.RUNNER_BOOT_TIME_IN_MINUTES;
-  const launchTimePlusBootTime = moment(ec2Runner.launchTime).utc().add(runnerBootTimeInMinutes, 'minutes');
-  return launchTimePlusBootTime < moment(new Date()).utc();
 }
 
 async function removeRunner(ec2runner: RunnerInfo, ghRunnerIds: number[]): Promise<void> {

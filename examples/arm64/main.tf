@@ -70,7 +70,7 @@ module "runners" {
   runners_maximum_count = 1
 
   # set up a fifo queue to remain order
-  enable_enable_fifo_build_queue = true
+  enable_fifo_build_queue = true
 
   # override scaling down
   scale_down_schedule_expression = "cron(* * * * ? *)"

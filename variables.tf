@@ -535,7 +535,7 @@ variable "log_level" {
 }
 
 variable "enable_runner_workflow_job_labels_check_all" {
-  description = "If set to true all labels in the workflow job must match the GitHub labels (os, architecture and `self-hosted`). When false if __any__ label matches it will trigger the webhook. `runner_enable_workflow_job_labels_check` must be true for this to take effect."
+  description = "If set to true all labels in the workflow job must match the GitHub labels (os, architecture and `self-hosted`). When false if __any__ label matches it will trigger the webhook."
   type        = bool
   default     = true
 }
@@ -595,7 +595,7 @@ variable "lambda_principals" {
   default = []
 }
 
-variable "enable_enable_fifo_build_queue" {
+variable "enable_fifo_build_queue" {
   description = "Enable a FIFO queue to remain the order of events received by the webhook. Suggest to set to true for repo level runners."
   type        = bool
   default     = false
