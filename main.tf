@@ -151,6 +151,7 @@ module "webhook" {
   webhook_lambda_s3_object_version              = var.webhook_lambda_s3_object_version
   webhook_lambda_apigateway_access_log_settings = var.webhook_lambda_apigateway_access_log_settings
   lambda_runtime                                = var.lambda_runtime
+  lambda_memory_size                            = var.webhook_lambda_memory_size
   lambda_architecture                           = var.lambda_architecture
   lambda_zip                                    = var.webhook_lambda_zip
   lambda_timeout                                = var.webhook_lambda_timeout

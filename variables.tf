@@ -100,7 +100,7 @@ variable "webhook_lambda_timeout" {
 }
 
 variable "webhook_lambda_memory_size" {
-  description = "Allocated memory size of the webhook lambda in MB. 128 MB to 10,240 MB, in 1-MB increments." 
+  description = "Allocated memory size of the webhook lambda in MB. 128 MB to 10,240 MB, in 1-MB increments."
   type        = number
   default     = 128
 }
