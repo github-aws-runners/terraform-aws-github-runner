@@ -53,6 +53,12 @@ variable "lambda_timeout" {
   default     = 10
 }
 
+variable "lambda_memory_size" {
+  description = "Allocated memory size for the lambda in MB. 128 MB to 10,240 MB, in 1-MB increments."
+  type        = number
+  default     = 128
+}
+
 variable "role_permissions_boundary" {
   description = "Permissions boundary that will be added to the created role for the lambda."
   type        = string

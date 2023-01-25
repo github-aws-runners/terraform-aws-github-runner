@@ -99,6 +99,12 @@ variable "webhook_lambda_timeout" {
   default     = 10
 }
 
+variable "webhook_lambda_memory_size" {
+  description = "Allocated memory size of the webhook lambda in MB. 128 MB to 10,240 MB, in 1-MB increments." 
+  type        = number
+  default     = 128
+}
+
 variable "runners_lambda_zip" {
   description = "File location of the lambda zip file for scaling runners."
   type        = string

@@ -6,6 +6,7 @@ resource "aws_lambda_function" "webhook" {
   source_code_hash  = var.lambda_s3_bucket == null ? filebase64sha256(local.lambda_zip) : null
   function_name     = "${var.prefix}-webhook"
   role              = aws_iam_role.webhook_lambda.arn
+  memory            = var.lambda_memory_size
   handler           = "index.githubWebhook"
   runtime           = var.lambda_runtime
   timeout           = var.lambda_timeout
