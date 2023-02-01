@@ -42,7 +42,7 @@ Write-Host  "Retrieved $ssm_config_path/token_path parameter - ($token_path)"
 if ($enable_cloudwatch_agent -eq "true")
 {
     Write-Host  "Enabling CloudWatch Agent"
-    & 'C:\Program Files\Amazon\AmazonCloudWatchAgent\amazon-cloudwatch-agent-ctl.ps1' -a fetch-config -m ec2 -s -c "ssm:$environment-cloudwatch_agent_config_runner"
+    & 'C:\Program Files\Amazon\AmazonCloudWatchAgent\amazon-cloudwatch-agent-ctl.ps1' -a fetch-config -m ec2 -s -c "ssm:$ssm_config_path/cloudwatch_agent_config_runner"
 }
 
 ## Configure the runner
