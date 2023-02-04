@@ -2,7 +2,7 @@ name: Lambda Runners
 on:
   push:
     branches:
-      - develop
+      - main
   pull_request:
     paths:
       - .github/workflows/lambda-runners.yml

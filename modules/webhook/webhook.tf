@@ -79,6 +79,7 @@ resource "aws_iam_role_policy" "webhook_sqs" {
     sqs_resource_arn = var.sqs_build_queue.arn
   })
 }
+
 resource "aws_iam_role_policy" "webhook_workflow_job_sqs" {
   count = var.sqs_workflow_job_queue != null ? 1 : 0
   name  = "${var.prefix}-lambda-webhook-publish-workflow-job-sqs-policy"

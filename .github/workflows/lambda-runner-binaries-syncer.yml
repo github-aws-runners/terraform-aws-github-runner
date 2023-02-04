@@ -2,7 +2,7 @@ name: Lambda Syncer
 on:
   push:
     branches:
-      - develop
+      - main
   pull_request:
     paths:
       - .github/workflows/lambda-runner-binaries-syncer.yml

@@ -58,7 +58,7 @@ Before you submit your merge request consider the following guidelines:
 * Make your changes in a new git branch:
 
     ```shell
-    git checkout -b my-fix-branch develop
+    git checkout -b my-fix-branch main
     ```
 
 * Create your patch, **including appropriate test cases**.
@@ -79,7 +79,7 @@ Before you submit your merge request consider the following guidelines:
     git push origin my-fix-branch
     ```
 
-In Github, send a pull request to original develop branch: f.e. `terraform-aws-github-runner:develop`.
+In Github, send a pull request to original main branch: f.e. `terraform-aws-github-runner:main`.
 If we suggest changes, then:
 
 * Make the required updates.
@@ -90,11 +90,11 @@ If we suggest changes, then:
 If the PR gets too outdated we may ask you to rebase and force push to update the PR:
 
 ```shell
-git rebase develop -i
+git rebase main -i
 git push origin my-fix-branch -f
 ```
 
-_WARNING: Squashing or reverting commits and force-pushing thereafter may remove Github comments on code that were previously made by you or others in your commits. Avoid any form of rebasing unless necessary._
+_WARNING: Squashing or reverting commits and force-pushing thereafter may remove Github comments on code that were previously made by you or others in your commits. Avoid any form of rebasing unless necessary.
 
 That's it! Thank you for your contribution!
 
@@ -109,10 +109,10 @@ from the main (upstream) repository:
     git push origin --delete my-fix-branch
     ```
 
-* Check out the develop branch:
+* Check out the main branch:
 
     ```shell
-    git checkout develop -f
+    git checkout main -f
     ```
 
 * Delete the local branch:
@@ -121,10 +121,10 @@ from the main (upstream) repository:
     git branch -D my-fix-branch
     ```
 
-* Update your develop with the latest upstream version:
+* Update your main with the latest upstream version:
 
     ```shell
-    git pull --ff upstream develop
+    git pull --ff upstream main
     ```
 
 ## <a name="info"></a> Info

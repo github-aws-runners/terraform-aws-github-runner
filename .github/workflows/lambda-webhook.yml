@@ -2,7 +2,7 @@ name: Lambda Webhook
 on:
   push:
     branches:
-      - develop
+      - main
   pull_request:
     paths:
       - .github/workflows/lambda-webhook.yml

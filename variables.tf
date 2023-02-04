@@ -20,7 +20,7 @@ variable "tags" {
 }
 
 variable "environment" {
-  description = "A name that identifies the environment, used as prefix and for tagging."
+  description = "DEPRECATED, no longer used. See `prefix`"
   type        = string
   default     = null
 
@@ -451,11 +451,11 @@ variable "instance_target_capacity_type" {
 }
 
 variable "instance_allocation_strategy" {
-  description = "The allocation strategy for spot instances. AWS recommends to use `capacity-optimized` however the AWS default is `lowest-price`."
+  description = "The allocation strategy for spot instances. AWS recommends to use `price-capacity-optimized` however the AWS default is `lowest-price`."
   type        = string
   default     = "lowest-price"
   validation {
-    condition     = contains(["lowest-price", "diversified", "capacity-optimized", "capacity-optimized-prioritized"], var.instance_allocation_strategy)
+    condition     = contains(["lowest-price", "diversified", "capacity-optimized", "capacity-optimized-prioritized", "price-capacity-optimized"], var.instance_allocation_strategy)
     error_message = "The instance allocation strategy does not match the allowed values."
   }
 }
