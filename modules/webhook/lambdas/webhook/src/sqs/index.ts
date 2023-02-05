@@ -1,7 +1,5 @@
 import { WorkflowJobEvent } from '@octokit/webhooks-types';
 import { SQS } from 'aws-sdk';
-import { bool } from 'aws-sdk/clients/signer';
-
 import { LogFields, logger } from '../webhook/logger';
 
 export interface ActionRequestMessage {
@@ -11,19 +9,19 @@ export interface ActionRequestMessage {
   repositoryOwner: string;
   installationId: number;
   queueId: string;
-  queueFifo: bool;
+  queueFifo: boolean;
 }
 
 export interface MatcherConfig {
   labelMatchers: string[][];
-  exactMatch: bool;
+  exactMatch: boolean;
 }
 
 export interface QueueConfig {
   matcherConfig: MatcherConfig;
   id: string;
   arn: string;
-  fifo: bool;
+  fifo: boolean;
 }
 export interface GithubWorkflowEvent {
   workflowJobEvent: WorkflowJobEvent;
