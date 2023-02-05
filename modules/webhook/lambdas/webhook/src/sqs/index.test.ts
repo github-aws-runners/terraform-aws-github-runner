@@ -1,16 +1,15 @@
-import { SQS } from 'aws-sdk';
-
+import { SendMessageCommandInput } from '@aws-sdk/client-sqs';
 import { ActionRequestMessage, GithubWorkflowEvent, sendActionRequest, sendWebhookEventToWorkflowJobQueue } from '.';
 import workflowjob_event from '../../test/resources/github_workflowjob_event.json';
 
 const mockSQS = {
   sendMessage: jest.fn(() => {
     {
-      return { promise: jest.fn() };
+      return {};
     }
   }),
 };
-jest.mock('aws-sdk', () => ({
+jest.mock('@aws-sdk/client-sqs', () => ({
   SQS: jest.fn().mockImplementation(() => mockSQS),
 }));
 
@@ -26,10 +25,6 @@ describe('Test sending message to SQS.', () => {
     queueFifo: false,
   };
 
-  const sqsMessage: SQS.Types.SendMessageRequest = {
-    QueueUrl: queueUrl,
-    MessageBody: JSON.stringify(message),
-  };
   afterEach(() => {
     jest.clearAllMocks();
   });
@@ -40,7 +35,7 @@ describe('Test sending message to SQS.', () => {
       ...message,
       queueFifo: false,
     };
-    const sqsMessage: SQS.Types.SendMessageRequest = {
+    const sqsMessage: SendMessageCommandInput = {
       QueueUrl: queueUrl,
       MessageBody: JSON.stringify(no_fifo_message),
     };
@@ -58,7 +53,7 @@ describe('Test sending message to SQS.', () => {
       ...message,
       queueFifo: true,
     };
-    const sqsMessage: SQS.Types.SendMessageRequest = {
+    const sqsMessage: SendMessageCommandInput = {
       QueueUrl: queueUrl,
       MessageBody: JSON.stringify(fifo_message),
     };
@@ -74,7 +69,7 @@ describe('Test sending message to SQS.', () => {
   const message: GithubWorkflowEvent = {
     workflowJobEvent: JSON.parse(JSON.stringify(workflowjob_event)),
   };
-  const sqsMessage: SQS.Types.SendMessageRequest = {
+  const sqsMessage: SendMessageCommandInput = {
     QueueUrl: 'https://sqs.eu-west-1.amazonaws.com/123456789/webhook_events_workflow_job_queue',
     MessageBody: JSON.stringify(message),
   };

@@ -1,5 +1,6 @@
+import { SQS, SendMessageCommandInput } from '@aws-sdk/client-sqs';
 import { WorkflowJobEvent } from '@octokit/webhooks-types';
-import { SQS } from 'aws-sdk';
+
 import { LogFields, logger } from '../webhook/logger';
 
 export interface ActionRequestMessage {
@@ -30,7 +31,7 @@ export interface GithubWorkflowEvent {
 export const sendActionRequest = async (message: ActionRequestMessage): Promise<void> => {
   const sqs = new SQS({ region: process.env.AWS_REGION });
 
-  const sqsMessage: SQS.Types.SendMessageRequest = {
+  const sqsMessage: SendMessageCommandInput = {
     QueueUrl: message.queueId,
     MessageBody: JSON.stringify(message),
   };
@@ -40,7 +41,7 @@ export const sendActionRequest = async (message: ActionRequestMessage): Promise<
     sqsMessage.MessageGroupId = String(message.id);
   }
 
-  await sqs.sendMessage(sqsMessage).promise();
+  await sqs.sendMessage(sqsMessage);
 };
 
 export const sendWebhookEventToWorkflowJobQueue = async (message: GithubWorkflowEvent): Promise<void> => {
@@ -48,7 +49,7 @@ export const sendWebhookEventToWorkflowJobQueue = async (message: GithubWorkflow
 
   if (webhook_events_workflow_job_queue != undefined) {
     const sqs = new SQS({ region: process.env.AWS_REGION });
-    const sqsMessage: SQS.Types.SendMessageRequest = {
+    const sqsMessage: SendMessageCommandInput = {
       QueueUrl: String(process.env.SQS_WORKFLOW_JOB_QUEUE),
       MessageBody: JSON.stringify(message),
     };
@@ -57,7 +58,7 @@ export const sendWebhookEventToWorkflowJobQueue = async (message: GithubWorkflow
       LogFields.print(),
     );
     try {
-      await sqs.sendMessage(sqsMessage).promise();
+      await sqs.sendMessage(sqsMessage);
     } catch (e) {
       logger.warn(`Error in sending webhook events to workflow job queue: ${(e as Error).message}`, LogFields.print());
     }
