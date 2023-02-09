@@ -22,7 +22,7 @@ resource "aws_lambda_function" "webhook" {
       SQS_WORKFLOW_JOB_QUEUE              = try(var.sqs_workflow_job_queue, null) != null ? var.sqs_workflow_job_queue.id : ""
     }
   }
-  
+
   dynamic "vpc_config" {
     for_each = var.lambda_subnet_ids != null && var.lambda_security_group_ids != null ? [true] : []
     content {
