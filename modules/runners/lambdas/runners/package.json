@@ -33,7 +33,7 @@
     "moment-timezone": "^0.5.40",
     "nock": "^13.3.0",
     "prettier": "2.8.1",
-    "ts-jest": "^29.0.3",
+    "ts-jest": "^29.0.5",
     "ts-node": "^10.9.1",
     "ts-node-dev": "^2.0.0"
   },
