@@ -38,6 +38,7 @@ variable "multi_runner_config" {
       })
       ami_filter                              = optional(map(list(string)), null)
       ami_owners                              = optional(list(string), ["amazon"])
+      ami_id_ssm_parameter_name               = optional(string, null)
       create_service_linked_role_spot         = optional(bool, false)
       delay_webhook_event                     = optional(number, 30)
       disable_runner_autoupdate               = optional(bool, false)

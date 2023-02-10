@@ -61,7 +61,7 @@ jobs:
 
       - name: Release
         id: release
-        uses: google-github-actions/release-please-action@5c07f8be172b1f6e90f9c35baf8184461b91b85f # ratchet:google-github-actions/release-please-action@v3
+        uses: google-github-actions/release-please-action@514bc6cdae71484c998108f2136a8f5e4c62b9b9 # ratchet:google-github-actions/release-please-action@v3
         with:
           default-branch: ${{ steps.branch.outputs.name }}
           release-type: terraform-module
