@@ -22,7 +22,7 @@
     "@types/express": "^4.17.15",
     "@types/jest": "^29.2.5",
     "@types/node": "^18.11.18",
-    "@typescript-eslint/eslint-plugin": "^5.48.1",
+    "@typescript-eslint/eslint-plugin": "^5.52.0",
     "@typescript-eslint/parser": "^5.48.1",
     "@vercel/ncc": "^0.36.0",
     "eslint": "^8.33.0",
