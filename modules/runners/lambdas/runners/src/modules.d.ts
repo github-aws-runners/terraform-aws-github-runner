@@ -20,6 +20,7 @@ declare namespace NodeJS {
     INSTANCE_MAX_SPOT_PRICE: string | undefined;
     INSTANCE_ALLOCATION_STRATEGY:
       | 'lowest-price'
+      | 'price-capacity-optimized'
       | 'diversified'
       | 'capacity-optimized'
       | 'capacity-optimized-prioritized';
