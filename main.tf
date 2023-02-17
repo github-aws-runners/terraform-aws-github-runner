@@ -161,6 +161,10 @@ module "webhook" {
   role_permissions_boundary = var.role_permissions_boundary
   repository_white_list     = var.repository_white_list
 
+  lambda_subnet_ids         = var.lambda_subnet_ids
+  lambda_security_group_ids = var.lambda_security_group_ids
+  aws_partition             = var.aws_partition
+
   log_type  = var.log_type
   log_level = var.log_level
 }
@@ -306,6 +310,8 @@ module "runner_binaries" {
 
   lambda_subnet_ids         = var.lambda_subnet_ids
   lambda_security_group_ids = var.lambda_security_group_ids
+  aws_partition             = var.aws_partition
+
 
   lambda_principals = var.lambda_principals
 }

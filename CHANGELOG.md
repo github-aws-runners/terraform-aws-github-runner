@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.2.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v2.2.0...v2.2.1) (2023-02-17)
+
+
+### Bug Fixes
+
+* **binary-syncer:** Allow lambda inside VPC ([#2938](https://github.com/philips-labs/terraform-aws-github-runner/issues/2938)) ([4bb80be](https://github.com/philips-labs/terraform-aws-github-runner/commit/4bb80be972a3b23e2914486bef0af791dc4a0c89))
+* **runners:** bump @octokit/auth-app from 4.0.8 to 4.0.9 in /modules/runners/lambdas/runners ([#2953](https://github.com/philips-labs/terraform-aws-github-runner/issues/2953)) ([fce2a75](https://github.com/philips-labs/terraform-aws-github-runner/commit/fce2a75f364d64497f5524e7d500085ba651d53c))
+* **runners:** Fix incorrect path to SSM cloudwatch config parameter. ([8f4cc41](https://github.com/philips-labs/terraform-aws-github-runner/commit/8f4cc4187b547c8d1e00f2c445db88b477aec31b))
+* **runners:** Fix path to SSM cloudwatch config parameter on Windows ([#2922](https://github.com/philips-labs/terraform-aws-github-runner/issues/2922)) ([8f4cc41](https://github.com/philips-labs/terraform-aws-github-runner/commit/8f4cc4187b547c8d1e00f2c445db88b477aec31b))
+* **syncer:** bump axios from 1.2.2 to 1.3.3 in /modules/runner-binaries-syncer/lambdas/runner-binaries-syncer ([#2959](https://github.com/philips-labs/terraform-aws-github-runner/issues/2959)) ([1aa261e](https://github.com/philips-labs/terraform-aws-github-runner/commit/1aa261e594fe5fdef8097258be7fccb0e6e306e2))
+
 ## [2.2.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v2.1.1...v2.2.0) (2023-02-10)
 
 
