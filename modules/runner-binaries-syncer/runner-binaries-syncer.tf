@@ -128,6 +128,12 @@ resource "aws_cloudwatch_event_target" "syncer" {
   arn  = aws_lambda_function.syncer.arn
 }
 
+resource "aws_iam_role_policy_attachment" "syncer_vpc_execution_role" {
+  count      = length(var.lambda_subnet_ids) > 0 ? 1 : 0
+  role       = aws_iam_role.syncer_lambda.name
+  policy_arn = "arn:${var.aws_partition}:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+}
+
 resource "aws_lambda_permission" "syncer" {
   statement_id  = "AllowExecutionFromCloudWatch"
   action        = "lambda:InvokeFunction"
@@ -173,3 +179,5 @@ resource "aws_lambda_permission" "on_deploy" {
   source_account = data.aws_caller_identity.current.account_id
   source_arn     = aws_s3_bucket.action_dist.arn
 }
+
+
