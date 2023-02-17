@@ -44,7 +44,7 @@
     "@octokit/types": "^9.0.0",
     "aws-sdk": "^2.1289.0",
     "cron-parser": "^4.7.1",
-    "tslog": "^3.3.4",
+    "tslog": "^4.7.2",
     "typescript": "^4.9.4"
   }
 }
