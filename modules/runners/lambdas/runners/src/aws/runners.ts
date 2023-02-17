@@ -243,6 +243,7 @@ export async function createRunner(runnerParameters: RunnerInputParameters): Pro
       'ResourceLimitExceeded',
       'MaxSpotInstanceCountExceeded',
       'MaxSpotFleetRequestCountExceeded',
+      'InsufficientInstanceCapacity',
     ];
 
     if (errors.some((e) => scaleErrors.includes(e))) {
