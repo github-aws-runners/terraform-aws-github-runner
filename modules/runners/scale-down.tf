@@ -85,7 +85,6 @@ resource "aws_iam_role_policy" "scale_down" {
     github_app_id_arn         = var.github_app_parameters.id.arn
     github_app_key_base64_arn = var.github_app_parameters.key_base64.arn
     kms_key_arn               = local.kms_key_arn
-    ami_kms_key_arn           = local.ami_kms_key_arn
   })
 }
 
