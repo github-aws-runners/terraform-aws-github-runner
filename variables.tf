@@ -707,6 +707,12 @@ variable "enable_runner_binaries_syncer" {
   default     = true
 }
 
+variable "enable_event_rule_binaries_syncer" {
+  type        = bool
+  default     = true
+  description = "Option to disable EventBridge Lambda trigger, useful to stop automatic updates of binary distribution"
+}
+
 variable "queue_encryption" {
   description = "Configure how data on queues managed by the modules in ecrypted at REST. Options are encryped via SSE, non encrypted and via KMSS. By default encryptes via SSE is enabled. See for more details the Terraform `aws_sqs_queue` resource https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sqs_queue."
   type = object({
