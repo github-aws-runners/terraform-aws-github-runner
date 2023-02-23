@@ -17,7 +17,7 @@
   },
   "devDependencies": {
     "@babel/helper-get-function-arity": "^7.16.7",
-    "@octokit/rest": "^19.0.5",
+    "@octokit/rest": "^19.0.7",
     "@trivago/prettier-plugin-sort-imports": "^4.0.0",
     "@types/jest": "^29.4.0",
     "@types/node": "^18.11.18",
