@@ -59,7 +59,7 @@ variable "s3_logging_bucket_prefix" {
 variable "enable_event_rule_binaries_syncer" {
   type        = bool
   default     = true
-  description = "Option to disable EventBridge Lambda trigger, useful to stop automatic updates of binary distribution"
+  description = "Option to disable EventBridge Lambda trigger for the binary syncer, useful to stop automatic updates of binary distribution"
 }
 
 variable "lambda_schedule_expression" {
