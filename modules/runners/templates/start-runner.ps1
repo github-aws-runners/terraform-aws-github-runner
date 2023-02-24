@@ -100,7 +100,7 @@ Write-Host "Starting the runner as user $run_as"
 $jsonBody = @(
     @{
         group='Runner Image'
-        details="AMI id: $ami_id"
+        detail="AMI id: $ami_id"
     }
 )
 ConvertTo-Json -InputObject $jsonBody | Set-Content -Path "$pwd\.setup_info"

@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.2.2](https://github.com/philips-labs/terraform-aws-github-runner/compare/v2.2.1...v2.2.2) (2023-02-24)
+
+
+### Bug Fixes
+
+* **runners:** bump @aws-sdk/client-ssm from 3.245.0 to 3.272.0 in /modules/runners/lambdas/runners ([#2971](https://github.com/philips-labs/terraform-aws-github-runner/issues/2971)) ([a1c700f](https://github.com/philips-labs/terraform-aws-github-runner/commit/a1c700f00fdeae436e4e3d02740d41cab980de3b))
+* **runners:** Fix typo in .setup_info generated in start-runner.ps1. ([#2967](https://github.com/philips-labs/terraform-aws-github-runner/issues/2967)) ([e8f74bc](https://github.com/philips-labs/terraform-aws-github-runner/commit/e8f74bca0e97247845968fdd4a5bd4b707e25d73))
+* **webhook:** bump @aws-sdk/client-ssm from 3.245.0 to 3.278.0 in /modules/webhook/lambdas/webhook ([#2990](https://github.com/philips-labs/terraform-aws-github-runner/issues/2990)) ([b61c2bf](https://github.com/philips-labs/terraform-aws-github-runner/commit/b61c2bf9a5ac17a0d90e0c21f18ff949cb22f57b))
+* **webhook:** bump @octokit/rest from 19.0.5 to 19.0.7 in /modules/webhook/lambdas/webhook ([#2980](https://github.com/philips-labs/terraform-aws-github-runner/issues/2980)) ([8a5a8ae](https://github.com/philips-labs/terraform-aws-github-runner/commit/8a5a8ae69a612623496f8ee1b06126e052f86d0d))
+
 ## [2.2.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v2.2.0...v2.2.1) (2023-02-17)
 
 
