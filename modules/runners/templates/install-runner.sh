@@ -42,11 +42,12 @@ tar xzf ./$file_name
 echo "Delete tar file"
 rm -rf $file_name
 
-if [[ "$architecture" == "arm64" ]]; then
+os_id=$(awk -F= '/^ID/{print $2}' /etc/os-release)
+
+if [[ "$architecture" == "arm64" ] && [ !"$os_id" =~ ^ubuntu.* ]]; then
   yum install -y libicu60
 fi
 
-os_id=$(awk -F= '/^ID/{print $2}' /etc/os-release)
 if [[ "$os_id" =~ ^ubuntu.* ]]; then
     echo "Installing dependencies"
     ./bin/installdependencies.sh
