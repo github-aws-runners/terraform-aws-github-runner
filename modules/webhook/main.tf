@@ -35,8 +35,8 @@ resource "aws_apigatewayv2_route" "webhook_with_authorizer" {
   api_id             = aws_apigatewayv2_api.webhook.id
   route_key          = "POST /${local.webhook_endpoint}"
   target             = "integrations/${aws_apigatewayv2_integration.webhook.id}"
-  authorization_type = var.lambda_webhook_authorizer_id != null ? "CUSTOM" : "NONE"
-  authorizer_id      = var.lambda_webhook_authorizer_id != null ? aws_apigatewayv2_authorizer.webhook_authorizer[0].id : null
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.webhook_authorizer[0].id
 }
 
 data "aws_lambda_function" "authorization_function" {
