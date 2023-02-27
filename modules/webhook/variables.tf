@@ -21,6 +21,12 @@ variable "environment" {
   }
 }
 
+variable "lambda_webhook_authorizer_id" {
+  description = "ID of Lambda used for authorization on WebHook"
+  type        = string
+  default     = null
+}
+
 variable "prefix" {
   description = "The prefix used for naming resources"
   type        = string

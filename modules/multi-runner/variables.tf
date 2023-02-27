@@ -288,6 +288,12 @@ variable "log_level" {
   }
 }
 
+variable "lambda_webhook_authorizer_id" {
+  description = "ID of Lambda used for authorization on WebHook"
+  type        = string
+  default     = null
+}
+
 variable "lambda_runtime" {
   description = "AWS Lambda runtime."
   type        = string

@@ -534,6 +534,13 @@ variable "log_level" {
   }
 }
 
+variable "lambda_webhook_authorizer_id" {
+  description = "ID of Lambda used for authorization on WebHook"
+  type        = string
+  default     = null
+}
+
+
 variable "enable_runner_workflow_job_labels_check_all" {
   description = "If set to true all labels in the workflow job must match the GitHub labels (os, architecture and `self-hosted`). When false if __any__ label matches it will trigger the webhook."
   type        = bool
