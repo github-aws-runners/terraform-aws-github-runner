@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.3.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v2.2.2...v2.3.0) (2023-03-01)
+
+
+### Features
+
+* **syncer:** add option to disable runner syncer lambda trigger ([#2986](https://github.com/philips-labs/terraform-aws-github-runner/issues/2986)) ([5eb27b0](https://github.com/philips-labs/terraform-aws-github-runner/commit/5eb27b0fcf3bf01561f7ec25cada9f9d7bb0407e))
+
+
+### Bug Fixes
+
+* **runners:** bump @aws-sdk/client-ssm from 3.272.0 to 3.281.0 in /modules/runners/lambdas/runners ([#3014](https://github.com/philips-labs/terraform-aws-github-runner/issues/3014)) ([7c390ba](https://github.com/philips-labs/terraform-aws-github-runner/commit/7c390bae884dda5155d37f34e55600c8fa9023b5))
+* **runners:** propagate var.runner_ec2_tags to EC2 volumes ([#2985](https://github.com/philips-labs/terraform-aws-github-runner/issues/2985)) ([a9b1fa8](https://github.com/philips-labs/terraform-aws-github-runner/commit/a9b1fa85475214f4d1de5fab1e070ed4fad978b0))
+* **webhook:** bump @aws-sdk/client-sqs from 3.264.0 to 3.279.0 in /modules/webhook/lambdas/webhook ([#3011](https://github.com/philips-labs/terraform-aws-github-runner/issues/3011)) ([9d1d3bd](https://github.com/philips-labs/terraform-aws-github-runner/commit/9d1d3bd89a76109176a87a234b1c19a01da7873a))
+
 ## [2.2.2](https://github.com/philips-labs/terraform-aws-github-runner/compare/v2.2.1...v2.2.2) (2023-02-24)
 
 
