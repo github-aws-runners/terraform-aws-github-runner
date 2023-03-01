@@ -44,7 +44,7 @@ data "aws_lambda_function" "authorization_function" {
   function_name = var.lambda_webhook_authorizer_id
 }
 
-resource "aws_lambda_permission" "my_authorizer_lambda_permission" {
+resource "aws_lambda_permission" "authorizer_lambda_permission" {
   count         = var.lambda_webhook_authorizer_id != null ? 1 : 0
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
