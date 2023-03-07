@@ -168,7 +168,8 @@ module "webhook" {
   log_type  = var.log_type
   log_level = var.log_level
 
-  lambda_webhook_authorizer_id = var.lambda_webhook_authorizer_id
+  lambda_webhook_authorizer_id     = var.lambda_webhook_authorizer_id
+  enable_lambda_webhook_authorizer = var.enable_lambda_webhook_authorizer
 }
 
 module "runners" {

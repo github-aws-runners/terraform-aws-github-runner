@@ -294,6 +294,12 @@ variable "lambda_webhook_authorizer_id" {
   default     = null
 }
 
+variable "enable_lambda_webhook_authorizer" {
+  description = "Enable lambda authorizer"
+  type        = bool
+  default     = false
+}
+
 variable "lambda_runtime" {
   description = "AWS Lambda runtime."
   type        = string

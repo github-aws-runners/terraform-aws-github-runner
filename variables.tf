@@ -540,6 +540,11 @@ variable "lambda_webhook_authorizer_id" {
   default     = null
 }
 
+variable "enable_lambda_webhook_authorizer" {
+  description = "Enable lambda webhook authorizer"
+  type        = bool
+  default     = false
+}
 
 variable "enable_runner_workflow_job_labels_check_all" {
   description = "If set to true all labels in the workflow job must match the GitHub labels (os, architecture and `self-hosted`). When false if __any__ label matches it will trigger the webhook."

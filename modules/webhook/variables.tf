@@ -27,6 +27,12 @@ variable "lambda_webhook_authorizer_id" {
   default     = null
 }
 
+variable "enable_lambda_webhook_authorizer" {
+  description = "Enable lambda authorizer"
+  type        = bool
+  default     = false
+}
+
 variable "prefix" {
   description = "The prefix used for naming resources"
   type        = string

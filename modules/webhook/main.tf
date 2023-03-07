@@ -10,7 +10,7 @@ resource "aws_apigatewayv2_api" "webhook" {
   tags          = var.tags
 }
 
-resource "aws_apigatewayv2_authorizer" "webhook_authorizer" {
+/*resource "aws_apigatewayv2_authorizer" "webhook_authorizer" {
   count           = var.lambda_webhook_authorizer_id != null ? 1 : 0
   api_id          = aws_apigatewayv2_api.webhook.id
   authorizer_type = "REQUEST"
@@ -52,7 +52,63 @@ resource "aws_lambda_permission" "authorizer_lambda_permission" {
   principal     = "apigateway.amazonaws.com"
 
   source_arn = "${aws_apigatewayv2_api.webhook.execution_arn}/authorizers/${aws_apigatewayv2_authorizer.webhook_authorizer[count.index].id}"
+}*/
+
+
+
+
+
+
+resource "aws_apigatewayv2_authorizer" "webhook_authorizer" {
+  count           = var.enable_lambda_webhook_authorizer == true ? 1 : 0
+  api_id          = aws_apigatewayv2_api.webhook.id
+  authorizer_type = "REQUEST"
+  authorizer_uri  = data.aws_lambda_function.authorization_function[count.index].invoke_arn
+
+  identity_sources                  = []
+  name                              = "${var.prefix}-github-action-webhook-authorizer"
+  authorizer_payload_format_version = "2.0"
+  authorizer_result_ttl_in_seconds  = 0
+  enable_simple_responses           = true
 }
+
+resource "aws_apigatewayv2_route" "webhook" {
+  count     = var.enable_lambda_webhook_authorizer != true ? 1 : 0
+  api_id    = aws_apigatewayv2_api.webhook.id
+  route_key = "POST /${local.webhook_endpoint}"
+  target    = "integrations/${aws_apigatewayv2_integration.webhook.id}"
+}
+
+resource "aws_apigatewayv2_route" "webhook_with_authorizer" {
+  count              = var.enable_lambda_webhook_authorizer == true ? 1 : 0
+  api_id             = aws_apigatewayv2_api.webhook.id
+  route_key          = "POST /${local.webhook_endpoint}"
+  target             = "integrations/${aws_apigatewayv2_integration.webhook.id}"
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.webhook_authorizer[0].id
+}
+
+data "aws_lambda_function" "authorization_function" {
+  count         = var.enable_lambda_webhook_authorizer == true ? 1 : 0
+  function_name = var.lambda_webhook_authorizer_id
+}
+
+resource "aws_lambda_permission" "authorizer_lambda_permission" {
+  count         = var.enable_lambda_webhook_authorizer == true ? 1 : 0
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = data.aws_lambda_function.authorization_function[count.index].function_name
+  principal     = "apigateway.amazonaws.com"
+
+  source_arn = "${aws_apigatewayv2_api.webhook.execution_arn}/authorizers/${aws_apigatewayv2_authorizer.webhook_authorizer[count.index].id}"
+}
+
+
+
+
+
+
+
 
 
 resource "aws_apigatewayv2_stage" "webhook" {
