@@ -22,7 +22,7 @@ output "lambda_scale_down" {
   value = aws_lambda_function.scale_down
 }
 
-output "lambda_scale_up_log_group" {
+output "lambda_scale_down_log_group" {
   value = aws_cloudwatch_log_group.scale_down
 }
 
