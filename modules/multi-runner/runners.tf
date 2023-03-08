@@ -93,7 +93,6 @@ module "runners" {
 
   kms_key_arn = var.kms_key_arn
 
-  log_type  = var.log_type
   log_level = var.log_level
 
   pool_config                                = each.value.runner_config.pool_config

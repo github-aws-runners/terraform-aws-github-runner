@@ -2,11 +2,11 @@ import { Octokit } from '@octokit/rest';
 import yn from 'yn';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctoClient } from '../gh-auth/gh-auth';
-import { LogFields, logger as rootLogger } from '../logger';
+import { LogFields, createChildLogger } from '../logger';
 import { RunnerInputParameters, createRunner, listEC2Runners } from './../aws/runners';
 import ScaleError from './ScaleError';
 
-const logger = rootLogger.getChildLogger({ name: 'scale-up' });
+const logger = createChildLogger('scale-up');
 
 export interface ActionRequestMessage {
   id: number;

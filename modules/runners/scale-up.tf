@@ -16,6 +16,7 @@ resource "aws_lambda_function" "scale_up" {
 
   environment {
     variables = {
+      AMI_ID_SSM_PARAMETER_NAME            = var.ami_id_ssm_parameter_name
       DISABLE_RUNNER_AUTOUPDATE            = var.disable_runner_autoupdate
       ENABLE_EPHEMERAL_RUNNERS             = var.enable_ephemeral_runners
       ENABLE_JOB_QUEUED_CHECK              = local.enable_job_queued_check
@@ -28,7 +29,7 @@ resource "aws_lambda_function" "scale_up" {
       INSTANCE_TYPES                       = join(",", var.instance_types)
       LAUNCH_TEMPLATE_NAME                 = aws_launch_template.runner.name
       LOG_LEVEL                            = var.log_level
-      LOG_TYPE                             = var.log_type
+      MINIMUM_RUNNING_TIME_IN_MINUTES      = coalesce(var.minimum_running_time_in_minutes, local.min_runtime_defaults[var.runner_os])
       NODE_TLS_REJECT_UNAUTHORIZED         = var.ghes_url != null && !var.ghes_ssl_verify ? 0 : 1
       PARAMETER_GITHUB_APP_ID_NAME         = var.github_app_parameters.id.name
       PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.github_app_parameters.key_base64.name
@@ -36,9 +37,9 @@ resource "aws_lambda_function" "scale_up" {
       RUNNER_GROUP_NAME                    = var.runner_group_name
       RUNNER_NAME_PREFIX                   = var.runner_name_prefix
       RUNNERS_MAXIMUM_COUNT                = var.runners_maximum_count
+      SERVICE_NAME                         = "runners-scale-up"
       SSM_TOKEN_PATH                       = "${var.ssm_paths.root}/${var.ssm_paths.tokens}"
       SUBNET_IDS                           = join(",", var.subnet_ids)
-      AMI_ID_SSM_PARAMETER_NAME            = var.ami_id_ssm_parameter_name
     }
   }
 

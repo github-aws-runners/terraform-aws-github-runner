@@ -25,7 +25,6 @@ module "runner_binaries" {
   role_path                 = var.role_path
   role_permissions_boundary = var.role_permissions_boundary
 
-  log_type  = var.log_type
   log_level = var.log_level
 
   lambda_subnet_ids         = var.lambda_subnet_ids

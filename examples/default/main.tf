@@ -90,4 +90,6 @@ module "runners" {
 
   # prefix GitHub runners with the environment name
   runner_name_prefix = "${local.environment}_"
+
+  log_level = "debug"
 }

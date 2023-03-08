@@ -1,10 +1,10 @@
 import { EC2, SSM } from 'aws-sdk';
 import moment from 'moment';
 
-import { LogFields, logger as rootLogger } from '../logger';
+import { LogFields, createChildLogger } from '../logger';
 import ScaleError from './../scale-runners/ScaleError';
 
-const logger = rootLogger.getChildLogger({ name: 'runners' });
+const logger = createChildLogger('runners');
 
 export interface RunnerList {
   instanceId: string;
@@ -157,7 +157,8 @@ function generateFleetOverrides(
 }
 
 export async function createRunner(runnerParameters: RunnerInputParameters): Promise<void> {
-  logger.debug('Runner configuration: ' + JSON.stringify(runnerParameters), LogFields.print());
+  const runnerParametersLog = JSON.stringify(runnerParameters).replace(/--token\s+\S+/g, '--token <REDACTED>');
+  logger.debug('Runner configuration: ' + runnerParametersLog, LogFields.print());
 
   const ec2 = new EC2();
   const ssm = new SSM();
@@ -175,7 +176,7 @@ export async function createRunner(runnerParameters: RunnerInputParameters): Pro
       logger.error(
         `Failed to lookup runner AMI ID from SSM parameter: ${runnerParameters.amiIdSsmParameterName}. ` +
           'Please ensure that the given parameter exists on this region and contains a valid runner AMI ID',
-        e,
+        { error: e },
       );
       throw e;
     }
@@ -224,14 +225,14 @@ export async function createRunner(runnerParameters: RunnerInputParameters): Pro
       })
       .promise();
   } catch (e) {
-    logger.warn('Create fleet request failed.', e);
+    logger.warn('Create fleet request failed.', { error: e as Error });
     throw e;
   }
 
   const instances: string[] = fleet.Instances?.flatMap((i) => i.InstanceIds?.flatMap((j) => j) || []) || [];
 
   if (instances.length === 0) {
-    logger.warn(`No instances created by fleet request. Check configuration! Response:`, fleet);
+    logger.warn(`No instances created by fleet request. Check configuration! Response:`, { data: fleet });
     const errors = fleet.Errors?.flatMap((e) => e.ErrorCode || '') || [];
 
     // Educated guess of errors that would make sense to retry based on the list
@@ -249,15 +250,15 @@ export async function createRunner(runnerParameters: RunnerInputParameters): Pro
 
     if (errors.some((e) => scaleErrors.includes(e))) {
       logger.warn('Create fleet failed, ScaleError will be thrown to trigger retry for ephemeral runners.');
-      logger.debug('Create fleet failed.', fleet.Errors);
+      logger.debug('Create fleet failed.', { data: fleet.Errors });
       throw new ScaleError('Failed to create instance, create fleet failed.');
     } else {
-      logger.warn('Create fleet failed, error not recognized as scaling error.', fleet.Errors);
+      logger.warn('Create fleet failed, error not recognized as scaling error.', { data: fleet.Errors });
       throw Error('Create fleet failed, no instance created.');
     }
   }
 
-  logger.info('Created instance(s): ', instances.join(','), LogFields.print());
+  logger.info(`Created instance(s): ${instances.join(',')}`, LogFields.print());
 
   const delay = async (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
   const ssmParameterStoreMaxThroughput = 40;

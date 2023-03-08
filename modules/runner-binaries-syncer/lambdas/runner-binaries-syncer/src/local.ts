@@ -1,4 +1,4 @@
-import { logger } from './syncer/logger';
+import { logger } from './logger';
 import { sync } from './syncer/syncer';
 
 sync()
@@ -7,5 +7,5 @@ sync()
     if (e instanceof Error) {
       logger.error(e.message);
     }
-    logger.trace(e);
+    logger.debug('Ignoring error', { error: e });
   });

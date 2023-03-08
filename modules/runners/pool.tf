@@ -18,7 +18,6 @@ module "pool" {
     ami_kms_key_arn               = local.ami_kms_key_arn
     lambda = {
       log_level                      = var.log_level
-      log_type                       = var.log_type
       logging_retention_in_days      = var.logging_retention_in_days
       logging_kms_key_id             = var.logging_kms_key_id
       reserved_concurrent_executions = var.pool_lambda_reserved_concurrent_executions

@@ -1,7 +1,9 @@
 import { SQS, SendMessageCommandInput } from '@aws-sdk/client-sqs';
 import { WorkflowJobEvent } from '@octokit/webhooks-types';
 
-import { LogFields, logger } from '../webhook/logger';
+import { LogFields, createChildLogger } from '../logger';
+
+const logger = createChildLogger('sqs');
 
 export interface ActionRequestMessage {
   id: number;

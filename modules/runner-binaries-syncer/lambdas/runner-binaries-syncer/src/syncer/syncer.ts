@@ -4,11 +4,11 @@ import AWS from 'aws-sdk';
 import axios from 'axios';
 import { PassThrough } from 'stream';
 
-import { logger as rootLogger } from './logger';
-
-const logger = rootLogger.getChildLogger();
+import { createChildLogger } from '../logger';
 
 const versionKey = 'name';
+
+const logger = createChildLogger('syncer.ts');
 
 interface CacheObject {
   bucket: string;
@@ -66,7 +66,7 @@ async function uploadToS3(s3: S3, cacheObject: CacheObject, actionRunnerReleaseA
     })
     .promise();
 
-  logger.debug('Start downloading %s and uploading to S3.', actionRunnerReleaseAsset.name);
+  logger.debug(`Start downloading ${actionRunnerReleaseAsset.name} and uploading to S3.`);
 
   const readPromise = new Promise<void>((resolve, reject) => {
     axios
@@ -88,7 +88,7 @@ async function uploadToS3(s3: S3, cacheObject: CacheObject, actionRunnerReleaseA
   await Promise.all([readPromise, writePromise])
     .then(() => logger.info(`The new distribution is uploaded to S3.`))
     .catch((error) => {
-      logger.error(`Uploading of the new distribution to S3 failed: ${error}`);
+      logger.error('Uploading of the new distribution to S3 failed.', error);
       throw error;
     });
 }
@@ -116,6 +116,6 @@ export async function sync(): Promise<void> {
   if (currentVersion === undefined || currentVersion != actionRunnerReleaseAsset.name) {
     await uploadToS3(s3, cacheObject, actionRunnerReleaseAsset);
   } else {
-    logger.debug('Distribution is up-to-date, no action.');
+    logger.debug('Distribution is up-to-date, download skipped.');
   }
 }

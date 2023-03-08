@@ -2,10 +2,10 @@ import yn from 'yn';
 
 import { bootTimeExceeded, listEC2Runners } from '../aws/runners';
 import { createGithubAppAuth, createGithubInstallationAuth, createOctoClient } from '../gh-auth/gh-auth';
-import { logger as rootLogger } from '../logger';
+import { createChildLogger } from '../logger';
 import { createRunners } from '../scale-runners/scale-up';
 
-const logger = rootLogger.getChildLogger({ name: 'pool' });
+const logger = createChildLogger('pool');
 
 export interface PoolEvent {
   poolSize: number;

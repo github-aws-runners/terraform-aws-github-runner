@@ -17,6 +17,7 @@ resource "aws_lambda_function" "pool" {
 
   environment {
     variables = {
+      AMI_ID_SSM_PARAMETER_NAME            = var.config.ami_id_ssm_parameter_name
       DISABLE_RUNNER_AUTOUPDATE            = var.config.runner.disable_runner_autoupdate
       ENABLE_EPHEMERAL_RUNNERS             = var.config.runner.ephemeral
       ENVIRONMENT                          = var.config.prefix
@@ -27,7 +28,6 @@ resource "aws_lambda_function" "pool" {
       INSTANCE_TYPES                       = join(",", var.config.instance_types)
       LAUNCH_TEMPLATE_NAME                 = var.config.runner.launch_template.name
       LOG_LEVEL                            = var.config.lambda.log_level
-      LOG_TYPE                             = var.config.lambda.log_type
       NODE_TLS_REJECT_UNAUTHORIZED         = var.config.ghes.url != null && !var.config.ghes.ssl_verify ? 0 : 1
       PARAMETER_GITHUB_APP_ID_NAME         = var.config.github_app_parameters.id.name
       PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.config.github_app_parameters.key_base64.name
@@ -36,9 +36,9 @@ resource "aws_lambda_function" "pool" {
       RUNNER_GROUP_NAME                    = var.config.runner.group_name
       RUNNER_NAME_PREFIX                   = var.config.runner.name_prefix
       RUNNER_OWNER                         = var.config.runner.pool_owner
+      SERVICE_NAME                         = "runners-pool"
       SSM_TOKEN_PATH                       = var.config.ssm_token_path
       SUBNET_IDS                           = join(",", var.config.subnet_ids)
-      AMI_ID_SSM_PARAMETER_NAME            = var.config.ami_id_ssm_parameter_name
     }
   }
 

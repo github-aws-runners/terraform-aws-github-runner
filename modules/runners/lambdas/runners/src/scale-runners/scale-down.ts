@@ -2,12 +2,12 @@ import { Octokit } from '@octokit/rest';
 import moment from 'moment';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctoClient } from '../gh-auth/gh-auth';
-import { LogFields, logger as rootLogger } from '../logger';
+import { LogFields, createChildLogger } from '../logger';
 import { RunnerInfo, RunnerList, bootTimeExceeded, listEC2Runners, terminateRunner } from './../aws/runners';
 import { GhRunners, githubCache } from './cache';
 import { ScalingDownConfig, getIdleRunnerCount } from './scale-down-config';
 
-const logger = rootLogger.getChildLogger({ name: 'scale-down' });
+const logger = createChildLogger('scale-down');
 
 async function getOrCreateOctokit(runner: RunnerInfo): Promise<Octokit> {
   const key = runner.owner;
@@ -145,7 +145,10 @@ async function removeRunner(ec2runner: RunnerInfo, ghRunnerIds: number[]): Promi
       );
     }
   } catch (e) {
-    logger.error(`Runner '${ec2runner.instanceId}' cannot be de-registered. Error: ${e}`, LogFields.print());
+    logger.error(`Runner '${ec2runner.instanceId}' cannot be de-registered. Error: ${e}`, {
+      data: LogFields.fields,
+      error: e as Error,
+    });
   }
 }
 

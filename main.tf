@@ -165,7 +165,6 @@ module "webhook" {
   lambda_security_group_ids = var.lambda_security_group_ids
   aws_partition             = var.aws_partition
 
-  log_type  = var.log_type
   log_level = var.log_level
 }
 
@@ -267,7 +266,6 @@ module "runners" {
 
   kms_key_arn = var.kms_key_arn
 
-  log_type  = var.log_type
   log_level = var.log_level
 
   pool_config                                = var.pool_config
@@ -308,7 +306,6 @@ module "runner_binaries" {
   role_path                 = var.role_path
   role_permissions_boundary = var.role_permissions_boundary
 
-  log_type  = var.log_type
   log_level = var.log_level
 
   lambda_subnet_ids         = var.lambda_subnet_ids

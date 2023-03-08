@@ -2,8 +2,8 @@ import { APIGatewayEvent, Context } from 'aws-lambda';
 import { mocked } from 'jest-mock';
 
 import { githubWebhook } from './lambda';
+import { logger } from './logger';
 import { handle } from './webhook/handler';
-import { logger } from './webhook/logger';
 
 const event: APIGatewayEvent = {
   body: JSON.stringify(''),

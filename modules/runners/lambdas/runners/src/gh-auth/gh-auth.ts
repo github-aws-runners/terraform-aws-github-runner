@@ -12,9 +12,9 @@ import { request } from '@octokit/request';
 import { Octokit } from '@octokit/rest';
 
 import { getParameterValue } from '../aws/ssm';
-import { LogFields, logger as rootLogger } from '../logger';
+import { LogFields, createChildLogger } from '../logger';
 
-const logger = rootLogger.getChildLogger({ name: 'gh-auth' });
+const logger = createChildLogger('gh-auth');
 
 export async function createOctoClient(token: string, ghesApiUrl = ''): Promise<Octokit> {
   const ocktokitOptions: OctokitOptions = {

@@ -56,6 +56,19 @@
     "@aws-sdk/util-utf8-browser" "^3.0.0"
     tslib "^1.11.1"
 
+"@aws-lambda-powertools/commons@^1.6.0":
+  version "1.6.0"
+  resolved "https://registry.yarnpkg.com/@aws-lambda-powertools/commons/-/commons-1.6.0.tgz#266c0b7e6cadb6b2c3bec9125a694144219a7e33"
+  integrity sha512-83YWf63FZN872Bodk+tJHdSZ2o8y5zsAcpQZgBTqL8TEFNBef/zkDuIuvDIUBmif9q+ZaYVAEtileWjjDTvgGA==
+
+"@aws-lambda-powertools/logger@^1.6.0":
+  version "1.6.0"
+  resolved "https://registry.yarnpkg.com/@aws-lambda-powertools/logger/-/logger-1.6.0.tgz#81bc873edcfec57204af7a149e9c201c3d282bfd"
+  integrity sha512-RIx8nHDH8exxPfMhkTnxWZMNOEOgf1CjkzbisLvX89/8Z0tMyruDFHdnolZXQ6Z1AyUE5FVaqN5FWlkmyqxS4A==
+  dependencies:
+    "@aws-lambda-powertools/commons" "^1.6.0"
+    lodash.merge "^4.6.2"
+
 "@aws-sdk/abort-controller@3.272.0":
   version "3.272.0"
   resolved "https://registry.yarnpkg.com/@aws-sdk/abort-controller/-/abort-controller-3.272.0.tgz#c2d244e9d422583a786dfb75485316cb1d4793ce"
@@ -4052,7 +4065,7 @@ source-map-support@0.5.13:
     buffer-from "^1.0.0"
     source-map "^0.6.0"
 
-source-map-support@^0.5.12, source-map-support@^0.5.21:
+source-map-support@^0.5.12:
   version "0.5.21"
   resolved "https://registry.yarnpkg.com/source-map-support/-/source-map-support-0.5.21.tgz#04fe7c7f9e1ed2d662233c28cb2b35b9f63f6e4f"
   integrity sha512-uBHU3L3czsIyYXKX88fdrGovxdSCoTGDRZ6SYXtSRxLZUzHg5P/66Ht6uoUlHu9EZod+inXhKo3qQgwXUT/y1w==
@@ -4276,13 +4289,6 @@ tslib@^2.3.0, tslib@^2.3.1:
   version "2.4.1"
   resolved "https://registry.yarnpkg.com/tslib/-/tslib-2.4.1.tgz#0d0bfbaac2880b91e22df0768e55be9753a5b17e"
   integrity sha512-tGyy4dAjRIEwI7BzsB0lynWgOpfqjUdq91XXAlIWD2OwKBH7oCl/GZG/HT4BOHrTlPMOASlMQ7veyTqpmRcrNA==
-
-tslog@^3.3.4:
-  version "3.3.4"
-  resolved "https://registry.yarnpkg.com/tslog/-/tslog-3.3.4.tgz#083197a908c97b3b714a0576b9dac293f223f368"
-  integrity sha512-N0HHuHE0e/o75ALfkioFObknHR5dVchUad4F0XyFf3gXJYB++DewEzwGI/uIOM216E5a43ovnRNEeQIq9qgm4Q==
-  dependencies:
-    source-map-support "^0.5.21"
 
 tsutils@^3.21.0:
   version "3.21.0"
