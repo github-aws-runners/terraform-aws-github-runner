@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.4.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v2.3.0...v2.4.0) (2023-03-08)
+
+
+### Features
+
+* add outputs for lambda and lambda log groups ([#3033](https://github.com/philips-labs/terraform-aws-github-runner/issues/3033)) ([e1ce8be](https://github.com/philips-labs/terraform-aws-github-runner/commit/e1ce8beff74896eba5b423c7510f2569078a8c01))
+* **runners:** allow to use a shared encrypted AMI ([#2933](https://github.com/philips-labs/terraform-aws-github-runner/issues/2933)) ([5514c72](https://github.com/philips-labs/terraform-aws-github-runner/commit/5514c7246184152349e3dbfa09a41b49b1156e60))
+
+
+### Bug Fixes
+
+* **runners:** bump aws-sdk from 2.1289.0 to 2.1329.0 in /modules/runners/lambdas/runners ([#3018](https://github.com/philips-labs/terraform-aws-github-runner/issues/3018)) ([9bfcfe6](https://github.com/philips-labs/terraform-aws-github-runner/commit/9bfcfe642a1d56ded7e65c190d31539c9ccc1336))
+* **webhook:** bump @aws-sdk/client-ssm from 3.278.0 to 3.282.0 in /modules/webhook/lambdas/webhook ([#3021](https://github.com/philips-labs/terraform-aws-github-runner/issues/3021)) ([7b7c211](https://github.com/philips-labs/terraform-aws-github-runner/commit/7b7c211e15f8e5e57c2866c6a9656399fdd2305e))
+
 ## [2.3.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v2.2.2...v2.3.0) (2023-03-01)
 
 

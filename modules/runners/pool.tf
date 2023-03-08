@@ -15,6 +15,7 @@ module "pool" {
     instance_target_capacity_type = var.instance_target_capacity_type
     instance_types                = var.instance_types
     kms_key_arn                   = local.kms_key_arn
+    ami_kms_key_arn               = local.ami_kms_key_arn
     lambda = {
       log_level                      = var.log_level
       log_type                       = var.log_type

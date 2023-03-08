@@ -122,6 +122,7 @@ No modules.
 |------|-------------|
 | <a name="output_bucket"></a> [bucket](#output\_bucket) | n/a |
 | <a name="output_lambda"></a> [lambda](#output\_lambda) | n/a |
+| <a name="output_lambda_log_group"></a> [lambda\_log\_group](#output\_lambda\_log\_group) | n/a |
 | <a name="output_lambda_role"></a> [lambda\_role](#output\_lambda\_role) | n/a |
 | <a name="output_runner_distribution_object_key"></a> [runner\_distribution\_object\_key](#output\_runner\_distribution\_object\_key) | n/a |
 <!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->

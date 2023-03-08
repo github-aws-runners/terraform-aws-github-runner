@@ -307,6 +307,12 @@ variable "ami_id_ssm_parameter_name" {
   default     = null
 }
 
+variable "ami_kms_key_arn" {
+  description = "Optional CMK Key ARN to be used to launch an instance from a shared encrypted AMI"
+  type        = string
+  default     = null
+}
+
 variable "lambda_s3_bucket" {
   description = "S3 bucket from which to specify lambda functions. This is an alternative to providing local files directly."
   type        = string

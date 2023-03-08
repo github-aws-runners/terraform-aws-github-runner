@@ -142,6 +142,12 @@ variable "ami_id_ssm_parameter_name" {
   default     = null
 }
 
+variable "ami_kms_key_arn" {
+  description = "Optional CMK Key ARN to be used to launch an instance from a shared encrypted AMI"
+  type        = string
+  default     = null
+}
+
 variable "enable_userdata" {
   description = "Should the userdata script be enabled for the runner. Set this to false if you are using your own prebuilt AMI"
   type        = bool

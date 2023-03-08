@@ -10,6 +10,10 @@ output "lambda" {
   value = aws_lambda_function.syncer
 }
 
+output "lambda_log_group" {
+  value = aws_cloudwatch_log_group.syncer
+}
+
 output "lambda_role" {
   value = aws_iam_role.syncer_lambda
 }

@@ -121,6 +121,7 @@ yarn run dist
 |------|-------------|------|---------|:--------:|
 | <a name="input_ami_filter"></a> [ami\_filter](#input\_ami\_filter) | Map of lists used to create the AMI filter for the action runner AMI. | `map(list(string))` | `null` | no |
 | <a name="input_ami_id_ssm_parameter_name"></a> [ami\_id\_ssm\_parameter\_name](#input\_ami\_id\_ssm\_parameter\_name) | Externally managed SSM parameter (of data type aws:ec2:image) that contains the AMI ID to launch runner instances from. Overrides ami\_filter | `string` | `null` | no |
+| <a name="input_ami_kms_key_arn"></a> [ami\_kms\_key\_arn](#input\_ami\_kms\_key\_arn) | Optional CMK Key ARN to be used to launch an instance from a shared encrypted AMI | `string` | `null` | no |
 | <a name="input_ami_owners"></a> [ami\_owners](#input\_ami\_owners) | The list of owners used to select the AMI of action runner instances. | `list(string)` | <pre>[<br>  "amazon"<br>]</pre> | no |
 | <a name="input_aws_partition"></a> [aws\_partition](#input\_aws\_partition) | (optional) partition for the base arn if not 'aws' | `string` | `"aws"` | no |
 | <a name="input_aws_region"></a> [aws\_region](#input\_aws\_region) | AWS region. | `string` | n/a | yes |
@@ -204,8 +205,12 @@ yarn run dist
 
 | Name | Description |
 |------|-------------|
+| <a name="output_lambda_pool"></a> [lambda\_pool](#output\_lambda\_pool) | n/a |
+| <a name="output_lambda_pool_log_group"></a> [lambda\_pool\_log\_group](#output\_lambda\_pool\_log\_group) | n/a |
 | <a name="output_lambda_scale_down"></a> [lambda\_scale\_down](#output\_lambda\_scale\_down) | n/a |
+| <a name="output_lambda_scale_down_log_group"></a> [lambda\_scale\_down\_log\_group](#output\_lambda\_scale\_down\_log\_group) | n/a |
 | <a name="output_lambda_scale_up"></a> [lambda\_scale\_up](#output\_lambda\_scale\_up) | n/a |
+| <a name="output_lambda_scale_up_log_group"></a> [lambda\_scale\_up\_log\_group](#output\_lambda\_scale\_up\_log\_group) | n/a |
 | <a name="output_launch_template"></a> [launch\_template](#output\_launch\_template) | n/a |
 | <a name="output_logfiles"></a> [logfiles](#output\_logfiles) | List of logfiles to send to CloudWatch. Object description: `log_group_name`: Name of the log group, `file_path`: path to the log file, `log_stream_name`: name of the log stream. |
 | <a name="output_role_pool"></a> [role\_pool](#output\_role\_pool) | n/a |
