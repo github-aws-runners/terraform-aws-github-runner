@@ -282,5 +282,6 @@ export async function createRunner(runnerParameters: RunnerInputParameters): Pro
 export function bootTimeExceeded(ec2Runner: { launchTime?: Date }): boolean {
   const runnerBootTimeInMinutes = process.env.RUNNER_BOOT_TIME_IN_MINUTES;
   const launchTimePlusBootTime = moment(ec2Runner.launchTime).utc().add(runnerBootTimeInMinutes, 'minutes');
-  return launchTimePlusBootTime < moment(new Date()).utc();
+  const now = moment(new Date()).utc();
+  return launchTimePlusBootTime < now;
 }
