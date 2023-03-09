@@ -37,7 +37,7 @@ export function run(): void {
   scaleUp(sqsEvent.Records[0].eventSource, sqsEvent.Records[0].body as ActionRequestMessage)
     .then()
     .catch((e) => {
-      logger.error("ee);
+      logger.error(e);
     });
 }
 
