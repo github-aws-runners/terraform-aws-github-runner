@@ -582,3 +582,13 @@ variable "ssm_paths" {
     config = string
   })
 }
+
+variable "runner_name_prefix" {
+  description = "The prefix used for the GitHub runner name. The prefix will be used in the default start script to prefix the instance name when register the runner in GitHub. The value is availabe via an EC2 tag 'ghr:runner_name_prefix'."
+  type        = string
+  default     = ""
+  validation {
+    condition     = length(var.runner_name_prefix) <= 45
+    error_message = "The prefix used for the GitHub runner name must be less than 32 characters. AWS instances id are 17 chars, https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/resource-ids.html"
+  }
+}

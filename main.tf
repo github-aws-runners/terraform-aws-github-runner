@@ -242,6 +242,7 @@ module "runners" {
   cloudwatch_config                = var.cloudwatch_config
   runner_log_files                 = var.runner_log_files
   runner_group_name                = var.runner_group_name
+  runner_name_prefix               = var.runner_name_prefix
 
   scale_up_reserved_concurrent_executions = var.scale_up_reserved_concurrent_executions
 

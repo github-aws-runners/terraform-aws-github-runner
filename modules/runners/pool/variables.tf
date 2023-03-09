@@ -34,8 +34,9 @@ variable "config" {
       launch_template = object({
         name = string
       })
-      group_name = string
-      pool_owner = string
+      group_name  = string
+      name_prefix = string
+      pool_owner  = string
       role = object({
         arn = string
       })

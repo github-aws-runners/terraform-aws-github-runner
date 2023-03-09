@@ -6,6 +6,9 @@ locals {
     {
       "ghr:ssm_config_path" = "${var.ssm_paths.root}/${var.ssm_paths.config}"
     },
+    {
+      "ghr:runner_name_prefix" = var.runner_name_prefix
+    },
     var.tags,
   )
 

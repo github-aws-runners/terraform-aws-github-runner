@@ -184,11 +184,11 @@ const DEFAULT_RUNNERS_ORIGINAL = [
 const DEFAULT_REGISTERED_RUNNERS = [
   {
     id: 101,
-    name: 'i-idle-101',
+    name: 'my-runner-i-idle-101',
   },
   {
     id: 102,
-    name: 'i-idle-102',
+    name: 'my-runner-i-idle-102',
   },
   {
     id: 103,

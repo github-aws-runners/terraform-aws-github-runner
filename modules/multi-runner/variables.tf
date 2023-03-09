@@ -60,6 +60,7 @@ variable "multi_runner_config" {
       runner_boot_time_in_minutes             = optional(number, 5)
       runner_extra_labels                     = string
       runner_group_name                       = optional(string, "Default")
+      runner_name_prefix                      = optional(string, "")
       runner_run_as                           = optional(string, "ec2-user")
       runners_maximum_count                   = number
       scale_down_schedule_expression          = optional(string, "cron(*/5 * * * ? *)")
@@ -150,6 +151,7 @@ variable "multi_runner_config" {
         runner_boot_time_in_minutes: "The minimum time for an EC2 runner to boot and register as a runner."
         runner_extra_labels: "Extra (custom) labels for the runners (GitHub). Separate each label by a comma. Labels checks on the webhook can be enforced by setting `enable_workflow_job_labels_check`. GitHub read-only labels should not be provided."
         runner_group_name: "Name of the runner group."
+        runner_name_prefix: "Prefix for the GitHub runner name."
         runner_run_as: "Run the GitHub actions agent as user."
         runners_maximum_count: "The maximum number of runners that will be created."
         scale_down_schedule_expression: "Scheduler expression to check every x for scale down."

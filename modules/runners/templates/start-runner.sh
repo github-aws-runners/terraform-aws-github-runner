@@ -27,6 +27,8 @@ ssm_config_path=$(echo "$tags" | jq -r '.Tags[]  | select(.Key == "ghr:ssm_confi
 
 echo "Retrieved ghr:environment tag - ($environment)"
 echo "Retrieved ghr:ssm_config_path tag - ($ssm_config_path)"
+runner_name_prefix=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/meta-data/tags/instance/ghr:runner_name_prefix) || true
+echo "Retrieved ghr:runner_name_prefix tag - ($runner_name_prefix)"
 
 parameters=$(aws ssm get-parameters-by-path --path "$ssm_config_path" --region "$region" --query "Parameters[*].{Name:Name,Value:Value}")
 echo "Retrieved parameters from AWS SSM ($parameters)"
@@ -74,7 +76,7 @@ fi
 chown -R $run_as .
 
 echo "Configure GH Runner as user $run_as"
-sudo --preserve-env=RUNNER_ALLOW_RUNASROOT -u "$run_as" -- ./config.sh --unattended --name "$instance_id" --work "_work" $${config}
+sudo --preserve-env=RUNNER_ALLOW_RUNASROOT -u "$run_as" -- ./config.sh --unattended --name "$runner_name_prefix$instance_id" --work "_work" $${config}
 
 info_arch=$(uname -p)
 info_os=$(( lsb_release -ds || cat /etc/*release || uname -om ) 2>/dev/null | head -n1 | cut -d "=" -f2- | tr -d '"')

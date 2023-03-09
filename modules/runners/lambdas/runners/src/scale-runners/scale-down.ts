@@ -165,7 +165,7 @@ async function evaluateAndRemoveRunners(
     for (const ec2Runner of ec2RunnersFiltered) {
       const ghRunners = await listGitHubRunners(ec2Runner);
       const ghRunnersFiltered = ghRunners.filter((runner: { name: string }) =>
-        runner.name.startsWith(ec2Runner.instanceId),
+        runner.name.endsWith(ec2Runner.instanceId),
       );
       if (ghRunnersFiltered.length) {
         if (runnerMinimumTimeExceeded(ec2Runner)) {

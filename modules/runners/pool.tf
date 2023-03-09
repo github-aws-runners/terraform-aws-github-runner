@@ -42,6 +42,7 @@ module "pool" {
       extra_labels              = var.runner_extra_labels
       launch_template           = aws_launch_template.runner
       group_name                = var.runner_group_name
+      name_prefix               = var.runner_name_prefix
       pool_owner                = var.pool_runner_owner
       role                      = aws_iam_role.runner
     }
