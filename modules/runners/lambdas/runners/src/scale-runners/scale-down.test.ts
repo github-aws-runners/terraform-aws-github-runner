@@ -68,6 +68,23 @@ let DEFAULT_RUNNERS_ORG_TO_BE_REMOVED: RunnerInfo[];
 let DEFAULT_RUNNERS_ORPHANED: RunnerInfo[];
 let DEFAULT_REPO_RUNNERS_ORPHANED: RunnerInfo[];
 let DEFAULT_ORG_RUNNERS_ORPHANED: RunnerInfo[];
+
+// Add table of DEFAULT_RUNNERS_ORIGINAL without launchTime and owner
+// instanceId | type | notes
+// i-idle-101 | Repo | idle and exceeds minimumRunningTimeInMinutes
+// i-idle-102 | Org | idle and exceeds minimumRunningTimeInMinutes
+// i-oldest-idle-103 | Repo | idle and exceeds minimumRunningTimeInMinutes
+// i-oldest-idle-104 | Org | idle and exceeds minimumRunningTimeInMinutes
+// i-running-cannot-delete-105 | Repo | unable to delete
+// i-running-cannot-delete-106 | Org | unable to delete
+// i-orphan-107 | Repo | orphaned no GitHub registration and exceeds minimumRunningTimeInMinutes
+// i-orphan-108 | Org | orphaned no GitHub registration and exceeds minimumRunningTimeInMinutes
+// i-not-registered-108 | Org | not registered and not exceeding minimumRunningTimeInMinutes
+// i-not-registered-109 | Repo | not registered and not exceeding minimumRunningTimeInMinutes
+// i-running-110 | Org | running and not exceeding minimumRunningTimeInMinutes
+// i-running-111 | Repo | running and not exceeding minimumRunningTimeInMinutes
+// i-running-112 | Org | busy
+// i-running-113 | Repo | busy
 const DEFAULT_RUNNERS_ORIGINAL = [
   {
     instanceId: 'i-idle-101',
@@ -122,7 +139,15 @@ const DEFAULT_RUNNERS_ORIGINAL = [
     owner: `doe/another-repo`,
   },
   {
-    instanceId: 'i-not-registered-108',
+    instanceId: 'i-orphan-108',
+    launchTime: moment(new Date())
+      .subtract(minimumRunningTimeInMinutes + 5, 'minutes')
+      .toDate(),
+    type: 'Org',
+    owner: TEST_DATA.repositoryOwner,
+  },
+  {
+    instanceId: 'i-not-registered-109',
     launchTime: moment(new Date())
       .subtract(runnerBootTimeInMinutes - 2, 'minutes')
       .toDate(),
@@ -130,19 +155,12 @@ const DEFAULT_RUNNERS_ORIGINAL = [
     owner: `doe/another-repo`,
   },
   {
-    instanceId: 'i-not-registered-109',
+    instanceId: 'i-not-registered-110',
     launchTime: moment(new Date())
       .subtract(runnerBootTimeInMinutes - 2, 'minutes')
       .toDate(),
     type: 'Org',
     owner: TEST_DATA.repositoryOwner,
-  },
-  {
-    instanceId: 'i-legacy-110',
-    launchTime: moment(new Date())
-      .subtract(minimumRunningTimeInMinutes + 5, 'minutes')
-      .toDate(),
-    repo: `${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName}`,
   },
   {
     instanceId: 'i-new-111',
@@ -195,7 +213,7 @@ const DEFAULT_REGISTERED_RUNNERS = [
   {
     id: 113,
     name: 'i-running-busy-113',
-  }
+  },
 ];
 
 describe('scaleDown', () => {
@@ -365,7 +383,7 @@ describe('scaleDown', () => {
       });
 
       expect(mockOctokit.apps.getOrgInstallation).toBeCalled();
-      expect(terminateRunner).toBeCalledTimes(2);
+      expect(terminateRunner).toBeCalledTimes(3);
       for (const toTerminate of DEFAULT_RUNNERS_ORG_TO_BE_REMOVED) {
         expect(terminateRunner).toHaveBeenCalledWith(toTerminate.instanceId);
       }
@@ -430,7 +448,7 @@ describe('scaleDown', () => {
       expect(terminateRunner).not.toBeCalled;
     });
 
-    it('Terminates 4 runners amongst all owners and all orphaned', async () => {
+    it('Terminates 4 runners amongst all owners and two orphaned', async () => {
       mockListRunners.mockResolvedValue(DEFAULT_RUNNERS);
       await scaleDown();
 
@@ -440,7 +458,7 @@ describe('scaleDown', () => {
 
       expect(mockOctokit.apps.getRepoInstallation).toBeCalledTimes(2);
       expect(mockOctokit.apps.getOrgInstallation).toBeCalledTimes(1);
-      expect(terminateRunner).toBeCalledTimes(5);
+      expect(terminateRunner).toBeCalledTimes(6);
       for (const toTerminate of RUNNERS_ALL_REMOVED) {
         expect(terminateRunner).toHaveBeenCalledWith(toTerminate.instanceId);
       }
@@ -495,7 +513,7 @@ describe('scaleDown', () => {
       });
 
       expect(mockOctokit.apps.getOrgInstallation).toBeCalled();
-      expect(terminateRunner).toBeCalledTimes(2);
+      expect(terminateRunner).toBeCalledTimes(3);
       for (const toTerminate of DEFAULT_RUNNERS_ORG_TO_BE_REMOVED) {
         expect(terminateRunner).toHaveBeenCalledWith(toTerminate.instanceId);
       }
@@ -544,7 +562,7 @@ describe('scaleDown', () => {
       });
     });
 
-    it('Terminates 4 runners amongst all owners and one orphaned', async () => {
+    it('Terminates 4 runners amongst all owners and two orphaned', async () => {
       mockListRunners.mockResolvedValue(DEFAULT_RUNNERS);
       await scaleDown();
 
@@ -554,7 +572,7 @@ describe('scaleDown', () => {
 
       expect(mockOctokit.apps.getRepoInstallation).toBeCalledTimes(2);
       expect(mockOctokit.apps.getOrgInstallation).toBeCalledTimes(1);
-      expect(terminateRunner).toBeCalledTimes(5);
+      expect(terminateRunner).toBeCalledTimes(6);
       for (const toTerminate of RUNNERS_ALL_REMOVED) {
         expect(terminateRunner).toHaveBeenCalledWith(toTerminate.instanceId);
       }
