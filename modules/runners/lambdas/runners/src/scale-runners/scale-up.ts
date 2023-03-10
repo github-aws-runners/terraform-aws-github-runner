@@ -110,7 +110,7 @@ async function isJobQueued(githubInstallationClient: Octokit, payload: ActionReq
     throw Error(`Event ${payload.eventType} is not supported`);
   }
   if (!isQueued) {
-    logger.info(`Job not queued`, LogFields.print());
+    logger.warn(`Job not queued in GitHub. A new runner instance will NOT be created.`, LogFields.print());
   }
   return isQueued;
 }
