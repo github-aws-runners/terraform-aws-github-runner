@@ -120,6 +120,13 @@ module "multi-runner" {
       fifo                = true
       delay_webhook_event = 0
       runner_config = {
+        # Test retrieving tag information via AWS API (Cli)
+        runner_metadata_options = {
+          instance_metadata_tags      = "disabled"
+          http_endpoint               = "enabled"
+          http_tokens                 = "optional"
+          http_put_response_hop_limit = 1
+        }
         runner_os                       = "linux"
         runner_architecture             = "x64"
         create_service_linked_role_spot = true
