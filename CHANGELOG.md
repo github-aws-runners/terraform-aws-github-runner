@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.5.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v2.4.0...v2.5.0) (2023-03-10)
+
+
+### Features
+
+* added outputs for runner log groups. ([#3044](https://github.com/philips-labs/terraform-aws-github-runner/issues/3044)) ([2f683da](https://github.com/philips-labs/terraform-aws-github-runner/commit/2f683dad0053ffc0d50f8bb860fb22e487e5c00e))
+* **runner:** allow linux starter-runner script to retrieve labels without with IMDSv2 tags option ([#2764](https://github.com/philips-labs/terraform-aws-github-runner/issues/2764)) ([0d8a74c](https://github.com/philips-labs/terraform-aws-github-runner/commit/0d8a74cb2d6eff7e91b6a1e41a58d1e08f86965f))
+
+
+### Bug Fixes
+
+* **pool:** ensure pool top up respects var.ami_id_ssm_parameter_name ([#3040](https://github.com/philips-labs/terraform-aws-github-runner/issues/3040)) ([c4ab242](https://github.com/philips-labs/terraform-aws-github-runner/commit/c4ab2428c514b1f8a48e4729e542f5e2ae4b14fa))
+
 ## [2.4.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v2.3.0...v2.4.0) (2023-03-08)
 
 
