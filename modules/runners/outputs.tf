@@ -42,6 +42,10 @@ output "role_pool" {
   value = try(module.pool[0].role_pool, null)
 }
 
+output "runners_log_groups" {
+  value = aws_cloudwatch_log_group.gh_runners
+}
+
 output "logfiles" {
   value       = local.logfiles
   description = "List of logfiles to send to CloudWatch. Object description: `log_group_name`: Name of the log group, `file_path`: path to the log file, `log_stream_name`: name of the log stream."

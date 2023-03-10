@@ -14,6 +14,7 @@ output "runners" {
     role_scale_up           = runner.role_scale_up
     role_scale_down         = runner.role_scale_down
     role_pool               = runner.role_pool
+    runners_log_groups      = runner.runners_log_groups
     logfiles                = runner.logfiles
   }]
 }

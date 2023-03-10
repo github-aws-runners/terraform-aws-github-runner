@@ -14,6 +14,7 @@ output "runners" {
     role_scale_up           = module.runners.role_scale_up
     role_scale_down         = module.runners.role_scale_down
     role_pool               = module.runners.role_pool
+    runners_log_groups      = module.runners.runners_log_groups
     labels                  = sort(split(",", local.runner_labels))
     logfiles                = module.runners.logfiles
   }
