@@ -43,6 +43,7 @@ output "role_pool" {
 }
 
 output "runners_log_groups" {
+  description = "List of log groups from different log files of runner machine."
   value = aws_cloudwatch_log_group.gh_runners
 }
 
