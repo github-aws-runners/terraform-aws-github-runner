@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.6.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v2.5.0...v2.6.0) (2023-03-13)
+
+
+### Features
+
+* **runners:** add option to prefix registered runners in GitHub ([#3043](https://github.com/philips-labs/terraform-aws-github-runner/issues/3043)) ([ea4e042](https://github.com/philips-labs/terraform-aws-github-runner/commit/ea4e0426cb32712cfd8235a799d19f65ca531387))
+
+
+### Bug Fixes
+
+* enable SSE by default for dist bucket ([a7ad31a](https://github.com/philips-labs/terraform-aws-github-runner/commit/a7ad31af7e36c0f0158b7d44048ced697dd42734))
+* **syncer:** enable SSE by default for dist bucket ([#3048](https://github.com/philips-labs/terraform-aws-github-runner/issues/3048)) ([a7ad31a](https://github.com/philips-labs/terraform-aws-github-runner/commit/a7ad31af7e36c0f0158b7d44048ced697dd42734))
+
 ## [2.5.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v2.4.0...v2.5.0) (2023-03-10)
 
 
