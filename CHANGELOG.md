@@ -10,7 +10,6 @@
 
 ### Bug Fixes
 
-* enable SSE by default for dist bucket ([a7ad31a](https://github.com/philips-labs/terraform-aws-github-runner/commit/a7ad31af7e36c0f0158b7d44048ced697dd42734))
 * **syncer:** enable SSE by default for dist bucket ([#3048](https://github.com/philips-labs/terraform-aws-github-runner/issues/3048)) ([a7ad31a](https://github.com/philips-labs/terraform-aws-github-runner/commit/a7ad31af7e36c0f0158b7d44048ced697dd42734))
 
 ## [2.5.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v2.4.0...v2.5.0) (2023-03-10)
