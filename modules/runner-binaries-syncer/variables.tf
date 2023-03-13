@@ -210,7 +210,13 @@ variable "log_level" {
 variable "server_side_encryption_configuration" {
   description = "Map containing server-side encryption configuration."
   type        = any
-  default     = {}
+  default = {
+    rule = {
+      apply_server_side_encryption_by_default = {
+        sse_algorithm = "AES256"
+      }
+    }
+  }
 }
 
 variable "lambda_principals" {
