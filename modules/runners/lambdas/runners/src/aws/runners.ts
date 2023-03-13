@@ -44,7 +44,6 @@ export interface RunnerInputParameters {
     instanceAllocationStrategy: EC2.SpotAllocationStrategy;
   };
   numberOfRunners?: number;
-  runnerNamePrefix: string;
   amiIdSsmParameterName?: string;
 }
 

@@ -16,6 +16,7 @@ echo "Retrieved INSTANCE_ID from AWS API ($instance_id)"
 %{ if metadata_tags == "enabled" }
 environment=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/meta-data/tags/instance/ghr:environment)
 ssm_config_path=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/meta-data/tags/instance/ghr:ssm_config_path)
+runner_name_prefix=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/meta-data/tags/instance/ghr:runner_name_prefix) || true
 
 %{ else }
 tags=$(aws ec2 describe-tags --region "$region" --filters "Name=resource-id,Values=$instance_id")
@@ -23,11 +24,12 @@ echo "Retrieved tags from AWS API ($tags)"
 
 environment=$(echo "$tags" | jq -r '.Tags[]  | select(.Key == "ghr:environment") | .Value')
 ssm_config_path=$(echo "$tags" | jq -r '.Tags[]  | select(.Key == "ghr:ssm_config_path") | .Value')
+runner_name_prefix=$(echo "$tags" | jq -r '.Tags[]  | select(.Key == "ghr:runner_name_prefix") | .Value')
+
 %{ endif }
 
 echo "Retrieved ghr:environment tag - ($environment)"
 echo "Retrieved ghr:ssm_config_path tag - ($ssm_config_path)"
-runner_name_prefix=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/meta-data/tags/instance/ghr:runner_name_prefix) || true
 echo "Retrieved ghr:runner_name_prefix tag - ($runner_name_prefix)"
 
 parameters=$(aws ssm get-parameters-by-path --path "$ssm_config_path" --region "$region" --query "Parameters[*].{Name:Name,Value:Value}")

@@ -64,7 +64,6 @@ const EXPECTED_RUNNER_PARAMS: RunnerInputParameters = {
   },
   ssmTokenPath: '/github-action-runners/default/runners/config',
   subnets: ['subnet-123'],
-  runnerNamePrefix: 'unit-test',
 };
 let expectedRunnerParams: RunnerInputParameters;
 

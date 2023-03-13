@@ -477,7 +477,6 @@ function createRunnerConfig(runnerConfig: RunnerConfig): RunnerInputParameters {
     },
     subnets: ['subnet-123', 'subnet-456'],
     amiIdSsmParameterName: runnerConfig.amiIdSsmParameterName,
-    runnerNamePrefix: RUNNER_NAME_PREFIX,
   };
 }
 
