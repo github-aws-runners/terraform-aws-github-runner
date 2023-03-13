@@ -89,5 +89,5 @@ module "runners" {
   enable_user_data_debug_logging_runner = true
 
   # prefix GitHub runners with the environment name
-  runner_name_prefix = local.environment
+  runner_name_prefix = "${local.environment}_"
 }
