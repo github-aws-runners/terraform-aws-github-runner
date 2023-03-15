@@ -13,7 +13,8 @@
         "resource-groups:*",
         "ssm:*",
         "ssmmessages:*",
-        "ec2messages:*"
+        "ec2messages:*",
+        "cloudwatch:*"
       ],
       "Resource": "*"
     },
