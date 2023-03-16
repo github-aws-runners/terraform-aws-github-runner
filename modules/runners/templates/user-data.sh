@@ -17,14 +17,16 @@ ${pre_install}
 
 yum update -y
 
+${get_runner_metadata}
+
 # Install docker
 amazon-linux-extras install docker
 service docker start
-usermod -a -G docker ec2-user
+usermod -a -G docker $run_as
 
 yum install -y amazon-cloudwatch-agent curl jq git
 
-user_name=ec2-user
+user_name=$run_as
 
 ${install_runner}
 

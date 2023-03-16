@@ -39,6 +39,7 @@ Write-Host "Installing additional development tools"
 choco install git awscli -y
 refreshenv
 
+${get_runner_metadata}
 ${install_runner}
 ${post_install}
 ${start_runner}

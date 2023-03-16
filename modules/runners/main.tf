@@ -27,6 +27,11 @@ locals {
     "linux"   = "${path.module}/templates/user-data.sh"
   }
 
+  userdata_get_runner_metadata = {
+    "windows" = "${path.module}/templates/get-runner-metadata.ps1"
+    "linux"   = "${path.module}/templates/get-runner-metadata.sh"
+  }
+
   userdata_install_runner = {
     "windows" = "${path.module}/templates/install-runner.ps1"
     "linux"   = "${path.module}/templates/install-runner.sh"
@@ -146,6 +151,7 @@ resource "aws_launch_template" "runner" {
     enable_debug_logging            = var.enable_user_data_debug_logging
     s3_location_runner_distribution = local.s3_location_runner_distribution
     pre_install                     = var.userdata_pre_install
+    get_runner_metadata             = var.userdata_get_runner_metadata
     install_runner = templatefile(local.userdata_install_runner[var.runner_os], {
       S3_LOCATION_RUNNER_DISTRIBUTION = local.s3_location_runner_distribution
       RUNNER_ARCHITECTURE             = var.runner_architecture
