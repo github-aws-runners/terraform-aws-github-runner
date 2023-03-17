@@ -12,6 +12,6 @@ jobs:
     if: github.actor == 'dependabot[bot]' || github.actor == 'dependabot-preview[bot]'
     runs-on: ubuntu-latest
     steps:
-      - uses: hmarr/auto-approve-action@de8ae18c173c131e182d4adf2c874d8d2308a85b # ratchet:hmarr/auto-approve-action@v3.1.0
+      - uses: hmarr/auto-approve-action@44888193675f29a83e04faf4002fa8c0b537b1e4 # ratchet:hmarr/auto-approve-action@v3.2.1
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
