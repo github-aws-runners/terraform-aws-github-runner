@@ -166,6 +166,12 @@ variable "userdata_pre_install" {
   default     = ""
 }
 
+variable "userdata_get_runner_metadata" {
+  description = "User-data script snippet to get instance metadata and SSM configurations"
+  type        = string
+  default     = ""
+}
+
 variable "userdata_post_install" {
   description = "User-data script snippet to insert after GitHub action runner install"
   type        = string
