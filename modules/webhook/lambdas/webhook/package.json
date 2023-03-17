@@ -44,6 +44,6 @@
     "@octokit/rest": "^19.0.7",
     "@octokit/webhooks": "^10.7.0",
     "aws-lambda": "^1.0.7",
-    "tslog": "^3.3.4"
+    "tslog": "^4.8.2"
   }
 }
