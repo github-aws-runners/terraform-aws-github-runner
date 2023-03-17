@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.6.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v2.6.0...v2.6.1) (2023-03-17)
+
+
+### Bug Fixes
+
+* add missing IAM permissions for runners from encrypted AMI ([#3049](https://github.com/philips-labs/terraform-aws-github-runner/issues/3049)) ([e0819f6](https://github.com/philips-labs/terraform-aws-github-runner/commit/e0819f616c3208835afc20187b8c28478cd0c5ff))
+* allow the instances to send metrics ([#3067](https://github.com/philips-labs/terraform-aws-github-runner/issues/3067)) ([55c40ff](https://github.com/philips-labs/terraform-aws-github-runner/commit/55c40ff9235451b070bdde03130af1fc0ce70590))
+* packer defintions missing required metadatatag for start script ([9c1fa8a](https://github.com/philips-labs/terraform-aws-github-runner/commit/9c1fa8aaffc2de319eab5fbc8290ed3b1220d580))
+* **runners:** bump aws-sdk from 2.1329.0 to 2.1337.0 in /modules/runners/lambdas/runners ([#3072](https://github.com/philips-labs/terraform-aws-github-runner/issues/3072)) ([0e80518](https://github.com/philips-labs/terraform-aws-github-runner/commit/0e8051816e4a3dff568a4a9ff14f6fe0a909a48f))
+* **runners:** increase the log level to WARN when using the enable_job_queued_check parameter ([#3046](https://github.com/philips-labs/terraform-aws-github-runner/issues/3046)) ([1de73bf](https://github.com/philips-labs/terraform-aws-github-runner/commit/1de73bf14c9c3898e079f3ef909d60838a7587d5))
+* **syncer:** bump axios from 1.3.3 to 1.3.4 in /modules/runner-binaries-syncer/lambdas/runner-binaries-syncer ([#3059](https://github.com/philips-labs/terraform-aws-github-runner/issues/3059)) ([fa06b30](https://github.com/philips-labs/terraform-aws-github-runner/commit/fa06b30dac859595a4b08226221e388490b6e250))
+* **webhook:** bump @aws-sdk/client-sqs from 3.279.0 to 3.293.0 in /modules/webhook/lambdas/webhook ([#3074](https://github.com/philips-labs/terraform-aws-github-runner/issues/3074)) ([5de5464](https://github.com/philips-labs/terraform-aws-github-runner/commit/5de5464a0e4aa77752f7c9e8e35e1e85d3c20943))
+* **webhook:** bump @aws-sdk/client-ssm from 3.282.0 to 3.290.0 in /modules/webhook/lambdas/webhook ([#3058](https://github.com/philips-labs/terraform-aws-github-runner/issues/3058)) ([f626c6d](https://github.com/philips-labs/terraform-aws-github-runner/commit/f626c6de9c11105ed3a7502a68e048f041072859))
+
 ## [2.6.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v2.5.0...v2.6.0) (2023-03-13)
 
 
