@@ -102,7 +102,7 @@ source "amazon-ebs" "githubrunner" {
     owners      = ["099720109477"]
   }
   iam_instance_profile = var.instance_profile
-  ssh_username = "ubuntu"
+  ssh_username         = "ubuntu"
   tags = merge(
     var.global_tags,
     var.ami_tags,
