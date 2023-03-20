@@ -20,7 +20,7 @@
     "@octokit/rest": "^19.0.7",
     "@trivago/prettier-plugin-sort-imports": "^4.1.1",
     "@types/jest": "^29.5.0",
-    "@types/node": "^18.14.6",
+    "@types/node": "^18.15.3",
     "@types/request": "^2.48.8",
     "@typescript-eslint/eslint-plugin": "^5.54.1",
     "@typescript-eslint/parser": "^5.54.1",
