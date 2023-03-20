@@ -1,5 +1,5 @@
-import { mocked } from 'jest-mock';
 import { Context } from 'aws-lambda';
+import { mocked } from 'jest-mock';
 
 import { handler } from './lambda';
 import { sync } from './syncer/syncer';
