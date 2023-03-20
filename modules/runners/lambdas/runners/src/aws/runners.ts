@@ -1,7 +1,7 @@
 import { EC2, SSM } from 'aws-sdk';
 import moment from 'moment';
 
-import { LogFields, createChildLogger } from '../logger';
+import { createChildLogger } from '../logger';
 import ScaleError from './../scale-runners/ScaleError';
 
 const logger = createChildLogger('runners');
@@ -127,7 +127,7 @@ export async function terminateRunner(instanceId: string): Promise<void> {
       InstanceIds: [instanceId],
     })
     .promise();
-  logger.info(`Runner ${instanceId} has been terminated.`, LogFields.print());
+  logger.info(`Runner ${instanceId} has been terminated.`);
 }
 
 function generateFleetOverrides(
@@ -158,7 +158,7 @@ function generateFleetOverrides(
 
 export async function createRunner(runnerParameters: RunnerInputParameters): Promise<void> {
   const runnerParametersLog = JSON.stringify(runnerParameters).replace(/--token\s+\S+/g, '--token <REDACTED>');
-  logger.debug('Runner configuration: ' + runnerParametersLog, LogFields.print());
+  logger.debug('Runner configuration: ' + runnerParametersLog);
 
   const ec2 = new EC2();
   const ssm = new SSM();
@@ -258,7 +258,7 @@ export async function createRunner(runnerParameters: RunnerInputParameters): Pro
     }
   }
 
-  logger.info(`Created instance(s): ${instances.join(',')}`, LogFields.print());
+  logger.info(`Created instance(s): ${instances.join(',')}`);
 
   const delay = async (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
   const ssmParameterStoreMaxThroughput = 40;

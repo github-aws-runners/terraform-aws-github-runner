@@ -12,7 +12,7 @@ import { request } from '@octokit/request';
 import { Octokit } from '@octokit/rest';
 
 import { getParameterValue } from '../aws/ssm';
-import { LogFields, createChildLogger } from '../logger';
+import { createChildLogger } from '../logger';
 
 const logger = createChildLogger('gh-auth');
 
@@ -61,7 +61,7 @@ async function createAuth(installationId: number | undefined, ghesApiUrl: string
   };
   if (installationId) authOptions = { ...authOptions, installationId };
 
-  logger.debug(`GHES API URL: ${ghesApiUrl}`, LogFields.print());
+  logger.debug(`GHES API URL: ${ghesApiUrl}`);
   if (ghesApiUrl) {
     authOptions.request = request.defaults({
       baseUrl: ghesApiUrl,

@@ -42,12 +42,4 @@ function createChildLogger(module: string): Logger {
   return childLogger;
 }
 
-export class LogFields {
-  static fields: { [key: string]: string } = {};
-
-  public static print(): { data: { [key: string]: string } } {
-    return { data: LogFields.fields };
-  }
-}
-
 export { createChildLogger, logger, setContext };

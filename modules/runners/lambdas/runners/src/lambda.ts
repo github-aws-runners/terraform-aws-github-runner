@@ -1,7 +1,7 @@
 import { Context, SQSEvent } from 'aws-lambda';
 import 'source-map-support/register';
 
-import { LogFields, logger, setContext } from './logger';
+import { logger, setContext } from './logger';
 import { PoolEvent, adjust } from './pool/pool';
 import ScaleError from './scale-runners/ScaleError';
 import { scaleDown } from './scale-runners/scale-down';
@@ -22,7 +22,7 @@ export async function scaleUpHandler(event: SQSEvent, context: Context): Promise
     if (e instanceof ScaleError) {
       throw e;
     } else {
-      logger.warn(`Ignoring error: ${(e as Error).message}`, LogFields.print());
+      logger.warn(`Ignoring error: ${(e as Error).message}`);
     }
   }
 }
