@@ -4,6 +4,8 @@
 
 This [Terraform](https://www.terraform.io/) module creates the required infrastructure needed to host [GitHub Actions](https://github.com/features/actions) self-hosted, auto-scaling runners on [AWS spot instances](https://aws.amazon.com/ec2/spot/). It provides the required logic to handle the life cycle for scaling up and down using a set of AWS Lambda functions. Runners are scaled down to zero to avoid costs when no workflows are active.
 
+> 📢 [`v3`](https://github.com/philips-labs/terraform-aws-github-runner/pull/3037) underlying loggin framework is replaces by [AWS Lambda Powertools](https://awslabs.github.io/aws-lambda-powertools-typescript/latest/). Depending on how you handle the logging of the module a migration could be required.
+
 > 📢 [`v2`](https://github.com/philips-labs/terraform-aws-github-runner/issues/2517) support via a Terraform [submodule](./modules/multi-runner/README.md) an option to create multiple runners at once. The webhook will deliver based on matching rules the events to a dedicated queue for the runners. Next per queue a scaling lambda will ensure the specific runner is created. For more details checkout the [examples](./examples/multi-runner/README.md).
 
 > 📢 `v1` is available on a dedicated branch. The default branch `main` is related to `v2`, for fixes or backports you can submit a PR to the branch `v1`. For feature PR's we will ask you to at least submit a PR to `main`
@@ -31,6 +33,7 @@ This [Terraform](https://www.terraform.io/) module creates the required infrastr
   - [Experimental - Optional queue to publish GitHub workflow job events](#experimental---optional-queue-to-publish-github-workflow-job-events)
 - [Examples](#examples)
 - [Sub modules](#sub-modules)
+- [Logging](#logging)
 - [Debugging](#debugging)
 - [Security Consideration](#security-consideration)
 - [Requirements](#requirements)
@@ -41,6 +44,12 @@ This [Terraform](https://www.terraform.io/) module creates the required infrastr
 - [Outputs](#outputs)
 - [Contribution](#contribution)
 - [Philips Forest](#philips-forest)
+- [Requirements](#requirements-1)
+- [Providers](#providers-1)
+- [Modules](#modules-1)
+- [Resources](#resources-1)
+- [Inputs](#inputs-1)
+- [Outputs](#outputs-1)
 
 ## Motivation
 
@@ -383,6 +392,45 @@ The following sub modules are optional and are provided as example or utility:
 - _[setup-iam-permissions](./modules/setup-iam-permissions/README.md)_ - Example module to setup permission boundaries
 
 ARM64 configuration for submodules. When using the top level module configure `runner_architecture = "arm64"` and ensure the list of `instance_types` matches. When not using the top-level, ensure these properties are set on the submodules.
+
+## Logging
+
+The module uses [AWS Lambda Powertools](https://awslabs.github.io/aws-lambda-powertools-typescript/latest/) for logging. By default the log level is set to `info`, by setting the leg level to `debug` the incoming event of the Lambda is logged as well.
+
+Log messages contains at least the following keys:
+
+- `messages`: The logged messages
+- `environment`: The environment prefix provided via Terraform
+- `service`: The lambda
+- `module`: The TypeScript module writing the log message
+- `function-name`: The name of the lambda function (prefix + function name)
+- `github`: Depending on the lambda, contains GitHub context
+- `runner`: Depending on the lambda, specific context related to the runner
+
+An example log messages of the scale-up function:
+
+```json
+{
+    "level": "INFO",
+    "message": "Received event",
+    "service": "runners-scale-up",
+    "timestamp": "2023-03-20T08:15:27.448Z",
+    "xray_trace_id": "1-6418161e-08825c2f575213ef760531bf",
+    "module": "scale-up",
+    "region": "eu-west-1",
+    "environment": "my-linux-x64",
+    "aws-request-id": "eef1efb7-4c07-555f-9a67-b3255448ee60",
+    "function-name": "my-linux-x64-scale-up",
+    "runner": {
+        "type": "Repo",
+        "owner": "test-runners/multi-runner"
+    },
+    "github": {
+        "event": "workflow_job",
+        "workflow_job_id": "1234"
+    }
+}
+```
 
 ## Debugging
 
