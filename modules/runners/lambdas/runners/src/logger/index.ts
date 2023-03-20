@@ -42,4 +42,14 @@ function createChildLogger(module: string): Logger {
   return childLogger;
 }
 
-export { createChildLogger, logger, setContext };
+type LogAttributes = {
+  [key: string]: unknown;
+};
+
+function addPersistentContextToChildLogger(attributes: LogAttributes) {
+  childLoggers.forEach((childLogger) => {
+    childLogger.addPersistentLogAttributes(attributes);
+  });
+}
+
+export { addPersistentContextToChildLogger, createChildLogger, logger, setContext };

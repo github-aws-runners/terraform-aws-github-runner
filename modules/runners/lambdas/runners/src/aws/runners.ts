@@ -156,9 +156,27 @@ function generateFleetOverrides(
   return result;
 }
 
+function removeTokenForLogging(config: string[]): string[] {
+  const result: string[] = [];
+  config.forEach((e) => {
+    if (e.startsWith('--token')) {
+      result.push('--token <REDACTED>');
+    } else {
+      result.push(e);
+    }
+  });
+  return result;
+}
+
 export async function createRunner(runnerParameters: RunnerInputParameters): Promise<void> {
-  const runnerParametersLog = JSON.stringify(runnerParameters).replace(/--token\s+\S+/g, '--token <REDACTED>');
-  logger.debug('Runner configuration: ' + runnerParametersLog);
+  logger.debug('Runner configuration.', {
+    runner: {
+      configuration: {
+        ...runnerParameters,
+        runnerServiceConfig: removeTokenForLogging(runnerParameters.runnerServiceConfig),
+      },
+    },
+  });
 
   const ec2 = new EC2();
   const ssm = new SSM();

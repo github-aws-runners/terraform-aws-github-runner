@@ -2,7 +2,7 @@ import { Octokit } from '@octokit/rest';
 import yn from 'yn';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctoClient } from '../gh-auth/gh-auth';
-import { createChildLogger } from '../logger';
+import { addPersistentContextToChildLogger, createChildLogger } from '../logger';
 import { RunnerInputParameters, createRunner, listEC2Runners } from './../aws/runners';
 import ScaleError from './ScaleError';
 
@@ -165,7 +165,7 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
   const runnerType = enableOrgLevel ? 'Org' : 'Repo';
   const runnerOwner = enableOrgLevel ? payload.repositoryOwner : `${payload.repositoryOwner}/${payload.repositoryName}`;
 
-  logger.addPersistentLogAttributes({
+  addPersistentContextToChildLogger({
     runner: {
       type: runnerType,
       owner: runnerOwner,
