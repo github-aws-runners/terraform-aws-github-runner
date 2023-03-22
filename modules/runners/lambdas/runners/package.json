@@ -41,7 +41,7 @@
     "@aws-lambda-powertools/logger": "^1.6.0",
     "@aws-sdk/client-ssm": "^3.296.0",
     "@octokit/auth-app": "4.0.9",
-    "@octokit/rest": "^19.0.5",
+    "@octokit/rest": "^19.0.7",
     "@octokit/types": "^9.0.0",
     "aws-sdk": "^2.1340.0",
     "cron-parser": "^4.7.1",
