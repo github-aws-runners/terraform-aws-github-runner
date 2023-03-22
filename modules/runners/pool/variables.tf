@@ -2,7 +2,6 @@ variable "config" {
   type = object({
     lambda = object({
       log_level                      = string
-      log_type                       = string
       logging_retention_in_days      = number
       logging_kms_key_id             = string
       reserved_concurrent_executions = number
@@ -34,8 +33,9 @@ variable "config" {
       launch_template = object({
         name = string
       })
-      group_name = string
-      pool_owner = string
+      group_name  = string
+      name_prefix = string
+      pool_owner  = string
       role = object({
         arn = string
       })
@@ -49,10 +49,13 @@ variable "config" {
       schedule_expression = string
       size                = number
     }))
-    role_permissions_boundary = string
-    kms_key_arn               = string
-    role_path                 = string
-    ssm_token_path            = string
+    role_permissions_boundary            = string
+    kms_key_arn                          = string
+    ami_kms_key_arn                      = string
+    role_path                            = string
+    ssm_token_path                       = string
+    ami_id_ssm_parameter_name            = string
+    ami_id_ssm_parameter_read_policy_arn = string
   })
 }
 

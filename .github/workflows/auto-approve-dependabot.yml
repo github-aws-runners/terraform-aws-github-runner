@@ -1,5 +1,4 @@
 name: Auto approve dependabot
-
 # Warning: The pull_request_target event is granted a read/write repository
 # token and can access secrets, even when it is triggered from a fork. Although
 # the workflow runs in the context of the base of the pull request, you should
@@ -8,12 +7,11 @@ name: Auto approve dependabot
 # the base branch, and to help prevent cache poisoning, you should not save the
 # cache if there is a possibility that the cache contents were altered. 
 on: pull_request_target
-
 jobs:
   approve:
     if: github.actor == 'dependabot[bot]' || github.actor == 'dependabot-preview[bot]'
     runs-on: ubuntu-latest
     steps:
-      - uses: hmarr/auto-approve-action@v3.1.0
+      - uses: hmarr/auto-approve-action@44888193675f29a83e04faf4002fa8c0b537b1e4 # ratchet:hmarr/auto-approve-action@v3.2.1
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"

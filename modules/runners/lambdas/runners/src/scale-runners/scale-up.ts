@@ -2,11 +2,11 @@ import { Octokit } from '@octokit/rest';
 import yn from 'yn';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctoClient } from '../gh-auth/gh-auth';
-import { LogFields, logger as rootLogger } from '../logger';
+import { addPersistentContextToChildLogger, createChildLogger } from '../logger';
 import { RunnerInputParameters, createRunner, listEC2Runners } from './../aws/runners';
 import ScaleError from './ScaleError';
 
-const logger = rootLogger.getChildLogger({ name: 'scale-up' });
+const logger = createChildLogger('scale-up');
 
 export interface ActionRequestMessage {
   id: number;
@@ -110,7 +110,7 @@ async function isJobQueued(githubInstallationClient: Octokit, payload: ActionReq
     throw Error(`Event ${payload.eventType} is not supported`);
   }
   if (!isQueued) {
-    logger.info(`Job not queued`, LogFields.print());
+    logger.warn(`Job not queued in GitHub. A new runner instance will NOT be created for this job.`);
   }
   return isQueued;
 }
@@ -133,10 +133,7 @@ export async function createRunners(
 }
 
 export async function scaleUp(eventSource: string, payload: ActionRequestMessage): Promise<void> {
-  logger.info(
-    `Received ${payload.eventType} from ${payload.repositoryOwner}/${payload.repositoryName}`,
-    LogFields.print(),
-  );
+  logger.info(`Received ${payload.eventType} from ${payload.repositoryOwner}/${payload.repositoryName}`);
 
   if (eventSource !== 'aws:sqs') throw Error('Cannot handle non-SQS events!');
   const enableOrgLevel = yn(process.env.ENABLE_ORGANIZATION_RUNNERS, { default: true });
@@ -158,10 +155,7 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
   const amiIdSsmParameterName = process.env.AMI_ID_SSM_PARAMETER_NAME;
 
   if (ephemeralEnabled && payload.eventType !== 'workflow_job') {
-    logger.warn(
-      `${payload.eventType} event is not supported in combination with ephemeral runners.`,
-      LogFields.print(),
-    );
+    logger.warn(`${payload.eventType} event is not supported in combination with ephemeral runners.`);
     throw Error(
       `The event type ${payload.eventType} is not supported in combination with ephemeral runners.` +
         `Please ensure you have enabled workflow_job events.`,
@@ -171,13 +165,18 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
   const runnerType = enableOrgLevel ? 'Org' : 'Repo';
   const runnerOwner = enableOrgLevel ? payload.repositoryOwner : `${payload.repositoryOwner}/${payload.repositoryName}`;
 
-  LogFields.fields = {};
-  LogFields.fields.runnerType = runnerType;
-  LogFields.fields.runnerOwner = runnerOwner;
-  LogFields.fields.event = payload.eventType;
-  LogFields.fields.id = payload.id.toString();
+  addPersistentContextToChildLogger({
+    runner: {
+      type: runnerType,
+      owner: runnerOwner,
+    },
+    github: {
+      event: payload.eventType,
+      workflow_job_id: payload.id.toString(),
+    },
+  });
 
-  logger.info(`Received event`, LogFields.print());
+  logger.info(`Received event`);
 
   let ghesApiUrl = '';
   if (ghesBaseUrl) {
@@ -194,10 +193,10 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
       runnerType,
       runnerOwner,
     });
-    logger.info(`Current runners: ${currentRunners.length} of ${maximumRunners}`, LogFields.print());
+    logger.info(`Current runners: ${currentRunners.length} of ${maximumRunners}`);
 
     if (currentRunners.length < maximumRunners) {
-      logger.info(`Attempting to launch a new runner`, LogFields.print());
+      logger.info(`Attempting to launch a new runner`);
 
       await createRunners(
         {
@@ -225,7 +224,7 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
         githubInstallationClient,
       );
     } else {
-      logger.info('No runner will be created, maximum number of runners reached.', LogFields.print());
+      logger.info('No runner will be created, maximum number of runners reached.');
       if (ephemeral) {
         throw new ScaleError('No runners create: maximum of runners reached.');
       }

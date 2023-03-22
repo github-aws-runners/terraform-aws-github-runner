@@ -9,22 +9,22 @@ module "runner_binaries" {
   runner_os           = each.value.os_type
   runner_architecture = each.value.architecture
 
-  lambda_s3_bucket                = var.lambda_s3_bucket
-  syncer_lambda_s3_key            = var.syncer_lambda_s3_key
-  syncer_lambda_s3_object_version = var.syncer_lambda_s3_object_version
-  lambda_runtime                  = var.lambda_runtime
-  lambda_architecture             = var.lambda_architecture
-  lambda_zip                      = var.runner_binaries_syncer_lambda_zip
-  lambda_timeout                  = var.runner_binaries_syncer_lambda_timeout
-  logging_retention_in_days       = var.logging_retention_in_days
-  logging_kms_key_id              = var.logging_kms_key_id
+  lambda_s3_bucket                  = var.lambda_s3_bucket
+  syncer_lambda_s3_key              = var.syncer_lambda_s3_key
+  syncer_lambda_s3_object_version   = var.syncer_lambda_s3_object_version
+  lambda_runtime                    = var.lambda_runtime
+  lambda_architecture               = var.lambda_architecture
+  lambda_zip                        = var.runner_binaries_syncer_lambda_zip
+  lambda_timeout                    = var.runner_binaries_syncer_lambda_timeout
+  logging_retention_in_days         = var.logging_retention_in_days
+  logging_kms_key_id                = var.logging_kms_key_id
+  enable_event_rule_binaries_syncer = var.enable_event_rule_binaries_syncer
 
   server_side_encryption_configuration = var.runner_binaries_s3_sse_configuration
 
   role_path                 = var.role_path
   role_permissions_boundary = var.role_permissions_boundary
 
-  log_type  = var.log_type
   log_level = var.log_level
 
   lambda_subnet_ids         = var.lambda_subnet_ids

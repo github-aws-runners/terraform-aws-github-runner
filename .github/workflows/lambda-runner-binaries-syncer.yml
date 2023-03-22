@@ -7,7 +7,6 @@ on:
     paths:
       - .github/workflows/lambda-runner-binaries-syncer.yml
       - "modules/runner-binaries-syncer/lambdas/runner-binaries-syncer/**"
-
 jobs:
   build:
     uses: ./.github/workflows/lambda-template.yml

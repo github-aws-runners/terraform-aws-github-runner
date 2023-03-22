@@ -165,7 +165,6 @@ module "webhook" {
   lambda_security_group_ids = var.lambda_security_group_ids
   aws_partition             = var.aws_partition
 
-  log_type  = var.log_type
   log_level = var.log_level
 
   lambda_webhook_authorizer_id     = var.lambda_webhook_authorizer_id
@@ -205,6 +204,7 @@ module "runners" {
   ami_filter                = var.ami_filter
   ami_owners                = var.ami_owners
   ami_id_ssm_parameter_name = var.ami_id_ssm_parameter_name
+  ami_kms_key_arn           = var.ami_kms_key_arn
 
   sqs_build_queue                      = aws_sqs_queue.queued_builds
   github_app_parameters                = local.github_app_parameters
@@ -244,6 +244,7 @@ module "runners" {
   cloudwatch_config                = var.cloudwatch_config
   runner_log_files                 = var.runner_log_files
   runner_group_name                = var.runner_group_name
+  runner_name_prefix               = var.runner_name_prefix
 
   scale_up_reserved_concurrent_executions = var.scale_up_reserved_concurrent_executions
 
@@ -268,7 +269,6 @@ module "runners" {
 
   kms_key_arn = var.kms_key_arn
 
-  log_type  = var.log_type
   log_level = var.log_level
 
   pool_config                                = var.pool_config
@@ -303,12 +303,12 @@ module "runner_binaries" {
   logging_retention_in_days       = var.logging_retention_in_days
   logging_kms_key_id              = var.logging_kms_key_id
 
+  enable_event_rule_binaries_syncer    = var.enable_event_rule_binaries_syncer
   server_side_encryption_configuration = var.runner_binaries_s3_sse_configuration
 
   role_path                 = var.role_path
   role_permissions_boundary = var.role_permissions_boundary
 
-  log_type  = var.log_type
   log_level = var.log_level
 
   lambda_subnet_ids         = var.lambda_subnet_ids

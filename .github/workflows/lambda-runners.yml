@@ -7,7 +7,6 @@ on:
     paths:
       - .github/workflows/lambda-runners.yml
       - "modules/runners/lambdas/runners/**"
-
 jobs:
   build:
     uses: ./.github/workflows/lambda-template.yml

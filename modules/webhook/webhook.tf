@@ -15,7 +15,7 @@ resource "aws_lambda_function" "webhook" {
     variables = {
       ENVIRONMENT                         = var.prefix
       LOG_LEVEL                           = var.log_level
-      LOG_TYPE                            = var.log_type
+      POWERTOOLS_LOGGER_LOG_EVENT         = var.log_level == "debug" ? "true" : "false"
       PARAMETER_GITHUB_APP_WEBHOOK_SECRET = var.github_app_parameters.webhook_secret.name
       REPOSITORY_WHITE_LIST               = jsonencode(var.repository_white_list)
       RUNNER_CONFIG                       = jsonencode([for k, v in var.runner_config : v])

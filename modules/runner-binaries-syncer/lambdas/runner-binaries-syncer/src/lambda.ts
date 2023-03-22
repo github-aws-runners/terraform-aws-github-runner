@@ -1,10 +1,12 @@
-import { logger } from './syncer/logger';
+import { Context } from 'aws-lambda';
+
+import { logger, setContext } from './logger';
 import { sync } from './syncer/syncer';
 
 // eslint-disable-next-line
-export async function handler(event: any, context: any): Promise<void> {
-  logger.setSettings({ requestId: context.awsRequestId });
-  logger.debug(JSON.stringify(event));
+export async function handler(event: any, context: Context): Promise<void> {
+  setContext(context, 'lambda.ts');
+  logger.logEventIfEnabled(event);
 
   try {
     await sync();
@@ -12,6 +14,6 @@ export async function handler(event: any, context: any): Promise<void> {
     if (e instanceof Error) {
       logger.warn(`Ignoring error: ${e.message}`);
     }
-    logger.trace(e);
+    logger.debug('Ignoring error', { error: e });
   }
 }

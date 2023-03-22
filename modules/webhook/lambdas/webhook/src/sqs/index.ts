@@ -1,7 +1,9 @@
 import { SQS, SendMessageCommandInput } from '@aws-sdk/client-sqs';
 import { WorkflowJobEvent } from '@octokit/webhooks-types';
 
-import { LogFields, logger } from '../webhook/logger';
+import { createChildLogger } from '../logger';
+
+const logger = createChildLogger('sqs');
 
 export interface ActionRequestMessage {
   id: number;
@@ -36,7 +38,7 @@ export const sendActionRequest = async (message: ActionRequestMessage): Promise<
     MessageBody: JSON.stringify(message),
   };
 
-  logger.debug(`sending message to SQS: ${JSON.stringify(sqsMessage)}`, LogFields.print());
+  logger.debug(`sending message to SQS: ${JSON.stringify(sqsMessage)}`);
   if (message.queueFifo) {
     sqsMessage.MessageGroupId = String(message.id);
   }
@@ -53,14 +55,11 @@ export const sendWebhookEventToWorkflowJobQueue = async (message: GithubWorkflow
       QueueUrl: String(process.env.SQS_WORKFLOW_JOB_QUEUE),
       MessageBody: JSON.stringify(message),
     };
-    logger.debug(
-      `Sending Webhook events to the workflow job queue: ${webhook_events_workflow_job_queue}`,
-      LogFields.print(),
-    );
+    logger.debug(`Sending Webhook events to the workflow job queue: ${webhook_events_workflow_job_queue}`);
     try {
       await sqs.sendMessage(sqsMessage);
     } catch (e) {
-      logger.warn(`Error in sending webhook events to workflow job queue: ${(e as Error).message}`, LogFields.print());
+      logger.warn(`Error in sending webhook events to workflow job queue: ${(e as Error).message}`);
     }
   }
 };

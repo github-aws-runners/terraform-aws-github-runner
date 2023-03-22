@@ -5,11 +5,16 @@ output "runners" {
     launch_template_version = module.runners.launch_template.latest_version
     launch_template_ami_id  = module.runners.launch_template.image_id
     lambda_up               = module.runners.lambda_scale_up
+    lambda_up_log_group     = module.runners.lambda_scale_up_log_group
     lambda_down             = module.runners.lambda_scale_down
+    lambda_down_log_group   = module.runners.lambda_scale_down_log_group
+    lambda_pool             = module.runners.lambda_pool
+    lambda_pool_log_group   = module.runners.lambda_pool_log_group
     role_runner             = module.runners.role_runner
     role_scale_up           = module.runners.role_scale_up
     role_scale_down         = module.runners.role_scale_down
     role_pool               = module.runners.role_pool
+    runners_log_groups      = module.runners.runners_log_groups
     labels                  = sort(split(",", local.runner_labels))
     logfiles                = module.runners.logfiles
   }
@@ -17,19 +22,21 @@ output "runners" {
 
 output "binaries_syncer" {
   value = var.enable_runner_binaries_syncer ? {
-    lambda      = module.runner_binaries[0].lambda
-    lambda_role = module.runner_binaries[0].lambda_role
-    location    = "s3://${module.runner_binaries[0].bucket.id}/module.runner_binaries[0].bucket.key"
-    bucket      = module.runner_binaries[0].bucket
+    lambda           = module.runner_binaries[0].lambda
+    lambda_log_group = module.runner_binaries[0].lambda_log_group
+    lambda_role      = module.runner_binaries[0].lambda_role
+    location         = "s3://${module.runner_binaries[0].bucket.id}/module.runner_binaries[0].bucket.key"
+    bucket           = module.runner_binaries[0].bucket
   } : null
 }
 
 output "webhook" {
   value = {
-    gateway     = module.webhook.gateway
-    lambda      = module.webhook.lambda
-    lambda_role = module.webhook.role
-    endpoint    = "${module.webhook.gateway.api_endpoint}/${module.webhook.endpoint_relative_path}"
+    gateway          = module.webhook.gateway
+    lambda           = module.webhook.lambda
+    lambda_log_group = module.webhook.lambda_log_group
+    lambda_role      = module.webhook.role
+    endpoint         = "${module.webhook.gateway.api_endpoint}/${module.webhook.endpoint_relative_path}"
   }
 }
 

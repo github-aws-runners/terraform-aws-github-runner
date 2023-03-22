@@ -7,7 +7,6 @@ on:
     paths:
       - .github/workflows/lambda-webhook.yml
       - "modules/webhook/lambdas/webhook/**"
-
 jobs:
   build:
     uses: ./.github/workflows/lambda-template.yml

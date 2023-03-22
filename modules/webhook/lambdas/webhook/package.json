@@ -18,16 +18,16 @@
   "devDependencies": {
     "@babel/helper-get-function-arity": "^7.16.7",
     "@octokit/webhooks-definitions": "^3.67.3",
-    "@trivago/prettier-plugin-sort-imports": "^4.0.0",
-    "@types/aws-lambda": "^8.10.110",
+    "@trivago/prettier-plugin-sort-imports": "^4.1.1",
+    "@types/aws-lambda": "^8.10.111",
     "@types/express": "^4.17.17",
     "@types/jest": "^29.4.0",
-    "@types/node": "^18.11.18",
-    "@typescript-eslint/eslint-plugin": "^5.53.0",
-    "@typescript-eslint/parser": "^5.48.1",
+    "@types/node": "^18.15.3",
+    "@typescript-eslint/eslint-plugin": "^5.54.0",
+    "@typescript-eslint/parser": "^5.56.0",
     "@vercel/ncc": "0.36.1",
-    "body-parser": "^1.20.0",
-    "eslint": "^8.33.0",
+    "body-parser": "^1.20.2",
+    "eslint": "^8.36.0",
     "eslint-plugin-prettier": "4.2.1",
     "express": "^4.18.2",
     "jest": "^29.4",
@@ -36,14 +36,14 @@
     "prettier": "2.8.4",
     "ts-jest": "^29.0.5",
     "ts-node-dev": "^2.0.0",
-    "typescript": "^4.9.5"
+    "typescript": "^5.0.2"
   },
   "dependencies": {
-    "@aws-sdk/client-sqs": "^3.264.0",
-    "@aws-sdk/client-ssm": "^3.278.0",
+    "@aws-lambda-powertools/logger": "^1.6.0",
+    "@aws-sdk/client-sqs": "^3.296.0",
+    "@aws-sdk/client-ssm": "^3.282.0",
     "@octokit/rest": "^19.0.7",
     "@octokit/webhooks": "^10.7.0",
-    "aws-lambda": "^1.0.7",
-    "tslog": "^3.3.4"
+    "aws-lambda": "^1.0.7"
   }
 }

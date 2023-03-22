@@ -2,23 +2,23 @@ import { Octokit } from '@octokit/rest';
 import moment from 'moment';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctoClient } from '../gh-auth/gh-auth';
-import { LogFields, logger as rootLogger } from '../logger';
+import { createChildLogger } from '../logger';
 import { RunnerInfo, RunnerList, bootTimeExceeded, listEC2Runners, terminateRunner } from './../aws/runners';
 import { GhRunners, githubCache } from './cache';
 import { ScalingDownConfig, getIdleRunnerCount } from './scale-down-config';
 
-const logger = rootLogger.getChildLogger({ name: 'scale-down' });
+const logger = createChildLogger('scale-down');
 
 async function getOrCreateOctokit(runner: RunnerInfo): Promise<Octokit> {
   const key = runner.owner;
   const cachedOctokit = githubCache.clients.get(key);
 
   if (cachedOctokit) {
-    logger.debug(`[createGitHubClientForRunner] Cache hit for ${key}`, LogFields.print());
+    logger.debug(`[createGitHubClientForRunner] Cache hit for ${key}`);
     return cachedOctokit;
   }
 
-  logger.debug(`[createGitHubClientForRunner] Cache miss for ${key}`, LogFields.print());
+  logger.debug(`[createGitHubClientForRunner] Cache miss for ${key}`);
   const ghesBaseUrl = process.env.GHES_URL;
   let ghesApiUrl = '';
   if (ghesBaseUrl) {
@@ -60,10 +60,7 @@ async function getGitHubRunnerBusyState(client: Octokit, ec2runner: RunnerInfo, 
           repo: ec2runner.owner.split('/')[1],
         });
 
-  logger.info(
-    `Runner '${ec2runner.instanceId}' - GitHub Runner ID '${runnerId}' - Busy: ${state.data.busy}`,
-    LogFields.print(),
-  );
+  logger.info(`Runner '${ec2runner.instanceId}' - GitHub Runner ID '${runnerId}' - Busy: ${state.data.busy}`);
 
   return state.data.busy;
 }
@@ -72,11 +69,11 @@ async function listGitHubRunners(runner: RunnerInfo): Promise<GhRunners> {
   const key = runner.owner as string;
   const cachedRunners = githubCache.runners.get(key);
   if (cachedRunners) {
-    logger.debug(`[listGithubRunners] Cache hit for ${key}`, LogFields.print());
+    logger.debug(`[listGithubRunners] Cache hit for ${key}`);
     return cachedRunners;
   }
 
-  logger.debug(`[listGithubRunners] Cache miss for ${key}`, LogFields.print());
+  logger.debug(`[listGithubRunners] Cache miss for ${key}`);
   const client = await getOrCreateOctokit(runner);
   const runners =
     runner.type === 'Org'
@@ -131,21 +128,17 @@ async function removeRunner(ec2runner: RunnerInfo, ghRunnerIds: number[]): Promi
 
       if (statuses.every((status) => status == 204)) {
         await terminateRunner(ec2runner.instanceId);
-        logger.info(
-          `AWS runner instance '${ec2runner.instanceId}' is terminated and GitHub runner is de-registered.`,
-          LogFields.print(),
-        );
+        logger.info(`AWS runner instance '${ec2runner.instanceId}' is terminated and GitHub runner is de-registered.`);
       } else {
-        logger.error(`Failed to de-register GitHub runner: ${statuses}`, LogFields.print());
+        logger.error(`Failed to de-register GitHub runner: ${statuses}`);
       }
     } else {
-      logger.info(
-        `Runner '${ec2runner.instanceId}' cannot be de-registered, because it is still busy.`,
-        LogFields.print(),
-      );
+      logger.info(`Runner '${ec2runner.instanceId}' cannot be de-registered, because it is still busy.`);
     }
   } catch (e) {
-    logger.error(`Runner '${ec2runner.instanceId}' cannot be de-registered. Error: ${e}`, LogFields.print());
+    logger.error(`Runner '${ec2runner.instanceId}' cannot be de-registered. Error: ${e}`, {
+      error: e as Error,
+    });
   }
 }
 
@@ -158,22 +151,19 @@ async function evaluateAndRemoveRunners(
 
   for (const ownerTag of ownerTags) {
     const ec2RunnersFiltered = ec2Runners.filter((runner) => runner.owner === ownerTag);
-    logger.debug(
-      `Found: '${ec2RunnersFiltered.length}' active GitHub runners with owner tag: '${ownerTag}'`,
-      LogFields.print(),
-    );
+    logger.debug(`Found: '${ec2RunnersFiltered.length}' active GitHub runners with owner tag: '${ownerTag}'`);
     for (const ec2Runner of ec2RunnersFiltered) {
       const ghRunners = await listGitHubRunners(ec2Runner);
       const ghRunnersFiltered = ghRunners.filter((runner: { name: string }) =>
-        runner.name.startsWith(ec2Runner.instanceId),
+        runner.name.endsWith(ec2Runner.instanceId),
       );
       if (ghRunnersFiltered.length) {
         if (runnerMinimumTimeExceeded(ec2Runner)) {
           if (idleCounter > 0) {
             idleCounter--;
-            logger.info(`Runner '${ec2Runner.instanceId}' will be kept idle.`, LogFields.print());
+            logger.info(`Runner '${ec2Runner.instanceId}' will be kept idle.`);
           } else {
-            logger.info(`Runner '${ec2Runner.instanceId}' will be terminated.`, LogFields.print());
+            logger.info(`Runner '${ec2Runner.instanceId}' will be terminated.`);
             await removeRunner(
               ec2Runner,
               ghRunnersFiltered.map((runner: { id: number }) => runner.id),
@@ -182,10 +172,10 @@ async function evaluateAndRemoveRunners(
         }
       } else {
         if (bootTimeExceeded(ec2Runner)) {
-          logger.info(`Runner '${ec2Runner.instanceId}' is orphaned and will be removed.`, LogFields.print());
+          logger.info(`Runner '${ec2Runner.instanceId}' is orphaned and will be removed.`);
           terminateOrphan(ec2Runner.instanceId);
         } else {
-          logger.debug(`Runner ${ec2Runner.instanceId} has not yet booted.`, LogFields.print());
+          logger.debug(`Runner ${ec2Runner.instanceId} has not yet booted.`);
         }
       }
     }
@@ -196,7 +186,7 @@ async function terminateOrphan(instanceId: string): Promise<void> {
   try {
     await terminateRunner(instanceId);
   } catch (e) {
-    logger.debug(`Orphan runner '${instanceId}' cannot be removed.`, LogFields.print());
+    logger.debug(`Orphan runner '${instanceId}' cannot be removed.`);
   }
 }
 
@@ -226,13 +216,10 @@ export async function scaleDown(): Promise<void> {
   // list and sort runners, newest first. This ensure we keep the newest runners longer.
   const ec2Runners = await listAndSortRunners(environment);
   const activeEc2RunnersCount = ec2Runners.length;
-  logger.info(
-    `Found: '${activeEc2RunnersCount}' active GitHub EC2 runner instances before clean-up.`,
-    LogFields.print(),
-  );
+  logger.info(`Found: '${activeEc2RunnersCount}' active GitHub EC2 runner instances before clean-up.`);
 
   if (activeEc2RunnersCount === 0) {
-    logger.debug(`No active runners found for environment: '${environment}'`, LogFields.print());
+    logger.debug(`No active runners found for environment: '${environment}'`);
     return;
   }
 
@@ -240,8 +227,5 @@ export async function scaleDown(): Promise<void> {
   await evaluateAndRemoveRunners(runners, scaleDownConfigs);
 
   const activeEc2RunnersCountAfter = (await listAndSortRunners(environment)).length;
-  logger.info(
-    `Found: '${activeEc2RunnersCountAfter}' active GitHub EC2 runners instances after clean-up.`,
-    LogFields.print(),
-  );
+  logger.info(`Found: '${activeEc2RunnersCountAfter}' active GitHub EC2 runners instances after clean-up.`);
 }

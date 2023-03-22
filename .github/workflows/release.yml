@@ -1,12 +1,10 @@
 name: Release build
-
 on:
   push:
     branches:
       - main
       - v1
   workflow_dispatch:
-
 jobs:
   prepare:
     name: Create dist
@@ -24,49 +22,43 @@ jobs:
         env:
           LAMBDA: ${{ matrix.lambda }}
         run: echo "name=${LAMBDA##*/}" >> $GITHUB_OUTPUT
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f # ratchet:actions/checkout@v3
       - name: Add zip
         run: apt update && apt install zip
       - name: Build dist
         working-directory: ${{ matrix.lambda }}
         run: yarn install && yarn run test && yarn dist
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # ratchet:actions/upload-artifact@v3
         with:
           name: ${{ steps.lambda.outputs.name }}
           path: ${{ matrix.lambda }}/${{ steps.lambda.outputs.name }}.zip
           retention-days: 1
-
   release:
     name: release
     runs-on: ubuntu-latest
-    needs:
-      prepare
+    needs: prepare
     outputs:
       releases_created: ${{ steps.release.outputs.releases_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
     steps:
       - name: Get installation token
-        uses: philips-software/app-token-action@v1.1.2
+        uses: philips-software/app-token-action@a37926571e4cec6f219e06727136efdd073d8657 # ratchet:philips-software/app-token-action@v1.1.2
         id: token
         with:
           app_id: ${{ secrets.FOREST_RELEASER_APP_ID }}
           app_base64_private_key: ${{ secrets.FOREST_RELEASER_APP_PRIVATE_KEY_BASE64 }}
           auth_type: installation
-
-
       - name: Extract branch name
         id: branch
         shell: bash
         run: echo "name=${GITHUB_REF#refs/heads/}" >> $GITHUB_OUTPUT
-
       - name: Release
         id: release
-        uses: google-github-actions/release-please-action@d3c71f9a0a55385580de793de58da057b3560862 # ratchet:google-github-actions/release-please-action@v3
+        uses: google-github-actions/release-please-action@e0b9d1885d92e9a93d5ce8656de60e3b806e542c # ratchet:google-github-actions/release-please-action@v3
         with:
           default-branch: ${{ steps.branch.outputs.name }}
           release-type: terraform-module
           token: ${{ steps.token.outputs.token }}
-
   assets:
     name: upload assets
     if: ${{ needs.release.outputs.releases_created }}
@@ -78,15 +70,12 @@ jobs:
     permissions:
       contents: write
       actions: read
-
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/download-artifact@v3
+      - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f # ratchet:actions/checkout@v3
+      - uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # ratchet:actions/download-artifact@v3
         with:
           name: ${{ matrix.asset }}
-
       - name: Upload Release Asset
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run:
-          gh release upload ${{ needs.release.outputs.tag_name }} ${{ matrix.asset }}.zip
+        run: gh release upload ${{ needs.release.outputs.tag_name }} ${{ matrix.asset }}.zip

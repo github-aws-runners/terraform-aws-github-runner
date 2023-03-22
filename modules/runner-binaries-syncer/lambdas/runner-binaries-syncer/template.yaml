@@ -12,6 +12,5 @@ Resources:
           GITHUB_RUNNER_ARCHITECTURE:
           GITHUB_RUNNER_OS:
           LOG_LEVEL:
-          LOG_TYPE:
           S3_BUCKET_NAME:
           S3_OBJECT_KEY:

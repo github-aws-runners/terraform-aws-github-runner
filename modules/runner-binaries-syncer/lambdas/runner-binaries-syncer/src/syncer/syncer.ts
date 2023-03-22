@@ -1,30 +1,30 @@
+import { GetObjectTaggingCommand, S3Client, Tag } from '@aws-sdk/client-s3';
+import { Upload } from '@aws-sdk/lib-storage';
 import { Octokit } from '@octokit/rest';
-import { S3 } from 'aws-sdk';
-import AWS from 'aws-sdk';
 import axios from 'axios';
-import { PassThrough } from 'stream';
+import { Stream } from 'stream';
 
-import { logger as rootLogger } from './logger';
-
-const logger = rootLogger.getChildLogger();
+import { createChildLogger } from '../logger';
 
 const versionKey = 'name';
+
+const logger = createChildLogger('syncer.ts');
 
 interface CacheObject {
   bucket: string;
   key: string;
 }
 
-async function getCachedVersion(s3: S3, cacheObject: CacheObject): Promise<string | undefined> {
+async function getCachedVersion(s3Client: S3Client, cacheObject: CacheObject): Promise<string | undefined> {
+  const command = new GetObjectTaggingCommand({
+    Bucket: cacheObject.bucket,
+    Key: cacheObject.key,
+  });
+
   try {
-    const objectTagging = await s3
-      .getObjectTagging({
-        Bucket: cacheObject.bucket,
-        Key: cacheObject.key,
-      })
-      .promise();
-    const versions = objectTagging.TagSet?.filter((t: S3.Tag) => t.Key === versionKey);
-    return versions.length === 1 ? versions[0].Value : undefined;
+    const objectTagging = await s3Client.send(command);
+    const versions = objectTagging.TagSet?.filter((t: Tag) => t.Key === versionKey);
+    return versions?.length === 1 ? versions[0].Value : undefined;
   } catch (e) {
     logger.debug('No tags found');
     return undefined;
@@ -53,48 +53,39 @@ async function getReleaseAsset(runnerOs = 'linux', runnerArch = 'x64'): Promise<
   return assets?.length === 1 ? { name: assets[0].name, downloadUrl: assets[0].browser_download_url } : undefined;
 }
 
-async function uploadToS3(s3: S3, cacheObject: CacheObject, actionRunnerReleaseAsset: ReleaseAsset): Promise<void> {
-  const writeStream = new PassThrough();
-  const writePromise = s3
-    .upload({
+async function uploadToS3(
+  s3Client: S3Client,
+  cacheObject: CacheObject,
+  actionRunnerReleaseAsset: ReleaseAsset,
+): Promise<void> {
+  const response = await axios.get(actionRunnerReleaseAsset.downloadUrl, {
+    responseType: 'stream',
+  });
+
+  const passThrough = new Stream.PassThrough();
+  response.data.pipe(passThrough);
+
+  const upload = new Upload({
+    client: s3Client,
+    params: {
       Bucket: cacheObject.bucket,
       Key: cacheObject.key,
       Tagging: versionKey + '=' + actionRunnerReleaseAsset.name,
-      Body: writeStream,
+      Body: passThrough,
       ServerSideEncryption: process.env.S3_SSE_ALGORITHM,
-      SSEKMSKeyId: process.env.S3_SSE_KMS_KEY_ID,
-    })
-    .promise();
-
-  logger.debug('Start downloading %s and uploading to S3.', actionRunnerReleaseAsset.name);
-
-  const readPromise = new Promise<void>((resolve, reject) => {
-    axios
-      .request<NodeJS.ReadableStream>({
-        method: 'get',
-        url: actionRunnerReleaseAsset.downloadUrl,
-        responseType: 'stream',
-      })
-      .then((res) => {
-        res.data
-          .pipe(writeStream)
-
-          .on('finish', () => resolve())
-          .on('error', (error) => reject(error));
-      })
-      .catch((error) => reject(error));
+    },
   });
 
-  await Promise.all([readPromise, writePromise])
-    .then(() => logger.info(`The new distribution is uploaded to S3.`))
-    .catch((error) => {
-      logger.error(`Uploading of the new distribution to S3 failed: ${error}`);
-      throw error;
-    });
+  upload.on('httpUploadProgress', () => logger.debug(`Downloading ${actionRunnerReleaseAsset.name} in progress`));
+  logger.debug(`Start downloading ${actionRunnerReleaseAsset.name} and uploading to S3.`);
+  await upload
+    .done()
+    .then(() => logger.info(`The new distribution ${actionRunnerReleaseAsset.name} is uploaded to S3.`))
+    .catch((e) => logger.error(`Error uploading ${actionRunnerReleaseAsset.name} to S3`, e));
 }
 
 export async function sync(): Promise<void> {
-  const s3 = new AWS.S3();
+  const s3 = new S3Client({});
 
   const runnerOs = process.env.GITHUB_RUNNER_OS || 'linux';
   const runnerArch = process.env.GITHUB_RUNNER_ARCHITECTURE || 'x64';
@@ -116,6 +107,6 @@ export async function sync(): Promise<void> {
   if (currentVersion === undefined || currentVersion != actionRunnerReleaseAsset.name) {
     await uploadToS3(s3, cacheObject, actionRunnerReleaseAsset);
   } else {
-    logger.debug('Distribution is up-to-date, no action.');
+    logger.debug('Distribution is up-to-date, download skipped.');
   }
 }

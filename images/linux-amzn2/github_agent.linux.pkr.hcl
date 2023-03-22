@@ -159,7 +159,7 @@ build {
 
   provisioner "file" {
     content = templatefile("../start-runner.sh", {
-      start_runner = templatefile("../../modules/runners/templates/start-runner.sh", {})
+      start_runner = templatefile("../../modules/runners/templates/start-runner.sh", { metadata_tags = "enabled" })
     })
     destination = "/tmp/start-runner.sh"
   }

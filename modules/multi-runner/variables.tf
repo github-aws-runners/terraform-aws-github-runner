@@ -39,6 +39,7 @@ variable "multi_runner_config" {
       ami_filter                              = optional(map(list(string)), null)
       ami_owners                              = optional(list(string), ["amazon"])
       ami_id_ssm_parameter_name               = optional(string, null)
+      ami_kms_key_arn                         = optional(string, "")
       create_service_linked_role_spot         = optional(bool, false)
       delay_webhook_event                     = optional(number, 30)
       disable_runner_autoupdate               = optional(bool, false)
@@ -59,6 +60,7 @@ variable "multi_runner_config" {
       runner_boot_time_in_minutes             = optional(number, 5)
       runner_extra_labels                     = string
       runner_group_name                       = optional(string, "Default")
+      runner_name_prefix                      = optional(string, "")
       runner_run_as                           = optional(string, "ec2-user")
       runners_maximum_count                   = number
       scale_down_schedule_expression          = optional(string, "cron(*/5 * * * ? *)")
@@ -149,6 +151,7 @@ variable "multi_runner_config" {
         runner_boot_time_in_minutes: "The minimum time for an EC2 runner to boot and register as a runner."
         runner_extra_labels: "Extra (custom) labels for the runners (GitHub). Separate each label by a comma. Labels checks on the webhook can be enforced by setting `enable_workflow_job_labels_check`. GitHub read-only labels should not be provided."
         runner_group_name: "Name of the runner group."
+        runner_name_prefix: "Prefix for the GitHub runner name."
         runner_run_as: "Run the GitHub actions agent as user."
         runners_maximum_count: "The maximum number of runners that will be created."
         scale_down_schedule_expression: "Scheduler expression to check every x for scale down."
@@ -259,14 +262,10 @@ variable "repository_white_list" {
 variable "log_type" {
   description = "Logging format for lambda logging. Valid values are 'json', 'pretty', 'hidden'. "
   type        = string
-  default     = "pretty"
+  default     = null
   validation {
-    condition = anytrue([
-      var.log_type == "json",
-      var.log_type == "pretty",
-      var.log_type == "hidden",
-    ])
-    error_message = "`log_type` value not valid. Valid values are 'json', 'pretty', 'hidden'."
+    condition     = var.log_type == null
+    error_message = "DEPRECATED: `log_type` is not longer supported."
   }
 }
 
@@ -353,6 +352,12 @@ variable "syncer_lambda_s3_object_version" {
   description = "S3 object version for syncer lambda function. Useful if S3 versioning is enabled on source bucket."
   type        = string
   default     = null
+}
+
+variable "enable_event_rule_binaries_syncer" {
+  type        = bool
+  default     = true
+  description = "Option to disable EventBridge Lambda trigger for the binary syncer, useful to stop automatic updates of binary distribution"
 }
 
 variable "queue_encryption" {

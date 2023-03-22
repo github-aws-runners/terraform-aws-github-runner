@@ -17,6 +17,7 @@ resource "aws_lambda_function" "pool" {
 
   environment {
     variables = {
+      AMI_ID_SSM_PARAMETER_NAME            = var.config.ami_id_ssm_parameter_name
       DISABLE_RUNNER_AUTOUPDATE            = var.config.runner.disable_runner_autoupdate
       ENABLE_EPHEMERAL_RUNNERS             = var.config.runner.ephemeral
       ENVIRONMENT                          = var.config.prefix
@@ -27,14 +28,16 @@ resource "aws_lambda_function" "pool" {
       INSTANCE_TYPES                       = join(",", var.config.instance_types)
       LAUNCH_TEMPLATE_NAME                 = var.config.runner.launch_template.name
       LOG_LEVEL                            = var.config.lambda.log_level
-      LOG_TYPE                             = var.config.lambda.log_type
       NODE_TLS_REJECT_UNAUTHORIZED         = var.config.ghes.url != null && !var.config.ghes.ssl_verify ? 0 : 1
       PARAMETER_GITHUB_APP_ID_NAME         = var.config.github_app_parameters.id.name
       PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.config.github_app_parameters.key_base64.name
+      POWERTOOLS_LOGGER_LOG_EVENT          = var.config.lambda.log_level == "debug" ? "true" : "false"
       RUNNER_BOOT_TIME_IN_MINUTES          = var.config.runner.boot_time_in_minutes
       RUNNER_EXTRA_LABELS                  = var.config.runner.extra_labels
       RUNNER_GROUP_NAME                    = var.config.runner.group_name
+      RUNNER_NAME_PREFIX                   = var.config.runner.name_prefix
       RUNNER_OWNER                         = var.config.runner.pool_owner
+      SERVICE_NAME                         = "runners-pool"
       SSM_TOKEN_PATH                       = var.config.ssm_token_path
       SUBNET_IDS                           = join(",", var.config.subnet_ids)
     }
@@ -72,6 +75,7 @@ resource "aws_iam_role_policy" "pool" {
     github_app_id_arn         = var.config.github_app_parameters.id.arn
     github_app_key_base64_arn = var.config.github_app_parameters.key_base64.arn
     kms_key_arn               = var.config.kms_key_arn
+    ami_kms_key_arn           = var.config.ami_kms_key_arn
   })
 }
 
@@ -136,4 +140,10 @@ resource "aws_lambda_permission" "pool" {
   function_name = aws_lambda_function.pool.function_name
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.pool[count.index].arn
+}
+
+resource "aws_iam_role_policy_attachment" "ami_id_ssm_parameter_read" {
+  count      = var.config.ami_id_ssm_parameter_name != null ? 1 : 0
+  role       = aws_iam_role.pool.name
+  policy_arn = var.config.ami_id_ssm_parameter_read_policy_arn
 }

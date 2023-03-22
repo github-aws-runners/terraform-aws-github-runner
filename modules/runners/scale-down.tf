@@ -25,13 +25,14 @@ resource "aws_lambda_function" "scale_down" {
       ENVIRONMENT                          = var.prefix
       GHES_URL                             = var.ghes_url
       LOG_LEVEL                            = var.log_level
-      LOG_TYPE                             = var.log_type
       MINIMUM_RUNNING_TIME_IN_MINUTES      = coalesce(var.minimum_running_time_in_minutes, local.min_runtime_defaults[var.runner_os])
       NODE_TLS_REJECT_UNAUTHORIZED         = var.ghes_url != null && !var.ghes_ssl_verify ? 0 : 1
       PARAMETER_GITHUB_APP_ID_NAME         = var.github_app_parameters.id.name
       PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.github_app_parameters.key_base64.name
+      POWERTOOLS_LOGGER_LOG_EVENT          = var.log_level == "debug" ? "true" : "false"
       RUNNER_BOOT_TIME_IN_MINUTES          = var.runner_boot_time_in_minutes
       SCALE_DOWN_CONFIG                    = jsonencode(var.idle_config)
+      SERVICE_NAME                         = "runners-scale-up"
     }
   }
 

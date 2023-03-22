@@ -113,8 +113,9 @@ async function testInvalidRecords(sqsRecords: SQSRecord[]) {
   await expect(scaleUpHandler(sqsEventMultipleRecords, context)).resolves;
 
   expect(logWarnSpy).toHaveBeenCalledWith(
-    'Event ignored, only one record at the time can be handled, ensure the lambda batch size is set to 1.',
-    undefined,
+    expect.stringContaining(
+      'Event ignored, only one record at the time can be handled, ensure the lambda batch size is set to 1.',
+    ),
   );
 }
 
@@ -126,14 +127,14 @@ describe('Test scale down lambda wrapper.', () => {
         resolve();
       });
     });
-    await expect(scaleDownHandler(context)).resolves;
+    await expect(scaleDownHandler({}, context)).resolves;
   });
 
   it('Scaling down with error.', async () => {
     const error = new Error('Scaling down with error.');
     const mock = mocked(scaleDown);
     mock.mockRejectedValue(error);
-    await expect(await scaleDownHandler(context)).resolves;
+    await expect(await scaleDownHandler({}, context)).resolves;
   });
 });
 
@@ -154,6 +155,6 @@ describe('Adjust pool.', () => {
     mock.mockRejectedValue(error);
     const logSpy = jest.spyOn(logger, 'error');
     await adjustPool({ poolSize: 0 }, context);
-    expect(logSpy).lastCalledWith(error);
+    expect(logSpy).lastCalledWith(expect.stringContaining(error.message), expect.anything());
   });
 });

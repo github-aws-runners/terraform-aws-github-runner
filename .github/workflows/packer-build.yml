@@ -8,31 +8,26 @@ on:
       - "images/**"
       - ".github/workflows/packer-build.yml"
       - "module/runners/templates/**"
-
 env:
   AWS_REGION: eu-west-1
-
 jobs:
   verify_packer:
     name: Verify packer
     runs-on: ubuntu-latest
     container:
-      image: hashicorp/packer:1.7.8
+      image: index.docker.io/hashicorp/packer@sha256:f795aace438ef92e738228c21d5ceb7d5dd73ceb7e0b1efab5b0e90cbc4d4dcd # ratchet:hashicorp/packer:1.7.8
     strategy:
       matrix:
-        image: ["linux-amzn2", "windows-core-2019", "ubuntu-focal"]
+        image: ["linux-amzn2", "windows-core-2019", "windows-core-2022", "ubuntu-focal", "ubuntu-jammy", "ubuntu-jammy-arm64"]
     defaults:
       run:
         working-directory: images/${{ matrix.image }}
     steps:
       - name: "Checkout"
-        uses: actions/checkout@v3
-
+        uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f # ratchet:actions/checkout@v3
       - name: packer init
         run: packer init .
-
       - name: check packer formatting
         run: packer fmt -recursive -check=true .
-
       - name: packer validate
         run: packer validate .

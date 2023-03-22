@@ -2,10 +2,10 @@ import yn from 'yn';
 
 import { bootTimeExceeded, listEC2Runners } from '../aws/runners';
 import { createGithubAppAuth, createGithubInstallationAuth, createOctoClient } from '../gh-auth/gh-auth';
-import { logger as rootLogger } from '../logger';
+import { createChildLogger } from '../logger';
 import { createRunners } from '../scale-runners/scale-up';
 
-const logger = rootLogger.getChildLogger({ name: 'pool' });
+const logger = createChildLogger('pool');
 
 export interface PoolEvent {
   poolSize: number;
@@ -32,6 +32,7 @@ export async function adjust(event: PoolEvent): Promise<void> {
   const instanceMaxSpotPrice = process.env.INSTANCE_MAX_SPOT_PRICE;
   const instanceAllocationStrategy = process.env.INSTANCE_ALLOCATION_STRATEGY || 'lowest-price'; // same as AWS default
   const runnerOwner = process.env.RUNNER_OWNER;
+  const amiIdSsmParameterName = process.env.AMI_ID_SSM_PARAMETER_NAME;
 
   let ghesApiUrl = '';
   if (ghesBaseUrl) {
@@ -109,6 +110,7 @@ export async function adjust(event: PoolEvent): Promise<void> {
         ssmTokenPath,
         subnets,
         numberOfRunners: topUp,
+        amiIdSsmParameterName,
       },
       githubInstallationClient,
     );

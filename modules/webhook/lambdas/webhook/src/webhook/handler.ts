@@ -3,12 +3,12 @@ import { CheckRunEvent, WorkflowJobEvent } from '@octokit/webhooks-types';
 import { IncomingHttpHeaders } from 'http';
 
 import { Response } from '../lambda';
+import { createChildLogger } from '../logger';
 import { QueueConfig, sendActionRequest, sendWebhookEventToWorkflowJobQueue } from '../sqs';
 import { getParameterValue } from '../ssm';
-import { LogFields, logger as rootLogger } from './logger';
 
 const supportedEvents = ['workflow_job'];
-const logger = rootLogger.getChildLogger();
+const logger = createChildLogger('handler');
 
 export async function handle(headers: IncomingHttpHeaders, body: string): Promise<Response> {
   const { environment, repositoryWhiteList, queuesConfig } = readEnvironmentVariables();
@@ -17,6 +17,13 @@ export async function handle(headers: IncomingHttpHeaders, body: string): Promis
   for (const key in headers) {
     headers[key.toLowerCase()] = headers[key];
   }
+
+  logger.addPersistentLogAttributes({
+    github: {
+      'github-event': headers['x-github-event'],
+      'github-delivery': headers['x-github-delivery'],
+    },
+  });
 
   const githubEvent = headers['x-github-event'] as string;
 
@@ -29,7 +36,7 @@ export async function handle(headers: IncomingHttpHeaders, body: string): Promis
   }
 
   if (!supportedEvents.includes(githubEvent)) {
-    logger.warn(`Unsupported event type.`, LogFields.print());
+    logger.warn(`Unsupported event type.`);
     return {
       statusCode: 202,
       body: `Ignoring unsupported event ${githubEvent}`,
@@ -37,29 +44,28 @@ export async function handle(headers: IncomingHttpHeaders, body: string): Promis
   }
 
   const payload = JSON.parse(body);
-  LogFields.fields.event = githubEvent;
-  LogFields.fields.repository = payload.repository.full_name;
-  LogFields.fields.action = payload.action;
-  LogFields.fields.name = payload[githubEvent].name;
-  LogFields.fields.status = payload[githubEvent].status;
-  LogFields.fields.workflowJobId = payload[githubEvent].id;
-  LogFields.fields.started_at = payload[githubEvent]?.started_at;
+  logger.addPersistentLogAttributes({
+    github: {
+      repository: payload.repository.full_name,
+      action: payload.action,
+      name: payload[githubEvent].name,
+      status: payload[githubEvent].status,
+      workflowJobId: payload[githubEvent].id,
+      started_at: payload[githubEvent]?.started_at,
+      completed_at: payload[githubEvent]?.completed_at,
+      conclusion: payload[githubEvent]?.conclusion,
+    },
+  });
 
-  /*
-  The app subscribes to all `check_run` and `workflow_job` events.
-  If the event status is `completed`, log the data for workflow metrics.
-  */
-  LogFields.fields.completed_at = payload[githubEvent]?.completed_at;
-  LogFields.fields.conclusion = payload[githubEvent]?.conclusion;
   if (isRepoNotAllowed(payload.repository.full_name, repositoryWhiteList)) {
-    logger.error(`Received event from unauthorized repository ${payload.repository.full_name}`, LogFields.print());
+    logger.error(`Received event from unauthorized repository ${payload.repository.full_name}`);
     return {
       statusCode: 403,
     };
   }
 
-  logger.info(`Processing Github event`, LogFields.print());
-  logger.debug(`Queue configuration: ${queuesConfig}`, LogFields.print());
+  logger.info(`Processing Github event`);
+  logger.debug(`Queue configuration: ${queuesConfig}`);
 
   const workflowJobEvent = payload as WorkflowJobEvent;
   response = await handleWorkflowJob(workflowJobEvent, githubEvent, queuesConfig);
@@ -89,10 +95,7 @@ async function verifySignature(githubEvent: string, headers: IncomingHttpHeaders
     signature = headers['x-hub-signature'] as string;
   }
   if (!signature) {
-    logger.error(
-      "Github event doesn't have signature. This webhook requires a secret to be configured.",
-      LogFields.print(),
-    );
+    logger.error("Github event doesn't have signature. This webhook requires a secret to be configured.");
     return 500;
   }
 
@@ -102,7 +105,7 @@ async function verifySignature(githubEvent: string, headers: IncomingHttpHeaders
     secret: secret,
   });
   if (!(await webhooks.verify(body, signature))) {
-    logger.error('Unable to verify signature!', LogFields.print());
+    logger.error('Unable to verify signature!');
     return 401;
   }
   return 200;
@@ -130,17 +133,11 @@ async function handleWorkflowJob(
           queueId: queue.id,
           queueFifo: queue.fifo,
         });
-        logger.info(
-          `Successfully queued job for ${body.repository.full_name} to the queue ${queue.id}`,
-          LogFields.print(),
-        );
+        logger.info(`Successfully queued job for ${body.repository.full_name} to the queue ${queue.id}`);
         return { statusCode: 201 };
       }
     }
-    logger.warn(
-      `Received event contains runner labels '${body.workflow_job.labels}' that are not accepted.`,
-      LogFields.print(),
-    );
+    logger.warn(`Received event contains runner labels '${body.workflow_job.labels}' that are not accepted.`);
     return {
       statusCode: 202,
       body: `Received event contains runner labels '${body.workflow_job.labels}' that are not accepted.`,
@@ -177,7 +174,6 @@ function canRunJob(
     `Received workflow job event with labels: '${JSON.stringify(workflowJobLabels)}'. The event does ${
       match ? '' : 'NOT '
     }match the runner labels: '${Array.from(runnerLabelsMatchers).join(',')}'`,
-    LogFields.print(),
   );
   return match;
 }

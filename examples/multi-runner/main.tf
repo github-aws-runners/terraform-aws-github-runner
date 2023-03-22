@@ -25,6 +25,7 @@ module "multi-runner" {
         runner_os                      = "linux"
         runner_architecture            = "arm64"
         runner_extra_labels            = "amazon"
+        runner_name_prefix             = "amazon-arm64_"
         enable_ssm_on_runners          = true
         instance_types                 = ["t4g.large", "c6g.large"]
         runners_maximum_count          = 1
@@ -47,6 +48,7 @@ module "multi-runner" {
         runner_architecture            = "x64"
         runner_extra_labels            = "ubuntu-latest,ubuntu-2204"
         runner_run_as                  = "ubuntu"
+        runner_name_prefix             = "ubuntu-2204-x64_"
         enable_ssm_on_runners          = true
         instance_types                 = ["m5ad.large", "m5a.large"]
         runners_maximum_count          = 1
@@ -101,6 +103,7 @@ module "multi-runner" {
       runner_config = {
         runner_os                      = "windows"
         runner_architecture            = "x64"
+        runner_name_prefix             = "servercore-2022-x64_"
         enable_ssm_on_runners          = true
         instance_types                 = ["m5.large", "c5.large"]
         runner_extra_labels            = "servercore-2022"
@@ -120,8 +123,16 @@ module "multi-runner" {
       fifo                = true
       delay_webhook_event = 0
       runner_config = {
+        # Test retrieving tag information via AWS API (Cli)
+        runner_metadata_options = {
+          instance_metadata_tags      = "disabled"
+          http_endpoint               = "enabled"
+          http_tokens                 = "optional"
+          http_put_response_hop_limit = 1
+        }
         runner_os                       = "linux"
         runner_architecture             = "x64"
+        runner_name_prefix              = "amazon-x64_"
         create_service_linked_role_spot = true
         enable_ssm_on_runners           = true
         instance_types                  = ["m5ad.large", "m5a.large"]
@@ -156,6 +167,7 @@ module "multi-runner" {
   # enable_workflow_job_events_queue = true
   # override delay of events in seconds
 
+  # Enable debug logging for the lambda functions
   # log_level = "debug"
 
 }

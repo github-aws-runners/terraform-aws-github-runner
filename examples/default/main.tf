@@ -87,4 +87,10 @@ module "runners" {
   # enable_workflow_job_events_queue  = true
 
   enable_user_data_debug_logging_runner = true
+
+  # prefix GitHub runners with the environment name
+  runner_name_prefix = "${local.environment}_"
+
+  # Enable debug logging for the lambda functions
+  # log_level = "debug"
 }

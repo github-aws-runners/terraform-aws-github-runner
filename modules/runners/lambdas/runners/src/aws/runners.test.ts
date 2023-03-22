@@ -16,6 +16,7 @@ const ORG_NAME = 'SomeAwesomeCoder';
 const REPO_NAME = `${ORG_NAME}/some-amazing-library`;
 const ENVIRONMENT = 'unit-test-environment';
 const SSM_TOKEN_PATH = '/github-action-runners/default/runners/tokens';
+const RUNNER_NAME_PREFIX = '';
 
 const mockDescribeInstances = { promise: jest.fn() };
 mockEC2.describeInstances.mockImplementation(() => mockDescribeInstances);
@@ -28,6 +29,8 @@ const mockRunningInstances: AWS.EC2.DescribeInstancesResult = {
           InstanceId: 'i-1234',
           Tags: [
             { Key: 'ghr:Application', Value: 'github-action-runner' },
+            { Key: 'ghr:runner_name_prefix', Value: RUNNER_NAME_PREFIX },
+            { Key: 'ghr:created_by', Value: 'scale-up-lambda' },
             { Key: 'Type', Value: 'Org' },
             { Key: 'Owner', Value: 'CoderToCat' },
           ],
@@ -523,6 +526,7 @@ function expectedCreateFleetRequest(expectedValues: ExpectedFleetRequestValues):
         ResourceType: 'instance',
         Tags: [
           { Key: 'ghr:Application', Value: 'github-action-runner' },
+          { Key: 'ghr:created_by', Value: expectedValues.totalTargetCapacity > 1 ? 'pool-lambda' : 'scale-up-lambda' },
           { Key: 'Type', Value: expectedValues.type },
           { Key: 'Owner', Value: REPO_NAME },
         ],

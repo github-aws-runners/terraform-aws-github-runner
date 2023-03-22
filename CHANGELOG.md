@@ -1,5 +1,72 @@
 # Changelog
 
+## [2.6.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v2.6.0...v2.6.1) (2023-03-17)
+
+
+### Bug Fixes
+
+* add missing IAM permissions for runners from encrypted AMI ([#3049](https://github.com/philips-labs/terraform-aws-github-runner/issues/3049)) ([e0819f6](https://github.com/philips-labs/terraform-aws-github-runner/commit/e0819f616c3208835afc20187b8c28478cd0c5ff))
+* allow the instances to send metrics ([#3067](https://github.com/philips-labs/terraform-aws-github-runner/issues/3067)) ([55c40ff](https://github.com/philips-labs/terraform-aws-github-runner/commit/55c40ff9235451b070bdde03130af1fc0ce70590))
+* packer defintions missing required metadatatag for start script ([9c1fa8a](https://github.com/philips-labs/terraform-aws-github-runner/commit/9c1fa8aaffc2de319eab5fbc8290ed3b1220d580))
+* **runners:** bump aws-sdk from 2.1329.0 to 2.1337.0 in /modules/runners/lambdas/runners ([#3072](https://github.com/philips-labs/terraform-aws-github-runner/issues/3072)) ([0e80518](https://github.com/philips-labs/terraform-aws-github-runner/commit/0e8051816e4a3dff568a4a9ff14f6fe0a909a48f))
+* **runners:** increase the log level to WARN when using the enable_job_queued_check parameter ([#3046](https://github.com/philips-labs/terraform-aws-github-runner/issues/3046)) ([1de73bf](https://github.com/philips-labs/terraform-aws-github-runner/commit/1de73bf14c9c3898e079f3ef909d60838a7587d5))
+* **syncer:** bump axios from 1.3.3 to 1.3.4 in /modules/runner-binaries-syncer/lambdas/runner-binaries-syncer ([#3059](https://github.com/philips-labs/terraform-aws-github-runner/issues/3059)) ([fa06b30](https://github.com/philips-labs/terraform-aws-github-runner/commit/fa06b30dac859595a4b08226221e388490b6e250))
+* **webhook:** bump @aws-sdk/client-sqs from 3.279.0 to 3.293.0 in /modules/webhook/lambdas/webhook ([#3074](https://github.com/philips-labs/terraform-aws-github-runner/issues/3074)) ([5de5464](https://github.com/philips-labs/terraform-aws-github-runner/commit/5de5464a0e4aa77752f7c9e8e35e1e85d3c20943))
+* **webhook:** bump @aws-sdk/client-ssm from 3.282.0 to 3.290.0 in /modules/webhook/lambdas/webhook ([#3058](https://github.com/philips-labs/terraform-aws-github-runner/issues/3058)) ([f626c6d](https://github.com/philips-labs/terraform-aws-github-runner/commit/f626c6de9c11105ed3a7502a68e048f041072859))
+
+## [2.6.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v2.5.0...v2.6.0) (2023-03-13)
+
+
+### Features
+
+* **runners:** add option to prefix registered runners in GitHub ([#3043](https://github.com/philips-labs/terraform-aws-github-runner/issues/3043)) ([ea4e042](https://github.com/philips-labs/terraform-aws-github-runner/commit/ea4e0426cb32712cfd8235a799d19f65ca531387))
+
+
+### Bug Fixes
+
+* **syncer:** enable SSE by default for dist bucket ([#3048](https://github.com/philips-labs/terraform-aws-github-runner/issues/3048)) ([a7ad31a](https://github.com/philips-labs/terraform-aws-github-runner/commit/a7ad31af7e36c0f0158b7d44048ced697dd42734))
+
+## [2.5.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v2.4.0...v2.5.0) (2023-03-10)
+
+
+### Features
+
+* added outputs for runner log groups. ([#3044](https://github.com/philips-labs/terraform-aws-github-runner/issues/3044)) ([2f683da](https://github.com/philips-labs/terraform-aws-github-runner/commit/2f683dad0053ffc0d50f8bb860fb22e487e5c00e))
+* **runner:** allow linux starter-runner script to retrieve labels without with IMDSv2 tags option ([#2764](https://github.com/philips-labs/terraform-aws-github-runner/issues/2764)) ([0d8a74c](https://github.com/philips-labs/terraform-aws-github-runner/commit/0d8a74cb2d6eff7e91b6a1e41a58d1e08f86965f))
+
+
+### Bug Fixes
+
+* **pool:** ensure pool top up respects var.ami_id_ssm_parameter_name ([#3040](https://github.com/philips-labs/terraform-aws-github-runner/issues/3040)) ([c4ab242](https://github.com/philips-labs/terraform-aws-github-runner/commit/c4ab2428c514b1f8a48e4729e542f5e2ae4b14fa))
+
+## [2.4.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v2.3.0...v2.4.0) (2023-03-08)
+
+
+### Features
+
+* add outputs for lambda and lambda log groups ([#3033](https://github.com/philips-labs/terraform-aws-github-runner/issues/3033)) ([e1ce8be](https://github.com/philips-labs/terraform-aws-github-runner/commit/e1ce8beff74896eba5b423c7510f2569078a8c01))
+* **runners:** allow to use a shared encrypted AMI ([#2933](https://github.com/philips-labs/terraform-aws-github-runner/issues/2933)) ([5514c72](https://github.com/philips-labs/terraform-aws-github-runner/commit/5514c7246184152349e3dbfa09a41b49b1156e60))
+
+
+### Bug Fixes
+
+* **runners:** bump aws-sdk from 2.1289.0 to 2.1329.0 in /modules/runners/lambdas/runners ([#3018](https://github.com/philips-labs/terraform-aws-github-runner/issues/3018)) ([9bfcfe6](https://github.com/philips-labs/terraform-aws-github-runner/commit/9bfcfe642a1d56ded7e65c190d31539c9ccc1336))
+* **webhook:** bump @aws-sdk/client-ssm from 3.278.0 to 3.282.0 in /modules/webhook/lambdas/webhook ([#3021](https://github.com/philips-labs/terraform-aws-github-runner/issues/3021)) ([7b7c211](https://github.com/philips-labs/terraform-aws-github-runner/commit/7b7c211e15f8e5e57c2866c6a9656399fdd2305e))
+
+## [2.3.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v2.2.2...v2.3.0) (2023-03-01)
+
+
+### Features
+
+* **syncer:** add option to disable runner syncer lambda trigger ([#2986](https://github.com/philips-labs/terraform-aws-github-runner/issues/2986)) ([5eb27b0](https://github.com/philips-labs/terraform-aws-github-runner/commit/5eb27b0fcf3bf01561f7ec25cada9f9d7bb0407e))
+
+
+### Bug Fixes
+
+* **runners:** bump @aws-sdk/client-ssm from 3.272.0 to 3.281.0 in /modules/runners/lambdas/runners ([#3014](https://github.com/philips-labs/terraform-aws-github-runner/issues/3014)) ([7c390ba](https://github.com/philips-labs/terraform-aws-github-runner/commit/7c390bae884dda5155d37f34e55600c8fa9023b5))
+* **runners:** propagate var.runner_ec2_tags to EC2 volumes ([#2985](https://github.com/philips-labs/terraform-aws-github-runner/issues/2985)) ([a9b1fa8](https://github.com/philips-labs/terraform-aws-github-runner/commit/a9b1fa85475214f4d1de5fab1e070ed4fad978b0))
+* **webhook:** bump @aws-sdk/client-sqs from 3.264.0 to 3.279.0 in /modules/webhook/lambdas/webhook ([#3011](https://github.com/philips-labs/terraform-aws-github-runner/issues/3011)) ([9d1d3bd](https://github.com/philips-labs/terraform-aws-github-runner/commit/9d1d3bd89a76109176a87a234b1c19a01da7873a))
+
 ## [2.2.2](https://github.com/philips-labs/terraform-aws-github-runner/compare/v2.2.1...v2.2.2) (2023-02-24)
 
 

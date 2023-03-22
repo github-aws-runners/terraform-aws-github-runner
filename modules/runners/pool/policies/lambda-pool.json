@@ -44,6 +44,29 @@
             ],
             "Resource": "${kms_key_arn}"
 %{ endif ~}
+%{ if ami_kms_key_arn != "" ~}
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "kms:DescribeKey",
+                "kms:ReEncrypt*",
+                "kms:Decrypt"
+            ],
+            "Resource": "${ami_kms_key_arn}"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "kms:CreateGrant"
+            ],
+            "Resource": "${ami_kms_key_arn}",
+            "Condition": {
+                "Bool": {
+                    "aws:ViaAWSService": "true"
+                }
+            }
+%{ endif ~}
         }
     ]
 }
