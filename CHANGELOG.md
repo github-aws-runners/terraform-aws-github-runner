@@ -1,5 +1,25 @@
 # Changelog
 
+## [3.0.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v2.6.1...v3.0.0) (2023-03-22)
+
+
+### ⚠ BREAKING CHANGES
+
+* replace tslog by awspowertools logging ([#3037](https://github.com/philips-labs/terraform-aws-github-runner/issues/3037))
+
+### Features
+
+* replace tslog by awspowertools logging ([#3037](https://github.com/philips-labs/terraform-aws-github-runner/issues/3037)) ([4c3ee20](https://github.com/philips-labs/terraform-aws-github-runner/commit/4c3ee20862ed75c8af05d7dad83d8336c1ebfcf5))
+
+
+### Bug Fixes
+
+* **runners:** bump @aws-sdk/client-ssm from 3.281.0 to 3.296.0 in /modules/runners/lambdas/runners ([#3098](https://github.com/philips-labs/terraform-aws-github-runner/issues/3098)) ([4a31f7b](https://github.com/philips-labs/terraform-aws-github-runner/commit/4a31f7b81c965eac4c640545c9d7df96e1ecd829))
+* **runners:** bump @octokit/rest from 19.0.5 to 19.0.7 in /modules/runners/lambdas/runners ([#3078](https://github.com/philips-labs/terraform-aws-github-runner/issues/3078)) ([4b26cfd](https://github.com/philips-labs/terraform-aws-github-runner/commit/4b26cfd33f16ac44b3542a4acceedad00d672592))
+* **runners:** bump aws-sdk from 2.1337.0 to 2.1340.0 in /modules/runners/lambdas/runners ([#3100](https://github.com/philips-labs/terraform-aws-github-runner/issues/3100)) ([f8cac68](https://github.com/philips-labs/terraform-aws-github-runner/commit/f8cac68ba2d9fbfcaa1042f24f9f27993bf99d3c))
+* **syncer:** replaced aws-sdk v2 by aws-sdk v3 ([#3075](https://github.com/philips-labs/terraform-aws-github-runner/issues/3075)) ([ac158f6](https://github.com/philips-labs/terraform-aws-github-runner/commit/ac158f68b5cc8b024d664fee369ea18455825388))
+* **webhook:** bump @aws-sdk/client-sqs from 3.294.0 to 3.296.0 in /modules/webhook/lambdas/webhook ([#3099](https://github.com/philips-labs/terraform-aws-github-runner/issues/3099)) ([87dbdf5](https://github.com/philips-labs/terraform-aws-github-runner/commit/87dbdf5d097210bca1badcc3dbf4c8b388ad4b6d))
+
 ## [2.6.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v2.6.0...v2.6.1) (2023-03-17)
 
 
