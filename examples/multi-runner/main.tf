@@ -167,6 +167,7 @@ module "multi-runner" {
   # enable_workflow_job_events_queue = true
   # override delay of events in seconds
 
+  # Enable debug logging for the lambda functions
   # log_level = "debug"
 
 }
