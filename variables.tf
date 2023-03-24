@@ -141,6 +141,12 @@ variable "runner_binaries_s3_sse_configuration" {
   }
 }
 
+variable "runner_binaries_s3_versioning" {
+  description = "Status of S3 versioning for runner-binaries S3 bucket."
+  type        = string
+  default     = "Disabled"
+}
+
 variable "runner_binaries_s3_logging_bucket" {
   description = "Bucket for action runner distribution bucket access logging."
   type        = string

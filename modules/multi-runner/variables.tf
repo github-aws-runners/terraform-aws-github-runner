@@ -324,6 +324,12 @@ variable "runner_binaries_s3_sse_configuration" {
   default     = {}
 }
 
+variable "runner_binaries_s3_versioning" {
+  description = "Status of S3 versioning for runner-binaries S3 bucket."
+  type        = string
+  default     = "Disabled"
+}
+
 variable "runner_binaries_syncer_lambda_timeout" {
   description = "Time out of the binaries sync lambda in seconds."
   type        = number

@@ -206,7 +206,7 @@ variable "log_level" {
 }
 
 variable "server_side_encryption_configuration" {
-  description = "Map containing server-side encryption configuration."
+  description = "Map containing server-side encryption configuration for runner-binaries S3 bucket."
   type        = any
   default = {
     rule = {
@@ -215,6 +215,12 @@ variable "server_side_encryption_configuration" {
       }
     }
   }
+}
+
+variable "s3_versioning" {
+  description = "Status of S3 versioning for runner-binaries S3 bucket."
+  type        = string
+  default     = "Disabled"
 }
 
 variable "lambda_principals" {

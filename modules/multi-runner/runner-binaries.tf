@@ -21,6 +21,7 @@ module "runner_binaries" {
   enable_event_rule_binaries_syncer = var.enable_event_rule_binaries_syncer
 
   server_side_encryption_configuration = var.runner_binaries_s3_sse_configuration
+  s3_versioning                        = var.runner_binaries_s3_versioning
 
   role_path                 = var.role_path
   role_permissions_boundary = var.role_permissions_boundary
