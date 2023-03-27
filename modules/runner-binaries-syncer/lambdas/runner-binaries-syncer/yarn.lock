@@ -494,12 +494,12 @@
   dependencies:
     tslib "^2.5.0"
 
-"@aws-sdk/lib-storage@^3.294.0":
-  version "3.296.0"
-  resolved "https://registry.yarnpkg.com/@aws-sdk/lib-storage/-/lib-storage-3.296.0.tgz#bdf5032c2fdfb08b038e043a14fd784bbdcef999"
-  integrity sha512-QXAaUWlYJYNK+fPc+urWLz1vJfoF3qA3UCufH+d2QGVmorCadX6jHPRZXPr1irmwqDrsa90kzA2RuWZHOHwxcg==
+"@aws-sdk/lib-storage@^3.300.0":
+  version "3.300.0"
+  resolved "https://registry.yarnpkg.com/@aws-sdk/lib-storage/-/lib-storage-3.300.0.tgz#82e99696fee8a1c3c76cc0e7820314e79958e40b"
+  integrity sha512-9Gwpvg6VxrBkakTGLjzeOuBFW/lPTiZx8sVOn2r3s9dUQbwJHuFMqnTCHteeFz8g6TXzeHaSGnSCyJNRl1N+Ug==
   dependencies:
-    "@aws-sdk/middleware-endpoint" "3.296.0"
+    "@aws-sdk/middleware-endpoint" "3.299.0"
     "@aws-sdk/smithy-client" "3.296.0"
     buffer "5.6.0"
     events "3.3.0"
@@ -546,6 +546,17 @@
     "@aws-sdk/types" "3.296.0"
     "@aws-sdk/url-parser" "3.296.0"
     "@aws-sdk/util-config-provider" "3.295.0"
+    "@aws-sdk/util-middleware" "3.296.0"
+    tslib "^2.5.0"
+
+"@aws-sdk/middleware-endpoint@3.299.0":
+  version "3.299.0"
+  resolved "https://registry.yarnpkg.com/@aws-sdk/middleware-endpoint/-/middleware-endpoint-3.299.0.tgz#5ee9f83ed8e15fd9cf1dfbd7bef1baa8fb6e9f40"
+  integrity sha512-37BGxHem6yKjSC6zG2xPjvjE7APIDIvwkxL+/K1Jz9+T6AZITcs7tx5y6mIfvaHsdPuCKjrl7Wzg/9jgUKuLkw==
+  dependencies:
+    "@aws-sdk/middleware-serde" "3.296.0"
+    "@aws-sdk/types" "3.296.0"
+    "@aws-sdk/url-parser" "3.296.0"
     "@aws-sdk/util-middleware" "3.296.0"
     tslib "^2.5.0"
 
