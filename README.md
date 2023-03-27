@@ -4,7 +4,7 @@
 
 This [Terraform](https://www.terraform.io/) module creates the required infrastructure needed to host [GitHub Actions](https://github.com/features/actions) self-hosted, auto-scaling runners on [AWS spot instances](https://aws.amazon.com/ec2/spot/). It provides the required logic to handle the life cycle for scaling up and down using a set of AWS Lambda functions. Runners are scaled down to zero to avoid costs when no workflows are active.
 
-> 📢 [`v3`](https://github.com/philips-labs/terraform-aws-github-runner/pull/3037) underlying logging framework is replaces by [AWS Lambda Powertools](https://awslabs.github.io/aws-lambda-powertools-typescript/latest/). Depending on how you handle the logging of the module a migration could be required.
+> 📢 [`v3`](https://github.com/philips-labs/terraform-aws-github-runner/pull/3037) underlying logging framework is replaced by [AWS Lambda Powertools](https://awslabs.github.io/aws-lambda-powertools-typescript/latest/). Depending on how you handle the logging of the module a migration could be required.
 
 > 📢 [`v2`](https://github.com/philips-labs/terraform-aws-github-runner/issues/2517) support via a Terraform [submodule](./modules/multi-runner/README.md) an option to create multiple runners at once. The webhook will deliver based on matching rules the events to a dedicated queue for the runners. Next per queue a scaling lambda will ensure the specific runner is created. For more details checkout the [examples](./examples/multi-runner/README.md).
 
