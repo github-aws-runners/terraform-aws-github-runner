@@ -39,7 +39,7 @@
     "typescript": "^5.0.2"
   },
   "dependencies": {
-    "@aws-lambda-powertools/logger": "^1.6.0",
+    "@aws-lambda-powertools/logger": "^1.7.0",
     "@aws-sdk/client-sqs": "^3.296.0",
     "@aws-sdk/client-ssm": "^3.282.0",
     "@octokit/rest": "^19.0.7",

@@ -56,17 +56,17 @@
     "@aws-sdk/util-utf8-browser" "^3.0.0"
     tslib "^1.11.1"
 
-"@aws-lambda-powertools/commons@^1.6.0":
-  version "1.6.0"
-  resolved "https://registry.yarnpkg.com/@aws-lambda-powertools/commons/-/commons-1.6.0.tgz#266c0b7e6cadb6b2c3bec9125a694144219a7e33"
-  integrity sha512-83YWf63FZN872Bodk+tJHdSZ2o8y5zsAcpQZgBTqL8TEFNBef/zkDuIuvDIUBmif9q+ZaYVAEtileWjjDTvgGA==
+"@aws-lambda-powertools/commons@^1.7.0":
+  version "1.7.0"
+  resolved "https://registry.yarnpkg.com/@aws-lambda-powertools/commons/-/commons-1.7.0.tgz#3992b13325a26621a034234631199b22faa205d4"
+  integrity sha512-Qtp5PU3UK7Nz7hLB/z3bUdmY6Wd/qn2Ki+JcXke++133y586wA3jTzZHHMjpWFb0eixy/znITDu0JUgSbnBJtg==
 
-"@aws-lambda-powertools/logger@^1.6.0":
-  version "1.6.0"
-  resolved "https://registry.yarnpkg.com/@aws-lambda-powertools/logger/-/logger-1.6.0.tgz#81bc873edcfec57204af7a149e9c201c3d282bfd"
-  integrity sha512-RIx8nHDH8exxPfMhkTnxWZMNOEOgf1CjkzbisLvX89/8Z0tMyruDFHdnolZXQ6Z1AyUE5FVaqN5FWlkmyqxS4A==
+"@aws-lambda-powertools/logger@^1.7.0":
+  version "1.7.0"
+  resolved "https://registry.yarnpkg.com/@aws-lambda-powertools/logger/-/logger-1.7.0.tgz#56fbfad54f61a7401e081547c8a11f0a862cae7b"
+  integrity sha512-OmIclKpKBjs5HMjsjySAGEAqbM2rigMiMEb5qipeAMkm0sOrIVlSz3ZLi1mRkvIVv1RqVlKQZrgocXAY2yoxBw==
   dependencies:
-    "@aws-lambda-powertools/commons" "^1.6.0"
+    "@aws-lambda-powertools/commons" "^1.7.0"
     lodash.merge "^4.6.2"
 
 "@aws-sdk/abort-controller@3.292.0":
