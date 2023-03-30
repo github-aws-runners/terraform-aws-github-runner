@@ -88,6 +88,7 @@ resource "aws_iam_role_policy" "webhook_sqs" {
 
   policy = templatefile("${path.module}/policies/lambda-publish-sqs-policy.json", {
     sqs_resource_arns = jsonencode([for k, v in var.runner_config : v.arn])
+    kms_key_arn       = var.kms_key_arn != null ? var.kms_key_arn : ""
   })
 }
 
@@ -98,6 +99,7 @@ resource "aws_iam_role_policy" "webhook_workflow_job_sqs" {
 
   policy = templatefile("${path.module}/policies/lambda-publish-sqs-policy.json", {
     sqs_resource_arns = jsonencode([var.sqs_workflow_job_queue.arn])
+    kms_key_arn       = var.kms_key_arn != null ? var.kms_key_arn : ""
   })
 }
 
@@ -107,6 +109,5 @@ resource "aws_iam_role_policy" "webhook_ssm" {
 
   policy = templatefile("${path.module}/policies/lambda-ssm.json", {
     github_app_webhook_secret_arn = var.github_app_parameters.webhook_secret.arn,
-    kms_key_arn                   = var.kms_key_arn != null ? var.kms_key_arn : ""
   })
 }
