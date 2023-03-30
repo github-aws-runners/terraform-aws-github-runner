@@ -1,3 +1,4 @@
+import { AllocationStrategy, DefaultTargetCapacityType, SpotAllocationStrategy } from '@aws-sdk/client-ec2';
 import { EC2 } from 'aws-sdk';
 import { performance } from 'perf_hooks';
 
@@ -169,14 +170,14 @@ describe('create runner', () => {
   const mockGetParameter = { promise: jest.fn() };
 
   const defaultRunnerConfig: RunnerConfig = {
-    allocationStrategy: 'capacity-optimized',
+    allocationStrategy: SpotAllocationStrategy.CAPACITY_OPTIMIZED,
     capacityType: 'spot',
     type: 'Org',
   };
   const defaultExpectedFleetRequestValues: ExpectedFleetRequestValues = {
     type: 'Org',
     capacityType: 'spot',
-    allocationStrategy: 'capacity-optimized',
+    allocationStrategy: SpotAllocationStrategy.CAPACITY_OPTIMIZED,
     totalTargetCapacity: 1,
   };
 
@@ -347,14 +348,14 @@ describe('create runner', () => {
 
 describe('create runner with errors', () => {
   const defaultRunnerConfig: RunnerConfig = {
-    allocationStrategy: 'capacity-optimized',
+    allocationStrategy: SpotAllocationStrategy.CAPACITY_OPTIMIZED,
     capacityType: 'spot',
     type: 'Repo',
   };
   const defaultExpectedFleetRequestValues: ExpectedFleetRequestValues = {
     type: 'Repo',
     capacityType: 'spot',
-    allocationStrategy: 'capacity-optimized',
+    allocationStrategy: SpotAllocationStrategy.CAPACITY_OPTIMIZED,
     totalTargetCapacity: 1,
   };
   beforeEach(() => {
@@ -455,8 +456,8 @@ function createFleetMockWithErrors(errors: string[], instances?: string[]) {
 
 interface RunnerConfig {
   type: 'Repo' | 'Org';
-  capacityType: EC2.DefaultTargetCapacityType;
-  allocationStrategy: EC2.AllocationStrategy;
+  capacityType: DefaultTargetCapacityType;
+  allocationStrategy: SpotAllocationStrategy;
   maxSpotPrice?: string;
   amiIdSsmParameterName?: string;
 }
