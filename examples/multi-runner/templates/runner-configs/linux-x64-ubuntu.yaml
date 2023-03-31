@@ -11,9 +11,6 @@ redrive_build_queue:
 runner_config:
   runner_os: linux
   runner_architecture: x64
-  runner_extra_labels:
-    - ubuntu-latest
-    - ubuntu-2204
   runner_run_as: ubuntu
   runner_name_prefix: ubuntu-2204-x64_
   enable_ssm_on_runners: true
