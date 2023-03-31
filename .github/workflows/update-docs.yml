@@ -3,6 +3,8 @@ on:
   push:
     branches:
       - release-please--branches--main
+  pull_request:
+
 permissions: read-all
 jobs:
   docs:
@@ -12,8 +14,16 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Checkout branch
+      - if: github.event_name == 'pull_request'
+        name: Checkout PR
         uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # ratchet:actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - if: github.event_name == 'push'
+        name: Checkout branch
+        uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # ratchet:actions/checkout@v3
+
       - name: Generate TF docs
         uses: terraform-docs/gh-actions@f6d59f89a280fa0a3febf55ef68f146784b20ba0 # ratchet:terraform-docs/gh-actions@v1.0.0
         with:
