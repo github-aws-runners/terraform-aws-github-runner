@@ -36,7 +36,7 @@ module "runners" {
   runner_binaries_syncer_lambda_zip = "../lambdas-download/runner-binaries-syncer.zip"
   runners_lambda_zip                = "../lambdas-download/runners.zip"
 
-  runner_extra_labels = "default,example"
+  runner_extra_labels = ["default", "example"]
 
   runner_os = var.runner_os
 

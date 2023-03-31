@@ -29,7 +29,7 @@ module "multi-runner" {
   #        create_service_linked_role_spot = true
   #        enable_ssm_on_runners           = true
   #        instance_types                  = ["m5ad.large", "m5a.large"]
-  #        runner_extra_labels             = "amazon"
+  #        runner_extra_labels             = ["amazon"]
   #        runners_maximum_count           = 1
   #        enable_ephemeral_runners        = true
   #        scale_down_schedule_expression  = "cron(* * * * ? *)"

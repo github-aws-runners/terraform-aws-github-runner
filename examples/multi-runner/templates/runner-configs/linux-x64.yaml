@@ -7,7 +7,8 @@ delay_webhook_event: 0
 runner_config:
   runner_os: linux
   runner_architecture: x64
-  runner_extra_labels: amazon
+  runner_extra_labels:
+    - amazon
   runner_name_prefix: amazon-x64_
   enable_ssm_on_runners: true
   instance_types:

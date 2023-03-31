@@ -58,7 +58,7 @@ variable "multi_runner_config" {
       pool_runner_owner                       = optional(string, null)
       runner_as_root                          = optional(bool, false)
       runner_boot_time_in_minutes             = optional(number, 5)
-      runner_extra_labels                     = string
+      runner_extra_labels                     = optional(list(string), [])
       runner_group_name                       = optional(string, "Default")
       runner_name_prefix                      = optional(string, "")
       runner_run_as                           = optional(string, "ec2-user")

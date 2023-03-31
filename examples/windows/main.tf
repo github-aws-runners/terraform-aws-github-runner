@@ -35,7 +35,7 @@ module "runners" {
 
   enable_organization_runners = false
   # no need to add extra windows tag here as it is automatically added by GitHub
-  runner_extra_labels = "default,example"
+  runner_extra_labels = ["default", "example"]
 
   # Set the OS to Windows
   runner_os = "windows"

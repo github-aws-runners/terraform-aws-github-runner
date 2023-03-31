@@ -7,7 +7,8 @@ delay_webhook_event: 5
 runner_config:
   runner_os: windows
   runner_architecture: x64
-  runner_extra_labels: servercore-2022
+  runner_extra_labels:
+    - servercore-2022
   runner_name_prefix: servercore-2022-x64_
   enable_ssm_on_runners: true
   instance_types:

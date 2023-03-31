@@ -210,9 +210,9 @@ variable "runner_boot_time_in_minutes" {
 }
 
 variable "runner_extra_labels" {
-  description = "Extra labels for the runners (GitHub). Separate each label by a comma"
-  type        = string
-  default     = ""
+  description = "Extra labels for the runners (GitHub)"
+  type        = list(string)
+  default     = []
 }
 
 variable "runner_group_name" {
