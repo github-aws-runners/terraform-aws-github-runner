@@ -4,7 +4,6 @@ import {
   DefaultTargetCapacityType,
   DescribeInstancesCommand,
   DescribeInstancesResult,
-  EC2,
   EC2Client,
   FleetLaunchTemplateOverridesRequest,
   SpotAllocationStrategy,
@@ -96,21 +95,13 @@ function constructFilters(filters?: ListRunnerFilters): Ec2Filter[][] {
   return ec2Filters;
 }
 
+
 async function getRunners(ec2Filters: Ec2Filter[]): Promise<RunnerList[]> {
   const ec2 = new EC2Client({ region: process.env.AWS_REGION });
-  const runners: RunnerList[] = [];
-  let nextToken;
-  let hasNext = true;
-  while (hasNext) {
-    const instances: DescribeInstancesOutput = await ec2.send(
-      new DescribeInstancesCommand({ Filters: ec2Filters, NextToken: nextToken }),
-    );
-
-    hasNext = instances.NextToken ? true : false;
-    nextToken = instances.NextToken;
-    runners.push(...getRunnerInfo(instances));
-  }
-  return runners;
+  const instances: DescribeInstancesOutput = await ec2.send(
+    new DescribeInstancesCommand({ Filters: ec2Filters }),
+  );
+  return getRunnerInfo(instances);
 }
 
 function getRunnerInfo(runningInstances: DescribeInstancesResult) {
