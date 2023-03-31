@@ -1,0 +1,51 @@
+matcherConfig:
+  exactMatch: true
+  labelMatchers:
+    - [ self-hosted, linux, x64, ubuntu-latest ]
+    - [ self-hosted, linux, x64, ubuntu-2204 ]
+fifo: true
+delay_webhook_event: 0
+redrive_build_queue:
+  enabled: false
+  maxReceiveCount: null
+runner_config:
+  runner_os: linux
+  runner_architecture: x64
+  runner_extra_labels: ubuntu-latest,ubuntu-2204
+  runner_run_as: ubuntu
+  runner_name_prefix: ubuntu-2204-x64_
+  enable_ssm_on_runners: true
+  instance_types:
+    - m5ad.large
+    - m5a.large
+  runners_maximum_count: 1
+  scale_down_schedule_expression: cron(* * * * ? *)
+  userdata_template: ./templates/user-data.sh
+  ami_owners:
+    - "099720109477" # Canonical's Amazon account ID
+  ami_filter:
+    name:
+      - ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*
+  block_device_mappings:
+    - device_name: /dev/sda1
+      delete_on_termination: true
+      volume_type: gp3
+      volume_size: 30
+      encrypted: true
+      iops: null
+      throughput: null
+      kms_key_id: null
+      snapshot_id: null
+  runner_log_files:
+    - log_group_name: syslog
+      prefix_log_group: true
+      file_path: /var/log/syslog
+      log_stream_name: "{instance_id}"
+    - log_group_name: user_data
+      prefix_log_group: true
+      file_path: /var/log/user-data.log
+      log_stream_name: "{instance_id}/user_data"
+    - log_group_name: runner
+      prefix_log_group: true
+      file_path: /opt/actions-runner/_diag/Runner_**.log
+      log_stream_name: "{instance_id}/runner"
