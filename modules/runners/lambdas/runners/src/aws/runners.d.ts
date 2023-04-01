@@ -1,0 +1,44 @@
+import { DefaultTargetCapacityType, SpotAllocationStrategy } from '@aws-sdk/client-ec2';
+
+export type RunnerType = 'Org' | 'Repo';
+
+export interface RunnerList {
+  instanceId: string;
+  launchTime?: Date;
+  owner?: string;
+  type?: string;
+  repo?: string;
+  org?: string;
+}
+
+export interface RunnerInfo {
+  instanceId: string;
+  launchTime?: Date;
+  owner: string;
+  type: string;
+}
+
+export interface ListRunnerFilters {
+  runnerType?: RunnerType;
+  runnerOwner?: string;
+  environment?: string;
+  statuses?: string[];
+}
+
+export interface RunnerInputParameters {
+  runnerServiceConfig: string[];
+  environment: string;
+  runnerType: RunnerType;
+  runnerOwner: string;
+  ssmTokenPath: string;
+  subnets: string[];
+  launchTemplateName: string;
+  ec2instanceCriteria: {
+    instanceTypes: string[];
+    targetCapacityType: DefaultTargetCapacityType;
+    maxSpotPrice?: string;
+    instanceAllocationStrategy: SpotAllocationStrategy;
+  };
+  numberOfRunners?: number;
+  amiIdSsmParameterName?: string;
+}

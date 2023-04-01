@@ -14,14 +14,8 @@ import { mockClient } from 'aws-sdk-client-mock';
 import 'aws-sdk-client-mock-jest';
 
 import ScaleError from './../scale-runners/ScaleError';
-import {
-  RunnerInfo,
-  RunnerInputParameters,
-  RunnerType,
-  createRunner,
-  listEC2Runners,
-  terminateRunner,
-} from './runners';
+import { createRunner, listEC2Runners, terminateRunner } from './runners';
+import { RunnerInfo, RunnerInputParameters, RunnerType } from './runners.d';
 
 process.env.AWS_REGION = 'eu-east-1';
 const mockEC2Client = mockClient(EC2Client);

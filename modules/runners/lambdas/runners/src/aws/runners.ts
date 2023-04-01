@@ -1,12 +1,10 @@
 import {
   CreateFleetCommand,
   CreateFleetResult,
-  DefaultTargetCapacityType,
   DescribeInstancesCommand,
   DescribeInstancesResult,
   EC2Client,
   FleetLaunchTemplateOverridesRequest,
-  SpotAllocationStrategy,
   TerminateInstancesCommand,
 } from '@aws-sdk/client-ec2';
 import { SSM } from '@aws-sdk/client-ssm';
@@ -14,66 +12,27 @@ import moment from 'moment';
 
 import { createChildLogger } from '../logger';
 import ScaleError from './../scale-runners/ScaleError';
+import * as Runners from './runners.d';
 
 const logger = createChildLogger('runners');
-
-export interface RunnerList {
-  instanceId: string;
-  launchTime?: Date;
-  owner?: string;
-  type?: string;
-  repo?: string;
-  org?: string;
-}
-
-export interface RunnerInfo {
-  instanceId: string;
-  launchTime?: Date;
-  owner: string;
-  type: string;
-}
-
-export type RunnerType = 'Org' | 'Repo';
-export interface ListRunnerFilters {
-  runnerType?: RunnerType;
-  runnerOwner?: string;
-  environment?: string;
-  statuses?: string[];
-}
-
-export interface RunnerInputParameters {
-  runnerServiceConfig: string[];
-  environment: string;
-  runnerType: RunnerType;
-  runnerOwner: string;
-  ssmTokenPath: string;
-  subnets: string[];
-  launchTemplateName: string;
-  ec2instanceCriteria: {
-    instanceTypes: string[];
-    targetCapacityType: DefaultTargetCapacityType;
-    maxSpotPrice?: string;
-    instanceAllocationStrategy: SpotAllocationStrategy;
-  };
-  numberOfRunners?: number;
-  amiIdSsmParameterName?: string;
-}
 
 interface Ec2Filter {
   Name: string;
   Values: string[];
 }
 
-export async function listEC2Runners(filters: ListRunnerFilters | undefined = undefined): Promise<RunnerList[]> {
+export async function listEC2Runners(
+  filters: Runners.ListRunnerFilters | undefined = undefined,
+): Promise<Runners.RunnerList[]> {
   const ec2Filters = constructFilters(filters);
-  const runners: RunnerList[] = [];
+  const runners: Runners.RunnerList[] = [];
   for (const filter of ec2Filters) {
     runners.push(...(await getRunners(filter)));
   }
   return runners;
 }
 
-function constructFilters(filters?: ListRunnerFilters): Ec2Filter[][] {
+function constructFilters(filters?: Runners.ListRunnerFilters): Ec2Filter[][] {
   const ec2Statuses = filters?.statuses ? filters.statuses : ['running', 'pending'];
   const ec2Filters: Ec2Filter[][] = [];
   const ec2FiltersBase = [{ Name: 'instance-state-name', Values: ec2Statuses }];
@@ -95,14 +54,14 @@ function constructFilters(filters?: ListRunnerFilters): Ec2Filter[][] {
   return ec2Filters;
 }
 
-async function getRunners(ec2Filters: Ec2Filter[]): Promise<RunnerList[]> {
+async function getRunners(ec2Filters: Ec2Filter[]): Promise<Runners.RunnerList[]> {
   const ec2 = new EC2Client({ region: process.env.AWS_REGION });
   const instances = await ec2.send(new DescribeInstancesCommand({ Filters: ec2Filters }));
   return getRunnerInfo(instances);
 }
 
 function getRunnerInfo(runningInstances: DescribeInstancesResult) {
-  const runners: RunnerList[] = [];
+  const runners: Runners.RunnerList[] = [];
   if (runningInstances.Reservations) {
     for (const r of runningInstances.Reservations) {
       if (r.Instances) {
@@ -159,7 +118,7 @@ function removeTokenForLogging(config: string[]): string[] {
   return result;
 }
 
-export async function createRunner(runnerParameters: RunnerInputParameters): Promise<void> {
+export async function createRunner(runnerParameters: Runners.RunnerInputParameters): Promise<void> {
   logger.debug('Runner configuration.', {
     runner: {
       configuration: {
