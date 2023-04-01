@@ -10,7 +10,6 @@ import {
   TerminateInstancesCommand,
 } from '@aws-sdk/client-ec2';
 import { SSM } from '@aws-sdk/client-ssm';
-import { DescribeInstancesOutput } from 'aws-sdk/clients/gamelift';
 import moment from 'moment';
 
 import { createChildLogger } from '../logger';
@@ -34,8 +33,9 @@ export interface RunnerInfo {
   type: string;
 }
 
+export type RunnerType = 'Org' | 'Repo';
 export interface ListRunnerFilters {
-  runnerType?: 'Org' | 'Repo';
+  runnerType?: RunnerType;
   runnerOwner?: string;
   environment?: string;
   statuses?: string[];
@@ -44,7 +44,7 @@ export interface ListRunnerFilters {
 export interface RunnerInputParameters {
   runnerServiceConfig: string[];
   environment: string;
-  runnerType: 'Org' | 'Repo';
+  runnerType: RunnerType;
   runnerOwner: string;
   ssmTokenPath: string;
   subnets: string[];
@@ -95,12 +95,9 @@ function constructFilters(filters?: ListRunnerFilters): Ec2Filter[][] {
   return ec2Filters;
 }
 
-
 async function getRunners(ec2Filters: Ec2Filter[]): Promise<RunnerList[]> {
   const ec2 = new EC2Client({ region: process.env.AWS_REGION });
-  const instances: DescribeInstancesOutput = await ec2.send(
-    new DescribeInstancesCommand({ Filters: ec2Filters }),
-  );
+  const instances = await ec2.send(new DescribeInstancesCommand({ Filters: ec2Filters }));
   return getRunnerInfo(instances);
 }
 
