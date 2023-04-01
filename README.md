@@ -36,6 +36,12 @@ This [Terraform](https://www.terraform.io/) module creates the required infrastr
 - [Logging](#logging)
 - [Debugging](#debugging)
 - [Security Consideration](#security-consideration)
+- [Requirements](#requirements)
+- [Providers](#providers)
+- [Modules](#modules)
+- [Resources](#resources)
+- [Inputs](#inputs)
+- [Outputs](#outputs)
 - [Contribution](#contribution)
 - [Philips Forest](#philips-forest)
 
@@ -589,13 +595,6 @@ We welcome any improvement to the standard module to make the default as secure 
 
 ## Outputs
 
-| Name | Description |
-|------|-------------|
-| <a name="output_binaries_syncer"></a> [binaries\_syncer](#output\_binaries\_syncer) | n/a |
-| <a name="output_queues"></a> [queues](#output\_queues) | SQS queues. |
-| <a name="output_runners"></a> [runners](#output\_runners) | n/a |
-| <a name="output_ssm_parameters"></a> [ssm\_parameters](#output\_ssm\_parameters) | n/a |
-| <a name="output_webhook"></a> [webhook](#output\_webhook) | n/a |
 <!-- END_TF_DOCS -->
 
 ## Contribution
