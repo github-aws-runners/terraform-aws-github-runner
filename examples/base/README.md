@@ -6,13 +6,6 @@
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1 |
 | <a name="requirement_aws"></a> [aws](#requirement\_aws) | ~> 4.0 |
 
-## Modules
-
-| Name | Source | Version |
-|------|--------|---------|
-| <a name="module_vpc"></a> [vpc](#module\_vpc) | terraform-aws-modules/vpc/aws | 3.16.0 |
-
-## Resources
 
 | Name | Type |
 |------|------|
