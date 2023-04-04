@@ -7,10 +7,9 @@ packer {
   }
 }
 
-variable "action_runner_url" {
-  description = "The URL to the tarball of the action runner"
-  type        = string
-  default     = "https://github.com/actions/runner/releases/download/v2.285.1/actions-runner-win-x64-2.285.1.zip"
+variable "runner_version" {
+  description = "The version (no v prefix) of the runner software to install https://github.com/actions/runner/releases. The latest release will be fetched from GitHub if not provided."
+  default     = null
 }
 
 variable "region" {
@@ -41,6 +40,18 @@ variable "custom_shell_commands" {
   description = "Additional commands to run on the EC2 instance, to customize the instance, like installing packages"
   type        = list(string)
   default     = []
+}
+
+data "http" github_runner_release_json {
+  url = "https://api.github.com/repos/actions/runner/releases/latest"
+  request_headers = {
+    Accept = "application/vnd.github+json"
+    X-GitHub-Api-Version : "2022-11-28"
+  }
+}
+
+locals {
+  runner_version = coalesce(var.runner_version, trimprefix(jsondecode(data.http.github_runner_release_json.body).tag_name, "v"))
 }
 
 source "amazon-ebs" "githubrunner" {
@@ -92,7 +103,7 @@ build {
   provisioner "powershell" {
     inline = concat([
       templatefile("./windows-provisioner.ps1", {
-        action_runner_url = var.action_runner_url
+        action_runner_url = "https://github.com/actions/runner/releases/download/v${local.runner_version}/actions-runner-win-x64-${local.runner_version}.zip"
       })
     ], var.custom_shell_commands)
   }
