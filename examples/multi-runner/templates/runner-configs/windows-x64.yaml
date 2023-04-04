@@ -1,0 +1,21 @@
+matcherConfig:
+  exactMatch: true
+  labelMatchers:
+    - [self-hosted, windows, x64, servercore-2022]
+fifo: true
+delay_webhook_event: 5
+runner_config:
+  runner_os: windows
+  runner_architecture: x64
+  runner_extra_labels: servercore-2022
+  runner_name_prefix: servercore-2022-x64_
+  enable_ssm_on_runners: true
+  instance_types:
+    - m5.large
+    - c5.large
+  runners_maximum_count: 1
+  scale_down_schedule_expression: cron(* * * * ? *)
+  runner_boot_time_in_minutes: 20
+  ami_filter:
+    name:
+      - Windows_Server-2022-English-Core-ContainersLatest-*

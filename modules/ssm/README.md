@@ -1,3 +1,7 @@
+# Module - AWS System Manager Parameter store
+
+This module is used for storing configuration of runners, registration tokens and secrets for the Lambda's in AWS System Manager Parameter store.
+
 <!-- BEGIN_TF_DOCS -->
 ## Requirements
 
