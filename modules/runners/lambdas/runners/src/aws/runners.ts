@@ -56,8 +56,18 @@ function constructFilters(filters?: Runners.ListRunnerFilters): Ec2Filter[][] {
 
 async function getRunners(ec2Filters: Ec2Filter[]): Promise<Runners.RunnerList[]> {
   const ec2 = new EC2Client({ region: process.env.AWS_REGION });
-  const instances = await ec2.send(new DescribeInstancesCommand({ Filters: ec2Filters }));
-  return getRunnerInfo(instances);
+  const runners: Runners.RunnerList[] = [];
+  let nextToken;
+  let hasNext = true;
+  while (hasNext) {
+    const instances: DescribeInstancesResult = await ec2.send(
+      new DescribeInstancesCommand({ Filters: ec2Filters, NextToken: nextToken }),
+    );
+    hasNext = instances.NextToken ? true : false;
+    nextToken = instances.NextToken;
+    runners.push(...getRunnerInfo(instances));
+  }
+  return runners;
 }
 
 function getRunnerInfo(runningInstances: DescribeInstancesResult) {
