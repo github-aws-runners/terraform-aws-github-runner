@@ -3,8 +3,9 @@ import { mocked } from 'jest-mock';
 import moment from 'moment';
 import nock from 'nock';
 
+import { RunnerInfo, RunnerList } from '../aws/runners.d';
 import * as ghAuth from '../gh-auth/gh-auth';
-import { RunnerInfo, RunnerList, listEC2Runners, terminateRunner } from './../aws/runners';
+import { listEC2Runners, terminateRunner } from './../aws/runners';
 import { githubCache } from './cache';
 import { scaleDown } from './scale-down';
 

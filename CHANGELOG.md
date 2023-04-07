@@ -1,5 +1,16 @@
 # Changelog
 
+## [3.0.2](https://github.com/philips-labs/terraform-aws-github-runner/compare/v3.0.1...v3.0.2) (2023-04-07)
+
+
+### Bug Fixes
+
+* **runners:** bump cron-parser from 4.7.1 to 4.8.1 in /modules/runners/lambdas/runners ([#3154](https://github.com/philips-labs/terraform-aws-github-runner/issues/3154)) ([698b1ba](https://github.com/philips-labs/terraform-aws-github-runner/commit/698b1ba3cb675bc21fe91899474fde38576aa6e8))
+* **runners:** bump typescript from 4.9.4 to 4.9.5 in /modules/runners/lambdas/runners ([#3148](https://github.com/philips-labs/terraform-aws-github-runner/issues/3148)) ([9cfa54d](https://github.com/philips-labs/terraform-aws-github-runner/commit/9cfa54dfdaa5c8cf6d312e2b4a6ce28316d91a99))
+* **runners:** upgrade aws sdk v2 to v3 ([#3138](https://github.com/philips-labs/terraform-aws-github-runner/issues/3138)) ([48da039](https://github.com/philips-labs/terraform-aws-github-runner/commit/48da03923a74f9ff5acff44bca39d4e19bae31b3))
+* **syncer:** bump @aws-sdk/lib-storage from 3.300.0 to 3.305.0 in /modules/runner-binaries-syncer/lambdas/runner-binaries-syncer ([#3153](https://github.com/philips-labs/terraform-aws-github-runner/issues/3153)) ([ec51969](https://github.com/philips-labs/terraform-aws-github-runner/commit/ec5196986448e8ac6bfc249f82f9d32a93d40df5))
+* **webhook:** bump @aws-sdk/client-ssm from 3.294.0 to 3.306.0 in /modules/webhook/lambdas/webhook ([#3164](https://github.com/philips-labs/terraform-aws-github-runner/issues/3164)) ([e6b6eef](https://github.com/philips-labs/terraform-aws-github-runner/commit/e6b6eef28eb7d444e795537cd3a60e5e701e08f2))
+
 ## [3.0.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v3.0.0...v3.0.1) (2023-03-31)
 
 

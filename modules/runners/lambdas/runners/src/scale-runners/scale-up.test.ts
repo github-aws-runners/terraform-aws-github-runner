@@ -3,7 +3,8 @@ import { mocked } from 'jest-mock';
 import nock from 'nock';
 
 import * as ghAuth from '../gh-auth/gh-auth';
-import { RunnerInputParameters, createRunner, listEC2Runners } from './../aws/runners';
+import { createRunner, listEC2Runners } from './../aws/runners';
+import { RunnerInputParameters } from './../aws/runners.d';
 import ScaleError from './ScaleError';
 import * as scaleUpModule from './scale-up';
 

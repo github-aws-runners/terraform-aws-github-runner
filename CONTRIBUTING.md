@@ -51,9 +51,9 @@ If your issue appears to be a bug, and hasn't been reported, open a new issue. H
 
 **If you get help, help others. Good karma rulez!**
 
-### Submitting a Merge Request
+### Submitting a Pull Request
 
-Before you submit your merge request consider the following guidelines:
+Before you submit your pull request consider the following guidelines:
 
 * Make your changes in a new git branch:
 
@@ -62,8 +62,9 @@ Before you submit your merge request consider the following guidelines:
     ```
 
 * Create your patch, **including appropriate test cases**.
-* Install [Terraform](https://www.terraform.io/). We lock the version with [tvenv](https://github.com/tfutils/tfenv), check `required_version` in `versions.tf` for the current development version of the module.
-* Install [pre-commit hooks](https://pre-commit.com/). The hooks runs some basic checks and update the docs. The commit will run the hooks, you can invoke the hooks manually `pre-commit run --all-files` as well.
+* Install [Terraform](https://www.terraform.io/). We lock the version with [tfenv](https://github.com/tfutils/tfenv), check `required_version` in `versions.tf` for the current development version of the module.
+* Install [pre-commit hooks](https://pre-commit.com/). The hooks runs some basic checks. The commit will run the hooks, you can invoke the hooks manually `pre-commit run --all-files` as well.
+* For updating docs, you have to enable GitHub actions on your forked repository. Simply go to the tab Actions and enable actions.
 * Commit your changes using a descriptive commit message.
 
     ```shell

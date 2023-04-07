@@ -36,6 +36,12 @@ This [Terraform](https://www.terraform.io/) module creates the required infrastr
 - [Logging](#logging)
 - [Debugging](#debugging)
 - [Security Consideration](#security-consideration)
+- [Requirements](#requirements)
+- [Providers](#providers)
+- [Modules](#modules)
+- [Resources](#resources)
+- [Inputs](#inputs)
+- [Outputs](#outputs)
 - [Contribution](#contribution)
 - [Philips Forest](#philips-forest)
 
