@@ -40,7 +40,7 @@
   },
   "dependencies": {
     "@aws-lambda-powertools/logger": "^1.7.0",
-    "@aws-sdk/client-sqs": "^3.303.0",
+    "@aws-sdk/client-sqs": "^3.310.0",
     "@aws-sdk/client-ssm": "^3.306.0",
     "@octokit/rest": "^19.0.7",
     "@octokit/webhooks": "^10.7.0",
