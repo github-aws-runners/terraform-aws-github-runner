@@ -40,7 +40,7 @@
     "ts-node-dev": "^2.0.0"
   },
   "dependencies": {
-    "@aws-lambda-powertools/logger": "^1.6.0",
+    "@aws-lambda-powertools/logger": "^1.8.0",
     "@aws-sdk/client-ec2": "^3.303.0",
     "@aws-sdk/client-ssm": "^3.303.0",
     "@octokit/auth-app": "4.0.9",
