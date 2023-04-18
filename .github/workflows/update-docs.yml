@@ -1,22 +1,38 @@
 name: Update docs
 on:
   push:
-    branches:
-      - release-please--branches--main
-permissions: read-all
+    paths:
+      - "*.tf"
+      - "*.md"
+      - ".github/workflows/update-docs.yml"
+
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   docs:
     # update docs after merge back to develop
     name: Auto update terraform docs
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
-      - name: Checkout branch
+      - if: github.event_name == 'push'
+        name: Checkout branch
         uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # ratchet:actions/checkout@v3
+
       - name: Generate TF docs
         uses: terraform-docs/gh-actions@f6d59f89a280fa0a3febf55ef68f146784b20ba0 # ratchet:terraform-docs/gh-actions@v1.0.0
         with:
           find-dir: .
           git-commit-message: "docs: auto update terraform docs"
-          git-push: true
+          git-push: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Create Pull Request (main branch only)
+        if: github.ref == 'refs/heads/main'
+        uses: peter-evans/create-pull-request@5b4a9f6a9e2af26e5f02351490b90d01eb8ec1e5 # ratchet:peter-evans/create-pull-request@v5.0.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "Update Terraform docs"
+          title: "docs: Update Terraform docs"
+          branch: ${{ github.event.pull_request.base.ref }}-update-docs
+          base: ${{ github.event.pull_request.base.ref }}

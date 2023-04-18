@@ -3,7 +3,8 @@ import yn from 'yn';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctoClient } from '../gh-auth/gh-auth';
 import { addPersistentContextToChildLogger, createChildLogger } from '../logger';
-import { RunnerInputParameters, createRunner, listEC2Runners } from './../aws/runners';
+import { createRunner, listEC2Runners } from './../aws/runners';
+import { RunnerInputParameters } from './../aws/runners.d';
 import ScaleError from './ScaleError';
 
 const logger = createChildLogger('scale-up');

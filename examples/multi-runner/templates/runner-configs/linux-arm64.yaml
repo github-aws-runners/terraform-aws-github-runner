@@ -1,0 +1,20 @@
+matcherConfig:
+  exactMatch: true
+  labelMatchers:
+    - [self-hosted, linux, arm64, amazon]
+fifo: true
+delay_webhook_event: 0
+redrive_build_queue:
+  enabled: false
+  maxReceiveCount: null
+runner_config:
+  runner_os: linux
+  runner_architecture: arm64
+  runner_extra_labels: amazon
+  runner_name_prefix: amazon-arm64_
+  enable_ssm_on_runners: true
+  instance_types:
+    - t4g.large
+    - c6g.large
+  runners_maximum_count: 1
+  scale_down_schedule_expression: cron(* * * * ? *)

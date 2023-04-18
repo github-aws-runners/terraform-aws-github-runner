@@ -1,5 +1,30 @@
 # Changelog
 
+## [3.0.2](https://github.com/philips-labs/terraform-aws-github-runner/compare/v3.0.1...v3.0.2) (2023-04-07)
+
+
+### Bug Fixes
+
+* **runners:** bump cron-parser from 4.7.1 to 4.8.1 in /modules/runners/lambdas/runners ([#3154](https://github.com/philips-labs/terraform-aws-github-runner/issues/3154)) ([698b1ba](https://github.com/philips-labs/terraform-aws-github-runner/commit/698b1ba3cb675bc21fe91899474fde38576aa6e8))
+* **runners:** bump typescript from 4.9.4 to 4.9.5 in /modules/runners/lambdas/runners ([#3148](https://github.com/philips-labs/terraform-aws-github-runner/issues/3148)) ([9cfa54d](https://github.com/philips-labs/terraform-aws-github-runner/commit/9cfa54dfdaa5c8cf6d312e2b4a6ce28316d91a99))
+* **runners:** upgrade aws sdk v2 to v3 ([#3138](https://github.com/philips-labs/terraform-aws-github-runner/issues/3138)) ([48da039](https://github.com/philips-labs/terraform-aws-github-runner/commit/48da03923a74f9ff5acff44bca39d4e19bae31b3))
+* **syncer:** bump @aws-sdk/lib-storage from 3.300.0 to 3.305.0 in /modules/runner-binaries-syncer/lambdas/runner-binaries-syncer ([#3153](https://github.com/philips-labs/terraform-aws-github-runner/issues/3153)) ([ec51969](https://github.com/philips-labs/terraform-aws-github-runner/commit/ec5196986448e8ac6bfc249f82f9d32a93d40df5))
+* **webhook:** bump @aws-sdk/client-ssm from 3.294.0 to 3.306.0 in /modules/webhook/lambdas/webhook ([#3164](https://github.com/philips-labs/terraform-aws-github-runner/issues/3164)) ([e6b6eef](https://github.com/philips-labs/terraform-aws-github-runner/commit/e6b6eef28eb7d444e795537cd3a60e5e701e08f2))
+
+## [3.0.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v3.0.0...v3.0.1) (2023-03-31)
+
+
+### Bug Fixes
+
+* add required permission to SQS message producer ([3f1fada](https://github.com/philips-labs/terraform-aws-github-runner/commit/3f1fada5bed09993b51fae9f4b094870384d0b7f))
+* Changed windows base image. ([e3708c3](https://github.com/philips-labs/terraform-aws-github-runner/commit/e3708c3cb74918306b463dd0da94dffb1cb75be8))
+* **images:** Changed windows base image to Windows_Server-2022-English-Full-ECS_Optimize* ([#3128](https://github.com/philips-labs/terraform-aws-github-runner/issues/3128)) ([e3708c3](https://github.com/philips-labs/terraform-aws-github-runner/commit/e3708c3cb74918306b463dd0da94dffb1cb75be8))
+* **images:** wait for cloud-init to be done before updating packages ([#3132](https://github.com/philips-labs/terraform-aws-github-runner/issues/3132)) ([92dff26](https://github.com/philips-labs/terraform-aws-github-runner/commit/92dff260d45ba54fcb98e4b722af0de770aae8f6))
+* **syncer:** bump @aws-lambda-powertools/logger from 1.6.0 to 1.7.0 in /modules/runner-binaries-syncer/lambdas/runner-binaries-syncer ([#3111](https://github.com/philips-labs/terraform-aws-github-runner/issues/3111)) ([3ecb894](https://github.com/philips-labs/terraform-aws-github-runner/commit/3ecb89405a0774d51ea143e6f59aac1db75fd0da))
+* **syncer:** bump @aws-sdk/lib-storage ([b2a88d4](https://github.com/philips-labs/terraform-aws-github-runner/commit/b2a88d44680f8e05dc7bb3756f73d97975cbe753))
+* **webhook:** bump @aws-lambda-powertools/logger ([1a7b6de](https://github.com/philips-labs/terraform-aws-github-runner/commit/1a7b6de3497a6391dffe783021d0849b761ff419))
+* **webhook:** bump @aws-sdk/client-sqs from 3.296.0 to 3.303.0 in /modules/webhook/lambdas/webhook ([#3137](https://github.com/philips-labs/terraform-aws-github-runner/issues/3137)) ([9cdf359](https://github.com/philips-labs/terraform-aws-github-runner/commit/9cdf3598346341459501b798d9ce293855b7072d))
+
 ## [3.0.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v2.6.1...v3.0.0) (2023-03-22)
 
 

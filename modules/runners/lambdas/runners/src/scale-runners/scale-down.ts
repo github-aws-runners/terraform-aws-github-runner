@@ -3,7 +3,8 @@ import moment from 'moment';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctoClient } from '../gh-auth/gh-auth';
 import { createChildLogger } from '../logger';
-import { RunnerInfo, RunnerList, bootTimeExceeded, listEC2Runners, terminateRunner } from './../aws/runners';
+import { bootTimeExceeded, listEC2Runners, terminateRunner } from './../aws/runners';
+import { RunnerInfo, RunnerList } from './../aws/runners.d';
 import { GhRunners, githubCache } from './cache';
 import { ScalingDownConfig, getIdleRunnerCount } from './scale-down-config';
 
