@@ -1,5 +1,18 @@
 # Changelog
 
+## [3.0.3](https://github.com/philips-labs/terraform-aws-github-runner/compare/v3.0.2...v3.0.3) (2023-04-18)
+
+
+### Bug Fixes
+
+* **runners:** bump @aws-lambda-powertools/logger from 1.6.0 to 1.8.0 in /modules/runners/lambdas/runners ([#3166](https://github.com/philips-labs/terraform-aws-github-runner/issues/3166)) ([2015dcf](https://github.com/philips-labs/terraform-aws-github-runner/commit/2015dcf9b45ea7d3079daa9dc1345a03de5dee43))
+* **syncer:** bump @aws-sdk/client-s3 from 3.296.0 to 3.315.0 in /modules/runner-binaries-syncer/lambdas/runner-binaries-syncer ([#3190](https://github.com/philips-labs/terraform-aws-github-runner/issues/3190)) ([31c9987](https://github.com/philips-labs/terraform-aws-github-runner/commit/31c9987da90a1b467bb1cee9451d2bb5f9fd5241))
+* **syncer:** bump @aws-sdk/lib-storage from 3.305.0 to 3.315.0 in /modules/runner-binaries-syncer/lambdas/runner-binaries-syncer ([#3187](https://github.com/philips-labs/terraform-aws-github-runner/issues/3187)) ([88e5d5d](https://github.com/philips-labs/terraform-aws-github-runner/commit/88e5d5d364057a7527a54edf20ed15bcacbe3830))
+* **syncer:** bump axios from 1.3.4 to 1.3.5 in /modules/runner-binaries-syncer/lambdas/runner-binaries-syncer ([#3171](https://github.com/philips-labs/terraform-aws-github-runner/issues/3171)) ([b8ff326](https://github.com/philips-labs/terraform-aws-github-runner/commit/b8ff3266e03c257cdc564a296d627b60367c212b))
+* **syncer:** lowercase distribution_bucket_name ([#3194](https://github.com/philips-labs/terraform-aws-github-runner/issues/3194)) ([b75010e](https://github.com/philips-labs/terraform-aws-github-runner/commit/b75010ea8e10bb1071bbeec353ef9a384695a3bc))
+* **webhook:** bump @aws-sdk/client-sqs from 3.303.0 to 3.315.0 in /modules/webhook/lambdas/webhook ([#3192](https://github.com/philips-labs/terraform-aws-github-runner/issues/3192)) ([882f911](https://github.com/philips-labs/terraform-aws-github-runner/commit/882f911c0b3dca97e8409599e8bd2fcc7fd8bac5))
+* **webhook:** bump @aws-sdk/client-ssm from 3.306.0 to 3.315.0 in /modules/webhook/lambdas/webhook ([#3191](https://github.com/philips-labs/terraform-aws-github-runner/issues/3191)) ([8cea8af](https://github.com/philips-labs/terraform-aws-github-runner/commit/8cea8afc5316152f5b0ecdb3e94c1bc66ea37b3b))
+
 ## [3.0.2](https://github.com/philips-labs/terraform-aws-github-runner/compare/v3.0.1...v3.0.2) (2023-04-07)
 
 
