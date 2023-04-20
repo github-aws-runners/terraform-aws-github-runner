@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.1.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v3.0.3...v3.1.0) (2023-04-20)
+
+
+### Features
+
+* **images:** automatically find latest GitHub Runner version when building images ([#3129](https://github.com/philips-labs/terraform-aws-github-runner/issues/3129)) ([da49078](https://github.com/philips-labs/terraform-aws-github-runner/commit/da49078d786cf1b5e6c7f1d053ce9bbcea7de658))
+* **lambda:** add support for X-Ray tracing ([#3142](https://github.com/philips-labs/terraform-aws-github-runner/issues/3142)) ([998a0d1](https://github.com/philips-labs/terraform-aws-github-runner/commit/998a0d1381e45a52fb909396c2317ca72edec814))
+
 ## [3.0.3](https://github.com/philips-labs/terraform-aws-github-runner/compare/v3.0.2...v3.0.3) (2023-04-18)
 
 
