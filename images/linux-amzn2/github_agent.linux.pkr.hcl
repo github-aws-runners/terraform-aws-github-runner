@@ -8,9 +8,8 @@ packer {
 }
 
 variable "runner_version" {
-  description = "The version (no v prefix) of the runner software to install https://github.com/actions/runner/releases"
-  type        = string
-  default     = "2.295.0"
+  description = "The version (no v prefix) of the runner software to install https://github.com/actions/runner/releases. The latest release will be fetched from GitHub if not provided."
+  default     = null
 }
 
 variable "region" {
@@ -76,6 +75,18 @@ variable "custom_shell_commands" {
   description = "Additional commands to run on the EC2 instance, to customize the instance, like installing packages"
   type        = list(string)
   default     = []
+}
+
+data "http" github_runner_release_json {
+  url = "https://api.github.com/repos/actions/runner/releases/latest"
+  request_headers = {
+    Accept = "application/vnd.github+json"
+    X-GitHub-Api-Version : "2022-11-28"
+  }
+}
+
+locals {
+  runner_version = coalesce(var.runner_version, trimprefix(jsondecode(data.http.github_runner_release_json.body).tag_name, "v"))
 }
 
 source "amazon-ebs" "githubrunner" {
@@ -148,7 +159,7 @@ build {
 
   provisioner "shell" {
     environment_vars = [
-      "RUNNER_TARBALL_URL=https://github.com/actions/runner/releases/download/v${var.runner_version}/actions-runner-linux-x64-${var.runner_version}.tar.gz"
+      "RUNNER_TARBALL_URL=https://github.com/actions/runner/releases/download/v${local.runner_version}/actions-runner-linux-x64-${local.runner_version}.tar.gz"
     ]
     inline = [
       "sudo chmod +x /tmp/install-runner.sh",
