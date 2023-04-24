@@ -124,11 +124,18 @@ variable "instance_types" {
   default     = null
 }
 
-variable "ami_filter" {
-  description = "Map of lists used to create the AMI filter for the action runner AMI."
+variable "ami_filters_default" {
+  description = "Default Map of lists used to create the AMI filter for the action runner AMI."
+  type        = map(list(string))
+  default     = { state = ["available"] }
+}
+
+variable "ami_filters_custom" {
+  description = "Additional custom filters used to create the AMI filter for the action runner AMI."
   type        = map(list(string))
   default     = null
 }
+
 
 variable "ami_owners" {
   description = "The list of owners used to select the AMI of action runner instances."
