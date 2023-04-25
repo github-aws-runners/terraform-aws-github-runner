@@ -313,7 +313,7 @@ variable "ami_owners" {
 }
 
 variable "ami_id_ssm_parameter_name" {
-  description = "Externally managed SSM parameter (of data type aws:ec2:image) that contains the AMI ID to launch runner instances from. Overrides ami_filter"
+  description = "Externally managed SSM parameter (of data type aws:ec2:image) that contains the AMI ID to launch runner instances from. Overrides ami_filters_custom"
   type        = string
   default     = null
 }
