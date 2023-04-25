@@ -63,6 +63,7 @@ variable "multi_runner_config" {
       runner_name_prefix                      = optional(string, "")
       runner_run_as                           = optional(string, "ec2-user")
       runners_maximum_count                   = number
+      runner_additional_security_group_ids    = optional(list(string), [])
       scale_down_schedule_expression          = optional(string, "cron(*/5 * * * ? *)")
       scale_up_reserved_concurrent_executions = optional(number, 1)
       userdata_template                       = optional(string, null)
