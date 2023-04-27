@@ -3,7 +3,7 @@ import { Context } from 'aws-lambda';
 import { addPersistentContextToChildLogger, createChildLogger, logger, setContext } from '.';
 
 const childLogger = createChildLogger('child');
-addPersistentContextToChildLogger({'child': 'child'});
+addPersistentContextToChildLogger({ child: 'child' });
 
 const context: Context = {
   awsRequestId: '1',
