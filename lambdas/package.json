@@ -7,7 +7,8 @@
   ],
   "scripts": {
     "bootstrap": "lerna bootstrap",
-    "build": "lerna run build && lerna run dist",
+    "build": "lerna run build",
+    "dist": "lerna run build && lerna run dist",
     "format": "lerna run format",
     "format-check": "lerna run format-check",
     "lint": "lerna run lint",
