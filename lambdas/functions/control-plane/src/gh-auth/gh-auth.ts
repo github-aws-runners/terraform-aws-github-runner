@@ -10,8 +10,8 @@ import {
 import { OctokitOptions } from '@octokit/core/dist-types/types';
 import { request } from '@octokit/request';
 import { Octokit } from '@octokit/rest';
-import { getParameterValue } from '@terraform-aws-github-runner/aws-ssm-utils';
-import { createChildLogger } from '@terraform-aws-github-runner/powertools-utils';
+import { getParameterValue } from '@terraform-aws-github-runner/aws-ssm-util';
+import { createChildLogger } from '@terraform-aws-github-runner/aws-powertools-util';
 
 const logger = createChildLogger('gh-auth');
 

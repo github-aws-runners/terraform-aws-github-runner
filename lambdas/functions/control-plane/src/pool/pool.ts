@@ -1,4 +1,4 @@
-import { createChildLogger } from '@terraform-aws-github-runner/powertools-utils';
+import { createChildLogger } from '@terraform-aws-github-runner/aws-powertools-util';
 import yn from 'yn';
 
 import { bootTimeExceeded, listEC2Runners } from '../aws/runners';

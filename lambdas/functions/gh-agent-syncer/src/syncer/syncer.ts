@@ -1,7 +1,7 @@
 import { GetObjectTaggingCommand, S3Client, Tag } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
 import { Octokit } from '@octokit/rest';
-import { createChildLogger } from '@terraform-aws-github-runner/powertools-utils';
+import { createChildLogger } from '@terraform-aws-github-runner/aws-powertools-util';
 import axios from 'axios';
 import { Stream } from 'stream';
 

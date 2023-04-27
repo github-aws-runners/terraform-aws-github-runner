@@ -1,6 +1,6 @@
 import { SQS, SendMessageCommandInput } from '@aws-sdk/client-sqs';
 import { WorkflowJobEvent } from '@octokit/webhooks-types';
-import { createChildLogger } from '@terraform-aws-github-runner/powertools-utils';
+import { createChildLogger } from '@terraform-aws-github-runner/aws-powertools-util';
 
 const logger = createChildLogger('sqs');
 

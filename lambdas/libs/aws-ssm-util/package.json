@@ -1,7 +1,7 @@
 {
-  "name": "@terraform-aws-github-runner/function-webhook",
+  "name": "@terraform-aws-github-runner/aws-ssm-util",
   "version": "1.0.0",
-  "main": "lambda.ts",
+  "main": "src/index.ts",
   "license": "MIT",
   "scripts": {
     "start": "ts-node-dev src/local.ts",
@@ -9,8 +9,6 @@
     "test:watch": "NODE_ENV=test jest --watch",
     "lint": "yarn eslint src",
     "watch": "ts-node-dev --respawn --exit-child src/local.ts",
-    "build": "ncc build src/lambda.ts -o dist",
-    "dist": "yarn build && cd dist && zip ../webhook.zip index.js",
     "format": "prettier --write \"**/*.ts\"",
     "format-check": "prettier --check \"**/*.ts\"",
     "all": "yarn build && yarn format && yarn lint && yarn test"
@@ -38,11 +36,6 @@
     "typescript": "^5.0.2"
   },
   "dependencies": {
-    "@aws-sdk/client-sqs": "^3.315.0",
-    "@octokit/rest": "19.0.7",
-    "@octokit/webhooks": "^11.0.0",
-    "@terraform-aws-github-runner/aws-ssm-util": "*",
-    "@terraform-aws-github-runner/aws-powertools-util": "*",
-    "aws-lambda": "^1.0.7"
+    "@aws-sdk/client-ssm": "^3.321.1"
   }
 }

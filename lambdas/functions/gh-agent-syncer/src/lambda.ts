@@ -1,4 +1,4 @@
-import { logger, setContext } from '@terraform-aws-github-runner/powertools-utils';
+import { logger, setContext } from '@terraform-aws-github-runner/aws-powertools-util';
 import { Context } from 'aws-lambda';
 
 import { sync } from './syncer/syncer';

@@ -1,4 +1,4 @@
-import { logger, setContext } from '@terraform-aws-github-runner/powertools-utils';
+import { logger, setContext } from '@terraform-aws-github-runner/aws-powertools-util';
 import { Context, SQSEvent } from 'aws-lambda';
 import 'source-map-support/register';
 

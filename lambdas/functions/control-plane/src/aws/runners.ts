@@ -8,7 +8,7 @@ import {
   TerminateInstancesCommand,
 } from '@aws-sdk/client-ec2';
 import { SSM } from '@aws-sdk/client-ssm';
-import { createChildLogger } from '@terraform-aws-github-runner/powertools-utils';
+import { createChildLogger } from '@terraform-aws-github-runner/aws-powertools-util';
 import moment from 'moment';
 
 import ScaleError from './../scale-runners/ScaleError';

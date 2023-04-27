@@ -1,4 +1,4 @@
-import { logger } from '@terraform-aws-github-runner/powertools-utils';
+import { logger } from '@terraform-aws-github-runner/aws-powertools-util';
 import { Context, SQSEvent, SQSRecord } from 'aws-lambda';
 import { mocked } from 'jest-mock';
 
@@ -61,7 +61,7 @@ const context: Context = {
 jest.mock('./scale-runners/scale-up');
 jest.mock('./scale-runners/scale-down');
 jest.mock('./pool/pool');
-jest.mock('@terraform-aws-github-runner/powertools-utils');
+jest.mock('@terraform-aws-github-runner/aws-powertools-util');
 
 // Docs for testing async with jest: https://jestjs.io/docs/tutorial-async
 describe('Test scale up lambda wrapper.', () => {

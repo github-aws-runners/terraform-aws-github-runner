@@ -1,5 +1,5 @@
 import { Webhooks } from '@octokit/webhooks';
-import { getParameterValue } from '@terraform-aws-github-runner/aws-ssm-utils';
+import { getParameterValue } from '@terraform-aws-github-runner/aws-ssm-util';
 import { mocked } from 'jest-mock';
 import nock from 'nock';
 
@@ -10,7 +10,7 @@ import { sendActionRequest } from '../sqs';
 import { handle } from './handler';
 
 jest.mock('../sqs');
-jest.mock('@terraform-aws-github-runner/aws-ssm-utils');
+jest.mock('@terraform-aws-github-runner/aws-ssm-util');
 
 const GITHUB_APP_WEBHOOK_SECRET = 'TEST_SECRET';
 

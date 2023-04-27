@@ -1,4 +1,4 @@
-import { logger, setContext } from '@terraform-aws-github-runner/powertools-utils';
+import { logger, setContext } from '@terraform-aws-github-runner/aws-powertools-util';
 import { APIGatewayEvent, Context } from 'aws-lambda';
 
 import { handle } from './webhook/handler';

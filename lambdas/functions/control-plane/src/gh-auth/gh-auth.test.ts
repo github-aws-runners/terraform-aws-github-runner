@@ -2,14 +2,14 @@ import { createAppAuth } from '@octokit/auth-app';
 import { StrategyOptions } from '@octokit/auth-app/dist-types/types';
 import { request } from '@octokit/request';
 import { RequestInterface } from '@octokit/types';
-import { getParameterValue } from '@terraform-aws-github-runner/aws-ssm-utils';
+import { getParameterValue } from '@terraform-aws-github-runner/aws-ssm-util';
 import { mocked } from 'jest-mock';
 import { MockProxy, mock } from 'jest-mock-extended';
 import nock from 'nock';
 
 import { createGithubAppAuth, createOctoClient } from './gh-auth';
 
-jest.mock('@terraform-aws-github-runner/aws-ssm-utils');
+jest.mock('@terraform-aws-github-runner/aws-ssm-util');
 jest.mock('@octokit/auth-app');
 
 const cleanEnv = process.env;

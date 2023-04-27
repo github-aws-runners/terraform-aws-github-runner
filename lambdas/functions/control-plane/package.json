@@ -38,13 +38,12 @@
     "ts-node-dev": "^2.0.0"
   },
   "dependencies": {
-    "@aws-lambda-powertools/logger": "^1.8.0",
     "@aws-sdk/client-ec2": "^3.303.0",
     "@octokit/auth-app": "4.0.9",
     "@octokit/rest": "^19.0.7",
     "@octokit/types": "^9.0.0",
-    "@terraform-aws-github-runner/aws-ssm-utils": "*",
-    "@terraform-aws-github-runner/powertools-utils": "*",
+    "@terraform-aws-github-runner/aws-ssm-util": "*",
+    "@terraform-aws-github-runner/aws-powertools-util": "*",
     "cron-parser": "^4.8.1",
     "typescript": "^5.0.4"
   }
