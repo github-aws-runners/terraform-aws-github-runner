@@ -10,12 +10,12 @@ on:
       - main
 
 jobs:
-  prepare:
-    name: Create dist
+  release:
+    name: Release
     runs-on: ubuntu-latest
     container: node:18
     permissions:
-      contents: read
+      contents: write
       actions: write
     steps:
       - name: Extract lambda name
@@ -29,11 +29,11 @@ jobs:
       - name: Build dist
         working-directory: lambdas
         run: yarn install && yarn run test && yarn build
-      - uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # ratchet:actions/upload-artifact@v3
-        with:
-          name: lambdas
-          path: lambdas/functions/*.zip
-          retention-days: 1
+      # - uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # ratchet:actions/upload-artifact@v3
+      #   with:
+      #     name: lambdas
+      #     path: lambdas/functions/*.zip
+      #     retention-days: 1
 
   # release:
   #   name: release
@@ -42,7 +42,7 @@ jobs:
   #   outputs:
   #     releases_created: ${{ steps.release.outputs.releases_created }}
   #     tag_name: ${{ steps.release.outputs.tag_name }}
-  #   steps:
+    # steps:
   #     - name: Get installation token
   #       uses: philips-software/app-token-action@a37926571e4cec6f219e06727136efdd073d8657 # ratchet:philips-software/app-token-action@v1.1.2
   #       id: token
@@ -61,24 +61,10 @@ jobs:
   #         default-branch: ${{ steps.branch.outputs.name }}
   #         release-type: terraform-module
   #         token: ${{ steps.token.outputs.token }}
-  assets:
-    name: upload assets
-    ##if: ${{ needs.release.outputs.releases_created }}
-    #needs: release
-    needs: prepare
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        asset: ["webhook", "runner-binaries-syncer", "runners"]
-    permissions:
-      contents: write
-      actions: read
-    steps:
-      - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f # ratchet:actions/checkout@v3
-      - uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # ratchet:actions/download-artifact@v3
-        with:
-          name: lambdas
       - name: Upload Release Asset
         # env:
         #   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: echo gh release upload ${{ needs.release.outputs.tag_name }} ${{ matrix.asset }}.zip
+        run: |
+          for f in $(find . -name '*.zip'); do
+            echo gh release upload ${{ needs.release.outputs.tag_name }} $f
+          done
