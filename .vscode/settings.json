@@ -1,7 +1,1 @@
-{
-    "sonarlint.rules": {
-        "javascript:S4123": {
-            "level": "off"
-        }
-    }
-}
+{}

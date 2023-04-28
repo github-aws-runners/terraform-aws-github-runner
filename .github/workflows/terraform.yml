@@ -27,9 +27,9 @@ jobs:
         uses: actions/checkout@v3
       - name: "Fake zip files" # Validate will fail if it cannot find the zip files
         run: |
-          touch modules/webhook/lambdas/webhook/webhook.zip
-          touch modules/runners/lambdas/runners/runners.zip
-          touch modules/runner-binaries-syncer/lambdas/runner-binaries-syncer/runner-binaries-syncer.zip
+          touch lambdas/functions/webhook/webhook.zip
+          touch lambdas/functions/control-plane/runners.zip
+          touch lambdas/functions/gh-agent-syncer/runner-binaries-syncer.zip
       - name: terraform init
         run: terraform init -get -backend=false -input=false
       - if: contains(matrix.terraform, '1.3.')
