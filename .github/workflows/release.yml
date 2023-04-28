@@ -44,6 +44,8 @@ jobs:
           default-branch: ${{ steps.branch.outputs.name }}
           release-type: terraform-module
           token: ${{ steps.token.outputs.token }}
+          release-as: v3.2.0
+          last-release-sha: 54575fd161366e90cb86e681c5b992da6b0f6456
       - name: Upload Release Asset
         if: ${{ steps.release.outputs.releases_created }}
         env:
