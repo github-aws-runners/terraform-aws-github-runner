@@ -63,7 +63,8 @@ jobs:
   #         token: ${{ steps.token.outputs.token }}
   assets:
     name: upload assets
-    #if: ${{ needs.release.outputs.releases_created }}
+    ##if: ${{ needs.release.outputs.releases_created }}
+    #needs: release
     needs: prepare
     runs-on: ubuntu-latest
     strategy:
