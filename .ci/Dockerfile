@@ -8,9 +8,8 @@ RUN apt-get update \
 FROM build as lambdas
 COPY lambdas /lambdas
 RUN --mount=type=cache,target=/work/node_modules,id=lambdas \
-        yarn install --frozen-lockfile && yarn build
+        yarn install --frozen-lockfile && yarn dist && \
+        find . -name "*.zip" -exec cp {} . \;
 
 FROM scratch as final
-COPY --from=lambdas /lambdas/functions/gh-agent-syncer/runner-binaries-syncer.zip /runner-binaries-syncer.zip
-COPY --from=lambdas /lambdas/functions/control-plane/runners.zip                  /runners.zip
-COPY --from=lambdas /lambdas/functions/webhook/webhook.zip                        /webhook.zip
+COPY --from=lambdas /lambdas/*.zip /
