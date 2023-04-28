@@ -778,9 +778,9 @@
     tslib "^2.5.0"
 
 "@aws-sdk/lib-storage@^3.315.0":
-  version "3.319.0"
-  resolved "https://registry.npmjs.org/@aws-sdk/lib-storage/-/lib-storage-3.319.0.tgz"
-  integrity sha512-/iWG61UTaUJO3Lfb/jhVk8BMVaFjiUplIqrDQTid2rcBEGJsepbuIL/+mas7redbN+4aOMQTioBZcTCapdef6Q==
+  version "3.321.1"
+  resolved "https://registry.yarnpkg.com/@aws-sdk/lib-storage/-/lib-storage-3.321.1.tgz#7d415f50ae7f30542ef47d3bd1e59ca38181e711"
+  integrity sha512-a9JZRuq1sc64zgoIIMipVovDgdCuiCaTRB0pY4rjVIvhQVgdyg734rlZbvdDOduiKYz7QvYkqMAdsp0ASV14Gg==
   dependencies:
     "@aws-sdk/middleware-endpoint" "3.310.0"
     "@aws-sdk/smithy-client" "3.316.0"
