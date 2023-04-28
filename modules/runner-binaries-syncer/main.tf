@@ -9,7 +9,7 @@ resource "aws_s3_bucket" "action_dist" {
 }
 
 resource "aws_s3_bucket_ownership_controls" "this" {
-  bucket   = aws_s3_bucket.action_dist.id
+  bucket = aws_s3_bucket.action_dist.id
   rule {
     object_ownership = "BucketOwnerEnforced"
   }
