@@ -28,7 +28,7 @@ jobs:
         run: apt update && apt install zip
       - name: Build dist
         working-directory: lambdas
-        run: yarn install && yarn run test && yarn build
+        run: yarn install && yarn run test && yarn dist
       # - uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # ratchet:actions/upload-artifact@v3
       #   with:
       #     name: lambdas
