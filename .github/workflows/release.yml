@@ -5,9 +5,6 @@ on:
       - main
       - v1
   workflow_dispatch:
-  pull_request:
-    branches:
-      - main
 
 jobs:
   release:
@@ -29,42 +26,29 @@ jobs:
       - name: Build dist
         working-directory: lambdas
         run: yarn install && yarn run test && yarn dist
-      # - uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # ratchet:actions/upload-artifact@v3
-      #   with:
-      #     name: lambdas
-      #     path: lambdas/functions/*.zip
-      #     retention-days: 1
-
-  # release:
-  #   name: release
-  #   runs-on: ubuntu-latest
-  #   needs: prepare
-  #   outputs:
-  #     releases_created: ${{ steps.release.outputs.releases_created }}
-  #     tag_name: ${{ steps.release.outputs.tag_name }}
-    # steps:
-  #     - name: Get installation token
-  #       uses: philips-software/app-token-action@a37926571e4cec6f219e06727136efdd073d8657 # ratchet:philips-software/app-token-action@v1.1.2
-  #       id: token
-  #       with:
-  #         app_id: ${{ secrets.FOREST_RELEASER_APP_ID }}
-  #         app_base64_private_key: ${{ secrets.FOREST_RELEASER_APP_PRIVATE_KEY_BASE64 }}
-  #         auth_type: installation
-  #     - name: Extract branch name
-  #       id: branch
-  #       shell: bash
-  #       run: echo "name=${GITHUB_REF#refs/heads/}" >> $GITHUB_OUTPUT
-  #     - name: Release
-  #       id: release
-  #       uses: google-github-actions/release-please-action@c078ea33917ab8cfa5300e48f4b7e6b16606aede # ratchet:google-github-actions/release-please-action@v3
-  #       with:
-  #         default-branch: ${{ steps.branch.outputs.name }}
-  #         release-type: terraform-module
-  #         token: ${{ steps.token.outputs.token }}
+      - name: Get installation token
+        uses: philips-software/app-token-action@a37926571e4cec6f219e06727136efdd073d8657 # ratchet:philips-software/app-token-action@v1.1.2
+        id: token
+        with:
+          app_id: ${{ secrets.FOREST_RELEASER_APP_ID }}
+          app_base64_private_key: ${{ secrets.FOREST_RELEASER_APP_PRIVATE_KEY_BASE64 }}
+          auth_type: installation
+      - name: Extract branch name
+        id: branch
+        shell: bash
+        run: echo "name=${GITHUB_REF#refs/heads/}" >> $GITHUB_OUTPUT
+      - name: Release
+        id: release
+        uses: google-github-actions/release-please-action@c078ea33917ab8cfa5300e48f4b7e6b16606aede # ratchet:google-github-actions/release-please-action@v3
+        with:
+          default-branch: ${{ steps.branch.outputs.name }}
+          release-type: terraform-module
+          token: ${{ steps.token.outputs.token }}
       - name: Upload Release Asset
-        # env:
-        #   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        if: ${{ steps.release.outputs.releases_created }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           for f in $(find . -name '*.zip'); do
-            echo gh release upload ${{ needs.release.outputs.tag_name }} $f
+            gh release upload ${{ needs.release.outputs.tag_name }} $f
           done
