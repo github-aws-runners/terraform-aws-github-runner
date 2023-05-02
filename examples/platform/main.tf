@@ -79,4 +79,9 @@ module "runners" {
 
   # override scaling down
   scale_down_schedule_expression = "cron(* * * * ? *)"
+
+  # give runner access to sccache s3 bucket
+  runner_iam_role_managed_policy_arns = [
+    aws_iam_policy.platform_runner_cache_bucket_access_policy.arn
+  ]
 }
