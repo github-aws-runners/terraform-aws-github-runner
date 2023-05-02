@@ -777,3 +777,14 @@ variable "lambda_tracing_mode" {
   type        = string
   default     = null
 }
+
+variable "runner_credit_specification" {
+  description = "Credit specification for runners. Only applicable for T instance types."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = contains([null, "standard", "unlimited"], var.runner_credit_specification)
+    error_message = "Valid values for runner_credit_specification are (null, \"standard\", \"unlimited\")."
+  }
+}

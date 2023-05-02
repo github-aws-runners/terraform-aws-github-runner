@@ -97,6 +97,13 @@ resource "aws_launch_template" "runner" {
     }
   }
 
+  dynamic "credit_specification" {
+    for_each = var.credit_specification != null ? [var.credit_specification] : []
+    content {
+      cpu_credits = credit_specification.value
+    }
+  }
+
   monitoring {
     enabled = var.enable_runner_detailed_monitoring
   }
