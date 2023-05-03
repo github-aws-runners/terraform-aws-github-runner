@@ -10,6 +10,7 @@ on:
       - "module/runners/templates/**"
 env:
   AWS_REGION: eu-west-1
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 jobs:
   verify_packer:
     name: Verify packer
