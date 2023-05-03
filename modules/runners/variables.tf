@@ -596,7 +596,7 @@ variable "lambda_tracing_mode" {
 }
 
 variable "credit_specification" {
-  description = "The credit option for CPU usage of a T instance."
+  description = "The credit option for CPU usage of a T instance. Can be unset, \"standard\" or \"unlimited\"."
   type        = string
   default     = null
 

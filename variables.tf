@@ -779,7 +779,7 @@ variable "lambda_tracing_mode" {
 }
 
 variable "runner_credit_specification" {
-  description = "Credit specification for runners. Only applicable for T instance types."
+  description = "The credit option for CPU usage of a T instance. Can be unset, \"standard\" or \"unlimited\"."
   type        = string
   default     = null
 
