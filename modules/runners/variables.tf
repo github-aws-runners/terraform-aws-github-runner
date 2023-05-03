@@ -601,7 +601,7 @@ variable "credit_specification" {
   default     = null
 
   validation {
-    condition     = contains([null, "standard", "unlimited"], var.credit_specification)
+    condition     = var.credit_specification == null ? true : contains(["standard", "unlimited"], var.credit_specification)
     error_message = "Valid values for credit_specification are (null, \"standard\", \"unlimited\")."
   }
 }

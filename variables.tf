@@ -784,7 +784,7 @@ variable "runner_credit_specification" {
   default     = null
 
   validation {
-    condition     = contains([null, "standard", "unlimited"], var.runner_credit_specification)
+    condition     = var.runner_credit_specification == null ? true : contains(["standard", "unlimited"], var.runner_credit_specification)
     error_message = "Valid values for runner_credit_specification are (null, \"standard\", \"unlimited\")."
   }
 }
