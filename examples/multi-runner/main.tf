@@ -10,7 +10,7 @@ resource "random_id" "random" {
   byte_length = 20
 }
 
-module "multi-runner" {
+module "multi_runner" {
   source              = "../../modules/multi-runner"
   multi_runner_config = local.multi_runner_config
   #  Alternative to loading runner configuration from Yaml files is using static configuration:
