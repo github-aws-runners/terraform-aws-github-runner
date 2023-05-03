@@ -98,9 +98,10 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
       - if: contains(matrix.terraform, '1.3.')
         name: Run TFLint
+        working-directory: ${{ github.workspace }}
         run: |
-          tflint --init -c ${GITHUB_WORKSPACE}/.tflint.hcl
-          tflint -f compact -c ${GITHUB_WORKSPACE}/.tflint.hcl --var-file ${GITHUB_WORKSPACE}/.github/lint/tflint.tfvars
+          tflint --init -c ${GITHUB_WORKSPACE}/.tflint.hcl --chdir modules/${{ matrix.module }}
+          tflint -f compact -c ${GITHUB_WORKSPACE}/.tflint.hcl --var-file ${GITHUB_WORKSPACE}/.github/lint/tflint.tfvars --chdir modules/${{ matrix.module }}
 
   verify_examples:
     name: Verify examples
