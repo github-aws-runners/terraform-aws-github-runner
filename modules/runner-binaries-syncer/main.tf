@@ -15,7 +15,7 @@ resource "aws_s3_bucket_ownership_controls" "this" {
   }
 }
 
-resource "aws_s3_bucket_lifecycle_configuration" "bucket-config" {
+resource "aws_s3_bucket_lifecycle_configuration" "bucket_config" {
   bucket = aws_s3_bucket.action_dist.id
 
   rule {

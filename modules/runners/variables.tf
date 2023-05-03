@@ -180,7 +180,8 @@ variable "sqs_build_queue" {
 }
 
 variable "enable_organization_runners" {
-  type = bool
+  description = "Register runners to organization, instead of repo level"
+  type        = bool
 }
 
 variable "github_app_parameters" {

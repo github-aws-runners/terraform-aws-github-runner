@@ -63,4 +63,4 @@ resource "aws_iam_role_policy" "ec2" {
   policy = templatefile("${path.module}/policies/instance-ec2.json", {})
 }
 
-// see also logging.tf for logging and metrics policies
+# see also logging.tf for logging and metrics policies
