@@ -7,11 +7,15 @@ resource "aws_s3_bucket_policy" "platform_runner_cache_bucket_policy" {
   policy = data.aws_iam_policy_document.platform_runner_cache_policy.json
 }
 
+data "aws_iam_role" "platform_runner_role" {
+  name = "platform-runner-role"
+}
+
 data "aws_iam_policy_document" "platform_runner_cache_policy" {
   statement {
     principals {
       type        = "AWS"
-      identifiers = ["arn:aws:iam::854439639386:role/platform/platform-runner-role"]
+      identifiers = [data.aws_iam_role.platform_runner_role.arn]
     }
 
     actions = [
