@@ -325,7 +325,7 @@ variable "runner_binaries_s3_sse_configuration" {
 }
 
 variable "runner_binaries_s3_versioning" {
-  description = "Status of S3 versioning for runner-binaries S3 bucket."
+  description = "Status of S3 versioning for runner-binaries S3 bucket. Once set to Enabled the change cannot be reverted via Terraform!"
   type        = string
   default     = "Disabled"
 }
