@@ -1,5 +1,21 @@
 # Changelog
 
+## [3.3.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v3.2.0...v3.3.0) (2023-05-05)
+
+
+### Features
+
+* added the option to generate outputs from packer builds. ([#3246](https://github.com/philips-labs/terraform-aws-github-runner/issues/3246)) ([97c4ee7](https://github.com/philips-labs/terraform-aws-github-runner/commit/97c4ee7d1145c5f10ea01bbe4a81e1e6e827cef9))
+* **syncer:** Enable S3 bucket versioning for syncer S3 bucket ([#3108](https://github.com/philips-labs/terraform-aws-github-runner/issues/3108)) ([e679021](https://github.com/philips-labs/terraform-aws-github-runner/commit/e67902133b2ab426068964c9bc24aab6ecd37a79))
+
+
+### Bug Fixes
+
+* **lambda:** bump @octokit/types from 9.1.2 to 9.2.0 in /lambdas ([#3243](https://github.com/philips-labs/terraform-aws-github-runner/issues/3243)) ([4ff85bb](https://github.com/philips-labs/terraform-aws-github-runner/commit/4ff85bbdb7fc00b8174092ed23c2eef10842460b))
+* **lambda:** bump axios from 1.3.6 to 1.4.0 in /lambdas ([#3242](https://github.com/philips-labs/terraform-aws-github-runner/issues/3242)) ([5620d88](https://github.com/philips-labs/terraform-aws-github-runner/commit/5620d886d74423889eb13f3c1746f784fbcb36a0))
+* S3 bucket logging prefix regex ([a952b91](https://github.com/philips-labs/terraform-aws-github-runner/commit/a952b91895b6629827a5af0f54fbc5c52661e36b))
+* **syncer:** S3 bucket logging prefix variable condition ([#3251](https://github.com/philips-labs/terraform-aws-github-runner/issues/3251)) ([a952b91](https://github.com/philips-labs/terraform-aws-github-runner/commit/a952b91895b6629827a5af0f54fbc5c52661e36b))
+
 ## [3.2.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v3.2.0...v3.2.0) (2023-04-28)
 
 
