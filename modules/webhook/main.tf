@@ -1,7 +1,7 @@
 locals {
   webhook_endpoint = "webhook"
   role_path        = var.role_path == null ? "/${var.prefix}/" : var.role_path
-  lambda_zip       = var.lambda_zip == null ? "${path.module}/lambdas/webhook/webhook.zip" : var.lambda_zip
+  lambda_zip       = var.lambda_zip == null ? "${path.module}/../../lambdas/functions/webhook/webhook.zip" : var.lambda_zip
 }
 
 resource "aws_apigatewayv2_api" "webhook" {

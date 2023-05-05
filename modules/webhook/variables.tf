@@ -185,3 +185,9 @@ variable "github_app_parameters" {
     webhook_secret = map(string)
   })
 }
+
+variable "lambda_tracing_mode" {
+  description = "Enable X-Ray tracing for the lambda functions."
+  type        = string
+  default     = null
+}

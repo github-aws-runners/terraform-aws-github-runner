@@ -52,6 +52,7 @@ module "pool" {
     tags                                 = local.tags
   }
 
-  aws_partition = var.aws_partition
+  aws_partition       = var.aws_partition
+  lambda_tracing_mode = var.lambda_tracing_mode
 
 }

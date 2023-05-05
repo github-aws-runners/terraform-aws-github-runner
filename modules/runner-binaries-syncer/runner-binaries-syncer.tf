@@ -1,5 +1,5 @@
 locals {
-  lambda_zip = var.lambda_zip == null ? "${path.module}/lambdas/runner-binaries-syncer/runner-binaries-syncer.zip" : var.lambda_zip
+  lambda_zip = var.lambda_zip == null ? "${path.module}/../../lambdas/functions/gh-agent-syncer/runner-binaries-syncer.zip" : var.lambda_zip
   role_path  = var.role_path == null ? "/${var.prefix}/" : var.role_path
   gh_binary_os_label = {
     windows = "win",
@@ -44,6 +44,13 @@ resource "aws_lambda_function" "syncer" {
   }
 
   tags = var.tags
+
+  dynamic "tracing_config" {
+    for_each = var.lambda_tracing_mode != null ? [true] : []
+    content {
+      mode = var.lambda_tracing_mode
+    }
+  }
 }
 
 resource "aws_iam_role_policy" "lambda_kms" {
@@ -182,4 +189,8 @@ resource "aws_lambda_permission" "on_deploy" {
   source_arn     = aws_s3_bucket.action_dist.arn
 }
 
-
+resource "aws_iam_role_policy" "syncer_lambda_xray" {
+  count  = var.lambda_tracing_mode != null ? 1 : 0
+  policy = data.aws_iam_policy_document.lambda_xray[0].json
+  role   = aws_iam_role.syncer_lambda.name
+}

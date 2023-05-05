@@ -51,6 +51,13 @@ resource "aws_lambda_function" "scale_up" {
       subnet_ids         = var.lambda_subnet_ids
     }
   }
+
+  dynamic "tracing_config" {
+    for_each = var.lambda_tracing_mode != null ? [true] : []
+    content {
+      mode = var.lambda_tracing_mode
+    }
+  }
 }
 
 resource "aws_cloudwatch_log_group" "scale_up" {
@@ -129,4 +136,10 @@ resource "aws_iam_role_policy_attachment" "ami_id_ssm_parameter_read" {
   count      = var.ami_id_ssm_parameter_name != null ? 1 : 0
   role       = aws_iam_role.scale_up.name
   policy_arn = aws_iam_policy.ami_id_ssm_parameter_read[0].arn
+}
+
+resource "aws_iam_role_policy" "scale_up_xray" {
+  count  = var.lambda_tracing_mode != null ? 1 : 0
+  policy = data.aws_iam_policy_document.lambda_xray[0].json
+  role   = aws_iam_role.scale_up.name
 }

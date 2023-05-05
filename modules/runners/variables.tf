@@ -588,3 +588,9 @@ variable "runner_name_prefix" {
     error_message = "The prefix used for the GitHub runner name must be less than 32 characters. AWS instances id are 17 chars, https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/resource-ids.html"
   }
 }
+
+variable "lambda_tracing_mode" {
+  description = "Enable X-Ray tracing for the lambda functions."
+  type        = string
+  default     = null
+}

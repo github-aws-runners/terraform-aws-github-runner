@@ -247,3 +247,9 @@ variable "lambda_architecture" {
     error_message = "`lambda_architecture` value is not valid, valid values are: `arm64` and `x86_64`."
   }
 }
+
+variable "lambda_tracing_mode" {
+  description = "Enable X-Ray tracing for the lambda functions."
+  type        = string
+  default     = null
+}

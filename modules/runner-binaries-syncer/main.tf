@@ -8,9 +8,11 @@ resource "aws_s3_bucket" "action_dist" {
   tags          = var.tags
 }
 
-resource "aws_s3_bucket_acl" "action_dist_acl" {
+resource "aws_s3_bucket_ownership_controls" "this" {
   bucket = aws_s3_bucket.action_dist.id
-  acl    = "private"
+  rule {
+    object_ownership = "BucketOwnerEnforced"
+  }
 }
 
 resource "aws_s3_bucket_lifecycle_configuration" "bucket-config" {

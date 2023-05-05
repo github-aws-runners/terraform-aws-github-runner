@@ -10,12 +10,13 @@ on:
       - "module/runners/templates/**"
 env:
   AWS_REGION: eu-west-1
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 jobs:
   verify_packer:
     name: Verify packer
     runs-on: ubuntu-latest
     container:
-      image: index.docker.io/hashicorp/packer@sha256:f795aace438ef92e738228c21d5ceb7d5dd73ceb7e0b1efab5b0e90cbc4d4dcd # ratchet:hashicorp/packer:1.7.8
+      image: index.docker.io/hashicorp/packer@sha256:297bbbbbbf3ce9e0431ac1e8f02934b20e1197613f877b55dfdb1ebfd94eb748 # ratchet:index.docker.io/hashicorp/packer:1.8.6
     strategy:
       matrix:
         image: ["linux-amzn2", "windows-core-2019", "windows-core-2022", "ubuntu-focal", "ubuntu-jammy", "ubuntu-jammy-arm64"]
@@ -30,4 +31,4 @@ jobs:
       - name: check packer formatting
         run: packer fmt -recursive -check=true .
       - name: packer validate
-        run: packer validate .
+        run: packer validate -evaluate-datasources .

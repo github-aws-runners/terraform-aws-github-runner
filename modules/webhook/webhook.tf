@@ -32,6 +32,13 @@ resource "aws_lambda_function" "webhook" {
   }
 
   tags = var.tags
+
+  dynamic "tracing_config" {
+    for_each = var.lambda_tracing_mode != null ? [true] : []
+    content {
+      mode = var.lambda_tracing_mode
+    }
+  }
 }
 
 resource "aws_cloudwatch_log_group" "webhook" {
@@ -110,4 +117,10 @@ resource "aws_iam_role_policy" "webhook_ssm" {
   policy = templatefile("${path.module}/policies/lambda-ssm.json", {
     github_app_webhook_secret_arn = var.github_app_parameters.webhook_secret.arn,
   })
+}
+
+resource "aws_iam_role_policy" "xray" {
+  count  = var.lambda_tracing_mode != null ? 1 : 0
+  policy = data.aws_iam_policy_document.lambda_xray[0].json
+  role   = aws_iam_role.webhook_lambda.name
 }
