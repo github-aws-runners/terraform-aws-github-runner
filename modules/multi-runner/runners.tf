@@ -51,6 +51,7 @@ module "runners" {
   egress_rules                         = var.runner_egress_rules
   runner_additional_security_group_ids = var.runner_additional_security_group_ids
   metadata_options                     = each.value.runner_config.runner_metadata_options
+  credit_specification                 = var.runner_credit_specification
 
   enable_runner_binaries_syncer    = each.value.runner_config.enable_runner_binaries_syncer
   lambda_s3_bucket                 = var.lambda_s3_bucket

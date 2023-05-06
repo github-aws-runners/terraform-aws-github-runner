@@ -539,3 +539,14 @@ variable "lambda_tracing_mode" {
   type        = string
   default     = null
 }
+
+variable "runner_credit_specification" {
+  description = "The credit option for CPU usage of a T instance. Can be unset, \"standard\" or \"unlimited\"."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.runner_credit_specification == null ? true : contains(["standard", "unlimited"], var.runner_credit_specification)
+    error_message = "Valid values for runner_credit_specification are (null, \"standard\", \"unlimited\")."
+  }
+}
