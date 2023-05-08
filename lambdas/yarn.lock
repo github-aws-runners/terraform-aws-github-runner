@@ -2556,9 +2556,9 @@
     minimatch "^7.4.6"
 
 "@types/aws-lambda@^8.10.111", "@types/aws-lambda@^8.10.114":
-  version "8.10.114"
-  resolved "https://registry.npmjs.org/@types/aws-lambda/-/aws-lambda-8.10.114.tgz"
-  integrity sha512-M8WpEGfC9iQ6V2Ccq6nGIXoQgeVc6z0Ngk8yCOL5V/TYIxshvb0MWQYLFFTZDesL0zmsoBc4OBjG9DB/4rei6w==
+  version "8.10.115"
+  resolved "https://registry.yarnpkg.com/@types/aws-lambda/-/aws-lambda-8.10.115.tgz#0b5ba361c8e95430ce25fa8d67640c5ac6c857b6"
+  integrity sha512-kCZuFXKLV3y8NjSoaD5+qKTpRWvPz3uh3W/u1uwlw3Mg+MtaStg1NWgjAwUXo/VJDb6n6KF1ljykFNlNwEJ53Q==
 
 "@types/babel__core@^7.1.14":
   version "7.20.0"
