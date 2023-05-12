@@ -7,6 +7,18 @@ resource "aws_s3_bucket_policy" "platform_runner_cache_bucket_policy" {
   policy = data.aws_iam_policy_document.platform_runner_cache_policy.json
 }
 
+resource "aws_s3_bucket_lifecycle_configuration" "platform_runner_cache_bucket_lifecycle_configuration" {
+  bucket = aws_s3_bucket.platform_runner_cache.id
+  rule {
+    id = "expire-cache"
+    filter {}
+    expiration {
+      days = 10
+    }
+    status = "Enabled"
+  }
+}
+
 data "aws_iam_role" "platform_runner_role" {
   name = "platform-runner-role"
 }
