@@ -323,7 +323,13 @@ variable "lambda_principals" {
 variable "runner_binaries_s3_sse_configuration" {
   description = "Map containing server-side encryption configuration for runner-binaries S3 bucket."
   type        = any
-  default     = {}
+  default = {
+    rule = {
+      apply_server_side_encryption_by_default = {
+        sse_algorithm = "AES256"
+      }
+    }
+  }
 }
 
 variable "runner_binaries_s3_versioning" {
