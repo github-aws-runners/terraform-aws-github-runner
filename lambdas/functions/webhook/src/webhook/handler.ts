@@ -167,8 +167,8 @@ function canRunJob(
     return runnerLabel.map((label) => label.toLowerCase());
   });
   const match = workflowLabelCheckAll
-    ? runnerLabelsMatchers.some((rl) => workflowJobLabels.every(wl => rl.includes(wl.toLowerCase())))
-    : runnerLabelsMatchers.some((rl) => workflowJobLabels.some(wl => rl.includes(wl.toLowerCase())))
+    ? runnerLabelsMatchers.some((rl) => workflowJobLabels.every((wl) => rl.includes(wl.toLowerCase())))
+    : runnerLabelsMatchers.some((rl) => workflowJobLabels.some((wl) => rl.includes(wl.toLowerCase())));
 
   logger.debug(
     `Received workflow job event with labels: '${JSON.stringify(workflowJobLabels)}'. The event does ${
