@@ -19,7 +19,7 @@
     "@types/aws-lambda": "^8.10.111",
     "@types/express": "^4.17.17",
     "@types/jest": "^29.5.0",
-    "@types/node": "^18.15.11",
+    "@types/node": "^20.1.4",
     "@typescript-eslint/eslint-plugin": "^5.57.0",
     "@typescript-eslint/parser": "^5.59.0",
     "@vercel/ncc": "0.36.1",
