@@ -269,7 +269,10 @@ describe('handler', () => {
         {
           ...queuesConfig[0],
           matcherConfig: {
-            labelMatchers: [['self-hosted', 'x64', 'linux'], ['self-hosted', 'x64', 'on-demand']],
+            labelMatchers: [
+              ['self-hosted', 'x64', 'linux'],
+              ['self-hosted', 'x64', 'on-demand'],
+            ],
             exactMatch: true,
           },
         },
