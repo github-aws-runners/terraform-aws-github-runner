@@ -42,3 +42,8 @@ output "webhook" {
 output "ssm_parameters" {
   value = module.ssm.parameters
 }
+
+output "workflow_job_queue" {
+  description = "Workflow job queue for multi runners."
+  value       = try(aws_sqs_queue.webhook_events_workflow_job_queue[*].arn, "")
+}
