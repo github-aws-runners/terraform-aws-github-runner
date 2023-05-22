@@ -179,4 +179,5 @@ module "multi-runner" {
 | <a name="output_runners"></a> [runners](#output\_runners) | n/a |
 | <a name="output_ssm_parameters"></a> [ssm\_parameters](#output\_ssm\_parameters) | n/a |
 | <a name="output_webhook"></a> [webhook](#output\_webhook) | n/a |
+| <a name="output_workflow_job_queue"></a> [workflow\_job\_queue](#output\_workflow\_job\_queue) | Workflow job queue for multi runners. |
 <!-- END_TF_DOCS -->
