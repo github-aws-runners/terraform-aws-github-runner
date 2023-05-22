@@ -2710,19 +2710,18 @@
   dependencies:
     nx "15.9.2"
 
-"@octokit/auth-app@4.0.9":
-  version "4.0.9"
-  resolved "https://registry.npmjs.org/@octokit/auth-app/-/auth-app-4.0.9.tgz"
-  integrity sha512-VFpKIXhHO+kVJtane5cEvdYPtjDKCOI0uKsRrsZfJP+uEu7rcPbQCLCcRKgyT+mUIzGr1IIOmwP/lFqSip1dXA==
+"@octokit/auth-app@4.0.13":
+  version "4.0.13"
+  resolved "https://registry.yarnpkg.com/@octokit/auth-app/-/auth-app-4.0.13.tgz#53323bee6bfefbb73ea544dd8e6a0144550e13e3"
+  integrity sha512-NBQkmR/Zsc+8fWcVIFrwDgNXS7f4XDrkd9LHdi9DPQw1NdGHLviLzRO2ZBwTtepnwHXW5VTrVU9eFGijMUqllg==
   dependencies:
     "@octokit/auth-oauth-app" "^5.0.0"
     "@octokit/auth-oauth-user" "^2.0.0"
     "@octokit/request" "^6.0.0"
     "@octokit/request-error" "^3.0.0"
     "@octokit/types" "^9.0.0"
-    "@types/lru-cache" "^5.1.0"
     deprecation "^2.3.1"
-    lru-cache "^6.0.0"
+    lru-cache "^9.0.0"
     universal-github-app-jwt "^1.1.1"
     universal-user-agent "^6.0.0"
 
@@ -3207,11 +3206,6 @@
   integrity sha512-c5ltxazpWabia/4UzhIoaDcIza4KViOQhdbjRlfcIGVnsE3c3brkz9Z+F/EeJIECOQP7W7US2hNE930cWWkPiw==
   dependencies:
     "@types/node" "*"
-
-"@types/lru-cache@^5.1.0":
-  version "5.1.1"
-  resolved "https://registry.npmjs.org/@types/lru-cache/-/lru-cache-5.1.1.tgz"
-  integrity sha512-ssE3Vlrys7sdIzs5LOxCzTVMsU7i9oa/IaW92wF32JFb3CVczqOkru2xspuKczHEbG3nvmPY7IFqVmGGHdNbYw==
 
 "@types/mime@*":
   version "3.0.1"

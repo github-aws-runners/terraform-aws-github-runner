@@ -39,7 +39,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-ec2": "^3.303.0",
-    "@octokit/auth-app": "4.0.9",
+    "@octokit/auth-app": "4.0.13",
     "@octokit/rest": "^19.0.7",
     "@octokit/types": "^9.0.0",
     "@terraform-aws-github-runner/aws-ssm-util": "*",
