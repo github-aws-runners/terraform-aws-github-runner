@@ -49,7 +49,7 @@ module "runners" {
   idle_config                          = each.value.runner_config.idle_config
   enable_ssm_on_runners                = each.value.runner_config.enable_ssm_on_runners
   egress_rules                         = var.runner_egress_rules
-  runner_additional_security_group_ids = concat(each.value.runner_config.runner_additional_security_group_ids, var.runner_additional_security_group_ids)
+  runner_additional_security_group_ids = coalesce(each.value.runner_config.runner_additional_security_group_ids, var.runner_additional_security_group_ids)
   metadata_options                     = each.value.runner_config.runner_metadata_options
 
   enable_runner_binaries_syncer    = each.value.runner_config.enable_runner_binaries_syncer
