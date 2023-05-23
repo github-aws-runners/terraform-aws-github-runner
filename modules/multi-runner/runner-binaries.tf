@@ -4,7 +4,8 @@ module "runner_binaries" {
   prefix   = "${var.prefix}-${each.value.os_type}-${each.value.architecture}"
   tags     = local.tags
 
-  distribution_bucket_name = "${var.prefix}-${each.value.os_type}-${each.value.architecture}-dist-${random_string.random.result}"
+  # force mandatory lower case for s3 bucketname
+  distribution_bucket_name = lower("${var.prefix}-${each.value.os_type}-${each.value.architecture}-dist-${random_string.random.result}")
 
   runner_os           = each.value.os_type
   runner_architecture = each.value.architecture
@@ -22,6 +23,7 @@ module "runner_binaries" {
   enable_event_rule_binaries_syncer = var.enable_event_rule_binaries_syncer
 
   server_side_encryption_configuration = var.runner_binaries_s3_sse_configuration
+  s3_versioning                        = var.runner_binaries_s3_versioning
 
   role_path                 = var.role_path
   role_permissions_boundary = var.role_permissions_boundary

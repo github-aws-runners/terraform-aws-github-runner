@@ -141,6 +141,12 @@ variable "runner_binaries_s3_sse_configuration" {
   }
 }
 
+variable "runner_binaries_s3_versioning" {
+  description = "Status of S3 versioning for runner-binaries S3 bucket. Once set to Enabled the change cannot be reverted via Terraform!"
+  type        = string
+  default     = "Disabled"
+}
+
 variable "runner_binaries_s3_logging_bucket" {
   description = "Bucket for action runner distribution bucket access logging."
   type        = string
@@ -770,4 +776,15 @@ variable "lambda_tracing_mode" {
   description = "Enable X-Ray tracing for the lambda functions."
   type        = string
   default     = null
+}
+
+variable "runner_credit_specification" {
+  description = "The credit option for CPU usage of a T instance. Can be unset, \"standard\" or \"unlimited\"."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.runner_credit_specification == null ? true : contains(["standard", "unlimited"], var.runner_credit_specification)
+    error_message = "Valid values for runner_credit_specification are (null, \"standard\", \"unlimited\")."
+  }
 }

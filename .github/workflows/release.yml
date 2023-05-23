@@ -5,42 +5,22 @@ on:
       - main
       - v1
   workflow_dispatch:
+
 jobs:
-  prepare:
-    name: Create dist
+  release:
+    name: Release
     runs-on: ubuntu-latest
-    container: node:18
-    strategy:
-      matrix:
-        lambda: ["modules/webhook/lambdas/webhook", "modules/runner-binaries-syncer/lambdas/runner-binaries-syncer", "modules/runners/lambdas/runners"]
     permissions:
-      contents: read
+      contents: write
       actions: write
     steps:
-      - name: Extract lambda name
-        id: lambda
-        env:
-          LAMBDA: ${{ matrix.lambda }}
-        run: echo "name=${LAMBDA##*/}" >> $GITHUB_OUTPUT
-      - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f # ratchet:actions/checkout@v3
-      - name: Add zip
-        run: apt update && apt install zip
-      - name: Build dist
-        working-directory: ${{ matrix.lambda }}
-        run: yarn install && yarn run test && yarn dist
-      - uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # ratchet:actions/upload-artifact@v3
+      - uses: actions/setup-node@64ed1c7eab4cce3362f8c340dee64e5eaeef8f7c # v3.6.0
         with:
-          name: ${{ steps.lambda.outputs.name }}
-          path: ${{ matrix.lambda }}/${{ steps.lambda.outputs.name }}.zip
-          retention-days: 1
-  release:
-    name: release
-    runs-on: ubuntu-latest
-    needs: prepare
-    outputs:
-      releases_created: ${{ steps.release.outputs.releases_created }}
-      tag_name: ${{ steps.release.outputs.tag_name }}
-    steps:
+          node-version: 16
+      - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f # ratchet:actions/checkout@v3
+      - name: Build dist
+        working-directory: lambdas
+        run: yarn install && yarn run test && yarn dist
       - name: Get installation token
         uses: philips-software/app-token-action@a37926571e4cec6f219e06727136efdd073d8657 # ratchet:philips-software/app-token-action@v1.1.2
         id: token
@@ -59,23 +39,11 @@ jobs:
           default-branch: ${{ steps.branch.outputs.name }}
           release-type: terraform-module
           token: ${{ steps.token.outputs.token }}
-  assets:
-    name: upload assets
-    if: ${{ needs.release.outputs.releases_created }}
-    needs: release
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        asset: ["webhook", "runner-binaries-syncer", "runners"]
-    permissions:
-      contents: write
-      actions: read
-    steps:
-      - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f # ratchet:actions/checkout@v3
-      - uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # ratchet:actions/download-artifact@v3
-        with:
-          name: ${{ matrix.asset }}
       - name: Upload Release Asset
+        if: ${{ steps.release.outputs.releases_created }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload ${{ needs.release.outputs.tag_name }} ${{ matrix.asset }}.zip
+        run: |
+          for f in $(find . -name '*.zip'); do
+            gh release upload ${{ steps.release.outputs.tag_name }} $f
+          done

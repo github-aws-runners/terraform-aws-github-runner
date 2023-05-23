@@ -17,25 +17,9 @@ updates:
       interval: "weekly"
 
   - package-ecosystem: "npm"
-    directory: "/modules/runner-binaries-syncer/lambdas/runner-binaries-syncer"
+    directory: "/lambdas"
     schedule:
       interval: "weekly"
     commit-message:
-      prefix: "fix(syncer)"
-      prefix-development: "chore(syncer)"
-
-  - package-ecosystem: "npm"
-    directory: "/modules/webhook/lambdas/webhook"
-    schedule:
-      interval: "weekly"
-    commit-message:
-      prefix: "fix(webhook)"
-      prefix-development: "chore(webhook)"
-
-  - package-ecosystem: "npm"
-    directory: "/modules/runners/lambdas/runners"
-    schedule:
-      interval: "weekly"
-    commit-message:
-      prefix: "fix(runners)"
-      prefix-development: "chore(runners)"
+      prefix: "fix(lambda)"
+      prefix-development: "chore(lambda)"

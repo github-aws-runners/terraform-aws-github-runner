@@ -594,3 +594,14 @@ variable "lambda_tracing_mode" {
   type        = string
   default     = null
 }
+
+variable "credit_specification" {
+  description = "The credit option for CPU usage of a T instance. Can be unset, \"standard\" or \"unlimited\"."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.credit_specification == null ? true : contains(["standard", "unlimited"], var.credit_specification)
+    error_message = "Valid values for credit_specification are (null, \"standard\", \"unlimited\")."
+  }
+}

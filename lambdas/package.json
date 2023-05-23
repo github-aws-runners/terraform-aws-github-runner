@@ -1,0 +1,20 @@
+{
+  "name": "lambdas",
+  "private": true,
+  "workspaces": [
+    "functions/*",
+    "libs/*"
+  ],
+  "scripts": {
+    "bootstrap": "lerna bootstrap",
+    "build": "lerna run build",
+    "dist": "lerna run build && lerna run dist",
+    "format": "lerna run format",
+    "format-check": "lerna run format-check",
+    "lint": "lerna run lint",
+    "test": "lerna run test"
+  },
+  "devDependencies": {
+    "lerna": "^6.6.1"
+  }
+}
