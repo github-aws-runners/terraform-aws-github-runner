@@ -1,5 +1,21 @@
 # Changelog
 
+## [3.4.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v3.4.0...v3.4.1) (2023-05-23)
+
+
+### Bug Fixes
+
+* added additional outputs to multi runner module. ([#3283](https://github.com/philips-labs/terraform-aws-github-runner/issues/3283)) ([9644e05](https://github.com/philips-labs/terraform-aws-github-runner/commit/9644e05a2345369349ee9217da47db68860997d5))
+* **lambda:** bump @aws-sdk/client-sqs from 3.321.1 to 3.332.0 in /lambdas ([#3271](https://github.com/philips-labs/terraform-aws-github-runner/issues/3271)) ([170baa8](https://github.com/philips-labs/terraform-aws-github-runner/commit/170baa8e8799a6335f4d0f868e89a8496632aa11))
+* **lambda:** bump @aws-sdk/client-sqs from 3.332.0 to 3.337.0 in /lambdas ([#3284](https://github.com/philips-labs/terraform-aws-github-runner/issues/3284)) ([01a053e](https://github.com/philips-labs/terraform-aws-github-runner/commit/01a053ee049c7a7cd80241d10272155c1a94af88))
+* **lambda:** bump @aws-sdk/lib-storage from 3.321.1 to 3.335.0 in /lambdas ([#3281](https://github.com/philips-labs/terraform-aws-github-runner/issues/3281)) ([9387bee](https://github.com/philips-labs/terraform-aws-github-runner/commit/9387bee757d7692b33a5599a6d2868de9f2ba492))
+* **lambda:** bump @aws-sdk/lib-storage from 3.335.0 to 3.337.0 in /lambdas ([#3286](https://github.com/philips-labs/terraform-aws-github-runner/issues/3286)) ([2a447ae](https://github.com/philips-labs/terraform-aws-github-runner/commit/2a447ae43520e9fca19d103ae956d5eb44e7f21a))
+* **lambda:** bump @octokit/auth-app from 4.0.9 to 4.0.13 in /lambdas ([#3287](https://github.com/philips-labs/terraform-aws-github-runner/issues/3287)) ([517d2e0](https://github.com/philips-labs/terraform-aws-github-runner/commit/517d2e02623ec863ebeb1fae105332026a32fe9e))
+* **lambda:** bump @octokit/types from 9.2.1 to 9.2.2 in /lambdas ([#3273](https://github.com/philips-labs/terraform-aws-github-runner/issues/3273)) ([e083898](https://github.com/philips-labs/terraform-aws-github-runner/commit/e083898e4da41c0c1f180094ae132479bc155ee6))
+* **multi-runner:** allow runner_additional_security_group_ids to apply to multi_runner_config ([#3221](https://github.com/philips-labs/terraform-aws-github-runner/issues/3221)) ([5fb1fa8](https://github.com/philips-labs/terraform-aws-github-runner/commit/5fb1fa87e2cec416051c225e5b32504df1e30004))
+* **multi-runner:** enable SSE by default for runner-binaries bucket ([#3274](https://github.com/philips-labs/terraform-aws-github-runner/issues/3274)) ([5d314f2](https://github.com/philips-labs/terraform-aws-github-runner/commit/5d314f2966381f6d281ef913f601f579e627f260))
+* **webhook:** logic to find the workflow labels inside runner config supported labelsets. ([#3278](https://github.com/philips-labs/terraform-aws-github-runner/issues/3278)) ([9fcf33a](https://github.com/philips-labs/terraform-aws-github-runner/commit/9fcf33a86254cf64f115327f506c940583144ed5))
+
 ## [3.4.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v3.3.0...v3.4.0) (2023-05-12)
 
 
