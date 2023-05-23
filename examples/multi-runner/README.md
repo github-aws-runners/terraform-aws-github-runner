@@ -45,7 +45,7 @@ You can receive the webhook details by running:
 terraform output -raw webhook_secret
 ```
 
-Be-aware some shells will print some end of line character `%`.
+Be aware some shells will print some end of line character `%`.
 
 <!-- BEGIN_TF_DOCS -->
 ## Requirements

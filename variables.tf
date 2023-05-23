@@ -9,7 +9,7 @@ variable "vpc_id" {
 }
 
 variable "subnet_ids" {
-  description = "List of subnets in which the action runner instances will be launched. The subnets need to exist in the configured VPC (`vpc_id`), and must reside on different availability zones (see https://github.com/philips-labs/terraform-aws-github-runner/issues/2904)"
+  description = "List of subnets in which the action runner instances will be launched. The subnets need to exist in the configured VPC (`vpc_id`), and must reside in different availability zones (see https://github.com/philips-labs/terraform-aws-github-runner/issues/2904)"
   type        = list(string)
 }
 
@@ -58,7 +58,7 @@ variable "scale_down_schedule_expression" {
 }
 
 variable "minimum_running_time_in_minutes" {
-  description = "The time an ec2 action runner should be running at minimum before terminated if not busy."
+  description = "The time an ec2 action runner should be running at minimum before terminated, if not busy."
   type        = number
   default     = null
 }
@@ -245,7 +245,7 @@ variable "userdata_post_install" {
 }
 
 variable "idle_config" {
-  description = "List of time period that can be defined as cron expression to keep a minimum amount of runners active instead of scaling down to 0. By defining this list you can ensure that in time periods that match the cron expression within 5 seconds a runner is kept idle."
+  description = "List of time periods, defined as a cron expression, to keep a minimum amount of runners active instead of scaling down to 0. By defining this list you can ensure that in time periods that match the cron expression within 5 seconds a runner is kept idle."
   type = list(object({
     cron      = string
     timeZone  = string
@@ -255,7 +255,7 @@ variable "idle_config" {
 }
 
 variable "enable_ssm_on_runners" {
-  description = "Enable to allow access the runner instances for debugging purposes via SSM. Note that this adds additional permissions to the runner instances."
+  description = "Enable to allow access to the runner instances for debugging purposes via SSM. Note that this adds additional permissions to the runner instances."
   type        = bool
   default     = false
 }
@@ -267,7 +267,7 @@ variable "logging_retention_in_days" {
 }
 
 variable "logging_kms_key_id" {
-  description = "Specifies the kms key id to encrypt the logs with"
+  description = "Specifies the kms key id to encrypt the logs with."
   type        = string
   default     = null
 }
@@ -332,7 +332,7 @@ variable "lambda_s3_bucket" {
 }
 
 variable "syncer_lambda_s3_key" {
-  description = "S3 key for syncer lambda function. Required if using S3 bucket to specify lambdas."
+  description = "S3 key for syncer lambda function. Required if using an S3 bucket to specify lambdas."
   type        = string
   default     = null
 }
@@ -376,7 +376,7 @@ variable "runners_lambda_s3_object_version" {
 }
 
 variable "create_service_linked_role_spot" {
-  description = "(optional) create the serviced linked role for spot instances that is required by the scale-up lambda."
+  description = "(optional) create the service linked role for spot instances that is required by the scale-up lambda."
   type        = bool
   default     = false
 }
@@ -388,13 +388,13 @@ variable "runner_iam_role_managed_policy_arns" {
 }
 
 variable "enable_cloudwatch_agent" {
-  description = "Enabling the cloudwatch agent on the ec2 runner instances, the runner contains default config. Configuration can be overridden via `cloudwatch_config`."
+  description = "Enables the cloudwatch agent on the ec2 runner instances. The runner uses a default config that can be overridden via `cloudwatch_config`."
   type        = bool
   default     = true
 }
 
 variable "cloudwatch_config" {
-  description = "(optional) Replaces the module default cloudwatch log config. See https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-Configuration-File-Details.html for details."
+  description = "(optional) Replaces the module's default cloudwatch log config. See https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-Configuration-File-Details.html for details."
   type        = string
   default     = null
 }
@@ -441,7 +441,7 @@ variable "key_name" {
 }
 
 variable "runner_additional_security_group_ids" {
-  description = "(optional) List of additional security groups IDs to apply to the runner"
+  description = "(optional) List of additional security groups IDs to apply to the runner."
   type        = list(string)
   default     = []
 }
@@ -457,7 +457,7 @@ variable "instance_target_capacity_type" {
 }
 
 variable "instance_allocation_strategy" {
-  description = "The allocation strategy for spot instances. AWS recommends to use `price-capacity-optimized` however the AWS default is `lowest-price`."
+  description = "The allocation strategy for spot instances. AWS recommends using `price-capacity-optimized` however the AWS default is `lowest-price`."
   type        = string
   default     = "lowest-price"
   validation {
@@ -467,7 +467,7 @@ variable "instance_allocation_strategy" {
 }
 
 variable "instance_max_spot_price" {
-  description = "Max price price for spot intances per hour. This variable will be passed to the create fleet as max spot price for the fleet."
+  description = "Max price price for spot instances per hour. This variable will be passed to the create fleet as max spot price for the fleet."
   type        = string
   default     = null
 }
@@ -479,7 +479,7 @@ variable "instance_types" {
 }
 
 variable "repository_white_list" {
-  description = "List of repositories allowed to use the github app"
+  description = "List of github repository full names (owner/repo_name) that will be allowed to use the github app. Leave empty for no filtering."
   type        = list(string)
   default     = []
 }
@@ -490,7 +490,7 @@ variable "delay_webhook_event" {
   default     = 30
 }
 variable "job_queue_retention_in_seconds" {
-  description = "The number of seconds the job is held in the queue before it is purged"
+  description = "The number of seconds the job is held in the queue before it is purged."
   type        = number
   default     = 86400
 }
@@ -578,13 +578,13 @@ variable "enable_ephemeral_runners" {
 }
 
 variable "enable_job_queued_check" {
-  description = "Only scale if the job event received by the scale up lambda is is in the state queued. By default enabled for non ephemeral runners and disabled for ephemeral. Set this variable to overwrite the default behavior."
+  description = "Only scale if the job event received by the scale up lambda is in the queued state. By default enabled for non ephemeral runners and disabled for ephemeral. Set this variable to overwrite the default behavior."
   type        = bool
   default     = null
 }
 
 variable "enable_managed_runner_security_group" {
-  description = "Enabling the default managed security group creation. Unmanaged security groups can be specified via `runner_additional_security_group_ids`."
+  description = "Enables creation of the default managed security group. Unmanaged security groups can be specified via `runner_additional_security_group_ids`."
   type        = bool
   default     = true
 }
@@ -610,7 +610,7 @@ variable "lambda_principals" {
 }
 
 variable "enable_fifo_build_queue" {
-  description = "Enable a FIFO queue to remain the order of events received by the webhook. Suggest to set to true for repo level runners."
+  description = "Enable a FIFO queue to keep the order of events received by the webhook. Recommended for repo level runners."
   type        = bool
   default     = false
 }
@@ -660,7 +660,7 @@ variable "pool_lambda_reserved_concurrent_executions" {
 }
 
 variable "pool_config" {
-  description = "The configuration for updating the pool. The `pool_size` to adjust to by the events triggered by the `schedule_expression`. For example you can configure a cron expression for week days to adjust the pool to 10 and another expression for the weekend to adjust the pool to 1."
+  description = "The configuration for updating the pool. The `pool_size` to adjust to by the events triggered by the `schedule_expression`. For example you can configure a cron expression for weekdays to adjust the pool to 10 and another expression for the weekend to adjust the pool to 1."
   type = list(object({
     schedule_expression = string
     size                = number
@@ -675,7 +675,7 @@ variable "aws_partition" {
 }
 
 variable "disable_runner_autoupdate" {
-  description = "Disable the auto update of the github runner agent. Be-aware there is a grace period of 30 days, see also the [GitHub article](https://github.blog/changelog/2022-02-01-github-actions-self-hosted-runners-can-now-disable-automatic-updates/)"
+  description = "Disable the auto update of the github runner agent. Be aware there is a grace period of 30 days, see also the [GitHub article](https://github.blog/changelog/2022-02-01-github-actions-self-hosted-runners-can-now-disable-automatic-updates/)"
   type        = bool
   default     = false
 }
@@ -697,7 +697,7 @@ variable "lambda_architecture" {
 }
 
 variable "enable_workflow_job_events_queue" {
-  description = "Enabling this experimental feature will create a secondory sqs queue to wich a copy of the workflow_job event will be delivered."
+  description = "Enabling this experimental feature will create a secondory sqs queue to which a copy of the workflow_job event will be delivered."
   type        = bool
   default     = false
 }
@@ -724,7 +724,7 @@ variable "enable_runner_binaries_syncer" {
 variable "enable_event_rule_binaries_syncer" {
   type        = bool
   default     = true
-  description = "Option to disable EventBridge Lambda trigger for the binary syncer, useful to stop automatic updates of binary distribution"
+  description = "Option to disable EventBridge Lambda trigger for the binary syncer, useful to stop automatic updates of binary distribution."
 }
 
 variable "queue_encryption" {
@@ -752,7 +752,7 @@ variable "enable_user_data_debug_logging_runner" {
 }
 
 variable "ssm_paths" {
-  description = "The root path used in SSM to store configuration and secreets."
+  description = "The root path used in SSM to store configuration and secrets."
   type = object({
     root       = optional(string, "github-action-runners")
     app        = optional(string, "app")
