@@ -94,7 +94,7 @@ function getRunnerInfo(runningInstances: DescribeInstancesResult) {
 }
 
 function getRunnerName(instance: Instance) {
-  let runnerName = [instance.Tags?.find((e) => e.Key === "ghr:runner_name_prefix")?.Value as string, instance.InstanceId as string].join('');
+  const runnerName = [instance.Tags?.find((e) => e.Key === "ghr:runner_name_prefix")?.Value as string, instance.InstanceId as string].join('');
   return runnerName;
 }
 
