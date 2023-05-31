@@ -9,6 +9,7 @@ export interface RunnerList {
   type?: string;
   repo?: string;
   org?: string;
+  runnerName: string;
 }
 
 export interface RunnerInfo {
@@ -16,6 +17,7 @@ export interface RunnerInfo {
   launchTime?: Date;
   owner: string;
   type: string;
+  runnerName: string;
 }
 
 export interface ListRunnerFilters {

@@ -68,19 +68,19 @@ export async function adjust(event: PoolEvent): Promise<void> {
   let numberOfRunnersInPool = 0;
   for (const ec2Instance of ec2runners) {
     if (
-      runnerStatus.get(ec2Instance.instanceId)?.busy === false &&
-      runnerStatus.get(ec2Instance.instanceId)?.status === 'online'
+      runnerStatus.get(ec2Instance.runnerName)?.busy === false &&
+      runnerStatus.get(ec2Instance.runnerName)?.status === 'online'
     ) {
       numberOfRunnersInPool++;
-      logger.debug(`Runner ${ec2Instance.instanceId} is idle in GitHub and counted as part of the pool`);
-    } else if (runnerStatus.get(ec2Instance.instanceId) != null) {
-      logger.debug(`Runner ${ec2Instance.instanceId} is not idle in GitHub and NOT counted as part of the pool`);
+      logger.debug(`Runner ${ec2Instance.runnerName} is idle in GitHub and counted as part of the pool`);
+    } else if (runnerStatus.get(ec2Instance.runnerName) != null) {
+      logger.debug(`Runner ${ec2Instance.runnerName} is not idle in GitHub and NOT counted as part of the pool`);
     } else if (!bootTimeExceeded(ec2Instance)) {
       numberOfRunnersInPool++;
-      logger.info(`Runner ${ec2Instance.instanceId} is still booting and counted as part of the pool`);
+      logger.info(`Runner ${ec2Instance.runnerName} is still booting and counted as part of the pool`);
     } else {
       logger.debug(
-        `Runner ${ec2Instance.instanceId} is not idle in GitHub nor booting and not counted as part of the pool`,
+        `Runner ${ec2Instance.runnerName} is not idle in GitHub nor booting and not counted as part of the pool`,
       );
     }
   }
