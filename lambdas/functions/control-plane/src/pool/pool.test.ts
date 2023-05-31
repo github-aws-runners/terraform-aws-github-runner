@@ -49,18 +49,21 @@ const ec2InstancesRegistered = [
     launchTime: new Date(),
     type: 'Org',
     owner: ORG,
+    runnerName: 'i-1-idle',
   },
   {
     instanceId: 'i-2-busy',
     launchTime: new Date(),
     type: 'Org',
     owner: ORG,
+    runnerName: 'i-2-busy',
   },
   {
     instanceId: 'i-3-offline',
     launchTime: new Date(),
     type: 'Org',
     owner: ORG,
+    runnerName: 'i-3-offline',
   },
   {
     instanceId: 'i-4-idle-older-than-minimum-time-running',
@@ -69,6 +72,7 @@ const ec2InstancesRegistered = [
       .toDate(),
     type: 'Org',
     owner: ORG,
+    runnerName: 'i-4-idle-older-than-minimum-time-running',
   },
 ];
 
@@ -190,6 +194,7 @@ describe('Test simple pool.', () => {
             .toDate(),
           type: 'Org',
           owner: ORG,
+          runnerName: 'i-4-still-booting',
         },
         {
           instanceId: 'i-5-orphan',
@@ -198,6 +203,7 @@ describe('Test simple pool.', () => {
             .toDate(),
           type: 'Org',
           owner: ORG,
+          runnerName: 'i-5-orphan',
         },
       ]);
 
@@ -220,6 +226,7 @@ describe('Test simple pool.', () => {
             .toDate(),
           type: 'Org',
           owner: ORG,
+          runnerName: 'i-4-still-booting',
         },
         {
           instanceId: 'i-5-orphan',
@@ -228,6 +235,7 @@ describe('Test simple pool.', () => {
             .toDate(),
           type: 'Org',
           owner: ORG,
+          runnerName: 'i-5-orphan',
         },
       ]);
 
