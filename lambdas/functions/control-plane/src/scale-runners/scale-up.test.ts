@@ -123,7 +123,6 @@ beforeEach(() => {
       launchTime: new Date(),
       type: 'Org',
       owner: TEST_DATA.repositoryOwner,
-      runnerName: 'i-1234',
     },
   ]);
 

@@ -153,7 +153,6 @@ describe('terminate runner', () => {
       instanceId: 'instance-2',
       owner: 'owner-2',
       type: 'Repo',
-      runnerName: 'instance-2',
     };
     await terminateRunner(runner.instanceId);
 
