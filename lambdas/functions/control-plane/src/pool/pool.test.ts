@@ -72,7 +72,7 @@ const ec2InstancesRegistered = [
   },
 ];
 
-const ghaRunnerInstances = [
+const githubRunnersRegistered = [
   {
     id: 1,
     name: 'i-1-idle',
@@ -134,7 +134,7 @@ beforeEach(() => {
   };
   mockOctokit.actions.createRegistrationTokenForOrg.mockImplementation(() => mockTokenReturnValue);
 
-  mockOctokit.paginate.mockImplementation(() => ghaRunnerInstances);
+  mockOctokit.paginate.mockImplementation(() => githubRunnersRegistered);
 
   mockListRunners.mockImplementation(async () => ec2InstancesRegistered);
 
@@ -259,10 +259,10 @@ describe('Test simple pool.', () => {
       process.env.RUNNER_NAME_PREFIX = 'runner-prefix_';
     });
 
-    it('Should not top up with runners with prefixed runner names with active instances', async () => {
+    it('Should top up with fewer runners when there are idle prefixed runners', async () => {
       // Add prefixed runners to github
       mockOctokit.paginate.mockImplementation(async () => [
-        ...ghaRunnerInstances,
+        ...githubRunnersRegistered,
         {
           id: 5,
           name: 'runner-prefix_i-5-idle',
