@@ -72,6 +72,41 @@ const ec2InstancesRegistered = [
   },
 ];
 
+const ghaRunnerInstances = [
+  {
+    id: 1,
+    name: 'i-1-idle',
+    os: 'linux',
+    status: 'online',
+    busy: false,
+    labels: [],
+  },
+  {
+    id: 2,
+    name: 'i-2-busy',
+    os: 'linux',
+    status: 'online',
+    busy: true,
+    labels: [],
+  },
+  {
+    id: 3,
+    name: 'i-3-offline',
+    os: 'linux',
+    status: 'offline',
+    busy: false,
+    labels: [],
+  },
+  {
+    id: 3,
+    name: 'i-4-idle-older-than-minimum-time-running',
+    os: 'linux',
+    status: 'online',
+    busy: false,
+    labels: [],
+  },
+]
+
 beforeEach(() => {
   nock.disableNetConnect();
   jest.resetModules();
@@ -99,40 +134,7 @@ beforeEach(() => {
   };
   mockOctokit.actions.createRegistrationTokenForOrg.mockImplementation(() => mockTokenReturnValue);
 
-  mockOctokit.paginate.mockImplementation(() => [
-    {
-      id: 1,
-      name: 'i-1-idle',
-      os: 'linux',
-      status: 'online',
-      busy: false,
-      labels: [],
-    },
-    {
-      id: 2,
-      name: 'i-2-busy',
-      os: 'linux',
-      status: 'online',
-      busy: true,
-      labels: [],
-    },
-    {
-      id: 3,
-      name: 'i-3-offline',
-      os: 'linux',
-      status: 'offline',
-      busy: false,
-      labels: [],
-    },
-    {
-      id: 3,
-      name: 'i-4-idle-older-than-minimum-time-running',
-      os: 'linux',
-      status: 'online',
-      busy: false,
-      labels: [],
-    },
-  ]);
+  mockOctokit.paginate.mockImplementation(() => ghaRunnerInstances);
 
   mockListRunners.mockImplementation(async () => ec2InstancesRegistered);
 
@@ -254,15 +256,53 @@ describe('Test simple pool.', () => {
 
   describe('With Runner Name Prefix', () => {
     beforeEach(() => {
-      process.env.RUNNER_NAME_PREFIX = 'ubuntu-20-04_';
+      process.env.RUNNER_NAME_PREFIX = 'runner-prefix_';
     });
 
-    it('Top up if the pool size is set to 5', async () => {
+    it('Should not top up with runners with prefixed runner names with active instances', async () => {
+      // Add prefixed runners to github
+      mockOctokit.paginate.mockImplementation(async () => [
+        ...ghaRunnerInstances,
+        {
+          id: 5,
+          name: 'runner-prefix_i-5-idle',
+          os: 'linux',
+          status: 'online',
+          busy: false,
+          labels: [],
+        },
+        {
+          id: 6,
+          name: 'runner-prefix_i-6-idle',
+          os: 'linux',
+          status: 'online',
+          busy: false,
+          labels: [],
+        },
+      ]);
+
+      // Add instances in ec2
+      mockListRunners.mockImplementation(async () => [
+        ...ec2InstancesRegistered,
+        {
+          instanceId: 'i-5-idle',
+          launchTime: new Date(),
+          type: 'Org',
+          owner: ORG,
+        },
+        {
+          instanceId: 'i-6-idle',
+          launchTime: new Date(),
+          type: 'Org',
+          owner: ORG,
+        },
+      ]);
+
       await expect(await adjust({ poolSize: 5 })).resolves;
-      // 2 idle, top up with 3 to match a pool of 5
+      // 2 idle, 2 prefixed idle top up with 1 to match a pool of 5
       expect(createRunners).toHaveBeenCalledWith(
         expect.anything(),
-        expect.objectContaining({ numberOfRunners: 3 }),
+        expect.objectContaining({ numberOfRunners: 1 }),
         expect.anything(),
       );
     });
