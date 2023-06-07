@@ -54,7 +54,7 @@ export async function adjust(event: PoolEvent): Promise<void> {
   );
   const runnerStatus = new Map<string, RunnerStatus>();
   for (const runner of runners) {
-    runner.name = runnerNamePrefix ? runner.name.replace(runnerNamePrefix, ''): runner.name;
+    runner.name = runnerNamePrefix ? runner.name.replace(runnerNamePrefix, '') : runner.name;
     runnerStatus.set(runner.name, { busy: runner.busy, status: runner.status });
   }
 
