@@ -105,7 +105,7 @@ const ghaRunnerInstances = [
     busy: false,
     labels: [],
   },
-]
+];
 
 beforeEach(() => {
   nock.disableNetConnect();
