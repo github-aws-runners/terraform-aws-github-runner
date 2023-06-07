@@ -1,9 +1,9 @@
 data "aws_ami" "docker_cache_ami" {
-  most_recent = true
+  most_recent = false
 
   filter {
     name   = "name"
-    values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-*"]
+    values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20230601"]
   }
 
   filter {
