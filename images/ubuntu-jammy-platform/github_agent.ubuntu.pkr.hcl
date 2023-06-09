@@ -162,7 +162,7 @@ build {
       ". \"$HOME/.cargo/env\"",
       "rustup toolchain install stable",
       "rustup target add wasm32-unknown-unknown --toolchain stable",
-      "cargo install -f wasm-bindgen-cli"
+      "cargo install -f wasm-bindgen-cli@0.2.86"
     ], var.custom_shell_commands)
   }
 
