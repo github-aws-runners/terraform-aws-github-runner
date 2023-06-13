@@ -20,6 +20,7 @@ export async function adjust(event: PoolEvent): Promise<void> {
   logger.info(`Checking current pool size against pool of size: ${event.poolSize}`);
   const runnerExtraLabels = process.env.RUNNER_EXTRA_LABELS;
   const runnerGroup = process.env.RUNNER_GROUP_NAME;
+  const runnerNamePrefix = process.env.RUNNER_NAME_PREFIX;
   const environment = process.env.ENVIRONMENT;
   const ghesBaseUrl = process.env.GHES_URL;
   const ssmTokenPath = process.env.SSM_TOKEN_PATH;
@@ -53,6 +54,7 @@ export async function adjust(event: PoolEvent): Promise<void> {
   );
   const runnerStatus = new Map<string, RunnerStatus>();
   for (const runner of runners) {
+    runner.name = runnerNamePrefix ? runner.name.replace(runnerNamePrefix, '') : runner.name;
     runnerStatus.set(runner.name, { busy: runner.busy, status: runner.status });
   }
 
