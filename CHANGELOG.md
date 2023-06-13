@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.4.2](https://github.com/philips-labs/terraform-aws-github-runner/compare/v3.4.1...v3.4.2) (2023-06-13)
+
+
+### Bug Fixes
+
+* Fix pool logic with runner name prefix ([#3303](https://github.com/philips-labs/terraform-aws-github-runner/issues/3303)) ([66e2a66](https://github.com/philips-labs/terraform-aws-github-runner/commit/66e2a66adcf200a85c0200382756f4fa5a71aadb))
+* remove duplicate vpc execution permissions ([#3304](https://github.com/philips-labs/terraform-aws-github-runner/issues/3304)) ([0bebeef](https://github.com/philips-labs/terraform-aws-github-runner/commit/0bebeef094b2e64af7f81166becae6c65167df86))
+
 ## [3.4.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v3.4.0...v3.4.1) (2023-05-23)
 
 
