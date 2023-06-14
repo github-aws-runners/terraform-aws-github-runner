@@ -12,12 +12,20 @@ resource "random_id" "random" {
 ### Hybrid account
 ################################################################################
 
+module "base" {
+  source = "../base"
+
+  prefix     = local.environment
+  aws_region = local.aws_region
+}
+
+
 module "runners" {
   source                          = "../../"
   create_service_linked_role_spot = true
   aws_region                      = local.aws_region
-  vpc_id                          = module.vpc.vpc_id
-  subnet_ids                      = module.vpc.private_subnets
+  vpc_id                          = module.base.vpc.vpc_id
+  subnet_ids                      = module.base.vpc.private_subnets
 
   prefix = local.environment
   tags = {
