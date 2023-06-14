@@ -9,6 +9,12 @@ locals {
 resource "random_id" "random" {
   byte_length = 20
 }
+module "base" {
+  source = "../base"
+
+  prefix     = local.environment
+  aws_region = local.aws_region
+}
 
 module "multi-runner" {
   source              = "../../modules/multi-runner"
@@ -37,8 +43,8 @@ module "multi-runner" {
   #    }
   #  }
   aws_region                        = local.aws_region
-  vpc_id                            = module.vpc.vpc_id
-  subnet_ids                        = module.vpc.private_subnets
+  vpc_id                            = module.base.vpc.vpc_id
+  subnet_ids                        = module.base.vpc.private_subnets
   runners_scale_up_lambda_timeout   = 60
   runners_scale_down_lambda_timeout = 60
   prefix                            = local.environment

@@ -23,6 +23,12 @@ resource "aws_kms_alias" "github" {
   name          = "alias/github/action-runners"
   target_key_id = aws_kms_key.github.key_id
 }
+module "base" {
+  source = "../base"
+
+  prefix     = local.environment
+  aws_region = local.aws_region
+}
 
 module "runners" {
   source = "../../"
@@ -31,8 +37,8 @@ module "runners" {
   }
 
   aws_region  = local.aws_region
-  vpc_id      = module.vpc.vpc_id
-  subnet_ids  = module.vpc.private_subnets
+  vpc_id      = module.base.vpc.vpc_id
+  subnet_ids  = module.base.vpc.private_subnets
   kms_key_arn = aws_kms_key.github.key_id
 
   prefix = local.environment
