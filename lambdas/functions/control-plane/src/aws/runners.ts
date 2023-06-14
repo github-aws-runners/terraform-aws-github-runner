@@ -7,8 +7,8 @@ import {
   FleetLaunchTemplateOverridesRequest,
   TerminateInstancesCommand,
 } from '@aws-sdk/client-ec2';
-import { SSM } from '@aws-sdk/client-ssm';
 import { createChildLogger } from '@terraform-aws-github-runner/aws-powertools-util';
+import { getParameter, putParameter } from '@terraform-aws-github-runner/aws-ssm-util';
 import moment from 'moment';
 
 import ScaleError from './../scale-runners/ScaleError';
@@ -138,14 +138,13 @@ export async function createRunner(runnerParameters: Runners.RunnerInputParamete
     },
   });
 
-  const ec2Clinnt = new EC2Client({ region: process.env.AWS_REGION });
-  const ssmClient = new SSM({ region: process.env.AWS_REGION });
+  const ec2Client = new EC2Client({ region: process.env.AWS_REGION });
 
   let amiIdOverride = undefined;
 
   if (runnerParameters.amiIdSsmParameterName) {
     try {
-      amiIdOverride = (await ssmClient.getParameter({ Name: runnerParameters.amiIdSsmParameterName })).Parameter?.Value;
+      amiIdOverride = await getParameter(runnerParameters.amiIdSsmParameterName);
       logger.debug(`AMI override SSM parameter (${runnerParameters.amiIdSsmParameterName}) set to: ${amiIdOverride}`);
     } catch (e) {
       logger.error(
@@ -197,7 +196,7 @@ export async function createRunner(runnerParameters: Runners.RunnerInputParamete
       ],
       Type: 'instant',
     });
-    fleet = await ec2Clinnt.send(createFleetCommand);
+    fleet = await ec2Client.send(createFleetCommand);
   } catch (e) {
     logger.warn('Create fleet request failed.', { error: e as Error });
     throw e;
@@ -239,11 +238,11 @@ export async function createRunner(runnerParameters: Runners.RunnerInputParamete
   const isDelay = instances.length >= ssmParameterStoreMaxThroughput ? true : false;
 
   for (const instance of instances) {
-    await ssmClient.putParameter({
-      Name: `${runnerParameters.ssmTokenPath}/${instance}`,
-      Value: runnerParameters.runnerServiceConfig.join(' '),
-      Type: 'SecureString',
-    });
+    await putParameter(
+      `${runnerParameters.ssmTokenPath}/${instance}`,
+      runnerParameters.runnerServiceConfig.join(' '),
+      true,
+    );
 
     if (isDelay) {
       // Delay to prevent AWS ssm rate limits by being within the max throughput limit

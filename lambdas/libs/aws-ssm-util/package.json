@@ -36,6 +36,7 @@
     "typescript": "^5.0.2"
   },
   "dependencies": {
-    "@aws-sdk/client-ssm": "^3.321.1"
+    "@aws-sdk/client-ssm": "^3.350.0",
+    "@aws-sdk/types": "^3.347.0"
   }
 }
