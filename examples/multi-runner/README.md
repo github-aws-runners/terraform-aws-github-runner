@@ -61,14 +61,14 @@ Be aware some shells will print some end of line character `%`.
 
 | Name | Version |
 |------|---------|
-| <a name="provider_random"></a> [random](#provider\_random) | 3.4.3 |
+| <a name="provider_random"></a> [random](#provider\_random) | 3.5.1 |
 
 ## Modules
 
 | Name | Source | Version |
 |------|--------|---------|
+| <a name="module_base"></a> [base](#module\_base) | ../base | n/a |
 | <a name="module_multi-runner"></a> [multi-runner](#module\_multi-runner) | ../../modules/multi-runner | n/a |
-| <a name="module_vpc"></a> [vpc](#module\_vpc) | terraform-aws-modules/vpc/aws | 3.11.2 |
 
 ## Resources
 

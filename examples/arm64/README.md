@@ -44,14 +44,14 @@ Be aware some shells will print some end of line character `%`.
 
 | Name | Version |
 |------|---------|
-| <a name="provider_random"></a> [random](#provider\_random) | 3.4.3 |
+| <a name="provider_random"></a> [random](#provider\_random) | 3.5.1 |
 
 ## Modules
 
 | Name | Source | Version |
 |------|--------|---------|
+| <a name="module_base"></a> [base](#module\_base) | ../base | n/a |
 | <a name="module_runners"></a> [runners](#module\_runners) | ../../ | n/a |
-| <a name="module_vpc"></a> [vpc](#module\_vpc) | git::https://github.com/philips-software/terraform-aws-vpc.git | 2.2.0 |
 
 ## Resources
 
