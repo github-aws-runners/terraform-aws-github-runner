@@ -1,7 +1,7 @@
 import { Webhooks } from '@octokit/webhooks';
 import { CheckRunEvent, WorkflowJobEvent } from '@octokit/webhooks-types';
 import { createChildLogger } from '@terraform-aws-github-runner/aws-powertools-util';
-import { getParameterValue } from '@terraform-aws-github-runner/aws-ssm-util';
+import { getParameter } from '@terraform-aws-github-runner/aws-ssm-util';
 import { IncomingHttpHeaders } from 'http';
 
 import { Response } from '../lambda';
@@ -99,7 +99,7 @@ async function verifySignature(githubEvent: string, headers: IncomingHttpHeaders
     return 500;
   }
 
-  const secret = await getParameterValue(process.env.PARAMETER_GITHUB_APP_WEBHOOK_SECRET);
+  const secret = await getParameter(process.env.PARAMETER_GITHUB_APP_WEBHOOK_SECRET);
 
   const webhooks = new Webhooks({
     secret: secret,

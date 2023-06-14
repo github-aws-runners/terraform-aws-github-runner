@@ -21,7 +21,7 @@ beforeEach(() => {
   nock.disableNetConnect();
 });
 
-describe('Test getParameterValue', () => {
+describe('Test getParameter and putParameter', () => {
   it('Gets parameters and returns string', async () => {
     // Arrange
     const parameterValue = 'test';

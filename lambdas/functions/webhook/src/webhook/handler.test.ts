@@ -1,5 +1,5 @@
 import { Webhooks } from '@octokit/webhooks';
-import { getParameterValue } from '@terraform-aws-github-runner/aws-ssm-util';
+import { getParameter } from '@terraform-aws-github-runner/aws-ssm-util';
 import { mocked } from 'jest-mock';
 import nock from 'nock';
 
@@ -41,7 +41,7 @@ describe('handler', () => {
     jest.clearAllMocks();
     jest.resetAllMocks();
 
-    const mockedGet = mocked(getParameterValue);
+    const mockedGet = mocked(getParameter);
     mockedGet.mockResolvedValueOnce(GITHUB_APP_WEBHOOK_SECRET);
   });
 

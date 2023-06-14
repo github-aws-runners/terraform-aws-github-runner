@@ -11,7 +11,7 @@ import { OctokitOptions } from '@octokit/core/dist-types/types';
 import { request } from '@octokit/request';
 import { Octokit } from '@octokit/rest';
 import { createChildLogger } from '@terraform-aws-github-runner/aws-powertools-util';
-import { getParameterValue } from '@terraform-aws-github-runner/aws-ssm-util';
+import { getParameter } from '@terraform-aws-github-runner/aws-ssm-util';
 
 const logger = createChildLogger('gh-auth');
 
@@ -45,11 +45,11 @@ export async function createGithubInstallationAuth(
 }
 
 async function createAuth(installationId: number | undefined, ghesApiUrl: string): Promise<AuthInterface> {
-  const appId = parseInt(await getParameterValue(process.env.PARAMETER_GITHUB_APP_ID_NAME));
+  const appId = parseInt(await getParameter(process.env.PARAMETER_GITHUB_APP_ID_NAME));
   let authOptions: StrategyOptions = {
     appId,
     privateKey: Buffer.from(
-      await getParameterValue(process.env.PARAMETER_GITHUB_APP_KEY_BASE64_NAME),
+      await getParameter(process.env.PARAMETER_GITHUB_APP_KEY_BASE64_NAME),
       'base64',
       // replace literal \n characters with new lines to allow the key to be stored as a
       // single line variable. This logic should match how the GitHub Terraform provider

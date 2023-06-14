@@ -2,7 +2,7 @@ import { createAppAuth } from '@octokit/auth-app';
 import { StrategyOptions } from '@octokit/auth-app/dist-types/types';
 import { request } from '@octokit/request';
 import { RequestInterface } from '@octokit/types';
-import { getParameterValue } from '@terraform-aws-github-runner/aws-ssm-util';
+import { getParameter } from '@terraform-aws-github-runner/aws-ssm-util';
 import { mocked } from 'jest-mock';
 import { MockProxy, mock } from 'jest-mock-extended';
 import nock from 'nock';
@@ -18,7 +18,7 @@ const GITHUB_APP_ID = '1';
 const PARAMETER_GITHUB_APP_ID_NAME = `/actions-runner/${ENVIRONMENT}/github_app_id`;
 const PARAMETER_GITHUB_APP_KEY_BASE64_NAME = `/actions-runner/${ENVIRONMENT}/github_app_key_base64`;
 
-const mockedGet = mocked(getParameterValue);
+const mockedGet = mocked(getParameter);
 
 beforeEach(() => {
   jest.resetModules();
@@ -117,8 +117,8 @@ ${decryptedValue}`,
     const result = await createGithubAppAuth(installationId);
 
     // Assert
-    expect(getParameterValue).toBeCalledWith(PARAMETER_GITHUB_APP_ID_NAME);
-    expect(getParameterValue).toBeCalledWith(PARAMETER_GITHUB_APP_KEY_BASE64_NAME);
+    expect(getParameter).toBeCalledWith(PARAMETER_GITHUB_APP_ID_NAME);
+    expect(getParameter).toBeCalledWith(PARAMETER_GITHUB_APP_KEY_BASE64_NAME);
 
     expect(mockedCreatAppAuth).toBeCalledTimes(1);
     expect(mockedCreatAppAuth).toBeCalledWith(authOptions);
@@ -154,8 +154,8 @@ ${decryptedValue}`,
     const result = await createGithubAppAuth(installationId, githubServerUrl);
 
     // Assert
-    expect(getParameterValue).toBeCalledWith(PARAMETER_GITHUB_APP_ID_NAME);
-    expect(getParameterValue).toBeCalledWith(PARAMETER_GITHUB_APP_KEY_BASE64_NAME);
+    expect(getParameter).toBeCalledWith(PARAMETER_GITHUB_APP_ID_NAME);
+    expect(getParameter).toBeCalledWith(PARAMETER_GITHUB_APP_KEY_BASE64_NAME);
 
     expect(mockedCreatAppAuth).toBeCalledTimes(1);
     expect(mockedCreatAppAuth).toBeCalledWith(authOptions);
@@ -191,8 +191,8 @@ ${decryptedValue}`,
     const result = await createGithubAppAuth(installationId, githubServerUrl);
 
     // Assert
-    expect(getParameterValue).toBeCalledWith(PARAMETER_GITHUB_APP_ID_NAME);
-    expect(getParameterValue).toBeCalledWith(PARAMETER_GITHUB_APP_KEY_BASE64_NAME);
+    expect(getParameter).toBeCalledWith(PARAMETER_GITHUB_APP_ID_NAME);
+    expect(getParameter).toBeCalledWith(PARAMETER_GITHUB_APP_KEY_BASE64_NAME);
 
     expect(mockedCreatAppAuth).toBeCalledTimes(1);
     expect(mockedCreatAppAuth).toBeCalledWith(authOptions);
