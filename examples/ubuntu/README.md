@@ -45,7 +45,6 @@ terraform apply
 |------|--------|---------|
 | <a name="module_base"></a> [base](#module\_base) | ../base | n/a |
 | <a name="module_runners"></a> [runners](#module\_runners) | ../../ | n/a |
-| <a name="module_vpc"></a> [vpc](#module\_vpc) | terraform-aws-modules/vpc/aws | 3.11.2 |
 
 ## Resources
 
