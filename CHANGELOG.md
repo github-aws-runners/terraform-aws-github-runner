@@ -1,5 +1,20 @@
 # Changelog
 
+## [3.5.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v3.4.2...v3.5.0) (2023-06-21)
+
+
+### Features
+
+* Support AWS 5.x Terraform provider ([#3315](https://github.com/philips-labs/terraform-aws-github-runner/issues/3315)) ([d0e8960](https://github.com/philips-labs/terraform-aws-github-runner/commit/d0e89608f52ff0db4abe204af6718a73e780ea98))
+
+
+### Bug Fixes
+
+* **lambda:** bump @aws-sdk/client-ec2 from 3.352.0 to 3.356.0 in /lambdas ([#3333](https://github.com/philips-labs/terraform-aws-github-runner/issues/3333)) ([9cb0369](https://github.com/philips-labs/terraform-aws-github-runner/commit/9cb0369195855ea2e1f75f905098588101a166f8))
+* **lambda:** bump @aws-sdk/client-s3 from 3.352.0 to 3.354.0 in /lambdas ([#3329](https://github.com/philips-labs/terraform-aws-github-runner/issues/3329)) ([37acc92](https://github.com/philips-labs/terraform-aws-github-runner/commit/37acc9247526fdfbe940fca1ad19beea89f3576c))
+* **lambda:** bump @aws-sdk/client-ssm from 3.321.1 to 3.350.0 in /lambdas ([#3319](https://github.com/philips-labs/terraform-aws-github-runner/issues/3319)) ([97d5c73](https://github.com/philips-labs/terraform-aws-github-runner/commit/97d5c7384cbeec38ee0d9b16167ed4a2f883d291))
+* **lambda:** bump @aws-sdk/client-ssm from 3.352.0 to 3.354.0 in /lambdas ([#3327](https://github.com/philips-labs/terraform-aws-github-runner/issues/3327)) ([e315230](https://github.com/philips-labs/terraform-aws-github-runner/commit/e315230f42d9b321a3ba28ff7f9294fc77dec78d))
+
 ## [3.4.2](https://github.com/philips-labs/terraform-aws-github-runner/compare/v3.4.1...v3.4.2) (2023-06-13)
 
 
