@@ -21,13 +21,13 @@ output "runners" {
 }
 
 output "binaries_syncer" {
-  value = [for runner_binary in module.runner_binaries : {
+  value = { for runner_binary_key, runner_binary in module.runner_binaries : runner_binary_key => {
     lambda           = runner_binary.lambda
     lambda_log_group = runner_binary.lambda_log_group
     lambda_role      = runner_binary.lambda_role
     location         = "s3://runner_binary.bucket.id}/runner_binary.bucket.key"
     bucket           = runner_binary.bucket
-  }]
+  } }
 }
 
 output "webhook" {
