@@ -1,5 +1,5 @@
 output "runners" {
-  value = [for runner in module.runners : {
+  value = { for runner_key, runner in module.runners : runner_key => {
     launch_template_name    = runner.launch_template.name
     launch_template_id      = runner.launch_template.id
     launch_template_version = runner.launch_template.latest_version
@@ -16,7 +16,8 @@ output "runners" {
     role_pool               = runner.role_pool
     runners_log_groups      = runner.runners_log_groups
     logfiles                = runner.logfiles
-  }]
+    }
+  }
 }
 
 output "binaries_syncer" {
