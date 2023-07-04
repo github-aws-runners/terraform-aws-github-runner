@@ -37,6 +37,13 @@ module "runners" {
   runners_lambda_zip                = "../lambdas-download/runners.zip"
 
   runner_extra_labels = "default,example"
+  runner_metadata_options = {
+    "http_endpoint" : "enabled",
+    # So docker can access ec2 metadata, see https://github.com/aws/aws-sdk-go/issues/2972
+    "http_put_response_hop_limit" : 2,
+    "http_tokens" : "optional",
+    "instance_metadata_tags" : "enabled"
+  }
 
   enable_ephemeral_runners          = true
   runners_maximum_count             = 15
