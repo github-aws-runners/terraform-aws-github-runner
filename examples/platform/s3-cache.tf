@@ -53,7 +53,10 @@ resource "aws_iam_policy" "platform_runner_cache_bucket_access_policy" {
         Action = [
           "s3:PutObject",
           "s3:GetObject",
-          "s3:ListBucket"
+          "s3:ListBucket",
+          "s3:GetBucketLocation",
+          "s3:ListBucketMultipartUploads",
+          "s3:ListMultipartUploadParts"
         ]
         Effect = "Allow"
         Resource = [
