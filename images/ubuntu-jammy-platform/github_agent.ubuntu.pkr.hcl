@@ -39,7 +39,7 @@ variable "associate_public_ip_address" {
 variable "instance_type" {
   description = "The instance type Packer will use for the builder"
   type        = string
-  default     = "c6a.2xlarge"
+  default     = "c6id.2xlarge"
 }
 
 variable "root_volume_size_gb" {
