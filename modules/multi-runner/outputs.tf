@@ -1,4 +1,5 @@
 output "runners" {
+  deprication_replacement = "runners_map"
   value = [for runner in module.runners : {
     launch_template_name    = runner.launch_template.name
     launch_template_id      = runner.launch_template.id
@@ -41,6 +42,7 @@ output "runners_map" {
 }
 
 output "binaries_syncer" {
+  deprication_replacement = "binaries_syncer_map"
   value = [for runner_binary in module.runner_binaries : {
     lambda           = runner_binary.lambda
     lambda_log_group = runner_binary.lambda_log_group
