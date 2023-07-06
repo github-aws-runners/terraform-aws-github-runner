@@ -59,6 +59,26 @@ resource "aws_route53_record" "docker_cache" {
   records = [aws_lb.docker_cache.dns_name]
 }
 
+resource "aws_iam_role" "docker_cache" {
+  name               = "${local.environment}-docker-cache-role"
+  assume_role_policy = templatefile("../../modules/runners/policies/instance-role-trust-policy.json", {})
+  tags = {
+    Name = "platform-docker-cache-tf"
+  }
+}
+
+resource "aws_iam_instance_profile" "docker_cache" {
+  name = "${local.environment}-docker-cache-profile"
+  role = aws_iam_role.docker_cache.name
+}
+
+resource "aws_iam_role_policy" "docker_cache_session_manager_aws_managed" {
+  name   = "docker-cache-ssm-session"
+  count  = 1
+  role   = aws_iam_role.docker_cache.name
+  policy = templatefile("../../modules/runners/policies/instance-ssm-policy.json", {})
+}
+
 resource "aws_launch_template" "docker_cache" {
   image_id      = data.aws_ami.docker_cache_ami.id
   instance_type = "t4g.micro"
@@ -70,8 +90,9 @@ resource "aws_launch_template" "docker_cache" {
     aws_security_group.docker_cache_sg.id
   ]
 
-  # TODO: Implement SSM
-  # iam_instance_profile =
+  iam_instance_profile {
+    name = aws_iam_instance_profile.docker_cache.name
+  }
 
   user_data = <<-EOF
               #!/bin/bash
