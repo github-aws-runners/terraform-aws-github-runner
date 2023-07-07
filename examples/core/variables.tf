@@ -35,6 +35,6 @@ variable "aws_region" {
 }
 
 variable "instance_types" {
-  type = list(string)
+  type    = list(string)
   default = ["c6a.2xlarge"]
 }
