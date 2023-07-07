@@ -28,13 +28,6 @@ resource "aws_security_group" "docker_cache_sg" {
   }
 }
 
-resource "aws_vpc_security_group_ingress_rule" "ssh" {
-  security_group_id = aws_security_group.docker_cache_sg.id
-  cidr_ipv4         = "0.0.0.0/0"
-  ip_protocol       = "tcp"
-  from_port         = 22
-  to_port           = 22
-}
 
 resource "aws_vpc_security_group_ingress_rule" "docker" {
   security_group_id            = aws_security_group.docker_cache_sg.id
@@ -55,8 +48,11 @@ resource "aws_route53_record" "docker_cache" {
   zone_id = aws_route53_zone.private.zone_id
   name    = "docker-cache.platform.internal"
   type    = "A"
-  ttl     = 300
-  records = [aws_lb.docker_cache.dns_name]
+  alias {
+    name                   = aws_lb.docker_cache.dns_name
+    zone_id                = aws_lb.docker_cache.zone_id
+    evaluate_target_health = true
+  }
 }
 
 resource "aws_iam_role" "docker_cache" {
@@ -93,19 +89,7 @@ resource "aws_launch_template" "docker_cache" {
     name = aws_iam_instance_profile.docker_cache.name
   }
 
-  user_data = <<-EOF
-              #!/bin/bash
-              apt-get update -y
-              apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release
-              curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
-              echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-              apt-get update -y
-              apt-get install -y docker-ce docker-ce-cli containerd.io
-              usermod -aG ubuntu docker
-              echo -e "---\n\nversion: 0.1\nlog:\n  level: info\n  fields:\n    service: registry\nstorage:\n  cache:\n    blobdescriptor: inmemory\n  filesystem:\n    rootdirectory: /var/lib/registry\nhttp:\n  addr: :5000\n  headers:\n    X-Content-Type-Options: [nosniff]\nproxy:\n  remoteurl: https://registry-1.docker.io" > /home/ubuntu/config.yml
-              mkdir /home/ubuntu/registry
-              docker run -d -p 5000:5000 --restart=always --name=through-cache -v /home/ubuntu/config.yml:/etc/docker/registry/config.yml -v /home/ubuntu/registry:/var/lib/registry registry:2
-              EOF
+  user_data = filebase64("${path.module}/user_data.sh")
 
   block_device_mappings {
     device_name = "/dev/sda1"
@@ -133,12 +117,16 @@ resource "aws_autoscaling_group" "docker_cache" {
   health_check_grace_period = 300
   health_check_type         = "ELB"
 
-  target_group_arns = [aws_lb_target_group.docker_cache.arn]
   tag {
     key                 = "Name"
     value               = "platform-docker-cache-tf"
     propagate_at_launch = true
   }
+}
+
+resource "aws_autoscaling_attachment" "docker_cache" {
+  autoscaling_group_name = aws_autoscaling_group.docker_cache.name
+  lb_target_group_arn   = aws_lb_target_group.docker_cache.arn
 }
 
 resource "aws_lb" "docker_cache" {
@@ -155,8 +143,18 @@ resource "aws_lb" "docker_cache" {
 
 resource "aws_lb_target_group" "docker_cache" {
   name        = "platform-docker-cache-tf"
-  target_type = "alb"
   port        = 5000
   protocol    = "HTTP"
   vpc_id      = module.base.vpc.vpc_id
+}
+
+resource "aws_lb_listener" "docker_cache" {
+  load_balancer_arn = aws_lb.docker_cache.arn
+  port              = 5000
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.docker_cache.arn
+  }
 }
