@@ -26,7 +26,7 @@ variable "runner_run_as" {
 
 variable "ami_name_filter" {
   type    = string
-  default = "github-runner-ubuntu-jammy-platform-amd64-202307050949"
+  default = "github-runner-ubuntu-jammy-platform-amd64-202307070322"
 }
 
 variable "aws_region" {
