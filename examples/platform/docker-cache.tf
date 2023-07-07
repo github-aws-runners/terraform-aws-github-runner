@@ -83,7 +83,6 @@ resource "aws_launch_template" "docker_cache" {
   image_id      = data.aws_ami.docker_cache_ami.id
   instance_type = "t4g.micro"
   name_prefix   = "${local.environment}-docker-cache"
-}
 
   vpc_security_group_ids = [
     data.aws_security_group.runner_sg.id,
@@ -113,6 +112,7 @@ resource "aws_launch_template" "docker_cache" {
     ebs {
       volume_size = 50
       volume_type = "gp3"
+    }
   }
 
   tags = {
