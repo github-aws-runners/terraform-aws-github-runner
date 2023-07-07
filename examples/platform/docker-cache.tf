@@ -134,7 +134,7 @@ resource "aws_autoscaling_group" "docker_cache" {
 
 resource "aws_autoscaling_attachment" "docker_cache" {
   autoscaling_group_name = aws_autoscaling_group.docker_cache.name
-  lb_target_group_arn   = aws_lb_target_group.docker_cache.arn
+  lb_target_group_arn    = aws_lb_target_group.docker_cache.arn
 }
 
 resource "aws_lb" "docker_cache" {
@@ -150,10 +150,10 @@ resource "aws_lb" "docker_cache" {
 }
 
 resource "aws_lb_target_group" "docker_cache" {
-  name        = "platform-docker-cache-tf"
-  port        = 5000
-  protocol    = "HTTP"
-  vpc_id      = module.base.vpc.vpc_id
+  name     = "platform-docker-cache-tf"
+  port     = 5000
+  protocol = "HTTP"
+  vpc_id   = module.base.vpc.vpc_id
 }
 
 resource "aws_lb_listener" "docker_cache" {
