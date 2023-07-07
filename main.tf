@@ -224,6 +224,7 @@ module "runners" {
   egress_rules                         = var.runner_egress_rules
   runner_additional_security_group_ids = var.runner_additional_security_group_ids
   metadata_options                     = var.runner_metadata_options
+  credit_specification                 = var.runner_credit_specification
 
   enable_runner_binaries_syncer    = var.enable_runner_binaries_syncer
   lambda_s3_bucket                 = var.lambda_s3_bucket
@@ -305,6 +306,7 @@ module "runner_binaries" {
 
   enable_event_rule_binaries_syncer    = var.enable_event_rule_binaries_syncer
   server_side_encryption_configuration = var.runner_binaries_s3_sse_configuration
+  s3_versioning                        = var.runner_binaries_s3_versioning
 
   role_path                 = var.role_path
   role_permissions_boundary = var.role_permissions_boundary

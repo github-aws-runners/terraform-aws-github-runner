@@ -13,6 +13,9 @@ echo "Retrieved REGION from AWS API ($region)"
 instance_id=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/meta-data/instance-id)
 echo "Retrieved INSTANCE_ID from AWS API ($instance_id)"
 
+instance_type=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/meta-data/instance-type)
+availability_zone=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/meta-data/placement/availability-zone)
+
 %{ if metadata_tags == "enabled" }
 environment=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/meta-data/tags/instance/ghr:environment)
 ssm_config_path=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/meta-data/tags/instance/ghr:ssm_config_path)
@@ -92,6 +95,10 @@ tee /opt/actions-runner/.setup_info <<EOL
   {
     "group": "Runner Image",
     "detail": "AMI id: $ami_id"
+  },
+  {
+    "group": "EC2",
+    "detail": "Instance type: $instance_type\nAvailability zone: $availability_zone"
   }
 ]
 EOL
