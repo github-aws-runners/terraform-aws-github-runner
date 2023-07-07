@@ -108,8 +108,8 @@ Be-aware some shells will print some end of line character `%`.
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 4.46.0 |
-| <a name="provider_random"></a> [random](#provider\_random) | 3.4.3 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 4.64.0 |
+| <a name="provider_random"></a> [random](#provider\_random) | 3.5.1 |
 
 ## Modules
 
@@ -129,9 +129,12 @@ Be-aware some shells will print some end of line character `%`.
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_ami_name_filter"></a> [ami\_name\_filter](#input\_ami\_name\_filter) | n/a | `string` | `"github-runner-amzn2-x86_64-*"` | no |
-| <a name="input_github_app"></a> [github\_app](#input\_github\_app) | GitHub for API usages. | <pre>object({<br>    id         = string<br>    key_base64 = string<br>  })</pre> | n/a | yes |
+| <a name="input_ami_name_filter"></a> [ami\_name\_filter](#input\_ami\_name\_filter) | n/a | `string` | `"github-runner-ubuntu-jammy-core-amd64-2023*"` | no |
+| <a name="input_aws_region"></a> [aws\_region](#input\_aws\_region) | n/a | `string` | `"eu-west-1"` | no |
+| <a name="input_github_app"></a> [github\_app](#input\_github\_app) | GitHub for API usages. | <pre>object({<br>    id         = string<br>    key_base64 = string<br>  })</pre> | <pre>{<br>  "id": 0,<br>  "key_base64": "insert base64 app key here\n"<br>}</pre> | no |
+| <a name="input_instance_types"></a> [instance\_types](#input\_instance\_types) | n/a | `list(string)` | <pre>[<br>  "c6a.2xlarge"<br>]</pre> | no |
 | <a name="input_runner_os"></a> [runner\_os](#input\_runner\_os) | n/a | `string` | `"linux"` | no |
+| <a name="input_runner_run_as"></a> [runner\_run\_as](#input\_runner\_run\_as) | n/a | `string` | `"ubuntu"` | no |
 
 ## Outputs
 
