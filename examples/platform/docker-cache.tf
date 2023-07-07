@@ -95,7 +95,7 @@ resource "aws_instance" "docker_cache" {
 
   root_block_device {
     volume_type = "gp3"
-    volume_size = 20
+    volume_size = 50
   }
 
   tags = {
