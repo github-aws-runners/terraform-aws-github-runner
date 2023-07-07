@@ -41,6 +41,7 @@ variable "multi_runner_config" {
       ami_id_ssm_parameter_name               = optional(string, null)
       ami_kms_key_arn                         = optional(string, "")
       create_service_linked_role_spot         = optional(bool, false)
+      credit_specification                    = optional(string, null)
       delay_webhook_event                     = optional(number, 30)
       disable_runner_autoupdate               = optional(bool, false)
       enable_ephemeral_runners                = optional(bool, false)
@@ -63,6 +64,7 @@ variable "multi_runner_config" {
       runner_name_prefix                      = optional(string, "")
       runner_run_as                           = optional(string, "ec2-user")
       runners_maximum_count                   = number
+      runner_additional_security_group_ids    = optional(list(string), [])
       scale_down_schedule_expression          = optional(string, "cron(*/5 * * * ? *)")
       scale_up_reserved_concurrent_executions = optional(number, 1)
       userdata_template                       = optional(string, null)
@@ -132,8 +134,9 @@ variable "multi_runner_config" {
         ami_filter: "(Optional) List of maps used to create the AMI filter for the action runner AMI. By default amazon linux 2 is used."
         ami_owners: "(Optional) The list of owners used to select the AMI of action runner instances."
         create_service_linked_role_spot: (Optional) create the serviced linked role for spot instances that is required by the scale-up lambda.
+        credit_specification: "(Optional) The credit specification of the runner instance_type. Can be unset, `standard` or `unlimited`.
         delay_webhook_event: "The number of seconds the event accepted by the webhook is invisible on the queue before the scale up lambda will receive the event."
-        disable_runner_autoupdate: "Disable the auto update of the github runner agent. Be-aware there is a grace period of 30 days, see also the [GitHub article](https://github.blog/changelog/2022-02-01-github-actions-self-hosted-runners-can-now-disable-automatic-updates/)"
+        disable_runner_autoupdate: "Disable the auto update of the github runner agent. Be aware there is a grace period of 30 days, see also the [GitHub article](https://github.blog/changelog/2022-02-01-github-actions-self-hosted-runners-can-now-disable-automatic-updates/)"
         enable_ephemeral_runners: "Enable ephemeral runners, runners will only be used once."
         enable_job_queued_check: "Only scale if the job event received by the scale up lambda is is in the state queued. By default enabled for non ephemeral runners and disabled for ephemeral. Set this variable to overwrite the default behavior."                 = optional(bool, null)
         enable_organization_runners: "Register runners to organization, instead of repo level"
@@ -147,6 +150,7 @@ variable "multi_runner_config" {
         job_queue_retention_in_seconds: "The number of seconds the job is held in the queue before it is purged"
         minimum_running_time_in_minutes: "The time an ec2 action runner should be running at minimum before terminated if not busy."
         pool_runner_owner: "The pool will deploy runners to the GitHub org ID, set this value to the org to which you want the runners deployed. Repo level is not supported."
+        runner_additional_security_group_ids: "List of additional security groups IDs to apply to the runner. If added outside the multi_runner_config block, the additional security group(s) will be applied to all runner configs. If added inside the multi_runner_config, the additional security group(s) will be applied to the individual runner."
         runner_as_root: "Run the action runner under the root user. Variable `runner_run_as` will be ignored."
         runner_boot_time_in_minutes: "The minimum time for an EC2 runner to boot and register as a runner."
         runner_extra_labels: "Extra (custom) labels for the runners (GitHub). Separate each label by a comma. Labels checks on the webhook can be enforced by setting `enable_workflow_job_labels_check`. GitHub read-only labels should not be provided."
@@ -254,7 +258,7 @@ variable "webhook_lambda_apigateway_access_log_settings" {
 }
 
 variable "repository_white_list" {
-  description = "List of repositories allowed to use the github app"
+  description = "List of github repository full names (owner/repo_name) that will be allowed to use the github app. Leave empty for no filtering."
   type        = list(string)
   default     = []
 }
@@ -321,7 +325,19 @@ variable "lambda_principals" {
 variable "runner_binaries_s3_sse_configuration" {
   description = "Map containing server-side encryption configuration for runner-binaries S3 bucket."
   type        = any
-  default     = {}
+  default = {
+    rule = {
+      apply_server_side_encryption_by_default = {
+        sse_algorithm = "AES256"
+      }
+    }
+  }
+}
+
+variable "runner_binaries_s3_versioning" {
+  description = "Status of S3 versioning for runner-binaries S3 bucket. Once set to Enabled the change cannot be reverted via Terraform!"
+  type        = string
+  default     = "Disabled"
 }
 
 variable "runner_binaries_syncer_lambda_timeout" {

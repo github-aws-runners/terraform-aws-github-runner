@@ -8,9 +8,11 @@ resource "aws_s3_bucket" "action_dist" {
   tags          = var.tags
 }
 
-resource "aws_s3_bucket_acl" "action_dist_acl" {
+resource "aws_s3_bucket_ownership_controls" "this" {
   bucket = aws_s3_bucket.action_dist.id
-  acl    = "private"
+  rule {
+    object_ownership = "BucketOwnerEnforced"
+  }
 }
 
 resource "aws_s3_bucket_lifecycle_configuration" "bucket-config" {
@@ -68,6 +70,13 @@ resource "aws_s3_bucket_logging" "action_dist_logging" {
   bucket        = aws_s3_bucket.action_dist.id
   target_bucket = var.s3_logging_bucket
   target_prefix = var.s3_logging_bucket_prefix != null ? var.s3_logging_bucket_prefix : var.distribution_bucket_name
+}
+
+resource "aws_s3_bucket_versioning" "action_dist" {
+  bucket = aws_s3_bucket.action_dist.id
+  versioning_configuration {
+    status = var.s3_versioning
+  }
 }
 
 data "aws_iam_policy_document" "action_dist_sse_policy" {

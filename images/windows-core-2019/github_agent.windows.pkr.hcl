@@ -107,4 +107,8 @@ build {
       })
     ], var.custom_shell_commands)
   }
+  post-processor "manifest" {
+    output     = "manifest.json"
+    strip_path = true
+  }
 }

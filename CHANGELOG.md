@@ -1,5 +1,127 @@
 # Changelog
 
+## [3.5.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v3.4.2...v3.5.0) (2023-06-21)
+
+
+### Features
+
+* Support AWS 5.x Terraform provider ([#3315](https://github.com/philips-labs/terraform-aws-github-runner/issues/3315)) ([d0e8960](https://github.com/philips-labs/terraform-aws-github-runner/commit/d0e89608f52ff0db4abe204af6718a73e780ea98))
+
+
+### Bug Fixes
+
+* **lambda:** bump @aws-sdk/client-ec2 from 3.352.0 to 3.356.0 in /lambdas ([#3333](https://github.com/philips-labs/terraform-aws-github-runner/issues/3333)) ([9cb0369](https://github.com/philips-labs/terraform-aws-github-runner/commit/9cb0369195855ea2e1f75f905098588101a166f8))
+* **lambda:** bump @aws-sdk/client-s3 from 3.352.0 to 3.354.0 in /lambdas ([#3329](https://github.com/philips-labs/terraform-aws-github-runner/issues/3329)) ([37acc92](https://github.com/philips-labs/terraform-aws-github-runner/commit/37acc9247526fdfbe940fca1ad19beea89f3576c))
+* **lambda:** bump @aws-sdk/client-ssm from 3.321.1 to 3.350.0 in /lambdas ([#3319](https://github.com/philips-labs/terraform-aws-github-runner/issues/3319)) ([97d5c73](https://github.com/philips-labs/terraform-aws-github-runner/commit/97d5c7384cbeec38ee0d9b16167ed4a2f883d291))
+* **lambda:** bump @aws-sdk/client-ssm from 3.352.0 to 3.354.0 in /lambdas ([#3327](https://github.com/philips-labs/terraform-aws-github-runner/issues/3327)) ([e315230](https://github.com/philips-labs/terraform-aws-github-runner/commit/e315230f42d9b321a3ba28ff7f9294fc77dec78d))
+
+## [3.4.2](https://github.com/philips-labs/terraform-aws-github-runner/compare/v3.4.1...v3.4.2) (2023-06-13)
+
+
+### Bug Fixes
+
+* Fix pool logic with runner name prefix ([#3303](https://github.com/philips-labs/terraform-aws-github-runner/issues/3303)) ([66e2a66](https://github.com/philips-labs/terraform-aws-github-runner/commit/66e2a66adcf200a85c0200382756f4fa5a71aadb))
+* remove duplicate vpc execution permissions ([#3304](https://github.com/philips-labs/terraform-aws-github-runner/issues/3304)) ([0bebeef](https://github.com/philips-labs/terraform-aws-github-runner/commit/0bebeef094b2e64af7f81166becae6c65167df86))
+
+## [3.4.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v3.4.0...v3.4.1) (2023-05-23)
+
+
+### Bug Fixes
+
+* added additional outputs to multi runner module. ([#3283](https://github.com/philips-labs/terraform-aws-github-runner/issues/3283)) ([9644e05](https://github.com/philips-labs/terraform-aws-github-runner/commit/9644e05a2345369349ee9217da47db68860997d5))
+* **lambda:** bump @aws-sdk/client-sqs from 3.321.1 to 3.332.0 in /lambdas ([#3271](https://github.com/philips-labs/terraform-aws-github-runner/issues/3271)) ([170baa8](https://github.com/philips-labs/terraform-aws-github-runner/commit/170baa8e8799a6335f4d0f868e89a8496632aa11))
+* **lambda:** bump @aws-sdk/client-sqs from 3.332.0 to 3.337.0 in /lambdas ([#3284](https://github.com/philips-labs/terraform-aws-github-runner/issues/3284)) ([01a053e](https://github.com/philips-labs/terraform-aws-github-runner/commit/01a053ee049c7a7cd80241d10272155c1a94af88))
+* **lambda:** bump @aws-sdk/lib-storage from 3.321.1 to 3.335.0 in /lambdas ([#3281](https://github.com/philips-labs/terraform-aws-github-runner/issues/3281)) ([9387bee](https://github.com/philips-labs/terraform-aws-github-runner/commit/9387bee757d7692b33a5599a6d2868de9f2ba492))
+* **lambda:** bump @aws-sdk/lib-storage from 3.335.0 to 3.337.0 in /lambdas ([#3286](https://github.com/philips-labs/terraform-aws-github-runner/issues/3286)) ([2a447ae](https://github.com/philips-labs/terraform-aws-github-runner/commit/2a447ae43520e9fca19d103ae956d5eb44e7f21a))
+* **lambda:** bump @octokit/auth-app from 4.0.9 to 4.0.13 in /lambdas ([#3287](https://github.com/philips-labs/terraform-aws-github-runner/issues/3287)) ([517d2e0](https://github.com/philips-labs/terraform-aws-github-runner/commit/517d2e02623ec863ebeb1fae105332026a32fe9e))
+* **lambda:** bump @octokit/types from 9.2.1 to 9.2.2 in /lambdas ([#3273](https://github.com/philips-labs/terraform-aws-github-runner/issues/3273)) ([e083898](https://github.com/philips-labs/terraform-aws-github-runner/commit/e083898e4da41c0c1f180094ae132479bc155ee6))
+* **multi-runner:** allow runner_additional_security_group_ids to apply to multi_runner_config ([#3221](https://github.com/philips-labs/terraform-aws-github-runner/issues/3221)) ([5fb1fa8](https://github.com/philips-labs/terraform-aws-github-runner/commit/5fb1fa87e2cec416051c225e5b32504df1e30004))
+* **multi-runner:** enable SSE by default for runner-binaries bucket ([#3274](https://github.com/philips-labs/terraform-aws-github-runner/issues/3274)) ([5d314f2](https://github.com/philips-labs/terraform-aws-github-runner/commit/5d314f2966381f6d281ef913f601f579e627f260))
+* **webhook:** logic to find the workflow labels inside runner config supported labelsets. ([#3278](https://github.com/philips-labs/terraform-aws-github-runner/issues/3278)) ([9fcf33a](https://github.com/philips-labs/terraform-aws-github-runner/commit/9fcf33a86254cf64f115327f506c940583144ed5))
+
+## [3.4.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v3.3.0...v3.4.0) (2023-05-12)
+
+
+### Features
+
+* **runners:** allow explicitly standard or unlimited ([#3244](https://github.com/philips-labs/terraform-aws-github-runner/issues/3244)) ([e2cf7ac](https://github.com/philips-labs/terraform-aws-github-runner/commit/e2cf7ace992df354281c19f8240a97c134264758))
+
+
+### Bug Fixes
+
+* Expand repository_white_list documentation ([#3254](https://github.com/philips-labs/terraform-aws-github-runner/issues/3254)) ([5f3771a](https://github.com/philips-labs/terraform-aws-github-runner/commit/5f3771af9e81f362f598fed5178e6f029fa2aa23))
+* **lambda:** bump @octokit/types from 9.2.0 to 9.2.1 in /lambdas ([#3259](https://github.com/philips-labs/terraform-aws-github-runner/issues/3259)) ([4bb77e0](https://github.com/philips-labs/terraform-aws-github-runner/commit/4bb77e062d378d52adddeb97929166d1ba9a95c4))
+
+## [3.3.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v3.2.0...v3.3.0) (2023-05-05)
+
+
+### Features
+
+* added the option to generate outputs from packer builds. ([#3246](https://github.com/philips-labs/terraform-aws-github-runner/issues/3246)) ([97c4ee7](https://github.com/philips-labs/terraform-aws-github-runner/commit/97c4ee7d1145c5f10ea01bbe4a81e1e6e827cef9))
+* **syncer:** Enable S3 bucket versioning for syncer S3 bucket ([#3108](https://github.com/philips-labs/terraform-aws-github-runner/issues/3108)) ([e679021](https://github.com/philips-labs/terraform-aws-github-runner/commit/e67902133b2ab426068964c9bc24aab6ecd37a79))
+
+
+### Bug Fixes
+
+* **lambda:** bump @octokit/types from 9.1.2 to 9.2.0 in /lambdas ([#3243](https://github.com/philips-labs/terraform-aws-github-runner/issues/3243)) ([4ff85bb](https://github.com/philips-labs/terraform-aws-github-runner/commit/4ff85bbdb7fc00b8174092ed23c2eef10842460b))
+* **lambda:** bump axios from 1.3.6 to 1.4.0 in /lambdas ([#3242](https://github.com/philips-labs/terraform-aws-github-runner/issues/3242)) ([5620d88](https://github.com/philips-labs/terraform-aws-github-runner/commit/5620d886d74423889eb13f3c1746f784fbcb36a0))
+* S3 bucket logging prefix regex ([a952b91](https://github.com/philips-labs/terraform-aws-github-runner/commit/a952b91895b6629827a5af0f54fbc5c52661e36b))
+* **syncer:** S3 bucket logging prefix variable condition ([#3251](https://github.com/philips-labs/terraform-aws-github-runner/issues/3251)) ([a952b91](https://github.com/philips-labs/terraform-aws-github-runner/commit/a952b91895b6629827a5af0f54fbc5c52661e36b))
+
+## [3.2.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v3.2.0...v3.2.0) (2023-04-28)
+
+
+### Features
+
+* **runner:** include instance type & availability zone in Github Action logs ([#3223](https://github.com/philips-labs/terraform-aws-github-runner/issues/3223)) ([775a548](https://github.com/philips-labs/terraform-aws-github-runner/commit/775a54831d31710d7c8faf38320e010807b1c828))
+* **runners:** Include instance type & availability zone in logs ([775a548](https://github.com/philips-labs/terraform-aws-github-runner/commit/775a54831d31710d7c8faf38320e010807b1c828))
+
+
+### Bug Fixes
+
+* **lambda:** bump @aws-sdk/client-ec2 from 3.319.0 to 3.322.0 in /lambdas ([#3228](https://github.com/philips-labs/terraform-aws-github-runner/issues/3228)) ([5e66d58](https://github.com/philips-labs/terraform-aws-github-runner/commit/5e66d581a04af62c247970c665c3a4c5972f0791))
+* **lambda:** bump @aws-sdk/client-s3 from 3.319.0 to 3.321.1 in /lambdas ([#3230](https://github.com/philips-labs/terraform-aws-github-runner/issues/3230)) ([42a2085](https://github.com/philips-labs/terraform-aws-github-runner/commit/42a2085af5c2b450f1f3a5383e3f55d032f11ea4))
+* **lambda:** bump @aws-sdk/client-sqs from 3.319.0 to 3.321.1 in /lambdas ([#3229](https://github.com/philips-labs/terraform-aws-github-runner/issues/3229)) ([9caa02d](https://github.com/philips-labs/terraform-aws-github-runner/commit/9caa02d997fa0a620a71a96d54f06bd3f4cc2d2e))
+* **lambda:** bump @aws-sdk/lib-storage from 3.319.0 to 3.321.1 in /lambdas ([#3227](https://github.com/philips-labs/terraform-aws-github-runner/issues/3227)) ([37e970a](https://github.com/philips-labs/terraform-aws-github-runner/commit/37e970a38dca95c974901163d7ae26312b446aba))
+* **multi-runner:** convertdistribution_bucket_name to lowercase ([#3219](https://github.com/philips-labs/terraform-aws-github-runner/issues/3219)) ([43acb08](https://github.com/philips-labs/terraform-aws-github-runner/commit/43acb08d94841ad5cdb3c3f08d078e67edcd84ea))
+* remove deprecated use of S3 ACLs ([#3222](https://github.com/philips-labs/terraform-aws-github-runner/issues/3222)) ([bf4cea8](https://github.com/philips-labs/terraform-aws-github-runner/commit/bf4cea84e9c3409dfc8b6c966c083d53444098ad))
+
+## [3.2.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v3.2.0...v3.2.0) (2023-04-28)
+
+
+### Features
+
+* **runner:** include instance type & availability zone in Github Action logs ([#3223](https://github.com/philips-labs/terraform-aws-github-runner/issues/3223)) ([775a548](https://github.com/philips-labs/terraform-aws-github-runner/commit/775a54831d31710d7c8faf38320e010807b1c828))
+* **runners:** Include instance type & availability zone in logs ([775a548](https://github.com/philips-labs/terraform-aws-github-runner/commit/775a54831d31710d7c8faf38320e010807b1c828))
+
+
+### Bug Fixes
+
+* **lambda:** bump @aws-sdk/client-ec2 from 3.319.0 to 3.322.0 in /lambdas ([#3228](https://github.com/philips-labs/terraform-aws-github-runner/issues/3228)) ([5e66d58](https://github.com/philips-labs/terraform-aws-github-runner/commit/5e66d581a04af62c247970c665c3a4c5972f0791))
+* **lambda:** bump @aws-sdk/client-s3 from 3.319.0 to 3.321.1 in /lambdas ([#3230](https://github.com/philips-labs/terraform-aws-github-runner/issues/3230)) ([42a2085](https://github.com/philips-labs/terraform-aws-github-runner/commit/42a2085af5c2b450f1f3a5383e3f55d032f11ea4))
+* **lambda:** bump @aws-sdk/client-sqs from 3.319.0 to 3.321.1 in /lambdas ([#3229](https://github.com/philips-labs/terraform-aws-github-runner/issues/3229)) ([9caa02d](https://github.com/philips-labs/terraform-aws-github-runner/commit/9caa02d997fa0a620a71a96d54f06bd3f4cc2d2e))
+* **lambda:** bump @aws-sdk/lib-storage from 3.319.0 to 3.321.1 in /lambdas ([#3227](https://github.com/philips-labs/terraform-aws-github-runner/issues/3227)) ([37e970a](https://github.com/philips-labs/terraform-aws-github-runner/commit/37e970a38dca95c974901163d7ae26312b446aba))
+* **multi-runner:** convertdistribution_bucket_name to lowercase ([#3219](https://github.com/philips-labs/terraform-aws-github-runner/issues/3219)) ([43acb08](https://github.com/philips-labs/terraform-aws-github-runner/commit/43acb08d94841ad5cdb3c3f08d078e67edcd84ea))
+* remove deprecated use of S3 ACLs ([#3222](https://github.com/philips-labs/terraform-aws-github-runner/issues/3222)) ([bf4cea8](https://github.com/philips-labs/terraform-aws-github-runner/commit/bf4cea84e9c3409dfc8b6c966c083d53444098ad))
+
+## [3.2.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v3.1.0...v3.2.0) (2023-04-28)
+
+
+### Features
+
+* **runner:** include instance type & availability zone in Github Action logs ([#3223](https://github.com/philips-labs/terraform-aws-github-runner/issues/3223)) ([775a548](https://github.com/philips-labs/terraform-aws-github-runner/commit/775a54831d31710d7c8faf38320e010807b1c828))
+* **runners:** Include instance type & availability zone in logs ([775a548](https://github.com/philips-labs/terraform-aws-github-runner/commit/775a54831d31710d7c8faf38320e010807b1c828))
+
+
+### Bug Fixes
+
+* **lambda:** bump @aws-sdk/client-ec2 from 3.319.0 to 3.322.0 in /lambdas ([#3228](https://github.com/philips-labs/terraform-aws-github-runner/issues/3228)) ([5e66d58](https://github.com/philips-labs/terraform-aws-github-runner/commit/5e66d581a04af62c247970c665c3a4c5972f0791))
+* **lambda:** bump @aws-sdk/client-s3 from 3.319.0 to 3.321.1 in /lambdas ([#3230](https://github.com/philips-labs/terraform-aws-github-runner/issues/3230)) ([42a2085](https://github.com/philips-labs/terraform-aws-github-runner/commit/42a2085af5c2b450f1f3a5383e3f55d032f11ea4))
+* **lambda:** bump @aws-sdk/client-sqs from 3.319.0 to 3.321.1 in /lambdas ([#3229](https://github.com/philips-labs/terraform-aws-github-runner/issues/3229)) ([9caa02d](https://github.com/philips-labs/terraform-aws-github-runner/commit/9caa02d997fa0a620a71a96d54f06bd3f4cc2d2e))
+* **lambda:** bump @aws-sdk/lib-storage from 3.319.0 to 3.321.1 in /lambdas ([#3227](https://github.com/philips-labs/terraform-aws-github-runner/issues/3227)) ([37e970a](https://github.com/philips-labs/terraform-aws-github-runner/commit/37e970a38dca95c974901163d7ae26312b446aba))
+* **multi-runner:** convertdistribution_bucket_name to lowercase ([#3219](https://github.com/philips-labs/terraform-aws-github-runner/issues/3219)) ([43acb08](https://github.com/philips-labs/terraform-aws-github-runner/commit/43acb08d94841ad5cdb3c3f08d078e67edcd84ea))
+* remove deprecated use of S3 ACLs ([#3222](https://github.com/philips-labs/terraform-aws-github-runner/issues/3222)) ([bf4cea8](https://github.com/philips-labs/terraform-aws-github-runner/commit/bf4cea84e9c3409dfc8b6c966c083d53444098ad))
+
 ## [3.1.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v3.0.3...v3.1.0) (2023-04-20)
 
 

@@ -538,7 +538,7 @@ variable "pool_config" {
 }
 
 variable "disable_runner_autoupdate" {
-  description = "Disable the auto update of the github runner agent. Be-aware there is a grace period of 30 days, see also the [GitHub article](https://github.blog/changelog/2022-02-01-github-actions-self-hosted-runners-can-now-disable-automatic-updates/)"
+  description = "Disable the auto update of the github runner agent. Be aware there is a grace period of 30 days, see also the [GitHub article](https://github.blog/changelog/2022-02-01-github-actions-self-hosted-runners-can-now-disable-automatic-updates/)"
   type        = bool
   default     = false
 }
@@ -593,4 +593,15 @@ variable "lambda_tracing_mode" {
   description = "Enable X-Ray tracing for the lambda functions."
   type        = string
   default     = null
+}
+
+variable "credit_specification" {
+  description = "The credit option for CPU usage of a T instance. Can be unset, \"standard\" or \"unlimited\"."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.credit_specification == null ? true : contains(["standard", "unlimited"], var.credit_specification)
+    error_message = "Valid values for credit_specification are (null, \"standard\", \"unlimited\")."
+  }
 }

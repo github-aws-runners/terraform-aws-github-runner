@@ -29,7 +29,7 @@ jobs:
 
       - name: Create Pull Request (main branch only)
         if: github.ref == 'refs/heads/main'
-        uses: peter-evans/create-pull-request@5b4a9f6a9e2af26e5f02351490b90d01eb8ec1e5 # ratchet:peter-evans/create-pull-request@v5.0.0
+        uses: peter-evans/create-pull-request@284f54f989303d2699d373481a0cfa13ad5a6666 # ratchet:peter-evans/create-pull-request@v5.0.1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: "Update Terraform docs"
