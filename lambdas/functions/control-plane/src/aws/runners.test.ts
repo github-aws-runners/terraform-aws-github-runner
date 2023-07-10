@@ -12,6 +12,7 @@ import {
 import { GetParameterCommand, GetParameterResult, PutParameterCommand, SSMClient } from '@aws-sdk/client-ssm';
 import { mockClient } from 'aws-sdk-client-mock';
 import 'aws-sdk-client-mock-jest';
+import { performance } from 'perf_hooks';
 
 import ScaleError from './../scale-runners/ScaleError';
 import { createRunner, listEC2Runners, terminateRunner } from './runners';
@@ -473,6 +474,12 @@ interface ExpectedFleetRequestValues {
 }
 
 function expectedCreateFleetRequest(expectedValues: ExpectedFleetRequestValues): CreateFleetCommandInput {
+  const tags = [
+    { Key: 'ghr:Application', Value: 'github-action-runner' },
+    { Key: 'ghr:created_by', Value: expectedValues.totalTargetCapacity > 1 ? 'pool-lambda' : 'scale-up-lambda' },
+    { Key: 'Type', Value: expectedValues.type },
+    { Key: 'Owner', Value: REPO_NAME },
+  ];
   const request: CreateFleetCommandInput = {
     LaunchTemplateConfigs: [
       {
@@ -507,12 +514,11 @@ function expectedCreateFleetRequest(expectedValues: ExpectedFleetRequestValues):
     TagSpecifications: [
       {
         ResourceType: 'instance',
-        Tags: [
-          { Key: 'ghr:Application', Value: 'github-action-runner' },
-          { Key: 'ghr:created_by', Value: expectedValues.totalTargetCapacity > 1 ? 'pool-lambda' : 'scale-up-lambda' },
-          { Key: 'Type', Value: expectedValues.type },
-          { Key: 'Owner', Value: REPO_NAME },
-        ],
+        Tags: tags,
+      },
+      {
+        ResourceType: 'volume',
+        Tags: tags,
       },
     ],
     TargetCapacitySpecification: {
