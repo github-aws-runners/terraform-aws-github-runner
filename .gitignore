@@ -23,3 +23,5 @@ secrets.auto.tfvars
 **/coverage/*
 
 node_modules/
+
+.terraform.lock.hcl
