@@ -77,6 +77,12 @@ variable "custom_shell_commands" {
   default     = []
 }
 
+variable "temporary_security_group_source_public_ip" {
+  description = "When enabled, use public IP of the host (obtained from https://checkip.amazonaws.com) as CIDR block to be authorized access to the instance, when packer is creating a temporary security group. Note: If you specify `security_group_id` then this input is ignored."
+  type        = bool
+  default     = false
+}
+
 data "http" github_runner_release_json {
   url = "https://api.github.com/repos/actions/runner/releases/latest"
   request_headers = {
@@ -90,12 +96,13 @@ locals {
 }
 
 source "amazon-ebs" "githubrunner" {
-  ami_name                    = "github-runner-ubuntu-focal-amd64-${formatdate("YYYYMMDDhhmm", timestamp())}"
-  instance_type               = var.instance_type
-  region                      = var.region
-  security_group_id           = var.security_group_id
-  subnet_id                   = var.subnet_id
-  associate_public_ip_address = var.associate_public_ip_address
+  ami_name                                  = "github-runner-ubuntu-focal-amd64-${formatdate("YYYYMMDDhhmm", timestamp())}"
+  instance_type                             = var.instance_type
+  region                                    = var.region
+  security_group_id                         = var.security_group_id
+  subnet_id                                 = var.subnet_id
+  associate_public_ip_address               = var.associate_public_ip_address
+  temporary_security_group_source_public_ip = var.temporary_security_group_source_public_ip
 
   source_ami_filter {
     filters = {
