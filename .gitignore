@@ -24,4 +24,3 @@ secrets.auto.tfvars
 
 node_modules/
 
-.terraform.lock.hcl
