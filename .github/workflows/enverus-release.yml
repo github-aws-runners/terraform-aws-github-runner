@@ -56,14 +56,13 @@ jobs:
           name: runner-binaries-syncer
           path: artifacts
 
-      - name: Get installation token
-        uses: npalm/action-app-token@v1.0.0
+      - name: Get token
+        uses: philips-software/app-token-action@v1.1.2
         id: app-token
         with:
-          appId: ${{ secrets.FOREST_RELEASER_APP_ID }}
-          appPrivateKeyBase64: ${{ secrets.FOREST_RELEASER_APP_PRIVATE_KEY_BASE64 }}
-          appInstallationType: repo
-          appInstallationValue: ${{ github.repository }}
+          app_id: ${{ secrets.RELEASER_APP_ID }}
+          app_base64_private_key: ${{ inputs.releaserGithubAppPrivateKey }}
+          auth_type: installation
 
       - name: Dry run release
         if: github.event_name != 'pull_request'
