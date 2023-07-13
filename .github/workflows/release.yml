@@ -61,7 +61,7 @@ jobs:
         id: app-token
         with:
           app_id: ${{ secrets.RELEASER_APP_ID }}
-          app_base64_private_key: ${{ inputs.releaserGithubAppPrivateKey }}
+          app_base64_private_key: ${{ secrets.RELEASER_APP_PRIVATE_KEY_BASE64 }}
           auth_type: installation
 
       - name: Dry run release
