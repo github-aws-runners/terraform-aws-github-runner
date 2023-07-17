@@ -36,8 +36,7 @@ variable "multi_runner_config" {
         http_tokens                 = "optional"
         http_put_response_hop_limit = 1
       })
-      ami_filters_custom                      = optional(map(list(string)), null)
-      ami_filters_default                     = optional(map(list(string)), null)
+      ami_filter                              = optional(map(list(string)), null)
       ami_owners                              = optional(list(string), ["amazon"])
       ami_id_ssm_parameter_name               = optional(string, null)
       ami_kms_key_arn                         = optional(string, "")
@@ -130,7 +129,7 @@ variable "multi_runner_config" {
         runner_os: "The EC2 Operating System type to use for action runner instances (linux,windows)."
         runner_architecture: "The platform architecture of the runner instance_type."
         runner_metadata_options: "(Optional) Metadata options for the ec2 runner instances."
-        ami_filters_custom: "(Optional) List of maps used to create the AMI filter for the action runner AMI. By default amazon linux 2 is used."
+        ami_filter: "(Optional) List of maps used to create the AMI filter for the action runner AMI. By default amazon linux 2 is used."
         ami_owners: "(Optional) The list of owners used to select the AMI of action runner instances."
         create_service_linked_role_spot: (Optional) create the serviced linked role for spot instances that is required by the scale-up lambda.
         delay_webhook_event: "The number of seconds the event accepted by the webhook is invisible on the queue before the scale up lambda will receive the event."

@@ -38,7 +38,7 @@ locals {
   }
 
   ami_kms_key_arn = var.ami_kms_key_arn != null ? var.ami_kms_key_arn : ""
-  ami_filter      = merge(var.ami_filters_default, coalesce(var.ami_filters_custom, local.default_ami[var.runner_os]))
+  ami_filter      = coalesce(var.ami_filter, local.default_ami[var.runner_os])
 
   enable_job_queued_check = var.enable_job_queued_check == null ? !var.enable_ephemeral_runners : var.enable_job_queued_check
 }

@@ -295,17 +295,17 @@ variable "block_device_mappings" {
   }]
 }
 
-variable "ami_filters_default" {
+variable "ami_filter" {
   description = "Default Map of lists used to create the AMI filter for the action runner AMI."
   type        = map(list(string))
   default     = { state = ["available"] }
+  validation {
+    // check the availability of the AMI
+    condition     = contains(keys(var.ami_filter), "state")
+    error_message = "The \"ami_filter\" variable must contain the \"state\" key with the value \"available\"."
+  }
 }
 
-variable "ami_filters_custom" {
-  description = "Additional custom filters used to create the AMI filter for the action runner AMI."
-  type        = map(list(string))
-  default     = null
-}
 variable "ami_owners" {
   description = "The list of owners used to select the AMI of action runner instances."
   type        = list(string)
@@ -313,7 +313,7 @@ variable "ami_owners" {
 }
 
 variable "ami_id_ssm_parameter_name" {
-  description = "Externally managed SSM parameter (of data type aws:ec2:image) that contains the AMI ID to launch runner instances from. Overrides ami_filters_custom"
+  description = "Externally managed SSM parameter (of data type aws:ec2:image) that contains the AMI ID to launch runner instances from. Overrides ami_filter"
   type        = string
   default     = null
 }

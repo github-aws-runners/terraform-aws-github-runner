@@ -124,18 +124,11 @@ variable "instance_types" {
   default     = null
 }
 
-variable "ami_filters_default" {
+variable "ami_filter" {
   description = "Default Map of lists used to create the AMI filter for the action runner AMI."
   type        = map(list(string))
   default     = { state = ["available"] }
 }
-
-variable "ami_filters_custom" {
-  description = "Additional custom filters used to create the AMI filter for the action runner AMI."
-  type        = map(list(string))
-  default     = null
-}
-
 
 variable "ami_owners" {
   description = "The list of owners used to select the AMI of action runner instances."
@@ -144,7 +137,7 @@ variable "ami_owners" {
 }
 
 variable "ami_id_ssm_parameter_name" {
-  description = "Externally managed SSM parameter (of data type aws:ec2:image) that contains the AMI ID to launch runner instances from. Overrides ami_filters_custom"
+  description = "Externally managed SSM parameter (of data type aws:ec2:image) that contains the AMI ID to launch runner instances from. Overrides ami_filter"
   type        = string
   default     = null
 }

@@ -50,8 +50,9 @@ module "runners" {
   userdata_template = "./templates/user-data.sh"
   ami_owners        = ["099720109477"] # Canonical's Amazon account ID
 
-  ami_filters_custom = {
-    name = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"]
+  ami_filter = {
+    name  = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"],
+    state = ["available"]
   }
 
   # Custom build AMI, no custom userdata needed.
