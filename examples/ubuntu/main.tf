@@ -58,7 +58,7 @@ module "runners" {
   # Custom build AMI, no custom userdata needed.
   # option 2: Build custom AMI see ../../images/ubuntu-focal
   #           disable lines above (option 1) and enable the ones below
-  # ami_filters_custom = { name = ["github-runner-ubuntu-focal-amd64-*"] }
+  # ami_filter = { name = ["github-runner-ubuntu-focal-amd64-*"], state = ["available"] }
   # data "aws_caller_identity" "current" {}
   # ami_owners = [data.aws_caller_identity.current.account_id]
 

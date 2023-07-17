@@ -296,7 +296,7 @@ variable "block_device_mappings" {
 }
 
 variable "ami_filter" {
-  description = "Default Map of lists used to create the AMI filter for the action runner AMI."
+  description = "Map of lists used to create the AMI filter for the action runner AMI."
   type        = map(list(string))
   default     = { state = ["available"] }
   validation {
