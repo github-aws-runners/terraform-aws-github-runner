@@ -26,7 +26,7 @@ module "runners" {
   block_device_mappings         = each.value.runner_config.block_device_mappings
 
   runner_architecture       = each.value.runner_config.runner_architecture
-  ami_filter                = each.value.runner_config.ami_filters_custom
+  ami_filter                = each.value.runner_config.ami_filter
   ami_owners                = each.value.runner_config.ami_owners
   ami_id_ssm_parameter_name = each.value.runner_config.ami_id_ssm_parameter_name
   ami_kms_key_arn           = each.value.runner_config.ami_kms_key_arn
