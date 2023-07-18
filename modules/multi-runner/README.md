@@ -175,9 +175,11 @@ module "multi-runner" {
 
 | Name | Description |
 |------|-------------|
-| <a name="output_binaries_syncer"></a> [binaries\_syncer](#output\_binaries\_syncer) | n/a |
+| <a name="output_binaries_syncer"></a> [binaries\_syncer](#output\_binaries\_syncer) | (Deprecated, no longer used), see binaries\_syncer\_map. |
+| <a name="output_binaries_syncer_map"></a> [binaries\_syncer\_map](#output\_binaries\_syncer\_map) | n/a |
 | <a name="output_queues"></a> [queues](#output\_queues) | SQS queues. |
-| <a name="output_runners"></a> [runners](#output\_runners) | n/a |
+| <a name="output_runners"></a> [runners](#output\_runners) | (Deprecated, no longer used), see runners\_map. |
+| <a name="output_runners_map"></a> [runners\_map](#output\_runners\_map) | n/a |
 | <a name="output_ssm_parameters"></a> [ssm\_parameters](#output\_ssm\_parameters) | n/a |
 | <a name="output_webhook"></a> [webhook](#output\_webhook) | n/a |
 <!-- END_TF_DOCS -->
