@@ -20,7 +20,7 @@ updates:
     directory: "/lambdas"
     schedule:
       interval: "weekly"
-    group:
+    groups:
       aws:
         patterns:
           - "@aws-sdk/*"
