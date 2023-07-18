@@ -1,5 +1,26 @@
 # Changelog
 
+## [3.6.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v3.5.0...v3.6.0) (2023-07-18)
+
+
+### Features
+
+* **images:** Allow specifying temporary security group source IP for packer builds ([#3351](https://github.com/philips-labs/terraform-aws-github-runner/issues/3351)) ([6d018f6](https://github.com/philips-labs/terraform-aws-github-runner/commit/6d018f648d998342c3e01443d49b60315d6c8f7f))
+* **syncer:** update bucket policy to require ssl ([#3342](https://github.com/philips-labs/terraform-aws-github-runner/issues/3342)) ([7a3d825](https://github.com/philips-labs/terraform-aws-github-runner/commit/7a3d8256c8a28849f84516d49a44e537e77eb4f2))
+* tag runner volumes with the same tags as the instance ([#3354](https://github.com/philips-labs/terraform-aws-github-runner/issues/3354)) ([116ea58](https://github.com/philips-labs/terraform-aws-github-runner/commit/116ea580eb004d581f46e4f245a3d3409c3b7568))
+* update bucket policy to require ssl ([7a3d825](https://github.com/philips-labs/terraform-aws-github-runner/commit/7a3d8256c8a28849f84516d49a44e537e77eb4f2))
+
+
+### Bug Fixes
+
+* add more outputs to multi runners module. ([#3343](https://github.com/philips-labs/terraform-aws-github-runner/issues/3343)) ([41a74ec](https://github.com/philips-labs/terraform-aws-github-runner/commit/41a74ec6203e8a5f6af96fa7c054724108b08874))
+* Changed the ami filters to ensure that AMI is available before its used in launch template. ([#3220](https://github.com/philips-labs/terraform-aws-github-runner/issues/3220)) ([0bcfbc7](https://github.com/philips-labs/terraform-aws-github-runner/commit/0bcfbc784fd22313a36613fe1209fede8a52e254))
+* **lambda:** bump @aws-lambda-powertools/logger from 1.8.0 to 1.10.0 in /lambdas ([#3337](https://github.com/philips-labs/terraform-aws-github-runner/issues/3337)) ([708748a](https://github.com/philips-labs/terraform-aws-github-runner/commit/708748aa6e29681682ebec0efdcb28ff84c362c2))
+* **lambda:** bump semver from 5.7.1 to 5.7.2 in /lambdas ([#3359](https://github.com/philips-labs/terraform-aws-github-runner/issues/3359)) ([1279e8c](https://github.com/philips-labs/terraform-aws-github-runner/commit/1279e8cfaefe595ffefa803bd1e61cccf8075586))
+* **lambda:** bump the aws group in /lambdas with 5 updates ([#3368](https://github.com/philips-labs/terraform-aws-github-runner/issues/3368)) ([32c15ec](https://github.com/philips-labs/terraform-aws-github-runner/commit/32c15ec3cc38365224871b6806cc21f015f8f0a7))
+* **lambda:** Rename scale-down.tf service name ([#3361](https://github.com/philips-labs/terraform-aws-github-runner/issues/3361)) ([22fad41](https://github.com/philips-labs/terraform-aws-github-runner/commit/22fad412b7b91706cc3cb7b227a9d57c1d77d73a))
+* **multi-runner:** Fix runner_additional_security_group_ids ([#3352](https://github.com/philips-labs/terraform-aws-github-runner/issues/3352)) ([1f0c938](https://github.com/philips-labs/terraform-aws-github-runner/commit/1f0c938e71e3afc81921c5659cc9e6267dafdf46))
+
 ## [3.5.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v3.4.2...v3.5.0) (2023-06-21)
 
 
