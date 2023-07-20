@@ -51,6 +51,7 @@ module "pool" {
     ami_id_ssm_parameter_name            = var.ami_id_ssm_parameter_name
     ami_id_ssm_parameter_read_policy_arn = var.ami_id_ssm_parameter_name != null ? aws_iam_policy.ami_id_ssm_parameter_read[0].arn : null
     tags                                 = local.tags
+    arn_ssm_parameters_path_config       = local.arn_ssm_parameters_path_config
   }
 
   aws_partition       = var.aws_partition

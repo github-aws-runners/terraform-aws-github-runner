@@ -150,17 +150,25 @@ async function getRunnerGroupId(githubRunnerConfig: CreateGitHubRunnerConfig, gh
         `${githubRunnerConfig.ssmConfigPath}/runner-group/${githubRunnerConfig.runnerGroup}`,
       );
     } catch (err) {
-      logger.warn(`SSM Parameter for Runner group ${githubRunnerConfig.runnerGroup} does not exist`);
+      logger.debug('Handling error:', err as Error);
+      logger.warn(
+        `SSM Parameter "${githubRunnerConfig.ssmConfigPath}/runner-group/${githubRunnerConfig.runnerGroup}" for Runner group ${githubRunnerConfig.runnerGroup} does not exist`,
+      );
     }
     if (runnerGroup === undefined) {
       // get runner group id from GitHub
       runnerGroupId = await GetRunnerGroupByName(ghClient, githubRunnerConfig);
       // store runner group id in SSM
-      await putParameter(
-        `${githubRunnerConfig.ssmConfigPath}/runner-group/${githubRunnerConfig.runnerGroup}`,
-        runnerGroupId.toString(),
-        false,
-      );
+      try {
+        await putParameter(
+          `${githubRunnerConfig.ssmConfigPath}/runner-group/${githubRunnerConfig.runnerGroup}`,
+          runnerGroupId.toString(),
+          false,
+        );
+      } catch (err) {
+        logger.debug('Error storing runner group id in SSM Parameter Store', err as Error);
+        throw err;
+      }
     } else {
       runnerGroupId = parseInt(runnerGroup);
     }

@@ -41,6 +41,8 @@ locals {
   ami_filter      = merge(local.default_ami[var.runner_os], var.ami_filter)
 
   enable_job_queued_check = var.enable_job_queued_check == null ? !var.enable_ephemeral_runners : var.enable_job_queued_check
+
+  arn_ssm_parameters_path_config = "arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.ssm_paths.root}/${var.ssm_paths.config}"
 }
 
 data "aws_ami" "runner" {

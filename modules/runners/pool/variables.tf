@@ -57,6 +57,7 @@ variable "config" {
     ssm_config_path                      = string
     ami_id_ssm_parameter_name            = string
     ami_id_ssm_parameter_read_policy_arn = string
+    arn_ssm_parameters_path_config       = string
   })
 }
 

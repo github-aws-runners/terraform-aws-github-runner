@@ -27,7 +27,7 @@ resource "aws_iam_role_policy" "ssm_parameters" {
   policy = templatefile("${path.module}/policies/instance-ssm-parameters-policy.json",
     {
       arn_ssm_parameters_path_tokens = "arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.ssm_paths.root}/${var.ssm_paths.tokens}"
-      arn_ssm_parameters_path_config = "arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.ssm_paths.root}/${var.ssm_paths.config}"
+      arn_ssm_parameters_path_config = local.arn_ssm_parameters_path_config
     }
   )
 }
