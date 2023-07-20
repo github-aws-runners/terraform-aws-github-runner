@@ -1,5 +1,16 @@
 # Changelog
 
+## [3.6.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v3.6.0...v3.6.1) (2023-07-20)
+
+
+### Bug Fixes
+
+* add state for multi-runner default ami-filter ([#3373](https://github.com/philips-labs/terraform-aws-github-runner/issues/3373)) ([f5b6ead](https://github.com/philips-labs/terraform-aws-github-runner/commit/f5b6eade82163373fff8ee9f4dc07242a44a3b92))
+* broken AMI fileter ([#3371](https://github.com/philips-labs/terraform-aws-github-runner/issues/3371)) ([999d139](https://github.com/philips-labs/terraform-aws-github-runner/commit/999d139c49bbce4de681d95d4462adbccec5f4fa))
+* **lambda:** bump word-wrap from 1.2.3 to 1.2.4 in /lambdas ([#3374](https://github.com/philips-labs/terraform-aws-github-runner/issues/3374)) ([c320253](https://github.com/philips-labs/terraform-aws-github-runner/commit/c320253d8cd86a5190ef67e748e7d296e03ef788))
+* merge ami filters. ([999d139](https://github.com/philips-labs/terraform-aws-github-runner/commit/999d139c49bbce4de681d95d4462adbccec5f4fa))
+* retry aws metadata token download ([#3292](https://github.com/philips-labs/terraform-aws-github-runner/issues/3292)) ([5537474](https://github.com/philips-labs/terraform-aws-github-runner/commit/553747418daaf92b6732615cdfc8df91a6295366))
+
 ## [3.6.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v3.5.0...v3.6.0) (2023-07-18)
 
 
