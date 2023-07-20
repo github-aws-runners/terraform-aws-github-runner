@@ -36,7 +36,7 @@ variable "multi_runner_config" {
         http_tokens                 = "optional"
         http_put_response_hop_limit = 1
       })
-      ami_filter                              = optional(map(list(string)), null)
+      ami_filter                              = optional(map(list(string)), { state = ["available"] })
       ami_owners                              = optional(list(string), ["amazon"])
       ami_id_ssm_parameter_name               = optional(string, null)
       ami_kms_key_arn                         = optional(string, "")
