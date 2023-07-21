@@ -1,0 +1,43 @@
+matcherConfig:
+  exactMatch: true
+  labelMatchers:
+    - [ self-hosted, linux, x64, ubuntu-core ]
+fifo: true
+delay_webhook_event: 0
+redrive_build_queue:
+  enabled: false
+  maxReceiveCount: null
+runner_config:
+  runner_os: linux
+  runner_architecture: x64
+  runner_extra_labels: ubuntu-core
+  runner_run_as: ubuntu
+  runner_name_prefix: ubuntu-core-x64_
+  enable_ssm_on_runners: true
+  instance_types:
+    - c6a.xlarge
+  runners_maximum_count: 15
+  enable_ephemeral_runners: true
+  create_service_linked_role_spot: true
+  scale_down_schedule_expression: cron(* * * * ? *)
+  enable_userdata: false
+  ami_owners:
+    - ${account_id}
+  ami_filter:
+    name:
+      - github-runner-ubuntu-jammy-core-amd64-2023*
+  block_device_mappings:
+    - device_name: /dev/sda1
+      delete_on_termination: true
+      volume_type: gp3
+      volume_size: 30
+      encrypted: true
+      iops: null
+      throughput: null
+      kms_key_id: null
+      snapshot_id: null
+  runner_metadata_options:
+    instance_metadata_tags: enabled
+    http_endpoint: enabled
+    http_tokens: optional
+    http_put_response_hop_limit: 2
