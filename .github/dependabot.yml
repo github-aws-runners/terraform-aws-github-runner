@@ -20,6 +20,13 @@ updates:
     directory: "/lambdas"
     schedule:
       interval: "weekly"
+    groups:
+      aws:
+        patterns:
+          - "@aws-sdk/*"
+      octokit:
+        patterns:
+          - "@octokit/*"
     commit-message:
       prefix: "fix(lambda)"
       prefix-development: "chore(lambda)"

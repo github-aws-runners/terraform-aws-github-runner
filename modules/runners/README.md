@@ -121,7 +121,7 @@ yarn run dist
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_ami_filter"></a> [ami\_filter](#input\_ami\_filter) | Map of lists used to create the AMI filter for the action runner AMI. | `map(list(string))` | `null` | no |
+| <a name="input_ami_filter"></a> [ami\_filter](#input\_ami\_filter) | Map of lists used to create the AMI filter for the action runner AMI. | `map(list(string))` | <pre>{<br>  "state": [<br>    "available"<br>  ]<br>}</pre> | no |
 | <a name="input_ami_id_ssm_parameter_name"></a> [ami\_id\_ssm\_parameter\_name](#input\_ami\_id\_ssm\_parameter\_name) | Externally managed SSM parameter (of data type aws:ec2:image) that contains the AMI ID to launch runner instances from. Overrides ami\_filter | `string` | `null` | no |
 | <a name="input_ami_kms_key_arn"></a> [ami\_kms\_key\_arn](#input\_ami\_kms\_key\_arn) | Optional CMK Key ARN to be used to launch an instance from a shared encrypted AMI | `string` | `null` | no |
 | <a name="input_ami_owners"></a> [ami\_owners](#input\_ami\_owners) | The list of owners used to select the AMI of action runner instances. | `list(string)` | <pre>[<br>  "amazon"<br>]</pre> | no |

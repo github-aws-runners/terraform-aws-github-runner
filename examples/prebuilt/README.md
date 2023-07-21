@@ -58,7 +58,7 @@ Assuming you have built the `linux-amzn2` image which has a pre-defined AMI name
 module "runners" {
   ...
   # set the name of the ami to use
-  ami_filter        = { name = ["github-runner-amzn2-x86_64-2021*"] }
+  ami_filter  = { name = ["github-runner-amzn2-x86_64-2021*"], state = ["available"] }
   # provide the owner id of
   ami_owners        = ["<your owner id>"]
 

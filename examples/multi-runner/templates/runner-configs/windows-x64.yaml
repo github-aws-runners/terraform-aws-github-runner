@@ -19,3 +19,5 @@ runner_config:
   ami_filter:
     name:
       - Windows_Server-2022-English-Core-ContainersLatest-*
+    state:
+      - available

@@ -127,7 +127,12 @@ variable "instance_types" {
 variable "ami_filter" {
   description = "Map of lists used to create the AMI filter for the action runner AMI."
   type        = map(list(string))
-  default     = null
+  default     = { state = ["available"] }
+  validation {
+    // check the availability of the AMI
+    condition     = contains(keys(var.ami_filter), "state")
+    error_message = "The \"ami_filter\" variable must contain the \"state\" key with the value \"available\"."
+  }
 }
 
 variable "ami_owners" {

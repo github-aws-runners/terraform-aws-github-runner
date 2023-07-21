@@ -71,7 +71,7 @@ module "runners" {
 
   # configure your pre-built AMI
   # enable_userdata = false
-  # ami_filter       = { name = ["github-runner-amzn2-x86_64-*"] }
+  # ami_filter       = { name = ["github-runner-amzn2-x86_64-*"], state = ["available"] }
   # data "aws_caller_identity" "current" {}
   # ami_owners       = [data.aws_caller_identity.current.account_id]
 

@@ -157,6 +157,12 @@ export async function createRunner(runnerParameters: Runners.RunnerInputParamete
   }
 
   const numberOfRunners = runnerParameters.numberOfRunners ? runnerParameters.numberOfRunners : 1;
+  const tags = [
+    { Key: 'ghr:Application', Value: 'github-action-runner' },
+    { Key: 'ghr:created_by', Value: numberOfRunners === 1 ? 'scale-up-lambda' : 'pool-lambda' },
+    { Key: 'Type', Value: runnerParameters.runnerType },
+    { Key: 'Owner', Value: runnerParameters.runnerOwner },
+  ];
 
   let fleet: CreateFleetResult;
   try {
@@ -186,12 +192,11 @@ export async function createRunner(runnerParameters: Runners.RunnerInputParamete
       TagSpecifications: [
         {
           ResourceType: 'instance',
-          Tags: [
-            { Key: 'ghr:Application', Value: 'github-action-runner' },
-            { Key: 'ghr:created_by', Value: numberOfRunners === 1 ? 'scale-up-lambda' : 'pool-lambda' },
-            { Key: 'Type', Value: runnerParameters.runnerType },
-            { Key: 'Owner', Value: runnerParameters.runnerOwner },
-          ],
+          Tags: tags,
+        },
+        {
+          ResourceType: 'volume',
+          Tags: tags,
         },
       ],
       Type: 'instant',

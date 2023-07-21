@@ -1,8 +1,8 @@
 matcherConfig:
   exactMatch: true
   labelMatchers:
-    - [ self-hosted, linux, x64, ubuntu-latest ]
-    - [ self-hosted, linux, x64, ubuntu-2204 ]
+    - [self-hosted, linux, x64, ubuntu-latest]
+    - [self-hosted, linux, x64, ubuntu-2204]
 fifo: true
 delay_webhook_event: 0
 redrive_build_queue:
@@ -28,6 +28,8 @@ runner_config:
   ami_filter:
     name:
       - ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*
+    state:
+      - available
   block_device_mappings:
     - device_name: /dev/sda1
       delete_on_termination: true
