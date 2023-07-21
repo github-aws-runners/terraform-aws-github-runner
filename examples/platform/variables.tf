@@ -5,13 +5,6 @@ variable "github_app" {
     id         = string
     key_base64 = string
   })
-
-  default = {
-    id = 000000
-    key_base64 = <<EOT
-insert base64 app key here
-EOT
-  }
 }
 
 variable "runner_os" {
