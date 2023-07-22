@@ -29,7 +29,7 @@ variable "config" {
       disable_runner_autoupdate = bool
       ephemeral                 = bool
       boot_time_in_minutes      = number
-      extra_labels              = string
+      labels                    = string
       launch_template = object({
         name = string
       })

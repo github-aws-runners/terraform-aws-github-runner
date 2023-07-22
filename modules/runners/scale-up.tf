@@ -34,7 +34,7 @@ resource "aws_lambda_function" "scale_up" {
       PARAMETER_GITHUB_APP_ID_NAME         = var.github_app_parameters.id.name
       PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.github_app_parameters.key_base64.name
       POWERTOOLS_LOGGER_LOG_EVENT          = var.log_level == "debug" ? "true" : "false"
-      RUNNER_EXTRA_LABELS                  = lower(var.runner_extra_labels)
+      RUNNER_LABELS                        = lower(var.runner_labels)
       RUNNER_GROUP_NAME                    = var.runner_group_name
       RUNNER_NAME_PREFIX                   = var.runner_name_prefix
       RUNNERS_MAXIMUM_COUNT                = var.runners_maximum_count

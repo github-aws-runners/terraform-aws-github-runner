@@ -33,7 +33,7 @@ resource "aws_lambda_function" "pool" {
       PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.config.github_app_parameters.key_base64.name
       POWERTOOLS_LOGGER_LOG_EVENT          = var.config.lambda.log_level == "debug" ? "true" : "false"
       RUNNER_BOOT_TIME_IN_MINUTES          = var.config.runner.boot_time_in_minutes
-      RUNNER_EXTRA_LABELS                  = var.config.runner.extra_labels
+      RUNNER_LABELS                        = var.config.runner.labels
       RUNNER_GROUP_NAME                    = var.config.runner.group_name
       RUNNER_NAME_PREFIX                   = var.config.runner.name_prefix
       RUNNER_OWNER                         = var.config.runner.pool_owner

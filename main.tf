@@ -215,7 +215,7 @@ module "runners" {
   scale_down_schedule_expression       = var.scale_down_schedule_expression
   minimum_running_time_in_minutes      = var.minimum_running_time_in_minutes
   runner_boot_time_in_minutes          = var.runner_boot_time_in_minutes
-  runner_extra_labels                  = local.runner_labels
+  runner_labels                        = local.runner_labels
   runner_as_root                       = var.runner_as_root
   runner_run_as                        = var.runner_run_as
   runners_maximum_count                = var.runners_maximum_count

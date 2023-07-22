@@ -32,7 +32,7 @@ export interface ActionRequestMessage {
 interface CreateGitHubRunnerConfig {
   ephemeral: boolean;
   ghesBaseUrl: string;
-  runnerExtraLabels: string;
+  runnerLabels: string;
   runnerGroup: string;
   runnerNamePrefix: string;
   runnerOwner: string;
@@ -57,8 +57,8 @@ function generateRunnerServiceConfig(githubRunnerConfig: CreateGitHubRunnerConfi
     `--token ${token}`,
   ];
 
-  if (githubRunnerConfig.runnerExtraLabels !== undefined) {
-    config.push(`--labels ${githubRunnerConfig.runnerExtraLabels}`);
+  if (githubRunnerConfig.runnerLabels !== undefined) {
+    config.push(`--labels ${githubRunnerConfig.runnerLabels}`);
   }
 
   if (githubRunnerConfig.disableAutoUpdate) {
@@ -203,7 +203,7 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
   if (eventSource !== 'aws:sqs') throw Error('Cannot handle non-SQS events!');
   const enableOrgLevel = yn(process.env.ENABLE_ORGANIZATION_RUNNERS, { default: true });
   const maximumRunners = parseInt(process.env.RUNNERS_MAXIMUM_COUNT || '3');
-  const runnerExtraLabels = process.env.RUNNER_EXTRA_LABELS || '';
+  const runnerLabels = process.env.RUNNER_LABELS || '';
   const runnerGroup = process.env.RUNNER_GROUP_NAME || 'Default';
   const environment = process.env.ENVIRONMENT;
   const ghesBaseUrl = process.env.GHES_URL;
@@ -268,7 +268,7 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
         {
           ephemeral,
           ghesBaseUrl,
-          runnerExtraLabels,
+          runnerLabels,
           runnerGroup,
           runnerNamePrefix,
           runnerOwner,
@@ -348,7 +348,7 @@ async function createStartRunnerConfigForEphemeralRunners(
 ) {
   const runnerGroupId = await getRunnerGroupId(githubRunnerConfig, ghClient);
   const { isDelay, delay } = addDelay(instances);
-  const runnerLabels = githubRunnerConfig.runnerExtraLabels.split(',');
+  const runnerLabels = githubRunnerConfig.runnerLabels.split(',');
 
   logger.debug(`Runner group id: ${runnerGroupId}`);
   logger.debug(`Runner labels: ${runnerLabels}`);

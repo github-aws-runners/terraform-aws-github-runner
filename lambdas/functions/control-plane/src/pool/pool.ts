@@ -18,7 +18,7 @@ interface RunnerStatus {
 
 export async function adjust(event: PoolEvent): Promise<void> {
   logger.info(`Checking current pool size against pool of size: ${event.poolSize}`);
-  const runnerExtraLabels = process.env.RUNNER_EXTRA_LABELS || '';
+  const runnerLabels = process.env.RUNNER_LABELS || '';
   const runnerGroup = process.env.RUNNER_GROUP_NAME || '';
   const runnerNamePrefix = process.env.RUNNER_NAME_PREFIX || '';
   const environment = process.env.ENVIRONMENT;
@@ -95,7 +95,7 @@ export async function adjust(event: PoolEvent): Promise<void> {
       {
         ephemeral,
         ghesBaseUrl,
-        runnerExtraLabels,
+        runnerLabels,
         runnerGroup,
         runnerOwner,
         runnerNamePrefix,
