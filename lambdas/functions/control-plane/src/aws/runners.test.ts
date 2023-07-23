@@ -12,7 +12,6 @@ import {
 import { GetParameterCommand, GetParameterResult, PutParameterCommand, SSMClient } from '@aws-sdk/client-ssm';
 import { mockClient } from 'aws-sdk-client-mock';
 import 'aws-sdk-client-mock-jest';
-import { performance } from 'perf_hooks';
 
 import ScaleError from './../scale-runners/ScaleError';
 import { createRunner, listEC2Runners, terminateRunner } from './runners';

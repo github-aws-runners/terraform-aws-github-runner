@@ -10,6 +10,7 @@ import { createRunner, listEC2Runners } from './../aws/runners';
 import { RunnerInputParameters } from './../aws/runners.d';
 import ScaleError from './ScaleError';
 import * as scaleUpModule from './scale-up';
+import { performance } from 'perf_hooks';
 
 const mockOctokit = {
   paginate: jest.fn(),
@@ -208,7 +209,7 @@ describe('scaleUp with GHES', () => {
       process.env.RUNNER_GROUP_NAME = 'Default';
       process.env.SSM_CONFIG_PATH = '/github-action-runners/default/runners/config';
       process.env.SSM_TOKEN_PATH = '/github-action-runners/default/runners/config';
-      process.env.RUNNER_EXTRA_LABELS = 'label1,label2';
+      process.env.RUNNER_LABELS = 'label1,label2';
 
       expectedRunnerParams = { ...EXPECTED_RUNNER_PARAMS };
       mockSSMClient.reset();
@@ -269,7 +270,7 @@ describe('scaleUp with GHES', () => {
     });
 
     it('creates a runner with labels in a specific group', async () => {
-      process.env.RUNNER_EXTRA_LABELS = 'label1,label2';
+      process.env.RUNNER_LABELS = 'label1,label2';
       process.env.RUNNER_GROUP_NAME = 'TEST_GROUP';
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
       expect(createRunner).toBeCalledWith(expectedRunnerParams);
@@ -475,13 +476,13 @@ describe('scaleUp with GHES', () => {
     });
 
     it('creates a runner with correct config and labels', async () => {
-      process.env.RUNNER_EXTRA_LABELS = 'label1,label2';
+      process.env.RUNNER_LABELS = 'label1,label2';
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
       expect(createRunner).toBeCalledWith(expectedRunnerParams);
     });
 
     it('creates a runner and ensure the group argument is ignored', async () => {
-      process.env.RUNNER_EXTRA_LABELS = 'label1,label2';
+      process.env.RUNNER_LABELS = 'label1,label2';
       process.env.RUNNER_GROUP_NAME = 'TEST_GROUP_IGNORED';
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
       expect(createRunner).toBeCalledWith(expectedRunnerParams);
@@ -582,7 +583,7 @@ describe('scaleUp with public GH', () => {
     });
 
     it('creates a runner with labels in s specific group', async () => {
-      process.env.RUNNER_EXTRA_LABELS = 'label1,label2';
+      process.env.RUNNER_LABELS = 'label1,label2';
       process.env.RUNNER_GROUP_NAME = 'TEST_GROUP';
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
       expect(createRunner).toBeCalledWith(expectedRunnerParams);
@@ -644,13 +645,13 @@ describe('scaleUp with public GH', () => {
     });
 
     it('creates a runner with correct config and labels', async () => {
-      process.env.RUNNER_EXTRA_LABELS = 'label1,label2';
+      process.env.RUNNER_LABELS = 'label1,label2';
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
       expect(createRunner).toBeCalledWith(expectedRunnerParams);
     });
 
     it('creates a runner and ensure the group argument is ignored', async () => {
-      process.env.RUNNER_EXTRA_LABELS = 'label1,label2';
+      process.env.RUNNER_LABELS = 'label1,label2';
       process.env.RUNNER_GROUP_NAME = 'TEST_GROUP_IGNORED';
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
       expect(createRunner).toBeCalledWith(expectedRunnerParams);
