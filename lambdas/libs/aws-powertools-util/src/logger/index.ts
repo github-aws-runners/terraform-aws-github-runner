@@ -4,7 +4,7 @@ import { Context } from 'aws-lambda';
 const childLoggers: Logger[] = [];
 
 const defaultValues = {
-  region: process.env.AWS_REGION || 'N/A',
+  region: process.env.AWS_REGION,
   environment: process.env.ENVIRONMENT || 'N/A',
 };
 
