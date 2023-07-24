@@ -8,3 +8,9 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+# variable "runner_role" {
+#   description = "Name of the IAM role that will be used by runners to access the cache."
+#   type        = string
+#   default     = "runner-role"
+# }

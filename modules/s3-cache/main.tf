@@ -8,15 +8,15 @@ resource "aws_s3_bucket_policy" "runner_cache" {
   policy = data.aws_iam_policy_document.runner_cache_policy.json
 }
 
-data "aws_iam_role" "runner_role" {
-  name = "runner-role"
-}
+# data "aws_iam_role" "runner" {
+#   name = var.runner_role
+# }
 
 data "aws_iam_policy_document" "runner_cache_policy" {
   statement {
     principals {
       type        = "AWS"
-      identifiers = [data.aws_iam_role.runner_role.arn]
+      identifiers = [data.aws_iam_role.runner.arn]
     }
 
     actions = [
@@ -29,8 +29,8 @@ data "aws_iam_policy_document" "runner_cache_policy" {
     ]
 
     resources = [
-      aws_s3_bucket.platform_runner_cache.arn,
-      "${aws_s3_bucket.platform_runner_cache.arn}/*",
+      aws_s3_bucket.runner_cache.arn,
+      "${aws_s3_bucket.runner_cache.arn}/*",
     ]
   }
 }
