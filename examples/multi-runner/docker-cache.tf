@@ -14,9 +14,9 @@ data "aws_ami" "docker_cache_ami" {
   owners = ["099720109477"] # Canonical
 }
 
-# data "aws_security_group" "runner_sg" {
-#   vpc_id = var.vpc_id
-# }
+data "aws_security_group" "runner_sg" {
+  vpc_id = module.base.vpc.vpc_id
+}
 
 resource "aws_security_group" "docker_cache_sg" {
   name_prefix = "${local.environment}-docker-cache-sg"
@@ -28,7 +28,7 @@ resource "aws_security_group" "docker_cache_sg" {
 
 resource "aws_vpc_security_group_ingress_rule" "docker" {
   security_group_id            = aws_security_group.docker_cache_sg.id
-  referenced_security_group_id = aws_security_group.runner_sg.id
+  referenced_security_group_id = data.aws_security_group.runner_sg.id
   ip_protocol                  = "tcp"
   from_port                    = 5000
   to_port                      = 5000
@@ -86,7 +86,7 @@ resource "aws_launch_template" "docker_cache" {
   name_prefix   = "${local.environment}-docker-cache"
 
   vpc_security_group_ids = [
-    aws_security_group.runner_sg.id,
+    data.aws_security_group.runner_sg.id,
     aws_security_group.docker_cache_sg.id
   ]
 
