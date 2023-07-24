@@ -3,6 +3,7 @@ data "aws_caller_identity" "current" {}
 locals {
   environment = var.environment != null ? var.environment : "multi-runner"
   aws_region  = "eu-west-1"
+  tags        = { Project = "multi-runner" }
 
   # Load runner configurations from Yaml files
   multi_runner_config = {
@@ -47,9 +48,7 @@ module "multi-runner" {
   runners_scale_up_lambda_timeout   = 60
   runners_scale_down_lambda_timeout = 30
   prefix                            = local.environment
-  tags = {
-    Project = "multi-runner"
-  }
+  tags                              = local.tags
   github_app = {
     key_base64     = var.github_app.key_base64
     id             = var.github_app.id
