@@ -26,6 +26,8 @@ runner_config:
   ami_filter:
     name:
       - github-runner-ubuntu-jammy-platform-amd64-202307070322
+    state:
+      - available
   block_device_mappings:
     - device_name: /dev/sda1
       delete_on_termination: true
