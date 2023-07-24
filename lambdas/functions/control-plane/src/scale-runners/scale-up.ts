@@ -152,7 +152,8 @@ async function getRunnerGroupId(githubRunnerConfig: CreateGitHubRunnerConfig, gh
     } catch (err) {
       logger.debug('Handling error:', err as Error);
       logger.warn(
-        `SSM Parameter "${githubRunnerConfig.ssmConfigPath}/runner-group/${githubRunnerConfig.runnerGroup}" for Runner group ${githubRunnerConfig.runnerGroup} does not exist`,
+        `SSM Parameter "${githubRunnerConfig.ssmConfigPath}/runner-group/${githubRunnerConfig.runnerGroup}"
+         for Runner group ${githubRunnerConfig.runnerGroup} does not exist`,
       );
     }
     if (runnerGroup === undefined) {
