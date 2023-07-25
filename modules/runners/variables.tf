@@ -342,6 +342,12 @@ variable "create_service_linked_role_spot" {
   default     = false
 }
 
+variable "create_cache_bucket" {
+  description = "(optional) create a S3 bucket to hold action cache for ephemeral runners"
+  type        = bool
+  default     = false
+}
+
 variable "aws_partition" {
   description = "(optional) partition for the base arn if not 'aws'"
   type        = string

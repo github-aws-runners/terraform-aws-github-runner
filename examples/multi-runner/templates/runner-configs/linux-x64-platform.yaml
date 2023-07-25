@@ -19,6 +19,7 @@ runner_config:
   runners_maximum_count: 15
   enable_ephemeral_runners: true
   create_service_linked_role_spot: true
+  create_cache_bucket: true
   scale_down_schedule_expression: cron(* * * * ? *)
   enable_userdata: false
   ami_owners:
