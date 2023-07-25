@@ -30,20 +30,6 @@ module "base" {
   aws_region = local.aws_region
 }
 
-# module "s3-cache-platform" {
-#   source      = "../../modules/s3-cache"
-#   bucket_name = "${local.environment}-platform-cache"
-#   tags        = local.tags
-#   runner_role = module.base.runners.aws_iam_role.runner
-# }
-
-# module "s3-cache-core" {
-#   source      = "../../modules/s3-cache"
-#   bucket_name = "${local.environment}-core-cache"
-#   tags        = local.tags
-#   runner_role = "multi-runner-linux-x64-core-runner-role"
-# }
-
 module "multi-runner" {
   source                            = "../../modules/multi-runner"
   multi_runner_config               = local.multi_runner_config
