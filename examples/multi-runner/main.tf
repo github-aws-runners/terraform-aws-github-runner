@@ -2,7 +2,7 @@ data "aws_caller_identity" "current" {}
 
 locals {
   environment = var.environment != null ? var.environment : "multi-runner"
-  aws_region  = "eu-west-1"
+  aws_region  = "ap-southeast-2"
   tags        = { Project = "multi-runner" }
 
   # Load runner configurations from Yaml files
