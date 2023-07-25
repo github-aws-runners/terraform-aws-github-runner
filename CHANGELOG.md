@@ -1,5 +1,23 @@
 # Changelog
 
+## [4.0.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v3.6.1...v4.0.0) (2023-07-25)
+
+
+### ⚠ BREAKING CHANGES
+
+* replace registration tokens by JIT config for ephemeral runners ([#3350](https://github.com/philips-labs/terraform-aws-github-runner/issues/3350))
+
+### Features
+
+* replace registration tokens by JIT config for ephemeral runners ([#3350](https://github.com/philips-labs/terraform-aws-github-runner/issues/3350)) ([2b776ba](https://github.com/philips-labs/terraform-aws-github-runner/commit/2b776bacb306be2eb14cf20f31251eb544a3cfba))
+
+
+### Bug Fixes
+
+* **lambda:** bump the aws group in /lambdas with 3 updates ([#3381](https://github.com/philips-labs/terraform-aws-github-runner/issues/3381)) ([3af675a](https://github.com/philips-labs/terraform-aws-github-runner/commit/3af675a05ece3dd55f9680249fb8c6e3bcd51811))
+* **lambda:** bump the octokit group in /lambdas with 4 updates ([#3386](https://github.com/philips-labs/terraform-aws-github-runner/issues/3386)) ([b067138](https://github.com/philips-labs/terraform-aws-github-runner/commit/b067138bccd68ae3ee56c9b8168a6737c6cbb46b))
+* scale up lambda build issue. ([#3388](https://github.com/philips-labs/terraform-aws-github-runner/issues/3388)) ([e78232c](https://github.com/philips-labs/terraform-aws-github-runner/commit/e78232caeeeab8829c04a9785ee05ddfe07939c1))
+
 ## [3.6.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v3.6.0...v3.6.1) (2023-07-20)
 
 
