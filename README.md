@@ -35,14 +35,14 @@ This [Terraform](https://www.terraform.io/) module creates the required infrastr
 - [Sub modules](#sub-modules)
 - [Logging](#logging)
 - [Debugging](#debugging)
-- [Security Consideration](#security-consideration)
+- [Security Considerations](#security-considerations)
 - [Requirements](#requirements)
 - [Providers](#providers)
 - [Modules](#modules)
 - [Resources](#resources)
 - [Inputs](#inputs)
 - [Outputs](#outputs)
-- [Contribution](#contribution)
+- [Contributing](#contributing)
 - [Philips Forest](#philips-forest)
 
 ## Motivation
@@ -66,7 +66,7 @@ In AWS an [API gateway](https://docs.aws.amazon.com/apigateway/index.html) endpo
 
 The "scale up runner" lambda listens to the SQS queue and picks up events. The lambda runs various checks to decide whether a new EC2 spot instance needs to be created. For example, the instance is not created if the build is already started by an existing runner, or the maximum number of runners is reached.
 
-The Lambda first requests a registration token from GitHub, which is needed later by the runner to register itself. This avoids the case that the EC2 instance, which later in the process will install the agent, needs administration permissions to register the runner. Next, the EC2 spot instance is created via the launch template. The launch template defines the specifications of the required instance and contains a [`user_data`](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/user-data.html) script. This script will install the required software and configure it. The registration token for the action runner is stored in the parameter store (SSM), from which the user data script will fetch it and delete it once it has been retrieved. Once the user data script is finished, the action runner should be online, and the workflow will start in seconds.
+The Lambda first requests a JIT configuration or registration token from GitHub, which is needed later by the runner to register itself. This avoids the case that the EC2 instance, which later in the process will install the agent, needs administration permissions to register the runner. Next, the EC2 spot instance is created via the launch template. The launch template defines the specifications of the required instance and contains a [`user_data`](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/user-data.html) script. This script will install the required software and configure it. The registration token for the action runner is stored in the parameter store (SSM), from which the user data script will fetch it and delete it once it has been retrieved. Once the user data script is finished, the action runner should be online, and the workflow will start in seconds.
 
 Scaling down the runners is at the moment brute-forced, every configurable amount of minutes a lambda will check every runner (instance) if it is busy. In case the runner is not busy it will be removed from GitHub and the instance terminated in AWS. At the moment there seems to be no other option to scale down more smoothly.
 
@@ -92,7 +92,7 @@ To be able to support a number of use-cases the module has quite a lot of config
 - Multi-Runner module. This modules allows you to create multiple runner configurations with a single webhook and single GitHub App to simplify deployment of different types of runners. Refer to the [ReadMe](.modules/../modules/multi-runner/README.md) for more information to understand the functionality.
 - Workflow job event. You can configure the webhook in GitHub to send workflow job events to the webhook. Workflow job events were introduced by GitHub in September 2021 and are designed to support scalable runners. We advise using the workflow job event when possible.
 - Linux vs Windows. You can configure the OS types linux and win. Linux will be used by default.
-- Re-use vs Ephemeral. By default runners are re-used, until detected idle. Once idle they will be removed from the pool. To improve security we are introducing ephemeral runners. Those runners are only used for one job. Ephemeral runners are only working in combination with the workflow job event. We also suggest using a pre-build AMI to improve the start time of jobs.
+- Re-use vs Ephemeral. By default runners are re-used, until detected idle. Once idle they will be removed from the pool. To improve security we are introducing ephemeral runners. Those runners are only used for one job. Ephemeral runners are only working in combination with the workflow job event. For ephemeral runners the lambda requests a JIT (just in time) configuration object via the GitHub to register the runner. [JIT configuration](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-just-in-time-runners) is limited to ephemeral runners, for non ephemeral a registration token is requested. In both cases the configuration is made available to the instance via the same SSM parameter. We also suggest using a pre-build AMI to improve the start time of jobs.
 - GitHub Cloud vs GitHub Enterprise Server (GHES). The runners support GitHub Cloud as well GitHub Enterprise Server. For GHES we rely on our community for support and testing. We have no possibility to test ourselves on GHES.
 - Spot vs on-demand. The runners use either the EC2 spot or on-demand life cycle. Runners will be created via the AWS [CreateFleet API](https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_CreateFleet.html). The module (scale up lambda) will request via the CreateFleet API to create instances in one of the subnets and of the specified instance types.
 - ARM64 support via Graviton/Graviton2 instance-types. When using the default example or top-level module, specifying `instance_types` that match a Graviton/Graviton 2 (ARM64) architecture (e.g. a1, t4g or any 6th-gen `g` or `gd` type), you must also specify `runner_architecture = "arm64"` and the sub-modules will be automatically configured to provision with ARM64 AMIs and leverage GitHub's ARM64 action runner. See below for more details.
@@ -105,7 +105,7 @@ The module uses the AWS System Manager Parameter Store to store configuration fo
 | ----------- | ----------- |
 | `ssm_paths.root/var.prefix?/app/`     | App secrets used by Lambda's       |
 | `ssm_paths.root/var.prefix?/runners/config/<name>`     | Configuration parameters used by runner start script       |
-| `ssm_paths.root/var.prefix?/runners/tokens/<ec2-instance-id>` | Registration tokens for the runners generated by the scale-up lambda, consumed by the start script on the runner.       |
+| `ssm_paths.root/var.prefix?/runners/tokens/<ec2-instance-id>` | Either JIT configuration (ephemeral runners) or registration tokens (non ephemeral runners) generated by the control plane (scale-up lambda), and consumed by the start script on the runner to activate / register the runner.
 
 Available configuration parameters:
 
@@ -330,7 +330,7 @@ You can configure runners to be ephemeral, runners will be used only for one job
 - All events in the queue will lead to a new runner created by the lambda. By setting `enable_job_queued_check` to `true` you can enforce a rule of only creating a runner if the event has a correlated queued job. Setting this can avoid creating useless runners, for example when jobs got cancelled before a runner was created or if the job was already picked up by another runner. We suggest using this in combination with a pool.
 - To ensure runners are created in the same order GitHub sends the events, by default we use a FIFO queue. This is mainly relevant for repo level runners. For ephemeral runners you can set `enable_fifo_build_queue` to `false`.
 - Errors related to scaling should be retried via SQS. You can configure `job_queue_retention_in_seconds` and `redrive_build_queue` to tune the behavior. We have no mechanism to avoid events never being processed, which means potentially no runner gets created and the job in GitHub times out in 6 hours.
- 
+
 The example for [ephemeral runners](./examples/ephemeral) is based on the [default example](./examples/default). Have look at the diff to see the major configuration differences.
 
 ### Prebuilt Images
@@ -438,7 +438,9 @@ In case the setup does not work as intended follow the trace of events:
 
 ## Security Considerations
 
-This module creates resources in your AWS infrastructure, and EC2 instances for hosting the self-hosted runners on-demand. IAM permissions are set to a minimal level, and could be further limited by using permission boundaries. Instances permissions are limited to retrieve and delete the registration token, access the instance's own tags, and terminate the instance itself.
+This module creates resources in your AWS infrastructure, and EC2 instances for hosting the self-hosted runners on-demand. IAM permissions are set to a minimal level, and could be further limited by using permission boundaries. Instances permissions are limited to retrieve and delete the registration token, access the instance's own tags, and terminate the instance itself. By nature instances are short-lived, we strongly suggest to use ephemeral runners to ensure a safe build environment for each workflow job execution.
+
+Ephemeral runners are using the JIT configuration, confguration that only can be used once to activate a runner. For non-ephemeral runners this option is not provided by GitHub. For non-ephemeeral runners a registration token is passed via SSM. After using the token, the token is deleted. But the token remains valid and is potential available in memory on the runner. For ephemeral runners this problem is avoid by using just in time tokens.
 
 The examples are using standard AMI's for different operation systems. Instances are not hardened, and sudo operation are not blocked. To provide an out of the box working experience by default the module installs and configures the runner. However secrets are not hard coded, they finally end up in the memory of the instances. You can harden the instance by providing your own AMI and overwriting the cloud-init script.
 
