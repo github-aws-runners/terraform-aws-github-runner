@@ -16,6 +16,9 @@ runner_config:
   enable_ssm_on_runners: true
   instance_types:
     - c6id.4xlarge
+    - c6id.2xlarge
+    - c6id.xlarge
+    - c6id.large
   runners_maximum_count: 15
   enable_ephemeral_runners: true
   create_service_linked_role_spot: true
