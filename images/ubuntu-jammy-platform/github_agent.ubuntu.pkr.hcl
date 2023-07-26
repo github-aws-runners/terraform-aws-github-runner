@@ -9,13 +9,13 @@ packer {
 
 variable "runner_version" {
   description = "The version (no v prefix) of the runner software to install https://github.com/actions/runner/releases. The latest release will be fetched from GitHub if not provided."
-  default     = "2.305.0"
+  default     = "2.306.0"
 }
 
 variable "region" {
   description = "The region to build the image in"
   type        = string
-  default     = "eu-west-1"
+  default     = "ap-southeast-2"
 }
 
 variable "security_group_id" {
