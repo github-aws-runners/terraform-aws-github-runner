@@ -77,6 +77,12 @@ variable "custom_shell_commands" {
   default     = []
 }
 
+variable "temporary_security_group_source_public_ip" {
+  description = "When enabled, use public IP of the host (obtained from https://checkip.amazonaws.com) as CIDR block to be authorized access to the instance, when packer is creating a temporary security group. Note: If you specify `security_group_id` then this input is ignored."
+  type        = bool
+  default     = false
+}
+
 data "http" github_runner_release_json {
   url = "https://api.github.com/repos/actions/runner/releases/latest"
   request_headers = {
@@ -90,12 +96,13 @@ locals {
 }
 
 source "amazon-ebs" "githubrunner" {
-  ami_name                    = "github-runner-ubuntu-jammy-platform-amd64-${formatdate("YYYYMMDDhhmm", timestamp())}"
-  instance_type               = var.instance_type
-  region                      = var.region
-  security_group_id           = var.security_group_id
-  subnet_id                   = var.subnet_id
-  associate_public_ip_address = var.associate_public_ip_address
+  ami_name                                  = "github-runner-ubuntu-jammy-platform-amd64-${formatdate("YYYYMMDDhhmm", timestamp())}"
+  instance_type                             = var.instance_type
+  region                                    = var.region
+  security_group_id                         = var.security_group_id
+  subnet_id                                 = var.subnet_id
+  associate_public_ip_address               = var.associate_public_ip_address
+  temporary_security_group_source_public_ip = var.temporary_security_group_source_public_ip
 
   source_ami_filter {
     filters = {
@@ -140,29 +147,20 @@ build {
     inline = concat([
       "sudo cloud-init status --wait",
       "sudo apt-get -y update",
+      "sudo apt-get -y install ca-certificates curl gnupg lsb-release",
       "sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg",
       "echo deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null",
-      "sudo add-apt-repository -y ppa:mozillateam/ppa",
-      "echo 'Package: *\nPin: release o=LP-PPA-mozillateam\nPin-Priority: 1001\n\nPackage: firefox\nPin: version 1:1snap1-0ubuntu2\nPin-Priority: -1\n' | sudo tee /etc/apt/preferences.d/mozilla-firefox",
-      "curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -",
-      "sudo apt-get -y install automake autotools-dev bsdmainutils build-essential clang cmake containerd.io docker-ce docker-ce-cli firefox gcc git jq libssl-dev libtool libzmq3-dev nodejs openssh-client pkg-config python3 unzip",
+      "sudo apt-get -y update",
+      "sudo apt-get -y install docker-ce docker-ce-cli containerd.io jq git unzip",
       "sudo systemctl enable containerd.service",
       "sudo service docker start",
       "sudo usermod -a -G docker ubuntu",
-      "echo '{\n  \"registry-mirrors\": [\"http://docker-cache.platform.internal:5000\"]\n}' | sudo tee /etc/docker/daemon.json",
-      "sudo curl -fO https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb",
-      "sudo apt-get -y install ./google-chrome-stable_current_amd64.deb",
       "sudo curl -f https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb -o amazon-cloudwatch-agent.deb",
       "sudo dpkg -i amazon-cloudwatch-agent.deb",
       "sudo systemctl restart amazon-cloudwatch-agent",
       "sudo curl -f https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o awscliv2.zip",
       "unzip awscliv2.zip",
       "sudo ./aws/install",
-      "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y",
-      ". \"$HOME/.cargo/env\"",
-      "rustup toolchain install stable",
-      "rustup target add wasm32-unknown-unknown --toolchain stable",
-      "cargo install -f wasm-bindgen-cli@0.2.86"
     ], var.custom_shell_commands)
   }
 
@@ -203,4 +201,8 @@ build {
     ]
   }
 
+  post-processor "manifest" {
+    output     = "manifest.json"
+    strip_path = true
+  }
 }
