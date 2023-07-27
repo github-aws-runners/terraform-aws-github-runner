@@ -99,9 +99,7 @@ resource "aws_launch_template" "docker_cache" {
     }
   }
 
-  tags = {
-    Name = "platform-docker-cache-tf"
-  }
+  tags = var.config.tags
 }
 
 resource "aws_autoscaling_group" "docker_cache" {
@@ -117,10 +115,13 @@ resource "aws_autoscaling_group" "docker_cache" {
   health_check_grace_period = 300
   health_check_type         = "ELB"
 
-  tag {
-    key                 = "Name"
-    value               = "platform-docker-cache-tf"
-    propagate_at_launch = true
+  dynamic "tag" {
+    for_each = var.config.tags
+    content {
+      key                 = tag.key
+      value               = tag.value
+      propagate_at_launch = true
+    }
   }
 }
 
@@ -135,9 +136,7 @@ resource "aws_lb" "docker_cache" {
   load_balancer_type = "application"
   subnets            = var.config.subnet_ids
   security_groups    = [aws_security_group.docker_cache_sg.id]
-  tags = {
-    Name = "platform-docker-cache-tf"
-  }
+  tags               = var.config.tags
 }
 
 resource "aws_lb_target_group" "docker_cache" {
