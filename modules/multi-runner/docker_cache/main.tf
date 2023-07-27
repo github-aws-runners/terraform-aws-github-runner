@@ -14,24 +14,21 @@ data "aws_ami" "docker_cache_ami" {
   owners = ["099720109477"] # Canonical
 }
 
-data "aws_security_group" "runner_sg" {
-  vpc_id = module.base.vpc.vpc_id
-}
-
 resource "aws_security_group" "docker_cache_sg" {
-  name_prefix = "${local.environment}-docker-cache-sg"
-  vpc_id      = module.base.vpc.vpc_id
-  tags = {
-    Name = "docker-cache-sg"
-  }
+  name_prefix = "${var.config.prefix}-docker-cache-sg"
+  vpc_id      = var.config.vpc_id
+  tags        = var.config.tags
 }
 
-resource "aws_vpc_security_group_ingress_rule" "docker" {
-  security_group_id            = aws_security_group.docker_cache_sg.id
-  referenced_security_group_id = data.aws_security_group.runner_sg.id
-  ip_protocol                  = "tcp"
-  from_port                    = 5000
-  to_port                      = 5000
+resource "aws_security_group_rule" "docker_ingress" {
+  count = length(var.config.lambda_security_group_ids)
+
+  type                     = "ingress"
+  protocol                 = "tcp"
+  from_port                = 5000
+  to_port                  = 5000
+  security_group_id        = aws_security_group.docker_cache_sg.id
+  source_security_group_id = var.config.lambda_security_group_ids[count.index]
 }
 
 resource "aws_vpc_security_group_egress_rule" "docker" {
@@ -45,7 +42,7 @@ resource "aws_vpc_security_group_egress_rule" "docker" {
 resource "aws_route53_zone" "private" {
   name = "platform.internal"
   vpc {
-    vpc_id = module.base.vpc.vpc_id
+    vpc_id = var.config.vpc_id
   }
 }
 
@@ -61,15 +58,13 @@ resource "aws_route53_record" "docker_cache" {
 }
 
 resource "aws_iam_role" "docker_cache" {
-  name               = "${local.environment}-docker-cache-role"
+  name               = "${var.config.prefix}-docker-cache-role"
   assume_role_policy = templatefile("../../modules/runners/policies/instance-role-trust-policy.json", {})
-  tags = {
-    Name = "platform-docker-cache-tf"
-  }
+  tags               = var.config.tags
 }
 
 resource "aws_iam_instance_profile" "docker_cache" {
-  name = "${local.environment}-docker-cache-profile"
+  name = "${var.config.prefix}-docker-cache-profile"
   role = aws_iam_role.docker_cache.name
 }
 
@@ -83,12 +78,12 @@ resource "aws_iam_role_policy" "docker_cache_session_manager_aws_managed" {
 resource "aws_launch_template" "docker_cache" {
   image_id      = data.aws_ami.docker_cache_ami.id
   instance_type = "t4g.micro"
-  name_prefix   = "${local.environment}-docker-cache"
+  name_prefix   = "${var.config.prefix}-docker-cache"
 
-  vpc_security_group_ids = [
-    data.aws_security_group.runner_sg.id,
-    aws_security_group.docker_cache_sg.id
-  ]
+  vpc_security_group_ids = concat(
+    var.config.lambda_security_group_ids,
+    [aws_security_group.docker_cache_sg.id]
+  )
 
   iam_instance_profile {
     name = aws_iam_instance_profile.docker_cache.name
@@ -110,8 +105,8 @@ resource "aws_launch_template" "docker_cache" {
 }
 
 resource "aws_autoscaling_group" "docker_cache" {
-  name_prefix         = "${local.environment}-docker-cache"
-  vpc_zone_identifier = module.base.vpc.private_subnets
+  name_prefix         = "${var.config.prefix}-docker-cache"
+  vpc_zone_identifier = var.config.subnet_ids
   launch_template {
     id      = aws_launch_template.docker_cache.id
     version = "$Latest"
@@ -138,7 +133,7 @@ resource "aws_lb" "docker_cache" {
   name                       = "platform-docker-cache-tf"
   internal                   = true
   load_balancer_type         = "application"
-  subnets                    = module.base.vpc.private_subnets
+  subnets                    = var.config.subnet_ids
   security_groups            = [aws_security_group.docker_cache_sg.id]
   enable_deletion_protection = true
   tags = {
@@ -150,7 +145,7 @@ resource "aws_lb_target_group" "docker_cache" {
   name     = "platform-docker-cache-tf"
   port     = 5000
   protocol = "HTTP"
-  vpc_id   = module.base.vpc.vpc_id
+  vpc_id   = var.config.vpc_id
 }
 
 resource "aws_lb_listener" "docker_cache" {
