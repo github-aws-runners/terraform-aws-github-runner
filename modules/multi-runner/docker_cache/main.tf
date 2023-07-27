@@ -135,7 +135,6 @@ resource "aws_lb" "docker_cache" {
   load_balancer_type         = "application"
   subnets                    = var.config.subnet_ids
   security_groups            = [aws_security_group.docker_cache_sg.id]
-  enable_deletion_protection = true
   tags = {
     Name = "platform-docker-cache-tf"
   }
