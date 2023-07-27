@@ -130,11 +130,11 @@ resource "aws_autoscaling_attachment" "docker_cache" {
 }
 
 resource "aws_lb" "docker_cache" {
-  name                       = "platform-docker-cache-tf"
-  internal                   = true
-  load_balancer_type         = "application"
-  subnets                    = var.config.subnet_ids
-  security_groups            = [aws_security_group.docker_cache_sg.id]
+  name               = "platform-docker-cache-tf"
+  internal           = true
+  load_balancer_type = "application"
+  subnets            = var.config.subnet_ids
+  security_groups    = [aws_security_group.docker_cache_sg.id]
   tags = {
     Name = "platform-docker-cache-tf"
   }
