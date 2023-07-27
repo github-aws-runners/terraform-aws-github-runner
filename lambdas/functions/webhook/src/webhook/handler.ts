@@ -11,7 +11,7 @@ const supportedEvents = ['workflow_job'];
 const logger = createChildLogger('handler');
 
 export async function handle(headers: IncomingHttpHeaders, body: string): Promise<Response> {
-  const { environment, repositoryWhiteList, queuesConfig } = readEnvironmentVariables();
+  const { repositoryWhiteList, queuesConfig } = readEnvironmentVariables();
 
   // ensure header keys lower case since github headers can contain capitals.
   for (const key in headers) {

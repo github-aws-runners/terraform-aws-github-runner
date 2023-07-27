@@ -40,9 +40,9 @@
   "dependencies": {
     "@aws-sdk/client-ec2": "^3.350.0",
     "@aws-sdk/types": "^3.347.0",
-    "@octokit/auth-app": "4.0.13",
-    "@octokit/rest": "^19.0.7",
-    "@octokit/types": "^9.0.0",
+    "@octokit/auth-app": "6.0.0",
+    "@octokit/rest": "20.0.1",
+    "@octokit/types": "^11.1.0",
     "@terraform-aws-github-runner/aws-powertools-util": "*",
     "@terraform-aws-github-runner/aws-ssm-util": "*",
     "cron-parser": "^4.8.1",

@@ -26,11 +26,9 @@ export interface ListRunnerFilters {
 }
 
 export interface RunnerInputParameters {
-  runnerServiceConfig: string[];
   environment: string;
   runnerType: RunnerType;
   runnerOwner: string;
-  ssmTokenPath: string;
   subnets: string[];
   launchTemplateName: string;
   ec2instanceCriteria: {

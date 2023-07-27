@@ -29,7 +29,7 @@ variable "config" {
       disable_runner_autoupdate = bool
       ephemeral                 = bool
       boot_time_in_minutes      = number
-      extra_labels              = string
+      labels                    = string
       launch_template = object({
         name = string
       })
@@ -54,8 +54,10 @@ variable "config" {
     ami_kms_key_arn                      = string
     role_path                            = string
     ssm_token_path                       = string
+    ssm_config_path                      = string
     ami_id_ssm_parameter_name            = string
     ami_id_ssm_parameter_read_policy_arn = string
+    arn_ssm_parameters_path_config       = string
   })
 }
 

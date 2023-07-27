@@ -38,7 +38,7 @@ module "pool" {
       disable_runner_autoupdate = var.disable_runner_autoupdate
       ephemeral                 = var.enable_ephemeral_runners
       boot_time_in_minutes      = var.runner_boot_time_in_minutes
-      extra_labels              = var.runner_extra_labels
+      labels                    = var.runner_labels
       launch_template           = aws_launch_template.runner
       group_name                = var.runner_group_name
       name_prefix               = var.runner_name_prefix
@@ -47,9 +47,11 @@ module "pool" {
     }
     subnet_ids                           = var.subnet_ids
     ssm_token_path                       = "${var.ssm_paths.root}/${var.ssm_paths.tokens}"
+    ssm_config_path                      = "${var.ssm_paths.root}/${var.ssm_paths.config}"
     ami_id_ssm_parameter_name            = var.ami_id_ssm_parameter_name
     ami_id_ssm_parameter_read_policy_arn = var.ami_id_ssm_parameter_name != null ? aws_iam_policy.ami_id_ssm_parameter_read[0].arn : null
     tags                                 = local.tags
+    arn_ssm_parameters_path_config       = local.arn_ssm_parameters_path_config
   }
 
   aws_partition       = var.aws_partition

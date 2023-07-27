@@ -27,6 +27,18 @@
             "Resource": "*"
         },
         {
+          "Effect": "Allow",
+          "Action": [
+            "ssm:GetParameter",
+            "ssm:GetParameters",
+            "ssm:GetParametersByPath"
+          ],
+          "Resource": [
+            "${arn_ssm_parameters_path_config}",
+            "${arn_ssm_parameters_path_config}/*"
+          ]
+        },
+        {
             "Effect": "Allow",
             "Action": [
                 "ssm:GetParameter"

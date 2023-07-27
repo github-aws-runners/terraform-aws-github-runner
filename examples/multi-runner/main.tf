@@ -17,31 +17,8 @@ module "base" {
 }
 
 module "multi-runner" {
-  source              = "../../modules/multi-runner"
-  multi_runner_config = local.multi_runner_config
-  #  Alternative to loading runner configuration from Yaml files is using static configuration:
-  #  multi_runner_config = {
-  #    "linux-x64" = {
-  #      matcherConfig : {
-  #        labelMatchers = [["self-hosted", "linux", "x64", "amazon"]]
-  #        exactMatch    = false
-  #      }
-  #      fifo                = true
-  #      delay_webhook_event = 0
-  #      runner_config = {
-  #        runner_os                       = "linux"
-  #        runner_architecture             = "x64"
-  #        runner_name_prefix              = "amazon-x64_"
-  #        create_service_linked_role_spot = true
-  #        enable_ssm_on_runners           = true
-  #        instance_types                  = ["m5ad.large", "m5a.large"]
-  #        runner_extra_labels             = "amazon"
-  #        runners_maximum_count           = 1
-  #        enable_ephemeral_runners        = true
-  #        scale_down_schedule_expression  = "cron(* * * * ? *)"
-  #      }
-  #    }
-  #  }
+  source                            = "../../modules/multi-runner"
+  multi_runner_config               = local.multi_runner_config
   aws_region                        = local.aws_region
   vpc_id                            = module.base.vpc.vpc_id
   subnet_ids                        = module.base.vpc.private_subnets
@@ -68,5 +45,4 @@ module "multi-runner" {
 
   # Enable debug logging for the lambda functions
   # log_level = "debug"
-
 }

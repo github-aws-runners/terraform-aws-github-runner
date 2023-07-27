@@ -33,12 +33,13 @@ resource "aws_lambda_function" "pool" {
       PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.config.github_app_parameters.key_base64.name
       POWERTOOLS_LOGGER_LOG_EVENT          = var.config.lambda.log_level == "debug" ? "true" : "false"
       RUNNER_BOOT_TIME_IN_MINUTES          = var.config.runner.boot_time_in_minutes
-      RUNNER_EXTRA_LABELS                  = var.config.runner.extra_labels
+      RUNNER_LABELS                        = var.config.runner.labels
       RUNNER_GROUP_NAME                    = var.config.runner.group_name
       RUNNER_NAME_PREFIX                   = var.config.runner.name_prefix
       RUNNER_OWNER                         = var.config.runner.pool_owner
       SERVICE_NAME                         = "runners-pool"
       SSM_TOKEN_PATH                       = var.config.ssm_token_path
+      SSM_CONFIG_PATH                      = var.config.ssm_config_path
       SUBNET_IDS                           = join(",", var.config.subnet_ids)
     }
   }
@@ -78,11 +79,12 @@ resource "aws_iam_role_policy" "pool" {
   name = "${var.config.prefix}-lambda-pool-policy"
   role = aws_iam_role.pool.name
   policy = templatefile("${path.module}/policies/lambda-pool.json", {
-    arn_runner_instance_role  = var.config.runner.role.arn
-    github_app_id_arn         = var.config.github_app_parameters.id.arn
-    github_app_key_base64_arn = var.config.github_app_parameters.key_base64.arn
-    kms_key_arn               = var.config.kms_key_arn
-    ami_kms_key_arn           = var.config.ami_kms_key_arn
+    arn_ssm_parameters_path_config = var.config.arn_ssm_parameters_path_config
+    arn_runner_instance_role       = var.config.runner.role.arn
+    github_app_id_arn              = var.config.github_app_parameters.id.arn
+    github_app_key_base64_arn      = var.config.github_app_parameters.key_base64.arn
+    kms_key_arn                    = var.config.kms_key_arn
+    ami_kms_key_arn                = var.config.ami_kms_key_arn
   })
 }
 

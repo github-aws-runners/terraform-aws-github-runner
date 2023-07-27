@@ -16,5 +16,8 @@
   },
   "devDependencies": {
     "lerna": "^6.6.1"
+  },
+  "resolutions": {
+    "@octokit/types": "^10.0.0"
   }
 }

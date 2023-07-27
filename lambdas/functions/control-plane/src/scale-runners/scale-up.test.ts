@@ -1,6 +1,10 @@
+import { GetParameterCommand, PutParameterCommand, SSMClient } from '@aws-sdk/client-ssm';
 import { Octokit } from '@octokit/rest';
+import { mockClient } from 'aws-sdk-client-mock';
+import 'aws-sdk-client-mock-jest';
 import { mocked } from 'jest-mock';
 import nock from 'nock';
+import { performance } from 'perf_hooks';
 
 import * as ghAuth from '../gh-auth/gh-auth';
 import { createRunner, listEC2Runners } from './../aws/runners';
@@ -9,17 +13,23 @@ import ScaleError from './ScaleError';
 import * as scaleUpModule from './scale-up';
 
 const mockOctokit = {
+  paginate: jest.fn(),
   checks: { get: jest.fn() },
   actions: {
     createRegistrationTokenForOrg: jest.fn(),
     createRegistrationTokenForRepo: jest.fn(),
     getJobForWorkflowRun: jest.fn(),
+    generateRunnerJitconfigForOrg: jest.fn(),
+    generateRunnerJitconfigForRepo: jest.fn(),
   },
   apps: {
     getOrgInstallation: jest.fn(),
     getRepoInstallation: jest.fn(),
   },
 };
+const mockCreateRunner = mocked(createRunner);
+const mockListRunners = mocked(listEC2Runners);
+const mockSSMClient = mockClient(SSMClient);
 
 jest.mock('@octokit/rest', () => ({
   Octokit: jest.fn().mockImplementation(() => mockOctokit),
@@ -27,6 +37,10 @@ jest.mock('@octokit/rest', () => ({
 
 jest.mock('./../aws/runners');
 jest.mock('./../gh-auth/gh-auth');
+export type RunnerType = 'ephemeral' | 'non-ephemeral';
+
+// for ephemeral and non-ephemeral runners
+const RUNNER_TYPES: RunnerType[] = ['ephemeral', 'non-ephemeral'];
 
 const mocktokit = Octokit as jest.MockedClass<typeof Octokit>;
 const mockedAppAuth = mocked(ghAuth.createGithubAppAuth, { shallow: false });
@@ -54,7 +68,6 @@ const cleanEnv = process.env;
 
 const EXPECTED_RUNNER_PARAMS: RunnerInputParameters = {
   environment: 'unit-test-environment',
-  runnerServiceConfig: [`--url https://github.enterprise.something/${TEST_DATA.repositoryOwner}`, '--token 1234abcd'],
   runnerType: 'Org',
   runnerOwner: TEST_DATA.repositoryOwner,
   launchTemplateName: 'lt-1',
@@ -63,7 +76,6 @@ const EXPECTED_RUNNER_PARAMS: RunnerInputParameters = {
     targetCapacityType: 'spot',
     instanceAllocationStrategy: 'lowest-price',
   },
-  ssmTokenPath: '/github-action-runners/default/runners/config',
   subnets: ['subnet-123'],
 };
 let expectedRunnerParams: RunnerInputParameters;
@@ -80,7 +92,6 @@ beforeEach(() => {
   process.env.RUNNERS_MAXIMUM_COUNT = '3';
   process.env.ENVIRONMENT = EXPECTED_RUNNER_PARAMS.environment;
   process.env.LAUNCH_TEMPLATE_NAME = 'lt-1';
-  process.env.SSM_TOKEN_PATH = EXPECTED_RUNNER_PARAMS.ssmTokenPath;
   process.env.SUBNET_IDS = 'subnet-123';
   process.env.INSTANCE_TYPES = 'm5.large';
   process.env.INSTANCE_TARGET_CAPACITY_TYPE = 'spot';
@@ -90,7 +101,22 @@ beforeEach(() => {
       status: 'queued',
     },
   }));
-
+  mockOctokit.paginate.mockImplementation(() => [
+    {
+      id: 1,
+      name: 'Default',
+    },
+  ]);
+  mockOctokit.actions.generateRunnerJitconfigForOrg.mockImplementation(() => ({
+    data: {
+      encoded_jit_config: 'TEST_JIT_CONFIG_ORG',
+    },
+  }));
+  mockOctokit.actions.generateRunnerJitconfigForRepo.mockImplementation(() => ({
+    data: {
+      encoded_jit_config: 'TEST_JIT_CONFIG_REPO',
+    },
+  }));
   mockOctokit.checks.get.mockImplementation(() => ({
     data: {
       status: 'queued',
@@ -116,7 +142,9 @@ beforeEach(() => {
   mockOctokit.actions.createRegistrationTokenForRepo.mockImplementation(() => mockTokenReturnValue);
   mockOctokit.apps.getOrgInstallation.mockImplementation(() => mockInstallationIdReturnValueOrgs);
   mockOctokit.apps.getRepoInstallation.mockImplementation(() => mockInstallationIdReturnValueRepos);
-  const mockListRunners = mocked(listEC2Runners);
+  mockCreateRunner.mockImplementation(async () => {
+    return ['i-12345'];
+  });
   mockListRunners.mockImplementation(async () => [
     {
       instanceId: 'i-1234',
@@ -176,8 +204,16 @@ describe('scaleUp with GHES', () => {
   describe('on org level', () => {
     beforeEach(() => {
       process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
-      process.env.RUNNER_NAME_PREFIX = 'unit-test';
+      process.env.ENABLE_EPHEMERAL_RUNNERS = 'true';
+      process.env.RUNNER_NAME_PREFIX = 'unit-test-';
+      process.env.RUNNER_GROUP_NAME = 'Default';
+      process.env.SSM_CONFIG_PATH = '/github-action-runners/default/runners/config';
+      process.env.SSM_TOKEN_PATH = '/github-action-runners/default/runners/config';
+      process.env.RUNNER_LABELS = 'label1,label2';
+
       expectedRunnerParams = { ...EXPECTED_RUNNER_PARAMS };
+      mockSSMClient.reset();
+      mockSSMClient.on(GetParameterCommand).resolves({ Parameter: { Value: '1' } });
     });
 
     it('gets the current org level runners', async () => {
@@ -191,12 +227,14 @@ describe('scaleUp with GHES', () => {
 
     it('does not create a token when maximum runners has been reached', async () => {
       process.env.RUNNERS_MAXIMUM_COUNT = '1';
+      process.env.ENABLE_EPHEMERAL_RUNNERS = 'false';
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
       expect(mockOctokit.actions.createRegistrationTokenForOrg).not.toBeCalled();
       expect(mockOctokit.actions.createRegistrationTokenForRepo).not.toBeCalled();
     });
 
     it('creates a token when maximum runners has not been reached', async () => {
+      process.env.ENABLE_EPHEMERAL_RUNNERS = 'false';
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
       expect(mockOctokit.actions.createRegistrationTokenForOrg).toBeCalledWith({
         org: TEST_DATA.repositoryOwner,
@@ -232,14 +270,9 @@ describe('scaleUp with GHES', () => {
     });
 
     it('creates a runner with labels in a specific group', async () => {
-      process.env.RUNNER_EXTRA_LABELS = 'label1,label2';
+      process.env.RUNNER_LABELS = 'label1,label2';
       process.env.RUNNER_GROUP_NAME = 'TEST_GROUP';
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
-      expectedRunnerParams.runnerServiceConfig = [
-        ...expectedRunnerParams.runnerServiceConfig,
-        '--labels label1,label2',
-        '--runnergroup TEST_GROUP',
-      ];
       expect(createRunner).toBeCalledWith(expectedRunnerParams);
     });
 
@@ -248,8 +281,127 @@ describe('scaleUp with GHES', () => {
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
       expect(createRunner).toBeCalledWith({ ...expectedRunnerParams, amiIdSsmParameterName: 'my-ami-id-param' });
     });
-  });
 
+    it('Throws an error if runner group doesnt exist for ephemeral runners', async () => {
+      process.env.RUNNER_GROUP_NAME = 'test-runner-group';
+      mockSSMClient.on(GetParameterCommand).rejects();
+      await expect(scaleUpModule.scaleUp('aws:sqs', TEST_DATA)).rejects.toBeInstanceOf(Error);
+      expect(mockOctokit.paginate).toHaveBeenCalledTimes(1);
+    });
+
+    it('create SSM parameter for runner group id if it doesnt exist', async () => {
+      mockSSMClient.on(GetParameterCommand).rejects();
+      await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
+      expect(mockOctokit.paginate).toHaveBeenCalledTimes(1);
+      expect(mockSSMClient).toHaveReceivedCommandTimes(PutParameterCommand, 2);
+      expect(mockSSMClient).toHaveReceivedNthSpecificCommandWith(1, PutParameterCommand, {
+        Name: `${process.env.SSM_CONFIG_PATH}/runner-group/${process.env.RUNNER_GROUP_NAME}`,
+        Value: '1',
+        Type: 'String',
+      });
+    });
+
+    it('Doesnt create SSM parameter for runner group id if it exists', async () => {
+      mockSSMClient.on(GetParameterCommand).resolves({ Parameter: { Value: '1' } });
+      await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
+      expect(mockOctokit.paginate).toHaveBeenCalledTimes(0);
+      expect(mockSSMClient).toHaveReceivedCommandTimes(PutParameterCommand, 1);
+    });
+
+    it('create start runner config for ephemeral runners ', async () => {
+      process.env.RUNNERS_MAXIMUM_COUNT = '2';
+      mockSSMClient.on(GetParameterCommand).resolves({ Parameter: { Value: '1' } });
+      await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
+      expect(mockOctokit.actions.generateRunnerJitconfigForOrg).toBeCalledWith({
+        org: TEST_DATA.repositoryOwner,
+        name: 'unit-test-i-12345',
+        runner_group_id: 1,
+        labels: ['label1', 'label2'],
+      });
+      expect(mockSSMClient).toHaveReceivedNthSpecificCommandWith(1, PutParameterCommand, {
+        Name: '/github-action-runners/default/runners/config/i-12345',
+        Value: 'TEST_JIT_CONFIG_ORG',
+        Type: 'SecureString',
+      });
+    });
+
+    it('create start runner config for non-ephemeral runners ', async () => {
+      process.env.ENABLE_EPHEMERAL_RUNNERS = 'false';
+      process.env.RUNNERS_MAXIMUM_COUNT = '2';
+      await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
+      expect(mockOctokit.actions.generateRunnerJitconfigForOrg).not.toBeCalled();
+      expect(mockOctokit.actions.createRegistrationTokenForOrg).toBeCalled();
+      expect(mockSSMClient).toHaveReceivedNthSpecificCommandWith(1, PutParameterCommand, {
+        Name: '/github-action-runners/default/runners/config/i-12345',
+        Value:
+          '--url https://github.enterprise.something/Codertocat --token 1234abcd ' +
+          '--labels label1,label2 --runnergroup Default',
+        Type: 'SecureString',
+      });
+    });
+    it.each(RUNNER_TYPES)(
+      'calls create start runner config of 40' + ' instances (ssm rate limit condition) to test time delay ',
+      async (type: RunnerType) => {
+        process.env.ENABLE_EPHEMERAL_RUNNERS = type === 'ephemeral' ? 'true' : 'false';
+        process.env.RUNNERS_MAXIMUM_COUNT = '40';
+        mockCreateRunner.mockImplementation(async () => {
+          return instances;
+        });
+        mockListRunners.mockImplementation(async () => {
+          return [];
+        });
+        mockSSMClient.on(GetParameterCommand).resolves({ Parameter: { Value: '1' } });
+        const startTime = performance.now();
+        const instances = [
+          'i-1234',
+          'i-5678',
+          'i-5567',
+          'i-5569',
+          'i-5561',
+          'i-5560',
+          'i-5566',
+          'i-5536',
+          'i-5526',
+          'i-5516',
+          'i-122',
+          'i-123',
+          'i-124',
+          'i-125',
+          'i-126',
+          'i-127',
+          'i-128',
+          'i-129',
+          'i-130',
+          'i-131',
+          'i-132',
+          'i-133',
+          'i-134',
+          'i-135',
+          'i-136',
+          'i-137',
+          'i-138',
+          'i-139',
+          'i-140',
+          'i-141',
+          'i-142',
+          'i-143',
+          'i-144',
+          'i-145',
+          'i-146',
+          'i-147',
+          'i-148',
+          'i-149',
+          'i-150',
+          'i-151',
+        ];
+        await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
+        const endTime = performance.now();
+        expect(endTime - startTime).toBeGreaterThan(1000);
+        expect(mockSSMClient).toHaveReceivedCommandTimes(PutParameterCommand, 40);
+      },
+      10000,
+    );
+  });
   describe('on repo level', () => {
     beforeEach(() => {
       process.env.ENABLE_ORGANIZATION_RUNNERS = 'false';
@@ -257,10 +409,9 @@ describe('scaleUp with GHES', () => {
       expectedRunnerParams = { ...EXPECTED_RUNNER_PARAMS };
       expectedRunnerParams.runnerType = 'Repo';
       expectedRunnerParams.runnerOwner = `${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName}`;
-      expectedRunnerParams.runnerServiceConfig = [
-        `--url https://github.enterprise.something/${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName}`,
-        `--token 1234abcd`,
-      ];
+      //   `--url https://github.enterprise.something/${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName}`,
+      //   `--token 1234abcd`,
+      // ];
     });
 
     it('gets the current repo level runners', async () => {
@@ -280,6 +431,7 @@ describe('scaleUp with GHES', () => {
     });
 
     it('creates a token when maximum runners has not been reached', async () => {
+      process.env.ENABLE_EPHEMERAL_RUNNERS = 'false';
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
       expect(mockOctokit.actions.createRegistrationTokenForOrg).not.toBeCalled();
       expect(mockOctokit.actions.createRegistrationTokenForRepo).toBeCalledWith({
@@ -324,23 +476,15 @@ describe('scaleUp with GHES', () => {
     });
 
     it('creates a runner with correct config and labels', async () => {
-      process.env.RUNNER_EXTRA_LABELS = 'label1,label2';
+      process.env.RUNNER_LABELS = 'label1,label2';
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
-      expectedRunnerParams.runnerServiceConfig = [
-        ...expectedRunnerParams.runnerServiceConfig,
-        `--labels label1,label2`,
-      ];
       expect(createRunner).toBeCalledWith(expectedRunnerParams);
     });
 
     it('creates a runner and ensure the group argument is ignored', async () => {
-      process.env.RUNNER_EXTRA_LABELS = 'label1,label2';
+      process.env.RUNNER_LABELS = 'label1,label2';
       process.env.RUNNER_GROUP_NAME = 'TEST_GROUP_IGNORED';
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
-      expectedRunnerParams.runnerServiceConfig = [
-        ...expectedRunnerParams.runnerServiceConfig,
-        `--labels label1,label2`,
-      ];
       expect(createRunner).toBeCalledWith(expectedRunnerParams);
     });
 
@@ -407,10 +551,6 @@ describe('scaleUp with public GH', () => {
       process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
       process.env.RUNNER_NAME_PREFIX = 'unit-test';
       expectedRunnerParams = { ...EXPECTED_RUNNER_PARAMS };
-      expectedRunnerParams.runnerServiceConfig = [
-        `--url https://github.com/${TEST_DATA.repositoryOwner}`,
-        `--token 1234abcd`,
-      ];
     });
 
     it('gets the current org level runners', async () => {
@@ -443,14 +583,9 @@ describe('scaleUp with public GH', () => {
     });
 
     it('creates a runner with labels in s specific group', async () => {
-      process.env.RUNNER_EXTRA_LABELS = 'label1,label2';
+      process.env.RUNNER_LABELS = 'label1,label2';
       process.env.RUNNER_GROUP_NAME = 'TEST_GROUP';
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
-      expectedRunnerParams.runnerServiceConfig = [
-        ...expectedRunnerParams.runnerServiceConfig,
-        `--labels label1,label2`,
-        `--runnergroup TEST_GROUP`,
-      ];
       expect(createRunner).toBeCalledWith(expectedRunnerParams);
     });
   });
@@ -462,10 +597,6 @@ describe('scaleUp with public GH', () => {
       expectedRunnerParams = { ...EXPECTED_RUNNER_PARAMS };
       expectedRunnerParams.runnerType = 'Repo';
       expectedRunnerParams.runnerOwner = `${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName}`;
-      expectedRunnerParams.runnerServiceConfig = [
-        `--url https://github.com/${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName}`,
-        `--token 1234abcd`,
-      ];
     });
 
     it('gets the current repo level runners', async () => {
@@ -514,23 +645,15 @@ describe('scaleUp with public GH', () => {
     });
 
     it('creates a runner with correct config and labels', async () => {
-      process.env.RUNNER_EXTRA_LABELS = 'label1,label2';
+      process.env.RUNNER_LABELS = 'label1,label2';
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
-      expectedRunnerParams.runnerServiceConfig = [
-        ...expectedRunnerParams.runnerServiceConfig,
-        `--labels label1,label2`,
-      ];
       expect(createRunner).toBeCalledWith(expectedRunnerParams);
     });
 
     it('creates a runner and ensure the group argument is ignored', async () => {
-      process.env.RUNNER_EXTRA_LABELS = 'label1,label2';
+      process.env.RUNNER_LABELS = 'label1,label2';
       process.env.RUNNER_GROUP_NAME = 'TEST_GROUP_IGNORED';
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
-      expectedRunnerParams.runnerServiceConfig = [
-        ...expectedRunnerParams.runnerServiceConfig,
-        `--labels label1,label2`,
-      ];
       expect(createRunner).toBeCalledWith(expectedRunnerParams);
     });
 
@@ -549,7 +672,6 @@ describe('scaleUp with public GH', () => {
       process.env.ENABLE_EPHEMERAL_RUNNERS = 'true';
       process.env.ENABLE_JOB_QUEUED_CHECK = 'false';
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
-      expectedRunnerParams.runnerServiceConfig = [...expectedRunnerParams.runnerServiceConfig, `--ephemeral`];
       expect(mockOctokit.actions.getJobForWorkflowRun).not.toBeCalled();
       expect(createRunner).toBeCalledWith(expectedRunnerParams);
     });
@@ -559,14 +681,12 @@ describe('scaleUp with public GH', () => {
       process.env.ENABLE_JOB_QUEUED_CHECK = 'true';
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
       expect(mockOctokit.actions.getJobForWorkflowRun).toBeCalled();
-      expectedRunnerParams.runnerServiceConfig = [...expectedRunnerParams.runnerServiceConfig, `--ephemeral`];
       expect(createRunner).toBeCalledWith(expectedRunnerParams);
     });
 
     it('disable auto update on the runner.', async () => {
       process.env.DISABLE_RUNNER_AUTOUPDATE = 'true';
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
-      expectedRunnerParams.runnerServiceConfig = [...expectedRunnerParams.runnerServiceConfig, `--disableupdate`];
       expect(createRunner).toBeCalledWith(expectedRunnerParams);
     });
 

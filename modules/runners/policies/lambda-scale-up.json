@@ -33,7 +33,8 @@
             ],
             "Resource": [
                 "${github_app_key_base64_arn}",
-                "${github_app_id_arn}"
+                "${github_app_id_arn}",
+                "${ssm_config_path}/*"
             ]
         },
         {
