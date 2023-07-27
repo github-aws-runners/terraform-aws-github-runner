@@ -1,5 +1,11 @@
+resource "random_string" "random" {
+  length  = 8
+  special = false
+  upper   = false
+}
+
 resource "aws_s3_bucket" "runner_cache" {
-  bucket        = "${var.config.prefix}-cache"
+  bucket        = "${var.config.prefix}-cache-${random_string.random.result}"
   force_destroy = true
   tags          = var.config.tags
 }
