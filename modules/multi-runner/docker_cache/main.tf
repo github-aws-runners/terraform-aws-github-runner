@@ -78,7 +78,7 @@ resource "aws_iam_role_policy" "docker_cache_session_manager_aws_managed" {
 resource "aws_launch_template" "docker_cache" {
   image_id      = data.aws_ami.docker_cache_ami.id
   instance_type = "t4g.micro"
-  name_prefix   = "${var.config.prefix}-docker-cache"
+  name_prefix   = "${var.config.prefix}-docker-cache-"
 
   vpc_security_group_ids = concat(
     var.config.lambda_security_group_ids,
@@ -103,7 +103,7 @@ resource "aws_launch_template" "docker_cache" {
 }
 
 resource "aws_autoscaling_group" "docker_cache" {
-  name_prefix         = "${var.config.prefix}-docker-cache"
+  name_prefix         = "${var.config.prefix}-docker-cache-"
   vpc_zone_identifier = var.config.subnet_ids
   launch_template {
     id      = aws_launch_template.docker_cache.id
