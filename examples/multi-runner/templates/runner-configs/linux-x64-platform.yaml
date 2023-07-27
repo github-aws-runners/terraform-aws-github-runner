@@ -15,10 +15,7 @@ runner_config:
   runner_name_prefix: ubuntu-platform-x64_
   enable_ssm_on_runners: true
   instance_types:
-    - c6id.4xlarge
     - c6id.2xlarge
-    - c6id.xlarge
-    - c6id.large
   runners_maximum_count: 15
   enable_ephemeral_runners: true
   create_service_linked_role_spot: true
@@ -29,7 +26,7 @@ runner_config:
     - ${account_id}
   ami_filter:
     name:
-      - github-runner-ubuntu-jammy-platform-amd64-202307270243
+      - github-runner-ubuntu-jammy-platform-amd64-202307270532
     state:
       - available
   block_device_mappings:
