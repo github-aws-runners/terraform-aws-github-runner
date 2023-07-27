@@ -32,6 +32,7 @@ export interface ActionRequestMessage {
 interface CreateGitHubRunnerConfig {
   ephemeral: boolean;
   ghesBaseUrl: string;
+  enableJitConfig: boolean;
   runnerLabels: string;
   runnerGroup: string;
   runnerNamePrefix: string;
@@ -221,6 +222,7 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
   const instanceTypes = process.env.INSTANCE_TYPES.split(',');
   const instanceTargetTargetCapacityType = process.env.INSTANCE_TARGET_CAPACITY_TYPE;
   const ephemeralEnabled = yn(process.env.ENABLE_EPHEMERAL_RUNNERS, { default: false });
+  const enableJitConfig = yn(process.env.ENABLE_JIT_CONFIG, { default: ephemeralEnabled });
   const disableAutoUpdate = yn(process.env.DISABLE_RUNNER_AUTOUPDATE, { default: false });
   const launchTemplateName = process.env.LAUNCH_TEMPLATE_NAME;
   const instanceMaxSpotPrice = process.env.INSTANCE_MAX_SPOT_PRICE;
@@ -229,6 +231,7 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
   const amiIdSsmParameterName = process.env.AMI_ID_SSM_PARAMETER_NAME;
   const runnerNamePrefix = process.env.RUNNER_NAME_PREFIX || '';
   const ssmConfigPath = process.env.SSM_CONFIG_PATH || '';
+
 
   if (ephemeralEnabled && payload.eventType !== 'workflow_job') {
     logger.warn(`${payload.eventType} event is not supported in combination with ephemeral runners.`);
@@ -276,6 +279,7 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
       await createRunners(
         {
           ephemeral,
+          enableJitConfig,
           ghesBaseUrl,
           runnerLabels,
           runnerGroup,
@@ -313,10 +317,10 @@ async function createStartRunnerConfig(
   instances: string[],
   ghClient: Octokit,
 ) {
-  if (githubRunnerConfig.ephemeral) {
-    await createStartRunnerConfigForEphemeralRunners(githubRunnerConfig, instances, ghClient);
+  if (githubRunnerConfig.enableJitConfig) {
+    await createJitConfig(githubRunnerConfig, instances, ghClient);
   } else {
-    await createStartRunnerConfigForNonEphemeralRunners(githubRunnerConfig, instances, ghClient);
+    await createRegistrationTokenConfig(githubRunnerConfig, instances, ghClient);
   }
 }
 
@@ -327,7 +331,7 @@ function addDelay(instances: string[]) {
   return { isDelay, delay };
 }
 
-async function createStartRunnerConfigForNonEphemeralRunners(
+async function createRegistrationTokenConfig(
   githubRunnerConfig: CreateGitHubRunnerConfig,
   instances: string[],
   ghClient: Octokit,
@@ -349,7 +353,7 @@ async function createStartRunnerConfigForNonEphemeralRunners(
   }
 }
 
-async function createStartRunnerConfigForEphemeralRunners(
+async function createJitConfig(
   githubRunnerConfig: CreateGitHubRunnerConfig,
   instances: string[],
   ghClient: Octokit,

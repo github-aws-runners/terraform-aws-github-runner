@@ -29,6 +29,7 @@ export async function adjust(event: PoolEvent): Promise<void> {
   const instanceTypes = process.env.INSTANCE_TYPES.split(',');
   const instanceTargetTargetCapacityType = process.env.INSTANCE_TARGET_CAPACITY_TYPE;
   const ephemeral = yn(process.env.ENABLE_EPHEMERAL_RUNNERS, { default: false });
+  const enableJitConfig = yn(process.env.ENABLE_JIT_CONFIG, { default: ephemeral });
   const disableAutoUpdate = yn(process.env.DISABLE_RUNNER_AUTOUPDATE, { default: false });
   const launchTemplateName = process.env.LAUNCH_TEMPLATE_NAME;
   const instanceMaxSpotPrice = process.env.INSTANCE_MAX_SPOT_PRICE;
@@ -94,6 +95,7 @@ export async function adjust(event: PoolEvent): Promise<void> {
     await createRunners(
       {
         ephemeral,
+        enableJitConfig,
         ghesBaseUrl,
         runnerLabels,
         runnerGroup,

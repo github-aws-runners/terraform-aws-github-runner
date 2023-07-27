@@ -37,6 +37,7 @@ module "pool" {
     runner = {
       disable_runner_autoupdate = var.disable_runner_autoupdate
       ephemeral                 = var.enable_ephemeral_runners
+      enable_jit_config         = var.enable_jit_config
       boot_time_in_minutes      = var.runner_boot_time_in_minutes
       labels                    = var.runner_labels
       launch_template           = aws_launch_template.runner

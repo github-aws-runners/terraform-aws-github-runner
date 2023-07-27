@@ -609,3 +609,9 @@ variable "credit_specification" {
     error_message = "Valid values for credit_specification are (null, \"standard\", \"unlimited\")."
   }
 }
+
+variable "enable_jit_config" {
+  description = "Enable just-in-time (JIT) instance configuration for the runner instances. By default the feature is enabled for ephemeral runners, set this variable to overwrite the default behavior."
+  type        = bool
+  default     = null
+}
