@@ -69,7 +69,7 @@ resource "aws_iam_instance_profile" "docker_cache" {
 }
 
 resource "aws_iam_role_policy" "docker_cache_session_manager_aws_managed" {
-  name   = "docker-cache-ssm-session"
+  name   = "${var.config.prefix}-docker-cache-ssm-session"
   count  = 1
   role   = aws_iam_role.docker_cache.name
   policy = templatefile("../../modules/runners/policies/instance-ssm-policy.json", {})
@@ -141,7 +141,7 @@ resource "aws_lb" "docker_cache" {
 }
 
 resource "aws_lb_target_group" "docker_cache" {
-  name     = "platform-docker-cache-tf"
+  name     = "${var.config.prefix}-docker-cache"
   port     = 5000
   protocol = "HTTP"
   vpc_id   = var.config.vpc_id
