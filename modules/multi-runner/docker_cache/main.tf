@@ -130,7 +130,7 @@ resource "aws_autoscaling_attachment" "docker_cache" {
 }
 
 resource "aws_lb" "docker_cache" {
-  name               = "platform-docker-cache-tf"
+  name               = "${var.config.prefix}-docker-cache"
   internal           = true
   load_balancer_type = "application"
   subnets            = var.config.subnet_ids
