@@ -40,7 +40,7 @@ resource "aws_vpc_security_group_egress_rule" "docker" {
 }
 
 resource "aws_route53_zone" "private" {
-  name = "platform.internal"
+  name = "dcg.internal"
   vpc {
     vpc_id = var.config.vpc_id
   }
@@ -48,7 +48,7 @@ resource "aws_route53_zone" "private" {
 
 resource "aws_route53_record" "docker_cache" {
   zone_id = aws_route53_zone.private.zone_id
-  name    = "docker-cache.platform.internal"
+  name    = "docker-cache.dcg.internal"
   type    = "A"
   alias {
     name                   = aws_lb.docker_cache.dns_name
