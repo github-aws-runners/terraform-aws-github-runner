@@ -680,10 +680,9 @@ describe('scaleUp with public GH', () => {
 
       expect(mockSSMClient).toHaveReceivedNthSpecificCommandWith(1, PutParameterCommand, {
         Name: '/github-action-runners/default/runners/config/i-12345',
-        Value: "TEST_JIT_CONFIG_REPO",
+        Value: 'TEST_JIT_CONFIG_REPO',
         Type: 'SecureString',
       });
-
     });
 
     it('creates a ephemeral runner with registration token.', async () => {
@@ -697,7 +696,7 @@ describe('scaleUp with public GH', () => {
 
       expect(mockSSMClient).toHaveReceivedNthSpecificCommandWith(1, PutParameterCommand, {
         Name: '/github-action-runners/default/runners/config/i-12345',
-        Value: "--url https://github.com/Codertocat/hello-world --token 1234abcd --labels ",
+        Value: '--url https://github.com/Codertocat/hello-world --token 1234abcd --labels ',
         Type: 'SecureString',
       });
     });

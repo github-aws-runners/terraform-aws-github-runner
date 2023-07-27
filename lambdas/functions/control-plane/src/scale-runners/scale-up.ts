@@ -232,7 +232,6 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
   const runnerNamePrefix = process.env.RUNNER_NAME_PREFIX || '';
   const ssmConfigPath = process.env.SSM_CONFIG_PATH || '';
 
-
   if (ephemeralEnabled && payload.eventType !== 'workflow_job') {
     logger.warn(`${payload.eventType} event is not supported in combination with ephemeral runners.`);
     throw Error(
@@ -353,11 +352,7 @@ async function createRegistrationTokenConfig(
   }
 }
 
-async function createJitConfig(
-  githubRunnerConfig: CreateGitHubRunnerConfig,
-  instances: string[],
-  ghClient: Octokit,
-) {
+async function createJitConfig(githubRunnerConfig: CreateGitHubRunnerConfig, instances: string[], ghClient: Octokit) {
   const runnerGroupId = await getRunnerGroupId(githubRunnerConfig, ghClient);
   const { isDelay, delay } = addDelay(instances);
   const runnerLabels = githubRunnerConfig.runnerLabels.split(',');
