@@ -76,9 +76,10 @@ resource "aws_iam_role_policy" "docker_cache_session_manager_aws_managed" {
 }
 
 resource "aws_launch_template" "docker_cache" {
-  image_id      = data.aws_ami.docker_cache_ami.id
-  instance_type = "t4g.micro"
-  name_prefix   = "${var.config.prefix}-docker-cache-"
+  image_id               = data.aws_ami.docker_cache_ami.id
+  instance_type          = "t4g.micro"
+  name_prefix            = "${var.config.prefix}-docker-cache-"
+  update_default_version = true
 
   vpc_security_group_ids = concat(
     var.config.lambda_security_group_ids,
@@ -97,6 +98,14 @@ resource "aws_launch_template" "docker_cache" {
       volume_size = 50
       volume_type = "gp3"
     }
+  }
+
+  tag_specifications {
+    resource_type = "instance"
+    tags = merge(
+      var.config.tags,
+      { Name = "${var.config.prefix}-docker-cache" }
+    )
   }
 
   tags = var.config.tags
