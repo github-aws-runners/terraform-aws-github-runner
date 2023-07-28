@@ -316,7 +316,7 @@ async function createStartRunnerConfig(
   instances: string[],
   ghClient: Octokit,
 ) {
-  if (githubRunnerConfig.enableJitConfig) {
+  if (githubRunnerConfig.enableJitConfig && githubRunnerConfig.ephemeral) {
     await createJitConfig(githubRunnerConfig, instances, ghClient);
   } else {
     await createRegistrationTokenConfig(githubRunnerConfig, instances, ghClient);

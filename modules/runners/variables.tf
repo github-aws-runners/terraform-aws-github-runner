@@ -611,7 +611,7 @@ variable "credit_specification" {
 }
 
 variable "enable_jit_config" {
-  description = "Enable just-in-time (JIT) instance configuration for the runner instances. By default the feature is enabled for ephemeral runners, set this variable to overwrite the default behavior."
+  description = "Enables JIT configuration for creating runners instead of registration token based registraton. JIT configuration will only be applied for ephemeral runners. By default JIT confiugration is enabled for ephemeral runners an can be disabled via this override. When running on GHES without support for JIT configuration this variable should be set to true for ephemeral runners."
   type        = bool
   default     = null
 }

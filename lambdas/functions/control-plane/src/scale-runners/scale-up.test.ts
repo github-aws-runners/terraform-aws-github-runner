@@ -701,6 +701,22 @@ describe('scaleUp with public GH', () => {
       });
     });
 
+    it('JIT config is ingored for non-ephemeral runners.', async () => {
+      process.env.ENABLE_EPHEMERAL_RUNNERS = 'false';
+      process.env.ENABLE_JIT_CONFIG = 'true';
+      process.env.ENABLE_JOB_QUEUED_CHECK = 'false';
+      process.env.SSM_TOKEN_PATH = '/github-action-runners/default/runners/config';
+      await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
+      expect(mockOctokit.actions.getJobForWorkflowRun).not.toBeCalled();
+      expect(createRunner).toBeCalledWith(expectedRunnerParams);
+
+      expect(mockSSMClient).toHaveReceivedNthSpecificCommandWith(1, PutParameterCommand, {
+        Name: '/github-action-runners/default/runners/config/i-12345',
+        Value: '--url https://github.com/Codertocat/hello-world --token 1234abcd --labels ',
+        Type: 'SecureString',
+      });
+    });
+
     it('creates a ephemeral runner after checking job is queued.', async () => {
       process.env.ENABLE_EPHEMERAL_RUNNERS = 'true';
       process.env.ENABLE_JOB_QUEUED_CHECK = 'true';
