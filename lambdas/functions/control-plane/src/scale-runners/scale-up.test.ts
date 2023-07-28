@@ -696,7 +696,7 @@ describe('scaleUp with public GH', () => {
 
       expect(mockSSMClient).toHaveReceivedNthSpecificCommandWith(1, PutParameterCommand, {
         Name: '/github-action-runners/default/runners/config/i-12345',
-        Value: '--url https://github.com/Codertocat/hello-world --token 1234abcd --labels ',
+        Value: '--url https://github.com/Codertocat/hello-world --token 1234abcd --ephemeral',
         Type: 'SecureString',
       });
     });
@@ -705,6 +705,7 @@ describe('scaleUp with public GH', () => {
       process.env.ENABLE_EPHEMERAL_RUNNERS = 'false';
       process.env.ENABLE_JIT_CONFIG = 'true';
       process.env.ENABLE_JOB_QUEUED_CHECK = 'false';
+      process.env.RUNNER_LABELS = 'jit';
       process.env.SSM_TOKEN_PATH = '/github-action-runners/default/runners/config';
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
       expect(mockOctokit.actions.getJobForWorkflowRun).not.toBeCalled();
@@ -712,7 +713,7 @@ describe('scaleUp with public GH', () => {
 
       expect(mockSSMClient).toHaveReceivedNthSpecificCommandWith(1, PutParameterCommand, {
         Name: '/github-action-runners/default/runners/config/i-12345',
-        Value: '--url https://github.com/Codertocat/hello-world --token 1234abcd --labels ',
+        Value: '--url https://github.com/Codertocat/hello-world --token 1234abcd --labels jit',
         Type: 'SecureString',
       });
     });

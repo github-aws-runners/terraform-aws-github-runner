@@ -58,8 +58,8 @@ function generateRunnerServiceConfig(githubRunnerConfig: CreateGitHubRunnerConfi
     `--token ${token}`,
   ];
 
-  if (githubRunnerConfig.runnerLabels !== undefined) {
-    config.push(`--labels ${githubRunnerConfig.runnerLabels}`);
+  if (githubRunnerConfig.runnerLabels) {
+    config.push(`--labels ${githubRunnerConfig.runnerLabels}`.trim());
   }
 
   if (githubRunnerConfig.disableAutoUpdate) {
@@ -68,6 +68,10 @@ function generateRunnerServiceConfig(githubRunnerConfig: CreateGitHubRunnerConfi
 
   if (githubRunnerConfig.runnerType === 'Org' && githubRunnerConfig.runnerGroup !== undefined) {
     config.push(`--runnergroup ${githubRunnerConfig.runnerGroup}`);
+  }
+
+  if (githubRunnerConfig.ephemeral) {
+    config.push(`--ephemeral`);
   }
 
   return config;

@@ -79,7 +79,7 @@ module "runners" {
 
   # override delay of events in seconds
   delay_webhook_event   = 5
-  runners_maximum_count = 1
+  runners_maximum_count = 2
 
   # set up a fifo queue to remain order
   enable_fifo_build_queue = true
@@ -96,4 +96,13 @@ module "runners" {
 
   # Enable debug logging for the lambda functions
   # log_level = "debug"
+
+  enable_jit_config        = false
+  enable_ephemeral_runners = true
+  # pool_runner_owner = "philips-test-runners"
+  # pool_config = [{
+  #   size                = 3
+  #   schedule_expression = "cron(* * * * ? *)"
+  # }]
+
 }

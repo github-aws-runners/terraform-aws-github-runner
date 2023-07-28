@@ -108,8 +108,8 @@ EOL
 echo "Starting runner after $(awk '{print int($1/3600)":"int(($1%3600)/60)":"int($1%60)}' /proc/uptime)"
 echo "Starting the runner as user $run_as"
 
-# configure the runner if enable_jit_config is set to true
-if [[ "$enable_jit_config" == "false" ]]; then
+# configure the runner if the runner is non ephemeral or jit config is disabled
+if [[ "$enable_jit_config" == "false" || $agent_mode != "ephemeral" ]]; then
   echo "Configure GH Runner as user $run_as"
   sudo --preserve-env=RUNNER_ALLOW_RUNASROOT -u "$run_as" -- ./config.sh --unattended --name "$runner_name_prefix$instance_id" --work "_work" $${config}
 fi
