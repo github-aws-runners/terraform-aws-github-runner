@@ -30,13 +30,13 @@ jobs:
           GITHUB_CONTEXT: ${{ toJson(github) }}
         run: echo "$GITHUB_CONTEXT"
 
-      - if: github.event_name == 'push' && github.repository_owner == 'philips-software'
+      - if: github.event_name == 'push' && github.repository_owner == 'philips-labs'
         name: Checkout with App Token
         uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # ratchet:actions/checkout@v3
         with:
           token: ${{ steps.token.outputs.token }}
 
-      - if: github.event_name == 'push' && github.repository_owner != 'philips-software'
+      - if: github.event_name == 'push' && github.repository_owner != 'philips-labs'
         name: Checkout with GITHUB Action token
         uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # ratchet:actions/checkout@v3
 
