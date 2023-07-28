@@ -795,7 +795,7 @@ variable "runner_credit_specification" {
 }
 
 variable "enable_jit_config" {
-  description = "Enables JIT configuration for creating runners instead of registration token based registraton. JIT configuration will only be applied for ephemeral runners after enabling this feature. For non-ephemeral the feature is ingored. When running on GHES check first if the jit config API is available. The configuration parameter auto update is not available for JIT configuraiton, we don't now if auto updates are enabled or not when applied."
+  description = "Enables JIT configuration for creating runners instead of registration token based registraton. JIT configuration will only be applied for ephemeral runners after enabling this feature. For non-ephemeral the feature is ingored. When running on GHES check first if the JIT config API is available. The configuration parameter auto update is not available for JIT configuraiton, we don't now if auto updates are enabled or not when applied."
   type        = bool
   default     = false
 }
