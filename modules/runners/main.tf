@@ -215,10 +215,10 @@ module "s3_cache" {
   source = "./s3_cache"
 
   config = {
-    prefix                   = var.prefix
-    tags                     = local.tags
+    prefix = var.prefix
+    tags   = local.tags
     runner_instance_role = {
-      arn  = aws_iam_role.runner.arn
+      arn = aws_iam_role.runner.arn
     }
   }
 }

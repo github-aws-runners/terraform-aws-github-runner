@@ -17,7 +17,7 @@ data "aws_iam_policy_document" "runner_cache_policy" {
       identifiers = [var.config.runner_instance_role.arn]
     }
 
-    actions   = ["s3:*"]
+    actions = ["s3:*"]
 
     resources = [
       aws_s3_bucket.runner_cache.arn,
