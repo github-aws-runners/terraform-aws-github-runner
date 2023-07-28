@@ -96,13 +96,4 @@ module "runners" {
 
   # Enable debug logging for the lambda functions
   # log_level = "debug"
-
-  enable_jit_config        = false
-  enable_ephemeral_runners = true
-  # pool_runner_owner = "philips-test-runners"
-  # pool_config = [{
-  #   size                = 3
-  #   schedule_expression = "cron(* * * * ? *)"
-  # }]
-
 }
