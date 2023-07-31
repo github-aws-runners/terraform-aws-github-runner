@@ -15,7 +15,7 @@ resource "aws_ssm_parameter" "runner_agent_mode" {
 resource "aws_ssm_parameter" "jit_config_enabled" {
   name  = "${var.ssm_paths.root}/${var.ssm_paths.config}/enable_jit_config"
   type  = "String"
-  value = var.enable_jit_config
+  value = var.enable_jit_config == null ? var.enable_ephemeral_runners : var.enable_jit_config
   tags  = local.tags
 }
 
