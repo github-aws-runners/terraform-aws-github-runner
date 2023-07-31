@@ -18,6 +18,7 @@ runner_config:
     - c6id.2xlarge
   runners_maximum_count: 15
   enable_ephemeral_runners: true
+  enable_jit_configuration: true
   create_service_linked_role_spot: true
   create_cache_bucket: true
   scale_down_schedule_expression: cron(* * * * ? *)

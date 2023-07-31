@@ -18,6 +18,7 @@ runner_config:
     - c6a.xlarge
   runners_maximum_count: 15
   enable_ephemeral_runners: true
+  enable_jit_configuration: true
   create_service_linked_role_spot: true
   create_cache_bucket: false
   scale_down_schedule_expression: cron(* * * * ? *)
@@ -26,7 +27,7 @@ runner_config:
     - ${account_id}
   ami_filter:
     name:
-      - github-runner-ubuntu-jammy-core-amd64-2023*
+      - github-runner-ubuntu-jammy-core-amd64-202307311112
     state:
       - available
   block_device_mappings:
