@@ -32,6 +32,7 @@ export interface ActionRequestMessage {
 interface CreateGitHubRunnerConfig {
   ephemeral: boolean;
   ghesBaseUrl: string;
+  enableJitConfig: boolean;
   runnerLabels: string;
   runnerGroup: string;
   runnerNamePrefix: string;
@@ -57,8 +58,8 @@ function generateRunnerServiceConfig(githubRunnerConfig: CreateGitHubRunnerConfi
     `--token ${token}`,
   ];
 
-  if (githubRunnerConfig.runnerLabels !== undefined) {
-    config.push(`--labels ${githubRunnerConfig.runnerLabels}`);
+  if (githubRunnerConfig.runnerLabels) {
+    config.push(`--labels ${githubRunnerConfig.runnerLabels}`.trim());
   }
 
   if (githubRunnerConfig.disableAutoUpdate) {
@@ -67,6 +68,10 @@ function generateRunnerServiceConfig(githubRunnerConfig: CreateGitHubRunnerConfi
 
   if (githubRunnerConfig.runnerType === 'Org' && githubRunnerConfig.runnerGroup !== undefined) {
     config.push(`--runnergroup ${githubRunnerConfig.runnerGroup}`);
+  }
+
+  if (githubRunnerConfig.ephemeral) {
+    config.push(`--ephemeral`);
   }
 
   return config;
@@ -221,6 +226,7 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
   const instanceTypes = process.env.INSTANCE_TYPES.split(',');
   const instanceTargetTargetCapacityType = process.env.INSTANCE_TARGET_CAPACITY_TYPE;
   const ephemeralEnabled = yn(process.env.ENABLE_EPHEMERAL_RUNNERS, { default: false });
+  const enableJitConfig = yn(process.env.ENABLE_JIT_CONFIG, { default: ephemeralEnabled });
   const disableAutoUpdate = yn(process.env.DISABLE_RUNNER_AUTOUPDATE, { default: false });
   const launchTemplateName = process.env.LAUNCH_TEMPLATE_NAME;
   const instanceMaxSpotPrice = process.env.INSTANCE_MAX_SPOT_PRICE;
@@ -276,6 +282,7 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
       await createRunners(
         {
           ephemeral,
+          enableJitConfig,
           ghesBaseUrl,
           runnerLabels,
           runnerGroup,
@@ -313,10 +320,10 @@ async function createStartRunnerConfig(
   instances: string[],
   ghClient: Octokit,
 ) {
-  if (githubRunnerConfig.ephemeral) {
-    await createStartRunnerConfigForEphemeralRunners(githubRunnerConfig, instances, ghClient);
+  if (githubRunnerConfig.enableJitConfig && githubRunnerConfig.ephemeral) {
+    await createJitConfig(githubRunnerConfig, instances, ghClient);
   } else {
-    await createStartRunnerConfigForNonEphemeralRunners(githubRunnerConfig, instances, ghClient);
+    await createRegistrationTokenConfig(githubRunnerConfig, instances, ghClient);
   }
 }
 
@@ -327,7 +334,7 @@ function addDelay(instances: string[]) {
   return { isDelay, delay };
 }
 
-async function createStartRunnerConfigForNonEphemeralRunners(
+async function createRegistrationTokenConfig(
   githubRunnerConfig: CreateGitHubRunnerConfig,
   instances: string[],
   ghClient: Octokit,
@@ -349,11 +356,7 @@ async function createStartRunnerConfigForNonEphemeralRunners(
   }
 }
 
-async function createStartRunnerConfigForEphemeralRunners(
-  githubRunnerConfig: CreateGitHubRunnerConfig,
-  instances: string[],
-  ghClient: Octokit,
-) {
+async function createJitConfig(githubRunnerConfig: CreateGitHubRunnerConfig, instances: string[], ghClient: Octokit) {
   const runnerGroupId = await getRunnerGroupId(githubRunnerConfig, ghClient);
   const { isDelay, delay } = addDelay(instances);
   const runnerLabels = githubRunnerConfig.runnerLabels.split(',');
