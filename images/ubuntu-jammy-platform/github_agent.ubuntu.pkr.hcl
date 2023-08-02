@@ -156,7 +156,7 @@ build {
       "sudo systemctl enable containerd.service",
       "sudo service docker start",
       "sudo usermod -a -G docker ubuntu",
-      "echo '{\n  \"registry-mirrors\": [\"http://docker-cache.platform.internal:5000\"]\n}' | sudo tee /etc/docker/daemon.json",
+      "echo '{\n  \"registry-mirrors\": [\"http://docker-cache.dcg.internal:5000\"]\n}' | sudo tee /etc/docker/daemon.json",
       "sudo curl -fO https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb",
       "sudo apt-get -y install ./google-chrome-stable_current_amd64.deb",
       "sudo curl -f https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb -o amazon-cloudwatch-agent.deb",
