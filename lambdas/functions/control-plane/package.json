@@ -20,7 +20,7 @@
     "@types/aws-lambda": "^8.10.114",
     "@types/jest": "^29.5.0",
     "@types/node": "^20.1.4",
-    "@typescript-eslint/eslint-plugin": "^5.57.0",
+    "@typescript-eslint/eslint-plugin": "^6.2.1",
     "@typescript-eslint/parser": "^6.1.0",
     "@vercel/ncc": "^0.36.1",
     "aws-sdk-client-mock": "^2.1.1",
