@@ -47,6 +47,9 @@ echo "Retrieved /$ssm_config_path/enable_cloudwatch parameter - ($enable_cloudwa
 agent_mode=$(echo "$parameters" | jq --arg ssm_config_path "$ssm_config_path" -r '.[] | select(.Name == "'$ssm_config_path'/agent_mode") | .Value')
 echo "Retrieved /$ssm_config_path/agent_mode parameter - ($agent_mode)"
 
+enable_jit_config=$(echo "$parameters" | jq --arg ssm_config_path "$ssm_config_path" -r '.[] | select(.Name == "'$ssm_config_path'/enable_jit_config") | .Value')
+echo "Retrieved /$ssm_config_path/enable_jit_config parameter - ($enable_jit_config)"
+
 token_path=$(echo "$parameters" | jq --arg ssm_config_path "$ssm_config_path" -r '.[] | select(.Name == "'$ssm_config_path'/token_path") | .Value')
 echo "Retrieved /$ssm_config_path/token_path parameter - ($token_path)"
 
@@ -105,12 +108,26 @@ EOL
 echo "Starting runner after $(awk '{print int($1/3600)":"int(($1%3600)/60)":"int($1%60)}' /proc/uptime)"
 echo "Starting the runner as user $run_as"
 
+# configure the runner if the runner is non ephemeral or jit config is disabled
+if [[ "$enable_jit_config" == "false" || $agent_mode != "ephemeral" ]]; then
+  echo "Configure GH Runner as user $run_as"
+  sudo --preserve-env=RUNNER_ALLOW_RUNASROOT -u "$run_as" -- ./config.sh --unattended --name "$runner_name_prefix$instance_id" --work "_work" $${config}
+fi
+
 if [[ $agent_mode = "ephemeral" ]]; then
 
 cat >/opt/start-runner-service.sh <<-EOF
+
   echo "Starting the runner in ephemeral mode"
 
-  sudo --preserve-env=RUNNER_ALLOW_RUNASROOT -u "$run_as" -- ./run.sh --jitconfig $${config}
+  if [[ "$enable_jit_config" == "true" ]]; then
+    echo "Starting with JIT config"
+    sudo --preserve-env=RUNNER_ALLOW_RUNASROOT -u "$run_as" -- ./run.sh --jitconfig $${config}
+  else
+    echo "Starting without JIT config"
+    sudo --preserve-env=RUNNER_ALLOW_RUNASROOT -u "$run_as" -- ./run.sh
+  fi
+
   echo "Runner has finished"
 
   echo "Stopping cloudwatch service"
@@ -123,9 +140,6 @@ EOF
   nohup /opt/start-runner-service.sh &
 
 else
-  echo "Configure GH Runner as user $run_as"
-  sudo --preserve-env=RUNNER_ALLOW_RUNASROOT -u "$run_as" -- ./config.sh --unattended --name "$runner_name_prefix$instance_id" --work "_work" $${config}
-
   echo "Installing the runner as a service"
   ./svc.sh install "$run_as"
   echo "Starting the runner in persistent mode"

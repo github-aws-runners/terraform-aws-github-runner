@@ -609,3 +609,9 @@ variable "credit_specification" {
     error_message = "Valid values for credit_specification are (null, \"standard\", \"unlimited\")."
   }
 }
+
+variable "enable_jit_config" {
+  description = "Overwrite the default behavior for JIT configuration. By default JIT configuration is enabled for ephemeral runners and disabled for non-ephemeral runners. In case of GHES check first if the JIT config API is avaialbe. In case you upgradeing from 3.x to 4.x you can set `enable_jit_config` to `false` to avoid a breaking change when having your own AMI."
+  type        = bool
+  default     = null
+}

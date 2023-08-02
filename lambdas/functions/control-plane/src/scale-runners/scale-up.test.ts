@@ -592,6 +592,8 @@ describe('scaleUp with public GH', () => {
 
   describe('on repo level', () => {
     beforeEach(() => {
+      mockSSMClient.reset();
+
       process.env.ENABLE_ORGANIZATION_RUNNERS = 'false';
       process.env.RUNNER_NAME_PREFIX = 'unit-test';
       expectedRunnerParams = { ...EXPECTED_RUNNER_PARAMS };
@@ -668,12 +670,52 @@ describe('scaleUp with public GH', () => {
       ).rejects.toBeInstanceOf(Error);
     });
 
-    it('creates a ephemeral runner.', async () => {
+    it('creates a ephemeral runner with JIT config.', async () => {
       process.env.ENABLE_EPHEMERAL_RUNNERS = 'true';
       process.env.ENABLE_JOB_QUEUED_CHECK = 'false';
+      process.env.SSM_TOKEN_PATH = '/github-action-runners/default/runners/config';
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
       expect(mockOctokit.actions.getJobForWorkflowRun).not.toBeCalled();
       expect(createRunner).toBeCalledWith(expectedRunnerParams);
+
+      expect(mockSSMClient).toHaveReceivedNthSpecificCommandWith(1, PutParameterCommand, {
+        Name: '/github-action-runners/default/runners/config/i-12345',
+        Value: 'TEST_JIT_CONFIG_REPO',
+        Type: 'SecureString',
+      });
+    });
+
+    it('creates a ephemeral runner with registration token.', async () => {
+      process.env.ENABLE_EPHEMERAL_RUNNERS = 'true';
+      process.env.ENABLE_JIT_CONFIG = 'false';
+      process.env.ENABLE_JOB_QUEUED_CHECK = 'false';
+      process.env.SSM_TOKEN_PATH = '/github-action-runners/default/runners/config';
+      await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
+      expect(mockOctokit.actions.getJobForWorkflowRun).not.toBeCalled();
+      expect(createRunner).toBeCalledWith(expectedRunnerParams);
+
+      expect(mockSSMClient).toHaveReceivedNthSpecificCommandWith(1, PutParameterCommand, {
+        Name: '/github-action-runners/default/runners/config/i-12345',
+        Value: '--url https://github.com/Codertocat/hello-world --token 1234abcd --ephemeral',
+        Type: 'SecureString',
+      });
+    });
+
+    it('JIT config is ingored for non-ephemeral runners.', async () => {
+      process.env.ENABLE_EPHEMERAL_RUNNERS = 'false';
+      process.env.ENABLE_JIT_CONFIG = 'true';
+      process.env.ENABLE_JOB_QUEUED_CHECK = 'false';
+      process.env.RUNNER_LABELS = 'jit';
+      process.env.SSM_TOKEN_PATH = '/github-action-runners/default/runners/config';
+      await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
+      expect(mockOctokit.actions.getJobForWorkflowRun).not.toBeCalled();
+      expect(createRunner).toBeCalledWith(expectedRunnerParams);
+
+      expect(mockSSMClient).toHaveReceivedNthSpecificCommandWith(1, PutParameterCommand, {
+        Name: '/github-action-runners/default/runners/config/i-12345',
+        Value: '--url https://github.com/Codertocat/hello-world --token 1234abcd --labels jit',
+        Type: 'SecureString',
+      });
     });
 
     it('creates a ephemeral runner after checking job is queued.', async () => {

@@ -20,6 +20,7 @@ resource "aws_lambda_function" "pool" {
       AMI_ID_SSM_PARAMETER_NAME            = var.config.ami_id_ssm_parameter_name
       DISABLE_RUNNER_AUTOUPDATE            = var.config.runner.disable_runner_autoupdate
       ENABLE_EPHEMERAL_RUNNERS             = var.config.runner.ephemeral
+      ENABLE_JIT_CONFIG                    = var.config.runner.enable_jit_config
       ENVIRONMENT                          = var.config.prefix
       GHES_URL                             = var.config.ghes.url
       INSTANCE_ALLOCATION_STRATEGY         = var.config.instance_allocation_strategy

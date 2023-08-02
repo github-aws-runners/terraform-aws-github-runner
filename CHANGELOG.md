@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.0.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v4.0.0...v4.0.1) (2023-07-31)
+
+
+### Bug Fixes
+
+* allow disable JIT config for ephemeral runners ([#3393](https://github.com/philips-labs/terraform-aws-github-runner/issues/3393)) ([cfbcc94](https://github.com/philips-labs/terraform-aws-github-runner/commit/cfbcc944fc183b481caaee323e7832ec1964eb54))
+
 ## [4.0.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v3.6.1...v4.0.0) (2023-07-25)
 
 

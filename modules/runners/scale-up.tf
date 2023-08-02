@@ -19,6 +19,7 @@ resource "aws_lambda_function" "scale_up" {
       AMI_ID_SSM_PARAMETER_NAME            = var.ami_id_ssm_parameter_name
       DISABLE_RUNNER_AUTOUPDATE            = var.disable_runner_autoupdate
       ENABLE_EPHEMERAL_RUNNERS             = var.enable_ephemeral_runners
+      ENABLE_JIT_CONFIG                    = var.enable_jit_config
       ENABLE_JOB_QUEUED_CHECK              = local.enable_job_queued_check
       ENABLE_ORGANIZATION_RUNNERS          = var.enable_organization_runners
       ENVIRONMENT                          = var.prefix

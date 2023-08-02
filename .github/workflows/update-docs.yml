@@ -16,8 +16,23 @@ jobs:
     name: Auto update terraform docs
     runs-on: ubuntu-latest
     steps:
-      - if: github.event_name == 'push'
-        name: Checkout branch
+      - name: Get installation token
+        uses: philips-software/app-token-action@a37926571e4cec6f219e06727136efdd073d8657 # ratchet:philips-software/app-token-action@v1.1.2
+        id: token
+        with:
+          app_id: ${{ secrets.FOREST_RELEASER_APP_ID }}
+          app_base64_private_key: ${{ secrets.FOREST_RELEASER_APP_PRIVATE_KEY_BASE64 }}
+          auth_type: installation
+
+      # We use the app for branches in this this repo to ensure PR chekcs are kept in place.
+      - if: github.event_name == 'push' && github.repository_owner == 'philips-labs' && github.ref != 'refs/heads/main'
+        name: Checkout with App Token
+        uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # ratchet:actions/checkout@v3
+        with:
+          token: ${{ steps.token.outputs.token }}
+
+      - if: (github.event_name == 'push' && github.repository_owner != 'philips-labs') || github.ref == 'refs/heads/main'
+        name: Checkout with GITHUB Action token
         uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # ratchet:actions/checkout@v3
 
       - name: Generate TF docs
@@ -31,7 +46,7 @@ jobs:
         if: github.ref == 'refs/heads/main'
         uses: peter-evans/create-pull-request@153407881ec5c347639a548ade7d8ad1d6740e38 # ratchet:peter-evans/create-pull-request@v5.0.2
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ steps.token.outputs.token || secrets.GITHUB_TOKEN }}
           commit-message: "Update Terraform docs"
           title: "docs: Update Terraform docs"
           branch: ${{ github.event.pull_request.base.ref }}-update-docs
