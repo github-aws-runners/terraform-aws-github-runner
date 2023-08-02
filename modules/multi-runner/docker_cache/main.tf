@@ -20,15 +20,12 @@ resource "aws_security_group" "docker_cache_sg" {
   tags        = var.config.tags
 }
 
-resource "aws_security_group_rule" "docker_ingress" {
-  count = length(var.config.lambda_security_group_ids)
-
-  type                     = "ingress"
-  protocol                 = "tcp"
-  from_port                = 5000
-  to_port                  = 5000
-  security_group_id        = aws_security_group.docker_cache_sg.id
-  source_security_group_id = var.config.lambda_security_group_ids[count.index]
+resource "aws_vpc_security_group_ingress_rule" "docker" {
+  security_group_id            = aws_security_group.docker_cache_sg.id
+  referenced_security_group_id = aws_security_group.docker_cache_sg.id
+  ip_protocol                  = "tcp"
+  from_port                    = 5000
+  to_port                      = 5000
 }
 
 resource "aws_vpc_security_group_egress_rule" "docker" {
