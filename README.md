@@ -292,13 +292,14 @@ The pool is NOT enabled by default and can be enabled by setting at least one ob
 
 The module will scale down to zero runners by default. By specifying a `idle_config` config, idle runners can be kept active. The scale down lambda checks if any of the cron expressions matches the current time with a margin of 5 seconds. When there is a match, the number of runners specified in the idle config will be kept active. In case multiple cron expressions matches, only the first one is taken into account. Below is an idle configuration for keeping runners active from 9:00am to 5:59pm on working days. The [cron expression generator by Cronhub](https://crontab.cronhub.io/) is a great resource to set up your idle config.
 
+By default, the oldest instances are evicted. This helps keep your environment up-to-date and reduce problems like running out of disk space or RAM. Alternatively, if your older instances have a long-living cache, you can override the `evictionStrategy` to `newest_first` to evict the newest instances first instead.
+
 ```hcl
 idle_config = [{
    cron             = "* * 9-17 * * 1-5"
    timeZone         = "Europe/Amsterdam"
    idleCount        = 2
-   # Defaults to 'oldest_first', use 'newest_first' if you want to evict newest runners first,
-   # for example if the oldest runners have a long-living cache
+   # Defaults to 'oldest_first'
    evictionStrategy = "oldest_first"
 }]
 ```
