@@ -88,6 +88,7 @@ module "runners" {
   runner_ec2_tags       = each.value.runner_config.runner_ec2_tags
 
   create_service_linked_role_spot = each.value.runner_config.create_service_linked_role_spot
+  create_cache_bucket             = each.value.runner_config.create_cache_bucket
 
   runner_iam_role_managed_policy_arns = each.value.runner_config.runner_iam_role_managed_policy_arns
 

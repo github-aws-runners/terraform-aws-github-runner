@@ -1,14 +1,28 @@
+data "aws_caller_identity" "current" {}
+
 locals {
   environment = var.environment != null ? var.environment : "multi-runner"
   aws_region  = "eu-west-1"
+  tags        = { Project = "multi-runner" }
 
   # Load runner configurations from Yaml files
-  multi_runner_config = { for c in fileset("${path.module}/templates/runner-configs", "*.yaml") : trimsuffix(c, ".yaml") => yamldecode(file("${path.module}/templates/runner-configs/${c}")) }
+  multi_runner_config = {
+    for c in fileset("${path.module}/templates/runner-configs", "*.yaml") : trimsuffix(c, ".yaml") =>
+    yamldecode(
+      templatefile(
+        "${path.module}/templates/runner-configs/${c}",
+        {
+          account_id = data.aws_caller_identity.current.account_id
+        }
+      )
+    )
+  }
 }
 
 resource "random_id" "random" {
   byte_length = 20
 }
+
 module "base" {
   source = "../base"
 
@@ -25,9 +39,7 @@ module "multi-runner" {
   runners_scale_up_lambda_timeout   = 60
   runners_scale_down_lambda_timeout = 60
   prefix                            = local.environment
-  tags = {
-    Project = "ProjectX"
-  }
+  tags                              = local.tags
   github_app = {
     key_base64     = var.github_app.key_base64
     id             = var.github_app.id
@@ -36,9 +48,9 @@ module "multi-runner" {
 
   # Assuming local build lambda's to use pre build ones, uncomment the lines below and download the
   # lambda zip files lambda_download
-  # webhook_lambda_zip                = "../lambdas-download/webhook.zip"
-  # runner_binaries_syncer_lambda_zip = "../lambdas-download/runner-binaries-syncer.zip"
-  # runners_lambda_zip                = "../lambdas-download/runners.zip"
+  webhook_lambda_zip                = "../lambdas-download/webhook.zip"
+  runner_binaries_syncer_lambda_zip = "../lambdas-download/runner-binaries-syncer.zip"
+  runners_lambda_zip                = "../lambdas-download/runners.zip"
 
   # enable_workflow_job_events_queue = true
   # override delay of events in seconds

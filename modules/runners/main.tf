@@ -208,3 +208,17 @@ resource "aws_security_group" "runner_sg" {
     },
   )
 }
+
+module "s3_cache" {
+  count = var.create_cache_bucket ? 1 : 0
+
+  source = "./s3_cache"
+
+  config = {
+    prefix = var.prefix
+    tags   = local.tags
+    runner_instance_role = {
+      arn = aws_iam_role.runner.arn
+    }
+  }
+}

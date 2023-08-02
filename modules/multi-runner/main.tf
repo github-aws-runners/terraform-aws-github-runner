@@ -21,3 +21,15 @@ resource "random_string" "random" {
   special = false
   upper   = false
 }
+
+module "docker_cache" {
+  source = "./docker_cache"
+
+  config = {
+    prefix                    = var.prefix
+    tags                      = local.tags
+    vpc_id                    = var.vpc_id
+    subnet_ids                = var.subnet_ids
+    lambda_security_group_ids = var.lambda_security_group_ids
+  }
+}

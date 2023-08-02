@@ -9,7 +9,7 @@ packer {
 
 variable "runner_version" {
   description = "The version (no v prefix) of the runner software to install https://github.com/actions/runner/releases. The latest release will be fetched from GitHub if not provided."
-  default     = "2.305.0"
+  default     = "2.307.1"
 }
 
 variable "region" {
@@ -77,6 +77,12 @@ variable "custom_shell_commands" {
   default     = []
 }
 
+variable "temporary_security_group_source_public_ip" {
+  description = "When enabled, use public IP of the host (obtained from https://checkip.amazonaws.com) as CIDR block to be authorized access to the instance, when packer is creating a temporary security group. Note: If you specify `security_group_id` then this input is ignored."
+  type        = bool
+  default     = false
+}
+
 data "http" github_runner_release_json {
   url = "https://api.github.com/repos/actions/runner/releases/latest"
   request_headers = {
@@ -90,12 +96,13 @@ locals {
 }
 
 source "amazon-ebs" "githubrunner" {
-  ami_name                    = "github-runner-ubuntu-jammy-platform-amd64-${formatdate("YYYYMMDDhhmm", timestamp())}"
-  instance_type               = var.instance_type
-  region                      = var.region
-  security_group_id           = var.security_group_id
-  subnet_id                   = var.subnet_id
-  associate_public_ip_address = var.associate_public_ip_address
+  ami_name                                  = "github-runner-ubuntu-jammy-platform-amd64-${formatdate("YYYYMMDDhhmm", timestamp())}"
+  instance_type                             = var.instance_type
+  region                                    = var.region
+  security_group_id                         = var.security_group_id
+  subnet_id                                 = var.subnet_id
+  associate_public_ip_address               = var.associate_public_ip_address
+  temporary_security_group_source_public_ip = var.temporary_security_group_source_public_ip
 
   source_ami_filter {
     filters = {
@@ -149,7 +156,7 @@ build {
       "sudo systemctl enable containerd.service",
       "sudo service docker start",
       "sudo usermod -a -G docker ubuntu",
-      "echo '{\n  \"registry-mirrors\": [\"http://docker-cache.platform.internal:5000\"]\n}' | sudo tee /etc/docker/daemon.json",
+      "echo '{\n  \"registry-mirrors\": [\"http://docker-cache.dcg.internal:5000\"]\n}' | sudo tee /etc/docker/daemon.json",
       "sudo curl -fO https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb",
       "sudo apt-get -y install ./google-chrome-stable_current_amd64.deb",
       "sudo curl -f https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb -o amazon-cloudwatch-agent.deb",
@@ -190,7 +197,7 @@ build {
   }
 
   provisioner "file" {
-    content = templatefile("../start-runner.sh", {
+    content = templatefile("./start-runner.sh", {
       start_runner = templatefile("../../modules/runners/templates/start-runner.sh", { metadata_tags = "enabled" })
     })
     destination = "/tmp/start-runner.sh"
@@ -203,4 +210,8 @@ build {
     ]
   }
 
+  post-processor "manifest" {
+    output     = "manifest.json"
+    strip_path = true
+  }
 }
