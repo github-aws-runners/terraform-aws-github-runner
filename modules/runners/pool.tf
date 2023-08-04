@@ -35,16 +35,17 @@ module "pool" {
     role_path                 = local.role_path
     role_permissions_boundary = var.role_permissions_boundary
     runner = {
-      disable_runner_autoupdate = var.disable_runner_autoupdate
-      ephemeral                 = var.enable_ephemeral_runners
-      enable_jit_config         = var.enable_jit_config
-      boot_time_in_minutes      = var.runner_boot_time_in_minutes
-      labels                    = var.runner_labels
-      launch_template           = aws_launch_template.runner
-      group_name                = var.runner_group_name
-      name_prefix               = var.runner_name_prefix
-      pool_owner                = var.pool_runner_owner
-      role                      = aws_iam_role.runner
+      disable_runner_autoupdate            = var.disable_runner_autoupdate
+      ephemeral                            = var.enable_ephemeral_runners
+      enable_jit_config                    = var.enable_jit_config
+      enable_on_demand_failover_for_errors = var.enable_on_demand_failover_for_errors
+      boot_time_in_minutes                 = var.runner_boot_time_in_minutes
+      labels                               = var.runner_labels
+      launch_template                      = aws_launch_template.runner
+      group_name                           = var.runner_group_name
+      name_prefix                          = var.runner_name_prefix
+      pool_owner                           = var.pool_runner_owner
+      role                                 = aws_iam_role.runner
     }
     subnet_ids                           = var.subnet_ids
     ssm_token_path                       = "${var.ssm_paths.root}/${var.ssm_paths.tokens}"

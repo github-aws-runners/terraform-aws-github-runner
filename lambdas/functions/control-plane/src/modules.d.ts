@@ -1,6 +1,7 @@
 declare namespace NodeJS {
   export interface ProcessEnv {
     AWS_REGION: string;
+    ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS: string;
     ENVIRONMENT: string;
     GHES_URL: string;
     LAUNCH_TEMPLATE_NAME: string;

@@ -6,6 +6,7 @@ locals {
   runner_config_sorted = [for k in sort(keys(local.runner_config)) : local.runner_config[k]]
 }
 
+
 resource "aws_lambda_function" "webhook" {
   s3_bucket         = var.lambda_s3_bucket != null ? var.lambda_s3_bucket : null
   s3_key            = var.webhook_lambda_s3_key != null ? var.webhook_lambda_s3_key : null

@@ -629,3 +629,9 @@ variable "ssm_housekeeper" {
   })
   default = { config = {} }
 }
+
+variable "enable_on_demand_failover_for_errors" {
+  description = "Enable on-demand failover. For example to fall back to on demand when no spot capacity is available the variable can be set to `InsufficientInstanceCapacity`. When not defined the default behavior is to retry later."
+  type        = list(string)
+  default     = []
+}

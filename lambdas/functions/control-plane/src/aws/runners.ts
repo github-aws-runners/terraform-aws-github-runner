@@ -128,28 +128,99 @@ export async function createRunner(runnerParameters: Runners.RunnerInputParamete
   });
 
   const ec2Client = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
+  const amiIdOverride = await getAmiIdOverride(runnerParameters);
 
-  let amiIdOverride = undefined;
+  const fleet: CreateFleetResult = await createInstances(runnerParameters, amiIdOverride, ec2Client);
 
-  if (runnerParameters.amiIdSsmParameterName) {
-    try {
-      amiIdOverride = await getParameter(runnerParameters.amiIdSsmParameterName);
-      logger.debug(`AMI override SSM parameter (${runnerParameters.amiIdSsmParameterName}) set to: ${amiIdOverride}`);
-    } catch (e) {
-      logger.error(
-        `Failed to lookup runner AMI ID from SSM parameter: ${runnerParameters.amiIdSsmParameterName}. ` +
-          'Please ensure that the given parameter exists on this region and contains a valid runner AMI ID',
-        { error: e },
-      );
-      throw e;
+  const instances: string[] = await processFleetResult(fleet, runnerParameters);
+
+  logger.info(`Created instance(s): ${instances.join(',')}`);
+
+  return instances;
+}
+
+async function processFleetResult(
+  fleet: CreateFleetResult,
+  runnerParameters: Runners.RunnerInputParameters,
+): Promise<string[]> {
+  const instances: string[] = fleet.Instances?.flatMap((i) => i.InstanceIds?.flatMap((j) => j) || []) || [];
+
+  if (instances.length !== runnerParameters.numberOfRunners) {
+    logger.warn(
+      `${
+        instances.length === 0 ? 'No' : instances.length + ' off ' + runnerParameters.numberOfRunners
+      } instances created.`,
+      { data: fleet },
+    );
+    const errors = fleet.Errors?.flatMap((e) => e.ErrorCode || '') || [];
+
+    // Educated guess of errors that would make sense to retry based on the list
+    // https://docs.aws.amazon.com/AWSEC2/latest/APIReference/errors-overview.html
+    const scaleErrors = [
+      'UnfulfillableCapacity',
+      'MaxSpotInstanceCountExceeded',
+      'TargetCapacityLimitExceededException',
+      'RequestLimitExceeded',
+      'ResourceLimitExceeded',
+      'MaxSpotInstanceCountExceeded',
+      'MaxSpotFleetRequestCountExceeded',
+      'InsufficientInstanceCapacity',
+    ];
+
+    if (
+      errors.some((e) => runnerParameters.onDemandFailoverOnError?.includes(e)) &&
+      runnerParameters.ec2instanceCriteria.targetCapacityType === 'spot'
+    ) {
+      logger.warn(`Create fleet failed, initatiing fall back to on demand instances.`);
+      logger.debug('Create fleet failed.', { data: fleet.Errors });
+      const numberOfInstances = runnerParameters.numberOfRunners - instances.length;
+      const instancesOnDemand = await createRunner({
+        ...runnerParameters,
+        numberOfRunners: numberOfInstances,
+        onDemandFailoverOnError: ['InsufficientInstanceCapacity'],
+        ec2instanceCriteria: { ...runnerParameters.ec2instanceCriteria, targetCapacityType: 'on-demand' },
+      });
+      instances.push(...instancesOnDemand);
+      return instances;
+    } else if (errors.some((e) => scaleErrors.includes(e))) {
+      logger.warn('Create fleet failed, ScaleError will be thrown to trigger retry for ephemeral runners.');
+      logger.debug('Create fleet failed.', { data: fleet.Errors });
+      throw new ScaleError('Failed to create instance, create fleet failed.');
+    } else {
+      logger.warn('Create fleet failed, error not recognized as scaling error.', { data: fleet.Errors });
+      throw Error('Create fleet failed, no instance created.');
     }
   }
+  return instances;
+}
 
-  const numberOfRunners = runnerParameters.numberOfRunners ? runnerParameters.numberOfRunners : 1;
+async function getAmiIdOverride(runnerParameters: Runners.RunnerInputParameters): Promise<string | undefined> {
+  if (!runnerParameters.amiIdSsmParameterName) {
+    return undefined;
+  }
 
+  try {
+    const amiIdOverride = await getParameter(runnerParameters.amiIdSsmParameterName);
+    logger.debug(`AMI override SSM parameter (${runnerParameters.amiIdSsmParameterName}) set to: ${amiIdOverride}`);
+    return amiIdOverride;
+  } catch (e) {
+    logger.debug(
+      `Failed to lookup runner AMI ID from SSM parameter: ${runnerParameters.amiIdSsmParameterName}. ` +
+        'Please ensure that the given parameter exists on this region and contains a valid runner AMI ID',
+      { error: e },
+    );
+    throw e;
+  }
+}
+
+async function createInstances(
+  runnerParameters: Runners.RunnerInputParameters,
+  amiIdOverride: string | undefined,
+  ec2Client: EC2Client,
+) {
   const tags = [
     { Key: 'ghr:Application', Value: 'github-action-runner' },
-    { Key: 'ghr:created_by', Value: numberOfRunners === 1 ? 'scale-up-lambda' : 'pool-lambda' },
+    { Key: 'ghr:created_by', Value: runnerParameters.numberOfRunners === 1 ? 'scale-up-lambda' : 'pool-lambda' },
     { Key: 'ghr:Type', Value: runnerParameters.runnerType },
     { Key: 'ghr:Owner', Value: runnerParameters.runnerOwner },
   ];
@@ -181,7 +252,7 @@ export async function createRunner(runnerParameters: Runners.RunnerInputParamete
         AllocationStrategy: runnerParameters.ec2instanceCriteria.instanceAllocationStrategy,
       },
       TargetCapacitySpecification: {
-        TotalTargetCapacity: numberOfRunners,
+        TotalTargetCapacity: runnerParameters.numberOfRunners,
         DefaultTargetCapacityType: runnerParameters.ec2instanceCriteria.targetCapacityType,
       },
       TagSpecifications: [
@@ -201,39 +272,7 @@ export async function createRunner(runnerParameters: Runners.RunnerInputParamete
     logger.warn('Create fleet request failed.', { error: e as Error });
     throw e;
   }
-
-  const instances: string[] = fleet.Instances?.flatMap((i) => i.InstanceIds?.flatMap((j) => j) || []) || [];
-
-  if (instances.length === 0) {
-    logger.warn(`No instances created by fleet request. Check configuration! Response:`, { data: fleet });
-    const errors = fleet.Errors?.flatMap((e) => e.ErrorCode || '') || [];
-
-    // Educated guess of errors that would make sense to retry based on the list
-    // https://docs.aws.amazon.com/AWSEC2/latest/APIReference/errors-overview.html
-    const scaleErrors = [
-      'UnfulfillableCapacity',
-      'MaxSpotInstanceCountExceeded',
-      'TargetCapacityLimitExceededException',
-      'RequestLimitExceeded',
-      'ResourceLimitExceeded',
-      'MaxSpotInstanceCountExceeded',
-      'MaxSpotFleetRequestCountExceeded',
-      'InsufficientInstanceCapacity',
-    ];
-
-    if (errors.some((e) => scaleErrors.includes(e))) {
-      logger.warn('Create fleet failed, ScaleError will be thrown to trigger retry for ephemeral runners.');
-      logger.debug('Create fleet failed.', { data: fleet.Errors });
-      throw new ScaleError('Failed to create instance, create fleet failed.');
-    } else {
-      logger.warn('Create fleet failed, error not recognized as scaling error.', { data: fleet.Errors });
-      throw Error('Create fleet failed, no instance created.');
-    }
-  }
-
-  logger.info(`Created instance(s): ${instances.join(',')}`);
-
-  return instances;
+  return fleet;
 }
 
 // If launchTime is undefined, this will return false

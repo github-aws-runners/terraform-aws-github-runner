@@ -15,6 +15,7 @@ runner_config:
     - m5a.large
   runners_maximum_count: 1
   enable_ephemeral_runners: true
+  enable_on_demand_failover_for_errors: ['InsufficientInstanceCapacity']
   create_service_linked_role_spot: true
   scale_down_schedule_expression: cron(* * * * ? *)
   runner_metadata_options:

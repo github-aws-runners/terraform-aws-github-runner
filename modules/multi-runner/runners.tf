@@ -34,6 +34,7 @@ module "runners" {
   sqs_build_queue                      = { "arn" : each.value.arn }
   github_app_parameters                = local.github_app_parameters
   ebs_optimized                        = each.value.runner_config.ebs_optimized
+  enable_on_demand_failover_for_errors = each.value.runner_config.enable_on_demand_failover_for_errors
   enable_organization_runners          = each.value.runner_config.enable_organization_runners
   enable_ephemeral_runners             = each.value.runner_config.enable_ephemeral_runners
   enable_jit_config                    = each.value.runner_config.enable_jit_config
