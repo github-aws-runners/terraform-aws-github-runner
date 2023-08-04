@@ -1,7 +1,7 @@
 matcherConfig:
   exactMatch: true
   labelMatchers:
-    - [ self-hosted, linux, x64, ubuntu-disabled ]
+    - [ self-hosted, linux, x64, ubuntu-core ]
 fifo: true
 delay_webhook_event: 0
 redrive_build_queue:
