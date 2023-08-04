@@ -120,7 +120,7 @@ cat >/opt/start-runner-service.sh <<-EOF
 
   echo "Starting the runner in ephemeral mode"
 
-  if [ "$enable_jit_config" = "true" ]; then
+  if [[ "$enable_jit_config" == "true" ]]; then
     echo "Starting with JIT config"
     sudo --preserve-env=RUNNER_ALLOW_RUNASROOT -u "$run_as" -- ./run.sh --jitconfig $${config}
   else
