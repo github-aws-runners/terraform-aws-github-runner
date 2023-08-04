@@ -135,9 +135,8 @@ cat >/opt/start-runner-service.sh <<-EOF
   echo "Terminating instance"
   aws ec2 terminate-instances --instance-ids "$instance_id" --region "$region"
 EOF
-  chmod 755 /opt/start-runner-service.sh
   # Starting the runner via a own process to ensure this process terminates
-  nohup /opt/start-runner-service.sh &
+  nohup bash /opt/start-runner-service.sh &
 
 else
   echo "Installing the runner as a service"
