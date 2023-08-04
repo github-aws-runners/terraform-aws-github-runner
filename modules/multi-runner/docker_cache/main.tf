@@ -29,11 +29,9 @@ resource "aws_vpc_security_group_ingress_rule" "docker" {
 }
 
 resource "aws_vpc_security_group_egress_rule" "docker" {
-  security_group_id            = aws_security_group.docker_cache_sg.id
-  referenced_security_group_id = aws_security_group.docker_cache_sg.id
-  ip_protocol                  = "tcp"
-  from_port                    = 5000
-  to_port                      = 5000
+  security_group_id = aws_security_group.docker_cache_sg.id
+  ip_protocol       = "-1"
+  cidr_ipv4         = "0.0.0.0/0"
 }
 
 resource "aws_route53_zone" "private" {
