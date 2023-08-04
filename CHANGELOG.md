@@ -1,5 +1,15 @@
 # Changelog
 
+## [4.0.2](https://github.com/philips-labs/terraform-aws-github-runner/compare/v4.0.1...v4.0.2) (2023-08-03)
+
+
+### Bug Fixes
+
+* ensure `/opt/start-runner-service.sh` is run with Bash ([1657e8e](https://github.com/philips-labs/terraform-aws-github-runner/commit/1657e8e05cd1f438b5420f89f5e0511e868047e6))
+* **lambda:** bump the aws group in /lambdas with 5 updates ([#3398](https://github.com/philips-labs/terraform-aws-github-runner/issues/3398)) ([14db7ca](https://github.com/philips-labs/terraform-aws-github-runner/commit/14db7cad993a478ab42ef12deefb3286f2808468))
+* **lambda:** bump typescript from 5.0.4 to 5.1.6 in /lambdas ([#3399](https://github.com/philips-labs/terraform-aws-github-runner/issues/3399)) ([ff8af09](https://github.com/philips-labs/terraform-aws-github-runner/commit/ff8af09678ad99f8b99c7424e56f5d56cbbc0b9b))
+* **runners:** ensure `/opt/start-runner-service.sh` is run with Bash ([#3407](https://github.com/philips-labs/terraform-aws-github-runner/issues/3407)) ([1657e8e](https://github.com/philips-labs/terraform-aws-github-runner/commit/1657e8e05cd1f438b5420f89f5e0511e868047e6))
+
 ## [4.0.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v4.0.0...v4.0.1) (2023-07-31)
 
 
