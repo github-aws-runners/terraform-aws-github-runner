@@ -76,9 +76,10 @@ variable "multi_runner_config" {
       runner_ec2_tags                         = optional(map(string), {})
       runner_iam_role_managed_policy_arns     = optional(list(string), [])
       idle_config = optional(list(object({
-        cron      = string
-        timeZone  = string
-        idleCount = number
+        cron             = string
+        timeZone         = string
+        idleCount        = number
+        evictionStrategy = optional(string, "oldest_first")
       })), [])
       runner_log_files = optional(list(object({
         log_group_name   = string
