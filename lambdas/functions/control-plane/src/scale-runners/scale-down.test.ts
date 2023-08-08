@@ -394,14 +394,13 @@ describe('scaleDown', () => {
     });
 
     describe('With idle config', () => {
+      const defaultConfig = {
+        idleCount: 3,
+        cron: '* * * * * *',
+        timeZone: 'Europe/Amsterdam',
+      };
       beforeEach(() => {
-        process.env.SCALE_DOWN_CONFIG = JSON.stringify([
-          {
-            idleCount: 3,
-            cron: '* * * * * *',
-            timeZone: 'Europe/Amsterdam',
-          },
-        ]);
+        process.env.SCALE_DOWN_CONFIG = JSON.stringify([defaultConfig]);
       });
 
       it('Terminates 1 runner owned by orgs', async () => {
@@ -430,6 +429,19 @@ describe('scaleDown', () => {
 
         expect(mockOctokit.apps.getRepoInstallation).toBeCalled();
         expect(terminateRunner).not.toBeCalled();
+      });
+
+      describe('With newest_first eviction strategy', () => {
+        beforeEach(() => {
+          process.env.SCALE_DOWN_CONFIG = JSON.stringify([{ ...defaultConfig, evictionStrategy: 'newest_first' }]);
+        });
+
+        it('Terminates the newest org', async () => {
+          mockListRunners.mockResolvedValue(RUNNERS_ORG_WITH_AUTO_SCALING_CONFIG);
+          await scaleDown();
+          expect(terminateRunner).toBeCalledTimes(1);
+          expect(terminateRunner).toHaveBeenCalledWith('i-idle-102');
+        });
       });
     });
 
