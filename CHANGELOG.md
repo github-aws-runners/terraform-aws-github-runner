@@ -1,5 +1,18 @@
 # Changelog
 
+## [4.1.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v4.0.2...v4.1.0) (2023-08-08)
+
+
+### Features
+
+* **runners:** add configurable eviction strategy to idle config ([#3375](https://github.com/philips-labs/terraform-aws-github-runner/issues/3375)) ([896f473](https://github.com/philips-labs/terraform-aws-github-runner/commit/896f473107beb37468ce957825ac6de448119dbc))
+
+
+### Bug Fixes
+
+* **lambda:** bump the aws group in /lambdas with 5 updates ([#3413](https://github.com/philips-labs/terraform-aws-github-runner/issues/3413)) ([1acc8ba](https://github.com/philips-labs/terraform-aws-github-runner/commit/1acc8ba295e81c0303bbc08db864a90495a23df9))
+* **runners:** retry aws metadata token download on Linux ([#3408](https://github.com/philips-labs/terraform-aws-github-runner/issues/3408)) ([ef46827](https://github.com/philips-labs/terraform-aws-github-runner/commit/ef46827e31d3aaabfe9676df4caad756eb1f3dc8))
+
 ## [4.0.2](https://github.com/philips-labs/terraform-aws-github-runner/compare/v4.0.1...v4.0.2) (2023-08-03)
 
 
