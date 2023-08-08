@@ -15,7 +15,7 @@
     "test": "lerna run test"
   },
   "devDependencies": {
-    "lerna": "^6.6.1"
+    "lerna": "^7.1.4"
   },
   "resolutions": {
     "@octokit/types": "^10.0.0"
