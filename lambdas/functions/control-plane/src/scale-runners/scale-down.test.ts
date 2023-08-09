@@ -86,6 +86,7 @@ let DEFAULT_ORG_RUNNERS_ORPHANED: RunnerInfo[];
 // i-running-111 | Repo | running and not exceeding minimumRunningTimeInMinutes
 // i-running-112 | Org | busy
 // i-running-113 | Repo | busy
+const oldest = moment(new Date()).subtract(25, 'minutes').toDate();
 const DEFAULT_RUNNERS_ORIGINAL = [
   {
     instanceId: 'i-idle-101',
@@ -105,17 +106,13 @@ const DEFAULT_RUNNERS_ORIGINAL = [
   },
   {
     instanceId: 'i-oldest-idle-103',
-    launchTime: moment(new Date())
-      .subtract(minimumRunningTimeInMinutes + 27, 'minutes')
-      .toDate(),
+    launchTime: oldest,
     type: 'Repo',
     owner: `${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName}`,
   },
   {
     instanceId: 'i-oldest-idle-104',
-    launchTime: moment(new Date())
-      .subtract(minimumRunningTimeInMinutes + 27, 'minutes')
-      .toDate(),
+    launchTime: oldest,
     type: 'Org',
     owner: TEST_DATA.repositoryOwner,
   },
