@@ -229,6 +229,7 @@ describe('scaleDown', () => {
     process.env.ENVIRONMENT = environment;
     process.env.MINIMUM_RUNNING_TIME_IN_MINUTES = minimumRunningTimeInMinutes.toString();
     process.env.RUNNER_BOOT_TIME_IN_MINUTES = runnerBootTimeInMinutes.toString();
+
     nock.disableNetConnect();
     jest.clearAllMocks();
     jest.resetModules();
@@ -398,6 +399,7 @@ describe('scaleDown', () => {
         idleCount: 3,
         cron: '* * * * * *',
         timeZone: 'Europe/Amsterdam',
+        evictionStrategy: 'oldest_first',
       };
       beforeEach(() => {
         process.env.SCALE_DOWN_CONFIG = JSON.stringify([defaultConfig]);
@@ -542,6 +544,7 @@ describe('scaleDown', () => {
             idleCount: 3,
             cron: '* * * * * *',
             timeZone: 'Europe/Amsterdam',
+            evictionStrategy: 'oldest_first',
           },
         ]);
       });
