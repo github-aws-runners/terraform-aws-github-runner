@@ -396,7 +396,7 @@ describe('scaleDown', () => {
         idleCount: 3,
         cron: '* * * * * *',
         timeZone: 'Europe/Amsterdam',
-        evictionStrategy: 'oldest_first',
+        evictionStrategy: 'oldest_first'
       };
       beforeEach(() => {
         process.env.SCALE_DOWN_CONFIG = JSON.stringify([defaultConfig]);
