@@ -220,5 +220,7 @@ module "s3_cache" {
     runner_instance_role = {
       arn = aws_iam_role.runner.arn
     }
+    vpc_id     = var.vpc_id
+    aws_region = var.aws_region
   }
 }
