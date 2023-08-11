@@ -20,23 +20,10 @@ resource "aws_security_group" "docker_cache_sg" {
   tags        = var.config.tags
 }
 
-resource "aws_security_group_rule" "docker_ingress" {
-  count = length(var.config.lambda_security_group_ids)
-
-  type                     = "ingress"
-  protocol                 = "tcp"
-  from_port                = 5000
-  to_port                  = 5000
-  security_group_id        = aws_security_group.docker_cache_sg.id
-  source_security_group_id = var.config.lambda_security_group_ids[count.index]
-}
-
 resource "aws_vpc_security_group_egress_rule" "docker" {
-  security_group_id            = aws_security_group.docker_cache_sg.id
-  referenced_security_group_id = aws_security_group.docker_cache_sg.id
-  ip_protocol                  = "tcp"
-  from_port                    = 5000
-  to_port                      = 5000
+  security_group_id = aws_security_group.docker_cache_sg.id
+  ip_protocol       = "-1"
+  cidr_ipv4         = "0.0.0.0/0"
 }
 
 resource "aws_route53_zone" "private" {
@@ -95,7 +82,7 @@ resource "aws_launch_template" "docker_cache" {
   block_device_mappings {
     device_name = "/dev/sda1"
     ebs {
-      volume_size = 50
+      volume_size = 20
       volume_type = "gp3"
     }
   }
