@@ -44,7 +44,7 @@ variable "instance_type" {
 
 variable "root_volume_size_gb" {
   type    = number
-  default = 8
+  default = 30
 }
 
 variable "ebs_delete_on_termination" {
@@ -146,6 +146,11 @@ build {
     ]
     inline = concat([
       "sudo cloud-init status --wait",
+      "sudo fallocate -l 8G /swapfile",
+      "sudo chmod 600 /swapfile",
+      "sudo mkswap /swapfile",
+      "sudo swapon /swapfile",
+      "echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab",
       "sudo apt-get -y update",
       "sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg",
       "echo deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null",
