@@ -394,16 +394,6 @@ describe('Scale down runners', () => {
         timeZone: 'Europe/Amsterdam',
         evictionStrategy: 'oldest_first',
       };
-      // beforeEach(() => {
-      //   process.env.SCALE_DOWN_CONFIG = JSON.stringify([
-      //     {
-      //       idleCount: 3,
-      //       cron: '* * * * * *',
-      //       timeZone: 'Europe/Amsterdam',
-      //       evictionStrategy: 'oldest_first',
-      //     },
-      //   ]);
-      // });
 
       beforeEach(() => {
         process.env.SCALE_DOWN_CONFIG = JSON.stringify([defaultConfig]);
@@ -503,7 +493,7 @@ describe('Scale down runners', () => {
       expect(mockOctokit.apps.getRepoInstallation).not;
     });
 
-    it('Terminates 3 of 5 runners owned by repos and one orphaned', async () => {
+    it('Should terminates 3 of 5 runners owned by repos and one orphaned', async () => {
       mockListRunners.mockResolvedValue(DEFAULT_RUNNERS_REPO);
       await scaleDown();
       expect(listEC2Runners).toBeCalledWith({
