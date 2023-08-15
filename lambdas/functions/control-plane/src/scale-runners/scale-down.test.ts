@@ -340,7 +340,6 @@ describe('Scale down runners', () => {
   });
 
   describe('for github.com', () => {
-
     it('Should not call terminate when no runners online.', async () => {
       mockListRunners.mockResolvedValue([]);
 
@@ -393,7 +392,7 @@ describe('Scale down runners', () => {
         idleCount: 3,
         cron: '* * * * * *',
         timeZone: 'Europe/Amsterdam',
-        evictionStrategy: 'oldest_first'
+        evictionStrategy: 'oldest_first',
       };
       // beforeEach(() => {
       //   process.env.SCALE_DOWN_CONFIG = JSON.stringify([
@@ -426,7 +425,6 @@ describe('Scale down runners', () => {
         mockListRunners.mockResolvedValue(RUNNERS_ORG_WITH_AUTO_SCALING_CONFIG);
         await scaleDown();
         expect(terminateRunner).toBeCalledTimes(2);
-
       });
 
       it('Should terminates 0 runners owned by org', async () => {
@@ -443,14 +441,14 @@ describe('Scale down runners', () => {
         expect(terminateRunner).not.toBeCalled();
       });
 
-        it('Should terminates the newest runner.', async () => {
-          process.env.SCALE_DOWN_CONFIG = JSON.stringify([{ ...defaultConfig, evictionStrategy: 'newest_first' }]);
+      it('Should terminates the newest runner.', async () => {
+        process.env.SCALE_DOWN_CONFIG = JSON.stringify([{ ...defaultConfig, evictionStrategy: 'newest_first' }]);
 
-          mockListRunners.mockResolvedValue(RUNNERS_ORG_WITH_AUTO_SCALING_CONFIG);
-          await scaleDown();
-          expect(terminateRunner).toBeCalledTimes(1);
-          expect(terminateRunner).toHaveBeenCalledWith('i-idle-102');
-        });
+        mockListRunners.mockResolvedValue(RUNNERS_ORG_WITH_AUTO_SCALING_CONFIG);
+        await scaleDown();
+        expect(terminateRunner).toBeCalledTimes(1);
+        expect(terminateRunner).toHaveBeenCalledWith('i-idle-102');
+      });
     });
 
     it('Should terminate no instances when delete runner in github results in a non 204 status.', async () => {
@@ -494,16 +492,16 @@ describe('Scale down runners', () => {
       process.env.GHES_URL = 'https://github.enterprise.something';
     });
 
-      it('Should not call terminate when no runners online', async () => {
-        mockListRunners.mockResolvedValue([]);
-        await scaleDown();
-        expect(listEC2Runners).toBeCalledWith({
-          environment: environment,
-        });
-        expect(terminateRunner).not;
-        expect(mockOctokit.apps.getRepoInstallation).not;
-        expect(mockOctokit.apps.getRepoInstallation).not;
+    it('Should not call terminate when no runners online', async () => {
+      mockListRunners.mockResolvedValue([]);
+      await scaleDown();
+      expect(listEC2Runners).toBeCalledWith({
+        environment: environment,
       });
+      expect(terminateRunner).not;
+      expect(mockOctokit.apps.getRepoInstallation).not;
+      expect(mockOctokit.apps.getRepoInstallation).not;
+    });
 
     it('Terminates 3 of 5 runners owned by repos and one orphaned', async () => {
       mockListRunners.mockResolvedValue(DEFAULT_RUNNERS_REPO);
