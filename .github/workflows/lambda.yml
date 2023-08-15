@@ -27,6 +27,14 @@ jobs:
       - name: Run linter
         run: yarn lint
       - name: Run tests
+        id: test
         run: yarn test
       - name: Build distribution
         run: yarn build
+      - name: Upload coverage report
+        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v31.2
+        if: ${{ failure() }}
+        with:
+          name: coverage-reports
+          path: ./**/coverage
+          retention-days: 5
