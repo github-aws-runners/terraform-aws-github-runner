@@ -119,7 +119,7 @@ variable "runner_architecture" {
 variable "logging_retention_in_days" {
   description = "Specifies the number of days you want to retain log events for the lambda log group. Possible values are: 0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, and 3653."
   type        = number
-  default     = 7
+  default     = 180
 }
 
 variable "logging_kms_key_id" {
