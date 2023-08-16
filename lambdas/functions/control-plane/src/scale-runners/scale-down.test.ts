@@ -87,6 +87,7 @@ let DEFAULT_ORG_RUNNERS_ORPHANED: RunnerInfo[];
 // i-running-112 | Org | busy
 // i-running-113 | Repo | busy
 const oldest = moment(new Date()).subtract(26, 'minutes').toDate();
+const old25minutes = moment(new Date()).subtract(25, 'minutes').toDate();
 const DEFAULT_RUNNERS_ORIGINAL = [
   {
     instanceId: 'i-idle-101',
@@ -118,13 +119,13 @@ const DEFAULT_RUNNERS_ORIGINAL = [
   },
   {
     instanceId: 'i-running-cannot-delete-105',
-    launchTime: moment(new Date()).subtract(25, 'minutes').toDate(),
+    launchTime: old25minutes,
     type: 'Repo',
     owner: `doe/another-repo`,
   },
   {
     instanceId: 'i-running-cannot-delete-106',
-    launchTime: moment(new Date()).subtract(25, 'minutes').toDate(),
+    launchTime: old25minutes,
     type: 'Org',
     owner: TEST_DATA.repositoryOwner,
   },
@@ -167,13 +168,13 @@ const DEFAULT_RUNNERS_ORIGINAL = [
   },
   {
     instanceId: 'i-running-busy-112',
-    launchTime: moment(new Date()).subtract(25, 'minutes').toDate(),
+    launchTime: old25minutes,
     type: 'Repo',
     owner: `doe/another-repo`,
   },
   {
     instanceId: 'i-running-busy-113',
-    launchTime: moment(new Date()).subtract(25, 'minutes').toDate(),
+    launchTime: old25minutes,
     type: 'Org',
     owner: TEST_DATA.repositoryOwner,
   },
@@ -399,7 +400,7 @@ describe('Scale down runners', () => {
         process.env.SCALE_DOWN_CONFIG = JSON.stringify([defaultConfig]);
       });
 
-      it('Should terminates based on the the idle config', async () => {
+      it('Should terminate based on the the idle config', async () => {
         mockListRunners.mockResolvedValue(RUNNERS_ORG_WITH_AUTO_SCALING_CONFIG);
         await scaleDown();
 
@@ -418,8 +419,6 @@ describe('Scale down runners', () => {
       });
 
       it('Should terminates 0 runners owned by org', async () => {
-        jest.clearAllMocks();
-
         mockListRunners.mockResolvedValue(RUNNERS_REPO_WITH_AUTO_SCALING_CONFIG);
         await scaleDown();
 
