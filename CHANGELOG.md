@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.1.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v4.1.0...v4.1.1) (2023-08-16)
+
+
+### Bug Fixes
+
+* **lambda:** bump the aws group in /lambdas with 5 updates ([#3425](https://github.com/philips-labs/terraform-aws-github-runner/issues/3425)) ([79983a0](https://github.com/philips-labs/terraform-aws-github-runner/commit/79983a081c11b8c6cabd33c0f01c3ace44af0c87))
+* set log retention in each module by default to 180 ([#3433](https://github.com/philips-labs/terraform-aws-github-runner/issues/3433)) ([86e6abc](https://github.com/philips-labs/terraform-aws-github-runner/commit/86e6abc174d714c0efafb25e7b8cb04d7b1e1e28))
+
 ## [4.1.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v4.0.2...v4.1.0) (2023-08-08)
 
 
