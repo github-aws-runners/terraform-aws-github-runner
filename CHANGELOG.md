@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.1.2](https://github.com/philips-labs/terraform-aws-github-runner/compare/v4.1.1...v4.1.2) (2023-08-22)
+
+
+### Bug Fixes
+
+* **lambda:** Bump the aws group in /lambdas with 5 updates ([#3439](https://github.com/philips-labs/terraform-aws-github-runner/issues/3439)) ([416e52f](https://github.com/philips-labs/terraform-aws-github-runner/commit/416e52facaa0384a7662425fb87925ba4a0cf574))
+* Replace defaul AMI for WIndows ([#3445](https://github.com/philips-labs/terraform-aws-github-runner/issues/3445)) ([a590da5](https://github.com/philips-labs/terraform-aws-github-runner/commit/a590da5638db1af4ff5fe315f6ab833cc9b016c2)), closes [#3423](https://github.com/philips-labs/terraform-aws-github-runner/issues/3423)
+
 ## [4.1.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v4.1.0...v4.1.1) (2023-08-16)
 
 
