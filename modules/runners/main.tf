@@ -18,7 +18,7 @@ locals {
   kms_key_arn                     = var.kms_key_arn != null ? var.kms_key_arn : ""
   s3_location_runner_distribution = var.enable_runner_binaries_syncer ? "s3://${var.s3_runner_binaries.id}/${var.s3_runner_binaries.key}" : ""
   default_ami = {
-    "windows" = { name = ["Windows_Server-2022-English-Core-ContainersLatest-*"] }
+    "windows" = { name = ["Windows_Server-2022-English-Full-ECS_Optimized-*"] }
     "linux"   = var.runner_architecture == "arm64" ? { name = ["al2023-ami-2023.*-kernel-5.*-arm64"] } : { name = ["al2023-ami-2023.*-kernel-5.*-x86_64"] }
   }
 

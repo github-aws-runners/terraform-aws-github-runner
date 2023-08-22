@@ -18,6 +18,6 @@ runner_config:
   runner_boot_time_in_minutes: 20
   ami_filter:
     name:
-      - Windows_Server-2022-English-Core-ContainersLatest-*
+      - Windows_Server-2022-English-Full-ECS_Optimized-*
     state:
       - available
