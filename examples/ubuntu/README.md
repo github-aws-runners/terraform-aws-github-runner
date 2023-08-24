@@ -23,6 +23,12 @@ terraform init
 terraform apply
 ```
 
+The module will try to update the GitHub App webhook and secret (only linux/mac). You can receive the webhook details by running:
+
+```bash
+terraform output webhook_secret
+```
+
 <!-- BEGIN_TF_DOCS -->
 ## Requirements
 
