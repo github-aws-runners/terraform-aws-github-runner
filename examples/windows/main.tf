@@ -62,5 +62,5 @@ module "webhook-github-app" {
     id             = var.github_app.id
     webhook_secret = random_id.random.hex
   }
-  webhook_endpoint = module.multi-runner.webhook.endpoint
+  webhook_endpoint = module.runners.webhook.endpoint
 }
