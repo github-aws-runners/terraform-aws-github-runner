@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.2.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v4.1.2...v4.2.0) (2023-08-24)
+
+
+### Features
+
+* support for cloudwatch config on per runner for multi-runners ([#3447](https://github.com/philips-labs/terraform-aws-github-runner/issues/3447)) ([cdaa950](https://github.com/philips-labs/terraform-aws-github-runner/commit/cdaa95057d09966c509a360fd9cea9d81a4993d9))
+
 ## [4.1.2](https://github.com/philips-labs/terraform-aws-github-runner/compare/v4.1.1...v4.1.2) (2023-08-22)
 
 
