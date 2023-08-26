@@ -104,6 +104,7 @@ No modules.
 | <a name="input_webhook_lambda_apigateway_access_log_settings"></a> [webhook\_lambda\_apigateway\_access\_log\_settings](#input\_webhook\_lambda\_apigateway\_access\_log\_settings) | Access log settings for webhook API gateway. | <pre>object({<br>    destination_arn = string<br>    format          = string<br>  })</pre> | `null` | no |
 | <a name="input_webhook_lambda_s3_key"></a> [webhook\_lambda\_s3\_key](#input\_webhook\_lambda\_s3\_key) | S3 key for webhook lambda function. Required if using S3 bucket to specify lambdas. | `string` | `null` | no |
 | <a name="input_webhook_lambda_s3_object_version"></a> [webhook\_lambda\_s3\_object\_version](#input\_webhook\_lambda\_s3\_object\_version) | S3 object version for webhook lambda function. Useful if S3 versioning is enabled on source bucket. | `string` | `null` | no |
+| <a name="input_webhook_apigateway_disable_execute_api_endpoint"></a> [webhook\_apigateway\_disable\_execute\_api\_endpoint](#input\_webhook\_apigateway\_disable\_execute\_api\_endpoint) | Disable execute API Gateway endpoint in case custom domain is used. | `bool` | `false` | no |
 
 ## Outputs
 

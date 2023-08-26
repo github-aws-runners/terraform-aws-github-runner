@@ -369,6 +369,12 @@ variable "webhook_lambda_apigateway_access_log_settings" {
   default = null
 }
 
+variable "webhook_apigateway_disable_execute_api_endpoint" {
+  description = "Disable execute API Gateway endpoint in case custom domain is used."
+  type        = bool
+  default     = false
+}
+
 variable "runners_lambda_s3_key" {
   description = "S3 key for runners lambda function. Required if using S3 bucket to specify lambdas."
   type        = string

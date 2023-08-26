@@ -5,9 +5,10 @@ locals {
 }
 
 resource "aws_apigatewayv2_api" "webhook" {
-  name          = "${var.prefix}-github-action-webhook"
-  protocol_type = "HTTP"
-  tags          = var.tags
+  name                         = "${var.prefix}-github-action-webhook"
+  protocol_type                = "HTTP"
+  disable_execute_api_endpoint = var.webhook_apigateway_disable_execute_api_endpoint
+  tags                         = var.tags
 }
 
 resource "aws_apigatewayv2_route" "webhook" {

@@ -116,6 +116,12 @@ variable "webhook_lambda_apigateway_access_log_settings" {
   default = null
 }
 
+variable "webhook_apigateway_disable_execute_api_endpoint" {
+  description = "Disable execute API Gateway endpoint in case custom domain is used."
+  type        = bool
+  default     = false
+}
+
 variable "repository_white_list" {
   description = "List of github repository full names (owner/repo_name) that will be allowed to use the github app. Leave empty for no filtering."
   type        = list(string)
