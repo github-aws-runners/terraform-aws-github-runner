@@ -3288,10 +3288,10 @@ aws-lambda@^1.0.7:
     js-yaml "^3.14.1"
     watchpack "^2.0.0-beta.10"
 
-aws-sdk-client-mock-jest@^2.1.1:
-  version "2.1.1"
-  resolved "https://registry.npmjs.org/aws-sdk-client-mock-jest/-/aws-sdk-client-mock-jest-2.1.1.tgz"
-  integrity sha512-z1rpv2ACN1WSGU8u73sJVC0pHPuJfHyITAE88Luz6ph6w47YIkgG0G2latoSmvqJwanv1gJYFk+1VPHJdco1Ig==
+aws-sdk-client-mock-jest@^3.0.0:
+  version "3.0.0"
+  resolved "https://registry.yarnpkg.com/aws-sdk-client-mock-jest/-/aws-sdk-client-mock-jest-3.0.0.tgz#fff5146ddd56ba3987da3c9aecf9196fa254b4a6"
+  integrity sha512-oV1rBQZc4UumLbzZAhi8UAehUq+k75hkQYGLrVIP0iJj85Z9xw+EaSsmJke/KQ8Z3vng+Xv1xbounsxpvZpunQ==
   dependencies:
     "@types/jest" "^28.1.3"
     tslib "^2.1.0"
