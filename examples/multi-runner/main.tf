@@ -3,7 +3,19 @@ locals {
   aws_region  = "eu-west-1"
 
   # Load runner configurations from Yaml files
-  multi_runner_config = { for c in fileset("${path.module}/templates/runner-configs", "*.yaml") : trimsuffix(c, ".yaml") => yamldecode(file("${path.module}/templates/runner-configs/${c}")) }
+  multi_runner_config = {
+    for c in fileset("${path.module}/templates/runner-configs", "*.yaml") :
+
+    trimsuffix(c, ".yaml") => yamldecode(
+      templatefile(
+        "${path.module}/templates/runner-configs/${c}",
+        {
+          vpc_id     = module.base_other.vpc.vpc_id
+          subnet_ids = jsonencode(module.base_other.vpc.private_subnets)
+        }
+      )
+    )
+  }
 }
 
 resource "random_id" "random" {
@@ -14,6 +26,13 @@ module "base" {
   source = "../base"
 
   prefix     = local.environment
+  aws_region = local.aws_region
+}
+
+module "base_other" {
+  source = "../base"
+
+  prefix     = "${local.environment}-other"
   aws_region = local.aws_region
 }
 
