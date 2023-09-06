@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.2.2](https://github.com/philips-labs/terraform-aws-github-runner/compare/v4.2.1...v4.2.2) (2023-09-06)
+
+
+### Bug Fixes
+
+* **lambda:** Bump the aws group in /lambdas with 5 updates ([#3462](https://github.com/philips-labs/terraform-aws-github-runner/issues/3462)) ([a8276a4](https://github.com/philips-labs/terraform-aws-github-runner/commit/a8276a471020177e6350f000c029c3636deb68fa))
+* **lambda:** Bump typescript from 5.1.6 to 5.2.2 in /lambdas ([#3465](https://github.com/philips-labs/terraform-aws-github-runner/issues/3465)) ([026ce11](https://github.com/philips-labs/terraform-aws-github-runner/commit/026ce116907209dea96cfe3dad1413bfde4bf7bd))
+
 ## [4.2.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v4.2.0...v4.2.1) (2023-08-31)
 
 
