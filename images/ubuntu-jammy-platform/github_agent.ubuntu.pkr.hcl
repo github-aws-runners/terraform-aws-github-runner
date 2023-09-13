@@ -9,7 +9,7 @@ packer {
 
 variable "runner_version" {
   description = "The version (no v prefix) of the runner software to install https://github.com/actions/runner/releases. The latest release will be fetched from GitHub if not provided."
-  default     = "2.307.1"
+  default     = "2.309.0"
 }
 
 variable "region" {
@@ -156,7 +156,8 @@ build {
       "echo deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null",
       "sudo add-apt-repository -y ppa:mozillateam/ppa",
       "echo 'Package: *\nPin: release o=LP-PPA-mozillateam\nPin-Priority: 1001\n\nPackage: firefox\nPin: version 1:1snap1-0ubuntu2\nPin-Priority: -1\n' | sudo tee /etc/apt/preferences.d/mozilla-firefox",
-      "curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -",
+      "sudo curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg",
+      "echo deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_18.x nodistro main | sudo tee /etc/apt/sources.list.d/nodesource.list",
       "sudo apt-get -y install automake autotools-dev bsdmainutils build-essential clang cmake containerd.io docker-ce docker-ce-cli firefox gcc git jq libssl-dev libtool libzmq3-dev nodejs openssh-client pkg-config python3 unzip",
       "sudo systemctl enable containerd.service",
       "sudo service docker start",
