@@ -158,7 +158,7 @@ build {
       "echo 'Package: *\nPin: release o=LP-PPA-mozillateam\nPin-Priority: 1001\n\nPackage: firefox\nPin: version 1:1snap1-0ubuntu2\nPin-Priority: -1\n' | sudo tee /etc/apt/preferences.d/mozilla-firefox",
       "sudo curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg",
       "echo deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_18.x nodistro main | sudo tee /etc/apt/sources.list.d/nodesource.list",
-      "sudo apt-get -y install automake autotools-dev bsdmainutils build-essential clang cmake containerd.io docker-ce docker-ce-cli firefox gcc git jq libssl-dev libtool libzmq3-dev nodejs openssh-client pkg-config python3 unzip",
+      "sudo apt-get -y install automake autotools-dev bsdmainutils build-essential clang cmake containerd.io docker-ce docker-ce-cli docker-compose-plugin=2.20.2-1~ubuntu.22.04~jammy firefox gcc git jq libssl-dev libtool libzmq3-dev nodejs openssh-client pkg-config python3 unzip",
       "sudo systemctl enable containerd.service",
       "sudo service docker start",
       "sudo usermod -a -G docker ubuntu",
