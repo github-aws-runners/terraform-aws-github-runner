@@ -175,6 +175,14 @@ resource "aws_launch_template" "runner" {
   tags = local.tags
 
   update_default_version = true
+
+  dynamic "network_interfaces" {
+    for_each = var.associate_public_ip_address ? [var.associate_public_ip_address] : []
+    iterator = associate_public_ip_address
+    content {
+      associate_public_ip_address = associate_public_ip_address.value
+    }
+  }
 }
 
 resource "aws_security_group" "runner_sg" {

@@ -554,3 +554,9 @@ variable "lambda_tracing_mode" {
   type        = string
   default     = null
 }
+
+variable "associate_public_ip_address" {
+  description = "Associate public IP with the runner"
+  type        = bool
+  default     = false
+}

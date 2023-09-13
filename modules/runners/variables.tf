@@ -616,3 +616,9 @@ variable "enable_jit_config" {
   type        = bool
   default     = null
 }
+
+variable "associate_public_ip_address" {
+  description = "Associate public IP with the runner"
+  type        = bool
+  default     = false
+}
