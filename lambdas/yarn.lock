@@ -5894,13 +5894,13 @@ jest-mock-extended@^3.0.4:
     ts-essentials "^7.0.3"
 
 jest-mock@^29.5.0, jest-mock@^29.6.3:
-  version "29.6.3"
-  resolved "https://registry.yarnpkg.com/jest-mock/-/jest-mock-29.6.3.tgz#433f3fd528c8ec5a76860177484940628bdf5e0a"
-  integrity sha512-Z7Gs/mOyTSR4yPsaZ72a/MtuK6RnC3JYqWONe48oLaoEcYwEDxqvbXz85G4SJrm2Z5Ar9zp6MiHF4AlFlRM4Pg==
+  version "29.7.0"
+  resolved "https://registry.yarnpkg.com/jest-mock/-/jest-mock-29.7.0.tgz#4e836cf60e99c6fcfabe9f99d017f3fdd50a6347"
+  integrity sha512-ITOMZn+UkYS4ZFh83xYAOzWStloNzJFO2s8DWrE4lhtGD+AorgnbkiKERe4wQVBydIGPx059g6riW5Btp6Llnw==
   dependencies:
     "@jest/types" "^29.6.3"
     "@types/node" "*"
-    jest-util "^29.6.3"
+    jest-util "^29.7.0"
 
 jest-pnp-resolver@^1.2.2:
   version "1.2.3"
@@ -6028,10 +6028,10 @@ jest-util@^28.1.3:
     graceful-fs "^4.2.9"
     picomatch "^2.2.3"
 
-jest-util@^29.0.0, jest-util@^29.6.3:
-  version "29.6.3"
-  resolved "https://registry.yarnpkg.com/jest-util/-/jest-util-29.6.3.tgz#e15c3eac8716440d1ed076f09bc63ace1aebca63"
-  integrity sha512-QUjna/xSy4B32fzcKTSz1w7YYzgiHrjjJjevdRf61HYk998R5vVMMNmrHESYZVDS5DSWs+1srPLPKxXPkeSDOA==
+jest-util@^29.0.0, jest-util@^29.6.3, jest-util@^29.7.0:
+  version "29.7.0"
+  resolved "https://registry.yarnpkg.com/jest-util/-/jest-util-29.7.0.tgz#23c2b62bfb22be82b44de98055802ff3710fc0bc"
+  integrity sha512-z6EbKajIpqGKU56y5KBUgy1dt1ihhQJgWzUlZHArA/+X2ad7Cb5iF+AK1EWVL/Bo7Rz9uurpqw6SiBCefUbCGA==
   dependencies:
     "@jest/types" "^29.6.3"
     "@types/node" "*"
