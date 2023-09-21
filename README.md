@@ -632,6 +632,6 @@ This module is part of the Philips Forest.
                                                                  Infrastructure
 ```
 
-Talk to the forestkeepers in the `runners`-channel on Slack.
+Talk to the forestkeepers in the `runners-channel` on Slack.
 
 [![Slack](https://img.shields.io/badge/Slack-4A154B?style=for-the-badge&logo=slack&logoColor=white)](https://join.slack.com/t/philips-software/shared_invite/zt-xecw65v5-i1531hGP~mdVwgxLFx7ckg)
