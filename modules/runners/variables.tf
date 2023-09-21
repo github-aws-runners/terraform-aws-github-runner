@@ -75,8 +75,8 @@ variable "block_device_mappings" {
 
 variable "ebs_optimized" {
   description = "The EC2 EBS optimized configuration."
-  type = bool
-  default = false
+  type        = bool
+  default     = false
 }
 
 variable "instance_target_capacity_type" {
