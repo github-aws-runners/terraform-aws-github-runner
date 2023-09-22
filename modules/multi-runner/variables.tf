@@ -72,14 +72,16 @@ variable "multi_runner_config" {
       enable_jit_config                       = optional(bool, null)
       enable_runner_detailed_monitoring       = optional(bool, false)
       enable_cloudwatch_agent                 = optional(bool, true)
+      cloudwatch_config                       = optional(string, null)
       userdata_pre_install                    = optional(string, "")
       userdata_post_install                   = optional(string, "")
       runner_ec2_tags                         = optional(map(string), {})
       runner_iam_role_managed_policy_arns     = optional(list(string), [])
       idle_config = optional(list(object({
-        cron      = string
-        timeZone  = string
-        idleCount = number
+        cron             = string
+        timeZone         = string
+        idleCount        = number
+        evictionStrategy = optional(string, "oldest_first")
       })), [])
       runner_log_files = optional(list(object({
         log_group_name   = string
@@ -167,6 +169,7 @@ variable "multi_runner_config" {
         enable_jit_config "Overwrite the default behavior for JIT configuration. By default JIT configuration is enabled for ephemeral runners and disabled for non-ephemeral runners. In case of GHES check first if the JIT config API is avaialbe. In case you upgradeing from 3.x to 4.x you can set `enable_jit_config` to `false` to avoid a breaking change when having your own AMI."
         enable_runner_detailed_monitoring: "Should detailed monitoring be enabled for the runner. Set this to true if you want to use detailed monitoring. See https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-cloudwatch-new.html for details."
         enable_cloudwatch_agent: "Enabling the cloudwatch agent on the ec2 runner instances, the runner contains default config. Configuration can be overridden via `cloudwatch_config`."
+        cloudwatch_config: "(optional) Replaces the module default cloudwatch log config. See https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-Configuration-File-Details.html for details."
         userdata_pre_install: "Script to be ran before the GitHub Actions runner is installed on the EC2 instances"
         userdata_post_install: "Script to be ran after the GitHub Actions runner is installed on the EC2 instances"
         runner_ec2_tags: "Map of tags that will be added to the launch template instance tag specifications."
@@ -225,7 +228,7 @@ variable "role_path" {
 variable "logging_retention_in_days" {
   description = "Specifies the number of days you want to retain log events for the lambda log group. Possible values are: 0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, and 3653."
   type        = number
-  default     = 7
+  default     = 180
 }
 
 variable "logging_kms_key_id" {

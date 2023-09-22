@@ -69,7 +69,7 @@ module "runners" {
   logging_retention_in_days        = var.logging_retention_in_days
   logging_kms_key_id               = var.logging_kms_key_id
   enable_cloudwatch_agent          = each.value.runner_config.enable_cloudwatch_agent
-  cloudwatch_config                = var.cloudwatch_config
+  cloudwatch_config                = try(coalesce(each.value.runner_config.cloudwatch_config, var.cloudwatch_config), null)
   runner_log_files                 = each.value.runner_config.runner_log_files
   runner_group_name                = each.value.runner_config.runner_group_name
   runner_name_prefix               = each.value.runner_config.runner_name_prefix

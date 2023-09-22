@@ -86,6 +86,8 @@ let DEFAULT_ORG_RUNNERS_ORPHANED: RunnerInfo[];
 // i-running-111 | Repo | running and not exceeding minimumRunningTimeInMinutes
 // i-running-112 | Org | busy
 // i-running-113 | Repo | busy
+const oldest = moment(new Date()).subtract(26, 'minutes').toDate();
+const old25minutes = moment(new Date()).subtract(25, 'minutes').toDate();
 const DEFAULT_RUNNERS_ORIGINAL = [
   {
     instanceId: 'i-idle-101',
@@ -105,29 +107,25 @@ const DEFAULT_RUNNERS_ORIGINAL = [
   },
   {
     instanceId: 'i-oldest-idle-103',
-    launchTime: moment(new Date())
-      .subtract(minimumRunningTimeInMinutes + 27, 'minutes')
-      .toDate(),
+    launchTime: oldest,
     type: 'Repo',
     owner: `${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName}`,
   },
   {
     instanceId: 'i-oldest-idle-104',
-    launchTime: moment(new Date())
-      .subtract(minimumRunningTimeInMinutes + 27, 'minutes')
-      .toDate(),
+    launchTime: oldest,
     type: 'Org',
     owner: TEST_DATA.repositoryOwner,
   },
   {
     instanceId: 'i-running-cannot-delete-105',
-    launchTime: moment(new Date()).subtract(25, 'minutes').toDate(),
+    launchTime: old25minutes,
     type: 'Repo',
     owner: `doe/another-repo`,
   },
   {
     instanceId: 'i-running-cannot-delete-106',
-    launchTime: moment(new Date()).subtract(25, 'minutes').toDate(),
+    launchTime: old25minutes,
     type: 'Org',
     owner: TEST_DATA.repositoryOwner,
   },
@@ -170,13 +168,13 @@ const DEFAULT_RUNNERS_ORIGINAL = [
   },
   {
     instanceId: 'i-running-busy-112',
-    launchTime: moment(new Date()).subtract(25, 'minutes').toDate(),
+    launchTime: old25minutes,
     type: 'Repo',
     owner: `doe/another-repo`,
   },
   {
     instanceId: 'i-running-busy-113',
-    launchTime: moment(new Date()).subtract(25, 'minutes').toDate(),
+    launchTime: old25minutes,
     type: 'Org',
     owner: TEST_DATA.repositoryOwner,
   },
@@ -217,7 +215,7 @@ const DEFAULT_REGISTERED_RUNNERS = [
   },
 ];
 
-describe('scaleDown', () => {
+describe('Scale down runners', () => {
   beforeEach(() => {
     process.env = { ...cleanEnv };
     process.env.GITHUB_APP_KEY_BASE64 = 'TEST_CERTIFICATE_DATA';
@@ -229,6 +227,7 @@ describe('scaleDown', () => {
     process.env.ENVIRONMENT = environment;
     process.env.MINIMUM_RUNNING_TIME_IN_MINUTES = minimumRunningTimeInMinutes.toString();
     process.env.RUNNER_BOOT_TIME_IN_MINUTES = runnerBootTimeInMinutes.toString();
+
     nock.disableNetConnect();
     jest.clearAllMocks();
     jest.resetModules();
@@ -341,24 +340,20 @@ describe('scaleDown', () => {
     );
   });
 
-  describe('github.com', () => {
-    describe('no runners running', () => {
-      beforeEach(() => {
-        mockListRunners.mockResolvedValue([]);
-      });
+  describe('for github.com', () => {
+    it('Should not call terminate when no runners online.', async () => {
+      mockListRunners.mockResolvedValue([]);
 
-      it('No runners online', async () => {
-        await scaleDown();
-        expect(listEC2Runners).toBeCalledWith({
-          environment: environment,
-        });
-        expect(terminateRunner).not;
-        expect(mockOctokit.apps.getRepoInstallation).not;
-        expect(mockOctokit.apps.getRepoInstallation).not;
+      await scaleDown();
+      expect(listEC2Runners).toBeCalledWith({
+        environment: environment,
       });
+      expect(terminateRunner).not;
+      expect(mockOctokit.apps.getRepoInstallation).not;
+      expect(mockOctokit.apps.getRepoInstallation).not;
     });
 
-    it('Terminates 3 of 5 runners owned by repos and one orphaned', async () => {
+    it('Should terminates 3 of 5 runners owned by repos and one orphaned', async () => {
       mockListRunners.mockResolvedValue(DEFAULT_RUNNERS_REPO);
       await scaleDown();
       expect(listEC2Runners).toBeCalledWith({
@@ -376,7 +371,7 @@ describe('scaleDown', () => {
       }
     });
 
-    it('Terminates 2 of 3 runners owned by orgs and one orphaned', async () => {
+    it('Should terminates 2 of 3 runners owned by orgs and one orphaned', async () => {
       mockListRunners.mockResolvedValue(DEFAULT_RUNNERS_ORG);
       await scaleDown();
       expect(listEC2Runners).toBeCalledWith({
@@ -393,35 +388,38 @@ describe('scaleDown', () => {
       }
     });
 
-    describe('With idle config', () => {
+    describe('When idle config defined', () => {
+      const defaultConfig = {
+        idleCount: 3,
+        cron: '* * * * * *',
+        timeZone: 'Europe/Amsterdam',
+        evictionStrategy: 'oldest_first',
+      };
+
       beforeEach(() => {
-        process.env.SCALE_DOWN_CONFIG = JSON.stringify([
-          {
-            idleCount: 3,
-            cron: '* * * * * *',
-            timeZone: 'Europe/Amsterdam',
-          },
-        ]);
+        process.env.SCALE_DOWN_CONFIG = JSON.stringify([defaultConfig]);
       });
 
-      it('Terminates 1 runner owned by orgs', async () => {
+      it('Should terminate based on the the idle config', async () => {
         mockListRunners.mockResolvedValue(RUNNERS_ORG_WITH_AUTO_SCALING_CONFIG);
         await scaleDown();
 
-        expect(listEC2Runners).toBeCalledWith({
-          environment: environment,
-        });
-
-        expect(mockOctokit.apps.getOrgInstallation).toBeCalled();
         expect(terminateRunner).toBeCalledTimes(1);
         for (const toTerminate of RUNNERS_ORG_TO_BE_REMOVED_WITH_AUTO_SCALING_CONFIG) {
           expect(terminateRunner).toHaveBeenCalledWith(toTerminate.instanceId);
         }
+
+        process.env.SCALE_DOWN_CONFIG = JSON.stringify([]);
+
+        // run test again with out idle config
+        jest.clearAllMocks();
+        mockListRunners.mockResolvedValue(RUNNERS_ORG_WITH_AUTO_SCALING_CONFIG);
+        await scaleDown();
+        expect(terminateRunner).toBeCalledTimes(2);
       });
 
-      it('Terminates 0 runners owned by org', async () => {
+      it('Should terminates 0 runners owned by org', async () => {
         mockListRunners.mockResolvedValue(RUNNERS_REPO_WITH_AUTO_SCALING_CONFIG);
-        process.env.ENABLE_ORGANIZATION_RUNNERS = 'false';
         await scaleDown();
 
         expect(listEC2Runners).toBeCalledWith({
@@ -431,9 +429,18 @@ describe('scaleDown', () => {
         expect(mockOctokit.apps.getRepoInstallation).toBeCalled();
         expect(terminateRunner).not.toBeCalled();
       });
+
+      it('Should terminates the newest runner.', async () => {
+        process.env.SCALE_DOWN_CONFIG = JSON.stringify([{ ...defaultConfig, evictionStrategy: 'newest_first' }]);
+
+        mockListRunners.mockResolvedValue(RUNNERS_ORG_WITH_AUTO_SCALING_CONFIG);
+        await scaleDown();
+        expect(terminateRunner).toBeCalledTimes(1);
+        expect(terminateRunner).toHaveBeenCalledWith('i-idle-102');
+      });
     });
 
-    it('No instances terminates when delete runner in github results in a non 204 status.', async () => {
+    it('Should terminate no instances when delete runner in github results in a non 204 status.', async () => {
       mockListRunners.mockResolvedValue(DEFAULT_RUNNERS);
       mockOctokit.actions.deleteSelfHostedRunnerFromOrg.mockImplementation(() => {
         return { status: 500 };
@@ -449,7 +456,7 @@ describe('scaleDown', () => {
       expect(terminateRunner).not.toBeCalled;
     });
 
-    it('Terminates 4 runners amongst all owners and two orphaned', async () => {
+    it('Should terminates 4 runners amongst all owners and two orphaned', async () => {
       mockListRunners.mockResolvedValue(DEFAULT_RUNNERS);
       await scaleDown();
 
@@ -469,27 +476,23 @@ describe('scaleDown', () => {
     });
   });
 
-  describe('ghes', () => {
+  describe('for GHES (GitHub Enterprise)', () => {
     beforeEach(() => {
       process.env.GHES_URL = 'https://github.enterprise.something';
     });
-    describe('no runners running', () => {
-      beforeEach(() => {
-        mockListRunners.mockResolvedValue([]);
-      });
 
-      it('No runners online', async () => {
-        await scaleDown();
-        expect(listEC2Runners).toBeCalledWith({
-          environment: environment,
-        });
-        expect(terminateRunner).not;
-        expect(mockOctokit.apps.getRepoInstallation).not;
-        expect(mockOctokit.apps.getRepoInstallation).not;
+    it('Should not call terminate when no runners online', async () => {
+      mockListRunners.mockResolvedValue([]);
+      await scaleDown();
+      expect(listEC2Runners).toBeCalledWith({
+        environment: environment,
       });
+      expect(terminateRunner).not;
+      expect(mockOctokit.apps.getRepoInstallation).not;
+      expect(mockOctokit.apps.getRepoInstallation).not;
     });
 
-    it('Terminates 3 of 5 runners owned by repos and one orphaned', async () => {
+    it('Should terminates 3 of 5 runners owned by repos and one orphaned', async () => {
       mockListRunners.mockResolvedValue(DEFAULT_RUNNERS_REPO);
       await scaleDown();
       expect(listEC2Runners).toBeCalledWith({
@@ -506,7 +509,7 @@ describe('scaleDown', () => {
       }
     });
 
-    it('Terminates 2 of 3 runners owned by orgs and one orphaned', async () => {
+    it('Should terminates 2 of 3 runners owned by orgs and one orphaned', async () => {
       mockListRunners.mockResolvedValue(DEFAULT_RUNNERS_ORG);
       await scaleDown();
       expect(listEC2Runners).toBeCalledWith({
@@ -523,18 +526,19 @@ describe('scaleDown', () => {
       }
     });
 
-    describe('With idle config', () => {
+    describe('When idle config defined', () => {
       beforeEach(() => {
         process.env.SCALE_DOWN_CONFIG = JSON.stringify([
           {
             idleCount: 3,
             cron: '* * * * * *',
             timeZone: 'Europe/Amsterdam',
+            evictionStrategy: 'oldest_first',
           },
         ]);
       });
 
-      it('Terminates 1 runner owned by orgs', async () => {
+      it('Should terminates 1 runner owned by orgs', async () => {
         mockListRunners.mockResolvedValue(RUNNERS_ORG_WITH_AUTO_SCALING_CONFIG);
         await scaleDown();
 
@@ -549,7 +553,7 @@ describe('scaleDown', () => {
         }
       });
 
-      it('Terminates 0 runners owned by repos', async () => {
+      it('Should terminates 0 runners owned by repos', async () => {
         mockListRunners.mockResolvedValue(RUNNERS_REPO_WITH_AUTO_SCALING_CONFIG);
         process.env.ENABLE_ORGANIZATION_RUNNERS = 'false';
         await scaleDown();
@@ -563,7 +567,7 @@ describe('scaleDown', () => {
       });
     });
 
-    it('Terminates 4 runners amongst all owners and two orphaned', async () => {
+    it('Should terminates 4 runners amongst all owners and two orphaned', async () => {
       mockListRunners.mockResolvedValue(DEFAULT_RUNNERS);
       await scaleDown();
 
