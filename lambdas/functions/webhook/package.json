@@ -40,7 +40,7 @@
   "dependencies": {
     "@aws-sdk/client-sqs": "^3.315.0",
     "@octokit/rest": "^20.0.1",
-    "@octokit/types": "^11.1.0",
+    "@octokit/types": "^12.0.0",
     "@octokit/webhooks": "^12.0.3",
     "@terraform-aws-github-runner/aws-powertools-util": "*",
     "@terraform-aws-github-runner/aws-ssm-util": "*",

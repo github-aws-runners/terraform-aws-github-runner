@@ -1807,16 +1807,16 @@
   dependencies:
     nx "15.9.2"
 
-"@octokit/auth-app@6.0.0":
-  version "6.0.0"
-  resolved "https://registry.yarnpkg.com/@octokit/auth-app/-/auth-app-6.0.0.tgz#f7d31d40f78973cb801c0661db2cc3719de7328b"
-  integrity sha512-OKct7Rukf3g9DjpzcpdacQsdmd6oPrJ7fZND22JkjzhDvfhttUOnmh+qPS4kHhaNNyTxqSThnfrUWvkqNLd1nw==
+"@octokit/auth-app@6.0.1":
+  version "6.0.1"
+  resolved "https://registry.yarnpkg.com/@octokit/auth-app/-/auth-app-6.0.1.tgz#7137b1af124189a979de6053da5d4c8cdb1fa4e9"
+  integrity sha512-tjCD4nzQNZgmLH62+PSnTF6eGerisFgV4v6euhqJik6yWV96e1ZiiGj+NXIqbgnpjLmtnBqVUrNyGKu3DoGEGA==
   dependencies:
     "@octokit/auth-oauth-app" "^7.0.0"
     "@octokit/auth-oauth-user" "^4.0.0"
     "@octokit/request" "^8.0.2"
     "@octokit/request-error" "^5.0.0"
-    "@octokit/types" "^11.0.0"
+    "@octokit/types" "^12.0.0"
     deprecation "^2.3.1"
     lru-cache "^10.0.0"
     universal-github-app-jwt "^1.1.1"
@@ -2057,7 +2057,7 @@
     "@octokit/plugin-request-log" "^4.0.0"
     "@octokit/plugin-rest-endpoint-methods" "^9.0.0"
 
-"@octokit/types@^10.0.0", "@octokit/types@^11.0.0", "@octokit/types@^11.1.0", "@octokit/types@^6.41.0", "@octokit/types@^8.1.1", "@octokit/types@^9.0.0":
+"@octokit/types@^10.0.0", "@octokit/types@^11.0.0", "@octokit/types@^11.1.0", "@octokit/types@^12.0.0", "@octokit/types@^6.41.0", "@octokit/types@^8.1.1", "@octokit/types@^9.0.0":
   version "10.0.0"
   resolved "https://registry.yarnpkg.com/@octokit/types/-/types-10.0.0.tgz#7ee19c464ea4ada306c43f1a45d444000f419a4a"
   integrity sha512-Vm8IddVmhCgU1fxC1eyinpwqzXPEYu0NrYzD3YZjlGjyftdLBTeqNblRC0jmJmgxbJIsQlyogVeGnrNaaMVzIg==
