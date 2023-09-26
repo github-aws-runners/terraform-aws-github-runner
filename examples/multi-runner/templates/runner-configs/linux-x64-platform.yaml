@@ -2,11 +2,11 @@ matcherConfig:
   exactMatch: true
   labelMatchers:
     - [ self-hosted, linux, x64, ubuntu-platform ]
-fifo: false
+fifo: true
 delay_webhook_event: 0
 redrive_build_queue:
-  enabled: true
-  maxReceiveCount: 300
+  enabled: false
+  maxReceiveCount: null
 runner_config:
   runner_os: linux
   runner_architecture: x64
@@ -16,7 +16,7 @@ runner_config:
   enable_ssm_on_runners: true
   instance_types:
     - c6id.2xlarge
-  runners_maximum_count: 5
+  runners_maximum_count: 15
   enable_ephemeral_runners: true
   enable_jit_config: true
   create_service_linked_role_spot: true
@@ -45,4 +45,5 @@ runner_config:
     http_endpoint: enabled
     http_tokens: optional
     http_put_response_hop_limit: 2
-  scale_up_reserved_concurrent_executions: 1
+  scale_up_reserved_concurrent_executions: 10
+  enable_job_queued_check: true
