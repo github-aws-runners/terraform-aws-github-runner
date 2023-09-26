@@ -45,4 +45,4 @@ runner_config:
     http_endpoint: enabled
     http_tokens: optional
     http_put_response_hop_limit: 2
-  scale_up_reserved_concurrent_executions: -1
+  scale_up_reserved_concurrent_executions: 1
