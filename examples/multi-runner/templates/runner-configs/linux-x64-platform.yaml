@@ -5,8 +5,8 @@ matcherConfig:
 fifo: false
 delay_webhook_event: 0
 redrive_build_queue:
-  enabled: false
-  maxReceiveCount: null
+  enabled: true
+  maxReceiveCount: 300
 runner_config:
   runner_os: linux
   runner_architecture: x64
