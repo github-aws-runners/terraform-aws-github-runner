@@ -16,7 +16,7 @@ runner_config:
   enable_ssm_on_runners: true
   instance_types:
     - c6id.2xlarge
-  runners_maximum_count: 15
+  runners_maximum_count: 5
   enable_ephemeral_runners: true
   enable_jit_config: true
   create_service_linked_role_spot: true
@@ -47,4 +47,4 @@ runner_config:
     http_put_response_hop_limit: 2
   scale_up_reserved_concurrent_executions: 1
   enable_organization_runners: false
-  enable_job_queued_check: true
+  enable_job_queued_check: false
