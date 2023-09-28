@@ -47,7 +47,7 @@ echo OS: $os_id
 
 # Install libicu on non-ubuntu
 if [[ ! "$os_id" =~ ^ubuntu.* ]]; then
-  yum install -y libicu
+  dnf install -y libicu
 fi
 
 # Install dependencies for ubuntu
