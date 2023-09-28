@@ -85,3 +85,14 @@ module "runners" {
   #   deadLetterTargetArn = null
   # }
 }
+
+module "webhook-github-app" {
+  source = "../../modules/webhook-github-app"
+
+  github_app = {
+    key_base64     = var.github_app.key_base64
+    id             = var.github_app.id
+    webhook_secret = random_id.random.hex
+  }
+  webhook_endpoint = module.runners.webhook.endpoint
+}

@@ -1,5 +1,25 @@
 # Changelog
 
+## [4.4.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v4.4.0...v4.4.1) (2023-09-28)
+
+
+### Bug Fixes
+
+* incorrect path to update app script ([#3510](https://github.com/philips-labs/terraform-aws-github-runner/issues/3510)) ([0865273](https://github.com/philips-labs/terraform-aws-github-runner/commit/0865273c9b426ce455380b297f5a9edbf3c767f4))
+
+## [4.4.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v4.3.0...v4.4.0) (2023-09-27)
+
+
+### Features
+
+* add module to update GitHub app webhook ([#3451](https://github.com/philips-labs/terraform-aws-github-runner/issues/3451)) ([525f400](https://github.com/philips-labs/terraform-aws-github-runner/commit/525f400f663652b05273c7376734e2853fa34fa5))
+
+
+### Bug Fixes
+
+* **lambda:** bump the aws group in /lambdas with 5 updates ([#3500](https://github.com/philips-labs/terraform-aws-github-runner/issues/3500)) ([8d4e0cd](https://github.com/philips-labs/terraform-aws-github-runner/commit/8d4e0cd95ab55fa6ffad5b8a8d2a113fad75c820))
+* **lambda:** bump the octokit group in /lambdas with 2 updates ([#3501](https://github.com/philips-labs/terraform-aws-github-runner/issues/3501)) ([f0c1285](https://github.com/philips-labs/terraform-aws-github-runner/commit/f0c1285d994f79dfa5731b851ae6c7b8614bd33a))
+
 ## [4.3.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v4.2.3...v4.3.0) (2023-09-22)
 
 
