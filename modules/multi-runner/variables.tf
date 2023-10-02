@@ -55,6 +55,7 @@ variable "multi_runner_config" {
       instance_max_spot_price                 = optional(string, null)
       instance_target_capacity_type           = optional(string, "spot")
       instance_types                          = list(string)
+      subnet_ids                              = optional(list(string), [])
       job_queue_retention_in_seconds          = optional(number, 86400)
       minimum_running_time_in_minutes         = optional(number, null)
       pool_runner_owner                       = optional(string, null)

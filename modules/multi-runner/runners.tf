@@ -4,14 +4,13 @@ module "runners" {
   aws_region    = var.aws_region
   aws_partition = var.aws_partition
   vpc_id        = var.vpc_id
-  subnet_ids    = var.subnet_ids
   prefix        = "${var.prefix}-${each.key}"
   tags = merge(local.tags, {
     "ghr:environment" = "${var.prefix}-${each.key}"
   })
 
   s3_runner_binaries = each.value.runner_config.enable_runner_binaries_syncer ? local.runner_binaries_by_os_and_arch_map["${each.value.runner_config.runner_os}_${each.value.runner_config.runner_architecture}"] : null
-
+  subnet_ids         = length(each.value.runner_config.subnet_ids) > 0 ? each.value.runner_config.subnet_ids : var.subnet_ids
   ssm_paths = {
     root   = "${local.ssm_root_path}/${each.key}"
     tokens = "${var.ssm_paths.runners}/tokens"
