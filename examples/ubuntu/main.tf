@@ -15,7 +15,8 @@ module "base" {
 }
 
 module "runners" {
-  source = "../../"
+  source     = "../../"
+  depends_on = [module.runners]
 
   aws_region = local.aws_region
   vpc_id     = module.base.vpc.vpc_id
