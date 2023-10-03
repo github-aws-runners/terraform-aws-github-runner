@@ -15,8 +15,7 @@ module "base" {
 }
 
 module "runners" {
-  source     = "../../"
-  depends_on = [module.runners]
+  source = "../../"
 
   aws_region = local.aws_region
   vpc_id     = module.base.vpc.vpc_id
@@ -114,7 +113,8 @@ module "runners" {
 }
 
 module "webhook-github-app" {
-  source = "../../modules/webhook-github-app"
+  source     = "../../modules/webhook-github-app"
+  depends_on = [module.runners]
 
   github_app = {
     key_base64     = var.github_app.key_base64
