@@ -49,7 +49,8 @@ module "multi-runner" {
 }
 
 module "webhook-github-app" {
-  source = "../../modules/webhook-github-app"
+  source     = "../../modules/webhook-github-app"
+  depends_on = [module.multi-runner]
 
   github_app = {
     key_base64     = var.github_app.key_base64
