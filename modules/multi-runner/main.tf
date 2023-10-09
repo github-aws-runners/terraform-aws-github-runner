@@ -33,3 +33,12 @@ module "docker_cache" {
     lambda_security_group_ids = var.lambda_security_group_ids
   }
 }
+
+module "s3_endpoint" {
+  source = "./s3_endpoint"
+
+  config = {
+    aws_region = var.aws_region
+    vpc_id     = var.vpc_id
+  }
+}
