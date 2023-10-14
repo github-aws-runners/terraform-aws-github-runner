@@ -215,12 +215,13 @@ module "s3_cache" {
   source = "./s3_cache"
 
   config = {
-    prefix = var.prefix
-    tags   = local.tags
+    aws_region      = var.aws_region
+    expiration_days = var.cache_expiration_days
+    prefix          = var.prefix
     runner_instance_role = {
       arn = aws_iam_role.runner.arn
     }
-    vpc_id     = var.vpc_id
-    aws_region = var.aws_region
+    tags   = local.tags
+    vpc_id = var.vpc_id
   }
 }
