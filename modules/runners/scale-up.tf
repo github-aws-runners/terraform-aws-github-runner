@@ -127,6 +127,12 @@ resource "aws_iam_role_policy_attachment" "scale_up_vpc_execution_role" {
   policy_arn = "arn:${var.aws_partition}:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }
 
+resource "aws_iam_role_policy_attachment" "scale_up_role_custom_policy" {
+  count      = var.scale_up_lambda_role_custom_policy_arn != null ? 1 : 0
+  role       = aws_iam_role.scale_up.name
+  policy_arn = var.scale_up_lambda_role_custom_policy_arn
+}
+
 resource "aws_iam_role_policy_attachment" "ami_id_ssm_parameter_read" {
   count      = var.ami_id_ssm_parameter_name != null ? 1 : 0
   role       = aws_iam_role.scale_up.name

@@ -54,6 +54,7 @@ variable "config" {
     kms_key_arn                          = string
     ami_kms_key_arn                      = string
     role_path                            = string
+    role_custom_policy_arn               = string
     ssm_token_path                       = string
     ssm_config_path                      = string
     ami_id_ssm_parameter_name            = string

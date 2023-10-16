@@ -34,6 +34,7 @@ module "pool" {
     pool                      = var.pool_config
     role_path                 = local.role_path
     role_permissions_boundary = var.role_permissions_boundary
+    role_custom_policy_arn    = var.pool_lambda_role_custom_policy_arn
     runner = {
       disable_runner_autoupdate = var.disable_runner_autoupdate
       ephemeral                 = var.enable_ephemeral_runners

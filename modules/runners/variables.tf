@@ -249,6 +249,13 @@ variable "scale_up_reserved_concurrent_executions" {
   default     = 1
 }
 
+variable "scale_up_lambda_role_custom_policy_arn" {
+  description = "IAM policy to attach to the scale-up lambda function"
+  type        = string
+  default     = null
+}
+
+
 variable "lambda_timeout_scale_up" {
   description = "Time out for the scale up lambda in seconds."
   type        = number
@@ -260,6 +267,7 @@ variable "role_permissions_boundary" {
   type        = string
   default     = null
 }
+
 
 variable "role_path" {
   description = "The path that will be added to the role; if not set, the prefix will be used."
@@ -537,6 +545,12 @@ variable "pool_lambda_reserved_concurrent_executions" {
   description = "Amount of reserved concurrent executions for the scale-up lambda function. A value of 0 disables lambda from being triggered and -1 removes any concurrency limitations."
   type        = number
   default     = 1
+}
+
+variable "pool_lambda_role_custom_policy_arn" {
+  description = "IAM policy to attach to the scale-up lambda function"
+  type        = string
+  default     = null
 }
 
 variable "pool_config" {

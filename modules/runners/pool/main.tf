@@ -103,6 +103,12 @@ resource "aws_iam_role_policy_attachment" "pool_vpc_execution_role" {
   policy_arn = "arn:${var.aws_partition}:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }
 
+resource "aws_iam_role_policy_attachment" "pool_role_custom_policy" {
+  count      = var.config.lambda.role_custom_policy_arn != null ? 1 : 0
+  role       = aws_iam_role.pool.name
+  policy_arn = var.config.lambda.role_custom_policy_arn
+}
+
 data "aws_iam_policy_document" "lambda_assume_role_policy" {
   statement {
     actions = ["sts:AssumeRole"]
