@@ -9,6 +9,7 @@ locals {
 resource "random_id" "random" {
   byte_length = 20
 }
+
 module "base" {
   source = "../base"
 
@@ -45,4 +46,16 @@ module "multi-runner" {
 
   # Enable debug logging for the lambda functions
   # log_level = "debug"
+}
+
+module "webhook-github-app" {
+  source     = "../../modules/webhook-github-app"
+  depends_on = [module.multi-runner]
+
+  github_app = {
+    key_base64     = var.github_app.key_base64
+    id             = var.github_app.id
+    webhook_secret = random_id.random.hex
+  }
+  webhook_endpoint = module.multi-runner.webhook.endpoint
 }

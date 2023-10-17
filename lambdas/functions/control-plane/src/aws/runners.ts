@@ -41,8 +41,8 @@ function constructFilters(filters?: Runners.ListRunnerFilters): Ec2Filter[][] {
       ec2FiltersBase.push({ Name: 'tag:ghr:environment', Values: [filters.environment] });
     }
     if (filters.runnerType && filters.runnerOwner) {
-      ec2FiltersBase.push({ Name: `tag:Type`, Values: [filters.runnerType] });
-      ec2FiltersBase.push({ Name: `tag:Owner`, Values: [filters.runnerOwner] });
+      ec2FiltersBase.push({ Name: `tag:ghr:Type`, Values: [filters.runnerType] });
+      ec2FiltersBase.push({ Name: `tag:ghr:Owner`, Values: [filters.runnerOwner] });
     }
   }
 
@@ -79,10 +79,10 @@ function getRunnerInfo(runningInstances: DescribeInstancesResult) {
           runners.push({
             instanceId: i.InstanceId as string,
             launchTime: i.LaunchTime,
-            owner: i.Tags?.find((e) => e.Key === 'Owner')?.Value as string,
-            type: i.Tags?.find((e) => e.Key === 'Type')?.Value as string,
-            repo: i.Tags?.find((e) => e.Key === 'Repo')?.Value as string,
-            org: i.Tags?.find((e) => e.Key === 'Org')?.Value as string,
+            owner: i.Tags?.find((e) => e.Key === 'ghr:Owner')?.Value as string,
+            type: i.Tags?.find((e) => e.Key === 'ghr:Type')?.Value as string,
+            repo: i.Tags?.find((e) => e.Key === 'ghr:Repo')?.Value as string,
+            org: i.Tags?.find((e) => e.Key === 'ghr:Org')?.Value as string,
           });
         }
       }
@@ -147,8 +147,8 @@ export async function createRunner(runnerParameters: Runners.RunnerInputParamete
   const tags = [
     { Key: 'ghr:Application', Value: 'github-action-runner' },
     { Key: 'ghr:created_by', Value: numberOfRunners === 1 ? 'scale-up-lambda' : 'pool-lambda' },
-    { Key: 'Type', Value: runnerParameters.runnerType },
-    { Key: 'Owner', Value: runnerParameters.runnerOwner },
+    { Key: 'ghr:Type', Value: runnerParameters.runnerType },
+    { Key: 'ghr:Owner', Value: runnerParameters.runnerOwner },
   ];
 
   let fleet: CreateFleetResult;

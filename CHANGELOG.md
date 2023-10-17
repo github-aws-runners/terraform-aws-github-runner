@@ -1,5 +1,61 @@
 # Changelog
 
+## [4.5.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v4.4.1...v4.5.0) (2023-10-04)
+
+
+### Features
+
+* namespace EC2 tags ([#3523](https://github.com/philips-labs/terraform-aws-github-runner/issues/3523)) ([35aa73a](https://github.com/philips-labs/terraform-aws-github-runner/commit/35aa73ac1e6df30d4a5c314457da5646a117131b))
+
+
+### Bug Fixes
+
+* **lambda:** Bump @aws-lambda-powertools/logger from 1.12.1 to 1.14.0 in /lambdas ([#3521](https://github.com/philips-labs/terraform-aws-github-runner/issues/3521)) ([3f42529](https://github.com/philips-labs/terraform-aws-github-runner/commit/3f425297c4458d3dc31f45d1a22302ba39c59000))
+* **lambda:** Bump the aws group in /lambdas with 5 updates ([#3525](https://github.com/philips-labs/terraform-aws-github-runner/issues/3525)) ([1b24342](https://github.com/philips-labs/terraform-aws-github-runner/commit/1b243426fdb76fc9fff2d244df357f15bbbb7b24))
+* **lambda:** Bump the octokit group in /lambdas with 1 update ([#3519](https://github.com/philips-labs/terraform-aws-github-runner/issues/3519)) ([cde80cd](https://github.com/philips-labs/terraform-aws-github-runner/commit/cde80cd9e6144e5b6c11f055e601521f277a4932))
+
+## [4.4.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v4.4.0...v4.4.1) (2023-09-28)
+
+
+### Bug Fixes
+
+* incorrect path to update app script ([#3510](https://github.com/philips-labs/terraform-aws-github-runner/issues/3510)) ([0865273](https://github.com/philips-labs/terraform-aws-github-runner/commit/0865273c9b426ce455380b297f5a9edbf3c767f4))
+
+## [4.4.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v4.3.0...v4.4.0) (2023-09-27)
+
+
+### Features
+
+* add module to update GitHub app webhook ([#3451](https://github.com/philips-labs/terraform-aws-github-runner/issues/3451)) ([525f400](https://github.com/philips-labs/terraform-aws-github-runner/commit/525f400f663652b05273c7376734e2853fa34fa5))
+
+
+### Bug Fixes
+
+* **lambda:** bump the aws group in /lambdas with 5 updates ([#3500](https://github.com/philips-labs/terraform-aws-github-runner/issues/3500)) ([8d4e0cd](https://github.com/philips-labs/terraform-aws-github-runner/commit/8d4e0cd95ab55fa6ffad5b8a8d2a113fad75c820))
+* **lambda:** bump the octokit group in /lambdas with 2 updates ([#3501](https://github.com/philips-labs/terraform-aws-github-runner/issues/3501)) ([f0c1285](https://github.com/philips-labs/terraform-aws-github-runner/commit/f0c1285d994f79dfa5731b851ae6c7b8614bd33a))
+
+## [4.3.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v4.2.3...v4.3.0) (2023-09-22)
+
+
+### Features
+
+* Add ebs_optimized option ([#3492](https://github.com/philips-labs/terraform-aws-github-runner/issues/3492)) ([bf73f1c](https://github.com/philips-labs/terraform-aws-github-runner/commit/bf73f1ce3756ce8a964d6782373a18128903f5e1))
+
+
+### Bug Fixes
+
+* **lambda:** Bump the aws group in /lambdas with 5 updates ([#3483](https://github.com/philips-labs/terraform-aws-github-runner/issues/3483)) ([1fad99d](https://github.com/philips-labs/terraform-aws-github-runner/commit/1fad99d6df3bf8bb78d57feac08311776c60aa4f))
+* missing partion in ARN to support China or govCloud ([#3494](https://github.com/philips-labs/terraform-aws-github-runner/issues/3494)) ([b0b3df6](https://github.com/philips-labs/terraform-aws-github-runner/commit/b0b3df6d828ae239bc3fab712e5744ec7b4d2403))
+
+## [4.2.3](https://github.com/philips-labs/terraform-aws-github-runner/compare/v4.2.2...v4.2.3) (2023-09-12)
+
+
+### Bug Fixes
+
+* **lambda:** Bump axios from 1.4.0 to 1.5.0 in /lambdas ([#3475](https://github.com/philips-labs/terraform-aws-github-runner/issues/3475)) ([f94645b](https://github.com/philips-labs/terraform-aws-github-runner/commit/f94645b771764af4ba0f0e3e55f481c3fd5833dd))
+* **lambda:** Bump cron-parser from 4.8.1 to 4.9.0 in /lambdas ([#3474](https://github.com/philips-labs/terraform-aws-github-runner/issues/3474)) ([08dfabf](https://github.com/philips-labs/terraform-aws-github-runner/commit/08dfabf940f2fdcab3831796c2be6c2afc967fce))
+* **lambda:** Bump the aws group in /lambdas with 5 updates ([#3472](https://github.com/philips-labs/terraform-aws-github-runner/issues/3472)) ([c8245e0](https://github.com/philips-labs/terraform-aws-github-runner/commit/c8245e0eea27320e32eb5e6514e13e6d93f47b7a))
+
 ## [4.2.2](https://github.com/philips-labs/terraform-aws-github-runner/compare/v4.2.1...v4.2.2) (2023-09-06)
 
 
