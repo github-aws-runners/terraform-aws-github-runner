@@ -349,6 +349,12 @@ variable "create_cache_bucket" {
   default     = false
 }
 
+variable "cache_expiration_days" {
+  description = "(optional) number of days to keep cache objects in the cache bucket"
+  type        = number
+  default     = 10
+}
+
 variable "aws_partition" {
   description = "(optional) partition for the base arn if not 'aws'"
   type        = string

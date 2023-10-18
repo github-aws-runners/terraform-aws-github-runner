@@ -37,7 +37,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "runner_cache_bucket_lifecycle_
     id = "expire-cache"
     filter {}
     expiration {
-      days = 10
+      days = var.config.expiration_days
     }
     status = "Enabled"
   }

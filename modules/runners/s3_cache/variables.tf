@@ -1,11 +1,12 @@
 variable "config" {
   type = object({
-    prefix = string
-    tags   = map(string)
+    aws_region      = string
+    expiration_days = number
+    prefix          = string
     runner_instance_role = object({
       arn = string
     })
-    vpc_id     = string
-    aws_region = string
+    tags   = map(string)
+    vpc_id = string
   })
 }
