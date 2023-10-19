@@ -6,7 +6,7 @@ import { createGithubAppAuth, createGithubInstallationAuth, createOctoClient } f
 import { bootTimeExceeded, listEC2Runners, terminateRunner } from './../aws/runners';
 import { RunnerInfo, RunnerList } from './../aws/runners.d';
 import { GhRunners, githubCache } from './cache';
-import { ScalingDownConfig, getIdleRunnerCount } from './scale-down-config';
+import { ScalingDownConfig, getEvictionStrategy, getIdleRunnerCount } from './scale-down-config';
 
 const logger = createChildLogger('scale-down');
 
@@ -148,10 +148,13 @@ async function evaluateAndRemoveRunners(
   scaleDownConfigs: ScalingDownConfig[],
 ): Promise<void> {
   let idleCounter = getIdleRunnerCount(scaleDownConfigs);
+  const evictionStrategy = getEvictionStrategy(scaleDownConfigs);
   const ownerTags = new Set(ec2Runners.map((runner) => runner.owner));
 
   for (const ownerTag of ownerTags) {
-    const ec2RunnersFiltered = ec2Runners.filter((runner) => runner.owner === ownerTag);
+    const ec2RunnersFiltered = ec2Runners
+      .filter((runner) => runner.owner === ownerTag)
+      .sort(evictionStrategy === 'oldest_first' ? oldestFirstStrategy : newestFirstStrategy);
     logger.debug(`Found: '${ec2RunnersFiltered.length}' active GitHub runners with owner tag: '${ownerTag}'`);
     for (const ec2Runner of ec2RunnersFiltered) {
       const ghRunners = await listGitHubRunners(ec2Runner);
@@ -191,17 +194,21 @@ async function terminateOrphan(instanceId: string): Promise<void> {
   }
 }
 
-async function listAndSortRunners(environment: string) {
-  return (
-    await listEC2Runners({
-      environment,
-    })
-  ).sort((a, b): number => {
-    if (a.launchTime === undefined) return 1;
-    if (b.launchTime === undefined) return 1;
-    if (a.launchTime < b.launchTime) return 1;
-    if (a.launchTime > b.launchTime) return -1;
-    return 0;
+function oldestFirstStrategy(a: RunnerInfo, b: RunnerInfo): number {
+  if (a.launchTime === undefined) return 1;
+  if (b.launchTime === undefined) return 1;
+  if (a.launchTime < b.launchTime) return 1;
+  if (a.launchTime > b.launchTime) return -1;
+  return 0;
+}
+
+function newestFirstStrategy(a: RunnerInfo, b: RunnerInfo): number {
+  return oldestFirstStrategy(a, b) * -1;
+}
+
+async function listRunners(environment: string) {
+  return await listEC2Runners({
+    environment,
   });
 }
 
@@ -214,8 +221,7 @@ export async function scaleDown(): Promise<void> {
   const scaleDownConfigs = JSON.parse(process.env.SCALE_DOWN_CONFIG) as [ScalingDownConfig];
   const environment = process.env.ENVIRONMENT;
 
-  // list and sort runners, newest first. This ensure we keep the newest runners longer.
-  const ec2Runners = await listAndSortRunners(environment);
+  const ec2Runners = await listRunners(environment);
   const activeEc2RunnersCount = ec2Runners.length;
   logger.info(`Found: '${activeEc2RunnersCount}' active GitHub EC2 runner instances before clean-up.`);
 
@@ -227,6 +233,6 @@ export async function scaleDown(): Promise<void> {
   const runners = filterRunners(ec2Runners);
   await evaluateAndRemoveRunners(runners, scaleDownConfigs);
 
-  const activeEc2RunnersCountAfter = (await listAndSortRunners(environment)).length;
+  const activeEc2RunnersCountAfter = (await listRunners(environment)).length;
   logger.info(`Found: '${activeEc2RunnersCountAfter}' active GitHub EC2 runners instances after clean-up.`);
 }

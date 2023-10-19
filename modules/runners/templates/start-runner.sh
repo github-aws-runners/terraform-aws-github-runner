@@ -3,7 +3,19 @@
 ## Retrieve instance metadata
 
 echo "Retrieving TOKEN from AWS API"
-token=$(curl --retry 20 -f -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 180")
+token=$(curl -f -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 180" || true)
+if [ -z "$token" ]; then
+  retrycount=0
+  until [ -n "$token" ]; do
+    echo "Failed to retrieve token. Retrying in 5 seconds."
+    sleep 5
+    token=$(curl -f -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 180" || true)
+    retrycount=$((retrycount + 1))
+    if [ $retrycount -gt 40 ]; then
+      break
+    fi
+  done
+fi
 
 ami_id=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/meta-data/ami-id)
 

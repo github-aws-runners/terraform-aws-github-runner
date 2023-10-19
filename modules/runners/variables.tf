@@ -73,6 +73,12 @@ variable "block_device_mappings" {
   }]
 }
 
+variable "ebs_optimized" {
+  description = "The EC2 EBS optimized configuration."
+  type        = bool
+  default     = false
+}
+
 variable "instance_target_capacity_type" {
   description = "Default lifecyle used runner instances, can be either `spot` or `on-demand`."
   type        = string
@@ -295,9 +301,10 @@ variable "runner_architecture" {
 variable "idle_config" {
   description = "List of time period that can be defined as cron expression to keep a minimum amount of runners active instead of scaling down to 0. By defining this list you can ensure that in time periods that match the cron expression within 5 seconds a runner is kept idle."
   type = list(object({
-    cron      = string
-    timeZone  = string
-    idleCount = number
+    cron             = string
+    timeZone         = string
+    idleCount        = number
+    evictionStrategy = optional(string, "oldest_first")
   }))
   default = []
 }
