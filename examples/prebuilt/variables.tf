@@ -14,5 +14,5 @@ variable "runner_os" {
 
 variable "ami_name_filter" {
   type    = string
-  default = "github-runner-amzn2-x86_64-*"
+  default = "github-runner-al2023-x86_64-*"
 }
