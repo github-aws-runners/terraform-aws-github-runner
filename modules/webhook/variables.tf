@@ -34,7 +34,7 @@ variable "tags" {
 }
 
 variable "runner_config" {
-  description = "SQS queue to publish accepted build events based on the runner type."
+  description = "SQS queue to publish accepted build events based on the runner type. When exact match is disabled the webhook accecpts the event if one of the workflow job labels is part of the matcher."
   type = map(object({
     arn  = string
     id   = string
