@@ -53,7 +53,7 @@ terraform output webhook_secret
 |------|--------|---------|
 | <a name="module_base"></a> [base](#module\_base) | ../base | n/a |
 | <a name="module_runners"></a> [runners](#module\_runners) | ../../ | n/a |
-| <a name="module_webhook-github-app"></a> [webhook-github-app](#module\_webhook-github-app) | ../../modules/webhook-github-app | n/a |
+| <a name="module_webhook_github_app"></a> [webhook\_github\_app](#module\_webhook\_github\_app) | ../../modules/webhook-github-app | n/a |
 
 ## Resources
 
