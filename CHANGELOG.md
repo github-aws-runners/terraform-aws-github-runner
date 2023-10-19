@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.6.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v4.5.1...v4.6.0) (2023-10-19)
+
+
+### Features
+
+* Use Instance Metadata Service Version 2 by default. ([#3513](https://github.com/philips-labs/terraform-aws-github-runner/issues/3513)) ([d8d69c3](https://github.com/philips-labs/terraform-aws-github-runner/commit/d8d69c34b0492f125a9d23689e356d04021fe434))
+
 ## [4.5.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v4.5.0...v4.5.1) (2023-10-18)
 
 
