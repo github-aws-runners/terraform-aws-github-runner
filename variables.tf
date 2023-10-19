@@ -70,9 +70,9 @@ variable "runner_boot_time_in_minutes" {
 }
 
 variable "runner_extra_labels" {
-  description = "Extra (custom) labels for the runners (GitHub). Separate each label by a comma. Labels checks on the webhook can be enforced by setting `enable_workflow_job_labels_check`. GitHub read-only labels should not be provided."
-  type        = string
-  default     = ""
+  description = "Extra (custom) labels for the runners (GitHub). Labels checks on the webhook can be enforced by setting `enable_workflow_job_labels_check`. GitHub read-only labels should not be provided."
+  type        = list(string)
+  default     = []
 }
 
 variable "runner_group_name" {
@@ -307,7 +307,7 @@ variable "ami_filter" {
   type        = map(list(string))
   default     = { state = ["available"] }
   validation {
-    // check the availability of the AMI
+    # check the availability of the AMI
     condition     = contains(keys(var.ami_filter), "state")
     error_message = "The \"ami_filter\" variable must contain the \"state\" key with the value \"available\"."
   }
@@ -362,6 +362,7 @@ variable "webhook_lambda_s3_object_version" {
 }
 
 variable "webhook_lambda_apigateway_access_log_settings" {
+  description = "Access log settings for webhook API gateway."
   type = object({
     destination_arn = string
     format          = string

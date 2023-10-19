@@ -37,7 +37,7 @@ module "runners" {
   # runners_lambda_zip                = "lambdas-download/runners.zip"
 
   enable_organization_runners = false
-  runner_extra_labels         = "default,example"
+  runner_extra_labels         = ["default", "example"]
 
   # enable access to the runners via SSM
   enable_ssm_on_runners = true
@@ -112,7 +112,7 @@ module "runners" {
   # enable_user_data_debug_logging_runner = true
 }
 
-module "webhook-github-app" {
+module "webhook_github_app" {
   source     = "../../modules/webhook-github-app"
   depends_on = [module.runners]
 

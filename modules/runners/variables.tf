@@ -135,7 +135,7 @@ variable "ami_filter" {
   type        = map(list(string))
   default     = { state = ["available"] }
   validation {
-    // check the availability of the AMI
+    # check the availability of the AMI
     condition     = contains(keys(var.ami_filter), "state")
     error_message = "The \"ami_filter\" variable must contain the \"state\" key with the value \"available\"."
   }
@@ -191,7 +191,8 @@ variable "sqs_build_queue" {
 }
 
 variable "enable_organization_runners" {
-  type = bool
+  description = "Register runners to organization, instead of repo level"
+  type        = bool
 }
 
 variable "github_app_parameters" {
@@ -222,7 +223,7 @@ variable "runner_boot_time_in_minutes" {
 
 variable "runner_labels" {
   description = "All the labels for the runners (GitHub) including the default one's(e.g: self-hosted, linux, x64, label1, label2). Separate each label by a comma"
-  type        = string
+  type        = list(string)
 }
 
 variable "runner_group_name" {

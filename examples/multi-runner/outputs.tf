@@ -1,5 +1,5 @@
 output "webhook_endpoint" {
-  value = module.multi-runner.webhook.endpoint
+  value = module.runners.webhook.endpoint
 }
 
 output "webhook_secret" {

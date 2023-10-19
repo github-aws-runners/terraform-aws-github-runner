@@ -1,4 +1,5 @@
 variable "config" {
+  description = "Lookup details in parent module."
   type = object({
     lambda = object({
       log_level                      = string
@@ -30,7 +31,7 @@ variable "config" {
       ephemeral                 = bool
       enable_jit_config         = bool
       boot_time_in_minutes      = number
-      labels                    = string
+      labels                    = list(string)
       launch_template = object({
         name = string
       })

@@ -8,8 +8,7 @@ locals {
     key_base64 = module.ssm.parameters.github_app_key_base64
   }
 
-  default_runner_labels = "self-hosted,${var.runner_os},${var.runner_architecture}"
-  runner_labels         = var.runner_extra_labels != "" ? "${local.default_runner_labels},${var.runner_extra_labels}" : local.default_runner_labels
+  runner_labels = sort(distinct(concat(["self-hosted", var.runner_os, var.runner_architecture], var.runner_extra_labels)))
 
   ssm_root_path = var.ssm_paths.use_prefix ? "/${var.ssm_paths.root}/${var.prefix}" : "/${var.ssm_paths.root}"
 }
@@ -135,7 +134,7 @@ module "webhook" {
       arn : aws_sqs_queue.queued_builds.arn
       fifo : var.enable_fifo_build_queue
       matcherConfig : {
-        labelMatchers : [split(",", local.runner_labels)]
+        labelMatchers : local.runner_labels
         exactMatch : var.enable_runner_workflow_job_labels_check_all
       }
     }
