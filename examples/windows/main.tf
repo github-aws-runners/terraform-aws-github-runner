@@ -54,7 +54,7 @@ module "runners" {
   scale_down_schedule_expression = "cron(* * * * ? *)"
 }
 
-module "webhook-github-app" {
+module "webhook_github_app" {
   source     = "../../modules/webhook-github-app"
   depends_on = [module.runners]
 

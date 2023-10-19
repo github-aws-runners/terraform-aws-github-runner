@@ -98,7 +98,7 @@ module "runners" {
   # log_level = "debug"
 }
 
-module "webhook-github-app" {
+module "webhook_github_app" {
   source     = "../../modules/webhook-github-app"
   depends_on = [module.runners]
 

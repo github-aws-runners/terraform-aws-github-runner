@@ -1,4 +1,5 @@
 variable "config" {
+  description = "Lookup details in parent module."
   type = object({
     lambda = object({
       log_level                      = string

@@ -112,7 +112,7 @@ module "runners" {
   # enable_user_data_debug_logging_runner = true
 }
 
-module "webhook-github-app" {
+module "webhook_github_app" {
   source     = "../../modules/webhook-github-app"
   depends_on = [module.runners]
 
