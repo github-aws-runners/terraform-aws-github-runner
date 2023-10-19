@@ -15,14 +15,15 @@ set -x
 
 ${pre_install}
 
-yum update -y
+dnf upgrade-minimal -y
 
 # Install docker
-amazon-linux-extras install docker
+dnf install -y docker
 service docker start
 usermod -a -G docker ec2-user
 
-yum install -y amazon-cloudwatch-agent curl jq git
+dnf install -y amazon-cloudwatch-agent jq git
+dnf install -y --allowerasing curl
 
 user_name=ec2-user
 

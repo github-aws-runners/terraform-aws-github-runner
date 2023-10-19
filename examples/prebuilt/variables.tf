@@ -18,5 +18,5 @@ variable "ami_name_filter" {
   description = "AMI name filter for the action runner AMI. By default amazon linux 2 is used."
 
   type    = string
-  default = "github-runner-amzn2-x86_64-*"
+  default = "github-runner-al2023-x86_64-*"
 }
