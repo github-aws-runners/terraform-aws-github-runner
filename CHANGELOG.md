@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.5.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v4.5.0...v4.5.1) (2023-10-18)
+
+
+### Bug Fixes
+
+* **lambda:** bump the aws group in /lambdas with 5 updates ([#3530](https://github.com/philips-labs/terraform-aws-github-runner/issues/3530)) ([0ada33b](https://github.com/philips-labs/terraform-aws-github-runner/commit/0ada33b99270da88716e7b4a381fae6d7a06fdd3))
+* **webhook:** Avoid jobs are accepted without labels ([#3548](https://github.com/philips-labs/terraform-aws-github-runner/issues/3548)) ([cb78738](https://github.com/philips-labs/terraform-aws-github-runner/commit/cb7873819b660be99b336c7ee486405b5cb3c2cb))
+
 ## [4.5.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v4.4.1...v4.5.0) (2023-10-04)
 
 
