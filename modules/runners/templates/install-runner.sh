@@ -10,6 +10,14 @@ if [ -z "$RUNNER_TARBALL_URL" ] && [ -z "$s3_location" ]; then
   exit 1
 fi
 
+ipv6=$(TOKEN=`curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600"` \
+&& curl -H "X-aws-ec2-metadata-token: $TOKEN" -v http://169.254.169.254/latest/meta-data/ipv6 2>/dev/null | head -n 1 | cut -d$' ' -f2)
+
+if [[ $ipv6 == '200' ]]; then
+  aws configure set default.s3.use_dualstack_endpoint true
+  aws configure set default.s3.addressing_style virtual
+fi
+
 file_name="actions-runner.tar.gz"
 
 echo "Setting up GH Actions runner tool cache"
