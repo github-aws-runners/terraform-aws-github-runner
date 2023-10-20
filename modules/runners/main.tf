@@ -182,6 +182,7 @@ resource "aws_launch_template" "runner" {
     iterator = associate_public_ip_address
     content {
       associate_public_ip_address = associate_public_ip_address.value
+      ipv6_address_count          = var.ipv6_address_count
       security_groups = compact(concat(
         var.enable_managed_runner_security_group ? [aws_security_group.runner_sg[0].id] : [],
         var.runner_additional_security_group_ids,

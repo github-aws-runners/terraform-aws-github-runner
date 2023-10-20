@@ -104,4 +104,5 @@ module "runners" {
   pool_runner_owner                          = each.value.runner_config.pool_runner_owner
   pool_lambda_reserved_concurrent_executions = var.pool_lambda_reserved_concurrent_executions
   associate_public_ip_address                = var.associate_public_ip_address
+  ipv6_address_count                         = var.ipv6_address_count
 }
