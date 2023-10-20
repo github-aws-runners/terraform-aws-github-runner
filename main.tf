@@ -155,6 +155,7 @@ module "webhook" {
   lambda_zip                                    = var.webhook_lambda_zip
   lambda_timeout                                = var.webhook_lambda_timeout
   lambda_tracing_mode                           = var.lambda_tracing_mode
+  lambda_tracing_config                         = var.lambda_tracing_config
   logging_retention_in_days                     = var.logging_retention_in_days
   logging_kms_key_id                            = var.logging_kms_key_id
 
@@ -239,6 +240,7 @@ module "runners" {
   lambda_subnet_ids                = var.lambda_subnet_ids
   lambda_security_group_ids        = var.lambda_security_group_ids
   lambda_tracing_mode              = var.lambda_tracing_mode
+  lambda_tracing_config            = var.lambda_tracing_config
   logging_retention_in_days        = var.logging_retention_in_days
   logging_kms_key_id               = var.logging_kms_key_id
   enable_cloudwatch_agent          = var.enable_cloudwatch_agent
@@ -302,6 +304,7 @@ module "runner_binaries" {
   lambda_zip                      = var.runner_binaries_syncer_lambda_zip
   lambda_timeout                  = var.runner_binaries_syncer_lambda_timeout
   lambda_tracing_mode             = var.lambda_tracing_mode
+  lambda_tracing_config           = var.lambda_tracing_config
   logging_retention_in_days       = var.logging_retention_in_days
   logging_kms_key_id              = var.logging_kms_key_id
 
