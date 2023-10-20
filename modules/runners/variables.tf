@@ -628,9 +628,3 @@ variable "associate_public_ip_address" {
   type        = bool
   default     = false
 }
-
-variable "ipv6_address_count" {
-  description = "The number of IPv6 addresses to assign to a network interface"
-  type        = number
-  default     = 0
-}
