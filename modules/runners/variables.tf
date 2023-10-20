@@ -600,6 +600,15 @@ variable "lambda_tracing_mode" {
   default     = null
 }
 
+variable "lambda_tracing_config" {
+  description = "Configuration for lambda tracing."
+  type = object({
+    capture_http_requests = optional(bool, false)
+    capture_error         = optional(bool, false)
+  })
+  default = null
+}
+
 variable "credit_specification" {
   description = "The credit option for CPU usage of a T instance. Can be unset, \"standard\" or \"unlimited\"."
   type        = string

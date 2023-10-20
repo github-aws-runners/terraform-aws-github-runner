@@ -8,6 +8,7 @@ import {
   TerminateInstancesCommand,
 } from '@aws-sdk/client-ec2';
 import { createChildLogger } from '@terraform-aws-github-runner/aws-powertools-util';
+import { getTracedAWSV3Client } from '@terraform-aws-github-runner/aws-powertools-util';
 import { getParameter } from '@terraform-aws-github-runner/aws-ssm-util';
 import moment from 'moment';
 
@@ -55,7 +56,7 @@ function constructFilters(filters?: Runners.ListRunnerFilters): Ec2Filter[][] {
 }
 
 async function getRunners(ec2Filters: Ec2Filter[]): Promise<Runners.RunnerList[]> {
-  const ec2 = new EC2Client({ region: process.env.AWS_REGION });
+  const ec2 = getTracedAWSV3Client<EC2Client>(new EC2Client({ region: process.env.AWS_REGION }));
   const runners: Runners.RunnerList[] = [];
   let nextToken;
   let hasNext = true;

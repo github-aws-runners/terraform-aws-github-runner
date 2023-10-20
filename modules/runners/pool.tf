@@ -55,7 +55,8 @@ module "pool" {
     arn_ssm_parameters_path_config       = local.arn_ssm_parameters_path_config
   }
 
-  aws_partition       = var.aws_partition
-  lambda_tracing_mode = var.lambda_tracing_mode
+  aws_partition         = var.aws_partition
+  lambda_tracing_mode   = var.lambda_tracing_mode
+  lambda_tracing_config = var.lambda_tracing_config
 
 }

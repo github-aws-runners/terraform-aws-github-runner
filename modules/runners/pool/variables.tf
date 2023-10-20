@@ -73,3 +73,14 @@ variable "lambda_tracing_mode" {
   type        = string
   default     = null
 }
+
+variable "lambda_tracing_config" {
+  description = "Configuration for lambda tracing."
+  type = object({
+    capture_http_requests = optional(bool, false)
+    capture_error         = optional(bool, false)
+  })
+  default = null
+}
+
+

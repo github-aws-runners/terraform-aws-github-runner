@@ -1,0 +1,16 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowXRay",
+      "Effect": "Allow",
+      "Action": [
+        "xray:BatchGetTraces",
+        "xray:GetTraceSummaries",
+        "xray:PutTelemetryRecords",
+        "xray:PutTraceSegments"
+      ],
+      "Resource": ["*"]
+    }
+  ]
+}

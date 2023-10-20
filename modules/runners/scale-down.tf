@@ -22,17 +22,20 @@ resource "aws_lambda_function" "scale_down" {
 
   environment {
     variables = {
-      ENVIRONMENT                          = var.prefix
-      GHES_URL                             = var.ghes_url
-      LOG_LEVEL                            = var.log_level
-      MINIMUM_RUNNING_TIME_IN_MINUTES      = coalesce(var.minimum_running_time_in_minutes, local.min_runtime_defaults[var.runner_os])
-      NODE_TLS_REJECT_UNAUTHORIZED         = var.ghes_url != null && !var.ghes_ssl_verify ? 0 : 1
-      PARAMETER_GITHUB_APP_ID_NAME         = var.github_app_parameters.id.name
-      PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.github_app_parameters.key_base64.name
-      POWERTOOLS_LOGGER_LOG_EVENT          = var.log_level == "debug" ? "true" : "false"
-      RUNNER_BOOT_TIME_IN_MINUTES          = var.runner_boot_time_in_minutes
-      SCALE_DOWN_CONFIG                    = jsonencode(var.idle_config)
-      SERVICE_NAME                         = "runners-scale-down"
+      ENVIRONMENT                              = var.prefix
+      GHES_URL                                 = var.ghes_url
+      LOG_LEVEL                                = var.log_level
+      MINIMUM_RUNNING_TIME_IN_MINUTES          = coalesce(var.minimum_running_time_in_minutes, local.min_runtime_defaults[var.runner_os])
+      NODE_TLS_REJECT_UNAUTHORIZED             = var.ghes_url != null && !var.ghes_ssl_verify ? 0 : 1
+      PARAMETER_GITHUB_APP_ID_NAME             = var.github_app_parameters.id.name
+      PARAMETER_GITHUB_APP_KEY_BASE64_NAME     = var.github_app_parameters.key_base64.name
+      POWERTOOLS_LOGGER_LOG_EVENT              = var.log_level == "debug" ? "true" : "false"
+      RUNNER_BOOT_TIME_IN_MINUTES              = var.runner_boot_time_in_minutes
+      SCALE_DOWN_CONFIG                        = jsonencode(var.idle_config)
+      SERVICE_NAME                             = "runners-scale-down"
+      POWERTOOLS_TRACE_ENABLED                 = var.lambda_tracing_mode == "Active" ? true : false
+      POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.lambda_tracing_config.capture_http_requests
+      POWERTOOLS_TRACER_CAPTURE_ERROR          = var.lambda_tracing_config.capture_error
     }
   }
 
@@ -65,10 +68,10 @@ resource "aws_cloudwatch_event_rule" "scale_down" {
   tags                = var.tags
 }
 
-resource "aws_cloudwatch_event_target" "scale_down" {
-  rule = aws_cloudwatch_event_rule.scale_down.name
-  arn  = aws_lambda_function.scale_down.arn
-}
+# resource "aws_cloudwatch_event_target" "scale_down" {
+#   rule = aws_cloudwatch_event_rule.scale_down.name
+#   arn  = aws_lambda_function.scale_down.arn
+# }
 
 resource "aws_lambda_permission" "scale_down" {
   statement_id  = "AllowExecutionFromCloudWatch"

@@ -1,4 +1,6 @@
+import middy from '@middy/core';
 import { logger, setContext } from '@terraform-aws-github-runner/aws-powertools-util';
+import { captureLambdaHandler, tracer } from '@terraform-aws-github-runner/aws-powertools-util';
 import { Context, SQSEvent } from 'aws-lambda';
 import 'source-map-support/register';
 
@@ -7,6 +9,9 @@ import ScaleError from './scale-runners/ScaleError';
 import { scaleDown } from './scale-runners/scale-down';
 import { scaleUp } from './scale-runners/scale-up';
 
+export const handlerScaleUp = middy(scaleUpHandler).use(captureLambdaHandler(tracer));
+export const handlerScaleDown = middy(scaleDownHandler).use(captureLambdaHandler(tracer));
+export const handlerPool = middy(adjustPool).use(captureLambdaHandler(tracer));
 export async function scaleUpHandler(event: SQSEvent, context: Context): Promise<void> {
   setContext(context, 'lambda.ts');
   logger.logEventIfEnabled(event);

@@ -37,6 +37,7 @@
   },
   "dependencies": {
     "@aws-lambda-powertools/logger": "^1.8.0",
+    "@aws-lambda-powertools/tracer": "^1.14.0",
     "aws-lambda": "^1.0.7"
   }
 }

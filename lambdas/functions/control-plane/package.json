@@ -40,6 +40,7 @@
   "dependencies": {
     "@aws-sdk/client-ec2": "^3.350.0",
     "@aws-sdk/types": "^3.347.0",
+    "@middy/core": "^3.6.2",
     "@octokit/auth-app": "6.0.0",
     "@octokit/rest": "20.0.1",
     "@octokit/types": "^11.1.0",

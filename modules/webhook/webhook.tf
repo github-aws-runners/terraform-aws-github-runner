@@ -13,13 +13,16 @@ resource "aws_lambda_function" "webhook" {
 
   environment {
     variables = {
-      ENVIRONMENT                         = var.prefix
-      LOG_LEVEL                           = var.log_level
-      POWERTOOLS_LOGGER_LOG_EVENT         = var.log_level == "debug" ? "true" : "false"
-      PARAMETER_GITHUB_APP_WEBHOOK_SECRET = var.github_app_parameters.webhook_secret.name
-      REPOSITORY_WHITE_LIST               = jsonencode(var.repository_white_list)
-      RUNNER_CONFIG                       = jsonencode([for k, v in var.runner_config : v])
-      SQS_WORKFLOW_JOB_QUEUE              = try(var.sqs_workflow_job_queue, null) != null ? var.sqs_workflow_job_queue.id : ""
+      ENVIRONMENT                              = var.prefix
+      LOG_LEVEL                                = var.log_level
+      POWERTOOLS_LOGGER_LOG_EVENT              = var.log_level == "debug" ? "true" : "false"
+      POWERTOOLS_TRACE_ENABLED                 = var.lambda_tracing_mode == "Active" ? true : false
+      POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.lambda_tracing_config.capture_http_requests
+      POWERTOOLS_TRACER_CAPTURE_ERROR          = var.lambda_tracing_config.capture_error
+      PARAMETER_GITHUB_APP_WEBHOOK_SECRET      = var.github_app_parameters.webhook_secret.name
+      REPOSITORY_WHITE_LIST                    = jsonencode(var.repository_white_list)
+      RUNNER_CONFIG                            = jsonencode([for k, v in var.runner_config : v])
+      SQS_WORKFLOW_JOB_QUEUE                   = try(var.sqs_workflow_job_queue, null) != null ? var.sqs_workflow_job_queue.id : ""
     }
   }
 
