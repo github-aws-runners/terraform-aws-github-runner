@@ -32,6 +32,12 @@ variable "distribution_bucket_name" {
   }
 }
 
+variable "use_existing_bucket" {
+  description = "Use an existing bucket for storing the action runner distribution."
+  type        = bool
+  default     = false
+}
+
 variable "s3_logging_bucket" {
   description = "Bucket for action runner distribution bucket access logging."
   type        = string

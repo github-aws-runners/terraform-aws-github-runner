@@ -286,7 +286,8 @@ module "runner_binaries" {
   prefix = var.prefix
   tags   = local.tags
 
-  distribution_bucket_name = lower("${var.prefix}-dist-${random_string.random.result}")
+  use_existing_bucket = var.runner_distribution_bucket_name != null ? true : false
+  distribution_bucket_name = try(var.runner_distribution_bucket_name, lower("${var.prefix}-dist-${random_string.random.result}"))
   s3_logging_bucket        = var.runner_binaries_s3_logging_bucket
   s3_logging_bucket_prefix = var.runner_binaries_s3_logging_bucket_prefix
 

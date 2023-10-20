@@ -3,12 +3,14 @@ locals {
 }
 
 resource "aws_s3_bucket" "action_dist" {
+  count         = var.use_existing_bucket ? 0 : 1
   bucket        = var.distribution_bucket_name
   force_destroy = true
   tags          = var.tags
 }
 
 resource "aws_s3_bucket_ownership_controls" "this" {
+  count  = var.use_existing_bucket ? 0 : 1
   bucket = aws_s3_bucket.action_dist.id
   rule {
     object_ownership = "BucketOwnerEnforced"
@@ -16,6 +18,7 @@ resource "aws_s3_bucket_ownership_controls" "this" {
 }
 
 resource "aws_s3_bucket_lifecycle_configuration" "bucket-config" {
+  count  = var.use_existing_bucket ? 0 : 1
   bucket = aws_s3_bucket.action_dist.id
 
   rule {
@@ -35,7 +38,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "bucket-config" {
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "action_dist" {
   bucket = aws_s3_bucket.action_dist.id
-  count  = try(var.server_side_encryption_configuration, null) != null ? 1 : 0
+  count  = try(var.server_side_encryption_configuration, null) != null && var.use_existing_bucket == false ? 1 : 0
 
   dynamic "rule" {
     for_each = [lookup(var.server_side_encryption_configuration, "rule", {})]
@@ -57,6 +60,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "action_dist" {
 }
 
 resource "aws_s3_bucket_public_access_block" "action_dist" {
+  count                   = var.use_existing_bucket ? 0 : 1
   bucket                  = aws_s3_bucket.action_dist.id
   block_public_acls       = true
   block_public_policy     = true
@@ -65,7 +69,7 @@ resource "aws_s3_bucket_public_access_block" "action_dist" {
 }
 
 resource "aws_s3_bucket_logging" "action_dist_logging" {
-  count = var.s3_logging_bucket != null ? 1 : 0
+  count = var.s3_logging_bucket != null && var.use_existing_bucket == false ? 1 : 0
 
   bucket        = aws_s3_bucket.action_dist.id
   target_bucket = var.s3_logging_bucket
@@ -73,6 +77,7 @@ resource "aws_s3_bucket_logging" "action_dist_logging" {
 }
 
 resource "aws_s3_bucket_versioning" "action_dist" {
+  count  = var.use_existing_bucket ? 0 : 1
   bucket = aws_s3_bucket.action_dist.id
   versioning_configuration {
     status = var.s3_versioning
@@ -125,6 +130,7 @@ data "aws_iam_policy_document" "action_dist_bucket_policy" {
 }
 
 resource "aws_s3_bucket_policy" "action_dist_bucket_policy" {
+  count  = var.use_existing_bucket ? 0 : 1
   bucket = aws_s3_bucket.action_dist.id
   policy = data.aws_iam_policy_document.action_dist_bucket_policy.json
 }

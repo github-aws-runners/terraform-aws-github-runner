@@ -800,3 +800,9 @@ variable "enable_jit_config" {
   type        = bool
   default     = null
 }
+
+variable "runner_distribution_bucket_name" {
+  description = "Name of an existing S3 bucket to store the runner binaries. If left empty, a new bucket will be created."
+  type        = string
+  default     = null
+}
