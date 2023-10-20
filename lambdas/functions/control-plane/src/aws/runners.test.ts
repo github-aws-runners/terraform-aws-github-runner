@@ -41,8 +41,8 @@ const mockRunningInstances: DescribeInstancesResult = {
             { Key: 'ghr:Application', Value: 'github-action-runner' },
             { Key: 'ghr:runner_name_prefix', Value: RUNNER_NAME_PREFIX },
             { Key: 'ghr:created_by', Value: 'scale-up-lambda' },
-            { Key: 'Type', Value: 'Org' },
-            { Key: 'Owner', Value: 'CoderToCat' },
+            { Key: 'ghr:Type', Value: 'Org' },
+            { Key: 'ghr:Owner', Value: 'CoderToCat' },
           ],
         },
       ],
@@ -80,8 +80,8 @@ describe('list instances', () => {
     expect(mockEC2Client).toHaveReceivedCommandWith(DescribeInstancesCommand, {
       Filters: [
         { Name: 'instance-state-name', Values: ['running', 'pending'] },
-        { Name: 'tag:Type', Values: ['Repo'] },
-        { Name: 'tag:Owner', Values: [REPO_NAME] },
+        { Name: 'tag:ghr:Type', Values: ['Repo'] },
+        { Name: 'tag:ghr:Owner', Values: [REPO_NAME] },
         { Name: 'tag:ghr:Application', Values: ['github-action-runner'] },
       ],
     });
@@ -93,8 +93,8 @@ describe('list instances', () => {
     expect(mockEC2Client).toHaveReceivedCommandWith(DescribeInstancesCommand, {
       Filters: [
         { Name: 'instance-state-name', Values: ['running', 'pending'] },
-        { Name: 'tag:Type', Values: ['Org'] },
-        { Name: 'tag:Owner', Values: [ORG_NAME] },
+        { Name: 'tag:ghr:Type', Values: ['Org'] },
+        { Name: 'tag:ghr:Owner', Values: [ORG_NAME] },
         { Name: 'tag:ghr:Application', Values: ['github-action-runner'] },
       ],
     });
@@ -382,8 +382,8 @@ function expectedCreateFleetRequest(expectedValues: ExpectedFleetRequestValues):
   const tags = [
     { Key: 'ghr:Application', Value: 'github-action-runner' },
     { Key: 'ghr:created_by', Value: expectedValues.totalTargetCapacity > 1 ? 'pool-lambda' : 'scale-up-lambda' },
-    { Key: 'Type', Value: expectedValues.type },
-    { Key: 'Owner', Value: REPO_NAME },
+    { Key: 'ghr:Type', Value: expectedValues.type },
+    { Key: 'ghr:Owner', Value: REPO_NAME },
   ];
   const request: CreateFleetCommandInput = {
     LaunchTemplateConfigs: [

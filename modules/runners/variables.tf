@@ -73,6 +73,12 @@ variable "block_device_mappings" {
   }]
 }
 
+variable "ebs_optimized" {
+  description = "The EC2 EBS optimized configuration."
+  type        = bool
+  default     = false
+}
+
 variable "instance_target_capacity_type" {
   description = "Default lifecyle used runner instances, can be either `spot` or `on-demand`."
   type        = string
@@ -498,7 +504,7 @@ variable "metadata_options" {
   default = {
     instance_metadata_tags      = "enabled"
     http_endpoint               = "enabled"
-    http_tokens                 = "optional"
+    http_tokens                 = "required"
     http_put_response_hop_limit = 1
   }
 }

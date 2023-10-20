@@ -25,6 +25,12 @@ terraform apply
 
 _**Note**_: It can take upwards of ten minutes for a runner to start processing jobs, and about as long for logs to start showing up. It's recommend that scale the runners via a warm-up job and then keep them idled.
 
+The module will try to update the GitHub App webhook and secret (only linux/mac). You can receive the webhook details by running:
+
+```bash
+terraform output webhook_secret
+```
+
 <!-- BEGIN_TF_DOCS -->
 ## Requirements
 
@@ -47,6 +53,7 @@ _**Note**_: It can take upwards of ten minutes for a runner to start processing 
 |------|--------|---------|
 | <a name="module_base"></a> [base](#module\_base) | ../base | n/a |
 | <a name="module_runners"></a> [runners](#module\_runners) | ../../ | n/a |
+| <a name="module_webhook-github-app"></a> [webhook-github-app](#module\_webhook-github-app) | ../../modules/webhook-github-app | n/a |
 
 ## Resources
 
