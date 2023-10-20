@@ -623,8 +623,8 @@ variable "enable_jit_config" {
   default     = null
 }
 
-variable "associate_public_ip_address" {
-  description = "Associate public IP with the runner"
+variable "associate_public_ipv4_address" {
+  description = "Associate public IPv4 with the runner. Only tested with IPv4"
   type        = bool
   default     = false
 }

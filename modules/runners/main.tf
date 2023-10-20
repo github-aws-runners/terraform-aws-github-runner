@@ -119,7 +119,7 @@ resource "aws_launch_template" "runner" {
   key_name                             = var.key_name
   ebs_optimized                        = var.ebs_optimized
 
-  vpc_security_group_ids = !var.associate_public_ip_address ? compact(concat(
+  vpc_security_group_ids = !var.associate_public_ipv4_address ? compact(concat(
     var.enable_managed_runner_security_group ? [aws_security_group.runner_sg[0].id] : [],
     var.runner_additional_security_group_ids,
   )) : []
@@ -178,10 +178,10 @@ resource "aws_launch_template" "runner" {
   update_default_version = true
 
   dynamic "network_interfaces" {
-    for_each = var.associate_public_ip_address ? [var.associate_public_ip_address] : []
-    iterator = associate_public_ip_address
+    for_each = var.associate_public_ipv4_address ? [var.associate_public_ipv4_address] : []
+    iterator = associate_public_ipv4_address
     content {
-      associate_public_ip_address = associate_public_ip_address.value
+      associate_public_ip_address = associate_public_ipv4_address.value
       security_groups = compact(concat(
         var.enable_managed_runner_security_group ? [aws_security_group.runner_sg[0].id] : [],
         var.runner_additional_security_group_ids,
