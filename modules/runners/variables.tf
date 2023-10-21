@@ -612,7 +612,6 @@ variable "lambda_tracing_config" {
     capture_http_requests = optional(bool, false)
     capture_error         = optional(bool, false)
   })
-  default = null
 }
 
 variable "credit_specification" {

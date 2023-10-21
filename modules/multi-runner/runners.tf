@@ -67,6 +67,7 @@ module "runners" {
   lambda_subnet_ids                = var.lambda_subnet_ids
   lambda_security_group_ids        = var.lambda_security_group_ids
   lambda_tracing_mode              = var.lambda_tracing_mode
+  lambda_tracing_config            = var.lambda_tracing_config
   logging_retention_in_days        = var.logging_retention_in_days
   logging_kms_key_id               = var.logging_kms_key_id
   enable_cloudwatch_agent          = each.value.runner_config.enable_cloudwatch_agent
