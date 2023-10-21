@@ -20,6 +20,7 @@ module "webhook" {
   lambda_zip                                    = var.webhook_lambda_zip
   lambda_timeout                                = var.webhook_lambda_timeout
   lambda_tracing_mode                           = var.lambda_tracing_mode
+  lambda_tracing_config                         = var.lambda_tracing_config
   logging_retention_in_days                     = var.logging_retention_in_days
   logging_kms_key_id                            = var.logging_kms_key_id
 
