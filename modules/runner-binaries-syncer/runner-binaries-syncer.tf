@@ -5,6 +5,13 @@ locals {
     windows = "win",
     linux   = "linux"
   }
+  s3_bucket_name = var.use_existing_bucket ? var.distribution_bucket_name : aws_s3_bucket.action_dist.id
+  s3_bucket_arn = var.use_existing_bucket ? data.aws_s3_bucket.action_dist.arn : aws_s3_bucket.action_dist.arn
+}
+
+data aws_s3_bucket action_dist {
+  count         = var.use_existing_bucket ? 1 : 0
+  bucket        = var.distribution_bucket_name
 }
 
 resource "aws_lambda_function" "syncer" {
@@ -28,7 +35,7 @@ resource "aws_lambda_function" "syncer" {
       GITHUB_RUNNER_OS            = local.gh_binary_os_label[var.runner_os]
       LOG_LEVEL                   = var.log_level
       POWERTOOLS_LOGGER_LOG_EVENT = var.log_level == "debug" ? "true" : "false"
-      S3_BUCKET_NAME              = aws_s3_bucket.action_dist.id
+      S3_BUCKET_NAME              = local.s3_bucket_name
       S3_OBJECT_KEY               = local.action_runner_distribution_object_key
       S3_SSE_ALGORITHM            = try(var.server_side_encryption_configuration.rule.apply_server_side_encryption_by_default.sse_algorithm, null)
       S3_SSE_KMS_KEY_ID           = try(var.server_side_encryption_configuration.rule.apply_server_side_encryption_by_default.kms_master_key_id, null)
@@ -113,7 +120,8 @@ resource "aws_iam_role_policy" "syncer" {
   role = aws_iam_role.syncer_lambda.id
 
   policy = templatefile("${path.module}/policies/lambda-syncer.json", {
-    s3_resource_arn = "${aws_s3_bucket.action_dist.arn}/${local.action_runner_distribution_object_key}"
+    s3_resource_arn = local.s3_bucket_arn
+
   })
 }
 
@@ -148,7 +156,7 @@ resource "aws_lambda_permission" "syncer" {
 ###################################################################################
 
 resource "aws_s3_object" "trigger" {
-  bucket                 = aws_s3_bucket.action_dist.id
+  bucket                 = local.s3_bucket_name
   key                    = "triggers/${aws_lambda_function.syncer.id}-trigger.json"
   source                 = "${path.module}/trigger.json"
   etag                   = try(var.server_side_encryption_configuration.rule.apply_server_side_encryption_by_default.kms_master_key_id, null) == null ? filemd5("${path.module}/trigger.json") : null
@@ -158,7 +166,7 @@ resource "aws_s3_object" "trigger" {
 }
 
 resource "aws_s3_bucket_notification" "on_deploy" {
-  bucket = aws_s3_bucket.action_dist.id
+  bucket = local.s3_bucket_name
 
   lambda_function {
     lambda_function_arn = aws_lambda_function.syncer.arn
@@ -178,7 +186,7 @@ resource "aws_lambda_permission" "on_deploy" {
   function_name  = aws_lambda_function.syncer.arn
   principal      = "s3.amazonaws.com"
   source_account = data.aws_caller_identity.current.account_id
-  source_arn     = aws_s3_bucket.action_dist.arn
+  source_arn     = local.s3_bucket_arn
 }
 
 resource "aws_iam_role_policy" "syncer_lambda_xray" {
