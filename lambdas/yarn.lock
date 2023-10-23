@@ -3032,10 +3032,10 @@
     "@typescript-eslint/types" "6.8.0"
     eslint-visitor-keys "^3.4.1"
 
-"@vercel/ncc@0.38.0", "@vercel/ncc@^0.38.0":
-  version "0.38.0"
-  resolved "https://registry.yarnpkg.com/@vercel/ncc/-/ncc-0.38.0.tgz#5210def0dcf0c79640bfaf16eecce54beed58fa6"
-  integrity sha512-B4YKZMm/EqMptKSFyAq4q2SlgJe+VCmEH6Y8gf/E1pTlWbsUJpuH1ymik2Ex3aYO5mCWwV1kaSYHSQOT8+4vHA==
+"@vercel/ncc@0.38.1", "@vercel/ncc@^0.38.0":
+  version "0.38.1"
+  resolved "https://registry.yarnpkg.com/@vercel/ncc/-/ncc-0.38.1.tgz#13f08738111e1d9e8a22fd6141f3590e54d9a60e"
+  integrity sha512-IBBb+iI2NLu4VQn3Vwldyi2QwaXt5+hTyh58ggAMoCGE6DJmPvwL3KPBWcJl1m9LYPChBLE980Jw+CS4Wokqxw==
 
 "@yarnpkg/lockfile@^1.1.0":
   version "1.1.0"
