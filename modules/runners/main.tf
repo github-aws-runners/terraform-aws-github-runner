@@ -185,6 +185,8 @@ resource "aws_security_group" "runner_sg" {
 
   vpc_id = var.vpc_id
 
+  ingress = []
+
   dynamic "egress" {
     for_each = var.egress_rules
     iterator = each
