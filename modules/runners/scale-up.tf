@@ -35,6 +35,7 @@ resource "aws_lambda_function" "scale_up" {
       PARAMETER_GITHUB_APP_KEY_BASE64_NAME     = var.github_app_parameters.key_base64.name
       POWERTOOLS_LOGGER_LOG_EVENT              = var.log_level == "debug" ? "true" : "false"
       POWERTOOLS_TRACE_ENABLED                 = var.lambda_tracing_mode == "Active" ? true : false
+      RUNNER_TRACING_ENABLED                   = var.runner_tracing_mode == "Active" ? true : false
       POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.lambda_tracing_config.capture_http_requests
       POWERTOOLS_TRACER_CAPTURE_ERROR          = var.lambda_tracing_config.capture_error
       RUNNER_LABELS                            = lower(var.runner_labels)

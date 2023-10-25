@@ -8,7 +8,7 @@ import {
   TerminateInstancesCommand,
 } from '@aws-sdk/client-ec2';
 import { createChildLogger } from '@terraform-aws-github-runner/aws-powertools-util';
-import { getTracedAWSV3Client } from '@terraform-aws-github-runner/aws-powertools-util';
+import { getTracedAWSV3Client, tracer } from '@terraform-aws-github-runner/aws-powertools-util';
 import { getParameter } from '@terraform-aws-github-runner/aws-ssm-util';
 import moment from 'moment';
 
@@ -56,7 +56,7 @@ function constructFilters(filters?: Runners.ListRunnerFilters): Ec2Filter[][] {
 }
 
 async function getRunners(ec2Filters: Ec2Filter[]): Promise<Runners.RunnerList[]> {
-  const ec2 = getTracedAWSV3Client<EC2Client>(new EC2Client({ region: process.env.AWS_REGION }));
+  const ec2 = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
   const runners: Runners.RunnerList[] = [];
   let nextToken;
   let hasNext = true;
@@ -93,7 +93,7 @@ function getRunnerInfo(runningInstances: DescribeInstancesResult) {
 }
 
 export async function terminateRunner(instanceId: string): Promise<void> {
-  const ec2 = new EC2Client({ region: process.env.AWS_REGION });
+  const ec2 = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
   await ec2.send(new TerminateInstancesCommand({ InstanceIds: [instanceId] }));
   logger.info(`Runner ${instanceId} has been terminated.`);
 }
@@ -126,7 +126,7 @@ export async function createRunner(runnerParameters: Runners.RunnerInputParamete
     },
   });
 
-  const ec2Client = new EC2Client({ region: process.env.AWS_REGION });
+  const ec2Client = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
 
   let amiIdOverride = undefined;
 
@@ -145,12 +145,18 @@ export async function createRunner(runnerParameters: Runners.RunnerInputParamete
   }
 
   const numberOfRunners = runnerParameters.numberOfRunners ? runnerParameters.numberOfRunners : 1;
+
   const tags = [
     { Key: 'ghr:Application', Value: 'github-action-runner' },
     { Key: 'ghr:created_by', Value: numberOfRunners === 1 ? 'scale-up-lambda' : 'pool-lambda' },
     { Key: 'ghr:Type', Value: runnerParameters.runnerType },
     { Key: 'ghr:Owner', Value: runnerParameters.runnerOwner },
   ];
+
+  if (runnerParameters.runnerTracingEnabled) {
+    const traceId = tracer.getRootXrayTraceId();
+    tags.push({ Key: 'ghr:trace_id', Value: traceId! });
+  }
 
   let fleet: CreateFleetResult;
   try {

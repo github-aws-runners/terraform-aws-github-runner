@@ -5,6 +5,6 @@ const tracer = new Tracer({
 });
 
 function getTracedAWSV3Client<T>(client: T): T {
-  return tracer.captureAWSClient(client);
+  return tracer.captureAWSv3Client(client);
 }
 export { tracer, captureLambdaHandler, getTracedAWSV3Client };

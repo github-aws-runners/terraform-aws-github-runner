@@ -58,5 +58,5 @@ module "pool" {
   aws_partition         = var.aws_partition
   lambda_tracing_mode   = var.lambda_tracing_mode
   lambda_tracing_config = var.lambda_tracing_config
-
+  runner_tracing_mode   = var.runner_tracing_mode
 }

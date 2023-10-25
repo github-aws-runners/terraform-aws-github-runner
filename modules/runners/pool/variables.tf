@@ -74,13 +74,22 @@ variable "lambda_tracing_mode" {
   default     = null
 }
 
+variable "runner_tracing_mode" {
+  description = "Enable X-Ray tracing for the runner startup script."
+  type        = string
+  default     = null
+}
+
 variable "lambda_tracing_config" {
   description = "Configuration for lambda tracing."
   type = object({
     capture_http_requests = optional(bool, false)
     capture_error         = optional(bool, false)
   })
-  default = null
+  default = {
+    capture_http_requests = false
+    capture_error         = false
+  }
 }
 
 

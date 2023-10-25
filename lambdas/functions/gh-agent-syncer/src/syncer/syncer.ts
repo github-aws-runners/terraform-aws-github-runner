@@ -85,7 +85,7 @@ async function uploadToS3(
 }
 
 export async function sync(): Promise<void> {
-  const s3 = getTracedAWSV3Client<S3Client>(new S3Client({}));
+  const s3 = getTracedAWSV3Client(new S3Client({}));
 
   const runnerOs = process.env.GITHUB_RUNNER_OS || 'linux';
   const runnerArch = process.env.GITHUB_RUNNER_ARCHITECTURE || 'x64';

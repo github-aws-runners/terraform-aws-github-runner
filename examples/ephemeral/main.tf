@@ -69,11 +69,22 @@ module "runners" {
   #
   enable_job_queued_check = true
 
+  # lambda_tracing_mode = "Active"
+  # runner_tracing_mode = "Active"
+  # lambda_tracing_config = {
+  #   capture_error         = true
+  #   capture_http_requests = true
+  # }
+
+
   # configure your pre-built AMI
   # enable_userdata = false
-  # ami_filter       = { name = ["github-runner-amzn2-x86_64-*"], state = ["available"] }
-  # data "aws_caller_identity" "current" {}
-  # ami_owners       = [data.aws_caller_identity.current.account_id]
+  # ami_filter      = { name = ["github-runner-amzn2-x86_64-*"], state = ["available"] }
+  # ami_owners      = [data.aws_caller_identity.current.account_id]
+
+  # or use the default AMI
+  # userdata_pre_install = file("./templates/preinstall.sh")
+  # enable_userdata = true
 
   # Enable debug logging for the lambda functions
   # log_level = "debug"

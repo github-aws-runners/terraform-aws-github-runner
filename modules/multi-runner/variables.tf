@@ -563,5 +563,14 @@ variable "lambda_tracing_config" {
     capture_http_requests = optional(bool, false)
     capture_error         = optional(bool, false)
   })
-  default = null
+  default = {
+    capture_http_requests = false
+    capture_error         = false
+  }
+}
+
+variable "runner_tracing_mode" {
+  description = "Enable X-Ray tracing for the runner startup script."
+  type        = string
+  default     = null
 }

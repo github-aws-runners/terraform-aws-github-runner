@@ -45,6 +45,7 @@ resource "aws_lambda_function" "pool" {
       POWERTOOLS_TRACE_ENABLED                 = var.lambda_tracing_mode == "Active" ? true : false
       POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.lambda_tracing_config.capture_http_requests
       POWERTOOLS_TRACER_CAPTURE_ERROR          = var.lambda_tracing_config.capture_error
+      RUNNER_TRACING_ENABLED                   = var.runner_tracing_mode == "Active" ? true : false
     }
   }
 

@@ -50,6 +50,7 @@ interface CreateEC2RunnerConfig {
   ec2instanceCriteria: RunnerInputParameters['ec2instanceCriteria'];
   numberOfRunners?: number;
   amiIdSsmParameterName?: string;
+  runnerTracingEnabled?: boolean;
 }
 
 function generateRunnerServiceConfig(githubRunnerConfig: CreateGitHubRunnerConfig, token: string) {
@@ -235,6 +236,7 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
   const amiIdSsmParameterName = process.env.AMI_ID_SSM_PARAMETER_NAME;
   const runnerNamePrefix = process.env.RUNNER_NAME_PREFIX || '';
   const ssmConfigPath = process.env.SSM_CONFIG_PATH || '';
+  const runnerTracingEnabled = yn(process.env.RUNNER_TRACING_ENABLED, { default: false });
 
   if (ephemeralEnabled && payload.eventType !== 'workflow_job') {
     logger.warn(`${payload.eventType} event is not supported in combination with ephemeral runners.`);
@@ -304,6 +306,7 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
           launchTemplateName,
           subnets,
           amiIdSsmParameterName,
+          runnerTracingEnabled,
         },
         githubInstallationClient,
       );
