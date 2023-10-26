@@ -1,4 +1,4 @@
-import { GetObjectTaggingCommand, S3Client, Tag } from '@aws-sdk/client-s3';
+import { GetObjectTaggingCommand, S3Client, ServerSideEncryption, Tag } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
 import { Octokit } from '@octokit/rest';
 import { createChildLogger } from '@terraform-aws-github-runner/aws-powertools-util';
@@ -71,7 +71,7 @@ async function uploadToS3(
       Key: cacheObject.key,
       Tagging: versionKey + '=' + actionRunnerReleaseAsset.name,
       Body: passThrough,
-      ServerSideEncryption: process.env.S3_SSE_ALGORITHM,
+      ServerSideEncryption: process.env.S3_SSE_ALGORITHM as ServerSideEncryption,
     },
   });
 
