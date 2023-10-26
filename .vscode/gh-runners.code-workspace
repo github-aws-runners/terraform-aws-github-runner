@@ -5,6 +5,10 @@
       "path": ".."
     },
     {
+      "name": "🚀 @lambda/functions/ami-housekeeper",
+      "path": "../lambdas/functions/ami-housekeeper"
+    },
+    {
       "name": "🚀 @lambda/functions/control-plane",
       "path": "../lambdas/functions/control-plane"
     },

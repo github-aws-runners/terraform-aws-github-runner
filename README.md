@@ -337,7 +337,7 @@ The example for [ephemeral runners](./examples/ephemeral) is based on the [defau
 
 ### Prebuilt Images
 
-This module also allows you to run agents from a prebuilt AMI to gain faster startup times. You can find more information in [the image README.md](/images/README.md)
+This module also allows you to run agents from a prebuilt AMI to gain faster startup times. The module provides several examples to build your own custom AMI. To remove old images, an [AMI housekeeper module](./modules/ami-housekeeper/README.md) can be used. You can find more information in [the image README.md](/images/README.md) for building custom images.
 
 ### Experimental - Optional queue to publish GitHub workflow job events
 
@@ -468,6 +468,7 @@ We welcome any improvement to the standard module to make the default as secure 
 
 | Name | Source | Version |
 |------|--------|---------|
+| <a name="module_ami_housekeeper"></a> [ami\_housekeeper](#module\_ami\_housekeeper) | ./modules/ami-housekeeper | n/a |
 | <a name="module_runner_binaries"></a> [runner\_binaries](#module\_runner\_binaries) | ./modules/runner-binaries-syncer | n/a |
 | <a name="module_runners"></a> [runners](#module\_runners) | ./modules/runners | n/a |
 | <a name="module_ssm"></a> [ssm](#module\_ssm) | ./modules/ssm | n/a |
@@ -491,6 +492,12 @@ We welcome any improvement to the standard module to make the default as secure 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | <a name="input_ami_filter"></a> [ami\_filter](#input\_ami\_filter) | Map of lists used to create the AMI filter for the action runner AMI. | `map(list(string))` | <pre>{<br>  "state": [<br>    "available"<br>  ]<br>}</pre> | no |
+| <a name="input_ami_housekeeper_cleanup_config"></a> [ami\_housekeeper\_cleanup\_config](#input\_ami\_housekeeper\_cleanup\_config) | Configuration for AMI cleanup. | <pre>object({<br>    maxItems       = optional(number)<br>    minimumDaysOld = optional(number)<br>    amiFilters = optional(list(object({<br>      Name   = string<br>      Values = list(string)<br>    })))<br>    launchTemplateNames = optional(list(string))<br>    ssmParameterNames   = optional(list(string))<br>    dryRun              = optional(bool)<br>  })</pre> | `{}` | no |
+| <a name="input_ami_housekeeper_lambda_s3_key"></a> [ami\_housekeeper\_lambda\_s3\_key](#input\_ami\_housekeeper\_lambda\_s3\_key) | S3 key for syncer lambda function. Required if using S3 bucket to specify lambdas. | `string` | `null` | no |
+| <a name="input_ami_housekeeper_lambda_s3_object_version"></a> [ami\_housekeeper\_lambda\_s3\_object\_version](#input\_ami\_housekeeper\_lambda\_s3\_object\_version) | S3 object version for syncer lambda function. Useful if S3 versioning is enabled on source bucket. | `string` | `null` | no |
+| <a name="input_ami_housekeeper_lambda_schedule_expression"></a> [ami\_housekeeper\_lambda\_schedule\_expression](#input\_ami\_housekeeper\_lambda\_schedule\_expression) | Scheduler expression for action runner binary syncer. | `string` | `"cron(11 7 * * ? *)"` | no |
+| <a name="input_ami_housekeeper_lambda_timeout"></a> [ami\_housekeeper\_lambda\_timeout](#input\_ami\_housekeeper\_lambda\_timeout) | Time out of the lambda in seconds. | `number` | `300` | no |
+| <a name="input_ami_housekeeper_lambda_zip"></a> [ami\_housekeeper\_lambda\_zip](#input\_ami\_housekeeper\_lambda\_zip) | File location of the lambda zip file. | `string` | `null` | no |
 | <a name="input_ami_id_ssm_parameter_name"></a> [ami\_id\_ssm\_parameter\_name](#input\_ami\_id\_ssm\_parameter\_name) | Externally managed SSM parameter (of data type aws:ec2:image) that contains the AMI ID to launch runner instances from. Overrides ami\_filter | `string` | `null` | no |
 | <a name="input_ami_kms_key_arn"></a> [ami\_kms\_key\_arn](#input\_ami\_kms\_key\_arn) | Optional CMK Key ARN to be used to launch an instance from a shared encrypted AMI | `string` | `null` | no |
 | <a name="input_ami_owners"></a> [ami\_owners](#input\_ami\_owners) | The list of owners used to select the AMI of action runner instances. | `list(string)` | <pre>[<br>  "amazon"<br>]</pre> | no |
@@ -501,6 +508,7 @@ We welcome any improvement to the standard module to make the default as secure 
 | <a name="input_create_service_linked_role_spot"></a> [create\_service\_linked\_role\_spot](#input\_create\_service\_linked\_role\_spot) | (optional) create the service linked role for spot instances that is required by the scale-up lambda. | `bool` | `false` | no |
 | <a name="input_delay_webhook_event"></a> [delay\_webhook\_event](#input\_delay\_webhook\_event) | The number of seconds the event accepted by the webhook is invisible on the queue before the scale up lambda will receive the event. | `number` | `30` | no |
 | <a name="input_disable_runner_autoupdate"></a> [disable\_runner\_autoupdate](#input\_disable\_runner\_autoupdate) | Disable the auto update of the github runner agent. Be aware there is a grace period of 30 days, see also the [GitHub article](https://github.blog/changelog/2022-02-01-github-actions-self-hosted-runners-can-now-disable-automatic-updates/) | `bool` | `false` | no |
+| <a name="input_enable_ami_housekeeper"></a> [enable\_ami\_housekeeper](#input\_enable\_ami\_housekeeper) | Option to disable the lambda to clean up old AMIs. | `bool` | `false` | no |
 | <a name="input_enable_cloudwatch_agent"></a> [enable\_cloudwatch\_agent](#input\_enable\_cloudwatch\_agent) | Enables the cloudwatch agent on the ec2 runner instances. The runner uses a default config that can be overridden via `cloudwatch_config`. | `bool` | `true` | no |
 | <a name="input_enable_ephemeral_runners"></a> [enable\_ephemeral\_runners](#input\_enable\_ephemeral\_runners) | Enable ephemeral runners, runners will only be used once. | `bool` | `false` | no |
 | <a name="input_enable_event_rule_binaries_syncer"></a> [enable\_event\_rule\_binaries\_syncer](#input\_enable\_event\_rule\_binaries\_syncer) | Option to disable EventBridge Lambda trigger for the binary syncer, useful to stop automatic updates of binary distribution. | `bool` | `true` | no |

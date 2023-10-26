@@ -2,8 +2,8 @@ name: Update docs
 on:
   push:
     paths:
-      - "*.tf"
-      - "*.md"
+      - "**/*.tf"
+      - "**/*.md"
       - ".github/workflows/update-docs.yml"
 
 permissions:

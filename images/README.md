@@ -6,6 +6,8 @@ These images share the same scripting as used in the user-data mechanism in `/mo
 
 The examples in `linux-al2023` and `windows-core-2019` also upload a `start-runner` script that uses the exact same startup process as used in the user-data mechanism. This means that the image created here does not need any extra scripts injected or changes to boot up and connect to GH.
 
+To remove old images the [AMI house keeper module](./modules/ami-housekeeper/README.md) can be used.
+
 ## Building your own
 
 To build these images you first need to install packer.
