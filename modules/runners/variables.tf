@@ -118,12 +118,6 @@ variable "runner_os" {
   }
 }
 
-variable "instance_type" { # tflint-ignore: terraform_unused_declarations
-  description = "[DEPRECATED] See instance_types."
-  type        = string
-  default     = "m5.large"
-}
-
 variable "instance_types" {
   description = "List of instance types for the action runner. Defaults are based on runner_os (al2023 for linux and Windows Server Core for win)."
   type        = list(string)
@@ -463,16 +457,6 @@ variable "egress_rules" {
     to_port          = 0
     description      = null
   }]
-}
-
-variable "log_type" {
-  description = "Logging format for lambda logging. Valid values are 'json', 'pretty', 'hidden'. "
-  type        = string
-  default     = null
-  validation {
-    condition     = var.log_type == null
-    error_message = "DEPRECATED: `log_type` is not longer supported."
-  }
 }
 
 variable "log_level" {

@@ -289,9 +289,8 @@ module "runner_binaries" {
   s3_logging_bucket        = var.runner_binaries_s3_logging_bucket
   s3_logging_bucket_prefix = var.runner_binaries_s3_logging_bucket_prefix
 
-  runner_os                        = var.runner_os
-  runner_architecture              = var.runner_architecture
-  runner_allow_prerelease_binaries = var.runner_allow_prerelease_binaries
+  runner_os           = var.runner_os
+  runner_architecture = var.runner_architecture
 
   lambda_s3_bucket                = var.lambda_s3_bucket
   syncer_lambda_s3_key            = var.syncer_lambda_s3_key
