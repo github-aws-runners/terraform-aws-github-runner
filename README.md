@@ -4,13 +4,11 @@
 
 This [Terraform](https://www.terraform.io/) module creates the required infrastructure needed to host [GitHub Actions](https://github.com/features/actions) self-hosted, auto-scaling runners on [AWS spot instances](https://aws.amazon.com/ec2/spot/). It provides the required logic to handle the life cycle for scaling up and down using a set of AWS Lambda functions. Runners are scaled down to zero to avoid costs when no workflows are active.
 
-> 📢 [`v3`](https://github.com/philips-labs/terraform-aws-github-runner/pull/3037) underlying logging framework is replaced by [AWS Lambda Powertools](https://awslabs.github.io/aws-lambda-powertools-typescript/latest/). Depending on how you handle the logging of the module a migration could be required.
+> 📢 We maintain the project as a thruly open-source project. We maintain the project on best effor. We welcome contributions from the community. Feel free to help us answering issues, reviewing PR's, maintain and improve the project.
 
-> 📢 [`v2`](https://github.com/philips-labs/terraform-aws-github-runner/issues/2517) adds the option to create multiple runners at once, via a Terraform [submodule](./modules/multi-runner/README.md). The webhook will deliver events to dedicated runner queues based on matching rules. Next, for each queue, a scaling lambda will ensure the specific runner is created. For more details checkout the [examples](./examples/multi-runner/README.md).
+> 📢 [`v5`](https://github.com/philips-labs/terraform-aws-github-runner/pull/3552) replaces Amazon Linux 2 by Amazon Linux 2023 as default OS. Check the PR for more details and other changes.
 
-> 📢 `v1` is available on a dedicated branch. The default branch `main` is related to `v2`, for fixes or backports you can submit a PR to the branch `v1`. For feature PR's we will ask you to at least submit a PR to `main`
-
-> 📢 The `main` branch is the new default branch, we will not merge PR's back to `develop`. Please update and rebase your PR to `main` for `v2`, or to the branch `v1` for `v1`.
+> 📢 For contibutions to older versions you can make a PR to the related branch, e.g. `v4`. We have no release process in place for older versions.
 
 > 📢 HELP WANTED: We have been running the AWS self-hosted GitHub runners OS project in Philips Labs for over two years! And we are incredibly happy with all the feedback and contribution of the open-source community. In the next months we will speak at some conferences to share the solution and story of running this open-source project. Via [this questionaire](https://forms.office.com/r/j03CUzdLFp) we would like to gather  feedback from the community to use in our talks.
 
