@@ -12,6 +12,7 @@ resource "aws_iam_instance_profile" "runner" {
   name = "${var.prefix}-runner-profile"
   role = aws_iam_role.runner.name
   path = local.instance_profile_path
+  tags = local.tags
 }
 
 resource "aws_iam_role_policy" "runner_session_manager_aws_managed" {
