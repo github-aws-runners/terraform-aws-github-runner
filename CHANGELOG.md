@@ -1,5 +1,18 @@
 # Changelog
 
+## [4.7.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v4.6.0...v4.7.0) (2023-10-26)
+
+
+### Features
+
+* Add public IP association to github runner ([#3547](https://github.com/philips-labs/terraform-aws-github-runner/issues/3547)) ([1a25b2c](https://github.com/philips-labs/terraform-aws-github-runner/commit/1a25b2c6bced8ab4657ace64ef0b6694140856de))
+
+
+### Bug Fixes
+
+* add tags to aws resources ([#3549](https://github.com/philips-labs/terraform-aws-github-runner/issues/3549)) ([c747139](https://github.com/philips-labs/terraform-aws-github-runner/commit/c74713923635d51e37cca98449a396a73f71a7bc))
+* restrict runner security group to only ingress ([#3564](https://github.com/philips-labs/terraform-aws-github-runner/issues/3564)) ([e63fdc5](https://github.com/philips-labs/terraform-aws-github-runner/commit/e63fdc5ec3b85f2b1fa9a4f881588681fee0c07d))
+
 ## [4.6.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v4.5.1...v4.6.0) (2023-10-19)
 
 
