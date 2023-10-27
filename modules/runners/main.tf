@@ -173,6 +173,10 @@ resource "aws_launch_template" "runner" {
     ssm_key_cloudwatch_agent_config = var.enable_cloudwatch_agent ? aws_ssm_parameter.cloudwatch_agent_config_runner[0].name : ""
   })) : ""
 
+  network_interfaces {
+    associate_public_ip_address = var.associate_public_ip_address
+  }
+
   tags = local.tags
 
   update_default_version = true

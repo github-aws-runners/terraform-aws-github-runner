@@ -622,3 +622,9 @@ variable "enable_jit_config" {
   type        = bool
   default     = null
 }
+
+variable "associate_public_ip_address" {
+  description = "Indicates whether a public IP address should be associated with the EC2 instance."
+  type        = bool
+  default     = true
+}
