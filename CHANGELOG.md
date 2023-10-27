@@ -1,5 +1,24 @@
 # Changelog
 
+## [5.0.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v4.7.0...v5.0.0) (2023-10-27)
+
+
+### ⚠ BREAKING CHANGES
+
+* remove depcrecated input and output variables ([#3567](https://github.com/philips-labs/terraform-aws-github-runner/issues/3567))
+* Change runner labels to list[string] and apply TFLint ([#3410](https://github.com/philips-labs/terraform-aws-github-runner/issues/3410))
+* replace Amazon Linux 2 by Amazon Linux 2023 as default Linux AMI ([#3437](https://github.com/philips-labs/terraform-aws-github-runner/issues/3437))
+
+### Features
+
+* replace Amazon Linux 2 by Amazon Linux 2023 as default Linux AMI ([#3437](https://github.com/philips-labs/terraform-aws-github-runner/issues/3437)) ([35219f5](https://github.com/philips-labs/terraform-aws-github-runner/commit/35219f5b35dcdd780e1a7d3d6b109933914233da))
+
+
+### Bug Fixes
+
+* Change runner labels to list[string] and apply TFLint ([#3410](https://github.com/philips-labs/terraform-aws-github-runner/issues/3410)) ([0b398f2](https://github.com/philips-labs/terraform-aws-github-runner/commit/0b398f2f1010e0af84022a6d11d696cdcb9eb1ec))
+* remove depcrecated input and output variables ([#3567](https://github.com/philips-labs/terraform-aws-github-runner/issues/3567)) ([89c8575](https://github.com/philips-labs/terraform-aws-github-runner/commit/89c8575bf5df80c9a0861ff63e72a5762edbdcfc))
+
 ## [4.7.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v4.6.0...v4.7.0) (2023-10-26)
 
 
