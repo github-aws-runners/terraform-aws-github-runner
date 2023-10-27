@@ -769,3 +769,9 @@ variable "enable_jit_config" {
   type        = bool
   default     = null
 }
+
+variable "associate_public_ipv4_address" {
+  description = "Associate public IPv4 with the runner. Only tested with IPv4"
+  type        = bool
+  default     = false
+}

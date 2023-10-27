@@ -248,6 +248,8 @@ module "runners" {
 
   scale_up_reserved_concurrent_executions = var.scale_up_reserved_concurrent_executions
 
+  associate_public_ipv4_address = var.associate_public_ipv4_address
+
   instance_profile_path     = var.instance_profile_path
   role_path                 = var.role_path
   role_permissions_boundary = var.role_permissions_boundary
