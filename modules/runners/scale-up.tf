@@ -34,10 +34,9 @@ resource "aws_lambda_function" "scale_up" {
       PARAMETER_GITHUB_APP_ID_NAME             = var.github_app_parameters.id.name
       PARAMETER_GITHUB_APP_KEY_BASE64_NAME     = var.github_app_parameters.key_base64.name
       POWERTOOLS_LOGGER_LOG_EVENT              = var.log_level == "debug" ? "true" : "false"
-      POWERTOOLS_TRACE_ENABLED                 = var.lambda_tracing_mode == "Active" ? true : false
-      RUNNER_TRACING_ENABLED                   = var.runner_tracing_mode == "Active" ? true : false
-      POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.lambda_tracing_config.capture_http_requests
-      POWERTOOLS_TRACER_CAPTURE_ERROR          = var.lambda_tracing_config.capture_error
+      POWERTOOLS_TRACE_ENABLED                 = var.tracing_config.mode != null ? true : false
+      POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.tracing_config.capture_http_requests
+      POWERTOOLS_TRACER_CAPTURE_ERROR          = var.tracing_config.capture_error
       RUNNER_LABELS                            = lower(var.runner_labels)
       RUNNER_GROUP_NAME                        = var.runner_group_name
       RUNNER_NAME_PREFIX                       = var.runner_name_prefix
@@ -59,9 +58,9 @@ resource "aws_lambda_function" "scale_up" {
   }
 
   dynamic "tracing_config" {
-    for_each = var.lambda_tracing_mode != null ? [true] : []
+    for_each = var.tracing_config.mode != null ? [true] : []
     content {
-      mode = var.lambda_tracing_mode
+      mode = var.tracing_config.mode
     }
   }
 }
@@ -138,7 +137,7 @@ resource "aws_iam_role_policy_attachment" "ami_id_ssm_parameter_read" {
 }
 
 resource "aws_iam_role_policy" "scale_up_xray" {
-  count  = var.lambda_tracing_mode != null ? 1 : 0
+  count  = var.tracing_config.mode != null ? 1 : 0
   policy = data.aws_iam_policy_document.lambda_xray[0].json
   role   = aws_iam_role.scale_up.name
 }

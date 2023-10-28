@@ -5,7 +5,8 @@ import { Context } from 'aws-lambda';
 
 import { sync } from './syncer/syncer';
 
-export const lambdaHandler = middy(handler).use(captureLambdaHandler(tracer));
+middy(handler).use(captureLambdaHandler(tracer));
+
 // eslint-disable-next-line
 export async function handler(event: any, context: Context): Promise<void> {
   setContext(context, 'lambda.ts');

@@ -10,6 +10,7 @@ import {
   TerminateInstancesCommand,
 } from '@aws-sdk/client-ec2';
 import { GetParameterCommand, GetParameterResult, PutParameterCommand, SSMClient } from '@aws-sdk/client-ssm';
+import { tracer } from '@terraform-aws-github-runner/aws-powertools-util';
 import { mockClient } from 'aws-sdk-client-mock';
 import 'aws-sdk-client-mock-jest';
 
@@ -236,6 +237,15 @@ describe('create runner', () => {
       Name: 'my-ami-id-param',
     });
   });
+  it('calls create fleet of 1 instance with runner tracing enabled', async () => {
+    tracer.getRootXrayTraceId = jest.fn().mockReturnValue('123');
+
+    await createRunner(createRunnerConfig({ ...defaultRunnerConfig, runnerTracingEnabled: true }));
+
+    expect(mockEC2Client).toHaveReceivedCommandWith(CreateFleetCommand, {
+      ...expectedCreateFleetRequest({ ...defaultExpectedFleetRequestValues, runnerTracingEnabled: true }),
+    });
+  });
 });
 
 describe('create runner with errors', () => {
@@ -350,6 +360,7 @@ interface RunnerConfig {
   allocationStrategy: SpotAllocationStrategy;
   maxSpotPrice?: string;
   amiIdSsmParameterName?: string;
+  runnerTracingEnabled?: boolean;
 }
 
 function createRunnerConfig(runnerConfig: RunnerConfig): RunnerInputParameters {
@@ -366,6 +377,7 @@ function createRunnerConfig(runnerConfig: RunnerConfig): RunnerInputParameters {
     },
     subnets: ['subnet-123', 'subnet-456'],
     amiIdSsmParameterName: runnerConfig.amiIdSsmParameterName,
+    runnerTracingEnabled: runnerConfig.runnerTracingEnabled,
   };
 }
 
@@ -376,6 +388,7 @@ interface ExpectedFleetRequestValues {
   maxSpotPrice?: string;
   totalTargetCapacity: number;
   imageId?: string;
+  runnerTracingEnabled?: boolean;
 }
 
 function expectedCreateFleetRequest(expectedValues: ExpectedFleetRequestValues): CreateFleetCommandInput {
@@ -385,6 +398,10 @@ function expectedCreateFleetRequest(expectedValues: ExpectedFleetRequestValues):
     { Key: 'ghr:Type', Value: expectedValues.type },
     { Key: 'ghr:Owner', Value: REPO_NAME },
   ];
+  if (expectedValues.runnerTracingEnabled) {
+    const traceId = tracer.getRootXrayTraceId();
+    tags.push({ Key: 'ghr:trace_id', Value: traceId! });
+  }
   const request: CreateFleetCommandInput = {
     LaunchTemplateConfigs: [
       {

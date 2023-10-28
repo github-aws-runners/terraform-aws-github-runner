@@ -1,6 +1,5 @@
 #!/bin/bash
 
-set -E -o functrace
 cleanup() {
   local exit_code="$1"
   local error_location="$2"

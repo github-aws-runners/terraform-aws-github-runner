@@ -13,14 +13,14 @@ create_xray_start_segment() {
   TRACE_ID=$1
   INSTANCE_ID=$2
   SEGMENT_ID=$(dd if=/dev/random bs=8 count=1 2>/dev/null | od -An -tx1 | tr -d ' \t\n')
-  SEGMENT_DOC="{\"trace_id\": \"$TRACE_ID\", \"id\": \"$SEGMENT_ID\", \"start_time\": $START_TIME, \"in_progress\": true, \"name\": \"Runner\",\"origin\": \"AWS::EC2::Instance\", \"aws\": {\"ec2\":{\"instance_id\":\"$INSTANCE_ID\"}, \"cloudwatch_logs\":[{\"log_group\": \"/github-self-hosted-runners/ubuntu/user_data\", \"arn\": \"arn:aws:logs:eu-west-1:734162824207:log-group:/github-self-hosted-runners/ubuntu/user_data:*\"}]}}"
+  SEGMENT_DOC="{\"trace_id\": \"$TRACE_ID\", \"id\": \"$SEGMENT_ID\", \"start_time\": $START_TIME, \"in_progress\": true, \"name\": \"Runner\",\"origin\": \"AWS::EC2::Instance\", \"aws\": {\"ec2\":{\"instance_id\":\"$INSTANCE_ID\"}}}"
   HEADER='{"format": "json", "version": 1}'
   TRACE_DATA="$HEADER\n$SEGMENT_DOC"
   echo "$HEADER" > document.txt
   echo "$SEGMENT_DOC" >> document.txt
   UDP_IP="127.0.0.1"
   UDP_PORT=2000
-  # cat document.txt > /dev/udp/$UDP_IP/$UDP_PORT
+  cat document.txt > /dev/udp/$UDP_IP/$UDP_PORT
   echo "$SEGMENT_DOC"
 }
 

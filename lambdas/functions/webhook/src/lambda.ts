@@ -9,7 +9,7 @@ export interface Response {
   statusCode: number;
   body?: string;
 }
-export const handlerWebhook = middy(githubWebhook).use(captureLambdaHandler(tracer));
+middy(githubWebhook).use(captureLambdaHandler(tracer));
 export async function githubWebhook(event: APIGatewayEvent, context: Context): Promise<Response> {
   setContext(context, 'lambda.ts');
   logger.logEventIfEnabled(event);

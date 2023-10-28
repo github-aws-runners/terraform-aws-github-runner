@@ -42,10 +42,9 @@ resource "aws_lambda_function" "pool" {
       SSM_TOKEN_PATH                           = var.config.ssm_token_path
       SSM_CONFIG_PATH                          = var.config.ssm_config_path
       SUBNET_IDS                               = join(",", var.config.subnet_ids)
-      POWERTOOLS_TRACE_ENABLED                 = var.lambda_tracing_mode == "Active" ? true : false
-      POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.lambda_tracing_config.capture_http_requests
-      POWERTOOLS_TRACER_CAPTURE_ERROR          = var.lambda_tracing_config.capture_error
-      RUNNER_TRACING_ENABLED                   = var.runner_tracing_mode == "Active" ? true : false
+      POWERTOOLS_TRACE_ENABLED                 = var.tracing_config.mode != null ? true : false
+      POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.tracing_config.capture_http_requests
+      POWERTOOLS_TRACER_CAPTURE_ERROR          = var.tracing_config.capture_error
     }
   }
 
@@ -58,9 +57,9 @@ resource "aws_lambda_function" "pool" {
   }
 
   dynamic "tracing_config" {
-    for_each = var.lambda_tracing_mode != null ? [true] : []
+    for_each = var.tracing_config.mode != null ? [true] : []
     content {
-      mode = var.lambda_tracing_mode
+      mode = var.tracing_config.mode
     }
   }
 }
@@ -156,7 +155,7 @@ resource "aws_iam_role_policy_attachment" "ami_id_ssm_parameter_read" {
 
 # lambda xray policy
 data "aws_iam_policy_document" "lambda_xray" {
-  count = var.lambda_tracing_mode != null ? 1 : 0
+  count = var.tracing_config.mode != null ? 1 : 0
   statement {
     actions = [
       "xray:BatchGetTraces",
@@ -173,7 +172,7 @@ data "aws_iam_policy_document" "lambda_xray" {
 }
 
 resource "aws_iam_role_policy" "pool_xray" {
-  count  = var.lambda_tracing_mode != null ? 1 : 0
+  count  = var.tracing_config.mode != null ? 1 : 0
   policy = data.aws_iam_policy_document.lambda_xray[0].json
   role   = aws_iam_role.pool.name
 }

@@ -69,9 +69,8 @@ module "runners" {
   #
   enable_job_queued_check = true
 
-  # lambda_tracing_mode = "Active"
-  # runner_tracing_mode = "Active"
-  # lambda_tracing_config = {
+  # tracing_config = {
+  #   mode                  = "Active"
   #   capture_error         = true
   #   capture_http_requests = true
   # }
@@ -84,7 +83,7 @@ module "runners" {
 
   # or use the default AMI
   # userdata_pre_install = file("./templates/preinstall.sh")
-  # enable_userdata = true
+  # enable_userdata      = true
 
   # Enable debug logging for the lambda functions
   # log_level = "debug"

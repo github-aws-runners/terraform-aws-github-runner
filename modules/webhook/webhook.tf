@@ -16,9 +16,9 @@ resource "aws_lambda_function" "webhook" {
       ENVIRONMENT                              = var.prefix
       LOG_LEVEL                                = var.log_level
       POWERTOOLS_LOGGER_LOG_EVENT              = var.log_level == "debug" ? "true" : "false"
-      POWERTOOLS_TRACE_ENABLED                 = var.lambda_tracing_mode == "Active" ? true : false
-      POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.lambda_tracing_config.capture_http_requests
-      POWERTOOLS_TRACER_CAPTURE_ERROR          = var.lambda_tracing_config.capture_error
+      POWERTOOLS_TRACE_ENABLED                 = var.tracing_config.mode != null ? true : false
+      POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.tracing_config.capture_http_requests
+      POWERTOOLS_TRACER_CAPTURE_ERROR          = var.tracing_config.capture_error
       PARAMETER_GITHUB_APP_WEBHOOK_SECRET      = var.github_app_parameters.webhook_secret.name
       REPOSITORY_WHITE_LIST                    = jsonencode(var.repository_white_list)
       RUNNER_CONFIG                            = jsonencode([for k, v in var.runner_config : v])
@@ -37,9 +37,9 @@ resource "aws_lambda_function" "webhook" {
   tags = var.tags
 
   dynamic "tracing_config" {
-    for_each = var.lambda_tracing_mode != null ? [true] : []
+    for_each = var.tracing_config.mode != null ? [true] : []
     content {
-      mode = var.lambda_tracing_mode
+      mode = var.tracing_config.mode
     }
   }
 }
@@ -123,7 +123,7 @@ resource "aws_iam_role_policy" "webhook_ssm" {
 }
 
 resource "aws_iam_role_policy" "xray" {
-  count  = var.lambda_tracing_mode != null ? 1 : 0
+  count  = var.tracing_config.mode != null ? 1 : 0
   policy = data.aws_iam_policy_document.lambda_xray[0].json
   role   = aws_iam_role.webhook_lambda.name
 }
