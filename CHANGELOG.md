@@ -1,5 +1,17 @@
 # Changelog
 
+## [5.1.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.0.0...v5.1.0) (2023-10-30)
+
+
+### Features
+
+* add AMI house keeping lambda ([#3570](https://github.com/philips-labs/terraform-aws-github-runner/issues/3570)) ([87104e8](https://github.com/philips-labs/terraform-aws-github-runner/commit/87104e8c09a9aaa6069be85c9b68920e455ff715))
+
+
+### Bug Fixes
+
+* **lambda:** bump the aws group in /lambdas with 5 updates ([#3579](https://github.com/philips-labs/terraform-aws-github-runner/issues/3579)) ([ccb1d32](https://github.com/philips-labs/terraform-aws-github-runner/commit/ccb1d32be888a28d37417275950afdc01c4ac0da))
+
 ## [5.0.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v4.7.0...v5.0.0) (2023-10-27)
 
 
