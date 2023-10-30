@@ -1,5 +1,63 @@
 #!/bin/bash
 
+# https://docs.aws.amazon.com/xray/latest/devguide/xray-api-sendingdata.html
+# https://docs.aws.amazon.com/xray/latest/devguide/scorekeep-scripts.html
+create_xray_start_segment() {
+  START_TIME=$(date +%s)
+  TRACE_ID=$1
+  INSTANCE_ID=$2
+  SEGMENT_ID=$(dd if=/dev/random bs=8 count=1 2>/dev/null | od -An -tx1 | tr -d ' \t\n')
+  SEGMENT_DOC="{\"trace_id\": \"$TRACE_ID\", \"id\": \"$SEGMENT_ID\", \"start_time\": $START_TIME, \"in_progress\": true, \"name\": \"Runner\",\"origin\": \"AWS::EC2::Instance\", \"aws\": {\"ec2\":{\"instance_id\":\"$INSTANCE_ID\"}}}"
+  HEADER='{"format": "json", "version": 1}'
+  TRACE_DATA="$HEADER\n$SEGMENT_DOC"
+  echo "$HEADER" > document.txt
+  echo "$SEGMENT_DOC" >> document.txt
+  UDP_IP="127.0.0.1"
+  UDP_PORT=2000
+  cat document.txt > /dev/udp/$UDP_IP/$UDP_PORT
+  echo "$SEGMENT_DOC"
+}
+
+create_xray_success_segment() {
+  SEGMENT_DOC=$1
+  if [ -z "$SEGMENT_DOC" ]; then
+    echo "No segment doc provided"
+    return
+  fi
+  SEGMENT_DOC=$(echo "${SEGMENT_DOC}" | jq '. | del(.in_progress)')
+  END_TIME=$(date +%s)
+  SEGMENT_DOC=$(echo "${SEGMENT_DOC}" | jq -c ". + {\"end_time\": ${END_TIME}}")
+  HEADER="{\"format\": \"json\", \"version\": 1}"
+  TRACE_DATA="$HEADER\n$SEGMENT_DOC"
+  echo "$HEADER" > document.txt
+  echo "$SEGMENT_DOC" >> document.txt
+  UDP_IP="127.0.0.1"
+  UDP_PORT=2000
+  cat document.txt > /dev/udp/$UDP_IP/$UDP_PORT
+  echo "$SEGMENT_DOC"
+}
+
+create_xray_error_segment() {
+  SEGMENT_DOC="$1"
+  if [ -z "$SEGMENT_DOC" ]; then
+    echo "No segment doc provided"
+    return
+  fi
+  MESSAGE="$2"
+  ERROR="{\"exceptions\": [{\"message\": \"$MESSAGE\"}]}"
+  SEGMENT_DOC=$(echo "${SEGMENT_DOC}" | jq '. | del(.in_progress)')
+  END_TIME=$(date +%s)
+  SEGMENT_DOC=$(echo "${SEGMENT_DOC}" | jq -c ". + {\"end_time\": ${END_TIME}, \"error\": true, \"cause\": $ERROR }")
+  HEADER="{\"format\": \"json\", \"version\": 1}"
+  TRACE_DATA="$HEADER\n$SEGMENT_DOC"
+  echo "$HEADER" > document.txt
+  echo "$SEGMENT_DOC" >> document.txt
+  UDP_IP="127.0.0.1"
+  UDP_PORT=2000
+  cat document.txt > /dev/udp/$UDP_IP/$UDP_PORT
+  echo "$SEGMENT_DOC"
+}
+
 cleanup() {
   local exit_code="$1"
   local error_location="$2"
@@ -99,7 +157,14 @@ echo "Retrieved /$ssm_config_path/enable_jit_config parameter - ($enable_jit_con
 token_path=$(echo "$parameters" | jq --arg ssm_config_path "$ssm_config_path" -r '.[] | select(.Name == "'$ssm_config_path'/token_path") | .Value')
 echo "Retrieved /$ssm_config_path/token_path parameter - ($token_path)"
 
-if [[ "$xray_trace_id" != "" && "$agent_mode" == "ephemeral" ]]; then
+if [[ "$xray_trace_id" != "" ]]; then
+  # run xray service
+  curl https://s3.us-east-2.amazonaws.com/aws-xray-assets.us-east-2/xray-daemon/aws-xray-daemon-linux-3.x.zip -o aws-xray-daemon-linux-3.x.zip
+  unzip aws-xray-daemon-linux-3.x.zip -d aws-xray-daemon-linux-3.x
+  cd ./aws-xray-daemon-linux-3.x
+  sudo chmod +x ./xray
+  ./xray -o -n eu-west-1 &
+
   SEGMENT=$(create_xray_start_segment "$xray_trace_id" "$instance_id")
   echo "$SEGMENT"
 fi

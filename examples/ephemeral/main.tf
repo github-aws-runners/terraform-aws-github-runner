@@ -82,8 +82,7 @@ module "runners" {
   # ami_owners      = [data.aws_caller_identity.current.account_id]
 
   # or use the default AMI
-  # userdata_pre_install = file("./templates/preinstall.sh")
-  # enable_userdata      = true
+  enable_userdata = true
 
   # Enable debug logging for the lambda functions
   # log_level = "debug"
