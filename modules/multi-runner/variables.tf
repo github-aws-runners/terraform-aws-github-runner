@@ -555,12 +555,12 @@ variable "associate_public_ipv4_address" {
 
 variable "runners_ssm_housekeeper" {
   description = <<EOF
-  Configuration for the ssm housekeeper lambda. This lambda deletes token / JIT config from SSM.
+  Configuration for the SSM housekeeper lambda. This lambda deletes token / JIT config from SSM.
 
   `schedule_expression`: is used to configure the schedule for the lambda.
   `enabled`: enable or disable the lambda trigger via the EventBridge.
   `lambda_timeout`: timeout for the lambda in seconds.
-  `config`: configuration for the lambda function. Tokenpath will be read by default from the module.
+  `config`: configuration for the lambda function. Token path will be read by default from the module.
   EOF
   type = object({
     schedule_expression = optional(string, "rate(1 day)")
