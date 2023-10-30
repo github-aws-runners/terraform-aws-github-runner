@@ -101,7 +101,7 @@ jobs:
           key: tflint-${{ hashFiles('.tflint.hcl') }}
       - if: contains(matrix.terraform, '1.3.')
         name: Setup TFLint
-        uses: terraform-linters/setup-tflint@v3
+        uses: terraform-linters/setup-tflint@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
       - if: contains(matrix.terraform, '1.3.')
@@ -150,7 +150,7 @@ jobs:
           key: tflint-${{ hashFiles('.tflint.hcl') }}
       - if: contains(matrix.terraform, '1.5.')
         name: Setup TFLint
-        uses: terraform-linters/setup-tflint@v3
+        uses: terraform-linters/setup-tflint@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
       - if: contains(matrix.terraform, '1.5.')
