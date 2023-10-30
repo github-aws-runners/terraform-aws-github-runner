@@ -8,7 +8,7 @@
     "test": "NODE_ENV=test jest",
     "test:watch": "NODE_ENV=test jest --watch",
     "lint": "yarn eslint src",
-    "watch": "ts-node-dev --respawn --exit-child src/local.ts",
+    "watch": "ts-node-dev --respawn --exit-child src/local-ssm-housekeeper.ts",
     "build": "ncc build src/lambda.ts -o dist",
     "dist": "yarn build && cd dist && zip ../runners.zip index.js",
     "format": "prettier --write \"**/*.ts\"",
