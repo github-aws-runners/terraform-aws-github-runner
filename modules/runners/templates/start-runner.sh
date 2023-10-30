@@ -19,14 +19,14 @@ create_xray_start_segment() {
 }
 
 create_xray_success_segment() {
-  SEGMENT_DOC=$1
+  local SEGMENT_DOC=$1
   if [ -z "$SEGMENT_DOC" ]; then
     echo "No segment doc provided"
     return
   fi
-  SEGMENT_DOC=$(echo "${SEGMENT_DOC}" | jq '. | del(.in_progress)')
+  SEGMENT_DOC=$(echo "$SEGMENT_DOC" | jq '. | del(.in_progress)')
   END_TIME=$(date +%s)
-  SEGMENT_DOC=$(echo "${SEGMENT_DOC}" | jq -c ". + {\"end_time\": ${END_TIME}}")
+  SEGMENT_DOC=$(echo "$SEGMENT_DOC" | jq -c ". + {\"end_time\": $END_TIME}")
   HEADER="{\"format\": \"json\", \"version\": 1}"
   TRACE_DATA="$HEADER\n$SEGMENT_DOC"
   echo "$HEADER" > document.txt
@@ -38,16 +38,16 @@ create_xray_success_segment() {
 }
 
 create_xray_error_segment() {
-  SEGMENT_DOC="$1"
+  local SEGMENT_DOC="$1"
   if [ -z "$SEGMENT_DOC" ]; then
     echo "No segment doc provided"
     return
   fi
   MESSAGE="$2"
   ERROR="{\"exceptions\": [{\"message\": \"$MESSAGE\"}]}"
-  SEGMENT_DOC=$(echo "${SEGMENT_DOC}" | jq '. | del(.in_progress)')
+  SEGMENT_DOC=$(echo "$SEGMENT_DOC" | jq '. | del(.in_progress)')
   END_TIME=$(date +%s)
-  SEGMENT_DOC=$(echo "${SEGMENT_DOC}" | jq -c ". + {\"end_time\": ${END_TIME}, \"error\": true, \"cause\": $ERROR }")
+  SEGMENT_DOC=$(echo "$SEGMENT_DOC" | jq -c ". + {\"end_time\": $END_TIME, \"error\": true, \"cause\": $ERROR }")
   HEADER="{\"format\": \"json\", \"version\": 1}"
   TRACE_DATA="$HEADER\n$SEGMENT_DOC"
   echo "$HEADER" > document.txt
@@ -80,7 +80,6 @@ cleanup() {
   sleep 10
   if [ "$agent_mode" = "ephemeral" ] || [ "$exit_code" -ne 0 ]; then
     echo "Stopping CloudWatch service"
-    systemctl stop xray
     systemctl stop amazon-cloudwatch-agent.service || true
     echo "Terminating instance"
     aws ec2 terminate-instances \
@@ -161,9 +160,9 @@ if [[ "$xray_trace_id" != "" ]]; then
   # run xray service
   curl https://s3.us-east-2.amazonaws.com/aws-xray-assets.us-east-2/xray-daemon/aws-xray-daemon-linux-3.x.zip -o aws-xray-daemon-linux-3.x.zip
   unzip aws-xray-daemon-linux-3.x.zip -d aws-xray-daemon-linux-3.x
-  cd ./aws-xray-daemon-linux-3.x
-  sudo chmod +x ./xray
-  ./xray -o -n eu-west-1 &
+  sudo chmod +x ./aws-xray-daemon-linux-3.x/xray
+  ./aws-xray-daemon-linux-3.x/xray -o -n "$region" &
+
 
   SEGMENT=$(create_xray_start_segment "$xray_trace_id" "$instance_id")
   echo "$SEGMENT"
