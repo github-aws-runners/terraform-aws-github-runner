@@ -157,4 +157,4 @@ Use the badge to sign-up.
 
 [contribute]: CONTRIBUTING.md
 [github]: https://github.com/philips-labs/terraform-aws-github-runner/issues
-[slack]: https://philips-software.slack.com/home
+[slack]: https://join.slack.com/t/philips-software/shared_invite/zt-xecw65v5-i1531hGP~mdVwgxLFx7ckg
