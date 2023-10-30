@@ -43,6 +43,8 @@ locals {
   enable_job_queued_check = var.enable_job_queued_check == null ? !var.enable_ephemeral_runners : var.enable_job_queued_check
 
   arn_ssm_parameters_path_config = "arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.ssm_paths.root}/${var.ssm_paths.config}"
+
+  token_path = "${var.ssm_paths.root}/${var.ssm_paths.tokens}"
 }
 
 data "aws_ami" "runner" {

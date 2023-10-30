@@ -1,0 +1,13 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+        "Effect": "Allow",
+        "Action": [
+            "ssm:DeleteParameter",
+            "ssm:GetParametersByPath"
+        ],
+        "Resource": "${ssm_token_path}*"
+    }
+  ]
+}

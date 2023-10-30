@@ -68,7 +68,7 @@ module "runners" {
   # override delay of events in seconds
 
   # Enable debug logging for the lambda functions
-  # log_level = "debug"
+  log_level = "debug"
 }
 
 module "webhook_github_app" {

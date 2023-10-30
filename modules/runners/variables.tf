@@ -613,3 +613,25 @@ variable "associate_public_ipv4_address" {
   type        = bool
   default     = false
 }
+
+variable "ssm_housekeeper" {
+  description = <<EOF
+  Configuration for the ssm housekeeper lambda. This lambda deletes token / JIT config from SSM.
+
+  `schedule_expression`: is used to configure the schedule for the lambda.
+  `enabled`: enable or disable the lambda trigger via the EventBridge.
+  `lambda_timeout`: timeout for the lambda in seconds.
+  `config`: configuration for the lambda function. Tokenpath will be read by default from the module.
+  EOF
+  type = object({
+    schedule_expression = optional(string, "rate(1 day)")
+    enabled             = optional(bool, true)
+    lambda_timeout      = optional(number, 60)
+    config = object({
+      tokenPath      = optional(string)
+      minimumDaysOld = optional(number, 1)
+      dryRun         = optional(bool, false)
+    })
+  })
+  default = { config = {} }
+}

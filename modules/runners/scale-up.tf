@@ -40,7 +40,7 @@ resource "aws_lambda_function" "scale_up" {
       RUNNER_NAME_PREFIX                   = var.runner_name_prefix
       RUNNERS_MAXIMUM_COUNT                = var.runners_maximum_count
       SERVICE_NAME                         = "runners-scale-up"
-      SSM_TOKEN_PATH                       = "${var.ssm_paths.root}/${var.ssm_paths.tokens}"
+      SSM_TOKEN_PATH                       = local.token_path
       SSM_CONFIG_PATH                      = "${var.ssm_paths.root}/${var.ssm_paths.config}"
       SUBNET_IDS                           = join(",", var.subnet_ids)
     }
