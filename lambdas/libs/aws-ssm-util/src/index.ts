@@ -1,4 +1,4 @@
-import { GetParameterCommand, PutParameterCommand, SSMClient } from '@aws-sdk/client-ssm';
+import { GetParameterCommand, GetParametersCommand, PutParameterCommand, SSMClient } from '@aws-sdk/client-ssm';
 
 export async function getParameter(parameter_name: string): Promise<string> {
   const client = new SSMClient({ region: process.env.AWS_REGION });

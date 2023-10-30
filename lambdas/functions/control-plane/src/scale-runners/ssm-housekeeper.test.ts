@@ -9,7 +9,9 @@ const mockSSMClient = mockClient(SSMClient);
 
 const deleteAmisOlderThenDays = 1;
 const now = new Date();
-const dateOld = new Date(new Date().setDate(new Date().getDate() - (deleteAmisOlderThenDays + 1)));
+const dateOld = new Date();
+dateOld.setDate(dateOld.getDate() - deleteAmisOlderThenDays - 1);
+
 const tokenPath = '/path/to/tokens/';
 
 describe('clean SSM tokens / JIT config', () => {
@@ -23,7 +25,7 @@ describe('clean SSM tokens / JIT config', () => {
         {
           Name: tokenPath + 'i-old-01',
           LastModifiedDate: dateOld,
-        }
+        },
       ],
       NextToken: 'next',
     });
@@ -88,6 +90,14 @@ describe('clean SSM tokens / JIT config', () => {
   });
 
   it('should only accept valid options.', async () => {
+    await expect(
+      cleanSSMTokens({
+        dryRun: false,
+        minimumDaysOld: undefined as unknown as number,
+        tokenPath: tokenPath,
+      }),
+    ).rejects.toBeInstanceOf(Error);
+
     await expect(
       cleanSSMTokens({
         dryRun: false,

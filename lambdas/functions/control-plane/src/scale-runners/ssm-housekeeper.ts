@@ -9,8 +9,8 @@ export interface SSMCleanupOptions {
 
 function validateOptions(options: SSMCleanupOptions): void {
   const errorMessages: string[] = [];
-  if (options.minimumDaysOld < 1) {
-    errorMessages.push('minimumDaysOld must be greater then 0');
+  if (!options.minimumDaysOld || options.minimumDaysOld < 1) {
+    errorMessages.push(`minimumDaysOld must be greater then 0, value is set to "${options.minimumDaysOld}"`);
   }
   if (!options.tokenPath) {
     errorMessages.push('tokenPath must be defined');
@@ -34,7 +34,8 @@ export async function cleanSSMTokens(options: SSMCleanupOptions): Promise<void> 
     parameters.Parameters?.push(...(nextParameters.Parameters ?? []));
     parameters.NextToken = nextParameters.NextToken;
   }
-  logger.debug(`Found #${parameters.Parameters?.length} parameters in path ${options.tokenPath}`);
+  logger.info(`Found #${parameters.Parameters?.length} parameters in path ${options.tokenPath}`);
+  logger.debug('Found parameters', { parameters });
 
   // minimumDate = today - minimumDaysOld
   const minimumDate = new Date();
@@ -53,6 +54,8 @@ export async function cleanSSMTokens(options: SSMCleanupOptions): Promise<void> 
         logger.warn(`Failed to delete parameter ${parameter.Name} with error ${(e as Error).message}`);
         logger.debug('Failed to delete parameter', { e });
       }
+    } else {
+      logger.debug(`Skipping parameter ${parameter.Name} with last modified date ${parameter.LastModifiedDate}`);
     }
   }
 }
