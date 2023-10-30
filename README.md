@@ -34,6 +34,12 @@ This [Terraform](https://www.terraform.io/) module creates the required infrastr
 - [Logging](#logging)
 - [Debugging](#debugging)
 - [Security Considerations](#security-considerations)
+- [Requirements](#requirements)
+- [Providers](#providers)
+- [Modules](#modules)
+- [Resources](#resources)
+- [Inputs](#inputs)
+- [Outputs](#outputs)
 - [Contributing](#contributing)
 - [Philips Forest](#philips-forest)
 
@@ -91,7 +97,7 @@ To be able to support a number of use-cases the module has quite a lot of config
 
 ### AWS SSM Parameters
 
-The module uses the AWS System Manager Parameter Store to store configuration for the runners, as well as registration tokens and secrets for the Lambdas. Paths for the parameters can be configured via the variable `ssm_paths`. The location of the configuration parameters is retrieved by the runners via the instance tag `ghr:ssm_config_path`. The following default paths will be used.
+The module uses the AWS System Manager Parameter Store to store configuration for the runners, as well as registration tokens and secrets for the Lambdas. Paths for the parameters can be configured via the variable `ssm_paths`. The location of the configuration parameters is retrieved by the runners via the instance tag `ghr:ssm_config_path`. The following default paths will be used. Tokens or JIT config stored in the the tokee path will be deleted after retrieval by instance, data not deleted after a day will be deleted by a SSM housekeeper lambda.
 
 | Path      | Description |
 | ----------- | ----------- |
