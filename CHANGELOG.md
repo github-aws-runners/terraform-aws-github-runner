@@ -1,5 +1,17 @@
 # Changelog
 
+## [5.2.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.1.0...v5.2.0) (2023-10-30)
+
+
+### Features
+
+* SSM housekeeper ([#3577](https://github.com/philips-labs/terraform-aws-github-runner/issues/3577)) ([340deea](https://github.com/philips-labs/terraform-aws-github-runner/commit/340deeaee94fa9cddbe11d9421cb06c35f2a2726))
+
+
+### Bug Fixes
+
+* allow use of associate_public_ipv4_address from top-level module ([#3572](https://github.com/philips-labs/terraform-aws-github-runner/issues/3572)) ([0ff7b23](https://github.com/philips-labs/terraform-aws-github-runner/commit/0ff7b2389fcbb607cdc37392b1612a14e9511c43))
+
 ## [5.1.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.0.0...v5.1.0) (2023-10-30)
 
 
