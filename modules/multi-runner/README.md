@@ -95,6 +95,7 @@ module "multi-runner" {
 
 | Name | Source | Version |
 |------|--------|---------|
+| <a name="module_ami_housekeeper"></a> [ami\_housekeeper](#module\_ami\_housekeeper) | ../ami-housekeeper | n/a |
 | <a name="module_runner_binaries"></a> [runner\_binaries](#module\_runner\_binaries) | ../runner-binaries-syncer | n/a |
 | <a name="module_runners"></a> [runners](#module\_runners) | ../runners | n/a |
 | <a name="module_ssm"></a> [ssm](#module\_ssm) | ../ssm | n/a |
@@ -116,10 +117,17 @@ module "multi-runner" {
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
+| <a name="input_ami_housekeeper_cleanup_config"></a> [ami\_housekeeper\_cleanup\_config](#input\_ami\_housekeeper\_cleanup\_config) | Configuration for AMI cleanup. | <pre>object({<br>    maxItems       = optional(number)<br>    minimumDaysOld = optional(number)<br>    amiFilters = optional(list(object({<br>      Name   = string<br>      Values = list(string)<br>    })))<br>    launchTemplateNames = optional(list(string))<br>    ssmParameterNames   = optional(list(string))<br>    dryRun              = optional(bool)<br>  })</pre> | `{}` | no |
+| <a name="input_ami_housekeeper_lambda_s3_key"></a> [ami\_housekeeper\_lambda\_s3\_key](#input\_ami\_housekeeper\_lambda\_s3\_key) | S3 key for syncer lambda function. Required if using S3 bucket to specify lambdas. | `string` | `null` | no |
+| <a name="input_ami_housekeeper_lambda_s3_object_version"></a> [ami\_housekeeper\_lambda\_s3\_object\_version](#input\_ami\_housekeeper\_lambda\_s3\_object\_version) | S3 object version for syncer lambda function. Useful if S3 versioning is enabled on source bucket. | `string` | `null` | no |
+| <a name="input_ami_housekeeper_lambda_schedule_expression"></a> [ami\_housekeeper\_lambda\_schedule\_expression](#input\_ami\_housekeeper\_lambda\_schedule\_expression) | Scheduler expression for action runner binary syncer. | `string` | `"cron(11 7 * * ? *)"` | no |
+| <a name="input_ami_housekeeper_lambda_timeout"></a> [ami\_housekeeper\_lambda\_timeout](#input\_ami\_housekeeper\_lambda\_timeout) | Time out of the lambda in seconds. | `number` | `300` | no |
+| <a name="input_ami_housekeeper_lambda_zip"></a> [ami\_housekeeper\_lambda\_zip](#input\_ami\_housekeeper\_lambda\_zip) | File location of the lambda zip file. | `string` | `null` | no |
 | <a name="input_associate_public_ipv4_address"></a> [associate\_public\_ipv4\_address](#input\_associate\_public\_ipv4\_address) | Associate public IPv4 with the runner. Only tested with IPv4 | `bool` | `false` | no |
 | <a name="input_aws_partition"></a> [aws\_partition](#input\_aws\_partition) | (optiona) partition in the arn namespace to use if not 'aws' | `string` | `"aws"` | no |
 | <a name="input_aws_region"></a> [aws\_region](#input\_aws\_region) | AWS region. | `string` | n/a | yes |
 | <a name="input_cloudwatch_config"></a> [cloudwatch\_config](#input\_cloudwatch\_config) | (optional) Replaces the module default cloudwatch log config. See https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-Configuration-File-Details.html for details. | `string` | `null` | no |
+| <a name="input_enable_ami_housekeeper"></a> [enable\_ami\_housekeeper](#input\_enable\_ami\_housekeeper) | Option to disable the lambda to clean up old AMIs. | `bool` | `false` | no |
 | <a name="input_enable_event_rule_binaries_syncer"></a> [enable\_event\_rule\_binaries\_syncer](#input\_enable\_event\_rule\_binaries\_syncer) | Option to disable EventBridge Lambda trigger for the binary syncer, useful to stop automatic updates of binary distribution | `bool` | `true` | no |
 | <a name="input_enable_managed_runner_security_group"></a> [enable\_managed\_runner\_security\_group](#input\_enable\_managed\_runner\_security\_group) | Enabling the default managed security group creation. Unmanaged security groups can be specified via `runner_additional_security_group_ids`. | `bool` | `true` | no |
 | <a name="input_enable_workflow_job_events_queue"></a> [enable\_workflow\_job\_events\_queue](#input\_enable\_workflow\_job\_events\_queue) | Enabling this experimental feature will create a secondory sqs queue to wich a copy of the workflow\_job event will be delivered. | `bool` | `false` | no |
