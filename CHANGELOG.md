@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.2.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.2.0...v5.2.1) (2023-10-31)
+
+
+### Bug Fixes
+
+* shorten role name for ssm housekeeper ([#3587](https://github.com/philips-labs/terraform-aws-github-runner/issues/3587)) ([a1440b5](https://github.com/philips-labs/terraform-aws-github-runner/commit/a1440b5a1b329e65e860292895714cc3f072a1bb))
+
 ## [5.2.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.1.0...v5.2.0) (2023-10-30)
 
 
