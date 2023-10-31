@@ -46,6 +46,7 @@ resource "aws_iam_role_policy" "dist_bucket" {
 }
 
 resource "aws_iam_role_policy_attachment" "xray_tracing" {
+  count      = var.tracing_config.mode != null ? 1 : 0
   role       = aws_iam_role.runner.name
   policy_arn = "arn:${var.aws_partition}:iam::aws:policy/AWSXRayDaemonWriteAccess"
 }
