@@ -1,8 +1,9 @@
-import axios from 'axios';
+import axios, { AxiosResponse } from 'axios';
 
 import { axiosFetch } from './fetch-override';
 
 jest.mock('axios');
+type FetchResponse = AxiosResponse & { json: () => string };
 
 describe('axiosFetch', () => {
   beforeEach(() => {
@@ -17,7 +18,7 @@ describe('axiosFetch', () => {
     mockedAxios.mockResolvedValue(responseData);
 
     // Act
-    const result = (await axiosFetch(url, options)) as any;
+    const result = (await axiosFetch(url, options)) as FetchResponse;
 
     // Assert
     expect(axios).toHaveBeenCalledWith(url, { ...options, data: options.body });
