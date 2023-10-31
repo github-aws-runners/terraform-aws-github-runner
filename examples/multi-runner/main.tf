@@ -1,5 +1,5 @@
 locals {
-  environment = var.environment != null ? var.environment : "multi-runner"
+  environment = var.environment != null ? var.environment : "nav-multi-runner"
   aws_region  = "eu-west-1"
 
   # Load runner configurations from Yaml files
@@ -34,7 +34,12 @@ module "multi-runner" {
     id             = var.github_app.id
     webhook_secret = random_id.random.hex
   }
-
+  # enable this section for tracing
+  # tracing_config = {
+  #   mode                  = "Active"
+  #   capture_error         = true
+  #   capture_http_requests = true
+  # }
   # Assuming local build lambda's to use pre build ones, uncomment the lines below and download the
   # lambda zip files lambda_download
   # webhook_lambda_zip                = "../lambdas-download/webhook.zip"
