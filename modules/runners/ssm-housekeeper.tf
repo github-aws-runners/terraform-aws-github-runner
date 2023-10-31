@@ -79,7 +79,8 @@ resource "aws_lambda_permission" "ssm_housekeeper" {
 }
 
 resource "aws_iam_role" "ssm_housekeeper" {
-  name                 = "${var.prefix}-action-ssm-housekeeper-lambda-role"
+  name                 = "${var.prefix}-ssm-hk-lambda"
+  description          = "Lambda role for SSM Housekeeper (${var.prefix})"
   assume_role_policy   = data.aws_iam_policy_document.lambda_assume_role_policy.json
   path                 = local.role_path
   permissions_boundary = var.role_permissions_boundary
@@ -87,7 +88,7 @@ resource "aws_iam_role" "ssm_housekeeper" {
 }
 
 resource "aws_iam_role_policy" "ssm_housekeeper" {
-  name = "${var.prefix}-ssm-housekeeper-policy"
+  name = "lambda-ssm"
   role = aws_iam_role.ssm_housekeeper.name
   policy = templatefile("${path.module}/policies/lambda-ssm-housekeeper.json", {
     ssm_token_path = "arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${local.token_path}"
@@ -95,7 +96,7 @@ resource "aws_iam_role_policy" "ssm_housekeeper" {
 }
 
 resource "aws_iam_role_policy" "ssm_housekeeper_logging" {
-  name = "${var.prefix}-lambda-logging"
+  name = "lambda-logging"
   role = aws_iam_role.ssm_housekeeper.name
   policy = templatefile("${path.module}/policies/lambda-cloudwatch.json", {
     log_group_arn = aws_cloudwatch_log_group.ssm_housekeeper.arn
