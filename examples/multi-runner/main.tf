@@ -1,5 +1,5 @@
 locals {
-  environment = var.environment != null ? var.environment : "nav-multi-runner"
+  environment = var.environment != null ? var.environment : "multi-runner"
   aws_region  = "eu-west-1"
 
   # Load runner configurations from Yaml files

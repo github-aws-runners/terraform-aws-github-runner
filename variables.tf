@@ -754,11 +754,7 @@ variable "tracing_config" {
     capture_http_requests = optional(bool, false)
     capture_error         = optional(bool, false)
   })
-  default = {
-    mode                  = null
-    capture_http_requests = false
-    capture_error         = false
-  }
+  default = {}
 }
 
 variable "runner_credit_specification" {
