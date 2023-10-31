@@ -44,9 +44,9 @@ resource "aws_lambda_function" "ssm_housekeeper" {
   }
 
   dynamic "tracing_config" {
-    for_each = var.lambda_tracing_mode != null ? [true] : []
+    for_each = var.tracing_config.mode != null ? [true] : []
     content {
-      mode = var.lambda_tracing_mode
+      mode = var.tracing_config.mode
     }
   }
 }
@@ -110,7 +110,7 @@ resource "aws_iam_role_policy_attachment" "ssm_housekeeper_vpc_execution_role" {
 }
 
 resource "aws_iam_role_policy" "ssm_housekeeper_xray" {
-  count  = var.lambda_tracing_mode != null ? 1 : 0
+  count  = var.tracing_config.mode != null ? 1 : 0
   policy = data.aws_iam_policy_document.lambda_xray[0].json
   role   = aws_iam_role.ssm_housekeeper.name
 }

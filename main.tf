@@ -342,7 +342,7 @@ module "ami_housekeeper" {
   lambda_security_group_ids = var.lambda_security_group_ids
   lambda_subnet_ids         = var.lambda_subnet_ids
   lambda_timeout            = var.ami_housekeeper_lambda_timeout
-  lambda_tracing_mode       = var.lambda_tracing_mode
+  tracing_config            = var.tracing_config
 
   logging_retention_in_days = var.logging_retention_in_days
   logging_kms_key_id        = var.logging_kms_key_id
