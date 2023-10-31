@@ -35,7 +35,7 @@ module "runners" {
 
   enable_organization_runners = false
   # no need to add extra windows tag here as it is automatically added by GitHub
-  runner_extra_labels = "default,example"
+  runner_extra_labels = ["default", "example"]
 
   # Set the OS to Windows
   runner_os = "windows"
@@ -54,7 +54,7 @@ module "runners" {
   scale_down_schedule_expression = "cron(* * * * ? *)"
 }
 
-module "webhook-github-app" {
+module "webhook_github_app" {
   source     = "../../modules/webhook-github-app"
   depends_on = [module.runners]
 

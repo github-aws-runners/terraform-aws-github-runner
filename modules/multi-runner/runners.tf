@@ -44,7 +44,7 @@ module "runners" {
   scale_down_schedule_expression       = each.value.runner_config.scale_down_schedule_expression
   minimum_running_time_in_minutes      = each.value.runner_config.minimum_running_time_in_minutes
   runner_boot_time_in_minutes          = each.value.runner_config.runner_boot_time_in_minutes
-  runner_labels                        = "self-hosted,${each.value.runner_config.runner_os},${each.value.runner_config.runner_architecture},${each.value.runner_config.runner_extra_labels}"
+  runner_labels                        = sort(distinct(concat(["self-hosted", each.value.runner_config.runner_os, each.value.runner_config.runner_architecture], each.value.runner_config.runner_extra_labels)))
   runner_as_root                       = each.value.runner_config.runner_as_root
   runner_run_as                        = each.value.runner_config.runner_run_as
   runners_maximum_count                = each.value.runner_config.runners_maximum_count
@@ -103,4 +103,7 @@ module "runners" {
   pool_lambda_timeout                        = var.pool_lambda_timeout
   pool_runner_owner                          = each.value.runner_config.pool_runner_owner
   pool_lambda_reserved_concurrent_executions = var.pool_lambda_reserved_concurrent_executions
+  associate_public_ipv4_address              = var.associate_public_ipv4_address
+
+  ssm_housekeeper = var.runners_ssm_housekeeper
 }

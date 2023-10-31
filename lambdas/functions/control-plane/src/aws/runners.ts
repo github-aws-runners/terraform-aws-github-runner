@@ -6,6 +6,7 @@ import {
   EC2Client,
   FleetLaunchTemplateOverridesRequest,
   TerminateInstancesCommand,
+  _InstanceType,
 } from '@aws-sdk/client-ec2';
 import { createChildLogger } from '@terraform-aws-github-runner/aws-powertools-util';
 import { getTracedAWSV3Client, tracer } from '@terraform-aws-github-runner/aws-powertools-util';
@@ -108,7 +109,7 @@ function generateFleetOverrides(
     instancesTypes.forEach((i) => {
       const item: FleetLaunchTemplateOverridesRequest = {
         SubnetId: s,
-        InstanceType: i,
+        InstanceType: i as _InstanceType,
         ImageId: amiId,
       };
       result.push(item);

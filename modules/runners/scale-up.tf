@@ -37,12 +37,12 @@ resource "aws_lambda_function" "scale_up" {
       POWERTOOLS_TRACE_ENABLED                 = var.tracing_config.mode != null ? true : false
       POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.tracing_config.capture_http_requests
       POWERTOOLS_TRACER_CAPTURE_ERROR          = var.tracing_config.capture_error
-      RUNNER_LABELS                            = lower(var.runner_labels)
+      RUNNER_LABELS                            = lower(join(",", var.runner_labels))
       RUNNER_GROUP_NAME                        = var.runner_group_name
       RUNNER_NAME_PREFIX                       = var.runner_name_prefix
       RUNNERS_MAXIMUM_COUNT                    = var.runners_maximum_count
       SERVICE_NAME                             = "runners-scale-up"
-      SSM_TOKEN_PATH                           = "${var.ssm_paths.root}/${var.ssm_paths.tokens}"
+      SSM_TOKEN_PATH                           = local.token_path
       SSM_CONFIG_PATH                          = "${var.ssm_paths.root}/${var.ssm_paths.config}"
       SUBNET_IDS                               = join(",", var.subnet_ids)
 

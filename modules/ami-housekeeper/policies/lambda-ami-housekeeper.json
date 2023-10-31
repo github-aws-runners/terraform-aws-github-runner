@@ -1,0 +1,19 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeImages",
+        "ec2:DescribeSnapshots",
+        "ec2:DescribeLaunchTemplates",
+        "ec2:DescribeLaunchTemplateVersions",
+        "ec2:DeregisterImage",
+        "ec2:DeleteSnapshot",
+        "ssm:DescribeParameters",
+        "ssm:GetParameter"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

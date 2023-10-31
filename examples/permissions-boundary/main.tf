@@ -56,7 +56,7 @@ module "runners" {
   runner_binaries_syncer_lambda_zip = "../lambdas-download/runner-binaries-syncer.zip"
   runners_lambda_zip                = "../lambdas-download/runners.zip"
   enable_organization_runners       = false
-  runner_extra_labels               = "default,example"
+  runner_extra_labels               = ["default", "example"]
 
   instance_profile_path     = "/runners/"
   role_path                 = "/runners/"

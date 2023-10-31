@@ -7,6 +7,7 @@ import { PoolEvent, adjust } from './pool/pool';
 import ScaleError from './scale-runners/ScaleError';
 import { scaleDown } from './scale-runners/scale-down';
 import { scaleUp } from './scale-runners/scale-up';
+import { SSMCleanupOptions, cleanSSMTokens } from './scale-runners/ssm-housekeeper';
 
 export async function scaleUpHandler(event: SQSEvent, context: Context): Promise<void> {
   setContext(context, 'lambda.ts');
@@ -60,3 +61,15 @@ export const addMiddleware = () => {
   middy(adjustPool).use(handler);
 };
 addMiddleware();
+
+export async function ssmHousekeeper(event: unknown, context: Context): Promise<void> {
+  setContext(context, 'lambda.ts');
+  logger.logEventIfEnabled(event);
+  const config = JSON.parse(process.env.SSM_CLEANUP_CONFIG) as SSMCleanupOptions;
+
+  try {
+    await cleanSSMTokens(config);
+  } catch (e) {
+    logger.error(`${(e as Error).message}`, { error: e as Error });
+  }
+}

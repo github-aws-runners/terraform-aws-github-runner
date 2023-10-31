@@ -18,6 +18,6 @@
     "lerna": "^6.6.1"
   },
   "resolutions": {
-    "@octokit/types": "^10.0.0"
+    "@octokit/types": "^12.0.0"
   }
 }

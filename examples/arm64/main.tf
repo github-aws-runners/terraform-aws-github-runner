@@ -45,7 +45,7 @@ module "runners" {
 
   enable_organization_runners = false
   # Runners will automatically get the "arm64" label
-  runner_extra_labels = "default,example"
+  runner_extra_labels = ["default", "example"]
 
   # enable access to the runners via SSM
   enable_ssm_on_runners = true
@@ -87,7 +87,7 @@ module "runners" {
   scale_down_schedule_expression = "cron(* * * * ? *)"
 }
 
-module "webhook-github-app" {
+module "webhook_github_app" {
   source = "../../modules/webhook-github-app"
 
   github_app = {

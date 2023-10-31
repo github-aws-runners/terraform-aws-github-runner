@@ -12,6 +12,7 @@ resource "aws_iam_instance_profile" "runner" {
   name = "${var.prefix}-runner-profile"
   role = aws_iam_role.runner.name
   path = local.instance_profile_path
+  tags = local.tags
 }
 
 resource "aws_iam_role_policy" "runner_session_manager_aws_managed" {
@@ -68,4 +69,4 @@ resource "aws_iam_role_policy" "ec2" {
   policy = templatefile("${path.module}/policies/instance-ec2.json", {})
 }
 
-// see also logging.tf for logging and metrics policies
+# see also logging.tf for logging and metrics policies
