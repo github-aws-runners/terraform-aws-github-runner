@@ -42,9 +42,15 @@ variable "runner_config" {
     matcherConfig = object({
       labelMatchers = list(list(string))
       exactMatch    = bool
+      order         = optional(number, 999)
     })
   }))
+  validation {
+    condition     = try(var.runner_config.matcherConfig.order, 999) >= 0 && try(var.runner_config.matcherConfig.order, 999) < 1000
+    error_message = "The order of the matcher must be between 0 and 999."
+  }
 }
+
 variable "sqs_workflow_job_queue" {
   description = "SQS queue to monitor github events."
   type = object({
