@@ -24,6 +24,7 @@ Controlling which event is taken up by which runner is not to this module. It is
 An example, given you have two runners one with the labels. `self-hosted, linux, x64, large` and one with the labels `self-hosted, linux, x64, small`. Once you define a subset of the labels in the workflow, for example `self-hosted, linux, x64`. Both runners can take the job potentially. You can define to scale one of the runners for the event, but still there is no guarantee that the scaled runner takes the job. The workflow with subset of labels (`self-hosted, linux, x64`) can take up runner with specific labels (`self-hosted, linux, x64, large`) and leave the workflow with labels (`self-hosted, linux, x64, large`) be without the runner.
 The only mitigation that is available right now is to use a small pool of runners. Pool instances can also exist for a short amount of time and only created once in x time based on a cron expression.
 
+Jobs not defining all all labels but for example only `[self-hosted, linux]` could be matched to potentially different runners. The matcher scales the first runner that matches. With the attribute `priority` the order of matchers can be defined.
 
 ## Usages
 

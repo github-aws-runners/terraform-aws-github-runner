@@ -3,7 +3,6 @@ matcherConfig:
   labelMatchers:
     - [self-hosted, linux, x64, ubuntu-latest]
     - [self-hosted, linux, x64, ubuntu-2204]
-  order: 1 # The order of the runner config, the smaller the higher priority
 fifo: true
 delay_webhook_event: 0
 redrive_build_queue:
