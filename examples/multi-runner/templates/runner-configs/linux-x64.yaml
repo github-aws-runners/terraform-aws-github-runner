@@ -2,6 +2,7 @@ matcherConfig:
   exactMatch: false
   labelMatchers:
     - [ self-hosted, linux, x64, amazon ]
+  priority: 1 # set ephemeral runner priority to 1
 fifo: true
 delay_webhook_event: 0
 runner_config:
