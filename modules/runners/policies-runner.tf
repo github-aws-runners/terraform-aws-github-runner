@@ -1,5 +1,7 @@
 data "aws_caller_identity" "current" {}
 
+data "aws_region" "current" {}
+
 resource "aws_iam_role" "runner" {
   name                 = "${var.prefix}-runner-role"
   assume_role_policy   = templatefile("${path.module}/policies/instance-role-trust-policy.json", {})
@@ -40,6 +42,19 @@ resource "aws_iam_role_policy" "dist_bucket" {
   policy = templatefile("${path.module}/policies/instance-s3-policy.json",
     {
       s3_arn = "${var.s3_runner_binaries.arn}/${var.s3_runner_binaries.key}"
+    }
+  )
+}
+
+resource "aws_iam_role_policy" "ecr_cache" {
+  count = var.enable_platform_ecr ? 1 : 0
+
+  name = "ecr-cache"
+  role = aws_iam_role.runner.name
+  policy = templatefile("${path.module}/policies/instance-ecr-policy.json",
+    {
+      aws_region = data.aws_region.current.name,
+      aws_account_id = data.aws_caller_identity.current.account_id
     }
   )
 }

@@ -225,3 +225,13 @@ module "s3_cache" {
     vpc_id = var.vpc_id
   }
 }
+
+module "ecr_cache" {
+  count = var.enable_platform_ecr ? 1 : 0
+
+  source = "./ecr_cache"
+
+  config = {
+    tags = local.tags
+  }
+}
