@@ -4,7 +4,7 @@
       "rulePriority": 1,
       "description": "Expire images older than 3 days",
       "selection": {
-        "tagStatus": "untagged",
+        "tagStatus": "any",
         "countType": "sinceImagePushed",
         "countUnit": "days",
         "countNumber": 3
