@@ -53,7 +53,7 @@ resource "aws_iam_role_policy" "ecr_cache" {
   role = aws_iam_role.runner.name
   policy = templatefile("${path.module}/policies/instance-ecr-policy.json",
     {
-      aws_region = data.aws_region.current.name,
+      aws_region     = data.aws_region.current.name,
       aws_account_id = data.aws_caller_identity.current.account_id
     }
   )
