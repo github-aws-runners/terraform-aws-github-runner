@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.3.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.2.1...v5.3.0) (2023-11-03)
+
+
+### Features
+
+* order label matchers for multi-runners ([#3591](https://github.com/philips-labs/terraform-aws-github-runner/issues/3591)) ([1829721](https://github.com/philips-labs/terraform-aws-github-runner/commit/1829721cb647b005ca44b5feb8d0de27217e6074))
+
 ## [5.2.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.2.0...v5.2.1) (2023-10-31)
 
 
