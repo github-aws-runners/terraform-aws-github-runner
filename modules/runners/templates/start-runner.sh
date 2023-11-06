@@ -65,13 +65,6 @@ cleanup() {
 
   if [ "$exit_code" -ne 0 ]; then
     echo "ERROR: runner-start-failed with exit code $exit_code occurred on $error_location"
-    # Create a CloudWatch metric for error
-    aws cloudwatch put-metric-data \
-      --metric-name "RunnerInstanceUnhealthy" \
-      --namespace "Github Runners metrics" \
-      --value 1 \
-      --region "$region" \
-      --dimensions "InstanceId=$instance_id"
     create_xray_error_segment "$SEGMENT" "runner-start-failed with exit code $exit_code occurred on $error_location - $error_lineno"
   else
     create_xray_success_segment "$SEGMENT"

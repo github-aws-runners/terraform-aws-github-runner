@@ -32,6 +32,7 @@ This [Terraform](https://www.terraform.io/) module creates the required infrastr
 - [Examples](#examples)
 - [Sub modules](#sub-modules)
 - [Logging](#logging)
+- [Tracing](#tracing)
 - [Debugging](#debugging)
 - [Security Considerations](#security-considerations)
 - [Requirements](#requirements)
@@ -427,6 +428,16 @@ An example log message of the scale-up function:
     }
 }
 ```
+## Tracing
+For the distributed architecture of this application it can be difficult to troubleshoot this application.
+We support the option to enable tracing for all the lambda functions created by this application. To enable tracing user can simply provide the `tracing_config` option inside the root module or inner modules.
+
+This tracing config generates timelines for following events:
+- Basic lifecycle of lambda function
+- Traces for Github API calls (can be configured by capture_http_requests).
+- Traces for all AWS SDK calls
+
+
 
 ## Debugging
 
