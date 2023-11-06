@@ -24,6 +24,7 @@ runner_config:
   cache_expiration_days: 3
   scale_down_schedule_expression: cron(* * * * ? *)
   enable_userdata: false
+  enable_platform_ecr: true
   ami_owners:
     - ${account_id}
   ami_filter:

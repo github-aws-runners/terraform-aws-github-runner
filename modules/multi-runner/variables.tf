@@ -49,6 +49,7 @@ variable "multi_runner_config" {
       enable_ephemeral_runners                = optional(bool, false)
       enable_job_queued_check                 = optional(bool, null)
       enable_organization_runners             = optional(bool, false)
+      enable_platform_ecr                     = optional(bool, false)
       enable_runner_binaries_syncer           = optional(bool, true)
       enable_ssm_on_runners                   = optional(bool, false)
       enable_userdata                         = optional(bool, true)
@@ -147,6 +148,7 @@ variable "multi_runner_config" {
         enable_ephemeral_runners: "Enable ephemeral runners, runners will only be used once."
         enable_job_queued_check: "Enables JIT configuration for creating runners instead of registration token based registraton. JIT configuration will only be applied for ephemeral runners. By default JIT confiugration is enabled for ephemeral runners an can be disabled via this override. When running on GHES without support for JIT configuration this variable should be set to true for ephemeral runners."
         enable_organization_runners: "Register runners to organization, instead of repo level"
+        enable_platform_ecr: "Enable platform ECR repositories"
         enable_runner_binaries_syncer: "Option to disable the lambda to sync GitHub runner distribution, useful when using a pre-build AMI."
         enable_ssm_on_runners: "Enable to allow access the runner instances for debugging purposes via SSM. Note that this adds additional permissions to the runner instances."
         enable_userdata: "Should the userdata script be enabled for the runner. Set this to false if you are using your own prebuilt AMI."

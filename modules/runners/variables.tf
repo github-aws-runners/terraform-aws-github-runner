@@ -319,6 +319,12 @@ variable "enable_ssm_on_runners" {
   type        = bool
 }
 
+variable "enable_platform_ecr" {
+  description = "Enable platform ECR registry for the runner instances."
+  type        = bool
+  default     = false
+}
+
 variable "lambda_s3_bucket" {
   description = "S3 bucket from which to specify lambda functions. This is an alternative to providing local files directly."
   type        = string

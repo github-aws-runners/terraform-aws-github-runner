@@ -55,6 +55,7 @@ module "runners" {
   credit_specification                 = each.value.runner_config.credit_specification
 
   enable_runner_binaries_syncer    = each.value.runner_config.enable_runner_binaries_syncer
+  enable_platform_ecr              = each.value.runner_config.enable_platform_ecr
   lambda_s3_bucket                 = var.lambda_s3_bucket
   runners_lambda_s3_key            = var.runners_lambda_s3_key
   runners_lambda_s3_object_version = var.runners_lambda_s3_object_version
