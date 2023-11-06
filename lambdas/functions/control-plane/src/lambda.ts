@@ -59,6 +59,7 @@ export const addMiddleware = () => {
   middy(scaleUpHandler).use(handler);
   middy(scaleDownHandler).use(handler);
   middy(adjustPool).use(handler);
+  middy(ssmHousekeeper).use(handler);
 };
 addMiddleware();
 

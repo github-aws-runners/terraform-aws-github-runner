@@ -154,7 +154,7 @@ export async function createRunner(runnerParameters: Runners.RunnerInputParamete
     { Key: 'ghr:Owner', Value: runnerParameters.runnerOwner },
   ];
 
-  if (runnerParameters.runnerTracingEnabled) {
+  if (runnerParameters.tracingEnabled) {
     const traceId = tracer.getRootXrayTraceId();
     tags.push({ Key: 'ghr:trace_id', Value: traceId! });
   }

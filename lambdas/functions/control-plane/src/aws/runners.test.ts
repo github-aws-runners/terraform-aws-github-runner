@@ -240,10 +240,10 @@ describe('create runner', () => {
   it('calls create fleet of 1 instance with runner tracing enabled', async () => {
     tracer.getRootXrayTraceId = jest.fn().mockReturnValue('123');
 
-    await createRunner(createRunnerConfig({ ...defaultRunnerConfig, runnerTracingEnabled: true }));
+    await createRunner(createRunnerConfig({ ...defaultRunnerConfig, tracingEnabled: true }));
 
     expect(mockEC2Client).toHaveReceivedCommandWith(CreateFleetCommand, {
-      ...expectedCreateFleetRequest({ ...defaultExpectedFleetRequestValues, runnerTracingEnabled: true }),
+      ...expectedCreateFleetRequest({ ...defaultExpectedFleetRequestValues, tracingEnabled: true }),
     });
   });
 });
@@ -360,7 +360,7 @@ interface RunnerConfig {
   allocationStrategy: SpotAllocationStrategy;
   maxSpotPrice?: string;
   amiIdSsmParameterName?: string;
-  runnerTracingEnabled?: boolean;
+  tracingEnabled?: boolean;
 }
 
 function createRunnerConfig(runnerConfig: RunnerConfig): RunnerInputParameters {
@@ -377,7 +377,7 @@ function createRunnerConfig(runnerConfig: RunnerConfig): RunnerInputParameters {
     },
     subnets: ['subnet-123', 'subnet-456'],
     amiIdSsmParameterName: runnerConfig.amiIdSsmParameterName,
-    runnerTracingEnabled: runnerConfig.runnerTracingEnabled,
+    tracingEnabled: runnerConfig.tracingEnabled,
   };
 }
 
@@ -388,7 +388,7 @@ interface ExpectedFleetRequestValues {
   maxSpotPrice?: string;
   totalTargetCapacity: number;
   imageId?: string;
-  runnerTracingEnabled?: boolean;
+  tracingEnabled?: boolean;
 }
 
 function expectedCreateFleetRequest(expectedValues: ExpectedFleetRequestValues): CreateFleetCommandInput {
@@ -398,7 +398,7 @@ function expectedCreateFleetRequest(expectedValues: ExpectedFleetRequestValues):
     { Key: 'ghr:Type', Value: expectedValues.type },
     { Key: 'ghr:Owner', Value: REPO_NAME },
   ];
-  if (expectedValues.runnerTracingEnabled) {
+  if (expectedValues.tracingEnabled) {
     const traceId = tracer.getRootXrayTraceId();
     tags.push({ Key: 'ghr:trace_id', Value: traceId! });
   }

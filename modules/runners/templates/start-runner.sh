@@ -160,7 +160,7 @@ if [[ "$xray_trace_id" != "" ]]; then
   # run xray service
   curl https://s3.us-east-2.amazonaws.com/aws-xray-assets.us-east-2/xray-daemon/aws-xray-daemon-linux-3.x.zip -o aws-xray-daemon-linux-3.x.zip
   unzip aws-xray-daemon-linux-3.x.zip -d aws-xray-daemon-linux-3.x
-  sudo chmod +x ./aws-xray-daemon-linux-3.x/xray
+  chmod +x ./aws-xray-daemon-linux-3.x/xray
   ./aws-xray-daemon-linux-3.x/xray -o -n "$region" &
 
 
