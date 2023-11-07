@@ -57,7 +57,6 @@ module "runners" {
     id             = var.github_app.id
     webhook_secret = random_id.random.hex
   }
-
   # Assuming local build lambda's to use pre build ones, uncomment the lines below and download the
   # lambda zip files lambda_download
   # webhook_lambda_zip                = "../lambdas-download/webhook.zip"
