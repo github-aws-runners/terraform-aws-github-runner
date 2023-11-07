@@ -1,5 +1,5 @@
 locals {
-  environment = "ephemeral"
+  environment = var.environment != null ? var.environment : "ephemeral"
   aws_region  = "eu-west-1"
 }
 
