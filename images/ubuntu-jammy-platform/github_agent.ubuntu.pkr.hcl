@@ -151,6 +151,8 @@ build {
       "sudo mkswap /swapfile",
       "sudo swapon /swapfile",
       "echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab",
+      "sudo curl -L https://github.com/BLAKE3-team/BLAKE3/releases/download/1.5.0/b3sum_linux_x64_bin -o /usr/local/bin/b3sum",
+      "sudo chmod +x /usr/local/bin/b3sum",
       "sudo apt-get -y update",
       "sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg",
       "echo deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null",
