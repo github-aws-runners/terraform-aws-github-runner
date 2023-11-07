@@ -3,7 +3,7 @@
 # https://docs.aws.amazon.com/xray/latest/devguide/xray-api-sendingdata.html
 # https://docs.aws.amazon.com/xray/latest/devguide/scorekeep-scripts.html
 create_xray_start_segment() {
-  START_TIME=$(date +%s)
+  START_TIME=$(date -d "$(uptime -s)" +%s)
   TRACE_ID=$1
   INSTANCE_ID=$2
   SEGMENT_ID=$(dd if=/dev/random bs=8 count=1 2>/dev/null | od -An -tx1 | tr -d ' \t\n')
@@ -66,8 +66,6 @@ cleanup() {
   if [ "$exit_code" -ne 0 ]; then
     echo "ERROR: runner-start-failed with exit code $exit_code occurred on $error_location"
     create_xray_error_segment "$SEGMENT" "runner-start-failed with exit code $exit_code occurred on $error_location - $error_lineno"
-  else
-    create_xray_success_segment "$SEGMENT"
   fi
   # allows to flush the cloud watch logs and traces
   sleep 10
@@ -222,6 +220,7 @@ if [[ "$enable_jit_config" == "false" || $agent_mode != "ephemeral" ]]; then
   sudo --preserve-env=RUNNER_ALLOW_RUNASROOT -u "$run_as" -- ./config.sh --unattended --name "$runner_name_prefix$instance_id" --work "_work" $${config}
 fi
 
+create_xray_success_segment "$SEGMENT"
 if [[ $agent_mode = "ephemeral" ]]; then
   echo "Starting the runner in ephemeral mode"
 

@@ -437,6 +437,7 @@ This tracing config generates timelines for following events:
 - Traces for Github API calls (can be configured by capture_http_requests).
 - Traces for all AWS SDK calls
 
+This feature has been disabled by default.
 
 
 ## Debugging
