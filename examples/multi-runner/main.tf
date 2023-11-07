@@ -33,6 +33,7 @@ module "base" {
 module "multi-runner" {
   source                            = "../../modules/multi-runner"
   multi_runner_config               = local.multi_runner_config
+  cache_bucket_oidc_role_arn        = aws_iam_role.oidc_role.arn
   aws_region                        = local.aws_region
   vpc_id                            = module.base.vpc.vpc_id
   subnet_ids                        = module.base.vpc.private_subnets

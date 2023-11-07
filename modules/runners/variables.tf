@@ -355,6 +355,11 @@ variable "create_cache_bucket" {
   default     = false
 }
 
+variable "cache_bucket_oidc_role_arn" {
+  description = "(optional) OIDC role ARN for cache bucket access."
+  type        = string
+}
+
 variable "cache_expiration_days" {
   description = "(optional) number of days to keep cache objects in the cache bucket"
   type        = number

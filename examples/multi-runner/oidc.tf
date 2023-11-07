@@ -24,12 +24,8 @@ resource "aws_iam_role" "oidc_role" {
 }
 
 resource "aws_iam_openid_connect_provider" "github_oidc" {
-  url      = "https://token.actions.githubusercontent.com"
-  client_id_list = ["sts.amazonaws.com"]
+  url             = "https://token.actions.githubusercontent.com"
+  client_id_list  = ["sts.amazonaws.com"]
   thumbprint_list = ["ffffffffffffffffffffffffffffffffffffffff"]
   tags            = local.tags
-}
-
-output "role" {
-  value = aws_iam_role.oidc_role.arn
 }
