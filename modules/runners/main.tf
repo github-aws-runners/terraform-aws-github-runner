@@ -208,33 +208,3 @@ resource "aws_security_group" "runner_sg" {
     },
   )
 }
-
-module "s3_cache" {
-  count = var.create_cache_bucket ? 1 : 0
-
-  source = "./s3_cache"
-
-  config = {
-    aws_region = var.aws_region
-    cache_bucket_oidc_role = {
-      arn = var.cache_bucket_oidc_role_arn
-    }
-    expiration_days = var.cache_expiration_days
-    prefix          = var.prefix
-    runner_instance_role = {
-      arn = aws_iam_role.runner.arn
-    }
-    tags   = local.tags
-    vpc_id = var.vpc_id
-  }
-}
-
-module "ecr_cache" {
-  count = var.enable_platform_ecr ? 1 : 0
-
-  source = "./ecr_cache"
-
-  config = {
-    tags = local.tags
-  }
-}

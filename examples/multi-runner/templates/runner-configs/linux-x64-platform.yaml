@@ -20,8 +20,6 @@ runner_config:
   enable_ephemeral_runners: true
   enable_jit_config: true
   create_service_linked_role_spot: true
-  create_cache_bucket: true
-  cache_expiration_days: 3
   scale_down_schedule_expression: cron(* * * * ? *)
   enable_userdata: false
   enable_platform_ecr: true
