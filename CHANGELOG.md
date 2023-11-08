@@ -1,5 +1,17 @@
 # Changelog
 
+## [5.4.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.3.0...v5.4.0) (2023-11-08)
+
+
+### Features
+
+* added changes to enable tracing in lambdas. ([#3554](https://github.com/philips-labs/terraform-aws-github-runner/issues/3554)) ([970e8a6](https://github.com/philips-labs/terraform-aws-github-runner/commit/970e8a657a9a3d62966c75c6738eba7292c77aa8))
+
+
+### Bug Fixes
+
+* **lambda:** Bump the aws group in /lambdas with 5 updates ([#3595](https://github.com/philips-labs/terraform-aws-github-runner/issues/3595)) ([581a4bf](https://github.com/philips-labs/terraform-aws-github-runner/commit/581a4bff74a22c6d9577c35c6bb683d26cfd5cff))
+
 ## [5.3.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.2.1...v5.3.0) (2023-11-03)
 
 
