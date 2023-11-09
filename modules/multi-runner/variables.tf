@@ -41,6 +41,7 @@ variable "multi_runner_config" {
       ami_id_ssm_parameter_name               = optional(string, null)
       ami_kms_key_arn                         = optional(string, "")
       create_service_linked_role_spot         = optional(bool, false)
+      create_cache_bucket                     = optional(bool, false)
       cache_expiration_days                   = optional(number, 10)
       credit_specification                    = optional(string, null)
       delay_webhook_event                     = optional(number, 30)
@@ -139,6 +140,7 @@ variable "multi_runner_config" {
         ami_filter: "(Optional) List of maps used to create the AMI filter for the action runner AMI. By default amazon linux 2 is used."
         ami_owners: "(Optional) The list of owners used to select the AMI of action runner instances."
         create_service_linked_role_spot: (Optional) create the serviced linked role for spot instances that is required by the scale-up lambda.
+        create_cache_bucket: "Create a S3 bucket to hold action cache for ephemeral runners. By default disabled."
         cache_expiration_days: "The number of days the cache is kept in S3 before it is purged."
         credit_specification: "(Optional) The credit specification of the runner instance_type. Can be unset, `standard` or `unlimited`.
         delay_webhook_event: "The number of seconds the event accepted by the webhook is invisible on the queue before the scale up lambda will receive the event."
@@ -557,4 +559,9 @@ variable "lambda_tracing_mode" {
   description = "Enable X-Ray tracing for the lambda functions."
   type        = string
   default     = null
+}
+
+variable "cache_bucket_oidc_role_arn" {
+  description = "The OIDC role ARN that is allowed to access the cache bucket, in addition to the runner instance role is used."
+  type        = string
 }

@@ -349,6 +349,23 @@ variable "create_service_linked_role_spot" {
   default     = false
 }
 
+variable "create_cache_bucket" {
+  description = "(optional) create a S3 bucket to hold action cache for ephemeral runners"
+  type        = bool
+  default     = false
+}
+
+variable "cache_bucket_oidc_role_arn" {
+  description = "(optional) OIDC role ARN for cache bucket access."
+  type        = string
+}
+
+variable "cache_expiration_days" {
+  description = "(optional) number of days to keep cache objects in the cache bucket"
+  type        = number
+  default     = 10
+}
+
 variable "aws_partition" {
   description = "(optional) partition for the base arn if not 'aws'"
   type        = string
