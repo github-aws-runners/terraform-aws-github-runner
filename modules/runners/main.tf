@@ -215,7 +215,10 @@ module "s3_cache" {
   source = "./s3_cache"
 
   config = {
-    aws_region      = var.aws_region
+    aws_region = var.aws_region
+    cache_bucket_oidc_role = {
+      arn = var.cache_bucket_oidc_role_arn
+    }
     expiration_days = var.cache_expiration_days
     prefix          = var.prefix
     runner_instance_role = {

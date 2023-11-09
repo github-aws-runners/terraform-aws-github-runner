@@ -13,8 +13,11 @@ resource "aws_s3_bucket" "runner_cache" {
 data "aws_iam_policy_document" "runner_cache_policy" {
   statement {
     principals {
-      type        = "AWS"
-      identifiers = [var.config.runner_instance_role.arn]
+      type = "AWS"
+      identifiers = [
+        var.config.runner_instance_role.arn,
+        var.config.cache_bucket_oidc_role.arn
+      ]
     }
 
     actions = ["s3:*"]

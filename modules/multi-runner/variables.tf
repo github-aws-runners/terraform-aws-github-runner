@@ -560,3 +560,8 @@ variable "lambda_tracing_mode" {
   type        = string
   default     = null
 }
+
+variable "cache_bucket_oidc_role_arn" {
+  description = "The OIDC role ARN that is allowed to access the cache bucket, in addition to the runner instance role is used."
+  type        = string
+}

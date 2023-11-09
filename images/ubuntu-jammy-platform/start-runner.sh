@@ -3,12 +3,12 @@ exec > >(tee /var/log/runner-startup.log | logger -t user-data -s 2>/dev/console
 
 echo "Initializing NVMe Instance Store for Docker"
 sudo systemctl stop docker
-sudo mkdir -p /mnt/instance-store
+sudo mkdir -p /opt/actions-runner/_work/docker
 EPHEMERAL_DISK=$(sudo nvme list | grep 'Amazon EC2 NVMe Instance Storage' | awk '{ print $1 }')
 sudo mkfs -t xfs $EPHEMERAL_DISK
-sudo mount $EPHEMERAL_DISK /mnt/instance-store
+sudo mount $EPHEMERAL_DISK /opt/actions-runner/_work/
 sudo touch /etc/docker/daemon.json
-sudo sed -i '1s/{$/{\n  "data-root": "\/mnt\/instance-store",/' /etc/docker/daemon.json
+sudo sed -i '1s/{$/{\n  "data-root": "\/opt\/actions-runner\/_work\/docker",/' /etc/docker/daemon.json
 sudo systemctl start docker
 echo "Initialized NVMe Instance Store for Docker"
 
