@@ -31,15 +31,16 @@ module "base" {
 }
 
 module "multi-runner" {
-  source                            = "../../modules/multi-runner"
-  multi_runner_config               = local.multi_runner_config
-  aws_region                        = local.aws_region
-  vpc_id                            = module.base.vpc.vpc_id
-  subnet_ids                        = module.base.vpc.private_subnets
-  runners_scale_up_lambda_timeout   = 60
-  runners_scale_down_lambda_timeout = 60
-  prefix                            = local.environment
-  tags                              = local.tags
+  source                               = "../../modules/multi-runner"
+  multi_runner_config                  = local.multi_runner_config
+  aws_region                           = local.aws_region
+  vpc_id                               = module.base.vpc.vpc_id
+  subnet_ids                           = module.base.vpc.private_subnets
+  runners_scale_up_lambda_timeout      = 60
+  runners_scale_down_lambda_timeout    = 60
+  runner_additional_security_group_ids = [module.docker_cache.security_group_id]
+  prefix                               = local.environment
+  tags                                 = local.tags
   github_app = {
     key_base64     = var.github_app.key_base64
     id             = var.github_app.id
@@ -91,6 +92,5 @@ module "docker_cache" {
     tags       = local.tags
     vpc_id     = module.base.vpc.vpc_id
     subnet_ids = module.base.vpc.private_subnets
-    # lambda_security_group_ids = var.lambda_security_group_ids
   }
 }

@@ -68,10 +68,7 @@ resource "aws_launch_template" "docker_cache" {
   name_prefix            = "${var.config.prefix}-docker-cache-"
   update_default_version = true
 
-  # vpc_security_group_ids = concat(
-  #   var.config.lambda_security_group_ids,
-  #   [aws_security_group.docker_cache_sg.id]
-  # )
+  vpc_security_group_ids = [aws_security_group.docker_cache_sg.id]
 
   iam_instance_profile {
     name = aws_iam_instance_profile.docker_cache.name
