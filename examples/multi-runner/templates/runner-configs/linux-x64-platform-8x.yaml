@@ -22,6 +22,7 @@ runner_config:
   create_service_linked_role_spot: true
   scale_down_schedule_expression: cron(* * * * ? *)
   enable_userdata: false
+  enable_platform_ecr: true
   ami_owners:
     - ${account_id}
   ami_filter:
