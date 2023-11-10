@@ -27,7 +27,7 @@
       ],
       "Resource": [
         "arn:aws:ecr:${aws_region}:${aws_account_id}:repository/dapi",
-        "arn:aws:ecr:${aws_region}:${aws_account_id}:repository/dashmate_helper",
+        "arn:aws:ecr:${aws_region}:${aws_account_id}:repository/dashmate-helper",
         "arn:aws:ecr:${aws_region}:${aws_account_id}:repository/drive"
       ]
     }

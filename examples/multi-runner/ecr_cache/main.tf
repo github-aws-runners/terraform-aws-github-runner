@@ -8,8 +8,8 @@ resource "aws_ecr_repository" "dapi" {
   tags = var.config.tags
 }
 
-resource "aws_ecr_repository" "dashmate_helper" {
-  name = "dashmate_helper"
+resource "aws_ecr_repository" "dashmate-helper" {
+  name = "dashmate-helper"
   tags = var.config.tags
 }
 
@@ -25,8 +25,8 @@ resource "aws_ecr_lifecycle_policy" "dapi" {
   policy = file("${path.module}/policies/ecr-lifecycle-policy.json")
 }
 
-resource "aws_ecr_lifecycle_policy" "dashmate_helper" {
-  repository = aws_ecr_repository.dashmate_helper.name
+resource "aws_ecr_lifecycle_policy" "dashmate-helper" {
+  repository = aws_ecr_repository.dashmate-helper.name
 
   policy = file("${path.module}/policies/ecr-lifecycle-policy.json")
 }
