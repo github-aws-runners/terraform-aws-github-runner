@@ -31,16 +31,16 @@ module "base" {
 }
 
 module "multi-runner" {
-  source                            = "../../modules/multi-runner"
-  multi_runner_config               = local.multi_runner_config
-  cache_bucket_oidc_role_arn        = aws_iam_role.oidc_role.arn
-  aws_region                        = local.aws_region
-  vpc_id                            = module.base.vpc.vpc_id
-  subnet_ids                        = module.base.vpc.private_subnets
-  runners_scale_up_lambda_timeout   = 60
-  runners_scale_down_lambda_timeout = 60
-  prefix                            = local.environment
-  tags                              = local.tags
+  source                               = "../../modules/multi-runner"
+  multi_runner_config                  = local.multi_runner_config
+  aws_region                           = local.aws_region
+  vpc_id                               = module.base.vpc.vpc_id
+  subnet_ids                           = module.base.vpc.private_subnets
+  runners_scale_up_lambda_timeout      = 60
+  runners_scale_down_lambda_timeout    = 60
+  runner_additional_security_group_ids = [module.docker_cache.security_group_id]
+  prefix                               = local.environment
+  tags                                 = local.tags
   github_app = {
     key_base64     = var.github_app.key_base64
     id             = var.github_app.id
@@ -58,4 +58,39 @@ module "multi-runner" {
 
   # Enable debug logging for the lambda functions
   # log_level = "debug"
+}
+
+locals {
+  runner_arns_list = [for runner in module.multi-runner.runners_map : runner.role_runner.arn]
+}
+
+module "s3_cache" {
+  source = "./s3_cache"
+
+  config = {
+    aws_region       = local.aws_region
+    prefix           = local.environment
+    runner_role_arns = local.runner_arns_list
+    tags             = local.tags
+    vpc_id           = module.base.vpc.vpc_id
+  }
+}
+
+module "ecr_cache" {
+  source = "./ecr_cache"
+
+  config = {
+    tags = local.tags
+  }
+}
+
+module "docker_cache" {
+  source = "./docker_cache"
+
+  config = {
+    prefix     = local.environment
+    tags       = local.tags
+    vpc_id     = module.base.vpc.vpc_id
+    subnet_ids = module.base.vpc.private_subnets
+  }
 }

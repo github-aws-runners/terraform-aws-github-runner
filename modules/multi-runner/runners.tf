@@ -50,7 +50,7 @@ module "runners" {
   idle_config                          = each.value.runner_config.idle_config
   enable_ssm_on_runners                = each.value.runner_config.enable_ssm_on_runners
   egress_rules                         = var.runner_egress_rules
-  runner_additional_security_group_ids = try(coalescelist(each.value.runner_config.runner_additional_security_group_ids, var.runner_additional_security_group_ids), [module.docker_cache.security_group_id])
+  runner_additional_security_group_ids = try(coalescelist(each.value.runner_config.runner_additional_security_group_ids, var.runner_additional_security_group_ids), [])
   metadata_options                     = each.value.runner_config.runner_metadata_options
   credit_specification                 = each.value.runner_config.credit_specification
 
@@ -89,9 +89,6 @@ module "runners" {
   runner_ec2_tags       = each.value.runner_config.runner_ec2_tags
 
   create_service_linked_role_spot = each.value.runner_config.create_service_linked_role_spot
-  create_cache_bucket             = each.value.runner_config.create_cache_bucket
-  cache_expiration_days           = each.value.runner_config.cache_expiration_days
-  cache_bucket_oidc_role_arn      = var.cache_bucket_oidc_role_arn
 
   runner_iam_role_managed_policy_arns = each.value.runner_config.runner_iam_role_managed_policy_arns
 
