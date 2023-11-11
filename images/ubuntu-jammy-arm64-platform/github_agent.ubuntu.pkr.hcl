@@ -159,7 +159,7 @@ build {
       "curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > microsoft.gpg",
       "sudo install -o root -g root -m 644 microsoft.gpg /etc/apt/trusted.gpg.d/",
       "sudo sh -c 'echo \"deb [arch=amd64] https://packages.microsoft.com/repos/edge stable main\" > /etc/apt/sources.list.d/microsoft-edge-dev.list'",
-      "apt-get update && apt-get install -y microsoft-edge-stable",
+      "sudo apt-get update && sudo apt-get install -y microsoft-edge-stable",
       "sudo curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg",
       "echo deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_18.x nodistro main | sudo tee /etc/apt/sources.list.d/nodesource.list",
       "sudo apt-get -y install automake autotools-dev bsdmainutils build-essential clang cmake containerd.io docker-ce docker-ce-cli docker-compose-plugin=2.20.2-1~ubuntu.22.04~jammy firefox gcc git jq libssl-dev libtool libzmq3-dev nodejs openssh-client pkg-config python3 unzip nvme-cli",
