@@ -1677,10 +1677,10 @@
     write-pkg "4.0.0"
     yargs "16.2.0"
 
-"@middy/core@^3.6.2":
-  version "3.6.2"
-  resolved "https://registry.yarnpkg.com/@middy/core/-/core-3.6.2.tgz#8d3fd3b4aa4c62a9f21a340559d6b6d3c0b37ca7"
-  integrity sha512-/vyvG34RIt7CTmuB/jksGkk9vs6RCoOlRFPfdQq11dHkiKlT2mm8j/jZx7gSpEhXXh9LeaEMuKPnsgWBIlGS1g==
+"@middy/core@^4.7.0":
+  version "4.7.0"
+  resolved "https://registry.yarnpkg.com/@middy/core/-/core-4.7.0.tgz#37e055559d5bf05dcb7b288c44644e8ae4255900"
+  integrity sha512-yI++DmhDQ8+ugvY7+GrEnb2PF0M/6Wzbgu4Tf7QhOlhwKGDd4j6or+Ab7qYPWx+jnKf8F0tqlmh0gV4JLi0yHw==
 
 "@nodelib/fs.scandir@2.1.5":
   version "2.1.5"

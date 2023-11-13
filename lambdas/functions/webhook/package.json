@@ -39,7 +39,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-sqs": "^3.436.0",
-    "@middy/core": "^3.6.2",
+    "@middy/core": "^4.7.0",
     "@octokit/rest": "^20.0.1",
     "@octokit/types": "^12.1.1",
     "@octokit/webhooks": "^12.0.3",
