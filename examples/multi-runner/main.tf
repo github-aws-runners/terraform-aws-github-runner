@@ -102,12 +102,12 @@ module "docker_cache" {
 
 module "webhook_github_app" {
   source     = "../../modules/webhook-github-app"
-  depends_on = [module.runners]
+  depends_on = [module.multi-runner]
 
   github_app = {
     key_base64     = var.github_app.key_base64
     id             = var.github_app.id
     webhook_secret = random_id.random.hex
   }
-  webhook_endpoint = module.runners.webhook.endpoint
+  webhook_endpoint = module.multi-runner.webhook.endpoint
 }

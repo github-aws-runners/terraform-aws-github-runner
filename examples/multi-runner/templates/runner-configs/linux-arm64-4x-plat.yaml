@@ -10,7 +10,6 @@ redrive_build_queue:
 runner_config:
   runner_os: linux
   runner_architecture: arm64
-  runner_extra_labels: ubuntu-platform-4x
   runner_run_as: ubuntu
   runner_name_prefix: ubuntu-platform-arm64-4x_
   enable_runner_workflow_job_labels_check_all: true
