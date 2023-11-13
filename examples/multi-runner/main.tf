@@ -46,7 +46,12 @@ module "multi-runner" {
     id             = var.github_app.id
     webhook_secret = random_id.random.hex
   }
-
+  # enable this section for tracing
+  # tracing_config = {
+  #   mode                  = "Active"
+  #   capture_error         = true
+  #   capture_http_requests = true
+  # }
   # Assuming local build lambda's to use pre build ones, uncomment the lines below and download the
   # lambda zip files lambda_download
   webhook_lambda_zip                = "../lambdas-download/webhook.zip"
@@ -93,4 +98,15 @@ module "docker_cache" {
     vpc_id     = module.base.vpc.vpc_id
     subnet_ids = module.base.vpc.private_subnets
   }
+
+module "webhook_github_app" {
+  source     = "../../modules/webhook-github-app"
+  depends_on = [module.runners]
+
+  github_app = {
+    key_base64     = var.github_app.key_base64
+    id             = var.github_app.id
+    webhook_secret = random_id.random.hex
+  }
+  webhook_endpoint = module.runners.webhook.endpoint
 }

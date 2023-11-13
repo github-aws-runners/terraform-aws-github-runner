@@ -4,8 +4,7 @@ on:
     branches:
       - main
   pull_request:
-    paths-ignore:
-      - "modules/*/lambdas/**"
+    paths: ["**/*.tf", "**/*.hcl", ".github/workflows/terraform.yml"]
 
 permissions:
   contents: read
@@ -18,18 +17,67 @@ jobs:
     name: Verify module
     strategy:
       matrix:
-        terraform: [1.3.2, "latest"]
+        terraform: [1.5.6, "latest"]
     runs-on: ubuntu-latest
     container:
       image: hashicorp/terraform:${{ matrix.terraform }}
     steps:
       - name: "Checkout"
-        uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - name: "Fake zip files" # Validate will fail if it cannot find the zip files
         run: |
           touch lambdas/functions/webhook/webhook.zip
           touch lambdas/functions/control-plane/runners.zip
           touch lambdas/functions/gh-agent-syncer/runner-binaries-syncer.zip
+          touch lambdas/functions/ami-housekeeper/ami-housekeeper.zip
+      - name: terraform init
+        run: terraform init -get -backend=false -input=false
+      - if: contains(matrix.terraform, '1.5.')
+        name: check terraform formatting
+        run: terraform fmt -recursive -check=true -write=false
+      - if: contains(matrix.terraform, 'latest') # check formatting for the latest release but avoid failing the build
+        name: check terraform formatting
+        run: terraform fmt -recursive -check=true -write=false
+        continue-on-error: true
+      - name: validate terraform
+        run: terraform validate
+      - if: contains(matrix.terraform, '1.5.')
+        name: Fix for actions/cache on alpine
+        run: apk add --no-cache tar
+        continue-on-error: true
+      - if: contains(matrix.terraform, '1.5.')
+        uses: actions/cache@v3.3.2
+        name: Cache TFLint plugin dir
+        with:
+          path: ~/.tflint.d/plugins
+          key: tflint-${{ hashFiles('.tflint.hcl') }}
+      - if: contains(matrix.terraform, '1.5.')
+        name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+      - if: contains(matrix.terraform, '1.3.')
+        name: Run TFLint
+        run: |
+          tflint --init -c ${GITHUB_WORKSPACE}/.tflint.hcl
+          tflint -c ${GITHUB_WORKSPACE}/.tflint.hcl --var-file ${GITHUB_WORKSPACE}/.github/lint/tflint.tfvars
+
+  verify_modules:
+    name: Verify modules
+    strategy:
+      fail-fast: false
+      matrix:
+        terraform: [1.3.2, "latest"]
+        module:
+          ["ami-housekeeper", "download-lambda", "multi-runner", "runner-binaries-syncer", "runners", "setup-iam-permissions", "ssm", "webhook"]
+    defaults:
+      run:
+        working-directory: modules/${{ matrix.module }}
+    runs-on: ubuntu-latest
+    container:
+      image: hashicorp/terraform:${{ matrix.terraform }}
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - name: terraform init
         run: terraform init -get -backend=false -input=false
       - if: contains(matrix.terraform, '1.3.')
@@ -42,22 +90,35 @@ jobs:
       - name: validate terraform
         run: terraform validate
       - if: contains(matrix.terraform, '1.3.')
+        name: Fix for actions/cache on alpine
+        run: apk add --no-cache tar
+        continue-on-error: true
+      - if: contains(matrix.terraform, '1.3.')
+        uses: actions/cache@v3.3.2
+        name: Cache TFLint plugin dir
+        with:
+          path: ~/.tflint.d/plugins
+          key: tflint-${{ hashFiles('.tflint.hcl') }}
+      - if: contains(matrix.terraform, '1.3.')
         name: Setup TFLint
-        uses: terraform-linters/setup-tflint@v3
+        uses: terraform-linters/setup-tflint@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
       - if: contains(matrix.terraform, '1.3.')
         name: Run TFLint
-        run: tflint -f compact
+        working-directory: ${{ github.workspace }}
+        run: |
+          tflint --init -c ${GITHUB_WORKSPACE}/.tflint.hcl --chdir modules/${{ matrix.module }}
+          tflint -f compact -c ${GITHUB_WORKSPACE}/.tflint.hcl --var-file ${GITHUB_WORKSPACE}/.github/lint/tflint.tfvars --chdir modules/${{ matrix.module }}
 
   verify_examples:
     name: Verify examples
     strategy:
       fail-fast: false
       matrix:
-        terraform: [1.3.0, "latest"]
+        terraform: [1.5.6, "latest"]
         example:
-          ["default", "ubuntu", "prebuilt", "arm64", "ephemeral", "windows"]
+          ["default", "ubuntu", "prebuilt", "arm64", "ephemeral", "windows", "multi-runner"]
     defaults:
       run:
         working-directory: examples/${{ matrix.example }}
@@ -65,37 +126,10 @@ jobs:
     container:
       image: hashicorp/terraform:${{ matrix.terraform }}
     steps:
-      - uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - name: terraform init
         run: terraform init -get -backend=false -input=false
-      - if: contains(matrix.terraform, '1.3.')
-        name: check terraform formatting
-        run: terraform fmt -recursive -check=true -write=false
-      - if: contains(matrix.terraform, 'latest') # check formatting for the latest release but avoid failing the build
-        name: check terraform formatting
-        run: terraform fmt -recursive -check=true -write=false
-        continue-on-error: true
-      - name: validate terraform011
-        run: terraform validate
-
-
-  verify_multi_runner_example:
-    name: Verify Multi-Runner examples
-    strategy:
-      fail-fast: false
-      matrix:
-        terraform: [1.3.2, "latest"]
-    defaults:
-      run:
-        working-directory: examples/multi-runner
-    runs-on: ubuntu-latest
-    container:
-      image: hashicorp/terraform:${{ matrix.terraform }}
-    steps:
-      - uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac
-      - name: terraform init
-        run: terraform init -get -backend=false -input=false
-      - if: contains(matrix.terraform, '1.3.')
+      - if: contains(matrix.terraform, '1.5.')
         name: check terraform formatting
         run: terraform fmt -recursive -check=true -write=false
       - if: contains(matrix.terraform, 'latest') # check formatting for the latest release but avoid failing the build
@@ -104,4 +138,24 @@ jobs:
         continue-on-error: true
       - name: validate terraform
         run: terraform validate
-
+      - if: contains(matrix.terraform, '1.5.')
+        name: Fix for actions/cache on alpine
+        run: apk add --no-cache tar
+        continue-on-error: true
+      - if: contains(matrix.terraform, '1.5.')
+        uses: actions/cache@v3.3.2
+        name: Cache TFLint plugin dir
+        with:
+          path: ~/.tflint.d/plugins
+          key: tflint-${{ hashFiles('.tflint.hcl') }}
+      - if: contains(matrix.terraform, '1.5.')
+        name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+      - if: contains(matrix.terraform, '1.5.')
+        name: Run TFLint
+        working-directory: ${{ github.workspace }}
+        run: |
+          tflint --init -c ${GITHUB_WORKSPACE}/.tflint.hcl --chdir modules/${{ matrix.module }}
+          tflint -f compact -c ${GITHUB_WORKSPACE}/.tflint.hcl --var-file ${GITHUB_WORKSPACE}/.github/lint/tflint.tfvars --chdir examples/${{ matrix.example }}

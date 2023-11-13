@@ -35,7 +35,7 @@ module "runners" {
 
   enable_organization_runners = false
   # no need to add extra windows tag here as it is automatically added by GitHub
-  runner_extra_labels = "default,example"
+  runner_extra_labels = ["default", "example"]
 
   # Set the OS to Windows
   runner_os = "windows"
@@ -52,4 +52,16 @@ module "runners" {
 
   # override scaling down for testing
   scale_down_schedule_expression = "cron(* * * * ? *)"
+}
+
+module "webhook_github_app" {
+  source     = "../../modules/webhook-github-app"
+  depends_on = [module.runners]
+
+  github_app = {
+    key_base64     = var.github_app.key_base64
+    id             = var.github_app.id
+    webhook_secret = random_id.random.hex
+  }
+  webhook_endpoint = module.runners.webhook.endpoint
 }

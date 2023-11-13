@@ -17,31 +17,34 @@ resource "aws_lambda_function" "pool" {
 
   environment {
     variables = {
-      AMI_ID_SSM_PARAMETER_NAME            = var.config.ami_id_ssm_parameter_name
-      DISABLE_RUNNER_AUTOUPDATE            = var.config.runner.disable_runner_autoupdate
-      ENABLE_EPHEMERAL_RUNNERS             = var.config.runner.ephemeral
-      ENABLE_JIT_CONFIG                    = var.config.runner.enable_jit_config
-      ENVIRONMENT                          = var.config.prefix
-      GHES_URL                             = var.config.ghes.url
-      INSTANCE_ALLOCATION_STRATEGY         = var.config.instance_allocation_strategy
-      INSTANCE_MAX_SPOT_PRICE              = var.config.instance_max_spot_price
-      INSTANCE_TARGET_CAPACITY_TYPE        = var.config.instance_target_capacity_type
-      INSTANCE_TYPES                       = join(",", var.config.instance_types)
-      LAUNCH_TEMPLATE_NAME                 = var.config.runner.launch_template.name
-      LOG_LEVEL                            = var.config.lambda.log_level
-      NODE_TLS_REJECT_UNAUTHORIZED         = var.config.ghes.url != null && !var.config.ghes.ssl_verify ? 0 : 1
-      PARAMETER_GITHUB_APP_ID_NAME         = var.config.github_app_parameters.id.name
-      PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.config.github_app_parameters.key_base64.name
-      POWERTOOLS_LOGGER_LOG_EVENT          = var.config.lambda.log_level == "debug" ? "true" : "false"
-      RUNNER_BOOT_TIME_IN_MINUTES          = var.config.runner.boot_time_in_minutes
-      RUNNER_LABELS                        = var.config.runner.labels
-      RUNNER_GROUP_NAME                    = var.config.runner.group_name
-      RUNNER_NAME_PREFIX                   = var.config.runner.name_prefix
-      RUNNER_OWNER                         = var.config.runner.pool_owner
-      SERVICE_NAME                         = "runners-pool"
-      SSM_TOKEN_PATH                       = var.config.ssm_token_path
-      SSM_CONFIG_PATH                      = var.config.ssm_config_path
-      SUBNET_IDS                           = join(",", var.config.subnet_ids)
+      AMI_ID_SSM_PARAMETER_NAME                = var.config.ami_id_ssm_parameter_name
+      DISABLE_RUNNER_AUTOUPDATE                = var.config.runner.disable_runner_autoupdate
+      ENABLE_EPHEMERAL_RUNNERS                 = var.config.runner.ephemeral
+      ENABLE_JIT_CONFIG                        = var.config.runner.enable_jit_config
+      ENVIRONMENT                              = var.config.prefix
+      GHES_URL                                 = var.config.ghes.url
+      INSTANCE_ALLOCATION_STRATEGY             = var.config.instance_allocation_strategy
+      INSTANCE_MAX_SPOT_PRICE                  = var.config.instance_max_spot_price
+      INSTANCE_TARGET_CAPACITY_TYPE            = var.config.instance_target_capacity_type
+      INSTANCE_TYPES                           = join(",", var.config.instance_types)
+      LAUNCH_TEMPLATE_NAME                     = var.config.runner.launch_template.name
+      LOG_LEVEL                                = var.config.lambda.log_level
+      NODE_TLS_REJECT_UNAUTHORIZED             = var.config.ghes.url != null && !var.config.ghes.ssl_verify ? 0 : 1
+      PARAMETER_GITHUB_APP_ID_NAME             = var.config.github_app_parameters.id.name
+      PARAMETER_GITHUB_APP_KEY_BASE64_NAME     = var.config.github_app_parameters.key_base64.name
+      POWERTOOLS_LOGGER_LOG_EVENT              = var.config.lambda.log_level == "debug" ? "true" : "false"
+      RUNNER_BOOT_TIME_IN_MINUTES              = var.config.runner.boot_time_in_minutes
+      RUNNER_LABELS                            = lower(join(",", var.config.runner.labels))
+      RUNNER_GROUP_NAME                        = var.config.runner.group_name
+      RUNNER_NAME_PREFIX                       = var.config.runner.name_prefix
+      RUNNER_OWNER                             = var.config.runner.pool_owner
+      SERVICE_NAME                             = "runners-pool"
+      SSM_TOKEN_PATH                           = var.config.ssm_token_path
+      SSM_CONFIG_PATH                          = var.config.ssm_config_path
+      SUBNET_IDS                               = join(",", var.config.subnet_ids)
+      POWERTOOLS_TRACE_ENABLED                 = var.tracing_config.mode != null ? true : false
+      POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.tracing_config.capture_http_requests
+      POWERTOOLS_TRACER_CAPTURE_ERROR          = var.tracing_config.capture_error
     }
   }
 
@@ -54,9 +57,9 @@ resource "aws_lambda_function" "pool" {
   }
 
   dynamic "tracing_config" {
-    for_each = var.lambda_tracing_mode != null ? [true] : []
+    for_each = var.tracing_config.mode != null ? [true] : []
     content {
-      mode = var.lambda_tracing_mode
+      mode = var.tracing_config.mode
     }
   }
 }
@@ -152,7 +155,7 @@ resource "aws_iam_role_policy_attachment" "ami_id_ssm_parameter_read" {
 
 # lambda xray policy
 data "aws_iam_policy_document" "lambda_xray" {
-  count = var.lambda_tracing_mode != null ? 1 : 0
+  count = var.tracing_config.mode != null ? 1 : 0
   statement {
     actions = [
       "xray:BatchGetTraces",
@@ -169,7 +172,7 @@ data "aws_iam_policy_document" "lambda_xray" {
 }
 
 resource "aws_iam_role_policy" "pool_xray" {
-  count  = var.lambda_tracing_mode != null ? 1 : 0
+  count  = var.tracing_config.mode != null ? 1 : 0
   policy = data.aws_iam_policy_document.lambda_xray[0].json
   role   = aws_iam_role.pool.name
 }

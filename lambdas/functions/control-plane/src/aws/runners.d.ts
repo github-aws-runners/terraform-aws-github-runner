@@ -39,4 +39,5 @@ export interface RunnerInputParameters {
   };
   numberOfRunners?: number;
   amiIdSsmParameterName?: string;
+  tracingEnabled?: boolean;
 }

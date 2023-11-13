@@ -33,6 +33,7 @@ module "runners" {
 
   sqs_build_queue                      = { "arn" : each.value.arn }
   github_app_parameters                = local.github_app_parameters
+  ebs_optimized                        = each.value.runner_config.ebs_optimized
   enable_organization_runners          = each.value.runner_config.enable_organization_runners
   enable_ephemeral_runners             = each.value.runner_config.enable_ephemeral_runners
   enable_jit_config                    = each.value.runner_config.enable_jit_config
@@ -43,7 +44,7 @@ module "runners" {
   scale_down_schedule_expression       = each.value.runner_config.scale_down_schedule_expression
   minimum_running_time_in_minutes      = each.value.runner_config.minimum_running_time_in_minutes
   runner_boot_time_in_minutes          = each.value.runner_config.runner_boot_time_in_minutes
-  runner_labels                        = "self-hosted,${each.value.runner_config.runner_os},${each.value.runner_config.runner_architecture},${each.value.runner_config.runner_extra_labels}"
+  runner_labels                        = sort(distinct(concat(["self-hosted", each.value.runner_config.runner_os, each.value.runner_config.runner_architecture], each.value.runner_config.runner_extra_labels)))
   runner_as_root                       = each.value.runner_config.runner_as_root
   runner_run_as                        = each.value.runner_config.runner_run_as
   runners_maximum_count                = each.value.runner_config.runners_maximum_count
@@ -66,7 +67,7 @@ module "runners" {
   lambda_timeout_scale_down        = var.runners_scale_down_lambda_timeout
   lambda_subnet_ids                = var.lambda_subnet_ids
   lambda_security_group_ids        = var.lambda_security_group_ids
-  lambda_tracing_mode              = var.lambda_tracing_mode
+  tracing_config                   = var.tracing_config
   logging_retention_in_days        = var.logging_retention_in_days
   logging_kms_key_id               = var.logging_kms_key_id
   enable_cloudwatch_agent          = each.value.runner_config.enable_cloudwatch_agent
@@ -103,4 +104,7 @@ module "runners" {
   pool_lambda_timeout                        = var.pool_lambda_timeout
   pool_runner_owner                          = each.value.runner_config.pool_runner_owner
   pool_lambda_reserved_concurrent_executions = var.pool_lambda_reserved_concurrent_executions
+  associate_public_ipv4_address              = var.associate_public_ipv4_address
+
+  ssm_housekeeper = var.runners_ssm_housekeeper
 }

@@ -17,7 +17,7 @@ module "runner_binaries" {
   lambda_architecture               = var.lambda_architecture
   lambda_zip                        = var.runner_binaries_syncer_lambda_zip
   lambda_timeout                    = var.runner_binaries_syncer_lambda_timeout
-  lambda_tracing_mode               = var.lambda_tracing_mode
+  tracing_config                    = var.tracing_config
   logging_retention_in_days         = var.logging_retention_in_days
   logging_kms_key_id                = var.logging_kms_key_id
   enable_event_rule_binaries_syncer = var.enable_event_rule_binaries_syncer

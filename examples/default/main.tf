@@ -48,7 +48,7 @@ module "runners" {
   # runners_lambda_zip                = "../lambdas-download/runners.zip"
 
   enable_organization_runners = true
-  runner_extra_labels         = "default,example"
+  runner_extra_labels         = ["default", "example"]
 
   # enable access to the runners via SSM
   enable_ssm_on_runners = true
@@ -96,4 +96,29 @@ module "runners" {
 
   # Enable debug logging for the lambda functions
   # log_level = "debug"
+
+  enable_ami_housekeeper = true
+  ami_housekeeper_cleanup_config = {
+    ssmParameterNames = ["*/ami-id"]
+    minimumDaysOld    = 10
+    amiFilters = [
+      {
+        Name   = "name"
+        Values = ["*al2023*"]
+      }
+    ]
+  }
+
+}
+
+module "webhook_github_app" {
+  source     = "../../modules/webhook-github-app"
+  depends_on = [module.runners]
+
+  github_app = {
+    key_base64     = var.github_app.key_base64
+    id             = var.github_app.id
+    webhook_secret = random_id.random.hex
+  }
+  webhook_endpoint = module.runners.webhook.endpoint
 }

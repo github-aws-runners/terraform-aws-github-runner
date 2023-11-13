@@ -34,7 +34,7 @@ variable "tags" {
 }
 
 variable "runner_config" {
-  description = "SQS queue to publish accepted build events based on the runner type."
+  description = "SQS queue to publish accepted build events based on the runner type. When exact match is disabled the webhook accecpts the event if one of the workflow job labels is part of the matcher. The priority defines the order the matchers are applied."
   type = map(object({
     arn  = string
     id   = string
@@ -42,9 +42,15 @@ variable "runner_config" {
     matcherConfig = object({
       labelMatchers = list(list(string))
       exactMatch    = bool
+      priority      = optional(number, 999)
     })
   }))
+  validation {
+    condition     = try(var.runner_config.matcherConfig.priority, 999) >= 0 && try(var.runner_config.matcherConfig.priority, 999) < 1000
+    error_message = "The priority of the matcher must be between 0 and 999."
+  }
 }
+
 variable "sqs_workflow_job_queue" {
   description = "SQS queue to monitor github events."
   type = object({
@@ -128,16 +134,6 @@ variable "kms_key_arn" {
   default     = null
 }
 
-variable "log_type" {
-  description = "Logging format for lambda logging. Valid values are 'json', 'pretty', 'hidden'. "
-  type        = string
-  default     = null
-  validation {
-    condition     = var.log_type == null
-    error_message = "DEPRECATED: `log_type` is not longer supported."
-  }
-}
-
 variable "log_level" {
   description = "Logging level for lambda logging. Valid values are  'silly', 'trace', 'debug', 'info', 'warn', 'error', 'fatal'."
   type        = string
@@ -186,8 +182,12 @@ variable "github_app_parameters" {
   })
 }
 
-variable "lambda_tracing_mode" {
-  description = "Enable X-Ray tracing for the lambda functions."
-  type        = string
-  default     = null
+variable "tracing_config" {
+  description = "Configuration for lambda tracing."
+  type = object({
+    mode                  = optional(string, null)
+    capture_http_requests = optional(bool, false)
+    capture_error         = optional(bool, false)
+  })
+  default = {}
 }

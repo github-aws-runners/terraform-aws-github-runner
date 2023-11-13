@@ -1,6 +1,7 @@
 import { SQS, SendMessageCommandInput } from '@aws-sdk/client-sqs';
 import { WorkflowJobEvent } from '@octokit/webhooks-types';
 import { createChildLogger } from '@terraform-aws-github-runner/aws-powertools-util';
+import { getTracedAWSV3Client } from '@terraform-aws-github-runner/aws-powertools-util';
 
 const logger = createChildLogger('sqs');
 
@@ -30,7 +31,7 @@ export interface GithubWorkflowEvent {
 }
 
 export const sendActionRequest = async (message: ActionRequestMessage): Promise<void> => {
-  const sqs = new SQS({ region: process.env.AWS_REGION });
+  const sqs = getTracedAWSV3Client(new SQS({ region: process.env.AWS_REGION }));
 
   const sqsMessage: SendMessageCommandInput = {
     QueueUrl: message.queueId,

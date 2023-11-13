@@ -19,9 +19,9 @@ resource "aws_apigatewayv2_route" "webhook" {
 resource "aws_apigatewayv2_stage" "webhook" {
   lifecycle {
     ignore_changes = [
-      // see bug https://github.com/terraform-providers/terraform-provider-aws/issues/12893
+      # see bug https://github.com/terraform-providers/terraform-provider-aws/issues/12893
       default_route_settings,
-      // not terraform managed
+      # not terraform managed
       deployment_id
     ]
   }
@@ -42,7 +42,7 @@ resource "aws_apigatewayv2_stage" "webhook" {
 resource "aws_apigatewayv2_integration" "webhook" {
   lifecycle {
     ignore_changes = [
-      // not terraform managed
+      # not terraform managed
       passthrough_behavior
     ]
   }

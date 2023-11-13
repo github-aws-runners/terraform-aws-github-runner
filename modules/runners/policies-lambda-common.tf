@@ -14,6 +14,7 @@ resource "aws_iam_policy" "ami_id_ssm_parameter_read" {
   name        = "${var.prefix}-ami-id-ssm-parameter-read"
   path        = local.role_path
   description = "Allows for reading ${var.prefix} GitHub runner AMI ID from an SSM parameter"
+  tags        = local.tags
   policy      = <<-JSON
     {
       "Version": "2012-10-17",
@@ -33,7 +34,7 @@ resource "aws_iam_policy" "ami_id_ssm_parameter_read" {
 }
 
 data "aws_iam_policy_document" "lambda_xray" {
-  count = var.lambda_tracing_mode != null ? 1 : 0
+  count = var.tracing_config.mode != null ? 1 : 0
   statement {
     actions = [
       "xray:BatchGetTraces",
