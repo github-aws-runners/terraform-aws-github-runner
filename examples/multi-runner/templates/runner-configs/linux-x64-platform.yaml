@@ -27,7 +27,7 @@ runner_config:
     - ${account_id}
   ami_filter:
     name:
-      - github-runner-ubuntu-jammy-platform-amd64-202311080020
+      - github-runner-ubuntu-jammy-platform-amd64-202311130458
     state:
       - available
   block_device_mappings:
