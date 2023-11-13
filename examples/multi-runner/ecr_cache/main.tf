@@ -9,7 +9,7 @@ resource "aws_ecr_repository" "dapi" {
 }
 
 resource "aws_ecr_repository" "dashmate_helper" {
-  name = "dashmate_helper"
+  name = "dashmate-helper"
   tags = var.config.tags
 }
 

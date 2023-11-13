@@ -102,12 +102,66 @@
     {
       "name": "githubrunner",
       "builder_type": "amazon-ebs",
-      "build_time": 1699852110,
+      "build_time": 1699618542,
       "files": null,
-      "artifact_id": "eu-west-1:ami-0fb5904a1e7587b02",
-      "packer_run_uuid": "242bab74-1574-9fe5-7fe2-a2557e70a43c",
+      "artifact_id": "eu-west-1:ami-0aef8da8ef18591b8",
+      "packer_run_uuid": "a96ace69-a84c-ca86-5081-7cf2d9c35c19",
+      "custom_data": null
+    },
+    {
+      "name": "githubrunner",
+      "builder_type": "amazon-ebs",
+      "build_time": 1699631481,
+      "files": null,
+      "artifact_id": "eu-west-1:ami-0913fafcc8aadde6f",
+      "packer_run_uuid": "e754eeaa-d92b-66eb-cad7-15120ea8b973",
+      "custom_data": null
+    },
+    {
+      "name": "githubrunner",
+      "builder_type": "amazon-ebs",
+      "build_time": 1699639560,
+      "files": null,
+      "artifact_id": "eu-west-1:ami-07a6e4625a9a3252f",
+      "packer_run_uuid": "60351ed5-4fb0-3fbb-7004-afc63abc95ca",
+      "custom_data": null
+    },
+    {
+      "name": "githubrunner",
+      "builder_type": "amazon-ebs",
+      "build_time": 1699650253,
+      "files": null,
+      "artifact_id": "eu-west-1:ami-0837e08ec1eb52007",
+      "packer_run_uuid": "a5a346f1-4223-dd1f-055d-36b0c4bce8eb",
+      "custom_data": null
+    },
+    {
+      "name": "githubrunner",
+      "builder_type": "amazon-ebs",
+      "build_time": 1699839243,
+      "files": null,
+      "artifact_id": "eu-west-1:ami-06d6061c496449272",
+      "packer_run_uuid": "e6acf1da-9b08-a79c-44f8-3f268e6d0d5b",
+      "custom_data": null
+    },
+    {
+      "name": "githubrunner",
+      "builder_type": "amazon-ebs",
+      "build_time": 1699850965,
+      "files": null,
+      "artifact_id": "eu-west-1:ami-0f3db1109f619df1e",
+      "packer_run_uuid": "3a68730d-e677-bb9a-0306-5b3c65b8f541",
+      "custom_data": null
+    },
+    {
+      "name": "githubrunner",
+      "builder_type": "amazon-ebs",
+      "build_time": 1699852165,
+      "files": null,
+      "artifact_id": "eu-west-1:ami-0719baee432f203a5",
+      "packer_run_uuid": "eb42f332-43fc-02d4-1b32-653a0a099478",
       "custom_data": null
     }
   ],
-  "last_run_uuid": "242bab74-1574-9fe5-7fe2-a2557e70a43c"
+  "last_run_uuid": "eb42f332-43fc-02d4-1b32-653a0a099478"
 }

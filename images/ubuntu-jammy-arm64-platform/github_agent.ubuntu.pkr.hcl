@@ -39,7 +39,7 @@ variable "associate_public_ip_address" {
 variable "instance_type" {
   description = "The instance type Packer will use for the builder"
   type        = string
-  default     = "c6id.2xlarge"
+  default     = "c7gd.2xlarge"
 }
 
 variable "root_volume_size_gb" {
@@ -96,7 +96,7 @@ locals {
 }
 
 source "amazon-ebs" "githubrunner" {
-  ami_name                                  = "github-runner-ubuntu-jammy-platform-amd64-${formatdate("YYYYMMDDhhmm", timestamp())}"
+  ami_name                                  = "github-runner-ubuntu-jammy-platform-arm64-${formatdate("YYYYMMDDhhmm", timestamp())}"
   instance_type                             = var.instance_type
   region                                    = var.region
   security_group_id                         = var.security_group_id
@@ -106,7 +106,7 @@ source "amazon-ebs" "githubrunner" {
 
   source_ami_filter {
     filters = {
-      name                = "*/ubuntu-jammy-22.04-amd64-server-*"
+      name                = "*/ubuntu-jammy-22.04-arm64-server-*"
       root-device-type    = "ebs"
       virtualization-type = "hvm"
     }
@@ -160,15 +160,15 @@ build {
       "echo 'Package: *\nPin: release o=LP-PPA-mozillateam\nPin-Priority: 1001\n\nPackage: firefox\nPin: version 1:1snap1-0ubuntu2\nPin-Priority: -1\n' | sudo tee /etc/apt/preferences.d/mozilla-firefox",
       "sudo curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg",
       "echo deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_18.x nodistro main | sudo tee /etc/apt/sources.list.d/nodesource.list",
-      "sudo apt-get -y install automake autotools-dev brave-browser bsdmainutils build-essential clang cmake containerd.io docker-ce docker-ce-cli docker-compose-plugin=2.20.2-1~ubuntu.22.04~jammy firefox gcc git jq libssl-dev libtool libzmq3-dev nodejs openssh-client pkg-config python3 unzip nvme-cli",
+      "sudo apt-get -y install automake autotools-dev brave-browser curl bsdmainutils build-essential clang cmake containerd.io docker-ce docker-ce-cli docker-compose-plugin=2.20.2-1~ubuntu.22.04~jammy firefox gcc git jq libssl-dev libtool libzmq3-dev nodejs openssh-client pkg-config python3 unzip nvme-cli",
       "sudo systemctl enable containerd.service",
       "sudo service docker start",
       "sudo usermod -a -G docker ubuntu",
       "echo '{\n  \"registry-mirrors\": [\"http://docker-cache.dcg.internal:5000\"]\n}' | sudo tee /etc/docker/daemon.json",
-      "sudo curl -f https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb -o amazon-cloudwatch-agent.deb",
+      "sudo curl -f https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/arm64/latest/amazon-cloudwatch-agent.deb -o amazon-cloudwatch-agent.deb",
       "sudo dpkg -i amazon-cloudwatch-agent.deb",
       "sudo systemctl restart amazon-cloudwatch-agent",
-      "sudo curl -f https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o awscliv2.zip",
+      "sudo curl -f https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip -o awscliv2.zip",
       "unzip awscliv2.zip",
       "sudo ./aws/install",
       "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y",
@@ -184,7 +184,7 @@ build {
       install_runner = templatefile("../../modules/runners/templates/install-runner.sh", {
         ARM_PATCH                       = ""
         S3_LOCATION_RUNNER_DISTRIBUTION = ""
-        RUNNER_ARCHITECTURE             = "x64"
+        RUNNER_ARCHITECTURE             = "arm64"
       })
     })
     destination = "/tmp/install-runner.sh"
@@ -192,12 +192,12 @@ build {
 
   provisioner "shell" {
     environment_vars = [
-      "RUNNER_TARBALL_URL=https://github.com/actions/runner/releases/download/v${local.runner_version}/actions-runner-linux-x64-${local.runner_version}.tar.gz"
+      "RUNNER_TARBALL_URL=https://github.com/actions/runner/releases/download/v${local.runner_version}/actions-runner-linux-arm64-${local.runner_version}.tar.gz"
     ]
     inline = [
       "sudo chmod +x /tmp/install-runner.sh",
       "echo ubuntu | tee -a /tmp/install-user.txt",
-      "sudo RUNNER_ARCHITECTURE=x64 RUNNER_TARBALL_URL=$RUNNER_TARBALL_URL /tmp/install-runner.sh",
+      "sudo RUNNER_ARCHITECTURE=arm64 RUNNER_TARBALL_URL=$RUNNER_TARBALL_URL /tmp/install-runner.sh",
       "echo ImageOS=ubuntu22 | tee -a /opt/actions-runner/.env"
     ]
   }
