@@ -100,7 +100,7 @@ variable "multi_runner_config" {
         volume_size           = number
         volume_type           = optional(string, "gp3")
         })), [{
-        volume_size           = 30
+        volume_size = 30
       }])
       pool_config = optional(list(object({
         schedule_expression = string
