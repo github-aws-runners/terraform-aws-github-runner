@@ -90,25 +90,17 @@ variable "multi_runner_config" {
         log_stream_name  = string
       })), null)
       block_device_mappings = optional(list(object({
-        delete_on_termination = bool
-        device_name           = string
-        encrypted             = bool
-        iops                  = number
-        kms_key_id            = string
-        snapshot_id           = string
-        throughput            = number
+        delete_on_termination = optional(bool, true)
+        device_name           = optional(string, "/dev/xvda")
+        encrypted             = optional(bool, true)
+        iops                  = optional(number)
+        kms_key_id            = optional(string)
+        snapshot_id           = optional(string)
+        throughput            = optional(number)
         volume_size           = number
-        volume_type           = string
+        volume_type           = optional(string, "gp3")
         })), [{
-        delete_on_termination = true
-        device_name           = "/dev/xvda"
-        encrypted             = true
-        iops                  = null
-        kms_key_id            = null
-        snapshot_id           = null
-        throughput            = null
         volume_size           = 30
-        volume_type           = "gp3"
       }])
       pool_config = optional(list(object({
         schedule_expression = string
