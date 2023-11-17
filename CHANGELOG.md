@@ -1,5 +1,16 @@
 # Changelog
 
+## [5.4.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.4.0...v5.4.1) (2023-11-17)
+
+
+### Bug Fixes
+
+* **lambda:** bump @aws-lambda-powertools/logger from 1.14.0 to 1.14.2 in /lambdas ([#3611](https://github.com/philips-labs/terraform-aws-github-runner/issues/3611)) ([1292c6b](https://github.com/philips-labs/terraform-aws-github-runner/commit/1292c6bf262c088be70119857327f332ddfea4ec))
+* **lambda:** bump @middy/core from 3.6.2 to 4.7.0 in /lambdas ([#3609](https://github.com/philips-labs/terraform-aws-github-runner/issues/3609)) ([2d0f039](https://github.com/philips-labs/terraform-aws-github-runner/commit/2d0f039f6b2e0b0bec4cb501e4797820c26531e8))
+* **lambda:** bump axios from 1.5.1 to 1.6.0 in /lambdas ([#3604](https://github.com/philips-labs/terraform-aws-github-runner/issues/3604)) ([a316b82](https://github.com/philips-labs/terraform-aws-github-runner/commit/a316b8226cb05f5ed9b586549892fa0ab4cb52b8))
+* **lambda:** bump axios from 1.6.0 to 1.6.1 in /lambdas ([#3612](https://github.com/philips-labs/terraform-aws-github-runner/issues/3612)) ([ab3627f](https://github.com/philips-labs/terraform-aws-github-runner/commit/ab3627f989564aa65efaa6b33c666870a9710aa8))
+* remove unused environment variable ([#3616](https://github.com/philips-labs/terraform-aws-github-runner/issues/3616)) ([bb68562](https://github.com/philips-labs/terraform-aws-github-runner/commit/bb68562953304dc1f6a6d6d5d2309db5e1e823c0))
+
 ## [5.4.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.3.0...v5.4.0) (2023-11-08)
 
 
