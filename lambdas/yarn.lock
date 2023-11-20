@@ -2188,9 +2188,9 @@
     "@octokit/plugin-rest-endpoint-methods" "^10.0.0"
 
 "@octokit/types@^11.0.0", "@octokit/types@^11.1.0", "@octokit/types@^12.0.0", "@octokit/types@^12.1.1", "@octokit/types@^6.41.0", "@octokit/types@^8.1.1", "@octokit/types@^9.0.0":
-  version "12.1.1"
-  resolved "https://registry.yarnpkg.com/@octokit/types/-/types-12.1.1.tgz#376726d8435625b3a1b6fcd8cd3e1b03ade939dc"
-  integrity sha512-qnJTldJ1NyGT5MTsCg/Zi+y2IFHZ1Jo5+njNCjJ9FcainV7LjuHgmB697kA0g4MjZeDAJsM3B45iqCVsCLVFZg==
+  version "12.3.0"
+  resolved "https://registry.yarnpkg.com/@octokit/types/-/types-12.3.0.tgz#e3f8bc53f65ef551e19cc1a0fea15adadec17d2d"
+  integrity sha512-nJ8X2HRr234q3w/FcovDlA+ttUU4m1eJAourvfUUtwAWeqL8AsyRqfnLvVnYn3NFbUnsmzQCzLNdFerPwdmcDQ==
   dependencies:
     "@octokit/openapi-types" "^19.0.2"
 
@@ -2210,9 +2210,9 @@
   integrity sha512-y92CpG4kFFtBBjni8LHoV12IegJ+KFxLgKRengrVjKmGE5XMeCuGvlfRe75lTRrgXaG6XIWJlFpIDTlkoJsU8w==
 
 "@octokit/webhooks@^12.0.3":
-  version "12.0.3"
-  resolved "https://registry.yarnpkg.com/@octokit/webhooks/-/webhooks-12.0.3.tgz#91f5df322e83b3b7d8bb9af5e692ffea16d6c8bb"
-  integrity sha512-8iG+/yza7hwz1RrQ7i7uGpK2/tuItZxZq1aTmeg2TNp2xTUB8F8lZF/FcZvyyAxT8tpDMF74TjFGCDACkf1kAQ==
+  version "12.0.7"
+  resolved "https://registry.yarnpkg.com/@octokit/webhooks/-/webhooks-12.0.7.tgz#aff57bd5bb00699ecf618324aeca9b8d16cc0059"
+  integrity sha512-g9HKed5x+72yBZcTRAYNiR7Ane/iOwNEjd9sdu+Jvrcc/Z0FdkjYBMfBmQdowbOhHM4Nek9zpGC5u3C3Wxfhsg==
   dependencies:
     "@octokit/request-error" "^5.0.0"
     "@octokit/webhooks-methods" "^4.0.0"
