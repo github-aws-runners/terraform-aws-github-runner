@@ -28,7 +28,7 @@ export async function githubWebhook(event: APIGatewayEvent, context: Context): P
     logger.error(`Failed to handle webhook event`, { error: e });
     if (e instanceof ValidationError) {
       result = {
-        statusCode: e.code,
+        statusCode: e.statusCode,
         body: e.message,
       };
     } else {

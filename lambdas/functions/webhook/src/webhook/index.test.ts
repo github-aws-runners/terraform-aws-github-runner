@@ -57,7 +57,7 @@ describe('handler', () => {
 
   it('returns 500 if no signature available', async () => {
     await expect(handle({}, '', config)).rejects.toMatchObject({
-      code: 500,
+      statusCode: 500,
     });
   });
 
@@ -68,7 +68,7 @@ describe('handler', () => {
     await expect(
       handle({ 'X-Hub-Signature-256': await webhooks.sign(other), 'X-GitHub-Event': 'workflow_job' }, event, config),
     ).rejects.toMatchObject({
-      code: 401,
+      statusCode: 401,
     });
   });
 
@@ -93,7 +93,7 @@ describe('handler', () => {
       await expect(
         handle({ 'X-Hub-Signature-256': await webhooks.sign(event), 'X-GitHub-Event': 'push' }, event, config),
       ).rejects.toMatchObject({
-        code: 202,
+        statusCode: 202,
       });
       expect(sendActionRequest).not.toHaveBeenCalled();
     });
@@ -126,7 +126,7 @@ describe('handler', () => {
       await expect(
         handle({ 'X-Hub-Signature-256': await webhooks.sign(event), 'X-GitHub-Event': 'workflow_job' }, event, config),
       ).rejects.toMatchObject({
-        code: 403,
+        statusCode: 403,
       });
       expect(sendActionRequest).not.toHaveBeenCalled();
     });
@@ -541,7 +541,7 @@ describe('handler', () => {
       await expect(
         handle({ 'X-Hub-Signature-256': await webhooks.sign(event), 'X-GitHub-Event': 'check_run' }, event, config),
       ).rejects.toMatchObject({
-        code: 202,
+        statusCode: 202,
       });
       expect(sendActionRequest).not.toHaveBeenCalled();
     });

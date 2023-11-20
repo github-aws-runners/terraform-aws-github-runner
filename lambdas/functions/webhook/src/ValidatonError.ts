@@ -1,6 +1,6 @@
 class ValidationError extends Error {
   constructor(
-    public code: number,
+    public statusCode: number,
     public message: string,
     public error?: Error,
   ) {
