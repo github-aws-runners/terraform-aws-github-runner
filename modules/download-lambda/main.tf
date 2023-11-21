@@ -2,9 +2,10 @@ resource "null_resource" "download" {
   count = length(var.lambdas)
 
   triggers = {
-    name = var.lambdas[count.index].name
-    file = "${var.lambdas[count.index].name}.zip"
-    tag  = var.lambdas[count.index].tag
+    name           = var.lambdas[count.index].name
+    file           = "${var.lambdas[count.index].name}.zip"
+    tag            = var.lambdas[count.index].tag
+    custom_trigger = var.custom_trigger
   }
 
   provisioner "local-exec" {

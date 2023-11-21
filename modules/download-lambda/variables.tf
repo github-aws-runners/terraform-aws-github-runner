@@ -5,3 +5,9 @@ variable "lambdas" {
     tag  = string
   }))
 }
+
+variable "custom_trigger" {
+  description = "Custom trigger for fetching lambda."
+  type        = string
+  default     = null
+}
