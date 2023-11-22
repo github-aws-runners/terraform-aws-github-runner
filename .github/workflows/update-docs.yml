@@ -24,10 +24,11 @@ jobs:
         with:
           find-dir: .
           git-commit-message: "docs: auto update terraform docs"
-          git-push: ${{ github.ref != 'refs/heads/npalm/docs-fix' || github.repository_owner != 'philips-labs' }}
+          git-push: ${{ github.ref != 'refs/heads/main' || github.repository_owner != 'philips-labs' }}
 
+      # change docs via PR in case of locked main branch
       - name: Create Pull Request (main branch only)
-        if: github.ref == 'refs/heads/npalm/docs-fix' && github.repository_owner == 'philips-labs'
+        if: github.ref == 'refs/heads/main' && github.repository_owner == 'philips-labs'
         uses: peter-evans/create-pull-request@153407881ec5c347639a548ade7d8ad1d6740e38 # ratchet:peter-evans/create-pull-request@v5.0.2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
