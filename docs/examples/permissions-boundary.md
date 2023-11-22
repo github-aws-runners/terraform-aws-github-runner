@@ -1,0 +1,1 @@
+--8<-- "examples/permissions-boundary/README.md"

@@ -1,4 +1,4 @@
-# Action runners deployment with ARM64 architecture
+# Amazon Linux ARM64
 
 This module shows how to create GitHub action runners using AWS Graviton instances which have ARM64 architecture. Lambda release will be downloaded from GitHub.
 
@@ -22,13 +22,11 @@ terraform init
 terraform apply
 ```
 
-You can receive the webhook details by running:
+The example will try to update the webhook of your GitHub. In case the update fails the apply will not fail. You can receive the webhook details by running:
 
 ```bash
 terraform output -raw webhook_secret
 ```
-
-Be aware some shells will print some end of line character `%`.
 
 <!-- BEGIN_TF_DOCS -->
 ## Requirements

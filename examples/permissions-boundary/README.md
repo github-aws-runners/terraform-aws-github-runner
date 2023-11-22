@@ -4,11 +4,6 @@ This module shows how to create GitHub action runners with permissions boundarie
 
 ## Usages
 
-Steps for the full setup, such as creating a GitHub app can be find the module [README](../../README.md). First create the deploy role and boundary policies. These steps require an admin user.
-
-> Ensure you have set the version in `lambdas-download/main.tf` for running the example. The version needs to be set to a GitHub release version, see https://github.com/philips-labs/terraform-aws-github-runner/releases
-
-
 ```bash
 cd setup
 terraform init

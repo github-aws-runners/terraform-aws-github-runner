@@ -1,0 +1,1 @@
+--8<-- "examples/default/README.md"

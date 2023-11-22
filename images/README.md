@@ -1,12 +1,14 @@
 # Prebuilt Images
 
+> :warning: These images are provided as an example/
+
 The images inside this folder are pre-built images designed to shorten the boot time of your runners and make using ephemeral runners a faster experience.
 
 These images share the same scripting as used in the user-data mechanism in `/modules/runners/templates/`. We use a `templatefile` mechanism to insert the relevant script fragments into the scripts used for provisioning the images.
 
 The examples in `linux-al2023` and `windows-core-2019` also upload a `start-runner` script that uses the exact same startup process as used in the user-data mechanism. This means that the image created here does not need any extra scripts injected or changes to boot up and connect to GH.
 
-To remove old images the [AMI house keeper module](./modules/ami-housekeeper/README.md) can be used.
+To remove old images the [AMI house keeper module](https://philips-labs.github.io/terraform-aws-github-runner/modules/public/ami-housekeeper/) can be used.
 
 ## Building your own
 

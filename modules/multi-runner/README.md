@@ -4,12 +4,12 @@
 
 This module creates many runners with a single GitHub app. The module utilizes the internal modules and deploys parts of the stack for each runner defined.
 
-The module takes a configuration as input containing a matcher for the labels. The [webhook](../webhook/README.md) lambda is using the configuration to delegate events based on the labels in the workflow job and sent them to a dedicated queue based on the configuration. Events on each queue are processed by a dedicated lambda per configuration to scale runners.
+The module takes a configuration as input containing a matcher for the labels. The [webhook](https://philips-labs.github.io/terraform-aws-github-runner/modules/internal/webhook/) lambda is using the configuration to delegate events based on the labels in the workflow job and sent them to a dedicated queue based on the configuration. Events on each queue are processed by a dedicated lambda per configuration to scale runners.
 
 For each configuration:
 
-- When enabled, the [distribution syncer](../runner-binaries-syncer/README.md) is deployed for each unique combination of OS and architecture.
-- For each configuration a queue is created and [runner module](../runners/README.md) is deployed
+- When enabled, the [distribution syncer](https://philips-labs.github.io/terraform-aws-github-runner/modules/internal/runner-binaries-syncer/) is deployed for each unique combination of OS and architecture.
+- For each configuration a queue is created and [runner module](https://philips-labs.github.io/terraform-aws-github-runner/modules/internal/runners/) is deployed
 
 
 ## Matching
@@ -28,7 +28,7 @@ Jobs not defining all all labels but for example only `[self-hosted, linux]` cou
 
 ## Usages
 
-A complete example is available in the examples, see the [multi-runner example](../../examples/multi-runner/) for actual implementation.
+A complete example is available in the examples, see the [multi-runner example](https://philips-labs.github.io/terraform-aws-github-runner/examples/) for actual implementation.
 
 
 ```hcl

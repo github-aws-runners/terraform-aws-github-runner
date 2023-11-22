@@ -32,9 +32,32 @@ jobs:
         uses: peter-evans/create-pull-request@153407881ec5c347639a548ade7d8ad1d6740e38 # ratchet:peter-evans/create-pull-request@v5.0.2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "Update Terraform docs"
+          commit-message: "docs: auto update terraform docs"
           title: "docs: Update Terraform docs"
           branch: update-docs
           branch-suffix: random
           base: ${{ github.event.pull_request.base.ref }}
           delete-branch: true
+
+  deploy-pages:
+    needs: [docs]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # ratchet:actions/checkout@v4
+      - name: Configure Git Credentials
+        run: |
+          git config user.name github-actions[bot]
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+      - uses: actions/setup-python@v4
+        with:
+          python-version: 3.x
+      - run: echo "cache_id=$(date --utc '+%V')" >> $GITHUB_ENV
+      - uses: actions/cache@v3
+        with:
+          key: mkdocs-material-${{ env.cache_id }}
+          path: .cache
+          restore-keys: |
+            mkdocs-material-
+      - run: pip install mkdocs-material
+      - run: pip install mkdocs-material-extensions
+      - run: mkdocs gh-deploy --force -c -b npalm/test
