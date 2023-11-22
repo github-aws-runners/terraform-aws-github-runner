@@ -1,5 +1,5 @@
 variable "github_app" {
-  description = "GitHub for API usages."
+  description = "GitHub App for API usages."
 
   type = object({
     id         = string

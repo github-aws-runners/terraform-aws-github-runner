@@ -6,7 +6,7 @@ resource "null_resource" "update_app" {
 
   provisioner "local-exec" {
     interpreter = ["bash", "-c"]
-    command     = "${path.module}/bin/update-app.sh -we ${var.webhook_endpoint} -ws ${var.github_app.webhook_secret} -a ${var.github_app.id} -k ${var.github_app.key_base64}"
+    command     = "${path.module}/bin/update-app.sh -e ${var.webhook_endpoint} -s ${var.github_app.webhook_secret} -a ${var.github_app.id} -k ${var.github_app.key_base64}"
     on_failure  = continue
   }
 }

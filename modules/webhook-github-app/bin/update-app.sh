@@ -23,21 +23,21 @@ usages() {
     echo "  -a APP_ID                    GitHub App ID" >&2
     echo "  -k APP_PRIVATE_KEY_BASE64    Base64 encoded private key of the GitHub App" >&2
     echo "  -f APP APP_PRIVATE_KEY_FILE  Path to the private key of the GitHub App" >&2
-    echo "  -we WEBHOOK_ENDPOINT         Webhook endpoint" >&2
-    echo "  -ws WEBHOOK_SECRET           Webhook secret" >&2
+    echo "  -e WEBHOOK_ENDPOINT          Webhook endpoint" >&2
+    echo "  -s WEBHOOK_SECRET            Webhook secret" >&2
     echo "  -h                           Show this help message" >&2
     exit 1
 }
 
 # hadd h flag to show help
-while getopts a:f:k:ws:we:h flag
+while getopts a:f:k:s:e:h flag
 do
     case "${flag}" in
         a) APP_ID=${OPTARG};;
         f) APP_PRIVATE_KEY_FILE=${OPTARG};;
         k) APP_PRIVATE_KEY_BASE64=${OPTARG};;
-        we) WEBHOOK_ENDPOINT=${OPTARG};;
-        ws) WEBHOOK_SECRET=${OPTARG};;
+        e) WEBHOOK_ENDPOINT=${OPTARG};;
+        s) WEBHOOK_SECRET=${OPTARG};;
         h) usages ;;
     esac
 done
