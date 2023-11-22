@@ -1,0 +1,28 @@
+{
+	"name": "GitHub Runners AWS",
+  "build": { "dockerfile": "Dockerfile" },
+
+  // "workspaceFolder": "/workspace",
+
+  "features": {
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainers/features/terraform:1": {}
+  },
+
+  "containerEnv": {
+    "WORKSPACE": "${containerWorkspaceFolder}" // e.g. /workspaces/my-project
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "hashicorp.hcl",
+        "hashicorp.terraform",
+        "orta.vscode-jest"
+      ]
+    }
+  },
+  "postCreateCommand": "bash ${containerWorkspaceFolder}/.devcontainer/postCreateScript.sh"
+}
