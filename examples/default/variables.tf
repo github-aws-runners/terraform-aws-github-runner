@@ -8,6 +8,8 @@ variable "github_app" {
 }
 
 variable "environment" {
+  description = "Environment name, used as prefix"
+
   type    = string
   default = null
 }

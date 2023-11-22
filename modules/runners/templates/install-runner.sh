@@ -45,9 +45,9 @@ rm -rf $file_name
 os_id=$(awk -F= '/^ID/{print $2}' /etc/os-release)
 echo OS: $os_id
 
-# Install libicu60 for arm64 on non-ubuntu
-if [[ "$architecture" == "arm64" ]] && [[ ! "$os_id" =~ ^ubuntu.* ]]; then
-  yum install -y libicu60
+# Install libicu on non-ubuntu
+if [[ ! "$os_id" =~ ^ubuntu.* ]]; then
+  dnf install -y libicu
 fi
 
 # Install dependencies for ubuntu

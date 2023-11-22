@@ -1,7 +1,8 @@
-import { GetObjectTaggingCommand, S3Client, Tag } from '@aws-sdk/client-s3';
+import { GetObjectTaggingCommand, S3Client, ServerSideEncryption, Tag } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
 import { Octokit } from '@octokit/rest';
 import { createChildLogger } from '@terraform-aws-github-runner/aws-powertools-util';
+import { getTracedAWSV3Client } from '@terraform-aws-github-runner/aws-powertools-util';
 import axios from 'axios';
 import { Stream } from 'stream';
 
@@ -45,8 +46,8 @@ async function getReleaseAsset(runnerOs = 'linux', runnerArch = 'x64'): Promise<
   }
 
   const releaseVersion = latestRelease.data.tag_name.replace('v', '');
-  const assets = latestRelease.data.assets?.filter((a: { name?: string }) =>
-    a.name?.includes(`actions-runner-${runnerOs}-${runnerArch}-${releaseVersion}.`),
+  const assets = latestRelease.data.assets?.filter(
+    (a: { name?: string }) => a.name?.includes(`actions-runner-${runnerOs}-${runnerArch}-${releaseVersion}.`),
   );
 
   return assets?.length === 1 ? { name: assets[0].name, downloadUrl: assets[0].browser_download_url } : undefined;
@@ -71,7 +72,7 @@ async function uploadToS3(
       Key: cacheObject.key,
       Tagging: versionKey + '=' + actionRunnerReleaseAsset.name,
       Body: passThrough,
-      ServerSideEncryption: process.env.S3_SSE_ALGORITHM,
+      ServerSideEncryption: process.env.S3_SSE_ALGORITHM as ServerSideEncryption,
     },
   });
 
@@ -84,7 +85,7 @@ async function uploadToS3(
 }
 
 export async function sync(): Promise<void> {
-  const s3 = new S3Client({});
+  const s3 = getTracedAWSV3Client(new S3Client({}));
 
   const runnerOs = process.env.GITHUB_RUNNER_OS || 'linux';
   const runnerArch = process.env.GITHUB_RUNNER_ARCHITECTURE || 'x64';

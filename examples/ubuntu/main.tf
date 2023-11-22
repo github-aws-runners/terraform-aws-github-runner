@@ -37,7 +37,7 @@ module "runners" {
   # runners_lambda_zip                = "lambdas-download/runners.zip"
 
   enable_organization_runners = false
-  runner_extra_labels         = "default,example"
+  runner_extra_labels         = ["default", "example"]
 
   # enable access to the runners via SSM
   enable_ssm_on_runners = true
@@ -110,4 +110,16 @@ module "runners" {
 
   # Enable logging all commands of user_data, secrets will be logged!!!
   # enable_user_data_debug_logging_runner = true
+}
+
+module "webhook_github_app" {
+  source     = "../../modules/webhook-github-app"
+  depends_on = [module.runners]
+
+  github_app = {
+    key_base64     = var.github_app.key_base64
+    id             = var.github_app.id
+    webhook_secret = random_id.random.hex
+  }
+  webhook_endpoint = module.runners.webhook.endpoint
 }

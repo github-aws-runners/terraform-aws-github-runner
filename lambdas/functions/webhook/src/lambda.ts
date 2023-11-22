@@ -1,4 +1,6 @@
+import middy from '@middy/core';
 import { logger, setContext } from '@terraform-aws-github-runner/aws-powertools-util';
+import { captureLambdaHandler, tracer } from '@terraform-aws-github-runner/aws-powertools-util';
 import { APIGatewayEvent, Context } from 'aws-lambda';
 
 import { handle } from './webhook/handler';
@@ -7,6 +9,7 @@ export interface Response {
   statusCode: number;
   body?: string;
 }
+middy(githubWebhook).use(captureLambdaHandler(tracer));
 export async function githubWebhook(event: APIGatewayEvent, context: Context): Promise<Response> {
   setContext(context, 'lambda.ts');
   logger.logEventIfEnabled(event);

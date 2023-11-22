@@ -19,13 +19,13 @@ jobs:
       image: index.docker.io/hashicorp/packer@sha256:297bbbbbbf3ce9e0431ac1e8f02934b20e1197613f877b55dfdb1ebfd94eb748 # ratchet:index.docker.io/hashicorp/packer:1.8.6
     strategy:
       matrix:
-        image: ["linux-amzn2", "windows-core-2019", "windows-core-2022", "ubuntu-focal", "ubuntu-jammy", "ubuntu-jammy-arm64"]
+        image: ["linux-al2023", "windows-core-2019", "windows-core-2022", "ubuntu-focal", "ubuntu-jammy", "ubuntu-jammy-arm64"]
     defaults:
       run:
         working-directory: images/${{ matrix.image }}
     steps:
       - name: "Checkout"
-        uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac # ratchet:actions/checkout@v4
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # ratchet:actions/checkout@v4
       - name: packer init
         run: packer init .
       - name: check packer formatting

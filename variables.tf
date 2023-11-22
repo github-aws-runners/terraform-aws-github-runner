@@ -19,17 +19,6 @@ variable "tags" {
   default     = {}
 }
 
-variable "environment" {
-  description = "DEPRECATED, no longer used. See `prefix`"
-  type        = string
-  default     = null
-
-  validation {
-    condition     = var.environment == null
-    error_message = "The \"environment\" variable is no longer used. To migrate, set the \"prefix\" variable to the original value of \"environment\" and optionally, add \"Environment\" to the \"tags\" variable map with the same value."
-  }
-}
-
 variable "prefix" {
   description = "The prefix used for naming resources"
   type        = string
@@ -70,9 +59,9 @@ variable "runner_boot_time_in_minutes" {
 }
 
 variable "runner_extra_labels" {
-  description = "Extra (custom) labels for the runners (GitHub). Separate each label by a comma. Labels checks on the webhook can be enforced by setting `enable_workflow_job_labels_check`. GitHub read-only labels should not be provided."
-  type        = string
-  default     = ""
+  description = "Extra (custom) labels for the runners (GitHub). Labels checks on the webhook can be enforced by setting `enable_workflow_job_labels_check`. GitHub read-only labels should not be provided."
+  type        = list(string)
+  default     = []
 }
 
 variable "runner_group_name" {
@@ -273,17 +262,6 @@ variable "logging_kms_key_id" {
   default     = null
 }
 
-variable "runner_allow_prerelease_binaries" {
-  description = "(Deprecated, no longer used), allow the runners to update to prerelease binaries."
-  type        = bool
-  default     = null
-
-  validation {
-    condition     = var.runner_allow_prerelease_binaries == null
-    error_message = "The \"runner_allow_prerelease_binaries\" variable is no longer used. GitHub runners are not released as pre-release, only releases should be used."
-  }
-}
-
 variable "block_device_mappings" {
   description = "The EC2 instance block device configuration. Takes the following keys: `device_name`, `delete_on_termination`, `volume_type`, `volume_size`, `encrypted`, `iops`, `throughput`, `kms_key_id`, `snapshot_id`."
   type = list(object({
@@ -307,7 +285,7 @@ variable "ami_filter" {
   type        = map(list(string))
   default     = { state = ["available"] }
   validation {
-    // check the availability of the AMI
+    # check the availability of the AMI
     condition     = contains(keys(var.ami_filter), "state")
     error_message = "The \"ami_filter\" variable must contain the \"state\" key with the value \"available\"."
   }
@@ -362,6 +340,7 @@ variable "webhook_lambda_s3_object_version" {
 }
 
 variable "webhook_lambda_apigateway_access_log_settings" {
+  description = "Access log settings for webhook API gateway."
   type = object({
     destination_arn = string
     format          = string
@@ -479,7 +458,7 @@ variable "instance_max_spot_price" {
 }
 
 variable "instance_types" {
-  description = "List of instance types for the action runner. Defaults are based on runner_os (amzn2 for linux and Windows Server Core for win)."
+  description = "List of instance types for the action runner. Defaults are based on runner_os (al2023 for linux and Windows Server Core for win)."
   type        = list(string)
   default     = ["m5.large", "c5.large"]
 }
@@ -526,16 +505,6 @@ variable "runner_egress_rules" {
   }]
 }
 
-variable "log_type" {
-  description = "Logging format for lambda logging. Valid values are 'json', 'pretty', 'hidden'. "
-  type        = string
-  default     = null
-  validation {
-    condition     = var.log_type == null
-    error_message = "DEPRECATED: `log_type` is not longer supported."
-  }
-}
-
 variable "log_level" {
   description = "Logging level for lambda logging. Valid values are  'silly', 'trace', 'debug', 'info', 'warn', 'error', 'fatal'."
   type        = string
@@ -572,7 +541,7 @@ variable "runner_metadata_options" {
   default = {
     instance_metadata_tags      = "enabled"
     http_endpoint               = "enabled"
-    http_tokens                 = "optional"
+    http_tokens                 = "required"
     http_put_response_hop_limit = 1
   }
 }
@@ -778,10 +747,14 @@ variable "runner_name_prefix" {
   }
 }
 
-variable "lambda_tracing_mode" {
-  description = "Enable X-Ray tracing for the lambda functions."
-  type        = string
-  default     = null
+variable "tracing_config" {
+  description = "Configuration for lambda tracing."
+  type = object({
+    mode                  = optional(string, null)
+    capture_http_requests = optional(bool, false)
+    capture_error         = optional(bool, false)
+  })
+  default = {}
 }
 
 variable "runner_credit_specification" {
@@ -799,4 +772,32 @@ variable "enable_jit_config" {
   description = "Overwrite the default behavior for JIT configuration. By default JIT configuration is enabled for ephemeral runners and disabled for non-ephemeral runners. In case of GHES check first if the JIT config API is avaialbe. In case you upgradeing from 3.x to 4.x you can set `enable_jit_config` to `false` to avoid a breaking change when having your own AMI."
   type        = bool
   default     = null
+}
+
+variable "associate_public_ipv4_address" {
+  description = "Associate public IPv4 with the runner. Only tested with IPv4"
+  type        = bool
+  default     = false
+}
+
+variable "runners_ssm_housekeeper" {
+  description = <<EOF
+  Configuration for the SSM housekeeper lambda. This lambda deletes token / JIT config from SSM.
+
+  `schedule_expression`: is used to configure the schedule for the lambda.
+  `enabled`: enable or disable the lambda trigger via the EventBridge.
+  `lambda_timeout`: timeout for the lambda in seconds.
+  `config`: configuration for the lambda function. Token path will be read by default from the module.
+  EOF
+  type = object({
+    schedule_expression = optional(string, "rate(1 day)")
+    enabled             = optional(bool, true)
+    lambda_timeout      = optional(number, 60)
+    config = object({
+      tokenPath      = optional(string)
+      minimumDaysOld = optional(number, 1)
+      dryRun         = optional(bool, false)
+    })
+  })
+  default = { config = {} }
 }

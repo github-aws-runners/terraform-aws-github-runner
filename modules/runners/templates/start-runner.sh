@@ -1,6 +1,86 @@
-# shellcheck shell=bash
+#!/bin/bash
 
-## Retrieve instance metadata
+# https://docs.aws.amazon.com/xray/latest/devguide/xray-api-sendingdata.html
+# https://docs.aws.amazon.com/xray/latest/devguide/scorekeep-scripts.html
+create_xray_start_segment() {
+  START_TIME=$(date -d "$(uptime -s)" +%s)
+  TRACE_ID=$1
+  INSTANCE_ID=$2
+  SEGMENT_ID=$(dd if=/dev/random bs=8 count=1 2>/dev/null | od -An -tx1 | tr -d ' \t\n')
+  SEGMENT_DOC="{\"trace_id\": \"$TRACE_ID\", \"id\": \"$SEGMENT_ID\", \"start_time\": $START_TIME, \"in_progress\": true, \"name\": \"Runner\",\"origin\": \"AWS::EC2::Instance\", \"aws\": {\"ec2\":{\"instance_id\":\"$INSTANCE_ID\"}}}"
+  HEADER='{"format": "json", "version": 1}'
+  TRACE_DATA="$HEADER\n$SEGMENT_DOC"
+  echo "$HEADER" > document.txt
+  echo "$SEGMENT_DOC" >> document.txt
+  UDP_IP="127.0.0.1"
+  UDP_PORT=2000
+  cat document.txt > /dev/udp/$UDP_IP/$UDP_PORT
+  echo "$SEGMENT_DOC"
+}
+
+create_xray_success_segment() {
+  local SEGMENT_DOC=$1
+  if [ -z "$SEGMENT_DOC" ]; then
+    echo "No segment doc provided"
+    return
+  fi
+  SEGMENT_DOC=$(echo "$SEGMENT_DOC" | jq '. | del(.in_progress)')
+  END_TIME=$(date +%s)
+  SEGMENT_DOC=$(echo "$SEGMENT_DOC" | jq -c ". + {\"end_time\": $END_TIME}")
+  HEADER="{\"format\": \"json\", \"version\": 1}"
+  TRACE_DATA="$HEADER\n$SEGMENT_DOC"
+  echo "$HEADER" > document.txt
+  echo "$SEGMENT_DOC" >> document.txt
+  UDP_IP="127.0.0.1"
+  UDP_PORT=2000
+  cat document.txt > /dev/udp/$UDP_IP/$UDP_PORT
+  echo "$SEGMENT_DOC"
+}
+
+create_xray_error_segment() {
+  local SEGMENT_DOC="$1"
+  if [ -z "$SEGMENT_DOC" ]; then
+    echo "No segment doc provided"
+    return
+  fi
+  MESSAGE="$2"
+  ERROR="{\"exceptions\": [{\"message\": \"$MESSAGE\"}]}"
+  SEGMENT_DOC=$(echo "$SEGMENT_DOC" | jq '. | del(.in_progress)')
+  END_TIME=$(date +%s)
+  SEGMENT_DOC=$(echo "$SEGMENT_DOC" | jq -c ". + {\"end_time\": $END_TIME, \"error\": true, \"cause\": $ERROR }")
+  HEADER="{\"format\": \"json\", \"version\": 1}"
+  TRACE_DATA="$HEADER\n$SEGMENT_DOC"
+  echo "$HEADER" > document.txt
+  echo "$SEGMENT_DOC" >> document.txt
+  UDP_IP="127.0.0.1"
+  UDP_PORT=2000
+  cat document.txt > /dev/udp/$UDP_IP/$UDP_PORT
+  echo "$SEGMENT_DOC"
+}
+
+cleanup() {
+  local exit_code="$1"
+  local error_location="$2"
+  local error_lineno="$3"
+
+  if [ "$exit_code" -ne 0 ]; then
+    echo "ERROR: runner-start-failed with exit code $exit_code occurred on $error_location"
+    create_xray_error_segment "$SEGMENT" "runner-start-failed with exit code $exit_code occurred on $error_location - $error_lineno"
+  fi
+  # allows to flush the cloud watch logs and traces
+  sleep 10
+  if [ "$agent_mode" = "ephemeral" ] || [ "$exit_code" -ne 0 ]; then
+    echo "Stopping CloudWatch service"
+    systemctl stop amazon-cloudwatch-agent.service || true
+    echo "Terminating instance"
+    aws ec2 terminate-instances \
+      --instance-ids "$instance_id" \
+      --region "$region" \
+      || true
+  fi
+}
+
+trap 'cleanup $? $LINENO $BASH_LINENO' EXIT
 
 echo "Retrieving TOKEN from AWS API"
 token=$(curl -f -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 180" || true)
@@ -32,6 +112,7 @@ availability_zone=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.
 environment=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/meta-data/tags/instance/ghr:environment)
 ssm_config_path=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/meta-data/tags/instance/ghr:ssm_config_path)
 runner_name_prefix=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/meta-data/tags/instance/ghr:runner_name_prefix || echo "")
+xray_trace_id=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/meta-data/tags/instance/ghr:trace_id || echo "")
 
 %{ else }
 tags=$(aws ec2 describe-tags --region "$region" --filters "Name=resource-id,Values=$instance_id")
@@ -40,6 +121,7 @@ echo "Retrieved tags from AWS API ($tags)"
 environment=$(echo "$tags" | jq -r '.Tags[]  | select(.Key == "ghr:environment") | .Value')
 ssm_config_path=$(echo "$tags" | jq -r '.Tags[]  | select(.Key == "ghr:ssm_config_path") | .Value')
 runner_name_prefix=$(echo "$tags" | jq -r '.Tags[]  | select(.Key == "ghr:runner_name_prefix") | .Value' || echo "")
+xray_trace_id=$(echo "$tags" | jq -r '.Tags[]  | select(.Key == "ghr:trace_id") | .Value' || echo "")
 
 %{ endif }
 
@@ -64,6 +146,18 @@ echo "Retrieved /$ssm_config_path/enable_jit_config parameter - ($enable_jit_con
 
 token_path=$(echo "$parameters" | jq --arg ssm_config_path "$ssm_config_path" -r '.[] | select(.Name == "'$ssm_config_path'/token_path") | .Value')
 echo "Retrieved /$ssm_config_path/token_path parameter - ($token_path)"
+
+if [[ "$xray_trace_id" != "" ]]; then
+  # run xray service
+  curl https://s3.us-east-2.amazonaws.com/aws-xray-assets.us-east-2/xray-daemon/aws-xray-daemon-linux-3.x.zip -o aws-xray-daemon-linux-3.x.zip
+  unzip aws-xray-daemon-linux-3.x.zip -d aws-xray-daemon-linux-3.x
+  chmod +x ./aws-xray-daemon-linux-3.x/xray
+  ./aws-xray-daemon-linux-3.x/xray -o -n "$region" &
+
+
+  SEGMENT=$(create_xray_start_segment "$xray_trace_id" "$instance_id")
+  echo "$SEGMENT"
+fi
 
 if [[ "$enable_cloudwatch_agent" == "true" ]]; then
   echo "Cloudwatch is enabled"
@@ -96,7 +190,7 @@ fi
 chown -R $run_as .
 
 info_arch=$(uname -p)
-info_os=$(( lsb_release -ds || cat /etc/*release || uname -om ) 2>/dev/null | head -n1 | cut -d "=" -f2- | tr -d '"')
+info_os=$( ( lsb_release -ds || cat /etc/*release || uname -om ) 2>/dev/null | head -n1 | cut -d "=" -f2- | tr -d '"')
 
 tee /opt/actions-runner/.setup_info <<EOL
 [
@@ -126,10 +220,8 @@ if [[ "$enable_jit_config" == "false" || $agent_mode != "ephemeral" ]]; then
   sudo --preserve-env=RUNNER_ALLOW_RUNASROOT -u "$run_as" -- ./config.sh --unattended --name "$runner_name_prefix$instance_id" --work "_work" $${config}
 fi
 
+create_xray_success_segment "$SEGMENT"
 if [[ $agent_mode = "ephemeral" ]]; then
-
-cat >/opt/start-runner-service.sh <<-EOF
-
   echo "Starting the runner in ephemeral mode"
 
   if [[ "$enable_jit_config" == "true" ]]; then
@@ -139,17 +231,7 @@ cat >/opt/start-runner-service.sh <<-EOF
     echo "Starting without JIT config"
     sudo --preserve-env=RUNNER_ALLOW_RUNASROOT -u "$run_as" -- ./run.sh
   fi
-
   echo "Runner has finished"
-
-  echo "Stopping cloudwatch service"
-  systemctl stop amazon-cloudwatch-agent.service
-  echo "Terminating instance"
-  aws ec2 terminate-instances --instance-ids "$instance_id" --region "$region"
-EOF
-  # Starting the runner via a own process to ensure this process terminates
-  nohup bash /opt/start-runner-service.sh &
-
 else
   echo "Installing the runner as a service"
   ./svc.sh install "$run_as"

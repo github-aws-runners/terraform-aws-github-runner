@@ -1,7 +1,11 @@
+import middy from '@middy/core';
 import { logger, setContext } from '@terraform-aws-github-runner/aws-powertools-util';
+import { captureLambdaHandler, tracer } from '@terraform-aws-github-runner/aws-powertools-util';
 import { Context } from 'aws-lambda';
 
 import { sync } from './syncer/syncer';
+
+middy(handler).use(captureLambdaHandler(tracer));
 
 // eslint-disable-next-line
 export async function handler(event: any, context: Context): Promise<void> {

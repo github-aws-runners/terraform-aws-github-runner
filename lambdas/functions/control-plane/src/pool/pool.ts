@@ -36,6 +36,7 @@ export async function adjust(event: PoolEvent): Promise<void> {
   const instanceAllocationStrategy = process.env.INSTANCE_ALLOCATION_STRATEGY || 'lowest-price'; // same as AWS default
   const runnerOwner = process.env.RUNNER_OWNER;
   const amiIdSsmParameterName = process.env.AMI_ID_SSM_PARAMETER_NAME;
+  const tracingEnabled = yn(process.env.POWERTOOLS_TRACE_ENABLED, { default: false });
 
   let ghesApiUrl = '';
   if (ghesBaseUrl) {
@@ -118,6 +119,7 @@ export async function adjust(event: PoolEvent): Promise<void> {
         subnets,
         numberOfRunners: topUp,
         amiIdSsmParameterName,
+        tracingEnabled,
       },
       githubInstallationClient,
     );

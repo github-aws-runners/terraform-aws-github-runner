@@ -96,7 +96,7 @@ locals {
 }
 
 source "amazon-ebs" "githubrunner" {
-  ami_name                                  = "github-runner-amzn2-x86_64-${formatdate("YYYYMMDDhhmm", timestamp())}"
+  ami_name                                  = "github-runner-al2023-x86_64-${formatdate("YYYYMMDDhhmm", timestamp())}"
   instance_type                             = var.instance_type
   region                                    = var.region
   security_group_id                         = var.security_group_id
@@ -106,7 +106,7 @@ source "amazon-ebs" "githubrunner" {
 
   source_ami_filter {
     filters = {
-      name                = "amzn2-ami-kernel-5.*-hvm-*-x86_64-gp2"
+      name                = "al2023-ami-2023.*-kernel-6.*-x86_64"
       root-device-type    = "ebs"
       virtualization-type = "hvm"
     }
@@ -118,7 +118,7 @@ source "amazon-ebs" "githubrunner" {
     var.global_tags,
     var.ami_tags,
     {
-      OS_Version    = "amzn2"
+      OS_Version    = "al2023"
       Release       = "Latest"
       Base_AMI_Name = "{{ .SourceAMIName }}"
   })
@@ -144,9 +144,9 @@ build {
   provisioner "shell" {
     environment_vars = []
     inline = concat([
-      "sudo yum update -y",
-      "sudo yum install -y amazon-cloudwatch-agent curl jq git",
-      "sudo amazon-linux-extras install docker",
+      "sudo dnf upgrade-minimal -y",
+      "sudo dnf install -y amazon-cloudwatch-agent jq git docker",
+      "sudo dnf install -y --allowerasing curl",
       "sudo systemctl enable docker.service",
       "sudo systemctl enable containerd.service",
       "sudo service docker start",

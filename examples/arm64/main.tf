@@ -45,7 +45,7 @@ module "runners" {
 
   enable_organization_runners = false
   # Runners will automatically get the "arm64" label
-  runner_extra_labels = "default,example"
+  runner_extra_labels = ["default", "example"]
 
   # enable access to the runners via SSM
   enable_ssm_on_runners = true
@@ -85,4 +85,15 @@ module "runners" {
 
   # override scaling down
   scale_down_schedule_expression = "cron(* * * * ? *)"
+}
+
+module "webhook_github_app" {
+  source = "../../modules/webhook-github-app"
+
+  github_app = {
+    key_base64     = var.github_app.key_base64
+    id             = var.github_app.id
+    webhook_secret = random_id.random.hex
+  }
+  webhook_endpoint = module.runners.webhook.endpoint
 }

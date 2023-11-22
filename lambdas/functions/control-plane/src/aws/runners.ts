@@ -6,8 +6,10 @@ import {
   EC2Client,
   FleetLaunchTemplateOverridesRequest,
   TerminateInstancesCommand,
+  _InstanceType,
 } from '@aws-sdk/client-ec2';
 import { createChildLogger } from '@terraform-aws-github-runner/aws-powertools-util';
+import { getTracedAWSV3Client, tracer } from '@terraform-aws-github-runner/aws-powertools-util';
 import { getParameter } from '@terraform-aws-github-runner/aws-ssm-util';
 import moment from 'moment';
 
@@ -41,8 +43,8 @@ function constructFilters(filters?: Runners.ListRunnerFilters): Ec2Filter[][] {
       ec2FiltersBase.push({ Name: 'tag:ghr:environment', Values: [filters.environment] });
     }
     if (filters.runnerType && filters.runnerOwner) {
-      ec2FiltersBase.push({ Name: `tag:Type`, Values: [filters.runnerType] });
-      ec2FiltersBase.push({ Name: `tag:Owner`, Values: [filters.runnerOwner] });
+      ec2FiltersBase.push({ Name: `tag:ghr:Type`, Values: [filters.runnerType] });
+      ec2FiltersBase.push({ Name: `tag:ghr:Owner`, Values: [filters.runnerOwner] });
     }
   }
 
@@ -55,7 +57,7 @@ function constructFilters(filters?: Runners.ListRunnerFilters): Ec2Filter[][] {
 }
 
 async function getRunners(ec2Filters: Ec2Filter[]): Promise<Runners.RunnerList[]> {
-  const ec2 = new EC2Client({ region: process.env.AWS_REGION });
+  const ec2 = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
   const runners: Runners.RunnerList[] = [];
   let nextToken;
   let hasNext = true;
@@ -79,10 +81,10 @@ function getRunnerInfo(runningInstances: DescribeInstancesResult) {
           runners.push({
             instanceId: i.InstanceId as string,
             launchTime: i.LaunchTime,
-            owner: i.Tags?.find((e) => e.Key === 'Owner')?.Value as string,
-            type: i.Tags?.find((e) => e.Key === 'Type')?.Value as string,
-            repo: i.Tags?.find((e) => e.Key === 'Repo')?.Value as string,
-            org: i.Tags?.find((e) => e.Key === 'Org')?.Value as string,
+            owner: i.Tags?.find((e) => e.Key === 'ghr:Owner')?.Value as string,
+            type: i.Tags?.find((e) => e.Key === 'ghr:Type')?.Value as string,
+            repo: i.Tags?.find((e) => e.Key === 'ghr:Repo')?.Value as string,
+            org: i.Tags?.find((e) => e.Key === 'ghr:Org')?.Value as string,
           });
         }
       }
@@ -92,7 +94,7 @@ function getRunnerInfo(runningInstances: DescribeInstancesResult) {
 }
 
 export async function terminateRunner(instanceId: string): Promise<void> {
-  const ec2 = new EC2Client({ region: process.env.AWS_REGION });
+  const ec2 = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
   await ec2.send(new TerminateInstancesCommand({ InstanceIds: [instanceId] }));
   logger.info(`Runner ${instanceId} has been terminated.`);
 }
@@ -107,7 +109,7 @@ function generateFleetOverrides(
     instancesTypes.forEach((i) => {
       const item: FleetLaunchTemplateOverridesRequest = {
         SubnetId: s,
-        InstanceType: i,
+        InstanceType: i as _InstanceType,
         ImageId: amiId,
       };
       result.push(item);
@@ -125,7 +127,7 @@ export async function createRunner(runnerParameters: Runners.RunnerInputParamete
     },
   });
 
-  const ec2Client = new EC2Client({ region: process.env.AWS_REGION });
+  const ec2Client = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
 
   let amiIdOverride = undefined;
 
@@ -144,12 +146,18 @@ export async function createRunner(runnerParameters: Runners.RunnerInputParamete
   }
 
   const numberOfRunners = runnerParameters.numberOfRunners ? runnerParameters.numberOfRunners : 1;
+
   const tags = [
     { Key: 'ghr:Application', Value: 'github-action-runner' },
     { Key: 'ghr:created_by', Value: numberOfRunners === 1 ? 'scale-up-lambda' : 'pool-lambda' },
-    { Key: 'Type', Value: runnerParameters.runnerType },
-    { Key: 'Owner', Value: runnerParameters.runnerOwner },
+    { Key: 'ghr:Type', Value: runnerParameters.runnerType },
+    { Key: 'ghr:Owner', Value: runnerParameters.runnerOwner },
   ];
+
+  if (runnerParameters.tracingEnabled) {
+    const traceId = tracer.getRootXrayTraceId();
+    tags.push({ Key: 'ghr:trace_id', Value: traceId! });
+  }
 
   let fleet: CreateFleetResult;
   try {

@@ -13,7 +13,7 @@ Steps for the full setup, such as creating a GitHub app can be found in the root
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_ami_filter"></a> [ami\_filter](#input\_ami\_filter) | The amis to search.  Use the default for the provided amazon linux image, `github-runner-windows-core-2019-*` for the provided Windows image | `string` | `github-runner-amzn2-x86_64-2021*` | no |
+| <a name="input_ami_filter"></a> [ami\_filter](#input\_ami\_filter) | The amis to search.  Use the default for the provided amazon linux image, `github-runner-windows-core-2019-*` for the provided Windows image | `string` | `github-runner-al2023-x86_64-2023*` | no |
 | <a name="input_github_app_key_base64"></a> [github\_app\_key\_base64](#input\_github\_app\_key\_base64) | The base64 encoded private key you downloaded from GitHub when creating the app | `string` | | yes |
 | <a name="input_github_app_id"></a> [github\_app\_id](#input\_github\_app\_id) | The id of the app you created on GitHub | `string` | | yes |
 | <a name="input_region"></a> [region](#input\_region) | The target aws region | `string` | `eu-west-1` | no |
@@ -52,13 +52,13 @@ You will need to build your image. This example deployment uses the image exampl
 
 To use your image in the terraform modules you will need to set some values on the module.
 
-Assuming you have built the `linux-amzn2` image which has a pre-defined AMI name in the following format `github-runner-amzn2-x86_64-YYYYMMDDhhmm` you can use the following values.
+Assuming you have built the `linux-al2023` image which has a pre-defined AMI name in the following format `github-runner-al2023-x86_64-YYYYMMDDhhmm` you can use the following values.
 
 ```hcl
 module "runners" {
   ...
   # set the name of the ami to use
-  ami_filter  = { name = ["github-runner-amzn2-x86_64-2021*"], state = ["available"] }
+  ami_filter        = { name = ["github-runner-al2023-x86_64-2023*"], state = ["available"] }
   # provide the owner id of
   ami_owners        = ["<your owner id>"]
 
@@ -86,13 +86,11 @@ terraform init
 terraform apply
 ```
 
-You can receive the webhook details by running:
+The module will try to update the GitHub App webhook and secret (only linux/mac). You can receive the webhook details by running:
 
 ```bash
-terraform output -raw webhook_secret
+terraform output webhook_secret
 ```
-
-Be aware some shells will print some end of line character `%`.
 
 <!-- BEGIN_TF_DOCS -->
 ## Requirements
@@ -117,6 +115,7 @@ Be aware some shells will print some end of line character `%`.
 |------|--------|---------|
 | <a name="module_base"></a> [base](#module\_base) | ../base | n/a |
 | <a name="module_runners"></a> [runners](#module\_runners) | ../../ | n/a |
+| <a name="module_webhook_github_app"></a> [webhook\_github\_app](#module\_webhook\_github\_app) | ../../modules/webhook-github-app | n/a |
 
 ## Resources
 
@@ -129,9 +128,9 @@ Be aware some shells will print some end of line character `%`.
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_ami_name_filter"></a> [ami\_name\_filter](#input\_ami\_name\_filter) | n/a | `string` | `"github-runner-amzn2-x86_64-*"` | no |
+| <a name="input_ami_name_filter"></a> [ami\_name\_filter](#input\_ami\_name\_filter) | AMI name filter for the action runner AMI. By default amazon linux 2 is used. | `string` | `"github-runner-al2023-x86_64-*"` | no |
 | <a name="input_github_app"></a> [github\_app](#input\_github\_app) | GitHub for API usages. | <pre>object({<br>    id         = string<br>    key_base64 = string<br>  })</pre> | n/a | yes |
-| <a name="input_runner_os"></a> [runner\_os](#input\_runner\_os) | n/a | `string` | `"linux"` | no |
+| <a name="input_runner_os"></a> [runner\_os](#input\_runner\_os) | The EC2 Operating System type to use for action runner instances (linux,windows). | `string` | `"linux"` | no |
 
 ## Outputs
 

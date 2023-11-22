@@ -95,7 +95,7 @@ ${decryptedValue}`,
 
     // Assert
     expect(mockedCreatAppAuth).toBeCalledTimes(1);
-    expect(mockedCreatAppAuth).toBeCalledWith(authOptions);
+    expect(mockedCreatAppAuth).toBeCalledWith({ ...authOptions, request: expect.anything() });
   });
 
   test('Creates auth object for public GitHub', async () => {
@@ -121,7 +121,7 @@ ${decryptedValue}`,
     expect(getParameter).toBeCalledWith(PARAMETER_GITHUB_APP_KEY_BASE64_NAME);
 
     expect(mockedCreatAppAuth).toBeCalledTimes(1);
-    expect(mockedCreatAppAuth).toBeCalledWith(authOptions);
+    expect(mockedCreatAppAuth).toBeCalledWith({ ...authOptions, request: expect.anything() });
     expect(mockedAuth).toBeCalledWith({ type: authType });
     expect(result.token).toBe(token);
   });
