@@ -1,9 +1,6 @@
 {
 	"name": "GitHub Runners AWS",
   "build": { "dockerfile": "Dockerfile" },
-
-  // "workspaceFolder": "/workspace",
-
   "features": {
     "ghcr.io/devcontainers/features/github-cli:1": {},
     "ghcr.io/devcontainers/features/terraform:1": {}
@@ -28,5 +25,8 @@
       ]
     }
   },
-  "postCreateCommand": "bash ${containerWorkspaceFolder}/.devcontainer/postCreateScript.sh"
+  "postCreateCommand": {
+    "bash_command": "bash ${containerWorkspaceFolder}/.devcontainer/postCreateScript.sh",
+    "welcome": "sudo cp -v .devcontainer/welcome.txt /usr/local/etc/vscode-dev-containers/first-run-notice.txt || true && sudo cp -v .devcontainer/welcome.txt /workspaces/.codespaces/shared/first-run-notice.txt || true"
+  }
 }
