@@ -1,5 +1,15 @@
 # Changelog
 
+## [5.4.2](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.4.1...v5.4.2) (2023-11-26)
+
+
+### Bug Fixes
+
+* **examples:** webhook-github-app multiple character args ([#3625](https://github.com/philips-labs/terraform-aws-github-runner/issues/3625)) ([941682e](https://github.com/philips-labs/terraform-aws-github-runner/commit/941682e8ffa04df6976f8f2f9e91ffe3aa4f6b66))
+* **lambda:** bump @aws-lambda-powertools/tracer from 1.14.2 to 1.16.0 in /lambdas ([#3622](https://github.com/philips-labs/terraform-aws-github-runner/issues/3622)) ([ba73565](https://github.com/philips-labs/terraform-aws-github-runner/commit/ba73565220179dd685c19d5c0cb57634f9d24fa8))
+* **lambda:** bump the aws group in /lambdas with 5 updates ([#3620](https://github.com/philips-labs/terraform-aws-github-runner/issues/3620)) ([1b944d5](https://github.com/philips-labs/terraform-aws-github-runner/commit/1b944d59bbbed7a6b60ba4d205440ff730208230))
+* **lambda:** bump the octokit group in /lambdas with 2 updates ([#3621](https://github.com/philips-labs/terraform-aws-github-runner/issues/3621)) ([c54e8c8](https://github.com/philips-labs/terraform-aws-github-runner/commit/c54e8c896b4f6a19dcc15172671fdf31de6e371d))
+
 ## [5.4.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.4.0...v5.4.1) (2023-11-17)
 
 

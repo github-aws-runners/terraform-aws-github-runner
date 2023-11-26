@@ -1,7 +1,7 @@
 import { SQS, SendMessageCommandInput } from '@aws-sdk/client-sqs';
 import { WorkflowJobEvent } from '@octokit/webhooks-types';
-import { createChildLogger } from '@terraform-aws-github-runner/aws-powertools-util';
-import { getTracedAWSV3Client } from '@terraform-aws-github-runner/aws-powertools-util';
+import { createChildLogger, getTracedAWSV3Client } from '@terraform-aws-github-runner/aws-powertools-util';
+import { Config } from '../ConfigResolver';
 
 const logger = createChildLogger('sqs');
 
@@ -20,12 +20,15 @@ export interface MatcherConfig {
   exactMatch: boolean;
 }
 
+export type RunnerConfig = QueueConfig[];
+
 export interface QueueConfig {
   matcherConfig: MatcherConfig;
   id: string;
   arn: string;
   fifo: boolean;
 }
+
 export interface GithubWorkflowEvent {
   workflowJobEvent: WorkflowJobEvent;
 }
@@ -46,20 +49,18 @@ export const sendActionRequest = async (message: ActionRequestMessage): Promise<
   await sqs.sendMessage(sqsMessage);
 };
 
-export const sendWebhookEventToWorkflowJobQueue = async (message: GithubWorkflowEvent): Promise<void> => {
-  const webhook_events_workflow_job_queue = process.env.SQS_WORKFLOW_JOB_QUEUE || undefined;
-
-  if (webhook_events_workflow_job_queue != undefined) {
+export async function sendWebhookEventToWorkflowJobQueue(message: GithubWorkflowEvent, config: Config): Promise<void> {
+  if (config.workflowJobEventSecondaryQueue != undefined) {
     const sqs = new SQS({ region: process.env.AWS_REGION });
     const sqsMessage: SendMessageCommandInput = {
-      QueueUrl: String(process.env.SQS_WORKFLOW_JOB_QUEUE),
+      QueueUrl: String(config.workflowJobEventSecondaryQueue),
       MessageBody: JSON.stringify(message),
     };
-    logger.debug(`Sending Webhook events to the workflow job queue: ${webhook_events_workflow_job_queue}`);
+    logger.debug(`Sending Webhook events to the workflow job queue: ${config.workflowJobEventSecondaryQueue}`);
     try {
       await sqs.sendMessage(sqsMessage);
     } catch (e) {
       logger.warn(`Error in sending webhook events to workflow job queue: ${(e as Error).message}`);
     }
   }
-};
+}
