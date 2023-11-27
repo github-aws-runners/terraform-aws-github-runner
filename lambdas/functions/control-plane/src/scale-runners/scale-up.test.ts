@@ -83,10 +83,7 @@ const EXPECTED_RUNNER_PARAMS: RunnerInputParameters = {
 };
 let expectedRunnerParams: RunnerInputParameters;
 
-beforeEach(() => {
-  nock.disableNetConnect();
-  jest.resetModules();
-  jest.clearAllMocks();
+function setDefaults() {
   process.env = { ...cleanEnv };
   process.env.GITHUB_APP_KEY_BASE64 = 'TEST_CERTIFICATE_DATA';
   process.env.GITHUB_APP_ID = '1337';
@@ -99,6 +96,13 @@ beforeEach(() => {
   process.env.INSTANCE_TYPES = 'm5.large';
   process.env.INSTANCE_TARGET_CAPACITY_TYPE = 'spot';
   process.env.ENABLE_ON_DEMAND_FAILOVER = undefined;
+}
+
+beforeEach(() => {
+  nock.disableNetConnect();
+  jest.resetModules();
+  jest.clearAllMocks();
+  setDefaults();
 
   mockOctokit.actions.getJobForWorkflowRun.mockImplementation(() => ({
     data: {
