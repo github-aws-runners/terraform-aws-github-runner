@@ -2142,9 +2142,9 @@
   integrity sha512-y92CpG4kFFtBBjni8LHoV12IegJ+KFxLgKRengrVjKmGE5XMeCuGvlfRe75lTRrgXaG6XIWJlFpIDTlkoJsU8w==
 
 "@octokit/webhooks@^12.0.3":
-  version "12.0.7"
-  resolved "https://registry.yarnpkg.com/@octokit/webhooks/-/webhooks-12.0.7.tgz#aff57bd5bb00699ecf618324aeca9b8d16cc0059"
-  integrity sha512-g9HKed5x+72yBZcTRAYNiR7Ane/iOwNEjd9sdu+Jvrcc/Z0FdkjYBMfBmQdowbOhHM4Nek9zpGC5u3C3Wxfhsg==
+  version "12.0.8"
+  resolved "https://registry.yarnpkg.com/@octokit/webhooks/-/webhooks-12.0.8.tgz#72d01f2ab08f11bcd91b8e8e4e18018018169094"
+  integrity sha512-IndolsepJQtsGo7pyNRnftla/6Gn6Vejk6iV/RmKP76Z7QNFLanZvoJkU8CLMcOjmJk/6X8T2TfpCXVw68RenQ==
   dependencies:
     "@octokit/request-error" "^5.0.0"
     "@octokit/webhooks-methods" "^4.0.0"
