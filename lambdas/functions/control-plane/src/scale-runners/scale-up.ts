@@ -258,6 +258,7 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
     runner: {
       type: runnerType,
       owner: runnerOwner,
+      namePrefix: runnerNamePrefix,
     },
     github: {
       event: payload.eventType,
