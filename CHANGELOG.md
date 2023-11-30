@@ -1,5 +1,19 @@
 # Changelog
 
+## [5.5.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.4.2...v5.5.0) (2023-11-30)
+
+
+### Features
+
+* add failover to on-demand in case request is failing ([#3409](https://github.com/philips-labs/terraform-aws-github-runner/issues/3409)) ([d71e631](https://github.com/philips-labs/terraform-aws-github-runner/commit/d71e631f3befe7aa15a56c52ba8ead2be71be460))
+
+
+### Bug Fixes
+
+* add runner name prefix to context of scale-up lambda ([#3644](https://github.com/philips-labs/terraform-aws-github-runner/issues/3644)) ([2936edd](https://github.com/philips-labs/terraform-aws-github-runner/commit/2936edde98bbd19349396ec575d810caa4f75efb))
+* **lambda:** bump the aws group in /lambdas with 5 updates ([#3635](https://github.com/philips-labs/terraform-aws-github-runner/issues/3635)) ([9615e53](https://github.com/philips-labs/terraform-aws-github-runner/commit/9615e53af45ae80884ea02570603dd9e614140d4))
+* **lambda:** bump the octokit group in /lambdas with 1 update ([#3636](https://github.com/philips-labs/terraform-aws-github-runner/issues/3636)) ([876db0c](https://github.com/philips-labs/terraform-aws-github-runner/commit/876db0ce2bf6f39ab3eb4264512086aafbeb65f1))
+
 ## [5.4.2](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.4.1...v5.4.2) (2023-11-26)
 
 
