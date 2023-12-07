@@ -65,7 +65,7 @@ resource "aws_cloudwatch_event_rule" "ssm_housekeeper" {
   name                = "${var.prefix}-ssm-housekeeper"
   schedule_expression = local.ssm_housekeeper.schedule_expression
   tags                = var.tags
-  is_enabled          = local.ssm_housekeeper.enabled
+  state               = local.ssm_housekeeper.enabled
 }
 
 resource "aws_cloudwatch_event_target" "ssm_housekeeper" {
