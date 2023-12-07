@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.5.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.5.0...v5.5.1) (2023-12-07)
+
+
+### Bug Fixes
+
+* **lambda:** bump the aws group in /lambdas with 5 updates ([#3647](https://github.com/philips-labs/terraform-aws-github-runner/issues/3647)) ([aa0de8d](https://github.com/philips-labs/terraform-aws-github-runner/commit/aa0de8d4f742cf0cc61e87010d70d8aca056f687))
+* **lambda:** bump the octokit group in /lambdas with 1 update ([#3648](https://github.com/philips-labs/terraform-aws-github-runner/issues/3648)) ([e5dc96b](https://github.com/philips-labs/terraform-aws-github-runner/commit/e5dc96b49af98da1630aa96bbde0f2589b145941))
+
 ## [5.5.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.4.2...v5.5.0) (2023-11-30)
 
 
