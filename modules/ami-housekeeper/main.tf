@@ -103,7 +103,7 @@ resource "aws_cloudwatch_event_rule" "ami_housekeeper" {
   name                = "${var.prefix}-ami-housekeeper-rule"
   schedule_expression = var.lambda_schedule_expression
   tags                = var.tags
-  state               = true
+  state               = var.cloudwatch_event_rule_state
 }
 
 resource "aws_cloudwatch_event_target" "ami_housekeeper" {

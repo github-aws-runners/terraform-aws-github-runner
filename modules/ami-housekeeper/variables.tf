@@ -175,3 +175,14 @@ variable "cleanup_config" {
   })
   default = {}
 }
+
+variable "cloudwatch_event_rule_state" {
+  type        = string
+  description = "State of the rule."
+  default     = "ENABLED"
+
+  validation {
+    condition     = contains(["ENABLED", "DISABLED", "ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS"], var.cloudwatch_event_rule_state)
+    error_message = "`cloudwatch_event_rule_state` value is not valid, valid values are: `ENABLED`, `DISABLED`, `ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS`."
+  }
+}
