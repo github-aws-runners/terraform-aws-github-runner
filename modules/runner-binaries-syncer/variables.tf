@@ -45,10 +45,15 @@ variable "s3_logging_bucket_prefix" {
   }
 }
 
-variable "enable_event_rule_binaries_syncer" {
-  type        = bool
-  default     = true
+variable "state_event_rule_binaries_syncer" {
+  type        = string
   description = "Option to disable EventBridge Lambda trigger for the binary syncer, useful to stop automatic updates of binary distribution"
+  default     = "ENABLED"
+
+  validation {
+    condition     = contains(["ENABLED", "DISABLED", "ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS"], var.state_event_rule_binaries_syncer)
+    error_message = "`state_event_rule_binaries_syncer` value is not valid, valid values are: `ENABLED`, `DISABLED`, `ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS`."
+  }
 }
 
 variable "lambda_schedule_expression" {

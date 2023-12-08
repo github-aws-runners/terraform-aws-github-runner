@@ -124,7 +124,7 @@ resource "aws_cloudwatch_event_rule" "syncer" {
   name                = "${var.prefix}-syncer-rule"
   schedule_expression = var.lambda_schedule_expression
   tags                = var.tags
-  state               = var.enable_event_rule_binaries_syncer
+  state               = var.state_event_rule_binaries_syncer
 }
 
 resource "aws_cloudwatch_event_target" "syncer" {
