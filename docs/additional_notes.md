@@ -1,9 +1,9 @@
 
 # Runner Labels
 
-Some CI systems require that all labels match between a job and a runner. In the case of GitHub Actions, workflows will be assigned to runners which have all the labels requested by the workflow, however it is not necessary the workflow mentions all labels.
+Some CI systems mandate that all labels must match between a job and a runner. In the context of GitHub Actions, workflows are assigned to runners that possess all the labels requested by the workflow, even though it is not necessary for the workflow to explicitly mention all labels.
 
-Labels specify the capabilities the runners have. The labels in the workflow are the capabilities needed. If the capabilities requested by the workflow are provided by the runners, there is match.  
+Labels define the capabilities of the runners, and the labels in the workflow represent the required capabilities. A match occurs when the capabilities requested by the workflow are provided by the runners.
 
 Examples:
 
