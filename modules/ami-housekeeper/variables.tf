@@ -176,13 +176,13 @@ variable "cleanup_config" {
   default = {}
 }
 
-variable "cloudwatch_event_rule_state" {
+variable "state_event_rule_ami_housekeeper" {
   type        = string
   description = "State of the rule."
   default     = "ENABLED"
 
   validation {
-    condition     = contains(["ENABLED", "DISABLED", "ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS"], var.cloudwatch_event_rule_state)
-    error_message = "`cloudwatch_event_rule_state` value is not valid, valid values are: `ENABLED`, `DISABLED`, `ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS`."
+    condition     = contains(["ENABLED", "DISABLED", "ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS"], var.state_event_rule_ami_housekeeper)
+    error_message = "`state_event_rule_ami_housekeeper` value is not valid, valid values are: `ENABLED`, `DISABLED`, `ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS`."
   }
 }
