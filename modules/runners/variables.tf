@@ -613,13 +613,13 @@ variable "ssm_housekeeper" {
   Configuration for the SSM housekeeper lambda. This lambda deletes token / JIT config from SSM.
 
   `schedule_expression`: is used to configure the schedule for the lambda.
-  `enabled`: enable or disable the lambda trigger via the EventBridge.
+  `state`: state of the cloudwatch event rule. Valid values are `DISABLED`, `ENABLED`, and `ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS`.
   `lambda_timeout`: timeout for the lambda in seconds.
   `config`: configuration for the lambda function. Token path will be read by default from the module.
   EOF
   type = object({
     schedule_expression = optional(string, "rate(1 day)")
-    enabled             = optional(bool, true)
+    state               = optional(string, "ENABLED")
     lambda_timeout      = optional(number, 60)
     config = object({
       tokenPath      = optional(string)

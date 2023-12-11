@@ -1,7 +1,7 @@
 locals {
   ssm_housekeeper = {
     schedule_expression = var.ssm_housekeeper.schedule_expression
-    enabled             = var.ssm_housekeeper.enabled
+    state               = var.ssm_housekeeper.state
     lambda_timeout      = var.ssm_housekeeper.lambda_timeout
     config = {
       tokenPath      = var.ssm_housekeeper.config.tokenPath == null ? local.token_path : var.ssm_housekeeper.config.tokenPath
@@ -65,7 +65,7 @@ resource "aws_cloudwatch_event_rule" "ssm_housekeeper" {
   name                = "${var.prefix}-ssm-housekeeper"
   schedule_expression = local.ssm_housekeeper.schedule_expression
   tags                = var.tags
-  state               = local.ssm_housekeeper.enabled
+  state               = local.ssm_housekeeper.state
 }
 
 resource "aws_cloudwatch_event_target" "ssm_housekeeper" {
