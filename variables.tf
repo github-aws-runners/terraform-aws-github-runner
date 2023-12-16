@@ -702,10 +702,15 @@ variable "enable_runner_binaries_syncer" {
   default     = true
 }
 
-variable "enable_event_rule_binaries_syncer" {
-  type        = bool
-  default     = true
-  description = "Option to disable EventBridge Lambda trigger for the binary syncer, useful to stop automatic updates of binary distribution."
+variable "state_event_rule_binaries_syncer" {
+  type        = string
+  description = "Option to disable EventBridge Lambda trigger for the binary syncer, useful to stop automatic updates of binary distribution"
+  default     = "ENABLED"
+
+  validation {
+    condition     = contains(["ENABLED", "DISABLED", "ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS"], var.state_event_rule_binaries_syncer)
+    error_message = "`state_event_rule_binaries_syncer` value is not valid, valid values are: `ENABLED`, `DISABLED`, `ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS`."
+  }
 }
 
 variable "queue_encryption" {

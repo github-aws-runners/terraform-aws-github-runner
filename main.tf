@@ -308,7 +308,7 @@ module "runner_binaries" {
   logging_retention_in_days       = var.logging_retention_in_days
   logging_kms_key_id              = var.logging_kms_key_id
 
-  enable_event_rule_binaries_syncer    = var.enable_event_rule_binaries_syncer
+  state_event_rule_binaries_syncer     = var.state_event_rule_binaries_syncer
   server_side_encryption_configuration = var.runner_binaries_s3_sse_configuration
   s3_versioning                        = var.runner_binaries_s3_versioning
 
