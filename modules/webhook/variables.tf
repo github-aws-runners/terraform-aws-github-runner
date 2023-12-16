@@ -138,7 +138,7 @@ variable "log_level" {
   }
   validation {
     condition     = !contains(["silly", "trace", "fatal"], var.log_level)
-    error_message = "PLEASE MIGRATE: The following log levels: 'silly', 'trace' and 'fatal' are not longeer supported."
+    error_message = "PLEASE MIGRATE: The following log levels: 'silly', 'trace' and 'fatal' are not longer supported."
   }
 }
 
