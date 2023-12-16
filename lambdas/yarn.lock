@@ -1884,7 +1884,7 @@
     "@octokit/types" "^11.0.0"
     btoa-lite "^1.0.0"
 
-"@octokit/openapi-types@^19.1.0":
+"@octokit/openapi-types@^19.0.2":
   version "19.1.0"
   resolved "https://registry.yarnpkg.com/@octokit/openapi-types/-/openapi-types-19.1.0.tgz#75ec7e64743870fc73e1ab4bc6ec252ecdd624dc"
   integrity sha512-6G+ywGClliGQwRsjvqVYpklIfa7oRPA0vyhPQG/1Feh+B+wU0vGH1JiJ5T25d3g1JZYBHzR2qefLi9x8Gt+cpw==
