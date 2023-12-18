@@ -3,7 +3,6 @@ matcherConfig:
   labelMatchers:
     - [self-hosted, linux, arm64, amazon]
 fifo: true
-delay_webhook_event: 0
 redrive_build_queue:
   enabled: false
   maxReceiveCount: null
@@ -17,4 +16,5 @@ runner_config:
     - t4g.large
     - c6g.large
   runners_maximum_count: 1
+  delay_webhook_event: 0
   scale_down_schedule_expression: cron(* * * * ? *)

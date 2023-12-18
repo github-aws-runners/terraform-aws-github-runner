@@ -4,7 +4,6 @@ matcherConfig:
     - [self-hosted, linux, x64, ubuntu-latest]
     - [self-hosted, linux, x64, ubuntu-2204]
 fifo: true
-delay_webhook_event: 0
 redrive_build_queue:
   enabled: false
   maxReceiveCount: null
@@ -20,6 +19,7 @@ runner_config:
     - m5ad.large
     - m5a.large
   runners_maximum_count: 1
+  delay_webhook_event: 0
   scale_down_schedule_expression: cron(* * * * ? *)
   userdata_template: ./templates/user-data.sh
   ami_owners:
