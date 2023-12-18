@@ -66,9 +66,9 @@ module "multi-runner" {
         runner_architecture             = "x64"
         instance_types                  = ["m5ad.large", "m5a.large"]
         enable_ephemeral_runners        = true
+        delay_webhook_event = 0
         ...
       }
-      delay_webhook_event = 0
       ...
     }
   }
