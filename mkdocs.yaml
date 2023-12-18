@@ -1,4 +1,4 @@
-site_name: GitHub Runners for AWS
+site_name: GitHub Runners on AWS
 
 repo_name: philips-labs/terraform-aws-github-runner
 repo_url: https://github.com/philips-labs/terraform-aws-github-runner
@@ -24,6 +24,16 @@ theme:
     - navigation.instant.progress
     - navigation.tracking
     - pymdownx.snippets
+    - navigation.footer
+
+extra:
+  status:
+    new: Recently added
+    deprecated: Deprecated
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/philips-labs/terraform-aws-github-runner
+
 
 markdown_extensions:
   - pymdownx.snippets:
