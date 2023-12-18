@@ -1,14 +1,14 @@
-# Terraform module Self-Hosted Secaleable GitHub Actions runners on AWS.
+# Terraform module Self-Hosted Scalable GitHub Actions runners on AWS.
 
 [![docs](https://img.shields.io/badge/docs-runners-blue.svg)](https://philips-labs.github.io/terraform-aws-github-runner) [![awesome-runners](https://img.shields.io/badge/listed%20on-awesome--runners-blue.svg)](https://github.com/jonico/awesome-runners) [![Terraform registry](https://img.shields.io/github/v/release/philips-labs/terraform-aws-github-runner?label=Terraform%20Registry)](https://registry.terraform.io/modules/philips-labs/github-runner/aws/) [![Terraform checks](https://github.com/philips-labs/terraform-aws-github-runner/actions/workflows/terraform.yml/badge.svg)](https://github.com/philips-labs/terraform-aws-github-runner/actions/workflows/terraform.yml) [![Lambdas](https://github.com/philips-labs/terraform-aws-github-runner/actions/workflows/lambda.yml/badge.svg)](https://github.com/philips-labs/terraform-aws-github-runner/actions/workflows/lambda.yml)
 
-> 📄 Extensive documention is available via our [GitHub Pages Docs site](https://philips-labs.github.io/terraform-aws-github-runner/).
+> 📄 Extensive documentation is available via our [GitHub Pages Docs site](https://philips-labs.github.io/terraform-aws-github-runner/).
 
 > 📢 We maintain the project as a truly open-source project. We maintain the project on a best effort basis. We welcome contributions from the community. Feel free to help us answering issues, reviewing PRs, or maintaining and improving the project.
 
 > 📢 [`v5`](https://github.com/philips-labs/terraform-aws-github-runner/pull/3552) replaces Amazon Linux 2 with Amazon Linux 2023 as default OS. Check the PR for more details and other changes.
 
-> 📢 For contibutions to older versions you can make a PR to the related branch, e.g. `v4`. We have no release process in place for older versions.
+> 📢 For contributions to older versions you can make a PR to the related branch, e.g. `v4`. We have no release process in place for older versions.
 
 This [Terraform](https://www.terraform.io/) module creates the required infrastructure needed to host [GitHub Actions](https://github.com/features/actions) self-hosted, auto-scaling runners on [AWS spot instances](https://aws.amazon.com/ec2/spot/). It provides the required logic to handle the life cycle for scaling up and down using a set of AWS Lambda functions. Runners are scaled down to zero to avoid costs when no workflows are active.
 
@@ -26,18 +26,18 @@ insert image dark mode and light mode name is assets/runners.dark.png and assets
 - Sustainability: Scale down to zero when no jobs are running
 - Security: Runners are created on-demand and terminated after use (ephemeral runners)
 - Cost optimization: Runners are created on spot instances
-- Tailored software, hardwware and network configuration: Bring your own AMI, define the instance types and subnets to use.
+- Tailored software, hardware and network configuration: Bring your own AMI, define the instance types and subnets to use.
 - OS support: Linux (x64/arm64) and Windows
 - Multi-Runner: Create multiple runner configurations with a single deployment
 - GitHub cloud and GitHub Enterprise Server (GHES) support.
-- Org and repo level runners. Entrise level runners are not supported (yet).
+- Org and repo level runners. enterprise level runners are not supported (yet).
 
 
 ## Getting started
 
 Cechkout the detailed istruction in the [Getting Started](https://philips-labs.github.io/terraform-aws-github-runner/getting-started/) section of the docs. On a high level, the following steps are required to get started:
 - Setup your AWS account
-- Create and confgure a GitHub App
+- Create and configure a GitHub App
 - Download or build the required lambdas
 - Deploy the module using Terraform
 - Install the GitHub App to your organization or repositories and add your repositories to the runner group(s).
@@ -50,7 +50,7 @@ Please check the [configuration](https://philips-labs.github.io/terraform-aws-gi
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE.md) file for details.
 
 ## Contributing
 

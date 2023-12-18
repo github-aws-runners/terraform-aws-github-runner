@@ -1,14 +1,14 @@
-# Setup
+# Getting started
 
-Terraform examples are availabile for different use-cases for example multiple runners, ephemeral runners, and windows. For more details see the [examplees](examples/index.md).
+Terraform examples are available for different use-cases for example multiple runners, ephemeral runners, and windows. For more details see the [examples](examples/index.md).
 
 The module supports two main scenarios for creating runners. Repository level runners will be dedicated to only one repository, no other repository can use the runner. At the organization level you can use the runner(s) for all repositories within the organization. See [GitHub self-hosted runner instructions](https://help.github.com/en/actions/hosting-your-own-runners/about-self-hosted-runners) for more information. Before starting the deployment you have to choose one option.
 
-The setup guide below is a generic direction. There are many choices you can make, and there is no right way. For example we deploy ephemeral runners for both Linux and WIndows with packer pre-bult AMI's that are automatically updated. Deployment is done with GitHub actions, Terragrunt and terraform. The lamba's we sync to AWS S3. For the major fleet we have a tiny pool to let start jobs quickly.
+The setup guide below is a generic direction. There are many choices you can make, and there is no right way. For example we deploy ephemeral runners for both Linux and WIndows with packer pre-built AMI's that are automatically updated. Deployment is done with GitHub actions, Terragrunt and terraform. The lambda's we sync to AWS S3. For the major fleet we have a tiny pool to let start jobs quickly.
 
-## Required rools
+## Required tools
 
-The following tools are a minimum rqquirement. We advise to deploy the stack via a CI/CD pipeline.
+The following tools are a minimum requirement. We advise to deploy the stack via a CI/CD pipeline.
 
 - Terraform
 - Bash shell or compatible

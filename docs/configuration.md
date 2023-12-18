@@ -1,6 +1,6 @@
 # Configuration
 
-## Major configuration considarations
+## Configuration considerations
 
 To be able to support a number of use-cases, the module has quite a lot of configuration options. We tried to choose reasonable defaults. Several examples also show the main cases of how to configure the runners.
 
