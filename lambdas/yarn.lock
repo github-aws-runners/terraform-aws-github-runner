@@ -92,10 +92,10 @@
     "@aws-sdk/util-utf8-browser" "^3.0.0"
     tslib "^1.11.1"
 
-"@aws-lambda-powertools/commons@^1.14.2", "@aws-lambda-powertools/commons@^1.16.0":
-  version "1.16.0"
-  resolved "https://registry.yarnpkg.com/@aws-lambda-powertools/commons/-/commons-1.16.0.tgz#a2388bfda8adadb645119e7e8b7e39db962cef64"
-  integrity sha512-NWCQapc7zbF0dHW469607l16pFIzm6EQNL/uBdY7bDhJ2t98VFpErO7lj0gbqtTtSL28Ev1TMLtP3PYQeq2BLw==
+"@aws-lambda-powertools/commons@^1.14.2", "@aws-lambda-powertools/commons@^1.17.0":
+  version "1.17.0"
+  resolved "https://registry.yarnpkg.com/@aws-lambda-powertools/commons/-/commons-1.17.0.tgz#01c78e1c9344dcd8209160f54229269ef6981086"
+  integrity sha512-eZbOUGKH+oNG49oObXucffTdUyj0XmQTnddgDWmSWLgAQ4/L60n7x80hYOTCmDqATxPoA4ADa+fzAxGx0hyaxQ==
 
 "@aws-lambda-powertools/logger@^1.8.0":
   version "1.14.2"
@@ -106,11 +106,11 @@
     lodash.merge "^4.6.2"
 
 "@aws-lambda-powertools/tracer@^1.14.0":
-  version "1.16.0"
-  resolved "https://registry.yarnpkg.com/@aws-lambda-powertools/tracer/-/tracer-1.16.0.tgz#b85fb818445f6a43fecdc6d35f0fe31104e283df"
-  integrity sha512-oJvjSZTvCAb2PDV0yKpAViLgl3aePe2DqCLX0ZWCXGVyoLq7y7KVX5zquDFzntx/LMDA9ZwDQtHYn2hsO9b4dA==
+  version "1.17.0"
+  resolved "https://registry.yarnpkg.com/@aws-lambda-powertools/tracer/-/tracer-1.17.0.tgz#75b065d0dd10faebe606d23531731572bc477ffd"
+  integrity sha512-o9ztpooJ/LZYIMrVarRnczT3ncw52UtcRtwBd2iD+koHZtiQO55kNDDRWhjtc8c0Ci8g5BxeWzi7hB0d6FK4aA==
   dependencies:
-    "@aws-lambda-powertools/commons" "^1.16.0"
+    "@aws-lambda-powertools/commons" "^1.17.0"
     aws-xray-sdk-core "^3.5.3"
 
 "@aws-sdk/client-ec2@^3.436.0":
