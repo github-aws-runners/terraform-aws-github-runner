@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [18]
+        node: [20]
     container:
       image: node:${{ matrix.node }}
     defaults:
