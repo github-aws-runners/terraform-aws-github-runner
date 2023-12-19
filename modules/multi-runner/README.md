@@ -82,14 +82,14 @@ module "multi-runner" {
 | Name | Version |
 |------|---------|
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.3 |
-| <a name="requirement_aws"></a> [aws](#requirement\_aws) | ~> 5.2 |
+| <a name="requirement_aws"></a> [aws](#requirement\_aws) | ~> 5.27.0 |
 | <a name="requirement_random"></a> [random](#requirement\_random) | ~> 3.0 |
 
 ## Providers
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | ~> 5.2 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | ~> 5.27.0 |
 | <a name="provider_random"></a> [random](#provider\_random) | ~> 3.0 |
 
 ## Modules
@@ -129,7 +129,6 @@ module "multi-runner" {
 | <a name="input_aws_region"></a> [aws\_region](#input\_aws\_region) | AWS region. | `string` | n/a | yes |
 | <a name="input_cloudwatch_config"></a> [cloudwatch\_config](#input\_cloudwatch\_config) | (optional) Replaces the module default cloudwatch log config. See https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-Configuration-File-Details.html for details. | `string` | `null` | no |
 | <a name="input_enable_ami_housekeeper"></a> [enable\_ami\_housekeeper](#input\_enable\_ami\_housekeeper) | Option to disable the lambda to clean up old AMIs. | `bool` | `false` | no |
-| <a name="input_enable_event_rule_binaries_syncer"></a> [enable\_event\_rule\_binaries\_syncer](#input\_enable\_event\_rule\_binaries\_syncer) | Option to disable EventBridge Lambda trigger for the binary syncer, useful to stop automatic updates of binary distribution | `bool` | `true` | no |
 | <a name="input_enable_managed_runner_security_group"></a> [enable\_managed\_runner\_security\_group](#input\_enable\_managed\_runner\_security\_group) | Enabling the default managed security group creation. Unmanaged security groups can be specified via `runner_additional_security_group_ids`. | `bool` | `true` | no |
 | <a name="input_enable_workflow_job_events_queue"></a> [enable\_workflow\_job\_events\_queue](#input\_enable\_workflow\_job\_events\_queue) | Enabling this experimental feature will create a secondory sqs queue to wich a copy of the workflow\_job event will be delivered. | `bool` | `false` | no |
 | <a name="input_ghes_ssl_verify"></a> [ghes\_ssl\_verify](#input\_ghes\_ssl\_verify) | GitHub Enterprise SSL verification. Set to 'false' when custom certificate (chains) is used for GitHub Enterprise Server (insecure). | `bool` | `true` | no |
@@ -168,6 +167,7 @@ module "multi-runner" {
 | <a name="input_runners_scale_up_lambda_timeout"></a> [runners\_scale\_up\_lambda\_timeout](#input\_runners\_scale\_up\_lambda\_timeout) | Time out for the scale up lambda in seconds. | `number` | `30` | no |
 | <a name="input_runners_ssm_housekeeper"></a> [runners\_ssm\_housekeeper](#input\_runners\_ssm\_housekeeper) | Configuration for the SSM housekeeper lambda. This lambda deletes token / JIT config from SSM.<br><br>  `schedule_expression`: is used to configure the schedule for the lambda.<br>  `enabled`: enable or disable the lambda trigger via the EventBridge.<br>  `lambda_timeout`: timeout for the lambda in seconds.<br>  `config`: configuration for the lambda function. Token path will be read by default from the module. | <pre>object({<br>    schedule_expression = optional(string, "rate(1 day)")<br>    enabled             = optional(bool, true)<br>    lambda_timeout      = optional(number, 60)<br>    config = object({<br>      tokenPath      = optional(string)<br>      minimumDaysOld = optional(number, 1)<br>      dryRun         = optional(bool, false)<br>    })<br>  })</pre> | <pre>{<br>  "config": {}<br>}</pre> | no |
 | <a name="input_ssm_paths"></a> [ssm\_paths](#input\_ssm\_paths) | The root path used in SSM to store configuration and secreets. | <pre>object({<br>    root    = optional(string, "github-action-runners")<br>    app     = optional(string, "app")<br>    runners = optional(string, "runners")<br>  })</pre> | `{}` | no |
+| <a name="input_state_event_rule_binaries_syncer"></a> [state\_event\_rule\_binaries\_syncer](#input\_state\_event\_rule\_binaries\_syncer) | Option to disable EventBridge Lambda trigger for the binary syncer, useful to stop automatic updates of binary distribution | `string` | `"ENABLED"` | no |
 | <a name="input_subnet_ids"></a> [subnet\_ids](#input\_subnet\_ids) | List of subnets in which the action runners will be launched, the subnets needs to be subnets in the `vpc_id`. | `list(string)` | n/a | yes |
 | <a name="input_syncer_lambda_s3_key"></a> [syncer\_lambda\_s3\_key](#input\_syncer\_lambda\_s3\_key) | S3 key for syncer lambda function. Required if using S3 bucket to specify lambdas. | `string` | `null` | no |
 | <a name="input_syncer_lambda_s3_object_version"></a> [syncer\_lambda\_s3\_object\_version](#input\_syncer\_lambda\_s3\_object\_version) | S3 object version for syncer lambda function. Useful if S3 versioning is enabled on source bucket. | `string` | `null` | no |
