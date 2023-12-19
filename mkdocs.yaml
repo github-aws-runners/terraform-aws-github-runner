@@ -41,7 +41,7 @@ markdown_extensions:
   - pymdownx.emoji:
 
 nav:
-  - Introduciton: index.md
+  - Introduction: index.md
   - Configuration: configuration.md
   - Getting started: getting-started.md
   - Security: security.md
@@ -56,9 +56,9 @@ nav:
       - Syncer: modules/internal/runner-binaries-syncer.md
       - SSM: modules/internal/ssm.md
       - Webhook: modules/internal/webhook.md
-      - Webhook GitHub App:: modules/internal/webhook-github-app.md
+      - Update Webhook: modules/internal/webhook-github-app.md
   - Examples:
-    - Oeverview: examples/index.md
+    - Overview: examples/index.md
     - Default: examples/default.md
     - Multi Runner: examples/multi-runner.md
     - Ephemeral: examples/ephemeral.md
