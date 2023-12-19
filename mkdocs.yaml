@@ -5,8 +5,12 @@ repo_url: https://github.com/philips-labs/terraform-aws-github-runner
 edit_uri: edit/npalm/mkdocs/docs/
 use_directory_urls: true
 
+
+
 theme:
   name: material
+  icon:
+    logo: material/rocket-launch-outline
   palette:
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
