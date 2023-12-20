@@ -1,48 +1,11 @@
-# Action runners deployment with prebuilt image
+# Ubuntu custom AMI example
 
 This module shows how to create GitHub action runners using a prebuilt AMI for the runners.
 
 - Configured to run with org level runners.
 - GitHub runner binary syncer is not deployed.
 
-## Usages
-
-Steps for the full setup, such as creating a GitHub app can be found in the root module's [README](../../README.md).
-
-## Variables
-
-| Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
-| <a name="input_ami_filter"></a> [ami\_filter](#input\_ami\_filter) | The amis to search.  Use the default for the provided amazon linux image, `github-runner-windows-core-2019-*` for the provided Windows image | `string` | `github-runner-al2023-x86_64-2023*` | no |
-| <a name="input_github_app_key_base64"></a> [github\_app\_key\_base64](#input\_github\_app\_key\_base64) | The base64 encoded private key you downloaded from GitHub when creating the app | `string` | | yes |
-| <a name="input_github_app_id"></a> [github\_app\_id](#input\_github\_app\_id) | The id of the app you created on GitHub | `string` | | yes |
-| <a name="input_region"></a> [region](#input\_region) | The target aws region | `string` | `eu-west-1` | no |
-| <a name="input_runner_os"></a> [runner\_os](#input\_runner\_os) | The os of the image, either `linux` or `windows` | `string` | `linux` | no |
-
-### Lambdas
-
-You can either download the released lambda code or build them locally yourself.
-
-First download the Lambda releases from GitHub. Ensure you have set the version in `lambdas-download/main.tf` for running the example. The version needs to be set to a GitHub release version, see https://github.com/philips-labs/terraform-aws-github-runner/releases
-
-```bash
-cd lambdas-download
-terraform init
-terraform apply
-cd ..
-```
-
-Alternatively you can build the lambdas locally with Node or Docker, there is a simple build script in `<root>/.ci/build.sh`. In the `main.tf` you need to specify the build location for all of the zip files.
-
-```hcl
-  webhook_lambda_zip                = "../../lambda_output/webhook.zip"
-  runner_binaries_syncer_lambda_zip = "../../lambda_output/runner-binaries-syncer.zip"
-  runners_lambda_zip                = "../../lambda_output/runners.zip"
-```
-
-### GitHub App Configuration
-
-Before running Terraform, ensure the GitHub app is configured. See the [configuration details](../../README.md#usages) for more details.
+@@ Usages
 
 ### Packer Image
 

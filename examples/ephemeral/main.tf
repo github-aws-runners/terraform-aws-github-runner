@@ -60,9 +60,9 @@ module "runners" {
   enable_ephemeral_runners = true
 
   # # Example of simple pool usages
-  # pool_runner_owner = "my-org"
+  # pool_runner_owner = "philips-test-runners"
   # pool_config = [{
-  #   size                = 20
+  #   size                = 3
   #   schedule_expression = "cron(* * * * ? *)"
   # }]
   #

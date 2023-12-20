@@ -1,0 +1,1 @@
+--8<-- "examples/ephemeral/README.md"

@@ -1,0 +1,1 @@
+--8<-- "modules/download-lambda/README.md"

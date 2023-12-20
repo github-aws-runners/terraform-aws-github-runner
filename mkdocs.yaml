@@ -1,0 +1,74 @@
+site_name: GitHub Runners on AWS
+
+repo_name: philips-labs/terraform-aws-github-runner
+repo_url: https://github.com/philips-labs/terraform-aws-github-runner
+edit_uri: edit/main/docs/
+use_directory_urls: true
+
+
+
+theme:
+  name: material
+  icon:
+    logo: material/rocket-launch-outline
+  palette:
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/weather-night
+        name: Switch to system preference
+    - scheme: default
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to dark mode
+  features:
+    - content.code.copy
+    - content.action.edit
+    - navigation.instant
+    - navigation.instant.progress
+    - navigation.tracking
+    - pymdownx.snippets
+    - navigation.footer
+
+extra:
+  status:
+    new: Recently added
+    deprecated: Deprecated
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/philips-labs/terraform-aws-github-runner
+
+
+markdown_extensions:
+  - pymdownx.snippets:
+      check_paths: true
+  - pymdownx.emoji:
+
+nav:
+  - Introduction: index.md
+  - Configuration: configuration.md
+  - Getting started: getting-started.md
+  - Security: security.md
+  - Modules:
+    - Runners (root): modules/runners.md
+    - Multi Runners: modules/public/multi-runner.md
+    - AMI Housekeeper: modules/public/ami-housekeeper.md
+    - Lambda Downloader: modules/public/download-lambda.md
+    - Setup IAM permissions: modules/public/setup-iam-permissions.md
+    - Internal:
+      - Runners: modules/internal/runners.md
+      - Syncer: modules/internal/runner-binaries-syncer.md
+      - SSM: modules/internal/ssm.md
+      - Webhook: modules/internal/webhook.md
+      - Update Webhook: modules/internal/webhook-github-app.md
+  - Examples:
+    - Overview: examples/index.md
+    - Default: examples/default.md
+    - Multi Runner: examples/multi-runner.md
+    - Ephemeral: examples/ephemeral.md
+    - ARM64: examples/arm64.md
+    - Windows: examples/windows.md
+    - Custom AMI: examples/prebuilt.md
+    - Lambda download: examples/lambda-download.md
+    - Permissions boundary: examples/permissions-boundary.md
+  - AMI examples: ami-examples/index.md

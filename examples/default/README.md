@@ -1,12 +1,12 @@
-# Action runners deployment default example
+# Amazon Linux X64 (default)
 
 This module shows how to create GitHub action runners. Lambda release will be downloaded from GitHub.
 
 ## Usages
 
-Steps for the full setup, such as creating a GitHub app can be found in the root module's [README](../../README.md). First download the Lambda releases from GitHub. Alternatively you can build the lambdas locally with Node or Docker, there is a simple build script in `<root>/.ci/build.sh`. In the `main.tf` you can simply remove the location of the lambda zip files, the default location will work in this case.
+Steps for the full setup, such as creating a GitHub app can be found in the root module's [README](https://github.com/philips-labs/terraform-aws-github-runner). First download the Lambda releases from GitHub. Alternatively you can build the lambdas locally with Node or Docker, there is a simple build script in `<root>/.ci/build.sh`. In the `main.tf` you can simply remove the location of the lambda zip files, the default location will work in this case.
 
-> Ensure you have set the version in `lambdas-download/main.tf` for running the example. The version needs to be set to a GitHub release version, see https://github.com/philips-labs/terraform-aws-github-runner/releases
+> The default example assumes local built lambda's available. Ensure you have built the lambda's. Alternativly you can downlowd the lambda's. The version needs to be set to a GitHub release version, see https://github.com/philips-labs/terraform-aws-github-runner/releases
 
 ```bash
 cd ../lambdas-download
@@ -15,17 +15,17 @@ terraform apply -var=module_version=<VERSION>
 cd -
 ```
 
-Before running Terraform, ensure the GitHub app is configured. See the [configuration details](../../README.md#usages) for more details.
+Before running Terraform, ensure the GitHub app is configured. See the [configuration details](https://github.com/philips-labs/terraform-aws-github-runner#usages) for more details.
 
 ```bash
 terraform init
 terraform apply
 ```
 
-The module will try to update the GitHub App webhook and secret (only linux/mac). You can receive the webhook details by running:
+The example will try to update the webhook of your GitHub. In case the update fails the apply will not fail. You can receive the webhook details by running:
 
 ```bash
-terraform output webhook_secret
+terraform output -raw webhook_secret
 ```
 
 <!-- BEGIN_TF_DOCS -->

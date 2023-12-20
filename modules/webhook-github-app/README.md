@@ -1,8 +1,10 @@
 # Module - Update GitHub App Webhook
 
+> This module is treated as internal module, breaking changes will not trigger a major release bump.
+
 > This module is using the local executor to run a bash script.
 
-This module updates the GitHub App webhook with the endpoint and secret and can be changed with the root module. See the examples for usages.
+This module updates the GitHub App webhook with the endpoint and secret and can be changed with the root module. The module is used to update the webhook after applying the examples.
 
 <!-- BEGIN_TF_DOCS -->
 ## Requirements
