@@ -12,8 +12,6 @@
 
 This [Terraform](https://www.terraform.io/) module creates the required infrastructure needed to host [GitHub Actions](https://github.com/features/actions) self-hosted, auto-scaling runners on [AWS spot instances](https://aws.amazon.com/ec2/spot/). It provides the required logic to handle the life cycle for scaling up and down using a set of AWS Lambda functions. Runners are scaled down to zero to avoid costs when no workflows are active.
 
-insert image dark mode and light mode name is assets/runners.dark.png and assets/runners.light.png
-
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/runners.dark.png">
   <source media="(prefers-color-scheme: light)" srcset="docs/assets/runners.light.png">
