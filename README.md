@@ -46,7 +46,7 @@ Checkout the provide Terrafom examples in the [examples](./examples) directory f
 
 ## Configuration
 
-Please check the [configuration](https://philips-labs.github.io/terraform-aws-github-runner/configuration.html) section of the docs for major configuration options. See the Terraform module documentation for all available options.
+Please check the [configuration](https://philips-labs.github.io/terraform-aws-github-runner/configuration/) section of the docs for major configuration options. See the Terraform module documentation for all available options.
 
 ## License
 

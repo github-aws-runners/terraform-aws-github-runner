@@ -2,7 +2,7 @@ site_name: GitHub Runners on AWS
 
 repo_name: philips-labs/terraform-aws-github-runner
 repo_url: https://github.com/philips-labs/terraform-aws-github-runner
-edit_uri: edit/npalm/mkdocs/docs/
+edit_uri: edit/main/docs/
 use_directory_urls: true
 
 
