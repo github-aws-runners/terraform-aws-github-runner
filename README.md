@@ -40,7 +40,7 @@ Cechkout the detailed istruction in the [Getting Started](https://philips-labs.g
 - Deploy the module using Terraform
 - Install the GitHub App to your organization or repositories and add your repositories to the runner group(s).
 
-Checkout the provide Terrafom examples in the [examples](./examples) directory for different scenarios.
+Checkout the provided Terraform examples in the [examples](./examples) directory for different scenarios.
 
 ## Configuration
 
