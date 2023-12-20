@@ -1,5 +1,20 @@
 # Changelog
 
+## [5.6.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.5.2...v5.6.0) (2023-12-20)
+
+
+### Features
+
+* upgrade lambda runtime from 18x to 20x ([#3682](https://github.com/philips-labs/terraform-aws-github-runner/issues/3682)) ([02dd3e6](https://github.com/philips-labs/terraform-aws-github-runner/commit/02dd3e64db3a8a026613f010f6654970c8daf6c2))
+
+
+### Bug Fixes
+
+* **lambda:** bump @aws-lambda-powertools/tracer from 1.16.0 to 1.17.0 in /lambdas ([#3675](https://github.com/philips-labs/terraform-aws-github-runner/issues/3675)) ([b3536f7](https://github.com/philips-labs/terraform-aws-github-runner/commit/b3536f7cb37a36643cf7beffd1629440bda221ca))
+* **lambda:** bump the aws group in /lambdas with 5 updates ([#3671](https://github.com/philips-labs/terraform-aws-github-runner/issues/3671)) ([677965d](https://github.com/philips-labs/terraform-aws-github-runner/commit/677965df7d392be7a5176837f74b6698b70a4947))
+* **lambda:** bump the octokit group in /lambdas with 1 update ([#3672](https://github.com/philips-labs/terraform-aws-github-runner/issues/3672)) ([67facac](https://github.com/philips-labs/terraform-aws-github-runner/commit/67facac961890186eed199ffa685211fbc933adb))
+* Replace deprecate aws_cloudwatch_event_rule.is_enabled, requires provide upgrade ([#3655](https://github.com/philips-labs/terraform-aws-github-runner/issues/3655)) ([3c78f65](https://github.com/philips-labs/terraform-aws-github-runner/commit/3c78f652a4b2569e1e93ce739e8a9cda62c2128e))
+
 ## [5.5.2](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.5.1...v5.5.2) (2023-12-16)
 
 
