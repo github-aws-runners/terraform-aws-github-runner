@@ -40,7 +40,7 @@
     "@aws-sdk/client-s3": "^3.477.0",
     "@aws-sdk/lib-storage": "^3.477.0",
     "@aws-sdk/types": "^3.433.0",
-    "@middy/core": "^4.7.0",
+    "@middy/core": "^5.2.1",
     "@terraform-aws-github-runner/aws-powertools-util": "*",
     "axios": "^1.6.2"
   }
