@@ -3,7 +3,7 @@
 This module shows how to create GitHub action runners with multiple runner configuration together in one deployment. This example has the configurations for the following runner types with the relevant labels supported by them as matchers:
 
 - Linux ARM64 `["self-hosted", "linux", "arm64", "amazon"]`
-- Linux Ubuntu `["self-hosted", "linux", "x64", "ubuntu-latest"]` or `["self-hosted", "linux", "x64", "ubuntu-2204"]``
+- Linux Ubuntu `["self-hosted", "linux", "x64", "ubuntu-latest"]` or `["self-hosted", "linux", "x64", "ubuntu-2204"]`
 - Linux X64 `["self-hosted", "linux", "x64", "amazon"]`
 - Windows X64 `["self-hosted", "windows", "x64", "servercore-2022"]`
 
