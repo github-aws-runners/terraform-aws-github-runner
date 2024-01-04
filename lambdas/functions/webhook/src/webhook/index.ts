@@ -125,6 +125,18 @@ function init(headers: IncomingHttpHeaders) {
   });
 }
 
+function computeJobRuntime(started_at: string | null, completed_at: string | null): number | null {
+  if (started_at === null || completed_at === null) return null;
+
+  const startedTime = Date.parse(started_at);
+  const completedTime = Date.parse(completed_at);
+
+  if (isNaN(startedTime) || isNaN(completedTime)) return null; // Invalid datetime format
+
+  const runtimeInSeconds = (completedTime - startedTime) / 1000;
+  return runtimeInSeconds;
+}
+
 function readEvent(headers: IncomingHttpHeaders, body: string): { event: WorkflowJobEvent; eventType: string } {
   const eventType = headers['x-github-event'] as string;
 
@@ -143,6 +155,7 @@ function readEvent(headers: IncomingHttpHeaders, body: string): { event: Workflo
       workflowJobId: event.workflow_job.id,
       started_at: event.workflow_job.started_at,
       completed_at: event.workflow_job.completed_at,
+      runtime: computeJobRuntime(event.workflow_job.started_at, event.workflow_job.completed_at),
       conclusion: event.workflow_job.conclusion,
     },
   });
