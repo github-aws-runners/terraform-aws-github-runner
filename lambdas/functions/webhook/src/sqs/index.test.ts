@@ -80,7 +80,7 @@ describe('Test sending message to SQS.', () => {
 
   it('sends webhook events to workflow job queue', async () => {
     // Arrange
-    process.env.WORKFLOW_JOB_EVENT_SECONDARY_QUEUE = sqsMessage.QueueUrl;
+    process.env.SQS_WORKFLOW_JOB_QUEUE = sqsMessage.QueueUrl;
     const config = new Config();
 
     // Act
@@ -93,7 +93,7 @@ describe('Test sending message to SQS.', () => {
 
   it('Does not send webhook events to workflow job event copy queue', async () => {
     // Arrange
-    process.env.WORKFLOW_JOB_EVENT_SECONDARY_QUEUE = '';
+    process.env.SQS_WORKFLOW_JOB_QUEUE = '';
     const config = new Config();
     // Act
     await sendWebhookEventToWorkflowJobQueue(message, config);
@@ -104,7 +104,7 @@ describe('Test sending message to SQS.', () => {
 
   it('Catch the exception when even copy queue throws exception', async () => {
     // Arrange
-    process.env.WORKFLOW_JOB_EVENT_SECONDARY_QUEUE = sqsMessage.QueueUrl;
+    process.env.SQS_WORKFLOW_JOB_QUEUE = sqsMessage.QueueUrl;
     const config = new Config();
 
     const mockSQS = {
