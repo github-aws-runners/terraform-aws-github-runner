@@ -40,7 +40,7 @@ jobs:
           release-type: terraform-module
           token: ${{ steps.token.outputs.token }}
       - name: Upload Release Asset
-        if: ${{ steps.release.outputs.releases_created }}
+        if: ${{ steps.release.outputs.releases_created == 'true' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
