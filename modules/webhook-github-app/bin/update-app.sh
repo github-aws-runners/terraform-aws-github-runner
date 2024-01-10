@@ -76,7 +76,7 @@ if [ -z "$APP_PRIVATE_KEY_BASE64" ]; then
   APP_PRIVATE_KEY_BASE64=$(cat $APP_PRIVATE_KEY_FILE | base64 | tr -d '\n')
 fi
 
-SIGNATURE=$(echo -n "$HEADER.$PAYLOAD" | openssl dgst -sha256 -sign <(echo "$APP_PRIVATE_KEY_BASE64" | base64 -d) | base64 | tr -d '\n')
+SIGNATURE=$(echo -n "$HEADER.$PAYLOAD" | openssl dgst -sha256 -sign <(echo -e "$APP_PRIVATE_KEY_BASE64" | base64 -d) | base64 | tr -d '\n')
 
 JWT_TOKEN="$HEADER.$PAYLOAD.$SIGNATURE"
 
