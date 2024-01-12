@@ -1,5 +1,17 @@
 # Changelog
 
+## [5.6.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.6.0...v5.6.1) (2024-01-10)
+
+
+### Bug Fixes
+
+* **lambda:** bump follow-redirects from 1.15.2 to 1.15.4 in /lambdas ([#3712](https://github.com/philips-labs/terraform-aws-github-runner/issues/3712)) ([97c5fcf](https://github.com/philips-labs/terraform-aws-github-runner/commit/97c5fcf6fe3b94b2af1646e8c18e00b69e608a04))
+* **lambda:** bump the aws group in /lambdas with 5 updates ([#3699](https://github.com/philips-labs/terraform-aws-github-runner/issues/3699)) ([6fa667f](https://github.com/philips-labs/terraform-aws-github-runner/commit/6fa667fae7e4302cf643bcdb4ff3c91b1e4ed8d1))
+* **lambda:** bump the aws group in /lambdas with 5 updates ([#3705](https://github.com/philips-labs/terraform-aws-github-runner/issues/3705)) ([477c59b](https://github.com/philips-labs/terraform-aws-github-runner/commit/477c59b3516558b02c98d56db652e634015a953c))
+* **lambda:** bump the octokit group in /lambdas with 1 update ([#3706](https://github.com/philips-labs/terraform-aws-github-runner/issues/3706)) ([af40f28](https://github.com/philips-labs/terraform-aws-github-runner/commit/af40f28c42d9be68d5bd945624ce390e87f87374))
+* Loosen the AWS Terraform provider constraint ([#3708](https://github.com/philips-labs/terraform-aws-github-runner/issues/3708)) ([649da42](https://github.com/philips-labs/terraform-aws-github-runner/commit/649da42de76a8b3ed895f0f0e6b08d4719198592))
+* workflow job event queue misconfiguration. ([#3710](https://github.com/philips-labs/terraform-aws-github-runner/issues/3710)) ([0a2577e](https://github.com/philips-labs/terraform-aws-github-runner/commit/0a2577ed250c73ac8272132f7b39874b9957fdbd))
+
 ## [5.6.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.5.2...v5.6.0) (2023-12-20)
 
 
