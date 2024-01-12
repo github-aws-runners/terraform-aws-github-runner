@@ -10,6 +10,6 @@ export class Config {
     this.repositoryAllowList = JSON.parse(repositoryAllowListEnv) as Array<string>;
     const queuesConfigEnv = process.env.RUNNER_CONFIG || '[]';
     this.queuesConfig = JSON.parse(queuesConfigEnv) as Array<QueueConfig>;
-    this.workflowJobEventSecondaryQueue = process.env.WORKFLOW_JOB_EVENT_SECONDARY_QUEUE || undefined;
+    this.workflowJobEventSecondaryQueue = process.env.SQS_WORKFLOW_JOB_QUEUE || undefined;
   }
 }
