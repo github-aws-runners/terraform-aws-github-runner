@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.6.2](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.6.1...v5.6.2) (2024-01-12)
+
+
+### Bug Fixes
+
+* **multi-runner:** remove renundant default labels ([#3715](https://github.com/philips-labs/terraform-aws-github-runner/issues/3715)) ([9353734](https://github.com/philips-labs/terraform-aws-github-runner/commit/93537347538a8a57516ae1737b96d4c37319af32))
+* **webhook-github-app:** Allow new lines in base64 key for module webhook-github-app ([#3714](https://github.com/philips-labs/terraform-aws-github-runner/issues/3714)) ([57f056d](https://github.com/philips-labs/terraform-aws-github-runner/commit/57f056dc4a57896d702c8bf056fceb8b3c6e77f8))
+
 ## [5.6.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.6.0...v5.6.1) (2024-01-10)
 
 
