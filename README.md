@@ -33,14 +33,14 @@ This [Terraform](https://www.terraform.io/) module creates the required infrastr
 
 ## Getting started
 
-Cechkout the detailed istruction in the [Getting Started](https://philips-labs.github.io/terraform-aws-github-runner/getting-started/) section of the docs. On a high level, the following steps are required to get started:
+Check out the detailed instructions in the [Getting Started](https://philips-labs.github.io/terraform-aws-github-runner/getting-started/) section of the docs. On a high level, the following steps are required to get started:
 - Setup your AWS account
 - Create and configure a GitHub App
 - Download or build the required lambdas
 - Deploy the module using Terraform
 - Install the GitHub App to your organization or repositories and add your repositories to the runner group(s).
 
-Checkout the provided Terraform examples in the [examples](./examples) directory for different scenarios.
+Check out the provided Terraform examples in the [examples](./examples) directory for different scenarios.
 
 ## Configuration
 
