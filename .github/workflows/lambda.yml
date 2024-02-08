@@ -32,7 +32,7 @@ jobs:
       - name: Build distribution
         run: yarn build
       - name: Upload coverage report
-        uses: actions/upload-artifact@1eb3cb2b3e0f29609092a73eb033bb759a334595 # v31.2
+        uses: actions/upload-artifact@26f96dfa697d77e81fd5907df203aa23a56210a8 # v31.2
         if: ${{ failure() }}
         with:
           name: coverage-reports
