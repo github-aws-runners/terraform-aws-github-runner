@@ -1,5 +1,22 @@
 # Changelog
 
+## [5.6.3](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.6.2...v5.6.3) (2024-01-16)
+
+
+### Bug Fixes
+
+* **lambda:** bump the aws group in /lambdas with 5 updates ([#3720](https://github.com/philips-labs/terraform-aws-github-runner/issues/3720)) ([9a17b13](https://github.com/philips-labs/terraform-aws-github-runner/commit/9a17b132c999b392e19af690362340508debe1f7))
+* **lambda:** bump the octokit group in /lambdas with 1 update ([#3721](https://github.com/philips-labs/terraform-aws-github-runner/issues/3721)) ([9b13c09](https://github.com/philips-labs/terraform-aws-github-runner/commit/9b13c099598728d91f58a79b46d460fad12c94a1))
+* **runners:** zip base64 encoded user data to avoid size limits ([#3717](https://github.com/philips-labs/terraform-aws-github-runner/issues/3717)) ([f2bbcb1](https://github.com/philips-labs/terraform-aws-github-runner/commit/f2bbcb16e2c99dbf58057680564f517e74599d73)), closes [#3700](https://github.com/philips-labs/terraform-aws-github-runner/issues/3700)
+
+## [5.6.2](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.6.1...v5.6.2) (2024-01-12)
+
+
+### Bug Fixes
+
+* **multi-runner:** remove renundant default labels ([#3715](https://github.com/philips-labs/terraform-aws-github-runner/issues/3715)) ([9353734](https://github.com/philips-labs/terraform-aws-github-runner/commit/93537347538a8a57516ae1737b96d4c37319af32))
+* **webhook-github-app:** Allow new lines in base64 key for module webhook-github-app ([#3714](https://github.com/philips-labs/terraform-aws-github-runner/issues/3714)) ([57f056d](https://github.com/philips-labs/terraform-aws-github-runner/commit/57f056dc4a57896d702c8bf056fceb8b3c6e77f8))
+
 ## [5.6.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.6.0...v5.6.1) (2024-01-10)
 
 
