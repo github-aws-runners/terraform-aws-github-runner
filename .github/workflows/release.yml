@@ -22,7 +22,7 @@ jobs:
         working-directory: lambdas
         run: yarn install --frozen-lockfile && yarn run test && yarn dist
       - name: Get installation token
-        uses: philips-software/app-token-action@a37926571e4cec6f219e06727136efdd073d8657 # ratchet:philips-software/app-token-action@v1.1.2
+        uses: philips-software/app-token-action@9f5d57062c9f2beaffafaa9a34f66f824ead63a9 # ratchet:philips-software/app-token-action@v2.0.0
         id: token
         with:
           app_id: ${{ secrets.FOREST_RELEASER_APP_ID }}

@@ -154,7 +154,7 @@ resource "aws_launch_template" "runner" {
     )
   }
 
-  user_data = var.enable_userdata ? base64encode(templatefile(local.userdata_template, {
+  user_data = var.enable_userdata ? base64gzip(templatefile(local.userdata_template, {
     enable_debug_logging            = var.enable_user_data_debug_logging
     s3_location_runner_distribution = local.s3_location_runner_distribution
     pre_install                     = var.userdata_pre_install
