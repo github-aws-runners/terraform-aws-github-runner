@@ -9,6 +9,8 @@ runner_config:
   runner_architecture: x64
   runner_name_prefix: amazon-x64_
   enable_ssm_on_runners: true
+  vpc_id: ${vpc_id}
+  subnet_ids: ${subnet_ids}
   instance_types:
     - m5ad.large
     - m5a.large
