@@ -217,7 +217,7 @@ echo "Starting the runner as user $run_as"
 # configure the runner if the runner is non ephemeral or jit config is disabled
 if [[ "$enable_jit_config" == "false" || $agent_mode != "ephemeral" ]]; then
   echo "Configure GH Runner as user $run_as"
-  sudo --preserve-env=RUNNER_ALLOW_RUNASROOT -u "$run_as" -- ./config.sh --unattended --name "$runner_name_prefix$instance_id" --work "_work" $${config}
+  sudo --preserve-env=RUNNER_ALLOW_RUNASROOT -i -u "$run_as" -- $PWD/config.sh --unattended --name "$runner_name_prefix$instance_id" --work "_work" $${config}
 fi
 
 create_xray_success_segment "$SEGMENT"
