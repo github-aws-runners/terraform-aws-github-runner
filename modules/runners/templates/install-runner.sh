@@ -48,7 +48,7 @@ echo OS: $os_id
 # Install libicu on non-ubuntu
 if [[ ! "$os_id" =~ ^ubuntu.* ]]; then
   max_attempts=5
-  attempt_count=1
+  attempt_count=0
   success=false
   while [ $success = false ] && [ $attempt_count -le $max_attempts ]; do
     echo "Attempt $attempt_count/$max_attempts: Installing libicu"
