@@ -78,6 +78,8 @@ variable "multi_runner_config" {
       userdata_post_install                   = optional(string, "")
       runner_ec2_tags                         = optional(map(string), {})
       runner_iam_role_managed_policy_arns     = optional(list(string), [])
+      vpc_id                                  = optional(string, null)
+      subnet_ids                              = optional(list(string), null)
       idle_config = optional(list(object({
         cron             = string
         timeZone         = string
@@ -169,6 +171,8 @@ variable "multi_runner_config" {
         userdata_post_install: "Script to be ran after the GitHub Actions runner is installed on the EC2 instances"
         runner_ec2_tags: "Map of tags that will be added to the launch template instance tag specifications."
         runner_iam_role_managed_policy_arns: "Attach AWS or customer-managed IAM policies (by ARN) to the runner IAM role"
+        vpc_id: "The VPC for security groups of the action runners. If not set uses the value of `var.vpc_id`."
+        subnet_ids: "List of subnets in which the action runners will be launched, the subnets needs to be subnets in the `vpc_id`. If not set, uses the value of `var.subnet_ids`."
         idle_config: "List of time period that can be defined as cron expression to keep a minimum amount of runners active instead of scaling down to 0. By defining this list you can ensure that in time periods that match the cron expression within 5 seconds a runner is kept idle."
         runner_log_files: "(optional) Replaces the module default cloudwatch log config. See https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-Configuration-File-Details.html for details."
         block_device_mappings: "The EC2 instance block device configuration. Takes the following keys: `device_name`, `delete_on_termination`, `volume_type`, `volume_size`, `encrypted`, `iops`, `throughput`, `kms_key_id`, `snapshot_id`."

@@ -11,11 +11,9 @@ For each configuration:
 - When enabled, the [distribution syncer](https://philips-labs.github.io/terraform-aws-github-runner/modules/internal/runner-binaries-syncer/) is deployed for each unique combination of OS and architecture.
 - For each configuration a queue is created and [runner module](https://philips-labs.github.io/terraform-aws-github-runner/modules/internal/runners/) is deployed
 
-
 ## Matching
 
 Matching of the configuration is done based on the labels specified in labelMatchers configuration. The webhook is processing the `workflow_job` event and match the labels against the labels specified in labelMatchers configuration in the order of configuration with exact-match true first, followed by all exact matches false.
-
 
 ## The catch
 
@@ -29,7 +27,6 @@ Jobs not defining all all labels but for example only `[self-hosted, linux]` cou
 ## Usages
 
 A complete example is available in the examples, see the [multi-runner example](https://philips-labs.github.io/terraform-aws-github-runner/examples/) for actual implementation.
-
 
 ```hcl
 
