@@ -66,7 +66,6 @@ locals {
     enable_cloudwatch_agent         = var.enable_cloudwatch_agent
     ssm_key_cloudwatch_agent_config = var.enable_cloudwatch_agent ? aws_ssm_parameter.cloudwatch_agent_config_runner[0].name : ""
   }) : ""
-  user_data_encoded = var.runner_os == "windows" ? base64encode(local.user_data) : base64gzip(local.user_data)
 }
 
 data "aws_ami" "runner" {
@@ -176,7 +175,7 @@ resource "aws_launch_template" "runner" {
     )
   }
 
-  user_data = local.user_data_encoded
+  user_data = var.runner_os == "windows" ? base64encode(local.user_data) : base64gzip(local.user_data)
 
   tags = local.tags
 
