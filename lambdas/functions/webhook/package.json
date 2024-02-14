@@ -5,8 +5,8 @@
   "license": "MIT",
   "scripts": {
     "start": "ts-node-dev src/local.ts",
-    "test": "NODE_ENV=test jest",
-    "test:watch": "NODE_ENV=test jest --watch",
+    "test": "NODE_ENV=test nx test",
+    "test:watch": "NODE_ENV=test nx test --watch",
     "lint": "yarn eslint src",
     "watch": "ts-node-dev --respawn --exit-child src/local.ts",
     "build": "ncc build src/lambda.ts -o dist",
@@ -46,5 +46,8 @@
     "@terraform-aws-github-runner/aws-powertools-util": "*",
     "@terraform-aws-github-runner/aws-ssm-util": "*",
     "aws-lambda": "^1.0.7"
+  },
+  "nx": {
+    "includedScripts": []
   }
 }

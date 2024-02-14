@@ -5,8 +5,8 @@
   "license": "MIT",
   "scripts": {
     "start": "ts-node-dev src/local.ts",
-    "test": "NODE_ENV=test jest",
-    "test:watch": "NODE_ENV=test jest --watch",
+    "test": "NODE_ENV=test nx test",
+    "test:watch": "NODE_ENV=test nx test --watch",
     "lint": "yarn eslint src",
     "watch": "ts-node-dev --respawn --exit-child src/local.ts",
     "format": "prettier --write \"**/*.ts\"",
@@ -39,5 +39,8 @@
     "@aws-lambda-powertools/logger": "^1.17.0",
     "@aws-lambda-powertools/tracer": "^1.14.0",
     "aws-lambda": "^1.0.7"
+  },
+  "nx": {
+    "includedScripts": []
   }
 }

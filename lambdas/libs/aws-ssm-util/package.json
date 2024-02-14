@@ -5,8 +5,8 @@
   "license": "MIT",
   "scripts": {
     "start": "ts-node-dev src/local.ts",
-    "test": "NODE_ENV=test jest",
-    "test:watch": "NODE_ENV=test jest --watch",
+    "test": "NODE_ENV=test nx test",
+    "test:watch": "NODE_ENV=test nx test --watch",
     "lint": "yarn eslint src",
     "watch": "ts-node-dev --respawn --exit-child src/local.ts",
     "format": "prettier --write \"**/*.ts\"",
@@ -39,5 +39,8 @@
     "@aws-sdk/client-ssm": "^3.477.0",
     "@aws-sdk/types": "^3.433.0",
     "@terraform-aws-github-runner/aws-powertools-util": "*"
+  },
+  "nx": {
+    "includedScripts": []
   }
 }
