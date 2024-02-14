@@ -6,12 +6,16 @@
     "libs/*"
   ],
   "scripts": {
-    "build": "yarn workspaces run build",
-    "dist": "yarn workspaces run build && yarn workspaces run dist",
-    "format": "yarn workspaces run format",
-    "format-check": "yarn workspaces run format-check",
-    "lint": "yarn workspaces run lint",
-    "test": "yarn workspaces run test"
+    "build": "nx run-many --target=build --all",
+    "affected:build": "nx affected:build --parallel",
+    "dist": "nx run-many --target=dist --all",
+    "format": "nx run-many --target=format --all",
+    "format-check": "nx run-many --target=format-check --all",
+    "affected:format-check": "nx affected:format-check --parallel",
+    "lint": "nx run-many --target=lint --all",
+    "affected:lint": "nx affected:lint --parallel",
+    "test": "nx run-many --target=test --all",
+    "affected:test": "nx affected:test --parallel"
   },
   "resolutions": {
     "@octokit/types": "^12.0.0"
@@ -26,6 +30,5 @@
     "jest": "^29.4.1",
     "nx": "18.0.4",
     "prettier": "^2.6.2"
-  },
-  "dependencies": {}
+  }
 }

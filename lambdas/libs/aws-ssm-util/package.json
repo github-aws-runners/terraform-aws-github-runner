@@ -41,6 +41,6 @@
     "@terraform-aws-github-runner/aws-powertools-util": "*"
   },
   "nx": {
-    "includedScripts": []
+    "includedScripts": ["build","dist","format","format-check","start","watch","all"]
   }
 }

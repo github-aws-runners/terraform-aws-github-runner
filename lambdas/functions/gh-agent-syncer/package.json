@@ -45,6 +45,6 @@
     "axios": "^1.6.2"
   },
   "nx": {
-    "includedScripts": []
+    "includedScripts": ["build","dist","format","format-check","start","watch","all"]
   }
 }
