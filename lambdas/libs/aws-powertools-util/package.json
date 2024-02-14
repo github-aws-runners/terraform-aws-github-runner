@@ -41,6 +41,6 @@
     "aws-lambda": "^1.0.7"
   },
   "nx": {
-    "includedScripts": []
+    "includedScripts": ["build","dist","format","format-check","start","watch","all"]
   }
 }
