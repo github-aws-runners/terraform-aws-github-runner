@@ -1,5 +1,5 @@
 {
-  "name": "@terraform-aws-github-runner/function-webhook",
+  "name": "@terraform-aws-github-runner/webhook",
   "version": "1.0.0",
   "main": "lambda.ts",
   "license": "MIT",
