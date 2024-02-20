@@ -1,5 +1,14 @@
 # Changelog
 
+## [5.7.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.7.0...v5.7.1) (2024-02-13)
+
+
+### Bug Fixes
+
+* add retry logic to runner start script for libicu download ([#3748](https://github.com/philips-labs/terraform-aws-github-runner/issues/3748)) ([1b4597b](https://github.com/philips-labs/terraform-aws-github-runner/commit/1b4597b613dc46dcc63cacb546ff4ce489cd731f))
+* **lambda:** bump the aws group in /lambdas with 6 updates ([#3762](https://github.com/philips-labs/terraform-aws-github-runner/issues/3762)) ([e43fd80](https://github.com/philips-labs/terraform-aws-github-runner/commit/e43fd80324dd1e553dc81720b39893f1c6dd97d4))
+* **lambda:** bump the octokit group in /lambdas with 1 update ([#3763](https://github.com/philips-labs/terraform-aws-github-runner/issues/3763)) ([77586c5](https://github.com/philips-labs/terraform-aws-github-runner/commit/77586c5efb6a4e33bb2c056867738c13559292b9))
+
 ## [5.7.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.6.3...v5.7.0) (2024-02-12)
 
 
