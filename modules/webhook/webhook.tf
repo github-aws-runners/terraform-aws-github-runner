@@ -51,7 +51,7 @@ resource "aws_lambda_function" "webhook" {
     }
   }
   lifecycle {
-    replace_triggered_by = [aws_ssm_parameter.runner_matcher_config]
+    replace_triggered_by = [aws_ssm_parameter.runner_matcher_config, null_resource.github_app_parameters]
   }
 }
 
@@ -69,7 +69,13 @@ resource "aws_lambda_permission" "webhook" {
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.webhook.execution_arn}/*/*/${local.webhook_endpoint}"
   lifecycle {
-    replace_triggered_by = [aws_ssm_parameter.runner_matcher_config]
+    replace_triggered_by = [aws_ssm_parameter.runner_matcher_config, null_resource.github_app_parameters]
+  }
+}
+
+resource "null_resource" "github_app_parameters" {
+  triggers = {
+    github_app_webhook_secret = var.github_app_parameters.webhook_secret.name
   }
 }
 

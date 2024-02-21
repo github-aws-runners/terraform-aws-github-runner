@@ -17,7 +17,7 @@ export class Config {
   static async load(): Promise<Config> {
     const repositoryAllowListEnv = process.env.REPOSITORY_ALLOW_LIST ?? '[]';
     const repositoryAllowList = JSON.parse(repositoryAllowListEnv) as Array<string>;
-    // load the queues config from SSM if it's not already loaded and cached
+    // load parallel config if not cached
     if (!Config.matcherConfig) {
       const matcherConfigPath =
         process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH ?? '/github-runner/runner-matcher-config';

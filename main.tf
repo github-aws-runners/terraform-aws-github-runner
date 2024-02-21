@@ -124,7 +124,7 @@ module "ssm" {
 module "webhook" {
   source = "./modules/webhook"
   ssm_paths = {
-    root = "${local.ssm_root_path}"
+    root    = "${local.ssm_root_path}"
     webhook = "${var.ssm_paths.webhook}"
   }
   prefix      = var.prefix
