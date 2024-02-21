@@ -16,6 +16,7 @@ module "runner_binaries" {
   lambda_runtime                   = var.lambda_runtime
   lambda_architecture              = var.lambda_architecture
   lambda_zip                       = var.runner_binaries_syncer_lambda_zip
+  lambda_memory_size               = var.runner_binaries_syncer_memory_size
   lambda_timeout                   = var.runner_binaries_syncer_lambda_timeout
   tracing_config                   = var.tracing_config
   logging_retention_in_days        = var.logging_retention_in_days

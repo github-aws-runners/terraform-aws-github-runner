@@ -17,7 +17,7 @@ resource "aws_lambda_function" "scale_down" {
   runtime           = var.lambda_runtime
   timeout           = var.lambda_timeout_scale_down
   tags              = local.tags
-  memory_size       = 512
+  memory_size       = var.lambda_scale_down_memory_size
   architectures     = [var.lambda_architecture]
 
   environment {

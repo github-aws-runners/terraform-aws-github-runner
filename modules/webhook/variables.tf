@@ -54,6 +54,12 @@ variable "lambda_zip" {
   default     = null
 }
 
+variable "lambda_memory_size" {
+  description = "Memory size limit for lambda."
+  type        = number
+  default     = 256
+}
+
 variable "lambda_timeout" {
   description = "Time out of the lambda in seconds."
   type        = number

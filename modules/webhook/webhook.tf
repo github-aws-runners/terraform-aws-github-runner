@@ -17,6 +17,7 @@ resource "aws_lambda_function" "webhook" {
   role              = aws_iam_role.webhook_lambda.arn
   handler           = "index.githubWebhook"
   runtime           = var.lambda_runtime
+  memory_size       = var.lambda_memory_size
   timeout           = var.lambda_timeout
   architectures     = [var.lambda_architecture]
 
