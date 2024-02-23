@@ -18,6 +18,18 @@ variable "region" {
   default     = "eu-west-1"
 }
 
+variable "instance_type" {
+  description = "The instance type Packer will use for the builder"
+  type        = string
+  default     = "m4.xlarge"
+}
+
+variable "iam_instance_profile" {
+  description = "IAM instance profile Packer will use for the builder. An empty string (default) means no profile will be assigned."
+  type        = string
+  default     = ""
+}
+
 variable "security_group_id" {
   description = "The ID of the security group Packer will associate with the builder to enable access"
   type        = string
@@ -53,6 +65,12 @@ variable "custom_shell_commands" {
   default     = []
 }
 
+variable "custom_shell_commands_post_runner_install" {
+  description = "Additional commands to run on the EC2 instance, to customize the instance, like installing packages. This runs after the agent is installed."
+  type        = list(string)
+  default     = []
+}
+
 variable "temporary_security_group_source_public_ip" {
   description = "When enabled, use public IP of the host (obtained from https://checkip.amazonaws.com) as CIDR block to be authorized access to the instance, when packer is creating a temporary security group. Note: If you specify `security_group_id` then this input is ignored."
   type        = bool
@@ -74,7 +92,8 @@ locals {
 source "amazon-ebs" "githubrunner" {
   ami_name                                  = "github-runner-windows-core-2022-${formatdate("YYYYMMDDhhmm", timestamp())}"
   communicator                              = "winrm"
-  instance_type                             = "m4.xlarge"
+  instance_type                             = var.instance_type
+  iam_instance_profile                      = var.iam_instance_profile
   region                                    = var.region
   security_group_id                         = var.security_group_id
   subnet_id                                 = var.subnet_id
@@ -126,7 +145,7 @@ build {
       templatefile("./windows-provisioner.ps1", {
         action_runner_url = "https://github.com/actions/runner/releases/download/v${local.runner_version}/actions-runner-win-x64-${local.runner_version}.zip"
       })
-    ], var.custom_shell_commands)
+    ], var.custom_shell_commands, var.custom_shell_commands_post_runner_install)
   }
   post-processor "manifest" {
     output     = "manifest.json"

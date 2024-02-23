@@ -24,6 +24,12 @@ variable "instance_type" {
   default     = "t3a.medium"
 }
 
+variable "iam_instance_profile" {
+  description = "IAM instance profile Packer will use for the builder. An empty string (default) means no profile will be assigned."
+  type        = string
+  default     = ""
+}
+
 variable "ebs_delete_on_termination" {
   description = "Indicates whether the EBS volume is deleted on instance termination."
   type        = bool
@@ -38,6 +44,12 @@ variable "associate_public_ip_address" {
 
 variable "custom_shell_commands" {
   description = "Additional commands to run on the EC2 instance, to customize the instance, like installing packages"
+  type        = list(string)
+  default     = []
+}
+
+variable "custom_shell_commands_post_runner_install" {
+  description = "Additional commands to run on the EC2 instance, to customize the instance, like installing packages. This runs after the agent is installed."
   type        = list(string)
   default     = []
 }
@@ -64,6 +76,7 @@ source "amazon-ebs" "githubrunner" {
   ami_name                                  = "github-runner-windows-core-2019-${formatdate("YYYYMMDDhhmm", timestamp())}"
   communicator                              = "winrm"
   instance_type                             = var.instance_type
+  iam_instance_profile                      = var.iam_instance_profile
   region                                    = var.region
   associate_public_ip_address               = var.associate_public_ip_address
   temporary_security_group_source_public_ip = var.temporary_security_group_source_public_ip
@@ -112,8 +125,9 @@ build {
       templatefile("./windows-provisioner.ps1", {
         action_runner_url = "https://github.com/actions/runner/releases/download/v${local.runner_version}/actions-runner-win-x64-${local.runner_version}.zip"
       })
-    ], var.custom_shell_commands)
+    ], var.custom_shell_commands, var.custom_shell_commands_post_runner_install)
   }
+
   post-processor "manifest" {
     output     = "manifest.json"
     strip_path = true
