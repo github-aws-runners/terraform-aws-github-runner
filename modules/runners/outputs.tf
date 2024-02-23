@@ -51,3 +51,8 @@ output "logfiles" {
   value       = local.logfiles
   description = "List of logfiles to send to CloudWatch. Object description: `log_group_name`: Name of the log group, `file_path`: path to the log file, `log_stream_name`: name of the log stream."
 }
+
+output "runners_sg_id" {
+  value       = aws_security_group.runner_sg.id
+  description = "ID of the security group."
+}

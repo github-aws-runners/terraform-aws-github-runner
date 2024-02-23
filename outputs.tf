@@ -17,6 +17,7 @@ output "runners" {
     runners_log_groups      = module.runners.runners_log_groups
     labels                  = local.runner_labels
     logfiles                = module.runners.logfiles
+    runners_sg_id           = module.runners.runners_sg_id
   }
 }
 
