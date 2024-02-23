@@ -17,6 +17,7 @@ output "runners" {
     runners_log_groups      = module.runners.runners_log_groups
     labels                  = sort(split(",", local.runner_labels))
     logfiles                = module.runners.logfiles
+    runner_sg_id            = module.runners.runner_sg_id
   }
 }
 
