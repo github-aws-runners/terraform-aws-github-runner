@@ -773,6 +773,7 @@ variable "ssm_paths" {
     root       = optional(string, "github-action-runners")
     app        = optional(string, "app")
     runners    = optional(string, "runners")
+    webhook    = optional(string, "webhook")
     use_prefix = optional(bool, true)
   })
   default = {}

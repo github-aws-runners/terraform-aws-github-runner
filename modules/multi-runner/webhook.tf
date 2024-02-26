@@ -4,7 +4,11 @@ module "webhook" {
   tags        = local.tags
   kms_key_arn = var.kms_key_arn
 
-  runner_config          = local.runner_config
+  runner_matcher_config = local.runner_config
+  ssm_paths = {
+    root    = local.ssm_root_path
+    webhook = var.ssm_paths.webhook
+  }
   sqs_workflow_job_queue = length(aws_sqs_queue.webhook_events_workflow_job_queue) > 0 ? aws_sqs_queue.webhook_events_workflow_job_queue[0] : null
 
   github_app_parameters = {
