@@ -43,7 +43,7 @@
     "@middy/core": "^4.7.0",
     "@octokit/auth-app": "6.0.3",
     "@octokit/rest": "20.0.2",
-    "@octokit/types": "^12.1.1",
+    "@octokit/types": "^12.5.0",
     "@terraform-aws-github-runner/aws-powertools-util": "*",
     "@terraform-aws-github-runner/aws-ssm-util": "*",
     "axios": "^1.6.2",
