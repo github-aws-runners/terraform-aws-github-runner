@@ -55,7 +55,7 @@ variable "lambda_zip" {
 }
 
 variable "lambda_memory_size" {
-  description = "Memory size limit inMB for lambda."
+  description = "Memory size limit in MB for lambda."
   type        = number
   default     = 256
 }
