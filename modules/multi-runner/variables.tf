@@ -190,7 +190,7 @@ variable "multi_runner_config" {
 }
 
 variable "scale_up_lambda_memory_size" {
-  description = "Memory size limit for scale_up lambda."
+  description = "Memory size limit in MBfor scale_up lambda."
   type        = number
   default     = 512
 }
@@ -202,7 +202,7 @@ variable "runners_scale_up_lambda_timeout" {
 }
 
 variable "scale_down_lambda_memory_size" {
-  description = "Memory size limit for scale down."
+  description = "Memory size limit in MBfor scale down."
   type        = number
   default     = 512
 }
@@ -220,7 +220,7 @@ variable "webhook_lambda_zip" {
 }
 
 variable "webhook_lambda_memory_size" {
-  description = "Memory size limit for webhook lambda."
+  description = "Memory size limit in MBfor webhook lambda."
   type        = number
   default     = 256
 }
@@ -356,7 +356,7 @@ variable "runner_binaries_s3_versioning" {
 }
 
 variable "runner_binaries_syncer_memory_size" {
-  description = "Memory size limit for binary syncer lambda."
+  description = "Memory size limit in MBfor binary syncer lambda."
   type        = number
   default     = 256
 }

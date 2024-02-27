@@ -83,7 +83,7 @@ variable "webhook_lambda_zip" {
 }
 
 variable "webhook_lambda_memory_size" {
-  description = "Memory size limit for webhook lambda."
+  description = "Memory size limit in MB for webhook lambda in."
   type        = number
   default     = 256
 }
@@ -101,7 +101,7 @@ variable "runners_lambda_zip" {
 }
 
 variable "runners_scale_up_Lambda_memory_size" {
-  description = "Memory size limit for scale-up lambda."
+  description = "Memory size limit in MBfor scale-up lambda."
   type        = number
   default     = 512
 }
@@ -113,7 +113,7 @@ variable "runners_scale_up_lambda_timeout" {
 }
 
 variable "runners_scale_down_lambda_memory_size" {
-  description = "Memory size limit for scale-down lambda."
+  description = "Memory size limit in MBfor scale-down lambda."
   type        = number
   default     = 512
 }
@@ -131,7 +131,7 @@ variable "runner_binaries_syncer_lambda_zip" {
 }
 
 variable "runner_binaries_syncer_lambda_memory_size" {
-  description = "Memory size limit for binary syncer lambda."
+  description = "Memory size limit in MBfor binary syncer lambda."
   type        = number
   default     = 256
 }
