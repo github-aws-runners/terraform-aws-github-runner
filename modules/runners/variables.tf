@@ -187,7 +187,7 @@ variable "github_app_parameters" {
 }
 
 variable "lambda_scale_down_memory_size" {
-  description = "Memory size limit in MBfor scale down lambda."
+  description = "Memory size limit inMB for scale down lambda."
   type        = number
   default     = 512
 }
@@ -240,7 +240,7 @@ variable "scale_up_reserved_concurrent_executions" {
 }
 
 variable "lambda_scale_up_memory_size" {
-  description = "Memory size limit in MBfor scale-up lambda."
+  description = "Memory size limit inMB for scale-up lambda."
   type        = number
   default     = 512
 }
@@ -514,7 +514,7 @@ variable "pool_lambda_timeout" {
 }
 
 variable "pool_lambda_memory_size" {
-  description = "Lambda Memory size limit in MBfor pool lambda"
+  description = "Lambda Memory size limit inMB for pool lambda"
   type        = number
   default     = 512
 }
