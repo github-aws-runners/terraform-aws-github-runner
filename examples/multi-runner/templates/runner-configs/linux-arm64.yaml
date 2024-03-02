@@ -11,7 +11,7 @@ runner_config:
   runner_architecture: arm64
   runner_name_prefix: amazon-arm64_
   enable_ssm_on_runners: true
-  credit_specification: unlimited
+  runner_credit_specification: unlimited
   instance_types:
     - t4g.large
     - c6g.large

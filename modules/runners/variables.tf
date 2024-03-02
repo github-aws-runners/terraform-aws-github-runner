@@ -204,8 +204,15 @@ variable "scale_down_schedule_expression" {
   default     = "cron(*/5 * * * ? *)"
 }
 
-variable "minimum_running_time_in_minutes" {
+variable "instance_minimum_running_time_in_minutes" {
   description = "The time an ec2 action runner should be running at minimum before terminated if non busy. If not set the default is calculated based on the OS."
+  type        = number
+  default     = null
+}
+
+# deprecated - should be removed at next breaking release
+variable "minimum_running_time_in_minutes" {
+  description = "DEPRECATED, please use instance_minimum_running_time_in_minutes."
   type        = number
   default     = null
 }
@@ -608,14 +615,24 @@ variable "tracing_config" {
   default = {}
 }
 
-
 variable "credit_specification" {
-  description = "The credit option for CPU usage of a T instance. Can be unset, \"standard\" or \"unlimited\"."
+  description = "DEPRECATED - please use runner_credit_specification."
   type        = string
   default     = null
 
   validation {
     condition     = var.credit_specification == null ? true : contains(["standard", "unlimited"], var.credit_specification)
+    error_message = "Valid values for credit_specification are (null, \"standard\", \"unlimited\")."
+  }
+}
+
+variable "runner_credit_specification" {
+  description = "The credit option for CPU usage of a T instance. Can be unset, \"standard\" or \"unlimited\"."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.runner_credit_specification == null ? true : contains(["standard", "unlimited"], var.credit_specification)
     error_message = "Valid values for credit_specification are (null, \"standard\", \"unlimited\")."
   }
 }

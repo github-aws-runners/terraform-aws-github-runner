@@ -13,7 +13,7 @@ runner_config:
   runner_run_as: ubuntu
   runner_name_prefix: ubuntu-2204-x64_
   enable_ssm_on_runners: true
-  credit_specification: standard
+  runner_credit_specification: standard
   instance_types:
     - t3a.large
     - m5ad.large

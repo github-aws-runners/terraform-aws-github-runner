@@ -93,8 +93,8 @@ async function listGitHubRunners(runner: RunnerInfo): Promise<GhRunners> {
 }
 
 function runnerMinimumTimeExceeded(runner: RunnerInfo): boolean {
-  const minimumRunningTimeInMinutes = process.env.MINIMUM_RUNNING_TIME_IN_MINUTES;
-  const launchTimePlusMinimum = moment(runner.launchTime).utc().add(minimumRunningTimeInMinutes, 'minutes');
+  const instanceMinimumRunningTimeInMinutes = process.env.INSTANCE_MINIMUM_RUNNING_TIME_IN_MINUTES;
+  const launchTimePlusMinimum = moment(runner.launchTime).utc().add(instanceMinimumRunningTimeInMinutes, 'minutes');
   const now = moment(new Date()).utc();
   return launchTimePlusMinimum < now;
 }

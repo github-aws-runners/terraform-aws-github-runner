@@ -122,10 +122,10 @@ resource "aws_launch_template" "runner" {
     }
   }
 
-  dynamic "credit_specification" {
-    for_each = var.credit_specification != null ? [var.credit_specification] : []
+  dynamic "runner_credit_specification" {
+    for_each = coalesce(var.runner_credit_specification, var.credit_specification) != null ? [coalesce(var.runner_credit_specification, var.credit_specification)] : []
     content {
-      cpu_credits = credit_specification.value
+      cpu_credits = runner_credit_specification.value
     }
   }
 

@@ -50,7 +50,7 @@ export interface TestData {
 const cleanEnv = process.env;
 
 const environment = 'unit-test-environment';
-const minimumRunningTimeInMinutes = 15;
+const instanceMinimumRunningTimeInMinutes = 15;
 const runnerBootTimeInMinutes = 5;
 const TEST_DATA: TestData = {
   repositoryName: 'hello-world',
@@ -72,18 +72,18 @@ let DEFAULT_ORG_RUNNERS_ORPHANED: RunnerInfo[];
 
 // Add table of DEFAULT_RUNNERS_ORIGINAL without launchTime and owner
 // instanceId | type | notes
-// i-idle-101 | Repo | idle and exceeds minimumRunningTimeInMinutes
-// i-idle-102 | Org | idle and exceeds minimumRunningTimeInMinutes
-// i-oldest-idle-103 | Repo | idle and exceeds minimumRunningTimeInMinutes
-// i-oldest-idle-104 | Org | idle and exceeds minimumRunningTimeInMinutes
+// i-idle-101 | Repo | idle and exceeds instanceMinimumRunningTimeInMinutes
+// i-idle-102 | Org | idle and exceeds instanceMinimumRunningTimeInMinutes
+// i-oldest-idle-103 | Repo | idle and exceeds instanceMinimumRunningTimeInMinutes
+// i-oldest-idle-104 | Org | idle and exceeds instanceMinimumRunningTimeInMinutes
 // i-running-cannot-delete-105 | Repo | unable to delete
 // i-running-cannot-delete-106 | Org | unable to delete
-// i-orphan-107 | Repo | orphaned no GitHub registration and exceeds minimumRunningTimeInMinutes
-// i-orphan-108 | Org | orphaned no GitHub registration and exceeds minimumRunningTimeInMinutes
-// i-not-registered-108 | Org | not registered and not exceeding minimumRunningTimeInMinutes
-// i-not-registered-109 | Repo | not registered and not exceeding minimumRunningTimeInMinutes
-// i-running-110 | Org | running and not exceeding minimumRunningTimeInMinutes
-// i-running-111 | Repo | running and not exceeding minimumRunningTimeInMinutes
+// i-orphan-107 | Repo | orphaned no GitHub registration and exceeds instanceMinimumRunningTimInMinutes
+// i-orphan-108 | Org | orphaned no GitHub registration and exceeds instanceMinimumRunningTimInMinutes
+// i-not-registered-108 | Org | not registered and not exceeding instanceMinimumRunningTimInMinutes
+// i-not-registered-109 | Repo | not registered and not exceeding instanceMinimumRunningTimInMinutes
+// i-running-110 | Org | running and not exceeding instanceMinimumRunningTimInMinutes
+// i-running-111 | Repo | running and not exceeding instanceMinimumRunningTimInMinutes
 // i-running-112 | Org | busy
 // i-running-113 | Repo | busy
 const oldest = moment(new Date()).subtract(26, 'minutes').toDate();
@@ -92,7 +92,7 @@ const DEFAULT_RUNNERS_ORIGINAL = [
   {
     instanceId: 'i-idle-101',
     launchTime: moment(new Date())
-      .subtract(minimumRunningTimeInMinutes + 5, 'minutes')
+      .subtract(instanceMinimumRunningTimInMinutes + 5, 'minutes')
       .toDate(),
     type: 'Repo',
     owner: `${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName}`,
@@ -100,7 +100,7 @@ const DEFAULT_RUNNERS_ORIGINAL = [
   {
     instanceId: 'i-idle-102',
     launchTime: moment(new Date())
-      .subtract(minimumRunningTimeInMinutes + 3, 'minutes')
+      .subtract(instanceMinimumRunningTimInMinutes + 3, 'minutes')
       .toDate(),
     type: 'Org',
     owner: TEST_DATA.repositoryOwner,
@@ -132,7 +132,7 @@ const DEFAULT_RUNNERS_ORIGINAL = [
   {
     instanceId: 'i-orphan-107',
     launchTime: moment(new Date())
-      .subtract(minimumRunningTimeInMinutes + 5, 'minutes')
+      .subtract(instanceMinimumRunningTimInMinutes + 5, 'minutes')
       .toDate(),
     type: 'Repo',
     owner: `doe/another-repo`,
@@ -140,7 +140,7 @@ const DEFAULT_RUNNERS_ORIGINAL = [
   {
     instanceId: 'i-orphan-108',
     launchTime: moment(new Date())
-      .subtract(minimumRunningTimeInMinutes + 5, 'minutes')
+      .subtract(instanceMinimumRunningTimInMinutes + 5, 'minutes')
       .toDate(),
     type: 'Org',
     owner: TEST_DATA.repositoryOwner,
@@ -225,7 +225,7 @@ describe('Scale down runners', () => {
     process.env.RUNNERS_MAXIMUM_COUNT = '3';
     process.env.SCALE_DOWN_CONFIG = '[]';
     process.env.ENVIRONMENT = environment;
-    process.env.MINIMUM_RUNNING_TIME_IN_MINUTES = minimumRunningTimeInMinutes.toString();
+    process.env.INSTANCE_MINIMUM_RUNNING_TIME_IN_MINUTES = instanceMinimumRunningTimeInMinutes.toString();
     process.env.RUNNER_BOOT_TIME_IN_MINUTES = runnerBootTimeInMinutes.toString();
 
     nock.disableNetConnect();

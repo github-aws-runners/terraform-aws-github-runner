@@ -36,51 +36,54 @@ variable "multi_runner_config" {
         http_tokens                 = "required"
         http_put_response_hop_limit = 1
       })
-      ami_filter                              = optional(map(list(string)), { state = ["available"] })
-      ami_owners                              = optional(list(string), ["amazon"])
-      ami_id_ssm_parameter_name               = optional(string, null)
-      ami_kms_key_arn                         = optional(string, "")
-      create_service_linked_role_spot         = optional(bool, false)
-      credit_specification                    = optional(string, null)
-      delay_webhook_event                     = optional(number, 30)
-      disable_runner_autoupdate               = optional(bool, false)
-      ebs_optimized                           = optional(bool, false)
-      enable_ephemeral_runners                = optional(bool, false)
-      enable_job_queued_check                 = optional(bool, null)
-      enable_on_demand_failover_for_errors    = optional(list(string), [])
-      enable_organization_runners             = optional(bool, false)
-      enable_runner_binaries_syncer           = optional(bool, true)
-      enable_ssm_on_runners                   = optional(bool, false)
-      enable_userdata                         = optional(bool, true)
-      instance_allocation_strategy            = optional(string, "lowest-price")
-      instance_max_spot_price                 = optional(string, null)
-      instance_target_capacity_type           = optional(string, "spot")
-      instance_types                          = list(string)
-      job_queue_retention_in_seconds          = optional(number, 86400)
-      minimum_running_time_in_minutes         = optional(number, null)
-      pool_runner_owner                       = optional(string, null)
-      runner_as_root                          = optional(bool, false)
-      runner_boot_time_in_minutes             = optional(number, 5)
-      runner_extra_labels                     = optional(list(string), [])
-      runner_group_name                       = optional(string, "Default")
-      runner_name_prefix                      = optional(string, "")
-      runner_run_as                           = optional(string, "ec2-user")
-      runners_maximum_count                   = number
-      runner_additional_security_group_ids    = optional(list(string), [])
-      scale_down_schedule_expression          = optional(string, "cron(*/5 * * * ? *)")
-      scale_up_reserved_concurrent_executions = optional(number, 1)
-      userdata_template                       = optional(string, null)
-      userdata_content                        = optional(string, null)
-      enable_jit_config                       = optional(bool, null)
-      enable_runner_detailed_monitoring       = optional(bool, false)
-      enable_cloudwatch_agent                 = optional(bool, true)
-      cloudwatch_config                       = optional(string, null)
-      userdata_pre_install                    = optional(string, "")
-      userdata_post_install                   = optional(string, "")
-      runner_ec2_tags                         = optional(map(string), {})
-      runner_iam_role_managed_policy_arns     = optional(list(string), [])
-      vpc_id                                  = optional(string, null)
-      subnet_ids                              = optional(list(string), null)
+      ami_filter                                  = optional(map(list(string)), { state = ["available"] })
+      ami_owners                                  = optional(list(string), ["amazon"])
+      ami_id_ssm_parameter_name                   = optional(string, null)
+      ami_kms_key_arn                             = optional(string, "")
+      create_service_linked_role_spot             = optional(bool, false)
+      credit_specification                        = optional(string, null)
+      runner_credit_specification                 = optional(string, null)
+      delay_webhook_event                         = optional(number, 30)
+      disable_runner_autoupdate                   = optional(bool, false)
+      ebs_optimized                               = optional(bool, false)
+      enable_ephemeral_runners                    = optional(bool, false)
+      enable_job_queued_check                     = optional(bool, null)
+      enable_on_demand_failover_for_errors        = optional(list(string), [])
+      enable_runner_on_demand_failover_for_errors = optional(list(string), [])
+      enable_organization_runners                 = optional(bool, false)
+      enable_runner_binaries_syncer               = optional(bool, true)
+      enable_ssm_on_runners                       = optional(bool, false)
+      enable_userdata                             = optional(bool, true)
+      instance_allocation_strategy                = optional(string, "lowest-price")
+      instance_max_spot_price                     = optional(string, null)
+      instance_target_capacity_type               = optional(string, "spot")
+      instance_types                              = list(string)
+      job_queue_retention_in_seconds              = optional(number, 86400)
+      minimum_running_time_in_minutes             = optional(number, null)
+      instance_minimum_running_time_in_minutes    = optional(number, null)
+      pool_runner_owner                           = optional(string, null)
+      runner_as_root                              = optional(bool, false)
+      runner_boot_time_in_minutes                 = optional(number, 5)
+      runner_extra_labels                         = optional(list(string), [])
+      runner_group_name                           = optional(string, "Default")
+      runner_name_prefix                          = optional(string, "")
+      runner_run_as                               = optional(string, "ec2-user")
+      runners_maximum_count                       = number
+      runner_additional_security_group_ids        = optional(list(string), [])
+      scale_down_schedule_expression              = optional(string, "cron(*/5 * * * ? *)")
+      scale_up_reserved_concurrent_executions     = optional(number, 1)
+      userdata_template                           = optional(string, null)
+      userdata_content                            = optional(string, null)
+      enable_jit_config                           = optional(bool, null)
+      enable_runner_detailed_monitoring           = optional(bool, false)
+      enable_cloudwatch_agent                     = optional(bool, true)
+      cloudwatch_config                           = optional(string, null)
+      userdata_pre_install                        = optional(string, "")
+      userdata_post_install                       = optional(string, "")
+      runner_ec2_tags                             = optional(map(string), {})
+      runner_iam_role_managed_policy_arns         = optional(list(string), [])
+      vpc_id                                      = optional(string, null)
+      subnet_ids                                  = optional(list(string), null)
       idle_config = optional(list(object({
         cron             = string
         timeZone         = string
@@ -135,7 +138,8 @@ variable "multi_runner_config" {
         ami_filter: "(Optional) List of maps used to create the AMI filter for the action runner AMI. By default amazon linux 2 is used."
         ami_owners: "(Optional) The list of owners used to select the AMI of action runner instances."
         create_service_linked_role_spot: (Optional) create the serviced linked role for spot instances that is required by the scale-up lambda.
-        credit_specification: "(Optional) The credit specification of the runner instance_type. Can be unset, `standard` or `unlimited`.
+        credit_specification: "(Optional) DEPRECATED - use runner_credit_specification"
+        runner_credit_specification: "(Optional) The credit specification of the runner instance_type. Can be unset, `standard` or `unlimited`.
         delay_webhook_event: "The number of seconds the event accepted by the webhook is invisible on the queue before the scale up lambda will receive the event."
         disable_runner_autoupdate: "Disable the auto update of the github runner agent. Be aware there is a grace period of 30 days, see also the [GitHub article](https://github.blog/changelog/2022-02-01-github-actions-self-hosted-runners-can-now-disable-automatic-updates/)"
         ebs_optimized: "The EC2 EBS optimized configuration."
@@ -151,7 +155,8 @@ variable "multi_runner_config" {
         instance_target_capacity_type: "Default lifecycle used for runner instances, can be either `spot` or `on-demand`."
         instance_types: "List of instance types for the action runner. Defaults are based on runner_os (al2023 for linux and Windows Server Core for win)."
         job_queue_retention_in_seconds: "The number of seconds the job is held in the queue before it is purged"
-        minimum_running_time_in_minutes: "The time an ec2 action runner should be running at minimum before terminated if not busy."
+        instance_minimum_running_time_in_minutes: "The time an ec2 action runner should be running at minimum before terminated if not busy."
+        minimum_running_time_in_minutes: "DEPRECATED - use instance_minimum_running_time instead"
         pool_runner_owner: "The pool will deploy runners to the GitHub org ID, set this value to the org to which you want the runners deployed. Repo level is not supported."
         runner_additional_security_group_ids: "List of additional security groups IDs to apply to the runner. If added outside the multi_runner_config block, the additional security group(s) will be applied to all runner configs. If added inside the multi_runner_config, the additional security group(s) will be applied to the individual runner."
         runner_as_root: "Run the action runner under the root user. Variable `runner_run_as` will be ignored."
