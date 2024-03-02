@@ -38,10 +38,10 @@ resource "aws_lambda_function" "pool" {
       RUNNER_GROUP_NAME                        = var.config.runner.group_name
       RUNNER_NAME_PREFIX                       = var.config.runner.name_prefix
       RUNNER_OWNER                             = var.config.runner.pool_owner
-      SERVICE_NAME                             = "runners-pool"
       SSM_TOKEN_PATH                           = var.config.ssm_token_path
       SSM_CONFIG_PATH                          = var.config.ssm_config_path
       SUBNET_IDS                               = join(",", var.config.subnet_ids)
+      POWERTOOLS_SERVICE_NAME                  = "runners-pool"
       POWERTOOLS_TRACE_ENABLED                 = var.tracing_config.mode != null ? true : false
       POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.tracing_config.capture_http_requests
       POWERTOOLS_TRACER_CAPTURE_ERROR          = var.tracing_config.capture_error
