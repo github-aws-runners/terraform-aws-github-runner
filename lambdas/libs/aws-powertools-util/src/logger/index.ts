@@ -25,7 +25,6 @@ function setContext(context: Context, module?: string) {
 }
 
 const logger = new Logger({
-  serviceName: process.env.SERVICE_NAME || 'runners',
   persistentLogAttributes: {
     ...defaultValues,
   },
