@@ -3,39 +3,39 @@ locals {
   name       = "spot-termination-watcher"
 
   environment_variables = {
-      CREATE_METRICS                           = "true"
-    }
+    CREATE_METRICS = "true"
+  }
 }
 
 module "spot_termination_warning_watcher" {
   source = "../lambda"
 
   lambda = {
-    name             = local.name
+    name    = local.name
     handler = "index.interruptionWarning"
-    zip              = local.lambda_zip
+    zip     = local.lambda_zip
 
     # Pass variables from the module to the lambda module
-    aws_partition = var.lambda.aws_partition
-    architecture      = var.lambda.architecture
-    environment_variables = local.environment_variables
-    log_level = var.lambda.log_level
-    logging_kms_key_id = var.lambda.logging_kms_key_id
+    aws_partition             = var.lambda.aws_partition
+    architecture              = var.lambda.architecture
+    environment_variables     = local.environment_variables
+    log_level                 = var.lambda.log_level
+    logging_kms_key_id        = var.lambda.logging_kms_key_id
     logging_retention_in_days = var.lambda.logging_retention_in_days
-    memory_size      = var.lambda.memory_size
-    prefix           = var.lambda.prefix
-    principals = var.lambda.principals
-    role_path = var.lambda.role_path
+    memory_size               = var.lambda.memory_size
+    prefix                    = var.lambda.prefix
+    principals                = var.lambda.principals
+    role_path                 = var.lambda.role_path
     role_permissions_boundary = var.lambda.role_permissions_boundary
-    runtime           = var.lambda.runtime
-    s3_bucket         = var.lambda.s3_bucket
-    s3_key            = var.lambda.s3_key
-    s3_object_version = var.lambda.s3_object_version
-    security_group_ids = var.lambda.security_group_ids
-    subnet_ids       = var.lambda.subnet_ids
-    tags             = var.lambda.tags
-    timeout          = var.lambda.timeout
-    tracing_config = var.lambda.tracing_config
+    runtime                   = var.lambda.runtime
+    s3_bucket                 = var.lambda.s3_bucket
+    s3_key                    = var.lambda.s3_key
+    s3_object_version         = var.lambda.s3_object_version
+    security_group_ids        = var.lambda.security_group_ids
+    subnet_ids                = var.lambda.subnet_ids
+    tags                      = var.lambda.tags
+    timeout                   = var.lambda.timeout
+    tracing_config            = var.lambda.tracing_config
   }
 }
 
@@ -67,7 +67,7 @@ resource "aws_lambda_permission" "main" {
 
 resource "aws_iam_role_policy" "lambda_policy" {
   name = "lambda-policy"
-  role       = module.spot_termination_warning_watcher.lambda.role.name
+  role = module.spot_termination_warning_watcher.lambda.role.name
 
   policy = templatefile("${path.module}/policies/lambda.json", {})
 }

@@ -371,18 +371,18 @@ module "spot_instance_termination_watcher" {
   source = "./modules/spot-termination-watcher"
 
   lambda = {
-    prefix = var.prefix
-    tags   = local.tags
-    aws_partition = var.aws_partition
-    architecture = var.lambda_architecture
-    principals = var.lambda_principals
-    runtime = var.lambda_runtime
-    security_group_ids = var.lambda_security_group_ids
-    subnet_ids = var.lambda_subnet_ids
-    log_level = var.log_level
-    logging_kms_key_id = var.logging_kms_key_id
+    prefix                    = var.prefix
+    tags                      = local.tags
+    aws_partition             = var.aws_partition
+    architecture              = var.lambda_architecture
+    principals                = var.lambda_principals
+    runtime                   = var.lambda_runtime
+    security_group_ids        = var.lambda_security_group_ids
+    subnet_ids                = var.lambda_subnet_ids
+    log_level                 = var.log_level
+    logging_kms_key_id        = var.logging_kms_key_id
     logging_retention_in_days = var.logging_retention_in_days
-    role_path = var.role_path
+    role_path                 = var.role_path
     role_permissions_boundary = var.role_permissions_boundary
 
   }

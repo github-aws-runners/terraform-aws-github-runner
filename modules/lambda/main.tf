@@ -1,17 +1,17 @@
 locals {
-  role_path  = var.lambda.role_path == null ? "/${var.lambda.prefix}/" : var.lambda.role_path
+  role_path = var.lambda.role_path == null ? "/${var.lambda.prefix}/" : var.lambda.role_path
 
   lambda_environment_variables = {
-      LOG_LEVEL                                = var.lambda.log_level
-      POWERTOOLS_LOGGER_LOG_EVENT              = var.lambda.log_level == "debug" ? "true" : "false"
-      POWERTOOLS_SERVICE_NAME                  = var.lambda.name
-      POWERTOOLS_TRACE_ENABLED                 = var.lambda.tracing_config.mode != null ? true : false
-      POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.lambda.tracing_config.capture_http_requests
-      POWERTOOLS_TRACER_CAPTURE_ERROR          = var.lambda.tracing_config.capture_error
-      POWERTOOLS_METRICS_NAMESPACE             = var.lambda.metrics_namespace
-    }
+    LOG_LEVEL                                = var.lambda.log_level
+    POWERTOOLS_LOGGER_LOG_EVENT              = var.lambda.log_level == "debug" ? "true" : "false"
+    POWERTOOLS_SERVICE_NAME                  = var.lambda.name
+    POWERTOOLS_TRACE_ENABLED                 = var.lambda.tracing_config.mode != null ? true : false
+    POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.lambda.tracing_config.capture_http_requests
+    POWERTOOLS_TRACER_CAPTURE_ERROR          = var.lambda.tracing_config.capture_error
+    POWERTOOLS_METRICS_NAMESPACE             = var.lambda.metrics_namespace
+  }
 
-    environment_variable = merge(local.lambda_environment_variables, var.lambda.environment_variables)
+  environment_variable = merge(local.lambda_environment_variables, var.lambda.environment_variables)
 }
 
 resource "aws_lambda_function" "main" {

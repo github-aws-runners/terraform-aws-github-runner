@@ -28,37 +28,37 @@ variable "lambda" {
     `zip`: File location of the lambda zip file.
   EOF
   type = object({
-    aws_partition = optional(string, "aws")
-    architecture      = optional(string, "arm64")
-    environment_variables = optional(map(string), {})
-    handler = string
-    log_level = optional(string, "info")
-    logging_kms_key_id = optional(string, null)
+    aws_partition             = optional(string, "aws")
+    architecture              = optional(string, "arm64")
+    environment_variables     = optional(map(string), {})
+    handler                   = string
+    log_level                 = optional(string, "info")
+    logging_kms_key_id        = optional(string, null)
     logging_retention_in_days = optional(number, 180)
-    memory_size      = optional(number, 256)
-    metrics_namespace = optional(string, "GitHub Runners")
-    name             = string
-    prefix           = optional(string, "github-actions")
+    memory_size               = optional(number, 256)
+    metrics_namespace         = optional(string, "GitHub Runners")
+    name                      = string
+    prefix                    = optional(string, "github-actions")
     principals = optional(list(object({
       type        = string
       identifiers = list(string)
     })), [])
-    role_path = optional(string, null)
+    role_path                 = optional(string, null)
     role_permissions_boundary = optional(string, null)
-    runtime           = optional(string, "nodejs20.x") 
-    s3_bucket         = optional(string, null)
-    s3_key            = optional(string, null)
-    s3_object_version = optional(string, null)
-    security_group_ids = optional(list(string), [])
-    subnet_ids       = optional(list(string), [])
-    tags             = optional(map(string), {})
-    timeout          = optional(number, 60)
+    runtime                   = optional(string, "nodejs20.x")
+    s3_bucket                 = optional(string, null)
+    s3_key                    = optional(string, null)
+    s3_object_version         = optional(string, null)
+    security_group_ids        = optional(list(string), [])
+    subnet_ids                = optional(list(string), [])
+    tags                      = optional(map(string), {})
+    timeout                   = optional(number, 60)
     tracing_config = optional(object({
       mode                  = optional(string, null)
       capture_http_requests = optional(bool, false)
       capture_error         = optional(bool, false)
     }), {})
-    zip              = optional(string, null)
+    zip = optional(string, null)
   })
 
   validation {
@@ -77,10 +77,10 @@ variable "lambda" {
       var.lambda.log_level == "error",
     ])
     error_message = "`log_level` value not valid. Valid values are 'debug', 'info', 'warn', 'error'."
-  
+
   }
   validation {
-    condition = length(var.lambda.name) + length(var.lambda.prefix) <= 63
+    condition     = length(var.lambda.name) + length(var.lambda.prefix) <= 63
     error_message = "The length of `name` + `prefix` must be less than or equal to 63."
   }
 }
