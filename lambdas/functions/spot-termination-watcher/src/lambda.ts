@@ -13,7 +13,6 @@ import { handle as handleTerminationWarning } from './termination-warning';
 import { SpotInterruptionWarning, SpotTerminationDetail } from './types';
 import { Config } from './ConfigResolver';
 
-middy(interruptionWarning).use(captureLambdaHandler(tracer)).use(logMetrics(metrics));
 const config = new Config();
 
 export async function interruptionWarning(
@@ -30,3 +29,16 @@ export async function interruptionWarning(
     logger.error(`${(e as Error).message}`, { error: e as Error });
   }
 }
+
+//middy(interruptionWarning).use(captureLambdaHandler(tracer)).use(logMetrics(metrics));
+
+export const addMiddleware = () => {
+  const handler = captureLambdaHandler(tracer);
+  // handler check needed for testing.
+  if (!handler) {
+    middy(interruptionWarning).use(logMetrics(metrics));
+    return;
+  }
+  middy(interruptionWarning).use(captureLambdaHandler(tracer)).use(logMetrics(metrics));
+};
+addMiddleware();

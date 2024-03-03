@@ -49,9 +49,9 @@ const context: Context = {
 
 // Docs for testing async with jest: https://jestjs.io/docs/tutorial-async
 describe('Handle sport termination interruption warning', () => {
-  beforeAll(() => {
-    jest.resetAllMocks();
-  });
+  // beforeAll(() => {
+  //   jest.resetAllMocks();
+  // });
 
   it('should not throw or log in error.', async () => {
     const mock = mocked(interruptionWarningHandlerImpl);
