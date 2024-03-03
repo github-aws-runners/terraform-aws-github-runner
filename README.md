@@ -100,6 +100,7 @@ Talk to the forestkeepers in the `runners-channel` on Slack.
 | <a name="module_ami_housekeeper"></a> [ami\_housekeeper](#module\_ami\_housekeeper) | ./modules/ami-housekeeper | n/a |
 | <a name="module_runner_binaries"></a> [runner\_binaries](#module\_runner\_binaries) | ./modules/runner-binaries-syncer | n/a |
 | <a name="module_runners"></a> [runners](#module\_runners) | ./modules/runners | n/a |
+| <a name="module_spot_instance_termination_watcher"></a> [spot\_instance\_termination\_watcher](#module\_spot\_instance\_termination\_watcher) | ./modules/spot-termination-watcher | n/a |
 | <a name="module_ssm"></a> [ssm](#module\_ssm) | ./modules/ssm | n/a |
 | <a name="module_webhook"></a> [webhook](#module\_webhook) | ./modules/webhook | n/a |
 
