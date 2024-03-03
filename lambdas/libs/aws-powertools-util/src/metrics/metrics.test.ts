@@ -1,7 +1,7 @@
 import { MetricUnits, Metrics } from '@aws-lambda-powertools/metrics';
 import { createSingleMetric } from '../';
 
-process.env.POWERTOOLS_METRICS_NAMESPACE = 'test'; 
+process.env.POWERTOOLS_METRICS_NAMESPACE = 'test';
 
 describe('A root tracer.', () => {
   beforeEach(() => {
