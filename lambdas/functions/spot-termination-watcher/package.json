@@ -4,11 +4,9 @@
   "main": "lambda.ts",
   "license": "MIT",
   "scripts": {
-    "start": "ts-node-dev src/local.ts",
     "test": "NODE_ENV=test nx test",
     "test:watch": "NODE_ENV=test nx test --watch",
     "lint": "yarn eslint src",
-    "watch": "ts-node-dev --respawn --exit-child src/local.ts",
     "build": "ncc build src/lambda.ts -o dist",
     "dist": "yarn build && cd dist && zip ../spot-termination-watcher.zip index.js",
     "format": "prettier --write \"**/*.ts\"",
@@ -37,7 +35,6 @@
     "ts-node-dev": "^2.0.0"
   },
   "dependencies": {
-    "@aws-lambda-powertools/metrics": "^1.18.1",
     "@aws-sdk/client-ec2": "^3.521.0",
     "@aws-sdk/types": "^3.433.0",
     "@middy/core": "^4.7.0",

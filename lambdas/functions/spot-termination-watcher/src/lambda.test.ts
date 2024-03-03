@@ -9,6 +9,8 @@ import { SpotInterruptionWarning, SpotTerminationDetail } from './types';
 jest.mock('./termination-warning');
 jest.mock('@terraform-aws-github-runner/aws-powertools-util');
 
+process.env.POWERTOOLS_METRICS_NAMESPACE = 'test'; 
+
 const event: SpotInterruptionWarning<SpotTerminationDetail> = {
   version: '0',
   id: '1',
@@ -48,7 +50,7 @@ const context: Context = {
 // Docs for testing async with jest: https://jestjs.io/docs/tutorial-async
 describe('Handle sport termination interruption warning', () => {
   beforeAll(() => {
-    //jest.resetAllMocks();
+    jest.resetAllMocks();
   });
 
   it('should not throw or log in error.', async () => {
