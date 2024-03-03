@@ -29,11 +29,7 @@ export async function interruptionWarning(
   } catch (e) {
     logger.error(`${(e as Error).message}`, { error: e as Error });
   }
-
 }
-
-
-
 
 // export const interruptionWarning = middy(interruptionWarningHandler)
 //   .use(captureLambdaHandler(tracer))
