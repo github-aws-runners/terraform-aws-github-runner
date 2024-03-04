@@ -100,8 +100,7 @@ variable "runners_lambda_zip" {
   default     = null
 }
 
-# tflint-ignore: terraform_naming_convention
-variable "runners_scale_up_Lambda_memory_size" {
+variable "runners_scale_up_lambda_memory_size" {
   description = "Memory size limit in MB for scale-up lambda."
   type        = number
   default     = 512
