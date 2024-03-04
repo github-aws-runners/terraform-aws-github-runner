@@ -167,7 +167,7 @@ yarn run dist
 | <a name="input_key_name"></a> [key\_name](#input\_key\_name) | Key pair name | `string` | `null` | no |
 | <a name="input_kms_key_arn"></a> [kms\_key\_arn](#input\_kms\_key\_arn) | Optional CMK Key ARN to be used for Parameter Store. | `string` | `null` | no |
 | <a name="input_lambda_architecture"></a> [lambda\_architecture](#input\_lambda\_architecture) | AWS Lambda architecture. Lambda functions using Graviton processors ('arm64') tend to have better price/performance than 'x86\_64' functions. | `string` | `"arm64"` | no |
-| <a name="input_lambda_runtime"></a> [lambda\_runtime](#input\_lambda\_runtime) | AWS Lambda runtime. | `string` | `"nodejs18.x"` | no |
+| <a name="input_lambda_runtime"></a> [lambda\_runtime](#input\_lambda\_runtime) | AWS Lambda runtime. | `string` | `"nodejs20.x"` | no |
 | <a name="input_lambda_s3_bucket"></a> [lambda\_s3\_bucket](#input\_lambda\_s3\_bucket) | S3 bucket from which to specify lambda functions. This is an alternative to providing local files directly. | `string` | `null` | no |
 | <a name="input_lambda_scale_down_memory_size"></a> [lambda\_scale\_down\_memory\_size](#input\_lambda\_scale\_down\_memory\_size) | Memory size limit in MB for scale down lambda. | `number` | `512` | no |
 | <a name="input_lambda_scale_up_memory_size"></a> [lambda\_scale\_up\_memory\_size](#input\_lambda\_scale\_up\_memory\_size) | Memory size limit in MB for scale-up lambda. | `number` | `512` | no |
