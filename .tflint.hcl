@@ -1,8 +1,6 @@
 config {
   format = "compact"
   module = true
-
-
 }
 
 plugin "aws" {

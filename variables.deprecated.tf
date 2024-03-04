@@ -1,3 +1,4 @@
+# tflint-ignore: terraform_unused_declarations
 variable "lambda_tracing_mode" {
   description = "DEPRECATED: Replaced by `tracing_config`."
   type        = string
@@ -9,6 +10,7 @@ variable "lambda_tracing_mode" {
   }
 }
 
+# tflint-ignore: terraform_unused_declarations
 variable "enable_event_rule_binaries_syncer" {
   description = "DEPRECATED: Replaced by `state_event_rule_binaries_syncer`."
   type        = bool
