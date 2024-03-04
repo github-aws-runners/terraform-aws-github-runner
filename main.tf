@@ -365,7 +365,6 @@ module "ami_housekeeper" {
   lambda_schedule_expression = var.ami_housekeeper_lambda_schedule_expression
 }
 
-
 locals {
   lambda_spot_instance_termination_watcher = {
     prefix                    = var.prefix
