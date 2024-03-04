@@ -10,7 +10,7 @@ jest.mock('./termination-warning');
 jest.mock('@terraform-aws-github-runner/aws-powertools-util');
 
 process.env.POWERTOOLS_METRICS_NAMESPACE = 'test';
-
+process.env.POWERTOOLS_TRACE_ENABLED = 'true';
 const event: SpotInterruptionWarning<SpotTerminationDetail> = {
   version: '0',
   id: '1',

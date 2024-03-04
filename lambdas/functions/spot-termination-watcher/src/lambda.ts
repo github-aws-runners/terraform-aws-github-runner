@@ -30,15 +30,20 @@ export async function interruptionWarning(
   }
 }
 
-//middy(interruptionWarning).use(captureLambdaHandler(tracer)).use(logMetrics(metrics));
+const addMiddleware = () => {
+  const middleware = middy(interruptionWarning);
 
-export const addMiddleware = () => {
-  const handler = captureLambdaHandler(tracer);
-  // handler check needed for testing.
-  if (!handler) {
-    middy(interruptionWarning).use(logMetrics(metrics));
-    return;
+  const c = captureLambdaHandler(tracer);
+  if (c) {
+    logger.debug('Adding captureLambdaHandler middleware');
+    middleware.use(c);
   }
-  middy(interruptionWarning).use(captureLambdaHandler(tracer)).use(logMetrics(metrics));
+
+  const l = logMetrics(metrics);
+  if (l) {
+    logger.debug('Adding logMetrics middleware');
+    middleware.use(l);
+  }
 };
+
 addMiddleware();

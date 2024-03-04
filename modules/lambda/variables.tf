@@ -38,7 +38,7 @@ variable "lambda" {
     memory_size               = optional(number, 256)
     metrics_namespace         = optional(string, "GitHub Runners")
     name                      = string
-    prefix                    = optional(string, "github-actions")
+    prefix                    = optional(string, null)
     principals = optional(list(object({
       type        = string
       identifiers = list(string)

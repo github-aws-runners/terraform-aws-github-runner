@@ -366,11 +366,8 @@ module "ami_housekeeper" {
 }
 
 
-
-module "spot_instance_termination_watcher" {
-  source = "./modules/spot-termination-watcher"
-
-  lambda = {
+locals {
+  lambda_spot_instance_termination_watcher = {
     prefix                    = var.prefix
     tags                      = local.tags
     aws_partition             = var.aws_partition
@@ -384,18 +381,15 @@ module "spot_instance_termination_watcher" {
     logging_retention_in_days = var.logging_retention_in_days
     role_path                 = var.role_path
     role_permissions_boundary = var.role_permissions_boundary
-
+    metrics_namespace         = var.metrics_namespace
+    s3_bucket                 = var.lambda_s3_bucket
+    tracing_config            = var.tracing_config
   }
-  # prefix        = var.prefix
-  # tags          = local.tags
-  # aws_partition = var.aws_partition
+}
 
-  #lambda_zip               = var.ami_housekeeper_lambda_zip
-  # lambda_s3_bucket         = var.lambda_s3_bucket
-  # lambda_s3_key            = var.ami_housekeeper_lambda_s3_key
-  # lambda_s3_object_version = var.ami_housekeeper_lambda_s3_object_version
+module "spot_instance_termination_watcher" {
+  source = "./modules/spot-termination-watcher"
+  count  = var.spot_instance_termination_watcher.enable ? 1 : 0
 
-  #lambda_timeout            = var.ami_housekeeper_lambda_timeout
-  #tracing_config            = var.tracing_config
-
+  config = merge(local.lambda_spot_instance_termination_watcher, var.spot_instance_termination_watcher)
 }
