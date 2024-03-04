@@ -46,14 +46,14 @@ jobs:
         run: apk add --no-cache tar
         continue-on-error: true
       - if: contains(matrix.terraform, '1.5.')
-        uses: actions/cache@v4
+        uses: actions/cache@ab5e6d0c87105b4c9c2047343972218f562e4319 # v4.0.1
         name: Cache TFLint plugin dir
         with:
           path: ~/.tflint.d/plugins
           key: tflint-${{ hashFiles('.tflint.hcl') }}
       - if: contains(matrix.terraform, '1.5.')
         name: Setup TFLint
-        uses: terraform-linters/setup-tflint@v4
+        uses: terraform-linters/setup-tflint@19a52fbac37dacb22a09518e4ef6ee234f2d4987 # v4.0.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
       - if: contains(matrix.terraform, '1.5.')
