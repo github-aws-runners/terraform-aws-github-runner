@@ -56,7 +56,7 @@ jobs:
         uses: terraform-linters/setup-tflint@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-      - if: contains(matrix.terraform, '1.3.')
+      - if: contains(matrix.terraform, '1.5.')
         name: Run TFLint
         run: |
           tflint --init -c ${GITHUB_WORKSPACE}/.tflint.hcl
