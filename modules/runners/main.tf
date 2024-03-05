@@ -46,7 +46,7 @@ locals {
 
   token_path = "${var.ssm_paths.root}/${var.ssm_paths.tokens}"
 
-  user_data = var.enable_userdata ? templatefile(local.userdata_template, {
+  user_data = var.enable_userdata ? (var.userdata_content == null ? templatefile(local.userdata_template, {
     enable_debug_logging            = var.enable_user_data_debug_logging
     s3_location_runner_distribution = local.s3_location_runner_distribution
     pre_install                     = var.userdata_pre_install
@@ -65,7 +65,7 @@ locals {
     environment                     = var.prefix
     enable_cloudwatch_agent         = var.enable_cloudwatch_agent
     ssm_key_cloudwatch_agent_config = var.enable_cloudwatch_agent ? aws_ssm_parameter.cloudwatch_agent_config_runner[0].name : ""
-  }) : ""
+  }) : var.userdata_content) : ""
 }
 
 data "aws_ami" "runner" {

@@ -264,6 +264,7 @@ module "runners" {
   enable_userdata                = var.enable_userdata
   enable_user_data_debug_logging = var.enable_user_data_debug_logging_runner
   userdata_template              = var.userdata_template
+  userdata_content               = var.userdata_content
   userdata_pre_install           = var.userdata_pre_install
   userdata_post_install          = var.userdata_post_install
   key_name                       = var.key_name

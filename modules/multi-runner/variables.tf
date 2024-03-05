@@ -70,6 +70,7 @@ variable "multi_runner_config" {
       scale_down_schedule_expression          = optional(string, "cron(*/5 * * * ? *)")
       scale_up_reserved_concurrent_executions = optional(number, 1)
       userdata_template                       = optional(string, null)
+      userdata_content                        = optional(string, null)
       enable_jit_config                       = optional(bool, null)
       enable_runner_detailed_monitoring       = optional(bool, false)
       enable_cloudwatch_agent                 = optional(bool, true)
