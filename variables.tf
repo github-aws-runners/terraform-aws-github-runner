@@ -860,7 +860,7 @@ variable "metrics_namespace" {
 
 variable "instance_termination_watcher" {
   description = <<-EOF
-    Configuration for the instance termination watcher lambda function.
+    Configuration for the instance termination watcher.
 
     `enable`: Enable or disable the spot termination watcher.
     'enable_metrics': Enable or disable the metrics for the spot termination watcher.
