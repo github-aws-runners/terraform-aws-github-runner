@@ -186,6 +186,12 @@ variable "github_app_parameters" {
   })
 }
 
+variable "lambda_scale_down_memory_size" {
+  description = "Memory size limit in MB for scale down lambda."
+  type        = number
+  default     = 512
+}
+
 variable "scale_down_schedule_expression" {
   description = "Scheduler expression to check every x for scale down."
   type        = string
@@ -231,6 +237,12 @@ variable "scale_up_reserved_concurrent_executions" {
   description = "Amount of reserved concurrent executions for the scale-up lambda function. A value of 0 disables lambda from being triggered and -1 removes any concurrency limitations."
   type        = number
   default     = 1
+}
+
+variable "lambda_scale_up_memory_size" {
+  description = "Memory size limit in MB for scale-up lambda."
+  type        = number
+  default     = 512
 }
 
 variable "lambda_timeout_scale_up" {
@@ -501,6 +513,12 @@ variable "pool_lambda_timeout" {
   default     = 60
 }
 
+variable "pool_lambda_memory_size" {
+  description = "Lambda Memory size limit in MB for pool lambda"
+  type        = number
+  default     = 512
+}
+
 variable "pool_runner_owner" {
   description = "The pool will deploy runners to the GitHub org ID, set this value to the org to which you want the runners deployed. Repo level is not supported."
   type        = string
@@ -531,7 +549,7 @@ variable "disable_runner_autoupdate" {
 variable "lambda_runtime" {
   description = "AWS Lambda runtime."
   type        = string
-  default     = "nodejs18.x"
+  default     = "nodejs20.x"
 }
 
 variable "lambda_architecture" {
@@ -614,12 +632,14 @@ variable "ssm_housekeeper" {
 
   `schedule_expression`: is used to configure the schedule for the lambda.
   `state`: state of the cloudwatch event rule. Valid values are `DISABLED`, `ENABLED`, and `ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS`.
+  `lambda_memory_size`: lambda memery size limit.
   `lambda_timeout`: timeout for the lambda in seconds.
   `config`: configuration for the lambda function. Token path will be read by default from the module.
   EOF
   type = object({
     schedule_expression = optional(string, "rate(1 day)")
     state               = optional(string, "ENABLED")
+    lambda_memory_size  = optional(number, 512)
     lambda_timeout      = optional(number, 60)
     config = object({
       tokenPath      = optional(string)

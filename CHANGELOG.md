@@ -1,5 +1,20 @@
 # Changelog
 
+## [5.8.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.7.1...v5.8.0) (2024-02-27)
+
+
+### Features
+
+* Add option to set lambda memory increase webhook memory ([#3778](https://github.com/philips-labs/terraform-aws-github-runner/issues/3778)) ([40bceb6](https://github.com/philips-labs/terraform-aws-github-runner/commit/40bceb6db1d4bed7959b35a7b23f2b2d21ddc447))
+* migrate webhook runner configuration to SSM ([#3728](https://github.com/philips-labs/terraform-aws-github-runner/issues/3728)) ([32492e3](https://github.com/philips-labs/terraform-aws-github-runner/commit/32492e3780509d4ff67d0ed3ad55f3506174974c))
+
+
+### Bug Fixes
+
+* **lambda:** bump the aws group in /lambdas with 6 updates ([#3772](https://github.com/philips-labs/terraform-aws-github-runner/issues/3772)) ([3549bc1](https://github.com/philips-labs/terraform-aws-github-runner/commit/3549bc1824fcf15b7b008eb6ea455a89ae3278df))
+* **lambda:** bump the aws group in /lambdas with 6 updates ([#3783](https://github.com/philips-labs/terraform-aws-github-runner/issues/3783)) ([b850e85](https://github.com/philips-labs/terraform-aws-github-runner/commit/b850e853e221e4f1026f31e1bfc8d4c73d08c212))
+* **lambda:** bump the octokit group in /lambdas with 2 updates ([#3773](https://github.com/philips-labs/terraform-aws-github-runner/issues/3773)) ([de9985a](https://github.com/philips-labs/terraform-aws-github-runner/commit/de9985a9f6babf83b3c2149247db7ecee602a500))
+
 ## [5.7.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.7.0...v5.7.1) (2024-02-13)
 
 

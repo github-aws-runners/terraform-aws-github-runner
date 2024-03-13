@@ -82,6 +82,12 @@ variable "webhook_lambda_zip" {
   default     = null
 }
 
+variable "webhook_lambda_memory_size" {
+  description = "Memory size limit in MB for webhook lambda in."
+  type        = number
+  default     = 256
+}
+
 variable "webhook_lambda_timeout" {
   description = "Time out of the webhook lambda in seconds."
   type        = number
@@ -94,10 +100,22 @@ variable "runners_lambda_zip" {
   default     = null
 }
 
+variable "runners_scale_up_lambda_memory_size" {
+  description = "Memory size limit in MB for scale-up lambda."
+  type        = number
+  default     = 512
+}
+
 variable "runners_scale_up_lambda_timeout" {
   description = "Time out for the scale up lambda in seconds."
   type        = number
   default     = 30
+}
+
+variable "runners_scale_down_lambda_memory_size" {
+  description = "Memory size limit in MB for scale-down lambda."
+  type        = number
+  default     = 512
 }
 
 variable "runners_scale_down_lambda_timeout" {
@@ -110,6 +128,12 @@ variable "runner_binaries_syncer_lambda_zip" {
   description = "File location of the binaries sync lambda zip file."
   type        = string
   default     = null
+}
+
+variable "runner_binaries_syncer_lambda_memory_size" {
+  description = "Memory size limit in MB for binary syncer lambda."
+  type        = number
+  default     = 256
 }
 
 variable "runner_binaries_syncer_lambda_timeout" {
@@ -622,6 +646,12 @@ variable "runner_architecture" {
   }
 }
 
+variable "pool_lambda_memory_size" {
+  description = "Memory size limit for scale-up lambda."
+  type        = number
+  default     = 512
+}
+
 variable "pool_lambda_timeout" {
   description = "Time out for the pool lambda in seconds."
   type        = number
@@ -664,7 +694,7 @@ variable "disable_runner_autoupdate" {
 variable "lambda_runtime" {
   description = "AWS Lambda runtime."
   type        = string
-  default     = "nodejs18.x"
+  default     = "nodejs20.x"
 }
 
 variable "lambda_architecture" {
@@ -798,12 +828,14 @@ variable "runners_ssm_housekeeper" {
 
   `schedule_expression`: is used to configure the schedule for the lambda.
   `enabled`: enable or disable the lambda trigger via the EventBridge.
+  `lambda_memory_size`: lambda memery size limit.
   `lambda_timeout`: timeout for the lambda in seconds.
   `config`: configuration for the lambda function. Token path will be read by default from the module.
   EOF
   type = object({
     schedule_expression = optional(string, "rate(1 day)")
     enabled             = optional(bool, true)
+    lambda_memory_size  = optional(number, 512)
     lambda_timeout      = optional(number, 60)
     config = object({
       tokenPath      = optional(string)

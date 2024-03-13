@@ -54,6 +54,12 @@ variable "lambda_zip" {
   default     = null
 }
 
+variable "lambda_memory_size" {
+  description = "Memory size limit in MB for lambda."
+  type        = number
+  default     = 256
+}
+
 variable "lambda_timeout" {
   description = "Time out of the lambda in seconds."
   type        = number
@@ -145,7 +151,7 @@ variable "log_level" {
 variable "lambda_runtime" {
   description = "AWS Lambda runtime."
   type        = string
-  default     = "nodejs18.x"
+  default     = "nodejs20.x"
 }
 
 variable "aws_partition" {
