@@ -127,21 +127,7 @@ describe('handle termination warning', () => {
 
   it('should log and create matric if filter is empty', async () => {
     const tags: Record<string, string> = { 'ghr:environment': 'runners', 'ghr:created_by': 'niek' };
-    mockEC2Client.on(DescribeInstancesCommand).resolves({
-      Reservations: [
-        {
-          Instances: [
-            {
-              ...instance,
-              InstanceType: undefined,
-              LaunchTime: undefined,
-              InstanceId: undefined,
-              Tags: Object.keys(tags).map((key) => ({ Key: key, Value: tags[key] })),
-            },
-          ],
-        },
-      ],
-    });
+    mockEC2Client.on(DescribeInstancesCommand).resolves({ Reservations: reservations });
 
     await handle(event, { createSpotWarningMetric: true, tagFilters: {}, prefix: '' });
     expect(createSingleMetric).toHaveBeenCalled();
