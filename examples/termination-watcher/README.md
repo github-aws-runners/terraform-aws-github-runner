@@ -25,7 +25,9 @@ Once a Spot instance is terminated a log line and metric will be updated. Spot t
 <!-- BEGIN_TF_DOCS -->
 ## Requirements
 
-No requirements.
+| Name | Version |
+|------|---------|
+| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1 |
 
 ## Providers
 
