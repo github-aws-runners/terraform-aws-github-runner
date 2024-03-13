@@ -14,7 +14,7 @@ resource "aws_lambda_function" "ami_housekeeper" {
   handler           = "index.handler"
   runtime           = var.lambda_runtime
   timeout           = var.lambda_timeout
-  memory_size       = 256
+  memory_size       = var.lambda_memory_size
   architectures     = [var.lambda_architecture]
 
   environment {

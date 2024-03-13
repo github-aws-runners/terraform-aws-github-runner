@@ -46,8 +46,8 @@ async function getReleaseAsset(runnerOs = 'linux', runnerArch = 'x64'): Promise<
   }
 
   const releaseVersion = latestRelease.data.tag_name.replace('v', '');
-  const assets = latestRelease.data.assets?.filter(
-    (a: { name?: string }) => a.name?.includes(`actions-runner-${runnerOs}-${runnerArch}-${releaseVersion}.`),
+  const assets = latestRelease.data.assets?.filter((a: { name?: string }) =>
+    a.name?.includes(`actions-runner-${runnerOs}-${runnerArch}-${releaseVersion}.`),
   );
 
   return assets?.length === 1 ? { name: assets[0].name, downloadUrl: assets[0].browser_download_url } : undefined;

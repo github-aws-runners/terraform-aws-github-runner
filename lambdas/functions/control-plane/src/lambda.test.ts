@@ -64,6 +64,7 @@ jest.mock('./scale-runners/scale-down');
 jest.mock('./pool/pool');
 jest.mock('./scale-runners/ssm-housekeeper');
 jest.mock('@terraform-aws-github-runner/aws-powertools-util');
+jest.mock('@terraform-aws-github-runner/aws-ssm-util');
 
 // Docs for testing async with jest: https://jestjs.io/docs/tutorial-async
 describe('Test scale up lambda wrapper.', () => {

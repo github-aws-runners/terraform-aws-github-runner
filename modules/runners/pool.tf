@@ -27,6 +27,7 @@ module "pool" {
       security_group_ids             = var.lambda_security_group_ids
       subnet_ids                     = var.lambda_subnet_ids
       architecture                   = var.lambda_architecture
+      memory_size                    = var.pool_lambda_memory_size
       runtime                        = var.lambda_runtime
       timeout                        = var.pool_lambda_timeout
       zip                            = local.lambda_zip

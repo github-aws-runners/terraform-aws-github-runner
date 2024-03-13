@@ -12,6 +12,7 @@ variable "config" {
       security_group_ids             = list(string)
       runtime                        = string
       architecture                   = string
+      memory_size                    = number
       timeout                        = number
       zip                            = string
       subnet_ids                     = list(string)

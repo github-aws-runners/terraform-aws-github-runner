@@ -1,11 +1,10 @@
 import { Webhooks } from '@octokit/webhooks';
 import { CheckRunEvent, WorkflowJobEvent } from '@octokit/webhooks-types';
 import { createChildLogger } from '@terraform-aws-github-runner/aws-powertools-util';
-import { getParameter } from '@terraform-aws-github-runner/aws-ssm-util';
 import { IncomingHttpHeaders } from 'http';
 
 import { Response } from '../lambda';
-import { QueueConfig, sendActionRequest, sendWebhookEventToWorkflowJobQueue } from '../sqs';
+import { RunnerMatcherConfig, sendActionRequest, sendWebhookEventToWorkflowJobQueue } from '../sqs';
 import ValidationError from '../ValidatonError';
 import { Config } from '../ConfigResolver';
 
@@ -21,7 +20,7 @@ export async function handle(headers: IncomingHttpHeaders, body: string, config:
 
   validateRepoInAllowList(event, config);
 
-  const response = await handleWorkflowJob(event, eventType, config.queuesConfig);
+  const response = await handleWorkflowJob(event, eventType, Config.matcherConfig!);
   await sendWebhookEventToWorkflowJobQueue({ workflowJobEvent: event }, config);
   return response;
 }
@@ -36,15 +35,15 @@ function validateRepoInAllowList(event: WorkflowJobEvent, config: Config) {
 async function handleWorkflowJob(
   body: WorkflowJobEvent,
   githubEvent: string,
-  queuesConfig: Array<QueueConfig>,
+  matcherConfig: Array<RunnerMatcherConfig>,
 ): Promise<Response> {
   const installationId = getInstallationId(body);
   if (body.action === 'queued') {
     // sort the queuesConfig by order of matcher config exact match, with all true matches lined up ahead.
-    queuesConfig.sort((a, b) => {
+    matcherConfig.sort((a, b) => {
       return a.matcherConfig.exactMatch === b.matcherConfig.exactMatch ? 0 : a.matcherConfig.exactMatch ? -1 : 1;
     });
-    for (const queue of queuesConfig) {
+    for (const queue of matcherConfig) {
       if (canRunJob(body.workflow_job.labels, queue.matcherConfig.labelMatchers, queue.matcherConfig.exactMatch)) {
         await sendActionRequest({
           id: body.workflow_job.id,
@@ -96,7 +95,7 @@ export function canRunJob(
 async function verifySignature(headers: IncomingHttpHeaders, body: string): Promise<number> {
   const signature = headers['x-hub-signature-256'] as string;
   const webhooks = new Webhooks({
-    secret: await getParameter(process.env.PARAMETER_GITHUB_APP_WEBHOOK_SECRET),
+    secret: Config.webhookSecret!,
   });
 
   if (

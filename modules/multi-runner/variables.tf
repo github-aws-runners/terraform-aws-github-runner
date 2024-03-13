@@ -189,10 +189,22 @@ variable "multi_runner_config" {
   EOT
 }
 
+variable "scale_up_lambda_memory_size" {
+  description = "Memory size limit in MB for scale_up lambda."
+  type        = number
+  default     = 512
+}
+
 variable "runners_scale_up_lambda_timeout" {
   description = "Time out for the scale up lambda in seconds."
   type        = number
   default     = 30
+}
+
+variable "scale_down_lambda_memory_size" {
+  description = "Memory size limit in MB for scale down."
+  type        = number
+  default     = 512
 }
 
 variable "runners_scale_down_lambda_timeout" {
@@ -205,6 +217,12 @@ variable "webhook_lambda_zip" {
   description = "File location of the webhook lambda zip file."
   type        = string
   default     = null
+}
+
+variable "webhook_lambda_memory_size" {
+  description = "Memory size limit in MB for webhook lambda."
+  type        = number
+  default     = 256
 }
 
 variable "webhook_lambda_timeout" {
@@ -291,7 +309,7 @@ variable "log_level" {
 variable "lambda_runtime" {
   description = "AWS Lambda runtime."
   type        = string
-  default     = "nodejs18.x"
+  default     = "nodejs20.x"
 }
 
 variable "lambda_architecture" {
@@ -335,6 +353,12 @@ variable "runner_binaries_s3_versioning" {
   description = "Status of S3 versioning for runner-binaries S3 bucket. Once set to Enabled the change cannot be reverted via Terraform!"
   type        = string
   default     = "Disabled"
+}
+
+variable "runner_binaries_syncer_memory_size" {
+  description = "Memory size limit in MB for binary syncer lambda."
+  type        = number
+  default     = 256
 }
 
 variable "runner_binaries_syncer_lambda_timeout" {
@@ -542,6 +566,7 @@ variable "ssm_paths" {
     root    = optional(string, "github-action-runners")
     app     = optional(string, "app")
     runners = optional(string, "runners")
+    webhook = optional(string, "webhook")
   })
   default = {}
 }
@@ -568,12 +593,14 @@ variable "runners_ssm_housekeeper" {
 
   `schedule_expression`: is used to configure the schedule for the lambda.
   `enabled`: enable or disable the lambda trigger via the EventBridge.
+  `lambda_memory_size`: lambda memery size limit.
   `lambda_timeout`: timeout for the lambda in seconds.
   `config`: configuration for the lambda function. Token path will be read by default from the module.
   EOF
   type = object({
     schedule_expression = optional(string, "rate(1 day)")
     enabled             = optional(bool, true)
+    lambda_memory_size  = optional(number, 512)
     lambda_timeout      = optional(number, 60)
     config = object({
       tokenPath      = optional(string)

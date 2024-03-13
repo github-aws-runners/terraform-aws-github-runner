@@ -24,6 +24,12 @@ variable "lambda_timeout" {
   default     = 60
 }
 
+variable "lambda_memory_size" {
+  description = "Memory size linit in MB of the lambda."
+  type        = number
+  default     = 256
+}
+
 variable "role_permissions_boundary" {
   description = "Permissions boundary that will be added to the created role for the lambda."
   type        = string
@@ -111,7 +117,7 @@ variable "lambda_s3_object_version" {
 variable "lambda_runtime" {
   description = "AWS Lambda runtime."
   type        = string
-  default     = "nodejs18.x"
+  default     = "nodejs20.x"
 }
 
 variable "lambda_architecture" {
