@@ -11,6 +11,12 @@ variable "ami_housekeeper_lambda_zip" {
   default     = null
 }
 
+variable "ami_housekeeper_lambda_memory_size" {
+  description = "Memory size linit in MB of the lambda."
+  type        = number
+  default     = 256
+}
+
 variable "ami_housekeeper_lambda_timeout" {
   description = "Time out of the lambda in seconds."
   type        = number

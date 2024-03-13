@@ -5,6 +5,7 @@ import { mocked } from 'jest-mock';
 import { githubWebhook } from './lambda';
 import { handle } from './webhook';
 import ValidationError from './ValidatonError';
+import { getParameter } from '@terraform-aws-github-runner/aws-ssm-util';
 
 const event: APIGatewayEvent = {
   body: JSON.stringify(''),
@@ -73,8 +74,13 @@ const context: Context = {
 };
 
 jest.mock('./webhook');
+jest.mock('@terraform-aws-github-runner/aws-ssm-util');
 
 describe('Test scale up lambda wrapper.', () => {
+  beforeEach(() => {
+    const mockedGet = mocked(getParameter);
+    mockedGet.mockResolvedValue('[]');
+  });
   it('Happy flow, resolve.', async () => {
     const mock = mocked(handle);
     mock.mockImplementation(() => {

@@ -20,9 +20,9 @@ export interface MatcherConfig {
   exactMatch: boolean;
 }
 
-export type RunnerConfig = QueueConfig[];
+export type RunnerConfig = RunnerMatcherConfig[];
 
-export interface QueueConfig {
+export interface RunnerMatcherConfig {
   matcherConfig: MatcherConfig;
   id: string;
   arn: string;

@@ -3,11 +3,10 @@
   "Statement": [
     {
       "Effect": "Allow",
-      "Action": [
-        "ssm:GetParameter"
-      ],
+      "Action": ["ssm:GetParameter"],
       "Resource": [
-        "${github_app_webhook_secret_arn}"
+        "${github_app_webhook_secret_arn}",
+        "${parameter_runner_matcher_config_arn}"
       ]
     }
   ]

@@ -3,6 +3,7 @@ locals {
     schedule_expression = var.ssm_housekeeper.schedule_expression
     state               = var.ssm_housekeeper.state
     lambda_timeout      = var.ssm_housekeeper.lambda_timeout
+    lambda_memory_size  = var.ssm_housekeeper.lambda_memory_size
     config = {
       tokenPath      = var.ssm_housekeeper.config.tokenPath == null ? local.token_path : var.ssm_housekeeper.config.tokenPath
       minimumDaysOld = var.ssm_housekeeper.config.minimumDaysOld
@@ -23,7 +24,7 @@ resource "aws_lambda_function" "ssm_housekeeper" {
   runtime           = var.lambda_runtime
   timeout           = local.ssm_housekeeper.lambda_timeout
   tags              = local.tags
-  memory_size       = 512
+  memory_size       = local.ssm_housekeeper.lambda_memory_size
   architectures     = [var.lambda_architecture]
 
   environment {

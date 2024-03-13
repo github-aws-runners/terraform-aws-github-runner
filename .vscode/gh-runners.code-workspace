@@ -5,28 +5,8 @@
       "path": ".."
     },
     {
-      "name": "🚀 @lambda/functions/ami-housekeeper",
-      "path": "../lambdas/functions/ami-housekeeper"
-    },
-    {
-      "name": "🚀 @lambda/functions/control-plane",
-      "path": "../lambdas/functions/control-plane"
-    },
-    {
-      "name": "🚀 @lambda/functions/gh-agent-syncer",
-      "path": "../lambdas/functions/gh-agent-syncer"
-    },
-    {
-      "name": "🚀 @lambda/functions/webhook",
-      "path": "../lambdas/functions/webhook"
-    },
-    {
-      "name": "📦 @lambda/libs/aws-ssm-util",
-      "path": "../lambdas/libs/aws-ssm-util"
-    },
-    {
-      "name": "📦 @lambdas/libs/aws-powertools-util",
-      "path": "../lambdas/libs/aws-powertools-util"
+      "name": "🚀 lambdas",
+      "path": "../lambdas"
     }
   ],
   "settings": {

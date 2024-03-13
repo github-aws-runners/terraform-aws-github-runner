@@ -1,5 +1,48 @@
 # Changelog
 
+## [5.8.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.7.1...v5.8.0) (2024-02-27)
+
+
+### Features
+
+* Add option to set lambda memory increase webhook memory ([#3778](https://github.com/philips-labs/terraform-aws-github-runner/issues/3778)) ([40bceb6](https://github.com/philips-labs/terraform-aws-github-runner/commit/40bceb6db1d4bed7959b35a7b23f2b2d21ddc447))
+* migrate webhook runner configuration to SSM ([#3728](https://github.com/philips-labs/terraform-aws-github-runner/issues/3728)) ([32492e3](https://github.com/philips-labs/terraform-aws-github-runner/commit/32492e3780509d4ff67d0ed3ad55f3506174974c))
+
+
+### Bug Fixes
+
+* **lambda:** bump the aws group in /lambdas with 6 updates ([#3772](https://github.com/philips-labs/terraform-aws-github-runner/issues/3772)) ([3549bc1](https://github.com/philips-labs/terraform-aws-github-runner/commit/3549bc1824fcf15b7b008eb6ea455a89ae3278df))
+* **lambda:** bump the aws group in /lambdas with 6 updates ([#3783](https://github.com/philips-labs/terraform-aws-github-runner/issues/3783)) ([b850e85](https://github.com/philips-labs/terraform-aws-github-runner/commit/b850e853e221e4f1026f31e1bfc8d4c73d08c212))
+* **lambda:** bump the octokit group in /lambdas with 2 updates ([#3773](https://github.com/philips-labs/terraform-aws-github-runner/issues/3773)) ([de9985a](https://github.com/philips-labs/terraform-aws-github-runner/commit/de9985a9f6babf83b3c2149247db7ecee602a500))
+
+## [5.7.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.7.0...v5.7.1) (2024-02-13)
+
+
+### Bug Fixes
+
+* add retry logic to runner start script for libicu download ([#3748](https://github.com/philips-labs/terraform-aws-github-runner/issues/3748)) ([1b4597b](https://github.com/philips-labs/terraform-aws-github-runner/commit/1b4597b613dc46dcc63cacb546ff4ce489cd731f))
+* **lambda:** bump the aws group in /lambdas with 6 updates ([#3762](https://github.com/philips-labs/terraform-aws-github-runner/issues/3762)) ([e43fd80](https://github.com/philips-labs/terraform-aws-github-runner/commit/e43fd80324dd1e553dc81720b39893f1c6dd97d4))
+* **lambda:** bump the octokit group in /lambdas with 1 update ([#3763](https://github.com/philips-labs/terraform-aws-github-runner/issues/3763)) ([77586c5](https://github.com/philips-labs/terraform-aws-github-runner/commit/77586c5efb6a4e33bb2c056867738c13559292b9))
+
+## [5.7.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.6.3...v5.7.0) (2024-02-12)
+
+
+### Features
+
+* allow setting VPC and subnets per runner ([#3467](https://github.com/philips-labs/terraform-aws-github-runner/issues/3467)) ([1288c81](https://github.com/philips-labs/terraform-aws-github-runner/commit/1288c81de1b9905a71b8f44c03efaf526384b0f2))
+
+
+### Bug Fixes
+
+* Correct typo in README.md ([#3758](https://github.com/philips-labs/terraform-aws-github-runner/issues/3758)) ([7186c1c](https://github.com/philips-labs/terraform-aws-github-runner/commit/7186c1ce48cdeb4ec017d3303f8b7f69d609891a))
+* **images:** avoid wrong AMI selected for ubuntu jammy ([#3747](https://github.com/philips-labs/terraform-aws-github-runner/issues/3747)) ([595aec9](https://github.com/philips-labs/terraform-aws-github-runner/commit/595aec9833dd1d1b1383449c0a8ea2284ed98406))
+* **lambda:** bump @aws-lambda-powertools/logger from 1.17.0 to 1.18.0 in /lambdas ([#3754](https://github.com/philips-labs/terraform-aws-github-runner/issues/3754)) ([98131ff](https://github.com/philips-labs/terraform-aws-github-runner/commit/98131ffd44b735e120d64e9a77020dc5733021d0))
+* **lambda:** bump axios from 1.6.2 to 1.6.7 in /lambdas ([#3755](https://github.com/philips-labs/terraform-aws-github-runner/issues/3755)) ([80a34bd](https://github.com/philips-labs/terraform-aws-github-runner/commit/80a34bd7eaafa49c774263ae5406bdc74255d250))
+* **lambda:** bump the aws group in /lambdas with 5 updates ([#3730](https://github.com/philips-labs/terraform-aws-github-runner/issues/3730)) ([7854a5f](https://github.com/philips-labs/terraform-aws-github-runner/commit/7854a5f7ed0cdbcbedd746f34074637898d5125d))
+* **lambda:** bump the aws group in /lambdas with 5 updates ([#3743](https://github.com/philips-labs/terraform-aws-github-runner/issues/3743)) ([7ca40ef](https://github.com/philips-labs/terraform-aws-github-runner/commit/7ca40ef1f952403e53e78193eceaea1b1bb67ff6))
+* **lambda:** bump the aws group in /lambdas with 5 updates ([#3753](https://github.com/philips-labs/terraform-aws-github-runner/issues/3753)) ([9f3aa68](https://github.com/philips-labs/terraform-aws-github-runner/commit/9f3aa689f1fdd574dc2980fb3d3f6166bd99238b))
+* windows userdata does not support gzip ([#3759](https://github.com/philips-labs/terraform-aws-github-runner/issues/3759)) ([b74df54](https://github.com/philips-labs/terraform-aws-github-runner/commit/b74df549521f7d8d54eb0e1e436803934cabac3f))
+
 ## [5.6.3](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.6.2...v5.6.3) (2024-01-16)
 
 

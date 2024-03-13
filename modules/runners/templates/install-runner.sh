@@ -47,7 +47,20 @@ echo OS: $os_id
 
 # Install libicu on non-ubuntu
 if [[ ! "$os_id" =~ ^ubuntu.* ]]; then
-  dnf install -y libicu
+  max_attempts=5
+  attempt_count=0
+  success=false
+  while [ $success = false ] && [ $attempt_count -le $max_attempts ]; do
+    echo "Attempt $attempt_count/$max_attempts: Installing libicu"
+    dnf install -y libicu
+    if [ $? -eq 0 ]; then
+      success=true
+    else
+      echo "Failed to install libicu"
+      attempt_count=$(( attempt_count + 1 ))
+      sleep 5
+    fi
+  done
 fi
 
 # Install dependencies for ubuntu

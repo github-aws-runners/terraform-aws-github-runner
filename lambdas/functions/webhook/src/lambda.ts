@@ -16,7 +16,7 @@ middy(githubWebhook).use(captureLambdaHandler(tracer));
 
 export async function githubWebhook(event: APIGatewayEvent, context: Context): Promise<Response> {
   setContext(context, 'lambda.ts');
-  const config = new Config();
+  const config = await Config.load();
 
   logger.logEventIfEnabled(event);
   logger.debug('Loading config', { config });

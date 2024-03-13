@@ -1,0 +1,40 @@
+{
+  "$schema": "./node_modules/nx/schemas/nx-schema.json",
+  "affected": {
+    "defaultBase": "main"
+  },
+  "workspaceLayout": {
+    "libsDir": "libs",
+    "appsDir": "functions"
+  },
+  "plugins": [
+
+    {
+      "plugin": "@nx/jest/plugin",
+      "options": {
+        "targetName": "test"
+      }
+    },
+    {
+      "plugin": "@nx/eslint/plugin",
+      "options": {
+        "targetName": "lint"
+      }
+    }
+  ],
+"targetDefaults": {
+  "build": {
+    "inputs": ["{projectRoot}/src/index.ts"],
+    "dependsOn": ["default", "^default","^build"],
+    "executor": "@nx/workspace:run-commands",
+    "cache": true
+  },
+  "dist":{
+    "outputs": ["{projectRoot}/dist/**/*"],
+    "dependsOn": ["build"],
+    "executor": "@nx/workspace:run-commands",
+    "cache": true
+  }
+}
+
+}

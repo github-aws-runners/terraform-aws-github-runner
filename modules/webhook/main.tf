@@ -55,3 +55,10 @@ resource "aws_apigatewayv2_integration" "webhook" {
   integration_method = "POST"
   integration_uri    = aws_lambda_function.webhook.invoke_arn
 }
+
+
+resource "aws_ssm_parameter" "runner_matcher_config" {
+  name  = "${var.ssm_paths.root}/${var.ssm_paths.webhook}/runner-matcher-config"
+  type  = "String"
+  value = jsonencode(local.runner_matcher_config_sorted)
+}

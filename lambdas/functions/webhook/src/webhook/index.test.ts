@@ -37,18 +37,17 @@ describe('handler', () => {
   let originalError: Console['error'];
   let config: Config;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     process.env = { ...cleanEnv };
 
     nock.disableNetConnect();
-    config = new Config();
     originalError = console.error;
     console.error = jest.fn();
     jest.clearAllMocks();
     jest.resetAllMocks();
 
-    const mockedGet = mocked(getParameter);
-    mockedGet.mockResolvedValueOnce(GITHUB_APP_WEBHOOK_SECRET);
+    mockSSMResponse();
+    config = await Config.load();
   });
 
   afterEach(() => {
@@ -73,8 +72,8 @@ describe('handler', () => {
   });
 
   describe('Test for workflowjob event: ', () => {
-    beforeEach(() => {
-      config = createConfig(undefined, runnerConfig);
+    beforeEach(async () => {
+      config = await createConfig(undefined, runnerConfig);
     });
 
     it('handles workflow job events with 256 hash signature', async () => {
@@ -122,7 +121,7 @@ describe('handler', () => {
 
     it('does not handle workflow_job events from unlisted repositories', async () => {
       const event = JSON.stringify(workflowjob_event);
-      config = createConfig(['NotCodertocat/Hello-World']);
+      config = await createConfig(['NotCodertocat/Hello-World']);
       await expect(
         handle({ 'X-Hub-Signature-256': await webhooks.sign(event), 'X-GitHub-Event': 'workflow_job' }, event, config),
       ).rejects.toMatchObject({
@@ -133,7 +132,7 @@ describe('handler', () => {
 
     it('handles workflow_job events without installation id', async () => {
       const event = JSON.stringify({ ...workflowjob_event, installation: null });
-      config = createConfig(['philips-labs/terraform-aws-github-runner']);
+      config = await createConfig(['philips-labs/terraform-aws-github-runner']);
       const resp = await handle(
         { 'X-Hub-Signature-256': await webhooks.sign(event), 'X-GitHub-Event': 'workflow_job' },
         event,
@@ -145,7 +144,7 @@ describe('handler', () => {
 
     it('handles workflow_job events from allow listed repositories', async () => {
       const event = JSON.stringify(workflowjob_event);
-      config = createConfig(['philips-labs/terraform-aws-github-runner']);
+      config = await createConfig(['philips-labs/terraform-aws-github-runner']);
       const resp = await handle(
         { 'X-Hub-Signature-256': await webhooks.sign(event), 'X-GitHub-Event': 'workflow_job' },
         event,
@@ -156,7 +155,7 @@ describe('handler', () => {
     });
 
     it('Check runner labels accept test job', async () => {
-      config = createConfig(undefined, [
+      config = await createConfig(undefined, [
         {
           ...runnerConfig[0],
           matcherConfig: {
@@ -189,7 +188,7 @@ describe('handler', () => {
     });
 
     it('Check runner labels accept job with mixed order.', async () => {
-      config = createConfig(undefined, [
+      config = await createConfig(undefined, [
         {
           ...runnerConfig[0],
           matcherConfig: {
@@ -222,7 +221,7 @@ describe('handler', () => {
     });
 
     it('Check webhook accept jobs where not all labels are provided in job.', async () => {
-      config = createConfig(undefined, [
+      config = await createConfig(undefined, [
         {
           ...runnerConfig[0],
           matcherConfig: {
@@ -255,7 +254,7 @@ describe('handler', () => {
     });
 
     it('Check webhook does not accept jobs where not all labels are supported (single matcher).', async () => {
-      config = createConfig(undefined, [
+      config = await createConfig(undefined, [
         {
           ...runnerConfig[0],
           matcherConfig: {
@@ -282,7 +281,7 @@ describe('handler', () => {
     });
 
     it('Check webhook does not accept jobs where the job labels are spread across label matchers.', async () => {
-      config = createConfig(undefined, [
+      config = await createConfig(undefined, [
         {
           ...runnerConfig[0],
           matcherConfig: {
@@ -312,7 +311,7 @@ describe('handler', () => {
     });
 
     it('Check webhook does not accept jobs where not all labels are supported by the runner.', async () => {
-      config = createConfig(undefined, [
+      config = await createConfig(undefined, [
         {
           ...runnerConfig[0],
           matcherConfig: {
@@ -346,7 +345,7 @@ describe('handler', () => {
     });
 
     it('Check webhook will accept jobs with a single acceptable label.', async () => {
-      config = createConfig(undefined, [
+      config = await createConfig(undefined, [
         {
           ...runnerConfig[0],
           matcherConfig: {
@@ -380,7 +379,7 @@ describe('handler', () => {
     });
 
     it('Check webhook will not accept jobs without correct label when job label check all is false.', async () => {
-      config = createConfig(undefined, [
+      config = await createConfig(undefined, [
         {
           ...runnerConfig[0],
           matcherConfig: {
@@ -412,7 +411,7 @@ describe('handler', () => {
       expect(sendActionRequest).not.toBeCalled();
     });
     it('Check webhook will accept jobs for specific labels if workflow labels are specific', async () => {
-      config = createConfig(undefined, [
+      config = await createConfig(undefined, [
         {
           ...runnerConfig[0],
           matcherConfig: {
@@ -454,7 +453,7 @@ describe('handler', () => {
       });
     });
     it('Check webhook will accept jobs for latest labels if workflow labels are not specific', async () => {
-      config = createConfig(undefined, [
+      config = await createConfig(undefined, [
         {
           ...runnerConfig[0],
           matcherConfig: {
@@ -498,7 +497,7 @@ describe('handler', () => {
   });
 
   it('Check webhook will accept jobs when matchers accepts multiple labels.', async () => {
-    config = createConfig(undefined, [
+    config = await createConfig(undefined, [
       {
         ...runnerConfig[0],
         matcherConfig: {
@@ -599,12 +598,21 @@ describe('canRunJob', () => {
   });
 });
 
-function createConfig(repositoryAllowList?: string[], runnerConfig?: RunnerConfig): Config {
+async function createConfig(repositoryAllowList?: string[], runnerConfig?: RunnerConfig): Promise<Config> {
   if (repositoryAllowList) {
     process.env.REPOSITORY_ALLOW_LIST = JSON.stringify(repositoryAllowList);
   }
-  if (runnerConfig) {
-    process.env.RUNNER_CONFIG = JSON.stringify(runnerConfig);
-  }
-  return new Config();
+  Config.reset();
+  mockSSMResponse(runnerConfig);
+  return await Config.load();
+}
+function mockSSMResponse(runnerConfigInput?: RunnerConfig) {
+  const mockedGet = mocked(getParameter);
+  mockedGet.mockImplementation((parameter_name) => {
+    const value =
+      parameter_name == '/github-runner/runner-matcher-config'
+        ? JSON.stringify(runnerConfigInput ?? runnerConfig)
+        : GITHUB_APP_WEBHOOK_SECRET;
+    return Promise.resolve(value);
+  });
 }
