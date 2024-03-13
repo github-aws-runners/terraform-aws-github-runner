@@ -2,7 +2,9 @@ locals {
   role_path = var.lambda.role_path == null ? "/${var.lambda.prefix}/" : var.lambda.role_path
 
   lambda_environment_variables = {
+    ENVIRONMENT                              = var.lambda.prefix
     LOG_LEVEL                                = var.lambda.log_level
+    PREFIX                                   = var.lambda.prefix
     POWERTOOLS_LOGGER_LOG_EVENT              = var.lambda.log_level == "debug" ? "true" : "false"
     POWERTOOLS_SERVICE_NAME                  = var.lambda.name
     POWERTOOLS_TRACE_ENABLED                 = var.lambda.tracing_config.mode != null ? true : false

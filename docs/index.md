@@ -64,6 +64,9 @@ The control plane (scale up lambda) will store the runner registration configura
 
 The AMI cleaner is a lambda that will clean up AMIs that are older than a configurable amount of days. This is useful when using the AMI builder to create AMIs. The cleaner will also check which AMIs are used the latest version of the launch template. And you can provide SSM config paths pointing to AMI IDs. The cleaner will not delete these AMIs. The AMI cleaner is opt in, it will not be created by default.
 
+### Spot Instance Termination Watcher
+
+The Spot Instance Termination Wachter is creating log and optional merrics for Spot Instance Termination warning sent by AWS two minutes before termination. The Lambda only will log instances details for instances tagged with `ghr:createdBy`. The module is by default not enabled.
 
 ### Security
 

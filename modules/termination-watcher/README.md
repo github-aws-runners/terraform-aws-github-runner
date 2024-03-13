@@ -1,21 +1,34 @@
-# Module - Spot Termination Watcher
+# Module - Termination Watcher
 
+This module is watching spot termination events published by the Event Bridge. A lambda function will look up the instance details and create a log line for the notification warning. Optionally a metric will be created.
 
 ## Usages
 
-The module can be activated via the main module by setting `________` to `true`. Or invoking the module directly.
+The module is part of the root and multi-runner module but can also be used stand-alone. Below a direction for configuration.
 
 ```
-module "spot_termination_watcher" {
+module "termination_watcher" {
   source = "path to module"
 
+  config = {
+    prefix = "global"
+    tag_filters = {
+      "ghr:Applicaton" = "github-action-runner"
+    }
+    metrics_namespace = "My Metrics
+    s3_bucket         = "..."
+    s3_key            = "..."
+    s3_object_version = "..."
 
+    enable_metric = {
+      spot_warning = true
+    }))
+  }
 }
+
 ```
 
 ## Development
-
-## Lambda Function
 
 The Lambda function is written in [TypeScript](https://www.typescriptlang.org/) and requires Node and yarn. Sources are located in [https://github.com/philips-labs/terraform-aws-github-runner/tree/main/lambdas].
 

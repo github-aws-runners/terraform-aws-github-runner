@@ -858,12 +858,12 @@ variable "metrics_namespace" {
   default     = "GitHub Runners"
 }
 
-variable "spot_instance_termination_watcher" {
+variable "instance_termination_watcher" {
   description = <<-EOF
-    Configuration for the spot termination watcher lambda function.
+    Configuration for the instance termination watcher lambda function.
 
     `enable`: Enable or disable the spot termination watcher.
-    'enable_metrics': Create metrics for spot termination events.
+    'enable_metrics': Enable or disable the metrics for the spot termination watcher.
     `memory_size`: Memory size linit in MB of the lambda.
     `s3_key`: S3 key for syncer lambda function. Required if using S3 bucket to specify lambdas.
     `s3_object_version`: S3 object version for syncer lambda function. Useful if S3 versioning is enabled on source bucket.
@@ -872,8 +872,10 @@ variable "spot_instance_termination_watcher" {
   EOF
 
   type = object({
-    enable            = optional(bool, false)
-    enable_metrics    = optional(bool, false)
+    enable = optional(bool, false)
+    enable_metric = optional(object({
+      spot_warning = optional(bool, false)
+    }))
     memory_size       = optional(number, null)
     s3_key            = optional(string, null)
     s3_object_version = optional(string, null)

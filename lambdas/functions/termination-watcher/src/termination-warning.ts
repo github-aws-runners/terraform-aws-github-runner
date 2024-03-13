@@ -16,24 +16,27 @@ async function handle(event: SpotInterruptionWarning<SpotTerminationDetail>, con
   const instance =
     (await ec2.send(new DescribeInstancesCommand({ InstanceIds: [event.detail['instance-id']] }))).Reservations?.[0]
       .Instances?.[0] ?? null;
+  logger.debug('Received spot notification warning for:', { instance });
 
-  // check if ghr:created_by tag is present
-  const createdByTag = instance?.Tags?.find((tag) => tag.Key === 'ghr:created_by');
+  // check if all tags in config.tagFilter are present on the instance
+  const matchFilter = Object.keys(config.tagFilters).every((key) => {
+    return instance?.Tags?.find((tag) => tag.Key === key && tag.Value?.startsWith(config.tagFilters[key]));
+  });
 
-  if (createdByTag && instance) {
+  if (matchFilter && instance) {
     const instanceRunningTimeInSeconds = instance.LaunchTime
-      ? new Date(event.time).getTime() - new Date(instance.LaunchTime).getTime()
-      : 0;
+      ? (new Date(event.time).getTime() - new Date(instance.LaunchTime).getTime()) / 1000
+      : undefined;
     logger.info('Received spot notification warning:', {
       instanceId: instance.InstanceId,
       instanceType: instance.InstanceType ?? 'unknown',
       instanceName: instance.Tags?.find((tag) => tag.Key === 'Name')?.Value,
       instanceState: instance.State?.Name,
       instanceLaunchTime: instance.LaunchTime,
-      instanceRunningTime: instanceRunningTimeInSeconds,
+      instanceRunningTimeInSeconds,
       tags: instance.Tags,
     });
-    if (config.createMetrics) {
+    if (config.createSpotWarningMetric) {
       const metric = createSingleMetric('SpotInterruptionWarning', MetricUnits.Count, 1, {
         InstanceType: instance.InstanceType ? instance.InstanceType : 'unknown',
         Environment: instance.Tags?.find((tag) => tag.Key === 'ghr:environment')?.Value ?? 'unknown',
@@ -45,12 +48,10 @@ async function handle(event: SpotInterruptionWarning<SpotTerminationDetail>, con
         instance.Tags?.find((tag) => tag.Key === 'ghr:environment')?.Value ?? 'unknown',
       );
     }
-    logger.debug('Received spot notification warning for:', { instance });
   } else {
     logger.warn(
-      // eslint-disable-next-line max-len
       `Received spot termination notification warning for instance ${event.detail['instance-id']} but ` +
-        `details are not available or instance not created by (createdBy: ${createdByTag}) GitHub Runner.`,
+        `details are not available or instance not matching the tag fileter (${config.tagFilters}).`,
     );
   }
 }

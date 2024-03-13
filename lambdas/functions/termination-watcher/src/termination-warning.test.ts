@@ -18,6 +18,8 @@ jest.mock('@terraform-aws-github-runner/aws-powertools-util', () => ({
 
 const mockEC2Client = mockClient(EC2Client);
 
+const config = { createSpotWarningMetric: true, tagFilters: { 'ghr:environment': 'test' }, prefix: 'runners' };
+
 const event: SpotInterruptionWarning<SpotTerminationDetail> = {
   version: '0',
   id: '1',
@@ -54,13 +56,12 @@ const reservations: Reservation[] = [
 describe('handle termination warning', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    //jest.restoreAllMocks();
   });
 
   it('should log and create an metric', async () => {
     mockEC2Client.on(DescribeInstancesCommand).resolves({ Reservations: reservations });
 
-    await handle(event, { createMetrics: true });
+    await handle(event, config);
     expect(createSingleMetric).toHaveBeenCalled();
     expect(createSingleMetric).toHaveBeenCalledWith('SpotInterruptionWarning', MetricUnits.Count, 1, {
       InstanceType: instance.InstanceType ? instance.InstanceType : '_FAIL_',
@@ -71,11 +72,12 @@ describe('handle termination warning', () => {
   it('should log details and not create a metric', async () => {
     mockEC2Client.on(DescribeInstancesCommand).resolves({ Reservations: reservations });
 
-    await handle(event, { createMetrics: false });
+    await handle(event, { ...config, createSpotWarningMetric: false });
     expect(createSingleMetric).not.toHaveBeenCalled();
   });
 
-  it('should log ec2 instance details 2', async () => {
+  it('should log and create matric for custom filters.', async () => {
+    const tags: Record<string, string> = { 'ghr:custom': 'runners', 'ghr:created_by': 'niek' };
     mockEC2Client.on(DescribeInstancesCommand).resolves({
       Reservations: [
         {
@@ -85,18 +87,67 @@ describe('handle termination warning', () => {
               InstanceType: undefined,
               LaunchTime: undefined,
               InstanceId: undefined,
-              Tags: [{ Key: 'ghr:created_by', Value: 'niek' }],
+              Tags: Object.keys(tags).map((key) => ({ Key: key, Value: tags[key] })),
             },
           ],
         },
       ],
     });
 
-    await handle(event, { createMetrics: true });
+    await handle(event, { createSpotWarningMetric: true, tagFilters: tags, prefix: '' });
     expect(createSingleMetric).toHaveBeenCalled();
   });
 
-  it('should log ec2 instance details 3', async () => {
+  it('should log and create matric for filter only with prefix match.', async () => {
+    // esnure instances contians tag with key gh:environment
+    const tagValue = instance.Tags?.find((tag) => tag.Key === 'ghr:environment')?.Value;
+    if (!tagValue) {
+      fail('Tag ghr:environment not found on instance, required for this test.');
+    }
+    expect(tagValue?.length).toBeGreaterThan(2);
+
+    mockEC2Client.on(DescribeInstancesCommand).resolves({ Reservations: reservations });
+
+    await handle(event, {
+      createSpotWarningMetric: true,
+      tagFilters: { 'ghr:environment': tagValue.substring(0, tagValue.length - 1) },
+      prefix: '',
+    });
+    expect(createSingleMetric).toHaveBeenCalled();
+  });
+
+  it('should not log and not create matric for custom filters without a match.', async () => {
+    // esnure instances contians tag with key gh:environment
+    expect(instance.Tags?.find((tag) => tag.Key === 'ghr:environment')?.Value).toBeDefined();
+    mockEC2Client.on(DescribeInstancesCommand).resolves({ Reservations: reservations });
+
+    await handle(event, { createSpotWarningMetric: true, tagFilters: { 'ghr:environment': '_INVALID_' }, prefix: '' });
+    expect(createSingleMetric).not.toHaveBeenCalled();
+  });
+
+  it('should log and create matric if filter is empty', async () => {
+    const tags: Record<string, string> = { 'ghr:environment': 'runners', 'ghr:created_by': 'niek' };
+    mockEC2Client.on(DescribeInstancesCommand).resolves({
+      Reservations: [
+        {
+          Instances: [
+            {
+              ...instance,
+              InstanceType: undefined,
+              LaunchTime: undefined,
+              InstanceId: undefined,
+              Tags: Object.keys(tags).map((key) => ({ Key: key, Value: tags[key] })),
+            },
+          ],
+        },
+      ],
+    });
+
+    await handle(event, { createSpotWarningMetric: true, tagFilters: {}, prefix: '' });
+    expect(createSingleMetric).toHaveBeenCalled();
+  });
+
+  it('should not create a metric if no instance is found.', async () => {
     mockEC2Client.on(DescribeInstancesCommand).resolves({
       Reservations: [
         {
@@ -105,7 +156,14 @@ describe('handle termination warning', () => {
       ],
     });
 
-    await handle(event, { createMetrics: true });
+    await handle(event, config);
+    expect(createSingleMetric).not.toHaveBeenCalled();
+  });
+
+  it('should not create a metric if filter not matched.', async () => {
+    mockEC2Client.on(DescribeInstancesCommand).resolves({ Reservations: reservations });
+
+    await handle(event, { createSpotWarningMetric: true, tagFilters: { 'ghr:environment': '_NO_MATCH_' }, prefix: 'runners' });
     expect(createSingleMetric).not.toHaveBeenCalled();
   });
 });

@@ -1,5 +1,5 @@
 {
-  "name": "@terraform-aws-github-runner/spot-termination-watcher",
+  "name": "@terraform-aws-github-runner/termination-watcher",
   "version": "1.0.0",
   "main": "lambda.ts",
   "license": "MIT",
@@ -8,7 +8,7 @@
     "test:watch": "NODE_ENV=test nx test --watch",
     "lint": "yarn eslint src",
     "build": "ncc build src/lambda.ts -o dist",
-    "dist": "yarn build && cd dist && zip ../spot-termination-watcher.zip index.js",
+    "dist": "yarn build && cd dist && zip ../termination-watcher.zip index.js",
     "format": "prettier --write \"**/*.ts\"",
     "format-check": "prettier --check \"**/*.ts\"",
     "all": "yarn build && yarn format && yarn lint && yarn test"

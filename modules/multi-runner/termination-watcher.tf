@@ -1,5 +1,5 @@
 locals {
-  lambda_spot_instance_termination_watcher = {
+  lambda_instance_termination_watcher = {
     prefix                    = var.prefix
     tags                      = local.tags
     aws_partition             = var.aws_partition
@@ -19,9 +19,9 @@ locals {
   }
 }
 
-module "spot_instance_termination_watcher" {
-  source = "../spot-termination-watcher"
-  count  = var.spot_instance_termination_watcher.enable ? 1 : 0
+module "instance_termination_watcher" {
+  source = "../termination-watcher"
+  count  = var.instance_termination_watcher.enable ? 1 : 0
 
-  config = merge(local.lambda_spot_instance_termination_watcher, var.spot_instance_termination_watcher)
+  config = merge(local.lambda_instance_termination_watcher, var.instance_termination_watcher)
 }
