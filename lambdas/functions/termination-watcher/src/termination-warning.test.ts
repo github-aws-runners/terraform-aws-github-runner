@@ -163,7 +163,11 @@ describe('handle termination warning', () => {
   it('should not create a metric if filter not matched.', async () => {
     mockEC2Client.on(DescribeInstancesCommand).resolves({ Reservations: reservations });
 
-    await handle(event, { createSpotWarningMetric: true, tagFilters: { 'ghr:environment': '_NO_MATCH_' }, prefix: 'runners' });
+    await handle(event, {
+      createSpotWarningMetric: true,
+      tagFilters: { 'ghr:environment': '_NO_MATCH_' },
+      prefix: 'runners',
+    });
     expect(createSingleMetric).not.toHaveBeenCalled();
   });
 });
