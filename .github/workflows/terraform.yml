@@ -30,6 +30,7 @@ jobs:
           touch lambdas/functions/control-plane/runners.zip
           touch lambdas/functions/gh-agent-syncer/runner-binaries-syncer.zip
           touch lambdas/functions/ami-housekeeper/ami-housekeeper.zip
+          touch lambdas/functions/termination-watcher/termination-watcher.zip
       - name: terraform init
         run: terraform init -get -backend=false -input=false
       - if: contains(matrix.terraform, '1.5.')
@@ -69,7 +70,18 @@ jobs:
       matrix:
         terraform: [1.5.6, "latest"]
         module:
-          ["ami-housekeeper", "download-lambda", "multi-runner", "runner-binaries-syncer", "runners", "setup-iam-permissions", "ssm", "webhook"]
+          [
+            "ami-housekeeper",
+            "download-lambda",
+            "lambda",
+            "multi-runner",
+            "runner-binaries-syncer",
+            "runners",
+            "setup-iam-permissions",
+            "ssm",
+            "termination-watcher",
+            "webhook",
+          ]
     defaults:
       run:
         working-directory: modules/${{ matrix.module }}
@@ -118,7 +130,16 @@ jobs:
       matrix:
         terraform: [1.5.6, "latest"]
         example:
-          ["default", "ubuntu", "prebuilt", "arm64", "ephemeral", "windows", "multi-runner"]
+          [
+            "default",
+            "ubuntu",
+            "prebuilt",
+            "arm64",
+            "ephemeral",
+            "termination-watcher",
+            "windows",
+            "multi-runner",
+          ]
     defaults:
       run:
         working-directory: examples/${{ matrix.example }}
