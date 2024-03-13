@@ -251,6 +251,7 @@ Talk to the forestkeepers in the `runners-channel` on Slack.
 | Name | Description |
 |------|-------------|
 | <a name="output_binaries_syncer"></a> [binaries\_syncer](#output\_binaries\_syncer) | n/a |
+| <a name="output_instance_termination_watcher"></a> [instance\_termination\_watcher](#output\_instance\_termination\_watcher) | n/a |
 | <a name="output_queues"></a> [queues](#output\_queues) | SQS queues. |
 | <a name="output_runners"></a> [runners](#output\_runners) | n/a |
 | <a name="output_ssm_parameters"></a> [ssm\_parameters](#output\_ssm\_parameters) | n/a |

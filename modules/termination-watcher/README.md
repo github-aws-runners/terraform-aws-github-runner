@@ -92,5 +92,7 @@ yarn run dist
 
 ## Outputs
 
-No outputs.
+| Name | Description |
+|------|-------------|
+| <a name="output_lambda"></a> [lambda](#output\_lambda) | n/a |
 <!-- END_TF_DOCS -->
