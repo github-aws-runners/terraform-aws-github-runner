@@ -20,7 +20,7 @@ terraform init
 terraform apply
 ```
 
-Once a Spot instance is terminated a log line and metric will be updated. Spot termiaation can be simulated by navigating to the request and invoce an interruption. 
+Once a Spot instance is terminated a log line and metric will be updated. Spot instance termination can be simulated using the Amazon [Fault Injection Service](https://docs.aws.amazon.com/fis/latest/userguide/what-is.html) (FIS). In thw web console you can simply initiate a spot instance failure by navigate in the EC2 console to Spot Requests and choose the action initiate a spot termination event.
 
 <!-- BEGIN_TF_DOCS -->
 ## Requirements

@@ -68,7 +68,7 @@ The AMI cleaner is a lambda that will clean up AMIs that are older than a config
 
 > This feature is Beta, changes will not trigger a major release as long in beta.
 
-The Instance Termination Wachter is creating log and optional merrics for termination of instances. Currently only spot termination warnings are watched. See [confgiuration](configuration/) for more details. 
+The Instance Termination Watcher is creating log and optional metrics for termination of instances. Currently only spot termination warnings are watched. See [configuration](configuration/) for more details. 
 
 ### Security
 
