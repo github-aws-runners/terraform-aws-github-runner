@@ -860,7 +860,7 @@ variable "metrics_namespace" {
 
 variable "instance_termination_watcher" {
   description = <<-EOF
-    Configuration for the instance termination watcher.
+    Configuration for the instance termination watcher. This feature is Beta, changes will not trigger a major release as long in beta.
 
     `enable`: Enable or disable the spot termination watcher.
     'enable_metrics': Enable or disable the metrics for the spot termination watcher.

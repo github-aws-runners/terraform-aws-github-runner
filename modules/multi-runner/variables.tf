@@ -620,7 +620,7 @@ variable "metrics_namespace" {
 
 variable "instance_termination_watcher" {
   description = <<-EOF
-    Configuration for the spot termination watcher lambda function.
+    Configuration for the spot termination watcher lambda function. This feature is Beta, changes will not trigger a major release as long in beta.
 
     `enable`: Enable or disable the spot termination watcher.
     'enable_metrics': Enable metric for the lambda. If `spot_warning` is set to true, the lambda will emit a metric when it detects a spot termination warning.
