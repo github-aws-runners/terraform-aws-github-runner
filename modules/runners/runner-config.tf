@@ -12,6 +12,13 @@ resource "aws_ssm_parameter" "runner_agent_mode" {
   tags  = local.tags
 }
 
+resource "aws_ssm_parameter" "gh_url" {
+  name  = "${var.ssm_paths.root}/${var.ssm_paths.config}/gh_url"
+  type  = "String"
+  value = var.enable_ephemeral_runners ? "ephemeral" : "persistent"
+  tags  = local.tags
+}
+
 resource "aws_ssm_parameter" "jit_config_enabled" {
   name  = "${var.ssm_paths.root}/${var.ssm_paths.config}/enable_jit_config"
   type  = "String"

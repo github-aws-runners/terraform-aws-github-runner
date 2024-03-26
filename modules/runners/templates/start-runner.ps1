@@ -54,6 +54,9 @@ Write-Host  "Retrieved $ssm_config_path/agent_mode parameter - ($agent_mode)"
 $token_path=$parameters.where( {$_.Name -eq "$ssm_config_path/token_path"}).value
 Write-Host  "Retrieved $ssm_config_path/token_path parameter - ($token_path)"
 
+$gh_url=$parameters.where( {$_.Name -eq "$ssm_config_path/gh_url"}).value
+Write-Host  "Retrieved $ssm_config_path/gh_url parameter - ($gh_url)"
+
 
 if ($enable_cloudwatch_agent -eq "true")
 {
@@ -107,7 +110,7 @@ foreach ($group in @("Administrators", "docker-users")) {
 Set-ItemProperty HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -Name ConsentPromptBehaviorAdmin -Value 0 -Force
 Write-Host "Disabled User Access Control (UAC)"
 
-$configCmd = ".\config.cmd --unattended --name $runner_name_prefix$InstanceId --work `"_work`" $config"
+$configCmd = ".\config.cmd --unattended --url $gh_url --name $runner_name_prefix$InstanceId --work `"_work`" $config"
 Write-Host "Configure GH Runner as user $run_as"
 Invoke-Expression $configCmd
 
