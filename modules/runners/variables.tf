@@ -392,6 +392,12 @@ variable "runner_log_files" {
   default = null
 }
 
+variable "gh_url" {
+  description = "GitHub URL with Org ID included."
+  type        = string
+  default     = null
+}
+
 variable "ghes_url" {
   description = "GitHub Enterprise Server URL. DO NOT SET IF USING PUBLIC GITHUB"
   type        = string
