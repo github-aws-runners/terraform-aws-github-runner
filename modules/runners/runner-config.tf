@@ -15,7 +15,7 @@ resource "aws_ssm_parameter" "runner_agent_mode" {
 resource "aws_ssm_parameter" "gh_url" {
   name  = "${var.ssm_paths.root}/${var.ssm_paths.config}/gh_url"
   type  = "String"
-  value = var.enable_ephemeral_runners ? "ephemeral" : "persistent"
+  value = var.gh_url
   tags  = local.tags
 }
 
