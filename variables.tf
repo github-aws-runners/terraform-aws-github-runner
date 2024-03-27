@@ -40,6 +40,12 @@ variable "github_app" {
   })
 }
 
+variable "gh_url" {
+  description = "GitHub URL with Org ID included."
+  type        = string
+  default     = null
+}
+
 variable "scale_down_schedule_expression" {
   description = "Scheduler expression to check every x for scale down."
   type        = string

@@ -200,6 +200,7 @@ module "runners" {
   instance_allocation_strategy  = var.instance_allocation_strategy
   instance_max_spot_price       = var.instance_max_spot_price
   block_device_mappings         = var.block_device_mappings
+  gh_url                        = var.gh_url
 
   runner_architecture       = var.runner_architecture
   ami_filter                = var.ami_filter
