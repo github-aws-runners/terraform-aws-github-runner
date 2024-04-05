@@ -49,4 +49,17 @@ $action = New-ScheduledTaskAction -WorkingDirectory "C:\actions-runner" -Execute
 $trigger = New-ScheduledTaskTrigger -AtStartup
 Register-ScheduledTask -TaskName "runnerinit" -Action $action -Trigger $trigger -User System -RunLevel Highest -Force
 
-C:\ProgramData\Amazon\EC2-Windows\Launch\Scripts\InitializeInstance.ps1 -Schedule
+$EC2LaunchFolder = "C:\EC2Launch"
+New-Item -ItemType Directory -Force -Path $EC2LaunchFolder
+
+$Url = "https://s3.amazonaws.com/ec2-downloads-windows/EC2Launch/latest/EC2-Windows-Launch.zip"
+$DownloadZipFile = Join-Path -Path $EC2LaunchFolder -ChildPath $(Split-Path -Path $Url -Leaf)
+Invoke-WebRequest -Uri $Url -OutFile $DownloadZipFile
+
+$Url = "https://s3.amazonaws.com/ec2-downloads-windows/EC2Launch/latest/install.ps1"
+$DownloadInstallFile = Join-Path -Path $EC2LaunchFolder -ChildPath $(Split-Path -Path $Url -Leaf)
+Invoke-WebRequest -Uri $Url -OutFile $DownloadInstallFile
+
+& $DownloadInstallFile
+
+& "C:\ProgramData\Amazon\EC2-Windows\Launch\Scripts\InitializeInstance.ps1" -Schedule
