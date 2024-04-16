@@ -86,6 +86,7 @@ module "runners" {
 
   enable_userdata       = each.value.runner_config.enable_userdata
   userdata_template     = each.value.runner_config.userdata_template
+  userdata_content      = each.value.runner_config.userdata_content
   userdata_pre_install  = each.value.runner_config.userdata_pre_install
   userdata_post_install = each.value.runner_config.userdata_post_install
   key_name              = var.key_name

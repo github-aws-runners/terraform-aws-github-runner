@@ -80,7 +80,37 @@ cleanup() {
   fi
 }
 
+set_job_hook() {
+  local job_hook_script="$1"
+  local job_hook_var_name="$2"
+
+  if [[ -f "$job_hook_script" ]]; then
+    echo "$job_hook_script exists - $job_hook_script"
+    echo "$job_hook_var_name=$job_hook_script" | tee -a /opt/actions-runner/.env
+  else
+    echo "$job_hook_script does not exist - $job_hook_script"
+  fi
+}
+
+create_job_start_hook_script() {
+  cat <<EOF > /opt/actions-runner/job_pre_start_hook.sh
+#!/bin/bash
+echo "Running job pre start hook"
+env
+echo ------
+ls -la /opt/actions-runner/_work/_temp/_github_workflow
+cat /opt/actions-runner/_work/_temp/_github_workflow/event.json
+
+EOF
+  chmod +x /opt/actions-runner/job_pre_start_hook.sh
+}
+
 trap 'cleanup $? $LINENO $BASH_LINENO' EXIT
+
+create_job_start_hook_script
+JOB_PRE_HOOK_SCRIPT=/opt/actions-runner/job_pre_start_hook.sh
+set_job_hook $JOB_PRE_HOOK_SCRIPT ACTIONS_RUNNER_HOOK_JOB_STARTED
+
 
 echo "Retrieving TOKEN from AWS API"
 token=$(curl -f -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 180" || true)
@@ -208,7 +238,6 @@ tee /opt/actions-runner/.setup_info <<EOL
   }
 ]
 EOL
-
 
 ## Start the runner
 echo "Starting runner after $(awk '{print int($1/3600)":"int(($1%3600)/60)":"int($1%60)}' /proc/uptime)"

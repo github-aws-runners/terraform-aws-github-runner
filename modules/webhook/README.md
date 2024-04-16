@@ -30,7 +30,6 @@ To compile all TypeScript/JavaScript sources in a single file [ncc](https://gith
 ```bash
 yarn run dist
 ```
-
 <!-- BEGIN_TF_DOCS -->
 ## Requirements
 

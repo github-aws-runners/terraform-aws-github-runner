@@ -1,6 +1,6 @@
 locals {
   environment = var.environment != null ? var.environment : "default"
-  aws_region  = "eu-west-1"
+  aws_region  = var.aws_region
 }
 
 resource "random_id" "random" {
@@ -79,7 +79,7 @@ module "runners" {
 
   # override delay of events in seconds
   delay_webhook_event   = 5
-  runners_maximum_count = 1
+  runners_maximum_count = 2
 
   # set up a fifo queue to remain order
   enable_fifo_build_queue = true
@@ -107,6 +107,13 @@ module "runners" {
         Values = ["*al2023*"]
       }
     ]
+  }
+
+  instance_termination_watcher = {
+    enable = true
+    enable_metric = {
+      spot_warning = true
+    }
   }
 
 }
