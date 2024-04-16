@@ -37,8 +37,8 @@
     "typescript": "^5.3.3"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.540.0",
-    "@aws-sdk/lib-storage": "^3.540.0",
+    "@aws-sdk/client-s3": "^3.554.0",
+    "@aws-sdk/lib-storage": "^3.554.0",
     "@aws-sdk/types": "^3.433.0",
     "@middy/core": "^4.7.0",
     "@terraform-aws-github-runner/aws-powertools-util": "*",
