@@ -1,5 +1,18 @@
 # Changelog
 
+## [5.9.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.8.0...v5.9.0) (2024-03-14)
+
+
+### Features
+
+* **runners:** add retry logic to default install and start script for dnf operations ([#3787](https://github.com/philips-labs/terraform-aws-github-runner/issues/3787)) ([6a8e1f0](https://github.com/philips-labs/terraform-aws-github-runner/commit/6a8e1f03e122f99006c488e544c6cf3b672fa304))
+* Update default runtime from nodejs18.x to nodejs20.x ([#3791](https://github.com/philips-labs/terraform-aws-github-runner/issues/3791)) ([11ace32](https://github.com/philips-labs/terraform-aws-github-runner/commit/11ace32b0a1283c65a19fe7035c0a9835f6cdeab))
+
+
+### Bug Fixes
+
+* **lambda:** bump the aws group in /lambdas with 6 updates ([#3803](https://github.com/philips-labs/terraform-aws-github-runner/issues/3803)) ([eedbf52](https://github.com/philips-labs/terraform-aws-github-runner/commit/eedbf525a9f1d377d8a1f9fb50d1842eb8947afe))
+
 ## [5.8.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.7.1...v5.8.0) (2024-02-27)
 
 

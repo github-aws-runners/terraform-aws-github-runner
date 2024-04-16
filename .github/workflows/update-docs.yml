@@ -16,10 +16,32 @@ jobs:
     name: Auto update terraform docs
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout with GITHUB Action token
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # ratchet:actions/checkout@v4
+      - uses: philips-software/app-token-action@9f5d57062c9f2beaffafaa9a34f66f824ead63a9 # v2.0.0
+        id: app
+        with:
+          app_id: ${{ vars.FOREST_PR_BOT_APP_ID }}
+          app_base64_private_key: ${{ secrets.FOREST_PR_BOT_APP_KEY_BASE64 }}
+          auth_type: installation
+          org: philips-labs
 
+      - name: Checkout with GITHUB Action token
+        uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633 # ratchet:actions/checkout@v4
+        with:
+          token: ${{ steps.app.outputs.token }}
+
+      # use an app to ensure CI is triggered
       - name: Generate TF docs
+        if: github.repository_owner == 'philips-labs'
+        uses: terraform-docs/gh-actions@f6d59f89a280fa0a3febf55ef68f146784b20ba0 # ratchet:terraform-docs/gh-actions@v1.0.0
+        with:
+          find-dir: .
+          git-commit-message: "docs: auto update terraform docs"
+          git-push: ${{ github.ref != 'refs/heads/main' || github.repository_owner != 'philips-labs' }}
+          git-push-user-name: forest-pr|bot
+          git-push-user-email: "forest-pr[bot]@users.noreply.github.com"
+
+      - name: Generate TF docs (forks)
+        if: github.repository_owner != 'philips-labs'
         uses: terraform-docs/gh-actions@f6d59f89a280fa0a3febf55ef68f146784b20ba0 # ratchet:terraform-docs/gh-actions@v1.0.0
         with:
           find-dir: .
@@ -29,7 +51,7 @@ jobs:
       # change docs via PR in case of locked main branch
       - name: Create Pull Request (main branch only)
         if: github.ref == 'refs/heads/main' && github.repository_owner == 'philips-labs'
-        uses: peter-evans/create-pull-request@b1ddad2c994a25fbc81a28b3ec0e368bb2021c50 # ratchet:peter-evans/create-pull-request@v6.0.0
+        uses: peter-evans/create-pull-request@70a41aba780001da0a30141984ae2a0c95d8704e # ratchet:peter-evans/create-pull-request@v6.0.2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: "docs: auto update terraform docs"
@@ -43,7 +65,7 @@ jobs:
     needs: [docs]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # ratchet:actions/checkout@v4
+      - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633 # ratchet:actions/checkout@v4
       - name: Configure Git Credentials
         run: |
           git config user.name github-actions[bot]

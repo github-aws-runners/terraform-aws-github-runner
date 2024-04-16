@@ -246,7 +246,13 @@ variable "enable_userdata" {
 }
 
 variable "userdata_template" {
-  description = "Alternative user-data template, replacing the default template. By providing your own user_data you have to take care of installing all required software, including the action runner. Variables userdata_pre/post_install are ignored."
+  description = "Alternative user-data template file path, replacing the default template. By providing your own user_data you have to take care of installing all required software, including the action runner. Variables userdata_pre/post_install are ignored."
+  type        = string
+  default     = null
+}
+
+variable "userdata_content" {
+  description = "Alternative user-data content, replacing the templated one. By providing your own user_data you have to take care of installing all required software, including the action runner and registering the runner.  Be-aware configuration paramaters in SSM as well as tags are treated as internals. Changes will not trigger a breaking release."
   type        = string
   default     = null
 }
@@ -844,4 +850,37 @@ variable "runners_ssm_housekeeper" {
     })
   })
   default = { config = {} }
+}
+
+variable "metrics_namespace" {
+  description = "The namespace for the metrics created by the module. Merics will only be created if explicit enabled."
+  type        = string
+  default     = "GitHub Runners"
+}
+
+variable "instance_termination_watcher" {
+  description = <<-EOF
+    Configuration for the instance termination watcher. This feature is Beta, changes will not trigger a major release as long in beta.
+
+    `enable`: Enable or disable the spot termination watcher.
+    'enable_metrics': Enable or disable the metrics for the spot termination watcher.
+    `memory_size`: Memory size linit in MB of the lambda.
+    `s3_key`: S3 key for syncer lambda function. Required if using S3 bucket to specify lambdas.
+    `s3_object_version`: S3 object version for syncer lambda function. Useful if S3 versioning is enabled on source bucket.
+    `timeout`: Time out of the lambda in seconds.
+    `zip`: File location of the lambda zip file.
+  EOF
+
+  type = object({
+    enable = optional(bool, false)
+    enable_metric = optional(object({
+      spot_warning = optional(bool, false)
+    }))
+    memory_size       = optional(number, null)
+    s3_key            = optional(string, null)
+    s3_object_version = optional(string, null)
+    timeout           = optional(number, null)
+    zip               = optional(string, null)
+  })
+  default = {}
 }

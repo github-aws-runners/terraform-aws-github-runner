@@ -1,6 +1,6 @@
 locals {
   environment = var.environment != null ? var.environment : "multi-runner"
-  aws_region  = "eu-west-1"
+  aws_region  = var.aws_region
 
   # Load runner configurations from Yaml files
   multi_runner_config_files = {
@@ -94,6 +94,19 @@ module "runners" {
 
   # Enable debug logging for the lambda functions
   # log_level = "debug"
+
+  # Enable spot termination watcher
+  # spot_instance_termination_watcher = {
+  #   enable = true
+  # }
+
+  # Enable to track the spot instance termination warning
+  # instance_termination_watcher = {
+  #   enable         = true
+  #   enable_metric = {
+  #     spot_warning = true
+  #   }
+  # }
 }
 
 module "webhook_github_app" {

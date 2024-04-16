@@ -17,7 +17,7 @@ jobs:
       - uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
         with:
           node-version: 20
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # ratchet:actions/checkout@v4
+      - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633 # ratchet:actions/checkout@v4
       - name: Build dist
         working-directory: lambdas
         run: yarn install --frozen-lockfile && yarn run test && yarn dist
@@ -34,7 +34,7 @@ jobs:
         run: echo "name=${GITHUB_REF#refs/heads/}" >> $GITHUB_OUTPUT
       - name: Release
         id: release
-        uses: google-github-actions/release-please-action@cc61a07e2da466bebbc19b3a7dd01d6aecb20d1e # ratchet:google-github-actions/release-please-action@v3
+        uses: google-github-actions/release-please-action@a37ac6e4f6449ce8b3f7607e4d97d0146028dc0b # ratchet:google-github-actions/release-please-action@v3
         with:
           default-branch: ${{ steps.branch.outputs.name }}
           release-type: terraform-module

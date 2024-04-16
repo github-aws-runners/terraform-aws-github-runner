@@ -175,6 +175,11 @@ This tracing config generates timelines for following events:
 
 This feature has been disabled by default.
 
+### Multiple runner module in your AWS account
+
+The watcher will act on all spot termination notificatins and log all onses relevant to the runner module. Therefor we suggest to only deploy the watcher once. You can either deploy the watcher by enabling in one of your deployments or deploy the watcher as a stand alone module.
+
+
 ## Debugging
 
 In case the setup does not work as intended, trace the events through this sequence:
@@ -186,6 +191,38 @@ In case the setup does not work as intended, trace the events through this seque
 - Registered instances should show up in the Settings - Actions page of the repository or organization (depending on the installation mode).
 
 ## Experimental features
+
+### Termination watcher
+
+This feature is in early stage and therefore disabled by default.
+
+The termination watcher is currently watching for spot termination notifications. The module is only taken events into account for instances tagged with `ghr:environment` by default when deployment the module as part of one of the main modules (root or multi-runner). The module can also be deployed stand-alone, in that case the tag filter needs to be tunned.
+
+- Logs: The module will log all termination notifications. For each warning it will look up instance details and log the environment, instance type and time the instance is running. As well some other details.
+- Metrics: Metrics are disabled by default, this to avoid costs. Once enabled a metric will be created for each warning with at least dimensions for the environment and instance type. THe metric name space can be configured via the variables. The metric name used is `SpotInterruptionWarning`.
+
+#### Log example
+
+Below an example of the the log messages created.
+
+```
+{
+    "level": "INFO",
+    "message": "Received spot notification warning:",
+    "environment": "default",
+    "instanceId": "i-0039b8826b3dcea55",
+    "instanceType": "c5.large",
+    "instanceLaunchTime": "2024-03-15T08:10:34.000Z",
+    "instanceRunningTimeInSeconds": 68,
+    "tags": [
+        {
+            "Key": "ghr:environment",
+            "Value": "default"
+        }
+        ... all tags ...
+    ]
+}
+```
 
 ### Queue to publish workflow job events
 

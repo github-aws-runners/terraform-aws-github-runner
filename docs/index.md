@@ -64,6 +64,11 @@ The control plane (scale up lambda) will store the runner registration configura
 
 The AMI cleaner is a lambda that will clean up AMIs that are older than a configurable amount of days. This is useful when using the AMI builder to create AMIs. The cleaner will also check which AMIs are used the latest version of the launch template. And you can provide SSM config paths pointing to AMI IDs. The cleaner will not delete these AMIs. The AMI cleaner is opt in, it will not be created by default.
 
+### Instance Termination Watcher
+
+> This feature is Beta, changes will not trigger a major release as long in beta.
+
+The Instance Termination Watcher is creating log and optional metrics for termination of instances. Currently only spot termination warnings are watched. See [configuration](configuration/) for more details. 
 
 ### Security
 

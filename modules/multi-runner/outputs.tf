@@ -51,3 +51,11 @@ output "queues" {
     webhook_workflow_job_queue = try(aws_sqs_queue.webhook_events_workflow_job_queue[*].arn, "")
   }
 }
+
+output "instance_termination_watcher" {
+  value = var.instance_termination_watcher.enable ? {
+    lambda           = module.instance_termination_watcher[0].lambda.function
+    lambda_log_group = module.instance_termination_watcher[0].lambda.log_group
+    lambda_role      = module.instance_termination_watcher[0].lambda.role
+  } : null
+}
