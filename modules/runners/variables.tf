@@ -288,7 +288,7 @@ variable "runner_run_as" {
 }
 
 variable "runners_maximum_count" {
-  description = "The maximum number of runners that will be created."
+  description = "The maximum number of runners that will be created. Setting the variable to `-1` desiables the maximum check."
   type        = number
   default     = 3
 }
