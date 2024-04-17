@@ -1,5 +1,22 @@
 # Changelog
 
+## [5.10.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.9.0...v5.10.0) (2024-04-17)
+
+
+### Features
+
+* add spot termination watcher (beta) ([#3789](https://github.com/philips-labs/terraform-aws-github-runner/issues/3789)) ([b2dc794](https://github.com/philips-labs/terraform-aws-github-runner/commit/b2dc794f08c932470dae846dad0e0a5f33a68cc4))
+* allow caller to provide custom userdata ([#3798](https://github.com/philips-labs/terraform-aws-github-runner/issues/3798)) ([ac49daf](https://github.com/philips-labs/terraform-aws-github-runner/commit/ac49daf4afb14b6710d2d652bc2c0f51fc2af98f))
+* Allow to disable runner max scaling check ([#3849](https://github.com/philips-labs/terraform-aws-github-runner/issues/3849)) ([e05a043](https://github.com/philips-labs/terraform-aws-github-runner/commit/e05a043b7354f42f391a1b5319bc850d4e8b2c02))
+
+
+### Bug Fixes
+
+* **lambda:** bump axios from 1.6.7 to 1.6.8 in /lambdas ([#3814](https://github.com/philips-labs/terraform-aws-github-runner/issues/3814)) ([513b22f](https://github.com/philips-labs/terraform-aws-github-runner/commit/513b22f6291d9437aae41367098096ca6377547b))
+* **lambda:** bump the aws group in /lambdas with 5 updates ([#3834](https://github.com/philips-labs/terraform-aws-github-runner/issues/3834)) ([e7e56ea](https://github.com/philips-labs/terraform-aws-github-runner/commit/e7e56ea9466feedec46c41f0834ebfd05e6f512f))
+* **lambda:** bump the aws group in /lambdas with 5 updates ([#3846](https://github.com/philips-labs/terraform-aws-github-runner/issues/3846)) ([9303a10](https://github.com/philips-labs/terraform-aws-github-runner/commit/9303a108dfd12ff0c63e7aeb55aa814c7f14619c))
+* **lambda:** bump the aws group in /lambdas with 6 updates ([#3818](https://github.com/philips-labs/terraform-aws-github-runner/issues/3818)) ([9a9031e](https://github.com/philips-labs/terraform-aws-github-runner/commit/9a9031ead20546f6a3b939435a801e5aeb8264b8))
+
 ## [5.9.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.8.0...v5.9.0) (2024-03-14)
 
 
