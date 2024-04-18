@@ -1,4 +1,5 @@
 import { Octokit } from '@octokit/rest';
+import { GetResponseDataTypeFromEndpointMethod } from '@octokit/types';
 import { createChildLogger } from '@terraform-aws-github-runner/aws-powertools-util';
 import yn from 'yn';
 
@@ -6,8 +7,11 @@ import { bootTimeExceeded, listEC2Runners } from '../aws/runners';
 import { RunnerList } from '../aws/runners.d';
 import { createGithubAppAuth, createGithubInstallationAuth, createOctoClient } from '../gh-auth/gh-auth';
 import { createRunners } from '../scale-runners/scale-up';
+import { RunnerType } from '../aws/runners.d';
 
 const logger = createChildLogger('pool');
+
+type Repository = GetResponseDataTypeFromEndpointMethod<Octokit['repos']['get']>;
 
 export interface PoolEvent {
   poolSize: number;
@@ -16,6 +20,13 @@ export interface PoolEvent {
 interface RunnerStatus {
   busy: boolean;
   status: string;
+}
+
+function canRunJob(workflowJobLabels: string[], runnerLabels: string[]): boolean {
+  runnerLabels = runnerLabels.map((label) => label.toLowerCase());
+  const matchLabels = workflowJobLabels.every((wl) => runnerLabels.includes(wl.toLowerCase()));
+  const match = workflowJobLabels.length === 0 ? !matchLabels : matchLabels;
+  return match;
 }
 
 export async function adjust(event: PoolEvent): Promise<void> {
@@ -36,7 +47,7 @@ export async function adjust(event: PoolEvent): Promise<void> {
   const launchTemplateName = process.env.LAUNCH_TEMPLATE_NAME;
   const instanceMaxSpotPrice = process.env.INSTANCE_MAX_SPOT_PRICE;
   const instanceAllocationStrategy = process.env.INSTANCE_ALLOCATION_STRATEGY || 'lowest-price'; // same as AWS default
-  const runnerOwner = process.env.RUNNER_OWNER;
+  const runnerOwners = process.env.RUNNER_OWNER.split(',');
   const amiIdSsmParameterName = process.env.AMI_ID_SSM_PARAMETER_NAME;
   const tracingEnabled = yn(process.env.POWERTOOLS_TRACE_ENABLED, { default: false });
   const onDemandFailoverOnError = process.env.ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS
@@ -48,63 +59,123 @@ export async function adjust(event: PoolEvent): Promise<void> {
     ghesApiUrl = `${ghesBaseUrl}/api/v3`;
   }
 
-  const installationId = await getInstallationId(ghesApiUrl, runnerOwner);
-  const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl);
-  const githubInstallationClient = await createOctoClient(ghAuth.token, ghesApiUrl);
+  for (const runnerOwner of runnerOwners) {
+    logger.info(`Checking ${runnerOwner}`);
 
-  // Get statusses of runners registed in GitHub
-  const runnerStatusses = await getGitHubRegisteredRunnnerStatusses(
-    githubInstallationClient,
-    runnerOwner,
-    runnerNamePrefix,
-  );
+    const [owner, repo] = runnerOwner.split('/');
+    const runnerType = repo === undefined ? 'Org' : 'Repo';
 
-  // Look up the managed ec2 runners in AWS, but running does not mean idle
-  const ec2runners = await listEC2Runners({
-    environment,
-    runnerOwner,
-    runnerType: 'Org',
-    statuses: ['running'],
-  });
+    const installationId = await getInstallationId(ghesApiUrl, owner);
+    const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl);
+    const githubInstallationClient = await createOctoClient(ghAuth.token, ghesApiUrl);
 
-  const numberOfRunnersInPool = calculatePooSize(ec2runners, runnerStatusses);
-  const topUp = event.poolSize - numberOfRunnersInPool;
-
-  if (topUp > 0) {
-    logger.info(`The pool will be topped up with ${topUp} runners.`);
-    await createRunners(
-      {
-        ephemeral,
-        enableJitConfig,
-        ghesBaseUrl,
-        runnerLabels,
-        runnerGroup,
-        runnerOwner,
-        runnerNamePrefix,
-        runnerType: 'Org',
-        disableAutoUpdate: disableAutoUpdate,
-        ssmTokenPath,
-        ssmConfigPath,
-      },
-      {
-        ec2instanceCriteria: {
-          instanceTypes,
-          targetCapacityType: instanceTargetTargetCapacityType,
-          maxSpotPrice: instanceMaxSpotPrice,
-          instanceAllocationStrategy: instanceAllocationStrategy,
-        },
-        environment,
-        launchTemplateName,
-        subnets,
-        numberOfRunners: topUp,
-        amiIdSsmParameterName,
-        tracingEnabled,
-        onDemandFailoverOnError,
-      },
+    // Get statusses of runners registed in GitHub
+    const runnerStatusses = await getGitHubRegisteredRunnnerStatusses(
       githubInstallationClient,
+      runnerOwner,
+      runnerType,
+      runnerNamePrefix,
     );
-  } else {
-    logger.info(`Pool will not be topped up. Found ${numberOfRunnersInPool} managed idle runners.`);
+
+    // Look up the managed ec2 runners in AWS, but running does not mean idle
+    const ec2runners = await listEC2Runners({
+      environment,
+      runnerOwner,
+      runnerType,
+      statuses: ['running'],
+    });
+
+    const numberOfRunnersInPool = calculatePooSize(ec2runners, runnerStatusses);
+    let topUp = 0;
+    if (event.poolSize >= 0) {
+      topUp = event.poolSize - numberOfRunnersInPool;
+    } else if (event.poolSize === -1) {
+      logger.info('Checking for queued jobs to determine pool size');
+      let repos;
+      if (runnerType === 'Repo') {
+        repos = [repo];
+      } else {
+        // @ts-ignore
+        // The types normalized by paginate are not correct because they only flatten .data,
+        // while in case of listReposAccessibleToInstallation they should normalize .repositories.
+        const reposAccessibleToInstallation = (await githubInstallationClient.paginate(
+          githubInstallationClient.apps.listReposAccessibleToInstallation,
+          {
+            per_page: 100,
+          },
+        )) as Repository[];
+        repos = reposAccessibleToInstallation.filter((repo) => repo.owner.login === owner).map((repo) => repo.name);
+      }
+      const queuedWorkflowRuns = [];
+      for (const repo of repos) {
+        const workflowRuns = await githubInstallationClient.paginate(
+          githubInstallationClient.actions.listWorkflowRunsForRepo,
+          {
+            owner,
+            repo,
+            status: 'queued',
+            per_page: 100,
+          },
+        );
+        queuedWorkflowRuns.push(...workflowRuns);
+      }
+      const queuedJobs = [];
+      for (const workflowRun of queuedWorkflowRuns) {
+        const jobs = await githubInstallationClient.paginate(
+          githubInstallationClient.actions.listJobsForWorkflowRunAttempt,
+          {
+            owner: workflowRun.repository.owner.login,
+            repo: workflowRun.repository.name,
+            run_id: workflowRun.id,
+            attempt_number: workflowRun.run_attempt || 1,
+            per_page: 100,
+          },
+        );
+        queuedJobs.push(...jobs.filter((job) => job.status === 'queued'));
+      }
+      const numberOfQueuedJobs = queuedJobs.filter((job) => canRunJob(job.labels, runnerLabels.split(','))).length;
+      logger.info(`Found ${numberOfQueuedJobs} queued jobs`);
+      topUp = numberOfQueuedJobs - numberOfRunnersInPool;
+    } else {
+      logger.error(`Invalid pool size: ${event.poolSize}`);
+    }
+
+    if (topUp > 0) {
+      logger.info(`The pool will be topped up with ${topUp} runners.`);
+      await createRunners(
+        {
+          ephemeral,
+          enableJitConfig,
+          ghesBaseUrl,
+          runnerLabels,
+          runnerGroup,
+          runnerOwner,
+          runnerNamePrefix,
+          runnerType,
+          disableAutoUpdate: disableAutoUpdate,
+          ssmTokenPath,
+          ssmConfigPath,
+        },
+        {
+          ec2instanceCriteria: {
+            instanceTypes,
+            targetCapacityType: instanceTargetTargetCapacityType,
+            maxSpotPrice: instanceMaxSpotPrice,
+            instanceAllocationStrategy: instanceAllocationStrategy,
+          },
+          environment,
+          launchTemplateName,
+          subnets,
+          numberOfRunners: topUp,
+          amiIdSsmParameterName,
+          tracingEnabled,
+          onDemandFailoverOnError,
+        },
+        githubInstallationClient,
+      );
+    } else {
+      logger.info(`Pool will not be topped up. Found ${numberOfRunnersInPool} managed idle runners.`);
+    }
   }
 }
 
@@ -146,12 +217,23 @@ function calculatePooSize(ec2runners: RunnerList[], runnerStatus: Map<string, Ru
 async function getGitHubRegisteredRunnnerStatusses(
   ghClient: Octokit,
   runnerOwner: string,
+  runnerType: RunnerType,
   runnerNamePrefix: string,
 ): Promise<Map<string, RunnerStatus>> {
-  const runners = await ghClient.paginate(ghClient.actions.listSelfHostedRunnersForOrg, {
-    org: runnerOwner,
-    per_page: 100,
-  });
+  let runners;
+  if (runnerType === 'Repo') {
+    const [owner, repo] = runnerOwner.split('/');
+    runners = await ghClient.paginate(ghClient.actions.listSelfHostedRunnersForRepo, {
+      owner,
+      repo,
+      per_page: 100,
+    });
+  } else {
+    runners = await ghClient.paginate(ghClient.actions.listSelfHostedRunnersForOrg, {
+      org: runnerOwner,
+      per_page: 100,
+    });
+  }
   const runnerStatus = new Map<string, RunnerStatus>();
   for (const runner of runners) {
     runner.name = runnerNamePrefix ? runner.name.replace(runnerNamePrefix, '') : runner.name;
