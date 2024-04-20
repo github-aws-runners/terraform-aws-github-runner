@@ -266,6 +266,11 @@ describe('Test simple pool.', () => {
       await expect(await adjust({ poolSize: 2 })).resolves;
       expect(createRunners).not.toHaveBeenCalled();
     });
+
+    it('Should not top up if pool size is invalid.', async () => {
+      await expect(await adjust({ poolSize: -2 })).resolves;
+      expect(createRunners).not.toHaveBeenCalled();
+    });
   });
 
   describe('With GHES', () => {
@@ -368,6 +373,7 @@ describe('Test simple pool.', () => {
       await expect(await adjust({ poolSize: -1 })).resolves;
       expect(createRunners).not.toHaveBeenCalled();
     });
+
     // effective pool size is 8 (2 queued job with matching labels x 2 workflows x 2 accessible repositories)
     it('Should top up if there are more queued jobs with matching labels than idle runners.', async () => {
       mockOctokit.actions.listWorkflowRunsForRepo.mockImplementation(async ({ owner, repo }) => [
@@ -417,6 +423,46 @@ describe('Test simple pool.', () => {
       expect(createRunners).toHaveBeenCalledWith(
         expect.objectContaining({ runnerOwner, runnerType: 'Repo' }),
         expect.objectContaining({ numberOfRunners: 1 }),
+        expect.anything(),
+      );
+    });
+
+    it('Should top up the repository runners pool dynamically', async () => {
+      const runnerOwner = `${ORG}/my-repo-1`;
+      process.env.RUNNER_OWNER = runnerOwner;
+      mockOctokit.actions.listWorkflowRunsForRepo.mockImplementation(async ({ owner, repo }) => [
+        {
+          repository: {
+            owner: { login: owner },
+            name: repo,
+          },
+          id: 1,
+          attempt_number: 1,
+        },
+        {
+          repository: {
+            owner: { login: owner },
+            name: repo,
+          },
+          id: 2,
+          attempt_number: 1,
+        },
+      ]);
+      mockOctokit.actions.listJobsForWorkflowRunAttempt.mockImplementation(async () => [
+        {
+          status: 'queued',
+          labels: LABELS,
+        },
+        {
+          status: 'queued',
+          labels: LABELS,
+        },
+      ]);
+      await expect(await adjust({ poolSize: -1 })).resolves;
+      expect(createRunners).toHaveBeenCalledTimes(1);
+      expect(createRunners).toHaveBeenCalledWith(
+        expect.objectContaining({ runnerOwner, runnerType: 'Repo' }),
+        expect.objectContaining({ numberOfRunners: 2 }),
         expect.anything(),
       );
     });
