@@ -277,14 +277,18 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
   const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl);
   const githubInstallationClient = await createOctoClient(ghAuth.token, ghesApiUrl);
   if (!enableJobQueuedCheck || (await isJobQueued(githubInstallationClient, payload))) {
-    const currentRunners = await listEC2Runners({
-      environment,
-      runnerType,
-      runnerOwner,
-    });
-    logger.info(`Current runners: ${currentRunners.length} of ${maximumRunners}`);
+    let scaleUp = true;
+    if (maximumRunners !== -1) {
+      const currentRunners = await listEC2Runners({
+        environment,
+        runnerType,
+        runnerOwner,
+      });
+      logger.info(`Current runners: ${currentRunners.length} of ${maximumRunners}`);
+      scaleUp = currentRunners.length < maximumRunners;
+    }
 
-    if (currentRunners.length < maximumRunners) {
+    if (scaleUp) {
       logger.info(`Attempting to launch a new runner`);
 
       await createRunners(

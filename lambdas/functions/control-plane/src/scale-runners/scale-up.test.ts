@@ -241,6 +241,14 @@ describe('scaleUp with GHES', () => {
       expect(mockOctokit.actions.createRegistrationTokenForRepo).not.toBeCalled();
     });
 
+    it('does create a runner if maximum is set to -1', async () => {
+      process.env.RUNNERS_MAXIMUM_COUNT = '-1';
+      process.env.ENABLE_EPHEMERAL_RUNNERS = 'false';
+      await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
+      expect(listEC2Runners).not.toHaveBeenCalled();
+      expect(createRunner).toHaveBeenCalled();
+    });
+
     it('creates a token when maximum runners has not been reached', async () => {
       process.env.ENABLE_EPHEMERAL_RUNNERS = 'false';
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);

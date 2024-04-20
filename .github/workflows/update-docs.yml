@@ -51,7 +51,7 @@ jobs:
       # change docs via PR in case of locked main branch
       - name: Create Pull Request (main branch only)
         if: github.ref == 'refs/heads/main' && github.repository_owner == 'philips-labs'
-        uses: peter-evans/create-pull-request@70a41aba780001da0a30141984ae2a0c95d8704e # ratchet:peter-evans/create-pull-request@v6.0.2
+        uses: peter-evans/create-pull-request@c55203cfde3e5c11a452d352b4393e68b85b4533 # ratchet:peter-evans/create-pull-request@v6.0.3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: "docs: auto update terraform docs"

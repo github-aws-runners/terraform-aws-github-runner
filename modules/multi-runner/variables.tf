@@ -160,7 +160,7 @@ variable "multi_runner_config" {
         runner_group_name: "Name of the runner group."
         runner_name_prefix: "Prefix for the GitHub runner name."
         runner_run_as: "Run the GitHub actions agent as user."
-        runners_maximum_count: "The maximum number of runners that will be created."
+        runners_maximum_count: "The maximum number of runners that will be created. Setting the variable to `-1` desiables the maximum check."
         scale_down_schedule_expression: "Scheduler expression to check every x for scale down."
         scale_up_reserved_concurrent_executions: "Amount of reserved concurrent executions for the scale-up lambda function. A value of 0 disables lambda from being triggered and -1 removes any concurrency limitations."
         userdata_template: "Alternative user-data template, replacing the default template. By providing your own user_data you have to take care of installing all required software, including the action runner. Variables userdata_pre/post_install are ignored."
