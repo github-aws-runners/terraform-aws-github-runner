@@ -9,7 +9,7 @@ import { createRunners } from '../scale-runners/scale-up';
 import { adjust } from './pool';
 
 const mockOctokit = {
-  paginate: (f: any, o: any) => f(o),
+  paginate: (f: (arg0: unknown) => unknown[], o: unknown) => f(o),
   checks: { get: jest.fn() },
   actions: {
     createRegistrationTokenForOrg: jest.fn(),

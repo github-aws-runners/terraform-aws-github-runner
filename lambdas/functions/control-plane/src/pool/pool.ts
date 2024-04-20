@@ -69,6 +69,8 @@ export async function adjust(event: PoolEvent): Promise<void> {
     const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl);
     const githubInstallationClient = await createOctoClient(ghAuth.token, ghesApiUrl);
 
+    githubInstallationClient.paginate;
+
     // Get statusses of runners registed in GitHub
     const runnerStatusses = await getGitHubRegisteredRunnnerStatusses(
       githubInstallationClient,
@@ -95,9 +97,9 @@ export async function adjust(event: PoolEvent): Promise<void> {
       if (runnerType === 'Repo') {
         repos = [repo];
       } else {
-        // @ts-ignore
-        // The types normalized by paginate are not correct because they only flatten .data,
-        // while in case of listReposAccessibleToInstallation they should normalize .repositories.
+        // @ts-expect-error The types normalized by paginate are not correct,
+        // because they only flatten .data, while in case of listReposAccessibleToInstallation,
+        // they should flatten .repositories.
         const reposAccessibleToInstallation = (await githubInstallationClient.paginate(
           githubInstallationClient.apps.listReposAccessibleToInstallation,
           {
