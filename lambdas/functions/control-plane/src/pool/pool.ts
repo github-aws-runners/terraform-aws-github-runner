@@ -69,8 +69,6 @@ export async function adjust(event: PoolEvent): Promise<void> {
     const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl);
     const githubInstallationClient = await createOctoClient(ghAuth.token, ghesApiUrl);
 
-    githubInstallationClient.paginate;
-
     // Get statusses of runners registed in GitHub
     const runnerStatusses = await getGitHubRegisteredRunnnerStatusses(
       githubInstallationClient,

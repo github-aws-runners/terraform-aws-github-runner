@@ -268,6 +268,7 @@ describe('Test simple pool.', () => {
     });
 
     it('Should not top up if pool size is invalid.', async () => {
+      process.env.RUNNER_LABELS = undefined;
       await expect(await adjust({ poolSize: -2 })).resolves;
       expect(createRunners).not.toHaveBeenCalled();
     });
@@ -368,6 +369,10 @@ describe('Test simple pool.', () => {
         {
           status: 'queued',
           labels: [...LABELS, 'label3'],
+        },
+        {
+          status: 'queued',
+          labels: [],
         },
       ]);
       await expect(await adjust({ poolSize: -1 })).resolves;
