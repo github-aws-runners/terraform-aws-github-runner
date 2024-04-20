@@ -152,7 +152,7 @@ variable "multi_runner_config" {
         instance_types: "List of instance types for the action runner. Defaults are based on runner_os (al2023 for linux and Windows Server Core for win)."
         job_queue_retention_in_seconds: "The number of seconds the job is held in the queue before it is purged"
         minimum_running_time_in_minutes: "The time an ec2 action runner should be running at minimum before terminated if not busy."
-        pool_runner_owner: "The pool will deploy runners to the GitHub org ID, set this value to the org to which you want the runners deployed. Repo level is not supported."
+        pool_runner_owner: "The pool will deploy runners to the GitHub org/repo ID(s), set this value to the org/repo(s) to which you want the runners deployed. Separate the entries by a comma."
         runner_additional_security_group_ids: "List of additional security groups IDs to apply to the runner. If added outside the multi_runner_config block, the additional security group(s) will be applied to all runner configs. If added inside the multi_runner_config, the additional security group(s) will be applied to the individual runner."
         runner_as_root: "Run the action runner under the root user. Variable `runner_run_as` will be ignored."
         runner_boot_time_in_minutes: "The minimum time for an EC2 runner to boot and register as a runner."
@@ -177,7 +177,7 @@ variable "multi_runner_config" {
         idle_config: "List of time period that can be defined as cron expression to keep a minimum amount of runners active instead of scaling down to 0. By defining this list you can ensure that in time periods that match the cron expression within 5 seconds a runner is kept idle."
         runner_log_files: "(optional) Replaces the module default cloudwatch log config. See https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-Configuration-File-Details.html for details."
         block_device_mappings: "The EC2 instance block device configuration. Takes the following keys: `device_name`, `delete_on_termination`, `volume_type`, `volume_size`, `encrypted`, `iops`, `throughput`, `kms_key_id`, `snapshot_id`."
-        pool_config: "The configuration for updating the pool. The `pool_size` to adjust to by the events triggered by the `schedule_expression`. For example you can configure a cron expression for week days to adjust the pool to 10 and another expression for the weekend to adjust the pool to 1."
+        pool_config: "The configuration for updating the pool. The `pool_size` to adjust to by the events triggered by the `schedule_expression`. For example you can configure a cron expression for week days to adjust the pool to 10 and another expression for the weekend to adjust the pool to 1. Setting pool size to -1 will adjust the pool based on the number of queued jobs."
       }
       matcherConfig: {
         labelMatchers: "The list of list of labels supported by the runner configuration. `[[self-hosted, linux, x64, example]]`"

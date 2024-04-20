@@ -665,7 +665,7 @@ variable "pool_lambda_timeout" {
 }
 
 variable "pool_runner_owner" {
-  description = "The pool will deploy runners to the GitHub org ID, set this value to the org to which you want the runners deployed. Repo level is not supported."
+  description = "The pool will deploy runners to the GitHub org/repo ID(s), set this value to the org/repo(s) to which you want the runners deployed. Separate the entries by a comma."
   type        = string
   default     = null
 }
@@ -677,7 +677,7 @@ variable "pool_lambda_reserved_concurrent_executions" {
 }
 
 variable "pool_config" {
-  description = "The configuration for updating the pool. The `pool_size` to adjust to by the events triggered by the `schedule_expression`. For example you can configure a cron expression for weekdays to adjust the pool to 10 and another expression for the weekend to adjust the pool to 1."
+  description = "The configuration for updating the pool. The `pool_size` to adjust to by the events triggered by the `schedule_expression`. For example you can configure a cron expression for weekdays to adjust the pool to 10 and another expression for the weekend to adjust the pool to 1. Setting the pool size to -1 will adjust the pool based on the number of queued jobs."
   type = list(object({
     schedule_expression = string
     size                = number
