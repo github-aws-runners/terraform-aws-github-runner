@@ -48,7 +48,7 @@
     "@terraform-aws-github-runner/aws-ssm-util": "*",
     "axios": "^1.6.8",
     "cron-parser": "^4.8.1",
-    "typescript": "^5.3.3"
+    "typescript": "^5.4.5"
   },
   "nx": {
     "includedScripts": ["build","dist","format","format-check","start","watch","all"]
