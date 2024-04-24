@@ -1,5 +1,15 @@
 # Changelog
 
+## [5.10.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.10.0...v5.10.1) (2024-04-24)
+
+
+### Bug Fixes
+
+* Add missing webhook_events_workflow_job_queue_policy to multi-runner queue ([#3848](https://github.com/philips-labs/terraform-aws-github-runner/issues/3848)) ([a8cba4e](https://github.com/philips-labs/terraform-aws-github-runner/commit/a8cba4e3795c6105636530ede9360e3123c92c3a))
+* **lambda:** bump the aws group in /lambdas with 5 updates ([#3861](https://github.com/philips-labs/terraform-aws-github-runner/issues/3861)) ([6119354](https://github.com/philips-labs/terraform-aws-github-runner/commit/611935472f8551c103544bc074c7ae419b455528))
+* **lambda:** bump typescript from 5.3.3 to 5.4.5 in /lambdas ([#3863](https://github.com/philips-labs/terraform-aws-github-runner/issues/3863)) ([e3f3d77](https://github.com/philips-labs/terraform-aws-github-runner/commit/e3f3d779a8f66f2933da0600c6ef3de252fb440d))
+* webhook expects REPOSITORY_ALLOW_LIST env var ([#3856](https://github.com/philips-labs/terraform-aws-github-runner/issues/3856)) ([0006ab9](https://github.com/philips-labs/terraform-aws-github-runner/commit/0006ab9fb5880fb1daf31b3e1b8d218e7b86105b))
+
 ## [5.10.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.9.0...v5.10.0) (2024-04-17)
 
 
