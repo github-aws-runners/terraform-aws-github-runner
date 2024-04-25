@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.10.2](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.10.1...v5.10.2) (2024-04-25)
+
+
+### Bug Fixes
+
+* change log level for termination watcher if no match ([#3866](https://github.com/philips-labs/terraform-aws-github-runner/issues/3866)) ([649ad35](https://github.com/philips-labs/terraform-aws-github-runner/commit/649ad35b63f519739354b8bc801dff6c70d66f46))
+* update dependencies ([#3867](https://github.com/philips-labs/terraform-aws-github-runner/issues/3867)) ([85b5aac](https://github.com/philips-labs/terraform-aws-github-runner/commit/85b5aac73931cebdeb779a86118d7b5043286493))
+
 ## [5.10.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.10.0...v5.10.1) (2024-04-24)
 
 
