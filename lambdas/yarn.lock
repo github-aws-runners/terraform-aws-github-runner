@@ -97,6 +97,11 @@
   resolved "https://registry.yarnpkg.com/@aws-lambda-powertools/commons/-/commons-1.18.1.tgz#fcfdef39639105a7b2b5363e4bcade9d277f5468"
   integrity sha512-gFRgQ2GJDghKvf+fXvT0kQVftgOT05W+hCa7RkfZj6HSjVAO+9DZZeJL3JK1HcsLAjWRj7W9ra0/MqB3Abf+PQ==
 
+"@aws-lambda-powertools/commons@^2.1.0":
+  version "2.1.0"
+  resolved "https://registry.yarnpkg.com/@aws-lambda-powertools/commons/-/commons-2.1.0.tgz#9b1ced20f03933e787836fbf04d872df4d693e5c"
+  integrity sha512-pFIlGa2IreeQ8elvuWlqxp6q/R4Zx7EqzCAlj0yXg12XpQprF4BhuE3NpeF09MA/QkyCot5Hxu3kG95E35XETA==
+
 "@aws-lambda-powertools/logger@^1.17.0":
   version "1.18.1"
   resolved "https://registry.yarnpkg.com/@aws-lambda-powertools/logger/-/logger-1.18.1.tgz#6388ddbafca6b3f65277b7a364df45f426f5c592"
@@ -112,13 +117,13 @@
   dependencies:
     "@aws-lambda-powertools/commons" "^1.18.1"
 
-"@aws-lambda-powertools/tracer@^1.14.0":
-  version "1.18.1"
-  resolved "https://registry.yarnpkg.com/@aws-lambda-powertools/tracer/-/tracer-1.18.1.tgz#9a6c618abb195d0e2cc25b2cd36469f9d63317bd"
-  integrity sha512-bMLBtdEFNmLUR9RJvBULR6XJD0XopUhhS1mlpeQlm2BCPIN3gLbqAlJK8dMXyAw8GCpLpHaziCo2+7a/AIh7lA==
+"@aws-lambda-powertools/tracer@^2.1.0":
+  version "2.1.0"
+  resolved "https://registry.yarnpkg.com/@aws-lambda-powertools/tracer/-/tracer-2.1.0.tgz#64dd7ce77a554d55354c721bbda375a9aa9cec9a"
+  integrity sha512-xQrGPdqwi5BLlZTESFIf43T0YHRzc+NsO25pt/gDLZFEZUKJDr7j1HwpjiXWzxiCfrCt/lNurPW+DpWqlTpvAg==
   dependencies:
-    "@aws-lambda-powertools/commons" "^1.18.1"
-    aws-xray-sdk-core "^3.5.3"
+    "@aws-lambda-powertools/commons" "^2.1.0"
+    aws-xray-sdk-core "^3.6.0"
 
 "@aws-sdk/client-ec2@^3.557.0":
   version "3.562.0"
@@ -4003,7 +4008,7 @@ aws-sdk@^2.814.0:
     uuid "8.0.0"
     xml2js "0.6.2"
 
-aws-xray-sdk-core@^3.5.3:
+aws-xray-sdk-core@^3.6.0:
   version "3.6.0"
   resolved "https://registry.yarnpkg.com/aws-xray-sdk-core/-/aws-xray-sdk-core-3.6.0.tgz#a9144aeb327b1ffb826833bd542e966a374e96df"
   integrity sha512-+UnYmVEni9NNJvE6aFY1dbvMtFquXSYAj+HYfm+90icoGKYvvLD71R7PHyFFnYct5of4NFpEXJtUJrWMv8e4mQ==
