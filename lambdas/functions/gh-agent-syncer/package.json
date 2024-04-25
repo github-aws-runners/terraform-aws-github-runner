@@ -45,6 +45,14 @@
     "axios": "^1.6.8"
   },
   "nx": {
-    "includedScripts": ["build","dist","format","format-check","start","watch","all"]
+    "includedScripts": [
+      "build",
+      "dist",
+      "format",
+      "format-check",
+      "start",
+      "watch",
+      "all"
+    ]
   }
 }

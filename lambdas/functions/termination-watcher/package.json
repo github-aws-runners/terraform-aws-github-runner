@@ -42,6 +42,14 @@
     "typescript": "^5.4.5"
   },
   "nx": {
-    "includedScripts": ["build","dist","format","format-check","start","watch","all"]
+    "includedScripts": [
+      "build",
+      "dist",
+      "format",
+      "format-check",
+      "start",
+      "watch",
+      "all"
+    ]
   }
 }
