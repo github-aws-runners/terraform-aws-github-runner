@@ -16,6 +16,7 @@
     "all": "yarn build && yarn format && yarn lint && yarn test"
   },
   "devDependencies": {
+    "@octokit/rest": "^20.0.1",
     "@trivago/prettier-plugin-sort-imports": "^4.2.1",
     "@types/aws-lambda": "^8.10.137",
     "@types/jest": "^29.5.12",
@@ -40,19 +41,10 @@
     "@aws-sdk/lib-storage": "^3.556.0",
     "@aws-sdk/types": "^3.433.0",
     "@middy/core": "^4.7.0",
-    "@octokit/rest": "^20.0.1",
     "@terraform-aws-github-runner/aws-powertools-util": "*",
     "axios": "^1.6.8"
   },
   "nx": {
-    "includedScripts": [
-      "build",
-      "dist",
-      "format",
-      "format-check",
-      "start",
-      "watch",
-      "all"
-    ]
+    "includedScripts": ["build","dist","format","format-check","start","watch","all"]
   }
 }
