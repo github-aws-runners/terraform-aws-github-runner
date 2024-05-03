@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.10.3](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.10.2...v5.10.3) (2024-05-03)
+
+
+### Bug Fixes
+
+* revert depedency update / broken release 5.10.2 ([#3885](https://github.com/philips-labs/terraform-aws-github-runner/issues/3885)) ([7464f2b](https://github.com/philips-labs/terraform-aws-github-runner/commit/7464f2bbb401c9c1b07d252c2572a4a970468e95))
+
 ## [5.10.2](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.10.1...v5.10.2) (2024-04-25)
 
 
