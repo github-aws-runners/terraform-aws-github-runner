@@ -644,3 +644,9 @@ variable "instance_termination_watcher" {
   })
   default = {}
 }
+
+variable "lambda_tags" {
+  description = "Map of tags that will be added to all the lambda function resources. Note these are additional tags to the default tags."
+  type        = map(string)
+  default     = {}
+}

@@ -863,7 +863,7 @@ variable "instance_termination_watcher" {
     Configuration for the instance termination watcher. This feature is Beta, changes will not trigger a major release as long in beta.
 
     `enable`: Enable or disable the spot termination watcher.
-    'enable_metrics': Enable or disable the metrics for the spot termination watcher.
+    `enable_metrics`: Enable or disable the metrics for the spot termination watcher.
     `memory_size`: Memory size linit in MB of the lambda.
     `s3_key`: S3 key for syncer lambda function. Required if using S3 bucket to specify lambdas.
     `s3_object_version`: S3 object version for syncer lambda function. Useful if S3 versioning is enabled on source bucket.
@@ -883,4 +883,10 @@ variable "instance_termination_watcher" {
     zip               = optional(string, null)
   })
   default = {}
+}
+
+variable "lambda_tags" {
+  description = "Map of tags that will be added to all the lambda function resources. Note these are additional tags to the default tags."
+  type        = map(string)
+  default     = {}
 }

@@ -43,7 +43,7 @@ resource "aws_lambda_function" "webhook" {
     }
   }
 
-  tags = var.tags
+  tags = merge(var.tags, var.lambda_tags)
 
   dynamic "tracing_config" {
     for_each = var.tracing_config.mode != null ? [true] : []
