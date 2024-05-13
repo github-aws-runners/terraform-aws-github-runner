@@ -13,6 +13,7 @@ export interface ActionRequestMessage {
   installationId: number;
   queueId: string;
   queueFifo: boolean;
+  repoOwnerType: string;
 }
 
 export interface MatcherConfig {

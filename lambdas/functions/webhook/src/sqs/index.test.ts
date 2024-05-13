@@ -26,6 +26,7 @@ describe('Test sending message to SQS.', () => {
     repositoryOwner: 'owner',
     queueId: queueUrl,
     queueFifo: false,
+    repoOwnerType: 'Organization',
   };
 
   afterEach(() => {
