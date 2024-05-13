@@ -354,7 +354,6 @@ function validateRepoOwnerTypeIfOrgLevelEnabled(payload: ActionRequestMessage, e
       `organization and organization runners are enabled. This is not supported. Not scaling up for this event.`,
     );
   }
-
 }
 
 function addDelay(instances: string[]) {
