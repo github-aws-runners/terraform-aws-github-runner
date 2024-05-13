@@ -53,6 +53,7 @@ async function handleWorkflowJob(
           installationId: installationId,
           queueId: queue.id,
           queueFifo: queue.fifo,
+          repoOwnerType: body.repository.owner.type,
         });
         logger.info(`Successfully queued job for ${body.repository.full_name} to the queue ${queue.id}`);
         return { statusCode: 201 };
