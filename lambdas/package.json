@@ -21,8 +21,8 @@
     "@octokit/types": "^12.0.0"
   },
   "devDependencies": {
-    "@nx/eslint": "18.0.4",
-    "@nx/jest": "18.0.4",
+    "@nx/eslint": "18.3.4",
+    "@nx/jest": "18.3.4",
     "@nx/js": "^18.0.4",
     "@swc-node/register": "~1.8.0",
     "@swc/core": "~1.3.85",
