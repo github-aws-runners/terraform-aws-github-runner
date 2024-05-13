@@ -252,14 +252,7 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
     );
   }
 
-  if (enableOrgLevel && payload.repoOwnerType !== 'Organization') {
-    logger.warn(`Repository ${payload.repositoryOwner}/${payload.repositoryName} does not belong to a GitHub` +
-    `organization and organization runners are enabled. This is not supported. Not scaling up for this event.`);
-    throw Error(
-      `Repository ${payload.repositoryOwner}/${payload.repositoryName} does not belong to a GitHub` +
-    `organization and organization runners are enabled. This is not supported. Not scaling up for this event.`,
-    );
-  }
+  validateRepoOwnerTypeIfOrgLevelEnabled(payload, enableOrgLevel);
 
   const ephemeral = ephemeralEnabled && payload.eventType === 'workflow_job';
   const runnerType = enableOrgLevel ? 'Org' : 'Repo';
@@ -350,6 +343,18 @@ async function createStartRunnerConfig(
   } else {
     await createRegistrationTokenConfig(githubRunnerConfig, instances, ghClient);
   }
+}
+
+function validateRepoOwnerTypeIfOrgLevelEnabled(payload: ActionRequestMessage, enableOrgLevel: boolean) {
+  if (enableOrgLevel && payload.repoOwnerType !== 'Organization') {
+    logger.warn(`Repository ${payload.repositoryOwner}/${payload.repositoryName} does not belong to a GitHub` +
+      `organization and organization runners are enabled. This is not supported. Not scaling up for this event.`);
+    throw Error(
+      `Repository ${payload.repositoryOwner}/${payload.repositoryName} does not belong to a GitHub` +
+      `organization and organization runners are enabled. This is not supported. Not scaling up for this event.`,
+    );
+  }
+
 }
 
 function addDelay(instances: string[]) {
