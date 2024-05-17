@@ -25,7 +25,7 @@ jobs:
           org: philips-labs
 
       - name: Checkout with GITHUB Action token
-        uses: actions/checkout@1d96c772d19495a3b5c517cd2bc0cb401ea0529f # ratchet:actions/checkout@v4
+        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # ratchet:actions/checkout@v4
         with:
           token: ${{ steps.app.outputs.token }}
 
@@ -51,7 +51,7 @@ jobs:
       # change docs via PR in case of locked main branch
       - name: Create Pull Request (main branch only)
         if: github.ref == 'refs/heads/main' && github.repository_owner == 'philips-labs'
-        uses: peter-evans/create-pull-request@9153d834b60caba6d51c9b9510b087acf9f33f83 # ratchet:peter-evans/create-pull-request@v6.0.4
+        uses: peter-evans/create-pull-request@6d6857d36972b65feb161a90e484f2984215f83e # ratchet:peter-evans/create-pull-request@v6.0.5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: "docs: auto update terraform docs"
@@ -65,7 +65,7 @@ jobs:
     needs: [docs]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@1d96c772d19495a3b5c517cd2bc0cb401ea0529f # ratchet:actions/checkout@v4
+      - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # ratchet:actions/checkout@v4
       - name: Configure Git Credentials
         run: |
           git config user.name github-actions[bot]

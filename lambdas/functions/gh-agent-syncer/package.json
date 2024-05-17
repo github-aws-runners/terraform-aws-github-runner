@@ -16,13 +16,14 @@
     "all": "yarn build && yarn format && yarn lint && yarn test"
   },
   "devDependencies": {
+    "@octokit/rest": "^20.0.1",
     "@trivago/prettier-plugin-sort-imports": "^4.2.1",
     "@types/aws-lambda": "^8.10.137",
     "@types/jest": "^29.5.12",
     "@types/node": "^20.8.9",
     "@types/request": "^2.48.11",
     "@typescript-eslint/eslint-plugin": "^7.4.0",
-    "@typescript-eslint/parser": "^6.21.0",
+    "@typescript-eslint/parser": "^7.9.0",
     "@vercel/ncc": "^0.38.1",
     "aws-sdk-client-mock": "^3.0.0",
     "aws-sdk-client-mock-jest": "^3.0.0",
@@ -36,23 +37,14 @@
     "typescript": "^5.4.5"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.556.0",
-    "@aws-sdk/lib-storage": "^3.556.0",
+    "@aws-sdk/client-s3": "^3.575.0",
+    "@aws-sdk/lib-storage": "^3.575.0",
     "@aws-sdk/types": "^3.433.0",
     "@middy/core": "^4.7.0",
-    "@octokit/rest": "^20.0.1",
     "@terraform-aws-github-runner/aws-powertools-util": "*",
     "axios": "^1.6.8"
   },
   "nx": {
-    "includedScripts": [
-      "build",
-      "dist",
-      "format",
-      "format-check",
-      "start",
-      "watch",
-      "all"
-    ]
+    "includedScripts": ["build","dist","format","format-check","start","watch","all"]
   }
 }

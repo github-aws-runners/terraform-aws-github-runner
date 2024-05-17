@@ -1,5 +1,21 @@
 # Changelog
 
+## [5.10.4](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.10.3...v5.10.4) (2024-05-06)
+
+
+### Bug Fixes
+
+* **lambda:** bump ejs from 3.1.9 to 3.1.10 in /lambdas ([#3887](https://github.com/philips-labs/terraform-aws-github-runner/issues/3887)) ([4cca21f](https://github.com/philips-labs/terraform-aws-github-runner/commit/4cca21fa5c44316e2ef2574563b24218f8ae090d))
+* **lambda:** bump the aws group across 1 directory with 6 updates ([#3890](https://github.com/philips-labs/terraform-aws-github-runner/issues/3890)) ([d1cd712](https://github.com/philips-labs/terraform-aws-github-runner/commit/d1cd712204b678a878f22eea75e540cb28d6a3ad))
+* Typo in env vars for scale-up lambda ([#3891](https://github.com/philips-labs/terraform-aws-github-runner/issues/3891)) ([f4ecf46](https://github.com/philips-labs/terraform-aws-github-runner/commit/f4ecf466014d7d51aed238aa851290908d3c7972))
+
+## [5.10.3](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.10.2...v5.10.3) (2024-05-03)
+
+
+### Bug Fixes
+
+* revert depedency update / broken release 5.10.2 ([#3885](https://github.com/philips-labs/terraform-aws-github-runner/issues/3885)) ([7464f2b](https://github.com/philips-labs/terraform-aws-github-runner/commit/7464f2bbb401c9c1b07d252c2572a4a970468e95))
+
 ## [5.10.2](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.10.1...v5.10.2) (2024-04-25)
 
 
