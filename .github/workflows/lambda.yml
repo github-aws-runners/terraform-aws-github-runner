@@ -19,7 +19,7 @@ jobs:
         working-directory: ./lambdas
 
     steps:
-      - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633 # v3.2.0
+      - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v3.2.0
       - name: Install dependencies
         run: yarn install --frozen-lockfile
       - name: Run prettier
@@ -32,7 +32,7 @@ jobs:
       - name: Build distribution
         run: yarn build
       - name: Upload coverage report
-        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v31.2
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v31.2
         if: ${{ failure() }}
         with:
           name: coverage-reports

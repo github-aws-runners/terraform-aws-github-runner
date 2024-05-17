@@ -49,7 +49,7 @@ async function handle(event: SpotInterruptionWarning<SpotTerminationDetail>, con
       );
     }
   } else {
-    logger.warn(
+    logger.debug(
       `Received spot termination notification warning for instance ${event.detail['instance-id']} but ` +
         `details are not available or instance not matching the tag fileter (${config.tagFilters}).`,
     );
