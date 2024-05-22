@@ -1,5 +1,20 @@
 # Changelog
 
+## [5.11.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.10.4...v5.11.0) (2024-05-22)
+
+
+### Features
+
+* add variable to configure ebs optimization for runner instances ([479b779](https://github.com/philips-labs/terraform-aws-github-runner/commit/479b779a71c77a62dd28d247f8a74cb75ce083f0))
+* add variable to configure ebs optimization for runner instances ([#3901](https://github.com/philips-labs/terraform-aws-github-runner/issues/3901)) ([479b779](https://github.com/philips-labs/terraform-aws-github-runner/commit/479b779a71c77a62dd28d247f8a74cb75ce083f0))
+* Restrict instance SSM permissions ([#3918](https://github.com/philips-labs/terraform-aws-github-runner/issues/3918)) ([9399cf2](https://github.com/philips-labs/terraform-aws-github-runner/commit/9399cf29bec963dfa305f367f37c098a76130371))
+
+
+### Bug Fixes
+
+* adding missing permissions to boundaries ([#3873](https://github.com/philips-labs/terraform-aws-github-runner/issues/3873)) ([93e8d27](https://github.com/philips-labs/terraform-aws-github-runner/commit/93e8d2746b647539212dbc65887ec748a1d734b7))
+* **lambda:** bump the aws group across 1 directory with 6 updates ([#3907](https://github.com/philips-labs/terraform-aws-github-runner/issues/3907)) ([50dda9a](https://github.com/philips-labs/terraform-aws-github-runner/commit/50dda9a465229bdb8d106e7ebc5d5b1de115a286))
+
 ## [5.10.4](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.10.3...v5.10.4) (2024-05-06)
 
 
