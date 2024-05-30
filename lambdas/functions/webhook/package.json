@@ -23,7 +23,7 @@
     "@types/jest": "^29.5.12",
     "@types/node": "^20.8.9",
     "@typescript-eslint/eslint-plugin": "^7.4.0",
-    "@typescript-eslint/parser": "^6.21.0",
+    "@typescript-eslint/parser": "^7.9.0",
     "@vercel/ncc": "0.38.1",
     "body-parser": "^1.20.2",
     "eslint": "^8.56.0",
@@ -38,7 +38,7 @@
     "typescript": "^5.4.5"
   },
   "dependencies": {
-    "@aws-sdk/client-sqs": "^3.568.0",
+    "@aws-sdk/client-sqs": "^3.575.0",
     "@middy/core": "^4.7.0",
     "@octokit/rest": "^20.0.1",
     "@octokit/types": "^12.5.0",

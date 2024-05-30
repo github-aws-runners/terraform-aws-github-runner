@@ -288,6 +288,7 @@ module "runners" {
   pool_lambda_reserved_concurrent_executions = var.pool_lambda_reserved_concurrent_executions
 
   ssm_housekeeper = var.runners_ssm_housekeeper
+  ebs_optimized   = var.runners_ebs_optimized
 }
 
 module "runner_binaries" {

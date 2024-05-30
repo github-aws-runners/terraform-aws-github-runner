@@ -884,3 +884,9 @@ variable "instance_termination_watcher" {
   })
   default = {}
 }
+
+variable "runners_ebs_optimized" {
+  description = "Enable EBS optimization for the runner instances."
+  type        = bool
+  default     = false
+}
