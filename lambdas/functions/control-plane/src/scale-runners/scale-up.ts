@@ -352,7 +352,6 @@ async function createStartRunnerConfig(
 
 function isValidRepoOwnerTypeIfOrgLevelEnabled(payload: ActionRequestMessage, enableOrgLevel: boolean) : boolean {
   return !(enableOrgLevel && payload.repoOwnerType !== 'Organization');
-
 }
 
 function addDelay(instances: string[]) {
