@@ -56,15 +56,6 @@ const TEST_DATA: scaleUpModule.ActionRequestMessage = {
   repoOwnerType: "Organization",
 };
 
-const TEST_DATA_USER_REPO: scaleUpModule.ActionRequestMessage = {
-  id: 1,
-  eventType: 'workflow_job',
-  repositoryName: 'hello-world',
-  repositoryOwner: 'Octocat',
-  installationId: 2,
-  repoOwnerType: "User",
-};
-
 // installationId 0 means no installationId is set.
 const TEST_DATA_WITH_ZERO_INSTALL_ID: scaleUpModule.ActionRequestMessage = {
   id: 3,
@@ -316,9 +307,12 @@ describe('scaleUp with GHES', () => {
       expect(mockOctokit.paginate).toHaveBeenCalledTimes(1);
     });
 
-    it('Throws error if it is a User repo and org level runners is enabled', () => {
+    it('Discards event if it is a User repo and org level runners is enabled', async () => {
       process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
-      expect(() => scaleUpModule.scaleUp('aws:sqs', TEST_DATA_USER_REPO)).rejects.toBeInstanceOf(Error);
+      const USER_REPO_TEST_DATA = { ...TEST_DATA };
+      USER_REPO_TEST_DATA.repoOwnerType = 'User';
+      await scaleUpModule.scaleUp('aws:sqs', USER_REPO_TEST_DATA);
+      expect(createRunner).not.toHaveBeenCalled();
     });
 
     it('create SSM parameter for runner group id if it doesnt exist', async () => {
