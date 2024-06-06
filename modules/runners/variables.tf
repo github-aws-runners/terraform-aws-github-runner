@@ -661,3 +661,13 @@ variable "enable_on_demand_failover_for_errors" {
   type        = list(string)
   default     = []
 }
+
+variable "enclave_support_options" {
+  description = "Enable Enclave Support for EC2 Instances."
+  type = object({
+    enabled = bool
+  })
+  default = {
+    enabled = false
+  }
+}
