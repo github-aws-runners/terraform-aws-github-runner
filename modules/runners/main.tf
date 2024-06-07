@@ -142,8 +142,11 @@ resource "aws_launch_template" "runner" {
   key_name                             = var.key_name
   ebs_optimized                        = var.ebs_optimized
 
-  enclave_options {
-    enabled = var.enclave_options.enabled
+  dynamic "enclave_options" {
+    for_each = var.enclave_options != null && var.enclave_options.enabled ? [var.enclave_options] : []
+    content {
+      enabled = enclave_options.value.enabled
+    }
   }
 
   vpc_security_group_ids = !var.associate_public_ipv4_address ? compact(concat(
