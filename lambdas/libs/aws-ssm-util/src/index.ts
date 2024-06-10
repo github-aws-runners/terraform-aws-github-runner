@@ -15,7 +15,7 @@ export async function putParameter(
   secure: boolean,
   options: { tags?: Tag[] } = {},
 ): Promise<void> {
-  ssmClient = getTracedAWSV3Client(new SSMClient({ region: process.env.AWS_REGION }));
+  ssmClient ??= getTracedAWSV3Client(new SSMClient({ region: process.env.AWS_REGION }));
   await ssmClient.send(
     new PutParameterCommand({
       Name: parameter_name,
