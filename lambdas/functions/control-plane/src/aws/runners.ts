@@ -17,6 +17,7 @@ import ScaleError from './../scale-runners/ScaleError';
 import * as Runners from './runners.d';
 
 const logger = createChildLogger('runners');
+const ec2 = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
 
 interface Ec2Filter {
   Name: string;
@@ -57,7 +58,6 @@ function constructFilters(filters?: Runners.ListRunnerFilters): Ec2Filter[][] {
 }
 
 async function getRunners(ec2Filters: Ec2Filter[]): Promise<Runners.RunnerList[]> {
-  const ec2 = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
   const runners: Runners.RunnerList[] = [];
   let nextToken;
   let hasNext = true;
@@ -94,7 +94,6 @@ function getRunnerInfo(runningInstances: DescribeInstancesResult) {
 }
 
 export async function terminateRunner(instanceId: string): Promise<void> {
-  const ec2 = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
   await ec2.send(new TerminateInstancesCommand({ InstanceIds: [instanceId] }));
   logger.info(`Runner ${instanceId} has been terminated.`);
 }
@@ -127,10 +126,9 @@ export async function createRunner(runnerParameters: Runners.RunnerInputParamete
     },
   });
 
-  const ec2Client = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
   const amiIdOverride = await getAmiIdOverride(runnerParameters);
 
-  const fleet: CreateFleetResult = await createInstances(runnerParameters, amiIdOverride, ec2Client);
+  const fleet: CreateFleetResult = await createInstances(runnerParameters, amiIdOverride, ec2);
 
   const instances: string[] = await processFleetResult(fleet, runnerParameters);
 

@@ -9,10 +9,10 @@ import { Config } from './ConfigResolver';
 import { MetricUnits } from '@aws-lambda-powertools/metrics';
 
 const logger = createChildLogger('termination-warning');
+const ec2 = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
 
 async function handle(event: SpotInterruptionWarning<SpotTerminationDetail>, config: Config): Promise<void> {
   logger.debug('Received spot notification warning:', { event });
-  const ec2 = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
   const instance =
     (await ec2.send(new DescribeInstancesCommand({ InstanceIds: [event.detail['instance-id']] }))).Reservations?.[0]
       .Instances?.[0] ?? null;

@@ -1,12 +1,13 @@
 import { DeleteParameterCommand, GetParametersByPathCommand, SSMClient } from '@aws-sdk/client-ssm';
-import { logger } from '@terraform-aws-github-runner/aws-powertools-util';
-import { getTracedAWSV3Client } from '@terraform-aws-github-runner/aws-powertools-util';
+import { getTracedAWSV3Client, logger } from '@terraform-aws-github-runner/aws-powertools-util';
 
 export interface SSMCleanupOptions {
   dryRun: boolean;
   minimumDaysOld: number;
   tokenPath: string;
 }
+
+const client = getTracedAWSV3Client(new SSMClient({ region: process.env.AWS_REGION }));
 
 function validateOptions(options: SSMCleanupOptions): void {
   const errorMessages: string[] = [];
@@ -26,7 +27,6 @@ export async function cleanSSMTokens(options: SSMCleanupOptions): Promise<void> 
   logger.debug('Cleaning with options', { options });
   validateOptions(options);
 
-  const client = getTracedAWSV3Client(new SSMClient({ region: process.env.AWS_REGION }));
   const parameters = await client.send(new GetParametersByPathCommand({ Path: options.tokenPath }));
   while (parameters.NextToken) {
     const nextParameters = await client.send(

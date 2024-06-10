@@ -13,6 +13,8 @@ import { createChildLogger } from '@terraform-aws-github-runner/aws-powertools-u
 import { getTracedAWSV3Client } from '@terraform-aws-github-runner/aws-powertools-util';
 
 const logger = createChildLogger('ami');
+const ec2Client = getTracedAWSV3Client(new EC2Client({}));
+const ssmClient = getTracedAWSV3Client(new SSMClient({}));
 
 export interface AmiCleanupOptions {
   minimumDaysOld?: number;
@@ -83,7 +85,6 @@ async function getAmisNotInUse(options: AmiCleanupOptions) {
   const amiIdsInSSM = await getAmisReferedInSSM(options);
   const amiIdsInTemplates = await getAmiInLatestTemplates(options);
 
-  const ec2Client = getTracedAWSV3Client(new EC2Client({}));
   logger.debug('Getting all AMIs from ec2 with filters', { filters: options.amiFilters });
   const amiEc2 = await ec2Client.send(
     new DescribeImagesCommand({
@@ -134,7 +135,6 @@ async function deleteAmi(amiDetails: Image, options: AmiCleanupOptionsInternal):
 
   try {
     logger.info(`deleting ami ${amiDetails.Name || amiDetails.ImageId} created at ${amiDetails.CreationDate}`);
-    const ec2Client = getTracedAWSV3Client(new EC2Client({}));
     await ec2Client.send(new DeregisterImageCommand({ ImageId: amiDetails.ImageId, DryRun: options.dryRun }));
     await deleteSnapshot(options, amiDetails, ec2Client);
   } catch (error) {
@@ -159,7 +159,6 @@ async function deleteSnapshot(options: AmiCleanupOptions, amiDetails: Image, ec2
 }
 
 async function getAmiInLatestTemplates(options: AmiCleanupOptions): Promise<(string | undefined)[]> {
-  const ec2Client = getTracedAWSV3Client(new EC2Client({}));
   const launnchTemplates = await ec2Client.send(
     new DescribeLaunchTemplatesCommand({
       LaunchTemplateNames: options.launchTemplateNames,
@@ -189,7 +188,6 @@ async function getAmisReferedInSSM(options: AmiCleanupOptions): Promise<(string 
     return [];
   }
 
-  const ssmClient = getTracedAWSV3Client(new SSMClient({}));
   const ssmParams = await ssmClient.send(
     new DescribeParametersCommand({
       ParameterFilters: [

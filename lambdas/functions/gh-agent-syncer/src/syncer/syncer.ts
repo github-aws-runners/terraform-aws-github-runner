@@ -9,6 +9,8 @@ import { Stream } from 'stream';
 const versionKey = 'name';
 
 const logger = createChildLogger('syncer.ts');
+const githubClient = new Octokit();
+const s3 = getTracedAWSV3Client(new S3Client({}));
 
 interface CacheObject {
   bucket: string;
@@ -36,7 +38,6 @@ interface ReleaseAsset {
 }
 
 async function getReleaseAsset(runnerOs = 'linux', runnerArch = 'x64'): Promise<ReleaseAsset | undefined> {
-  const githubClient = new Octokit();
   const latestRelease = await githubClient.repos.getLatestRelease({
     owner: 'actions',
     repo: 'runner',
@@ -85,8 +86,6 @@ async function uploadToS3(
 }
 
 export async function sync(): Promise<void> {
-  const s3 = getTracedAWSV3Client(new S3Client({}));
-
   const runnerOs = process.env.GITHUB_RUNNER_OS || 'linux';
   const runnerArch = process.env.GITHUB_RUNNER_ARCHITECTURE || 'x64';
 
