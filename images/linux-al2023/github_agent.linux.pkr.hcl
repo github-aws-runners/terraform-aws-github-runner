@@ -143,7 +143,7 @@ build {
   ]
   provisioner "shell" {
     environment_vars = []
-    inline = concat([
+    inline = [
       "sudo dnf upgrade-minimal -y",
       "sudo dnf install -y amazon-cloudwatch-agent jq git docker",
       "sudo dnf install -y --allowerasing curl",
@@ -151,7 +151,12 @@ build {
       "sudo systemctl enable containerd.service",
       "sudo service docker start",
       "sudo usermod -a -G docker ec2-user",
-    ], var.custom_shell_commands)
+    ]
+  }
+
+  provisioner "shell" {
+    environment_vars = []
+    inline           = var.custom_shell_commands
   }
 
   provisioner "file" {

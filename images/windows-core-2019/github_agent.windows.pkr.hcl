@@ -108,12 +108,18 @@ build {
   }
 
   provisioner "powershell" {
-    inline = concat([
+    inline = [
       templatefile("./windows-provisioner.ps1", {
         action_runner_url = "https://github.com/actions/runner/releases/download/v${local.runner_version}/actions-runner-win-x64-${local.runner_version}.zip"
       })
-    ], var.custom_shell_commands)
+    ]
   }
+
+  provisioner "powershell" {
+    environment_vars = []
+    inline           = var.custom_shell_commands
+  }
+
   post-processor "manifest" {
     output     = "manifest.json"
     strip_path = true

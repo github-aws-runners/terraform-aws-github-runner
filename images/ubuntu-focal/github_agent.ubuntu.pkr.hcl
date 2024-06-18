@@ -144,7 +144,7 @@ build {
     environment_vars = [
       "DEBIAN_FRONTEND=noninteractive"
     ]
-    inline = concat([
+    inline = [
       "sudo cloud-init status --wait",
       "sudo apt-get -y update",
       "sudo apt-get -y install ca-certificates curl gnupg lsb-release",
@@ -161,7 +161,12 @@ build {
       "sudo curl -f https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o awscliv2.zip",
       "unzip awscliv2.zip",
       "sudo ./aws/install",
-    ], var.custom_shell_commands)
+    ]
+  }
+
+  provisioner "shell" {
+    environment_vars = []
+    inline           = var.custom_shell_commands
   }
 
   provisioner "file" {
