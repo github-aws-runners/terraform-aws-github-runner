@@ -54,6 +54,8 @@ Write-Host  "Retrieved $ssm_config_path/agent_mode parameter - ($agent_mode)"
 $token_path=$parameters.where( {$_.Name -eq "$ssm_config_path/token_path"}).value
 Write-Host  "Retrieved $ssm_config_path/token_path parameter - ($token_path)"
 
+$enable_jit_config=$parameters.where( {$_.Name -eq "$ssm_config_path/enable_jit_config"}).value
+Write-Host  "Retrieved $ssm_config_path/enable_jit_config parameter - ($enable_jit_config)"
 
 if ($enable_cloudwatch_agent -eq "true")
 {
@@ -107,9 +109,14 @@ foreach ($group in @("Administrators", "docker-users")) {
 Set-ItemProperty HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -Name ConsentPromptBehaviorAdmin -Value 0 -Force
 Write-Host "Disabled User Access Control (UAC)"
 
-$configCmd = ".\config.cmd --unattended --name $runner_name_prefix$InstanceId --work `"_work`" $config"
-Write-Host "Configure GH Runner as user $run_as"
-Invoke-Expression $configCmd
+if ($enable_jit_config -eq "true") {
+    Write-Output "Starting with JIT config -> config.cmd not called"
+} else {
+    Write-Output "Starting without JIT config -> call config.cmd"
+    $configCmd = ".\config.cmd --unattended --name $runner_name_prefix$InstanceId --work `"_work`" $config"
+    Write-Host "Configure GH Runner as user $run_as"
+    Invoke-Expression $configCmd
+}
 
 Write-Host "Starting the runner as user $run_as"
 
@@ -123,7 +130,11 @@ ConvertTo-Json -InputObject $jsonBody | Set-Content -Path "$pwd\.setup_info"
 
 Write-Host  "Installing the runner as a service"
 
-$action = New-ScheduledTaskAction -WorkingDirectory "$pwd" -Execute "run.cmd"
+if ($enable_jit_config -eq "true") {
+    $action = New-ScheduledTaskAction -WorkingDirectory "$pwd" -Execute "run.cmd" -Argument "--jitconfig $config"
+} else {
+    $action = New-ScheduledTaskAction -WorkingDirectory "$pwd" -Execute "run.cmd"
+}
 $trigger = Get-CimClass "MSFT_TaskRegistrationTrigger" -Namespace "Root/Microsoft/Windows/TaskScheduler"
 Register-ScheduledTask -TaskName "runnertask" -Action $action -Trigger $trigger -User $username -Password $password -RunLevel Highest -Force
 Write-Host "Starting the runner in persistent mode"
