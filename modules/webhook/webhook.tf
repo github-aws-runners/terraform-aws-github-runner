@@ -23,15 +23,17 @@ resource "aws_lambda_function" "webhook" {
 
   environment {
     variables = {
-      LOG_LEVEL                                = var.log_level
-      POWERTOOLS_LOGGER_LOG_EVENT              = var.log_level == "debug" ? "true" : "false"
-      POWERTOOLS_TRACE_ENABLED                 = var.tracing_config.mode != null ? true : false
-      POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.tracing_config.capture_http_requests
-      POWERTOOLS_TRACER_CAPTURE_ERROR          = var.tracing_config.capture_error
-      PARAMETER_GITHUB_APP_WEBHOOK_SECRET      = var.github_app_parameters.webhook_secret.name
-      REPOSITORY_ALLOW_LIST                    = jsonencode(var.repository_white_list)
-      SQS_WORKFLOW_JOB_QUEUE                   = try(var.sqs_workflow_job_queue, null) != null ? var.sqs_workflow_job_queue.id : ""
-      PARAMETER_RUNNER_MATCHER_CONFIG_PATH     = aws_ssm_parameter.runner_matcher_config.name
+      for k, v in {
+        LOG_LEVEL                                = var.log_level
+        POWERTOOLS_LOGGER_LOG_EVENT              = var.log_level == "debug" ? "true" : "false"
+        POWERTOOLS_TRACE_ENABLED                 = var.tracing_config.mode != null ? true : false
+        POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.tracing_config.capture_http_requests
+        POWERTOOLS_TRACER_CAPTURE_ERROR          = var.tracing_config.capture_error
+        PARAMETER_GITHUB_APP_WEBHOOK_SECRET      = var.github_app_parameters.webhook_secret.name
+        REPOSITORY_ALLOW_LIST                    = jsonencode(var.repository_white_list)
+        SQS_WORKFLOW_JOB_QUEUE                   = try(var.sqs_workflow_job_queue.id, null)
+        PARAMETER_RUNNER_MATCHER_CONFIG_PATH     = aws_ssm_parameter.runner_matcher_config.name
+      } : k => v if v != null
     }
   }
 

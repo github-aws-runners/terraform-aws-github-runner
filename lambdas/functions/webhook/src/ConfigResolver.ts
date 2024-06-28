@@ -29,7 +29,7 @@ export class Config {
       Config.matcherConfig = JSON.parse(matcherConfigVal) as Array<RunnerMatcherConfig>;
       logger.debug('Loaded queues config', { matcherConfig: Config.matcherConfig });
     }
-    const workflowJobEventSecondaryQueue = process.env.SQS_WORKFLOW_JOB_QUEUE ?? undefined;
+    const workflowJobEventSecondaryQueue = process.env.SQS_WORKFLOW_JOB_QUEUE || undefined;
     return new Config(repositoryAllowList, workflowJobEventSecondaryQueue);
   }
 
