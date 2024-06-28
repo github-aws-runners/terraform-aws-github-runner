@@ -94,6 +94,7 @@ function getRunnerInfo(runningInstances: DescribeInstancesResult) {
 }
 
 export async function terminateRunner(instanceId: string): Promise<void> {
+  logger.info(`Runner '${instanceId}' will be terminated.`);
   const ec2 = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
   await ec2.send(new TerminateInstancesCommand({ InstanceIds: [instanceId] }));
   logger.info(`Runner ${instanceId} has been terminated.`);

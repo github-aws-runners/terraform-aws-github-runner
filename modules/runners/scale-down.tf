@@ -16,7 +16,7 @@ resource "aws_lambda_function" "scale_down" {
   handler           = "index.scaleDownHandler"
   runtime           = var.lambda_runtime
   timeout           = var.lambda_timeout_scale_down
-  tags              = local.tags
+  tags              = merge(local.tags, var.lambda_tags)
   memory_size       = var.lambda_scale_down_memory_size
   architectures     = [var.lambda_architecture]
 

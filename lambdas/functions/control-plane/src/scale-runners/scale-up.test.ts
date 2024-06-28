@@ -338,6 +338,12 @@ describe('scaleUp with GHES', () => {
         Name: '/github-action-runners/default/runners/config/i-12345',
         Value: 'TEST_JIT_CONFIG_ORG',
         Type: 'SecureString',
+        Tags: [
+          {
+            Key: 'InstanceId',
+            Value: 'i-12345',
+          },
+        ],
       });
     });
 
@@ -353,6 +359,12 @@ describe('scaleUp with GHES', () => {
           '--url https://github.enterprise.something/Codertocat --token 1234abcd ' +
           '--labels label1,label2 --runnergroup Default',
         Type: 'SecureString',
+        Tags: [
+          {
+            Key: 'InstanceId',
+            Value: 'i-12345',
+          },
+        ],
       });
     });
     it.each(RUNNER_TYPES)(
@@ -708,6 +720,12 @@ describe('scaleUp with public GH', () => {
         Name: '/github-action-runners/default/runners/config/i-12345',
         Value: 'TEST_JIT_CONFIG_REPO',
         Type: 'SecureString',
+        Tags: [
+          {
+            Key: 'InstanceId',
+            Value: 'i-12345',
+          },
+        ],
       });
     });
 
@@ -724,6 +742,12 @@ describe('scaleUp with public GH', () => {
         Name: '/github-action-runners/default/runners/config/i-12345',
         Value: '--url https://github.com/Codertocat/hello-world --token 1234abcd --ephemeral',
         Type: 'SecureString',
+        Tags: [
+          {
+            Key: 'InstanceId',
+            Value: 'i-12345',
+          },
+        ],
       });
     });
 
@@ -741,6 +765,12 @@ describe('scaleUp with public GH', () => {
         Name: '/github-action-runners/default/runners/config/i-12345',
         Value: '--url https://github.com/Codertocat/hello-world --token 1234abcd --labels jit',
         Type: 'SecureString',
+        Tags: [
+          {
+            Key: 'InstanceId',
+            Value: 'i-12345',
+          },
+        ],
       });
     });
 

@@ -362,7 +362,9 @@ async function createRegistrationTokenConfig(
   });
 
   for (const instance of instances) {
-    await putParameter(`${githubRunnerConfig.ssmTokenPath}/${instance}`, runnerServiceConfig.join(' '), true);
+    await putParameter(`${githubRunnerConfig.ssmTokenPath}/${instance}`, runnerServiceConfig.join(' '), true, {
+      tags: [{ Key: 'InstanceId', Value: instance }],
+    });
     if (isDelay) {
       // Delay to prevent AWS ssm rate limits by being within the max throughput limit
       await delay(25);
@@ -405,7 +407,9 @@ async function createJitConfig(githubRunnerConfig: CreateGitHubRunnerConfig, ins
     logger.debug('Runner JIT config for ephemeral runner generated.', {
       instance: instance,
     });
-    await putParameter(`${githubRunnerConfig.ssmTokenPath}/${instance}`, runnerConfig.data.encoded_jit_config, true);
+    await putParameter(`${githubRunnerConfig.ssmTokenPath}/${instance}`, runnerConfig.data.encoded_jit_config, true, {
+      tags: [{ Key: 'InstanceId', Value: instance }],
+    });
     if (isDelay) {
       // Delay to prevent AWS ssm rate limits by being within the max throughput limit
       await delay(25);

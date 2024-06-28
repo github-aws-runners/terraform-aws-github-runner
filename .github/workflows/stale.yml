@@ -18,7 +18,7 @@ jobs:
           stale-pr-message: >
             This pull request has been automatically marked as stale because it has not had activity in the last 30 days. It will be closed if no further activity occurs. Thank you for your contributions.
 
-          days-before-stale: 30
-          days-before-close: 10
+          days-before-stale: 90
+          days-before-close: 14
           close-issue-label: "abandoned"
           exempt-issue-labels: "stale:exempt"

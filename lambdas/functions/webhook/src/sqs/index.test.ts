@@ -16,6 +16,8 @@ jest.mock('@aws-sdk/client-sqs', () => ({
 }));
 jest.mock('@terraform-aws-github-runner/aws-ssm-util');
 
+import { SQS } from '@aws-sdk/client-sqs';
+
 describe('Test sending message to SQS.', () => {
   const queueUrl = 'https://sqs.eu-west-1.amazonaws.com/123456789/queued-builds';
   const message = {
@@ -98,7 +100,19 @@ describe('Test sending message to SQS.', () => {
     expect(result).resolves;
   });
 
-  it('Does not send webhook events to workflow job event copy queue', async () => {
+  it('Does not send webhook events to workflow job event copy queue when job queue is not in environment', async () => {
+    // Arrange
+    delete process.env.SQS_WORKFLOW_JOB_QUEUE;
+    const config = await Config.load();
+
+    // Act
+    await sendWebhookEventToWorkflowJobQueue(message, config);
+
+    // Assert
+    expect(SQS).not.toHaveBeenCalled();
+  });
+
+  it('Does not send webhook events to workflow job event copy queue when job queue is set to empty string', async () => {
     // Arrange
     process.env.SQS_WORKFLOW_JOB_QUEUE = '';
     const config = await Config.load();
@@ -106,7 +120,7 @@ describe('Test sending message to SQS.', () => {
     await sendWebhookEventToWorkflowJobQueue(message, config);
 
     // Assert
-    expect(mockSQS.sendMessage).not.toHaveBeenCalledWith(sqsMessage);
+    expect(SQS).not.toHaveBeenCalled();
   });
 
   it('Catch the exception when even copy queue throws exception', async () => {
