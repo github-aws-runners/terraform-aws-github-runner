@@ -88,7 +88,8 @@ async function listGitHubRunners(runner: RunnerInfo): Promise<GhRunners> {
           per_page: 100,
         });
   githubCache.runners.set(key, runners);
-
+  logger.debug(`[listGithubRunners] Cache set for ${key}`);
+  logger.debug(`[listGithubRunners] Runners: ${JSON.stringify(runners)}`);
   return runners;
 }
 
@@ -156,10 +157,17 @@ async function evaluateAndRemoveRunners(
       .filter((runner) => runner.owner === ownerTag)
       .sort(evictionStrategy === 'oldest_first' ? oldestFirstStrategy : newestFirstStrategy);
     logger.debug(`Found: '${ec2RunnersFiltered.length}' active GitHub runners with owner tag: '${ownerTag}'`);
+    logger.debug(`Active GitHub runners with owner tag: '${ownerTag}': ${JSON.stringify(ec2RunnersFiltered)}`);
     for (const ec2Runner of ec2RunnersFiltered) {
       const ghRunners = await listGitHubRunners(ec2Runner);
       const ghRunnersFiltered = ghRunners.filter((runner: { name: string }) =>
         runner.name.endsWith(ec2Runner.instanceId),
+      );
+      logger.debug(
+        `Found: '${ghRunnersFiltered.length}' GitHub runners for AWS runner instance: '${ec2Runner.instanceId}'`,
+      );
+      logger.debug(
+        `GitHub runners for AWS runner instance: '${ec2Runner.instanceId}': ${JSON.stringify(ghRunnersFiltered)}`,
       );
       if (ghRunnersFiltered.length) {
         if (runnerMinimumTimeExceeded(ec2Runner)) {
@@ -167,7 +175,7 @@ async function evaluateAndRemoveRunners(
             idleCounter--;
             logger.info(`Runner '${ec2Runner.instanceId}' will be kept idle.`);
           } else {
-            logger.info(`Runner '${ec2Runner.instanceId}' will be terminated.`);
+            logger.info(`Will try to terminate runners that are not busy`);
             await removeRunner(
               ec2Runner,
               ghRunnersFiltered.map((runner: { id: number }) => runner.id),
@@ -224,6 +232,7 @@ export async function scaleDown(): Promise<void> {
   const ec2Runners = await listRunners(environment);
   const activeEc2RunnersCount = ec2Runners.length;
   logger.info(`Found: '${activeEc2RunnersCount}' active GitHub EC2 runner instances before clean-up.`);
+  logger.debug(`Active GitHub EC2 runner instances: ${JSON.stringify(ec2Runners)}`);
 
   if (activeEc2RunnersCount === 0) {
     logger.debug(`No active runners found for environment: '${environment}'`);
