@@ -192,3 +192,9 @@ variable "state_event_rule_ami_housekeeper" {
     error_message = "`state_event_rule_ami_housekeeper` value is not valid, valid values are: `ENABLED`, `DISABLED`, `ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS`."
   }
 }
+
+variable "lambda_tags" {
+  description = "Map of tags that will be added to all the lambda function resources. Note these are additional tags to the default tags."
+  type        = map(string)
+  default     = {}
+}

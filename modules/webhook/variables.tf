@@ -195,6 +195,12 @@ variable "ssm_paths" {
   })
 }
 
+variable "lambda_tags" {
+  description = "Map of tags that will be added to all the lambda function resources. Note these are additional tags to the default tags."
+  type        = map(string)
+  default     = {}
+}
+
 variable "matcher_config_parameter_store_tier" {
   description = "The tier of the parameter store for the matcher configuration. Valid values are `Standard`, and `Advanced`."
   type        = string

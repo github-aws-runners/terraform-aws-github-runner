@@ -116,10 +116,10 @@
     "@aws-lambda-powertools/commons" "^1.17.0"
     aws-xray-sdk-core "^3.5.3"
 
-"@aws-sdk/client-ec2@^3.600.0":
-  version "3.600.0"
-  resolved "https://registry.yarnpkg.com/@aws-sdk/client-ec2/-/client-ec2-3.600.0.tgz#02a1915101f1f79480c3f44a44e1994e2435aef9"
-  integrity sha512-Rh2BqT7nmuP5ysLe0KFNofils/ZU1nH66XdGEk9WwIHaccCtt/7xDUIwTzrle9B8004O2bGTF2rE4eilvQ4vng==
+"@aws-sdk/client-ec2@^3.604.0":
+  version "3.604.0"
+  resolved "https://registry.yarnpkg.com/@aws-sdk/client-ec2/-/client-ec2-3.604.0.tgz#6bf2cd23a0959027285c808fa25eda33431a1c7b"
+  integrity sha512-ZnmqKRewjYkEps7tRoTaA7yo8wSgwOHqGU+Pw6wVsaR7RqmfxCtWb6QQNAk7sqqv1zv15a8TNfA/oekA5fFUPw==
   dependencies:
     "@aws-crypto/sha256-browser" "5.2.0"
     "@aws-crypto/sha256-js" "5.2.0"
@@ -279,10 +279,10 @@
     "@smithy/util-utf8" "^3.0.0"
     tslib "^2.6.2"
 
-"@aws-sdk/client-ssm@^3.600.0":
-  version "3.600.0"
-  resolved "https://registry.yarnpkg.com/@aws-sdk/client-ssm/-/client-ssm-3.600.0.tgz#fee6f638cf87c730a21c911adceb1ba01b38d8f9"
-  integrity sha512-HleBvyteNNaqnsSZz4IcI6S+J+tNvRI4tjbfzrJoVHj86wDeH4eRQhxqJjmFEiJZJuM2EybclRuoCT/2U7SWdQ==
+"@aws-sdk/client-ssm@^3.603.0":
+  version "3.603.0"
+  resolved "https://registry.yarnpkg.com/@aws-sdk/client-ssm/-/client-ssm-3.603.0.tgz#17925086bd94e23eee791e958df95f1d023824e9"
+  integrity sha512-KyHp8mxIFUDeAkjSiPzfDTFcrP3WSjQeNUYBTG76cowkmYZgc0QqVfgQwjOt3rQvmkG8R7M/vmDIwLTh1xx/7A==
   dependencies:
     "@aws-crypto/sha256-browser" "5.2.0"
     "@aws-crypto/sha256-js" "5.2.0"

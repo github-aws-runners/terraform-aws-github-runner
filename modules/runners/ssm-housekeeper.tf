@@ -23,7 +23,7 @@ resource "aws_lambda_function" "ssm_housekeeper" {
   handler           = "index.ssmHousekeeper"
   runtime           = var.lambda_runtime
   timeout           = local.ssm_housekeeper.lambda_timeout
-  tags              = local.tags
+  tags              = merge(local.tags, var.lambda_tags)
   memory_size       = local.ssm_housekeeper.lambda_memory_size
   architectures     = [var.lambda_architecture]
 
