@@ -19,7 +19,7 @@ jobs:
         working-directory: ./lambdas
 
     steps:
-      - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v3.2.0
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v3.2.0
       - name: Install dependencies
         run: yarn install --frozen-lockfile
       - name: Run prettier

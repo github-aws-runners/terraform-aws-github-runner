@@ -61,4 +61,5 @@ resource "aws_ssm_parameter" "runner_matcher_config" {
   name  = "${var.ssm_paths.root}/${var.ssm_paths.webhook}/runner-matcher-config"
   type  = "String"
   value = jsonencode(local.runner_matcher_config_sorted)
+  tier  = var.matcher_config_parameter_store_tier
 }
