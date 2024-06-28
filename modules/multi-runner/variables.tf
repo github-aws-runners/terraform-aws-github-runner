@@ -644,3 +644,13 @@ variable "instance_termination_watcher" {
   })
   default = {}
 }
+
+variable "matcher_config_parameter_store_tier" {
+  description = "The tier of the parameter store for the matcher configuration. Valid values are `Standard`, and `Advanced`."
+  type        = string
+  default     = "Standard"
+  validation {
+    condition     = contains(["Standard", "Advanced"], var.matcher_config_parameter_store_tier)
+    error_message = "`matcher_config_parameter_store_tier` value is not valid, valid values are: `Standard`, and `Advanced`."
+  }
+}
