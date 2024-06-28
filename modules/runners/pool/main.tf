@@ -13,7 +13,7 @@ resource "aws_lambda_function" "pool" {
   timeout                        = var.config.lambda.timeout
   reserved_concurrent_executions = var.config.lambda.reserved_concurrent_executions
   memory_size                    = var.config.lambda.memory_size
-  tags                           = var.config.tags
+  tags                           = merge(var.config.tags, var.config.lambda_tags)
 
   environment {
     variables = {

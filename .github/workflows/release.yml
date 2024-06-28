@@ -17,7 +17,7 @@ jobs:
       - uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
         with:
           node-version: 20
-      - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # ratchet:actions/checkout@v4
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # ratchet:actions/checkout@v4
       - name: Build dist
         working-directory: lambdas
         run: yarn install --frozen-lockfile && yarn run test && yarn dist
