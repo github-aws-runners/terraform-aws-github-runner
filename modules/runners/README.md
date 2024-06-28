@@ -173,6 +173,7 @@ yarn run dist
 | <a name="input_lambda_scale_up_memory_size"></a> [lambda\_scale\_up\_memory\_size](#input\_lambda\_scale\_up\_memory\_size) | Memory size limit in MB for scale-up lambda. | `number` | `512` | no |
 | <a name="input_lambda_security_group_ids"></a> [lambda\_security\_group\_ids](#input\_lambda\_security\_group\_ids) | List of security group IDs associated with the Lambda function. | `list(string)` | `[]` | no |
 | <a name="input_lambda_subnet_ids"></a> [lambda\_subnet\_ids](#input\_lambda\_subnet\_ids) | List of subnets in which the lambda will be launched, the subnets needs to be subnets in the `vpc_id`. | `list(string)` | `[]` | no |
+| <a name="input_lambda_tags"></a> [lambda\_tags](#input\_lambda\_tags) | Map of tags that will be added to all the lambda function resources. Note these are additional tags to the default tags. | `map(string)` | `{}` | no |
 | <a name="input_lambda_timeout_scale_down"></a> [lambda\_timeout\_scale\_down](#input\_lambda\_timeout\_scale\_down) | Time out for the scale down lambda in seconds. | `number` | `60` | no |
 | <a name="input_lambda_timeout_scale_up"></a> [lambda\_timeout\_scale\_up](#input\_lambda\_timeout\_scale\_up) | Time out for the scale up lambda in seconds. | `number` | `60` | no |
 | <a name="input_lambda_zip"></a> [lambda\_zip](#input\_lambda\_zip) | File location of the lambda zip file. | `string` | `null` | no |
