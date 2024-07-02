@@ -210,7 +210,8 @@ async function getAmiIdOverride(runnerParameters: Runners.RunnerInputParameters)
         'Please ensure that the given parameter exists on this region and contains a valid runner AMI ID',
       { error: e },
     );
-    throw e;
+    throw new Error(`Failed to lookup runner AMI ID from SSM parameter: ${runnerParameters.amiIdSsmParameterName},
+       ${e}`);
   }
 }
 
