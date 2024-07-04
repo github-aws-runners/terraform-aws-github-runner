@@ -44,9 +44,9 @@
   "nx": {
     "includedScripts": [
       "build",
-      "dist",
       "format",
       "format-check",
+      "lint",
       "start",
       "watch",
       "all"

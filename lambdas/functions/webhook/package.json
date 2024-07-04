@@ -53,6 +53,7 @@
       "dist",
       "format",
       "format-check",
+      "lint",
       "start",
       "watch",
       "all"

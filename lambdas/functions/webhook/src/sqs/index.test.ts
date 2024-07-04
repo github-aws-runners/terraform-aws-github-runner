@@ -112,6 +112,7 @@ describe('Test sending message to SQS.', () => {
     expect(SQS).not.toHaveBeenCalled();
   });
 
+  // eslint-disable-next-line max-len
   it('Does not send webhook events to workflow job event copy queue when job queue is set to empty string', async () => {
     // Arrange
     process.env.SQS_WORKFLOW_JOB_QUEUE = '';
