@@ -27,6 +27,18 @@ updates:
       octokit:
         patterns:
           - "@octokit/*"
+    ignore:
+      - dependency-name: "aws-sdk*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "aws-lambda-powertools/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@middy/core"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@@octokit/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@@octokit/rest"
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
     commit-message:
       prefix: "fix(lambda)"
       prefix-development: "chore(lambda)"
