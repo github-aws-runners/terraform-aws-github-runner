@@ -43,7 +43,6 @@
   },
   "nx": {
     "includedScripts": [
-      "build",
       "format",
       "format-check",
       "lint",
