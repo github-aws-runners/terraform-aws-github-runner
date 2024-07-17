@@ -202,7 +202,7 @@ async function terminateOrphan(instanceId: string): Promise<void> {
   }
 }
 
-function oldestFirstStrategy(a: RunnerInfo, b: RunnerInfo): number {
+export function oldestFirstStrategy(a: RunnerInfo, b: RunnerInfo): number {
   if (a.launchTime === undefined) return 1;
   if (b.launchTime === undefined) return 1;
   if (a.launchTime < b.launchTime) return 1;
@@ -210,7 +210,7 @@ function oldestFirstStrategy(a: RunnerInfo, b: RunnerInfo): number {
   return 0;
 }
 
-function newestFirstStrategy(a: RunnerInfo, b: RunnerInfo): number {
+export function newestFirstStrategy(a: RunnerInfo, b: RunnerInfo): number {
   return oldestFirstStrategy(a, b) * -1;
 }
 
