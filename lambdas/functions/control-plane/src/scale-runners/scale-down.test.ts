@@ -96,7 +96,7 @@ describe('Scale down runners', () => {
 
     mockOctokit.paginate.mockResolvedValue([]);
     mockOctokit.actions.deleteSelfHostedRunnerFromRepo.mockImplementation((repo) => {
-      // check if repo.runner_id contains the word buys. If yest throw an error else return 204
+      // check if repo.runner_id contains the word "busy". If yes, throw an error else return 204
       if (repo.runner_id.includes('busy')) {
         throw Error();
       } else {
@@ -105,7 +105,7 @@ describe('Scale down runners', () => {
     });
 
     mockOctokit.actions.deleteSelfHostedRunnerFromOrg.mockImplementation((repo) => {
-      // check if repo.runner_id contains the word buys. If yest throw an error else return 204
+      // check if repo.runner_id contains the word "busy". If yes, throw an error else return 204
       if (repo.runner_id.includes('busy')) {
         throw Error();
       } else {
