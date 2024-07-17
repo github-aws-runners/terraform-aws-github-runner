@@ -14,6 +14,15 @@ resource "aws_apigatewayv2_route" "webhook" {
   api_id    = aws_apigatewayv2_api.webhook.id
   route_key = "POST /${local.webhook_endpoint}"
   target    = "integrations/${aws_apigatewayv2_integration.webhook.id}"
+
+  lifecycle {
+    ignore_changes = [
+      # ignore authorization related attributes to enable authenticator assignment to API route
+      authorizer_id,
+      authorization_type,
+      authorization_scopes,
+    ]
+  }
 }
 
 resource "aws_apigatewayv2_stage" "webhook" {
