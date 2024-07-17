@@ -3,7 +3,7 @@ import { createChildLogger } from '@terraform-aws-github-runner/aws-powertools-u
 import moment from 'moment';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctoClient } from '../gh-auth/gh-auth';
-import { bootTimeExceeded, listEC2Runners, terminateRunner } from './../aws/runners';
+import { bootTimeExceeded, listEC2Runners, tag, terminateRunner } from './../aws/runners';
 import { RunnerInfo, RunnerList } from './../aws/runners.d';
 import { GhRunners, githubCache } from './cache';
 import { ScalingDownConfig, getEvictionStrategy, getIdleRunnerCount } from './scale-down-config';
@@ -184,8 +184,7 @@ async function evaluateAndRemoveRunners(
         }
       } else {
         if (bootTimeExceeded(ec2Runner)) {
-          logger.info(`Runner '${ec2Runner.instanceId}' is orphaned and will be removed.`);
-          terminateOrphan(ec2Runner.instanceId);
+          markOrphan(ec2Runner.instanceId);
         } else {
           logger.debug(`Runner ${ec2Runner.instanceId} has not yet booted.`);
         }
@@ -194,11 +193,26 @@ async function evaluateAndRemoveRunners(
   }
 }
 
-async function terminateOrphan(instanceId: string): Promise<void> {
+async function markOrphan(instanceId: string): Promise<void> {
   try {
-    await terminateRunner(instanceId);
+    await tag(instanceId, [{ Key: 'orphan', Value: 'true' }]);
+    logger.info(`Runner '${instanceId}' marked as orphan.`);
   } catch (e) {
-    logger.debug(`Orphan runner '${instanceId}' cannot be removed.`);
+    logger.warn(`Orphan runner '${instanceId}' cannot be marked.`);
+  }
+}
+
+async function terminateOrphan(environment: string): Promise<void> {
+  try {
+    const orphanRunners = await listEC2Runners({ environment, orphan: true });
+
+    for (const runner of orphanRunners) {
+      await terminateRunner(runner.instanceId).catch((e) => {
+        logger.error(`Failed to terminate orphan runner '${runner.instanceId}'`, { error: e });
+      });
+    }
+  } catch (e) {
+    logger.warn(`Failure during orphan runner termination.`, { error: e });
   }
 }
 
@@ -221,14 +235,18 @@ async function listRunners(environment: string) {
 }
 
 function filterRunners(ec2runners: RunnerList[]): RunnerInfo[] {
-  return ec2runners.filter((ec2Runner) => ec2Runner.type) as RunnerInfo[];
+  return ec2runners.filter((ec2Runner) => ec2Runner.type && !ec2Runner.orphan) as RunnerInfo[];
 }
 
 export async function scaleDown(): Promise<void> {
   githubCache.reset();
-  const scaleDownConfigs = JSON.parse(process.env.SCALE_DOWN_CONFIG) as [ScalingDownConfig];
   const environment = process.env.ENVIRONMENT;
+  const scaleDownConfigs = JSON.parse(process.env.SCALE_DOWN_CONFIG) as [ScalingDownConfig];
 
+  // first runners marked to be orphan.
+  await terminateOrphan(environment);
+
+  // next scale down idle runners with respect to config and mark potential orphans
   const ec2Runners = await listRunners(environment);
   const activeEc2RunnersCount = ec2Runners.length;
   logger.info(`Found: '${activeEc2RunnersCount}' active GitHub EC2 runner instances before clean-up.`);

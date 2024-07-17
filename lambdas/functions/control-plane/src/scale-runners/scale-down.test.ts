@@ -5,7 +5,7 @@ import nock from 'nock';
 
 import { RunnerInfo, RunnerList } from '../aws/runners.d';
 import * as ghAuth from '../gh-auth/gh-auth';
-import { listEC2Runners, terminateRunner } from './../aws/runners';
+import { listEC2Runners, terminateRunner, tag } from './../aws/runners';
 import { githubCache } from './cache';
 import { newestFirstStrategy, oldestFirstStrategy, scaleDown } from './scale-down';
 
@@ -42,6 +42,7 @@ const mockedAppAuth = mocked(ghAuth.createGithubAppAuth, { shallow: false });
 const mockedInstallationAuth = mocked(ghAuth.createGithubInstallationAuth, { shallow: false });
 const mockCreateClient = mocked(ghAuth.createOctoClient, { shallow: false });
 const mockListRunners = mocked(listEC2Runners);
+const mockTagRunners = mocked(tag);
 const mockTerminateRunners = mocked(terminateRunner);
 
 export interface TestData {
@@ -172,7 +173,7 @@ describe('Scale down runners', () => {
     describe.each(runnerTypes)('For %s runners.', (type) => {
       it('Should not call terminate when no runners online.', async () => {
         // setup
-        mockListRunners.mockResolvedValue([]);
+        mockAwsRunners([]);
 
         // act
         await scaleDown();
@@ -197,7 +198,8 @@ describe('Scale down runners', () => {
 
         mockGitHubRunners(runners);
         mockListRunners.mockResolvedValue(runners);
-        // act
+        mockAwsRunners(runners);
+
         await scaleDown();
 
         // assert
@@ -220,7 +222,7 @@ describe('Scale down runners', () => {
         const runners = [createRunnerTestData('idle-1', type, MINIMUM_TIME_RUNNING_IN_MINUTES - 1, true, false, false)];
 
         mockGitHubRunners(runners);
-        mockListRunners.mockResolvedValue(runners);
+        mockAwsRunners(runners);
 
         // act
         await scaleDown();
@@ -235,7 +237,7 @@ describe('Scale down runners', () => {
         const runners = [createRunnerTestData('booting-1', type, MINIMUM_BOOT_TIME - 1, false, false, false)];
 
         mockGitHubRunners(runners);
-        mockListRunners.mockResolvedValue(runners);
+        mockAwsRunners(runners);
 
         // act
         await scaleDown();
@@ -250,7 +252,7 @@ describe('Scale down runners', () => {
         const runners = [createRunnerTestData('busy-1', type, MINIMUM_TIME_RUNNING_IN_MINUTES + 1, true, false, false)];
 
         mockGitHubRunners(runners);
-        mockListRunners.mockResolvedValue(runners);
+        mockAwsRunners(runners);
 
         // act
         await scaleDown();
@@ -274,7 +276,7 @@ describe('Scale down runners', () => {
         ];
 
         mockGitHubRunners(runners);
-        mockListRunners.mockResolvedValue(runners);
+        mockAwsRunners(runners);
         mockOctokit.actions.deleteSelfHostedRunnerFromRepo.mockImplementation(() => {
           return { status: 500 };
         });
@@ -293,10 +295,31 @@ describe('Scale down runners', () => {
 
       it(`Should terminate orphan.`, async () => {
         // setup
-        const runners = [createRunnerTestData('orphan-1', type, MINIMUM_BOOT_TIME + 1, false, true, true)];
+        const orphanRunner = createRunnerTestData('orphan-1', type, MINIMUM_BOOT_TIME + 1, false, false, false);
+        const idleRunner = createRunnerTestData('idle-1', type, MINIMUM_BOOT_TIME + 1, true, false, false);
+        const runners = [orphanRunner, idleRunner];
 
-        mockGitHubRunners([]);
-        mockListRunners.mockResolvedValue(runners);
+        mockGitHubRunners([idleRunner]);
+        mockAwsRunners(runners);
+
+        // act
+        await scaleDown();
+
+        // assert
+        checkTerminated(runners);
+        checkNonTerminated(runners);
+
+        expect(mockTagRunners).toHaveBeenCalledWith(orphanRunner.instanceId, [
+          {
+            Key: 'orphan',
+            Value: 'true',
+          },
+        ]);
+        expect(mockTagRunners).not.toHaveBeenCalledWith(idleRunner.instanceId, expect.anything());
+
+        // next cycle, update test data set orphan to true and terminate should be true
+        orphanRunner.orphan = true;
+        orphanRunner.shouldBeTerminated = true;
 
         // act
         await scaleDown();
@@ -306,21 +329,60 @@ describe('Scale down runners', () => {
         checkNonTerminated(runners);
       });
 
-      it(`Should orphan termination failure is not resulting in an exception..`, async () => {
+      it(`Should ignore errors when termination orphan fails.`, async () => {
         // setup
-        const runners = [createRunnerTestData('orphan-1', type, MINIMUM_BOOT_TIME + 1, false, true, true)];
+        const orphanRunner = createRunnerTestData('orphan-1', type, MINIMUM_BOOT_TIME + 1, false, true, true);
+        const runners = [orphanRunner];
 
         mockGitHubRunners([]);
-        mockListRunners.mockResolvedValue(runners);
-        mockTerminateRunners.mockRejectedValue(new Error('Termination failed'));
+        mockAwsRunners(runners);
+        mockTerminateRunners.mockImplementation(() => {
+          throw new Error('Failed to terminate');
+        });
 
-        // act and ensure no exception is thrown
-        await expect(scaleDown()).resolves.not.toThrow();
+        // act
+        await scaleDown();
+
+        // assert
+        checkTerminated(runners);
+        checkNonTerminated(runners);
+      });
+
+      describe('When orphan termination fails', () => {
+        it(`Should not throw in case of list runner exception.`, async () => {
+          // setup
+          const runners = [createRunnerTestData('orphan-1', type, MINIMUM_BOOT_TIME + 1, false, true, true)];
+
+          mockGitHubRunners([]);
+          mockListRunners.mockRejectedValueOnce(new Error('Failed to list runners'));
+          mockAwsRunners(runners);
+
+          // ac
+          await scaleDown();
+
+          // assert
+          checkNonTerminated(runners);
+        });
+
+        it(`Should not throw in case of terminate runner exception.`, async () => {
+          // setup
+          const runners = [createRunnerTestData('orphan-1', type, MINIMUM_BOOT_TIME + 1, false, true, true)];
+
+          mockGitHubRunners([]);
+          mockAwsRunners(runners);
+          mockTerminateRunners.mockRejectedValue(new Error('Failed to terminate'));
+
+          // act and ensure no exception is thrown
+          await scaleDown();
+
+          // assert
+          checkNonTerminated(runners);
+        });
       });
 
       it(`Should not terminate instance in case de-register fails.`, async () => {
         // setup
-        const runners = [createRunnerTestData('idle-1', type, MINIMUM_TIME_RUNNING_IN_MINUTES + 1, true, true, false)];
+        const runners = [createRunnerTestData('idle-1', type, MINIMUM_TIME_RUNNING_IN_MINUTES + 1, true, false, false)];
 
         mockOctokit.actions.deleteSelfHostedRunnerFromOrg.mockImplementation(() => {
           return { status: 500 };
@@ -330,7 +392,7 @@ describe('Scale down runners', () => {
         });
 
         mockGitHubRunners(runners);
-        mockListRunners.mockResolvedValue(runners);
+        mockAwsRunners(runners);
 
         // act and should resolve
         await expect(scaleDown()).resolves.not.toThrow();
@@ -352,7 +414,7 @@ describe('Scale down runners', () => {
         });
 
         mockGitHubRunners(runners);
-        mockListRunners.mockResolvedValue(runners);
+        mockAwsRunners(runners);
 
         // act
         await expect(scaleDown()).resolves.not.toThrow();
@@ -383,7 +445,7 @@ describe('Scale down runners', () => {
           ];
 
           mockGitHubRunners(runners);
-          mockListRunners.mockResolvedValue(runners);
+          mockAwsRunners(runners);
 
           // act
           await scaleDown();
@@ -501,6 +563,12 @@ describe('Scale down runners', () => {
     });
   });
 });
+
+function mockAwsRunners(runners: RunnerTestItem[]) {
+  mockListRunners.mockImplementation(async (filter) => {
+    return runners.filter((r) => !filter?.orphan || filter?.orphan === r.orphan);
+  });
+}
 
 function checkNonTerminated(runners: RunnerTestItem[]) {
   const notTerminated = runners.filter((r) => !r.shouldBeTerminated);

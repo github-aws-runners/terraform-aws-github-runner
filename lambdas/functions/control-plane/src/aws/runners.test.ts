@@ -68,6 +68,23 @@ describe('list instances', () => {
       launchTime: new Date('2020-10-10T14:48:00.000+09:00'),
       type: 'Org',
       owner: 'CoderToCat',
+      orphan: false,
+    });
+  });
+
+  it('check orphan tag.', async () => {
+    const instances: DescribeInstancesResult = mockRunningInstances;
+    instances.Reservations![0].Instances![0].Tags!.push({ Key: 'ghr:orphan', Value: 'true' });
+    mockEC2Client.on(DescribeInstancesCommand).resolves(instances);
+
+    const resp = await listEC2Runners();
+    expect(resp.length).toBe(1);
+    expect(resp).toContainEqual({
+      instanceId: instances.Reservations![0].Instances![0].InstanceId!,
+      launchTime: instances.Reservations![0].Instances![0].LaunchTime!,
+      type: 'Org',
+      owner: 'CoderToCat',
+      orphan: true,
     });
   });
 
@@ -110,6 +127,23 @@ describe('list instances', () => {
       Filters: [
         { Name: 'instance-state-name', Values: ['running', 'pending'] },
         { Name: 'tag:ghr:environment', Values: [ENVIRONMENT] },
+        { Name: 'tag:ghr:Application', Values: ['github-action-runner'] },
+      ],
+    });
+  });
+
+  it('filters instances on environment and orphan', async () => {
+    mockRunningInstances.Reservations![0].Instances![0].Tags!.push({
+      Key: 'ghr:orphan',
+      Value: 'true',
+    });
+    mockEC2Client.on(DescribeInstancesCommand).resolves(mockRunningInstances);
+    await listEC2Runners({ environment: ENVIRONMENT, orphan: true });
+    expect(mockEC2Client).toHaveReceivedCommandWith(DescribeInstancesCommand, {
+      Filters: [
+        { Name: 'instance-state-name', Values: ['running', 'pending'] },
+        { Name: 'tag:ghr:environment', Values: [ENVIRONMENT] },
+        { Name: 'tag:ghr:orphan', Values: ['true'] },
         { Name: 'tag:ghr:Application', Values: ['github-action-runner'] },
       ],
     });
