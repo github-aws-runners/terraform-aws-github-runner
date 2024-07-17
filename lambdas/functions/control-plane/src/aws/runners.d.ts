@@ -22,6 +22,7 @@ export interface ListRunnerFilters {
   runnerType?: RunnerType;
   runnerOwner?: string;
   environment?: string;
+  orphan?: boolean;
   statuses?: string[];
 }
 

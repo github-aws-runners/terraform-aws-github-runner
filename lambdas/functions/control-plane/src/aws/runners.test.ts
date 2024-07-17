@@ -3,6 +3,7 @@ import {
   CreateFleetCommandInput,
   CreateFleetInstance,
   CreateFleetResult,
+  CreateTagsCommand,
   DefaultTargetCapacityType,
   DescribeInstancesCommand,
   DescribeInstancesResult,
@@ -16,7 +17,7 @@ import { mockClient } from 'aws-sdk-client-mock';
 import 'aws-sdk-client-mock-jest';
 
 import ScaleError from './../scale-runners/ScaleError';
-import { createRunner, listEC2Runners, terminateRunner } from './runners';
+import { createRunner, listEC2Runners, tag, terminateRunner } from './runners';
 import { RunnerInfo, RunnerInputParameters, RunnerType } from './runners.d';
 
 process.env.AWS_REGION = 'eu-east-1';
@@ -179,6 +180,26 @@ describe('terminate runner', () => {
     await terminateRunner(runner.instanceId);
 
     expect(mockEC2Client).toHaveReceivedCommandWith(TerminateInstancesCommand, { InstanceIds: [runner.instanceId] });
+  });
+});
+
+describe('tag runner', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+  it('adding extra tag', async () => {
+    mockEC2Client.on(CreateTagsCommand).resolves({});
+    const runner: RunnerInfo = {
+      instanceId: 'instance-2',
+      owner: 'owner-2',
+      type: 'Repo',
+    };
+    await tag(runner.instanceId, [{ Key: 'ghr:orphan', Value: 'truer' }]);
+
+    expect(mockEC2Client).toHaveReceivedCommandWith(CreateTagsCommand, {
+      Resources: [runner.instanceId],
+      Tags: [{ Key: 'ghr:orphan', Value: 'truer' }],
+    });
   });
 });
 

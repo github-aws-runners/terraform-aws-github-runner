@@ -1,10 +1,12 @@
 import {
   CreateFleetCommand,
   CreateFleetResult,
+  CreateTagsCommand,
   DescribeInstancesCommand,
   DescribeInstancesResult,
   EC2Client,
   FleetLaunchTemplateOverridesRequest,
+  Tag,
   TerminateInstancesCommand,
   _InstanceType,
 } from '@aws-sdk/client-ec2';
@@ -45,6 +47,9 @@ function constructFilters(filters?: Runners.ListRunnerFilters): Ec2Filter[][] {
     if (filters.runnerType && filters.runnerOwner) {
       ec2FiltersBase.push({ Name: `tag:ghr:Type`, Values: [filters.runnerType] });
       ec2FiltersBase.push({ Name: `tag:ghr:Owner`, Values: [filters.runnerOwner] });
+    }
+    if (filters.orphan) {
+      ec2FiltersBase.push({ Name: 'tag:ghr:orphan', Values: ['true'] });
     }
   }
 
@@ -98,6 +103,12 @@ export async function terminateRunner(instanceId: string): Promise<void> {
   const ec2 = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
   await ec2.send(new TerminateInstancesCommand({ InstanceIds: [instanceId] }));
   logger.info(`Runner ${instanceId} has been terminated.`);
+}
+
+export async function tag(instanceId: string, tags: Tag[]): Promise<void> {
+  logger.info(`Tagging '${instanceId}'`, { tags });
+  const ec2 = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
+  await ec2.send(new CreateTagsCommand({ Resources: [instanceId], Tags: tags }));
 }
 
 function generateFleetOverrides(
