@@ -2379,12 +2379,12 @@
   dependencies:
     "@nx/devkit" "19.5.2"
 
-"@nrwl/jest@19.4.2":
-  version "19.4.2"
-  resolved "https://registry.yarnpkg.com/@nrwl/jest/-/jest-19.4.2.tgz#c5ec6a25ae00f56df4a88c6b06f4c17a85d23c61"
-  integrity sha512-523Ecv0NWNex88t/xDls9dAqeA/r2gaDKXzVp03YeUf61Ue5PcdEXYLzgyPuctn6dhVPKGFb1yjaojtGOtRi7A==
+"@nrwl/jest@19.5.2":
+  version "19.5.2"
+  resolved "https://registry.yarnpkg.com/@nrwl/jest/-/jest-19.5.2.tgz#3ab9a246190b790872b1d4f46242f2616150d2a0"
+  integrity sha512-TndQ8dVp+l8qhFPIZO8GKCq/j1P14hD9DkEf48CeDJF/G0ZxSmDBp5cUM5qSRoG7LiA0Vx/V1wKkJUHN9k5xrw==
   dependencies:
-    "@nx/jest" "19.4.2"
+    "@nx/jest" "19.5.2"
 
 "@nrwl/js@19.4.2":
   version "19.4.2"
@@ -2480,16 +2480,16 @@
     tslib "^2.3.0"
     typescript "~5.4.2"
 
-"@nx/jest@19.4.2":
-  version "19.4.2"
-  resolved "https://registry.yarnpkg.com/@nx/jest/-/jest-19.4.2.tgz#90df90d07207e3f92ce9f5d561659b17643c6573"
-  integrity sha512-OXpK68K853WIQZycQv+xE7lfE4CX51CDivuThIxED+aE5yYRH3M71tqM9/qkm5Jc/9Tj3qdXzU+KpPA3HBNxFg==
+"@nx/jest@19.5.2":
+  version "19.5.2"
+  resolved "https://registry.yarnpkg.com/@nx/jest/-/jest-19.5.2.tgz#c758593cf30bd51dd2ca5f7ad70fe14f2f909f1d"
+  integrity sha512-GLT+kWpXtOEM9QG6Q2qX7VgBbcMQOzl4dV8uXFGPDU9r00w4DBl/tHXQpcTF+ju83tqB2723bJJMvkWEQKLXlw==
   dependencies:
     "@jest/reporters" "^29.4.1"
     "@jest/test-result" "^29.4.1"
-    "@nrwl/jest" "19.4.2"
-    "@nx/devkit" "19.4.2"
-    "@nx/js" "19.4.2"
+    "@nrwl/jest" "19.5.2"
+    "@nx/devkit" "19.5.2"
+    "@nx/js" "19.5.2"
     "@phenomnomnominal/tsquery" "~5.0.1"
     chalk "^4.1.0"
     identity-obj-proxy "3.0.0"
