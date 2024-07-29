@@ -83,6 +83,11 @@
   resolved "https://registry.yarnpkg.com/@aws-lambda-powertools/commons/-/commons-1.18.1.tgz#fcfdef39639105a7b2b5363e4bcade9d277f5468"
   integrity sha512-gFRgQ2GJDghKvf+fXvT0kQVftgOT05W+hCa7RkfZj6HSjVAO+9DZZeJL3JK1HcsLAjWRj7W9ra0/MqB3Abf+PQ==
 
+"@aws-lambda-powertools/commons@^2.6.0":
+  version "2.6.0"
+  resolved "https://registry.yarnpkg.com/@aws-lambda-powertools/commons/-/commons-2.6.0.tgz#16ccdd45c24c14493d4791f6d14ddce002d53691"
+  integrity sha512-mvJXwd+HUfc4K5OuKhMQv0i8UXkNt55yL42AZHmHV0Vd1fzixJ2xuKC6xyav+W/v8HnBsECHa1UgHt4qa4jK7A==
+
 "@aws-lambda-powertools/logger@^1.17.0":
   version "1.18.1"
   resolved "https://registry.yarnpkg.com/@aws-lambda-powertools/logger/-/logger-1.18.1.tgz#6388ddbafca6b3f65277b7a364df45f426f5c592"
@@ -98,13 +103,13 @@
   dependencies:
     "@aws-lambda-powertools/commons" "^1.18.1"
 
-"@aws-lambda-powertools/tracer@^1.14.0":
-  version "1.18.1"
-  resolved "https://registry.yarnpkg.com/@aws-lambda-powertools/tracer/-/tracer-1.18.1.tgz#9a6c618abb195d0e2cc25b2cd36469f9d63317bd"
-  integrity sha512-bMLBtdEFNmLUR9RJvBULR6XJD0XopUhhS1mlpeQlm2BCPIN3gLbqAlJK8dMXyAw8GCpLpHaziCo2+7a/AIh7lA==
+"@aws-lambda-powertools/tracer@^2.6.0":
+  version "2.6.0"
+  resolved "https://registry.yarnpkg.com/@aws-lambda-powertools/tracer/-/tracer-2.6.0.tgz#c0ecabc783efe75884d202cb21729d0c40c0f8d4"
+  integrity sha512-NmqWmph8aHHaACK/08HIqx1zk9LjZ9cYKP11xHtZfl1xjo/ThNKYCjBfgzm8M6nEmmqKL8baO+FI1i/izqd3nQ==
   dependencies:
-    "@aws-lambda-powertools/commons" "^1.18.1"
-    aws-xray-sdk-core "^3.5.3"
+    "@aws-lambda-powertools/commons" "^2.6.0"
+    aws-xray-sdk-core "^3.9.0"
 
 "@aws-sdk/client-ec2@^3.616.0":
   version "3.616.0"
@@ -4284,7 +4289,7 @@ aws-sdk@^2.814.0:
     uuid "8.0.0"
     xml2js "0.5.0"
 
-aws-xray-sdk-core@^3.5.3:
+aws-xray-sdk-core@^3.9.0:
   version "3.9.0"
   resolved "https://registry.yarnpkg.com/aws-xray-sdk-core/-/aws-xray-sdk-core-3.9.0.tgz#f42b4081113c33088d8ad29d31e4bba7e94b1eed"
   integrity sha512-YKzOVse7m6PCO/Uf3y3zhkWqPo5uUIU1Iin/hvL+Lpr2gFxCbNR88pkARAW2LyjvkwlcwLvx7TEoNV3SJYa4yg==
