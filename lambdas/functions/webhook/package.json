@@ -38,7 +38,7 @@
     "typescript": "^5.4.5"
   },
   "dependencies": {
-    "@aws-sdk/client-sqs": "^3.616.0",
+    "@aws-sdk/client-sqs": "^3.620.1",
     "@middy/core": "^4.7.0",
     "@octokit/rest": "^20.0.1",
     "@octokit/types": "^13.5.0",
