@@ -363,6 +363,12 @@ variable "syncer_lambda_s3_object_version" {
   default     = null
 }
 
+variable "enable_webhook_apigateway_v1" {
+  description = "Enables the the webhook apigateway v1. Disable apigateway v2.."
+  type        = bool
+  default     = false
+}
+
 variable "webhook_lambda_s3_key" {
   description = "S3 key for webhook lambda function. Required if using S3 bucket to specify lambdas."
   type        = string
@@ -904,4 +910,10 @@ variable "lambda_tags" {
   description = "Map of tags that will be added to all the lambda function resources. Note these are additional tags to the default tags."
   type        = map(string)
   default     = {}
+}
+
+variable "aws_apigateway_stage" {
+  description = "Stage to be used in the apigateway"
+  type        = string
+  default     = ""
 }

@@ -102,6 +102,18 @@ variable "webhook_lambda_s3_key" {
   default     = null
 }
 
+variable "enable_webhook_apigateway_v1" {
+  description = "Enables the the webhook apigateway v1. Disable apigateway v2.."
+  type        = bool
+  default     = false
+}
+
+variable "aws_apigateway_stage" {
+  description = "Stage to be used in the apigateway"
+  type        = string
+  default     = ""
+}
+
 variable "webhook_lambda_s3_object_version" {
   description = "S3 object version for webhook lambda function. Useful if S3 versioning is enabled on source bucket."
   type        = string

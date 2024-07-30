@@ -5,18 +5,21 @@ locals {
 }
 
 resource "aws_apigatewayv2_api" "webhook" {
+  count = var.enable_webhook_apigateway_v1 ? 0 : 1
   name          = "${var.prefix}-github-action-webhook"
   protocol_type = "HTTP"
   tags          = var.tags
 }
 
 resource "aws_apigatewayv2_route" "webhook" {
+  count = var.enable_webhook_apigateway_v1 ? 0 : 1
   api_id    = aws_apigatewayv2_api.webhook.id
   route_key = "POST /${local.webhook_endpoint}"
   target    = "integrations/${aws_apigatewayv2_integration.webhook.id}"
 }
 
 resource "aws_apigatewayv2_stage" "webhook" {
+  count = var.enable_webhook_apigateway_v1 ? 0 : 1
   lifecycle {
     ignore_changes = [
       # see bug https://github.com/terraform-providers/terraform-provider-aws/issues/12893
@@ -40,6 +43,7 @@ resource "aws_apigatewayv2_stage" "webhook" {
 }
 
 resource "aws_apigatewayv2_integration" "webhook" {
+  count = var.enable_webhook_apigateway_v1 ? 0 : 1
   lifecycle {
     ignore_changes = [
       # not terraform managed
