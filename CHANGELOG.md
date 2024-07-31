@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.12.2](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.12.1...v5.12.2) (2024-07-12)
+
+
+### Bug Fixes
+
+* remove job start hook with senstive information ([#3986](https://github.com/philips-labs/terraform-aws-github-runner/issues/3986)) ([bbcb470](https://github.com/philips-labs/terraform-aws-github-runner/commit/bbcb4707f698b29c470c0aadf81c9ac2c37781f8)), closes [#3980](https://github.com/philips-labs/terraform-aws-github-runner/issues/3980)
+
 ## [5.12.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.12.0...v5.12.1) (2024-07-05)
 
 
