@@ -16,7 +16,6 @@
     "all": "yarn build && yarn format && yarn lint && yarn test"
   },
   "devDependencies": {
-    "@octokit/webhooks-definitions": "^3.67.3",
     "@trivago/prettier-plugin-sort-imports": "^4.3.0",
     "@types/aws-lambda": "^8.10.142",
     "@types/express": "^4.17.21",
@@ -40,7 +39,7 @@
   "dependencies": {
     "@aws-sdk/client-sqs": "^3.621.0",
     "@middy/core": "^4.7.0",
-    "@octokit/rest": "^20.0.1",
+    "@octokit/rest": "20.0.2",
     "@octokit/types": "^13.5.0",
     "@octokit/webhooks": "^12.2.0",
     "@terraform-aws-github-runner/aws-powertools-util": "*",

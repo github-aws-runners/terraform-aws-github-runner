@@ -3590,7 +3590,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@octokit/rest@npm:20.0.2, @octokit/rest@npm:^20.0.1":
+"@octokit/rest@npm:20.0.2":
   version: 20.0.2
   resolution: "@octokit/rest@npm:20.0.2"
   dependencies:
@@ -3608,13 +3608,6 @@ __metadata:
   dependencies:
     "@octokit/openapi-types": "npm:^22.2.0"
   checksum: 10c0/355ebc6776ce23feace1b1be0927cdda758790fda83068109c4f27b354dcd43d0447d4dc24e5eafdb596465469ea1baed23f3fd63adfec508cc375ccd1dcb0a3
-  languageName: node
-  linkType: hard
-
-"@octokit/webhooks-definitions@npm:^3.67.3":
-  version: 3.67.3
-  resolution: "@octokit/webhooks-definitions@npm:3.67.3"
-  checksum: 10c0/036d3a3bb0f211defe9f311780466472423c595d2ba95fba126b5678c3b2321ce0f288eb4a5e069d96fc1e43c4536e31b8685cec558fee4fab2b81a520854ceb
   languageName: node
   linkType: hard
 
@@ -4640,7 +4633,6 @@ __metadata:
     "@aws-lambda-powertools/logger": "npm:^1.18.1"
     "@aws-lambda-powertools/metrics": "npm:^1.18.1"
     "@aws-lambda-powertools/tracer": "npm:^1.18.1"
-    "@octokit/webhooks-definitions": "npm:^3.67.3"
     "@trivago/prettier-plugin-sort-imports": "npm:^4.3.0"
     "@types/aws-lambda": "npm:^8.10.142"
     "@types/express": "npm:^4.17.21"
@@ -4670,7 +4662,6 @@ __metadata:
   dependencies:
     "@aws-sdk/client-ssm": "npm:^3.621.0"
     "@aws-sdk/types": "npm:^3.609.0"
-    "@octokit/webhooks-definitions": "npm:^3.67.3"
     "@terraform-aws-github-runner/aws-powertools-util": "npm:*"
     "@trivago/prettier-plugin-sort-imports": "npm:^4.3.0"
     "@types/aws-lambda": "npm:^8.10.142"
@@ -4742,7 +4733,7 @@ __metadata:
     "@aws-sdk/lib-storage": "npm:^3.621.0"
     "@aws-sdk/types": "npm:^3.609.0"
     "@middy/core": "npm:^4.7.0"
-    "@octokit/rest": "npm:^20.0.1"
+    "@octokit/rest": "npm:20.0.2"
     "@terraform-aws-github-runner/aws-powertools-util": "npm:*"
     "@trivago/prettier-plugin-sort-imports": "npm:^4.3.0"
     "@types/aws-lambda": "npm:^8.10.142"
@@ -4803,10 +4794,9 @@ __metadata:
   dependencies:
     "@aws-sdk/client-sqs": "npm:^3.621.0"
     "@middy/core": "npm:^4.7.0"
-    "@octokit/rest": "npm:^20.0.1"
+    "@octokit/rest": "npm:20.0.2"
     "@octokit/types": "npm:^13.5.0"
     "@octokit/webhooks": "npm:^12.2.0"
-    "@octokit/webhooks-definitions": "npm:^3.67.3"
     "@terraform-aws-github-runner/aws-powertools-util": "npm:*"
     "@terraform-aws-github-runner/aws-ssm-util": "npm:*"
     "@trivago/prettier-plugin-sort-imports": "npm:^4.3.0"
