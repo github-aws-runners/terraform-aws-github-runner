@@ -27,11 +27,11 @@ updates:
       octokit:
         patterns:
           - "@octokit/*"
+      aws-powertools:
+        patterns:
+          - "@aws-lambda-powertools/*"
+
     ignore:
-      - dependency-name: "aws-sdk*"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "aws-lambda-powertools/*"
-        update-types: ["version-update:semver-major"]
       - dependency-name: "@middy/core"
         update-types: ["version-update:semver-major"]
       - dependency-name: "@octokit/*"
