@@ -97,54 +97,54 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@aws-lambda-powertools/commons@npm:^1.18.1":
-  version: 1.18.1
-  resolution: "@aws-lambda-powertools/commons@npm:1.18.1"
-  checksum: 10c0/5c5b748b03f166cf3efce99e3e5029cb4615d2e31b0593586479f0101b61de34f35ad380ea058fc3ba4c11444c0701daad2f833405db79ee6a69979bfaf14d50
+"@aws-lambda-powertools/commons@npm:^2.6.0":
+  version: 2.6.0
+  resolution: "@aws-lambda-powertools/commons@npm:2.6.0"
+  checksum: 10c0/e236e5d02b66b824916bb7626008ebf4e884b517afb4ef79caea58e58bbb61455e17f5b95522c21784372de2912d05c7cc69001d9009bad3057f6ec7cf005aab
   languageName: node
   linkType: hard
 
-"@aws-lambda-powertools/logger@npm:^1.18.1":
-  version: 1.18.1
-  resolution: "@aws-lambda-powertools/logger@npm:1.18.1"
+"@aws-lambda-powertools/logger@npm:^2.6.0":
+  version: 2.6.0
+  resolution: "@aws-lambda-powertools/logger@npm:2.6.0"
   dependencies:
-    "@aws-lambda-powertools/commons": "npm:^1.18.1"
+    "@aws-lambda-powertools/commons": "npm:^2.6.0"
     lodash.merge: "npm:^4.6.2"
   peerDependencies:
-    "@middy/core": ">=3.x"
+    "@middy/core": 4.x || 5.x
   peerDependenciesMeta:
     "@middy/core":
       optional: true
-  checksum: 10c0/3d9c43bd2d68b47bd4eb0e96268382bd2b40e6009c8faf4072ff8e673fddd25a2f113a65f6fd319839680478f03c34abe3cca1acf4b76e101807e587cad61dfc
+  checksum: 10c0/b6f89363d8f635fd8429f156e02c9eb0e8f2cfbe37cc774075262666e9a67f91af84a5a28fcb34197616e3fb85f62243746381a61b3a638169401307f18e84e6
   languageName: node
   linkType: hard
 
-"@aws-lambda-powertools/metrics@npm:^1.18.1":
-  version: 1.18.1
-  resolution: "@aws-lambda-powertools/metrics@npm:1.18.1"
+"@aws-lambda-powertools/metrics@npm:^2.6.0":
+  version: 2.6.0
+  resolution: "@aws-lambda-powertools/metrics@npm:2.6.0"
   dependencies:
-    "@aws-lambda-powertools/commons": "npm:^1.18.1"
+    "@aws-lambda-powertools/commons": "npm:^2.6.0"
   peerDependencies:
-    "@middy/core": ">=3.x"
+    "@middy/core": 4.x || 5.x
   peerDependenciesMeta:
     "@middy/core":
       optional: true
-  checksum: 10c0/1e4bacc5069140ff84ceca2d27b104b0d6ee862eccd8bd8180e18459ae2bc6d753649d1b5d4579fdfd26ac74f6406a37be2d8ce662150795beb2ffd6063799da
+  checksum: 10c0/270913878d7e6703c47414fa22af15463814cd971eeeb32fc673d1e24f72dce950e5879f10c190286d7ea8dbe82d5de82b901bf49faf3bc1da5e2c6f52ca124e
   languageName: node
   linkType: hard
 
-"@aws-lambda-powertools/tracer@npm:^1.18.1":
-  version: 1.18.1
-  resolution: "@aws-lambda-powertools/tracer@npm:1.18.1"
+"@aws-lambda-powertools/tracer@npm:^2.6.0":
+  version: 2.6.0
+  resolution: "@aws-lambda-powertools/tracer@npm:2.6.0"
   dependencies:
-    "@aws-lambda-powertools/commons": "npm:^1.18.1"
-    aws-xray-sdk-core: "npm:^3.5.3"
+    "@aws-lambda-powertools/commons": "npm:^2.6.0"
+    aws-xray-sdk-core: "npm:^3.9.0"
   peerDependencies:
-    "@middy/core": ">=3.x"
+    "@middy/core": 4.x || 5.x
   peerDependenciesMeta:
     "@middy/core":
       optional: true
-  checksum: 10c0/3b2932608f93cb5ceb2ceb9a0d861b26f231d9739e9869748515cbea30b31d7ecb388c7915cff7b74ac9a2649360024b930b3697d530a0b5e19b5383b080f79b
+  checksum: 10c0/e3e5c2fa47a9784c4e99f5e72498756d30895215237bf9fa4b24db98522510144710264b317bd01c2f8bba52b631d9bc6de00347b4ea5e47f9f8e328debbb616
   languageName: node
   linkType: hard
 
@@ -4630,9 +4630,9 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@terraform-aws-github-runner/aws-powertools-util@workspace:libs/aws-powertools-util"
   dependencies:
-    "@aws-lambda-powertools/logger": "npm:^1.18.1"
-    "@aws-lambda-powertools/metrics": "npm:^1.18.1"
-    "@aws-lambda-powertools/tracer": "npm:^1.18.1"
+    "@aws-lambda-powertools/logger": "npm:^2.6.0"
+    "@aws-lambda-powertools/metrics": "npm:^2.6.0"
+    "@aws-lambda-powertools/tracer": "npm:^2.6.0"
     "@trivago/prettier-plugin-sort-imports": "npm:^4.3.0"
     "@types/aws-lambda": "npm:^8.10.142"
     "@types/express": "npm:^4.17.21"
@@ -5634,7 +5634,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"aws-xray-sdk-core@npm:^3.5.3":
+"aws-xray-sdk-core@npm:^3.9.0":
   version: 3.9.0
   resolution: "aws-xray-sdk-core@npm:3.9.0"
   dependencies:
