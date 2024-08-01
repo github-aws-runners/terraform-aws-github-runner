@@ -8,7 +8,7 @@
     "test": "NODE_ENV=test nx test",
     "test:watch": "NODE_ENV=test nx test --watch",
     "lint": "yarn eslint src",
-    "watch": "ts-node-dev --respawn --exit-child --files src/local.ts",
+    "watch": "ts-node-dev --respawn --exit-child --files src/local-down.ts",
     "build": "ncc build src/lambda.ts -o dist",
     "dist": "yarn build && cd dist && zip ../runners.zip index.js",
     "format": "prettier --write \"**/*.ts\"",

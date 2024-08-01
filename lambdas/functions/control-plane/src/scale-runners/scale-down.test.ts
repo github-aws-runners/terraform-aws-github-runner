@@ -311,7 +311,7 @@ describe('Scale down runners', () => {
 
         expect(mockTagRunners).toHaveBeenCalledWith(orphanRunner.instanceId, [
           {
-            Key: 'orphan',
+            Key: 'ghr:orphan',
             Value: 'true',
           },
         ]);

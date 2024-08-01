@@ -182,12 +182,10 @@ async function evaluateAndRemoveRunners(
             );
           }
         }
+      } else if (bootTimeExceeded(ec2Runner)) {
+        markOrphan(ec2Runner.instanceId);
       } else {
-        if (bootTimeExceeded(ec2Runner)) {
-          markOrphan(ec2Runner.instanceId);
-        } else {
-          logger.debug(`Runner ${ec2Runner.instanceId} has not yet booted.`);
-        }
+        logger.debug(`Runner ${ec2Runner.instanceId} has not yet booted.`);
       }
     }
   }
@@ -195,10 +193,10 @@ async function evaluateAndRemoveRunners(
 
 async function markOrphan(instanceId: string): Promise<void> {
   try {
-    await tag(instanceId, [{ Key: 'orphan', Value: 'true' }]);
+    await tag(instanceId, [{ Key: 'ghr:orphan', Value: 'true' }]);
     logger.info(`Runner '${instanceId}' marked as orphan.`);
   } catch (e) {
-    logger.warn(`Orphan runner '${instanceId}' cannot be marked.`);
+    logger.error(`Failed to mark runner '${instanceId}' as orphan.`, { error: e });
   }
 }
 
