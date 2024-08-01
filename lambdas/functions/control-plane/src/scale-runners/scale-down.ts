@@ -130,7 +130,7 @@ async function removeRunner(ec2runner: RunnerInfo, ghRunnerIds: number[]): Promi
 
       if (statuses.every((status) => status == 204)) {
         await terminateRunner(ec2runner.instanceId);
-        logger.info(`AWS runner instance '${ec2runner.instanceId}' is terminated and GitHub runner is de-registered.`);
+        logger.debug(`AWS runner instance '${ec2runner.instanceId}' is terminated and GitHub runner is de-registered.`);
       } else {
         logger.error(`Failed to de-register GitHub runner: ${statuses}`);
       }
@@ -175,7 +175,7 @@ async function evaluateAndRemoveRunners(
             idleCounter--;
             logger.info(`Runner '${ec2Runner.instanceId}' will be kept idle.`);
           } else {
-            logger.info(`Will try to terminate runners that are not busy`);
+            logger.info(`Terminating all non busy runners.`);
             await removeRunner(
               ec2Runner,
               ghRunnersFiltered.map((runner: { id: number }) => runner.id),
@@ -183,7 +183,7 @@ async function evaluateAndRemoveRunners(
           }
         }
       } else if (bootTimeExceeded(ec2Runner)) {
-        markOrphan(ec2Runner.instanceId);
+        await markOrphan(ec2Runner.instanceId);
       } else {
         logger.debug(`Runner ${ec2Runner.instanceId} has not yet booted.`);
       }
@@ -205,6 +205,7 @@ async function terminateOrphan(environment: string): Promise<void> {
     const orphanRunners = await listEC2Runners({ environment, orphan: true });
 
     for (const runner of orphanRunners) {
+      logger.info(`Terminating orphan runner '${runner.instanceId}'`);
       await terminateRunner(runner.instanceId).catch((e) => {
         logger.error(`Failed to terminate orphan runner '${runner.instanceId}'`, { error: e });
       });

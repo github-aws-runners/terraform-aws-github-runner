@@ -100,14 +100,14 @@ function getRunnerInfo(runningInstances: DescribeInstancesResult) {
 }
 
 export async function terminateRunner(instanceId: string): Promise<void> {
-  logger.info(`Runner '${instanceId}' will be terminated.`);
+  logger.debug(`Runner '${instanceId}' will be terminated.`);
   const ec2 = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
   await ec2.send(new TerminateInstancesCommand({ InstanceIds: [instanceId] }));
-  logger.info(`Runner ${instanceId} has been terminated.`);
+  logger.debug(`Runner ${instanceId} has been terminated.`);
 }
 
 export async function tag(instanceId: string, tags: Tag[]): Promise<void> {
-  logger.info(`Tagging '${instanceId}'`, { tags });
+  logger.debug(`Tagging '${instanceId}'`, { tags });
   const ec2 = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
   await ec2.send(new CreateTagsCommand({ Resources: [instanceId], Tags: tags }));
 }
