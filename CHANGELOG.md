@@ -1,5 +1,17 @@
 # Changelog
 
+## [5.14.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.13.0...v5.14.0) (2024-08-01)
+
+
+### Features
+
+* mark orphan runners before removing them ([#4001](https://github.com/philips-labs/terraform-aws-github-runner/issues/4001)) ([6cde62c](https://github.com/philips-labs/terraform-aws-github-runner/commit/6cde62c8c1d6d5eafae01bf9770bd12bb423d779))
+
+
+### Bug Fixes
+
+* upgrade aws powertools to v2 ([#4027](https://github.com/philips-labs/terraform-aws-github-runner/issues/4027)) ([900217b](https://github.com/philips-labs/terraform-aws-github-runner/commit/900217bd81cb5cabcc8c38e12b8fd380315319e8))
+
 ## [5.13.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.12.2...v5.13.0) (2024-08-01)
 
 
