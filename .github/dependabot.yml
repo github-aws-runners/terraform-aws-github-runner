@@ -34,9 +34,10 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "@middy/core"
         update-types: ["version-update:semver-major"]
-      - dependency-name: "@@octokit/*"
+      - dependency-name: "@octokit/*"
         update-types: ["version-update:semver-major"]
-      - dependency-name: "@@octokit/rest"
+      - dependency-name: "@octokit/rest"
+      - dependency-name: "@octokit/auth-app"
       - dependency-name: "eslint"
         update-types: ["version-update:semver-major"]
     commit-message:

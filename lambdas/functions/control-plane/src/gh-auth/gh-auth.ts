@@ -32,12 +32,12 @@ export async function createOctoClient(token: string, ghesApiUrl = ''): Promise<
   return new CustomOctokit({
     ...ocktokitOptions,
     throttle: {
-      onRateLimit: (retryAfter, options) => {
+      onRateLimit: (options: { method: string; url: string }) => {
         logger.warn(
           `GitHub rate limit: Request quota exhausted for request ${options.method} ${options.url}. Requested `,
         );
       },
-      onSecondaryRateLimit: (retryAfter, options) => {
+      onSecondaryRateLimit: (options: { method: string; url: string }) => {
         logger.warn(`GitHub rate limit: SecondaryRateLimit detected for request ${options.method} ${options.url}`);
       },
     },
