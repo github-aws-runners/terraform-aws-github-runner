@@ -1,5 +1,21 @@
 # Changelog
 
+## [5.13.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.12.2...v5.13.0) (2024-08-01)
+
+
+### Features
+
+* **webhook:** Enable authorizer assignment to webhook ([#4000](https://github.com/philips-labs/terraform-aws-github-runner/issues/4000)) ([b78ccde](https://github.com/philips-labs/terraform-aws-github-runner/commit/b78ccde771f6c24b736e046cd41acb72308baac0))
+
+
+### Bug Fixes
+
+* add warnings to log for GitHub rate limits ([#3988](https://github.com/philips-labs/terraform-aws-github-runner/issues/3988)) ([2ed0b29](https://github.com/philips-labs/terraform-aws-github-runner/commit/2ed0b29960a7eb932090cdd3612680c9efc3a5b8))
+* bump node dependencies and cleanup ([#4020](https://github.com/philips-labs/terraform-aws-github-runner/issues/4020)) ([221958b](https://github.com/philips-labs/terraform-aws-github-runner/commit/221958bccb56642ae654d0a27eb2b27a17013700))
+* **lambda:** bump the aws group across 1 directory with 5 updates ([#4005](https://github.com/philips-labs/terraform-aws-github-runner/issues/4005)) ([4ca422d](https://github.com/philips-labs/terraform-aws-github-runner/commit/4ca422d95da447416f0bc1b53e6e0fea70cca4bd))
+* **lambda:** bump the aws group across 1 directory with 5 updates ([#4017](https://github.com/philips-labs/terraform-aws-github-runner/issues/4017)) ([0cd6a85](https://github.com/philips-labs/terraform-aws-github-runner/commit/0cd6a854ee54b36b2ede20145a2e8a77f5ed534f))
+* mark github_app variable as sensitive ([#4013](https://github.com/philips-labs/terraform-aws-github-runner/issues/4013)) ([08be669](https://github.com/philips-labs/terraform-aws-github-runner/commit/08be669a9d04bb8c5930b69d17f12748720e6148))
+
 ## [5.12.2](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.12.1...v5.12.2) (2024-07-12)
 
 
