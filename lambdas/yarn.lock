@@ -4619,7 +4619,7 @@ __metadata:
     jest-mock-extended: "npm:^3.0.7"
     nock: "npm:^13.5.4"
     prettier: "npm:3.3.3"
-    ts-jest: "npm:^29.2.3"
+    ts-jest: "npm:^29.2.4"
     ts-node: "npm:^10.9.2"
     ts-node-dev: "npm:^2.0.0"
     typescript: "npm:^5.5.4"
@@ -4650,7 +4650,7 @@ __metadata:
     jest-mock: "npm:^29.7.0"
     nock: "npm:^13.5.4"
     prettier: "npm:3.3.3"
-    ts-jest: "npm:^29.2.3"
+    ts-jest: "npm:^29.2.4"
     ts-node-dev: "npm:^2.0.0"
     typescript: "npm:^5.5.4"
   languageName: unknown
@@ -4679,7 +4679,7 @@ __metadata:
     jest-mock: "npm:^29.7.0"
     nock: "npm:^13.5.4"
     prettier: "npm:3.3.3"
-    ts-jest: "npm:^29.2.3"
+    ts-jest: "npm:^29.2.4"
     ts-node-dev: "npm:^2.0.0"
     typescript: "npm:^5.5.4"
   languageName: unknown
@@ -4718,7 +4718,7 @@ __metadata:
     moment-timezone: "npm:^0.5.45"
     nock: "npm:^13.5.4"
     prettier: "npm:3.3.3"
-    ts-jest: "npm:^29.2.3"
+    ts-jest: "npm:^29.2.4"
     ts-node: "npm:^10.9.2"
     ts-node-dev: "npm:^2.0.0"
     typescript: "npm:^5.5.4"
@@ -4751,7 +4751,7 @@ __metadata:
     jest: "npm:^29.7.0"
     jest-mock: "npm:^29.7.0"
     prettier: "npm:3.3.3"
-    ts-jest: "npm:^29.2.3"
+    ts-jest: "npm:^29.2.4"
     ts-node-dev: "npm:^2.0.0"
     typescript: "npm:^5.5.4"
   languageName: unknown
@@ -4781,7 +4781,7 @@ __metadata:
     jest-mock-extended: "npm:^3.0.7"
     nock: "npm:^13.5.4"
     prettier: "npm:3.3.3"
-    ts-jest: "npm:^29.2.3"
+    ts-jest: "npm:^29.2.4"
     ts-node: "npm:^10.9.2"
     ts-node-dev: "npm:^2.0.0"
     typescript: "npm:^5.5.4"
@@ -4816,7 +4816,7 @@ __metadata:
     jest-mock: "npm:^29.7.0"
     nock: "npm:^13.5.4"
     prettier: "npm:3.3.3"
-    ts-jest: "npm:^29.2.3"
+    ts-jest: "npm:^29.2.4"
     ts-node-dev: "npm:^2.0.0"
     typescript: "npm:^5.5.4"
   languageName: unknown
@@ -10544,9 +10544,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ts-jest@npm:^29.2.3":
-  version: 29.2.3
-  resolution: "ts-jest@npm:29.2.3"
+"ts-jest@npm:^29.2.4":
+  version: 29.2.4
+  resolution: "ts-jest@npm:29.2.4"
   dependencies:
     bs-logger: "npm:0.x"
     ejs: "npm:^3.1.10"
@@ -10577,7 +10577,7 @@ __metadata:
       optional: true
   bin:
     ts-jest: cli.js
-  checksum: 10c0/3be57a9f0e9cf0d0de235f5543dc1f2a33da4380bf46e660f79d050a15a6e7bab71a7a80ba9559761ce1203248b40d0f9386c19356718165575f32192e32140e
+  checksum: 10c0/43be1d5625d44bc48815d91810e796d74682757b4f64677b54aae1f4da855476e50c01b92d54add4b02976ecf2cbb2f318d7c7788844328de44f145b95185fac
   languageName: node
   linkType: hard
 
