@@ -104,6 +104,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@aws-lambda-powertools/commons@npm:^2.6.0":
+  version: 2.6.0
+  resolution: "@aws-lambda-powertools/commons@npm:2.6.0"
+  checksum: 10c0/e236e5d02b66b824916bb7626008ebf4e884b517afb4ef79caea58e58bbb61455e17f5b95522c21784372de2912d05c7cc69001d9009bad3057f6ec7cf005aab
+  languageName: node
+  linkType: hard
+
 "@aws-lambda-powertools/logger@npm:^1.18.1":
   version: 1.18.1
   resolution: "@aws-lambda-powertools/logger@npm:1.18.1"
@@ -119,17 +126,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@aws-lambda-powertools/metrics@npm:^1.18.1":
-  version: 1.18.1
-  resolution: "@aws-lambda-powertools/metrics@npm:1.18.1"
+"@aws-lambda-powertools/metrics@npm:^2.6.0":
+  version: 2.6.0
+  resolution: "@aws-lambda-powertools/metrics@npm:2.6.0"
   dependencies:
-    "@aws-lambda-powertools/commons": "npm:^1.18.1"
+    "@aws-lambda-powertools/commons": "npm:^2.6.0"
   peerDependencies:
-    "@middy/core": ">=3.x"
+    "@middy/core": 4.x || 5.x
   peerDependenciesMeta:
     "@middy/core":
       optional: true
-  checksum: 10c0/1e4bacc5069140ff84ceca2d27b104b0d6ee862eccd8bd8180e18459ae2bc6d753649d1b5d4579fdfd26ac74f6406a37be2d8ce662150795beb2ffd6063799da
+  checksum: 10c0/270913878d7e6703c47414fa22af15463814cd971eeeb32fc673d1e24f72dce950e5879f10c190286d7ea8dbe82d5de82b901bf49faf3bc1da5e2c6f52ca124e
   languageName: node
   linkType: hard
 
@@ -4631,7 +4638,7 @@ __metadata:
   resolution: "@terraform-aws-github-runner/aws-powertools-util@workspace:libs/aws-powertools-util"
   dependencies:
     "@aws-lambda-powertools/logger": "npm:^1.18.1"
-    "@aws-lambda-powertools/metrics": "npm:^1.18.1"
+    "@aws-lambda-powertools/metrics": "npm:^2.6.0"
     "@aws-lambda-powertools/tracer": "npm:^1.18.1"
     "@trivago/prettier-plugin-sort-imports": "npm:^4.3.0"
     "@types/aws-lambda": "npm:^8.10.142"
