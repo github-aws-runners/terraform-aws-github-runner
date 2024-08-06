@@ -10,13 +10,16 @@ import {
 import { OctokitOptions } from '@octokit/core/dist-types/types';
 import { request } from '@octokit/request';
 import { Octokit } from '@octokit/rest';
+import { throttling } from '@octokit/plugin-throttling';
 import { createChildLogger } from '@terraform-aws-github-runner/aws-powertools-util';
 import { getParameter } from '@terraform-aws-github-runner/aws-ssm-util';
 
 import { axiosFetch } from '../axios/fetch-override';
 
 const logger = createChildLogger('gh-auth');
+
 export async function createOctoClient(token: string, ghesApiUrl = ''): Promise<Octokit> {
+  const CustomOctokit = Octokit.plugin(throttling);
   const ocktokitOptions: OctokitOptions = {
     auth: token,
     request: { fetch: axiosFetch },
@@ -25,7 +28,20 @@ export async function createOctoClient(token: string, ghesApiUrl = ''): Promise<
     ocktokitOptions.baseUrl = ghesApiUrl;
     ocktokitOptions.previews = ['antiope'];
   }
-  return new Octokit(ocktokitOptions);
+
+  return new CustomOctokit({
+    ...ocktokitOptions,
+    throttle: {
+      onRateLimit: (options: { method: string; url: string }) => {
+        logger.warn(
+          `GitHub rate limit: Request quota exhausted for request ${options.method} ${options.url}. Requested `,
+        );
+      },
+      onSecondaryRateLimit: (options: { method: string; url: string }) => {
+        logger.warn(`GitHub rate limit: SecondaryRateLimit detected for request ${options.method} ${options.url}`);
+      },
+    },
+  });
 }
 
 export async function createGithubAppAuth(

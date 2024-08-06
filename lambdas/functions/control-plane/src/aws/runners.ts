@@ -1,10 +1,12 @@
 import {
   CreateFleetCommand,
   CreateFleetResult,
+  CreateTagsCommand,
   DescribeInstancesCommand,
   DescribeInstancesResult,
   EC2Client,
   FleetLaunchTemplateOverridesRequest,
+  Tag,
   TerminateInstancesCommand,
   _InstanceType,
 } from '@aws-sdk/client-ec2';
@@ -46,6 +48,9 @@ function constructFilters(filters?: Runners.ListRunnerFilters): Ec2Filter[][] {
       ec2FiltersBase.push({ Name: `tag:ghr:Type`, Values: [filters.runnerType] });
       ec2FiltersBase.push({ Name: `tag:ghr:Owner`, Values: [filters.runnerOwner] });
     }
+    if (filters.orphan) {
+      ec2FiltersBase.push({ Name: 'tag:ghr:orphan', Values: ['true'] });
+    }
   }
 
   for (const key of ['tag:ghr:Application']) {
@@ -85,6 +90,7 @@ function getRunnerInfo(runningInstances: DescribeInstancesResult) {
             type: i.Tags?.find((e) => e.Key === 'ghr:Type')?.Value as string,
             repo: i.Tags?.find((e) => e.Key === 'ghr:Repo')?.Value as string,
             org: i.Tags?.find((e) => e.Key === 'ghr:Org')?.Value as string,
+            orphan: i.Tags?.find((e) => e.Key === 'ghr:orphan')?.Value === 'true',
           });
         }
       }
@@ -94,9 +100,16 @@ function getRunnerInfo(runningInstances: DescribeInstancesResult) {
 }
 
 export async function terminateRunner(instanceId: string): Promise<void> {
+  logger.debug(`Runner '${instanceId}' will be terminated.`);
   const ec2 = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
   await ec2.send(new TerminateInstancesCommand({ InstanceIds: [instanceId] }));
-  logger.info(`Runner ${instanceId} has been terminated.`);
+  logger.debug(`Runner ${instanceId} has been terminated.`);
+}
+
+export async function tag(instanceId: string, tags: Tag[]): Promise<void> {
+  logger.debug(`Tagging '${instanceId}'`, { tags });
+  const ec2 = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
+  await ec2.send(new CreateTagsCommand({ Resources: [instanceId], Tags: tags }));
 }
 
 function generateFleetOverrides(
@@ -209,7 +222,8 @@ async function getAmiIdOverride(runnerParameters: Runners.RunnerInputParameters)
         'Please ensure that the given parameter exists on this region and contains a valid runner AMI ID',
       { error: e },
     );
-    throw e;
+    throw new Error(`Failed to lookup runner AMI ID from SSM parameter: ${runnerParameters.amiIdSsmParameterName},
+       ${e}`);
   }
 }
 

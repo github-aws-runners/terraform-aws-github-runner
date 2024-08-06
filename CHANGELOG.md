@@ -1,5 +1,65 @@
 # Changelog
 
+## [5.14.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.13.0...v5.14.0) (2024-08-01)
+
+
+### Features
+
+* mark orphan runners before removing them ([#4001](https://github.com/philips-labs/terraform-aws-github-runner/issues/4001)) ([6cde62c](https://github.com/philips-labs/terraform-aws-github-runner/commit/6cde62c8c1d6d5eafae01bf9770bd12bb423d779))
+
+
+### Bug Fixes
+
+* upgrade aws powertools to v2 ([#4027](https://github.com/philips-labs/terraform-aws-github-runner/issues/4027)) ([900217b](https://github.com/philips-labs/terraform-aws-github-runner/commit/900217bd81cb5cabcc8c38e12b8fd380315319e8))
+
+## [5.13.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.12.2...v5.13.0) (2024-08-01)
+
+
+### Features
+
+* **webhook:** Enable authorizer assignment to webhook ([#4000](https://github.com/philips-labs/terraform-aws-github-runner/issues/4000)) ([b78ccde](https://github.com/philips-labs/terraform-aws-github-runner/commit/b78ccde771f6c24b736e046cd41acb72308baac0))
+
+
+### Bug Fixes
+
+* add warnings to log for GitHub rate limits ([#3988](https://github.com/philips-labs/terraform-aws-github-runner/issues/3988)) ([2ed0b29](https://github.com/philips-labs/terraform-aws-github-runner/commit/2ed0b29960a7eb932090cdd3612680c9efc3a5b8))
+* bump node dependencies and cleanup ([#4020](https://github.com/philips-labs/terraform-aws-github-runner/issues/4020)) ([221958b](https://github.com/philips-labs/terraform-aws-github-runner/commit/221958bccb56642ae654d0a27eb2b27a17013700))
+* **lambda:** bump the aws group across 1 directory with 5 updates ([#4005](https://github.com/philips-labs/terraform-aws-github-runner/issues/4005)) ([4ca422d](https://github.com/philips-labs/terraform-aws-github-runner/commit/4ca422d95da447416f0bc1b53e6e0fea70cca4bd))
+* **lambda:** bump the aws group across 1 directory with 5 updates ([#4017](https://github.com/philips-labs/terraform-aws-github-runner/issues/4017)) ([0cd6a85](https://github.com/philips-labs/terraform-aws-github-runner/commit/0cd6a854ee54b36b2ede20145a2e8a77f5ed534f))
+* mark github_app variable as sensitive ([#4013](https://github.com/philips-labs/terraform-aws-github-runner/issues/4013)) ([08be669](https://github.com/philips-labs/terraform-aws-github-runner/commit/08be669a9d04bb8c5930b69d17f12748720e6148))
+
+## [5.12.2](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.12.1...v5.12.2) (2024-07-12)
+
+
+### Bug Fixes
+
+* remove job start hook with senstive information ([#3986](https://github.com/philips-labs/terraform-aws-github-runner/issues/3986)) ([bbcb470](https://github.com/philips-labs/terraform-aws-github-runner/commit/bbcb4707f698b29c470c0aadf81c9ac2c37781f8)), closes [#3980](https://github.com/philips-labs/terraform-aws-github-runner/issues/3980)
+
+## [5.12.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.12.0...v5.12.1) (2024-07-05)
+
+
+### Bug Fixes
+
+* dependency updates lambda ([#3965](https://github.com/philips-labs/terraform-aws-github-runner/issues/3965)) ([a6df2b6](https://github.com/philips-labs/terraform-aws-github-runner/commit/a6df2b65dd74a911e9403f7ae7a03230d5003e8e))
+* improve logging when there is an error retrieving ssm parameters ([#3962](https://github.com/philips-labs/terraform-aws-github-runner/issues/3962)) ([1498c8c](https://github.com/philips-labs/terraform-aws-github-runner/commit/1498c8c2bdc4e1df8fd3671f2cc2c59d86c3eb92))
+
+## [5.12.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.11.0...v5.12.0) (2024-06-28)
+
+
+### Features
+
+* add support for matcher config tiering options ([#3953](https://github.com/philips-labs/terraform-aws-github-runner/issues/3953)) ([5f9d9eb](https://github.com/philips-labs/terraform-aws-github-runner/commit/5f9d9eb3f9fbda10495b9a2194dc91867942276e))
+* **lambda:** add option to define explicit lambda tags ([#3934](https://github.com/philips-labs/terraform-aws-github-runner/issues/3934)) ([7e98943](https://github.com/philips-labs/terraform-aws-github-runner/commit/7e98943c0b8962ebd0a231da233b431ba692c321))
+
+
+### Bug Fixes
+
+* **lambda:** bump braces from 3.0.2 to 3.0.3 in /lambdas ([#3944](https://github.com/philips-labs/terraform-aws-github-runner/issues/3944)) ([1aef82b](https://github.com/philips-labs/terraform-aws-github-runner/commit/1aef82b19fd1b53194b07ba650649f6d314e597c))
+* **lambda:** bump the aws group across 1 directory with 2 updates ([#3955](https://github.com/philips-labs/terraform-aws-github-runner/issues/3955)) ([2e094cf](https://github.com/philips-labs/terraform-aws-github-runner/commit/2e094cf242fd910d2e2451ece3946f7232f048b7))
+* **lambda:** bump the aws group across 1 directory with 6 updates ([#3949](https://github.com/philips-labs/terraform-aws-github-runner/issues/3949)) ([76fe9af](https://github.com/philips-labs/terraform-aws-github-runner/commit/76fe9af0ad25f2d7647c1c838c6a144b55a1105d))
+* **webhook:** Don't log warning when secondary job queue is empty ([#3942](https://github.com/philips-labs/terraform-aws-github-runner/issues/3942)) ([ef25bd4](https://github.com/philips-labs/terraform-aws-github-runner/commit/ef25bd44717d282cc123ada570b0b03cf76b4d7f))
+* **webhook:** Don't set `${SQS_WORKFLOW_JOB_QUEUE}` to empty string ([#3943](https://github.com/philips-labs/terraform-aws-github-runner/issues/3943)) ([6c48dff](https://github.com/philips-labs/terraform-aws-github-runner/commit/6c48dffff558dba78d013f10764fb65329b6523e))
+
 ## [5.11.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.10.4...v5.11.0) (2024-05-22)
 
 

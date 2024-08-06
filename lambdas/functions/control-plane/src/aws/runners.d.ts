@@ -9,6 +9,7 @@ export interface RunnerList {
   type?: string;
   repo?: string;
   org?: string;
+  orphan?: boolean;
 }
 
 export interface RunnerInfo {
@@ -22,6 +23,7 @@ export interface ListRunnerFilters {
   runnerType?: RunnerType;
   runnerOwner?: string;
   environment?: string;
+  orphan?: boolean;
   statuses?: string[];
 }
 

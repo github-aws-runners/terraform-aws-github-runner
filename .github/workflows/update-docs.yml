@@ -25,14 +25,14 @@ jobs:
           org: philips-labs
 
       - name: Checkout with GITHUB Action token
-        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # ratchet:actions/checkout@v4
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # ratchet:actions/checkout@v4
         with:
           token: ${{ steps.app.outputs.token }}
 
       # use an app to ensure CI is triggered
       - name: Generate TF docs
         if: github.repository_owner == 'philips-labs'
-        uses: terraform-docs/gh-actions@7a62208a0090636af2df1b739da46d27fd90bdc6 # ratchet:terraform-docs/gh-actions@v1.1.0
+        uses: terraform-docs/gh-actions@e47bfa196e79fa50987ef391be236d9d97b0c786 # ratchet:terraform-docs/gh-actions@v1.2.0
         with:
           find-dir: .
           git-commit-message: "docs: auto update terraform docs"
@@ -42,7 +42,7 @@ jobs:
 
       - name: Generate TF docs (forks)
         if: github.repository_owner != 'philips-labs'
-        uses: terraform-docs/gh-actions@7a62208a0090636af2df1b739da46d27fd90bdc6 # ratchet:terraform-docs/gh-actions@v1.1.0
+        uses: terraform-docs/gh-actions@e47bfa196e79fa50987ef391be236d9d97b0c786 # ratchet:terraform-docs/gh-actions@v1.2.0
         with:
           find-dir: .
           git-commit-message: "docs: auto update terraform docs"
@@ -51,7 +51,7 @@ jobs:
       # change docs via PR in case of locked main branch
       - name: Create Pull Request (main branch only)
         if: github.ref == 'refs/heads/main' && github.repository_owner == 'philips-labs'
-        uses: peter-evans/create-pull-request@6d6857d36972b65feb161a90e484f2984215f83e # ratchet:peter-evans/create-pull-request@v6.0.5
+        uses: peter-evans/create-pull-request@c5a7806660adbe173f04e3e038b0ccdcd758773c # ratchet:peter-evans/create-pull-request@v6.1.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: "docs: auto update terraform docs"
@@ -65,7 +65,7 @@ jobs:
     needs: [docs]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # ratchet:actions/checkout@v4
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # ratchet:actions/checkout@v4
       - name: Configure Git Credentials
         run: |
           git config user.name github-actions[bot]

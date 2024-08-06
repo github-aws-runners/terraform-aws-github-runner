@@ -29,7 +29,7 @@ export async function adjust(event: PoolEvent): Promise<void> {
   const ssmConfigPath = process.env.SSM_CONFIG_PATH || '';
   const subnets = process.env.SUBNET_IDS.split(',');
   const instanceTypes = process.env.INSTANCE_TYPES.split(',');
-  const instanceTargetTargetCapacityType = process.env.INSTANCE_TARGET_CAPACITY_TYPE;
+  const instanceTargetCapacityType = process.env.INSTANCE_TARGET_CAPACITY_TYPE;
   const ephemeral = yn(process.env.ENABLE_EPHEMERAL_RUNNERS, { default: false });
   const enableJitConfig = yn(process.env.ENABLE_JIT_CONFIG, { default: ephemeral });
   const disableAutoUpdate = yn(process.env.DISABLE_RUNNER_AUTOUPDATE, { default: false });
@@ -89,7 +89,7 @@ export async function adjust(event: PoolEvent): Promise<void> {
       {
         ec2instanceCriteria: {
           instanceTypes,
-          targetCapacityType: instanceTargetTargetCapacityType,
+          targetCapacityType: instanceTargetCapacityType,
           maxSpotPrice: instanceMaxSpotPrice,
           instanceAllocationStrategy: instanceAllocationStrategy,
         },

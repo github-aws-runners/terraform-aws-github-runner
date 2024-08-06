@@ -6,7 +6,7 @@ import {
   setContext,
   tracer,
 } from '@terraform-aws-github-runner/aws-powertools-util';
-import { logMetrics } from '@aws-lambda-powertools/metrics';
+import { logMetrics } from '@aws-lambda-powertools/metrics/middleware';
 import { Context } from 'aws-lambda';
 
 import { handle as handleTerminationWarning } from './termination-warning';

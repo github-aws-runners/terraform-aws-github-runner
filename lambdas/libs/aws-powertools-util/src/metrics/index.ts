@@ -1,5 +1,5 @@
 import { Metrics } from '@aws-lambda-powertools/metrics';
-import { MetricUnits } from '@aws-lambda-powertools/metrics/lib/types';
+import { MetricUnit } from '@aws-lambda-powertools/metrics/types';
 
 export const metrics = new Metrics({
   defaultDimensions: {},
@@ -7,7 +7,7 @@ export const metrics = new Metrics({
 
 export function createSingleMetric(
   name: string,
-  unit: MetricUnits,
+  unit: MetricUnit,
   value: number,
   dimensions: Record<string, string> = {},
 ): ReturnType<typeof metrics.singleMetric> {

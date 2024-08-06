@@ -16,7 +16,7 @@ resource "aws_lambda_function" "scale_down" {
   handler           = "index.scaleDownHandler"
   runtime           = var.lambda_runtime
   timeout           = var.lambda_timeout_scale_down
-  tags              = local.tags
+  tags              = merge(local.tags, var.lambda_tags)
   memory_size       = var.lambda_scale_down_memory_size
   architectures     = [var.lambda_architecture]
 
@@ -93,6 +93,7 @@ resource "aws_iam_role_policy" "scale_down" {
   name = "${var.prefix}-lambda-scale-down-policy"
   role = aws_iam_role.scale_down.name
   policy = templatefile("${path.module}/policies/lambda-scale-down.json", {
+    environment               = var.prefix
     github_app_id_arn         = var.github_app_parameters.id.arn
     github_app_key_base64_arn = var.github_app_parameters.key_base64.arn
     kms_key_arn               = local.kms_key_arn

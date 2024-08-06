@@ -14,6 +14,16 @@ resource "aws_apigatewayv2_route" "webhook" {
   api_id    = aws_apigatewayv2_api.webhook.id
   route_key = "POST /${local.webhook_endpoint}"
   target    = "integrations/${aws_apigatewayv2_integration.webhook.id}"
+
+  lifecycle {
+    ignore_changes = [
+      # Ignore authorization related attributes to enable authenticator assignment to API route.
+      # NOTE: We consider the ignores as a system intenral. Future changes will not trigger a breakig change.
+      authorizer_id,
+      authorization_type,
+      authorization_scopes,
+    ]
+  }
 }
 
 resource "aws_apigatewayv2_stage" "webhook" {
@@ -61,4 +71,5 @@ resource "aws_ssm_parameter" "runner_matcher_config" {
   name  = "${var.ssm_paths.root}/${var.ssm_paths.webhook}/runner-matcher-config"
   type  = "String"
   value = jsonencode(local.runner_matcher_config_sorted)
+  tier  = var.matcher_config_parameter_store_tier
 }

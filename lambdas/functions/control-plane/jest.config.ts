@@ -6,10 +6,10 @@ const config: Config = {
   ...defaultConfig,
   coverageThreshold: {
     global: {
-      statements: 97.99,
-      branches: 96.04,
-      functions: 97.53,
-      lines: 98.3,
+      statements: 98.01,
+      branches: 97.28,
+      functions: 95.6,
+      lines: 97.94,
     },
   },
 };
