@@ -102,7 +102,7 @@ resource "aws_iam_role" "webhook_lambda" {
 }
 
 resource "aws_iam_role_policy" "webhook_logging" {
-  name = "${var.prefix}-lambda-logging-policy"
+  name = "logging-policy"
   role = aws_iam_role.webhook_lambda.name
   policy = templatefile("${path.module}/policies/lambda-cloudwatch.json", {
     log_group_arn = aws_cloudwatch_log_group.webhook.arn
@@ -116,7 +116,7 @@ resource "aws_iam_role_policy_attachment" "webhook_vpc_execution_role" {
 }
 
 resource "aws_iam_role_policy" "webhook_sqs" {
-  name = "${var.prefix}-lambda-webhook-publish-sqs-policy"
+  name = "publish-sqs-policy"
   role = aws_iam_role.webhook_lambda.name
 
   policy = templatefile("${path.module}/policies/lambda-publish-sqs-policy.json", {
@@ -127,7 +127,7 @@ resource "aws_iam_role_policy" "webhook_sqs" {
 
 resource "aws_iam_role_policy" "webhook_workflow_job_sqs" {
   count = var.sqs_workflow_job_queue != null ? 1 : 0
-  name  = "${var.prefix}-lambda-webhook-publish-workflow-job-sqs-policy"
+  name  = "publish-workflow-job-sqs-policy"
   role  = aws_iam_role.webhook_lambda.name
 
   policy = templatefile("${path.module}/policies/lambda-publish-sqs-policy.json", {
@@ -137,7 +137,7 @@ resource "aws_iam_role_policy" "webhook_workflow_job_sqs" {
 }
 
 resource "aws_iam_role_policy" "webhook_ssm" {
-  name = "${var.prefix}-lambda-webhook-publish-ssm-policy"
+  name = "publish-ssm-policy"
   role = aws_iam_role.webhook_lambda.name
 
   policy = templatefile("${path.module}/policies/lambda-ssm.json", {
@@ -148,6 +148,7 @@ resource "aws_iam_role_policy" "webhook_ssm" {
 
 resource "aws_iam_role_policy" "xray" {
   count  = var.tracing_config.mode != null ? 1 : 0
+  name   = "xray-policy"
   policy = data.aws_iam_policy_document.lambda_xray[0].json
   role   = aws_iam_role.webhook_lambda.name
 }
