@@ -4769,7 +4769,7 @@ __metadata:
     "@terraform-aws-github-runner/aws-powertools-util": "npm:*"
     "@terraform-aws-github-runner/aws-ssm-util": "npm:*"
     "@trivago/prettier-plugin-sort-imports": "npm:^4.3.0"
-    "@types/aws-lambda": "npm:^8.10.142"
+    "@types/aws-lambda": "npm:^8.10.143"
     "@types/jest": "npm:^29.5.12"
     "@types/node": "npm:^22.0.2"
     "@typescript-eslint/eslint-plugin": "npm:^7.18.0"
@@ -4800,7 +4800,7 @@ __metadata:
     "@aws-lambda-powertools/metrics": "npm:^2.6.0"
     "@aws-lambda-powertools/tracer": "npm:^2.6.0"
     "@trivago/prettier-plugin-sort-imports": "npm:^4.3.0"
-    "@types/aws-lambda": "npm:^8.10.142"
+    "@types/aws-lambda": "npm:^8.10.143"
     "@types/express": "npm:^4.17.21"
     "@types/jest": "npm:^29.5.12"
     "@types/node": "npm:^22.0.2"
@@ -4830,7 +4830,7 @@ __metadata:
     "@aws-sdk/types": "npm:^3.609.0"
     "@terraform-aws-github-runner/aws-powertools-util": "npm:*"
     "@trivago/prettier-plugin-sort-imports": "npm:^4.3.0"
-    "@types/aws-lambda": "npm:^8.10.142"
+    "@types/aws-lambda": "npm:^8.10.143"
     "@types/express": "npm:^4.17.21"
     "@types/jest": "npm:^29.5.12"
     "@types/node": "npm:^22.0.2"
@@ -4866,7 +4866,7 @@ __metadata:
     "@terraform-aws-github-runner/aws-powertools-util": "npm:*"
     "@terraform-aws-github-runner/aws-ssm-util": "npm:*"
     "@trivago/prettier-plugin-sort-imports": "npm:^4.3.0"
-    "@types/aws-lambda": "npm:^8.10.142"
+    "@types/aws-lambda": "npm:^8.10.143"
     "@types/jest": "npm:^29.5.12"
     "@types/node": "npm:^22.0.2"
     "@typescript-eslint/eslint-plugin": "npm:^7.18.0"
@@ -4901,7 +4901,7 @@ __metadata:
     "@octokit/rest": "npm:20.1.1"
     "@terraform-aws-github-runner/aws-powertools-util": "npm:*"
     "@trivago/prettier-plugin-sort-imports": "npm:^4.3.0"
-    "@types/aws-lambda": "npm:^8.10.142"
+    "@types/aws-lambda": "npm:^8.10.143"
     "@types/jest": "npm:^29.5.12"
     "@types/node": "npm:^22.0.2"
     "@types/request": "npm:^2.48.12"
@@ -4931,7 +4931,7 @@ __metadata:
     "@middy/core": "npm:^4.7.0"
     "@terraform-aws-github-runner/aws-powertools-util": "npm:*"
     "@trivago/prettier-plugin-sort-imports": "npm:^4.3.0"
-    "@types/aws-lambda": "npm:^8.10.142"
+    "@types/aws-lambda": "npm:^8.10.143"
     "@types/jest": "npm:^29.5.12"
     "@types/node": "npm:^22.0.2"
     "@typescript-eslint/eslint-plugin": "npm:^7.18.0"
@@ -4965,7 +4965,7 @@ __metadata:
     "@terraform-aws-github-runner/aws-powertools-util": "npm:*"
     "@terraform-aws-github-runner/aws-ssm-util": "npm:*"
     "@trivago/prettier-plugin-sort-imports": "npm:^4.3.0"
-    "@types/aws-lambda": "npm:^8.10.142"
+    "@types/aws-lambda": "npm:^8.10.143"
     "@types/express": "npm:^4.17.21"
     "@types/jest": "npm:^29.5.12"
     "@types/node": "npm:^22.0.2"
@@ -5044,10 +5044,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/aws-lambda@npm:^8.10.142":
-  version: 8.10.142
-  resolution: "@types/aws-lambda@npm:8.10.142"
-  checksum: 10c0/9c9544d0f93bb8e1c044cd9d991c5c11d04c4a98d3b2dfade7d420df56270288baa254ec2d9782144ec7291d154c0dd550862f133ba81cca12a28af9f5349414
+"@types/aws-lambda@npm:^8.10.143":
+  version: 8.10.143
+  resolution: "@types/aws-lambda@npm:8.10.143"
+  checksum: 10c0/1a004c8dfc9f1f99cbf0e3dd75f2c578d5518a53fc6f278791b7a7445cce380dc56513daeb2b4959823d355fb2fb690271b210af538807422b337a2e14a9aa01
   languageName: node
   linkType: hard
 
