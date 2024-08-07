@@ -44,11 +44,10 @@
     "@octokit/auth-app": "6.1.1",
     "@octokit/core": "5.2.0",
     "@octokit/plugin-throttling": "8.2.0",
-    "@octokit/rest": "20.0.2",
+    "@octokit/rest": "20.1.1",
     "@octokit/types": "^13.5.0",
     "@terraform-aws-github-runner/aws-powertools-util": "*",
     "@terraform-aws-github-runner/aws-ssm-util": "*",
-    "axios": "^1.7.2",
     "cron-parser": "^4.9.0",
     "typescript": "^5.5.4"
   },
