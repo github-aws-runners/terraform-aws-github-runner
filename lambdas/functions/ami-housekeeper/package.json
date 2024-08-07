@@ -17,7 +17,7 @@
   },
   "devDependencies": {
     "@trivago/prettier-plugin-sort-imports": "^4.3.0",
-    "@types/aws-lambda": "^8.10.142",
+    "@types/aws-lambda": "^8.10.143",
     "@types/jest": "^29.5.12",
     "@types/node": "^22.0.2",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
@@ -38,7 +38,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-ec2": "^3.624.0",
-    "@aws-sdk/client-ssm": "^3.623.0",
+    "@aws-sdk/client-ssm": "^3.624.0",
     "@aws-sdk/types": "^3.609.0",
     "@terraform-aws-github-runner/aws-powertools-util": "*",
     "@terraform-aws-github-runner/aws-ssm-util": "*",

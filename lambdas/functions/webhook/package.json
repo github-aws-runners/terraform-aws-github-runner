@@ -17,7 +17,7 @@
   },
   "devDependencies": {
     "@trivago/prettier-plugin-sort-imports": "^4.3.0",
-    "@types/aws-lambda": "^8.10.142",
+    "@types/aws-lambda": "^8.10.143",
     "@types/express": "^4.17.21",
     "@types/jest": "^29.5.12",
     "@types/node": "^22.0.2",
@@ -37,9 +37,9 @@
     "typescript": "^5.5.4"
   },
   "dependencies": {
-    "@aws-sdk/client-sqs": "^3.623.0",
+    "@aws-sdk/client-sqs": "^3.624.0",
     "@middy/core": "^4.7.0",
-    "@octokit/rest": "20.0.2",
+    "@octokit/rest": "20.1.1",
     "@octokit/types": "^13.5.0",
     "@octokit/webhooks": "^12.2.0",
     "@terraform-aws-github-runner/aws-powertools-util": "*",
