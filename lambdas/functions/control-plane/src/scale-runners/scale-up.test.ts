@@ -53,7 +53,7 @@ const TEST_DATA: scaleUpModule.ActionRequestMessage = {
   repositoryName: 'hello-world',
   repositoryOwner: 'Codertocat',
   installationId: 2,
-  repoOwnerType: "Organization",
+  repoOwnerType: 'Organization',
 };
 
 // installationId 0 means no installationId is set.
@@ -63,7 +63,7 @@ const TEST_DATA_WITH_ZERO_INSTALL_ID: scaleUpModule.ActionRequestMessage = {
   repositoryName: 'hello-world',
   repositoryOwner: 'Codertocat',
   installationId: 0,
-  repoOwnerType: "Organization",
+  repoOwnerType: 'Organization',
 };
 
 const cleanEnv = process.env;

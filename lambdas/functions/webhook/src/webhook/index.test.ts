@@ -450,7 +450,7 @@ describe('handler', () => {
         installationId: 0,
         queueId: 'ubuntu-queue-id',
         queueFifo: false,
-        repoOwnerType: "Organization",
+        repoOwnerType: 'Organization',
       });
     });
     it('Check webhook will accept jobs for latest labels if workflow labels are not specific', async () => {
@@ -493,7 +493,7 @@ describe('handler', () => {
         installationId: 0,
         queueId: 'ubuntu-queue-id',
         queueFifo: false,
-        repoOwnerType: "Organization",
+        repoOwnerType: 'Organization',
       });
     });
   });
@@ -533,7 +533,7 @@ describe('handler', () => {
       installationId: 0,
       queueId: 'ubuntu-queue-id',
       queueFifo: false,
-      repoOwnerType: "Organization",
+      repoOwnerType: 'Organization',
     });
   });
 

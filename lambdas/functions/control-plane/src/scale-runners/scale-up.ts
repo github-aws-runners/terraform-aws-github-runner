@@ -253,9 +253,11 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
   }
 
   if (!isValidRepoOwnerTypeIfOrgLevelEnabled(payload, enableOrgLevel)) {
-    logger.warn(`Repository ${payload.repositoryOwner}/${payload.repositoryName} does not belong to a GitHub` +
-      `organization and organization runners are enabled. This is not supported. Not scaling up for this event.` +
-    `Not throwing error to prevent re-queueing and just ignoring the event.`);
+    logger.warn(
+      `Repository ${payload.repositoryOwner}/${payload.repositoryName} does not belong to a GitHub` +
+        `organization and organization runners are enabled. This is not supported. Not scaling up for this event.` +
+        `Not throwing error to prevent re-queueing and just ignoring the event.`,
+    );
     return;
   }
 
@@ -350,7 +352,7 @@ async function createStartRunnerConfig(
   }
 }
 
-function isValidRepoOwnerTypeIfOrgLevelEnabled(payload: ActionRequestMessage, enableOrgLevel: boolean) : boolean {
+function isValidRepoOwnerTypeIfOrgLevelEnabled(payload: ActionRequestMessage, enableOrgLevel: boolean): boolean {
   return !(enableOrgLevel && payload.repoOwnerType !== 'Organization');
 }
 

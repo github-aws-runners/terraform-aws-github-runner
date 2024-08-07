@@ -15,7 +15,7 @@ const body: ActionRequestMessage = {
   installationId: 1,
   repositoryName: 'name',
   repositoryOwner: 'owner',
-  repoOwnerType: "Organization",
+  repoOwnerType: 'Organization',
 };
 
 const sqsRecord: SQSRecord = {
