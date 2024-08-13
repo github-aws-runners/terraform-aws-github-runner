@@ -1,5 +1,15 @@
 # Changelog
 
+## [5.14.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.14.0...v5.14.1) (2024-08-07)
+
+
+### Bug Fixes
+
+* align inlince policies ([#4046](https://github.com/philips-labs/terraform-aws-github-runner/issues/4046)) ([7235cdc](https://github.com/philips-labs/terraform-aws-github-runner/commit/7235cdc40686f3218e1991ec9a8feeb900b719f1)), closes [#4045](https://github.com/philips-labs/terraform-aws-github-runner/issues/4045)
+* **lambda:** bump the aws group in /lambdas with 4 updates ([#4048](https://github.com/philips-labs/terraform-aws-github-runner/issues/4048)) ([e32b14b](https://github.com/philips-labs/terraform-aws-github-runner/commit/e32b14bc246463d50620c354ce84edc0751623c0))
+* **lambda:** bump the aws group in /lambdas with 5 updates ([#4035](https://github.com/philips-labs/terraform-aws-github-runner/issues/4035)) ([c15c99d](https://github.com/philips-labs/terraform-aws-github-runner/commit/c15c99db84132b11f886f6f8e5291af5e357b41e))
+* remove fetch override for octokit and versions ([#4042](https://github.com/philips-labs/terraform-aws-github-runner/issues/4042)) ([6ac19e6](https://github.com/philips-labs/terraform-aws-github-runner/commit/6ac19e6e4aa3a950d26fcaf496d08fe5508d8992))
+
 ## [5.14.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.13.0...v5.14.0) (2024-08-01)
 
 
