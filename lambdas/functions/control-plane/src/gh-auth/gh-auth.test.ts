@@ -7,7 +7,7 @@ import { mocked } from 'jest-mock';
 import { MockProxy, mock } from 'jest-mock-extended';
 import nock from 'nock';
 
-import { createGithubAppAuth, createOctoClient } from './gh-auth';
+import { createGithubAppAuth, createOctokitClient } from './gh-auth';
 
 jest.mock('@terraform-aws-github-runner/aws-ssm-util');
 jest.mock('@octokit/auth-app');
@@ -35,7 +35,7 @@ describe('Test createOctoClient', () => {
     const token = '123456';
 
     // Act
-    const result = await createOctoClient(token);
+    const result = await createOctokitClient(token);
 
     // Assert
     expect(result.request.endpoint.DEFAULTS.baseUrl).toBe('https://api.github.com');
@@ -47,7 +47,7 @@ describe('Test createOctoClient', () => {
     const token = '123456';
 
     // Act
-    const result = await createOctoClient(token, enterpriseServer);
+    const result = await createOctokitClient(token, enterpriseServer);
 
     // Assert
     expect(result.request.endpoint.DEFAULTS.baseUrl).toBe(enterpriseServer);

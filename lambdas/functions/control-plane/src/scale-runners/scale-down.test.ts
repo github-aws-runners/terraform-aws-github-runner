@@ -40,7 +40,7 @@ jest.mock('./cache');
 const mocktokit = Octokit as jest.MockedClass<typeof Octokit>;
 const mockedAppAuth = mocked(ghAuth.createGithubAppAuth, { shallow: false });
 const mockedInstallationAuth = mocked(ghAuth.createGithubInstallationAuth, { shallow: false });
-const mockCreateClient = mocked(ghAuth.createOctoClient, { shallow: false });
+const mockCreateClient = mocked(ghAuth.createOctokitClient, { shallow: false });
 const mockListRunners = mocked(listEC2Runners);
 const mockTagRunners = mocked(tag);
 const mockTerminateRunners = mocked(terminateRunner);

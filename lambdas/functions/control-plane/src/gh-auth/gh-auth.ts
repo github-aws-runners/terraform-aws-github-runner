@@ -17,7 +17,7 @@ import { EndpointDefaults } from '@octokit/types';
 
 const logger = createChildLogger('gh-auth');
 
-export async function createOctoClient(token: string, ghesApiUrl = ''): Promise<Octokit> {
+export async function createOctokitClient(token: string, ghesApiUrl = ''): Promise<Octokit> {
   const CustomOctokit = Octokit.plugin(throttling);
   const ocktokitOptions: OctokitOptions = {
     auth: token,

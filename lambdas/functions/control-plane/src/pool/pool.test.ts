@@ -35,7 +35,7 @@ const mockedAppAuth = mocked(ghAuth.createGithubAppAuth, {
   shallow: false,
 });
 const mockedInstallationAuth = mocked(ghAuth.createGithubInstallationAuth, { shallow: false });
-const mockCreateClient = mocked(ghAuth.createOctoClient, { shallow: false });
+const mockCreateClient = mocked(ghAuth.createOctokitClient, { shallow: false });
 const mockListRunners = mocked(listEC2Runners);
 
 const cleanEnv = process.env;

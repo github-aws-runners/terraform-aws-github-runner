@@ -2,7 +2,7 @@ import { Octokit } from '@octokit/rest';
 import { createChildLogger } from '@terraform-aws-github-runner/aws-powertools-util';
 import moment from 'moment';
 
-import { createGithubAppAuth, createGithubInstallationAuth, createOctoClient } from '../gh-auth/gh-auth';
+import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../gh-auth/gh-auth';
 import { bootTimeExceeded, listEC2Runners, tag, terminateRunner } from './../aws/runners';
 import { RunnerInfo, RunnerList } from './../aws/runners.d';
 import { GhRunners, githubCache } from './cache';
@@ -26,7 +26,7 @@ async function getOrCreateOctokit(runner: RunnerInfo): Promise<Octokit> {
     ghesApiUrl = `${ghesBaseUrl}/api/v3`;
   }
   const ghAuthPre = await createGithubAppAuth(undefined, ghesApiUrl);
-  const githubClientPre = await createOctoClient(ghAuthPre.token, ghesApiUrl);
+  const githubClientPre = await createOctokitClient(ghAuthPre.token, ghesApiUrl);
 
   const installationId =
     runner.type === 'Org'
@@ -42,7 +42,7 @@ async function getOrCreateOctokit(runner: RunnerInfo): Promise<Octokit> {
           })
         ).data.id;
   const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl);
-  const octokit = await createOctoClient(ghAuth.token, ghesApiUrl);
+  const octokit = await createOctokitClient(ghAuth.token, ghesApiUrl);
   githubCache.clients.set(key, octokit);
 
   return octokit;

@@ -292,6 +292,8 @@ module "runners" {
 
   ssm_housekeeper = var.runners_ssm_housekeeper
   ebs_optimized   = var.runners_ebs_optimized
+
+  job_retry = var.job_retry
 }
 
 module "runner_binaries" {

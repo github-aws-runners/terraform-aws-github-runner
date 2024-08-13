@@ -1,3 +1,13 @@
+locals {
+  job_retry_config = local.job_retry_enabled ? {
+    enable         = var.job_retry.enable
+    maxAttempts    = var.job_retry.max_attempts
+    delayInSeconds = var.job_retry.delay_in_seconds
+    delayBackoff   = var.job_retry.delay_backoff
+    queueUrl       = module.job_retry_check[0].job_retry_check_queue.url
+  } : {}
+}
+
 resource "aws_lambda_function" "scale_up" {
   s3_bucket                      = var.lambda_s3_bucket != null ? var.lambda_s3_bucket : null
   s3_key                         = var.runners_lambda_s3_key != null ? var.runners_lambda_s3_key : null
@@ -46,6 +56,7 @@ resource "aws_lambda_function" "scale_up" {
       SSM_CONFIG_PATH                          = "${var.ssm_paths.root}/${var.ssm_paths.config}"
       SUBNET_IDS                               = join(",", var.subnet_ids)
       ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS     = jsonencode(var.enable_on_demand_failover_for_errors)
+      JOB_RETRY_CONFIG                         = jsonencode(local.job_retry_config)
     }
   }
 
@@ -108,7 +119,6 @@ resource "aws_iam_role_policy" "scale_up" {
   })
 }
 
-
 resource "aws_iam_role_policy" "scale_up_logging" {
   name = "logging-policy"
   role = aws_iam_role.scale_up.name
@@ -141,4 +151,15 @@ resource "aws_iam_role_policy" "scale_up_xray" {
   name   = "xray-policy"
   policy = data.aws_iam_policy_document.lambda_xray[0].json
   role   = aws_iam_role.scale_up.name
+}
+
+resource "aws_iam_role_policy" "webhook_workflow_job_sqs" {
+  count = local.job_retry_enabled ? 1 : 0
+  name  = "publish-retry-check-sqs-policy"
+  role  = aws_iam_role.scale_up.name
+
+  policy = templatefile("${path.module}/policies/lambda-publish-sqs-policy.json", {
+    sqs_resource_arns = jsonencode([module.job_retry_check[0].job_retry_check_queue.arn])
+    kms_key_arn       = var.kms_key_arn != null ? var.kms_key_arn : ""
+  })
 }

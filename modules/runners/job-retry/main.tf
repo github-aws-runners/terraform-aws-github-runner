@@ -1,0 +1,92 @@
+locals {
+  lambda_zip = var.config.zip == null ? "${path.module}/../../../lambdas/functions/control-plane/runners.zip" : var.config.zip
+  name       = "job-retry-check"
+
+  environment_variables = {
+    ENABLE_ORGANIZATION_RUNNERS          = var.config.enable_organization_runners
+    GHES_URL                             = var.config.ghes_url
+    JOB_QUEUE_SCALE_UP_URL               = var.config.sqs_build_queue.url
+    PARAMETER_GITHUB_APP_ID_NAME         = var.config.github_app_parameters.id.name
+    PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.config.github_app_parameters.key_base64.name
+  }
+
+  config = merge(var.config, { name = local.name, handler = "index.jobRetryCheck", zip = local.lambda_zip, environment_variables = local.environment_variables })
+}
+
+resource "aws_sqs_queue_policy" "job_retry_check_queue_policy" {
+  queue_url = aws_sqs_queue.job_retry_check_queue.id
+  policy    = data.aws_iam_policy_document.deny_unsecure_transport.json
+}
+
+resource "aws_sqs_queue" "job_retry_check_queue" {
+  name                       = "${var.config.prefix}-job-retry-check"
+  visibility_timeout_seconds = local.config.timeout
+
+  sqs_managed_sse_enabled = true #var.queue_encryption.sqs_managed_sse_enabled
+  # kms_master_key_id                 = var.queue_encryption.kms_master_key_id
+  # kms_data_key_reuse_period_seconds = var.queue_encryption.kms_data_key_reuse_period_seconds
+
+  tags = var.config.tags
+}
+
+
+module "job_retry_check" {
+  source = "../../lambda"
+  lambda = local.config
+}
+
+
+resource "aws_lambda_event_source_mapping" "job_retry" {
+  event_source_arn = aws_sqs_queue.job_retry_check_queue.arn
+  function_name    = module.job_retry_check.lambda.function.arn
+  batch_size       = 1
+}
+
+
+resource "aws_lambda_permission" "job_retry" {
+  statement_id  = "AllowExecutionFromSQS"
+  action        = "lambda:InvokeFunction"
+  function_name = module.job_retry_check.lambda.function.function_name
+  principal     = "sqs.amazonaws.com"
+  source_arn    = aws_sqs_queue.job_retry_check_queue.arn
+}
+
+resource "aws_iam_role_policy" "job_retry" {
+  name = "job_retry-policy"
+  role = module.job_retry_check.lambda.role.name
+  policy = templatefile("${path.module}/policies/lambda.json", {
+    sqs_build_queue_arn       = var.config.sqs_build_queue.arn
+    sqs_job_retry_queue_arn   = aws_sqs_queue.job_retry_check_queue.arn
+    github_app_id_arn         = var.config.github_app_parameters.id.arn
+    github_app_key_base64_arn = var.config.github_app_parameters.key_base64.arn
+  })
+}
+
+
+
+data "aws_iam_policy_document" "deny_unsecure_transport" {
+  statement {
+    sid = "DenyUnsecureTransport"
+
+    effect = "Deny"
+
+    principals {
+      type        = "AWS"
+      identifiers = ["*"]
+    }
+
+    actions = [
+      "sqs:*"
+    ]
+
+    resources = [
+      "*"
+    ]
+
+    condition {
+      test     = "Bool"
+      variable = "aws:SecureTransport"
+      values   = ["false"]
+    }
+  }
+}

@@ -905,3 +905,26 @@ variable "lambda_tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "job_retry" {
+  description = <<-EOF
+    Configure job retries. The configuration enables job retries (for ephemeral runners). After creating the insances a message will be published to a job retry queue. The job retry check lambda is checking after a delay if the job is queued. If not the message will be published again on the scale-up (build queue). Using this feature can impact the reate limit of the GitHub app.
+
+    `enable`: Enable or disable the job retry feature.
+    `delay_in_seconds`: The delay in seconds before the job retry check lambda will check the job status.
+    `delay_backoff`: The backoff factor for the delay.
+    `lambda_memory_size`: Memory size limit in MB for the job retry check lambda.
+    `lambda_timeout`: Time out of the job retry check lambda in seconds.
+    `max_attempts`: The maximum number of attempts to retry the job.
+  EOF
+
+  type = object({
+    enable             = optional(bool, false)
+    delay_in_seconds   = optional(number, 300)
+    delay_backoff      = optional(number, 2)
+    lambda_memory_size = optional(number, 256)
+    lambda_timeout     = optional(number, 30)
+    max_attempts       = optional(number, 1)
+  })
+  default = {}
+}

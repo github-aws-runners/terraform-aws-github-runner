@@ -4,7 +4,7 @@ import yn from 'yn';
 
 import { bootTimeExceeded, listEC2Runners } from '../aws/runners';
 import { RunnerList } from '../aws/runners.d';
-import { createGithubAppAuth, createGithubInstallationAuth, createOctoClient } from '../gh-auth/gh-auth';
+import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../gh-auth/gh-auth';
 import { createRunners } from '../scale-runners/scale-up';
 
 const logger = createChildLogger('pool');
@@ -50,7 +50,7 @@ export async function adjust(event: PoolEvent): Promise<void> {
 
   const installationId = await getInstallationId(ghesApiUrl, runnerOwner);
   const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl);
-  const githubInstallationClient = await createOctoClient(ghAuth.token, ghesApiUrl);
+  const githubInstallationClient = await createOctokitClient(ghAuth.token, ghesApiUrl);
 
   // Get statusses of runners registed in GitHub
   const runnerStatusses = await getGitHubRegisteredRunnnerStatusses(
@@ -110,7 +110,7 @@ export async function adjust(event: PoolEvent): Promise<void> {
 
 async function getInstallationId(ghesApiUrl: string, org: string): Promise<number> {
   const ghAuth = await createGithubAppAuth(undefined, ghesApiUrl);
-  const githubClient = await createOctoClient(ghAuth.token, ghesApiUrl);
+  const githubClient = await createOctokitClient(ghAuth.token, ghesApiUrl);
 
   return (
     await githubClient.apps.getOrgInstallation({

@@ -2,12 +2,13 @@ import { captureLambdaHandler, logger } from '@terraform-aws-github-runner/aws-p
 import { Context, SQSEvent, SQSRecord } from 'aws-lambda';
 import { mocked } from 'jest-mock';
 
-import { addMiddleware, adjustPool, scaleDownHandler, scaleUpHandler, ssmHousekeeper } from './lambda';
+import { addMiddleware, adjustPool, scaleDownHandler, scaleUpHandler, ssmHousekeeper, jobRetryCheck } from './lambda';
 import { adjust } from './pool/pool';
 import ScaleError from './scale-runners/ScaleError';
 import { scaleDown } from './scale-runners/scale-down';
 import { ActionRequestMessage, scaleUp } from './scale-runners/scale-up';
 import { cleanSSMTokens } from './scale-runners/ssm-housekeeper';
+import { checkAndRetryJob } from './scale-runners/job-retry';
 
 const body: ActionRequestMessage = {
   eventType: 'workflow_job',
@@ -60,10 +61,11 @@ const context: Context = {
   },
 };
 
-jest.mock('./scale-runners/scale-up');
-jest.mock('./scale-runners/scale-down');
 jest.mock('./pool/pool');
+jest.mock('./scale-runners/scale-down');
+jest.mock('./scale-runners/scale-up');
 jest.mock('./scale-runners/ssm-housekeeper');
+jest.mock('./scale-runners/job-retry');
 jest.mock('@terraform-aws-github-runner/aws-powertools-util');
 jest.mock('@terraform-aws-github-runner/aws-ssm-util');
 
@@ -189,9 +191,32 @@ describe('Test ssm housekeeper lambda wrapper.', () => {
     await expect(ssmHousekeeper({}, context)).resolves.not.toThrow();
   });
 
-  it('Errors not throwed.', async () => {
+  it('Errors not throws.', async () => {
     const mock = mocked(cleanSSMTokens);
     mock.mockRejectedValue(new Error());
     await expect(ssmHousekeeper({}, context)).resolves.not.toThrow();
+  });
+});
+
+describe('Test job retry check wrapper', () => {
+  it('Handle without error should resolve.', async () => {
+    const mock = mocked(checkAndRetryJob);
+    mock.mockImplementation(() => {
+      return new Promise((resolve) => {
+        resolve();
+      });
+    });
+    expect(await jobRetryCheck(sqsEvent, context)).resolves;
+  });
+
+  it('Handle with error should resolve and log only a warning.', async () => {
+    const logSpyWarn = jest.spyOn(logger, 'warn');
+
+    const mock = mocked(checkAndRetryJob);
+    const error = new Error('Error handling retry check.');
+    mock.mockRejectedValue(error);
+
+    expect(await jobRetryCheck(sqsEvent, context)).resolves;
+    expect(logSpyWarn).toHaveBeenCalledWith(expect.stringContaining(error.message), expect.anything());
   });
 });

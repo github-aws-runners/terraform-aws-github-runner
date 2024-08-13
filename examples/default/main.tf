@@ -95,7 +95,7 @@ module "runners" {
   runner_name_prefix = "${local.environment}_"
 
   # Enable debug logging for the lambda functions
-  # log_level = "debug"
+  log_level = "debug"
 
   enable_ami_housekeeper = true
   ami_housekeeper_cleanup_config = {
@@ -115,6 +115,13 @@ module "runners" {
       spot_warning = true
     }
   }
+
+  # enable job_retry feature. Be careful with this feature, it can lead to API rate limits.
+  # job_retry = {
+  #   enable           = true
+  #   max_attempts     = 1
+  #   delay_in_seconds = 180
+  # }
 
 }
 

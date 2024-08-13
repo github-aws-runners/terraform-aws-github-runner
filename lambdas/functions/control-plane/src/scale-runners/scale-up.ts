@@ -3,10 +3,11 @@ import { addPersistentContextToChildLogger, createChildLogger } from '@terraform
 import { getParameter, putParameter } from '@terraform-aws-github-runner/aws-ssm-util';
 import yn from 'yn';
 
-import { createGithubAppAuth, createGithubInstallationAuth, createOctoClient } from '../gh-auth/gh-auth';
+import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../gh-auth/gh-auth';
 import { createRunner, listEC2Runners } from './../aws/runners';
 import { RunnerInputParameters } from './../aws/runners.d';
 import ScaleError from './ScaleError';
+import { publishRetryMessage } from './job-retry';
 
 const logger = createChildLogger('scale-up');
 
@@ -28,6 +29,7 @@ export interface ActionRequestMessage {
   repositoryOwner: string;
   installationId: number;
   repoOwnerType: string;
+  retryCounter?: number;
 }
 
 interface CreateGitHubRunnerConfig {
@@ -103,7 +105,7 @@ function removeTokenFromLogging(config: string[]): string[] {
   return result;
 }
 
-async function getInstallationId(
+export async function getInstallationId(
   ghesApiUrl: string,
   enableOrgLevel: boolean,
   payload: ActionRequestMessage,
@@ -113,7 +115,7 @@ async function getInstallationId(
   }
 
   const ghAuth = await createGithubAppAuth(undefined, ghesApiUrl);
-  const githubClient = await createOctoClient(ghAuth.token, ghesApiUrl);
+  const githubClient = await createOctokitClient(ghAuth.token, ghesApiUrl);
   return enableOrgLevel
     ? (
         await githubClient.apps.getOrgInstallation({
@@ -128,7 +130,7 @@ async function getInstallationId(
       ).data.id;
 }
 
-async function isJobQueued(githubInstallationClient: Octokit, payload: ActionRequestMessage): Promise<boolean> {
+export async function isJobQueued(githubInstallationClient: Octokit, payload: ActionRequestMessage): Promise<boolean> {
   let isQueued = false;
   if (payload.eventType === 'workflow_job') {
     const jobForWorkflowRun = await githubInstallationClient.actions.getJobForWorkflowRun({
@@ -224,7 +226,6 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
   const runnerLabels = process.env.RUNNER_LABELS || '';
   const runnerGroup = process.env.RUNNER_GROUP_NAME || 'Default';
   const environment = process.env.ENVIRONMENT;
-  const ghesBaseUrl = process.env.GHES_URL;
   const ssmTokenPath = process.env.SSM_TOKEN_PATH;
   const subnets = process.env.SUBNET_IDS.split(',');
   const instanceTypes = process.env.INSTANCE_TYPES.split(',');
@@ -279,14 +280,12 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
 
   logger.info(`Received event`);
 
-  let ghesApiUrl = '';
-  if (ghesBaseUrl) {
-    ghesApiUrl = `${ghesBaseUrl}/api/v3`;
-  }
+  const { ghesApiUrl, ghesBaseUrl } = getGitHubEnterpriseApiUrl();
 
   const installationId = await getInstallationId(ghesApiUrl, enableOrgLevel, payload);
   const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl);
-  const githubInstallationClient = await createOctoClient(ghAuth.token, ghesApiUrl);
+  const githubInstallationClient = await createOctokitClient(ghAuth.token, ghesApiUrl);
+
   if (!enableJobQueuedCheck || (await isJobQueued(githubInstallationClient, payload))) {
     let scaleUp = true;
     if (maximumRunners !== -1) {
@@ -332,6 +331,8 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
         },
         githubInstallationClient,
       );
+
+      await publishRetryMessage(payload);
     } else {
       logger.info('No runner will be created, maximum number of runners reached.');
       if (ephemeral) {
@@ -340,6 +341,16 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
     }
   }
 }
+
+export function getGitHubEnterpriseApiUrl() {
+  const ghesBaseUrl = process.env.GHES_URL;
+  let ghesApiUrl = '';
+  if (ghesBaseUrl) {
+    ghesApiUrl = `${ghesBaseUrl}/api/v3`;
+  }
+  return { ghesApiUrl, ghesBaseUrl };
+}
+
 async function createStartRunnerConfig(
   githubRunnerConfig: CreateGitHubRunnerConfig,
   instances: string[],
