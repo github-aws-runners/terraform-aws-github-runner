@@ -92,7 +92,7 @@ resource "aws_iam_role" "ssm_housekeeper" {
 }
 
 resource "aws_iam_role_policy" "ssm_housekeeper" {
-  name = "lambda-ssm"
+  name = "ssm-policy"
   role = aws_iam_role.ssm_housekeeper.name
   policy = templatefile("${path.module}/policies/lambda-ssm-housekeeper.json", {
     ssm_token_path = "arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${local.token_path}"
@@ -100,7 +100,7 @@ resource "aws_iam_role_policy" "ssm_housekeeper" {
 }
 
 resource "aws_iam_role_policy" "ssm_housekeeper_logging" {
-  name = "lambda-logging"
+  name = "logging-policy"
   role = aws_iam_role.ssm_housekeeper.name
   policy = templatefile("${path.module}/policies/lambda-cloudwatch.json", {
     log_group_arn = aws_cloudwatch_log_group.ssm_housekeeper.arn
@@ -115,6 +115,7 @@ resource "aws_iam_role_policy_attachment" "ssm_housekeeper_vpc_execution_role" {
 
 resource "aws_iam_role_policy" "ssm_housekeeper_xray" {
   count  = var.tracing_config.mode != null ? 1 : 0
+  name   = "xray-policy"
   policy = data.aws_iam_policy_document.lambda_xray[0].json
   role   = aws_iam_role.ssm_housekeeper.name
 }

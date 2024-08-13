@@ -13,8 +13,7 @@ import { Octokit } from '@octokit/rest';
 import { throttling } from '@octokit/plugin-throttling';
 import { createChildLogger } from '@terraform-aws-github-runner/aws-powertools-util';
 import { getParameter } from '@terraform-aws-github-runner/aws-ssm-util';
-
-import { axiosFetch } from '../axios/fetch-override';
+import { EndpointDefaults } from '@octokit/types';
 
 const logger = createChildLogger('gh-auth');
 
@@ -22,7 +21,6 @@ export async function createOctoClient(token: string, ghesApiUrl = ''): Promise<
   const CustomOctokit = Octokit.plugin(throttling);
   const ocktokitOptions: OctokitOptions = {
     auth: token,
-    request: { fetch: axiosFetch },
   };
   if (ghesApiUrl) {
     ocktokitOptions.baseUrl = ghesApiUrl;
@@ -32,12 +30,12 @@ export async function createOctoClient(token: string, ghesApiUrl = ''): Promise<
   return new CustomOctokit({
     ...ocktokitOptions,
     throttle: {
-      onRateLimit: (options: { method: string; url: string }) => {
+      onRateLimit: (retryAfter: number, options: Required<EndpointDefaults>) => {
         logger.warn(
           `GitHub rate limit: Request quota exhausted for request ${options.method} ${options.url}. Requested `,
         );
       },
-      onSecondaryRateLimit: (options: { method: string; url: string }) => {
+      onSecondaryRateLimit: (retryAfter: number, options: Required<EndpointDefaults>) => {
         logger.warn(`GitHub rate limit: SecondaryRateLimit detected for request ${options.method} ${options.url}`);
       },
     },
@@ -82,12 +80,7 @@ async function createAuth(installationId: number | undefined, ghesApiUrl: string
   if (ghesApiUrl) {
     authOptions.request = request.defaults({
       baseUrl: ghesApiUrl,
-      request: {
-        fetch: axiosFetch,
-      },
     });
-  } else {
-    authOptions.request = request.defaults({ request: { fetch: axiosFetch } });
   }
   return createAppAuth(authOptions);
 }
