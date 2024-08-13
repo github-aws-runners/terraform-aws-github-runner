@@ -182,6 +182,9 @@ data "aws_iam_policy_document" "scheduler" {
 resource "aws_iam_role" "scheduler" {
   name_prefix = "${var.config.prefix}-pool"
 
+  path                 = var.config.role_path
+  permissions_boundary = var.config.role_permissions_boundary
+
   assume_role_policy = data.aws_iam_policy_document.scheduler_assume.json
 
   inline_policy {
