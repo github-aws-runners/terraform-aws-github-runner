@@ -65,8 +65,9 @@ The pool is introduced in combination with the ephemeral runners and is primaril
 ```hcl
 pool_runner_owner = "my-org"                  # Org to which the runners are added
 pool_config = [{
-  size                = 20                    # size of the pool
-  schedule_expression = "cron(* * * * ? *)"   # cron expression to trigger the adjustment of the pool
+  size                         = 20                    # size of the pool
+  schedule_expression          = "cron(* * * * ? *)"   # cron expression to trigger the adjustment of the pool
+  schedule_expression_timezone = "Australia/Sydney"    # optional time zone (defaults to UTC)
 }]
 ```
 
