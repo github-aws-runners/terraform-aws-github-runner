@@ -1,10 +1,22 @@
 import { publishMessage } from '../aws/sqs';
 import { publishRetryMessage, checkAndRetryJob } from './job-retry';
-import { ActionRequestMessage } from './scale-up';
+import { ActionRequestMessage, ActionRequestMessageRetry } from './scale-up';
 import { getOctokit } from '../gh-auth/gh-octokit';
 import { Octokit } from '@octokit/rest';
 import { mocked } from 'jest-mock';
+import { createSingleMetric } from '@terraform-aws-github-runner/aws-powertools-util';
+
 jest.mock('../aws/sqs');
+
+jest.mock('@terraform-aws-github-runner/aws-powertools-util', () => ({
+  ...jest.requireActual('@terraform-aws-github-runner/aws-powertools-util'),
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  createSingleMetric: jest.fn((name: string, unit: string, value: number, dimensions?: Record<string, string>) => {
+    return {
+      addMetadata: jest.fn(),
+    };
+  }),
+}));
 
 const cleanEnv = process.env;
 
@@ -119,13 +131,14 @@ describe(`Test job retry check`, () => {
       },
     }));
 
-    const message: ActionRequestMessage = {
+    const message: ActionRequestMessageRetry = {
       eventType: 'workflow_job',
       id: 0,
       installationId: 0,
       repositoryName: 'test',
       repositoryOwner: 'philips-labs',
-      repoOwnerType: 'Organization'
+      repoOwnerType: 'Organization',
+      retryCounter: 0
     };
     process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
     process.env.RUNNER_NAME_PREFIX = 'test';
@@ -142,9 +155,51 @@ describe(`Test job retry check`, () => {
       }),
       'https://sqs.eu-west-1.amazonaws.com/123456789/webhook_events_workflow_job_queue',
     );
+    expect(createSingleMetric).not.toHaveBeenCalled();
   });
 
-  it(`should publish a message for retry if retry is enabled and counter is below max attempts v2.`, async () => {
+  it(`should publish a message for retry if retry is enabled and counter is below max attempts.`, async () => {
+    // setup
+    mockOctokit.actions.getJobForWorkflowRun.mockImplementation(() => ({
+      data: {
+        status: 'queued',
+      },
+    }));
+
+    const message: ActionRequestMessageRetry = {
+      eventType: 'workflow_job',
+      id: 0,
+      installationId: 0,
+      repositoryName: 'test',
+      repositoryOwner: 'philips-labs',
+      retryCounter: 1,
+    };
+
+    process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
+    process.env.ENVIRONMENT = 'test';
+    process.env.RUNNER_NAME_PREFIX = 'test';
+    process.env.ENABLE_METRICS = 'true';
+    process.env.JOB_QUEUE_SCALE_UP_URL =
+      'https://sqs.eu-west-1.amazonaws.com/123456789/webhook_events_workflow_job_queue';
+
+    // act
+    await checkAndRetryJob(message);
+
+    // assert
+    expect(publishMessage).toHaveBeenCalledWith(
+      JSON.stringify({
+        ...message,
+      }),
+      'https://sqs.eu-west-1.amazonaws.com/123456789/webhook_events_workflow_job_queue',
+    );
+    expect(createSingleMetric).toHaveBeenCalled();
+    expect(createSingleMetric).toHaveBeenCalledWith('RetryJob', 'Count', 1, {
+      Environment: 'test',
+      RetryCount: '1',
+    });
+  });
+
+  it(`should not publish a message for retry when the job is running.`, async () => {
     // setup
     mockOctokit.actions.getJobForWorkflowRun.mockImplementation(() => ({
       data: {
@@ -152,13 +207,14 @@ describe(`Test job retry check`, () => {
       },
     }));
 
-    const message: ActionRequestMessage = {
+    const message: ActionRequestMessageRetry = {
       eventType: 'workflow_job',
       id: 0,
       installationId: 0,
       repositoryName: 'test',
       repositoryOwner: 'philips-labs',
-      repoOwnerType: 'Organization'
+      repoOwnerType: 'Organization',
+      retryCounter: 0
     };
     process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
     process.env.RUNNER_NAME_PREFIX = 'test';
@@ -180,13 +236,14 @@ describe(`Test job retry check`, () => {
       },
     }));
 
-    const message: ActionRequestMessage = {
+    const message: ActionRequestMessageRetry = {
       eventType: 'workflow_job',
       id: 0,
       installationId: 0,
       repositoryName: 'test',
       repositoryOwner: 'philips-labs',
-      repoOwnerType: 'Organization'
+      repoOwnerType: 'Organization',
+      retryCounter: 0
     };
     process.env.ENABLE_ORGANIZATION_RUNNERS = 'false';
 

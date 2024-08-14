@@ -668,3 +668,9 @@ variable "matcher_config_parameter_store_tier" {
     error_message = "`matcher_config_parameter_store_tier` value is not valid, valid values are: `Standard`, and `Advanced`."
   }
 }
+
+variable "enable_metrics_control_plane" {
+  description = "(Experimental) Enable or disable the metrics for the module. Feature can change or renamed without a major release."
+  type        = bool
+  default     = false
+}

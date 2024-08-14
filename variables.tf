@@ -906,6 +906,12 @@ variable "lambda_tags" {
   default     = {}
 }
 
+variable "enable_metrics_control_plane" {
+  description = "(Experimental) Enable or disable the metrics for the module. Feature can change or renamed without a major release."
+  type        = bool
+  default     = false
+}
+
 variable "job_retry" {
   description = <<-EOF
     Configure job retries. The configuration enables job retries (for ephemeral runners). After creating the insances a message will be published to a job retry queue. The job retry check lambda is checking after a delay if the job is queued. If not the message will be published again on the scale-up (build queue). Using this feature can impact the reate limit of the GitHub app.

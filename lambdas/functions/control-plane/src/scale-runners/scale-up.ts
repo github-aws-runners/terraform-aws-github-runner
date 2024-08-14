@@ -32,6 +32,15 @@ export interface ActionRequestMessage {
   retryCounter?: number;
 }
 
+export interface ActionRequestMessageRetry extends ActionRequestMessage {
+  id: number;
+  eventType: 'check_run' | 'workflow_job';
+  repositoryName: string;
+  repositoryOwner: string;
+  installationId: number;
+  retryCounter: number;
+}
+
 interface CreateGitHubRunnerConfig {
   ephemeral: boolean;
   ghesBaseUrl: string;
@@ -141,9 +150,6 @@ export async function isJobQueued(githubInstallationClient: Octokit, payload: Ac
     isQueued = jobForWorkflowRun.data.status === 'queued';
   } else {
     throw Error(`Event ${payload.eventType} is not supported`);
-  }
-  if (!isQueued) {
-    logger.warn(`Job not queued in GitHub. A new runner instance will NOT be created for this job.`);
   }
   return isQueued;
 }
@@ -339,6 +345,8 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
         throw new ScaleError('No runners create: maximum of runners reached.');
       }
     }
+  } else {
+    logger.info('No runner will be created, job is not queued.');
   }
 }
 

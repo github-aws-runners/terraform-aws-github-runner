@@ -4,13 +4,21 @@ locals {
 
   environment_variables = {
     ENABLE_ORGANIZATION_RUNNERS          = var.config.enable_organization_runners
+    ENABLE_METRICS                       = var.config.metrics_config.enable
     GHES_URL                             = var.config.ghes_url
     JOB_QUEUE_SCALE_UP_URL               = var.config.sqs_build_queue.url
     PARAMETER_GITHUB_APP_ID_NAME         = var.config.github_app_parameters.id.name
     PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.config.github_app_parameters.key_base64.name
   }
 
-  config = merge(var.config, { name = local.name, handler = "index.jobRetryCheck", zip = local.lambda_zip, environment_variables = local.environment_variables })
+  config = merge(var.config, {
+    name                  = local.name,
+    handler               = "index.jobRetryCheck",
+    zip                   = local.lambda_zip,
+    environment_variables = local.environment_variables
+    metrics_namespace     = var.config.metrics_config.namespace
+  })
+
 }
 
 resource "aws_sqs_queue_policy" "job_retry_check_queue_policy" {
@@ -62,8 +70,6 @@ resource "aws_iam_role_policy" "job_retry" {
     github_app_key_base64_arn = var.config.github_app_parameters.key_base64.arn
   })
 }
-
-
 
 data "aws_iam_policy_document" "deny_unsecure_transport" {
   statement {

@@ -669,6 +669,14 @@ variable "lambda_tags" {
   default     = {}
 }
 
+variable "metrics_config" {
+  description = "Configuraiton to enable metrics creation by the lambdas."
+  type = object({
+    enable    = optional(bool, false)
+    namespace = optional(string, null)
+  })
+  default = {}
+}
 
 variable "job_retry" {
   description = <<-EOF

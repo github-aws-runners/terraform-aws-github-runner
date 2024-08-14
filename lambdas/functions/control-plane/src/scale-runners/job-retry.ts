@@ -1,7 +1,12 @@
-import { addPersistentContextToChildLogger, logger } from '@terraform-aws-github-runner/aws-powertools-util';
+import {
+  addPersistentContextToChildLogger,
+  createSingleMetric,
+  logger,
+} from '@terraform-aws-github-runner/aws-powertools-util';
 import { publishMessage } from '../aws/sqs';
-import { ActionRequestMessage, getGitHubEnterpriseApiUrl, isJobQueued } from './scale-up';
+import { ActionRequestMessage, ActionRequestMessageRetry, getGitHubEnterpriseApiUrl, isJobQueued } from './scale-up';
 import { getOctokit } from '../gh-auth/gh-octokit';
+import { MetricUnit } from '@aws-lambda-powertools/metrics';
 import yn from 'yn';
 
 interface JobRetryConfig {
@@ -35,12 +40,14 @@ export async function publishRetryMessage(payload: ActionRequestMessage): Promis
   }
 }
 
-export async function checkAndRetryJob(payload: ActionRequestMessage): Promise<void> {
+export async function checkAndRetryJob(payload: ActionRequestMessageRetry): Promise<void> {
   const enableOrgLevel = yn(process.env.ENABLE_ORGANIZATION_RUNNERS, { default: true });
   const runnerType = enableOrgLevel ? 'Org' : 'Repo';
   const runnerOwner = enableOrgLevel ? payload.repositoryOwner : `${payload.repositoryOwner}/${payload.repositoryName}`;
-  const runnerNamePrefix = process.env.RUNNER_NAME_PREFIX || '';
-  const jobQueueUrl = process.env.JOB_QUEUE_SCALE_UP_URL || '';
+  const runnerNamePrefix = process.env.RUNNER_NAME_PREFIX ?? '';
+  const jobQueueUrl = process.env.JOB_QUEUE_SCALE_UP_URL ?? '';
+  const enableMetrics = yn(process.env.ENABLE_METRICS, { default: false });
+  const environment = process.env.ENVIRONMENT;
 
   addPersistentContextToChildLogger({
     runner: {
@@ -62,8 +69,22 @@ export async function checkAndRetryJob(payload: ActionRequestMessage): Promise<v
   // check job is still queued
   if (await isJobQueued(ghClient, payload)) {
     await publishMessage(JSON.stringify(payload), jobQueueUrl);
+    createMetric(enableMetrics, environment, payload);
     logger.info(`Job is still queued, message published to build queue and will be handled by scale-up.`, { payload });
   } else {
     logger.debug(`Job is no longer queued, skipping retry`, { payload });
+  }
+}
+
+function createMetric(enableMetrics: boolean, environment: string, payload: ActionRequestMessageRetry) {
+  if (enableMetrics) {
+    const metric = createSingleMetric('RetryJob', MetricUnit.Count, 1, {
+      Environment: environment,
+      RetryCount: payload.retryCounter?.toString(),
+    });
+    metric.addMetadata('Environment', environment);
+    metric.addMetadata('RepositoryName', payload.repositoryName);
+    metric.addMetadata('RepositoryOwner', payload.repositoryOwner);
+    metric.addMetadata('RetryCounter', payload.retryCounter?.toString());
   }
 }

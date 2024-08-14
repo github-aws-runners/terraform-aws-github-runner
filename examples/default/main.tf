@@ -95,7 +95,7 @@ module "runners" {
   runner_name_prefix = "${local.environment}_"
 
   # Enable debug logging for the lambda functions
-  log_level = "debug"
+  log_level = "info"
 
   enable_ami_housekeeper = true
   ami_housekeeper_cleanup_config = {
@@ -122,6 +122,9 @@ module "runners" {
   #   max_attempts     = 1
   #   delay_in_seconds = 180
   # }
+
+  # enable metric creation by the control plane (experimental)
+  # enable_metrics_control_plane = true
 
   # enable CMK instead of aws managed key for encryptions
   # ks_key_arn = aws_kms_key.github.arn
