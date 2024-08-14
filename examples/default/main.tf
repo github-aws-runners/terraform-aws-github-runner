@@ -123,6 +123,8 @@ module "runners" {
   #   delay_in_seconds = 180
   # }
 
+  # enable CMK instead of aws managed key for encryptions
+  # ks_key_arn = aws_kms_key.github.arn
 }
 
 module "webhook_github_app" {
@@ -136,3 +138,13 @@ module "webhook_github_app" {
   }
   webhook_endpoint = module.runners.webhook.endpoint
 }
+
+# enable CMK instead of aws managed key for encryptions
+# resource "aws_kms_key" "github" {
+#   is_enabled = true
+# }
+
+# resource "aws_kms_alias" "github" {
+#   name          = "alias/github/action-runners"
+#   target_key_id = aws_kms_key.github.key_id
+# }
