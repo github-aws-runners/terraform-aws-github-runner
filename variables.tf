@@ -914,7 +914,7 @@ variable "enable_metrics_control_plane" {
 
 variable "job_retry" {
   description = <<-EOF
-    Configure job retries. The configuration enables job retries (for ephemeral runners). After creating the insances a message will be published to a job retry queue. The job retry check lambda is checking after a delay if the job is queued. If not the message will be published again on the scale-up (build queue). Using this feature can impact the reate limit of the GitHub app.
+    Experimental! Can be removed / changed without trigger a major release.Configure job retries. The configuration enables job retries (for ephemeral runners). After creating the insances a message will be published to a job retry queue. The job retry check lambda is checking after a delay if the job is queued. If not the message will be published again on the scale-up (build queue). Using this feature can impact the reate limit of the GitHub app.
 
     `enable`: Enable or disable the job retry feature.
     `delay_in_seconds`: The delay in seconds before the job retry check lambda will check the job status.
