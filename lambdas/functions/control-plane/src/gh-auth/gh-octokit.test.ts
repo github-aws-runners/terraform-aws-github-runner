@@ -63,19 +63,7 @@ describe('Test getOctokit', () => {
       mockOctokit.apps.getOrgInstallation.mockRejectedValue(new Error('Error'));
     }
 
-    // (createGithubInstallationAuth as jest.Mock).mockResolvedValueOnce({
-    //   token: 'token',
-    //   type: 'installation',
-    //   installationId: 1,
-    // });
-
-    // (createGithubInstallationAuth as jest.Mock).mockImplementationOnce(async (installationId) => {
-    //   return { token: 'token', type: 'installation', installationId: installationId };
-    // });
-
-    //mockOctokit.apps.getRepoInstallation.mockResolvedValue({ data: { id: 2 } });
-
-    await expect(await getOctokit('', input.orgLevelRunner, payload)).resolves;
+    expect(await getOctokit('', input.orgLevelRunner, payload)).resolves;
 
     if (output.callOrgInstallation) {
       expect(mockOctokit.apps.getOrgInstallation).toHaveBeenCalled();
