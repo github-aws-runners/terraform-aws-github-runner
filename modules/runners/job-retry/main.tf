@@ -55,6 +55,7 @@ resource "aws_iam_role_policy" "job_retry" {
   name = "job_retry-policy"
   role = module.job_retry_check.lambda.role.name
   policy = templatefile("${path.module}/policies/lambda.json", {
+    kms_key_arn               = var.config.kms_key_arn != null ? var.config.kms_key_arn : ""
     sqs_build_queue_arn       = var.config.sqs_build_queue.arn
     sqs_job_retry_queue_arn   = aws_sqs_queue.job_retry_check_queue.arn
     github_app_id_arn         = var.config.github_app_parameters.id.arn

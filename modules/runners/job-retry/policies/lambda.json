@@ -27,6 +27,17 @@
         "sqs:GetQueueAttributes"
       ],
       "Resource": "${sqs_build_queue_arn}"
+%{ if kms_key_arn != "" ~}
+    },
+    {
+        "Effect": "Allow",
+        "Action": [
+            "kms:Encrypt",
+            "kms:Decrypt",
+            "kms:GenerateDataKey"
+        ],
+        "Resource": "${kms_key_arn}"
+%{ endif ~}
     }
   ]
 }

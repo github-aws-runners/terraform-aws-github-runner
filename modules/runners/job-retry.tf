@@ -10,6 +10,7 @@ locals {
     runtime                   = var.lambda_runtime
     security_group_ids        = var.lambda_security_group_ids
     subnet_ids                = var.lambda_subnet_ids
+    kms_key_arn               = var.kms_key_arn
     lambda_tags               = var.lambda_tags
     log_level                 = var.log_level
     logging_kms_key_id        = var.logging_kms_key_id
