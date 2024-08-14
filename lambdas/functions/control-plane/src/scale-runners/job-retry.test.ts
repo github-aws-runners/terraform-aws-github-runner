@@ -31,17 +31,22 @@ describe('Test job retry publish message', () => {
   const data = [
     {
       description: 'publish a message if retry is enabled and counter is undefined.',
-      input: { enable: true, retryCounter: undefined },
-      output: { published: true, maxAttempts: 2, newRetryCounter: 0, delay: 10 },
+      input: { enable: true, retryCounter: undefined, maxAttempts: 2, delayInSeconds: 10 },
+      output: { published: true, newRetryCounter: 0, delay: 10 },
     },
     {
       description: 'publish a message if retry is enabled and counter is 1 and is below max attempts.',
-      input: { enable: true, retryCounter: 0 },
-      output: { published: true, maxAttempts: 2, newRetryCounter: 1, delay: 20 },
+      input: { enable: true, retryCounter: 0, maxAttempts: 2, delayInSeconds: 10 },
+      output: { published: true, newRetryCounter: 1, delay: 20 },
+    },
+    {
+      description: 'publish a message with delay exceeding sqs max.',
+      input: { enable: true, retryCounter: 0, maxAttempts: 2, delayInSeconds: 1000 },
+      output: { published: true, newRetryCounter: 1, delay: 900 },
     },
     {
       description: 'NOT publish a message if retry is enabled and counter is 1 and is NOT below max attempts.',
-      input: { enable: true, retryCounter: 0 },
+      input: { enable: true, retryCounter: 0, delayInSeconds: 1000 },
       output: { published: false },
     },
     {
@@ -63,8 +68,8 @@ describe('Test job retry publish message', () => {
     };
     const jobRetryConfig = {
       enable: input.enable,
-      maxAttempts: output.maxAttempts,
-      delayInSeconds: 10,
+      maxAttempts: input.maxAttempts,
+      delayInSeconds: input.delayInSeconds,
       delayBackoff: 2,
       queueUrl: 'https://sqs.eu-west-1.amazonaws.com/123456789/webhook_events_workflow_job_queue',
     };

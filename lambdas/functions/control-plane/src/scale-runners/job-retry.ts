@@ -26,7 +26,8 @@ export async function publishRetryMessage(payload: ActionRequestMessage): Promis
       message: payload,
       config: jobRetryConfig,
     });
-    const delay = jobRetryConfig.delayInSeconds * Math.pow(jobRetryConfig.delayBackoff, payload.retryCounter);
+    let delay = jobRetryConfig.delayInSeconds * Math.pow(jobRetryConfig.delayBackoff, payload.retryCounter);
+    delay = Math.min(delay, 900); // max delay of 15 minutes
     await publishMessage(JSON.stringify(payload), jobRetryConfig.queueUrl, delay);
     logger.info(`Messages published for retry check with a delay of: '${delay}' seconds`);
   } else {
