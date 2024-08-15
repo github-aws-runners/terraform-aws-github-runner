@@ -126,7 +126,7 @@ The example for [ephemeral runners](examples/ephemeral.md) is based on the [defa
 
 You can enable the job retry function to retry a job after a delay for a configured number of times. The function is disabled by default. To enable the function set `job_retry.enable` to `true`. The function will check the job status after a delay, and when the is still queued, it will create a new runner. The new runner is created in the same way as the others via the scale-up function. Hence the same configuration applies.
 
-For checking the job status a API call is made to GitHub. Which can exhausted the GitHub API for larger deployments and cause rate limits. For larger deployment with a lot of frequent jobs having a small pool available could be a better choice.
+For checking the job status a API call is made to GitHub. Which can exhaust the GitHub API more quickly for larger deployments and cause rate limits. For larger deployment with a lot of frequent jobs having a small pool available could be a better choice.
 
 The option `job_retry.delay_in_seconds` is the delay before the job status is checked. The delay is increased by the factor `job_retry.delay_backoff` for each attempt. The upper bound for a delay is 900 seconds, which is the max message delay on SQS. The maximum number of attempts is configured via `job_retry.max_attempts`. The delay should be set to a higher value than the time it takes to start a runner.
 
