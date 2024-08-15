@@ -26,7 +26,7 @@ locals {
   }
 }
 
-module "job_retry_check" {
+module "job_retry" {
   source = "./job-retry"
   count  = local.job_retry_enabled ? 1 : 0
 
