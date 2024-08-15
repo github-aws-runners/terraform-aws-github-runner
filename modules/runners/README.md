@@ -63,7 +63,7 @@ yarn run dist
 
 | Name | Source | Version |
 |------|--------|---------|
-| <a name="module_job_retry_check"></a> [job\_retry\_check](#module\_job\_retry\_check) | ./job-retry | n/a |
+| <a name="module_job_retry"></a> [job\_retry](#module\_job\_retry) | ./job-retry | n/a |
 | <a name="module_pool"></a> [pool](#module\_pool) | ./pool | n/a |
 
 ## Resources
