@@ -57,6 +57,11 @@ variable "config" {
       type        = string
       identifiers = list(string)
     })), [])
+    queue_encryption = optional(object({
+      kms_data_key_reuse_period_seconds = optional(number, null)
+      kms_master_key_id                 = optional(string, null)
+      sqs_managed_sse_enabled           = optional(bool, true)
+    }), {})
     role_path                 = optional(string, null)
     role_permissions_boundary = optional(string, null)
     runtime                   = optional(string, null)
@@ -77,4 +82,3 @@ variable "config" {
     zip = optional(string, null)
   })
 }
-

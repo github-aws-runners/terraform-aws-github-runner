@@ -18,7 +18,6 @@ locals {
     environment_variables = local.environment_variables
     metrics_namespace     = var.config.metrics_config.namespace
   })
-
 }
 
 resource "aws_sqs_queue_policy" "job_retry_check_queue_policy" {
@@ -30,26 +29,23 @@ resource "aws_sqs_queue" "job_retry_check_queue" {
   name                       = "${var.config.prefix}-job-retry-check"
   visibility_timeout_seconds = local.config.timeout
 
-  sqs_managed_sse_enabled = true #var.queue_encryption.sqs_managed_sse_enabled
-  # kms_master_key_id                 = var.queue_encryption.kms_master_key_id
-  # kms_data_key_reuse_period_seconds = var.queue_encryption.kms_data_key_reuse_period_seconds
+  sqs_managed_sse_enabled           = var.config.queue_encryption.sqs_managed_sse_enabled
+  kms_master_key_id                 = var.config.queue_encryption.kms_master_key_id
+  kms_data_key_reuse_period_seconds = var.config.queue_encryption.kms_data_key_reuse_period_seconds
 
   tags = var.config.tags
 }
-
 
 module "job_retry_check" {
   source = "../../lambda"
   lambda = local.config
 }
 
-
 resource "aws_lambda_event_source_mapping" "job_retry" {
   event_source_arn = aws_sqs_queue.job_retry_check_queue.arn
   function_name    = module.job_retry_check.lambda.function.arn
   batch_size       = 1
 }
-
 
 resource "aws_lambda_permission" "job_retry" {
   statement_id  = "AllowExecutionFromSQS"

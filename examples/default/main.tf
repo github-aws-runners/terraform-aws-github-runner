@@ -127,7 +127,7 @@ module "runners" {
   # enable_metrics_control_plane = true
 
   # enable CMK instead of aws managed key for encryptions
-  # ks_key_arn = aws_kms_key.github.arn
+  # kms_key_arn = aws_kms_key.github.arn
 }
 
 module "webhook_github_app" {

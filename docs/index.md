@@ -66,9 +66,25 @@ The AMI cleaner is a lambda that will clean up AMIs that are older than a config
 
 ### Instance Termination Watcher
 
-> This feature is Beta, changes will not trigger a major release as long in beta.
+!!! Warning
+
+    This feature is Beta, changes will not trigger a major release as long in beta.
 
 The Instance Termination Watcher is creating log and optional metrics for termination of instances. Currently only spot termination warnings are watched. See [configuration](configuration/) for more details.
+
+
+### Job Retry
+
+!!! Warning
+
+    This feature is Beta, changes will not trigger a major release as long in beta.
+
+The Job Retry will allow you to retry scaling when a job is not started. When enabled the scale up lambda will send a retry message to the a SQS queue. The job retry lambda will check after a delay if the job is still queued. And if so it will send a retry command de the scale up lambda via SQS. The feature is designed to be used with ephemeral runners. The feature is opt in, it will not be created by default.
+
+Consequences of enabling the feature are:
+- Increase of calls to the GitHub API, could cause reaching the rate limit.
+- Could create new instance when job are not started caused by other failures, resulting in more costs and useless instance creation.
+
 
 ### Security
 

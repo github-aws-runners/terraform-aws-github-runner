@@ -43,6 +43,9 @@ markdown_extensions:
   - pymdownx.snippets:
       check_paths: true
   - pymdownx.emoji:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
 
 nav:
   - Introduction: index.md
@@ -69,6 +72,7 @@ nav:
     - ARM64: examples/arm64.md
     - Windows: examples/windows.md
     - Custom AMI: examples/prebuilt.md
+    - Termination watcher: examples/termination-watcher.md
     - Lambda download: examples/lambda-download.md
     - Permissions boundary: examples/permissions-boundary.md
   - AMI examples: ami-examples/index.md

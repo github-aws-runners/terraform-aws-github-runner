@@ -703,4 +703,9 @@ variable "job_retry" {
     max_attempts = optional(number, 1)
   })
   default = {}
+
+  validation {
+    condition     = var.job_retry.enable == false || (var.job_retry.enable == true && var.job_retry.delay_in_seconds <= 900)
+    error_message = "The maxium message delay for SWS is 900 seconds."
+  }
 }
