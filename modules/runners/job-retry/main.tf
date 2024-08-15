@@ -1,6 +1,6 @@
 locals {
   lambda_zip = var.config.zip == null ? "${path.module}/../../../lambdas/functions/control-plane/runners.zip" : var.config.zip
-  name       = "job-retry-check"
+  name       = "job-retry"
 
   environment_variables = {
     ENABLE_ORGANIZATION_RUNNERS          = var.config.enable_organization_runners
@@ -26,7 +26,7 @@ resource "aws_sqs_queue_policy" "job_retry_check_queue_policy" {
 }
 
 resource "aws_sqs_queue" "job_retry_check_queue" {
-  name                       = "${var.config.prefix}-job-retry-check"
+  name                       = "${var.config.prefix}-job-retrys"
   visibility_timeout_seconds = local.config.timeout
 
   sqs_managed_sse_enabled           = var.config.queue_encryption.sqs_managed_sse_enabled
@@ -36,28 +36,28 @@ resource "aws_sqs_queue" "job_retry_check_queue" {
   tags = var.config.tags
 }
 
-module "job_retry_check" {
+module "job_retry" {
   source = "../../lambda"
   lambda = local.config
 }
 
 resource "aws_lambda_event_source_mapping" "job_retry" {
   event_source_arn = aws_sqs_queue.job_retry_check_queue.arn
-  function_name    = module.job_retry_check.lambda.function.arn
+  function_name    = module.job_retry.lambda.function.arn
   batch_size       = 1
 }
 
 resource "aws_lambda_permission" "job_retry" {
   statement_id  = "AllowExecutionFromSQS"
   action        = "lambda:InvokeFunction"
-  function_name = module.job_retry_check.lambda.function.function_name
+  function_name = module.job_retry.lambda.function.function_name
   principal     = "sqs.amazonaws.com"
   source_arn    = aws_sqs_queue.job_retry_check_queue.arn
 }
 
 resource "aws_iam_role_policy" "job_retry" {
   name = "job_retry-policy"
-  role = module.job_retry_check.lambda.role.name
+  role = module.job_retry.lambda.role.name
   policy = templatefile("${path.module}/policies/lambda.json", {
     kms_key_arn               = var.config.kms_key_arn != null ? var.config.kms_key_arn : ""
     sqs_build_queue_arn       = var.config.sqs_build_queue.arn

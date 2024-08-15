@@ -1,8 +1,8 @@
 output "lambda" {
   value = {
-    function  = module.job_retry_check.lambda
-    log_group = module.job_retry_check.lambda.log_group
-    role      = module.job_retry_check.lambda.role
+    function  = module.job_retry.lambda
+    log_group = module.job_retry.lambda.log_group
+    role      = module.job_retry.lambda.role
   }
 }
 

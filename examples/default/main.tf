@@ -117,11 +117,11 @@ module "runners" {
   }
 
   # enable job_retry feature. Be careful with this feature, it can lead to API rate limits.
-  # job_retry = {
-  #   enable           = true
-  #   max_attempts     = 1
-  #   delay_in_seconds = 180
-  # }
+  job_retry = {
+    enable           = true
+    max_attempts     = 1
+    delay_in_seconds = 180
+  }
 
   # enable metric creation by the control plane (experimental)
   # enable_metrics_control_plane = true

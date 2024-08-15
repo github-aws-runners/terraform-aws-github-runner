@@ -4,7 +4,7 @@ locals {
     maxAttempts    = var.job_retry.max_attempts
     delayInSeconds = var.job_retry.delay_in_seconds
     delayBackoff   = var.job_retry.delay_backoff
-    queueUrl       = module.job_retry_check[0].job_retry_check_queue.url
+    queueUrl       = module.job_retry[0].job_retry_check_queue.url
   } : {}
 }
 
@@ -159,7 +159,7 @@ resource "aws_iam_role_policy" "webhook_workflow_job_sqs" {
   role  = aws_iam_role.scale_up.name
 
   policy = templatefile("${path.module}/policies/lambda-publish-sqs-policy.json", {
-    sqs_resource_arns = jsonencode([module.job_retry_check[0].job_retry_check_queue.arn])
+    sqs_resource_arns = jsonencode([module.job_retry[0].job_retry_check_queue.arn])
     kms_key_arn       = var.kms_key_arn != null ? var.kms_key_arn : ""
   })
 }
