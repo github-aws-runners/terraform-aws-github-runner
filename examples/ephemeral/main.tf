@@ -65,8 +65,10 @@ module "runners" {
   # # Example of simple pool usages
   # pool_runner_owner = "philips-test-runners"
   # pool_config = [{
-  #   size                = 3
-  #   schedule_expression = "cron(* * * * ? *)"
+  #   size                         = 3
+  #   schedule_expression = "cron(0/3 14 * * ? *)" # every 3 minutes between 14:00 and 15:00
+  #   schedule_expression_timezone = "Europe/Amsterdam"
+
   # }]
   #
   #
