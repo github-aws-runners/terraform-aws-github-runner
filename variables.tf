@@ -640,17 +640,6 @@ variable "lambda_principals" {
   default = []
 }
 
-variable "enable_fifo_build_queue" {
-  description = "(FEATURE REMOVED) Enable a FIFO queue to keep the order of events received by the webhook. Recommended for repo level runners."
-  type        = bool
-  default     = false
-
-  validation {
-    condition     = var.enable_fifo_build_queue == false
-    error_message = "The feature for FIFO build queue is not supported anymore."
-  }
-}
-
 variable "redrive_build_queue" {
   description = "Set options to attach (optional) a dead letter queue to the build queue, the queue between the webhook and the scale up lambda. You have the following options. 1. Disable by setting `enabled` to false. 2. Enable by setting `enabled` to `true`, `maxReceiveCount` to a number of max retries."
   type = object({

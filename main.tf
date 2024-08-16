@@ -53,13 +53,11 @@ resource "aws_sqs_queue_policy" "build_queue_policy" {
 }
 
 resource "aws_sqs_queue" "queued_builds" {
-  name                        = "${var.prefix}-queued-builds"
-  delay_seconds               = var.delay_webhook_event
-  visibility_timeout_seconds  = var.runners_scale_up_lambda_timeout
-  message_retention_seconds   = var.job_queue_retention_in_seconds
-  fifo_queue                  = var.enable_fifo_build_queue
-  receive_wait_time_seconds   = 0
-  content_based_deduplication = var.enable_fifo_build_queue
+  name                       = "${var.prefix}-queued-builds"
+  delay_seconds              = var.delay_webhook_event
+  visibility_timeout_seconds = var.runners_scale_up_lambda_timeout
+  message_retention_seconds  = var.job_queue_retention_in_seconds
+  receive_wait_time_seconds  = 0
   redrive_policy = var.redrive_build_queue.enabled ? jsonencode({
     deadLetterTargetArn = aws_sqs_queue.queued_builds_dlq[0].arn,
     maxReceiveCount     = var.redrive_build_queue.maxReceiveCount
@@ -85,7 +83,6 @@ resource "aws_sqs_queue" "queued_builds_dlq" {
   sqs_managed_sse_enabled           = var.queue_encryption.sqs_managed_sse_enabled
   kms_master_key_id                 = var.queue_encryption.kms_master_key_id
   kms_data_key_reuse_period_seconds = var.queue_encryption.kms_data_key_reuse_period_seconds
-  fifo_queue                        = var.enable_fifo_build_queue
   tags                              = var.tags
 }
 
