@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.15.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.15.0...v5.15.1) (2024-08-16)
+
+
+### Bug Fixes
+
+* missing lambda s3 key and version for job retry ([#4074](https://github.com/philips-labs/terraform-aws-github-runner/issues/4074)) ([8540379](https://github.com/philips-labs/terraform-aws-github-runner/commit/8540379e36dd0e900e777684a55c51da80a5ef1b))
+
 ## [5.15.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.14.1...v5.15.0) (2024-08-16)
 
 
