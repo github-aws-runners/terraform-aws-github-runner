@@ -101,7 +101,6 @@ describe('Dispatcher', () => {
         eventType: 'workflow_job',
         installationId: 0,
         queueId: runnerConfig[0].id,
-        queueFifo: false,
         repoOwnerType: 'Organization',
       });
     });
@@ -149,7 +148,6 @@ describe('Dispatcher', () => {
         eventType: 'workflow_job',
         installationId: 0,
         queueId: 'match',
-        queueFifo: false,
         repoOwnerType: 'Organization',
       });
     });

@@ -29,7 +29,6 @@ describe('ConfigLoader Tests', () => {
         {
           id: '1',
           arn: 'arn:aws:sqs:us-east-1:123456789012:queue1',
-          fifo: false,
           matcherConfig: {
             labelMatchers: [['label1', 'label2']],
             exactMatch: true,
@@ -100,7 +99,6 @@ describe('ConfigLoader Tests', () => {
         {
           id: '1',
           arn: 'arn:aws:sqs:us-east-1:123456789012:queue1',
-          fifo: false,
           matcherConfig: {
             labelMatchers: [['label1', 'label2']],
             exactMatch: true,
@@ -131,7 +129,6 @@ describe('ConfigLoader Tests', () => {
         {
           id: '1',
           arn: 'arn:aws:sqs:us-east-1:123456789012:queue1',
-          fifo: false,
           matcherConfig: {
             labelMatchers: [['label1', 'label2']],
             exactMatch: true,
@@ -211,7 +208,6 @@ describe('ConfigLoader Tests', () => {
       const matcherConfig: RunnerMatcherConfig[] = [
         {
           arn: 'arn:aws:sqs:eu-central-1:123456:npalm-default-queued-builds',
-          fifo: true,
           id: 'https://sqs.eu-central-1.amazonaws.com/123456/npalm-default-queued-builds',
           matcherConfig: {
             exactMatch: true,
@@ -248,7 +244,6 @@ describe('ConfigLoader Tests', () => {
       const matcherConfig: RunnerMatcherConfig[] = [
         {
           arn: 'arn:aws:sqs:eu-central-1:123456:npalm-default-queued-builds',
-          fifo: true,
           id: 'https://sqs.eu-central-1.amazonaws.com/123456/npalm-default-queued-builds',
           matcherConfig: {
             exactMatch: true,

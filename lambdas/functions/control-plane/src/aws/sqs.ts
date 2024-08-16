@@ -18,8 +18,7 @@ export async function publishMessage(message: string, queueUrl: string, delayInS
   const messageCommand = new SendMessageCommand({
     QueueUrl: queueUrl,
     MessageBody: message,
-    DelaySeconds: delayInSeconds,
-    MessageGroupId: queueUrl.endsWith('.fifo') ? '1' : undefined,
+    DelaySeconds: delayInSeconds
   });
 
   try {

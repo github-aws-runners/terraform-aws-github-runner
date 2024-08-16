@@ -34,11 +34,11 @@ describe('Publish message to SQS', () => {
     });
 
     // act
-    await publishMessage('test', 'https://sqs.eu-west-1.amazonaws.com/123456789/queued-builds.fifo');
+    await publishMessage('test', 'https://sqs.eu-west-1.amazonaws.com/123456789/queued-builds');
 
     // assert
     expect(mockSQSClient).toHaveReceivedCommandWith(SendMessageCommand, {
-      QueueUrl: 'https://sqs.eu-west-1.amazonaws.com/123456789/queued-builds.fifo',
+      QueueUrl: 'https://sqs.eu-west-1.amazonaws.com/123456789/queued-builds',
       MessageBody: 'test',
       MessageGroupId: '1', // Fifo queue
     });

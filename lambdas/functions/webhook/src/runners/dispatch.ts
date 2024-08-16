@@ -44,7 +44,6 @@ async function handleWorkflowJob(
           eventType: githubEvent,
           installationId: body.installation?.id ?? 0,
           queueId: queue.id,
-          queueFifo: queue.fifo,
           repoOwnerType: body.repository.owner.type,
         });
         logger.info(`Successfully dispatched job for ${body.repository.full_name} to the queue ${queue.id}`);
