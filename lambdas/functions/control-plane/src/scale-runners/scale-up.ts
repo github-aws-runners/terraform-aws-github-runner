@@ -33,11 +33,6 @@ export interface ActionRequestMessage {
 }
 
 export interface ActionRequestMessageRetry extends ActionRequestMessage {
-  id: number;
-  eventType: 'check_run' | 'workflow_job';
-  repositoryName: string;
-  repositoryOwner: string;
-  installationId: number;
   retryCounter: number;
 }
 

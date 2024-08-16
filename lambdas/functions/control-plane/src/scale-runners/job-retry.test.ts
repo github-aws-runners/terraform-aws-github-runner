@@ -172,6 +172,7 @@ describe(`Test job retry check`, () => {
       installationId: 0,
       repositoryName: 'test',
       repositoryOwner: 'philips-labs',
+      repoOwnerType: 'Organization',
       retryCounter: 1,
     };
 
