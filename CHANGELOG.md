@@ -1,5 +1,21 @@
 # Changelog
 
+## [5.15.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.14.1...v5.15.0) (2024-08-16)
+
+
+### Features
+
+* add time zone support for pool schedules ([#4063](https://github.com/philips-labs/terraform-aws-github-runner/issues/4063)) ([b8f9eb4](https://github.com/philips-labs/terraform-aws-github-runner/commit/b8f9eb4638efbb45a7e27ddb66b3a10eef2617a7))
+* scale up for long waiting jobs (job retry) ([#4064](https://github.com/philips-labs/terraform-aws-github-runner/issues/4064)) ([6120571](https://github.com/philips-labs/terraform-aws-github-runner/commit/6120571a959bd672c2bbc77ebf05825185c90bc6))
+
+
+### Bug Fixes
+
+* **lambda:** bump axios from 1.7.2 to 1.7.4 in /lambdas ([#4071](https://github.com/philips-labs/terraform-aws-github-runner/issues/4071)) ([2f32195](https://github.com/philips-labs/terraform-aws-github-runner/commit/2f3219597f3729a2e0b7e464048e3119958b62cd))
+* **lambda:** bump the aws group in /lambdas with 5 updates ([#4057](https://github.com/philips-labs/terraform-aws-github-runner/issues/4057)) ([5ecdbad](https://github.com/philips-labs/terraform-aws-github-runner/commit/5ecdbaddaf255043057e5427e5f62283b7d59be2))
+* **lambda:** bump the aws-powertools group in /lambdas with 3 updates ([#4058](https://github.com/philips-labs/terraform-aws-github-runner/issues/4058)) ([f9533f3](https://github.com/philips-labs/terraform-aws-github-runner/commit/f9533f3423a060f232455aacaa8d4967025f6e2c))
+* **lambda:** Prevent scale-up lambda from starting runner for user repo if org level runners is enabled ([#3909](https://github.com/philips-labs/terraform-aws-github-runner/issues/3909)) ([98b1560](https://github.com/philips-labs/terraform-aws-github-runner/commit/98b1560f86bb609110bfdbf3607eb19f23beab0e))
+
 ## [5.14.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.14.0...v5.14.1) (2024-08-07)
 
 
