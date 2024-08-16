@@ -27,6 +27,7 @@ export interface ActionRequestMessage {
   repositoryName: string;
   repositoryOwner: string;
   installationId: number;
+  repoOwnerType: string;
 }
 
 interface CreateGitHubRunnerConfig {
@@ -250,6 +251,16 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
         `Please ensure you have enabled workflow_job events.`,
     );
   }
+
+  if (!isValidRepoOwnerTypeIfOrgLevelEnabled(payload, enableOrgLevel)) {
+    logger.warn(
+      `Repository ${payload.repositoryOwner}/${payload.repositoryName} does not belong to a GitHub` +
+        `organization and organization runners are enabled. This is not supported. Not scaling up for this event.` +
+        `Not throwing error to prevent re-queueing and just ignoring the event.`,
+    );
+    return;
+  }
+
   const ephemeral = ephemeralEnabled && payload.eventType === 'workflow_job';
   const runnerType = enableOrgLevel ? 'Org' : 'Repo';
   const runnerOwner = enableOrgLevel ? payload.repositoryOwner : `${payload.repositoryOwner}/${payload.repositoryName}`;
@@ -339,6 +350,10 @@ async function createStartRunnerConfig(
   } else {
     await createRegistrationTokenConfig(githubRunnerConfig, instances, ghClient);
   }
+}
+
+function isValidRepoOwnerTypeIfOrgLevelEnabled(payload: ActionRequestMessage, enableOrgLevel: boolean): boolean {
+  return !(enableOrgLevel && payload.repoOwnerType !== 'Organization');
 }
 
 function addDelay(instances: string[]) {

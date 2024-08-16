@@ -71,7 +71,6 @@ Before you submit your pull request consider the following guidelines:
         terraform init
         ```
 
-* For updating docs, you have to enable GitHub actions on your forked repository. Simply go to the tab Actions and enable actions.
 * Commit your changes using a descriptive commit message:
 
     ```shell
