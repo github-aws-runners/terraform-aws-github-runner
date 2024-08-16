@@ -42,7 +42,10 @@ module "runners" {
   #   iops                  = null
   # }]
 
-  # Grab zip files via lambda_download
+  # When not explicitly set lambda zip files are grapped from the module requiring lambda build.
+  # Alternatively you can set the path to the lambda zip files here.
+  #
+  # For example grab zip files via lambda_download
   # webhook_lambda_zip                = "../lambdas-download/webhook.zip"
   # runner_binaries_syncer_lambda_zip = "../lambdas-download/runner-binaries-syncer.zip"
   # runners_lambda_zip                = "../lambdas-download/runners.zip"
@@ -117,11 +120,11 @@ module "runners" {
   }
 
   # enable job_retry feature. Be careful with this feature, it can lead to API rate limits.
-  job_retry = {
-    enable           = true
-    max_attempts     = 1
-    delay_in_seconds = 180
-  }
+  # job_retry = {
+  #   enable           = true
+  #   max_attempts     = 1
+  #   delay_in_seconds = 180
+  # }
 
   # enable metric creation by the control plane (experimental)
   # enable_metrics_control_plane = true
