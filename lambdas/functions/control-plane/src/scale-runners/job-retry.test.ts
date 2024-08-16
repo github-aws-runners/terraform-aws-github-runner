@@ -113,7 +113,7 @@ describe('Test job retry publish message', () => {
       installationId: 0,
       repositoryName: 'test',
       repositoryOwner: 'philips-labs',
-      repoOwnerType: 'Organization'
+      repoOwnerType: 'Organization',
     };
 
     // act
@@ -138,7 +138,7 @@ describe(`Test job retry check`, () => {
       repositoryName: 'test',
       repositoryOwner: 'philips-labs',
       repoOwnerType: 'Organization',
-      retryCounter: 0
+      retryCounter: 0,
     };
     process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
     process.env.RUNNER_NAME_PREFIX = 'test';
@@ -215,7 +215,7 @@ describe(`Test job retry check`, () => {
       repositoryName: 'test',
       repositoryOwner: 'philips-labs',
       repoOwnerType: 'Organization',
-      retryCounter: 0
+      retryCounter: 0,
     };
     process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
     process.env.RUNNER_NAME_PREFIX = 'test';
@@ -244,7 +244,7 @@ describe(`Test job retry check`, () => {
       repositoryName: 'test',
       repositoryOwner: 'philips-labs',
       repoOwnerType: 'Organization',
-      retryCounter: 0
+      retryCounter: 0,
     };
     process.env.ENABLE_ORGANIZATION_RUNNERS = 'false';
 
