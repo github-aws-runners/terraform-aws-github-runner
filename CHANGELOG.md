@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.15.2](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.15.1...v5.15.2) (2024-08-19)
+
+
+### Bug Fixes
+
+* pass lambda zip file to job retry feature ([#4080](https://github.com/philips-labs/terraform-aws-github-runner/issues/4080)) ([098c0ea](https://github.com/philips-labs/terraform-aws-github-runner/commit/098c0ea9ad96d31a2fa944d7eafe90861d8c6184)), closes [#4078](https://github.com/philips-labs/terraform-aws-github-runner/issues/4078)
+* use name instead of name prefix to avoid too long names ([#4079](https://github.com/philips-labs/terraform-aws-github-runner/issues/4079)) ([8bb6272](https://github.com/philips-labs/terraform-aws-github-runner/commit/8bb62724c41b6dbd3d3f484f32da9d46dc5ad853))
+
 ## [5.15.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.15.0...v5.15.1) (2024-08-16)
 
 
