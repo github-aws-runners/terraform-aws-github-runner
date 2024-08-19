@@ -21,6 +21,7 @@ locals {
     s3_bucket                   = var.lambda_s3_bucket
     s3_key                      = var.runners_lambda_s3_key
     s3_object_version           = var.runners_lambda_s3_object_version
+    zip                         = var.lambda_zip
     tracing_config              = var.tracing_config
     github_app_parameters       = var.github_app_parameters
     enable_organization_runners = var.enable_organization_runners
