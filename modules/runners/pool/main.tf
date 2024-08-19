@@ -199,8 +199,8 @@ resource "aws_iam_role" "scheduler" {
 resource "aws_scheduler_schedule" "pool" {
   for_each = { for i, v in var.config.pool : i => v }
 
-  name_prefix = "${var.config.prefix}-pool-${each.key}-rule"
-  group_name  = aws_scheduler_schedule_group.pool.name
+  name       = "${var.config.prefix}-pool-${each.key}-rule"
+  group_name = aws_scheduler_schedule_group.pool.name
 
   flexible_time_window {
     mode = "OFF"
