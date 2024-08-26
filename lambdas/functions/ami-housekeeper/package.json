@@ -32,7 +32,7 @@
     "jest-mock-extended": "^3.0.7",
     "nock": "^13.5.4",
     "prettier": "3.3.3",
-    "ts-jest": "^29.2.4",
+    "ts-jest": "^29.2.5",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0"
   },
