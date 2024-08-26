@@ -7,6 +7,7 @@ import { bootTimeExceeded, listEC2Runners, tag, terminateRunner } from './../aws
 import { RunnerInfo, RunnerList } from './../aws/runners.d';
 import { GhRunners, githubCache } from './cache';
 import { ScalingDownConfig, getEvictionStrategy, getIdleRunnerCount } from './scale-down-config';
+import { metricGitHubAppRateLimit } from '../gh-auth/rate-limit';
 
 const logger = createChildLogger('scale-down');
 
@@ -62,6 +63,8 @@ async function getGitHubRunnerBusyState(client: Octokit, ec2runner: RunnerInfo, 
         });
 
   logger.info(`Runner '${ec2runner.instanceId}' - GitHub Runner ID '${runnerId}' - Busy: ${state.data.busy}`);
+
+  metricGitHubAppRateLimit(state.headers);
 
   return state.data.busy;
 }

@@ -293,10 +293,7 @@ module "runners" {
   ssm_housekeeper = var.runners_ssm_housekeeper
   ebs_optimized   = var.runners_ebs_optimized
 
-  metrics_config = {
-    namespace = var.metrics_namespace
-    enable    = var.enable_metrics_control_plane
-  }
+  metrics = var.metrics
 
   job_retry = var.job_retry
 }
@@ -394,9 +391,9 @@ locals {
     logging_retention_in_days = var.logging_retention_in_days
     role_path                 = var.role_path
     role_permissions_boundary = var.role_permissions_boundary
-    metrics_namespace         = var.metrics_namespace
     s3_bucket                 = var.lambda_s3_bucket
     tracing_config            = var.tracing_config
+    metrics                   = var.metrics
   }
 }
 

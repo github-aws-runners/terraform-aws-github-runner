@@ -46,7 +46,7 @@ export async function checkAndRetryJob(payload: ActionRequestMessageRetry): Prom
   const runnerOwner = enableOrgLevel ? payload.repositoryOwner : `${payload.repositoryOwner}/${payload.repositoryName}`;
   const runnerNamePrefix = process.env.RUNNER_NAME_PREFIX ?? '';
   const jobQueueUrl = process.env.JOB_QUEUE_SCALE_UP_URL ?? '';
-  const enableMetrics = yn(process.env.ENABLE_METRICS, { default: false });
+  const enableMetrics = yn(process.env.ENABLE_METRIC_JOB_RETRY, { default: false });
   const environment = process.env.ENVIRONMENT;
 
   addPersistentContextToChildLogger({

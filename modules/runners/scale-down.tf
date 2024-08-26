@@ -23,6 +23,7 @@ resource "aws_lambda_function" "scale_down" {
   environment {
     variables = {
       ENVIRONMENT                              = var.prefix
+      ENABLE_METRIC_GITHUB_APP_RATE_LIMIT      = var.metrics.enable && var.metrics.metric.enable_github_app_rate_limit
       GHES_URL                                 = var.ghes_url
       LOG_LEVEL                                = var.log_level
       MINIMUM_RUNNING_TIME_IN_MINUTES          = coalesce(var.minimum_running_time_in_minutes, local.min_runtime_defaults[var.runner_os])
@@ -33,6 +34,7 @@ resource "aws_lambda_function" "scale_down" {
       RUNNER_BOOT_TIME_IN_MINUTES              = var.runner_boot_time_in_minutes
       SCALE_DOWN_CONFIG                        = jsonencode(var.idle_config)
       POWERTOOLS_SERVICE_NAME                  = "runners-scale-down"
+      POWERTOOLS_METRICS_NAMESPACE             = var.metrics.namespace
       POWERTOOLS_TRACE_ENABLED                 = var.tracing_config.mode != null ? true : false
       POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.tracing_config.capture_http_requests
       POWERTOOLS_TRACER_CAPTURE_ERROR          = var.tracing_config.capture_error

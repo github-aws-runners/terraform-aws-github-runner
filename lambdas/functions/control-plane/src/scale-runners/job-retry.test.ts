@@ -179,7 +179,7 @@ describe(`Test job retry check`, () => {
     process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
     process.env.ENVIRONMENT = 'test';
     process.env.RUNNER_NAME_PREFIX = 'test';
-    process.env.ENABLE_METRICS = 'true';
+    process.env.ENABLE_METRIC_JOB_RETRY = 'true';
     process.env.JOB_QUEUE_SCALE_UP_URL =
       'https://sqs.eu-west-1.amazonaws.com/123456789/webhook_events_workflow_job_queue';
 

@@ -114,8 +114,5 @@ module "runners" {
 
   job_retry = each.value.runner_config.job_retry
 
-  metrics_config = {
-    namespace = var.metrics_namespace
-    enable    = var.enable_metrics_control_plane
-  }
+  metrics = var.metrics
 }

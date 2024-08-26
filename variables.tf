@@ -862,10 +862,18 @@ variable "runners_ssm_housekeeper" {
   default = { config = {} }
 }
 
-variable "metrics_namespace" {
-  description = "The namespace for the metrics created by the module. Merics will only be created if explicit enabled."
-  type        = string
-  default     = "GitHub Runners"
+variable "metrics" {
+  description = "Configuration for metrics created by the module, by default disabled to avoid additional costs. When metrics are enable all metrics are created unless explicit configured otherwise."
+  type = object({
+    enable    = optional(bool, false)
+    namespace = optional(string, "GitHub Runners")
+    metric = optional(object({
+      enable_github_app_rate_limit    = optional(bool, true)
+      enable_job_retry                = optional(bool, true)
+      enable_spot_termination_warning = optional(bool, true)
+    }), {})
+  })
+  default = {}
 }
 
 variable "instance_termination_watcher" {
@@ -873,7 +881,6 @@ variable "instance_termination_watcher" {
     Configuration for the instance termination watcher. This feature is Beta, changes will not trigger a major release as long in beta.
 
     `enable`: Enable or disable the spot termination watcher.
-    `enable_metrics`: Enable or disable the metrics for the spot termination watcher.
     `memory_size`: Memory size linit in MB of the lambda.
     `s3_key`: S3 key for syncer lambda function. Required if using S3 bucket to specify lambdas.
     `s3_object_version`: S3 object version for syncer lambda function. Useful if S3 versioning is enabled on source bucket.
@@ -882,10 +889,8 @@ variable "instance_termination_watcher" {
   EOF
 
   type = object({
-    enable = optional(bool, false)
-    enable_metric = optional(object({
-      spot_warning = optional(bool, false)
-    }))
+    enable            = optional(bool, false)
+    enable_metric     = optional(string, null) # deprectaed
     memory_size       = optional(number, null)
     s3_key            = optional(string, null)
     s3_object_version = optional(string, null)
@@ -893,6 +898,11 @@ variable "instance_termination_watcher" {
     zip               = optional(string, null)
   })
   default = {}
+
+  validation {
+    condition     = var.instance_termination_watcher.enable_metric == null
+    error_message = "The variable `instance_termination_watcher.enable_metric` is deprecated, use `metrics` instead."
+  }
 }
 
 variable "runners_ebs_optimized" {
@@ -905,12 +915,6 @@ variable "lambda_tags" {
   description = "Map of tags that will be added to all the lambda function resources. Note these are additional tags to the default tags."
   type        = map(string)
   default     = {}
-}
-
-variable "enable_metrics_control_plane" {
-  description = "(Experimental) Enable or disable the metrics for the module. Feature can change or renamed without a major release."
-  type        = bool
-  default     = false
 }
 
 variable "job_retry" {

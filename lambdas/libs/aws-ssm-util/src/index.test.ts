@@ -136,9 +136,6 @@ describe('Test getParameter and putParameter', () => {
     mockSSMClient.on(GetParameterCommand).resolves(output);
 
     // Act
-    const result = await getParameter(parameterName);
-
-    // Assert
-    expect(result).toBe(undefined);
+    await expect(getParameter(parameterName)).rejects.toThrow(`Parameter ${parameterName} not found`);
   });
 });

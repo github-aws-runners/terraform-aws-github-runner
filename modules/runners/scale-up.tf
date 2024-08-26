@@ -30,6 +30,7 @@ resource "aws_lambda_function" "scale_up" {
       ENABLE_EPHEMERAL_RUNNERS                 = var.enable_ephemeral_runners
       ENABLE_JIT_CONFIG                        = var.enable_jit_config
       ENABLE_JOB_QUEUED_CHECK                  = local.enable_job_queued_check
+      ENABLE_METRIC_GITHUB_APP_RATE_LIMIT      = var.metrics.enable && var.metrics.metric.enable_github_app_rate_limit
       ENABLE_ORGANIZATION_RUNNERS              = var.enable_organization_runners
       ENVIRONMENT                              = var.prefix
       GHES_URL                                 = var.ghes_url
@@ -44,6 +45,7 @@ resource "aws_lambda_function" "scale_up" {
       PARAMETER_GITHUB_APP_ID_NAME             = var.github_app_parameters.id.name
       PARAMETER_GITHUB_APP_KEY_BASE64_NAME     = var.github_app_parameters.key_base64.name
       POWERTOOLS_LOGGER_LOG_EVENT              = var.log_level == "debug" ? "true" : "false"
+      POWERTOOLS_METRICS_NAMESPACE             = var.metrics.namespace
       POWERTOOLS_TRACE_ENABLED                 = var.tracing_config.mode != null ? true : false
       POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.tracing_config.capture_http_requests
       POWERTOOLS_TRACER_CAPTURE_ERROR          = var.tracing_config.capture_error

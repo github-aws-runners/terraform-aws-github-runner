@@ -133,6 +133,35 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@aws-lambda-powertools/parameters@npm:^2.7.0":
+  version: 2.7.0
+  resolution: "@aws-lambda-powertools/parameters@npm:2.7.0"
+  dependencies:
+    "@aws-lambda-powertools/commons": "npm:^2.7.0"
+  peerDependencies:
+    "@aws-sdk/client-appconfigdata": ">=3.x"
+    "@aws-sdk/client-dynamodb": ">=3.x"
+    "@aws-sdk/client-secrets-manager": ">=3.x"
+    "@aws-sdk/client-ssm": ">=3.x"
+    "@aws-sdk/util-dynamodb": ">=3.x"
+    "@middy/core": 4.x || 5.x
+  peerDependenciesMeta:
+    "@aws-sdk/client-appconfigdata":
+      optional: true
+    "@aws-sdk/client-dynamodb":
+      optional: true
+    "@aws-sdk/client-secrets-manager":
+      optional: true
+    "@aws-sdk/client-ssm":
+      optional: true
+    "@aws-sdk/util-dynamodb":
+      optional: true
+    "@middy/core":
+      optional: true
+  checksum: 10c0/7fc65a6ef975bfa2973a5babbc4e85a19e809e01b4209be491686d625810596ae51a8a4c99ff4877e898df3e045e870431677373c8f7415bcca353ddc4aab943
+  languageName: node
+  linkType: hard
+
 "@aws-lambda-powertools/tracer@npm:^2.7.0":
   version: 2.7.0
   resolution: "@aws-lambda-powertools/tracer@npm:2.7.0"
@@ -4815,6 +4844,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@terraform-aws-github-runner/control-plane@workspace:functions/control-plane"
   dependencies:
+    "@aws-lambda-powertools/parameters": "npm:^2.7.0"
     "@aws-sdk/client-ec2": "npm:^3.637.0"
     "@aws-sdk/client-sqs": "npm:^3.637.0"
     "@aws-sdk/types": "npm:^3.609.0"
@@ -5178,16 +5208,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:*":
-  version: 22.0.2
-  resolution: "@types/node@npm:22.0.2"
-  dependencies:
-    undici-types: "npm:~6.11.1"
-  checksum: 10c0/59ee26fb1104674b2e23981d7569ad113aa8ee23c8449af8e4312aa9352ac738c5ffd0ae4d8077db0467704a3b9ccc662048e39716cb5ad51cdb24d106c7871b
-  languageName: node
-  linkType: hard
-
-"@types/node@npm:^22.4.1":
+"@types/node@npm:*, @types/node@npm:^22.4.1":
   version: 22.4.1
   resolution: "@types/node@npm:22.4.1"
   dependencies:
@@ -5758,29 +5779,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"axios@npm:^1.7.2":
-  version: 1.7.2
-  resolution: "axios@npm:1.7.2"
-  dependencies:
-    follow-redirects: "npm:^1.15.6"
-    form-data: "npm:^4.0.0"
-    proxy-from-env: "npm:^1.1.0"
-  checksum: 10c0/cbd47ce380fe045313364e740bb03b936420b8b5558c7ea36a4563db1258c658f05e40feb5ddd41f6633fdd96d37ac2a76f884dad599c5b0224b4c451b3fa7ae
-  languageName: node
-  linkType: hard
-
-"axios@npm:^1.7.4":
-  version: 1.7.4
-  resolution: "axios@npm:1.7.4"
-  dependencies:
-    follow-redirects: "npm:^1.15.6"
-    form-data: "npm:^4.0.0"
-    proxy-from-env: "npm:^1.1.0"
-  checksum: 10c0/5ea1a93140ca1d49db25ef8e1bd8cfc59da6f9220159a944168860ad15a2743ea21c5df2967795acb15cbe81362f5b157fdebbea39d53117ca27658bab9f7f17
-  languageName: node
-  linkType: hard
-
-"axios@npm:^1.7.5":
+"axios@npm:^1.7.2, axios@npm:^1.7.4, axios@npm:^1.7.5":
   version: 1.7.5
   resolution: "axios@npm:1.7.5"
   dependencies:
@@ -11037,13 +11036,6 @@ __metadata:
     tsc: bin/tsc
     tsserver: bin/tsserver
   checksum: 10c0/db2ad2a16ca829f50427eeb1da155e7a45e598eec7b086d8b4e8ba44e5a235f758e606d681c66992230d3fc3b8995865e5fd0b22a2c95486d0b3200f83072ec9
-  languageName: node
-  linkType: hard
-
-"undici-types@npm:~6.11.1":
-  version: 6.11.1
-  resolution: "undici-types@npm:6.11.1"
-  checksum: 10c0/d8f5739a8e6c779d72336c82deb49c56d5ac9f9f6e0eb2e8dd4d3f6929ae9db7cde370d2e46516fe6cad04ea53e790c5e16c4c75eed7cd0f9bd31b0763bb2fa3
   languageName: node
   linkType: hard
 

@@ -15,7 +15,7 @@ locals {
     log_level                   = var.log_level
     logging_kms_key_id          = var.logging_kms_key_id
     logging_retention_in_days   = var.logging_retention_in_days
-    metrics_config              = var.metrics_config
+    metrics                     = var.metrics
     role_path                   = var.role_path
     role_permissions_boundary   = var.role_permissions_boundary
     s3_bucket                   = var.lambda_s3_bucket

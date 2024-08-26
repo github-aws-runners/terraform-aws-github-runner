@@ -38,6 +38,7 @@
     "ts-node-dev": "^2.0.0"
   },
   "dependencies": {
+    "@aws-lambda-powertools/parameters": "^2.7.0",
     "@aws-sdk/client-ec2": "^3.637.0",
     "@aws-sdk/client-sqs": "^3.637.0",
     "@aws-sdk/types": "^3.609.0",

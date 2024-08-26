@@ -114,20 +114,24 @@ module "runners" {
 
   instance_termination_watcher = {
     enable = true
-    enable_metric = {
-      spot_warning = true
-    }
   }
 
-  # enable job_retry feature. Be careful with this feature, it can lead to API rate limits.
-  # job_retry = {
-  #   enable           = true
-  #   max_attempts     = 1
-  #   delay_in_seconds = 180
+  # enable metric creation  (experimental)
+  # metrics = {
+  #   enable = true
+  #   metric = {
+  #     enable_spot_termination_warning = true
+  #     enable_job_retry                = false
+  #     enable_github_app_rate_limit    = true
+  #   }
   # }
 
-  # enable metric creation by the control plane (experimental)
-  # enable_metrics_control_plane = true
+  # enable job_retry feature. Be careful with this feature, it can lead to API rate limits.
+  job_retry = {
+    enable           = true
+    max_attempts     = 1
+    delay_in_seconds = 180
+  }
 
   # enable CMK instead of aws managed key for encryptions
   # kms_key_arn = aws_kms_key.github.arn

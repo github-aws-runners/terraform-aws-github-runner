@@ -28,3 +28,28 @@ variable "runners_scale_up_Lambda_memory_size" {
   type        = number
   default     = null
 }
+
+# tflint-ignore: terraform_unused_declarations
+variable "enable_metrics_control_plane" {
+  description = "(Experimental) Enable or disable the metrics for the module. Feature can change or renamed without a major release."
+  type        = bool
+  default     = null
+
+  # depcreated
+  validation {
+    condition     = var.enable_metrics_control_plane == null
+    error_message = "The variable `enable_metrics_control_plane` is deprecated, use `metrics.enabled` instead."
+  }
+}
+
+# tflint-ignore: terraform_unused_declarations
+variable "metrics_namespace" {
+  description = "The namespace for the metrics created by the module. Merics will only be created if explicit enabled."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.metrics_namespace == null
+    error_message = "The variable `metrics_namespace` is deprecated, use `metrics.namespace` instead."
+  }
+}

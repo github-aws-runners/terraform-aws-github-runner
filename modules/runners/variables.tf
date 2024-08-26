@@ -670,11 +670,16 @@ variable "lambda_tags" {
   default     = {}
 }
 
-variable "metrics_config" {
-  description = "Configuraiton to enable metrics creation by the lambdas."
+variable "metrics" {
+  description = "Configuration for metrics created by the module, by default disabled to avoid additional costs. When metrics are enable all metrics are created unless explicit configured otherwise."
   type = object({
     enable    = optional(bool, false)
-    namespace = optional(string, null)
+    namespace = optional(string, "GitHub Runners")
+    metric = optional(object({
+      enable_github_app_rate_limit    = optional(bool, true)
+      enable_job_retry                = optional(bool, true)
+      enable_spot_termination_warning = optional(bool, true)
+    }), {})
   })
   default = {}
 }

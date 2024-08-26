@@ -191,6 +191,15 @@ This feature has been disabled by default.
 
 The watcher will act on all spot termination notificatins and log all onses relevant to the runner module. Therefor we suggest to only deploy the watcher once. You can either deploy the watcher by enabling in one of your deployments or deploy the watcher as a stand alone module.
 
+## Metrics
+
+The module supports metrics (experimental feature) to monitor the system. The metrics are disabled by default. To enable the metrics set `metrics.enable = true`. Once put by true all module managed metrics are used, you can configure the one bye one via the `metrics` object. The metrics are created in the namespace `GitHub Runners`.
+
+### Supported metrics
+
+- **GitHubAppRateLimitRemaining**: Remaining rate limit for the GitHub App.
+- **JobRetry**: Number of job retries, only relevant when job retry is enabled.
+- **SpotInterruptionWarning**: Number of spot interruption warnings received by the termination watcher, only relevant when the termination watcher is enabled.
 
 ## Debugging
 

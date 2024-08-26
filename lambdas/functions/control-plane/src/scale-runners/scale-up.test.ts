@@ -1,4 +1,4 @@
-import { GetParameterCommand, PutParameterCommand, SSMClient } from '@aws-sdk/client-ssm';
+import { PutParameterCommand, SSMClient } from '@aws-sdk/client-ssm';
 import { Octokit } from '@octokit/rest';
 import { mockClient } from 'aws-sdk-client-mock';
 import 'aws-sdk-client-mock-jest';
@@ -11,6 +11,7 @@ import { createRunner, listEC2Runners } from './../aws/runners';
 import { RunnerInputParameters } from './../aws/runners.d';
 import ScaleError from './ScaleError';
 import * as scaleUpModule from './scale-up';
+import { getParameter } from '@terraform-aws-github-runner/aws-ssm-util';
 
 const mockOctokit = {
   paginate: jest.fn(),
@@ -30,6 +31,7 @@ const mockOctokit = {
 const mockCreateRunner = mocked(createRunner);
 const mockListRunners = mocked(listEC2Runners);
 const mockSSMClient = mockClient(SSMClient);
+const mockSSM = mocked(getParameter);
 
 jest.mock('@octokit/rest', () => ({
   Octokit: jest.fn().mockImplementation(() => mockOctokit),
@@ -37,6 +39,12 @@ jest.mock('@octokit/rest', () => ({
 
 jest.mock('./../aws/runners');
 jest.mock('./../gh-auth/gh-auth');
+
+jest.mock('@terraform-aws-github-runner/aws-ssm-util', () => ({
+  ...jest.requireActual('@terraform-aws-github-runner/aws-ssm-util'),
+  getParameter: jest.fn(),
+}));
+
 export type RunnerType = 'ephemeral' | 'non-ephemeral';
 
 // for ephemeral and non-ephemeral runners
@@ -172,6 +180,10 @@ beforeEach(() => {
   });
 
   mockCreateClient.mockResolvedValue(new mocktokit());
+
+  mockSSM.mockImplementation(async () => {
+    return '1';
+  });
 });
 
 describe('scaleUp with GHES', () => {
@@ -213,7 +225,6 @@ describe('scaleUp with GHES', () => {
 
       expectedRunnerParams = { ...EXPECTED_RUNNER_PARAMS };
       mockSSMClient.reset();
-      mockSSMClient.on(GetParameterCommand).resolves({ Parameter: { Value: '1' } });
     });
 
     it('gets the current org level runners', async () => {
@@ -270,7 +281,9 @@ describe('scaleUp with GHES', () => {
 
     it('Throws an error if runner group doesnt exist for ephemeral runners', async () => {
       process.env.RUNNER_GROUP_NAME = 'test-runner-group';
-      mockSSMClient.on(GetParameterCommand).rejects();
+      mockSSM.mockImplementation(async () => {
+        throw new Error('ParameterNotFound');
+      });
       await expect(scaleUpModule.scaleUp('aws:sqs', TEST_DATA)).rejects.toBeInstanceOf(Error);
       expect(mockOctokit.paginate).toHaveBeenCalledTimes(1);
     });
@@ -284,7 +297,9 @@ describe('scaleUp with GHES', () => {
     });
 
     it('create SSM parameter for runner group id if it doesnt exist', async () => {
-      mockSSMClient.on(GetParameterCommand).rejects();
+      mockSSM.mockImplementation(async () => {
+        throw new Error('ParameterNotFound');
+      });
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
       expect(mockOctokit.paginate).toHaveBeenCalledTimes(1);
       expect(mockSSMClient).toHaveReceivedCommandTimes(PutParameterCommand, 2);
@@ -295,8 +310,7 @@ describe('scaleUp with GHES', () => {
       });
     });
 
-    it('Doesnt create SSM parameter for runner group id if it exists', async () => {
-      mockSSMClient.on(GetParameterCommand).resolves({ Parameter: { Value: '1' } });
+    it('Does not create SSM parameter for runner group id if it exists', async () => {
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
       expect(mockOctokit.paginate).toHaveBeenCalledTimes(0);
       expect(mockSSMClient).toHaveReceivedCommandTimes(PutParameterCommand, 1);
@@ -304,7 +318,6 @@ describe('scaleUp with GHES', () => {
 
     it('create start runner config for ephemeral runners ', async () => {
       process.env.RUNNERS_MAXIMUM_COUNT = '2';
-      mockSSMClient.on(GetParameterCommand).resolves({ Parameter: { Value: '1' } });
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
       expect(mockOctokit.actions.generateRunnerJitconfigForOrg).toBeCalledWith({
         org: TEST_DATA.repositoryOwner,
@@ -356,7 +369,6 @@ describe('scaleUp with GHES', () => {
         mockListRunners.mockImplementation(async () => {
           return [];
         });
-        mockSSMClient.on(GetParameterCommand).resolves({ Parameter: { Value: '1' } });
         const startTime = performance.now();
         const instances = [
           'i-1234',

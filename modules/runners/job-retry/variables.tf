@@ -48,9 +48,13 @@ variable "config" {
     logging_kms_key_id        = optional(string, null)
     logging_retention_in_days = optional(number, null)
     memory_size               = optional(number, null)
-    metrics_config = optional(object({
+    metrics = optional(object({
       enable    = optional(bool, false)
       namespace = optional(string, null)
+      metric = optional(object({
+        enable_github_app_rate_limit = optional(bool, true)
+        enable_job_retry             = optional(bool, true)
+      }), {})
     }), {})
     prefix = optional(string, null)
     principals = optional(list(object({
