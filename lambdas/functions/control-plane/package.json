@@ -38,8 +38,8 @@
     "ts-node-dev": "^2.0.0"
   },
   "dependencies": {
-    "@aws-sdk/client-ec2": "^3.632.0",
-    "@aws-sdk/client-sqs": "^3.632.0",
+    "@aws-sdk/client-ec2": "^3.637.0",
+    "@aws-sdk/client-sqs": "^3.637.0",
     "@aws-sdk/types": "^3.609.0",
     "@middy/core": "^4.7.0",
     "@octokit/auth-app": "6.1.1",
