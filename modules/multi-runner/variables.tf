@@ -667,7 +667,7 @@ variable "matcher_config_parameter_store_tier" {
 }
 
 variable "metrics" {
-  description = "Configuration for metrics created by the module, by default disabled to avoid additional costs. When metrics are enable all metrics are created unless explicit configured otherwise."
+  description = "Configuration for metrics created by the module, by default metrics are disabled to avoid additional costs. When metrics are enable all metrics are created unless explicit configured otherwise."
   type = object({
     enable    = optional(bool, false)
     namespace = optional(string, "GitHub Runners")
