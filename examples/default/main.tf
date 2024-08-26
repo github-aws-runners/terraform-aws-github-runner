@@ -126,7 +126,7 @@ module "runners" {
   #   }
   # }
 
-  # enable job_retry feature. Be careful with this feature, it can lead to API rate limits.
+  # enable job_retry feature. Be careful with this feature, it can lead to you hitting API rate limits.
   job_retry = {
     enable           = true
     max_attempts     = 1
