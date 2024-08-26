@@ -3,12 +3,12 @@ import { addPersistentContextToChildLogger, createChildLogger } from '@terraform
 import { getParameter, putParameter } from '@terraform-aws-github-runner/aws-ssm-util';
 import yn from 'yn';
 
-import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../gh-auth/gh-auth';
+import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
 import { createRunner, listEC2Runners } from './../aws/runners';
 import { RunnerInputParameters } from './../aws/runners.d';
 import ScaleError from './ScaleError';
 import { publishRetryMessage } from './job-retry';
-import { metricGitHubAppRateLimit } from '../gh-auth/rate-limit';
+import { metricGitHubAppRateLimit } from '../github/rate-limit';
 
 const logger = createChildLogger('scale-up');
 

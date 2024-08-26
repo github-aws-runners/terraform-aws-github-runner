@@ -5,7 +5,7 @@ import {
 } from '@terraform-aws-github-runner/aws-powertools-util';
 import { publishMessage } from '../aws/sqs';
 import { ActionRequestMessage, ActionRequestMessageRetry, getGitHubEnterpriseApiUrl, isJobQueued } from './scale-up';
-import { getOctokit } from '../gh-auth/gh-octokit';
+import { getOctokit } from '../github/octokit';
 import { MetricUnit } from '@aws-lambda-powertools/metrics';
 import yn from 'yn';
 

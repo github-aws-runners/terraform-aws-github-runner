@@ -6,7 +6,7 @@ import { mocked } from 'jest-mock';
 import nock from 'nock';
 import { performance } from 'perf_hooks';
 
-import * as ghAuth from '../gh-auth/gh-auth';
+import * as ghAuth from '../github/auth';
 import { createRunner, listEC2Runners } from './../aws/runners';
 import { RunnerInputParameters } from './../aws/runners.d';
 import ScaleError from './ScaleError';
@@ -38,7 +38,7 @@ jest.mock('@octokit/rest', () => ({
 }));
 
 jest.mock('./../aws/runners');
-jest.mock('./../gh-auth/gh-auth');
+jest.mock('./../github/auth');
 
 jest.mock('@terraform-aws-github-runner/aws-ssm-util', () => ({
   ...jest.requireActual('@terraform-aws-github-runner/aws-ssm-util'),

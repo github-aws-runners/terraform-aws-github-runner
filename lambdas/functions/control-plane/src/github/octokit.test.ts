@@ -1,6 +1,6 @@
 import { Octokit } from '@octokit/rest';
 import { ActionRequestMessage } from '../scale-runners/scale-up';
-import { getOctokit } from './gh-octokit';
+import { getOctokit } from './octokit';
 
 const mockOctokit = {
   apps: {
@@ -9,7 +9,7 @@ const mockOctokit = {
   },
 };
 
-jest.mock('../gh-auth/gh-auth', () => ({
+jest.mock('../github/auth', () => ({
   createGithubInstallationAuth: jest.fn().mockImplementation(async (installationId) => {
     return { token: 'token', type: 'installation', installationId: installationId };
   }),
@@ -21,7 +21,7 @@ jest.mock('@octokit/rest', () => ({
   Octokit: jest.fn().mockImplementation(() => mockOctokit),
 }));
 
-jest.mock('../gh-auth/gh-auth');
+jest.mock('../github/auth');
 
 describe('Test getOctokit', () => {
   const data = [

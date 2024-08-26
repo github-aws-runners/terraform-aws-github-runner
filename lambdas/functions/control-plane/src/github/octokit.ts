@@ -1,6 +1,6 @@
 import { Octokit } from '@octokit/rest';
 import { ActionRequestMessage } from '../scale-runners/scale-up';
-import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from './gh-auth';
+import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from './auth';
 
 export async function getInstallationId(
   ghesApiUrl: string,

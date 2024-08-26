@@ -4,7 +4,7 @@ import yn from 'yn';
 
 import { bootTimeExceeded, listEC2Runners } from '../aws/runners';
 import { RunnerList } from '../aws/runners.d';
-import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../gh-auth/gh-auth';
+import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
 import { createRunners } from '../scale-runners/scale-up';
 
 const logger = createChildLogger('pool');

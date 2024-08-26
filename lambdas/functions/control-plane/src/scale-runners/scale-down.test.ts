@@ -4,7 +4,7 @@ import moment from 'moment';
 import nock from 'nock';
 
 import { RunnerInfo, RunnerList } from '../aws/runners.d';
-import * as ghAuth from '../gh-auth/gh-auth';
+import * as ghAuth from '../github/auth';
 import { listEC2Runners, terminateRunner, tag } from './../aws/runners';
 import { githubCache } from './cache';
 import { newestFirstStrategy, oldestFirstStrategy, scaleDown } from './scale-down';
@@ -34,7 +34,7 @@ jest.mock('./../aws/runners', () => ({
   terminateRunner: jest.fn(),
   listEC2Runners: jest.fn(),
 }));
-jest.mock('./../gh-auth/gh-auth');
+jest.mock('./../github/auth');
 jest.mock('./cache');
 
 const mocktokit = Octokit as jest.MockedClass<typeof Octokit>;
