@@ -100,7 +100,7 @@ resource "aws_iam_role_policy" "ami_housekeeper" {
 }
 
 resource "aws_cloudwatch_event_rule" "ami_housekeeper" {
-  name                = "ami-housekeeper-rule"
+  name                = "${var.prefix}-ami-housekeeper"
   schedule_expression = var.lambda_schedule_expression
   tags                = var.tags
   state               = var.state_event_rule_ami_housekeeper
