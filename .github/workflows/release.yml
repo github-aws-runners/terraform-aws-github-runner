@@ -22,12 +22,11 @@ jobs:
         working-directory: lambdas
         run: yarn install --frozen-lockfile && yarn run test && yarn dist
       - name: Get installation token
-        uses: philips-software/app-token-action@9f5d57062c9f2beaffafaa9a34f66f824ead63a9 # ratchet:philips-software/app-token-action@v2.0.0
+        uses: actions/create-github-app-token@31c86eb3b33c9b601a1f60f98dcbfd1d70f379b4 # v1.10.3
         id: token
         with:
-          app_id: ${{ secrets.FOREST_RELEASER_APP_ID }}
-          app_base64_private_key: ${{ secrets.FOREST_RELEASER_APP_PRIVATE_KEY_BASE64 }}
-          auth_type: installation
+          app-id: ${{ secrets.FOREST_RELEASER_APP_ID }}
+          private-key: ${{ secrets.FOREST_RELEASER_APP_PRIVATE_KEY }}
       - name: Extract branch name
         id: branch
         shell: bash
@@ -36,7 +35,7 @@ jobs:
         id: release
         uses: google-github-actions/release-please-action@e4dc86ba9405554aeba3c6bb2d169500e7d3b4ee # v4.1.1
         with:
-          default-branch: ${{ steps.branch.outputs.name }}
+          target-branch: ${{ steps.branch.outputs.name }}
           release-type: terraform-module
           token: ${{ steps.token.outputs.token }}
       - name: Upload Release Asset
