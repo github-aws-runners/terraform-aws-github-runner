@@ -10,7 +10,7 @@ jobs:
   stale:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/stale@28ca1036281a5e5922ead5184a1bbf96e5fc984e # ratchet:actions/stale@v7
+      - uses: actions/stale@28ca1036281a5e5922ead5184a1bbf96e5fc984e # v9.0.0
         with:
           stale-issue-message: >
             This issue has been automatically marked as stale because it has not had activity in the last 30 days. It will be closed if no further activity occurs.  Thank you for your contributions.

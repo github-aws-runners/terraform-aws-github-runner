@@ -23,7 +23,7 @@ jobs:
       image: hashicorp/terraform:${{ matrix.terraform }}
     steps:
       - name: "Checkout"
-        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
       - name: "Fake zip files" # Validate will fail if it cannot find the zip files
         run: |
           touch lambdas/functions/webhook/webhook.zip
@@ -89,7 +89,7 @@ jobs:
     container:
       image: hashicorp/terraform:${{ matrix.terraform }}
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
       - name: terraform init
         run: terraform init -get -backend=false -input=false
       - if: contains(matrix.terraform, '1.3.')
@@ -147,7 +147,7 @@ jobs:
     container:
       image: hashicorp/terraform:${{ matrix.terraform }}
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
       - name: terraform init
         run: terraform init -get -backend=false -input=false
       - if: contains(matrix.terraform, '1.5.')

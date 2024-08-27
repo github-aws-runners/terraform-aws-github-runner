@@ -12,22 +12,13 @@ permissions:
 
 jobs:
   docs:
-    # update docs after merge back to develop
     name: Auto update terraform docs
     runs-on: ubuntu-latest
     steps:
-      - uses: philips-software/app-token-action@9f5d57062c9f2beaffafaa9a34f66f824ead63a9 # v2.0.0
-        id: app
-        with:
-          app_id: ${{ vars.FOREST_PR_BOT_APP_ID }}
-          app_base64_private_key: ${{ secrets.FOREST_PR_BOT_APP_KEY_BASE64 }}
-          auth_type: installation
-          org: philips-labs
-
       - name: Checkout with GITHUB Action token
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # ratchet:actions/checkout@v4
         with:
-          token: ${{ steps.app.outputs.token }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       # use an app to ensure CI is triggered
       - name: Generate TF docs
@@ -37,8 +28,8 @@ jobs:
           find-dir: .
           git-commit-message: "docs: auto update terraform docs"
           git-push: ${{ github.ref != 'refs/heads/main' || github.repository_owner != 'philips-labs' }}
-          git-push-user-name: forest-pr|bot
-          git-push-user-email: "forest-pr[bot]@users.noreply.github.com"
+          git-push-user-name: philips-labs-pr|bot
+          git-push-user-email: "philips-labs-pr[bot]@users.noreply.github.com"
 
       - name: Generate TF docs (forks)
         if: github.repository_owner != 'philips-labs'
