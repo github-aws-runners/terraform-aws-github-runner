@@ -153,7 +153,7 @@ resource "aws_iam_role_policy" "scale_up_xray" {
   role   = aws_iam_role.scale_up.name
 }
 
-resource "aws_iam_role_policy" "webhook_workflow_job_sqs" {
+resource "aws_iam_role_policy" "job_retry_sqs_publish" {
   count = local.job_retry_enabled ? 1 : 0
   name  = "publish-retry-check-sqs-policy"
   role  = aws_iam_role.scale_up.name

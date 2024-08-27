@@ -26,7 +26,7 @@ resource "aws_sqs_queue_policy" "job_retry_check_queue_policy" {
 }
 
 resource "aws_sqs_queue" "job_retry_check_queue" {
-  name                       = "${var.config.prefix}-job-retrys"
+  name                       = "${var.config.prefix}-job-retry"
   visibility_timeout_seconds = local.config.timeout
 
   sqs_managed_sse_enabled           = var.config.queue_encryption.sqs_managed_sse_enabled
