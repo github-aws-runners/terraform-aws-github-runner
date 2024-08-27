@@ -127,11 +127,11 @@ module "runners" {
   # }
 
   # enable job_retry feature. Be careful with this feature, it can lead to you hitting API rate limits.
-  job_retry = {
-    enable           = true
-    max_attempts     = 1
-    delay_in_seconds = 180
-  }
+  # job_retry = {
+  #   enable           = true
+  #   max_attempts     = 1
+  #   delay_in_seconds = 180
+  # }
 
   # enable CMK instead of aws managed key for encryptions
   # kms_key_arn = aws_kms_key.github.arn
