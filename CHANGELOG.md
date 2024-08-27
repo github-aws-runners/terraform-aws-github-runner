@@ -1,5 +1,17 @@
 # Changelog
 
+## [5.15.4](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.15.3...v5.15.4) (2024-08-27)
+
+
+### Bug Fixes
+
+* add missing prefix to ami cleanur for event rule ([#4098](https://github.com/philips-labs/terraform-aws-github-runner/issues/4098)) ([1ad118b](https://github.com/philips-labs/terraform-aws-github-runner/commit/1ad118bd516cc29919a2ec9deb9c9362f635f953))
+* job retry resource and queue naming ([#4099](https://github.com/philips-labs/terraform-aws-github-runner/issues/4099)) ([4344f18](https://github.com/philips-labs/terraform-aws-github-runner/commit/4344f18c4518ac0aa135bbdd8b4af13b34d36d63))
+* **lambda:** bump axios from 1.7.2 to 1.7.5 in /lambdas ([#4100](https://github.com/philips-labs/terraform-aws-github-runner/issues/4100)) ([0f4cd41](https://github.com/philips-labs/terraform-aws-github-runner/commit/0f4cd419a83b77c47e0bf9923b78f1f61e583955))
+* **lambda:** bump axios from 1.7.4 to 1.7.5 in /lambdas ([#4092](https://github.com/philips-labs/terraform-aws-github-runner/issues/4092)) ([6ed654f](https://github.com/philips-labs/terraform-aws-github-runner/commit/6ed654f8e01f5348260ce0f6e9f8c490469127e2))
+* **lambda:** bump micromatch from 4.0.7 to 4.0.8 in /lambdas ([#4096](https://github.com/philips-labs/terraform-aws-github-runner/issues/4096)) ([d200413](https://github.com/philips-labs/terraform-aws-github-runner/commit/d2004130668ae88fa28e30378472ab17ab899c87))
+* **lambda:** bump the aws group in /lambdas with 5 updates ([#4089](https://github.com/philips-labs/terraform-aws-github-runner/issues/4089)) ([1405e54](https://github.com/philips-labs/terraform-aws-github-runner/commit/1405e54adfecb9373af1831a973a92fb2be18998))
+
 ## [5.15.3](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.15.2...v5.15.3) (2024-08-20)
 
 
