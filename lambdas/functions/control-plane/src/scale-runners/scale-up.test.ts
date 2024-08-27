@@ -31,7 +31,7 @@ const mockOctokit = {
 const mockCreateRunner = mocked(createRunner);
 const mockListRunners = mocked(listEC2Runners);
 const mockSSMClient = mockClient(SSMClient);
-const mockSSM = mocked(getParameter);
+const mockSSMgetParameter = mocked(getParameter);
 
 jest.mock('@octokit/rest', () => ({
   Octokit: jest.fn().mockImplementation(() => mockOctokit),
@@ -85,6 +85,7 @@ let expectedRunnerParams: RunnerInputParameters;
 
 function setDefaults() {
   process.env = { ...cleanEnv };
+  process.env.PARAMETER_GITHUB_APP_ID_NAME = 'github-app-id';
   process.env.GITHUB_APP_KEY_BASE64 = 'TEST_CERTIFICATE_DATA';
   process.env.GITHUB_APP_ID = '1337';
   process.env.GITHUB_APP_CLIENT_ID = 'TEST_CLIENT_ID';
@@ -104,52 +105,9 @@ beforeEach(() => {
   jest.clearAllMocks();
   setDefaults();
 
-  mockOctokit.actions.getJobForWorkflowRun.mockImplementation(() => ({
-    data: {
-      status: 'queued',
-    },
-  }));
-  mockOctokit.paginate.mockImplementation(() => [
-    {
-      id: 1,
-      name: 'Default',
-    },
-  ]);
-  mockOctokit.actions.generateRunnerJitconfigForOrg.mockImplementation(() => ({
-    data: {
-      encoded_jit_config: 'TEST_JIT_CONFIG_ORG',
-    },
-  }));
-  mockOctokit.actions.generateRunnerJitconfigForRepo.mockImplementation(() => ({
-    data: {
-      encoded_jit_config: 'TEST_JIT_CONFIG_REPO',
-    },
-  }));
-  mockOctokit.checks.get.mockImplementation(() => ({
-    data: {
-      status: 'queued',
-    },
-  }));
-  const mockTokenReturnValue = {
-    data: {
-      token: '1234abcd',
-    },
-  };
-  const mockInstallationIdReturnValueOrgs = {
-    data: {
-      id: TEST_DATA.installationId,
-    },
-  };
-  const mockInstallationIdReturnValueRepos = {
-    data: {
-      id: TEST_DATA.installationId,
-    },
-  };
+  defaultSSMGetParameterMockImpl();
+  defaultOctokitMockImpl();
 
-  mockOctokit.actions.createRegistrationTokenForOrg.mockImplementation(() => mockTokenReturnValue);
-  mockOctokit.actions.createRegistrationTokenForRepo.mockImplementation(() => mockTokenReturnValue);
-  mockOctokit.apps.getOrgInstallation.mockImplementation(() => mockInstallationIdReturnValueOrgs);
-  mockOctokit.apps.getRepoInstallation.mockImplementation(() => mockInstallationIdReturnValueRepos);
   mockCreateRunner.mockImplementation(async () => {
     return ['i-12345'];
   });
@@ -180,10 +138,6 @@ beforeEach(() => {
   });
 
   mockCreateClient.mockResolvedValue(new mocktokit());
-
-  mockSSM.mockImplementation(async () => {
-    return '1';
-  });
 });
 
 describe('scaleUp with GHES', () => {
@@ -281,7 +235,7 @@ describe('scaleUp with GHES', () => {
 
     it('Throws an error if runner group doesnt exist for ephemeral runners', async () => {
       process.env.RUNNER_GROUP_NAME = 'test-runner-group';
-      mockSSM.mockImplementation(async () => {
+      mockSSMgetParameter.mockImplementation(async () => {
         throw new Error('ParameterNotFound');
       });
       await expect(scaleUpModule.scaleUp('aws:sqs', TEST_DATA)).rejects.toBeInstanceOf(Error);
@@ -297,7 +251,7 @@ describe('scaleUp with GHES', () => {
     });
 
     it('create SSM parameter for runner group id if it doesnt exist', async () => {
-      mockSSM.mockImplementation(async () => {
+      mockSSMgetParameter.mockImplementation(async () => {
         throw new Error('ParameterNotFound');
       });
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
@@ -318,6 +272,7 @@ describe('scaleUp with GHES', () => {
 
     it('create start runner config for ephemeral runners ', async () => {
       process.env.RUNNERS_MAXIMUM_COUNT = '2';
+
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
       expect(mockOctokit.actions.generateRunnerJitconfigForOrg).toBeCalledWith({
         org: TEST_DATA.repositoryOwner,
@@ -719,3 +674,65 @@ describe('scaleUp with public GH', () => {
     });
   });
 });
+
+function defaultOctokitMockImpl() {
+  mockOctokit.actions.getJobForWorkflowRun.mockImplementation(() => ({
+    data: {
+      status: 'queued',
+    },
+  }));
+  mockOctokit.paginate.mockImplementation(() => [
+    {
+      id: 1,
+      name: 'Default',
+    },
+  ]);
+  mockOctokit.actions.generateRunnerJitconfigForOrg.mockImplementation(() => ({
+    data: {
+      encoded_jit_config: 'TEST_JIT_CONFIG_ORG',
+    },
+  }));
+  mockOctokit.actions.generateRunnerJitconfigForRepo.mockImplementation(() => ({
+    data: {
+      encoded_jit_config: 'TEST_JIT_CONFIG_REPO',
+    },
+  }));
+  mockOctokit.checks.get.mockImplementation(() => ({
+    data: {
+      status: 'queued',
+    },
+  }));
+
+  const mockTokenReturnValue = {
+    data: {
+      token: '1234abcd',
+    },
+  };
+  const mockInstallationIdReturnValueOrgs = {
+    data: {
+      id: TEST_DATA.installationId,
+    },
+  };
+  const mockInstallationIdReturnValueRepos = {
+    data: {
+      id: TEST_DATA.installationId,
+    },
+  };
+
+  mockOctokit.actions.createRegistrationTokenForOrg.mockImplementation(() => mockTokenReturnValue);
+  mockOctokit.actions.createRegistrationTokenForRepo.mockImplementation(() => mockTokenReturnValue);
+  mockOctokit.apps.getOrgInstallation.mockImplementation(() => mockInstallationIdReturnValueOrgs);
+  mockOctokit.apps.getRepoInstallation.mockImplementation(() => mockInstallationIdReturnValueRepos);
+}
+
+function defaultSSMGetParameterMockImpl() {
+  mockSSMgetParameter.mockImplementation(async (name: string) => {
+    if (name === `${process.env.SSM_CONFIG_PATH}/runner-group/${process.env.RUNNER_GROUP_NAME}`) {
+      return '1';
+    } else if (name === `${process.env.PARAMETER_GITHUB_APP_ID_NAME}`) {
+      return `${process.env.GITHUB_APP_ID}`;
+    } else {
+      throw new Error(`ParameterNotFound: ${name}`);
+    }
+  });
+}
