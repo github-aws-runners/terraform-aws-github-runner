@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.16.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.15.4...v5.16.0) (2024-08-28)
+
+
+### Features
+
+* Add metric to track GitHub app rate limit ([#4088](https://github.com/philips-labs/terraform-aws-github-runner/issues/4088)) ([d7cdaed](https://github.com/philips-labs/terraform-aws-github-runner/commit/d7cdaed26ec8b57fef058ebace4a3dde725ad0b8))
+
 ## [5.15.4](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.15.3...v5.15.4) (2024-08-27)
 
 
