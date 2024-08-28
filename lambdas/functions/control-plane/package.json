@@ -1,5 +1,5 @@
 {
-  "name": "@terraform-aws-github-runner/control-plane",
+  "name": "@aws-github-runner/control-plane",
   "version": "1.0.0",
   "main": "lambda.ts",
   "license": "MIT",
@@ -38,6 +38,8 @@
     "ts-node-dev": "^2.0.0"
   },
   "dependencies": {
+    "@aws-github-runner/aws-powertools-util": "*",
+    "@aws-github-runner/aws-ssm-util": "*",
     "@aws-lambda-powertools/parameters": "^2.7.0",
     "@aws-sdk/client-ec2": "^3.637.0",
     "@aws-sdk/client-sqs": "^3.637.0",
@@ -48,8 +50,6 @@
     "@octokit/plugin-throttling": "8.2.0",
     "@octokit/rest": "20.1.1",
     "@octokit/types": "^13.5.0",
-    "@terraform-aws-github-runner/aws-powertools-util": "*",
-    "@terraform-aws-github-runner/aws-ssm-util": "*",
     "cron-parser": "^4.9.0",
     "typescript": "^5.5.4"
   },

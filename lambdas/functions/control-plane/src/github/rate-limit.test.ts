@@ -1,11 +1,11 @@
 import { ResponseHeaders } from '@octokit/types';
-import { createSingleMetric } from '@terraform-aws-github-runner/aws-powertools-util';
+import { createSingleMetric } from '@aws-github-runner/aws-powertools-util';
 import { MetricUnit } from '@aws-lambda-powertools/metrics';
 import { metricGitHubAppRateLimit } from './rate-limit';
 
 process.env.PARAMETER_GITHUB_APP_ID_NAME = 'test';
-jest.mock('@terraform-aws-github-runner/aws-ssm-util', () => ({
-  ...jest.requireActual('@terraform-aws-github-runner/aws-ssm-util'),
+jest.mock('@aws-github-runner/aws-ssm-util', () => ({
+  ...jest.requireActual('@aws-github-runner/aws-ssm-util'),
   // get parameter name from process.env.PARAMETER_GITHUB_APP_ID_NAME rerunt 1234
   getParameter: jest.fn((name: string) => {
     if (name === process.env.PARAMETER_GITHUB_APP_ID_NAME) {
@@ -16,8 +16,8 @@ jest.mock('@terraform-aws-github-runner/aws-ssm-util', () => ({
   }),
 }));
 
-jest.mock('@terraform-aws-github-runner/aws-powertools-util', () => ({
-  ...jest.requireActual('@terraform-aws-github-runner/aws-powertools-util'),
+jest.mock('@aws-github-runner/aws-powertools-util', () => ({
+  ...jest.requireActual('@aws-github-runner/aws-powertools-util'),
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   createSingleMetric: jest.fn((name: string, unit: string, value: number, dimensions?: Record<string, string>) => {
     return {

@@ -1,5 +1,5 @@
 import { PutParameterCommand, SSMClient, Tag } from '@aws-sdk/client-ssm';
-import { getTracedAWSV3Client } from '@terraform-aws-github-runner/aws-powertools-util';
+import { getTracedAWSV3Client } from '@aws-github-runner/aws-powertools-util';
 import { SSMProvider } from '@aws-lambda-powertools/parameters/ssm';
 
 export async function getParameter(parameter_name: string): Promise<string> {

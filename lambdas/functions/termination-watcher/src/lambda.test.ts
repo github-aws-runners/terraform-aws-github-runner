@@ -1,4 +1,4 @@
-import { logger } from '@terraform-aws-github-runner/aws-powertools-util';
+import { logger } from '@aws-github-runner/aws-powertools-util';
 import { Context } from 'aws-lambda';
 import { mocked } from 'jest-mock';
 

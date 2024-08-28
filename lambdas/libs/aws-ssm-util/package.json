@@ -1,5 +1,5 @@
 {
-  "name": "@terraform-aws-github-runner/aws-ssm-util",
+  "name": "@aws-github-runner/aws-ssm-util",
   "version": "1.0.0",
   "main": "src/index.ts",
   "license": "MIT",
@@ -35,9 +35,9 @@
     "typescript": "^5.5.4"
   },
   "dependencies": {
+    "@aws-github-runner/aws-powertools-util": "*",
     "@aws-sdk/client-ssm": "^3.637.0",
-    "@aws-sdk/types": "^3.609.0",
-    "@terraform-aws-github-runner/aws-powertools-util": "*"
+    "@aws-sdk/types": "^3.609.0"
   },
   "nx": {
     "includedScripts": [

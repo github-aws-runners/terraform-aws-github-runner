@@ -2,7 +2,7 @@ import {
   createChildLogger,
   createSingleMetric,
   getTracedAWSV3Client,
-} from '@terraform-aws-github-runner/aws-powertools-util';
+} from '@aws-github-runner/aws-powertools-util';
 import { SpotInterruptionWarning, SpotTerminationDetail } from './types';
 import { DescribeInstancesCommand, EC2Client } from '@aws-sdk/client-ec2';
 import { Config } from './ConfigResolver';

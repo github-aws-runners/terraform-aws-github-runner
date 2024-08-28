@@ -1,11 +1,11 @@
-import { logger } from '@terraform-aws-github-runner/aws-powertools-util';
+import { logger } from '@aws-github-runner/aws-powertools-util';
 import { APIGatewayEvent, Context } from 'aws-lambda';
 import { mocked } from 'jest-mock';
 
 import { githubWebhook } from './lambda';
 import { handle } from './webhook';
 import ValidationError from './ValidatonError';
-import { getParameter } from '@terraform-aws-github-runner/aws-ssm-util';
+import { getParameter } from '@aws-github-runner/aws-ssm-util';
 
 const event: APIGatewayEvent = {
   body: JSON.stringify(''),
@@ -74,7 +74,7 @@ const context: Context = {
 };
 
 jest.mock('./webhook');
-jest.mock('@terraform-aws-github-runner/aws-ssm-util');
+jest.mock('@aws-github-runner/aws-ssm-util');
 
 describe('Test scale up lambda wrapper.', () => {
   beforeEach(() => {

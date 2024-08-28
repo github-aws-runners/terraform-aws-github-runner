@@ -1,6 +1,6 @@
 import { Webhooks } from '@octokit/webhooks';
 import { CheckRunEvent, WorkflowJobEvent } from '@octokit/webhooks-types';
-import { createChildLogger } from '@terraform-aws-github-runner/aws-powertools-util';
+import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import { IncomingHttpHeaders } from 'http';
 
 import { Response } from '../lambda';

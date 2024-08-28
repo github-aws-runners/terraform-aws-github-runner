@@ -1,5 +1,5 @@
 import { Octokit } from '@octokit/rest';
-import { createChildLogger } from '@terraform-aws-github-runner/aws-powertools-util';
+import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import yn from 'yn';
 
 import { bootTimeExceeded, listEC2Runners } from '../aws/runners';

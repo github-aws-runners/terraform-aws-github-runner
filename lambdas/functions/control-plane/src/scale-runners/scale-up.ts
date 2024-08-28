@@ -1,6 +1,6 @@
 import { Octokit } from '@octokit/rest';
-import { addPersistentContextToChildLogger, createChildLogger } from '@terraform-aws-github-runner/aws-powertools-util';
-import { getParameter, putParameter } from '@terraform-aws-github-runner/aws-ssm-util';
+import { addPersistentContextToChildLogger, createChildLogger } from '@aws-github-runner/aws-powertools-util';
+import { getParameter, putParameter } from '@aws-github-runner/aws-ssm-util';
 import yn from 'yn';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';

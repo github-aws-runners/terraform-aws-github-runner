@@ -97,6 +97,236 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@aws-github-runner/ami-housekeeper@workspace:functions/ami-housekeeper":
+  version: 0.0.0-use.local
+  resolution: "@aws-github-runner/ami-housekeeper@workspace:functions/ami-housekeeper"
+  dependencies:
+    "@aws-github-runner/aws-powertools-util": "npm:*"
+    "@aws-github-runner/aws-ssm-util": "npm:*"
+    "@aws-sdk/client-ec2": "npm:^3.637.0"
+    "@aws-sdk/client-ssm": "npm:^3.637.0"
+    "@aws-sdk/types": "npm:^3.609.0"
+    "@trivago/prettier-plugin-sort-imports": "npm:^4.3.0"
+    "@types/aws-lambda": "npm:^8.10.143"
+    "@types/jest": "npm:^29.5.12"
+    "@types/node": "npm:^22.4.1"
+    "@typescript-eslint/eslint-plugin": "npm:^7.18.0"
+    "@typescript-eslint/parser": "npm:^7.18.0"
+    "@vercel/ncc": "npm:^0.38.1"
+    aws-sdk-client-mock: "npm:^4.0.1"
+    aws-sdk-client-mock-jest: "npm:^4.0.1"
+    cron-parser: "npm:^4.9.0"
+    eslint: "npm:^8.57.0"
+    eslint-plugin-prettier: "npm:5.2.1"
+    jest: "npm:^29.7.0"
+    jest-mock: "npm:^29.7.0"
+    jest-mock-extended: "npm:^3.0.7"
+    nock: "npm:^13.5.4"
+    prettier: "npm:3.3.3"
+    ts-jest: "npm:^29.2.5"
+    ts-node: "npm:^10.9.2"
+    ts-node-dev: "npm:^2.0.0"
+    typescript: "npm:^5.5.4"
+  languageName: unknown
+  linkType: soft
+
+"@aws-github-runner/aws-powertools-util@npm:*, @aws-github-runner/aws-powertools-util@workspace:libs/aws-powertools-util":
+  version: 0.0.0-use.local
+  resolution: "@aws-github-runner/aws-powertools-util@workspace:libs/aws-powertools-util"
+  dependencies:
+    "@aws-lambda-powertools/logger": "npm:^2.7.0"
+    "@aws-lambda-powertools/metrics": "npm:^2.7.0"
+    "@aws-lambda-powertools/tracer": "npm:^2.7.0"
+    "@trivago/prettier-plugin-sort-imports": "npm:^4.3.0"
+    "@types/aws-lambda": "npm:^8.10.143"
+    "@types/express": "npm:^4.17.21"
+    "@types/jest": "npm:^29.5.12"
+    "@types/node": "npm:^22.4.1"
+    "@typescript-eslint/eslint-plugin": "npm:^7.18.0"
+    "@typescript-eslint/parser": "npm:^7.18.0"
+    "@vercel/ncc": "npm:0.38.1"
+    aws-lambda: "npm:^1.0.7"
+    body-parser: "npm:^1.20.2"
+    eslint: "npm:^8.57.0"
+    eslint-plugin-prettier: "npm:5.2.1"
+    express: "npm:^4.19.2"
+    jest: "npm:^29.7.0"
+    jest-mock: "npm:^29.7.0"
+    nock: "npm:^13.5.4"
+    prettier: "npm:3.3.3"
+    ts-jest: "npm:^29.2.5"
+    ts-node-dev: "npm:^2.0.0"
+    typescript: "npm:^5.5.4"
+  languageName: unknown
+  linkType: soft
+
+"@aws-github-runner/aws-ssm-util@npm:*, @aws-github-runner/aws-ssm-util@workspace:libs/aws-ssm-util":
+  version: 0.0.0-use.local
+  resolution: "@aws-github-runner/aws-ssm-util@workspace:libs/aws-ssm-util"
+  dependencies:
+    "@aws-github-runner/aws-powertools-util": "npm:*"
+    "@aws-sdk/client-ssm": "npm:^3.637.0"
+    "@aws-sdk/types": "npm:^3.609.0"
+    "@trivago/prettier-plugin-sort-imports": "npm:^4.3.0"
+    "@types/aws-lambda": "npm:^8.10.143"
+    "@types/express": "npm:^4.17.21"
+    "@types/jest": "npm:^29.5.12"
+    "@types/node": "npm:^22.4.1"
+    "@typescript-eslint/eslint-plugin": "npm:^7.18.0"
+    "@typescript-eslint/parser": "npm:^7.18.0"
+    "@vercel/ncc": "npm:0.38.1"
+    body-parser: "npm:^1.20.2"
+    eslint: "npm:^8.57.0"
+    eslint-plugin-prettier: "npm:5.2.1"
+    express: "npm:^4.19.2"
+    jest: "npm:^29.7.0"
+    jest-mock: "npm:^29.7.0"
+    nock: "npm:^13.5.4"
+    prettier: "npm:3.3.3"
+    ts-jest: "npm:^29.2.5"
+    ts-node-dev: "npm:^2.0.0"
+    typescript: "npm:^5.5.4"
+  languageName: unknown
+  linkType: soft
+
+"@aws-github-runner/control-plane@workspace:functions/control-plane":
+  version: 0.0.0-use.local
+  resolution: "@aws-github-runner/control-plane@workspace:functions/control-plane"
+  dependencies:
+    "@aws-github-runner/aws-powertools-util": "npm:*"
+    "@aws-github-runner/aws-ssm-util": "npm:*"
+    "@aws-lambda-powertools/parameters": "npm:^2.7.0"
+    "@aws-sdk/client-ec2": "npm:^3.637.0"
+    "@aws-sdk/client-sqs": "npm:^3.637.0"
+    "@aws-sdk/types": "npm:^3.609.0"
+    "@middy/core": "npm:^4.7.0"
+    "@octokit/auth-app": "npm:6.1.1"
+    "@octokit/core": "npm:5.2.0"
+    "@octokit/plugin-throttling": "npm:8.2.0"
+    "@octokit/rest": "npm:20.1.1"
+    "@octokit/types": "npm:^13.5.0"
+    "@trivago/prettier-plugin-sort-imports": "npm:^4.3.0"
+    "@types/aws-lambda": "npm:^8.10.143"
+    "@types/jest": "npm:^29.5.12"
+    "@types/node": "npm:^22.4.1"
+    "@typescript-eslint/eslint-plugin": "npm:^7.18.0"
+    "@typescript-eslint/parser": "npm:^7.18.0"
+    "@vercel/ncc": "npm:^0.38.1"
+    aws-sdk-client-mock: "npm:^4.0.1"
+    aws-sdk-client-mock-jest: "npm:^4.0.1"
+    cron-parser: "npm:^4.9.0"
+    eslint: "npm:^8.57.0"
+    eslint-plugin-prettier: "npm:5.2.1"
+    jest: "npm:^29.7.0"
+    jest-mock: "npm:^29.7.0"
+    jest-mock-extended: "npm:^3.0.7"
+    moment-timezone: "npm:^0.5.45"
+    nock: "npm:^13.5.4"
+    prettier: "npm:3.3.3"
+    ts-jest: "npm:^29.2.5"
+    ts-node: "npm:^10.9.2"
+    ts-node-dev: "npm:^2.0.0"
+    typescript: "npm:^5.5.4"
+  languageName: unknown
+  linkType: soft
+
+"@aws-github-runner/gh-agent-syncer@workspace:functions/gh-agent-syncer":
+  version: 0.0.0-use.local
+  resolution: "@aws-github-runner/gh-agent-syncer@workspace:functions/gh-agent-syncer"
+  dependencies:
+    "@aws-github-runner/aws-powertools-util": "npm:*"
+    "@aws-sdk/client-s3": "npm:^3.637.0"
+    "@aws-sdk/lib-storage": "npm:^3.637.0"
+    "@aws-sdk/types": "npm:^3.609.0"
+    "@middy/core": "npm:^4.7.0"
+    "@octokit/rest": "npm:20.1.1"
+    "@trivago/prettier-plugin-sort-imports": "npm:^4.3.0"
+    "@types/aws-lambda": "npm:^8.10.143"
+    "@types/jest": "npm:^29.5.12"
+    "@types/node": "npm:^22.4.1"
+    "@types/request": "npm:^2.48.12"
+    "@typescript-eslint/eslint-plugin": "npm:^7.18.0"
+    "@typescript-eslint/parser": "npm:^7.18.0"
+    "@vercel/ncc": "npm:^0.38.1"
+    aws-sdk-client-mock: "npm:^4.0.1"
+    aws-sdk-client-mock-jest: "npm:^4.0.1"
+    axios: "npm:^1.7.5"
+    eslint: "npm:^8.57.0"
+    eslint-plugin-prettier: "npm:5.2.1"
+    jest: "npm:^29.7.0"
+    jest-mock: "npm:^29.7.0"
+    prettier: "npm:3.3.3"
+    ts-jest: "npm:^29.2.5"
+    ts-node-dev: "npm:^2.0.0"
+    typescript: "npm:^5.5.4"
+  languageName: unknown
+  linkType: soft
+
+"@aws-github-runner/termination-watcher@workspace:functions/termination-watcher":
+  version: 0.0.0-use.local
+  resolution: "@aws-github-runner/termination-watcher@workspace:functions/termination-watcher"
+  dependencies:
+    "@aws-github-runner/aws-powertools-util": "npm:*"
+    "@aws-sdk/client-ec2": "npm:^3.637.0"
+    "@aws-sdk/types": "npm:^3.609.0"
+    "@middy/core": "npm:^4.7.0"
+    "@trivago/prettier-plugin-sort-imports": "npm:^4.3.0"
+    "@types/aws-lambda": "npm:^8.10.143"
+    "@types/jest": "npm:^29.5.12"
+    "@types/node": "npm:^22.4.1"
+    "@typescript-eslint/eslint-plugin": "npm:^7.18.0"
+    "@typescript-eslint/parser": "npm:^7.18.0"
+    "@vercel/ncc": "npm:^0.38.1"
+    aws-sdk-client-mock: "npm:^4.0.1"
+    aws-sdk-client-mock-jest: "npm:^4.0.1"
+    eslint: "npm:^8.57.0"
+    eslint-plugin-prettier: "npm:5.2.1"
+    jest: "npm:^29.7.0"
+    jest-mock: "npm:^29.7.0"
+    jest-mock-extended: "npm:^3.0.7"
+    nock: "npm:^13.5.4"
+    prettier: "npm:3.3.3"
+    ts-jest: "npm:^29.2.5"
+    ts-node: "npm:^10.9.2"
+    ts-node-dev: "npm:^2.0.0"
+    typescript: "npm:^5.5.4"
+  languageName: unknown
+  linkType: soft
+
+"@aws-github-runner/webhook@workspace:functions/webhook":
+  version: 0.0.0-use.local
+  resolution: "@aws-github-runner/webhook@workspace:functions/webhook"
+  dependencies:
+    "@aws-github-runner/aws-powertools-util": "npm:*"
+    "@aws-github-runner/aws-ssm-util": "npm:*"
+    "@aws-sdk/client-sqs": "npm:^3.637.0"
+    "@middy/core": "npm:^4.7.0"
+    "@octokit/rest": "npm:20.1.1"
+    "@octokit/types": "npm:^13.5.0"
+    "@octokit/webhooks": "npm:^12.2.0"
+    "@trivago/prettier-plugin-sort-imports": "npm:^4.3.0"
+    "@types/aws-lambda": "npm:^8.10.143"
+    "@types/express": "npm:^4.17.21"
+    "@types/jest": "npm:^29.5.12"
+    "@types/node": "npm:^22.4.1"
+    "@typescript-eslint/eslint-plugin": "npm:^7.18.0"
+    "@typescript-eslint/parser": "npm:^7.18.0"
+    "@vercel/ncc": "npm:0.38.1"
+    aws-lambda: "npm:^1.0.7"
+    body-parser: "npm:^1.20.2"
+    eslint: "npm:^8.57.0"
+    eslint-plugin-prettier: "npm:5.2.1"
+    express: "npm:^4.19.2"
+    jest: "npm:^29.7.0"
+    jest-mock: "npm:^29.7.0"
+    nock: "npm:^13.5.4"
+    prettier: "npm:3.3.3"
+    ts-jest: "npm:^29.2.5"
+    ts-node-dev: "npm:^2.0.0"
+    typescript: "npm:^5.5.4"
+  languageName: unknown
+  linkType: soft
+
 "@aws-lambda-powertools/commons@npm:^2.7.0":
   version: 2.7.0
   resolution: "@aws-lambda-powertools/commons@npm:2.7.0"
@@ -4747,236 +4977,6 @@ __metadata:
   checksum: 10c0/f95fea7dee8fc07f8389afbb9578f3d0cd84b429b1d0dbff7fd99b2ef06ed88e96bc33631f36c3bc0505d5a783bee1374acd84b8fc2593001219b6c2caba241b
   languageName: node
   linkType: hard
-
-"@terraform-aws-github-runner/ami-housekeeper@workspace:functions/ami-housekeeper":
-  version: 0.0.0-use.local
-  resolution: "@terraform-aws-github-runner/ami-housekeeper@workspace:functions/ami-housekeeper"
-  dependencies:
-    "@aws-sdk/client-ec2": "npm:^3.637.0"
-    "@aws-sdk/client-ssm": "npm:^3.637.0"
-    "@aws-sdk/types": "npm:^3.609.0"
-    "@terraform-aws-github-runner/aws-powertools-util": "npm:*"
-    "@terraform-aws-github-runner/aws-ssm-util": "npm:*"
-    "@trivago/prettier-plugin-sort-imports": "npm:^4.3.0"
-    "@types/aws-lambda": "npm:^8.10.143"
-    "@types/jest": "npm:^29.5.12"
-    "@types/node": "npm:^22.4.1"
-    "@typescript-eslint/eslint-plugin": "npm:^7.18.0"
-    "@typescript-eslint/parser": "npm:^7.18.0"
-    "@vercel/ncc": "npm:^0.38.1"
-    aws-sdk-client-mock: "npm:^4.0.1"
-    aws-sdk-client-mock-jest: "npm:^4.0.1"
-    cron-parser: "npm:^4.9.0"
-    eslint: "npm:^8.57.0"
-    eslint-plugin-prettier: "npm:5.2.1"
-    jest: "npm:^29.7.0"
-    jest-mock: "npm:^29.7.0"
-    jest-mock-extended: "npm:^3.0.7"
-    nock: "npm:^13.5.4"
-    prettier: "npm:3.3.3"
-    ts-jest: "npm:^29.2.5"
-    ts-node: "npm:^10.9.2"
-    ts-node-dev: "npm:^2.0.0"
-    typescript: "npm:^5.5.4"
-  languageName: unknown
-  linkType: soft
-
-"@terraform-aws-github-runner/aws-powertools-util@npm:*, @terraform-aws-github-runner/aws-powertools-util@workspace:libs/aws-powertools-util":
-  version: 0.0.0-use.local
-  resolution: "@terraform-aws-github-runner/aws-powertools-util@workspace:libs/aws-powertools-util"
-  dependencies:
-    "@aws-lambda-powertools/logger": "npm:^2.7.0"
-    "@aws-lambda-powertools/metrics": "npm:^2.7.0"
-    "@aws-lambda-powertools/tracer": "npm:^2.7.0"
-    "@trivago/prettier-plugin-sort-imports": "npm:^4.3.0"
-    "@types/aws-lambda": "npm:^8.10.143"
-    "@types/express": "npm:^4.17.21"
-    "@types/jest": "npm:^29.5.12"
-    "@types/node": "npm:^22.4.1"
-    "@typescript-eslint/eslint-plugin": "npm:^7.18.0"
-    "@typescript-eslint/parser": "npm:^7.18.0"
-    "@vercel/ncc": "npm:0.38.1"
-    aws-lambda: "npm:^1.0.7"
-    body-parser: "npm:^1.20.2"
-    eslint: "npm:^8.57.0"
-    eslint-plugin-prettier: "npm:5.2.1"
-    express: "npm:^4.19.2"
-    jest: "npm:^29.7.0"
-    jest-mock: "npm:^29.7.0"
-    nock: "npm:^13.5.4"
-    prettier: "npm:3.3.3"
-    ts-jest: "npm:^29.2.5"
-    ts-node-dev: "npm:^2.0.0"
-    typescript: "npm:^5.5.4"
-  languageName: unknown
-  linkType: soft
-
-"@terraform-aws-github-runner/aws-ssm-util@npm:*, @terraform-aws-github-runner/aws-ssm-util@workspace:libs/aws-ssm-util":
-  version: 0.0.0-use.local
-  resolution: "@terraform-aws-github-runner/aws-ssm-util@workspace:libs/aws-ssm-util"
-  dependencies:
-    "@aws-sdk/client-ssm": "npm:^3.637.0"
-    "@aws-sdk/types": "npm:^3.609.0"
-    "@terraform-aws-github-runner/aws-powertools-util": "npm:*"
-    "@trivago/prettier-plugin-sort-imports": "npm:^4.3.0"
-    "@types/aws-lambda": "npm:^8.10.143"
-    "@types/express": "npm:^4.17.21"
-    "@types/jest": "npm:^29.5.12"
-    "@types/node": "npm:^22.4.1"
-    "@typescript-eslint/eslint-plugin": "npm:^7.18.0"
-    "@typescript-eslint/parser": "npm:^7.18.0"
-    "@vercel/ncc": "npm:0.38.1"
-    body-parser: "npm:^1.20.2"
-    eslint: "npm:^8.57.0"
-    eslint-plugin-prettier: "npm:5.2.1"
-    express: "npm:^4.19.2"
-    jest: "npm:^29.7.0"
-    jest-mock: "npm:^29.7.0"
-    nock: "npm:^13.5.4"
-    prettier: "npm:3.3.3"
-    ts-jest: "npm:^29.2.5"
-    ts-node-dev: "npm:^2.0.0"
-    typescript: "npm:^5.5.4"
-  languageName: unknown
-  linkType: soft
-
-"@terraform-aws-github-runner/control-plane@workspace:functions/control-plane":
-  version: 0.0.0-use.local
-  resolution: "@terraform-aws-github-runner/control-plane@workspace:functions/control-plane"
-  dependencies:
-    "@aws-lambda-powertools/parameters": "npm:^2.7.0"
-    "@aws-sdk/client-ec2": "npm:^3.637.0"
-    "@aws-sdk/client-sqs": "npm:^3.637.0"
-    "@aws-sdk/types": "npm:^3.609.0"
-    "@middy/core": "npm:^4.7.0"
-    "@octokit/auth-app": "npm:6.1.1"
-    "@octokit/core": "npm:5.2.0"
-    "@octokit/plugin-throttling": "npm:8.2.0"
-    "@octokit/rest": "npm:20.1.1"
-    "@octokit/types": "npm:^13.5.0"
-    "@terraform-aws-github-runner/aws-powertools-util": "npm:*"
-    "@terraform-aws-github-runner/aws-ssm-util": "npm:*"
-    "@trivago/prettier-plugin-sort-imports": "npm:^4.3.0"
-    "@types/aws-lambda": "npm:^8.10.143"
-    "@types/jest": "npm:^29.5.12"
-    "@types/node": "npm:^22.4.1"
-    "@typescript-eslint/eslint-plugin": "npm:^7.18.0"
-    "@typescript-eslint/parser": "npm:^7.18.0"
-    "@vercel/ncc": "npm:^0.38.1"
-    aws-sdk-client-mock: "npm:^4.0.1"
-    aws-sdk-client-mock-jest: "npm:^4.0.1"
-    cron-parser: "npm:^4.9.0"
-    eslint: "npm:^8.57.0"
-    eslint-plugin-prettier: "npm:5.2.1"
-    jest: "npm:^29.7.0"
-    jest-mock: "npm:^29.7.0"
-    jest-mock-extended: "npm:^3.0.7"
-    moment-timezone: "npm:^0.5.45"
-    nock: "npm:^13.5.4"
-    prettier: "npm:3.3.3"
-    ts-jest: "npm:^29.2.5"
-    ts-node: "npm:^10.9.2"
-    ts-node-dev: "npm:^2.0.0"
-    typescript: "npm:^5.5.4"
-  languageName: unknown
-  linkType: soft
-
-"@terraform-aws-github-runner/gh-agent-syncer@workspace:functions/gh-agent-syncer":
-  version: 0.0.0-use.local
-  resolution: "@terraform-aws-github-runner/gh-agent-syncer@workspace:functions/gh-agent-syncer"
-  dependencies:
-    "@aws-sdk/client-s3": "npm:^3.637.0"
-    "@aws-sdk/lib-storage": "npm:^3.637.0"
-    "@aws-sdk/types": "npm:^3.609.0"
-    "@middy/core": "npm:^4.7.0"
-    "@octokit/rest": "npm:20.1.1"
-    "@terraform-aws-github-runner/aws-powertools-util": "npm:*"
-    "@trivago/prettier-plugin-sort-imports": "npm:^4.3.0"
-    "@types/aws-lambda": "npm:^8.10.143"
-    "@types/jest": "npm:^29.5.12"
-    "@types/node": "npm:^22.4.1"
-    "@types/request": "npm:^2.48.12"
-    "@typescript-eslint/eslint-plugin": "npm:^7.18.0"
-    "@typescript-eslint/parser": "npm:^7.18.0"
-    "@vercel/ncc": "npm:^0.38.1"
-    aws-sdk-client-mock: "npm:^4.0.1"
-    aws-sdk-client-mock-jest: "npm:^4.0.1"
-    axios: "npm:^1.7.5"
-    eslint: "npm:^8.57.0"
-    eslint-plugin-prettier: "npm:5.2.1"
-    jest: "npm:^29.7.0"
-    jest-mock: "npm:^29.7.0"
-    prettier: "npm:3.3.3"
-    ts-jest: "npm:^29.2.5"
-    ts-node-dev: "npm:^2.0.0"
-    typescript: "npm:^5.5.4"
-  languageName: unknown
-  linkType: soft
-
-"@terraform-aws-github-runner/termination-watcher@workspace:functions/termination-watcher":
-  version: 0.0.0-use.local
-  resolution: "@terraform-aws-github-runner/termination-watcher@workspace:functions/termination-watcher"
-  dependencies:
-    "@aws-sdk/client-ec2": "npm:^3.637.0"
-    "@aws-sdk/types": "npm:^3.609.0"
-    "@middy/core": "npm:^4.7.0"
-    "@terraform-aws-github-runner/aws-powertools-util": "npm:*"
-    "@trivago/prettier-plugin-sort-imports": "npm:^4.3.0"
-    "@types/aws-lambda": "npm:^8.10.143"
-    "@types/jest": "npm:^29.5.12"
-    "@types/node": "npm:^22.4.1"
-    "@typescript-eslint/eslint-plugin": "npm:^7.18.0"
-    "@typescript-eslint/parser": "npm:^7.18.0"
-    "@vercel/ncc": "npm:^0.38.1"
-    aws-sdk-client-mock: "npm:^4.0.1"
-    aws-sdk-client-mock-jest: "npm:^4.0.1"
-    eslint: "npm:^8.57.0"
-    eslint-plugin-prettier: "npm:5.2.1"
-    jest: "npm:^29.7.0"
-    jest-mock: "npm:^29.7.0"
-    jest-mock-extended: "npm:^3.0.7"
-    nock: "npm:^13.5.4"
-    prettier: "npm:3.3.3"
-    ts-jest: "npm:^29.2.5"
-    ts-node: "npm:^10.9.2"
-    ts-node-dev: "npm:^2.0.0"
-    typescript: "npm:^5.5.4"
-  languageName: unknown
-  linkType: soft
-
-"@terraform-aws-github-runner/webhook@workspace:functions/webhook":
-  version: 0.0.0-use.local
-  resolution: "@terraform-aws-github-runner/webhook@workspace:functions/webhook"
-  dependencies:
-    "@aws-sdk/client-sqs": "npm:^3.637.0"
-    "@middy/core": "npm:^4.7.0"
-    "@octokit/rest": "npm:20.1.1"
-    "@octokit/types": "npm:^13.5.0"
-    "@octokit/webhooks": "npm:^12.2.0"
-    "@terraform-aws-github-runner/aws-powertools-util": "npm:*"
-    "@terraform-aws-github-runner/aws-ssm-util": "npm:*"
-    "@trivago/prettier-plugin-sort-imports": "npm:^4.3.0"
-    "@types/aws-lambda": "npm:^8.10.143"
-    "@types/express": "npm:^4.17.21"
-    "@types/jest": "npm:^29.5.12"
-    "@types/node": "npm:^22.4.1"
-    "@typescript-eslint/eslint-plugin": "npm:^7.18.0"
-    "@typescript-eslint/parser": "npm:^7.18.0"
-    "@vercel/ncc": "npm:0.38.1"
-    aws-lambda: "npm:^1.0.7"
-    body-parser: "npm:^1.20.2"
-    eslint: "npm:^8.57.0"
-    eslint-plugin-prettier: "npm:5.2.1"
-    express: "npm:^4.19.2"
-    jest: "npm:^29.7.0"
-    jest-mock: "npm:^29.7.0"
-    nock: "npm:^13.5.4"
-    prettier: "npm:3.3.3"
-    ts-jest: "npm:^29.2.5"
-    ts-node-dev: "npm:^2.0.0"
-    typescript: "npm:^5.5.4"
-  languageName: unknown
-  linkType: soft
 
 "@trivago/prettier-plugin-sort-imports@npm:^4.3.0":
   version: 4.3.0

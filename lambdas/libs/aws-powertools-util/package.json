@@ -1,5 +1,5 @@
 {
-  "name": "@terraform-aws-github-runner/aws-powertools-util",
+  "name": "@aws-github-runner/aws-powertools-util",
   "version": "1.0.0",
   "main": "src/index.ts",
   "license": "MIT",

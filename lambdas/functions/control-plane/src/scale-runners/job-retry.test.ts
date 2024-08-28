@@ -4,12 +4,12 @@ import { ActionRequestMessage, ActionRequestMessageRetry } from './scale-up';
 import { getOctokit } from '../github/octokit';
 import { Octokit } from '@octokit/rest';
 import { mocked } from 'jest-mock';
-import { createSingleMetric } from '@terraform-aws-github-runner/aws-powertools-util';
+import { createSingleMetric } from '@aws-github-runner/aws-powertools-util';
 
 jest.mock('../aws/sqs');
 
-jest.mock('@terraform-aws-github-runner/aws-powertools-util', () => ({
-  ...jest.requireActual('@terraform-aws-github-runner/aws-powertools-util'),
+jest.mock('@aws-github-runner/aws-powertools-util', () => ({
+  ...jest.requireActual('@aws-github-runner/aws-powertools-util'),
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   createSingleMetric: jest.fn((name: string, unit: string, value: number, dimensions?: Record<string, string>) => {
     return {

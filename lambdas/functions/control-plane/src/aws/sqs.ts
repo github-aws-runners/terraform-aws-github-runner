@@ -1,5 +1,5 @@
 import { SQSClient, SendMessageCommand, SendMessageCommandOutput } from '@aws-sdk/client-sqs';
-import { logger } from '@terraform-aws-github-runner/aws-powertools-util';
+import { logger } from '@aws-github-runner/aws-powertools-util';
 
 const sqs = new SQSClient({});
 

@@ -1,8 +1,8 @@
 import { ResponseHeaders } from '@octokit/types';
-import { createSingleMetric, logger } from '@terraform-aws-github-runner/aws-powertools-util';
+import { createSingleMetric, logger } from '@aws-github-runner/aws-powertools-util';
 import { MetricUnit } from '@aws-lambda-powertools/metrics';
 import yn from 'yn';
-import { getParameter } from '@terraform-aws-github-runner/aws-ssm-util';
+import { getParameter } from '@aws-github-runner/aws-ssm-util';
 
 export async function metricGitHubAppRateLimit(headers: ResponseHeaders): Promise<void> {
   try {

@@ -1,6 +1,6 @@
 import { DeleteParameterCommand, GetParametersByPathCommand, SSMClient } from '@aws-sdk/client-ssm';
-import { logger } from '@terraform-aws-github-runner/aws-powertools-util';
-import { getTracedAWSV3Client } from '@terraform-aws-github-runner/aws-powertools-util';
+import { logger } from '@aws-github-runner/aws-powertools-util';
+import { getTracedAWSV3Client } from '@aws-github-runner/aws-powertools-util';
 
 export interface SSMCleanupOptions {
   dryRun: boolean;

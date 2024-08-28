@@ -1,5 +1,5 @@
 import { Octokit } from '@octokit/rest';
-import { createChildLogger } from '@terraform-aws-github-runner/aws-powertools-util';
+import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import moment from 'moment';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';

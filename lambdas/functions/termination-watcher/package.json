@@ -1,5 +1,5 @@
 {
-  "name": "@terraform-aws-github-runner/termination-watcher",
+  "name": "@aws-github-runner/termination-watcher",
   "version": "1.0.0",
   "main": "lambda.ts",
   "license": "MIT",
@@ -35,10 +35,10 @@
     "ts-node-dev": "^2.0.0"
   },
   "dependencies": {
+    "@aws-github-runner/aws-powertools-util": "*",
     "@aws-sdk/client-ec2": "^3.637.0",
     "@aws-sdk/types": "^3.609.0",
     "@middy/core": "^4.7.0",
-    "@terraform-aws-github-runner/aws-powertools-util": "*",
     "typescript": "^5.5.4"
   },
   "nx": {

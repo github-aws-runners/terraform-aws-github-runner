@@ -11,7 +11,7 @@ import { createRunner, listEC2Runners } from './../aws/runners';
 import { RunnerInputParameters } from './../aws/runners.d';
 import ScaleError from './ScaleError';
 import * as scaleUpModule from './scale-up';
-import { getParameter } from '@terraform-aws-github-runner/aws-ssm-util';
+import { getParameter } from '@aws-github-runner/aws-ssm-util';
 
 const mockOctokit = {
   paginate: jest.fn(),
@@ -40,8 +40,8 @@ jest.mock('@octokit/rest', () => ({
 jest.mock('./../aws/runners');
 jest.mock('./../github/auth');
 
-jest.mock('@terraform-aws-github-runner/aws-ssm-util', () => ({
-  ...jest.requireActual('@terraform-aws-github-runner/aws-ssm-util'),
+jest.mock('@aws-github-runner/aws-ssm-util', () => ({
+  ...jest.requireActual('@aws-github-runner/aws-ssm-util'),
   getParameter: jest.fn(),
 }));
 

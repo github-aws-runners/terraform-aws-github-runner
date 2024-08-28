@@ -2,7 +2,7 @@ import {
   addPersistentContextToChildLogger,
   createSingleMetric,
   logger,
-} from '@terraform-aws-github-runner/aws-powertools-util';
+} from '@aws-github-runner/aws-powertools-util';
 import { publishMessage } from '../aws/sqs';
 import { ActionRequestMessage, ActionRequestMessageRetry, getGitHubEnterpriseApiUrl, isJobQueued } from './scale-up';
 import { getOctokit } from '../github/octokit';

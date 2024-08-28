@@ -1,4 +1,4 @@
-import { captureLambdaHandler, logger } from '@terraform-aws-github-runner/aws-powertools-util';
+import { captureLambdaHandler, logger } from '@aws-github-runner/aws-powertools-util';
 import { Context, SQSEvent, SQSRecord } from 'aws-lambda';
 import { mocked } from 'jest-mock';
 
@@ -66,8 +66,8 @@ jest.mock('./scale-runners/scale-down');
 jest.mock('./scale-runners/scale-up');
 jest.mock('./scale-runners/ssm-housekeeper');
 jest.mock('./scale-runners/job-retry');
-jest.mock('@terraform-aws-github-runner/aws-powertools-util');
-jest.mock('@terraform-aws-github-runner/aws-ssm-util');
+jest.mock('@aws-github-runner/aws-powertools-util');
+jest.mock('@aws-github-runner/aws-ssm-util');
 
 // Docs for testing async with jest: https://jestjs.io/docs/tutorial-async
 describe('Test scale up lambda wrapper.', () => {

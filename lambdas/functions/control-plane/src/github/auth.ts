@@ -11,8 +11,8 @@ import { OctokitOptions } from '@octokit/core/dist-types/types';
 import { request } from '@octokit/request';
 import { Octokit } from '@octokit/rest';
 import { throttling } from '@octokit/plugin-throttling';
-import { createChildLogger } from '@terraform-aws-github-runner/aws-powertools-util';
-import { getParameter } from '@terraform-aws-github-runner/aws-ssm-util';
+import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
+import { getParameter } from '@aws-github-runner/aws-ssm-util';
 import { EndpointDefaults } from '@octokit/types';
 
 const logger = createChildLogger('gh-auth');

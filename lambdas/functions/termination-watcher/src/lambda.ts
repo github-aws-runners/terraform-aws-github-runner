@@ -5,7 +5,7 @@ import {
   metrics,
   setContext,
   tracer,
-} from '@terraform-aws-github-runner/aws-powertools-util';
+} from '@aws-github-runner/aws-powertools-util';
 import { logMetrics } from '@aws-lambda-powertools/metrics/middleware';
 import { Context } from 'aws-lambda';
 
