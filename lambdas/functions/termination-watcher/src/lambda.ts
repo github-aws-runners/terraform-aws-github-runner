@@ -1,11 +1,5 @@
 import middy from '@middy/core';
-import {
-  captureLambdaHandler,
-  logger,
-  metrics,
-  setContext,
-  tracer,
-} from '@aws-github-runner/aws-powertools-util';
+import { captureLambdaHandler, logger, metrics, setContext, tracer } from '@aws-github-runner/aws-powertools-util';
 import { logMetrics } from '@aws-lambda-powertools/metrics/middleware';
 import { Context } from 'aws-lambda';
 

@@ -1,8 +1,4 @@
-import {
-  addPersistentContextToChildLogger,
-  createSingleMetric,
-  logger,
-} from '@aws-github-runner/aws-powertools-util';
+import { addPersistentContextToChildLogger, createSingleMetric, logger } from '@aws-github-runner/aws-powertools-util';
 import { publishMessage } from '../aws/sqs';
 import { ActionRequestMessage, ActionRequestMessageRetry, getGitHubEnterpriseApiUrl, isJobQueued } from './scale-up';
 import { getOctokit } from '../github/octokit';
