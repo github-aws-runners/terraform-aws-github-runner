@@ -551,7 +551,7 @@ variable "pool_lambda_reserved_concurrent_executions" {
 }
 
 variable "enable_workflow_job_events_queue" {
-  description = "Enabling this experimental feature will create a secondory sqs queue to wich a copy of the workflow_job event will be delivered."
+  description = "Enabling this experimental feature will create a secondory sqs queue to which a copy of the workflow_job event will be delivered."
   type        = bool
   default     = false
 }
