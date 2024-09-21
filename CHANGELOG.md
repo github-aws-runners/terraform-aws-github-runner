@@ -1,5 +1,17 @@
 # Changelog
 
+## [5.16.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.16.0...v5.16.1) (2024-09-21)
+
+
+### Bug Fixes
+
+* Add missing SG and subnet configuration for Job Retry lambda ([#4114](https://github.com/philips-labs/terraform-aws-github-runner/issues/4114)) ([7095487](https://github.com/philips-labs/terraform-aws-github-runner/commit/7095487325d4f63acd246e508e2e997cf13a2249))
+* **lambda:** bump @aws-sdk/client-ec2 from 3.637.0 to 3.641.0 in /lambdas in the aws group ([#4106](https://github.com/philips-labs/terraform-aws-github-runner/issues/4106)) ([20f51a1](https://github.com/philips-labs/terraform-aws-github-runner/commit/20f51a14f9e95630ac88b29f3fb9b1b41189c864))
+* **lambda:** bump @octokit/auth-app from 6.1.1 to 6.1.2 in /lambdas in the octokit group ([#4117](https://github.com/philips-labs/terraform-aws-github-runner/issues/4117)) ([6e6bd98](https://github.com/philips-labs/terraform-aws-github-runner/commit/6e6bd98246fd589a1b1187443c6f5ca36f0ba95c))
+* **lambda:** bump the aws group in /lambdas with 5 updates ([#4116](https://github.com/philips-labs/terraform-aws-github-runner/issues/4116)) ([4a8826b](https://github.com/philips-labs/terraform-aws-github-runner/commit/4a8826b5b27db929b3cb4de290fdc989ccab8c69))
+* **lambda:** bump the aws group in /lambdas with 6 updates ([#4128](https://github.com/philips-labs/terraform-aws-github-runner/issues/4128)) ([f6164e7](https://github.com/philips-labs/terraform-aws-github-runner/commit/f6164e7fb8cfb4776c62e4a1dbea698ba0f2b6d2))
+* **lambda:** bump the aws-powertools group in /lambdas with 4 updates ([#4129](https://github.com/philips-labs/terraform-aws-github-runner/issues/4129)) ([ab2605f](https://github.com/philips-labs/terraform-aws-github-runner/commit/ab2605f92d8dd8e297c3b063e589d17005330b00))
+
 ## [5.16.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.15.4...v5.16.0) (2024-08-28)
 
 
