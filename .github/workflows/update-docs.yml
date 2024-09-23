@@ -23,7 +23,7 @@ jobs:
       # use an app to ensure CI is triggered
       - name: Generate TF docs
         if: github.repository_owner == 'philips-labs'
-        uses: terraform-docs/gh-actions@cca78c27ac9e2b6545debf2ecae9df930fd3461c # v1.2.2
+        uses: terraform-docs/gh-actions@aeae0038ed47a547e0c0fca5c059d3335f48fb25 # v1.3.0
         with:
           find-dir: .
           git-commit-message: "docs: auto update terraform docs"
@@ -33,7 +33,7 @@ jobs:
 
       - name: Generate TF docs (forks)
         if: github.repository_owner != 'philips-labs'
-        uses: terraform-docs/gh-actions@cca78c27ac9e2b6545debf2ecae9df930fd3461c # v1.2.2
+        uses: terraform-docs/gh-actions@aeae0038ed47a547e0c0fca5c059d3335f48fb25 # v1.3.0
         with:
           find-dir: .
           git-commit-message: "docs: auto update terraform docs"
