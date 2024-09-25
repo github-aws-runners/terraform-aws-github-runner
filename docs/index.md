@@ -24,7 +24,7 @@ For non ephemeral runners with the idle config the module will avoid scaling dow
 
 ## Detailed design
 
-The diagram below shows the architecture of the module, groups are indicating the different components. Ww will go through the components in the following sections.
+The diagram below shows the architecture of the module, groups are indicating the different components. We will go through the components in the following sections.
 
 ![Architecture](assets/aws-architecture.light.png#only-light)
 ![Architecture](assets/aws-architecture.dark.png#only-dark)

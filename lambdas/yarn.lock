@@ -113,7 +113,7 @@ __metadata:
     "@typescript-eslint/eslint-plugin": "npm:^7.18.0"
     "@typescript-eslint/parser": "npm:^7.18.0"
     "@vercel/ncc": "npm:^0.38.1"
-    aws-sdk-client-mock: "npm:^4.0.1"
+    aws-sdk-client-mock: "npm:^4.0.2"
     aws-sdk-client-mock-jest: "npm:^4.0.1"
     cron-parser: "npm:^4.9.0"
     eslint: "npm:^8.57.0"
@@ -212,7 +212,7 @@ __metadata:
     "@typescript-eslint/eslint-plugin": "npm:^7.18.0"
     "@typescript-eslint/parser": "npm:^7.18.0"
     "@vercel/ncc": "npm:^0.38.1"
-    aws-sdk-client-mock: "npm:^4.0.1"
+    aws-sdk-client-mock: "npm:^4.0.2"
     aws-sdk-client-mock-jest: "npm:^4.0.1"
     cron-parser: "npm:^4.9.0"
     eslint: "npm:^8.57.0"
@@ -248,7 +248,7 @@ __metadata:
     "@typescript-eslint/eslint-plugin": "npm:^7.18.0"
     "@typescript-eslint/parser": "npm:^7.18.0"
     "@vercel/ncc": "npm:^0.38.1"
-    aws-sdk-client-mock: "npm:^4.0.1"
+    aws-sdk-client-mock: "npm:^4.0.2"
     aws-sdk-client-mock-jest: "npm:^4.0.1"
     axios: "npm:^1.7.5"
     eslint: "npm:^8.57.0"
@@ -277,7 +277,7 @@ __metadata:
     "@typescript-eslint/eslint-plugin": "npm:^7.18.0"
     "@typescript-eslint/parser": "npm:^7.18.0"
     "@vercel/ncc": "npm:^0.38.1"
-    aws-sdk-client-mock: "npm:^4.0.1"
+    aws-sdk-client-mock: "npm:^4.0.2"
     aws-sdk-client-mock-jest: "npm:^4.0.1"
     eslint: "npm:^8.57.0"
     eslint-plugin-prettier: "npm:5.2.1"
@@ -3193,12 +3193,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nrwl/devkit@npm:19.7.3":
-  version: 19.7.3
-  resolution: "@nrwl/devkit@npm:19.7.3"
+"@nrwl/devkit@npm:19.8.0":
+  version: 19.8.0
+  resolution: "@nrwl/devkit@npm:19.8.0"
   dependencies:
-    "@nx/devkit": "npm:19.7.3"
-  checksum: 10c0/578440a4fda547ee781af211312929138515d566498cac79e9fda036d08cb91ab6edd9e6feb99fdf4dc98da57821c8faef7fc0cfae7ddad9a0d8f2f9748efcc8
+    "@nx/devkit": "npm:19.8.0"
+  checksum: 10c0/ba545a986c01ad9949c2bc92ea770e3c1ac3085dd4fdf04e0353b243605e6075aa8c4bb8406500f3ac7d71b050e66182d57cd502d7b27bc7bfd221504d35fd65
   languageName: node
   linkType: hard
 
@@ -3229,12 +3229,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nrwl/js@npm:19.7.3":
-  version: 19.7.3
-  resolution: "@nrwl/js@npm:19.7.3"
+"@nrwl/js@npm:19.8.0":
+  version: 19.8.0
+  resolution: "@nrwl/js@npm:19.8.0"
   dependencies:
-    "@nx/js": "npm:19.7.3"
-  checksum: 10c0/6fc1993a9fb8c9ab897d2043457b024628de2d5eddca139869f93b08ca73a0591072e84a9b4078403cd94d698ec995bb1836a4ef34aece37a4dceae2cf836f6a
+    "@nx/js": "npm:19.8.0"
+  checksum: 10c0/113972ed77c2185a3c4a8115c08018983920a25c3ce218d436a012d425be8e8cadc618811e7a5561dc6d37d2f5bc2a023d1f170d89660ad7cf851561c00169cf
   languageName: node
   linkType: hard
 
@@ -3262,15 +3262,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nrwl/tao@npm:19.7.3":
-  version: 19.7.3
-  resolution: "@nrwl/tao@npm:19.7.3"
+"@nrwl/tao@npm:19.8.0":
+  version: 19.8.0
+  resolution: "@nrwl/tao@npm:19.8.0"
   dependencies:
-    nx: "npm:19.7.3"
+    nx: "npm:19.8.0"
     tslib: "npm:^2.3.0"
   bin:
     tao: index.js
-  checksum: 10c0/af16f1670c0aaa3e2d12598918124ba2e15f24a2c274aed6ac01be4342c718971e10a8f201f6a7521e65dfd1a0b134767a7b3cf3280824de920e76ca02ec8fa1
+  checksum: 10c0/fd553087fbef6afc855f8c64598abd1d304850bbf725d874db814a653e10850ca41ba33cdfcb0799c440df86adc7c1c3146977e96551c677d7416a2f1c89af2b
   languageName: node
   linkType: hard
 
@@ -3292,12 +3292,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nrwl/workspace@npm:19.7.3":
-  version: 19.7.3
-  resolution: "@nrwl/workspace@npm:19.7.3"
+"@nrwl/workspace@npm:19.8.0":
+  version: 19.8.0
+  resolution: "@nrwl/workspace@npm:19.8.0"
   dependencies:
-    "@nx/workspace": "npm:19.7.3"
-  checksum: 10c0/d4ddada31bee4cb564182315e2df74aef60b437e2ad2e1cfde784fd4bcb7b5b38372ffd5f66b920876f2c2fd7cdb5ca9438e5b66044f75a3399eee2811249391
+    "@nx/workspace": "npm:19.8.0"
+  checksum: 10c0/2be7a888992042d4fc1c4723c41d10f2b7b965a5071b4a9dfe9fbded12616dbc7381550be4c60ba7ecb059111726b9745181fd5d4073fbafded9cdf45d16363f
   languageName: node
   linkType: hard
 
@@ -3339,11 +3339,11 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nx/devkit@npm:19.7.3":
-  version: 19.7.3
-  resolution: "@nx/devkit@npm:19.7.3"
+"@nx/devkit@npm:19.8.0":
+  version: 19.8.0
+  resolution: "@nx/devkit@npm:19.8.0"
   dependencies:
-    "@nrwl/devkit": "npm:19.7.3"
+    "@nrwl/devkit": "npm:19.8.0"
     ejs: "npm:^3.1.7"
     enquirer: "npm:~2.3.6"
     ignore: "npm:^5.0.4"
@@ -3354,7 +3354,7 @@ __metadata:
     yargs-parser: "npm:21.1.1"
   peerDependencies:
     nx: ">= 17 <= 20"
-  checksum: 10c0/d8812da070d74776f38432080731daaeee78d7b6a29c6c45659d925cea374bcd868a035ca4eb032bdcd92345d386537ec49aebca1da16eb1f5f99d45a69bae7c
+  checksum: 10c0/d22a357577d6e7d424e93688619e5236e3349c4556f41f339780d430c491fea954205fb740ffe3229c84a05a5da481e3614633ab08ea0962ce711e05b5d75012
   languageName: node
   linkType: hard
 
@@ -3485,9 +3485,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nx/js@npm:19.7.3, @nx/js@npm:^19.7.3":
-  version: 19.7.3
-  resolution: "@nx/js@npm:19.7.3"
+"@nx/js@npm:19.8.0, @nx/js@npm:^19.8.0":
+  version: 19.8.0
+  resolution: "@nx/js@npm:19.8.0"
   dependencies:
     "@babel/core": "npm:^7.23.2"
     "@babel/plugin-proposal-decorators": "npm:^7.22.7"
@@ -3496,9 +3496,9 @@ __metadata:
     "@babel/preset-env": "npm:^7.23.2"
     "@babel/preset-typescript": "npm:^7.22.5"
     "@babel/runtime": "npm:^7.22.6"
-    "@nrwl/js": "npm:19.7.3"
-    "@nx/devkit": "npm:19.7.3"
-    "@nx/workspace": "npm:19.7.3"
+    "@nrwl/js": "npm:19.8.0"
+    "@nx/devkit": "npm:19.8.0"
+    "@nx/workspace": "npm:19.8.0"
     babel-plugin-const-enum: "npm:^1.0.1"
     babel-plugin-macros: "npm:^2.8.0"
     babel-plugin-transform-typescript-metadata: "npm:^0.3.1"
@@ -3506,7 +3506,6 @@ __metadata:
     columnify: "npm:^1.6.0"
     detect-port: "npm:^1.5.1"
     fast-glob: "npm:3.2.7"
-    fs-extra: "npm:^11.1.0"
     ignore: "npm:^5.0.4"
     js-tokens: "npm:^4.0.0"
     jsonc-parser: "npm:3.2.0"
@@ -3524,7 +3523,7 @@ __metadata:
   peerDependenciesMeta:
     verdaccio:
       optional: true
-  checksum: 10c0/81e6a25c19317cc7c4bc34ac8fdda84da955d8cde77964f60cf17c3ec0b520b1944a6f014493db97ba4f6ca80eaef93d64d4e133cd165e78eb3978af6dcd5541
+  checksum: 10c0/812f510da9bd25ccf6cb009f4d89729b28af5a82d061018eb2e1b2120b89f3f19fcf974c02d1a9150c3769bcd4f02721f43d4530506fd880b54b8c56c6483624
   languageName: node
   linkType: hard
 
@@ -3551,9 +3550,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nx/nx-darwin-arm64@npm:19.7.3":
-  version: 19.7.3
-  resolution: "@nx/nx-darwin-arm64@npm:19.7.3"
+"@nx/nx-darwin-arm64@npm:19.8.0":
+  version: 19.8.0
+  resolution: "@nx/nx-darwin-arm64@npm:19.8.0"
   conditions: os=darwin & cpu=arm64
   languageName: node
   linkType: hard
@@ -3572,9 +3571,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nx/nx-darwin-x64@npm:19.7.3":
-  version: 19.7.3
-  resolution: "@nx/nx-darwin-x64@npm:19.7.3"
+"@nx/nx-darwin-x64@npm:19.8.0":
+  version: 19.8.0
+  resolution: "@nx/nx-darwin-x64@npm:19.8.0"
   conditions: os=darwin & cpu=x64
   languageName: node
   linkType: hard
@@ -3593,9 +3592,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nx/nx-freebsd-x64@npm:19.7.3":
-  version: 19.7.3
-  resolution: "@nx/nx-freebsd-x64@npm:19.7.3"
+"@nx/nx-freebsd-x64@npm:19.8.0":
+  version: 19.8.0
+  resolution: "@nx/nx-freebsd-x64@npm:19.8.0"
   conditions: os=freebsd & cpu=x64
   languageName: node
   linkType: hard
@@ -3614,9 +3613,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nx/nx-linux-arm-gnueabihf@npm:19.7.3":
-  version: 19.7.3
-  resolution: "@nx/nx-linux-arm-gnueabihf@npm:19.7.3"
+"@nx/nx-linux-arm-gnueabihf@npm:19.8.0":
+  version: 19.8.0
+  resolution: "@nx/nx-linux-arm-gnueabihf@npm:19.8.0"
   conditions: os=linux & cpu=arm
   languageName: node
   linkType: hard
@@ -3635,9 +3634,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nx/nx-linux-arm64-gnu@npm:19.7.3":
-  version: 19.7.3
-  resolution: "@nx/nx-linux-arm64-gnu@npm:19.7.3"
+"@nx/nx-linux-arm64-gnu@npm:19.8.0":
+  version: 19.8.0
+  resolution: "@nx/nx-linux-arm64-gnu@npm:19.8.0"
   conditions: os=linux & cpu=arm64 & libc=glibc
   languageName: node
   linkType: hard
@@ -3656,9 +3655,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nx/nx-linux-arm64-musl@npm:19.7.3":
-  version: 19.7.3
-  resolution: "@nx/nx-linux-arm64-musl@npm:19.7.3"
+"@nx/nx-linux-arm64-musl@npm:19.8.0":
+  version: 19.8.0
+  resolution: "@nx/nx-linux-arm64-musl@npm:19.8.0"
   conditions: os=linux & cpu=arm64 & libc=musl
   languageName: node
   linkType: hard
@@ -3677,9 +3676,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nx/nx-linux-x64-gnu@npm:19.7.3":
-  version: 19.7.3
-  resolution: "@nx/nx-linux-x64-gnu@npm:19.7.3"
+"@nx/nx-linux-x64-gnu@npm:19.8.0":
+  version: 19.8.0
+  resolution: "@nx/nx-linux-x64-gnu@npm:19.8.0"
   conditions: os=linux & cpu=x64 & libc=glibc
   languageName: node
   linkType: hard
@@ -3698,9 +3697,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nx/nx-linux-x64-musl@npm:19.7.3":
-  version: 19.7.3
-  resolution: "@nx/nx-linux-x64-musl@npm:19.7.3"
+"@nx/nx-linux-x64-musl@npm:19.8.0":
+  version: 19.8.0
+  resolution: "@nx/nx-linux-x64-musl@npm:19.8.0"
   conditions: os=linux & cpu=x64 & libc=musl
   languageName: node
   linkType: hard
@@ -3719,9 +3718,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nx/nx-win32-arm64-msvc@npm:19.7.3":
-  version: 19.7.3
-  resolution: "@nx/nx-win32-arm64-msvc@npm:19.7.3"
+"@nx/nx-win32-arm64-msvc@npm:19.8.0":
+  version: 19.8.0
+  resolution: "@nx/nx-win32-arm64-msvc@npm:19.8.0"
   conditions: os=win32 & cpu=arm64
   languageName: node
   linkType: hard
@@ -3740,9 +3739,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nx/nx-win32-x64-msvc@npm:19.7.3":
-  version: 19.7.3
-  resolution: "@nx/nx-win32-x64-msvc@npm:19.7.3"
+"@nx/nx-win32-x64-msvc@npm:19.8.0":
+  version: 19.8.0
+  resolution: "@nx/nx-win32-x64-msvc@npm:19.8.0"
   conditions: os=win32 & cpu=x64
   languageName: node
   linkType: hard
@@ -3777,18 +3776,18 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nx/workspace@npm:19.7.3":
-  version: 19.7.3
-  resolution: "@nx/workspace@npm:19.7.3"
+"@nx/workspace@npm:19.8.0":
+  version: 19.8.0
+  resolution: "@nx/workspace@npm:19.8.0"
   dependencies:
-    "@nrwl/workspace": "npm:19.7.3"
-    "@nx/devkit": "npm:19.7.3"
+    "@nrwl/workspace": "npm:19.8.0"
+    "@nx/devkit": "npm:19.8.0"
     chalk: "npm:^4.1.0"
     enquirer: "npm:~2.3.6"
-    nx: "npm:19.7.3"
+    nx: "npm:19.8.0"
     tslib: "npm:^2.3.0"
     yargs-parser: "npm:21.1.1"
-  checksum: 10c0/c20cde59b7b4d7c89591a67e02db1deae36be58b6ea6e9d5b746f3c3e1a5cb20d8d8d9d02b4419a1e25c56c87bb357138754bc3b0e4bcda9726f058b5009c756
+  checksum: 10c0/29e5bbb48bb678e77f9250ae244864f149a238734689f2237bf17fea94602cb7b382d8a5e3e9a3c49b6890c7bc3db52ef79b16e5a8df3997c4bfba41aa95aaba
   languageName: node
   linkType: hard
 
@@ -4153,7 +4152,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@sinonjs/commons@npm:^3.0.0":
+"@sinonjs/commons@npm:^3.0.0, @sinonjs/commons@npm:^3.0.1":
   version: 3.0.1
   resolution: "@sinonjs/commons@npm:3.0.1"
   dependencies:
@@ -4162,7 +4161,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@sinonjs/fake-timers@npm:^10.0.2, @sinonjs/fake-timers@npm:^10.3.0":
+"@sinonjs/fake-timers@npm:11.2.2":
+  version: 11.2.2
+  resolution: "@sinonjs/fake-timers@npm:11.2.2"
+  dependencies:
+    "@sinonjs/commons": "npm:^3.0.0"
+  checksum: 10c0/a4218efa6fdafda622d02d4c0a6ab7df3641cb038bb0b14f0a3ee56f50c95aab4f1ab2d7798ce928b40c6fc1839465a558c9393a77e4dca879e1b2f8d60d8136
+  languageName: node
+  linkType: hard
+
+"@sinonjs/fake-timers@npm:^10.0.2":
   version: 10.3.0
   resolution: "@sinonjs/fake-timers@npm:10.3.0"
   dependencies:
@@ -4171,12 +4179,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@sinonjs/fake-timers@npm:^11.2.2":
-  version: 11.2.2
-  resolution: "@sinonjs/fake-timers@npm:11.2.2"
+"@sinonjs/fake-timers@npm:^13.0.1":
+  version: 13.0.2
+  resolution: "@sinonjs/fake-timers@npm:13.0.2"
   dependencies:
-    "@sinonjs/commons": "npm:^3.0.0"
-  checksum: 10c0/a4218efa6fdafda622d02d4c0a6ab7df3641cb038bb0b14f0a3ee56f50c95aab4f1ab2d7798ce928b40c6fc1839465a558c9393a77e4dca879e1b2f8d60d8136
+    "@sinonjs/commons": "npm:^3.0.1"
+  checksum: 10c0/fc68fd872dff8a3457f7b0cf4e3c06db5ab35332a19da58165bb2e02b2016911dd77c6d5bd8995f8d9e012f3379b065ea37c3f240d0aa6716a591ba89912a486
   languageName: node
   linkType: hard
 
@@ -4191,10 +4199,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@sinonjs/text-encoding@npm:^0.7.2":
-  version: 0.7.2
-  resolution: "@sinonjs/text-encoding@npm:0.7.2"
-  checksum: 10c0/583a45bf3643169e313ff9d4395aff28b0c4f330d3697e252c3effc13d4303ee30f83df542732c1a68617720e4ea6fc08d48a3d9151c9b354a7fc356a8e9b162
+"@sinonjs/text-encoding@npm:^0.7.3":
+  version: 0.7.3
+  resolution: "@sinonjs/text-encoding@npm:0.7.3"
+  checksum: 10c0/b112d1e97af7f99fbdc63c7dbcd35d6a60764dfec85cfcfff532e55cce8ecd8453f9fa2139e70aea47142c940fd90cd201d19f370b9a0141700d8a6de3116815
   languageName: node
   linkType: hard
 
@@ -5364,12 +5372,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/sinon@npm:^10.0.10":
-  version: 10.0.20
-  resolution: "@types/sinon@npm:10.0.20"
+"@types/sinon@npm:^17.0.3":
+  version: 17.0.3
+  resolution: "@types/sinon@npm:17.0.3"
   dependencies:
     "@types/sinonjs__fake-timers": "npm:*"
-  checksum: 10c0/8c523a3ac2bf5bd48a481cb340b3db0176b65d1190a9dfac41044ad47ae7e2c3f6ad40a564dc831c5adf3b4ab4d983cc4993b4053217afe11b3985875b9f3fee
+  checksum: 10c0/6fc3aa497fd87826375de3dbddc2bf01c281b517c32c05edf95b5ad906382dc221bca01ca9d44fc7d5cb4c768f996f268154e87633a45b3c0b5cddca7ef5e2be
   languageName: node
   linkType: hard
 
@@ -5840,14 +5848,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"aws-sdk-client-mock@npm:^4.0.1":
-  version: 4.0.1
-  resolution: "aws-sdk-client-mock@npm:4.0.1"
+"aws-sdk-client-mock@npm:^4.0.2":
+  version: 4.0.2
+  resolution: "aws-sdk-client-mock@npm:4.0.2"
   dependencies:
-    "@types/sinon": "npm:^10.0.10"
-    sinon: "npm:^16.1.3"
+    "@types/sinon": "npm:^17.0.3"
+    sinon: "npm:^18.0.1"
     tslib: "npm:^2.1.0"
-  checksum: 10c0/e6baaf5bcec75d0e327ca02faef560254f27647d31f8a6bd595d4bff660c00bae61fa0b8825133557e6f87691a8ef1f1ae5c94fb2532340d17520d24f7d162bd
+  checksum: 10c0/3028bb4997e51efa8669f96e01b6c3841f0c5cfb4ae8e3087e31b556dc34193619cd7152f4c30eb65f5c851e384709f915a2d6ea6dd52f7ece7216a9942c213b
   languageName: node
   linkType: hard
 
@@ -6753,7 +6761,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"diff@npm:^5.1.0":
+"diff@npm:^5.2.0":
   version: 5.2.0
   resolution: "diff@npm:5.2.0"
   checksum: 10c0/aed0941f206fe261ecb258dc8d0ceea8abbde3ace5827518ff8d302f0fc9cc81ce116c4d8f379151171336caf0516b79e01abdc1ed1201b6440d895a66689eb4
@@ -8893,7 +8901,7 @@ __metadata:
   dependencies:
     "@nx/eslint": "npm:19.5.7"
     "@nx/jest": "npm:19.5.4"
-    "@nx/js": "npm:^19.7.3"
+    "@nx/js": "npm:^19.8.0"
     "@swc-node/register": "npm:~1.10.9"
     "@swc/core": "npm:~1.7.22"
     "@swc/helpers": "npm:~0.5.12"
@@ -9380,16 +9388,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"nise@npm:^5.1.4":
-  version: 5.1.9
-  resolution: "nise@npm:5.1.9"
+"nise@npm:^6.0.0":
+  version: 6.1.1
+  resolution: "nise@npm:6.1.1"
   dependencies:
-    "@sinonjs/commons": "npm:^3.0.0"
-    "@sinonjs/fake-timers": "npm:^11.2.2"
-    "@sinonjs/text-encoding": "npm:^0.7.2"
+    "@sinonjs/commons": "npm:^3.0.1"
+    "@sinonjs/fake-timers": "npm:^13.0.1"
+    "@sinonjs/text-encoding": "npm:^0.7.3"
     just-extend: "npm:^6.2.0"
-    path-to-regexp: "npm:^6.2.1"
-  checksum: 10c0/a44318e6de738b34a1f51b4b478f97f5b40a5a27175be4bf13f6e5b8e67aa70d0b3f51c77a966d6617fccdc3b436c675a89be57424833e6d8a290367faa66b28
+    path-to-regexp: "npm:^8.1.0"
+  checksum: 10c0/09471adb738dc3be2981cc7815c90879ed6a5a3e162202ca66e12f9a5a0956bea718d0ec2f0c07acc26e3f958481b8fb30c30da76c13620e922f3b9dcd249c50
   languageName: node
   linkType: hard
 
@@ -9654,22 +9662,22 @@ __metadata:
   languageName: node
   linkType: hard
 
-"nx@npm:19.7.3":
-  version: 19.7.3
-  resolution: "nx@npm:19.7.3"
+"nx@npm:19.8.0":
+  version: 19.8.0
+  resolution: "nx@npm:19.8.0"
   dependencies:
     "@napi-rs/wasm-runtime": "npm:0.2.4"
-    "@nrwl/tao": "npm:19.7.3"
-    "@nx/nx-darwin-arm64": "npm:19.7.3"
-    "@nx/nx-darwin-x64": "npm:19.7.3"
-    "@nx/nx-freebsd-x64": "npm:19.7.3"
-    "@nx/nx-linux-arm-gnueabihf": "npm:19.7.3"
-    "@nx/nx-linux-arm64-gnu": "npm:19.7.3"
-    "@nx/nx-linux-arm64-musl": "npm:19.7.3"
-    "@nx/nx-linux-x64-gnu": "npm:19.7.3"
-    "@nx/nx-linux-x64-musl": "npm:19.7.3"
-    "@nx/nx-win32-arm64-msvc": "npm:19.7.3"
-    "@nx/nx-win32-x64-msvc": "npm:19.7.3"
+    "@nrwl/tao": "npm:19.8.0"
+    "@nx/nx-darwin-arm64": "npm:19.8.0"
+    "@nx/nx-darwin-x64": "npm:19.8.0"
+    "@nx/nx-freebsd-x64": "npm:19.8.0"
+    "@nx/nx-linux-arm-gnueabihf": "npm:19.8.0"
+    "@nx/nx-linux-arm64-gnu": "npm:19.8.0"
+    "@nx/nx-linux-arm64-musl": "npm:19.8.0"
+    "@nx/nx-linux-x64-gnu": "npm:19.8.0"
+    "@nx/nx-linux-x64-musl": "npm:19.8.0"
+    "@nx/nx-win32-arm64-msvc": "npm:19.8.0"
+    "@nx/nx-win32-x64-msvc": "npm:19.8.0"
     "@yarnpkg/lockfile": "npm:^1.1.0"
     "@yarnpkg/parsers": "npm:3.0.0-rc.46"
     "@zkochan/js-yaml": "npm:0.0.7"
@@ -9735,7 +9743,7 @@ __metadata:
   bin:
     nx: bin/nx.js
     nx-cloud: bin/nx-cloud.js
-  checksum: 10c0/486d9be5076e7ee012fb63b199b178c7386e9d9a8e918ea3705d9203481e991bc1fa2abc1f66b3c3f402b81db1c5ef3af8bf5ee7dcd142e356828da44d3cb217
+  checksum: 10c0/aa9d60ff0933ccbc6ddae0362f765750218658fbb2f8ac88d5e30575f94ad11c0d733f690a362a53092d43198f22143396e4436c8c5d1dbd803453339317f65d
   languageName: node
   linkType: hard
 
@@ -9988,10 +9996,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"path-to-regexp@npm:^6.2.1":
-  version: 6.2.2
-  resolution: "path-to-regexp@npm:6.2.2"
-  checksum: 10c0/4b60852d3501fd05ca9dd08c70033d73844e5eca14e41f499f069afa8364f780f15c5098002f93bd42af8b3514de62ac6e82a53b5662de881d2b08c9ef21ea6b
+"path-to-regexp@npm:^8.1.0":
+  version: 8.1.0
+  resolution: "path-to-regexp@npm:8.1.0"
+  checksum: 10c0/1c46be3806ab081bedc51eb238fcb026b61b15f19e8924b26e7dad88812dda499efe357a780665dc915dcab3be67213f145f5e2921b8fc8c6c497608d4e092ed
   languageName: node
   linkType: hard
 
@@ -10558,17 +10566,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"sinon@npm:^16.1.3":
-  version: 16.1.3
-  resolution: "sinon@npm:16.1.3"
+"sinon@npm:^18.0.1":
+  version: 18.0.1
+  resolution: "sinon@npm:18.0.1"
   dependencies:
-    "@sinonjs/commons": "npm:^3.0.0"
-    "@sinonjs/fake-timers": "npm:^10.3.0"
+    "@sinonjs/commons": "npm:^3.0.1"
+    "@sinonjs/fake-timers": "npm:11.2.2"
     "@sinonjs/samsam": "npm:^8.0.0"
-    diff: "npm:^5.1.0"
-    nise: "npm:^5.1.4"
-    supports-color: "npm:^7.2.0"
-  checksum: 10c0/a30e80cb9293cc2954074a461349ac7df1fd0c1ed746c6828b65ea908711b8b4b6598182252c3971bf60bba134a492dc1c294b54919f073f3b29acced76de411
+    diff: "npm:^5.2.0"
+    nise: "npm:^6.0.0"
+    supports-color: "npm:^7"
+  checksum: 10c0/c4554b8d9654d42fc4baefecd3b5ac42bcce73ad926d58521233d9c355dc2c1a0d73c55e5b2c929b6814e528cd9b54bc61096b9288579f9b284edd6e3d2da3df
   languageName: node
   linkType: hard
 
@@ -10837,7 +10845,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"supports-color@npm:^7.1.0, supports-color@npm:^7.2.0":
+"supports-color@npm:^7, supports-color@npm:^7.1.0":
   version: 7.2.0
   resolution: "supports-color@npm:7.2.0"
   dependencies:
