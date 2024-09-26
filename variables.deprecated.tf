@@ -21,14 +21,6 @@ variable "enable_event_rule_binaries_syncer" {
   }
 }
 
-
-# tflint-ignore: terraform_naming_convention
-variable "runners_scale_up_Lambda_memory_size" {
-  description = "Memory size limit in MB for scale-up lambda."
-  type        = number
-  default     = null
-}
-
 # tflint-ignore: terraform_unused_declarations
 variable "enable_metrics_control_plane" {
   description = "(Experimental) Enable or disable the metrics for the module. Feature can change or renamed without a major release."
