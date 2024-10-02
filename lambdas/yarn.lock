@@ -204,7 +204,7 @@ __metadata:
     "@octokit/core": "npm:5.2.0"
     "@octokit/plugin-throttling": "npm:8.2.0"
     "@octokit/rest": "npm:20.1.1"
-    "@octokit/types": "npm:^13.5.0"
+    "@octokit/types": "npm:^13.6.0"
     "@trivago/prettier-plugin-sort-imports": "npm:^4.3.0"
     "@types/aws-lambda": "npm:^8.10.143"
     "@types/jest": "npm:^29.5.12"
@@ -250,7 +250,7 @@ __metadata:
     "@vercel/ncc": "npm:^0.38.1"
     aws-sdk-client-mock: "npm:^4.0.2"
     aws-sdk-client-mock-jest: "npm:^4.0.1"
-    axios: "npm:^1.7.5"
+    axios: "npm:^1.7.7"
     eslint: "npm:^8.57.0"
     eslint-plugin-prettier: "npm:5.2.1"
     jest: "npm:^29.7.0"
@@ -302,7 +302,7 @@ __metadata:
     "@aws-sdk/client-sqs": "npm:^3.658.1"
     "@middy/core": "npm:^4.7.0"
     "@octokit/rest": "npm:20.1.1"
-    "@octokit/types": "npm:^13.5.0"
+    "@octokit/types": "npm:^13.6.0"
     "@octokit/webhooks": "npm:^12.2.0"
     "@trivago/prettier-plugin-sort-imports": "npm:^4.3.0"
     "@types/aws-lambda": "npm:^8.10.143"
@@ -6044,7 +6044,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"axios@npm:^1.7.2, axios@npm:^1.7.4, axios@npm:^1.7.5":
+"axios@npm:^1.7.2, axios@npm:^1.7.4":
   version: 1.7.5
   resolution: "axios@npm:1.7.5"
   dependencies:
@@ -6052,6 +6052,17 @@ __metadata:
     form-data: "npm:^4.0.0"
     proxy-from-env: "npm:^1.1.0"
   checksum: 10c0/1d5daeb28b3d1bb2a7b9f0743433c4bfbeaddc15461e50ebde487eec6c009af2515749d5261096dd430c90cd891bd310bcba5ec3967bae2033c4a307f58a6ad3
+  languageName: node
+  linkType: hard
+
+"axios@npm:^1.7.7":
+  version: 1.7.7
+  resolution: "axios@npm:1.7.7"
+  dependencies:
+    follow-redirects: "npm:^1.15.6"
+    form-data: "npm:^4.0.0"
+    proxy-from-env: "npm:^1.1.0"
+  checksum: 10c0/4499efc89e86b0b49ffddc018798de05fab26e3bf57913818266be73279a6418c3ce8f9e934c7d2d707ab8c095e837fc6c90608fb7715b94d357720b5f568af7
   languageName: node
   linkType: hard
 

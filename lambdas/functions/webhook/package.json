@@ -42,7 +42,7 @@
     "@aws-sdk/client-sqs": "^3.658.1",
     "@middy/core": "^4.7.0",
     "@octokit/rest": "20.1.1",
-    "@octokit/types": "^13.5.0",
+    "@octokit/types": "^13.6.0",
     "@octokit/webhooks": "^12.2.0",
     "aws-lambda": "^1.0.7"
   },

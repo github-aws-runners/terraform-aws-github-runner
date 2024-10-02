@@ -53,7 +53,7 @@ No modules.
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_lambdas"></a> [lambdas](#input\_lambdas) | Name and tag for lambdas to download. | <pre>list(object({<br>    name = string<br>    tag  = string<br>  }))</pre> | n/a | yes |
+| <a name="input_lambdas"></a> [lambdas](#input\_lambdas) | Name and tag for lambdas to download. | <pre>list(object({<br/>    name = string<br/>    tag  = string<br/>  }))</pre> | n/a | yes |
 
 ## Outputs
 
