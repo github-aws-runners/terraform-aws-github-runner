@@ -6,10 +6,11 @@ import nock from 'nock';
 import workFlowJobEvent from '../../test/resources/github_workflowjob_event.json';
 import runnerConfig from '../../test/resources/multi_runner_configurations.json';
 
-import { RunnerConfig, sendWebhookEventToWorkflowJobQueue } from '../sqs';
-import { handle } from '.';
+import { RunnerConfig } from '../sqs';
+import { checkBodySize, handle } from '.';
 import { Config } from '../ConfigResolver';
-import { dispatch as dispatch } from '../runners/dispatch';
+import { dispatch } from '../runners/dispatch';
+import { IncomingHttpHeaders } from 'http';
 
 jest.mock('../sqs');
 jest.mock('../runners/dispatch');
@@ -22,8 +23,6 @@ const cleanEnv = process.env;
 const webhooks = new Webhooks({
   secret: 'TEST_SECRET',
 });
-
-const sendWebhookEventToWorkflowJobQueueMock = jest.mocked(sendWebhookEventToWorkflowJobQueue);
 
 describe('handle GitHub webhook events', () => {
   let originalError: Console['error'];
@@ -50,7 +49,29 @@ describe('handle GitHub webhook events', () => {
     await expect(handle({}, '', config)).rejects.toMatchObject({
       statusCode: 500,
     });
-    expect(sendWebhookEventToWorkflowJobQueueMock).not.toHaveBeenCalled();
+  });
+
+  it('should accept large events', async () => {
+    // setup
+    mocked(dispatch).mockImplementation(() => {
+      return Promise.resolve({ body: 'test', statusCode: 201 });
+    });
+
+    const event = JSON.stringify(workFlowJobEvent);
+
+    // act and assert
+    const result = handle(
+      {
+        'X-Hub-Signature-256': await webhooks.sign(event),
+        'X-GitHub-Event': 'workflow_job',
+        'content-length': (1024 * 256 + 1).toString(),
+      },
+      event,
+      config,
+    );
+    expect(result).resolves.toMatchObject({
+      statusCode: 201,
+    });
   });
 
   it('should reject with 403 if invalid signature', async () => {
@@ -62,7 +83,6 @@ describe('handle GitHub webhook events', () => {
     ).rejects.toMatchObject({
       statusCode: 401,
     });
-    expect(sendWebhookEventToWorkflowJobQueueMock).not.toHaveBeenCalled();
   });
 
   it('should reject with 202 if event type is not supported', async () => {
@@ -73,10 +93,9 @@ describe('handle GitHub webhook events', () => {
     ).rejects.toMatchObject({
       statusCode: 202,
     });
-    expect(sendWebhookEventToWorkflowJobQueueMock).not.toHaveBeenCalled();
   });
 
-  it('should reject with 201 if valid signature', async () => {
+  it('should accept with 201 if valid signature', async () => {
     const event = JSON.stringify(workFlowJobEvent);
 
     mocked(dispatch).mockImplementation(() => {
@@ -88,7 +107,33 @@ describe('handle GitHub webhook events', () => {
     ).resolves.toMatchObject({
       statusCode: 201,
     });
-    expect(sendWebhookEventToWorkflowJobQueueMock).toHaveBeenCalled();
+  });
+});
+
+describe('Check message size (checkBodySize)', () => {
+  it('should return sizeExceeded if body is to big', () => {
+    const body = JSON.stringify({ a: 'a'.repeat(1024 * 256) });
+    const headers: IncomingHttpHeaders = {
+      'content-length': Buffer.byteLength(body).toString(),
+    };
+    const result = checkBodySize(body, headers);
+    expect(result.sizeExceeded).toBe(true);
+  });
+
+  it('should return sizeExceeded if body is to big and content-length is not available', () => {
+    const body = JSON.stringify({ a: 'a'.repeat(1024 * 256) });
+    const headers: IncomingHttpHeaders = {};
+    const result = checkBodySize(body, headers);
+    expect(result.sizeExceeded).toBe(true);
+  });
+
+  it('should return sizeExceeded if body is to big and content-length is not a number', () => {
+    const body = JSON.stringify({ a: 'a'.repeat(1024 * 256) });
+    const headers: IncomingHttpHeaders = {
+      'content-length': 'NaN',
+    };
+    const result = checkBodySize(body, headers);
+    expect(result.sizeExceeded).toBe(true);
   });
 });
 

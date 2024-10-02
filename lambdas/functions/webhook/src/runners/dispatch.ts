@@ -2,7 +2,7 @@ import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import { WorkflowJobEvent } from '@octokit/webhooks-types';
 
 import { Response } from '../lambda';
-import { RunnerMatcherConfig, sendActionRequest } from '../sqs';
+import { RunnerMatcherConfig, sendActionRequest, sendWebhookEventToWorkflowJobQueue } from '../sqs';
 import { Config } from '../ConfigResolver';
 import ValidationError from '../ValidationError';
 
@@ -12,7 +12,8 @@ export async function dispatch(event: WorkflowJobEvent, eventType: string, confi
   validateRepoInAllowList(event, config);
 
   const result = await handleWorkflowJob(event, eventType, Config.matcherConfig!);
-  logger.info(result.body);
+  await sendWebhookEventToWorkflowJobQueue({ workflowJobEvent: event }, config);
+
   return result;
 }
 
@@ -45,7 +46,7 @@ async function handleWorkflowJob(
           queueFifo: queue.fifo,
           repoOwnerType: body.repository.owner.type,
         });
-        logger.info(`Successfully queued job for ${body.repository.full_name} to the queue ${queue.id}`);
+        logger.info(`Successfully dispatched job for ${body.repository.full_name} to the queue ${queue.id}`);
         return {
           statusCode: 201,
           body: `Successfully queued job for ${body.repository.full_name} to the queue ${queue.id}`,

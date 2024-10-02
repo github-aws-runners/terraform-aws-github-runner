@@ -13,6 +13,7 @@ import { Config } from '../ConfigResolver';
 jest.mock('../sqs');
 jest.mock('@aws-github-runner/aws-ssm-util');
 
+const sendWebhookEventToWorkflowJobQueueMock = jest.mocked(sendActionRequest);
 const GITHUB_APP_WEBHOOK_SECRET = 'TEST_SECRET';
 
 const cleanEnv = process.env;
@@ -53,6 +54,7 @@ describe('Dispatcher', () => {
         statusCode: 403,
       });
       expect(sendActionRequest).not.toHaveBeenCalled();
+      expect(sendWebhookEventToWorkflowJobQueueMock).not.toHaveBeenCalled();
     });
 
     it('should handle workflow_job events without installation id', async () => {
@@ -61,6 +63,7 @@ describe('Dispatcher', () => {
       const resp = await dispatch(event, 'workflow_job', config);
       expect(resp.statusCode).toBe(201);
       expect(sendActionRequest).toHaveBeenCalled();
+      expect(sendWebhookEventToWorkflowJobQueueMock).toHaveBeenCalled();
     });
 
     it('should handle workflow_job events from allow listed repositories', async () => {
@@ -68,7 +71,8 @@ describe('Dispatcher', () => {
       const event = workFlowJobEvent as unknown as WorkflowJobEvent;
       const resp = await dispatch(event, 'workflow_job', config);
       expect(resp.statusCode).toBe(201);
-      expect(sendActionRequest).toBeCalled();
+      expect(sendActionRequest).toHaveBeenCalled();
+      expect(sendWebhookEventToWorkflowJobQueueMock).toHaveBeenCalled();
     });
 
     it('should match labels', async () => {
@@ -102,6 +106,7 @@ describe('Dispatcher', () => {
         queueFifo: false,
         repoOwnerType: 'Organization',
       });
+      expect(sendWebhookEventToWorkflowJobQueueMock).toHaveBeenCalled();
     });
 
     it('should sort matcher with exact first.', async () => {
@@ -150,6 +155,7 @@ describe('Dispatcher', () => {
         queueFifo: false,
         repoOwnerType: 'Organization',
       });
+      expect(sendWebhookEventToWorkflowJobQueueMock).toHaveBeenCalled();
     });
 
     it('should not accept jobs where not all labels are supported (single matcher).', async () => {
@@ -172,7 +178,8 @@ describe('Dispatcher', () => {
       } as unknown as WorkflowJobEvent;
       const resp = await dispatch(event, 'workflow_job', config);
       expect(resp.statusCode).toBe(202);
-      expect(sendActionRequest).not.toBeCalled();
+      expect(sendActionRequest).not.toHaveBeenCalled();
+      expect(sendWebhookEventToWorkflowJobQueueMock).not.toHaveBeenCalled();
     });
   });
 
