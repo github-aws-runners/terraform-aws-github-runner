@@ -4,7 +4,7 @@ import { mocked } from 'jest-mock';
 
 import { githubWebhook } from './lambda';
 import { handle } from './webhook';
-import ValidationError from './ValidatonError';
+import ValidationError from './ValidationError';
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
 
 const event: APIGatewayEvent = {
@@ -85,12 +85,12 @@ describe('Test scale up lambda wrapper.', () => {
     const mock = mocked(handle);
     mock.mockImplementation(() => {
       return new Promise((resolve) => {
-        resolve({ statusCode: 200 });
+        resolve({ body: 'test', statusCode: 200 });
       });
     });
 
     const result = await githubWebhook(event, context);
-    expect(result).toEqual({ statusCode: 200 });
+    expect(result).toEqual({ body: 'test', statusCode: 200 });
   });
 
   it('An expected error, resolve.', async () => {
@@ -98,7 +98,7 @@ describe('Test scale up lambda wrapper.', () => {
     mock.mockRejectedValue(new ValidationError(400, 'some error'));
 
     const result = await githubWebhook(event, context);
-    expect(result).toMatchObject({ statusCode: 400 });
+    expect(result).toMatchObject({ body: 'some error', statusCode: 400 });
   });
 
   it('Errors are not thrown.', async () => {
@@ -106,7 +106,7 @@ describe('Test scale up lambda wrapper.', () => {
     const logSpy = jest.spyOn(logger, 'error');
     mock.mockRejectedValue(new Error('some error'));
     const result = await githubWebhook(event, context);
-    expect(result).toMatchObject({ statusCode: 500 });
-    expect(logSpy).toBeCalledTimes(1);
+    expect(result).toMatchObject({ body: 'Check the Lambda logs for the error details.', statusCode: 500 });
+    expect(logSpy).toHaveBeenCalledTimes(1);
   });
 });

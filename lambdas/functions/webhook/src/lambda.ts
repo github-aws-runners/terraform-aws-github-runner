@@ -5,11 +5,11 @@ import { APIGatewayEvent, Context } from 'aws-lambda';
 import { handle } from './webhook';
 import { Config } from './ConfigResolver';
 import { IncomingHttpHeaders } from 'http';
-import ValidationError from './ValidatonError';
+import ValidationError from './ValidationError';
 
 export interface Response {
   statusCode: number;
-  body?: string;
+  body: string;
 }
 
 middy(githubWebhook).use(captureLambdaHandler(tracer));
