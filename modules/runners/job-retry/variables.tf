@@ -5,6 +5,7 @@ variable "config" {
     `aws_partition`: Partition for the base arn if not 'aws'
     `architecture`: AWS Lambda architecture. Lambda functions using Graviton processors ('arm64') tend to have better price/performance than 'x86_64' functions.
     `environment_variables`: Environment variables for the lambda.
+    `enable_organization_runners`: Enable organization runners.
     `enable_metric`: Enable metric for the lambda. If `spot_warning` is set to true, the lambda will emit a metric when it detects a spot termination warning.
     'ghes_url': Optional GitHub Enterprise Server URL.
     'github_app_parameters': Parameter Store for GitHub App Parameters.
@@ -15,7 +16,7 @@ variable "config" {
     `logging_kms_key_id`: Specifies the kms key id to encrypt the logs with
     `logging_retention_in_days`: Specifies the number of days you want to retain log events for the lambda log group. Possible values are: 0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, and 3653.
     `memory_size`: Memory size linit in MB of the lambda.
-    `metrics_config`: Configuraiton to enable metrics creation by the lambda.
+    `metrics`: Configuration to enable metrics creation by the lambda.
     `prefix`: The prefix used for naming resources.
     `role_path`: The path that will be added to the role, if not set the environment name will be used.
     `role_permissions_boundary`: Permissions boundary that will be added to the created role for the lambda.
@@ -69,6 +70,8 @@ variable "config" {
     role_path                 = optional(string, null)
     role_permissions_boundary = optional(string, null)
     runtime                   = optional(string, null)
+    security_group_ids        = optional(list(string), [])
+    subnet_ids                = optional(list(string), [])
     s3_bucket                 = optional(string, null)
     s3_key                    = optional(string, null)
     s3_object_version         = optional(string, null)
