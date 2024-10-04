@@ -62,7 +62,7 @@ terraform output -raw webhook_secret
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_github_app"></a> [github\_app](#input\_github\_app) | GitHub App for API usages. | <pre>object({<br>    id         = string<br>    key_base64 = string<br>  })</pre> | n/a | yes |
+| <a name="input_github_app"></a> [github\_app](#input\_github\_app) | GitHub App for API usages. | <pre>object({<br/>    id         = string<br/>    key_base64 = string<br/>  })</pre> | n/a | yes |
 
 ## Outputs
 
