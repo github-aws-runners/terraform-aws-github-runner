@@ -1,5 +1,15 @@
 # Changelog
 
+## [5.16.2](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.16.1...v5.16.2) (2024-10-04)
+
+
+### Bug Fixes
+
+* **lambda:** bump @octokit/types from 13.5.0 to 13.6.0 in /lambdas in the octokit group ([#4154](https://github.com/philips-labs/terraform-aws-github-runner/issues/4154)) ([825b465](https://github.com/philips-labs/terraform-aws-github-runner/commit/825b465daeae53cc319d49b749d994c19057f5a1))
+* **lambda:** bump axios from 1.7.5 to 1.7.7 in /lambdas ([#4155](https://github.com/philips-labs/terraform-aws-github-runner/issues/4155)) ([82a19c1](https://github.com/philips-labs/terraform-aws-github-runner/commit/82a19c1fcec4c5ddc21bc03dda565ba57fa60388))
+* **lambda:** bump the aws group across 1 directory with 6 updates ([#4159](https://github.com/philips-labs/terraform-aws-github-runner/issues/4159)) ([fb67693](https://github.com/philips-labs/terraform-aws-github-runner/commit/fb67693a8a71c2013c24cc8b46317e051c66ee8b))
+* **lambda:** bump the aws group in /lambdas with 6 updates ([#4146](https://github.com/philips-labs/terraform-aws-github-runner/issues/4146)) ([43bf911](https://github.com/philips-labs/terraform-aws-github-runner/commit/43bf911b486fc585c3de4b61ec6aa47aef48e639))
+
 ## [5.16.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.16.0...v5.16.1) (2024-09-21)
 
 
