@@ -103,8 +103,15 @@ module "runners" {
   # Enable to track the spot instance termination warning
   # instance_termination_watcher = {
   #   enable         = true
-  #   enable_metric = {
-  #     spot_warning = true
+  # }
+
+  # Enable metrics
+  # metrics = {
+  #   enable = true
+  #   metric = {
+  #     enable_github_app_rate_limit    = true
+  #     enable_job_retry                = false
+  #     enable_spot_termination_warning = true
   #   }
   # }
 }

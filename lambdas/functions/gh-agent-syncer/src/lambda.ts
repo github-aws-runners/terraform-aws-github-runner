@@ -1,6 +1,6 @@
 import middy from '@middy/core';
-import { logger, setContext } from '@terraform-aws-github-runner/aws-powertools-util';
-import { captureLambdaHandler, tracer } from '@terraform-aws-github-runner/aws-powertools-util';
+import { logger, setContext } from '@aws-github-runner/aws-powertools-util';
+import { captureLambdaHandler, tracer } from '@aws-github-runner/aws-powertools-util';
 import { Context } from 'aws-lambda';
 
 import { sync } from './syncer/syncer';

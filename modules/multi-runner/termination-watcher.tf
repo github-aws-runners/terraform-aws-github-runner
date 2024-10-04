@@ -13,10 +13,10 @@ locals {
     logging_retention_in_days = var.logging_retention_in_days
     role_path                 = var.role_path
     role_permissions_boundary = var.role_permissions_boundary
-    metrics_namespace         = var.metrics_namespace
     s3_bucket                 = var.lambda_s3_bucket
     tracing_config            = var.tracing_config
     lambda_tags               = var.lambda_tags
+    metrics                   = var.metrics
   }
 }
 

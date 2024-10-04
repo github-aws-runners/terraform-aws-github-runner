@@ -1,0 +1,43 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ssm:GetParameter"
+      ],
+      "Resource": [
+        "${github_app_key_base64_arn}",
+        "${github_app_id_arn}"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "sqs:ReceiveMessage",
+        "sqs:GetQueueAttributes",
+        "sqs:DeleteMessage"
+      ],
+      "Resource": "${sqs_job_retry_queue_arn}"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "sqs:SendMessage",
+        "sqs:GetQueueAttributes"
+      ],
+      "Resource": "${sqs_build_queue_arn}"
+%{ if kms_key_arn != "" ~}
+    },
+    {
+        "Effect": "Allow",
+        "Action": [
+            "kms:Encrypt",
+            "kms:Decrypt",
+            "kms:GenerateDataKey"
+        ],
+        "Resource": "${kms_key_arn}"
+%{ endif ~}
+    }
+  ]
+}

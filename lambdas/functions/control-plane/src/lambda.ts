@@ -1,6 +1,6 @@
 import middy from '@middy/core';
-import { logger, setContext } from '@terraform-aws-github-runner/aws-powertools-util';
-import { captureLambdaHandler, tracer } from '@terraform-aws-github-runner/aws-powertools-util';
+import { logger, setContext } from '@aws-github-runner/aws-powertools-util';
+import { captureLambdaHandler, tracer } from '@aws-github-runner/aws-powertools-util';
 import { Context, SQSEvent } from 'aws-lambda';
 
 import { PoolEvent, adjust } from './pool/pool';
@@ -8,6 +8,7 @@ import ScaleError from './scale-runners/ScaleError';
 import { scaleDown } from './scale-runners/scale-down';
 import { scaleUp } from './scale-runners/scale-up';
 import { SSMCleanupOptions, cleanSSMTokens } from './scale-runners/ssm-housekeeper';
+import { checkAndRetryJob } from './scale-runners/job-retry';
 
 export async function scaleUpHandler(event: SQSEvent, context: Context): Promise<void> {
   setContext(context, 'lambda.ts');
@@ -72,5 +73,17 @@ export async function ssmHousekeeper(event: unknown, context: Context): Promise<
     await cleanSSMTokens(config);
   } catch (e) {
     logger.error(`${(e as Error).message}`, { error: e as Error });
+  }
+}
+
+export async function jobRetryCheck(event: SQSEvent, context: Context): Promise<void> {
+  setContext(context, 'lambda.ts');
+  logger.logEventIfEnabled(event);
+
+  for (const record of event.Records) {
+    const payload = JSON.parse(record.body);
+    await checkAndRetryJob(payload).catch((e) => {
+      logger.warn(`Error processing job retry: ${e.message}`, { error: e });
+    });
   }
 }

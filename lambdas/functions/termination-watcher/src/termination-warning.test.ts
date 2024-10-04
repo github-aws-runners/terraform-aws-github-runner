@@ -3,11 +3,11 @@ import { mockClient } from 'aws-sdk-client-mock';
 import 'aws-sdk-client-mock-jest';
 import { handle } from './termination-warning';
 import { SpotInterruptionWarning, SpotTerminationDetail } from './types';
-import { createSingleMetric } from '@terraform-aws-github-runner/aws-powertools-util';
-import { MetricUnits } from '@aws-lambda-powertools/metrics';
+import { createSingleMetric } from '@aws-github-runner/aws-powertools-util';
+import { MetricUnit } from '@aws-lambda-powertools/metrics';
 
-jest.mock('@terraform-aws-github-runner/aws-powertools-util', () => ({
-  ...jest.requireActual('@terraform-aws-github-runner/aws-powertools-util'),
+jest.mock('@aws-github-runner/aws-powertools-util', () => ({
+  ...jest.requireActual('@aws-github-runner/aws-powertools-util'),
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   createSingleMetric: jest.fn((name: string, unit: string, value: number, dimensions?: Record<string, string>) => {
     return {
@@ -63,7 +63,7 @@ describe('handle termination warning', () => {
 
     await handle(event, config);
     expect(createSingleMetric).toHaveBeenCalled();
-    expect(createSingleMetric).toHaveBeenCalledWith('SpotInterruptionWarning', MetricUnits.Count, 1, {
+    expect(createSingleMetric).toHaveBeenCalledWith('SpotInterruptionWarning', MetricUnit.Count, 1, {
       InstanceType: instance.InstanceType ? instance.InstanceType : '_FAIL_',
       Environment: instance.Tags?.find((tag) => tag.Key === 'ghr:environment')?.Value ?? '_FAIL_',
     });

@@ -1,5 +1,5 @@
 import middy from '@middy/core';
-import { logger, setContext, captureLambdaHandler, tracer } from '@terraform-aws-github-runner/aws-powertools-util';
+import { logger, setContext, captureLambdaHandler, tracer } from '@aws-github-runner/aws-powertools-util';
 import { APIGatewayEvent, Context } from 'aws-lambda';
 
 import { handle } from './webhook';

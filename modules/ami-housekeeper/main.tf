@@ -84,7 +84,7 @@ data "aws_iam_policy_document" "lambda_assume_role_policy" {
 }
 
 resource "aws_iam_role_policy" "lambda_logging" {
-  name = "${var.prefix}-lambda-logging-policy-ami-housekeeper"
+  name = "logging-policy"
   role = aws_iam_role.ami_housekeeper.id
 
   policy = templatefile("${path.module}/policies/lambda-cloudwatch.json", {
@@ -93,14 +93,14 @@ resource "aws_iam_role_policy" "lambda_logging" {
 }
 
 resource "aws_iam_role_policy" "ami_housekeeper" {
-  name = "${var.prefix}-lambda-ami-policy"
+  name = "lambda-ami-policy"
   role = aws_iam_role.ami_housekeeper.id
 
   policy = templatefile("${path.module}/policies/lambda-ami-housekeeper.json", {})
 }
 
 resource "aws_cloudwatch_event_rule" "ami_housekeeper" {
-  name                = "${var.prefix}-ami-housekeeper-rule"
+  name                = "${var.prefix}-ami-housekeeper"
   schedule_expression = var.lambda_schedule_expression
   tags                = var.tags
   state               = var.state_event_rule_ami_housekeeper
@@ -127,6 +127,7 @@ resource "aws_lambda_permission" "ami_housekeeper" {
 
 resource "aws_iam_role_policy" "ami_housekeeper_xray" {
   count  = var.tracing_config.mode != null ? 1 : 0
+  name   = "xray-policy"
   policy = data.aws_iam_policy_document.lambda_xray[0].json
   role   = aws_iam_role.ami_housekeeper.name
 }

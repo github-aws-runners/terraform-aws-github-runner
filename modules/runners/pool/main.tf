@@ -81,7 +81,7 @@ resource "aws_iam_role" "pool" {
 }
 
 resource "aws_iam_role_policy" "pool" {
-  name = "${var.config.prefix}-lambda-pool-policy"
+  name = "pool-policy"
   role = aws_iam_role.pool.name
   policy = templatefile("${path.module}/policies/lambda-pool.json", {
     arn_ssm_parameters_path_config = var.config.arn_ssm_parameters_path_config
@@ -94,7 +94,7 @@ resource "aws_iam_role_policy" "pool" {
 }
 
 resource "aws_iam_role_policy" "pool_logging" {
-  name = "${var.config.prefix}-lambda-logging"
+  name = "logging-policy"
   role = aws_iam_role.pool.name
   policy = templatefile("${path.module}/../policies/lambda-cloudwatch.json", {
     log_group_arn = aws_cloudwatch_log_group.pool.arn
@@ -116,36 +116,6 @@ data "aws_iam_policy_document" "lambda_assume_role_policy" {
       identifiers = ["lambda.amazonaws.com"]
     }
   }
-}
-
-# per config object one trigger is created to trigger the lambda.
-resource "aws_cloudwatch_event_rule" "pool" {
-  count = length(var.config.pool)
-
-  name                = "${var.config.prefix}-pool-${count.index}-rule"
-  schedule_expression = var.config.pool[count.index].schedule_expression
-  tags                = var.config.tags
-}
-
-resource "aws_cloudwatch_event_target" "pool" {
-  count = length(var.config.pool)
-
-  input = jsonencode({
-    poolSize = var.config.pool[count.index].size
-  })
-
-  rule = aws_cloudwatch_event_rule.pool[count.index].name
-  arn  = aws_lambda_function.pool.arn
-}
-
-resource "aws_lambda_permission" "pool" {
-  count = length(var.config.pool)
-
-  statement_id  = "AllowExecutionFromCloudWatch-${count.index}"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.pool.function_name
-  principal     = "events.amazonaws.com"
-  source_arn    = aws_cloudwatch_event_rule.pool[count.index].arn
 }
 
 resource "aws_iam_role_policy_attachment" "ami_id_ssm_parameter_read" {
@@ -174,6 +144,76 @@ data "aws_iam_policy_document" "lambda_xray" {
 
 resource "aws_iam_role_policy" "pool_xray" {
   count  = var.tracing_config.mode != null ? 1 : 0
+  name   = "xray-policy"
   policy = data.aws_iam_policy_document.lambda_xray[0].json
   role   = aws_iam_role.pool.name
+}
+
+resource "aws_scheduler_schedule_group" "pool" {
+  name_prefix = "${var.config.prefix}-pool"
+
+  tags = var.config.tags
+}
+
+data "aws_iam_policy_document" "scheduler_assume" {
+  statement {
+    sid     = "ScheduleGroupAssumeRole"
+    actions = ["sts:AssumeRole"]
+    principals {
+      type        = "Service"
+      identifiers = ["scheduler.amazonaws.com"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:SourceArn"
+      values   = [aws_scheduler_schedule_group.pool.arn]
+    }
+  }
+}
+
+data "aws_iam_policy_document" "scheduler" {
+  statement {
+    sid       = "InvokePoolLambda"
+    actions   = ["lambda:InvokeFunction"]
+    resources = [aws_lambda_function.pool.arn]
+  }
+}
+
+resource "aws_iam_role" "scheduler" {
+  name_prefix = "${var.config.prefix}-pool"
+
+  path                 = var.config.role_path
+  permissions_boundary = var.config.role_permissions_boundary
+
+  assume_role_policy = data.aws_iam_policy_document.scheduler_assume.json
+
+  inline_policy {
+    name   = "terraform"
+    policy = data.aws_iam_policy_document.scheduler.json
+  }
+
+  tags = var.config.tags
+}
+
+resource "aws_scheduler_schedule" "pool" {
+  for_each = { for i, v in var.config.pool : i => v }
+
+  name       = "${var.config.prefix}-pool-${each.key}-rule"
+  group_name = aws_scheduler_schedule_group.pool.name
+
+  flexible_time_window {
+    mode = "OFF"
+  }
+
+  schedule_expression          = each.value.schedule_expression
+  schedule_expression_timezone = each.value.schedule_expression_timezone
+
+  target {
+    arn      = aws_lambda_function.pool.arn
+    role_arn = aws_iam_role.scheduler.arn
+    input = jsonencode({
+      poolSize = each.value.size
+    })
+  }
 }

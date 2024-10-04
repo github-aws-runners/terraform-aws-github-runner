@@ -686,10 +686,11 @@ variable "pool_lambda_reserved_concurrent_executions" {
 }
 
 variable "pool_config" {
-  description = "The configuration for updating the pool. The `pool_size` to adjust to by the events triggered by the `schedule_expression`. For example you can configure a cron expression for weekdays to adjust the pool to 10 and another expression for the weekend to adjust the pool to 1."
+  description = "The configuration for updating the pool. The `pool_size` to adjust to by the events triggered by the `schedule_expression`. For example you can configure a cron expression for weekdays to adjust the pool to 10 and another expression for the weekend to adjust the pool to 1. Use `schedule_expression_timezone` to override the schedule time zone (defaults to UTC)."
   type = list(object({
-    schedule_expression = string
-    size                = number
+    schedule_expression          = string
+    schedule_expression_timezone = optional(string)
+    size                         = number
   }))
   default = []
 }
@@ -861,10 +862,18 @@ variable "runners_ssm_housekeeper" {
   default = { config = {} }
 }
 
-variable "metrics_namespace" {
-  description = "The namespace for the metrics created by the module. Merics will only be created if explicit enabled."
-  type        = string
-  default     = "GitHub Runners"
+variable "metrics" {
+  description = "Configuration for metrics created by the module, by default disabled to avoid additional costs. When metrics are enable all metrics are created unless explicit configured otherwise."
+  type = object({
+    enable    = optional(bool, false)
+    namespace = optional(string, "GitHub Runners")
+    metric = optional(object({
+      enable_github_app_rate_limit    = optional(bool, true)
+      enable_job_retry                = optional(bool, true)
+      enable_spot_termination_warning = optional(bool, true)
+    }), {})
+  })
+  default = {}
 }
 
 variable "instance_termination_watcher" {
@@ -872,7 +881,6 @@ variable "instance_termination_watcher" {
     Configuration for the instance termination watcher. This feature is Beta, changes will not trigger a major release as long in beta.
 
     `enable`: Enable or disable the spot termination watcher.
-    `enable_metrics`: Enable or disable the metrics for the spot termination watcher.
     `memory_size`: Memory size linit in MB of the lambda.
     `s3_key`: S3 key for syncer lambda function. Required if using S3 bucket to specify lambdas.
     `s3_object_version`: S3 object version for syncer lambda function. Useful if S3 versioning is enabled on source bucket.
@@ -881,10 +889,8 @@ variable "instance_termination_watcher" {
   EOF
 
   type = object({
-    enable = optional(bool, false)
-    enable_metric = optional(object({
-      spot_warning = optional(bool, false)
-    }))
+    enable            = optional(bool, false)
+    enable_metric     = optional(string, null) # deprectaed
     memory_size       = optional(number, null)
     s3_key            = optional(string, null)
     s3_object_version = optional(string, null)
@@ -892,6 +898,11 @@ variable "instance_termination_watcher" {
     zip               = optional(string, null)
   })
   default = {}
+
+  validation {
+    condition     = var.instance_termination_watcher.enable_metric == null
+    error_message = "The variable `instance_termination_watcher.enable_metric` is deprecated, use `metrics` instead."
+  }
 }
 
 variable "runners_ebs_optimized" {
@@ -904,4 +915,27 @@ variable "lambda_tags" {
   description = "Map of tags that will be added to all the lambda function resources. Note these are additional tags to the default tags."
   type        = map(string)
   default     = {}
+}
+
+variable "job_retry" {
+  description = <<-EOF
+    Experimental! Can be removed / changed without trigger a major release.Configure job retries. The configuration enables job retries (for ephemeral runners). After creating the insances a message will be published to a job retry queue. The job retry check lambda is checking after a delay if the job is queued. If not the message will be published again on the scale-up (build queue). Using this feature can impact the reate limit of the GitHub app.
+
+    `enable`: Enable or disable the job retry feature.
+    `delay_in_seconds`: The delay in seconds before the job retry check lambda will check the job status.
+    `delay_backoff`: The backoff factor for the delay.
+    `lambda_memory_size`: Memory size limit in MB for the job retry check lambda.
+    `lambda_timeout`: Time out of the job retry check lambda in seconds.
+    `max_attempts`: The maximum number of attempts to retry the job.
+  EOF
+
+  type = object({
+    enable             = optional(bool, false)
+    delay_in_seconds   = optional(number, 300)
+    delay_backoff      = optional(number, 2)
+    lambda_memory_size = optional(number, 256)
+    lambda_timeout     = optional(number, 30)
+    max_attempts       = optional(number, 1)
+  })
+  default = {}
 }

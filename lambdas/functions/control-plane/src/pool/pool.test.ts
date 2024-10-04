@@ -4,7 +4,7 @@ import moment from 'moment-timezone';
 import nock from 'nock';
 
 import { listEC2Runners } from '../aws/runners';
-import * as ghAuth from '../gh-auth/gh-auth';
+import * as ghAuth from '../github/auth';
 import { createRunners } from '../scale-runners/scale-up';
 import { adjust } from './pool';
 
@@ -27,7 +27,7 @@ jest.mock('./../aws/runners', () => ({
   ...jest.requireActual('./../aws/runners'),
   listEC2Runners: jest.fn(),
 }));
-jest.mock('./../gh-auth/gh-auth');
+jest.mock('./../github/auth');
 jest.mock('./../scale-runners/scale-up');
 
 const mocktokit = Octokit as jest.MockedClass<typeof Octokit>;
@@ -35,7 +35,7 @@ const mockedAppAuth = mocked(ghAuth.createGithubAppAuth, {
   shallow: false,
 });
 const mockedInstallationAuth = mocked(ghAuth.createGithubInstallationAuth, { shallow: false });
-const mockCreateClient = mocked(ghAuth.createOctoClient, { shallow: false });
+const mockCreateClient = mocked(ghAuth.createOctokitClient, { shallow: false });
 const mockListRunners = mocked(listEC2Runners);
 
 const cleanEnv = process.env;

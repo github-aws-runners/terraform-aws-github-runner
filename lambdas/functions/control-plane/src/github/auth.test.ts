@@ -2,14 +2,14 @@ import { createAppAuth } from '@octokit/auth-app';
 import { StrategyOptions } from '@octokit/auth-app/dist-types/types';
 import { request } from '@octokit/request';
 import { RequestInterface } from '@octokit/types';
-import { getParameter } from '@terraform-aws-github-runner/aws-ssm-util';
+import { getParameter } from '@aws-github-runner/aws-ssm-util';
 import { mocked } from 'jest-mock';
 import { MockProxy, mock } from 'jest-mock-extended';
 import nock from 'nock';
 
-import { createGithubAppAuth, createOctoClient } from './gh-auth';
+import { createGithubAppAuth, createOctokitClient } from './auth';
 
-jest.mock('@terraform-aws-github-runner/aws-ssm-util');
+jest.mock('@aws-github-runner/aws-ssm-util');
 jest.mock('@octokit/auth-app');
 
 const cleanEnv = process.env;
@@ -35,7 +35,7 @@ describe('Test createOctoClient', () => {
     const token = '123456';
 
     // Act
-    const result = await createOctoClient(token);
+    const result = await createOctokitClient(token);
 
     // Assert
     expect(result.request.endpoint.DEFAULTS.baseUrl).toBe('https://api.github.com');
@@ -47,7 +47,7 @@ describe('Test createOctoClient', () => {
     const token = '123456';
 
     // Act
-    const result = await createOctoClient(token, enterpriseServer);
+    const result = await createOctokitClient(token, enterpriseServer);
 
     // Assert
     expect(result.request.endpoint.DEFAULTS.baseUrl).toBe(enterpriseServer);
@@ -95,7 +95,7 @@ ${decryptedValue}`,
 
     // Assert
     expect(mockedCreatAppAuth).toBeCalledTimes(1);
-    expect(mockedCreatAppAuth).toBeCalledWith({ ...authOptions, request: expect.anything() });
+    expect(mockedCreatAppAuth).toBeCalledWith({ ...authOptions });
   });
 
   test('Creates auth object for public GitHub', async () => {
@@ -121,7 +121,7 @@ ${decryptedValue}`,
     expect(getParameter).toBeCalledWith(PARAMETER_GITHUB_APP_KEY_BASE64_NAME);
 
     expect(mockedCreatAppAuth).toBeCalledTimes(1);
-    expect(mockedCreatAppAuth).toBeCalledWith({ ...authOptions, request: expect.anything() });
+    expect(mockedCreatAppAuth).toBeCalledWith({ ...authOptions });
     expect(mockedAuth).toBeCalledWith({ type: authType });
     expect(result.token).toBe(token);
   });

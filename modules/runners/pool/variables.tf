@@ -50,8 +50,9 @@ variable "config" {
     instance_max_spot_price       = string
     prefix                        = string
     pool = list(object({
-      schedule_expression = string
-      size                = number
+      schedule_expression          = string
+      schedule_expression_timezone = string
+      size                         = number
     }))
     role_permissions_boundary            = string
     kms_key_arn                          = string

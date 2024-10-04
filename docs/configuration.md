@@ -9,6 +9,7 @@ To be able to support a number of use-cases, the module has quite a lot of confi
 - Workflow job event. You can configure the webhook in GitHub to send workflow job events to the webhook. Workflow job events were introduced by GitHub in September 2021 and are designed to support scalable runners. We advise using the workflow job event when possible.
 - Linux vs Windows. You can configure the OS types linux and win. Linux will be used by default.
 - Re-use vs Ephemeral. By default runners are re-used, until detected idle. Once idle they will be removed from the pool. To improve security we are introducing ephemeral runners. Those runners are only used for one job. Ephemeral runners only work in combination with the workflow job event. For ephemeral runners the lambda requests a JIT (just in time) configuration via the GitHub API to register the runner. [JIT configuration](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-just-in-time-runners) is limited to ephemeral runners (and currently not supported by GHES). For non-ephemeral runners, a registration token is always requested. In both cases the configuration is made available to the instance via the same SSM parameter. To disable JIT configuration for ephemeral runners set `enable_jit_config` to `false`. We also suggest using a pre-build AMI to improve the start time of jobs for ephemeral runners.
+- Job retry (**Beta**). By default the scale-up lambda will discard the message when it is handled. Meaning in the ephemeral use-case an instance is created. The created runner will ask GitHub for a job, no guarantee it will run the job for which it was scaling. Result could be that with small system hick-up the job is keeping waiting for a runner. Enable a pool (org runners) is one option to avoid this problem. Another option is to enable the job retry function. Which will retry the job after a delay for a configured number of times.
 - GitHub Cloud vs GitHub Enterprise Server (GHES). The runners support GitHub Cloud as well GitHub Enterprise Server. For GHES, we rely on our community for support and testing. We at Philips have no capability to test GHES ourselves.
 - Spot vs on-demand. The runners use either the EC2 spot or on-demand life cycle. Runners will be created via the AWS [CreateFleet API](https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_CreateFleet.html). The module (scale up lambda) will request via the CreateFleet API to create instances in one of the subnets and of the specified instance types.
 - ARM64 support via Graviton/Graviton2 instance-types. When using the default example or top-level module, specifying `instance_types` that match a Graviton/Graviton 2 (ARM64) architecture (e.g. a1, t4g or any 6th-gen `g` or `gd` type), you must also specify `runner_architecture = "arm64"` and the sub-modules will be automatically configured to provision with ARM64 AMIs and leverage GitHub's ARM64 action runner. See below for more details.
@@ -65,8 +66,9 @@ The pool is introduced in combination with the ephemeral runners and is primaril
 ```hcl
 pool_runner_owner = "my-org"                  # Org to which the runners are added
 pool_config = [{
-  size                = 20                    # size of the pool
-  schedule_expression = "cron(* * * * ? *)"   # cron expression to trigger the adjustment of the pool
+  size                         = 20                    # size of the pool
+  schedule_expression          = "cron(* * * * ? *)"   # cron expression to trigger the adjustment of the pool
+  schedule_expression_timezone = "Australia/Sydney"    # optional time zone (defaults to UTC)
 }]
 ```
 
@@ -119,6 +121,16 @@ You can configure runners to be ephemeral, in which case runners will be used on
 - Errors related to scaling should be retried via SQS. You can configure `job_queue_retention_in_seconds` and `redrive_build_queue` to tune the behavior. We have no mechanism to avoid events never being processed, which means potentially no runner gets created and the job in GitHub times out in 6 hours.
 
 The example for [ephemeral runners](examples/ephemeral.md) is based on the [default example](examples/default.md). Have look at the diff to see the major configuration differences.
+
+
+## Job retry (**Beta**)
+
+You can enable the job retry function to retry a job after a delay for a configured number of times. The function is disabled by default. To enable the function set `job_retry.enable` to `true`. The function will check the job status after a delay, and when the is still queued, it will create a new runner. The new runner is created in the same way as the others via the scale-up function. Hence the same configuration applies.
+
+For checking the job status a API call is made to GitHub. Which can exhaust the GitHub API more quickly for larger deployments and cause rate limits. For larger deployment with a lot of frequent jobs having a small pool available could be a better choice.
+
+The option `job_retry.delay_in_seconds` is the delay before the job status is checked. The delay is increased by the factor `job_retry.delay_backoff` for each attempt. The upper bound for a delay is 900 seconds, which is the max message delay on SQS. The maximum number of attempts is configured via `job_retry.max_attempts`. The delay should be set to a higher value than the time it takes to start a runner.
+
 
 ## Prebuilt Images
 
@@ -179,6 +191,15 @@ This feature has been disabled by default.
 
 The watcher will act on all spot termination notificatins and log all onses relevant to the runner module. Therefor we suggest to only deploy the watcher once. You can either deploy the watcher by enabling in one of your deployments or deploy the watcher as a stand alone module.
 
+## Metrics
+
+The module supports metrics (experimental feature) to monitor the system. The metrics are disabled by default. To enable the metrics set `metrics.enable = true`. If set to true, all module managed metrics are used, you can configure the one by one via the `metrics` object. The metrics are created in the namespace `GitHub Runners`.
+
+### Supported metrics
+
+- **GitHubAppRateLimitRemaining**: Remaining rate limit for the GitHub App.
+- **JobRetry**: Number of job retries, only relevant when job retry is enabled.
+- **SpotInterruptionWarning**: Number of spot interruption warnings received by the termination watcher, only relevant when the termination watcher is enabled.
 
 ## Debugging
 

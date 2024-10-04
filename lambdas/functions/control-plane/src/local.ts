@@ -1,4 +1,4 @@
-import { logger } from '@terraform-aws-github-runner/aws-powertools-util';
+import { logger } from '@aws-github-runner/aws-powertools-util';
 
 import { ActionRequestMessage, scaleUp } from './scale-runners/scale-up';
 

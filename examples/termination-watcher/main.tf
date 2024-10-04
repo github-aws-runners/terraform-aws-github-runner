@@ -2,8 +2,11 @@ module "spot_termination_watchter" {
   source = "../../modules/termination-watcher"
 
   config = {
-    enable_metric = {
-      spot_warning = true
+    metrics = {
+      enable = true
+      metric = {
+        enable_spot_termination_warning = true
+      }
     }
     prefix = "global"
     tag_filters = {

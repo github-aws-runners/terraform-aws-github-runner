@@ -9,8 +9,8 @@ import {
   Image,
 } from '@aws-sdk/client-ec2';
 import { DescribeParametersCommand, GetParameterCommand, SSMClient } from '@aws-sdk/client-ssm';
-import { createChildLogger } from '@terraform-aws-github-runner/aws-powertools-util';
-import { getTracedAWSV3Client } from '@terraform-aws-github-runner/aws-powertools-util';
+import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
+import { getTracedAWSV3Client } from '@aws-github-runner/aws-powertools-util';
 
 const logger = createChildLogger('ami');
 

@@ -1,6 +1,6 @@
 import { SQS, SendMessageCommandInput } from '@aws-sdk/client-sqs';
 import { WorkflowJobEvent } from '@octokit/webhooks-types';
-import { createChildLogger, getTracedAWSV3Client } from '@terraform-aws-github-runner/aws-powertools-util';
+import { createChildLogger, getTracedAWSV3Client } from '@aws-github-runner/aws-powertools-util';
 import { Config } from '../ConfigResolver';
 
 const logger = createChildLogger('sqs');
@@ -13,6 +13,7 @@ export interface ActionRequestMessage {
   installationId: number;
   queueId: string;
   queueFifo: boolean;
+  repoOwnerType: string;
 }
 
 export interface MatcherConfig {

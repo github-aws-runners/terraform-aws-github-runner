@@ -1,4 +1,4 @@
-import { createChildLogger } from '@terraform-aws-github-runner/aws-powertools-util';
+import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 
 export class Config {
   createSpotWarningMetric: boolean;
