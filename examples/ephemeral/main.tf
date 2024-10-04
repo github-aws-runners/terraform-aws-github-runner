@@ -1,6 +1,6 @@
 locals {
   environment = var.environment != null ? var.environment : "ephemeral"
-  aws_region  = "eu-west-1"
+  aws_region  = var.aws_region
 }
 
 resource "random_id" "random" {
@@ -32,10 +32,13 @@ module "runners" {
     webhook_secret = random_id.random.hex
   }
 
-  # Grab the lambda packages from local directory. Must run /.ci/build.sh first
-  webhook_lambda_zip                = "../../lambda_output/webhook.zip"
-  runner_binaries_syncer_lambda_zip = "../../lambda_output/runner-binaries-syncer.zip"
-  runners_lambda_zip                = "../../lambda_output/runners.zip"
+  # When not explicitly set lambda zip files are grapped from the module requiring lambda build.
+  # Alternatively you can set the path to the lambda zip files here.
+  #
+  # For example grab zip files via lambda_download
+  # webhook_lambda_zip                = "../lambdas-download/webhook.zip"
+  # runner_binaries_syncer_lambda_zip = "../lambdas-download/runner-binaries-syncer.zip"
+  # runners_lambda_zip                = "../lambdas-download/runners.zip"
 
   enable_organization_runners = true
   runner_extra_labels         = ["default", "example"]
@@ -62,8 +65,10 @@ module "runners" {
   # # Example of simple pool usages
   # pool_runner_owner = "philips-test-runners"
   # pool_config = [{
-  #   size                = 3
-  #   schedule_expression = "cron(* * * * ? *)"
+  #   size                         = 3
+  #   schedule_expression = "cron(0/3 14 * * ? *)" # every 3 minutes between 14:00 and 15:00
+  #   schedule_expression_timezone = "Europe/Amsterdam"
+
   # }]
   #
   #
@@ -93,6 +98,13 @@ module "runners" {
   #   maxReceiveCount     = 50 # 50 retries every 30 seconds => 25 minutes
   #   deadLetterTargetArn = null
   # }
+
+  # Enable beta feature job retry
+  job_retry = {
+    enable           = true
+    max_attempts     = 1
+    delay_in_seconds = 180
+  }
 }
 
 module "webhook_github_app" {

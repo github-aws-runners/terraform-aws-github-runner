@@ -1,4 +1,4 @@
-import { GetParameterCommand, PutParameterCommand, SSMClient } from '@aws-sdk/client-ssm';
+import { PutParameterCommand, SSMClient } from '@aws-sdk/client-ssm';
 import { Octokit } from '@octokit/rest';
 import { mockClient } from 'aws-sdk-client-mock';
 import 'aws-sdk-client-mock-jest';
@@ -6,11 +6,12 @@ import { mocked } from 'jest-mock';
 import nock from 'nock';
 import { performance } from 'perf_hooks';
 
-import * as ghAuth from '../gh-auth/gh-auth';
+import * as ghAuth from '../github/auth';
 import { createRunner, listEC2Runners } from './../aws/runners';
 import { RunnerInputParameters } from './../aws/runners.d';
 import ScaleError from './ScaleError';
 import * as scaleUpModule from './scale-up';
+import { getParameter } from '@aws-github-runner/aws-ssm-util';
 
 const mockOctokit = {
   paginate: jest.fn(),
@@ -30,13 +31,20 @@ const mockOctokit = {
 const mockCreateRunner = mocked(createRunner);
 const mockListRunners = mocked(listEC2Runners);
 const mockSSMClient = mockClient(SSMClient);
+const mockSSMgetParameter = mocked(getParameter);
 
 jest.mock('@octokit/rest', () => ({
   Octokit: jest.fn().mockImplementation(() => mockOctokit),
 }));
 
 jest.mock('./../aws/runners');
-jest.mock('./../gh-auth/gh-auth');
+jest.mock('./../github/auth');
+
+jest.mock('@aws-github-runner/aws-ssm-util', () => ({
+  ...jest.requireActual('@aws-github-runner/aws-ssm-util'),
+  getParameter: jest.fn(),
+}));
+
 export type RunnerType = 'ephemeral' | 'non-ephemeral';
 
 // for ephemeral and non-ephemeral runners
@@ -45,7 +53,7 @@ const RUNNER_TYPES: RunnerType[] = ['ephemeral', 'non-ephemeral'];
 const mocktokit = Octokit as jest.MockedClass<typeof Octokit>;
 const mockedAppAuth = mocked(ghAuth.createGithubAppAuth, { shallow: false });
 const mockedInstallationAuth = mocked(ghAuth.createGithubInstallationAuth, { shallow: false });
-const mockCreateClient = mocked(ghAuth.createOctoClient, { shallow: false });
+const mockCreateClient = mocked(ghAuth.createOctokitClient, { shallow: false });
 
 const TEST_DATA: scaleUpModule.ActionRequestMessage = {
   id: 1,
@@ -53,15 +61,7 @@ const TEST_DATA: scaleUpModule.ActionRequestMessage = {
   repositoryName: 'hello-world',
   repositoryOwner: 'Codertocat',
   installationId: 2,
-};
-
-// installationId 0 means no installationId is set.
-const TEST_DATA_WITH_ZERO_INSTALL_ID: scaleUpModule.ActionRequestMessage = {
-  id: 3,
-  eventType: 'workflow_job',
-  repositoryName: 'hello-world',
-  repositoryOwner: 'Codertocat',
-  installationId: 0,
+  repoOwnerType: 'Organization',
 };
 
 const cleanEnv = process.env;
@@ -85,6 +85,7 @@ let expectedRunnerParams: RunnerInputParameters;
 
 function setDefaults() {
   process.env = { ...cleanEnv };
+  process.env.PARAMETER_GITHUB_APP_ID_NAME = 'github-app-id';
   process.env.GITHUB_APP_KEY_BASE64 = 'TEST_CERTIFICATE_DATA';
   process.env.GITHUB_APP_ID = '1337';
   process.env.GITHUB_APP_CLIENT_ID = 'TEST_CLIENT_ID';
@@ -104,52 +105,9 @@ beforeEach(() => {
   jest.clearAllMocks();
   setDefaults();
 
-  mockOctokit.actions.getJobForWorkflowRun.mockImplementation(() => ({
-    data: {
-      status: 'queued',
-    },
-  }));
-  mockOctokit.paginate.mockImplementation(() => [
-    {
-      id: 1,
-      name: 'Default',
-    },
-  ]);
-  mockOctokit.actions.generateRunnerJitconfigForOrg.mockImplementation(() => ({
-    data: {
-      encoded_jit_config: 'TEST_JIT_CONFIG_ORG',
-    },
-  }));
-  mockOctokit.actions.generateRunnerJitconfigForRepo.mockImplementation(() => ({
-    data: {
-      encoded_jit_config: 'TEST_JIT_CONFIG_REPO',
-    },
-  }));
-  mockOctokit.checks.get.mockImplementation(() => ({
-    data: {
-      status: 'queued',
-    },
-  }));
-  const mockTokenReturnValue = {
-    data: {
-      token: '1234abcd',
-    },
-  };
-  const mockInstallationIdReturnValueOrgs = {
-    data: {
-      id: TEST_DATA.installationId,
-    },
-  };
-  const mockInstallationIdReturnValueRepos = {
-    data: {
-      id: TEST_DATA.installationId,
-    },
-  };
+  defaultSSMGetParameterMockImpl();
+  defaultOctokitMockImpl();
 
-  mockOctokit.actions.createRegistrationTokenForOrg.mockImplementation(() => mockTokenReturnValue);
-  mockOctokit.actions.createRegistrationTokenForRepo.mockImplementation(() => mockTokenReturnValue);
-  mockOctokit.apps.getOrgInstallation.mockImplementation(() => mockInstallationIdReturnValueOrgs);
-  mockOctokit.apps.getRepoInstallation.mockImplementation(() => mockInstallationIdReturnValueRepos);
   mockCreateRunner.mockImplementation(async () => {
     return ['i-12345'];
   });
@@ -221,7 +179,6 @@ describe('scaleUp with GHES', () => {
 
       expectedRunnerParams = { ...EXPECTED_RUNNER_PARAMS };
       mockSSMClient.reset();
-      mockSSMClient.on(GetParameterCommand).resolves({ Parameter: { Value: '1' } });
     });
 
     it('gets the current org level runners', async () => {
@@ -241,6 +198,14 @@ describe('scaleUp with GHES', () => {
       expect(mockOctokit.actions.createRegistrationTokenForRepo).not.toBeCalled();
     });
 
+    it('does create a runner if maximum is set to -1', async () => {
+      process.env.RUNNERS_MAXIMUM_COUNT = '-1';
+      process.env.ENABLE_EPHEMERAL_RUNNERS = 'false';
+      await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
+      expect(listEC2Runners).not.toHaveBeenCalled();
+      expect(createRunner).toHaveBeenCalled();
+    });
+
     it('creates a token when maximum runners has not been reached', async () => {
       process.env.ENABLE_EPHEMERAL_RUNNERS = 'false';
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
@@ -248,28 +213,6 @@ describe('scaleUp with GHES', () => {
         org: TEST_DATA.repositoryOwner,
       });
       expect(mockOctokit.actions.createRegistrationTokenForRepo).not.toBeCalled();
-    });
-
-    it('does not retrieve installation id if already set', async () => {
-      const appSpy = jest.spyOn(ghAuth, 'createGithubAppAuth');
-      const installationSpy = jest.spyOn(ghAuth, 'createGithubInstallationAuth');
-      await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
-      expect(mockOctokit.apps.getOrgInstallation).not.toBeCalled();
-      expect(mockOctokit.apps.getRepoInstallation).not.toBeCalled();
-      expect(appSpy).not.toBeCalled();
-      expect(installationSpy).toBeCalledWith(TEST_DATA.installationId, 'https://github.enterprise.something/api/v3');
-    });
-
-    it('retrieves installation id if not set', async () => {
-      const appSpy = jest.spyOn(ghAuth, 'createGithubAppAuth');
-      const installationSpy = jest.spyOn(ghAuth, 'createGithubInstallationAuth');
-      await scaleUpModule.scaleUp('aws:sqs', TEST_DATA_WITH_ZERO_INSTALL_ID);
-      expect(mockOctokit.apps.getRepoInstallation).not.toBeCalled();
-      expect(appSpy).toHaveBeenCalledWith(undefined, 'https://github.enterprise.something/api/v3');
-      expect(installationSpy).toHaveBeenCalledWith(
-        TEST_DATA.installationId,
-        'https://github.enterprise.something/api/v3',
-      );
     });
 
     it('creates a runner with correct config', async () => {
@@ -292,13 +235,25 @@ describe('scaleUp with GHES', () => {
 
     it('Throws an error if runner group doesnt exist for ephemeral runners', async () => {
       process.env.RUNNER_GROUP_NAME = 'test-runner-group';
-      mockSSMClient.on(GetParameterCommand).rejects();
+      mockSSMgetParameter.mockImplementation(async () => {
+        throw new Error('ParameterNotFound');
+      });
       await expect(scaleUpModule.scaleUp('aws:sqs', TEST_DATA)).rejects.toBeInstanceOf(Error);
       expect(mockOctokit.paginate).toHaveBeenCalledTimes(1);
     });
 
+    it('Discards event if it is a User repo and org level runners is enabled', async () => {
+      process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
+      const USER_REPO_TEST_DATA = { ...TEST_DATA };
+      USER_REPO_TEST_DATA.repoOwnerType = 'User';
+      await scaleUpModule.scaleUp('aws:sqs', USER_REPO_TEST_DATA);
+      expect(createRunner).not.toHaveBeenCalled();
+    });
+
     it('create SSM parameter for runner group id if it doesnt exist', async () => {
-      mockSSMClient.on(GetParameterCommand).rejects();
+      mockSSMgetParameter.mockImplementation(async () => {
+        throw new Error('ParameterNotFound');
+      });
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
       expect(mockOctokit.paginate).toHaveBeenCalledTimes(1);
       expect(mockSSMClient).toHaveReceivedCommandTimes(PutParameterCommand, 2);
@@ -309,8 +264,7 @@ describe('scaleUp with GHES', () => {
       });
     });
 
-    it('Doesnt create SSM parameter for runner group id if it exists', async () => {
-      mockSSMClient.on(GetParameterCommand).resolves({ Parameter: { Value: '1' } });
+    it('Does not create SSM parameter for runner group id if it exists', async () => {
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
       expect(mockOctokit.paginate).toHaveBeenCalledTimes(0);
       expect(mockSSMClient).toHaveReceivedCommandTimes(PutParameterCommand, 1);
@@ -318,7 +272,7 @@ describe('scaleUp with GHES', () => {
 
     it('create start runner config for ephemeral runners ', async () => {
       process.env.RUNNERS_MAXIMUM_COUNT = '2';
-      mockSSMClient.on(GetParameterCommand).resolves({ Parameter: { Value: '1' } });
+
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
       expect(mockOctokit.actions.generateRunnerJitconfigForOrg).toBeCalledWith({
         org: TEST_DATA.repositoryOwner,
@@ -330,6 +284,12 @@ describe('scaleUp with GHES', () => {
         Name: '/github-action-runners/default/runners/config/i-12345',
         Value: 'TEST_JIT_CONFIG_ORG',
         Type: 'SecureString',
+        Tags: [
+          {
+            Key: 'InstanceId',
+            Value: 'i-12345',
+          },
+        ],
       });
     });
 
@@ -345,6 +305,12 @@ describe('scaleUp with GHES', () => {
           '--url https://github.enterprise.something/Codertocat --token 1234abcd ' +
           '--labels label1,label2 --runnergroup Default',
         Type: 'SecureString',
+        Tags: [
+          {
+            Key: 'InstanceId',
+            Value: 'i-12345',
+          },
+        ],
       });
     });
     it.each(RUNNER_TYPES)(
@@ -358,7 +324,6 @@ describe('scaleUp with GHES', () => {
         mockListRunners.mockImplementation(async () => {
           return [];
         });
-        mockSSMClient.on(GetParameterCommand).resolves({ Parameter: { Value: '1' } });
         const startTime = performance.now();
         const instances = [
           'i-1234',
@@ -457,32 +422,6 @@ describe('scaleUp with GHES', () => {
       });
     });
 
-    it('does not retrieve installation id if already set', async () => {
-      const appSpy = jest.spyOn(ghAuth, 'createGithubAppAuth');
-      const installationSpy = jest.spyOn(ghAuth, 'createGithubInstallationAuth');
-      await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
-      expect(mockOctokit.apps.getOrgInstallation).not.toBeCalled();
-      expect(mockOctokit.apps.getRepoInstallation).not.toBeCalled();
-      expect(appSpy).not.toBeCalled();
-      expect(installationSpy).toBeCalledWith(TEST_DATA.installationId, 'https://github.enterprise.something/api/v3');
-    });
-
-    it('retrieves installation id if not set', async () => {
-      const appSpy = jest.spyOn(ghAuth, 'createGithubAppAuth');
-      const installationSpy = jest.spyOn(ghAuth, 'createGithubInstallationAuth');
-      await scaleUpModule.scaleUp('aws:sqs', TEST_DATA_WITH_ZERO_INSTALL_ID);
-      expect(mockOctokit.apps.getOrgInstallation).not.toBeCalled();
-      expect(mockOctokit.apps.getRepoInstallation).toBeCalledWith({
-        owner: TEST_DATA.repositoryOwner,
-        repo: TEST_DATA.repositoryName,
-      });
-      expect(appSpy).toHaveBeenCalledWith(undefined, 'https://github.enterprise.something/api/v3');
-      expect(installationSpy).toHaveBeenCalledWith(
-        TEST_DATA.installationId,
-        'https://github.enterprise.something/api/v3',
-      );
-    });
-
     it('creates a runner with correct config and labels', async () => {
       process.env.RUNNER_LABELS = 'label1,label2';
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
@@ -524,26 +463,6 @@ describe('scaleUp with public GH', () => {
     process.env.ENABLE_JOB_QUEUED_CHECK = 'false';
     await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
     expect(mockOctokit.actions.getJobForWorkflowRun).not.toBeCalled();
-  });
-
-  it('does not retrieve installation id if already set', async () => {
-    const appSpy = jest.spyOn(ghAuth, 'createGithubAppAuth');
-    const installationSpy = jest.spyOn(ghAuth, 'createGithubInstallationAuth');
-    await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
-    expect(mockOctokit.apps.getOrgInstallation).not.toBeCalled();
-    expect(mockOctokit.apps.getRepoInstallation).not.toBeCalled();
-    expect(appSpy).not.toBeCalled();
-    expect(installationSpy).toBeCalledWith(TEST_DATA.installationId, '');
-  });
-
-  it('retrieves installation id if not set', async () => {
-    const appSpy = jest.spyOn(ghAuth, 'createGithubAppAuth');
-    const installationSpy = jest.spyOn(ghAuth, 'createGithubInstallationAuth');
-    await scaleUpModule.scaleUp('aws:sqs', TEST_DATA_WITH_ZERO_INSTALL_ID);
-    expect(mockOctokit.apps.getOrgInstallation).toBeCalled();
-    expect(mockOctokit.apps.getRepoInstallation).not.toBeCalled();
-    expect(appSpy).toHaveBeenCalledWith(undefined, '');
-    expect(installationSpy).toHaveBeenCalledWith(TEST_DATA.installationId, '');
   });
 
   it('does not list runners when no workflows are queued', async () => {
@@ -634,26 +553,6 @@ describe('scaleUp with public GH', () => {
       });
     });
 
-    it('does not retrieve installation id if already set', async () => {
-      const appSpy = jest.spyOn(ghAuth, 'createGithubAppAuth');
-      const installationSpy = jest.spyOn(ghAuth, 'createGithubInstallationAuth');
-      await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
-      expect(mockOctokit.apps.getOrgInstallation).not.toBeCalled();
-      expect(mockOctokit.apps.getRepoInstallation).not.toBeCalled();
-      expect(appSpy).not.toBeCalled();
-      expect(installationSpy).toBeCalledWith(TEST_DATA.installationId, '');
-    });
-
-    it('retrieves installation id if not set', async () => {
-      const appSpy = jest.spyOn(ghAuth, 'createGithubAppAuth');
-      const installationSpy = jest.spyOn(ghAuth, 'createGithubInstallationAuth');
-      await scaleUpModule.scaleUp('aws:sqs', TEST_DATA_WITH_ZERO_INSTALL_ID);
-      expect(mockOctokit.apps.getOrgInstallation).not.toBeCalled();
-      expect(mockOctokit.apps.getRepoInstallation).toBeCalled();
-      expect(appSpy).toHaveBeenCalledWith(undefined, '');
-      expect(installationSpy).toHaveBeenCalledWith(TEST_DATA.installationId, '');
-    });
-
     it('creates a runner with correct config and labels', async () => {
       process.env.RUNNER_LABELS = 'label1,label2';
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
@@ -700,6 +599,12 @@ describe('scaleUp with public GH', () => {
         Name: '/github-action-runners/default/runners/config/i-12345',
         Value: 'TEST_JIT_CONFIG_REPO',
         Type: 'SecureString',
+        Tags: [
+          {
+            Key: 'InstanceId',
+            Value: 'i-12345',
+          },
+        ],
       });
     });
 
@@ -716,6 +621,12 @@ describe('scaleUp with public GH', () => {
         Name: '/github-action-runners/default/runners/config/i-12345',
         Value: '--url https://github.com/Codertocat/hello-world --token 1234abcd --ephemeral',
         Type: 'SecureString',
+        Tags: [
+          {
+            Key: 'InstanceId',
+            Value: 'i-12345',
+          },
+        ],
       });
     });
 
@@ -733,6 +644,12 @@ describe('scaleUp with public GH', () => {
         Name: '/github-action-runners/default/runners/config/i-12345',
         Value: '--url https://github.com/Codertocat/hello-world --token 1234abcd --labels jit',
         Type: 'SecureString',
+        Tags: [
+          {
+            Key: 'InstanceId',
+            Value: 'i-12345',
+          },
+        ],
       });
     });
 
@@ -757,3 +674,65 @@ describe('scaleUp with public GH', () => {
     });
   });
 });
+
+function defaultOctokitMockImpl() {
+  mockOctokit.actions.getJobForWorkflowRun.mockImplementation(() => ({
+    data: {
+      status: 'queued',
+    },
+  }));
+  mockOctokit.paginate.mockImplementation(() => [
+    {
+      id: 1,
+      name: 'Default',
+    },
+  ]);
+  mockOctokit.actions.generateRunnerJitconfigForOrg.mockImplementation(() => ({
+    data: {
+      encoded_jit_config: 'TEST_JIT_CONFIG_ORG',
+    },
+  }));
+  mockOctokit.actions.generateRunnerJitconfigForRepo.mockImplementation(() => ({
+    data: {
+      encoded_jit_config: 'TEST_JIT_CONFIG_REPO',
+    },
+  }));
+  mockOctokit.checks.get.mockImplementation(() => ({
+    data: {
+      status: 'queued',
+    },
+  }));
+
+  const mockTokenReturnValue = {
+    data: {
+      token: '1234abcd',
+    },
+  };
+  const mockInstallationIdReturnValueOrgs = {
+    data: {
+      id: TEST_DATA.installationId,
+    },
+  };
+  const mockInstallationIdReturnValueRepos = {
+    data: {
+      id: TEST_DATA.installationId,
+    },
+  };
+
+  mockOctokit.actions.createRegistrationTokenForOrg.mockImplementation(() => mockTokenReturnValue);
+  mockOctokit.actions.createRegistrationTokenForRepo.mockImplementation(() => mockTokenReturnValue);
+  mockOctokit.apps.getOrgInstallation.mockImplementation(() => mockInstallationIdReturnValueOrgs);
+  mockOctokit.apps.getRepoInstallation.mockImplementation(() => mockInstallationIdReturnValueRepos);
+}
+
+function defaultSSMGetParameterMockImpl() {
+  mockSSMgetParameter.mockImplementation(async (name: string) => {
+    if (name === `${process.env.SSM_CONFIG_PATH}/runner-group/${process.env.RUNNER_GROUP_NAME}`) {
+      return '1';
+    } else if (name === `${process.env.PARAMETER_GITHUB_APP_ID_NAME}`) {
+      return `${process.env.GITHUB_APP_ID}`;
+    } else {
+      throw new Error(`ParameterNotFound: ${name}`);
+    }
+  });
+}

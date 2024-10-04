@@ -31,7 +31,7 @@ module "runners" {
   ami_id_ssm_parameter_name = each.value.runner_config.ami_id_ssm_parameter_name
   ami_kms_key_arn           = each.value.runner_config.ami_kms_key_arn
 
-  sqs_build_queue                      = { "arn" : each.value.arn }
+  sqs_build_queue                      = { "arn" : each.value.arn, "url" : each.value.url }
   github_app_parameters                = local.github_app_parameters
   ebs_optimized                        = each.value.runner_config.ebs_optimized
   enable_on_demand_failover_for_errors = each.value.runner_config.enable_on_demand_failover_for_errors
@@ -69,6 +69,7 @@ module "runners" {
   lambda_timeout_scale_down        = var.runners_scale_down_lambda_timeout
   lambda_subnet_ids                = var.lambda_subnet_ids
   lambda_security_group_ids        = var.lambda_security_group_ids
+  lambda_tags                      = var.lambda_tags
   tracing_config                   = var.tracing_config
   logging_retention_in_days        = var.logging_retention_in_days
   logging_kms_key_id               = var.logging_kms_key_id
@@ -110,4 +111,8 @@ module "runners" {
   associate_public_ipv4_address              = var.associate_public_ipv4_address
 
   ssm_housekeeper = var.runners_ssm_housekeeper
+
+  job_retry = each.value.runner_config.job_retry
+
+  metrics = var.metrics
 }

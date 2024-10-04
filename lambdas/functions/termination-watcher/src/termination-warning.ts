@@ -1,12 +1,8 @@
-import {
-  createChildLogger,
-  createSingleMetric,
-  getTracedAWSV3Client,
-} from '@terraform-aws-github-runner/aws-powertools-util';
+import { createChildLogger, createSingleMetric, getTracedAWSV3Client } from '@aws-github-runner/aws-powertools-util';
 import { SpotInterruptionWarning, SpotTerminationDetail } from './types';
 import { DescribeInstancesCommand, EC2Client } from '@aws-sdk/client-ec2';
 import { Config } from './ConfigResolver';
-import { MetricUnits } from '@aws-lambda-powertools/metrics';
+import { MetricUnit } from '@aws-lambda-powertools/metrics';
 
 const logger = createChildLogger('termination-warning');
 
@@ -37,7 +33,7 @@ async function handle(event: SpotInterruptionWarning<SpotTerminationDetail>, con
       tags: instance.Tags,
     });
     if (config.createSpotWarningMetric) {
-      const metric = createSingleMetric('SpotInterruptionWarning', MetricUnits.Count, 1, {
+      const metric = createSingleMetric('SpotInterruptionWarning', MetricUnit.Count, 1, {
         InstanceType: instance.InstanceType ? instance.InstanceType : 'unknown',
         Environment: instance.Tags?.find((tag) => tag.Key === 'ghr:environment')?.Value ?? 'unknown',
       });
@@ -49,7 +45,7 @@ async function handle(event: SpotInterruptionWarning<SpotTerminationDetail>, con
       );
     }
   } else {
-    logger.warn(
+    logger.debug(
       `Received spot termination notification warning for instance ${event.detail['instance-id']} but ` +
         `details are not available or instance not matching the tag fileter (${config.tagFilters}).`,
     );

@@ -1,4 +1,4 @@
-import { logger } from '@terraform-aws-github-runner/aws-powertools-util';
+import { logger } from '@aws-github-runner/aws-powertools-util';
 import { Context } from 'aws-lambda';
 import { mocked } from 'jest-mock';
 
@@ -7,7 +7,6 @@ import { interruptionWarning } from './lambda';
 import { SpotInterruptionWarning, SpotTerminationDetail } from './types';
 
 jest.mock('./termination-warning');
-//jest.mock('@terraform-aws-github-runner/aws-powertools-util');
 
 process.env.POWERTOOLS_METRICS_NAMESPACE = 'test';
 process.env.POWERTOOLS_TRACE_ENABLED = 'true';

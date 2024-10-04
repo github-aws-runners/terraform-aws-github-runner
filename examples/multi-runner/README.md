@@ -2,10 +2,10 @@
 
 This module shows how to create GitHub action runners with multiple runner configuration together in one deployment. This example has the configurations for the following runner types with the relevant labels supported by them as matchers:
 
-- Linux ARM64 `["self-hosted", "linux", "arm64", "amazon"]`
-- Linux Ubuntu `["self-hosted", "linux", "x64", "ubuntu-latest"]` or `["self-hosted", "linux", "x64", "ubuntu-2204"]`
-- Linux X64 `["self-hosted", "linux", "x64", "amazon"]`
-- Windows X64 `["self-hosted", "windows", "x64", "servercore-2022"]`
+- Linux ARM64 `["self-hosted", "linux", "arm64", "amazon"]`: Amazon Linux ARM64 non ephemeral runner based on module defaults
+- Linux Ubuntu `["self-hosted", "linux", "x64", "ubuntu-latest"]` or `["self-hosted", "linux", "x64", "ubuntu-2204"]`: Ubuntu runners non ephemeral based on a custom start script.
+- Linux X64 `["self-hosted", "linux", "x64", "amazon"]`: Amazon X64 Linux runners ephemeral with retry enabled.
+- Windows X64 `["self-hosted", "windows", "x64", "servercore-2022"]`: Windows X64 Servercore 2022 runners non ephemeral based on a custom start script.
 
 The module will decide the runner for the workflow job based on the match in the labels defined in the workflow job and runner configuration. Also the runner configuration allows the match to be exact or non-exact match. We recommend to use only exact matches.
 
@@ -82,7 +82,7 @@ terraform output -raw webhook_secret
 |------|-------------|------|---------|:--------:|
 | <a name="input_aws_region"></a> [aws\_region](#input\_aws\_region) | AWS region to deploy to | `string` | `"eu-west-1"` | no |
 | <a name="input_environment"></a> [environment](#input\_environment) | Environment name, used as prefix | `string` | `null` | no |
-| <a name="input_github_app"></a> [github\_app](#input\_github\_app) | GitHub for API usages. | <pre>object({<br>    id         = string<br>    key_base64 = string<br>  })</pre> | n/a | yes |
+| <a name="input_github_app"></a> [github\_app](#input\_github\_app) | GitHub for API usages. | <pre>object({<br/>    id         = string<br/>    key_base64 = string<br/>  })</pre> | n/a | yes |
 
 ## Outputs
 

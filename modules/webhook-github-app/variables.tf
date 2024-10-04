@@ -5,6 +5,7 @@ variable "github_app" {
     id             = string
     webhook_secret = string
   })
+  sensitive = true
 }
 
 variable "webhook_endpoint" {

@@ -14,7 +14,8 @@
     {
       "Effect": "Allow",
       "Action": [
-        "ec2:TerminateInstances"
+        "ec2:TerminateInstances",
+        "ec2:CreateTags"
       ],
       "Resource": [
         "*"
@@ -28,14 +29,15 @@
     {
       "Effect": "Allow",
       "Action": [
-        "ec2:TerminateInstances"
+        "ec2:TerminateInstances",
+        "ec2:CreateTags"
       ],
       "Resource": [
         "*"
       ],
       "Condition": {
         "StringEquals": {
-          "ec2:ResourceTag/Application": "github-action-runner"
+          "ec2:ResourceTag/gh:environment": "${environment}"
         }
       }
     },
