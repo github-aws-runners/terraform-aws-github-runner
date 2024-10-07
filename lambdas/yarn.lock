@@ -107,7 +107,7 @@ __metadata:
     "@aws-sdk/client-ssm": "npm:^3.662.0"
     "@aws-sdk/types": "npm:^3.662.0"
     "@trivago/prettier-plugin-sort-imports": "npm:^4.3.0"
-    "@types/aws-lambda": "npm:^8.10.143"
+    "@types/aws-lambda": "npm:^8.10.145"
     "@types/jest": "npm:^29.5.12"
     "@types/node": "npm:^22.5.4"
     "@typescript-eslint/eslint-plugin": "npm:^7.18.0"
@@ -138,7 +138,7 @@ __metadata:
     "@aws-lambda-powertools/metrics": "npm:^2.8.0"
     "@aws-lambda-powertools/tracer": "npm:^2.8.0"
     "@trivago/prettier-plugin-sort-imports": "npm:^4.3.0"
-    "@types/aws-lambda": "npm:^8.10.143"
+    "@types/aws-lambda": "npm:^8.10.145"
     "@types/express": "npm:^4.17.21"
     "@types/jest": "npm:^29.5.12"
     "@types/node": "npm:^22.5.4"
@@ -168,7 +168,7 @@ __metadata:
     "@aws-sdk/client-ssm": "npm:^3.662.0"
     "@aws-sdk/types": "npm:^3.662.0"
     "@trivago/prettier-plugin-sort-imports": "npm:^4.3.0"
-    "@types/aws-lambda": "npm:^8.10.143"
+    "@types/aws-lambda": "npm:^8.10.145"
     "@types/express": "npm:^4.17.21"
     "@types/jest": "npm:^29.5.12"
     "@types/node": "npm:^22.5.4"
@@ -206,7 +206,7 @@ __metadata:
     "@octokit/rest": "npm:20.1.1"
     "@octokit/types": "npm:^13.6.0"
     "@trivago/prettier-plugin-sort-imports": "npm:^4.3.0"
-    "@types/aws-lambda": "npm:^8.10.143"
+    "@types/aws-lambda": "npm:^8.10.145"
     "@types/jest": "npm:^29.5.12"
     "@types/node": "npm:^22.5.4"
     "@typescript-eslint/eslint-plugin": "npm:^7.18.0"
@@ -241,7 +241,7 @@ __metadata:
     "@middy/core": "npm:^4.7.0"
     "@octokit/rest": "npm:20.1.1"
     "@trivago/prettier-plugin-sort-imports": "npm:^4.3.0"
-    "@types/aws-lambda": "npm:^8.10.143"
+    "@types/aws-lambda": "npm:^8.10.145"
     "@types/jest": "npm:^29.5.12"
     "@types/node": "npm:^22.5.4"
     "@types/request": "npm:^2.48.12"
@@ -271,7 +271,7 @@ __metadata:
     "@aws-sdk/types": "npm:^3.662.0"
     "@middy/core": "npm:^4.7.0"
     "@trivago/prettier-plugin-sort-imports": "npm:^4.3.0"
-    "@types/aws-lambda": "npm:^8.10.143"
+    "@types/aws-lambda": "npm:^8.10.145"
     "@types/jest": "npm:^29.5.12"
     "@types/node": "npm:^22.5.4"
     "@typescript-eslint/eslint-plugin": "npm:^7.18.0"
@@ -305,7 +305,7 @@ __metadata:
     "@octokit/types": "npm:^13.6.0"
     "@octokit/webhooks": "npm:^12.2.0"
     "@trivago/prettier-plugin-sort-imports": "npm:^4.3.0"
-    "@types/aws-lambda": "npm:^8.10.143"
+    "@types/aws-lambda": "npm:^8.10.145"
     "@types/express": "npm:^4.17.21"
     "@types/jest": "npm:^29.5.12"
     "@types/node": "npm:^22.5.4"
@@ -5065,10 +5065,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/aws-lambda@npm:^8.10.143":
-  version: 8.10.143
-  resolution: "@types/aws-lambda@npm:8.10.143"
-  checksum: 10c0/1a004c8dfc9f1f99cbf0e3dd75f2c578d5518a53fc6f278791b7a7445cce380dc56513daeb2b4959823d355fb2fb690271b210af538807422b337a2e14a9aa01
+"@types/aws-lambda@npm:^8.10.145":
+  version: 8.10.145
+  resolution: "@types/aws-lambda@npm:8.10.145"
+  checksum: 10c0/22086185f975e797aa7bfc4937be328b37901b580eba88ce2c5082f99dca722984ad9d0aab8f3ce52f62251ffc1ced09cf17517b54d7c5fb669ecf1dd27dc22d
   languageName: node
   linkType: hard
 
