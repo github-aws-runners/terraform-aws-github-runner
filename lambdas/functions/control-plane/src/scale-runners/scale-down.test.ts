@@ -182,9 +182,9 @@ describe('Scale down runners', () => {
         expect(listEC2Runners).toHaveBeenCalledWith({
           environment: ENVIRONMENT,
         });
-        expect(terminateRunner).not;
-        expect(mockOctokit.apps.getRepoInstallation).not;
-        expect(mockOctokit.apps.getRepoInstallation).not;
+        expect(terminateRunner).not.toHaveBeenCalled();
+        expect(mockOctokit.apps.getRepoInstallation).not.toHaveBeenCalled();
+        expect(mockOctokit.apps.getRepoInstallation).not.toHaveBeenCalled();
       });
 
       it(`Should terminate runner without idle config ${type} runners.`, async () => {
