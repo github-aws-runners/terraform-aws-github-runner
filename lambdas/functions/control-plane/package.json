@@ -49,7 +49,7 @@
     "@octokit/core": "5.2.0",
     "@octokit/plugin-throttling": "8.2.0",
     "@octokit/rest": "20.1.1",
-    "@octokit/types": "^13.6.0",
+    "@octokit/types": "^13.6.1",
     "cron-parser": "^4.9.0",
     "typescript": "^5.5.4"
   },
