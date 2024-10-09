@@ -9,6 +9,7 @@ interface SpotTerminationDetail {
   'instance-action': string;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface BidEvictedEvent<BidEvictedDetail>
   extends EventBridgeEvent<'AWS Service Event via CloudTrail', BidEvictedDetail> {}
 
