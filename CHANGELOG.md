@@ -1,5 +1,14 @@
 # Changelog
 
+## [5.16.3](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.16.2...v5.16.3) (2024-10-09)
+
+
+### Bug Fixes
+
+* **lambda:** bump the aws group across 1 directory with 6 updates ([#4172](https://github.com/philips-labs/terraform-aws-github-runner/issues/4172)) ([71f4b6e](https://github.com/philips-labs/terraform-aws-github-runner/commit/71f4b6e19082efec01b057040bdf3b9e26139cc9))
+* **lambda:** bump the octokit group in /lambdas with 2 updates ([#4166](https://github.com/philips-labs/terraform-aws-github-runner/issues/4166)) ([5573c39](https://github.com/philips-labs/terraform-aws-github-runner/commit/5573c399ad2d5668561abc33ac02d24bc4c6178a))
+* support ephemeral runners for windows ([#4164](https://github.com/philips-labs/terraform-aws-github-runner/issues/4164)) ([44f5d6d](https://github.com/philips-labs/terraform-aws-github-runner/commit/44f5d6de244f5b23a1992aa36e49e41d605b659b))
+
 ## [5.16.2](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.16.1...v5.16.2) (2024-10-04)
 
 
