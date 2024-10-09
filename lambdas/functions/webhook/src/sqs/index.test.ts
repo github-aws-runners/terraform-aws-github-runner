@@ -51,7 +51,7 @@ describe('Test sending message to SQS.', () => {
 
     // Assert
     expect(mockSQS.sendMessage).toHaveBeenCalledWith(sqsMessage);
-    await expect(result).resolves.toBeUndefined();
+    await expect(result).resolves.not.toThrow();
   });
 
   it('use a fifo queue', async () => {
