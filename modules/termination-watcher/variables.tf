@@ -1,6 +1,6 @@
 variable "config" {
   description = <<-EOF
-    Configuration for the spot termination watcher lambda function.
+    Configuration for the spot termination watcher.
 
     `aws_partition`: Partition for the base arn if not 'aws'
     `architecture`: AWS Lambda architecture. Lambda functions using Graviton processors ('arm64') tend to have better price/performance than 'x86_64' functions.
