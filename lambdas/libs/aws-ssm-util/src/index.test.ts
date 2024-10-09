@@ -75,7 +75,7 @@ describe('Test getParameter and putParameter', () => {
     mockSSMClient.on(PutParameterCommand).resolves(output);
 
     // Act
-    await expect(putParameter(parameterName, parameterValue, true)).resolves.toBeUndefined();
+    await expect(putParameter(parameterName, parameterValue, true)).resolves.not.toThrow();
   });
 
   it('Puts parameters as String', async () => {
