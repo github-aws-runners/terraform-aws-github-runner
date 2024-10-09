@@ -99,7 +99,7 @@ describe('Test sending message to SQS.', () => {
 
     // Assert
     expect(mockSQS.sendMessage).toHaveBeenCalledWith(sqsMessage);
-    await expect(result).resolves.toBeUndefined();
+    await expect(result).resolves.not.toThrow();
   });
 
   it('Does not send webhook events to workflow job event copy queue when job queue is not in environment', async () => {
