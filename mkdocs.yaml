@@ -53,12 +53,13 @@ nav:
   - Getting started: getting-started.md
   - Security: security.md
   - Modules:
-    - Runners (root): modules/runners.md
-    - Multi Runners: modules/public/multi-runner.md
-    - AMI Housekeeper: modules/public/ami-housekeeper.md
-    - Lambda Downloader: modules/public/download-lambda.md
-    - Setup IAM permissions: modules/public/setup-iam-permissions.md
-    - Internal:
+    - Runners (main): modules/runners.md
+    - Submodules (public):
+      - Multi Runners: modules/public/multi-runner.md
+      - AMI Housekeeper: modules/public/ami-housekeeper.md
+      - Lambda Downloader: modules/public/download-lambda.md
+      - Setup IAM permissions: modules/public/setup-iam-permissions.md
+    - Submodules (internal):
       - Runners: modules/internal/runners.md
       - Syncer: modules/internal/runner-binaries-syncer.md
       - SSM: modules/internal/ssm.md
