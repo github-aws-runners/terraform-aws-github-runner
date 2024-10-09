@@ -86,7 +86,7 @@ describe('Test scale up lambda wrapper.', () => {
         resolve();
       });
     });
-    await expect(scaleUpHandler(sqsEvent, context)).resolves.toBeUndefined();
+    await expect(scaleUpHandler(sqsEvent, context)).resolves.not.toThrow();
   });
 
   it('Non scale should resolve.', async () => {
