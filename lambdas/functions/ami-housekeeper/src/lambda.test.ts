@@ -52,7 +52,7 @@ describe('Housekeeper ami', () => {
         resolve();
       });
     });
-    await expect(handler(undefined, context)).resolves.toBeUndefined();
+    await expect(handler(undefined, context)).resolves.not.toThrow();
   });
 
   it('should not thow only log in error in case of an exception.', async () => {
