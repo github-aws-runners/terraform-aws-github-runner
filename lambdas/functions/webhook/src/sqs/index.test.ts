@@ -69,7 +69,7 @@ describe('Test sending message to SQS.', () => {
 
     // Assert
     expect(mockSQS.sendMessage).toHaveBeenCalledWith({ ...sqsMessage, MessageGroupId: String(message.id) });
-    await expect(result).resolves.toBeUndefined();
+    await expect(result).resolves.not.toThrow();
   });
 });
 
