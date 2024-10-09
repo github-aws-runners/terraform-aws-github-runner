@@ -216,7 +216,7 @@ describe('Test job retry check wrapper', () => {
     const error = new Error('Error handling retry check.');
     mock.mockRejectedValue(error);
 
-    await expect(jobRetryCheck(sqsEvent, context)).resolves.not.toThrow('Error handling retry check.');
+    await expect(jobRetryCheck(sqsEvent, context)).resolves.not.toThrow();
     expect(logSpyWarn).toHaveBeenCalledWith(expect.stringContaining(error.message), expect.anything());
   });
 });
