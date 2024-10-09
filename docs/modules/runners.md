@@ -1,4 +1,4 @@
-# Runner module (main))
+# Runner module (main)
 
 !!! note
     This is the top-level module located in the root of the repository. The directory [`modules/runners`](../internal/runners/) contains an internal Terraform sub-module used by this and the [mult-runner module](../public/multi-runner/)
