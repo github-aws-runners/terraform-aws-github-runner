@@ -63,7 +63,7 @@ describe('Test getOctokit', () => {
       mockOctokit.apps.getOrgInstallation.mockRejectedValue(new Error('Error'));
     }
 
-    expect(await getOctokit('', input.orgLevelRunner, payload)).resolves;
+    await expect(getOctokit('', input.orgLevelRunner, payload)).resolves.toBeDefined();
 
     if (output.callOrgInstallation) {
       expect(mockOctokit.apps.getOrgInstallation).toHaveBeenCalled();

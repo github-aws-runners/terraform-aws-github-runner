@@ -45,12 +45,13 @@ describe('Test sending message to SQS.', () => {
       QueueUrl: queueUrl,
       MessageBody: JSON.stringify(no_fifo_message),
     };
+
     // Act
-    const result = await sendActionRequest(no_fifo_message);
+    const result = sendActionRequest(no_fifo_message);
 
     // Assert
-    expect(mockSQS.sendMessage).toBeCalledWith(sqsMessage);
-    expect(result).resolves;
+    expect(mockSQS.sendMessage).toHaveBeenCalledWith(sqsMessage);
+    await expect(result).resolves.not.toThrow();
   });
 
   it('use a fifo queue', async () => {
@@ -64,11 +65,11 @@ describe('Test sending message to SQS.', () => {
       MessageBody: JSON.stringify(fifo_message),
     };
     // Act
-    const result = await sendActionRequest(fifo_message);
+    const result = sendActionRequest(fifo_message);
 
     // Assert
-    expect(mockSQS.sendMessage).toBeCalledWith({ ...sqsMessage, MessageGroupId: String(message.id) });
-    expect(result).resolves;
+    expect(mockSQS.sendMessage).toHaveBeenCalledWith({ ...sqsMessage, MessageGroupId: String(message.id) });
+    await expect(result).resolves.not.toThrow();
   });
 });
 
@@ -94,11 +95,11 @@ describe('Test sending message to SQS.', () => {
     const config = await Config.load();
 
     // Act
-    const result = await sendWebhookEventToWorkflowJobQueue(message, config);
+    const result = sendWebhookEventToWorkflowJobQueue(message, config);
 
     // Assert
     expect(mockSQS.sendMessage).toHaveBeenCalledWith(sqsMessage);
-    expect(result).resolves;
+    await expect(result).resolves.not.toThrow();
   });
 
   it('Does not send webhook events to workflow job event copy queue when job queue is not in environment', async () => {

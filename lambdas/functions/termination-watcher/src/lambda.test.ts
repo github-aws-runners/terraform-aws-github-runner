@@ -55,7 +55,7 @@ describe('Handle sport termination interruption warning', () => {
         resolve();
       });
     });
-    expect(await interruptionWarning(event, context)).resolves;
+    await expect(interruptionWarning(event, context)).resolves.not.toThrow();
   });
 
   it('should not throw only log in error in case of an exception.', async () => {

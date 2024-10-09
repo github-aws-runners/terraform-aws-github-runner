@@ -86,7 +86,7 @@ describe('Test scale up lambda wrapper.', () => {
         resolve();
       });
     });
-    expect(await scaleUpHandler(sqsEvent, context)).resolves;
+    await expect(scaleUpHandler(sqsEvent, context)).resolves.not.toThrow();
   });
 
   it('Non scale should resolve.', async () => {
@@ -206,7 +206,7 @@ describe('Test job retry check wrapper', () => {
         resolve();
       });
     });
-    expect(await jobRetryCheck(sqsEvent, context)).resolves;
+    await expect(jobRetryCheck(sqsEvent, context)).resolves.not.toThrow();
   });
 
   it('Handle with error should resolve and log only a warning.', async () => {
@@ -216,7 +216,7 @@ describe('Test job retry check wrapper', () => {
     const error = new Error('Error handling retry check.');
     mock.mockRejectedValue(error);
 
-    expect(await jobRetryCheck(sqsEvent, context)).resolves;
+    await expect(jobRetryCheck(sqsEvent, context)).resolves.not.toThrow();
     expect(logSpyWarn).toHaveBeenCalledWith(expect.stringContaining(error.message), expect.anything());
   });
 });

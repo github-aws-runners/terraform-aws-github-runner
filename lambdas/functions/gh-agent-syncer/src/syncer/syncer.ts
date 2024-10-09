@@ -25,7 +25,7 @@ async function getCachedVersion(s3Client: S3Client, cacheObject: CacheObject): P
     const objectTagging = await s3Client.send(command);
     const versions = objectTagging.TagSet?.filter((t: Tag) => t.Key === versionKey);
     return versions?.length === 1 ? versions[0].Value : undefined;
-  } catch (e) {
+  } catch {
     logger.debug('No tags found');
     return undefined;
   }
