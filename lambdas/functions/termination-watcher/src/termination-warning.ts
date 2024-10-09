@@ -24,7 +24,7 @@ async function createMetricForInstances(
   for (const instance of instances) {
     const matchFilter = tagFilter(instance, config.tagFilters);
 
-    if (matchFilter && instance) {
+    if (matchFilter) {
       metricEvent(instance, event, config.createSpotWarningMetric ? 'SpotInterruptionWarning' : undefined, logger);
     } else {
       logger.debug(

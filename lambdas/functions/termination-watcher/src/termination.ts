@@ -3,7 +3,7 @@ import { BidEvictedDetail, BidEvictedEvent } from './types';
 import { EC2Client } from '@aws-sdk/client-ec2';
 import { Config } from './ConfigResolver';
 import { metricEvent } from './metric-event';
-import { getInstances } from './ec2';
+import { getInstances, tagFilter } from './ec2';
 
 const logger = createChildLogger('termination-handler');
 
@@ -26,11 +26,9 @@ async function createMetricForInstances(
 
   // check if all tags in config.tagFilter are present on the instance
   for (const instance of instances) {
-    const matchFilter = Object.keys(config.tagFilters).every((key) => {
-      return instance?.Tags?.find((tag) => tag.Key === key && tag.Value?.startsWith(config.tagFilters[key]));
-    });
+    const matchFilter = tagFilter(instance, config.tagFilters);
 
-    if (matchFilter && instance) {
+    if (matchFilter) {
       metricEvent(instance, event, config.createSpotTerminationMetric ? 'SpotTermination' : undefined, logger);
     } else {
       logger.debug(

@@ -98,7 +98,7 @@ module "runners" {
   runner_name_prefix = "${local.environment}_"
 
   # Enable debug logging for the lambda functions
-  log_level = "debug"
+  log_level = "info"
 
   enable_ami_housekeeper = true
   ami_housekeeper_cleanup_config = {
@@ -117,14 +117,14 @@ module "runners" {
   }
 
   # enable metric creation  (experimental)
-  metrics = {
-    enable = true
-    metric = {
-      enable_spot_termination_warning = true
-      enable_job_retry                = false
-      enable_github_app_rate_limit    = false
-    }
-  }
+  # metrics = {
+  #   enable = true
+  #   metric = {
+  #     enable_spot_termination_warning = true
+  #     enable_job_retry                = false
+  #     enable_github_app_rate_limit    = false
+  #   }
+  # }
 
   # enable job_retry feature. Be careful with this feature, it can lead to you hitting API rate limits.
   # job_retry = {
