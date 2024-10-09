@@ -5,6 +5,7 @@ variable "config" {
     `aws_partition`: Partition for the base arn if not 'aws'
     `architecture`: AWS Lambda architecture. Lambda functions using Graviton processors ('arm64') tend to have better price/performance than 'x86_64' functions.
     `environment_variables`: Environment variables for the lambda.
+    'features': Features to enable the different lambda functions to handle spot termination events.
     `lambda_principals`: Add extra principals to the role created for execution of the lambda, e.g. for local testing.
     `lambda_tags`: Map of tags that will be added to created resources. By default resources will be tagged with name and environment.
     `log_level`: Logging level for lambda logging. Valid values are  'silly', 'trace', 'debug', 'info', 'warn', 'error', 'fatal'.
@@ -27,10 +28,14 @@ variable "config" {
     `zip`: File location of the lambda zip file.
   EOF
   type = object({
-    aws_partition             = optional(string, null)
-    architecture              = optional(string, null)
-    enable_metric             = optional(string, null)
-    environment_variables     = optional(map(string), {})
+    aws_partition         = optional(string, null)
+    architecture          = optional(string, null)
+    enable_metric         = optional(string, null)
+    environment_variables = optional(map(string), {})
+    features = optional(object({
+      enable_spot_termination_handler              = optional(bool, true)
+      enable_spot_termination_notification_watcher = optional(bool, true)
+    }), {})
     lambda_tags               = optional(map(string), {})
     log_level                 = optional(string, null)
     logging_kms_key_id        = optional(string, null)
@@ -40,6 +45,7 @@ variable "config" {
       enable    = optional(bool, false)
       namespace = optional(string, "GitHub Runners")
       metric = optional(object({
+        enable_spot_termination         = optional(bool, true)
         enable_spot_termination_warning = optional(bool, true)
       }), {})
     }), {})
