@@ -72,6 +72,7 @@ No providers.
 | Name | Source | Version |
 |------|--------|---------|
 | <a name="module_termination_handler"></a> [termination\_handler](#module\_termination\_handler) | ./termination | n/a |
+| <a name="module_termination_notification"></a> [termination\_notification](#module\_termination\_notification) | ./notification | n/a |
 
 ## Resources
 
