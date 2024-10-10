@@ -26,6 +26,7 @@ locals {
     github_app_parameters       = var.github_app_parameters
     enable_organization_runners = var.enable_organization_runners
     sqs_build_queue             = var.sqs_build_queue
+    ghes_url                    = var.ghes_url
   }
 }
 
