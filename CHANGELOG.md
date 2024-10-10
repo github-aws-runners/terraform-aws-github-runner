@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.16.4](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.16.3...v5.16.4) (2024-10-10)
+
+
+### Bug Fixes
+
+* missing GHES URL for the retry lambda ([#4177](https://github.com/philips-labs/terraform-aws-github-runner/issues/4177)) ([3afbd5f](https://github.com/philips-labs/terraform-aws-github-runner/commit/3afbd5fb0952dbb37d7db216f325acf57cc3aa97))
+
 ## [5.16.3](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.16.2...v5.16.3) (2024-10-09)
 
 
