@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.17.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.16.4...v5.17.0) (2024-10-10)
+
+
+### Features
+
+* add spot termination handler ([#4176](https://github.com/philips-labs/terraform-aws-github-runner/issues/4176)) ([8ba0a82](https://github.com/philips-labs/terraform-aws-github-runner/commit/8ba0a821dd741d863facb86e621f5d8b596e9273))
+
 ## [5.16.4](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.16.3...v5.16.4) (2024-10-10)
 
 
