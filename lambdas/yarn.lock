@@ -8824,7 +8824,7 @@ __metadata:
     "@swc/helpers": "npm:~0.5.12"
     eslint: "npm:^8.57.0"
     jest: "npm:^29.7.0"
-    nx: "npm:19.5.4"
+    nx: "npm:20.0.0"
     prettier: "npm:^3.3.3"
     typescript: "npm:^5.5.4"
   languageName: unknown
