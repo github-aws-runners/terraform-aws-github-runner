@@ -98,7 +98,13 @@ module "runners" {
   runner_name_prefix = "${local.environment}_"
 
   # Enable debug logging for the lambda functions
-  log_level = "info"
+  log_level = "debug"
+
+  tracing_config = {
+    mode                  = "Active"
+    capture_error         = true
+    capture_http_requests = true
+  }
 
   enable_ami_housekeeper = true
   ami_housekeeper_cleanup_config = {
@@ -157,4 +163,8 @@ module "webhook_github_app" {
 # resource "aws_kms_alias" "github" {
 #   name          = "alias/github/action-runners"
 #   target_key_id = aws_kms_key.github.key_id
+# }
+# moved {
+#   from = module.runners.module.webhook.aws_lambda_function.webhook
+#   to   = module.runners.module.webhook.module.webhook.aws_lambda_function.webhook
 # }

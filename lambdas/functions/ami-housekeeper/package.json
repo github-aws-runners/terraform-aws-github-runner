@@ -41,7 +41,7 @@
     "@aws-github-runner/aws-ssm-util": "*",
     "@aws-sdk/client-ec2": "^3.670.0",
     "@aws-sdk/client-ssm": "^3.670.0",
-    "@aws-sdk/types": "^3.664.0",
+    "@aws-sdk/types": "^3.667.0",
     "cron-parser": "^4.9.0",
     "typescript": "^5.5.4"
   },

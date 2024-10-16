@@ -210,3 +210,9 @@ variable "matcher_config_parameter_store_tier" {
     error_message = "`matcher_config_parameter_store_tier` value is not valid, valid values are: `Standard`, and `Advanced`."
   }
 }
+
+variable "legacy_mode" {
+  description = "Enable legacy mode for the webhook lambda."
+  type        = bool
+  default     = false
+}

@@ -32,11 +32,11 @@ output "binaries_syncer" {
 
 output "webhook" {
   value = {
-    gateway          = module.webhook.gateway
-    lambda           = module.webhook.lambda
-    lambda_log_group = module.webhook.lambda_log_group
-    lambda_role      = module.webhook.role
-    endpoint         = "${module.webhook.gateway.api_endpoint}/${module.webhook.endpoint_relative_path}"
+    # gateway          = module.webhook.gateway
+    # lambda           = module.webhook.lambda
+    # lambda_log_group = module.webhook.lambda_log_group
+    # lambda_role      = module.webhook.role
+    endpoint = "${module.webhook.gateway.api_endpoint}/${module.webhook.endpoint_relative_path}"
   }
 }
 
