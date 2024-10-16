@@ -4,13 +4,12 @@ import { mocked } from 'jest-mock';
 import nock from 'nock';
 
 import workFlowJobEvent from '../../test/resources/github_workflowjob_event.json';
-import runnerConfig from '../../test/resources/multi_runner_configurations.json';
 
 import { RunnerConfig } from '../sqs';
 import { checkBodySize, handle } from '.';
-import { Config } from '../ConfigResolver';
 import { dispatch } from '../runners/dispatch';
 import { IncomingHttpHeaders } from 'http';
+import { ConfigWebhook, ConfigWebhookEventBridge } from '../ConfigLoader';
 
 jest.mock('../sqs');
 jest.mock('../runners/dispatch');
@@ -25,24 +24,20 @@ const webhooks = new Webhooks({
 });
 
 describe('handle GitHub webhook events', () => {
-  let originalError: Console['error'];
-  let config: Config;
+  let config: ConfigWebhook;
 
   beforeEach(async () => {
     process.env = { ...cleanEnv };
 
     nock.disableNetConnect();
-    originalError = console.error;
-    console.error = jest.fn();
+
     jest.clearAllMocks();
     jest.resetAllMocks();
 
+    ConfigWebhook.reset();
     mockSSMResponse();
-    config = await Config.load();
-  });
-
-  afterEach(() => {
-    console.error = originalError;
+    process.env.EVENT_BUS_NAME = 'test';
+    config = await ConfigWebhook.load();
   });
 
   it('should return 500 if no signature available', async () => {
@@ -137,13 +132,27 @@ describe('Check message size (checkBodySize)', () => {
   });
 });
 
-function mockSSMResponse(runnerConfigInput?: RunnerConfig) {
-  const mockedGet = mocked(getParameter);
-  mockedGet.mockImplementation((parameter_name) => {
-    const value =
-      parameter_name == '/github-runner/runner-matcher-config'
-        ? JSON.stringify(runnerConfigInput ?? runnerConfig)
-        : GITHUB_APP_WEBHOOK_SECRET;
-    return Promise.resolve(value);
+function mockSSMResponse() {
+  process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH = '/path/to/matcher/config';
+  process.env.PARAMETER_GITHUB_APP_WEBHOOK_SECRET = '/path/to/webhook/secret';
+  const matcherConfig = [
+    {
+      id: '1',
+      arn: 'arn:aws:sqs:us-east-1:123456789012:queue1',
+      fifo: false,
+      matcherConfig: {
+        labelMatchers: [['label1', 'label2']],
+        exactMatch: true,
+      },
+    },
+  ];
+  mocked(getParameter).mockImplementation(async (paramPath: string) => {
+    if (paramPath === '/path/to/matcher/config') {
+      return JSON.stringify(matcherConfig);
+    }
+    if (paramPath === '/path/to/webhook/secret') {
+      return GITHUB_APP_WEBHOOK_SECRET;
+    }
+    throw new Error('Parameter not found');
   });
 }

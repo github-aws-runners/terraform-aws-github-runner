@@ -3,21 +3,25 @@ import { WorkflowJobEvent } from '@octokit/webhooks-types';
 
 import { Response } from '../lambda';
 import { RunnerMatcherConfig, sendActionRequest, sendWebhookEventToWorkflowJobQueue } from '../sqs';
-import { Config } from '../ConfigResolver';
 import ValidationError from '../ValidationError';
+import { ConfigDispatcher, ConfigWebhook } from '../ConfigLoader';
 
 const logger = createChildLogger('handler');
 
-export async function dispatch(event: WorkflowJobEvent, eventType: string, config: Config): Promise<Response> {
+export async function dispatch(
+  event: WorkflowJobEvent,
+  eventType: string,
+  config: ConfigDispatcher | ConfigWebhook,
+): Promise<Response> {
   validateRepoInAllowList(event, config);
 
-  const result = await handleWorkflowJob(event, eventType, Config.matcherConfig!);
+  const result = await handleWorkflowJob(event, eventType, config.matcherConfig!);
   await sendWebhookEventToWorkflowJobQueue({ workflowJobEvent: event }, config);
 
   return result;
 }
 
-function validateRepoInAllowList(event: WorkflowJobEvent, config: Config) {
+function validateRepoInAllowList(event: WorkflowJobEvent, config: ConfigDispatcher) {
   if (config.repositoryAllowList.length > 0 && !config.repositoryAllowList.includes(event.repository.full_name)) {
     logger.info(`Received event from unauthorized repository ${event.repository.full_name}`);
     throw new ValidationError(403, `Received event from unauthorized repository ${event.repository.full_name}`);

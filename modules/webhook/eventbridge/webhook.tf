@@ -16,7 +16,6 @@ resource "aws_ssm_parameter" "runner_matcher_config" {
   tier  = var.config.matcher_config_parameter_store_tier
 }
 
-
 resource "aws_lambda_function" "webhook" {
   s3_bucket         = var.config.lambda_s3_bucket != null ? var.config.lambda_s3_bucket : null
   s3_key            = var.config.lambda_s3_key != null ? var.config.lambda_s3_key : null

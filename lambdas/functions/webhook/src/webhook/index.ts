@@ -5,18 +5,17 @@ import { IncomingHttpHeaders } from 'http';
 
 import { Response } from '../lambda';
 import ValidationError from '../ValidationError';
-import { Config } from '../ConfigResolver';
 import { dispatch } from '../runners/dispatch';
 import { publish } from '../eventbridge';
 import { EventWrapper } from '../types';
-import { ConfigWebhook, ConfigWebhookEventBridge } from '../ConfigLoader';
+import { ConfigDispatcher, ConfigWebhook, ConfigWebhookEventBridge } from '../ConfigLoader';
 const supportedEvents = ['workflow_job'];
 const logger = createChildLogger('handler');
 
-export async function handle(headers: IncomingHttpHeaders, body: string, config: Config): Promise<Response> {
+export async function handle(headers: IncomingHttpHeaders, body: string, config: ConfigWebhook): Promise<Response> {
   init(headers);
 
-  await verifySignature(headers, body);
+  await verifySignature(headers, body, config.webhookSecret);
 
   const checkBodySizeResult = checkBodySize(body, headers);
 
@@ -61,16 +60,6 @@ export async function publishOnEventBridge(
   return response;
 }
 
-export async function dispatchToRunners(event: EventWrapper<WorkflowJobEvent>, config: Config): Promise<Response> {
-  const eventType = event['detail-type'];
-  if (eventType != 'workflow_job') {
-    logger.debug('Wrong event type received. Unable to process event', { event });
-    throw new Error('Incorrect Event detail-type only workflow_job is accepted');
-  }
-
-  return await dispatch(event.detail, eventType, config);
-}
-
 async function publishEvent(eventBusName: string | undefined, eventSource: string, eventType: string, body: string) {
   if (!eventBusName || eventBusName === '') {
     logger.warn(`EventBridge not configured, skipping event publishing`);
@@ -98,10 +87,10 @@ async function publishEvent(eventBusName: string | undefined, eventSource: strin
   }
 }
 
-async function verifySignature(headers: IncomingHttpHeaders, body: string, secret?: string): Promise<number> {
+async function verifySignature(headers: IncomingHttpHeaders, body: string, secret: string): Promise<number> {
   const signature = headers['x-hub-signature-256'] as string;
   const webhooks = new Webhooks({
-    secret: secret || Config.webhookSecret!,
+    secret,
   });
 
   if (

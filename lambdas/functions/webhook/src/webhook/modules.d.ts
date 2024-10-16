@@ -8,6 +8,6 @@ declare namespace NodeJS {
     j;
     RUNNER_LABELS: string;
     ALLOWED_EVENTS: string;
-    WORKFLOW_JOB_EVENT_SECONDARY_QUEUE: string;
+    SQS_WORKFLOW_JOB_QUEUE: string;
   }
 }

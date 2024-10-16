@@ -2,15 +2,15 @@ import bodyParser from 'body-parser';
 import express from 'express';
 
 import { handle } from './webhook';
-import { Config } from './ConfigResolver';
+import { ConfigWebhook } from './ConfigLoader';
 
 const app = express();
-const config = Config.load();
 
 app.use(bodyParser.json());
 
 app.post('/event_handler', async (req, res) => {
-  handle(req.headers, JSON.stringify(req.body), await config)
+  const config: ConfigWebhook = await ConfigWebhook.load();
+  handle(req.headers, JSON.stringify(req.body), config)
     .then((c) => res.status(c.statusCode).end())
     .catch((e) => {
       console.log(e);

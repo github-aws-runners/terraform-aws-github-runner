@@ -2,6 +2,7 @@ import { getParameter } from '@aws-github-runner/aws-ssm-util';
 import { ConfigWebhook, ConfigWebhookEventBridge, ConfigDispatcher } from './ConfigLoader';
 import { mocked } from 'jest-mock';
 import { logger } from '@aws-github-runner/aws-powertools-util';
+import { MatcherConfig, RunnerMatcherConfig } from './sqs';
 
 jest.mock('@aws-github-runner/aws-ssm-util');
 
@@ -93,7 +94,7 @@ describe('ConfigLoader Tests', () => {
   describe('ConfigWebhook', () => {
     it('should load config successfully', async () => {
       process.env.REPOSITORY_ALLOW_LIST = '["repo1", "repo2"]';
-      process.env.WORKFLOW_JOB_EVENT_SECONDARY_QUEUE = 'secondary-queue';
+      process.env.SQS_WORKFLOW_JOB_QUEUE = 'secondary-queue';
       process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH = '/path/to/matcher/config';
       process.env.PARAMETER_GITHUB_APP_WEBHOOK_SECRET = '/path/to/webhook/secret';
       const matcherConfig = [
@@ -209,18 +210,17 @@ describe('ConfigLoader Tests', () => {
       process.env.REPOSITORY_ALLOW_LIST = '["repo1", "repo2"]';
       process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH = '/path/to/matcher/config';
 
-      const matcherConfig = [
+      const matcherConfig: RunnerMatcherConfig[] = [
         {
-          id: '1',
-          arn: 'arn:aws:sqs:us-east-1:123456789012:queue1',
-          fifo: false,
+          arn: 'arn:aws:sqs:eu-central-1:123456:npalm-default-queued-builds',
+          fifo: true,
+          id: 'https://sqs.eu-central-1.amazonaws.com/123456/npalm-default-queued-builds',
           matcherConfig: {
-            labelMatchers: [['label1', 'label2']],
             exactMatch: true,
+            labelMatchers: [['default', 'example', 'linux', 'self-hosted', 'x64']],
           },
         },
       ];
-
       mocked(getParameter).mockImplementation(async (paramPath: string) => {
         if (paramPath === '/path/to/matcher/config') {
           return JSON.stringify(matcherConfig);
@@ -242,6 +242,21 @@ describe('ConfigLoader Tests', () => {
       await expect(ConfigDispatcher.load()).rejects.toThrow(
         'Failed to load config: Failed to load parameter for matcherConfig from path undefined: Parameter undefined not found',
       );
+    });
+
+    it('should throw an error if runner matcher config is empty.', async () => {
+      process.env.REPOSITORY_ALLOW_LIST = '["repo1", "repo2"]';
+      process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH = '/path/to/matcher/config';
+
+      mocked(getParameter).mockImplementation(async (paramPath: string) => {
+        if (paramPath === '/path/to/matcher/config') {
+          return JSON.stringify('');
+        }
+        return '';
+      });
+
+      await expect(ConfigDispatcher.load()).rejects.toThrow('ailed to load config: Matcher config is empty');
+
     });
   });
 });

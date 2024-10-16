@@ -2,13 +2,13 @@ import middy from '@middy/core';
 import { logger, setContext, captureLambdaHandler, tracer } from '@aws-github-runner/aws-powertools-util';
 import { APIGatewayEvent, Context } from 'aws-lambda';
 
-import { handle, publishOnEventBridge, dispatchToRunners } from './webhook';
-import { Config } from './ConfigResolver';
+import { handle, publishOnEventBridge } from './webhook';
 import { IncomingHttpHeaders } from 'http';
 import ValidationError from './ValidationError';
 import { EventWrapper } from './types';
 import { WorkflowJobEvent } from '@octokit/webhooks-types';
-import { ConfigWebhook, ConfigWebhookEventBridge } from './ConfigLoader';
+import { ConfigDispatcher, ConfigWebhook, ConfigWebhookEventBridge } from './ConfigLoader';
+import { dispatch } from './runners/dispatch';
 
 export interface Response {
   statusCode: number;
@@ -19,13 +19,11 @@ middy(githubWebhook).use(captureLambdaHandler(tracer));
 
 export async function githubWebhook(event: APIGatewayEvent, context: Context): Promise<Response> {
   setContext(context, 'lambda.ts');
-  const config = await Config.load();
-
   logger.logEventIfEnabled(event);
-  logger.debug('Loading config', { config });
 
   let result: Response;
   try {
+    const config: ConfigWebhook = await ConfigWebhook.load();
     result = await handle(headersToLowerCase(event.headers), event.body as string, config);
   } catch (e) {
     logger.error(`Failed to handle webhook event`, { error: e });
@@ -46,13 +44,11 @@ export async function githubWebhook(event: APIGatewayEvent, context: Context): P
 
 export async function eventBridgeWebhook(event: APIGatewayEvent, context: Context): Promise<Response> {
   setContext(context, 'lambda.ts');
-  const config: ConfigWebhookEventBridge = await ConfigWebhookEventBridge.load();
-
   logger.logEventIfEnabled(event);
-  logger.debug('Loading config', { config });
 
   let result: Response;
   try {
+    const config: ConfigWebhookEventBridge = await ConfigWebhookEventBridge.load();
     result = await publishOnEventBridge(headersToLowerCase(event.headers), event.body as string, config);
   } catch (e) {
     logger.error(`Failed to handle webhook event`, { error: e });
@@ -71,17 +67,22 @@ export async function eventBridgeWebhook(event: APIGatewayEvent, context: Contex
   return result;
 }
 
-export async function workflowJob(event: EventWrapper<WorkflowJobEvent>, context: Context): Promise<void> {
+export async function dispatchToRunners(event: EventWrapper<WorkflowJobEvent>, context: Context): Promise<void> {
   setContext(context, 'lambda.ts');
-  const config = await Config.load();
-
   logger.logEventIfEnabled(event);
-  logger.debug('Loading config', { config });
+
+  const eventType = event['detail-type'];
+  if (eventType != 'workflow_job') {
+    logger.debug('Wrong event type received. Unable to process event', { event });
+    throw new Error('Incorrect Event detail-type only workflow_job is accepted');
+  }
 
   try {
-    await dispatchToRunners(event, config);
+    const config: ConfigDispatcher = await ConfigDispatcher.load();
+    await dispatch(event.detail, eventType, config);
   } catch (e) {
     logger.error(`Failed to handle webhook event`, { error: e });
+    throw e;
   }
 }
 

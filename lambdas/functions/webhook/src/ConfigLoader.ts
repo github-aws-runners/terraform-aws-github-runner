@@ -86,7 +86,7 @@ export class ConfigWebhook extends BaseConfig {
 
   async loadConfig(): Promise<void> {
     this.loadEnvVar(process.env.REPOSITORY_ALLOW_LIST, 'repositoryAllowList', []);
-    this.loadEnvVar(process.env.WORKFLOW_JOB_EVENT_SECONDARY_QUEUE, 'workflowJobEventSecondaryQueue', '');
+    this.loadEnvVar(process.env.SQS_WORKFLOW_JOB_QUEUE, 'workflowJobEventSecondaryQueue', '');
 
     await Promise.all([
       this.loadParameter<MatcherConfig[]>(process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH, 'matcherConfig'),
@@ -110,9 +110,15 @@ export class ConfigWebhookEventBridge extends BaseConfig {
 export class ConfigDispatcher extends BaseConfig {
   repositoryAllowList: string[] = [];
   matcherConfig: RunnerMatcherConfig[] = [];
+  workflowJobEventSecondaryQueue: string = ''; // Deprecated, not loaded
 
   async loadConfig(): Promise<void> {
     this.loadEnvVar(process.env.REPOSITORY_ALLOW_LIST, 'repositoryAllowList', []);
     await this.loadParameter<MatcherConfig[]>(process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH, 'matcherConfig');
+
+    // check matcherConfig object is not empty
+    if (this.matcherConfig.length === 0) {
+      this.configLoadingErrors.push('Matcher config is empty');
+    }
   }
 }

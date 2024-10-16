@@ -8,7 +8,8 @@ import runnerConfig from '../../test/resources/multi_runner_configurations.json'
 
 import { RunnerConfig, sendActionRequest } from '../sqs';
 import { canRunJob, dispatch } from './dispatch';
-import { Config } from '../ConfigResolver';
+import { ConfigDispatcher } from '../ConfigLoader';
+import { logger } from '@aws-github-runner/aws-powertools-util';
 
 jest.mock('../sqs');
 jest.mock('@aws-github-runner/aws-ssm-util');
@@ -20,9 +21,10 @@ const cleanEnv = process.env;
 
 describe('Dispatcher', () => {
   let originalError: Console['error'];
-  let config: Config;
+  let config: ConfigDispatcher;
 
   beforeEach(async () => {
+    logger.setLogLevel('DEBUG');
     process.env = { ...cleanEnv };
 
     nock.disableNetConnect();
@@ -235,6 +237,7 @@ describe('Dispatcher', () => {
 });
 
 function mockSSMResponse(runnerConfigInput?: RunnerConfig) {
+  process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH = '/github-runner/runner-matcher-config';
   const mockedGet = mocked(getParameter);
   mockedGet.mockImplementation((parameter_name) => {
     const value =
@@ -245,11 +248,11 @@ function mockSSMResponse(runnerConfigInput?: RunnerConfig) {
   });
 }
 
-async function createConfig(repositoryAllowList?: string[], runnerConfig?: RunnerConfig): Promise<Config> {
+async function createConfig(repositoryAllowList?: string[], runnerConfig?: RunnerConfig): Promise<ConfigDispatcher> {
   if (repositoryAllowList) {
     process.env.REPOSITORY_ALLOW_LIST = JSON.stringify(repositoryAllowList);
   }
-  Config.reset();
+  ConfigDispatcher.reset();
   mockSSMResponse(runnerConfig);
-  return await Config.load();
+  return await ConfigDispatcher.load();
 }

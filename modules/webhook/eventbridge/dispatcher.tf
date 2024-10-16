@@ -68,7 +68,7 @@ resource "aws_lambda_function" "dispatcher" {
   source_code_hash  = var.config.lambda_s3_bucket == null ? filebase64sha256(local.lambda_zip) : null
   function_name     = "${var.config.prefix}-dispatch-to-runner"
   role              = aws_iam_role.dispatcher_lambda.arn
-  handler           = "index.workflowJob"
+  handler           = "index.dispatchToRunners"
   runtime           = var.config.lambda_runtime
   memory_size       = var.config.lambda_memory_size
   timeout           = var.config.lambda_timeout
