@@ -1,5 +1,5 @@
 import { Webhooks } from '@octokit/webhooks';
-import { Schema, WorkflowJobEvent } from '@octokit/webhooks-types';
+import { WorkflowJobEvent } from '@octokit/webhooks-types';
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import { IncomingHttpHeaders } from 'http';
 
@@ -7,9 +7,7 @@ import { Response } from '../lambda';
 import ValidationError from '../ValidationError';
 import { dispatch } from '../runners/dispatch';
 import { publish } from '../eventbridge';
-import { EventWrapper } from '../types';
-import { ConfigDispatcher, ConfigWebhook, ConfigWebhookEventBridge } from '../ConfigLoader';
-const supportedEvents = ['workflow_job'];
+import { ConfigWebhook, ConfigWebhookEventBridge } from '../ConfigLoader';
 const logger = createChildLogger('handler');
 
 export async function handle(headers: IncomingHttpHeaders, body: string, config: ConfigWebhook): Promise<Response> {
@@ -48,7 +46,6 @@ export async function publishOnEventBridge(
   );
 
   let response: Response = { body: '', statusCode: 201 };
-  const installationId = headers['x-github-hook-installation-target-id'] as string;
   if (!checkBodySizeResult.sizeExceeded) {
     await publishEvent(config.eventBusName, `github`, eventType, body);
     response = { statusCode: 201, body: 'Event sent successfully to EventBridge successfully.' };
@@ -61,11 +58,6 @@ export async function publishOnEventBridge(
 }
 
 async function publishEvent(eventBusName: string | undefined, eventSource: string, eventType: string, body: string) {
-  if (!eventBusName || eventBusName === '') {
-    logger.warn(`EventBridge not configured, skipping event publishing`);
-    throw Error('EventBridge not configured');
-  }
-
   try {
     const result = await publish({
       EventBusName: eventBusName,

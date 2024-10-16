@@ -9,7 +9,6 @@ import ValidationError from './ValidationError';
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
 import { dispatch } from './runners/dispatch';
 import { EventWrapper } from './types';
-import { rejects } from 'assert';
 
 const event: APIGatewayEvent = {
   body: JSON.stringify(''),
@@ -77,7 +76,6 @@ const context: Context = {
   },
 };
 
-
 jest.mock('./runners/dispatch');
 jest.mock('./webhook');
 jest.mock('@aws-github-runner/aws-ssm-util');
@@ -122,8 +120,6 @@ describe('Test webhook lambda wrapper.', () => {
     });
   });
 
-
-
   describe('Lmmbda eventBridgeWebhook.', () => {
     beforeEach(() => {
       process.env.EVENT_BUS_NAME = 'test';
@@ -140,7 +136,6 @@ describe('Test webhook lambda wrapper.', () => {
       const result = await eventBridgeWebhook(event, context);
       expect(result).toEqual({ body: 'test', statusCode: 200 });
     });
-
 
     it('Reject events .', async () => {
       const mock = mocked(publishOnEventBridge);
@@ -190,9 +185,10 @@ describe('Test webhook lambda wrapper.', () => {
         'detail-type': 'non_workflow_job',
       } as unknown as EventWrapper<WorkflowJobEvent>;
 
-      await expect(dispatchToRunners(testEvent, context)).rejects.toThrow('Incorrect Event detail-type only workflow_job is accepted');
+      await expect(dispatchToRunners(testEvent, context)).rejects.toThrow(
+        'Incorrect Event detail-type only workflow_job is accepted',
+      );
     });
-
 
     it('Rejects any event causing an error.', async () => {
       const mock = mocked(dispatch);

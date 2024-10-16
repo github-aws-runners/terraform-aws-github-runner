@@ -1,5 +1,5 @@
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
-import { MatcherConfig, RunnerMatcherConfig } from './sqs';
+import { RunnerMatcherConfig } from './sqs';
 import { logger } from '@aws-github-runner/aws-powertools-util';
 
 abstract class BaseConfig {
@@ -36,7 +36,7 @@ abstract class BaseConfig {
   protected loadEnvVar<T>(envVar: string, propertyName: keyof this, defaultValue?: T): void {
     logger.debug(`Loading env var for ${String(propertyName)}`, { envVar });
     if (envVar !== undefined) {
-      this.loadProperty<T>(propertyName, envVar);
+      this.loadProperty(propertyName, envVar);
     } else if (defaultValue !== undefined) {
       this[propertyName] = defaultValue as unknown as this[keyof this];
     } else {
@@ -45,22 +45,22 @@ abstract class BaseConfig {
     }
   }
 
-  protected async loadParameter<T>(paramPath: string, propertyName: keyof this): Promise<void> {
+  protected async loadParameter(paramPath: string, propertyName: keyof this): Promise<void> {
     logger.debug(`Loading parameter for ${String(propertyName)} from path ${paramPath}`);
     await getParameter(paramPath)
       .then((value) => {
-        this.loadProperty<T>(propertyName, value);
+        this.loadProperty(propertyName, value);
       })
       .catch((error) => {
-        const errorMessage = `Failed to load parameter for ${String(propertyName)} from path ${paramPath}: ${(error as Error).message}`;
+        const errorMessage = `Failed to load parameter for ${String(propertyName)} from path ${paramPath}: ${(error as Error).message}`; // eslint-disable-line max-len
         this.configLoadingErrors.push(errorMessage);
       });
   }
 
-  private loadProperty<T>(propertyName: keyof this, value: string) {
+  private loadProperty(propertyName: keyof this, value: string) {
     try {
       this[propertyName] = JSON.parse(value) as unknown as this[keyof this];
-    } catch (error) {
+    } catch {
       this[propertyName] = value as unknown as this[keyof this];
     }
   }
@@ -89,7 +89,7 @@ export class ConfigWebhook extends BaseConfig {
     this.loadEnvVar(process.env.SQS_WORKFLOW_JOB_QUEUE, 'workflowJobEventSecondaryQueue', '');
 
     await Promise.all([
-      this.loadParameter<MatcherConfig[]>(process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH, 'matcherConfig'),
+      this.loadParameter(process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH, 'matcherConfig'),
       this.loadParameter(process.env.PARAMETER_GITHUB_APP_WEBHOOK_SECRET, 'webhookSecret'),
     ]);
   }
@@ -114,7 +114,7 @@ export class ConfigDispatcher extends BaseConfig {
 
   async loadConfig(): Promise<void> {
     this.loadEnvVar(process.env.REPOSITORY_ALLOW_LIST, 'repositoryAllowList', []);
-    await this.loadParameter<MatcherConfig[]>(process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH, 'matcherConfig');
+    await this.loadParameter(process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH, 'matcherConfig');
 
     // check matcherConfig object is not empty
     if (this.matcherConfig.length === 0) {

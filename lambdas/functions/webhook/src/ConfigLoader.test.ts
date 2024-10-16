@@ -2,7 +2,7 @@ import { getParameter } from '@aws-github-runner/aws-ssm-util';
 import { ConfigWebhook, ConfigWebhookEventBridge, ConfigDispatcher } from './ConfigLoader';
 import { mocked } from 'jest-mock';
 import { logger } from '@aws-github-runner/aws-powertools-util';
-import { MatcherConfig, RunnerMatcherConfig } from './sqs';
+import { RunnerMatcherConfig } from './sqs';
 
 jest.mock('@aws-github-runner/aws-ssm-util');
 
@@ -78,7 +78,7 @@ describe('ConfigLoader Tests', () => {
       setupConfiguration();
       const spy = jest.spyOn(logger, 'debug');
 
-      const config = await ConfigWebhook.load();
+      await ConfigWebhook.load();
 
       expect(spy).toHaveBeenCalledWith(
         'Config loaded',
@@ -169,7 +169,7 @@ describe('ConfigLoader Tests', () => {
       });
 
       await expect(ConfigWebhook.load()).rejects.toThrow(
-        'Failed to load config: Failed to load parameter for matcherConfig from path /path/to/matcher/config: Failed to load matcher config',
+        'Failed to load config: Failed to load parameter for matcherConfig from path /path/to/matcher/config: Failed to load matcher config', // eslint-disable-line max-len
       );
     });
   });
@@ -200,7 +200,7 @@ describe('ConfigLoader Tests', () => {
       });
 
       await expect(ConfigWebhookEventBridge.load()).rejects.toThrow(
-        'Failed to load config: Environment variable for eventBusName is not set and no default value provided., Failed to load parameter for webhookSecret from path undefined: Parameter undefined not found',
+        'Failed to load config: Environment variable for eventBusName is not set and no default value provided., Failed to load parameter for webhookSecret from path undefined: Parameter undefined not found', // eslint-disable-line max-len
       );
     });
   });
@@ -240,7 +240,7 @@ describe('ConfigLoader Tests', () => {
       });
 
       await expect(ConfigDispatcher.load()).rejects.toThrow(
-        'Failed to load config: Failed to load parameter for matcherConfig from path undefined: Parameter undefined not found',
+        'Failed to load config: Failed to load parameter for matcherConfig from path undefined: Parameter undefined not found', // eslint-disable-line max-len
       );
     });
 
@@ -256,7 +256,6 @@ describe('ConfigLoader Tests', () => {
       });
 
       await expect(ConfigDispatcher.load()).rejects.toThrow('ailed to load config: Matcher config is empty');
-
     });
   });
 });
