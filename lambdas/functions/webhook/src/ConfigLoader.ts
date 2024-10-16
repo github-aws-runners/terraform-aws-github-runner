@@ -92,6 +92,9 @@ export class ConfigWebhook extends BaseConfig {
       this.loadParameter(process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH, 'matcherConfig'),
       this.loadParameter(process.env.PARAMETER_GITHUB_APP_WEBHOOK_SECRET, 'webhookSecret'),
     ]);
+
+    validateWebhookSecret(this);
+    validateRunnerMatcherConfig(this);
   }
 }
 
@@ -104,6 +107,9 @@ export class ConfigWebhookEventBridge extends BaseConfig {
     this.loadEnvVar(process.env.ALLOWED_EVENTS, 'allowedEvents', []);
     this.loadEnvVar(process.env.EVENT_BUS_NAME, 'eventBusName');
     await this.loadParameter(process.env.PARAMETER_GITHUB_APP_WEBHOOK_SECRET, 'webhookSecret');
+
+    validateEventBusName(this);
+    validateWebhookSecret(this);
   }
 }
 
@@ -116,9 +122,24 @@ export class ConfigDispatcher extends BaseConfig {
     this.loadEnvVar(process.env.REPOSITORY_ALLOW_LIST, 'repositoryAllowList', []);
     await this.loadParameter(process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH, 'matcherConfig');
 
-    // check matcherConfig object is not empty
-    if (this.matcherConfig.length === 0) {
-      this.configLoadingErrors.push('Matcher config is empty');
-    }
+    validateRunnerMatcherConfig(this);
+  }
+}
+
+function validateEventBusName(config: ConfigWebhookEventBridge): void {
+  if (!config.eventBusName) {
+    config.configLoadingErrors.push('Environment variable for eventBusName is not set and no default value provided.');
+  }
+}
+
+function validateWebhookSecret(config: ConfigWebhookEventBridge | ConfigWebhook): void {
+  if (!config.webhookSecret) {
+    config.configLoadingErrors.push('Environment variable for webhookSecret is not set and no default value provided.');
+  }
+}
+
+function validateRunnerMatcherConfig(config: ConfigDispatcher | ConfigWebhook): void {
+  if (config.matcherConfig.length === 0) {
+    config.configLoadingErrors.push('Matcher config is empty');
   }
 }
