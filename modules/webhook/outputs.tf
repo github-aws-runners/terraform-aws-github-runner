@@ -31,13 +31,3 @@ output "lambda_log_group" {
 output "role" {
   value = var.mode == "direct" ? module.direct[0].webhook.role : module.eventbridge[0].webhook.role
 }
-
-
-
-# output "webhook_lambda_function_name" {
-#   value = module.webhook.lambda_function_name
-# }
-
-# output "webhook_cloudwatch_log_group_name" {
-#   value = module.webhook.cloudwatch_log_group_name
-# }
