@@ -955,3 +955,9 @@ variable "webhook_mode" {
     error_message = "`mode` value is not valid, valid values are: `direct`, and `eventbridge`."
   }
 }
+
+variable "eventbridge_allowed_events" {
+  description = "List of events that are allowed (accepted) to be sent to the eventbridge by the webhook. Variable only have effect if `webhook_mode` is set to `eventbridge`."
+  type        = list(string)
+  default     = []
+}

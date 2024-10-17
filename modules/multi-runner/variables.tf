@@ -283,6 +283,12 @@ variable "webhook_mode" {
   }
 }
 
+variable "eventbridge_allowed_events" {
+  description = "List of events that are allowed (accepted) to be sent to the eventbridge by the webhook. Variable only have effect if `webhook_mode` is set to `eventbridge`."
+  type        = list(string)
+  default     = []
+}
+
 variable "webhook_lambda_s3_key" {
   description = "S3 key for webhook lambda function. Required if using S3 bucket to specify lambdas."
   type        = string

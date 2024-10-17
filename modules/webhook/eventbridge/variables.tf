@@ -50,5 +50,6 @@ variable "config" {
       arn     = string
       version = string
     })
+    allowed_events = optional(list(string), [])
   })
 }

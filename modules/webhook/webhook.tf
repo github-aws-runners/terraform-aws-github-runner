@@ -84,6 +84,7 @@ module "eventbridge" {
     lambda_tags                           = var.lambda_tags,
     api_gw_source_arn                     = "${aws_apigatewayv2_api.webhook.execution_arn}/*/*/${local.webhook_endpoint}"
     ssm_parameter_runner_matcher_config   = aws_ssm_parameter.runner_matcher_config
+    allowed_events                        = var.eventbridge_allowed_events
   }
 
 }
