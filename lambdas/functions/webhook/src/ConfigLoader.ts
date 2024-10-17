@@ -2,6 +2,15 @@ import { getParameter } from '@aws-github-runner/aws-ssm-util';
 import { RunnerMatcherConfig } from './sqs';
 import { logger } from '@aws-github-runner/aws-powertools-util';
 
+/**
+ * Base class for loading configuration from environment variables and SSM parameters.
+ *
+ * @remarks
+ * To avoid usages or checking values can be undefined we assume that configuration is
+ * set to
+ * - empty string if the property is not relevant
+ * - empty list if the property is not relevant
+ */
 abstract class BaseConfig {
   static instance: BaseConfig | null = null;
   configLoadingErrors: string[] = [];

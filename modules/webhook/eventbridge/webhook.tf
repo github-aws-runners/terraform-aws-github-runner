@@ -1,21 +1,3 @@
-locals {
-  # config with combined key and order
-  runner_matcher_config = { for k, v in var.config.runner_matcher_config : format("%03d-%s", v.matcherConfig.priority, k) => merge(v, { key = k }) }
-
-  # sorted list
-  runner_matcher_config_sorted = [for k in sort(keys(local.runner_matcher_config)) : local.runner_matcher_config[k]]
-
-  lambda_zip = var.config.lambda_zip == null ? "${path.module}/../../../lambdas/functions/webhook/webhook.zip" : var.config.lambda_zip
-
-}
-
-resource "aws_ssm_parameter" "runner_matcher_config" {
-  name  = "${var.config.ssm_paths.root}/${var.config.ssm_paths.webhook}/runner-matcher-config"
-  type  = "String"
-  value = jsonencode(local.runner_matcher_config_sorted)
-  tier  = var.config.matcher_config_parameter_store_tier
-}
-
 resource "aws_lambda_function" "webhook" {
   s3_bucket         = var.config.lambda_s3_bucket != null ? var.config.lambda_s3_bucket : null
   s3_key            = var.config.lambda_s3_key != null ? var.config.lambda_s3_key : null
@@ -40,7 +22,7 @@ resource "aws_lambda_function" "webhook" {
         POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.config.tracing_config.capture_http_requests
         POWERTOOLS_TRACER_CAPTURE_ERROR          = var.config.tracing_config.capture_error
         PARAMETER_GITHUB_APP_WEBHOOK_SECRET      = var.config.github_app_parameters.webhook_secret.name
-        PARAMETER_RUNNER_MATCHER_CONFIG_PATH     = aws_ssm_parameter.runner_matcher_config.name
+        PARAMETER_RUNNER_MATCHER_CONFIG_PATH     = var.config.ssm_parameter_runner_matcher_config.name
         EVENT_BUS_NAME                           = aws_cloudwatch_event_bus.main.name
       } : k => v if v != null
     }
@@ -64,7 +46,7 @@ resource "aws_lambda_function" "webhook" {
   }
 
   lifecycle {
-    replace_triggered_by = [aws_ssm_parameter.runner_matcher_config, null_resource.github_app_parameters]
+    replace_triggered_by = [null_resource.ssm_parameter_runner_matcher_config, null_resource.github_app_parameters]
   }
 }
 
@@ -82,7 +64,7 @@ resource "aws_lambda_permission" "webhook" {
   principal     = "apigateway.amazonaws.com"
   source_arn    = var.config.api_gw_source_arn
   lifecycle {
-    replace_triggered_by = [aws_ssm_parameter.runner_matcher_config, null_resource.github_app_parameters]
+    replace_triggered_by = [null_resource.ssm_parameter_runner_matcher_config, null_resource.github_app_parameters]
   }
 }
 
@@ -104,7 +86,7 @@ data "aws_iam_policy_document" "lambda_assume_role_policy" {
 }
 
 resource "aws_iam_role" "webhook_lambda" {
-  name                 = "${var.config.prefix}-action-webhook-lambda-role"
+  name                 = "${var.config.prefix}-eventbridge-webhook-lambda-role"
   assume_role_policy   = data.aws_iam_policy_document.lambda_assume_role_policy.json
   path                 = var.config.role_path
   permissions_boundary = var.config.role_permissions_boundary
@@ -140,7 +122,7 @@ resource "aws_iam_role_policy" "webhook_ssm" {
 
   policy = templatefile("${path.module}/../policies/lambda-ssm.json", {
     github_app_webhook_secret_arn       = var.config.github_app_parameters.webhook_secret.arn,
-    parameter_runner_matcher_config_arn = aws_ssm_parameter.runner_matcher_config.arn
+    parameter_runner_matcher_config_arn = var.config.ssm_parameter_runner_matcher_config.arn
   })
 }
 

@@ -1,11 +1,22 @@
 output "eventbridge" {
-  value = aws_cloudwatch_event_bus.main
+  value = {
+    event_but = aws_cloudwatch_event_bus.main
+    archive   = aws_cloudwatch_event_archive.main
+  }
 }
 
-output "achive" {
-  value = var.config.archive.enable ? aws_cloudwatch_event_archive.main : null
+output "webhook" {
+  value = {
+    lambda    = aws_lambda_function.webhook
+    log_group = aws_cloudwatch_log_group.webhook
+    role      = aws_iam_role.webhook_lambda
+  }
 }
 
-output "webhook_lambda_function" {
-  value = aws_lambda_function.webhook
+output "dispatcher" {
+  value = {
+    lambda    = aws_lambda_function.dispatcher
+    log_group = aws_cloudwatch_log_group.dispatcher
+    role      = aws_iam_role.dispatcher_lambda
+  }
 }

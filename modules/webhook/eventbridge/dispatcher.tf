@@ -1,43 +1,3 @@
-# locals {
-#   # config with combined key and order
-#   runner_matcher_config = { for k, v in var.config.runner_matcher_config : format("%03d-%s", v.matcherConfig.priority, k) => merge(v, { key = k }) }
-
-#   # sorted list
-#   runner_matcher_config_sorted = [for k in sort(keys(local.runner_matcher_config)) : local.runner_matcher_config[k]]
-
-#   # handler
-#   lambda_handler_function = var.config.legacy_mode ? "index.githubWebhook" : "index.eventBridgeWebhook"
-
-#   lambda_zip       = var.config.lambda_zip == null ? "${path.module}/../../../lambdas/functions/webhook/webhook.zip" : var.config.lambda_zip
-
-# }
-
-# resource "aws_ssm_parameter" "runner_matcher_config" {
-#   name  = "${var.config.ssm_paths.root}/${var.config.ssm_paths.webhook}/runner-matcher-config"
-#   type  = "String"
-#   value = jsonencode(local.runner_matcher_config_sorted)
-#   tier  = var.config.matcher_config_parameter_store_tier
-# }
-
-# resource "aws_cloudwatch_event_rule" "workflow_job" {
-#   name           = "${var.config.prefix}-workflow_job"
-#   description    = "Workflow job event ruule for job queued."
-#   event_bus_name = aws_cloudwatch_event_bus.main.name
-
-#   event_pattern = <<EOF
-# {
-#   "detail-type": [
-#     "workflow_job"
-#   ],
-#   "source": ["github"],
-#   "detail": {
-#     "action": ["queued"]
-#   }
-# }
-# EOF
-# }
-
-
 resource "aws_cloudwatch_event_rule" "workflow_job" {
   name           = "${var.config.prefix}-workflow_job"
   description    = "Workflow job event ruule for job queued."
@@ -87,7 +47,7 @@ resource "aws_lambda_function" "dispatcher" {
         REPOSITORY_ALLOW_LIST                    = jsonencode(var.config.repository_white_list)
         SQS_WORKFLOW_JOB_QUEUE                   = try(var.config.sqs_workflow_job_queue.id, null)
         PARAMETER_GITHUB_APP_WEBHOOK_SECRET      = var.config.github_app_parameters.webhook_secret.name
-        PARAMETER_RUNNER_MATCHER_CONFIG_PATH     = aws_ssm_parameter.runner_matcher_config.name
+        PARAMETER_RUNNER_MATCHER_CONFIG_PATH     = var.config.ssm_parameter_runner_matcher_config.name
       } : k => v if v != null
     }
   }
@@ -110,7 +70,7 @@ resource "aws_lambda_function" "dispatcher" {
   }
 
   lifecycle {
-    replace_triggered_by = [aws_ssm_parameter.runner_matcher_config, null_resource.github_app_parameters]
+    replace_triggered_by = [null_resource.ssm_parameter_runner_matcher_config, null_resource.github_app_parameters]
   }
 }
 
@@ -121,17 +81,6 @@ resource "aws_cloudwatch_log_group" "dispatcher" {
   tags              = var.config.tags
 }
 
-# resource "aws_lambda_permission" "dispatcher" {
-#   statement_id  = "AllowExecutionFromAPIGateway"
-#   action        = "lambda:InvokeFunction"
-#   function_name = aws_lambda_function.dispatcher.function_name
-#   principal     = "apigateway.amazonaws.com"
-#   source_arn    = var.config.api_gw_source_arn
-#   lifecycle {
-#     replace_triggered_by = [aws_ssm_parameter.runner_matcher_config, null_resource.github_app_parameters]
-#   }
-# }
-
 resource "aws_lambda_permission" "allow_cloudwatch_to_call_lambda" {
   statement_id  = "AllowExecutionFromCloudWatch"
   action        = "lambda:InvokeFunction"
@@ -139,18 +88,6 @@ resource "aws_lambda_permission" "allow_cloudwatch_to_call_lambda" {
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.workflow_job.arn
 }
-
-
-# data "aws_iam_policy_document" "lambda_assume_role_policy" {
-#   statement {
-#     actions = ["sts:AssumeRole"]
-
-#     principals {
-#       type        = "Service"
-#       identifiers = ["lambda.amazonaws.com"]
-#     }
-#   }
-# }
 
 resource "aws_iam_role" "dispatcher_lambda" {
   name                 = "${var.config.prefix}-dispatcher-lambda-role"
@@ -179,7 +116,7 @@ resource "aws_iam_role_policy" "dispatcher_sqs" {
   role = aws_iam_role.dispatcher_lambda.name
 
   policy = templatefile("${path.module}/../policies/lambda-publish-sqs-policy.json", {
-    sqs_resource_arns = jsonencode([for k, v in var.config.runner_matcher_config : v.arn])
+    sqs_resource_arns = jsonencode(var.config.sqs_job_queues_arns)
     kms_key_arn       = var.config.kms_key_arn != null ? var.config.kms_key_arn : ""
   })
 }
@@ -190,7 +127,7 @@ resource "aws_iam_role_policy" "dispatcher_ssm" {
 
   policy = templatefile("${path.module}/../policies/lambda-ssm.json", {
     github_app_webhook_secret_arn       = var.config.github_app_parameters.webhook_secret.arn,
-    parameter_runner_matcher_config_arn = aws_ssm_parameter.runner_matcher_config.arn
+    parameter_runner_matcher_config_arn = var.config.ssm_parameter_runner_matcher_config.arn
   })
 }
 
