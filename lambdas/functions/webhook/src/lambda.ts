@@ -15,9 +15,9 @@ export interface Response {
   body: string;
 }
 
-middy(githubWebhook).use(captureLambdaHandler(tracer));
+middy(directWebhook).use(captureLambdaHandler(tracer));
 
-export async function githubWebhook(event: APIGatewayEvent, context: Context): Promise<Response> {
+export async function directWebhook(event: APIGatewayEvent, context: Context): Promise<Response> {
   setContext(context, 'lambda.ts');
   logger.logEventIfEnabled(event);
 

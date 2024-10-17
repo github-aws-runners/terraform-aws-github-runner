@@ -3,7 +3,7 @@ import { APIGatewayEvent, Context } from 'aws-lambda';
 import { mocked } from 'jest-mock';
 import { WorkflowJobEvent } from '@octokit/webhooks-types';
 
-import { dispatchToRunners, eventBridgeWebhook, githubWebhook } from './lambda';
+import { dispatchToRunners, eventBridgeWebhook, directWebhook } from './lambda';
 import { handle, publishOnEventBridge } from './webhook';
 import ValidationError from './ValidationError';
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
@@ -98,7 +98,7 @@ describe('Test webhook lambda wrapper.', () => {
         });
       });
 
-      const result = await githubWebhook(event, context);
+      const result = await directWebhook(event, context);
       expect(result).toEqual({ body: 'test', statusCode: 200 });
     });
 
@@ -106,7 +106,7 @@ describe('Test webhook lambda wrapper.', () => {
       const mock = mocked(handle);
       mock.mockRejectedValue(new ValidationError(400, 'some error'));
 
-      const result = await githubWebhook(event, context);
+      const result = await directWebhook(event, context);
       expect(result).toMatchObject({ body: 'some error', statusCode: 400 });
     });
 
@@ -114,7 +114,7 @@ describe('Test webhook lambda wrapper.', () => {
       const mock = mocked(handle);
       const logSpy = jest.spyOn(logger, 'error');
       mock.mockRejectedValue(new Error('some error'));
-      const result = await githubWebhook(event, context);
+      const result = await directWebhook(event, context);
       expect(result).toMatchObject({ body: 'Check the Lambda logs for the error details.', statusCode: 500 });
       expect(logSpy).toHaveBeenCalledTimes(1);
     });
