@@ -271,6 +271,18 @@ variable "lambda_s3_bucket" {
   default     = null
 }
 
+
+variable "webhook_mode" {
+  description = "The webhook and dispatching to runner queues supports two modes. Direct messages, are delivered directly to the runner queues. EventBridge messages are delivered to an EventBridge bus and then dispatched to the runner queues. Valid values are `direct` and `eventbridge`."
+  type        = string
+  default     = "direct"
+
+  validation {
+    condition     = contains(["direct", "eventbridge"], var.webhook_mode)
+    error_message = "`mode` value is not valid, valid values are: `direct`, and `eventbridge`."
+  }
+}
+
 variable "webhook_lambda_s3_key" {
   description = "S3 key for webhook lambda function. Required if using S3 bucket to specify lambdas."
   type        = string

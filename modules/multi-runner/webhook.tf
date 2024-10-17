@@ -2,6 +2,7 @@ module "webhook" {
   source      = "../webhook"
   prefix      = var.prefix
   tags        = local.tags
+  mode        = var.webhook_mode
   kms_key_arn = var.kms_key_arn
 
   runner_matcher_config               = local.runner_config
