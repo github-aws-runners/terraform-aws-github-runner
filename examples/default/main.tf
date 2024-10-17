@@ -98,16 +98,16 @@ module "runners" {
   runner_name_prefix = "${local.environment}_"
 
   # webhook supports to modes, either direct or via the eventbridge
-  webhook_mode = "eventbridge" # or "direct"
+  # webhook_mode = "direct" # or "eventbridge"
 
   # Enable debug logging for the lambda functions
-  log_level = "debug"
+  # log_level = "debug"
 
-  tracing_config = {
-    mode                  = "Active"
-    capture_error         = true
-    capture_http_requests = true
-  }
+  # tracing_config = {
+  #   mode                  = "Active"
+  #   capture_error         = true
+  #   capture_http_requests = true
+  # }
 
   enable_ami_housekeeper = true
   ami_housekeeper_cleanup_config = {
