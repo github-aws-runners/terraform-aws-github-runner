@@ -10,7 +10,7 @@ import { publish } from '../eventbridge';
 import { ConfigWebhook, ConfigWebhookEventBridge } from '../ConfigLoader';
 const logger = createChildLogger('handler');
 
-export async function handle(headers: IncomingHttpHeaders, body: string, config: ConfigWebhook): Promise<Response> {
+export async function publishForRunners(headers: IncomingHttpHeaders, body: string, config: ConfigWebhook): Promise<Response> {
   init(headers);
 
   await verifySignature(headers, body, config.webhookSecret);

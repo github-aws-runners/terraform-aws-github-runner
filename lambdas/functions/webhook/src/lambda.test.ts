@@ -4,7 +4,7 @@ import { mocked } from 'jest-mock';
 import { WorkflowJobEvent } from '@octokit/webhooks-types';
 
 import { dispatchToRunners, eventBridgeWebhook, directWebhook } from './lambda';
-import { handle, publishOnEventBridge } from './webhook';
+import { publishForRunners, publishOnEventBridge } from './webhook';
 import ValidationError from './ValidationError';
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
 import { dispatch } from './runners/dispatch';
@@ -91,7 +91,7 @@ describe('Test webhook lambda wrapper.', () => {
 
   describe('Test webhook lambda wrapper.', () => {
     it('Happy flow, resolve.', async () => {
-      const mock = mocked(handle);
+      const mock = mocked(publishForRunners);
       mock.mockImplementation(() => {
         return new Promise((resolve) => {
           resolve({ body: 'test', statusCode: 200 });
@@ -103,7 +103,7 @@ describe('Test webhook lambda wrapper.', () => {
     });
 
     it('An expected error, resolve.', async () => {
-      const mock = mocked(handle);
+      const mock = mocked(publishForRunners);
       mock.mockRejectedValue(new ValidationError(400, 'some error'));
 
       const result = await directWebhook(event, context);
@@ -111,7 +111,7 @@ describe('Test webhook lambda wrapper.', () => {
     });
 
     it('Errors are not thrown.', async () => {
-      const mock = mocked(handle);
+      const mock = mocked(publishForRunners);
       const logSpy = jest.spyOn(logger, 'error');
       mock.mockRejectedValue(new Error('some error'));
       const result = await directWebhook(event, context);

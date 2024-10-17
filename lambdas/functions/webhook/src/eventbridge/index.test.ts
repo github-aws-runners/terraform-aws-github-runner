@@ -14,7 +14,7 @@ beforeEach(() => {
   nock.disableNetConnect();
 });
 
-describe('Test publish', () => {
+describe('Test EventBridge adapter', () => {
   test('Test publish without errors', async () => {
     // Arrange
     const output: PutEventsCommandOutput = {

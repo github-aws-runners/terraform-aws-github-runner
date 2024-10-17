@@ -2,7 +2,7 @@ import middy from '@middy/core';
 import { logger, setContext, captureLambdaHandler, tracer } from '@aws-github-runner/aws-powertools-util';
 import { APIGatewayEvent, Context } from 'aws-lambda';
 
-import { handle, publishOnEventBridge } from './webhook';
+import { publishForRunners, publishOnEventBridge } from './webhook';
 import { IncomingHttpHeaders } from 'http';
 import ValidationError from './ValidationError';
 import { EventWrapper } from './types';
@@ -24,7 +24,7 @@ export async function directWebhook(event: APIGatewayEvent, context: Context): P
   let result: Response;
   try {
     const config: ConfigWebhook = await ConfigWebhook.load();
-    result = await handle(headersToLowerCase(event.headers), event.body as string, config);
+    result = await publishForRunners(headersToLowerCase(event.headers), event.body as string, config);
   } catch (e) {
     logger.error(`Failed to handle webhook event`, { error: e });
     if (e instanceof ValidationError) {

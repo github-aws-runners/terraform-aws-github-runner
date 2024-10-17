@@ -5,7 +5,7 @@ import nock from 'nock';
 
 import workFlowJobEvent from '../../test/resources/github_workflowjob_event.json';
 
-import { checkBodySize, handle, publishOnEventBridge } from '.';
+import { checkBodySize, publishForRunners, publishOnEventBridge } from '.';
 import { dispatch } from '../runners/dispatch';
 import { IncomingHttpHeaders } from 'http';
 import { ConfigWebhook, ConfigWebhookEventBridge } from '../ConfigLoader';
@@ -43,7 +43,7 @@ describe('handle GitHub webhook events', () => {
     });
 
     it('should return 500 if no signature available', async () => {
-      await expect(handle({}, '', config)).rejects.toMatchObject({
+      await expect(publishForRunners({}, '', config)).rejects.toMatchObject({
         statusCode: 500,
       });
     });
@@ -57,7 +57,7 @@ describe('handle GitHub webhook events', () => {
       const event = JSON.stringify(workFlowJobEvent);
 
       // act and assert
-      const result = handle(
+      const result = publishForRunners(
         {
           'X-Hub-Signature-256': await webhooks.sign(event),
           'X-GitHub-Event': 'workflow_job',
@@ -76,7 +76,7 @@ describe('handle GitHub webhook events', () => {
       const other = JSON.stringify({ ...workFlowJobEvent, action: 'mutated' });
 
       await expect(
-        handle({ 'X-Hub-Signature-256': await webhooks.sign(other), 'X-GitHub-Event': 'workflow_job' }, event, config),
+        publishForRunners({ 'X-Hub-Signature-256': await webhooks.sign(other), 'X-GitHub-Event': 'workflow_job' }, event, config),
       ).rejects.toMatchObject({
         statusCode: 401,
       });
@@ -86,7 +86,7 @@ describe('handle GitHub webhook events', () => {
       const event = JSON.stringify(workFlowJobEvent);
 
       await expect(
-        handle({ 'X-Hub-Signature-256': await webhooks.sign(event), 'X-GitHub-Event': 'invalid' }, event, config),
+        publishForRunners({ 'X-Hub-Signature-256': await webhooks.sign(event), 'X-GitHub-Event': 'invalid' }, event, config),
       ).rejects.toMatchObject({
         statusCode: 202,
       });
@@ -100,7 +100,7 @@ describe('handle GitHub webhook events', () => {
       });
 
       await expect(
-        handle({ 'X-Hub-Signature-256': await webhooks.sign(event), 'X-GitHub-Event': 'workflow_job' }, event, config),
+        publishForRunners({ 'X-Hub-Signature-256': await webhooks.sign(event), 'X-GitHub-Event': 'workflow_job' }, event, config),
       ).resolves.toMatchObject({
         statusCode: 201,
       });

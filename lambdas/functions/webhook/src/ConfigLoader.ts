@@ -125,10 +125,11 @@ export class ConfigWebhookEventBridge extends BaseConfig {
 export class ConfigDispatcher extends BaseConfig {
   repositoryAllowList: string[] = [];
   matcherConfig: RunnerMatcherConfig[] = [];
-  workflowJobEventSecondaryQueue: string = ''; // Deprecated, not loaded
+  workflowJobEventSecondaryQueue: string = ''; // Deprecated
 
   async loadConfig(): Promise<void> {
     this.loadEnvVar(process.env.REPOSITORY_ALLOW_LIST, 'repositoryAllowList', []);
+    this.loadEnvVar(process.env.SQS_WORKFLOW_JOB_QUEUE, 'workflowJobEventSecondaryQueue', '');
     await this.loadParameter(process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH, 'matcherConfig');
 
     validateRunnerMatcherConfig(this);
