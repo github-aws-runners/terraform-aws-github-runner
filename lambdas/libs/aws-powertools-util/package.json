@@ -19,7 +19,7 @@
     "@types/express": "^4.17.21",
     "@types/jest": "^29.5.12",
     "@types/node": "^22.5.4",
-    "@typescript-eslint/eslint-plugin": "^8.8.1",
+    "@typescript-eslint/eslint-plugin": "^8.9.0",
     "@typescript-eslint/parser": "^8.8.0",
     "@vercel/ncc": "0.38.1",
     "body-parser": "^1.20.3",
@@ -35,9 +35,9 @@
     "typescript": "^5.5.4"
   },
   "dependencies": {
-    "@aws-lambda-powertools/logger": "^2.8.0",
-    "@aws-lambda-powertools/metrics": "^2.8.0",
-    "@aws-lambda-powertools/tracer": "^2.8.0",
+    "@aws-lambda-powertools/logger": "^2.9.0",
+    "@aws-lambda-powertools/metrics": "^2.9.0",
+    "@aws-lambda-powertools/tracer": "^2.9.0",
     "aws-lambda": "^1.0.7"
   },
   "nx": {
