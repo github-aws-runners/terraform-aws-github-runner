@@ -43,11 +43,10 @@ resource "aws_lambda_function" "dispatcher" {
         POWERTOOLS_TRACE_ENABLED                 = var.config.tracing_config.mode != null ? true : false
         POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.config.tracing_config.capture_http_requests
         POWERTOOLS_TRACER_CAPTURE_ERROR          = var.config.tracing_config.capture_error
-        PARAMETER_GITHUB_APP_WEBHOOK_SECRET      = var.config.github_app_parameters.webhook_secret.name
-        REPOSITORY_ALLOW_LIST                    = jsonencode(var.config.repository_white_list)
-        SQS_WORKFLOW_JOB_QUEUE                   = try(var.config.sqs_workflow_job_queue.id, null)
-        PARAMETER_GITHUB_APP_WEBHOOK_SECRET      = var.config.github_app_parameters.webhook_secret.name
-        PARAMETER_RUNNER_MATCHER_CONFIG_PATH     = var.config.ssm_parameter_runner_matcher_config.name
+        # Parameters required for lambda configuration
+        PARAMETER_RUNNER_MATCHER_CONFIG_PATH = var.config.ssm_parameter_runner_matcher_config.name
+        REPOSITORY_ALLOW_LIST                = jsonencode(var.config.repository_white_list)
+        SQS_WORKFLOW_JOB_QUEUE               = try(var.config.sqs_workflow_job_queue.id, null)
       } : k => v if v != null
     }
   }
@@ -126,8 +125,7 @@ resource "aws_iam_role_policy" "dispatcher_ssm" {
   role = aws_iam_role.dispatcher_lambda.name
 
   policy = templatefile("${path.module}/../policies/lambda-ssm.json", {
-    github_app_webhook_secret_arn       = var.config.github_app_parameters.webhook_secret.arn,
-    parameter_runner_matcher_config_arn = var.config.ssm_parameter_runner_matcher_config.arn
+    resource_arns = jsonencode([var.config.ssm_parameter_runner_matcher_config.arn])
   })
 }
 

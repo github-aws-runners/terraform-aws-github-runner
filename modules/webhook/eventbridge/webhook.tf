@@ -121,8 +121,7 @@ resource "aws_iam_role_policy" "webhook_ssm" {
   role = aws_iam_role.webhook_lambda.name
 
   policy = templatefile("${path.module}/../policies/lambda-ssm.json", {
-    github_app_webhook_secret_arn       = var.config.github_app_parameters.webhook_secret.arn,
-    parameter_runner_matcher_config_arn = var.config.ssm_parameter_runner_matcher_config.arn
+    resource_arns = jsonencode([var.config.github_app_parameters.webhook_secret.arn])
   })
 }
 
