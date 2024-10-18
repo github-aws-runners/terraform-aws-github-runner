@@ -1,6 +1,6 @@
 output "eventbridge" {
   value = {
-    event_but = aws_cloudwatch_event_bus.main
+    event_bus = aws_cloudwatch_event_bus.main
     archive   = aws_cloudwatch_event_archive.main
   }
 }

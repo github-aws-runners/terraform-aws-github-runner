@@ -38,6 +38,9 @@ output "webhook" {
     lambda_log_group = module.webhook.lambda_log_group
     lambda_role      = module.webhook.role
     endpoint         = "${module.webhook.gateway.api_endpoint}/${module.webhook.endpoint_relative_path}"
+    webhook          = module.webhook.webhook
+    dispatcher       = var.webhook_mode == "eventbridge" ? module.webhook.dispatcher : null
+    eventbridge      = var.webhook_mode == "eventbridge" ? module.webhook.eventbridge : null
   }
 }
 
