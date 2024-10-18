@@ -213,6 +213,12 @@ build {
       "sudo chmod +x /var/lib/cloud/scripts/per-boot/start-runner.sh",
     ]
   }
+
+  provisioner "shell" {
+    environment_vars = []
+    inline           = concat(var.custom_shell_commands_post_runner_install)
+  }
+
   post-processor "manifest" {
     output     = "manifest.json"
     strip_path = true
