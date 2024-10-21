@@ -114,7 +114,7 @@ __metadata:
     "@typescript-eslint/parser": "npm:^8.8.0"
     "@vercel/ncc": "npm:^0.38.1"
     aws-sdk-client-mock: "npm:^4.0.2"
-    aws-sdk-client-mock-jest: "npm:^4.0.1"
+    aws-sdk-client-mock-jest: "npm:^4.1.0"
     cron-parser: "npm:^4.9.0"
     eslint: "npm:^8.57.0"
     eslint-plugin-prettier: "npm:5.2.1"
@@ -213,7 +213,7 @@ __metadata:
     "@typescript-eslint/parser": "npm:^8.8.0"
     "@vercel/ncc": "npm:^0.38.1"
     aws-sdk-client-mock: "npm:^4.0.2"
-    aws-sdk-client-mock-jest: "npm:^4.0.1"
+    aws-sdk-client-mock-jest: "npm:^4.1.0"
     cron-parser: "npm:^4.9.0"
     eslint: "npm:^8.57.0"
     eslint-plugin-prettier: "npm:5.2.1"
@@ -249,7 +249,7 @@ __metadata:
     "@typescript-eslint/parser": "npm:^8.8.0"
     "@vercel/ncc": "npm:^0.38.1"
     aws-sdk-client-mock: "npm:^4.0.2"
-    aws-sdk-client-mock-jest: "npm:^4.0.1"
+    aws-sdk-client-mock-jest: "npm:^4.1.0"
     axios: "npm:^1.7.7"
     eslint: "npm:^8.57.0"
     eslint-plugin-prettier: "npm:5.2.1"
@@ -278,7 +278,7 @@ __metadata:
     "@typescript-eslint/parser": "npm:^8.8.0"
     "@vercel/ncc": "npm:^0.38.1"
     aws-sdk-client-mock: "npm:^4.0.2"
-    aws-sdk-client-mock-jest: "npm:^4.0.1"
+    aws-sdk-client-mock-jest: "npm:^4.1.0"
     eslint: "npm:^8.57.0"
     eslint-plugin-prettier: "npm:5.2.1"
     jest: "npm:^29.7.0"
@@ -5590,6 +5590,47 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@vitest/expect@npm:>1.6.0":
+  version: 2.1.3
+  resolution: "@vitest/expect@npm:2.1.3"
+  dependencies:
+    "@vitest/spy": "npm:2.1.3"
+    "@vitest/utils": "npm:2.1.3"
+    chai: "npm:^5.1.1"
+    tinyrainbow: "npm:^1.2.0"
+  checksum: 10c0/0837adcbb938feebcc083664afc5c4d12e42f1f2442b6f1bedc6b5650a8ff2448b1f10713b45afb099c839fb5cf766c971736267fa9b0fe2ac87f3e2d7f782c2
+  languageName: node
+  linkType: hard
+
+"@vitest/pretty-format@npm:2.1.3":
+  version: 2.1.3
+  resolution: "@vitest/pretty-format@npm:2.1.3"
+  dependencies:
+    tinyrainbow: "npm:^1.2.0"
+  checksum: 10c0/5a6ee872a8adf5e2764f2b5b2276d8a2199be4ef14777ab693428caf359481851400af10b59721d4972289c955ffe7277954a662b04cfb10233824574c7074ba
+  languageName: node
+  linkType: hard
+
+"@vitest/spy@npm:2.1.3":
+  version: 2.1.3
+  resolution: "@vitest/spy@npm:2.1.3"
+  dependencies:
+    tinyspy: "npm:^3.0.0"
+  checksum: 10c0/8d85a5c2848c5bd81892af989aebad65d0c7ae74094aa98ad4f35ecf80755259c7a748a8e7bf683b2906fac29a51fc0ffa82f8fc073b36dbd8a0418261fccdba
+  languageName: node
+  linkType: hard
+
+"@vitest/utils@npm:2.1.3":
+  version: 2.1.3
+  resolution: "@vitest/utils@npm:2.1.3"
+  dependencies:
+    "@vitest/pretty-format": "npm:2.1.3"
+    loupe: "npm:^3.1.1"
+    tinyrainbow: "npm:^1.2.0"
+  checksum: 10c0/55a044e43b84c0f8f573d8578107f26440678b6f506c8d9fee88b7ef120d19efd27c9be77985c107113b0f3f3db298dcee57074e1c1c214bee7a097fd08a209b
+  languageName: node
+  linkType: hard
+
 "@yarnpkg/lockfile@npm:^1.1.0":
   version: 1.1.0
   resolution: "@yarnpkg/lockfile@npm:1.1.0"
@@ -5800,6 +5841,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"assertion-error@npm:^2.0.1":
+  version: 2.0.1
+  resolution: "assertion-error@npm:2.0.1"
+  checksum: 10c0/bbbcb117ac6480138f8c93cf7f535614282dea9dc828f540cdece85e3c665e8f78958b96afac52f29ff883c72638e6a87d469ecc9fe5bc902df03ed24a55dba8
+  languageName: node
+  linkType: hard
+
 "async-hook-jl@npm:^1.7.6":
   version: 1.7.6
   resolution: "async-hook-jl@npm:1.7.6"
@@ -5851,15 +5899,20 @@ __metadata:
   languageName: node
   linkType: hard
 
-"aws-sdk-client-mock-jest@npm:^4.0.1":
-  version: 4.0.1
-  resolution: "aws-sdk-client-mock-jest@npm:4.0.1"
+"aws-sdk-client-mock-jest@npm:^4.1.0":
+  version: 4.1.0
+  resolution: "aws-sdk-client-mock-jest@npm:4.1.0"
   dependencies:
+    "@vitest/expect": "npm:>1.6.0"
     expect: "npm:>28.1.3"
     tslib: "npm:^2.1.0"
   peerDependencies:
-    aws-sdk-client-mock: 4.0.1
-  checksum: 10c0/9832cc132e3cd33f85b882e646ee63ea10500d59c94340c1425a46bd6ace85d07122070ba7eea5100b6729a8f4f6ab0a4df042b919681a7cbb719f9e5a13d3b1
+    aws-sdk-client-mock: 4.1.0
+    vitest: ">1.6.0"
+  peerDependenciesMeta:
+    vitest:
+      optional: true
+  checksum: 10c0/bf68498476328b483e2847eb4a0ff65b4d6bf5850ed650d0c5e433373337b9fa3bdd0a64d63f3ff389747b150b1706a150b28e39bb6b5a7c490e9df49a0e62e1
   languageName: node
   linkType: hard
 
@@ -6335,6 +6388,19 @@ __metadata:
   languageName: node
   linkType: hard
 
+"chai@npm:^5.1.1":
+  version: 5.1.1
+  resolution: "chai@npm:5.1.1"
+  dependencies:
+    assertion-error: "npm:^2.0.1"
+    check-error: "npm:^2.1.1"
+    deep-eql: "npm:^5.0.1"
+    loupe: "npm:^3.1.0"
+    pathval: "npm:^2.0.0"
+  checksum: 10c0/e7f00e5881e3d5224f08fe63966ed6566bd9fdde175863c7c16dd5240416de9b34c4a0dd925f4fd64ad56256ca6507d32cf6131c49e1db65c62578eb31d4566c
+  languageName: node
+  linkType: hard
+
 "chalk@npm:^2.4.2":
   version: 2.4.2
   resolution: "chalk@npm:2.4.2"
@@ -6360,6 +6426,13 @@ __metadata:
   version: 1.0.2
   resolution: "char-regex@npm:1.0.2"
   checksum: 10c0/57a09a86371331e0be35d9083ba429e86c4f4648ecbe27455dbfb343037c16ee6fdc7f6b61f433a57cc5ded5561d71c56a150e018f40c2ffb7bc93a26dae341e
+  languageName: node
+  linkType: hard
+
+"check-error@npm:^2.1.1":
+  version: 2.1.1
+  resolution: "check-error@npm:2.1.1"
+  checksum: 10c0/979f13eccab306cf1785fa10941a590b4e7ea9916ea2a4f8c87f0316fc3eab07eabefb6e587424ef0f88cbcd3805791f172ea739863ca3d7ce2afc54641c7f0e
   languageName: node
   linkType: hard
 
@@ -6681,6 +6754,13 @@ __metadata:
     babel-plugin-macros:
       optional: true
   checksum: 10c0/f8612cd5b00aab58b18bb95572dca08dc2d49720bfa7201a444c3dae430291e8a06d4928614a6ec8764d713927f44bce9c990d3b8238fca2f430990ddc17c070
+  languageName: node
+  linkType: hard
+
+"deep-eql@npm:^5.0.1":
+  version: 5.0.2
+  resolution: "deep-eql@npm:5.0.2"
+  checksum: 10c0/7102cf3b7bb719c6b9c0db2e19bf0aa9318d141581befe8c7ce8ccd39af9eaa4346e5e05adef7f9bd7015da0f13a3a25dcfe306ef79dc8668aedbecb658dd247
   languageName: node
   linkType: hard
 
@@ -9059,6 +9139,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"loupe@npm:^3.1.0, loupe@npm:^3.1.1":
+  version: 3.1.2
+  resolution: "loupe@npm:3.1.2"
+  checksum: 10c0/b13c02e3ddd6a9d5f8bf84133b3242de556512d824dddeea71cce2dbd6579c8f4d672381c4e742d45cf4423d0701765b4a6e5fbc24701def16bc2b40f8daa96a
+  languageName: node
+  linkType: hard
+
 "lru-cache@npm:^10.0.0, lru-cache@npm:^10.0.1, lru-cache@npm:^10.2.0":
   version: 10.4.3
   resolution: "lru-cache@npm:10.4.3"
@@ -10092,6 +10179,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"pathval@npm:^2.0.0":
+  version: 2.0.0
+  resolution: "pathval@npm:2.0.0"
+  checksum: 10c0/602e4ee347fba8a599115af2ccd8179836a63c925c23e04bd056d0674a64b39e3a081b643cc7bc0b84390517df2d800a46fcc5598d42c155fe4977095c2f77c5
+  languageName: node
+  linkType: hard
+
 "picocolors@npm:^1.0.0":
   version: 1.0.1
   resolution: "picocolors@npm:1.0.1"
@@ -11011,6 +11105,20 @@ __metadata:
   version: 2.3.8
   resolution: "through@npm:2.3.8"
   checksum: 10c0/4b09f3774099de0d4df26d95c5821a62faee32c7e96fb1f4ebd54a2d7c11c57fe88b0a0d49cf375de5fee5ae6bf4eb56dbbf29d07366864e2ee805349970d3cc
+  languageName: node
+  linkType: hard
+
+"tinyrainbow@npm:^1.2.0":
+  version: 1.2.0
+  resolution: "tinyrainbow@npm:1.2.0"
+  checksum: 10c0/7f78a4b997e5ba0f5ecb75e7ed786f30bab9063716e7dff24dd84013fb338802e43d176cb21ed12480561f5649a82184cf31efb296601a29d38145b1cdb4c192
+  languageName: node
+  linkType: hard
+
+"tinyspy@npm:^3.0.0":
+  version: 3.0.2
+  resolution: "tinyspy@npm:3.0.2"
+  checksum: 10c0/55ffad24e346622b59292e097c2ee30a63919d5acb7ceca87fc0d1c223090089890587b426e20054733f97a58f20af2c349fb7cc193697203868ab7ba00bcea0
   languageName: node
   linkType: hard
 
