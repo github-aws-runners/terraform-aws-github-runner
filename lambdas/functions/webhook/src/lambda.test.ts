@@ -157,7 +157,7 @@ describe('Test webhook lambda wrapper.', () => {
     });
   });
 
-  describe('Lmmbda dispatchToRunners.', () => {
+  describe('Lambda dispatchToRunners.', () => {
     it('Happy flow, resolve.', async () => {
       const mock = mocked(dispatch);
       mock.mockImplementation(() => {
