@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.17.2](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.17.1...v5.17.2) (2024-10-21)
+
+
+### Bug Fixes
+
+* spot termination watcher output multi runner ([#4194](https://github.com/philips-labs/terraform-aws-github-runner/issues/4194)) ([367b1b3](https://github.com/philips-labs/terraform-aws-github-runner/commit/367b1b38285d63c0cc0fb8a991f69dcbac227222))
+
 ## [5.17.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.17.0...v5.17.1) (2024-10-17)
 
 
