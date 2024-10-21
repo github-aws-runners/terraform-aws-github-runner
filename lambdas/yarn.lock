@@ -220,7 +220,7 @@ __metadata:
     jest: "npm:^29.7.0"
     jest-mock: "npm:^29.7.0"
     jest-mock-extended: "npm:^3.0.7"
-    moment-timezone: "npm:^0.5.45"
+    moment-timezone: "npm:^0.5.46"
     nock: "npm:^13.5.4"
     prettier: "npm:3.3.3"
     ts-jest: "npm:^29.2.5"
@@ -9340,12 +9340,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"moment-timezone@npm:^0.5.45":
-  version: 0.5.45
-  resolution: "moment-timezone@npm:0.5.45"
+"moment-timezone@npm:^0.5.46":
+  version: 0.5.46
+  resolution: "moment-timezone@npm:0.5.46"
   dependencies:
     moment: "npm:^2.29.4"
-  checksum: 10c0/7497f23c4b8c875dbf07c03f9a1253f79edaeedc29d5732e36bfd3c5577e25aed1924fbd84cbb713ce1920dbe822be0e21bd487851a7d13907226f289a5e568b
+  checksum: 10c0/003fd278d1aa3e63afff340a318735db80157b7a343e3f807cac10e026def214f0e71b52d582b89a11ee0a19f5d9f0da2752b7959d855429f2b715d4859d3722
   languageName: node
   linkType: hard
 
