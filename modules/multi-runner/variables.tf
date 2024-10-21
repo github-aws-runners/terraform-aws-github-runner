@@ -271,24 +271,6 @@ variable "lambda_s3_bucket" {
   default     = null
 }
 
-
-variable "webhook_mode" {
-  description = "The webhook and dispatching to runner queues supports two modes. Direct messages, are delivered directly to the runner queues. EventBridge messages are delivered to an EventBridge bus and then dispatched to the runner queues. Valid values are `direct` and `eventbridge`."
-  type        = string
-  default     = "direct"
-
-  validation {
-    condition     = contains(["direct", "eventbridge"], var.webhook_mode)
-    error_message = "`mode` value is not valid, valid values are: `direct`, and `eventbridge`."
-  }
-}
-
-variable "eventbridge_allowed_events" {
-  description = "List of events that are allowed (accepted) to be sent to the eventbridge by the webhook. Variable only have effect if `webhook_mode` is set to `eventbridge`."
-  type        = list(string)
-  default     = []
-}
-
 variable "webhook_lambda_s3_key" {
   description = "S3 key for webhook lambda function. Required if using S3 bucket to specify lambdas."
   type        = string
@@ -699,5 +681,15 @@ variable "metrics" {
       enable_spot_termination_warning = optional(bool, true)
     }), {})
   })
+  default = {}
+}
+
+variable "eventbridge" {
+  description = "Enable the use of EventBridge by the module. By enable this feature events will be putted on the EventBridge bhy the webhook instead of directly dispatchting to queues for sacling."
+  type = object({
+    enable        = optional(bool, false)
+    accept_events = optional(list(string), [])
+  })
+
   default = {}
 }

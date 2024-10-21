@@ -176,7 +176,7 @@ describe('ConfigLoader Tests', () => {
 
   describe('ConfigWebhookEventBridge', () => {
     it('should load config successfully', async () => {
-      process.env.ALLOWED_EVENTS = '["push", "pull_request"]';
+      process.env.ACCEPT_EVENTS = '["push", "pull_request"]';
       process.env.EVENT_BUS_NAME = 'event-bus';
       process.env.PARAMETER_GITHUB_APP_WEBHOOK_SECRET = '/path/to/webhook/secret';
 
@@ -242,6 +242,33 @@ describe('ConfigLoader Tests', () => {
       await expect(ConfigDispatcher.load()).rejects.toThrow(
         'Failed to load config: Failed to load parameter for matcherConfig from path undefined: Parameter undefined not found', // eslint-disable-line max-len
       );
+    });
+
+    it('should rely on default when optionals are not set.', async () => {
+      process.env.ACCEPT_EVENTS = 'null';
+      process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH = '/path/to/matcher/config';
+      const matcherConfig: RunnerMatcherConfig[] = [
+        {
+          arn: 'arn:aws:sqs:eu-central-1:123456:npalm-default-queued-builds',
+          fifo: true,
+          id: 'https://sqs.eu-central-1.amazonaws.com/123456/npalm-default-queued-builds',
+          matcherConfig: {
+            exactMatch: true,
+            labelMatchers: [['default', 'example', 'linux', 'self-hosted', 'x64']],
+          },
+        },
+      ];
+      mocked(getParameter).mockImplementation(async (paramPath: string) => {
+        if (paramPath === '/path/to/matcher/config') {
+          return JSON.stringify(matcherConfig);
+        }
+        return '';
+      });
+
+      const config: ConfigDispatcher = await ConfigDispatcher.load();
+
+      expect(config.repositoryAllowList).toEqual([]);
+      expect(config.matcherConfig).toEqual(matcherConfig);
     });
 
     it('should throw an error if runner matcher config is empty.', async () => {

@@ -124,9 +124,6 @@ module "ssm" {
 module "webhook" {
   source = "./modules/webhook"
 
-  mode                       = var.webhook_mode
-  eventbridge_allowed_events = var.eventbridge_allowed_events
-
   ssm_paths = {
     root    = local.ssm_root_path
     webhook = var.ssm_paths.webhook
@@ -134,6 +131,7 @@ module "webhook" {
   prefix      = var.prefix
   tags        = local.tags
   kms_key_arn = var.kms_key_arn
+  eventbridge = var.eventbridge
 
   runner_matcher_config = {
     (aws_sqs_queue.queued_builds.id) = {

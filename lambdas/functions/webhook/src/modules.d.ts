@@ -6,7 +6,7 @@ declare namespace NodeJS {
     PARAMETER_RUNNER_MATCHER_CONFIG_PATH: string;
     REPOSITORY_ALLOW_LIST: string;
     RUNNER_LABELS: string;
-    ALLOWED_EVENTS: string;
+    ACCEPT_EVENTS: string;
     SQS_WORKFLOW_JOB_QUEUE: string;
   }
 }

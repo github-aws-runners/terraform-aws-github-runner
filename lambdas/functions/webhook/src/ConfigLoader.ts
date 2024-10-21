@@ -44,7 +44,7 @@ abstract class BaseConfig {
 
   protected loadEnvVar<T>(envVar: string, propertyName: keyof this, defaultValue?: T): void {
     logger.debug(`Loading env var for ${String(propertyName)}`, { envVar });
-    if (envVar !== undefined) {
+    if (!(envVar == undefined || envVar === 'null')) {
       this.loadProperty(propertyName, envVar);
     } else if (defaultValue !== undefined) {
       this[propertyName] = defaultValue as unknown as this[keyof this];
@@ -113,7 +113,7 @@ export class ConfigWebhookEventBridge extends BaseConfig {
   webhookSecret: string = '';
 
   async loadConfig(): Promise<void> {
-    this.loadEnvVar(process.env.ALLOWED_EVENTS, 'allowedEvents', []);
+    this.loadEnvVar(process.env.ACCEPT_EVENTS, 'allowedEvents', []);
     this.loadEnvVar(process.env.EVENT_BUS_NAME, 'eventBusName');
     await this.loadParameter(process.env.PARAMETER_GITHUB_APP_WEBHOOK_SECRET, 'webhookSecret');
 

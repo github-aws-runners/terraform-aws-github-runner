@@ -7,27 +7,27 @@ output "endpoint_relative_path" {
 }
 
 output "webhook" {
-  value = var.mode == "direct" ? module.direct[0].webhook : module.eventbridge[0].webhook
+  value = !var.eventbridge.enable ? module.direct[0].webhook : module.eventbridge[0].webhook
 }
 
 output "dispatcher" {
-  value = var.mode == "eventbridge" ? module.eventbridge[0].dispatcher : null
+  value = var.eventbridge.enable ? module.eventbridge[0].dispatcher : null
 }
 
 output "eventbridge" {
-  value = var.mode == "eventbridge" ? module.eventbridge[0].eventbridge : null
+  value = var.eventbridge.enable ? module.eventbridge[0].eventbridge : null
 }
 
 ### For backwards compatibility
 
 output "lambda" {
-  value = var.mode == "direct" ? module.direct[0].webhook.lambda : module.eventbridge[0].webhook.lambda
+  value = !var.eventbridge.enable ? module.direct[0].webhook.lambda : module.eventbridge[0].webhook.lambda
 }
 
 output "lambda_log_group" {
-  value = var.mode == "direct" ? module.direct[0].webhook.log_group : module.eventbridge[0].webhook.log_group
+  value = !var.eventbridge.enable ? module.direct[0].webhook.log_group : module.eventbridge[0].webhook.log_group
 }
 
 output "role" {
-  value = var.mode == "direct" ? module.direct[0].webhook.role : module.eventbridge[0].webhook.role
+  value = !var.eventbridge.enable ? module.direct[0].webhook.role : module.eventbridge[0].webhook.role
 }

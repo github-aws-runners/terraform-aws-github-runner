@@ -6,7 +6,7 @@ To be able to support a number of use-cases, the module has quite a lot of confi
 
 - Org vs Repo level. You can configure the module to connect the runners in GitHub on an org level and share the runners in your org, or set the runners on repo level and the module will install the runner to the repo. There can be multiple repos but runners are not shared between repos.
 - Multi-Runner module. This modules allows you to create multiple runner configurations with a single webhook and single GitHub App to simplify deployment of different types of runners. Check the detailed module [documentation](modules/public/multi-runner.md) for more information or checkout the [multi-runner example](examples/multi-runner.md).
-- Webhook mode, the module can be deployed in the mode `direct` and `eventbridge`. The `direct` mode is the default and will directly distribute to SQS for the scale-up lambda. The `eventbridge` mode will publish the event to an event bus with a target rule the events are sent to a dispatch lambda. The dispatch lambda will send the event to the SQS queue. The `eventbridge` mode is useful when you want to have more control over the events and potentially filter them. The `eventbridge` mode is disabled by default. We expect thhe `eventbridge` mode will be the future direction to build a data lake, build metrics, acto on `workflow_job` job started events, etc.
+- Webhook mode, the module can be deployed in the mode `direct` and `eventbridge` (Experimental). The `direct` mode is the default and will directly distribute to SQS for the scale-up lambda. The `eventbridge` mode will publish the event to an event bus with a target rule the events are sent to a dispatch lambda. The dispatch lambda will send the event to the SQS queue. The `eventbridge` mode is useful when you want to have more control over the events and potentially filter them. The `eventbridge` mode is disabled by default. We expect thhe `eventbridge` mode will be the future direction to build a data lake, build metrics, acto on `workflow_job` job started events, etc.
 - Linux vs Windows. You can configure the OS types linux and win. Linux will be used by default.
 - Re-use vs Ephemeral. By default runners are re-used, until detected idle. Once idle they will be removed from the pool. To improve security we are introducing ephemeral runners. Those runners are only used for one job. Ephemeral runners only work in combination with the workflow job event. For ephemeral runners the lambda requests a JIT (just in time) configuration via the GitHub API to register the runner. [JIT configuration](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-just-in-time-runners) is limited to ephemeral runners (and currently not supported by GHES). For non-ephemeral runners, a registration token is always requested. In both cases the configuration is made available to the instance via the same SSM parameter. To disable JIT configuration for ephemeral runners set `enable_jit_config` to `false`. We also suggest using a pre-build AMI to improve the start time of jobs for ephemeral runners.
 - Job retry (**Beta**). By default the scale-up lambda will discard the message when it is handled. Meaning in the ephemeral use-case an instance is created. The created runner will ask GitHub for a job, no guarantee it will run the job for which it was scaling. Result could be that with small system hick-up the job is keeping waiting for a runner. Enable a pool (org runners) is one option to avoid this problem. Another option is to enable the job retry function. Which will retry the job after a delay for a configured number of times.
@@ -259,7 +259,82 @@ Below an example of the the log messages created.
 }
 ```
 
+### EventBridge
+
+The module can be deployed in the mode `eventbridge` (Experimental). The `eventbridge` mode will publish the event to an event bus with a target rule the events are sent to a dispatch lambda. The dispatch lambda will send the event to the SQS queue. The `eventbridge` mode is disabled by default. We expect thhe `eventbridge` mode will be the future direction to build a data lake, build metrics, acto on `workflow_job` job started events, etc.
+
+Example to use the EventBridge:
+
+```hcl
+
+module "runners" {
+  source = "philips-labs/github-runners/aws"
+
+  ...
+  eventbridge = {
+    enable = true
+  }
+  ...
+}
+
+locals {
+  event_bus_name = module.runners.webhook.eventbridge.event_bus.name
+}
+
+resource "aws_cloudwatch_event_rule" "example" {
+  name           = "${local.prefix}-github-events-all"
+  description    = "Caputure all GitHub events"
+  event_bus_name = local.event_bus_name
+  event_pattern  = <<EOF
+{
+  "source": [{
+    "prefix": "github"
+  }]
+}
+EOF
+}
+
+resource "aws_cloudwatch_event_target" "main" {
+  rule           = aws_cloudwatch_event_rule.example.name
+  arn            = <arn of target>
+  event_bus_name = local.event_bus_name
+  role_arn       = aws_iam_role.event_rule_firehose_role.arn
+}
+
+data "aws_iam_policy_document" "event_rule_firehose_role" {
+  statement {
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["events.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role" "event_rule_role" {
+  name               = "${local.prefix}-eventbridge-github-rule"
+  assume_role_policy = data.aws_iam_policy_document.event_rule_firehose_role.json
+}
+
+data aws_iam_policy_document firehose_stream {
+  statement {
+    INSER_YOUR_POIICY_HERE_TO_ACCESS_THE_TARGET
+  }
+}
+
+resource "aws_iam_role_policy" "event_rule_firehose_role" {
+  name = "target-event-rule-firehose"
+  role = aws_iam_role.event_rule_firehose_role.name
+  policy = data.aws_iam_policy_document.firehose_stream.json
+}
+```
+
 ### Queue to publish workflow job events
+
+!!! warning "Deprecated
+
+    This fearure will be removed since we introducing the EventBridge. Same functinallity can be implemented by adding a rule to the EventBridge to forward `workflow_job` events to the SQS queue.
 
 This queue is an experimental feature to allow you to receive a copy of the wokflow_jobs events sent by the GitHub App. This can be used to calculate a matrix or monitor the system.
 

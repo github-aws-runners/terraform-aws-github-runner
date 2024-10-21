@@ -62,5 +62,5 @@ resource "aws_apigatewayv2_integration" "webhook" {
   connection_type    = "INTERNET"
   description        = "GitHub App webhook for receiving build events."
   integration_method = "POST"
-  integration_uri    = var.mode == "direct" ? module.direct[0].webhook.lambda.invoke_arn : module.eventbridge[0].webhook.lambda.invoke_arn
+  integration_uri    = !var.eventbridge.enable ? module.direct[0].webhook.lambda.invoke_arn : module.eventbridge[0].webhook.lambda.invoke_arn
 }

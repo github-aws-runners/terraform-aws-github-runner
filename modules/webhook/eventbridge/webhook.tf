@@ -22,7 +22,7 @@ resource "aws_lambda_function" "webhook" {
         POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.config.tracing_config.capture_http_requests
         POWERTOOLS_TRACER_CAPTURE_ERROR          = var.config.tracing_config.capture_error
         # Parameters required for lambda configuration
-        ALLOWED_EVENTS                       = jsonencode(var.config.allowed_events)
+        ACCEPT_EVENTS                        = jsonencode(var.config.accept_events)
         EVENT_BUS_NAME                       = aws_cloudwatch_event_bus.main.name
         PARAMETER_GITHUB_APP_WEBHOOK_SECRET  = var.config.github_app_parameters.webhook_secret.name
         PARAMETER_RUNNER_MATCHER_CONFIG_PATH = var.config.ssm_parameter_runner_matcher_config.name

@@ -196,7 +196,7 @@ describe('handle GitHub webhook events', () => {
       });
 
       ConfigWebhookEventBridge.reset();
-      process.env.ALLOWED_EVENTS = JSON.stringify(input.events);
+      process.env.ACCEPT_EVENTS = JSON.stringify(input.events);
       config = await ConfigWebhookEventBridge.load();
 
       await expect(
@@ -239,7 +239,7 @@ describe('handle GitHub webhook events', () => {
         });
 
         ConfigWebhookEventBridge.reset();
-        process.env.ALLOWED_EVENTS = JSON.stringify(input.events);
+        process.env.ACCEPT_EVENTS = JSON.stringify(input.events);
         config = await ConfigWebhookEventBridge.load();
 
         await expect(
