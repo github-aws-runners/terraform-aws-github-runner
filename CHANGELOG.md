@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.17.3](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.17.2...v5.17.3) (2024-10-23)
+
+
+### Bug Fixes
+
+* **lambda:** bump the aws group across 1 directory with 5 updates ([#4203](https://github.com/philips-labs/terraform-aws-github-runner/issues/4203)) ([e12ee80](https://github.com/philips-labs/terraform-aws-github-runner/commit/e12ee80bb6d1e5b83a8fe092f6364fd2895fd631))
+* **lambda:** bump typescript from 5.5.4 to 5.6.3 in /lambdas ([#4200](https://github.com/philips-labs/terraform-aws-github-runner/issues/4200)) ([cb0c1ff](https://github.com/philips-labs/terraform-aws-github-runner/commit/cb0c1fff3c3d771837a635db4f89a1ef68e9cfaf))
+
 ## [5.17.2](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.17.1...v5.17.2) (2024-10-21)
 
 
