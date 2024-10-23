@@ -2,6 +2,7 @@ locals {
   webhook_endpoint = "webhook"
   role_path        = var.role_path == null ? "/${var.prefix}/" : var.role_path
   lambda_zip       = var.lambda_zip == null ? "${path.module}/../../lambdas/functions/webhook/webhook.zip" : var.lambda_zip
+  auth_lambda_zip  = var.auth_lambda_zip == null ? "${path.module}/../../lambdas/functions/webhook-auth/webhook-auth.zip" : var.auth_lambda_zip
 }
 
 resource "aws_apigatewayv2_api" "webhook" {
@@ -72,4 +73,15 @@ resource "aws_ssm_parameter" "runner_matcher_config" {
   type  = "String"
   value = jsonencode(local.runner_matcher_config_sorted)
   tier  = var.matcher_config_parameter_store_tier
+}
+
+resource "aws_apigatewayv2_authorizer" "webhook_auth" {
+  count = local.webhook_auth_enabled ? 1 : 0
+
+  name                             = "webhook-auth"
+  api_id                           = aws_apigatewayv2_api.webhook.id
+  authorizer_type                  = "REQUEST"
+  authorizer_uri                   = aws_lambda_function.webhook_auth[0].invoke_arn
+  enable_simple_responses          = true
+  authorizer_result_ttl_in_seconds = 0
 }

@@ -27,6 +27,7 @@ jobs:
       - name: "Fake zip files" # Validate will fail if it cannot find the zip files
         run: |
           touch lambdas/functions/webhook/webhook.zip
+          touch lambdas/functions/webhook/webhook-auth.zip
           touch lambdas/functions/control-plane/runners.zip
           touch lambdas/functions/gh-agent-syncer/runner-binaries-syncer.zip
           touch lambdas/functions/ami-housekeeper/ami-housekeeper.zip
@@ -81,6 +82,7 @@ jobs:
             "ssm",
             "termination-watcher",
             "webhook",
+            "webhook-auth",
           ]
     defaults:
       run:
