@@ -2,7 +2,7 @@
 
 > This module is treated as internal module, breaking changes will not trigger a major release bump.
 
-Th module can be deployed in two modes. Direct messages, are delivered directly to the runner queues. EventBridge messages are delivered to an EventBridge bus and then dispatched to the runner queues.
+The module can be deployed in two modes. 'Direct' messages, are delivered directly to the runner queues. 'EventBridge' messages are delivered to an EventBridge bus and then dispatched to the runner queues.
 
 ## Lambda Function
 

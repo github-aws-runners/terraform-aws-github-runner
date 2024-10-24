@@ -685,7 +685,7 @@ variable "metrics" {
 }
 
 variable "eventbridge" {
-  description = "Enable the use of EventBridge by the module. By enable this feature events will be putted on the EventBridge bhy the webhook instead of directly dispatchting to queues for sacling."
+  description = "Enable the use of EventBridge by the module. By enabling this feature events will be put on the EventBridge by the webhook instead of directly dispatching to queues for scaling."
   type = object({
     enable        = optional(bool, false)
     accept_events = optional(list(string), [])

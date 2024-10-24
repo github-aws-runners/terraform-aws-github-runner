@@ -213,8 +213,7 @@ variable "matcher_config_parameter_store_tier" {
 
 variable "eventbridge" {
   description = <<EOF
-    Enable the use of EventBridge by the module. By enable this feature events will be putted on the EventBridge bhy the
-    webhook instead of directly dispatchting to queues for sacling.
+    Enable the use of EventBridge by the module. By enabling this feature events will be put on the EventBridge by the webhook instead of directly dispatching to queues for scaling.
 
     `enable`: Enable the EventBridge feature.
     `accept_events`: List can be used to only allow specific events to be putted on the EventBridge. By default all events, empty list will be be interpreted as all events.
