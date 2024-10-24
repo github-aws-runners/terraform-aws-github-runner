@@ -171,7 +171,3 @@ module "webhook_github_app" {
 #   name          = "alias/github/action-runners"
 #   target_key_id = aws_kms_key.github.key_id
 # }
-# moved {
-#   from = module.runners.module.webhook.aws_lambda_function.webhook
-#   to   = module.runners.module.webhook.module.webhook.aws_lambda_function.webhook
-# }
