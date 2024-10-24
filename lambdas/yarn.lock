@@ -113,7 +113,7 @@ __metadata:
     "@typescript-eslint/eslint-plugin": "npm:^8.9.0"
     "@typescript-eslint/parser": "npm:^8.11.0"
     "@vercel/ncc": "npm:^0.38.1"
-    aws-sdk-client-mock: "npm:^4.0.2"
+    aws-sdk-client-mock: "npm:^4.1.0"
     aws-sdk-client-mock-jest: "npm:^4.1.0"
     cron-parser: "npm:^4.9.0"
     eslint: "npm:^8.57.0"
@@ -212,7 +212,7 @@ __metadata:
     "@typescript-eslint/eslint-plugin": "npm:^8.9.0"
     "@typescript-eslint/parser": "npm:^8.11.0"
     "@vercel/ncc": "npm:^0.38.1"
-    aws-sdk-client-mock: "npm:^4.0.2"
+    aws-sdk-client-mock: "npm:^4.1.0"
     aws-sdk-client-mock-jest: "npm:^4.1.0"
     cron-parser: "npm:^4.9.0"
     eslint: "npm:^8.57.0"
@@ -248,7 +248,7 @@ __metadata:
     "@typescript-eslint/eslint-plugin": "npm:^8.9.0"
     "@typescript-eslint/parser": "npm:^8.11.0"
     "@vercel/ncc": "npm:^0.38.1"
-    aws-sdk-client-mock: "npm:^4.0.2"
+    aws-sdk-client-mock: "npm:^4.1.0"
     aws-sdk-client-mock-jest: "npm:^4.1.0"
     axios: "npm:^1.7.7"
     eslint: "npm:^8.57.0"
@@ -277,7 +277,7 @@ __metadata:
     "@typescript-eslint/eslint-plugin": "npm:^8.9.0"
     "@typescript-eslint/parser": "npm:^8.11.0"
     "@vercel/ncc": "npm:^0.38.1"
-    aws-sdk-client-mock: "npm:^4.0.2"
+    aws-sdk-client-mock: "npm:^4.1.0"
     aws-sdk-client-mock-jest: "npm:^4.1.0"
     eslint: "npm:^8.57.0"
     eslint-plugin-prettier: "npm:5.2.1"
@@ -6287,14 +6287,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"aws-sdk-client-mock@npm:^4.0.2":
-  version: 4.0.2
-  resolution: "aws-sdk-client-mock@npm:4.0.2"
+"aws-sdk-client-mock@npm:^4.1.0":
+  version: 4.1.0
+  resolution: "aws-sdk-client-mock@npm:4.1.0"
   dependencies:
     "@types/sinon": "npm:^17.0.3"
     sinon: "npm:^18.0.1"
     tslib: "npm:^2.1.0"
-  checksum: 10c0/3028bb4997e51efa8669f96e01b6c3841f0c5cfb4ae8e3087e31b556dc34193619cd7152f4c30eb65f5c851e384709f915a2d6ea6dd52f7ece7216a9942c213b
+  checksum: 10c0/045caad0cff0ffeb08e69849dcae51aac8999163c58d71220bf47a82c237aabab2abf92bf6bf3bd7666e6e8984513c628e01a89eafa46fb230201d6587bc01e9
   languageName: node
   linkType: hard
 
