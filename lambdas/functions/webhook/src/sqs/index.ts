@@ -64,7 +64,7 @@ export async function sendWebhookEventToWorkflowJobQueue(
     MessageBody: JSON.stringify(message),
   };
 
-  logger.debug(`Sending Webhook events to the workflow job queue: ${config.workflowJobEventSecondaryQueue}`);
+  logger.info(`Sending event to the workflow job queue: ${config.workflowJobEventSecondaryQueue}`);
 
   try {
     await sqs.sendMessage(sqsMessage);
