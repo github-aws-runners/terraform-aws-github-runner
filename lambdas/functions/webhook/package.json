@@ -23,7 +23,7 @@
     "@types/jest": "^29.5.12",
     "@types/node": "^22.5.4",
     "@typescript-eslint/eslint-plugin": "^8.9.0",
-    "@typescript-eslint/parser": "^8.8.0",
+    "@typescript-eslint/parser": "^8.11.0",
     "@vercel/ncc": "0.38.1",
     "body-parser": "^1.20.3",
     "eslint": "^8.57.0",
@@ -35,12 +35,12 @@
     "prettier": "3.3.3",
     "ts-jest": "^29.2.5",
     "ts-node-dev": "^2.0.0",
-    "typescript": "^5.5.4"
+    "typescript": "^5.6.3"
   },
   "dependencies": {
     "@aws-github-runner/aws-powertools-util": "*",
     "@aws-github-runner/aws-ssm-util": "*",
-    "@aws-sdk/client-sqs": "^3.670.0",
+    "@aws-sdk/client-sqs": "^3.677.0",
     "@middy/core": "^4.7.0",
     "@octokit/rest": "20.1.1",
     "@octokit/types": "^13.6.1",

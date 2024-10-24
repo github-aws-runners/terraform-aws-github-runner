@@ -20,7 +20,7 @@
     "@types/jest": "^29.5.12",
     "@types/node": "^22.5.4",
     "@typescript-eslint/eslint-plugin": "^8.9.0",
-    "@typescript-eslint/parser": "^8.8.0",
+    "@typescript-eslint/parser": "^8.11.0",
     "@vercel/ncc": "0.38.1",
     "body-parser": "^1.20.3",
     "eslint": "^8.57.0",
@@ -32,7 +32,7 @@
     "prettier": "3.3.3",
     "ts-jest": "^29.2.5",
     "ts-node-dev": "^2.0.0",
-    "typescript": "^5.5.4"
+    "typescript": "^5.6.3"
   },
   "dependencies": {
     "@aws-lambda-powertools/logger": "^2.9.0",
