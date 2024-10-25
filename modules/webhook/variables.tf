@@ -54,6 +54,11 @@ variable "lambda_zip" {
   default     = null
 }
 
+variable "auth_lambda_zip" {
+  type    = string
+  default = null
+}
+
 variable "lambda_memory_size" {
   description = "Memory size limit in MB for lambda."
   type        = number
@@ -102,10 +107,20 @@ variable "webhook_lambda_s3_key" {
   default     = null
 }
 
+variable "webhook_auth_lambda_s3_key" {
+  type    = string
+  default = null
+}
+
 variable "webhook_lambda_s3_object_version" {
   description = "S3 object version for webhook lambda function. Useful if S3 versioning is enabled on source bucket."
   type        = string
   default     = null
+}
+
+variable "webhook_auth_lambda_s3_object_version" {
+  type    = string
+  default = null
 }
 
 variable "webhook_lambda_apigateway_access_log_settings" {
@@ -201,6 +216,11 @@ variable "lambda_tags" {
   default     = {}
 }
 
+variable "auth_lambda_tags" {
+  type    = map(string)
+  default = {}
+}
+
 variable "matcher_config_parameter_store_tier" {
   description = "The tier of the parameter store for the matcher configuration. Valid values are `Standard`, and `Advanced`."
   type        = string
@@ -210,3 +230,15 @@ variable "matcher_config_parameter_store_tier" {
     error_message = "`matcher_config_parameter_store_tier` value is not valid, valid values are: `Standard`, and `Advanced`."
   }
 }
+
+variable "webhook_allow_list" {
+  type = object({
+    ipv4_cidr_blocks = optional(list(string), [])
+  })
+
+  validation {
+    condition     = can([for ip in var.webhook_allow_list.ipv4_cidr_blocks : regex("^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}/[0-9]{1,2}$", ip)])
+    error_message = "Incorrect format for IPv4 CIDR range."
+  }
+}
+
