@@ -44,7 +44,6 @@ yarn run dist
 | Name | Version |
 |------|---------|
 | <a name="provider_aws"></a> [aws](#provider\_aws) | ~> 5.27 |
-| <a name="provider_null"></a> [null](#provider\_null) | ~> 3 |
 
 ## Modules
 
