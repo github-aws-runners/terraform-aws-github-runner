@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.18.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.17.3...v5.18.0) (2024-10-28)
+
+
+### Features
+
+* support AWS EventBridge ([#4188](https://github.com/philips-labs/terraform-aws-github-runner/issues/4188)) ([9607ca6](https://github.com/philips-labs/terraform-aws-github-runner/commit/9607ca65a8b2c9a62936b28e823c6d7865d3ca38))
+
 ## [5.17.3](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.17.2...v5.17.3) (2024-10-23)
 
 
