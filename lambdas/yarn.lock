@@ -108,7 +108,7 @@ __metadata:
     "@aws-sdk/types": "npm:^3.664.0"
     "@trivago/prettier-plugin-sort-imports": "npm:^4.3.0"
     "@types/aws-lambda": "npm:^8.10.145"
-    "@types/jest": "npm:^29.5.12"
+    "@types/jest": "npm:^29.5.14"
     "@types/node": "npm:^22.5.4"
     "@typescript-eslint/eslint-plugin": "npm:^8.9.0"
     "@typescript-eslint/parser": "npm:^8.11.0"
@@ -140,7 +140,7 @@ __metadata:
     "@trivago/prettier-plugin-sort-imports": "npm:^4.3.0"
     "@types/aws-lambda": "npm:^8.10.145"
     "@types/express": "npm:^4.17.21"
-    "@types/jest": "npm:^29.5.12"
+    "@types/jest": "npm:^29.5.14"
     "@types/node": "npm:^22.5.4"
     "@typescript-eslint/eslint-plugin": "npm:^8.9.0"
     "@typescript-eslint/parser": "npm:^8.11.0"
@@ -170,7 +170,7 @@ __metadata:
     "@trivago/prettier-plugin-sort-imports": "npm:^4.3.0"
     "@types/aws-lambda": "npm:^8.10.145"
     "@types/express": "npm:^4.17.21"
-    "@types/jest": "npm:^29.5.12"
+    "@types/jest": "npm:^29.5.14"
     "@types/node": "npm:^22.5.4"
     "@typescript-eslint/eslint-plugin": "npm:^8.9.0"
     "@typescript-eslint/parser": "npm:^8.11.0"
@@ -207,7 +207,7 @@ __metadata:
     "@octokit/types": "npm:^13.6.1"
     "@trivago/prettier-plugin-sort-imports": "npm:^4.3.0"
     "@types/aws-lambda": "npm:^8.10.145"
-    "@types/jest": "npm:^29.5.12"
+    "@types/jest": "npm:^29.5.14"
     "@types/node": "npm:^22.5.4"
     "@typescript-eslint/eslint-plugin": "npm:^8.9.0"
     "@typescript-eslint/parser": "npm:^8.11.0"
@@ -242,7 +242,7 @@ __metadata:
     "@octokit/rest": "npm:20.1.1"
     "@trivago/prettier-plugin-sort-imports": "npm:^4.3.0"
     "@types/aws-lambda": "npm:^8.10.145"
-    "@types/jest": "npm:^29.5.12"
+    "@types/jest": "npm:^29.5.14"
     "@types/node": "npm:^22.5.4"
     "@types/request": "npm:^2.48.12"
     "@typescript-eslint/eslint-plugin": "npm:^8.9.0"
@@ -272,7 +272,7 @@ __metadata:
     "@middy/core": "npm:^4.7.0"
     "@trivago/prettier-plugin-sort-imports": "npm:^4.3.0"
     "@types/aws-lambda": "npm:^8.10.145"
-    "@types/jest": "npm:^29.5.12"
+    "@types/jest": "npm:^29.5.14"
     "@types/node": "npm:^22.5.4"
     "@typescript-eslint/eslint-plugin": "npm:^8.9.0"
     "@typescript-eslint/parser": "npm:^8.11.0"
@@ -308,7 +308,7 @@ __metadata:
     "@trivago/prettier-plugin-sort-imports": "npm:^4.3.0"
     "@types/aws-lambda": "npm:^8.10.145"
     "@types/express": "npm:^4.17.21"
-    "@types/jest": "npm:^29.5.12"
+    "@types/jest": "npm:^29.5.14"
     "@types/node": "npm:^22.5.4"
     "@typescript-eslint/eslint-plugin": "npm:^8.9.0"
     "@typescript-eslint/parser": "npm:^8.11.0"
@@ -5636,13 +5636,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/jest@npm:^29.5.12":
-  version: 29.5.12
-  resolution: "@types/jest@npm:29.5.12"
+"@types/jest@npm:^29.5.14":
+  version: 29.5.14
+  resolution: "@types/jest@npm:29.5.14"
   dependencies:
     expect: "npm:^29.0.0"
     pretty-format: "npm:^29.0.0"
-  checksum: 10c0/25fc8e4c611fa6c4421e631432e9f0a6865a8cb07c9815ec9ac90d630271cad773b2ee5fe08066f7b95bebd18bb967f8ce05d018ee9ab0430f9dfd1d84665b6f
+  checksum: 10c0/18e0712d818890db8a8dab3d91e9ea9f7f19e3f83c2e50b312f557017dc81466207a71f3ed79cf4428e813ba939954fa26ffa0a9a7f153181ba174581b1c2aed
   languageName: node
   linkType: hard
 
