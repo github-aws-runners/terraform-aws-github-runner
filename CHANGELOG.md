@@ -1,5 +1,15 @@
 # Changelog
 
+## [5.18.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.18.0...v5.18.1) (2024-10-29)
+
+
+### Bug Fixes
+
+* **lambda:** bump the aws group in /lambdas with 7 updates ([#4211](https://github.com/philips-labs/terraform-aws-github-runner/issues/4211)) ([d18dcaa](https://github.com/philips-labs/terraform-aws-github-runner/commit/d18dcaa08801228b0b7d8086962de5fb681dafe3))
+* **lambda:** bump the aws-powertools group in /lambdas with 4 updates ([#4212](https://github.com/philips-labs/terraform-aws-github-runner/issues/4212)) ([9c9219b](https://github.com/philips-labs/terraform-aws-github-runner/commit/9c9219b690c83125a0817f125f499d6155c0cdf1))
+* **webhook:** grant KMS permission to decrypt wehn using EventBridge ([#4220](https://github.com/philips-labs/terraform-aws-github-runner/issues/4220)) ([380bcaf](https://github.com/philips-labs/terraform-aws-github-runner/commit/380bcaf68447fb05be6c888392b46449cf5d409d))
+* **webhook:** result message webhook ([#4221](https://github.com/philips-labs/terraform-aws-github-runner/issues/4221)) ([8099c17](https://github.com/philips-labs/terraform-aws-github-runner/commit/8099c1766e4b8d63b950cf6a2c360cf95cdd0dab))
+
 ## [5.18.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.17.3...v5.18.0) (2024-10-28)
 
 
