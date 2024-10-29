@@ -52,7 +52,10 @@ export async function publishOnEventBridge(
   let response: Response = { body: '', statusCode: 201 };
   if (!checkBodySizeResult.sizeExceeded) {
     await publishEvent(config.eventBusName, `github`, eventType, body);
-    response = { statusCode: 201, body: 'Event sent successfully to EventBridge successfully.' };
+    response = {
+      statusCode: 201,
+      body: `Event sent successfully to the EventBridge.`,
+    };
   } else {
     await publishEvent(config.eventBusName, 'runners.webhook', `error.${eventType}`, checkBodySizeResult.message);
     logger.warn('Github event body size exceeded 256KB');
