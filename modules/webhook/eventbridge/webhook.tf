@@ -127,6 +127,15 @@ resource "aws_iam_role_policy" "webhook_ssm" {
   })
 }
 
+resource "aws_iam_role_policy" "webhook_kms" {
+  name = "kms-policy"
+  role = aws_iam_role.webhook_lambda.name
+
+  policy = templatefile("${path.module}/../policies/lambda-kms.json", {
+    kms_key_arn = var.config.kms_key_arn != null ? var.config.kms_key_arn : "arn:${var.config.aws_partition}:kms:::CMK_NOT_IN_USE"
+  })
+}
+
 resource "aws_iam_role_policy" "xray" {
   count  = var.config.tracing_config.mode != null ? 1 : 0
   name   = "xray-policy"

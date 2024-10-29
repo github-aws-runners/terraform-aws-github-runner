@@ -116,7 +116,15 @@ resource "aws_iam_role_policy" "dispatcher_sqs" {
 
   policy = templatefile("${path.module}/../policies/lambda-publish-sqs-policy.json", {
     sqs_resource_arns = jsonencode(var.config.sqs_job_queues_arns)
-    kms_key_arn       = var.config.kms_key_arn != null ? var.config.kms_key_arn : ""
+  })
+}
+
+resource "aws_iam_role_policy" "dispatcher_kms" {
+  name = "kms-policy"
+  role = aws_iam_role.webhook_lambda.name
+
+  policy = templatefile("${path.module}/../policies/lambda-kms.json", {
+    kms_key_arn = var.config.kms_key_arn != null ? var.config.kms_key_arn : "arn:${var.config.aws_partition}:kms:::CMK_NOT_IN_USE"
   })
 }
 
