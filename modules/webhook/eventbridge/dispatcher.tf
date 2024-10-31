@@ -143,3 +143,13 @@ resource "aws_iam_role_policy" "dispatcher_xray" {
   policy = data.aws_iam_policy_document.lambda_xray[0].json
   role   = aws_iam_role.dispatcher_lambda.name
 }
+
+resource "aws_iam_role_policy" "webhook_workflow_job_sqs" {
+  count = var.config.sqs_workflow_job_queue != null ? 1 : 0
+  name  = "publish-workflow-job-sqs-policy"
+  role  = aws_iam_role.webhook_lambda.name
+
+  policy = templatefile("${path.module}/../policies/lambda-publish-sqs-policy.json", {
+    sqs_resource_arns = jsonencode([var.config.sqs_workflow_job_queue.arn])
+  })
+}
