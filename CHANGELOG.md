@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.18.2](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.18.1...v5.18.2) (2024-10-31)
+
+
+### Bug Fixes
+
+* **webhook:** add missing permission to workflow job queue (EventBridge) ([#4224](https://github.com/philips-labs/terraform-aws-github-runner/issues/4224)) ([d7e516c](https://github.com/philips-labs/terraform-aws-github-runner/commit/d7e516c4cc8b3c5091937730935efa716e6481bd))
+
 ## [5.18.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.18.0...v5.18.1) (2024-10-29)
 
 
