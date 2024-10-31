@@ -26,6 +26,11 @@ module "runners" {
     Project = "ProjectX"
   }
 
+  eventbridge = {
+    enable = true
+  }
+  enable_workflow_job_events_queue = true
+
   github_app = {
     key_base64     = var.github_app.key_base64
     id             = var.github_app.id
