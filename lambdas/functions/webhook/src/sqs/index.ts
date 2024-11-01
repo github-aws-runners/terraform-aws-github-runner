@@ -1,7 +1,7 @@
 import { SQS, SendMessageCommandInput } from '@aws-sdk/client-sqs';
 import { WorkflowJobEvent } from '@octokit/webhooks-types';
 import { createChildLogger, getTracedAWSV3Client } from '@aws-github-runner/aws-powertools-util';
-import { Config } from '../ConfigResolver';
+import { ConfigDispatcher } from '../ConfigLoader';
 
 const logger = createChildLogger('sqs');
 
@@ -50,7 +50,10 @@ export const sendActionRequest = async (message: ActionRequestMessage): Promise<
   await sqs.sendMessage(sqsMessage);
 };
 
-export async function sendWebhookEventToWorkflowJobQueue(message: GithubWorkflowEvent, config: Config): Promise<void> {
+export async function sendWebhookEventToWorkflowJobQueue(
+  message: GithubWorkflowEvent,
+  config: ConfigDispatcher,
+): Promise<void> {
   if (!config.workflowJobEventSecondaryQueue) {
     return;
   }
@@ -61,7 +64,7 @@ export async function sendWebhookEventToWorkflowJobQueue(message: GithubWorkflow
     MessageBody: JSON.stringify(message),
   };
 
-  logger.debug(`Sending Webhook events to the workflow job queue: ${config.workflowJobEventSecondaryQueue}`);
+  logger.info(`Sending event to the workflow job queue: ${config.workflowJobEventSecondaryQueue}`);
 
   try {
     await sqs.sendMessage(sqsMessage);

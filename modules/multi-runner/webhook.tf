@@ -1,11 +1,12 @@
 module "webhook" {
-  source      = "../webhook"
-  prefix      = var.prefix
-  tags        = local.tags
-  kms_key_arn = var.kms_key_arn
-
+  source                              = "../webhook"
+  prefix                              = var.prefix
+  tags                                = local.tags
+  kms_key_arn                         = var.kms_key_arn
+  eventbridge                         = var.eventbridge
   runner_matcher_config               = local.runner_config
   matcher_config_parameter_store_tier = var.matcher_config_parameter_store_tier
+
   ssm_paths = {
     root    = local.ssm_root_path
     webhook = var.ssm_paths.webhook

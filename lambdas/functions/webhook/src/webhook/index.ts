@@ -5,15 +5,19 @@ import { IncomingHttpHeaders } from 'http';
 
 import { Response } from '../lambda';
 import ValidationError from '../ValidationError';
-import { Config } from '../ConfigResolver';
 import { dispatch } from '../runners/dispatch';
-const supportedEvents = ['workflow_job'];
+import { publish } from '../eventbridge';
+import { ConfigWebhook, ConfigWebhookEventBridge } from '../ConfigLoader';
 const logger = createChildLogger('handler');
 
-export async function handle(headers: IncomingHttpHeaders, body: string, config: Config): Promise<Response> {
+export async function publishForRunners(
+  headers: IncomingHttpHeaders,
+  body: string,
+  config: ConfigWebhook,
+): Promise<Response> {
   init(headers);
 
-  await verifySignature(headers, body);
+  await verifySignature(headers, body, config.webhookSecret);
 
   const checkBodySizeResult = checkBodySize(body, headers);
 
@@ -26,10 +30,66 @@ export async function handle(headers: IncomingHttpHeaders, body: string, config:
   return await dispatch(event, eventType, config);
 }
 
-async function verifySignature(headers: IncomingHttpHeaders, body: string): Promise<number> {
+export async function publishOnEventBridge(
+  headers: IncomingHttpHeaders,
+  body: string,
+  config: ConfigWebhookEventBridge,
+): Promise<Response> {
+  init(headers);
+
+  await verifySignature(headers, body, config.webhookSecret);
+
+  const eventType = headers['x-github-event'] as string;
+  checkEventIsSupported(eventType, config.allowedEvents);
+
+  const checkBodySizeResult = checkBodySize(body, headers);
+
+  logger.info(
+    `Github event ${headers['x-github-event'] as string} accepted for ` +
+      `${headers['x-github-hook-installation-target-id'] as string}`,
+  );
+
+  let response: Response = { body: '', statusCode: 201 };
+  if (!checkBodySizeResult.sizeExceeded) {
+    await publishEvent(config.eventBusName, `github`, eventType, body);
+    response = {
+      statusCode: 201,
+      body: `Event sent successfully to the EventBridge.`,
+    };
+  } else {
+    await publishEvent(config.eventBusName, 'runners.webhook', `error.${eventType}`, checkBodySizeResult.message);
+    logger.warn('Github event body size exceeded 256KB');
+    response = { statusCode: 400, body: checkBodySizeResult.message.error };
+  }
+  return response;
+}
+
+async function publishEvent(eventBusName: string | undefined, eventSource: string, eventType: string, body: string) {
+  try {
+    const result = await publish({
+      EventBusName: eventBusName,
+      Source: eventSource,
+      DetailType: eventType,
+      Detail: body,
+    });
+    logger.debug(`Event sent to EventBridge`, {
+      message: {
+        Source: eventSource,
+        DetailType: eventType,
+        Detail: body,
+      },
+      result: result,
+    });
+  } catch (e) {
+    logger.warn(`Failed to send event to EventBridge`, { error: e });
+    throw e;
+  }
+}
+
+async function verifySignature(headers: IncomingHttpHeaders, body: string, secret: string): Promise<number> {
   const signature = headers['x-hub-signature-256'] as string;
   const webhooks = new Webhooks({
-    secret: Config.webhookSecret!,
+    secret,
   });
 
   if (
@@ -50,21 +110,26 @@ function init(headers: IncomingHttpHeaders) {
     headers[key.toLowerCase()] = headers[key];
   }
 
-  logger.addPersistentLogAttributes({
+  logger.appendPersistentKeys({
     github: {
-      'github-event': headers['x-github-event'],
       'github-delivery': headers['x-github-delivery'],
+      'github-event': headers['x-github-event'],
+      'github-hook-id': headers['x-github-hook-id'],
+      'github-hook-installation-target-id': headers['x-github-hook-installation-target-id'],
     },
   });
 }
 
-function readEvent(headers: IncomingHttpHeaders, body: string): { event: WorkflowJobEvent; eventType: string } {
-  const eventType = headers['x-github-event'] as string;
-
-  if (!supportedEvents.includes(eventType)) {
+function checkEventIsSupported(eventType: string, allowedEvents: string[]): void {
+  if (allowedEvents.length > 0 && !allowedEvents.includes(eventType)) {
     logger.warn(`Unsupported event type: ${eventType}`);
     throw new ValidationError(202, `Unsupported event type: ${eventType}`);
   }
+}
+
+function readEvent(headers: IncomingHttpHeaders, body: string): { event: WorkflowJobEvent; eventType: string } {
+  const eventType = headers['x-github-event'] as string;
+  checkEventIsSupported(eventType, ['workflow_job']);
 
   const event = JSON.parse(body) as WorkflowJobEvent;
   logger.appendPersistentKeys({

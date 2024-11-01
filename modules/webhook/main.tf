@@ -1,7 +1,6 @@
 locals {
   webhook_endpoint = "webhook"
   role_path        = var.role_path == null ? "/${var.prefix}/" : var.role_path
-  lambda_zip       = var.lambda_zip == null ? "${path.module}/../../lambdas/functions/webhook/webhook.zip" : var.lambda_zip
 }
 
 resource "aws_apigatewayv2_api" "webhook" {
@@ -63,13 +62,5 @@ resource "aws_apigatewayv2_integration" "webhook" {
   connection_type    = "INTERNET"
   description        = "GitHub App webhook for receiving build events."
   integration_method = "POST"
-  integration_uri    = aws_lambda_function.webhook.invoke_arn
-}
-
-
-resource "aws_ssm_parameter" "runner_matcher_config" {
-  name  = "${var.ssm_paths.root}/${var.ssm_paths.webhook}/runner-matcher-config"
-  type  = "String"
-  value = jsonencode(local.runner_matcher_config_sorted)
-  tier  = var.matcher_config_parameter_store_tier
+  integration_uri    = !var.eventbridge.enable ? module.direct[0].webhook.lambda.invoke_arn : module.eventbridge[0].webhook.lambda.invoke_arn
 }

@@ -31,7 +31,7 @@ The diagram below shows the architecture of the module, groups are indicating th
 
 ### Webhook
 
-The moment a GitHub action workflow requiring a `self-hosted` runner is triggered, GitHub will try to find a runner which can execute the workload. See [additional notes](additional_notes.md) for how the selection is made. This module reacts to GitHub's [`workflow_job` event](https://docs.github.com/en/free-pro-team@latest/developers/webhooks-and-events/webhook-events-and-payloads#workflow_job) for the triggered workflow and creates a new runner if necessary.
+The moment a GitHub action workflow requiring a `self-hosted` runner is triggered, GitHub will try to find a runner which can execute the workload. See [additional notes](additional_notes.md) for how the selection is made. The module can be deployed in two modes. One mode called `direct`, after accepting the [`workflow_job` event](https://docs.github.com/en/free-pro-team@latest/developers/webhooks-and-events/webhook-events-and-payloads#workflow_job) event the module will dispatch the event to a SQS queue on which the scale-up function will act. The second mode, `eventbridge` will funnel events via the AWS EventBridge. the EventBridge enables act on other events then only the `workflow_job` event with status `queued`. besides that the EventBridge supports replay functionality. For future extensions to act on events or create a data lake we will relay on the EventBridge.
 
 For receiving the `workflow_job` event by the webhook (lambda), a webhook needs to be created in GitHub. The same app as for API calls can be used to create the webhook. Or a dedicated webhook can be defined.
 

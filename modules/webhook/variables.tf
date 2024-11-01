@@ -210,3 +210,16 @@ variable "matcher_config_parameter_store_tier" {
     error_message = "`matcher_config_parameter_store_tier` value is not valid, valid values are: `Standard`, and `Advanced`."
   }
 }
+
+variable "eventbridge" {
+  description = <<EOF
+    Enable the use of EventBridge by the module. By enabling this feature events will be put on the EventBridge by the webhook instead of directly dispatching to queues for scaling.
+
+    `enable`: Enable the EventBridge feature.
+    `accept_events`: List can be used to only allow specific events to be putted on the EventBridge. By default all events, empty list will be be interpreted as all events.
+EOF
+  type = object({
+    enable        = optional(bool, false)
+    accept_events = optional(list(string), null)
+  })
+}

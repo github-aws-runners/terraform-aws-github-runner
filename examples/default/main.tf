@@ -97,8 +97,21 @@ module "runners" {
   # prefix GitHub runners with the environment name
   runner_name_prefix = "${local.environment}_"
 
+  # webhook supports two modes, either direct or via the eventbridge, uncomment to enable eventbridge
+  # eventbridge = {
+  #   enable = true
+  #   # adjust the allow events to only allow specific events, like workflow_job
+  #   # allowed_events = ['workflow_job']
+  # }
+
   # Enable debug logging for the lambda functions
-  log_level = "info"
+  # log_level = "debug"
+
+  # tracing_config = {
+  #   mode                  = "Active"
+  #   capture_error         = true
+  #   capture_http_requests = true
+  # }
 
   enable_ami_housekeeper = true
   ami_housekeeper_cleanup_config = {

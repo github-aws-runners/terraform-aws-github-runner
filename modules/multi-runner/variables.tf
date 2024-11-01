@@ -551,7 +551,7 @@ variable "pool_lambda_reserved_concurrent_executions" {
 }
 
 variable "enable_workflow_job_events_queue" {
-  description = "Enabling this experimental feature will create a secondory sqs queue to which a copy of the workflow_job event will be delivered."
+  description = "Enabling this experimental feature will create a secondary SQS queue to which a copy of the workflow_job event will be delivered."
   type        = bool
   default     = false
 }
@@ -681,5 +681,15 @@ variable "metrics" {
       enable_spot_termination_warning = optional(bool, true)
     }), {})
   })
+  default = {}
+}
+
+variable "eventbridge" {
+  description = "Enable the use of EventBridge by the module. By enabling this feature events will be put on the EventBridge by the webhook instead of directly dispatching to queues for scaling."
+  type = object({
+    enable        = optional(bool, false)
+    accept_events = optional(list(string), [])
+  })
+
   default = {}
 }

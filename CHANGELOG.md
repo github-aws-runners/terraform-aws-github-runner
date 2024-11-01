@@ -1,5 +1,37 @@
 # Changelog
 
+## [5.18.2](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.18.1...v5.18.2) (2024-10-31)
+
+
+### Bug Fixes
+
+* **webhook:** add missing permission to workflow job queue (EventBridge) ([#4224](https://github.com/philips-labs/terraform-aws-github-runner/issues/4224)) ([d7e516c](https://github.com/philips-labs/terraform-aws-github-runner/commit/d7e516c4cc8b3c5091937730935efa716e6481bd))
+
+## [5.18.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.18.0...v5.18.1) (2024-10-29)
+
+
+### Bug Fixes
+
+* **lambda:** bump the aws group in /lambdas with 7 updates ([#4211](https://github.com/philips-labs/terraform-aws-github-runner/issues/4211)) ([d18dcaa](https://github.com/philips-labs/terraform-aws-github-runner/commit/d18dcaa08801228b0b7d8086962de5fb681dafe3))
+* **lambda:** bump the aws-powertools group in /lambdas with 4 updates ([#4212](https://github.com/philips-labs/terraform-aws-github-runner/issues/4212)) ([9c9219b](https://github.com/philips-labs/terraform-aws-github-runner/commit/9c9219b690c83125a0817f125f499d6155c0cdf1))
+* **webhook:** grant KMS permission to decrypt wehn using EventBridge ([#4220](https://github.com/philips-labs/terraform-aws-github-runner/issues/4220)) ([380bcaf](https://github.com/philips-labs/terraform-aws-github-runner/commit/380bcaf68447fb05be6c888392b46449cf5d409d))
+* **webhook:** result message webhook ([#4221](https://github.com/philips-labs/terraform-aws-github-runner/issues/4221)) ([8099c17](https://github.com/philips-labs/terraform-aws-github-runner/commit/8099c1766e4b8d63b950cf6a2c360cf95cdd0dab))
+
+## [5.18.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.17.3...v5.18.0) (2024-10-28)
+
+
+### Features
+
+* support AWS EventBridge ([#4188](https://github.com/philips-labs/terraform-aws-github-runner/issues/4188)) ([9607ca6](https://github.com/philips-labs/terraform-aws-github-runner/commit/9607ca65a8b2c9a62936b28e823c6d7865d3ca38))
+
+## [5.17.3](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.17.2...v5.17.3) (2024-10-23)
+
+
+### Bug Fixes
+
+* **lambda:** bump the aws group across 1 directory with 5 updates ([#4203](https://github.com/philips-labs/terraform-aws-github-runner/issues/4203)) ([e12ee80](https://github.com/philips-labs/terraform-aws-github-runner/commit/e12ee80bb6d1e5b83a8fe092f6364fd2895fd631))
+* **lambda:** bump typescript from 5.5.4 to 5.6.3 in /lambdas ([#4200](https://github.com/philips-labs/terraform-aws-github-runner/issues/4200)) ([cb0c1ff](https://github.com/philips-labs/terraform-aws-github-runner/commit/cb0c1fff3c3d771837a635db4f89a1ef68e9cfaf))
+
 ## [5.17.2](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.17.1...v5.17.2) (2024-10-21)
 
 

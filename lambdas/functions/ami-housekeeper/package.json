@@ -18,13 +18,13 @@
   "devDependencies": {
     "@trivago/prettier-plugin-sort-imports": "^4.3.0",
     "@types/aws-lambda": "^8.10.145",
-    "@types/jest": "^29.5.12",
+    "@types/jest": "^29.5.14",
     "@types/node": "^22.5.4",
     "@typescript-eslint/eslint-plugin": "^8.9.0",
-    "@typescript-eslint/parser": "^8.8.0",
+    "@typescript-eslint/parser": "^8.11.0",
     "@vercel/ncc": "^0.38.1",
-    "aws-sdk-client-mock": "^4.0.2",
-    "aws-sdk-client-mock-jest": "^4.0.1",
+    "aws-sdk-client-mock": "^4.1.0",
+    "aws-sdk-client-mock-jest": "^4.1.0",
     "eslint": "^8.57.0",
     "eslint-plugin-prettier": "5.2.1",
     "jest": "^29.7.0",
@@ -39,11 +39,11 @@
   "dependencies": {
     "@aws-github-runner/aws-powertools-util": "*",
     "@aws-github-runner/aws-ssm-util": "*",
-    "@aws-sdk/client-ec2": "^3.670.0",
-    "@aws-sdk/client-ssm": "^3.670.0",
-    "@aws-sdk/types": "^3.664.0",
+    "@aws-sdk/client-ec2": "^3.679.0",
+    "@aws-sdk/client-ssm": "^3.679.0",
+    "@aws-sdk/types": "^3.679.0",
     "cron-parser": "^4.9.0",
-    "typescript": "^5.5.4"
+    "typescript": "^5.6.3"
   },
   "nx": {
     "includedScripts": [
