@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.18.3](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.18.2...v5.18.3) (2024-11-05)
+
+
+### Bug Fixes
+
+* **lambda:** bump the aws group in /lambdas with 6 updates ([#4235](https://github.com/philips-labs/terraform-aws-github-runner/issues/4235)) ([ef89b98](https://github.com/philips-labs/terraform-aws-github-runner/commit/ef89b98ca3494d8dac0a38f7f39a73128e6444af))
+* remove unused example spot_instance_termination_watcher ([#4226](https://github.com/philips-labs/terraform-aws-github-runner/issues/4226)) ([ad865a7](https://github.com/philips-labs/terraform-aws-github-runner/commit/ad865a7df9393ede2958e53d9ecbb0a61e66053c))
+
 ## [5.18.2](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.18.1...v5.18.2) (2024-10-31)
 
 
