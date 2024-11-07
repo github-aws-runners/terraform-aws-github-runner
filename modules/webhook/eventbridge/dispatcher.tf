@@ -12,13 +12,11 @@ resource "aws_cloudwatch_event_rule" "workflow_job" {
 EOF
 }
 
-
-resource "aws_cloudwatch_event_target" "github_welcome" {
+resource "aws_cloudwatch_event_target" "dispatcher" {
   arn            = aws_lambda_function.dispatcher.arn
   rule           = aws_cloudwatch_event_rule.workflow_job.name
   event_bus_name = aws_cloudwatch_event_bus.main.name
 }
-
 
 resource "aws_lambda_function" "dispatcher" {
   s3_bucket         = var.config.lambda_s3_bucket != null ? var.config.lambda_s3_bucket : null
@@ -45,6 +43,7 @@ resource "aws_lambda_function" "dispatcher" {
         POWERTOOLS_TRACER_CAPTURE_ERROR          = var.config.tracing_config.capture_error
         # Parameters required for lambda configuration
         PARAMETER_RUNNER_MATCHER_CONFIG_PATH = var.config.ssm_parameter_runner_matcher_config.name
+        PARAMETER_RUNNER_MATCHER_VERSION     = var.config.ssm_parameter_runner_matcher_config.version # enforce cold start after Changes in SSM parameter
         REPOSITORY_ALLOW_LIST                = jsonencode(var.config.repository_white_list)
         SQS_WORKFLOW_JOB_QUEUE               = try(var.config.sqs_workflow_job_queue.id, null)
       } : k => v if v != null
@@ -66,10 +65,6 @@ resource "aws_lambda_function" "dispatcher" {
     content {
       mode = var.config.tracing_config.mode
     }
-  }
-
-  lifecycle {
-    replace_triggered_by = [null_resource.ssm_parameter_runner_matcher_config, null_resource.github_app_parameters]
   }
 }
 

@@ -13,9 +13,3 @@ resource "aws_cloudwatch_event_archive" "main" {
   event_source_arn = aws_cloudwatch_event_bus.main.arn
   retention_days   = var.config.archive.retention_days
 }
-
-resource "null_resource" "ssm_parameter_runner_matcher_config" {
-  triggers = {
-    version = var.config.ssm_parameter_runner_matcher_config.version
-  }
-}

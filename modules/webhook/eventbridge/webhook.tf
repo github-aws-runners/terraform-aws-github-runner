@@ -1,3 +1,9 @@
+resource "null_resource" "github_app_parameters" {
+  triggers = {
+    github_app_webhook_secret_name = var.config.github_app_parameters.webhook_secret.name
+  }
+}
+
 resource "aws_lambda_function" "webhook" {
   s3_bucket         = var.config.lambda_s3_bucket != null ? var.config.lambda_s3_bucket : null
   s3_key            = var.config.lambda_s3_key != null ? var.config.lambda_s3_key : null
@@ -48,7 +54,7 @@ resource "aws_lambda_function" "webhook" {
   }
 
   lifecycle {
-    replace_triggered_by = [null_resource.ssm_parameter_runner_matcher_config, null_resource.github_app_parameters]
+    replace_triggered_by = [null_resource.github_app_parameters]
   }
 }
 
@@ -65,14 +71,9 @@ resource "aws_lambda_permission" "webhook" {
   function_name = aws_lambda_function.webhook.function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = var.config.api_gw_source_arn
-  lifecycle {
-    replace_triggered_by = [null_resource.ssm_parameter_runner_matcher_config, null_resource.github_app_parameters]
-  }
-}
 
-resource "null_resource" "github_app_parameters" {
-  triggers = {
-    github_app_webhook_secret = var.config.github_app_parameters.webhook_secret.name
+  lifecycle {
+    replace_triggered_by = [null_resource.github_app_parameters]
   }
 }
 
