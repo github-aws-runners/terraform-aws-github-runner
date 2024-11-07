@@ -28,6 +28,7 @@ resource "aws_lambda_function" "webhook" {
         REPOSITORY_ALLOW_LIST                    = jsonencode(var.config.repository_white_list)
         SQS_WORKFLOW_JOB_QUEUE                   = try(var.config.sqs_workflow_job_queue.id, null)
         PARAMETER_RUNNER_MATCHER_CONFIG_PATH     = var.config.ssm_parameter_runner_matcher_config.name
+        PARAMETER_RUNNER_MATCHER_VERSION         = var.config.ssm_parameter_runner_matcher_config.version # enforce cold start after Changes in SSM parameter
       } : k => v if v != null
     }
   }
@@ -50,7 +51,7 @@ resource "aws_lambda_function" "webhook" {
   }
 
   lifecycle {
-    replace_triggered_by = [null_resource.ssm_parameter_runner_matcher_config, null_resource.github_app_parameters]
+    replace_triggered_by = [null_resource.github_app_parameters]
   }
 }
 
@@ -68,7 +69,7 @@ resource "aws_lambda_permission" "webhook" {
   principal     = "apigateway.amazonaws.com"
   source_arn    = var.config.api_gw_source_arn
   lifecycle {
-    replace_triggered_by = [null_resource.ssm_parameter_runner_matcher_config, null_resource.github_app_parameters]
+    replace_triggered_by = [null_resource.github_app_parameters]
   }
 }
 
