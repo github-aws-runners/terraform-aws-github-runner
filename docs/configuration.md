@@ -358,6 +358,31 @@ resource "aws_sqs_queue" "workflow_job_in_progress" {
   name = "workflow_job_in_progress
 }
 
+resource "aws_sqs_queue_policy" "workflow_job_in_progress" {
+  queue_url = aws_sqs_queue.workflow_job_in_progress.id
+  policy    = data.aws_iam_policy_document.sqs_policy.json
+}
+
+data "aws_iam_policy_document" "sqs_policy" {
+  statement {
+    sid     = "AllowFromEventBridge"
+    actions = ["sqs:SendMessage"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["events.amazonaws.com"]
+    }
+
+    resources = [aws_sqs_queue.workflow_job_in_progress.arn]
+
+    condition {
+      test     = "ArnEquals"
+      variable = "aws:SourceArn"
+      values   = [aws_cloudwatch_event_rule.workflow_job_in_progress.arn]
+    }
+  }
+}
+
 ```
 
 
