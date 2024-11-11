@@ -69,28 +69,3 @@ resource "aws_sqs_queue_policy" "build_queue_dlq_policy" {
   queue_url = aws_sqs_queue.queued_builds_dlq[each.key].id
   policy    = data.aws_iam_policy_document.deny_unsecure_transport.json
 }
-
-resource "aws_sqs_queue_policy" "webhook_events_workflow_job_queue_policy" {
-  count     = var.enable_workflow_job_events_queue ? 1 : 0
-  queue_url = aws_sqs_queue.webhook_events_workflow_job_queue[0].id
-  policy    = data.aws_iam_policy_document.deny_unsecure_transport.json
-}
-
-resource "aws_sqs_queue" "webhook_events_workflow_job_queue" {
-  count                       = var.enable_workflow_job_events_queue ? 1 : 0
-  name                        = "${var.prefix}-webhook_events_workflow_job_queue"
-  delay_seconds               = var.workflow_job_queue_configuration.delay_seconds
-  visibility_timeout_seconds  = var.workflow_job_queue_configuration.visibility_timeout_seconds
-  message_retention_seconds   = var.workflow_job_queue_configuration.message_retention_seconds
-  fifo_queue                  = false
-  receive_wait_time_seconds   = 0
-  content_based_deduplication = false
-  redrive_policy              = null
-
-  sqs_managed_sse_enabled           = var.queue_encryption.sqs_managed_sse_enabled
-  kms_master_key_id                 = var.queue_encryption.kms_master_key_id
-  kms_data_key_reuse_period_seconds = var.queue_encryption.kms_data_key_reuse_period_seconds
-
-  tags = var.tags
-}
-

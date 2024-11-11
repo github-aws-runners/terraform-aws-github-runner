@@ -11,7 +11,6 @@ module "webhook" {
     root    = local.ssm_root_path
     webhook = var.ssm_paths.webhook
   }
-  sqs_workflow_job_queue = length(aws_sqs_queue.webhook_events_workflow_job_queue) > 0 ? aws_sqs_queue.webhook_events_workflow_job_queue[0] : null
 
   github_app_parameters = {
     webhook_secret = module.ssm.parameters.github_app_webhook_secret

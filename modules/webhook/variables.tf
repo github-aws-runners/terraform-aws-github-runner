@@ -40,14 +40,6 @@ variable "runner_matcher_config" {
   }
 }
 
-variable "sqs_workflow_job_queue" {
-  description = "SQS queue to monitor github events."
-  type = object({
-    id  = string
-    arn = string
-  })
-  default = null
-}
 variable "lambda_zip" {
   description = "File location of the lambda zip file."
   type        = string

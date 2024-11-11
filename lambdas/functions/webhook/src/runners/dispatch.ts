@@ -2,7 +2,7 @@ import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import { WorkflowJobEvent } from '@octokit/webhooks-types';
 
 import { Response } from '../lambda';
-import { RunnerMatcherConfig, sendActionRequest, sendWebhookEventToWorkflowJobQueue } from '../sqs';
+import { RunnerMatcherConfig, sendActionRequest } from '../sqs';
 import ValidationError from '../ValidationError';
 import { ConfigDispatcher, ConfigWebhook } from '../ConfigLoader';
 
@@ -15,10 +15,7 @@ export async function dispatch(
 ): Promise<Response> {
   validateRepoInAllowList(event, config);
 
-  const result = await handleWorkflowJob(event, eventType, config.matcherConfig!);
-  await sendWebhookEventToWorkflowJobQueue({ workflowJobEvent: event }, config);
-
-  return result;
+  return await handleWorkflowJob(event, eventType, config.matcherConfig!);
 }
 
 function validateRepoInAllowList(event: WorkflowJobEvent, config: ConfigDispatcher) {

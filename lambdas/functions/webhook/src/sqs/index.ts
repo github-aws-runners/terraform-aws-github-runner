@@ -49,26 +49,3 @@ export const sendActionRequest = async (message: ActionRequestMessage): Promise<
 
   await sqs.sendMessage(sqsMessage);
 };
-
-export async function sendWebhookEventToWorkflowJobQueue(
-  message: GithubWorkflowEvent,
-  config: ConfigDispatcher,
-): Promise<void> {
-  if (!config.workflowJobEventSecondaryQueue) {
-    return;
-  }
-
-  const sqs = new SQS({ region: process.env.AWS_REGION });
-  const sqsMessage: SendMessageCommandInput = {
-    QueueUrl: String(config.workflowJobEventSecondaryQueue),
-    MessageBody: JSON.stringify(message),
-  };
-
-  logger.info(`Sending event to the workflow job queue: ${config.workflowJobEventSecondaryQueue}`);
-
-  try {
-    await sqs.sendMessage(sqsMessage);
-  } catch (e) {
-    logger.warn(`Error in sending webhook events to workflow job queue: ${(e as Error).message}`);
-  }
-}

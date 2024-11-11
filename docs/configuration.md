@@ -332,23 +332,34 @@ resource "aws_iam_role_policy" "event_rule_firehose_role" {
 
 ### Queue to publish workflow job events
 
-!!! warning "Deprecated
+!!! warning "Removed
 
-    This fearure will be removed since we introducing the EventBridge. Same functinallity can be implemented by adding a rule to the EventBridge to forward `workflow_job` events to the SQS queue.
+    This feaTure will be removed since we introducing the EventBridge. Same functionality can be implemented by adding a rule to the EventBridge to forward `workflow_job` events to the SQS queue.
 
-This queue is an experimental feature to allow you to receive a copy of the wokflow_jobs events sent by the GitHub App. This can be used to calculate a matrix or monitor the system.
+Below an example how you can sent all `workflow_job` with action `in_progress` to a SQS queue.
 
-To enable the feature set `enable_workflow_job_events_queue = true`. Be aware though, this feature is experimental!
+```hcl
 
-Messages received on the queue are using the same format as published by GitHub wrapped in a property `workflowJobEvent`.
+resource "aws_cloudwatch_event_rule" "workflow_job_in_progress" {
+  name           = "workflow-job-in-progress"
+  event_bus_name = modules.runners.webhook.eventbridge.name # The name of the event bus output by the module
 
-```
-export interface GithubWorkflowEvent {
-  workflowJobEvent: WorkflowJobEvent;
+  event_pattern = <<EOF
+{
+  "detail-type": ["workflow_job"],
+  "detail": {
+    "action": ["in_progress"]
+  }
 }
+EOF
+}
+
+resource "aws_sqs_queue" "workflow_job_in_progress" {
+  name = "workflow_job_in_progress
+}
+
 ```
 
-This extensible format allows more fields to be added if needed.
-You can configure the queue by setting properties to `workflow_job_events_queue_config`
+
 
 NOTE: By default, a runner AMI update requires a re-apply of this terraform config (the runner AMI ID is looked up by a terraform data source). To avoid this, you can use `ami_id_ssm_parameter_name` to have the scale-up lambda dynamically lookup the runner AMI ID from an SSM parameter at instance launch time. Said SSM parameter is managed outside of this module (e.g. by a runner AMI build workflow).

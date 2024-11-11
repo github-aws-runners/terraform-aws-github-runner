@@ -24,7 +24,6 @@ module "direct" {
     tags                                  = var.tags,
     runner_matcher_config                 = var.runner_matcher_config,
     sqs_job_queues_arns                   = [for k, v in var.runner_matcher_config : v.arn]
-    sqs_workflow_job_queue                = var.sqs_workflow_job_queue,
     lambda_zip                            = var.lambda_zip,
     lambda_memory_size                    = var.lambda_memory_size,
     lambda_timeout                        = var.lambda_timeout,
@@ -61,7 +60,6 @@ module "eventbridge" {
     prefix                                = var.prefix,
     tags                                  = var.tags,
     sqs_job_queues_arns                   = [for k, v in var.runner_matcher_config : v.arn]
-    sqs_workflow_job_queue                = var.sqs_workflow_job_queue,
     lambda_zip                            = var.lambda_zip,
     lambda_memory_size                    = var.lambda_memory_size,
     lambda_timeout                        = var.lambda_timeout,

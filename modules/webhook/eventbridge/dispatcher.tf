@@ -45,7 +45,6 @@ resource "aws_lambda_function" "dispatcher" {
         PARAMETER_RUNNER_MATCHER_CONFIG_PATH = var.config.ssm_parameter_runner_matcher_config.name
         PARAMETER_RUNNER_MATCHER_VERSION     = var.config.ssm_parameter_runner_matcher_config.version # enforce cold start after Changes in SSM parameter
         REPOSITORY_ALLOW_LIST                = jsonencode(var.config.repository_white_list)
-        SQS_WORKFLOW_JOB_QUEUE               = try(var.config.sqs_workflow_job_queue.id, null)
       } : k => v if v != null
     }
   }
@@ -137,14 +136,4 @@ resource "aws_iam_role_policy" "dispatcher_xray" {
   name   = "xray-policy"
   policy = data.aws_iam_policy_document.lambda_xray[0].json
   role   = aws_iam_role.dispatcher_lambda.name
-}
-
-resource "aws_iam_role_policy" "dispatcher_workflow_job_sqs" {
-  count = var.config.sqs_workflow_job_queue != null ? 1 : 0
-  name  = "publish-workflow-job-sqs-policy"
-  role  = aws_iam_role.dispatcher_lambda.name
-
-  policy = templatefile("${path.module}/../policies/lambda-publish-sqs-policy.json", {
-    sqs_resource_arns = jsonencode([var.config.sqs_workflow_job_queue.arn])
-  })
 }

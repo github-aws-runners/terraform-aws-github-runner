@@ -7,6 +7,5 @@ declare namespace NodeJS {
     REPOSITORY_ALLOW_LIST: string;
     RUNNER_LABELS: string;
     ACCEPT_EVENTS: string;
-    SQS_WORKFLOW_JOB_QUEUE: string;
   }
 }

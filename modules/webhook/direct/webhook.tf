@@ -26,7 +26,6 @@ resource "aws_lambda_function" "webhook" {
         POWERTOOLS_TRACER_CAPTURE_ERROR          = var.config.tracing_config.capture_error
         PARAMETER_GITHUB_APP_WEBHOOK_SECRET      = var.config.github_app_parameters.webhook_secret.name
         REPOSITORY_ALLOW_LIST                    = jsonencode(var.config.repository_white_list)
-        SQS_WORKFLOW_JOB_QUEUE                   = try(var.config.sqs_workflow_job_queue.id, null)
         PARAMETER_RUNNER_MATCHER_CONFIG_PATH     = var.config.ssm_parameter_runner_matcher_config.name
         PARAMETER_RUNNER_MATCHER_VERSION         = var.config.ssm_parameter_runner_matcher_config.version # enforce cold start after Changes in SSM parameter
       } : k => v if v != null
@@ -127,16 +126,6 @@ resource "aws_iam_role_policy" "webhook_kms" {
 
   policy = templatefile("${path.module}/../policies/lambda-kms.json", {
     kms_key_arn = var.config.kms_key_arn != null ? var.config.kms_key_arn : "arn:${var.config.aws_partition}:kms:::CMK_NOT_IN_USE"
-  })
-}
-
-resource "aws_iam_role_policy" "webhook_workflow_job_sqs" {
-  count = var.config.sqs_workflow_job_queue != null ? 1 : 0
-  name  = "publish-workflow-job-sqs-policy"
-  role  = aws_iam_role.webhook_lambda.name
-
-  policy = templatefile("${path.module}/../policies/lambda-publish-sqs-policy.json", {
-    sqs_resource_arns = jsonencode([var.config.sqs_workflow_job_queue.arn])
   })
 }
 
