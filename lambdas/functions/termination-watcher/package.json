@@ -36,8 +36,8 @@
   },
   "dependencies": {
     "@aws-github-runner/aws-powertools-util": "*",
-    "@aws-sdk/client-ec2": "^3.683.0",
-    "@aws-sdk/types": "^3.679.0",
+    "@aws-sdk/client-ec2": "^3.687.0",
+    "@aws-sdk/types": "^3.686.0",
     "@middy/core": "^4.7.0",
     "typescript": "^5.6.3"
   },
