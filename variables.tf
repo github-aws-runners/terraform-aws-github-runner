@@ -926,7 +926,6 @@ variable "job_retry" {
   default = {}
 }
 
-
 variable "eventbridge" {
   description = <<EOF
     Enable the use of EventBridge by the module. By enabling this feature events will be put on the EventBridge by the webhook instead of directly dispatching to queues for scaling.
