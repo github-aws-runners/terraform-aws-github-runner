@@ -1,5 +1,19 @@
 # Changelog
 
+## [5.19.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.18.4...v5.19.0) (2024-11-12)
+
+
+### Features
+
+* remove deprecated bata feature workflow job queue ([#4249](https://github.com/philips-labs/terraform-aws-github-runner/issues/4249)) ([4066c4e](https://github.com/philips-labs/terraform-aws-github-runner/commit/4066c4eefdf778702cf3490336c92a9755581eaf))
+
+
+### Bug Fixes
+
+* dispatch only queued events to runners ([#4257](https://github.com/philips-labs/terraform-aws-github-runner/issues/4257)) ([a0a8322](https://github.com/philips-labs/terraform-aws-github-runner/commit/a0a8322b539edab279a8570507f6f83ec11a290a))
+* **lambda:** bump @octokit/auth-app from 6.1.2 to 6.1.3 in /lambdas in the octokit group ([#4252](https://github.com/philips-labs/terraform-aws-github-runner/issues/4252)) ([25f3538](https://github.com/philips-labs/terraform-aws-github-runner/commit/25f3538d59dd76ecea704727c754e0407610f0d3))
+* **lambda:** bump the aws group in /lambdas with 7 updates ([#4251](https://github.com/philips-labs/terraform-aws-github-runner/issues/4251)) ([6a98712](https://github.com/philips-labs/terraform-aws-github-runner/commit/6a98712fd522c1721c7e094204f1723f11e962d8))
+
 ## [5.18.4](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.18.3...v5.18.4) (2024-11-07)
 
 
