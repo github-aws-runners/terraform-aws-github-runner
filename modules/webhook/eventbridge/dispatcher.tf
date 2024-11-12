@@ -5,9 +5,10 @@ resource "aws_cloudwatch_event_rule" "workflow_job" {
 
   event_pattern = <<EOF
 {
-  "detail-type": [
-    "workflow_job"
-  ]
+  "detail-type": ["workflow_job"],
+  "detail": {
+    "action": ["queued"]
+  }
 }
 EOF
 }
