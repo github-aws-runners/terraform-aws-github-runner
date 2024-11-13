@@ -18,10 +18,16 @@ variable "region" {
   default     = "eu-west-1"
 }
 
+variable "aws_account_number" {
+  description = "The AWS account number"
+  type        = string
+  default     = ""
+}
+
 variable "instance_type" {
   description = "The instance type Packer will use for the builder"
   type        = string
-  default     = "t3a.medium"
+  default     = "c7i-flex.xlarge"
 }
 
 variable "ebs_delete_on_termination" {
@@ -62,11 +68,20 @@ locals {
 
 source "amazon-ebs" "githubrunner" {
   ami_name                                  = "github-runner-windows-core-2019-${formatdate("YYYYMMDDhhmm", timestamp())}"
-  communicator                              = "winrm"
+  ami_users                                 = [ var.aws_account_number ]
+  ami_regions                               = var.aws_region_mirror_list
+  ami_description                           = "GitHub Actions runner AMI Windows Core 2019 Pro Video"
+
   instance_type                             = var.instance_type
   region                                    = var.region
   associate_public_ip_address               = var.associate_public_ip_address
   temporary_security_group_source_public_ip = var.temporary_security_group_source_public_ip
+
+  user_data_file           = "../setup-ssh.ps1"
+  communicator             = "ssh"
+  ssh_username             = "Administrator"
+  ssh_file_transfer_method = "sftp"
+  ssh_timeout              = "15m"
 
   source_ami_filter {
     filters = {
@@ -77,19 +92,16 @@ source "amazon-ebs" "githubrunner" {
     most_recent = true
     owners      = ["amazon"]
   }
+
   tags = {
     OS_Version    = "windows-core-2019"
     Release       = "Latest"
     Base_AMI_Name = "{{ .SourceAMIName }}"
   }
-  user_data_file = "./bootstrap_win.ps1"
-  winrm_insecure = true
-  winrm_port     = 5986
-  winrm_use_ssl  = true
-  winrm_username = "Administrator"
 
   launch_block_device_mappings {
     device_name           = "/dev/sda1"
+    volume_size           = 100
     delete_on_termination = "${var.ebs_delete_on_termination}"
   }
 }
@@ -101,21 +113,29 @@ build {
   ]
 
   provisioner "file" {
-    content = templatefile("../start-runner.ps1", {
-      start_runner = templatefile("../../modules/runners/templates/start-runner.ps1", {})
+    content = templatefile("../../start-runner.ps1", {
+      start_runner = templatefile("../../templates/start-runner.ps1", {})
     })
     destination = "C:\\start-runner.ps1"
   }
 
   provisioner "powershell" {
     inline = concat([
-      templatefile("./windows-provisioner.ps1", {
+      templatefile("../../windows-provisioner.ps1", {
         action_runner_url = "https://github.com/actions/runner/releases/download/v${local.runner_version}/actions-runner-win-x64-${local.runner_version}.zip"
       })
     ], var.custom_shell_commands)
   }
+
+  # Needed to make the chocolatey install pathing changes stick for any subsequent provisioning script that you want to run.
+  provisioner "windows-restart" {
+    restart_check_command = "powershell -command \"& {Write-Output 'Restarted!'}\""
+    restart_timeout = "5m"
+  }
+  
   post-processor "manifest" {
     output     = "manifest.json"
     strip_path = true
   }
+  
 }
