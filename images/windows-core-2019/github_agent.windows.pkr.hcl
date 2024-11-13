@@ -113,15 +113,15 @@ build {
   ]
 
   provisioner "file" {
-    content = templatefile("../../start-runner.ps1", {
-      start_runner = templatefile("../../templates/start-runner.ps1", {})
+    content = templatefile("../start-runner.ps1", {
+      start_runner = templatefile("../templates/start-runner.ps1", {})
     })
     destination = "C:\\start-runner.ps1"
   }
 
   provisioner "powershell" {
     inline = concat([
-      templatefile("../../windows-provisioner.ps1", {
+      templatefile("./windows-provisioner.ps1", {
         action_runner_url = "https://github.com/actions/runner/releases/download/v${local.runner_version}/actions-runner-win-x64-${local.runner_version}.zip"
       })
     ], var.custom_shell_commands)
