@@ -114,7 +114,7 @@ build {
 
   provisioner "file" {
     content = templatefile("../start-runner.ps1", {
-      start_runner = templatefile("../templates/start-runner.ps1", {})
+      start_runner = templatefile("../../modules/runners/templates/start-runner.ps1", {})
     })
     destination = "C:\\start-runner.ps1"
   }
@@ -132,10 +132,10 @@ build {
     restart_check_command = "powershell -command \"& {Write-Output 'Restarted!'}\""
     restart_timeout = "5m"
   }
-  
+
   post-processor "manifest" {
     output     = "manifest.json"
     strip_path = true
   }
-  
+
 }

@@ -134,7 +134,7 @@ build {
 
   provisioner "file" {
     content = templatefile("../start-runner.ps1", {
-      start_runner = templatefile("../../templates/start-runner.ps1", {})
+      start_runner = templatefile("../../modules/runners/templates/start-runner.ps1", {})
     })
     destination = "C:\\start-runner.ps1"
   }
