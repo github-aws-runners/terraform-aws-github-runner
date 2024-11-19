@@ -1,5 +1,19 @@
 # Changelog
 
+## [5.20.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.19.0...v5.20.0) (2024-11-19)
+
+
+### Features
+
+* **runners:** add support to disable default labels (Linux) ([#3491](https://github.com/philips-labs/terraform-aws-github-runner/issues/3491)) ([772e1a5](https://github.com/philips-labs/terraform-aws-github-runner/commit/772e1a59906f171c6dc70183544443509f9c0580))
+* **runners:** add support to disable default labels (Windows) ([#4261](https://github.com/philips-labs/terraform-aws-github-runner/issues/4261)) ([ad9bcc4](https://github.com/philips-labs/terraform-aws-github-runner/commit/ad9bcc47f8105098811175379b9eed68d73f7d92))
+
+
+### Bug Fixes
+
+* **lambda:** bump cross-spawn from 7.0.3 to 7.0.6 in /lambdas ([#4273](https://github.com/philips-labs/terraform-aws-github-runner/issues/4273)) ([dcec236](https://github.com/philips-labs/terraform-aws-github-runner/commit/dcec23624b5b0fddc352b9d61cccb18107cc888d))
+* **lambda:** bump the aws group in /lambdas with 7 updates ([#4266](https://github.com/philips-labs/terraform-aws-github-runner/issues/4266)) ([849549e](https://github.com/philips-labs/terraform-aws-github-runner/commit/849549e8b6497fa7fc8288739669c8daf1223df8))
+
 ## [5.19.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.18.4...v5.19.0) (2024-11-12)
 
 
