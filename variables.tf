@@ -555,7 +555,7 @@ variable "runner_egress_rules" {
 variable "log_level" {
   description = "Logging level for lambda logging. Valid values are  'silly', 'trace', 'debug', 'info', 'warn', 'error', 'fatal'."
   type        = string
-  default     = "info"
+  default     = "debug"
   validation {
     condition = anytrue([
       var.log_level == "silly",
