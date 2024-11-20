@@ -217,6 +217,12 @@ variable "runner_boot_time_in_minutes" {
   default     = 5
 }
 
+variable "runner_disable_default_labels" {
+  description = "Disable default labels for the runners (os, architecture and `self-hosted`). If enabled, the runner will only have the extra labels provided in `runner_extra_labels`."
+  type        = bool
+  default     = false
+}
+
 variable "runner_labels" {
   description = "All the labels for the runners (GitHub) including the default one's(e.g: self-hosted, linux, x64, label1, label2). Separate each label by a comma"
   type        = list(string)

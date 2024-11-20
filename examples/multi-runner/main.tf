@@ -97,16 +97,8 @@ module "runners" {
   # runner_binaries_syncer_lambda_zip = "../lambdas-download/runner-binaries-syncer.zip"
   # runners_lambda_zip                = "../lambdas-download/runners.zip"
 
-  # enable_workflow_job_events_queue = true
-  # override delay of events in seconds
-
   # Enable debug logging for the lambda functions
   # log_level = "debug"
-
-  # Enable spot termination watcher
-  # spot_instance_termination_watcher = {
-  #   enable = true
-  # }
 
   # Enable to track the spot instance termination warning
   # instance_termination_watcher = {

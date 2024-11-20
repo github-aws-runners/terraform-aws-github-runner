@@ -1,9 +1,5 @@
 import { SendMessageCommandInput } from '@aws-sdk/client-sqs';
-
-import { ActionRequestMessage, GithubWorkflowEvent, sendActionRequest, sendWebhookEventToWorkflowJobQueue } from '.';
-import workflowjob_event from '../../test/resources/github_workflowjob_event.json';
-import { getParameter } from '@aws-github-runner/aws-ssm-util';
-import { mocked } from 'jest-mock';
+import { ActionRequestMessage, sendActionRequest } from '.';
 
 const mockSQS = {
   sendMessage: jest.fn(() => {
@@ -14,9 +10,6 @@ jest.mock('@aws-sdk/client-sqs', () => ({
   SQS: jest.fn().mockImplementation(() => mockSQS),
 }));
 jest.mock('@aws-github-runner/aws-ssm-util');
-
-import { SQS } from '@aws-sdk/client-sqs';
-import { ConfigDispatcher, ConfigWebhook } from '../ConfigLoader';
 
 describe('Test sending message to SQS.', () => {
   const queueUrl = 'https://sqs.eu-west-1.amazonaws.com/123456789/queued-builds';
@@ -70,64 +63,5 @@ describe('Test sending message to SQS.', () => {
     // Assert
     expect(mockSQS.sendMessage).toHaveBeenCalledWith({ ...sqsMessage, MessageGroupId: String(message.id) });
     await expect(result).resolves.not.toThrow();
-  });
-});
-
-describe('Test sending message to SQS.', () => {
-  const message: GithubWorkflowEvent = {
-    workflowJobEvent: JSON.parse(JSON.stringify(workflowjob_event)),
-  };
-  const sqsMessage: SendMessageCommandInput = {
-    QueueUrl: 'https://sqs.eu-west-1.amazonaws.com/123456789/webhook_events_workflow_job_queue',
-    MessageBody: JSON.stringify(message),
-  };
-  beforeEach(() => {
-    ConfigDispatcher.reset();
-    const mockedGet = mocked(getParameter);
-    mockedGet.mockResolvedValue('["abc"]');
-  });
-  afterEach(() => {
-    jest.clearAllMocks();
-  });
-
-  it('sends webhook events to workflow job queue', async () => {
-    // Arrange
-    process.env.SQS_WORKFLOW_JOB_QUEUE = sqsMessage.QueueUrl || '';
-    const config: ConfigWebhook = await ConfigWebhook.load();
-
-    // Act
-    const result = sendWebhookEventToWorkflowJobQueue(message, config);
-
-    // Assert
-    expect(mockSQS.sendMessage).toHaveBeenCalledWith(sqsMessage);
-    await expect(result).resolves.not.toThrow();
-  });
-
-  it('Does not send webhook events to workflow job event copy queue when job queue is not in environment', async () => {
-    // Arrange
-    process.env.SQS_WORKFLOW_JOB_QUEUE = '';
-    const config: ConfigDispatcher = await ConfigDispatcher.load();
-
-    // Act
-    await sendWebhookEventToWorkflowJobQueue(message, config);
-
-    // Assert
-    expect(SQS).not.toHaveBeenCalled();
-  });
-
-  it('Catch the exception when even copy queue throws exception', async () => {
-    // Arrange
-    process.env.SQS_WORKFLOW_JOB_QUEUE = sqsMessage.QueueUrl || '';
-    const config: ConfigDispatcher = await ConfigDispatcher.load();
-
-    const mockSQS = {
-      sendMessage: jest.fn(() => {
-        throw new Error();
-      }),
-    };
-    jest.mock('aws-sdk', () => ({
-      SQS: jest.fn().mockImplementation(() => mockSQS),
-    }));
-    await expect(sendWebhookEventToWorkflowJobQueue(message, config)).resolves.not.toThrow();
   });
 });

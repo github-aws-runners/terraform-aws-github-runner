@@ -18,10 +18,10 @@
     "@types/aws-lambda": "^8.10.145",
     "@types/express": "^4.17.21",
     "@types/jest": "^29.5.14",
-    "@types/node": "^22.5.4",
-    "@typescript-eslint/eslint-plugin": "^8.9.0",
-    "@typescript-eslint/parser": "^8.11.0",
-    "@vercel/ncc": "0.38.1",
+    "@types/node": "^22.9.0",
+    "@typescript-eslint/eslint-plugin": "^8.15.0",
+    "@typescript-eslint/parser": "^8.14.0",
+    "@vercel/ncc": "0.38.2",
     "body-parser": "^1.20.3",
     "eslint": "^8.57.0",
     "eslint-plugin-prettier": "5.2.1",
@@ -36,8 +36,8 @@
   },
   "dependencies": {
     "@aws-github-runner/aws-powertools-util": "*",
-    "@aws-sdk/client-ssm": "^3.679.0",
-    "@aws-sdk/types": "^3.679.0"
+    "@aws-sdk/client-ssm": "^3.693.0",
+    "@aws-sdk/types": "^3.692.0"
   },
   "nx": {
     "includedScripts": [

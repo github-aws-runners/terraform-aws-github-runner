@@ -1,5 +1,48 @@
 # Changelog
 
+## [5.20.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.19.0...v5.20.0) (2024-11-19)
+
+
+### Features
+
+* **runners:** add support to disable default labels (Linux) ([#3491](https://github.com/philips-labs/terraform-aws-github-runner/issues/3491)) ([772e1a5](https://github.com/philips-labs/terraform-aws-github-runner/commit/772e1a59906f171c6dc70183544443509f9c0580))
+* **runners:** add support to disable default labels (Windows) ([#4261](https://github.com/philips-labs/terraform-aws-github-runner/issues/4261)) ([ad9bcc4](https://github.com/philips-labs/terraform-aws-github-runner/commit/ad9bcc47f8105098811175379b9eed68d73f7d92))
+
+
+### Bug Fixes
+
+* **lambda:** bump cross-spawn from 7.0.3 to 7.0.6 in /lambdas ([#4273](https://github.com/philips-labs/terraform-aws-github-runner/issues/4273)) ([dcec236](https://github.com/philips-labs/terraform-aws-github-runner/commit/dcec23624b5b0fddc352b9d61cccb18107cc888d))
+* **lambda:** bump the aws group in /lambdas with 7 updates ([#4266](https://github.com/philips-labs/terraform-aws-github-runner/issues/4266)) ([849549e](https://github.com/philips-labs/terraform-aws-github-runner/commit/849549e8b6497fa7fc8288739669c8daf1223df8))
+
+## [5.19.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.18.4...v5.19.0) (2024-11-12)
+
+
+### Features
+
+* remove deprecated bata feature workflow job queue ([#4249](https://github.com/philips-labs/terraform-aws-github-runner/issues/4249)) ([4066c4e](https://github.com/philips-labs/terraform-aws-github-runner/commit/4066c4eefdf778702cf3490336c92a9755581eaf))
+
+
+### Bug Fixes
+
+* dispatch only queued events to runners ([#4257](https://github.com/philips-labs/terraform-aws-github-runner/issues/4257)) ([a0a8322](https://github.com/philips-labs/terraform-aws-github-runner/commit/a0a8322b539edab279a8570507f6f83ec11a290a))
+* **lambda:** bump @octokit/auth-app from 6.1.2 to 6.1.3 in /lambdas in the octokit group ([#4252](https://github.com/philips-labs/terraform-aws-github-runner/issues/4252)) ([25f3538](https://github.com/philips-labs/terraform-aws-github-runner/commit/25f3538d59dd76ecea704727c754e0407610f0d3))
+* **lambda:** bump the aws group in /lambdas with 7 updates ([#4251](https://github.com/philips-labs/terraform-aws-github-runner/issues/4251)) ([6a98712](https://github.com/philips-labs/terraform-aws-github-runner/commit/6a98712fd522c1721c7e094204f1723f11e962d8))
+
+## [5.18.4](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.18.3...v5.18.4) (2024-11-07)
+
+
+### Bug Fixes
+
+* trigger cold start dispatcher after update SSM parameters ([#4243](https://github.com/philips-labs/terraform-aws-github-runner/issues/4243)) ([580d24b](https://github.com/philips-labs/terraform-aws-github-runner/commit/580d24b6be14508d34c201fe764f35d34024ea57))
+
+## [5.18.3](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.18.2...v5.18.3) (2024-11-05)
+
+
+### Bug Fixes
+
+* **lambda:** bump the aws group in /lambdas with 6 updates ([#4235](https://github.com/philips-labs/terraform-aws-github-runner/issues/4235)) ([ef89b98](https://github.com/philips-labs/terraform-aws-github-runner/commit/ef89b98ca3494d8dac0a38f7f39a73128e6444af))
+* remove unused example spot_instance_termination_watcher ([#4226](https://github.com/philips-labs/terraform-aws-github-runner/issues/4226)) ([ad865a7](https://github.com/philips-labs/terraform-aws-github-runner/commit/ad865a7df9393ede2958e53d9ecbb0a61e66053c))
+
 ## [5.18.2](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.18.1...v5.18.2) (2024-10-31)
 
 

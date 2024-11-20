@@ -89,8 +89,6 @@ module "runners" {
 
   # override scaling down
   scale_down_schedule_expression = "cron(* * * * ? *)"
-  # enable this flag to publish webhook events to workflow job queue
-  # enable_workflow_job_events_queue  = true
 
   enable_user_data_debug_logging_runner = true
 

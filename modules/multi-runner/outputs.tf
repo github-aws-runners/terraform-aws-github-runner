@@ -48,13 +48,6 @@ output "ssm_parameters" {
   value = module.ssm.parameters
 }
 
-output "queues" {
-  description = "SQS queues."
-  value = {
-    webhook_workflow_job_queue = try(aws_sqs_queue.webhook_events_workflow_job_queue[*].arn, "")
-  }
-}
-
 output "instance_termination_watcher" {
   value = var.instance_termination_watcher.enable && var.instance_termination_watcher.features.enable_spot_termination_notification_watcher ? {
     lambda           = module.instance_termination_watcher[0].spot_termination_notification.lambda

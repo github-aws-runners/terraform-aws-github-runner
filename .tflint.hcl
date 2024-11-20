@@ -1,6 +1,6 @@
 config {
   format = "compact"
-  module = true
+  call_module_type = "local"
 }
 
 plugin "aws" {

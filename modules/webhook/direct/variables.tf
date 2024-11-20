@@ -11,10 +11,6 @@ variable "config" {
     lambda_subnet_ids         = optional(list(string), [])
     lambda_security_group_ids = optional(list(string), [])
     sqs_job_queues_arns       = list(string)
-    sqs_workflow_job_queue = optional(object({
-      id  = string
-      arn = string
-    }), null)
     lambda_zip                = optional(string, null)
     lambda_memory_size        = optional(number, 256)
     lambda_timeout            = optional(number, 10)

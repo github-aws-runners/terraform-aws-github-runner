@@ -51,6 +51,9 @@ Write-Host  "Retrieved $ssm_config_path/enable_cloudwatch parameter - ($enable_c
 $agent_mode=$parameters.where( {$_.Name -eq "$ssm_config_path/agent_mode"}).value
 Write-Host  "Retrieved $ssm_config_path/agent_mode parameter - ($agent_mode)"
 
+$disable_default_labels=$parameters.where( {$_.Name -eq "$ssm_config_path/disable_default_labels"}).value
+Write-Host  "Retrieved $ssm_config_path/disable_default_labels parameter - ($disable_default_labels)"
+
 $enable_jit_config=$parameters.where( {$_.Name -eq "$ssm_config_path/enable_jit_config"}).value
 Write-Host  "Retrieved $ssm_config_path/enable_jit_config parameter - ($enable_jit_config)"
 
@@ -110,8 +113,13 @@ foreach ($group in @("Administrators", "docker-users")) {
 Set-ItemProperty HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -Name ConsentPromptBehaviorAdmin -Value 0 -Force
 Write-Host "Disabled User Access Control (UAC)"
 
+$runnerExtraOptions = ""
+if ($disable_default_labels -eq "true") {
+    $runnerExtraOptions += "--no-default-labels"
+}
+
 if ($enable_jit_config -eq "false" -or $agent_mode -ne "ephemeral") {
-  $configCmd = ".\config.cmd --unattended --name $runner_name_prefix$InstanceId --work `"_work`" $config"
+  $configCmd = ".\config.cmd --unattended --name $runner_name_prefix$InstanceId --work `"_work`" $runnerExtraOptions $config"
   Write-Host "Configure GH Runner (non ephmeral / no JIT) as user $run_as"
   Invoke-Expression $configCmd
 }

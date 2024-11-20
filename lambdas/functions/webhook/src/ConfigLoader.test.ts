@@ -94,9 +94,8 @@ describe('ConfigLoader Tests', () => {
   describe('ConfigWebhook', () => {
     it('should load config successfully', async () => {
       process.env.REPOSITORY_ALLOW_LIST = '["repo1", "repo2"]';
-      process.env.SQS_WORKFLOW_JOB_QUEUE = 'secondary-queue';
-      process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH = '/path/to/matcher/config';
       process.env.PARAMETER_GITHUB_APP_WEBHOOK_SECRET = '/path/to/webhook/secret';
+      process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH = '/path/to/matcher/config';
       const matcherConfig = [
         {
           id: '1',
@@ -121,7 +120,6 @@ describe('ConfigLoader Tests', () => {
       const config: ConfigWebhook = await ConfigWebhook.load();
 
       expect(config.repositoryAllowList).toEqual(['repo1', 'repo2']);
-      expect(config.workflowJobEventSecondaryQueue).toBe('secondary-queue');
       expect(config.matcherConfig).toEqual(matcherConfig);
       expect(config.webhookSecret).toBe('secret');
     });
