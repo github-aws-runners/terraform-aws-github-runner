@@ -112,7 +112,7 @@ __metadata:
     "@types/node": "npm:^22.9.0"
     "@typescript-eslint/eslint-plugin": "npm:^8.15.0"
     "@typescript-eslint/parser": "npm:^8.16.0"
-    "@vercel/ncc": "npm:^0.38.2"
+    "@vercel/ncc": "npm:^0.38.3"
     aws-sdk-client-mock: "npm:^4.1.0"
     aws-sdk-client-mock-jest: "npm:^4.1.0"
     cron-parser: "npm:^4.9.0"
@@ -144,7 +144,7 @@ __metadata:
     "@types/node": "npm:^22.9.0"
     "@typescript-eslint/eslint-plugin": "npm:^8.15.0"
     "@typescript-eslint/parser": "npm:^8.16.0"
-    "@vercel/ncc": "npm:0.38.2"
+    "@vercel/ncc": "npm:0.38.3"
     aws-lambda: "npm:^1.0.7"
     body-parser: "npm:^1.20.3"
     eslint: "npm:^8.57.0"
@@ -174,7 +174,7 @@ __metadata:
     "@types/node": "npm:^22.9.0"
     "@typescript-eslint/eslint-plugin": "npm:^8.15.0"
     "@typescript-eslint/parser": "npm:^8.16.0"
-    "@vercel/ncc": "npm:0.38.2"
+    "@vercel/ncc": "npm:0.38.3"
     body-parser: "npm:^1.20.3"
     eslint: "npm:^8.57.0"
     eslint-plugin-prettier: "npm:5.2.1"
@@ -211,7 +211,7 @@ __metadata:
     "@types/node": "npm:^22.9.0"
     "@typescript-eslint/eslint-plugin": "npm:^8.15.0"
     "@typescript-eslint/parser": "npm:^8.16.0"
-    "@vercel/ncc": "npm:^0.38.2"
+    "@vercel/ncc": "npm:^0.38.3"
     aws-sdk-client-mock: "npm:^4.1.0"
     aws-sdk-client-mock-jest: "npm:^4.1.0"
     cron-parser: "npm:^4.9.0"
@@ -247,7 +247,7 @@ __metadata:
     "@types/request": "npm:^2.48.12"
     "@typescript-eslint/eslint-plugin": "npm:^8.15.0"
     "@typescript-eslint/parser": "npm:^8.16.0"
-    "@vercel/ncc": "npm:^0.38.2"
+    "@vercel/ncc": "npm:^0.38.3"
     aws-sdk-client-mock: "npm:^4.1.0"
     aws-sdk-client-mock-jest: "npm:^4.1.0"
     axios: "npm:^1.7.7"
@@ -276,7 +276,7 @@ __metadata:
     "@types/node": "npm:^22.9.0"
     "@typescript-eslint/eslint-plugin": "npm:^8.15.0"
     "@typescript-eslint/parser": "npm:^8.16.0"
-    "@vercel/ncc": "npm:^0.38.2"
+    "@vercel/ncc": "npm:^0.38.3"
     aws-sdk-client-mock: "npm:^4.1.0"
     aws-sdk-client-mock-jest: "npm:^4.1.0"
     eslint: "npm:^8.57.0"
@@ -312,7 +312,7 @@ __metadata:
     "@types/node": "npm:^22.9.0"
     "@typescript-eslint/eslint-plugin": "npm:^8.15.0"
     "@typescript-eslint/parser": "npm:^8.16.0"
-    "@vercel/ncc": "npm:0.38.2"
+    "@vercel/ncc": "npm:0.38.3"
     aws-lambda: "npm:^1.0.7"
     body-parser: "npm:^1.20.3"
     eslint: "npm:^8.57.0"
@@ -5509,14 +5509,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@vercel/ncc@npm:0.38.2, @vercel/ncc@npm:^0.38.2":
-  version: 0.38.2
-  resolution: "@vercel/ncc@npm:0.38.2"
+"@vercel/ncc@npm:0.38.3, @vercel/ncc@npm:^0.38.3":
+  version: 0.38.3
+  resolution: "@vercel/ncc@npm:0.38.3"
   dependencies:
     node-gyp: "npm:latest"
   bin:
     ncc: dist/ncc/cli.js
-  checksum: 10c0/430f506d7243155d85b8f99d46f46159b9dea58190ae4c28eadebe6b1b90e350e9861c7accc4f3b2dcb603f47fbe7cc947c56af396c96ba1059419f1b4f20928
+  checksum: 10c0/91b328b53d3bb17ac2fd329d9d2115192d2001e52a7f6d38828ce878e465f3bc62031a8b206bdbbf90e449c11f9e411f853f7081a6e2947ef3459365fa12da49
   languageName: node
   linkType: hard
 
