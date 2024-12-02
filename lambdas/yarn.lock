@@ -103,7 +103,7 @@ __metadata:
   dependencies:
     "@aws-github-runner/aws-powertools-util": "npm:*"
     "@aws-github-runner/aws-ssm-util": "npm:*"
-    "@aws-sdk/client-ec2": "npm:^3.701.0"
+    "@aws-sdk/client-ec2": "npm:^3.703.0"
     "@aws-sdk/client-ssm": "npm:^3.699.0"
     "@aws-sdk/types": "npm:^3.696.0"
     "@trivago/prettier-plugin-sort-imports": "npm:^4.3.0"
@@ -196,7 +196,7 @@ __metadata:
     "@aws-github-runner/aws-powertools-util": "npm:*"
     "@aws-github-runner/aws-ssm-util": "npm:*"
     "@aws-lambda-powertools/parameters": "npm:^2.11.0"
-    "@aws-sdk/client-ec2": "npm:^3.701.0"
+    "@aws-sdk/client-ec2": "npm:^3.703.0"
     "@aws-sdk/client-sqs": "npm:^3.699.0"
     "@aws-sdk/types": "npm:^3.696.0"
     "@middy/core": "npm:^4.7.0"
@@ -235,8 +235,8 @@ __metadata:
   resolution: "@aws-github-runner/gh-agent-syncer@workspace:functions/gh-agent-syncer"
   dependencies:
     "@aws-github-runner/aws-powertools-util": "npm:*"
-    "@aws-sdk/client-s3": "npm:^3.701.0"
-    "@aws-sdk/lib-storage": "npm:^3.701.0"
+    "@aws-sdk/client-s3": "npm:^3.703.0"
+    "@aws-sdk/lib-storage": "npm:^3.703.0"
     "@aws-sdk/types": "npm:^3.696.0"
     "@middy/core": "npm:^4.7.0"
     "@octokit/rest": "npm:20.1.1"
@@ -267,7 +267,7 @@ __metadata:
   resolution: "@aws-github-runner/termination-watcher@workspace:functions/termination-watcher"
   dependencies:
     "@aws-github-runner/aws-powertools-util": "npm:*"
-    "@aws-sdk/client-ec2": "npm:^3.701.0"
+    "@aws-sdk/client-ec2": "npm:^3.703.0"
     "@aws-sdk/types": "npm:^3.696.0"
     "@middy/core": "npm:^4.7.0"
     "@trivago/prettier-plugin-sort-imports": "npm:^4.3.0"
@@ -299,7 +299,7 @@ __metadata:
   dependencies:
     "@aws-github-runner/aws-powertools-util": "npm:*"
     "@aws-github-runner/aws-ssm-util": "npm:*"
-    "@aws-sdk/client-eventbridge": "npm:^3.699.0"
+    "@aws-sdk/client-eventbridge": "npm:^3.703.0"
     "@aws-sdk/client-sqs": "npm:^3.699.0"
     "@middy/core": "npm:^4.7.0"
     "@octokit/rest": "npm:20.1.1"
@@ -408,9 +408,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@aws-sdk/client-ec2@npm:^3.701.0":
-  version: 3.701.0
-  resolution: "@aws-sdk/client-ec2@npm:3.701.0"
+"@aws-sdk/client-ec2@npm:^3.703.0":
+  version: 3.703.0
+  resolution: "@aws-sdk/client-ec2@npm:3.703.0"
   dependencies:
     "@aws-crypto/sha256-browser": "npm:5.2.0"
     "@aws-crypto/sha256-js": "npm:5.2.0"
@@ -457,13 +457,13 @@ __metadata:
     "@types/uuid": "npm:^9.0.1"
     tslib: "npm:^2.6.2"
     uuid: "npm:^9.0.1"
-  checksum: 10c0/314973aba04b665f53f8a88d7f525fa8d95c450e0af309cc693160a5d72011f34812bfc4b8d3a82904905a524c0372b19691f1f8348eb933af2c81d7b478f9a4
+  checksum: 10c0/3ab15a5da0c1d42e3ffef2de997d16b4ee35db79b33d475bfbb6ef3b4472822fdf76d25314a379b6d1743a34051d36e58ddedc798dd16c3a953d8507b14e1392
   languageName: node
   linkType: hard
 
-"@aws-sdk/client-eventbridge@npm:^3.699.0":
-  version: 3.699.0
-  resolution: "@aws-sdk/client-eventbridge@npm:3.699.0"
+"@aws-sdk/client-eventbridge@npm:^3.703.0":
+  version: 3.703.0
+  resolution: "@aws-sdk/client-eventbridge@npm:3.703.0"
   dependencies:
     "@aws-crypto/sha256-browser": "npm:5.2.0"
     "@aws-crypto/sha256-js": "npm:5.2.0"
@@ -507,13 +507,13 @@ __metadata:
     "@smithy/util-retry": "npm:^3.0.10"
     "@smithy/util-utf8": "npm:^3.0.0"
     tslib: "npm:^2.6.2"
-  checksum: 10c0/e3b48c3c6ad515e66ce253c2a247cd9e5e760e8b45770d8cc79606bb75e59636a728d81620a37f97457f22468c5009d6d3d581a3c65be943c67c023117cd443e
+  checksum: 10c0/652f79d4311b51eadf159c14ad9989c48a57c562ec2971d0df391bdacfa842c63064541d533456d1d9402fe63b092359638eedcf9d878fbbc287983e04a75ac6
   languageName: node
   linkType: hard
 
-"@aws-sdk/client-s3@npm:^3.701.0":
-  version: 3.701.0
-  resolution: "@aws-sdk/client-s3@npm:3.701.0"
+"@aws-sdk/client-s3@npm:^3.703.0":
+  version: 3.703.0
+  resolution: "@aws-sdk/client-s3@npm:3.703.0"
   dependencies:
     "@aws-crypto/sha1-browser": "npm:5.2.0"
     "@aws-crypto/sha256-browser": "npm:5.2.0"
@@ -573,7 +573,7 @@ __metadata:
     "@smithy/util-utf8": "npm:^3.0.0"
     "@smithy/util-waiter": "npm:^3.1.9"
     tslib: "npm:^2.6.2"
-  checksum: 10c0/b7eeb84dddb1c5581de6210ecdfd943a1f94582d30bf58e7ce2ff7ecdbfee68edf01838c0f78f015ebfb134f60cb27d6827f85b78ad8b90cb6516a072425987f
+  checksum: 10c0/eba492878a32cad0709383af4d56b9df95e8de02d99963cb9e3bdb60ade49c8617c857340bd0348711f2212b9ca6d9f7dc00ea80c001ac31afcdeee6824b702d
   languageName: node
   linkType: hard
 
@@ -960,9 +960,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@aws-sdk/lib-storage@npm:^3.701.0":
-  version: 3.701.0
-  resolution: "@aws-sdk/lib-storage@npm:3.701.0"
+"@aws-sdk/lib-storage@npm:^3.703.0":
+  version: 3.703.0
+  resolution: "@aws-sdk/lib-storage@npm:3.703.0"
   dependencies:
     "@smithy/abort-controller": "npm:^3.1.7"
     "@smithy/middleware-endpoint": "npm:^3.2.3"
@@ -972,8 +972,8 @@ __metadata:
     stream-browserify: "npm:3.0.0"
     tslib: "npm:^2.6.2"
   peerDependencies:
-    "@aws-sdk/client-s3": ^3.701.0
-  checksum: 10c0/3fd27a46ceadf7b3bcb9c226e70a2045e93e60641a3cff058397d3bac3d8a013f32c038ef6f4f914ea561f9a13eaf2c4739dd5d3cdb1e020537db095eb10dfb7
+    "@aws-sdk/client-s3": ^3.703.0
+  checksum: 10c0/18972ae77f17ba19120fff3c6f2e448ab3dfaa2b741532fb99b3d9afc247dd698196c757dd3d76e7628fef284c0152fedfec43cbd8608e9354ea179039faae3b
   languageName: node
   linkType: hard
 
