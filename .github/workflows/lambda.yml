@@ -13,7 +13,7 @@ jobs:
       matrix:
         node: [20]
     container:
-      image: node:${{ matrix.node }}
+      image: 290268990387.dkr.ecr.us-west-2.amazonaws.com/ecr-public/docker/library/node:${{ matrix.node }}
     defaults:
       run:
         working-directory: ./lambdas

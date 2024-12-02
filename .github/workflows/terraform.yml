@@ -20,7 +20,7 @@ jobs:
         terraform: [1.5.6, "latest"]
     runs-on: ubuntu-latest
     container:
-      image: hashicorp/terraform:${{ matrix.terraform }}
+      image: 290268990387.dkr.ecr.us-west-2.amazonaws.com/ecr-public/hashicorp/terraform:${{ matrix.terraform }}
     steps:
       - name: "Checkout"
         uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b
@@ -87,7 +87,7 @@ jobs:
         working-directory: modules/${{ matrix.module }}
     runs-on: ubuntu-latest
     container:
-      image: hashicorp/terraform:${{ matrix.terraform }}
+      image: 290268990387.dkr.ecr.us-west-2.amazonaws.com/ecr-public/hashicorp/terraform:${{ matrix.terraform }}
     steps:
       - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b
       - name: terraform init
@@ -145,7 +145,7 @@ jobs:
         working-directory: examples/${{ matrix.example }}
     runs-on: ubuntu-latest
     container:
-      image: hashicorp/terraform:${{ matrix.terraform }}
+      image: 290268990387.dkr.ecr.us-west-2.amazonaws.com/ecr-public/hashicorp/terraform:${{ matrix.terraform }}
     steps:
       - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b
       - name: terraform init
