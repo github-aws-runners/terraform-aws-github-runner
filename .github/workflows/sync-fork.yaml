@@ -1,0 +1,162 @@
+name: Sync Fork, Upload Zips, Create Release
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  sync-fork:
+    name: Sync Fork
+    runs-on: ubuntu-latest
+    outputs:
+      upstream_tag: ${{ steps.upstream_tag.upstream_tag}}
+
+    steps:
+      - name: Checkout forked repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for accurate merging
+
+      - name: Fork tag
+        id: fork_tag
+        run: |
+          # List all tags reachable from the current branch
+          LATEST_TAG=$(git describe --tags --abbrev=0)
+          
+          echo "Latest tag on the forked branch: $LATEST_TAG"
+          echo "fork_tag=$LATEST_TAG" >> $GITHUB_ENV
+
+      - name: Upstream tag
+        id: upstream_tag
+        run: |
+          # Fetch the latest release using GitHub API
+          LATEST_TAG=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+          https://api.github.com/repos/philips-labs/releases/latest | jq -r '.tag_name')
+          
+          echo "Latest upstream tag: $LATEST_TAG"
+          echo "upstream_tag=$LATEST_TAG" >> $GITHUB_ENV
+
+      - name: Compare Image Tags
+        id: compare-tags
+        shell: bash
+        run: |
+          echo "fork_tag=$fork_tag"
+          echo "upstream_tag=$upstream_tag"
+
+          if [ "$fork_tag" == "$upstream_tag" ]; then
+            echo "### :info: Fork is already synced, ending workflow." >> $GITHUB_STEP_SUMMARY
+            echo "Current forked tag matches the upstream tag. QA Tag: $fork_tag, PROD Tag: $upstream_tag " >> $GITHUB_STEP_SUMMARY
+            echo "duplicate_tag=true" >> $GITHUB_OUTPUT
+          else
+            echo "duplicate_tag=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Cancel workflow if duplicate tags
+        if: ${{ steps.compare-tags.outputs.duplicate_tags == 'true' }}
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const https = require('https');
+            const options = {
+              hostname: 'api.github.com',
+              path: `/repos/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}/cancel`,
+              headers: {
+                'Authorization': `token ${process.env.GITHUB_TOKEN}`,
+                'Content-Type': 'application/json',
+                'User-Agent': 'actions/cancel-action'
+              },
+              method: 'POST'
+            }
+
+            const req = https.request(options, (res) => {
+              res.on('data', (data) => {
+                if (res.statusCode != 202) {
+                  let parsed = JSON.parse(data)
+                  console.log(`Error: ${parsed.message}`)
+                  process.exit(1)
+                } else {
+                  console.log('Cancelled successfully.')
+                  process.exit(0)
+                }
+              })
+            })
+
+            req.on('error', (error) => {
+              console.log(`HTTP Error: ${error}`)
+              process.exit(1)
+            })
+
+            req.end();
+
+      - name: Add upstream repository
+        run: |
+          git remote add upstream https://github.com/philips-labs/terraform-aws-github-runner.git
+          git fetch upstream
+
+      - name: Sync with upstream/main
+        if: success()
+        run: |
+          git checkout main
+          git merge upstream/main
+          git push origin main
+
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: 
+      - sync-fork
+
+    steps:
+      - name: Checkout forked repository
+        uses: actions/checkout@v4
+
+      - name: Create a release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ needs.sync-fork.upstream_tag }} # Incremental tag
+          release_name: "Release ${{ needs.sync-fork.upstream_tag }}"
+          body: |
+            This release contains the latest changes synced from the upstream repository.
+          draft: false
+          prerelease: false
+
+  download-s3-zips: #needs work
+    name: Download zips and store in s3
+    runs-on: ubuntu-latest
+    needs: 
+      - sync-fork
+
+    steps:
+      - name: Download zips
+        run: |
+          wget "https://github.com/philips-labs/terraform-aws-github-runner/releases/download/${{ needs.sync-fork.upstream_tag }}/runners.zip"
+          wget "https://github.com/philips-labs/terraform-aws-github-runner/releases/download/${{ needs.sync-fork.upstream_tag }}/webhook.zip"
+          wget "https://github.com/philips-labs/terraform-aws-github-runner/releases/download/${{ needs.sync-fork.upstream_tag }}/runner-binaries-syncer.zip"
+
+      - name: Configure AWS credentials via OIDC
+        id: oidc-creds
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: us-east-1
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID_ORG }}:role/external/github_actions
+          role-session-name: tmchanges_assume_github_actions_role
+          output-credentials: true
+
+      - name: Assume AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: us-east-1
+          aws-access-key-id: ${{ steps.oidc-creds.outputs.aws-access-key-id }}
+          aws-secret-access-key: ${{ steps.oidc-creds.outputs.aws-secret-access-key }}
+
+      - name: Upload zips to S3
+        run: |
+          # mgmt-infra-dev
+          aws s3 cp runners.zip s3://mgmt-infra-dev-aws-gha-zips/${{ needs.sync-fork.upstream_tag }}/runners.zip
+          aws s3 cp runners.zip s3://mgmt-infra-dev-aws-gha-zips/${{ needs.sync-fork.upstream_tag }}/webhook.zip
+          aws s3 cp runners.zip s3://mgmt-infra-dev-aws-gha-zips/${{ needs.sync-fork.upstream_tag }}/runner-binaries-syncer.zip
+          # mgmt-infra-prod
+          aws s3 cp runners.zip s3://mgmt-infra-prod-aws-gha-zips/${{ needs.sync-fork.upstream_tag }}/runners.zip
+          aws s3 cp runners.zip s3://mgmt-infra-prod-aws-gha-zips/${{ needs.sync-fork.upstream_tag }}/webhook.zip
+          aws s3 cp runners.zip s3://mgmt-infra-prod-aws-gha-zips/${{ needs.sync-fork.upstream_tag }}/runner-binaries-syncer.zip          
