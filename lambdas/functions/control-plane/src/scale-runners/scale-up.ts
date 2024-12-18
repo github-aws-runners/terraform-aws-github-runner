@@ -148,6 +148,12 @@ export async function isJobQueued(githubInstallationClient: Octokit, payload: Ac
     });
     metricGitHubAppRateLimit(jobForWorkflowRun.headers);
     isQueued = jobForWorkflowRun.data.status === 'queued';
+    if (!isQueued) {
+      logger.info(`Job ${payload.id} is not queued`);
+    }
+    else {
+      logger.info(`Job ${payload.id} is queued`);
+    }
   } else {
     throw Error(`Event ${payload.eventType} is not supported`);
   }
