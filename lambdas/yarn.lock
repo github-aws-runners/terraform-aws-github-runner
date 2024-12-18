@@ -3995,11 +3995,11 @@ __metadata:
   linkType: hard
 
 "@octokit/types@npm:^13.0.0":
-  version: 13.6.1
-  resolution: "@octokit/types@npm:13.6.1"
+  version: 13.6.2
+  resolution: "@octokit/types@npm:13.6.2"
   dependencies:
     "@octokit/openapi-types": "npm:^22.2.0"
-  checksum: 10c0/891334b5786ba6aef953384cec05d53e05132dd577c0c22db124d55eaa69609362d1e3147853b46e91bf226e046ba24d615c55214c8f8f4e7c3a5c38429b38e9
+  checksum: 10c0/ea51afb21b667b25dad9e5daae1701da1b362a4d6ed9609f6d3f9f219e5389bf50f7e53ae029ca190750e278be3ab963cac648a95ad248f245a5fda16a4f1ed1
   languageName: node
   linkType: hard
 
