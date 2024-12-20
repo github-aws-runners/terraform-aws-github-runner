@@ -1,5 +1,31 @@
 # Changelog
 
+## [6.0.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.21.0...v6.0.0) (2024-12-20)
+
+
+### ⚠ BREAKING CHANGES
+
+* Enable eventbridge by default ([#4320](https://github.com/philips-labs/terraform-aws-github-runner/issues/4320))
+* remove deprecated metric feature flag ([#4319](https://github.com/philips-labs/terraform-aws-github-runner/issues/4319))
+* Upgrade Node to 22 (LTS) ([#4318](https://github.com/philips-labs/terraform-aws-github-runner/issues/4318))
+* remove deprecated variables ([#4073](https://github.com/philips-labs/terraform-aws-github-runner/issues/4073))
+* Remove FIFO queues ([#4072](https://github.com/philips-labs/terraform-aws-github-runner/issues/4072))
+* remove deprecated runners_scale_up_Lambda_memory_size as it breaks CDKTF ([#4276](https://github.com/philips-labs/terraform-aws-github-runner/issues/4276))
+
+### Features
+
+* Enable eventbridge by default ([#4320](https://github.com/philips-labs/terraform-aws-github-runner/issues/4320)) ([142bb61](https://github.com/philips-labs/terraform-aws-github-runner/commit/142bb61539c00e5fc661725c4fc924c4128484cc))
+* Upgrade Node to 22 (LTS) ([#4318](https://github.com/philips-labs/terraform-aws-github-runner/issues/4318)) ([c5d4693](https://github.com/philips-labs/terraform-aws-github-runner/commit/c5d4693c7e8889ee9f1672385e26278275d771c2))
+
+
+### Bug Fixes
+
+* broken docs after removing examples ([#4321](https://github.com/philips-labs/terraform-aws-github-runner/issues/4321)) ([7171215](https://github.com/philips-labs/terraform-aws-github-runner/commit/71712159cd4ad8ae6cb6371e0342b1c6bf663c54))
+* remove deprecated metric feature flag ([#4319](https://github.com/philips-labs/terraform-aws-github-runner/issues/4319)) ([70105b4](https://github.com/philips-labs/terraform-aws-github-runner/commit/70105b49d166088bd7f522005b95b40b7ab5b2e4))
+* remove deprecated runners_scale_up_Lambda_memory_size as it breaks CDKTF ([#4276](https://github.com/philips-labs/terraform-aws-github-runner/issues/4276)) ([a2280f7](https://github.com/philips-labs/terraform-aws-github-runner/commit/a2280f74d45475804de730aeaf903670a3400bd1))
+* remove deprecated variables ([#4073](https://github.com/philips-labs/terraform-aws-github-runner/issues/4073)) ([099c78d](https://github.com/philips-labs/terraform-aws-github-runner/commit/099c78dc5db0ccf71277b1d4941e05e72336cff8))
+* Remove FIFO queues ([#4072](https://github.com/philips-labs/terraform-aws-github-runner/issues/4072)) ([2f20a8b](https://github.com/philips-labs/terraform-aws-github-runner/commit/2f20a8b9564301346b84eb5baefb22bb313a5408))
+
 ## [5.21.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.20.1...v5.21.0) (2024-12-20)
 
 
