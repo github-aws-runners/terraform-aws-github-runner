@@ -1,10 +1,12 @@
 name: Build lambdas
+
 on:
   pull_request:
     branches:
       - main
     paths:
       - 'lambdas/**'
+      - '.github/workflows/lambda.yml'
 
 jobs:
   build:
