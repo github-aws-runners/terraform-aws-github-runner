@@ -30,7 +30,6 @@ variable "config" {
   type = object({
     aws_partition         = optional(string, null)
     architecture          = optional(string, null)
-    enable_metric         = optional(string, null)
     environment_variables = optional(map(string), {})
     features = optional(object({
       enable_spot_termination_handler              = optional(bool, true)
@@ -72,9 +71,4 @@ variable "config" {
     }), {})
     zip = optional(string, null)
   })
-
-  validation {
-    condition     = var.config.enable_metric == null
-    error_message = "enable_metric is deprecated, use metrics.enable instead."
-  }
 }
