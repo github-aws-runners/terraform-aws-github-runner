@@ -47,7 +47,7 @@ variable "lambda" {
     })), [])
     role_path                 = optional(string, null)
     role_permissions_boundary = optional(string, null)
-    runtime                   = optional(string, "nodejs20.x")
+    runtime                   = optional(string, "nodejs22.x")
     s3_bucket                 = optional(string, null)
     s3_key                    = optional(string, null)
     s3_object_version         = optional(string, null)
