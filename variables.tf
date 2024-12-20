@@ -641,9 +641,14 @@ variable "lambda_principals" {
 }
 
 variable "enable_fifo_build_queue" {
-  description = "Enable a FIFO queue to keep the order of events received by the webhook. Recommended for repo level runners."
+  description = "(FEATURE REMOVED) Enable a FIFO queue to keep the order of events received by the webhook. Recommended for repo level runners."
   type        = bool
   default     = false
+
+  validation {
+    condition     = var.enable_fifo_build_queue == false
+    error_message = "The feature for FIFO build queue is not supported anymore."
+  }
 }
 
 variable "redrive_build_queue" {

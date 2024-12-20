@@ -290,7 +290,6 @@ function mockSSMResponse() {
     {
       id: '1',
       arn: 'arn:aws:sqs:us-east-1:123456789012:queue1',
-      fifo: false,
       matcherConfig: {
         labelMatchers: [['label1', 'label2']],
         exactMatch: true,

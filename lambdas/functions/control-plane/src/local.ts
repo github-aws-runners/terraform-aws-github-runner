@@ -28,7 +28,7 @@ const sqsEvent = {
       messageAttributes: {},
       md5OfBody: '4aef3bd70526e152e86426a0938cbec6',
       eventSource: 'aws:sqs',
-      eventSourceARN: 'arn:aws:sqs:us-west-2:916370655143:cicddev-queued-builds.fifo',
+      eventSourceARN: 'arn:aws:sqs:us-west-2:916370655143:cicddev-queued-builds',
       awsRegion: 'us-west-2',
     },
   ],

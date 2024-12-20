@@ -47,7 +47,6 @@ module "runners" {
   #        labelMatchers = [["self-hosted", "linux", "x64", "amazon"]]
   #        exactMatch    = false
   #      }
-  #      fifo                = true
   #      delay_webhook_event = 0
   #      runner_config = {
   #        runner_os                       = "linux"

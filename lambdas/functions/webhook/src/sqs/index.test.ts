@@ -30,38 +30,17 @@ describe('Test sending message to SQS.', () => {
 
   it('no fifo queue', async () => {
     // Arrange
-    const no_fifo_message: ActionRequestMessage = {
-      ...message,
-      queueFifo: false,
-    };
     const sqsMessage: SendMessageCommandInput = {
       QueueUrl: queueUrl,
-      MessageBody: JSON.stringify(no_fifo_message),
+      MessageBody: JSON.stringify(message),
     };
 
     // Act
-    const result = sendActionRequest(no_fifo_message);
+    const result = sendActionRequest(message);
 
     // Assert
     expect(mockSQS.sendMessage).toHaveBeenCalledWith(sqsMessage);
     await expect(result).resolves.not.toThrow();
   });
 
-  it('use a fifo queue', async () => {
-    // Arrange
-    const fifo_message: ActionRequestMessage = {
-      ...message,
-      queueFifo: true,
-    };
-    const sqsMessage: SendMessageCommandInput = {
-      QueueUrl: queueUrl,
-      MessageBody: JSON.stringify(fifo_message),
-    };
-    // Act
-    const result = sendActionRequest(fifo_message);
-
-    // Assert
-    expect(mockSQS.sendMessage).toHaveBeenCalledWith({ ...sqsMessage, MessageGroupId: String(message.id) });
-    await expect(result).resolves.not.toThrow();
-  });
 });
