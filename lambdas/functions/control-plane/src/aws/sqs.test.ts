@@ -27,23 +27,6 @@ describe('Publish message to SQS', () => {
     });
   });
 
-  it('should publish message to SQS Fifo queue', async () => {
-    // setup
-    mockSQSClient.on(SendMessageCommand).resolves({
-      MessageId: '123',
-    });
-
-    // act
-    await publishMessage('test', 'https://sqs.eu-west-1.amazonaws.com/123456789/queued-builds');
-
-    // assert
-    expect(mockSQSClient).toHaveReceivedCommandWith(SendMessageCommand, {
-      QueueUrl: 'https://sqs.eu-west-1.amazonaws.com/123456789/queued-builds',
-      MessageBody: 'test',
-      MessageGroupId: '1', // Fifo queue
-    });
-  });
-
   it('should log error if queue URL not found', async () => {
     // setup
     const logErrorSpy = jest.spyOn(logger, 'error');

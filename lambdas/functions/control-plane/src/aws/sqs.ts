@@ -18,7 +18,7 @@ export async function publishMessage(message: string, queueUrl: string, delayInS
   const messageCommand = new SendMessageCommand({
     QueueUrl: queueUrl,
     MessageBody: message,
-    DelaySeconds: delayInSeconds
+    DelaySeconds: delayInSeconds,
   });
 
   try {
