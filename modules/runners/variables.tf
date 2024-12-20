@@ -172,6 +172,18 @@ variable "userdata_post_install" {
   default     = ""
 }
 
+variable "runner_hook_job_started" {
+  description = "Script to be ran in the runner environment at the beginning of every job"
+  type        = string
+  default     = ""
+}
+
+variable "runner_hook_job_completed" {
+  description = "Script to be ran in the runner environment at the end of every job"
+  type        = string
+  default     = ""
+}
+
 variable "sqs_build_queue" {
   description = "SQS queue to consume accepted build events."
   type = object({

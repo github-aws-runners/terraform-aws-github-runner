@@ -280,6 +280,18 @@ variable "userdata_post_install" {
   description = "Script to be ran after the GitHub Actions runner is installed on the EC2 instances"
 }
 
+variable "runner_hook_job_started" {
+  type        = string
+  default     = ""
+  description = "Script to be ran in the runner environment at the beginning of every job"
+}
+
+variable "runner_hook_job_completed" {
+  type        = string
+  default     = ""
+  description = "Script to be ran in the runner environment at the end of every job"
+}
+
 variable "idle_config" {
   description = "List of time periods, defined as a cron expression, to keep a minimum amount of runners active instead of scaling down to 0. By defining this list you can ensure that in time periods that match the cron expression within 5 seconds a runner is kept idle."
   type = list(object({

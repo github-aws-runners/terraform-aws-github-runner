@@ -78,6 +78,8 @@ variable "multi_runner_config" {
       cloudwatch_config                       = optional(string, null)
       userdata_pre_install                    = optional(string, "")
       userdata_post_install                   = optional(string, "")
+      runner_hook_job_started                 = optional(string, "")
+      runner_hook_job_completed               = optional(string, "")
       runner_ec2_tags                         = optional(map(string), {})
       runner_iam_role_managed_policy_arns     = optional(list(string), [])
       vpc_id                                  = optional(string, null)
@@ -179,6 +181,8 @@ variable "multi_runner_config" {
         cloudwatch_config: "(optional) Replaces the module default cloudwatch log config. See https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-Configuration-File-Details.html for details."
         userdata_pre_install: "Script to be ran before the GitHub Actions runner is installed on the EC2 instances"
         userdata_post_install: "Script to be ran after the GitHub Actions runner is installed on the EC2 instances"
+        runner_hook_job_started: "Script to be ran in the runner environment at the beginning of every job"
+        runner_hook_job_completed: "Script to be ran in the runner environment at the end of every job"
         runner_ec2_tags: "Map of tags that will be added to the launch template instance tag specifications."
         runner_iam_role_managed_policy_arns: "Attach AWS or customer-managed IAM policies (by ARN) to the runner IAM role"
         vpc_id: "The VPC for security groups of the action runners. If not set uses the value of `var.vpc_id`."

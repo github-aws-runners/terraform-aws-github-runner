@@ -1,5 +1,20 @@
 # Changelog
 
+## [5.21.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.20.1...v5.21.0) (2024-12-20)
+
+
+### Features
+
+* Natively support runner pre/post job hooks ([#4263](https://github.com/philips-labs/terraform-aws-github-runner/issues/4263)) ([259a852](https://github.com/philips-labs/terraform-aws-github-runner/commit/259a852d9e1b08f18abe81c9fd80589be9cc7e64))
+
+
+### Bug Fixes
+
+* Incorrect syncer binary location in tf outputs ([#4274](https://github.com/philips-labs/terraform-aws-github-runner/issues/4274)) ([401a373](https://github.com/philips-labs/terraform-aws-github-runner/commit/401a373684a6b11acd705fe88afee19f3fa84b4c)), closes [#4137](https://github.com/philips-labs/terraform-aws-github-runner/issues/4137)
+* **lambda:** bump @octokit/types from 13.6.1 to 13.6.2 in /lambdas in the octokit group ([#4303](https://github.com/philips-labs/terraform-aws-github-runner/issues/4303)) ([9f76c4c](https://github.com/philips-labs/terraform-aws-github-runner/commit/9f76c4c7b12814da32310153ae668a657da30458))
+* **lambda:** bump axios from 1.7.7 to 1.7.9 in /lambdas ([#4305](https://github.com/philips-labs/terraform-aws-github-runner/issues/4305)) ([e3cd5b4](https://github.com/philips-labs/terraform-aws-github-runner/commit/e3cd5b4c5c92ff1107f03f04d691ba8ed214da4d))
+* **lambda:** bump the aws group across 1 directory with 7 updates ([#4314](https://github.com/philips-labs/terraform-aws-github-runner/issues/4314)) ([3f9b768](https://github.com/philips-labs/terraform-aws-github-runner/commit/3f9b76878987773458fd2d9bb696d1f4d82d5ec2))
+
 ## [5.20.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.20.0...v5.20.1) (2024-12-09)
 
 
