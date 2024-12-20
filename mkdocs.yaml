@@ -70,8 +70,6 @@ nav:
     - Default: examples/default.md
     - Multi Runner: examples/multi-runner.md
     - Ephemeral: examples/ephemeral.md
-    - ARM64: examples/arm64.md
-    - Windows: examples/windows.md
     - Custom AMI: examples/prebuilt.md
     - Termination watcher: examples/termination-watcher.md
     - Lambda download: examples/lambda-download.md
