@@ -42,5 +42,4 @@ describe('Test sending message to SQS.', () => {
     expect(mockSQS.sendMessage).toHaveBeenCalledWith(sqsMessage);
     await expect(result).resolves.not.toThrow();
   });
-
 });
