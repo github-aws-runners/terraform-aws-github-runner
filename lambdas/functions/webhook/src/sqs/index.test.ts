@@ -1,5 +1,5 @@
 import { SendMessageCommandInput } from '@aws-sdk/client-sqs';
-import { ActionRequestMessage, sendActionRequest } from '.';
+import { sendActionRequest } from '.';
 
 const mockSQS = {
   sendMessage: jest.fn(() => {
