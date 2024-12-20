@@ -2,13 +2,11 @@
 
 [![docs](https://img.shields.io/badge/docs-runners-blue.svg)](https://philips-labs.github.io/terraform-aws-github-runner) [![awesome-runners](https://img.shields.io/badge/listed%20on-awesome--runners-blue.svg)](https://github.com/jonico/awesome-runners) [![Terraform registry](https://img.shields.io/github/v/release/philips-labs/terraform-aws-github-runner?label=Terraform%20Registry)](https://registry.terraform.io/modules/philips-labs/github-runner/aws/) [![Terraform checks](https://github.com/philips-labs/terraform-aws-github-runner/actions/workflows/terraform.yml/badge.svg)](https://github.com/philips-labs/terraform-aws-github-runner/actions/workflows/terraform.yml) [![Lambdas](https://github.com/philips-labs/terraform-aws-github-runner/actions/workflows/lambda.yml/badge.svg)](https://github.com/philips-labs/terraform-aws-github-runner/actions/workflows/lambda.yml)
 
+> 📢 We're moving `terraform-aws-github-runner` to a new organization https://github.com/github-aws-runners in January to foster growth and community ownership! 🎉 Join us on our new [Discord server](https://discord.gg/EwUScJy8) for discussions and updates. Please see #4298 for more details.
+
 > 📄 Extensive documentation is available via our [GitHub Pages Docs site](https://philips-labs.github.io/terraform-aws-github-runner/).
 
 > 📢 We maintain the project as a truly open-source project. We maintain the project on a best effort basis. We welcome contributions from the community. Feel free to help us answering issues, reviewing PRs, or maintaining and improving the project.
-
-> 📢 [`v5`](https://github.com/philips-labs/terraform-aws-github-runner/pull/3552) replaces Amazon Linux 2 with Amazon Linux 2023 as default OS. Check the PR for more details and other changes.
-
-> 📢 For contributions to older versions you can make a PR to the related branch, e.g. `v4`. We have no release process in place for older versions.
 
 This [Terraform](https://www.terraform.io/) module creates the required infrastructure needed to host [GitHub Actions](https://github.com/features/actions) self-hosted, auto-scaling runners on [AWS spot instances](https://aws.amazon.com/ec2/spot/). It provides the required logic to handle the life cycle for scaling up and down using a set of AWS Lambda functions. Runners are scaled down to zero to avoid costs when no workflows are active.
 

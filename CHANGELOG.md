@@ -1,5 +1,16 @@
 # Changelog
 
+## [5.20.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.20.0...v5.20.1) (2024-12-09)
+
+
+### Bug Fixes
+
+* **lambda:** bump @octokit/types from 13.6.1 to 13.6.2 in /lambdas in the octokit group ([#4291](https://github.com/philips-labs/terraform-aws-github-runner/issues/4291)) ([d8d7519](https://github.com/philips-labs/terraform-aws-github-runner/commit/d8d75191eb4573d07ce3ee7f78bfb246b46e1198))
+* **lambda:** bump the aws group across 1 directory with 7 updates ([#4288](https://github.com/philips-labs/terraform-aws-github-runner/issues/4288)) ([039f5db](https://github.com/philips-labs/terraform-aws-github-runner/commit/039f5dbeb8af6a02a4686572d8e3377e5048fb3b))
+* **lambda:** bump the aws group in /lambdas with 4 updates ([#4290](https://github.com/philips-labs/terraform-aws-github-runner/issues/4290)) ([eb9c123](https://github.com/philips-labs/terraform-aws-github-runner/commit/eb9c123e53c02b332f78c92aedb69b9267810410))
+* **lambda:** bump the aws-powertools group in /lambdas with 4 updates ([#4281](https://github.com/philips-labs/terraform-aws-github-runner/issues/4281)) ([e1f330b](https://github.com/philips-labs/terraform-aws-github-runner/commit/e1f330bb3c8321af875232e23ff1f4d053c684f5))
+* **lambda:** bump typescript from 5.6.3 to 5.7.2 in /lambdas ([#4293](https://github.com/philips-labs/terraform-aws-github-runner/issues/4293)) ([f6e4b92](https://github.com/philips-labs/terraform-aws-github-runner/commit/f6e4b926e6e73bddb7b0b2f78183d3542f26d023))
+
 ## [5.20.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v5.19.0...v5.20.0) (2024-11-19)
 
 

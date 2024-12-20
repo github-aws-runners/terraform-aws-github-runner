@@ -19,25 +19,25 @@
     "@types/express": "^4.17.21",
     "@types/jest": "^29.5.14",
     "@types/node": "^22.9.0",
-    "@typescript-eslint/eslint-plugin": "^8.15.0",
-    "@typescript-eslint/parser": "^8.14.0",
-    "@vercel/ncc": "0.38.2",
+    "@typescript-eslint/eslint-plugin": "^8.18.1",
+    "@typescript-eslint/parser": "^8.16.0",
+    "@vercel/ncc": "0.38.3",
     "body-parser": "^1.20.3",
     "eslint": "^8.57.0",
     "eslint-plugin-prettier": "5.2.1",
     "express": "^4.21.1",
     "jest": "^29.7.0",
     "jest-mock": "^29.7.0",
-    "nock": "^13.5.4",
+    "nock": "^13.5.6",
     "prettier": "3.3.3",
     "ts-jest": "^29.2.5",
     "ts-node-dev": "^2.0.0",
-    "typescript": "^5.6.3"
+    "typescript": "^5.7.2"
   },
   "dependencies": {
-    "@aws-lambda-powertools/logger": "^2.10.0",
-    "@aws-lambda-powertools/metrics": "^2.10.0",
-    "@aws-lambda-powertools/tracer": "^2.10.0",
+    "@aws-lambda-powertools/logger": "^2.11.0",
+    "@aws-lambda-powertools/metrics": "^2.11.0",
+    "@aws-lambda-powertools/tracer": "^2.11.0",
     "aws-lambda": "^1.0.7"
   },
   "nx": {

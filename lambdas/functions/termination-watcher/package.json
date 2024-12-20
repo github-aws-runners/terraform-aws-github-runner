@@ -18,9 +18,9 @@
     "@types/aws-lambda": "^8.10.145",
     "@types/jest": "^29.5.14",
     "@types/node": "^22.9.0",
-    "@typescript-eslint/eslint-plugin": "^8.15.0",
-    "@typescript-eslint/parser": "^8.14.0",
-    "@vercel/ncc": "^0.38.2",
+    "@typescript-eslint/eslint-plugin": "^8.18.1",
+    "@typescript-eslint/parser": "^8.16.0",
+    "@vercel/ncc": "^0.38.3",
     "aws-sdk-client-mock": "^4.1.0",
     "aws-sdk-client-mock-jest": "^4.1.0",
     "eslint": "^8.57.0",
@@ -28,7 +28,7 @@
     "jest": "^29.7.0",
     "jest-mock": "^29.7.0",
     "jest-mock-extended": "^3.0.7",
-    "nock": "^13.5.4",
+    "nock": "^13.5.6",
     "prettier": "3.3.3",
     "ts-jest": "^29.2.5",
     "ts-node": "^10.9.2",
@@ -36,10 +36,10 @@
   },
   "dependencies": {
     "@aws-github-runner/aws-powertools-util": "*",
-    "@aws-sdk/client-ec2": "^3.694.0",
-    "@aws-sdk/types": "^3.692.0",
+    "@aws-sdk/client-ec2": "^3.714.0",
+    "@aws-sdk/types": "^3.714.0",
     "@middy/core": "^4.7.0",
-    "typescript": "^5.6.3"
+    "typescript": "^5.7.2"
   },
   "nx": {
     "includedScripts": [
