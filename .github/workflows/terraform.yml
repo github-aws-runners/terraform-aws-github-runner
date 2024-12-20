@@ -132,12 +132,9 @@ jobs:
         example:
           [
             "default",
-            "ubuntu",
             "prebuilt",
-            "arm64",
             "ephemeral",
             "termination-watcher",
-            "windows",
             "multi-runner",
           ]
     defaults:
