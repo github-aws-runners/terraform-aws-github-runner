@@ -92,12 +92,10 @@ module "runners" {
   # prefix GitHub runners with the environment name
   runner_name_prefix = "${local.environment}_"
 
-  # webhook supports two modes, either direct or via the eventbridge, uncomment to enable eventbridge
-  # eventbridge = {
-  #   enable = true
-  #   # adjust the allow events to only allow specific events, like workflow_job
-  #   # allowed_events = ['workflow_job']
-  # }
+  # by default eventbridge is used, see multi-runner example. Here we disable the eventbridge
+  eventbridge = {
+    enable = false
+  }
 
   # Enable debug logging for the lambda functions
   # log_level = "debug"

@@ -6,7 +6,7 @@ To be able to support a number of use-cases, the module has quite a lot of confi
 
 - Org vs Repo level. You can configure the module to connect the runners in GitHub on an org level and share the runners in your org, or set the runners on repo level and the module will install the runner to the repo. There can be multiple repos but runners are not shared between repos.
 - Multi-Runner module. This modules allows you to create multiple runner configurations with a single webhook and single GitHub App to simplify deployment of different types of runners. Check the detailed module [documentation](modules/public/multi-runner.md) for more information or checkout the [multi-runner example](examples/multi-runner.md).
-- Webhook mode, the module can be deployed in `direct` mode or `EventBridge` (Experimental) mode. The `direct` mode is the default and will directly distribute to SQS for the scale-up lambda. The `EventBridge` mode will publish the events to a eventbus, the rule then directs the received events to a dispatch lambda. The dispatch lambda will send the event to the SQS queue. The `EventBridge` mode is useful when you want to have more control over the events and potentially filter them. The `EventBridge` mode is disabled by default. An example of what the `EventBridge` mode could be used for is building a data lake, build metrics, act on `workflow_job` job started events, etc.
+- Webhook mode, the module can be deployed in `direct` mode or `EventBridge` (Experimental) mode. The `direct` mode is the default and will directly distribute to SQS for the scale-up lambda. The `EventBridge` mode will publish the events to a eventbus, the rule then directs the received events to a dispatch lambda. The dispatch lambda will send the event to the SQS queue. The `EventBridge` mode is the default and allows to have more control over the events and potentially filter them. The `EventBridge` mode can be disabled, messages are sent directed to queues in that case. An example of what the `EventBridge` mode could be used for is building a data lake, build metrics, act on `workflow_job` job started events, etc.
 - Linux vs Windows. You can configure the OS types linux and win. Linux will be used by default.
 - Re-use vs Ephemeral. By default runners are re-used, until detected idle. Once idle they will be removed from the pool. To improve security we are introducing ephemeral runners. Those runners are only used for one job. Ephemeral runners only work in combination with the workflow job event. For ephemeral runners the lambda requests a JIT (just in time) configuration via the GitHub API to register the runner. [JIT configuration](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-just-in-time-runners) is limited to ephemeral runners (and currently not supported by GHES). For non-ephemeral runners, a registration token is always requested. In both cases the configuration is made available to the instance via the same SSM parameter. To disable JIT configuration for ephemeral runners set `enable_jit_config` to `false`. We also suggest using a pre-build AMI to improve the start time of jobs for ephemeral runners.
 - Job retry (**Beta**). By default the scale-up lambda will discard the message when it is handled. Meaning in the ephemeral use-case an instance is created. The created runner will ask GitHub for a job, no guarantee it will run the job for which it was scaling. Result could be that with small system hick-up the job is keeping waiting for a runner. Enable a pool (org runners) is one option to avoid this problem. Another option is to enable the job retry function. Which will retry the job after a delay for a configured number of times.
@@ -263,9 +263,9 @@ Below an example of the the log messages created.
 
 ### EventBridge
 
-This module can be deployed in using the mode `EventBridge` (Experimental). The `EventBridge` mode will publish an event to a eventbus. Within the eventbus, there is a target rule set, sending events to the dispatch lambda. The `EventBridge` mode is disabled by default.
+This module can be deployed in using the mode `EventBridge`. The `EventBridge` mode will publish an event to a eventbus. Within the eventbus, there is a target rule set, sending events to the dispatch lambda. The `EventBridge` mode is enabled by default.
 
-Example to use the EventBridge:
+Example to extend the EventBridge:
 
 ```hcl
 
@@ -274,7 +274,7 @@ module "runners" {
 
   ...
   eventbridge = {
-    enable = true
+    enable = false
   }
   ...
 }
@@ -331,62 +331,6 @@ resource "aws_iam_role_policy" "event_rule_firehose_role" {
   policy = data.aws_iam_policy_document.firehose_stream.json
 }
 ```
-
-### Queue to publish workflow job events
-
-!!! warning "Removed
-
-    This feaTure will be removed since we introducing the EventBridge. Same functionality can be implemented by adding a rule to the EventBridge to forward `workflow_job` events to the SQS queue.
-
-Below an example how you can sent all `workflow_job` with action `in_progress` to a SQS queue.
-
-```hcl
-
-resource "aws_cloudwatch_event_rule" "workflow_job_in_progress" {
-  name           = "workflow-job-in-progress"
-  event_bus_name = modules.runners.webhook.eventbridge.name # The name of the event bus output by the module
-
-  event_pattern = <<EOF
-{
-  "detail-type": ["workflow_job"],
-  "detail": {
-    "action": ["in_progress"]
-  }
-}
-EOF
-}
-
-resource "aws_sqs_queue" "workflow_job_in_progress" {
-  name = "workflow_job_in_progress
-}
-
-resource "aws_sqs_queue_policy" "workflow_job_in_progress" {
-  queue_url = aws_sqs_queue.workflow_job_in_progress.id
-  policy    = data.aws_iam_policy_document.sqs_policy.json
-}
-
-data "aws_iam_policy_document" "sqs_policy" {
-  statement {
-    sid     = "AllowFromEventBridge"
-    actions = ["sqs:SendMessage"]
-
-    principals {
-      type        = "Service"
-      identifiers = ["events.amazonaws.com"]
-    }
-
-    resources = [aws_sqs_queue.workflow_job_in_progress.arn]
-
-    condition {
-      test     = "ArnEquals"
-      variable = "aws:SourceArn"
-      values   = [aws_cloudwatch_event_rule.workflow_job_in_progress.arn]
-    }
-  }
-}
-
-```
-
 
 
 NOTE: By default, a runner AMI update requires a re-apply of this terraform config (the runner AMI ID is looked up by a terraform data source). To avoid this, you can use `ami_id_ssm_parameter_name` to have the scale-up lambda dynamically lookup the runner AMI ID from an SSM parameter at instance launch time. Said SSM parameter is managed outside of this module (e.g. by a runner AMI build workflow).

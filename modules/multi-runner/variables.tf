@@ -618,8 +618,7 @@ variable "instance_termination_watcher" {
   EOF
 
   type = object({
-    enable         = optional(bool, false)
-    enable_metrics = optional(string, null) # deprecated
+    enable = optional(bool, false)
     features = optional(object({
       enable_spot_termination_handler              = optional(bool, true)
       enable_spot_termination_notification_watcher = optional(bool, true)
@@ -631,11 +630,6 @@ variable "instance_termination_watcher" {
     zip               = optional(string, null)
   })
   default = {}
-
-  validation {
-    condition     = var.instance_termination_watcher.enable_metrics == null
-    error_message = "The feature `instance_termination_watcher` is deprecated and will be removed in a future release. Please use the `termination_watcher` variable instead."
-  }
 }
 
 variable "lambda_tags" {
@@ -671,7 +665,7 @@ variable "metrics" {
 variable "eventbridge" {
   description = "Enable the use of EventBridge by the module. By enabling this feature events will be put on the EventBridge by the webhook instead of directly dispatching to queues for scaling."
   type = object({
-    enable        = optional(bool, false)
+    enable        = optional(bool, true)
     accept_events = optional(list(string), [])
   })
 

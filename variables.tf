@@ -951,7 +951,7 @@ variable "eventbridge" {
     `accept_events`: List can be used to only allow specific events to be putted on the EventBridge. By default all events, empty list will be be interpreted as all events.
 EOF
   type = object({
-    enable        = optional(bool, false)
+    enable        = optional(bool, true)
     accept_events = optional(list(string), null)
   })
 
