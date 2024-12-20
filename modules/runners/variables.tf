@@ -721,3 +721,8 @@ variable "job_retry" {
     error_message = "The maxium message delay for SWS is 900 seconds."
   }
 }
+
+variable "enable_runner_workflow_job_labels_check_all" {
+  description = "If set to true all labels in the workflow job must match the GitHub labels (os, architecture and `self-hosted`). When false if __any__ label matches it will trigger the webhook."
+  type        = bool
+}
