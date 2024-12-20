@@ -888,8 +888,7 @@ variable "instance_termination_watcher" {
   EOF
 
   type = object({
-    enable        = optional(bool, false)
-    enable_metric = optional(string, null) # deprectaed
+    enable = optional(bool, false)
     features = optional(object({
       enable_spot_termination_handler              = optional(bool, true)
       enable_spot_termination_notification_watcher = optional(bool, true)
@@ -902,10 +901,6 @@ variable "instance_termination_watcher" {
   })
   default = {}
 
-  validation {
-    condition     = var.instance_termination_watcher.enable_metric == null
-    error_message = "The variable `instance_termination_watcher.enable_metric` is deprecated, use `metrics` instead."
-  }
 }
 
 variable "runners_ebs_optimized" {
