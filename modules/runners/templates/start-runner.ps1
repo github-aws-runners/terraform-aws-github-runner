@@ -6,7 +6,7 @@ $token=Invoke-RestMethod -Method PUT -Uri "http://169.254.169.254/latest/api/tok
 if ( ! $token ) {
   $retrycount=0
   do {
-    echo "Failed to retrieve token. Retrying in 5 seconds."
+    Write-Output "Failed to retrieve token. Retrying in 5 seconds."
     Start-Sleep 5
     $token=Invoke-RestMethod -Method PUT -Uri "http://169.254.169.254/latest/api/token" -Headers @{"X-aws-ec2-metadata-token-ttl-seconds" = "180"}
     $retrycount=$retrycount + 1

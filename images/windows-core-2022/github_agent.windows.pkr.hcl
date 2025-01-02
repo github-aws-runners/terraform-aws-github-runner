@@ -18,6 +18,24 @@ variable "region" {
   default     = "eu-west-1"
 }
 
+variable "aws_account_number" {
+  description = "The AWS account number"
+  type        = string
+  default     = ""
+}
+
+variable "aws_region_mirror_list" {
+  description = "The list of regions to mirror the AMI to"
+  type        = list(string)
+  default     = ["eu-west-1"]
+}
+
+variable "instance_type" {
+  description = "The instance type Packer will use for the builder"
+  type        = string
+  default     = "c7i-flex.xlarge"
+}
+
 variable "security_group_id" {
   description = "The ID of the security group Packer will associate with the builder to enable access"
   type        = string
@@ -28,11 +46,6 @@ variable "subnet_id" {
   description = "If using VPC, the ID of the subnet, such as subnet-12345def, where Packer will launch the EC2 instance. This field is required if you are using an non-default VPC"
   type        = string
   default     = null
-}
-
-variable "root_volume_size_gb" {
-  type    = number
-  default = 30
 }
 
 variable "ebs_delete_on_termination" {
@@ -72,14 +85,23 @@ locals {
 }
 
 source "amazon-ebs" "githubrunner" {
-  ami_name                                  = "github-runner-windows-core-2022-${formatdate("YYYYMMDDhhmm", timestamp())}"
-  communicator                              = "winrm"
-  instance_type                             = "m4.xlarge"
+  ami_name        = "github-runner-windows-core-2022-${formatdate("YYYYMMDDhhmm", timestamp())}"
+  ami_users       = [ var.aws_account_number ]
+  ami_regions     = var.aws_region_mirror_list
+  ami_description = "GitHub Actions runner AMI Windows Core 2019 Pro Video"
+
+  instance_type                             = var.instance_type
   region                                    = var.region
   security_group_id                         = var.security_group_id
   subnet_id                                 = var.subnet_id
   associate_public_ip_address               = var.associate_public_ip_address
   temporary_security_group_source_public_ip = var.temporary_security_group_source_public_ip
+
+  user_data_file           = "../setup-ssh.ps1"
+  communicator             = "ssh"
+  ssh_username             = "Administrator"
+  ssh_file_transfer_method = "sftp"
+  ssh_timeout              = "15m"
 
   source_ami_filter {
     filters = {
@@ -90,20 +112,16 @@ source "amazon-ebs" "githubrunner" {
     most_recent = true
     owners      = ["amazon"]
   }
+
   tags = {
     OS_Version    = "windows-core-2022"
     Release       = "Latest"
     Base_AMI_Name = "{{ .SourceAMIName }}"
   }
-  user_data_file = "./bootstrap_win.ps1"
-  winrm_insecure = true
-  winrm_port     = 5986
-  winrm_use_ssl  = true
-  winrm_username = "Administrator"
 
   launch_block_device_mappings {
     device_name           = "/dev/sda1"
-    volume_size           = "${var.root_volume_size_gb}"
+    volume_size           = 100
     delete_on_termination = "${var.ebs_delete_on_termination}"
   }
 }
@@ -128,6 +146,12 @@ build {
       })
     ], var.custom_shell_commands)
   }
+
+  provisioner "windows-restart" {
+    restart_check_command = "powershell -command \"& {Write-Output 'Restarted!'}\""
+    restart_timeout = "5m"
+  }
+
   post-processor "manifest" {
     output     = "manifest.json"
     strip_path = true
