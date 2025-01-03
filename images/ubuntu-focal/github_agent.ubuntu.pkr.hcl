@@ -83,12 +83,6 @@ variable "custom_shell_commands" {
   default     = []
 }
 
-variable "custom_shell_commands_post_runner_install" {
-  description = "Additional commands to run on the EC2 instance, to customize the instance, like installing packages. This runs after the agent is installed."
-  type        = list(string)
-  default     = []
-}
-
 variable "temporary_security_group_source_public_ip" {
   description = "When enabled, use public IP of the host (obtained from https://checkip.amazonaws.com) as CIDR block to be authorized access to the instance, when packer is creating a temporary security group. Note: If you specify `security_group_id` then this input is ignored."
   type        = bool
@@ -212,11 +206,6 @@ build {
       "sudo mv /tmp/start-runner.sh /var/lib/cloud/scripts/per-boot/start-runner.sh",
       "sudo chmod +x /var/lib/cloud/scripts/per-boot/start-runner.sh",
     ]
-  }
-
-  provisioner "shell" {
-    environment_vars = []
-    inline           = concat(var.custom_shell_commands_post_runner_install)
   }
 
   post-processor "manifest" {
