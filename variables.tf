@@ -34,10 +34,30 @@ variable "enable_organization_runners" {
 variable "github_app" {
   description = "GitHub app parameters, see your github app. Ensure the key is the base64-encoded `.pem` file (the output of `base64 app.private-key.pem`, not the content of `private-key.pem`)."
   type = object({
-    key_base64     = string
-    id             = string
-    webhook_secret = string
+    key_base64     = optional(string)
+    id             = optional(string)
+    webhook_secret = optional(string)
   })
+  default = {}
+}
+
+variable "github_app_ssm_parameters" {
+  description = "If you opt to create the SSM parameters yourself (see create_ssm_parameters_github_app), you need to provide name and arn here."
+  type = object({
+    key_base64 = optional(object({
+      arn  = string
+      name = string
+    }))
+    id = optional(object({
+      arn  = string
+      name = string
+    }))
+    webhook_secret = optional(object({
+      arn  = string
+      name = string
+    }))
+  })
+  default = {}
 }
 
 variable "scale_down_schedule_expression" {
@@ -951,4 +971,16 @@ EOF
   })
 
   default = {}
+}
+
+variable "create_ssm_parameters_github_app" {
+  description = <<EOF
+    Create SSM parameters for the runner configuration. The parameters are used to configure the runner. The parameters are created in the `ssm_paths.root` path.
+
+    Setting this to false will disable the creation of the SSM parameters. This can be useful when you want to manage the SSM parameters yourself, and avoid having github app details in the state.
+    After creating the SSM parameters, fill the name and arn in the `github_app_ssm_parameters` variable.
+  EOF
+
+  type    = bool
+  default = true
 }

@@ -3,9 +3,14 @@ locals {
     "ghr:environment" = var.prefix
   })
 
-  github_app_parameters = {
-    id         = module.ssm.parameters.github_app_id
-    key_base64 = module.ssm.parameters.github_app_key_base64
+  github_app_parameters = var.create_ssm_parameters_github_app ? {
+    id             = module.ssm[0].parameters.github_app_id
+    key_base64     = module.ssm[0].parameters.github_app_key_base64
+    webhook_secret = module.ssm[0].parameters.github_app_webhook_secret
+    } : {
+    id             = var.github_app_ssm_parameters.id
+    key_base64     = var.github_app_ssm_parameters.key_base64
+    webhook_secret = var.github_app_ssm_parameters.webhook_secret
   }
 
   runner_extra_labels = { for k, v in var.multi_runner_config : k => sort(setunion(flatten(v.matcherConfig.labelMatchers), compact(v.runner_config.runner_extra_labels))) }

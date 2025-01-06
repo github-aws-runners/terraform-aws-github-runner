@@ -45,7 +45,7 @@ output "webhook" {
 }
 
 output "ssm_parameters" {
-  value = module.ssm.parameters
+  value = var.create_ssm_parameters_github_app ? module.ssm[0].parameters : var.github_app_ssm_parameters
 }
 
 output "instance_termination_watcher" {
