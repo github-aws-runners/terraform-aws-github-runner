@@ -24,6 +24,12 @@ variable "security_group_id" {
   default     = null
 }
 
+variable "iam_instance_profile" {
+  description = "The IAM instance profile to run the builder as"
+  type        = string
+  default     = ""
+}
+
 variable "subnet_id" {
   description = "If using VPC, the ID of the subnet, such as subnet-12345def, where Packer will launch the EC2 instance. This field is required if you are using an non-default VPC"
   type        = string
@@ -80,6 +86,7 @@ source "amazon-ebs" "githubrunner" {
   subnet_id                                 = var.subnet_id
   associate_public_ip_address               = var.associate_public_ip_address
   temporary_security_group_source_public_ip = var.temporary_security_group_source_public_ip
+  iam_instance_profile                      = var.iam_instance_profile
 
   source_ami_filter {
     filters = {

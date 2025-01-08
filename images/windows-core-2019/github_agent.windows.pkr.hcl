@@ -24,6 +24,12 @@ variable "instance_type" {
   default     = "t3a.medium"
 }
 
+variable "iam_instance_profile" {
+  description = "The IAM instance profile to run the builder as"
+  type        = string
+  default     = ""
+}
+
 variable "ebs_delete_on_termination" {
   description = "Indicates whether the EBS volume is deleted on instance termination."
   type        = bool
@@ -67,6 +73,7 @@ source "amazon-ebs" "githubrunner" {
   region                                    = var.region
   associate_public_ip_address               = var.associate_public_ip_address
   temporary_security_group_source_public_ip = var.temporary_security_group_source_public_ip
+  iam_instance_profile                      = var.iam_instance_profile
 
   source_ami_filter {
     filters = {

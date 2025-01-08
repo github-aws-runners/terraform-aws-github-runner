@@ -42,6 +42,12 @@ variable "instance_type" {
   default     = "m3.medium"
 }
 
+variable "iam_instance_profile" {
+  description = "The IAM instance profile to run the builder as"
+  type        = string
+  default     = ""
+}
+
 variable "root_volume_size_gb" {
   type    = number
   default = 8
@@ -103,6 +109,7 @@ source "amazon-ebs" "githubrunner" {
   subnet_id                                 = var.subnet_id
   associate_public_ip_address               = var.associate_public_ip_address
   temporary_security_group_source_public_ip = var.temporary_security_group_source_public_ip
+  iam_instance_profile                      = var.iam_instance_profile
 
   source_ami_filter {
     filters = {
