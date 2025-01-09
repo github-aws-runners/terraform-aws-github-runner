@@ -1,5 +1,18 @@
 # Changelog
 
+## [6.1.0](https://github.com/philips-labs/terraform-aws-github-runner/compare/v6.0.1...v6.1.0) (2025-01-09)
+
+
+### Features
+
+* **packer:** Allow passing in an instance_profile to packer ([#4278](https://github.com/philips-labs/terraform-aws-github-runner/issues/4278)) ([bb7346b](https://github.com/philips-labs/terraform-aws-github-runner/commit/bb7346bee8340af03a61e85a3cb129da68543612))
+
+
+### Bug Fixes
+
+* Disable interpolation of HEREDOC strings containing runner hook scripts ([#4333](https://github.com/philips-labs/terraform-aws-github-runner/issues/4333)) ([2622589](https://github.com/philips-labs/terraform-aws-github-runner/commit/26225898b6a55d38f96938c95ba55c7b0319343d))
+* **lambda:** bump the aws group in /lambdas with 6 updates ([#4336](https://github.com/philips-labs/terraform-aws-github-runner/issues/4336)) ([1282e11](https://github.com/philips-labs/terraform-aws-github-runner/commit/1282e113bcda7fb0433b2a8fb5d5ee86c1c27c6b))
+
 ## [6.0.1](https://github.com/philips-labs/terraform-aws-github-runner/compare/v6.0.0...v6.0.1) (2025-01-02)
 
 
