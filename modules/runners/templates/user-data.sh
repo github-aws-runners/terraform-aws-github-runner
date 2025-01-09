@@ -63,16 +63,16 @@ ${install_runner}
 ${post_install}
 
 # Register runner job hooks
-# Ref: https://github.com/actions/runner/blob/main/docs/adrs/1751-runner-job-hooks.md
+# Ref: https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/running-scripts-before-or-after-a-job
 %{ if hook_job_started != "" }
-cat > /opt/actions-runner/hook_job_started.sh << EOF
+cat > /opt/actions-runner/hook_job_started.sh <<'EOF'
 ${hook_job_started}
 EOF
 echo ACTIONS_RUNNER_HOOK_JOB_STARTED=/opt/actions-runner/hook_job_started.sh | tee -a /opt/actions-runner/.env
 %{ endif }
 
 %{ if hook_job_completed != "" }
-cat > /opt/actions-runner/hook_job_completed.sh << EOF
+cat > /opt/actions-runner/hook_job_completed.sh <<'EOF'
 ${hook_job_completed}
 EOF
 echo ACTIONS_RUNNER_HOOK_JOB_COMPLETED=/opt/actions-runner/hook_job_completed.sh | tee -a /opt/actions-runner/.env
