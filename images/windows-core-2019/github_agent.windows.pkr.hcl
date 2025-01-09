@@ -24,6 +24,12 @@ variable "instance_type" {
   default     = "t3a.medium"
 }
 
+variable "iam_instance_profile" {
+  description = "IAM instance profile Packer will use for the builder. An empty string (default) means no profile will be assigned."
+  type        = string
+  default     = ""
+}
+
 variable "ebs_delete_on_termination" {
   description = "Indicates whether the EBS volume is deleted on instance termination."
   type        = bool
@@ -64,6 +70,7 @@ source "amazon-ebs" "githubrunner" {
   ami_name                                  = "github-runner-windows-core-2019-${formatdate("YYYYMMDDhhmm", timestamp())}"
   communicator                              = "winrm"
   instance_type                             = var.instance_type
+  iam_instance_profile                      = var.iam_instance_profile
   region                                    = var.region
   associate_public_ip_address               = var.associate_public_ip_address
   temporary_security_group_source_public_ip = var.temporary_security_group_source_public_ip
@@ -114,6 +121,7 @@ build {
       })
     ], var.custom_shell_commands)
   }
+
   post-processor "manifest" {
     output     = "manifest.json"
     strip_path = true

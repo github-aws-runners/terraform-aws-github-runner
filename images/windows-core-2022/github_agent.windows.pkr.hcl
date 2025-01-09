@@ -18,6 +18,18 @@ variable "region" {
   default     = "eu-west-1"
 }
 
+variable "instance_type" {
+  description = "The instance type Packer will use for the builder"
+  type        = string
+  default     = "m4.xlarge"
+}
+
+variable "iam_instance_profile" {
+  description = "IAM instance profile Packer will use for the builder. An empty string (default) means no profile will be assigned."
+  type        = string
+  default     = ""
+}
+
 variable "security_group_id" {
   description = "The ID of the security group Packer will associate with the builder to enable access"
   type        = string
@@ -74,7 +86,8 @@ locals {
 source "amazon-ebs" "githubrunner" {
   ami_name                                  = "github-runner-windows-core-2022-${formatdate("YYYYMMDDhhmm", timestamp())}"
   communicator                              = "winrm"
-  instance_type                             = "m4.xlarge"
+  instance_type                             = var.instance_type
+  iam_instance_profile                      = var.iam_instance_profile
   region                                    = var.region
   security_group_id                         = var.security_group_id
   subnet_id                                 = var.subnet_id

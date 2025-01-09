@@ -42,6 +42,12 @@ variable "instance_type" {
   default     = "t4g.small"
 }
 
+variable "iam_instance_profile" {
+  description = "IAM instance profile Packer will use for the builder. An empty string (default) means no profile will be assigned."
+  type        = string
+  default     = ""
+}
+
 variable "root_volume_size_gb" {
   type    = number
   default = 8
@@ -98,6 +104,7 @@ locals {
 source "amazon-ebs" "githubrunner" {
   ami_name                                  = "github-runner-ubuntu-jammy-arm64-${formatdate("YYYYMMDDhhmm", timestamp())}"
   instance_type                             = var.instance_type
+  iam_instance_profile                      = var.iam_instance_profile
   region                                    = var.region
   security_group_id                         = var.security_group_id
   subnet_id                                 = var.subnet_id
@@ -200,6 +207,7 @@ build {
       "sudo chmod +x /var/lib/cloud/scripts/per-boot/start-runner.sh",
     ]
   }
+
   post-processor "manifest" {
     output     = "manifest.json"
     strip_path = true
