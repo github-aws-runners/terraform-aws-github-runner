@@ -26,7 +26,7 @@ jobs:
         uses: actions/create-github-app-token@c1a285145b9d317df6ced56c09f525b5c2b6f755 # v1.11.1
         id: token
         with:
-          app-id: ${{ secrets.RELEASER_APP_ID }}
+          app-id: ${{ vars.RELEASER_APP_ID }}
           private-key: ${{ secrets.RELEASER_APP_PRIVATE_KEY }}
       - name: Extract branch name
         id: branch
