@@ -1,16 +1,15 @@
-# Contributing to Forest Terraform
+# Contributing to this project
 
-We'd love for you to contribute to our source code and to make the Forest even better than it is today! Here are the guidelines we'd like you to follow:
+We'd love for you to contribute to our source code and to make this project even better than it is today! Here are the guidelines we'd like you to follow:
 
 * [Question or Problem?](#question)
 * [Issues and Bugs](#issue)
 * [Feature Requests](#feature)
 * [Submission Guidelines](#submit)
-* [Further Info](#info)
 
 ## <a name="question"></a> Got a Question or Problem?
 
-If you have questions about how to use the Forest, please direct these to [Discord](https://discord.gg/bxgXW8jJGh)
+If you have questions about how to use aws-github-runners, please direct these to [Discord](https://discord.gg/bxgXW8jJGh)
 
 ## <a name="issue"></a> Found an Issue?
 
@@ -41,7 +40,7 @@ If your issue appears to be a bug, and hasn't been reported, open a new issue. H
 
 * **Overview of the Issue** - if an error is being thrown a non-minified stack trace helps
 * **Motivation for or Use Case** - explain why this is a bug for you
-* **Forest Version(s)** - is it a regression?
+* **Project Version(s)** - is it a regression?
 * **Reproduce the Error** - try to describe how to reproduce the error
 * **Related Issues** - has a similar issue been reported before?
 * **Suggest a Fix** - if you can't fix the bug yourself, perhaps you can point to what might be
@@ -144,7 +143,6 @@ from the main (upstream) repository:
     git pull --ff upstream main
     ```
 
-## <a name="info"></a> Info
 
 [contribute]: CONTRIBUTING.md
 [github]: https://github.com/github-aws-runners/terraform-aws-github-runner/issues
