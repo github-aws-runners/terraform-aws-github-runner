@@ -4,9 +4,10 @@ Roles and responsibilities of the maintainers of the project.
 
 ## Maintainers
 
-| Name      | GitHub   | Affiliation |
-| --------- | -------- | ----------- |
-| Niek Palm | [@npalm] | Philips     |
+| Name         | GitHub        | Affiliation |
+| ------------ | ------------- | ----------- |
+| Niek Palm    | [@npalm]      | Philips     |
+| Koen de Laat | [@koendelaat] | Philips     |
 
 ## Responsibilities
 
