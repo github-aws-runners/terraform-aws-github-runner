@@ -16,7 +16,7 @@ Maintainers are responsible to review and merge pull requests. Currently we have
 
 #### Guidelines
 
-- Check if changes is implement for both modules (root and multi-runner)
+- Check if changes are implemented for both modules (root and multi-runner)
 - Check backwards compatibility, we strive to keep the module compatible with previous versions
 - Check complexity of the changes, if the changes are too complex. Think about how does impact the PR on the long term maintaining the module.
 - Check all pipelines are passing, if not request the author to fix the issues
