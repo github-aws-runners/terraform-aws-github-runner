@@ -2,7 +2,7 @@
 
 [![docs](https://img.shields.io/badge/docs-runners-blue.svg)](https://github-aws-runners.github.io/terraform-aws-github-runner) [![awesome-runners](https://img.shields.io/badge/listed%20on-awesome--runners-blue.svg)](https://github.com/jonico/awesome-runners) [![Terraform registry](https://img.shields.io/github/v/release/github-aws-runners/terraform-aws-github-runner?label=Terraform%20Registry)](https://registry.terraform.io/modules/github-aws-runners/github-runner/aws/) [![Terraform checks](https://github.com/github-aws-runners/terraform-aws-github-runner/actions/workflows/terraform.yml/badge.svg)](https://github.com/github-aws-runners/terraform-aws-github-runner/actions/workflows/terraform.yml) [![Lambdas](https://github.com/github-aws-runners/terraform-aws-github-runner/actions/workflows/lambda.yml/badge.svg)](https://github.com/github-aws-runners/terraform-aws-github-runner/actions/workflows/lambda.yml)
 
-> 📢 We're moving `terraform-aws-github-runner` to a new organization https://github.com/github-aws-runners in January to foster growth and community ownership! 🎉 Join us on our new [Discord server](https://discord.gg/EwUScJy8) for discussions and updates. Please see #4298 for more details.
+> 📢 We're moving `terraform-aws-github-runner` to a new organization https://github.com/github-aws-runners in January to foster growth and community ownership! 🎉 Join us on our new [Discord server](https://discord.gg/bxgXW8jJGh) for discussions and updates. Please see #4298 for more details.
 
 > 📄 Extensive documentation is available via our [GitHub Pages Docs site](https://github-aws-runners.github.io/terraform-aws-github-runner/).
 
