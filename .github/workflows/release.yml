@@ -6,7 +6,6 @@ on:
       - v1
   workflow_dispatch:
 
-
 jobs:
   release:
     name: Release
@@ -14,6 +13,8 @@ jobs:
     permissions:
       contents: write
       actions: write
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
         with:
@@ -34,12 +35,28 @@ jobs:
         run: echo "name=${GITHUB_REF#refs/heads/}" >> $GITHUB_OUTPUT
       - name: Release
         id: release
-        uses: google-github-actions/release-please-action@e4dc86ba9405554aeba3c6bb2d169500e7d3b4ee # v4.1.1
+        uses: googleapis/release-please-action@7987652d64b4581673a76e33ad5e98e3dd56832f # v4.1.3
         with:
           target-branch: ${{ steps.branch.outputs.name }}
           release-type: terraform-module
           token: ${{ steps.token.outputs.token }}
-      - name: Upload Release Asset
+      - name: Attest
+        if: ${{ steps.release.outputs.releases_created == 'true' }}
+        id: attest
+        uses: actions/attest-build-provenance@7668571508540a607bdfd90a87a560489fe372eb # v2.1.0
+        with:
+          subject-path: '${{ github.workspace }}/lambdas/functions/**/*.zip'
+      - name: Update release notes with attestation
+        if: ${{ steps.release.outputs.releases_created == 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view ${{ github.event.inputs.version }} --json body -q '.body' > new-release-notes.md
+          echo "## Attestation" >> new-release-notes.md
+          echo "Attestation url: ${{ steps.attest.outputs.attestation-url }}" >> new-release-notes.md
+          echo "Verify the artifacts by running \`gh attest verify <name_of_artifact> --repo ${{ github.repository }}\`" >> new-release-notes.md
+          gh release edit ${{ steps.release.outputs.tag_name }} -F new-release-notes.md -t ${{ steps.release.outputs.tag_name }}
+      - name: Upload release assets
         if: ${{ steps.release.outputs.releases_created == 'true' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
