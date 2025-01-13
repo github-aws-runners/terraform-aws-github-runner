@@ -1,5 +1,14 @@
 # Changelog
 
+## [6.1.2](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.1.1...v6.1.2) (2025-01-13)
+
+
+### Bug Fixes
+
+* **lambda:** bump @octokit/types from 13.6.2 to 13.7.0 in /lambdas in the octokit group ([#4355](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4355)) ([4544228](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/4544228406306724be9da955d13b7fb4ae565fa0))
+* **lambda:** bump the aws group in /lambdas with 7 updates ([#4354](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4354)) ([c30c5b8](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/c30c5b88768f4cd2af088db9ab183fb0d76f775c))
+* **lambda:** bump typescript from 5.7.2 to 5.7.3 in /lambdas ([#4356](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4356)) ([5a5f58d](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/5a5f58d4f5650d15b1d1e629b9b3eabb4bd2505f))
+
 ## [6.1.1](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.1.0...v6.1.1) (2025-01-13)
 
 
