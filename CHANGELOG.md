@@ -1,5 +1,12 @@
 # Changelog
 
+## [6.1.1](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.1.0...v6.1.1) (2025-01-13)
+
+
+### Bug Fixes
+
+* **ci:** add attestation for lambda artifacts to release ([#4351](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4351)) ([7387ac8](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/7387ac867c9d581c0306440ffd78c80be0f61d25))
+
 ## [6.1.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.0.1...v6.1.0) (2025-01-09)
 
 
