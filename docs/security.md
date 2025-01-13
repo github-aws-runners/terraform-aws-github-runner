@@ -1,7 +1,7 @@
 
 # Security
 
-This module is not certified by any security organization. The module is build with the best practices in mind, but it is your responsibility to ensure the security of your environment. We welcome any feedback to improve the security of the module.
+This module is not certified by any security organization. The module is built with best practices in mind, but it is your responsibility to ensure the security of your environment. We welcome any feedback to improve the security of the module.
 
 ## Guidelines and directions
 
