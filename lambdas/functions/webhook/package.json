@@ -35,7 +35,7 @@
     "prettier": "3.4.2",
     "ts-jest": "^29.2.5",
     "ts-node-dev": "^2.0.0",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.3"
   },
   "dependencies": {
     "@aws-github-runner/aws-powertools-util": "*",
