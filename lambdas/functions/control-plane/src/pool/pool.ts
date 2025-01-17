@@ -5,7 +5,7 @@ import yn from 'yn';
 import { bootTimeExceeded, listEC2Runners } from '../aws/runners';
 import { RunnerList } from '../aws/runners.d';
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
-import { createRunners } from '../scale-runners/scale-up';
+import { createRunners, getGitHubEnterpriseApiUrl } from '../scale-runners/scale-up';
 
 const logger = createChildLogger('pool');
 
@@ -24,7 +24,6 @@ export async function adjust(event: PoolEvent): Promise<void> {
   const runnerGroup = process.env.RUNNER_GROUP_NAME || '';
   const runnerNamePrefix = process.env.RUNNER_NAME_PREFIX || '';
   const environment = process.env.ENVIRONMENT;
-  const ghesBaseUrl = process.env.GHES_URL;
   const ssmTokenPath = process.env.SSM_TOKEN_PATH;
   const ssmConfigPath = process.env.SSM_CONFIG_PATH || '';
   const subnets = process.env.SUBNET_IDS.split(',');
@@ -43,10 +42,7 @@ export async function adjust(event: PoolEvent): Promise<void> {
     ? (JSON.parse(process.env.ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS) as [string])
     : [];
 
-  let ghesApiUrl = '';
-  if (ghesBaseUrl) {
-    ghesApiUrl = `${ghesBaseUrl}/api/v3`;
-  }
+  const { ghesApiUrl, ghesBaseUrl } = getGitHubEnterpriseApiUrl();
 
   const installationId = await getInstallationId(ghesApiUrl, runnerOwner);
   const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl);
