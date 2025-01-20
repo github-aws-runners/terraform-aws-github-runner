@@ -163,7 +163,7 @@ describe('Scale down runners', () => {
 
   describe.each(endpoints)('for %s', (endpoint) => {
     beforeEach(() => {
-      if (endpoint.includes('enterprise') || endpoint.includes('ghe.com')) {
+      if (endpoint.includes('enterprise') || endpoint.endsWith('.ghe.com')) {
         process.env.GHES_URL = endpoint;
       }
     });
