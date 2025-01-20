@@ -358,7 +358,7 @@ export function getGitHubEnterpriseApiUrl() {
         const url = new URL(ghesBaseUrl);
         const domain = url.hostname;
         logger.info(`Domain name: ${domain}`);
-        if (domain.endsWith('ghe.com')) {
+        if (domain.endsWith('.ghe.com')) {
             // Data residency: Prepend 'api.'
             ghesApiUrl = `https://api.${domain}`;
         } else {
