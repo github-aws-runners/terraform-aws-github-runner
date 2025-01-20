@@ -36,8 +36,8 @@
   },
   "dependencies": {
     "@aws-github-runner/aws-powertools-util": "*",
-    "@aws-sdk/client-ssm": "^3.726.1",
-    "@aws-sdk/types": "^3.723.0"
+    "@aws-sdk/client-ssm": "^3.731.1",
+    "@aws-sdk/types": "^3.731.0"
   },
   "nx": {
     "includedScripts": [
