@@ -117,7 +117,7 @@ __metadata:
     aws-sdk-client-mock-jest: "npm:^4.1.0"
     cron-parser: "npm:^4.9.0"
     eslint: "npm:^8.57.0"
-    eslint-plugin-prettier: "npm:5.2.1"
+    eslint-plugin-prettier: "npm:5.2.3"
     jest: "npm:^29.7.0"
     jest-mock: "npm:^29.7.0"
     jest-mock-extended: "npm:^3.0.7"
@@ -148,7 +148,7 @@ __metadata:
     aws-lambda: "npm:^1.0.7"
     body-parser: "npm:^1.20.3"
     eslint: "npm:^8.57.0"
-    eslint-plugin-prettier: "npm:5.2.1"
+    eslint-plugin-prettier: "npm:5.2.3"
     express: "npm:^4.21.2"
     jest: "npm:^29.7.0"
     jest-mock: "npm:^29.7.0"
@@ -177,7 +177,7 @@ __metadata:
     "@vercel/ncc": "npm:0.38.3"
     body-parser: "npm:^1.20.3"
     eslint: "npm:^8.57.0"
-    eslint-plugin-prettier: "npm:5.2.1"
+    eslint-plugin-prettier: "npm:5.2.3"
     express: "npm:^4.21.2"
     jest: "npm:^29.7.0"
     jest-mock: "npm:^29.7.0"
@@ -216,7 +216,7 @@ __metadata:
     aws-sdk-client-mock-jest: "npm:^4.1.0"
     cron-parser: "npm:^4.9.0"
     eslint: "npm:^8.57.0"
-    eslint-plugin-prettier: "npm:5.2.1"
+    eslint-plugin-prettier: "npm:5.2.3"
     jest: "npm:^29.7.0"
     jest-mock: "npm:^29.7.0"
     jest-mock-extended: "npm:^3.0.7"
@@ -252,7 +252,7 @@ __metadata:
     aws-sdk-client-mock-jest: "npm:^4.1.0"
     axios: "npm:^1.7.9"
     eslint: "npm:^8.57.0"
-    eslint-plugin-prettier: "npm:5.2.1"
+    eslint-plugin-prettier: "npm:5.2.3"
     jest: "npm:^29.7.0"
     jest-mock: "npm:^29.7.0"
     prettier: "npm:3.4.2"
@@ -280,7 +280,7 @@ __metadata:
     aws-sdk-client-mock: "npm:^4.1.0"
     aws-sdk-client-mock-jest: "npm:^4.1.0"
     eslint: "npm:^8.57.0"
-    eslint-plugin-prettier: "npm:5.2.1"
+    eslint-plugin-prettier: "npm:5.2.3"
     jest: "npm:^29.7.0"
     jest-mock: "npm:^29.7.0"
     jest-mock-extended: "npm:^3.0.7"
@@ -316,7 +316,7 @@ __metadata:
     aws-lambda: "npm:^1.0.7"
     body-parser: "npm:^1.20.3"
     eslint: "npm:^8.57.0"
-    eslint-plugin-prettier: "npm:5.2.1"
+    eslint-plugin-prettier: "npm:5.2.3"
     express: "npm:^4.21.2"
     jest: "npm:^29.7.0"
     jest-mock: "npm:^29.7.0"
@@ -6756,9 +6756,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint-plugin-prettier@npm:5.2.1":
-  version: 5.2.1
-  resolution: "eslint-plugin-prettier@npm:5.2.1"
+"eslint-plugin-prettier@npm:5.2.3":
+  version: 5.2.3
+  resolution: "eslint-plugin-prettier@npm:5.2.3"
   dependencies:
     prettier-linter-helpers: "npm:^1.0.0"
     synckit: "npm:^0.9.1"
@@ -6772,7 +6772,7 @@ __metadata:
       optional: true
     eslint-config-prettier:
       optional: true
-  checksum: 10c0/4bc8bbaf5bb556c9c501dcdff369137763c49ccaf544f9fa91400360ed5e3a3f1234ab59690e06beca5b1b7e6f6356978cdd3b02af6aba3edea2ffe69ca6e8b2
+  checksum: 10c0/60d9c03491ec6080ac1d71d0bee1361539ff6beb9b91ac98cfa7176c9ed52b7dbe7119ebee5b441b479d447d17d802a4a492ee06095ef2f22c460e3dd6459302
   languageName: node
   linkType: hard
 
