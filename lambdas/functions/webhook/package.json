@@ -16,7 +16,7 @@
     "all": "yarn build && yarn format && yarn lint && yarn test"
   },
   "devDependencies": {
-    "@aws-sdk/client-eventbridge": "^3.731.1",
+    "@aws-sdk/client-eventbridge": "^3.734.0",
     "@trivago/prettier-plugin-sort-imports": "^4.3.0",
     "@types/aws-lambda": "^8.10.146",
     "@types/express": "^4.17.21",
@@ -40,7 +40,7 @@
   "dependencies": {
     "@aws-github-runner/aws-powertools-util": "*",
     "@aws-github-runner/aws-ssm-util": "*",
-    "@aws-sdk/client-sqs": "^3.731.1",
+    "@aws-sdk/client-sqs": "^3.734.0",
     "@middy/core": "^4.7.0",
     "@octokit/rest": "20.1.1",
     "@octokit/types": "^13.7.0",
