@@ -16,7 +16,7 @@ jobs:
       id-token: write
       attestations: write
     steps:
-      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+      - uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
         with:
           node-version: 22
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -43,7 +43,7 @@ jobs:
       - name: Attest
         if: ${{ steps.release.outputs.releases_created == 'true' }}
         id: attest
-        uses: actions/attest-build-provenance@7668571508540a607bdfd90a87a560489fe372eb # v2.1.0
+        uses: actions/attest-build-provenance@520d128f165991a6c774bcb264f323e3d70747f4 # v2.2.0
         with:
           subject-path: '${{ github.workspace }}/lambdas/functions/**/*.zip'
       - name: Update release notes with attestation

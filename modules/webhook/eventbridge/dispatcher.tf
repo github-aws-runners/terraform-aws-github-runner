@@ -1,7 +1,8 @@
 resource "aws_cloudwatch_event_rule" "workflow_job" {
   name           = "${var.config.prefix}-workflow_job"
-  description    = "Workflow job event ruule for job queued."
+  description    = "Workflow job event rule for job queued."
   event_bus_name = aws_cloudwatch_event_bus.main.name
+  tags           = var.config.tags
 
   event_pattern = <<EOF
 {

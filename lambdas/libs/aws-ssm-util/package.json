@@ -19,7 +19,7 @@
     "@types/express": "^4.17.21",
     "@types/jest": "^29.5.14",
     "@types/node": "^22.10.2",
-    "@typescript-eslint/eslint-plugin": "^8.19.1",
+    "@typescript-eslint/eslint-plugin": "^8.22.0",
     "@typescript-eslint/parser": "^8.16.0",
     "@vercel/ncc": "0.38.3",
     "body-parser": "^1.20.3",
@@ -36,8 +36,8 @@
   },
   "dependencies": {
     "@aws-github-runner/aws-powertools-util": "*",
-    "@aws-sdk/client-ssm": "^3.731.1",
-    "@aws-sdk/types": "^3.731.0"
+    "@aws-sdk/client-ssm": "^3.735.0",
+    "@aws-sdk/types": "^3.734.0"
   },
   "nx": {
     "includedScripts": [
