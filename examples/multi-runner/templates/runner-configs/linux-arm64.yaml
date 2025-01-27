@@ -19,6 +19,6 @@ runner_config:
   delay_webhook_event: 0
   scale_down_schedule_expression: cron(* * * * ? *)
   runner_hook_job_started: |
-    echo "Running pre job hook as \$(whoami)"
+    echo "Running pre job hook as $(whoami)"
   runner_hook_job_completed: |
-    echo "Running post job hook as \$(whoami)"
+    echo "Running post job hook as $(whoami)"

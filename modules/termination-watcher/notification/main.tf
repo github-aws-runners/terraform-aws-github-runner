@@ -19,6 +19,7 @@ module "termination_warning_watcher" {
 resource "aws_cloudwatch_event_rule" "spot_instance_termination_warning" {
   name        = "${var.config.prefix != null ? format("%s-", var.config.prefix) : ""}spot-notify"
   description = "Spot Instance Termination Warning"
+  tags        = local.config.tags
 
   event_pattern = <<EOF
 {
