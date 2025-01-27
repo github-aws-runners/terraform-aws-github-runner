@@ -1,5 +1,13 @@
 # Changelog
 
+## [6.1.4](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.1.3...v6.1.4) (2025-01-27)
+
+
+### Bug Fixes
+
+* **lambda:** bump the aws group in /lambdas with 7 updates ([#4383](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4383)) ([1b3f8af](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/1b3f8af0657eb467f3e1787ad8f55262795f9690))
+* Tag event rules, fix broken runner hook examples ([#4378](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4378)) ([6345ec2](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/6345ec23580a02a3263c798dc2e0851aff89f328))
+
 ## [6.1.3](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.1.2...v6.1.3) (2025-01-21)
 
 
