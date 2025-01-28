@@ -28,9 +28,8 @@ jest.mock('./../aws/runners', () => ({
   listEC2Runners: jest.fn(),
 }));
 jest.mock('./../github/auth');
-jest.mock('../scale-runners/scale-up', () => ({
-  getGitHubEnterpriseApiUrl: jest.fn() as jest.Mock,
-}));
+jest.mock('../scale-runners/scale-up');
+
 const mocktokit = Octokit as jest.MockedClass<typeof Octokit>;
 const mockedAppAuth = mocked(ghAuth.createGithubAppAuth, {
   shallow: false,
