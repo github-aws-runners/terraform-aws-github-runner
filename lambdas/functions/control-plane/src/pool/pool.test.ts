@@ -170,7 +170,7 @@ beforeEach(() => {
 describe('Test simple pool.', () => {
   describe('With GitHub Cloud', () => {
     beforeEach(() => {
-      scaleUp.getGitHubEnterpriseApiUrl.mockReturnValue({
+      getGitHubEnterpriseApiUrl.mockReturnValue({
         ghesApiUrl: '',
         ghesBaseUrl: '',
       });
