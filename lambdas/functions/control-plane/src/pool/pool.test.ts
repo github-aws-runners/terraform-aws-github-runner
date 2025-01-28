@@ -170,7 +170,7 @@ beforeEach(() => {
 describe('Test simple pool.', () => {
   describe('With GitHub Cloud', () => {
     beforeEach(() => {
-      getGitHubEnterpriseApiUrl.mockReturnValue({
+      (getGitHubEnterpriseApiUrl as jest.Mock).mockReturnValue({
         ghesApiUrl: '',
         ghesBaseUrl: '',
       });
@@ -251,7 +251,7 @@ describe('Test simple pool.', () => {
 
   describe('With GHES', () => {
     beforeEach(() => {
-      getGitHubEnterpriseApiUrl.mockReturnValue({
+      (getGitHubEnterpriseApiUrl as jest.Mock).mockReturnValue({
         ghesApiUrl: 'https://api.github.enterprise.something',
         ghesBaseUrl: 'https://github.enterprise.something',
       });
@@ -270,7 +270,7 @@ describe('Test simple pool.', () => {
 
   describe('With Github Data Residency', () => {
     beforeEach(() => {
-      getGitHubEnterpriseApiUrl.mockReturnValue({
+      (getGitHubEnterpriseApiUrl as jest.Mock).mockReturnValue({
         ghesApiUrl: 'https://api.companyname.ghe.com',
         ghesBaseUrl: 'https://companyname.ghe.com',
       });
