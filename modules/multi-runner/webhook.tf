@@ -13,7 +13,7 @@ module "webhook" {
   }
 
   github_app_parameters = {
-    webhook_secret = module.ssm.parameters.github_app_webhook_secret
+    webhook_secret = local.github_app_parameters.webhook_secret
   }
 
   lambda_s3_bucket                              = var.lambda_s3_bucket
