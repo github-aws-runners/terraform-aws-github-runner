@@ -25,7 +25,7 @@ This [Terraform](https://www.terraform.io/) module creates the required infrastr
 - Tailored software, hardware and network configuration: Bring your own AMI, define the instance types and subnets to use.
 - OS support: Linux (x64/arm64) and Windows
 - Multi-Runner: Create multiple runner configurations with a single deployment
-- GitHub cloud and GitHub Enterprise Server (GHES) support.
+- GitHub cloud, Github Cloud with Data Residency and GitHub Enterprise Server (GHES) support.
 - Org and repo level runners. enterprise level runners are not supported (yet).
 
 
@@ -140,7 +140,7 @@ Join our discord community via [this invite link](https://discord.gg/bxgXW8jJGh)
 | <a name="input_enable_userdata"></a> [enable\_userdata](#input\_enable\_userdata) | Should the userdata script be enabled for the runner. Set this to false if you are using your own prebuilt AMI. | `bool` | `true` | no |
 | <a name="input_eventbridge"></a> [eventbridge](#input\_eventbridge) | Enable the use of EventBridge by the module. By enabling this feature events will be put on the EventBridge by the webhook instead of directly dispatching to queues for scaling.<br/><br/>    `enable`: Enable the EventBridge feature.<br/>    `accept_events`: List can be used to only allow specific events to be putted on the EventBridge. By default all events, empty list will be be interpreted as all events. | <pre>object({<br/>    enable        = optional(bool, true)<br/>    accept_events = optional(list(string), null)<br/>  })</pre> | `{}` | no |
 | <a name="input_ghes_ssl_verify"></a> [ghes\_ssl\_verify](#input\_ghes\_ssl\_verify) | GitHub Enterprise SSL verification. Set to 'false' when custom certificate (chains) is used for GitHub Enterprise Server (insecure). | `bool` | `true` | no |
-| <a name="input_ghes_url"></a> [ghes\_url](#input\_ghes\_url) | GitHub Enterprise Server URL. Example: https://github.internal.co - DO NOT SET IF USING PUBLIC GITHUB | `string` | `null` | no |
+| <a name="input_ghes_url"></a> [ghes\_url](#input\_ghes\_url) | GitHub Enterprise Server URL. Example: https://github.internal.co - DO NOT SET IF USING PUBLIC GITHUB - github.com. However if you are using Github Enterprise Cloud with data-residency (ghe.com), set the endpoint here. Example - https://companyname.ghe.com | `string` | `null` | no |
 | <a name="input_github_app"></a> [github\_app](#input\_github\_app) | GitHub app parameters, see your github app. Ensure the key is the base64-encoded `.pem` file (the output of `base64 app.private-key.pem`, not the content of `private-key.pem`). | <pre>object({<br/>    key_base64     = string<br/>    id             = string<br/>    webhook_secret = string<br/>  })</pre> | n/a | yes |
 | <a name="input_idle_config"></a> [idle\_config](#input\_idle\_config) | List of time periods, defined as a cron expression, to keep a minimum amount of runners active instead of scaling down to 0. By defining this list you can ensure that in time periods that match the cron expression within 5 seconds a runner is kept idle. | <pre>list(object({<br/>    cron             = string<br/>    timeZone         = string<br/>    idleCount        = number<br/>    evictionStrategy = optional(string, "oldest_first")<br/>  }))</pre> | `[]` | no |
 | <a name="input_instance_allocation_strategy"></a> [instance\_allocation\_strategy](#input\_instance\_allocation\_strategy) | The allocation strategy for spot instances. AWS recommends using `price-capacity-optimized` however the AWS default is `lowest-price`. | `string` | `"lowest-price"` | no |
