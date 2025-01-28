@@ -29,7 +29,6 @@ jest.mock('./../aws/runners', () => ({
 }));
 jest.mock('./../github/auth');
 jest.mock('../scale-runners/scale-up', () => ({
-  ...jest.fn(),
   getGitHubEnterpriseApiUrl: jest.fn() as jest.Mock,
 }));
 const mocktokit = Octokit as jest.MockedClass<typeof Octokit>;
