@@ -5,7 +5,7 @@ import nock from 'nock';
 
 import { listEC2Runners } from '../aws/runners';
 import * as ghAuth from '../github/auth';
-import { createRunners } from '../scale-runners/scale-up';
+import { createRunners, getGitHubEnterpriseApiUrl } from '../scale-runners/scale-up';
 import { adjust } from './pool';
 
 const mockOctokit = {
@@ -29,6 +29,7 @@ jest.mock('./../aws/runners', () => ({
 }));
 jest.mock('./../github/auth');
 jest.mock('./../scale-runners/scale-up');
+
 
 const mocktokit = Octokit as jest.MockedClass<typeof Octokit>;
 const mockedAppAuth = mocked(ghAuth.createGithubAppAuth, {
@@ -167,6 +168,15 @@ beforeEach(() => {
 
 describe('Test simple pool.', () => {
   describe('With GitHub Cloud', () => {
+    beforeEach(() => {
+    getGitHubEnterpriseApiUrl.mockReturnValue({
+      ghesApiUrl: '',
+      ghesBaseUrl: '',
+    });
+
+    // Reset mocks before each test
+    jest.clearAllMocks();
+  });
     it('Top up pool with pool size 2 registered.', async () => {
       await expect(await adjust({ poolSize: 3 })).resolves;
       expect(createRunners).toHaveBeenCalledTimes(1);
@@ -240,7 +250,10 @@ describe('Test simple pool.', () => {
 
   describe('With GHES', () => {
     beforeEach(() => {
-      process.env.GHES_URL = 'https://github.enterprise.something';
+       getGitHubEnterpriseApiUrl.mockReturnValue({
+            ghesApiUrl: 'https://api.github.enterprise.something',
+            ghesBaseUrl: 'https://github.enterprise.something',
+    });
     });
 
     it('Top up if the pool size is set to 5', async () => {
@@ -256,7 +269,10 @@ describe('Test simple pool.', () => {
 
    describe('With Github Data Residency', () => {
     beforeEach(() => {
-      process.env.GHES_URL = 'https://companyname.ghe.com';
+          getGitHubEnterpriseApiUrl.mockReturnValue({
+            ghesApiUrl: 'https://api.companyname.ghe.com',
+            ghesBaseUrl: 'https://companyname.ghe.com',
+    });
     });
 
     it('Top up if the pool size is set to 5', async () => {
