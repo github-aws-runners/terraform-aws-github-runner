@@ -28,8 +28,10 @@ jest.mock('./../aws/runners', () => ({
   listEC2Runners: jest.fn(),
 }));
 jest.mock('./../github/auth');
-jest.mock('./../scale-runners/scale-up');
-
+jest.mock('../scale-runners/scale-up', () => ({
+  ...jest.fn(),
+  getGitHubEnterpriseApiUrl: jest.fn(),
+}));
 const mocktokit = Octokit as jest.MockedClass<typeof Octokit>;
 const mockedAppAuth = mocked(ghAuth.createGithubAppAuth, {
   shallow: false,
@@ -168,7 +170,7 @@ beforeEach(() => {
 describe('Test simple pool.', () => {
   describe('With GitHub Cloud', () => {
     beforeEach(() => {
-      getGitHubEnterpriseApiUrl.mockReturnValue({
+      scaleUp.getGitHubEnterpriseApiUrl.mockReturnValue({
         ghesApiUrl: '',
         ghesBaseUrl: '',
       });
