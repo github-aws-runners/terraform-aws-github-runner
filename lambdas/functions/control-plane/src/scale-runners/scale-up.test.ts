@@ -979,7 +979,6 @@ describe('scaleUp with Github Data Residency', () => {
   });
 });
 
-
 function defaultOctokitMockImpl() {
   mockOctokit.actions.getJobForWorkflowRun.mockImplementation(() => ({
     data: {

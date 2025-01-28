@@ -8,7 +8,7 @@ import { RunnerInfo, RunnerList } from './../aws/runners.d';
 import { GhRunners, githubCache } from './cache';
 import { ScalingDownConfig, getEvictionStrategy, getIdleRunnerCount } from './scale-down-config';
 import { metricGitHubAppRateLimit } from '../github/rate-limit';
-import {getGitHubEnterpriseApiUrl} from './scale-up';
+import { getGitHubEnterpriseApiUrl } from './scale-up';
 
 const logger = createChildLogger('scale-down');
 
@@ -22,7 +22,7 @@ async function getOrCreateOctokit(runner: RunnerInfo): Promise<Octokit> {
   }
 
   logger.debug(`[createGitHubClientForRunner] Cache miss for ${key}`);
-  const { ghesApiUrl} = getGitHubEnterpriseApiUrl();
+  const { ghesApiUrl } = getGitHubEnterpriseApiUrl();
   const ghAuthPre = await createGithubAppAuth(undefined, ghesApiUrl);
   const githubClientPre = await createOctokitClient(ghAuthPre.token, ghesApiUrl);
 
