@@ -352,21 +352,12 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
 }
 
 export function getGitHubEnterpriseApiUrl() {
-    const ghesBaseUrl = process.env.GHES_URL;
-    let ghesApiUrl = '';
-    if (ghesBaseUrl) {
-        const url = new URL(ghesBaseUrl);
-        const domain = url.hostname;
-        if (domain.endsWith('.ghe.com')) {
-            // Data residency: Prepend 'api.'
-            ghesApiUrl = `https://api.${domain}`;
-        } else {
-            // GitHub Enterprise Server: Append '/api/v3'
-            ghesApiUrl = `${ghesBaseUrl}/api/v3`;
-        }
-    }
-  logger.debug (`Github Enterprise URLs: api_url - ${ghesApiUrl}; base_url - ${ghesBaseUrl}`)
-    return { ghesApiUrl, ghesBaseUrl };
+  const ghesBaseUrl = process.env.GHES_URL;
+  let ghesApiUrl = '';
+  if (ghesBaseUrl) {
+    ghesApiUrl = `${ghesBaseUrl}/api/v3`;
+  }
+  return { ghesApiUrl, ghesBaseUrl };
 }
 
 async function createStartRunnerConfig(

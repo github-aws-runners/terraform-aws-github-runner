@@ -254,22 +254,6 @@ describe('Test simple pool.', () => {
     });
   });
 
-   describe('With Github Data Residency', () => {
-    beforeEach(() => {
-      process.env.GHES_URL = 'https://companyname.ghe.com';
-    });
-
-    it('Top up if the pool size is set to 5', async () => {
-      await expect(await adjust({ poolSize: 5 })).resolves;
-      // 2 idle, top up with 3 to match a pool of 5
-      expect(createRunners).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({ numberOfRunners: 3 }),
-        expect.anything(),
-      );
-    });
-  });
-
   describe('With Runner Name Prefix', () => {
     beforeEach(() => {
       process.env.RUNNER_NAME_PREFIX = 'runner-prefix_';
