@@ -30,7 +30,7 @@ jest.mock('./../aws/runners', () => ({
 jest.mock('./../github/auth');
 jest.mock('../scale-runners/scale-up', () => ({
   ...jest.fn(),
-  getGitHubEnterpriseApiUrl: jest.fn(),
+  getGitHubEnterpriseApiUrl: jest.fn() as jest.Mock,
 }));
 const mocktokit = Octokit as jest.MockedClass<typeof Octokit>;
 const mockedAppAuth = mocked(ghAuth.createGithubAppAuth, {
@@ -174,9 +174,6 @@ describe('Test simple pool.', () => {
         ghesApiUrl: '',
         ghesBaseUrl: '',
       });
-
-      // Reset mocks before each test
-      jest.clearAllMocks();
     });
     it('Top up pool with pool size 2 registered.', async () => {
       await expect(await adjust({ poolSize: 3 })).resolves;
