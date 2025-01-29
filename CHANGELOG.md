@@ -1,5 +1,19 @@
 # Changelog
 
+## [6.2.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.1.3...v6.2.0) (2025-01-29)
+
+
+### Features
+
+* Support GitHub Enterprise Cloud with Data Residency ([#4367](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4367)) ([e5ebd5f](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/e5ebd5fbb3fc2899de3a2a7ce6de9014b95ba6ed))
+* Support GitHub Enterprise Cloud with Data Residency ([#4390](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4390)) ([02b4a04](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/02b4a04bc45331667a9d8c1177107e46ee336782))
+
+
+### Bug Fixes
+
+* **lambda:** bump the aws group in /lambdas with 7 updates ([#4383](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4383)) ([1b3f8af](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/1b3f8af0657eb467f3e1787ad8f55262795f9690))
+* Tag event rules, fix broken runner hook examples ([#4378](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4378)) ([6345ec2](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/6345ec23580a02a3263c798dc2e0851aff89f328))
+
 ## [6.1.3](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.1.2...v6.1.3) (2025-01-21)
 
 
