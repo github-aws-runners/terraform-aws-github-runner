@@ -47,7 +47,6 @@ output "ssm_parameters" {
   value = module.ssm.parameters
 }
 
-
 output "queues" {
   description = "SQS queues."
   value = {

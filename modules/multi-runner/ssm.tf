@@ -3,6 +3,6 @@ module "ssm" {
 
   kms_key_arn = var.kms_key_arn
   path_prefix = "${local.ssm_root_path}/${var.ssm_paths.app}"
-  github_app  = var.github_app
+  github_app  = local.github_app
   tags        = local.tags
 }

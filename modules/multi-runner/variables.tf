@@ -1,9 +1,15 @@
 variable "github_app" {
-  description = "GitHub app parameters, see your github app. Ensure the key is the base64-encoded `.pem` file (the output of `base64 app.private-key.pem`, not the content of `private-key.pem`)."
+  description = <<EOF
+    GitHub app parameters, see your github app. Ensure the key is the base64-encoded `.pem` file (the output of `base64 app.private-key.pem`, not the content of `private-key.pem`)."
+
+    If `webhook_secret` is not set, a random secret will be generated and stored in SSM. The secret is used to validate the webhook events. If you want to use your own secret, set the `webhook_secret` parameter.
+    When the secret is managed by the module, it will be rotated every `webhook_secret_rotation_days` days.
+  EOF
   type = object({
-    key_base64     = string
-    id             = string
-    webhook_secret = string
+    key_base64                   = string
+    id                           = string
+    webhook_secret               = optional(string)
+    webhook_secret_rotation_days = optional(number, 30)
   })
 }
 

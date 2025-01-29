@@ -3,10 +3,6 @@ locals {
   aws_region  = var.aws_region
 }
 
-resource "random_id" "random" {
-  byte_length = 20
-}
-
 module "base" {
   source = "../base"
 
@@ -27,9 +23,9 @@ module "runners" {
   }
 
   github_app = {
-    key_base64     = var.github_app.key_base64
-    id             = var.github_app.id
-    webhook_secret = random_id.random.hex
+    key_base64 = var.github_app.key_base64
+    id         = var.github_app.id
+    # webhook_secret = random_id.random.hex
   }
 
   # configure the block device mappings, default for Amazon Linux2
@@ -141,18 +137,6 @@ module "runners" {
 
   # enable CMK instead of aws managed key for encryptions
   # kms_key_arn = aws_kms_key.github.arn
-}
-
-module "webhook_github_app" {
-  source     = "../../modules/webhook-github-app"
-  depends_on = [module.runners]
-
-  github_app = {
-    key_base64     = var.github_app.key_base64
-    id             = var.github_app.id
-    webhook_secret = random_id.random.hex
-  }
-  webhook_endpoint = module.runners.webhook.endpoint
 }
 
 # enable CMK instead of aws managed key for encryptions

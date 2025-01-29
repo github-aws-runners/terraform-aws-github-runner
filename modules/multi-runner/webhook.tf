@@ -1,3 +1,11 @@
+module "webhook_github_app" {
+  count  = var.github_app.webhook_secret == null ? 1 : 0
+  source = "./../webhook-github-app"
+
+  github_app       = local.github_app
+  webhook_endpoint = "${module.webhook.gateway.api_endpoint}/${module.webhook.endpoint_relative_path}"
+}
+
 module "webhook" {
   source                              = "../webhook"
   prefix                              = var.prefix

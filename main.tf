@@ -12,6 +12,17 @@ locals {
   runner_labels         = (var.runner_disable_default_labels == false) ? sort(concat(local.default_runner_labels, var.runner_extra_labels)) : var.runner_extra_labels
 
   ssm_root_path = var.ssm_paths.use_prefix ? "/${var.ssm_paths.root}/${var.prefix}" : "/${var.ssm_paths.root}"
+
+  github_app = merge(var.github_app, {
+    webhook_secret = var.github_app.webhook_secret != null ? var.github_app.webhook_secret : module.rotating_random[0].random.hex
+  })
+}
+
+module "rotating_random" {
+  count  = var.github_app.webhook_secret == null ? 1 : 0
+  source = "./modules/rotating-random"
+
+  rotation_days = var.github_app.webhook_secret_rotation_days
 }
 
 resource "random_string" "random" {
@@ -91,8 +102,16 @@ module "ssm" {
 
   kms_key_arn = var.kms_key_arn
   path_prefix = "${local.ssm_root_path}/${var.ssm_paths.app}"
-  github_app  = var.github_app
+  github_app  = local.github_app
   tags        = local.tags
+}
+
+module "webhook_github_app" {
+  count  = var.github_app.webhook_secret == null ? 1 : 0
+  source = "./modules/webhook-github-app"
+
+  github_app       = local.github_app
+  webhook_endpoint = "${module.webhook.gateway.api_endpoint}/${module.webhook.endpoint_relative_path}"
 }
 
 module "webhook" {

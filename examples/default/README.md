@@ -40,9 +40,7 @@ terraform output -raw webhook_secret
 
 ## Providers
 
-| Name | Version |
-|------|---------|
-| <a name="provider_random"></a> [random](#provider\_random) | 3.6.3 |
+No providers.
 
 ## Modules
 
@@ -50,13 +48,10 @@ terraform output -raw webhook_secret
 |------|--------|---------|
 | <a name="module_base"></a> [base](#module\_base) | ../base | n/a |
 | <a name="module_runners"></a> [runners](#module\_runners) | ../../ | n/a |
-| <a name="module_webhook_github_app"></a> [webhook\_github\_app](#module\_webhook\_github\_app) | ../../modules/webhook-github-app | n/a |
 
 ## Resources
 
-| Name | Type |
-|------|------|
-| [random_id.random](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/id) | resource |
+No resources.
 
 ## Inputs
 
@@ -72,5 +67,4 @@ terraform output -raw webhook_secret
 |------|-------------|
 | <a name="output_runners"></a> [runners](#output\_runners) | n/a |
 | <a name="output_webhook_endpoint"></a> [webhook\_endpoint](#output\_webhook\_endpoint) | n/a |
-| <a name="output_webhook_secret"></a> [webhook\_secret](#output\_webhook\_secret) | n/a |
 <!-- END_TF_DOCS -->

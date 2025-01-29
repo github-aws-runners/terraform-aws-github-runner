@@ -16,6 +16,17 @@ locals {
   unique_os_and_arch                   = { for i, v in local.tmp_distinct_list_unique_os_and_arch : "${v.os_type}_${v.architecture}" => v }
 
   ssm_root_path = "/${var.ssm_paths.root}/${var.prefix}"
+
+  github_app = merge(var.github_app, {
+    webhook_secret = var.github_app.webhook_secret != null ? var.github_app.webhook_secret : module.rotating_random[0].random.hex
+  })
+}
+
+module "rotating_random" {
+  count  = var.github_app.webhook_secret == null ? 1 : 0
+  source = "./../rotating-random"
+
+  rotation_days = var.github_app.webhook_secret_rotation_days
 }
 
 resource "random_string" "random" {
