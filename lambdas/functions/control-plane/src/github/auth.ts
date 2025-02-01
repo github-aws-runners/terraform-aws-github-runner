@@ -29,6 +29,7 @@ export async function createOctokitClient(token: string, ghesApiUrl = ''): Promi
 
   return new CustomOctokit({
     ...ocktokitOptions,
+    userAgent: process.env.USER_AGENT || 'aws-github-runner',
     throttle: {
       onRateLimit: (retryAfter: number, options: Required<EndpointDefaults>) => {
         logger.warn(

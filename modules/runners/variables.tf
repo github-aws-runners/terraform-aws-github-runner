@@ -733,3 +733,9 @@ variable "job_retry" {
     error_message = "The maxium message delay for SWS is 900 seconds."
   }
 }
+
+variable "user_agent" {
+  description = "User agent used for API calls."
+  type        = string
+  default     = null
+}

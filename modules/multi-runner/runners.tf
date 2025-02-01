@@ -102,6 +102,7 @@ module "runners" {
 
   ghes_url        = var.ghes_url
   ghes_ssl_verify = var.ghes_ssl_verify
+  user_agent      = var.user_agent
 
   kms_key_arn = var.kms_key_arn
 

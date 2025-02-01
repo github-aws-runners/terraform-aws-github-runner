@@ -34,6 +34,7 @@ resource "aws_lambda_function" "scale_up" {
       ENABLE_ORGANIZATION_RUNNERS              = var.enable_organization_runners
       ENVIRONMENT                              = var.prefix
       GHES_URL                                 = var.ghes_url
+      USER_AGENT                               = var.user_agent
       INSTANCE_ALLOCATION_STRATEGY             = var.instance_allocation_strategy
       INSTANCE_MAX_SPOT_PRICE                  = var.instance_max_spot_price
       INSTANCE_TARGET_CAPACITY_TYPE            = var.instance_target_capacity_type

@@ -98,7 +98,7 @@ module "runners" {
   }
 
   # Enable debug logging for the lambda functions
-  # log_level = "debug"
+  log_level = "debug"
 
   # tracing_config = {
   #   mode                  = "Active"
