@@ -8,9 +8,13 @@ on:
       - "images/**"
       - ".github/workflows/packer-build.yml"
       - "module/runners/templates/**"
+permissions:
+  contents: read
+
 env:
   AWS_REGION: eu-west-1
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 jobs:
   verify_packer:
     name: Verify packer
