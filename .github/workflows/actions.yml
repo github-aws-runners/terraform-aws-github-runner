@@ -24,7 +24,7 @@ jobs:
       - name: lint wit zizmor
         run: |
           pipx install zizmor
-          zizmor --gh-token $GITHUB_TOKEN --format sarif . > results.sarif || true
+          zizmor --gh-token ${{ secrets.GITHUB_TOKEN }} --format sarif . > results.sarif || true
 
       - name: Upload SARIF file
         uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
