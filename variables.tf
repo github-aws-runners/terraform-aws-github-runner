@@ -956,5 +956,5 @@ EOF
 variable "user_agent" {
   description = "User agent used for API calls by lambda functions."
   type        = string
-  default     = "aws-github-runner"
+  default     = "github-aws-runners"
 }
