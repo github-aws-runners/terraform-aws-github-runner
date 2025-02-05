@@ -160,12 +160,12 @@ ONYX_ECR_REGISTRY=$(echo "$tags" | jq -r '.Tags[] | select(.Key == "onyx:ecr-reg
 echo "ONYX_ECR_REGISTRY=$ONYX_ECR_REGISTRY" >> .env
 ONYX_ARTIFACTS_BUCKET=$(echo "$tags" | jq -r '.Tags[] | select(.Key == "onyx:artifacts-bucket") | .Value')
 echo "ONYX_ARTIFACTS_BUCKET=$ONYX_ARTIFACTS_BUCKET" >> .env
-ONYX_ARTIFACTS_BUCKET_NAME=$(echo "$tags" | jq -r '.Tags[] | select(.Key == "onyx:artifacts-bucket-name") | .Value')
-echo "ONYX_ARTIFACTS_BUCKET_NAME=$ONYX_ARTIFACTS_BUCKET_NAME" >> .env
+ONYX_ARTIFACTS_BUCKET_DIRECTORY=$(echo "$tags" | jq -r '.Tags[] | select(.Key == "onyx:artifacts-bucket-directory") | .Value')
+echo "ONYX_ARTIFACTS_BUCKET_DIRECTORY=$ONYX_ARTIFACTS_BUCKET_DIRECTORY" >> .env
 ONYX_TERRAFORM_STATE_BUCKET=$(echo "$tags" | jq -r '.Tags[] | select(.Key == "onyx:terraform-state-bucket") | .Value')
 echo "ONYX_TERRAFORM_STATE_BUCKET=$ONYX_TERRAFORM_STATE_BUCKET" >> .env
-ONYX_TERRAFORM_STATE_BUCKET_NAME=$(echo "$tags" | jq -r '.Tags[] | select(.Key == "onyx:terraform-state-bucket-name") | .Value')
-echo "ONYX_TERRAFORM_STATE_BUCKET_NAME=$ONYX_TERRAFORM_STATE_BUCKET_NAME" >> .env
+ONYX_TERRAFORM_STATE_BUCKET_DIRECTORY=$(echo "$tags" | jq -r '.Tags[] | select(.Key == "onyx:terraform-state-bucket-directory") | .Value')
+echo "ONYX_TERRAFORM_STATE_BUCKET_DIRECTORY=$ONYX_TERRAFORM_STATE_BUCKET_DIRECTORY" >> .env
 #### ONYX CUSTOM CHANGES END
 if [[ "$xray_trace_id" != "" ]]; then
   # run xray service
