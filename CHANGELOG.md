@@ -1,5 +1,15 @@
 # Changelog
 
+## [6.2.1](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.2.0...v6.2.1) (2025-02-05)
+
+
+### Bug Fixes
+
+* define user agent ([#4394](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4394)) ([95c9b8a](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/95c9b8abf918da8671a397c09fca9633ab6d1680))
+* **lambda:** bump @octokit/types from 13.7.0 to 13.8.0 in /lambdas in the octokit group ([#4400](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4400)) ([8a14868](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/8a14868e360e9c5721ac2ca964f4261887550da7))
+* **lambda:** bump the aws group across 1 directory with 6 updates ([#4406](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4406)) ([60c734d](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/60c734da01078393ed12c290126a28dc4029b85f))
+* **lambda:** bump the aws-powertools group in /lambdas with 4 updates ([#4401](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4401)) ([7793bf1](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/7793bf17c00acc62736f8ac56a306e3084fa5575))
+
 ## [6.2.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.1.3...v6.2.0) (2025-01-29)
 
 
