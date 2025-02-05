@@ -150,6 +150,23 @@ echo "Retrieved /$ssm_config_path/enable_jit_config parameter - ($enable_jit_con
 token_path=$(echo "$parameters" | jq --arg ssm_config_path "$ssm_config_path" -r '.[] | select(.Name == "'$ssm_config_path'/token_path") | .Value')
 echo "Retrieved /$ssm_config_path/token_path parameter - ($token_path)"
 
+# ONYX CUSTOM CHANGES BEGIN
+tags=$(aws ec2 describe-tags --region "$region" --filters "Name=resource-id,Values=$instance_id")
+# Insert environment variables into .env file
+echo "AWS_DEFAULT_REGION=$region" >> .env
+AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
+echo "AWS_ACCOUNT_ID=$AWS_ACCOUNT_ID" >> .env
+ONYX_ECR_REGISTRY=$(echo "$tags" | jq -r '.Tags[] | select(.Key == "onyx:ecr-registry") | .Value')
+echo "ONYX_ECR_REGISTRY=$ONYX_ECR_REGISTRY" >> .env
+ONYX_ARTIFACTS_BUCKET=$(echo "$tags" | jq -r '.Tags[] | select(.Key == "onyx:artifacts-bucket") | .Value')
+echo "ONYX_ARTIFACTS_BUCKET=$ONYX_ARTIFACTS_BUCKET" >> .env
+ONYX_ARTIFACTS_BUCKET_NAME=$(echo "$tags" | jq -r '.Tags[] | select(.Key == "onyx:artifacts-bucket-name") | .Value')
+echo "ONYX_ARTIFACTS_BUCKET_NAME=$ONYX_ARTIFACTS_BUCKET_NAME" >> .env
+ONYX_TERRAFORM_STATE_BUCKET=$(echo "$tags" | jq -r '.Tags[] | select(.Key == "onyx:terraform-state-bucket") | .Value')
+echo "ONYX_TERRAFORM_STATE_BUCKET=$ONYX_TERRAFORM_STATE_BUCKET" >> .env
+ONYX_TERRAFORM_STATE_BUCKET_NAME=$(echo "$tags" | jq -r '.Tags[] | select(.Key == "onyx:terraform-state-bucket-name") | .Value')
+echo "ONYX_TERRAFORM_STATE_BUCKET_NAME=$ONYX_TERRAFORM_STATE_BUCKET_NAME" >> .env
+#### ONYX CUSTOM CHANGES END
 if [[ "$xray_trace_id" != "" ]]; then
   # run xray service
   curl https://s3.us-east-2.amazonaws.com/aws-xray-assets.us-east-2/xray-daemon/aws-xray-daemon-linux-3.x.zip -o aws-xray-daemon-linux-3.x.zip
