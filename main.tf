@@ -265,7 +265,7 @@ module "runners" {
   pool_config                                = var.pool_config
   pool_lambda_memory_size                    = var.pool_lambda_memory_size
   pool_lambda_timeout                        = var.pool_lambda_timeout
-  pool_runner_owner                          = var.pool_runner_owner
+  pool_runner_owners                         = var.pool_runner_owners
   pool_lambda_reserved_concurrent_executions = var.pool_lambda_reserved_concurrent_executions
 
   ssm_housekeeper = var.runners_ssm_housekeeper

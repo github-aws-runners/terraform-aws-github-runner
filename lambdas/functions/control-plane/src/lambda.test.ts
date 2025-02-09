@@ -152,7 +152,7 @@ describe('Adjust pool.', () => {
         resolve();
       });
     });
-    await expect(adjustPool({ poolSize: 2 }, context)).resolves.not.toThrow();
+    await expect(adjustPool({ poolSize: 2, dynamicPoolScalingEnabled: false }, context)).resolves.not.toThrow();
   });
 
   it('Handle error for adjusting pool.', async () => {
@@ -160,7 +160,7 @@ describe('Adjust pool.', () => {
     const error = new Error('Handle error for adjusting pool.');
     mock.mockRejectedValue(error);
     const logSpy = jest.spyOn(logger, 'error');
-    await adjustPool({ poolSize: 0 }, context);
+    await adjustPool({ poolSize: 0, dynamicPoolScalingEnabled: false }, context);
     expect(logSpy).lastCalledWith(expect.stringContaining(error.message), expect.anything());
   });
 });

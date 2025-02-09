@@ -6,7 +6,7 @@ import nock from 'nock';
 import { listEC2Runners } from '../aws/runners';
 import * as ghAuth from '../github/auth';
 import { createRunners, getGitHubEnterpriseApiUrl } from '../scale-runners/scale-up';
-import { adjust } from './pool';
+import * as pool from './pool';
 
 const mockOctokit = {
   paginate: (f: (arg0: unknown) => unknown[], o: unknown) => f(o),
@@ -35,6 +35,8 @@ jest.mock('./../aws/runners', () => ({
 jest.mock('./../github/auth');
 jest.mock('../scale-runners/scale-up');
 
+const { adjust, getNumberOfQueuedJobs } = pool;
+
 const mocktokit = Octokit as jest.MockedClass<typeof Octokit>;
 const mockedAppAuth = mocked(ghAuth.createGithubAppAuth, {
   shallow: false,
@@ -42,6 +44,7 @@ const mockedAppAuth = mocked(ghAuth.createGithubAppAuth, {
 const mockedInstallationAuth = mocked(ghAuth.createGithubInstallationAuth, { shallow: false });
 const mockCreateClient = mocked(ghAuth.createOctokitClient, { shallow: false });
 const mockListRunners = mocked(listEC2Runners);
+const mockGetNumberOfQueuedJobs = jest.spyOn(pool, 'getNumberOfQueuedJobs');
 
 const cleanEnv = process.env;
 
@@ -145,7 +148,7 @@ beforeEach(() => {
   process.env.SSM_TOKEN_PATH = '/github-action-runners/default/runners/tokens';
   process.env.INSTANCE_TYPES = 'm5.large';
   process.env.INSTANCE_TARGET_CAPACITY_TYPE = 'spot';
-  process.env.RUNNER_OWNER = ORG;
+  process.env.RUNNER_OWNERS = ORG;
   process.env.RUNNER_BOOT_TIME_IN_MINUTES = MINIMUM_TIME_RUNNING.toString();
   process.env.RUNNER_LABELS = LABELS.join(',');
 
@@ -204,7 +207,7 @@ describe('Test simple pool.', () => {
       });
     });
     it('Top up pool with pool size 2 registered.', async () => {
-      await expect(await adjust({ poolSize: 3 })).resolves;
+      await expect(await adjust({ poolSize: 3, dynamicPoolScalingEnabled: false })).resolves;
       expect(createRunners).toHaveBeenCalledTimes(1);
       expect(createRunners).toHaveBeenCalledWith(
         expect.objectContaining({ runnerOwner: ORG, runnerType: 'Org' }),
@@ -214,7 +217,7 @@ describe('Test simple pool.', () => {
     });
 
     it('Should not top up if pool size is reached.', async () => {
-      await expect(await adjust({ poolSize: 1 })).resolves;
+      await expect(await adjust({ poolSize: 1, dynamicPoolScalingEnabled: false })).resolves;
       expect(createRunners).not.toHaveBeenCalled();
     });
 
@@ -240,7 +243,7 @@ describe('Test simple pool.', () => {
       ]);
 
       // 2 idle + 1 booting = 3, top up with 2 to match a pool of 5
-      await expect(await adjust({ poolSize: 5 })).resolves;
+      await expect(await adjust({ poolSize: 5, dynamicPoolScalingEnabled: false })).resolves;
       expect(createRunners).toHaveBeenCalledWith(
         expect.objectContaining({ runnerOwner: ORG, runnerType: 'Org' }),
         expect.objectContaining({ numberOfRunners: 2 }),
@@ -269,13 +272,13 @@ describe('Test simple pool.', () => {
         },
       ]);
 
-      await expect(await adjust({ poolSize: 2 })).resolves;
+      await expect(await adjust({ poolSize: 2, dynamicPoolScalingEnabled: false })).resolves;
       expect(createRunners).not.toHaveBeenCalled();
     });
 
     it('Should not top up if pool size is invalid.', async () => {
       process.env.RUNNER_LABELS = undefined;
-      await expect(await adjust({ poolSize: -2 })).resolves;
+      await expect(await adjust({ poolSize: -2, dynamicPoolScalingEnabled: false })).resolves;
       expect(createRunners).not.toHaveBeenCalled();
     });
   });
@@ -289,7 +292,7 @@ describe('Test simple pool.', () => {
     });
 
     it('Top up if the pool size is set to 5', async () => {
-      await expect(await adjust({ poolSize: 5 })).resolves;
+      await expect(await adjust({ poolSize: 5, dynamicPoolScalingEnabled: false })).resolves;
       // 2 idle, top up with 3 to match a pool of 5
       expect(createRunners).toHaveBeenCalledWith(
         expect.anything(),
@@ -308,7 +311,7 @@ describe('Test simple pool.', () => {
     });
 
     it('Top up if the pool size is set to 5', async () => {
-      await expect(await adjust({ poolSize: 5 })).resolves;
+      await expect(await adjust({ poolSize: 5, dynamicPoolScalingEnabled: false })).resolves;
       // 2 idle, top up with 3 to match a pool of 5
       expect(createRunners).toHaveBeenCalledWith(
         expect.objectContaining({ runnerOwner: ORG, runnerType: 'Org' }),
@@ -362,7 +365,7 @@ describe('Test simple pool.', () => {
         },
       ]);
 
-      await expect(await adjust({ poolSize: 5 })).resolves;
+      await expect(await adjust({ poolSize: 5, dynamicPoolScalingEnabled: false })).resolves;
       // 2 idle, 2 prefixed idle top up with 1 to match a pool of 5
       expect(createRunners).toHaveBeenCalledWith(
         expect.objectContaining({ runnerOwner: ORG, runnerType: 'Org' }),
@@ -372,86 +375,53 @@ describe('Test simple pool.', () => {
     });
   });
 
-  describe('With Negative Pool Size', () => {
-    // effective pool size is 2 (1 queued job with matching labels x 1 workflows x 2 accessible repositories)
-    it('Should not top up if there are fewer queued jobs than idle runners.', async () => {
-      mockOctokit.actions.listWorkflowRunsForRepo.mockImplementation(async ({ owner, repo }) => [
-        {
-          repository: {
-            owner: { login: owner },
-            name: repo,
-          },
-          id: 1,
-          attempt_number: 1,
-        },
-      ]);
-      mockOctokit.actions.listJobsForWorkflowRunAttempt.mockImplementation(async () => [
-        {
-          status: 'completed',
-          labels: LABELS,
-        },
-        {
-          status: 'queued',
-          labels: LABELS,
-        },
-        {
-          status: 'queued',
-          labels: [...LABELS, 'label3'],
-        },
-        {
-          status: 'queued',
-          labels: [],
-        },
-      ]);
-      await expect(await adjust({ poolSize: -1 })).resolves;
-      expect(createRunners).not.toHaveBeenCalled();
-    });
+  describe('With Dynamic Pool Scaling Enabled', () => {
+    const testCases = [
+      { poolSize: 1, numberOfRunners: 0 },
+      { poolSize: 2, numberOfRunners: 0 },
+      { poolSize: 4, numberOfRunners: 2, numberOfQueuedJobs: 6 },
+      { poolSize: 4, numberOfRunners: 2, numberOfQueuedJobs: 4 },
+      { poolSize: 4, numberOfRunners: 1, numberOfQueuedJobs: 3 },
+      { poolSize: 4, numberOfRunners: 0, numberOfQueuedJobs: 2 },
+      { poolSize: 4, numberOfRunners: 0, numberOfQueuedJobs: 0 },
+    ];
 
-    // effective pool size is 8 (2 queued job with matching labels x 2 workflows x 2 accessible repositories)
-    it('Should top up if there are more queued jobs with matching labels than idle runners.', async () => {
-      mockOctokit.actions.listWorkflowRunsForRepo.mockImplementation(async ({ owner, repo }) => [
-        {
-          repository: {
-            owner: { login: owner },
-            name: repo,
-          },
-          id: 1,
-          attempt_number: 1,
-        },
-        {
-          repository: {
-            owner: { login: owner },
-            name: repo,
-          },
-          id: 2,
-          attempt_number: 1,
-        },
-      ]);
-      mockOctokit.actions.listJobsForWorkflowRunAttempt.mockImplementation(async () => [
-        {
-          status: 'queued',
-          labels: LABELS,
-        },
-        {
-          status: 'queued',
-          labels: LABELS,
-        },
-      ]);
-      await expect(await adjust({ poolSize: -1 })).resolves;
-      expect(createRunners).toHaveBeenCalledTimes(1);
-      expect(createRunners).toHaveBeenCalledWith(
-        expect.objectContaining({ runnerOwner: ORG, runnerType: 'Org' }),
-        expect.objectContaining({ numberOfRunners: 6 }),
-        expect.anything(),
-      );
-    });
+    for (const { poolSize, numberOfRunners, numberOfQueuedJobs } of testCases) {
+      let message = numberOfRunners === 0 ? 'Should not top up' : `Should top up with ${numberOfRunners} runners`;
+      message += ` when the maximum pool size is ${poolSize}, and there are 2 idle runners`;
+      if (numberOfQueuedJobs !== undefined) {
+        message += ` and ${numberOfQueuedJobs} queued jobs`;
+      }
+
+      it(message, async () => {
+        if (numberOfQueuedJobs !== undefined) {
+          mockGetNumberOfQueuedJobs.mockReturnValueOnce(Promise.resolve(numberOfQueuedJobs));
+        }
+        await expect(await adjust({ poolSize, dynamicPoolScalingEnabled: true })).resolves;
+        if (numberOfQueuedJobs === undefined) {
+          expect(mockGetNumberOfQueuedJobs).not.toHaveBeenCalled();
+        } else {
+          expect(mockGetNumberOfQueuedJobs).toHaveBeenCalledTimes(1);
+        }
+        if (numberOfRunners === 0) {
+          expect(createRunners).not.toHaveBeenCalled();
+        } else {
+          expect(createRunners).toHaveBeenCalledTimes(1);
+          expect(createRunners).toHaveBeenCalledWith(
+            expect.objectContaining({ runnerOwner: ORG, runnerType: 'Org' }),
+            expect.objectContaining({ numberOfRunners }),
+            expect.anything(),
+          );
+        }
+      });
+    }
   });
 
   describe('With Runner Type Repo', () => {
     it('Should top up the repository runners pool', async () => {
       const runnerOwner = `${ORG}/my-repo-1`;
-      process.env.RUNNER_OWNER = runnerOwner;
-      await expect(await adjust({ poolSize: 3 })).resolves;
+      process.env.RUNNER_OWNERS = runnerOwner;
+      await expect(await adjust({ poolSize: 3, dynamicPoolScalingEnabled: false })).resolves;
       expect(createRunners).toHaveBeenCalledTimes(1);
       expect(createRunners).toHaveBeenCalledWith(
         expect.objectContaining({ runnerOwner, runnerType: 'Repo' }),
@@ -462,40 +432,13 @@ describe('Test simple pool.', () => {
 
     it('Should top up the repository runners pool dynamically', async () => {
       const runnerOwner = `${ORG}/my-repo-1`;
-      process.env.RUNNER_OWNER = runnerOwner;
-      mockOctokit.actions.listWorkflowRunsForRepo.mockImplementation(async ({ owner, repo }) => [
-        {
-          repository: {
-            owner: { login: owner },
-            name: repo,
-          },
-          id: 1,
-          attempt_number: 1,
-        },
-        {
-          repository: {
-            owner: { login: owner },
-            name: repo,
-          },
-          id: 2,
-          attempt_number: 1,
-        },
-      ]);
-      mockOctokit.actions.listJobsForWorkflowRunAttempt.mockImplementation(async () => [
-        {
-          status: 'queued',
-          labels: LABELS,
-        },
-        {
-          status: 'queued',
-          labels: LABELS,
-        },
-      ]);
-      await expect(await adjust({ poolSize: -1 })).resolves;
+      process.env.RUNNER_OWNERS = runnerOwner;
+      mockGetNumberOfQueuedJobs.mockReturnValueOnce(Promise.resolve(3));
+      await expect(await adjust({ poolSize: 3, dynamicPoolScalingEnabled: true })).resolves;
       expect(createRunners).toHaveBeenCalledTimes(1);
       expect(createRunners).toHaveBeenCalledWith(
         expect.objectContaining({ runnerOwner, runnerType: 'Repo' }),
-        expect.objectContaining({ numberOfRunners: 2 }),
+        expect.objectContaining({ numberOfRunners: 1 }),
         expect.anything(),
       );
     });
@@ -504,8 +447,8 @@ describe('Test simple pool.', () => {
   describe('With Multiple Runner Owners', () => {
     it('Should top up pools for all runner owners', async () => {
       const runnerOwners = [`${ORG}/my-repo-1`, `${ORG}/my-repo-2`];
-      process.env.RUNNER_OWNER = runnerOwners.join(',');
-      await expect(await adjust({ poolSize: 3 })).resolves;
+      process.env.RUNNER_OWNERS = runnerOwners.join(',');
+      await expect(await adjust({ poolSize: 3, dynamicPoolScalingEnabled: false })).resolves;
       expect(createRunners).toHaveBeenCalledTimes(2);
       for (const runnerOwner of runnerOwners) {
         expect(createRunners).toHaveBeenCalledWith(
@@ -516,4 +459,64 @@ describe('Test simple pool.', () => {
       }
     });
   });
+});
+
+describe('Test number of queued jobs retrieval.', () => {
+  let ghClient: Octokit;
+
+  beforeEach(() => {
+    ghClient = new mocktokit();
+
+    mockOctokit.actions.listWorkflowRunsForRepo.mockImplementation(async ({ owner, repo }) => [
+      {
+        repository: {
+          owner: { login: owner },
+          name: repo,
+        },
+        id: 1,
+        attempt_number: 1,
+      },
+      {
+        repository: {
+          owner: { login: owner },
+          name: repo,
+        },
+        id: 2,
+        attempt_number: 1,
+      },
+    ]);
+
+    mockOctokit.actions.listJobsForWorkflowRunAttempt.mockImplementation(async () => [
+      {
+        status: 'queued',
+        labels: LABELS,
+      },
+      {
+        status: 'queued',
+        labels: LABELS,
+      },
+      {
+        status: 'queued',
+        labels: [...LABELS, 'label3'],
+      },
+      {
+        status: 'in_progress',
+        labels: LABELS,
+      },
+    ]);
+  });
+
+  it('Should retrieve the number of queued jobs for the org', async () => {
+    // 2 repos x 2 workflow runs x 2 queued jobs with matching labels
+    await expect(getNumberOfQueuedJobs(ghClient, ORG, 'Org', LABELS.join(','))).resolves.toBe(8);
+  });
+
+  for (const githubRepo of githubReposAccessibleToInstallation) {
+    it(`Should retrieve the number of queued jobs for the repo ${githubRepo.name}`, async () => {
+      // 1 repo x 2 workflow runs x 2 queued jobs with matching labels
+      await expect(
+        getNumberOfQueuedJobs(ghClient, `${githubRepo.owner.login}/${githubRepo.name}`, 'Repo', LABELS.join(',')),
+      ).resolves.toBe(4);
+    });
+  }
 });

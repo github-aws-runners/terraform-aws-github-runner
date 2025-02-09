@@ -110,7 +110,7 @@ module "runners" {
 
   pool_config                                = each.value.runner_config.pool_config
   pool_lambda_timeout                        = var.pool_lambda_timeout
-  pool_runner_owner                          = each.value.runner_config.pool_runner_owner
+  pool_runner_owners                         = each.value.runner_config.pool_runner_owners
   pool_lambda_reserved_concurrent_executions = var.pool_lambda_reserved_concurrent_executions
   associate_public_ipv4_address              = var.associate_public_ipv4_address
 

@@ -62,16 +62,17 @@ module "runners" {
 
 ## Pool
 
-The module supports two options for keeping a pool of runners. One is via a pool which only supports org-level runners, the second option is [keeping runners idle](#idle-runners).
+The module supports two options for keeping a pool of runners. One is via a pool, the second option is [keeping runners idle](#idle-runners).
 
 The pool is introduced in combination with the ephemeral runners and is primarily meant to ensure if any event is unexpectedly dropped and no runner was created, the pool can pick up the job. The pool is maintained by a lambda. Each time the lambda is triggered a check is performed to ensure the number of idle runners managed by the module matches the expected pool size. If not, the pool will be adjusted. Keep in mind that the scale down function is still active and will terminate instances that are detected as idle.
 
 ```hcl
-pool_runner_owner = "my-org"                  # Org to which the runners are added
+pool_runner_owners = "my-org"                          # Org to which the runners are added
 pool_config = [{
   size                         = 20                    # size of the pool
   schedule_expression          = "cron(* * * * ? *)"   # cron expression to trigger the adjustment of the pool
   schedule_expression_timezone = "Australia/Sydney"    # optional time zone (defaults to UTC)
+  dynamic_pool_scaling_enabled = false                 # EXPERIMENTAL: if optionaly enabled, the pool will be scaled dynamically, up to the pool size, based on the number of queued jobs (defaults to false)
 }]
 ```
 
@@ -334,3 +335,11 @@ resource "aws_iam_role_policy" "event_rule_firehose_role" {
 
 
 NOTE: By default, a runner AMI update requires a re-apply of this terraform config (the runner AMI ID is looked up by a terraform data source). To avoid this, you can use `ami_id_ssm_parameter_name` to have the scale-up lambda dynamically lookup the runner AMI ID from an SSM parameter at instance launch time. Said SSM parameter is managed outside of this module (e.g. by a runner AMI build workflow).
+
+### Dynamic Pool Scaling
+
+This feature allows the pool to grow dynamically based on the number of queued jobs. It can be enabled by setting the `pool_config.dynamic_pool_scaling_enabled` to `true`.
+
+If the feature is enabled, the expected pool size will be calculated based on the number of queued jobs. The effective size of the pool will be set to the minimum of the number of queued jobs and the configured pool size.
+
+This feature is disabled by default because the retrieval of queued jobs may exhause the GitHub API for larger deployments and cause rate limits. For larger deployments with a lot of frequent jobs having a permanent small pool available could be a better choice.

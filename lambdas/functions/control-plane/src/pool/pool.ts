@@ -14,6 +14,7 @@ type Repository = GetResponseDataTypeFromEndpointMethod<Octokit['repos']['get']>
 
 export interface PoolEvent {
   poolSize: number;
+  dynamicPoolScalingEnabled: boolean;
 }
 
 interface RunnerStatus {
@@ -21,6 +22,8 @@ interface RunnerStatus {
   status: string;
 }
 
+// TODO: Move this function to a common module - a very similar function is
+// defined in ../../webhook/src/runners/dispatch.ts
 function canRunJob(workflowJobLabels: string[], runnerLabels: string[]): boolean {
   runnerLabels = runnerLabels.map((label) => label.toLowerCase());
   const matchLabels = workflowJobLabels.every((wl) => runnerLabels.includes(wl.toLowerCase()));
@@ -45,7 +48,8 @@ export async function adjust(event: PoolEvent): Promise<void> {
   const launchTemplateName = process.env.LAUNCH_TEMPLATE_NAME;
   const instanceMaxSpotPrice = process.env.INSTANCE_MAX_SPOT_PRICE;
   const instanceAllocationStrategy = process.env.INSTANCE_ALLOCATION_STRATEGY || 'lowest-price'; // same as AWS default
-  const runnerOwners = process.env.RUNNER_OWNER.split(',');
+  // RUNNER_OWNERS is a comma-split list of owners, which might be either org or repo owners
+  const runnerOwners = process.env.RUNNER_OWNERS.split(',');
   const amiIdSsmParameterName = process.env.AMI_ID_SSM_PARAMETER_NAME;
   const tracingEnabled = yn(process.env.POWERTOOLS_TRACE_ENABLED, { default: false });
   const onDemandFailoverOnError = process.env.ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS
@@ -80,97 +84,66 @@ export async function adjust(event: PoolEvent): Promise<void> {
       statuses: ['running'],
     });
 
-    const numberOfRunnersInPool = calculatePooSize(ec2runners, runnerStatusses);
-    let topUp = 0;
-    if (event.poolSize >= 0) {
-      topUp = event.poolSize - numberOfRunnersInPool;
-    } else if (event.poolSize === -1) {
-      logger.info('Checking for queued jobs to determine pool size');
-      let repos;
-      if (runnerType === 'Repo') {
-        repos = [repo];
-      } else {
-        // @ts-expect-error The types normalized by paginate are not correct,
-        // because they only flatten .data, while in case of listReposAccessibleToInstallation,
-        // they should flatten .repositories.
-        const reposAccessibleToInstallation = (await githubInstallationClient.paginate(
-          githubInstallationClient.apps.listReposAccessibleToInstallation,
-          {
-            per_page: 100,
-          },
-        )) as Repository[];
-        repos = reposAccessibleToInstallation.filter((repo) => repo.owner.login === owner).map((repo) => repo.name);
-      }
-      const queuedWorkflowRuns = [];
-      for (const repo of repos) {
-        const workflowRuns = await githubInstallationClient.paginate(
-          githubInstallationClient.actions.listWorkflowRunsForRepo,
-          {
-            owner,
-            repo,
-            status: 'queued',
-            per_page: 100,
-          },
-        );
-        queuedWorkflowRuns.push(...workflowRuns);
-      }
-      const queuedJobs = [];
-      for (const workflowRun of queuedWorkflowRuns) {
-        const jobs = await githubInstallationClient.paginate(
-          githubInstallationClient.actions.listJobsForWorkflowRunAttempt,
-          {
-            owner: workflowRun.repository.owner.login,
-            repo: workflowRun.repository.name,
-            run_id: workflowRun.id,
-            attempt_number: workflowRun.run_attempt || 1,
-            per_page: 100,
-          },
-        );
-        queuedJobs.push(...jobs.filter((job) => job.status === 'queued'));
-      }
-      const numberOfQueuedJobs = queuedJobs.filter((job) => canRunJob(job.labels, runnerLabels.split(','))).length;
-      logger.info(`Found ${numberOfQueuedJobs} queued jobs`);
-      topUp = numberOfQueuedJobs - numberOfRunnersInPool;
-    } else {
+    if (event.poolSize <= 0) {
       logger.error(`Invalid pool size: ${event.poolSize}`);
+      return;
     }
 
-    if (topUp > 0) {
-      logger.info(`The pool will be topped up with ${topUp} runners.`);
-      await createRunners(
-        {
-          ephemeral,
-          enableJitConfig,
-          ghesBaseUrl,
-          runnerLabels,
-          runnerGroup,
-          runnerOwner,
-          runnerNamePrefix,
-          runnerType,
-          disableAutoUpdate: disableAutoUpdate,
-          ssmTokenPath,
-          ssmConfigPath,
-        },
-        {
-          ec2instanceCriteria: {
-            instanceTypes,
-            targetCapacityType: instanceTargetCapacityType,
-            maxSpotPrice: instanceMaxSpotPrice,
-            instanceAllocationStrategy: instanceAllocationStrategy,
-          },
-          environment,
-          launchTemplateName,
-          subnets,
-          numberOfRunners: topUp,
-          amiIdSsmParameterName,
-          tracingEnabled,
-          onDemandFailoverOnError,
-        },
-        githubInstallationClient,
-      );
-    } else {
-      logger.info(`Pool will not be topped up. Found ${numberOfRunnersInPool} managed idle runners.`);
+    const currentPoolSize = calculateCurrentPoolSize(ec2runners, runnerStatusses);
+
+    if (currentPoolSize >= event.poolSize) {
+      logger.info(`Pool will not be topped up. Found ${currentPoolSize} managed idle runners.`);
+      return;
     }
+
+    const targetPoolSize = await calculateTargetPoolSize(
+      githubInstallationClient,
+      runnerOwner,
+      runnerType,
+      runnerLabels,
+      event.poolSize,
+      event.dynamicPoolScalingEnabled,
+    );
+
+    if (currentPoolSize >= targetPoolSize) {
+      logger.info(`Pool will not be topped up. Found ${currentPoolSize} managed idle runners.`);
+      return;
+    }
+
+    const topUp = targetPoolSize - currentPoolSize;
+
+    logger.info(`The pool will be topped up with ${topUp} runners.`);
+    await createRunners(
+      {
+        ephemeral,
+        enableJitConfig,
+        ghesBaseUrl,
+        runnerLabels,
+        runnerGroup,
+        runnerOwner,
+        runnerNamePrefix,
+        runnerType,
+        disableAutoUpdate: disableAutoUpdate,
+        ssmTokenPath,
+        ssmConfigPath,
+      },
+      {
+        ec2instanceCriteria: {
+          instanceTypes,
+          targetCapacityType: instanceTargetCapacityType,
+          maxSpotPrice: instanceMaxSpotPrice,
+          instanceAllocationStrategy: instanceAllocationStrategy,
+        },
+        environment,
+        launchTemplateName,
+        subnets,
+        numberOfRunners: topUp,
+        amiIdSsmParameterName,
+        tracingEnabled,
+        onDemandFailoverOnError,
+      },
+      githubInstallationClient,
+    );
   }
 }
 
@@ -185,7 +158,7 @@ async function getInstallationId(ghesApiUrl: string, org: string): Promise<numbe
   ).data.id;
 }
 
-function calculatePooSize(ec2runners: RunnerList[], runnerStatus: Map<string, RunnerStatus>): number {
+function calculateCurrentPoolSize(ec2runners: RunnerList[], runnerStatus: Map<string, RunnerStatus>): number {
   // Runner should be considered idle if it is still booting, or is idle in GitHub
   let numberOfRunnersInPool = 0;
   for (const ec2Instance of ec2runners) {
@@ -207,6 +180,71 @@ function calculatePooSize(ec2runners: RunnerList[], runnerStatus: Map<string, Ru
     }
   }
   return numberOfRunnersInPool;
+}
+
+async function calculateTargetPoolSize(
+  ghClient: Octokit,
+  runnerOwner: string,
+  runnerType: RunnerType,
+  runnerLabels: string,
+  poolSize: number,
+  dynamicPoolScalingEnabled: boolean,
+): Promise<number> {
+  if (!dynamicPoolScalingEnabled) {
+    return poolSize;
+  }
+
+  // This call is made on the exports object to enable mocking it in tests
+  const numberOfQueuedJobs = await exports.getNumberOfQueuedJobs(ghClient, runnerOwner, runnerType, runnerLabels);
+
+  return Math.min(poolSize, numberOfQueuedJobs);
+}
+
+// This function is exported for testing purposes only
+export async function getNumberOfQueuedJobs(
+  ghClient: Octokit,
+  runnerOwner: string,
+  runnerType: RunnerType,
+  runnerLabels: string,
+): Promise<number> {
+  logger.info('Checking for queued jobs to determine pool size');
+  const [owner, repo] = runnerOwner.split('/');
+  let repos;
+  if (runnerType === 'Repo') {
+    repos = [repo];
+  } else {
+    // @ts-expect-error The types normalized by paginate are not correct,
+    // because they only flatten .data, while in case of listReposAccessibleToInstallation,
+    // they should flatten .repositories.
+    const reposAccessibleToInstallation = (await ghClient.paginate(ghClient.apps.listReposAccessibleToInstallation, {
+      per_page: 100,
+    })) as Repository[];
+    repos = reposAccessibleToInstallation.filter((repo) => repo.owner.login === owner).map((repo) => repo.name);
+  }
+  const queuedWorkflowRuns = [];
+  for (const repo of repos) {
+    const workflowRuns = await ghClient.paginate(ghClient.actions.listWorkflowRunsForRepo, {
+      owner,
+      repo,
+      status: 'queued',
+      per_page: 100,
+    });
+    queuedWorkflowRuns.push(...workflowRuns);
+  }
+  const queuedJobs = [];
+  for (const workflowRun of queuedWorkflowRuns) {
+    const jobs = await ghClient.paginate(ghClient.actions.listJobsForWorkflowRunAttempt, {
+      owner: workflowRun.repository.owner.login,
+      repo: workflowRun.repository.name,
+      run_id: workflowRun.id,
+      attempt_number: workflowRun.run_attempt || 1,
+      per_page: 100,
+    });
+    queuedJobs.push(...jobs.filter((job) => job.status === 'queued'));
+  }
+  const numberOfQueuedJobs = queuedJobs.filter((job) => canRunJob(job.labels, runnerLabels.split(','))).length;
+  logger.info(`Found ${numberOfQueuedJobs} queued jobs`);
+  return numberOfQueuedJobs;
 }
 
 async function getGitHubRegisteredRunnnerStatusses(

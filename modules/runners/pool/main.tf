@@ -38,7 +38,7 @@ resource "aws_lambda_function" "pool" {
       RUNNER_LABELS                            = lower(join(",", var.config.runner.labels))
       RUNNER_GROUP_NAME                        = var.config.runner.group_name
       RUNNER_NAME_PREFIX                       = var.config.runner.name_prefix
-      RUNNER_OWNER                             = var.config.runner.pool_owner
+      RUNNER_OWNERS                            = var.config.runner.pool_owners
       SSM_TOKEN_PATH                           = var.config.ssm_token_path
       SSM_CONFIG_PATH                          = var.config.ssm_config_path
       SUBNET_IDS                               = join(",", var.config.subnet_ids)
@@ -214,7 +214,8 @@ resource "aws_scheduler_schedule" "pool" {
     arn      = aws_lambda_function.pool.arn
     role_arn = aws_iam_role.scheduler.arn
     input = jsonencode({
-      poolSize = each.value.size
+      poolSize                     = each.value.size
+      dynamic_pool_scaling_enabled = each.value.dynamic_pool_scaling_enabled
     })
   }
 }
