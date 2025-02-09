@@ -1,0 +1,18 @@
+# Each line is a file pattern followed by one or more owners.
+
+# These owners will be the default owners for everything in
+# the repo. Unless a later match takes precedence,
+* @github-aws-runners/terraform-aws-github-runner
+
+# admins
+CODEOWNERS @github-aws-runners/terraform-aws-github-runner-admins
+LICENSE* @github-aws-runners/terraform-aws-github-runner-admins
+
+# maintainers - protect potential interface changes by maintainer team
+.github/** @github-aws-runners/terraform-aws-github-runner-maintainers
+/*.* @github-aws-runners/terraform-aws-github-runner-maintainers
+/policies/** @github-aws-runners/terraform-aws-github-runner-maintainers
+/modules/multi-runner/** @github-aws-runners/terraform-aws-github-runner-maintainers
+
+# exclude example from CODEOWNER file. NOT USED YET
+# CHANGELOG.md

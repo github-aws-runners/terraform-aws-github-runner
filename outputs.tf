@@ -25,7 +25,7 @@ output "binaries_syncer" {
     lambda           = module.runner_binaries[0].lambda
     lambda_log_group = module.runner_binaries[0].lambda_log_group
     lambda_role      = module.runner_binaries[0].lambda_role
-    location         = "s3://${module.runner_binaries[0].bucket.id}/module.runner_binaries[0].bucket.key"
+    location         = "s3://${module.runner_binaries[0].bucket.id}/${module.runner_binaries[0].runner_distribution_object_key}"
     bucket           = module.runner_binaries[0].bucket
   } : null
 }
@@ -37,6 +37,9 @@ output "webhook" {
     lambda_log_group = module.webhook.lambda_log_group
     lambda_role      = module.webhook.role
     endpoint         = "${module.webhook.gateway.api_endpoint}/${module.webhook.endpoint_relative_path}"
+    webhook          = module.webhook.webhook
+    dispatcher       = var.eventbridge.enable ? module.webhook.dispatcher : null
+    eventbridge      = var.eventbridge.enable ? module.webhook.eventbridge : null
   }
 }
 
@@ -48,16 +51,23 @@ output "ssm_parameters" {
 output "queues" {
   description = "SQS queues."
   value = {
-    build_queue_arn            = aws_sqs_queue.queued_builds.arn
-    build_queue_dlq_arn        = var.redrive_build_queue.enabled ? aws_sqs_queue.queued_builds_dlq[0].arn : null
-    webhook_workflow_job_queue = try(aws_sqs_queue.webhook_events_workflow_job_queue[*].arn, "")
+    build_queue_arn     = aws_sqs_queue.queued_builds.arn
+    build_queue_dlq_arn = var.redrive_build_queue.enabled ? aws_sqs_queue.queued_builds_dlq[0].arn : null
   }
 }
 
 output "instance_termination_watcher" {
-  value = var.instance_termination_watcher.enable ? {
-    lambda           = module.instance_termination_watcher[0].lambda.function
-    lambda_log_group = module.instance_termination_watcher[0].lambda.log_group
-    lambda_role      = module.instance_termination_watcher[0].lambda.role
+  value = var.instance_termination_watcher.enable && var.instance_termination_watcher.features.enable_spot_termination_notification_watcher ? {
+    lambda           = module.instance_termination_watcher[0].spot_termination_notification.lambda
+    lambda_log_group = module.instance_termination_watcher[0].spot_termination_notification.lambda_log_group
+    lambda_role      = module.instance_termination_watcher[0].spot_termination_notification.lambda_role
+  } : null
+}
+
+output "instance_termination_handler" {
+  value = var.instance_termination_watcher.enable && var.instance_termination_watcher.features.enable_spot_termination_handler ? {
+    lambda           = module.instance_termination_watcher[0].spot_termination_handler.lambda
+    lambda_log_group = module.instance_termination_watcher[0].spot_termination_handler.lambda_log_group
+    lambda_role      = module.instance_termination_watcher[0].spot_termination_handler.lambda_role
   } : null
 }

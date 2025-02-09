@@ -4,8 +4,14 @@
 # Module directory
 .terraform/
 
+# lock files
+**/.terraform.lock.hcl
+!examples/**/.terraform.lock.hcl
+
+
 # keys
 *id_rsa*
+*.pem
 
 # other
 node_modules/

@@ -80,37 +80,7 @@ cleanup() {
   fi
 }
 
-set_job_hook() {
-  local job_hook_script="$1"
-  local job_hook_var_name="$2"
-
-  if [[ -f "$job_hook_script" ]]; then
-    echo "$job_hook_script exists - $job_hook_script"
-    echo "$job_hook_var_name=$job_hook_script" | tee -a /opt/actions-runner/.env
-  else
-    echo "$job_hook_script does not exist - $job_hook_script"
-  fi
-}
-
-create_job_start_hook_script() {
-  cat <<EOF > /opt/actions-runner/job_pre_start_hook.sh
-#!/bin/bash
-echo "Running job pre start hook"
-env
-echo ------
-ls -la /opt/actions-runner/_work/_temp/_github_workflow
-cat /opt/actions-runner/_work/_temp/_github_workflow/event.json
-
-EOF
-  chmod +x /opt/actions-runner/job_pre_start_hook.sh
-}
-
 trap 'cleanup $? $LINENO $BASH_LINENO' EXIT
-
-create_job_start_hook_script
-JOB_PRE_HOOK_SCRIPT=/opt/actions-runner/job_pre_start_hook.sh
-set_job_hook $JOB_PRE_HOOK_SCRIPT ACTIONS_RUNNER_HOOK_JOB_STARTED
-
 
 echo "Retrieving TOKEN from AWS API"
 token=$(curl -f -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 180" || true)
@@ -170,6 +140,9 @@ echo "Retrieved /$ssm_config_path/enable_cloudwatch parameter - ($enable_cloudwa
 
 agent_mode=$(echo "$parameters" | jq --arg ssm_config_path "$ssm_config_path" -r '.[] | select(.Name == "'$ssm_config_path'/agent_mode") | .Value')
 echo "Retrieved /$ssm_config_path/agent_mode parameter - ($agent_mode)"
+
+disable_default_labels=$(echo "$parameters" | jq --arg ssm_config_path "$ssm_config_path" -r '.[] | select(.Name == "'$ssm_config_path'/disable_default_labels") | .Value')
+echo "Retrieved /$ssm_config_path/disable_default_labels parameter - ($disable_default_labels)"
 
 enable_jit_config=$(echo "$parameters" | jq --arg ssm_config_path "$ssm_config_path" -r '.[] | select(.Name == "'$ssm_config_path'/enable_jit_config") | .Value')
 echo "Retrieved /$ssm_config_path/enable_jit_config parameter - ($enable_jit_config)"
@@ -246,7 +219,12 @@ echo "Starting the runner as user $run_as"
 # configure the runner if the runner is non ephemeral or jit config is disabled
 if [[ "$enable_jit_config" == "false" || $agent_mode != "ephemeral" ]]; then
   echo "Configure GH Runner as user $run_as"
-  sudo --preserve-env=RUNNER_ALLOW_RUNASROOT -u "$run_as" -- ./config.sh --unattended --name "$runner_name_prefix$instance_id" --work "_work" $${config}
+  if [[ "$disable_default_labels" == "true" ]]; then
+      extra_flags="--no-default-labels"
+  else
+      extra_flags=""
+  fi
+  sudo --preserve-env=RUNNER_ALLOW_RUNASROOT -u "$run_as" -- ./config.sh $${extra_flags} --unattended --name "$runner_name_prefix$instance_id" --work "_work" $${config}
 fi
 
 create_xray_success_segment "$SEGMENT"

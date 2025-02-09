@@ -31,7 +31,7 @@ module "runners" {
   ami_id_ssm_parameter_name = each.value.runner_config.ami_id_ssm_parameter_name
   ami_kms_key_arn           = each.value.runner_config.ami_kms_key_arn
 
-  sqs_build_queue                      = { "arn" : each.value.arn }
+  sqs_build_queue                      = { "arn" : each.value.arn, "url" : each.value.url }
   github_app_parameters                = local.github_app_parameters
   ebs_optimized                        = each.value.runner_config.ebs_optimized
   enable_on_demand_failover_for_errors = each.value.runner_config.enable_on_demand_failover_for_errors
@@ -45,7 +45,8 @@ module "runners" {
   scale_down_schedule_expression       = each.value.runner_config.scale_down_schedule_expression
   minimum_running_time_in_minutes      = each.value.runner_config.minimum_running_time_in_minutes
   runner_boot_time_in_minutes          = each.value.runner_config.runner_boot_time_in_minutes
-  runner_labels                        = sort(distinct(concat(["self-hosted", each.value.runner_config.runner_os, each.value.runner_config.runner_architecture], each.value.runner_config.runner_extra_labels)))
+  runner_disable_default_labels        = each.value.runner_config.runner_disable_default_labels
+  runner_labels                        = each.value.runner_config.runner_disable_default_labels ? sort(distinct(each.value.runner_config.runner_extra_labels)) : sort(distinct(concat(["self-hosted", each.value.runner_config.runner_os, each.value.runner_config.runner_architecture], each.value.runner_config.runner_extra_labels)))
   runner_as_root                       = each.value.runner_config.runner_as_root
   runner_run_as                        = each.value.runner_config.runner_run_as
   runners_maximum_count                = each.value.runner_config.runners_maximum_count
@@ -69,6 +70,7 @@ module "runners" {
   lambda_timeout_scale_down        = var.runners_scale_down_lambda_timeout
   lambda_subnet_ids                = var.lambda_subnet_ids
   lambda_security_group_ids        = var.lambda_security_group_ids
+  lambda_tags                      = var.lambda_tags
   tracing_config                   = var.tracing_config
   logging_retention_in_days        = var.logging_retention_in_days
   logging_kms_key_id               = var.logging_kms_key_id
@@ -84,13 +86,15 @@ module "runners" {
   role_path                 = var.role_path
   role_permissions_boundary = var.role_permissions_boundary
 
-  enable_userdata       = each.value.runner_config.enable_userdata
-  userdata_template     = each.value.runner_config.userdata_template
-  userdata_content      = each.value.runner_config.userdata_content
-  userdata_pre_install  = each.value.runner_config.userdata_pre_install
-  userdata_post_install = each.value.runner_config.userdata_post_install
-  key_name              = var.key_name
-  runner_ec2_tags       = each.value.runner_config.runner_ec2_tags
+  enable_userdata           = each.value.runner_config.enable_userdata
+  userdata_template         = each.value.runner_config.userdata_template
+  userdata_content          = each.value.runner_config.userdata_content
+  userdata_pre_install      = each.value.runner_config.userdata_pre_install
+  userdata_post_install     = each.value.runner_config.userdata_post_install
+  runner_hook_job_started   = each.value.runner_config.runner_hook_job_started
+  runner_hook_job_completed = each.value.runner_config.runner_hook_job_completed
+  key_name                  = var.key_name
+  runner_ec2_tags           = each.value.runner_config.runner_ec2_tags
 
   create_service_linked_role_spot = each.value.runner_config.create_service_linked_role_spot
 
@@ -98,6 +102,7 @@ module "runners" {
 
   ghes_url        = var.ghes_url
   ghes_ssl_verify = var.ghes_ssl_verify
+  user_agent      = var.user_agent
 
   kms_key_arn = var.kms_key_arn
 
@@ -110,4 +115,8 @@ module "runners" {
   associate_public_ipv4_address              = var.associate_public_ipv4_address
 
   ssm_housekeeper = var.runners_ssm_housekeeper
+
+  job_retry = each.value.runner_config.job_retry
+
+  metrics = var.metrics
 }

@@ -1,7 +1,7 @@
 [
   {
     "id": "ubuntu-queue-id",
-    "arn": "queueARN",
+    "arn": "queueARN-ubuntu",
     "fifo": false,
     "matcherConfig": {
       "labelMatchers": [[
@@ -15,7 +15,7 @@
   },
   {
     "id": "latest-queue-id",
-    "arn": "queueARN",
+    "arn": "queueARN-latest",
     "fifo": false,
     "matcherConfig": {
       "labelMatchers": [[

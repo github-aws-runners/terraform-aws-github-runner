@@ -1,1 +1,0 @@
---8<-- "examples/windows/README.md"

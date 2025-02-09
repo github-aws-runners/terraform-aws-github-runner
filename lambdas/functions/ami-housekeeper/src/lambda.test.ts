@@ -1,4 +1,4 @@
-import { logger } from '@terraform-aws-github-runner/aws-powertools-util';
+import { logger } from '@aws-github-runner/aws-powertools-util';
 import { Context } from 'aws-lambda';
 import { mocked } from 'jest-mock';
 
@@ -6,7 +6,7 @@ import { AmiCleanupOptions, amiCleanup } from './ami';
 import { handler } from './lambda';
 
 jest.mock('./ami');
-jest.mock('@terraform-aws-github-runner/aws-powertools-util');
+jest.mock('@aws-github-runner/aws-powertools-util');
 
 const amiCleanupOptions: AmiCleanupOptions = {
   minimumDaysOld: undefined,
@@ -52,7 +52,7 @@ describe('Housekeeper ami', () => {
         resolve();
       });
     });
-    expect(await handler(undefined, context)).resolves;
+    await expect(handler(undefined, context)).resolves.not.toThrow();
   });
 
   it('should not thow only log in error in case of an exception.', async () => {

@@ -25,9 +25,8 @@ variable "tags" {
 variable "runner_matcher_config" {
   description = "SQS queue to publish accepted build events based on the runner type. When exact match is disabled the webhook accepts the event if one of the workflow job labels is part of the matcher. The priority defines the order the matchers are applied."
   type = map(object({
-    arn  = string
-    id   = string
-    fifo = bool
+    arn = string
+    id  = string
     matcherConfig = object({
       labelMatchers = list(list(string))
       exactMatch    = bool
@@ -40,14 +39,6 @@ variable "runner_matcher_config" {
   }
 }
 
-variable "sqs_workflow_job_queue" {
-  description = "SQS queue to monitor github events."
-  type = object({
-    id  = string
-    arn = string
-  })
-  default = null
-}
 variable "lambda_zip" {
   description = "File location of the lambda zip file."
   type        = string
@@ -151,7 +142,7 @@ variable "log_level" {
 variable "lambda_runtime" {
   description = "AWS Lambda runtime."
   type        = string
-  default     = "nodejs20.x"
+  default     = "nodejs22.x"
 }
 
 variable "aws_partition" {
@@ -192,5 +183,34 @@ variable "ssm_paths" {
   type = object({
     root    = string
     webhook = string
+  })
+}
+
+variable "lambda_tags" {
+  description = "Map of tags that will be added to all the lambda function resources. Note these are additional tags to the default tags."
+  type        = map(string)
+  default     = {}
+}
+
+variable "matcher_config_parameter_store_tier" {
+  description = "The tier of the parameter store for the matcher configuration. Valid values are `Standard`, and `Advanced`."
+  type        = string
+  default     = "Standard"
+  validation {
+    condition     = contains(["Standard", "Advanced"], var.matcher_config_parameter_store_tier)
+    error_message = "`matcher_config_parameter_store_tier` value is not valid, valid values are: `Standard`, and `Advanced`."
+  }
+}
+
+variable "eventbridge" {
+  description = <<EOF
+    Enable the use of EventBridge by the module. By enabling this feature events will be put on the EventBridge by the webhook instead of directly dispatching to queues for scaling.
+
+    `enable`: Enable the EventBridge feature.
+    `accept_events`: List can be used to only allow specific events to be putted on the EventBridge. By default all events, empty list will be be interpreted as all events.
+EOF
+  type = object({
+    enable        = optional(bool, false)
+    accept_events = optional(list(string), null)
   })
 }

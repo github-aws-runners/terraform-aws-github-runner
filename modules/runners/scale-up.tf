@@ -1,3 +1,13 @@
+locals {
+  job_retry_config = local.job_retry_enabled ? {
+    enable         = var.job_retry.enable
+    maxAttempts    = var.job_retry.max_attempts
+    delayInSeconds = var.job_retry.delay_in_seconds
+    delayBackoff   = var.job_retry.delay_backoff
+    queueUrl       = module.job_retry[0].job_retry_check_queue.url
+  } : {}
+}
+
 resource "aws_lambda_function" "scale_up" {
   s3_bucket                      = var.lambda_s3_bucket != null ? var.lambda_s3_bucket : null
   s3_key                         = var.runners_lambda_s3_key != null ? var.runners_lambda_s3_key : null
@@ -11,7 +21,7 @@ resource "aws_lambda_function" "scale_up" {
   timeout                        = var.lambda_timeout_scale_up
   reserved_concurrent_executions = var.scale_up_reserved_concurrent_executions
   memory_size                    = var.lambda_scale_up_memory_size
-  tags                           = local.tags
+  tags                           = merge(local.tags, var.lambda_tags)
   architectures                  = [var.lambda_architecture]
   environment {
     variables = {
@@ -20,9 +30,11 @@ resource "aws_lambda_function" "scale_up" {
       ENABLE_EPHEMERAL_RUNNERS                 = var.enable_ephemeral_runners
       ENABLE_JIT_CONFIG                        = var.enable_jit_config
       ENABLE_JOB_QUEUED_CHECK                  = local.enable_job_queued_check
+      ENABLE_METRIC_GITHUB_APP_RATE_LIMIT      = var.metrics.enable && var.metrics.metric.enable_github_app_rate_limit
       ENABLE_ORGANIZATION_RUNNERS              = var.enable_organization_runners
       ENVIRONMENT                              = var.prefix
       GHES_URL                                 = var.ghes_url
+      USER_AGENT                               = var.user_agent
       INSTANCE_ALLOCATION_STRATEGY             = var.instance_allocation_strategy
       INSTANCE_MAX_SPOT_PRICE                  = var.instance_max_spot_price
       INSTANCE_TARGET_CAPACITY_TYPE            = var.instance_target_capacity_type
@@ -34,6 +46,7 @@ resource "aws_lambda_function" "scale_up" {
       PARAMETER_GITHUB_APP_ID_NAME             = var.github_app_parameters.id.name
       PARAMETER_GITHUB_APP_KEY_BASE64_NAME     = var.github_app_parameters.key_base64.name
       POWERTOOLS_LOGGER_LOG_EVENT              = var.log_level == "debug" ? "true" : "false"
+      POWERTOOLS_METRICS_NAMESPACE             = var.metrics.namespace
       POWERTOOLS_TRACE_ENABLED                 = var.tracing_config.mode != null ? true : false
       POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.tracing_config.capture_http_requests
       POWERTOOLS_TRACER_CAPTURE_ERROR          = var.tracing_config.capture_error
@@ -46,6 +59,7 @@ resource "aws_lambda_function" "scale_up" {
       SSM_CONFIG_PATH                          = "${var.ssm_paths.root}/${var.ssm_paths.config}"
       SUBNET_IDS                               = join(",", var.subnet_ids)
       ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS     = jsonencode(var.enable_on_demand_failover_for_errors)
+      JOB_RETRY_CONFIG                         = jsonencode(local.job_retry_config)
     }
   }
 
@@ -95,7 +109,7 @@ resource "aws_iam_role" "scale_up" {
 }
 
 resource "aws_iam_role_policy" "scale_up" {
-  name = "${var.prefix}-lambda-scale-up-policy"
+  name = "scale-up-policy"
   role = aws_iam_role.scale_up.name
   policy = templatefile("${path.module}/policies/lambda-scale-up.json", {
     arn_runner_instance_role  = aws_iam_role.runner.arn
@@ -108,9 +122,8 @@ resource "aws_iam_role_policy" "scale_up" {
   })
 }
 
-
 resource "aws_iam_role_policy" "scale_up_logging" {
-  name = "${var.prefix}-lambda-logging"
+  name = "logging-policy"
   role = aws_iam_role.scale_up.name
   policy = templatefile("${path.module}/policies/lambda-cloudwatch.json", {
     log_group_arn = aws_cloudwatch_log_group.scale_up.arn
@@ -119,7 +132,7 @@ resource "aws_iam_role_policy" "scale_up_logging" {
 
 resource "aws_iam_role_policy" "service_linked_role" {
   count  = var.create_service_linked_role_spot ? 1 : 0
-  name   = "${var.prefix}-service_linked_role"
+  name   = "service_linked_role"
   role   = aws_iam_role.scale_up.name
   policy = templatefile("${path.module}/policies/service-linked-role-create-policy.json", { aws_partition = var.aws_partition })
 }
@@ -138,6 +151,18 @@ resource "aws_iam_role_policy_attachment" "ami_id_ssm_parameter_read" {
 
 resource "aws_iam_role_policy" "scale_up_xray" {
   count  = var.tracing_config.mode != null ? 1 : 0
+  name   = "xray-policy"
   policy = data.aws_iam_policy_document.lambda_xray[0].json
   role   = aws_iam_role.scale_up.name
+}
+
+resource "aws_iam_role_policy" "job_retry_sqs_publish" {
+  count = local.job_retry_enabled ? 1 : 0
+  name  = "publish-retry-check-sqs-policy"
+  role  = aws_iam_role.scale_up.name
+
+  policy = templatefile("${path.module}/policies/lambda-publish-sqs-policy.json", {
+    sqs_resource_arns = jsonencode([module.job_retry[0].job_retry_check_queue.arn])
+    kms_key_arn       = var.kms_key_arn != null ? var.kms_key_arn : ""
+  })
 }

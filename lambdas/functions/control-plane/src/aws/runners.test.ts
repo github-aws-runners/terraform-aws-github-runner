@@ -3,6 +3,7 @@ import {
   CreateFleetCommandInput,
   CreateFleetInstance,
   CreateFleetResult,
+  CreateTagsCommand,
   DefaultTargetCapacityType,
   DescribeInstancesCommand,
   DescribeInstancesResult,
@@ -11,12 +12,12 @@ import {
   TerminateInstancesCommand,
 } from '@aws-sdk/client-ec2';
 import { GetParameterCommand, GetParameterResult, PutParameterCommand, SSMClient } from '@aws-sdk/client-ssm';
-import { tracer } from '@terraform-aws-github-runner/aws-powertools-util';
+import { tracer } from '@aws-github-runner/aws-powertools-util';
 import { mockClient } from 'aws-sdk-client-mock';
 import 'aws-sdk-client-mock-jest';
 
 import ScaleError from './../scale-runners/ScaleError';
-import { createRunner, listEC2Runners, terminateRunner } from './runners';
+import { createRunner, listEC2Runners, tag, terminateRunner } from './runners';
 import { RunnerInfo, RunnerInputParameters, RunnerType } from './runners.d';
 
 process.env.AWS_REGION = 'eu-east-1';
@@ -67,6 +68,23 @@ describe('list instances', () => {
       launchTime: new Date('2020-10-10T14:48:00.000+09:00'),
       type: 'Org',
       owner: 'CoderToCat',
+      orphan: false,
+    });
+  });
+
+  it('check orphan tag.', async () => {
+    const instances: DescribeInstancesResult = mockRunningInstances;
+    instances.Reservations![0].Instances![0].Tags!.push({ Key: 'ghr:orphan', Value: 'true' });
+    mockEC2Client.on(DescribeInstancesCommand).resolves(instances);
+
+    const resp = await listEC2Runners();
+    expect(resp.length).toBe(1);
+    expect(resp).toContainEqual({
+      instanceId: instances.Reservations![0].Instances![0].InstanceId!,
+      launchTime: instances.Reservations![0].Instances![0].LaunchTime!,
+      type: 'Org',
+      owner: 'CoderToCat',
+      orphan: true,
     });
   });
 
@@ -109,6 +127,23 @@ describe('list instances', () => {
       Filters: [
         { Name: 'instance-state-name', Values: ['running', 'pending'] },
         { Name: 'tag:ghr:environment', Values: [ENVIRONMENT] },
+        { Name: 'tag:ghr:Application', Values: ['github-action-runner'] },
+      ],
+    });
+  });
+
+  it('filters instances on environment and orphan', async () => {
+    mockRunningInstances.Reservations![0].Instances![0].Tags!.push({
+      Key: 'ghr:orphan',
+      Value: 'true',
+    });
+    mockEC2Client.on(DescribeInstancesCommand).resolves(mockRunningInstances);
+    await listEC2Runners({ environment: ENVIRONMENT, orphan: true });
+    expect(mockEC2Client).toHaveReceivedCommandWith(DescribeInstancesCommand, {
+      Filters: [
+        { Name: 'instance-state-name', Values: ['running', 'pending'] },
+        { Name: 'tag:ghr:environment', Values: [ENVIRONMENT] },
+        { Name: 'tag:ghr:orphan', Values: ['true'] },
         { Name: 'tag:ghr:Application', Values: ['github-action-runner'] },
       ],
     });
@@ -179,6 +214,26 @@ describe('terminate runner', () => {
     await terminateRunner(runner.instanceId);
 
     expect(mockEC2Client).toHaveReceivedCommandWith(TerminateInstancesCommand, { InstanceIds: [runner.instanceId] });
+  });
+});
+
+describe('tag runner', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+  it('adding extra tag', async () => {
+    mockEC2Client.on(CreateTagsCommand).resolves({});
+    const runner: RunnerInfo = {
+      instanceId: 'instance-2',
+      owner: 'owner-2',
+      type: 'Repo',
+    };
+    await tag(runner.instanceId, [{ Key: 'ghr:orphan', Value: 'truer' }]);
+
+    expect(mockEC2Client).toHaveReceivedCommandWith(CreateTagsCommand, {
+      Resources: [runner.instanceId],
+      Tags: [{ Key: 'ghr:orphan', Value: 'truer' }],
+    });
   });
 });
 
@@ -328,7 +383,7 @@ describe('create runner with errors', () => {
   it('test now error is thrown if an instance is created', async () => {
     createFleetMockWithErrors(['NonMappedError'], ['i-123']);
 
-    expect(await createRunner(createRunnerConfig(defaultRunnerConfig))).resolves;
+    await expect(createRunner(createRunnerConfig(defaultRunnerConfig))).resolves.toEqual(['i-123']);
     expect(mockEC2Client).toHaveReceivedCommandWith(
       CreateFleetCommand,
       expectedCreateFleetRequest(defaultExpectedFleetRequestValues),

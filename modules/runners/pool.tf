@@ -9,6 +9,7 @@ module "pool" {
       ssl_verify = var.ghes_ssl_verify
       url        = var.ghes_url
     }
+    user_agent                    = var.user_agent
     github_app_parameters         = var.github_app_parameters
     instance_allocation_strategy  = var.instance_allocation_strategy
     instance_max_spot_price       = var.instance_max_spot_price
@@ -54,6 +55,7 @@ module "pool" {
     ami_id_ssm_parameter_name            = var.ami_id_ssm_parameter_name
     ami_id_ssm_parameter_read_policy_arn = var.ami_id_ssm_parameter_name != null ? aws_iam_policy.ami_id_ssm_parameter_read[0].arn : null
     tags                                 = local.tags
+    lambda_tags                          = var.lambda_tags
     arn_ssm_parameters_path_config       = local.arn_ssm_parameters_path_config
   }
 

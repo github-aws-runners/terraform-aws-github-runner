@@ -19,6 +19,7 @@ module "ami_housekeeper" {
   lambda_subnet_ids         = var.lambda_subnet_ids
   lambda_memory_size        = var.ami_housekeeper_lambda_memory_size
   lambda_timeout            = var.ami_housekeeper_lambda_timeout
+  lambda_tags               = var.lambda_tags
   tracing_config            = var.tracing_config
 
   logging_retention_in_days = var.logging_retention_in_days

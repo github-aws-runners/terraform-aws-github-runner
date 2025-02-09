@@ -56,10 +56,10 @@ describe('Test getParameter and putParameter', () => {
       },
     };
 
-    mockSSMClient.on(PutParameterCommand).resolves(output);
+    mockSSMClient.on(PutParameterCommand).rejects(output);
 
     // Act
-    expect(putParameter(parameterName, parameterValue, true)).rejects;
+    await expect(putParameter(parameterName, parameterValue, true)).rejects.toThrow();
   });
 
   it('Puts parameters and returns success', async () => {
@@ -75,7 +75,7 @@ describe('Test getParameter and putParameter', () => {
     mockSSMClient.on(PutParameterCommand).resolves(output);
 
     // Act
-    expect(putParameter(parameterName, parameterValue, true)).resolves;
+    await expect(putParameter(parameterName, parameterValue, true)).resolves.not.toThrow();
   });
 
   it('Puts parameters as String', async () => {
@@ -136,9 +136,6 @@ describe('Test getParameter and putParameter', () => {
     mockSSMClient.on(GetParameterCommand).resolves(output);
 
     // Act
-    const result = await getParameter(parameterName);
-
-    // Assert
-    expect(result).toBe(undefined);
+    await expect(getParameter(parameterName)).rejects.toThrow(`Parameter ${parameterName} not found`);
   });
 });

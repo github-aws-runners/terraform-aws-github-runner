@@ -1,16 +1,11 @@
 import middy from '@middy/core';
-import {
-  captureLambdaHandler,
-  logger,
-  metrics,
-  setContext,
-  tracer,
-} from '@terraform-aws-github-runner/aws-powertools-util';
-import { logMetrics } from '@aws-lambda-powertools/metrics';
+import { captureLambdaHandler, logger, metrics, setContext, tracer } from '@aws-github-runner/aws-powertools-util';
+import { logMetrics } from '@aws-lambda-powertools/metrics/middleware';
 import { Context } from 'aws-lambda';
 
 import { handle as handleTerminationWarning } from './termination-warning';
-import { SpotInterruptionWarning, SpotTerminationDetail } from './types';
+import { handle as handleTermination } from './termination';
+import { BidEvictedDetail, BidEvictedEvent, SpotInterruptionWarning, SpotTerminationDetail } from './types';
 import { Config } from './ConfigResolver';
 
 const config = new Config();
@@ -25,6 +20,18 @@ export async function interruptionWarning(
 
   try {
     await handleTerminationWarning(event, config);
+  } catch (e) {
+    logger.error(`${(e as Error).message}`, { error: e as Error });
+  }
+}
+
+export async function termination(event: BidEvictedEvent<BidEvictedDetail>, context: Context): Promise<void> {
+  setContext(context, 'lambda.ts');
+  logger.logEventIfEnabled(event);
+  logger.debug('Configuration of the lambda', { config });
+
+  try {
+    await handleTermination(event, config);
   } catch (e) {
     logger.error(`${(e as Error).message}`, { error: e as Error });
   }

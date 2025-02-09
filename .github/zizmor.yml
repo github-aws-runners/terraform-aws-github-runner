@@ -1,0 +1,9 @@
+rules:
+  artipacked:
+    ignore:
+      # update docs requires token to be persisted
+      - update-docs.yml:61:9
+  dangerous-triggers:
+    ignore:
+      # semantic check with only a read only token
+      - semantic-check.yml:2:1

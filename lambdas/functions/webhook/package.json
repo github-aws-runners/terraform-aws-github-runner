@@ -1,5 +1,5 @@
 {
-  "name": "@terraform-aws-github-runner/webhook",
+  "name": "@aws-github-runner/webhook",
   "version": "1.0.0",
   "main": "lambda.ts",
   "license": "MIT",
@@ -16,38 +16,47 @@
     "all": "yarn build && yarn format && yarn lint && yarn test"
   },
   "devDependencies": {
-    "@octokit/webhooks-definitions": "^3.67.3",
-    "@trivago/prettier-plugin-sort-imports": "^4.2.1",
-    "@types/aws-lambda": "^8.10.137",
-    "@types/express": "^4.17.21",
-    "@types/jest": "^29.5.12",
-    "@types/node": "^20.8.9",
-    "@typescript-eslint/eslint-plugin": "^7.4.0",
-    "@typescript-eslint/parser": "^6.21.0",
-    "@vercel/ncc": "0.38.1",
-    "body-parser": "^1.20.2",
-    "eslint": "^8.56.0",
-    "eslint-plugin-prettier": "5.1.2",
-    "express": "^4.19.2",
-    "jest": "^29.5",
-    "jest-mock": "^29.5.0",
-    "nock": "^13.4.0",
-    "prettier": "3.2.5",
-    "ts-jest": "^29.1.0",
+    "@aws-sdk/client-eventbridge": "^3.741.0",
+    "@trivago/prettier-plugin-sort-imports": "^4.3.0",
+    "@types/aws-lambda": "^8.10.146",
+    "@types/express": "^5.0.0",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^22.10.2",
+    "@typescript-eslint/eslint-plugin": "^8.22.0",
+    "@typescript-eslint/parser": "^8.23.0",
+    "@vercel/ncc": "0.38.3",
+    "body-parser": "^1.20.3",
+    "eslint": "^8.57.0",
+    "eslint-plugin-prettier": "5.2.3",
+    "express": "^4.21.2",
+    "jest": "^29.7.0",
+    "jest-mock": "^29.7.0",
+    "nock": "^13.5.6",
+    "prettier": "3.4.2",
+    "ts-jest": "^29.2.5",
     "ts-node-dev": "^2.0.0",
-    "typescript": "^5.4.5"
+    "typescript": "^5.7.3"
   },
   "dependencies": {
-    "@aws-sdk/client-sqs": "^3.568.0",
+    "@aws-github-runner/aws-powertools-util": "*",
+    "@aws-github-runner/aws-ssm-util": "*",
+    "@aws-sdk/client-sqs": "^3.741.0",
     "@middy/core": "^4.7.0",
-    "@octokit/rest": "^20.0.1",
-    "@octokit/types": "^12.5.0",
-    "@octokit/webhooks": "^12.1.2",
-    "@terraform-aws-github-runner/aws-powertools-util": "*",
-    "@terraform-aws-github-runner/aws-ssm-util": "*",
+    "@octokit/rest": "20.1.1",
+    "@octokit/types": "^13.8.0",
+    "@octokit/webhooks": "^12.3.1",
     "aws-lambda": "^1.0.7"
   },
   "nx": {
-    "includedScripts": ["build","dist","format","format-check","start","watch","all"]
+    "includedScripts": [
+      "build",
+      "dist",
+      "format",
+      "format-check",
+      "lint",
+      "start",
+      "watch",
+      "all"
+    ]
   }
 }

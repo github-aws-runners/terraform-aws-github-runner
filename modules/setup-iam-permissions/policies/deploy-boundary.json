@@ -52,7 +52,8 @@
         "iam:RemoveRoleFromInstanceProfile",
         "iam:DeleteInstanceProfile",
         "iam:AddRoleToInstanceProfile",
-        "iam:GetInstanceProfile"
+        "iam:GetInstanceProfile",
+        "iam:TagInstanceProfile"
       ],
       "Resource": "arn:${aws_partition}:iam::${account_id}:instance-profile/${instance_profile_namespace}/*"
     },

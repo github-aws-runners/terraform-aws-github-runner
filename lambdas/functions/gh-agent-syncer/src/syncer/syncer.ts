@@ -1,8 +1,8 @@
 import { GetObjectTaggingCommand, S3Client, ServerSideEncryption, Tag } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
 import { Octokit } from '@octokit/rest';
-import { createChildLogger } from '@terraform-aws-github-runner/aws-powertools-util';
-import { getTracedAWSV3Client } from '@terraform-aws-github-runner/aws-powertools-util';
+import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
+import { getTracedAWSV3Client } from '@aws-github-runner/aws-powertools-util';
 import axios from 'axios';
 import { Stream } from 'stream';
 
@@ -25,7 +25,7 @@ async function getCachedVersion(s3Client: S3Client, cacheObject: CacheObject): P
     const objectTagging = await s3Client.send(command);
     const versions = objectTagging.TagSet?.filter((t: Tag) => t.Key === versionKey);
     return versions?.length === 1 ? versions[0].Value : undefined;
-  } catch (e) {
+  } catch {
     logger.debug('No tags found');
     return undefined;
   }

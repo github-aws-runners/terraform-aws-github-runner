@@ -1,9 +1,11 @@
 declare namespace NodeJS {
   export interface ProcessEnv {
     AWS_REGION: string;
+    ENABLE_METRIC_GITHUB_APP_RATE_LIMIT: string;
     ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS: string;
     ENVIRONMENT: string;
     GHES_URL: string;
+    JOB_RETRY_CONFIG: string;
     LAUNCH_TEMPLATE_NAME: string;
     LOG_LEVEL: 'silly' | 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'fatal';
     LOG_TYPE: 'json' | 'pretty' | 'hidden';

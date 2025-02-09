@@ -47,7 +47,6 @@ module "runners" {
   #        labelMatchers = [["self-hosted", "linux", "x64", "amazon"]]
   #        exactMatch    = false
   #      }
-  #      fifo                = true
   #      delay_webhook_event = 0
   #      runner_config = {
   #        runner_os                       = "linux"
@@ -77,6 +76,14 @@ module "runners" {
     id             = var.github_app.id
     webhook_secret = random_id.random.hex
   }
+
+  # Deploy webhook using the EventBridge
+  eventbridge = {
+    enable = true
+    # adjust the allow events to only allow specific events, like workflow_job
+    accept_events = ["workflow_job"]
+  }
+
   # enable this section for tracing
   # tracing_config = {
   #   mode                  = "Active"
@@ -89,22 +96,21 @@ module "runners" {
   # runner_binaries_syncer_lambda_zip = "../lambdas-download/runner-binaries-syncer.zip"
   # runners_lambda_zip                = "../lambdas-download/runners.zip"
 
-  # enable_workflow_job_events_queue = true
-  # override delay of events in seconds
-
   # Enable debug logging for the lambda functions
   # log_level = "debug"
-
-  # Enable spot termination watcher
-  # spot_instance_termination_watcher = {
-  #   enable = true
-  # }
 
   # Enable to track the spot instance termination warning
   # instance_termination_watcher = {
   #   enable         = true
-  #   enable_metric = {
-  #     spot_warning = true
+  # }
+
+  # Enable metrics
+  # metrics = {
+  #   enable = true
+  #   metric = {
+  #     enable_github_app_rate_limit    = true
+  #     enable_job_retry                = false
+  #     enable_spot_termination_warning = true
   #   }
   # }
 }

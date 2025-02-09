@@ -25,3 +25,7 @@ runner_config:
     http_endpoint: enabled
     http_tokens: optional
     http_put_response_hop_limit: 1
+  job_retry:
+    enable: true
+    max_attempts: 1
+    delay_in_seconds: 180
