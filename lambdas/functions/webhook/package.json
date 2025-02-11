@@ -17,7 +17,7 @@
   },
   "devDependencies": {
     "@aws-sdk/client-eventbridge": "^3.744.0",
-    "@trivago/prettier-plugin-sort-imports": "^4.3.0",
+    "@trivago/prettier-plugin-sort-imports": "^5.2.2",
     "@types/aws-lambda": "^8.10.146",
     "@types/express": "^5.0.0",
     "@types/jest": "^29.5.14",
