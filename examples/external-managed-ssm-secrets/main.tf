@@ -25,9 +25,11 @@ module "runners" {
   tags = {
     Project = "ProjectX"
   }
-  create_ssm_parameters_github_app = false
-  github_app_ssm_parameters        = var.github_app_ssm_parameters
-
+  github_app = {
+    key_base64_ssm     = var.github_app_ssm_parameters.key_base64
+    id_ssm             = var.github_app_ssm_parameters.id
+    webhook_secret_ssm = var.github_app_ssm_parameters.webhook_secret
+  }
 
   # configure the block device mappings, default for Amazon Linux2
   # block_device_mappings = [{

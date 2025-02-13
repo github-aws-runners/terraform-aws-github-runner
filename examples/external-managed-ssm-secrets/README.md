@@ -1,16 +1,40 @@
-# Amazon Linux X64 (default)
+# Externally managed SSM secrets
 
-This module shows how to create GitHub action runners. Lambda release will be downloaded from GitHub.
+This example is based on the [default setup](../default/README.md), but shows how to use configure runners with already existing SSM parameters that you'd have created manually.
 
-The only difference compared to [`default`](../default/README.md) is that you need to create SSM parameters manually so their values are not stored in the state (see `create_ssm_parameters_github_app` variable).
+Manually creating the SSM parameters that hold the configuration of your GitHub App avoids leaking critical plain text values in your terraform state and version control system. This is a recommended security practice for handling sensitive credentials.
+
+## Prerequisites
+
+Create the following SSM parameters on the AWS console, or by using the following aws-cli commands:
+
+```bash
+   # GitHub App ID
+   aws ssm put-parameter \
+     --name "/github-action-runners/app/github_app_id" \
+     --value "YOUR_APP_ID" \
+     --type "SecureString"
+
+   # GitHub App Private Key
+   aws ssm put-parameter \
+     --name "/github-action-runners/app/github_app_key_base64" \
+     --value "YOUR_PRIVATE_KEY" \
+     --type "SecureString"
+
+   # GitHub App Installation ID
+   aws ssm put-parameter \
+     --name "/github-action-runners/app/github_app_webhook_secret" \
+     --value "YOUR_INSTALLATION_ID" \
+     --type "SecureString"
+```
+
+Then fill the `arn` and `name` values for each of these inside the [`github_app_ssm_parameters` variable](./variables.tf).
 
 ## Usages
 
-Before all, manually create the SSM parameters for the GitHub App ID, base64-encoded private key and webhook secret. Then refer their name and arn through the [`github_app_ssm_parameters` variable](./variables.tf).
-
 Steps for the full setup, such as creating a GitHub app can be found in the root module's [README](https://github.com/philips-labs/terraform-aws-github-runner). First download the Lambda releases from GitHub. Alternatively you can build the lambdas locally with Node or Docker, there is a simple build script in `<root>/.ci/build.sh`. In the `main.tf` you can simply remove the location of the lambda zip files, the default location will work in this case.
 
-> The default example assumes local built lambda's available. Ensure you have built the lambda's. Alternativly you can downlowd the lambda's. The version needs to be set to a GitHub release version, see https://github.com/philips-labs/terraform-aws-github-runner/releases
+> This example assumes local built lambda's available. Ensure you have built the lambda's. Alternativly you can downlowd the lambda's. The version needs to be set to a GitHub release version, see https://github.com/philips-labs/terraform-aws-github-runner/releases
 
 ```bash
 cd ../lambdas-download
