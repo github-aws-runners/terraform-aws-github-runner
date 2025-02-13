@@ -3,14 +3,10 @@ locals {
     "ghr:environment" = var.prefix
   })
 
-  github_app_parameters = var.create_ssm_parameters_github_app ? {
-    id             = module.ssm[0].parameters.github_app_id
-    key_base64     = module.ssm[0].parameters.github_app_key_base64
-    webhook_secret = module.ssm[0].parameters.github_app_webhook_secret
-    } : {
-    id             = var.github_app_ssm_parameters.id
-    key_base64     = var.github_app_ssm_parameters.key_base64
-    webhook_secret = var.github_app_ssm_parameters.webhook_secret
+  github_app_parameters = {
+    id             = coalesce(var.github_app.id_ssm, module.ssm[0].parameters.github_app_id)
+    key_base64     = coalesce(var.github_app.key_base64_ssm, module.ssm[0].parameters.github_app_key_base64)
+    webhook_secret = coalesce(var.github_app.webhook_secret_ssm, module.ssm[0].parameters.github_app_webhook_secret)
   }
 
   default_runner_labels = distinct(concat(["self-hosted", var.runner_os, var.runner_architecture]))
@@ -93,7 +89,6 @@ resource "aws_sqs_queue" "queued_builds_dlq" {
 
 module "ssm" {
   source      = "./modules/ssm"
-  count       = var.create_ssm_parameters_github_app ? 1 : 0
   kms_key_arn = var.kms_key_arn
   path_prefix = "${local.ssm_root_path}/${var.ssm_paths.app}"
   github_app  = var.github_app

@@ -1,9 +1,21 @@
 variable "github_app" {
   description = "GitHub app parameters, see your github app. Ensure the key is the base64-encoded `.pem` file (the output of `base64 app.private-key.pem`, not the content of `private-key.pem`)."
   type = object({
-    key_base64     = string
-    id             = string
-    webhook_secret = string
+    key_base64 = optional(string)
+    key_base64_ssm = optional(object({
+      arn  = string
+      name = string
+    }))
+    id = optional(string)
+    id_ssm = optional(object({
+      arn  = string
+      name = string
+    }))
+    webhook_secret = optional(string)
+    webhook_secret_ssm = optional(object({
+      arn  = string
+      name = string
+    }))
   })
 }
 
