@@ -690,3 +690,9 @@ variable "eventbridge" {
 
   default = {}
 }
+
+variable "user_agent" {
+  description = "User agent used for API calls by lambda functions."
+  type        = string
+  default     = "github-aws-runners"
+}
