@@ -4,12 +4,12 @@
 
 This module creates many runners with a single GitHub app. The module utilizes the internal modules and deploys parts of the stack for each runner defined.
 
-The module takes a configuration as input containing a matcher for the labels. The [webhook](https://philips-labs.github.io/terraform-aws-github-runner/modules/internal/webhook/) lambda is using the configuration to delegate events based on the labels in the workflow job and sent them to a dedicated queue based on the configuration. Events on each queue are processed by a dedicated lambda per configuration to scale runners.
+The module takes a configuration as input containing a matcher for the labels. The [webhook](https://github-aws-runners.github.io/terraform-aws-github-runner/modules/internal/webhook/) lambda is using the configuration to delegate events based on the labels in the workflow job and sent them to a dedicated queue based on the configuration. Events on each queue are processed by a dedicated lambda per configuration to scale runners.
 
 For each configuration:
 
-- When enabled, the [distribution syncer](https://philips-labs.github.io/terraform-aws-github-runner/modules/internal/runner-binaries-syncer/) is deployed for each unique combination of OS and architecture.
-- For each configuration a queue is created and [runner module](https://philips-labs.github.io/terraform-aws-github-runner/modules/internal/runners/) is deployed
+- When enabled, the [distribution syncer](https://github-aws-runners.github.io/terraform-aws-github-runner/modules/internal/runner-binaries-syncer/) is deployed for each unique combination of OS and architecture.
+- For each configuration a queue is created and [runner module](https://github-aws-runners.github.io/terraform-aws-github-runner/modules/internal/runners/) is deployed
 
 ## Matching
 
@@ -26,7 +26,7 @@ Jobs not defining all all labels but for example only `[self-hosted, linux]` cou
 
 ## Usages
 
-A complete example is available in the examples, see the [multi-runner example](https://philips-labs.github.io/terraform-aws-github-runner/examples/) for actual implementation.
+A complete example is available in the examples, see the [multi-runner example](https://github-aws-runners.github.io/terraform-aws-github-runner/examples/) for actual implementation.
 
 ```hcl
 
@@ -130,7 +130,7 @@ module "multi-runner" {
 | <a name="input_enable_managed_runner_security_group"></a> [enable\_managed\_runner\_security\_group](#input\_enable\_managed\_runner\_security\_group) | Enabling the default managed security group creation. Unmanaged security groups can be specified via `runner_additional_security_group_ids`. | `bool` | `true` | no |
 | <a name="input_eventbridge"></a> [eventbridge](#input\_eventbridge) | Enable the use of EventBridge by the module. By enabling this feature events will be put on the EventBridge by the webhook instead of directly dispatching to queues for scaling. | <pre>object({<br/>    enable        = optional(bool, true)<br/>    accept_events = optional(list(string), [])<br/>  })</pre> | `{}` | no |
 | <a name="input_ghes_ssl_verify"></a> [ghes\_ssl\_verify](#input\_ghes\_ssl\_verify) | GitHub Enterprise SSL verification. Set to 'false' when custom certificate (chains) is used for GitHub Enterprise Server (insecure). | `bool` | `true` | no |
-| <a name="input_ghes_url"></a> [ghes\_url](#input\_ghes\_url) | GitHub Enterprise Server URL. Example: https://github.internal.co - DO NOT SET IF USING PUBLIC GITHUB | `string` | `null` | no |
+| <a name="input_ghes_url"></a> [ghes\_url](#input\_ghes\_url) | GitHub Enterprise Server URL. Example: https://github.internal.co - DO NOT SET IF USING PUBLIC GITHUB. .However if you are using Github Enterprise Cloud with data-residency (ghe.com), set the endpoint here. Example - https://companyname.ghe.com\| | `string` | `null` | no |
 | <a name="input_github_app"></a> [github\_app](#input\_github\_app) | GitHub app parameters, see your github app. Ensure the key is the base64-encoded `.pem` file (the output of `base64 app.private-key.pem`, not the content of `private-key.pem`). | <pre>object({<br/>    key_base64     = string<br/>    id             = string<br/>    webhook_secret = string<br/>  })</pre> | n/a | yes |
 | <a name="input_instance_profile_path"></a> [instance\_profile\_path](#input\_instance\_profile\_path) | The path that will be added to the instance\_profile, if not set the environment name will be used. | `string` | `null` | no |
 | <a name="input_instance_termination_watcher"></a> [instance\_termination\_watcher](#input\_instance\_termination\_watcher) | Configuration for the spot termination watcher lambda function. This feature is Beta, changes will not trigger a major release as long in beta.<br/><br/>`enable`: Enable or disable the spot termination watcher.<br/>`memory_size`: Memory size linit in MB of the lambda.<br/>`s3_key`: S3 key for syncer lambda function. Required if using S3 bucket to specify lambdas.<br/>`s3_object_version`: S3 object version for syncer lambda function. Useful if S3 versioning is enabled on source bucket.<br/>`timeout`: Time out of the lambda in seconds.<br/>`zip`: File location of the lambda zip file. | <pre>object({<br/>    enable = optional(bool, false)<br/>    features = optional(object({<br/>      enable_spot_termination_handler              = optional(bool, true)<br/>      enable_spot_termination_notification_watcher = optional(bool, true)<br/>    }), {})<br/>    memory_size       = optional(number, null)<br/>    s3_key            = optional(string, null)<br/>    s3_object_version = optional(string, null)<br/>    timeout           = optional(number, null)<br/>    zip               = optional(string, null)<br/>  })</pre> | `{}` | no |
@@ -178,6 +178,7 @@ module "multi-runner" {
 | <a name="input_syncer_lambda_s3_object_version"></a> [syncer\_lambda\_s3\_object\_version](#input\_syncer\_lambda\_s3\_object\_version) | S3 object version for syncer lambda function. Useful if S3 versioning is enabled on source bucket. | `string` | `null` | no |
 | <a name="input_tags"></a> [tags](#input\_tags) | Map of tags that will be added to created resources. By default resources will be tagged with name and environment. | `map(string)` | `{}` | no |
 | <a name="input_tracing_config"></a> [tracing\_config](#input\_tracing\_config) | Configuration for lambda tracing. | <pre>object({<br/>    mode                  = optional(string, null)<br/>    capture_http_requests = optional(bool, false)<br/>    capture_error         = optional(bool, false)<br/>  })</pre> | `{}` | no |
+| <a name="input_user_agent"></a> [user\_agent](#input\_user\_agent) | User agent used for API calls by lambda functions. | `string` | `"github-aws-runners"` | no |
 | <a name="input_vpc_id"></a> [vpc\_id](#input\_vpc\_id) | The VPC for security groups of the action runners. | `string` | n/a | yes |
 | <a name="input_webhook_lambda_apigateway_access_log_settings"></a> [webhook\_lambda\_apigateway\_access\_log\_settings](#input\_webhook\_lambda\_apigateway\_access\_log\_settings) | Access log settings for webhook API gateway. | <pre>object({<br/>    destination_arn = string<br/>    format          = string<br/>  })</pre> | `null` | no |
 | <a name="input_webhook_lambda_memory_size"></a> [webhook\_lambda\_memory\_size](#input\_webhook\_lambda\_memory\_size) | Memory size limit in MB for webhook lambda. | `number` | `256` | no |

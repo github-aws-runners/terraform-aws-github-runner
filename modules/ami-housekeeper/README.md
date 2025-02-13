@@ -36,7 +36,7 @@ module "ami_housekeeper" {
 
 ## Lambda Function
 
-The Lambda function is written in [TypeScript](https://www.typescriptlang.org/) and requires Node and yarn. Sources are located in [https://github.com/philips-labs/terraform-aws-github-runner/tree/main/lambdas].
+The Lambda function is written in [TypeScript](https://www.typescriptlang.org/) and requires Node and yarn. Sources are located in [https://github.com/github-aws-runners/terraform-aws-github-runner/tree/main/lambdas].
 
 ### Install
 

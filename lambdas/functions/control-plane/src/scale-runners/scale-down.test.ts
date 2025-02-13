@@ -159,11 +159,11 @@ describe('Scale down runners', () => {
     mockCreateClient.mockResolvedValue(new mocktokit());
   });
 
-  const endpoints = ['https://api.github.com', 'https://github.enterprise.something'];
+  const endpoints = ['https://api.github.com', 'https://github.enterprise.something', 'https://companyname.ghe.com'];
 
   describe.each(endpoints)('for %s', (endpoint) => {
     beforeEach(() => {
-      if (endpoint.includes('enterprise')) {
+      if (endpoint.includes('enterprise') || endpoint.endsWith('.ghe.com')) {
         process.env.GHES_URL = endpoint;
       }
     });

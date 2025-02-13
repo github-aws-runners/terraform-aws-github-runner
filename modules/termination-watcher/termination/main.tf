@@ -19,6 +19,7 @@ module "termination_handler" {
 resource "aws_cloudwatch_event_rule" "spot_instance_termination" {
   name        = "${var.config.prefix != null ? format("%s-", var.config.prefix) : ""}spot-termination"
   description = "Spot Instance Termination (BidEventicedEvent)"
+  tags        = local.config.tags
 
   event_pattern = <<EOF
 {

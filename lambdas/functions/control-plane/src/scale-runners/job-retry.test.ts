@@ -74,7 +74,7 @@ describe('Test job retry publish message', () => {
       id: 0,
       installationId: 0,
       repositoryName: 'test',
-      repositoryOwner: 'philips-labs',
+      repositoryOwner: 'github-aws-runners',
       repoOwnerType: 'Organization',
       retryCounter: input.retryCounter,
     };
@@ -112,7 +112,7 @@ describe('Test job retry publish message', () => {
       id: 0,
       installationId: 0,
       repositoryName: 'test',
-      repositoryOwner: 'philips-labs',
+      repositoryOwner: 'github-aws-runners',
       repoOwnerType: 'Organization',
     };
 
@@ -136,7 +136,7 @@ describe(`Test job retry check`, () => {
       id: 0,
       installationId: 0,
       repositoryName: 'test',
-      repositoryOwner: 'philips-labs',
+      repositoryOwner: 'github-aws-runners',
       repoOwnerType: 'Organization',
       retryCounter: 0,
     };
@@ -171,7 +171,7 @@ describe(`Test job retry check`, () => {
       id: 0,
       installationId: 0,
       repositoryName: 'test',
-      repositoryOwner: 'philips-labs',
+      repositoryOwner: 'github-aws-runners',
       repoOwnerType: 'Organization',
       retryCounter: 1,
     };
@@ -213,7 +213,7 @@ describe(`Test job retry check`, () => {
       id: 0,
       installationId: 0,
       repositoryName: 'test',
-      repositoryOwner: 'philips-labs',
+      repositoryOwner: 'github-aws-runners',
       repoOwnerType: 'Organization',
       retryCounter: 0,
     };
@@ -242,7 +242,7 @@ describe(`Test job retry check`, () => {
       id: 0,
       installationId: 0,
       repositoryName: 'test',
-      repositoryOwner: 'philips-labs',
+      repositoryOwner: 'github-aws-runners',
       repoOwnerType: 'Organization',
       retryCounter: 0,
     };

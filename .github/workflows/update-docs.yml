@@ -6,42 +6,42 @@ on:
       - "**/*.md"
       - ".github/workflows/update-docs.yml"
 
-permissions:
-  contents: write
-  pull-requests: write
-
 jobs:
   docs:
     name: Auto update terraform docs
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - name: Checkout with GITHUB Action token
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: true
 
       # use an app to ensure CI is triggered
       - name: Generate TF docs
-        if: github.repository_owner == 'philips-labs'
+        if: github.repository_owner == 'github-aws-runners'
         uses: terraform-docs/gh-actions@aeae0038ed47a547e0c0fca5c059d3335f48fb25 # v1.3.0
         with:
           find-dir: .
           git-commit-message: "docs: auto update terraform docs"
-          git-push: ${{ github.ref != 'refs/heads/main' || github.repository_owner != 'philips-labs' }}
-          git-push-user-name: philips-labs-pr|bot
-          git-push-user-email: "philips-labs-pr[bot]@users.noreply.github.com"
+          git-push: ${{ github.ref != 'refs/heads/main' || github.repository_owner != 'github-aws-runners' }}
+          git-push-user-name: github-aws-runners-pr|bot
+          git-push-user-email: "github-aws-runners-pr[bot]@users.noreply.github.com"
 
       - name: Generate TF docs (forks)
-        if: github.repository_owner != 'philips-labs'
+        if: github.repository_owner != 'github-aws-runners'
         uses: terraform-docs/gh-actions@aeae0038ed47a547e0c0fca5c059d3335f48fb25 # v1.3.0
         with:
           find-dir: .
           git-commit-message: "docs: auto update terraform docs"
-          git-push: ${{ github.ref != 'refs/heads/main' || github.repository_owner != 'philips-labs' }}
+          git-push: ${{ github.ref != 'refs/heads/main' || github.repository_owner != 'github-aws-runners' }}
 
       # change docs via PR in case of locked main branch
       - name: Create Pull Request (main branch only)
-        if: github.ref == 'refs/heads/main' && github.repository_owner == 'philips-labs'
+        if: github.ref == 'refs/heads/main' && github.repository_owner == 'github-aws-runners'
         uses: peter-evans/create-pull-request@67ccf781d68cd99b580ae25a5c18a1cc84ffff1f # v7.0.6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -55,17 +55,19 @@ jobs:
   deploy-pages:
     needs: [docs]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Configure Git Credentials
         run: |
           git config user.name github-actions[bot]
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-      - uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+      - uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5.4.0
         with:
           python-version: 3.x
       - run: echo "cache_id=$(date --utc '+%V')" >> $GITHUB_ENV
-      - uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+      - uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
         with:
           key: mkdocs-material-${{ env.cache_id }}
           path: .cache

@@ -9,6 +9,7 @@ module "pool" {
       ssl_verify = var.ghes_ssl_verify
       url        = var.ghes_url
     }
+    user_agent                    = var.user_agent
     github_app_parameters         = var.github_app_parameters
     instance_allocation_strategy  = var.instance_allocation_strategy
     instance_max_spot_price       = var.instance_max_spot_price

@@ -3,9 +3,9 @@
 This example is based on the default setup, but shows how runners can be used with the ephemeral flag enabled. Once enabled, ephemeral runners will be used for one job only. Each job requires a fresh instance. This feature should be used in combination with the `workflow_job` event. See GitHub webhook endpoint configuration(link needed here). It is also suggested to use a pre-build AMI to minimize runner launch times.
 ## Usages
 
-Steps for the full setup, such as creating a GitHub app can be found the [docs](https://philips-labs.github.io/terraform-aws-github-runner/getting-started/). First download the Lambda releases from GitHub. Alternatively you can build the lambdas locally with Node or Docker, there is a simple build script in `<root>/.ci/build.sh`. In the `main.tf` you can simply remove the location of the lambda zip files, the default location will work in this case.
+Steps for the full setup, such as creating a GitHub app can be found the [docs](https://github-aws-runners.github.io/terraform-aws-github-runner/getting-started/). First download the Lambda releases from GitHub. Alternatively you can build the lambdas locally with Node or Docker, there is a simple build script in `<root>/.ci/build.sh`. In the `main.tf` you can simply remove the location of the lambda zip files, the default location will work in this case.
 
-> Ensure you have set the version in `lambdas-download/main.tf` for running the example. The version needs to be set to a GitHub release version, see https://github.com/philips-labs/terraform-aws-github-runner/releases
+> Ensure you have set the version in `lambdas-download/main.tf` for running the example. The version needs to be set to a GitHub release version, see https://github.com/github-aws-runners/terraform-aws-github-runner/releases
 
 ```bash
 cd lambdas-download
@@ -14,7 +14,7 @@ terraform apply
 cd ..
 ```
 
-Before running Terraform, ensure the GitHub app is configured. See the [configuration details](https://philips-labs.github.io/terraform-aws-github-runner/configuration/#ephemeral-runners) for more details.
+Before running Terraform, ensure the GitHub app is configured. See the [configuration details](https://github-aws-runners.github.io/terraform-aws-github-runner/configuration/#ephemeral-runners) for more details.
 
 ```bash
 terraform init

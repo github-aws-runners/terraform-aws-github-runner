@@ -8,7 +8,7 @@ These images share the same scripting as used in the user-data mechanism in `/mo
 
 The examples in `linux-al2023` and `windows-core-2019` also upload a `start-runner` script that uses the exact same startup process as used in the user-data mechanism. This means that the image created here does not need any extra scripts injected or changes to boot up and connect to GH.
 
-To remove old images the [AMI house keeper module](https://philips-labs.github.io/terraform-aws-github-runner/modules/public/ami-housekeeper/) can be used.
+To remove old images the [AMI house keeper module](https://github-aws-runners.github.io/terraform-aws-github-runner/modules/public/ami-housekeeper/) can be used.
 
 ## Building your own
 

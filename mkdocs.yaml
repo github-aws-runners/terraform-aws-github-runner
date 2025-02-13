@@ -1,7 +1,7 @@
 site_name: GitHub Runners on AWS
 
-repo_name: philips-labs/terraform-aws-github-runner
-repo_url: https://github.com/philips-labs/terraform-aws-github-runner
+repo_name: github-aws-runners/terraform-aws-github-runner
+repo_url: https://github.com/github-aws-runners/terraform-aws-github-runner
 edit_uri: edit/main/docs/
 use_directory_urls: true
 
@@ -36,7 +36,7 @@ extra:
     deprecated: Deprecated
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/philips-labs/terraform-aws-github-runner
+      link: https://github.com/github-aws-runners/terraform-aws-github-runner
 
 
 markdown_extensions:

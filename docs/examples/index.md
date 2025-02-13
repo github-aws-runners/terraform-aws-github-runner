@@ -1,6 +1,6 @@
 # Examples
 
-Examples are located in the [examples](https://github.com/philips-labs/terraform-aws-github-runner/tree/main/examples) directory. The following examples are provided:
+Examples are located in the [examples](https://github.com/github-aws-runners/terraform-aws-github-runner/tree/main/examples) directory. The following examples are provided:
 
 - _[Default](default.md)_: The default example of the module
 - _[Ephemeral](ephemeral.md)_: Example usages of ephemeral runners based on the default example.

@@ -5,7 +5,7 @@ import nock from 'nock';
 
 import { listEC2Runners } from '../aws/runners';
 import * as ghAuth from '../github/auth';
-import { createRunners } from '../scale-runners/scale-up';
+import { createRunners, getGitHubEnterpriseApiUrl } from '../scale-runners/scale-up';
 import { adjust } from './pool';
 
 const mockOctokit = {
@@ -28,7 +28,7 @@ jest.mock('./../aws/runners', () => ({
   listEC2Runners: jest.fn(),
 }));
 jest.mock('./../github/auth');
-jest.mock('./../scale-runners/scale-up');
+jest.mock('../scale-runners/scale-up');
 
 const mocktokit = Octokit as jest.MockedClass<typeof Octokit>;
 const mockedAppAuth = mocked(ghAuth.createGithubAppAuth, {
@@ -167,6 +167,12 @@ beforeEach(() => {
 
 describe('Test simple pool.', () => {
   describe('With GitHub Cloud', () => {
+    beforeEach(() => {
+      (getGitHubEnterpriseApiUrl as jest.Mock).mockReturnValue({
+        ghesApiUrl: '',
+        ghesBaseUrl: '',
+      });
+    });
     it('Top up pool with pool size 2 registered.', async () => {
       await expect(await adjust({ poolSize: 3 })).resolves;
       expect(createRunners).toHaveBeenCalledTimes(1);
@@ -240,7 +246,29 @@ describe('Test simple pool.', () => {
 
   describe('With GHES', () => {
     beforeEach(() => {
-      process.env.GHES_URL = 'https://github.enterprise.something';
+      (getGitHubEnterpriseApiUrl as jest.Mock).mockReturnValue({
+        ghesApiUrl: 'https://api.github.enterprise.something',
+        ghesBaseUrl: 'https://github.enterprise.something',
+      });
+    });
+
+    it('Top up if the pool size is set to 5', async () => {
+      await expect(await adjust({ poolSize: 5 })).resolves;
+      // 2 idle, top up with 3 to match a pool of 5
+      expect(createRunners).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ numberOfRunners: 3 }),
+        expect.anything(),
+      );
+    });
+  });
+
+  describe('With Github Data Residency', () => {
+    beforeEach(() => {
+      (getGitHubEnterpriseApiUrl as jest.Mock).mockReturnValue({
+        ghesApiUrl: 'https://api.companyname.ghe.com',
+        ghesBaseUrl: 'https://companyname.ghe.com',
+      });
     });
 
     it('Top up if the pool size is set to 5', async () => {

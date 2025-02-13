@@ -6,7 +6,7 @@ This module will create an AWS IAM role that is required to use permission bound
 
 ## Usages
 
-See below or check out [this example](https://philips-labs.github.io/terraform-aws-github-runner/examples/permissions-boundary/)
+See below or check out [this example](https://github-aws-runners.github.io/terraform-aws-github-runner/examples/permissions-boundary/)
 Create a workspace and add the following terraform code.
 
 ```hcl
@@ -81,21 +81,3 @@ No modules.
 | <a name="output_boundary"></a> [boundary](#output\_boundary) | n/a |
 | <a name="output_role"></a> [role](#output\_role) | n/a |
 <!-- END_TF_DOCS -->
-
-## Philips Forest
-
-This module is part of the Philips Forest.
-
-```plain
-                                                     ___                   _
-                                                    / __\__  _ __ ___  ___| |_
-                                                   / _\/ _ \| '__/ _ \/ __| __|
-                                                  / / | (_) | | |  __/\__ \ |_
-                                                  \/   \___/|_|  \___||___/\__|
-
-                                                                 Infrastructure
-```
-
-Talk to the forestkeepers in the `forest`-channel on Slack.
-
-[![Slack](https://philips-software-slackin.now.sh/badge.svg)](https://philips-software-slackin.now.sh)

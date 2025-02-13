@@ -4,9 +4,9 @@
 # required to run tflint via pre-commit
 
 # only run the script if a uniique pid file exits if not creat it or --force flag is passed
-pid="/tmp/philips-labs-terraform-aws-github-runner.pid"
+pid="/tmp/github-aws-runners-terraform-aws-github-runner.pid"
 if [ "$1" == "--force" ]; then
-  rm -f /tmp/philips-labs-terraform-aws-github-runner.pid
+  rm -f /tmp/github-aws-runners-terraform-aws-github-runner.pid
 fi
 
 if [ ! -f $pid ]; then

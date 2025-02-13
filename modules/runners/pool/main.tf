@@ -23,6 +23,7 @@ resource "aws_lambda_function" "pool" {
       ENABLE_JIT_CONFIG                        = var.config.runner.enable_jit_config
       ENVIRONMENT                              = var.config.prefix
       GHES_URL                                 = var.config.ghes.url
+      USER_AGENT                               = var.config.user_agent
       INSTANCE_ALLOCATION_STRATEGY             = var.config.instance_allocation_strategy
       INSTANCE_MAX_SPOT_PRICE                  = var.config.instance_max_spot_price
       INSTANCE_TARGET_CAPACITY_TYPE            = var.config.instance_target_capacity_type

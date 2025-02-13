@@ -51,7 +51,7 @@ To apply the terraform module, the compiled lambdas (.zip files) need to be avai
 
 To read the files from S3, set the `lambda_s3_bucket` variable and the specific object key for each lambda.
 
-The lambdas can be downloaded manually from the [release page](https://github.com/philips-labs/terraform-aws-github-runner/releases) or using the [download-lambda](modules/public/download-lambda.md) terraform module (requires `curl` to be installed on your machine). In the `download-lambda` directory, run `terraform init && terraform apply`. The lambdas will be saved to the same directory.
+The lambdas can be downloaded manually from the [release page](https://github.com/github-aws-runners/terraform-aws-github-runner/releases) or using the [download-lambda](modules/public/download-lambda.md) terraform module (requires `curl` to be installed on your machine). In the `download-lambda` directory, run `terraform init && terraform apply`. The lambdas will be saved to the same directory.
 
 For local development you can build all the lambdas at once using `.ci/build.sh` or individually using `yarn dist`.
 
@@ -73,7 +73,7 @@ Note that `github_app.key_base64` needs to be a base64-encoded string of the `.p
 
 ```hcl
 module "github-runner" {
-  source  = "philips-labs/github-runner/aws"
+  source  = "github-aws-runners/github-runner/aws"
   version = "REPLACE_WITH_VERSION"
 
   aws_region = "eu-west-1"
