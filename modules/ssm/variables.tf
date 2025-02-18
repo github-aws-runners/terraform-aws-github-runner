@@ -1,5 +1,10 @@
 variable "github_app" {
-  description = "GitHub app parameters, see your github app. Ensure the key is the base64-encoded `.pem` file (the output of `base64 app.private-key.pem`, not the content of `private-key.pem`)."
+  description = <<EOF
+  GitHub app parameters, see your github app. 
+  You can optionally create the SSM parameters yourself and provide the ARN and name here, through the `*_ssm` attributes.
+  If you chose to provide the configuration values directly here, 
+  please ensure the key is the base64-encoded `.pem` file (the output of `base64 app.private-key.pem`, not the content of `private-key.pem`).
+  EOF
   type = object({
     key_base64 = optional(string)
     key_base64_ssm = optional(object({
@@ -17,6 +22,15 @@ variable "github_app" {
       name = string
     }))
   })
+  validation {
+    condition     = (var.github_app.key_base64 != null || var.github_app.key_base64_ssm != null) && (var.github_app.id != null || var.github_app.id_ssm != null) && (var.github_app.webhook_secret != null || var.github_app.webhook_secret_ssm != null)
+    error_message = <<EOF
+     You must set all of the following parameters, choosing one option from each pair:
+      - `key_base64` or `key_base64_ssm`
+      - `id` or `id_ssm`
+      - `webhook_secret` or `webhook_secret_ssm`
+    EOF
+  }
 }
 
 variable "path_prefix" {
