@@ -1,0 +1,1 @@
+--8<-- "examples/external-managed-ssm-secrets/README.md"
