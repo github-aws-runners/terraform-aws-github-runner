@@ -6,7 +6,7 @@ Manually creating the SSM parameters that hold the configuration of your GitHub 
 
 ## Prerequisites
 
-Create the following SSM parameters on the AWS console, or by using the following aws-cli commands:
+Create the following SSM parameters on the AWS console, or by using the following aws-cli commands, see example below. You can also use the script `ssm.sh`. First set the required values, next source the script before running terraform.
 
 ```bash
    # GitHub App ID
@@ -95,5 +95,4 @@ No resources.
 |------|-------------|
 | <a name="output_runners"></a> [runners](#output\_runners) | n/a |
 | <a name="output_webhook_endpoint"></a> [webhook\_endpoint](#output\_webhook\_endpoint) | n/a |
-| <a name="output_webhook_secret"></a> [webhook\_secret](#output\_webhook\_secret) | n/a |
 <!-- END_TF_DOCS -->
