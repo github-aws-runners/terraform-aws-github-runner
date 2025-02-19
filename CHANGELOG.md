@@ -1,5 +1,14 @@
 # Changelog
 
+## [6.2.3](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.2.2...v6.2.3) (2025-02-19)
+
+
+### Bug Fixes
+
+* **lambda:** bump @octokit/request from 8.4.0 to 8.4.1 in /lambdas ([#4431](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4431)) ([945bff1](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/945bff1e166e9b3bba1d613e093260f2b13d91fb))
+* **lambda:** bump @octokit/request-error from 5.1.0 to 5.1.1 in /lambdas ([#4422](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4422)) ([7ef849e](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/7ef849ecc52456259bf7dba1805ce75ad4745634))
+* **lambda:** bump the aws group in /lambdas with 6 updates ([#4424](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4424)) ([ee80ada](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/ee80ada97e2801d9ba360c9ab69352c4bd29d84b))
+
 ## [6.2.2](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.2.1...v6.2.2) (2025-02-11)
 
 
