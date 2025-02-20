@@ -59,9 +59,9 @@ github_app_key_base64_ssm=$(aws ssm get-parameter --name "${SSM_PATH}/github_app
 github_app_webhook_secret_ssm=$(aws ssm get-parameter --name "${SSM_PATH}/github_app_webhook_secret" --query 'Parameter.{arn:ARN,name:Name}' --output json)
 
 export TF_VAR_github_app_ssm_parameters="{
-  "id": `echo $github_app_id_ssm`,
-  "key_base64": `echo $github_app_key_base64_ssm`,
-  "webhook_secret": `echo $github_app_webhook_secret_ssm`
+  \"id\": `echo $github_app_id_ssm`,
+  \"key_base64\": `echo $github_app_key_base64_ssm`,
+  \"webhook_secret\": `echo $github_app_webhook_secret_ssm`
 }"
 
 export TF_VAR_environment=external-ssm
