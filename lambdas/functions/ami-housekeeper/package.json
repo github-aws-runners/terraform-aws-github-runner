@@ -30,7 +30,7 @@
     "jest": "^29.7.0",
     "jest-mock": "^29.7.0",
     "jest-mock-extended": "^3.0.7",
-    "nock": "^13.5.6",
+    "nock": "^14.0.1",
     "prettier": "3.4.2",
     "ts-jest": "^29.2.5",
     "ts-node": "^10.9.2",
@@ -39,8 +39,8 @@
   "dependencies": {
     "@aws-github-runner/aws-powertools-util": "*",
     "@aws-github-runner/aws-ssm-util": "*",
-    "@aws-sdk/client-ec2": "^3.744.0",
-    "@aws-sdk/client-ssm": "^3.744.0",
+    "@aws-sdk/client-ec2": "^3.749.0",
+    "@aws-sdk/client-ssm": "^3.749.0",
     "@aws-sdk/types": "^3.734.0",
     "cron-parser": "^4.9.0",
     "typescript": "^5.7.3"
