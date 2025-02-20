@@ -75,15 +75,14 @@ terraform output -raw webhook_secret
 ```
 
 <!-- BEGIN_TF_DOCS -->
-
 ## Requirements
 
-| Name                                                                     | Version  |
-| ------------------------------------------------------------------------ | -------- |
-| <a name="requirement_terraform"></a> [terraform](#requirement_terraform) | >= 1.3.0 |
-| <a name="requirement_aws"></a> [aws](#requirement_aws)                   | ~> 5.27  |
-| <a name="requirement_local"></a> [local](#requirement_local)             | ~> 2.0   |
-| <a name="requirement_random"></a> [random](#requirement_random)          | ~> 3.0   |
+| Name | Version |
+|------|---------|
+| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.3.0 |
+| <a name="requirement_aws"></a> [aws](#requirement\_aws) | ~> 5.27 |
+| <a name="requirement_local"></a> [local](#requirement\_local) | ~> 2.0 |
+| <a name="requirement_random"></a> [random](#requirement\_random) | ~> 3.0 |
 
 ## Providers
 
@@ -91,10 +90,10 @@ No providers.
 
 ## Modules
 
-| Name                                                     | Source  | Version |
-| -------------------------------------------------------- | ------- | ------- |
-| <a name="module_base"></a> [base](#module_base)          | ../base | n/a     |
-| <a name="module_runners"></a> [runners](#module_runners) | ../../  | n/a     |
+| Name | Source | Version |
+|------|--------|---------|
+| <a name="module_base"></a> [base](#module\_base) | ../base | n/a |
+| <a name="module_runners"></a> [runners](#module\_runners) | ../../ | n/a |
 
 ## Resources
 
@@ -102,18 +101,17 @@ No resources.
 
 ## Inputs
 
-| Name                                                                                                         | Description                                                                     | Type                                                                                                                                                                                                                                                                          | Default       | Required |
-| ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | :------: |
-| <a name="input_aws_region"></a> [aws_region](#input_aws_region)                                              | AWS region.                                                                     | `string`                                                                                                                                                                                                                                                                      | `"eu-west-1"` |    no    |
-| <a name="input_environment"></a> [environment](#input_environment)                                           | Environment name, used as prefix.                                               | `string`                                                                                                                                                                                                                                                                      | `null`        |    no    |
-| <a name="input_github_app_ssm_parameters"></a> [github_app_ssm_parameters](#input_github_app_ssm_parameters) | SSM parameters details for the GitHub App, that you've created manually on AWS. | <pre>object({<br/> key_base64 = optional(object({<br/> arn = string<br/> name = string<br/> }))<br/> id = optional(object({<br/> arn = string<br/> name = string<br/> }))<br/> webhook_secret = optional(object({<br/> arn = string<br/> name = string<br/> }))<br/> })</pre> | `{}`          |    no    |
+| Name | Description | Type | Default | Required |
+|------|-------------|------|---------|:--------:|
+| <a name="input_aws_region"></a> [aws\_region](#input\_aws\_region) | AWS region. | `string` | `"eu-west-1"` | no |
+| <a name="input_environment"></a> [environment](#input\_environment) | Environment name, used as prefix. | `string` | `null` | no |
+| <a name="input_github_app_ssm_parameters"></a> [github\_app\_ssm\_parameters](#input\_github\_app\_ssm\_parameters) | SSM parameters details for the GitHub App, that you've created manually on AWS. | <pre>object({<br/>    key_base64 = optional(object({<br/>      arn  = string<br/>      name = string<br/>    }))<br/>    id = optional(object({<br/>      arn  = string<br/>      name = string<br/>    }))<br/>    webhook_secret = optional(object({<br/>      arn  = string<br/>      name = string<br/>    }))<br/>  })</pre> | `{}` | no |
 
 ## Outputs
 
-| Name                                                                                | Description |
-| ----------------------------------------------------------------------------------- | ----------- |
-| <a name="output_note"></a> [note](#output_note)                                     | n/a         |
-| <a name="output_runners"></a> [runners](#output_runners)                            | n/a         |
-| <a name="output_webhook_endpoint"></a> [webhook_endpoint](#output_webhook_endpoint) | n/a         |
-
+| Name | Description |
+|------|-------------|
+| <a name="output_note"></a> [note](#output\_note) | n/a |
+| <a name="output_runners"></a> [runners](#output\_runners) | n/a |
+| <a name="output_webhook_endpoint"></a> [webhook\_endpoint](#output\_webhook\_endpoint) | n/a |
 <!-- END_TF_DOCS -->
