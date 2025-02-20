@@ -46,15 +46,15 @@ If you opt for this approach, please fill the `*_ssm` attributes of the `github_
 github_app = {
     key_base64_ssm     = {
       name = "/your/path/to/ssm/parameter/key-base-64"
-      arn = "arn:aws:ssm:eu-west-3:402738628039:parameter/your/path/to/ssm/parameter/key-base-64"
+      arn = "arn:aws:ssm:::parameter/your/path/to/ssm/parameter/key-base-64"
     }
     id_ssm             = {
       name = "/your/path/to/ssm/parameter/id"
-      arn = "arn:aws:ssm:eu-west-3:402738628039:parameter/your/path/to/ssm/parameter/id"
+      arn = "arn:aws:ssm:::parameter/your/path/to/ssm/parameter/id"
     }
     webhook_secret_ssm = {
       name = "/your/path/to/ssm/parameter/webhook-secret"
-      arn = "arn:aws:ssm:eu-west-3:402738628039:parameter/your/path/to/ssm/parameter/webhook-secret"
+      arn = "arn:aws:ssm:::parameter/your/path/to/ssm/parameter/webhook-secret"
     }
   }
 ```
