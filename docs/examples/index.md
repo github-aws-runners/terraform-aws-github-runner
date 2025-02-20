@@ -9,3 +9,4 @@ Examples are located in the [examples](https://github.com/github-aws-runners/ter
 - _[Prebuilt Images](prebuilt.md)_: Example usages of deploying runners with a custom prebuilt image.
 - _[Windows](windows.md)_: Example usage of creating a runner using Windows as the OS.
 - _[Termination watcher](termination-watcher.md)_: Example usages of termination watcher.
+- _[Externally managed SSM secrets](external-managed-ssm-secrets.md)_: Example usage of externally managed SSM secrets for the GitHub App credentials.
