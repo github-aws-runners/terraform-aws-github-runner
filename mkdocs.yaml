@@ -70,6 +70,7 @@ nav:
     - Default: examples/default.md
     - Multi Runner: examples/multi-runner.md
     - Ephemeral: examples/ephemeral.md
+    - External managed secrets: examples/external-managed-ssm-secrets.md
     - Custom AMI: examples/prebuilt.md
     - Termination watcher: examples/termination-watcher.md
     - Lambda download: examples/lambda-download.md
