@@ -16,12 +16,12 @@
     "all": "yarn build && yarn format && yarn lint && yarn test"
   },
   "devDependencies": {
-    "@aws-sdk/client-eventbridge": "^3.741.0",
-    "@trivago/prettier-plugin-sort-imports": "^4.3.0",
+    "@aws-sdk/client-eventbridge": "^3.749.0",
+    "@trivago/prettier-plugin-sort-imports": "^5.2.2",
     "@types/aws-lambda": "^8.10.146",
     "@types/express": "^5.0.0",
     "@types/jest": "^29.5.14",
-    "@types/node": "^22.10.2",
+    "@types/node": "^22.13.1",
     "@typescript-eslint/eslint-plugin": "^8.22.0",
     "@typescript-eslint/parser": "^8.23.0",
     "@vercel/ncc": "0.38.3",
@@ -31,7 +31,7 @@
     "express": "^4.21.2",
     "jest": "^29.7.0",
     "jest-mock": "^29.7.0",
-    "nock": "^13.5.6",
+    "nock": "^14.0.1",
     "prettier": "3.4.2",
     "ts-jest": "^29.2.5",
     "ts-node-dev": "^2.0.0",
@@ -40,7 +40,7 @@
   "dependencies": {
     "@aws-github-runner/aws-powertools-util": "*",
     "@aws-github-runner/aws-ssm-util": "*",
-    "@aws-sdk/client-sqs": "^3.741.0",
+    "@aws-sdk/client-sqs": "^3.749.0",
     "@middy/core": "^4.7.0",
     "@octokit/rest": "20.1.1",
     "@octokit/types": "^13.8.0",
