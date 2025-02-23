@@ -27,8 +27,7 @@ interface RunnerStatus {
 function canRunJob(workflowJobLabels: string[], runnerLabels: string[]): boolean {
   runnerLabels = runnerLabels.map((label) => label.toLowerCase());
   const matchLabels = workflowJobLabels.every((wl) => runnerLabels.includes(wl.toLowerCase()));
-  const match = workflowJobLabels.length === 0 ? !matchLabels : matchLabels;
-  return match;
+  return workflowJobLabels.length !== 0 && matchLabels;
 }
 
 export async function adjust(event: PoolEvent): Promise<void> {
@@ -52,9 +51,7 @@ export async function adjust(event: PoolEvent): Promise<void> {
   const runnerOwners = process.env.RUNNER_OWNERS.split(',');
   const amiIdSsmParameterName = process.env.AMI_ID_SSM_PARAMETER_NAME;
   const tracingEnabled = yn(process.env.POWERTOOLS_TRACE_ENABLED, { default: false });
-  const onDemandFailoverOnError = process.env.ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS
-    ? (JSON.parse(process.env.ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS) as [string])
-    : [];
+  const onDemandFailoverOnError: string[] = JSON.parse(process.env.ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS ?? '[]');
 
   const { ghesApiUrl, ghesBaseUrl } = getGitHubEnterpriseApiUrl();
 
