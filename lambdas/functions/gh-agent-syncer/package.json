@@ -21,7 +21,7 @@
     "@types/jest": "^29.5.14",
     "@types/node": "^22.13.5",
     "@types/request": "^2.48.12",
-    "@typescript-eslint/eslint-plugin": "^8.22.0",
+    "@typescript-eslint/eslint-plugin": "^8.25.0",
     "@typescript-eslint/parser": "^8.25.0",
     "@vercel/ncc": "^0.38.3",
     "aws-sdk-client-mock": "^4.1.0",
