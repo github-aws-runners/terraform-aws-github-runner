@@ -1,5 +1,17 @@
 # Changelog
 
+## [6.3.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.2.3...v6.3.0) (2025-02-24)
+
+
+### Features
+
+* opt-out ssm parameters for github app ([#4335](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4335)) ([a2f013f](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/a2f013f4352912b618ffc071ef8ea06376ed9c5b))
+
+
+### Bug Fixes
+
+* **lambda:** bump the aws group in /lambdas with 6 updates ([#4440](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4440)) ([b10d87e](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/b10d87ea40ad57acc0d4711e52be9c8ee7ece177))
+
 ## [6.2.3](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.2.2...v6.2.3) (2025-02-19)
 
 
