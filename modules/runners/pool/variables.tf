@@ -39,7 +39,7 @@ variable "config" {
       })
       group_name  = string
       name_prefix = string
-      pool_owner  = string
+      pool_owners = string
       role = object({
         arn = string
       })
@@ -50,6 +50,7 @@ variable "config" {
     instance_max_spot_price       = string
     prefix                        = string
     pool = list(object({
+      dynamic_pool_scaling_enabled = bool
       schedule_expression          = string
       schedule_expression_timezone = string
       size                         = number
@@ -83,5 +84,3 @@ variable "tracing_config" {
   })
   default = {}
 }
-
-
