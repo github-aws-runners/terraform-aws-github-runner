@@ -1,6 +1,9 @@
 import { Octokit } from '@octokit/rest';
 import { addPersistentContextToChildLogger, createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import { getParameter, putParameter } from '@aws-github-runner/aws-ssm-util';
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient, PutCommand } from '@aws-sdk/lib-dynamodb';
+
 import yn from 'yn';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
@@ -49,7 +52,13 @@ interface CreateGitHubRunnerConfig {
   disableAutoUpdate: boolean;
   ssmTokenPath: string;
   ssmConfigPath: string;
+  dynamoDBConfig?: {
+    tableName: string;
+    ttlInSeconds?: number;
+  };
 }
+
+type ConfigType = 'service' | 'jit';
 
 interface CreateEC2RunnerConfig {
   environment: string;
@@ -216,6 +225,7 @@ export async function createRunners(
   const instances = await createRunner({
     runnerType: githubRunnerConfig.runnerType,
     runnerOwner: githubRunnerConfig.runnerOwner,
+    dynamoDBTableName: githubRunnerConfig.dynamoDBConfig?.tableName,
     numberOfRunners: 1,
     ...ec2RunnerConfig,
   });
@@ -251,6 +261,10 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
   const onDemandFailoverOnError = process.env.ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS
     ? (JSON.parse(process.env.ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS) as [string])
     : [];
+  const dynamoDBTableName = process.env.DYNAMODB_TABLE_NAME || '';
+  const dynamoDBTTLInSeconds = process.env.DYNAMODB_TTL_IN_SECONDS
+    ? parseInt(process.env.DYNAMODB_TTL_IN_SECONDS)
+    : 24 * 60 * 60;
 
   if (ephemeralEnabled && payload.eventType !== 'workflow_job') {
     logger.warn(`${payload.eventType} event is not supported in combination with ephemeral runners.`);
@@ -321,6 +335,7 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
           disableAutoUpdate,
           ssmTokenPath,
           ssmConfigPath,
+          dynamoDBConfig: { tableName: dynamoDBTableName, ttlInSeconds: dynamoDBTTLInSeconds },
         },
         {
           ec2instanceCriteria: {
@@ -406,17 +421,20 @@ async function createRegistrationTokenConfig(
   });
 
   for (const instance of instances) {
-    await putParameter(`${githubRunnerConfig.ssmTokenPath}/${instance}`, runnerServiceConfig.join(' '), true, {
-      tags: [{ Key: 'InstanceId', Value: instance }],
-    });
-    if (isDelay) {
+    await storeRunnerConfig(instance, 'service', runnerServiceConfig.join(' '), githubRunnerConfig);
+
+    if (isDelay && githubRunnerConfig.dynamoDBConfig?.tableName === '') {
       // Delay to prevent AWS ssm rate limits by being within the max throughput limit
       await delay(25);
     }
   }
 }
 
-async function createJitConfig(githubRunnerConfig: CreateGitHubRunnerConfig, instances: string[], ghClient: Octokit) {
+async function createJitConfig(
+  githubRunnerConfig: CreateGitHubRunnerConfig,
+  instances: string[],
+  ghClient: Octokit,
+): Promise<void> {
   const runnerGroupId = await getRunnerGroupId(githubRunnerConfig, ghClient);
   const { isDelay, delay } = addDelay(instances);
   const runnerLabels = githubRunnerConfig.runnerLabels.split(',');
@@ -449,16 +467,55 @@ async function createJitConfig(githubRunnerConfig: CreateGitHubRunnerConfig, ins
 
     metricGitHubAppRateLimit(runnerConfig.headers);
 
-    // store jit config in ssm parameter store
     logger.debug('Runner JIT config for ephemeral runner generated.', {
       instance: instance,
     });
-    await putParameter(`${githubRunnerConfig.ssmTokenPath}/${instance}`, runnerConfig.data.encoded_jit_config, true, {
-      tags: [{ Key: 'InstanceId', Value: instance }],
-    });
-    if (isDelay) {
-      // Delay to prevent AWS ssm rate limits by being within the max throughput limit
+
+    await storeRunnerConfig(instance, 'jit', runnerConfig.data.encoded_jit_config, githubRunnerConfig);
+
+    if (isDelay && githubRunnerConfig.dynamoDBConfig?.tableName === '') {
+      // Only apply delay for SSM operations to prevent rate limits
       await delay(25);
     }
+  }
+}
+
+async function storeRunnerConfig(
+  instance: string,
+  configType: ConfigType,
+  configValue: string,
+  githubRunnerConfig: CreateGitHubRunnerConfig,
+): Promise<void> {
+  if (githubRunnerConfig.dynamoDBConfig?.tableName !== '') {
+    // Use DynamoDB if configured
+    const client = new DynamoDBClient({});
+    const docClient = DynamoDBDocumentClient.from(client);
+
+    const ttl = Math.floor(Date.now() / 1000) + (githubRunnerConfig.dynamoDBConfig?.ttlInSeconds || 24 * 60 * 60);
+
+    await docClient.send(
+      new PutCommand({
+        TableName: githubRunnerConfig.dynamoDBConfig?.tableName,
+        Item: {
+          instance_id: instance,
+          config: Buffer.from(configValue, 'base64'),
+          ttl: ttl,
+        },
+      }),
+    );
+
+    logger.debug(`Stored ${configType} config in DynamoDB`, {
+      instance: instance,
+      tableName: githubRunnerConfig.dynamoDBConfig?.tableName,
+    });
+  } else {
+    await putParameter(`${githubRunnerConfig.ssmTokenPath}/${instance}`, configValue, true, {
+      tags: [{ Key: 'InstanceId', Value: instance }],
+    });
+
+    logger.debug(`Stored ${configType} config in SSM`, {
+      instance,
+      path: `${githubRunnerConfig.ssmTokenPath}/${instance}`,
+    });
   }
 }

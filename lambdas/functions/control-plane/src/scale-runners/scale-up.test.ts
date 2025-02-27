@@ -45,6 +45,15 @@ jest.mock('@aws-github-runner/aws-ssm-util', () => ({
   getParameter: jest.fn(),
 }));
 
+jest.mock('@aws-sdk/lib-dynamodb', () => ({
+  ...jest.requireActual('@aws-sdk/lib-dynamodb'),
+  DynamoDBDocumentClient: {
+    from: jest.fn().mockImplementation(() => ({
+      send: jest.fn(),
+    })),
+  },
+}));
+
 export type RunnerType = 'ephemeral' | 'non-ephemeral';
 
 // for ephemeral and non-ephemeral runners
@@ -80,6 +89,7 @@ const EXPECTED_RUNNER_PARAMS: RunnerInputParameters = {
   subnets: ['subnet-123'],
   tracingEnabled: false,
   onDemandFailoverOnError: [],
+  dynamoDBTableName: '',
 };
 let expectedRunnerParams: RunnerInputParameters;
 
@@ -613,6 +623,7 @@ describe('scaleUp with public GH', () => {
       process.env.ENABLE_JIT_CONFIG = 'false';
       process.env.ENABLE_JOB_QUEUED_CHECK = 'false';
       process.env.SSM_TOKEN_PATH = '/github-action-runners/default/runners/config';
+      process.env.RUNNER_LABELS = '';
       await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
       expect(mockOctokit.actions.getJobForWorkflowRun).not.toBeCalled();
       expect(createRunner).toBeCalledWith(expectedRunnerParams);

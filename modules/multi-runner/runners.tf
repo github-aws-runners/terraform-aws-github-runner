@@ -119,4 +119,9 @@ module "runners" {
   job_retry = each.value.runner_config.job_retry
 
   metrics = var.metrics
+
+  dynamodb_arn        = var.dynamodb_arn
+  dynamodb_table_name = var.dynamodb_table_name
+
+  cleanup_org_runners = var.cleanup_org_runners
 }

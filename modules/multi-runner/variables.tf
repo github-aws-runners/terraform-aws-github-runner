@@ -615,14 +615,14 @@ variable "runners_ssm_housekeeper" {
   Configuration for the SSM housekeeper lambda. This lambda deletes token / JIT config from SSM.
 
   `schedule_expression`: is used to configure the schedule for the lambda.
-  `enabled`: enable or disable the lambda trigger via the EventBridge.
+  `state`: state of the cloudwatch event rule. Valid values are `DISABLED`, `ENABLED`, and `ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS`.
   `lambda_memory_size`: lambda memery size limit.
   `lambda_timeout`: timeout for the lambda in seconds.
   `config`: configuration for the lambda function. Token path will be read by default from the module.
   EOF
   type = object({
     schedule_expression = optional(string, "rate(1 day)")
-    enabled             = optional(bool, true)
+    state               = optional(string, "ENABLED")
     lambda_memory_size  = optional(number, 512)
     lambda_timeout      = optional(number, 60)
     config = object({
@@ -705,4 +705,39 @@ variable "user_agent" {
   description = "User agent used for API calls by lambda functions."
   type        = string
   default     = "github-aws-runners"
+}
+
+variable "dynamodb_arn" {
+  description = "ARN of the DynamoDB table"
+  type        = string
+  default     = null
+}
+
+variable "dynamodb_table_name" {
+  description = "Name of the DynamoDB table"
+  type        = string
+  default     = null
+}
+
+variable "cleanup_org_runners" {
+  description = <<EOF
+  Configuration for the cleanup lambda function that will clean up runners for the GitHub org.
+
+  `schedule_expression`: is used to configure the schedule for the lambda.
+  `state`: state of the cloudwatch event rule. Valid values are `DISABLED`, `ENABLED`, and `ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS`.
+  `lambda_memory_size`: lambda memery size limit.
+  `lambda_timeout`: timeout for the lambda in seconds.
+  `config`: configuration for the lambda function.
+    - `githubOrgOwner` (required if enabled): The GitHub org name to clean up runners for.
+  EOF
+  type = object({
+    schedule_expression = optional(string, "rate(1 day)")
+    state               = optional(string, "DISABLED")
+    lambda_memory_size  = optional(number, 512)
+    lambda_timeout      = optional(number, 30)
+    config = object({
+      githubOrgOwner = string
+    })
+  })
+  default = { config = { githubOrgOwner = "" } }
 }

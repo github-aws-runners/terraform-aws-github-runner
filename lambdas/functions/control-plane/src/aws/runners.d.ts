@@ -31,6 +31,8 @@ export interface RunnerInputParameters {
   environment: string;
   runnerType: RunnerType;
   runnerOwner: string;
+  dynamoDBTableName?: string;
+
   subnets: string[];
   launchTemplateName: string;
   ec2instanceCriteria: {

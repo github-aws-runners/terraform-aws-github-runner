@@ -244,6 +244,10 @@ async function createInstances(
     tags.push({ Key: 'ghr:trace_id', Value: traceId! });
   }
 
+  if (runnerParameters.dynamoDBTableName) {
+    tags.push({ Key: 'ghr:dynamo_db_table', Value: runnerParameters.dynamoDBTableName });
+  }
+
   let fleet: CreateFleetResult;
   try {
     // see for spec https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_CreateFleet.html

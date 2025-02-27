@@ -70,4 +70,13 @@ resource "aws_iam_role_policy" "ec2" {
   policy = templatefile("${path.module}/policies/instance-ec2.json", {})
 }
 
+resource "aws_iam_role_policy" "dynamodb" {
+  count = var.dynamodb_table_name != null ? 1 : 0
+  name  = "dynamodb"
+  role  = aws_iam_role.runner.name
+  policy = templatefile("${path.module}/policies/instance-dynamodb.json", {
+    dynamodb_arn = var.dynamodb_arn != null ? var.dynamodb_arn : "arn:${var.aws_partition}:dynamodb:${var.aws_region}:${data.aws_caller_identity.current.account_id}:table/${var.dynamodb_table_name}"
+  })
+}
+
 # see also logging.tf for logging and metrics policies

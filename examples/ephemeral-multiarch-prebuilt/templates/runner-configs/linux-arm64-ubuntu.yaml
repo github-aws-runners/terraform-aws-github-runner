@@ -1,0 +1,62 @@
+matcherConfig:
+  exactMatch: true
+  labelMatchers:
+    - [self-hosted, linux, arm64, ephemeral]
+fifo: true
+redrive_build_queue:
+  enabled: true
+  maxReceiveCount: 3
+runner_config:
+  runner_os: linux
+  runner_architecture: arm64
+  runner_run_as: ubuntu
+  runner_name_prefix: ubuntu-2204-arm64_
+  enable_ssm_on_runners: true
+  credit_specification: standard
+  instance_types:
+    - m8g.large
+    - m7g.large
+    - m6g.large
+  runners_maximum_count: 256
+  delay_webhook_event: 0
+  scale_down_schedule_expression: cron(* * * * ? *)
+  userdata_template: ./templates/user-data.sh
+  enable_userdata: true
+  ami_owners:
+    - "self"
+  ami_filter:
+    name:
+      - github-runner-ubuntu-jammy-arm64-*
+    state:
+      - available
+  enable_organization_runners: true
+  enable_ephemeral_runners: true
+  enable_job_queued_check: true
+  minimum_running_time_in_minutes: 2
+  enable_runner_binaries_syncer: false
+  create_service_linked_role_spot: true
+  scale_up_reserved_concurrent_executions: 12
+  lambda_architecture: arm64
+  job_retry:
+    enabled: true
+    max_attempts: 3
+    delay_in_seconds: 180
+  block_device_mappings:
+    - device_name: /dev/xvda
+      delete_on_termination: true
+      volume_type: gp3
+      volume_size: 40
+      encrypted: true
+      iops: null
+      throughput: null
+      kms_key_id: null
+      snapshot_id: null
+  runner_log_files:
+    - log_group_name: syslog
+      prefix_log_group: true
+      file_path: /var/log/syslog
+      log_stream_name: "{instance_id}"
+  runner_hook_job_started: |
+    echo "Running pre job hook as $(whoami)"
+  runner_hook_job_completed: |
+    echo "Running post job hook as $(whoami)"

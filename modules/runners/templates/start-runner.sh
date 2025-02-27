@@ -83,19 +83,7 @@ cleanup() {
 trap 'cleanup $? $LINENO $BASH_LINENO' EXIT
 
 echo "Retrieving TOKEN from AWS API"
-token=$(curl -f -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 180" || true)
-if [ -z "$token" ]; then
-  retrycount=0
-  until [ -n "$token" ]; do
-    echo "Failed to retrieve token. Retrying in 5 seconds."
-    sleep 5
-    token=$(curl -f -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 180" || true)
-    retrycount=$((retrycount + 1))
-    if [ $retrycount -gt 40 ]; then
-      break
-    fi
-  done
-fi
+token=$(curl -sSL -X PUT --retry 40 --retry-connrefused --retry-delay 5 "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 180")
 
 ami_id=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/meta-data/ami-id)
 
@@ -113,6 +101,7 @@ environment=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.16
 ssm_config_path=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/meta-data/tags/instance/ghr:ssm_config_path)
 runner_name_prefix=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/meta-data/tags/instance/ghr:runner_name_prefix || echo "")
 xray_trace_id=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/meta-data/tags/instance/ghr:trace_id || echo "")
+dynamo_db_table=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/meta-data/tags/instance/ghr:dynamo_db_table || echo "")
 
 %{ else }
 tags=$(aws ec2 describe-tags --region "$region" --filters "Name=resource-id,Values=$instance_id")
@@ -122,12 +111,14 @@ environment=$(echo "$tags" | jq -r '.Tags[]  | select(.Key == "ghr:environment")
 ssm_config_path=$(echo "$tags" | jq -r '.Tags[]  | select(.Key == "ghr:ssm_config_path") | .Value')
 runner_name_prefix=$(echo "$tags" | jq -r '.Tags[]  | select(.Key == "ghr:runner_name_prefix") | .Value' || echo "")
 xray_trace_id=$(echo "$tags" | jq -r '.Tags[]  | select(.Key == "ghr:trace_id") | .Value' || echo "")
+dynamo_db_table=$(echo "$tags" | jq -r '.Tags[]  | select(.Key == "ghr:dynamo_db_table") | .Value' || echo "")
 
 %{ endif }
 
 echo "Retrieved ghr:environment tag - ($environment)"
 echo "Retrieved ghr:ssm_config_path tag - ($ssm_config_path)"
 echo "Retrieved ghr:runner_name_prefix tag - ($runner_name_prefix)"
+echo "Retrieved ghr:dynamo_db_table tag - ($dynamo_db_table)"
 
 parameters=$(aws ssm get-parameters-by-path --path "$ssm_config_path" --region "$region" --query "Parameters[*].{Name:Name,Value:Value}")
 echo "Retrieved parameters from AWS SSM ($parameters)"
@@ -168,17 +159,56 @@ if [[ "$enable_cloudwatch_agent" == "true" ]]; then
 fi
 
 ## Configure the runner
+echo "Checking if DynamoDB is enabled for config storage"
+config=''
+if [[ -n "$dynamo_db_table" ]]; then
+  echo "DynamoDB table configured: $dynamo_db_table - retrieving config from DynamoDB"
 
-echo "Get GH Runner config from AWS SSM"
-config=$(aws ssm get-parameter --name "$token_path"/"$instance_id" --with-decryption --region "$region" | jq -r ".Parameter | .Value")
-while [[ -z "$config" ]]; do
-  echo "Waiting for GH Runner config to become available in AWS SSM"
-  sleep 1
+  config=$(aws dynamodb get-item \
+    --table-name "$dynamo_db_table" \
+    --key "{\"instance_id\": {\"S\": \"$instance_id\"}}" \
+    --query "Item.config.B" \
+    --output text)
+  echo "Retrieved config: $config"
+
+  retries=0
+  while [[ -z "$config" ]]; do
+    if [ $retries -gt 12 ]; then
+      echo "Timeout waiting for GH Runner config to become available in DynamoDB"
+      exit 1
+    fi
+
+    echo "Waiting for GH Runner config to become available in DynamoDB"
+    sleep $((2**retries))
+    config=$(aws dynamodb get-item \
+      --table-name "$dynamo_db_table" \
+      --key "{\"instance_id\": {\"S\": \"$instance_id\"}}" \
+      --query "Item.config.B" \
+      --output text)
+
+    ((retries++))
+  done
+
+  if [[ -n "$config" ]]; then
+    echo "Retrieved config from DynamoDB, deleting item"
+    echo "$config" | base64 -d | jq -r '.[".runner"]' | base64 -d
+    aws dynamodb delete-item \
+      --table-name "$dynamo_db_table" \
+      --key "{\"instance_id\": {\"S\": \"$instance_id\"}}" \
+      --region "$region"
+  fi
+else
+  echo "Get GH Runner config from AWS SSM"
   config=$(aws ssm get-parameter --name "$token_path"/"$instance_id" --with-decryption --region "$region" | jq -r ".Parameter | .Value")
-done
+  while [[ -z "$config" ]]; do
+    echo "Waiting for GH Runner config to become available in AWS SSM"
+    sleep 1
+    config=$(aws ssm get-parameter --name "$token_path"/"$instance_id" --with-decryption --region "$region" | jq -r ".Parameter | .Value")
+  done
 
-echo "Delete GH Runner token from AWS SSM"
-aws ssm delete-parameter --name "$token_path"/"$instance_id" --region "$region"
+  echo "Delete GH Runner token from AWS SSM"
+  aws ssm delete-parameter --name "$token_path"/"$instance_id" --region "$region"
+fi
 
 if [ -z "$run_as" ]; then
   echo "No user specified, using default ec2-user account"
@@ -190,34 +220,60 @@ if [[ "$run_as" == "root" ]]; then
   export RUNNER_ALLOW_RUNASROOT=1
 fi
 
+if [ -b /dev/nvme1n1 ]; then
+    echo "Found extra data volume, format and mount to /data"
+    mount
+    lsblk
+    if ! mkfs.xfs -f -L data /dev/nvme1n1; then
+      echo "Failed to format /dev/nvme1n1"
+      exit 1
+    fi
+
+    mkdir -p /data
+    mount -L data /data
+    mkdir -p /data/docker
+    chown -R root:docker /data/docker
+
+    mkdir -p /data/_work
+    chown -R $run_as:$run_as /data/_work
+    rm -rf /opt/actions-runner/_work
+    ln -s /data/_work /opt/actions-runner/
+
+    mkdir -p /data/_diag
+    chown -R $run_as:$run_as /data/_diag
+    rm -rf /opt/actions-runner/_diag
+    ln -s /data/_diag /opt/actions-runner/
+
+    usermod -a -G docker ubuntu
+    echo '{"data-root": "/data/docker"}' | jq '.' > /etc/docker/daemon.json
+
+    systemctl restart docker.service
+    docker info
+fi
+
 chown -R $run_as .
 
 info_arch=$(uname -p)
 info_os=$( ( lsb_release -ds || cat /etc/*release || uname -om ) 2>/dev/null | head -n1 | cut -d "=" -f2- | tr -d '"')
 
-tee /opt/actions-runner/.setup_info <<EOL
-[
-  {
-    "group": "Operating System",
-    "detail": "Distribution: $info_os\nArchitecture: $info_arch"
-  },
-  {
-    "group": "Runner Image",
-    "detail": "AMI id: $ami_id"
-  },
-  {
-    "group": "EC2",
-    "detail": "Instance type: $instance_type\nAvailability zone: $availability_zone"
-  }
-]
-EOL
+jq -n \
+  --arg info_os "$info_os" \
+  --arg info_arch "$info_arch" \
+  --arg ami_id "$ami_id" \
+  --arg instance_type "$instance_type" \
+  --arg availability_zone "$availability_zone" \
+  '[
+     {"group": "Operating System", "detail": "Distribution: \($info_os)\nArchitecture: \($info_arch)"},
+     {"group": "Runner Image", "detail": "AMI id: \($ami_id)"},
+     {"group": "EC2", "detail": "Instance type: \($instance_type)\nAvailability zone: \($availability_zone)"}
+   ]' > /opt/actions-runner/.setup_info
 
 ## Start the runner
 echo "Starting runner after $(awk '{print int($1/3600)":"int(($1%3600)/60)":"int($1%60)}' /proc/uptime)"
 echo "Starting the runner as user $run_as"
 
 # configure the runner if the runner is non ephemeral or jit config is disabled
-if [[ "$enable_jit_config" == "false" || $agent_mode != "ephemeral" ]]; then
+if [[ "$enable_jit_config" == "false" ]] || [[ "$agent_mode" != "ephemeral" ]]; then
   echo "Configure GH Runner as user $run_as"
   if [[ "$disable_default_labels" == "true" ]]; then
       extra_flags="--no-default-labels"
@@ -228,12 +284,12 @@ if [[ "$enable_jit_config" == "false" || $agent_mode != "ephemeral" ]]; then
 fi
 
 create_xray_success_segment "$SEGMENT"
-if [[ $agent_mode = "ephemeral" ]]; then
+if [[ "$agent_mode" == "ephemeral" ]]; then
   echo "Starting the runner in ephemeral mode"
 
   if [[ "$enable_jit_config" == "true" ]]; then
     echo "Starting with JIT config"
-    sudo --preserve-env=RUNNER_ALLOW_RUNASROOT -u "$run_as" -- ./run.sh --jitconfig $${config}
+    sudo --preserve-env=RUNNER_ALLOW_RUNASROOT -u "$run_as" -- ./run.sh --jitconfig "$${config}"
   else
     echo "Starting without JIT config"
     sudo --preserve-env=RUNNER_ALLOW_RUNASROOT -u "$run_as" -- ./run.sh
