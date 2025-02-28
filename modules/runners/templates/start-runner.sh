@@ -231,8 +231,8 @@ if [ -b /dev/nvme1n1 ]; then
 
     mkdir -p /data
     mount -L data /data
-    mkdir -p /data/docker
-    chown -R root:docker /data/docker
+    mkdir -p /data/docker /data/containerd
+    chown -R root:docker /data/docker /data/containerd
 
     mkdir -p /data/_work
     chown -R $run_as:$run_as /data/_work
@@ -245,9 +245,25 @@ if [ -b /dev/nvme1n1 ]; then
     ln -s /data/_diag /opt/actions-runner/
 
     usermod -a -G docker ubuntu
+
+    # Configure docker to use /data/docker as the data-root
     echo '{"data-root": "/data/docker"}' | jq '.' > /etc/docker/daemon.json
 
-    systemctl restart docker.service
+    # Configure containerd to use /data/containerd as the root
+    if [ -f /etc/containerd/config.toml ]; then
+        cp /etc/containerd/config.toml /etc/containerd/config.toml.bak
+    else
+        mkdir -p /etc/containerd
+        containerd config default > /etc/containerd/config.toml
+    fi
+
+    if grep -q '^root *=.*' /etc/containerd/config.toml; then
+        sed -i "s|^root *=.*|root = \"/data/containerd\"|" /etc/containerd/config.toml
+    else
+        sed -i "1i root = \"/data/containerd\"" /etc/containerd/config.toml
+    fi
+
+    systemctl restart docker.service containerd.service
     docker info
 fi
 
