@@ -147,27 +147,20 @@ build {
   sources = [
     "source.amazon-ebs.githubrunner"
   ]
+
+  provisioner "file" {
+    content     = file("../ubuntu-base.sh")
+    destination = "/tmp/base.sh"
+  }
+
   provisioner "shell" {
     environment_vars = [
       "DEBIAN_FRONTEND=noninteractive"
     ]
     inline = concat([
       "sudo cloud-init status --wait",
-      "sudo apt-get update",
-      "sudo apt-get -y install ca-certificates curl gnupg lsb-release",
-      "sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg",
-      "echo deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null",
-      "sudo apt-get -y update",
-      "sudo apt-get -y install docker-ce docker-ce-cli containerd.io jq git unzip build-essential",
-      "sudo systemctl enable containerd.service",
-      "sudo service docker start",
-      "sudo usermod -a -G docker ubuntu",
-      "sudo curl -f https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/arm64/latest/amazon-cloudwatch-agent.deb -o amazon-cloudwatch-agent.deb",
-      "sudo dpkg -i amazon-cloudwatch-agent.deb",
-      "sudo systemctl restart amazon-cloudwatch-agent",
-      "sudo curl -f https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip -o awscliv2.zip",
-      "unzip awscliv2.zip",
-      "sudo ./aws/install",
+      "sudo chmod +x /tmp/base.sh",
+      "sudo /tmp/base.sh",
     ], var.custom_shell_commands)
   }
 
@@ -183,9 +176,9 @@ build {
   }
 
   provisioner "shell" {
-    environment_vars = [
-      "RUNNER_TARBALL_URL=https://github.com/actions/runner/releases/download/v${local.runner_version}/actions-runner-linux-arm64-${local.runner_version}.tar.gz"
-    ]
+    env = {
+      RUNNER_TARBALL_URL = "https://github.com/actions/runner/releases/download/v${local.runner_version}/actions-runner-linux-arm64-${local.runner_version}.tar.gz"
+    }
     inline = [
       "sudo chmod +x /tmp/install-runner.sh",
       "echo ubuntu | tee -a /tmp/install-user.txt",

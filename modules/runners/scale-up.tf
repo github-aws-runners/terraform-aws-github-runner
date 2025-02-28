@@ -60,6 +60,8 @@ resource "aws_lambda_function" "scale_up" {
       SUBNET_IDS                               = join(",", var.subnet_ids)
       ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS     = jsonencode(var.enable_on_demand_failover_for_errors)
       JOB_RETRY_CONFIG                         = jsonencode(local.job_retry_config)
+      DYNAMODB_TABLE_NAME                      = var.dynamodb_table_name != null ? var.dynamodb_table_name : ""
+      DYNAMODB_TTL_IN_SECONDS                  = var.dynamodb_ttl_in_seconds
     }
   }
 
@@ -164,5 +166,14 @@ resource "aws_iam_role_policy" "job_retry_sqs_publish" {
   policy = templatefile("${path.module}/policies/lambda-publish-sqs-policy.json", {
     sqs_resource_arns = jsonencode([module.job_retry[0].job_retry_check_queue.arn])
     kms_key_arn       = var.kms_key_arn != null ? var.kms_key_arn : ""
+  })
+}
+
+resource "aws_iam_role_policy" "scale_up_dynamodb" {
+  count = var.dynamodb_table_name != null ? 1 : 0
+  name  = "dynamodb"
+  role  = aws_iam_role.scale_up.name
+  policy = templatefile("${path.module}/policies/instance-dynamodb.json", {
+    dynamodb_arn = var.dynamodb_arn != null ? var.dynamodb_arn : "arn:${var.aws_partition}:dynamodb:${var.aws_region}:${data.aws_caller_identity.current.account_id}:table/${var.dynamodb_table_name}"
   })
 }
