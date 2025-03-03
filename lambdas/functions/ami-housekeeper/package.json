@@ -42,7 +42,7 @@
     "@aws-sdk/client-ec2": "^3.750.0",
     "@aws-sdk/client-ssm": "^3.750.0",
     "@aws-sdk/types": "^3.734.0",
-    "cron-parser": "^4.9.0",
+    "cron-parser": "^5.0.4",
     "typescript": "^5.7.3"
   },
   "nx": {

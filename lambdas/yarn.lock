@@ -115,7 +115,7 @@ __metadata:
     "@vercel/ncc": "npm:^0.38.3"
     aws-sdk-client-mock: "npm:^4.1.0"
     aws-sdk-client-mock-jest: "npm:^4.1.0"
-    cron-parser: "npm:^4.9.0"
+    cron-parser: "npm:^5.0.4"
     eslint: "npm:^8.57.0"
     eslint-plugin-prettier: "npm:5.2.3"
     jest: "npm:^29.7.0"
@@ -212,7 +212,7 @@ __metadata:
     "@vercel/ncc": "npm:^0.38.3"
     aws-sdk-client-mock: "npm:^4.1.0"
     aws-sdk-client-mock-jest: "npm:^4.1.0"
-    cron-parser: "npm:^4.9.0"
+    cron-parser: "npm:^5.0.4"
     eslint: "npm:^8.57.0"
     eslint-plugin-prettier: "npm:5.2.3"
     jest: "npm:^29.7.0"
@@ -6720,12 +6720,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"cron-parser@npm:^4.9.0":
-  version: 4.9.0
-  resolution: "cron-parser@npm:4.9.0"
+"cron-parser@npm:^5.0.4":
+  version: 5.0.4
+  resolution: "cron-parser@npm:5.0.4"
   dependencies:
-    luxon: "npm:^3.2.1"
-  checksum: 10c0/348622bdcd1a15695b61fc33af8a60133e5913a85cf99f6344367579e7002896514ba3b0a9d6bb569b02667d6b06836722bf2295fcd101b3de378f71d37bed0b
+    luxon: "npm:^3.5.0"
+  checksum: 10c0/cac705efad1976d3441e967083dc786fb1dca5dbcdafc73e26774a231fed7d6efaf62d2b155c4b28232e4a3501d65e71d250b2d319c951ec35d3f3dc6ac87c98
   languageName: node
   linkType: hard
 
@@ -9174,10 +9174,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"luxon@npm:^3.2.1":
-  version: 3.3.0
-  resolution: "luxon@npm:3.3.0"
-  checksum: 10c0/47f8e1e96b25441c799b8aa833b3f007fb1854713bcffc8c3384eda8e61fc9af1f038474d137274d2d386492f341c8a8c992fc78c213adfb3143780feba2776c
+"luxon@npm:^3.5.0":
+  version: 3.5.0
+  resolution: "luxon@npm:3.5.0"
+  checksum: 10c0/335789bba95077db831ef99894edadeb23023b3eb2137a1b56acd0d290082b691cf793143d69e30bc069ec95f0b49f36419f48e951c68014f19ffe12045e3494
   languageName: node
   linkType: hard
 
