@@ -34,9 +34,9 @@
     "typescript": "^5.7.3"
   },
   "dependencies": {
-    "@aws-lambda-powertools/logger": "^2.14.0",
-    "@aws-lambda-powertools/metrics": "^2.14.0",
-    "@aws-lambda-powertools/tracer": "^2.14.0",
+    "@aws-lambda-powertools/logger": "^2.15.0",
+    "@aws-lambda-powertools/metrics": "^2.15.0",
+    "@aws-lambda-powertools/tracer": "^2.15.0",
     "aws-lambda": "^1.0.7"
   },
   "nx": {
