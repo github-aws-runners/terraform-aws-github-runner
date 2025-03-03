@@ -41,7 +41,7 @@
     "@aws-sdk/lib-storage": "^3.750.0",
     "@aws-sdk/types": "^3.734.0",
     "@middy/core": "^4.7.0",
-    "@octokit/rest": "20.1.1",
+    "@octokit/rest": "20.1.2",
     "axios": "^1.7.9"
   },
   "nx": {

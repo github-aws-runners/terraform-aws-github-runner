@@ -201,7 +201,7 @@ __metadata:
     "@octokit/auth-app": "npm:6.1.3"
     "@octokit/core": "npm:5.2.0"
     "@octokit/plugin-throttling": "npm:8.2.0"
-    "@octokit/rest": "npm:20.1.1"
+    "@octokit/rest": "npm:20.1.2"
     "@octokit/types": "npm:^13.8.0"
     "@trivago/prettier-plugin-sort-imports": "npm:^5.2.2"
     "@types/aws-lambda": "npm:^8.10.146"
@@ -237,7 +237,7 @@ __metadata:
     "@aws-sdk/lib-storage": "npm:^3.750.0"
     "@aws-sdk/types": "npm:^3.734.0"
     "@middy/core": "npm:^4.7.0"
-    "@octokit/rest": "npm:20.1.1"
+    "@octokit/rest": "npm:20.1.2"
     "@trivago/prettier-plugin-sort-imports": "npm:^5.2.2"
     "@types/aws-lambda": "npm:^8.10.146"
     "@types/jest": "npm:^29.5.14"
@@ -300,7 +300,7 @@ __metadata:
     "@aws-sdk/client-eventbridge": "npm:^3.750.0"
     "@aws-sdk/client-sqs": "npm:^3.750.0"
     "@middy/core": "npm:^4.7.0"
-    "@octokit/rest": "npm:20.1.1"
+    "@octokit/rest": "npm:20.1.2"
     "@octokit/types": "npm:^13.8.0"
     "@octokit/webhooks": "npm:^12.3.1"
     "@trivago/prettier-plugin-sort-imports": "npm:^5.2.2"
@@ -3891,14 +3891,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@octokit/plugin-paginate-rest@npm:11.3.1":
-  version: 11.3.1
-  resolution: "@octokit/plugin-paginate-rest@npm:11.3.1"
+"@octokit/plugin-paginate-rest@npm:11.4.4-cjs.2":
+  version: 11.4.4-cjs.2
+  resolution: "@octokit/plugin-paginate-rest@npm:11.4.4-cjs.2"
   dependencies:
-    "@octokit/types": "npm:^13.5.0"
+    "@octokit/types": "npm:^13.7.0"
   peerDependencies:
     "@octokit/core": 5
-  checksum: 10c0/72107ff7e459c49d1f13bbe44ac07b073497692eba28cb5ac6dbfa41e0ebc059ad7bccfa3dd45d3165348adcc2ede8ac159f8a9b637389b8e335af16aaa01469
+  checksum: 10c0/1d61a63c98a18c171bccdc6cf63ffe279fe852e8bdc9db6647ffcb27f4ea485fdab78fb71b552ed0f2186785cf5264f8ed3f9a8f33061e4697b5f73b097accb1
   languageName: node
   linkType: hard
 
@@ -3911,14 +3911,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@octokit/plugin-rest-endpoint-methods@npm:13.2.2":
-  version: 13.2.2
-  resolution: "@octokit/plugin-rest-endpoint-methods@npm:13.2.2"
+"@octokit/plugin-rest-endpoint-methods@npm:13.3.2-cjs.1":
+  version: 13.3.2-cjs.1
+  resolution: "@octokit/plugin-rest-endpoint-methods@npm:13.3.2-cjs.1"
   dependencies:
-    "@octokit/types": "npm:^13.5.0"
+    "@octokit/types": "npm:^13.8.0"
   peerDependencies:
     "@octokit/core": ^5
-  checksum: 10c0/0f2b14b7a185b49908bcc01bcae9849aae2da46c88f500c143d230caa3cd35540839b916e88a4642c60a5499d33e7a37faf1aa42c5bab270cefc10f5d6202893
+  checksum: 10c0/810fe5cb1861386746bf0218ea969d87c56e553ff339490526483b4b66f53c4b4c6092034bec30c5d453172eb6f33e75b5748ade1b401b76774b5a994e2c10b0
   languageName: node
   linkType: hard
 
@@ -3957,15 +3957,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@octokit/rest@npm:20.1.1":
-  version: 20.1.1
-  resolution: "@octokit/rest@npm:20.1.1"
+"@octokit/rest@npm:20.1.2":
+  version: 20.1.2
+  resolution: "@octokit/rest@npm:20.1.2"
   dependencies:
     "@octokit/core": "npm:^5.0.2"
-    "@octokit/plugin-paginate-rest": "npm:11.3.1"
+    "@octokit/plugin-paginate-rest": "npm:11.4.4-cjs.2"
     "@octokit/plugin-request-log": "npm:^4.0.0"
-    "@octokit/plugin-rest-endpoint-methods": "npm:13.2.2"
-  checksum: 10c0/9b62e0372381b548806edbd9e32059ebaec315ddf90e9c3df7e0f2bfab2fc938ca5c3b939035e082e245315b2359947f52f853027a8ca2510fddb79ff5cc9e8a
+    "@octokit/plugin-rest-endpoint-methods": "npm:13.3.2-cjs.1"
+  checksum: 10c0/712e08c43c7af37c5c219f95ae289b3ac2646270be4e8a7141fa2aa9340ed8f7134f117c9467e89206c5a9797c49c8d2c039b884d4865bb3bde91bc5adb3c38c
   languageName: node
   linkType: hard
 
