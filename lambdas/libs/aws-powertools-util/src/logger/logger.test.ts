@@ -1,10 +1,12 @@
 import { Context } from 'aws-lambda';
 
 import { logger, setContext } from '../';
+import { describe, test, expect, beforeEach, vi } from 'vitest';
+
 
 beforeEach(() => {
-  jest.clearAllMocks();
-  jest.resetAllMocks();
+  vi.clearAllMocks();
+  vi.resetAllMocks();
 });
 
 const context: Context = {
