@@ -17,7 +17,7 @@
     "@trivago/prettier-plugin-sort-imports": "^5.2.2",
     "@types/aws-lambda": "^8.10.146",
     "@types/jest": "^29.5.14",
-    "@types/node": "^22.13.5",
+    "@types/node": "^22.13.9",
     "@typescript-eslint/eslint-plugin": "^8.25.0",
     "@typescript-eslint/parser": "^8.25.0",
     "@vercel/ncc": "0.38.3",
@@ -34,9 +34,9 @@
     "typescript": "^5.7.3"
   },
   "dependencies": {
-    "@aws-lambda-powertools/logger": "^2.14.0",
-    "@aws-lambda-powertools/metrics": "^2.14.0",
-    "@aws-lambda-powertools/tracer": "^2.14.0",
+    "@aws-lambda-powertools/logger": "^2.15.0",
+    "@aws-lambda-powertools/metrics": "^2.15.0",
+    "@aws-lambda-powertools/tracer": "^2.15.0",
     "aws-lambda": "^1.0.7"
   },
   "nx": {
