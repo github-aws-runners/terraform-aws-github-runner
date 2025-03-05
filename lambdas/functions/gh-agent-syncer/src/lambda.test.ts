@@ -1,10 +1,12 @@
 import { Context } from 'aws-lambda';
-import { mocked } from 'jest-mock';
+
 
 import { handler } from './lambda';
 import { sync } from './syncer/syncer';
+import { describe, it, expect, beforeEach, beforeAll, afterEach, afterAll, vi } from 'vitest';
 
-jest.mock('./syncer/syncer');
+
+vi.mock('./syncer/syncer');
 
 const context: Context = {
   awsRequestId: '1',
@@ -29,7 +31,7 @@ const context: Context = {
 
 describe('Test download sync wrapper.', () => {
   it('Test successful download.', async () => {
-    const mock = mocked(sync);
+    const mock = vi.mocked(sync);
     mock.mockImplementation(() => {
       return new Promise((resolve) => {
         resolve();
@@ -39,7 +41,7 @@ describe('Test download sync wrapper.', () => {
   });
 
   it('Test wrapper with returning an error. ', async () => {
-    const mock = mocked(sync);
+    const mock = vi.mocked(sync);
     mock.mockRejectedValue(new Error(''));
 
     await expect(handler({}, context)).resolves;
