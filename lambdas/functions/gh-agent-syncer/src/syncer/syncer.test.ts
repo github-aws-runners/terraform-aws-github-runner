@@ -7,14 +7,16 @@ import { PassThrough } from 'stream';
 import mockDataLatestRelease from '../../test/resources/github-latest-release.json';
 import noX64Assets from '../../test/resources/github-releases-no-x64.json';
 import { sync } from './syncer';
+import { describe, test, expect, beforeEach, beforeAll, afterEach, afterAll, vi } from 'vitest';
+
 
 const mockOctokit = {
   repos: {
-    getLatestRelease: jest.fn(),
+    getLatestRelease: vi.fn(),
   },
 };
-jest.mock('@octokit/rest', () => ({
-  Octokit: jest.fn().mockImplementation(() => mockOctokit),
+vi.mock('@octokit/rest', () => ({
+  Octokit: vi.fn().mockImplementation(() => mockOctokit),
 }));
 
 // mock stream for Axios
@@ -23,8 +25,8 @@ const mockStream = new PassThrough();
 mockStream.push(mockResponse);
 mockStream.end();
 
-jest.mock('axios');
-const mockAxios = axios as jest.Mocked<typeof axios>;
+vi.mock('axios');
+const mockAxios = axios as vi.Mocked<typeof axios>;
 mockAxios.get.mockResolvedValue({
   data: mockStream,
 });
@@ -49,11 +51,11 @@ const runnerOs = [['linux'], ['win']];
 const latestRelease = '2.296.2';
 
 beforeEach(() => {
-  jest.clearAllMocks();
+  vi.clearAllMocks();
   mockS3client.reset();
 });
 
-jest.setTimeout(60 * 1000);
+vi.setConfig({ testTimeout: 60 * 1000 });
 
 describe('Synchronize action distribution (no S3 tags).', () => {
   beforeEach(() => {
