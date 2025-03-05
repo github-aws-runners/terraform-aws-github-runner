@@ -20,6 +20,12 @@
       "options": {
         "targetName": "lint"
       }
+    },
+    {
+      "plugin": "@nx/vite/plugin",
+      "options": {
+        "targetName": "test"
+      }
     }
   ],
 "targetDefaults": {
@@ -33,6 +39,15 @@
     "outputs": ["{projectRoot}/dist/**/*"],
     "dependsOn": ["build"],
     "executor": "@nx/workspace:run-commands",
+    "cache": true
+  },
+  "test": {
+    "inputs": [
+      "default", 
+      "^default", 
+      "{workspaceRoot}/vitest.base.config.ts",
+      "{projectRoot}/vitest.config.ts"
+    ],
     "cache": true
   }
 }
