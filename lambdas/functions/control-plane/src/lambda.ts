@@ -16,16 +16,18 @@ export async function scaleUpHandler(event: SQSEvent, context: Context): Promise
 
   if (event.Records.length !== 1) {
     logger.warn('Event ignored, only one record at the time can be handled, ensure the lambda batch size is set to 1.');
-    return new Promise((resolve) => resolve());
+    return Promise.resolve();
   }
 
   try {
     await scaleUp(event.Records[0].eventSource, JSON.parse(event.Records[0].body));
+    return Promise.resolve();
   } catch (e) {
     if (e instanceof ScaleError) {
-      throw e;
+      return Promise.reject(e);
     } else {
       logger.warn(`Ignoring error: ${e}`);
+      return Promise.resolve();
     }
   }
 }
@@ -48,8 +50,9 @@ export async function adjustPool(event: PoolEvent, context: Context): Promise<vo
   try {
     await adjust(event);
   } catch (e) {
-    logger.error(`${(e as Error).message}`, { error: e as Error });
+    logger.error(`Handle error for adjusting pool. ${(e as Error).message}`, { error: e as Error });
   }
+  return Promise.resolve();
 }
 
 export const addMiddleware = () => {
@@ -86,4 +89,5 @@ export async function jobRetryCheck(event: SQSEvent, context: Context): Promise<
       logger.warn(`Error processing job retry: ${e.message}`, { error: e });
     });
   }
+  return Promise.resolve();
 }
