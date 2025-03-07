@@ -16,9 +16,8 @@
   "devDependencies": {
     "@types/aws-lambda": "^8.10.146",
     "@types/node": "^22.13.9",
-    "@vercel/ncc": "0.38.3",
+    "aws-sdk-client-mock": "^4.1.0",
     "aws-sdk-client-mock-jest": "^4.1.0",
-    "body-parser": "^1.20.3",
     "ts-node-dev": "^2.0.0"
   },
   "dependencies": {

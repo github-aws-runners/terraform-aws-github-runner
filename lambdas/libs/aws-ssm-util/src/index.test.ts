@@ -5,6 +5,7 @@ import {
   PutParameterCommandOutput,
   SSMClient,
 } from '@aws-sdk/client-ssm';
+import 'aws-sdk-client-mock-jest/vitest';
 import { mockClient } from 'aws-sdk-client-mock';
 import nock from 'nock';
 
