@@ -3,41 +3,53 @@ import { publishRetryMessage, checkAndRetryJob } from './job-retry';
 import { ActionRequestMessage, ActionRequestMessageRetry } from './scale-up';
 import { getOctokit } from '../github/octokit';
 import { Octokit } from '@octokit/rest';
-import { mocked } from 'jest-mock';
 import { createSingleMetric } from '@aws-github-runner/aws-powertools-util';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-jest.mock('../aws/sqs');
-
-jest.mock('@aws-github-runner/aws-powertools-util', () => ({
-  ...jest.requireActual('@aws-github-runner/aws-powertools-util'),
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  createSingleMetric: jest.fn((name: string, unit: string, value: number, dimensions?: Record<string, string>) => {
-    return {
-      addMetadata: jest.fn(),
-    };
-  }),
+vi.mock('../aws/sqs', async () => ({
+  publishMessage: vi.fn(),
 }));
+
+vi.mock('@aws-github-runner/aws-powertools-util', async () => {
+  // This is a workaround for TypeScript's type checking
+  // Use vi.importActual with a type assertion to avoid spread operator type error
+  const actual = (await vi.importActual(
+    '@aws-github-runner/aws-powertools-util',
+  )) as typeof import('@aws-github-runner/aws-powertools-util');
+
+  return {
+    ...actual,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    createSingleMetric: vi.fn((name: string, unit: string, value: number, dimensions?: Record<string, string>) => {
+      return {
+        addMetadata: vi.fn(),
+      };
+    }),
+  };
+});
 
 const cleanEnv = process.env;
 
 beforeEach(() => {
-  jest.clearAllMocks();
+  vi.clearAllMocks();
   process.env = { ...cleanEnv };
 });
 
 const mockOctokit = {
   actions: {
-    getJobForWorkflowRun: jest.fn(),
+    getJobForWorkflowRun: vi.fn(),
   },
 };
 
-jest.mock('@octokit/rest', () => ({
-  Octokit: jest.fn().mockImplementation(() => mockOctokit),
+vi.mock('@octokit/rest', async () => ({
+  Octokit: vi.fn().mockImplementation(() => mockOctokit),
 }));
-jest.mock('../github/octokit');
+vi.mock('../github/octokit', async () => ({
+  getOctokit: vi.fn(),
+}));
 
-const mockCreateOctokitClient = mocked(getOctokit, { shallow: false });
-mockCreateOctokitClient.mockResolvedValue(new (Octokit as jest.MockedClass<typeof Octokit>)());
+const mockCreateOctokitClient = vi.mocked(getOctokit);
+mockCreateOctokitClient.mockResolvedValue(new Octokit());
 
 describe('Test job retry publish message', () => {
   const data = [

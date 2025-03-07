@@ -8,13 +8,6 @@
     "appsDir": "functions"
   },
   "plugins": [
-
-    {
-      "plugin": "@nx/jest/plugin",
-      "options": {
-        "targetName": "test"
-      }
-    },
     {
       "plugin": "@nx/eslint/plugin",
       "options": {
@@ -28,28 +21,28 @@
       }
     }
   ],
-"targetDefaults": {
-  "build": {
-    "inputs": ["{projectRoot}/src/index.ts"],
-    "dependsOn": ["default", "^default","^build"],
-    "executor": "@nx/workspace:run-commands",
-    "cache": true
-  },
-  "dist":{
-    "outputs": ["{projectRoot}/dist/**/*"],
-    "dependsOn": ["build"],
-    "executor": "@nx/workspace:run-commands",
-    "cache": true
-  },
-  "test": {
-    "inputs": [
-      "default", 
-      "^default", 
-      "{workspaceRoot}/vitest.base.config.ts",
-      "{projectRoot}/vitest.config.ts"
-    ],
-    "cache": true
+  "targetDefaults": {
+    "build": {
+      "inputs": [
+        "{projectRoot}/src/index.ts"
+      ],
+      "dependsOn": [
+        "default",
+        "^default",
+        "^build"
+      ],
+      "executor": "@nx/workspace:run-commands",
+      "cache": true
+    },
+    "dist": {
+      "outputs": [
+        "{projectRoot}/dist/**/*"
+      ],
+      "dependsOn": [
+        "build"
+      ],
+      "executor": "@nx/workspace:run-commands",
+      "cache": true
+    }
   }
-}
-
 }

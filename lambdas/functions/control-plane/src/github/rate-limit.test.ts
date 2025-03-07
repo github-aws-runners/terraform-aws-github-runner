@@ -2,33 +2,44 @@ import { ResponseHeaders } from '@octokit/types';
 import { createSingleMetric } from '@aws-github-runner/aws-powertools-util';
 import { MetricUnit } from '@aws-lambda-powertools/metrics';
 import { metricGitHubAppRateLimit } from './rate-limit';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 process.env.PARAMETER_GITHUB_APP_ID_NAME = 'test';
-jest.mock('@aws-github-runner/aws-ssm-util', () => ({
-  ...jest.requireActual('@aws-github-runner/aws-ssm-util'),
-  // get parameter name from process.env.PARAMETER_GITHUB_APP_ID_NAME rerunt 1234
-  getParameter: jest.fn((name: string) => {
-    if (name === process.env.PARAMETER_GITHUB_APP_ID_NAME) {
-      return '1234';
-    } else {
-      return '';
-    }
-  }),
-}));
+vi.mock('@aws-github-runner/aws-ssm-util', async () => {
+  // Return only what we need without spreading actual
+  return {
+    getParameter: vi.fn((name: string) => {
+      if (name === process.env.PARAMETER_GITHUB_APP_ID_NAME) {
+        return '1234';
+      } else {
+        return '';
+      }
+    }),
+  };
+});
 
-jest.mock('@aws-github-runner/aws-powertools-util', () => ({
-  ...jest.requireActual('@aws-github-runner/aws-powertools-util'),
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  createSingleMetric: jest.fn((name: string, unit: string, value: number, dimensions?: Record<string, string>) => {
-    return {
-      addMetadata: jest.fn(),
-    };
-  }),
-}));
+vi.mock('@aws-github-runner/aws-powertools-util', async () => {
+  // Provide only what's needed without spreading actual
+  return {
+    // Mock the logger
+    logger: {
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    },
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    createSingleMetric: vi.fn((name: string, unit: string, value: number, dimensions?: Record<string, string>) => {
+      return {
+        addMetadata: vi.fn(),
+      };
+    }),
+  };
+});
 
 describe('metricGitHubAppRateLimit', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('should update rate limit metric', async () => {

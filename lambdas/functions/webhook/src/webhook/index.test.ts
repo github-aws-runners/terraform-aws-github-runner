@@ -10,8 +10,7 @@ import { dispatch } from '../runners/dispatch';
 import { IncomingHttpHeaders } from 'http';
 import { ConfigWebhook, ConfigWebhookEventBridge } from '../ConfigLoader';
 import { publish } from '../eventbridge';
-import { describe, it, expect, beforeEach, beforeAll, afterEach, afterAll, vi } from 'vitest';
-
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 vi.mock('../sqs');
 vi.mock('../eventbridge');

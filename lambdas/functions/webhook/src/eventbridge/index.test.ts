@@ -2,8 +2,7 @@ import { EventBridgeClient, PutEventsCommandOutput, PutEventsRequestEntry } from
 import nock from 'nock';
 
 import { publish } from '.';
-import { describe, it, expect, beforeEach, beforeAll, afterEach, afterAll, vi } from 'vitest';
-
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 vi.mock('@aws-sdk/client-eventbridge');
 

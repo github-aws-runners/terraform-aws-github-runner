@@ -1,7 +1,6 @@
 import { captureLambdaHandler, getTracedAWSV3Client, tracer } from '../';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-
 describe('A root tracer.', () => {
   beforeEach(() => {
     vi.clearAllMocks();

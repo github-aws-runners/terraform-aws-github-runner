@@ -3,8 +3,7 @@ import { ConfigWebhook, ConfigWebhookEventBridge, ConfigDispatcher } from './Con
 
 import { logger } from '@aws-github-runner/aws-powertools-util';
 import { RunnerMatcherConfig } from './sqs';
-import { describe, it, expect, beforeEach, beforeAll, afterEach, afterAll, vi } from 'vitest';
-
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 vi.mock('@aws-github-runner/aws-ssm-util');
 

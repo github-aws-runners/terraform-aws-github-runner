@@ -6,7 +6,6 @@ import {
   SSMClient,
 } from '@aws-sdk/client-ssm';
 import { mockClient } from 'aws-sdk-client-mock';
-import { AwsClientStubSpy } from 'aws-sdk-client-mock';
 import nock from 'nock';
 
 import { getParameter, putParameter } from '.';

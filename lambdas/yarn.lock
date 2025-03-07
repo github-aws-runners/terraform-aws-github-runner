@@ -116,27 +116,15 @@ __metadata:
     "@aws-sdk/client-ec2": "npm:^3.764.0"
     "@aws-sdk/client-ssm": "npm:^3.759.0"
     "@aws-sdk/types": "npm:^3.734.0"
-    "@trivago/prettier-plugin-sort-imports": "npm:^5.2.2"
     "@types/aws-lambda": "npm:^8.10.146"
-    "@types/jest": "npm:^29.5.14"
-    "@types/node": "npm:^22.13.9"
-    "@typescript-eslint/eslint-plugin": "npm:^8.25.0"
-    "@typescript-eslint/parser": "npm:^8.25.0"
     "@vercel/ncc": "npm:^0.38.3"
     aws-sdk-client-mock: "npm:^4.1.0"
     aws-sdk-client-mock-jest: "npm:^4.1.0"
     cron-parser: "npm:^4.9.0"
     eslint: "npm:^8.57.0"
     eslint-plugin-prettier: "npm:5.2.3"
-    jest: "npm:^29.7.0"
-    jest-mock: "npm:^29.7.0"
-    jest-mock-extended: "npm:^3.0.7"
-    nock: "npm:^14.0.1"
-    prettier: "npm:3.4.2"
-    ts-jest: "npm:^29.2.5"
     ts-node: "npm:^10.9.2"
     ts-node-dev: "npm:^2.0.0"
-    typescript: "npm:^5.7.3"
   languageName: unknown
   linkType: soft
 
@@ -149,21 +137,9 @@ __metadata:
     "@aws-lambda-powertools/tracer": "npm:^2.16.0"
     "@trivago/prettier-plugin-sort-imports": "npm:^5.2.2"
     "@types/aws-lambda": "npm:^8.10.146"
-    "@types/jest": "npm:^29.5.14"
     "@types/node": "npm:^22.13.9"
-    "@typescript-eslint/eslint-plugin": "npm:^8.25.0"
-    "@typescript-eslint/parser": "npm:^8.25.0"
-    "@vercel/ncc": "npm:0.38.3"
     aws-lambda: "npm:^1.0.7"
     body-parser: "npm:^1.20.3"
-    eslint: "npm:^8.57.0"
-    eslint-plugin-prettier: "npm:5.2.3"
-    express: "npm:^4.21.2"
-    jest: "npm:^29.7.0"
-    jest-mock: "npm:^29.7.0"
-    nock: "npm:^14.0.1"
-    prettier: "npm:3.4.2"
-    ts-jest: "npm:^29.2.5"
     ts-node-dev: "npm:^2.0.0"
     typescript: "npm:^5.7.3"
   languageName: unknown
@@ -176,25 +152,12 @@ __metadata:
     "@aws-github-runner/aws-powertools-util": "npm:*"
     "@aws-sdk/client-ssm": "npm:^3.759.0"
     "@aws-sdk/types": "npm:^3.734.0"
-    "@trivago/prettier-plugin-sort-imports": "npm:^5.2.2"
     "@types/aws-lambda": "npm:^8.10.146"
-    "@types/jest": "npm:^29.5.14"
     "@types/node": "npm:^22.13.9"
-    "@typescript-eslint/eslint-plugin": "npm:^8.25.0"
-    "@typescript-eslint/parser": "npm:^8.25.0"
     "@vercel/ncc": "npm:0.38.3"
     aws-sdk-client-mock-jest: "npm:^4.1.0"
     body-parser: "npm:^1.20.3"
-    eslint: "npm:^8.57.0"
-    eslint-plugin-prettier: "npm:5.2.3"
-    express: "npm:^4.21.2"
-    jest: "npm:^29.7.0"
-    jest-mock: "npm:^29.7.0"
-    nock: "npm:^14.0.1"
-    prettier: "npm:3.4.2"
-    ts-jest: "npm:^29.2.5"
     ts-node-dev: "npm:^2.0.0"
-    typescript: "npm:^5.7.3"
   languageName: unknown
   linkType: soft
 
@@ -214,28 +177,15 @@ __metadata:
     "@octokit/plugin-throttling": "npm:8.2.0"
     "@octokit/rest": "npm:20.1.2"
     "@octokit/types": "npm:^13.8.0"
-    "@trivago/prettier-plugin-sort-imports": "npm:^5.2.2"
     "@types/aws-lambda": "npm:^8.10.146"
-    "@types/jest": "npm:^29.5.14"
-    "@types/node": "npm:^22.13.9"
-    "@typescript-eslint/eslint-plugin": "npm:^8.25.0"
-    "@typescript-eslint/parser": "npm:^8.25.0"
     "@vercel/ncc": "npm:^0.38.3"
     aws-sdk-client-mock: "npm:^4.1.0"
     aws-sdk-client-mock-jest: "npm:^4.1.0"
     cron-parser: "npm:^4.9.0"
-    eslint: "npm:^8.57.0"
-    eslint-plugin-prettier: "npm:5.2.3"
-    jest: "npm:^29.7.0"
-    jest-mock: "npm:^29.7.0"
-    jest-mock-extended: "npm:^3.0.7"
     moment-timezone: "npm:^0.5.47"
     nock: "npm:^14.0.1"
-    prettier: "npm:3.4.2"
-    ts-jest: "npm:^29.2.5"
     ts-node: "npm:^10.9.2"
     ts-node-dev: "npm:^2.0.0"
-    typescript: "npm:^5.7.3"
   languageName: unknown
   linkType: soft
 
@@ -249,13 +199,9 @@ __metadata:
     "@aws-sdk/types": "npm:^3.734.0"
     "@middy/core": "npm:^4.7.0"
     "@octokit/rest": "npm:20.1.2"
-    "@trivago/prettier-plugin-sort-imports": "npm:^5.2.2"
     "@types/aws-lambda": "npm:^8.10.146"
-    "@types/jest": "npm:^29.5.14"
     "@types/node": "npm:^22.13.9"
     "@types/request": "npm:^2.48.12"
-    "@typescript-eslint/eslint-plugin": "npm:^8.25.0"
-    "@typescript-eslint/parser": "npm:^8.25.0"
     "@vercel/ncc": "npm:^0.38.3"
     aws-sdk-client-mock: "npm:^4.1.0"
     aws-sdk-client-mock-jest: "npm:^4.1.0"
@@ -267,7 +213,6 @@ __metadata:
     prettier: "npm:3.4.2"
     ts-jest: "npm:^29.2.5"
     ts-node-dev: "npm:^2.0.0"
-    typescript: "npm:^5.7.3"
   languageName: unknown
   linkType: soft
 
@@ -279,26 +224,13 @@ __metadata:
     "@aws-sdk/client-ec2": "npm:^3.764.0"
     "@aws-sdk/types": "npm:^3.734.0"
     "@middy/core": "npm:^4.7.0"
-    "@trivago/prettier-plugin-sort-imports": "npm:^5.2.2"
     "@types/aws-lambda": "npm:^8.10.146"
-    "@types/jest": "npm:^29.5.14"
     "@types/node": "npm:^22.13.9"
-    "@typescript-eslint/eslint-plugin": "npm:^8.25.0"
-    "@typescript-eslint/parser": "npm:^8.25.0"
     "@vercel/ncc": "npm:^0.38.3"
     aws-sdk-client-mock: "npm:^4.1.0"
     aws-sdk-client-mock-jest: "npm:^4.1.0"
-    eslint: "npm:^8.57.0"
-    eslint-plugin-prettier: "npm:5.2.3"
-    jest: "npm:^29.7.0"
-    jest-mock: "npm:^29.7.0"
-    jest-mock-extended: "npm:^3.0.7"
-    nock: "npm:^14.0.1"
-    prettier: "npm:3.4.2"
-    ts-jest: "npm:^29.2.5"
     ts-node: "npm:^10.9.2"
     ts-node-dev: "npm:^2.0.0"
-    typescript: "npm:^5.7.3"
   languageName: unknown
   linkType: soft
 
@@ -314,26 +246,15 @@ __metadata:
     "@octokit/rest": "npm:20.1.2"
     "@octokit/types": "npm:^13.8.0"
     "@octokit/webhooks": "npm:^12.3.1"
-    "@trivago/prettier-plugin-sort-imports": "npm:^5.2.2"
     "@types/aws-lambda": "npm:^8.10.146"
     "@types/express": "npm:^5.0.0"
     "@types/jest": "npm:^29.5.14"
     "@types/node": "npm:^22.13.9"
-    "@typescript-eslint/eslint-plugin": "npm:^8.25.0"
-    "@typescript-eslint/parser": "npm:^8.25.0"
     "@vercel/ncc": "npm:0.38.3"
     aws-lambda: "npm:^1.0.7"
     body-parser: "npm:^1.20.3"
-    eslint: "npm:^8.57.0"
-    eslint-plugin-prettier: "npm:5.2.3"
     express: "npm:^4.21.2"
-    jest: "npm:^29.7.0"
-    jest-mock: "npm:^29.7.0"
-    nock: "npm:^14.0.1"
-    prettier: "npm:3.4.2"
-    ts-jest: "npm:^29.2.5"
     ts-node-dev: "npm:^2.0.0"
-    typescript: "npm:^5.7.3"
   languageName: unknown
   linkType: soft
 
@@ -6128,7 +6049,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@vitest/expect@npm:3.0.7":
+"@vitest/expect@npm:3.0.7, @vitest/expect@npm:^3.0.5":
   version: 3.0.7
   resolution: "@vitest/expect@npm:3.0.7"
   dependencies:
@@ -6535,6 +6456,19 @@ __metadata:
   languageName: node
   linkType: hard
 
+"aws-sdk-client-mock-vitest@npm:^6.1.1":
+  version: 6.1.1
+  resolution: "aws-sdk-client-mock-vitest@npm:6.1.1"
+  dependencies:
+    "@vitest/expect": "npm:^3.0.5"
+    tslib: "npm:^2.8.1"
+  peerDependencies:
+    "@smithy/types": ">=3.5.0"
+    aws-sdk-client-mock: ">=2.2.0"
+  checksum: 10c0/9bab1486e7aa52b38223f6b2f488ec522d8e354d8f4470a2fcf54871d0015a32934ed4ff4a2271277207618f15b5a344f0c15f632f323fd0b2a7cbab116f9b15
+  languageName: node
+  linkType: hard
+
 "aws-sdk-client-mock@npm:^4.1.0":
   version: 4.1.0
   resolution: "aws-sdk-client-mock@npm:4.1.0"
@@ -6857,15 +6791,6 @@ __metadata:
   bin:
     browserslist: cli.js
   checksum: 10c0/5a1f673ce0d6e61a68369835a6b66e199669bde02c3bed5ec51e77598d8daafd91719dba55b15af2021b9ad0bbaa94951fd702eb71087449eb28be8002815ece
-  languageName: node
-  linkType: hard
-
-"bs-logger@npm:^0.2.6":
-  version: 0.2.6
-  resolution: "bs-logger@npm:0.2.6"
-  dependencies:
-    fast-json-stable-stringify: "npm:2.x"
-  checksum: 10c0/80e89aaaed4b68e3374ce936f2eb097456a0dddbf11f75238dbd53140b1e39259f0d248a5089ed456f1158984f22191c3658d54a713982f676709fbe1a6fa5a0
   languageName: node
   linkType: hard
 
@@ -7592,7 +7517,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ejs@npm:^3.1.10, ejs@npm:^3.1.7":
+"ejs@npm:^3.1.7":
   version: 3.1.10
   resolution: "ejs@npm:3.1.10"
   dependencies:
@@ -8220,7 +8145,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"fast-json-stable-stringify@npm:2.x, fast-json-stable-stringify@npm:^2.0.0, fast-json-stable-stringify@npm:^2.1.0":
+"fast-json-stable-stringify@npm:^2.0.0, fast-json-stable-stringify@npm:^2.1.0":
   version: 2.1.0
   resolution: "fast-json-stable-stringify@npm:2.1.0"
   checksum: 10c0/7f081eb0b8a64e0057b3bb03f974b3ef00135fbf36c1c710895cd9300f13c94ba809bb3a81cf4e1b03f6e5285610a61abbd7602d0652de423144dfee5a389c9b
@@ -9460,18 +9385,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"jest-mock-extended@npm:^3.0.7":
-  version: 3.0.7
-  resolution: "jest-mock-extended@npm:3.0.7"
-  dependencies:
-    ts-essentials: "npm:^10.0.0"
-  peerDependencies:
-    jest: ^24.0.0 || ^25.0.0 || ^26.0.0 || ^27.0.0 || ^28.0.0 || ^29.0.0
-    typescript: ^3.0.0 || ^4.0.0 || ^5.0.0
-  checksum: 10c0/17d2e816eae8e95933817102987ba9f700890c4b1223495012bca2ec76644cd203336843a4c381a662e03bde0b637767ad8e2c13b490e9a5eaeb87d211994647
-  languageName: node
-  linkType: hard
-
 "jest-mock@npm:^29.7.0":
   version: 29.7.0
   resolution: "jest-mock@npm:29.7.0"
@@ -9616,7 +9529,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"jest-util@npm:^29.0.0, jest-util@npm:^29.4.1, jest-util@npm:^29.7.0":
+"jest-util@npm:^29.4.1, jest-util@npm:^29.7.0":
   version: 29.7.0
   resolution: "jest-util@npm:29.7.0"
   dependencies:
@@ -9885,9 +9798,13 @@ __metadata:
     "@swc-node/register": "npm:~1.10.9"
     "@swc/core": "npm:~1.10.11"
     "@swc/helpers": "npm:~0.5.15"
+    "@trivago/prettier-plugin-sort-imports": "npm:^5.2.2"
+    "@typescript-eslint/eslint-plugin": "npm:^8.25.0"
+    "@typescript-eslint/parser": "npm:^8.25.0"
     "@vitest/coverage-v8": "npm:^3.0.7"
     chalk: "npm:^5.4.1"
     eslint: "npm:^8.57.0"
+    eslint-plugin-prettier: "npm:5.2.3"
     jest: "npm:^29.7.0"
     nx: "npm:20.3.2"
     prettier: "npm:^3.4.2"
@@ -9999,13 +9916,6 @@ __metadata:
   version: 4.0.1
   resolution: "lodash.isstring@npm:4.0.1"
   checksum: 10c0/09eaf980a283f9eef58ef95b30ec7fee61df4d6bf4aba3b5f096869cc58f24c9da17900febc8ffd67819b4e29de29793190e88dc96983db92d84c95fa85d1c92
-  languageName: node
-  linkType: hard
-
-"lodash.memoize@npm:^4.1.2":
-  version: 4.1.2
-  resolution: "lodash.memoize@npm:4.1.2"
-  checksum: 10c0/c8713e51eccc650422716a14cece1809cfe34bc5ab5e242b7f8b4e2241c2483697b971a604252807689b9dd69bfe3a98852e19a5b89d506b000b4187a1285df8
   languageName: node
   linkType: hard
 
@@ -10122,7 +10032,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"make-error@npm:^1.1.1, make-error@npm:^1.3.6":
+"make-error@npm:^1.1.1":
   version: 1.3.6
   resolution: "make-error@npm:1.3.6"
   checksum: 10c0/171e458d86854c6b3fc46610cfacf0b45149ba043782558c6875d9f42f222124384ad0b468c92e996d815a8a2003817a710c0a160e49c1c394626f76fa45396f
@@ -11226,7 +11136,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"prettier@npm:3.4.2, prettier@npm:^3.4.2":
+"prettier@npm:^3.4.2":
   version: 3.4.2
   resolution: "prettier@npm:3.4.2"
   bin:
@@ -11713,7 +11623,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"semver@npm:^7.0.0, semver@npm:^7.3.5, semver@npm:^7.5.3, semver@npm:^7.5.4, semver@npm:^7.6.0, semver@npm:^7.6.3":
+"semver@npm:^7.0.0, semver@npm:^7.3.5, semver@npm:^7.5.3, semver@npm:^7.5.4, semver@npm:^7.6.0":
   version: 7.6.3
   resolution: "semver@npm:7.6.3"
   bin:
@@ -12319,55 +12229,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ts-essentials@npm:^10.0.0":
-  version: 10.0.1
-  resolution: "ts-essentials@npm:10.0.1"
-  peerDependencies:
-    typescript: ">=4.5.0"
-  peerDependenciesMeta:
-    typescript:
-      optional: true
-  checksum: 10c0/bc412ae9dafc97a7ab51c63743628d58cc9e7f4f7449d8c89ccb04f50502d04c3dd35a6dea94dbaab2845b856f198a8eb2e8d93e897218d1eb810ca826c1b080
-  languageName: node
-  linkType: hard
-
-"ts-jest@npm:^29.2.5":
-  version: 29.2.5
-  resolution: "ts-jest@npm:29.2.5"
-  dependencies:
-    bs-logger: "npm:^0.2.6"
-    ejs: "npm:^3.1.10"
-    fast-json-stable-stringify: "npm:^2.1.0"
-    jest-util: "npm:^29.0.0"
-    json5: "npm:^2.2.3"
-    lodash.memoize: "npm:^4.1.2"
-    make-error: "npm:^1.3.6"
-    semver: "npm:^7.6.3"
-    yargs-parser: "npm:^21.1.1"
-  peerDependencies:
-    "@babel/core": ">=7.0.0-beta.0 <8"
-    "@jest/transform": ^29.0.0
-    "@jest/types": ^29.0.0
-    babel-jest: ^29.0.0
-    jest: ^29.0.0
-    typescript: ">=4.3 <6"
-  peerDependenciesMeta:
-    "@babel/core":
-      optional: true
-    "@jest/transform":
-      optional: true
-    "@jest/types":
-      optional: true
-    babel-jest:
-      optional: true
-    esbuild:
-      optional: true
-  bin:
-    ts-jest: cli.js
-  checksum: 10c0/acb62d168faec073e64b20873b583974ba8acecdb94681164eb346cef82ade8fb481c5b979363e01a97ce4dd1e793baf64d9efd90720bc941ad7fc1c3d6f3f68
-  languageName: node
-  linkType: hard
-
 "ts-node-dev@npm:^2.0.0":
   version: 2.0.0
   resolution: "ts-node-dev@npm:2.0.0"
@@ -12494,7 +12355,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tslib@npm:^2.1.0, tslib@npm:^2.3.0, tslib@npm:^2.4.0, tslib@npm:^2.6.2, tslib@npm:^2.6.3, tslib@npm:^2.8.0":
+"tslib@npm:^2.1.0, tslib@npm:^2.3.0, tslib@npm:^2.4.0, tslib@npm:^2.6.2, tslib@npm:^2.6.3, tslib@npm:^2.8.0, tslib@npm:^2.8.1":
   version: 2.8.1
   resolution: "tslib@npm:2.8.1"
   checksum: 10c0/9c4759110a19c53f992d9aae23aac5ced636e99887b51b9e61def52611732872ff7668757d4e4c61f19691e36f4da981cd9485e869b4a7408d689f6bf1f14e62

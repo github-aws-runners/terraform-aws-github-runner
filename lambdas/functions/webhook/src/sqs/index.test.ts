@@ -1,7 +1,6 @@
 import { SendMessageCommandInput } from '@aws-sdk/client-sqs';
 import { sendActionRequest } from '.';
-import { describe, it, expect, beforeEach, beforeAll, afterEach, afterAll, vi } from 'vitest';
-
+import { describe, it, expect, afterEach, vi } from 'vitest';
 
 const mockSQS = {
   sendMessage: vi.fn(() => {

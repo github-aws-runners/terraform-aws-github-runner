@@ -10,8 +10,7 @@ import { RunnerConfig, sendActionRequest } from '../sqs';
 import { canRunJob, dispatch } from './dispatch';
 import { ConfigDispatcher } from '../ConfigLoader';
 import { logger } from '@aws-github-runner/aws-powertools-util';
-import { describe, it, expect, beforeEach, beforeAll, afterEach, afterAll, vi } from 'vitest';
-
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 vi.mock('../sqs');
 vi.mock('@aws-github-runner/aws-ssm-util');

@@ -1,11 +1,9 @@
 import { logger } from '@aws-github-runner/aws-powertools-util';
 import { Context } from 'aws-lambda';
 
-
 import { AmiCleanupOptions, amiCleanup } from './ami';
 import { handler } from './lambda';
-import { describe, it, expect, beforeEach, beforeAll, vi } from 'vitest';
-
+import { describe, it, expect, beforeAll, vi } from 'vitest';
 
 vi.mock('./ami');
 vi.mock('@aws-github-runner/aws-powertools-util');
@@ -41,7 +39,6 @@ const context: Context = {
   },
 };
 
-// Docs for testing async with jest: https://jestjs.io/docs/tutorial-async
 describe('Housekeeper ami', () => {
   beforeAll(() => {
     vi.resetAllMocks();
