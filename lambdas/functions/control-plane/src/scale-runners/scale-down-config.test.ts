@@ -1,6 +1,7 @@
 import moment from 'moment-timezone';
 
 import { EvictionStrategy, ScalingDownConfigList, getEvictionStrategy, getIdleRunnerCount } from './scale-down-config';
+import { describe, it, expect } from 'vitest';
 
 const DEFAULT_TIMEZONE = 'America/Los_Angeles';
 const DEFAULT_IDLE_COUNT = 1;

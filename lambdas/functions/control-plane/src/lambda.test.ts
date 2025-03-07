@@ -1,6 +1,5 @@
 import { captureLambdaHandler, logger } from '@aws-github-runner/aws-powertools-util';
 import { Context, SQSEvent, SQSRecord } from 'aws-lambda';
-import { mocked } from 'jest-mock';
 
 import { addMiddleware, adjustPool, scaleDownHandler, scaleUpHandler, ssmHousekeeper, jobRetryCheck } from './lambda';
 import { adjust } from './pool/pool';
@@ -9,6 +8,7 @@ import { scaleDown } from './scale-runners/scale-down';
 import { ActionRequestMessage, scaleUp } from './scale-runners/scale-up';
 import { cleanSSMTokens } from './scale-runners/ssm-housekeeper';
 import { checkAndRetryJob } from './scale-runners/job-retry';
+import { describe, it, expect, vi, MockedFunction } from 'vitest';
 
 const body: ActionRequestMessage = {
   eventType: 'workflow_job',
@@ -61,15 +61,14 @@ const context: Context = {
   },
 };
 
-jest.mock('./pool/pool');
-jest.mock('./scale-runners/scale-down');
-jest.mock('./scale-runners/scale-up');
-jest.mock('./scale-runners/ssm-housekeeper');
-jest.mock('./scale-runners/job-retry');
-jest.mock('@aws-github-runner/aws-powertools-util');
-jest.mock('@aws-github-runner/aws-ssm-util');
+vi.mock('./pool/pool');
+vi.mock('./scale-runners/scale-down');
+vi.mock('./scale-runners/scale-up');
+vi.mock('./scale-runners/ssm-housekeeper');
+vi.mock('./scale-runners/job-retry');
+vi.mock('@aws-github-runner/aws-powertools-util');
+vi.mock('@aws-github-runner/aws-ssm-util');
 
-// Docs for testing async with jest: https://jestjs.io/docs/tutorial-async
 describe('Test scale up lambda wrapper.', () => {
   it('Do not handle multiple record sets.', async () => {
     await testInvalidRecords([sqsRecord, sqsRecord]);
@@ -80,7 +79,7 @@ describe('Test scale up lambda wrapper.', () => {
   });
 
   it('Scale without error should resolve.', async () => {
-    const mock = mocked(scaleUp);
+    const mock = vi.fn(scaleUp);
     mock.mockImplementation(() => {
       return new Promise((resolve) => {
         resolve();
@@ -91,22 +90,25 @@ describe('Test scale up lambda wrapper.', () => {
 
   it('Non scale should resolve.', async () => {
     const error = new Error('Non scale should resolve.');
-    const mock = mocked(scaleUp);
+    const mock = vi.fn(scaleUp);
     mock.mockRejectedValue(error);
-    await expect(scaleUpHandler(sqsEvent, context)).resolves.not.toThrow;
+    await expect(scaleUpHandler(sqsEvent, context)).resolves.not.toThrow();
   });
 
   it('Scale should be rejected', async () => {
     const error = new ScaleError('Scale should be rejected');
-    const mock = mocked(scaleUp);
-    mock.mockRejectedValue(error);
+    const mock = vi.fn() as MockedFunction<typeof scaleUp>;
+    mock.mockImplementation(() => {
+      return Promise.reject(error);
+    });
+    vi.mocked(scaleUp).mockImplementation(mock);
     await expect(scaleUpHandler(sqsEvent, context)).rejects.toThrow(error);
   });
 });
 
 async function testInvalidRecords(sqsRecords: SQSRecord[]) {
-  const mock = mocked(scaleUp);
-  const logWarnSpy = jest.spyOn(logger, 'warn');
+  const mock = vi.fn(scaleUp);
+  const logWarnSpy = vi.spyOn(logger, 'warn');
   mock.mockImplementation(() => {
     return new Promise((resolve) => {
       resolve();
@@ -127,7 +129,7 @@ async function testInvalidRecords(sqsRecords: SQSRecord[]) {
 
 describe('Test scale down lambda wrapper.', () => {
   it('Scaling down no error.', async () => {
-    const mock = mocked(scaleDown);
+    const mock = vi.fn(scaleDown);
     mock.mockImplementation(() => {
       return new Promise((resolve) => {
         resolve();
@@ -138,7 +140,7 @@ describe('Test scale down lambda wrapper.', () => {
 
   it('Scaling down with error.', async () => {
     const error = new Error('Scaling down with error.');
-    const mock = mocked(scaleDown);
+    const mock = vi.fn(scaleDown);
     mock.mockRejectedValue(error);
     await expect(scaleDownHandler({}, context)).resolves.not.toThrow();
   });
@@ -146,7 +148,7 @@ describe('Test scale down lambda wrapper.', () => {
 
 describe('Adjust pool.', () => {
   it('Receive message to adjust pool.', async () => {
-    const mock = mocked(adjust);
+    const mock = vi.fn(adjust);
     mock.mockImplementation(() => {
       return new Promise((resolve) => {
         resolve();
@@ -156,26 +158,29 @@ describe('Adjust pool.', () => {
   });
 
   it('Handle error for adjusting pool.', async () => {
-    const mock = mocked(adjust);
     const error = new Error('Handle error for adjusting pool.');
-    mock.mockRejectedValue(error);
-    const logSpy = jest.spyOn(logger, 'error');
+    const mock = vi.fn() as MockedFunction<typeof adjust>;
+    mock.mockImplementation(() => {
+      return Promise.reject(error);
+    });
+    vi.mocked(adjust).mockImplementation(mock);
+    const logSpy = vi.spyOn(logger, 'error');
     await adjustPool({ poolSize: 0 }, context);
-    expect(logSpy).lastCalledWith(expect.stringContaining(error.message), expect.anything());
+    expect(logSpy).toHaveBeenCalledWith(`Handle error for adjusting pool. ${error.message}`, { error });
   });
 });
 
 describe('Test middleware', () => {
   it('Should have a working middleware', async () => {
-    const mockedLambdaHandler = captureLambdaHandler as unknown as jest.Mock;
-    mockedLambdaHandler.mockReturnValue({ before: jest.fn(), after: jest.fn(), onError: jest.fn() });
+    const mockedLambdaHandler = captureLambdaHandler as MockedFunction<typeof captureLambdaHandler>;
+    mockedLambdaHandler.mockReturnValue({ before: vi.fn(), after: vi.fn(), onError: vi.fn() });
     expect(addMiddleware).not.toThrowError();
   });
 });
 
 describe('Test ssm housekeeper lambda wrapper.', () => {
   it('Invoke without errors.', async () => {
-    const mock = mocked(cleanSSMTokens);
+    const mock = vi.fn(cleanSSMTokens);
     mock.mockImplementation(() => {
       return new Promise((resolve) => {
         resolve();
@@ -192,7 +197,7 @@ describe('Test ssm housekeeper lambda wrapper.', () => {
   });
 
   it('Errors not throws.', async () => {
-    const mock = mocked(cleanSSMTokens);
+    const mock = vi.fn(cleanSSMTokens);
     mock.mockRejectedValue(new Error());
     await expect(ssmHousekeeper({}, context)).resolves.not.toThrow();
   });
@@ -200,23 +205,24 @@ describe('Test ssm housekeeper lambda wrapper.', () => {
 
 describe('Test job retry check wrapper', () => {
   it('Handle without error should resolve.', async () => {
-    const mock = mocked(checkAndRetryJob);
+    const mock = vi.fn() as MockedFunction<typeof checkAndRetryJob>;
     mock.mockImplementation(() => {
-      return new Promise((resolve) => {
-        resolve();
-      });
+      return Promise.resolve();
     });
+    vi.mocked(checkAndRetryJob).mockImplementation(mock);
     await expect(jobRetryCheck(sqsEvent, context)).resolves.not.toThrow();
   });
 
   it('Handle with error should resolve and log only a warning.', async () => {
-    const logSpyWarn = jest.spyOn(logger, 'warn');
-
-    const mock = mocked(checkAndRetryJob);
     const error = new Error('Error handling retry check.');
-    mock.mockRejectedValue(error);
+    const mock = vi.fn() as MockedFunction<typeof checkAndRetryJob>;
+    mock.mockImplementation(() => {
+      return Promise.reject(error);
+    });
+    vi.mocked(checkAndRetryJob).mockImplementation(mock);
 
+    const logSpyWarn = vi.spyOn(logger, 'warn');
     await expect(jobRetryCheck(sqsEvent, context)).resolves.not.toThrow();
-    expect(logSpyWarn).toHaveBeenCalledWith(expect.stringContaining(error.message), expect.anything());
+    expect(logSpyWarn).toHaveBeenCalledWith(`Error processing job retry: ${error.message}`, { error });
   });
 });

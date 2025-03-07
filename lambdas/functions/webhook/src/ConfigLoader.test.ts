@@ -1,14 +1,15 @@
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
 import { ConfigWebhook, ConfigWebhookEventBridge, ConfigDispatcher } from './ConfigLoader';
-import { mocked } from 'jest-mock';
+
 import { logger } from '@aws-github-runner/aws-powertools-util';
 import { RunnerMatcherConfig } from './sqs';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-jest.mock('@aws-github-runner/aws-ssm-util');
+vi.mock('@aws-github-runner/aws-ssm-util');
 
 describe('ConfigLoader Tests', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     ConfigWebhook.reset();
     ConfigWebhookEventBridge.reset();
     ConfigDispatcher.reset();
@@ -35,7 +36,7 @@ describe('ConfigLoader Tests', () => {
           },
         },
       ];
-      mocked(getParameter).mockImplementation(async (paramPath: string) => {
+      vi.mocked(getParameter).mockImplementation(async (paramPath: string) => {
         if (paramPath === '/path/to/matcher/config') {
           return JSON.stringify(matcherConfig);
         }
@@ -75,7 +76,7 @@ describe('ConfigLoader Tests', () => {
 
     it('should filter secrets from being logged', async () => {
       setupConfiguration();
-      const spy = jest.spyOn(logger, 'debug');
+      const spy = vi.spyOn(logger, 'debug');
 
       await ConfigWebhook.load();
 
@@ -105,7 +106,7 @@ describe('ConfigLoader Tests', () => {
           },
         },
       ];
-      mocked(getParameter).mockImplementation(async (paramPath: string) => {
+      vi.mocked(getParameter).mockImplementation(async (paramPath: string) => {
         if (paramPath === '/path/to/matcher/config') {
           return JSON.stringify(matcherConfig);
         }
@@ -135,7 +136,7 @@ describe('ConfigLoader Tests', () => {
           },
         },
       ];
-      mocked(getParameter).mockImplementation(async (paramPath: string) => {
+      vi.mocked(getParameter).mockImplementation(async (paramPath: string) => {
         if (paramPath === '/path/to/matcher/config') {
           return JSON.stringify(matcherConfig);
         }
@@ -156,7 +157,7 @@ describe('ConfigLoader Tests', () => {
     it('should throw error if config loading fails', async () => {
       process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH = '/path/to/matcher/config';
 
-      mocked(getParameter).mockImplementation(async (paramPath: string) => {
+      vi.mocked(getParameter).mockImplementation(async (paramPath: string) => {
         if (paramPath === '/path/to/matcher/config') {
           throw new Error('Failed to load matcher config');
         }
@@ -175,7 +176,7 @@ describe('ConfigLoader Tests', () => {
       process.env.EVENT_BUS_NAME = 'event-bus';
       process.env.PARAMETER_GITHUB_APP_WEBHOOK_SECRET = '/path/to/webhook/secret';
 
-      mocked(getParameter).mockImplementation(async (paramPath: string) => {
+      vi.mocked(getParameter).mockImplementation(async (paramPath: string) => {
         if (paramPath === '/path/to/webhook/secret') {
           return 'secret';
         }
@@ -190,7 +191,7 @@ describe('ConfigLoader Tests', () => {
     });
 
     it('should throw error if config loading fails', async () => {
-      mocked(getParameter).mockImplementation(async (paramPath: string) => {
+      vi.mocked(getParameter).mockImplementation(async (paramPath: string) => {
         throw new Error(`Parameter ${paramPath} not found`);
       });
 
@@ -215,7 +216,7 @@ describe('ConfigLoader Tests', () => {
           },
         },
       ];
-      mocked(getParameter).mockImplementation(async (paramPath: string) => {
+      vi.mocked(getParameter).mockImplementation(async (paramPath: string) => {
         if (paramPath === '/path/to/matcher/config') {
           return JSON.stringify(matcherConfig);
         }
@@ -229,7 +230,7 @@ describe('ConfigLoader Tests', () => {
     });
 
     it('should throw error if config loading fails', async () => {
-      mocked(getParameter).mockImplementation(async (paramPath: string) => {
+      vi.mocked(getParameter).mockImplementation(async (paramPath: string) => {
         throw new Error(`Parameter ${paramPath} not found`);
       });
 
@@ -251,7 +252,7 @@ describe('ConfigLoader Tests', () => {
           },
         },
       ];
-      mocked(getParameter).mockImplementation(async (paramPath: string) => {
+      vi.mocked(getParameter).mockImplementation(async (paramPath: string) => {
         if (paramPath === '/path/to/matcher/config') {
           return JSON.stringify(matcherConfig);
         }
@@ -268,7 +269,7 @@ describe('ConfigLoader Tests', () => {
       process.env.REPOSITORY_ALLOW_LIST = '["repo1", "repo2"]';
       process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH = '/path/to/matcher/config';
 
-      mocked(getParameter).mockImplementation(async (paramPath: string) => {
+      vi.mocked(getParameter).mockImplementation(async (paramPath: string) => {
         if (paramPath === '/path/to/matcher/config') {
           return JSON.stringify('');
         }

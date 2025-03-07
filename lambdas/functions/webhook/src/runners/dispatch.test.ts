@@ -1,5 +1,5 @@
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
-import { mocked } from 'jest-mock';
+
 import nock from 'nock';
 import { WorkflowJobEvent } from '@octokit/webhooks-types';
 
@@ -10,9 +10,10 @@ import { RunnerConfig, sendActionRequest } from '../sqs';
 import { canRunJob, dispatch } from './dispatch';
 import { ConfigDispatcher } from '../ConfigLoader';
 import { logger } from '@aws-github-runner/aws-powertools-util';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
-jest.mock('../sqs');
-jest.mock('@aws-github-runner/aws-ssm-util');
+vi.mock('../sqs');
+vi.mock('@aws-github-runner/aws-ssm-util');
 
 const GITHUB_APP_WEBHOOK_SECRET = 'TEST_SECRET';
 
@@ -28,9 +29,9 @@ describe('Dispatcher', () => {
 
     nock.disableNetConnect();
     originalError = console.error;
-    console.error = jest.fn();
-    jest.clearAllMocks();
-    jest.resetAllMocks();
+    console.error = vi.fn();
+    vi.clearAllMocks();
+    vi.resetAllMocks();
 
     mockSSMResponse();
     config = await createConfig(undefined, runnerConfig);
@@ -57,9 +58,9 @@ describe('Dispatcher', () => {
       expect(sendActionRequest).not.toHaveBeenCalled();
     });
 
-    it('should handle workflow_job events without installation id', async () => {
+    it('should handle workflow_job events with a valid installation id', async () => {
       config = await createConfig(['github-aws-runners/terraform-aws-github-runner']);
-      const event = { ...workFlowJobEvent, installation: null } as unknown as WorkflowJobEvent;
+      const event = { ...workFlowJobEvent, installation: { id: 123 } } as unknown as WorkflowJobEvent;
       const resp = await dispatch(event, 'workflow_job', config);
       expect(resp.statusCode).toBe(201);
       expect(sendActionRequest).toHaveBeenCalled();
@@ -229,7 +230,7 @@ describe('Dispatcher', () => {
 
 function mockSSMResponse(runnerConfigInput?: RunnerConfig) {
   process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH = '/github-runner/runner-matcher-config';
-  const mockedGet = mocked(getParameter);
+  const mockedGet = vi.mocked(getParameter);
   mockedGet.mockImplementation((parameter_name) => {
     const value =
       parameter_name == '/github-runner/runner-matcher-config'

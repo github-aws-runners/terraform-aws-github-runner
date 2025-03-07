@@ -1,6 +1,6 @@
 import { Webhooks } from '@octokit/webhooks';
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
-import { mocked } from 'jest-mock';
+
 import nock from 'nock';
 
 import workFlowJobEvent from '../../test/resources/github_workflowjob_event.json';
@@ -10,11 +10,12 @@ import { dispatch } from '../runners/dispatch';
 import { IncomingHttpHeaders } from 'http';
 import { ConfigWebhook, ConfigWebhookEventBridge } from '../ConfigLoader';
 import { publish } from '../eventbridge';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-jest.mock('../sqs');
-jest.mock('../eventbridge');
-jest.mock('../runners/dispatch');
-jest.mock('@aws-github-runner/aws-ssm-util');
+vi.mock('../sqs');
+vi.mock('../eventbridge');
+vi.mock('../runners/dispatch');
+vi.mock('@aws-github-runner/aws-ssm-util');
 
 const GITHUB_APP_WEBHOOK_SECRET = 'TEST_SECRET';
 
@@ -29,7 +30,7 @@ describe('handle GitHub webhook events', () => {
     process.env = { ...cleanEnv };
 
     nock.disableNetConnect();
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     mockSSMResponse();
   });
@@ -50,7 +51,7 @@ describe('handle GitHub webhook events', () => {
 
     it('should accept large events', async () => {
       // setup
-      mocked(dispatch).mockImplementation(() => {
+      vi.mocked(dispatch).mockImplementation(() => {
         return Promise.resolve({ body: 'test', statusCode: 201 });
       });
 
@@ -66,7 +67,7 @@ describe('handle GitHub webhook events', () => {
         event,
         config,
       );
-      expect(result).resolves.toMatchObject({
+      await expect(result).resolves.toMatchObject({
         statusCode: 201,
       });
     });
@@ -103,7 +104,7 @@ describe('handle GitHub webhook events', () => {
     it('should accept with 201 if valid signature', async () => {
       const event = JSON.stringify(workFlowJobEvent);
 
-      mocked(dispatch).mockImplementation(() => {
+      vi.mocked(dispatch).mockImplementation(() => {
         return Promise.resolve({ body: 'test', statusCode: 201 });
       });
 
@@ -135,7 +136,7 @@ describe('handle GitHub webhook events', () => {
 
     it('should publish too large events on an error channel.,', async () => {
       // setup
-      mocked(publish).mockImplementation(async () => {
+      vi.mocked(publish).mockImplementation(async () => {
         return Promise.resolve();
       });
 
@@ -191,7 +192,7 @@ describe('handle GitHub webhook events', () => {
     ])('should accept $eventType for allowed events list $events', async (input: TestInput) => {
       const event = JSON.stringify(workFlowJobEvent);
 
-      mocked(dispatch).mockImplementation(() => {
+      vi.mocked(dispatch).mockImplementation(() => {
         return Promise.resolve({ body: 'test', statusCode: 201 });
       });
 
@@ -212,7 +213,7 @@ describe('handle GitHub webhook events', () => {
 
     it('should throw if publish to bridge failes.,', async () => {
       // setup
-      mocked(publish).mockRejectedValue(new Error('test'));
+      vi.mocked(publish).mockRejectedValue(new Error('test'));
       const event = JSON.stringify(workFlowJobEvent);
 
       // act and assert
@@ -234,7 +235,7 @@ describe('handle GitHub webhook events', () => {
       async (input: TestInput) => {
         const event = JSON.stringify(workFlowJobEvent);
 
-        mocked(dispatch).mockImplementation(() => {
+        vi.mocked(dispatch).mockImplementation(() => {
           return Promise.resolve({ body: 'test', statusCode: 201 });
         });
 
@@ -296,7 +297,7 @@ function mockSSMResponse() {
       },
     },
   ];
-  mocked(getParameter).mockImplementation(async (paramPath: string) => {
+  vi.mocked(getParameter).mockImplementation(async (paramPath: string) => {
     if (paramPath === '/path/to/matcher/config') {
       return JSON.stringify(matcherConfig);
     }

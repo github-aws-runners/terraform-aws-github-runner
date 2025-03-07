@@ -1,5 +1,4 @@
 import { Octokit } from '@octokit/rest';
-import { mocked } from 'jest-mock';
 import moment from 'moment';
 import nock from 'nock';
 
@@ -8,42 +7,62 @@ import * as ghAuth from '../github/auth';
 import { listEC2Runners, terminateRunner, tag } from './../aws/runners';
 import { githubCache } from './cache';
 import { newestFirstStrategy, oldestFirstStrategy, scaleDown } from './scale-down';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 const mockOctokit = {
   apps: {
-    getOrgInstallation: jest.fn(),
-    getRepoInstallation: jest.fn(),
+    getOrgInstallation: vi.fn(),
+    getRepoInstallation: vi.fn(),
   },
   actions: {
-    listSelfHostedRunnersForRepo: jest.fn(),
-    listSelfHostedRunnersForOrg: jest.fn(),
-    deleteSelfHostedRunnerFromOrg: jest.fn(),
-    deleteSelfHostedRunnerFromRepo: jest.fn(),
-    getSelfHostedRunnerForOrg: jest.fn(),
-    getSelfHostedRunnerForRepo: jest.fn(),
+    listSelfHostedRunnersForRepo: vi.fn(),
+    listSelfHostedRunnersForOrg: vi.fn(),
+    deleteSelfHostedRunnerFromOrg: vi.fn(),
+    deleteSelfHostedRunnerFromRepo: vi.fn(),
+    getSelfHostedRunnerForOrg: vi.fn(),
+    getSelfHostedRunnerForRepo: vi.fn(),
   },
-  paginate: jest.fn(),
+  paginate: vi.fn(),
 };
-jest.mock('@octokit/rest', () => ({
-  Octokit: jest.fn().mockImplementation(() => mockOctokit),
+vi.mock('@octokit/rest', () => ({
+  Octokit: vi.fn().mockImplementation(() => mockOctokit),
 }));
 
-jest.mock('./../aws/runners', () => ({
-  ...jest.requireActual('./../aws/runners'),
-  tag: jest.fn(),
-  terminateRunner: jest.fn(),
-  listEC2Runners: jest.fn(),
+vi.mock('./../aws/runners', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    tag: vi.fn(),
+    terminateRunner: vi.fn(),
+    listEC2Runners: vi.fn(),
+  };
+});
+vi.mock('./../github/auth', async () => ({
+  createGithubAppAuth: vi.fn(),
+  createGithubInstallationAuth: vi.fn(),
+  createOctokitClient: vi.fn(),
 }));
-jest.mock('./../github/auth');
-jest.mock('./cache');
 
-const mocktokit = Octokit as jest.MockedClass<typeof Octokit>;
-const mockedAppAuth = mocked(ghAuth.createGithubAppAuth, { shallow: false });
-const mockedInstallationAuth = mocked(ghAuth.createGithubInstallationAuth, { shallow: false });
-const mockCreateClient = mocked(ghAuth.createOctokitClient, { shallow: false });
-const mockListRunners = mocked(listEC2Runners);
-const mockTagRunners = mocked(tag);
-const mockTerminateRunners = mocked(terminateRunner);
+vi.mock('./cache', async () => ({
+  githubCache: {
+    getRunner: vi.fn(),
+    addRunner: vi.fn(),
+    clients: new Map(),
+    runners: new Map(),
+    reset: vi.fn().mockImplementation(() => {
+      githubCache.clients.clear();
+      githubCache.runners.clear();
+    }),
+  },
+}));
+
+const mocktokit = Octokit as vi.MockedClass<typeof Octokit>;
+const mockedAppAuth = vi.mocked(ghAuth.createGithubAppAuth);
+const mockedInstallationAuth = vi.mocked(ghAuth.createGithubInstallationAuth);
+const mockCreateClient = vi.mocked(ghAuth.createOctokitClient);
+const mockListRunners = vi.mocked(listEC2Runners);
+const mockTagRunners = vi.mocked(tag);
+const mockTerminateRunners = vi.mocked(terminateRunner);
 
 export interface TestData {
   repositoryName: string;
@@ -80,8 +99,8 @@ describe('Scale down runners', () => {
     process.env.RUNNER_BOOT_TIME_IN_MINUTES = MINIMUM_BOOT_TIME.toString();
 
     nock.disableNetConnect();
-    jest.clearAllMocks();
-    jest.resetModules();
+    vi.clearAllMocks();
+    vi.resetModules();
     githubCache.clients.clear();
     githubCache.runners.clear();
     mockOctokit.apps.getOrgInstallation.mockImplementation(() => ({

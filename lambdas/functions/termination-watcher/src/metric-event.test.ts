@@ -4,16 +4,24 @@ import { SpotInterruptionWarning, SpotTerminationDetail } from './types';
 import { createSingleMetric } from '@aws-github-runner/aws-powertools-util';
 import { MetricUnit } from '@aws-lambda-powertools/metrics';
 import { metricEvent } from './metric-event';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-jest.mock('@aws-github-runner/aws-powertools-util', () => ({
-  ...jest.requireActual('@aws-github-runner/aws-powertools-util'),
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  createSingleMetric: jest.fn((name: string, unit: string, value: number, dimensions?: Record<string, string>) => {
-    return {
-      addMetadata: jest.fn(),
-    };
-  }),
-}));
+// Mock the module before imports
+vi.mock('@aws-github-runner/aws-powertools-util', async () => {
+  // Use importOriginal instead of requireActual in Vitest
+  const actual = (await vi.importActual(
+    '@aws-github-runner/aws-powertools-util',
+  )) as typeof import('@aws-github-runner/aws-powertools-util');
+  return {
+    ...actual,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    createSingleMetric: vi.fn((name: string, unit: string, value: number, dimensions?: Record<string, string>) => {
+      return {
+        addMetadata: vi.fn(),
+      };
+    }),
+  };
+});
 
 const event: SpotInterruptionWarning<SpotTerminationDetail> = {
   version: '0',
@@ -44,7 +52,7 @@ const instance: Instance = {
 
 describe('create metric and metric logs', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('should log and create a metric', async () => {

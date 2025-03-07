@@ -1,27 +1,28 @@
 import { Octokit } from '@octokit/rest';
 import { ActionRequestMessage } from '../scale-runners/scale-up';
 import { getOctokit } from './octokit';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 const mockOctokit = {
   apps: {
-    getOrgInstallation: jest.fn(),
-    getRepoInstallation: jest.fn(),
+    getOrgInstallation: vi.fn(),
+    getRepoInstallation: vi.fn(),
   },
 };
 
-jest.mock('../github/auth', () => ({
-  createGithubInstallationAuth: jest.fn().mockImplementation(async (installationId) => {
+vi.mock('../github/auth', async () => ({
+  createGithubInstallationAuth: vi.fn().mockImplementation(async (installationId) => {
     return { token: 'token', type: 'installation', installationId: installationId };
   }),
-  createOctokitClient: jest.fn().mockImplementation(() => new (Octokit as jest.MockedClass<typeof Octokit>)()),
-  createGithubAppAuth: jest.fn().mockResolvedValue({ token: 'token' }),
+  createOctokitClient: vi.fn().mockImplementation(() => new Octokit()),
+  createGithubAppAuth: vi.fn().mockResolvedValue({ token: 'token' }),
 }));
 
-jest.mock('@octokit/rest', () => ({
-  Octokit: jest.fn().mockImplementation(() => mockOctokit),
+vi.mock('@octokit/rest', async () => ({
+  Octokit: vi.fn().mockImplementation(() => mockOctokit),
 }));
 
-jest.mock('../github/auth');
+// We've already mocked '../github/auth' above
 
 describe('Test getOctokit', () => {
   const data = [
@@ -43,7 +44,7 @@ describe('Test getOctokit', () => {
   ];
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it.each(data)(`$description`, async ({ input, output }) => {

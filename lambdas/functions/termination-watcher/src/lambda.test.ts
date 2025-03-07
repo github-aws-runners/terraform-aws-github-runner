@@ -1,14 +1,14 @@
 import { logger } from '@aws-github-runner/aws-powertools-util';
 import { Context } from 'aws-lambda';
-import { mocked } from 'jest-mock';
 
 import { handle as interruptionWarningHandlerImpl } from './termination-warning';
 import { handle as terminationHandlerImpl } from './termination';
 import { interruptionWarning, termination } from './lambda';
 import { BidEvictedDetail, BidEvictedEvent, SpotInterruptionWarning, SpotTerminationDetail } from './types';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-jest.mock('./termination-warning');
-jest.mock('./termination');
+vi.mock('./termination-warning');
+vi.mock('./termination');
 
 process.env.POWERTOOLS_METRICS_NAMESPACE = 'test';
 process.env.POWERTOOLS_TRACE_ENABLED = 'true';
@@ -84,14 +84,13 @@ const context: Context = {
   },
 };
 
-// Docs for testing async with jest: https://jestjs.io/docs/tutorial-async
 describe('Handle sport termination interruption warning', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('should not throw or log in error.', async () => {
-    const mock = mocked(interruptionWarningHandlerImpl);
+    const mock = vi.mocked(interruptionWarningHandlerImpl);
     mock.mockImplementation(() => {
       return new Promise((resolve) => {
         resolve();
@@ -101,9 +100,9 @@ describe('Handle sport termination interruption warning', () => {
   });
 
   it('should not throw only log in error in case of an exception.', async () => {
-    const logSpy = jest.spyOn(logger, 'error');
+    const logSpy = vi.spyOn(logger, 'error');
     const error = new Error('An error.');
-    const mock = mocked(interruptionWarningHandlerImpl);
+    const mock = vi.mocked(interruptionWarningHandlerImpl);
     mock.mockRejectedValue(error);
     await expect(interruptionWarning(spotInstanceInterruptionEvent, context)).resolves.toBeUndefined();
 
@@ -113,11 +112,11 @@ describe('Handle sport termination interruption warning', () => {
 
 describe('Handle sport termination (BidEvictEvent', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('should not throw or log in error.', async () => {
-    const mock = mocked(terminationHandlerImpl);
+    const mock = vi.mocked(terminationHandlerImpl);
     mock.mockImplementation(() => {
       return new Promise((resolve) => {
         resolve();
@@ -127,9 +126,9 @@ describe('Handle sport termination (BidEvictEvent', () => {
   });
 
   it('should not throw only log in error in case of an exception.', async () => {
-    const logSpy = jest.spyOn(logger, 'error');
+    const logSpy = vi.spyOn(logger, 'error');
     const error = new Error('An error.');
-    const mock = mocked(terminationHandlerImpl);
+    const mock = vi.mocked(terminationHandlerImpl);
     mock.mockRejectedValue(error);
     await expect(termination(bidEvictedEvent, context)).resolves.toBeUndefined();
 

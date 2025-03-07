@@ -4,17 +4,21 @@ import 'aws-sdk-client-mock-jest';
 import { handle } from './termination-warning';
 import { SpotInterruptionWarning, SpotTerminationDetail } from './types';
 import { metricEvent } from './metric-event';
-import { mocked } from 'jest-mock';
+
 import { getInstances } from './ec2';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-jest.mock('./metric-event', () => ({
-  metricEvent: jest.fn(),
+vi.mock('./metric-event', () => ({
+  metricEvent: vi.fn(),
 }));
 
-jest.mock('./ec2', () => ({
-  ...jest.requireActual('./ec2'),
-  getInstances: jest.fn(),
-}));
+vi.mock('./ec2', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    getInstances: vi.fn(),
+  };
+});
 
 mockClient(EC2Client);
 
@@ -54,11 +58,11 @@ const instance: Instance = {
 
 describe('handle termination warning', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('should log and create an metric', async () => {
-    mocked(getInstances).mockResolvedValue([instance]);
+    vi.mocked(getInstances).mockResolvedValue([instance]);
     await handle(event, config);
 
     expect(metricEvent).toHaveBeenCalled();
@@ -66,14 +70,14 @@ describe('handle termination warning', () => {
   });
 
   it('should log details and not create a metric', async () => {
-    mocked(getInstances).mockResolvedValue([instance]);
+    vi.mocked(getInstances).mockResolvedValue([instance]);
 
     await handle(event, { ...config, createSpotWarningMetric: false });
     expect(metricEvent).toHaveBeenCalledWith(instance, event, undefined, expect.anything());
   });
 
   it('should not create a metric if filter not matched.', async () => {
-    mocked(getInstances).mockResolvedValue([instance]);
+    vi.mocked(getInstances).mockResolvedValue([instance]);
 
     await handle(event, {
       createSpotWarningMetric: true,

@@ -14,11 +14,12 @@ import {
 import { GetParameterCommand, GetParameterResult, PutParameterCommand, SSMClient } from '@aws-sdk/client-ssm';
 import { tracer } from '@aws-github-runner/aws-powertools-util';
 import { mockClient } from 'aws-sdk-client-mock';
-import 'aws-sdk-client-mock-jest';
+import 'aws-sdk-client-mock-jest/vitest';
 
 import ScaleError from './../scale-runners/ScaleError';
 import { createRunner, listEC2Runners, tag, terminateRunner } from './runners';
 import { RunnerInfo, RunnerInputParameters, RunnerType } from './runners.d';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 process.env.AWS_REGION = 'eu-east-1';
 const mockEC2Client = mockClient(EC2Client);
@@ -55,8 +56,8 @@ const mockRunningInstances: DescribeInstancesResult = {
 
 describe('list instances', () => {
   beforeEach(() => {
-    jest.resetModules();
-    jest.clearAllMocks();
+    vi.resetModules();
+    vi.clearAllMocks();
   });
 
   it('returns a list of instances', async () => {
@@ -202,7 +203,7 @@ describe('list instances', () => {
 
 describe('terminate runner', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
   it('calls terminate instances with the right instance ids', async () => {
     mockEC2Client.on(TerminateInstancesCommand).resolves({});
@@ -219,7 +220,7 @@ describe('terminate runner', () => {
 
 describe('tag runner', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
   it('adding extra tag', async () => {
     mockEC2Client.on(CreateTagsCommand).resolves({});
@@ -252,7 +253,7 @@ describe('create runner', () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockEC2Client.reset();
     mockSSMClient.reset();
 
@@ -315,7 +316,7 @@ describe('create runner', () => {
     });
   });
   it('calls create fleet of 1 instance with runner tracing enabled', async () => {
-    tracer.getRootXrayTraceId = jest.fn().mockReturnValue('123');
+    tracer.getRootXrayTraceId = vi.fn().mockReturnValue('123');
 
     await createRunner(createRunnerConfig({ ...defaultRunnerConfig, tracingEnabled: true }));
 
@@ -338,7 +339,7 @@ describe('create runner with errors', () => {
     totalTargetCapacity: 1,
   };
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockEC2Client.reset();
     mockSSMClient.reset();
 
@@ -443,7 +444,7 @@ describe('create runner with errors fail over to OnDemand', () => {
     totalTargetCapacity: 1,
   };
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockEC2Client.reset();
     mockSSMClient.reset();
 

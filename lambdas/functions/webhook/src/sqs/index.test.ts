@@ -1,15 +1,16 @@
 import { SendMessageCommandInput } from '@aws-sdk/client-sqs';
 import { sendActionRequest } from '.';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 
 const mockSQS = {
-  sendMessage: jest.fn(() => {
+  sendMessage: vi.fn(() => {
     return {};
   }),
 };
-jest.mock('@aws-sdk/client-sqs', () => ({
-  SQS: jest.fn().mockImplementation(() => mockSQS),
+vi.mock('@aws-sdk/client-sqs', () => ({
+  SQS: vi.fn().mockImplementation(() => mockSQS),
 }));
-jest.mock('@aws-github-runner/aws-ssm-util');
+vi.mock('@aws-github-runner/aws-ssm-util');
 
 describe('Test sending message to SQS.', () => {
   const queueUrl = 'https://sqs.eu-west-1.amazonaws.com/123456789/queued-builds';
@@ -25,7 +26,7 @@ describe('Test sending message to SQS.', () => {
   };
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('no fifo queue', async () => {

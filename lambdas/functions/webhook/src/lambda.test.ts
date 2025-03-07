@@ -1,6 +1,6 @@
 import { logger } from '@aws-github-runner/aws-powertools-util';
 import { APIGatewayEvent, Context } from 'aws-lambda';
-import { mocked } from 'jest-mock';
+
 import { WorkflowJobEvent } from '@octokit/webhooks-types';
 
 import { dispatchToRunners, eventBridgeWebhook, directWebhook } from './lambda';
@@ -9,6 +9,7 @@ import ValidationError from './ValidationError';
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
 import { dispatch } from './runners/dispatch';
 import { EventWrapper } from './types';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 const event: APIGatewayEvent = {
   body: JSON.stringify(''),
@@ -76,22 +77,22 @@ const context: Context = {
   },
 };
 
-jest.mock('./runners/dispatch');
-jest.mock('./webhook');
-jest.mock('@aws-github-runner/aws-ssm-util');
+vi.mock('./runners/dispatch');
+vi.mock('./webhook');
+vi.mock('@aws-github-runner/aws-ssm-util');
 
 describe('Test webhook lambda wrapper.', () => {
   beforeEach(() => {
     // We mock all SSM request to resolve to a non empty array. Since we mock all implemeantions
     // relying on the config opbject that is enought to test the handlers.
-    const mockedGet = mocked(getParameter);
+    const mockedGet = vi.mocked(getParameter);
     mockedGet.mockResolvedValue('["abc"]');
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('Test webhook lambda wrapper.', () => {
     it('Happy flow, resolve.', async () => {
-      const mock = mocked(publishForRunners);
+      const mock = vi.mocked(publishForRunners);
       mock.mockImplementation(() => {
         return new Promise((resolve) => {
           resolve({ body: 'test', statusCode: 200 });
@@ -103,7 +104,7 @@ describe('Test webhook lambda wrapper.', () => {
     });
 
     it('An expected error, resolve.', async () => {
-      const mock = mocked(publishForRunners);
+      const mock = vi.mocked(publishForRunners);
       mock.mockRejectedValue(new ValidationError(400, 'some error'));
 
       const result = await directWebhook(event, context);
@@ -111,8 +112,8 @@ describe('Test webhook lambda wrapper.', () => {
     });
 
     it('Errors are not thrown.', async () => {
-      const mock = mocked(publishForRunners);
-      const logSpy = jest.spyOn(logger, 'error');
+      const mock = vi.mocked(publishForRunners);
+      const logSpy = vi.spyOn(logger, 'error');
       mock.mockRejectedValue(new Error('some error'));
       const result = await directWebhook(event, context);
       expect(result).toMatchObject({ body: 'Check the Lambda logs for the error details.', statusCode: 500 });
@@ -126,7 +127,7 @@ describe('Test webhook lambda wrapper.', () => {
     });
 
     it('Happy flow, resolve.', async () => {
-      const mock = mocked(publishOnEventBridge);
+      const mock = vi.mocked(publishOnEventBridge);
       mock.mockImplementation(() => {
         return new Promise((resolve) => {
           resolve({ body: 'test', statusCode: 200 });
@@ -138,7 +139,7 @@ describe('Test webhook lambda wrapper.', () => {
     });
 
     it('Reject events .', async () => {
-      const mock = mocked(publishOnEventBridge);
+      const mock = vi.mocked(publishOnEventBridge);
       mock.mockRejectedValue(new Error('some error'));
 
       mock.mockRejectedValue(new ValidationError(400, 'some error'));
@@ -148,8 +149,8 @@ describe('Test webhook lambda wrapper.', () => {
     });
 
     it('Errors are not thrown.', async () => {
-      const mock = mocked(publishOnEventBridge);
-      const logSpy = jest.spyOn(logger, 'error');
+      const mock = vi.mocked(publishOnEventBridge);
+      const logSpy = vi.spyOn(logger, 'error');
       mock.mockRejectedValue(new Error('some error'));
       const result = await eventBridgeWebhook(event, context);
       expect(result).toMatchObject({ body: 'Check the Lambda logs for the error details.', statusCode: 500 });
@@ -159,7 +160,7 @@ describe('Test webhook lambda wrapper.', () => {
 
   describe('Lambda dispatchToRunners.', () => {
     it('Happy flow, resolve.', async () => {
-      const mock = mocked(dispatch);
+      const mock = vi.mocked(dispatch);
       mock.mockImplementation(() => {
         return new Promise((resolve) => {
           resolve({ body: 'test', statusCode: 200 });
@@ -174,7 +175,7 @@ describe('Test webhook lambda wrapper.', () => {
     });
 
     it('Rejects non workflow_job events.', async () => {
-      const mock = mocked(dispatch);
+      const mock = vi.mocked(dispatch);
       mock.mockImplementation(() => {
         return new Promise((resolve) => {
           resolve({ body: 'test', statusCode: 200 });
@@ -191,7 +192,7 @@ describe('Test webhook lambda wrapper.', () => {
     });
 
     it('Rejects any event causing an error.', async () => {
-      const mock = mocked(dispatch);
+      const mock = vi.mocked(dispatch);
       mock.mockRejectedValue(new Error('some error'));
 
       const testEvent = {

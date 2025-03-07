@@ -1,7 +1,8 @@
 import { DeleteParameterCommand, GetParametersByPathCommand, SSMClient } from '@aws-sdk/client-ssm';
 import { mockClient } from 'aws-sdk-client-mock';
-import 'aws-sdk-client-mock-jest';
+import 'aws-sdk-client-mock-jest/vitest';
 import { cleanSSMTokens } from './ssm-housekeeper';
+import { describe, it, expect, beforeEach } from 'vitest';
 
 process.env.AWS_REGION = 'eu-east-1';
 
