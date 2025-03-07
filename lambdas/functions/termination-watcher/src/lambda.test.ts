@@ -1,13 +1,11 @@
 import { logger } from '@aws-github-runner/aws-powertools-util';
 import { Context } from 'aws-lambda';
 
-
 import { handle as interruptionWarningHandlerImpl } from './termination-warning';
 import { handle as terminationHandlerImpl } from './termination';
 import { interruptionWarning, termination } from './lambda';
 import { BidEvictedDetail, BidEvictedEvent, SpotInterruptionWarning, SpotTerminationDetail } from './types';
-import { describe, it, expect, beforeEach, beforeAll, afterEach, afterAll, vi } from 'vitest';
-
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 vi.mock('./termination-warning');
 vi.mock('./termination');

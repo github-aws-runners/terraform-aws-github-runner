@@ -3,7 +3,6 @@ import { Context } from 'aws-lambda';
 import { logger, setContext } from '../';
 import { describe, test, expect, beforeEach, vi } from 'vitest';
 
-
 beforeEach(() => {
   vi.clearAllMocks();
   vi.resetAllMocks();

@@ -1,10 +1,8 @@
 import { Context } from 'aws-lambda';
 
-
 import { handler } from './lambda';
 import { sync } from './syncer/syncer';
-import { describe, it, expect, beforeEach, beforeAll, afterEach, afterAll, vi } from 'vitest';
-
+import { describe, it, expect, vi } from 'vitest';
 
 vi.mock('./syncer/syncer');
 

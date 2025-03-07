@@ -9,8 +9,7 @@ import ValidationError from './ValidationError';
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
 import { dispatch } from './runners/dispatch';
 import { EventWrapper } from './types';
-import { describe, it, expect, beforeEach, beforeAll, afterEach, afterAll, vi } from 'vitest';
-
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 const event: APIGatewayEvent = {
   body: JSON.stringify(''),

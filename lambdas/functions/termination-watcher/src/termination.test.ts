@@ -6,8 +6,7 @@ import { BidEvictedDetail, BidEvictedEvent } from './types';
 import { metricEvent } from './metric-event';
 
 import { getInstances } from './ec2';
-import { describe, it, expect, beforeEach, beforeAll, afterEach, afterAll, vi } from 'vitest';
-
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 vi.mock('./metric-event', () => ({
   metricEvent: vi.fn(),

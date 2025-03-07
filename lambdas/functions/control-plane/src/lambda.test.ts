@@ -9,6 +9,7 @@ import { scaleDown } from './scale-runners/scale-down';
 import { ActionRequestMessage, scaleUp } from './scale-runners/scale-up';
 import { cleanSSMTokens } from './scale-runners/ssm-housekeeper';
 import { checkAndRetryJob } from './scale-runners/job-retry';
+import { describe, it, expect, vi, MockedFunction } from 'vitest';
 
 const body: ActionRequestMessage = {
   eventType: 'workflow_job',
@@ -61,13 +62,13 @@ const context: Context = {
   },
 };
 
-jest.mock('./pool/pool');
-jest.mock('./scale-runners/scale-down');
-jest.mock('./scale-runners/scale-up');
-jest.mock('./scale-runners/ssm-housekeeper');
-jest.mock('./scale-runners/job-retry');
-jest.mock('@aws-github-runner/aws-powertools-util');
-jest.mock('@aws-github-runner/aws-ssm-util');
+vi.mock('./pool/pool');
+vi.mock('./scale-runners/scale-down');
+vi.mock('./scale-runners/scale-up');
+vi.mock('./scale-runners/ssm-housekeeper');
+vi.mock('./scale-runners/job-retry');
+vi.mock('@aws-github-runner/aws-powertools-util');
+vi.mock('@aws-github-runner/aws-ssm-util');
 
 // Docs for testing async with jest: https://jestjs.io/docs/tutorial-async
 describe('Test scale up lambda wrapper.', () => {
@@ -106,7 +107,7 @@ describe('Test scale up lambda wrapper.', () => {
 
 async function testInvalidRecords(sqsRecords: SQSRecord[]) {
   const mock = mocked(scaleUp);
-  const logWarnSpy = jest.spyOn(logger, 'warn');
+  const logWarnSpy = vi.spyOn(logger, 'warn');
   mock.mockImplementation(() => {
     return new Promise((resolve) => {
       resolve();
@@ -159,7 +160,7 @@ describe('Adjust pool.', () => {
     const mock = mocked(adjust);
     const error = new Error('Handle error for adjusting pool.');
     mock.mockRejectedValue(error);
-    const logSpy = jest.spyOn(logger, 'error');
+    const logSpy = vi.spyOn(logger, 'error');
     await adjustPool({ poolSize: 0 }, context);
     expect(logSpy).lastCalledWith(expect.stringContaining(error.message), expect.anything());
   });
@@ -167,8 +168,8 @@ describe('Adjust pool.', () => {
 
 describe('Test middleware', () => {
   it('Should have a working middleware', async () => {
-    const mockedLambdaHandler = captureLambdaHandler as unknown as jest.Mock;
-    mockedLambdaHandler.mockReturnValue({ before: jest.fn(), after: jest.fn(), onError: jest.fn() });
+    const mockedLambdaHandler = captureLambdaHandler as MockedFunction<typeof captureLambdaHandler>;
+    mockedLambdaHandler.mockReturnValue({ before: vi.fn(), after: vi.fn(), onError: vi.fn() });
     expect(addMiddleware).not.toThrowError();
   });
 });
@@ -210,7 +211,7 @@ describe('Test job retry check wrapper', () => {
   });
 
   it('Handle with error should resolve and log only a warning.', async () => {
-    const logSpyWarn = jest.spyOn(logger, 'warn');
+    const logSpyWarn = vi.spyOn(logger, 'warn');
 
     const mock = mocked(checkAndRetryJob);
     const error = new Error('Error handling retry check.');

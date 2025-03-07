@@ -12,6 +12,7 @@ const defaultConfig = defineConfig({
       reportsDirectory: './coverage'
     },
     globals: true,
+    watch: false
   }
 });
 

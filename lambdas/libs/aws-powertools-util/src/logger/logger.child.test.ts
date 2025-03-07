@@ -1,8 +1,7 @@
 import { Context } from 'aws-lambda';
 
 import { addPersistentContextToChildLogger, createChildLogger, logger, setContext } from '.';
-import { describe, test, expect, beforeEach, vi } from 'vitest';
-
+import { describe, test, expect } from 'vitest';
 
 const childLogger = createChildLogger('child');
 addPersistentContextToChildLogger({ child: 'child' });

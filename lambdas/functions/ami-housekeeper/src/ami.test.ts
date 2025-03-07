@@ -14,10 +14,10 @@ import {
   SSMClient,
 } from '@aws-sdk/client-ssm';
 import { mockClient } from 'aws-sdk-client-mock';
+import 'aws-sdk-client-mock-jest/vitest';
 
 import { AmiCleanupOptions, amiCleanup, defaultAmiCleanupOptions } from './ami';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-
 
 process.env.AWS_REGION = 'eu-east-1';
 const deleteAmisOlderThenDays = 30;

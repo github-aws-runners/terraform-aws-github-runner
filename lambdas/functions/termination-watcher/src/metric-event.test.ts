@@ -4,13 +4,14 @@ import { SpotInterruptionWarning, SpotTerminationDetail } from './types';
 import { createSingleMetric } from '@aws-github-runner/aws-powertools-util';
 import { MetricUnit } from '@aws-lambda-powertools/metrics';
 import { metricEvent } from './metric-event';
-import { describe, it, expect, beforeEach, beforeAll, afterEach, afterAll, vi } from 'vitest';
-
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 // Mock the module before imports
-vi.mock('@aws-github-runner/aws-powertools-util', async (importOriginal) => {
+vi.mock('@aws-github-runner/aws-powertools-util', async () => {
   // Use importOriginal instead of requireActual in Vitest
-  const actual = await importOriginal();
+  const actual = (await vi.importActual(
+    '@aws-github-runner/aws-powertools-util',
+  )) as typeof import('@aws-github-runner/aws-powertools-util');
   return {
     ...actual,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
