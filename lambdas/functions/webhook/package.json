@@ -19,7 +19,6 @@
     "@aws-sdk/client-eventbridge": "^3.758.0",
     "@types/aws-lambda": "^8.10.146",
     "@types/express": "^5.0.0",
-    "@types/jest": "^29.5.14",
     "@types/node": "^22.13.9",
     "@vercel/ncc": "0.38.3",
     "body-parser": "^1.20.3",

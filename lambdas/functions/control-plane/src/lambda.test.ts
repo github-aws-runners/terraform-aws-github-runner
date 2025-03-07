@@ -70,7 +70,6 @@ vi.mock('./scale-runners/job-retry');
 vi.mock('@aws-github-runner/aws-powertools-util');
 vi.mock('@aws-github-runner/aws-ssm-util');
 
-// Docs for testing async with jest: https://jestjs.io/docs/tutorial-async
 describe('Test scale up lambda wrapper.', () => {
   it('Do not handle multiple record sets.', async () => {
     await testInvalidRecords([sqsRecord, sqsRecord]);

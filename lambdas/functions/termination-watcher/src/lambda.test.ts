@@ -84,7 +84,6 @@ const context: Context = {
   },
 };
 
-// Docs for testing async with jest: https://jestjs.io/docs/tutorial-async
 describe('Handle sport termination interruption warning', () => {
   beforeEach(() => {
     vi.clearAllMocks();

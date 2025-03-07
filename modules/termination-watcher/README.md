@@ -41,7 +41,7 @@ yarn install
 
 ### Test
 
-Test are implemented with [Jest](https://jestjs.io/), calls to AWS and GitHub are mocked.
+Test are implemented with [vitest][https://vitest.dev/]), calls to AWS and GitHub are mocked.
 
 ```bash
 yarn run test
