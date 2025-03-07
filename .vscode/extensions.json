@@ -6,6 +6,6 @@
     "editorconfig.editorconfig",
     "yzhang.markdown-all-in-one",
     "hashicorp.terraform",
-    "firsttris.vscode-jest-runner"
+    "vitest.explorer"
   ]
 }
