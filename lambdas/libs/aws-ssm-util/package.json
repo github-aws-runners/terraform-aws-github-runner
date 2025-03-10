@@ -2,6 +2,7 @@
   "name": "@aws-github-runner/aws-ssm-util",
   "version": "1.0.0",
   "main": "src/index.ts",
+  "type": "module",
   "license": "MIT",
   "scripts": {
     "start": "ts-node-dev src/local.ts",
