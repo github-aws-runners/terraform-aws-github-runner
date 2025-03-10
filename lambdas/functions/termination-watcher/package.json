@@ -2,6 +2,7 @@
   "name": "@aws-github-runner/termination-watcher",
   "version": "1.0.0",
   "main": "lambda.ts",
+  "type": "module",
   "license": "MIT",
   "scripts": {
     "test": "NODE_ENV=test nx test",
