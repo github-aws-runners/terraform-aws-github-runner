@@ -37,7 +37,7 @@ jobs:
         run: echo "name=${GITHUB_REF#refs/heads/}" >> $GITHUB_OUTPUT
       - name: Release
         id: release
-        uses: googleapis/release-please-action@d1a8f221d7723166f48a584aebba00ef3f6febec # v4.1.4
+        uses: googleapis/release-please-action@a02a34c4d625f9be7cb89156071d8567266a2445 # v4.2.0
         with:
           target-branch: ${{ steps.branch.outputs.name }}
           release-type: terraform-module
@@ -45,7 +45,7 @@ jobs:
       - name: Attest
         if: ${{ steps.release.outputs.releases_created == 'true' }}
         id: attest
-        uses: actions/attest-build-provenance@bd77c077858b8d561b7a36cbe48ef4cc642ca39d # v2.2.2
+        uses: actions/attest-build-provenance@c074443f1aee8d4aeeae555aebba3282517141b2 # v2.2.3
         with:
           subject-path: '${{ github.workspace }}/lambdas/functions/**/*.zip'
       - name: Update release notes with attestation
