@@ -1,6 +1,7 @@
 MIT License
 
 Copyright (c) 2025 GitHub Terraform AWS runners
+Copyright (c) 2020-2024 Koninklijke Philips N.V., https://www.philips.com
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
