@@ -239,6 +239,7 @@ __metadata:
     "@octokit/rest": "npm:20.1.2"
     "@octokit/types": "npm:^13.8.0"
     "@octokit/webhooks": "npm:^12.3.1"
+    "@octokit/webhooks-types": "npm:^7.6.1"
     "@types/aws-lambda": "npm:^8.10.146"
     "@types/express": "npm:^5.0.0"
     "@types/node": "npm:^22.13.9"
@@ -3894,7 +3895,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@octokit/webhooks-types@npm:7.6.1":
+"@octokit/webhooks-types@npm:7.6.1, @octokit/webhooks-types@npm:^7.6.1":
   version: 7.6.1
   resolution: "@octokit/webhooks-types@npm:7.6.1"
   checksum: 10c0/7c2cb40f9ccd2bd392cf35c23f995ae0719ef35fd3bce0264ced5518cbf0a7087bd069bf5e5963fc33d0232726968db526912df3cb017c1bd1761c8849c31a30

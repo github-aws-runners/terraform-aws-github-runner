@@ -11,7 +11,7 @@
     "lint": "eslint src",
     "watch": "ts-node-dev --respawn --exit-child src/local.ts",
     "build": "ncc build src/lambda.ts -o dist",
-    "dist": "yarn build && cd dist && zip ../ami-housekeeper.zip index.js",
+    "dist": "yarn build && cp package.json dist/ && cd dist && zip ../ami-housekeeper.zip *",
     "format": "prettier --write \"**/*.ts\"",
     "format-check": "prettier --check \"**/*.ts\"",
     "all": "yarn build && yarn format && yarn lint && yarn test"
