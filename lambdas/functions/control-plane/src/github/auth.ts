@@ -1,13 +1,21 @@
-import { createAppAuth } from '@octokit/auth-app';
-import {
-  AppAuthOptions,
-  AppAuthentication,
-  AuthInterface,
-  InstallationAccessTokenAuthentication,
-  InstallationAuthOptions,
-  StrategyOptions,
-} from '@octokit/auth-app/dist-types/types';
-import { OctokitOptions } from '@octokit/core/dist-types/types';
+import { createAppAuth, type AppAuthentication, type InstallationAccessTokenAuthentication } from '@octokit/auth-app';
+import type { OctokitOptions } from '@octokit/core';
+import type { RequestInterface } from '@octokit/types';
+
+// Define types that are not directly exported
+type AppAuthOptions = { type: 'app' };
+type InstallationAuthOptions = { type: 'installation'; installationId?: number };
+// Use a more generalized AuthInterface to match what createAppAuth returns
+type AuthInterface = {
+  (options: AppAuthOptions): Promise<AppAuthentication>;
+  (options: InstallationAuthOptions): Promise<InstallationAccessTokenAuthentication>;
+};
+type StrategyOptions = {
+  appId: number;
+  privateKey: string;
+  installationId?: number;
+  request?: RequestInterface;
+};
 import { request } from '@octokit/request';
 import { Octokit } from '@octokit/rest';
 import { throttling } from '@octokit/plugin-throttling';

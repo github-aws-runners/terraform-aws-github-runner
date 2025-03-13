@@ -33,9 +33,9 @@
     "@aws-github-runner/aws-ssm-util": "*",
     "@aws-sdk/client-sqs": "^3.758.0",
     "@middy/core": "^4.7.0",
-    "@octokit/rest": "20.1.2",
+    "@octokit/rest": "21.1.1",
     "@octokit/types": "^13.8.0",
-    "@octokit/webhooks": "^12.3.1",
+    "@octokit/webhooks": "^13.7.4",
     "aws-lambda": "^1.0.7"
   },
   "nx": {
