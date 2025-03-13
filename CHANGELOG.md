@@ -1,5 +1,16 @@
 # Changelog
 
+## [6.3.2](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.3.1...v6.3.2) (2025-03-13)
+
+
+### Bug Fixes
+
+* add default filter with empty prefix due to changes in AWS Provider 5.90.0 ([1ba9dcc](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/1ba9dcc6a8110bbadc00851f3522a96f4c0c8953))
+* **lambda:** bump @aws-sdk/client-ec2 in /lambdas in the aws group ([b9238aa](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/b9238aa259d4f148d7c25142721af807b1ce1a23))
+* **lambda:** bump axios from 1.7.7 to 1.8.3 in /lambdas ([72e6579](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/72e6579dcaa1ef6a9f73e6bc2756eb54bed75023))
+* **lambda:** bump axios from 1.7.9 to 1.8.2 in /lambdas ([3068a66](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/3068a66c62564b28688dcaefb743e464df216363))
+* **lambda:** bump the aws-powertools group in /lambdas with 4 updates ([83ae151](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/83ae1514e708e4ff2ca978202602743731684e78))
+
 ## [6.3.1](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.3.0...v6.3.1) (2025-03-05)
 
 
