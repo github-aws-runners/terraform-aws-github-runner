@@ -2,13 +2,14 @@ import { captureLambdaHandler, logger } from '@aws-github-runner/aws-powertools-
 import { Context, SQSEvent, SQSRecord } from 'aws-lambda';
 import { mocked } from 'jest-mock';
 
-import { addMiddleware, adjustPool, scaleDownHandler, scaleUpHandler, ssmHousekeeper, jobRetryCheck } from './lambda';
+import { addMiddleware, adjustPool, scaleDownHandler, scaleUpHandler, ssmHousekeeper, jobRetryCheck, cleanupOrgRunnersHandler } from './lambda';
 import { adjust } from './pool/pool';
 import ScaleError from './scale-runners/ScaleError';
 import { scaleDown } from './scale-runners/scale-down';
 import { ActionRequestMessage, scaleUp } from './scale-runners/scale-up';
 import { cleanSSMTokens } from './scale-runners/ssm-housekeeper';
 import { checkAndRetryJob } from './scale-runners/job-retry';
+import { cleanupOrgRunners } from './scale-runners/cleanup-org-runners';
 
 const body: ActionRequestMessage = {
   eventType: 'workflow_job',
@@ -66,6 +67,7 @@ jest.mock('./scale-runners/scale-down');
 jest.mock('./scale-runners/scale-up');
 jest.mock('./scale-runners/ssm-housekeeper');
 jest.mock('./scale-runners/job-retry');
+jest.mock('./scale-runners/cleanup-org-runners');
 jest.mock('@aws-github-runner/aws-powertools-util');
 jest.mock('@aws-github-runner/aws-ssm-util');
 
@@ -218,5 +220,28 @@ describe('Test job retry check wrapper', () => {
 
     await expect(jobRetryCheck(sqsEvent, context)).resolves.not.toThrow();
     expect(logSpyWarn).toHaveBeenCalledWith(expect.stringContaining(error.message), expect.anything());
+  });
+});
+
+describe('Test cleanupOrgRunnersHandler lambda wrapper', () => {
+  it('Cleanup without error should resolve.', async () => {
+    const mock = mocked(cleanupOrgRunners);
+    mock.mockImplementation(() => {
+      return new Promise((resolve) => {
+        resolve();
+      });
+    });
+    await expect(cleanupOrgRunnersHandler({}, context)).resolves.not.toThrow();
+  });
+
+  it('Cleanup with error should resolve and log error.', async () => {
+    const logSpyError = jest.spyOn(logger, 'error');
+
+    const mock = mocked(cleanupOrgRunners);
+    const error = new Error('Error cleaning up org runners.');
+    mock.mockRejectedValue(error);
+
+    await expect(cleanupOrgRunnersHandler({}, context)).resolves.not.toThrow();
+    expect(logSpyError).toHaveBeenCalledWith(expect.stringContaining(error.message), expect.anything());
   });
 });
