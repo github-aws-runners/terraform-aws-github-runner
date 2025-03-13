@@ -15,7 +15,7 @@ const logger = createChildLogger('scale-down-config.ts');
 
 function inPeriod(period: ScalingDownConfig): boolean {
   const now = moment(new Date());
-  const expr = parser.parseExpression(period.cron, {
+  const expr = parser.parse(period.cron, {
     tz: period.timeZone,
   });
   const next = moment(expr.next().toDate());
