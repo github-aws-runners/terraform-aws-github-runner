@@ -119,4 +119,6 @@ module "runners" {
   job_retry = each.value.runner_config.job_retry
 
   metrics = var.metrics
+
+  cleanup_org_runners = var.cleanup_org_runners
 }
