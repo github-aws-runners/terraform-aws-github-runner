@@ -6,7 +6,7 @@ import { mocked } from 'jest-mock';
 import nock from 'nock';
 import { performance } from 'perf_hooks';
 
-import * as ghAuth from '../github/auth';
+import * as ghAuth from '../github/client';
 import { createRunner, listEC2Runners } from './../aws/runners';
 import { RunnerInputParameters } from './../aws/runners.d';
 import ScaleError from './ScaleError';

@@ -1,14 +1,14 @@
-import { Octokit } from '@octokit/rest';
+import { type Octokit } from '@octokit/rest';
 import { addPersistentContextToChildLogger, createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import { getParameter, putParameter } from '@aws-github-runner/aws-ssm-util';
 import yn from 'yn';
 
-import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
 import { createRunner, listEC2Runners } from './../aws/runners';
 import { RunnerInputParameters } from './../aws/runners.d';
 import ScaleError from './ScaleError';
 import { publishRetryMessage } from './job-retry';
 import { metricGitHubAppRateLimit } from '../github/rate-limit';
+import { createAppInstallationClient, getGitHubEnterpriseApiUrl } from '../github/client';
 
 const logger = createChildLogger('scale-up');
 
@@ -113,30 +113,7 @@ function removeTokenFromLogging(config: string[]): string[] {
   return result;
 }
 
-export async function getInstallationId(
-  ghesApiUrl: string,
-  enableOrgLevel: boolean,
-  payload: ActionRequestMessage,
-): Promise<number> {
-  if (payload.installationId !== 0) {
-    return payload.installationId;
-  }
 
-  const ghAuth = await createGithubAppAuth(undefined, ghesApiUrl);
-  const githubClient = await createOctokitClient(ghAuth.token, ghesApiUrl);
-  return enableOrgLevel
-    ? (
-        await githubClient.apps.getOrgInstallation({
-          org: payload.repositoryOwner,
-        })
-      ).data.id
-    : (
-        await githubClient.apps.getRepoInstallation({
-          owner: payload.repositoryOwner,
-          repo: payload.repositoryName,
-        })
-      ).data.id;
-}
 
 export async function isJobQueued(githubInstallationClient: Octokit, payload: ActionRequestMessage): Promise<boolean> {
   let isQueued = false;
@@ -166,7 +143,7 @@ async function getRunnerGroupId(githubRunnerConfig: CreateGitHubRunnerConfig, gh
       runnerGroup = await getParameter(
         `${githubRunnerConfig.ssmConfigPath}/runner-group/${githubRunnerConfig.runnerGroup}`,
       );
-    } catch (err) {
+    } catch (err){
       logger.debug('Handling error:', err as Error);
       logger.warn(
         `SSM Parameter "${githubRunnerConfig.ssmConfigPath}/runner-group/${githubRunnerConfig.runnerGroup}"
@@ -224,7 +201,7 @@ export async function createRunners(
   }
 }
 
-export async function scaleUp(eventSource: string, payload: ActionRequestMessage): Promise<void> {
+export async function scaleUp(ghAppClient: Octokit, eventSource: string, payload: ActionRequestMessage): Promise<void> {
   logger.info(`Received ${payload.eventType} from ${payload.repositoryOwner}/${payload.repositoryName}`);
 
   if (eventSource !== 'aws:sqs') throw Error('Cannot handle non-SQS events!');
@@ -287,11 +264,9 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
 
   logger.info(`Received event`);
 
-  const { ghesApiUrl, ghesBaseUrl } = getGitHubEnterpriseApiUrl();
+  const { ghesBaseUrl } = getGitHubEnterpriseApiUrl();
 
-  const installationId = await getInstallationId(ghesApiUrl, enableOrgLevel, payload);
-  const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl);
-  const githubInstallationClient = await createOctokitClient(ghAuth.token, ghesApiUrl);
+  const githubInstallationClient = await createAppInstallationClient(ghAppClient, enableOrgLevel, payload);
 
   if (!enableJobQueuedCheck || (await isJobQueued(githubInstallationClient, payload))) {
     let scaleUp = true;
@@ -349,24 +324,6 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
   } else {
     logger.info('No runner will be created, job is not queued.');
   }
-}
-
-export function getGitHubEnterpriseApiUrl() {
-  const ghesBaseUrl = process.env.GHES_URL;
-  let ghesApiUrl = '';
-  if (ghesBaseUrl) {
-    const url = new URL(ghesBaseUrl);
-    const domain = url.hostname;
-    if (domain.endsWith('.ghe.com')) {
-      // Data residency: Prepend 'api.'
-      ghesApiUrl = `https://api.${domain}`;
-    } else {
-      // GitHub Enterprise Server: Append '/api/v3'
-      ghesApiUrl = `${ghesBaseUrl}/api/v3`;
-    }
-  }
-  logger.debug(`Github Enterprise URLs: api_url - ${ghesApiUrl}; base_url - ${ghesBaseUrl}`);
-  return { ghesApiUrl, ghesBaseUrl };
 }
 
 async function createStartRunnerConfig(

@@ -2,13 +2,11 @@ import { Octokit } from '@octokit/rest';
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import moment from 'moment';
 
-import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
 import { bootTimeExceeded, listEC2Runners, tag, terminateRunner } from './../aws/runners';
 import { RunnerInfo, RunnerList } from './../aws/runners.d';
 import { GhRunners, githubCache } from './cache';
 import { ScalingDownConfig, getEvictionStrategy, getIdleRunnerCount } from './scale-down-config';
 import { metricGitHubAppRateLimit } from '../github/rate-limit';
-import { getGitHubEnterpriseApiUrl } from './scale-up';
 
 const logger = createChildLogger('scale-down');
 

@@ -4,7 +4,7 @@ import moment from 'moment';
 import nock from 'nock';
 
 import { RunnerInfo, RunnerList } from '../aws/runners.d';
-import * as ghAuth from '../github/auth';
+import * as ghAuth from '../github/client';
 import { listEC2Runners, terminateRunner, tag } from './../aws/runners';
 import { githubCache } from './cache';
 import { newestFirstStrategy, oldestFirstStrategy, scaleDown } from './scale-down';

@@ -7,7 +7,7 @@ import { mocked } from 'jest-mock';
 import { MockProxy, mock } from 'jest-mock-extended';
 import nock from 'nock';
 
-import { createGithubAppAuth, createOctokitClient } from './auth';
+import { createGithubAppAuth, createOctokitClient } from './client';
 
 jest.mock('@aws-github-runner/aws-ssm-util');
 jest.mock('@octokit/auth-app');

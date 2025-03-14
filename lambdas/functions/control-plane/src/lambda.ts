@@ -9,6 +9,11 @@ import { scaleDown } from './scale-runners/scale-down';
 import { scaleUp } from './scale-runners/scale-up';
 import { SSMCleanupOptions, cleanSSMTokens } from './scale-runners/ssm-housekeeper';
 import { checkAndRetryJob } from './scale-runners/job-retry';
+import { createAppAuthClient, getGitHubEnterpriseApiUrl } from './github/client';
+
+const { ghesApiUrl } = getGitHubEnterpriseApiUrl();
+// TODO: needs to be ESM for top-level await, or we create this lazily.
+const ghAppClient = await createAppAuthClient(ghesApiUrl);
 
 export async function scaleUpHandler(event: SQSEvent, context: Context): Promise<void> {
   setContext(context, 'lambda.ts');
@@ -20,7 +25,7 @@ export async function scaleUpHandler(event: SQSEvent, context: Context): Promise
   }
 
   try {
-    await scaleUp(event.Records[0].eventSource, JSON.parse(event.Records[0].body));
+    await scaleUp(ghAppClient, event.Records[0].eventSource, JSON.parse(event.Records[0].body));
   } catch (e) {
     if (e instanceof ScaleError) {
       throw e;

@@ -4,7 +4,7 @@ import moment from 'moment-timezone';
 import nock from 'nock';
 
 import { listEC2Runners } from '../aws/runners';
-import * as ghAuth from '../github/auth';
+import * as ghAuth from '../github/client';
 import { createRunners, getGitHubEnterpriseApiUrl } from '../scale-runners/scale-up';
 import { adjust } from './pool';
 
