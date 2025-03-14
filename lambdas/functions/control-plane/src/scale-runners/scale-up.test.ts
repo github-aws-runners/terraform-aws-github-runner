@@ -1,8 +1,8 @@
 import { PutParameterCommand, SSMClient } from '@aws-sdk/client-ssm';
 import { Octokit } from '@octokit/rest';
 import { mockClient } from 'aws-sdk-client-mock';
-import 'aws-sdk-client-mock-jest';
-import { mocked } from 'jest-mock';
+import 'aws-sdk-client-mock-jest/vitest';
+// Using vi.mocked instead of jest-mock
 import nock from 'nock';
 import { performance } from 'perf_hooks';
 
@@ -12,48 +12,63 @@ import { RunnerInputParameters } from './../aws/runners.d';
 import ScaleError from './ScaleError';
 import * as scaleUpModule from './scale-up';
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 const mockOctokit = {
-  paginate: jest.fn(),
-  checks: { get: jest.fn() },
+  paginate: vi.fn(),
+  checks: { get: vi.fn() },
   actions: {
-    createRegistrationTokenForOrg: jest.fn(),
-    createRegistrationTokenForRepo: jest.fn(),
-    getJobForWorkflowRun: jest.fn(),
-    generateRunnerJitconfigForOrg: jest.fn(),
-    generateRunnerJitconfigForRepo: jest.fn(),
+    createRegistrationTokenForOrg: vi.fn(),
+    createRegistrationTokenForRepo: vi.fn(),
+    getJobForWorkflowRun: vi.fn(),
+    generateRunnerJitconfigForOrg: vi.fn(),
+    generateRunnerJitconfigForRepo: vi.fn(),
   },
   apps: {
-    getOrgInstallation: jest.fn(),
-    getRepoInstallation: jest.fn(),
+    getOrgInstallation: vi.fn(),
+    getRepoInstallation: vi.fn(),
   },
 };
-const mockCreateRunner = mocked(createRunner);
-const mockListRunners = mocked(listEC2Runners);
+const mockCreateRunner = vi.mocked(createRunner);
+const mockListRunners = vi.mocked(listEC2Runners);
 const mockSSMClient = mockClient(SSMClient);
-const mockSSMgetParameter = mocked(getParameter);
+const mockSSMgetParameter = vi.mocked(getParameter);
 
-jest.mock('@octokit/rest', () => ({
-  Octokit: jest.fn().mockImplementation(() => mockOctokit),
+vi.mock('@octokit/rest', () => ({
+  Octokit: vi.fn().mockImplementation(() => mockOctokit),
 }));
 
-jest.mock('./../aws/runners');
-jest.mock('./../github/auth');
-
-jest.mock('@aws-github-runner/aws-ssm-util', () => ({
-  ...jest.requireActual('@aws-github-runner/aws-ssm-util'),
-  getParameter: jest.fn(),
+vi.mock('./../aws/runners', async () => ({
+  createRunner: vi.fn(),
+  listEC2Runners: vi.fn(),
 }));
+
+vi.mock('./../github/auth', async () => ({
+  createGithubAppAuth: vi.fn(),
+  createGithubInstallationAuth: vi.fn(),
+  createOctokitClient: vi.fn(),
+}));
+
+vi.mock('@aws-github-runner/aws-ssm-util', async () => {
+  const actual = (await vi.importActual(
+    '@aws-github-runner/aws-ssm-util',
+  )) as typeof import('@aws-github-runner/aws-ssm-util');
+
+  return {
+    ...actual,
+    getParameter: vi.fn(),
+  };
+});
 
 export type RunnerType = 'ephemeral' | 'non-ephemeral';
 
 // for ephemeral and non-ephemeral runners
 const RUNNER_TYPES: RunnerType[] = ['ephemeral', 'non-ephemeral'];
 
-const mocktokit = Octokit as jest.MockedClass<typeof Octokit>;
-const mockedAppAuth = mocked(ghAuth.createGithubAppAuth, { shallow: false });
-const mockedInstallationAuth = mocked(ghAuth.createGithubInstallationAuth, { shallow: false });
-const mockCreateClient = mocked(ghAuth.createOctokitClient, { shallow: false });
+const mocktokit = Octokit as vi.MockedClass<typeof Octokit>;
+const mockedAppAuth = vi.mocked(ghAuth.createGithubAppAuth);
+const mockedInstallationAuth = vi.mocked(ghAuth.createGithubInstallationAuth);
+const mockCreateClient = vi.mocked(ghAuth.createOctokitClient);
 
 const TEST_DATA: scaleUpModule.ActionRequestMessage = {
   id: 1,
@@ -101,8 +116,8 @@ function setDefaults() {
 
 beforeEach(() => {
   nock.disableNetConnect();
-  jest.resetModules();
-  jest.clearAllMocks();
+  vi.resetModules();
+  vi.clearAllMocks();
   setDefaults();
 
   defaultSSMGetParameterMockImpl();
@@ -436,7 +451,7 @@ describe('scaleUp with GHES', () => {
     });
 
     it('Check error is thrown', async () => {
-      const mockCreateRunners = mocked(createRunner);
+      const mockCreateRunners = vi.mocked(createRunner);
       mockCreateRunners.mockRejectedValue(new Error('no retry'));
       await expect(scaleUpModule.scaleUp('aws:sqs', TEST_DATA)).rejects.toThrow('no retry');
       mockCreateRunners.mockReset();
@@ -971,7 +986,7 @@ describe('scaleUp with Github Data Residency', () => {
     });
 
     it('Check error is thrown', async () => {
-      const mockCreateRunners = mocked(createRunner);
+      const mockCreateRunners = vi.mocked(createRunner);
       mockCreateRunners.mockRejectedValue(new Error('no retry'));
       await expect(scaleUpModule.scaleUp('aws:sqs', TEST_DATA)).rejects.toThrow('no retry');
       mockCreateRunners.mockReset();

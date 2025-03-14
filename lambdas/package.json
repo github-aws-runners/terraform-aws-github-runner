@@ -21,17 +21,26 @@
     "@octokit/types": "^13.0.0"
   },
   "devDependencies": {
-    "@nx/eslint": "20.4.6",
-    "@nx/jest": "20.3.0",
+    "@nx/eslint": "20.5.0",
     "@nx/js": "^20.5.0",
-    "@swc-node/register": "~1.10.9",
-    "@swc/core": "~1.10.11",
+    "@nx/vite": "^20.5.0",
+    "@swc-node/register": "~1.10.10",
+    "@swc/core": "~1.10.18",
     "@swc/helpers": "~0.5.15",
-    "eslint": "^8.57.0",
-    "jest": "^29.7.0",
-    "nx": "20.3.2",
-    "prettier": "^3.4.2",
-    "typescript": "^5.7.3"
+    "@trivago/prettier-plugin-sort-imports": "^5.2.2",
+    "@typescript-eslint/eslint-plugin": "^8.26.1",
+    "@typescript-eslint/parser": "^8.26.1",
+    "@vitest/coverage-v8": "^3.0.8",
+    "chalk": "^5.4.1",
+    "eslint": "^8.57.1",
+    "eslint-plugin-prettier": "5.2.3",
+    "nx": "20.5.0",
+    "prettier": "^3.5.3",
+    "ts-node": "^10.9.2",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.8.2",
+    "vite": "^5.4.14",
+    "vitest": "^3.0.8"
   },
   "packageManager": "yarn@4.3.1"
 }

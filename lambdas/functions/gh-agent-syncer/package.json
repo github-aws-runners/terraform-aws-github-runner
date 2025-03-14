@@ -2,47 +2,37 @@
   "name": "@aws-github-runner/gh-agent-syncer",
   "version": "1.0.0",
   "main": "lambda.ts",
+  "type": "module",
   "license": "MIT",
   "scripts": {
     "start": "ts-node-dev src/local.ts",
-    "test": "NODE_ENV=test nx test",
-    "test:watch": "NODE_ENV=test nx test --watch",
-    "lint": "yarn eslint src",
+    "test": "NODE_ENV=test vitest run",
+    "test:watch": "NODE_ENV=test vitest",
+    "lint": "eslint src",
     "watch": "ts-node-dev --respawn --exit-child src/local.ts",
     "build": "ncc build src/lambda.ts -o dist",
-    "dist": "yarn build && cd dist && zip ../runner-binaries-syncer.zip index.js",
+    "dist": "yarn build && cp package.json dist/ && cd dist && zip ../runner-binaries-syncer.zip *",
     "format": "prettier --write \"**/*.ts\"",
     "format-check": "prettier --check \"**/*.ts\"",
     "all": "yarn build && yarn format && yarn lint && yarn test"
   },
   "devDependencies": {
-    "@trivago/prettier-plugin-sort-imports": "^5.2.2",
-    "@types/aws-lambda": "^8.10.146",
-    "@types/jest": "^29.5.14",
-    "@types/node": "^22.13.9",
+    "@aws-sdk/types": "^3.734.0",
+    "@types/aws-lambda": "^8.10.147",
+    "@types/node": "^22.13.10",
     "@types/request": "^2.48.12",
-    "@typescript-eslint/eslint-plugin": "^8.25.0",
-    "@typescript-eslint/parser": "^8.25.0",
     "@vercel/ncc": "^0.38.3",
     "aws-sdk-client-mock": "^4.1.0",
     "aws-sdk-client-mock-jest": "^4.1.0",
-    "eslint": "^8.57.0",
-    "eslint-plugin-prettier": "5.2.3",
-    "jest": "^29.7.0",
-    "jest-mock": "^29.7.0",
-    "prettier": "3.4.2",
-    "ts-jest": "^29.2.5",
-    "ts-node-dev": "^2.0.0",
-    "typescript": "^5.7.3"
+    "aws-sdk-client-mock-vitest": "^6.1.1"
   },
   "dependencies": {
     "@aws-github-runner/aws-powertools-util": "*",
     "@aws-sdk/client-s3": "^3.758.0",
     "@aws-sdk/lib-storage": "^3.758.0",
-    "@aws-sdk/types": "^3.734.0",
     "@middy/core": "^4.7.0",
     "@octokit/rest": "20.1.2",
-    "axios": "^1.8.2"
+    "axios": "^1.8.3"
   },
   "nx": {
     "includedScripts": [

@@ -5,18 +5,19 @@ import {
   PutParameterCommandOutput,
   SSMClient,
 } from '@aws-sdk/client-ssm';
+import 'aws-sdk-client-mock-jest/vitest';
 import { mockClient } from 'aws-sdk-client-mock';
-import 'aws-sdk-client-mock-jest';
 import nock from 'nock';
 
 import { getParameter, putParameter } from '.';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 const mockSSMClient = mockClient(SSMClient);
 const cleanEnv = process.env;
 
 beforeEach(() => {
-  jest.resetModules();
-  jest.clearAllMocks();
+  vi.resetModules();
+  vi.clearAllMocks();
   process.env = { ...cleanEnv };
   nock.disableNetConnect();
 });

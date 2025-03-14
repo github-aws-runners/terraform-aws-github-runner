@@ -2,48 +2,33 @@
   "name": "@aws-github-runner/ami-housekeeper",
   "version": "1.0.0",
   "main": "lambda.ts",
+  "type": "module",
   "license": "MIT",
   "scripts": {
     "start": "ts-node-dev src/local.ts",
     "test": "NODE_ENV=test nx test",
     "test:watch": "NODE_ENV=test nx test --watch",
-    "lint": "yarn eslint src",
+    "lint": "eslint src",
     "watch": "ts-node-dev --respawn --exit-child src/local.ts",
     "build": "ncc build src/lambda.ts -o dist",
-    "dist": "yarn build && cd dist && zip ../ami-housekeeper.zip index.js",
+    "dist": "yarn build && cp package.json dist/ && cd dist && zip ../ami-housekeeper.zip *",
     "format": "prettier --write \"**/*.ts\"",
     "format-check": "prettier --check \"**/*.ts\"",
     "all": "yarn build && yarn format && yarn lint && yarn test"
   },
   "devDependencies": {
-    "@trivago/prettier-plugin-sort-imports": "^5.2.2",
-    "@types/aws-lambda": "^8.10.146",
-    "@types/jest": "^29.5.14",
-    "@types/node": "^22.13.9",
-    "@typescript-eslint/eslint-plugin": "^8.25.0",
-    "@typescript-eslint/parser": "^8.25.0",
+    "@aws-sdk/types": "^3.734.0",
+    "@types/aws-lambda": "^8.10.147",
     "@vercel/ncc": "^0.38.3",
     "aws-sdk-client-mock": "^4.1.0",
-    "aws-sdk-client-mock-jest": "^4.1.0",
-    "eslint": "^8.57.0",
-    "eslint-plugin-prettier": "5.2.3",
-    "jest": "^29.7.0",
-    "jest-mock": "^29.7.0",
-    "jest-mock-extended": "^3.0.7",
-    "nock": "^14.0.1",
-    "prettier": "3.4.2",
-    "ts-jest": "^29.2.5",
-    "ts-node": "^10.9.2",
-    "ts-node-dev": "^2.0.0"
+    "aws-sdk-client-mock-jest": "^4.1.0"
   },
   "dependencies": {
     "@aws-github-runner/aws-powertools-util": "*",
     "@aws-github-runner/aws-ssm-util": "*",
-    "@aws-sdk/client-ec2": "^3.764.0",
+    "@aws-sdk/client-ec2": "^3.767.0",
     "@aws-sdk/client-ssm": "^3.759.0",
-    "@aws-sdk/types": "^3.734.0",
-    "cron-parser": "^4.9.0",
-    "typescript": "^5.7.3"
+    "cron-parser": "^4.9.0"
   },
   "nx": {
     "includedScripts": [

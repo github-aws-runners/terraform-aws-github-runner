@@ -1,6 +1,7 @@
 import { EC2Client, DescribeInstancesCommand, DescribeInstancesResult } from '@aws-sdk/client-ec2';
 import { mockClient } from 'aws-sdk-client-mock';
 import { getInstances, tagFilter } from './ec2';
+import { describe, it, expect, beforeEach } from 'vitest';
 
 const ec2Mock = mockClient(EC2Client);
 

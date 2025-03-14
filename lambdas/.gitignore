@@ -1,6 +1,6 @@
 node_modules/
 build/
-dist/
+**/dist/
 *.log
 
 # Ignore all yarn.lock files except the one in the root

@@ -1,12 +1,12 @@
 import { logger } from '@aws-github-runner/aws-powertools-util';
 import { Context } from 'aws-lambda';
-import { mocked } from 'jest-mock';
 
 import { AmiCleanupOptions, amiCleanup } from './ami';
 import { handler } from './lambda';
+import { describe, it, expect, beforeAll, vi } from 'vitest';
 
-jest.mock('./ami');
-jest.mock('@aws-github-runner/aws-powertools-util');
+vi.mock('./ami');
+vi.mock('@aws-github-runner/aws-powertools-util');
 
 const amiCleanupOptions: AmiCleanupOptions = {
   minimumDaysOld: undefined,
@@ -39,14 +39,13 @@ const context: Context = {
   },
 };
 
-// Docs for testing async with jest: https://jestjs.io/docs/tutorial-async
 describe('Housekeeper ami', () => {
   beforeAll(() => {
-    jest.resetAllMocks();
+    vi.resetAllMocks();
   });
 
   it('should not throw or log in error.', async () => {
-    const mock = mocked(amiCleanup);
+    const mock = vi.mocked(amiCleanup);
     mock.mockImplementation(() => {
       return new Promise((resolve) => {
         resolve();
@@ -56,10 +55,10 @@ describe('Housekeeper ami', () => {
   });
 
   it('should not thow only log in error in case of an exception.', async () => {
-    const logSpy = jest.spyOn(logger, 'error');
+    const logSpy = vi.spyOn(logger, 'error');
 
     const error = new Error('An error.');
-    const mock = mocked(amiCleanup);
+    const mock = vi.mocked(amiCleanup);
     mock.mockRejectedValue(error);
     await expect(handler(undefined, context)).resolves.toBeUndefined();
 

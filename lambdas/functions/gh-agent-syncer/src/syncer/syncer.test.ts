@@ -1,20 +1,21 @@
 import { GetObjectTaggingCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { mockClient } from 'aws-sdk-client-mock';
-import 'aws-sdk-client-mock-jest';
+import 'aws-sdk-client-mock-vitest';
 import axios from 'axios';
 import { PassThrough } from 'stream';
 
 import mockDataLatestRelease from '../../test/resources/github-latest-release.json';
 import noX64Assets from '../../test/resources/github-releases-no-x64.json';
 import { sync } from './syncer';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 const mockOctokit = {
   repos: {
-    getLatestRelease: jest.fn(),
+    getLatestRelease: vi.fn(),
   },
 };
-jest.mock('@octokit/rest', () => ({
-  Octokit: jest.fn().mockImplementation(() => mockOctokit),
+vi.mock('@octokit/rest', async () => ({
+  Octokit: vi.fn().mockImplementation(() => mockOctokit),
 }));
 
 // mock stream for Axios
@@ -23,8 +24,12 @@ const mockStream = new PassThrough();
 mockStream.push(mockResponse);
 mockStream.end();
 
-jest.mock('axios');
-const mockAxios = axios as jest.Mocked<typeof axios>;
+vi.mock('axios', async () => ({
+  default: {
+    get: vi.fn(),
+  },
+}));
+const mockAxios = axios as vi.Mocked<typeof axios>;
 mockAxios.get.mockResolvedValue({
   data: mockStream,
 });
@@ -49,11 +54,11 @@ const runnerOs = [['linux'], ['win']];
 const latestRelease = '2.296.2';
 
 beforeEach(() => {
-  jest.clearAllMocks();
+  vi.clearAllMocks();
   mockS3client.reset();
 });
 
-jest.setTimeout(60 * 1000);
+vi.setConfig({ testTimeout: 60 * 1000 });
 
 describe('Synchronize action distribution (no S3 tags).', () => {
   beforeEach(() => {
@@ -63,7 +68,7 @@ describe('Synchronize action distribution (no S3 tags).', () => {
     }));
   });
 
-  test.each(runnerOs)('%p Distribution is S3 has no tags.', async (os) => {
+  it.each(runnerOs)('%p Distribution is S3 has no tags.', async (os) => {
     process.env.S3_OBJECT_KEY = bucketObjectKey(os);
     process.env.GITHUB_RUNNER_OS = os;
     mockS3client.on(GetObjectTaggingCommand).resolves({
@@ -71,7 +76,7 @@ describe('Synchronize action distribution (no S3 tags).', () => {
     });
 
     await sync();
-    expect(mockS3client).toHaveReceivedCommandTimes(PutObjectCommand, 1);
+    expect(mockS3client.commandCalls(PutObjectCommand).length).toBe(1);
   });
 });
 
@@ -84,7 +89,7 @@ describe('Synchronize action distribution.', () => {
     }));
   });
 
-  test.each(runnerOs)('%p Distribution is up-to-date with latest release.', async (os) => {
+  it.each(runnerOs)('%p Distribution is up-to-date with latest release.', async (os) => {
     process.env.S3_OBJECT_KEY = bucketObjectKey(os);
     process.env.GITHUB_RUNNER_OS = os;
     mockS3client.on(GetObjectTaggingCommand).resolves({
@@ -93,15 +98,15 @@ describe('Synchronize action distribution.', () => {
 
     await sync();
     expect(mockOctokit.repos.getLatestRelease).toBeCalledTimes(1);
-    expect(mockS3client).toHaveReceivedNthCommandWith(1, GetObjectTaggingCommand, {
+    expect(mockS3client.commandCalls(GetObjectTaggingCommand)[0].args[0].input).toEqual({
       Bucket: bucketName,
       Key: bucketObjectKey(os),
     });
 
-    expect(mockS3client).toHaveReceivedCommandTimes(PutObjectCommand, 0);
+    expect(mockS3client.commandCalls(PutObjectCommand).length).toBe(0);
   });
 
-  test.each(runnerOs)('%p Distribution should update to release.', async (os) => {
+  it.each(runnerOs)('%p Distribution should update to release.', async (os) => {
     process.env.S3_OBJECT_KEY = bucketObjectKey(os);
     process.env.GITHUB_RUNNER_OS = os;
 
@@ -111,19 +116,19 @@ describe('Synchronize action distribution.', () => {
 
     await sync();
     expect(mockOctokit.repos.getLatestRelease).toBeCalledTimes(1);
-    expect(mockS3client).toHaveReceivedNthCommandWith(1, GetObjectTaggingCommand, {
+    expect(mockS3client.commandCalls(GetObjectTaggingCommand)[0].args[0].input).toEqual({
       Bucket: bucketName,
       Key: bucketObjectKey(os),
     });
 
-    expect(mockS3client).toHaveReceivedNthSpecificCommandWith(1, PutObjectCommand, {
+    expect(mockS3client.commandCalls(PutObjectCommand)[0].args[0].input).toMatchObject({
       Bucket: bucketName,
       Key: bucketObjectKey(os),
       Tagging: `name=actions-runner-${os}-x64-${latestRelease}${objectExtension[os]}`,
     });
   });
 
-  test.each(runnerOs)('%p Distribution should update to release (tags look-up errored)', async (os) => {
+  it.each(runnerOs)('%p Distribution should update to release (tags look-up errored)', async (os) => {
     process.env.S3_OBJECT_KEY = bucketObjectKey(os);
     process.env.GITHUB_RUNNER_OS = os;
 
@@ -131,19 +136,19 @@ describe('Synchronize action distribution.', () => {
 
     await sync();
     expect(mockOctokit.repos.getLatestRelease).toBeCalledTimes(1);
-    expect(mockS3client).toHaveReceivedNthCommandWith(1, GetObjectTaggingCommand, {
+    expect(mockS3client.commandCalls(GetObjectTaggingCommand)[0].args[0].input).toEqual({
       Bucket: bucketName,
       Key: bucketObjectKey(os),
     });
 
-    expect(mockS3client).toHaveReceivedNthSpecificCommandWith(1, PutObjectCommand, {
+    expect(mockS3client.commandCalls(PutObjectCommand)[0].args[0].input).toMatchObject({
       Bucket: bucketName,
       Key: bucketObjectKey(os),
       Tagging: `name=actions-runner-${os}-x64-${latestRelease}${objectExtension[os]}`,
     });
   });
 
-  test.each(runnerOs)('%p Tags, but no version, distribution should update.', async (os) => {
+  it.each(runnerOs)('%p Tags, but no version, distribution should update.', async (os) => {
     process.env.S3_OBJECT_KEY = bucketObjectKey(os);
     process.env.GITHUB_RUNNER_OS = os;
     mockS3client.on(GetObjectTaggingCommand).resolves({
@@ -152,12 +157,12 @@ describe('Synchronize action distribution.', () => {
 
     await sync();
     expect(mockOctokit.repos.getLatestRelease).toBeCalledTimes(1);
-    expect(mockS3client).toHaveReceivedNthCommandWith(1, GetObjectTaggingCommand, {
+    expect(mockS3client.commandCalls(GetObjectTaggingCommand)[0].args[0].input).toEqual({
       Bucket: bucketName,
       Key: bucketObjectKey(os),
     });
 
-    expect(mockS3client).toHaveReceivedNthSpecificCommandWith(1, PutObjectCommand, {
+    expect(mockS3client.commandCalls(PutObjectCommand)[0].args[0].input).toMatchObject({
       Bucket: bucketName,
       Key: bucketObjectKey(os),
       Tagging: `name=actions-runner-${os}-x64-${latestRelease}${objectExtension[os]}`,
@@ -172,7 +177,7 @@ describe('No release assets found.', () => {
     process.env.S3_OBJECT_KEY = bucketObjectKey('linux');
   });
 
-  test('Empty result.', async () => {
+  it('Empty result.', async () => {
     mockOctokit.repos.getLatestRelease.mockImplementation(() => ({
       data: undefined,
     }));
@@ -180,7 +185,7 @@ describe('No release assets found.', () => {
     await expect(sync()).rejects.toThrow(errorMessage);
   });
 
-  test.each(runnerOs)('No %p x64 asset.', async (os) => {
+  it.each(runnerOs)('No %p x64 asset.', async (os) => {
     process.env.S3_OBJECT_KEY = bucketObjectKey(os);
     process.env.GITHUB_RUNNER_OS = os;
     mockOctokit.repos.getLatestRelease.mockImplementation(() => ({
@@ -192,19 +197,19 @@ describe('No release assets found.', () => {
 
 describe('Invalid config', () => {
   const errorMessage = 'Please check all mandatory variables are set.';
-  test('No bucket and object key.', async () => {
+  it('No bucket and object key.', async () => {
     delete process.env.S3_OBJECT_KEY;
     delete process.env.S3_BUCKET_NAME;
     await expect(sync()).rejects.toThrow(errorMessage);
   });
 
-  test('No bucket.', async () => {
+  it('No bucket.', async () => {
     delete process.env.S3_BUCKET_NAME;
     process.env.S3_OBJECT_KEY = bucketObjectKey('linux');
     await expect(sync()).rejects.toThrow(errorMessage);
   });
 
-  test('No object key.', async () => {
+  it('No object key.', async () => {
     delete process.env.S3_OBJECT_KEY;
     process.env.S3_BUCKET_NAME = bucketName;
     await expect(sync()).rejects.toThrow(errorMessage);
