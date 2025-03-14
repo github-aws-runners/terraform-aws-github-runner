@@ -2,7 +2,15 @@ import { captureLambdaHandler, logger } from '@aws-github-runner/aws-powertools-
 import { Context, SQSEvent, SQSRecord } from 'aws-lambda';
 import { mocked } from 'jest-mock';
 
-import { addMiddleware, adjustPool, scaleDownHandler, scaleUpHandler, ssmHousekeeper, jobRetryCheck, cleanupOrgRunnersHandler } from './lambda';
+import {
+  addMiddleware,
+  adjustPool,
+  scaleDownHandler,
+  scaleUpHandler,
+  ssmHousekeeper,
+  jobRetryCheck,
+  cleanupOrgRunnersHandler,
+} from './lambda';
 import { adjust } from './pool/pool';
 import ScaleError from './scale-runners/ScaleError';
 import { scaleDown } from './scale-runners/scale-down';

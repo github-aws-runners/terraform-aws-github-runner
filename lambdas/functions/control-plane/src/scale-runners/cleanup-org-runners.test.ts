@@ -203,7 +203,7 @@ describe('cleanup-org-runners', () => {
             { id: 1, name: 'runner-1', status: 'offline', labels: [] }, // Empty labels
           ],
           expectedDeletedIds: [1], // Based on actual behavior, it deletes runners with empty labels
-        }
+        },
       ];
 
       for (const testCase of testCases) {
@@ -217,10 +217,10 @@ describe('cleanup-org-runners', () => {
 
         // Verify
         expect(mockOctokit.actions.deleteSelfHostedRunnerFromOrg).toHaveBeenCalledTimes(
-          testCase.expectedDeletedIds.length
+          testCase.expectedDeletedIds.length,
         );
 
-        testCase.expectedDeletedIds.forEach(id => {
+        testCase.expectedDeletedIds.forEach((id) => {
           expect(mockOctokit.actions.deleteSelfHostedRunnerFromOrg).toHaveBeenCalledWith({
             runner_id: id,
             org: 'test-org',

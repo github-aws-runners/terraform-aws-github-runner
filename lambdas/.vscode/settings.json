@@ -1,5 +1,4 @@
 {
-
-    "jest.jestCommandLine": "yarn run test --",
+  "jest.jestCommandLine": "yarn run test --",
 }
     
