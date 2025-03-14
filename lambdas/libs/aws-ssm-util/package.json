@@ -15,16 +15,15 @@
     "all": "yarn build && yarn format && yarn lint && yarn test"
   },
   "devDependencies": {
-    "@types/aws-lambda": "^8.10.146",
-    "@types/node": "^22.13.9",
+    "@aws-sdk/types": "^3.734.0",
+    "@types/aws-lambda": "^8.10.147",
+    "@types/node": "^22.13.10",
     "aws-sdk-client-mock": "^4.1.0",
-    "aws-sdk-client-mock-jest": "^4.1.0",
-    "ts-node-dev": "^2.0.0"
+    "aws-sdk-client-mock-jest": "^4.1.0"
   },
   "dependencies": {
     "@aws-github-runner/aws-powertools-util": "*",
-    "@aws-sdk/client-ssm": "^3.759.0",
-    "@aws-sdk/types": "^3.734.0"
+    "@aws-sdk/client-ssm": "^3.759.0"
   },
   "nx": {
     "includedScripts": [

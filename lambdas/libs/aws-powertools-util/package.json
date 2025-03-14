@@ -15,11 +15,9 @@
     "all": "yarn build && yarn format && yarn lint && yarn test"
   },
   "devDependencies": {
-    "@types/aws-lambda": "^8.10.146",
-    "@types/node": "^22.13.9",
-    "body-parser": "^1.20.3",
-    "ts-node-dev": "^2.0.0",
-    "typescript": "^5.7.3"
+    "@types/aws-lambda": "^8.10.147",
+    "@types/node": "^22.13.10",
+    "body-parser": "^1.20.3"
   },
   "dependencies": {
     "@aws-lambda-powertools/logger": "^2.16.0",

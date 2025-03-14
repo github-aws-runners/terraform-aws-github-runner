@@ -17,21 +17,17 @@
     "all": "yarn build && yarn format && yarn lint && yarn test"
   },
   "devDependencies": {
-    "@types/aws-lambda": "^8.10.146",
+    "@aws-sdk/types": "^3.734.0",
+    "@types/aws-lambda": "^8.10.147",
     "@vercel/ncc": "^0.38.3",
     "aws-sdk-client-mock": "^4.1.0",
-    "aws-sdk-client-mock-jest": "^4.1.0",
-    "eslint": "^8.57.0",
-    "eslint-plugin-prettier": "5.2.3",
-    "ts-node": "^10.9.2",
-    "ts-node-dev": "^2.0.0"
+    "aws-sdk-client-mock-jest": "^4.1.0"
   },
   "dependencies": {
     "@aws-github-runner/aws-powertools-util": "*",
     "@aws-github-runner/aws-ssm-util": "*",
-    "@aws-sdk/client-ec2": "^3.764.0",
+    "@aws-sdk/client-ec2": "^3.767.0",
     "@aws-sdk/client-ssm": "^3.759.0",
-    "@aws-sdk/types": "^3.734.0",
     "cron-parser": "^4.9.0"
   },
   "nx": {

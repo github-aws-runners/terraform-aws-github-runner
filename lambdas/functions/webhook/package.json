@@ -12,7 +12,6 @@
     "watch": "ts-node-dev --respawn --exit-child src/local.ts",
     "build": "ncc build src/lambda.ts -o dist",
     "dist": "yarn build && cp package.json dist/ && cd dist && zip ../webhook.zip *",
-    "dist2": "yarn build && zip -r webhook.zip index.mjs dist/",
     "format": "prettier --write \"**/*.ts\"",
     "format-check": "prettier --check \"**/*.ts\"",
     "all": "yarn build && yarn format && yarn lint && yarn test"
@@ -20,9 +19,9 @@
   "devDependencies": {
     "@aws-sdk/client-eventbridge": "^3.758.0",
     "@octokit/webhooks-types": "^7.6.1",
-    "@types/aws-lambda": "^8.10.146",
+    "@types/aws-lambda": "^8.10.147",
     "@types/express": "^5.0.0",
-    "@types/node": "^22.13.9",
+    "@types/node": "^22.13.10",
     "@vercel/ncc": "0.38.3",
     "body-parser": "^1.20.3",
     "express": "^4.21.2",
