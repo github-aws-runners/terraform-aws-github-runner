@@ -46,7 +46,7 @@ module "pool" {
       launch_template                      = aws_launch_template.runner
       group_name                           = var.runner_group_name
       name_prefix                          = var.runner_name_prefix
-      pool_owner                           = var.pool_runner_owner
+      pool_owners                          = var.pool_runner_owners
       role                                 = aws_iam_role.runner
     }
     subnet_ids                           = var.subnet_ids
