@@ -3206,24 +3206,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nx/devkit@npm:20.5.0":
-  version: 20.5.0
-  resolution: "@nx/devkit@npm:20.5.0"
-  dependencies:
-    ejs: "npm:^3.1.7"
-    enquirer: "npm:~2.3.6"
-    ignore: "npm:^5.0.4"
-    minimatch: "npm:9.0.3"
-    semver: "npm:^7.5.3"
-    tmp: "npm:~0.2.1"
-    tslib: "npm:^2.3.0"
-    yargs-parser: "npm:21.1.1"
-  peerDependencies:
-    nx: ">= 19 <= 21"
-  checksum: 10c0/0ef956343a6156dc53ceb6ace601ec3c03fd667384fe7fbf3a5b306142c2c0ccf53224e8b72a603b72f34878995b09847ac02f67764f8748e3480e6aa80c9144
-  languageName: node
-  linkType: hard
-
 "@nx/devkit@npm:20.6.1":
   version: 20.6.1
   resolution: "@nx/devkit@npm:20.6.1"
@@ -3242,12 +3224,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nx/eslint@npm:20.5.0":
-  version: 20.5.0
-  resolution: "@nx/eslint@npm:20.5.0"
+"@nx/eslint@npm:20.6.1":
+  version: 20.6.1
+  resolution: "@nx/eslint@npm:20.6.1"
   dependencies:
-    "@nx/devkit": "npm:20.5.0"
-    "@nx/js": "npm:20.5.0"
+    "@nx/devkit": "npm:20.6.1"
+    "@nx/js": "npm:20.6.1"
     semver: "npm:^7.5.3"
     tslib: "npm:^2.3.0"
     typescript: "npm:~5.7.2"
@@ -3257,51 +3239,7 @@ __metadata:
   peerDependenciesMeta:
     "@zkochan/js-yaml":
       optional: true
-  checksum: 10c0/2357f6acf67360511dff35881ccf018bad85dba8c7cf52389ec95e348a01f26cb4dd5e53e98af18c78a9994741d936408863610171339e1ea05fd98562b19e98
-  languageName: node
-  linkType: hard
-
-"@nx/js@npm:20.5.0":
-  version: 20.5.0
-  resolution: "@nx/js@npm:20.5.0"
-  dependencies:
-    "@babel/core": "npm:^7.23.2"
-    "@babel/plugin-proposal-decorators": "npm:^7.22.7"
-    "@babel/plugin-transform-class-properties": "npm:^7.22.5"
-    "@babel/plugin-transform-runtime": "npm:^7.23.2"
-    "@babel/preset-env": "npm:^7.23.2"
-    "@babel/preset-typescript": "npm:^7.22.5"
-    "@babel/runtime": "npm:^7.22.6"
-    "@nx/devkit": "npm:20.5.0"
-    "@nx/workspace": "npm:20.5.0"
-    "@zkochan/js-yaml": "npm:0.0.7"
-    babel-plugin-const-enum: "npm:^1.0.1"
-    babel-plugin-macros: "npm:^3.1.0"
-    babel-plugin-transform-typescript-metadata: "npm:^0.3.1"
-    chalk: "npm:^4.1.0"
-    columnify: "npm:^1.6.0"
-    detect-port: "npm:^1.5.1"
-    enquirer: "npm:~2.3.6"
-    ignore: "npm:^5.0.4"
-    js-tokens: "npm:^4.0.0"
-    jsonc-parser: "npm:3.2.0"
-    npm-package-arg: "npm:11.0.1"
-    npm-run-path: "npm:^4.0.1"
-    ora: "npm:5.3.0"
-    picocolors: "npm:^1.1.0"
-    picomatch: "npm:4.0.2"
-    semver: "npm:^7.5.3"
-    source-map-support: "npm:0.5.19"
-    tinyglobby: "npm:^0.2.10"
-    ts-node: "npm:10.9.1"
-    tsconfig-paths: "npm:^4.1.2"
-    tslib: "npm:^2.3.0"
-  peerDependencies:
-    verdaccio: ^6.0.5
-  peerDependenciesMeta:
-    verdaccio:
-      optional: true
-  checksum: 10c0/c9fcbdf5727f35f9768ae0a60dc60675287370cdf2cef352105fcebfb29504a11f756dd26893cdac859c29ed2236b230c65d5f8b0fe4a0ef06d1bd25a35dfc0b
+  checksum: 10c0/9e3a8dfb01ea57eb3dae62b2cb568dc298e6e6d8554019da48095cadbc16ca65406546b1b4adb2165638827f8c318469d9360c778d38e3406485161fcbb1d55d
   languageName: node
   linkType: hard
 
@@ -3505,20 +3443,6 @@ __metadata:
     vite: ^5.0.0 || ^6.0.0
     vitest: ^1.3.1 || ^2.0.0 || ^3.0.0
   checksum: 10c0/664ea538206f6b5880fec23670ea487196812ca8006a9cb2da4651e9a4253da43cf8fbb72c8b5f090f3d31f4c8ede4f48fac8f9bebed9e594c9ac97465feea4d
-  languageName: node
-  linkType: hard
-
-"@nx/workspace@npm:20.5.0":
-  version: 20.5.0
-  resolution: "@nx/workspace@npm:20.5.0"
-  dependencies:
-    "@nx/devkit": "npm:20.5.0"
-    chalk: "npm:^4.1.0"
-    enquirer: "npm:~2.3.6"
-    nx: "npm:20.5.0"
-    tslib: "npm:^2.3.0"
-    yargs-parser: "npm:21.1.1"
-  checksum: 10c0/c537e6d1f1c5bb6d13eb2d9b79c09c58cf529d32c76baeaa2b3bc0786ecc0ee28bbdc8e7ef72fe81358838d4578171b72ef820822b357b5d70d536bd2c3813e0
   languageName: node
   linkType: hard
 
@@ -8383,7 +8307,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "lambdas@workspace:."
   dependencies:
-    "@nx/eslint": "npm:20.5.0"
+    "@nx/eslint": "npm:20.6.1"
     "@nx/js": "npm:^20.6.1"
     "@nx/vite": "npm:^20.6.1"
     "@swc-node/register": "npm:~1.10.10"
