@@ -22,7 +22,7 @@
   },
   "devDependencies": {
     "@nx/eslint": "20.5.0",
-    "@nx/js": "^20.5.0",
+    "@nx/js": "^20.6.1",
     "@nx/vite": "^20.6.1",
     "@swc-node/register": "~1.10.10",
     "@swc/core": "~1.10.18",

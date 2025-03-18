@@ -3261,7 +3261,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nx/js@npm:20.5.0, @nx/js@npm:^20.5.0":
+"@nx/js@npm:20.5.0":
   version: 20.5.0
   resolution: "@nx/js@npm:20.5.0"
   dependencies:
@@ -3305,7 +3305,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nx/js@npm:20.6.1":
+"@nx/js@npm:20.6.1, @nx/js@npm:^20.6.1":
   version: 20.6.1
   resolution: "@nx/js@npm:20.6.1"
   dependencies:
@@ -8384,7 +8384,7 @@ __metadata:
   resolution: "lambdas@workspace:."
   dependencies:
     "@nx/eslint": "npm:20.5.0"
-    "@nx/js": "npm:^20.5.0"
+    "@nx/js": "npm:^20.6.1"
     "@nx/vite": "npm:^20.6.1"
     "@swc-node/register": "npm:~1.10.10"
     "@swc/core": "npm:~1.10.18"
