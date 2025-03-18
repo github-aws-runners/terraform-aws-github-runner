@@ -1,5 +1,17 @@
 # Changelog
 
+## [6.4.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.3.2...v6.4.0) (2025-03-18)
+
+
+### Features
+
+* migrate to ESM and vitest ([#4461](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4461)) ([aa62967](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/aa6296703af4274a9fb85f95a85ec952411bc5db))
+
+
+### Bug Fixes
+
+* **lambda:** bump cron-parser from 4.9.0 to 5.0.4 in /lambdas ([#4455](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4455)) ([4b446bf](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/4b446bfc3762010814d9d10510a6ae3cb8cfbd82))
+
 ## [6.3.2](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.3.1...v6.3.2) (2025-03-13)
 
 
