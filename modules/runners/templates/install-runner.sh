@@ -42,7 +42,7 @@ tar xzf ./$file_name
 echo "Delete tar file"
 rm -rf $file_name
 
-os_id=$(awk -F= '/^ID/{print $2}' /etc/os-release)
+os_id=$(awk -F= '/^ID=/{print $2}' /etc/os-release)
 echo OS: $os_id
 
 # Install libicu on non-ubuntu
