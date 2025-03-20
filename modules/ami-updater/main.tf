@@ -1,5 +1,5 @@
 locals {
-  lambda_zip = var.lambda_zip == null ? "${path.module}/../../lambdas/functions/ami-updater/dist/ami-updater.zip" : var.lambda_zip
+  lambda_zip = var.lambda_zip == null ? "${path.module}/../../lambdas/functions/ami-updater/ami-updater.zip" : var.lambda_zip
   role_path  = var.role_path == null ? "/${var.prefix}/" : var.role_path
   tags = merge(
     {
