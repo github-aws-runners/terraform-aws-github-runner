@@ -122,7 +122,7 @@ resource "aws_iam_role_policy" "ami_updater_logging" {
 }
 
 resource "aws_iam_role_policy_attachment" "ami_updater_vpc_execution_role" {
-  count      = length(var.lambda_subnet_ids) > 0 ? 1 : 0
+  count      = var.lambda_subnet_ids != null && var.lambda_security_group_ids != null ? 1 : 0
   role       = aws_iam_role.ami_updater.name
   policy_arn = "arn:${var.aws_partition}:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }
