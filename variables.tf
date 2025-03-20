@@ -33,9 +33,9 @@ variable "enable_organization_runners" {
 
 variable "github_app" {
   description = <<EOF
-  GitHub app parameters, see your github app. 
+  GitHub app parameters, see your github app.
   You can optionally create the SSM parameters yourself and provide the ARN and name here, through the `*_ssm` attributes.
-  If you chose to provide the configuration values directly here, 
+  If you chose to provide the configuration values directly here,
   please ensure the key is the base64-encoded `.pem` file (the output of `base64 app.private-key.pem`, not the content of `private-key.pem`).
   Note: the provided SSM parameters arn and name have a precedence over the actual value (i.e `key_base64_ssm` has a precedence over `key_base64` etc).
   EOF
@@ -773,6 +773,12 @@ variable "enable_runner_binaries_syncer" {
   default     = true
 }
 
+variable "enable_ami_updater" {
+  description = "Option to enable the lambda to update the AMI, useful when using a pre-build AMI or an AMI that gets updated out of your control."
+  type        = bool
+  default     = false
+}
+
 variable "state_event_rule_binaries_syncer" {
   type        = string
   description = "Option to disable EventBridge Lambda trigger for the binary syncer, useful to stop automatic updates of binary distribution"
@@ -984,4 +990,22 @@ variable "user_agent" {
   description = "User agent used for API calls by lambda functions."
   type        = string
   default     = "github-aws-runners"
+}
+
+variable "ami_updater_lambda_zip" {
+  description = "File location of the ami-updater lambda zip file."
+  type        = string
+  default     = null
+}
+
+variable "ami_updater_lambda_memory_size" {
+  description = "Memory size limit in MB for ami-updater lambda."
+  type        = number
+  default     = 256
+}
+
+variable "ami_updater_lambda_timeout" {
+  description = "Time out for the ami-updater lambda in seconds."
+  type        = number
+  default     = 300
 }

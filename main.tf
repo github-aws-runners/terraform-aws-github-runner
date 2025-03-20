@@ -353,6 +353,53 @@ module "ami_housekeeper" {
   lambda_schedule_expression = var.ami_housekeeper_lambda_schedule_expression
 }
 
+module "ami_updater" {
+  count  = var.enable_ami_updater ? 1 : 0
+  source = "./modules/ami-updater"
+
+  prefix        = var.prefix
+  tags          = local.tags
+  aws_partition = var.aws_partition
+
+  lambda_zip          = var.ami_updater_lambda_zip
+  lambda_memory_size  = var.ami_updater_lambda_memory_size
+  lambda_timeout      = var.ami_updater_lambda_timeout
+  lambda_s3_bucket    = var.lambda_s3_bucket
+  lambda_runtime      = var.lambda_runtime
+  lambda_architecture = var.lambda_architecture
+
+  lambda_subnet_ids         = var.lambda_subnet_ids
+  lambda_security_group_ids = var.lambda_security_group_ids
+  lambda_tags               = var.lambda_tags
+  tracing_config            = var.tracing_config
+
+  logging_retention_in_days = var.logging_retention_in_days
+  logging_kms_key_id        = var.logging_kms_key_id
+  log_level                 = var.log_level
+
+  role_path                 = var.role_path
+  role_permissions_boundary = var.role_permissions_boundary
+
+  ssm_parameter_name = var.ami_id_ssm_parameter_name
+
+  config = {
+    dry_run = false
+    ami_filter = {
+      owners = var.ami_owners
+      filters = [
+        {
+          name   = "state"
+          values = ["available"]
+        },
+        {
+          name   = "image-type"
+          values = ["machine"]
+        }
+      ]
+    }
+  }
+}
+
 locals {
   lambda_instance_termination_watcher = {
     prefix                    = var.prefix
