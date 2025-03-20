@@ -1,28 +1,51 @@
 {
-    "name": "@lambda/ami-updater",
+    "name": "@aws-github-runner/ami-updater",
     "version": "1.0.0",
-    "description": "Lambda function to update AMIs in launch templates",
-    "main": "dist/index.js",
+    "main": "lambda.ts",
+    "type": "module",
+    "license": "MIT",
     "scripts": {
-        "build": "tsc",
+        "start": "ts-node-dev src/local.ts",
         "test": "vitest run",
         "test:watch": "vitest",
-        "lint": "eslint . --ext .ts",
-        "lint:fix": "eslint . --ext .ts --fix"
+        "lint": "eslint src",
+        "watch": "ts-node-dev --respawn --exit-child src/local.ts",
+        "build": "ncc build src/lambda.ts -o dist",
+        "dist": "yarn build && cp package.json dist/ && cd dist && zip ../ami-updater.zip *",
+        "format": "prettier --write \"**/*.ts\"",
+        "format-check": "prettier --check \"**/*.ts\"",
+        "all": "yarn build && yarn format && yarn lint && yarn test"
     },
     "dependencies": {
-        "@aws-lambda-powertools/logger": "^1.17.0",
-        "@aws-lambda-powertools/metrics": "^1.17.0",
-        "@aws-lambda-powertools/tracer": "^1.17.0",
-        "@aws-sdk/client-ec2": "^3.470.0",
-        "@types/aws-lambda": "^8.10.130"
+        "@aws-github-runner/aws-powertools-util": "*",
+        "@aws-github-runner/aws-ssm-util": "*",
+        "@aws-sdk/client-ec2": "^3.767.0",
+        "@aws-sdk/client-ssm": "^3.759.0"
     },
     "devDependencies": {
+        "@aws-sdk/types": "^3.734.0",
+        "@types/aws-lambda": "^8.10.147",
         "@types/node": "^20.10.4",
         "@typescript-eslint/eslint-plugin": "^6.13.2",
         "@typescript-eslint/parser": "^6.13.2",
+        "@vercel/ncc": "^0.38.3",
+        "aws-sdk-client-mock": "^4.1.0",
+        "aws-sdk-client-mock-jest": "^4.1.0",
         "eslint": "^8.55.0",
+        "prettier": "^3.0.0",
         "typescript": "^5.3.3",
-        "vitest": "^1.0.2"
+        "vitest": "^3.0.9"
+    },
+    "nx": {
+        "includedScripts": [
+            "build",
+            "dist",
+            "format",
+            "format-check",
+            "lint",
+            "start",
+            "watch",
+            "all"
+        ]
     }
 }

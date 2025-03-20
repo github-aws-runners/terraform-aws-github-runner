@@ -1,30 +1,9 @@
 {
   "extends": "../../tsconfig.json",
-  "compilerOptions": {
-    "target": "ES2020",
-    "module": "commonjs",
-    "lib": ["ES2020"],
-    "declaration": true,
-    "strict": true,
-    "noImplicitAny": true,
-    "strictNullChecks": true,
-    "noImplicitThis": true,
-    "alwaysStrict": true,
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
-    "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": false,
-    "inlineSourceMap": true,
-    "inlineSources": true,
-    "experimentalDecorators": true,
-    "strictPropertyInitialization": false,
-    "outDir": "./dist",
-    "rootDir": "./src",
-    "composite": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
-  },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"]
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "src/**/*.test.ts"
+  ]
 }

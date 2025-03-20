@@ -1,18 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { handler } from '../index';
+import { handler } from '../lambda';
 import { AMIManager } from '../ami';
 import { getConfig } from '../config';
 
 vi.mock('../ami');
 vi.mock('../config');
-vi.mock('../../shared/aws-powertools-util', () => ({
+vi.mock('@aws-github-runner/aws-powertools-util', () => ({
   logger: {
     addContext: vi.fn(),
     info: vi.fn(),
     error: vi.fn(),
-  },
-  metrics: {
-    addMetric: vi.fn(),
   },
 }));
 
@@ -43,13 +40,13 @@ describe('Lambda Handler', () => {
       message: 'Updated successfully',
     });
 
-    await handler({}, mockContext as any);
+    await handler({}, mockContext);
 
     expect(AMIManager.prototype.getLatestAmi).toHaveBeenCalledWith(mockConfig.amiFilter);
     expect(AMIManager.prototype.updateLaunchTemplate).toHaveBeenCalledWith(
       mockConfig.launchTemplateName,
       'ami-new',
-      mockConfig.dryRun
+      mockConfig.dryRun,
     );
   });
 
@@ -60,14 +57,14 @@ describe('Lambda Handler', () => {
       message: 'Update failed',
     });
 
-    await expect(handler({}, mockContext as any)).rejects.toThrow('Update failed');
+    await expect(handler({}, mockContext)).rejects.toThrow('Update failed');
   });
 
   it('should handle errors in getLatestAmi', async () => {
     const error = new Error('Failed to get AMI');
     vi.mocked(AMIManager.prototype.getLatestAmi).mockRejectedValue(error);
 
-    await expect(handler({}, mockContext as any)).rejects.toThrow('Failed to get AMI');
+    await expect(handler({}, mockContext)).rejects.toThrow('Failed to get AMI');
   });
 
   it('should handle errors in updateLaunchTemplate', async () => {
@@ -75,6 +72,6 @@ describe('Lambda Handler', () => {
     const error = new Error('Failed to update template');
     vi.mocked(AMIManager.prototype.updateLaunchTemplate).mockRejectedValue(error);
 
-    await expect(handler({}, mockContext as any)).rejects.toThrow('Failed to update template');
+    await expect(handler({}, mockContext)).rejects.toThrow('Failed to update template');
   });
 });
