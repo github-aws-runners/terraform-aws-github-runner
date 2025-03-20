@@ -130,3 +130,33 @@ variable "config" {
     })
   })
 }
+
+variable "lambda_zip" {
+  description = "Path to Lambda zip file, will be used when S3 bucket is not set"
+  type        = string
+  default     = null
+}
+
+variable "lambda_s3_bucket" {
+  description = "S3 bucket from which to specify lambda functions source code"
+  type        = string
+  default     = null
+}
+
+variable "lambda_s3_key" {
+  description = "S3 key from which to specify lambda function source code"
+  type        = string
+  default     = null
+}
+
+variable "lambda_s3_object_version" {
+  description = "S3 object version from which to specify lambda function source code"
+  type        = string
+  default     = null
+}
+
+variable "lambda_tags" {
+  description = "Additional tags to apply to the Lambda function"
+  type        = map(string)
+  default     = {}
+}

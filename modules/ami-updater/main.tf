@@ -1,5 +1,5 @@
 locals {
-  lambda_zip = "${path.module}/../../lambdas/functions/ami-updater/dist/ami-updater.zip"
+  lambda_zip = var.lambda_zip == null ? "${path.module}/../../lambdas/functions/ami-updater/dist/ami-updater.zip" : var.lambda_zip
   role_path  = var.role_path == null ? "/${var.prefix}/" : var.role_path
   tags = merge(
     {
@@ -11,16 +11,19 @@ locals {
 }
 
 resource "aws_lambda_function" "ami_updater" {
-  filename         = local.lambda_zip
-  source_code_hash = filebase64sha256(local.lambda_zip)
-  function_name    = "${var.prefix}-ami-updater"
-  role             = aws_iam_role.ami_updater.arn
-  handler          = "index.handler"
-  runtime          = var.lambda_runtime
-  timeout          = var.lambda_timeout
-  memory_size      = var.lambda_memory_size
-  architectures    = [var.lambda_architecture]
-  tags             = local.tags
+  s3_bucket         = var.lambda_s3_bucket != null ? var.lambda_s3_bucket : null
+  s3_key            = var.lambda_s3_key != null ? var.lambda_s3_key : null
+  s3_object_version = var.lambda_s3_object_version != null ? var.lambda_s3_object_version : null
+  filename          = var.lambda_s3_bucket == null ? local.lambda_zip : null
+  source_code_hash  = var.lambda_s3_bucket == null ? filebase64sha256(local.lambda_zip) : null
+  function_name     = "${var.prefix}-ami-updater"
+  role              = aws_iam_role.ami_updater.arn
+  handler           = "index.handler"
+  runtime           = var.lambda_runtime
+  timeout           = var.lambda_timeout
+  memory_size       = var.lambda_memory_size
+  architectures     = [var.lambda_architecture]
+  tags              = merge(local.tags, var.lambda_tags)
 
   environment {
     variables = {
