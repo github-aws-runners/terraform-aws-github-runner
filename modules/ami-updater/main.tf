@@ -1,10 +1,10 @@
 locals {
   lambda_zip = "${path.module}/../../lambdas/functions/ami-updater/dist/ami-updater.zip"
-  role_path  = var.role_path == null ? "/${var.environment}/" : var.role_path
+  role_path  = var.role_path == null ? "/${var.prefix}/" : var.role_path
   tags = merge(
     {
-      Environment = var.environment
-      Name        = "${var.environment}-ami-updater"
+      Environment = var.prefix
+      Name        = "${var.prefix}-ami-updater"
     },
     var.tags
   )
@@ -13,7 +13,7 @@ locals {
 resource "aws_lambda_function" "ami_updater" {
   filename         = local.lambda_zip
   source_code_hash = filebase64sha256(local.lambda_zip)
-  function_name    = "${var.environment}-ami-updater"
+  function_name    = "${var.prefix}-ami-updater"
   role             = aws_iam_role.ami_updater.arn
   handler          = "index.handler"
   runtime          = var.lambda_runtime
@@ -56,7 +56,7 @@ resource "aws_cloudwatch_log_group" "ami_updater" {
 }
 
 resource "aws_cloudwatch_event_rule" "ami_updater" {
-  name                = "${var.environment}-ami-updater"
+  name                = "${var.prefix}-ami-updater"
   description         = "Trigger AMI updater Lambda function"
   schedule_expression = var.schedule_expression
   state               = var.state
@@ -78,7 +78,7 @@ resource "aws_lambda_permission" "ami_updater" {
 }
 
 resource "aws_iam_role" "ami_updater" {
-  name                 = "${var.environment}-ami-updater"
+  name                 = "${var.prefix}-ami-updater"
   assume_role_policy   = data.aws_iam_policy_document.lambda_assume_role_policy.json
   path                 = local.role_path
   permissions_boundary = var.role_permissions_boundary

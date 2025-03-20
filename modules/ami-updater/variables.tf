@@ -1,5 +1,5 @@
-variable "environment" {
-  description = "The environment name for the resources."
+variable "prefix" {
+  description = "The prefix used for naming resources"
   type        = string
 }
 
