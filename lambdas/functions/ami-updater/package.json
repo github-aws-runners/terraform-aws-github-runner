@@ -1,0 +1,28 @@
+{
+    "name": "@lambda/ami-updater",
+    "version": "1.0.0",
+    "description": "Lambda function to update AMIs in launch templates",
+    "main": "dist/index.js",
+    "scripts": {
+        "build": "tsc",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "lint": "eslint . --ext .ts",
+        "lint:fix": "eslint . --ext .ts --fix"
+    },
+    "dependencies": {
+        "@aws-lambda-powertools/logger": "^1.17.0",
+        "@aws-lambda-powertools/metrics": "^1.17.0",
+        "@aws-lambda-powertools/tracer": "^1.17.0",
+        "@aws-sdk/client-ec2": "^3.470.0",
+        "@types/aws-lambda": "^8.10.130"
+    },
+    "devDependencies": {
+        "@types/node": "^20.10.4",
+        "@typescript-eslint/eslint-plugin": "^6.13.2",
+        "@typescript-eslint/parser": "^6.13.2",
+        "eslint": "^8.55.0",
+        "typescript": "^5.3.3",
+        "vitest": "^1.0.2"
+    }
+}
