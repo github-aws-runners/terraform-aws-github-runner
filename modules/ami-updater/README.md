@@ -16,10 +16,12 @@ This module creates a Lambda function that automatically updates an SSM paramete
 
 ```hcl
 module "ami_updater" {
-  source = "./modules/ami-updater"
+  #source = "./modules/ami-updater"
+  source = "git::https://github.com/dgokcin/terraform-aws-github-runner.git//modules/ami-updater?ref=ami-updater-lambda"
 
-  environment       = "prod"
-  ssm_parameter_name = "/github-action-runners/latest_ami_id"
+  prefix             = "test-${local.github_runner_prefix}-"
+  lambda_zip         = "./gh-runner-${local.github_runner_version}-assets/ami-updater.zip"
+  ssm_parameter_name = "/github-action-runners/test-latest_ami_id"
 
   config = {
     dry_run = false
@@ -27,8 +29,8 @@ module "ami_updater" {
       owners = ["self"]
       filters = [
         {
-          name   = "tag:Environment"
-          values = ["prod"]
+          name   = "name"
+          values = ["runs-on-v2.2-ubuntu24-full-x64-*"]
         },
         {
           name   = "state"
@@ -40,10 +42,10 @@ module "ami_updater" {
 
   # Optional configurations
   schedule_expression = "rate(1 day)"
-  state              = "ENABLED"
-  lambda_memory_size = 512
-  lambda_timeout     = 30
-  log_level         = "info"
+  state               = "ENABLED"
+  lambda_memory_size  = 512
+  lambda_timeout      = 30
+  log_level           = "info"
 
   tags = {
     Environment = "prod"
