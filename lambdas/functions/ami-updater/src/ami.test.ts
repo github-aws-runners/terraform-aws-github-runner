@@ -1,6 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { EC2Client, DescribeImagesCommand, DescribeLaunchTemplatesCommand, DescribeLaunchTemplateVersionsCommand, CreateLaunchTemplateVersionCommand, ModifyLaunchTemplateCommand } from '@aws-sdk/client-ec2';
-import { AMIManager } from '../ami';
+import {
+  EC2Client,
+  DescribeImagesCommand,
+  DescribeLaunchTemplatesCommand,
+  DescribeLaunchTemplateVersionsCommand,
+  CreateLaunchTemplateVersionCommand,
+  ModifyLaunchTemplateCommand,
+} from '@aws-sdk/client-ec2';
+import { AMIManager } from './ami';
 
 vi.mock('@aws-sdk/client-ec2');
 vi.mock('../../shared/aws-powertools-util', () => ({
@@ -34,7 +41,7 @@ describe('AMIManager', () => {
 
       const config = {
         owners: ['self'],
-        filters: [{ name: 'tag:Environment', values: ['prod'] }],
+        filters: [{ Name: 'tag:Environment', Values: ['prod'] }],
       };
 
       const result = await amiManager.getLatestAmi(config);
@@ -47,7 +54,7 @@ describe('AMIManager', () => {
 
       const config = {
         owners: ['self'],
-        filters: [{ name: 'tag:Environment', values: ['prod'] }],
+        filters: [{ Name: 'tag:Environment', Values: ['prod'] }],
       };
 
       await expect(amiManager.getLatestAmi(config)).rejects.toThrow('No matching AMIs found');
@@ -57,13 +64,16 @@ describe('AMIManager', () => {
   describe('updateLaunchTemplate', () => {
     it('should update launch template with new AMI ID', async () => {
       vi.mocked(ec2Client.send)
-        .mockResolvedValueOnce({ // getCurrentAmiId - DescribeLaunchTemplatesCommand
+        .mockResolvedValueOnce({
+          // getCurrentAmiId - DescribeLaunchTemplatesCommand
           LaunchTemplates: [{ LatestVersionNumber: 1 }],
         })
-        .mockResolvedValueOnce({ // getCurrentAmiId - DescribeLaunchTemplateVersionsCommand
+        .mockResolvedValueOnce({
+          // getCurrentAmiId - DescribeLaunchTemplateVersionsCommand
           LaunchTemplateVersions: [{ LaunchTemplateData: { ImageId: 'ami-old' } }],
         })
-        .mockResolvedValueOnce({ // updateLaunchTemplate - DescribeLaunchTemplatesCommand
+        .mockResolvedValueOnce({
+          // updateLaunchTemplate - DescribeLaunchTemplatesCommand
           LaunchTemplates: [{ LatestVersionNumber: 1 }],
         });
 
@@ -77,10 +87,12 @@ describe('AMIManager', () => {
 
     it('should not update if AMI ID is the same', async () => {
       vi.mocked(ec2Client.send)
-        .mockResolvedValueOnce({ // getCurrentAmiId - DescribeLaunchTemplatesCommand
+        .mockResolvedValueOnce({
+          // getCurrentAmiId - DescribeLaunchTemplatesCommand
           LaunchTemplates: [{ LatestVersionNumber: 1 }],
         })
-        .mockResolvedValueOnce({ // getCurrentAmiId - DescribeLaunchTemplateVersionsCommand
+        .mockResolvedValueOnce({
+          // getCurrentAmiId - DescribeLaunchTemplateVersionsCommand
           LaunchTemplateVersions: [{ LaunchTemplateData: { ImageId: 'ami-1' } }],
         });
 
@@ -93,10 +105,12 @@ describe('AMIManager', () => {
 
     it('should handle dry run mode', async () => {
       vi.mocked(ec2Client.send)
-        .mockResolvedValueOnce({ // getCurrentAmiId - DescribeLaunchTemplatesCommand
+        .mockResolvedValueOnce({
+          // getCurrentAmiId - DescribeLaunchTemplatesCommand
           LaunchTemplates: [{ LatestVersionNumber: 1 }],
         })
-        .mockResolvedValueOnce({ // getCurrentAmiId - DescribeLaunchTemplateVersionsCommand
+        .mockResolvedValueOnce({
+          // getCurrentAmiId - DescribeLaunchTemplateVersionsCommand
           LaunchTemplateVersions: [{ LaunchTemplateData: { ImageId: 'ami-old' } }],
         });
 

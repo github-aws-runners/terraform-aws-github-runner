@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getConfig } from '../config';
+import { getConfig } from './config';
 
 vi.mock('../../shared/aws-powertools-util', () => ({
   logger: {

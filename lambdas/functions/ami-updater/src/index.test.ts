@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { handler } from '../lambda';
-import { AMIManager } from '../ami';
-import { getConfig } from '../config';
+import { handler } from './lambda';
+import { AMIManager } from './ami';
+import { getConfig } from './config';
 
-vi.mock('../ami');
-vi.mock('../config');
+vi.mock('./ami');
+vi.mock('./config');
 vi.mock('@aws-github-runner/aws-powertools-util', () => ({
   logger: {
     addContext: vi.fn(),
@@ -24,7 +24,7 @@ describe('Lambda Handler', () => {
     dryRun: false,
     amiFilter: {
       owners: ['self'],
-      filters: [{ name: 'tag:Environment', values: ['prod'] }],
+      filters: [{ Name: 'tag:Environment', Values: ['prod'] }],
     },
   };
 
