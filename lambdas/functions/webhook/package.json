@@ -33,8 +33,8 @@
     "@aws-sdk/client-sqs": "^3.758.0",
     "@middy/core": "^4.7.0",
     "@octokit/rest": "21.1.1",
-    "@octokit/types": "^13.8.0",
-    "@octokit/webhooks": "^13.7.4",
+    "@octokit/types": "^13.10.0",
+    "@octokit/webhooks": "^13.7.5",
     "aws-lambda": "^1.0.7"
   },
   "nx": {
