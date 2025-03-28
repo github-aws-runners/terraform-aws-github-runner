@@ -31,7 +31,7 @@
     "@aws-sdk/client-s3": "^3.777.0",
     "@aws-sdk/lib-storage": "^3.777.0",
     "@middy/core": "^4.7.0",
-    "@octokit/rest": "20.1.2",
+    "@octokit/rest": "21.1.1",
     "axios": "^1.8.3"
   },
   "nx": {
