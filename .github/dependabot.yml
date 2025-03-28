@@ -15,6 +15,11 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      github:
+        patterns:
+          - "actions/*"
+          - "github/"
 
   - package-ecosystem: "npm"
     directory: "/lambdas"
@@ -30,11 +35,13 @@ updates:
       aws-powertools:
         patterns:
           - "@aws-lambda-powertools/*"
+      nx:
+        patterns:
+          - "@nx/*"
+          - "nx/*"
 
     ignore:
       - dependency-name: "@middy/core"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "@octokit/*"
         update-types: ["version-update:semver-major"]
       - dependency-name: "eslint"
         update-types: ["version-update:semver-major"]
