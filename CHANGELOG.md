@@ -1,5 +1,17 @@
 # Changelog
 
+## [6.4.1](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.4.0...v6.4.1) (2025-03-28)
+
+
+### Bug Fixes
+
+* **lambda:** bump the aws group across 1 directory with 7 updates ([#4502](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4502)) ([d2ebb3a](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/d2ebb3a6083004fd8f080696a7369bbb583d629e))
+* **lambda:** bump the aws group in /lambdas with 6 updates ([#4495](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4495)) ([9d86451](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/9d864517a8e308ceca7246a6dd1620d81fbdb1b4))
+* **lambda:** bump the aws-powertools group in /lambdas with 4 updates ([#4507](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4507)) ([f3100e1](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/f3100e1e36eb98fea7907bb583186d9332fde2b2))
+* **lambda:** bump the octokit group in /lambdas with 2 updates ([#4506](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4506)) ([72da9d7](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/72da9d7bfb6b78b83595ec2b455d39772f6dd3b3))
+* **lambda:** bump the octokit group in /lambdas with 3 updates ([#4498](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4498)) ([fc2c309](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/fc2c309f65d229aa1be0890ff0f407ad5bd7c339))
+* **lambda:** bump vite from 6.2.0 to 6.2.3 in /lambdas ([#4504](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4504)) ([5493334](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/5493334ab01748be5a29db1e39b686f42b28dfd3))
+
 ## [6.4.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.3.2...v6.4.0) (2025-03-18)
 
 
