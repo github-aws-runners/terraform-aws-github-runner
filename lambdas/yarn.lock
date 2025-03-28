@@ -3242,12 +3242,30 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nx/eslint@npm:20.6.1":
-  version: 20.6.1
-  resolution: "@nx/eslint@npm:20.6.1"
+"@nx/devkit@npm:20.6.4":
+  version: 20.6.4
+  resolution: "@nx/devkit@npm:20.6.4"
   dependencies:
-    "@nx/devkit": "npm:20.6.1"
-    "@nx/js": "npm:20.6.1"
+    ejs: "npm:^3.1.7"
+    enquirer: "npm:~2.3.6"
+    ignore: "npm:^5.0.4"
+    minimatch: "npm:9.0.3"
+    semver: "npm:^7.5.3"
+    tmp: "npm:~0.2.1"
+    tslib: "npm:^2.3.0"
+    yargs-parser: "npm:21.1.1"
+  peerDependencies:
+    nx: ">= 19 <= 21"
+  checksum: 10c0/a1ddc125e2eb632187f34a459ad38ae1225c7c5b983c4f20c7fca07e4090c0e19762f2808a171a0a6b97c074fd8e3e736f9a5d4e686dd20cdfcacd188b819e95
+  languageName: node
+  linkType: hard
+
+"@nx/eslint@npm:20.6.4":
+  version: 20.6.4
+  resolution: "@nx/eslint@npm:20.6.4"
+  dependencies:
+    "@nx/devkit": "npm:20.6.4"
+    "@nx/js": "npm:20.6.4"
     semver: "npm:^7.5.3"
     tslib: "npm:^2.3.0"
     typescript: "npm:~5.7.2"
@@ -3257,51 +3275,7 @@ __metadata:
   peerDependenciesMeta:
     "@zkochan/js-yaml":
       optional: true
-  checksum: 10c0/9e3a8dfb01ea57eb3dae62b2cb568dc298e6e6d8554019da48095cadbc16ca65406546b1b4adb2165638827f8c318469d9360c778d38e3406485161fcbb1d55d
-  languageName: node
-  linkType: hard
-
-"@nx/js@npm:20.6.1, @nx/js@npm:^20.6.1":
-  version: 20.6.1
-  resolution: "@nx/js@npm:20.6.1"
-  dependencies:
-    "@babel/core": "npm:^7.23.2"
-    "@babel/plugin-proposal-decorators": "npm:^7.22.7"
-    "@babel/plugin-transform-class-properties": "npm:^7.22.5"
-    "@babel/plugin-transform-runtime": "npm:^7.23.2"
-    "@babel/preset-env": "npm:^7.23.2"
-    "@babel/preset-typescript": "npm:^7.22.5"
-    "@babel/runtime": "npm:^7.22.6"
-    "@nx/devkit": "npm:20.6.1"
-    "@nx/workspace": "npm:20.6.1"
-    "@zkochan/js-yaml": "npm:0.0.7"
-    babel-plugin-const-enum: "npm:^1.0.1"
-    babel-plugin-macros: "npm:^3.1.0"
-    babel-plugin-transform-typescript-metadata: "npm:^0.3.1"
-    chalk: "npm:^4.1.0"
-    columnify: "npm:^1.6.0"
-    detect-port: "npm:^1.5.1"
-    enquirer: "npm:~2.3.6"
-    ignore: "npm:^5.0.4"
-    js-tokens: "npm:^4.0.0"
-    jsonc-parser: "npm:3.2.0"
-    npm-package-arg: "npm:11.0.1"
-    npm-run-path: "npm:^4.0.1"
-    ora: "npm:5.3.0"
-    picocolors: "npm:^1.1.0"
-    picomatch: "npm:4.0.2"
-    semver: "npm:^7.5.3"
-    source-map-support: "npm:0.5.19"
-    tinyglobby: "npm:^0.2.10"
-    ts-node: "npm:10.9.1"
-    tsconfig-paths: "npm:^4.1.2"
-    tslib: "npm:^2.3.0"
-  peerDependencies:
-    verdaccio: ^6.0.5
-  peerDependenciesMeta:
-    verdaccio:
-      optional: true
-  checksum: 10c0/17450efc17baa5a9d601ea0c4b980b649e035b76cdfee18f51bca896a6633de4e3c3dc9d4d5f16c36659a3d676dfec3a4fd28cf666942051bd7f86446128fcfc
+  checksum: 10c0/0ca31e3a41850ef543e25dfe5ca5b49c565caddcff0e95efa40edfbba01c8b52f101747f5a0213b261c6a9045ab848c53101627c43b27ad74527d7b7ffb39aff
   languageName: node
   linkType: hard
 
@@ -3346,6 +3320,92 @@ __metadata:
     verdaccio:
       optional: true
   checksum: 10c0/6c25df1dd9f177962213b224c1a670db4d813087845ba32a99a825349a54ec272376a436ab8229fbab744a41c3439ebc0e0fee6cd2c35cd58ecb8fb76f681b7f
+  languageName: node
+  linkType: hard
+
+"@nx/js@npm:20.6.4":
+  version: 20.6.4
+  resolution: "@nx/js@npm:20.6.4"
+  dependencies:
+    "@babel/core": "npm:^7.23.2"
+    "@babel/plugin-proposal-decorators": "npm:^7.22.7"
+    "@babel/plugin-transform-class-properties": "npm:^7.22.5"
+    "@babel/plugin-transform-runtime": "npm:^7.23.2"
+    "@babel/preset-env": "npm:^7.23.2"
+    "@babel/preset-typescript": "npm:^7.22.5"
+    "@babel/runtime": "npm:^7.22.6"
+    "@nx/devkit": "npm:20.6.4"
+    "@nx/workspace": "npm:20.6.4"
+    "@zkochan/js-yaml": "npm:0.0.7"
+    babel-plugin-const-enum: "npm:^1.0.1"
+    babel-plugin-macros: "npm:^3.1.0"
+    babel-plugin-transform-typescript-metadata: "npm:^0.3.1"
+    chalk: "npm:^4.1.0"
+    columnify: "npm:^1.6.0"
+    detect-port: "npm:^1.5.1"
+    enquirer: "npm:~2.3.6"
+    ignore: "npm:^5.0.4"
+    js-tokens: "npm:^4.0.0"
+    jsonc-parser: "npm:3.2.0"
+    npm-package-arg: "npm:11.0.1"
+    npm-run-path: "npm:^4.0.1"
+    ora: "npm:5.3.0"
+    picocolors: "npm:^1.1.0"
+    picomatch: "npm:4.0.2"
+    semver: "npm:^7.5.3"
+    source-map-support: "npm:0.5.19"
+    tinyglobby: "npm:^0.2.12"
+    tslib: "npm:^2.3.0"
+  peerDependencies:
+    verdaccio: ^6.0.5
+  peerDependenciesMeta:
+    verdaccio:
+      optional: true
+  checksum: 10c0/0ea4b7e4e1647643e6234f2e6c480193f8df93faacfe18cb4a18f379f7a87c4a29183d37c26c8b9f6d8d023229484feb2e8e61ff5b03d1de04dec167bbb8a6c3
+  languageName: node
+  linkType: hard
+
+"@nx/js@npm:^20.6.1":
+  version: 20.6.1
+  resolution: "@nx/js@npm:20.6.1"
+  dependencies:
+    "@babel/core": "npm:^7.23.2"
+    "@babel/plugin-proposal-decorators": "npm:^7.22.7"
+    "@babel/plugin-transform-class-properties": "npm:^7.22.5"
+    "@babel/plugin-transform-runtime": "npm:^7.23.2"
+    "@babel/preset-env": "npm:^7.23.2"
+    "@babel/preset-typescript": "npm:^7.22.5"
+    "@babel/runtime": "npm:^7.22.6"
+    "@nx/devkit": "npm:20.6.1"
+    "@nx/workspace": "npm:20.6.1"
+    "@zkochan/js-yaml": "npm:0.0.7"
+    babel-plugin-const-enum: "npm:^1.0.1"
+    babel-plugin-macros: "npm:^3.1.0"
+    babel-plugin-transform-typescript-metadata: "npm:^0.3.1"
+    chalk: "npm:^4.1.0"
+    columnify: "npm:^1.6.0"
+    detect-port: "npm:^1.5.1"
+    enquirer: "npm:~2.3.6"
+    ignore: "npm:^5.0.4"
+    js-tokens: "npm:^4.0.0"
+    jsonc-parser: "npm:3.2.0"
+    npm-package-arg: "npm:11.0.1"
+    npm-run-path: "npm:^4.0.1"
+    ora: "npm:5.3.0"
+    picocolors: "npm:^1.1.0"
+    picomatch: "npm:4.0.2"
+    semver: "npm:^7.5.3"
+    source-map-support: "npm:0.5.19"
+    tinyglobby: "npm:^0.2.10"
+    ts-node: "npm:10.9.1"
+    tsconfig-paths: "npm:^4.1.2"
+    tslib: "npm:^2.3.0"
+  peerDependencies:
+    verdaccio: ^6.0.5
+  peerDependenciesMeta:
+    verdaccio:
+      optional: true
+  checksum: 10c0/17450efc17baa5a9d601ea0c4b980b649e035b76cdfee18f51bca896a6633de4e3c3dc9d4d5f16c36659a3d676dfec3a4fd28cf666942051bd7f86446128fcfc
   languageName: node
   linkType: hard
 
@@ -3607,6 +3667,22 @@ __metadata:
     tslib: "npm:^2.3.0"
     yargs-parser: "npm:21.1.1"
   checksum: 10c0/c8692ce57bb64378325d93cc16603c5384155ae38c523f465a099fc7793a335b1047b95c06150b2ca4ba06e9f2171e47187105a2c140e673376d1da9ebf5de9e
+  languageName: node
+  linkType: hard
+
+"@nx/workspace@npm:20.6.4":
+  version: 20.6.4
+  resolution: "@nx/workspace@npm:20.6.4"
+  dependencies:
+    "@nx/devkit": "npm:20.6.4"
+    "@zkochan/js-yaml": "npm:0.0.7"
+    chalk: "npm:^4.1.0"
+    enquirer: "npm:~2.3.6"
+    nx: "npm:20.6.4"
+    picomatch: "npm:4.0.2"
+    tslib: "npm:^2.3.0"
+    yargs-parser: "npm:21.1.1"
+  checksum: 10c0/7f97ba04bb1348f12895f87ad053f1601705ef260324645c6307f8725c4c3ca5148ca3bb519d6007e993ecff6841ab1ac1d7df3424d5fbca781b89ffd00953cc
   languageName: node
   linkType: hard
 
@@ -8467,7 +8543,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "lambdas@workspace:."
   dependencies:
-    "@nx/eslint": "npm:20.6.1"
+    "@nx/eslint": "npm:20.6.4"
     "@nx/js": "npm:^20.6.1"
     "@nx/vite": "npm:^20.6.2"
     "@swc-node/register": "npm:~1.10.10"
