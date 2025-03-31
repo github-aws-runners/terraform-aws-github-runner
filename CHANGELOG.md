@@ -1,5 +1,13 @@
 # Changelog
 
+## [6.4.2](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.4.1...v6.4.2) (2025-03-31)
+
+
+### Bug Fixes
+
+* **lambda:** bump @octokit/webhooks from 13.7.5 to 13.8.0 in /lambdas in the octokit group ([#4514](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4514)) ([1f1da77](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/1f1da77a73ea418d196c01379475570e920ddce6))
+* **lambda:** bump the aws group in /lambdas with 3 updates ([#4513](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4513)) ([ecf9a77](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/ecf9a7764d9052e76669861032c820fb0d5e7918))
+
 ## [6.4.1](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.4.0...v6.4.1) (2025-03-28)
 
 
