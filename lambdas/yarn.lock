@@ -126,7 +126,7 @@ __metadata:
   dependencies:
     "@aws-github-runner/aws-powertools-util": "npm:*"
     "@aws-github-runner/aws-ssm-util": "npm:*"
-    "@aws-sdk/client-ec2": "npm:^3.777.0"
+    "@aws-sdk/client-ec2": "npm:^3.779.0"
     "@aws-sdk/client-ssm": "npm:^3.777.0"
     "@aws-sdk/types": "npm:^3.775.0"
     "@types/aws-lambda": "npm:^8.10.147"
@@ -172,7 +172,7 @@ __metadata:
     "@aws-github-runner/aws-powertools-util": "npm:*"
     "@aws-github-runner/aws-ssm-util": "npm:*"
     "@aws-lambda-powertools/parameters": "npm:^2.17.0"
-    "@aws-sdk/client-ec2": "npm:^3.777.0"
+    "@aws-sdk/client-ec2": "npm:^3.779.0"
     "@aws-sdk/client-sqs": "npm:^3.777.0"
     "@aws-sdk/types": "npm:^3.775.0"
     "@middy/core": "npm:^4.7.0"
@@ -199,8 +199,8 @@ __metadata:
   resolution: "@aws-github-runner/gh-agent-syncer@workspace:functions/gh-agent-syncer"
   dependencies:
     "@aws-github-runner/aws-powertools-util": "npm:*"
-    "@aws-sdk/client-s3": "npm:^3.777.0"
-    "@aws-sdk/lib-storage": "npm:^3.777.0"
+    "@aws-sdk/client-s3": "npm:^3.779.0"
+    "@aws-sdk/lib-storage": "npm:^3.779.0"
     "@aws-sdk/types": "npm:^3.775.0"
     "@middy/core": "npm:^4.7.0"
     "@octokit/rest": "npm:21.1.1"
@@ -220,7 +220,7 @@ __metadata:
   resolution: "@aws-github-runner/termination-watcher@workspace:functions/termination-watcher"
   dependencies:
     "@aws-github-runner/aws-powertools-util": "npm:*"
-    "@aws-sdk/client-ec2": "npm:^3.777.0"
+    "@aws-sdk/client-ec2": "npm:^3.779.0"
     "@aws-sdk/types": "npm:^3.775.0"
     "@middy/core": "npm:^4.7.0"
     "@types/aws-lambda": "npm:^8.10.147"
@@ -338,9 +338,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@aws-sdk/client-ec2@npm:^3.777.0":
-  version: 3.777.0
-  resolution: "@aws-sdk/client-ec2@npm:3.777.0"
+"@aws-sdk/client-ec2@npm:^3.779.0":
+  version: 3.779.0
+  resolution: "@aws-sdk/client-ec2@npm:3.779.0"
   dependencies:
     "@aws-crypto/sha256-browser": "npm:5.2.0"
     "@aws-crypto/sha256-js": "npm:5.2.0"
@@ -385,7 +385,7 @@ __metadata:
     "@types/uuid": "npm:^9.0.1"
     tslib: "npm:^2.6.2"
     uuid: "npm:^9.0.1"
-  checksum: 10c0/997721295c70743636b024e585ea8f26bfdc84c698cd81189a89f0f46c00e281df1e9f24134d3e7fefb5b458ab7e1ef8a6a101c9ff8e4411f36f4703dad7371c
+  checksum: 10c0/b386546b1dd0ff2c714a0420c6fdfefbd7948d168bb25f49fdeb21b7a5ba31632360f996d98db5ad171af57e80e427ae524fddbe11180406e6a428f22833dfbe
   languageName: node
   linkType: hard
 
@@ -437,9 +437,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@aws-sdk/client-s3@npm:^3.777.0":
-  version: 3.777.0
-  resolution: "@aws-sdk/client-s3@npm:3.777.0"
+"@aws-sdk/client-s3@npm:^3.779.0":
+  version: 3.779.0
+  resolution: "@aws-sdk/client-s3@npm:3.779.0"
   dependencies:
     "@aws-crypto/sha1-browser": "npm:5.2.0"
     "@aws-crypto/sha256-browser": "npm:5.2.0"
@@ -497,7 +497,7 @@ __metadata:
     "@smithy/util-utf8": "npm:^4.0.0"
     "@smithy/util-waiter": "npm:^4.0.3"
     tslib: "npm:^2.6.2"
-  checksum: 10c0/21c1ca43f0f2cc09aed47e52c5e63edf2ca7858af41db9c08e6f58763233e908d7e9f8724acb0a43669797a76d15597f4075ac173ef66d2cc20e1395fc0f5557
+  checksum: 10c0/7b6f60e81a127208e37f3a79c903b2d92343eab0b952b9138469e3baef00f82f99b7221d9af8e0f1ea75fa7a2c2de4817375be5e8fb2e036ae54d1b2b4b010c0
   languageName: node
   linkType: hard
 
@@ -781,9 +781,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@aws-sdk/lib-storage@npm:^3.777.0":
-  version: 3.777.0
-  resolution: "@aws-sdk/lib-storage@npm:3.777.0"
+"@aws-sdk/lib-storage@npm:^3.779.0":
+  version: 3.779.0
+  resolution: "@aws-sdk/lib-storage@npm:3.779.0"
   dependencies:
     "@smithy/abort-controller": "npm:^4.0.2"
     "@smithy/middleware-endpoint": "npm:^4.1.0"
@@ -793,8 +793,8 @@ __metadata:
     stream-browserify: "npm:3.0.0"
     tslib: "npm:^2.6.2"
   peerDependencies:
-    "@aws-sdk/client-s3": ^3.777.0
-  checksum: 10c0/ecd83283d557b86d717ad712ac6941dd2f2afd67bc4e93e106e72a033a402364a54d1fa847e0953197425d43c052b54816507fd9acf59770c8dd0f8c985f94a0
+    "@aws-sdk/client-s3": ^3.779.0
+  checksum: 10c0/73c6ab95726f229714ef3235b6956062ff8d681965b0f37101bc3e21d3a014c881682db3daa0a07fb311e0f27840771d31ba9da9de099a5fcb11b641de00c427
   languageName: node
   linkType: hard
 

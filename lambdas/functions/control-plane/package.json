@@ -33,7 +33,7 @@
     "@aws-github-runner/aws-powertools-util": "*",
     "@aws-github-runner/aws-ssm-util": "*",
     "@aws-lambda-powertools/parameters": "^2.17.0",
-    "@aws-sdk/client-ec2": "^3.777.0",
+    "@aws-sdk/client-ec2": "^3.779.0",
     "@aws-sdk/client-sqs": "^3.777.0",
     "@middy/core": "^4.7.0",
     "@octokit/auth-app": "7.1.5",
