@@ -21,9 +21,9 @@
     "@octokit/types": "^13.0.0"
   },
   "devDependencies": {
-    "@nx/eslint": "20.6.4",
-    "@nx/js": "^20.6.4",
-    "@nx/vite": "^20.6.4",
+    "@nx/eslint": "20.7.0",
+    "@nx/js": "^20.7.0",
+    "@nx/vite": "^20.7.0",
     "@swc-node/register": "~1.10.10",
     "@swc/core": "~1.10.18",
     "@swc/helpers": "~0.5.15",
