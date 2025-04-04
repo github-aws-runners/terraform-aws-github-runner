@@ -67,3 +67,23 @@ output "instance_termination_handler" {
     lambda_role      = module.instance_termination_watcher[0].spot_termination_handler.lambda_role
   } : null
 }
+
+output "deprecated_variables_warning" {
+  description = "Warning for deprecated variables usage. These variables will be removed in a future release. Please migrate to using the consolidated 'ami' object in each runner configuration."
+  value = join("", [
+    for key, runner_config in var.multi_runner_config : (
+      join("", [
+        # Show object migration warning only when ami is null and old variables are used
+        try(runner_config.runner_config.ami, null) == null ? (
+          (try(runner_config.runner_config.ami_filter, { state = ["available"] }) != { state = ["available"] } ||
+            try(runner_config.runner_config.ami_owners, ["amazon"]) != ["amazon"] ||
+          try(runner_config.runner_config.ami_kms_key_arn, "") != "") ?
+          "DEPRECATION WARNING: Runner '${key}' is using deprecated AMI variables (ami_filter, ami_owners, ami_kms_key_arn). These variables will be removed in a future version. Please migrate to using the consolidated 'ami' object.\n" : ""
+        ) : "",
+        # Always show warning for ami_id_ssm_parameter_name to migrate to ami_id_ssm_parameter_arn
+        try(runner_config.runner_config.ami_id_ssm_parameter_name, null) != null ?
+        "DEPRECATION WARNING: Runner '${key}' is using deprecated variable 'ami_id_ssm_parameter_name'. Please use 'ami.id_ssm_parameter_arn' instead.\n" : ""
+      ])
+    )
+  ])
+}

@@ -14,6 +14,8 @@ runner_config:
   instance_types:
     - m5ad.large
     - m5a.large
+  ami:
+    id_ssm_parameter_arn: ${ami_id_ssm_parameter_arn}
   runners_maximum_count: 1
   enable_ephemeral_runners: true
   enable_on_demand_failover_for_errors: ['InsufficientInstanceCapacity']

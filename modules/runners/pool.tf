@@ -17,6 +17,7 @@ module "pool" {
     instance_types                = var.instance_types
     kms_key_arn                   = local.kms_key_arn
     ami_kms_key_arn               = local.ami_kms_key_arn
+    ami_id_ssm_parameter_arn      = local.ami_id_ssm_module_managed ? aws_ssm_parameter.runner_ami_id[0].arn : var.ami.id_ssm_parameter_arn
     lambda = {
       log_level                      = var.log_level
       logging_retention_in_days      = var.logging_retention_in_days

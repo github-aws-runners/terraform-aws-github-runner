@@ -25,11 +25,11 @@ module "runners" {
   instance_max_spot_price       = each.value.runner_config.instance_max_spot_price
   block_device_mappings         = each.value.runner_config.block_device_mappings
 
-  runner_architecture       = each.value.runner_config.runner_architecture
-  ami_filter                = each.value.runner_config.ami_filter
-  ami_owners                = each.value.runner_config.ami_owners
-  ami_id_ssm_parameter_name = each.value.runner_config.ami_id_ssm_parameter_name
-  ami_kms_key_arn           = each.value.runner_config.ami_kms_key_arn
+  runner_architecture = each.value.runner_config.runner_architecture
+  ami                 = each.value.runner_config.ami
+  ami_filter          = each.value.runner_config.ami_filter
+  ami_owners          = each.value.runner_config.ami_owners
+  ami_kms_key_arn     = each.value.runner_config.ami_kms_key_arn
 
   sqs_build_queue                      = { "arn" : each.value.arn, "url" : each.value.url }
   github_app_parameters                = local.github_app_parameters

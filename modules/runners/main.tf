@@ -37,8 +37,16 @@ locals {
     "linux"   = "${path.module}/templates/start-runner.sh"
   }
 
-  ami_kms_key_arn = var.ami_kms_key_arn != null ? var.ami_kms_key_arn : ""
-  ami_filter      = merge(local.default_ami[var.runner_os], var.ami_filter)
+  # Handle AMI configuration from either the new object or old variables
+  ami_config = var.ami != null ? var.ami : {
+    filter               = var.ami_filter
+    owners               = var.ami_owners
+    id_ssm_parameter_arn = null
+    kms_key_arn          = var.ami_kms_key_arn
+  }
+  ami_kms_key_arn           = local.ami_config.kms_key_arn != null ? local.ami_config.kms_key_arn : ""
+  ami_filter                = merge(local.default_ami[var.runner_os], local.ami_config.filter)
+  ami_id_ssm_module_managed = local.ami_config.id_ssm_parameter_arn == null
 
   enable_job_queued_check = var.enable_job_queued_check == null ? !var.enable_ephemeral_runners : var.enable_job_queued_check
 
@@ -81,7 +89,28 @@ data "aws_ami" "runner" {
     }
   }
 
-  owners = var.ami_owners
+  owners = local.ami_config.owners
+}
+
+resource "aws_ssm_parameter" "runner_ami_id" {
+  count     = local.ami_id_ssm_module_managed ? 1 : 0
+  name      = "${var.ssm_paths.root}/${var.ssm_paths.config}/ami_id"
+  type      = "String"
+  data_type = "aws:ec2:image"
+  value     = data.aws_ami.runner.id
+
+  tags = merge(
+    local.tags,
+    {
+      "ghr:ami_name" = data.aws_ami.runner.name
+    },
+    {
+      "ghr:ami_creation_date" = data.aws_ami.runner.creation_date
+    },
+    {
+      "ghr:ami_deprecation_time" = data.aws_ami.runner.deprecation_time
+    }
+  )
 }
 
 resource "aws_launch_template" "runner" {
@@ -140,7 +169,7 @@ resource "aws_launch_template" "runner" {
   }
 
   instance_initiated_shutdown_behavior = "terminate"
-  image_id                             = data.aws_ami.runner.id
+  image_id                             = "resolve:ssm:${local.ami_id_ssm_module_managed ? aws_ssm_parameter.runner_ami_id[0].arn : var.ami.id_ssm_parameter_arn}"
   key_name                             = var.key_name
   ebs_optimized                        = var.ebs_optimized
 
