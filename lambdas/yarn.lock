@@ -145,7 +145,7 @@ __metadata:
     "@aws-lambda-powertools/metrics": "npm:^2.17.0"
     "@aws-lambda-powertools/tracer": "npm:^2.17.0"
     "@types/aws-lambda": "npm:^8.10.147"
-    "@types/node": "npm:^22.13.14"
+    "@types/node": "npm:^22.14.0"
     aws-lambda: "npm:^1.0.7"
     body-parser: "npm:^1.20.3"
   languageName: unknown
@@ -159,7 +159,7 @@ __metadata:
     "@aws-sdk/client-ssm": "npm:^3.777.0"
     "@aws-sdk/types": "npm:^3.775.0"
     "@types/aws-lambda": "npm:^8.10.147"
-    "@types/node": "npm:^22.13.14"
+    "@types/node": "npm:^22.14.0"
     aws-sdk-client-mock: "npm:^4.1.0"
     aws-sdk-client-mock-jest: "npm:^4.1.0"
   languageName: unknown
@@ -182,7 +182,7 @@ __metadata:
     "@octokit/rest": "npm:21.1.1"
     "@octokit/types": "npm:^13.10.0"
     "@types/aws-lambda": "npm:^8.10.147"
-    "@types/node": "npm:^22.13.14"
+    "@types/node": "npm:^22.14.0"
     "@vercel/ncc": "npm:^0.38.3"
     aws-sdk-client-mock: "npm:^4.1.0"
     aws-sdk-client-mock-jest: "npm:^4.1.0"
@@ -205,7 +205,7 @@ __metadata:
     "@middy/core": "npm:^4.7.0"
     "@octokit/rest": "npm:21.1.1"
     "@types/aws-lambda": "npm:^8.10.147"
-    "@types/node": "npm:^22.13.14"
+    "@types/node": "npm:^22.14.0"
     "@types/request": "npm:^2.48.12"
     "@vercel/ncc": "npm:^0.38.3"
     aws-sdk-client-mock: "npm:^4.1.0"
@@ -224,7 +224,7 @@ __metadata:
     "@aws-sdk/types": "npm:^3.775.0"
     "@middy/core": "npm:^4.7.0"
     "@types/aws-lambda": "npm:^8.10.147"
-    "@types/node": "npm:^22.13.14"
+    "@types/node": "npm:^22.14.0"
     "@vercel/ncc": "npm:^0.38.3"
     aws-sdk-client-mock: "npm:^4.1.0"
     aws-sdk-client-mock-jest: "npm:^4.1.0"
@@ -246,7 +246,7 @@ __metadata:
     "@octokit/webhooks-types": "npm:^7.6.1"
     "@types/aws-lambda": "npm:^8.10.147"
     "@types/express": "npm:^5.0.0"
-    "@types/node": "npm:^22.13.14"
+    "@types/node": "npm:^22.14.0"
     "@vercel/ncc": "npm:0.38.3"
     aws-lambda: "npm:^1.0.7"
     body-parser: "npm:^1.20.3"
@@ -5072,12 +5072,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:^22.13.14":
-  version: 22.13.14
-  resolution: "@types/node@npm:22.13.14"
+"@types/node@npm:^22.14.0":
+  version: 22.14.0
+  resolution: "@types/node@npm:22.14.0"
   dependencies:
-    undici-types: "npm:~6.20.0"
-  checksum: 10c0/fa2ab5b8277bfbcc86c42e46a3ea9871b0d559894cc9d955685d17178c9499f0b1bf03d1d1ea8d92ef2dda818988f4035acb8abf9dc15423a998fa56173ab804
+    undici-types: "npm:~6.21.0"
+  checksum: 10c0/9d79f3fa1af9c2c869514f419c4a4905b34c10e12915582fd1784868ac4e74c6d306cf5eb47ef889b6750ab85a31be96618227b86739c4a3e0b1c15063f384c6
   languageName: node
   linkType: hard
 
@@ -10764,10 +10764,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"undici-types@npm:~6.20.0":
-  version: 6.20.0
-  resolution: "undici-types@npm:6.20.0"
-  checksum: 10c0/68e659a98898d6a836a9a59e6adf14a5d799707f5ea629433e025ac90d239f75e408e2e5ff086afc3cace26f8b26ee52155293564593fbb4a2f666af57fc59bf
+"undici-types@npm:~6.21.0":
+  version: 6.21.0
+  resolution: "undici-types@npm:6.21.0"
+  checksum: 10c0/c01ed51829b10aa72fc3ce64b747f8e74ae9b60eafa19a7b46ef624403508a54c526ffab06a14a26b3120d055e1104d7abe7c9017e83ced038ea5cf52f8d5e04
   languageName: node
   linkType: hard
 
