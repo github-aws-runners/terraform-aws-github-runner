@@ -36,9 +36,9 @@
     "@aws-sdk/client-ec2": "^3.779.0",
     "@aws-sdk/client-sqs": "^3.777.0",
     "@middy/core": "^4.7.0",
-    "@octokit/auth-app": "7.1.5",
+    "@octokit/auth-app": "7.2.0",
     "@octokit/core": "6.1.4",
-    "@octokit/plugin-throttling": "9.6.0",
+    "@octokit/plugin-throttling": "9.6.1",
     "@octokit/rest": "21.1.1",
     "cron-parser": "^5.0.4"
   },
