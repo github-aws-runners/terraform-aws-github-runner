@@ -661,6 +661,12 @@ variable "enable_ephemeral_runners" {
   default     = false
 }
 
+variable "enable_dynamic_ec2_configuration" {
+  description = "Enable dynamic EC2 configs based on workflow job labels. When enabled, jobs can request specific configs via the 'gh-ec2-<config type key>:<config type value>' label (e.g., 'gh-ec2-instance-type:t3.large')."
+  type        = bool
+  default     = false
+}
+
 variable "enable_job_queued_check" {
   description = "Only scale if the job event received by the scale up lambda is in the queued state. By default enabled for non ephemeral runners and disabled for ephemeral. Set this variable to overwrite the default behavior."
   type        = bool

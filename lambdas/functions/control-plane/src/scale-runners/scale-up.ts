@@ -30,6 +30,7 @@ export interface ActionRequestMessage {
   installationId: number;
   repoOwnerType: string;
   retryCounter?: number;
+  labels?: string[];
 }
 
 export interface ActionRequestMessageSQS extends ActionRequestMessage {
@@ -252,6 +253,7 @@ export async function createRunners(
   ghClient: Octokit,
 ): Promise<string[]> {
   const instances = await createRunner({
+    environment: ec2RunnerConfig.environment,
     runnerType: githubRunnerConfig.runnerType,
     runnerOwner: githubRunnerConfig.runnerOwner,
     numberOfRunners,
@@ -269,9 +271,30 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
     n_requests: payloads.length,
   });
 
+  const dynamicEc2TypesEnabled = yn(process.env.ENABLE_DYNAMIC_EC2_CONFIGURATION, { default: false });
+  const requestedInstanceType = payload.labels?.find(label => label.startsWith('ghr-ec2-'))?.replace('ghr-ec2-', '');
+
+  if (dynamicEc2TypesEnabled && requestedInstanceType) {
+    logger.info(`Dynamic EC2 instance type requested: ${requestedInstanceType}`);
+  }
+
+  // Store the requested instance type for use in createRunners
+  const ec2Config = {
+    ...payload,
+    requestedInstanceType: dynamicEc2TypesEnabled ? requestedInstanceType : undefined,
+  };
+
   const enableOrgLevel = yn(process.env.ENABLE_ORGANIZATION_RUNNERS, { default: true });
   const maximumRunners = parseInt(process.env.RUNNERS_MAXIMUM_COUNT || '3');
-  const runnerLabels = process.env.RUNNER_LABELS || '';
+
+  // Combine configured runner labels with dynamic EC2 instance type label if present
+  let runnerLabels = process.env.RUNNER_LABELS || '';
+  if (dynamicEc2TypesEnabled && requestedInstanceType) {
+    const ec2Label = `ghr-ec2-${requestedInstanceType}`;
+    runnerLabels = runnerLabels ? `${runnerLabels},${ec2Label}` : ec2Label;
+    logger.debug(`Added dynamic EC2 instance type label: ${ec2Label} to runner config.`);
+  }
+
   const runnerGroup = process.env.RUNNER_GROUP_NAME || 'Default';
   const environment = process.env.ENVIRONMENT;
   const ssmTokenPath = process.env.SSM_TOKEN_PATH;
@@ -315,6 +338,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
     githubInstallationClient: Octokit;
   };
 
+<<<<<<< HEAD
   const validMessages = new Map<string, MessagesWithClient>();
   const rejectedMessageIds = new Set<string>();
   for (const payload of payloads) {
@@ -323,6 +347,41 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       logger.warn(
         'Event is not supported in combination with ephemeral runners. Please ensure you have enabled workflow_job events.',
         { eventType, messageId },
+=======
+    if (scaleUp) {
+      logger.info(`Attempting to launch a new runner`);
+
+      await createRunners(
+        {
+          ephemeral,
+          enableJitConfig,
+          ghesBaseUrl,
+          runnerLabels,
+          runnerGroup,
+          runnerNamePrefix,
+          runnerOwner,
+          runnerType,
+          disableAutoUpdate,
+          ssmTokenPath,
+          ssmConfigPath,
+        },
+        {
+          ec2instanceCriteria: {
+            instanceTypes,
+            targetCapacityType: instanceTargetCapacityType,
+            maxSpotPrice: instanceMaxSpotPrice,
+            instanceAllocationStrategy: instanceAllocationStrategy,
+          },
+          environment,
+          launchTemplateName,
+          subnets,
+          amiIdSsmParameterName,
+          tracingEnabled,
+          onDemandFailoverOnError,
+        },
+        githubInstallationClient,
+        ec2Config.requestedInstanceType,
+>>>>>>> 44737379 (feat: Add feature to enable dynamic instance types via workflow labels)
       );
 
       rejectedMessageIds.add(messageId);
