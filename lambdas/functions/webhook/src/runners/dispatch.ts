@@ -81,13 +81,16 @@ export function canRunJob(
   runnerLabelsMatchers: string[][],
   workflowLabelCheckAll: boolean,
 ): boolean {
+  // Filter out ghr-ec2- labels as they are handled by the dynamic EC2 instance type feature
+  const filteredLabels = workflowJobLabels.filter(label => !label.startsWith('ghr-ec2-'));
+
   runnerLabelsMatchers = runnerLabelsMatchers.map((runnerLabel) => {
     return runnerLabel.map((label) => label.toLowerCase());
   });
   const matchLabels = workflowLabelCheckAll
-    ? runnerLabelsMatchers.some((rl) => workflowJobLabels.every((wl) => rl.includes(wl.toLowerCase())))
-    : runnerLabelsMatchers.some((rl) => workflowJobLabels.some((wl) => rl.includes(wl.toLowerCase())));
-  const match = workflowJobLabels.length === 0 ? !matchLabels : matchLabels;
+    ? runnerLabelsMatchers.some((rl) => filteredLabels.every((wl) => rl.includes(wl.toLowerCase())))
+    : runnerLabelsMatchers.some((rl) => filteredLabels.some((wl) => rl.includes(wl.toLowerCase())));
+  const match = filteredLabels.length === 0 ? !matchLabels : matchLabels;
 
   logger.debug(
     `Received workflow job event with labels: '${JSON.stringify(workflowJobLabels)}'. The event does ${
