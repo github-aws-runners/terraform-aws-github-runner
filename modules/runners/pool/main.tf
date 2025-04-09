@@ -91,6 +91,7 @@ resource "aws_iam_role_policy" "pool" {
     github_app_key_base64_arn      = var.config.github_app_parameters.key_base64.arn
     kms_key_arn                    = var.config.kms_key_arn
     ami_kms_key_arn                = var.config.ami_kms_key_arn
+    ssm_ami_id_parameter_arn       = var.config.ami_id_ssm_parameter_arn
   })
 }
 
@@ -188,13 +189,13 @@ resource "aws_iam_role" "scheduler" {
   permissions_boundary = var.config.role_permissions_boundary
 
   assume_role_policy = data.aws_iam_policy_document.scheduler_assume.json
-
-  inline_policy {
-    name   = "terraform"
-    policy = data.aws_iam_policy_document.scheduler.json
-  }
-
   tags = var.config.tags
+}
+
+resource "aws_iam_role_policy" "scheduler" {
+  name   = "terraform"
+  role   = aws_iam_role.scheduler.name
+  policy = data.aws_iam_policy_document.scheduler.json
 }
 
 resource "aws_scheduler_schedule" "pool" {

@@ -178,6 +178,7 @@ module "runners" {
   block_device_mappings         = var.block_device_mappings
 
   runner_architecture       = var.runner_architecture
+  ami                       = var.ami
   ami_filter                = var.ami_filter
   ami_owners                = var.ami_owners
   ami_id_ssm_parameter_name = var.ami_id_ssm_parameter_name

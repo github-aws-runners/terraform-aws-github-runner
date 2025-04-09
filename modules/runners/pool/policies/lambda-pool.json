@@ -42,6 +42,15 @@
         {
             "Effect": "Allow",
             "Action": [
+              "ssm:GetParameters"
+            ],
+            "Resource": [
+                "${ssm_ami_id_parameter_arn}"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
                 "ssm:GetParameter"
             ],
             "Resource": [

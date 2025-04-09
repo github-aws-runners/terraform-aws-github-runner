@@ -42,7 +42,7 @@ terraform output -raw webhook_secret
 
 | Name | Version |
 |------|---------|
-| <a name="provider_random"></a> [random](#provider\_random) | 3.6.3 |
+| <a name="provider_random"></a> [random](#provider\_random) | 3.7.1 |
 
 ## Modules
 
@@ -70,6 +70,7 @@ terraform output -raw webhook_secret
 
 | Name | Description |
 |------|-------------|
+| <a name="output_deprecated_variables_warning"></a> [deprecated\_variables\_warning](#output\_deprecated\_variables\_warning) | n/a |
 | <a name="output_runners"></a> [runners](#output\_runners) | n/a |
 | <a name="output_webhook_endpoint"></a> [webhook\_endpoint](#output\_webhook\_endpoint) | n/a |
 | <a name="output_webhook_secret"></a> [webhook\_secret](#output\_webhook\_secret) | n/a |
