@@ -176,6 +176,32 @@ resource "aws_launch_template" "runner" {
       var.runner_ec2_tags
     )
   }
+  tag_specifications {
+    resource_type = "spot-instances-request"
+    tags = merge(
+      local.tags,
+      {
+        "Name" = format("%s", local.name_runner)
+      },
+      {
+        "ghr:runner_name_prefix" = var.runner_name_prefix
+      },
+      var.runner_ec2_tags
+    )
+  }
+  tag_specifications {
+    resource_type = "network-interface"
+    tags = merge(
+      local.tags,
+      {
+        "Name" = format("%s", local.name_runner)
+      },
+      {
+        "ghr:runner_name_prefix" = var.runner_name_prefix
+      },
+      var.runner_ec2_tags
+    )
+  }
 
   user_data = var.runner_os == "windows" ? base64encode(local.user_data) : base64gzip(local.user_data)
 
