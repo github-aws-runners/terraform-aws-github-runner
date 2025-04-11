@@ -187,8 +187,9 @@ module "runners" {
   github_app_parameters                = local.github_app_parameters
   enable_organization_runners          = var.enable_organization_runners
   enable_ephemeral_runners             = var.enable_ephemeral_runners
-  enable_jit_config                    = var.enable_jit_config
+  enable_dynamic_ec2_types             = var.enable_dynamic_ec2_types
   enable_job_queued_check              = var.enable_job_queued_check
+  enable_jit_config                    = var.enable_jit_config
   enable_on_demand_failover_for_errors = var.enable_runner_on_demand_failover_for_errors
   disable_runner_autoupdate            = var.disable_runner_autoupdate
   enable_managed_runner_security_group = var.enable_managed_runner_security_group

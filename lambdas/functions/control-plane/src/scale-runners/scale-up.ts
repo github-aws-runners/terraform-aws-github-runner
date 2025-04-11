@@ -31,6 +31,7 @@ export interface ActionRequestMessage {
   installationId: number;
   repoOwnerType: string;
   retryCounter?: number;
+  labels?: string[];
 }
 
 export interface ActionRequestMessageRetry extends ActionRequestMessage {
@@ -212,12 +213,26 @@ export async function createRunners(
   githubRunnerConfig: CreateGitHubRunnerConfig,
   ec2RunnerConfig: CreateEC2RunnerConfig,
   ghClient: Octokit,
+  requestedInstanceType?: string,
 ): Promise<void> {
   const instances = await createRunner({
+    environment: ec2RunnerConfig.environment,
     runnerType: githubRunnerConfig.runnerType,
     runnerOwner: githubRunnerConfig.runnerOwner,
-    numberOfRunners: 1,
-    ...ec2RunnerConfig,
+    launchTemplateName: ec2RunnerConfig.launchTemplateName,
+    ec2instanceCriteria: requestedInstanceType
+      ? {
+          instanceTypes: [requestedInstanceType],
+          maxSpotPrice: ec2RunnerConfig.ec2instanceCriteria.maxSpotPrice,
+          instanceAllocationStrategy: ec2RunnerConfig.ec2instanceCriteria.instanceAllocationStrategy,
+          targetCapacityType: ec2RunnerConfig.ec2instanceCriteria.targetCapacityType,
+        }
+      : ec2RunnerConfig.ec2instanceCriteria,
+    subnets: ec2RunnerConfig.subnets,
+    numberOfRunners: ec2RunnerConfig.numberOfRunners ?? 1,
+    amiIdSsmParameterName: ec2RunnerConfig.amiIdSsmParameterName,
+    tracingEnabled: ec2RunnerConfig.tracingEnabled,
+    onDemandFailoverOnError: ec2RunnerConfig.onDemandFailoverOnError,
   });
   if (instances.length !== 0) {
     await createStartRunnerConfig(githubRunnerConfig, instances, ghClient);
@@ -225,12 +240,32 @@ export async function createRunners(
 }
 
 export async function scaleUp(eventSource: string, payload: ActionRequestMessage): Promise<void> {
-  logger.info(`Received ${payload.eventType} from ${payload.repositoryOwner}/${payload.repositoryName}`);
-
+  logger.debug(`Received event`, { payload });
   if (eventSource !== 'aws:sqs') throw Error('Cannot handle non-SQS events!');
+
+  const dynamicEc2TypesEnabled = yn(process.env.ENABLE_DYNAMIC_EC2_TYPES, { default: false });
+  const requestedInstanceType = payload.labels?.find(label => label.startsWith('ghr-ec2-'))?.replace('ghr-ec2-', '');
+
+  if (dynamicEc2TypesEnabled && requestedInstanceType) {
+    logger.info(`Dynamic EC2 instance type requested: ${requestedInstanceType}`);
+  }
+
+  // Store the requested instance type for use in createRunners
+  const ec2Config = {
+    ...payload,
+    requestedInstanceType: dynamicEc2TypesEnabled ? requestedInstanceType : undefined,
+  };
   const enableOrgLevel = yn(process.env.ENABLE_ORGANIZATION_RUNNERS, { default: true });
   const maximumRunners = parseInt(process.env.RUNNERS_MAXIMUM_COUNT || '3');
-  const runnerLabels = process.env.RUNNER_LABELS || '';
+
+  // Combine configured runner labels with dynamic EC2 instance type label if present
+  let runnerLabels = process.env.RUNNER_LABELS || '';
+  if (dynamicEc2TypesEnabled && requestedInstanceType) {
+    const ec2Label = `ghr-ec2-${requestedInstanceType}`;
+    runnerLabels = runnerLabels ? `${runnerLabels},${ec2Label}` : ec2Label;
+    logger.debug(`Added dynamic EC2 instance type label: ${ec2Label} to runner config.`);
+  }
+
   const runnerGroup = process.env.RUNNER_GROUP_NAME || 'Default';
   const environment = process.env.ENVIRONMENT;
   const ssmTokenPath = process.env.SSM_TOKEN_PATH;
@@ -337,6 +372,7 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
           onDemandFailoverOnError,
         },
         githubInstallationClient,
+        ec2Config.requestedInstanceType,
       );
 
       await publishRetryMessage(payload);

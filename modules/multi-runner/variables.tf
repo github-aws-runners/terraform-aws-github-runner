@@ -75,6 +75,7 @@ variable "multi_runner_config" {
       disable_runner_autoupdate               = optional(bool, false)
       ebs_optimized                           = optional(bool, false)
       enable_ephemeral_runners                = optional(bool, false)
+      enable_dynamic_ec2_types                = optional(bool, false)
       enable_job_queued_check                 = optional(bool, null)
       enable_on_demand_failover_for_errors    = optional(list(string), [])
       enable_organization_runners             = optional(bool, false)
@@ -179,7 +180,8 @@ variable "multi_runner_config" {
         disable_runner_autoupdate: "Disable the auto update of the github runner agent. Be aware there is a grace period of 30 days, see also the [GitHub article](https://github.blog/changelog/2022-02-01-github-actions-self-hosted-runners-can-now-disable-automatic-updates/)"
         ebs_optimized: "The EC2 EBS optimized configuration."
         enable_ephemeral_runners: "Enable ephemeral runners, runners will only be used once."
-        enable_job_queued_check: "Enables JIT configuration for creating runners instead of registration token based registraton. JIT configuration will only be applied for ephemeral runners. By default JIT confiugration is enabled for ephemeral runners an can be disabled via this override. When running on GHES without support for JIT configuration this variable should be set to true for ephemeral runners."
+        enable_dynamic_ec2_types: "Enable dynamic EC2 instance types based on workflow job labels. When enabled, jobs can request specific instance types via the 'gh-ec2-instance-type' label (e.g., 'gh-ec2-t3.large')."
+        enable_job_queued_check: "(Optional) Only scale if the job event received by the scale up lambda is is in the state queued. By default enabled for non ephemeral runners and disabled for ephemeral. Set this variable to overwrite the default behavior."
         enable_on_demand_failover_for_errors: "Enable on-demand failover. For example to fall back to on demand when no spot capacity is available the variable can be set to `InsufficientInstanceCapacity`. When not defined the default behavior is to retry later."
         enable_organization_runners: "Register runners to organization, instead of repo level"
         enable_runner_binaries_syncer: "Option to disable the lambda to sync GitHub runner distribution, useful when using a pre-build AMI."

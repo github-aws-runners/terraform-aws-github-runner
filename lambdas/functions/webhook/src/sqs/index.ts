@@ -6,12 +6,13 @@ const logger = createChildLogger('sqs');
 
 export interface ActionRequestMessage {
   id: number;
-  eventType: string;
   repositoryName: string;
   repositoryOwner: string;
+  eventType: string;
   installationId: number;
   queueId: string;
   repoOwnerType: string;
+  labels?: string[];
 }
 
 export interface MatcherConfig {
