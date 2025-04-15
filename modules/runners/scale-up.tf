@@ -119,6 +119,7 @@ resource "aws_iam_role_policy" "scale_up" {
     ssm_config_path           = "arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.ssm_paths.root}/${var.ssm_paths.config}"
     kms_key_arn               = local.kms_key_arn
     ami_kms_key_arn           = local.ami_kms_key_arn
+    ssm_ami_id_parameter_arn  = local.ami_id_ssm_module_managed ? aws_ssm_parameter.runner_ami_id[0].arn : var.ami.id_ssm_parameter_arn
   })
 }
 

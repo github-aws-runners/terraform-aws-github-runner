@@ -163,6 +163,42 @@ The option `job_retry.delay_in_seconds` is the delay before the job status is ch
 
 This module also allows you to run agents from a prebuilt AMI to gain faster startup times. The module provides several examples to build your own custom AMI. To remove old images, an [AMI housekeeper module](modules/public/ami-housekeeper.md) can be used. See the [AMI examples](ami-examples/index.md) for more details.
 
+## AMI Configuration
+
+By default, the module will automatically select appropriate AMI images:
+- For Linux x64: Amazon Linux 2023 x86_64
+- For Linux ARM64: Amazon Linux 2023 ARM64
+- For Windows: Windows Server 2022 English Full ECS Optimized
+
+However, you can override these defaults using the `ami` object in two ways:
+
+1. **Using AMI Filters**
+
+You can define filters and owners to look up an AMI. The module will store the AMI ID in an SSM parameter that is managed by the module.
+
+```hcl
+ami = {
+  filter = {
+    name   = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-*"]
+    state  = ["available"]
+  }
+  owners = ["amazon"]
+}
+```
+
+2. **Using SSM Parameter**
+
+Provide a parameter in SSM that contains the AMI ID. The parameter should be of type `String` and the module will grant the required lambdas access to this parameter.
+
+```hcl
+ami = {
+  id_ssm_parameter_arn = "arn:aws:ssm:region:account:parameter/path/to/ami/parameter"
+}
+```
+
+> **Note:** The old way of configuring AMIs using individual variables (`ami_filter`, `ami_owners`, `ami_kms_key_arn`) is deprecated and will be removed in a future version. It is recommended to migrate to the new consolidated `ami` object.
+
+
 ## Logging
 
 The module uses [AWS Lambda Powertools](https://awslabs.github.io/aws-lambda-powertools-typescript/latest/) for logging. By default the log level is set to `info`, by setting the log level to `debug` the incoming events of the Lambda are logged as well.

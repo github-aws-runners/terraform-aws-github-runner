@@ -17,14 +17,14 @@
   "devDependencies": {
     "@aws-sdk/types": "^3.775.0",
     "@types/aws-lambda": "^8.10.147",
-    "@types/node": "^22.13.14",
+    "@types/node": "^22.14.0",
     "@vercel/ncc": "^0.38.3",
     "aws-sdk-client-mock": "^4.1.0",
     "aws-sdk-client-mock-jest": "^4.1.0"
   },
   "dependencies": {
     "@aws-github-runner/aws-powertools-util": "*",
-    "@aws-sdk/client-ec2": "^3.779.0",
+    "@aws-sdk/client-ec2": "^3.783.0",
     "@middy/core": "^4.7.0"
   },
   "nx": {

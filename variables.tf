@@ -33,9 +33,9 @@ variable "enable_organization_runners" {
 
 variable "github_app" {
   description = <<EOF
-  GitHub app parameters, see your github app. 
+  GitHub app parameters, see your github app.
   You can optionally create the SSM parameters yourself and provide the ARN and name here, through the `*_ssm` attributes.
-  If you chose to provide the configuration values directly here, 
+  If you chose to provide the configuration values directly here,
   please ensure the key is the base64-encoded `.pem` file (the output of `base64 app.private-key.pem`, not the content of `private-key.pem`).
   Note: the provided SSM parameters arn and name have a precedence over the actual value (i.e `key_base64_ssm` has a precedence over `key_base64` etc).
   EOF
@@ -366,31 +366,53 @@ variable "block_device_mappings" {
   }]
 }
 
+variable "ami" {
+  description = <<EOT
+AMI configuration for the action runner instances. This object allows you to specify all AMI-related settings in one place.
+
+Parameters:
+- `filter`: Map of lists to filter AMIs by various criteria (e.g., { name = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-*"], state = ["available"] })
+- `owners`: List of AMI owners to limit the search. Common values: ["amazon"], ["self"], or specific AWS account IDs
+- `id_ssm_parameter_name`: Name of an SSM parameter containing the AMI ID. If specified, this overrides the AMI filter
+- `id_ssm_parameter_arn`: ARN of an SSM parameter containing the AMI ID. If specified, this overrides both AMI filter and parameter name
+- `kms_key_arn`: Optional KMS key ARN if the AMI is encrypted with a customer managed key
+
+Defaults to null, in which case the module falls back to individual AMI variables (deprecated).
+EOT
+  type = object({
+    filter               = optional(map(list(string)), { state = ["available"] })
+    owners               = optional(list(string), ["amazon"])
+    id_ssm_parameter_arn = optional(string, null)
+    kms_key_arn          = optional(string, null)
+  })
+  default = null
+}
+
 variable "ami_filter" {
-  description = "Map of lists used to create the AMI filter for the action runner AMI."
+  description = "[DEPRECATED: Use ami.filter] Map of lists used to create the AMI filter for the action runner AMI."
   type        = map(list(string))
   default     = { state = ["available"] }
   validation {
     # check the availability of the AMI
     condition     = contains(keys(var.ami_filter), "state")
-    error_message = "The \"ami_filter\" variable must contain the \"state\" key with the value \"available\"."
+    error_message = "The AMI filter must contain the state filter."
   }
 }
 
 variable "ami_owners" {
-  description = "The list of owners used to select the AMI of action runner instances."
+  description = "[DEPRECATED: Use ami.owners] The list of owners that should be used to find the AMI."
   type        = list(string)
   default     = ["amazon"]
 }
 
 variable "ami_id_ssm_parameter_name" {
-  description = "Externally managed SSM parameter (of data type aws:ec2:image) that contains the AMI ID to launch runner instances from. Overrides ami_filter"
+  description = "[DEPRECATED: Use ami.id_ssm_parameter_name] String used to construct the SSM parameter name used to resolve the latest AMI ID for the runner instances. The SSM parameter should be of type String and contain a valid AMI ID. The default behavior is to use the latest Ubuntu 22.04 AMI."
   type        = string
   default     = null
 }
 
 variable "ami_kms_key_arn" {
-  description = "Optional CMK Key ARN to be used to launch an instance from a shared encrypted AMI"
+  description = "[DEPRECATED: Use ami.kms_key_arn] Optional CMK Key ARN to be used to launch an instance from a shared encrypted AMI"
   type        = string
   default     = null
 }

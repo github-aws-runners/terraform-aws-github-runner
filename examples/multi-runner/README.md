@@ -60,6 +60,7 @@ terraform output -raw webhook_secret
 
 | Name | Version |
 |------|---------|
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 5.82.1 |
 | <a name="provider_random"></a> [random](#provider\_random) | 3.6.3 |
 
 ## Modules
@@ -74,7 +75,11 @@ terraform output -raw webhook_secret
 
 | Name | Type |
 |------|------|
+| [aws_ssm_parameter.al2023_arm64](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_parameter) | resource |
 | [random_id.random](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/id) | resource |
+| [aws_caller_identity.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/caller_identity) | data source |
+| [aws_ssm_parameter.al2023_arm64](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/ssm_parameter) | data source |
+| [aws_ssm_parameter.al2023_x64](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/ssm_parameter) | data source |
 
 ## Inputs
 
@@ -88,6 +93,7 @@ terraform output -raw webhook_secret
 
 | Name | Description |
 |------|-------------|
+| <a name="output_deprecated_variables_warning"></a> [deprecated\_variables\_warning](#output\_deprecated\_variables\_warning) | n/a |
 | <a name="output_webhook_endpoint"></a> [webhook\_endpoint](#output\_webhook\_endpoint) | n/a |
 | <a name="output_webhook_secret"></a> [webhook\_secret](#output\_webhook\_secret) | n/a |
 <!-- END_TF_DOCS -->

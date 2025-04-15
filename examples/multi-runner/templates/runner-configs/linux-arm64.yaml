@@ -15,6 +15,8 @@ runner_config:
   instance_types:
     - t4g.large
     - c6g.large
+  ami:
+    id_ssm_parameter_arn: ${ami_id_ssm_parameter_arn}
   runners_maximum_count: 1
   delay_webhook_event: 0
   scale_down_schedule_expression: cron(* * * * ? *)
