@@ -189,7 +189,7 @@ resource "aws_iam_role" "scheduler" {
   permissions_boundary = var.config.role_permissions_boundary
 
   assume_role_policy = data.aws_iam_policy_document.scheduler_assume.json
-  tags = var.config.tags
+  tags               = var.config.tags
 }
 
 resource "aws_iam_role_policy" "scheduler" {

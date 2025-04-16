@@ -205,6 +205,7 @@ resource "aws_launch_template" "runner" {
       var.runner_ec2_tags
     )
   }
+
   tag_specifications {
     resource_type = "spot-instances-request"
     tags = merge(
