@@ -23,7 +23,7 @@ jobs:
       # use an app to ensure CI is triggered
       - name: Generate TF docs
         if: github.repository_owner == 'github-aws-runners'
-        uses: terraform-docs/gh-actions@aeae0038ed47a547e0c0fca5c059d3335f48fb25 # v1.3.0
+        uses: terraform-docs/gh-actions@6de6da0cefcc6b4b7a5cbea4d79d97060733093c # v1.4.1
         with:
           find-dir: .
           git-commit-message: "docs: auto update terraform docs"
@@ -33,7 +33,7 @@ jobs:
 
       - name: Generate TF docs (forks)
         if: github.repository_owner != 'github-aws-runners'
-        uses: terraform-docs/gh-actions@aeae0038ed47a547e0c0fca5c059d3335f48fb25 # v1.3.0
+        uses: terraform-docs/gh-actions@6de6da0cefcc6b4b7a5cbea4d79d97060733093c # v1.4.1
         with:
           find-dir: .
           git-commit-message: "docs: auto update terraform docs"

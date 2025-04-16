@@ -1,5 +1,19 @@
 # Changelog
 
+## [6.5.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.4.3...v6.5.0) (2025-04-15)
+
+
+### Features
+
+* migrate launch template to use SSM for AMI lookup ([#4517](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4517)) ([472cc5f](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/472cc5f6175d79e26260e0ed7a9cac7fc299411f))
+
+
+### Bug Fixes
+
+* **lambda:** bump the aws group in /lambdas with 6 updates ([#4536](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4536)) ([acfb6c5](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/acfb6c5deda8a273e05b7cce36c6ec655dee3f50))
+* **lambda:** bump the aws-powertools group in /lambdas with 4 updates ([#4538](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4538)) ([a308819](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/a308819b00484006013ae1b3a538a0ecbe1296ce))
+* **lambda:** bump the octokit group in /lambdas with 4 updates ([#4537](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4537)) ([94f2c9d](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/94f2c9de292200fb8c9d640cc26a759fc91cf0f7))
+
 ## [6.4.3](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.4.2...v6.4.3) (2025-04-08)
 
 
