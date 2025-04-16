@@ -1,5 +1,13 @@
 # Changelog
 
+## [6.5.1](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.5.0...v6.5.1) (2025-04-16)
+
+
+### Bug Fixes
+
+* added missing launch template tag_specifications ([#4544](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4544)) ([f2eb809](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/f2eb80943166680daa204234a2b3bcfab92f07c5))
+* **lambda:** bump vite from 6.2.3 to 6.2.6 in /lambdas ([#4542](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4542)) ([dc385cd](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/dc385cdb9b39fadbbf1613bdb16722a697119db6))
+
 ## [6.5.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.4.3...v6.5.0) (2025-04-15)
 
 
