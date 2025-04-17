@@ -32,6 +32,7 @@ module "runners" {
     webhook_secret = random_id.random.hex
   }
 
+  enable_dynamic_ec2_types = true
   # configure the block device mappings, default for Amazon Linux2
   # block_device_mappings = [{
   #   device_name           = "/dev/xvda"
@@ -98,7 +99,7 @@ module "runners" {
   }
 
   # Enable debug logging for the lambda functions
-  # log_level = "debug"
+  log_level = "debug"
 
   # tracing_config = {
   #   mode                  = "Active"

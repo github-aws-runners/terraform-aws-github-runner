@@ -647,10 +647,16 @@ variable "enable_ephemeral_runners" {
   default     = false
 }
 
-variable "enable_dynamic_ec2_types" {
-  description = "Enable dynamic EC2 instance types based on workflow job labels. When enabled, jobs can request specific instance types via the 'gh-ec2-instance-type' label (e.g., 'gh-ec2-t3.large')."
-  type        = bool
-  default     = false
+variable "dynamic_ec2" {
+  description = "Configuration for dynamic EC2 instance types feature."
+  type = object({
+    enable_types              = bool
+    workflow_label_type_prefix = string
+  })
+  default = {
+    enable_types              = false
+    workflow_label_type_prefix = "ghr-ec2-"
+  }
 }
 
 variable "enable_job_queued_check" {

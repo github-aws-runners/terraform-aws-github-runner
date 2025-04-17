@@ -244,7 +244,8 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
   if (eventSource !== 'aws:sqs') throw Error('Cannot handle non-SQS events!');
 
   const dynamicEc2TypesEnabled = yn(process.env.ENABLE_DYNAMIC_EC2_TYPES, { default: false });
-  const requestedInstanceType = payload.labels?.find(label => label.startsWith('ghr-ec2-'))?.replace('ghr-ec2-', '');
+  const labelPrefix = process.env.WORKFLOW_LABEL_TYPE_PREFIX || 'ghr-ec2-';
+  const requestedInstanceType = payload.labels?.find(label => label.startsWith(labelPrefix))?.replace(labelPrefix, '');
 
   if (dynamicEc2TypesEnabled && requestedInstanceType) {
     logger.info(`Dynamic EC2 instance type requested: ${requestedInstanceType}`);
@@ -261,7 +262,7 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
   // Combine configured runner labels with dynamic EC2 instance type label if present
   let runnerLabels = process.env.RUNNER_LABELS || '';
   if (dynamicEc2TypesEnabled && requestedInstanceType) {
-    const ec2Label = `ghr-ec2-${requestedInstanceType}`;
+    const ec2Label = `${labelPrefix}${requestedInstanceType}`;
     runnerLabels = runnerLabels ? `${runnerLabels},${ec2Label}` : ec2Label;
     logger.debug(`Added dynamic EC2 instance type label: ${ec2Label} to runner config.`);
   }

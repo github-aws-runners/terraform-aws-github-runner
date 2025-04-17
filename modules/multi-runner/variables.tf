@@ -75,7 +75,13 @@ variable "multi_runner_config" {
       disable_runner_autoupdate               = optional(bool, false)
       ebs_optimized                           = optional(bool, false)
       enable_ephemeral_runners                = optional(bool, false)
-      enable_dynamic_ec2_types                = optional(bool, false)
+      dynamic_ec2 = optional(object({
+        enable_types              = bool
+        workflow_label_type_prefix = string
+      }), {
+        enable_types              = false
+        workflow_label_type_prefix = "ghr-ec2-"
+      })
       enable_job_queued_check                 = optional(bool, null)
       enable_on_demand_failover_for_errors    = optional(list(string), [])
       enable_organization_runners             = optional(bool, false)
@@ -180,7 +186,7 @@ variable "multi_runner_config" {
         disable_runner_autoupdate: "Disable the auto update of the github runner agent. Be aware there is a grace period of 30 days, see also the [GitHub article](https://github.blog/changelog/2022-02-01-github-actions-self-hosted-runners-can-now-disable-automatic-updates/)"
         ebs_optimized: "The EC2 EBS optimized configuration."
         enable_ephemeral_runners: "Enable ephemeral runners, runners will only be used once."
-        enable_dynamic_ec2_types: "Enable dynamic EC2 instance types based on workflow job labels. When enabled, jobs can request specific instance types via the 'gh-ec2-instance-type' label (e.g., 'gh-ec2-t3.large')."
+        dynamic_ec2: "Configuration for dynamic EC2 instance types feature. This object allows you to enable dynamic instance types and configure the label prefix used in workflows."
         enable_job_queued_check: "(Optional) Only scale if the job event received by the scale up lambda is is in the state queued. By default enabled for non ephemeral runners and disabled for ephemeral. Set this variable to overwrite the default behavior."
         enable_on_demand_failover_for_errors: "Enable on-demand failover. For example to fall back to on demand when no spot capacity is available the variable can be set to `InsufficientInstanceCapacity`. When not defined the default behavior is to retry later."
         enable_organization_runners: "Register runners to organization, instead of repo level"
