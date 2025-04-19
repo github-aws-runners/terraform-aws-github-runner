@@ -41,8 +41,6 @@ updates:
           - "nx/*"
 
     ignore:
-      - dependency-name: "@middy/core"
-        update-types: ["version-update:semver-major"]
       - dependency-name: "eslint"
         update-types: ["version-update:semver-major"]
     commit-message:
