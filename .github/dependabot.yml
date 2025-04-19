@@ -39,6 +39,14 @@ updates:
         patterns:
           - "@nx/*"
           - "nx/*"
+      eslint:
+        patterns:
+          - "eslint*"
+          - "@typescript-eslint-*"
+      vite:
+        patterns:
+          - "vite*"
+          - "@vite/*"
 
     commit-message:
       prefix: "fix(lambda)"
