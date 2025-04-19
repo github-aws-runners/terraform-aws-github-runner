@@ -17,7 +17,7 @@
   "devDependencies": {
     "@types/aws-lambda": "^8.10.147",
     "@types/node": "^22.14.0",
-    "body-parser": "^1.20.3"
+    "body-parser": "^2.2.0"
   },
   "dependencies": {
     "@aws-lambda-powertools/logger": "^2.18.0",
