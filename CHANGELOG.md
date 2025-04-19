@@ -1,5 +1,12 @@
 # Changelog
 
+## [6.5.2](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.5.1...v6.5.2) (2025-04-19)
+
+
+### Bug Fixes
+
+* Dispatcher kms permission role mismatch ([#4547](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4547)) ([cae3e74](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/cae3e74ddabc8e65731eca5209144de1df7d3415))
+
 ## [6.5.1](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.5.0...v6.5.1) (2025-04-16)
 
 
