@@ -175,7 +175,7 @@ __metadata:
     "@aws-sdk/client-ec2": "npm:^3.787.0"
     "@aws-sdk/client-sqs": "npm:^3.787.0"
     "@aws-sdk/types": "npm:^3.775.0"
-    "@middy/core": "npm:^4.7.0"
+    "@middy/core": "npm:^6.1.6"
     "@octokit/auth-app": "npm:7.2.1"
     "@octokit/core": "npm:6.1.5"
     "@octokit/plugin-throttling": "npm:10.0.0"
@@ -202,7 +202,7 @@ __metadata:
     "@aws-sdk/client-s3": "npm:^3.787.0"
     "@aws-sdk/lib-storage": "npm:^3.787.0"
     "@aws-sdk/types": "npm:^3.775.0"
-    "@middy/core": "npm:^4.7.0"
+    "@middy/core": "npm:^6.1.6"
     "@octokit/rest": "npm:21.1.1"
     "@types/aws-lambda": "npm:^8.10.147"
     "@types/node": "npm:^22.14.0"
@@ -222,7 +222,7 @@ __metadata:
     "@aws-github-runner/aws-powertools-util": "npm:*"
     "@aws-sdk/client-ec2": "npm:^3.787.0"
     "@aws-sdk/types": "npm:^3.775.0"
-    "@middy/core": "npm:^4.7.0"
+    "@middy/core": "npm:^6.1.6"
     "@types/aws-lambda": "npm:^8.10.147"
     "@types/node": "npm:^22.14.0"
     "@vercel/ncc": "npm:^0.38.3"
@@ -239,7 +239,7 @@ __metadata:
     "@aws-github-runner/aws-ssm-util": "npm:*"
     "@aws-sdk/client-eventbridge": "npm:^3.787.0"
     "@aws-sdk/client-sqs": "npm:^3.787.0"
-    "@middy/core": "npm:^4.7.0"
+    "@middy/core": "npm:^6.1.6"
     "@octokit/rest": "npm:21.1.1"
     "@octokit/types": "npm:^14.0.0"
     "@octokit/webhooks": "npm:^13.8.0"
@@ -3176,10 +3176,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@middy/core@npm:^4.7.0":
-  version: 4.7.0
-  resolution: "@middy/core@npm:4.7.0"
-  checksum: 10c0/61519a9258f0bd7a9eec3a0400f326659ef91210c4000777423d0d7147a1609bc7cf1074eeb27f6a7e897b84fa5d90ba70e00d85db0c617f95254cdf34a7afcc
+"@middy/core@npm:^6.1.6":
+  version: 6.1.6
+  resolution: "@middy/core@npm:6.1.6"
+  checksum: 10c0/3d76b87954aa1f1fa3c7e3bbbd47ca13310a456bde044d15750b7b40bc0a6ed9fec7e3a848e049ae3b93a0ff8d87b9efa102eda38a2d3cc6221eec8c622ab9de
   languageName: node
   linkType: hard
 
