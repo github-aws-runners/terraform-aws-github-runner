@@ -40,9 +40,6 @@ updates:
           - "@nx/*"
           - "nx/*"
 
-    ignore:
-      - dependency-name: "eslint"
-        update-types: ["version-update:semver-major"]
     commit-message:
       prefix: "fix(lambda)"
       prefix-development: "chore(lambda)"
