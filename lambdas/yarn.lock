@@ -237,7 +237,7 @@ __metadata:
   dependencies:
     "@aws-github-runner/aws-powertools-util": "npm:*"
     "@aws-github-runner/aws-ssm-util": "npm:*"
-    "@aws-sdk/client-eventbridge": "npm:^3.787.0"
+    "@aws-sdk/client-eventbridge": "npm:^3.790.0"
     "@aws-sdk/client-sqs": "npm:^3.787.0"
     "@middy/core": "npm:^6.1.6"
     "@octokit/rest": "npm:21.1.1"
@@ -389,9 +389,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@aws-sdk/client-eventbridge@npm:^3.787.0":
-  version: 3.787.0
-  resolution: "@aws-sdk/client-eventbridge@npm:3.787.0"
+"@aws-sdk/client-eventbridge@npm:^3.790.0":
+  version: 3.790.0
+  resolution: "@aws-sdk/client-eventbridge@npm:3.790.0"
   dependencies:
     "@aws-crypto/sha256-browser": "npm:5.2.0"
     "@aws-crypto/sha256-js": "npm:5.2.0"
@@ -433,7 +433,7 @@ __metadata:
     "@smithy/util-retry": "npm:^4.0.2"
     "@smithy/util-utf8": "npm:^4.0.0"
     tslib: "npm:^2.6.2"
-  checksum: 10c0/a8204eb101e7c2c80e8e613ab3f14c2385d79373e4378846e853f11cbc5782b244b1c2c66991df74fe6449e31620317a624c73108dae053806ba535bfe0477c2
+  checksum: 10c0/b9ccf3c5bcb41d157b9b22e4b70922386e4dccbd06ba416e353a46b8188e0c1029af2f8af596d2206aedb4dc4b66d2d147b9e846da87e32a0c94d87486d02c8a
   languageName: node
   linkType: hard
 
