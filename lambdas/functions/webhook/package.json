@@ -17,7 +17,7 @@
     "all": "yarn build && yarn format && yarn lint && yarn test"
   },
   "devDependencies": {
-    "@aws-sdk/client-eventbridge": "^3.787.0",
+    "@aws-sdk/client-eventbridge": "^3.790.0",
     "@octokit/webhooks-types": "^7.6.1",
     "@types/aws-lambda": "^8.10.147",
     "@types/express": "^5.0.0",
