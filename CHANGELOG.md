@@ -1,5 +1,13 @@
 # Changelog
 
+## [6.5.3](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.5.2...v6.5.3) (2025-04-20)
+
+
+### Bug Fixes
+
+* **lambdas:** upgrade express 4.21.2 -&gt; 5.1.0 ([10519e9](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/10519e95847edd1e0afd1da4ff007fb22daee521))
+* **lambdas:** upgrade middy to 4.7.0 -&gt; 6.1.6 ([7401c75](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/7401c755a2ae794224c848706aa01ad5ec154193))
+
 ## [6.5.2](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.5.1...v6.5.2) (2025-04-19)
 
 
