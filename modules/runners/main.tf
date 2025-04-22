@@ -206,18 +206,21 @@ resource "aws_launch_template" "runner" {
     )
   }
 
-  tag_specifications {
-    resource_type = "spot-instances-request"
-    tags = merge(
-      local.tags,
-      {
-        "Name" = format("%s", local.name_runner)
-      },
-      {
-        "ghr:runner_name_prefix" = var.runner_name_prefix
-      },
-      var.runner_ec2_tags
-    )
+  dynamic "tag_specifications" {
+    for_each = var.instance_target_capacity_type == "spot" ? 1 : 0
+    content {
+      resource_type = "spot-instances-request"
+      tags = merge(
+        local.tags,
+        {
+          "Name" = format("%s", local.name_runner)
+        },
+        {
+          "ghr:runner_name_prefix" = var.runner_name_prefix
+        },
+        var.runner_ec2_tags
+      )
+    }
   }
 
   tag_specifications {
