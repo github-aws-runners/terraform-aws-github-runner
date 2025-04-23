@@ -1,5 +1,13 @@
 # Changelog
 
+## [6.5.4](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.5.3...v6.5.4) (2025-04-23)
+
+
+### Bug Fixes
+
+* only tag spot rquests for spot ([a9ab69e](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/a9ab69e90fe8e1f9df1c752757ef774eed42e278))
+* only tag spot rquests for spot ([806bf58](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/806bf580c177c5d2bbdad3b309c48e941b2c6eb4))
+
 ## [6.5.3](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.5.2...v6.5.3) (2025-04-20)
 
 
