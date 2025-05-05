@@ -26,7 +26,7 @@ jobs:
         working-directory: lambdas
         run: yarn install --frozen-lockfile && yarn run test && yarn dist
       - name: Get installation token
-        uses: actions/create-github-app-token@3ff1caaa28b64c9cc276ce0a02e2ff584f3900c5 # v2.0.2
+        uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2.0.6
         id: token
         with:
           app-id: ${{ vars.RELEASER_APP_ID }}
@@ -45,7 +45,7 @@ jobs:
       - name: Attest
         if: ${{ steps.release.outputs.releases_created == 'true' }}
         id: attest
-        uses: actions/attest-build-provenance@c074443f1aee8d4aeeae555aebba3282517141b2 # v2.2.3
+        uses: actions/attest-build-provenance@db473fddc028af60658334401dc6fa3ffd8669fd # v2.3.0
         with:
           subject-path: '${{ github.workspace }}/lambdas/functions/**/*.zip'
       - name: Update release notes with attestation
