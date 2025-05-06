@@ -242,7 +242,7 @@ __metadata:
     "@middy/core": "npm:^6.1.6"
     "@octokit/rest": "npm:21.1.1"
     "@octokit/types": "npm:^14.0.0"
-    "@octokit/webhooks": "npm:^13.8.0"
+    "@octokit/webhooks": "npm:^13.8.2"
     "@octokit/webhooks-types": "npm:^7.6.1"
     "@types/aws-lambda": "npm:^8.10.147"
     "@types/express": "npm:^5.0.0"
@@ -3746,10 +3746,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@octokit/openapi-webhooks-types@npm:10.4.0":
-  version: 10.4.0
-  resolution: "@octokit/openapi-webhooks-types@npm:10.4.0"
-  checksum: 10c0/5f2c44ce519731981ecfa81d5de767d10bd897e75233f0ea704ddfb8402bfe948d63d2dde8ab37b82038c9ac07e407df7a744ab32cf515f085d29a239f241e8d
+"@octokit/openapi-webhooks-types@npm:11.0.0":
+  version: 11.0.0
+  resolution: "@octokit/openapi-webhooks-types@npm:11.0.0"
+  checksum: 10c0/cea59ba6b976a242fa4e6bedfab7e6fc3437381557d2c1876ca3aea5f6d4231559a378f9bc35e09593cb2d466afb4a2415be66b960f3e0a38b65b8b9f22ff90e
   languageName: node
   linkType: hard
 
@@ -3875,14 +3875,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@octokit/webhooks@npm:^13.8.0":
-  version: 13.8.0
-  resolution: "@octokit/webhooks@npm:13.8.0"
+"@octokit/webhooks@npm:^13.8.2":
+  version: 13.8.2
+  resolution: "@octokit/webhooks@npm:13.8.2"
   dependencies:
-    "@octokit/openapi-webhooks-types": "npm:10.4.0"
+    "@octokit/openapi-webhooks-types": "npm:11.0.0"
     "@octokit/request-error": "npm:^6.1.7"
     "@octokit/webhooks-methods": "npm:^5.1.1"
-  checksum: 10c0/8a462342c9ef133fcb6b6fdb3ac568cd4d910df4ad17cc03677a3178df2ab8feb9ad6047354c83e974b512e50aa5c2ee8f0101a23e91ffa69475c40174c11a80
+  checksum: 10c0/5053ab9cff8afe4cd6e7d7a41af3f1b0c0ccc5058482577aa82bb8e5003f3002896c68bd59d7da363204c2d6baa4cca73ed684bb7a5a9286ca4b43172cd1fe9e
   languageName: node
   linkType: hard
 
