@@ -9,6 +9,7 @@ import { scaleDown } from './scale-runners/scale-down';
 import { scaleUp } from './scale-runners/scale-up';
 import { SSMCleanupOptions, cleanSSMTokens } from './scale-runners/ssm-housekeeper';
 import { checkAndRetryJob } from './scale-runners/job-retry';
+import { cleanupOrgRunners } from './scale-runners/cleanup-org-runners';
 
 export async function scaleUpHandler(event: SQSEvent, context: Context): Promise<void> {
   setContext(context, 'lambda.ts');
@@ -64,6 +65,8 @@ export const addMiddleware = () => {
   middy(scaleDownHandler).use(handler);
   middy(adjustPool).use(handler);
   middy(ssmHousekeeper).use(handler);
+  middy(jobRetryCheck).use(handler);
+  middy(cleanupOrgRunnersHandler).use(handler);
 };
 addMiddleware();
 
@@ -90,4 +93,15 @@ export async function jobRetryCheck(event: SQSEvent, context: Context): Promise<
     });
   }
   return Promise.resolve();
+}
+
+export async function cleanupOrgRunnersHandler(event: unknown, context: Context): Promise<void> {
+  setContext(context, 'lambda.ts');
+  logger.logEventIfEnabled(event);
+
+  try {
+    await cleanupOrgRunners();
+  } catch (e) {
+    logger.error(`${(e as Error).message}`, { error: e as Error });
+  }
 }
