@@ -1,5 +1,15 @@
 # Changelog
 
+## [6.5.5](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.5.4...v6.5.5) (2025-05-09)
+
+
+### Bug Fixes
+
+* **lambda:** bump @octokit/webhooks in /lambdas in the octokit group ([1b3badf](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/1b3badf204ff8c949143d257d92573f65f611a29))
+* **lambda:** bump the aws group in /lambdas with 6 updates ([9eafc97](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/9eafc97c6bf22dc76784dbade8da7b319d732366))
+* **lambda:** bump the aws-powertools group in /lambdas with 4 updates ([f732583](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/f73258366b59c5806c09ead30a2f4196fa1e7bab))
+* **lambda:** bump vite from 6.2.6 to 6.3.5 in /lambdas ([ee69778](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/ee697784cd7b686053dd8215476518c266f7aa0d))
+
 ## [6.5.4](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.5.3...v6.5.4) (2025-04-23)
 
 
