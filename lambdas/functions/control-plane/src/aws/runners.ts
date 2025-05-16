@@ -174,6 +174,7 @@ async function processFleetResult(
       { data: fleet },
     );
     const errors = fleet.Errors?.flatMap((e) => e.ErrorCode || '') || [];
+    let failedCount = 0;
 
     // Educated guess of errors that would make sense to retry based on the list
     // https://docs.aws.amazon.com/AWSEC2/latest/APIReference/errors-overview.html
@@ -203,16 +204,21 @@ async function processFleetResult(
       });
       instances.push(...instancesOnDemand);
       return instances;
-    } else if (errors.some((e) => scaleErrors.includes(e))) {
+    } else if ((failedCount = countScaleErrors(errors, scaleErrors)) > 0) {
+
       logger.warn('Create fleet failed, ScaleError will be thrown to trigger retry for ephemeral runners.');
       logger.debug('Create fleet failed.', { data: fleet.Errors });
-      throw new ScaleError('Failed to create instance, create fleet failed.');
+      throw new ScaleError('Failed to create instance, create fleet failed.', failedCount);
     } else {
       logger.warn('Create fleet failed, error not recognized as scaling error.', { data: fleet.Errors });
       throw Error('Create fleet failed, no instance created.');
     }
   }
   return instances;
+}
+
+function countScaleErrors(errors: string[], scaleErrors: string[]): number {
+  return errors.reduce((acc, e) => scaleErrors.includes(e) ? acc + 1 : acc, 0);
 }
 
 async function getAmiIdOverride(runnerParameters: Runners.RunnerInputParameters): Promise<string | undefined> {

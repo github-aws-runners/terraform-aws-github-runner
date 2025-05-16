@@ -419,9 +419,12 @@ describe('create runner with errors', () => {
   });
 
   it('test ScaleError with multiple error.', async () => {
-    createFleetMockWithErrors(['UnfulfillableCapacity', 'SomeError']);
+    createFleetMockWithErrors(['UnfulfillableCapacity', 'MaxSpotInstanceCountExceeded', 'NotMappedError']);
 
-    await expect(createRunner(createRunnerConfig(defaultRunnerConfig))).rejects.toBeInstanceOf(ScaleError);
+    await expect(createRunner(createRunnerConfig(defaultRunnerConfig))).rejects.toMatchObject({
+      name: 'ScaleError',
+      failedInstanceCount: 2,
+    });
     expect(mockEC2Client).toHaveReceivedCommandWith(
       CreateFleetCommand,
       expectedCreateFleetRequest(defaultExpectedFleetRequestValues),
@@ -521,7 +524,7 @@ describe('create runner with errors fail over to OnDemand', () => {
 
     expect(mockEC2Client).toHaveReceivedCommandTimes(CreateFleetCommand, 2);
 
-    // first call with spot failuer
+    // first call with spot failoer
     expect(mockEC2Client).toHaveReceivedNthCommandWith(1, CreateFleetCommand, {
       ...expectedCreateFleetRequest({
         ...defaultExpectedFleetRequestValues,
@@ -530,7 +533,7 @@ describe('create runner with errors fail over to OnDemand', () => {
       }),
     });
 
-    // second call with with OnDemand failback
+    // second call with with OnDemand fallback
     expect(mockEC2Client).toHaveReceivedNthCommandWith(2, CreateFleetCommand, {
       ...expectedCreateFleetRequest({
         ...defaultExpectedFleetRequestValues,
@@ -540,13 +543,13 @@ describe('create runner with errors fail over to OnDemand', () => {
     });
   });
 
-  it('test InsufficientInstanceCapacity no failback.', async () => {
+  it('test InsufficientInstanceCapacity no fallback.', async () => {
     await expect(
       createRunner(createRunnerConfig({ ...defaultRunnerConfig, onDemandFailoverOnError: [] })),
     ).rejects.toBeInstanceOf(Error);
   });
 
-  it('test InsufficientInstanceCapacity with mutlipte instances and fallback to on demand .', async () => {
+  it('test InsufficientInstanceCapacity with multiple instances and fallback to on demand .', async () => {
     const instancesIds = ['i-123', 'i-456'];
     createFleetMockWithWithOnDemandFallback(['InsufficientInstanceCapacity'], instancesIds);
 
