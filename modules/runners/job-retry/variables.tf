@@ -11,6 +11,8 @@ variable "config" {
     'user_agent': Optional User-Agent header for GitHub API requests.
     'github_app_parameters': Parameter Store for GitHub App Parameters.
     'kms_key_arn': Optional CMK Key ARN instead of using the default AWS managed key.
+    `lambda_event_source_mapping_batch_size`: Maximum number of records to pass to the lambda function in a single batch for the event source mapping. When not set, the AWS default will be used.
+    `lambda_event_source_mapping_maximum_batching_window_in_seconds`: Maximum amount of time to gather records before invoking the lambda function, in seconds. AWS requires this to be greater than 0 if batch_size is greater than 10.
     `lambda_principals`: Add extra principals to the role created for execution of the lambda, e.g. for local testing.
     `lambda_tags`: Map of tags that will be added to created resources. By default resources will be tagged with name and environment.
     `log_level`: Logging level for lambda logging. Valid values are  'silly', 'trace', 'debug', 'info', 'warn', 'error', 'fatal'.
@@ -45,12 +47,14 @@ variable "config" {
       key_base64 = map(string)
       id         = map(string)
     })
-    kms_key_arn               = optional(string, null)
-    lambda_tags               = optional(map(string), {})
-    log_level                 = optional(string, null)
-    logging_kms_key_id        = optional(string, null)
-    logging_retention_in_days = optional(number, null)
-    memory_size               = optional(number, null)
+    kms_key_arn                                                    = optional(string, null)
+    lambda_event_source_mapping_batch_size                         = optional(number, 10)
+    lambda_event_source_mapping_maximum_batching_window_in_seconds = optional(number, 0)
+    lambda_tags                                                    = optional(map(string), {})
+    log_level                                                      = optional(string, null)
+    logging_kms_key_id                                             = optional(string, null)
+    logging_retention_in_days                                      = optional(number, null)
+    memory_size                                                    = optional(number, null)
     metrics = optional(object({
       enable    = optional(bool, false)
       namespace = optional(string, null)

@@ -28,11 +28,11 @@ const sqsRecord: SQSRecord = {
   },
   awsRegion: '',
   body: JSON.stringify(body),
-  eventSource: 'aws:SQS',
+  eventSource: 'aws:sqs',
   eventSourceARN: '',
   md5OfBody: '',
   messageAttributes: {},
-  messageId: '',
+  messageId: 'abcd1234',
   receiptHandle: '',
 };
 
@@ -70,19 +70,33 @@ vi.mock('@aws-github-runner/aws-powertools-util');
 vi.mock('@aws-github-runner/aws-ssm-util');
 
 describe('Test scale up lambda wrapper.', () => {
-  it('Do not handle multiple record sets.', async () => {
-    await testInvalidRecords([sqsRecord, sqsRecord]);
+  it('Do not handle empty record sets.', async () => {
+    const sqsEventMultipleRecords: SQSEvent = {
+      Records: [],
+    };
+
+    await expect(scaleUpHandler(sqsEventMultipleRecords, context)).resolves.not.toThrow();
   });
 
-  it('Do not handle empty record sets.', async () => {
-    await testInvalidRecords([]);
+  it('Ignores non-sqs event sources.', async () => {
+    const record = {
+      ...sqsRecord,
+      eventSource: 'aws:non-sqs',
+    };
+
+    const sqsEventMultipleRecordsNonSQS: SQSEvent = {
+      Records: [record],
+    };
+
+    await expect(scaleUpHandler(sqsEventMultipleRecordsNonSQS, context)).resolves.not.toThrow();
+    expect(scaleUp).toHaveBeenCalledWith([]);
   });
 
   it('Scale without error should resolve.', async () => {
     const mock = vi.fn(scaleUp);
     mock.mockImplementation(() => {
       return new Promise((resolve) => {
-        resolve();
+        resolve([]);
       });
     });
     await expect(scaleUpHandler(sqsEvent, context)).resolves.not.toThrow();
@@ -95,37 +109,150 @@ describe('Test scale up lambda wrapper.', () => {
     await expect(scaleUpHandler(sqsEvent, context)).resolves.not.toThrow();
   });
 
-  it('Scale should be rejected', async () => {
-    const error = new ScaleError('Scale should be rejected');
+  it('Scale should create a batch failure message', async () => {
+    const error = new ScaleError();
     const mock = vi.fn() as MockedFunction<typeof scaleUp>;
     mock.mockImplementation(() => {
       return Promise.reject(error);
     });
     vi.mocked(scaleUp).mockImplementation(mock);
-    await expect(scaleUpHandler(sqsEvent, context)).rejects.toThrow(error);
-  });
-});
-
-async function testInvalidRecords(sqsRecords: SQSRecord[]) {
-  const mock = vi.fn(scaleUp);
-  const logWarnSpy = vi.spyOn(logger, 'warn');
-  mock.mockImplementation(() => {
-    return new Promise((resolve) => {
-      resolve();
+    await expect(scaleUpHandler(sqsEvent, context)).resolves.toEqual({
+      batchItemFailures: [{ itemIdentifier: sqsRecord.messageId }],
     });
   });
-  const sqsEventMultipleRecords: SQSEvent = {
-    Records: sqsRecords,
-  };
 
-  await expect(scaleUpHandler(sqsEventMultipleRecords, context)).resolves.not.toThrow();
+  describe('Batch processing', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
 
-  expect(logWarnSpy).toHaveBeenCalledWith(
-    expect.stringContaining(
-      'Event ignored, only one record at the time can be handled, ensure the lambda batch size is set to 1.',
-    ),
-  );
-}
+    const createMultipleRecords = (count: number, eventSource = 'aws:sqs'): SQSRecord[] => {
+      return Array.from({ length: count }, (_, i) => ({
+        ...sqsRecord,
+        eventSource,
+        messageId: `message-${i}`,
+        body: JSON.stringify({
+          ...body,
+          id: i + 1,
+        }),
+      }));
+    };
+
+    it('Should handle multiple SQS records in a single invocation', async () => {
+      const records = createMultipleRecords(3);
+      const multiRecordEvent: SQSEvent = { Records: records };
+
+      const mock = vi.fn(scaleUp);
+      mock.mockImplementation(() => Promise.resolve([]));
+      vi.mocked(scaleUp).mockImplementation(mock);
+
+      await expect(scaleUpHandler(multiRecordEvent, context)).resolves.not.toThrow();
+      expect(scaleUp).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ messageId: 'message-0' }),
+          expect.objectContaining({ messageId: 'message-1' }),
+          expect.objectContaining({ messageId: 'message-2' }),
+        ]),
+      );
+    });
+
+    it('Should return batch item failures for rejected messages', async () => {
+      const records = createMultipleRecords(3);
+      const multiRecordEvent: SQSEvent = { Records: records };
+
+      const mock = vi.fn(scaleUp);
+      mock.mockImplementation(() => Promise.resolve(['message-1', 'message-2']));
+      vi.mocked(scaleUp).mockImplementation(mock);
+
+      const result = await scaleUpHandler(multiRecordEvent, context);
+      expect(result).toEqual({
+        batchItemFailures: [{ itemIdentifier: 'message-1' }, { itemIdentifier: 'message-2' }],
+      });
+    });
+
+    it('Should filter out non-SQS event sources', async () => {
+      const sqsRecords = createMultipleRecords(2, 'aws:sqs');
+      const nonSqsRecords = createMultipleRecords(1, 'aws:sns');
+      const mixedEvent: SQSEvent = {
+        Records: [...sqsRecords, ...nonSqsRecords],
+      };
+
+      const mock = vi.fn(scaleUp);
+      mock.mockImplementation(() => Promise.resolve([]));
+      vi.mocked(scaleUp).mockImplementation(mock);
+
+      await scaleUpHandler(mixedEvent, context);
+      expect(scaleUp).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ messageId: 'message-0' }),
+          expect.objectContaining({ messageId: 'message-1' }),
+        ]),
+      );
+      expect(scaleUp).not.toHaveBeenCalledWith(
+        expect.arrayContaining([expect.objectContaining({ messageId: 'message-2' })]),
+      );
+    });
+
+    it('Should sort messages by retry count', async () => {
+      const records = [
+        {
+          ...sqsRecord,
+          messageId: 'high-retry',
+          body: JSON.stringify({ ...body, retryCounter: 5 }),
+        },
+        {
+          ...sqsRecord,
+          messageId: 'low-retry',
+          body: JSON.stringify({ ...body, retryCounter: 1 }),
+        },
+        {
+          ...sqsRecord,
+          messageId: 'no-retry',
+          body: JSON.stringify({ ...body }),
+        },
+      ];
+      const multiRecordEvent: SQSEvent = { Records: records };
+
+      const mock = vi.fn(scaleUp);
+      mock.mockImplementation((messages) => {
+        // Verify messages are sorted by retry count (ascending)
+        expect(messages[0].messageId).toBe('no-retry');
+        expect(messages[1].messageId).toBe('low-retry');
+        expect(messages[2].messageId).toBe('high-retry');
+        return Promise.resolve([]);
+      });
+      vi.mocked(scaleUp).mockImplementation(mock);
+
+      await scaleUpHandler(multiRecordEvent, context);
+    });
+
+    it('Should return all failed messages when scaleUp throws non-ScaleError', async () => {
+      const records = createMultipleRecords(2);
+      const multiRecordEvent: SQSEvent = { Records: records };
+
+      const mock = vi.fn(scaleUp);
+      mock.mockImplementation(() => Promise.reject(new Error('Generic error')));
+      vi.mocked(scaleUp).mockImplementation(mock);
+
+      const result = await scaleUpHandler(multiRecordEvent, context);
+      expect(result).toEqual({ batchItemFailures: [] });
+    });
+
+    it('Should throw when scaleUp throws ScaleError', async () => {
+      const records = createMultipleRecords(2);
+      const multiRecordEvent: SQSEvent = { Records: records };
+
+      const error = new ScaleError(2);
+      const mock = vi.fn(scaleUp);
+      mock.mockImplementation(() => Promise.reject(error));
+      vi.mocked(scaleUp).mockImplementation(mock);
+
+      await expect(scaleUpHandler(multiRecordEvent, context)).resolves.toEqual({
+        batchItemFailures: [{ itemIdentifier: 'message-0' }, { itemIdentifier: 'message-1' }],
+      });
+    });
+  });
+});
 
 describe('Test scale down lambda wrapper.', () => {
   it('Scaling down no error.', async () => {
