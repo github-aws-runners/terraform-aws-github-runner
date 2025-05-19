@@ -242,7 +242,7 @@ __metadata:
     "@middy/core": "npm:^6.1.6"
     "@octokit/rest": "npm:21.1.1"
     "@octokit/types": "npm:^14.0.0"
-    "@octokit/webhooks": "npm:^13.8.2"
+    "@octokit/webhooks": "npm:^13.9.0"
     "@octokit/webhooks-types": "npm:^7.6.1"
     "@types/aws-lambda": "npm:^8.10.147"
     "@types/express": "npm:^5.0.0"
@@ -3893,14 +3893,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@octokit/webhooks@npm:^13.8.2":
-  version: 13.8.2
-  resolution: "@octokit/webhooks@npm:13.8.2"
+"@octokit/webhooks@npm:^13.9.0":
+  version: 13.9.0
+  resolution: "@octokit/webhooks@npm:13.9.0"
   dependencies:
     "@octokit/openapi-webhooks-types": "npm:11.0.0"
     "@octokit/request-error": "npm:^6.1.7"
     "@octokit/webhooks-methods": "npm:^5.1.1"
-  checksum: 10c0/5053ab9cff8afe4cd6e7d7a41af3f1b0c0ccc5058482577aa82bb8e5003f3002896c68bd59d7da363204c2d6baa4cca73ed684bb7a5a9286ca4b43172cd1fe9e
+  checksum: 10c0/6ae9001465014f26159a2009860b586ac80dacbf710bf01611fff82ef4fabc91432072d6dca7daa652ec9b2b41031eff6ce0a6ae9d3e6e334dbe2c736c099134
   languageName: node
   linkType: hard
 
