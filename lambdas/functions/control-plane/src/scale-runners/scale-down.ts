@@ -3,8 +3,8 @@ import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import moment from 'moment';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
-import { bootTimeExceeded, listEC2Runners, tag, terminateRunner } from './../aws/runners';
-import { RunnerInfo, RunnerList } from './../aws/runners.d';
+import { bootTimeExceeded, listEC2Runners, tag, untag, terminateRunner } from './../aws/runners';
+import { RunnerInfo, RunnerList, RunnerState } from './../aws/runners.d';
 import { GhRunners, githubCache } from './cache';
 import { ScalingDownConfig, getEvictionStrategy, getIdleRunnerCount } from './scale-down-config';
 import { metricGitHubAppRateLimit } from '../github/rate-limit';
@@ -46,7 +46,11 @@ async function getOrCreateOctokit(runner: RunnerInfo): Promise<Octokit> {
   return octokit;
 }
 
-async function getGitHubRunnerBusyState(client: Octokit, ec2runner: RunnerInfo, runnerId: number): Promise<boolean> {
+async function getGitHubSelfHostedRunnerState(
+  client: Octokit,
+  ec2runner: RunnerInfo,
+  runnerId: number,
+): Promise<RunnerState> {
   const state =
     ec2runner.type === 'Org'
       ? await client.actions.getSelfHostedRunnerForOrg({
@@ -59,11 +63,12 @@ async function getGitHubRunnerBusyState(client: Octokit, ec2runner: RunnerInfo, 
           repo: ec2runner.owner.split('/')[1],
         });
 
-  logger.info(`Runner '${ec2runner.instanceId}' - GitHub Runner ID '${runnerId}' - Busy: ${state.data.busy}`);
+  return { id: state.data.id, name: state.data.name, busy: state.data.busy, status: state.data.status };
+}
 
-  metricGitHubAppRateLimit(state.headers);
-
-  return state.data.busy;
+async function getGitHubRunnerBusyState(client: Octokit, ec2runner: RunnerInfo, runnerId: number): Promise<boolean> {
+  const state = await getGitHubSelfHostedRunnerState(client, ec2runner, runnerId);
+  return state.busy;
 }
 
 async function listGitHubRunners(runner: RunnerInfo): Promise<GhRunners> {
@@ -205,13 +210,36 @@ async function terminateOrphan(environment: string): Promise<void> {
     const orphanRunners = await listEC2Runners({ environment, orphan: true });
 
     for (const runner of orphanRunners) {
-      logger.info(`Terminating orphan runner '${runner.instanceId}'`);
-      await terminateRunner(runner.instanceId).catch((e) => {
-        logger.error(`Failed to terminate orphan runner '${runner.instanceId}'`, { error: e });
-      });
+      // do we have a valid runnerId? then we are in a Jit Runner scenario else, use old method
+      logger.info(`Runner var us '${JSON.stringify(runner)}' `);
+      if (runner.runnerId) {
+        logger.info(`Runner '${runner.instanceId}' is orphan, but has a runnerId.`);
+        // build a runner instance
+        const client = await getOrCreateOctokit(runner as RunnerInfo);
+        const runnerId = parseInt(runner.runnerId);
+        const ec2Instance = runner as RunnerInfo;
+        const state = await getGitHubSelfHostedRunnerState(client, ec2Instance, runnerId);
+        logger.info(`Runner is currently '${runner.instanceId}' state: ${JSON.stringify(state)}`);
+        if (state.status === 'online' && state.busy) {
+          logger.info(`Runner '${runner.instanceId}' is orphan, but is online and busy.`);
+          await untag(runner.instanceId, [{ Key: 'ghr:orphan', Value: 'true' }]);
+        } else if (state.status === 'offline') {
+          logger.warn(`Runner '${runner.instanceId}' is orphan.`);
+          logger.info(`Terminating orphan runner '${runner.instanceId}'`);
+          await terminateRunner(runner.instanceId).catch((e) => {
+            logger.error(`Failed to terminate orphan runner '${runner.instanceId}'`, { error: e });
+          });
+        }
+      } else {
+        logger.warn(`Runner '${runner.instanceId}' is orphan, but no runnerId found.`);
+        logger.info(`Terminating orphan runner '${runner.instanceId}'`);
+        await terminateRunner(runner.instanceId).catch((e) => {
+          logger.error(`Failed to terminate orphan runner '${runner.instanceId}'`, { error: e });
+        });
+      }
     }
   } catch (e) {
-    logger.warn(`Failure during orphan runner termination.`, { error: e });
+    logger.warn(`Failure during orphan termination processing.`, { error: e });
   }
 }
 
