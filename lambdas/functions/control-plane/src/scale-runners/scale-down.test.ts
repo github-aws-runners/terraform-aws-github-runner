@@ -351,9 +351,18 @@ describe('Scale down runners', () => {
         checkNonTerminated(runners);
       });
 
-    it('Should test if orphaned runner, untag if online and busy, else terminate (JIT)', async () => {
+      it('Should test if orphaned runner, untag if online and busy, else terminate (JIT)', async () => {
         // arrange
-        const orphanRunner = createRunnerTestData('orphan-jit', type, MINIMUM_BOOT_TIME + 1, false, true, false, undefined, 1234567890);
+        const orphanRunner = createRunnerTestData(
+          'orphan-jit',
+          type,
+          MINIMUM_BOOT_TIME + 1,
+          false,
+          true,
+          false,
+          undefined,
+          1234567890,
+        );
         const runners = [orphanRunner];
 
         mockGitHubRunners([]);
@@ -373,9 +382,7 @@ describe('Scale down runners', () => {
         await scaleDown();
 
         // assert
-        expect(mockUntagRunners).toHaveBeenCalledWith(orphanRunner.instanceId, [
-          { Key: 'ghr:orphan', Value: 'true' },
-        ]);
+        expect(mockUntagRunners).toHaveBeenCalledWith(orphanRunner.instanceId, [{ Key: 'ghr:orphan', Value: 'true' }]);
         expect(mockTerminateRunners).not.toHaveBeenCalledWith(orphanRunner.instanceId);
 
         // arrange
