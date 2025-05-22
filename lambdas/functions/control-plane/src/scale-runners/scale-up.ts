@@ -9,7 +9,6 @@ import { RunnerInputParameters } from './../aws/runners.d';
 import ScaleError from './ScaleError';
 import { publishRetryMessage } from './job-retry';
 import { metricGitHubAppRateLimit } from '../github/rate-limit';
-import { run } from '../local-down';
 
 const logger = createChildLogger('scale-up');
 
