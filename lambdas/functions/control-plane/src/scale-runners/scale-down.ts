@@ -211,7 +211,6 @@ async function terminateOrphan(environment: string): Promise<void> {
 
     for (const runner of orphanRunners) {
       // do we have a valid runnerId? then we are in a Jit Runner scenario else, use old method
-      logger.info(`Runner var us '${JSON.stringify(runner)}' `);
       if (runner.runnerId) {
         logger.info(`Runner '${runner.instanceId}' is orphan, but has a runnerId.`);
         // build a runner instance
