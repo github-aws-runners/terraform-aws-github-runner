@@ -4,6 +4,7 @@ import {
   CreateTagsCommand,
   DescribeInstancesCommand,
   DescribeInstancesResult,
+  DescribeLaunchTemplateVersionsCommand,
   EC2Client,
   FleetLaunchTemplateOverridesRequest,
   Tag,
@@ -227,6 +228,22 @@ async function getAmiIdOverride(runnerParameters: Runners.RunnerInputParameters)
   }
 }
 
+async function getLaunchTemplateTags(
+  runnerParameters: Runners.RunnerInputParameters,
+  ec2Client: EC2Client,
+): Promise<Tag[] | undefined> {
+  const command = new DescribeLaunchTemplateVersionsCommand({
+    LaunchTemplateName: runnerParameters.launchTemplateName,
+    Versions: ['$Default'],
+  });
+  const response = await ec2Client.send(command);
+  const launchTemplateTags = response.LaunchTemplateVersions?.[0]?.LaunchTemplateData?.TagSpecifications?.flatMap(
+    ({ Tags }) => Tags,
+  ).filter((tag) => tag !== undefined);
+
+  return launchTemplateTags || [];
+}
+
 async function createInstances(
   runnerParameters: Runners.RunnerInputParameters,
   amiIdOverride: string | undefined,
@@ -238,6 +255,8 @@ async function createInstances(
     { Key: 'ghr:Type', Value: runnerParameters.runnerType },
     { Key: 'ghr:Owner', Value: runnerParameters.runnerOwner },
   ];
+
+  const launchTemplateTags = await getLaunchTemplateTags(runnerParameters, ec2Client);
 
   if (runnerParameters.tracingEnabled) {
     const traceId = tracer.getRootXrayTraceId();
@@ -277,6 +296,10 @@ async function createInstances(
         {
           ResourceType: 'volume',
           Tags: tags,
+        },
+        {
+          ResourceType: 'spot-instances-request',
+          Tags: runnerParameters.ec2instanceCriteria.targetCapacityType === 'spot' ? launchTemplateTags : undefined,
         },
       ],
       Type: 'instant',
