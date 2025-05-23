@@ -206,23 +206,6 @@ resource "aws_launch_template" "runner" {
     )
   }
 
-  dynamic "tag_specifications" {
-    for_each = var.instance_target_capacity_type == "spot" ? [1] : [] # Include the block only if the value is "spot"
-    content {
-      resource_type = "spot-instances-request"
-      tags = merge(
-        local.tags,
-        {
-          "Name" = format("%s", local.name_runner)
-        },
-        {
-          "ghr:runner_name_prefix" = var.runner_name_prefix
-        },
-        var.runner_ec2_tags
-      )
-    }
-  }
-
   tag_specifications {
     resource_type = "network-interface"
     tags = merge(
