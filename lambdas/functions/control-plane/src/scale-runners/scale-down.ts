@@ -7,7 +7,6 @@ import { bootTimeExceeded, listEC2Runners, tag, untag, terminateRunner } from '.
 import { RunnerInfo, RunnerList, RunnerState } from './../aws/runners.d';
 import { GhRunners, githubCache } from './cache';
 import { ScalingDownConfig, getEvictionStrategy, getIdleRunnerCount } from './scale-down-config';
-import { metricGitHubAppRateLimit } from '../github/rate-limit';
 import { getGitHubEnterpriseApiUrl } from './scale-up';
 
 const logger = createChildLogger('scale-down');
