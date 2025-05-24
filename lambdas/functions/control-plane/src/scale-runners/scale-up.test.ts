@@ -41,6 +41,7 @@ vi.mock('@octokit/rest', () => ({
 vi.mock('./../aws/runners', async () => ({
   createRunner: vi.fn(),
   listEC2Runners: vi.fn(),
+  tag: vi.fn(),
 }));
 
 vi.mock('./../github/auth', async () => ({
@@ -645,7 +646,7 @@ describe('scaleUp with public GH', () => {
       });
     });
 
-    it('JIT config is ingored for non-ephemeral runners.', async () => {
+    it('JIT config is ignored for non-ephemeral runners.', async () => {
       process.env.ENABLE_EPHEMERAL_RUNNERS = 'false';
       process.env.ENABLE_JIT_CONFIG = 'true';
       process.env.ENABLE_JOB_QUEUED_CHECK = 'false';
@@ -1008,11 +1009,13 @@ function defaultOctokitMockImpl() {
   ]);
   mockOctokit.actions.generateRunnerJitconfigForOrg.mockImplementation(() => ({
     data: {
+      runner: { id: 9876543210 },
       encoded_jit_config: 'TEST_JIT_CONFIG_ORG',
     },
   }));
   mockOctokit.actions.generateRunnerJitconfigForRepo.mockImplementation(() => ({
     data: {
+      runner: { id: 9876543210 },
       encoded_jit_config: 'TEST_JIT_CONFIG_REPO',
     },
   }));
