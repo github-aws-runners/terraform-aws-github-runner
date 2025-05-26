@@ -459,9 +459,6 @@ async function createJitConfig(githubRunnerConfig: CreateGitHubRunnerConfig, ins
     metricGitHubAppRateLimit(runnerConfig.headers);
 
     // tag the EC2 instance with the Github runner id
-    logger.debug('Tagging instance with GitHub runner ID', {
-      runnerId: runnerConfig.data.runner.id,
-    });
     await addGhRunnerIdToEC2InstanceTag(instance, runnerConfig.data.runner.id.toString());
 
     // store jit config in ssm parameter store
