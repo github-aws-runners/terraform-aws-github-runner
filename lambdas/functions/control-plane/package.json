@@ -24,7 +24,7 @@
     "@vercel/ncc": "^0.38.3",
     "aws-sdk-client-mock": "^4.1.0",
     "aws-sdk-client-mock-jest": "^4.1.0",
-    "moment-timezone": "^0.5.47",
+    "moment-timezone": "^0.6.0",
     "nock": "^14.0.2",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0"
