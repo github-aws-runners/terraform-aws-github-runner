@@ -217,7 +217,7 @@ async function terminateOrphan(environment: string): Promise<void> {
         const runnerId = parseInt(runner.runnerId);
         const ec2Instance = runner as RunnerInfo;
         const state = await getGitHubSelfHostedRunnerState(client, ec2Instance, runnerId);
-        logger.info(`Runner is currently '${runner.instanceId}' state: ${JSON.stringify(state)}`);
+        logger.debug(`Runner is currently '${runner.instanceId}' state: ${JSON.stringify(state)}`);
         if (state.status === 'online' && state.busy) {
           logger.info(`Runner '${runner.instanceId}' is orphan, but is online and busy.`);
           await untag(runner.instanceId, [{ Key: 'ghr:orphan', Value: 'true' }]);
