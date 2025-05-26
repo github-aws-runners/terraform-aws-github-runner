@@ -418,7 +418,7 @@ async function createRegistrationTokenConfig(
 
 async function addGhRunnerIdToEC2InstanceTag(instanceId: string, runnerId: string): Promise<void> {
   try {
-    await tag(instanceId, [{ Key: 'ghr:githubrunnerid', Value: runnerId }]);
+    await tag(instanceId, [{ Key: 'ghr:github_runner_id', Value: runnerId }]);
     logger.info(`Runner '${instanceId}' marked with ${runnerId}.`);
   } catch (e) {
     logger.error(`Failed to mark runner '${instanceId}' with ${runnerId}.`, { error: e });
