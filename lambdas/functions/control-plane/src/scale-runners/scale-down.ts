@@ -229,7 +229,6 @@ async function terminateOrphan(environment: string): Promise<void> {
           });
         }
       } else {
-        logger.warn(`Runner '${runner.instanceId}' is orphan, but no runnerId found.`);
         logger.info(`Terminating orphan runner '${runner.instanceId}'`);
         await terminateRunner(runner.instanceId).catch((e) => {
           logger.error(`Failed to terminate orphan runner '${runner.instanceId}'`, { error: e });
