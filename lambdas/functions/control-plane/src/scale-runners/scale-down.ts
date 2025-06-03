@@ -7,9 +7,11 @@ import { bootTimeExceeded, listEC2Runners, tag, untag, terminateRunner } from '.
 import { RunnerInfo, RunnerList, RunnerState } from './../aws/runners.d';
 import { GhRunners, githubCache } from './cache';
 import { ScalingDownConfig, getEvictionStrategy, getIdleRunnerCount } from './scale-down-config';
+import { metricGitHubAppRateLimit } from '../github/rate-limit';
 import { getGitHubEnterpriseApiUrl } from './scale-up';
 
 const logger = createChildLogger('scale-down');
+
 
 async function getOrCreateOctokit(runner: RunnerInfo): Promise<Octokit> {
   const key = runner.owner;
@@ -67,6 +69,8 @@ async function getGitHubSelfHostedRunnerState(
 
 async function getGitHubRunnerBusyState(client: Octokit, ec2runner: RunnerInfo, runnerId: number): Promise<boolean> {
   const state = await getGitHubSelfHostedRunnerState(client, ec2runner, runnerId);
+  logger.info(`Runner '${ec2runner.instanceId}' - GitHub Runner ID '${runnerId}' - Busy: ${state.data.busy}`);
+  metricGitHubAppRateLimit(state.headers);
   return state.busy;
 }
 
