@@ -4,14 +4,25 @@ import moment from 'moment';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
 import { bootTimeExceeded, listEC2Runners, tag, untag, terminateRunner } from './../aws/runners';
-import { RunnerInfo, RunnerList, RunnerState } from './../aws/runners.d';
+import { RunnerInfo, RunnerList } from './../aws/runners.d';
 import { GhRunners, githubCache } from './cache';
 import { ScalingDownConfig, getEvictionStrategy, getIdleRunnerCount } from './scale-down-config';
 import { metricGitHubAppRateLimit } from '../github/rate-limit';
 import { getGitHubEnterpriseApiUrl } from './scale-up';
+import { GetResponseDataTypeFromEndpointMethod } from '@octokit/types/dist-types/GetResponseTypeFromEndpointMethod';
 
 const logger = createChildLogger('scale-down');
 
+type OrgRunnerList = GetResponseDataTypeFromEndpointMethod<
+  typeof Octokit.prototype.actions.listSelfHostedRunnersForOrg
+>;
+
+type RepoRunnerList = GetResponseDataTypeFromEndpointMethod<
+  typeof Octokit.prototype.actions.listSelfHostedRunnersForRepo
+>;
+
+// Derive the shape of an individual runner
+type RunnerState = (OrgRunnerList | RepoRunnerList)['runners'][number];
 
 async function getOrCreateOctokit(runner: RunnerInfo): Promise<Octokit> {
   const key = runner.owner;

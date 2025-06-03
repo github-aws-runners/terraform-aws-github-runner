@@ -13,13 +13,6 @@ export interface RunnerList {
   runnerId?: string;
 }
 
-export interface RunnerState {
-  id: number;
-  name: string;
-  busy: boolean;
-  status: string;
-}
-
 export interface RunnerInfo {
   instanceId: string;
   launchTime?: Date;
