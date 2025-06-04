@@ -218,6 +218,24 @@ async function markOrphan(instanceId: string): Promise<void> {
   }
 }
 
+async function lastChanceCheckOrphanRunner(runner: RunnerList): Promise<void> {
+  const client = await getOrCreateOctokit(runner as RunnerInfo);
+  const runnerId = parseInt(runner.runnerId);
+  const ec2Instance = runner as RunnerInfo;
+  const state = await getGitHubSelfHostedRunnerState(client, ec2Instance, runnerId);
+  logger.debug(`Runner is currently '${runner.instanceId}' state: ${JSON.stringify(state)}`);
+  if (state.status === 'online' && state.busy) {
+    logger.info(`Runner '${runner.instanceId}' is orphan, but is online and busy.`);
+    await untag(runner.instanceId, [{ Key: 'ghr:orphan', Value: 'true' }]);
+  } else if (state.status === 'offline') {
+    logger.warn(`Runner '${runner.instanceId}' is orphan.`);
+    logger.info(`Terminating orphan runner '${runner.instanceId}'`);
+    await terminateRunner(runner.instanceId).catch((e) => {
+      logger.error(`Failed to terminate orphan runner '${runner.instanceId}'`, { error: e });
+    });
+  }
+}
+
 async function terminateOrphan(environment: string): Promise<void> {
   try {
     const orphanRunners = await listEC2Runners({ environment, orphan: true });
@@ -226,22 +244,7 @@ async function terminateOrphan(environment: string): Promise<void> {
       // do we have a valid runnerId? then we are in a Jit Runner scenario else, use old method
       if (runner.runnerId) {
         logger.debug(`Runner '${runner.instanceId}' is orphan, but has a runnerId.`);
-        // build a runner instance
-        const client = await getOrCreateOctokit(runner as RunnerInfo);
-        const runnerId = parseInt(runner.runnerId);
-        const ec2Instance = runner as RunnerInfo;
-        const state = await getGitHubSelfHostedRunnerState(client, ec2Instance, runnerId);
-        logger.debug(`Runner is currently '${runner.instanceId}' state: ${JSON.stringify(state)}`);
-        if (state.status === 'online' && state.busy) {
-          logger.info(`Runner '${runner.instanceId}' is orphan, but is online and busy.`);
-          await untag(runner.instanceId, [{ Key: 'ghr:orphan', Value: 'true' }]);
-        } else if (state.status === 'offline') {
-          logger.warn(`Runner '${runner.instanceId}' is orphan.`);
-          logger.info(`Terminating orphan runner '${runner.instanceId}'`);
-          await terminateRunner(runner.instanceId).catch((e) => {
-            logger.error(`Failed to terminate orphan runner '${runner.instanceId}'`, { error: e });
-          });
-        }
+        await lastChanceCheckOrphanRunner(runner);
       } else {
         logger.info(`Terminating orphan runner '${runner.instanceId}'`);
         await terminateRunner(runner.instanceId).catch((e) => {
