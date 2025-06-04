@@ -67,7 +67,7 @@ const mockRunningInstancesJit: DescribeInstancesResult = {
             { Key: 'ghr:created_by', Value: 'scale-up-lambda' },
             { Key: 'ghr:Type', Value: 'Org' },
             { Key: 'ghr:Owner', Value: 'CoderToCat' },
-            { Key: 'ghr:githubrunnerid', Value: '9876543210' },
+            { Key: 'ghr:github_runner_id', Value: '9876543210' },
           ],
         },
       ],
