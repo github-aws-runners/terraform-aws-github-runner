@@ -13,8 +13,8 @@ import { getGitHubEnterpriseApiUrl } from './scale-up';
 
 const logger = createChildLogger('scale-down');
 
-type OrgRunnerList = Endpoints["GET /orgs/{org}/actions/runners"]["response"]["data"]["runners"];
-type RepoRunnerList = Endpoints["GET /repos/{owner}/{repo}/actions/runners"]["response"]["data"]["runners"];
+type OrgRunnerList = Endpoints['GET /orgs/{org}/actions/runners']['response']['data']['runners'];
+type RepoRunnerList = Endpoints['GET /repos/{owner}/{repo}/actions/runners']['response']['data']['runners'];
 type RunnerState = OrgRunnerList[number] | RepoRunnerList[number];
 
 async function getOrCreateOctokit(runner: RunnerInfo): Promise<Octokit> {
@@ -67,7 +67,7 @@ async function getGitHubSelfHostedRunnerState(
           owner: ec2runner.owner.split('/')[0],
           repo: ec2runner.owner.split('/')[1],
         });
-        metricGitHubAppRateLimit(state.headers);
+  metricGitHubAppRateLimit(state.headers);
 
   return {
     id: state.data.id,
