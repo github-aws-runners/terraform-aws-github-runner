@@ -370,11 +370,11 @@ describe('Scale down runners', () => {
 
         if (type === 'Repo') {
           mockOctokit.actions.getSelfHostedRunnerForRepo.mockResolvedValueOnce({
-            data: { runnerId: 1234567890, name: orphanRunner.instanceId, busy: true, status: 'online' },
+            data: { id: 1234567890, name: orphanRunner.instanceId, busy: true, status: 'online' },
           });
         } else {
           mockOctokit.actions.getSelfHostedRunnerForOrg.mockResolvedValueOnce({
-            data: { runnerId: 1234567890, name: orphanRunner.instanceId, busy: true, status: 'online' },
+            data: { id: 1234567890, name: orphanRunner.instanceId, busy: true, status: 'online' },
           });
         }
 
