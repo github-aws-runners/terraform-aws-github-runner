@@ -1,4 +1,5 @@
 import { Octokit } from '@octokit/rest';
+import { Endpoints } from '@octokit/types';
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import moment from 'moment';
 
@@ -9,19 +10,12 @@ import { GhRunners, githubCache } from './cache';
 import { ScalingDownConfig, getEvictionStrategy, getIdleRunnerCount } from './scale-down-config';
 import { metricGitHubAppRateLimit } from '../github/rate-limit';
 import { getGitHubEnterpriseApiUrl } from './scale-up';
-import { GetResponseDataTypeFromEndpointMethod } from '@octokit/types/dist-types/GetResponseTypeFromEndpointMethod';
 
 const logger = createChildLogger('scale-down');
 
-type OrgRunnerList = GetResponseDataTypeFromEndpointMethod<
-  typeof Octokit.prototype.actions.listSelfHostedRunnersForOrg
->;
-
-type RepoRunnerList = GetResponseDataTypeFromEndpointMethod<
-  typeof Octokit.prototype.actions.listSelfHostedRunnersForRepo
->;
-
-type RunnerState = (OrgRunnerList | RepoRunnerList)['runners'][number];
+type OrgRunnerList = Endpoints["GET /orgs/{org}/actions/runners"]["response"]["data"]["runners"];
+type RepoRunnerList = Endpoints["GET /repos/{owner}/{repo}/actions/runners"]["response"]["data"]["runners"];
+type RunnerState = OrgRunnerList[number] | RepoRunnerList[number];
 
 async function getOrCreateOctokit(runner: RunnerInfo): Promise<Octokit> {
   const key = runner.owner;
@@ -73,20 +67,23 @@ async function getGitHubSelfHostedRunnerState(
           owner: ec2runner.owner.split('/')[0],
           repo: ec2runner.owner.split('/')[1],
         });
+        metricGitHubAppRateLimit(state.headers);
 
   return {
     id: state.data.id,
     name: state.data.name,
     busy: state.data.busy,
     status: state.data.status,
-    headers: state.headers,
+    os: state.data.os,
+    labels: state.data.labels,
+    runner_group_id: state.data.runner_group_id,
+    ephemeral: state.data.ephemeral,
   };
 }
 
 async function getGitHubRunnerBusyState(client: Octokit, ec2runner: RunnerInfo, runnerId: number): Promise<boolean> {
   const state = await getGitHubSelfHostedRunnerState(client, ec2runner, runnerId);
   logger.info(`Runner '${ec2runner.instanceId}' - GitHub Runner ID '${runnerId}' - Busy: ${state.busy}`);
-  metricGitHubAppRateLimit(state.headers);
   return state.busy;
 }
 
@@ -226,7 +223,7 @@ async function markOrphan(instanceId: string): Promise<void> {
 
 async function lastChanceCheckOrphanRunner(runner: RunnerList): Promise<void> {
   const client = await getOrCreateOctokit(runner as RunnerInfo);
-  const runnerId = parseInt(runner.runnerId);
+  const runnerId = parseInt(runner.runnerId || '0');
   const ec2Instance = runner as RunnerInfo;
   const state = await getGitHubSelfHostedRunnerState(client, ec2Instance, runnerId);
   logger.debug(`Runner is currently '${runner.instanceId}' state: ${JSON.stringify(state)}`);
