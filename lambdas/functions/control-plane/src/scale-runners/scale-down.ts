@@ -75,12 +75,12 @@ async function getGitHubSelfHostedRunnerState(
           repo: ec2runner.owner.split('/')[1],
         });
 
-  return { id: state.data.id, name: state.data.name, busy: state.data.busy, status: state.data.status };
+  return { id: state.data.id, name: state.data.name, busy: state.data.busy, status: state.data.status, headers: state.headers };
 }
 
 async function getGitHubRunnerBusyState(client: Octokit, ec2runner: RunnerInfo, runnerId: number): Promise<boolean> {
   const state = await getGitHubSelfHostedRunnerState(client, ec2runner, runnerId);
-  logger.info(`Runner '${ec2runner.instanceId}' - GitHub Runner ID '${runnerId}' - Busy: ${state.data.busy}`);
+  logger.info(`Runner '${ec2runner.instanceId}' - GitHub Runner ID '${runnerId}' - Busy: ${state.busy}`);
   metricGitHubAppRateLimit(state.headers);
   return state.busy;
 }
