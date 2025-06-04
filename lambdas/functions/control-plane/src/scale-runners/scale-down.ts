@@ -21,7 +21,6 @@ type RepoRunnerList = GetResponseDataTypeFromEndpointMethod<
   typeof Octokit.prototype.actions.listSelfHostedRunnersForRepo
 >;
 
-// Derive the shape of an individual runner
 type RunnerState = (OrgRunnerList | RepoRunnerList)['runners'][number];
 
 async function getOrCreateOctokit(runner: RunnerInfo): Promise<Octokit> {
