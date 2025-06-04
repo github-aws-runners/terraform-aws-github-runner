@@ -305,46 +305,48 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
       scaleUp = currentRunners.length < maximumRunners;
     }
 
-    if (scaleUp) {
-      logger.info(`Attempting to launch a new runner`);
+    try {
+      if (scaleUp) {
+        logger.info(`Attempting to launch a new runner`);
 
-      await createRunners(
-        {
-          ephemeral,
-          enableJitConfig,
-          ghesBaseUrl,
-          runnerLabels,
-          runnerGroup,
-          runnerNamePrefix,
-          runnerOwner,
-          runnerType,
-          disableAutoUpdate,
-          ssmTokenPath,
-          ssmConfigPath,
-        },
-        {
-          ec2instanceCriteria: {
-            instanceTypes,
-            targetCapacityType: instanceTargetCapacityType,
-            maxSpotPrice: instanceMaxSpotPrice,
-            instanceAllocationStrategy: instanceAllocationStrategy,
+        await createRunners(
+          {
+            ephemeral,
+            enableJitConfig,
+            ghesBaseUrl,
+            runnerLabels,
+            runnerGroup,
+            runnerNamePrefix,
+            runnerOwner,
+            runnerType,
+            disableAutoUpdate,
+            ssmTokenPath,
+            ssmConfigPath,
           },
-          environment,
-          launchTemplateName,
-          subnets,
-          amiIdSsmParameterName,
-          tracingEnabled,
-          onDemandFailoverOnError,
-        },
-        githubInstallationClient,
-      );
-
-      await publishRetryMessage(payload);
-    } else {
-      logger.info('No runner will be created, maximum number of runners reached.');
-      if (ephemeral) {
-        throw new ScaleError('No runners create: maximum of runners reached.');
+          {
+            ec2instanceCriteria: {
+              instanceTypes,
+              targetCapacityType: instanceTargetCapacityType,
+              maxSpotPrice: instanceMaxSpotPrice,
+              instanceAllocationStrategy: instanceAllocationStrategy,
+            },
+            environment,
+            launchTemplateName,
+            subnets,
+            amiIdSsmParameterName,
+            tracingEnabled,
+            onDemandFailoverOnError,
+          },
+          githubInstallationClient,
+        );
+      } else {
+        logger.info('No runner will be created, maximum number of runners reached.');
+        if (ephemeral) {
+          throw new ScaleError('No runners create: maximum of runners reached.');
+        }
       }
+    } finally {
+      await publishRetryMessage(payload);
     }
   } else {
     logger.info('No runner will be created, job is not queued.');
