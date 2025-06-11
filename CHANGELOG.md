@@ -1,5 +1,17 @@
 # Changelog
 
+## [6.5.7](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.5.6...v6.5.7) (2025-06-11)
+
+
+### Bug Fixes
+
+* add comment in terraform code ([d9d6373](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/d9d6373b217f8abe7b112c1746c437deae25f569))
+* handle enable_on_demand_failover_for_errors default value ([ab8b15f](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/ab8b15f9f2686a7a0cffe5b9de05432014a01cda))
+* **lambda:** bump the aws group across 1 directory with 7 updates ([0558831](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/05588310ee8c409e29b5148930b16b3ea4f4e7d5))
+* **lambda:** bump the aws-powertools group in /lambdas with 4 updates ([0219411](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/0219411d2b9bc56fad6d6e90fe94de42cc95216e))
+* **lambda:** bump the octokit group across 1 directory with 3 updates ([015752a](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/015752a93b05a6ceef34f0936202a2f8ea7df35d))
+* only tag spot requests if no on-demand fallback ([2a28ef1](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/2a28ef1bc5aeb0280b92c5f7b6aabf69c1a68b81))
+
 ## [6.5.6](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.5.5...v6.5.6) (2025-05-24)
 
 
