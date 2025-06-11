@@ -206,8 +206,12 @@ resource "aws_launch_template" "runner" {
     )
   }
 
+  # We avoid including the "spot-instances-request" tag_specifications block when on_demand_failover_for_errors is defined,
+  # because when using on-demand fallback, the spot instance request resource is not created and thus the tags would not apply.
+  # Additionally, tagging spot requests via the CreateFleetCommand in the Lambda function does not work as expected,
+  # so we rely on Terraform to manage these tags only when spot is exclusively used without on-demand failover.
   dynamic "tag_specifications" {
-    for_each = var.instance_target_capacity_type == "spot" ? [1] : [] # Include the block only if the value is "spot"
+    for_each = var.instance_target_capacity_type == "spot" && length(var.enable_on_demand_failover_for_errors) == 0 ? [1] : [] # Include the block only if the value is "spot" and on_demand_failover_for_errors is not enabled
     content {
       resource_type = "spot-instances-request"
       tags = merge(
