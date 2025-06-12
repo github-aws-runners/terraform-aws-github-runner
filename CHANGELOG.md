@@ -1,5 +1,12 @@
 # Changelog
 
+## [6.5.8](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.5.7...v6.5.8) (2025-06-12)
+
+
+### Bug Fixes
+
+* scale down log level ([1d32d26](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/1d32d262ff67a13b0eab8cb6b4f19fa5f9479324))
+
 ## [6.5.7](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.5.6...v6.5.7) (2025-06-11)
 
 
