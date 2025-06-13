@@ -130,7 +130,7 @@ async function removeRunner(ec2runner: RunnerInfo, ghRunnerIds: number[]): Promi
 
       if (statuses.every((status) => status == 204)) {
         await terminateRunner(ec2runner.instanceId);
-        logger.debug(`AWS runner instance '${ec2runner.instanceId}' is terminated and GitHub runner is de-registered.`);
+        logger.info(`AWS runner instance '${ec2runner.instanceId}' is terminated and GitHub runner is de-registered.`);
       } else {
         logger.error(`Failed to de-register GitHub runner: ${statuses}`);
       }
