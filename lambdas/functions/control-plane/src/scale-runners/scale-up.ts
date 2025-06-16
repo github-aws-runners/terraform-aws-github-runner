@@ -455,12 +455,13 @@ async function createJitConfig(githubRunnerConfig: CreateGitHubRunnerConfig, ins
       instance: instance,
     });
     await putParameter(
-      `${githubRunnerConfig.ssmTokenPath}/${instance}`, 
-      runnerConfig.data.encoded_jit_config, true, 
-      { 
-        tags: [{ Key: 'InstanceId', Value: instance }],         
-      }, 
-      "Advanced"
+      `${githubRunnerConfig.ssmTokenPath}/${instance}`,
+      runnerConfig.data.encoded_jit_config,
+      true,
+      {
+        tags: [{ Key: 'InstanceId', Value: instance }],
+      },
+      'Advanced',
     );
     if (isDelay) {
       // Delay to prevent AWS ssm rate limits by being within the max throughput limit
