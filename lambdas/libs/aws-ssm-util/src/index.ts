@@ -22,6 +22,7 @@ export async function putParameter(
   parameter_value: string,
   secure: boolean,
   options: { tags?: Tag[] } = {},
+  tier: "Advanced" | "Standard" = "Standard",
 ): Promise<void> {
   const client = getTracedAWSV3Client(new SSMClient({ region: process.env.AWS_REGION }));
   await client.send(
@@ -30,6 +31,7 @@ export async function putParameter(
       Value: parameter_value,
       Type: secure ? 'SecureString' : 'String',
       Tags: options.tags,
+      Tier: tier
     }),
   );
 }

@@ -450,12 +450,18 @@ async function createJitConfig(githubRunnerConfig: CreateGitHubRunnerConfig, ins
     metricGitHubAppRateLimit(runnerConfig.headers);
 
     // store jit config in ssm parameter store
+    // Must used advanced tier for SSM as encoded_jit_config can be > 4kb
     logger.debug('Runner JIT config for ephemeral runner generated.', {
       instance: instance,
     });
-    await putParameter(`${githubRunnerConfig.ssmTokenPath}/${instance}`, runnerConfig.data.encoded_jit_config, true, {
-      tags: [{ Key: 'InstanceId', Value: instance }],
-    });
+    await putParameter(
+      `${githubRunnerConfig.ssmTokenPath}/${instance}`, 
+      runnerConfig.data.encoded_jit_config, true, 
+      { 
+        tags: [{ Key: 'InstanceId', Value: instance }],         
+      }, 
+      "Advanced"
+    );
     if (isDelay) {
       // Delay to prevent AWS ssm rate limits by being within the max throughput limit
       await delay(25);
