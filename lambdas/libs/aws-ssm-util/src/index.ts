@@ -17,6 +17,8 @@ export async function getParameter(parameter_name: string): Promise<string> {
   return result;
 }
 
+export const SSM_ADVANCED_TIER_THRESHOLD = 4000;
+
 export async function putParameter(
   parameter_name: string,
   parameter_value: string,
@@ -24,12 +26,17 @@ export async function putParameter(
   options: { tags?: Tag[] } = {},
 ): Promise<void> {
   const client = getTracedAWSV3Client(new SSMClient({ region: process.env.AWS_REGION }));
+
+  // Determine tier based on parameter_value size
+  const valueSizeBytes = Buffer.byteLength(parameter_value, 'utf8');
+
   await client.send(
     new PutParameterCommand({
       Name: parameter_name,
       Value: parameter_value,
       Type: secure ? 'SecureString' : 'String',
       Tags: options.tags,
+      Tier: valueSizeBytes >= SSM_ADVANCED_TIER_THRESHOLD ? 'Advanced' : 'Standard',
     }),
   );
 }
