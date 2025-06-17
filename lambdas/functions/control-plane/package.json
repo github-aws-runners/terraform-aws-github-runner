@@ -32,7 +32,7 @@
   "dependencies": {
     "@aws-github-runner/aws-powertools-util": "*",
     "@aws-github-runner/aws-ssm-util": "*",
-    "@aws-lambda-powertools/parameters": "^2.20.0",
+    "@aws-lambda-powertools/parameters": "^2.21.0",
     "@aws-sdk/client-ec2": "^3.830.0",
     "@aws-sdk/client-sqs": "^3.830.0",
     "@middy/core": "^6.1.6",
