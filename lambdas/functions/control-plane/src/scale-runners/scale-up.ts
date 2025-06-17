@@ -450,7 +450,6 @@ async function createJitConfig(githubRunnerConfig: CreateGitHubRunnerConfig, ins
     metricGitHubAppRateLimit(runnerConfig.headers);
 
     // store jit config in ssm parameter store
-    // Must used advanced tier for SSM as encoded_jit_config can be > 4kb
     logger.debug('Runner JIT config for ephemeral runner generated.', {
       instance: instance,
     });
