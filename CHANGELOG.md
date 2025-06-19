@@ -1,5 +1,12 @@
 # Changelog
 
+## [6.5.10](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.5.9...v6.5.10) (2025-06-19)
+
+
+### Bug Fixes
+
+* **docs:** github artifact attestation command in release notes ([#4624](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4624)) ([ff39d4f](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/ff39d4f30992f7e37db086ae01c49c9ce233334f))
+
 ## [6.5.9](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.5.8...v6.5.9) (2025-06-17)
 
 
