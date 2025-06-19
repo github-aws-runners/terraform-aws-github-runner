@@ -33,15 +33,15 @@
     "@typescript-eslint/parser": "^8.31.0",
     "@vitest/coverage-v8": "^3.0.8",
     "chalk": "^5.4.1",
-    "eslint": "^9.27.0",
-    "eslint-plugin-prettier": "5.4.0",
+    "eslint": "^9.29.0",
+    "eslint-plugin-prettier": "5.4.1",
     "nx": "20.6.4",
     "prettier": "^3.5.3",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.8.3",
     "vite": "^6.3.5",
-    "vitest": "^3.1.4"
+    "vitest": "^3.2.3"
   },
   "packageManager": "yarn@4.3.1"
 }

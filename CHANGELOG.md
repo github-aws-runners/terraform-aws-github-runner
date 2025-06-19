@@ -1,5 +1,14 @@
 # Changelog
 
+## [6.5.9](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.5.8...v6.5.9) (2025-06-17)
+
+
+### Bug Fixes
+
+* Dynamic set SSM-paramater tier [#4613](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4613) ([#4622](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4622)) ([430c6e8](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/430c6e8b62bc06f5daa7690d9e09bc4c359f866e))
+* **lambda:** bump the aws group in /lambdas with 6 updates ([ddbe7db](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/ddbe7dbd311b2cd296c189403bc24f79718a6477))
+* **lambda:** bump the aws-powertools group in /lambdas with 4 updates ([91a06e9](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/91a06e9d8f25b15247fe1c3733ac6d230ab45bf1))
+
 ## [6.5.8](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.5.7...v6.5.8) (2025-06-12)
 
 
