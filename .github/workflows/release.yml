@@ -74,3 +74,20 @@ jobs:
           for f in $(find . -name '*.zip'); do
             gh release upload $tag_name $f
           done
+      - name: Attach attestation
+        if: ${{ steps.release.outputs.releases_created == 'true' }}
+        env:
+          ATTESTATION_BUNDLE: ${{ steps.attest.outputs.bundle-path }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ steps.release.outputs.tag_name }}
+          ATTESTATION_ID: ${{ steps.attest.outputs.attestation-id }}
+        run: |
+          # rename attest bundle to github-aws-runners-terraform-aws-github-runner-attestation-$attestation-id.sigstore
+          # OpenSSF expects the attestation bundle to be named in this format (*.sigstore)
+          SIGSTORE_BUNDLE="github-aws-runners-terraform-aws-github-runner-attestation-${ATTESTATION_ID}.sigstore"
+          mv ${ATTESTATION_BUNDLE} $SIGSTORE_BUNDLE
+          if [ -z "$SIGSTORE_BUNDLE" ]; then
+            echo "No attestation bundle found, skipping attachment."
+            exit 0
+          fi
+          gh release upload $tag_name "$SIGSTORE_BUNDLE"
