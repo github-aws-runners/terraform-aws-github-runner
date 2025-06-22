@@ -217,11 +217,15 @@ async function getAmiInLatestTemplates(options: AmiCleanupOptions): Promise<(str
 
   // Discover launch templates, optionally filtered by specific names. If no
   // names provided, this will return all launch templates in the account
+  logger.debug('Describing launch templates', {
+    launchTemplateNames: options.launchTemplateNames,
+  });
   const launchTemplates = await ec2Client.send(
     new DescribeLaunchTemplatesCommand({
       LaunchTemplateNames: options.launchTemplateNames,
     }),
   );
+  logger.debug('Found launch templates', { launchTemplates });
 
   // For each template, fetch the default version and resolve any SSM aliases.
   const amiIdsNested = await Promise.all(
@@ -236,10 +240,12 @@ async function getAmiInLatestTemplates(options: AmiCleanupOptions): Promise<(str
         }),
       );
 
+      logger.debug('Found launch template versions', { versionsResp });
       return (versionsResp.LaunchTemplateVersions ?? []).map((v) => v.LaunchTemplateData?.ImageId);
     }),
   );
 
+  logger.debug('Found AMIs in launch templates', { amiIdsNested });
   return amiIdsNested.flat();
 }
 
@@ -283,6 +289,7 @@ async function getAmisReferedInSSM(options: AmiCleanupOptions): Promise<(string 
 
     try {
       // Discover parameters matching the wildcard patterns
+      logger.debug('Describing SSM parameter', { filters });
       const ssmParameters = await ssmClient.send(new DescribeParametersCommand({ ParameterFilters: filters }));
 
       // Fetch the actual values of discovered parameters
@@ -296,6 +303,7 @@ async function getAmisReferedInSSM(options: AmiCleanupOptions): Promise<(string 
 
   // Combine results from both explicit and wildcard parameter resolution
   const values = await Promise.all([explicitValuesPromise, wildcardValues]);
+  logger.debug('Resolved SSM parameter values', { values });
   return values.flat();
 }
 
