@@ -85,9 +85,12 @@ jobs:
           # rename attest bundle to github-aws-runners-terraform-aws-github-runner-attestation-$attestation-id.sigstore
           # OpenSSF expects the attestation bundle to be named in this format (*.sigstore)
           SIGSTORE_BUNDLE=$RUNNER_TEMP/github-aws-runners-terraform-aws-github-runner-attestation-${ATTESTATION_ID}.sigstore
+          INTOTO_BUNDLE=$RUNNER_TEMP/github-aws-runners-terraform-aws-github-runner-attestation-${ATTESTATION_ID}.intoto.json
           mv ${ATTESTATION_BUNDLE} $SIGSTORE_BUNDLE
           if [ -z "$SIGSTORE_BUNDLE" ]; then
             echo "No attestation bundle found, skipping attachment."
             exit 0
           fi
           gh release upload $TAG_NAME "$SIGSTORE_BUNDLE"
+          cat ${SIGSTORE_BUNDLE} | jq -r '.dsseEnvelope | select(.payloadType == "application/vnd.in-toto+json").payload' | base64 -d | jq .> ${INTOTO_BUNDLE}
+          gh release upload $TAG_NAME "${INTOTO_BUNDLE}"
