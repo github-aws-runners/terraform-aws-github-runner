@@ -90,4 +90,4 @@ jobs:
             echo "No attestation bundle found, skipping attachment."
             exit 0
           fi
-          gh release upload $tag_name "$SIGSTORE_BUNDLE"
+          gh release upload $TAG_NAME "$SIGSTORE_BUNDLE"
