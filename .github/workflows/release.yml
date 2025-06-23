@@ -84,7 +84,7 @@ jobs:
         run: |
           # rename attest bundle to github-aws-runners-terraform-aws-github-runner-attestation-$attestation-id.sigstore
           # OpenSSF expects the attestation bundle to be named in this format (*.sigstore)
-          SIGSTORE_BUNDLE="github-aws-runners-terraform-aws-github-runner-attestation-${ATTESTATION_ID}.sigstore"
+          SIGSTORE_BUNDLE=$RUNNER_TEMP/github-aws-runners-terraform-aws-github-runner-attestation-${ATTESTATION_ID}.sigstore
           mv ${ATTESTATION_BUNDLE} $SIGSTORE_BUNDLE
           if [ -z "$SIGSTORE_BUNDLE" ]; then
             echo "No attestation bundle found, skipping attachment."
