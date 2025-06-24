@@ -205,7 +205,6 @@ async function processFleetResult(
       instances.push(...instancesOnDemand);
       return instances;
     } else if ((failedCount = countScaleErrors(errors, scaleErrors)) > 0) {
-
       logger.warn('Create fleet failed, ScaleError will be thrown to trigger retry for ephemeral runners.');
       logger.debug('Create fleet failed.', { data: fleet.Errors });
       throw new ScaleError('Failed to create instance, create fleet failed.', failedCount);
@@ -218,7 +217,7 @@ async function processFleetResult(
 }
 
 function countScaleErrors(errors: string[], scaleErrors: string[]): number {
-  return errors.reduce((acc, e) => scaleErrors.includes(e) ? acc + 1 : acc, 0);
+  return errors.reduce((acc, e) => (scaleErrors.includes(e) ? acc + 1 : acc), 0);
 }
 
 async function getAmiIdOverride(runnerParameters: Runners.RunnerInputParameters): Promise<string | undefined> {

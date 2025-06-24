@@ -1,7 +1,7 @@
 class ScaleError extends Error {
   constructor(
     public message: string,
-    public failedInstanceCount: number = 1
+    public failedInstanceCount: number = 1,
   ) {
     super(message);
     this.name = 'ScaleError';
