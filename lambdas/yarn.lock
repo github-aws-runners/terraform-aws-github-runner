@@ -5090,12 +5090,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@swc/helpers@npm:~0.5.0, @swc/helpers@npm:~0.5.15":
+"@swc/helpers@npm:~0.5.0":
   version: 0.5.15
   resolution: "@swc/helpers@npm:0.5.15"
   dependencies:
     tslib: "npm:^2.8.0"
   checksum: 10c0/33002f74f6f885f04c132960835fdfc474186983ea567606db62e86acd0680ca82f34647e8e610f4e1e422d1c16fce729dde22cd3b797ab1fd9061a825dabca4
+  languageName: node
+  linkType: hard
+
+"@swc/helpers@npm:~0.5.17":
+  version: 0.5.17
+  resolution: "@swc/helpers@npm:0.5.17"
+  dependencies:
+    tslib: "npm:^2.8.0"
+  checksum: 10c0/fe1f33ebb968558c5a0c595e54f2e479e4609bff844f9ca9a2d1ffd8dd8504c26f862a11b031f48f75c95b0381c2966c3dd156e25942f90089badd24341e7dbb
   languageName: node
   linkType: hard
 
@@ -8761,7 +8770,7 @@ __metadata:
     "@nx/vite": "npm:^20.7.1"
     "@swc-node/register": "npm:~1.10.10"
     "@swc/core": "npm:~1.11.21"
-    "@swc/helpers": "npm:~0.5.15"
+    "@swc/helpers": "npm:~0.5.17"
     "@trivago/prettier-plugin-sort-imports": "npm:^5.2.2"
     "@typescript-eslint/eslint-plugin": "npm:^8.31.0"
     "@typescript-eslint/parser": "npm:^8.31.0"
