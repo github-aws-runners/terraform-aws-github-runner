@@ -4,7 +4,7 @@ import nock from 'nock';
 
 import { RunnerInfo, RunnerList } from '../aws/runners.d';
 import * as ghAuth from '../github/auth';
-import { listEC2Runners, terminateRunner, tag } from './../aws/runners';
+import { listEC2Runners, terminateRunner, tag, untag } from './../aws/runners';
 import { githubCache } from './cache';
 import { newestFirstStrategy, oldestFirstStrategy, scaleDown } from './scale-down';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -33,6 +33,7 @@ vi.mock('./../aws/runners', async (importOriginal) => {
   return {
     ...actual,
     tag: vi.fn(),
+    untag: vi.fn(),
     terminateRunner: vi.fn(),
     listEC2Runners: vi.fn(),
   };
@@ -62,6 +63,7 @@ const mockedInstallationAuth = vi.mocked(ghAuth.createGithubInstallationAuth);
 const mockCreateClient = vi.mocked(ghAuth.createOctokitClient);
 const mockListRunners = vi.mocked(listEC2Runners);
 const mockTagRunners = vi.mocked(tag);
+const mockUntagRunners = vi.mocked(untag);
 const mockTerminateRunners = vi.mocked(terminateRunner);
 
 export interface TestData {
@@ -312,7 +314,7 @@ describe('Scale down runners', () => {
         checkNonTerminated(runners);
       });
 
-      it(`Should terminate orphan.`, async () => {
+      it(`Should terminate orphan (Non JIT)`, async () => {
         // setup
         const orphanRunner = createRunnerTestData('orphan-1', type, MINIMUM_BOOT_TIME + 1, false, false, false);
         const idleRunner = createRunnerTestData('idle-1', type, MINIMUM_BOOT_TIME + 1, true, false, false);
@@ -334,6 +336,7 @@ describe('Scale down runners', () => {
             Value: 'true',
           },
         ]);
+
         expect(mockTagRunners).not.toHaveBeenCalledWith(idleRunner.instanceId, expect.anything());
 
         // next cycle, update test data set orphan to true and terminate should be true
@@ -346,6 +349,58 @@ describe('Scale down runners', () => {
         // assert
         checkTerminated(runners);
         checkNonTerminated(runners);
+      });
+
+      it('Should test if orphaned runner, untag if online and busy, else terminate (JIT)', async () => {
+        // arrange
+        const orphanRunner = createRunnerTestData(
+          'orphan-jit',
+          type,
+          MINIMUM_BOOT_TIME + 1,
+          false,
+          true,
+          false,
+          undefined,
+          1234567890,
+        );
+        const runners = [orphanRunner];
+
+        mockGitHubRunners([]);
+        mockAwsRunners(runners);
+
+        if (type === 'Repo') {
+          mockOctokit.actions.getSelfHostedRunnerForRepo.mockResolvedValueOnce({
+            data: { id: 1234567890, name: orphanRunner.instanceId, busy: true, status: 'online' },
+          });
+        } else {
+          mockOctokit.actions.getSelfHostedRunnerForOrg.mockResolvedValueOnce({
+            data: { id: 1234567890, name: orphanRunner.instanceId, busy: true, status: 'online' },
+          });
+        }
+
+        // act
+        await scaleDown();
+
+        // assert
+        expect(mockUntagRunners).toHaveBeenCalledWith(orphanRunner.instanceId, [{ Key: 'ghr:orphan', Value: 'true' }]);
+        expect(mockTerminateRunners).not.toHaveBeenCalledWith(orphanRunner.instanceId);
+
+        // arrange
+        if (type === 'Repo') {
+          mockOctokit.actions.getSelfHostedRunnerForRepo.mockResolvedValueOnce({
+            data: { runnerId: 1234567890, name: orphanRunner.instanceId, busy: true, status: 'offline' },
+          });
+        } else {
+          mockOctokit.actions.getSelfHostedRunnerForOrg.mockResolvedValueOnce({
+            data: { runnerId: 1234567890, name: orphanRunner.instanceId, busy: true, status: 'offline' },
+          });
+        }
+
+        // act
+        await scaleDown();
+
+        // assert
+        expect(mockTerminateRunners).toHaveBeenCalledWith(orphanRunner.instanceId);
       });
 
       it(`Should ignore errors when termination orphan fails.`, async () => {
@@ -625,6 +680,7 @@ function createRunnerTestData(
   orphan: boolean,
   shouldBeTerminated: boolean,
   owner?: string,
+  runnerId?: number,
 ): RunnerTestItem {
   return {
     instanceId: `i-${name}-${type.toLowerCase()}`,
@@ -638,5 +694,6 @@ function createRunnerTestData(
     registered,
     orphan,
     shouldBeTerminated,
+    runnerId: runnerId !== undefined ? String(runnerId) : undefined,
   };
 }
