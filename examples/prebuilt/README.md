@@ -7,6 +7,18 @@ This module shows how to create GitHub action runners using a prebuilt AMI for t
 
 @@ Usages
 
+
+Steps for the full setup, such as creating a GitHub app can be found in the root module's [README](https://github.com/github-aws-runners/terraform-aws-github-runner). First download the Lambda releases from GitHub. Alternatively you can build the lambdas locally with Node or Docker, there is a simple build script in `<root>/.ci/build.sh`. In the `main.tf` you can simply remove the location of the lambda zip files, the default location will work in this case.
+
+> This example assumes local built lambda's available. Ensure you have built the lambda's. Alternatively you can download the lambda's. The version needs to be set to a GitHub release version, see https://github.com/github-aws-runners/terraform-aws-github-runner/releases
+
+```bash
+cd ../lambdas-download
+terraform init
+terraform apply -var=module_version=<VERSION>
+cd -
+```
+
 ### Packer Image
 
 You will need to build your image. This example deployment uses the image example in `/images/linux-amz2`. You must build this image with packer in your AWS account first. Once you have built this you need to provider your owner ID as a variable
@@ -92,6 +104,8 @@ terraform output webhook_secret
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | <a name="input_ami_name_filter"></a> [ami\_name\_filter](#input\_ami\_name\_filter) | AMI name filter for the action runner AMI. By default amazon linux 2 is used. | `string` | `"github-runner-al2023-x86_64-*"` | no |
+| <a name="input_aws_region"></a> [aws\_region](#input\_aws\_region) | AWS region. | `string` | `"eu-west-1"` | no |
+| <a name="input_environment"></a> [environment](#input\_environment) | Environment name, used as prefix. | `string` | `null` | no |
 | <a name="input_github_app"></a> [github\_app](#input\_github\_app) | GitHub for API usages. | <pre>object({<br/>    id         = string<br/>    key_base64 = string<br/>  })</pre> | n/a | yes |
 | <a name="input_runner_os"></a> [runner\_os](#input\_runner\_os) | The EC2 Operating System type to use for action runner instances (linux,windows). | `string` | `"linux"` | no |
 

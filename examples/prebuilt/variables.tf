@@ -7,6 +7,20 @@ variable "github_app" {
   })
 }
 
+variable "environment" {
+  description = "Environment name, used as prefix."
+
+  type    = string
+  default = null
+}
+
+variable "aws_region" {
+  description = "AWS region."
+
+  type    = string
+  default = "eu-west-1"
+}
+
 variable "runner_os" {
   description = "The EC2 Operating System type to use for action runner instances (linux,windows)."
 

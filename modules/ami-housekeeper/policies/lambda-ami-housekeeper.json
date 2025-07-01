@@ -11,6 +11,7 @@
         "ec2:DeregisterImage",
         "ec2:DeleteSnapshot",
         "ssm:DescribeParameters",
+        "ssm:GetParameters",
         "ssm:GetParameter"
       ],
       "Resource": "*"

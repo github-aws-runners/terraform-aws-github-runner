@@ -51,3 +51,23 @@ updates:
     commit-message:
       prefix: "fix(lambda)"
       prefix-development: "chore(lambda)"
+
+  - package-ecosystem: "docker"
+    directory: "/.ci/Dockerfile"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "docker"
+    commit-message:
+      prefix: "chore(docker)"
+
+  - package-ecosystem: "docker"
+    directory: "/.devcontainer/Dockerfile"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "docker"
+    commit-message:
+      prefix: "chore(devcontainer)"
