@@ -1,5 +1,20 @@
 # Changelog
 
+## [6.6.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.5.11...v6.6.0) (2025-07-01)
+
+
+### Features
+
+* **runner:** support Ubuntu 24.04 ([#4246](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4246)) ([76456b5](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/76456b5f625fa36140b7a7e9c1a104b248eeef7f))
+
+
+### Bug Fixes
+
+* **lambda:** bump @octokit/webhooks from 14.0.2 to 14.1.0 in /lambdas in the octokit group ([#4651](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4651)) ([754ffc8](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/754ffc80fd7c70b3260be5d2c9ac88e350325cf9))
+* **lambda:** bump the aws group in /lambdas with 6 updates ([#4641](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4641)) ([1955841](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/19558416b8b43080235329eadb2000f8d63555fa))
+* **lambda:** bump the aws group in /lambdas with 7 updates ([#4650](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4650)) ([e53710e](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/e53710ef6d7e20b15e839bcdb7754d47d7ce612f))
+* support Terraform AWS Provider v6 ([#4646](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4646)) ([aebef80](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/aebef800ce165fd0df26d774f9c344c1cf02d245))
+
 ## [6.5.11](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.5.10...v6.5.11) (2025-06-24)
 
 
