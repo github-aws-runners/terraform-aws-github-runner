@@ -70,5 +70,5 @@ if [[ "$os_id" =~ ^ubuntu.* ]]; then
 fi
 
 echo "Set file ownership of action runner"
-chown -R "$user_name":"$user_name" .
+chown -R "$user_name":"$user_name" /opt/actions-runner
 chown -R "$user_name":"$user_name" /opt/hostedtoolcache
