@@ -72,47 +72,4 @@ updates:
     commit-message:
       prefix: "chore(devcontainer)"
 
-  - package-ecosystem: docker
-    directory: /.ci
-    schedule:
-      interval: daily
 
-  - package-ecosystem: docker
-    directory: /.devcontainer
-    schedule:
-      interval: daily
-
-  - package-ecosystem: npm
-    directory: /lambdas/functions/ami-housekeeper
-    schedule:
-      interval: daily
-
-  - package-ecosystem: npm
-    directory: /lambdas/functions/control-plane
-    schedule:
-      interval: daily
-
-  - package-ecosystem: npm
-    directory: /lambdas/functions/gh-agent-syncer
-    schedule:
-      interval: daily
-
-  - package-ecosystem: npm
-    directory: /lambdas/functions/termination-watcher
-    schedule:
-      interval: daily
-
-  - package-ecosystem: npm
-    directory: /lambdas/functions/webhook
-    schedule:
-      interval: daily
-
-  - package-ecosystem: npm
-    directory: /lambdas/libs/aws-powertools-util
-    schedule:
-      interval: daily
-
-  - package-ecosystem: npm
-    directory: /lambdas/libs/aws-ssm-util
-    schedule:
-      interval: daily
