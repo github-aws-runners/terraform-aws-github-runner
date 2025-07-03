@@ -71,5 +71,3 @@ updates:
       - "docker"
     commit-message:
       prefix: "chore(devcontainer)"
-
-
