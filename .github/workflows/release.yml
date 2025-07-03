@@ -6,6 +6,9 @@ on:
       - v1
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   release:
     name: Release
@@ -16,6 +19,11 @@ jobs:
       id-token: write
       attestations: write
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@6c439dc8bdf85cadbbce9ed30d1c7b959517bc49 # v2.12.2
+        with:
+          egress-policy: audit
+
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
