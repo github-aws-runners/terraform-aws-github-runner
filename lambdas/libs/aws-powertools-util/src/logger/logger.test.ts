@@ -30,7 +30,7 @@ const context: Context = {
   },
 };
 
-const versionFilePath = path.resolve(__dirname, 'version.json');
+const versionFilePath = path.resolve(__dirname, 'package.json');
 
 let logger: typeof import('../').logger;
 let setContext: typeof import('../').setContext;
