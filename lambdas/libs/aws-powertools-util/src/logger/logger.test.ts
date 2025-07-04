@@ -71,12 +71,10 @@ describe('A root logger.', () => {
 
 describe('Logger version handling', () => {
   test('Should not fail if package.json does not exist', () => {
-    const packageFilePath = path.resolve(__dirname, 'package.json');
-
     // Temporarily rename package.json to simulate its absence
-    const tempFilePath = `${packageFilePath}.bak`;
-    if (fs.existsSync(packageFilePath)) {
-      fs.renameSync(packageFilePath, tempFilePath);
+    const tempFilePath = `${versionFilePath}.bak`;
+    if (fs.existsSync(versionFilePath)) {
+      fs.renameSync(versionFilePath, tempFilePath);
     }
 
     setContext(context, 'unit-test');
@@ -89,17 +87,15 @@ describe('Logger version handling', () => {
 
     // Restore package.json
     if (fs.existsSync(tempFilePath)) {
-      fs.renameSync(tempFilePath, packageFilePath);
+      fs.renameSync(tempFilePath, versionFilePath);
     }
   });
 
   test('Should log version from package.json', () => {
-    const packageFilePath = path.resolve(__dirname, 'package.json');
-
     // Create a mock package.json file
-    const originalPackageData = fs.existsSync(packageFilePath) ? fs.readFileSync(packageFilePath, 'utf-8') : null;
+    const originalPackageData = fs.existsSync(versionFilePath) ? fs.readFileSync(packageFilePath, 'utf-8') : null;
     const mockPackageData = JSON.stringify({ version: '1.0.0' });
-    fs.writeFileSync(packageFilePath, mockPackageData);
+    fs.writeFileSync(versionFilePath, mockPackageData);
 
     setContext(context, 'unit-test');
 
@@ -111,9 +107,9 @@ describe('Logger version handling', () => {
 
     // Restore the original package.json file
     if (originalPackageData) {
-      fs.writeFileSync(packageFilePath, originalPackageData);
+      fs.writeFileSync(versionFilePath, originalPackageData);
     } else {
-      fs.unlinkSync(packageFilePath);
+      fs.unlinkSync(versionFilePath);
     }
   });
 });
