@@ -40,7 +40,8 @@ jobs:
         uses: googleapis/release-please-action@a02a34c4d625f9be7cb89156071d8567266a2445 # v4.2.0
         with:
           target-branch: ${{ steps.branch.outputs.name }}
-          release-type: terraform-module
+          manifest-file: .release-please-manifest.json
+          config-file: .release-please-config.json
           token: ${{ steps.token.outputs.token }}
       - name: Attest
         if: ${{ steps.release.outputs.releases_created == 'true' }}
