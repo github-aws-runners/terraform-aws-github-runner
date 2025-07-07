@@ -17,7 +17,7 @@
     "all": "yarn build && yarn format && yarn lint && yarn test"
   },
   "devDependencies": {
-    "@aws-sdk/types": "^3.821.0",
+    "@aws-sdk/types": "^3.840.0",
     "@octokit/types": "^14.1.0",
     "@types/aws-lambda": "^8.10.147",
     "@types/node": "^22.14.0",
@@ -32,9 +32,9 @@
   "dependencies": {
     "@aws-github-runner/aws-powertools-util": "*",
     "@aws-github-runner/aws-ssm-util": "*",
-    "@aws-lambda-powertools/parameters": "^2.20.0",
-    "@aws-sdk/client-ec2": "^3.827.0",
-    "@aws-sdk/client-sqs": "^3.826.0",
+    "@aws-lambda-powertools/parameters": "^2.22.0",
+    "@aws-sdk/client-ec2": "^3.840.0",
+    "@aws-sdk/client-sqs": "^3.840.0",
     "@middy/core": "^6.1.6",
     "@octokit/auth-app": "8.0.1",
     "@octokit/core": "7.0.2",
