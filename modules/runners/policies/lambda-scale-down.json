@@ -15,7 +15,8 @@
       "Effect": "Allow",
       "Action": [
         "ec2:TerminateInstances",
-        "ec2:CreateTags"
+        "ec2:CreateTags",
+        "ec2:RemoveTags"
       ],
       "Resource": [
         "*"
@@ -30,7 +31,8 @@
       "Effect": "Allow",
       "Action": [
         "ec2:TerminateInstances",
-        "ec2:CreateTags"
+        "ec2:CreateTags",
+        "ec2:RemoveTags"
       ],
       "Resource": [
         "*"
