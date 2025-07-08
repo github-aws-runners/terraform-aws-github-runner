@@ -69,16 +69,7 @@ async function getGitHubSelfHostedRunnerState(
         });
   metricGitHubAppRateLimit(state.headers);
 
-  return {
-    id: state.data.id,
-    name: state.data.name,
-    busy: state.data.busy,
-    status: state.data.status,
-    os: state.data.os,
-    labels: state.data.labels,
-    runner_group_id: state.data.runner_group_id,
-    ephemeral: state.data.ephemeral,
-  };
+  return state.data;
 }
 
 async function getGitHubRunnerBusyState(client: Octokit, ec2runner: RunnerInfo, runnerId: number): Promise<boolean> {
@@ -221,22 +212,26 @@ async function markOrphan(instanceId: string): Promise<void> {
   }
 }
 
-async function lastChanceCheckOrphanRunner(runner: RunnerList): Promise<void> {
+async function unmarkOrphan(instanceId: string): Promise<void> {
+  try {
+    await untag(instanceId, [{ Key: 'ghr:orphan', Value: 'true' }]);
+    logger.info(`Runner '${instanceId}' unmarked as orphan.`);
+  } catch (e) {
+    logger.error(`Failed to unmark runner '${instanceId}' as orphan.`, { error: e });
+  }
+}
+
+async function lastChanceCheckOrphanRunner(runner: RunnerList): Promise<boolean> {
   const client = await getOrCreateOctokit(runner as RunnerInfo);
   const runnerId = parseInt(runner.runnerId || '0');
   const ec2Instance = runner as RunnerInfo;
   const state = await getGitHubSelfHostedRunnerState(client, ec2Instance, runnerId);
+  var isOrphan = false;
   logger.debug(`Runner is currently '${runner.instanceId}' state: ${JSON.stringify(state)}`);
-  if (state.status === 'online' && state.busy) {
-    logger.info(`Runner '${runner.instanceId}' is orphan, but is online and busy.`);
-    await untag(runner.instanceId, [{ Key: 'ghr:orphan', Value: 'true' }]);
-  } else if (state.status === 'offline') {
-    logger.warn(`Runner '${runner.instanceId}' is orphan.`);
-    logger.info(`Terminating orphan runner '${runner.instanceId}'`);
-    await terminateRunner(runner.instanceId).catch((e) => {
-      logger.error(`Failed to terminate orphan runner '${runner.instanceId}'`, { error: e });
-    });
+  if (state.status === 'offline') {
+    isOrphan = true;
   }
+  return isOrphan
 }
 
 async function terminateOrphan(environment: string): Promise<void> {
@@ -244,10 +239,8 @@ async function terminateOrphan(environment: string): Promise<void> {
     const orphanRunners = await listEC2Runners({ environment, orphan: true });
 
     for (const runner of orphanRunners) {
-      // do we have a valid runnerId? then we are in a Jit Runner scenario else, use old method
       if (runner.runnerId) {
-        logger.debug(`Runner '${runner.instanceId}' is orphan, but has a runnerId.`);
-        await lastChanceCheckOrphanRunner(runner);
+        await lastChanceCheckOrphanRunner(runner) ? terminateRunner(runner.instanceId) : unmarkOrphan(runner.instanceId);
       } else {
         logger.info(`Terminating orphan runner '${runner.instanceId}'`);
         await terminateRunner(runner.instanceId).catch((e) => {
