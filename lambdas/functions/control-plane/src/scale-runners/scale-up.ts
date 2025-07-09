@@ -416,7 +416,7 @@ async function createRegistrationTokenConfig(
   }
 }
 
-async function addGhRunnerIdToEC2InstanceTag(instanceId: string, runnerId: string): Promise<void> {
+async function tagRunnerId(instanceId: string, runnerId: string): Promise<void> {
   try {
     await tag(instanceId, [{ Key: 'ghr:github_runner_id', Value: runnerId }]);
   } catch (e) {
@@ -458,7 +458,7 @@ async function createJitConfig(githubRunnerConfig: CreateGitHubRunnerConfig, ins
     metricGitHubAppRateLimit(runnerConfig.headers);
 
     // tag the EC2 instance with the Github runner id
-    await addGhRunnerIdToEC2InstanceTag(instance, runnerConfig.data.runner.id.toString());
+    await tagRunnerId(instance, runnerConfig.data.runner.id.toString());
 
     // store jit config in ssm parameter store
     logger.debug('Runner JIT config for ephemeral runner generated.', {
