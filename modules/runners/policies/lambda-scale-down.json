@@ -16,7 +16,8 @@
       "Action": [
         "ec2:TerminateInstances",
         "ec2:CreateTags",
-        "ec2:RemoveTags"
+        "ec2:DeleteTags",
+        "tag:UntagResources"
       ],
       "Resource": [
         "*"
@@ -32,7 +33,8 @@
       "Action": [
         "ec2:TerminateInstances",
         "ec2:CreateTags",
-        "ec2:RemoveTags"
+        "ec2:DeleteTags",
+        "tag:UntagResources"
       ],
       "Resource": [
         "*"
