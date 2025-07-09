@@ -230,8 +230,9 @@ async function lastChanceCheckOrphanRunner(runner: RunnerList): Promise<boolean>
   logger.debug(
     `Runner '${runner.instanceId}' is '${state.status}' and is currently '${state.busy ? 'busy' : 'idle'}'.`,
   );
-  const isOfflineAndBusy = state.status === 'offline' && (state.busy || !state.busy);
-  if (isOfflineAndBusy) {
+  const isOfflineAndBusy = state.status === 'offline' && state.busy;
+  const isOfflineAndIdle = state.status === 'offline' && !state.busy;
+  if (isOfflineAndBusy || isOfflineAndIdle) {
     isOrphan = true;
   }
   logger.info(`Runner '${runner.instanceId}' is judged to ${isOrphan ? 'be' : 'not be'} orphaned.`);
