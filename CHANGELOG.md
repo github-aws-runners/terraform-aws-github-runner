@@ -1,5 +1,12 @@
 # Changelog
 
+## [6.6.1](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.6.0...v6.6.1) (2025-07-09)
+
+
+### Bug Fixes
+
+* Safer chown call in runner scripts for custom AMIs ([#4654](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4654)) ([0114816](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/0114816eac28428d409c3554c7c871056c07ae93))
+
 ## [6.6.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.5.11...v6.6.0) (2025-07-01)
 
 
