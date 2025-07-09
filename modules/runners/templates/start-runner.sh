@@ -190,7 +190,7 @@ if [[ "$run_as" == "root" ]]; then
   export RUNNER_ALLOW_RUNASROOT=1
 fi
 
-chown -R $run_as .
+chown -R $run_as /opt/actions-runner
 
 info_arch=$(uname -p)
 info_os=$( ( lsb_release -ds || cat /etc/*release || uname -om ) 2>/dev/null | head -n1 | cut -d "=" -f2- | tr -d '"')
