@@ -234,7 +234,7 @@ async function lastChanceCheckOrphanRunner(runner: RunnerList): Promise<boolean>
   if (isOfflineAndBusy) {
     isOrphan = true;
   }
-  logger.info(`Runner is judged to '${runner.instanceId}' ${isOrphan ? 'be' : 'not be'} orphaned.`);
+  logger.info(`Runner '${runner.instanceId}' is judged to ${isOrphan ? 'be' : 'not be'} orphaned.`);
   return isOrphan;
 }
 
