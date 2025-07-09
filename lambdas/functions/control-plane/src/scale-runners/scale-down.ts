@@ -244,9 +244,12 @@ async function terminateOrphan(environment: string): Promise<void> {
 
     for (const runner of orphanRunners) {
       if (runner.runnerId) {
-        (await lastChanceCheckOrphanRunner(runner))
-          ? terminateRunner(runner.instanceId)
-          : unmarkOrphan(runner.instanceId);
+        const isOrphan = await lastChanceCheckOrphanRunner(runner);
+        if (isOrphan) {
+          await terminateRunner(runner.instanceId);
+        } else {
+          await unmarkOrphan(runner.instanceId);
+        }
       } else {
         logger.info(`Terminating orphan runner '${runner.instanceId}'`);
         await terminateRunner(runner.instanceId).catch((e) => {
