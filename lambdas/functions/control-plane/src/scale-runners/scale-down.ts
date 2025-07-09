@@ -206,18 +206,18 @@ async function evaluateAndRemoveRunners(
 async function markOrphan(instanceId: string): Promise<void> {
   try {
     await tag(instanceId, [{ Key: 'ghr:orphan', Value: 'true' }]);
-    logger.info(`Runner '${instanceId}' marked as orphan.`);
+    logger.info(`Runner '${instanceId}' tagged as orphan.`);
   } catch (e) {
-    logger.error(`Failed to mark runner '${instanceId}' as orphan.`, { error: e });
+    logger.error(`Failed to tag runner '${instanceId}' as orphan.`, { error: e });
   }
 }
 
 async function unmarkOrphan(instanceId: string): Promise<void> {
   try {
     await untag(instanceId, [{ Key: 'ghr:orphan', Value: 'true' }]);
-    logger.info(`Runner '${instanceId}' unmarked as orphan.`);
+    logger.info(`Runner '${instanceId}' untagged as orphan.`);
   } catch (e) {
-    logger.error(`Failed to unmark runner '${instanceId}' as orphan.`, { error: e });
+    logger.error(`Failed to un-tag runner '${instanceId}' as orphan.`, { error: e });
   }
 }
 
@@ -227,11 +227,15 @@ async function lastChanceCheckOrphanRunner(runner: RunnerList): Promise<boolean>
   const ec2Instance = runner as RunnerInfo;
   const state = await getGitHubSelfHostedRunnerState(client, ec2Instance, runnerId);
   var isOrphan = false;
-  logger.debug(`Runner is currently '${runner.instanceId}' state: ${JSON.stringify(state)}`);
-  if (state.status === 'offline') {
+  logger.debug(
+    `Runner '${runner.instanceId}' is '${state.status}' and is currently '${state.busy ? 'busy' : 'idle'}'.`,
+  );
+  const isOfflineAndBusy = state.status === 'offline' && state.busy;
+  if (isOfflineAndBusy) {
     isOrphan = true;
   }
-  return isOrphan
+  logger.info(`Runner '${runner.instanceId}' ${isOrphan ? 'is judged to be' : 'is judged to not be'} orphaned.`);
+  return isOrphan;
 }
 
 async function terminateOrphan(environment: string): Promise<void> {
@@ -240,7 +244,9 @@ async function terminateOrphan(environment: string): Promise<void> {
 
     for (const runner of orphanRunners) {
       if (runner.runnerId) {
-        await lastChanceCheckOrphanRunner(runner) ? terminateRunner(runner.instanceId) : unmarkOrphan(runner.instanceId);
+        (await lastChanceCheckOrphanRunner(runner))
+          ? terminateRunner(runner.instanceId)
+          : unmarkOrphan(runner.instanceId);
       } else {
         logger.info(`Terminating orphan runner '${runner.instanceId}'`);
         await terminateRunner(runner.instanceId).catch((e) => {
