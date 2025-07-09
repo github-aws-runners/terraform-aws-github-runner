@@ -226,7 +226,7 @@ async function lastChanceCheckOrphanRunner(runner: RunnerList): Promise<boolean>
   const runnerId = parseInt(runner.runnerId || '0');
   const ec2Instance = runner as RunnerInfo;
   const state = await getGitHubSelfHostedRunnerState(client, ec2Instance, runnerId);
-  var isOrphan = false;
+  let isOrphan = false;
   logger.debug(
     `Runner '${runner.instanceId}' is '${state.status}' and is currently '${state.busy ? 'busy' : 'idle'}'.`,
   );
