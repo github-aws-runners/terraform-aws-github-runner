@@ -37,7 +37,7 @@ async function handleWorkflowJob(
     });
     for (const queue of matcherConfig) {
       if (canRunJob(body.workflow_job.labels, queue.matcherConfig.labelMatchers, queue.matcherConfig.exactMatch)) {
-        await sendActionRequest({
+        const actionRequest = {
           id: body.workflow_job.id,
           repositoryName: body.repository.name,
           repositoryOwner: body.repository.owner.login,
@@ -45,7 +45,11 @@ async function handleWorkflowJob(
           installationId: body.installation?.id ?? 0,
           queueId: queue.id,
           repoOwnerType: body.repository.owner.type,
-        });
+          workflowUrl: body.workflow_job.run_url,
+        };
+        logger.info(`Action request: ${JSON.stringify(actionRequest)}`);
+        await sendActionRequest(actionRequest);
+
         logger.info(`Successfully dispatched job for ${body.repository.full_name} to the queue ${queue.id}`);
         return {
           statusCode: 201,
