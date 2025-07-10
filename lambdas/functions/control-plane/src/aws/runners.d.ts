@@ -10,6 +10,7 @@ export interface RunnerList {
   repo?: string;
   org?: string;
   orphan?: boolean;
+  runnerId?: string;
 }
 
 export interface RunnerInfo {

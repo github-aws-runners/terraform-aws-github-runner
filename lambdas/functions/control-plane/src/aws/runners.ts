@@ -2,6 +2,7 @@ import {
   CreateFleetCommand,
   CreateFleetResult,
   CreateTagsCommand,
+  DeleteTagsCommand,
   DescribeInstancesCommand,
   DescribeInstancesResult,
   EC2Client,
@@ -91,6 +92,7 @@ function getRunnerInfo(runningInstances: DescribeInstancesResult) {
             repo: i.Tags?.find((e) => e.Key === 'ghr:Repo')?.Value as string,
             org: i.Tags?.find((e) => e.Key === 'ghr:Org')?.Value as string,
             orphan: i.Tags?.find((e) => e.Key === 'ghr:orphan')?.Value === 'true',
+            runnerId: i.Tags?.find((e) => e.Key === 'ghr:github_runner_id')?.Value as string,
           });
         }
       }
@@ -110,6 +112,12 @@ export async function tag(instanceId: string, tags: Tag[]): Promise<void> {
   logger.debug(`Tagging '${instanceId}'`, { tags });
   const ec2 = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
   await ec2.send(new CreateTagsCommand({ Resources: [instanceId], Tags: tags }));
+}
+
+export async function untag(instanceId: string, tags: Tag[]): Promise<void> {
+  logger.debug(`Untagging '${instanceId}'`, { tags });
+  const ec2 = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
+  await ec2.send(new DeleteTagsCommand({ Resources: [instanceId], Tags: tags }));
 }
 
 function generateFleetOverrides(
