@@ -12,6 +12,7 @@ export interface ActionRequestMessage {
   installationId: number;
   queueId: string;
   repoOwnerType: string;
+  workflowUrl?: string;
 }
 
 export interface MatcherConfig {
