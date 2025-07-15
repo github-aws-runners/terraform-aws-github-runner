@@ -9,7 +9,7 @@ const defaultValues = {
 };
 
 function setContext(context: Context, module?: string) {
-  logger.addPersistentLogAttributes({
+  logger.appendPersistentKeys({
     'aws-request-id': context.awsRequestId,
     'function-name': context.functionName,
     module: module,
@@ -17,7 +17,7 @@ function setContext(context: Context, module?: string) {
 
   // Add the context to all child loggers
   childLoggers.forEach((childLogger) => {
-    childLogger.addPersistentLogAttributes({
+    childLogger.appendPersistentKeys({
       'aws-request-id': context.awsRequestId,
       'function-name': context.functionName,
     });
@@ -25,14 +25,14 @@ function setContext(context: Context, module?: string) {
 }
 
 const logger = new Logger({
-  persistentLogAttributes: {
+  persistentKeys: {
     ...defaultValues,
   },
 });
 
 function createChildLogger(module: string): Logger {
   const childLogger = logger.createChild({
-    persistentLogAttributes: {
+    persistentKeys: {
       module: module,
     },
   });
@@ -47,7 +47,7 @@ type LogAttributes = {
 
 function addPersistentContextToChildLogger(attributes: LogAttributes) {
   childLoggers.forEach((childLogger) => {
-    childLogger.addPersistentLogAttributes(attributes);
+    childLogger.appendPersistentKeys(attributes);
   });
 }
 
