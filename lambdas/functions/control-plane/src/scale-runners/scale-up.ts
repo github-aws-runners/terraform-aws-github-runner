@@ -4,7 +4,7 @@ import { getParameter, putParameter } from '@aws-github-runner/aws-ssm-util';
 import yn from 'yn';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
-import { createRunner, listEC2Runners } from './../aws/runners';
+import { createRunner, listEC2Runners, tag } from './../aws/runners';
 import { RunnerInputParameters } from './../aws/runners.d';
 import ScaleError from './ScaleError';
 import { publishRetryMessage } from './job-retry';
@@ -416,6 +416,14 @@ async function createRegistrationTokenConfig(
   }
 }
 
+async function tagRunnerId(instanceId: string, runnerId: string): Promise<void> {
+  try {
+    await tag(instanceId, [{ Key: 'ghr:github_runner_id', Value: runnerId }]);
+  } catch (e) {
+    logger.error(`Failed to mark runner '${instanceId}' with ${runnerId}.`, { error: e });
+  }
+}
+
 async function createJitConfig(githubRunnerConfig: CreateGitHubRunnerConfig, instances: string[], ghClient: Octokit) {
   const runnerGroupId = await getRunnerGroupId(githubRunnerConfig, ghClient);
   const { isDelay, delay } = addDelay(instances);
@@ -448,6 +456,9 @@ async function createJitConfig(githubRunnerConfig: CreateGitHubRunnerConfig, ins
           });
 
     metricGitHubAppRateLimit(runnerConfig.headers);
+
+    // tag the EC2 instance with the Github runner id
+    await tagRunnerId(instance, runnerConfig.data.runner.id.toString());
 
     // store jit config in ssm parameter store
     logger.debug('Runner JIT config for ephemeral runner generated.', {
