@@ -1,0 +1,2068 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="..">
+      
+      
+        <link rel="next" href="../getting-started/">
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.15">
+    
+    
+      
+        <title>Configuration - GitHub Runners on AWS</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.342714a4.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#configuration" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="GitHub Runners on AWS" class="md-header__button md-logo" aria-label="GitHub Runners on AWS" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m13.13 22.19-1.63-3.83c1.57-.58 3.04-1.36 4.4-2.27zM5.64 12.5l-3.83-1.63 6.1-2.77C7 9.46 6.22 10.93 5.64 12.5M19.22 4c.28 0 .53 0 .74.05.17 1.39-.02 4.25-3.3 7.53-1.7 1.71-3.73 3.02-6.01 3.89l-2.15-2.1c.92-2.31 2.23-4.34 3.92-6.03C15.18 4.58 17.64 4 19.22 4m0-2c-1.98 0-4.98.69-8.22 3.93-2.19 2.19-3.5 4.6-4.35 6.71-.28.75-.09 1.57.46 2.13l2.13 2.12c.38.38.89.61 1.42.61.23 0 .47-.06.7-.15A19.1 19.1 0 0 0 18.07 13c5.66-5.66 3.54-10.61 3.54-10.61S20.7 2 19.22 2m-4.68 7.46c-.78-.78-.78-2.05 0-2.83s2.05-.78 2.83 0c.77.78.78 2.05 0 2.83s-2.05.78-2.83 0m-5.66 7.07-1.41-1.41zM6.24 22l3.64-3.64c-.34-.09-.67-.24-.97-.45L4.83 22zM2 22h1.41l4.77-4.76-1.42-1.41L2 20.59zm0-2.83 4.09-4.08c-.21-.3-.36-.62-.45-.97L2 17.76z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            GitHub Runners on AWS
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Configuration
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to system preference"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/github-aws-runners/terraform-aws-github-runner" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    github-aws-runners/terraform-aws-github-runner
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="GitHub Runners on AWS" class="md-nav__button md-logo" aria-label="GitHub Runners on AWS" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m13.13 22.19-1.63-3.83c1.57-.58 3.04-1.36 4.4-2.27zM5.64 12.5l-3.83-1.63 6.1-2.77C7 9.46 6.22 10.93 5.64 12.5M19.22 4c.28 0 .53 0 .74.05.17 1.39-.02 4.25-3.3 7.53-1.7 1.71-3.73 3.02-6.01 3.89l-2.15-2.1c.92-2.31 2.23-4.34 3.92-6.03C15.18 4.58 17.64 4 19.22 4m0-2c-1.98 0-4.98.69-8.22 3.93-2.19 2.19-3.5 4.6-4.35 6.71-.28.75-.09 1.57.46 2.13l2.13 2.12c.38.38.89.61 1.42.61.23 0 .47-.06.7-.15A19.1 19.1 0 0 0 18.07 13c5.66-5.66 3.54-10.61 3.54-10.61S20.7 2 19.22 2m-4.68 7.46c-.78-.78-.78-2.05 0-2.83s2.05-.78 2.83 0c.77.78.78 2.05 0 2.83s-2.05.78-2.83 0m-5.66 7.07-1.41-1.41zM6.24 22l3.64-3.64c-.34-.09-.67-.24-.97-.45L4.83 22zM2 22h1.41l4.77-4.76-1.42-1.41L2 20.59zm0-2.83 4.09-4.08c-.21-.3-.36-.62-.45-.97L2 17.76z"/></svg>
+
+    </a>
+    GitHub Runners on AWS
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/github-aws-runners/terraform-aws-github-runner" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    github-aws-runners/terraform-aws-github-runner
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Introduction
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Configuration
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    Configuration
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-considerations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration considerations
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#aws-ssm-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      AWS SSM Parameters
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="AWS SSM Parameters">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#note-regarding-github-app-secrets-provisioning-in-ssm" class="md-nav__link">
+    <span class="md-ellipsis">
+      Note regarding GitHub App secrets provisioning in SSM
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#encryption" class="md-nav__link">
+    <span class="md-ellipsis">
+      Encryption
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Encryption">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#managed-kms-key-default" class="md-nav__link">
+    <span class="md-ellipsis">
+      Managed KMS key (default)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#provided-kms-key" class="md-nav__link">
+    <span class="md-ellipsis">
+      Provided KMS key
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pool" class="md-nav__link">
+    <span class="md-ellipsis">
+      Pool
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#idle-runners" class="md-nav__link">
+    <span class="md-ellipsis">
+      Idle runners
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Idle runners">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#supported-config" class="md-nav__link">
+    <span class="md-ellipsis">
+      Supported config
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ephemeral-runners" class="md-nav__link">
+    <span class="md-ellipsis">
+      Ephemeral runners
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#job-retry-beta" class="md-nav__link">
+    <span class="md-ellipsis">
+      Job retry (Beta)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prebuilt-images" class="md-nav__link">
+    <span class="md-ellipsis">
+      Prebuilt Images
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ami-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      AMI Configuration
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#logging" class="md-nav__link">
+    <span class="md-ellipsis">
+      Logging
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tracing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tracing
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Tracing">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#multiple-runner-module-in-your-aws-account" class="md-nav__link">
+    <span class="md-ellipsis">
+      Multiple runner module in your AWS account
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Metrics
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Metrics">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#supported-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Supported metrics
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#debugging" class="md-nav__link">
+    <span class="md-ellipsis">
+      Debugging
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#experimental-features" class="md-nav__link">
+    <span class="md-ellipsis">
+      Experimental features
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Experimental features">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#termination-watcher" class="md-nav__link">
+    <span class="md-ellipsis">
+      Termination watcher
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#termination-notification" class="md-nav__link">
+    <span class="md-ellipsis">
+      Termination notification
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#termination-handler" class="md-nav__link">
+    <span class="md-ellipsis">
+      Termination handler
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#log-example-both-warnings-and-terminations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Log example (both warnings and terminations)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#eventbridge" class="md-nav__link">
+    <span class="md-ellipsis">
+      EventBridge
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Getting started
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Security
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Modules
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Modules
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../modules/runners/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Runners (main)
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_2" id="__nav_5_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Submodules (public)
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2">
+            <span class="md-nav__icon md-icon"></span>
+            Submodules (public)
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../modules/public/multi-runner/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Multi Runners
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../modules/public/ami-housekeeper/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    AMI Housekeeper
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../modules/public/download-lambda/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Lambda Downloader
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../modules/public/setup-iam-permissions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Setup IAM permissions
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_3" id="__nav_5_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Submodules (internal)
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_3">
+            <span class="md-nav__icon md-icon"></span>
+            Submodules (internal)
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../modules/internal/runners/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Runners
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../modules/internal/runner-binaries-syncer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Syncer
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../modules/internal/ssm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    SSM
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../modules/internal/webhook/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Webhook
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../modules/internal/webhook-github-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Update Webhook
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Examples
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Examples
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Overview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/default/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Default
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/multi-runner/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Multi Runner
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/ephemeral/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Ephemeral
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/external-managed-ssm-secrets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    External managed secrets
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/prebuilt/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Custom AMI
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/termination-watcher/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Termination watcher
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/lambda-download/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Lambda download
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/permissions-boundary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Permissions boundary
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ami-examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    AMI examples
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-considerations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration considerations
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#aws-ssm-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      AWS SSM Parameters
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="AWS SSM Parameters">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#note-regarding-github-app-secrets-provisioning-in-ssm" class="md-nav__link">
+    <span class="md-ellipsis">
+      Note regarding GitHub App secrets provisioning in SSM
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#encryption" class="md-nav__link">
+    <span class="md-ellipsis">
+      Encryption
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Encryption">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#managed-kms-key-default" class="md-nav__link">
+    <span class="md-ellipsis">
+      Managed KMS key (default)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#provided-kms-key" class="md-nav__link">
+    <span class="md-ellipsis">
+      Provided KMS key
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pool" class="md-nav__link">
+    <span class="md-ellipsis">
+      Pool
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#idle-runners" class="md-nav__link">
+    <span class="md-ellipsis">
+      Idle runners
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Idle runners">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#supported-config" class="md-nav__link">
+    <span class="md-ellipsis">
+      Supported config
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ephemeral-runners" class="md-nav__link">
+    <span class="md-ellipsis">
+      Ephemeral runners
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#job-retry-beta" class="md-nav__link">
+    <span class="md-ellipsis">
+      Job retry (Beta)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prebuilt-images" class="md-nav__link">
+    <span class="md-ellipsis">
+      Prebuilt Images
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ami-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      AMI Configuration
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#logging" class="md-nav__link">
+    <span class="md-ellipsis">
+      Logging
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tracing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tracing
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Tracing">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#multiple-runner-module-in-your-aws-account" class="md-nav__link">
+    <span class="md-ellipsis">
+      Multiple runner module in your AWS account
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Metrics
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Metrics">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#supported-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Supported metrics
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#debugging" class="md-nav__link">
+    <span class="md-ellipsis">
+      Debugging
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#experimental-features" class="md-nav__link">
+    <span class="md-ellipsis">
+      Experimental features
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Experimental features">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#termination-watcher" class="md-nav__link">
+    <span class="md-ellipsis">
+      Termination watcher
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#termination-notification" class="md-nav__link">
+    <span class="md-ellipsis">
+      Termination notification
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#termination-handler" class="md-nav__link">
+    <span class="md-ellipsis">
+      Termination handler
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#log-example-both-warnings-and-terminations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Log example (both warnings and terminations)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#eventbridge" class="md-nav__link">
+    <span class="md-ellipsis">
+      EventBridge
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/github-aws-runners/terraform-aws-github-runner/edit/main/docs/configuration.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="configuration">Configuration</h1>
+<h2 id="configuration-considerations">Configuration considerations</h2>
+<p>To be able to support a number of use-cases, the module has quite a lot of configuration options. We tried to choose reasonable defaults. Several examples also show the main cases of how to configure the runners.</p>
+<ul>
+<li>Org vs Repo level. You can configure the module to connect the runners in GitHub on an org level and share the runners in your org, or set the runners on repo level and the module will install the runner to the repo. There can be multiple repos but runners are not shared between repos.</li>
+<li>Multi-Runner module. This modules allows you to create multiple runner configurations with a single webhook and single GitHub App to simplify deployment of different types of runners. Check the detailed module <a href="../modules/public/multi-runner/">documentation</a> for more information or checkout the <a href="../examples/multi-runner/">multi-runner example</a>.</li>
+<li>Webhook mode, the module can be deployed in <code>direct</code> mode or <code>EventBridge</code> (Experimental) mode. The <code>direct</code> mode is the default and will directly distribute to SQS for the scale-up lambda. The <code>EventBridge</code> mode will publish the events to a eventbus, the rule then directs the received events to a dispatch lambda. The dispatch lambda will send the event to the SQS queue. The <code>EventBridge</code> mode is the default and allows to have more control over the events and potentially filter them. The <code>EventBridge</code> mode can be disabled, messages are sent directed to queues in that case. An example of what the <code>EventBridge</code> mode could be used for is building a data lake, build metrics, act on <code>workflow_job</code> job started events, etc.</li>
+<li>Linux vs Windows. You can configure the OS types linux and win. Linux will be used by default.</li>
+<li>Re-use vs Ephemeral. By default runners are re-used, until detected idle. Once idle they will be removed from the pool. To improve security we are introducing ephemeral runners. Those runners are only used for one job. Ephemeral runners only work in combination with the workflow job event. For ephemeral runners the lambda requests a JIT (just in time) configuration via the GitHub API to register the runner. <a href="https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-just-in-time-runners">JIT configuration</a> is limited to ephemeral runners (and currently not supported by GHES). For non-ephemeral runners, a registration token is always requested. In both cases the configuration is made available to the instance via the same SSM parameter. To disable JIT configuration for ephemeral runners set <code>enable_jit_config</code> to <code>false</code>. We also suggest using a pre-build AMI to improve the start time of jobs for ephemeral runners.</li>
+<li>Job retry (<strong>Beta</strong>). By default the scale-up lambda will discard the message when it is handled. Meaning in the ephemeral use-case an instance is created. The created runner will ask GitHub for a job, no guarantee it will run the job for which it was scaling. Result could be that with small system hick-up the job is keeping waiting for a runner. Enable a pool (org runners) is one option to avoid this problem. Another option is to enable the job retry function. Which will retry the job after a delay for a configured number of times.</li>
+<li>GitHub Cloud vs GitHub Enterprise Server (GHES). The runners support GitHub Cloud (Public GitHub - github.com), GitHub Data Residency instances (ghe.com), and GitHub Enterprise Server. For GHES, we rely on our community for support and testing. We have no capability to test GHES ourselves.</li>
+<li>Spot vs on-demand. The runners use either the EC2 spot or on-demand life cycle. Runners will be created via the AWS <a href="https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_CreateFleet.html">CreateFleet API</a>. The module (scale up lambda) will request via the CreateFleet API to create instances in one of the subnets and of the specified instance types.</li>
+<li>ARM64 support via Graviton/Graviton2 instance-types. When using the default example or top-level module, specifying <code>instance_types</code> that match a Graviton/Graviton 2 (ARM64) architecture (e.g. a1, t4g or any 6th-gen <code>g</code> or <code>gd</code> type), you must also specify <code>runner_architecture = "arm64"</code> and the sub-modules will be automatically configured to provision with ARM64 AMIs and leverage GitHub's ARM64 action runner. See below for more details.</li>
+<li>Disable default labels for the runners (os, architecture and <code>self-hosted</code>) can achieve by setting <code>runner_disable_default_labels</code> = true. If enabled, the runner will only have the extra labels provided in <code>runner_extra_labels</code>. In case you on own start script is used, this configuration parameter needs to be parsed via SSM.</li>
+</ul>
+<h2 id="aws-ssm-parameters">AWS SSM Parameters</h2>
+<p>The module uses the AWS System Manager Parameter Store to store configuration for the runners, as well as registration tokens and secrets for the Lambdas. Paths for the parameters can be configured via the variable <code>ssm_paths</code>. The location of the configuration parameters is retrieved by the runners via the instance tag <code>ghr:ssm_config_path</code>. The following default paths will be used. Tokens or JIT config stored in the token path will be deleted after retrieval by instance, data not deleted after a day will be deleted by a SSM housekeeper lambda.</p>
+<p>Furthermore, to accommodate larger JIT configurations or other stored values, the module implements automatic tier selection for SSM parameters:</p>
+<ul>
+<li><strong>Parameter Tiering</strong>: If the size of a parameter's value exceeds 4KB (specifically, 4000 bytes), the module will automatically use the 'Advanced' tier for that SSM parameter. Values smaller than this threshold will use the 'Standard' tier.</li>
+<li><strong>Cost Implications</strong>: While the 'Standard' tier is generally free for a certain number of parameters and operations, the 'Advanced' tier incurs costs. These costs are typically pro-rated per hour for each parameter stored using the Advanced tier. For detailed and up-to-date pricing, please refer to the <a href="https://aws.amazon.com/systems-manager/pricing/#Parameter_Store">AWS Systems Manager Pricing page</a>.</li>
+<li><strong>Housekeeping Recommendation</strong>: The last sentence of the "AWS SSM Parameters" section already mentions that "data not deleted after a day will be deleted by a SSM housekeeper lambda." It is crucial to ensure this or a similar housekeeping mechanism is active and correctly configured, especially considering the potential costs associated with 'Advanced' tier parameters. This utility should identify and delete any orphaned parameters to help manage costs and maintain a clean SSM environment.</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Path</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ssm_paths.root/var.prefix?/app/</code></td>
+<td>App secrets used by Lambda's</td>
+</tr>
+<tr>
+<td><code>ssm_paths.root/var.prefix?/runners/config/&lt;name&gt;</code></td>
+<td>Configuration parameters used by runner start script</td>
+</tr>
+<tr>
+<td><code>ssm_paths.root/var.prefix?/runners/tokens/&lt;ec2-instance-id&gt;</code></td>
+<td>Either JIT configuration (ephemeral runners) or registration tokens (non ephemeral runners) generated by the control plane (scale-up lambda), and consumed by the start script on the runner to activate / register the runner.</td>
+</tr>
+<tr>
+<td><code>ssm_paths.root/var.prefix?/webhook/runner-matcher-config</code></td>
+<td>Runner matcher config used by webhook to decide the target for the webhook event.</td>
+</tr>
+</tbody>
+</table>
+<p>Available configuration parameters:</p>
+<table>
+<thead>
+<tr>
+<th>Parameter name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>agent_mode</code></td>
+<td>Indicates if the agent is running in ephemeral mode or not.</td>
+</tr>
+<tr>
+<td><code>disable_default_labels</code></td>
+<td>Indicates if the default labels for the runners (os, architecture and <code>self-hosted</code>) are disabled</td>
+</tr>
+<tr>
+<td><code>enable_cloudwatch</code></td>
+<td>Configuration for the cloudwatch agent to stream logging.</td>
+</tr>
+<tr>
+<td><code>run_as</code></td>
+<td>The user used for running the GitHub action runner agent.</td>
+</tr>
+<tr>
+<td><code>token_path</code></td>
+<td>The path where tokens are stored.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="note-regarding-github-app-secrets-provisioning-in-ssm">Note regarding GitHub App secrets provisioning in SSM</h3>
+<p>SSM parameters for GitHub App secrets (<code>webhook_secret</code>, <code>key_base64</code>, <code>id</code>) can also be manually created at the SSM path of your choice.</p>
+<p>If you opt for this approach, please fill the <code>*_ssm</code> attributes of the <code>github_app</code> variable as following:</p>
+<div class="highlight"><pre><span></span><code>github_app = {
+    key_base64_ssm     = {
+      name = &quot;/your/path/to/ssm/parameter/key-base-64&quot;
+      arn = &quot;arn:aws:ssm:::parameter/your/path/to/ssm/parameter/key-base-64&quot;
+    }
+    id_ssm             = {
+      name = &quot;/your/path/to/ssm/parameter/id&quot;
+      arn = &quot;arn:aws:ssm:::parameter/your/path/to/ssm/parameter/id&quot;
+    }
+    webhook_secret_ssm = {
+      name = &quot;/your/path/to/ssm/parameter/webhook-secret&quot;
+      arn = &quot;arn:aws:ssm:::parameter/your/path/to/ssm/parameter/webhook-secret&quot;
+    }
+  }
+</code></pre></div>
+<p>Manually creating the SSM parameters that hold the configuration of your GitHub App avoids leaking critical plain text values in your terraform state and version control system. This is a recommended security practice for handling sensitive credentials.</p>
+<p>You can read more <a href="../examples/external-managed-ssm-secrets/README.md">over here</a>.</p>
+<h2 id="encryption">Encryption</h2>
+<p>The module supports two scenarios to manage environment secrets and private keys of the Lambda functions.</p>
+<h3 id="managed-kms-key-default">Managed KMS key (default)</h3>
+<p>This is the default, no additional configuration is required.</p>
+<h3 id="provided-kms-key">Provided KMS key</h3>
+<p>You have to create and configure you KMS key. The module will use the context with key: <code>Environment</code> and value <code>var.environment</code> as encryption context.</p>
+<div class="highlight"><pre><span></span><code><span class="kr">resource</span><span class="w"> </span><span class="nc">&quot;aws_kms_key&quot;</span><span class="w"> </span><span class="nv">&quot;github&quot;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="na">is_enabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="no">true</span>
+<span class="p">}</span>
+
+<span class="kr">module</span><span class="w"> </span><span class="nv">&quot;runners&quot;</span><span class="w"> </span><span class="p">{</span>
+
+<span class="w">  </span><span class="p">...</span>
+<span class="w">  </span><span class="na">kms_key_arn</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">aws_kms_key.github.arn</span>
+<span class="w">  </span><span class="p">...</span>
+</code></pre></div>
+<h2 id="pool">Pool</h2>
+<p>The module supports two options for keeping a pool of runners. One is via a pool which only supports org-level runners, the second option is <a href="#idle-runners">keeping runners idle</a>.</p>
+<p>The pool is introduced in combination with the ephemeral runners and is primarily meant to ensure if any event is unexpectedly dropped and no runner was created, the pool can pick up the job. The pool is maintained by a lambda. Each time the lambda is triggered a check is performed to ensure the number of idle runners managed by the module matches the expected pool size. If not, the pool will be adjusted. Keep in mind that the scale down function is still active and will terminate instances that are detected as idle.</p>
+<div class="highlight"><pre><span></span><code><span class="na">pool_runner_owner</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;my-org&quot;</span><span class="c1">                  # Org to which the runners are added</span>
+<span class="na">pool_config</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[{</span>
+<span class="w">  </span><span class="na">size</span><span class="w">                         </span><span class="o">=</span><span class="w"> </span><span class="m">20</span><span class="c1">                    # size of the pool</span>
+<span class="w">  </span><span class="na">schedule_expression</span><span class="w">          </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;cron(* * * * ? *)&quot;</span><span class="c1">   # cron expression to trigger the adjustment of the pool</span>
+<span class="w">  </span><span class="na">schedule_expression_timezone</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;Australia/Sydney&quot;</span><span class="c1">    # optional time zone (defaults to UTC)</span>
+<span class="p">}]</span>
+</code></pre></div>
+<p>The pool is NOT enabled by default and can be enabled by setting at least one object of the pool config list. The <a href="../examples/ephemeral/">ephemeral example</a> contains configuration options (commented out).</p>
+<h2 id="idle-runners">Idle runners</h2>
+<p>The module will scale down to zero runners by default. By specifying a <code>idle_config</code> config, idle runners can be kept active. The scale down lambda checks if any of the cron expressions matches the current time with a margin of 5 seconds. When there is a match, the number of runners specified in the idle config will be kept active. In case multiple cron expressions match, the first one will be used. Below is an idle configuration for keeping runners active from 9:00am to 5:59pm on working days. The <a href="https://crontab.cronhub.io/">cron expression generator by Cronhub</a> is a great resource to set up your idle config.</p>
+<p>By default, the oldest instances are evicted. This helps keep your environment up-to-date and reduce problems like running out of disk space or RAM. Alternatively, if your older instances have a long-living cache, you can override the <code>evictionStrategy</code> to <code>newest_first</code> to evict the newest instances first instead.</p>
+<div class="highlight"><pre><span></span><code><span class="na">idle_config</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[{</span>
+<span class="w">   </span><span class="na">cron</span><span class="w">             </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;* * 9-17 * * 1-5&quot;</span>
+<span class="w">   </span><span class="na">timeZone</span><span class="w">         </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;Europe/Amsterdam&quot;</span>
+<span class="w">   </span><span class="na">idleCount</span><span class="w">        </span><span class="o">=</span><span class="w"> </span><span class="m">2</span>
+<span class="c1">   # Defaults to &#39;oldest_first&#39;</span>
+<span class="w">   </span><span class="na">evictionStrategy</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;oldest_first&quot;</span>
+<span class="p">}]</span>
+</code></pre></div>
+<p><em><strong>Note</strong></em>: When using Windows runners, we recommend keeping a few runners warmed up due to the minutes-long cold start time.</p>
+<h4 id="supported-config">Supported config <!-- omit in toc --></h4>
+<p>Cron expressions are parsed by <a href="https://github.com/harrisiirak/cron-parser#readme">cron-parser</a>. The supported syntax.</p>
+<div class="highlight"><pre><span></span><code>*<span class="w">    </span>*<span class="w">    </span>*<span class="w">    </span>*<span class="w">    </span>*<span class="w">    </span>*
+┬<span class="w">    </span>┬<span class="w">    </span>┬<span class="w">    </span>┬<span class="w">    </span>┬<span class="w">    </span>┬
+│<span class="w">    </span>│<span class="w">    </span>│<span class="w">    </span>│<span class="w">    </span>│<span class="w">    </span><span class="p">|</span>
+│<span class="w">    </span>│<span class="w">    </span>│<span class="w">    </span>│<span class="w">    </span>│<span class="w">    </span>└<span class="w"> </span>day<span class="w"> </span>of<span class="w"> </span>week<span class="w"> </span><span class="o">(</span><span class="m">0</span><span class="w"> </span>-<span class="w"> </span><span class="m">7</span><span class="o">)</span><span class="w"> </span><span class="o">(</span><span class="m">0</span><span class="w"> </span>or<span class="w"> </span><span class="m">7</span><span class="w"> </span>is<span class="w"> </span>Sun<span class="o">)</span>
+│<span class="w">    </span>│<span class="w">    </span>│<span class="w">    </span>│<span class="w">    </span>└─────<span class="w"> </span>month<span class="w"> </span><span class="o">(</span><span class="m">1</span><span class="w"> </span>-<span class="w"> </span><span class="m">12</span><span class="o">)</span>
+│<span class="w">    </span>│<span class="w">    </span>│<span class="w">    </span>└──────────<span class="w"> </span>day<span class="w"> </span>of<span class="w"> </span>month<span class="w"> </span><span class="o">(</span><span class="m">1</span><span class="w"> </span>-<span class="w"> </span><span class="m">31</span><span class="o">)</span>
+│<span class="w">    </span>│<span class="w">    </span>└───────────────<span class="w"> </span>hour<span class="w"> </span><span class="o">(</span><span class="m">0</span><span class="w"> </span>-<span class="w"> </span><span class="m">23</span><span class="o">)</span>
+│<span class="w">    </span>└────────────────────<span class="w"> </span>minute<span class="w"> </span><span class="o">(</span><span class="m">0</span><span class="w"> </span>-<span class="w"> </span><span class="m">59</span><span class="o">)</span>
+└─────────────────────────<span class="w"> </span>second<span class="w"> </span><span class="o">(</span><span class="m">0</span><span class="w"> </span>-<span class="w"> </span><span class="m">59</span>,<span class="w"> </span>optional<span class="o">)</span>
+</code></pre></div>
+<p>For time zones please check <a href="https://en.wikipedia.org/wiki/List_of_tz_database_time_zones">TZ database name column</a> for the supported values.</p>
+<h2 id="ephemeral-runners">Ephemeral runners</h2>
+<p>You can configure runners to be ephemeral, in which case runners will be used only for one job. The feature should be used in conjunction with listening for the workflow job event. Please consider the following:</p>
+<ul>
+<li>The scale down lambda is still active, and should only remove orphan instances. But there is no strict check in place. So ensure you configure the <code>minimum_running_time_in_minutes</code> to a value that is high enough to get your runner booted and connected to avoid it being terminated before executing a job.</li>
+<li>The messages sent from the webhook lambda to the scale-up lambda are by default delayed by SQS, to give available runners a chance to start the job before the decision is made to scale more runners. For ephemeral runners there is no need to wait. Set <code>delay_webhook_event</code> to <code>0</code>.</li>
+<li>All events in the queue will lead to a new runner created by the lambda. By setting <code>enable_job_queued_check</code> to <code>true</code> you can enforce a rule of only creating a runner if the event has a correlated queued job. Setting this can avoid creating useless runners. For example, a job getting cancelled before a runner was created or if the job was already picked up by another runner. We suggest using this in combination with a pool.</li>
+<li>Errors related to scaling should be retried via SQS. You can configure <code>job_queue_retention_in_seconds</code> and <code>redrive_build_queue</code> to tune the behavior. We have no mechanism to avoid events never being processed, which means potentially no runner gets created and the job in GitHub times out in 6 hours.</li>
+</ul>
+<p>The example for <a href="../examples/ephemeral/">ephemeral runners</a> is based on the <a href="../examples/default/">default example</a>. Have look at the diff to see the major configuration differences.</p>
+<h2 id="job-retry-beta">Job retry (<strong>Beta</strong>)</h2>
+<p>You can enable the job retry function to retry a job after a delay for a configured number of times. The function is disabled by default. To enable the function set <code>job_retry.enable</code> to <code>true</code>. The function will check the job status after a delay, and when the is still queued, it will create a new runner. The new runner is created in the same way as the others via the scale-up function. Hence the same configuration applies.</p>
+<p>For checking the job status a API call is made to GitHub. Which can exhaust the GitHub API more quickly for larger deployments and cause rate limits. For larger deployment with a lot of frequent jobs having a small pool available could be a better choice.</p>
+<p>The option <code>job_retry.delay_in_seconds</code> is the delay before the job status is checked. The delay is increased by the factor <code>job_retry.delay_backoff</code> for each attempt. The upper bound for a delay is 900 seconds, which is the max message delay on SQS. The maximum number of attempts is configured via <code>job_retry.max_attempts</code>. The delay should be set to a higher value than the time it takes to start a runner.</p>
+<h2 id="prebuilt-images">Prebuilt Images</h2>
+<p>This module also allows you to run agents from a prebuilt AMI to gain faster startup times. The module provides several examples to build your own custom AMI. To remove old images, an <a href="../modules/public/ami-housekeeper/">AMI housekeeper module</a> can be used. See the <a href="../ami-examples/">AMI examples</a> for more details.</p>
+<h2 id="ami-configuration">AMI Configuration</h2>
+<p>By default, the module will automatically select appropriate AMI images:
+- For Linux x64: Amazon Linux 2023 x86_64
+- For Linux ARM64: Amazon Linux 2023 ARM64
+- For Windows: Windows Server 2022 English Full ECS Optimized</p>
+<p>However, you can override these defaults using the <code>ami</code> object in two ways:</p>
+<ol>
+<li><strong>Using AMI Filters</strong></li>
+</ol>
+<p>You can define filters and owners to look up an AMI. The module will store the AMI ID in an SSM parameter that is managed by the module.</p>
+<div class="highlight"><pre><span></span><code><span class="nb">ami</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nb">filter</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="na">name</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-*&quot;</span><span class="p">]</span>
+<span class="w">    </span><span class="na">state</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;available&quot;</span><span class="p">]</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="w">  </span><span class="na">owners</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;amazon&quot;</span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+<ol>
+<li><strong>Using SSM Parameter</strong></li>
+</ol>
+<p>Provide a parameter in SSM that contains the AMI ID. The parameter should be of type <code>String</code> and the module will grant the required lambdas access to this parameter.</p>
+<div class="highlight"><pre><span></span><code><span class="nb">ami</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="na">id_ssm_parameter_arn</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;arn:aws:ssm:region:account:parameter/path/to/ami/parameter&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+<blockquote>
+<p><strong>Note:</strong> The old way of configuring AMIs using individual variables (<code>ami_filter</code>, <code>ami_owners</code>, <code>ami_kms_key_arn</code>) is deprecated and will be removed in a future version. It is recommended to migrate to the new consolidated <code>ami</code> object.</p>
+</blockquote>
+<h2 id="logging">Logging</h2>
+<p>The module uses <a href="https://awslabs.github.io/aws-lambda-powertools-typescript/latest/">AWS Lambda Powertools</a> for logging. By default the log level is set to <code>info</code>, by setting the log level to <code>debug</code> the incoming events of the Lambda are logged as well.</p>
+<p>Log messages contains at least the following keys:</p>
+<ul>
+<li><code>messages</code>: The logged messages</li>
+<li><code>environment</code>: The environment prefix provided via Terraform</li>
+<li><code>service</code>: The lambda</li>
+<li><code>module</code>: The TypeScript module writing the log message</li>
+<li><code>function-name</code>: The name of the lambda function (prefix + function name)</li>
+<li><code>github</code>: Depending on the lambda, contains GitHub context</li>
+<li><code>runner</code>: Depending on the lambda, specific context related to the runner</li>
+</ul>
+<p>An example log message of the scale-up function:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;level&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;INFO&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Received event&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;service&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;runners-scale-up&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;timestamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2023-03-20T08:15:27.448Z&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;xray_trace_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1-6418161e-08825c2f575213ef760531bf&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;module&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;scale-up&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;region&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;eu-west-1&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;environment&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;my-linux-x64&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;aws-request-id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;eef1efb7-4c07-555f-9a67-b3255448ee60&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;function-name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;my-linux-x64-scale-up&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;runner&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Repo&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;owner&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;test-runners/multi-runner&quot;</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;github&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;event&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;workflow_job&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;workflow_job_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1234&quot;</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<h2 id="tracing">Tracing</h2>
+<p>The distributed architecture of this application can make it difficult to troubleshoot. We support the option to enable tracing for all the lambda functions created by this application. To enable tracing, you can provide the <code>tracing_config</code> option inside the root module or inner modules.</p>
+<p>This tracing config generates timelines for following events:</p>
+<ul>
+<li>Basic lifecycle of lambda function</li>
+<li>Traces for Github API calls (can be configured by capture_http_requests).</li>
+<li>Traces for all AWS SDK calls</li>
+</ul>
+<p>This feature has been disabled by default.</p>
+<h3 id="multiple-runner-module-in-your-aws-account">Multiple runner module in your AWS account</h3>
+<p>The watcher will act on all spot termination notificatins and log all onses relevant to the runner module. Therefor we suggest to only deploy the watcher once. You can either deploy the watcher by enabling in one of your deployments or deploy the watcher as a stand alone module.</p>
+<h2 id="metrics">Metrics</h2>
+<p>The module supports metrics (experimental feature) to monitor the system. The metrics are disabled by default. To enable the metrics set <code>metrics.enable = true</code>. If set to true, all module managed metrics are used, you can configure the one by one via the <code>metrics</code> object. The metrics are created in the namespace <code>GitHub Runners</code>.</p>
+<h3 id="supported-metrics">Supported metrics</h3>
+<ul>
+<li><strong>GitHubAppRateLimitRemaining</strong>: Remaining rate limit for the GitHub App.</li>
+<li><strong>JobRetry</strong>: Number of job retries, only relevant when job retry is enabled.</li>
+<li><strong>SpotInterruptionWarning</strong>: Number of spot interruption warnings received by the termination watcher, only relevant when the termination watcher is enabled.</li>
+</ul>
+<h2 id="debugging">Debugging</h2>
+<p>In case the setup does not work as intended, trace the events through this sequence:</p>
+<ul>
+<li>In the GitHub App configuration, the Advanced page displays all webhook events that were sent.</li>
+<li>In AWS CloudWatch, every lambda has a log group. Look at the logs of the <code>webhook</code> and <code>scale-up</code> lambdas.</li>
+<li>In AWS SQS you can see messages available or in flight.</li>
+<li>Once an EC2 instance is running, you can connect to it in the EC2 user interface using Session Manager (use <code>enable_ssm_on_runners = true</code>). Check the user data script using <code>cat /var/log/user-data.log</code>. By default several log files of the instances are streamed to AWS CloudWatch, look for a log group named <code>&lt;environment&gt;/runners</code>. In the log group you should see at least the log streams for the user data installation and runner agent.</li>
+<li>Registered instances should show up in the Settings - Actions page of the repository or organization (depending on the installation mode).</li>
+</ul>
+<h2 id="experimental-features">Experimental features</h2>
+<h3 id="termination-watcher">Termination watcher</h3>
+<p>This feature is in early stage and therefore disabled by default. To enable the watcher, set <code>instance_termination_watcher.enable = true</code>.</p>
+<p>The termination watcher is currently watching for spot terminations. The module is only taken events into account for instances tagged with <code>ghr:environment</code> by default when deployment the module as part of one of the main modules (root or multi-runner). The module can also be deployed stand-alone, in this case, the tag filter needs to be tunned.</p>
+<h3 id="termination-notification">Termination notification</h3>
+<p>The watcher is listening for spot termination warnings and create a log message and optionally a metric. The watcher is disabled by default. The feature is enabled once the watcher is enabled, the feature can be disabled explicit by setting <code>instance_termination_watcher.features.enable_spot_termination_handler = false</code>.</p>
+<ul>
+<li>Logs: The module will log all termination notifications. For each warning it will look up instance details and log the environment, instance type and time the instance is running. As well some other details.</li>
+<li>Metrics: Metrics are disabled by default, this to avoid costs. Once enabled a metric will be created for each warning with at least dimensions for the environment and instance type. THe metric name space can be configured via the variables. The metric name used is <code>SpotInterruptionWarning</code>.</li>
+</ul>
+<h3 id="termination-handler">Termination handler</h3>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+</div>
+<p>This feature will only work once the CloudTrail is enabled.</p>
+<p>The termination handler is listening for spot terminations by capture the <code>BidEvictedEvent</code> via CloudTrail. The handler will log and optionally create a metric for each termination. The intend is to enhance the logic to inform the user about the termination via the GitHub Job or Workflow run. The feature is disabled by default. The feature is enabled once the watcher is enabled, the feature can be disabled explicit by setting <code>instance_termination_watcher.features.enable_spot_termination_handler = false</code>.</p>
+<ul>
+<li>Logs: The module will log all termination notifications. For each warning it will look up instance details and log the environment, instance type and time the instance is running. As well some other details.</li>
+<li>Metrics: Metrics are disabled by default, this to avoid costs. Once enabled a metric will be created for each termination with at least dimensions for the environment and instance type. THe metric name space can be configured via the variables. The metric name used is <code>SpotTermination</code>.</li>
+</ul>
+<h3 id="log-example-both-warnings-and-terminations">Log example (both warnings and terminations)</h3>
+<p>Below an example of the the log messages created.</p>
+<div class="highlight"><pre><span></span><code>{
+    &quot;level&quot;: &quot;INFO&quot;,
+    &quot;message&quot;: &quot;Received spot notification for ${metricName}&quot;,
+    &quot;environment&quot;: &quot;default&quot;,
+    &quot;instanceId&quot;: &quot;i-0039b8826b3dcea55&quot;,
+    &quot;instanceType&quot;: &quot;c5.large&quot;,
+    &quot;instanceLaunchTime&quot;: &quot;2024-03-15T08:10:34.000Z&quot;,
+    &quot;instanceRunningTimeInSeconds&quot;: 68,
+    &quot;tags&quot;: [
+        {
+            &quot;Key&quot;: &quot;ghr:environment&quot;,
+            &quot;Value&quot;: &quot;default&quot;
+        }
+        ... all tags ...
+    ]
+}
+</code></pre></div>
+<h3 id="eventbridge">EventBridge</h3>
+<p>This module can be deployed in using the mode <code>EventBridge</code>. The <code>EventBridge</code> mode will publish an event to a eventbus. Within the eventbus, there is a target rule set, sending events to the dispatch lambda. The <code>EventBridge</code> mode is enabled by default.</p>
+<p>Example to extend the EventBridge:</p>
+<div class="highlight"><pre><span></span><code><span class="kr">module</span><span class="w"> </span><span class="nv">&quot;runners&quot;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="na">source</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;github-aws-runners/github-runners/aws&quot;</span>
+
+<span class="w">  </span><span class="p">...</span>
+<span class="w">  </span><span class="nb">eventbridge</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="na">enable</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="no">false</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="w">  </span><span class="p">...</span>
+<span class="p">}</span>
+
+<span class="nb">locals</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="na">event_bus_name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">module.runners.webhook.eventbridge.event_bus.name</span>
+<span class="p">}</span>
+
+<span class="kr">resource</span><span class="w"> </span><span class="nc">&quot;aws_cloudwatch_event_rule&quot;</span><span class="w"> </span><span class="nv">&quot;example&quot;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="na">name</span><span class="w">           </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;${local.prefix}-github-events-all&quot;</span>
+<span class="w">  </span><span class="na">description</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;Caputure all GitHub events&quot;</span>
+<span class="w">  </span><span class="na">event_bus_name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">local.event_bus_name</span>
+<span class="w">  </span><span class="na">event_pattern</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="dl">EOF</span>
+<span class="sh">{</span>
+<span class="sh">  &quot;source&quot;: [{</span>
+<span class="sh">    &quot;prefix&quot;: &quot;github&quot;</span>
+<span class="sh">  }]</span>
+<span class="sh">}</span>
+<span class="dl">EOF</span>
+<span class="p">}</span>
+
+<span class="kr">resource</span><span class="w"> </span><span class="nc">&quot;aws_cloudwatch_event_target&quot;</span><span class="w"> </span><span class="nv">&quot;main&quot;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="na">rule</span><span class="w">           </span><span class="o">=</span><span class="w"> </span><span class="nv">aws_cloudwatch_event_rule.example.name</span>
+<span class="w">  </span><span class="na">arn</span><span class="w">            </span><span class="o">=</span><span class="w"> </span><span class="err">&lt;arn</span><span class="w"> </span><span class="err">of</span><span class="w"> </span><span class="err">target&gt;</span>
+<span class="w">  </span><span class="na">event_bus_name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">local.event_bus_name</span>
+<span class="w">  </span><span class="na">role_arn</span><span class="w">       </span><span class="o">=</span><span class="w"> </span><span class="nv">aws_iam_role.event_rule_firehose_role.arn</span>
+<span class="p">}</span>
+
+<span class="kr">data</span><span class="w"> </span><span class="nc">&quot;aws_iam_policy_document&quot;</span><span class="w"> </span><span class="nv">&quot;event_rule_firehose_role&quot;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nb">statement</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="na">actions</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;sts:AssumeRole&quot;</span><span class="p">]</span>
+
+<span class="w">    </span><span class="nb">principals</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="na">type</span><span class="w">        </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;Service&quot;</span>
+<span class="w">      </span><span class="na">identifiers</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;events.amazonaws.com&quot;</span><span class="p">]</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kr">resource</span><span class="w"> </span><span class="nc">&quot;aws_iam_role&quot;</span><span class="w"> </span><span class="nv">&quot;event_rule_role&quot;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="na">name</span><span class="w">               </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;${local.prefix}-eventbridge-github-rule&quot;</span>
+<span class="w">  </span><span class="na">assume_role_policy</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">data.aws_iam_policy_document.event_rule_firehose_role.json</span>
+<span class="p">}</span>
+
+<span class="err">data</span><span class="w"> </span><span class="err">aws_iam_policy_document</span><span class="w"> </span><span class="nb">firehose_stream</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nb">statement</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="err">INSER_YOUR_POIICY_HERE_TO_ACCESS_THE_TARGET</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kr">resource</span><span class="w"> </span><span class="nc">&quot;aws_iam_role_policy&quot;</span><span class="w"> </span><span class="nv">&quot;event_rule_firehose_role&quot;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="na">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;target-event-rule-firehose&quot;</span>
+<span class="w">  </span><span class="na">role</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">aws_iam_role.event_rule_firehose_role.name</span>
+<span class="w">  </span><span class="na">policy</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">data.aws_iam_policy_document.firehose_stream.json</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>NOTE: By default, a runner AMI update requires a re-apply of this terraform config (the runner AMI ID is looked up by a terraform data source). To avoid this, you can use <code>ami_id_ssm_parameter_name</code> to have the scale-up lambda dynamically lookup the runner AMI ID from an SSM parameter at instance launch time. Said SSM parameter is managed outside of this module (e.g. by a runner AMI build workflow).</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href=".." class="md-footer__link md-footer__link--prev" aria-label="Previous: Introduction">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Introduction
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../getting-started/" class="md-footer__link md-footer__link--next" aria-label="Next: Getting started">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Getting started
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        <div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/github-aws-runners/terraform-aws-github-runner" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8M97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+      <div class="md-progress" data-md-component="progress" role="progressbar"></div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "..", "features": ["content.code.copy", "content.action.edit", "navigation.instant", "navigation.instant.progress", "navigation.tracking", "pymdownx.snippets", "navigation.footer"], "search": "../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.56ea9cef.min.js"></script>
+      
+    
+  </body>
+</html>
