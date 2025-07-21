@@ -57,6 +57,12 @@ resource "aws_iam_role_policy" "describe_tags" {
   policy = file("${path.module}/policies/instance-describe-tags-policy.json")
 }
 
+resource "aws_iam_role_policy" "create_tag" {
+  name   = "runner-create-tags"
+  role   = aws_iam_role.runner.name
+  policy = templatefile("${path.module}/policies/instance-create-tags-policy.json", {})
+}
+
 resource "aws_iam_role_policy_attachment" "managed_policies" {
   count      = length(var.runner_iam_role_managed_policy_arns)
   role       = aws_iam_role.runner.name
