@@ -58,6 +58,36 @@ create_xray_error_segment() {
   echo "$SEGMENT_DOC"
 }
 
+tag_instance_with_runner_id() {
+  echo "Checking for .runner file to extract agent ID"
+
+  if [[ ! -f "/opt/actions-runner/.runner" ]]; then
+    echo "Warning: .runner file not found"
+    return 0
+  fi
+
+  echo "Found .runner file, extracting agent ID"
+  local agent_id
+  agent_id=$(jq -r '.agentId' /opt/actions-runner/.runner 2>/dev/null || echo "")
+
+  if [[ -z "$agent_id" || "$agent_id" == "null" ]]; then
+    echo "Warning: Could not extract agent ID from .runner file"
+    return 0
+  fi
+
+  echo "Tagging instance with GitHub runner agent ID: $agent_id"
+  if aws ec2 create-tags \
+    --region "$region" \
+    --resources "$instance_id" \
+    --tags Key=ghr:github_runner_id,Value="$agent_id"; then
+    echo "Successfully tagged instance with agent ID: $agent_id"
+    return 0
+  else
+    echo "Warning: Failed to tag instance with agent ID"
+    return 0
+  fi
+}
+
 cleanup() {
   local exit_code="$1"
   local error_location="$2"
@@ -225,6 +255,9 @@ if [[ "$enable_jit_config" == "false" || $agent_mode != "ephemeral" ]]; then
       extra_flags=""
   fi
   sudo --preserve-env=RUNNER_ALLOW_RUNASROOT -u "$run_as" -- ./config.sh $${extra_flags} --unattended --name "$runner_name_prefix$instance_id" --work "_work" $${config}
+
+  # Tag instance with GitHub runner agent ID for non-JIT runners
+  tag_instance_with_runner_id
 fi
 
 create_xray_success_segment "$SEGMENT"

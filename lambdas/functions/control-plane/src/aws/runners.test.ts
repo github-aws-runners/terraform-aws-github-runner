@@ -4,6 +4,7 @@ import {
   CreateFleetInstance,
   CreateFleetResult,
   CreateTagsCommand,
+  DeleteTagsCommand,
   DefaultTargetCapacityType,
   DescribeInstancesCommand,
   DescribeInstancesResult,
@@ -17,7 +18,7 @@ import { mockClient } from 'aws-sdk-client-mock';
 import 'aws-sdk-client-mock-jest/vitest';
 
 import ScaleError from './../scale-runners/ScaleError';
-import { createRunner, listEC2Runners, tag, terminateRunner } from './runners';
+import { createRunner, listEC2Runners, tag, untag, terminateRunner } from './runners';
 import { RunnerInfo, RunnerInputParameters, RunnerType } from './runners.d';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
@@ -53,6 +54,26 @@ const mockRunningInstances: DescribeInstancesResult = {
     },
   ],
 };
+const mockRunningInstancesJit: DescribeInstancesResult = {
+  Reservations: [
+    {
+      Instances: [
+        {
+          LaunchTime: new Date('2020-10-10T14:48:00.000+09:00'),
+          InstanceId: 'i-1234',
+          Tags: [
+            { Key: 'ghr:Application', Value: 'github-action-runner' },
+            { Key: 'ghr:runner_name_prefix', Value: RUNNER_NAME_PREFIX },
+            { Key: 'ghr:created_by', Value: 'scale-up-lambda' },
+            { Key: 'ghr:Type', Value: 'Org' },
+            { Key: 'ghr:Owner', Value: 'CoderToCat' },
+            { Key: 'ghr:github_runner_id', Value: '9876543210' },
+          ],
+        },
+      ],
+    },
+  ],
+};
 
 describe('list instances', () => {
   beforeEach(() => {
@@ -60,7 +81,7 @@ describe('list instances', () => {
     vi.clearAllMocks();
   });
 
-  it('returns a list of instances', async () => {
+  it('returns a list of instances (Non JIT)', async () => {
     mockEC2Client.on(DescribeInstancesCommand).resolves(mockRunningInstances);
     const resp = await listEC2Runners();
     expect(resp.length).toBe(1);
@@ -70,6 +91,20 @@ describe('list instances', () => {
       type: 'Org',
       owner: 'CoderToCat',
       orphan: false,
+    });
+  });
+
+  it('returns a list of instances (JIT)', async () => {
+    mockEC2Client.on(DescribeInstancesCommand).resolves(mockRunningInstancesJit);
+    const resp = await listEC2Runners();
+    expect(resp.length).toBe(1);
+    expect(resp).toContainEqual({
+      instanceId: 'i-1234',
+      launchTime: new Date('2020-10-10T14:48:00.000+09:00'),
+      type: 'Org',
+      owner: 'CoderToCat',
+      orphan: false,
+      runnerId: '9876543210',
     });
   });
 
@@ -229,11 +264,35 @@ describe('tag runner', () => {
       owner: 'owner-2',
       type: 'Repo',
     };
-    await tag(runner.instanceId, [{ Key: 'ghr:orphan', Value: 'truer' }]);
+    await tag(runner.instanceId, [{ Key: 'ghr:orphan', Value: 'true' }]);
 
     expect(mockEC2Client).toHaveReceivedCommandWith(CreateTagsCommand, {
       Resources: [runner.instanceId],
-      Tags: [{ Key: 'ghr:orphan', Value: 'truer' }],
+      Tags: [{ Key: 'ghr:orphan', Value: 'true' }],
+    });
+  });
+});
+
+describe('untag runner', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+  it('removing extra tag', async () => {
+    mockEC2Client.on(DeleteTagsCommand).resolves({});
+    const runner: RunnerInfo = {
+      instanceId: 'instance-2',
+      owner: 'owner-2',
+      type: 'Repo',
+    };
+    await tag(runner.instanceId, [{ Key: 'ghr:orphan', Value: 'true' }]);
+    expect(mockEC2Client).toHaveReceivedCommandWith(CreateTagsCommand, {
+      Resources: [runner.instanceId],
+      Tags: [{ Key: 'ghr:orphan', Value: 'true' }],
+    });
+    await untag(runner.instanceId, [{ Key: 'ghr:orphan', Value: 'true' }]);
+    expect(mockEC2Client).toHaveReceivedCommandWith(DeleteTagsCommand, {
+      Resources: [runner.instanceId],
+      Tags: [{ Key: 'ghr:orphan', Value: 'true' }],
     });
   });
 });
