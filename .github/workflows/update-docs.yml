@@ -87,4 +87,9 @@ jobs:
           restore-keys: |
             mkdocs-material-
       - run: pip install -r .github/workflows/mkdocs/requirements.txt
-      - run: mkdocs gh-deploy --force -c -b gh-pages
+      - name: Build and deploy docs (main branch)
+        if: github.ref == 'refs/heads/main'
+        run: mkdocs gh-deploy --force -c -b gh-pages
+      - name: Build docs only (other branches)
+        if: github.ref != 'refs/heads/main'
+        run: mkdocs build
