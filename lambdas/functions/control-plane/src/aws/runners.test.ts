@@ -284,7 +284,7 @@ describe('untag runner', () => {
       owner: 'owner-2',
       type: 'Repo',
     };
-    //await tag(runner.instanceId, [{ Key: 'ghr:orphan', Value: '' }]);
+    await tag(runner.instanceId, [{ Key: 'ghr:orphan', Value: 'true' }]);
     expect(mockEC2Client).toHaveReceivedCommandWith(CreateTagsCommand, {
       Resources: [runner.instanceId],
       Tags: [{ Key: 'ghr:orphan', Value: 'true' }],
