@@ -6,6 +6,9 @@ on:
       - v1
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   release:
     name: Release
@@ -16,6 +19,11 @@ jobs:
       id-token: write
       attestations: write
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@6c439dc8bdf85cadbbce9ed30d1c7b959517bc49 # v2.12.2
+        with:
+          egress-policy: audit
+
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
@@ -26,7 +34,7 @@ jobs:
         working-directory: lambdas
         run: yarn install --frozen-lockfile && yarn run test && yarn dist
       - name: Get installation token
-        uses: actions/create-github-app-token@3ff1caaa28b64c9cc276ce0a02e2ff584f3900c5 # v2.0.2
+        uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2.0.6
         id: token
         with:
           app-id: ${{ vars.RELEASER_APP_ID }}
@@ -45,7 +53,7 @@ jobs:
       - name: Attest
         if: ${{ steps.release.outputs.releases_created == 'true' }}
         id: attest
-        uses: actions/attest-build-provenance@c074443f1aee8d4aeeae555aebba3282517141b2 # v2.2.3
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0
         with:
           subject-path: '${{ github.workspace }}/lambdas/functions/**/*.zip'
       - name: Update release notes with attestation
@@ -62,7 +70,7 @@ jobs:
           gh release view $version --json body -q '.body' > new-release-notes.md
           echo "## Attestation" >> new-release-notes.md
           echo "Attestation url: $attestation_url" >> new-release-notes.md
-          echo "Verify the artifacts by running \`gh attest verify <name_of_artifact> --repo ${{ github.repository }}\`" >> new-release-notes.md
+          echo "Verify the artifacts by running \`gh attestation verify <name_of_artifact> --repo ${{ github.repository }}\`" >> new-release-notes.md
           gh release edit $tag_name -F new-release-notes.md -t $tag_name
       - name: Upload release assets
         if: ${{ steps.release.outputs.releases_created == 'true' }}
@@ -74,3 +82,23 @@ jobs:
           for f in $(find . -name '*.zip'); do
             gh release upload $tag_name $f
           done
+      - name: Attach attestation
+        if: ${{ steps.release.outputs.releases_created == 'true' }}
+        env:
+          ATTESTATION_BUNDLE: ${{ steps.attest.outputs.bundle-path }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ steps.release.outputs.tag_name }}
+          ATTESTATION_ID: ${{ steps.attest.outputs.attestation-id }}
+        run: |
+          # rename attest bundle to github-aws-runners-terraform-aws-github-runner-attestation-$attestation-id.sigstore
+          # OpenSSF expects the attestation bundle to be named in this format (*.sigstore)
+          SIGSTORE_BUNDLE=$RUNNER_TEMP/github-aws-runners-terraform-aws-github-runner-attestation-${ATTESTATION_ID}.sigstore
+          INTOTO_BUNDLE=$RUNNER_TEMP/github-aws-runners-terraform-aws-github-runner-attestation-${ATTESTATION_ID}.intoto.jsonl
+          mv ${ATTESTATION_BUNDLE} $SIGSTORE_BUNDLE
+          if [ -z "$SIGSTORE_BUNDLE" ]; then
+            echo "No attestation bundle found, skipping attachment."
+            exit 0
+          fi
+          gh release upload $TAG_NAME "$SIGSTORE_BUNDLE"
+          cat ${SIGSTORE_BUNDLE} | jq -r '.dsseEnvelope | select(.payloadType == "application/vnd.in-toto+json").payload' | base64 -d | jq .> ${INTOTO_BUNDLE}
+          gh release upload $TAG_NAME "${INTOTO_BUNDLE}"

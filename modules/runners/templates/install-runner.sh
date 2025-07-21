@@ -42,7 +42,7 @@ tar xzf ./$file_name
 echo "Delete tar file"
 rm -rf $file_name
 
-os_id=$(awk -F= '/^ID/{print $2}' /etc/os-release)
+os_id=$(awk -F= '/^ID=/{print $2}' /etc/os-release)
 echo OS: $os_id
 
 # Install libicu on non-ubuntu
@@ -70,5 +70,5 @@ if [[ "$os_id" =~ ^ubuntu.* ]]; then
 fi
 
 echo "Set file ownership of action runner"
-chown -R "$user_name":"$user_name" .
+chown -R "$user_name":"$user_name" /opt/actions-runner
 chown -R "$user_name":"$user_name" /opt/hostedtoolcache

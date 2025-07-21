@@ -45,13 +45,13 @@ jobs:
       security-events: write
     steps:
       - name: Download SARIF file
-        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: results.sarif
           path: results.sarif
 
       - name: Upload SARIF file
-        uses: github/codeql-action/upload-sarif@45775bd8235c68ba998cffa5171334d58593da47 # v3.28.15
+        uses: github/codeql-action/upload-sarif@181d5eefc20863364f96762470ba6f862bdef56b # v3.29.2
         with:
           sarif_file: results.sarif
           category: actions-zizmor

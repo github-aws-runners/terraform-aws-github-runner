@@ -3,7 +3,8 @@
 This module shows how to create GitHub action runners with multiple runner configuration together in one deployment. This example has the configurations for the following runner types with the relevant labels supported by them as matchers:
 
 - Linux ARM64 `["self-hosted", "linux", "arm64", "amazon"]`: Amazon Linux ARM64 non ephemeral runner based on module defaults
-- Linux Ubuntu `["self-hosted", "linux", "x64", "ubuntu-latest"]` or `["self-hosted", "linux", "x64", "ubuntu-2204"]`: Ubuntu runners non ephemeral based on a custom start script.
+- Linux Ubuntu 24.04 `["self-hosted", "linux", "x64", "ubuntu-latest"]` or `["self-hosted", "linux", "x64", "ubuntu-2404"]`: Ubuntu runners non ephemeral based on a custom start script.
+- Linux Ubuntu 22.04 `["self-hosted", "linux", "x64", "ubuntu-2204"]`: Ubuntu runners non ephemeral based on a custom start script.
 - Linux X64 `["self-hosted", "linux", "x64", "amazon"]`: Amazon X64 Linux runners ephemeral with retry enabled.
 - Windows X64 `["self-hosted", "windows", "x64", "servercore-2022"]`: Windows X64 Servercore 2022 runners non ephemeral based on a custom start script.
 

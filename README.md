@@ -1,6 +1,6 @@
 # Terraform module Self-Hosted Scalable GitHub Actions runners on AWS.
 
-[![docs](https://img.shields.io/badge/docs-runners-blue.svg)](https://github-aws-runners.github.io/terraform-aws-github-runner) [![awesome-runners](https://img.shields.io/badge/listed%20on-awesome--runners-blue.svg)](https://github.com/jonico/awesome-runners) [![Terraform registry](https://img.shields.io/github/v/release/github-aws-runners/terraform-aws-github-runner?label=Terraform%20Registry)](https://registry.terraform.io/modules/github-aws-runners/github-runner/aws/) [![Terraform checks](https://github.com/github-aws-runners/terraform-aws-github-runner/actions/workflows/terraform.yml/badge.svg)](https://github.com/github-aws-runners/terraform-aws-github-runner/actions/workflows/terraform.yml) [![Lambdas](https://github.com/github-aws-runners/terraform-aws-github-runner/actions/workflows/lambda.yml/badge.svg)](https://github.com/github-aws-runners/terraform-aws-github-runner/actions/workflows/lambda.yml)
+[![docs](https://img.shields.io/badge/docs-runners-blue.svg)](https://github-aws-runners.github.io/terraform-aws-github-runner) [![awesome-runners](https://img.shields.io/badge/listed%20on-awesome--runners-blue.svg)](https://github.com/jonico/awesome-runners) [![Terraform registry](https://img.shields.io/github/v/release/github-aws-runners/terraform-aws-github-runner?label=Terraform%20Registry)](https://registry.terraform.io/modules/github-aws-runners/github-runner/aws/) [![Terraform checks](https://github.com/github-aws-runners/terraform-aws-github-runner/actions/workflows/terraform.yml/badge.svg)](https://github.com/github-aws-runners/terraform-aws-github-runner/actions/workflows/terraform.yml) [![Lambdas](https://github.com/github-aws-runners/terraform-aws-github-runner/actions/workflows/lambda.yml/badge.svg)](https://github.com/github-aws-runners/terraform-aws-github-runner/actions/workflows/lambda.yml) [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/github-aws-runners/terraform-aws-github-runner/badge)](https://scorecard.dev/viewer/?uri=github.com/github-aws-runners/terraform-aws-github-runner) [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/10905/badge)](https://www.bestpractices.dev/projects/10905)
 
 > 📢 We're moving `terraform-aws-github-runner` to a new organization https://github.com/github-aws-runners in January to foster growth and community ownership! 🎉 Join us on our new [Discord server](https://discord.gg/bxgXW8jJGh) for discussions and updates. Please see #4298 for more details.
 
@@ -70,14 +70,14 @@ Join our discord community via [this invite link](https://discord.gg/bxgXW8jJGh)
 | Name | Version |
 |------|---------|
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.3.0 |
-| <a name="requirement_aws"></a> [aws](#requirement\_aws) | ~> 5.77 |
+| <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 5.77 |
 | <a name="requirement_random"></a> [random](#requirement\_random) | ~> 3.0 |
 
 ## Providers
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | ~> 5.77 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | >= 5.77 |
 | <a name="provider_random"></a> [random](#provider\_random) | ~> 3.0 |
 
 ## Modules

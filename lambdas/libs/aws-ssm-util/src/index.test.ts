@@ -9,7 +9,7 @@ import 'aws-sdk-client-mock-jest/vitest';
 import { mockClient } from 'aws-sdk-client-mock';
 import nock from 'nock';
 
-import { getParameter, putParameter } from '.';
+import { getParameter, putParameter, SSM_ADVANCED_TIER_THRESHOLD } from '.';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 const mockSSMClient = mockClient(SSMClient);
@@ -138,5 +138,31 @@ describe('Test getParameter and putParameter', () => {
 
     // Act
     await expect(getParameter(parameterName)).rejects.toThrow(`Parameter ${parameterName} not found`);
+  });
+
+  it.each([
+    ['a'.repeat(SSM_ADVANCED_TIER_THRESHOLD - 1), 'Standard'],
+    ['a'.repeat(SSM_ADVANCED_TIER_THRESHOLD), 'Advanced'],
+    ['a'.repeat(SSM_ADVANCED_TIER_THRESHOLD + 1), 'Advanced'],
+  ])('Puts parameters with value and sets correct SSM tier based on size and threshold', async (data, expectedTier) => {
+    // Arrange
+    const parameterValue = data;
+    const parameterName = 'testParamSmall';
+    const secure = false;
+    const output: PutParameterCommandOutput = {
+      $metadata: { httpStatusCode: 200 },
+    };
+    mockSSMClient.on(PutParameterCommand).resolves(output);
+
+    // Act
+    await putParameter(parameterName, parameterValue, secure);
+
+    // Assert
+    expect(mockSSMClient).toHaveReceivedCommandWith(PutParameterCommand, {
+      Name: parameterName,
+      Value: parameterValue,
+      Type: 'String',
+      Tier: expectedTier,
+    });
   });
 });
