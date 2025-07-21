@@ -212,7 +212,7 @@ async function markOrphan(instanceId: string): Promise<void> {
   }
 }
 
-async function unmarkOrphan(instanceId: string): Promise<void> {
+async function unMarkOrphan(instanceId: string): Promise<void> {
   try {
     await untag(instanceId, [{ Key: 'ghr:orphan', Value: 'true' }]);
     logger.info(`Runner '${instanceId}' untagged as orphan.`);
@@ -248,7 +248,7 @@ async function terminateOrphan(environment: string): Promise<void> {
         if (isOrphan) {
           await terminateRunner(runner.instanceId);
         } else {
-          await unmarkOrphan(runner.instanceId);
+          await unMarkOrphan(runner.instanceId);
         }
       } else {
         logger.info(`Terminating orphan runner '${runner.instanceId}'`);
