@@ -86,6 +86,5 @@ jobs:
           path: .cache
           restore-keys: |
             mkdocs-material-
-      - run: pip install mkdocs-material
-      - run: pip install mkdocs-material-extensions
+      - run: pip install -r .github/workflows/mkdocs/requirements.txt
       - run: mkdocs gh-deploy --force -c -b gh-pages
