@@ -71,3 +71,17 @@ updates:
       - "docker"
     commit-message:
       prefix: "chore(devcontainer)"
+
+  - package-ecosystem: "pip"
+    directory: "/.github/workflows/mkdocs"
+    schedule:
+      interval: "weekly"
+    groups:
+      python-deps:
+        patterns:
+          - "*"
+    labels:
+      - "dependencies"
+      - "python"
+    commit-message:
+      prefix: "chore(docs)"
