@@ -1,5 +1,18 @@
 # Changelog
 
+## [6.7.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.6.2...v6.7.0) (2025-07-22)
+
+
+### Features
+
+* Add last chance check before orphan termination ([#4595](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4595)) ([7cbd9e0](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/7cbd9e0430c5213157a1befa804edde03e8f4336))
+
+
+### Bug Fixes
+
+* [#4391](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4391) ([7cbd9e0](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/7cbd9e0430c5213157a1befa804edde03e8f4336))
+* **lambda:** bump form-data from 2.5.1 to 2.5.5 in /lambdas ([#4672](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4672)) ([0ec1c9a](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/0ec1c9ab505ff25214312bc020b033104fe04a60))
+
 ## [6.6.2](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.6.1...v6.6.2) (2025-07-15)
 
 
