@@ -16,7 +16,7 @@
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.147",
-    "@types/node": "^22.14.0",
+    "@types/node": "^22.16.5",
     "body-parser": "^2.2.0"
   },
   "dependencies": {
