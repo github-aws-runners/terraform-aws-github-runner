@@ -24,7 +24,7 @@
   },
   "dependencies": {
     "@aws-github-runner/aws-powertools-util": "*",
-    "@aws-sdk/client-ec2": "^3.844.0",
+    "@aws-sdk/client-ec2": "^3.850.0",
     "@middy/core": "^6.1.6"
   },
   "nx": {
