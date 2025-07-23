@@ -28,7 +28,7 @@
     "@aws-github-runner/aws-ssm-util": "*",
     "@aws-sdk/client-ec2": "^3.850.0",
     "@aws-sdk/client-ssm": "^3.849.0",
-    "cron-parser": "^5.0.4"
+    "cron-parser": "^5.3.0"
   },
   "nx": {
     "includedScripts": [
