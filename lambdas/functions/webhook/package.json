@@ -31,7 +31,7 @@
     "@aws-github-runner/aws-powertools-util": "*",
     "@aws-github-runner/aws-ssm-util": "*",
     "@aws-sdk/client-sqs": "^3.848.0",
-    "@middy/core": "^6.1.6",
+    "@middy/core": "^6.4.1",
     "@octokit/rest": "22.0.0",
     "@octokit/types": "^14.1.0",
     "@octokit/webhooks": "^14.1.1",

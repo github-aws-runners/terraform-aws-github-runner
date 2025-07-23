@@ -35,7 +35,7 @@
     "@aws-lambda-powertools/parameters": "^2.24.0",
     "@aws-sdk/client-ec2": "^3.850.0",
     "@aws-sdk/client-sqs": "^3.848.0",
-    "@middy/core": "^6.1.6",
+    "@middy/core": "^6.4.1",
     "@octokit/auth-app": "8.0.2",
     "@octokit/core": "7.0.3",
     "@octokit/plugin-throttling": "11.0.1",

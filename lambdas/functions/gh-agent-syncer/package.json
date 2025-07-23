@@ -30,7 +30,7 @@
     "@aws-github-runner/aws-powertools-util": "*",
     "@aws-sdk/client-s3": "^3.850.0",
     "@aws-sdk/lib-storage": "^3.850.0",
-    "@middy/core": "^6.1.6",
+    "@middy/core": "^6.4.1",
     "@octokit/rest": "22.0.0",
     "axios": "^1.8.4"
   },
