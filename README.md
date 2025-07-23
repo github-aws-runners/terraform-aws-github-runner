@@ -58,7 +58,7 @@ We welcome contributions, please check out the [contribution guide](CONTRIBUTING
 
 ## Join the community
 
-Join our discord community via [this invite link](https://discord.gg/bxgXW8jJGh))
+Join our discord community via [this invite link](https://discord.gg/bxgXW8jJGh).
 
 <details>
 <summary>Terraform root module documention</summary>
