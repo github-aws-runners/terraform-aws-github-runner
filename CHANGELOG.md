@@ -1,5 +1,13 @@
 # Changelog
 
+## [6.7.1](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.7.0...v6.7.1) (2025-07-23)
+
+
+### Bug Fixes
+
+* **lambda:** bump @middy/core from 6.1.6 to 6.4.1 in /lambdas ([#4678](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4678)) ([fecd701](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/fecd701d2782e73b15fb64311ab7bf8e0ca69a56))
+* **lambda:** bump the aws group in /lambdas with 6 updates ([#4674](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4674)) ([8e6c422](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/8e6c42248707973215878193f0cda485a3455b60))
+
 ## [6.7.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.6.2...v6.7.0) (2025-07-22)
 
 
