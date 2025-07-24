@@ -15,7 +15,7 @@
     "all": "yarn build && yarn format && yarn lint && yarn test"
   },
   "devDependencies": {
-    "@types/aws-lambda": "^8.10.147",
+    "@types/aws-lambda": "^8.10.152",
     "@types/node": "^22.16.5",
     "body-parser": "^2.2.0"
   },
