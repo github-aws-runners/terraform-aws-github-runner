@@ -1,5 +1,13 @@
 # Changelog
 
+## [6.7.2](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.7.1...v6.7.2) (2025-07-24)
+
+
+### Bug Fixes
+
+* **lambda:** bump @aws-sdk/client-ec2 from 3.850.0 to 3.852.0 in /lambdas in the aws group ([#4681](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4681)) ([c51f04f](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/c51f04f0a829a0a5da940aa166fa771b233397b7))
+* **lambda:** bump cron-parser from 5.0.4 to 5.3.0 in /lambdas ([#4683](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4683)) ([aa33c79](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/aa33c79a86519a64988b6d2a5a6e619f4d31cbae))
+
 ## [6.7.1](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.7.0...v6.7.1) (2025-07-23)
 
 
