@@ -126,7 +126,7 @@ __metadata:
   dependencies:
     "@aws-github-runner/aws-powertools-util": "npm:*"
     "@aws-github-runner/aws-ssm-util": "npm:*"
-    "@aws-sdk/client-ec2": "npm:^3.850.0"
+    "@aws-sdk/client-ec2": "npm:^3.852.0"
     "@aws-sdk/client-ssm": "npm:^3.849.0"
     "@aws-sdk/types": "npm:^3.840.0"
     "@types/aws-lambda": "npm:^8.10.147"
@@ -172,7 +172,7 @@ __metadata:
     "@aws-github-runner/aws-powertools-util": "npm:*"
     "@aws-github-runner/aws-ssm-util": "npm:*"
     "@aws-lambda-powertools/parameters": "npm:^2.24.0"
-    "@aws-sdk/client-ec2": "npm:^3.850.0"
+    "@aws-sdk/client-ec2": "npm:^3.852.0"
     "@aws-sdk/client-sqs": "npm:^3.848.0"
     "@aws-sdk/types": "npm:^3.840.0"
     "@middy/core": "npm:^6.4.1"
@@ -220,7 +220,7 @@ __metadata:
   resolution: "@aws-github-runner/termination-watcher@workspace:functions/termination-watcher"
   dependencies:
     "@aws-github-runner/aws-powertools-util": "npm:*"
-    "@aws-sdk/client-ec2": "npm:^3.850.0"
+    "@aws-sdk/client-ec2": "npm:^3.852.0"
     "@aws-sdk/types": "npm:^3.840.0"
     "@middy/core": "npm:^6.4.1"
     "@types/aws-lambda": "npm:^8.10.147"
@@ -338,9 +338,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@aws-sdk/client-ec2@npm:^3.850.0":
-  version: 3.850.0
-  resolution: "@aws-sdk/client-ec2@npm:3.850.0"
+"@aws-sdk/client-ec2@npm:^3.852.0":
+  version: 3.852.0
+  resolution: "@aws-sdk/client-ec2@npm:3.852.0"
   dependencies:
     "@aws-crypto/sha256-browser": "npm:5.2.0"
     "@aws-crypto/sha256-js": "npm:5.2.0"
@@ -385,7 +385,7 @@ __metadata:
     "@types/uuid": "npm:^9.0.1"
     tslib: "npm:^2.6.2"
     uuid: "npm:^9.0.1"
-  checksum: 10c0/60b9a36b12a26467ce1a2862af4ec59bdddb14c807d0266af41aba17e8dd67979f61e599477d33f2a6325a97941269f4bd42252186455bd8464b7510c862d50c
+  checksum: 10c0/7e0f4d7265de432c911965d94524b6d56603f2038ef819ab9b128bf1468c68a08e57b5571d2f49dbfcf6ea01a88865f40c44b90792277bd0b7dd030c269f46d7
   languageName: node
   linkType: hard
 
