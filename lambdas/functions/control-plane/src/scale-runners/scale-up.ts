@@ -31,6 +31,7 @@ export interface ActionRequestMessage {
   installationId: number;
   repoOwnerType: string;
   retryCounter?: number;
+  workflowUrl?: string;
 }
 
 export interface ActionRequestMessageRetry extends ActionRequestMessage {
@@ -49,6 +50,7 @@ interface CreateGitHubRunnerConfig {
   disableAutoUpdate: boolean;
   ssmTokenPath: string;
   ssmConfigPath: string;
+  jobId?: number;
 }
 
 interface CreateEC2RunnerConfig {
@@ -60,6 +62,7 @@ interface CreateEC2RunnerConfig {
   amiIdSsmParameterName?: string;
   tracingEnabled?: boolean;
   onDemandFailoverOnError?: string[];
+  workflowUrl?: string;
 }
 
 function generateRunnerServiceConfig(githubRunnerConfig: CreateGitHubRunnerConfig, token: string) {
@@ -217,6 +220,7 @@ export async function createRunners(
     runnerType: githubRunnerConfig.runnerType,
     runnerOwner: githubRunnerConfig.runnerOwner,
     numberOfRunners: 1,
+    githubJobId: githubRunnerConfig.jobId?.toString(),
     ...ec2RunnerConfig,
   });
   if (instances.length !== 0) {
@@ -225,7 +229,9 @@ export async function createRunners(
 }
 
 export async function scaleUp(eventSource: string, payload: ActionRequestMessage): Promise<void> {
-  logger.info(`Received ${payload.eventType} from ${payload.repositoryOwner}/${payload.repositoryName}`);
+  logger.info(
+    `Received ${payload.eventType} from ${payload.repositoryOwner}/${payload.repositoryName} Workflow URL: ${payload.workflowUrl}`,
+  );
 
   if (eventSource !== 'aws:sqs') throw Error('Cannot handle non-SQS events!');
   const enableOrgLevel = yn(process.env.ENABLE_ORGANIZATION_RUNNERS, { default: true });
@@ -321,6 +327,7 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
           disableAutoUpdate,
           ssmTokenPath,
           ssmConfigPath,
+          jobId: payload.id,
         },
         {
           ec2instanceCriteria: {
@@ -335,6 +342,7 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
           amiIdSsmParameterName,
           tracingEnabled,
           onDemandFailoverOnError,
+          workflowUrl: payload.workflowUrl,
         },
         githubInstallationClient,
       );
