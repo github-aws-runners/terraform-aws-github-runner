@@ -85,7 +85,7 @@ resource "aws_lambda_permission" "allow_cloudwatch_to_call_lambda" {
 }
 
 resource "aws_iam_role" "dispatcher_lambda" {
-  name                 = "${var.config.prefix}-dispatcher-lambda-role"
+  name                 = substr("${var.config.prefix}-dispatcher-lambda-role", 0, 63)
   assume_role_policy   = data.aws_iam_policy_document.lambda_assume_role_policy.json
   path                 = var.config.role_path
   permissions_boundary = var.config.role_permissions_boundary
