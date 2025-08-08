@@ -1,34 +1,72 @@
 import middy from '@middy/core';
 import { logger, setContext } from '@aws-github-runner/aws-powertools-util';
 import { captureLambdaHandler, tracer } from '@aws-github-runner/aws-powertools-util';
-import { Context, SQSEvent } from 'aws-lambda';
+import { Context, type SQSBatchItemFailure, type SQSBatchResponse, SQSEvent } from 'aws-lambda';
 
 import { PoolEvent, adjust } from './pool/pool';
 import ScaleError from './scale-runners/ScaleError';
 import { scaleDown } from './scale-runners/scale-down';
-import { scaleUp } from './scale-runners/scale-up';
+import { type ActionRequestMessage, type ActionRequestMessageSQS, scaleUp } from './scale-runners/scale-up';
 import { SSMCleanupOptions, cleanSSMTokens } from './scale-runners/ssm-housekeeper';
 import { checkAndRetryJob } from './scale-runners/job-retry';
 
-export async function scaleUpHandler(event: SQSEvent, context: Context): Promise<void> {
+export async function scaleUpHandler(event: SQSEvent, context: Context): Promise<SQSBatchResponse> {
   setContext(context, 'lambda.ts');
   logger.logEventIfEnabled(event);
 
-  if (event.Records.length !== 1) {
-    logger.warn('Event ignored, only one record at the time can be handled, ensure the lambda batch size is set to 1.');
-    return Promise.resolve();
+  // Group the messages by their event source. We're only interested in
+  // `aws:sqs`-originated messages.
+  const groupedEvents = new Map<string, ActionRequestMessageSQS[]>();
+  for (const { body, eventSource, messageId } of event.Records) {
+    const group = groupedEvents.get(eventSource) || [];
+    const payload = JSON.parse(body) as ActionRequestMessage;
+
+    if (group.length === 0) {
+      groupedEvents.set(eventSource, group);
+    }
+
+    groupedEvents.get(eventSource)?.push({
+      ...payload,
+      messageId,
+    });
   }
 
+  for (const [eventSource, messages] of groupedEvents.entries()) {
+    if (eventSource === 'aws:sqs') {
+      continue;
+    }
+
+    logger.warn('Ignoring non-sqs event source', { eventSource, messages });
+  }
+
+  const sqsMessages = groupedEvents.get('aws:sqs') ?? [];
+
+  // Sort messages by their retry count, so that we retry the same messages if
+  // there's a persistent failure. This should cause messages to be dropped
+  // quicker than if we retried in an arbitrary order.
+  sqsMessages.sort((l, r) => {
+    return (l.retryCounter ?? 0) - (r.retryCounter ?? 0);
+  });
+
+  const batchItemFailures: SQSBatchItemFailure[] = [];
+
   try {
-    await scaleUp(event.Records[0].eventSource, JSON.parse(event.Records[0].body));
-    return Promise.resolve();
+    const rejectedMessageIds = await scaleUp(sqsMessages);
+
+    for (const messageId of rejectedMessageIds) {
+      batchItemFailures.push({
+        itemIdentifier: messageId,
+      });
+    }
+
+    return { batchItemFailures };
   } catch (e) {
     if (e instanceof ScaleError) {
-      return Promise.reject(e);
-    } else {
-      logger.warn(`Ignoring error: ${e}`);
-      return Promise.resolve();
+      throw e;
     }
+
+    logger.warn(`Will retry error: ${e}`);
+    return { batchItemFailures };
   }
 }
 
