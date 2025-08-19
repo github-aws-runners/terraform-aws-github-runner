@@ -20,7 +20,7 @@
     "@aws-sdk/types": "^3.862.0",
     "@types/aws-lambda": "^8.10.152",
     "@types/node": "^22.16.5",
-    "@types/request": "^2.48.12",
+    "@types/request": "^2.48.13",
     "@vercel/ncc": "^0.38.3",
     "aws-sdk-client-mock": "^4.1.0",
     "aws-sdk-client-mock-jest": "^4.1.0",
