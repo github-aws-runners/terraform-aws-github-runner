@@ -177,30 +177,29 @@ ConvertTo-Json -InputObject $jsonBody | Set-Content -Path "$pwd\.setup_info"
 Write-Host "Starting the runner in $agent_mode mode"
 Write-Host "Starting runner after $(((get-date) - (gcim Win32_OperatingSystem).LastBootUpTime).tostring("hh':'mm':'ss''"))"
 
+$taskExecutable = "run.cmd"
+$taskArgument = $null
+
 if ($agent_mode -eq "ephemeral") {
     if ($enable_jit_config -eq "true") {
         Write-Host "Starting with jit config"
-        Invoke-Expression ".\run.cmd --jitconfig $${config}"
+        $taskExecutable = "run.cmd"
+        $taskArgument = "--jitconfig $${config}"
     }
     else {
         Write-Host "Starting without jit config"
-        Invoke-Expression ".\run.cmd"
+        $taskExecutable = "run.cmd"
     }
-    Write-Host "Runner has finished"
-
-    if ($enable_cloudwatch_agent)
-    {
-        Write-Host "Stopping CloudWatch Agent"
-        & 'C:\Program Files\Amazon\AmazonCloudWatchAgent\amazon-cloudwatch-agent-ctl.ps1' -a stop
-    }
-
-    Write-Host "Terminating instance"
-    aws ec2 terminate-instances --instance-ids "$InstanceId" --region "$Region"
-} else {
-    Write-Host  "Installing the runner as a service"
-
-    $action = New-ScheduledTaskAction -WorkingDirectory "$pwd" -Execute "run.cmd"
-    $trigger = Get-CimClass "MSFT_TaskRegistrationTrigger" -Namespace "Root/Microsoft/Windows/TaskScheduler"
-    Register-ScheduledTask -TaskName "runnertask" -Action $action -Trigger $trigger -User $username -Password $password -RunLevel Highest -Force
-    Write-Host "Starting runner after $(((get-date) - (gcim Win32_OperatingSystem).LastBootUpTime).tostring("hh':'mm':'ss''"))"
 }
+
+Write-Host  "Installing the runner as a service"
+
+if ( $taskArgument ) {
+    $action = New-ScheduledTaskAction -WorkingDirectory "$pwd" -Execute "$taskExecutable" -Argument "$taskArgument"
+  }
+else {
+    $action = New-ScheduledTaskAction -WorkingDirectory "$pwd" -Execute "$taskExecutable"
+}
+$trigger = Get-CimClass "MSFT_TaskRegistrationTrigger" -Namespace "Root/Microsoft/Windows/TaskScheduler"
+Register-ScheduledTask -TaskName "runnertask" -Action $action -Trigger $trigger -User $username -Password $password -RunLevel Highest -Force
+Write-Host "Starting runner after $(((get-date) - (gcim Win32_OperatingSystem).LastBootUpTime).tostring("hh':'mm':'ss''"))"
