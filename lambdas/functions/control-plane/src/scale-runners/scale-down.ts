@@ -72,6 +72,27 @@ async function getGitHubSelfHostedRunnerState(
   return state.data;
 }
 
+// Add a safe runner state fetch with retries and fallback to null
+async function safeGetGitHubSelfHostedRunnerState(
+  client: Octokit,
+  ec2runner: RunnerInfo,
+  runnerId: number,
+  retries = 3,
+): Promise<RunnerState | null> {
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      return await getGitHubSelfHostedRunnerState(client, ec2runner, runnerId);
+    } catch (e) {
+      logger.warn(`Attempt ${attempt + 1}: Failed to fetch runner state for '${ec2runner.instanceId}'. Error: ${e}`);
+      await new Promise((res) => setTimeout(res, 1000 * (attempt + 1)));
+    }
+  }
+  logger.error(
+    `All attempts failed. Unable to fetch runner state for '${ec2runner.instanceId}'. Assuming stale and terminating.`,
+  );
+  return null;
+}
+
 async function getGitHubRunnerBusyState(client: Octokit, ec2runner: RunnerInfo, runnerId: number): Promise<boolean> {
   const state = await getGitHubSelfHostedRunnerState(client, ec2runner, runnerId);
   logger.info(`Runner '${ec2runner.instanceId}' - GitHub Runner ID '${runnerId}' - Busy: ${state.busy}`);
@@ -117,13 +138,21 @@ async function removeRunner(ec2runner: RunnerInfo, ghRunnerIds: number[]): Promi
   try {
     const states = await Promise.all(
       ghRunnerIds.map(async (ghRunnerId) => {
-        // Get busy state instead of using the output of listGitHubRunners(...) to minimize to race condition.
-        return await getGitHubRunnerBusyState(githubAppClient, ec2runner, ghRunnerId);
+        // Use safe fetch
+        const state = await safeGetGitHubSelfHostedRunnerState(githubAppClient, ec2runner, ghRunnerId);
+        if (state === null) {
+          // Terminate immediately if state is unreachable
+          await terminateRunner(ec2runner.instanceId);
+          logger.info(`AWS runner instance '${ec2runner.instanceId}' is terminated due to unreachable GitHub runner state.`);
+          return false; // treat as "not busy" for logic
+        }
+        logger.info(`Runner '${ec2runner.instanceId}' - GitHub Runner ID '${ghRunnerId}' - Busy: ${state.busy}`);
+        return state.busy;
       }),
     );
 
     if (states.every((busy) => busy === false)) {
-      const statuses = await Promise.all(
+      const responses = await Promise.all(
         ghRunnerIds.map(async (ghRunnerId) => {
           return (
             ec2runner.type === 'Org'
@@ -136,11 +165,11 @@ async function removeRunner(ec2runner: RunnerInfo, ghRunnerIds: number[]): Promi
                   owner: ec2runner.owner.split('/')[0],
                   repo: ec2runner.owner.split('/')[1],
                 })
-          ).status;
+          );
         }),
       );
-
-      if (statuses.every((status) => status == 204)) {
+      const statuses = responses.map((r) => r.status);
+      if (statuses.every((status) => status === 204)) {
         await terminateRunner(ec2runner.instanceId);
         logger.info(`AWS runner instance '${ec2runner.instanceId}' is terminated and GitHub runner is de-registered.`);
       } else {
@@ -225,8 +254,16 @@ async function lastChanceCheckOrphanRunner(runner: RunnerList): Promise<boolean>
   const client = await getOrCreateOctokit(runner as RunnerInfo);
   const runnerId = parseInt(runner.runnerId || '0');
   const ec2Instance = runner as RunnerInfo;
-  const state = await getGitHubSelfHostedRunnerState(client, ec2Instance, runnerId);
+  const state = await safeGetGitHubSelfHostedRunnerState(client, ec2Instance, runnerId);
   let isOrphan = false;
+
+  if (state === null) {
+    // Terminate immediately if state is unreachable
+    await terminateRunner(runner.instanceId);
+    logger.info(`Runner '${runner.instanceId}' terminated due to unreachable GitHub runner state.`);
+    return true;
+  }
+
   logger.debug(
     `Runner '${runner.instanceId}' is '${state.status}' and is currently '${state.busy ? 'busy' : 'idle'}'.`,
   );
