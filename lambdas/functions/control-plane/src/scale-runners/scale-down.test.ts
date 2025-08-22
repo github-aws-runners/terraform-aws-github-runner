@@ -516,7 +516,7 @@ describe('Scale down runners', () => {
         await expect(scaleDown()).resolves.not.toThrow();
 
         // Should not terminate since the error was not a 404
-        expect(mockTerminateRunners).not.toHaveBeenCalledWith(orphanRunner.instanceId);
+        expect(terminateRunner).not.toHaveBeenCalledWith(orphanRunner.instanceId);
       });
 
       it(`Should ignore errors when termination orphan fails.`, async () => {
