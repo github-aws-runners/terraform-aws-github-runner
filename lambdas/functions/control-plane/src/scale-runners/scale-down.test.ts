@@ -403,6 +403,106 @@ describe('Scale down runners', () => {
         expect(mockTerminateRunners).toHaveBeenCalledWith(orphanRunner.instanceId);
       });
 
+      it('Should handle 404 error when checking orphaned runner (JIT) - treat as orphaned', async () => {
+        // arrange
+        const orphanRunner = createRunnerTestData(
+          'orphan-jit-404',
+          type,
+          MINIMUM_BOOT_TIME + 1,
+          false,
+          true,
+          true, // should be terminated when 404
+          undefined,
+          1234567890,
+        );
+        const runners = [orphanRunner];
+
+        mockGitHubRunners([]);
+        mockAwsRunners(runners);
+
+        // Mock 404 error response
+        const error404 = new Error('Runner not found');
+        (error404 as any).status = 404;
+
+        if (type === 'Repo') {
+          mockOctokit.actions.getSelfHostedRunnerForRepo.mockRejectedValueOnce(error404);
+        } else {
+          mockOctokit.actions.getSelfHostedRunnerForOrg.mockRejectedValueOnce(error404);
+        }
+
+        // act
+        await scaleDown();
+
+        // assert - should terminate since 404 means runner doesn't exist on GitHub
+        expect(mockTerminateRunners).toHaveBeenCalledWith(orphanRunner.instanceId);
+      });
+
+      it('Should handle 404 error when checking runner busy state - treat as not busy', async () => {
+        // arrange
+        const runner = createRunnerTestData(
+          'runner-404',
+          type,
+          MINIMUM_TIME_RUNNING_IN_MINUTES + 1,
+          true,
+          false,
+          true, // should be terminated since not busy due to 404
+        );
+        const runners = [runner];
+
+        mockGitHubRunners(runners);
+        mockAwsRunners(runners);
+
+        // Mock 404 error response for busy state check
+        const error404 = new Error('Runner not found');
+        (error404 as any).status = 404;
+
+        if (type === 'Repo') {
+          mockOctokit.actions.getSelfHostedRunnerForRepo.mockRejectedValueOnce(error404);
+        } else {
+          mockOctokit.actions.getSelfHostedRunnerForOrg.mockRejectedValueOnce(error404);
+        }
+
+        // act
+        await scaleDown();
+
+        // assert - should terminate since 404 means runner is not busy
+        checkTerminated(runners);
+      });
+
+      it('Should re-throw non-404 errors when checking runner state', async () => {
+        // arrange
+        const orphanRunner = createRunnerTestData(
+          'orphan-error',
+          type,
+          MINIMUM_BOOT_TIME + 1,
+          false,
+          true,
+          false,
+          undefined,
+          1234567890,
+        );
+        const runners = [orphanRunner];
+
+        mockGitHubRunners([]);
+        mockAwsRunners(runners);
+
+        // Mock non-404 error response
+        const error500 = new Error('Internal server error');
+        (error500 as any).status = 500;
+
+        if (type === 'Repo') {
+          mockOctokit.actions.getSelfHostedRunnerForRepo.mockRejectedValueOnce(error500);
+        } else {
+          mockOctokit.actions.getSelfHostedRunnerForOrg.mockRejectedValueOnce(error500);
+        }
+
+        // act & assert - should not throw because error handling is in terminateOrphan
+        await expect(scaleDown()).resolves.not.toThrow();
+
+        // Should not terminate since the error was not a 404
+        expect(mockTerminateRunners).not.toHaveBeenCalledWith(orphanRunner.instanceId);
+      });
+
       it(`Should ignore errors when termination orphan fails.`, async () => {
         // setup
         const orphanRunner = createRunnerTestData('orphan-1', type, MINIMUM_BOOT_TIME + 1, false, true, true);
