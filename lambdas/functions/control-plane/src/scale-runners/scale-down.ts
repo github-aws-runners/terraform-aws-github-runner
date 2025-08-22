@@ -83,7 +83,9 @@ async function getGitHubSelfHostedRunnerState(
 async function getGitHubRunnerBusyState(client: Octokit, ec2runner: RunnerInfo, runnerId: number): Promise<boolean> {
   const state = await getGitHubSelfHostedRunnerState(client, ec2runner, runnerId);
   if (state === null) {
-    logger.info(`Runner '${ec2runner.instanceId}' - GitHub Runner ID '${runnerId}' - Not found on GitHub, treating as not busy`);
+    logger.info(
+      `Runner '${ec2runner.instanceId}' - GitHub Runner ID '${runnerId}' - Not found on GitHub, treating as not busy`,
+    );
     return false;
   }
   logger.info(`Runner '${ec2runner.instanceId}' - GitHub Runner ID '${runnerId}' - Busy: ${state.busy}`);
