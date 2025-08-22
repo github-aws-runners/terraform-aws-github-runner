@@ -93,12 +93,6 @@ async function safeGetGitHubSelfHostedRunnerState(
   return null;
 }
 
-async function getGitHubRunnerBusyState(client: Octokit, ec2runner: RunnerInfo, runnerId: number): Promise<boolean> {
-  const state = await getGitHubSelfHostedRunnerState(client, ec2runner, runnerId);
-  logger.info(`Runner '${ec2runner.instanceId}' - GitHub Runner ID '${runnerId}' - Busy: ${state.busy}`);
-  return state.busy;
-}
-
 async function listGitHubRunners(runner: RunnerInfo): Promise<GhRunners> {
   const key = runner.owner as string;
   const cachedRunners = githubCache.runners.get(key);
@@ -143,7 +137,9 @@ async function removeRunner(ec2runner: RunnerInfo, ghRunnerIds: number[]): Promi
         if (state === null) {
           // Terminate immediately if state is unreachable
           await terminateRunner(ec2runner.instanceId);
-          logger.info(`AWS runner instance '${ec2runner.instanceId}' is terminated due to unreachable GitHub runner state.`);
+          logger.info(
+            `AWS runner instance '${ec2runner.instanceId}' is terminated due to unreachable GitHub runner state.`,
+          );
           return false; // treat as "not busy" for logic
         }
         logger.info(`Runner '${ec2runner.instanceId}' - GitHub Runner ID '${ghRunnerId}' - Busy: ${state.busy}`);
@@ -154,18 +150,16 @@ async function removeRunner(ec2runner: RunnerInfo, ghRunnerIds: number[]): Promi
     if (states.every((busy) => busy === false)) {
       const responses = await Promise.all(
         ghRunnerIds.map(async (ghRunnerId) => {
-          return (
-            ec2runner.type === 'Org'
-              ? await githubAppClient.actions.deleteSelfHostedRunnerFromOrg({
-                  runner_id: ghRunnerId,
-                  org: ec2runner.owner,
-                })
-              : await githubAppClient.actions.deleteSelfHostedRunnerFromRepo({
-                  runner_id: ghRunnerId,
-                  owner: ec2runner.owner.split('/')[0],
-                  repo: ec2runner.owner.split('/')[1],
-                })
-          );
+          return ec2runner.type === 'Org'
+            ? await githubAppClient.actions.deleteSelfHostedRunnerFromOrg({
+                runner_id: ghRunnerId,
+                org: ec2runner.owner,
+              })
+            : await githubAppClient.actions.deleteSelfHostedRunnerFromRepo({
+                runner_id: ghRunnerId,
+                owner: ec2runner.owner.split('/')[0],
+                repo: ec2runner.owner.split('/')[1],
+              });
         }),
       );
       const statuses = responses.map((r) => r.status);
