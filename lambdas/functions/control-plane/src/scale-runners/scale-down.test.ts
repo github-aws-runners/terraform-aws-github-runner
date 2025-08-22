@@ -1,4 +1,5 @@
 import { Octokit } from '@octokit/rest';
+import { RequestError } from '@octokit/request-error';
 import moment from 'moment';
 import nock from 'nock';
 
@@ -421,8 +422,13 @@ describe('Scale down runners', () => {
         mockAwsRunners(runners);
 
         // Mock 404 error response
-        const error404 = new Error('Runner not found');
-        (error404 as any).status = 404;
+        const error404 = new RequestError('Runner not found', 404, {
+          request: {
+            method: 'GET',
+            url: 'https://api.github.com/test',
+            headers: {},
+          },
+        });
 
         if (type === 'Repo') {
           mockOctokit.actions.getSelfHostedRunnerForRepo.mockRejectedValueOnce(error404);
@@ -453,8 +459,13 @@ describe('Scale down runners', () => {
         mockAwsRunners(runners);
 
         // Mock 404 error response for busy state check
-        const error404 = new Error('Runner not found');
-        (error404 as any).status = 404;
+        const error404 = new RequestError('Runner not found', 404, {
+          request: {
+            method: 'GET',
+            url: 'https://api.github.com/test',
+            headers: {},
+          },
+        });
 
         if (type === 'Repo') {
           mockOctokit.actions.getSelfHostedRunnerForRepo.mockRejectedValueOnce(error404);
@@ -487,8 +498,13 @@ describe('Scale down runners', () => {
         mockAwsRunners(runners);
 
         // Mock non-404 error response
-        const error500 = new Error('Internal server error');
-        (error500 as any).status = 500;
+        const error500 = new RequestError('Internal server error', 500, {
+          request: {
+            method: 'GET',
+            url: 'https://api.github.com/test',
+            headers: {},
+          },
+        });
 
         if (type === 'Repo') {
           mockOctokit.actions.getSelfHostedRunnerForRepo.mockRejectedValueOnce(error500);

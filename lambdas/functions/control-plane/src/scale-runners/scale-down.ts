@@ -1,5 +1,6 @@
 import { Octokit } from '@octokit/rest';
 import { Endpoints } from '@octokit/types';
+import { RequestError } from '@octokit/request-error';
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import moment from 'moment';
 
@@ -71,8 +72,8 @@ async function getGitHubSelfHostedRunnerState(
     metricGitHubAppRateLimit(state.headers);
 
     return state.data;
-  } catch (error: any) {
-    if (error.status === 404) {
+  } catch (error) {
+    if (error instanceof RequestError && error.status === 404) {
       logger.info(`Runner '${ec2runner.instanceId}' with GitHub Runner ID '${runnerId}' not found on GitHub (404)`);
       return null;
     }
