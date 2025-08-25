@@ -1,5 +1,13 @@
 # Changelog
 
+## [6.7.4](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.7.3...v6.7.4) (2025-08-25)
+
+
+### Bug Fixes
+
+* **lambda:** bump the aws group in /lambdas with 7 updates ([#4709](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4709)) ([0e74b3d](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/0e74b3da68098efe1253b68208a037a83f18c81b))
+* remove progress and control codes from log output ([#4699](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4699)) ([1c6b424](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/1c6b4242b00aef6e2057a176baf29dc03ed4dceb))
+
 ## [6.7.3](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.7.2...v6.7.3) (2025-08-07)
 
 
