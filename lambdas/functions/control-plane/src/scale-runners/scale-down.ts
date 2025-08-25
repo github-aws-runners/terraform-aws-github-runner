@@ -1,5 +1,6 @@
 import { Octokit } from '@octokit/rest';
 import { Endpoints } from '@octokit/types';
+import { RequestError } from '@octokit/request-error';
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import moment from 'moment';
 
@@ -55,25 +56,39 @@ async function getGitHubSelfHostedRunnerState(
   client: Octokit,
   ec2runner: RunnerInfo,
   runnerId: number,
-): Promise<RunnerState> {
-  const state =
-    ec2runner.type === 'Org'
-      ? await client.actions.getSelfHostedRunnerForOrg({
-          runner_id: runnerId,
-          org: ec2runner.owner,
-        })
-      : await client.actions.getSelfHostedRunnerForRepo({
-          runner_id: runnerId,
-          owner: ec2runner.owner.split('/')[0],
-          repo: ec2runner.owner.split('/')[1],
-        });
-  metricGitHubAppRateLimit(state.headers);
+): Promise<RunnerState | null> {
+  try {
+    const state =
+      ec2runner.type === 'Org'
+        ? await client.actions.getSelfHostedRunnerForOrg({
+            runner_id: runnerId,
+            org: ec2runner.owner,
+          })
+        : await client.actions.getSelfHostedRunnerForRepo({
+            runner_id: runnerId,
+            owner: ec2runner.owner.split('/')[0],
+            repo: ec2runner.owner.split('/')[1],
+          });
+    metricGitHubAppRateLimit(state.headers);
 
-  return state.data;
+    return state.data;
+  } catch (error) {
+    if (error instanceof RequestError && error.status === 404) {
+      logger.info(`Runner '${ec2runner.instanceId}' with GitHub Runner ID '${runnerId}' not found on GitHub (404)`);
+      return null;
+    }
+    throw error;
+  }
 }
 
 async function getGitHubRunnerBusyState(client: Octokit, ec2runner: RunnerInfo, runnerId: number): Promise<boolean> {
   const state = await getGitHubSelfHostedRunnerState(client, ec2runner, runnerId);
+  if (state === null) {
+    logger.info(
+      `Runner '${ec2runner.instanceId}' - GitHub Runner ID '${runnerId}' - Not found on GitHub, treating as not busy`,
+    );
+    return false;
+  }
   logger.info(`Runner '${ec2runner.instanceId}' - GitHub Runner ID '${runnerId}' - Busy: ${state.busy}`);
   return state.busy;
 }
@@ -227,12 +242,18 @@ async function lastChanceCheckOrphanRunner(runner: RunnerList): Promise<boolean>
   const ec2Instance = runner as RunnerInfo;
   const state = await getGitHubSelfHostedRunnerState(client, ec2Instance, runnerId);
   let isOrphan = false;
-  logger.debug(
-    `Runner '${runner.instanceId}' is '${state.status}' and is currently '${state.busy ? 'busy' : 'idle'}'.`,
-  );
-  const isOfflineAndBusy = state.status === 'offline' && state.busy;
-  if (isOfflineAndBusy) {
+
+  if (state === null) {
+    logger.debug(`Runner '${runner.instanceId}' not found on GitHub, treating as orphaned.`);
     isOrphan = true;
+  } else {
+    logger.debug(
+      `Runner '${runner.instanceId}' is '${state.status}' and is currently '${state.busy ? 'busy' : 'idle'}'.`,
+    );
+    const isOfflineAndBusy = state.status === 'offline' && state.busy;
+    if (isOfflineAndBusy) {
+      isOrphan = true;
+    }
   }
   logger.info(`Runner '${runner.instanceId}' is judged to ${isOrphan ? 'be' : 'not be'} orphaned.`);
   return isOrphan;
