@@ -1,5 +1,15 @@
 # Changelog
 
+## [6.7.4](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.7.3...v6.7.4) (2025-08-25)
+
+
+### Bug Fixes
+
+* add handling for 404 errors in scale-down tests and improve error logging ([#4726](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4726)) ([95aa6a2](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/95aa6a2774d1694d27c3b21a79d05600fae84762))
+* **lambda:** bump the aws group in /lambdas with 7 updates ([#4709](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4709)) ([0e74b3d](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/0e74b3da68098efe1253b68208a037a83f18c81b))
+* **lambda:** bump the aws-powertools group in /lambdas with 4 updates ([#4718](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4718)) ([9a63469](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/9a634690994db35be82ca8126b4380e60b08da6a))
+* remove progress and control codes from log output ([#4699](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4699)) ([1c6b424](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/1c6b4242b00aef6e2057a176baf29dc03ed4dceb))
+
 ## [6.7.3](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.7.2...v6.7.3) (2025-08-07)
 
 
