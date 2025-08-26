@@ -26,8 +26,8 @@
   "dependencies": {
     "@aws-github-runner/aws-powertools-util": "*",
     "@aws-github-runner/aws-ssm-util": "*",
-    "@aws-sdk/client-ec2": "^3.865.0",
-    "@aws-sdk/client-ssm": "^3.864.0",
+    "@aws-sdk/client-ec2": "^3.875.0",
+    "@aws-sdk/client-ssm": "^3.873.0",
     "cron-parser": "^5.3.0"
   },
   "nx": {
