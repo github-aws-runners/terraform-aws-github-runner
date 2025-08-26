@@ -36,7 +36,7 @@
     "eslint": "^9.34.0",
     "eslint-plugin-prettier": "5.5.4",
     "nx": "21.3.2",
-    "prettier": "^3.5.3",
+    "prettier": "^3.6.2",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.8.3",
