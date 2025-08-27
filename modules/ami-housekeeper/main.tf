@@ -55,7 +55,7 @@ resource "aws_cloudwatch_log_group" "ami_housekeeper" {
 }
 
 resource "aws_iam_role" "ami_housekeeper" {
-  name                 = "${var.prefix}-ami-housekeeper-role"
+  name                 = substr("${var.prefix}-ami-housekeeper-role", 0, 63)
   assume_role_policy   = data.aws_iam_policy_document.lambda_assume_role_policy.json
   path                 = local.role_path
   permissions_boundary = var.role_permissions_boundary

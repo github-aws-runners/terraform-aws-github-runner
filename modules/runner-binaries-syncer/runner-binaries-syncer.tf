@@ -58,7 +58,7 @@ resource "aws_lambda_function" "syncer" {
 
 resource "aws_iam_role_policy" "lambda_kms" {
   count = try(var.server_side_encryption_configuration.rule.apply_server_side_encryption_by_default.kms_master_key_id, null) != null ? 1 : 0
-  name  = "${var.prefix}-lambda-kms-policy-syncer"
+  name  = substr("${var.prefix}-lambda-kms-policy-syncer", 0, 63)
   role  = aws_iam_role.syncer_lambda.id
 
   policy = templatefile("${path.module}/policies/lambda-kms.json", {
