@@ -2,11 +2,8 @@ import type { SQSBatchItemFailure } from 'aws-lambda';
 import type { ActionRequestMessageSQS } from './scale-up';
 
 class ScaleError extends Error {
-  constructor(
-    message: string,
-    public readonly failedInstanceCount: number = 1,
-  ) {
-    super(message);
+  constructor(public readonly failedInstanceCount: number = 1) {
+    super('Failed to create instance, create fleet failed.');
     this.name = 'ScaleError';
   }
 

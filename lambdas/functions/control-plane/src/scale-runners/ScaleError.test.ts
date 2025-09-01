@@ -5,15 +5,19 @@ import ScaleError from './ScaleError';
 describe('ScaleError', () => {
   describe('detailedMessage', () => {
     it('should format message for single instance failure', () => {
-      const error = new ScaleError('Failed to create fleet', 1);
+      const error = new ScaleError(1);
 
-      expect(error.detailedMessage).toBe('Failed to create fleet (Failed to create 1 instance)');
+      expect(error.detailedMessage).toBe(
+        'Failed to create instance, create fleet failed. (Failed to create 1 instance)',
+      );
     });
 
     it('should format message for multiple instance failures', () => {
-      const error = new ScaleError('Failed to create fleet', 3);
+      const error = new ScaleError(3);
 
-      expect(error.detailedMessage).toBe('Failed to create fleet (Failed to create 3 instances)');
+      expect(error.detailedMessage).toBe(
+        'Failed to create instance, create fleet failed. (Failed to create 3 instances)',
+      );
     });
   });
 
@@ -56,14 +60,14 @@ describe('ScaleError', () => {
       { failedCount: -1, expected: [], description: 'negative failed instances' },
       { failedCount: -10, expected: [], description: 'large negative failed instances' },
     ])('should handle $description (failedCount=$failedCount)', ({ failedCount, expected }) => {
-      const error = new ScaleError('Test error', failedCount);
+      const error = new ScaleError(failedCount);
       const failures = error.toBatchItemFailures(mockMessages);
 
       expect(failures).toEqual(expected);
     });
 
     it('should handle empty message array', () => {
-      const error = new ScaleError('Test error', 3);
+      const error = new ScaleError(3);
       const failures = error.toBatchItemFailures([]);
 
       expect(failures).toEqual([]);

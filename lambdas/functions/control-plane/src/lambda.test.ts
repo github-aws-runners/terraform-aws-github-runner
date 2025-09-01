@@ -110,7 +110,7 @@ describe('Test scale up lambda wrapper.', () => {
   });
 
   it('Scale should create a batch failure message', async () => {
-    const error = new ScaleError('Scale should be rejected');
+    const error = new ScaleError();
     const mock = vi.fn() as MockedFunction<typeof scaleUp>;
     mock.mockImplementation(() => {
       return Promise.reject(error);
@@ -242,7 +242,7 @@ describe('Test scale up lambda wrapper.', () => {
       const records = createMultipleRecords(2);
       const multiRecordEvent: SQSEvent = { Records: records };
 
-      const error = new ScaleError('Critical scaling error', 2);
+      const error = new ScaleError(2);
       const mock = vi.fn(scaleUp);
       mock.mockImplementation(() => Promise.reject(error));
       vi.mocked(scaleUp).mockImplementation(mock);
