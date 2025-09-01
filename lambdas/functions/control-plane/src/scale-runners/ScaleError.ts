@@ -1,17 +1,16 @@
 class ScaleError extends Error {
   constructor(
-    public message: string,
-    public failedInstanceCount: number = 1,
+    message: string,
+    public readonly failedInstanceCount: number = 1,
   ) {
     super(message);
     this.name = 'ScaleError';
-    this.stack = new Error().stack;
   }
 
   /**
    * Gets a formatted error message including the failed instance count
    */
-  public getDetailedMessage(): string {
+  public get detailedMessage(): string {
     return `${this.message} (Failed to create ${this.failedInstanceCount} instance${this.failedInstanceCount !== 1 ? 's' : ''})`;
   }
 }

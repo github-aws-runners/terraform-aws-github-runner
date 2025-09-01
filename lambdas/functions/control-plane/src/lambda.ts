@@ -67,10 +67,7 @@ export async function scaleUpHandler(event: SQSEvent, context: Context): Promise
           itemIdentifier: sqsMessages[i].messageId,
         });
       }
-      logger.warn(
-        `ScaleError detected, ${e.failedInstanceCount} could not be created. A retry will be attempted via SQS.`,
-        { error: e },
-      );
+      logger.warn(`${e.detailedMessage} A retry will be attempted via SQS.`, { error: e });
     } else {
       logger.error(`Error processing batch (size: ${sqsMessages.length}): ${(e as Error).message}, ignoring batch`, {
         error: e,
