@@ -1,3 +1,6 @@
+import type { SQSBatchItemFailure } from 'aws-lambda';
+import type { ActionRequestMessageSQS } from './scale-up';
+
 class ScaleError extends Error {
   constructor(
     message: string,
@@ -12,6 +15,17 @@ class ScaleError extends Error {
    */
   public get detailedMessage(): string {
     return `${this.message} (Failed to create ${this.failedInstanceCount} instance${this.failedInstanceCount !== 1 ? 's' : ''})`;
+  }
+
+  /**
+   * Generate SQS batch item failures for the failed instances
+   */
+  public toBatchItemFailures(messages: ActionRequestMessageSQS[]): SQSBatchItemFailure[] {
+    // Ensure we don't retry negative counts or more messages than available
+    const messagesToRetry = Math.max(0, Math.min(this.failedInstanceCount, messages.length));
+    return messages.slice(0, messagesToRetry).map(({ messageId }) => ({
+      itemIdentifier: messageId,
+    }));
   }
 }
 
