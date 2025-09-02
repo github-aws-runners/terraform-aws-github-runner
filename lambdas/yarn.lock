@@ -133,7 +133,7 @@ __metadata:
     "@vercel/ncc": "npm:^0.38.3"
     aws-sdk-client-mock: "npm:^4.1.0"
     aws-sdk-client-mock-jest: "npm:^4.1.0"
-    cron-parser: "npm:^5.3.0"
+    cron-parser: "npm:^5.3.1"
   languageName: unknown
   linkType: soft
 
@@ -186,7 +186,7 @@ __metadata:
     "@vercel/ncc": "npm:^0.38.3"
     aws-sdk-client-mock: "npm:^4.1.0"
     aws-sdk-client-mock-jest: "npm:^4.1.0"
-    cron-parser: "npm:^5.3.0"
+    cron-parser: "npm:^5.3.1"
     moment-timezone: "npm:^0.6.0"
     nock: "npm:^14.0.2"
     ts-node: "npm:^10.9.2"
@@ -6907,12 +6907,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"cron-parser@npm:^5.3.0":
-  version: 5.3.0
-  resolution: "cron-parser@npm:5.3.0"
+"cron-parser@npm:^5.3.1":
+  version: 5.3.1
+  resolution: "cron-parser@npm:5.3.1"
   dependencies:
-    luxon: "npm:^3.6.1"
-  checksum: 10c0/770d88db93af031ecc0fa7e7fc4f587af32df66eaff985137f86a02fee9af038533788dd36d5bc6ac283392e9db82b55fd4841e7e02098617fc7b73a813c5b7a
+    luxon: "npm:^3.7.1"
+  checksum: 10c0/0a5a1070cd5c1a33a0e8d9942868e5fe19d597ef83f3af0dbf701708d7d4084ba3a90563ae0d4cb20c8155caf35571eadfa7be09eee46ead570bf9e745a0aab8
   languageName: node
   linkType: hard
 
@@ -9111,7 +9111,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"luxon@npm:^3.6.1":
+"luxon@npm:^3.7.1":
   version: 3.7.1
   resolution: "luxon@npm:3.7.1"
   checksum: 10c0/f83bc23a4c09da9111bc2510d2f5346e1ced4938379ebff13e308fece2ea852eb6e8b9ed8053b8d82e0fce05d5dd46e4cd64d8831ca04cfe32c0954b6f087258

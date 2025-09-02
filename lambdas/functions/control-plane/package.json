@@ -40,7 +40,7 @@
     "@octokit/core": "7.0.3",
     "@octokit/plugin-throttling": "11.0.1",
     "@octokit/rest": "22.0.0",
-    "cron-parser": "^5.3.0"
+    "cron-parser": "^5.3.1"
   },
   "nx": {
     "includedScripts": [
