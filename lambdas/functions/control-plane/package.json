@@ -36,7 +36,7 @@
     "@aws-sdk/client-ec2": "^3.875.0",
     "@aws-sdk/client-sqs": "^3.875.0",
     "@middy/core": "^6.4.1",
-    "@octokit/auth-app": "8.0.2",
+    "@octokit/auth-app": "8.1.0",
     "@octokit/core": "7.0.3",
     "@octokit/plugin-throttling": "11.0.1",
     "@octokit/rest": "22.0.0",
