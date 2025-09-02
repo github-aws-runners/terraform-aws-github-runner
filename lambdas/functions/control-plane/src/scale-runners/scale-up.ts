@@ -366,7 +366,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       continue;
     }
 
-    // Don't call the EC2 API if we can create an unlimited nur of runners.
+    // Don't call the EC2 API if we can create an unlimited number of runners.
     const currentRunners =
       maximumRunners === -1 ? 0 : (await listEC2Runners({ environment, runnerType, runnerOwner: group })).length;
 
