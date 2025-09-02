@@ -277,17 +277,15 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
   const invalidMessages: string[] = [];
   for (const payload of payloads) {
     const { eventType, messageId, repositoryName, repositoryOwner } = payload;
-    if (ephemeralEnabled) {
-      if (eventType !== 'workflow_job') {
-        logger.warn(
-          'Event is not supported in combination with ephemeral runners. Please ensure you have enabled workflow_job events.',
-          { eventType, messageId },
-        );
+    if (ephemeralEnabled && eventType !== 'workflow_job') {
+      logger.warn(
+        'Event is not supported in combination with ephemeral runners. Please ensure you have enabled workflow_job events.',
+        { eventType, messageId },
+      );
 
-        invalidMessages.push(messageId);
+      invalidMessages.push(messageId);
 
-        continue;
-      }
+      continue;
     }
 
     if (!isValidRepoOwnerTypeIfOrgLevelEnabled(payload, enableOrgLevel)) {
