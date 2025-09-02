@@ -383,14 +383,23 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
         : // Otherwise, we do have a limit, so work out if `scaleUp` would exceed it.
           Math.min(scaleUp, maximumRunners - currentRunners);
 
-    if (newRunners <= 0) {
-      logger.info('No runners will be created for this group, maximum number of runners reached.', {
+    const missingInstanceCount = Math.max(0, scaleUp - newRunners);
+
+    if (missingInstanceCount > 0) {
+      logger.info('Not all runners will be created for this group, maximum number of runners reached.', {
         desiredNewRunners: scaleUp,
       });
 
-      invalidMessages.push(...messages.map((message) => message.messageId));
+      if (ephemeralEnabled) {
+        // This removes `missingInstanceCount` items from the start of the array
+        // so that, if we retry more messages later, we pick fresh ones.
+        invalidMessages.push(...messages.splice(0, missingInstanceCount).map(({ messageId }) => messageId));
+      }
 
-      continue;
+      // No runners will be created, so skip calling the EC2 API.
+      if (missingInstanceCount === scaleUp) {
+        continue;
+      }
     }
 
     logger.info(`Attempting to launch new runners`, {
@@ -431,16 +440,16 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
 
     // Not all runners we wanted were created, let's reject enough items so that
     // number of entries will be retried.
-    if (instances.length !== scaleUp) {
-      const missingInstanceCount = scaleUp - instances.length;
+    if (instances.length !== newRunners) {
+      const failedInstanceCount = newRunners - instances.length;
 
-      logger.warn('Not enough runners were created, rejecting some messages so the requests are retried', {
+      logger.warn('Some runners failed to be created, rejecting some messages so the requests are retried', {
         wanted: newRunners,
         got: instances.length,
-        missingInstanceCount,
+        missingInstanceCount: failedInstanceCount,
       });
 
-      invalidMessages.push(...messages.slice(0, missingInstanceCount).map((message) => message.messageId));
+      invalidMessages.push(...messages.slice(0, failedInstanceCount).map(({ messageId }) => messageId));
     }
   }
 
