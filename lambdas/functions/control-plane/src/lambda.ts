@@ -14,32 +14,22 @@ export async function scaleUpHandler(event: SQSEvent, context: Context): Promise
   setContext(context, 'lambda.ts');
   logger.logEventIfEnabled(event);
 
-  // Group the messages by their event source. We're only interested in
-  // `aws:sqs`-originated messages.
-  const groupedEvents = new Map<string, ActionRequestMessageSQS[]>();
+  const sqsMessages: ActionRequestMessageSQS[] = [];
+  const warnedEventSources = new Set<string>();
+
   for (const { body, eventSource, messageId } of event.Records) {
-    const group = groupedEvents.get(eventSource) || [];
-    const payload = JSON.parse(body) as ActionRequestMessage;
+    if (eventSource !== 'aws:sqs') {
+      if (!warnedEventSources.has(eventSource)) {
+        logger.warn('Ignoring non-sqs event source', { eventSource });
+        warnedEventSources.add(eventSource);
+      }
 
-    if (group.length === 0) {
-      groupedEvents.set(eventSource, group);
-    }
-
-    groupedEvents.get(eventSource)?.push({
-      ...payload,
-      messageId,
-    });
-  }
-
-  for (const [eventSource, messages] of groupedEvents.entries()) {
-    if (eventSource === 'aws:sqs') {
       continue;
     }
 
-    logger.warn('Ignoring non-sqs event source', { eventSource, messages });
+    const payload = JSON.parse(body) as ActionRequestMessage;
+    sqsMessages.push({ ...payload, messageId });
   }
-
-  const sqsMessages = groupedEvents.get('aws:sqs') ?? [];
 
   // Sort messages by their retry count, so that we retry the same messages if
   // there's a persistent failure. This should cause messages to be dropped
