@@ -444,7 +444,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       logger.warn('Some runners failed to be created, rejecting some messages so the requests are retried', {
         wanted: newRunners,
         got: instances.length,
-        missingInstanceCount: failedInstanceCount,
+        failedInstanceCount,
       });
 
       invalidMessages.push(...messages.slice(0, failedInstanceCount).map(({ messageId }) => messageId));
