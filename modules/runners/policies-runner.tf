@@ -1,7 +1,7 @@
 data "aws_caller_identity" "current" {}
 
 resource "aws_iam_role" "runner" {
-  name                 = substr("${var.prefix}-runner-role", 0, 63)
+  name                 = "${substr("${var.prefix}-runner-role", 0, 54)}-${substr(md5("${var.prefix}-runner-role"), 0, 8)}"
   assume_role_policy   = templatefile("${path.module}/policies/instance-role-trust-policy.json", {})
   path                 = local.role_path
   permissions_boundary = var.role_permissions_boundary
