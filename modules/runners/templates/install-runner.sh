@@ -25,16 +25,16 @@ mkdir -p actions-runner && cd actions-runner
 
 if [[ -n "$RUNNER_TARBALL_URL" ]]; then
   echo "Downloading the GH Action runner from $RUNNER_TARBALL_URL to $file_name"
-  curl -o $file_name -L "$RUNNER_TARBALL_URL"
+  curl -s -o $file_name -L "$RUNNER_TARBALL_URL"
 else
   echo "Retrieving TOKEN from AWS API"
-  token=$(curl -f -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 180")
+  token="$(curl -s -f -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 180")"
 
-  region=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r .region)
+  region="$(curl -s -f -H "X-aws-ec2-metadata-token: $token" http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r .region)"
   echo "Retrieved REGION from AWS API ($region)"
 
   echo "Downloading the GH Action runner from s3 bucket $s3_location"
-  aws s3 cp "$s3_location" "$file_name" --region "$region"
+  aws s3 cp "$s3_location" "$file_name" --region "$region" --no-progress
 fi
 
 echo "Un-tar action runner"

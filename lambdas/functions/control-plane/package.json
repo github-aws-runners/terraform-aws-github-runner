@@ -32,15 +32,15 @@
   "dependencies": {
     "@aws-github-runner/aws-powertools-util": "*",
     "@aws-github-runner/aws-ssm-util": "*",
-    "@aws-lambda-powertools/parameters": "^2.24.1",
-    "@aws-sdk/client-ec2": "^3.865.0",
-    "@aws-sdk/client-sqs": "^3.864.0",
+    "@aws-lambda-powertools/parameters": "^2.25.2",
+    "@aws-sdk/client-ec2": "^3.875.0",
+    "@aws-sdk/client-sqs": "^3.875.0",
     "@middy/core": "^6.4.1",
-    "@octokit/auth-app": "8.0.2",
+    "@octokit/auth-app": "8.1.0",
     "@octokit/core": "7.0.3",
     "@octokit/plugin-throttling": "11.0.1",
     "@octokit/rest": "22.0.0",
-    "cron-parser": "^5.3.0"
+    "cron-parser": "^5.3.1"
   },
   "nx": {
     "includedScripts": [

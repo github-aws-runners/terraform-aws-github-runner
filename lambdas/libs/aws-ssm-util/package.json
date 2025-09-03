@@ -23,7 +23,7 @@
   },
   "dependencies": {
     "@aws-github-runner/aws-powertools-util": "*",
-    "@aws-sdk/client-ssm": "^3.864.0"
+    "@aws-sdk/client-ssm": "^3.873.0"
   },
   "nx": {
     "includedScripts": [
