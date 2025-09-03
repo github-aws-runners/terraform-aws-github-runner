@@ -74,7 +74,7 @@ resource "aws_cloudwatch_log_group" "syncer" {
 }
 
 resource "aws_iam_role" "syncer_lambda" {
-  name                 = "${var.prefix}-action-syncer-lambda-role"
+  name                 = "${substr("${var.prefix}-syncer-lambda", 0, 54)}-${substr(md5("${var.prefix}-syncer-lambda"), 0, 8)}"
   assume_role_policy   = data.aws_iam_policy_document.lambda_assume_role_policy.json
   path                 = local.role_path
   permissions_boundary = var.role_permissions_boundary
