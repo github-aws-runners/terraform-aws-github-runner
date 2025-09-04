@@ -83,7 +83,7 @@ resource "aws_lambda_permission" "ssm_housekeeper" {
 }
 
 resource "aws_iam_role" "ssm_housekeeper" {
-  name                 = "${var.prefix}-ssm-hk-lambda"
+  name                 = "${substr("${var.prefix}-ssm-hk-lambda", 0, 54)}-${substr(md5("${var.prefix}-ssm-hk-lambda"), 0, 8)}"
   description          = "Lambda role for SSM Housekeeper (${var.prefix})"
   assume_role_policy   = data.aws_iam_policy_document.lambda_assume_role_policy.json
   path                 = local.role_path

@@ -60,7 +60,7 @@ resource "aws_cloudwatch_log_group" "main" {
 }
 
 resource "aws_iam_role" "main" {
-  name                 = "${var.lambda.prefix}-${var.lambda.name}"
+  name                 = "${substr("${var.lambda.prefix}-${var.lambda.name}", 0, 54)}-${substr(md5("${var.lambda.prefix}-${var.lambda.name}"), 0, 8)}"
   assume_role_policy   = data.aws_iam_policy_document.lambda_assume_role_policy.json
   path                 = local.role_path
   permissions_boundary = var.lambda.role_permissions_boundary

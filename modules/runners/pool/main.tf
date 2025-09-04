@@ -74,7 +74,7 @@ resource "aws_cloudwatch_log_group" "pool" {
 }
 
 resource "aws_iam_role" "pool" {
-  name                 = "${var.config.prefix}-action-pool-lambda-role"
+  name                 = "${substr("${var.config.prefix}-pool-lambda", 0, 54)}-${substr(md5("${var.config.prefix}-pool-lambda"), 0, 8)}"
   assume_role_policy   = data.aws_iam_policy_document.lambda_assume_role_policy.json
   path                 = var.config.role_path
   permissions_boundary = var.config.role_permissions_boundary
