@@ -1,5 +1,15 @@
 # Changelog
 
+## [6.7.6](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.7.5...v6.7.6) (2025-09-04)
+
+
+### Bug Fixes
+
+* **lambda:** bump @octokit/auth-app from 8.0.2 to 8.1.0 in /lambdas in the octokit group ([#4740](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4740)) ([6f2e4b1](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/6f2e4b12ae3d449ff78838b7c332e433e92a6b61))
+* **lambda:** bump cron-parser from 5.3.0 to 5.3.1 in /lambdas ([#4744](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4744)) ([6ea4bca](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/6ea4bcabdaac70a29a064776feb6e0fc7c46eb37))
+* **lambda:** bump the aws group in /lambdas with 6 updates ([#4739](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4739)) ([7639ceb](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/7639cebd9dfc00e029658af9ac8b44eaea4a8d6d))
+* **lambda:** bump the aws-powertools group in /lambdas with 4 updates ([#4743](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4743)) ([4997f31](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/4997f318e110365b390ad536034224d8a9ff7404))
+
 ## [6.7.5](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.7.4...v6.7.5) (2025-08-26)
 
 
