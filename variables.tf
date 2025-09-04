@@ -917,6 +917,7 @@ variable "metrics" {
     metric = optional(object({
       enable_github_app_rate_limit    = optional(bool, true)
       enable_job_retry                = optional(bool, true)
+      enable_pool_sufficiency         = optional(bool, true)
       enable_spot_termination_warning = optional(bool, true)
     }), {})
   })
