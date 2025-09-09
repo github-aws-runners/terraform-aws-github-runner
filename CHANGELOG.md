@@ -1,5 +1,13 @@
 # Changelog
 
+## [6.7.7](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.7.6...v6.7.7) (2025-09-09)
+
+
+### Bug Fixes
+
+* ensure IAM Role name length does not exceed 64 characters ([#4696](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4696)) ([afacbef](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/afacbef8398d0f138c89bcdeeae029b54f04d105))
+* **lambda:** bump the aws group in /lambdas with 6 updates ([#4750](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4750)) ([094d539](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/094d5395f778bab5234aceb1be03af41fba6f05c))
+
 ## [6.7.6](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.7.5...v6.7.6) (2025-09-04)
 
 
