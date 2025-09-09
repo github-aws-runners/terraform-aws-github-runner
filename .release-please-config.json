@@ -1,0 +1,34 @@
+{
+  "release-type": "simple",
+  "packages": {
+    ".": {
+      "extra-files": [
+        {
+          "type": "json",
+          "path": "lambdas/functions/ami-housekeeper/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "lambdas/functions/control-plane/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "lambdas/functions/gh-agent-syncer/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "lambdas/functions/termination-watcher/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "lambdas/functions/webhook/package.json",
+          "jsonpath": "$.version"
+        }
+      ]
+    }
+  }
+}
