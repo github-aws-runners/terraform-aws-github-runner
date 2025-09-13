@@ -32,7 +32,7 @@
     "@aws-sdk/lib-storage": "^3.884.0",
     "@middy/core": "^6.4.1",
     "@octokit/rest": "22.0.0",
-    "axios": "^1.8.4"
+    "axios": "^1.12.0"
   },
   "nx": {
     "includedScripts": [
