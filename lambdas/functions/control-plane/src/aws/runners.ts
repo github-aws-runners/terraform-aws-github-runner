@@ -252,6 +252,10 @@ async function createInstances(
     tags.push({ Key: 'ghr:trace_id', Value: traceId! });
   }
 
+  if (runnerParameters.workflowUrl) {
+    tags.push({ Key: 'ghr:workflow_url', Value: runnerParameters.workflowUrl });
+  }
+
   let fleet: CreateFleetResult;
   try {
     // see for spec https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_CreateFleet.html
