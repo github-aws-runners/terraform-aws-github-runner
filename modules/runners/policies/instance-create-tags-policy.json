@@ -5,9 +5,7 @@
             "Action": "ec2:CreateTags",
             "Condition": {
                 "ForAllValues:StringEquals": {
-                    "aws:TagKeys": [
-                        "ghr:github_runner_id"
-                    ]
+                    "aws:TagKeys": ${jsonencode(concat(["ghr:github_runner_id"], ec2_custom_allowed_tags))}
                 },
                 "StringEquals": {
                     "aws:ARN": "$${ec2:SourceInstanceARN}"
