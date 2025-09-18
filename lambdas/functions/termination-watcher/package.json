@@ -15,7 +15,7 @@
     "all": "yarn build && yarn format && yarn lint && yarn test"
   },
   "devDependencies": {
-    "@aws-sdk/types": "^3.862.0",
+    "@aws-sdk/types": "^3.887.0",
     "@types/aws-lambda": "^8.10.152",
     "@types/node": "^22.16.5",
     "@vercel/ncc": "^0.38.3",
@@ -24,7 +24,7 @@
   },
   "dependencies": {
     "@aws-github-runner/aws-powertools-util": "*",
-    "@aws-sdk/client-ec2": "^3.883.0",
+    "@aws-sdk/client-ec2": "^3.892.0",
     "@middy/core": "^6.4.1"
   },
   "nx": {
