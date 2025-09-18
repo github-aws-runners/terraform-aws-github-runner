@@ -762,7 +762,7 @@ variable "user_agent" {
   default     = null
 }
 
-variable "ec2_custom_allowed_tags" {
+variable "ec2_custom_allowed_tags_creation" {
   description = "Allows the EC2 instance to create tags listed here."
   type        = list(string)
   default     = []
