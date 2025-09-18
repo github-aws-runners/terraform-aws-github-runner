@@ -1,5 +1,16 @@
 # Changelog
 
+## [6.7.8](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.7.7...v6.7.8) (2025-09-18)
+
+
+### Bug Fixes
+
+* **dispatcher:** Log org / repository context when unable to match labels ([#4761](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4761)) ([e214177](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/e214177cba3588abc96185c1e223ffadc946bbac))
+* **lambda:** bump axios from 1.12.1 to 1.12.2 in /lambdas ([#4772](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4772)) ([4d0ad0a](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/4d0ad0aae6ef449bd73abaec70fa17a6bbae0ec9))
+* **lambda:** bump axios from 1.8.4 to 1.12.0 in /lambdas ([#4763](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4763)) ([bbf1bd8](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/bbf1bd8c4a67969ee2c5a05aada07a2d3d4adf70))
+* **lambda:** bump the aws group in /lambdas with 7 updates ([#4769](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4769)) ([7f30dca](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/7f30dca7a3efda0db6a1442ad800a25af8f97834))
+* **lambda:** bump the aws-powertools group in /lambdas with 4 updates ([#4770](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4770)) ([dbb6888](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/dbb6888a064ea733abc501790307f2d956772c1c))
+
 ## [6.7.7](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.7.6...v6.7.7) (2025-09-09)
 
 
