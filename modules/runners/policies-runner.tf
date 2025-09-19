@@ -58,9 +58,11 @@ resource "aws_iam_role_policy" "describe_tags" {
 }
 
 resource "aws_iam_role_policy" "create_tag" {
-  name   = "runner-create-tags"
-  role   = aws_iam_role.runner.name
-  policy = templatefile("${path.module}/policies/instance-create-tags-policy.json", {})
+  name = "runner-create-tags"
+  role = aws_iam_role.runner.name
+  policy = templatefile("${path.module}/policies/instance-create-tags-policy.json", {
+    ec2_custom_allowed_tags_creation = var.ec2_custom_allowed_tags_creation
+  })
 }
 
 resource "aws_iam_role_policy_attachment" "managed_policies" {
