@@ -12,6 +12,7 @@ import { RunnerInputParameters } from './../aws/runners.d';
 import ScaleError from './ScaleError';
 import * as scaleUpModule from './scale-up';
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
+import { createSingleMetric } from '@aws-github-runner/aws-powertools-util';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 const mockOctokit = {
@@ -33,6 +34,7 @@ const mockCreateRunner = vi.mocked(createRunner);
 const mockListRunners = vi.mocked(listEC2Runners);
 const mockSSMClient = mockClient(SSMClient);
 const mockSSMgetParameter = vi.mocked(getParameter);
+const mockCreateSingleMetric = vi.mocked(createSingleMetric);
 
 vi.mock('@octokit/rest', () => ({
   Octokit: vi.fn().mockImplementation(() => mockOctokit),
@@ -58,6 +60,22 @@ vi.mock('@aws-github-runner/aws-ssm-util', async () => {
   return {
     ...actual,
     getParameter: vi.fn(),
+  };
+});
+
+vi.mock('@aws-github-runner/aws-powertools-util', async () => {
+  const actual = (await vi.importActual(
+    '@aws-github-runner/aws-powertools-util',
+  )) as typeof import('@aws-github-runner/aws-powertools-util');
+
+  return {
+    ...actual,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    createSingleMetric: vi.fn((name: string, unit: string, value: number, dimensions?: Record<string, string>) => {
+      return {
+        addMetadata: vi.fn(),
+      };
+    }),
   };
 });
 
@@ -181,6 +199,83 @@ describe('scaleUp with GHES', () => {
     }));
     await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
     expect(listEC2Runners).not.toBeCalled();
+  });
+
+  describe('pool sufficiency metrics', () => {
+    beforeEach(() => {
+      process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
+      process.env.ENVIRONMENT = 'test-env';
+    });
+
+    it('records pool sufficiency metric as insufficient when scaling up', async () => {
+      process.env.ENABLE_METRIC_POOL_SUFFICIENCY = 'true';
+      process.env.RUNNERS_MAXIMUM_COUNT = '5';
+
+      mockListRunners.mockImplementation(async () => [
+        {
+          instanceId: 'i-1234',
+          launchTime: new Date(),
+          type: 'Org',
+          owner: TEST_DATA.repositoryOwner,
+        },
+      ]);
+
+      await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
+
+      expect(mockCreateSingleMetric).toHaveBeenCalledWith('SufficientPoolHosts', 'Count', 0.0, {
+        Environment: 'test-env',
+      });
+    });
+
+    it('records pool sufficiency metric as sufficient when job is not queued', async () => {
+      process.env.ENABLE_METRIC_POOL_SUFFICIENCY = 'true';
+
+      mockOctokit.actions.getJobForWorkflowRun.mockImplementation(() => ({
+        data: { status: 'completed' },
+      }));
+
+      await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
+
+      expect(mockCreateSingleMetric).toHaveBeenCalledWith('SufficientPoolHosts', 'Count', 1.0, {
+        Environment: 'test-env',
+      });
+    });
+
+    it('does not record pool sufficiency metric when disabled', async () => {
+      process.env.ENABLE_METRIC_POOL_SUFFICIENCY = 'false';
+      process.env.RUNNERS_MAXIMUM_COUNT = '5';
+
+      mockListRunners.mockImplementation(async () => [
+        {
+          instanceId: 'i-1234',
+          launchTime: new Date(),
+          type: 'Org',
+          owner: TEST_DATA.repositoryOwner,
+        },
+      ]);
+
+      await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
+
+      expect(mockCreateSingleMetric).not.toHaveBeenCalled();
+    });
+
+    it('does not record pool sufficiency metric when environment variable is undefined', async () => {
+      delete process.env.ENABLE_METRIC_POOL_SUFFICIENCY;
+      process.env.RUNNERS_MAXIMUM_COUNT = '5';
+
+      mockListRunners.mockImplementation(async () => [
+        {
+          instanceId: 'i-1234',
+          launchTime: new Date(),
+          type: 'Org',
+          owner: TEST_DATA.repositoryOwner,
+        },
+      ]);
+
+      await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
+
+      expect(mockCreateSingleMetric).not.toHaveBeenCalled();
+    });
   });
 
   describe('on org level', () => {
