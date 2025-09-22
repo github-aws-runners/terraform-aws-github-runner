@@ -164,10 +164,10 @@ __metadata:
     "@aws-sdk/types": "npm:^3.887.0"
     "@middy/core": "npm:^6.4.1"
     "@octokit/auth-app": "npm:8.1.0"
-    "@octokit/core": "npm:7.0.3"
+    "@octokit/core": "npm:7.0.4"
     "@octokit/plugin-throttling": "npm:11.0.1"
     "@octokit/rest": "npm:22.0.0"
-    "@octokit/types": "npm:^14.1.0"
+    "@octokit/types": "npm:^15.0.0"
     "@types/aws-lambda": "npm:^8.10.152"
     "@types/node": "npm:^22.16.5"
     "@vercel/ncc": "npm:^0.38.3"
@@ -228,7 +228,7 @@ __metadata:
     "@aws-sdk/client-sqs": "npm:^3.891.0"
     "@middy/core": "npm:^6.4.1"
     "@octokit/rest": "npm:22.0.0"
-    "@octokit/types": "npm:^14.1.0"
+    "@octokit/types": "npm:^15.0.0"
     "@octokit/webhooks": "npm:^14.1.3"
     "@octokit/webhooks-types": "npm:^7.6.1"
     "@types/aws-lambda": "npm:^8.10.152"
@@ -3641,18 +3641,18 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@octokit/core@npm:7.0.3":
-  version: 7.0.3
-  resolution: "@octokit/core@npm:7.0.3"
+"@octokit/core@npm:7.0.4":
+  version: 7.0.4
+  resolution: "@octokit/core@npm:7.0.4"
   dependencies:
     "@octokit/auth-token": "npm:^6.0.0"
     "@octokit/graphql": "npm:^9.0.1"
     "@octokit/request": "npm:^10.0.2"
     "@octokit/request-error": "npm:^7.0.0"
-    "@octokit/types": "npm:^14.0.0"
+    "@octokit/types": "npm:^15.0.0"
     before-after-hook: "npm:^4.0.0"
     universal-user-agent: "npm:^7.0.0"
-  checksum: 10c0/51427b4c3337e15b394d60277b673c5628a72d245a23b1a446e4249d15e37983fa01d09f10c8ab281207e024929f4d2f6cc27a4d345ec0ece2df78d42586d846
+  checksum: 10c0/73f22e4cf0c304027c078cfa2caa0495dfd9f2693212ecf7d77ddab0120bda34ed26c55d1bacbf41dac147b94b22b9b866439db7789226ada583b4122d70a303
   languageName: node
   linkType: hard
 
