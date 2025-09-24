@@ -1,5 +1,9 @@
 import { Octokit } from '@octokit/rest';
-import { addPersistentContextToChildLogger, createChildLogger } from '@aws-github-runner/aws-powertools-util';
+import {
+  addPersistentContextToChildLogger,
+  createChildLogger,
+  createSingleMetric,
+} from '@aws-github-runner/aws-powertools-util';
 import { getParameter, putParameter } from '@aws-github-runner/aws-ssm-util';
 import yn from 'yn';
 
@@ -9,6 +13,7 @@ import { RunnerInputParameters } from './../aws/runners.d';
 import ScaleError from './ScaleError';
 import { publishRetryMessage } from './job-retry';
 import { metricGitHubAppRateLimit } from '../github/rate-limit';
+import { MetricUnit } from '@aws-lambda-powertools/metrics';
 
 const logger = createChildLogger('scale-up');
 
@@ -307,6 +312,7 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
 
     if (scaleUp) {
       logger.info(`Attempting to launch a new runner`);
+      createPoolSufficiencyMetric(environment, payload, false);
 
       await createRunners(
         {
@@ -348,6 +354,7 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
     }
   } else {
     logger.info('No runner will be created, job is not queued.');
+    createPoolSufficiencyMetric(environment, payload, true);
   }
 }
 
@@ -471,5 +478,16 @@ async function createJitConfig(githubRunnerConfig: CreateGitHubRunnerConfig, ins
       // Delay to prevent AWS ssm rate limits by being within the max throughput limit
       await delay(25);
     }
+  }
+}
+
+function createPoolSufficiencyMetric(environment: string, payload: ActionRequestMessage, wasSufficient: boolean) {
+  if (yn(process.env.ENABLE_METRIC_POOL_SUFFICIENCY, { default: false })) {
+    const metric = createSingleMetric('SufficientPoolHosts', MetricUnit.Count, wasSufficient ? 1.0 : 0.0, {
+      Environment: environment,
+    });
+    metric.addMetadata('Environment', environment);
+    metric.addMetadata('RepositoryName', payload.repositoryName);
+    metric.addMetadata('RepositoryOwner', payload.repositoryOwner);
   }
 }
