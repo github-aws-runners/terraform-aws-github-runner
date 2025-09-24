@@ -15,7 +15,7 @@
     "all": "yarn build && yarn format && yarn lint && yarn test"
   },
   "devDependencies": {
-    "@aws-sdk/types": "^3.887.0",
+    "@aws-sdk/types": "^3.893.0",
     "@types/aws-lambda": "^8.10.152",
     "@types/node": "^22.16.5",
     "aws-sdk-client-mock": "^4.1.0",
@@ -23,7 +23,7 @@
   },
   "dependencies": {
     "@aws-github-runner/aws-powertools-util": "*",
-    "@aws-sdk/client-ssm": "^3.891.0"
+    "@aws-sdk/client-ssm": "^3.895.0"
   },
   "nx": {
     "includedScripts": [
