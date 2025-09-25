@@ -160,6 +160,11 @@ resource "aws_launch_template" "runner" {
     }
   }
 
+  cpu_options {
+    core_count       = var.cpu_options != null ? var.cpu_options.core_count : null
+    threads_per_core = var.cpu_options != null ? var.cpu_options.threads_per_core : null
+  }
+
   monitoring {
     enabled = var.enable_runner_detailed_monitoring
   }
