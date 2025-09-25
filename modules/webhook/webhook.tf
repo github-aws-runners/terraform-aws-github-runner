@@ -4,12 +4,31 @@ locals {
 
   # sorted list
   runner_matcher_config_sorted = [for k in sort(keys(local.runner_matcher_config)) : local.runner_matcher_config[k]]
+
+  # Encode the sorted matcher config as JSON
+  matcher_json = jsonencode(local.runner_matcher_config_sorted)
+
+  # Set max chunk size based on SSM tier
+  # AWS SSM limits:
+  #   - Standard: 4096 bytes
+  #   - Advanced: 8192 bytes
+  # We leave a small safety margin to avoid hitting the exact limit
+  # (e.g., escaped characters or minor overhead could exceed the limit)
+  max_chunk_size = var.matcher_config_parameter_store_tier == "Advanced" ? 8000 : 4000
+
+  # Split JSON into chunks safely under the SSM limit
+  matcher_chunks = [
+    for i in range(0, length(local.matcher_json), local.max_chunk_size) :
+    substr(local.matcher_json, i, local.max_chunk_size)
+  ]
 }
 
 resource "aws_ssm_parameter" "runner_matcher_config" {
-  name  = "${var.ssm_paths.root}/${var.ssm_paths.webhook}/runner-matcher-config"
+  for_each = { for idx, val in local.matcher_chunks : idx => val }
+
+  name  = "${var.ssm_paths.root}/${var.ssm_paths.webhook}/runner-matcher-config${length(local.matcher_chunks) > 1 ? "-${each.key}" : ""}"
   type  = "String"
-  value = jsonencode(local.runner_matcher_config_sorted)
+  value = each.value
   tier  = var.matcher_config_parameter_store_tier
   tags  = var.tags
 }
@@ -47,7 +66,13 @@ module "direct" {
     lambda_tags                           = var.lambda_tags,
     matcher_config_parameter_store_tier   = var.matcher_config_parameter_store_tier,
     api_gw_source_arn                     = "${aws_apigatewayv2_api.webhook.execution_arn}/*/*/${local.webhook_endpoint}"
-    ssm_parameter_runner_matcher_config   = aws_ssm_parameter.runner_matcher_config
+    ssm_parameter_runner_matcher_config = [
+      for p in aws_ssm_parameter.runner_matcher_config : {
+        name    = p.name
+        arn     = p.arn
+        version = p.version
+      }
+    ]
   }
 }
 
@@ -82,8 +107,14 @@ module "eventbridge" {
     tracing_config                        = var.tracing_config,
     lambda_tags                           = var.lambda_tags,
     api_gw_source_arn                     = "${aws_apigatewayv2_api.webhook.execution_arn}/*/*/${local.webhook_endpoint}"
-    ssm_parameter_runner_matcher_config   = aws_ssm_parameter.runner_matcher_config
-    accept_events                         = var.eventbridge.accept_events
+    ssm_parameter_runner_matcher_config = [
+      for p in aws_ssm_parameter.runner_matcher_config : {
+        name    = p.name
+        arn     = p.arn
+        version = p.version
+      }
+    ]
+    accept_events = var.eventbridge.accept_events
   }
 
 }
