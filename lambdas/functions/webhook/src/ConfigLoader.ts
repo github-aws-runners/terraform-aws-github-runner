@@ -87,9 +87,34 @@ abstract class BaseConfig {
   }
 }
 
-export class ConfigWebhook extends BaseConfig {
-  repositoryAllowList: string[] = [];
+abstract class MatcherAwareConfig extends BaseConfig {
   matcherConfig: RunnerMatcherConfig[] = [];
+
+  protected async loadMatcherConfig(paramPathsEnv: string | undefined) {
+    if (!paramPathsEnv) return;
+
+    const paths = paramPathsEnv.split(':').map(p => p.trim()).filter(Boolean);
+    let combinedString = '';
+
+    for (const path of paths) {
+      await this.loadParameter(path, 'matcherConfig');
+      if (typeof this.matcherConfig === 'string') {
+        combinedString += this.matcherConfig;
+      }
+    }
+
+    try {
+      this.matcherConfig = JSON.parse(combinedString);
+    } catch (error) {
+      this.configLoadingErrors.push(`Failed to parse combined matcher config: ${(error as Error).message}`);
+      this.matcherConfig = [];
+    }
+  }
+}
+
+
+export class ConfigWebhook extends MatcherAwareConfig {
+  repositoryAllowList: string[] = [];
   webhookSecret: string = '';
   workflowJobEventSecondaryQueue: string = '';
 
@@ -97,7 +122,7 @@ export class ConfigWebhook extends BaseConfig {
     this.loadEnvVar(process.env.REPOSITORY_ALLOW_LIST, 'repositoryAllowList', []);
 
     await Promise.all([
-      this.loadParameter(process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH, 'matcherConfig'),
+      this.loadMatcherConfig(process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH),
       this.loadParameter(process.env.PARAMETER_GITHUB_APP_WEBHOOK_SECRET, 'webhookSecret'),
     ]);
 
@@ -121,14 +146,13 @@ export class ConfigWebhookEventBridge extends BaseConfig {
   }
 }
 
-export class ConfigDispatcher extends BaseConfig {
+export class ConfigDispatcher extends MatcherAwareConfig {
   repositoryAllowList: string[] = [];
-  matcherConfig: RunnerMatcherConfig[] = [];
   workflowJobEventSecondaryQueue: string = ''; // Deprecated
 
   async loadConfig(): Promise<void> {
     this.loadEnvVar(process.env.REPOSITORY_ALLOW_LIST, 'repositoryAllowList', []);
-    await this.loadParameter(process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH, 'matcherConfig');
+    await this.loadMatcherConfig(process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH);
 
     validateRunnerMatcherConfig(this);
   }
