@@ -173,8 +173,10 @@ describe('ConfigLoader Tests', () => {
       process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH = '/path/to/matcher/config-1:/path/to/matcher/config-2';
       process.env.PARAMETER_GITHUB_APP_WEBHOOK_SECRET = '/path/to/webhook/secret';
 
-      const partialMatcher1 = '[{"id":"1","arn":"arn:aws:sqs:queue1","matcherConfig":{"labelMatchers":[["a"]],"exactMatch":true}}';
-      const partialMatcher2 = ',{"id":"2","arn":"arn:aws:sqs:queue2","matcherConfig":{"labelMatchers":[["b"]],"exactMatch":true}}]';
+      const partialMatcher1 =
+        '[{"id":"1","arn":"arn:aws:sqs:queue1","matcherConfig":{"labelMatchers":[["a"]],"exactMatch":true}}';
+      const partialMatcher2 =
+        ',{"id":"2","arn":"arn:aws:sqs:queue2","matcherConfig":{"labelMatchers":[["b"]],"exactMatch":true}}]';
 
       const combinedMatcherConfig = [
         { id: '1', arn: 'arn:aws:sqs:queue1', matcherConfig: { labelMatchers: [['a']], exactMatch: true } },
@@ -258,8 +260,10 @@ describe('ConfigLoader Tests', () => {
       process.env.REPOSITORY_ALLOW_LIST = '["repo1", "repo2"]';
       process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH = '/path/to/matcher/config-1:/path/to/matcher/config-2';
 
-      const partial1 = '[{"id":"1","arn":"arn:aws:sqs:queue1","matcherConfig":{"labelMatchers":[["x"]],"exactMatch":true}}';
-      const partial2 = ',{"id":"2","arn":"arn:aws:sqs:queue2","matcherConfig":{"labelMatchers":[["y"]],"exactMatch":true}}]';
+      const partial1 =
+        '[{"id":"1","arn":"arn:aws:sqs:queue1","matcherConfig":{"labelMatchers":[["x"]],"exactMatch":true}}';
+      const partial2 =
+        ',{"id":"2","arn":"arn:aws:sqs:queue2","matcherConfig":{"labelMatchers":[["y"]],"exactMatch":true}}]';
 
       const combined: RunnerMatcherConfig[] = [
         { id: '1', arn: 'arn:aws:sqs:queue1', matcherConfig: { labelMatchers: [['x']], exactMatch: true } },
