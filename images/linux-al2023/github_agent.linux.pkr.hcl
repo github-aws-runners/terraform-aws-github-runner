@@ -1,7 +1,7 @@
 packer {
   required_plugins {
     amazon = {
-      version = ">= 0.0.2"
+      version = ">= 1.0.0"
       source  = "github.com/hashicorp/amazon"
     }
   }
@@ -10,6 +10,16 @@ packer {
 variable "runner_version" {
   description = "The version (no v prefix) of the runner software to install https://github.com/actions/runner/releases. The latest release will be fetched from GitHub if not provided."
   default     = null
+}
+
+variable "architecture" {
+  description = "The architecture of the runner. Supported values are 'x86-64' and 'arm64'"
+  type        = string
+  default     = "x86_64"
+  validation {
+    condition     = contains(["arm64", "x86_64"], var.architecture)
+    error_message = "`lambda_architecture` value is not valid, valid values are: `arm64` and `x86_64`."
+  }
 }
 
 variable "region" {
@@ -39,7 +49,7 @@ variable "associate_public_ip_address" {
 variable "instance_type" {
   description = "The instance type Packer will use for the builder"
   type        = string
-  default     = "m3.medium"
+  default     = "t4g.small"
 }
 
 variable "iam_instance_profile" {
@@ -99,12 +109,13 @@ data "http" github_runner_release_json {
 
 locals {
   runner_version = coalesce(var.runner_version, trimprefix(jsondecode(data.http.github_runner_release_json.body).tag_name, "v"))
+  instance_type   = coalesce(var.instance_type, var.architecture == "arm64" ? "t4g.small" : "m3.medium")
 }
 
 source "amazon-ebs" "githubrunner" {
-  ami_name                                  = "github-runner-al2023-x86_64-${formatdate("YYYYMMDDhhmm", timestamp())}"
+  ami_name                                  = "github-runner-al2023-${var.architecture}-${formatdate("YYYYMMDDhhmm", timestamp())}"
   instance_type                             = var.instance_type
-  iam_instance_profile                      = var.iam_instance_profile
+  iam_instance_profile                       = var.iam_instance_profile
   region                                    = var.region
   security_group_id                         = var.security_group_id
   subnet_id                                 = var.subnet_id
@@ -113,7 +124,7 @@ source "amazon-ebs" "githubrunner" {
 
   source_ami_filter {
     filters = {
-      name                = "al2023-ami-2023.*-kernel-6.*-x86_64"
+      name                = "al2023-ami-2023.*-kernel-6.*-${var.architecture}"
       root-device-type    = "ebs"
       virtualization-type = "hvm"
     }
@@ -166,7 +177,6 @@ build {
       install_runner = templatefile("../../modules/runners/templates/install-runner.sh", {
         ARM_PATCH                       = ""
         S3_LOCATION_RUNNER_DISTRIBUTION = ""
-        RUNNER_ARCHITECTURE             = "x64"
       })
     })
     destination = "/tmp/install-runner.sh"
@@ -174,12 +184,12 @@ build {
 
   provisioner "shell" {
     environment_vars = [
-      "RUNNER_TARBALL_URL=https://github.com/actions/runner/releases/download/v${local.runner_version}/actions-runner-linux-x64-${local.runner_version}.tar.gz"
+      "RUNNER_TARBALL_URL=https://github.com/actions/runner/releases/download/v${local.runner_version}/actions-runner-linux-${var.architecture}-${local.runner_version}.tar.gz"
     ]
     inline = [
       "sudo chmod +x /tmp/install-runner.sh",
       "echo ec2-user > /tmp/install-user.txt",
-      "sudo RUNNER_ARCHITECTURE=x64 RUNNER_TARBALL_URL=$RUNNER_TARBALL_URL /tmp/install-runner.sh"
+      "sudo RUNNER_TARBALL_URL=$RUNNER_TARBALL_URL /tmp/install-runner.sh"
     ]
   }
 
