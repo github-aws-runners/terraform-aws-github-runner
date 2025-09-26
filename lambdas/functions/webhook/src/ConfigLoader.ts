@@ -93,7 +93,10 @@ abstract class MatcherAwareConfig extends BaseConfig {
   protected async loadMatcherConfig(paramPathsEnv: string | undefined) {
     if (!paramPathsEnv) return;
 
-    const paths = paramPathsEnv.split(':').map(p => p.trim()).filter(Boolean);
+    const paths = paramPathsEnv
+      .split(':')
+      .map((p) => p.trim())
+      .filter(Boolean);
     let combinedString = '';
 
     for (const path of paths) {
@@ -111,7 +114,6 @@ abstract class MatcherAwareConfig extends BaseConfig {
     }
   }
 }
-
 
 export class ConfigWebhook extends MatcherAwareConfig {
   repositoryAllowList: string[] = [];
