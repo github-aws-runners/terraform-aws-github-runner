@@ -91,8 +91,8 @@ abstract class MatcherAwareConfig extends BaseConfig {
   matcherConfig: RunnerMatcherConfig[] = [];
 
   protected async loadMatcherConfig(paramPathsEnv: string) {
-    if (!paramPathsEnv || paramPathsEnv === 'undefined' || paramPathsEnv === 'null' || !paramPathsEnv.includes(':')) {      
-      await this.loadParameter(paramPathsEnv, 'matcherConfig');      
+    if (!paramPathsEnv || paramPathsEnv === 'undefined' || paramPathsEnv === 'null' || !paramPathsEnv.includes(':')) {
+      await this.loadParameter(paramPathsEnv, 'matcherConfig');
       return;
     }
 
