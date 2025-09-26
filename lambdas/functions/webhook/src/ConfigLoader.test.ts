@@ -195,6 +195,27 @@ describe('ConfigLoader Tests', () => {
       expect(config.matcherConfig).toEqual(combinedMatcherConfig);
       expect(config.webhookSecret).toBe('secret');
     });
+
+    it('should throw error if config loading fails from multiple paths', async () => {
+      process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH = '/path/to/matcher/config-1:/path/to/matcher/config-2';
+      process.env.PARAMETER_GITHUB_APP_WEBHOOK_SECRET = '/path/to/webhook/secret';
+
+      const partialMatcher1 =
+        '[{"id":"1","arn":"arn:aws:sqs:queue1","matcherConfig":{"labelMatchers":[["a"]],"exactMatch":true}}';
+      const partialMatcher2 =
+        ',{"id":"2","arn":"arn:aws:sqs:queue2","matcherConfig":{"labelMatchers":[["b"]],"exactMatch":true}}';
+
+      vi.mocked(getParameter).mockImplementation(async (paramPath: string) => {
+        if (paramPath === '/path/to/matcher/config-1') return partialMatcher1;
+        if (paramPath === '/path/to/matcher/config-2') return partialMatcher2;
+        if (paramPath === '/path/to/webhook/secret') return 'secret';
+        return '';
+      });
+
+      await expect(ConfigWebhook.load()).rejects.toThrow(
+        'Failed to load config: Failed to parse combined matcher config: Expected \',\' or \']\' after array element in JSON at position 196 (line 1 column 197)', // eslint-disable-line max-len
+      );
+    });
   });
 
   describe('ConfigWebhookEventBridge', () => {

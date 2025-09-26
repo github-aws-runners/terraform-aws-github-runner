@@ -90,8 +90,11 @@ abstract class BaseConfig {
 abstract class MatcherAwareConfig extends BaseConfig {
   matcherConfig: RunnerMatcherConfig[] = [];
 
-  protected async loadMatcherConfig(paramPathsEnv: string | undefined) {
-    if (!paramPathsEnv) return;
+  protected async loadMatcherConfig(paramPathsEnv: string) {
+    if (!paramPathsEnv || paramPathsEnv === 'undefined' || paramPathsEnv === 'null' || !paramPathsEnv.includes(':')) {      
+      await this.loadParameter(paramPathsEnv, 'matcherConfig');      
+      return;
+    }
 
     const paths = paramPathsEnv
       .split(':')
@@ -101,16 +104,13 @@ abstract class MatcherAwareConfig extends BaseConfig {
 
     for (const path of paths) {
       await this.loadParameter(path, 'matcherConfig');
-      if (typeof this.matcherConfig === 'string') {
-        combinedString += this.matcherConfig;
-      }
+      combinedString += this.matcherConfig;
     }
 
     try {
       this.matcherConfig = JSON.parse(combinedString);
     } catch (error) {
       this.configLoadingErrors.push(`Failed to parse combined matcher config: ${(error as Error).message}`);
-      this.matcherConfig = [];
     }
   }
 }
