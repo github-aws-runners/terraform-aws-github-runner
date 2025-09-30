@@ -42,7 +42,7 @@ module "runners" {
   #   iops                  = null
   # }]
 
-  # When not explicitly set lambda zip files are grapped from the module requiring lambda build.
+  # When not explicitly set lambda zip files are grabbed from the module requiring lambda build.
   # Alternatively you can set the path to the lambda zip files here.
   #
   # For example grab zip files via lambda_download
@@ -68,7 +68,7 @@ module "runners" {
   # enable S3 versioning for runners S3 bucket
   # runner_binaries_s3_versioning = "Enabled"
 
-  # Uncommet idle config to have idle runners from 9 to 5 in time zone Amsterdam
+  # Uncomment idle config to have idle runners from 9 to 5 in time zone Amsterdam
   # idle_config = [{
   #   cron      = "* * 9-17 * * *"
   #   timeZone  = "Europe/Amsterdam"
