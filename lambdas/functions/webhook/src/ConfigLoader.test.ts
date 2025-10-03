@@ -277,7 +277,7 @@ describe('ConfigLoader Tests', () => {
       expect(config.matcherConfig).toEqual(matcherConfig);
     });
 
-    it('should load config successfully from multiple paths', async () => {
+    it('should load config successfully from multiple paths with repo allow list', async () => {
       process.env.REPOSITORY_ALLOW_LIST = '["repo1", "repo2"]';
       process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH = '/path/to/matcher/config-1:/path/to/matcher/config-2';
 
