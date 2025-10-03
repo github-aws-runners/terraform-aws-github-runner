@@ -1,7 +1,7 @@
 data "aws_caller_identity" "current" {}
 
 resource "aws_iam_role" "deploy" {
-  name = "${var.prefix}-terraform"
+  name = "${substr("${var.prefix}-terraform", 0, 54)}-${substr(md5("${var.prefix}-terraform"), 0, 8)}"
 
   permissions_boundary = aws_iam_policy.deploy_boundary.arn
   assume_role_policy = templatefile("${path.module}/policies/assume-role-for-account.json", {
