@@ -1,5 +1,45 @@
 # Changelog
 
+## [6.8.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.7.9...v6.8.0) (2025-10-03)
+
+
+### Features
+
+* add cpu_options for EC2 launch template ([#4789](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4789)) ([20eeead](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/20eeead48a4547e1f29257bbe771c14917d5db96))
+
+
+### Bug Fixes
+
+* **lambda:** bump the aws group across 1 directory with 7 updates ([#4805](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4805)) ([3025930](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/3025930d4246c713285de2a314285e0d0881d4e1))
+* **lambda:** bump the octokit group in /lambdas with 3 updates ([#4794](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4794)) ([73cf01e](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/73cf01e1652ece1e121295cbaab2ca22fe400e61))
+
+## [6.7.9](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.7.8...v6.7.9) (2025-09-28)
+
+
+### Bug Fixes
+
+* **lambda:** bump the aws group in /lambdas with 7 updates ([#4781](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4781)) ([83cc3f2](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/83cc3f22375f7bce7509f8c992e0a9a41cc4b322))
+* **lambda:** bump the octokit group in /lambdas with 2 updates ([#4782](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4782)) ([6e2f86f](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/6e2f86f83188756ab96e4c0c5cfae7eeb90007e8))
+
+## [6.7.8](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.7.7...v6.7.8) (2025-09-18)
+
+
+### Bug Fixes
+
+* **dispatcher:** Log org / repository context when unable to match labels ([#4761](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4761)) ([e214177](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/e214177cba3588abc96185c1e223ffadc946bbac))
+* **lambda:** bump axios from 1.12.1 to 1.12.2 in /lambdas ([#4772](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4772)) ([4d0ad0a](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/4d0ad0aae6ef449bd73abaec70fa17a6bbae0ec9))
+* **lambda:** bump axios from 1.8.4 to 1.12.0 in /lambdas ([#4763](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4763)) ([bbf1bd8](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/bbf1bd8c4a67969ee2c5a05aada07a2d3d4adf70))
+* **lambda:** bump the aws group in /lambdas with 7 updates ([#4769](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4769)) ([7f30dca](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/7f30dca7a3efda0db6a1442ad800a25af8f97834))
+* **lambda:** bump the aws-powertools group in /lambdas with 4 updates ([#4770](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4770)) ([dbb6888](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/dbb6888a064ea733abc501790307f2d956772c1c))
+
+## [6.7.7](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.7.6...v6.7.7) (2025-09-09)
+
+
+### Bug Fixes
+
+* ensure IAM Role name length does not exceed 64 characters ([#4696](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4696)) ([afacbef](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/afacbef8398d0f138c89bcdeeae029b54f04d105))
+* **lambda:** bump the aws group in /lambdas with 6 updates ([#4750](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4750)) ([094d539](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/094d5395f778bab5234aceb1be03af41fba6f05c))
+
 ## [6.7.6](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.7.5...v6.7.6) (2025-09-04)
 
 

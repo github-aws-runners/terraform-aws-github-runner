@@ -30,39 +30,39 @@ async function handleWorkflowJob(
   githubEvent: string,
   matcherConfig: Array<RunnerMatcherConfig>,
 ): Promise<Response> {
-  if (body.action === 'queued') {
-    // sort the queuesConfig by order of matcher config exact match, with all true matches lined up ahead.
-    matcherConfig.sort((a, b) => {
-      return a.matcherConfig.exactMatch === b.matcherConfig.exactMatch ? 0 : a.matcherConfig.exactMatch ? -1 : 1;
-    });
-    for (const queue of matcherConfig) {
-      if (canRunJob(body.workflow_job.labels, queue.matcherConfig.labelMatchers, queue.matcherConfig.exactMatch)) {
-        await sendActionRequest({
-          id: body.workflow_job.id,
-          repositoryName: body.repository.name,
-          repositoryOwner: body.repository.owner.login,
-          eventType: githubEvent,
-          installationId: body.installation?.id ?? 0,
-          queueId: queue.id,
-          repoOwnerType: body.repository.owner.type,
-        });
-        logger.info(`Successfully dispatched job for ${body.repository.full_name} to the queue ${queue.id}`);
-        return {
-          statusCode: 201,
-          body: `Successfully queued job for ${body.repository.full_name} to the queue ${queue.id}`,
-        };
-      }
-    }
-    logger.warn(`Received event contains runner labels '${body.workflow_job.labels}' that are not accepted.`);
+  if (body.action !== 'queued') {
     return {
-      statusCode: 202,
-      body: `Received event contains runner labels '${body.workflow_job.labels}' that are not accepted.`,
+      statusCode: 201,
+      body: `Workflow job not queued, not dispatching to queue.`,
     };
   }
-  return {
-    statusCode: 201,
-    body: `Received not queued and will not be ignored.`,
-  };
+  // sort the queuesConfig by order of matcher config exact match, with all true matches lined up ahead.
+  matcherConfig.sort((a, b) => {
+    return a.matcherConfig.exactMatch === b.matcherConfig.exactMatch ? 0 : a.matcherConfig.exactMatch ? -1 : 1;
+  });
+  for (const queue of matcherConfig) {
+    if (canRunJob(body.workflow_job.labels, queue.matcherConfig.labelMatchers, queue.matcherConfig.exactMatch)) {
+      await sendActionRequest({
+        id: body.workflow_job.id,
+        repositoryName: body.repository.name,
+        repositoryOwner: body.repository.owner.login,
+        eventType: githubEvent,
+        installationId: body.installation?.id ?? 0,
+        queueId: queue.id,
+        repoOwnerType: body.repository.owner.type,
+      });
+      logger.info(`Successfully dispatched job for ${body.repository.full_name} to the queue ${queue.id}`);
+      return {
+        statusCode: 201,
+        body: `Successfully queued job for ${body.repository.full_name} to the queue ${queue.id}`,
+      };
+    }
+  }
+  const notAcceptedErrorMsg = `Received event contains runner labels '${body.workflow_job.labels}' from '${
+    body.repository.full_name
+  }' that are not accepted.`;
+  logger.warn(notAcceptedErrorMsg);
+  return { statusCode: 202, body: notAcceptedErrorMsg };
 }
 
 export function canRunJob(

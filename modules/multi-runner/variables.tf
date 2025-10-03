@@ -126,6 +126,10 @@ variable "multi_runner_config" {
         idleCount        = number
         evictionStrategy = optional(string, "oldest_first")
       })), [])
+      cpu_options = optional(object({
+        core_count       = number
+        threads_per_core = number
+      }), null)
       runner_log_files = optional(list(object({
         log_group_name   = string
         prefix_log_group = bool

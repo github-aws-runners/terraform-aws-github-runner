@@ -85,7 +85,7 @@ resource "aws_lambda_permission" "scale_down" {
 }
 
 resource "aws_iam_role" "scale_down" {
-  name                 = "${var.prefix}-action-scale-down-lambda-role"
+  name                 = "${substr("${var.prefix}-scale-down-lambda", 0, 54)}-${substr(md5("${var.prefix}-scale-down-lambda"), 0, 8)}"
   assume_role_policy   = data.aws_iam_policy_document.lambda_assume_role_policy.json
   path                 = local.role_path
   permissions_boundary = var.role_permissions_boundary
