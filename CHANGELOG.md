@@ -1,5 +1,13 @@
 # Changelog
 
+## [6.7.9](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.7.8...v6.7.9) (2025-09-28)
+
+
+### Bug Fixes
+
+* **lambda:** bump the aws group in /lambdas with 7 updates ([#4781](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4781)) ([83cc3f2](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/83cc3f22375f7bce7509f8c992e0a9a41cc4b322))
+* **lambda:** bump the octokit group in /lambdas with 2 updates ([#4782](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4782)) ([6e2f86f](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/6e2f86f83188756ab96e4c0c5cfae7eeb90007e8))
+
 ## [6.7.8](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.7.7...v6.7.8) (2025-09-18)
 
 
