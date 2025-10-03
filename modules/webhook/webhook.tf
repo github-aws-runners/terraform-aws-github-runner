@@ -24,11 +24,11 @@ locals {
 }
 
 resource "aws_ssm_parameter" "runner_matcher_config" {
-  for_each = { for idx, val in local.matcher_chunks : idx => val }
+  count = length(local.matcher_chunks)
 
-  name  = "${var.ssm_paths.root}/${var.ssm_paths.webhook}/runner-matcher-config${length(local.matcher_chunks) > 1 ? "-${each.key}" : ""}"
+  name  = "${var.ssm_paths.root}/${var.ssm_paths.webhook}/runner-matcher-config${length(local.matcher_chunks) > 1 ? "-${count.index}" : ""}"
   type  = "String"
-  value = each.value
+  value = local.matcher_chunks[count.index]
   tier  = var.matcher_config_parameter_store_tier
   tags  = var.tags
 }
