@@ -9,9 +9,6 @@ rules:
       - terraform.yml:22
       - terraform.yml:96
       - terraform.yml:161
-  cache-poisoning:
-    ignore:
-      - release.yml:27
   dangerous-triggers:
     ignore:
       - semantic-check.yml:2
