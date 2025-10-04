@@ -18,19 +18,19 @@
   },
   "devDependencies": {
     "@aws-sdk/types": "^3.901.0",
-    "@types/aws-lambda": "^8.10.152",
-    "@types/node": "^22.16.5",
+    "@types/aws-lambda": "^8.10.155",
+    "@types/node": "^22.18.8",
     "@types/request": "^2.48.13",
-    "@vercel/ncc": "^0.38.3",
+    "@vercel/ncc": "^0.38.4",
     "aws-sdk-client-mock": "^4.1.0",
     "aws-sdk-client-mock-jest": "^4.1.0",
-    "aws-sdk-client-mock-vitest": "^6.1.1"
+    "aws-sdk-client-mock-vitest": "^6.2.1"
   },
   "dependencies": {
     "@aws-github-runner/aws-powertools-util": "*",
     "@aws-sdk/client-s3": "^3.901.0",
-    "@aws-sdk/lib-storage": "^3.901.0",
-    "@middy/core": "^6.4.1",
+    "@aws-sdk/lib-storage": "^3.903.0",
+    "@middy/core": "^6.4.5",
     "@octokit/rest": "22.0.0",
     "axios": "^1.12.2"
   },

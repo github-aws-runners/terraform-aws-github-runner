@@ -18,8 +18,8 @@
   },
   "devDependencies": {
     "@aws-sdk/types": "^3.901.0",
-    "@types/aws-lambda": "^8.10.152",
-    "@vercel/ncc": "^0.38.3",
+    "@types/aws-lambda": "^8.10.155",
+    "@vercel/ncc": "^0.38.4",
     "aws-sdk-client-mock": "^4.1.0",
     "aws-sdk-client-mock-jest": "^4.1.0"
   },
@@ -28,7 +28,7 @@
     "@aws-github-runner/aws-ssm-util": "*",
     "@aws-sdk/client-ec2": "^3.901.0",
     "@aws-sdk/client-ssm": "^3.901.0",
-    "cron-parser": "^5.3.1"
+    "cron-parser": "^5.4.0"
   },
   "nx": {
     "includedScripts": [

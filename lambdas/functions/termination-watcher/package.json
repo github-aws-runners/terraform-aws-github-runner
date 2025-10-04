@@ -16,16 +16,16 @@
   },
   "devDependencies": {
     "@aws-sdk/types": "^3.901.0",
-    "@types/aws-lambda": "^8.10.152",
-    "@types/node": "^22.16.5",
-    "@vercel/ncc": "^0.38.3",
+    "@types/aws-lambda": "^8.10.155",
+    "@types/node": "^22.18.8",
+    "@vercel/ncc": "^0.38.4",
     "aws-sdk-client-mock": "^4.1.0",
     "aws-sdk-client-mock-jest": "^4.1.0"
   },
   "dependencies": {
     "@aws-github-runner/aws-powertools-util": "*",
     "@aws-sdk/client-ec2": "^3.901.0",
-    "@middy/core": "^6.4.1"
+    "@middy/core": "^6.4.5"
   },
   "nx": {
     "includedScripts": [
