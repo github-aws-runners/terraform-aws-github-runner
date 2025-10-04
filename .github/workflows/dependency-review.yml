@@ -13,10 +13,11 @@ permissions: {}
 
 jobs:
   dependency-review:
+    name: Dependency vulnerability scan
     runs-on: ubuntu-latest
     permissions:
-      contents: read
-      pull-requests: write
+      contents: read # for actions/checkout
+      pull-requests: write # for actions/dependency-review-action to comment on PRs
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@f4a75cfd619ee5ce8d5b864b0d183aff3c69b55a # v2.13.1
