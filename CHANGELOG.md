@@ -1,5 +1,12 @@
 # Changelog
 
+## [6.8.1](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.8.0...v6.8.1) (2025-10-04)
+
+
+### Bug Fixes
+
+* prevent unnecessary updates when cpu_options is unset ([#4806](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4806)) ([8a1cd6f](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/8a1cd6f5c7a956d15d7eafa9f45ea5405179887a))
+
 ## [6.8.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.7.9...v6.8.0) (2025-10-03)
 
 
