@@ -1,5 +1,12 @@
 # Changelog
 
+## [6.8.2](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.8.1...v6.8.2) (2025-10-04)
+
+
+### Bug Fixes
+
+* **lambda:** Update all dependencies, cleanup lock file and force non… ([#4809](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4809)) ([b20180a](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/b20180a24ca136b81138a77353d0e1d1e4eefced))
+
 ## [6.8.1](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.8.0...v6.8.1) (2025-10-04)
 
 
