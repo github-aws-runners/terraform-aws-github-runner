@@ -7,7 +7,8 @@ on:
   push:
     branches: [ "main" ]
 
-permissions: read-all
+permissions:
+  contents: read # for actions/checkout and repository analysis
 
 jobs:
   analysis:
@@ -15,8 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event.repository.default_branch == github.ref_name || github.event_name == 'pull_request'
     permissions:
-      security-events: write
-      id-token: write
+      security-events: write # for github/codeql-action/upload-sarif to upload security scan results
+      id-token: write # for ossf/scorecard-action to generate attestations
 
     steps:
       - name: Harden the runner (Audit all outbound calls)
@@ -48,6 +49,6 @@ jobs:
       # Upload the results to GitHub's code scanning dashboard (optional).
       # Commenting out will disable upload of results to your repo's Code Scanning dashboard
       - name: "Upload to code-scanning"
-        uses: github/codeql-action/upload-sarif@3599b3baa15b485a2e49ef411a7a4bb2452e7f93
+        uses: github/codeql-action/upload-sarif@dd196fa9ce80b6bacc74ca1c32bd5b0ba22efca7 # v3.28.3
         with:
           sarif_file: results.sarif

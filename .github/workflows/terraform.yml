@@ -16,7 +16,7 @@ jobs:
     name: Verify module
     strategy:
       matrix:
-        terraform: [1.5.6, "latest"]
+        terraform: ["1.5.6", "latest"]
     runs-on: ubuntu-latest
     container:
       image: hashicorp/terraform:${{ matrix.terraform }}
@@ -74,7 +74,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        terraform: [1.5.6, "latest"]
+        terraform: ["1.5.6", "latest"]
         module:
           [
             "ami-housekeeper",
@@ -132,16 +132,18 @@ jobs:
       - if: contains(matrix.terraform, '1.3.')
         name: Run TFLint
         working-directory: ${{ github.workspace }}
+        env:
+          MODULE_NAME: ${{ matrix.module }}
         run: |
-          tflint --init -c ${GITHUB_WORKSPACE}/.tflint.hcl --chdir modules/${{ matrix.module }}
-          tflint -f compact -c ${GITHUB_WORKSPACE}/.tflint.hcl --var-file ${GITHUB_WORKSPACE}/.github/lint/tflint.tfvars --chdir modules/${{ matrix.module }}
+          tflint --init -c ${GITHUB_WORKSPACE}/.tflint.hcl --chdir "modules/${MODULE_NAME}"
+          tflint -f compact -c ${GITHUB_WORKSPACE}/.tflint.hcl --var-file ${GITHUB_WORKSPACE}/.github/lint/tflint.tfvars --chdir "modules/${MODULE_NAME}"
 
   verify_examples:
     name: Verify examples
     strategy:
       fail-fast: false
       matrix:
-        terraform: [1.5.6, "latest"]
+        terraform: ["1.5.6", "latest"]
         example:
           [
             "default",
@@ -195,6 +197,8 @@ jobs:
       - if: contains(matrix.terraform, '1.5.')
         name: Run TFLint
         working-directory: ${{ github.workspace }}
+        env:
+          EXAMPLE_NAME: ${{ matrix.example }}
         run: |
-          tflint --init -c ${GITHUB_WORKSPACE}/.tflint.hcl --chdir modules/${{ matrix.module }}
-          tflint -f compact -c ${GITHUB_WORKSPACE}/.tflint.hcl --var-file ${GITHUB_WORKSPACE}/.github/lint/tflint.tfvars --chdir examples/${{ matrix.example }}
+          tflint --init -c ${GITHUB_WORKSPACE}/.tflint.hcl --chdir "examples/${EXAMPLE_NAME}"
+          tflint -f compact -c ${GITHUB_WORKSPACE}/.tflint.hcl --var-file ${GITHUB_WORKSPACE}/.github/lint/tflint.tfvars --chdir "examples/${EXAMPLE_NAME}"
