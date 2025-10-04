@@ -15,9 +15,9 @@ A pertinent question may arise: why not opt for Kubernetes? The current strategy
 
 ## Overview
 
-The module is designed to be used in a GitHub organization. It can also be used in a GitHub repository, but this does not supports all features. The module is receiving GitHub webhook events for the `workflow_job` event. The module will create a new runner if the event is for a workflow that requires a runner, and no runner is available. Alternatively the module can be configured as ephemeral runners. In this case the module will create a new runner for each workflow job event.
+The module is designed to be used in a GitHub organization. It can also be used in a GitHub repository, but this does not support all features. The module is receiving GitHub webhook events for the `workflow_job` event. The module will create a new runner if the event is for a workflow that requires a runner, and no runner is available. Alternatively the module can be configured as ephemeral runners. In this case the module will create a new runner for each workflow job event.
 
-For ephemeral runners a pool is can be configured. The pool maintains a minimum number of runners based on a schedule. The pool works only for org level runners.
+For ephemeral runners a pool can be configured. The pool maintains a minimum number of runners based on a schedule. The pool works only for org level runners.
 
 For non ephemeral runners with the idle config the module will avoid scaling down back to zero. Instead it will maintain a minimum number of runners based on a schedule. This avoids the need to scale up when a new workflow is triggered.
 

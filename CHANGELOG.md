@@ -1,5 +1,18 @@
 # Changelog
 
+## [6.8.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.7.9...v6.8.0) (2025-10-03)
+
+
+### Features
+
+* add cpu_options for EC2 launch template ([#4789](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4789)) ([20eeead](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/20eeead48a4547e1f29257bbe771c14917d5db96))
+
+
+### Bug Fixes
+
+* **lambda:** bump the aws group across 1 directory with 7 updates ([#4805](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4805)) ([3025930](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/3025930d4246c713285de2a314285e0d0881d4e1))
+* **lambda:** bump the octokit group in /lambdas with 3 updates ([#4794](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4794)) ([73cf01e](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/73cf01e1652ece1e121295cbaab2ca22fe400e61))
+
 ## [6.7.9](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.7.8...v6.7.9) (2025-09-28)
 
 
