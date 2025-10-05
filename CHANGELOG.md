@@ -1,5 +1,33 @@
 # Changelog
 
+## [6.8.1](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.8.0...v6.8.1) (2025-10-04)
+
+
+### Bug Fixes
+
+* prevent unnecessary updates when cpu_options is unset ([#4806](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4806)) ([8a1cd6f](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/8a1cd6f5c7a956d15d7eafa9f45ea5405179887a))
+
+## [6.8.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.7.9...v6.8.0) (2025-10-03)
+
+
+### Features
+
+* add cpu_options for EC2 launch template ([#4789](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4789)) ([20eeead](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/20eeead48a4547e1f29257bbe771c14917d5db96))
+
+
+### Bug Fixes
+
+* **lambda:** bump the aws group across 1 directory with 7 updates ([#4805](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4805)) ([3025930](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/3025930d4246c713285de2a314285e0d0881d4e1))
+* **lambda:** bump the octokit group in /lambdas with 3 updates ([#4794](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4794)) ([73cf01e](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/73cf01e1652ece1e121295cbaab2ca22fe400e61))
+
+## [6.7.9](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.7.8...v6.7.9) (2025-09-28)
+
+
+### Bug Fixes
+
+* **lambda:** bump the aws group in /lambdas with 7 updates ([#4781](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4781)) ([83cc3f2](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/83cc3f22375f7bce7509f8c992e0a9a41cc4b322))
+* **lambda:** bump the octokit group in /lambdas with 2 updates ([#4782](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4782)) ([6e2f86f](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/6e2f86f83188756ab96e4c0c5cfae7eeb90007e8))
+
 ## [6.7.8](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.7.7...v6.7.8) (2025-09-18)
 
 

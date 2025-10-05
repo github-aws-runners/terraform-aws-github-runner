@@ -56,6 +56,7 @@ module "runners" {
   runner_additional_security_group_ids = try(coalescelist(each.value.runner_config.runner_additional_security_group_ids, var.runner_additional_security_group_ids), [])
   metadata_options                     = each.value.runner_config.runner_metadata_options
   credit_specification                 = each.value.runner_config.credit_specification
+  cpu_options                          = each.value.runner_config.cpu_options
 
   enable_runner_binaries_syncer    = each.value.runner_config.enable_runner_binaries_syncer
   lambda_s3_bucket                 = var.lambda_s3_bucket

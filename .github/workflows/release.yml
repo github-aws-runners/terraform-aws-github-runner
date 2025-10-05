@@ -14,10 +14,10 @@ jobs:
     name: Release
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-      actions: write
-      id-token: write
-      attestations: write
+      contents: write # for release-please-action to create releases and update changelogs
+      actions: write # for release-please-action to trigger other workflows
+      id-token: write # for actions/attest-build-provenance to generate attestations
+      attestations: write # for actions/attest-build-provenance to write attestations
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@f4a75cfd619ee5ce8d5b864b0d183aff3c69b55a # v2.13.1
@@ -27,6 +27,7 @@ jobs:
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: 22
+          package-manager-cache: false
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           persist-credentials: false
@@ -63,14 +64,16 @@ jobs:
           VERSION: ${{ github.event.inputs.version }}
           TAG_NAME: ${{ steps.release.outputs.tag_name }}
           ATTESTATION_URL: ${{ steps.attest.outputs.attestation-url }}
+          REPOSITORY: ${{ github.repository }}
         run: |
           version="${VERSION}"
           tag_name="${TAG_NAME}"
           attestation_url="${ATTESTATION_URL}"
+          repository="${REPOSITORY}"
           gh release view $version --json body -q '.body' > new-release-notes.md
           echo "## Attestation" >> new-release-notes.md
           echo "Attestation url: $attestation_url" >> new-release-notes.md
-          echo "Verify the artifacts by running \`gh attestation verify <name_of_artifact> --repo ${{ github.repository }}\`" >> new-release-notes.md
+          echo "Verify the artifacts by running \`gh attestation verify <name_of_artifact> --repo ${repository}\`" >> new-release-notes.md
           gh release edit $tag_name -F new-release-notes.md -t $tag_name
       - name: Upload release assets
         if: ${{ steps.release.outputs.releases_created == 'true' }}

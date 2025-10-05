@@ -3,12 +3,14 @@ on:
   schedule:
     - cron: "30 1 * * *"
   workflow_dispatch:
-permissions:
-  issues: write
-  pull-requests: write
+permissions: {}
 jobs:
   stale:
+    name: Mark stale issues and PRs
     runs-on: ubuntu-latest
+    permissions:
+      issues: write # for actions/stale to close stale issues
+      pull-requests: write # for actions/stale to close stale PRs
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@f4a75cfd619ee5ce8d5b864b0d183aff3c69b55a # v2.13.1

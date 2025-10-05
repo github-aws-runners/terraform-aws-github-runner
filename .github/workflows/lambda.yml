@@ -13,12 +13,10 @@ permissions:
 
 jobs:
   build:
+    name: Build and test lambda functions
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node: [22]
     container:
-      image: node:${{ matrix.node }}
+      image: node:22@sha256:2bb201f33898d2c0ce638505b426f4dd038cc00e5b2b4cbba17b069f0fff1496
     defaults:
       run:
         working-directory: ./lambdas
