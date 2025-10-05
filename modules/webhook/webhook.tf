@@ -5,8 +5,12 @@ locals {
   # sorted list
   runner_matcher_config_sorted = [for k in sort(keys(local.runner_matcher_config)) : local.runner_matcher_config[k]]
 
-  # Encode the sorted matcher config as JSON
-  matcher_json = jsonencode(local.runner_matcher_config_sorted)
+  # Define worst-case dummy ARN/ID lengths
+  worst_case_arn = join("", [for i in range(0, 127) : "X"]) # ARN length assuming 80-char queue name, longest partition & region
+  worst_case_id  = join("", [for i in range(0, 135) : "Y"]) # SQS URL length for same worst-case scenario
+
+  # Compute worst-case JSON length
+  worst_case_json_length = length(jsonencode([for r in local.runner_matcher_config_sorted : merge(r, { arn = local.worst_case_arn, id = local.worst_case_id })]))
 
   # Set max chunk size based on SSM tier
   # AWS SSM limits:
@@ -16,19 +20,23 @@ locals {
   # (e.g., escaped characters or minor overhead could exceed the limit)
   max_chunk_size = var.matcher_config_parameter_store_tier == "Advanced" ? 8000 : 4000
 
+  # Calculate total number of chunks
+  total_chunks = ceil(local.worst_case_json_length / local.max_chunk_size)
+
+  # Encode the sorted matcher config as JSON
+  matcher_json = jsonencode(local.runner_matcher_config_sorted)
+  chunk_size   = ceil(length(local.matcher_json) / local.total_chunks)
+
   # Split JSON into chunks safely under the SSM limit
-  matcher_chunks = [
-    for i in range(0, length(local.matcher_json), local.max_chunk_size) :
-    substr(local.matcher_json, i, local.max_chunk_size)
-  ]
+  matcher_json_chunks = [for i in range(0, length(local.matcher_json), local.chunk_size) : substr(local.matcher_json, i, local.chunk_size)]
 }
 
 resource "aws_ssm_parameter" "runner_matcher_config" {
-  count = length(local.matcher_chunks)
+  count = local.total_chunks
 
-  name  = "${var.ssm_paths.root}/${var.ssm_paths.webhook}/runner-matcher-config${length(local.matcher_chunks) > 1 ? "-${count.index}" : ""}"
+  name  = "${var.ssm_paths.root}/${var.ssm_paths.webhook}/runner-matcher-config${local.total_chunks > 1 ? "-${count.index}" : ""}"
   type  = "String"
-  value = local.matcher_chunks[count.index]
+  value = local.matcher_json_chunks[count.index]
   tier  = var.matcher_config_parameter_store_tier
   tags  = var.tags
 }
