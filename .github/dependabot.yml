@@ -20,10 +20,6 @@ updates:
         patterns:
           - "actions/*"
           - "github/"
-    # Ignore major version updates for Node.js Docker images to keep aligned with Lambda runtime (nodejs22.x)
-    ignore:
-      - dependency-name: "node"
-        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "npm"
     directory: "/lambdas"
