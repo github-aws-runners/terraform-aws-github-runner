@@ -51,6 +51,10 @@ updates:
     commit-message:
       prefix: "fix(lambda)"
       prefix-development: "chore(lambda)"
+    # Ignore major version updates for Node.js related packages to keep aligned with Lambda runtime (nodejs22.x)
+    ignore:
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "docker"
     directory: "/.ci/Dockerfile"
