@@ -20,6 +20,10 @@ updates:
         patterns:
           - "actions/*"
           - "github/"
+    # Ignore major version updates for Node.js Docker images to keep aligned with Lambda runtime (nodejs22.x)
+    ignore:
+      - dependency-name: "node"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "npm"
     directory: "/lambdas"
@@ -61,6 +65,10 @@ updates:
       - "docker"
     commit-message:
       prefix: "chore(docker)"
+    # Ignore major version updates for Node.js Docker images to keep aligned with Lambda runtime (nodejs22.x)
+    ignore:
+      - dependency-name: "node"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "docker"
     directory: "/.devcontainer/Dockerfile"
@@ -71,6 +79,10 @@ updates:
       - "docker"
     commit-message:
       prefix: "chore(devcontainer)"
+    # Ignore major version updates for Node.js Docker images to keep aligned with Lambda runtime (nodejs22.x)
+    ignore:
+      - dependency-name: "mcr.microsoft.com/vscode/devcontainers/typescript-node"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "pip"
     directory: "/.github/workflows/mkdocs"
