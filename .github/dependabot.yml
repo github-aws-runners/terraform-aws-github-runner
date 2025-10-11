@@ -85,3 +85,13 @@ updates:
       - "python"
     commit-message:
       prefix: "chore(docs)"
+
+  - package-ecosystem: "terraform"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "terraform"
+    commit-message:
+      prefix: "chore(terraform)"
