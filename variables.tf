@@ -31,6 +31,25 @@ variable "enable_organization_runners" {
   default     = false
 }
 
+variable "enable_enterprise_runners" {
+  description = "Register runners to enterprise"
+  type        = bool
+  default     = false
+}
+
+variable "enterprise_slug" {
+  description = "Enterprise slug"
+  type        = string
+  default     = ""
+}
+
+variable "enterprise_installation" {
+  description = "Enterprise Installation ID. Required since GitHub doesn't return enterprises on the installations endpoints"
+  type        = string
+  default     = ""
+}
+
+
 variable "github_app" {
   description = <<EOF
   GitHub app parameters, see your github app.
