@@ -239,8 +239,7 @@ variable "github_app_parameters" {
 
 variable "enterprise_pat" {
   description = "GitHub Enterprise PAT to use for registering runners to the enterprise. This is only required when `enable_enterprise_runners` is set to true."
-  type        = string
-  default     = null
+  type        = map(string)
 }
 
 variable "lambda_scale_down_memory_size" {
