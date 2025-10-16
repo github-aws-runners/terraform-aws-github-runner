@@ -61,12 +61,12 @@ variable "github_app" {
   EOF
 
   type = object({
-    key_base64 = optional(string)
+    key_base64 = optional(string,null)
     key_base64_ssm = optional(object({
       arn  = string
       name = string
     }))
-    id = optional(string)
+    id = optional(string, null)
     id_ssm = optional(object({
       arn  = string
       name = string
