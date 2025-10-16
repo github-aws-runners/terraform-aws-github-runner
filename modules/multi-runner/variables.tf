@@ -85,6 +85,9 @@ variable "multi_runner_config" {
       enable_job_queued_check                 = optional(bool, null)
       enable_on_demand_failover_for_errors    = optional(list(string), [])
       enable_organization_runners             = optional(bool, false)
+      enable_enterprise_runners               = optional(bool, false)
+      enterprise_slug                         = optional(string, "")
+      enterprise_installation_id              = optional(string, "")
       enable_runner_binaries_syncer           = optional(bool, true)
       enable_ssm_on_runners                   = optional(bool, false)
       enable_userdata                         = optional(bool, true)
@@ -194,6 +197,9 @@ variable "multi_runner_config" {
         enable_job_queued_check: "Enables JIT configuration for creating runners instead of registration token based registraton. JIT configuration will only be applied for ephemeral runners. By default JIT confiugration is enabled for ephemeral runners an can be disabled via this override. When running on GHES without support for JIT configuration this variable should be set to true for ephemeral runners."
         enable_on_demand_failover_for_errors: "Enable on-demand failover. For example to fall back to on demand when no spot capacity is available the variable can be set to `InsufficientInstanceCapacity`. When not defined the default behavior is to retry later."
         enable_organization_runners: "Register runners to organization, instead of repo level"
+        enable_enterprise_runners: "Register runners to enterprise, instead of repo or organization level"
+        enterprise_slug: "Enterprise slug"
+        enterprise_installation_id: "Enterprise Installation ID. Required since GitHub doesn't return enterprises on the installations endpoints"
         enable_runner_binaries_syncer: "Option to disable the lambda to sync GitHub runner distribution, useful when using a pre-build AMI."
         enable_ssm_on_runners: "Enable to allow access the runner instances for debugging purposes via SSM. Note that this adds additional permissions to the runner instances."
         enable_userdata: "Should the userdata script be enabled for the runner. Set this to false if you are using your own prebuilt AMI."

@@ -4,6 +4,9 @@ locals {
 
   environment_variables = {
     ENABLE_ORGANIZATION_RUNNERS          = var.config.enable_organization_runners
+    ENABLE_ENTERPRISE_RUNNERS            = var.config.enable_enterprise_runners
+    ENTERPRISE_SLUG                      = var.config.enterprise_slug
+    ENTERPRISE_INSTALLATION_ID           = var.config.enterprise_installation_id
     ENABLE_METRIC_JOB_RETRY              = var.config.metrics.enable && var.config.metrics.metric.enable_job_retry
     ENABLE_METRIC_GITHUB_APP_RATE_LIMIT  = var.config.metrics.enable && var.config.metrics.metric.enable_github_app_rate_limit
     GHES_URL                             = var.config.ghes_url

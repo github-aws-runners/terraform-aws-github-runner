@@ -38,8 +38,10 @@ export async function publishRetryMessage(payload: ActionRequestMessage): Promis
 
 export async function checkAndRetryJob(payload: ActionRequestMessageRetry): Promise<void> {
   const enableOrgLevel = yn(process.env.ENABLE_ORGANIZATION_RUNNERS, { default: true });
-  const runnerType = enableOrgLevel ? 'Org' : 'Repo';
-  const runnerOwner = enableOrgLevel ? payload.repositoryOwner : `${payload.repositoryOwner}/${payload.repositoryName}`;
+  const enableEnterpriseLevel = yn(process.env.ENABLE_ENTERPRISE_RUNNERS, { default: true });
+  const enterpriseSlug = process.env.ENTERPRISE_SLUG ?? '';
+  const runnerType = enableEnterpriseLevel ? 'Enterprise' : enableOrgLevel ? 'Org' : 'Repo';
+  const runnerOwner = enableEnterpriseLevel ? enterpriseSlug : enableOrgLevel ? payload.repositoryOwner : `${payload.repositoryOwner}/${payload.repositoryName}`;
   const runnerNamePrefix = process.env.RUNNER_NAME_PREFIX ?? '';
   const jobQueueUrl = process.env.JOB_QUEUE_SCALE_UP_URL ?? '';
   const enableMetrics = yn(process.env.ENABLE_METRIC_JOB_RETRY, { default: false });

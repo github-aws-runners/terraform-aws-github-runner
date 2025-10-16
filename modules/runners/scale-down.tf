@@ -28,6 +28,7 @@ resource "aws_lambda_function" "scale_down" {
       USER_AGENT                               = var.user_agent
       LOG_LEVEL                                = var.log_level
       MINIMUM_RUNNING_TIME_IN_MINUTES          = coalesce(var.minimum_running_time_in_minutes, local.min_runtime_defaults[var.runner_os])
+      ENTERPRISE_INSTALLATION_ID               = var.enterprise_installation_id
       NODE_TLS_REJECT_UNAUTHORIZED             = var.ghes_url != null && !var.ghes_ssl_verify ? 0 : 1
       PARAMETER_GITHUB_APP_ID_NAME             = var.github_app_parameters.id.name
       PARAMETER_GITHUB_APP_KEY_BASE64_NAME     = var.github_app_parameters.key_base64.name
