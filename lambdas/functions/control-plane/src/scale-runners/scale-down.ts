@@ -35,7 +35,7 @@ async function getOrCreateOctokit(runner: RunnerInfo): Promise<Octokit> {
   const githubClientPre = await createOctokitClient(ghAuthPre.token, ghesApiUrl);
 
   const installationId =
-    runner.type === 'Enterprise' 
+    runner.type === 'Enterprise'
       ? enterpriseInstallationId
       : runner.type === 'Org'
         ? (

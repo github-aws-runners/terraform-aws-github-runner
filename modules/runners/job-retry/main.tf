@@ -6,14 +6,14 @@ locals {
     ENABLE_ORGANIZATION_RUNNERS          = var.config.enable_organization_runners
     ENABLE_ENTERPRISE_RUNNERS            = var.config.enable_enterprise_runners
     ENTERPRISE_SLUG                      = var.config.enterprise_slug
-    ENTERPRISE_INSTALLATION_ID           = var.config.enterprise_installation_id
     ENABLE_METRIC_JOB_RETRY              = var.config.metrics.enable && var.config.metrics.metric.enable_job_retry
     ENABLE_METRIC_GITHUB_APP_RATE_LIMIT  = var.config.metrics.enable && var.config.metrics.metric.enable_github_app_rate_limit
     GHES_URL                             = var.config.ghes_url
     USER_AGENT                           = var.config.user_agent
     JOB_QUEUE_SCALE_UP_URL               = var.config.sqs_build_queue.url
-    PARAMETER_GITHUB_APP_ID_NAME         = var.config.github_app_parameters.id.name
-    PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.config.github_app_parameters.key_base64.name
+    PARAMETER_GITHUB_APP_ID_NAME         = var.config.enterprise_pat == null ? var.config.github_app_parameters.id.name: null
+    PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.config.enterprise_pat == null ? var.config.github_app_parameters.key_base64.name : null
+    PARAMETER_ENTERPRISE_PAT_NAME        = var.config.enterprise_pat != null ? var.config.enterprise_pat.name : null
   }
 
   config = merge(var.config, {

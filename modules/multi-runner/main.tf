@@ -4,10 +4,12 @@ locals {
   })
 
   github_app_parameters = {
-    id             = coalesce(var.github_app.id_ssm, module.ssm.parameters.github_app_id)
-    key_base64     = coalesce(var.github_app.key_base64_ssm, module.ssm.parameters.github_app_key_base64)
-    webhook_secret = coalesce(var.github_app.webhook_secret_ssm, module.ssm.parameters.github_app_webhook_secret)
+    id             = var.enterprise_pat == null ? coalesce(var.github_app.id_ssm, module.ssm.parameters.github_app_id) : null
+    key_base64     = var.enterprise_pat == null ? coalesce(var.github_app.key_base64_ssm, module.ssm.parameters.github_app_key_base64) : null
+    webhook_secret = var.enterprise_pat == null ? coalesce(var.github_app.webhook_secret_ssm, module.ssm.parameters.github_app_webhook_secret) : null
   }
+
+  enterprise_pat = var.enterprise_pat != null ? module.ssm.parameters.enterprise_pat : null
 
   runner_extra_labels = { for k, v in var.multi_runner_config : k => sort(setunion(flatten(v.matcherConfig.labelMatchers), compact(v.runner_config.runner_extra_labels))) }
 

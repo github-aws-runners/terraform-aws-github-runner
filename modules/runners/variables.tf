@@ -229,18 +229,18 @@ variable "enterprise_slug" {
   type        = string
 }
 
-variable "enterprise_installation_id" {
-  description = "Enterprise Installation ID. Required since GitHub doesn't return enterprises on the installations endpoints"
-  type        = string
-  default     = ""
-}
-
 variable "github_app_parameters" {
   description = "Parameter Store for GitHub App Parameters."
   type = object({
     key_base64 = map(string)
     id         = map(string)
   })
+}
+
+variable "enterprise_pat" {
+  description = "GitHub Enterprise PAT to use for registering runners to the enterprise. This is only required when `enable_enterprise_runners` is set to true."
+  type        = string
+  default     = null
 }
 
 variable "lambda_scale_down_memory_size" {

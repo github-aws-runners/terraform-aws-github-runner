@@ -26,6 +26,7 @@ variable "config" {
       key_base64 = map(string)
       id         = map(string)
     })
+    enterprise_pat = string
     subnet_ids = list(string)
     runner = object({
       disable_runner_autoupdate            = bool

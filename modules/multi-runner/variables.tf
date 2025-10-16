@@ -1,11 +1,14 @@
+variable "enterprise_pat" {
+  description = "GitHub enterprise PAT. Used when not authenticating via GitHub App."
+  type        = string
+  default     = null
+}
+
 variable "github_app" {
   description = <<EOF
-  GitHub app parameters, see your github app.
-  You can optionally create the SSM parameters yourself and provide the ARN and name here, through the `*_ssm` attributes.
-  If you chose to provide the configuration values directly here,
-  please ensure the key is the base64-encoded `.pem` file (the output of `base64 app.private-key.pem`, not the content of `private-key.pem`).
-  Note: the provided SSM parameters arn and name have a precedence over the actual value (i.e `key_base64_ssm` has a precedence over `key_base64` etc).
+  GitHub app parameters.
   EOF
+
   type = object({
     key_base64 = optional(string)
     key_base64_ssm = optional(object({
@@ -25,13 +28,36 @@ variable "github_app" {
   })
 
   validation {
-    condition     = (var.github_app.key_base64 != null || var.github_app.key_base64_ssm != null) && (var.github_app.id != null || var.github_app.id_ssm != null) && (var.github_app.webhook_secret != null || var.github_app.webhook_secret_ssm != null)
+    condition = (
+      // 1) Webhook secret is ALWAYS required
+      (var.github_app.webhook_secret != null || var.github_app.webhook_secret_ssm != null)
+      &&
+      // 2) Exactly one of:
+      //    A) GitHub App creds (key & id)  XOR  B) enterprise_pat
+      (
+        (
+          (var.github_app.key_base64 != null || var.github_app.key_base64_ssm != null) &&
+          (var.github_app.id != null || var.github_app.id_ssm != null) &&
+          var.enterprise_pat == null
+        )
+        ||
+        (
+          var.enterprise_pat != null &&
+          var.github_app.key_base64 == null &&
+          var.github_app.key_base64_ssm == null &&
+          var.github_app.id == null &&
+          var.github_app.id_ssm == null
+        )
+      )
+    )
+
     error_message = <<EOF
-     You must set all of the following parameters, choosing one option from each pair:
-      - `key_base64` or `key_base64_ssm`
-      - `id` or `id_ssm`
-      - `webhook_secret` or `webhook_secret_ssm`
-    EOF
+webhook_secret is required: set either `webhook_secret` or `webhook_secret_ssm`.
+
+Then choose exactly ONE auth method:
+  - GitHub App: provide `key_base64` or `key_base64_ssm` AND `id` or `id_ssm` (and do NOT set enterprise_pat), OR
+  - Enterprise PAT: set `enterprise_pat` (and do NOT set GitHub App key/id).
+EOF
   }
 }
 
@@ -87,7 +113,7 @@ variable "multi_runner_config" {
       enable_organization_runners             = optional(bool, false)
       enable_enterprise_runners               = optional(bool, false)
       enterprise_slug                         = optional(string, "")
-      enterprise_installation_id              = optional(string, "")
+      enterprise_pat                          = optional(string, "")
       enable_runner_binaries_syncer           = optional(bool, true)
       enable_ssm_on_runners                   = optional(bool, false)
       enable_userdata                         = optional(bool, true)
@@ -199,7 +225,6 @@ variable "multi_runner_config" {
         enable_organization_runners: "Register runners to organization, instead of repo level"
         enable_enterprise_runners: "Register runners to enterprise, instead of repo or organization level"
         enterprise_slug: "Enterprise slug"
-        enterprise_installation_id: "Enterprise Installation ID. Required since GitHub doesn't return enterprises on the installations endpoints"
         enable_runner_binaries_syncer: "Option to disable the lambda to sync GitHub runner distribution, useful when using a pre-build AMI."
         enable_ssm_on_runners: "Enable to allow access the runner instances for debugging purposes via SSM. Note that this adds additional permissions to the runner instances."
         enable_userdata: "Should the userdata script be enabled for the runner. Set this to false if you are using your own prebuilt AMI."

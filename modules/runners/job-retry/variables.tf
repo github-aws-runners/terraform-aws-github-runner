@@ -8,11 +8,11 @@ variable "config" {
     `enable_organization_runners`: Enable organization runners.
     `enable_enterprise_runners`: Enable enterprise runners.
     `enterprise_slug`: GitHub enterprise slug.
-    `enterprise_installation_id`: Enterprise Installation ID. Required since GitHub doesn't return enterprises on the installations endpoints 
     `enable_metric`: Enable metric for the lambda. If `spot_warning` is set to true, the lambda will emit a metric when it detects a spot termination warning.
     'ghes_url': Optional GitHub Enterprise Server URL.
     'user_agent': Optional User-Agent header for GitHub API requests.
     'github_app_parameters': Parameter Store for GitHub App Parameters.
+    'enterprise_pat = string': Personal Access Token for GitHub Enterprise. If set, the lambda will use this PAT to authenticate with the GitHub API.
     'kms_key_arn': Optional CMK Key ARN instead of using the default AWS managed key.
     `lambda_principals`: Add extra principals to the role created for execution of the lambda, e.g. for local testing.
     `lambda_tags`: Map of tags that will be added to created resources. By default resources will be tagged with name and environment.
@@ -43,7 +43,6 @@ variable "config" {
     enable_organization_runners = bool
     enable_enterprise_runners   = bool
     enterprise_slug             = string
-    enterprise_installation_id  = string
     environment_variables       = optional(map(string), {})
     ghes_url                    = optional(string, null)
     user_agent                  = optional(string, null)
@@ -51,6 +50,7 @@ variable "config" {
       key_base64 = map(string)
       id         = map(string)
     })
+    enterprise_pat            = string
     kms_key_arn               = optional(string, null)
     lambda_tags               = optional(map(string), {})
     log_level                 = optional(string, null)

@@ -34,7 +34,6 @@ resource "aws_lambda_function" "scale_up" {
       ENABLE_ORGANIZATION_RUNNERS              = var.enable_organization_runners
       ENABLE_ENTERPRISE_RUNNERS                = var.enable_enterprise_runners
       ENTERPRISE_SLUG                          = var.enterprise_slug
-      ENTERPRISE_INSTALLATION_ID               = var.enterprise_installation_id
       ENVIRONMENT                              = var.prefix
       GHES_URL                                 = var.ghes_url
       USER_AGENT                               = var.user_agent
@@ -46,8 +45,9 @@ resource "aws_lambda_function" "scale_up" {
       LOG_LEVEL                                = var.log_level
       MINIMUM_RUNNING_TIME_IN_MINUTES          = coalesce(var.minimum_running_time_in_minutes, local.min_runtime_defaults[var.runner_os])
       NODE_TLS_REJECT_UNAUTHORIZED             = var.ghes_url != null && !var.ghes_ssl_verify ? 0 : 1
-      PARAMETER_GITHUB_APP_ID_NAME             = var.github_app_parameters.id.name
-      PARAMETER_GITHUB_APP_KEY_BASE64_NAME     = var.github_app_parameters.key_base64.name
+      PARAMETER_GITHUB_APP_ID_NAME             = var.enterprise_pat == null ? var.github_app_parameters.id.name : null
+      PARAMETER_GITHUB_APP_KEY_BASE64_NAME     = var.enterprise_pat == null ? var.github_app_parameters.key_base64.name : null
+      PARAMETER_ENTERPRISE_PAT_NAME            = var.enterprise_pat != null ? var.enterprise_pat.name : null
       POWERTOOLS_LOGGER_LOG_EVENT              = var.log_level == "debug" ? "true" : "false"
       POWERTOOLS_METRICS_NAMESPACE             = var.metrics.namespace
       POWERTOOLS_TRACE_ENABLED                 = var.tracing_config.mode != null ? true : false

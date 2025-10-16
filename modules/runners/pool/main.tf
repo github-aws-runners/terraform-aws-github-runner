@@ -31,8 +31,10 @@ resource "aws_lambda_function" "pool" {
       LAUNCH_TEMPLATE_NAME                     = var.config.runner.launch_template.name
       LOG_LEVEL                                = var.config.lambda.log_level
       NODE_TLS_REJECT_UNAUTHORIZED             = var.config.ghes.url != null && !var.config.ghes.ssl_verify ? 0 : 1
-      PARAMETER_GITHUB_APP_ID_NAME             = var.config.github_app_parameters.id.name
-      PARAMETER_GITHUB_APP_KEY_BASE64_NAME     = var.config.github_app_parameters.key_base64.name
+      PARAMETER_GITHUB_APP_ID_NAME             = var.config.enterprise_pat == null ? var.config.github_app_parameters.id.name: null
+      PARAMETER_GITHUB_APP_KEY_BASE64_NAME     = var.config.enterprise_pat == null ? var.config.github_app_parameters.key_base64.name : null
+      PARAMETER_ENTERPRISE_PAT_NAME            = var.config.enterprise_pat != null ? var.config.enterprise_pat.name : null
+
       POWERTOOLS_LOGGER_LOG_EVENT              = var.config.lambda.log_level == "debug" ? "true" : "false"
       RUNNER_BOOT_TIME_IN_MINUTES              = var.config.runner.boot_time_in_minutes
       RUNNER_LABELS                            = lower(join(",", var.config.runner.labels))

@@ -24,10 +24,10 @@ locals {
     zip                         = var.lambda_zip
     tracing_config              = var.tracing_config
     github_app_parameters       = var.github_app_parameters
+    enterprise_pat              = var.enterprise_pat
     enable_organization_runners = var.enable_organization_runners
     enable_enterprise_runners   = var.enable_enterprise_runners
     enterprise_slug             = var.enterprise_slug
-    enterprise_installation_id  = var.enterprise_installation_id
     sqs_build_queue             = var.sqs_build_queue
     ghes_url                    = var.ghes_url
   }
