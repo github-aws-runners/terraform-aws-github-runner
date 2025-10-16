@@ -45,7 +45,7 @@ interface CreateGitHubRunnerConfig {
   runnerGroup: string;
   runnerNamePrefix: string;
   runnerOwner: string;
-  runnerType: 'Enterprise'| 'Org' | 'Repo';
+  runnerType: 'Org' | 'Repo';
   disableAutoUpdate: boolean;
   ssmTokenPath: string;
   ssmConfigPath: string;
@@ -63,9 +63,8 @@ interface CreateEC2RunnerConfig {
 }
 
 function generateRunnerServiceConfig(githubRunnerConfig: CreateGitHubRunnerConfig, token: string) {
-  const enterpriseContextPath = githubRunnerConfig.runnerType === 'Enterprise' ? 'enterprise/' : ''
   const config = [
-    `--url ${githubRunnerConfig.ghesBaseUrl ?? 'https://github.com'}/${enterpriseContextPath}${githubRunnerConfig.runnerOwner}`,
+    `--url ${githubRunnerConfig.ghesBaseUrl ?? 'https://github.com'}/${githubRunnerConfig.runnerOwner}`,
     `--token ${token}`,
   ];
 
@@ -77,8 +76,7 @@ function generateRunnerServiceConfig(githubRunnerConfig: CreateGitHubRunnerConfi
     config.push('--disableupdate');
   }
 
-  if ((githubRunnerConfig.runnerType === 'Org' || githubRunnerConfig.runnerType === 'Enterprise' ) 
-      && githubRunnerConfig.runnerGroup !== undefined) {
+  if (githubRunnerConfig.runnerType === 'Org' && githubRunnerConfig.runnerGroup !== undefined) {
     config.push(`--runnergroup ${githubRunnerConfig.runnerGroup}`);
   }
 
@@ -91,15 +89,12 @@ function generateRunnerServiceConfig(githubRunnerConfig: CreateGitHubRunnerConfi
 
 async function getGithubRunnerRegistrationToken(githubRunnerConfig: CreateGitHubRunnerConfig, ghClient: Octokit) {
   const registrationToken =
-    githubRunnerConfig.runnerType === 'Enterprise' 
-      ? await ghClient.request("POST /enterprises/{enterprise}/actions/runners/registration-token",
-        { enterprise: githubRunnerConfig.runnerOwner })
-      : githubRunnerConfig.runnerType === 'Org'
-        ? await ghClient.actions.createRegistrationTokenForOrg({ org: githubRunnerConfig.runnerOwner })
-        : await ghClient.actions.createRegistrationTokenForRepo({
-            owner: githubRunnerConfig.runnerOwner.split('/')[0],
-            repo: githubRunnerConfig.runnerOwner.split('/')[1],
-          });
+    githubRunnerConfig.runnerType === 'Org'
+      ? await ghClient.actions.createRegistrationTokenForOrg({ org: githubRunnerConfig.runnerOwner })
+      : await ghClient.actions.createRegistrationTokenForRepo({
+          owner: githubRunnerConfig.runnerOwner.split('/')[0],
+          repo: githubRunnerConfig.runnerOwner.split('/')[1],
+        });
 
   const appId = parseInt(await getParameter(process.env.PARAMETER_GITHUB_APP_ID_NAME));
   logger.info('App id from SSM', { appId: appId });
@@ -163,8 +158,7 @@ export async function isJobQueued(githubInstallationClient: Octokit, payload: Ac
 async function getRunnerGroupId(githubRunnerConfig: CreateGitHubRunnerConfig, ghClient: Octokit): Promise<number> {
   // if the runnerType is Repo, then runnerGroupId is default to 1
   let runnerGroupId: number | undefined = 1;
-  if ((githubRunnerConfig.runnerType === 'Enterprise' || githubRunnerConfig.runnerType === 'Org')
-      && githubRunnerConfig.runnerGroup !== undefined) {
+  if (githubRunnerConfig.runnerType === 'Org' && githubRunnerConfig.runnerGroup !== undefined) {
     let runnerGroup: string | undefined;
     // check if runner group id is already stored in SSM Parameter Store and
     // use it if it exists to avoid API call to GitHub
@@ -201,16 +195,10 @@ async function getRunnerGroupId(githubRunnerConfig: CreateGitHubRunnerConfig, gh
 }
 
 async function getRunnerGroupByName(ghClient: Octokit, githubRunnerConfig: CreateGitHubRunnerConfig): Promise<number> {
-
-  const runnerGroups: RunnerGroup[] = githubRunnerConfig.runnerType === 'Enterprise'
-    ? await ghClient.paginate(`GET /enterprises/{enterprise}/actions/runner-groups`, {
-        enterprise: githubRunnerConfig.runnerOwner,
-        per_page: 100,
-      })
-    : await ghClient.paginate(`GET /orgs/{org}/actions/runner-groups`, {
-        org: githubRunnerConfig.runnerOwner,
-        per_page: 100,
-      });
+  const runnerGroups: RunnerGroup[] = await ghClient.paginate(`GET /orgs/{org}/actions/runner-groups`, {
+    org: githubRunnerConfig.runnerOwner,
+    per_page: 100,
+  });
   const runnerGroupId = runnerGroups.find((runnerGroup) => runnerGroup.name === githubRunnerConfig.runnerGroup)?.id;
 
   if (runnerGroupId === undefined) {
@@ -240,10 +228,7 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
   logger.info(`Received ${payload.eventType} from ${payload.repositoryOwner}/${payload.repositoryName}`);
 
   if (eventSource !== 'aws:sqs') throw Error('Cannot handle non-SQS events!');
-  const enableEnterpriseLevel = yn(process.env.ENABLE_ENTERPRISE_RUNNERS, { default: false });
-  const enableOrgLevel = enableEnterpriseLevel ? false : yn(process.env.ENABLE_ORGANIZATION_RUNNERS, { default: true }); // Enterprise level takes precedence
-  const enterpriseSlug = process.env.ENTERPRISE_SLUG ?? '';
-  const enterpriseInstallationId = Number(process.env.ENTERPRISE_INSTALLATION_ID);
+  const enableOrgLevel = yn(process.env.ENABLE_ORGANIZATION_RUNNERS, { default: true });
   const maximumRunners = parseInt(process.env.RUNNERS_MAXIMUM_COUNT || '3');
   const runnerLabels = process.env.RUNNER_LABELS || '';
   const runnerGroup = process.env.RUNNER_GROUP_NAME || 'Default';
@@ -285,9 +270,8 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
   }
 
   const ephemeral = ephemeralEnabled && payload.eventType === 'workflow_job';
-  const runnerType = enableEnterpriseLevel ? 'Enterprise' : enableOrgLevel ? 'Org' : 'Repo';
-  const runnerOwner = enableEnterpriseLevel ? enterpriseSlug : enableOrgLevel ? payload.repositoryOwner : `${payload.repositoryOwner}/${payload.repositoryName}`;
-
+  const runnerType = enableOrgLevel ? 'Org' : 'Repo';
+  const runnerOwner = enableOrgLevel ? payload.repositoryOwner : `${payload.repositoryOwner}/${payload.repositoryName}`;
 
   addPersistentContextToChildLogger({
     runner: {
@@ -305,7 +289,7 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
 
   const { ghesApiUrl, ghesBaseUrl } = getGitHubEnterpriseApiUrl();
 
-  const installationId = enableEnterpriseLevel ? enterpriseInstallationId : await getInstallationId(ghesApiUrl, enableOrgLevel, payload);
+  const installationId = await getInstallationId(ghesApiUrl, enableOrgLevel, payload);
   const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl);
   const githubInstallationClient = await createOctokitClient(ghAuth.token, ghesApiUrl);
 
@@ -456,29 +440,20 @@ async function createJitConfig(githubRunnerConfig: CreateGitHubRunnerConfig, ins
     };
     logger.debug(`Runner name: ${ephemeralRunnerConfig.runnerName}`);
     const runnerConfig =
-      githubRunnerConfig.runnerType === 'Enterprise'
-        ? await ghClient.request(
-          "POST /enterprises/{enterprise}/actions/runners/generate-jitconfig",
-          {
-            enterprise: githubRunnerConfig.runnerOwner,
+      githubRunnerConfig.runnerType === 'Org'
+        ? await ghClient.actions.generateRunnerJitconfigForOrg({
+            org: githubRunnerConfig.runnerOwner,
             name: ephemeralRunnerConfig.runnerName,
             runner_group_id: ephemeralRunnerConfig.runnerGroupId,
             labels: ephemeralRunnerConfig.runnerLabels,
           })
-        : githubRunnerConfig.runnerType === 'Org'
-          ? await ghClient.actions.generateRunnerJitconfigForOrg({
-              org: githubRunnerConfig.runnerOwner,
-              name: ephemeralRunnerConfig.runnerName,
-              runner_group_id: ephemeralRunnerConfig.runnerGroupId,
-              labels: ephemeralRunnerConfig.runnerLabels,
-            })
-          : await ghClient.actions.generateRunnerJitconfigForRepo({
-              owner: githubRunnerConfig.runnerOwner.split('/')[0],
-              repo: githubRunnerConfig.runnerOwner.split('/')[1],
-              name: ephemeralRunnerConfig.runnerName,
-              runner_group_id: ephemeralRunnerConfig.runnerGroupId,
-              labels: ephemeralRunnerConfig.runnerLabels,
-            });
+        : await ghClient.actions.generateRunnerJitconfigForRepo({
+            owner: githubRunnerConfig.runnerOwner.split('/')[0],
+            repo: githubRunnerConfig.runnerOwner.split('/')[1],
+            name: ephemeralRunnerConfig.runnerName,
+            runner_group_id: ephemeralRunnerConfig.runnerGroupId,
+            labels: ephemeralRunnerConfig.runnerLabels,
+          });
 
     metricGitHubAppRateLimit(runnerConfig.headers);
 

@@ -219,22 +219,6 @@ variable "enable_organization_runners" {
   type        = bool
 }
 
-variable "enable_enterprise_runners" {
-  description = "Register runners to organization, instead of repo or organization level"
-  type        = bool
-}
-
-variable "enterprise_slug" {
-  description = "Enterprise slug"
-  type        = string
-}
-
-variable "enterprise_installation_id" {
-  description = "Enterprise Installation ID. Required since GitHub doesn't return enterprises on the installations endpoints"
-  type        = string
-  default     = ""
-}
-
 variable "github_app_parameters" {
   description = "Parameter Store for GitHub App Parameters."
   type = object({

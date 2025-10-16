@@ -6,9 +6,6 @@ variable "config" {
     `architecture`: AWS Lambda architecture. Lambda functions using Graviton processors ('arm64') tend to have better price/performance than 'x86_64' functions.
     `environment_variables`: Environment variables for the lambda.
     `enable_organization_runners`: Enable organization runners.
-    `enable_enterprise_runners`: Enable enterprise runners.
-    `enterprise_slug`: GitHub enterprise slug.
-    `enterprise_installation_id`: Enterprise Installation ID. Required since GitHub doesn't return enterprises on the installations endpoints 
     `enable_metric`: Enable metric for the lambda. If `spot_warning` is set to true, the lambda will emit a metric when it detects a spot termination warning.
     'ghes_url': Optional GitHub Enterprise Server URL.
     'user_agent': Optional User-Agent header for GitHub API requests.
@@ -41,9 +38,6 @@ variable "config" {
     aws_partition               = optional(string, null)
     architecture                = optional(string, null)
     enable_organization_runners = bool
-    enable_enterprise_runners   = bool
-    enterprise_slug             = string
-    enterprise_installation_id  = string
     environment_variables       = optional(map(string), {})
     ghes_url                    = optional(string, null)
     user_agent                  = optional(string, null)

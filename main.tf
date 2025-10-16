@@ -187,9 +187,6 @@ module "runners" {
   sqs_build_queue                      = aws_sqs_queue.queued_builds
   github_app_parameters                = local.github_app_parameters
   enable_organization_runners          = var.enable_organization_runners
-  enable_enterprise_runners            = var.enable_enterprise_runners
-  enterprise_slug                      = var.enterprise_slug
-  enterprise_installation_id           = var.enterprise_installation_id
   enable_ephemeral_runners             = var.enable_ephemeral_runners
   enable_jit_config                    = var.enable_jit_config
   enable_job_queued_check              = var.enable_job_queued_check
