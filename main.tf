@@ -308,6 +308,7 @@ module "runner_binaries" {
 
   state_event_rule_binaries_syncer     = var.state_event_rule_binaries_syncer
   server_side_encryption_configuration = var.runner_binaries_s3_sse_configuration
+  s3_tags                              = var.runner_binaries_s3_tags
   s3_versioning                        = var.runner_binaries_s3_versioning
 
   role_path                 = var.role_path

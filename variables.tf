@@ -192,6 +192,12 @@ variable "runner_binaries_s3_sse_configuration" {
   }
 }
 
+variable "runner_binaries_s3_tags" {
+  description = "Map of tags that will be added to the S3 bucket. Note these are additional tags to the default tags."
+  type        = map(string)
+  default     = {}
+}
+
 variable "runner_binaries_s3_versioning" {
   description = "Status of S3 versioning for runner-binaries S3 bucket. Once set to Enabled the change cannot be reverted via Terraform!"
   type        = string
