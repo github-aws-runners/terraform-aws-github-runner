@@ -128,6 +128,7 @@ module "runners" {
   #   metric = {
   #     enable_spot_termination_warning = true
   #     enable_job_retry                = false
+  #     enable_pool_sufficiency         = true
   #     enable_github_app_rate_limit    = false
   #   }
   # }
