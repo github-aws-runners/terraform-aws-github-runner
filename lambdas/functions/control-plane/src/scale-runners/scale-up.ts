@@ -45,7 +45,7 @@ interface CreateGitHubRunnerConfig {
   runnerGroup: string;
   runnerNamePrefix: string;
   runnerOwner: string;
-  runnerType: 'Enterprise'| 'Org' | 'Repo';
+  runnerType: 'Enterprise' | 'Org' | 'Repo';
   disableAutoUpdate: boolean;
   ssmTokenPath: string;
   ssmConfigPath: string;

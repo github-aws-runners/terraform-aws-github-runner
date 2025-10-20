@@ -155,13 +155,13 @@ async function getGitHubRegisteredRunnnerStatusses(
 ): Promise<Map<string, RunnerStatus>> {
   const runners: GhRunners = enableEnterpriseLevel
     ? await ghClient.paginate('GET /enterprises/{enterprise}/actions/runners', {
-          enterprise: runnerOwner,
-          per_page: 100,
-        })
+        enterprise: runnerOwner,
+        per_page: 100,
+      })
     : await ghClient.paginate(ghClient.actions.listSelfHostedRunnersForOrg, {
-      org: runnerOwner,
-      per_page: 100,
-    });
+        org: runnerOwner,
+        per_page: 100,
+      });
   const runnerStatus = new Map<string, RunnerStatus>();
   for (const runner of runners) {
     runner.name = runnerNamePrefix ? runner.name.replace(runnerNamePrefix, '') : runner.name;
