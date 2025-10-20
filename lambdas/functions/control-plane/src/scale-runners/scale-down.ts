@@ -17,7 +17,6 @@ const logger = createChildLogger('scale-down');
 
 type OrgRunnerList = Endpoints['GET /orgs/{org}/actions/runners']['response']['data']['runners'];
 type RepoRunnerList = Endpoints['GET /repos/{owner}/{repo}/actions/runners']['response']['data']['runners'];
-type RunnerItem = OrgRunnerList[number] | RepoRunnerList[number];
 type RunnerState = OrgRunnerList[number] | RepoRunnerList[number];
 
 async function getOrCreateOctokit(runner: RunnerInfo): Promise<Octokit> {
