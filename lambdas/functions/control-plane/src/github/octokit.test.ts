@@ -1,3 +1,5 @@
+import { GetParameterCommand, SSMClient } from '@aws-sdk/client-ssm';
+import { mockClient } from 'aws-sdk-client-mock';
 import { Octokit } from '@octokit/rest';
 import { ActionRequestMessage } from '../scale-runners/scale-up';
 import { getOctokit } from './octokit';
@@ -9,6 +11,8 @@ const mockOctokit = {
     getRepoInstallation: vi.fn(),
   },
 };
+
+const mockSSMClient = mockClient(SSMClient);
 
 vi.mock('../github/auth', async () => ({
   createGithubInstallationAuth: vi.fn().mockImplementation(async (installationId) => {
@@ -45,6 +49,9 @@ describe('Test getOctokit', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockSSMClient.reset();
+
+    mockSSMClient.on(GetParameterCommand).resolves({});
   });
 
   it.each(data)(`$description`, async ({ input, output }) => {
@@ -64,7 +71,7 @@ describe('Test getOctokit', () => {
       mockOctokit.apps.getOrgInstallation.mockRejectedValue(new Error('Error'));
     }
 
-    await expect(getOctokit('', input.orgLevelRunner, payload)).resolves.toBeDefined();
+    await expect(getOctokit('', false, input.orgLevelRunner, payload)).resolves.toBeDefined();
 
     if (output.callOrgInstallation) {
       expect(mockOctokit.apps.getOrgInstallation).toHaveBeenCalled();
