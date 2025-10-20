@@ -1,11 +1,13 @@
 import { Octokit } from '@octokit/rest';
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
+import { getParameter } from '@aws-github-runner/aws-ssm-util';
 import yn from 'yn';
 
 import { bootTimeExceeded, listEC2Runners } from '../aws/runners';
 import { RunnerList } from '../aws/runners.d';
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
 import { createRunners, getGitHubEnterpriseApiUrl } from '../scale-runners/scale-up';
+import { GhRunners } from '../scale-runners/cache';
 
 const logger = createChildLogger('pool');
 
@@ -20,6 +22,7 @@ interface RunnerStatus {
 
 export async function adjust(event: PoolEvent): Promise<void> {
   logger.info(`Checking current pool size against pool of size: ${event.poolSize}`);
+  const enableEnterpriseLevel = yn(process.env.ENABLE_ENTERPRISE_RUNNERS, { default: false });
   const runnerLabels = process.env.RUNNER_LABELS || '';
   const runnerGroup = process.env.RUNNER_GROUP_NAME || '';
   const runnerNamePrefix = process.env.RUNNER_NAME_PREFIX || '';
@@ -44,22 +47,27 @@ export async function adjust(event: PoolEvent): Promise<void> {
 
   const { ghesApiUrl, ghesBaseUrl } = getGitHubEnterpriseApiUrl();
 
-  const installationId = await getInstallationId(ghesApiUrl, runnerOwner);
-  const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl);
-  const githubInstallationClient = await createOctokitClient(ghAuth.token, ghesApiUrl);
+  const installationId = enableEnterpriseLevel ? undefined : await getInstallationId(ghesApiUrl, runnerOwner);
+  const ghToken = enableEnterpriseLevel
+    ? await getParameter(process.env.PARAMETER_ENTERPRISE_PAT_NAME)
+    : (await createGithubInstallationAuth(installationId, ghesApiUrl)).token;
+  const githubInstallationClient = await createOctokitClient(ghToken, ghesApiUrl);
 
   // Get statusses of runners registed in GitHub
   const runnerStatusses = await getGitHubRegisteredRunnnerStatusses(
+    enableEnterpriseLevel,
     githubInstallationClient,
     runnerOwner,
     runnerNamePrefix,
   );
 
+  const ec2RunnerType = enableEnterpriseLevel ? 'Enterprise' : 'Org';
+
   // Look up the managed ec2 runners in AWS, but running does not mean idle
   const ec2runners = await listEC2Runners({
     environment,
     runnerOwner,
-    runnerType: 'Org',
+    runnerType: ec2RunnerType,
     statuses: ['running'],
   });
 
@@ -77,7 +85,7 @@ export async function adjust(event: PoolEvent): Promise<void> {
         runnerGroup,
         runnerOwner,
         runnerNamePrefix,
-        runnerType: 'Org',
+        runnerType: ec2RunnerType,
         disableAutoUpdate: disableAutoUpdate,
         ssmTokenPath,
         ssmConfigPath,
@@ -140,14 +148,20 @@ function calculatePooSize(ec2runners: RunnerList[], runnerStatus: Map<string, Ru
 }
 
 async function getGitHubRegisteredRunnnerStatusses(
+  enableEnterpriseLevel: boolean,
   ghClient: Octokit,
   runnerOwner: string,
   runnerNamePrefix: string,
 ): Promise<Map<string, RunnerStatus>> {
-  const runners = await ghClient.paginate(ghClient.actions.listSelfHostedRunnersForOrg, {
-    org: runnerOwner,
-    per_page: 100,
-  });
+  const runners: GhRunners = enableEnterpriseLevel
+    ? await ghClient.paginate('GET /enterprises/{enterprise}/actions/runners', {
+          enterprise: runnerOwner,
+          per_page: 100,
+        })
+    : await ghClient.paginate(ghClient.actions.listSelfHostedRunnersForOrg, {
+      org: runnerOwner,
+      per_page: 100,
+    });
   const runnerStatus = new Map<string, RunnerStatus>();
   for (const runner of runners) {
     runner.name = runnerNamePrefix ? runner.name.replace(runnerNamePrefix, '') : runner.name;

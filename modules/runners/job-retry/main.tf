@@ -69,6 +69,7 @@ resource "aws_iam_role_policy" "job_retry" {
     sqs_job_retry_queue_arn   = aws_sqs_queue.job_retry_check_queue.arn
     github_app_id_arn         = var.config.github_app_parameters.id.arn
     github_app_key_base64_arn = var.config.github_app_parameters.key_base64.arn
+    enterprise_pat_arn        = var.config.enterprise_pat
   })
 }
 

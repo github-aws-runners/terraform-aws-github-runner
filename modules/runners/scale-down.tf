@@ -98,8 +98,8 @@ resource "aws_iam_role_policy" "scale_down" {
   role = aws_iam_role.scale_down.name
   policy = templatefile("${path.module}/policies/lambda-scale-down.json", {
     environment               = var.prefix
-    github_app_id_arn         = var.enterprise_pat ==null ? var.github_app_parameters.id.arn : null
-    github_app_key_base64_arn = var.enterprise_pat ==null ?  var.github_app_parameters.key_base64.arn : null
+    github_app_id_arn         = var.enterprise_pat == null ? var.github_app_parameters.id.arn : null
+    github_app_key_base64_arn = var.enterprise_pat == null ? var.github_app_parameters.key_base64.arn : null
     enterprise_pat_arn        = var.enterprise_pat != null ? var.enterprise_pat.arn : null
     kms_key_arn               = local.kms_key_arn
   })

@@ -41,7 +41,11 @@ export async function checkAndRetryJob(payload: ActionRequestMessageRetry): Prom
   const enableEnterpriseLevel = yn(process.env.ENABLE_ENTERPRISE_RUNNERS, { default: true });
   const enterpriseSlug = process.env.ENTERPRISE_SLUG ?? '';
   const runnerType = enableEnterpriseLevel ? 'Enterprise' : enableOrgLevel ? 'Org' : 'Repo';
-  const runnerOwner = enableEnterpriseLevel ? enterpriseSlug : enableOrgLevel ? payload.repositoryOwner : `${payload.repositoryOwner}/${payload.repositoryName}`;
+  const runnerOwner = enableEnterpriseLevel
+    ? enterpriseSlug
+    : enableOrgLevel
+      ? payload.repositoryOwner
+      : `${payload.repositoryOwner}/${payload.repositoryName}`;
   const runnerNamePrefix = process.env.RUNNER_NAME_PREFIX ?? '';
   const jobQueueUrl = process.env.JOB_QUEUE_SCALE_UP_URL ?? '';
   const enableMetrics = yn(process.env.ENABLE_METRIC_JOB_RETRY, { default: false });
@@ -62,7 +66,7 @@ export async function checkAndRetryJob(payload: ActionRequestMessageRetry): Prom
   logger.info(`Received event`);
 
   const { ghesApiUrl } = getGitHubEnterpriseApiUrl();
-  const ghClient = await getOctokit(ghesApiUrl, enableOrgLevel, payload);
+  const ghClient = await getOctokit(ghesApiUrl, enableEnterpriseLevel, enableOrgLevel, payload);
 
   // check job is still queued
   if (await isJobQueued(ghClient, payload)) {

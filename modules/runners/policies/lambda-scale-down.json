@@ -55,8 +55,8 @@
 %{ if github_app_id_arn != null ~}
         "${github_app_id_arn}",
 %{ endif ~}
-%{ if github_app_id_arn != null ~}
-        "${github_app_id_arn}",
+%{ if enterprise_pat_arn != null ~}
+        "${enterprise_pat_arn}"
 %{ endif ~}
       ]
 %{ if kms_key_arn != "" ~}

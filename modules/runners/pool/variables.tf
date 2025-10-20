@@ -1,6 +1,7 @@
 variable "config" {
   description = "Lookup details in parent module."
   type = object({
+    enable_enterprise_runners   = bool
     lambda = object({
       log_level                      = string
       logging_retention_in_days      = number
@@ -23,10 +24,10 @@ variable "config" {
       ssl_verify = string
     })
     github_app_parameters = object({
-      key_base64 = map(string)
-      id         = map(string)
+      key_base64 = optional(map(string))
+      id         = optional(map(string))
     })
-    enterprise_pat = string
+    enterprise_pat = optional(map(string))
     subnet_ids = list(string)
     runner = object({
       disable_runner_autoupdate            = bool

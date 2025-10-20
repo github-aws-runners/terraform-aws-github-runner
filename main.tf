@@ -4,12 +4,12 @@ locals {
   })
 
   github_app_parameters = {
-    id             = coalesce(var.github_app.id_ssm, module.ssm.parameters.github_app_id)
-    key_base64     = coalesce(var.github_app.key_base64_ssm, module.ssm.parameters.github_app_key_base64)
+    id             = var.enterprise_pat == null ? coalesce(var.github_app.id_ssm, module.ssm.parameters.github_app_id) : null
+    key_base64     = var.enterprise_pat == null ? coalesce(var.github_app.key_base64_ssm, module.ssm.parameters.github_app_key_base64) : null
     webhook_secret = coalesce(var.github_app.webhook_secret_ssm, module.ssm.parameters.github_app_webhook_secret)
   }
 
-  enterprise_pat = module.ssm.parameters.enterprise_pat
+  enterprise_pat = var.enterprise_pat != null ? module.ssm.parameters.enterprise_pat : null
 
   default_runner_labels = distinct(concat(["self-hosted", var.runner_os, var.runner_architecture]))
   runner_labels         = (var.runner_disable_default_labels == false) ? sort(concat(local.default_runner_labels, var.runner_extra_labels)) : var.runner_extra_labels

@@ -34,6 +34,7 @@ resource "aws_lambda_function" "pool" {
       PARAMETER_GITHUB_APP_ID_NAME             = var.config.enterprise_pat == null ? var.config.github_app_parameters.id.name: null
       PARAMETER_GITHUB_APP_KEY_BASE64_NAME     = var.config.enterprise_pat == null ? var.config.github_app_parameters.key_base64.name : null
       PARAMETER_ENTERPRISE_PAT_NAME            = var.config.enterprise_pat != null ? var.config.enterprise_pat.name : null
+      ENABLE_ENTERPRISE_RUNNERS                = var.config.enable_enterprise_runners
 
       POWERTOOLS_LOGGER_LOG_EVENT              = var.config.lambda.log_level == "debug" ? "true" : "false"
       RUNNER_BOOT_TIME_IN_MINUTES              = var.config.runner.boot_time_in_minutes
@@ -91,8 +92,10 @@ resource "aws_iam_role_policy" "pool" {
     arn_runner_instance_role       = var.config.runner.role.arn
     github_app_id_arn              = var.config.github_app_parameters.id.arn
     github_app_key_base64_arn      = var.config.github_app_parameters.key_base64.arn
+    enterprise_pat_arn             = var.config.enterprise_pat
     kms_key_arn                    = var.config.kms_key_arn
     ami_kms_key_arn                = var.config.ami_kms_key_arn
+
     ssm_ami_id_parameter_arn       = var.config.ami_id_ssm_parameter_arn
   })
 }

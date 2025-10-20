@@ -63,7 +63,7 @@ interface CreateEC2RunnerConfig {
 }
 
 function generateRunnerServiceConfig(githubRunnerConfig: CreateGitHubRunnerConfig, token: string) {
-  const enterpriseContextPath = githubRunnerConfig.runnerType === 'Enterprise' ? 'enterprise/' : ''
+  const enterpriseContextPath = githubRunnerConfig.runnerType === 'Enterprise' ? 'enterprise/' : '';
   const config = [
     `--url ${githubRunnerConfig.ghesBaseUrl ?? 'https://github.com'}/${enterpriseContextPath}${githubRunnerConfig.runnerOwner}`,
     `--token ${token}`,
@@ -248,7 +248,6 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
   const enableEnterpriseLevel = yn(process.env.ENABLE_ENTERPRISE_RUNNERS, { default: false });
   const enableOrgLevel = enableEnterpriseLevel ? false : yn(process.env.ENABLE_ORGANIZATION_RUNNERS, { default: true }); // Enterprise level takes precedence
   const enterpriseSlug = process.env.ENTERPRISE_SLUG ?? '';
-  const enterpriseInstallationId = Number(process.env.ENTERPRISE_INSTALLATION_ID);
   const maximumRunners = parseInt(process.env.RUNNERS_MAXIMUM_COUNT || '3');
   const runnerLabels = process.env.RUNNER_LABELS || '';
   const runnerGroup = process.env.RUNNER_GROUP_NAME || 'Default';
@@ -314,12 +313,16 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
   const { ghesApiUrl, ghesBaseUrl } = getGitHubEnterpriseApiUrl();
 
   const installationId = enableEnterpriseLevel
-    ? enterpriseInstallationId
+    ? undefined // Enterprise level does not use installationId
     : await getInstallationId(ghesApiUrl, enableOrgLevel, payload);
-  const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl);
-  const githubInstallationClient = await createOctokitClient(ghAuth.token, ghesApiUrl);
 
-  if (!enableJobQueuedCheck || (await isJobQueued(githubInstallationClient, payload))) {
+  const ghToken = enableEnterpriseLevel
+    ? await getParameter(process.env.PARAMETER_ENTERPRISE_PAT_NAME)
+    : (await createGithubInstallationAuth(installationId, ghesApiUrl)).token;
+
+  const githubClient = await createOctokitClient(ghToken, ghesApiUrl);
+
+  if (!enableJobQueuedCheck || (await isJobQueued(githubClient, payload))) {
     let scaleUp = true;
     if (maximumRunners !== -1) {
       const currentRunners = await listEC2Runners({
@@ -362,7 +365,7 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
           tracingEnabled,
           onDemandFailoverOnError,
         },
-        githubInstallationClient,
+        githubClient,
       );
 
       await publishRetryMessage(payload);

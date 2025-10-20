@@ -2,6 +2,7 @@ import { Octokit } from '@octokit/rest';
 import { Endpoints } from '@octokit/types';
 import { RequestError } from '@octokit/request-error';
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
+import { getParameter } from '@aws-github-runner/aws-ssm-util';
 import moment from 'moment';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
@@ -14,15 +15,14 @@ import { getGitHubEnterpriseApiUrl } from './scale-up';
 
 const logger = createChildLogger('scale-down');
 
-
 type OrgRunnerList = Endpoints['GET /orgs/{org}/actions/runners']['response']['data']['runners'];
 type RepoRunnerList = Endpoints['GET /repos/{owner}/{repo}/actions/runners']['response']['data']['runners'];
+type RunnerItem = OrgRunnerList[number] | RepoRunnerList[number];
 type RunnerState = OrgRunnerList[number] | RepoRunnerList[number];
 
 async function getOrCreateOctokit(runner: RunnerInfo): Promise<Octokit> {
   const key = runner.owner;
   const cachedOctokit = githubCache.clients.get(key);
-  const enterpriseInstallationId = Number(process.env.ENTERPRISE_INSTALLATION_ID);
 
   if (cachedOctokit) {
     logger.debug(`[createGitHubClientForRunner] Cache hit for ${key}`);
@@ -31,12 +31,15 @@ async function getOrCreateOctokit(runner: RunnerInfo): Promise<Octokit> {
 
   logger.debug(`[createGitHubClientForRunner] Cache miss for ${key}`);
   const { ghesApiUrl } = getGitHubEnterpriseApiUrl();
-  const ghAuthPre = await createGithubAppAuth(undefined, ghesApiUrl);
-  const githubClientPre = await createOctokitClient(ghAuthPre.token, ghesApiUrl);
+  const ghAuthPre =
+    runner.type === 'Enterprise'
+      ? await getParameter(process.env.PARAMETER_ENTERPRISE_PAT_NAME)
+      : (await createGithubAppAuth(undefined, ghesApiUrl)).token;
+  const githubClientPre = await createOctokitClient(ghAuthPre, ghesApiUrl);
 
   const installationId =
     runner.type === 'Enterprise'
-      ? enterpriseInstallationId
+      ? undefined
       : runner.type === 'Org'
         ? (
             await githubClientPre.apps.getOrgInstallation({
@@ -49,8 +52,10 @@ async function getOrCreateOctokit(runner: RunnerInfo): Promise<Octokit> {
               repo: runner.owner.split('/')[1],
             })
           ).data.id;
-  const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl);
-  const octokit = await createOctokitClient(ghAuth.token, ghesApiUrl);
+
+  const ghToken =
+    runner.type === 'Enterprise' ? ghAuthPre : (await createGithubInstallationAuth(installationId, ghesApiUrl)).token;
+  const octokit = await createOctokitClient(ghToken, ghesApiUrl);
   githubCache.clients.set(key, octokit);
 
   return octokit;
@@ -64,10 +69,9 @@ async function getGitHubSelfHostedRunnerState(
   try {
     const state =
       ec2runner.type === 'Enterprise'
-        ? await client.request("GET /enterprises/{enterprise}/actions/runners/{runner_id}",
-          {
+        ? await client.request('GET /enterprises/{enterprise}/actions/runners/{runner_id}', {
             enterprise: ec2runner.owner,
-            runner_id: runnerId
+            runner_id: runnerId,
           })
         : ec2runner.type === 'Org'
           ? await client.actions.getSelfHostedRunnerForOrg({
@@ -114,28 +118,22 @@ async function listGitHubRunners(runner: RunnerInfo): Promise<GhRunners> {
   logger.debug(`[listGithubRunners] Cache miss for ${key}`);
   const client = await getOrCreateOctokit(runner);
 
-  let runners: GhRunners;
-
-  if (runner.type === 'Enterprise') {
-    const enterpriseResponses = await client.paginate(
-      "GET /enterprises/{enterprise}/actions/runners",
-      { enterprise: runner.owner, per_page: 100 }
-    );
-
-    // flatten out the runner arrays (each page has `.runners`)
-    runners = enterpriseResponses.flatMap((res: any) => res.runners);
-  } else {
-    runners = runner.type === 'Org'
-      ? await client.paginate(client.actions.listSelfHostedRunnersForOrg, {
-          org: runner.owner,
+  const runners: GhRunners =
+    runner.type === 'Enterprise'
+      ? await client.paginate('GET /enterprises/{enterprise}/actions/runners', {
+          enterprise: runner.owner,
           per_page: 100,
         })
-      : await client.paginate(client.actions.listSelfHostedRunnersForRepo, {
-          owner: runner.owner.split('/')[0],
-          repo: runner.owner.split('/')[1],
-          per_page: 100,
-        });
-  }
+      : runner.type === 'Org'
+        ? await client.paginate(client.actions.listSelfHostedRunnersForOrg, {
+            org: runner.owner,
+            per_page: 100,
+          })
+        : await client.paginate(client.actions.listSelfHostedRunnersForRepo, {
+            owner: runner.owner.split('/')[0],
+            repo: runner.owner.split('/')[1],
+            per_page: 100,
+          });
 
   githubCache.runners.set(key, runners);
   logger.debug(`[listGithubRunners] Cache set for ${key}`);
@@ -165,10 +163,9 @@ async function removeRunner(ec2runner: RunnerInfo, ghRunnerIds: number[]): Promi
         ghRunnerIds.map(async (ghRunnerId) => {
           return (
             ec2runner.type === 'Enterprise'
-              ? await githubAppClient.request("DELETE /enterprises/{enterprise}/actions/runners/{runner_id}",
-                {
+              ? await githubAppClient.request('DELETE /enterprises/{enterprise}/actions/runners/{runner_id}', {
                   enterprise: ec2runner.owner,
-                  runner_id: ghRunnerId
+                  runner_id: ghRunnerId,
                 })
               : ec2runner.type === 'Org'
                 ? await githubAppClient.actions.deleteSelfHostedRunnerFromOrg({

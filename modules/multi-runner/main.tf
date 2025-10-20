@@ -6,7 +6,7 @@ locals {
   github_app_parameters = {
     id             = var.enterprise_pat == null ? coalesce(var.github_app.id_ssm, module.ssm.parameters.github_app_id) : null
     key_base64     = var.enterprise_pat == null ? coalesce(var.github_app.key_base64_ssm, module.ssm.parameters.github_app_key_base64) : null
-    webhook_secret = var.enterprise_pat == null ? coalesce(var.github_app.webhook_secret_ssm, module.ssm.parameters.github_app_webhook_secret) : null
+    webhook_secret = coalesce(var.github_app.webhook_secret_ssm, module.ssm.parameters.github_app_webhook_secret)
   }
 
   enterprise_pat = var.enterprise_pat != null ? module.ssm.parameters.enterprise_pat : null

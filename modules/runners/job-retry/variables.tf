@@ -47,10 +47,10 @@ variable "config" {
     ghes_url                    = optional(string, null)
     user_agent                  = optional(string, null)
     github_app_parameters = object({
-      key_base64 = map(string)
-      id         = map(string)
+      key_base64 = optional(map(string))
+      id         = optional(map(string))
     })
-    enterprise_pat            = string
+    enterprise_pat            = optional(map(string))
     kms_key_arn               = optional(string, null)
     lambda_tags               = optional(map(string), {})
     log_level                 = optional(string, null)
