@@ -11,6 +11,13 @@ export interface ScalingDownConfig {
   evictionStrategy?: EvictionStrategy;
 }
 
+export interface EnvironmentScaleDownConfig {
+  environment: string;
+  idle_config: ScalingDownConfig[];
+  minimum_running_time_in_minutes: number;
+  runner_boot_time_in_minutes: number;
+}
+
 const logger = createChildLogger('scale-down-config.ts');
 
 function inPeriod(period: ScalingDownConfig): boolean {

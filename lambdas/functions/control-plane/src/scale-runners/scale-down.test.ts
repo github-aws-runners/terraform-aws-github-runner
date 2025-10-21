@@ -96,10 +96,12 @@ describe('Scale down runners', () => {
     process.env.GITHUB_APP_CLIENT_ID = 'TEST_CLIENT_ID';
     process.env.GITHUB_APP_CLIENT_SECRET = 'TEST_CLIENT_SECRET';
     process.env.RUNNERS_MAXIMUM_COUNT = '3';
-    process.env.SCALE_DOWN_CONFIG = '[]';
-    process.env.ENVIRONMENT = ENVIRONMENT;
-    process.env.MINIMUM_RUNNING_TIME_IN_MINUTES = MINIMUM_TIME_RUNNING_IN_MINUTES.toString();
-    process.env.RUNNER_BOOT_TIME_IN_MINUTES = MINIMUM_BOOT_TIME.toString();
+    process.env.ENVIRONMENT_CONFIGS = JSON.stringify([{
+      environment: ENVIRONMENT,
+      idle_config: [],
+      minimum_running_time_in_minutes: MINIMUM_TIME_RUNNING_IN_MINUTES,
+      runner_boot_time_in_minutes: MINIMUM_BOOT_TIME,
+    }]);
 
     nock.disableNetConnect();
     vi.clearAllMocks();
@@ -620,7 +622,12 @@ describe('Scale down runners', () => {
         };
 
         beforeEach(() => {
-          process.env.SCALE_DOWN_CONFIG = JSON.stringify([defaultConfig]);
+          process.env.ENVIRONMENT_CONFIGS = JSON.stringify([{
+            environment: ENVIRONMENT,
+            idle_config: [defaultConfig],
+            minimum_running_time_in_minutes: MINIMUM_TIME_RUNNING_IN_MINUTES,
+            runner_boot_time_in_minutes: MINIMUM_BOOT_TIME,
+          }]);
         });
 
         it(`Should terminate based on the the idle config with ${evictionStrategy} eviction strategy`, async () => {
@@ -750,6 +757,140 @@ describe('Scale down runners', () => {
       expect(runnersTest[0].launchTime).toBeUndefined();
       expect(runnersTest[1].launchTime).toBeDefined();
       expect(runnersTest[2].launchTime).not.toBeDefined();
+    });
+  });
+
+  describe('Multi-environment scale-down', () => {
+    it('Should process multiple environments independently', async () => {
+      // setup - two environments with different settings
+      const environment1 = 'env-1';
+      const environment2 = 'env-2';
+      const minTime1 = 10;
+      const minTime2 = 20;
+
+      process.env.ENVIRONMENT_CONFIGS = JSON.stringify([
+        {
+          environment: environment1,
+          idle_config: [],
+          minimum_running_time_in_minutes: minTime1,
+          runner_boot_time_in_minutes: MINIMUM_BOOT_TIME,
+        },
+        {
+          environment: environment2,
+          idle_config: [],
+          minimum_running_time_in_minutes: minTime2,
+          runner_boot_time_in_minutes: MINIMUM_BOOT_TIME,
+        },
+      ]);
+
+      const runners1 = [
+        createRunnerTestData('env1-runner-old', 'Org', minTime1 + 1, true, false, true, 'owner1'),
+        createRunnerTestData('env1-runner-new', 'Org', minTime1 - 1, true, false, false, 'owner1'),
+      ];
+
+      const runners2 = [
+        createRunnerTestData('env2-runner-old', 'Org', minTime2 + 1, true, false, true, 'owner2'),
+        createRunnerTestData('env2-runner-new', 'Org', minTime2 - 1, true, false, false, 'owner2'),
+      ];
+
+      mockListRunners.mockImplementation(async (filter) => {
+        const allRunners = filter?.environment === environment1 ? runners1 :
+                          filter?.environment === environment2 ? runners2 : [];
+        // Filter by orphan flag if specified
+        return allRunners.filter((r) => !filter?.orphan || r.orphan === filter.orphan);
+      });
+
+      // Mock GitHub API to return runners filtered by owner
+      mockOctokit.paginate.mockImplementation((fn, params: any) => {
+        const allRunners = [...runners1, ...runners2];
+        return Promise.resolve(
+          allRunners
+            .filter((r) => r.owner === params.org)
+            .map((r) => ({ id: r.instanceId, name: r.instanceId }))
+        );
+      });
+
+      // act
+      await scaleDown();
+
+      // assert - should have been called for both environments
+      expect(listEC2Runners).toHaveBeenCalledWith({ environment: environment1 });
+      expect(listEC2Runners).toHaveBeenCalledWith({ environment: environment2 });
+
+      // env1 runner that exceeded minTime1 should be terminated
+      expect(terminateRunner).toHaveBeenCalledWith(runners1[0].instanceId);
+      // env1 runner that didn't exceed minTime1 should not be terminated
+      expect(terminateRunner).not.toHaveBeenCalledWith(runners1[1].instanceId);
+
+      // env2 runner that exceeded minTime2 should be terminated
+      expect(terminateRunner).toHaveBeenCalledWith(runners2[0].instanceId);
+      // env2 runner that didn't exceed minTime2 should not be terminated
+      expect(terminateRunner).not.toHaveBeenCalledWith(runners2[1].instanceId);
+    });
+
+    it('Should use per-environment idle config', async () => {
+      // setup - two environments with different idle configs
+      const environment1 = 'env-1';
+      const environment2 = 'env-2';
+
+      const idleConfig1 = { cron: '* * * * * *', idleCount: 2, timeZone: 'UTC' };
+      const idleConfig2 = { cron: '* * * * * *', idleCount: 0, timeZone: 'UTC' };
+
+      process.env.ENVIRONMENT_CONFIGS = JSON.stringify([
+        {
+          environment: environment1,
+          idle_config: [idleConfig1],
+          minimum_running_time_in_minutes: MINIMUM_TIME_RUNNING_IN_MINUTES,
+          runner_boot_time_in_minutes: MINIMUM_BOOT_TIME,
+        },
+        {
+          environment: environment2,
+          idle_config: [idleConfig2],
+          minimum_running_time_in_minutes: MINIMUM_TIME_RUNNING_IN_MINUTES,
+          runner_boot_time_in_minutes: MINIMUM_BOOT_TIME,
+        },
+      ]);
+
+      const runners1 = [
+        createRunnerTestData('env1-idle-1', 'Org', MINIMUM_TIME_RUNNING_IN_MINUTES + 5, true, false, true, 'owner1'),  // oldest - should terminate
+        createRunnerTestData('env1-idle-2', 'Org', MINIMUM_TIME_RUNNING_IN_MINUTES + 4, true, false, false, 'owner1'), // middle - keep
+        createRunnerTestData('env1-idle-3', 'Org', MINIMUM_TIME_RUNNING_IN_MINUTES + 3, true, false, false, 'owner1'), // newest - keep
+      ];
+
+      const runners2 = [
+        createRunnerTestData('env2-idle-1', 'Org', MINIMUM_TIME_RUNNING_IN_MINUTES + 5, true, false, true, 'owner2'),
+        createRunnerTestData('env2-idle-2', 'Org', MINIMUM_TIME_RUNNING_IN_MINUTES + 4, true, false, true, 'owner2'),
+      ];
+
+      mockListRunners.mockImplementation(async (filter) => {
+        const allRunners = filter?.environment === environment1 ? runners1 :
+                          filter?.environment === environment2 ? runners2 : [];
+        // Filter by orphan flag if specified
+        return allRunners.filter((r) => !filter?.orphan || r.orphan === filter.orphan);
+      });
+
+      // Mock GitHub API to return runners filtered by owner
+      mockOctokit.paginate.mockImplementation((fn, params: any) => {
+        const allRunners = [...runners1, ...runners2];
+        return Promise.resolve(
+          allRunners
+            .filter((r) => r.owner === params.org)
+            .map((r) => ({ id: r.instanceId, name: r.instanceId }))
+        );
+      });
+
+      // act
+      await scaleDown();
+
+      // assert
+      // env1 has idleCount=2, so terminate oldest, keep 2 newest
+      expect(terminateRunner).toHaveBeenCalledWith(runners1[0].instanceId);     // oldest - terminated
+      expect(terminateRunner).not.toHaveBeenCalledWith(runners1[1].instanceId); // middle - kept
+      expect(terminateRunner).not.toHaveBeenCalledWith(runners1[2].instanceId); // newest - kept
+
+      // env2 has idleCount=0, so all idle runners should be terminated
+      expect(terminateRunner).toHaveBeenCalledWith(runners2[0].instanceId);
+      expect(terminateRunner).toHaveBeenCalledWith(runners2[1].instanceId);
     });
   });
 });

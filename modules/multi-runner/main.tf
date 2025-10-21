@@ -24,3 +24,51 @@ resource "random_string" "random" {
   special = false
   upper   = false
 }
+
+locals {
+  scale_down_environment_configs = [
+    for k, v in local.runner_config : {
+      environment = "${var.prefix}-${k}"
+      idle_config = v.runner_config.idle_config
+      minimum_running_time_in_minutes = coalesce(
+        v.runner_config.minimum_running_time_in_minutes,
+        v.runner_config.runner_os == "windows" ? 15 : 5
+      )
+      runner_boot_time_in_minutes = v.runner_config.runner_boot_time_in_minutes
+    }
+  ]
+}
+
+module "scale_down" {
+  source = "../runners/scale-down"
+
+  environments        = local.scale_down_environment_configs
+  prefix              = var.prefix
+  schedule_expression = var.scale_down_schedule_expression
+
+  github_app_parameters            = local.github_app_parameters
+  lambda_s3_bucket                 = var.lambda_s3_bucket
+  runners_lambda_s3_key            = var.runners_lambda_s3_key
+  runners_lambda_s3_object_version = var.runners_lambda_s3_object_version
+  lambda_runtime                   = var.lambda_runtime
+  lambda_timeout                   = var.runners_scale_down_lambda_timeout
+  lambda_memory_size               = var.scale_down_lambda_memory_size
+  lambda_architecture              = var.lambda_architecture
+  lambda_zip                       = var.runners_lambda_zip
+  lambda_subnet_ids                = var.lambda_subnet_ids
+  lambda_security_group_ids        = var.lambda_security_group_ids
+  lambda_tags                      = var.lambda_tags
+  tracing_config                   = var.tracing_config
+  logging_retention_in_days        = var.logging_retention_in_days
+  logging_kms_key_id               = var.logging_kms_key_id
+  kms_key_arn                      = coalesce(var.kms_key_arn, "")
+  ghes_url                         = var.ghes_url
+  ghes_ssl_verify                  = var.ghes_ssl_verify
+  user_agent                       = var.user_agent
+  log_level                        = var.log_level
+  metrics                          = var.metrics
+  role_path                        = var.role_path
+  role_permissions_boundary        = var.role_permissions_boundary
+  aws_partition                    = var.aws_partition
+  tags                             = local.tags
+}

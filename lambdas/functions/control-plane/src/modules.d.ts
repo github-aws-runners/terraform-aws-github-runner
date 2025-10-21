@@ -4,6 +4,7 @@ declare namespace NodeJS {
     ENABLE_METRIC_GITHUB_APP_RATE_LIMIT: string;
     ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS: string;
     ENVIRONMENT: string;
+    ENVIRONMENT_CONFIGS: string;
     GHES_URL: string;
     JOB_RETRY_CONFIG: string;
     LAUNCH_TEMPLATE_NAME: string;
@@ -14,8 +15,8 @@ declare namespace NodeJS {
     PARAMETER_GITHUB_APP_CLIENT_SECRET_NAME: string;
     PARAMETER_GITHUB_APP_ID_NAME: string;
     PARAMETER_GITHUB_APP_KEY_BASE64_NAME: string;
+    RUNNER_BOOT_TIME_IN_MINUTES: string;
     RUNNER_OWNER: string;
-    SCALE_DOWN_CONFIG: string;
     SSM_TOKEN_PATH: string;
     SSM_CLEANUP_CONFIG: string;
     SUBNET_IDS: string;

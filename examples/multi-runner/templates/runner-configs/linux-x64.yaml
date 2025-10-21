@@ -21,7 +21,6 @@ runner_config:
   enable_on_demand_failover_for_errors: ['InsufficientInstanceCapacity']
   create_service_linked_role_spot: true
   delay_webhook_event: 0
-  scale_down_schedule_expression: cron(* * * * ? *)
   runner_metadata_options:
     instance_metadata_tags: disabled
     http_endpoint: enabled

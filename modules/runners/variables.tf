@@ -234,7 +234,7 @@ variable "lambda_scale_down_memory_size" {
 }
 
 variable "scale_down_schedule_expression" {
-  description = "Scheduler expression to check every x for scale down."
+  description = "Scheduler expression to check every x for scale down. Set to null to disable scale-down Lambda creation."
   type        = string
   default     = "cron(*/5 * * * ? *)"
 }
