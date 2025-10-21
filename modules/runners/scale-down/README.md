@@ -37,8 +37,11 @@ No modules.
 | [aws_iam_role_policy_attachment.scale_down_vpc_execution_role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
 | [aws_lambda_function.scale_down](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lambda_function) | resource |
 | [aws_lambda_permission.scale_down](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lambda_permission) | resource |
+| [aws_ssm_parameter.scale_down_config](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_parameter) | resource |
+| [aws_caller_identity.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/caller_identity) | data source |
 | [aws_iam_policy_document.lambda_assume_role_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 | [aws_iam_policy_document.lambda_xray](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
+| [aws_region.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/region) | data source |
 
 ## Inputs
 
@@ -62,18 +65,18 @@ No modules.
 | <a name="input_log_level"></a> [log\_level](#input\_log\_level) | Log level for Lambda function | `string` | `"info"` | no |
 | <a name="input_logging_kms_key_id"></a> [logging\_kms\_key\_id](#input\_logging\_kms\_key\_id) | KMS key ID for CloudWatch log encryption | `string` | `null` | no |
 | <a name="input_logging_retention_in_days"></a> [logging\_retention\_in\_days](#input\_logging\_retention\_in\_days) | CloudWatch log retention in days | `number` | n/a | yes |
-| <a name="input_metrics"></a> [metrics](#input\_metrics) | Metrics configuration | <pre>object({<br/>    enable    = bool<br/>    namespace = string<br/>    metric    = object({<br/>      enable_github_app_rate_limit = bool<br/>    })<br/>  })</pre> | n/a | yes |
+| <a name="input_metrics"></a> [metrics](#input\_metrics) | Metrics configuration | <pre>object({<br/>    enable    = optional(bool, false)<br/>    namespace = optional(string, "GitHub Runners")<br/>    metric    = optional(object({<br/>      enable_github_app_rate_limit = optional(bool, true)<br/>    }), {})<br/>  })</pre> | `{}` | no |
 | <a name="input_prefix"></a> [prefix](#input\_prefix) | Prefix for Lambda function name | `string` | n/a | yes |
 | <a name="input_role_path"></a> [role\_path](#input\_role\_path) | IAM role path | `string` | n/a | yes |
 | <a name="input_role_permissions_boundary"></a> [role\_permissions\_boundary](#input\_role\_permissions\_boundary) | IAM role permissions boundary ARN | `string` | `null` | no |
 | <a name="input_runners_lambda_s3_key"></a> [runners\_lambda\_s3\_key](#input\_runners\_lambda\_s3\_key) | S3 key for Lambda deployment package | `string` | `null` | no |
 | <a name="input_runners_lambda_s3_object_version"></a> [runners\_lambda\_s3\_object\_version](#input\_runners\_lambda\_s3\_object\_version) | S3 object version for Lambda deployment package | `string` | `null` | no |
+| <a name="input_scale_down_parameter_store_tier"></a> [scale\_down\_parameter\_store\_tier](#input\_scale\_down\_parameter\_store\_tier) | SSM Parameter Store tier to use for persisted scale-down configuration. | `string` | `"Standard"` | no |
 | <a name="input_schedule_expression"></a> [schedule\_expression](#input\_schedule\_expression) | CloudWatch Event schedule expression | `string` | `"cron(*/5 * * * ? *)"` | no |
-| <a name="input_scale_down_parameter_store_tier"></a> [scale\_down\_parameter\_store\_tier](#input\_scale\_down\_parameter\_store\_tier) | SSM Parameter Store tier used to store scale-down configuration. | `string` | `"Standard"` | no |
-| <a name="input_tags"></a> [tags](#input\_tags) | Tags to apply to resources | `map(string)` | `{}` | no |
-| <a name="input_tracing_config"></a> [tracing\_config](#input\_tracing\_config) | Lambda tracing configuration | <pre>object({<br/>    mode                      = optional(string, null)<br/>    capture_http_requests     = optional(string, "false")<br/>    capture_error             = optional(string, "false")<br/>  })</pre> | n/a | yes |
-| <a name="input_user_agent"></a> [user\_agent](#input\_user\_agent) | User agent string for GitHub API requests | `string` | `null` | no |
 | <a name="input_ssm_parameter_path_prefix"></a> [ssm\_parameter\_path\_prefix](#input\_ssm\_parameter\_path\_prefix) | Base SSM parameter path prefix used to store scale-down configuration (without environment suffix). | `string` | n/a | yes |
+| <a name="input_tags"></a> [tags](#input\_tags) | Tags to apply to resources | `map(string)` | `{}` | no |
+| <a name="input_tracing_config"></a> [tracing\_config](#input\_tracing\_config) | Lambda tracing configuration | <pre>object({<br/>    mode                      = optional(string, null)<br/>    capture_http_requests     = optional(bool, false)<br/>    capture_error             = optional(bool, false)<br/>  })</pre> | `{}` | no |
+| <a name="input_user_agent"></a> [user\_agent](#input\_user\_agent) | User agent string for GitHub API requests | `string` | `null` | no |
 
 ## Outputs
 
