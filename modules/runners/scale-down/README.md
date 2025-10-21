@@ -69,9 +69,11 @@ No modules.
 | <a name="input_runners_lambda_s3_key"></a> [runners\_lambda\_s3\_key](#input\_runners\_lambda\_s3\_key) | S3 key for Lambda deployment package | `string` | `null` | no |
 | <a name="input_runners_lambda_s3_object_version"></a> [runners\_lambda\_s3\_object\_version](#input\_runners\_lambda\_s3\_object\_version) | S3 object version for Lambda deployment package | `string` | `null` | no |
 | <a name="input_schedule_expression"></a> [schedule\_expression](#input\_schedule\_expression) | CloudWatch Event schedule expression | `string` | `"cron(*/5 * * * ? *)"` | no |
+| <a name="input_scale_down_parameter_store_tier"></a> [scale\_down\_parameter\_store\_tier](#input\_scale\_down\_parameter\_store\_tier) | SSM Parameter Store tier used to store scale-down configuration. | `string` | `"Standard"` | no |
 | <a name="input_tags"></a> [tags](#input\_tags) | Tags to apply to resources | `map(string)` | `{}` | no |
 | <a name="input_tracing_config"></a> [tracing\_config](#input\_tracing\_config) | Lambda tracing configuration | <pre>object({<br/>    mode                      = optional(string, null)<br/>    capture_http_requests     = optional(string, "false")<br/>    capture_error             = optional(string, "false")<br/>  })</pre> | n/a | yes |
 | <a name="input_user_agent"></a> [user\_agent](#input\_user\_agent) | User agent string for GitHub API requests | `string` | `null` | no |
+| <a name="input_ssm_parameter_path_prefix"></a> [ssm\_parameter\_path\_prefix](#input\_ssm\_parameter\_path\_prefix) | Base SSM parameter path prefix used to store scale-down configuration (without environment suffix). | `string` | n/a | yes |
 
 ## Outputs
 
@@ -81,4 +83,5 @@ No modules.
 | <a name="output_lambda"></a> [lambda](#output\_lambda) | Scale-down Lambda function |
 | <a name="output_lambda_log_group"></a> [lambda\_log\_group](#output\_lambda\_log\_group) | Scale-down Lambda log group |
 | <a name="output_role"></a> [role](#output\_role) | Scale-down Lambda IAM role |
+| <a name="output_ssm_parameters"></a> [ssm\_parameters](#output\_ssm\_parameters) | Scale-down configuration parameters stored in SSM |
 <!-- END_TF_DOCS -->

@@ -52,6 +52,16 @@
         "${github_app_key_base64_arn}",
         "${github_app_id_arn}"
       ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ssm:GetParametersByPath"
+      ],
+      "Resource": [
+        "${arn_ssm_parameters_path_scale_down_config}",
+        "${arn_ssm_parameters_path_scale_down_config}/*"
+      ]
 %{ if kms_key_arn != "" ~}
     },
     {

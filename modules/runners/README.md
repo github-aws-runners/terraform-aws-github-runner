@@ -206,6 +206,7 @@ yarn run dist
 | <a name="input_runners_lambda_s3_object_version"></a> [runners\_lambda\_s3\_object\_version](#input\_runners\_lambda\_s3\_object\_version) | S3 object version for runners lambda function. Useful if S3 versioning is enabled on source bucket. | `string` | `null` | no |
 | <a name="input_runners_maximum_count"></a> [runners\_maximum\_count](#input\_runners\_maximum\_count) | The maximum number of runners that will be created. Setting the variable to `-1` desiables the maximum check. | `number` | `3` | no |
 | <a name="input_s3_runner_binaries"></a> [s3\_runner\_binaries](#input\_s3\_runner\_binaries) | Bucket details for cached GitHub binary. | <pre>object({<br/>    arn = string<br/>    id  = string<br/>    key = string<br/>  })</pre> | n/a | yes |
+| <a name="input_scale_down_parameter_store_tier"></a> [scale\_down\_parameter\_store\_tier](#input\_scale\_down\_parameter\_store\_tier) | SSM Parameter Store tier used to store scale-down configuration. | `string` | `"Standard"` | no |
 | <a name="input_scale_down_schedule_expression"></a> [scale\_down\_schedule\_expression](#input\_scale\_down\_schedule\_expression) | Scheduler expression to check every x for scale down. Set to null to disable scale-down Lambda creation. | `string` | `"cron(*/5 * * * ? *)"` | no |
 | <a name="input_scale_up_reserved_concurrent_executions"></a> [scale\_up\_reserved\_concurrent\_executions](#input\_scale\_up\_reserved\_concurrent\_executions) | Amount of reserved concurrent executions for the scale-up lambda function. A value of 0 disables lambda from being triggered and -1 removes any concurrency limitations. | `number` | `1` | no |
 | <a name="input_sqs_build_queue"></a> [sqs\_build\_queue](#input\_sqs\_build\_queue) | SQS queue to consume accepted build events. | <pre>object({<br/>    arn = string<br/>    url = string<br/>  })</pre> | n/a | yes |
@@ -236,6 +237,7 @@ yarn run dist
 | <a name="output_role_pool"></a> [role\_pool](#output\_role\_pool) | n/a |
 | <a name="output_role_runner"></a> [role\_runner](#output\_role\_runner) | n/a |
 | <a name="output_role_scale_down"></a> [role\_scale\_down](#output\_role\_scale\_down) | n/a |
+| <a name="output_scale_down_ssm_parameters"></a> [scale\_down\_ssm\_parameters](#output\_scale\_down\_ssm\_parameters) | n/a |
 | <a name="output_role_scale_up"></a> [role\_scale\_up](#output\_role\_scale\_up) | n/a |
 | <a name="output_runners_log_groups"></a> [runners\_log\_groups](#output\_runners\_log\_groups) | List of log groups from different log files of runner machine. |
 <!-- END_TF_DOCS -->

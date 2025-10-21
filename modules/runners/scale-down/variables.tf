@@ -11,6 +11,28 @@ variable "environments" {
     minimum_running_time_in_minutes = number
     runner_boot_time_in_minutes     = number
   }))
+  validation {
+    condition = alltrue([
+      for env in var.environments :
+      !can(regex("/", env.environment))
+    ])
+    error_message = "Environment names cannot contain slashes. Each environment must be stored as a direct child of the SSM parameter path prefix."
+  }
+}
+
+variable "ssm_parameter_path_prefix" {
+  description = "Base SSM parameter path prefix used to store scale-down configuration (without environment suffix)."
+  type        = string
+}
+
+variable "scale_down_parameter_store_tier" {
+  description = "SSM Parameter Store tier to use for persisted scale-down configuration."
+  type        = string
+  default     = "Standard"
+  validation {
+    condition     = contains(["Standard", "Advanced"], var.scale_down_parameter_store_tier)
+    error_message = "`scale_down_parameter_store_tier` must be either `Standard` or `Advanced`."
+  }
 }
 
 variable "prefix" {

@@ -1,5 +1,33 @@
 locals {
-  managed_environments = [for e in var.environments : e.environment]
+  managed_environments             = [for e in var.environments : e.environment]
+  environment_map                  = { for env in var.environments : env.environment => env }
+  normalized_ssm_parameter_prefix  = "/${trim(var.ssm_parameter_path_prefix, "/")}"
+  scale_down_parameter_name_prefix = local.normalized_ssm_parameter_prefix
+}
+
+data "aws_caller_identity" "current" {}
+
+data "aws_region" "current" {}
+
+locals {
+  arn_ssm_parameters_path_scale_down_config = "arn:${var.aws_partition}:ssm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:parameter${local.scale_down_parameter_name_prefix}"
+}
+
+resource "aws_ssm_parameter" "scale_down_config" {
+  for_each = local.environment_map
+
+  name        = "${local.scale_down_parameter_name_prefix}/${each.key}"
+  description = "Scale-down configuration for environment ${each.key}"
+  type        = "String"
+  tier        = var.scale_down_parameter_store_tier
+  overwrite   = true
+  value = jsonencode({
+    environment                     = each.key
+    idle_config                     = each.value.idle_config
+    minimum_running_time_in_minutes = each.value.minimum_running_time_in_minutes
+    runner_boot_time_in_minutes     = each.value.runner_boot_time_in_minutes
+  })
+  tags = var.tags
 }
 
 # IAM assume role policy for Lambda
@@ -49,20 +77,20 @@ resource "aws_lambda_function" "scale_down" {
 
   environment {
     variables = {
-      ENVIRONMENT_CONFIGS                      = jsonencode(var.environments)
       ENABLE_METRIC_GITHUB_APP_RATE_LIMIT      = var.metrics.enable && var.metrics.metric.enable_github_app_rate_limit
       GHES_URL                                 = var.ghes_url
-      USER_AGENT                               = var.user_agent
       LOG_LEVEL                                = var.log_level
       NODE_TLS_REJECT_UNAUTHORIZED             = var.ghes_url != null && !var.ghes_ssl_verify ? 0 : 1
       PARAMETER_GITHUB_APP_ID_NAME             = var.github_app_parameters.id.name
       PARAMETER_GITHUB_APP_KEY_BASE64_NAME     = var.github_app_parameters.key_base64.name
       POWERTOOLS_LOGGER_LOG_EVENT              = var.log_level == "debug" ? "true" : "false"
-      POWERTOOLS_SERVICE_NAME                  = "runners-scale-down"
       POWERTOOLS_METRICS_NAMESPACE             = var.metrics.namespace
+      POWERTOOLS_SERVICE_NAME                  = "runners-scale-down"
       POWERTOOLS_TRACE_ENABLED                 = var.tracing_config.mode != null ? true : false
-      POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.tracing_config.capture_http_requests
       POWERTOOLS_TRACER_CAPTURE_ERROR          = var.tracing_config.capture_error
+      POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.tracing_config.capture_http_requests
+      SCALE_DOWN_CONFIG_SSM_PATH_PREFIX        = local.scale_down_parameter_name_prefix
+      USER_AGENT                               = var.user_agent
     }
   }
 
@@ -120,10 +148,11 @@ resource "aws_iam_role_policy" "scale_down" {
   name = "scale-down-policy"
   role = aws_iam_role.scale_down.name
   policy = templatefile("${path.module}/policies/lambda-scale-down.json", {
-    environments              = jsonencode(local.managed_environments)
-    github_app_id_arn         = var.github_app_parameters.id.arn
-    github_app_key_base64_arn = var.github_app_parameters.key_base64.arn
-    kms_key_arn               = var.kms_key_arn
+    environments                              = jsonencode(local.managed_environments)
+    github_app_id_arn                         = var.github_app_parameters.id.arn
+    github_app_key_base64_arn                 = var.github_app_parameters.key_base64.arn
+    kms_key_arn                               = var.kms_key_arn
+    arn_ssm_parameters_path_scale_down_config = local.arn_ssm_parameters_path_scale_down_config
   })
 }
 

@@ -239,6 +239,16 @@ variable "scale_down_schedule_expression" {
   default     = "cron(*/5 * * * ? *)"
 }
 
+variable "scale_down_parameter_store_tier" {
+  description = "SSM Parameter Store tier used to store scale-down configuration."
+  type        = string
+  default     = "Standard"
+  validation {
+    condition     = contains(["Standard", "Advanced"], var.scale_down_parameter_store_tier)
+    error_message = "`scale_down_parameter_store_tier` must be either `Standard` or `Advanced`."
+  }
+}
+
 variable "minimum_running_time_in_minutes" {
   description = "The time an ec2 action runner should be running at minimum before terminated if non busy. If not set the default is calculated based on the OS."
   type        = number

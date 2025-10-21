@@ -69,6 +69,7 @@ module "runners" {
   lambda_timeout_scale_up          = var.runners_scale_up_lambda_timeout
   lambda_scale_down_memory_size    = var.scale_down_lambda_memory_size
   lambda_timeout_scale_down        = var.runners_scale_down_lambda_timeout
+  scale_down_parameter_store_tier  = var.scale_down_parameter_store_tier
   lambda_subnet_ids                = var.lambda_subnet_ids
   lambda_security_group_ids        = var.lambda_security_group_ids
   lambda_tags                      = var.lambda_tags

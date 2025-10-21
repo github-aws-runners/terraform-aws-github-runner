@@ -30,6 +30,10 @@ output "role_scale_down" {
   value = try(module.scale_down[0].role, null)
 }
 
+output "scale_down_ssm_parameters" {
+  value = try(module.scale_down[0].ssm_parameters, null)
+}
+
 output "lambda_pool" {
   value = try(module.pool[0].lambda, null)
 }

@@ -25,6 +25,7 @@ output "scale_down" {
     lambda_log_group = module.scale_down.lambda_log_group
     role             = module.scale_down.role
     event_rule       = module.scale_down.cloudwatch_event_rule
+    ssm_parameters   = module.scale_down.ssm_parameters
   }
 }
 

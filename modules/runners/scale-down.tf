@@ -11,6 +11,8 @@ locals {
     minimum_running_time_in_minutes = coalesce(var.minimum_running_time_in_minutes, local.min_runtime_defaults[var.runner_os])
     runner_boot_time_in_minutes     = var.runner_boot_time_in_minutes
   }
+
+  scale_down_ssm_parameter_prefix = format("/%s/scale-down", trim(var.ssm_paths.root, "/"))
 }
 
 module "scale_down" {
@@ -20,6 +22,8 @@ module "scale_down" {
   environments        = [local.scale_down_environment_config]
   prefix              = var.prefix
   schedule_expression = var.scale_down_schedule_expression
+  ssm_parameter_path_prefix        = local.scale_down_ssm_parameter_prefix
+  scale_down_parameter_store_tier  = var.scale_down_parameter_store_tier
 
   github_app_parameters            = var.github_app_parameters
   lambda_s3_bucket                 = var.lambda_s3_bucket

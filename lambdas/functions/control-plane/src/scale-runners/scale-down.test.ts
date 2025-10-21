@@ -1,14 +1,18 @@
-import { Octokit } from '@octokit/rest';
 import { RequestError } from '@octokit/request-error';
+import { Octokit } from '@octokit/rest';
 import moment from 'moment';
 import nock from 'nock';
-
-import { RunnerInfo, RunnerList } from '../aws/runners.d';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { listEC2Runners, tag, terminateRunner, untag } from './../aws/runners';
+import type { RunnerInfo, RunnerList } from '../aws/runners.d';
 import * as ghAuth from '../github/auth';
-import { listEC2Runners, terminateRunner, tag, untag } from './../aws/runners';
 import { githubCache } from './cache';
-import { newestFirstStrategy, oldestFirstStrategy, scaleDown } from './scale-down';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { newestFirstStrategy, oldestFirstStrategy, scaleDown, scaleDownEnvironment } from './scale-down';
+import {
+  type EnvironmentScaleDownConfig,
+  type EvictionStrategy,
+  loadEnvironmentScaleDownConfigFromSsm,
+} from './scale-down-config';
 
 const mockOctokit = {
   apps: {
@@ -58,6 +62,14 @@ vi.mock('./cache', async () => ({
   },
 }));
 
+vi.mock('./scale-down-config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./scale-down-config')>();
+  return {
+    ...actual,
+    loadEnvironmentScaleDownConfigFromSsm: vi.fn(),
+  };
+});
+
 const mocktokit = Octokit as vi.MockedClass<typeof Octokit>;
 const mockedAppAuth = vi.mocked(ghAuth.createGithubAppAuth);
 const mockedInstallationAuth = vi.mocked(ghAuth.createGithubInstallationAuth);
@@ -66,6 +78,7 @@ const mockListRunners = vi.mocked(listEC2Runners);
 const mockTagRunners = vi.mocked(tag);
 const mockUntagRunners = vi.mocked(untag);
 const mockTerminateRunners = vi.mocked(terminateRunner);
+const mockLoadEnvironmentScaleDownConfigFromSsm = vi.mocked(loadEnvironmentScaleDownConfigFromSsm);
 
 export interface TestData {
   repositoryName: string;
@@ -82,6 +95,13 @@ const TEST_DATA: TestData = {
   repositoryOwner: 'Codertocat',
 };
 
+const defaultEnvironmentConfig: EnvironmentScaleDownConfig = {
+  environment: ENVIRONMENT,
+  idle_config: [],
+  minimum_running_time_in_minutes: MINIMUM_TIME_RUNNING_IN_MINUTES,
+  runner_boot_time_in_minutes: MINIMUM_BOOT_TIME,
+};
+
 interface RunnerTestItem extends RunnerList {
   registered: boolean;
   orphan: boolean;
@@ -96,18 +116,14 @@ describe('Scale down runners', () => {
     process.env.GITHUB_APP_CLIENT_ID = 'TEST_CLIENT_ID';
     process.env.GITHUB_APP_CLIENT_SECRET = 'TEST_CLIENT_SECRET';
     process.env.RUNNERS_MAXIMUM_COUNT = '3';
-    process.env.ENVIRONMENT_CONFIGS = JSON.stringify([{
-      environment: ENVIRONMENT,
-      idle_config: [],
-      minimum_running_time_in_minutes: MINIMUM_TIME_RUNNING_IN_MINUTES,
-      runner_boot_time_in_minutes: MINIMUM_BOOT_TIME,
-    }]);
 
     nock.disableNetConnect();
     vi.clearAllMocks();
     vi.resetModules();
     githubCache.clients.clear();
     githubCache.runners.clear();
+    mockLoadEnvironmentScaleDownConfigFromSsm.mockReset();
+    mockLoadEnvironmentScaleDownConfigFromSsm.mockResolvedValue([defaultEnvironmentConfig]);
     mockOctokit.apps.getOrgInstallation.mockImplementation(() => ({
       data: {
         id: 'ORG',
@@ -181,6 +197,13 @@ describe('Scale down runners', () => {
       installationId: 0,
     });
     mockCreateClient.mockResolvedValue(new mocktokit());
+  });
+
+  it('should handle empty environment configs gracefully', async () => {
+    mockLoadEnvironmentScaleDownConfigFromSsm.mockResolvedValue([]);
+
+    await expect(scaleDown()).resolves.not.toThrow();
+    expect(mockListRunners).not.toHaveBeenCalled();
   });
 
   const endpoints = ['https://api.github.com', 'https://github.enterprise.something', 'https://companyname.ghe.com'];
@@ -373,11 +396,21 @@ describe('Scale down runners', () => {
 
         if (type === 'Repo') {
           mockOctokit.actions.getSelfHostedRunnerForRepo.mockResolvedValueOnce({
-            data: { id: 1234567890, name: orphanRunner.instanceId, busy: true, status: 'online' },
+            data: {
+              id: 1234567890,
+              name: orphanRunner.instanceId,
+              busy: true,
+              status: 'online',
+            },
           });
         } else {
           mockOctokit.actions.getSelfHostedRunnerForOrg.mockResolvedValueOnce({
-            data: { id: 1234567890, name: orphanRunner.instanceId, busy: true, status: 'online' },
+            data: {
+              id: 1234567890,
+              name: orphanRunner.instanceId,
+              busy: true,
+              status: 'online',
+            },
           });
         }
 
@@ -391,11 +424,21 @@ describe('Scale down runners', () => {
         // arrange
         if (type === 'Repo') {
           mockOctokit.actions.getSelfHostedRunnerForRepo.mockResolvedValueOnce({
-            data: { runnerId: 1234567890, name: orphanRunner.instanceId, busy: true, status: 'offline' },
+            data: {
+              runnerId: 1234567890,
+              name: orphanRunner.instanceId,
+              busy: true,
+              status: 'offline',
+            },
           });
         } else {
           mockOctokit.actions.getSelfHostedRunnerForOrg.mockResolvedValueOnce({
-            data: { runnerId: 1234567890, name: orphanRunner.instanceId, busy: true, status: 'offline' },
+            data: {
+              runnerId: 1234567890,
+              name: orphanRunner.instanceId,
+              busy: true,
+              status: 'offline',
+            },
           });
         }
 
@@ -612,7 +655,7 @@ describe('Scale down runners', () => {
         await expect(scaleDown()).resolves.not.toThrow();
       });
 
-      const evictionStrategies = ['oldest_first', 'newest_first'];
+      const evictionStrategies: EvictionStrategy[] = ['oldest_first', 'newest_first'];
       describe.each(evictionStrategies)('When idle config defined', (evictionStrategy) => {
         const defaultConfig = {
           idleCount: 1,
@@ -622,12 +665,14 @@ describe('Scale down runners', () => {
         };
 
         beforeEach(() => {
-          process.env.ENVIRONMENT_CONFIGS = JSON.stringify([{
-            environment: ENVIRONMENT,
-            idle_config: [defaultConfig],
-            minimum_running_time_in_minutes: MINIMUM_TIME_RUNNING_IN_MINUTES,
-            runner_boot_time_in_minutes: MINIMUM_BOOT_TIME,
-          }]);
+          mockLoadEnvironmentScaleDownConfigFromSsm.mockResolvedValue([
+            {
+              environment: ENVIRONMENT,
+              idle_config: [defaultConfig],
+              minimum_running_time_in_minutes: MINIMUM_TIME_RUNNING_IN_MINUTES,
+              runner_boot_time_in_minutes: MINIMUM_BOOT_TIME,
+            },
+          ]);
         });
 
         it(`Should terminate based on the the idle config with ${evictionStrategy} eviction strategy`, async () => {
@@ -768,7 +813,7 @@ describe('Scale down runners', () => {
       const minTime1 = 10;
       const minTime2 = 20;
 
-      process.env.ENVIRONMENT_CONFIGS = JSON.stringify([
+      mockLoadEnvironmentScaleDownConfigFromSsm.mockResolvedValue([
         {
           environment: environment1,
           idle_config: [],
@@ -794,8 +839,8 @@ describe('Scale down runners', () => {
       ];
 
       mockListRunners.mockImplementation(async (filter) => {
-        const allRunners = filter?.environment === environment1 ? runners1 :
-                          filter?.environment === environment2 ? runners2 : [];
+        const allRunners =
+          filter?.environment === environment1 ? runners1 : filter?.environment === environment2 ? runners2 : [];
         // Filter by orphan flag if specified
         return allRunners.filter((r) => !filter?.orphan || r.orphan === filter.orphan);
       });
@@ -804,9 +849,7 @@ describe('Scale down runners', () => {
       mockOctokit.paginate.mockImplementation((fn, params: any) => {
         const allRunners = [...runners1, ...runners2];
         return Promise.resolve(
-          allRunners
-            .filter((r) => r.owner === params.org)
-            .map((r) => ({ id: r.instanceId, name: r.instanceId }))
+          allRunners.filter((r) => r.owner === params.org).map((r) => ({ id: r.instanceId, name: r.instanceId })),
         );
       });
 
@@ -814,8 +857,12 @@ describe('Scale down runners', () => {
       await scaleDown();
 
       // assert - should have been called for both environments
-      expect(listEC2Runners).toHaveBeenCalledWith({ environment: environment1 });
-      expect(listEC2Runners).toHaveBeenCalledWith({ environment: environment2 });
+      expect(listEC2Runners).toHaveBeenCalledWith({
+        environment: environment1,
+      });
+      expect(listEC2Runners).toHaveBeenCalledWith({
+        environment: environment2,
+      });
 
       // env1 runner that exceeded minTime1 should be terminated
       expect(terminateRunner).toHaveBeenCalledWith(runners1[0].instanceId);
@@ -833,10 +880,18 @@ describe('Scale down runners', () => {
       const environment1 = 'env-1';
       const environment2 = 'env-2';
 
-      const idleConfig1 = { cron: '* * * * * *', idleCount: 2, timeZone: 'UTC' };
-      const idleConfig2 = { cron: '* * * * * *', idleCount: 0, timeZone: 'UTC' };
+      const idleConfig1 = {
+        cron: '* * * * * *',
+        idleCount: 2,
+        timeZone: 'UTC',
+      };
+      const idleConfig2 = {
+        cron: '* * * * * *',
+        idleCount: 0,
+        timeZone: 'UTC',
+      };
 
-      process.env.ENVIRONMENT_CONFIGS = JSON.stringify([
+      mockLoadEnvironmentScaleDownConfigFromSsm.mockResolvedValue([
         {
           environment: environment1,
           idle_config: [idleConfig1],
@@ -852,7 +907,7 @@ describe('Scale down runners', () => {
       ]);
 
       const runners1 = [
-        createRunnerTestData('env1-idle-1', 'Org', MINIMUM_TIME_RUNNING_IN_MINUTES + 5, true, false, true, 'owner1'),  // oldest - should terminate
+        createRunnerTestData('env1-idle-1', 'Org', MINIMUM_TIME_RUNNING_IN_MINUTES + 5, true, false, true, 'owner1'), // oldest - should terminate
         createRunnerTestData('env1-idle-2', 'Org', MINIMUM_TIME_RUNNING_IN_MINUTES + 4, true, false, false, 'owner1'), // middle - keep
         createRunnerTestData('env1-idle-3', 'Org', MINIMUM_TIME_RUNNING_IN_MINUTES + 3, true, false, false, 'owner1'), // newest - keep
       ];
@@ -863,8 +918,8 @@ describe('Scale down runners', () => {
       ];
 
       mockListRunners.mockImplementation(async (filter) => {
-        const allRunners = filter?.environment === environment1 ? runners1 :
-                          filter?.environment === environment2 ? runners2 : [];
+        const allRunners =
+          filter?.environment === environment1 ? runners1 : filter?.environment === environment2 ? runners2 : [];
         // Filter by orphan flag if specified
         return allRunners.filter((r) => !filter?.orphan || r.orphan === filter.orphan);
       });
@@ -873,9 +928,7 @@ describe('Scale down runners', () => {
       mockOctokit.paginate.mockImplementation((fn, params: any) => {
         const allRunners = [...runners1, ...runners2];
         return Promise.resolve(
-          allRunners
-            .filter((r) => r.owner === params.org)
-            .map((r) => ({ id: r.instanceId, name: r.instanceId }))
+          allRunners.filter((r) => r.owner === params.org).map((r) => ({ id: r.instanceId, name: r.instanceId })),
         );
       });
 
@@ -884,7 +937,7 @@ describe('Scale down runners', () => {
 
       // assert
       // env1 has idleCount=2, so terminate oldest, keep 2 newest
-      expect(terminateRunner).toHaveBeenCalledWith(runners1[0].instanceId);     // oldest - terminated
+      expect(terminateRunner).toHaveBeenCalledWith(runners1[0].instanceId); // oldest - terminated
       expect(terminateRunner).not.toHaveBeenCalledWith(runners1[1].instanceId); // middle - kept
       expect(terminateRunner).not.toHaveBeenCalledWith(runners1[2].instanceId); // newest - kept
 

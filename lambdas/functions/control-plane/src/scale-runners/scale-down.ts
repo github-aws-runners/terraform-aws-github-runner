@@ -1,20 +1,20 @@
-import { Octokit } from '@octokit/rest';
-import { Endpoints } from '@octokit/types';
-import { RequestError } from '@octokit/request-error';
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
+import { RequestError } from '@octokit/request-error';
+import type { Octokit } from '@octokit/rest';
+import type { Endpoints } from '@octokit/types';
 import moment from 'moment';
-
+import { bootTimeExceeded, listEC2Runners, tag, terminateRunner, untag } from './../aws/runners';
+import type { RunnerInfo, RunnerList } from './../aws/runners.d';
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
-import { bootTimeExceeded, listEC2Runners, tag, untag, terminateRunner } from './../aws/runners';
-import { RunnerInfo, RunnerList } from './../aws/runners.d';
-import { GhRunners, githubCache } from './cache';
+import { metricGitHubAppRateLimit } from '../github/rate-limit';
+import { type GhRunners, githubCache } from './cache';
 import {
-  ScalingDownConfig,
-  EnvironmentScaleDownConfig,
+  type EnvironmentScaleDownConfig,
   getEvictionStrategy,
   getIdleRunnerCount,
+  loadEnvironmentScaleDownConfigFromSsm,
+  type ScalingDownConfig,
 } from './scale-down-config';
-import { metricGitHubAppRateLimit } from '../github/rate-limit';
 import { getGitHubEnterpriseApiUrl } from './scale-up';
 
 const logger = createChildLogger('scale-down');
@@ -229,7 +229,9 @@ async function markOrphan(instanceId: string): Promise<void> {
     await tag(instanceId, [{ Key: 'ghr:orphan', Value: 'true' }]);
     logger.info(`Runner '${instanceId}' tagged as orphan.`);
   } catch (e) {
-    logger.error(`Failed to tag runner '${instanceId}' as orphan.`, { error: e });
+    logger.error(`Failed to tag runner '${instanceId}' as orphan.`, {
+      error: e,
+    });
   }
 }
 
@@ -238,7 +240,9 @@ async function unMarkOrphan(instanceId: string): Promise<void> {
     await untag(instanceId, [{ Key: 'ghr:orphan', Value: 'true' }]);
     logger.info(`Runner '${instanceId}' untagged as orphan.`);
   } catch (e) {
-    logger.error(`Failed to un-tag runner '${instanceId}' as orphan.`, { error: e });
+    logger.error(`Failed to un-tag runner '${instanceId}' as orphan.`, {
+      error: e,
+    });
   }
 }
 
@@ -313,14 +317,15 @@ function filterRunners(ec2runners: RunnerList[]): RunnerInfo[] {
 
 export async function scaleDown(): Promise<void> {
   githubCache.reset();
-  const environmentConfigs = JSON.parse(process.env.ENVIRONMENT_CONFIGS) as EnvironmentScaleDownConfig[];
+  const configPathPrefix = process.env.SCALE_DOWN_CONFIG_SSM_PATH_PREFIX;
+  const environmentConfigs = await loadEnvironmentScaleDownConfigFromSsm(configPathPrefix ?? '');
 
   for (const envConfig of environmentConfigs) {
     await scaleDownEnvironment(envConfig);
   }
 }
 
-async function scaleDownEnvironment(envConfig: EnvironmentScaleDownConfig): Promise<void> {
+export async function scaleDownEnvironment(envConfig: EnvironmentScaleDownConfig): Promise<void> {
   const { environment, idle_config, minimum_running_time_in_minutes, runner_boot_time_in_minutes } = envConfig;
 
   logger.info(`Processing scale-down for environment: ${environment}`);

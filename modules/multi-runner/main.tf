@@ -17,6 +17,8 @@ locals {
   unique_os_and_arch                   = { for i, v in local.tmp_distinct_list_unique_os_and_arch : "${v.os_type}_${v.architecture}" => v }
 
   ssm_root_path = "/${var.ssm_paths.root}/${var.prefix}"
+
+  scale_down_parameter_path_prefix = "${local.ssm_root_path}/scale-down"
 }
 
 resource "random_string" "random" {
@@ -45,6 +47,8 @@ module "scale_down" {
   environments        = local.scale_down_environment_configs
   prefix              = var.prefix
   schedule_expression = var.scale_down_schedule_expression
+  ssm_parameter_path_prefix        = local.scale_down_parameter_path_prefix
+  scale_down_parameter_store_tier  = var.scale_down_parameter_store_tier
 
   github_app_parameters            = local.github_app_parameters
   lambda_s3_bucket                 = var.lambda_s3_bucket
