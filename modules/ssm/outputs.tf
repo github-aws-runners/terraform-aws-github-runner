@@ -14,7 +14,7 @@ output "parameters" {
     }
     enterprise_pat = {
       name = var.enterprise_pat != null ? aws_ssm_parameter.github_enterprise_pat[0].name : null
-      arn  =  var.enterprise_pat != null ? aws_ssm_parameter.github_enterprise_pat[0].arn : null
+      arn  = var.enterprise_pat != null ? aws_ssm_parameter.github_enterprise_pat[0].arn : null
     }
   }
 }

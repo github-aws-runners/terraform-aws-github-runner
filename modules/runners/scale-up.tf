@@ -118,7 +118,7 @@ resource "aws_iam_role_policy" "scale_up" {
     arn_runner_instance_role  = aws_iam_role.runner.arn
     sqs_arn                   = var.sqs_build_queue.arn
     github_app_id_arn         = var.enterprise_pat == null ? var.github_app_parameters.id.arn : null
-    github_app_key_base64_arn = var.enterprise_pat == null ?  var.github_app_parameters.key_base64.arn : null
+    github_app_key_base64_arn = var.enterprise_pat == null ? var.github_app_parameters.key_base64.arn : null
     enterprise_pat_arn        = var.enterprise_pat != null ? var.enterprise_pat.arn : null
     ssm_config_path           = "arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.ssm_paths.root}/${var.ssm_paths.config}"
     kms_key_arn               = local.kms_key_arn

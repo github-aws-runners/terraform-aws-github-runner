@@ -1,7 +1,7 @@
 variable "config" {
   description = "Lookup details in parent module."
   type = object({
-    enable_enterprise_runners   = bool
+    enable_enterprise_runners = bool
     lambda = object({
       log_level                      = string
       logging_retention_in_days      = number
@@ -28,7 +28,7 @@ variable "config" {
       id         = optional(map(string))
     })
     enterprise_pat = optional(map(string))
-    subnet_ids = list(string)
+    subnet_ids     = list(string)
     runner = object({
       disable_runner_autoupdate            = bool
       ephemeral                            = bool

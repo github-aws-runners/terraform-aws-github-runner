@@ -11,7 +11,7 @@ locals {
     GHES_URL                             = var.config.ghes_url
     USER_AGENT                           = var.config.user_agent
     JOB_QUEUE_SCALE_UP_URL               = var.config.sqs_build_queue.url
-    PARAMETER_GITHUB_APP_ID_NAME         = var.config.enterprise_pat == null ? var.config.github_app_parameters.id.name: null
+    PARAMETER_GITHUB_APP_ID_NAME         = var.config.enterprise_pat == null ? var.config.github_app_parameters.id.name : null
     PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.config.enterprise_pat == null ? var.config.github_app_parameters.key_base64.name : null
     PARAMETER_ENTERPRISE_PAT_NAME        = var.config.enterprise_pat != null ? var.config.enterprise_pat.name : null
   }

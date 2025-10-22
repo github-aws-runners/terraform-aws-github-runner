@@ -55,12 +55,12 @@ variable "github_app" {
   EOF
 
   type = object({
-    key_base64        = optional(string, null)
-    key_base64_ssm    = optional(object({ arn = string, name = string }))
-    id                = optional(string, null)
-    id_ssm            = optional(object({ arn = string, name = string }))
-    webhook_secret    = optional(string)
-    webhook_secret_ssm= optional(object({ arn = string, name = string }))
+    key_base64         = optional(string, null)
+    key_base64_ssm     = optional(object({ arn = string, name = string }))
+    id                 = optional(string, null)
+    id_ssm             = optional(object({ arn = string, name = string }))
+    webhook_secret     = optional(string)
+    webhook_secret_ssm = optional(object({ arn = string, name = string }))
   })
 
   validation {
@@ -69,15 +69,15 @@ variable "github_app" {
       (var.github_app.webhook_secret != null || var.github_app.webhook_secret_ssm != null)
       &&
       // 2) key_*: exactly one source if provided (not both direct and SSM)
-      ! (var.github_app.key_base64 != null && var.github_app.key_base64_ssm != null)
+      !(var.github_app.key_base64 != null && var.github_app.key_base64_ssm != null)
       &&
       // 3) id_*: exactly one source if provided (not both direct and SSM)
-      ! (var.github_app.id != null && var.github_app.id_ssm != null)
+      !(var.github_app.id != null && var.github_app.id_ssm != null)
       &&
       // 4) If key is provided, id must be provided (from any source), and vice versa
       ((var.github_app.key_base64 != null || var.github_app.key_base64_ssm != null)
         ==
-       (var.github_app.id != null        || var.github_app.id_ssm        != null))
+      (var.github_app.id != null || var.github_app.id_ssm != null))
     )
 
     error_message = <<EOF
