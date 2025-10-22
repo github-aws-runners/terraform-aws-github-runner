@@ -28,8 +28,8 @@
   },
   "dependencies": {
     "@aws-github-runner/aws-powertools-util": "*",
-    "@aws-sdk/client-s3": "^3.901.0",
-    "@aws-sdk/lib-storage": "^3.903.0",
+    "@aws-sdk/client-s3": "^3.908.0",
+    "@aws-sdk/lib-storage": "^3.908.0",
     "@middy/core": "^6.4.5",
     "@octokit/rest": "22.0.0",
     "axios": "^1.12.2"
