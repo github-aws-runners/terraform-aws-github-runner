@@ -170,6 +170,42 @@ describe(`Test job retry check`, () => {
     expect(createSingleMetric).not.toHaveBeenCalled();
   });
 
+  it(`should publish a message for retry if retry is enabled and enterprise level is enabled.`, async () => {
+    // setup
+    mockOctokit.actions.getJobForWorkflowRun.mockImplementation(() => ({
+      data: {
+        status: 'queued',
+      },
+    }));
+
+    const message: ActionRequestMessageRetry = {
+      eventType: 'workflow_job',
+      id: 0,
+      installationId: 0,
+      repositoryName: 'test',
+      repositoryOwner: 'github-aws-runners',
+      repoOwnerType: 'Enterprise',
+      retryCounter: 0,
+    };
+    process.env.ENABLE_ENTERPRISE_RUNNERS = 'true';
+    process.env.RUNNER_NAME_PREFIX = 'test';
+    process.env.JOB_QUEUE_SCALE_UP_URL =
+      'https://sqs.eu-west-1.amazonaws.com/123456789/webhook_events_workflow_job_queue';
+
+    // act
+    await checkAndRetryJob(message);
+
+    // assert
+    expect(publishMessage).toHaveBeenCalledWith(
+      JSON.stringify({
+        ...message,
+      }),
+      'https://sqs.eu-west-1.amazonaws.com/123456789/webhook_events_workflow_job_queue',
+    );
+    expect(createSingleMetric).not.toHaveBeenCalled();
+  });
+
+
   it(`should publish a message for retry if retry is enabled and counter is below max attempts.`, async () => {
     // setup
     mockOctokit.actions.getJobForWorkflowRun.mockImplementation(() => ({
