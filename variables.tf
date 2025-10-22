@@ -31,12 +31,6 @@ variable "enable_organization_runners" {
   default     = false
 }
 
-variable "enable_enterprise_runners" {
-  description = "Register runners to enterprise"
-  type        = bool
-  default     = false
-}
-
 variable "enterprise_slug" {
   description = "Enterprise slug"
   type        = string
