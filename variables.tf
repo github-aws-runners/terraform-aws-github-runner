@@ -61,60 +61,38 @@ variable "github_app" {
   EOF
 
   type = object({
-    key_base64 = optional(string,null)
-    key_base64_ssm = optional(object({
-      arn  = string
-      name = string
-    }))
-    id = optional(string, null)
-    id_ssm = optional(object({
-      arn  = string
-      name = string
-    }))
-    webhook_secret = optional(string)
-    webhook_secret_ssm = optional(object({
-      arn  = string
-      name = string
-    }))
+    key_base64        = optional(string, null)
+    key_base64_ssm    = optional(object({ arn = string, name = string }))
+    id                = optional(string, null)
+    id_ssm            = optional(object({ arn = string, name = string }))
+    webhook_secret    = optional(string)
+    webhook_secret_ssm= optional(object({ arn = string, name = string }))
   })
 
   validation {
     condition = (
-      // 1) Webhook secret is ALWAYS required
+      // 1) Webhook secret is ALWAYS required (direct or SSM)
       (var.github_app.webhook_secret != null || var.github_app.webhook_secret_ssm != null)
       &&
-      // 2) Branch on enable_enterprise_runners
-      (
-        // A) Enterprise runners enabled -> PAT required, App creds must be absent
-        (
-          var.enable_enterprise_runners == true &&
-          var.enterprise_pat != null &&
-          var.github_app.key_base64 == null &&
-          var.github_app.key_base64_ssm == null &&
-          var.github_app.id == null &&
-          var.github_app.id_ssm == null
-        )
-        ||
-        // B) Enterprise runners disabled -> App creds required, PAT must be absent
-        (
-          var.enable_enterprise_runners == false &&
-          var.enterprise_pat == null &&
-          (var.github_app.key_base64 != null || var.github_app.key_base64_ssm != null) &&
-          (var.github_app.id != null || var.github_app.id_ssm != null)
-        )
-      )
+      // 2) key_*: exactly one source if provided (not both direct and SSM)
+      ! (var.github_app.key_base64 != null && var.github_app.key_base64_ssm != null)
+      &&
+      // 3) id_*: exactly one source if provided (not both direct and SSM)
+      ! (var.github_app.id != null && var.github_app.id_ssm != null)
+      &&
+      // 4) If key is provided, id must be provided (from any source), and vice versa
+      ((var.github_app.key_base64 != null || var.github_app.key_base64_ssm != null)
+        ==
+       (var.github_app.id != null        || var.github_app.id_ssm        != null))
     )
 
     error_message = <<EOF
 webhook_secret is required: set either `webhook_secret` or `webhook_secret_ssm`.
 
-When enable_enterprise_runners = true:
-  - Set `enterprise_pat`
-  - Do NOT set GitHub App `key_base64/_ssm` or `id/_ssm`
-
-When enable_enterprise_runners = false:
-  - Do NOT set `enterprise_pat`
-  - Provide GitHub App credentials: `key_base64` or `key_base64_ssm` AND `id` or `id_ssm`
+For GitHub App credentials:
+- Provide key from exactly one source: `key_base64` XOR `key_base64_ssm`
+- Provide id  from exactly one source: `id` XOR `id_ssm`
+- If a key is provided, an id must also be provided (and vice versa)
 EOF
   }
 }
