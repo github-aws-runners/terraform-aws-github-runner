@@ -1,7 +1,7 @@
 variable "config" {
   description = "Lookup details in parent module."
   type = object({
-    enable_enterprise_runners = optioanl(bool)
+    enable_enterprise_runners = optional(bool)
     lambda = object({
       log_level                      = string
       logging_retention_in_days      = number
