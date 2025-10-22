@@ -65,16 +65,16 @@ variable "github_app" {
 
   validation {
     condition = (
-      // 1) Webhook secret is ALWAYS required (direct or SSM)
+      # 1) Webhook secret is ALWAYS required (direct or SSM)
       (var.github_app.webhook_secret != null || var.github_app.webhook_secret_ssm != null)
       &&
-      // 2) key_*: exactly one source if provided (not both direct and SSM)
+      # 2) key_*: exactly one source if provided (not both direct and SSM)
       !(var.github_app.key_base64 != null && var.github_app.key_base64_ssm != null)
       &&
-      // 3) id_*: exactly one source if provided (not both direct and SSM)
+      # 3) id_*: exactly one source if provided (not both direct and SSM)
       !(var.github_app.id != null && var.github_app.id_ssm != null)
       &&
-      // 4) If key is provided, id must be provided (from any source), and vice versa
+      # 4) If key is provided, id must be provided (from any source), and vice versa
       ((var.github_app.key_base64 != null || var.github_app.key_base64_ssm != null)
         ==
       (var.github_app.id != null || var.github_app.id_ssm != null))
