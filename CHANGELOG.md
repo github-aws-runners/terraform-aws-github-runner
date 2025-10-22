@@ -1,5 +1,12 @@
 # Changelog
 
+## [6.8.4](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.8.3...v6.8.4) (2025-10-22)
+
+
+### Bug Fixes
+
+* **lambda:** bump the aws group in /lambdas with 7 updates ([#4837](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4837)) ([7f707c5](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/7f707c5acec38bb60a347718d99de2d54d5ff3e4))
+
 ## [6.8.3](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.8.2...v6.8.3) (2025-10-17)
 
 
