@@ -63,5 +63,6 @@ module "pool" {
   }
 
   aws_partition  = var.aws_partition
+  aws_region     = var.aws_region
   tracing_config = var.tracing_config
 }

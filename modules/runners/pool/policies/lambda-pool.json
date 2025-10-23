@@ -63,6 +63,7 @@
 %{ if enterprise_pat_arn != null ~}
                 "${enterprise_pat_arn}",
 %{ endif ~}
+                 "${ssm_config_path}/*"
             ]
 %{ if kms_key_arn != "" ~}
         },
