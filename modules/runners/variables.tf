@@ -91,7 +91,7 @@ variable "ebs_optimized" {
 }
 
 variable "instance_target_capacity_type" {
-  description = "Default lifecyle used runner instances, can be either `spot` or `on-demand`."
+  description = "Default lifecycle used runner instances, can be either `spot` or `on-demand`."
   type        = string
   default     = "spot"
 
@@ -113,7 +113,7 @@ variable "instance_allocation_strategy" {
 }
 
 variable "instance_max_spot_price" {
-  description = "Max price price for spot intances per hour. This variable will be passed to the create fleet as max spot price for the fleet."
+  description = "Max price price for spot instances per hour. This variable will be passed to the create fleet as max spot price for the fleet."
   type        = string
   default     = null
 }
@@ -177,7 +177,7 @@ variable "userdata_template" {
 }
 
 variable "userdata_content" {
-  description = "Alternative user-data content, replacing the templated one. By providing your own user_data you have to take care of installing all required software, including the action runner and registering the runner.  Be-aware configuration paramaters in SSM as well as tags are treated as internals. Changes will not trigger a breaking release."
+  description = "Alternative user-data content, replacing the templated one. By providing your own user_data you have to take care of installing all required software, including the action runner and registering the runner.  Be-aware configuration parameters in SSM as well as tags are treated as internals. Changes will not trigger a breaking release."
   type        = string
   default     = null
 }
@@ -631,7 +631,7 @@ variable "ssm_paths" {
 }
 
 variable "runner_name_prefix" {
-  description = "The prefix used for the GitHub runner name. The prefix will be used in the default start script to prefix the instance name when register the runner in GitHub. The value is availabe via an EC2 tag 'ghr:runner_name_prefix'."
+  description = "The prefix used for the GitHub runner name. The prefix will be used in the default start script to prefix the instance name when register the runner in GitHub. The value is available via an EC2 tag 'ghr:runner_name_prefix'."
   type        = string
   default     = ""
   validation {
@@ -672,7 +672,7 @@ variable "cpu_options" {
 }
 
 variable "enable_jit_config" {
-  description = "Overwrite the default behavior for JIT configuration. By default JIT configuration is enabled for ephemeral runners and disabled for non-ephemeral runners. In case of GHES check first if the JIT config API is avaialbe. In case you upgradeing from 3.x to 4.x you can set `enable_jit_config` to `false` to avoid a breaking change when having your own AMI."
+  description = "Overwrite the default behavior for JIT configuration. By default JIT configuration is enabled for ephemeral runners and disabled for non-ephemeral runners. In case of GHES check first if the JIT config API is available. In case you are upgrading from 3.x to 4.x you can set `enable_jit_config` to `false` to avoid a breaking change when having your own AMI."
   type        = bool
   default     = null
 }
@@ -689,7 +689,7 @@ variable "ssm_housekeeper" {
 
   `schedule_expression`: is used to configure the schedule for the lambda.
   `state`: state of the cloudwatch event rule. Valid values are `DISABLED`, `ENABLED`, and `ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS`.
-  `lambda_memory_size`: lambda memery size limit.
+  `lambda_memory_size`: lambda memory size limit.
   `lambda_timeout`: timeout for the lambda in seconds.
   `config`: configuration for the lambda function. Token path will be read by default from the module.
   EOF
@@ -735,7 +735,7 @@ variable "metrics" {
 
 variable "job_retry" {
   description = <<-EOF
-    Configure job retries. The configuration enables job retries (for ephemeral runners). After creating the insances a message will be published to a job retry queue. The job retry check lambda is checking after a delay if the job is queued. If not the message will be published again on the scale-up (build queue). Using this feature can impact the reate limit of the GitHub app.
+    Configure job retries. The configuration enables job retries (for ephemeral runners). After creating the instances a message will be published to a job retry queue. The job retry check lambda is checking after a delay if the job is queued. If not the message will be published again on the scale-up (build queue). Using this feature can impact the rate limit of the GitHub app.
 
     `enable`: Enable or disable the job retry feature.
     `delay_in_seconds`: The delay in seconds before the job retry check lambda will check the job status.
@@ -761,7 +761,7 @@ variable "job_retry" {
 
   validation {
     condition     = var.job_retry.enable == false || (var.job_retry.enable == true && var.job_retry.delay_in_seconds <= 900)
-    error_message = "The maxium message delay for SWS is 900 seconds."
+    error_message = "The maximum message delay for SWS is 900 seconds."
   }
 }
 

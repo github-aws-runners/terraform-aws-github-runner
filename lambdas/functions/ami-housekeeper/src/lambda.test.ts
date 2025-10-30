@@ -54,7 +54,7 @@ describe('Housekeeper ami', () => {
     await expect(handler(undefined, context)).resolves.not.toThrow();
   });
 
-  it('should not thow only log in error in case of an exception.', async () => {
+  it('should not throw only log in error in case of an exception.', async () => {
     const logSpy = vi.spyOn(logger, 'error');
 
     const error = new Error('An error.');

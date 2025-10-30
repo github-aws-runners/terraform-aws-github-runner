@@ -234,8 +234,8 @@
 
 ### Bug Fixes
 
-* only tag spot rquests for spot ([a9ab69e](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/a9ab69e90fe8e1f9df1c752757ef774eed42e278))
-* only tag spot rquests for spot ([806bf58](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/806bf580c177c5d2bbdad3b309c48e941b2c6eb4))
+* only tag spot requests for spot ([a9ab69e](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/a9ab69e90fe8e1f9df1c752757ef774eed42e278))
+* only tag spot requests for spot ([806bf58](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/806bf580c177c5d2bbdad3b309c48e941b2c6eb4))
 
 ## [6.5.3](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.5.2...v6.5.3) (2025-04-20)
 
@@ -542,7 +542,7 @@
 
 * **lambda:** bump the aws group in /lambdas with 7 updates ([#4211](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4211)) ([d18dcaa](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/d18dcaa08801228b0b7d8086962de5fb681dafe3))
 * **lambda:** bump the aws-powertools group in /lambdas with 4 updates ([#4212](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4212)) ([9c9219b](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/9c9219b690c83125a0817f125f499d6155c0cdf1))
-* **webhook:** grant KMS permission to decrypt wehn using EventBridge ([#4220](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4220)) ([380bcaf](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/380bcaf68447fb05be6c888392b46449cf5d409d))
+* **webhook:** grant KMS permission to decrypt when using EventBridge ([#4220](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4220)) ([380bcaf](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/380bcaf68447fb05be6c888392b46449cf5d409d))
 * **webhook:** result message webhook ([#4221](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4221)) ([8099c17](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/8099c1766e4b8d63b950cf6a2c360cf95cdd0dab))
 
 ## [5.18.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v5.17.3...v5.18.0) (2024-10-28)
@@ -721,7 +721,7 @@
 
 ### Bug Fixes
 
-* remove job start hook with senstive information ([#3986](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/3986)) ([bbcb470](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/bbcb4707f698b29c470c0aadf81c9ac2c37781f8)), closes [#3980](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/3980)
+* remove job start hook with sensitive information ([#3986](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/3986)) ([bbcb470](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/bbcb4707f698b29c470c0aadf81c9ac2c37781f8)), closes [#3980](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/3980)
 
 ## [5.12.1](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v5.12.0...v5.12.1) (2024-07-05)
 
@@ -777,7 +777,7 @@
 
 ### Bug Fixes
 
-* revert depedency update / broken release 5.10.2 ([#3885](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/3885)) ([7464f2b](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/7464f2bbb401c9c1b07d252c2572a4a970468e95))
+* revert dependency update / broken release 5.10.2 ([#3885](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/3885)) ([7464f2b](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/7464f2bbb401c9c1b07d252c2572a4a970468e95))
 
 ## [5.10.2](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v5.10.1...v5.10.2) (2024-04-25)
 
@@ -1020,7 +1020,7 @@
 
 ### ⚠ BREAKING CHANGES
 
-* remove depcrecated input and output variables ([#3567](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/3567))
+* remove deprecated input and output variables ([#3567](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/3567))
 * Change runner labels to list[string] and apply TFLint ([#3410](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/3410))
 * replace Amazon Linux 2 by Amazon Linux 2023 as default Linux AMI ([#3437](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/3437))
 
@@ -1032,7 +1032,7 @@
 ### Bug Fixes
 
 * Change runner labels to list[string] and apply TFLint ([#3410](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/3410)) ([0b398f2](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/0b398f2f1010e0af84022a6d11d696cdcb9eb1ec))
-* remove depcrecated input and output variables ([#3567](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/3567)) ([89c8575](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/89c8575bf5df80c9a0861ff63e72a5762edbdcfc))
+* remove deprecated input and output variables ([#3567](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/3567)) ([89c8575](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/89c8575bf5df80c9a0861ff63e72a5762edbdcfc))
 
 ## [4.7.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v4.6.0...v4.7.0) (2023-10-26)
 
@@ -1107,7 +1107,7 @@
 ### Bug Fixes
 
 * **lambda:** Bump the aws group in /lambdas with 5 updates ([#3483](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/3483)) ([1fad99d](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/1fad99d6df3bf8bb78d57feac08311776c60aa4f))
-* missing partion in ARN to support China or govCloud ([#3494](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/3494)) ([b0b3df6](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/b0b3df6d828ae239bc3fab712e5744ec7b4d2403))
+* missing partition in ARN to support China or govCloud ([#3494](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/3494)) ([b0b3df6](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/b0b3df6d828ae239bc3fab712e5744ec7b4d2403))
 
 ## [4.2.3](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v4.2.2...v4.2.3) (2023-09-12)
 
@@ -1210,7 +1210,7 @@
 ### Bug Fixes
 
 * add state for multi-runner default ami-filter ([#3373](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/3373)) ([f5b6ead](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/f5b6eade82163373fff8ee9f4dc07242a44a3b92))
-* broken AMI fileter ([#3371](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/3371)) ([999d139](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/999d139c49bbce4de681d95d4462adbccec5f4fa))
+* broken AMI filter ([#3371](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/3371)) ([999d139](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/999d139c49bbce4de681d95d4462adbccec5f4fa))
 * **lambda:** bump word-wrap from 1.2.3 to 1.2.4 in /lambdas ([#3374](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/3374)) ([c320253](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/c320253d8cd86a5190ef67e748e7d296e03ef788))
 * merge ami filters. ([999d139](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/999d139c49bbce4de681d95d4462adbccec5f4fa))
 * retry aws metadata token download ([#3292](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/3292)) ([5537474](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/553747418daaf92b6732615cdfc8df91a6295366))
@@ -1431,7 +1431,7 @@
 
 * add missing IAM permissions for runners from encrypted AMI ([#3049](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/3049)) ([e0819f6](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/e0819f616c3208835afc20187b8c28478cd0c5ff))
 * allow the instances to send metrics ([#3067](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/3067)) ([55c40ff](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/55c40ff9235451b070bdde03130af1fc0ce70590))
-* packer defintions missing required metadatatag for start script ([9c1fa8a](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/9c1fa8aaffc2de319eab5fbc8290ed3b1220d580))
+* packer definitions missing required metadatatag for start script ([9c1fa8a](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/9c1fa8aaffc2de319eab5fbc8290ed3b1220d580))
 * **runners:** bump aws-sdk from 2.1329.0 to 2.1337.0 in /modules/runners/lambdas/runners ([#3072](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/3072)) ([0e80518](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/0e8051816e4a3dff568a4a9ff14f6fe0a909a48f))
 * **runners:** increase the log level to WARN when using the enable_job_queued_check parameter ([#3046](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/3046)) ([1de73bf](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/1de73bf14c9c3898e079f3ef909d60838a7587d5))
 * **syncer:** bump axios from 1.3.3 to 1.3.4 in /modules/runner-binaries-syncer/lambdas/runner-binaries-syncer ([#3059](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/3059)) ([fa06b30](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/fa06b30dac859595a4b08226221e388490b6e250))
@@ -1849,7 +1849,7 @@ See the [GitHub release](https://github.com/github-aws-runners/terraform-aws-git
 ### Bug Fixes
 
 * don't apply extra labels unless defined ([#2181](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/2181)) ([c0b11bb](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/c0b11bb1a78eb1a2f0453031c04f781d33d3dc17))
-* Remove asterik in permission for runner lambda to describe instances ([9b9da03](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/9b9da036a723305531bd4b5f66addf2f219bc1af))
+* Remove asterisk in permission for runner lambda to describe instances ([9b9da03](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/9b9da036a723305531bd4b5f66addf2f219bc1af))
 
 ## [1.3.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v1.2.0...v1.3.0) (2022-06-14)
 
@@ -1918,7 +1918,7 @@ See the [GitHub release](https://github.com/github-aws-runners/terraform-aws-git
 
 ### Bug Fixes
 
-* Volume size is ingored ([#2014](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/2014)) ([b733248](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/b7332489f637ad94bcdceef1e0c7c46149f1e6a7)), closes [#1954](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/1954)
+* Volume size is ignored ([#2014](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/2014)) ([b733248](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/b7332489f637ad94bcdceef1e0c7c46149f1e6a7)), closes [#1954](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/1954)
 
 ### [0.40.2](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v0.40.1...v0.40.2) (2022-04-25)
 
@@ -2104,7 +2104,7 @@ See the [GitHub release](https://github.com/github-aws-runners/terraform-aws-git
 
 ### Bug Fixes
 
-* Dowload lambda see [#1541](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/1541) for details. ([#1542](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/1542)) ([7cb73c8](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/7cb73c8a5165564244a4d6ec842238de7a4b913b))
+* Download lambda see [#1541](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/1541) for details. ([#1542](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/1542)) ([7cb73c8](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/7cb73c8a5165564244a4d6ec842238de7a4b913b))
 
 ### [0.27.1](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v0.27.0...v0.27.1) (2021-12-21)
 
@@ -2306,7 +2306,7 @@ See the [GitHub release](https://github.com/github-aws-runners/terraform-aws-git
 ### Features
 
 * make delay of webhook event configurable ([#990](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/990)) ([92a0d8a](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/92a0d8a94b145c3e2fdcfa120907c17228583d93))
-* Store lambda secrets paramaters in Paramater Store ([#941](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/941)) ([c6badbf](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/c6badbf9e1cf6bbcdd6a9841b1f342ef5fbd1ed3)), closes [#871](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/871) [#898](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/898) [#738](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/738) [#902](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/902) [#738](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/738) [#905](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/905) [#906](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/906) [#904](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/904) [#1](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/1) [#752](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/752) [#909](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/909) [#752](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/752) [#908](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/908) [#752](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/752) [#887](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/887) [#752](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/752) [#885](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/885) [#752](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/752) [#889](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/889) [#752](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/752) [#892](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/892) [#752](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/752) [#907](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/907) [#752](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/752) [#864](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/864) [#918](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/918)
+* Store lambda secrets paramaters in Parameter Store ([#941](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/941)) ([c6badbf](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/c6badbf9e1cf6bbcdd6a9841b1f342ef5fbd1ed3)), closes [#871](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/871) [#898](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/898) [#738](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/738) [#902](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/902) [#738](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/738) [#905](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/905) [#906](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/906) [#904](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/904) [#1](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/1) [#752](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/752) [#909](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/909) [#752](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/752) [#908](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/908) [#752](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/752) [#887](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/887) [#752](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/752) [#885](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/885) [#752](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/752) [#889](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/889) [#752](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/752) [#892](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/892) [#752](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/752) [#907](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/907) [#752](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/752) [#864](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/864) [#918](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/918)
 
 
 ### Bug Fixes
@@ -2347,7 +2347,7 @@ See the [GitHub release](https://github.com/github-aws-runners/terraform-aws-git
 ### Bug Fixes
 
 * .gitignore for 'secrets.auto.tfvars' ([38d7df0](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/38d7df0f86581ea3a1f64b2673707cd0427eb8e3))
-* Add some essential dependecies on ubuntu example ([0079d16](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/0079d16b809fbb7391353e97bce429e295973dd5))
+* Add some essential dependencies on ubuntu example ([0079d16](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/0079d16b809fbb7391353e97bce429e295973dd5))
 * fail to download wrong tag of lambda ([#840](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/840)) ([1112ca8](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/1112ca8bb2da87cfe93fea17a8070fac8bd3598b))
 * increase runner sync lambda memory setting and upgrade npm dependencies ([#844](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/844)) ([b9e36e9](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/b9e36e9393c932b71817adefba411e420ba3aa65))
 * revert dependency updates on runner module ([#784](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/784)) ([76cdbe3](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/76cdbe3605269ca64e532b1f850de727ad85658f))
