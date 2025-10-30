@@ -17,7 +17,7 @@ resource "aws_apigatewayv2_route" "webhook" {
   lifecycle {
     ignore_changes = [
       # Ignore authorization related attributes to enable authenticator assignment to API route.
-      # NOTE: We consider the ignores as a system intenral. Future changes will not trigger a breakig change.
+      # NOTE: We consider the ignores as a system internal. Future changes will not trigger a breakig change.
       authorizer_id,
       authorization_type,
       authorization_scopes,

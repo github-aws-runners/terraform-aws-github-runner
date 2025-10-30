@@ -208,7 +208,7 @@ describe('Dispatcher', () => {
       expect(canRunJob(workflowLabels, runnerLabels, false)).toBe(true);
     });
 
-    it('should NOT accept job with for an exact match. Not all requested capabilites are supported.', () => {
+    it('should NOT accept job with for an exact match. Not all requested capabilities are supported.', () => {
       const workflowLabels = ['self-hosted', 'linux', 'x64', 'ubuntu-latest', 'gpu'];
       const runnerLabels = [['gpu']];
       expect(canRunJob(workflowLabels, runnerLabels, true)).toBe(false);
