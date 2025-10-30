@@ -41,10 +41,10 @@ variable "config" {
     }), {})
     lambda_tags       = optional(map(string), {})
     api_gw_source_arn = string
-    ssm_parameter_runner_matcher_config = object({
+    ssm_parameter_runner_matcher_config = list(object({
       name    = string
       arn     = string
       version = string
-    })
+    }))
   })
 }
