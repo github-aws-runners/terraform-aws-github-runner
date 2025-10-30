@@ -51,6 +51,10 @@ updates:
     commit-message:
       prefix: "fix(lambda)"
       prefix-development: "chore(lambda)"
+    # Ignore major version updates for Node.js related packages to keep aligned with Lambda runtime as configured via Terraform
+    ignore:
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "docker"
     directory: "/.ci/Dockerfile"
@@ -61,6 +65,10 @@ updates:
       - "docker"
     commit-message:
       prefix: "chore(docker)"
+    # Ignore major version updates for Node.js Docker images to keep aligned with Lambda runtime as configured via Terraform
+    ignore:
+      - dependency-name: "node"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "docker"
     directory: "/.devcontainer/Dockerfile"
@@ -71,6 +79,10 @@ updates:
       - "docker"
     commit-message:
       prefix: "chore(devcontainer)"
+    # Ignore major version updates for Node.js Docker images to keep aligned with Lambda runtime as configured via Terraform
+    ignore:
+      - dependency-name: "mcr.microsoft.com/vscode/devcontainers/typescript-node"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "pip"
     directory: "/.github/workflows/mkdocs"
