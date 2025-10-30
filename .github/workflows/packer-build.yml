@@ -8,6 +8,11 @@ on:
       - "images/**"
       - ".github/workflows/packer-build.yml"
       - "module/runners/templates/**"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 

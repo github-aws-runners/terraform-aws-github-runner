@@ -12,3 +12,6 @@ rules:
   dangerous-triggers:
     ignore:
       - semantic-check.yml:2
+  concurrency-limits:
+    ignore:
+      - release.yml
