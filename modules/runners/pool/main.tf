@@ -47,6 +47,7 @@ resource "aws_lambda_function" "pool" {
       POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.tracing_config.capture_http_requests
       POWERTOOLS_TRACER_CAPTURE_ERROR          = var.tracing_config.capture_error
       ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS     = jsonencode(var.config.runner.enable_on_demand_failover_for_errors)
+      SSM_PARAMETER_STORE_TAGS                 = var.config.lambda.parameter_store_tags
     }
   }
 
