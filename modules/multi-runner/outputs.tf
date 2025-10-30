@@ -45,10 +45,13 @@ output "webhook" {
 }
 
 output "ssm_parameters" {
-  value = { for k, v in local.github_app_parameters : k => {
-    name = v.name
-    arn  = v.arn
+  value = {
+    for k, v in local.github_app_parameters :
+    k => {
+      name = v.name
+      arn  = v.arn
     }
+    if v != null
   }
 }
 

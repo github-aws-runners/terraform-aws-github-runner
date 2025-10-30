@@ -10,6 +10,10 @@ const mockOctokit = {
   },
 };
 
+function setDefaults() {
+  process.env.PARAMETER_ENTERPRISE_PAT_NAME = 'github-pat-id';
+}
+
 vi.mock('../github/auth', async () => ({
   createGithubInstallationAuth: vi.fn().mockImplementation(async (installationId) => {
     return { token: 'token', type: 'installation', installationId: installationId };
@@ -22,29 +26,46 @@ vi.mock('@octokit/rest', async () => ({
   Octokit: vi.fn().mockImplementation(() => mockOctokit),
 }));
 
+vi.mock('@aws-github-runner/aws-ssm-util', async () => {
+  const actual = (await vi.importActual(
+    '@aws-github-runner/aws-ssm-util',
+  )) as typeof import('@aws-github-runner/aws-ssm-util');
+
+  return {
+    ...actual,
+    getParameter: vi.fn(),
+  };
+});
+
 // We've already mocked '../github/auth' above
 
 describe('Test getOctokit', () => {
   const data = [
     {
       description: 'Should look-up org installation if installationId is 0.',
-      input: { orgLevelRunner: false, installationId: 0 },
-      output: { callReposInstallation: true, callOrgInstallation: false },
+      input: { enableEnterpriseLevel: false, orgLevelRunner: false, installationId: 0 },
+      output: { callEnterpriseToken: false, callReposInstallation: true, callOrgInstallation: false },
     },
     {
       description: 'Should look-up org installation if installationId is 0.',
-      input: { orgLevelRunner: true, installationId: 0 },
-      output: { callReposInstallation: false, callOrgInstallation: true },
+      input: { enableEnterpriseLevel: false, orgLevelRunner: true, installationId: 0 },
+      output: { callEnterpriseToken: false, callReposInstallation: false, callOrgInstallation: true },
     },
     {
       description: 'Should not look-up org installation if provided in payload.',
-      input: { orgLevelRunner: true, installationId: 1 },
-      output: { callReposInstallation: false, callOrgInstallation: false },
+      input: { enableEnterpriseLevel: false, orgLevelRunner: true, installationId: 1 },
+      output: { callEnterpriseToken: false, callReposInstallation: false, callOrgInstallation: false },
+    },
+    {
+      description: 'Should not look-up org installation if enterprise is enabled.',
+      input: { enableEnterpriseLevel: true, orgLevelRunner: false, installationId: 1 },
+      output: { callEnterpriseToken: true, callReposInstallation: false, callOrgInstallation: false },
     },
   ];
 
   beforeEach(() => {
     vi.clearAllMocks();
+    setDefaults();
   });
 
   it.each(data)(`$description`, async ({ input, output }) => {
@@ -64,9 +85,12 @@ describe('Test getOctokit', () => {
       mockOctokit.apps.getOrgInstallation.mockRejectedValue(new Error('Error'));
     }
 
-    await expect(getOctokit('', input.orgLevelRunner, payload)).resolves.toBeDefined();
+    await expect(getOctokit('', input.enableEnterpriseLevel, input.orgLevelRunner, payload)).resolves.toBeDefined();
 
-    if (output.callOrgInstallation) {
+    if (output.callEnterpriseToken) {
+      expect(mockOctokit.apps.getOrgInstallation).not.toHaveBeenCalled();
+      expect(mockOctokit.apps.getRepoInstallation).not.toHaveBeenCalled();
+    } else if (output.callOrgInstallation) {
       expect(mockOctokit.apps.getOrgInstallation).toHaveBeenCalled();
       expect(mockOctokit.apps.getRepoInstallation).not.toHaveBeenCalled();
     } else if (output.callReposInstallation) {

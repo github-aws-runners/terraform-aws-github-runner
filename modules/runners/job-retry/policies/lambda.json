@@ -7,8 +7,15 @@
         "ssm:GetParameter"
       ],
       "Resource": [
-        "${github_app_key_base64_arn}",
-        "${github_app_id_arn}"
+%{ if github_app_key_base64_arn != null ~}
+                "${github_app_key_base64_arn}",
+%{ endif ~}
+%{ if github_app_id_arn != null ~}
+                "${github_app_id_arn}",
+%{ endif ~}
+%{ if enterprise_pat_arn != null ~}
+                "${enterprise_pat_arn}",
+%{ endif ~}
       ]
     },
     {

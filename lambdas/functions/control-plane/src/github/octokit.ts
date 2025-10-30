@@ -1,6 +1,7 @@
 import { Octokit } from '@octokit/rest';
 import { ActionRequestMessage } from '../scale-runners/scale-up';
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from './auth';
+import { getParameter } from '@aws-github-runner/aws-ssm-util';
 
 export async function getInstallationId(
   ghesApiUrl: string,
@@ -37,10 +38,17 @@ export async function getInstallationId(
  */
 export async function getOctokit(
   ghesApiUrl: string,
+  enableEnterpriseLevel: boolean,
   enableOrgLevel: boolean,
   payload: ActionRequestMessage,
 ): Promise<Octokit> {
-  const installationId = await getInstallationId(ghesApiUrl, enableOrgLevel, payload);
-  const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl);
-  return await createOctokitClient(ghAuth.token, ghesApiUrl);
+  let ghToken;
+  if (enableEnterpriseLevel) {
+    ghToken = await getParameter(process.env.PARAMETER_ENTERPRISE_PAT_NAME);
+  } else {
+    const installationId = await getInstallationId(ghesApiUrl, enableOrgLevel, payload);
+    ghToken = (await createGithubInstallationAuth(installationId, ghesApiUrl)).token;
+  }
+
+  return await createOctokitClient(ghToken, ghesApiUrl);
 }

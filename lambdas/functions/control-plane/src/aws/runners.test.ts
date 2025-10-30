@@ -661,7 +661,7 @@ function createRunnerConfig(runnerConfig: RunnerConfig): RunnerInputParameters {
 }
 
 interface ExpectedFleetRequestValues {
-  type: 'Repo' | 'Org';
+  type: 'Enterprise' | 'Repo' | 'Org';
   capacityType: DefaultTargetCapacityType;
   allocationStrategy: SpotAllocationStrategy;
   maxSpotPrice?: string;

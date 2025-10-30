@@ -1,37 +1,48 @@
+variable "enterprise_pat" {
+  description = "GitHub enterprise PAT. Used when not authenticating via GitHub App."
+  type        = string
+  default     = null
+}
+
 variable "github_app" {
   description = <<EOF
-  GitHub app parameters, see your github app.
-  You can optionally create the SSM parameters yourself and provide the ARN and name here, through the `*_ssm` attributes.
-  If you chose to provide the configuration values directly here,
-  please ensure the key is the base64-encoded `.pem` file (the output of `base64 app.private-key.pem`, not the content of `private-key.pem`).
-  Note: the provided SSM parameters arn and name have a precedence over the actual value (i.e `key_base64_ssm` has a precedence over `key_base64` etc).
+  GitHub app parameters.
   EOF
+
   type = object({
-    key_base64 = optional(string)
-    key_base64_ssm = optional(object({
-      arn  = string
-      name = string
-    }))
-    id = optional(string)
-    id_ssm = optional(object({
-      arn  = string
-      name = string
-    }))
-    webhook_secret = optional(string)
-    webhook_secret_ssm = optional(object({
-      arn  = string
-      name = string
-    }))
+    key_base64         = optional(string, null)
+    key_base64_ssm     = optional(object({ arn = string, name = string }))
+    id                 = optional(string, null)
+    id_ssm             = optional(object({ arn = string, name = string }))
+    webhook_secret     = optional(string)
+    webhook_secret_ssm = optional(object({ arn = string, name = string }))
   })
 
   validation {
-    condition     = (var.github_app.key_base64 != null || var.github_app.key_base64_ssm != null) && (var.github_app.id != null || var.github_app.id_ssm != null) && (var.github_app.webhook_secret != null || var.github_app.webhook_secret_ssm != null)
+    condition = (
+      // 1) Webhook secret is ALWAYS required (direct or SSM)
+      (var.github_app.webhook_secret != null || var.github_app.webhook_secret_ssm != null)
+      &&
+      // 2) key_*: exactly one source if provided (not both direct and SSM)
+      !(var.github_app.key_base64 != null && var.github_app.key_base64_ssm != null)
+      &&
+      // 3) id_*: exactly one source if provided (not both direct and SSM)
+      !(var.github_app.id != null && var.github_app.id_ssm != null)
+      &&
+      // 4) If key is provided, id must be provided (from any source), and vice versa
+      ((var.github_app.key_base64 != null || var.github_app.key_base64_ssm != null)
+        ==
+      (var.github_app.id != null || var.github_app.id_ssm != null))
+    )
+
     error_message = <<EOF
-     You must set all of the following parameters, choosing one option from each pair:
-      - `key_base64` or `key_base64_ssm`
-      - `id` or `id_ssm`
-      - `webhook_secret` or `webhook_secret_ssm`
-    EOF
+webhook_secret is required: set either `webhook_secret` or `webhook_secret_ssm`.
+
+For GitHub App credentials:
+- Provide key from exactly one source: `key_base64` XOR `key_base64_ssm`
+- Provide id  from exactly one source: `id` XOR `id_ssm`
+- If a key is provided, an id must also be provided (and vice versa)
+EOF
   }
 }
 
@@ -85,6 +96,9 @@ variable "multi_runner_config" {
       enable_job_queued_check                 = optional(bool, null)
       enable_on_demand_failover_for_errors    = optional(list(string), [])
       enable_organization_runners             = optional(bool, false)
+      enable_enterprise_runners               = optional(bool, false)
+      enterprise_slug                         = optional(string, "")
+      enterprise_pat                          = optional(string, "")
       enable_runner_binaries_syncer           = optional(bool, true)
       enable_ssm_on_runners                   = optional(bool, false)
       enable_userdata                         = optional(bool, true)
@@ -194,6 +208,8 @@ variable "multi_runner_config" {
         enable_job_queued_check: "Enables JIT configuration for creating runners instead of registration token based registraton. JIT configuration will only be applied for ephemeral runners. By default JIT confiugration is enabled for ephemeral runners an can be disabled via this override. When running on GHES without support for JIT configuration this variable should be set to true for ephemeral runners."
         enable_on_demand_failover_for_errors: "Enable on-demand failover. For example to fall back to on demand when no spot capacity is available the variable can be set to `InsufficientInstanceCapacity`. When not defined the default behavior is to retry later."
         enable_organization_runners: "Register runners to organization, instead of repo level"
+        enable_enterprise_runners: "Register runners to enterprise, instead of repo or organization level"
+        enterprise_slug: "Enterprise slug"
         enable_runner_binaries_syncer: "Option to disable the lambda to sync GitHub runner distribution, useful when using a pre-build AMI."
         enable_ssm_on_runners: "Enable to allow access the runner instances for debugging purposes via SSM. Note that this adds additional permissions to the runner instances."
         enable_userdata: "Should the userdata script be enabled for the runner. Set this to false if you are using your own prebuilt AMI."

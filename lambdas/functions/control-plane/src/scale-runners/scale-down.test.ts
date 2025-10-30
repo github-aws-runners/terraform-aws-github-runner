@@ -1,5 +1,6 @@
 import { Octokit } from '@octokit/rest';
 import { RequestError } from '@octokit/request-error';
+import * as aws_ssm from '@aws-github-runner/aws-ssm-util';
 import moment from 'moment';
 import nock from 'nock';
 
@@ -9,6 +10,8 @@ import { listEC2Runners, terminateRunner, tag, untag } from './../aws/runners';
 import { githubCache } from './cache';
 import { newestFirstStrategy, oldestFirstStrategy, scaleDown } from './scale-down';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+const routeHandlers = new Map();
 
 const mockOctokit = {
   apps: {
@@ -23,6 +26,11 @@ const mockOctokit = {
     getSelfHostedRunnerForOrg: vi.fn(),
     getSelfHostedRunnerForRepo: vi.fn(),
   },
+  request: vi.fn((route, params) => {
+    const handler = routeHandlers.get(route);
+    if (!handler) throw new Error(`Unmocked route: ${route}`);
+    return handler(params);
+  }),
   paginate: vi.fn(),
 };
 vi.mock('@octokit/rest', () => ({
@@ -39,6 +47,11 @@ vi.mock('./../aws/runners', async (importOriginal) => {
     listEC2Runners: vi.fn(),
   };
 });
+
+vi.mock('@aws-github-runner/aws-ssm-util', () => ({
+  getParameter: vi.fn(),
+}));
+
 vi.mock('./../github/auth', async () => ({
   createGithubAppAuth: vi.fn(),
   createGithubInstallationAuth: vi.fn(),
@@ -66,6 +79,7 @@ const mockListRunners = vi.mocked(listEC2Runners);
 const mockTagRunners = vi.mocked(tag);
 const mockUntagRunners = vi.mocked(untag);
 const mockTerminateRunners = vi.mocked(terminateRunner);
+const mockedGetParameter = vi.mocked(aws_ssm.getParameter);
 
 export interface TestData {
   repositoryName: string;
@@ -104,6 +118,7 @@ describe('Scale down runners', () => {
     nock.disableNetConnect();
     vi.clearAllMocks();
     vi.resetModules();
+    routeHandlers.clear();
     githubCache.clients.clear();
     githubCache.runners.clear();
     mockOctokit.apps.getOrgInstallation.mockImplementation(() => ({
@@ -159,6 +174,8 @@ describe('Scale down runners', () => {
       }
     });
 
+    mockedGetParameter.mockResolvedValue('dummy-enterprise-pat');
+
     mockTerminateRunners.mockImplementation(async () => {
       return;
     });
@@ -190,8 +207,8 @@ describe('Scale down runners', () => {
       }
     });
 
-    type RunnerType = 'Repo' | 'Org';
-    const runnerTypes: RunnerType[] = ['Org', 'Repo'];
+    type RunnerType = 'Repo' | 'Org' | 'Enterprise';
+    const runnerTypes: RunnerType[] = ['Org', 'Repo', 'Enterprise'];
     describe.each(runnerTypes)('For %s runners.', (type) => {
       it('Should not call terminate when no runners online.', async () => {
         // setup
@@ -222,6 +239,24 @@ describe('Scale down runners', () => {
         mockListRunners.mockResolvedValue(runners);
         mockAwsRunners(runners);
 
+        if (type === 'Enterprise') {
+          routeHandlers.set(
+            'GET /enterprises/{enterprise}/actions/runners/{runner_id}',
+            ({ enterprise, runner_id }: { enterprise: string; runner_id: string }) =>
+              Promise.resolve({
+                data: {
+                  id: runner_id,
+                  owner: enterprise,
+                  busy: runner_id.includes('busy') ? true : false,
+                  status: 'online',
+                },
+              }),
+          );
+          routeHandlers.set('DELETE /enterprises/{enterprise}/actions/runners/{runner_id}', () =>
+            Promise.resolve({ status: 204 }),
+          );
+        }
+
         await scaleDown();
 
         // assert
@@ -231,7 +266,7 @@ describe('Scale down runners', () => {
 
         if (type === 'Repo') {
           expect(mockOctokit.apps.getRepoInstallation).toHaveBeenCalled();
-        } else {
+        } else if (type === 'Org') {
           expect(mockOctokit.apps.getOrgInstallation).toHaveBeenCalled();
         }
 
@@ -373,10 +408,18 @@ describe('Scale down runners', () => {
           mockOctokit.actions.getSelfHostedRunnerForRepo.mockResolvedValueOnce({
             data: { id: 1234567890, name: orphanRunner.instanceId, busy: true, status: 'online' },
           });
-        } else {
+        } else if (type === 'Org') {
           mockOctokit.actions.getSelfHostedRunnerForOrg.mockResolvedValueOnce({
             data: { id: 1234567890, name: orphanRunner.instanceId, busy: true, status: 'online' },
           });
+        }
+
+        if (type === 'Enterprise') {
+          routeHandlers.set('GET /enterprises/{enterprise}/actions/runners/{runner_id}', () =>
+            Promise.resolve({
+              data: { id: 1234567890, name: orphanRunner.instanceId, busy: true, status: 'online' },
+            }),
+          );
         }
 
         // act
@@ -391,10 +434,21 @@ describe('Scale down runners', () => {
           mockOctokit.actions.getSelfHostedRunnerForRepo.mockResolvedValueOnce({
             data: { runnerId: 1234567890, name: orphanRunner.instanceId, busy: true, status: 'offline' },
           });
-        } else {
+        } else if (type === 'Org') {
           mockOctokit.actions.getSelfHostedRunnerForOrg.mockResolvedValueOnce({
             data: { runnerId: 1234567890, name: orphanRunner.instanceId, busy: true, status: 'offline' },
           });
+        }
+
+        if (type === 'Enterprise') {
+          routeHandlers.set('GET /enterprises/{enterprise}/actions/runners/{runner_id}', () =>
+            Promise.resolve({
+              data: { id: 1234567890, name: orphanRunner.instanceId, busy: true, status: 'offline' },
+            }),
+          );
+          routeHandlers.set('DELETE /enterprises/{enterprise}/actions/runners/{runner_id}', () =>
+            Promise.resolve({ status: 204 }),
+          );
         }
 
         // act
@@ -436,6 +490,15 @@ describe('Scale down runners', () => {
           mockOctokit.actions.getSelfHostedRunnerForOrg.mockRejectedValueOnce(error404);
         }
 
+        if (type === 'Enterprise') {
+          routeHandlers.set('GET /enterprises/{enterprise}/actions/runners/{runner_id}', () =>
+            Promise.resolve({ data: null }),
+          );
+          routeHandlers.set('DELETE /enterprises/{enterprise}/actions/runners/{runner_id}', () =>
+            Promise.resolve({ status: 204 }),
+          );
+        }
+
         // act
         await scaleDown();
 
@@ -469,8 +532,19 @@ describe('Scale down runners', () => {
 
         if (type === 'Repo') {
           mockOctokit.actions.getSelfHostedRunnerForRepo.mockRejectedValueOnce(error404);
-        } else {
+        } else if (type === 'Org') {
           mockOctokit.actions.getSelfHostedRunnerForOrg.mockRejectedValueOnce(error404);
+        }
+
+        if (type === 'Enterprise') {
+          routeHandlers.set(
+            'GET /enterprises/{enterprise}/actions/runners/{runner_id}',
+            ({ enterprise, runner_id }: { enterprise: string; runner_id: number }) =>
+              Promise.resolve({ data: { id: runner_id, owner: enterprise, busy: false, status: 'online' } }),
+          );
+          routeHandlers.set('DELETE /enterprises/{enterprise}/actions/runners/{runner_id}', () =>
+            Promise.resolve({ status: 204 }),
+          );
         }
 
         // act
@@ -508,7 +582,7 @@ describe('Scale down runners', () => {
 
         if (type === 'Repo') {
           mockOctokit.actions.getSelfHostedRunnerForRepo.mockRejectedValueOnce(error500);
-        } else {
+        } else if (type === 'Org') {
           mockOctokit.actions.getSelfHostedRunnerForOrg.mockRejectedValueOnce(error500);
         }
 
@@ -620,6 +694,7 @@ describe('Scale down runners', () => {
         };
 
         beforeEach(() => {
+          mockOctokit.request.mockClear();
           process.env.SCALE_DOWN_CONFIG = JSON.stringify([defaultConfig]);
         });
 
@@ -628,7 +703,7 @@ describe('Scale down runners', () => {
           const runnerToTerminateTime =
             evictionStrategy === 'oldest_first'
               ? MINIMUM_TIME_RUNNING_IN_MINUTES + 5
-              : MINIMUM_TIME_RUNNING_IN_MINUTES + 1;
+              : MINIMUM_TIME_RUNNING_IN_MINUTES + 2;
           const runners = [
             createRunnerTestData('idle-1', type, MINIMUM_TIME_RUNNING_IN_MINUTES + 4, true, false, false),
             createRunnerTestData('idle-to-terminate', type, runnerToTerminateTime, true, false, true),
@@ -636,6 +711,18 @@ describe('Scale down runners', () => {
 
           mockGitHubRunners(runners);
           mockAwsRunners(runners);
+
+          if (type === 'Enterprise') {
+            routeHandlers.set(
+              'GET /enterprises/{enterprise}/actions/runners/{runner_id}',
+              ({ enterprise, runner_id }: { enterprise: string; runner_id: number }) =>
+                Promise.resolve({ data: { id: runner_id, owner: enterprise, busy: false, status: 'online' } }),
+            );
+
+            routeHandlers.set('DELETE /enterprises/{enterprise}/actions/runners/{runner_id}', () =>
+              Promise.resolve({ status: 204 }),
+            );
+          }
 
           // act
           await scaleDown();
@@ -790,7 +877,7 @@ function mockGitHubRunners(runners: RunnerTestItem[]) {
 
 function createRunnerTestData(
   name: string,
-  type: 'Org' | 'Repo',
+  type: 'Enterprise' | 'Org' | 'Repo',
   minutesLaunchedAgo: number,
   registered: boolean,
   orphan: boolean,

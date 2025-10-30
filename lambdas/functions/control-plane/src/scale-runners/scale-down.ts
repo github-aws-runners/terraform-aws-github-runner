@@ -2,6 +2,7 @@ import { Octokit } from '@octokit/rest';
 import { Endpoints } from '@octokit/types';
 import { RequestError } from '@octokit/request-error';
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
+import { getParameter } from '@aws-github-runner/aws-ssm-util';
 import moment from 'moment';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
@@ -29,24 +30,31 @@ async function getOrCreateOctokit(runner: RunnerInfo): Promise<Octokit> {
 
   logger.debug(`[createGitHubClientForRunner] Cache miss for ${key}`);
   const { ghesApiUrl } = getGitHubEnterpriseApiUrl();
-  const ghAuthPre = await createGithubAppAuth(undefined, ghesApiUrl);
-  const githubClientPre = await createOctokitClient(ghAuthPre.token, ghesApiUrl);
+  const ghAuthPre =
+    runner.type === 'Enterprise'
+      ? await getParameter(process.env.PARAMETER_ENTERPRISE_PAT_NAME)
+      : (await createGithubAppAuth(undefined, ghesApiUrl)).token;
+  const githubClientPre = await createOctokitClient(ghAuthPre, ghesApiUrl);
 
   const installationId =
-    runner.type === 'Org'
-      ? (
-          await githubClientPre.apps.getOrgInstallation({
-            org: runner.owner,
-          })
-        ).data.id
-      : (
-          await githubClientPre.apps.getRepoInstallation({
-            owner: runner.owner.split('/')[0],
-            repo: runner.owner.split('/')[1],
-          })
-        ).data.id;
-  const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl);
-  const octokit = await createOctokitClient(ghAuth.token, ghesApiUrl);
+    runner.type === 'Enterprise'
+      ? undefined
+      : runner.type === 'Org'
+        ? (
+            await githubClientPre.apps.getOrgInstallation({
+              org: runner.owner,
+            })
+          ).data.id
+        : (
+            await githubClientPre.apps.getRepoInstallation({
+              owner: runner.owner.split('/')[0],
+              repo: runner.owner.split('/')[1],
+            })
+          ).data.id;
+
+  const ghToken =
+    runner.type === 'Enterprise' ? ghAuthPre : (await createGithubInstallationAuth(installationId, ghesApiUrl)).token;
+  const octokit = await createOctokitClient(ghToken, ghesApiUrl);
   githubCache.clients.set(key, octokit);
 
   return octokit;
@@ -59,16 +67,21 @@ async function getGitHubSelfHostedRunnerState(
 ): Promise<RunnerState | null> {
   try {
     const state =
-      ec2runner.type === 'Org'
-        ? await client.actions.getSelfHostedRunnerForOrg({
+      ec2runner.type === 'Enterprise'
+        ? await client.request('GET /enterprises/{enterprise}/actions/runners/{runner_id}', {
+            enterprise: ec2runner.owner,
             runner_id: runnerId,
-            org: ec2runner.owner,
           })
-        : await client.actions.getSelfHostedRunnerForRepo({
-            runner_id: runnerId,
-            owner: ec2runner.owner.split('/')[0],
-            repo: ec2runner.owner.split('/')[1],
-          });
+        : ec2runner.type === 'Org'
+          ? await client.actions.getSelfHostedRunnerForOrg({
+              runner_id: runnerId,
+              org: ec2runner.owner,
+            })
+          : await client.actions.getSelfHostedRunnerForRepo({
+              runner_id: runnerId,
+              owner: ec2runner.owner.split('/')[0],
+              repo: ec2runner.owner.split('/')[1],
+            });
     metricGitHubAppRateLimit(state.headers);
 
     return state.data;
@@ -103,17 +116,24 @@ async function listGitHubRunners(runner: RunnerInfo): Promise<GhRunners> {
 
   logger.debug(`[listGithubRunners] Cache miss for ${key}`);
   const client = await getOrCreateOctokit(runner);
-  const runners =
-    runner.type === 'Org'
-      ? await client.paginate(client.actions.listSelfHostedRunnersForOrg, {
-          org: runner.owner,
+
+  const runners: GhRunners =
+    runner.type === 'Enterprise'
+      ? await client.paginate('GET /enterprises/{enterprise}/actions/runners', {
+          enterprise: runner.owner,
           per_page: 100,
         })
-      : await client.paginate(client.actions.listSelfHostedRunnersForRepo, {
-          owner: runner.owner.split('/')[0],
-          repo: runner.owner.split('/')[1],
-          per_page: 100,
-        });
+      : runner.type === 'Org'
+        ? await client.paginate(client.actions.listSelfHostedRunnersForOrg, {
+            org: runner.owner,
+            per_page: 100,
+          })
+        : await client.paginate(client.actions.listSelfHostedRunnersForRepo, {
+            owner: runner.owner.split('/')[0],
+            repo: runner.owner.split('/')[1],
+            per_page: 100,
+          });
+
   githubCache.runners.set(key, runners);
   logger.debug(`[listGithubRunners] Cache set for ${key}`);
   logger.debug(`[listGithubRunners] Runners: ${JSON.stringify(runners)}`);
@@ -141,16 +161,21 @@ async function removeRunner(ec2runner: RunnerInfo, ghRunnerIds: number[]): Promi
       const statuses = await Promise.all(
         ghRunnerIds.map(async (ghRunnerId) => {
           return (
-            ec2runner.type === 'Org'
-              ? await githubAppClient.actions.deleteSelfHostedRunnerFromOrg({
+            ec2runner.type === 'Enterprise'
+              ? await githubAppClient.request('DELETE /enterprises/{enterprise}/actions/runners/{runner_id}', {
+                  enterprise: ec2runner.owner,
                   runner_id: ghRunnerId,
-                  org: ec2runner.owner,
                 })
-              : await githubAppClient.actions.deleteSelfHostedRunnerFromRepo({
-                  runner_id: ghRunnerId,
-                  owner: ec2runner.owner.split('/')[0],
-                  repo: ec2runner.owner.split('/')[1],
-                })
+              : ec2runner.type === 'Org'
+                ? await githubAppClient.actions.deleteSelfHostedRunnerFromOrg({
+                    runner_id: ghRunnerId,
+                    org: ec2runner.owner,
+                  })
+                : await githubAppClient.actions.deleteSelfHostedRunnerFromRepo({
+                    runner_id: ghRunnerId,
+                    owner: ec2runner.owner.split('/')[0],
+                    repo: ec2runner.owner.split('/')[1],
+                  })
           ).status;
         }),
       );

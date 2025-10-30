@@ -6,10 +6,13 @@ variable "config" {
     `architecture`: AWS Lambda architecture. Lambda functions using Graviton processors ('arm64') tend to have better price/performance than 'x86_64' functions.
     `environment_variables`: Environment variables for the lambda.
     `enable_organization_runners`: Enable organization runners.
+    `enable_enterprise_runners`: Enable enterprise runners.
+    `enterprise_slug`: GitHub enterprise slug.
     `enable_metric`: Enable metric for the lambda. If `spot_warning` is set to true, the lambda will emit a metric when it detects a spot termination warning.
     'ghes_url': Optional GitHub Enterprise Server URL.
     'user_agent': Optional User-Agent header for GitHub API requests.
     'github_app_parameters': Parameter Store for GitHub App Parameters.
+    'enterprise_pat = string': Personal Access Token for GitHub Enterprise. If set, the lambda will use this PAT to authenticate with the GitHub API.
     'kms_key_arn': Optional CMK Key ARN instead of using the default AWS managed key.
     `lambda_principals`: Add extra principals to the role created for execution of the lambda, e.g. for local testing.
     `lambda_tags`: Map of tags that will be added to created resources. By default resources will be tagged with name and environment.
@@ -38,13 +41,16 @@ variable "config" {
     aws_partition               = optional(string, null)
     architecture                = optional(string, null)
     enable_organization_runners = bool
+    enable_enterprise_runners   = bool
+    enterprise_slug             = string
     environment_variables       = optional(map(string), {})
     ghes_url                    = optional(string, null)
     user_agent                  = optional(string, null)
     github_app_parameters = object({
-      key_base64 = map(string)
-      id         = map(string)
+      key_base64 = optional(map(string))
+      id         = optional(map(string))
     })
+    enterprise_pat            = optional(map(string))
     kms_key_arn               = optional(string, null)
     lambda_tags               = optional(map(string), {})
     log_level                 = optional(string, null)

@@ -1,3 +1,5 @@
+data "aws_caller_identity" "current" {}
+
 resource "aws_lambda_function" "pool" {
 
   s3_bucket                      = var.config.lambda.s3_bucket != null ? var.config.lambda.s3_bucket : null
@@ -17,22 +19,25 @@ resource "aws_lambda_function" "pool" {
 
   environment {
     variables = {
-      AMI_ID_SSM_PARAMETER_NAME                = var.config.ami_id_ssm_parameter_name
-      DISABLE_RUNNER_AUTOUPDATE                = var.config.runner.disable_runner_autoupdate
-      ENABLE_EPHEMERAL_RUNNERS                 = var.config.runner.ephemeral
-      ENABLE_JIT_CONFIG                        = var.config.runner.enable_jit_config
-      ENVIRONMENT                              = var.config.prefix
-      GHES_URL                                 = var.config.ghes.url
-      USER_AGENT                               = var.config.user_agent
-      INSTANCE_ALLOCATION_STRATEGY             = var.config.instance_allocation_strategy
-      INSTANCE_MAX_SPOT_PRICE                  = var.config.instance_max_spot_price
-      INSTANCE_TARGET_CAPACITY_TYPE            = var.config.instance_target_capacity_type
-      INSTANCE_TYPES                           = join(",", var.config.instance_types)
-      LAUNCH_TEMPLATE_NAME                     = var.config.runner.launch_template.name
-      LOG_LEVEL                                = var.config.lambda.log_level
-      NODE_TLS_REJECT_UNAUTHORIZED             = var.config.ghes.url != null && !var.config.ghes.ssl_verify ? 0 : 1
-      PARAMETER_GITHUB_APP_ID_NAME             = var.config.github_app_parameters.id.name
-      PARAMETER_GITHUB_APP_KEY_BASE64_NAME     = var.config.github_app_parameters.key_base64.name
+      AMI_ID_SSM_PARAMETER_NAME            = var.config.ami_id_ssm_parameter_name
+      DISABLE_RUNNER_AUTOUPDATE            = var.config.runner.disable_runner_autoupdate
+      ENABLE_EPHEMERAL_RUNNERS             = var.config.runner.ephemeral
+      ENABLE_JIT_CONFIG                    = var.config.runner.enable_jit_config
+      ENVIRONMENT                          = var.config.prefix
+      GHES_URL                             = var.config.ghes.url
+      USER_AGENT                           = var.config.user_agent
+      INSTANCE_ALLOCATION_STRATEGY         = var.config.instance_allocation_strategy
+      INSTANCE_MAX_SPOT_PRICE              = var.config.instance_max_spot_price
+      INSTANCE_TARGET_CAPACITY_TYPE        = var.config.instance_target_capacity_type
+      INSTANCE_TYPES                       = join(",", var.config.instance_types)
+      LAUNCH_TEMPLATE_NAME                 = var.config.runner.launch_template.name
+      LOG_LEVEL                            = var.config.lambda.log_level
+      NODE_TLS_REJECT_UNAUTHORIZED         = var.config.ghes.url != null && !var.config.ghes.ssl_verify ? 0 : 1
+      PARAMETER_GITHUB_APP_ID_NAME         = var.config.enterprise_pat == null ? var.config.github_app_parameters.id.name : null
+      PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.config.enterprise_pat == null ? var.config.github_app_parameters.key_base64.name : null
+      PARAMETER_ENTERPRISE_PAT_NAME        = var.config.enterprise_pat != null ? var.config.enterprise_pat.name : null
+      ENABLE_ENTERPRISE_RUNNERS            = var.config.enable_enterprise_runners
+
       POWERTOOLS_LOGGER_LOG_EVENT              = var.config.lambda.log_level == "debug" ? "true" : "false"
       RUNNER_BOOT_TIME_IN_MINUTES              = var.config.runner.boot_time_in_minutes
       RUNNER_LABELS                            = lower(join(",", var.config.runner.labels))
@@ -87,11 +92,14 @@ resource "aws_iam_role_policy" "pool" {
   policy = templatefile("${path.module}/policies/lambda-pool.json", {
     arn_ssm_parameters_path_config = var.config.arn_ssm_parameters_path_config
     arn_runner_instance_role       = var.config.runner.role.arn
-    github_app_id_arn              = var.config.github_app_parameters.id.arn
-    github_app_key_base64_arn      = var.config.github_app_parameters.key_base64.arn
+    github_app_id_arn              = var.config.enterprise_pat == null ? var.config.github_app_parameters.id.arn : null
+    github_app_key_base64_arn      = var.config.enterprise_pat == null ? var.config.github_app_parameters.key_base64.arn : null
+    enterprise_pat_arn             = var.config.enterprise_pat != null ? var.config.enterprise_pat.arn : null
     kms_key_arn                    = var.config.kms_key_arn
     ami_kms_key_arn                = var.config.ami_kms_key_arn
-    ssm_ami_id_parameter_arn       = var.config.ami_id_ssm_parameter_arn
+    ssm_config_path                = "arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.config.ssm_config_path}"
+
+    ssm_ami_id_parameter_arn = var.config.ami_id_ssm_parameter_arn
   })
 }
 

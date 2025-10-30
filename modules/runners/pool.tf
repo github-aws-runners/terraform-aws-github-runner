@@ -11,6 +11,8 @@ module "pool" {
     }
     user_agent                    = var.user_agent
     github_app_parameters         = var.github_app_parameters
+    enterprise_pat                = var.enterprise_pat
+    enable_enterprise_runners     = var.enable_enterprise_runners
     instance_allocation_strategy  = var.instance_allocation_strategy
     instance_max_spot_price       = var.instance_max_spot_price
     instance_target_capacity_type = var.instance_target_capacity_type
@@ -61,5 +63,6 @@ module "pool" {
   }
 
   aws_partition  = var.aws_partition
+  aws_region     = var.aws_region
   tracing_config = var.tracing_config
 }
