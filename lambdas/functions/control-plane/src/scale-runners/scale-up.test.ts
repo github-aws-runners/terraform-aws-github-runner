@@ -35,7 +35,9 @@ const mockSSMClient = mockClient(SSMClient);
 const mockSSMgetParameter = vi.mocked(getParameter);
 
 vi.mock('@octokit/rest', () => ({
-  Octokit: vi.fn().mockImplementation(() => mockOctokit),
+  Octokit: vi.fn().mockImplementation(function () {
+    return mockOctokit;
+  }),
 }));
 
 vi.mock('./../aws/runners', async () => ({

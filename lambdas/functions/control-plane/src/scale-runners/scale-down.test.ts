@@ -26,7 +26,9 @@ const mockOctokit = {
   paginate: vi.fn(),
 };
 vi.mock('@octokit/rest', () => ({
-  Octokit: vi.fn().mockImplementation(() => mockOctokit),
+  Octokit: vi.fn().mockImplementation(function () {
+    return mockOctokit;
+  }),
 }));
 
 vi.mock('./../aws/runners', async (importOriginal) => {

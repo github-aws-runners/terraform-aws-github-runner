@@ -19,7 +19,9 @@ vi.mock('../github/auth', async () => ({
 }));
 
 vi.mock('@octokit/rest', async () => ({
-  Octokit: vi.fn().mockImplementation(() => mockOctokit),
+  Octokit: vi.fn().mockImplementation(function () {
+    return mockOctokit;
+  }),
 }));
 
 // We've already mocked '../github/auth' above
