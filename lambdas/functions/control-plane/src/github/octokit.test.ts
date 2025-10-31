@@ -19,7 +19,7 @@ vi.mock('../github/auth', async () => ({
 }));
 
 vi.mock('@octokit/rest', async () => ({
-  Octokit: vi.fn().mockImplementation(function() {
+  Octokit: vi.fn().mockImplementation(function () {
     return mockOctokit;
   }),
 }));

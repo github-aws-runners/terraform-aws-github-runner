@@ -8,7 +8,7 @@ const mockSQS = {
   }),
 };
 vi.mock('@aws-sdk/client-sqs', () => ({
-  SQS: vi.fn().mockImplementation(function() {
+  SQS: vi.fn().mockImplementation(function () {
     return mockSQS;
   }),
 }));

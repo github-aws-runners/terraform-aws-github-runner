@@ -26,7 +26,7 @@ const mockOctokit = {
   paginate: vi.fn(),
 };
 vi.mock('@octokit/rest', () => ({
-  Octokit: vi.fn().mockImplementation(function() {
+  Octokit: vi.fn().mockImplementation(function () {
     return mockOctokit;
   }),
 }));
