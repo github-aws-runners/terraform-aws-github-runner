@@ -4,10 +4,12 @@ locals {
   })
 
   github_app_parameters = {
-    id             = coalesce(var.github_app.id_ssm, module.ssm.parameters.github_app_id)
-    key_base64     = coalesce(var.github_app.key_base64_ssm, module.ssm.parameters.github_app_key_base64)
+    id             = var.enterprise_pat == null ? coalesce(var.github_app.id_ssm, module.ssm.parameters.github_app_id) : null
+    key_base64     = var.enterprise_pat == null ? coalesce(var.github_app.key_base64_ssm, module.ssm.parameters.github_app_key_base64) : null
     webhook_secret = coalesce(var.github_app.webhook_secret_ssm, module.ssm.parameters.github_app_webhook_secret)
   }
+
+  enterprise_pat = var.enterprise_pat != null ? module.ssm.parameters.enterprise_pat : null
 
   default_runner_labels = distinct(concat(["self-hosted", var.runner_os, var.runner_architecture]))
   runner_labels         = (var.runner_disable_default_labels == false) ? sort(concat(local.default_runner_labels, var.runner_extra_labels)) : var.runner_extra_labels
@@ -88,11 +90,12 @@ resource "aws_sqs_queue" "queued_builds_dlq" {
 }
 
 module "ssm" {
-  source      = "./modules/ssm"
-  kms_key_arn = var.kms_key_arn
-  path_prefix = "${local.ssm_root_path}/${var.ssm_paths.app}"
-  github_app  = var.github_app
-  tags        = local.tags
+  source         = "./modules/ssm"
+  kms_key_arn    = var.kms_key_arn
+  path_prefix    = "${local.ssm_root_path}/${var.ssm_paths.app}"
+  github_app     = var.github_app
+  enterprise_pat = var.enterprise_pat
+  tags           = local.tags
 }
 
 module "webhook" {
@@ -186,7 +189,10 @@ module "runners" {
 
   sqs_build_queue                      = aws_sqs_queue.queued_builds
   github_app_parameters                = local.github_app_parameters
+  enterprise_pat                       = local.enterprise_pat
   enable_organization_runners          = var.enable_organization_runners
+  enable_enterprise_runners            = var.enable_enterprise_runners
+  enterprise_slug                      = var.enterprise_slug
   enable_ephemeral_runners             = var.enable_ephemeral_runners
   enable_jit_config                    = var.enable_jit_config
   enable_job_queued_check              = var.enable_job_queued_check

@@ -1,5 +1,6 @@
 import { Octokit } from '@octokit/rest';
 import moment from 'moment-timezone';
+import * as aws_ssm from '@aws-github-runner/aws-ssm-util';
 import * as nock from 'nock';
 
 import { listEC2Runners } from '../aws/runners';
@@ -34,6 +35,10 @@ vi.mock('./../github/auth', async () => ({
   createOctokitClient: vi.fn(),
 }));
 
+vi.mock('@aws-github-runner/aws-ssm-util', () => ({
+  getParameter: vi.fn(),
+}));
+
 vi.mock('../scale-runners/scale-up', async () => ({
   scaleUp: vi.fn(),
   createRunners: vi.fn(),
@@ -47,6 +52,7 @@ vi.mock('../scale-runners/scale-up', async () => ({
 const mocktokit = Octokit as MockedClass<typeof Octokit>;
 const mockedAppAuth = vi.mocked(ghAuth.createGithubAppAuth);
 const mockedInstallationAuth = vi.mocked(ghAuth.createGithubInstallationAuth);
+const mockedGetParameter = vi.mocked(aws_ssm.getParameter);
 const mockCreateClient = vi.mocked(ghAuth.createOctokitClient);
 const mockListRunners = vi.mocked(listEC2Runners);
 
@@ -174,6 +180,7 @@ beforeEach(() => {
     installationId: 0,
   });
 
+  mockedGetParameter.mockResolvedValue('dummy-enterprise-pat');
   mockCreateClient.mockResolvedValue(new mocktokit());
 });
 
@@ -273,6 +280,24 @@ describe('Test simple pool.', () => {
         expect.objectContaining({ numberOfRunners: 3 }),
         expect.anything(),
       );
+    });
+
+    it('Uses Enterprise PAT from SSM when ENABLE_ENTERPRISE_RUNNERS=true', async () => {
+      process.env.ENABLE_ENTERPRISE_RUNNERS = 'true';
+      process.env.PARAMETER_ENTERPRISE_PAT_NAME = '/ssm/enterprise/pat';
+      mockedGetParameter.mockResolvedValue('enterprise-pat-123');
+
+      await adjust({ poolSize: 5 });
+
+      // createGithubInstallationAuth must NOT be called in enterprise mode
+      expect(ghAuth.createGithubInstallationAuth).not.toHaveBeenCalled();
+
+      // client is created with PAT
+      expect(ghAuth.createOctokitClient).toHaveBeenCalledWith(
+        'enterprise-pat-123',
+        'https://api.github.enterprise.something',
+      );
+      expect(createRunners).toHaveBeenCalled(); // still reaches scale-up if needed
     });
   });
 

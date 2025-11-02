@@ -31,41 +31,66 @@ variable "enable_organization_runners" {
   default     = false
 }
 
+variable "enterprise_slug" {
+  description = "Enterprise slug"
+  type        = string
+  default     = ""
+}
+
+variable "enable_enterprise_runners" {
+  description = "Enable enterprise-level runners; when true, authentication must use enterprise_pat."
+  type        = bool
+  default     = false
+}
+
+variable "enterprise_pat" {
+  description = "GitHub enterprise PAT. Used only when enable_enterprise_runners is true."
+  type        = string
+  default     = null
+}
+
 variable "github_app" {
   description = <<EOF
-  GitHub app parameters, see your github app.
-  You can optionally create the SSM parameters yourself and provide the ARN and name here, through the `*_ssm` attributes.
-  If you chose to provide the configuration values directly here,
-  please ensure the key is the base64-encoded `.pem` file (the output of `base64 app.private-key.pem`, not the content of `private-key.pem`).
-  Note: the provided SSM parameters arn and name have a precedence over the actual value (i.e `key_base64_ssm` has a precedence over `key_base64` etc).
+  GitHub app parameters.
   EOF
+
   type = object({
-    key_base64 = optional(string)
-    key_base64_ssm = optional(object({
-      arn  = string
-      name = string
-    }))
-    id = optional(string)
-    id_ssm = optional(object({
-      arn  = string
-      name = string
-    }))
-    webhook_secret = optional(string)
-    webhook_secret_ssm = optional(object({
-      arn  = string
-      name = string
-    }))
+    key_base64         = optional(string, null)
+    key_base64_ssm     = optional(object({ arn = string, name = string }))
+    id                 = optional(string, null)
+    id_ssm             = optional(object({ arn = string, name = string }))
+    webhook_secret     = optional(string)
+    webhook_secret_ssm = optional(object({ arn = string, name = string }))
   })
+
   validation {
-    condition     = (var.github_app.key_base64 != null || var.github_app.key_base64_ssm != null) && (var.github_app.id != null || var.github_app.id_ssm != null) && (var.github_app.webhook_secret != null || var.github_app.webhook_secret_ssm != null)
+    condition = (
+      # 1) Webhook secret is ALWAYS required (direct or SSM)
+      (var.github_app.webhook_secret != null || var.github_app.webhook_secret_ssm != null)
+      &&
+      # 2) key_*: exactly one source if provided (not both direct and SSM)
+      !(var.github_app.key_base64 != null && var.github_app.key_base64_ssm != null)
+      &&
+      # 3) id_*: exactly one source if provided (not both direct and SSM)
+      !(var.github_app.id != null && var.github_app.id_ssm != null)
+      &&
+      # 4) If key is provided, id must be provided (from any source), and vice versa
+      ((var.github_app.key_base64 != null || var.github_app.key_base64_ssm != null)
+        ==
+      (var.github_app.id != null || var.github_app.id_ssm != null))
+    )
+
     error_message = <<EOF
-     You must set all of the following parameters, choosing one option from each pair:
-      - `key_base64` or `key_base64_ssm`
-      - `id` or `id_ssm`
-      - `webhook_secret` or `webhook_secret_ssm`
-    EOF
+webhook_secret is required: set either `webhook_secret` or `webhook_secret_ssm`.
+
+For GitHub App credentials:
+- Provide key from exactly one source: `key_base64` XOR `key_base64_ssm`
+- Provide id  from exactly one source: `id` XOR `id_ssm`
+- If a key is provided, an id must also be provided (and vice versa)
+EOF
   }
 }
+
 
 variable "scale_down_schedule_expression" {
   description = "Scheduler expression to check every x for scale down."

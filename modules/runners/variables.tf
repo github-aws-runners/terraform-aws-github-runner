@@ -219,12 +219,27 @@ variable "enable_organization_runners" {
   type        = bool
 }
 
+variable "enable_enterprise_runners" {
+  description = "Register runners to organization, instead of repo or organization level"
+  type        = bool
+}
+
+variable "enterprise_slug" {
+  description = "Enterprise slug"
+  type        = string
+}
+
 variable "github_app_parameters" {
   description = "Parameter Store for GitHub App Parameters."
   type = object({
     key_base64 = map(string)
     id         = map(string)
   })
+}
+
+variable "enterprise_pat" {
+  description = "GitHub Enterprise PAT to use for registering runners to the enterprise. This is only required when `enable_enterprise_runners` is set to true."
+  type        = map(string)
 }
 
 variable "lambda_scale_down_memory_size" {
