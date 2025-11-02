@@ -6,8 +6,8 @@ on:
       - edited
       - synchronize
 permissions:
-  contents: read
-  pull-requests: read
+  contents: read # for actions/checkout
+  pull-requests: read # for amannn/action-semantic-pull-request to check PR details
 jobs:
   main:
     name: Semantic Commit Message Check

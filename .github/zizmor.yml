@@ -1,9 +1,14 @@
 rules:
-  artipacked:
+  unpinned-uses:
+    config:
+      policies:
+        actions/*: hash-pin
+  unpinned-images:
     ignore:
-      # update docs requires token to be persisted
-      - update-docs.yml:61:9
+      # ignore, since CI is checking latest
+      - terraform.yml:22
+      - terraform.yml:96
+      - terraform.yml:161
   dangerous-triggers:
     ignore:
-      # semantic check with only a read only token
-      - semantic-check.yml:2:1
+      - semantic-check.yml:2

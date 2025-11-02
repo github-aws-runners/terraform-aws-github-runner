@@ -1,5 +1,33 @@
 # Changelog
 
+## [6.8.4](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.8.3...v6.8.4) (2025-10-22)
+
+
+### Bug Fixes
+
+* **lambda:** bump the aws group in /lambdas with 7 updates ([#4837](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4837)) ([7f707c5](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/7f707c5acec38bb60a347718d99de2d54d5ff3e4))
+
+## [6.8.3](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.8.2...v6.8.3) (2025-10-17)
+
+
+### Bug Fixes
+
+* **lambda:** bump the aws group in /lambdas with 6 updates ([#4828](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4828)) ([759539d](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/759539d147da7b914d78180e9b80abfd9893faf8))
+
+## [6.8.2](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.8.1...v6.8.2) (2025-10-04)
+
+
+### Bug Fixes
+
+* **lambda:** Update all dependencies, cleanup lock file and force non… ([#4809](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4809)) ([b20180a](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/b20180a24ca136b81138a77353d0e1d1e4eefced))
+
+## [6.8.1](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.8.0...v6.8.1) (2025-10-04)
+
+
+### Bug Fixes
+
+* prevent unnecessary updates when cpu_options is unset ([#4806](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4806)) ([8a1cd6f](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/8a1cd6f5c7a956d15d7eafa9f45ea5405179887a))
+
 ## [6.8.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.7.9...v6.8.0) (2025-10-03)
 
 
