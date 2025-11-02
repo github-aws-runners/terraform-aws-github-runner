@@ -14,8 +14,9 @@ declare namespace NodeJS {
     PARAMETER_GITHUB_APP_CLIENT_SECRET_NAME: string;
     PARAMETER_GITHUB_APP_ID_NAME: string;
     PARAMETER_GITHUB_APP_KEY_BASE64_NAME: string;
+    RUNNER_BOOT_TIME_IN_MINUTES: string;
     RUNNER_OWNER: string;
-    SCALE_DOWN_CONFIG: string;
+    SCALE_DOWN_CONFIG_SSM_PATH_PREFIX: string;
     SSM_TOKEN_PATH: string;
     SSM_CLEANUP_CONFIG: string;
     SUBNET_IDS: string;

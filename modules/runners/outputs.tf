@@ -19,15 +19,19 @@ output "role_scale_up" {
 }
 
 output "lambda_scale_down" {
-  value = aws_lambda_function.scale_down
+  value = try(module.scale_down[0].lambda, null)
 }
 
 output "lambda_scale_down_log_group" {
-  value = aws_cloudwatch_log_group.scale_down
+  value = try(module.scale_down[0].lambda_log_group, null)
 }
 
 output "role_scale_down" {
-  value = aws_iam_role.scale_down
+  value = try(module.scale_down[0].role, null)
+}
+
+output "scale_down_ssm_parameters" {
+  value = try(module.scale_down[0].ssm_parameters, null)
 }
 
 output "lambda_pool" {

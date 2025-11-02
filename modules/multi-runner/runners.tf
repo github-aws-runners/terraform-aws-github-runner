@@ -42,7 +42,7 @@ module "runners" {
   disable_runner_autoupdate            = each.value.runner_config.disable_runner_autoupdate
   enable_managed_runner_security_group = var.enable_managed_runner_security_group
   enable_runner_detailed_monitoring    = each.value.runner_config.enable_runner_detailed_monitoring
-  scale_down_schedule_expression       = each.value.runner_config.scale_down_schedule_expression
+  scale_down_schedule_expression       = null # multi-runner handles scaling down all runners
   minimum_running_time_in_minutes      = each.value.runner_config.minimum_running_time_in_minutes
   runner_boot_time_in_minutes          = each.value.runner_config.runner_boot_time_in_minutes
   runner_disable_default_labels        = each.value.runner_config.runner_disable_default_labels
@@ -69,6 +69,7 @@ module "runners" {
   lambda_timeout_scale_up          = var.runners_scale_up_lambda_timeout
   lambda_scale_down_memory_size    = var.scale_down_lambda_memory_size
   lambda_timeout_scale_down        = var.runners_scale_down_lambda_timeout
+  scale_down_parameter_store_tier  = var.scale_down_parameter_store_tier
   lambda_subnet_ids                = var.lambda_subnet_ids
   lambda_security_group_ids        = var.lambda_security_group_ids
   lambda_tags                      = var.lambda_tags

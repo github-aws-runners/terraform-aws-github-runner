@@ -37,6 +37,7 @@ export async function adjust(event: PoolEvent): Promise<void> {
   const instanceAllocationStrategy = process.env.INSTANCE_ALLOCATION_STRATEGY || 'lowest-price'; // same as AWS default
   const runnerOwner = process.env.RUNNER_OWNER;
   const amiIdSsmParameterName = process.env.AMI_ID_SSM_PARAMETER_NAME;
+  const runnerBootTimeInMinutes = parseInt(process.env.RUNNER_BOOT_TIME_IN_MINUTES || '5');
   const tracingEnabled = yn(process.env.POWERTOOLS_TRACE_ENABLED, { default: false });
   const onDemandFailoverOnError = process.env.ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS
     ? (JSON.parse(process.env.ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS) as [string])
@@ -63,7 +64,7 @@ export async function adjust(event: PoolEvent): Promise<void> {
     statuses: ['running'],
   });
 
-  const numberOfRunnersInPool = calculatePooSize(ec2runners, runnerStatusses);
+  const numberOfRunnersInPool = calculatePooSize(ec2runners, runnerStatusses, runnerBootTimeInMinutes);
   const topUp = event.poolSize - numberOfRunnersInPool;
 
   if (topUp > 0) {
@@ -115,7 +116,7 @@ async function getInstallationId(ghesApiUrl: string, org: string): Promise<numbe
   ).data.id;
 }
 
-function calculatePooSize(ec2runners: RunnerList[], runnerStatus: Map<string, RunnerStatus>): number {
+function calculatePooSize(ec2runners: RunnerList[], runnerStatus: Map<string, RunnerStatus>, runnerBootTimeInMinutes: number): number {
   // Runner should be considered idle if it is still booting, or is idle in GitHub
   let numberOfRunnersInPool = 0;
   for (const ec2Instance of ec2runners) {
@@ -127,7 +128,7 @@ function calculatePooSize(ec2runners: RunnerList[], runnerStatus: Map<string, Ru
       logger.debug(`Runner ${ec2Instance.instanceId} is idle in GitHub and counted as part of the pool`);
     } else if (runnerStatus.get(ec2Instance.instanceId) != null) {
       logger.debug(`Runner ${ec2Instance.instanceId} is not idle in GitHub and NOT counted as part of the pool`);
-    } else if (!bootTimeExceeded(ec2Instance)) {
+    } else if (!bootTimeExceeded(ec2Instance, runnerBootTimeInMinutes)) {
       numberOfRunnersInPool++;
       logger.info(`Runner ${ec2Instance.instanceId} is still booting and counted as part of the pool`);
     } else {

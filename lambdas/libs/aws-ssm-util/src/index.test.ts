@@ -1,6 +1,8 @@
 import {
   GetParameterCommand,
   GetParameterCommandOutput,
+  GetParametersByPathCommand,
+  GetParametersByPathCommandOutput,
   PutParameterCommand,
   PutParameterCommandOutput,
   SSMClient,
@@ -9,7 +11,7 @@ import 'aws-sdk-client-mock-jest/vitest';
 import { mockClient } from 'aws-sdk-client-mock';
 import nock from 'nock';
 
-import { getParameter, putParameter, SSM_ADVANCED_TIER_THRESHOLD } from '.';
+import { getParameter, getParametersByPath, putParameter, SSM_ADVANCED_TIER_THRESHOLD } from '.';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 const mockSSMClient = mockClient(SSMClient);
@@ -18,6 +20,7 @@ const cleanEnv = process.env;
 beforeEach(() => {
   vi.resetModules();
   vi.clearAllMocks();
+  mockSSMClient.reset();
   process.env = { ...cleanEnv };
   nock.disableNetConnect();
 });
@@ -163,6 +166,129 @@ describe('Test getParameter and putParameter', () => {
       Value: parameterValue,
       Type: 'String',
       Tier: expectedTier,
+    });
+  });
+
+  describe('getParametersByPath', () => {
+    it('returns parameters for single page result', async () => {
+      const output: GetParametersByPathCommandOutput = {
+        Parameters: [
+          { Name: '/path/param1', Value: 'value1' },
+          { Name: '/path/param2', Value: 'value2' },
+        ],
+        $metadata: { httpStatusCode: 200 },
+      };
+
+      mockSSMClient.on(GetParametersByPathCommand).resolves(output);
+
+      await expect(getParametersByPath('/path')).resolves.toEqual({
+        '/path/param1': 'value1',
+        '/path/param2': 'value2',
+      });
+    });
+
+    it('paginates over multiple responses', async () => {
+      const firstPage: GetParametersByPathCommandOutput = {
+        Parameters: [{ Name: '/path/param1', Value: 'value1' }],
+        NextToken: 'TOKEN',
+        $metadata: { httpStatusCode: 200 },
+      };
+      const secondPage: GetParametersByPathCommandOutput = {
+        Parameters: [{ Name: '/path/param2', Value: 'value2' }],
+        $metadata: { httpStatusCode: 200 },
+      };
+
+      mockSSMClient
+        .on(GetParametersByPathCommand, { Path: '/path', Recursive: false, WithDecryption: true })
+        .resolvesOnce(firstPage)
+        .resolvesOnce(secondPage);
+
+      const result = await getParametersByPath('/path');
+
+      expect(result).toEqual({ '/path/param1': 'value1', '/path/param2': 'value2' });
+      expect(mockSSMClient).toHaveReceivedCommandTimes(GetParametersByPathCommand, 2);
+    });
+
+    it('returns empty record when path is empty', async () => {
+      await expect(getParametersByPath('')).resolves.toEqual({});
+      expect(mockSSMClient).not.toHaveReceivedCommand(GetParametersByPathCommand);
+    });
+
+    it('returns empty record when no parameters exist at path', async () => {
+      const output: GetParametersByPathCommandOutput = {
+        Parameters: [],
+        $metadata: { httpStatusCode: 200 },
+      };
+
+      mockSSMClient.on(GetParametersByPathCommand).resolves(output);
+
+      await expect(getParametersByPath('/path')).resolves.toEqual({});
+    });
+
+    it('uses recursive option when specified', async () => {
+      const output: GetParametersByPathCommandOutput = {
+        Parameters: [{ Name: '/path/nested/param1', Value: 'value1' }],
+        $metadata: { httpStatusCode: 200 },
+      };
+
+      mockSSMClient
+        .on(GetParametersByPathCommand, { Path: '/path', Recursive: true, WithDecryption: true })
+        .resolves(output);
+
+      const result = await getParametersByPath('/path', { recursive: true });
+
+      expect(result).toEqual({ '/path/nested/param1': 'value1' });
+      expect(mockSSMClient).toHaveReceivedCommandWith(GetParametersByPathCommand, {
+        Path: '/path',
+        Recursive: true,
+        WithDecryption: true,
+      });
+    });
+
+    it.each([
+      {
+        description: 'filters out parameters with missing Name',
+        mockParameters: [
+          { Name: '/path/param1', Value: 'value1' },
+          { Value: 'value2' }, // no Name
+        ],
+        expectedOutput: { '/path/param1': 'value1' },
+      },
+      {
+        description: 'filters out parameters with undefined Value',
+        mockParameters: [
+          { Name: '/path/param1', Value: 'value1' },
+          { Name: '/path/param2' }, // undefined Value
+        ],
+        expectedOutput: { '/path/param1': 'value1' },
+      },
+      {
+        description: 'includes parameters with empty string Value',
+        mockParameters: [
+          { Name: '/path/param1', Value: '' },
+          { Name: '/path/param2', Value: 'value2' },
+        ],
+        expectedOutput: { '/path/param1': '', '/path/param2': 'value2' },
+      },
+      {
+        description: 'handles mix of valid and invalid parameters',
+        mockParameters: [
+          { Name: '/path/param1', Value: 'value1' },
+          { Value: 'no-name' },
+          { Name: '/path/param2' }, // undefined Value
+          { Name: '/path/param3', Value: 'value3' },
+        ],
+        expectedOutput: { '/path/param1': 'value1', '/path/param3': 'value3' },
+      },
+    ])('$description', async ({ mockParameters, expectedOutput }) => {
+      const output: GetParametersByPathCommandOutput = {
+        Parameters: mockParameters,
+        $metadata: { httpStatusCode: 200 },
+      };
+
+      mockSSMClient.on(GetParametersByPathCommand).resolves(output);
+
+      await expect(getParametersByPath('/path')).resolves.toEqual(expectedOutput);
     });
   });
 });

@@ -19,7 +19,6 @@ runner_config:
     - m5a.large
   runners_maximum_count: 1
   delay_webhook_event: 0
-  scale_down_schedule_expression: cron(* * * * ? *)
   userdata_template: ./templates/user-data.sh
   ami:
     owners:

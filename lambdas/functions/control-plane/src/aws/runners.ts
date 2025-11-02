@@ -298,8 +298,7 @@ async function createInstances(
 }
 
 // If launchTime is undefined, this will return false
-export function bootTimeExceeded(ec2Runner: { launchTime?: Date }): boolean {
-  const runnerBootTimeInMinutes = process.env.RUNNER_BOOT_TIME_IN_MINUTES;
+export function bootTimeExceeded(ec2Runner: { launchTime?: Date }, runnerBootTimeInMinutes: number): boolean {
   const launchTimePlusBootTime = moment(ec2Runner.launchTime).utc().add(runnerBootTimeInMinutes, 'minutes');
   return launchTimePlusBootTime < moment(new Date()).utc();
 }

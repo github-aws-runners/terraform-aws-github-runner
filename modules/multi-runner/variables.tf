@@ -104,7 +104,6 @@ variable "multi_runner_config" {
       runner_run_as                           = optional(string, "ec2-user")
       runners_maximum_count                   = number
       runner_additional_security_group_ids    = optional(list(string), [])
-      scale_down_schedule_expression          = optional(string, "cron(*/5 * * * ? *)")
       scale_up_reserved_concurrent_executions = optional(number, 1)
       userdata_template                       = optional(string, null)
       userdata_content                        = optional(string, null)
@@ -213,10 +212,9 @@ variable "multi_runner_config" {
         runner_name_prefix: "Prefix for the GitHub runner name."
         runner_run_as: "Run the GitHub actions agent as user."
         runners_maximum_count: "The maximum number of runners that will be created. Setting the variable to `-1` desiables the maximum check."
-        scale_down_schedule_expression: "Scheduler expression to check every x for scale down."
         scale_up_reserved_concurrent_executions: "Amount of reserved concurrent executions for the scale-up lambda function. A value of 0 disables lambda from being triggered and -1 removes any concurrency limitations."
         userdata_template: "Alternative user-data template, replacing the default template. By providing your own user_data you have to take care of installing all required software, including the action runner. Variables userdata_pre/post_install are ignored."
-        enable_jit_config "Overwrite the default behavior for JIT configuration. By default JIT configuration is enabled for ephemeral runners and disabled for non-ephemeral runners. In case of GHES check first if the JIT config API is avaialbe. In case you upgradeing from 3.x to 4.x you can set `enable_jit_config` to `false` to avoid a breaking change when having your own AMI."
+        enable_jit_config: "Overwrite the default behavior for JIT configuration. By default JIT configuration is enabled for ephemeral runners and disabled for non-ephemeral runners. In case of GHES check first if the JIT config API is avaialbe. In case you upgradeing from 3.x to 4.x you can set `enable_jit_config` to `false` to avoid a breaking change when having your own AMI."
         enable_runner_detailed_monitoring: "Should detailed monitoring be enabled for the runner. Set this to true if you want to use detailed monitoring. See https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-cloudwatch-new.html for details."
         enable_cloudwatch_agent: "Enabling the cloudwatch agent on the ec2 runner instances, the runner contains default config. Configuration can be overridden via `cloudwatch_config`."
         cloudwatch_config: "(optional) Replaces the module default cloudwatch log config. See https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-Configuration-File-Details.html for details."
@@ -266,6 +264,22 @@ variable "runners_scale_down_lambda_timeout" {
   description = "Time out for the scale down lambda in seconds."
   type        = number
   default     = 60
+}
+
+variable "scale_down_schedule_expression" {
+  description = "Scheduler expression to check every x for scale down."
+  type        = string
+  default     = "cron(*/5 * * * ? *)"
+}
+
+variable "scale_down_parameter_store_tier" {
+  description = "SSM Parameter Store tier used to store consolidated scale-down configuration."
+  type        = string
+  default     = "Standard"
+  validation {
+    condition     = contains(["Standard", "Advanced"], var.scale_down_parameter_store_tier)
+    error_message = "`scale_down_parameter_store_tier` must be either `Standard` or `Advanced`."
+  }
 }
 
 variable "webhook_lambda_zip" {

@@ -1,0 +1,76 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeInstances",
+        "ec2:DescribeTags"
+      ],
+      "Resource": [
+        "*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ec2:TerminateInstances",
+        "ec2:CreateTags",
+        "ec2:DeleteTags"
+      ],
+      "Resource": [
+        "*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "ec2:ResourceTag/ghr:Application": "github-action-runner"
+        }
+      }
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ec2:TerminateInstances",
+        "ec2:CreateTags",
+        "ec2:DeleteTags"
+      ],
+      "Resource": [
+        "*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "ec2:ResourceTag/ghr:environment": ${environments}
+        }
+      }
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ssm:GetParameter"
+      ],
+      "Resource": [
+        "${github_app_key_base64_arn}",
+        "${github_app_id_arn}"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ssm:GetParametersByPath"
+      ],
+      "Resource": [
+        "${arn_ssm_parameters_path_scale_down_config}",
+        "${arn_ssm_parameters_path_scale_down_config}/*"
+      ]
+%{ if kms_key_arn != "" ~}
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "kms:Decrypt"
+      ],
+      "Resource": "${kms_key_arn}"
+%{ endif ~}
+    }
+  ]
+}

@@ -98,7 +98,6 @@ module "runners" {
   #        runner_extra_labels             = ["amazon"]
   #        runners_maximum_count           = 1
   #        enable_ephemeral_runners        = true
-  #        scale_down_schedule_expression  = "cron(* * * * ? *)"
   #      }
   #    }
   #  }
@@ -107,6 +106,7 @@ module "runners" {
   subnet_ids                        = module.base.vpc.private_subnets
   runners_scale_up_lambda_timeout   = 60
   runners_scale_down_lambda_timeout = 60
+  scale_down_schedule_expression    = "cron(* * * * ? *)"
   prefix                            = local.environment
   tags = {
     Project = "ProjectX"

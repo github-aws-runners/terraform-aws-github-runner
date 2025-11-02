@@ -14,12 +14,6 @@ The action runners are created via a launch template; in the launch template onl
 
 The scale up lambda is triggered by events on a SQS queue. Events on this queue are delayed, which will give the workflow some time to start running on available runners. For each event the lambda will check if the workflow is still queued and no other limits are reached. In that case the lambda will create a new EC2 instance. The lambda only needs to know which launch template to use and which subnets are available. From the available subnets a random one will be chosen. Once the instance is created the event is assumed as handled, and we assume the workflow wil start at some moment once the created instance is ready.
 
-### Lambda scale down
-
-The scale down lambda is triggered via a CloudWatch event. The event is triggered by a cron expression defined in the variable `scale_down_schedule_expression` (https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html). For scaling down GitHub does not provide a good API yet, therefore we run the scaling down based on this event every x minutes. Each time the lambda is triggered it tries to remove all runners older than x minutes (configurable) managed in this deployment. In case the runner can be removed from GitHub, which means it is not executing a workflow, the lambda will terminate the EC2 instance.
-
---8<-- "modules/runners/scale-down-state-diagram.md:mkdocs_scale_down_state_diagram"
-
 ## Lambda Function
 
 The Lambda function is written in [TypeScript](https://www.typescriptlang.org/) and requires Node 12.x and yarn. Sources are located in [./lambdas/runners]. Two lambda functions share the same sources, there is one entry point for `scaleDown` and another one for `scaleUp`.
@@ -67,23 +61,20 @@ yarn run dist
 |------|--------|---------|
 | <a name="module_job_retry"></a> [job\_retry](#module\_job\_retry) | ./job-retry | n/a |
 | <a name="module_pool"></a> [pool](#module\_pool) | ./pool | n/a |
+| <a name="module_scale_down"></a> [scale\_down](#module\_scale\_down) | ./scale-down | n/a |
 
 ## Resources
 
 | Name | Type |
 |------|------|
-| [aws_cloudwatch_event_rule.scale_down](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_event_rule) | resource |
 | [aws_cloudwatch_event_rule.ssm_housekeeper](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_event_rule) | resource |
-| [aws_cloudwatch_event_target.scale_down](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_event_target) | resource |
 | [aws_cloudwatch_event_target.ssm_housekeeper](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_event_target) | resource |
 | [aws_cloudwatch_log_group.gh_runners](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_log_group) | resource |
-| [aws_cloudwatch_log_group.scale_down](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_log_group) | resource |
 | [aws_cloudwatch_log_group.scale_up](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_log_group) | resource |
 | [aws_cloudwatch_log_group.ssm_housekeeper](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_log_group) | resource |
 | [aws_iam_instance_profile.runner](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_instance_profile) | resource |
 | [aws_iam_policy.ami_id_ssm_parameter_read](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy) | resource |
 | [aws_iam_role.runner](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
-| [aws_iam_role.scale_down](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
 | [aws_iam_role.scale_up](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
 | [aws_iam_role.ssm_housekeeper](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
 | [aws_iam_role_policy.cloudwatch](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy) | resource |
@@ -93,9 +84,6 @@ yarn run dist
 | [aws_iam_role_policy.ec2](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy) | resource |
 | [aws_iam_role_policy.job_retry_sqs_publish](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy) | resource |
 | [aws_iam_role_policy.runner_session_manager_aws_managed](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy) | resource |
-| [aws_iam_role_policy.scale_down](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy) | resource |
-| [aws_iam_role_policy.scale_down_logging](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy) | resource |
-| [aws_iam_role_policy.scale_down_xray](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy) | resource |
 | [aws_iam_role_policy.scale_up](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy) | resource |
 | [aws_iam_role_policy.scale_up_logging](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy) | resource |
 | [aws_iam_role_policy.scale_up_xray](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy) | resource |
@@ -106,15 +94,12 @@ yarn run dist
 | [aws_iam_role_policy.ssm_parameters](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy) | resource |
 | [aws_iam_role_policy_attachment.ami_id_ssm_parameter_read](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
 | [aws_iam_role_policy_attachment.managed_policies](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
-| [aws_iam_role_policy_attachment.scale_down_vpc_execution_role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
 | [aws_iam_role_policy_attachment.scale_up_vpc_execution_role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
 | [aws_iam_role_policy_attachment.ssm_housekeeper_vpc_execution_role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
 | [aws_iam_role_policy_attachment.xray_tracing](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
 | [aws_lambda_event_source_mapping.scale_up](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lambda_event_source_mapping) | resource |
-| [aws_lambda_function.scale_down](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lambda_function) | resource |
 | [aws_lambda_function.scale_up](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lambda_function) | resource |
 | [aws_lambda_function.ssm_housekeeper](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lambda_function) | resource |
-| [aws_lambda_permission.scale_down](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lambda_permission) | resource |
 | [aws_lambda_permission.scale_runners_lambda](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lambda_permission) | resource |
 | [aws_lambda_permission.ssm_housekeeper](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lambda_permission) | resource |
 | [aws_launch_template.runner](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template) | resource |
@@ -221,7 +206,8 @@ yarn run dist
 | <a name="input_runners_lambda_s3_object_version"></a> [runners\_lambda\_s3\_object\_version](#input\_runners\_lambda\_s3\_object\_version) | S3 object version for runners lambda function. Useful if S3 versioning is enabled on source bucket. | `string` | `null` | no |
 | <a name="input_runners_maximum_count"></a> [runners\_maximum\_count](#input\_runners\_maximum\_count) | The maximum number of runners that will be created. Setting the variable to `-1` desiables the maximum check. | `number` | `3` | no |
 | <a name="input_s3_runner_binaries"></a> [s3\_runner\_binaries](#input\_s3\_runner\_binaries) | Bucket details for cached GitHub binary. | <pre>object({<br/>    arn = string<br/>    id  = string<br/>    key = string<br/>  })</pre> | n/a | yes |
-| <a name="input_scale_down_schedule_expression"></a> [scale\_down\_schedule\_expression](#input\_scale\_down\_schedule\_expression) | Scheduler expression to check every x for scale down. | `string` | `"cron(*/5 * * * ? *)"` | no |
+| <a name="input_scale_down_parameter_store_tier"></a> [scale\_down\_parameter\_store\_tier](#input\_scale\_down\_parameter\_store\_tier) | SSM Parameter Store tier used to store scale-down configuration. | `string` | `"Standard"` | no |
+| <a name="input_scale_down_schedule_expression"></a> [scale\_down\_schedule\_expression](#input\_scale\_down\_schedule\_expression) | Scheduler expression to check every x for scale down. Set to null to disable scale-down Lambda creation. | `string` | `"cron(*/5 * * * ? *)"` | no |
 | <a name="input_scale_up_reserved_concurrent_executions"></a> [scale\_up\_reserved\_concurrent\_executions](#input\_scale\_up\_reserved\_concurrent\_executions) | Amount of reserved concurrent executions for the scale-up lambda function. A value of 0 disables lambda from being triggered and -1 removes any concurrency limitations. | `number` | `1` | no |
 | <a name="input_sqs_build_queue"></a> [sqs\_build\_queue](#input\_sqs\_build\_queue) | SQS queue to consume accepted build events. | <pre>object({<br/>    arn = string<br/>    url = string<br/>  })</pre> | n/a | yes |
 | <a name="input_ssm_housekeeper"></a> [ssm\_housekeeper](#input\_ssm\_housekeeper) | Configuration for the SSM housekeeper lambda. This lambda deletes token / JIT config from SSM.<br/><br/>  `schedule_expression`: is used to configure the schedule for the lambda.<br/>  `state`: state of the cloudwatch event rule. Valid values are `DISABLED`, `ENABLED`, and `ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS`.<br/>  `lambda_memory_size`: lambda memery size limit.<br/>  `lambda_timeout`: timeout for the lambda in seconds.<br/>  `config`: configuration for the lambda function. Token path will be read by default from the module. | <pre>object({<br/>    schedule_expression = optional(string, "rate(1 day)")<br/>    state               = optional(string, "ENABLED")<br/>    lambda_memory_size  = optional(number, 512)<br/>    lambda_timeout      = optional(number, 60)<br/>    config = object({<br/>      tokenPath      = optional(string)<br/>      minimumDaysOld = optional(number, 1)<br/>      dryRun         = optional(bool, false)<br/>    })<br/>  })</pre> | <pre>{<br/>  "config": {}<br/>}</pre> | no |
@@ -253,4 +239,5 @@ yarn run dist
 | <a name="output_role_scale_down"></a> [role\_scale\_down](#output\_role\_scale\_down) | n/a |
 | <a name="output_role_scale_up"></a> [role\_scale\_up](#output\_role\_scale\_up) | n/a |
 | <a name="output_runners_log_groups"></a> [runners\_log\_groups](#output\_runners\_log\_groups) | List of log groups from different log files of runner machine. |
+| <a name="output_scale_down_ssm_parameters"></a> [scale\_down\_ssm\_parameters](#output\_scale\_down\_ssm\_parameters) | n/a |
 <!-- END_TF_DOCS -->
