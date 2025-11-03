@@ -5,6 +5,11 @@ on:
       - opened
       - edited
       - synchronize
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 permissions:
   contents: read # for actions/checkout
   pull-requests: read # for amannn/action-semantic-pull-request to check PR details

@@ -6,6 +6,10 @@ on:
   pull_request:
     paths: ["**/*.tf", "**/*.hcl", ".github/workflows/terraform.yml"]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
