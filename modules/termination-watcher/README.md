@@ -13,7 +13,7 @@ module "termination_watcher" {
   config = {
     prefix = "global"
     tag_filters = {
-      "ghr:Applicaton" = "github-action-runner"
+      "ghr:Application" = "github-action-runner"
     }
     metrics_namespace = "My Metrics
     s3_bucket         = "..."

@@ -249,7 +249,7 @@ describe('scaleUp with GHES', () => {
       expect(createRunner).toBeCalledWith({ ...expectedRunnerParams, amiIdSsmParameterName: 'my-ami-id-param' });
     });
 
-    it('Throws an error if runner group doesnt exist for ephemeral runners', async () => {
+    it('Throws an error if runner group does not exist for ephemeral runners', async () => {
       process.env.RUNNER_GROUP_NAME = 'test-runner-group';
       mockSSMgetParameter.mockImplementation(async () => {
         throw new Error('ParameterNotFound');
@@ -266,7 +266,7 @@ describe('scaleUp with GHES', () => {
       expect(createRunner).not.toHaveBeenCalled();
     });
 
-    it('create SSM parameter for runner group id if it doesnt exist', async () => {
+    it('create SSM parameter for runner group id if it does not exist', async () => {
       mockSSMgetParameter.mockImplementation(async () => {
         throw new Error('ParameterNotFound');
       });
@@ -784,7 +784,7 @@ describe('scaleUp with Github Data Residency', () => {
       expect(createRunner).toBeCalledWith({ ...expectedRunnerParams, amiIdSsmParameterName: 'my-ami-id-param' });
     });
 
-    it('Throws an error if runner group doesnt exist for ephemeral runners', async () => {
+    it('Throws an error if runner group does not exist for ephemeral runners', async () => {
       process.env.RUNNER_GROUP_NAME = 'test-runner-group';
       mockSSMgetParameter.mockImplementation(async () => {
         throw new Error('ParameterNotFound');
@@ -801,7 +801,7 @@ describe('scaleUp with Github Data Residency', () => {
       expect(createRunner).not.toHaveBeenCalled();
     });
 
-    it('create SSM parameter for runner group id if it doesnt exist', async () => {
+    it('create SSM parameter for runner group id if it does not exist', async () => {
       mockSSMgetParameter.mockImplementation(async () => {
         throw new Error('ParameterNotFound');
       });
