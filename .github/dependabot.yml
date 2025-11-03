@@ -15,7 +15,7 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
-    experimental-branch-cooldown:
+    cooldown:
       default-days: 5
     groups:
       github:
@@ -27,7 +27,7 @@ updates:
     directory: "/lambdas"
     schedule:
       interval: "weekly"
-    experimental-branch-cooldown:
+    cooldown:
       default-days: 5
     groups:
       aws:
@@ -60,7 +60,7 @@ updates:
     directory: "/.ci/Dockerfile"
     schedule:
       interval: "weekly"
-    experimental-branch-cooldown:
+    cooldown:
       default-days: 5
     labels:
       - "dependencies"
@@ -72,7 +72,7 @@ updates:
     directory: "/.devcontainer/Dockerfile"
     schedule:
       interval: "weekly"
-    experimental-branch-cooldown:
+    cooldown:
       default-days: 5
     labels:
       - "dependencies"
@@ -84,7 +84,7 @@ updates:
     directory: "/.github/workflows/mkdocs"
     schedule:
       interval: "weekly"
-    experimental-branch-cooldown:
+    cooldown:
       default-days: 5
     groups:
       python-deps:
