@@ -18,7 +18,7 @@
   },
   "devDependencies": {
     "@aws-sdk/types": "^3.914.0",
-    "@octokit/types": "^15.0.0",
+    "@octokit/types": "^15.0.1",
     "@types/aws-lambda": "^8.10.155",
     "@types/node": "^22.18.8",
     "@vercel/ncc": "^0.38.4",
