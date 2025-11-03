@@ -79,7 +79,7 @@ module "runners" {
 
   #   `schedule_expression`: is used to configure the schedule for the lambda.
   #   `enabled`: enable or disable the lambda trigger via the EventBridge.
-  #   `lambda_memory_size`: lambda memery size limit.
+  #   `lambda_memory_size`: lambda memory size limit.
   #   `lambda_timeout`: timeout for the lambda in seconds.
   #   `config`: configuration for the lambda function. Token path will be read by default from the module.
   #   EOF

@@ -155,7 +155,7 @@ variable "cleanup_config" {
     `amiFilters` - Filters to use when searching for AMIs to cleanup. Default filter for images owned by the account and that are available.
     `dryRun` - If true, no AMIs will be deregistered. Default false.
     `launchTemplateNames` - Launch template names to use when searching for AMIs to cleanup. Default no launch templates.
-    `maxItems` - The maximum numer of AMI's tha will be queried for cleanup. Default no maximum.
+    `maxItems` - The maximum number of AMIs that will be queried for cleanup. Default no maximum.
     `minimumDaysOld` - Minimum number of days old an AMI must be to be considered for cleanup. Default 30.
     `ssmParameterNames` - SSM parameter names to use when searching for AMIs to cleanup. This parameter should be set when using SSM to configure the AMI to use. Default no SSM parameters.
   EOF

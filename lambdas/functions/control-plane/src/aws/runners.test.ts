@@ -558,7 +558,7 @@ describe('create runner with errors fail over to OnDemand', () => {
 
     expect(mockEC2Client).toHaveReceivedCommandTimes(CreateFleetCommand, 2);
 
-    // first call with spot failuer
+    // first call with spot failure
     expect(mockEC2Client).toHaveReceivedNthCommandWith(1, CreateFleetCommand, {
       ...expectedCreateFleetRequest({
         ...defaultExpectedFleetRequestValues,
@@ -588,7 +588,7 @@ describe('create runner with errors fail over to OnDemand', () => {
 
     expect(mockEC2Client).toHaveReceivedCommandTimes(CreateFleetCommand, 1);
 
-    // first call with spot failuer
+    // first call with spot failure
     expect(mockEC2Client).toHaveReceivedNthCommandWith(1, CreateFleetCommand, {
       ...expectedCreateFleetRequest({
         ...defaultExpectedFleetRequestValues,

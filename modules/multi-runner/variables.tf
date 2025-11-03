@@ -191,14 +191,14 @@ variable "multi_runner_config" {
         disable_runner_autoupdate: "Disable the auto update of the github runner agent. Be aware there is a grace period of 30 days, see also the [GitHub article](https://github.blog/changelog/2022-02-01-github-actions-self-hosted-runners-can-now-disable-automatic-updates/)"
         ebs_optimized: "The EC2 EBS optimized configuration."
         enable_ephemeral_runners: "Enable ephemeral runners, runners will only be used once."
-        enable_job_queued_check: "Enables JIT configuration for creating runners instead of registration token based registraton. JIT configuration will only be applied for ephemeral runners. By default JIT confiugration is enabled for ephemeral runners an can be disabled via this override. When running on GHES without support for JIT configuration this variable should be set to true for ephemeral runners."
+        enable_job_queued_check: "Enables JIT configuration for creating runners instead of registration token based registraton. JIT configuration will only be applied for ephemeral runners. By default JIT configuration is enabled for ephemeral runners an can be disabled via this override. When running on GHES without support for JIT configuration this variable should be set to true for ephemeral runners."
         enable_on_demand_failover_for_errors: "Enable on-demand failover. For example to fall back to on demand when no spot capacity is available the variable can be set to `InsufficientInstanceCapacity`. When not defined the default behavior is to retry later."
         enable_organization_runners: "Register runners to organization, instead of repo level"
         enable_runner_binaries_syncer: "Option to disable the lambda to sync GitHub runner distribution, useful when using a pre-build AMI."
         enable_ssm_on_runners: "Enable to allow access the runner instances for debugging purposes via SSM. Note that this adds additional permissions to the runner instances."
         enable_userdata: "Should the userdata script be enabled for the runner. Set this to false if you are using your own prebuilt AMI."
         instance_allocation_strategy: "The allocation strategy for spot instances. AWS recommends to use `capacity-optimized` however the AWS default is `lowest-price`."
-        instance_max_spot_price: "Max price price for spot intances per hour. This variable will be passed to the create fleet as max spot price for the fleet."
+        instance_max_spot_price: "Max price price for spot instances per hour. This variable will be passed to the create fleet as max spot price for the fleet."
         instance_target_capacity_type: "Default lifecycle used for runner instances, can be either `spot` or `on-demand`."
         instance_types: "List of instance types for the action runner. Defaults are based on runner_os (al2023 for linux and Windows Server Core for win)."
         job_queue_retention_in_seconds: "The number of seconds the job is held in the queue before it is purged"
@@ -216,7 +216,7 @@ variable "multi_runner_config" {
         scale_down_schedule_expression: "Scheduler expression to check every x for scale down."
         scale_up_reserved_concurrent_executions: "Amount of reserved concurrent executions for the scale-up lambda function. A value of 0 disables lambda from being triggered and -1 removes any concurrency limitations."
         userdata_template: "Alternative user-data template, replacing the default template. By providing your own user_data you have to take care of installing all required software, including the action runner. Variables userdata_pre/post_install are ignored."
-        enable_jit_config "Overwrite the default behavior for JIT configuration. By default JIT configuration is enabled for ephemeral runners and disabled for non-ephemeral runners. In case of GHES check first if the JIT config API is avaialbe. In case you upgradeing from 3.x to 4.x you can set `enable_jit_config` to `false` to avoid a breaking change when having your own AMI."
+        enable_jit_config "Overwrite the default behavior for JIT configuration. By default JIT configuration is enabled for ephemeral runners and disabled for non-ephemeral runners. In case of GHES check first if the JIT config API is available. In case you are upgrading from 3.x to 4.x you can set `enable_jit_config` to `false` to avoid a breaking change when having your own AMI."
         enable_runner_detailed_monitoring: "Should detailed monitoring be enabled for the runner. Set this to true if you want to use detailed monitoring. See https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-cloudwatch-new.html for details."
         enable_cloudwatch_agent: "Enabling the cloudwatch agent on the ec2 runner instances, the runner contains default config. Configuration can be overridden via `cloudwatch_config`."
         cloudwatch_config: "(optional) Replaces the module default cloudwatch log config. See https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-Configuration-File-Details.html for details."
@@ -231,7 +231,7 @@ variable "multi_runner_config" {
         idle_config: "List of time period that can be defined as cron expression to keep a minimum amount of runners active instead of scaling down to 0. By defining this list you can ensure that in time periods that match the cron expression within 5 seconds a runner is kept idle."
         runner_log_files: "(optional) Replaces the module default cloudwatch log config. See https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-Configuration-File-Details.html for details."
         block_device_mappings: "The EC2 instance block device configuration. Takes the following keys: `device_name`, `delete_on_termination`, `volume_type`, `volume_size`, `encrypted`, `iops`, `throughput`, `kms_key_id`, `snapshot_id`."
-        job_retry: "Experimental! Can be removed / changed without trigger a major release. Configure job retries. The configuration enables job retries (for ephemeral runners). After creating the insances a message will be published to a job retry queue. The job retry check lambda is checking after a delay if the job is queued. If not the message will be published again on the scale-up (build queue). Using this feature can impact the reate limit of the GitHub app."
+        job_retry: "Experimental! Can be removed / changed without trigger a major release. Configure job retries. The configuration enables job retries (for ephemeral runners). After creating the instances a message will be published to a job retry queue. The job retry check lambda is checking after a delay if the job is queued. If not the message will be published again on the scale-up (build queue). Using this feature can impact the rate limit of the GitHub app."
         pool_config: "The configuration for updating the pool. The `pool_size` to adjust to by the events triggered by the `schedule_expression`. For example you can configure a cron expression for week days to adjust the pool to 10 and another expression for the weekend to adjust the pool to 1. Use `schedule_expression_timezone` to override the schedule time zone (defaults to UTC)."
       }
       matcherConfig: {
@@ -446,7 +446,7 @@ variable "state_event_rule_binaries_syncer" {
 }
 
 variable "queue_encryption" {
-  description = "Configure how data on queues managed by the modules in ecrypted at REST. Options are encryped via SSE, non encrypted and via KMSS. By default encryptes via SSE is enabled. See for more details the Terraform `aws_sqs_queue` resource https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sqs_queue."
+  description = "Configure how data on queues managed by the modules in ecrypted at REST. Options are encrypted via SSE, non encrypted and via KMSS. By default encryptes via SSE is enabled. See for more details the Terraform `aws_sqs_queue` resource https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sqs_queue."
   type = object({
     kms_data_key_reuse_period_seconds = number
     kms_master_key_id                 = string
@@ -628,7 +628,7 @@ variable "runners_ssm_housekeeper" {
 
   `schedule_expression`: is used to configure the schedule for the lambda.
   `enabled`: enable or disable the lambda trigger via the EventBridge.
-  `lambda_memory_size`: lambda memery size limit.
+  `lambda_memory_size`: lambda memory size limit.
   `lambda_timeout`: timeout for the lambda in seconds.
   `config`: configuration for the lambda function. Token path will be read by default from the module.
   EOF

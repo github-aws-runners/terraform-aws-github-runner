@@ -84,7 +84,7 @@ vi.mock('@aws-github-runner/aws-ssm-util');
 describe('Test webhook lambda wrapper.', () => {
   beforeEach(() => {
     // We mock all SSM request to resolve to a non empty array. Since we mock all implemeantions
-    // relying on the config opbject that is enought to test the handlers.
+    // relying on the config object that is enough to test the handlers.
     const mockedGet = vi.mocked(getParameter);
     mockedGet.mockResolvedValue('["abc"]');
     vi.clearAllMocks();

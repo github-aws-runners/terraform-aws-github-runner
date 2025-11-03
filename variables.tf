@@ -290,7 +290,7 @@ variable "userdata_template" {
 }
 
 variable "userdata_content" {
-  description = "Alternative user-data content, replacing the templated one. By providing your own user_data you have to take care of installing all required software, including the action runner and registering the runner.  Be-aware configuration paramaters in SSM as well as tags are treated as internals. Changes will not trigger a breaking release."
+  description = "Alternative user-data content, replacing the templated one. By providing your own user_data you have to take care of installing all required software, including the action runner and registering the runner.  Be-aware configuration parameters in SSM as well as tags are treated as internals. Changes will not trigger a breaking release."
   type        = string
   default     = null
 }
@@ -807,7 +807,7 @@ variable "state_event_rule_binaries_syncer" {
 }
 
 variable "queue_encryption" {
-  description = "Configure how data on queues managed by the modules in ecrypted at REST. Options are encryped via SSE, non encrypted and via KMSS. By default encryptes via SSE is enabled. See for more details the Terraform `aws_sqs_queue` resource https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sqs_queue."
+  description = "Configure how data on queues managed by the modules is encrypted at REST. Options are encrypted via SSE, non encrypted and via KMS. By default encrypted via SSE is enabled. See for more details the Terraform `aws_sqs_queue` resource https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sqs_queue."
   type = object({
     kms_data_key_reuse_period_seconds = number
     kms_master_key_id                 = string
@@ -843,7 +843,7 @@ variable "ssm_paths" {
 }
 
 variable "runner_name_prefix" {
-  description = "The prefix used for the GitHub runner name. The prefix will be used in the default start script to prefix the instance name when register the runner in GitHub. The value is availabe via an EC2 tag 'ghr:runner_name_prefix'."
+  description = "The prefix used for the GitHub runner name. The prefix will be used in the default start script to prefix the instance name when register the runner in GitHub. The value is available via an EC2 tag 'ghr:runner_name_prefix'."
   type        = string
   default     = ""
   validation {
@@ -874,7 +874,7 @@ variable "runner_credit_specification" {
 }
 
 variable "runner_cpu_options" {
-  description = "TThe CPU options for the instance. See https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#cpu-options for details. Note that not all instance types support CPU options, see https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-optimize-cpu.html#instance-cpu-options"
+  description = "The CPU options for the instance. See https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#cpu-options for details. Note that not all instance types support CPU options, see https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-optimize-cpu.html#instance-cpu-options"
   type = object({
     core_count       = number
     threads_per_core = number
@@ -883,7 +883,7 @@ variable "runner_cpu_options" {
 }
 
 variable "enable_jit_config" {
-  description = "Overwrite the default behavior for JIT configuration. By default JIT configuration is enabled for ephemeral runners and disabled for non-ephemeral runners. In case of GHES check first if the JIT config API is avaialbe. In case you upgradeing from 3.x to 4.x you can set `enable_jit_config` to `false` to avoid a breaking change when having your own AMI."
+  description = "Overwrite the default behavior for JIT configuration. By default JIT configuration is enabled for ephemeral runners and disabled for non-ephemeral runners. In case of GHES check first if the JIT config API is available. In case you are upgrading from 3.x to 4.x you can set `enable_jit_config` to `false` to avoid a breaking change when having your own AMI."
   type        = bool
   default     = null
 }
@@ -900,7 +900,7 @@ variable "runners_ssm_housekeeper" {
 
   `schedule_expression`: is used to configure the schedule for the lambda.
   `enabled`: enable or disable the lambda trigger via the EventBridge.
-  `lambda_memory_size`: lambda memery size limit.
+  `lambda_memory_size`: lambda memory size limit.
   `lambda_timeout`: timeout for the lambda in seconds.
   `config`: configuration for the lambda function. Token path will be read by default from the module.
   EOF
@@ -975,7 +975,7 @@ variable "lambda_tags" {
 
 variable "job_retry" {
   description = <<-EOF
-    Experimental! Can be removed / changed without trigger a major release.Configure job retries. The configuration enables job retries (for ephemeral runners). After creating the insances a message will be published to a job retry queue. The job retry check lambda is checking after a delay if the job is queued. If not the message will be published again on the scale-up (build queue). Using this feature can impact the reate limit of the GitHub app.
+    Experimental! Can be removed / changed without trigger a major release.Configure job retries. The configuration enables job retries (for ephemeral runners). After creating the instances a message will be published to a job retry queue. The job retry check lambda is checking after a delay if the job is queued. If not the message will be published again on the scale-up (build queue). Using this feature can impact the rate limit of the GitHub app.
 
     `enable`: Enable or disable the job retry feature.
     `delay_in_seconds`: The delay in seconds before the job retry check lambda will check the job status.

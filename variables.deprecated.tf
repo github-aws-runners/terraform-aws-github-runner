@@ -3,7 +3,7 @@
 # EXAMPLE
 # tflint-ignore: terraform_unused_declarations
 # variable "name" {
-#   description = "DEPRECATED: decription`."
+#   description = "DEPRECATED: description`."
 #   type        = string
 #   default     = null
 
