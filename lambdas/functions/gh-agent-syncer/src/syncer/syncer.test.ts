@@ -15,7 +15,9 @@ const mockOctokit = {
   },
 };
 vi.mock('@octokit/rest', async () => ({
-  Octokit: vi.fn().mockImplementation(() => mockOctokit),
+  Octokit: vi.fn().mockImplementation(function () {
+    return mockOctokit;
+  }),
 }));
 
 // mock stream for Axios

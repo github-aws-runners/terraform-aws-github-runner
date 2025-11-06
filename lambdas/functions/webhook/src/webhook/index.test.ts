@@ -211,7 +211,7 @@ describe('handle GitHub webhook events', () => {
       });
     });
 
-    it('should throw if publish to bridge failes.,', async () => {
+    it('should throw if publish to bridge fails.,', async () => {
       // setup
       vi.mocked(publish).mockRejectedValue(new Error('test'));
       const event = JSON.stringify(workFlowJobEvent);
