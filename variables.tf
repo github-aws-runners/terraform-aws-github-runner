@@ -108,6 +108,23 @@ variable "runner_group_name" {
   default     = "Default"
 }
 
+variable "iam_overrides" {
+  description = "This map provides the possibility to override some defaults. The following attributes are supported: `name_sg` overrides the `Name` tag for all security groups created by this module. `name_runner` overrides the `Name` tag for the ec2 instance defined in the auto launch configuration. `instance_profile_name` overrides the instance profile name used in the launch template."
+  type = object({
+    override_instance_profile = optional(bool, null)
+    instance_profile_name     = optional(string, null)
+    override_runner_role      = optional(bool, null)
+    runner_role_arn           = optional(string, null)
+  })
+
+  default = {
+    override_instance_profile = false
+    instance_profile_name     = null
+    override_runner_role      = false
+    runner_role_arn           = null
+  }
+}
+
 variable "scale_up_reserved_concurrent_executions" {
   description = "Amount of reserved concurrent executions for the scale-up lambda function. A value of 0 disables lambda from being triggered and -1 removes any concurrency limitations."
   type        = number

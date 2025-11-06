@@ -36,12 +36,29 @@ variable "subnet_ids" {
 }
 
 variable "overrides" {
-  description = "This map provides the possibility to override some defaults. The following attributes are supported: `name_sg` overrides the `Name` tag for all security groups created by this module. `name_runner_agent_instance` overrides the `Name` tag for the ec2 instance defined in the auto launch configuration. `name_docker_machine_runners` overrides the `Name` tag spot instances created by the runner agent."
+  description = "This map provides the possibility to override some defaults. The following attributes are supported: `name_sg` overrides the `Name` tag for all security groups created by this module. `name_runner` overrides the `Name` tag for the ec2 instance defined in the auto launch configuration. `instance_profile_name` overrides the instance profile name used in the launch template."
   type        = map(string)
 
   default = {
     name_runner = ""
     name_sg     = ""
+  }
+}
+
+variable "iam_overrides" {
+  description = "This map provides the possibility to override some IAM defaults. The following attributes are supported: `instance_profile_name` overrides the instance profile name used in the launch template. `runner_role_arn` overrides the IAM role ARN used for the runner instances."
+  type = object({
+    override_instance_profile = optional(bool, null)
+    instance_profile_name     = optional(string, null)
+    override_runner_role      = optional(bool, null)
+    runner_role_arn           = optional(string, null)
+  })
+
+  default = {
+    override_instance_profile = false
+    instance_profile_name     = null
+    override_runner_role      = false
+    runner_role_arn           = null
   }
 }
 
