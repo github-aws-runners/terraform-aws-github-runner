@@ -109,7 +109,7 @@ variable "runner_group_name" {
 }
 
 variable "iam_overrides" {
-  description = "This map provides the possibility to override some defaults. The following attributes are supported: `name_sg` overrides the `Name` tag for all security groups created by this module. `name_runner` overrides the `Name` tag for the ec2 instance defined in the auto launch configuration. `instance_profile_name` overrides the instance profile name used in the launch template."
+  description = "This map provides the possibility to override some IAM defaults. Note that when using this variable, you are responsible for ensuring the role has necessary permissions to access required resources; `override_instance_profile`: When set to true, the instance profile name provided in `instance_profile_name` will be used for the runners. `override_runner_role`: When set to true, the role ARN provided in `runner_role_arn` will be used for the runners."
   type = object({
     override_instance_profile = optional(bool, null)
     instance_profile_name     = optional(string, null)
