@@ -350,7 +350,7 @@ describe('ConfigLoader Tests', () => {
         return '';
       });
 
-      await expect(ConfigDispatcher.load()).rejects.toThrow('ailed to load config: Matcher config is empty');
+      await expect(ConfigDispatcher.load()).rejects.toThrow('Failed to load config: Matcher config is empty');
     });
   });
 });

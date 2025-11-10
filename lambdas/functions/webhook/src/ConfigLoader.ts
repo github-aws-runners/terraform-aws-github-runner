@@ -91,29 +91,27 @@ abstract class MatcherAwareConfig extends BaseConfig {
   matcherConfig: RunnerMatcherConfig[] = [];
 
   protected async loadMatcherConfig(paramPathsEnv: string) {
-    if (!paramPathsEnv || paramPathsEnv === 'undefined' || paramPathsEnv === 'null') {
-      return;
-    } else if (paramPathsEnv.includes(':')) {
-      const paths = paramPathsEnv
-        .split(':')
-        .map((p) => p.trim())
-        .filter(Boolean);
-      
-      let combinedMatcherConfig: RunnerMatcherConfig[] = [];
-      
-      for (const path of paths) {
-        await this.loadParameter(path, 'matcherConfig');
-        if (Array.isArray(this.matcherConfig)) {
-          combinedMatcherConfig.push(...this.matcherConfig);
-        } else {
-          this.configLoadingErrors.push(`Matcher config at path "${path}" is not an array`);
-        }
-      }
+    if (!paramPathsEnv?.trim()) return;
 
-      this.matcherConfig = combinedMatcherConfig;
-    } else {
-      await this.loadParameter(paramPathsEnv, 'matcherConfig');
+    const paths = paramPathsEnv.includes(':')
+      ? paramPathsEnv
+          .split(':')
+          .map((p) => p.trim())
+          .filter(Boolean)
+      : [paramPathsEnv];
+
+    let combinedMatcherConfig: RunnerMatcherConfig[] = [];
+
+    for (const path of paths) {
+      const loadedConfig = await this.loadParameter(path, 'matcherConfig');
+      if (Array.isArray(loadedConfig)) {
+        combinedMatcherConfig.push(...loadedConfig);
+      } else {
+        this.configLoadingErrors.push(`Matcher config at path "${path}" is not an array`);
+      }
     }
+
+    this.matcherConfig = combinedMatcherConfig;
   }
 }
 
