@@ -91,18 +91,16 @@ abstract class MatcherAwareConfig extends BaseConfig {
   matcherConfig: RunnerMatcherConfig[] = [];
 
   protected async loadMatcherConfig(paramPathsEnv: string) {
-    if (
-      !paramPathsEnv || 
-      paramPathsEnv === 'undefined' || 
-      paramPathsEnv === 'null' || 
-      !paramPathsEnv.includes(':')
-    ) {
+    if (!paramPathsEnv || paramPathsEnv === 'undefined' || paramPathsEnv === 'null' || !paramPathsEnv.includes(':')) {
       // Single path or invalid string → load directly
       await this.loadParameter(paramPathsEnv, 'matcherConfig');
       return;
     }
 
-    const paths = paramPathsEnv.split(':').map((p) => p.trim()).filter(Boolean);
+    const paths = paramPathsEnv
+      .split(':')
+      .map((p) => p.trim())
+      .filter(Boolean);
     let combinedString = '';
     for (const path of paths) {
       await this.loadParameter(path, 'matcherConfig');
