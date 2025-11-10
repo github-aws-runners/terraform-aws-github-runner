@@ -5,11 +5,17 @@ locals {
   # sorted list
   runner_matcher_config_sorted = [for k in sort(keys(local.runner_matcher_config)) : local.runner_matcher_config[k]]
 
+  # Calculate worst-case scenario values to determine optimal parameter chunking
+  # These intermediate values help estimate the maximum possible size of the matcher config JSON
+  # when serialized, allowing us to pre-calculate how to split it across multiple SSM parameters
+  # if it exceeds the size limits (4KB for Standard tier, 8KB for Advanced tier).
+
   # Define worst-case dummy ARN/ID lengths
   worst_case_arn = join("", [for i in range(0, 127) : "X"]) # ARN length assuming 80-char queue name, longest partition & region
   worst_case_id  = join("", [for i in range(0, 135) : "Y"]) # SQS URL length for same worst-case scenario
 
-  # Compute worst-case JSON length
+  # Compute worst-case JSON length using maximum possible ARN/ID values
+  # This ensures we allocate enough parameter chunks even in the most extreme case
   worst_case_json_length = length(jsonencode([for r in local.runner_matcher_config_sorted : merge(r, { arn = local.worst_case_arn, id = local.worst_case_id })]))
 
   # Set max chunk size based on SSM tier
