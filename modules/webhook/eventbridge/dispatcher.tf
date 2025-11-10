@@ -131,7 +131,6 @@ resource "aws_iam_role_policy" "dispatcher_ssm" {
   policy = templatefile("${path.module}/../policies/lambda-ssm.json", {
     resource_arns = jsonencode(
       concat(
-        [var.config.github_app_parameters.webhook_secret.arn],
         [for p in var.config.ssm_parameter_runner_matcher_config : p.arn]
       )
     )
