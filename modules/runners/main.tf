@@ -102,7 +102,8 @@ resource "aws_ssm_parameter" "runner_ami_id" {
   tags = merge(
     local.tags,
     {
-      "ghr:ami_name" = data.aws_ami.runner.name
+      # Remove parentheses from AMI name to comply with AWS tag constraints
+      "ghr:ami_name" = replace(data.aws_ami.runner.name, "/[()]/", "")
     },
     {
       "ghr:ami_creation_date" = data.aws_ami.runner.creation_date
