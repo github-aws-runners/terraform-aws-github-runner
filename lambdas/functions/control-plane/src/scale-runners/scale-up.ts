@@ -31,6 +31,7 @@ export interface ActionRequestMessage {
   installationId: number;
   repoOwnerType: string;
   retryCounter?: number;
+  origin?: string;
 }
 
 export interface ActionRequestMessageRetry extends ActionRequestMessage {
@@ -60,6 +61,7 @@ interface CreateEC2RunnerConfig {
   amiIdSsmParameterName?: string;
   tracingEnabled?: boolean;
   onDemandFailoverOnError?: string[];
+  origin?: string;
 }
 
 function generateRunnerServiceConfig(githubRunnerConfig: CreateGitHubRunnerConfig, token: string) {
@@ -272,6 +274,8 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
   const ephemeral = ephemeralEnabled && payload.eventType === 'workflow_job';
   const runnerType = enableOrgLevel ? 'Org' : 'Repo';
   const runnerOwner = enableOrgLevel ? payload.repositoryOwner : `${payload.repositoryOwner}/${payload.repositoryName}`;
+  // Determine the origin of the request - use provided origin or default to 'build-queue'
+  const origin = payload.origin || 'build-queue';
 
   addPersistentContextToChildLogger({
     runner: {
@@ -335,6 +339,7 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
           amiIdSsmParameterName,
           tracingEnabled,
           onDemandFailoverOnError,
+          origin,
         },
         githubInstallationClient,
       );

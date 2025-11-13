@@ -98,6 +98,7 @@ const EXPECTED_RUNNER_PARAMS: RunnerInputParameters = {
   subnets: ['subnet-123'],
   tracingEnabled: false,
   onDemandFailoverOnError: [],
+  origin: 'build-queue',
 };
 let expectedRunnerParams: RunnerInputParameters;
 
@@ -183,6 +184,27 @@ describe('scaleUp with GHES', () => {
     }));
     await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
     expect(listEC2Runners).not.toBeCalled();
+  });
+
+  it('creates a runner with origin set to build-queue when no origin is provided', async () => {
+    process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
+    await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
+    expect(createRunner).toBeCalledWith(
+      expect.objectContaining({
+        origin: 'build-queue',
+      }),
+    );
+  });
+
+  it('creates a runner with origin from payload when provided', async () => {
+    process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
+    const testDataWithOrigin = { ...TEST_DATA, origin: 'job-retry' };
+    await scaleUpModule.scaleUp('aws:sqs', testDataWithOrigin);
+    expect(createRunner).toBeCalledWith(
+      expect.objectContaining({
+        origin: 'job-retry',
+      }),
+    );
   });
 
   describe('on org level', () => {

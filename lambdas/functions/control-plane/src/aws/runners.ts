@@ -247,6 +247,10 @@ async function createInstances(
     { Key: 'ghr:Owner', Value: runnerParameters.runnerOwner },
   ];
 
+  if (runnerParameters.origin) {
+    tags.push({ Key: 'ghr:origin', Value: runnerParameters.origin });
+  }
+
   if (runnerParameters.tracingEnabled) {
     const traceId = tracer.getRootXrayTraceId();
     tags.push({ Key: 'ghr:trace_id', Value: traceId! });

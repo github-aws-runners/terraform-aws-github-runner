@@ -64,7 +64,9 @@ export async function checkAndRetryJob(payload: ActionRequestMessageRetry): Prom
 
   // check job is still queued
   if (await isJobQueued(ghClient, payload)) {
-    await publishMessage(JSON.stringify(payload), jobQueueUrl);
+    // Set the origin to 'job-retry' when publishing back to the scale-up queue
+    const retryPayload = { ...payload, origin: 'job-retry' };
+    await publishMessage(JSON.stringify(retryPayload), jobQueueUrl);
     createMetric(enableMetrics, environment, payload);
     logger.info(`Job is still queued, message published to build queue and will be handled by scale-up.`, { payload });
   } else {
