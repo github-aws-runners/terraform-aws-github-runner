@@ -39,7 +39,7 @@
     "@octokit/auth-app": "8.1.2",
     "@octokit/core": "7.0.6",
     "@octokit/plugin-throttling": "11.0.3",
-    "@octokit/rest": "22.0.0",
+    "@octokit/rest": "22.0.1",
     "cron-parser": "^5.4.0"
   },
   "nx": {
