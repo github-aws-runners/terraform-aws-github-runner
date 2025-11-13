@@ -122,7 +122,7 @@ __metadata:
     "@aws-lambda-powertools/metrics": "npm:^2.28.1"
     "@aws-lambda-powertools/tracer": "npm:^2.28.1"
     "@types/aws-lambda": "npm:^8.10.155"
-    "@types/node": "npm:^22.18.8"
+    "@types/node": "npm:^22.19.0"
     aws-lambda: "npm:^1.0.7"
     body-parser: "npm:^2.2.0"
   languageName: unknown
@@ -136,7 +136,7 @@ __metadata:
     "@aws-sdk/client-ssm": "npm:^3.921.0"
     "@aws-sdk/types": "npm:^3.921.0"
     "@types/aws-lambda": "npm:^8.10.155"
-    "@types/node": "npm:^22.18.8"
+    "@types/node": "npm:^22.19.0"
     aws-sdk-client-mock: "npm:^4.1.0"
     aws-sdk-client-mock-jest: "npm:^4.1.0"
   languageName: unknown
@@ -159,7 +159,7 @@ __metadata:
     "@octokit/rest": "npm:22.0.1"
     "@octokit/types": "npm:^16.0.0"
     "@types/aws-lambda": "npm:^8.10.155"
-    "@types/node": "npm:^22.18.8"
+    "@types/node": "npm:^22.19.0"
     "@vercel/ncc": "npm:^0.38.4"
     aws-sdk-client-mock: "npm:^4.1.0"
     aws-sdk-client-mock-jest: "npm:^4.1.0"
@@ -182,7 +182,7 @@ __metadata:
     "@middy/core": "npm:^6.4.5"
     "@octokit/rest": "npm:22.0.1"
     "@types/aws-lambda": "npm:^8.10.155"
-    "@types/node": "npm:^22.18.8"
+    "@types/node": "npm:^22.19.0"
     "@types/request": "npm:^2.48.13"
     "@vercel/ncc": "npm:^0.38.4"
     aws-sdk-client-mock: "npm:^4.1.0"
@@ -201,7 +201,7 @@ __metadata:
     "@aws-sdk/types": "npm:^3.921.0"
     "@middy/core": "npm:^6.4.5"
     "@types/aws-lambda": "npm:^8.10.155"
-    "@types/node": "npm:^22.18.8"
+    "@types/node": "npm:^22.19.0"
     "@vercel/ncc": "npm:^0.38.4"
     aws-sdk-client-mock: "npm:^4.1.0"
     aws-sdk-client-mock-jest: "npm:^4.1.0"
@@ -223,7 +223,7 @@ __metadata:
     "@octokit/webhooks-types": "npm:^7.6.1"
     "@types/aws-lambda": "npm:^8.10.155"
     "@types/express": "npm:^5.0.3"
-    "@types/node": "npm:^22.18.8"
+    "@types/node": "npm:^22.19.0"
     "@vercel/ncc": "npm:0.38.4"
     aws-lambda: "npm:^1.0.7"
     body-parser: "npm:^2.2.0"
@@ -5025,12 +5025,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:*, @types/node@npm:^22.18.8":
+"@types/node@npm:*":
   version: 22.18.8
   resolution: "@types/node@npm:22.18.8"
   dependencies:
     undici-types: "npm:~6.21.0"
   checksum: 10c0/54473730e7417b923fec427f62ed3204259acbd8e450a7593bad8ae02a75effcfcc864b34bf02c108eeb9c04a404791687f42b801bafa5264a8761f4df9122fd
+  languageName: node
+  linkType: hard
+
+"@types/node@npm:^22.19.0":
+  version: 22.19.1
+  resolution: "@types/node@npm:22.19.1"
+  dependencies:
+    undici-types: "npm:~6.21.0"
+  checksum: 10c0/6edd93aea86da740cb7872626839cd6f4a67a049d3a3a6639cb592c620ec591408a30989ab7410008d1a0b2d4985ce50f1e488e79c033e4476d3bec6833b0a2f
   languageName: node
   linkType: hard
 
