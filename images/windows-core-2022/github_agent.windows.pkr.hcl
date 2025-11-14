@@ -21,7 +21,7 @@ variable "region" {
 variable "instance_type" {
   description = "The instance type Packer will use for the builder"
   type        = string
-  default     = "m4.xlarge"
+  default     = "c8i-flex.xlarge"
 }
 
 variable "iam_instance_profile" {

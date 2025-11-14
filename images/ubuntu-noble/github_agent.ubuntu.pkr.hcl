@@ -39,7 +39,7 @@ variable "associate_public_ip_address" {
 variable "instance_type" {
   description = "The instance type Packer will use for the builder"
   type        = string
-  default     = "t3.medium"
+  default     = "	c8i-flex.large"
 }
 
 variable "iam_instance_profile" {
