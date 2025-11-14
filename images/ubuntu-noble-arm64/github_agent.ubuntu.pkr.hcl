@@ -153,6 +153,7 @@ build {
     ]
     inline = concat([
       "sudo cloud-init status --wait",
+      "sleep 5", # Adding this to give time for dpkg lock to be released
       "sudo apt-get update",
       "sudo apt-get -y install ca-certificates curl gnupg lsb-release",
       "sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg",
@@ -166,8 +167,10 @@ build {
       "sudo dpkg -i amazon-cloudwatch-agent.deb",
       "sudo systemctl restart amazon-cloudwatch-agent",
       "sudo curl -f https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip -o awscliv2.zip",
-      "unzip awscliv2.zip",
+      "unzip -q awscliv2.zip",
+      "sleep 5", # Adding this to give time for dpkg lock to be released
       "sudo ./aws/install",
+      "sleep 5", # Adding this to give time for dpkg lock to be released
     ], var.custom_shell_commands)
   }
 
