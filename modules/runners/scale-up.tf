@@ -31,6 +31,7 @@ resource "aws_lambda_function" "scale_up" {
       ENABLE_JIT_CONFIG                        = var.enable_jit_config
       ENABLE_JOB_QUEUED_CHECK                  = local.enable_job_queued_check
       ENABLE_METRIC_GITHUB_APP_RATE_LIMIT      = var.metrics.enable && var.metrics.metric.enable_github_app_rate_limit
+      ENABLE_METRIC_POOL_SUFFICIENCY           = var.metrics.enable && var.metrics.metric.enable_pool_sufficiency
       ENABLE_ORGANIZATION_RUNNERS              = var.enable_organization_runners
       ENVIRONMENT                              = var.prefix
       GHES_URL                                 = var.ghes_url
