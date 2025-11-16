@@ -2,7 +2,7 @@
 
 > This module is treated as internal module, breaking changes will not trigger a major release bump.
 
-Generica module to create lambda functions
+Generic module to create lambda functions
 
 <!-- BEGIN_TF_DOCS -->
 ## Requirements
