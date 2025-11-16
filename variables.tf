@@ -944,7 +944,7 @@ variable "instance_termination_watcher" {
 
     `enable`: Enable or disable the spot termination watcher.
     'features': Enable or disable features of the termination watcher.
-    `memory_size`: Memory size linit in MB of the lambda.
+    `memory_size`: Memory size limit in MB of the lambda.
     `s3_key`: S3 key for syncer lambda function. Required if using S3 bucket to specify lambdas.
     `s3_object_version`: S3 object version for syncer lambda function. Useful if S3 versioning is enabled on source bucket.
     `timeout`: Time out of the lambda in seconds.
