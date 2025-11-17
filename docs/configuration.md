@@ -259,7 +259,7 @@ This feature has been disabled by default.
 
 ### Multiple runner module in your AWS account
 
-The watcher will act on all spot termination notificatins and log all onses relevant to the runner module. Therefor we suggest to only deploy the watcher once. You can either deploy the watcher by enabling in one of your deployments or deploy the watcher as a stand alone module.
+The watcher will act on all spot termination notifications and log the ones relevant to the runner module. Therefor we suggest to only deploy the watcher once. You can either deploy the watcher by enabling in one of your deployments or deploy the watcher as a stand alone module.
 
 ## Metrics
 
