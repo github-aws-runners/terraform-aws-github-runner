@@ -1,5 +1,20 @@
 # Changelog
 
+## [6.9.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.8.5...v6.9.0) (2025-11-13)
+
+
+### Features
+
+* support multiple SSM parameters for large runner matcher configs ([#4790](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4790)) ([#4792](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4792)) ([4d4872f](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/4d4872fd67a09f576743c04a8e342dd9350d160f))
+
+
+### Bug Fixes
+
+* **lambda:** bump @octokit/rest from 22.0.0 to 22.0.1 in /lambdas in the octokit group ([#4876](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4876)) ([807aeef](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/807aeefbe7d3fac452b29eb2b6efacc16c14e01c))
+* **lambda:** bump the aws group across 1 directory with 7 updates ([#4871](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4871)) ([8737fe2](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/8737fe210beca5200170774534b0936fdbaa9942))
+* **lambda:** bump the aws-powertools group in /lambdas with 4 updates ([#4865](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4865)) ([8c76e12](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/8c76e1223b1b976b74f30e57d2d73e207b7ac178))
+* **lambda:** bump the octokit group across 1 directory with 4 updates ([#4873](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4873)) ([39fc3cf](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/39fc3cf45508ce28094c2c0a19cd7c39ba74299a))
+
 ## [6.8.5](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.8.4...v6.8.5) (2025-11-02)
 
 

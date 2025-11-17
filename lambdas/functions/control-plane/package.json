@@ -20,7 +20,7 @@
     "@aws-sdk/types": "^3.921.0",
     "@octokit/types": "^16.0.0",
     "@types/aws-lambda": "^8.10.155",
-    "@types/node": "^22.18.8",
+    "@types/node": "^22.19.0",
     "@vercel/ncc": "^0.38.4",
     "aws-sdk-client-mock": "^4.1.0",
     "aws-sdk-client-mock-jest": "^4.1.0",
@@ -39,7 +39,7 @@
     "@octokit/auth-app": "8.1.2",
     "@octokit/core": "7.0.6",
     "@octokit/plugin-throttling": "11.0.3",
-    "@octokit/rest": "22.0.0",
+    "@octokit/rest": "22.0.1",
     "cron-parser": "^5.4.0"
   },
   "nx": {

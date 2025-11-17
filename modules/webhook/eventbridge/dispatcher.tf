@@ -44,8 +44,8 @@ resource "aws_lambda_function" "dispatcher" {
         POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.config.tracing_config.capture_http_requests
         POWERTOOLS_TRACER_CAPTURE_ERROR          = var.config.tracing_config.capture_error
         # Parameters required for lambda configuration
-        PARAMETER_RUNNER_MATCHER_CONFIG_PATH = var.config.ssm_parameter_runner_matcher_config.name
-        PARAMETER_RUNNER_MATCHER_VERSION     = var.config.ssm_parameter_runner_matcher_config.version # enforce cold start after Changes in SSM parameter
+        PARAMETER_RUNNER_MATCHER_CONFIG_PATH = join(":", [for p in var.config.ssm_parameter_runner_matcher_config : p.name])
+        PARAMETER_RUNNER_MATCHER_VERSION     = join(":", [for p in var.config.ssm_parameter_runner_matcher_config : p.version]) # enforce cold start after Changes in SSM parameter
         REPOSITORY_ALLOW_LIST                = jsonencode(var.config.repository_white_list)
       } : k => v if v != null
     }
@@ -129,7 +129,11 @@ resource "aws_iam_role_policy" "dispatcher_ssm" {
   role = aws_iam_role.dispatcher_lambda.name
 
   policy = templatefile("${path.module}/../policies/lambda-ssm.json", {
-    resource_arns = jsonencode([var.config.ssm_parameter_runner_matcher_config.arn])
+    resource_arns = jsonencode(
+      concat(
+        [for p in var.config.ssm_parameter_runner_matcher_config : p.arn]
+      )
+    )
   })
 }
 
