@@ -1,8 +1,8 @@
 # Module - IAM setup for using boundaries
 
-This module is optional and only added as example. You can deploy the root terraform module via you own IAM user with the right credentials. Alternatively you can create a role to deploy the root module with a limit boundary set.
+This module is optional and only added as example. You can deploy the root terraform module via your own IAM user with the right credentials. Alternatively you can create a role to deploy the root module with a limit boundary set.
 
-This module will create an AWS IAM role that is required to use permission boundaries. The created rol can be used to deploy the root module.
+This module will create an AWS IAM role that is required to use permission boundaries. The created role can be used to deploy the root module.
 
 ## Usages
 
@@ -33,7 +33,7 @@ output "boundary" {
 }
 ```
 
-Next execute the created Terraform code `terraform init && terraform apply` The module will. You can use the created role in your terraform provider with assume role and the boundary as well the namespace needs to be set to the root module.
+Next execute the created Terraform code via `terraform init && terraform apply`. You can use the created role in your terraform provider with assume role and the boundary as well the namespace needs to be set to the root module.
 
 
 <!-- BEGIN_TF_DOCS -->
