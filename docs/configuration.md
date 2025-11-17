@@ -263,7 +263,7 @@ The watcher will act on all spot termination notifications and log the ones rele
 
 ## Metrics
 
-The module supports metrics (experimental feature) to monitor the system. The metrics are disabled by default. To enable the metrics set `metrics.enable = true`. If set to true, all module managed metrics are used, you can configure the one by one via the `metrics` object. The metrics are created in the namespace `GitHub Runners`.
+The module supports metrics (experimental feature) to monitor the system. The metrics are disabled by default. To enable the metrics set `metrics.enable = true`. If set to true, all module managed metrics are used, you can configure them one by one via the `metrics` object. The metrics are created in the namespace `GitHub Runners`.
 
 ### Supported metrics
 
