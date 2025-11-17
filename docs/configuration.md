@@ -287,7 +287,7 @@ In case the setup does not work as intended, trace the events through this seque
 
 This feature is in early stage and therefore disabled by default. To enable the watcher, set `instance_termination_watcher.enable = true`.
 
-The termination watcher is currently watching for spot terminations. The module is only taken events into account for instances tagged with `ghr:environment` by default when deployment the module as part of one of the main modules (root or multi-runner). The module can also be deployed stand-alone, in this case, the tag filter needs to be tuned.
+The termination watcher is currently watching for spot terminations. The module only takes events into account for instances tagged with `ghr:environment` by default, when the module is deployed as part of one of the main modules (root or multi-runner). The module can also be deployed stand-alone, in this case, the tag filter needs to be tuned.
 
 ### Termination notification
 
