@@ -171,6 +171,8 @@ This module also allows you to run agents from a prebuilt AMI to gain faster sta
 
 ## AMI Configuration
 
+> **Note:** By default, a runner AMI update requires a re-apply of the terraform configuration, as the runner AMI ID is looked up by a terraform data source. To avoid this, you can use or `ami.id_ssm_parameter_arn` to have the scale-up lambda dynamically lookup the runner AMI ID from an SSM parameter at instance launch time. Said SSM parameter is managed outside of this module (e.g. by a runner AMI build workflow).
+
 By default, the module will automatically select appropriate AMI images:
 
 - For Linux x64: Amazon Linux 2023 x86_64
@@ -203,8 +205,7 @@ ami = {
 }
 ```
 
-> **Note:** The old way of configuring AMIs using individual variables (`ami_filter`, `ami_owners`, `ami_kms_key_arn`) is deprecated and will be removed in a future version. It is recommended to migrate to the new consolidated `ami` object.
-
+> **Note:** The old way of configuring AMIs using individual variables (`ami_filter`, `ami_owners`, `ami_kms_key_arn`, `ami_id_ssm_parameter_arn`, `ami_id_ssm_parameter_name`) is deprecated and will be removed in a future version. It is recommended to migrate to the new consolidated `ami` object. Support for `ami_id_ssm_parameter_name` will be dropped, please specify an arn via `ami.id_ssm_parameter_arn` instead.
 
 ## Logging
 
@@ -399,5 +400,3 @@ resource "aws_iam_role_policy" "event_rule_firehose_role" {
   policy = data.aws_iam_policy_document.firehose_stream.json
 }
 ```
-
-NOTE: By default, a runner AMI update requires a re-apply of this terraform config (the runner AMI ID is looked up by a terraform data source). To avoid this, you can use `ami_id_ssm_parameter_name` to have the scale-up lambda dynamically lookup the runner AMI ID from an SSM parameter at instance launch time. Said SSM parameter is managed outside of this module (e.g. by a runner AMI build workflow).
