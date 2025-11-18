@@ -292,24 +292,24 @@ The termination watcher is currently watching for spot terminations. The module 
 
 ### Termination notification
 
-The watcher is listening for spot termination warnings and create a log message and optionally a metric. The watcher is disabled by default. The feature is enabled once the watcher is enabled, the feature can be disabled explicit by setting `instance_termination_watcher.features.enable_spot_termination_handler = false`.
+The watcher is listening for spot termination warnings and creates a log message and optionally a metric. The watcher is disabled by default. The feature is enabled once the watcher is enabled. It can be disabled explicitly by setting `instance_termination_watcher.features.enable_spot_termination_handler = false`.
 
-- Logs: The module will log all termination notifications. For each warning it will look up instance details and log the environment, instance type and time the instance is running. As well some other details.
-- Metrics: Metrics are disabled by default, this to avoid costs. Once enabled a metric will be created for each warning with at least dimensions for the environment and instance type. THe metric name space can be configured via the variables. The metric name used is `SpotInterruptionWarning`.
+- Logs: The module will log all termination notifications. For each warning it will look up instance details and log the environment, instance type and time the instance is running, as well as some other details.
+- Metrics: Metrics are disabled by default, in order to avoid costs. Once enabled a metric will be created for each warning with at least dimensions for the environment and instance type. The metric name space can be configured via the variables. The metric name used is `SpotInterruptionWarning`.
 
 ### Termination handler
 
 !!! warning
-This feature will only work once the CloudTrail is enabled.
+This feature will only work once CloudTrail is enabled.
 
-The termination handler is listening for spot terminations by capture the `BidEvictedEvent` via CloudTrail. The handler will log and optionally create a metric for each termination. The intend is to enhance the logic to inform the user about the termination via the GitHub Job or Workflow run. The feature is disabled by default. The feature is enabled once the watcher is enabled, the feature can be disabled explicit by setting `instance_termination_watcher.features.enable_spot_termination_handler = false`.
+The termination handler is listening for spot terminations by capturing the `BidEvictedEvent` via CloudTrail. The handler will log and optionally create a metric for each termination. The intent is to enhance the logic to inform the user about the termination via the GitHub Job or Workflow run. The feature is disabled by default. The feature is enabled once the watcher is enabled. It can be disabled explicitly by setting `instance_termination_watcher.features.enable_spot_termination_handler = false`.
 
-- Logs: The module will log all termination notifications. For each warning it will look up instance details and log the environment, instance type and time the instance is running. As well some other details.
-- Metrics: Metrics are disabled by default, this to avoid costs. Once enabled a metric will be created for each termination with at least dimensions for the environment and instance type. THe metric name space can be configured via the variables. The metric name used is `SpotTermination`.
+- Logs: The module will log all termination notifications. For each warning it will look up instance details and log the environment, instance type and time the instance is running, as well as some other details.
+- Metrics: Metrics are disabled by default, in order to avoid costs. Once enabled a metric will be created for each termination with at least dimensions for the environment and instance type. THe metric name space can be configured via the variables. The metric name used is `SpotTermination`.
 
 ### Log example (both warnings and terminations)
 
-Below an example of the the log messages created.
+Below is an example of the log messages created.
 
 ```
 {
@@ -332,7 +332,7 @@ Below an example of the the log messages created.
 
 ### EventBridge
 
-This module can be deployed in using the mode `EventBridge`. The `EventBridge` mode will publish an event to a eventbus. Within the eventbus, there is a target rule set, sending events to the dispatch lambda. The `EventBridge` mode is enabled by default.
+This module can be deployed in `EventBridge` mode. The `EventBridge` mode will publish an event to an eventbus. Within the eventbus, there is a target rule set, sending events to the dispatch lambda. The `EventBridge` mode is enabled by default.
 
 Example to extend the EventBridge:
 
@@ -390,7 +390,7 @@ resource "aws_iam_role" "event_rule_role" {
 
 data aws_iam_policy_document firehose_stream {
   statement {
-    INSER_YOUR_POIICY_HERE_TO_ACCESS_THE_TARGET
+    INSERT_YOUR_POLICY_HERE_TO_ACCESS_THE_TARGET
   }
 }
 
