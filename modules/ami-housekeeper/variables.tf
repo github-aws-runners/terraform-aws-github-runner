@@ -25,7 +25,7 @@ variable "lambda_timeout" {
 }
 
 variable "lambda_memory_size" {
-  description = "Memory size linit in MB of the lambda."
+  description = "Memory size limit in MB of the lambda."
   type        = number
   default     = 256
 }
