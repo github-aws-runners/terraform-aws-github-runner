@@ -162,6 +162,17 @@ variable "multi_runner_config" {
         lambda_timeout     = optional(number, 30)
         max_attempts       = optional(number, 1)
       }), {})
+      iam_overrides = optional(object({
+        override_instance_profile = optional(bool, null)
+        instance_profile_name     = optional(string, null)
+        override_runner_role      = optional(bool, null)
+        runner_role_arn           = optional(string, null)
+        }), {
+        override_instance_profile = false
+        instance_profile_name     = null
+        override_runner_role      = false
+        runner_role_arn           = null
+      })
     })
     matcherConfig = object({
       labelMatchers = list(list(string))
@@ -233,6 +244,7 @@ variable "multi_runner_config" {
         block_device_mappings: "The EC2 instance block device configuration. Takes the following keys: `device_name`, `delete_on_termination`, `volume_type`, `volume_size`, `encrypted`, `iops`, `throughput`, `kms_key_id`, `snapshot_id`."
         job_retry: "Experimental! Can be removed / changed without trigger a major release. Configure job retries. The configuration enables job retries (for ephemeral runners). After creating the instances a message will be published to a job retry queue. The job retry check lambda is checking after a delay if the job is queued. If not the message will be published again on the scale-up (build queue). Using this feature can impact the rate limit of the GitHub app."
         pool_config: "The configuration for updating the pool. The `pool_size` to adjust to by the events triggered by the `schedule_expression`. For example you can configure a cron expression for week days to adjust the pool to 10 and another expression for the weekend to adjust the pool to 1. Use `schedule_expression_timezone` to override the schedule time zone (defaults to UTC)."
+        iam_overrides: "Allows to (optionally) override the instance profile and runner role created by the module. Set `override_instance_profile` to true and provide the `instance_profile_name` to use an existing instance profile. Set `override_runner_role` to true and provide the `runner_role_arn` to use an existing role for the runner instances."
       }
       matcherConfig: {
         labelMatchers: "The list of list of labels supported by the runner configuration. `[[self-hosted, linux, x64, example]]`"
