@@ -100,7 +100,7 @@ module "runners" {
   create_service_linked_role_spot = each.value.runner_config.create_service_linked_role_spot
 
   runner_iam_role_managed_policy_arns = each.value.runner_config.runner_iam_role_managed_policy_arns
-  iam_overrides                     = each.value.runner_config.iam_overrides
+  iam_overrides                       = each.value.runner_config.iam_overrides
 
   ghes_url        = var.ghes_url
   ghes_ssl_verify = var.ghes_ssl_verify
