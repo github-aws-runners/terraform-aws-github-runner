@@ -172,6 +172,7 @@ This module also allows you to run agents from a prebuilt AMI to gain faster sta
 ## AMI Configuration
 
 By default, the module will automatically select appropriate AMI images:
+
 - For Linux x64: Amazon Linux 2023 x86_64
 - For Linux ARM64: Amazon Linux 2023 ARM64
 - For Windows: Windows Server 2022 English Full ECS Optimized

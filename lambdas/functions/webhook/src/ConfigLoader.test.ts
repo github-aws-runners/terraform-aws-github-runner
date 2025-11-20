@@ -168,6 +168,54 @@ describe('ConfigLoader Tests', () => {
         'Failed to load config: Failed to load parameter for matcherConfig from path /path/to/matcher/config: Failed to load matcher config', // eslint-disable-line max-len
       );
     });
+
+    it('should load config successfully from multiple paths', async () => {
+      process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH = '/path/to/matcher/config-1:/path/to/matcher/config-2';
+      process.env.PARAMETER_GITHUB_APP_WEBHOOK_SECRET = '/path/to/webhook/secret';
+
+      const partialMatcher1 =
+        '[{"id":"1","arn":"arn:aws:sqs:queue1","matcherConfig":{"labelMatchers":[["a"]],"exactMatch":true}}';
+      const partialMatcher2 =
+        ',{"id":"2","arn":"arn:aws:sqs:queue2","matcherConfig":{"labelMatchers":[["b"]],"exactMatch":true}}]';
+
+      const combinedMatcherConfig = [
+        { id: '1', arn: 'arn:aws:sqs:queue1', matcherConfig: { labelMatchers: [['a']], exactMatch: true } },
+        { id: '2', arn: 'arn:aws:sqs:queue2', matcherConfig: { labelMatchers: [['b']], exactMatch: true } },
+      ];
+
+      vi.mocked(getParameter).mockImplementation(async (paramPath: string) => {
+        if (paramPath === '/path/to/matcher/config-1') return partialMatcher1;
+        if (paramPath === '/path/to/matcher/config-2') return partialMatcher2;
+        if (paramPath === '/path/to/webhook/secret') return 'secret';
+        return '';
+      });
+
+      const config: ConfigWebhook = await ConfigWebhook.load();
+
+      expect(config.matcherConfig).toEqual(combinedMatcherConfig);
+      expect(config.webhookSecret).toBe('secret');
+    });
+
+    it('should throw error if config loading fails from multiple paths', async () => {
+      process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH = '/path/to/matcher/config-1:/path/to/matcher/config-2';
+      process.env.PARAMETER_GITHUB_APP_WEBHOOK_SECRET = '/path/to/webhook/secret';
+
+      const partialMatcher1 =
+        '[{"id":"1","arn":"arn:aws:sqs:queue1","matcherConfig":{"labelMatchers":[["a"]],"exactMatch":true}}';
+      const partialMatcher2 =
+        ',{"id":"2","arn":"arn:aws:sqs:queue2","matcherConfig":{"labelMatchers":[["b"]],"exactMatch":true}}';
+
+      vi.mocked(getParameter).mockImplementation(async (paramPath: string) => {
+        if (paramPath === '/path/to/matcher/config-1') return partialMatcher1;
+        if (paramPath === '/path/to/matcher/config-2') return partialMatcher2;
+        if (paramPath === '/path/to/webhook/secret') return 'secret';
+        return '';
+      });
+
+      await expect(ConfigWebhook.load()).rejects.toThrow(
+        "Failed to load config: Failed to parse combined matcher config: Expected ',' or ']' after array element in JSON at position 196", // eslint-disable-line max-len
+      );
+    });
   });
 
   describe('ConfigWebhookEventBridge', () => {
@@ -229,6 +277,32 @@ describe('ConfigLoader Tests', () => {
       expect(config.matcherConfig).toEqual(matcherConfig);
     });
 
+    it('should load config successfully from multiple paths with repo allow list', async () => {
+      process.env.REPOSITORY_ALLOW_LIST = '["repo1", "repo2"]';
+      process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH = '/path/to/matcher/config-1:/path/to/matcher/config-2';
+
+      const partial1 =
+        '[{"id":"1","arn":"arn:aws:sqs:queue1","matcherConfig":{"labelMatchers":[["x"]],"exactMatch":true}}';
+      const partial2 =
+        ',{"id":"2","arn":"arn:aws:sqs:queue2","matcherConfig":{"labelMatchers":[["y"]],"exactMatch":true}}]';
+
+      const combined: RunnerMatcherConfig[] = [
+        { id: '1', arn: 'arn:aws:sqs:queue1', matcherConfig: { labelMatchers: [['x']], exactMatch: true } },
+        { id: '2', arn: 'arn:aws:sqs:queue2', matcherConfig: { labelMatchers: [['y']], exactMatch: true } },
+      ];
+
+      vi.mocked(getParameter).mockImplementation(async (paramPath: string) => {
+        if (paramPath === '/path/to/matcher/config-1') return partial1;
+        if (paramPath === '/path/to/matcher/config-2') return partial2;
+        return '';
+      });
+
+      const config: ConfigDispatcher = await ConfigDispatcher.load();
+
+      expect(config.repositoryAllowList).toEqual(['repo1', 'repo2']);
+      expect(config.matcherConfig).toEqual(combined);
+    });
+
     it('should throw error if config loading fails', async () => {
       vi.mocked(getParameter).mockImplementation(async (paramPath: string) => {
         throw new Error(`Parameter ${paramPath} not found`);
@@ -276,7 +350,7 @@ describe('ConfigLoader Tests', () => {
         return '';
       });
 
-      await expect(ConfigDispatcher.load()).rejects.toThrow('ailed to load config: Matcher config is empty');
+      await expect(ConfigDispatcher.load()).rejects.toThrow('Failed to load config: Matcher config is empty');
     });
   });
 });
