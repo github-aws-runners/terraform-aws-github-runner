@@ -57,6 +57,7 @@ variable "config" {
       metric = optional(object({
         enable_github_app_rate_limit = optional(bool, true)
         enable_job_retry             = optional(bool, true)
+        enable_pool_sufficiency      = optional(bool, true)
       }), {})
     }), {})
     prefix = optional(string, null)
