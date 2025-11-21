@@ -596,7 +596,7 @@ variable "pool_lambda_reserved_concurrent_executions" {
 }
 
 variable "ssm_paths" {
-  description = "The root path used in SSM to store configuration and secreets."
+  description = "The root path used in SSM to store configuration and secrets."
   type = object({
     root    = optional(string, "github-action-runners")
     app     = optional(string, "app")

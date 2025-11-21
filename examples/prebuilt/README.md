@@ -21,7 +21,7 @@ cd -
 
 ### Packer Image
 
-You will need to build your image. This example deployment uses the image example in `/images/linux-amz2`. You must build this image with packer in your AWS account first. Once you have built this you need to provider your owner ID as a variable
+You will need to build your image. This example deployment uses the image example in `/images/linux-amz2`. You must build this image with packer in your AWS account first. Once you have built this you need to provide your owner ID as a variable
 
 ## Deploy
 
