@@ -1,10 +1,9 @@
-import { createAppAuth } from '@octokit/auth-app';
-import { StrategyOptions } from '@octokit/auth-app/dist-types/types';
+import { createAppAuth, type StrategyOptions } from '@octokit/auth-app';
 import { request } from '@octokit/request';
 import { RequestInterface, RequestParameters } from '@octokit/types';
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
 import * as nock from 'nock';
-
+import { reset } from './cache';
 import { createGithubAppAuth, createOctokitClient } from './auth';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
@@ -29,6 +28,7 @@ const PARAMETER_GITHUB_APP_KEY_BASE64_NAME = `/actions-runner/${ENVIRONMENT}/git
 const mockedGet = vi.mocked(getParameter);
 
 beforeEach(() => {
+  reset(); // clear all caches before each test
   vi.resetModules();
   vi.clearAllMocks();
   process.env = { ...cleanEnv };
