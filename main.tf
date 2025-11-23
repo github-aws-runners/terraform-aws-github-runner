@@ -108,7 +108,7 @@ module "webhook" {
   eventbridge = var.eventbridge
 
   runner_matcher_config = {
-    (aws_sqs_queue.queued_builds.id) = {
+    "${var.prefix}-queued-builds" = {
       id : aws_sqs_queue.queued_builds.id
       arn : aws_sqs_queue.queued_builds.arn
       matcherConfig : {
