@@ -1,5 +1,15 @@
 # Changelog
 
+## [6.9.1](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.9.0...v6.9.1) (2025-11-21)
+
+
+### Bug Fixes
+
+* **lambda:** bump axios from 1.12.2 to 1.13.2 in /lambdas ([#4895](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4895)) ([59e231d](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/59e231d5ffc79639c441d5989bd6a922cdf94948))
+* **lambda:** bump js-yaml from 3.14.1 to 3.14.2 in /lambdas ([#4890](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4890)) ([18b8c4e](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/18b8c4eff626ec3d8f5fb340b94336ebec924a42))
+* **lambda:** bump the aws group across 1 directory with 7 updates ([#4898](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4898)) ([cf7f4ad](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/cf7f4ad5376dae754f4fc12ada4cc736d1942287))
+* use a static key in runner_matcher_config ([#4901](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4901)) ([#4903](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4903)) ([cc5dc65](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/cc5dc657310fb341b2737138713517837600f153))
+
 ## [6.9.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.8.5...v6.9.0) (2025-11-13)
 
 
