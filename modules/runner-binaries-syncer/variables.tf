@@ -45,6 +45,12 @@ variable "s3_logging_bucket_prefix" {
   }
 }
 
+variable "s3_tags" {
+  description = "Map of tags that will be added to the S3 bucket. Note these are additional tags to the default tags."
+  type        = map(string)
+  default     = {}
+}
+
 variable "state_event_rule_binaries_syncer" {
   type        = string
   description = "Option to disable EventBridge Lambda trigger for the binary syncer, useful to stop automatic updates of binary distribution"
