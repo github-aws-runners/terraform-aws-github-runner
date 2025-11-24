@@ -102,7 +102,8 @@ resource "aws_ssm_parameter" "runner_ami_id" {
   tags = merge(
     local.tags,
     {
-      "ghr:ami_name" = data.aws_ami.runner.name
+      # Remove parentheses from AMI name to comply with AWS tag constraints
+      "ghr:ami_name" = replace(data.aws_ami.runner.name, "/[()]/", "")
     },
     {
       "ghr:ami_creation_date" = data.aws_ami.runner.creation_date
@@ -157,6 +158,14 @@ resource "aws_launch_template" "runner" {
     for_each = var.credit_specification != null ? [var.credit_specification] : []
     content {
       cpu_credits = credit_specification.value
+    }
+  }
+
+  dynamic "cpu_options" {
+    for_each = var.cpu_options != null ? [var.cpu_options] : []
+    content {
+      core_count       = try(cpu_options.value.core_count, null)
+      threads_per_core = try(cpu_options.value.threads_per_core, null)
     }
   }
 

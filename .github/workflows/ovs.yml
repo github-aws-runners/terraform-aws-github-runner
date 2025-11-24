@@ -1,0 +1,20 @@
+name: OSV-Scanner
+on:
+  pull_request:
+    branches: [main]
+  merge_group:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  scan-pr:
+    permissions:
+      actions: read            # Required to upload SARIF file to CodeQL
+      security-events: write   # Require writing security events to upload
+      contents: read           # for checkout
+    uses: "google/osv-scanner-action/.github/workflows/osv-scanner-reusable-pr.yml@9bb69575e74019c2ad085a1860787043adf47ccb" # v2.2.4

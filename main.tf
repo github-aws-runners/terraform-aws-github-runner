@@ -108,7 +108,7 @@ module "webhook" {
   eventbridge = var.eventbridge
 
   runner_matcher_config = {
-    (aws_sqs_queue.queued_builds.id) = {
+    "${var.prefix}-queued-builds" = {
       id : aws_sqs_queue.queued_builds.id
       arn : aws_sqs_queue.queued_builds.arn
       matcherConfig : {
@@ -208,6 +208,7 @@ module "runners" {
   runner_additional_security_group_ids = var.runner_additional_security_group_ids
   metadata_options                     = var.runner_metadata_options
   credit_specification                 = var.runner_credit_specification
+  cpu_options                          = var.runner_cpu_options
 
   enable_runner_binaries_syncer    = var.enable_runner_binaries_syncer
   lambda_s3_bucket                 = var.lambda_s3_bucket
@@ -307,6 +308,7 @@ module "runner_binaries" {
 
   state_event_rule_binaries_syncer     = var.state_event_rule_binaries_syncer
   server_side_encryption_configuration = var.runner_binaries_s3_sse_configuration
+  s3_tags                              = var.runner_binaries_s3_tags
   s3_versioning                        = var.runner_binaries_s3_versioning
 
   role_path                 = var.role_path
