@@ -93,6 +93,10 @@ source "amazon-ebs" "githubrunner" {
   subnet_id                                 = var.subnet_id
   associate_public_ip_address               = var.associate_public_ip_address
   temporary_security_group_source_public_ip = var.temporary_security_group_source_public_ip
+  aws_polling {
+    delay_seconds = 60
+    max_attempts  = 120
+  }
 
   source_ami_filter {
     filters = {
