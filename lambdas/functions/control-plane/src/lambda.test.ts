@@ -8,7 +8,7 @@ import { scaleDown } from './scale-runners/scale-down';
 import { ActionRequestMessage, scaleUp } from './scale-runners/scale-up';
 import { cleanSSMTokens } from './scale-runners/ssm-housekeeper';
 import { checkAndRetryJob } from './scale-runners/job-retry';
-import { describe, it, expect, vi, MockedFunction } from 'vitest';
+import { describe, it, expect, vi, MockedFunction, beforeEach } from 'vitest';
 
 const body: ActionRequestMessage = {
   eventType: 'workflow_job',
@@ -160,9 +160,7 @@ describe('Test scale up lambda wrapper.', () => {
       const records = createMultipleRecords(3);
       const multiRecordEvent: SQSEvent = { Records: records };
 
-      const mock = vi.fn(scaleUp);
-      mock.mockImplementation(() => Promise.resolve(['message-1', 'message-2']));
-      vi.mocked(scaleUp).mockImplementation(mock);
+      vi.mocked(scaleUp).mockResolvedValue(['message-1', 'message-2']);
 
       const result = await scaleUpHandler(multiRecordEvent, context);
       expect(result).toEqual({
@@ -243,9 +241,7 @@ describe('Test scale up lambda wrapper.', () => {
       const multiRecordEvent: SQSEvent = { Records: records };
 
       const error = new ScaleError(2);
-      const mock = vi.fn(scaleUp);
-      mock.mockImplementation(() => Promise.reject(error));
-      vi.mocked(scaleUp).mockImplementation(mock);
+      vi.mocked(scaleUp).mockRejectedValue(error);
 
       await expect(scaleUpHandler(multiRecordEvent, context)).resolves.toEqual({
         batchItemFailures: [{ itemIdentifier: 'message-0' }, { itemIdentifier: 'message-1' }],
