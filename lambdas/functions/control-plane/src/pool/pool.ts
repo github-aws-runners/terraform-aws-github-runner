@@ -92,11 +92,11 @@ export async function adjust(event: PoolEvent): Promise<void> {
         environment,
         launchTemplateName,
         subnets,
-        numberOfRunners: topUp,
         amiIdSsmParameterName,
         tracingEnabled,
         onDemandFailoverOnError,
       },
+      topUp,
       githubInstallationClient,
     );
   } else {
