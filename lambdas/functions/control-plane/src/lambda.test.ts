@@ -93,29 +93,19 @@ describe('Test scale up lambda wrapper.', () => {
   });
 
   it('Scale without error should resolve.', async () => {
-    const mock = vi.fn(scaleUp);
-    mock.mockImplementation(() => {
-      return new Promise((resolve) => {
-        resolve([]);
-      });
-    });
+    vi.mocked(scaleUp).mockResolvedValue([]);
     await expect(scaleUpHandler(sqsEvent, context)).resolves.not.toThrow();
   });
 
   it('Non scale should resolve.', async () => {
     const error = new Error('Non scale should resolve.');
-    const mock = vi.fn(scaleUp);
-    mock.mockRejectedValue(error);
+    vi.mocked(scaleUp).mockRejectedValue(error);
     await expect(scaleUpHandler(sqsEvent, context)).resolves.not.toThrow();
   });
 
   it('Scale should create a batch failure message', async () => {
     const error = new ScaleError();
-    const mock = vi.fn() as MockedFunction<typeof scaleUp>;
-    mock.mockImplementation(() => {
-      return Promise.reject(error);
-    });
-    vi.mocked(scaleUp).mockImplementation(mock);
+    vi.mocked(scaleUp).mockRejectedValue(error);
     await expect(scaleUpHandler(sqsEvent, context)).resolves.toEqual({
       batchItemFailures: [{ itemIdentifier: sqsRecord.messageId }],
     });
@@ -142,9 +132,7 @@ describe('Test scale up lambda wrapper.', () => {
       const records = createMultipleRecords(3);
       const multiRecordEvent: SQSEvent = { Records: records };
 
-      const mock = vi.fn(scaleUp);
-      mock.mockImplementation(() => Promise.resolve([]));
-      vi.mocked(scaleUp).mockImplementation(mock);
+      vi.mocked(scaleUp).mockResolvedValue([]);
 
       await expect(scaleUpHandler(multiRecordEvent, context)).resolves.not.toThrow();
       expect(scaleUp).toHaveBeenCalledWith(
@@ -175,9 +163,7 @@ describe('Test scale up lambda wrapper.', () => {
         Records: [...sqsRecords, ...nonSqsRecords],
       };
 
-      const mock = vi.fn(scaleUp);
-      mock.mockImplementation(() => Promise.resolve([]));
-      vi.mocked(scaleUp).mockImplementation(mock);
+      vi.mocked(scaleUp).mockResolvedValue([]);
 
       await scaleUpHandler(mixedEvent, context);
       expect(scaleUp).toHaveBeenCalledWith(
@@ -211,15 +197,13 @@ describe('Test scale up lambda wrapper.', () => {
       ];
       const multiRecordEvent: SQSEvent = { Records: records };
 
-      const mock = vi.fn(scaleUp);
-      mock.mockImplementation((messages) => {
+      vi.mocked(scaleUp).mockImplementation((messages) => {
         // Verify messages are sorted by retry count (ascending)
         expect(messages[0].messageId).toBe('no-retry');
         expect(messages[1].messageId).toBe('low-retry');
         expect(messages[2].messageId).toBe('high-retry');
         return Promise.resolve([]);
       });
-      vi.mocked(scaleUp).mockImplementation(mock);
 
       await scaleUpHandler(multiRecordEvent, context);
     });
@@ -228,9 +212,7 @@ describe('Test scale up lambda wrapper.', () => {
       const records = createMultipleRecords(2);
       const multiRecordEvent: SQSEvent = { Records: records };
 
-      const mock = vi.fn(scaleUp);
-      mock.mockImplementation(() => Promise.reject(new Error('Generic error')));
-      vi.mocked(scaleUp).mockImplementation(mock);
+      vi.mocked(scaleUp).mockRejectedValue(new Error('Generic error'));
 
       const result = await scaleUpHandler(multiRecordEvent, context);
       expect(result).toEqual({ batchItemFailures: [] });
@@ -252,41 +234,26 @@ describe('Test scale up lambda wrapper.', () => {
 
 describe('Test scale down lambda wrapper.', () => {
   it('Scaling down no error.', async () => {
-    const mock = vi.fn(scaleDown);
-    mock.mockImplementation(() => {
-      return new Promise((resolve) => {
-        resolve();
-      });
-    });
+    vi.mocked(scaleDown).mockResolvedValue();
     await expect(scaleDownHandler({}, context)).resolves.not.toThrow();
   });
 
   it('Scaling down with error.', async () => {
     const error = new Error('Scaling down with error.');
-    const mock = vi.fn(scaleDown);
-    mock.mockRejectedValue(error);
+    vi.mocked(scaleDown).mockRejectedValue(error);
     await expect(scaleDownHandler({}, context)).resolves.not.toThrow();
   });
 });
 
 describe('Adjust pool.', () => {
   it('Receive message to adjust pool.', async () => {
-    const mock = vi.fn(adjust);
-    mock.mockImplementation(() => {
-      return new Promise((resolve) => {
-        resolve();
-      });
-    });
+    vi.mocked(adjust).mockResolvedValue();
     await expect(adjustPool({ poolSize: 2 }, context)).resolves.not.toThrow();
   });
 
   it('Handle error for adjusting pool.', async () => {
     const error = new Error('Handle error for adjusting pool.');
-    const mock = vi.fn() as MockedFunction<typeof adjust>;
-    mock.mockImplementation(() => {
-      return Promise.reject(error);
-    });
-    vi.mocked(adjust).mockImplementation(mock);
+    vi.mocked(adjust).mockRejectedValue(error);
     const logSpy = vi.spyOn(logger, 'error');
     await adjustPool({ poolSize: 0 }, context);
     expect(logSpy).toHaveBeenCalledWith(`Handle error for adjusting pool. ${error.message}`, { error });
@@ -303,12 +270,7 @@ describe('Test middleware', () => {
 
 describe('Test ssm housekeeper lambda wrapper.', () => {
   it('Invoke without errors.', async () => {
-    const mock = vi.fn(cleanSSMTokens);
-    mock.mockImplementation(() => {
-      return new Promise((resolve) => {
-        resolve();
-      });
-    });
+    vi.mocked(cleanSSMTokens).mockResolvedValue();
 
     process.env.SSM_CLEANUP_CONFIG = JSON.stringify({
       dryRun: false,
@@ -320,29 +282,20 @@ describe('Test ssm housekeeper lambda wrapper.', () => {
   });
 
   it('Errors not throws.', async () => {
-    const mock = vi.fn(cleanSSMTokens);
-    mock.mockRejectedValue(new Error());
+    vi.mocked(cleanSSMTokens).mockRejectedValue(new Error());
     await expect(ssmHousekeeper({}, context)).resolves.not.toThrow();
   });
 });
 
 describe('Test job retry check wrapper', () => {
   it('Handle without error should resolve.', async () => {
-    const mock = vi.fn() as MockedFunction<typeof checkAndRetryJob>;
-    mock.mockImplementation(() => {
-      return Promise.resolve();
-    });
-    vi.mocked(checkAndRetryJob).mockImplementation(mock);
+    vi.mocked(checkAndRetryJob).mockResolvedValue();
     await expect(jobRetryCheck(sqsEvent, context)).resolves.not.toThrow();
   });
 
   it('Handle with error should resolve and log only a warning.', async () => {
     const error = new Error('Error handling retry check.');
-    const mock = vi.fn() as MockedFunction<typeof checkAndRetryJob>;
-    mock.mockImplementation(() => {
-      return Promise.reject(error);
-    });
-    vi.mocked(checkAndRetryJob).mockImplementation(mock);
+    vi.mocked(checkAndRetryJob).mockRejectedValue(error);
 
     const logSpyWarn = vi.spyOn(logger, 'warn');
     await expect(jobRetryCheck(sqsEvent, context)).resolves.not.toThrow();
