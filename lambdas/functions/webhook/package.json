@@ -23,7 +23,7 @@
     "@types/express": "^5.0.3",
     "@types/node": "^22.19.0",
     "@vercel/ncc": "0.38.4",
-    "body-parser": "^2.2.0",
+    "body-parser": "^2.2.1",
     "express": "^5.1.0",
     "ts-node-dev": "^2.0.0"
   },
