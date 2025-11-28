@@ -117,7 +117,7 @@ variable "lambda_s3_object_version" {
 variable "lambda_runtime" {
   description = "AWS Lambda runtime."
   type        = string
-  default     = "nodejs22.x"
+  default     = "nodejs24.x"
 }
 
 variable "lambda_architecture" {
