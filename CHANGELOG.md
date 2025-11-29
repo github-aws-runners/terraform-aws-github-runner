@@ -1,5 +1,12 @@
 # Changelog
 
+## [6.10.1](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.10.0...v6.10.1) (2025-11-27)
+
+
+### Bug Fixes
+
+* **lambda:** bump body-parser from 2.2.0 to 2.2.1 in /lambdas ([#4913](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4913)) ([3481dbb](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/3481dbbed81eb56c217fd10358097d29533b4cfe))
+
 ## [6.10.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.9.1...v6.10.0) (2025-11-24)
 
 
