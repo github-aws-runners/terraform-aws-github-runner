@@ -3,7 +3,6 @@ on:
   push:
     branches:
       - main
-      - v1
   workflow_dispatch:
 
 concurrency:
@@ -22,6 +21,7 @@ jobs:
       actions: write # for release-please-action to trigger other workflows
       id-token: write # for actions/attest-build-provenance to generate attestations
       attestations: write # for actions/attest-build-provenance to write attestations
+    environment: release
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@20cf305ff2072d973412fa9b1e3a4f227bda3c76 # v2.14.0
