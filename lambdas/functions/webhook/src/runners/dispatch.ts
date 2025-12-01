@@ -36,6 +36,12 @@ async function handleWorkflowJob(
       body: `Workflow job not queued, not dispatching to queue.`,
     };
   }
+
+  logger.debug(
+    `Processing workflow job event - Repository: ${body.repository.full_name}, ` +
+      `Job ID: ${body.workflow_job.id}, Job Name: ${body.workflow_job.name}, ` +
+      `Run ID: ${body.workflow_job.run_id}, Labels: ${JSON.stringify(body.workflow_job.labels)}`,
+  );
   // sort the queuesConfig by order of matcher config exact match, with all true matches lined up ahead.
   matcherConfig.sort((a, b) => {
     return a.matcherConfig.exactMatch === b.matcherConfig.exactMatch ? 0 : a.matcherConfig.exactMatch ? -1 : 1;
@@ -51,7 +57,10 @@ async function handleWorkflowJob(
         queueId: queue.id,
         repoOwnerType: body.repository.owner.type,
       });
-      logger.info(`Successfully dispatched job for ${body.repository.full_name} to the queue ${queue.id}`);
+      logger.info(
+        `Successfully dispatched job for ${body.repository.full_name} to the queue ${queue.id} - ` +
+          `Job ID: ${body.workflow_job.id}, Job Name: ${body.workflow_job.name}, Run ID: ${body.workflow_job.run_id}`,
+      );
       return {
         statusCode: 201,
         body: `Successfully queued job for ${body.repository.full_name} to the queue ${queue.id}`,
@@ -61,7 +70,9 @@ async function handleWorkflowJob(
   const notAcceptedErrorMsg = `Received event contains runner labels '${body.workflow_job.labels}' from '${
     body.repository.full_name
   }' that are not accepted.`;
-  logger.warn(notAcceptedErrorMsg);
+  logger.warn(
+    `${notAcceptedErrorMsg} - Job ID: ${body.workflow_job.id}, Job Name: ${body.workflow_job.name}, Run ID: ${body.workflow_job.run_id}`,
+  );
   return { statusCode: 202, body: notAcceptedErrorMsg };
 }
 
