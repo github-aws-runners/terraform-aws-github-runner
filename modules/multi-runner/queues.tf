@@ -1,7 +1,7 @@
 
-data "aws_iam_policy_document" "deny_unsecure_transport" {
+data "aws_iam_policy_document" "deny_insecure_transport" {
   statement {
-    sid = "DenyUnsecureTransport"
+    sid = "DenyInsecureTransport"
 
     effect = "Deny"
 
@@ -48,7 +48,7 @@ resource "aws_sqs_queue" "queued_builds" {
 resource "aws_sqs_queue_policy" "build_queue_policy" {
   for_each  = var.multi_runner_config
   queue_url = aws_sqs_queue.queued_builds[each.key].id
-  policy    = data.aws_iam_policy_document.deny_unsecure_transport.json
+  policy    = data.aws_iam_policy_document.deny_insecure_transport.json
 }
 
 resource "aws_sqs_queue" "queued_builds_dlq" {
@@ -64,5 +64,5 @@ resource "aws_sqs_queue" "queued_builds_dlq" {
 resource "aws_sqs_queue_policy" "build_queue_dlq_policy" {
   for_each  = { for config, values in var.multi_runner_config : config => values if values.redrive_build_queue.enabled }
   queue_url = aws_sqs_queue.queued_builds_dlq[each.key].id
-  policy    = data.aws_iam_policy_document.deny_unsecure_transport.json
+  policy    = data.aws_iam_policy_document.deny_insecure_transport.json
 }
