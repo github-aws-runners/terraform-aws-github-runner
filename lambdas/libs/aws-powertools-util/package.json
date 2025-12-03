@@ -20,9 +20,9 @@
     "body-parser": "^2.2.1"
   },
   "dependencies": {
-    "@aws-lambda-powertools/logger": "^2.28.1",
-    "@aws-lambda-powertools/metrics": "^2.28.1",
-    "@aws-lambda-powertools/tracer": "^2.28.1",
+    "@aws-lambda-powertools/logger": "^2.29.0",
+    "@aws-lambda-powertools/metrics": "^2.29.0",
+    "@aws-lambda-powertools/tracer": "^2.29.0",
     "aws-lambda": "^1.0.7"
   },
   "nx": {
