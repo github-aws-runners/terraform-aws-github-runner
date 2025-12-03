@@ -26,19 +26,19 @@ locals {
   default_userdata_template = {
     "windows" = "${path.module}/templates/user-data.ps1"
     "linux"   = "${path.module}/templates/user-data.sh"
-    "osx"     = "${path.module}/templates/user-data.sh"
+    "osx"     = "${path.module}/templates/user-data-osx.sh"
   }
 
   userdata_install_runner = {
     "windows" = "${path.module}/templates/install-runner.ps1"
     "linux"   = "${path.module}/templates/install-runner.sh"
-    "osx"     = "${path.module}/templates/install-runner.sh"
+    "osx"     = "${path.module}/templates/install-runner-osx.sh"
   }
 
   userdata_start_runner = {
     "windows" = "${path.module}/templates/start-runner.ps1"
     "linux"   = "${path.module}/templates/start-runner.sh"
-    "osx"     = "${path.module}/templates/start-runner.sh"
+    "osx"     = "${path.module}/templates/start-runner-osx.sh"
   }
 
   # Handle AMI configuration
