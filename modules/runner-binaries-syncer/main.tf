@@ -1,5 +1,5 @@
 locals {
-  action_runner_distribution_object_key = "actions-runner-${var.runner_os}.${var.runner_os == "linux" ? "tar.gz" : "zip"}"
+  action_runner_distribution_object_key = "actions-runner-${var.runner_os}.${var.runner_os == "windows" ? "zip" : "tar.gz"}"
 }
 
 resource "aws_s3_bucket" "action_dist" {
