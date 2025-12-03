@@ -207,6 +207,7 @@ async function processFleetResult(
     'MaxSpotInstanceCountExceeded',
     'MaxSpotFleetRequestCountExceeded',
     'InsufficientInstanceCapacity',
+    'InsufficientCapacityOnHost',
   ];
 
   const failedCount = countScaleErrors(errors, scaleErrors);

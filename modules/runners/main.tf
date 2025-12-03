@@ -20,21 +20,25 @@ locals {
   default_ami = {
     "windows" = { name = ["Windows_Server-2022-English-Full-ECS_Optimized-*"] }
     "linux"   = var.runner_architecture == "arm64" ? { name = ["al2023-ami-2023.*-kernel-6.*-arm64"] } : { name = ["al2023-ami-2023.*-kernel-6.*-x86_64"] }
+    "osx"     = var.runner_architecture == "arm64" ? { name = ["amzn-ec2-macos-15.*-arm64"] } : { name = ["amzn-ec2-macos-15.*"] }
   }
 
   default_userdata_template = {
     "windows" = "${path.module}/templates/user-data.ps1"
     "linux"   = "${path.module}/templates/user-data.sh"
+    "osx"     = "${path.module}/templates/user-data.sh"
   }
 
   userdata_install_runner = {
     "windows" = "${path.module}/templates/install-runner.ps1"
     "linux"   = "${path.module}/templates/install-runner.sh"
+    "osx"     = "${path.module}/templates/install-runner.sh"
   }
 
   userdata_start_runner = {
     "windows" = "${path.module}/templates/start-runner.ps1"
     "linux"   = "${path.module}/templates/start-runner.sh"
+    "osx"     = "${path.module}/templates/start-runner.sh"
   }
 
   # Handle AMI configuration
