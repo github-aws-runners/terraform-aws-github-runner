@@ -186,6 +186,7 @@ async function processFleetResult(
       'MaxSpotInstanceCountExceeded',
       'MaxSpotFleetRequestCountExceeded',
       'InsufficientInstanceCapacity',
+      'InsufficientCapacityOnHost',
     ];
 
     if (
