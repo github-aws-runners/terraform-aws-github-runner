@@ -172,9 +172,9 @@ resource "aws_launch_template" "runner" {
   dynamic "placement" {
     for_each = var.placement != null ? [var.placement] : []
     content {
-      affinity                = try(placement.value.affinity, null)
-      availability_zone       = try(placement.value.availability_zone, null)
-      group_id                = try(placement.value.group_id, null)
+      affinity          = try(placement.value.affinity, null)
+      availability_zone = try(placement.value.availability_zone, null)
+      # group_id                = try(placement.value.group_id, null) # aws >= 6.12.0
       group_name              = try(placement.value.group_name, null)
       host_id                 = try(placement.value.host_id, null)
       host_resource_group_arn = try(placement.value.host_resource_group_arn, null)

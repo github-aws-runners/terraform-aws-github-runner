@@ -131,9 +131,9 @@ variable "multi_runner_config" {
         threads_per_core = number
       }), null)
       placement = optional(object({
-        affinity                = optional(string)
-        availability_zone       = optional(string)
-        group_id                = optional(string)
+        affinity          = optional(string)
+        availability_zone = optional(string)
+        # group_id                = try(placement.value.group_id, null) # aws >= 6.12.0
         group_name              = optional(string)
         host_id                 = optional(string)
         host_resource_group_arn = optional(number)
