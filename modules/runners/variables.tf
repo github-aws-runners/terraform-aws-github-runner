@@ -701,20 +701,10 @@ variable "enable_on_demand_failover_for_errors" {
   default     = []
 }
 
-variable "scale_errors" {
-  description = "List of aws error codes that should trigger retry during scale up. This list will replace the default errors defined in the variable `defaultScaleErrors` in https://github.com/github-aws-runners/terraform-aws-github-runner/blob/main/lambdas/functions/control-plane/src/aws/runners.ts"
+variable "custom_scale_errors" {
+  description = "List of custom aws error codes that should trigger retry during scale up."
   type        = list(string)
-  default = [
-    "UnfulfillableCapacity",
-    "MaxSpotInstanceCountExceeded",
-    "TargetCapacityLimitExceededException",
-    "RequestLimitExceeded",
-    "ResourceLimitExceeded",
-    "MaxSpotInstanceCountExceeded",
-    "MaxSpotFleetRequestCountExceeded",
-    "InsufficientInstanceCapacity",
-    "InsufficientCapacityOnHost",
-  ]
+  default     = []
 }
 
 variable "lambda_tags" {
