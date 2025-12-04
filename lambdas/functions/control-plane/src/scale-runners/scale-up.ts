@@ -60,6 +60,7 @@ interface CreateEC2RunnerConfig {
   amiIdSsmParameterName?: string;
   tracingEnabled?: boolean;
   onDemandFailoverOnError?: string[];
+  customScaleErrors?: string[];
 }
 
 function generateRunnerServiceConfig(githubRunnerConfig: CreateGitHubRunnerConfig, token: string) {
@@ -251,6 +252,9 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
   const onDemandFailoverOnError = process.env.ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS
     ? (JSON.parse(process.env.ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS) as [string])
     : [];
+  const customScaleErrors = process.env.CUSTOM_SCALE_ERRORS
+    ? (JSON.parse(process.env.CUSTOM_SCALE_ERRORS) as [string])
+    : [];
 
   if (ephemeralEnabled && payload.eventType !== 'workflow_job') {
     logger.warn(`${payload.eventType} event is not supported in combination with ephemeral runners.`);
@@ -335,6 +339,7 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
           amiIdSsmParameterName,
           tracingEnabled,
           onDemandFailoverOnError,
+          customScaleErrors,
         },
         githubInstallationClient,
       );
