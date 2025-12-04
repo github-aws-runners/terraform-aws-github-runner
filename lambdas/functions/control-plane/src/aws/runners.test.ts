@@ -463,8 +463,10 @@ describe('create runner with errors', () => {
 
   it('test ScaleError with custom scale error.', async () => {
     createFleetMockWithErrors(['CustomAWSError']);
-    
-    await expect(createRunner(createRunnerConfig({ ...defaultRunnerConfig, customScaleErrors: ['CustomAWSError'] }))).rejects.toBeInstanceOf(ScaleError);
+
+    await expect(
+      createRunner(createRunnerConfig({ ...defaultRunnerConfig, customScaleErrors: ['CustomAWSError'] })),
+    ).rejects.toBeInstanceOf(ScaleError);
     expect(mockEC2Client).toHaveReceivedCommandWith(
       CreateFleetCommand,
       expectedCreateFleetRequest(defaultExpectedFleetRequestValues),
