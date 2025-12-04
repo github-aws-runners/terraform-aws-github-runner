@@ -64,7 +64,7 @@ interface CreateEC2RunnerConfig {
   amiIdSsmParameterName?: string;
   tracingEnabled?: boolean;
   onDemandFailoverOnError?: string[];
-  scaleErrors: string[];
+  customScaleErrors?: string[];
 }
 
 function generateRunnerServiceConfig(githubRunnerConfig: CreateGitHubRunnerConfig, token: string) {
@@ -503,7 +503,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
         amiIdSsmParameterName,
         tracingEnabled,
         onDemandFailoverOnError,
-        scaleErrors,
+        customScaleErrors,
       },
       newRunners,
       githubInstallationClient,
