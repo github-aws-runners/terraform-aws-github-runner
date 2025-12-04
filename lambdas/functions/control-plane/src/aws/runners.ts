@@ -198,7 +198,7 @@ async function processFleetResult(
 
   // Educated guess of errors that would make sense to retry based on the list
   // https://docs.aws.amazon.com/AWSEC2/latest/APIReference/errors-overview.html
-  const scaleErrors = [
+  const defaultScaleErrors = [
     'UnfulfillableCapacity',
     'MaxSpotInstanceCountExceeded',
     'TargetCapacityLimitExceededException',
@@ -209,6 +209,11 @@ async function processFleetResult(
     'InsufficientInstanceCapacity',
   ];
 
+  const scaleErrors =
+      runnerParameters.customScaleErrors && runnerParameters.customScaleErrors.length > 0
+        ? runnerParameters.customScaleErrors
+        : defaultScaleErrors;
+  
   const failedCount = countScaleErrors(errors, scaleErrors);
   if (failedCount > 0) {
     logger.warn('Create fleet failed, ScaleError will be thrown to trigger retry for ephemeral runners.');

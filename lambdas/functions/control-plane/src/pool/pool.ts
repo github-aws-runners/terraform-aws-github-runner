@@ -41,6 +41,9 @@ export async function adjust(event: PoolEvent): Promise<void> {
   const onDemandFailoverOnError = process.env.ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS
     ? (JSON.parse(process.env.ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS) as [string])
     : [];
+  const customScaleErrors = process.env.CUSTOM_SCALE_ERRORS
+    ? (JSON.parse(process.env.CUSTOM_SCALE_ERRORS) as [string])
+    : [];
 
   const { ghesApiUrl, ghesBaseUrl } = getGitHubEnterpriseApiUrl();
 
@@ -95,6 +98,7 @@ export async function adjust(event: PoolEvent): Promise<void> {
         amiIdSsmParameterName,
         tracingEnabled,
         onDemandFailoverOnError,
+        customScaleErrors
       },
       topUp,
       githubInstallationClient,

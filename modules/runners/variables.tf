@@ -701,6 +701,12 @@ variable "enable_on_demand_failover_for_errors" {
   default     = []
 }
 
+variable "custom_scale_errors" {
+  description = "List of custom aws error codes that should trigger retry during scale up."
+  type        = list(string)
+  default     = []
+}
+
 variable "lambda_tags" {
   description = "Map of tags that will be added to all the lambda function resources. Note these are additional tags to the default tags."
   type        = map(string)

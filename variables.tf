@@ -283,6 +283,12 @@ variable "enable_runner_on_demand_failover_for_errors" {
   default     = []
 }
 
+variable "custom_scale_errors" {
+  description = "List of custom aws error codes that should trigger retry during scale up."
+  type        = list(string)
+  default     = []
+}
+
 variable "enable_userdata" {
   description = "Should the userdata script be enabled for the runner. Set this to false if you are using your own prebuilt AMI."
   type        = bool
