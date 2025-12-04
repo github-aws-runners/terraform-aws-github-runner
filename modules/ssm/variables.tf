@@ -50,3 +50,9 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "tier" {
+  description = "The tier of the SSM parameter, e.g., Standard or Advanced."
+  type        = string
+  default     = "Standard"
+}
