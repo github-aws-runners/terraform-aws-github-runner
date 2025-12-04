@@ -38,6 +38,7 @@ No modules.
 | <a name="input_kms_key_arn"></a> [kms\_key\_arn](#input\_kms\_key\_arn) | Optional CMK Key ARN to be used for Parameter Store. | `string` | `null` | no |
 | <a name="input_path_prefix"></a> [path\_prefix](#input\_path\_prefix) | The path prefix used for naming resources | `string` | n/a | yes |
 | <a name="input_tags"></a> [tags](#input\_tags) | Map of tags that will be added to created resources. By default resources will be tagged with name and environment. | `map(string)` | `{}` | no |
+| <a name="input_tier"></a> [tier](#input\_tier) | The tier of the SSM parameter, e.g., Standard or Advanced. | `string` | `"Standard"` | no |
 
 ## Outputs
 
