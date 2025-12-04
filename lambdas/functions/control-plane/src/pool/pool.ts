@@ -102,7 +102,7 @@ export async function adjust(event: PoolEvent): Promise<void> {
         amiIdSsmParameterName,
         tracingEnabled,
         onDemandFailoverOnError,
-        scaleErrors,
+        customScaleErrors
       },
       topUp,
       githubInstallationClient,
