@@ -300,7 +300,7 @@ variable "scale_errors" {
   ]
 =======
 variable "custom_scale_errors" {
-  description = "List of custom aws error codes that should trigger retry during scale up."
+  description = "List of aws error codesthat should trigger retry during scale up. This list will replace the default errors defined in the variable `defaultScaleErrors` in https://github.com/github-aws-runners/terraform-aws-github-runner/blob/main/lambdas/functions/control-plane/src/aws/runners.ts"
   type        = list(string)
   default     = []
 >>>>>>> eb7236e3 (feat: add support to use custom scale errors)
