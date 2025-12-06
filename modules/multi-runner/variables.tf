@@ -578,7 +578,7 @@ variable "key_name" {
 }
 
 variable "ghes_url" {
-  description = "GitHub Enterprise Server URL. Example: https://github.internal.co - DO NOT SET IF USING PUBLIC GITHUB. .However if you are using Github Enterprise Cloud with data-residency (ghe.com), set the endpoint here. Example - https://companyname.ghe.com|"
+  description = "GitHub Enterprise Server URL. Example: https://github.internal.co - DO NOT SET IF USING PUBLIC GITHUB. .However if you are using GitHub Enterprise Cloud with data-residency (ghe.com), set the endpoint here. Example - https://companyname.ghe.com|"
   type        = string
   default     = null
 }
@@ -657,7 +657,7 @@ variable "instance_termination_watcher" {
     Configuration for the spot termination watcher lambda function. This feature is Beta, changes will not trigger a major release as long in beta.
 
     `enable`: Enable or disable the spot termination watcher.
-    `memory_size`: Memory size linit in MB of the lambda.
+    `memory_size`: Memory size limit in MB of the lambda.
     `s3_key`: S3 key for syncer lambda function. Required if using S3 bucket to specify lambdas.
     `s3_object_version`: S3 object version for syncer lambda function. Useful if S3 versioning is enabled on source bucket.
     `timeout`: Time out of the lambda in seconds.
@@ -723,4 +723,16 @@ variable "user_agent" {
   description = "User agent used for API calls by lambda functions."
   type        = string
   default     = "github-aws-runners"
+}
+
+variable "lambda_event_source_mapping_batch_size" {
+  description = "Maximum number of records to pass to the lambda function in a single batch for the event source mapping. When not set, the AWS default of 10 events will be used."
+  type        = number
+  default     = 10
+}
+
+variable "lambda_event_source_mapping_maximum_batching_window_in_seconds" {
+  description = "Maximum amount of time to gather records before invoking the lambda function, in seconds. AWS requires this to be greater than 0 if batch_size is greater than 10. Defaults to 0."
+  type        = number
+  default     = 0
 }
