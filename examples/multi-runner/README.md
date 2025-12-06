@@ -14,7 +14,7 @@ For exact match, all the labels defined in the workflow should be present in the
 
 ## Webhook
 
-For the list of provided runner configurations, there will be a single webhook and only a single Github App to receive the notifications for all types of workflow triggers.
+For the list of provided runner configurations, there will be a single webhook and only a single GitHub App to receive the notifications for all types of workflow triggers.
 
 ## Lambda distribution
 

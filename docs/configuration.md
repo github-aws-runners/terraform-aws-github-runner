@@ -11,7 +11,7 @@ To be able to support a number of use-cases, the module has quite a lot of confi
 - Reuse vs Ephemeral. By default runners are reused, until detected idle. Once idle they will be removed from the pool. To improve security we are introducing ephemeral runners. Those runners are only used for one job. Ephemeral runners only work in combination with the workflow job event. For ephemeral runners the lambda requests a JIT (just in time) configuration via the GitHub API to register the runner. [JIT configuration](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-just-in-time-runners) is limited to ephemeral runners (and currently not supported by GHES). For non-ephemeral runners, a registration token is always requested. In both cases the configuration is made available to the instance via the same SSM parameter. To disable JIT configuration for ephemeral runners set `enable_jit_config` to `false`. We also suggest using a pre-build AMI to improve the start time of jobs for ephemeral runners.
 - Job retry (**Beta**). By default the scale-up lambda will discard the message when it is handled. Meaning in the ephemeral use-case an instance is created. The created runner will ask GitHub for a job, no guarantee it will run the job for which it was scaling. Result could be that with small system hick-up the job is keeping waiting for a runner. Enable a pool (org runners) is one option to avoid this problem. Another option is to enable the job retry function. Which will retry the job after a delay for a configured number of times.
 - GitHub Cloud vs GitHub Enterprise Server (GHES). The runners support GitHub Cloud (Public GitHub - github.com), GitHub Data Residency instances (ghe.com), and GitHub Enterprise Server. For GHES, we rely on our community for support and testing. We have no capability to test GHES ourselves.
-- Spot vs on-demand. The runners use either the EC2 spot or on-demand life cycle. Runners will be created via the AWS [CreateFleet API](https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_CreateFleet.html). The module (scale up lambda) will request via the CreateFleet API to create instances in one of the subnets and of the specified instance types.
+- Spot vs on-demand. The runners use either the EC2 spot or on-demand lifecycle. Runners will be created via the AWS [CreateFleet API](https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_CreateFleet.html). The module (scale up lambda) will request via the CreateFleet API to create instances in one of the subnets and of the specified instance types.
 - ARM64 support via Graviton/Graviton2 instance-types. When using the default example or top-level module, specifying `instance_types` that match a Graviton/Graviton 2 (ARM64) architecture (e.g. a1, t4g or any 6th-gen `g` or `gd` type), you must also specify `runner_architecture = "arm64"` and the sub-modules will be automatically configured to provision with ARM64 AMIs and leverage GitHub's ARM64 action runner. See below for more details.
 - Disable default labels for the runners (os, architecture and `self-hosted`) can achieve by setting `runner_disable_default_labels` = true. If enabled, the runner will only have the extra labels provided in `runner_extra_labels`. In case you on own start script is used, this configuration parameter needs to be parsed via SSM.
 
@@ -171,6 +171,8 @@ This module also allows you to run agents from a prebuilt AMI to gain faster sta
 
 ## AMI Configuration
 
+> **Note:** By default, a runner AMI update requires a re-apply of the terraform configuration, as the runner AMI ID is looked up by a terraform data source. To avoid this, you can use or `ami.id_ssm_parameter_arn` to have the scale-up lambda dynamically lookup the runner AMI ID from an SSM parameter at instance launch time. Said SSM parameter is managed outside of this module (e.g. by a runner AMI build workflow).
+
 By default, the module will automatically select appropriate AMI images:
 
 - For Linux x64: Amazon Linux 2023 x86_64
@@ -203,8 +205,7 @@ ami = {
 }
 ```
 
-> **Note:** The old way of configuring AMIs using individual variables (`ami_filter`, `ami_owners`, `ami_kms_key_arn`) is deprecated and will be removed in a future version. It is recommended to migrate to the new consolidated `ami` object.
-
+> **Note:** The old way of configuring AMIs using individual variables (`ami_filter`, `ami_owners`, `ami_kms_key_arn`, `ami_id_ssm_parameter_arn`, `ami_id_ssm_parameter_name`) is deprecated and will be removed in a future version. It is recommended to migrate to the new consolidated `ami` object. Support for `ami_id_ssm_parameter_name` will be dropped, please specify an arn via `ami.id_ssm_parameter_arn` instead.
 
 ## Logging
 
@@ -252,18 +253,18 @@ The distributed architecture of this application can make it difficult to troubl
 This tracing config generates timelines for following events:
 
 - Basic lifecycle of lambda function
-- Traces for Github API calls (can be configured by capture_http_requests).
+- Traces for GitHub API calls (can be configured by capture_http_requests).
 - Traces for all AWS SDK calls
 
 This feature has been disabled by default.
 
 ### Multiple runner module in your AWS account
 
-The watcher will act on all spot termination notificatins and log all onses relevant to the runner module. Therefor we suggest to only deploy the watcher once. You can either deploy the watcher by enabling in one of your deployments or deploy the watcher as a stand alone module.
+The watcher will act on all spot termination notifications and log the ones relevant to the runner module. Therefor we suggest to only deploy the watcher once. You can either deploy the watcher by enabling in one of your deployments or deploy the watcher as a stand alone module.
 
 ## Metrics
 
-The module supports metrics (experimental feature) to monitor the system. The metrics are disabled by default. To enable the metrics set `metrics.enable = true`. If set to true, all module managed metrics are used, you can configure the one by one via the `metrics` object. The metrics are created in the namespace `GitHub Runners`.
+The module supports metrics (experimental feature) to monitor the system. The metrics are disabled by default. To enable the metrics set `metrics.enable = true`. If set to true, all module managed metrics are used, you can configure them one by one via the `metrics` object. The metrics are created in the namespace `GitHub Runners`.
 
 ### Supported metrics
 
@@ -287,28 +288,28 @@ In case the setup does not work as intended, trace the events through this seque
 
 This feature is in early stage and therefore disabled by default. To enable the watcher, set `instance_termination_watcher.enable = true`.
 
-The termination watcher is currently watching for spot terminations. The module is only taken events into account for instances tagged with `ghr:environment` by default when deployment the module as part of one of the main modules (root or multi-runner). The module can also be deployed stand-alone, in this case, the tag filter needs to be tuned.
+The termination watcher is currently watching for spot terminations. The module only takes events into account for instances tagged with `ghr:environment` by default, when the module is deployed as part of one of the main modules (root or multi-runner). The module can also be deployed stand-alone, in this case, the tag filter needs to be tuned.
 
 ### Termination notification
 
-The watcher is listening for spot termination warnings and create a log message and optionally a metric. The watcher is disabled by default. The feature is enabled once the watcher is enabled, the feature can be disabled explicit by setting `instance_termination_watcher.features.enable_spot_termination_handler = false`.
+The watcher is listening for spot termination warnings and creates a log message and optionally a metric. The watcher is disabled by default. The feature is enabled once the watcher is enabled. It can be disabled explicitly by setting `instance_termination_watcher.features.enable_spot_termination_handler = false`.
 
-- Logs: The module will log all termination notifications. For each warning it will look up instance details and log the environment, instance type and time the instance is running. As well some other details.
-- Metrics: Metrics are disabled by default, this to avoid costs. Once enabled a metric will be created for each warning with at least dimensions for the environment and instance type. THe metric name space can be configured via the variables. The metric name used is `SpotInterruptionWarning`.
+- Logs: The module will log all termination notifications. For each warning it will look up instance details and log the environment, instance type and time the instance is running, as well as some other details.
+- Metrics: Metrics are disabled by default, in order to avoid costs. Once enabled a metric will be created for each warning with at least dimensions for the environment and instance type. The metric name space can be configured via the variables. The metric name used is `SpotInterruptionWarning`.
 
 ### Termination handler
 
 !!! warning
-This feature will only work once the CloudTrail is enabled.
+This feature will only work once CloudTrail is enabled.
 
-The termination handler is listening for spot terminations by capture the `BidEvictedEvent` via CloudTrail. The handler will log and optionally create a metric for each termination. The intend is to enhance the logic to inform the user about the termination via the GitHub Job or Workflow run. The feature is disabled by default. The feature is enabled once the watcher is enabled, the feature can be disabled explicit by setting `instance_termination_watcher.features.enable_spot_termination_handler = false`.
+The termination handler is listening for spot terminations by capturing the `BidEvictedEvent` via CloudTrail. The handler will log and optionally create a metric for each termination. The intent is to enhance the logic to inform the user about the termination via the GitHub Job or Workflow run. The feature is disabled by default. The feature is enabled once the watcher is enabled. It can be disabled explicitly by setting `instance_termination_watcher.features.enable_spot_termination_handler = false`.
 
-- Logs: The module will log all termination notifications. For each warning it will look up instance details and log the environment, instance type and time the instance is running. As well some other details.
-- Metrics: Metrics are disabled by default, this to avoid costs. Once enabled a metric will be created for each termination with at least dimensions for the environment and instance type. THe metric name space can be configured via the variables. The metric name used is `SpotTermination`.
+- Logs: The module will log all termination notifications. For each warning it will look up instance details and log the environment, instance type and time the instance is running, as well as some other details.
+- Metrics: Metrics are disabled by default, in order to avoid costs. Once enabled a metric will be created for each termination with at least dimensions for the environment and instance type. THe metric name space can be configured via the variables. The metric name used is `SpotTermination`.
 
 ### Log example (both warnings and terminations)
 
-Below an example of the the log messages created.
+Below is an example of the log messages created.
 
 ```
 {
@@ -331,7 +332,7 @@ Below an example of the the log messages created.
 
 ### EventBridge
 
-This module can be deployed in using the mode `EventBridge`. The `EventBridge` mode will publish an event to a eventbus. Within the eventbus, there is a target rule set, sending events to the dispatch lambda. The `EventBridge` mode is enabled by default.
+This module can be deployed in `EventBridge` mode. The `EventBridge` mode will publish an event to an eventbus. Within the eventbus, there is a target rule set, sending events to the dispatch lambda. The `EventBridge` mode is enabled by default.
 
 Example to extend the EventBridge:
 
@@ -389,7 +390,7 @@ resource "aws_iam_role" "event_rule_role" {
 
 data aws_iam_policy_document firehose_stream {
   statement {
-    INSER_YOUR_POIICY_HERE_TO_ACCESS_THE_TARGET
+    INSERT_YOUR_POLICY_HERE_TO_ACCESS_THE_TARGET
   }
 }
 
@@ -399,5 +400,3 @@ resource "aws_iam_role_policy" "event_rule_firehose_role" {
   policy = data.aws_iam_policy_document.firehose_stream.json
 }
 ```
-
-NOTE: By default, a runner AMI update requires a re-apply of this terraform config (the runner AMI ID is looked up by a terraform data source). To avoid this, you can use `ami_id_ssm_parameter_name` to have the scale-up lambda dynamically lookup the runner AMI ID from an SSM parameter at instance launch time. Said SSM parameter is managed outside of this module (e.g. by a runner AMI build workflow).

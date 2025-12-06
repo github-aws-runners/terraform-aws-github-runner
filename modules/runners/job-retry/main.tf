@@ -24,7 +24,7 @@ locals {
 
 resource "aws_sqs_queue_policy" "job_retry_check_queue_policy" {
   queue_url = aws_sqs_queue.job_retry_check_queue.id
-  policy    = data.aws_iam_policy_document.deny_unsecure_transport.json
+  policy    = data.aws_iam_policy_document.deny_insecure_transport.json
 }
 
 resource "aws_sqs_queue" "job_retry_check_queue" {
@@ -69,9 +69,9 @@ resource "aws_iam_role_policy" "job_retry" {
   })
 }
 
-data "aws_iam_policy_document" "deny_unsecure_transport" {
+data "aws_iam_policy_document" "deny_insecure_transport" {
   statement {
-    sid = "DenyUnsecureTransport"
+    sid = "DenyInsecureTransport"
 
     effect = "Deny"
 
