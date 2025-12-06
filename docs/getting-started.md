@@ -4,7 +4,7 @@ Terraform examples are available for different use-cases for example multiple ru
 
 The module supports two main scenarios for creating runners. Repository level runners will be dedicated to only one repository, no other repository can use the runner. At the organization level you can use the runner(s) for all repositories within the organization. See [GitHub self-hosted runner instructions](https://help.github.com/en/actions/hosting-your-own-runners/about-self-hosted-runners) for more information. Before starting the deployment you have to choose one option.
 
-The setup guide below is a generic direction. There are many choices you can make, and there is no right way. For example we deploy ephemeral runners for both Linux and WIndows with packer pre-built AMI's that are automatically updated. Deployment is done with GitHub actions, Terragrunt and terraform. The lambda's we sync to AWS S3. For the major fleet we have a tiny pool to let start jobs quickly.
+The setup guide below is a generic direction. There are many choices you can make, and there is no right way. For example, we deploy ephemeral runners for both Linux and Windows with packer pre-built AMI's that are automatically updated. Deployment is done with GitHub actions, Terragrunt and terraform. We sync the lambda to AWS S3. For the major fleet we have a tiny pool to let start jobs quickly.
 
 ## Required tools
 
@@ -14,17 +14,17 @@ The following tools are a minimum requirement. We advise to deploy the stack via
 - Bash shell or compatible
 - Docker (optional, to build lambdas without node).
 - AWS cli (optional)
-- Node and yarn to build the Lambda's (or download via Release).
+- Node and yarn to build the lambdas (or download via Release).
 
 ## Setup guide
 
-The setup consists of running Terraform to create all AWS resources and manually configuring the GitHub App. The Terraform module requires configuration from the GitHub App and the GitHub app requires output from Terraform. Therefore you first create the GitHub App and configure the basics, then run Terraform, and afterwards finalize the configuration of the GitHub App.
+The setup consists of running Terraform to create all AWS resources and manually configuring the GitHub App. The Terraform module requires configuration from the GitHub App and the GitHub App requires output from Terraform. Therefore you first create the GitHub App and configure the basics, then run Terraform, and afterwards finalize the configuration of the GitHub App.
 
 ### Setup GitHub App (part 1)
 
-Go to GitHub and [create a new app](https://docs.github.com/en/developers/apps/creating-a-github-app). Be aware you can create apps for your organization or for a user. For now we only support organization level apps.
+Go to GitHub and [create a new app](https://docs.github.com/en/developers/apps/creating-a-github-app). Be aware you can create apps for your organization or for a user. For now, we only support organization level apps.
 
-1. Create an app in Github
+1. Create an app in GitHub
 2. Choose a name
 3. Choose a website (mandatory, not required for the module).
 4. Disable the webhook for now (we will configure this later or create an alternative webhook).
@@ -106,7 +106,7 @@ The terraform output displays the API gateway url (endpoint) and secret, which y
 
 The lambda for syncing the GitHub distribution to S3 is triggered via CloudWatch (by default once per hour). After deployment the function is triggered via S3 to ensure the distribution is cached.
 
-### Setup the webhook / GitHub App (part 2)
+### Set up the webhook / GitHub App (part 2)
 
 At this point you have two options. Either create a separate webhook (enterprise,
 org, or repo), or create a webhook in the App.
@@ -131,7 +131,7 @@ Go back to the GitHub App and update the following settings.
 
 #### Install GitHub app
 
-Finally you need to ensure the app is installed to all or selected repositories.
+Finally, you need to ensure the app is installed to all or selected repositories.
 
 Go back to the GitHub App and update the following settings.
 
@@ -145,5 +145,5 @@ In case the setup does not work as intended follow the trace of events:
 - In the GitHub App configuration, the Advanced page displays all webhook events that were sent.
 - In AWS CloudWatch, every lambda has a log group. Look at the logs of the `webhook` and `scale-up` lambdas.
 - In AWS SQS you can see messages available or in flight.
-- Once an EC2 instance is running, you can connect to it in the EC2 user interface using Session Manager (use `enable_ssm_on_runners = true`). Check the user data script using `cat /var/log/user-data.log`. By default several log files of the instances are streamed to AWS CloudWatch, look for a log group named `<environment>/runners`. In the log group you should see at least the log streams for the user data installation and runner agent.
+- Once an EC2 instance is running, you can connect to it in the EC2 user interface using Session Manager (use `enable_ssm_on_runners = true`). Check the user data script using `cat /var/log/user-data.log`. By default, several log files of the instances are streamed to AWS CloudWatch, look for a log group named `<environment>/runners`. In the log group you should see at least the log streams for the user data installation and runner agent.
 - Registered instances should show up in the Settings - Actions page of the repository or organization (depending on the installation mode).

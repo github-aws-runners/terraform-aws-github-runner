@@ -25,14 +25,14 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
-    "@nx/eslint": "22.0.3",
-    "@nx/js": "^22.0.3",
-    "@nx/vite": "^22.0.3",
+    "@nx/eslint": "22.1.2",
+    "@nx/js": "^22.1.2",
+    "@nx/vite": "^22.1.2",
     "@swc-node/register": "~1.11.1",
     "@swc/core": "~1.15.0",
     "@swc/helpers": "~0.5.17",
     "@trivago/prettier-plugin-sort-imports": "^5.2.2",
-    "@typescript-eslint/eslint-plugin": "^8.46.0",
+    "@typescript-eslint/eslint-plugin": "^8.47.0",
     "@typescript-eslint/parser": "^8.46.2",
     "@vitest/coverage-v8": "^4.0.5",
     "chalk": "^5.6.2",
@@ -43,8 +43,8 @@
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.9.3",
-    "vite": "^7.2.0",
-    "vitest": "^4.0.7"
+    "vite": "^7.2.6",
+    "vitest": "^4.0.14"
   },
   "packageManager": "yarn@4.3.1"
 }

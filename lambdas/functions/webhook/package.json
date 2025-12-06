@@ -17,20 +17,20 @@
     "all": "yarn build && yarn format && yarn lint && yarn test"
   },
   "devDependencies": {
-    "@aws-sdk/client-eventbridge": "^3.930.0",
+    "@aws-sdk/client-eventbridge": "^3.940.0",
     "@octokit/webhooks-types": "^7.6.1",
     "@types/aws-lambda": "^8.10.155",
     "@types/express": "^5.0.3",
     "@types/node": "^22.19.0",
     "@vercel/ncc": "0.38.4",
-    "body-parser": "^2.2.0",
-    "express": "^5.1.0",
+    "body-parser": "^2.2.1",
+    "express": "^5.2.0",
     "ts-node-dev": "^2.0.0"
   },
   "dependencies": {
     "@aws-github-runner/aws-powertools-util": "*",
     "@aws-github-runner/aws-ssm-util": "*",
-    "@aws-sdk/client-sqs": "^3.930.0",
+    "@aws-sdk/client-sqs": "^3.940.0",
     "@middy/core": "^6.4.5",
     "@octokit/rest": "22.0.1",
     "@octokit/types": "^16.0.0",

@@ -1,5 +1,25 @@
 # Changelog
 
+## [6.10.1](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.10.0...v6.10.1) (2025-11-27)
+
+
+### Bug Fixes
+
+* **lambda:** bump body-parser from 2.2.0 to 2.2.1 in /lambdas ([#4913](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4913)) ([3481dbb](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/3481dbbed81eb56c217fd10358097d29533b4cfe))
+
+## [6.10.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.9.1...v6.10.0) (2025-11-24)
+
+
+### Features
+
+* **runner-binaries-syncer:** add s3_tags variable for additional S3 bucket tagging ([#4832](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4832)) ([8db1f60](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/8db1f60401b35e769e03b2ab6a1a009ea0dd8095))
+
+
+### Bug Fixes
+
+* **lambda:** bump the aws group in /lambdas with 6 updates ([#4906](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4906)) ([afd62b6](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/afd62b676f9f7e05d3065484c38c1c96cb4d1884))
+* **runners:** support for AMIs with parentheses in the name ([#4856](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4856)) ([2904a10](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/2904a10e0b0d6c0bbb862643af49659530c19960))
+
 ## [6.9.1](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.9.0...v6.9.1) (2025-11-21)
 
 

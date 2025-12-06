@@ -21,9 +21,9 @@ resource "random_string" "random" {
   upper   = false
 }
 
-data "aws_iam_policy_document" "deny_unsecure_transport" {
+data "aws_iam_policy_document" "deny_insecure_transport" {
   statement {
-    sid = "DenyUnsecureTransport"
+    sid = "DenyInsecureTransport"
 
     effect = "Deny"
 
@@ -50,7 +50,7 @@ data "aws_iam_policy_document" "deny_unsecure_transport" {
 
 resource "aws_sqs_queue_policy" "build_queue_policy" {
   queue_url = aws_sqs_queue.queued_builds.id
-  policy    = data.aws_iam_policy_document.deny_unsecure_transport.json
+  policy    = data.aws_iam_policy_document.deny_insecure_transport.json
 }
 
 resource "aws_sqs_queue" "queued_builds" {
@@ -74,7 +74,7 @@ resource "aws_sqs_queue" "queued_builds" {
 resource "aws_sqs_queue_policy" "build_queue_dlq_policy" {
   count     = var.redrive_build_queue.enabled ? 1 : 0
   queue_url = aws_sqs_queue.queued_builds.id
-  policy    = data.aws_iam_policy_document.deny_unsecure_transport.json
+  policy    = data.aws_iam_policy_document.deny_insecure_transport.json
 }
 
 resource "aws_sqs_queue" "queued_builds_dlq" {
