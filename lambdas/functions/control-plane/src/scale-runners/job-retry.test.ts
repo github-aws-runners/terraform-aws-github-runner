@@ -2,9 +2,11 @@ import { publishMessage } from '../aws/sqs';
 import { publishRetryMessage, checkAndRetryJob } from './job-retry';
 import { ActionRequestMessage, ActionRequestMessageRetry } from './scale-up';
 import { getOctokit } from '../github/octokit';
+import { jobRetryCheck } from '../lambda';
 import { Octokit } from '@octokit/rest';
 import { createSingleMetric } from '@aws-github-runner/aws-powertools-util';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import type { SQSRecord } from 'aws-lambda';
 
 vi.mock('../aws/sqs', async () => ({
   publishMessage: vi.fn(),
@@ -267,5 +269,95 @@ describe(`Test job retry check`, () => {
 
     // assert
     expect(publishMessage).not.toHaveBeenCalled();
+  });
+});
+
+describe('Test job retry handler (batch processing)', () => {
+  const context = {
+    requestId: 'request-id',
+    functionName: 'function-name',
+    functionVersion: 'function-version',
+    invokedFunctionArn: 'invoked-function-arn',
+    memoryLimitInMB: '128',
+    awsRequestId: 'aws-request-id',
+    logGroupName: 'log-group-name',
+    logStreamName: 'log-stream-name',
+    remainingTimeInMillis: () => 30000,
+    done: () => {},
+    fail: () => {},
+    succeed: () => {},
+    getRemainingTimeInMillis: () => 30000,
+    callbackWaitsForEmptyEventLoop: false,
+  };
+
+  function createSQSRecord(messageId: string): SQSRecord {
+    return {
+      messageId,
+      receiptHandle: 'receipt-handle',
+      body: JSON.stringify({
+        eventType: 'workflow_job',
+        id: 123,
+        installationId: 456,
+        repositoryName: 'test-repo',
+        repositoryOwner: 'test-owner',
+        repoOwnerType: 'Organization',
+        retryCounter: 0,
+      }),
+      attributes: {
+        ApproximateReceiveCount: '1',
+        SentTimestamp: '1234567890',
+        SenderId: 'sender-id',
+        ApproximateFirstReceiveTimestamp: '1234567891',
+      },
+      messageAttributes: {},
+      md5OfBody: 'md5',
+      eventSource: 'aws:sqs',
+      eventSourceARN: 'arn:aws:sqs:region:account:queue',
+      awsRegion: 'us-east-1',
+    };
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
+    process.env.JOB_QUEUE_SCALE_UP_URL = 'https://sqs.example.com/queue';
+  });
+
+  it('should handle multiple records in a single batch', async () => {
+    mockOctokit.actions.getJobForWorkflowRun.mockImplementation(() => ({
+      data: {
+        status: 'queued',
+      },
+      headers: {},
+    }));
+
+    const event = {
+      Records: [createSQSRecord('msg-1'), createSQSRecord('msg-2'), createSQSRecord('msg-3')],
+    };
+
+    await expect(jobRetryCheck(event, context)).resolves.not.toThrow();
+    expect(publishMessage).toHaveBeenCalledTimes(3);
+  });
+
+  it('should continue processing other records when one fails', async () => {
+    mockCreateOctokitClient
+      .mockResolvedValueOnce(new Octokit()) // First record succeeds
+      .mockRejectedValueOnce(new Error('API error')) // Second record fails
+      .mockResolvedValueOnce(new Octokit()); // Third record succeeds
+
+    mockOctokit.actions.getJobForWorkflowRun.mockImplementation(() => ({
+      data: {
+        status: 'queued',
+      },
+      headers: {},
+    }));
+
+    const event = {
+      Records: [createSQSRecord('msg-1'), createSQSRecord('msg-2'), createSQSRecord('msg-3')],
+    };
+
+    await expect(jobRetryCheck(event, context)).resolves.not.toThrow();
+    // There were two successful calls to publishMessage
+    expect(publishMessage).toHaveBeenCalledTimes(2);
   });
 });
