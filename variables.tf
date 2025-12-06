@@ -108,6 +108,23 @@ variable "runner_group_name" {
   default     = "Default"
 }
 
+variable "iam_overrides" {
+  description = "This map provides the possibility to override some IAM defaults. Note that when using this variable, you are responsible for ensuring the role has necessary permissions to access required resources; `override_instance_profile`: When set to true, the instance profile name provided in `instance_profile_name` will be used for the runners. `override_runner_role`: When set to true, the role ARN provided in `runner_role_arn` will be used for the runners."
+  type = object({
+    override_instance_profile = optional(bool, null)
+    instance_profile_name     = optional(string, null)
+    override_runner_role      = optional(bool, null)
+    runner_role_arn           = optional(string, null)
+  })
+
+  default = {
+    override_instance_profile = false
+    instance_profile_name     = null
+    override_runner_role      = false
+    runner_role_arn           = null
+  }
+}
+
 variable "scale_up_reserved_concurrent_executions" {
   description = "Amount of reserved concurrent executions for the scale-up lambda function. A value of 0 disables lambda from being triggered and -1 removes any concurrency limitations."
   type        = number
