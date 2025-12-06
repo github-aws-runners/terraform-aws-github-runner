@@ -2,7 +2,7 @@
 
 > This module is treated as internal module, breaking changes will not trigger a major release bump.
 
-This module creates resources required to run the GitHub action runner on AWS EC2 spot instances. The life cycle of the runners on AWS is managed by two lambda functions. One function will handle scaling up, the other scaling down.
+This module creates resources required to run the GitHub action runner on AWS EC2 spot instances. The lifecycle of the runners on AWS is managed by two lambda functions. One function will handle scaling up, the other scaling down.
 
 ## Overview
 
@@ -165,7 +165,7 @@ yarn run dist
 | <a name="input_enable_user_data_debug_logging"></a> [enable\_user\_data\_debug\_logging](#input\_enable\_user\_data\_debug\_logging) | Option to enable debug logging for user-data, this logs all secrets as well. | `bool` | `false` | no |
 | <a name="input_enable_userdata"></a> [enable\_userdata](#input\_enable\_userdata) | Should the userdata script be enabled for the runner. Set this to false if you are using your own prebuilt AMI | `bool` | `true` | no |
 | <a name="input_ghes_ssl_verify"></a> [ghes\_ssl\_verify](#input\_ghes\_ssl\_verify) | GitHub Enterprise SSL verification. Set to 'false' when custom certificate (chains) is used for GitHub Enterprise Server (insecure). | `bool` | `true` | no |
-| <a name="input_ghes_url"></a> [ghes\_url](#input\_ghes\_url) | GitHub Enterprise Server URL. DO NOT SET IF USING PUBLIC GITHUB..However if you are using Github Enterprise Cloud with data-residency (ghe.com), set the endpoint here. Example - https://companyname.ghe.com\| | `string` | `null` | no |
+| <a name="input_ghes_url"></a> [ghes\_url](#input\_ghes\_url) | GitHub Enterprise Server URL. DO NOT SET IF USING PUBLIC GITHUB..However if you are using GitHub Enterprise Cloud with data-residency (ghe.com), set the endpoint here. Example - https://companyname.ghe.com\| | `string` | `null` | no |
 | <a name="input_github_app_parameters"></a> [github\_app\_parameters](#input\_github\_app\_parameters) | Parameter Store for GitHub App Parameters. | <pre>object({<br/>    key_base64 = map(string)<br/>    id         = map(string)<br/>  })</pre> | n/a | yes |
 | <a name="input_idle_config"></a> [idle\_config](#input\_idle\_config) | List of time period that can be defined as cron expression to keep a minimum amount of runners active instead of scaling down to 0. By defining this list you can ensure that in time periods that match the cron expression within 5 seconds a runner is kept idle. | <pre>list(object({<br/>    cron             = string<br/>    timeZone         = string<br/>    idleCount        = number<br/>    evictionStrategy = optional(string, "oldest_first")<br/>  }))</pre> | `[]` | no |
 | <a name="input_instance_allocation_strategy"></a> [instance\_allocation\_strategy](#input\_instance\_allocation\_strategy) | The allocation strategy for spot instances. AWS recommends to use `capacity-optimized` however the AWS default is `lowest-price`. | `string` | `"lowest-price"` | no |
