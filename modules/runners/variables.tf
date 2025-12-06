@@ -713,6 +713,12 @@ variable "enable_on_demand_failover_for_errors" {
   default     = []
 }
 
+variable "custom_scale_errors" {
+  description = "List of aws error codesthat should trigger retry during scale up. This list will replace the default errors defined in the variable `defaultScaleErrors` in https://github.com/github-aws-runners/terraform-aws-github-runner/blob/main/lambdas/functions/control-plane/src/aws/runners.ts"
+  type        = list(string)
+  default     = []
+}
+
 variable "lambda_tags" {
   description = "Map of tags that will be added to all the lambda function resources. Note these are additional tags to the default tags."
   type        = map(string)
