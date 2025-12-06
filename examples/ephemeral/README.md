@@ -33,7 +33,7 @@ terraform output webhook_secret
 | Name | Version |
 |------|---------|
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.3.0 |
-| <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 6.0 |
+| <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 6.21 |
 | <a name="requirement_local"></a> [local](#requirement\_local) | ~> 2.0 |
 | <a name="requirement_random"></a> [random](#requirement\_random) | ~> 3.0 |
 

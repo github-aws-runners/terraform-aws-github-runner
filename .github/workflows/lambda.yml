@@ -20,7 +20,7 @@ jobs:
     name: Build and test lambda functions
     runs-on: ubuntu-latest
     container:
-      image: node:22@sha256:2bb201f33898d2c0ce638505b426f4dd038cc00e5b2b4cbba17b069f0fff1496
+      image: node:24@sha256:aa648b387728c25f81ff811799bbf8de39df66d7e2d9b3ab55cc6300cb9175d9
     defaults:
       run:
         working-directory: ./lambdas
