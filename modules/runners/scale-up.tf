@@ -87,10 +87,12 @@ resource "aws_cloudwatch_log_group" "scale_up" {
 }
 
 resource "aws_lambda_event_source_mapping" "scale_up" {
-  event_source_arn = var.sqs_build_queue.arn
-  function_name    = aws_lambda_function.scale_up.arn
-  batch_size       = 1
-  tags             = var.tags
+  event_source_arn                   = var.sqs_build_queue.arn
+  function_name                      = aws_lambda_function.scale_up.arn
+  function_response_types            = ["ReportBatchItemFailures"]
+  batch_size                         = var.lambda_event_source_mapping_batch_size
+  maximum_batching_window_in_seconds = var.lambda_event_source_mapping_maximum_batching_window_in_seconds
+  tags                               = var.tags
 }
 
 resource "aws_lambda_permission" "scale_runners_lambda" {
