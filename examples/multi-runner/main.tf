@@ -150,6 +150,7 @@ module "runners" {
   #   metric = {
   #     enable_github_app_rate_limit    = true
   #     enable_job_retry                = false
+  #     enable_pool_sufficiency         = true
   #     enable_spot_termination_warning = true
   #   }
   # }
