@@ -24,7 +24,7 @@ locals {
 
 resource "aws_sqs_queue_policy" "job_retry_check_queue_policy" {
   queue_url = aws_sqs_queue.job_retry_check_queue.id
-  policy    = data.aws_iam_policy_document.deny_unsecure_transport.json
+  policy    = data.aws_iam_policy_document.deny_insecure_transport.json
 }
 
 resource "aws_sqs_queue" "job_retry_check_queue" {
@@ -44,9 +44,10 @@ module "job_retry" {
 }
 
 resource "aws_lambda_event_source_mapping" "job_retry" {
-  event_source_arn = aws_sqs_queue.job_retry_check_queue.arn
-  function_name    = module.job_retry.lambda.function.arn
-  batch_size       = 1
+  event_source_arn                   = aws_sqs_queue.job_retry_check_queue.arn
+  function_name                      = module.job_retry.lambda.function.arn
+  batch_size                         = var.config.lambda_event_source_mapping_batch_size
+  maximum_batching_window_in_seconds = var.config.lambda_event_source_mapping_maximum_batching_window_in_seconds
 }
 
 resource "aws_lambda_permission" "job_retry" {
@@ -69,9 +70,9 @@ resource "aws_iam_role_policy" "job_retry" {
   })
 }
 
-data "aws_iam_policy_document" "deny_unsecure_transport" {
+data "aws_iam_policy_document" "deny_insecure_transport" {
   statement {
-    sid = "DenyUnsecureTransport"
+    sid = "DenyInsecureTransport"
 
     effect = "Deny"
 

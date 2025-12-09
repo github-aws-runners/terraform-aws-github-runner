@@ -13,16 +13,16 @@ If you have questions about how to use aws-github-runners, please direct these t
 
 ## <a name="issue"></a> Found an Issue?
 
-If you find a bug in the source code or a mistake in the documentation, you can help us by submitting an issue to our [Github Repository][github]. Even better you can submit a Pull Request with a fix.
+If you find a bug in the source code or a mistake in the documentation, you can help us by submitting an issue to our [GitHub Repository][github]. Even better you can submit a Pull Request with a fix.
 
 **Please see the [Submission Guidelines](#submit) below.**
 
 ## <a name="feature"></a> Want a Feature?
 
-You can request a new feature by submitting an issue to our [Github Repository][github]. If you would like to implement a new feature then consider what kind of change it is:
+You can request a new feature by submitting an issue to our [GitHub Repository][github]. If you would like to implement a new feature then consider what kind of change it is:
 
 * **Major Changes** that you wish to contribute to the project should be discussed first on our [Slack group][slack] so that we can better coordinate our efforts, prevent duplication of work, and help you to craft the change so that it is successfully accepted into the project.
-* **Small Changes** can be crafted and submitted to the [Github Repository][github] as a Pull Request.
+* **Small Changes** can be crafted and submitted to the [GitHub Repository][github] as a Pull Request.
 
 ## <a name="docs"></a> Want a Doc Fix?
 
@@ -89,19 +89,19 @@ Before you submit your pull request consider the following guidelines:
         cd ..
         ```
 
-* Push your branch to Github:
+* Push your branch to GitHub:
 
     ```shell
     git push origin my-fix-branch
     ```
 
-In Github, send a pull request to original main branch: f.e. `terraform-aws-github-runner:main`.
+In GitHub, send a pull request to original main branch: f.e. `terraform-aws-github-runner:main`.
 If we suggest changes, then:
 
 * Make the required updates.
 * Re-run the test suite to ensure tests are still passing.
 * Commit your changes to your branch (e.g. `my-fix-branch`).
-* Push the changes to your Github repository (this will update your Pull Request).
+* Push the changes to your GitHub repository (this will update your Pull Request).
 
 If the PR gets too outdated we may ask you to rebase and force push to update the PR:
 
@@ -110,7 +110,7 @@ git rebase main -i
 git push origin my-fix-branch -f
 ```
 
-_WARNING: Squashing or reverting commits and force-pushing thereafter may remove Github comments on code that were previously made by you or others in your commits. Avoid any form of rebasing unless necessary.
+_WARNING: Squashing or reverting commits and force-pushing thereafter may remove GitHub comments on code that were previously made by you or others in your commits. Avoid any form of rebasing unless necessary.
 
 That's it! Thank you for your contribution!
 
@@ -119,7 +119,7 @@ That's it! Thank you for your contribution!
 After your pull request is merged, you can safely delete your branch and pull the changes
 from the main (upstream) repository:
 
-* Delete the remote branch on Github either through the Github web UI or your local shell as follows:
+* Delete the remote branch on GitHub either through the GitHub web UI or your local shell as follows:
 
     ```shell
     git push origin --delete my-fix-branch

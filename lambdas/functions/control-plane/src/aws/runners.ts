@@ -166,53 +166,62 @@ async function processFleetResult(
 ): Promise<string[]> {
   const instances: string[] = fleet.Instances?.flatMap((i) => i.InstanceIds?.flatMap((j) => j) || []) || [];
 
-  if (instances.length !== runnerParameters.numberOfRunners) {
-    logger.warn(
-      `${
-        instances.length === 0 ? 'No' : instances.length + ' off ' + runnerParameters.numberOfRunners
-      } instances created.`,
-      { data: fleet },
-    );
-    const errors = fleet.Errors?.flatMap((e) => e.ErrorCode || '') || [];
-
-    // Educated guess of errors that would make sense to retry based on the list
-    // https://docs.aws.amazon.com/AWSEC2/latest/APIReference/errors-overview.html
-    const scaleErrors = [
-      'UnfulfillableCapacity',
-      'MaxSpotInstanceCountExceeded',
-      'TargetCapacityLimitExceededException',
-      'RequestLimitExceeded',
-      'ResourceLimitExceeded',
-      'MaxSpotInstanceCountExceeded',
-      'MaxSpotFleetRequestCountExceeded',
-      'InsufficientInstanceCapacity',
-    ];
-
-    if (
-      errors.some((e) => runnerParameters.onDemandFailoverOnError?.includes(e)) &&
-      runnerParameters.ec2instanceCriteria.targetCapacityType === 'spot'
-    ) {
-      logger.warn(`Create fleet failed, initatiing fall back to on demand instances.`);
-      logger.debug('Create fleet failed.', { data: fleet.Errors });
-      const numberOfInstances = runnerParameters.numberOfRunners - instances.length;
-      const instancesOnDemand = await createRunner({
-        ...runnerParameters,
-        numberOfRunners: numberOfInstances,
-        onDemandFailoverOnError: ['InsufficientInstanceCapacity'],
-        ec2instanceCriteria: { ...runnerParameters.ec2instanceCriteria, targetCapacityType: 'on-demand' },
-      });
-      instances.push(...instancesOnDemand);
-      return instances;
-    } else if (errors.some((e) => scaleErrors.includes(e))) {
-      logger.warn('Create fleet failed, ScaleError will be thrown to trigger retry for ephemeral runners.');
-      logger.debug('Create fleet failed.', { data: fleet.Errors });
-      throw new ScaleError('Failed to create instance, create fleet failed.');
-    } else {
-      logger.warn('Create fleet failed, error not recognized as scaling error.', { data: fleet.Errors });
-      throw Error('Create fleet failed, no instance created.');
-    }
+  if (instances.length === runnerParameters.numberOfRunners) {
+    return instances;
   }
-  return instances;
+
+  logger.warn(
+    `${
+      instances.length === 0 ? 'No' : instances.length + ' off ' + runnerParameters.numberOfRunners
+    } instances created.`,
+    { data: fleet },
+  );
+
+  const errors = fleet.Errors?.flatMap((e) => e.ErrorCode || '') || [];
+
+  if (
+    errors.some((e) => runnerParameters.onDemandFailoverOnError?.includes(e)) &&
+    runnerParameters.ec2instanceCriteria.targetCapacityType === 'spot'
+  ) {
+    logger.warn(`Create fleet failed, initatiing fall back to on demand instances.`);
+    logger.debug('Create fleet failed.', { data: fleet.Errors });
+    const numberOfInstances = runnerParameters.numberOfRunners - instances.length;
+    const instancesOnDemand = await createRunner({
+      ...runnerParameters,
+      numberOfRunners: numberOfInstances,
+      onDemandFailoverOnError: ['InsufficientInstanceCapacity'],
+      ec2instanceCriteria: { ...runnerParameters.ec2instanceCriteria, targetCapacityType: 'on-demand' },
+    });
+    instances.push(...instancesOnDemand);
+    return instances;
+  }
+
+  // Educated guess of errors that would make sense to retry based on the list
+  // https://docs.aws.amazon.com/AWSEC2/latest/APIReference/errors-overview.html
+  const scaleErrors = [
+    'UnfulfillableCapacity',
+    'MaxSpotInstanceCountExceeded',
+    'TargetCapacityLimitExceededException',
+    'RequestLimitExceeded',
+    'ResourceLimitExceeded',
+    'MaxSpotInstanceCountExceeded',
+    'MaxSpotFleetRequestCountExceeded',
+    'InsufficientInstanceCapacity',
+  ];
+
+  const failedCount = countScaleErrors(errors, scaleErrors);
+  if (failedCount > 0) {
+    logger.warn('Create fleet failed, ScaleError will be thrown to trigger retry for ephemeral runners.');
+    logger.debug('Create fleet failed.', { data: fleet.Errors });
+    throw new ScaleError(failedCount);
+  }
+
+  logger.warn('Create fleet failed, error not recognized as scaling error.', { data: fleet.Errors });
+  throw Error('Create fleet failed, no instance created.');
+}
+
+function countScaleErrors(errors: string[], scaleErrors: string[]): number {
+  return errors.reduce((acc, e) => (scaleErrors.includes(e) ? acc + 1 : acc), 0);
 }
 
 async function getAmiIdOverride(runnerParameters: Runners.RunnerInputParameters): Promise<string | undefined> {
