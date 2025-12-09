@@ -70,12 +70,7 @@ variable "multi_runner_config" {
         owners               = optional(list(string), ["amazon"])
         id_ssm_parameter_arn = optional(string, null)
         kms_key_arn          = optional(string, null)
-      }), null) # Defaults to null, in which case the module falls back to individual AMI variables (deprecated)
-      # Deprecated: Use ami object instead
-      ami_filter                              = optional(map(list(string)), { state = ["available"] })
-      ami_owners                              = optional(list(string), ["amazon"])
-      ami_id_ssm_parameter_name               = optional(string, null)
-      ami_kms_key_arn                         = optional(string, "")
+      }), null)
       create_service_linked_role_spot         = optional(bool, false)
       credit_specification                    = optional(string, null)
       delay_webhook_event                     = optional(number, 30)
@@ -183,8 +178,6 @@ variable "multi_runner_config" {
         runner_architecture: "The platform architecture of the runner instance_type."
         runner_metadata_options: "(Optional) Metadata options for the ec2 runner instances."
         ami: "(Optional) AMI configuration for the action runner instances. This object allows you to specify all AMI-related settings in one place."
-        ami_filter: "(Optional) List of maps used to create the AMI filter for the action runner AMI. By default amazon linux 2 is used."
-        ami_owners: "(Optional) The list of owners used to select the AMI of action runner instances."
         create_service_linked_role_spot: (Optional) create the serviced linked role for spot instances that is required by the scale-up lambda.
         credit_specification: "(Optional) The credit specification of the runner instance_type. Can be unset, `standard` or `unlimited`.
         delay_webhook_event: "The number of seconds the event accepted by the webhook is invisible on the queue before the scale up lambda will receive the event."
