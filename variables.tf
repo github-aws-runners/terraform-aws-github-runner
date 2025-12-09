@@ -890,9 +890,9 @@ variable "runner_cpu_options" {
 variable "runner_placement" {
   description = "The placement options for the instance. See https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#placement for details."
   type = object({
-    affinity          = optional(string)
-    availability_zone = optional(string)
-    # group_id                = try(placement.value.group_id, null) # aws >= 6.12.0
+    affinity                = optional(string)
+    availability_zone       = optional(string)
+    group_id                = optional(string)
     group_name              = optional(string)
     host_id                 = optional(string)
     host_resource_group_arn = optional(number)
