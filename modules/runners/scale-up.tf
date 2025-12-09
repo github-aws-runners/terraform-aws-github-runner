@@ -25,7 +25,7 @@ resource "aws_lambda_function" "scale_up" {
   architectures                  = [var.lambda_architecture]
   environment {
     variables = {
-      AMI_ID_SSM_PARAMETER_NAME                = var.ami_id_ssm_parameter_name
+      AMI_ID_SSM_PARAMETER_NAME                = local.ami_id_ssm_parameter_name
       DISABLE_RUNNER_AUTOUPDATE                = var.disable_runner_autoupdate
       ENABLE_EPHEMERAL_RUNNERS                 = var.enable_ephemeral_runners
       ENABLE_JIT_CONFIG                        = var.enable_jit_config
@@ -148,7 +148,7 @@ resource "aws_iam_role_policy_attachment" "scale_up_vpc_execution_role" {
 }
 
 resource "aws_iam_role_policy_attachment" "ami_id_ssm_parameter_read" {
-  count      = var.ami_id_ssm_parameter_name != null ? 1 : 0
+  count      = local.ami_id_ssm_parameter_name != null ? 1 : 0
   role       = aws_iam_role.scale_up.name
   policy_arn = aws_iam_policy.ami_id_ssm_parameter_read[0].arn
 }

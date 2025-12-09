@@ -393,35 +393,6 @@ EOT
   default = null
 }
 
-variable "ami_filter" {
-  description = "[DEPRECATED: Use ami.filter] Map of lists used to create the AMI filter for the action runner AMI."
-  type        = map(list(string))
-  default     = { state = ["available"] }
-  validation {
-    # check the availability of the AMI
-    condition     = contains(keys(var.ami_filter), "state")
-    error_message = "The AMI filter must contain the state filter."
-  }
-}
-
-variable "ami_owners" {
-  description = "[DEPRECATED: Use ami.owners] The list of owners that should be used to find the AMI."
-  type        = list(string)
-  default     = ["amazon"]
-}
-
-variable "ami_id_ssm_parameter_name" {
-  description = "[DEPRECATED: Use ami.id_ssm_parameter_arn] String used to construct the SSM parameter name used to resolve the latest AMI ID for the runner instances. The SSM parameter should be of type String and contain a valid AMI ID. The default behavior is to use the latest Ubuntu 22.04 AMI."
-  type        = string
-  default     = null
-}
-
-variable "ami_kms_key_arn" {
-  description = "[DEPRECATED: Use ami.kms_key_arn] Optional CMK Key ARN to be used to launch an instance from a shared encrypted AMI"
-  type        = string
-  default     = null
-}
-
 variable "lambda_s3_bucket" {
   description = "S3 bucket from which to specify lambda functions. This is an alternative to providing local files directly."
   type        = string

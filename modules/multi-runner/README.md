@@ -195,7 +195,6 @@ module "multi-runner" {
 | Name | Description |
 |------|-------------|
 | <a name="output_binaries_syncer_map"></a> [binaries\_syncer\_map](#output\_binaries\_syncer\_map) | n/a |
-| <a name="output_deprecated_variables_warning"></a> [deprecated\_variables\_warning](#output\_deprecated\_variables\_warning) | Warning for deprecated variables usage. These variables will be removed in a future release. Please migrate to using the consolidated 'ami' object in each runner configuration. |
 | <a name="output_instance_termination_handler"></a> [instance\_termination\_handler](#output\_instance\_termination\_handler) | n/a |
 | <a name="output_instance_termination_watcher"></a> [instance\_termination\_watcher](#output\_instance\_termination\_watcher) | n/a |
 | <a name="output_runners_map"></a> [runners\_map](#output\_runners\_map) | n/a |

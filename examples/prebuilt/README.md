@@ -33,9 +33,11 @@ Assuming you have built the `linux-al2023` image which has a pre-defined AMI nam
 module "runners" {
   ...
   # set the name of the ami to use
-  ami_filter        = { name = ["github-runner-al2023-x86_64-2023*"], state = ["available"] }
-  # provide the owner id of
-  ami_owners        = ["<your owner id>"]
+  ami = {
+    filter = { name = ["github-runner-al2023-x86_64-2023*"], state = ["available"] }
+    # provide the owner id of
+    owners = ["<your owner id>"]
+  }
 
   enable_userdata = false
   ...
@@ -49,7 +51,10 @@ data "aws_caller_identity" "current" {}
 
 module "runners" {
   ...
-  ami_owners       = [data.aws_caller_identity.current.account_id]
+  ami = {
+    filter = { name = ["github-runner-al2023-x86_64-2023*"], state = ["available"] }
+    owners = [data.aws_caller_identity.current.account_id]
+  }
   ...
 }
 ```
