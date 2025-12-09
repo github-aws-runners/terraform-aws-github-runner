@@ -48,7 +48,7 @@ locals {
   ami_filter                = merge(local.default_ami[var.runner_os], local.ami_config.filter)
   ami_id_ssm_module_managed = local.ami_config.id_ssm_parameter_arn == null
   # Extract parameter name from ARN (format: arn:aws:ssm:region:account:parameter/path/to/param)
-  ami_id_ssm_parameter_name = local.ami_id_ssm_module_managed ? null : regex("parameter/(.+)$", local.ami_config.id_ssm_parameter_arn)[0]
+  ami_id_ssm_parameter_name = local.ami_id_ssm_module_managed ? null : try(regex("parameter/(.+)$", local.ami_config.id_ssm_parameter_arn)[0], null)
 
   enable_job_queued_check = var.enable_job_queued_check == null ? !var.enable_ephemeral_runners : var.enable_job_queued_check
 
