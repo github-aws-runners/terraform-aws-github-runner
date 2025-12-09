@@ -858,6 +858,22 @@ variable "runner_cpu_options" {
   default = null
 }
 
+variable "runner_placement" {
+  description = "The placement options for the instance. See https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#placement for details."
+  type = object({
+    affinity                = optional(string)
+    availability_zone       = optional(string)
+    group_id                = optional(string)
+    group_name              = optional(string)
+    host_id                 = optional(string)
+    host_resource_group_arn = optional(number)
+    spread_domain           = optional(string)
+    tenancy                 = optional(string)
+    partition_number        = optional(number)
+  })
+  default = null
+}
+
 variable "enable_jit_config" {
   description = "Overwrite the default behavior for JIT configuration. By default JIT configuration is enabled for ephemeral runners and disabled for non-ephemeral runners. In case of GHES check first if the JIT config API is available. In case you are upgrading from 3.x to 4.x you can set `enable_jit_config` to `false` to avoid a breaking change when having your own AMI."
   type        = bool

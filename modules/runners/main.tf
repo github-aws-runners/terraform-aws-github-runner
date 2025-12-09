@@ -171,6 +171,21 @@ resource "aws_launch_template" "runner" {
     }
   }
 
+  dynamic "placement" {
+    for_each = var.placement != null ? [var.placement] : []
+    content {
+      affinity                = try(placement.value.affinity, null)
+      availability_zone       = try(placement.value.availability_zone, null)
+      group_id                = try(placement.value.group_id, null)
+      group_name              = try(placement.value.group_name, null)
+      host_id                 = try(placement.value.host_id, null)
+      host_resource_group_arn = try(placement.value.host_resource_group_arn, null)
+      spread_domain           = try(placement.value.spread_domain, null)
+      tenancy                 = try(placement.value.tenancy, null)
+      partition_number        = try(placement.value.partition_number, null)
+    }
+  }
+
   monitoring {
     enabled = var.enable_runner_detailed_monitoring
   }

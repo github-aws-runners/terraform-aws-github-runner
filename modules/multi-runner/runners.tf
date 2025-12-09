@@ -54,6 +54,7 @@ module "runners" {
   metadata_options                     = each.value.runner_config.runner_metadata_options
   credit_specification                 = each.value.runner_config.credit_specification
   cpu_options                          = each.value.runner_config.cpu_options
+  placement                            = each.value.runner_config.placement
 
   enable_runner_binaries_syncer                                  = each.value.runner_config.enable_runner_binaries_syncer
   lambda_s3_bucket                                               = var.lambda_s3_bucket

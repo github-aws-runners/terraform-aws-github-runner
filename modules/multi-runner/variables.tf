@@ -125,6 +125,17 @@ variable "multi_runner_config" {
         core_count       = number
         threads_per_core = number
       }), null)
+      placement = optional(object({
+        affinity                = optional(string)
+        availability_zone       = optional(string)
+        group_id                = optional(string)
+        group_name              = optional(string)
+        host_id                 = optional(string)
+        host_resource_group_arn = optional(number)
+        spread_domain           = optional(string)
+        tenancy                 = optional(string)
+        partition_number        = optional(number)
+      }), null)
       runner_log_files = optional(list(object({
         log_group_name   = string
         prefix_log_group = bool
