@@ -83,8 +83,10 @@ module "runners" {
 
   # configure your pre-built AMI
   # enable_userdata = false
-  # ami_filter      = { name = ["github-runner-al2023-x86_64-*"], state = ["available"] }
-  # ami_owners      = [data.aws_caller_identity.current.account_id]
+  # ami = {
+  #   filter = { name = ["github-runner-al2023-x86_64-*"], state = ["available"] }
+  #   owners = [data.aws_caller_identity.current.account_id]
+  # }
 
   # or use the default AMI
   # enable_userdata = true

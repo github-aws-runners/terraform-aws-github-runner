@@ -45,8 +45,10 @@ module "runners" {
 
   # configure your pre-built AMI
   enable_userdata = false
-  ami_filter      = { name = [var.ami_name_filter], state = ["available"] }
-  ami_owners      = [data.aws_caller_identity.current.account_id]
+  ami = {
+    filter = { name = [var.ami_name_filter], state = ["available"] }
+    owners = [data.aws_caller_identity.current.account_id]
+  }
 
   # disable binary syncer since github agent is already installed in the AMI.
   enable_runner_binaries_syncer = false

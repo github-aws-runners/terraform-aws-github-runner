@@ -205,8 +205,6 @@ ami = {
 }
 ```
 
-> **Note:** The old way of configuring AMIs using individual variables (`ami_filter`, `ami_owners`, `ami_kms_key_arn`, `ami_id_ssm_parameter_arn`, `ami_id_ssm_parameter_name`) is deprecated and will be removed in a future version. It is recommended to migrate to the new consolidated `ami` object. Support for `ami_id_ssm_parameter_name` will be dropped, please specify an arn via `ami.id_ssm_parameter_arn` instead.
-
 ## Logging
 
 The module uses [AWS Lambda Powertools](https://awslabs.github.io/aws-lambda-powertools-typescript/latest/) for logging. By default the log level is set to `info`, by setting the log level to `debug` the incoming events of the Lambda are logged as well.
