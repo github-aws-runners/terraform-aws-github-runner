@@ -1,1 +1,1 @@
-FROM mcr.microsoft.com/vscode/devcontainers/typescript-node@sha256:acdce1045a2ddce4c66846d5cd09adf746d157fce9233124e4925b647f192b2e
+FROM mcr.microsoft.com/vscode/devcontainers/typescript-node@sha256:d09eac5cd85fb4bd70770fa3f88ee9dfdd0b09f8b85455a0e039048677276749

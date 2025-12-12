@@ -70,12 +70,7 @@ variable "multi_runner_config" {
         owners               = optional(list(string), ["amazon"])
         id_ssm_parameter_arn = optional(string, null)
         kms_key_arn          = optional(string, null)
-      }), null) # Defaults to null, in which case the module falls back to individual AMI variables (deprecated)
-      # Deprecated: Use ami object instead
-      ami_filter                              = optional(map(list(string)), { state = ["available"] })
-      ami_owners                              = optional(list(string), ["amazon"])
-      ami_id_ssm_parameter_name               = optional(string, null)
-      ami_kms_key_arn                         = optional(string, "")
+      }), null)
       create_service_linked_role_spot         = optional(bool, false)
       credit_specification                    = optional(string, null)
       delay_webhook_event                     = optional(number, 30)
@@ -130,6 +125,17 @@ variable "multi_runner_config" {
         core_count       = number
         threads_per_core = number
       }), null)
+      placement = optional(object({
+        affinity                = optional(string)
+        availability_zone       = optional(string)
+        group_id                = optional(string)
+        group_name              = optional(string)
+        host_id                 = optional(string)
+        host_resource_group_arn = optional(number)
+        spread_domain           = optional(string)
+        tenancy                 = optional(string)
+        partition_number        = optional(number)
+      }), null)
       runner_log_files = optional(list(object({
         log_group_name   = string
         prefix_log_group = bool
@@ -183,8 +189,6 @@ variable "multi_runner_config" {
         runner_architecture: "The platform architecture of the runner instance_type."
         runner_metadata_options: "(Optional) Metadata options for the ec2 runner instances."
         ami: "(Optional) AMI configuration for the action runner instances. This object allows you to specify all AMI-related settings in one place."
-        ami_filter: "(Optional) List of maps used to create the AMI filter for the action runner AMI. By default amazon linux 2 is used."
-        ami_owners: "(Optional) The list of owners used to select the AMI of action runner instances."
         create_service_linked_role_spot: (Optional) create the serviced linked role for spot instances that is required by the scale-up lambda.
         credit_specification: "(Optional) The credit specification of the runner instance_type. Can be unset, `standard` or `unlimited`.
         delay_webhook_event: "The number of seconds the event accepted by the webhook is invisible on the queue before the scale up lambda will receive the event."
@@ -364,7 +368,7 @@ variable "log_level" {
 variable "lambda_runtime" {
   description = "AWS Lambda runtime."
   type        = string
-  default     = "nodejs22.x"
+  default     = "nodejs24.x"
 }
 
 variable "lambda_architecture" {
@@ -723,4 +727,16 @@ variable "user_agent" {
   description = "User agent used for API calls by lambda functions."
   type        = string
   default     = "github-aws-runners"
+}
+
+variable "lambda_event_source_mapping_batch_size" {
+  description = "Maximum number of records to pass to the lambda function in a single batch for the event source mapping. When not set, the AWS default of 10 events will be used."
+  type        = number
+  default     = 10
+}
+
+variable "lambda_event_source_mapping_maximum_batching_window_in_seconds" {
+  description = "Maximum amount of time to gather records before invoking the lambda function, in seconds. AWS requires this to be greater than 0 if batch_size is greater than 10. Defaults to 0."
+  type        = number
+  default     = 0
 }
