@@ -1,5 +1,28 @@
 # Changelog
 
+## [7.0.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.10.1...v7.0.0) (2025-12-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* remove deprecated terraform variables ([#4945](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4945))
+* Upgrade lambda runtime to Node24.x ([#4911](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4911))
+* **control-plane:** add support for handling multiple events in a single invocation ([#4603](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4603))
+
+### Features
+
+* add support to use placement group in launch template ([#4929](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4929)) ([36b7b3e](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/36b7b3e1dd699a7a0ed8119eeca2392bed8f760a))
+* **control-plane:** add support for handling multiple events in a single invocation ([#4603](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4603)) ([3937ec3](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/3937ec337a73ebfa737704f3da608ae0b70cc5e7))
+* Upgrade lambda runtime to Node24.x ([#4911](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4911)) ([682289e](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/682289e54e197394ef6c1b2c30d4882010d00e3a))
+
+
+### Bug Fixes
+
+* **lambda:** bump the aws group in /lambdas with 6 updates ([bf39fbc](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/bf39fbc6c7fc719f0b6deda3b07dd721bef2b47e))
+* **lambda:** bump the aws group in /lambdas with 7 updates ([#4924](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4924)) ([62a3a8b](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/62a3a8bb872e32c3b56b931d10d7923e5b60207f))
+* remove deprecated terraform variables ([#4945](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4945)) ([8afc75c](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/8afc75ce8b2da7e5676639381288bf059952d8d5))
+* remove invalid inputs for submodule direct ([#4947](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4947)) ([79f26d6](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/79f26d6539b7d21d8a27515dd9fd452cd7ef9e8a))
+
 ## [6.10.1](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.10.0...v6.10.1) (2025-11-27)
 
 
