@@ -6,8 +6,6 @@ import yn from 'yn';
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
 import { createRunner, listEC2Runners, tag } from './../aws/runners';
 import { RunnerInputParameters } from './../aws/runners.d';
-import ScaleError from './ScaleError';
-import { publishRetryMessage } from './job-retry';
 import { metricGitHubAppRateLimit } from '../github/rate-limit';
 
 const logger = createChildLogger('scale-up');
@@ -31,6 +29,10 @@ export interface ActionRequestMessage {
   installationId: number;
   repoOwnerType: string;
   retryCounter?: number;
+}
+
+export interface ActionRequestMessageSQS extends ActionRequestMessage {
+  messageId: string;
 }
 
 export interface ActionRequestMessageRetry extends ActionRequestMessage {
@@ -114,7 +116,7 @@ function removeTokenFromLogging(config: string[]): string[] {
 }
 
 export async function getInstallationId(
-  ghesApiUrl: string,
+  githubAppClient: Octokit,
   enableOrgLevel: boolean,
   payload: ActionRequestMessage,
 ): Promise<number> {
@@ -122,16 +124,14 @@ export async function getInstallationId(
     return payload.installationId;
   }
 
-  const ghAuth = await createGithubAppAuth(undefined, ghesApiUrl);
-  const githubClient = await createOctokitClient(ghAuth.token, ghesApiUrl);
   return enableOrgLevel
     ? (
-        await githubClient.apps.getOrgInstallation({
+        await githubAppClient.apps.getOrgInstallation({
           org: payload.repositoryOwner,
         })
       ).data.id
     : (
-        await githubClient.apps.getRepoInstallation({
+        await githubAppClient.apps.getRepoInstallation({
           owner: payload.repositoryOwner,
           repo: payload.repositoryName,
         })
@@ -211,23 +211,27 @@ async function getRunnerGroupByName(ghClient: Octokit, githubRunnerConfig: Creat
 export async function createRunners(
   githubRunnerConfig: CreateGitHubRunnerConfig,
   ec2RunnerConfig: CreateEC2RunnerConfig,
+  numberOfRunners: number,
   ghClient: Octokit,
-): Promise<void> {
+): Promise<string[]> {
   const instances = await createRunner({
     runnerType: githubRunnerConfig.runnerType,
     runnerOwner: githubRunnerConfig.runnerOwner,
-    numberOfRunners: 1,
+    numberOfRunners,
     ...ec2RunnerConfig,
   });
   if (instances.length !== 0) {
     await createStartRunnerConfig(githubRunnerConfig, instances, ghClient);
   }
+
+  return instances;
 }
 
-export async function scaleUp(eventSource: string, payload: ActionRequestMessage): Promise<void> {
-  logger.info(`Received ${payload.eventType} from ${payload.repositoryOwner}/${payload.repositoryName}`);
+export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<string[]> {
+  logger.info('Received scale up requests', {
+    n_requests: payloads.length,
+  });
 
-  if (eventSource !== 'aws:sqs') throw Error('Cannot handle non-SQS events!');
   const enableOrgLevel = yn(process.env.ENABLE_ORGANIZATION_RUNNERS, { default: true });
   const maximumRunners = parseInt(process.env.RUNNERS_MAXIMUM_COUNT || '3');
   const runnerLabels = process.env.RUNNER_LABELS || '';
@@ -252,103 +256,202 @@ export async function scaleUp(eventSource: string, payload: ActionRequestMessage
     ? (JSON.parse(process.env.ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS) as [string])
     : [];
 
-  if (ephemeralEnabled && payload.eventType !== 'workflow_job') {
-    logger.warn(`${payload.eventType} event is not supported in combination with ephemeral runners.`);
-    throw Error(
-      `The event type ${payload.eventType} is not supported in combination with ephemeral runners.` +
-        `Please ensure you have enabled workflow_job events.`,
-    );
+  const { ghesApiUrl, ghesBaseUrl } = getGitHubEnterpriseApiUrl();
+
+  const ghAuth = await createGithubAppAuth(undefined, ghesApiUrl);
+  const githubAppClient = await createOctokitClient(ghAuth.token, ghesApiUrl);
+
+  // A map of either owner or owner/repo name to Octokit client, so we use a
+  // single client per installation (set of messages), depending on how the app
+  // is installed. This is for a couple of reasons:
+  // - Sharing clients opens up the possibility of caching API calls.
+  // - Fetching a client for an installation actually requires a couple of API
+  //   calls itself, which would get expensive if done for every message in a
+  //   batch.
+  type MessagesWithClient = {
+    messages: ActionRequestMessageSQS[];
+    githubInstallationClient: Octokit;
+  };
+
+  const validMessages = new Map<string, MessagesWithClient>();
+  const invalidMessages: string[] = [];
+  for (const payload of payloads) {
+    const { eventType, messageId, repositoryName, repositoryOwner } = payload;
+    if (ephemeralEnabled && eventType !== 'workflow_job') {
+      logger.warn(
+        'Event is not supported in combination with ephemeral runners. Please ensure you have enabled workflow_job events.',
+        { eventType, messageId },
+      );
+
+      invalidMessages.push(messageId);
+
+      continue;
+    }
+
+    if (!isValidRepoOwnerTypeIfOrgLevelEnabled(payload, enableOrgLevel)) {
+      logger.warn(
+        `Repository does not belong to a GitHub organization and organization runners are enabled. This is not supported. Not scaling up for this event. Not throwing error to prevent re-queueing and just ignoring the event.`,
+        {
+          repository: `${repositoryOwner}/${repositoryName}`,
+          messageId,
+        },
+      );
+
+      continue;
+    }
+
+    const key = enableOrgLevel ? payload.repositoryOwner : `${payload.repositoryOwner}/${payload.repositoryName}`;
+
+    let entry = validMessages.get(key);
+
+    // If we've not seen this owner/repo before, we'll need to create a GitHub
+    // client for it.
+    if (entry === undefined) {
+      const installationId = await getInstallationId(githubAppClient, enableOrgLevel, payload);
+      const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl);
+      const githubInstallationClient = await createOctokitClient(ghAuth.token, ghesApiUrl);
+
+      entry = {
+        messages: [],
+        githubInstallationClient,
+      };
+
+      validMessages.set(key, entry);
+    }
+
+    entry.messages.push(payload);
   }
 
-  if (!isValidRepoOwnerTypeIfOrgLevelEnabled(payload, enableOrgLevel)) {
-    logger.warn(
-      `Repository ${payload.repositoryOwner}/${payload.repositoryName} does not belong to a GitHub` +
-        `organization and organization runners are enabled. This is not supported. Not scaling up for this event.` +
-        `Not throwing error to prevent re-queueing and just ignoring the event.`,
-    );
-    return;
-  }
-
-  const ephemeral = ephemeralEnabled && payload.eventType === 'workflow_job';
   const runnerType = enableOrgLevel ? 'Org' : 'Repo';
-  const runnerOwner = enableOrgLevel ? payload.repositoryOwner : `${payload.repositoryOwner}/${payload.repositoryName}`;
 
   addPersistentContextToChildLogger({
     runner: {
+      ephemeral: ephemeralEnabled,
       type: runnerType,
-      owner: runnerOwner,
       namePrefix: runnerNamePrefix,
-    },
-    github: {
-      event: payload.eventType,
-      workflow_job_id: payload.id.toString(),
+      n_events: Array.from(validMessages.values()).reduce((acc, group) => acc + group.messages.length, 0),
     },
   });
 
-  logger.info(`Received event`);
+  logger.info(`Received events`);
 
-  const { ghesApiUrl, ghesBaseUrl } = getGitHubEnterpriseApiUrl();
+  for (const [group, { githubInstallationClient, messages }] of validMessages.entries()) {
+    // Work out how much we want to scale up by.
+    let scaleUp = 0;
 
-  const installationId = await getInstallationId(ghesApiUrl, enableOrgLevel, payload);
-  const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl);
-  const githubInstallationClient = await createOctokitClient(ghAuth.token, ghesApiUrl);
-
-  if (!enableJobQueuedCheck || (await isJobQueued(githubInstallationClient, payload))) {
-    let scaleUp = true;
-    if (maximumRunners !== -1) {
-      const currentRunners = await listEC2Runners({
-        environment,
-        runnerType,
-        runnerOwner,
+    for (const message of messages) {
+      const messageLogger = logger.createChild({
+        persistentKeys: {
+          eventType: message.eventType,
+          group,
+          messageId: message.messageId,
+          repository: `${message.repositoryOwner}/${message.repositoryName}`,
+        },
       });
-      logger.info(`Current runners: ${currentRunners.length} of ${maximumRunners}`);
-      scaleUp = currentRunners.length < maximumRunners;
+
+      if (enableJobQueuedCheck && !(await isJobQueued(githubInstallationClient, message))) {
+        messageLogger.info('No runner will be created, job is not queued.');
+
+        continue;
+      }
+
+      scaleUp++;
     }
 
-    if (scaleUp) {
-      logger.info(`Attempting to launch a new runner`);
+    if (scaleUp === 0) {
+      logger.info('No runners will be created for this group, no valid messages found.');
 
-      await createRunners(
-        {
-          ephemeral,
-          enableJitConfig,
-          ghesBaseUrl,
-          runnerLabels,
-          runnerGroup,
-          runnerNamePrefix,
-          runnerOwner,
-          runnerType,
-          disableAutoUpdate,
-          ssmTokenPath,
-          ssmConfigPath,
-        },
-        {
-          ec2instanceCriteria: {
-            instanceTypes,
-            targetCapacityType: instanceTargetCapacityType,
-            maxSpotPrice: instanceMaxSpotPrice,
-            instanceAllocationStrategy: instanceAllocationStrategy,
-          },
-          environment,
-          launchTemplateName,
-          subnets,
-          amiIdSsmParameterName,
-          tracingEnabled,
-          onDemandFailoverOnError,
-        },
-        githubInstallationClient,
-      );
+      continue;
+    }
 
-      await publishRetryMessage(payload);
-    } else {
-      logger.info('No runner will be created, maximum number of runners reached.');
-      if (ephemeral) {
-        throw new ScaleError('No runners create: maximum of runners reached.');
+    // Don't call the EC2 API if we can create an unlimited number of runners.
+    const currentRunners =
+      maximumRunners === -1 ? 0 : (await listEC2Runners({ environment, runnerType, runnerOwner: group })).length;
+
+    logger.info('Current runners', {
+      currentRunners,
+      maximumRunners,
+    });
+
+    // Calculate how many runners we want to create.
+    const newRunners =
+      maximumRunners === -1
+        ? // If we don't have an upper limit, scale up by the number of new jobs.
+          scaleUp
+        : // Otherwise, we do have a limit, so work out if `scaleUp` would exceed it.
+          Math.min(scaleUp, maximumRunners - currentRunners);
+
+    const missingInstanceCount = Math.max(0, scaleUp - newRunners);
+
+    if (missingInstanceCount > 0) {
+      logger.info('Not all runners will be created for this group, maximum number of runners reached.', {
+        desiredNewRunners: scaleUp,
+      });
+
+      if (ephemeralEnabled) {
+        // This removes `missingInstanceCount` items from the start of the array
+        // so that, if we retry more messages later, we pick fresh ones.
+        invalidMessages.push(...messages.splice(0, missingInstanceCount).map(({ messageId }) => messageId));
+      }
+
+      // No runners will be created, so skip calling the EC2 API.
+      if (missingInstanceCount === scaleUp) {
+        continue;
       }
     }
-  } else {
-    logger.info('No runner will be created, job is not queued.');
+
+    logger.info(`Attempting to launch new runners`, {
+      newRunners,
+    });
+
+    const instances = await createRunners(
+      {
+        ephemeral: ephemeralEnabled,
+        enableJitConfig,
+        ghesBaseUrl,
+        runnerLabels,
+        runnerGroup,
+        runnerNamePrefix,
+        runnerOwner: group,
+        runnerType,
+        disableAutoUpdate,
+        ssmTokenPath,
+        ssmConfigPath,
+      },
+      {
+        ec2instanceCriteria: {
+          instanceTypes,
+          targetCapacityType: instanceTargetCapacityType,
+          maxSpotPrice: instanceMaxSpotPrice,
+          instanceAllocationStrategy: instanceAllocationStrategy,
+        },
+        environment,
+        launchTemplateName,
+        subnets,
+        amiIdSsmParameterName,
+        tracingEnabled,
+        onDemandFailoverOnError,
+      },
+      newRunners,
+      githubInstallationClient,
+    );
+
+    // Not all runners we wanted were created, let's reject enough items so that
+    // number of entries will be retried.
+    if (instances.length !== newRunners) {
+      const failedInstanceCount = newRunners - instances.length;
+
+      logger.warn('Some runners failed to be created, rejecting some messages so the requests are retried', {
+        wanted: newRunners,
+        got: instances.length,
+        failedInstanceCount,
+      });
+
+      invalidMessages.push(...messages.slice(0, failedInstanceCount).map(({ messageId }) => messageId));
+    }
   }
+
+  return invalidMessages;
 }
 
 export function getGitHubEnterpriseApiUrl() {
