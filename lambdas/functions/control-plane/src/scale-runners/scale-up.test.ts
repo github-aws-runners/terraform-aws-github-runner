@@ -814,7 +814,7 @@ describe('scaleUp with public GH', () => {
     it('creates a runner with correct config and labels and custom scale errors enabled.', async () => {
       process.env.RUNNER_LABELS = 'label1,label2';
       process.env.CUSTOM_SCALE_ERRORS = JSON.stringify(['RequestLimitExceeded']);
-      await scaleUpModule.scaleUp('aws:sqs', TEST_DATA);
+      await scaleUpModule.scaleUp(TEST_DATA);
       expect(createRunner).toBeCalledWith({
         ...expectedRunnerParams,
         customScaleErrors: ['RequestLimitExceeded'],
