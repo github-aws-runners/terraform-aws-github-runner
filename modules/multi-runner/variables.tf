@@ -756,6 +756,16 @@ variable "iam_overrides" {
     override_runner_role      = false
     runner_role_arn           = null
   }
+
+  validation {
+    condition     = !var.iam_overrides.override_instance_profile || var.iam_overrides.instance_profile_name != null
+    error_message = "instance_profile_name must be provided when override_instance_profile is true."
+  }
+
+  validation {
+    condition     = !var.iam_overrides.override_runner_role || var.iam_overrides.runner_role_arn != null
+    error_message = "runner_role_arn must be provided when override_runner_role is true."
+  }
 }
 
 variable "lambda_event_source_mapping_batch_size" {

@@ -109,7 +109,7 @@ variable "runner_group_name" {
 }
 
 variable "iam_overrides" {
-  description = "This map provides the possibility to override some IAM defaults. Note that when using this variable, you are responsible for ensuring the role has necessary permissions to access required resources; `override_instance_profile`: When set to true, the instance profile name provided in `instance_profile_name` will be used for the runners. `override_runner_role`: When set to true, the role ARN provided in `runner_role_arn` will be used for the runners."
+  description = "This map provides the possibility to override some IAM defaults. Note that when using this variable, you are responsible for ensuring the role has necessary permissions to access required resources. `override_instance_profile`: When set to true, uses the instance profile name specified in `instance_profile_name` instead of creating a new instance profile. `override_runner_role`: When set to true, uses the role ARN specified in `runner_role_arn` instead of creating a new IAM role."
   type = object({
     override_instance_profile = optional(bool, null)
     instance_profile_name     = optional(string, null)
@@ -122,6 +122,16 @@ variable "iam_overrides" {
     instance_profile_name     = null
     override_runner_role      = false
     runner_role_arn           = null
+  }
+
+  validation {
+    condition     = !var.iam_overrides.override_instance_profile || var.iam_overrides.instance_profile_name != null
+    error_message = "instance_profile_name must be provided when override_instance_profile is true."
+  }
+
+  validation {
+    condition     = !var.iam_overrides.override_runner_role || var.iam_overrides.runner_role_arn != null
+    error_message = "runner_role_arn must be provided when override_runner_role is true."
   }
 }
 

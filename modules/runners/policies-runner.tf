@@ -10,7 +10,7 @@ resource "aws_iam_role" "runner" {
 }
 
 resource "aws_iam_instance_profile" "runner" {
-  count = var.iam_overrides["override_instance_profile"] ? 0 : 1
+  count = (var.iam_overrides["override_instance_profile"] || var.iam_overrides["override_runner_role"]) ? 0 : 1
   name  = "${var.prefix}-runner-profile"
   role  = aws_iam_role.runner[0].name
   path  = local.instance_profile_path
@@ -18,14 +18,14 @@ resource "aws_iam_instance_profile" "runner" {
 }
 
 resource "aws_iam_role_policy" "runner_session_manager_aws_managed" {
-  count  = var.iam_overrides["override_runner_role"] ? 0 : (var.enable_ssm_on_runners ? 1 : 0)
+  count  = (var.iam_overrides["override_runner_role"] || var.iam_overrides["override_instance_profile"]) ? 0 : (var.enable_ssm_on_runners ? 1 : 0)
   name   = "runner-ssm-session"
   role   = aws_iam_role.runner[0].name
   policy = templatefile("${path.module}/policies/instance-ssm-policy.json", {})
 }
 
 resource "aws_iam_role_policy" "ssm_parameters" {
-  count = var.iam_overrides["override_runner_role"] ? 0 : 1
+  count = (var.iam_overrides["override_runner_role"] || var.iam_overrides["override_instance_profile"]) ? 0 : 1
   name  = "runner-ssm-parameters"
   role  = aws_iam_role.runner[0].name
   policy = templatefile("${path.module}/policies/instance-ssm-parameters-policy.json",
@@ -37,7 +37,7 @@ resource "aws_iam_role_policy" "ssm_parameters" {
 }
 
 resource "aws_iam_role_policy" "dist_bucket" {
-  count = var.iam_overrides["override_runner_role"] ? 0 : (var.enable_runner_binaries_syncer ? 1 : 0)
+  count = (var.iam_overrides["override_runner_role"] || var.iam_overrides["override_instance_profile"]) ? 0 : (var.enable_runner_binaries_syncer ? 1 : 0)
 
   name = "distribution-bucket"
   role = aws_iam_role.runner[0].name
@@ -49,33 +49,33 @@ resource "aws_iam_role_policy" "dist_bucket" {
 }
 
 resource "aws_iam_role_policy_attachment" "xray_tracing" {
-  count      = var.iam_overrides["override_runner_role"] ? 0 : (var.tracing_config.mode != null ? 1 : 0)
+  count      = (var.iam_overrides["override_runner_role"] || var.iam_overrides["override_instance_profile"]) ? 0 : (var.tracing_config.mode != null ? 1 : 0)
   role       = aws_iam_role.runner[0].name
   policy_arn = "arn:${var.aws_partition}:iam::aws:policy/AWSXRayDaemonWriteAccess"
 }
 
 resource "aws_iam_role_policy" "describe_tags" {
-  count  = var.iam_overrides["override_runner_role"] ? 0 : 1
+  count  = (var.iam_overrides["override_runner_role"] || var.iam_overrides["override_instance_profile"]) ? 0 : 1
   name   = "runner-describe-tags"
   role   = aws_iam_role.runner[0].name
   policy = file("${path.module}/policies/instance-describe-tags-policy.json")
 }
 
 resource "aws_iam_role_policy" "create_tag" {
-  count  = var.iam_overrides["override_runner_role"] ? 0 : 1
+  count  = (var.iam_overrides["override_runner_role"] || var.iam_overrides["override_instance_profile"]) ? 0 : 1
   name   = "runner-create-tags"
   role   = aws_iam_role.runner[0].name
   policy = templatefile("${path.module}/policies/instance-create-tags-policy.json", {})
 }
 
 resource "aws_iam_role_policy_attachment" "managed_policies" {
-  count      = var.iam_overrides["override_runner_role"] ? 0 : length(var.runner_iam_role_managed_policy_arns)
+  count      = (var.iam_overrides["override_runner_role"] || var.iam_overrides["override_instance_profile"]) ? 0 : length(var.runner_iam_role_managed_policy_arns)
   role       = aws_iam_role.runner[0].name
   policy_arn = element(var.runner_iam_role_managed_policy_arns, count.index)
 }
 
 resource "aws_iam_role_policy" "ec2" {
-  count  = var.iam_overrides["override_runner_role"] ? 0 : 1
+  count  = (var.iam_overrides["override_runner_role"] || var.iam_overrides["override_instance_profile"]) ? 0 : 1
   name   = "ec2"
   role   = aws_iam_role.runner[0].name
   policy = templatefile("${path.module}/policies/instance-ec2.json", {})

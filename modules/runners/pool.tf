@@ -48,7 +48,7 @@ module "pool" {
       group_name                           = var.runner_group_name
       name_prefix                          = var.runner_name_prefix
       pool_owner                           = var.pool_runner_owner
-      role                                 = var.iam_overrides["override_runner_role"] ? var.iam_overrides["runner_role_arn"] : aws_iam_role.runner[0].name
+      role                                 = var.iam_overrides["override_runner_role"] ? { arn = var.iam_overrides["runner_role_arn"] } : aws_iam_role.runner[0]
     }
     subnet_ids                           = var.subnet_ids
     ssm_token_path                       = "${var.ssm_paths.root}/${var.ssm_paths.tokens}"
