@@ -152,34 +152,6 @@ variable "instance_types" {
   default     = null
 }
 
-variable "ami_filter" {
-  description = "[DEPRECATED: Use ami.filter] Map of lists used to create the AMI filter for the action runner AMI."
-  type        = map(list(string))
-  default     = { state = ["available"] }
-  validation {
-    # check the availability of the AMI
-    condition     = contains(keys(var.ami_filter), "state")
-    error_message = "The \"ami_filter\" variable must contain the \"state\" key with the value \"available\"."
-  }
-}
-
-variable "ami_owners" {
-  description = "[DEPRECATED: Use ami.owners] The list of owners used to select the AMI of action runner instances."
-  type        = list(string)
-  default     = ["amazon"]
-}
-
-variable "ami_id_ssm_parameter_name" {
-  description = "[DEPRECATED: Use ami.id_ssm_parameter_name] Externally managed SSM parameter (of data type aws:ec2:image) that contains the AMI ID to launch runner instances from. Overrides ami_filter"
-  type        = string
-  default     = null
-}
-
-variable "ami_kms_key_arn" {
-  description = "[DEPRECATED: Use ami.kms_key_arn] Optional CMK Key ARN to be used to launch an instance from a shared encrypted AMI"
-  type        = string
-  default     = null
-}
 
 variable "enable_userdata" {
   description = "Should the userdata script be enabled for the runner. Set this to false if you are using your own prebuilt AMI"
@@ -614,7 +586,7 @@ variable "disable_runner_autoupdate" {
 variable "lambda_runtime" {
   description = "AWS Lambda runtime."
   type        = string
-  default     = "nodejs22.x"
+  default     = "nodejs24.x"
 }
 
 variable "lambda_architecture" {
@@ -684,6 +656,22 @@ variable "cpu_options" {
   type = object({
     core_count       = number
     threads_per_core = number
+  })
+  default = null
+}
+
+variable "placement" {
+  description = "The placement options for the instance. See https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#placement for details."
+  type = object({
+    affinity                = optional(string)
+    availability_zone       = optional(string)
+    group_id                = optional(string)
+    group_name              = optional(string)
+    host_id                 = optional(string)
+    host_resource_group_arn = optional(number)
+    spread_domain           = optional(string)
+    tenancy                 = optional(string)
+    partition_number        = optional(number)
   })
   default = null
 }
@@ -786,4 +774,24 @@ variable "user_agent" {
   description = "User agent used for API calls."
   type        = string
   default     = null
+}
+
+variable "lambda_event_source_mapping_batch_size" {
+  description = "Maximum number of records to pass to the lambda function in a single batch for the event source mapping. When not set, the AWS default of 10 events will be used."
+  type        = number
+  default     = 10
+  validation {
+    condition     = var.lambda_event_source_mapping_batch_size >= 1 && var.lambda_event_source_mapping_batch_size <= 1000
+    error_message = "The batch size for the lambda event source mapping must be between 1 and 1000."
+  }
+}
+
+variable "lambda_event_source_mapping_maximum_batching_window_in_seconds" {
+  description = "Maximum amount of time to gather records before invoking the lambda function, in seconds. AWS requires this to be greater than 0 if batch_size is greater than 10. Defaults to 0."
+  type        = number
+  default     = 0
+  validation {
+    condition     = var.lambda_event_source_mapping_maximum_batching_window_in_seconds >= 0 && var.lambda_event_source_mapping_maximum_batching_window_in_seconds <= 300
+    error_message = "Maximum batching window must be between 0 and 300 seconds."
+  }
 }
