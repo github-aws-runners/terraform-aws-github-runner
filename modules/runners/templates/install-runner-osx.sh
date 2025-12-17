@@ -53,8 +53,6 @@ else
   # Example: brew install jq awscli
 fi
 
-user_name="${RUNNER_USER:-ec2-user}"
-
 echo "Set file ownership of action runner"
 sudo chown -R "$user_name":"$user_name" /opt/actions-runner
 sudo chown -R "$user_name":"$user_name" /opt/hostedtoolcache
