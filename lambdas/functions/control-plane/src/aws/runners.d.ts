@@ -1,4 +1,4 @@
-import { DefaultTargetCapacityType, SpotAllocationStrategy } from '@aws-sdk/client-ec2';
+import { DefaultTargetCapacityType, SpotAllocationStrategy, Tag } from '@aws-sdk/client-ec2';
 
 export type RunnerType = 'Org' | 'Repo';
 
@@ -11,6 +11,7 @@ export interface RunnerList {
   org?: string;
   orphan?: boolean;
   runnerId?: string;
+  tags?: Tag[];
 }
 
 export interface RunnerInfo {

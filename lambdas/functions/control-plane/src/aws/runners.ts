@@ -98,6 +98,7 @@ function getRunnerInfo(runningInstances: DescribeInstancesResult) {
             org: i.Tags?.find((e) => e.Key === 'ghr:Org')?.Value as string,
             orphan: i.Tags?.find((e) => e.Key === 'ghr:orphan')?.Value === 'true',
             runnerId: i.Tags?.find((e) => e.Key === 'ghr:github_runner_id')?.Value as string,
+            tags: i.Tags,
           });
         }
       }
@@ -119,7 +120,7 @@ export async function stopRunner(instanceId: string): Promise<void> {
   await ec2.send(new StopInstancesCommand({ InstanceIds: [instanceId] }));
   await tag(instanceId, [
     { Key: 'ghr:state', Value: 'standby' },
-    { Key: 'ghr:stopped_at', Value: new Date().toISOString() },
+    { Key: 'ghr:standby_time', Value: new Date().toISOString() },
   ]);
   logger.debug(`Runner ${instanceId} has been stopped.`);
 }
@@ -128,7 +129,7 @@ export async function startRunner(instanceId: string): Promise<void> {
   logger.debug(`Runner '${instanceId}' will be started.`);
   const ec2 = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
   await ec2.send(new StartInstancesCommand({ InstanceIds: [instanceId] }));
-  await untag(instanceId, [{ Key: 'ghr:state' }, { Key: 'ghr:stopped_at' }]);
+  await untag(instanceId, [{ Key: 'ghr:state' }, { Key: 'ghr:standby_time' }]);
   logger.debug(`Runner ${instanceId} has been started.`);
 }
 

@@ -87,27 +87,27 @@ describe('list instances', () => {
     mockEC2Client.on(DescribeInstancesCommand).resolves(mockRunningInstances);
     const resp = await listEC2Runners();
     expect(resp.length).toBe(1);
-    expect(resp).toContainEqual({
+    expect(resp).toContainEqual(expect.objectContaining({
       instanceId: 'i-1234',
       launchTime: new Date('2020-10-10T14:48:00.000+09:00'),
       type: 'Org',
       owner: 'CoderToCat',
       orphan: false,
-    });
+    }));
   });
 
   it('returns a list of instances (JIT)', async () => {
     mockEC2Client.on(DescribeInstancesCommand).resolves(mockRunningInstancesJit);
     const resp = await listEC2Runners();
     expect(resp.length).toBe(1);
-    expect(resp).toContainEqual({
+    expect(resp).toContainEqual(expect.objectContaining({
       instanceId: 'i-1234',
       launchTime: new Date('2020-10-10T14:48:00.000+09:00'),
       type: 'Org',
       owner: 'CoderToCat',
       orphan: false,
       runnerId: '9876543210',
-    });
+    }));
   });
 
   it('check orphan tag.', async () => {
@@ -120,13 +120,13 @@ describe('list instances', () => {
 
     const resp = await listEC2Runners();
     expect(resp.length).toBe(1);
-    expect(resp).toContainEqual({
+    expect(resp).toContainEqual(expect.objectContaining({
       instanceId: instances.Reservations![0].Instances![0].InstanceId!,
       launchTime: instances.Reservations![0].Instances![0].LaunchTime!,
       type: 'Org',
       owner: 'CoderToCat',
       orphan: true,
-    });
+    }));
   });
 
   it('calls EC2 describe instances', async () => {
@@ -302,7 +302,7 @@ describe('stop runner', () => {
       Resources: [runner.instanceId],
       Tags: [
         { Key: 'ghr:state', Value: 'standby' },
-        { Key: 'ghr:stopped_at', Value: expect.any(String) },
+        { Key: 'ghr:standby_time', Value: expect.any(String) },
       ],
     });
   });
@@ -327,7 +327,7 @@ describe('start runner', () => {
     });
     expect(mockEC2Client).toHaveReceivedCommandWith(DeleteTagsCommand, {
       Resources: [runner.instanceId],
-      Tags: [{ Key: 'ghr:state' }, { Key: 'ghr:stopped_at' }],
+      Tags: [{ Key: 'ghr:state' }, { Key: 'ghr:standby_time' }],
     });
   });
 });

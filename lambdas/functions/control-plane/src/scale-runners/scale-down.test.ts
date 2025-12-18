@@ -290,7 +290,7 @@ describe('Scale down runners', () => {
       it(`Should stop idle runner to standby when standby pool enabled`, async () => {
         process.env.STANDBY_POOL_SIZE = '2';
         process.env.STANDBY_IDLE_TIME_MINUTES = '0';
-        
+
         const runners = [
           createRunnerTestData('idle-1', type, MINIMUM_TIME_RUNNING_IN_MINUTES + 1, true, false, false),
           createRunnerTestData('idle-2', type, MINIMUM_TIME_RUNNING_IN_MINUTES + 1, true, false, false),
@@ -298,7 +298,7 @@ describe('Scale down runners', () => {
 
         mockGitHubRunners(runners);
         mockAwsRunners(runners);
-        
+
         const originalListRunners = mockListRunners.getMockImplementation();
         mockListRunners.mockImplementation(async (filters) => {
           if (filters?.statuses?.includes('stopped') && filters?.standby) {
@@ -311,9 +311,102 @@ describe('Scale down runners', () => {
 
         expect(mockStopRunners).toHaveBeenCalledTimes(2);
         expect(mockTerminateRunners).not.toHaveBeenCalled();
-        
+
         delete process.env.STANDBY_POOL_SIZE;
         delete process.env.STANDBY_IDLE_TIME_MINUTES;
+      });
+
+      it(`Should terminate standby runners older than max age`, async () => {
+        process.env.STANDBY_POOL_SIZE = '2';
+        process.env.STANDBY_MAX_AGE_HOURS = '24';
+
+        const oldStandbyTime = moment().subtract(25, 'hours').toISOString();
+        const recentStandbyTime = moment().subtract(1, 'hours').toISOString();
+
+        const oldStandbyRunner: RunnerList = {
+          instanceId: 'i-old-standby',
+          launchTime: moment().subtract(26, 'hours').toDate(),
+          type,
+          owner: `${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName}`,
+          tags: [
+            { Key: 'ghr:state', Value: 'standby' },
+            { Key: 'ghr:standby_time', Value: oldStandbyTime },
+          ],
+        };
+
+        const recentStandbyRunner: RunnerList = {
+          instanceId: 'i-recent-standby',
+          launchTime: moment().subtract(2, 'hours').toDate(),
+          type,
+          owner: `${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName}`,
+          tags: [
+            { Key: 'ghr:state', Value: 'standby' },
+            { Key: 'ghr:standby_time', Value: recentStandbyTime },
+          ],
+        };
+
+        const runners = [
+          createRunnerTestData('active-1', type, MINIMUM_TIME_RUNNING_IN_MINUTES + 1, true, false, false),
+        ];
+
+        mockGitHubRunners(runners);
+        mockAwsRunners(runners);
+
+        const originalListRunners = mockListRunners.getMockImplementation();
+        mockListRunners.mockImplementation(async (filters) => {
+          if (filters?.statuses?.includes('stopped') && filters?.standby) {
+            return [oldStandbyRunner, recentStandbyRunner];
+          }
+          return originalListRunners ? originalListRunners(filters) : runners;
+        });
+
+        await scaleDown();
+
+        expect(mockTerminateRunners).toHaveBeenCalledWith('i-old-standby');
+        expect(mockTerminateRunners).not.toHaveBeenCalledWith('i-recent-standby');
+
+        delete process.env.STANDBY_POOL_SIZE;
+        delete process.env.STANDBY_MAX_AGE_HOURS;
+      });
+
+      it(`Should skip age termination when standby pool disabled`, async () => {
+        process.env.STANDBY_POOL_SIZE = '0';
+        process.env.STANDBY_MAX_AGE_HOURS = '24';
+
+        const oldStandbyTime = moment().subtract(25, 'hours').toISOString();
+
+        const oldStandbyRunner: RunnerList = {
+          instanceId: 'i-old-standby',
+          launchTime: moment().subtract(26, 'hours').toDate(),
+          type,
+          owner: `${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName}`,
+          tags: [
+            { Key: 'ghr:state', Value: 'standby' },
+            { Key: 'ghr:standby_time', Value: oldStandbyTime },
+          ],
+        };
+
+        const runners = [
+          createRunnerTestData('active-1', type, MINIMUM_TIME_RUNNING_IN_MINUTES + 1, true, false, false),
+        ];
+
+        mockGitHubRunners(runners);
+        mockAwsRunners(runners);
+
+        const originalListRunners = mockListRunners.getMockImplementation();
+        mockListRunners.mockImplementation(async (filters) => {
+          if (filters?.statuses?.includes('stopped') && filters?.standby) {
+            return [oldStandbyRunner];
+          }
+          return originalListRunners ? originalListRunners(filters) : runners;
+        });
+
+        await scaleDown();
+
+        expect(mockTerminateRunners).not.toHaveBeenCalledWith('i-old-standby');
+
+        delete process.env.STANDBY_POOL_SIZE;
+        delete process.env.STANDBY_MAX_AGE_HOURS;
       });
 
       it(`Should not terminate a runner that became busy just before deregister runner.`, async () => {

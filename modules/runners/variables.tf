@@ -561,16 +561,18 @@ variable "pool_config" {
 }
 
 variable "standby_pool_config" {
-  description = "Configuration for the standby pool. Instances in the standby pool are stopped instead of terminated, allowing faster scale-up. The `size` specifies how many stopped instances to maintain. The `idle_time_minutes` specifies how long an idle runner should wait before being moved to standby (0 means immediate). Stopped instances only incur EBS storage costs."
+  description = "Configuration for the standby pool. Instances in the standby pool are stopped instead of terminated, allowing faster scale-up. The `size` specifies how many stopped instances to maintain. The `idle_time_minutes` specifies how long an idle runner should wait before being moved to standby (0 means immediate). The `max_age_hours` specifies the maximum age of stopped instances before they are terminated (default 168 hours = 7 days). Stopped instances only incur EBS storage costs."
   type = object({
     enabled            = optional(bool, false)
     size               = optional(number, 0)
     idle_time_minutes  = optional(number, 0)
+    max_age_hours      = optional(number, 168)
   })
   default = {
     enabled            = false
     size               = 0
     idle_time_minutes  = 0
+    max_age_hours      = 168
   }
 }
 

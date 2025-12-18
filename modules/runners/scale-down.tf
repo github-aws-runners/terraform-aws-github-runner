@@ -36,6 +36,7 @@ resource "aws_lambda_function" "scale_down" {
       SCALE_DOWN_CONFIG                        = jsonencode(var.idle_config)
       STANDBY_POOL_SIZE                        = var.standby_pool_config.size
       STANDBY_IDLE_TIME_MINUTES                = var.standby_pool_config.idle_time_minutes
+      STANDBY_MAX_AGE_HOURS                    = var.standby_pool_config.max_age_hours
       POWERTOOLS_SERVICE_NAME                  = "runners-scale-down"
       POWERTOOLS_METRICS_NAMESPACE             = var.metrics.namespace
       POWERTOOLS_TRACE_ENABLED                 = var.tracing_config.mode != null ? true : false

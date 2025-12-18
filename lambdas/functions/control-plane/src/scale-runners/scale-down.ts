@@ -130,7 +130,7 @@ function runnerMinimumTimeExceeded(runner: RunnerInfo): boolean {
 function runnerIdleTimeExceeded(runner: RunnerInfo): boolean {
   const idleTimeMinutes = parseInt(process.env.STANDBY_IDLE_TIME_MINUTES || '0');
   if (idleTimeMinutes === 0) return true;
-  
+
   const launchTimePlusIdle = moment(runner.launchTime).utc().add(idleTimeMinutes, 'minutes');
   const now = moment(new Date()).utc();
   return launchTimePlusIdle < now;
@@ -169,7 +169,9 @@ async function removeRunner(ec2runner: RunnerInfo, ghRunnerIds: number[], should
 
         if (statuses.every((status) => status == 204)) {
           await terminateRunner(ec2runner.instanceId);
-          logger.info(`AWS runner instance '${ec2runner.instanceId}' is terminated and GitHub runner is de-registered.`);
+          logger.info(
+            `AWS runner instance '${ec2runner.instanceId}' is terminated and GitHub runner is de-registered.`,
+          );
         } else {
           logger.error(`Failed to de-register GitHub runner: ${statuses}`);
         }
@@ -191,7 +193,7 @@ async function evaluateAndRemoveRunners(
   let idleCounter = getIdleRunnerCount(scaleDownConfigs);
   const evictionStrategy = getEvictionStrategy(scaleDownConfigs);
   const ownerTags = new Set(ec2Runners.map((runner) => runner.owner));
-  
+
   const standbyPoolSize = parseInt(process.env.STANDBY_POOL_SIZE || '0');
   const environment = process.env.ENVIRONMENT;
 
@@ -201,15 +203,22 @@ async function evaluateAndRemoveRunners(
       .sort(evictionStrategy === 'oldest_first' ? oldestFirstStrategy : newestFirstStrategy);
     logger.debug(`Found: '${ec2RunnersFiltered.length}' active GitHub runners with owner tag: '${ownerTag}'`);
     logger.debug(`Active GitHub runners with owner tag: '${ownerTag}': ${JSON.stringify(ec2RunnersFiltered)}`);
-    
-    const standbyRunners = standbyPoolSize > 0 
-      ? await listEC2Runners({ environment, runnerType: 'Org', runnerOwner: ownerTag, statuses: ['stopped'], standby: true })
-      : [];
+
+    const standbyRunners =
+      standbyPoolSize > 0
+        ? await listEC2Runners({
+            environment,
+            runnerType: 'Org',
+            runnerOwner: ownerTag,
+            statuses: ['stopped'],
+            standby: true,
+          })
+        : [];
     const currentStandbyCount = standbyRunners.length;
     let standbyCounter = Math.max(0, standbyPoolSize - currentStandbyCount);
-    
+
     logger.debug(`Standby pool: target=${standbyPoolSize}, current=${currentStandbyCount}, needed=${standbyCounter}`);
-    
+
     for (const ec2Runner of ec2RunnersFiltered) {
       const ghRunners = await listGitHubRunners(ec2Runner);
       const ghRunnersFiltered = ghRunners.filter((runner: { name: string }) =>
@@ -336,6 +345,42 @@ async function listRunners(environment: string) {
   });
 }
 
+async function terminateOldStandbyRunners(environment: string): Promise<void> {
+  const maxAgeHours = parseInt(process.env.STANDBY_MAX_AGE_HOURS || '168');
+  const standbyPoolSize = parseInt(process.env.STANDBY_POOL_SIZE || '0');
+  
+  if (standbyPoolSize === 0) {
+    return;
+  }
+
+  try {
+    const standbyRunners = await listEC2Runners({
+      environment,
+      statuses: ['stopped'],
+      standby: true,
+    });
+
+    for (const runner of standbyRunners) {
+      const standbyTimeTag = runner.tags?.find((t) => t.Key === 'ghr:standby_time')?.Value;
+      if (standbyTimeTag) {
+        const standbyTime = moment(standbyTimeTag);
+        const ageHours = moment().diff(standbyTime, 'hours');
+        
+        if (ageHours > maxAgeHours) {
+          logger.info(
+            `Terminating standby runner '${runner.instanceId}' - age ${ageHours}h exceeds limit ${maxAgeHours}h`,
+          );
+          await terminateRunner(runner.instanceId).catch((e) => {
+            logger.error(`Failed to terminate old standby runner '${runner.instanceId}'`, { error: e });
+          });
+        }
+      }
+    }
+  } catch (e) {
+    logger.warn(`Failure during old standby runner termination.`, { error: e });
+  }
+}
+
 function filterRunners(ec2runners: RunnerList[]): RunnerInfo[] {
   return ec2runners.filter((ec2Runner) => ec2Runner.type && !ec2Runner.orphan) as RunnerInfo[];
 }
@@ -345,10 +390,10 @@ export async function scaleDown(): Promise<void> {
   const environment = process.env.ENVIRONMENT;
   const scaleDownConfigs = JSON.parse(process.env.SCALE_DOWN_CONFIG) as [ScalingDownConfig];
 
-  // first runners marked to be orphan.
   await terminateOrphan(environment);
 
-  // next scale down idle runners with respect to config and mark potential orphans
+  await terminateOldStandbyRunners(environment);
+
   const ec2Runners = await listRunners(environment);
   const activeEc2RunnersCount = ec2Runners.length;
   logger.info(`Found: '${activeEc2RunnersCount}' active GitHub EC2 runner instances before clean-up.`);
