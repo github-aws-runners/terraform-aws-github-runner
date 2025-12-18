@@ -207,6 +207,7 @@ module "runners" {
   credit_specification                 = var.runner_credit_specification
   cpu_options                          = var.runner_cpu_options
   placement                            = var.runner_placement
+  license_specification                = var.runner_license_specification
 
   enable_runner_binaries_syncer                                  = var.enable_runner_binaries_syncer
   lambda_s3_bucket                                               = var.lambda_s3_bucket

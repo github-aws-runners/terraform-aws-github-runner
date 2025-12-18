@@ -190,6 +190,13 @@ resource "aws_launch_template" "runner" {
     }
   }
 
+  dynamic "license_specification" {
+    for_each = var.license_specification != null ? [var.license_specification] : []
+    content {
+      license_configuration_arn = license_specification.value.license_configuration_arn
+    }
+  }
+
   monitoring {
     enabled = var.enable_runner_detailed_monitoring
   }

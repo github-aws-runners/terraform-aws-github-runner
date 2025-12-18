@@ -147,6 +147,9 @@ variable "multi_runner_config" {
         tenancy                 = optional(string)
         partition_number        = optional(number)
       }), null)
+      license_specification = optional(object({
+        license_configuration_arn = string
+      }), null)
       runner_log_files = optional(list(object({
         log_group_name   = string
         prefix_log_group = bool

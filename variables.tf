@@ -890,6 +890,14 @@ variable "runner_placement" {
   default = null
 }
 
+variable "runner_license_specification" {
+  description = "The license specifications for the instance. See https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#license_specification for details."
+  type = object({
+    license_configuration_arn = string
+  })
+  default = null
+}
+
 variable "enable_jit_config" {
   description = "Overwrite the default behavior for JIT configuration. By default JIT configuration is enabled for ephemeral runners and disabled for non-ephemeral runners. In case of GHES check first if the JIT config API is available. In case you are upgrading from 3.x to 4.x you can set `enable_jit_config` to `false` to avoid a breaking change when having your own AMI."
   type        = bool
