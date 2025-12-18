@@ -717,19 +717,6 @@ describe('create runner with errors', () => {
     expect(mockSSMClient).not.toHaveReceivedCommand(PutParameterCommand);
   });
 
-  it('test ScaleError with custom scale error.', async () => {
-    createFleetMockWithErrors(['CustomAWSError']);
-
-    await expect(
-      createRunner(createRunnerConfig({ ...defaultRunnerConfig, customScaleErrors: ['CustomAWSError'] })),
-    ).rejects.toBeInstanceOf(ScaleError);
-    expect(mockEC2Client).toHaveReceivedCommandWith(
-      CreateFleetCommand,
-      expectedCreateFleetRequest(defaultExpectedFleetRequestValues),
-    );
-    expect(mockSSMClient).not.toHaveReceivedCommand(PutParameterCommand);
-  });
-
   it('test ScaleError with multiple error.', async () => {
     createFleetMockWithErrors(['UnfulfillableCapacity', 'MaxSpotInstanceCountExceeded', 'NotMappedError']);
 
@@ -975,7 +962,7 @@ interface RunnerConfig {
   amiIdSsmParameterName?: string;
   tracingEnabled?: boolean;
   onDemandFailoverOnError?: string[];
-  customScaleErrors?: string[];
+  scaleErrors: string[];
   source: LambdaRunnerSource;
 }
 
@@ -996,8 +983,8 @@ function createRunnerConfig(runnerConfig: RunnerConfig): RunnerInputParameters {
     amiIdSsmParameterName: runnerConfig.amiIdSsmParameterName,
     tracingEnabled: runnerConfig.tracingEnabled,
     onDemandFailoverOnError: runnerConfig.onDemandFailoverOnError,
-    customScaleErrors: runnerConfig.customScaleErrors,
-    source: runnerConfig.source,
+    scaleErrors: runnerConfig.scaleErrors,
+    source: runnerConfig.source,    
   };
 }
 
