@@ -1,9 +1,5 @@
 #!/bin/bash -e
 
-exec > >(tee /var/log/user-data.log | logger -t user-data -s 2>/dev/console) 2>&1
-
-# macOS user-data for GitHub Actions runners
-
 set +x
 
 %{ if enable_debug_logging }
