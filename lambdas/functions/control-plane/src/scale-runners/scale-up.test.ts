@@ -10,6 +10,7 @@ import { createRunner, listEC2Runners } from './../aws/runners';
 import { RunnerInputParameters } from './../aws/runners.d';
 import * as scaleUpModule from './scale-up';
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
+import { publishRetryMessage } from './job-retry';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { Octokit } from '@octokit/rest';
 
@@ -33,6 +34,7 @@ const mockCreateRunner = vi.mocked(createRunner);
 const mockListRunners = vi.mocked(listEC2Runners);
 const mockSSMClient = mockClient(SSMClient);
 const mockSSMgetParameter = vi.mocked(getParameter);
+const mockPublishRetryMessage = vi.mocked(publishRetryMessage);
 
 vi.mock('@octokit/rest', () => ({
   Octokit: vi.fn().mockImplementation(function () {
@@ -62,6 +64,11 @@ vi.mock('@aws-github-runner/aws-ssm-util', async () => {
     getParameter: vi.fn(),
   };
 });
+
+vi.mock('./job-retry', () => ({
+  publishRetryMessage: vi.fn(),
+  checkAndRetryJob: vi.fn(),
+}));
 
 export type RunnerType = 'ephemeral' | 'non-ephemeral';
 
@@ -1664,6 +1671,159 @@ describe('scaleUp with Github Data Residency', () => {
         }),
       );
     });
+  });
+});
+
+describe('Retry mechanism tests', () => {
+  beforeEach(() => {
+    process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
+    process.env.ENABLE_EPHEMERAL_RUNNERS = 'true';
+    process.env.ENABLE_JOB_QUEUED_CHECK = 'true';
+    process.env.RUNNERS_MAXIMUM_COUNT = '10';
+    expectedRunnerParams = { ...EXPECTED_RUNNER_PARAMS };
+    mockSSMClient.reset();
+  });
+
+  const createTestMessages = (
+    count: number,
+    overrides: Partial<scaleUpModule.ActionRequestMessageSQS>[] = [],
+  ): scaleUpModule.ActionRequestMessageSQS[] => {
+    return Array.from({ length: count }, (_, i) => ({
+      ...TEST_DATA_SINGLE,
+      id: i + 1,
+      messageId: `message-${i + 1}`,
+      ...overrides[i],
+    }));
+  };
+
+  it('calls publishRetryMessage for each valid message when job is queued', async () => {
+    const messages = createTestMessages(3);
+
+    await scaleUpModule.scaleUp(messages);
+
+    expect(mockPublishRetryMessage).toHaveBeenCalledTimes(3);
+    expect(mockPublishRetryMessage).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        id: 1,
+        messageId: 'message-1',
+      }),
+    );
+    expect(mockPublishRetryMessage).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        id: 2,
+        messageId: 'message-2',
+      }),
+    );
+    expect(mockPublishRetryMessage).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({
+        id: 3,
+        messageId: 'message-3',
+      }),
+    );
+  });
+
+  it('does not call publishRetryMessage when job is not queued', async () => {
+    mockOctokit.actions.getJobForWorkflowRun.mockImplementation((params) => {
+      const isQueued = params.job_id === 1; // Only job 1 is queued
+      return {
+        data: {
+          status: isQueued ? 'queued' : 'completed',
+        },
+      };
+    });
+
+    const messages = createTestMessages(3);
+
+    await scaleUpModule.scaleUp(messages);
+
+    // Only message with id 1 should trigger retry
+    expect(mockPublishRetryMessage).toHaveBeenCalledTimes(1);
+    expect(mockPublishRetryMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 1,
+        messageId: 'message-1',
+      }),
+    );
+  });
+
+  it('calls publishRetryMessage even when maximum runners is reached', async () => {
+    process.env.RUNNERS_MAXIMUM_COUNT = '0'; // No runners can be created
+
+    const messages = createTestMessages(2);
+
+    await scaleUpModule.scaleUp(messages);
+
+    // publishRetryMessage should still be called even though no runners will be created
+    expect(mockPublishRetryMessage).toHaveBeenCalledTimes(2);
+    expect(createRunner).not.toHaveBeenCalled();
+  });
+
+  it('calls publishRetryMessage with correct message structure including retry counter', async () => {
+    const message = {
+      ...TEST_DATA_SINGLE,
+      messageId: 'test-message-id',
+      retryCounter: 2,
+    };
+
+    await scaleUpModule.scaleUp([message]);
+
+    expect(mockPublishRetryMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: message.id,
+        messageId: 'test-message-id',
+        retryCounter: 2,
+      }),
+    );
+  });
+
+  it('calls publishRetryMessage when ENABLE_JOB_QUEUED_CHECK is false', async () => {
+    process.env.ENABLE_JOB_QUEUED_CHECK = 'false';
+
+    const messages = createTestMessages(2);
+
+    await scaleUpModule.scaleUp(messages);
+
+    // Should always call publishRetryMessage when queue check is disabled
+    expect(mockPublishRetryMessage).toHaveBeenCalledTimes(2);
+    expect(mockOctokit.actions.getJobForWorkflowRun).not.toHaveBeenCalled();
+  });
+
+  it('calls publishRetryMessage for each message in a multi-runner scenario', async () => {
+    const messages = createTestMessages(5);
+
+    await scaleUpModule.scaleUp(messages);
+
+    expect(mockPublishRetryMessage).toHaveBeenCalledTimes(5);
+    messages.forEach((msg, index) => {
+      expect(mockPublishRetryMessage).toHaveBeenNthCalledWith(
+        index + 1,
+        expect.objectContaining({
+          id: msg.id,
+          messageId: msg.messageId,
+        }),
+      );
+    });
+  });
+
+  it('calls publishRetryMessage before runner creation', async () => {
+    const messages = createTestMessages(1);
+
+    const callOrder: string[] = [];
+    mockPublishRetryMessage.mockImplementation(() => {
+      callOrder.push('publishRetryMessage');
+      return Promise.resolve();
+    });
+    mockCreateRunner.mockImplementation(async () => {
+      callOrder.push('createRunner');
+      return ['i-12345'];
+    });
+
+    await scaleUpModule.scaleUp(messages);
+
+    expect(callOrder).toEqual(['publishRetryMessage', 'createRunner']);
   });
 });
 
