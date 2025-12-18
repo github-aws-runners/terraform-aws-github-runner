@@ -339,6 +339,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
   for (const [group, { githubInstallationClient, messages }] of validMessages.entries()) {
     // Work out how much we want to scale up by.
     let scaleUp = 0;
+    const validMessagesForRetry: ActionRequestMessageSQS[] = [];
 
     for (const message of messages) {
       const messageLogger = logger.createChild({
@@ -357,7 +358,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       }
 
       scaleUp++;
-      await publishRetryMessage(message as ActionRequestMessageRetry);
+      validMessagesForRetry.push(message);
     }
 
     if (scaleUp === 0) {
@@ -398,6 +399,12 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
 
       // No runners will be created, so skip calling the EC2 API.
       if (newRunners <= 0) {
+        // Publish retry messages for all remaining messages that are not marked as invalid
+        for (const message of validMessagesForRetry) {
+          if (!invalidMessages.includes(message.messageId)) {
+            await publishRetryMessage(message as ActionRequestMessageRetry);
+          }
+        }
         continue;
       }
     }
@@ -450,6 +457,13 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       });
 
       invalidMessages.push(...messages.slice(0, failedInstanceCount).map(({ messageId }) => messageId));
+    }
+
+    // Publish retry messages for all messages that are not marked as invalid
+    for (const message of validMessagesForRetry) {
+      if (!invalidMessages.includes(message.messageId)) {
+        await publishRetryMessage(message as ActionRequestMessageRetry);
+      }
     }
   }
 

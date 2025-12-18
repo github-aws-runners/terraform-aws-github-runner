@@ -1698,6 +1698,7 @@ describe('Retry mechanism tests', () => {
 
   it('calls publishRetryMessage for each valid message when job is queued', async () => {
     const messages = createTestMessages(3);
+    mockCreateRunner.mockResolvedValue(['i-12345', 'i-67890', 'i-abcdef']); // Create all requested runners
 
     await scaleUpModule.scaleUp(messages);
 
@@ -1749,15 +1750,16 @@ describe('Retry mechanism tests', () => {
     );
   });
 
-  it('calls publishRetryMessage even when maximum runners is reached', async () => {
+  it('does not call publishRetryMessage when maximum runners is reached and messages are marked invalid', async () => {
     process.env.RUNNERS_MAXIMUM_COUNT = '0'; // No runners can be created
 
     const messages = createTestMessages(2);
 
     await scaleUpModule.scaleUp(messages);
 
-    // publishRetryMessage should still be called even though no runners will be created
-    expect(mockPublishRetryMessage).toHaveBeenCalledTimes(2);
+    // publishRetryMessage should NOT be called because messages are marked as invalid
+    // Invalid messages go back to the SQS queue and will be retried there
+    expect(mockPublishRetryMessage).not.toHaveBeenCalled();
     expect(createRunner).not.toHaveBeenCalled();
   });
 
@@ -1781,6 +1783,7 @@ describe('Retry mechanism tests', () => {
 
   it('calls publishRetryMessage when ENABLE_JOB_QUEUED_CHECK is false', async () => {
     process.env.ENABLE_JOB_QUEUED_CHECK = 'false';
+    mockCreateRunner.mockResolvedValue(['i-12345', 'i-67890']); // Create all requested runners
 
     const messages = createTestMessages(2);
 
@@ -1792,6 +1795,7 @@ describe('Retry mechanism tests', () => {
   });
 
   it('calls publishRetryMessage for each message in a multi-runner scenario', async () => {
+    mockCreateRunner.mockResolvedValue(['i-12345', 'i-67890', 'i-abcdef', 'i-11111', 'i-22222']); // Create all requested runners
     const messages = createTestMessages(5);
 
     await scaleUpModule.scaleUp(messages);
@@ -1808,8 +1812,9 @@ describe('Retry mechanism tests', () => {
     });
   });
 
-  it('calls publishRetryMessage before runner creation', async () => {
+  it('calls publishRetryMessage after runner creation', async () => {
     const messages = createTestMessages(1);
+    mockCreateRunner.mockResolvedValue(['i-12345']); // Create the requested runner
 
     const callOrder: string[] = [];
     mockPublishRetryMessage.mockImplementation(() => {
@@ -1823,7 +1828,7 @@ describe('Retry mechanism tests', () => {
 
     await scaleUpModule.scaleUp(messages);
 
-    expect(callOrder).toEqual(['publishRetryMessage', 'createRunner']);
+    expect(callOrder).toEqual(['createRunner', 'publishRetryMessage']);
   });
 });
 
