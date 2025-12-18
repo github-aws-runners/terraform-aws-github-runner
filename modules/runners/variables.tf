@@ -560,6 +560,20 @@ variable "pool_config" {
   default = []
 }
 
+variable "standby_pool_config" {
+  description = "Configuration for the standby pool. Instances in the standby pool are stopped instead of terminated, allowing faster scale-up. The `size` specifies how many stopped instances to maintain. The `idle_time_minutes` specifies how long an idle runner should wait before being moved to standby (0 means immediate). Stopped instances only incur EBS storage costs."
+  type = object({
+    enabled            = optional(bool, false)
+    size               = optional(number, 0)
+    idle_time_minutes  = optional(number, 0)
+  })
+  default = {
+    enabled            = false
+    size               = 0
+    idle_time_minutes  = 0
+  }
+}
+
 variable "disable_runner_autoupdate" {
   description = "Disable the auto update of the github runner agent. Be aware there is a grace period of 30 days, see also the [GitHub article](https://github.blog/changelog/2022-02-01-github-actions-self-hosted-runners-can-now-disable-automatic-updates/)"
   type        = bool

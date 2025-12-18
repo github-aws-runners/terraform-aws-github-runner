@@ -26,6 +26,7 @@ export interface ListRunnerFilters {
   environment?: string;
   orphan?: boolean;
   statuses?: string[];
+  standby?: boolean;
 }
 
 export interface RunnerInputParameters {

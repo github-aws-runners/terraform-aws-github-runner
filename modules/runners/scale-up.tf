@@ -60,6 +60,7 @@ resource "aws_lambda_function" "scale_up" {
       SUBNET_IDS                               = join(",", var.subnet_ids)
       ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS     = jsonencode(var.enable_on_demand_failover_for_errors)
       JOB_RETRY_CONFIG                         = jsonencode(local.job_retry_config)
+      STANDBY_POOL_ENABLED                     = var.standby_pool_config.enabled
     }
   }
 

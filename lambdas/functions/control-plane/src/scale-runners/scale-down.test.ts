@@ -5,7 +5,7 @@ import nock from 'nock';
 
 import { RunnerInfo, RunnerList } from '../aws/runners.d';
 import * as ghAuth from '../github/auth';
-import { listEC2Runners, terminateRunner, tag, untag } from './../aws/runners';
+import { listEC2Runners, terminateRunner, tag, untag, stopRunner } from './../aws/runners';
 import { githubCache } from './cache';
 import { newestFirstStrategy, oldestFirstStrategy, scaleDown } from './scale-down';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -32,12 +32,13 @@ vi.mock('@octokit/rest', () => ({
 }));
 
 vi.mock('./../aws/runners', async (importOriginal) => {
-  const actual = await importOriginal();
+  const actual = await importOriginal<typeof import('./../aws/runners')>();
   return {
     ...actual,
     tag: vi.fn(),
     untag: vi.fn(),
     terminateRunner: vi.fn(),
+    stopRunner: vi.fn(),
     listEC2Runners: vi.fn(),
   };
 });
@@ -60,7 +61,6 @@ vi.mock('./cache', async () => ({
   },
 }));
 
-const mocktokit = Octokit as vi.MockedClass<typeof Octokit>;
 const mockedAppAuth = vi.mocked(ghAuth.createGithubAppAuth);
 const mockedInstallationAuth = vi.mocked(ghAuth.createGithubInstallationAuth);
 const mockCreateClient = vi.mocked(ghAuth.createOctokitClient);
@@ -68,6 +68,7 @@ const mockListRunners = vi.mocked(listEC2Runners);
 const mockTagRunners = vi.mocked(tag);
 const mockUntagRunners = vi.mocked(untag);
 const mockTerminateRunners = vi.mocked(terminateRunner);
+const mockStopRunners = vi.mocked(stopRunner);
 
 export interface TestData {
   repositoryName: string;
@@ -180,7 +181,7 @@ describe('Scale down runners', () => {
       repositorySelection: 'all',
       installationId: 0,
     });
-    mockCreateClient.mockResolvedValue(new mocktokit());
+    mockCreateClient.mockResolvedValue(mockOctokit as unknown as Octokit);
   });
 
   const endpoints = ['https://api.github.com', 'https://github.enterprise.something', 'https://companyname.ghe.com'];
@@ -284,6 +285,35 @@ describe('Scale down runners', () => {
         // assert
         checkTerminated(runners);
         checkNonTerminated(runners);
+      });
+
+      it(`Should stop idle runner to standby when standby pool enabled`, async () => {
+        process.env.STANDBY_POOL_SIZE = '2';
+        process.env.STANDBY_IDLE_TIME_MINUTES = '0';
+        
+        const runners = [
+          createRunnerTestData('idle-1', type, MINIMUM_TIME_RUNNING_IN_MINUTES + 1, true, false, false),
+          createRunnerTestData('idle-2', type, MINIMUM_TIME_RUNNING_IN_MINUTES + 1, true, false, false),
+        ];
+
+        mockGitHubRunners(runners);
+        mockAwsRunners(runners);
+        
+        const originalListRunners = mockListRunners.getMockImplementation();
+        mockListRunners.mockImplementation(async (filters) => {
+          if (filters?.statuses?.includes('stopped') && filters?.standby) {
+            return [];
+          }
+          return originalListRunners ? originalListRunners(filters) : runners;
+        });
+
+        await scaleDown();
+
+        expect(mockStopRunners).toHaveBeenCalledTimes(2);
+        expect(mockTerminateRunners).not.toHaveBeenCalled();
+        
+        delete process.env.STANDBY_POOL_SIZE;
+        delete process.env.STANDBY_IDLE_TIME_MINUTES;
       });
 
       it(`Should not terminate a runner that became busy just before deregister runner.`, async () => {

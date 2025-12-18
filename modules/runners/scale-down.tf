@@ -34,6 +34,8 @@ resource "aws_lambda_function" "scale_down" {
       POWERTOOLS_LOGGER_LOG_EVENT              = var.log_level == "debug" ? "true" : "false"
       RUNNER_BOOT_TIME_IN_MINUTES              = var.runner_boot_time_in_minutes
       SCALE_DOWN_CONFIG                        = jsonencode(var.idle_config)
+      STANDBY_POOL_SIZE                        = var.standby_pool_config.size
+      STANDBY_IDLE_TIME_MINUTES                = var.standby_pool_config.idle_time_minutes
       POWERTOOLS_SERVICE_NAME                  = "runners-scale-down"
       POWERTOOLS_METRICS_NAMESPACE             = var.metrics.namespace
       POWERTOOLS_TRACE_ENABLED                 = var.tracing_config.mode != null ? true : false

@@ -11,6 +11,8 @@ import {
   type DescribeInstancesResult,
   EC2Client,
   SpotAllocationStrategy,
+  StartInstancesCommand,
+  StopInstancesCommand,
   TerminateInstancesCommand,
 } from '@aws-sdk/client-ec2';
 import { GetParameterCommand, type GetParameterResult, PutParameterCommand, SSMClient } from '@aws-sdk/client-ssm';
@@ -19,7 +21,7 @@ import 'aws-sdk-client-mock-jest/vitest';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ScaleError from './../scale-runners/ScaleError';
-import { createRunner, listEC2Runners, tag, terminateRunner, untag } from './runners';
+import { createRunner, listEC2Runners, tag, terminateRunner, untag, stopRunner, startRunner } from './runners';
 import type { RunnerInfo, RunnerInputParameters, RunnerType } from './runners.d';
 
 process.env.AWS_REGION = 'eu-east-1';
@@ -245,6 +247,19 @@ describe('list instances', () => {
       ],
     });
   });
+
+  it('Filter instances for standby state', async () => {
+    mockEC2Client.on(DescribeInstancesCommand).resolves(mockRunningInstances);
+    await listEC2Runners({ statuses: ['stopped'], standby: true, environment: ENVIRONMENT });
+    expect(mockEC2Client).toHaveReceivedCommandWith(DescribeInstancesCommand, {
+      Filters: [
+        { Name: 'instance-state-name', Values: ['stopped'] },
+        { Name: 'tag:ghr:environment', Values: [ENVIRONMENT] },
+        { Name: 'tag:ghr:state', Values: ['standby'] },
+        { Name: 'tag:ghr:Application', Values: ['github-action-runner'] },
+      ],
+    });
+  });
 });
 
 describe('terminate runner', () => {
@@ -262,6 +277,57 @@ describe('terminate runner', () => {
 
     expect(mockEC2Client).toHaveReceivedCommandWith(TerminateInstancesCommand, {
       InstanceIds: [runner.instanceId],
+    });
+  });
+});
+
+describe('stop runner', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+  it('calls stop instances and tags with standby state', async () => {
+    mockEC2Client.on(StopInstancesCommand).resolves({});
+    mockEC2Client.on(CreateTagsCommand).resolves({});
+    const runner: RunnerInfo = {
+      instanceId: 'instance-3',
+      owner: 'owner-3',
+      type: 'Org',
+    };
+    await stopRunner(runner.instanceId);
+
+    expect(mockEC2Client).toHaveReceivedCommandWith(StopInstancesCommand, {
+      InstanceIds: [runner.instanceId],
+    });
+    expect(mockEC2Client).toHaveReceivedCommandWith(CreateTagsCommand, {
+      Resources: [runner.instanceId],
+      Tags: [
+        { Key: 'ghr:state', Value: 'standby' },
+        { Key: 'ghr:stopped_at', Value: expect.any(String) },
+      ],
+    });
+  });
+});
+
+describe('start runner', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+  it('calls start instances and removes standby tags', async () => {
+    mockEC2Client.on(StartInstancesCommand).resolves({});
+    mockEC2Client.on(DeleteTagsCommand).resolves({});
+    const runner: RunnerInfo = {
+      instanceId: 'instance-4',
+      owner: 'owner-4',
+      type: 'Org',
+    };
+    await startRunner(runner.instanceId);
+
+    expect(mockEC2Client).toHaveReceivedCommandWith(StartInstancesCommand, {
+      InstanceIds: [runner.instanceId],
+    });
+    expect(mockEC2Client).toHaveReceivedCommandWith(DeleteTagsCommand, {
+      Resources: [runner.instanceId],
+      Tags: [{ Key: 'ghr:state' }, { Key: 'ghr:stopped_at' }],
     });
   });
 });

@@ -4,7 +4,7 @@ import { getParameter, putParameter } from '@aws-github-runner/aws-ssm-util';
 import yn from 'yn';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
-import { createRunner, listEC2Runners, tag } from './../aws/runners';
+import { createRunner, listEC2Runners, tag, startRunner } from './../aws/runners';
 import { RunnerInputParameters } from './../aws/runners.d';
 import { metricGitHubAppRateLimit } from '../github/rate-limit';
 
@@ -208,6 +208,39 @@ async function getRunnerGroupByName(ghClient: Octokit, githubRunnerConfig: Creat
   return runnerGroupId;
 }
 
+async function startStandbyRunners(
+  githubRunnerConfig: CreateGitHubRunnerConfig,
+  ec2RunnerConfig: CreateEC2RunnerConfig,
+  numberOfRunners: number,
+  ghClient: Octokit,
+): Promise<string[]> {
+  const standbyRunners = await listEC2Runners({
+    environment: ec2RunnerConfig.environment,
+    runnerType: githubRunnerConfig.runnerType,
+    runnerOwner: githubRunnerConfig.runnerOwner,
+    statuses: ['stopped'],
+    standby: true,
+  });
+
+  const runnersToStart = standbyRunners.slice(0, numberOfRunners);
+  const startedInstances: string[] = [];
+
+  for (const runner of runnersToStart) {
+    try {
+      await startRunner(runner.instanceId);
+      startedInstances.push(runner.instanceId);
+    } catch (e) {
+      logger.error(`Failed to start standby runner '${runner.instanceId}'`, { error: e });
+    }
+  }
+
+  if (startedInstances.length > 0) {
+    await createStartRunnerConfig(githubRunnerConfig, startedInstances, ghClient);
+  }
+
+  return startedInstances;
+}
+
 export async function createRunners(
   githubRunnerConfig: CreateGitHubRunnerConfig,
   ec2RunnerConfig: CreateEC2RunnerConfig,
@@ -404,37 +437,82 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       newRunners,
     });
 
-    const instances = await createRunners(
-      {
-        ephemeral: ephemeralEnabled,
-        enableJitConfig,
-        ghesBaseUrl,
-        runnerLabels,
-        runnerGroup,
-        runnerNamePrefix,
-        runnerOwner: group,
-        runnerType,
-        disableAutoUpdate,
-        ssmTokenPath,
-        ssmConfigPath,
-      },
-      {
-        ec2instanceCriteria: {
-          instanceTypes,
-          targetCapacityType: instanceTargetCapacityType,
-          maxSpotPrice: instanceMaxSpotPrice,
-          instanceAllocationStrategy: instanceAllocationStrategy,
+    let instances: string[] = [];
+    let remainingRunners = newRunners;
+
+    const standbyPoolEnabled = yn(process.env.STANDBY_POOL_ENABLED, { default: false });
+    if (standbyPoolEnabled && remainingRunners > 0) {
+      logger.info('Checking for standby runners to start');
+      const startedInstances = await startStandbyRunners(
+        {
+          ephemeral: ephemeralEnabled,
+          enableJitConfig,
+          ghesBaseUrl,
+          runnerLabels,
+          runnerGroup,
+          runnerNamePrefix,
+          runnerOwner: group,
+          runnerType,
+          disableAutoUpdate,
+          ssmTokenPath,
+          ssmConfigPath,
         },
-        environment,
-        launchTemplateName,
-        subnets,
-        amiIdSsmParameterName,
-        tracingEnabled,
-        onDemandFailoverOnError,
-      },
-      newRunners,
-      githubInstallationClient,
-    );
+        {
+          ec2instanceCriteria: {
+            instanceTypes,
+            targetCapacityType: instanceTargetCapacityType,
+            maxSpotPrice: instanceMaxSpotPrice,
+            instanceAllocationStrategy: instanceAllocationStrategy,
+          },
+          environment,
+          launchTemplateName,
+          subnets,
+          amiIdSsmParameterName,
+          tracingEnabled,
+          onDemandFailoverOnError,
+        },
+        remainingRunners,
+        githubInstallationClient,
+      );
+      instances.push(...startedInstances);
+      remainingRunners -= startedInstances.length;
+      logger.info(`Started ${startedInstances.length} standby runners, ${remainingRunners} remaining`);
+    }
+
+    if (remainingRunners > 0) {
+      const newInstances = await createRunners(
+        {
+          ephemeral: ephemeralEnabled,
+          enableJitConfig,
+          ghesBaseUrl,
+          runnerLabels,
+          runnerGroup,
+          runnerNamePrefix,
+          runnerOwner: group,
+          runnerType,
+          disableAutoUpdate,
+          ssmTokenPath,
+          ssmConfigPath,
+        },
+        {
+          ec2instanceCriteria: {
+            instanceTypes,
+            targetCapacityType: instanceTargetCapacityType,
+            maxSpotPrice: instanceMaxSpotPrice,
+            instanceAllocationStrategy: instanceAllocationStrategy,
+          },
+          environment,
+          launchTemplateName,
+          subnets,
+          amiIdSsmParameterName,
+          tracingEnabled,
+          onDemandFailoverOnError,
+        },
+        remainingRunners,
+        githubInstallationClient,
+      );
+      instances.push(...newInstances);
+    }
 
     // Not all runners we wanted were created, let's reject enough items so that
     // number of entries will be retried.

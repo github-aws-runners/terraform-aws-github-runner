@@ -7,6 +7,8 @@ import {
   DescribeInstancesResult,
   EC2Client,
   FleetLaunchTemplateOverridesRequest,
+  StartInstancesCommand,
+  StopInstancesCommand,
   Tag,
   TerminateInstancesCommand,
   _InstanceType,
@@ -51,6 +53,9 @@ function constructFilters(filters?: Runners.ListRunnerFilters): Ec2Filter[][] {
     }
     if (filters.orphan) {
       ec2FiltersBase.push({ Name: 'tag:ghr:orphan', Values: ['true'] });
+    }
+    if (filters.standby) {
+      ec2FiltersBase.push({ Name: 'tag:ghr:state', Values: ['standby'] });
     }
   }
 
@@ -106,6 +111,25 @@ export async function terminateRunner(instanceId: string): Promise<void> {
   const ec2 = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
   await ec2.send(new TerminateInstancesCommand({ InstanceIds: [instanceId] }));
   logger.debug(`Runner ${instanceId} has been terminated.`);
+}
+
+export async function stopRunner(instanceId: string): Promise<void> {
+  logger.debug(`Runner '${instanceId}' will be stopped.`);
+  const ec2 = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
+  await ec2.send(new StopInstancesCommand({ InstanceIds: [instanceId] }));
+  await tag(instanceId, [
+    { Key: 'ghr:state', Value: 'standby' },
+    { Key: 'ghr:stopped_at', Value: new Date().toISOString() },
+  ]);
+  logger.debug(`Runner ${instanceId} has been stopped.`);
+}
+
+export async function startRunner(instanceId: string): Promise<void> {
+  logger.debug(`Runner '${instanceId}' will be started.`);
+  const ec2 = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
+  await ec2.send(new StartInstancesCommand({ InstanceIds: [instanceId] }));
+  await untag(instanceId, [{ Key: 'ghr:state' }, { Key: 'ghr:stopped_at' }]);
+  logger.debug(`Runner ${instanceId} has been started.`);
 }
 
 export async function tag(instanceId: string, tags: Tag[]): Promise<void> {
