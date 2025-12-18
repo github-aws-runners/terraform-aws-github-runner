@@ -7,6 +7,7 @@ import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient 
 import { createRunner, listEC2Runners, tag } from './../aws/runners';
 import { RunnerInputParameters } from './../aws/runners.d';
 import { metricGitHubAppRateLimit } from '../github/rate-limit';
+import { publishRetryMessage } from './job-retry';
 
 const logger = createChildLogger('scale-up');
 
@@ -358,6 +359,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       }
 
       scaleUp++;
+      await publishRetryMessage(message as ActionRequestMessageRetry);
     }
 
     if (scaleUp === 0) {
@@ -397,7 +399,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       }
 
       // No runners will be created, so skip calling the EC2 API.
-      if (missingInstanceCount === scaleUp) {
+      if (newRunners <= 0) {
         continue;
       }
     }
