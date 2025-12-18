@@ -659,12 +659,12 @@ variable "placement" {
   default = null
 }
 
-variable "license_specification" {
+variable "license_specifications" {
   description = "The license specifications for the instance. See https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#license_specification for details."
-  type = object({
+  type = list(object({
     license_configuration_arn = string
-  })
-  default = null
+  }))
+  default = []
 }
 
 variable "enable_jit_config" {
