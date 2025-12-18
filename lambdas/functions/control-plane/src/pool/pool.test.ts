@@ -140,6 +140,8 @@ beforeEach(() => {
   process.env.INSTANCE_TARGET_CAPACITY_TYPE = 'spot';
   process.env.RUNNER_OWNER = ORG;
   process.env.RUNNER_BOOT_TIME_IN_MINUTES = MINIMUM_TIME_RUNNING.toString();
+  process.env.SCALE_ERRORS =
+    '["UnfulfillableCapacity","MaxSpotInstanceCountExceeded","TargetCapacityLimitExceededException"]';
 
   const mockTokenReturnValue = {
     data: {

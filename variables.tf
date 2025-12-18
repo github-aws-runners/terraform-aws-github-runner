@@ -283,6 +283,22 @@ variable "enable_runner_on_demand_failover_for_errors" {
   default     = []
 }
 
+variable "scale_errors" {
+  description = "List of aws error codes that should trigger retry during scale up. This list will replace the default errors defined in the variable `defaultScaleErrors` in https://github.com/github-aws-runners/terraform-aws-github-runner/blob/main/lambdas/functions/control-plane/src/aws/runners.ts"
+  type        = list(string)
+  default = [
+    "UnfulfillableCapacity",
+    "MaxSpotInstanceCountExceeded",
+    "TargetCapacityLimitExceededException",
+    "RequestLimitExceeded",
+    "ResourceLimitExceeded",
+    "MaxSpotInstanceCountExceeded",
+    "MaxSpotFleetRequestCountExceeded",
+    "InsufficientInstanceCapacity",
+    "InsufficientCapacityOnHost",
+  ]
+}
+
 variable "enable_userdata" {
   description = "Should the userdata script be enabled for the runner. Set this to false if you are using your own prebuilt AMI."
   type        = bool

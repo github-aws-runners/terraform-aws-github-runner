@@ -32,6 +32,7 @@ variable "config" {
       ephemeral                            = bool
       enable_jit_config                    = bool
       enable_on_demand_failover_for_errors = list(string)
+      scale_errors                         = list(string)
       boot_time_in_minutes                 = number
       labels                               = list(string)
       launch_template = object({
