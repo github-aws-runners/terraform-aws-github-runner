@@ -59,9 +59,9 @@ resource "aws_cloudwatch_log_group" "gh_runners" {
 }
 
 resource "aws_iam_role_policy" "cloudwatch" {
-  count = var.enable_cloudwatch_agent ? 1 : 0
+  count = var.iam_overrides["override_runner_role"] ? 0 : (var.enable_cloudwatch_agent ? 1 : 0)
   name  = "CloudWatchLogginAndMetrics"
-  role  = aws_iam_role.runner.name
+  role  = aws_iam_role.runner[0].name
   policy = templatefile("${path.module}/policies/instance-cloudwatch-policy.json",
     {
       ssm_parameter_arn = aws_ssm_parameter.cloudwatch_agent_config_runner[0].arn
