@@ -16,7 +16,7 @@ updates:
     schedule:
       interval: "weekly"
     cooldown:
-      default-days: 5
+      default-days: 7
     groups:
       github:
         patterns:
@@ -28,7 +28,7 @@ updates:
     schedule:
       interval: "weekly"
     cooldown:
-      default-days: 5
+      default-days: 7
     groups:
       aws:
         patterns:
@@ -65,7 +65,7 @@ updates:
     schedule:
       interval: "weekly"
     cooldown:
-      default-days: 5
+      default-days: 7
     labels:
       - "dependencies"
       - "docker"
@@ -81,7 +81,7 @@ updates:
     schedule:
       interval: "weekly"
     cooldown:
-      default-days: 5
+      default-days: 7
     labels:
       - "dependencies"
       - "docker"
@@ -97,7 +97,7 @@ updates:
     schedule:
       interval: "weekly"
     cooldown:
-      default-days: 5
+      default-days: 7
     groups:
       python-deps:
         patterns:
