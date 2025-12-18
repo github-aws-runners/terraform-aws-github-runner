@@ -149,7 +149,7 @@ variable "multi_runner_config" {
       }), null)
       license_specifications = optional(list(object({
         license_configuration_arn = string
-      })), null)
+      })), [])
       runner_log_files = optional(list(object({
         log_group_name   = string
         prefix_log_group = bool

@@ -82,6 +82,13 @@ locals {
     enable_cloudwatch_agent         = var.enable_cloudwatch_agent
     ssm_key_cloudwatch_agent_config = var.enable_cloudwatch_agent ? aws_ssm_parameter.cloudwatch_agent_config_runner[0].name : ""
   }) : var.userdata_content) : ""
+
+  encoded_user_data = (
+    var.runner_os == "linux" ? base64gzip(local.user_data) :
+    var.runner_os == "windows" ? base64encode(local.user_data) :
+    var.runner_os == "osx" ? base64encode(local.user_data) :
+    null
+  )
 }
 
 data "aws_ami" "runner" {
@@ -278,7 +285,7 @@ resource "aws_launch_template" "runner" {
     )
   }
 
-  user_data = var.runner_os == "windows" ? base64encode(local.user_data) : base64gzip(local.user_data)
+  user_data = local.encoded_user_data
 
   tags = local.tags
 
