@@ -54,5 +54,5 @@ else
 fi
 
 echo "Set file ownership of action runner"
-sudo chown -R "$user_name":"$user_name" /opt/actions-runner
-sudo chown -R "$user_name":"$user_name" /opt/hostedtoolcache
+sudo chown -R "$user_name":staff /opt/actions-runner
+sudo chown -R "$user_name":staff /opt/hostedtoolcache
