@@ -429,6 +429,7 @@ describe('create runner with errors', () => {
     allocationStrategy: SpotAllocationStrategy.CAPACITY_OPTIMIZED,
     capacityType: 'spot',
     type: 'Repo',
+    scaleErrors: ['UnfulfillableCapacity', 'MaxSpotInstanceCountExceeded'],
   };
   const defaultExpectedFleetRequestValues: ExpectedFleetRequestValues = {
     type: 'Repo',
@@ -450,19 +451,6 @@ describe('create runner with errors', () => {
     createFleetMockWithErrors(['UnfulfillableCapacity']);
 
     await expect(createRunner(createRunnerConfig(defaultRunnerConfig))).rejects.toBeInstanceOf(ScaleError);
-    expect(mockEC2Client).toHaveReceivedCommandWith(
-      CreateFleetCommand,
-      expectedCreateFleetRequest(defaultExpectedFleetRequestValues),
-    );
-    expect(mockSSMClient).not.toHaveReceivedCommand(PutParameterCommand);
-  });
-
-  it('test ScaleError with custom scale error.', async () => {
-    createFleetMockWithErrors(['CustomAWSError']);
-
-    await expect(
-      createRunner(createRunnerConfig({ ...defaultRunnerConfig, customScaleErrors: ['CustomAWSError'] })),
-    ).rejects.toBeInstanceOf(ScaleError);
     expect(mockEC2Client).toHaveReceivedCommandWith(
       CreateFleetCommand,
       expectedCreateFleetRequest(defaultExpectedFleetRequestValues),
@@ -712,7 +700,7 @@ interface RunnerConfig {
   amiIdSsmParameterName?: string;
   tracingEnabled?: boolean;
   onDemandFailoverOnError?: string[];
-  customScaleErrors?: string[];
+  scaleErrors: string[];
 }
 
 function createRunnerConfig(runnerConfig: RunnerConfig): RunnerInputParameters {
@@ -732,7 +720,7 @@ function createRunnerConfig(runnerConfig: RunnerConfig): RunnerInputParameters {
     amiIdSsmParameterName: runnerConfig.amiIdSsmParameterName,
     tracingEnabled: runnerConfig.tracingEnabled,
     onDemandFailoverOnError: runnerConfig.onDemandFailoverOnError,
-    customScaleErrors: runnerConfig.customScaleErrors,
+    scaleErrors: runnerConfig.scaleErrors,
   };
 }
 
