@@ -90,6 +90,17 @@ function generateRunnerServiceConfig(githubRunnerConfig: CreateGitHubRunnerConfi
   return config;
 }
 
+async function publishRetryMessagesForValid(
+  messages: ActionRequestMessageSQS[],
+  invalidMessageIds: Set<string>,
+): Promise<void> {
+  for (const message of messages) {
+    if (!invalidMessageIds.has(message.messageId)) {
+      await publishRetryMessage(message as ActionRequestMessageRetry);
+    }
+  }
+}
+
 async function getGithubRunnerRegistrationToken(githubRunnerConfig: CreateGitHubRunnerConfig, ghClient: Octokit) {
   const registrationToken =
     githubRunnerConfig.runnerType === 'Org'
@@ -276,6 +287,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
 
   const validMessages = new Map<string, MessagesWithClient>();
   const invalidMessages: string[] = [];
+  const invalidMessageIds = new Set<string>();
   for (const payload of payloads) {
     const { eventType, messageId, repositoryName, repositoryOwner } = payload;
     if (ephemeralEnabled && eventType !== 'workflow_job') {
@@ -394,17 +406,15 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       if (ephemeralEnabled) {
         // This removes `missingInstanceCount` items from the start of the array
         // so that, if we retry more messages later, we pick fresh ones.
-        invalidMessages.push(...messages.splice(0, missingInstanceCount).map(({ messageId }) => messageId));
+        const removedMessages = messages.splice(0, missingInstanceCount);
+        invalidMessages.push(...removedMessages.map(({ messageId }) => messageId));
+        removedMessages.forEach(({ messageId }) => invalidMessageIds.add(messageId));
       }
 
       // No runners will be created, so skip calling the EC2 API.
       if (newRunners <= 0) {
         // Publish retry messages for all remaining messages that are not marked as invalid
-        for (const message of validMessagesForRetry) {
-          if (!invalidMessages.includes(message.messageId)) {
-            await publishRetryMessage(message as ActionRequestMessageRetry);
-          }
-        }
+        await publishRetryMessagesForValid(validMessagesForRetry, invalidMessageIds);
         continue;
       }
     }
@@ -456,15 +466,13 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
         failedInstanceCount,
       });
 
-      invalidMessages.push(...messages.slice(0, failedInstanceCount).map(({ messageId }) => messageId));
+      const failedMessages = messages.slice(0, failedInstanceCount);
+      invalidMessages.push(...failedMessages.map(({ messageId }) => messageId));
+      failedMessages.forEach(({ messageId }) => invalidMessageIds.add(messageId));
     }
 
     // Publish retry messages for all messages that are not marked as invalid
-    for (const message of validMessagesForRetry) {
-      if (!invalidMessages.includes(message.messageId)) {
-        await publishRetryMessage(message as ActionRequestMessageRetry);
-      }
-    }
+    await publishRetryMessagesForValid(validMessagesForRetry, invalidMessageIds);
   }
 
   return invalidMessages;
