@@ -57,6 +57,7 @@ resource "aws_lambda_function" "scale_up" {
       POWERTOOLS_SERVICE_NAME                  = "runners-scale-up"
       SSM_TOKEN_PATH                           = local.token_path
       SSM_CONFIG_PATH                          = "${var.ssm_paths.root}/${var.ssm_paths.config}"
+      SSM_PARAMETER_STORE_TAGS                 = local.parameter_store_tags
       SUBNET_IDS                               = join(",", var.subnet_ids)
       ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS     = jsonencode(var.enable_on_demand_failover_for_errors)
       JOB_RETRY_CONFIG                         = jsonencode(local.job_retry_config)

@@ -740,3 +740,9 @@ variable "lambda_event_source_mapping_maximum_batching_window_in_seconds" {
   type        = number
   default     = 0
 }
+
+variable "parameter_store_tags" {
+  description = "Map of tags that will be added to all the SSM Parameter Store parameters created by the Lambda function."
+  type        = map(string)
+  default     = {}
+}

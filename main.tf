@@ -231,6 +231,7 @@ module "runners" {
   runner_log_files                                               = var.runner_log_files
   runner_group_name                                              = var.runner_group_name
   runner_name_prefix                                             = var.runner_name_prefix
+  parameter_store_tags                                           = var.parameter_store_tags
 
   scale_up_reserved_concurrent_executions = var.scale_up_reserved_concurrent_executions
 
