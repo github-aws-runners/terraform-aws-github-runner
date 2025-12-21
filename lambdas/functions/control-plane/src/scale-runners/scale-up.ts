@@ -359,7 +359,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       }
 
       scaleUp++;
-      await publishRetryMessage(message as ActionRequestMessageRetry);
+      await publishRetryMessage(message);
     }
 
     if (scaleUp === 0) {
