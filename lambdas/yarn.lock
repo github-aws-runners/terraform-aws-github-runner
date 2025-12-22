@@ -118,9 +118,9 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@aws-github-runner/aws-powertools-util@workspace:libs/aws-powertools-util"
   dependencies:
-    "@aws-lambda-powertools/logger": "npm:^2.29.0"
-    "@aws-lambda-powertools/metrics": "npm:^2.29.0"
-    "@aws-lambda-powertools/tracer": "npm:^2.29.0"
+    "@aws-lambda-powertools/logger": "npm:^2.30.0"
+    "@aws-lambda-powertools/metrics": "npm:^2.30.0"
+    "@aws-lambda-powertools/tracer": "npm:^2.30.0"
     "@types/aws-lambda": "npm:^8.10.155"
     "@types/node": "npm:^22.19.0"
     aws-lambda: "npm:^1.0.7"
@@ -148,7 +148,7 @@ __metadata:
   dependencies:
     "@aws-github-runner/aws-powertools-util": "npm:*"
     "@aws-github-runner/aws-ssm-util": "npm:*"
-    "@aws-lambda-powertools/parameters": "npm:^2.29.0"
+    "@aws-lambda-powertools/parameters": "npm:^2.30.0"
     "@aws-sdk/client-ec2": "npm:^3.948.0"
     "@aws-sdk/client-sqs": "npm:^3.948.0"
     "@aws-sdk/types": "npm:^3.936.0"
@@ -232,53 +232,54 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@aws-lambda-powertools/commons@npm:2.29.0":
-  version: 2.29.0
-  resolution: "@aws-lambda-powertools/commons@npm:2.29.0"
+"@aws-lambda-powertools/commons@npm:2.30.0":
+  version: 2.30.0
+  resolution: "@aws-lambda-powertools/commons@npm:2.30.0"
   dependencies:
-    "@aws/lambda-invoke-store": "npm:0.2.1"
-  checksum: 10c0/62796c0380614ff4ba8907487c479c6d5b8298cc730afc4932ba717983e61f8f20bb87e302bdd1162b1bf965a069f2ee7c51468bb237231ee835771406d49e1b
+    "@aws/lambda-invoke-store": "npm:0.2.2"
+  checksum: 10c0/7baa8e9f31fd3e18472e7141bef765d2e60c85708f6b3db47ec1381784a715a5591224999bdd3e79543f67a0c870542e9860facc4d265bd048ec7450dc2b1bc8
   languageName: node
   linkType: hard
 
-"@aws-lambda-powertools/logger@npm:^2.29.0":
-  version: 2.29.0
-  resolution: "@aws-lambda-powertools/logger@npm:2.29.0"
+"@aws-lambda-powertools/logger@npm:^2.30.0":
+  version: 2.30.0
+  resolution: "@aws-lambda-powertools/logger@npm:2.30.0"
   dependencies:
-    "@aws-lambda-powertools/commons": "npm:2.29.0"
-    "@aws/lambda-invoke-store": "npm:0.2.1"
+    "@aws-lambda-powertools/commons": "npm:2.30.0"
+    "@aws/lambda-invoke-store": "npm:0.2.2"
     lodash.merge: "npm:^4.6.2"
   peerDependencies:
-    "@aws-lambda-powertools/jmespath": 2.29.0
+    "@aws-lambda-powertools/jmespath": 2.30.0
     "@middy/core": 4.x || 5.x || 6.x
   peerDependenciesMeta:
     "@aws-lambda-powertools/jmespath":
       optional: true
     "@middy/core":
       optional: true
-  checksum: 10c0/ad9b50067ba3eb0a9dd96e1f20fd36d461acb62566c504bb8accda7b94dcb90c514ebc12f91b4cbf1c663d45b62f9187eab49ee1b5162b4c405c6ea9f2730ca0
+  checksum: 10c0/32e8ec20dca46242a3268b73217bdb1c4e871f6d5d001f4e78bee9834b99985adf53c143a5898e60bc72f08c35a5afb3d80194bf194d48ad6c3f2a3b9e82a3d1
   languageName: node
   linkType: hard
 
-"@aws-lambda-powertools/metrics@npm:^2.29.0":
-  version: 2.29.0
-  resolution: "@aws-lambda-powertools/metrics@npm:2.29.0"
+"@aws-lambda-powertools/metrics@npm:^2.30.0":
+  version: 2.30.0
+  resolution: "@aws-lambda-powertools/metrics@npm:2.30.0"
   dependencies:
-    "@aws-lambda-powertools/commons": "npm:2.29.0"
+    "@aws-lambda-powertools/commons": "npm:2.30.0"
+    "@aws/lambda-invoke-store": "npm:0.2.2"
   peerDependencies:
     "@middy/core": 4.x || 5.x || 6.x
   peerDependenciesMeta:
     "@middy/core":
       optional: true
-  checksum: 10c0/5e93880c0f76975c2bfd2c8ca3d4fa1c0d6802570ff718fb4b98353bcc6f55dc874df739526057c9a4122a4a38eb98d43097ff3b518297ca702113f40d34123f
+  checksum: 10c0/10e197b60c6b6763540a9490a36edc8d4c3670f8639f7d434d091e19a2741631df7385e032f5cc3a8c9521477becf37e3a79ff95150687ec6aefb77c543e25b3
   languageName: node
   linkType: hard
 
-"@aws-lambda-powertools/parameters@npm:^2.29.0":
-  version: 2.29.0
-  resolution: "@aws-lambda-powertools/parameters@npm:2.29.0"
+"@aws-lambda-powertools/parameters@npm:^2.30.0":
+  version: 2.30.0
+  resolution: "@aws-lambda-powertools/parameters@npm:2.30.0"
   dependencies:
-    "@aws-lambda-powertools/commons": "npm:2.29.0"
+    "@aws-lambda-powertools/commons": "npm:2.30.0"
   peerDependencies:
     "@aws-sdk/client-appconfigdata": ">=3.x"
     "@aws-sdk/client-dynamodb": ">=3.x"
@@ -299,22 +300,22 @@ __metadata:
       optional: true
     "@middy/core":
       optional: true
-  checksum: 10c0/3293cbf2fd3b7214ca906a94578af0ed583b4321a76b5962472636653da05348e68cec7fb42b5b7f3ae18b36f4d686a52938375010350ac752677bbadb49273a
+  checksum: 10c0/0109c142fad6e2ba34bb731c1090e85699827fb1709ddfb3b61b96b21f83707718eb58eec0c86919b44d969426698dd6fe43e908e4a1e2a780669603b74f1b59
   languageName: node
   linkType: hard
 
-"@aws-lambda-powertools/tracer@npm:^2.29.0":
-  version: 2.29.0
-  resolution: "@aws-lambda-powertools/tracer@npm:2.29.0"
+"@aws-lambda-powertools/tracer@npm:^2.30.0":
+  version: 2.30.0
+  resolution: "@aws-lambda-powertools/tracer@npm:2.30.0"
   dependencies:
-    "@aws-lambda-powertools/commons": "npm:2.29.0"
+    "@aws-lambda-powertools/commons": "npm:2.30.0"
     aws-xray-sdk-core: "npm:^3.12.0"
   peerDependencies:
     "@middy/core": 4.x || 5.x || 6.x
   peerDependenciesMeta:
     "@middy/core":
       optional: true
-  checksum: 10c0/7db935bdbbfb3034e21a811e8df21f3e00a24d7ff85eb6f631fd670b57e4e1a43a4f1709c6c741b8f2ae8458cdbe915d2af89c28047595603f7d787bd4427f26
+  checksum: 10c0/ddc8fa1b2e6b1a7b4a350567db8714a47efc1ec49c500515da8279be5c2ec96c2f4efe70af9119c976254e1545c41d31a34342af779b990df850851fe1658680
   languageName: node
   linkType: hard
 
@@ -1158,14 +1159,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@aws/lambda-invoke-store@npm:0.2.1":
-  version: 0.2.1
-  resolution: "@aws/lambda-invoke-store@npm:0.2.1"
-  checksum: 10c0/7fdfd6e4b175d36dae522556efc51b0f7445af3d55e516acee0f4e52946833ec9655be45cb3bdefec5974c0c6e5bcca3ad1bce7d397eb5f7a2393623867fb4b2
-  languageName: node
-  linkType: hard
-
-"@aws/lambda-invoke-store@npm:^0.2.2":
+"@aws/lambda-invoke-store@npm:0.2.2, @aws/lambda-invoke-store@npm:^0.2.2":
   version: 0.2.2
   resolution: "@aws/lambda-invoke-store@npm:0.2.2"
   checksum: 10c0/0ce2f527e2ab6b07372a08a137991163b99bf646b8dbbb01dbc5370f4e578aa6ddf7f09a63ecead576f04ce54e52cb927c12683f4d97e322dcb76ddfc5843784
