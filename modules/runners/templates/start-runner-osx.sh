@@ -160,8 +160,6 @@ EOL
 
 echo "Starting runner as user $run_as"
 
-cd /opt/actions-runner || exit 1
-
 if [[ "$enable_jit_config" == "false" || $agent_mode != "ephemeral" ]]; then
   echo "Configure GH Runner as user $run_as"
   if [[ "$disable_default_labels" == "true" ]]; then
