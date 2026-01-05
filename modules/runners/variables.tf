@@ -778,3 +778,18 @@ variable "lambda_event_source_mapping_maximum_batching_window_in_seconds" {
     error_message = "Maximum batching window must be between 0 and 300 seconds."
   }
 }
+
+variable "runner_count_cache" {
+  description = <<-EOF
+    Configuration for the runner count cache feature that reduces EC2 DescribeInstances API calls.
+    This is passed from the root module when the feature is enabled.
+
+    `table_name`: DynamoDB table name for storing runner counts.
+    `stale_threshold_ms`: How long before a cached count is considered stale.
+  EOF
+  type = object({
+    table_name         = string
+    stale_threshold_ms = number
+  })
+  default = null
+}

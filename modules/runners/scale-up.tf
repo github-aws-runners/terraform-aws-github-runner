@@ -60,6 +60,8 @@ resource "aws_lambda_function" "scale_up" {
       SUBNET_IDS                               = join(",", var.subnet_ids)
       ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS     = jsonencode(var.enable_on_demand_failover_for_errors)
       JOB_RETRY_CONFIG                         = jsonencode(local.job_retry_config)
+      RUNNER_COUNT_CACHE_TABLE_NAME            = var.runner_count_cache != null ? var.runner_count_cache.table_name : ""
+      RUNNER_COUNT_CACHE_STALE_THRESHOLD_MS    = var.runner_count_cache != null ? var.runner_count_cache.stale_threshold_ms : 60000
     }
   }
 
@@ -168,5 +170,25 @@ resource "aws_iam_role_policy" "job_retry_sqs_publish" {
   policy = templatefile("${path.module}/policies/lambda-publish-sqs-policy.json", {
     sqs_resource_arns = jsonencode([module.job_retry[0].job_retry_check_queue.arn])
     kms_key_arn       = var.kms_key_arn != null ? var.kms_key_arn : ""
+  })
+}
+
+resource "aws_iam_role_policy" "scale_up_runner_count_cache" {
+  count = var.runner_count_cache != null ? 1 : 0
+  name  = "runner-count-cache-policy"
+  role  = aws_iam_role.scale_up.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid      = "AllowDynamoDBRead"
+        Effect   = "Allow"
+        Action   = [
+          "dynamodb:GetItem"
+        ]
+        Resource = "arn:${var.aws_partition}:dynamodb:${var.aws_region}:${data.aws_caller_identity.current.account_id}:table/${var.runner_count_cache.table_name}"
+      }
+    ]
   })
 }

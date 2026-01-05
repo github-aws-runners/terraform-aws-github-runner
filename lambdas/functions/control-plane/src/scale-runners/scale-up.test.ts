@@ -12,6 +12,7 @@ import * as scaleUpModule from './scale-up';
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { Octokit } from '@octokit/rest';
+import { ec2RunnerCountCache, dynamoDbRunnerCountCache } from './cache';
 
 const mockOctokit = {
   paginate: vi.fn(),
@@ -129,6 +130,10 @@ beforeEach(() => {
   vi.resetModules();
   vi.clearAllMocks();
   setDefaults();
+
+  // Reset runner count caches to ensure tests start with clean state
+  ec2RunnerCountCache.reset();
+  dynamoDbRunnerCountCache.reset();
 
   defaultSSMGetParameterMockImpl();
   defaultOctokitMockImpl();

@@ -7,8 +7,20 @@ import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient 
 import { createRunner, listEC2Runners, tag } from './../aws/runners';
 import { RunnerInputParameters } from './../aws/runners.d';
 import { metricGitHubAppRateLimit } from '../github/rate-limit';
+import { ec2RunnerCountCache, dynamoDbRunnerCountCache } from './cache';
 
 const logger = createChildLogger('scale-up');
+
+// Initialize DynamoDB cache if configured
+const dynamoDbCacheTableName = process.env.RUNNER_COUNT_CACHE_TABLE_NAME;
+const dynamoDbCacheStaleThreshold = parseInt(process.env.RUNNER_COUNT_CACHE_STALE_THRESHOLD_MS || '60000', 10);
+if (dynamoDbCacheTableName && process.env.AWS_REGION) {
+  dynamoDbRunnerCountCache.initialize(dynamoDbCacheTableName, process.env.AWS_REGION, dynamoDbCacheStaleThreshold);
+  logger.info('DynamoDB runner count cache enabled', {
+    tableName: dynamoDbCacheTableName,
+    staleThresholdMs: dynamoDbCacheStaleThreshold,
+  });
+}
 
 export interface RunnerGroup {
   name: string;
@@ -365,8 +377,44 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
     }
 
     // Don't call the EC2 API if we can create an unlimited number of runners.
-    const currentRunners =
-      maximumRunners === -1 ? 0 : (await listEC2Runners({ environment, runnerType, runnerOwner: group })).length;
+    // Use cached runner count if available to reduce EC2 API calls (Issue #4710).
+    // Cache priority: DynamoDB (cross-invocation) -> In-memory (within invocation) -> EC2 API
+    let currentRunners = 0;
+    if (maximumRunners !== -1) {
+      let cacheSource = 'none';
+
+      // First, try DynamoDB cache (cross-invocation, event-driven)
+      if (dynamoDbRunnerCountCache.isEnabled()) {
+        const dynamoResult = await dynamoDbRunnerCountCache.get(environment, runnerType, group);
+        if (dynamoResult !== null && !dynamoResult.isStale) {
+          currentRunners = dynamoResult.count;
+          cacheSource = 'dynamodb';
+          logger.debug('Using DynamoDB cached runner count', {
+            currentRunners,
+            group,
+            cacheSource,
+          });
+        }
+      }
+
+      // If DynamoDB cache miss or stale, try in-memory cache
+      if (cacheSource === 'none') {
+        const cachedCount = ec2RunnerCountCache.get(environment, runnerType, group);
+        if (cachedCount !== undefined) {
+          currentRunners = cachedCount;
+          cacheSource = 'memory';
+          logger.debug('Using in-memory cached runner count', { currentRunners, group, cacheSource });
+        }
+      }
+
+      // If all caches miss, fall back to EC2 API
+      if (cacheSource === 'none') {
+        currentRunners = (await listEC2Runners({ environment, runnerType, runnerOwner: group })).length;
+        ec2RunnerCountCache.set(environment, runnerType, group, currentRunners);
+        cacheSource = 'ec2-api';
+        logger.debug('Fetched runner count from EC2 API', { currentRunners, group, cacheSource });
+      }
+    }
 
     logger.info('Current runners', {
       currentRunners,
@@ -435,6 +483,11 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       newRunners,
       githubInstallationClient,
     );
+
+    // Update the cache with the new runner count to avoid stale data in subsequent iterations
+    if (instances.length > 0) {
+      ec2RunnerCountCache.increment(environment, runnerType, group, instances.length);
+    }
 
     // Not all runners we wanted were created, let's reject enough items so that
     // number of entries will be retried.
