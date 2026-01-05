@@ -1760,6 +1760,16 @@ describe('Retry mechanism tests', () => {
     // publishRetryMessage should NOT be called because messages are marked as invalid
     // Invalid messages go back to the SQS queue and will be retried there
     expect(mockPublishRetryMessage).not.toHaveBeenCalled();
+    
+    // Verify listEC2Runners is called to check current runner count
+    expect(listEC2Runners).toHaveBeenCalledWith({
+      environment: 'unit-test-environment',
+      runnerType: 'Org',
+      runnerOwner: TEST_DATA_SINGLE.repositoryOwner,
+    });
+
+    // publishRetryMessage should still be called even though no runners will be created
+    expect(mockPublishRetryMessage).toHaveBeenCalledTimes(2);
     expect(createRunner).not.toHaveBeenCalled();
   });
 
