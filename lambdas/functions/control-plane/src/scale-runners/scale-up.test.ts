@@ -1757,7 +1757,7 @@ describe('Retry mechanism tests', () => {
     await scaleUpModule.scaleUp(messages);
 
     // Verify listEC2Runners is called to check current runner count
-    expect(listEC2Runners).toBeCalledWith({
+    expect(listEC2Runners).toHaveBeenCalledWith({
       environment: 'unit-test-environment',
       runnerType: 'Org',
       runnerOwner: TEST_DATA_SINGLE.repositoryOwner,
