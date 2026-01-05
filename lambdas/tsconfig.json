@@ -3,9 +3,7 @@
     "target": "ES2022",
     "module": "ES2022",
     "outDir": "dist",
-    "lib": [
-      "es2022"
-    ],
+    "lib": ["es2022"],
     "downlevelIteration": true,
     "strict": true,
     "moduleResolution": "bundler",
@@ -17,4 +15,3 @@
     "types": ["vitest/globals"]
   }
 }
-

@@ -5,8 +5,5 @@
   "semi": true,
   "importOrderSeparation": true,
   "importOrderSortSpecifiers": true,
-  "importOrder": [
-    "<THIRD_PARTY_MODULES>",
-    "^[./]"
-  ]
+  "importOrder": ["<THIRD_PARTY_MODULES>", "^[./]"]
 }

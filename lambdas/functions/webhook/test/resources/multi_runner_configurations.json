@@ -4,12 +4,7 @@
     "arn": "queueARN-ubuntu",
     "fifo": false,
     "matcherConfig": {
-      "labelMatchers": [[
-        "self-hosted",
-        "linux",
-        "x64",
-        "ubuntu"
-      ]],
+      "labelMatchers": [["self-hosted", "linux", "x64", "ubuntu"]],
       "exactMatch": true
     }
   },
@@ -18,12 +13,7 @@
     "arn": "queueARN-latest",
     "fifo": false,
     "matcherConfig": {
-      "labelMatchers": [[
-        "self-hosted",
-        "linux",
-        "x64",
-        "latest"
-      ]],
+      "labelMatchers": [["self-hosted", "linux", "x64", "latest"]],
       "exactMatch": false
     }
   }
