@@ -1756,6 +1756,13 @@ describe('Retry mechanism tests', () => {
 
     await scaleUpModule.scaleUp(messages);
 
+    // Verify listEC2Runners is called to check current runner count
+    expect(listEC2Runners).toHaveBeenCalledWith({
+      environment: 'unit-test-environment',
+      runnerType: 'Org',
+      runnerOwner: TEST_DATA_SINGLE.repositoryOwner,
+    });
+
     // publishRetryMessage should still be called even though no runners will be created
     expect(mockPublishRetryMessage).toHaveBeenCalledTimes(2);
     expect(createRunner).not.toHaveBeenCalled();
