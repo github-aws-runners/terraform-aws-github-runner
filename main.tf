@@ -187,6 +187,7 @@ module "runners" {
   enable_jit_config                    = var.enable_jit_config
   enable_job_queued_check              = var.enable_job_queued_check
   enable_on_demand_failover_for_errors = var.enable_runner_on_demand_failover_for_errors
+  scale_errors                         = var.scale_errors
   disable_runner_autoupdate            = var.disable_runner_autoupdate
   enable_managed_runner_security_group = var.enable_managed_runner_security_group
   enable_runner_detailed_monitoring    = var.enable_runner_detailed_monitoring
