@@ -276,6 +276,11 @@ module "runners" {
   metrics = var.metrics
 
   job_retry = var.job_retry
+
+  runner_count_cache = var.runner_count_cache.enable ? {
+    table_name         = module.runner_count_cache[0].dynamodb_table.name
+    stale_threshold_ms = var.runner_count_cache.stale_threshold_ms
+  } : null
 }
 
 module "runner_binaries" {
@@ -383,4 +388,33 @@ module "instance_termination_watcher" {
   count  = var.instance_termination_watcher.enable ? 1 : 0
 
   config = merge(local.lambda_instance_termination_watcher, var.instance_termination_watcher)
+}
+
+module "runner_count_cache" {
+  source = "./modules/runner-count-cache"
+  count  = var.runner_count_cache.enable ? 1 : 0
+
+  prefix      = var.prefix
+  tags        = local.tags
+  kms_key_arn = var.kms_key_arn
+
+  environment_filter = var.prefix
+  ttl_seconds        = var.runner_count_cache.ttl_seconds
+
+  lambda_s3_bucket                 = var.lambda_s3_bucket
+  counter_lambda_s3_key            = var.runner_count_cache.lambda_s3_key
+  counter_lambda_s3_object_version = var.runner_count_cache.lambda_s3_object_version
+  counter_lambda_memory_size       = var.runner_count_cache.lambda_memory_size
+  counter_lambda_timeout           = var.runner_count_cache.lambda_timeout
+  lambda_runtime                   = var.lambda_runtime
+  lambda_architecture              = var.lambda_architecture
+  lambda_tags                      = var.lambda_tags
+  lambda_subnet_ids                = var.lambda_subnet_ids
+  lambda_security_group_ids        = var.lambda_security_group_ids
+  tracing_config                   = var.tracing_config
+  logging_retention_in_days        = var.logging_retention_in_days
+  logging_kms_key_id               = var.logging_kms_key_id
+
+  role_path                 = var.role_path
+  role_permissions_boundary = var.role_permissions_boundary
 }
