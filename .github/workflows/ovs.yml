@@ -17,4 +17,4 @@ jobs:
       actions: read            # Required to upload SARIF file to CodeQL
       security-events: write   # Require writing security events to upload
       contents: read           # for checkout
-    uses: "google/osv-scanner-action/.github/workflows/osv-scanner-reusable-pr.yml@b77c075a1235514558f0eb88dbd31e22c45e0cd2" # v2.3.0
+    uses: "google/osv-scanner-action/.github/workflows/osv-scanner-reusable-pr.yml@375a0e8ebdc98e99b02ac4338a724f5750f21213" # v2.3.1
