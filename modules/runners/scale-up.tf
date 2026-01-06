@@ -182,9 +182,9 @@ resource "aws_iam_role_policy" "scale_up_runner_count_cache" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid      = "AllowDynamoDBRead"
-        Effect   = "Allow"
-        Action   = [
+        Sid    = "AllowDynamoDBRead"
+        Effect = "Allow"
+        Action = [
           "dynamodb:GetItem"
         ]
         Resource = "arn:${var.aws_partition}:dynamodb:${var.aws_region}:${data.aws_caller_identity.current.account_id}:table/${var.runner_count_cache.table_name}"

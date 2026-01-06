@@ -26,10 +26,10 @@ resource "aws_lambda_function" "counter" {
 
   environment {
     variables = {
-      DYNAMODB_TABLE_NAME   = aws_dynamodb_table.runner_counts.name
-      ENVIRONMENT_FILTER    = var.environment_filter
-      TTL_SECONDS           = var.ttl_seconds
-      LOG_LEVEL             = "info"
+      DYNAMODB_TABLE_NAME     = aws_dynamodb_table.runner_counts.name
+      ENVIRONMENT_FILTER      = var.environment_filter
+      TTL_SECONDS             = var.ttl_seconds
+      LOG_LEVEL               = "info"
       POWERTOOLS_SERVICE_NAME = "runner-count-cache"
     }
   }
@@ -110,6 +110,9 @@ data "aws_iam_policy_document" "counter_ec2" {
       "ec2:DescribeInstances",
       "ec2:DescribeTags",
     ]
+    # EC2 Describe* actions require resource = "*" - they cannot be scoped to specific
+    # instance ARNs. See: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-policy-structure.html
+    # The Lambda filters instances by tags after fetching to ensure only runner instances are counted.
     resources = ["*"]
   }
 }

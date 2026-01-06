@@ -21,7 +21,7 @@ variable "environment_filter" {
 }
 
 variable "counter_lambda_timeout" {
-  description = "Time out for the counter update lambda in seconds."
+  description = "Timeout for the counter update lambda in seconds."
   type        = number
   default     = 30
 }

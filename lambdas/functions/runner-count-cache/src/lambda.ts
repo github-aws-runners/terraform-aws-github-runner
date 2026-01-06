@@ -153,16 +153,19 @@ export async function handler(
   // Generate partition key
   const pk = `${tags.environment}#${tags.type}#${tags.owner}`;
 
-  // Determine increment based on state
+  // Determine increment based on state.
+  // IMPORTANT: We only count 'running' state as +1 to avoid double-counting when instances
+  // transition from pending -> running. The 'pending' state is ignored because all instances
+  // that reach 'running' must first pass through 'pending', which would cause double-counting.
   let increment = 0;
-  if (state === 'running' || state === 'pending') {
+  if (state === 'running') {
     increment = 1;
   } else if (state === 'terminated' || state === 'stopped' || state === 'shutting-down') {
     increment = -1;
   }
 
   if (increment === 0) {
-    logger.debug('State does not affect counter', { state });
+    logger.debug('State does not affect counter (pending or other transitional states are ignored)', { state });
     return;
   }
 

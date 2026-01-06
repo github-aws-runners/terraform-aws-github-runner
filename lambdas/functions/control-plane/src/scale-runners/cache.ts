@@ -228,6 +228,16 @@ export class dynamoDbRunnerCountCache {
 
       logger.debug('DynamoDB cache hit', { pk, count, isStale, ageMs: Date.now() - updated });
 
+      // Normalize negative counts to zero. This can happen due to race conditions with
+      // EventBridge events (e.g., termination event arrives before running event).
+      if (count < 0) {
+        logger.warn('DynamoDB cache returned negative count, normalizing to 0', {
+          pk,
+          rawCount: count,
+          updated,
+        });
+      }
+
       return { count: Math.max(0, count), isStale };
     } catch (error) {
       logger.warn('Failed to read from DynamoDB cache', { pk, error });

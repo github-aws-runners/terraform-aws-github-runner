@@ -75,7 +75,7 @@ The scale-up Lambda can be configured to use this cache by setting these environ
 | Name | Version |
 |------|---------|
 | terraform | >= 1.3.0 |
-| aws | ~> 5.27 |
+| aws | >= 6.21 |
 
 ## Inputs
 

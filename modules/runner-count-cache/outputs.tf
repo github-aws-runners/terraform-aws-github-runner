@@ -33,7 +33,7 @@ output "lambda_role" {
 output "cache_config" {
   description = "Configuration for scale-up Lambda to use the cache"
   value = {
-    table_name              = aws_dynamodb_table.runner_counts.name
-    stale_threshold_ms      = var.cache_stale_threshold_ms
+    table_name         = aws_dynamodb_table.runner_counts.name
+    stale_threshold_ms = var.cache_stale_threshold_ms
   }
 }

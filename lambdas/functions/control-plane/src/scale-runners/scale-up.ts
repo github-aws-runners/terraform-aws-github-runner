@@ -394,6 +394,11 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
             group,
             cacheSource,
           });
+        } else if (dynamoResult !== null && dynamoResult.isStale) {
+          logger.debug('DynamoDB cache entry is stale, falling back to other caches', {
+            staleCount: dynamoResult.count,
+            group,
+          });
         }
       }
 
@@ -484,7 +489,11 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       githubInstallationClient,
     );
 
-    // Update the cache with the new runner count to avoid stale data in subsequent iterations
+    // Update the cache with the new runner count to avoid stale data in subsequent iterations.
+    // NOTE: There's an inherent race condition between this in-memory cache increment and
+    // the DynamoDB cache updates from EventBridge. The in-memory cache provides immediate
+    // visibility within this Lambda invocation, while DynamoDB provides cross-invocation
+    // consistency. The stale threshold ensures we eventually fall back to EC2 API for accuracy.
     if (instances.length > 0) {
       ec2RunnerCountCache.increment(environment, runnerType, group, instances.length);
     }
