@@ -25,9 +25,9 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
-    "@nx/eslint": "22.2.0",
-    "@nx/js": "^22.2.0",
-    "@nx/vite": "^22.2.0",
+    "@nx/eslint": "22.2.7",
+    "@nx/js": "^22.2.7",
+    "@nx/vite": "^22.2.7",
     "@swc-node/register": "~1.11.1",
     "@swc/core": "~1.15.0",
     "@swc/helpers": "~0.5.17",
