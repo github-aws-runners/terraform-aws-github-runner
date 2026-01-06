@@ -17,7 +17,7 @@
     "all": "yarn build && yarn format && yarn lint && yarn test"
   },
   "devDependencies": {
-    "@aws-sdk/client-eventbridge": "^3.953.0",
+    "@aws-sdk/client-eventbridge": "^3.958.0",
     "@octokit/webhooks-types": "^7.6.1",
     "@types/aws-lambda": "^8.10.155",
     "@types/express": "^5.0.3",
@@ -30,7 +30,7 @@
   "dependencies": {
     "@aws-github-runner/aws-powertools-util": "*",
     "@aws-github-runner/aws-ssm-util": "*",
-    "@aws-sdk/client-sqs": "^3.953.0",
+    "@aws-sdk/client-sqs": "^3.960.0",
     "@middy/core": "^6.4.5",
     "@octokit/rest": "22.0.1",
     "@octokit/types": "^16.0.0",

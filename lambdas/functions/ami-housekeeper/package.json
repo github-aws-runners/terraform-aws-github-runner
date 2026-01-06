@@ -17,7 +17,7 @@
     "all": "yarn build && yarn format && yarn lint && yarn test"
   },
   "devDependencies": {
-    "@aws-sdk/types": "^3.953.0",
+    "@aws-sdk/types": "^3.957.0",
     "@types/aws-lambda": "^8.10.155",
     "@vercel/ncc": "^0.38.4",
     "aws-sdk-client-mock": "^4.1.0",
@@ -26,8 +26,8 @@
   "dependencies": {
     "@aws-github-runner/aws-powertools-util": "*",
     "@aws-github-runner/aws-ssm-util": "*",
-    "@aws-sdk/client-ec2": "^3.953.0",
-    "@aws-sdk/client-ssm": "^3.953.0",
+    "@aws-sdk/client-ec2": "^3.958.0",
+    "@aws-sdk/client-ssm": "^3.958.0",
     "cron-parser": "^5.4.0"
   },
   "nx": {
