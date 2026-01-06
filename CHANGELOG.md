@@ -1,5 +1,18 @@
 # Changelog
 
+## [7.1.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v7.0.0...v7.1.0) (2025-12-18)
+
+
+### Features
+
+* **dispatch:** enhance logging for workflow job events and dispatch status ([#4964](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4964)) ([612f2b8](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/612f2b81e6bb33a33bcf13a288927c06de11a556))
+
+
+### Bug Fixes
+
+* **lambda:** bump @octokit/webhooks from 14.1.3 to 14.2.0 in /lambdas in the octokit group ([#4955](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4955)) ([47b6a29](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/47b6a29c46e5a2d12beb6ed827fe52fdd4f1e127))
+* **lambda:** bump the aws group in /lambdas with 6 updates ([#4954](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4954)) ([81e461e](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/81e461edfe77e342867561097e2241030841aabe))
+
 ## [7.0.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v6.10.1...v7.0.0) (2025-12-13)
 
 
