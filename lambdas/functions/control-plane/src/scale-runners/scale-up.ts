@@ -534,48 +534,65 @@ async function createJitConfig(githubRunnerConfig: CreateGitHubRunnerConfig, ins
   const runnerGroupId = await getRunnerGroupId(githubRunnerConfig, ghClient);
   const { isDelay, delay } = addDelay(instances);
   const runnerLabels = githubRunnerConfig.runnerLabels.split(',');
+  const failedInstances: string[] = [];
 
   logger.debug(`Runner group id: ${runnerGroupId}`);
   logger.debug(`Runner labels: ${runnerLabels}`);
   for (const instance of instances) {
-    // generate jit config for runner registration
-    const ephemeralRunnerConfig: EphemeralRunnerConfig = {
-      runnerName: `${githubRunnerConfig.runnerNamePrefix}${instance}`,
-      runnerGroupId: runnerGroupId,
-      runnerLabels: runnerLabels,
-    };
-    logger.debug(`Runner name: ${ephemeralRunnerConfig.runnerName}`);
-    const runnerConfig =
-      githubRunnerConfig.runnerType === 'Org'
-        ? await ghClient.actions.generateRunnerJitconfigForOrg({
-            org: githubRunnerConfig.runnerOwner,
-            name: ephemeralRunnerConfig.runnerName,
-            runner_group_id: ephemeralRunnerConfig.runnerGroupId,
-            labels: ephemeralRunnerConfig.runnerLabels,
-          })
-        : await ghClient.actions.generateRunnerJitconfigForRepo({
-            owner: githubRunnerConfig.runnerOwner.split('/')[0],
-            repo: githubRunnerConfig.runnerOwner.split('/')[1],
-            name: ephemeralRunnerConfig.runnerName,
-            runner_group_id: ephemeralRunnerConfig.runnerGroupId,
-            labels: ephemeralRunnerConfig.runnerLabels,
-          });
+    try {
+      // generate jit config for runner registration
+      const ephemeralRunnerConfig: EphemeralRunnerConfig = {
+        runnerName: `${githubRunnerConfig.runnerNamePrefix}${instance}`,
+        runnerGroupId: runnerGroupId,
+        runnerLabels: runnerLabels,
+      };
+      logger.debug(`Runner name: ${ephemeralRunnerConfig.runnerName}`);
+      const runnerConfig =
+        githubRunnerConfig.runnerType === 'Org'
+          ? await ghClient.actions.generateRunnerJitconfigForOrg({
+              org: githubRunnerConfig.runnerOwner,
+              name: ephemeralRunnerConfig.runnerName,
+              runner_group_id: ephemeralRunnerConfig.runnerGroupId,
+              labels: ephemeralRunnerConfig.runnerLabels,
+            })
+          : await ghClient.actions.generateRunnerJitconfigForRepo({
+              owner: githubRunnerConfig.runnerOwner.split('/')[0],
+              repo: githubRunnerConfig.runnerOwner.split('/')[1],
+              name: ephemeralRunnerConfig.runnerName,
+              runner_group_id: ephemeralRunnerConfig.runnerGroupId,
+              labels: ephemeralRunnerConfig.runnerLabels,
+            });
 
-    metricGitHubAppRateLimit(runnerConfig.headers);
+      metricGitHubAppRateLimit(runnerConfig.headers);
 
-    // tag the EC2 instance with the Github runner id
-    await tagRunnerId(instance, runnerConfig.data.runner.id.toString());
+      // tag the EC2 instance with the Github runner id
+      await tagRunnerId(instance, runnerConfig.data.runner.id.toString());
 
-    // store jit config in ssm parameter store
-    logger.debug('Runner JIT config for ephemeral runner generated.', {
-      instance: instance,
-    });
-    await putParameter(`${githubRunnerConfig.ssmTokenPath}/${instance}`, runnerConfig.data.encoded_jit_config, true, {
-      tags: [{ Key: 'InstanceId', Value: instance }],
-    });
-    if (isDelay) {
-      // Delay to prevent AWS ssm rate limits by being within the max throughput limit
-      await delay(25);
+      // store jit config in ssm parameter store
+      logger.debug('Runner JIT config for ephemeral runner generated.', {
+        instance: instance,
+      });
+      await putParameter(`${githubRunnerConfig.ssmTokenPath}/${instance}`, runnerConfig.data.encoded_jit_config, true, {
+        tags: [{ Key: 'InstanceId', Value: instance }],
+      });
+      if (isDelay) {
+        // Delay to prevent AWS ssm rate limits by being within the max throughput limit
+        await delay(25);
+      }
+    } catch (error) {
+      failedInstances.push(instance);
+      logger.warn('Failed to create JIT config for instance, continuing with remaining instances', {
+        instance: instance,
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
+  }
+
+  if (failedInstances.length > 0) {
+    logger.error('Failed to create JIT config for some instances', {
+      failedInstances: failedInstances,
+      totalInstances: instances.length,
+      successfulInstances: instances.length - failedInstances.length,
+    });
   }
 }
