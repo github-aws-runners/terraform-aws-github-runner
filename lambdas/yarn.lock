@@ -155,6 +155,7 @@ __metadata:
     "@middy/core": "npm:^6.4.5"
     "@octokit/auth-app": "npm:8.1.2"
     "@octokit/core": "npm:7.0.6"
+    "@octokit/plugin-retry": "npm:8.0.3"
     "@octokit/plugin-throttling": "npm:11.0.3"
     "@octokit/rest": "npm:22.0.1"
     "@octokit/types": "npm:^16.0.0"
@@ -3682,6 +3683,19 @@ __metadata:
   peerDependencies:
     "@octokit/core": ">=6"
   checksum: 10c0/cf9984d7cf6a36ff7ff1b86078ae45fe246e3df10fcef0bccf20c8cfd27bf5e7d98dcb9cf5a7b56332b9c6fa30be28d159c2987d272a4758f77056903d94402f
+  languageName: node
+  linkType: hard
+
+"@octokit/plugin-retry@npm:8.0.3":
+  version: 8.0.3
+  resolution: "@octokit/plugin-retry@npm:8.0.3"
+  dependencies:
+    "@octokit/request-error": "npm:^7.0.2"
+    "@octokit/types": "npm:^16.0.0"
+    bottleneck: "npm:^2.15.3"
+  peerDependencies:
+    "@octokit/core": ">=7"
+  checksum: 10c0/24d35d85f750f9e3e52f63b8ddd8fc8aa7bdd946c77b9ea4d6894d026c5c2c69109e8de3880a9970c906f624eb777c7d0c0a2072e6d41dadc7b36cce104b978c
   languageName: node
   linkType: hard
 
