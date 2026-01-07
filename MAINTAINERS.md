@@ -4,13 +4,14 @@ Roles and responsibilities of the maintainers of the project.
 
 ## Maintainers
 
-| Name              | GitHub        | Affiliation      |
-| ----------------- | ------------- | ---------------- |
-| Niek Palm         | [@npalm]      | Philips          |
-| Koen de Laat      | [@koendelaat] | Philips          |
-| Guilherme Caulada | [@guicaulada] | Grafana Labs     |
-| Stuart Pearson    | [@stuartp44]  | Philips          |
-| Brend Smits       | [@Brend-Smits]| Philips          |
+| Name              | GitHub              | Affiliation      |
+| ----------------- | ------------------- | ---------------- |
+| Niek Palm         | [@npalm]            | Philips          |
+| Koen de Laat      | [@koendelaat]       | Philips          |
+| Guilherme Caulada | [@guicaulada]       | Grafana Labs     |
+| Ederson Brilhante | [@edersonbrilhante] | Cisco            |
+| Stuart Pearson    | [@stuartp44]        | Philips          |
+| Brend Smits       | [@Brend-Smits].     | Philips          |
 
 ## Responsibilities
 

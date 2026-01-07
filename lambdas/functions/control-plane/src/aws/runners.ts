@@ -196,18 +196,7 @@ async function processFleetResult(
     return instances;
   }
 
-  // Educated guess of errors that would make sense to retry based on the list
-  // https://docs.aws.amazon.com/AWSEC2/latest/APIReference/errors-overview.html
-  const scaleErrors = [
-    'UnfulfillableCapacity',
-    'MaxSpotInstanceCountExceeded',
-    'TargetCapacityLimitExceededException',
-    'RequestLimitExceeded',
-    'ResourceLimitExceeded',
-    'MaxSpotInstanceCountExceeded',
-    'MaxSpotFleetRequestCountExceeded',
-    'InsufficientInstanceCapacity',
-  ];
+  const scaleErrors = runnerParameters.scaleErrors;
 
   const failedCount = countScaleErrors(errors, scaleErrors);
   if (failedCount > 0) {

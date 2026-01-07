@@ -42,6 +42,7 @@ module "pool" {
       ephemeral                            = var.enable_ephemeral_runners
       enable_jit_config                    = var.enable_jit_config
       enable_on_demand_failover_for_errors = var.enable_on_demand_failover_for_errors
+      scale_errors                         = var.scale_errors
       boot_time_in_minutes                 = var.runner_boot_time_in_minutes
       labels                               = var.runner_labels
       launch_template                      = aws_launch_template.runner
