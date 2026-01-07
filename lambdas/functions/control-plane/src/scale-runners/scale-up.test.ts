@@ -105,6 +105,7 @@ const EXPECTED_RUNNER_PARAMS: RunnerInputParameters = {
   subnets: ['subnet-123'],
   tracingEnabled: false,
   onDemandFailoverOnError: [],
+  scaleErrors: ['UnfulfillableCapacity', 'MaxSpotInstanceCountExceeded', 'TargetCapacityLimitExceededException'],
 };
 let expectedRunnerParams: RunnerInputParameters;
 
@@ -122,6 +123,8 @@ function setDefaults() {
   process.env.INSTANCE_TYPES = 'm5.large';
   process.env.INSTANCE_TARGET_CAPACITY_TYPE = 'spot';
   process.env.ENABLE_ON_DEMAND_FAILOVER = undefined;
+  process.env.SCALE_ERRORS =
+    '["UnfulfillableCapacity","MaxSpotInstanceCountExceeded","TargetCapacityLimitExceededException"]';
 }
 
 beforeEach(() => {
@@ -806,6 +809,16 @@ describe('scaleUp with public GH', () => {
       expect(createRunner).toBeCalledWith({
         ...expectedRunnerParams,
         onDemandFailoverOnError: ['InsufficientInstanceCapacity'],
+      });
+    });
+
+    it('creates a runner with correct config and labels and custom scale errors enabled.', async () => {
+      process.env.RUNNER_LABELS = 'label1,label2';
+      process.env.SCALE_ERRORS = JSON.stringify(['RequestLimitExceeded']);
+      await scaleUpModule.scaleUp(TEST_DATA);
+      expect(createRunner).toBeCalledWith({
+        ...expectedRunnerParams,
+        scaleErrors: ['RequestLimitExceeded'],
       });
     });
 
