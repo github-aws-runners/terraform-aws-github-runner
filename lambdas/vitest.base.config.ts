@@ -9,11 +9,11 @@ const defaultConfig = defineConfig({
       include: ['**/src/**/*.ts'],
       exclude: ['**/*local*.ts', '**/*.d.ts', '**/*.test.ts', '**/node_modules/**'],
       all: true,
-      reportsDirectory: './coverage',
+      reportsDirectory: './coverage'
     },
     globals: true,
-    watch: false,
-  },
+    watch: false
+  }
 });
 
 export default defaultConfig;

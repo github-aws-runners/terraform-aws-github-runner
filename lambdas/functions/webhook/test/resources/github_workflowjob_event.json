@@ -15,7 +15,9 @@
     "name": "build",
     "steps": [],
     "check_run_url": "https://api.github.com/repos/github-aws-runners/terraform-aws-github-runner/check-runs/3169272040",
-    "labels": ["self-hosted"]
+    "labels": [
+      "self-hosted"
+    ]
   },
   "repository": {
     "id": 258465213,

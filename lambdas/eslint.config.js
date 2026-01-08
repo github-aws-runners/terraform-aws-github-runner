@@ -14,7 +14,9 @@ const compat = new FlatCompat({
 // Create the ESLint 9.x flat config
 module.exports = [
   js.configs.recommended,
-  ...compat.extends('plugin:@typescript-eslint/recommended'),
+  ...compat.extends(
+    'plugin:@typescript-eslint/recommended'
+  ),
   {
     // Global linting settings
     languageOptions: {
@@ -26,7 +28,7 @@ module.exports = [
     },
     plugins: {
       '@typescript-eslint': require('@typescript-eslint/eslint-plugin'),
-      prettier: require('eslint-plugin-prettier'),
+      'prettier': require('eslint-plugin-prettier'),
     },
     rules: {
       'prettier/prettier': 'error',
@@ -37,3 +39,4 @@ module.exports = [
     ignores: ['**/node_modules/**', '**/dist/**', '**/.nx/**', '**/coverage/**'],
   },
 ];
+
