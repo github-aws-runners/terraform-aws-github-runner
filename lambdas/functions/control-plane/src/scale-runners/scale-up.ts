@@ -63,6 +63,7 @@ interface CreateEC2RunnerConfig {
   amiIdSsmParameterName?: string;
   tracingEnabled?: boolean;
   onDemandFailoverOnError?: string[];
+  scaleErrors: string[];
 }
 
 function generateRunnerServiceConfig(githubRunnerConfig: CreateGitHubRunnerConfig, token: string) {
@@ -256,6 +257,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
   const onDemandFailoverOnError = process.env.ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS
     ? (JSON.parse(process.env.ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS) as [string])
     : [];
+  const scaleErrors = JSON.parse(process.env.SCALE_ERRORS) as [string];
 
   const { ghesApiUrl, ghesBaseUrl } = getGitHubEnterpriseApiUrl();
 
@@ -433,6 +435,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
         amiIdSsmParameterName,
         tracingEnabled,
         onDemandFailoverOnError,
+        scaleErrors,
       },
       newRunners,
       githubInstallationClient,

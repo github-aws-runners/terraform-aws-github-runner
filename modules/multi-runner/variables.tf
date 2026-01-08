@@ -71,14 +71,25 @@ variable "multi_runner_config" {
         id_ssm_parameter_arn = optional(string, null)
         kms_key_arn          = optional(string, null)
       }), null)
-      create_service_linked_role_spot         = optional(bool, false)
-      credit_specification                    = optional(string, null)
-      delay_webhook_event                     = optional(number, 30)
-      disable_runner_autoupdate               = optional(bool, false)
-      ebs_optimized                           = optional(bool, false)
-      enable_ephemeral_runners                = optional(bool, false)
-      enable_job_queued_check                 = optional(bool, null)
-      enable_on_demand_failover_for_errors    = optional(list(string), [])
+      create_service_linked_role_spot      = optional(bool, false)
+      credit_specification                 = optional(string, null)
+      delay_webhook_event                  = optional(number, 30)
+      disable_runner_autoupdate            = optional(bool, false)
+      ebs_optimized                        = optional(bool, false)
+      enable_ephemeral_runners             = optional(bool, false)
+      enable_job_queued_check              = optional(bool, null)
+      enable_on_demand_failover_for_errors = optional(list(string), [])
+      scale_errors = optional(list(string), [
+        "UnfulfillableCapacity",
+        "MaxSpotInstanceCountExceeded",
+        "TargetCapacityLimitExceededException",
+        "RequestLimitExceeded",
+        "ResourceLimitExceeded",
+        "MaxSpotInstanceCountExceeded",
+        "MaxSpotFleetRequestCountExceeded",
+        "InsufficientInstanceCapacity",
+        "InsufficientCapacityOnHost",
+      ])
       enable_organization_runners             = optional(bool, false)
       enable_runner_binaries_syncer           = optional(bool, true)
       enable_ssm_on_runners                   = optional(bool, false)
@@ -197,6 +208,7 @@ variable "multi_runner_config" {
         enable_ephemeral_runners: "Enable ephemeral runners, runners will only be used once."
         enable_job_queued_check: "Enables JIT configuration for creating runners instead of registration token based registraton. JIT configuration will only be applied for ephemeral runners. By default JIT configuration is enabled for ephemeral runners an can be disabled via this override. When running on GHES without support for JIT configuration this variable should be set to true for ephemeral runners."
         enable_on_demand_failover_for_errors: "Enable on-demand failover. For example to fall back to on demand when no spot capacity is available the variable can be set to `InsufficientInstanceCapacity`. When not defined the default behavior is to retry later."
+        scale_errors: "List of aws error codes that should trigger retry during scale up. This list will replace the default errors defined in the variable `defaultScaleErrors` in https://github.com/github-aws-runners/terraform-aws-github-runner/blob/main/lambdas/functions/control-plane/src/aws/runners.ts"
         enable_organization_runners: "Register runners to organization, instead of repo level"
         enable_runner_binaries_syncer: "Option to disable the lambda to sync GitHub runner distribution, useful when using a pre-build AMI."
         enable_ssm_on_runners: "Enable to allow access the runner instances for debugging purposes via SSM. Note that this adds additional permissions to the runner instances."

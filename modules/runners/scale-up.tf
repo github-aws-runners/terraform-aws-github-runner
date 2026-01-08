@@ -59,6 +59,7 @@ resource "aws_lambda_function" "scale_up" {
       SSM_CONFIG_PATH                          = "${var.ssm_paths.root}/${var.ssm_paths.config}"
       SUBNET_IDS                               = join(",", var.subnet_ids)
       ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS     = jsonencode(var.enable_on_demand_failover_for_errors)
+      SCALE_ERRORS                             = jsonencode(var.scale_errors)
       JOB_RETRY_CONFIG                         = jsonencode(local.job_retry_config)
     }
   }

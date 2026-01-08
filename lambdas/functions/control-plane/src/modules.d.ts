@@ -3,6 +3,7 @@ declare namespace NodeJS {
     AWS_REGION: string;
     ENABLE_METRIC_GITHUB_APP_RATE_LIMIT: string;
     ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS: string;
+    SCALE_ERRORS: string;
     ENVIRONMENT: string;
     GHES_URL: string;
     JOB_RETRY_CONFIG: string;
