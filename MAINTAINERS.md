@@ -10,6 +10,7 @@ Roles and responsibilities of the maintainers of the project.
 | Koen de Laat      | [@koendelaat]       | Philips          |
 | Guilherme Caulada | [@guicaulada]       | Grafana Labs     |
 | Ederson Brilhante | [@edersonbrilhante] | Cisco            |
+| Brend Smits       | [@Brend-Smits]      | Philips          |
 
 ## Responsibilities
 
