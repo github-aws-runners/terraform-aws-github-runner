@@ -21,7 +21,7 @@
     "@octokit/webhooks-types": "^7.6.1",
     "@types/aws-lambda": "^8.10.155",
     "@types/express": "^5.0.3",
-    "@types/node": "^22.19.0",
+    "@types/node": "^22.19.3",
     "@vercel/ncc": "0.38.4",
     "body-parser": "^2.2.1",
     "express": "^5.2.0",

@@ -19,7 +19,7 @@
   "devDependencies": {
     "@aws-sdk/types": "^3.957.0",
     "@types/aws-lambda": "^8.10.155",
-    "@types/node": "^22.19.0",
+    "@types/node": "^22.19.3",
     "@types/request": "^2.48.13",
     "@vercel/ncc": "^0.38.4",
     "aws-sdk-client-mock": "^4.1.0",
