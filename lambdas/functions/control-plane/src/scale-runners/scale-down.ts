@@ -130,6 +130,14 @@ function runnerMinimumTimeExceeded(runner: RunnerInfo): boolean {
 async function removeRunner(ec2runner: RunnerInfo, ghRunnerIds: number[]): Promise<void> {
   const githubAppClient = await getOrCreateOctokit(ec2runner);
   try {
+    const runnerList = ec2runner as unknown as RunnerList;
+    if (runnerList.bypassRemoval) {
+      logger.info(
+        `Runner '${ec2runner.instanceId}' has bypass-removal tag set, skipping removal. Remove the tag to allow scale-down.`,
+      );
+      return;
+    }
+
     const states = await Promise.all(
       ghRunnerIds.map(async (ghRunnerId) => {
         // Get busy state instead of using the output of listGitHubRunners(...) to minimize to race condition.

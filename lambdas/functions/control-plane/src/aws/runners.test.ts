@@ -91,6 +91,7 @@ describe('list instances', () => {
       type: 'Org',
       owner: 'CoderToCat',
       orphan: false,
+      bypassRemoval: false,
     });
   });
 
@@ -105,6 +106,7 @@ describe('list instances', () => {
       owner: 'CoderToCat',
       orphan: false,
       runnerId: '9876543210',
+      bypassRemoval: false,
     });
   });
 
@@ -124,6 +126,7 @@ describe('list instances', () => {
       type: 'Org',
       owner: 'CoderToCat',
       orphan: true,
+      bypassRemoval: false,
     });
   });
 

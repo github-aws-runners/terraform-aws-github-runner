@@ -813,5 +813,6 @@ function createRunnerTestData(
     orphan,
     shouldBeTerminated,
     runnerId: runnerId !== undefined ? String(runnerId) : undefined,
+    bypassRemoval: false,
   };
 }
