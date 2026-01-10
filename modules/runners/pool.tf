@@ -33,6 +33,7 @@ module "pool" {
       runtime                        = var.lambda_runtime
       timeout                        = var.pool_lambda_timeout
       zip                            = local.lambda_zip
+      parameter_store_tags           = local.parameter_store_tags
     }
     pool                      = var.pool_config
     role_path                 = local.role_path
