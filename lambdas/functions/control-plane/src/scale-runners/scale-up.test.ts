@@ -336,6 +336,172 @@ describe('scaleUp with GHES', () => {
         ],
       });
     });
+
+    it('should create JIT config for all remaining instances even when GitHub API fails for one instance', async () => {
+      process.env.RUNNERS_MAXIMUM_COUNT = '5';
+      mockCreateRunner.mockImplementation(async () => {
+        return ['i-instance-1', 'i-instance-2', 'i-instance-3'];
+      });
+      mockListRunners.mockImplementation(async () => {
+        return [];
+      });
+
+      mockOctokit.actions.generateRunnerJitconfigForOrg.mockImplementation(({ name }) => {
+        if (name === 'unit-test-i-instance-2') {
+          // Simulate a 503 Service Unavailable error from GitHub
+          const error = new Error('Service Unavailable') as Error & {
+            status: number;
+            response: { status: number; data: { message: string } };
+          };
+          error.status = 503;
+          error.response = {
+            status: 503,
+            data: { message: 'Service temporarily unavailable' },
+          };
+          throw error;
+        }
+        return {
+          data: {
+            runner: { id: 9876543210 },
+            encoded_jit_config: `TEST_JIT_CONFIG_${name}`,
+          },
+          headers: {},
+        };
+      });
+
+      await scaleUpModule.scaleUp(TEST_DATA);
+
+      expect(mockOctokit.actions.generateRunnerJitconfigForOrg).toHaveBeenCalledWith({
+        org: TEST_DATA_SINGLE.repositoryOwner,
+        name: 'unit-test-i-instance-1',
+        runner_group_id: 1,
+        labels: ['label1', 'label2'],
+      });
+
+      expect(mockOctokit.actions.generateRunnerJitconfigForOrg).toHaveBeenCalledWith({
+        org: TEST_DATA_SINGLE.repositoryOwner,
+        name: 'unit-test-i-instance-2',
+        runner_group_id: 1,
+        labels: ['label1', 'label2'],
+      });
+
+      expect(mockOctokit.actions.generateRunnerJitconfigForOrg).toHaveBeenCalledWith({
+        org: TEST_DATA_SINGLE.repositoryOwner,
+        name: 'unit-test-i-instance-3',
+        runner_group_id: 1,
+        labels: ['label1', 'label2'],
+      });
+
+      expect(mockSSMClient).toHaveReceivedCommandWith(PutParameterCommand, {
+        Name: '/github-action-runners/default/runners/config/i-instance-1',
+        Value: 'TEST_JIT_CONFIG_unit-test-i-instance-1',
+        Type: 'SecureString',
+        Tags: [{ Key: 'InstanceId', Value: 'i-instance-1' }],
+      });
+
+      expect(mockSSMClient).toHaveReceivedCommandWith(PutParameterCommand, {
+        Name: '/github-action-runners/default/runners/config/i-instance-3',
+        Value: 'TEST_JIT_CONFIG_unit-test-i-instance-3',
+        Type: 'SecureString',
+        Tags: [{ Key: 'InstanceId', Value: 'i-instance-3' }],
+      });
+
+      expect(mockSSMClient).not.toHaveReceivedCommandWith(PutParameterCommand, {
+        Name: '/github-action-runners/default/runners/config/i-instance-2',
+      });
+    });
+
+    it('should handle retryable errors with error handling logic', async () => {
+      process.env.RUNNERS_MAXIMUM_COUNT = '5';
+      mockCreateRunner.mockImplementation(async () => {
+        return ['i-instance-1', 'i-instance-2'];
+      });
+      mockListRunners.mockImplementation(async () => {
+        return [];
+      });
+
+      mockOctokit.actions.generateRunnerJitconfigForOrg.mockImplementation(({ name }) => {
+        if (name === 'unit-test-i-instance-1') {
+          const error = new Error('Internal Server Error') as Error & {
+            status: number;
+            response: { status: number; data: { message: string } };
+          };
+          error.status = 500;
+          error.response = {
+            status: 500,
+            data: { message: 'Internal server error' },
+          };
+          throw error;
+        }
+        return {
+          data: {
+            runner: { id: 9876543210 },
+            encoded_jit_config: `TEST_JIT_CONFIG_${name}`,
+          },
+          headers: {},
+        };
+      });
+
+      await scaleUpModule.scaleUp(TEST_DATA);
+
+      expect(mockSSMClient).toHaveReceivedCommandWith(PutParameterCommand, {
+        Name: '/github-action-runners/default/runners/config/i-instance-2',
+        Value: 'TEST_JIT_CONFIG_unit-test-i-instance-2',
+        Type: 'SecureString',
+        Tags: [{ Key: 'InstanceId', Value: 'i-instance-2' }],
+      });
+
+      expect(mockSSMClient).not.toHaveReceivedCommandWith(PutParameterCommand, {
+        Name: '/github-action-runners/default/runners/config/i-instance-1',
+      });
+    });
+
+    it('should handle non-retryable 4xx errors gracefully', async () => {
+      process.env.RUNNERS_MAXIMUM_COUNT = '5';
+      mockCreateRunner.mockImplementation(async () => {
+        return ['i-instance-1', 'i-instance-2'];
+      });
+      mockListRunners.mockImplementation(async () => {
+        return [];
+      });
+
+      mockOctokit.actions.generateRunnerJitconfigForOrg.mockImplementation(({ name }) => {
+        if (name === 'unit-test-i-instance-1') {
+          // 404 is not retryable - will fail immediately
+          const error = new Error('Not Found') as Error & {
+            status: number;
+            response: { status: number; data: { message: string } };
+          };
+          error.status = 404;
+          error.response = {
+            status: 404,
+            data: { message: 'Resource not found' },
+          };
+          throw error;
+        }
+        return {
+          data: {
+            runner: { id: 9876543210 },
+            encoded_jit_config: `TEST_JIT_CONFIG_${name}`,
+          },
+          headers: {},
+        };
+      });
+
+      await scaleUpModule.scaleUp(TEST_DATA);
+
+      expect(mockSSMClient).toHaveReceivedCommandWith(PutParameterCommand, {
+        Name: '/github-action-runners/default/runners/config/i-instance-2',
+        Value: 'TEST_JIT_CONFIG_unit-test-i-instance-2',
+        Type: 'SecureString',
+        Tags: [{ Key: 'InstanceId', Value: 'i-instance-2' }],
+      });
+
+      expect(mockSSMClient).not.toHaveReceivedCommandWith(PutParameterCommand, {
+        Name: '/github-action-runners/default/runners/config/i-instance-1',
+      });
+    });
+
     it.each(RUNNER_TYPES)(
       'calls create start runner config of 40' + ' instances (ssm rate limit condition) to test time delay ',
       async (type: RunnerType) => {

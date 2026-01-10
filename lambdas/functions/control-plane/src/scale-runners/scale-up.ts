@@ -4,7 +4,7 @@ import { getParameter, putParameter } from '@aws-github-runner/aws-ssm-util';
 import yn from 'yn';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
-import { createRunner, listEC2Runners, tag } from './../aws/runners';
+import { createRunner, listEC2Runners, tag, terminateRunner } from './../aws/runners';
 import { RunnerInputParameters } from './../aws/runners.d';
 import { metricGitHubAppRateLimit } from '../github/rate-limit';
 
@@ -222,7 +222,29 @@ export async function createRunners(
     ...ec2RunnerConfig,
   });
   if (instances.length !== 0) {
-    await createStartRunnerConfig(githubRunnerConfig, instances, ghClient);
+    const failedInstances = await createStartRunnerConfig(githubRunnerConfig, instances, ghClient);
+
+    // Terminate instances that failed to get configured to avoid waste
+    if (failedInstances.length > 0) {
+      logger.warn('Terminating instances that failed to get configured', {
+        failedInstances,
+        failedCount: failedInstances.length,
+      });
+
+      for (const instanceId of failedInstances) {
+        try {
+          await terminateRunner(instanceId);
+        } catch (error) {
+          logger.error('Failed to terminate instance', {
+            instanceId,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }
+
+      // Remove failed instances from the returned list
+      return instances.filter((id) => !failedInstances.includes(id));
+    }
   }
 
   return instances;
@@ -475,15 +497,21 @@ export function getGitHubEnterpriseApiUrl() {
   return { ghesApiUrl, ghesBaseUrl };
 }
 
+/**
+ * Creates the start configuration for runner instances by either generating JIT configs
+ * or registration tokens.
+ *
+ * @returns Array of instance IDs that failed to get configured
+ */
 async function createStartRunnerConfig(
   githubRunnerConfig: CreateGitHubRunnerConfig,
   instances: string[],
   ghClient: Octokit,
-) {
+): Promise<string[]> {
   if (githubRunnerConfig.enableJitConfig && githubRunnerConfig.ephemeral) {
-    await createJitConfig(githubRunnerConfig, instances, ghClient);
+    return await createJitConfig(githubRunnerConfig, instances, ghClient);
   } else {
-    await createRegistrationTokenConfig(githubRunnerConfig, instances, ghClient);
+    return await createRegistrationTokenConfig(githubRunnerConfig, instances, ghClient);
   }
 }
 
@@ -498,11 +526,16 @@ function addDelay(instances: string[]) {
   return { isDelay, delay };
 }
 
+/**
+ * Creates registration token configuration for non-ephemeral runners.
+ *
+ * @returns Empty array (this configuration method does not have failure cases)
+ */
 async function createRegistrationTokenConfig(
   githubRunnerConfig: CreateGitHubRunnerConfig,
   instances: string[],
   ghClient: Octokit,
-) {
+): Promise<string[]> {
   const { isDelay, delay } = addDelay(instances);
   const token = await getGithubRunnerRegistrationToken(githubRunnerConfig, ghClient);
   const runnerServiceConfig = generateRunnerServiceConfig(githubRunnerConfig, token);
@@ -520,6 +553,8 @@ async function createRegistrationTokenConfig(
       await delay(25);
     }
   }
+
+  return [];
 }
 
 async function tagRunnerId(instanceId: string, runnerId: string): Promise<void> {
@@ -530,52 +565,81 @@ async function tagRunnerId(instanceId: string, runnerId: string): Promise<void> 
   }
 }
 
-async function createJitConfig(githubRunnerConfig: CreateGitHubRunnerConfig, instances: string[], ghClient: Octokit) {
+/**
+ * Creates JIT (Just-In-Time) configuration for ephemeral runners.
+ * Continues processing remaining instances even if some fail.
+ *
+ * @returns Array of instance IDs that failed to get JIT configuration
+ */
+async function createJitConfig(
+  githubRunnerConfig: CreateGitHubRunnerConfig,
+  instances: string[],
+  ghClient: Octokit,
+): Promise<string[]> {
   const runnerGroupId = await getRunnerGroupId(githubRunnerConfig, ghClient);
   const { isDelay, delay } = addDelay(instances);
   const runnerLabels = githubRunnerConfig.runnerLabels.split(',');
+  const failedInstances: string[] = [];
 
   logger.debug(`Runner group id: ${runnerGroupId}`);
   logger.debug(`Runner labels: ${runnerLabels}`);
   for (const instance of instances) {
-    // generate jit config for runner registration
-    const ephemeralRunnerConfig: EphemeralRunnerConfig = {
-      runnerName: `${githubRunnerConfig.runnerNamePrefix}${instance}`,
-      runnerGroupId: runnerGroupId,
-      runnerLabels: runnerLabels,
-    };
-    logger.debug(`Runner name: ${ephemeralRunnerConfig.runnerName}`);
-    const runnerConfig =
-      githubRunnerConfig.runnerType === 'Org'
-        ? await ghClient.actions.generateRunnerJitconfigForOrg({
-            org: githubRunnerConfig.runnerOwner,
-            name: ephemeralRunnerConfig.runnerName,
-            runner_group_id: ephemeralRunnerConfig.runnerGroupId,
-            labels: ephemeralRunnerConfig.runnerLabels,
-          })
-        : await ghClient.actions.generateRunnerJitconfigForRepo({
-            owner: githubRunnerConfig.runnerOwner.split('/')[0],
-            repo: githubRunnerConfig.runnerOwner.split('/')[1],
-            name: ephemeralRunnerConfig.runnerName,
-            runner_group_id: ephemeralRunnerConfig.runnerGroupId,
-            labels: ephemeralRunnerConfig.runnerLabels,
-          });
+    try {
+      // generate jit config for runner registration
+      const ephemeralRunnerConfig: EphemeralRunnerConfig = {
+        runnerName: `${githubRunnerConfig.runnerNamePrefix}${instance}`,
+        runnerGroupId: runnerGroupId,
+        runnerLabels: runnerLabels,
+      };
+      logger.debug(`Runner name: ${ephemeralRunnerConfig.runnerName}`);
+      const runnerConfig =
+        githubRunnerConfig.runnerType === 'Org'
+          ? await ghClient.actions.generateRunnerJitconfigForOrg({
+              org: githubRunnerConfig.runnerOwner,
+              name: ephemeralRunnerConfig.runnerName,
+              runner_group_id: ephemeralRunnerConfig.runnerGroupId,
+              labels: ephemeralRunnerConfig.runnerLabels,
+            })
+          : await ghClient.actions.generateRunnerJitconfigForRepo({
+              owner: githubRunnerConfig.runnerOwner.split('/')[0],
+              repo: githubRunnerConfig.runnerOwner.split('/')[1],
+              name: ephemeralRunnerConfig.runnerName,
+              runner_group_id: ephemeralRunnerConfig.runnerGroupId,
+              labels: ephemeralRunnerConfig.runnerLabels,
+            });
 
-    metricGitHubAppRateLimit(runnerConfig.headers);
+      metricGitHubAppRateLimit(runnerConfig.headers);
 
-    // tag the EC2 instance with the Github runner id
-    await tagRunnerId(instance, runnerConfig.data.runner.id.toString());
+      // tag the EC2 instance with the Github runner id
+      await tagRunnerId(instance, runnerConfig.data.runner.id.toString());
 
-    // store jit config in ssm parameter store
-    logger.debug('Runner JIT config for ephemeral runner generated.', {
-      instance: instance,
-    });
-    await putParameter(`${githubRunnerConfig.ssmTokenPath}/${instance}`, runnerConfig.data.encoded_jit_config, true, {
-      tags: [{ Key: 'InstanceId', Value: instance }],
-    });
-    if (isDelay) {
-      // Delay to prevent AWS ssm rate limits by being within the max throughput limit
-      await delay(25);
+      // store jit config in ssm parameter store
+      logger.debug('Runner JIT config for ephemeral runner generated.', {
+        instance: instance,
+      });
+      await putParameter(`${githubRunnerConfig.ssmTokenPath}/${instance}`, runnerConfig.data.encoded_jit_config, true, {
+        tags: [{ Key: 'InstanceId', Value: instance }],
+      });
+      if (isDelay) {
+        // Delay to prevent AWS ssm rate limits by being within the max throughput limit
+        await delay(25);
+      }
+    } catch (error) {
+      failedInstances.push(instance);
+      logger.warn('Failed to create JIT config for instance, continuing with remaining instances', {
+        instance: instance,
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
+
+  if (failedInstances.length > 0) {
+    logger.error('Failed to create JIT config for some instances', {
+      failedInstances: failedInstances,
+      totalInstances: instances.length,
+      successfulInstances: instances.length - failedInstances.length,
+    });
+  }
+
+  return failedInstances;
 }
