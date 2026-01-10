@@ -3,7 +3,6 @@
 ## install the runner
 
 s3_location=${S3_LOCATION_RUNNER_DISTRIBUTION}
-architecture=${RUNNER_ARCHITECTURE}
 
 if [ -z "$RUNNER_TARBALL_URL" ] && [ -z "$s3_location" ]; then
   echo "Neither RUNNER_TARBALL_URL or s3_location are set"
