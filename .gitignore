@@ -29,3 +29,4 @@ secrets.auto.tfvars
 
 node_modules/
 site/
+lambdas/package-lock.json
