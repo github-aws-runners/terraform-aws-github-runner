@@ -142,7 +142,7 @@ variable "multi_runner_config" {
         group_id                = optional(string)
         group_name              = optional(string)
         host_id                 = optional(string)
-        host_resource_group_arn = optional(number)
+        host_resource_group_arn = optional(string)
         spread_domain           = optional(string)
         tenancy                 = optional(string)
         partition_number        = optional(number)
