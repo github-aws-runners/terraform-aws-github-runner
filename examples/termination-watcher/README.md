@@ -4,7 +4,7 @@ This module shows how to use the termination watcher stand-alone.
 
 ## Usages
 
-Ensure your have the lambda for the termination locally build. By default the one in the lambdas folder will be used.
+Ensure you have the lambda for the termination built locally. By default the one in the lambdas folder will be used.
 
 Build lambda's (requires node and yarn).
 

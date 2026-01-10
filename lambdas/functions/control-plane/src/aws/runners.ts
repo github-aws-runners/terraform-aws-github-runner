@@ -93,6 +93,7 @@ function getRunnerInfo(runningInstances: DescribeInstancesResult) {
             org: i.Tags?.find((e) => e.Key === 'ghr:Org')?.Value as string,
             orphan: i.Tags?.find((e) => e.Key === 'ghr:orphan')?.Value === 'true',
             runnerId: i.Tags?.find((e) => e.Key === 'ghr:github_runner_id')?.Value as string,
+            bypassRemoval: i.Tags?.find((e) => e.Key === 'ghr:bypass-removal')?.Value === 'true',
           });
         }
       }

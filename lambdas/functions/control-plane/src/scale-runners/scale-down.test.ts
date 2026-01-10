@@ -286,6 +286,25 @@ describe('Scale down runners', () => {
         checkNonTerminated(runners);
       });
 
+      it(`Should not terminate runner with bypass-removal tag set.`, async () => {
+        // setup
+        const runners = [
+          createRunnerTestData('idle-with-bypass', type, MINIMUM_TIME_RUNNING_IN_MINUTES + 10, true, false, false),
+        ];
+        // Set bypass-removal tag
+        runners[0].bypassRemoval = true;
+
+        mockGitHubRunners(runners);
+        mockAwsRunners(runners);
+
+        // act
+        await scaleDown();
+
+        // assert
+        expect(terminateRunner).not.toHaveBeenCalled();
+        checkNonTerminated(runners);
+      });
+
       it(`Should not terminate a runner that became busy just before deregister runner.`, async () => {
         // setup
         const runners = [
@@ -813,5 +832,6 @@ function createRunnerTestData(
     orphan,
     shouldBeTerminated,
     runnerId: runnerId !== undefined ? String(runnerId) : undefined,
+    bypassRemoval: false,
   };
 }
