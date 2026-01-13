@@ -18,6 +18,7 @@ type StrategyOptions = {
 };
 import { request } from '@octokit/request';
 import { Octokit } from '@octokit/rest';
+import { retry } from '@octokit/plugin-retry';
 import { throttling } from '@octokit/plugin-throttling';
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
@@ -26,7 +27,7 @@ import { EndpointDefaults } from '@octokit/types';
 const logger = createChildLogger('gh-auth');
 
 export async function createOctokitClient(token: string, ghesApiUrl = ''): Promise<Octokit> {
-  const CustomOctokit = Octokit.plugin(throttling);
+  const CustomOctokit = Octokit.plugin(retry, throttling);
   const ocktokitOptions: OctokitOptions = {
     auth: token,
   };
@@ -38,6 +39,17 @@ export async function createOctokitClient(token: string, ghesApiUrl = ''): Promi
   return new CustomOctokit({
     ...ocktokitOptions,
     userAgent: process.env.USER_AGENT || 'github-aws-runners',
+    retry: {
+      onRetry: (retryCount: number, error: Error, request: { method: string; url: string }) => {
+        logger.warn('GitHub API request retry attempt', {
+          retryCount,
+          method: request.method,
+          url: request.url,
+          error: error.message,
+          status: (error as Error & { status?: number }).status,
+        });
+      },
+    },
     throttle: {
       onRateLimit: (retryAfter: number, options: Required<EndpointDefaults>) => {
         logger.warn(
