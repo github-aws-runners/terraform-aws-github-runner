@@ -91,6 +91,7 @@ describe('list instances', () => {
       type: 'Org',
       owner: 'CoderToCat',
       orphan: false,
+      bypassRemoval: false,
     });
   });
 
@@ -105,6 +106,7 @@ describe('list instances', () => {
       owner: 'CoderToCat',
       orphan: false,
       runnerId: '9876543210',
+      bypassRemoval: false,
     });
   });
 
@@ -124,6 +126,7 @@ describe('list instances', () => {
       type: 'Org',
       owner: 'CoderToCat',
       orphan: true,
+      bypassRemoval: false,
     });
   });
 
@@ -429,6 +432,7 @@ describe('create runner with errors', () => {
     allocationStrategy: SpotAllocationStrategy.CAPACITY_OPTIMIZED,
     capacityType: 'spot',
     type: 'Repo',
+    scaleErrors: ['UnfulfillableCapacity', 'MaxSpotInstanceCountExceeded'],
   };
   const defaultExpectedFleetRequestValues: ExpectedFleetRequestValues = {
     type: 'Repo',
@@ -699,6 +703,7 @@ interface RunnerConfig {
   amiIdSsmParameterName?: string;
   tracingEnabled?: boolean;
   onDemandFailoverOnError?: string[];
+  scaleErrors: string[];
 }
 
 function createRunnerConfig(runnerConfig: RunnerConfig): RunnerInputParameters {
@@ -718,6 +723,7 @@ function createRunnerConfig(runnerConfig: RunnerConfig): RunnerInputParameters {
     amiIdSsmParameterName: runnerConfig.amiIdSsmParameterName,
     tracingEnabled: runnerConfig.tracingEnabled,
     onDemandFailoverOnError: runnerConfig.onDemandFailoverOnError,
+    scaleErrors: runnerConfig.scaleErrors,
   };
 }
 

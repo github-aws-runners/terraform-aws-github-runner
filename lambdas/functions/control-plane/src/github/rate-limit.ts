@@ -4,6 +4,16 @@ import { MetricUnit } from '@aws-lambda-powertools/metrics';
 import yn from 'yn';
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
 
+// Cache the app ID to avoid repeated SSM calls across Lambda invocations
+let appIdPromise: Promise<string> | null = null;
+
+async function getAppId(): Promise<string> {
+  if (!appIdPromise) {
+    appIdPromise = getParameter(process.env.PARAMETER_GITHUB_APP_ID_NAME);
+  }
+  return appIdPromise;
+}
+
 export async function metricGitHubAppRateLimit(headers: ResponseHeaders): Promise<void> {
   try {
     const remaining = parseInt(headers['x-ratelimit-remaining'] as string);
@@ -13,7 +23,7 @@ export async function metricGitHubAppRateLimit(headers: ResponseHeaders): Promis
 
     const updateMetric = yn(process.env.ENABLE_METRIC_GITHUB_APP_RATE_LIMIT);
     if (updateMetric) {
-      const appId = await getParameter(process.env.PARAMETER_GITHUB_APP_ID_NAME);
+      const appId = await getAppId();
       const metric = createSingleMetric('GitHubAppRateLimitRemaining', MetricUnit.Count, remaining, {
         AppId: appId,
       });
