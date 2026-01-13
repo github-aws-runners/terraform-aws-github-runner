@@ -5,6 +5,10 @@ on:
   merge_group:
     branches: [main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions: {}
 
 jobs:
@@ -13,4 +17,4 @@ jobs:
       actions: read            # Required to upload SARIF file to CodeQL
       security-events: write   # Require writing security events to upload
       contents: read           # for checkout
-    uses: "google/osv-scanner-action/.github/workflows/osv-scanner-reusable-pr.yml@e92b5d07338d4f0ba0981dffed17c48976ca4730" # v2.2.3
+    uses: "google/osv-scanner-action/.github/workflows/osv-scanner-reusable-pr.yml@375a0e8ebdc98e99b02ac4338a724f5750f21213" # v2.3.1

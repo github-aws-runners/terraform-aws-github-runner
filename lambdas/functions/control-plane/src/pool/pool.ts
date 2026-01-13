@@ -41,6 +41,7 @@ export async function adjust(event: PoolEvent): Promise<void> {
   const onDemandFailoverOnError = process.env.ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS
     ? (JSON.parse(process.env.ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS) as [string])
     : [];
+  const scaleErrors = JSON.parse(process.env.SCALE_ERRORS) as [string];
 
   const { ghesApiUrl, ghesBaseUrl } = getGitHubEnterpriseApiUrl();
 
@@ -48,7 +49,7 @@ export async function adjust(event: PoolEvent): Promise<void> {
   const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl);
   const githubInstallationClient = await createOctokitClient(ghAuth.token, ghesApiUrl);
 
-  // Get statusses of runners registed in GitHub
+  // Get statuses of runners registered in GitHub
   const runnerStatusses = await getGitHubRegisteredRunnnerStatusses(
     githubInstallationClient,
     runnerOwner,
@@ -92,11 +93,12 @@ export async function adjust(event: PoolEvent): Promise<void> {
         environment,
         launchTemplateName,
         subnets,
-        numberOfRunners: topUp,
         amiIdSsmParameterName,
         tracingEnabled,
         onDemandFailoverOnError,
+        scaleErrors,
       },
+      topUp,
       githubInstallationClient,
     );
   } else {

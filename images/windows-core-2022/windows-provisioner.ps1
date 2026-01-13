@@ -33,7 +33,7 @@ Write-Host "Installing additional development tools"
 choco install git awscli -y
 refreshenv
 
-Write-Host "Creating actions-runner directory for the GH Action installtion"
+Write-Host "Creating actions-runner directory for the GH Action installation"
 New-Item -ItemType Directory -Path C:\actions-runner ; Set-Location C:\actions-runner
 
 Write-Host "Downloading the GH Action runner from ${action_runner_url}"

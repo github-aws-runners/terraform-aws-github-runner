@@ -45,8 +45,10 @@ module "runners" {
 
   # configure your pre-built AMI
   enable_userdata = false
-  ami_filter      = { name = [var.ami_name_filter], state = ["available"] }
-  ami_owners      = [data.aws_caller_identity.current.account_id]
+  ami = {
+    filter = { name = [var.ami_name_filter], state = ["available"] }
+    owners = [data.aws_caller_identity.current.account_id]
+  }
 
   # disable binary syncer since github agent is already installed in the AMI.
   enable_runner_binaries_syncer = false
@@ -79,7 +81,7 @@ module "runners" {
 
   #   `schedule_expression`: is used to configure the schedule for the lambda.
   #   `enabled`: enable or disable the lambda trigger via the EventBridge.
-  #   `lambda_memory_size`: lambda memery size limit.
+  #   `lambda_memory_size`: lambda memory size limit.
   #   `lambda_timeout`: timeout for the lambda in seconds.
   #   `config`: configuration for the lambda function. Token path will be read by default from the module.
   #   EOF

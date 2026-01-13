@@ -83,8 +83,10 @@ module "runners" {
 
   # configure your pre-built AMI
   # enable_userdata = false
-  # ami_filter      = { name = ["github-runner-al2023-x86_64-*"], state = ["available"] }
-  # ami_owners      = [data.aws_caller_identity.current.account_id]
+  # ami = {
+  #   filter = { name = ["github-runner-al2023-x86_64-*"], state = ["available"] }
+  #   owners = [data.aws_caller_identity.current.account_id]
+  # }
 
   # or use the default AMI
   # enable_userdata = true
@@ -92,7 +94,7 @@ module "runners" {
   # Enable debug logging for the lambda functions
   # log_level = "debug"
 
-  # Setup a dead letter queue, by default scale up lambda will kepp retrying to process event in case of scaling error.
+  # Setup a dead letter queue, by default scale up lambda will keep retrying to process event in case of scaling error.
   # redrive_policy_build_queue = {
   #   enabled             = true
   #   maxReceiveCount     = 50 # 50 retries every 30 seconds => 25 minutes

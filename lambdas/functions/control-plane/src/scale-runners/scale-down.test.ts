@@ -26,7 +26,9 @@ const mockOctokit = {
   paginate: vi.fn(),
 };
 vi.mock('@octokit/rest', () => ({
-  Octokit: vi.fn().mockImplementation(() => mockOctokit),
+  Octokit: vi.fn().mockImplementation(function () {
+    return mockOctokit;
+  }),
 }));
 
 vi.mock('./../aws/runners', async (importOriginal) => {
@@ -281,6 +283,25 @@ describe('Scale down runners', () => {
 
         // assert
         checkTerminated(runners);
+        checkNonTerminated(runners);
+      });
+
+      it(`Should not terminate runner with bypass-removal tag set.`, async () => {
+        // setup
+        const runners = [
+          createRunnerTestData('idle-with-bypass', type, MINIMUM_TIME_RUNNING_IN_MINUTES + 10, true, false, false),
+        ];
+        // Set bypass-removal tag
+        runners[0].bypassRemoval = true;
+
+        mockGitHubRunners(runners);
+        mockAwsRunners(runners);
+
+        // act
+        await scaleDown();
+
+        // assert
+        expect(terminateRunner).not.toHaveBeenCalled();
         checkNonTerminated(runners);
       });
 
@@ -811,5 +832,6 @@ function createRunnerTestData(
     orphan,
     shouldBeTerminated,
     runnerId: runnerId !== undefined ? String(runnerId) : undefined,
+    bypassRemoval: false,
   };
 }

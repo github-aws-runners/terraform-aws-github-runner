@@ -11,6 +11,12 @@ variable "ami_housekeeper_lambda_zip" {
   default     = null
 }
 
+variable "ami_housekeeper_lambda_memory_size" {
+  description = "Memory size limit in MB of the lambda."
+  type        = number
+  default     = 256
+}
+
 variable "ami_housekeeper_lambda_timeout" {
   description = "Time out of the lambda in seconds."
   type        = number
@@ -32,39 +38,21 @@ variable "ami_housekeeper_lambda_s3_object_version" {
 variable "ami_housekeeper_lambda_schedule_expression" {
   description = "Scheduler expression for action runner binary syncer."
   type        = string
-  default     = "rate(1 day)"
+  default     = "cron(11 7 * * ? *)" # once a day
 }
 
 variable "ami_housekeeper_cleanup_config" {
-  description = <<EOF
-    Configuration for AMI cleanup.
-
-    `amiFilters` - Filters to use when searching for AMIs to cleanup. Default filter for images owned by the account and that are available.
-    `dryRun` - If true, no AMIs will be deregistered. Default false.
-    `launchTemplateNames` - Launch template names to use when searching for AMIs to cleanup. Default no launch templates.
-    `maxItems` - The maximum numer of AMI's tha will be queried for cleanup. Default no maximum.
-    `minimumDaysOld` - Minimum number of days old an AMI must be to be considered for cleanup. Default 30.
-    `ssmParameterNames` - SSM parameter names to use when searching for AMIs to cleanup. This parameter should be set when using SSM to configure the AMI to use. Default no SSM parameters.
-  EOF
+  description = "Configuration for AMI cleanup."
   type = object({
+    maxItems       = optional(number)
+    minimumDaysOld = optional(number)
     amiFilters = optional(list(object({
       Name   = string
       Values = list(string)
-      })),
-      [{
-        Name : "state",
-        Values : ["available"],
-        },
-        {
-          Name : "image-type",
-          Values : ["machine"],
-      }]
-    )
-    dryRun              = optional(bool, false)
+    })))
     launchTemplateNames = optional(list(string))
-    maxItems            = optional(number)
-    minimumDaysOld      = optional(number, 30)
     ssmParameterNames   = optional(list(string))
+    dryRun              = optional(bool)
   })
   default = {}
 }

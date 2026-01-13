@@ -37,16 +37,18 @@ locals {
     "linux"   = "${path.module}/templates/start-runner.sh"
   }
 
-  # Handle AMI configuration from either the new object or old variables
+  # Handle AMI configuration
   ami_config = var.ami != null ? var.ami : {
-    filter               = var.ami_filter
-    owners               = var.ami_owners
+    filter               = local.default_ami[var.runner_os]
+    owners               = ["amazon"]
     id_ssm_parameter_arn = null
-    kms_key_arn          = var.ami_kms_key_arn
+    kms_key_arn          = null
   }
   ami_kms_key_arn           = local.ami_config.kms_key_arn != null ? local.ami_config.kms_key_arn : ""
   ami_filter                = merge(local.default_ami[var.runner_os], local.ami_config.filter)
   ami_id_ssm_module_managed = local.ami_config.id_ssm_parameter_arn == null
+  # Extract parameter name from ARN (format: arn:aws:ssm:region:account:parameter/path/to/param)
+  ami_id_ssm_parameter_name = local.ami_id_ssm_module_managed ? null : try(regex("parameter(/.+)$", local.ami_config.id_ssm_parameter_arn)[0], null)
 
   enable_job_queued_check = var.enable_job_queued_check == null ? !var.enable_ephemeral_runners : var.enable_job_queued_check
 
@@ -102,7 +104,8 @@ resource "aws_ssm_parameter" "runner_ami_id" {
   tags = merge(
     local.tags,
     {
-      "ghr:ami_name" = data.aws_ami.runner.name
+      # Remove parentheses from AMI name to comply with AWS tag constraints
+      "ghr:ami_name" = replace(data.aws_ami.runner.name, "/[()]/", "")
     },
     {
       "ghr:ami_creation_date" = data.aws_ami.runner.creation_date
@@ -165,6 +168,21 @@ resource "aws_launch_template" "runner" {
     content {
       core_count       = try(cpu_options.value.core_count, null)
       threads_per_core = try(cpu_options.value.threads_per_core, null)
+    }
+  }
+
+  dynamic "placement" {
+    for_each = var.placement != null ? [var.placement] : []
+    content {
+      affinity                = try(placement.value.affinity, null)
+      availability_zone       = try(placement.value.availability_zone, null)
+      group_id                = try(placement.value.group_id, null)
+      group_name              = try(placement.value.group_name, null)
+      host_id                 = try(placement.value.host_id, null)
+      host_resource_group_arn = try(placement.value.host_resource_group_arn, null)
+      spread_domain           = try(placement.value.spread_domain, null)
+      tenancy                 = try(placement.value.tenancy, null)
+      partition_number        = try(placement.value.partition_number, null)
     }
   }
 

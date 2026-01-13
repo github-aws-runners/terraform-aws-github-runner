@@ -8,7 +8,9 @@ const mockSQS = {
   }),
 };
 vi.mock('@aws-sdk/client-sqs', () => ({
-  SQS: vi.fn().mockImplementation(() => mockSQS),
+  SQS: vi.fn().mockImplementation(function () {
+    return mockSQS;
+  }),
 }));
 vi.mock('@aws-github-runner/aws-ssm-util');
 

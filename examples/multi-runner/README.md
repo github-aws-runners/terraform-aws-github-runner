@@ -14,7 +14,7 @@ For exact match, all the labels defined in the workflow should be present in the
 
 ## Webhook
 
-For the list of provided runner configurations, there will be a single webhook and only a single Github App to receive the notifications for all types of workflow triggers.
+For the list of provided runner configurations, there will be a single webhook and only a single GitHub App to receive the notifications for all types of workflow triggers.
 
 ## Lambda distribution
 
@@ -53,7 +53,7 @@ terraform output -raw webhook_secret
 | Name | Version |
 |------|---------|
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.3.0 |
-| <a name="requirement_aws"></a> [aws](#requirement\_aws) | ~> 5.27 |
+| <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 6.21 |
 | <a name="requirement_local"></a> [local](#requirement\_local) | ~> 2.0 |
 | <a name="requirement_random"></a> [random](#requirement\_random) | ~> 3.0 |
 
@@ -61,8 +61,8 @@ terraform output -raw webhook_secret
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 5.82.1 |
-| <a name="provider_random"></a> [random](#provider\_random) | 3.6.3 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.22.1 |
+| <a name="provider_random"></a> [random](#provider\_random) | 3.7.2 |
 
 ## Modules
 
@@ -94,7 +94,6 @@ terraform output -raw webhook_secret
 
 | Name | Description |
 |------|-------------|
-| <a name="output_deprecated_variables_warning"></a> [deprecated\_variables\_warning](#output\_deprecated\_variables\_warning) | n/a |
 | <a name="output_webhook_endpoint"></a> [webhook\_endpoint](#output\_webhook\_endpoint) | n/a |
 | <a name="output_webhook_secret"></a> [webhook\_secret](#output\_webhook\_secret) | n/a |
 <!-- END_TF_DOCS -->

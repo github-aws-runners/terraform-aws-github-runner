@@ -1,26 +1,26 @@
+import { tracer } from '@aws-github-runner/aws-powertools-util';
 import {
   CreateFleetCommand,
-  CreateFleetCommandInput,
-  CreateFleetInstance,
-  CreateFleetResult,
+  type CreateFleetCommandInput,
+  type CreateFleetInstance,
+  type CreateFleetResult,
   CreateTagsCommand,
+  type DefaultTargetCapacityType,
   DeleteTagsCommand,
-  DefaultTargetCapacityType,
   DescribeInstancesCommand,
-  DescribeInstancesResult,
+  type DescribeInstancesResult,
   EC2Client,
   SpotAllocationStrategy,
   TerminateInstancesCommand,
 } from '@aws-sdk/client-ec2';
-import { GetParameterCommand, GetParameterResult, PutParameterCommand, SSMClient } from '@aws-sdk/client-ssm';
-import { tracer } from '@aws-github-runner/aws-powertools-util';
+import { GetParameterCommand, type GetParameterResult, PutParameterCommand, SSMClient } from '@aws-sdk/client-ssm';
 import { mockClient } from 'aws-sdk-client-mock';
 import 'aws-sdk-client-mock-jest/vitest';
 
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ScaleError from './../scale-runners/ScaleError';
-import { createRunner, listEC2Runners, tag, untag, terminateRunner } from './runners';
-import { RunnerInfo, RunnerInputParameters, RunnerType } from './runners.d';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { createRunner, listEC2Runners, tag, terminateRunner, untag } from './runners';
+import type { RunnerInfo, RunnerInputParameters, RunnerType } from './runners.d';
 
 process.env.AWS_REGION = 'eu-east-1';
 const mockEC2Client = mockClient(EC2Client);
@@ -91,6 +91,7 @@ describe('list instances', () => {
       type: 'Org',
       owner: 'CoderToCat',
       orphan: false,
+      bypassRemoval: false,
     });
   });
 
@@ -105,12 +106,16 @@ describe('list instances', () => {
       owner: 'CoderToCat',
       orphan: false,
       runnerId: '9876543210',
+      bypassRemoval: false,
     });
   });
 
   it('check orphan tag.', async () => {
     const instances: DescribeInstancesResult = mockRunningInstances;
-    instances.Reservations![0].Instances![0].Tags!.push({ Key: 'ghr:orphan', Value: 'true' });
+    instances.Reservations![0].Instances![0].Tags!.push({
+      Key: 'ghr:orphan',
+      Value: 'true',
+    });
     mockEC2Client.on(DescribeInstancesCommand).resolves(instances);
 
     const resp = await listEC2Runners();
@@ -121,6 +126,7 @@ describe('list instances', () => {
       type: 'Org',
       owner: 'CoderToCat',
       orphan: true,
+      bypassRemoval: false,
     });
   });
 
@@ -132,7 +138,11 @@ describe('list instances', () => {
 
   it('filters instances on repo name', async () => {
     mockEC2Client.on(DescribeInstancesCommand).resolves(mockRunningInstances);
-    await listEC2Runners({ runnerType: 'Repo', runnerOwner: REPO_NAME, environment: undefined });
+    await listEC2Runners({
+      runnerType: 'Repo',
+      runnerOwner: REPO_NAME,
+      environment: undefined,
+    });
     expect(mockEC2Client).toHaveReceivedCommandWith(DescribeInstancesCommand, {
       Filters: [
         { Name: 'instance-state-name', Values: ['running', 'pending'] },
@@ -145,7 +155,11 @@ describe('list instances', () => {
 
   it('filters instances on org name', async () => {
     mockEC2Client.on(DescribeInstancesCommand).resolves(mockRunningInstances);
-    await listEC2Runners({ runnerType: 'Org', runnerOwner: ORG_NAME, environment: undefined });
+    await listEC2Runners({
+      runnerType: 'Org',
+      runnerOwner: ORG_NAME,
+      environment: undefined,
+    });
     expect(mockEC2Client).toHaveReceivedCommandWith(DescribeInstancesCommand, {
       Filters: [
         { Name: 'instance-state-name', Values: ['running', 'pending'] },
@@ -249,7 +263,9 @@ describe('terminate runner', () => {
     };
     await terminateRunner(runner.instanceId);
 
-    expect(mockEC2Client).toHaveReceivedCommandWith(TerminateInstancesCommand, { InstanceIds: [runner.instanceId] });
+    expect(mockEC2Client).toHaveReceivedCommandWith(TerminateInstancesCommand, {
+      InstanceIds: [runner.instanceId],
+    });
   });
 });
 
@@ -324,7 +340,10 @@ describe('create runner', () => {
     await createRunner(createRunnerConfig({ ...defaultRunnerConfig, type: type }));
 
     expect(mockEC2Client).toHaveReceivedCommandWith(CreateFleetCommand, {
-      ...expectedCreateFleetRequest({ ...defaultExpectedFleetRequestValues, type: type }),
+      ...expectedCreateFleetRequest({
+        ...defaultExpectedFleetRequestValues,
+        type: type,
+      }),
     });
   });
 
@@ -333,24 +352,36 @@ describe('create runner', () => {
 
     mockEC2Client.on(CreateFleetCommand).resolves({ Instances: instances });
 
-    await createRunner({ ...createRunnerConfig(defaultRunnerConfig), numberOfRunners: 2 });
+    await createRunner({
+      ...createRunnerConfig(defaultRunnerConfig),
+      numberOfRunners: 2,
+    });
 
     expect(mockEC2Client).toHaveReceivedCommandWith(CreateFleetCommand, {
-      ...expectedCreateFleetRequest({ ...defaultExpectedFleetRequestValues, totalTargetCapacity: 2 }),
+      ...expectedCreateFleetRequest({
+        ...defaultExpectedFleetRequestValues,
+        totalTargetCapacity: 2,
+      }),
     });
   });
 
   it('calls create fleet of 1 instance with the on-demand capacity', async () => {
     await createRunner(createRunnerConfig({ ...defaultRunnerConfig, capacityType: 'on-demand' }));
     expect(mockEC2Client).toHaveReceivedCommandWith(CreateFleetCommand, {
-      ...expectedCreateFleetRequest({ ...defaultExpectedFleetRequestValues, capacityType: 'on-demand' }),
+      ...expectedCreateFleetRequest({
+        ...defaultExpectedFleetRequestValues,
+        capacityType: 'on-demand',
+      }),
     });
   });
 
   it('calls run instances with the on-demand capacity', async () => {
     await createRunner(createRunnerConfig({ ...defaultRunnerConfig, maxSpotPrice: '0.1' }));
     expect(mockEC2Client).toHaveReceivedCommandWith(CreateFleetCommand, {
-      ...expectedCreateFleetRequest({ ...defaultExpectedFleetRequestValues, maxSpotPrice: '0.1' }),
+      ...expectedCreateFleetRequest({
+        ...defaultExpectedFleetRequestValues,
+        maxSpotPrice: '0.1',
+      }),
     });
   });
 
@@ -367,8 +398,16 @@ describe('create runner', () => {
       },
     };
     mockSSMClient.on(GetParameterCommand).resolves(paramValue);
-    await createRunner(createRunnerConfig({ ...defaultRunnerConfig, amiIdSsmParameterName: 'my-ami-id-param' }));
-    const expectedRequest = expectedCreateFleetRequest({ ...defaultExpectedFleetRequestValues, imageId: 'ami-123' });
+    await createRunner(
+      createRunnerConfig({
+        ...defaultRunnerConfig,
+        amiIdSsmParameterName: 'my-ami-id-param',
+      }),
+    );
+    const expectedRequest = expectedCreateFleetRequest({
+      ...defaultExpectedFleetRequestValues,
+      imageId: 'ami-123',
+    });
     expect(mockEC2Client).toHaveReceivedCommandWith(CreateFleetCommand, expectedRequest);
     expect(mockSSMClient).toHaveReceivedCommandWith(GetParameterCommand, {
       Name: 'my-ami-id-param',
@@ -380,7 +419,10 @@ describe('create runner', () => {
     await createRunner(createRunnerConfig({ ...defaultRunnerConfig, tracingEnabled: true }));
 
     expect(mockEC2Client).toHaveReceivedCommandWith(CreateFleetCommand, {
-      ...expectedCreateFleetRequest({ ...defaultExpectedFleetRequestValues, tracingEnabled: true }),
+      ...expectedCreateFleetRequest({
+        ...defaultExpectedFleetRequestValues,
+        tracingEnabled: true,
+      }),
     });
   });
 });
@@ -390,6 +432,7 @@ describe('create runner with errors', () => {
     allocationStrategy: SpotAllocationStrategy.CAPACITY_OPTIMIZED,
     capacityType: 'spot',
     type: 'Repo',
+    scaleErrors: ['UnfulfillableCapacity', 'MaxSpotInstanceCountExceeded'],
   };
   const defaultExpectedFleetRequestValues: ExpectedFleetRequestValues = {
     type: 'Repo',
@@ -419,9 +462,12 @@ describe('create runner with errors', () => {
   });
 
   it('test ScaleError with multiple error.', async () => {
-    createFleetMockWithErrors(['UnfulfillableCapacity', 'SomeError']);
+    createFleetMockWithErrors(['UnfulfillableCapacity', 'MaxSpotInstanceCountExceeded', 'NotMappedError']);
 
-    await expect(createRunner(createRunnerConfig(defaultRunnerConfig))).rejects.toBeInstanceOf(ScaleError);
+    await expect(createRunner(createRunnerConfig(defaultRunnerConfig))).rejects.toMatchObject({
+      name: 'ScaleError',
+      failedInstanceCount: 2,
+    });
     expect(mockEC2Client).toHaveReceivedCommandWith(
       CreateFleetCommand,
       expectedCreateFleetRequest(defaultExpectedFleetRequestValues),
@@ -465,7 +511,12 @@ describe('create runner with errors', () => {
     mockSSMClient.on(GetParameterCommand).rejects(new Error('Some error'));
 
     await expect(
-      createRunner(createRunnerConfig({ ...defaultRunnerConfig, amiIdSsmParameterName: 'my-ami-id-param' })),
+      createRunner(
+        createRunnerConfig({
+          ...defaultRunnerConfig,
+          amiIdSsmParameterName: 'my-ami-id-param',
+        }),
+      ),
     ).rejects.toBeInstanceOf(Error);
     expect(mockEC2Client).not.toHaveReceivedCommand(CreateFleetCommand);
     expect(mockSSMClient).not.toHaveReceivedCommand(PutParameterCommand);
@@ -521,7 +572,7 @@ describe('create runner with errors fail over to OnDemand', () => {
 
     expect(mockEC2Client).toHaveReceivedCommandTimes(CreateFleetCommand, 2);
 
-    // first call with spot failuer
+    // first call with spot failure
     expect(mockEC2Client).toHaveReceivedNthCommandWith(1, CreateFleetCommand, {
       ...expectedCreateFleetRequest({
         ...defaultExpectedFleetRequestValues,
@@ -530,7 +581,7 @@ describe('create runner with errors fail over to OnDemand', () => {
       }),
     });
 
-    // second call with with OnDemand failback
+    // second call with with OnDemand fallback
     expect(mockEC2Client).toHaveReceivedNthCommandWith(2, CreateFleetCommand, {
       ...expectedCreateFleetRequest({
         ...defaultExpectedFleetRequestValues,
@@ -540,22 +591,30 @@ describe('create runner with errors fail over to OnDemand', () => {
     });
   });
 
-  it('test InsufficientInstanceCapacity no failback.', async () => {
+  it('test InsufficientInstanceCapacity no fallback.', async () => {
     await expect(
-      createRunner(createRunnerConfig({ ...defaultRunnerConfig, onDemandFailoverOnError: [] })),
+      createRunner(
+        createRunnerConfig({
+          ...defaultRunnerConfig,
+          onDemandFailoverOnError: [],
+        }),
+      ),
     ).rejects.toBeInstanceOf(Error);
   });
 
-  it('test InsufficientInstanceCapacity with mutlipte instances and fallback to on demand .', async () => {
+  it('test InsufficientInstanceCapacity with multiple instances and fallback to on demand .', async () => {
     const instancesIds = ['i-123', 'i-456'];
     createFleetMockWithWithOnDemandFallback(['InsufficientInstanceCapacity'], instancesIds);
 
-    const instancesResult = await createRunner({ ...createRunnerConfig(defaultRunnerConfig), numberOfRunners: 2 });
+    const instancesResult = await createRunner({
+      ...createRunnerConfig(defaultRunnerConfig),
+      numberOfRunners: 2,
+    });
     expect(instancesResult).toEqual(instancesIds);
 
     expect(mockEC2Client).toHaveReceivedCommandTimes(CreateFleetCommand, 2);
 
-    // first call with spot failuer
+    // first call with spot failure
     expect(mockEC2Client).toHaveReceivedNthCommandWith(1, CreateFleetCommand, {
       ...expectedCreateFleetRequest({
         ...defaultExpectedFleetRequestValues,
@@ -580,12 +639,15 @@ describe('create runner with errors fail over to OnDemand', () => {
     createFleetMockWithWithOnDemandFallback(['UnfulfillableCapacity'], instancesIds);
 
     await expect(
-      createRunner({ ...createRunnerConfig(defaultRunnerConfig), numberOfRunners: 2 }),
+      createRunner({
+        ...createRunnerConfig(defaultRunnerConfig),
+        numberOfRunners: 2,
+      }),
     ).rejects.toBeInstanceOf(Error);
 
     expect(mockEC2Client).toHaveReceivedCommandTimes(CreateFleetCommand, 1);
 
-    // first call with spot failuer
+    // first call with spot failure
     expect(mockEC2Client).toHaveReceivedNthCommandWith(1, CreateFleetCommand, {
       ...expectedCreateFleetRequest({
         ...defaultExpectedFleetRequestValues,
@@ -626,7 +688,10 @@ function createFleetMockWithWithOnDemandFallback(errors: string[], instances?: s
 
   mockEC2Client
     .on(CreateFleetCommand)
-    .resolvesOnce({ Instances: [instanceesFirstCall], Errors: errors.map((e) => ({ ErrorCode: e })) })
+    .resolvesOnce({
+      Instances: [instanceesFirstCall],
+      Errors: errors.map((e) => ({ ErrorCode: e })),
+    })
     .resolvesOnce({ Instances: [instancesSecondCall] });
 }
 
@@ -638,6 +703,7 @@ interface RunnerConfig {
   amiIdSsmParameterName?: string;
   tracingEnabled?: boolean;
   onDemandFailoverOnError?: string[];
+  scaleErrors: string[];
 }
 
 function createRunnerConfig(runnerConfig: RunnerConfig): RunnerInputParameters {
@@ -657,6 +723,7 @@ function createRunnerConfig(runnerConfig: RunnerConfig): RunnerInputParameters {
     amiIdSsmParameterName: runnerConfig.amiIdSsmParameterName,
     tracingEnabled: runnerConfig.tracingEnabled,
     onDemandFailoverOnError: runnerConfig.onDemandFailoverOnError,
+    scaleErrors: runnerConfig.scaleErrors,
   };
 }
 
@@ -673,7 +740,10 @@ interface ExpectedFleetRequestValues {
 function expectedCreateFleetRequest(expectedValues: ExpectedFleetRequestValues): CreateFleetCommandInput {
   const tags = [
     { Key: 'ghr:Application', Value: 'github-action-runner' },
-    { Key: 'ghr:created_by', Value: expectedValues.totalTargetCapacity > 1 ? 'pool-lambda' : 'scale-up-lambda' },
+    {
+      Key: 'ghr:created_by',
+      Value: expectedValues.totalTargetCapacity > 1 ? 'pool-lambda' : 'scale-up-lambda',
+    },
     { Key: 'ghr:Type', Value: expectedValues.type },
     { Key: 'ghr:Owner', Value: REPO_NAME },
   ];

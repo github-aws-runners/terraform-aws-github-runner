@@ -11,6 +11,7 @@ export interface RunnerList {
   org?: string;
   orphan?: boolean;
   runnerId?: string;
+  bypassRemoval?: boolean;
 }
 
 export interface RunnerInfo {
@@ -44,4 +45,5 @@ export interface RunnerInputParameters {
   amiIdSsmParameterName?: string;
   tracingEnabled?: boolean;
   onDemandFailoverOnError?: string[];
+  scaleErrors: string[];
 }
