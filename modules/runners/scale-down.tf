@@ -1,6 +1,6 @@
 locals {
   # Windows Runners can take their sweet time to do anything
-  # For an AWS vended AMI with a x86 Mac instance or a Apple silicon Mac instance, 
+  # For an AWS vended AMI with an x86 Mac instance or an Apple silicon Mac instance,
   # the launch time can range from approximately 6 minutes to 20 minutes. 
   min_runtime_defaults = {
     "windows" = 15
