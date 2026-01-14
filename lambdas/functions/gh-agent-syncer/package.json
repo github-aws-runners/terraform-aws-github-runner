@@ -17,9 +17,9 @@
     "all": "yarn build && yarn format && yarn lint && yarn test"
   },
   "devDependencies": {
-    "@aws-sdk/types": "^3.936.0",
-    "@types/aws-lambda": "^8.10.155",
-    "@types/node": "^22.19.0",
+    "@aws-sdk/types": "^3.957.0",
+    "@types/aws-lambda": "^8.10.159",
+    "@types/node": "^22.19.3",
     "@types/request": "^2.48.13",
     "@vercel/ncc": "^0.38.4",
     "aws-sdk-client-mock": "^4.1.0",
@@ -28,8 +28,8 @@
   },
   "dependencies": {
     "@aws-github-runner/aws-powertools-util": "*",
-    "@aws-sdk/client-s3": "^3.948.0",
-    "@aws-sdk/lib-storage": "^3.948.0",
+    "@aws-sdk/client-s3": "^3.958.0",
+    "@aws-sdk/lib-storage": "^3.958.0",
     "@middy/core": "^6.4.5",
     "@octokit/rest": "22.0.1",
     "axios": "^1.13.2"

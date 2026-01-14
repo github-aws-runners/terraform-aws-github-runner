@@ -93,6 +93,7 @@ function getRunnerInfo(runningInstances: DescribeInstancesResult) {
             org: i.Tags?.find((e) => e.Key === 'ghr:Org')?.Value as string,
             orphan: i.Tags?.find((e) => e.Key === 'ghr:orphan')?.Value === 'true',
             runnerId: i.Tags?.find((e) => e.Key === 'ghr:github_runner_id')?.Value as string,
+            bypassRemoval: i.Tags?.find((e) => e.Key === 'ghr:bypass-removal')?.Value === 'true',
           });
         }
       }
@@ -196,18 +197,7 @@ async function processFleetResult(
     return instances;
   }
 
-  // Educated guess of errors that would make sense to retry based on the list
-  // https://docs.aws.amazon.com/AWSEC2/latest/APIReference/errors-overview.html
-  const scaleErrors = [
-    'UnfulfillableCapacity',
-    'MaxSpotInstanceCountExceeded',
-    'TargetCapacityLimitExceededException',
-    'RequestLimitExceeded',
-    'ResourceLimitExceeded',
-    'MaxSpotInstanceCountExceeded',
-    'MaxSpotFleetRequestCountExceeded',
-    'InsufficientInstanceCapacity',
-  ];
+  const scaleErrors = runnerParameters.scaleErrors;
 
   const failedCount = countScaleErrors(errors, scaleErrors);
   if (failedCount > 0) {
