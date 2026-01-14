@@ -100,6 +100,6 @@ resource "aws_licensemanager_license_configuration" "mac_dedicated_host_license_
   license_counting_type = "Socket"
 
   tags = {
-    "Name" = each.value.name
+    "Name" = "mac-dedicated-host-license-configuration"
   }
 }
