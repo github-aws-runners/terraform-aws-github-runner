@@ -109,13 +109,13 @@ data "http" github_runner_release_json {
 
 locals {
   runner_version = coalesce(var.runner_version, trimprefix(jsondecode(data.http.github_runner_release_json.body).tag_name, "v"))
-  instance_type   = coalesce(var.instance_type, var.architecture == "arm64" ? "t4g.medium" : "m3.medium")
+  instance_type  = coalesce(var.instance_type, var.architecture == "arm64" ? "t4g.medium" : "m3.medium")
 }
 
 source "amazon-ebs" "githubrunner" {
   ami_name                                  = "github-runner-al2023-${var.architecture}-${formatdate("YYYYMMDDhhmm", timestamp())}"
   instance_type                             = local.instance_type
-  iam_instance_profile                       = var.iam_instance_profile
+  iam_instance_profile                      = var.iam_instance_profile
   region                                    = var.region
   security_group_id                         = var.security_group_id
   subnet_id                                 = var.subnet_id
