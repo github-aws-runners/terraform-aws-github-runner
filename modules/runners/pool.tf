@@ -42,6 +42,7 @@ module "pool" {
       ephemeral                            = var.enable_ephemeral_runners
       enable_jit_config                    = var.enable_jit_config
       enable_on_demand_failover_for_errors = var.enable_on_demand_failover_for_errors
+      scale_errors                         = var.scale_errors
       boot_time_in_minutes                 = var.runner_boot_time_in_minutes
       labels                               = var.runner_labels
       launch_template                      = aws_launch_template.runner
@@ -53,8 +54,8 @@ module "pool" {
     subnet_ids                           = var.subnet_ids
     ssm_token_path                       = "${var.ssm_paths.root}/${var.ssm_paths.tokens}"
     ssm_config_path                      = "${var.ssm_paths.root}/${var.ssm_paths.config}"
-    ami_id_ssm_parameter_name            = var.ami_id_ssm_parameter_name
-    ami_id_ssm_parameter_read_policy_arn = var.ami_id_ssm_parameter_name != null ? aws_iam_policy.ami_id_ssm_parameter_read[0].arn : null
+    ami_id_ssm_parameter_name            = local.ami_id_ssm_parameter_name
+    ami_id_ssm_parameter_read_policy_arn = local.ami_id_ssm_parameter_name != null ? aws_iam_policy.ami_id_ssm_parameter_read[0].arn : null
     tags                                 = local.tags
     lambda_tags                          = var.lambda_tags
     arn_ssm_parameters_path_config       = local.arn_ssm_parameters_path_config

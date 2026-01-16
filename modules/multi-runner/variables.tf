@@ -70,20 +70,26 @@ variable "multi_runner_config" {
         owners               = optional(list(string), ["amazon"])
         id_ssm_parameter_arn = optional(string, null)
         kms_key_arn          = optional(string, null)
-      }), null) # Defaults to null, in which case the module falls back to individual AMI variables (deprecated)
-      # Deprecated: Use ami object instead
-      ami_filter                              = optional(map(list(string)), { state = ["available"] })
-      ami_owners                              = optional(list(string), ["amazon"])
-      ami_id_ssm_parameter_name               = optional(string, null)
-      ami_kms_key_arn                         = optional(string, "")
-      create_service_linked_role_spot         = optional(bool, false)
-      credit_specification                    = optional(string, null)
-      delay_webhook_event                     = optional(number, 30)
-      disable_runner_autoupdate               = optional(bool, false)
-      ebs_optimized                           = optional(bool, false)
-      enable_ephemeral_runners                = optional(bool, false)
-      enable_job_queued_check                 = optional(bool, null)
-      enable_on_demand_failover_for_errors    = optional(list(string), [])
+      }), null)
+      create_service_linked_role_spot      = optional(bool, false)
+      credit_specification                 = optional(string, null)
+      delay_webhook_event                  = optional(number, 30)
+      disable_runner_autoupdate            = optional(bool, false)
+      ebs_optimized                        = optional(bool, false)
+      enable_ephemeral_runners             = optional(bool, false)
+      enable_job_queued_check              = optional(bool, null)
+      enable_on_demand_failover_for_errors = optional(list(string), [])
+      scale_errors = optional(list(string), [
+        "UnfulfillableCapacity",
+        "MaxSpotInstanceCountExceeded",
+        "TargetCapacityLimitExceededException",
+        "RequestLimitExceeded",
+        "ResourceLimitExceeded",
+        "MaxSpotInstanceCountExceeded",
+        "MaxSpotFleetRequestCountExceeded",
+        "InsufficientInstanceCapacity",
+        "InsufficientCapacityOnHost",
+      ])
       enable_organization_runners             = optional(bool, false)
       enable_runner_binaries_syncer           = optional(bool, true)
       enable_ssm_on_runners                   = optional(bool, false)
@@ -129,6 +135,17 @@ variable "multi_runner_config" {
       cpu_options = optional(object({
         core_count       = number
         threads_per_core = number
+      }), null)
+      placement = optional(object({
+        affinity                = optional(string)
+        availability_zone       = optional(string)
+        group_id                = optional(string)
+        group_name              = optional(string)
+        host_id                 = optional(string)
+        host_resource_group_arn = optional(string)
+        spread_domain           = optional(string)
+        tenancy                 = optional(string)
+        partition_number        = optional(number)
       }), null)
       runner_log_files = optional(list(object({
         log_group_name   = string
@@ -183,8 +200,6 @@ variable "multi_runner_config" {
         runner_architecture: "The platform architecture of the runner instance_type."
         runner_metadata_options: "(Optional) Metadata options for the ec2 runner instances."
         ami: "(Optional) AMI configuration for the action runner instances. This object allows you to specify all AMI-related settings in one place."
-        ami_filter: "(Optional) List of maps used to create the AMI filter for the action runner AMI. By default amazon linux 2 is used."
-        ami_owners: "(Optional) The list of owners used to select the AMI of action runner instances."
         create_service_linked_role_spot: (Optional) create the serviced linked role for spot instances that is required by the scale-up lambda.
         credit_specification: "(Optional) The credit specification of the runner instance_type. Can be unset, `standard` or `unlimited`.
         delay_webhook_event: "The number of seconds the event accepted by the webhook is invisible on the queue before the scale up lambda will receive the event."
@@ -193,6 +208,7 @@ variable "multi_runner_config" {
         enable_ephemeral_runners: "Enable ephemeral runners, runners will only be used once."
         enable_job_queued_check: "Enables JIT configuration for creating runners instead of registration token based registraton. JIT configuration will only be applied for ephemeral runners. By default JIT configuration is enabled for ephemeral runners an can be disabled via this override. When running on GHES without support for JIT configuration this variable should be set to true for ephemeral runners."
         enable_on_demand_failover_for_errors: "Enable on-demand failover. For example to fall back to on demand when no spot capacity is available the variable can be set to `InsufficientInstanceCapacity`. When not defined the default behavior is to retry later."
+        scale_errors: "List of aws error codes that should trigger retry during scale up. This list will replace the default errors defined in the variable `defaultScaleErrors` in https://github.com/github-aws-runners/terraform-aws-github-runner/blob/main/lambdas/functions/control-plane/src/aws/runners.ts"
         enable_organization_runners: "Register runners to organization, instead of repo level"
         enable_runner_binaries_syncer: "Option to disable the lambda to sync GitHub runner distribution, useful when using a pre-build AMI."
         enable_ssm_on_runners: "Enable to allow access the runner instances for debugging purposes via SSM. Note that this adds additional permissions to the runner instances."
@@ -364,7 +380,7 @@ variable "log_level" {
 variable "lambda_runtime" {
   description = "AWS Lambda runtime."
   type        = string
-  default     = "nodejs22.x"
+  default     = "nodejs24.x"
 }
 
 variable "lambda_architecture" {
@@ -578,7 +594,7 @@ variable "key_name" {
 }
 
 variable "ghes_url" {
-  description = "GitHub Enterprise Server URL. Example: https://github.internal.co - DO NOT SET IF USING PUBLIC GITHUB. .However if you are using Github Enterprise Cloud with data-residency (ghe.com), set the endpoint here. Example - https://companyname.ghe.com|"
+  description = "GitHub Enterprise Server URL. Example: https://github.internal.co - DO NOT SET IF USING PUBLIC GITHUB. .However if you are using GitHub Enterprise Cloud with data-residency (ghe.com), set the endpoint here. Example - https://companyname.ghe.com|"
   type        = string
   default     = null
 }
@@ -657,7 +673,7 @@ variable "instance_termination_watcher" {
     Configuration for the spot termination watcher lambda function. This feature is Beta, changes will not trigger a major release as long in beta.
 
     `enable`: Enable or disable the spot termination watcher.
-    `memory_size`: Memory size linit in MB of the lambda.
+    `memory_size`: Memory size limit in MB of the lambda.
     `s3_key`: S3 key for syncer lambda function. Required if using S3 bucket to specify lambdas.
     `s3_object_version`: S3 object version for syncer lambda function. Useful if S3 versioning is enabled on source bucket.
     `timeout`: Time out of the lambda in seconds.
@@ -723,4 +739,16 @@ variable "user_agent" {
   description = "User agent used for API calls by lambda functions."
   type        = string
   default     = "github-aws-runners"
+}
+
+variable "lambda_event_source_mapping_batch_size" {
+  description = "Maximum number of records to pass to the lambda function in a single batch for the event source mapping. When not set, the AWS default of 10 events will be used."
+  type        = number
+  default     = 10
+}
+
+variable "lambda_event_source_mapping_maximum_batching_window_in_seconds" {
+  description = "Maximum amount of time to gather records before invoking the lambda function, in seconds. AWS requires this to be greater than 0 if batch_size is greater than 10. Defaults to 0."
+  type        = number
+  default     = 0
 }

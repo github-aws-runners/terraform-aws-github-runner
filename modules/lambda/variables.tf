@@ -11,7 +11,7 @@ variable "lambda" {
     `log_level`: Logging level for lambda logging. Valid values are  'silly', 'trace', 'debug', 'info', 'warn', 'error', 'fatal'.
     `logging_kms_key_id`: Specifies the kms key id to encrypt the logs with
     `logging_retention_in_days`: Specifies the number of days you want to retain log events for the lambda log group. Possible values are: 0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, and 3653.
-    `memory_size`: Memory size linit in MB of the lambda.
+    `memory_size`: Memory size limit in MB of the lambda.
     `metrics_namespace`: Namespace for the metrics emitted by the lambda.
     `name`: The name of the lambda function.
     `prefix`: The prefix used for naming resources.
@@ -47,7 +47,7 @@ variable "lambda" {
     })), [])
     role_path                 = optional(string, null)
     role_permissions_boundary = optional(string, null)
-    runtime                   = optional(string, "nodejs22.x")
+    runtime                   = optional(string, "nodejs24.x")
     s3_bucket                 = optional(string, null)
     s3_key                    = optional(string, null)
     s3_object_version         = optional(string, null)
