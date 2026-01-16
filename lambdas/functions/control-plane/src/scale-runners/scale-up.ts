@@ -110,7 +110,7 @@ export function validateSsmParameterStoreTags(tagsJson: string): { Key: string; 
       if (!tag.Key || typeof tag.Key !== 'string' || tag.Key.trim() === '') {
         throw new Error(`Tag at index ${index} has missing or invalid 'Key' property`);
       }
-      if (!tag.Value || typeof tag.Value !== 'string' || tag.Value.trim() === '') {
+      if (!Object.prototype.hasOwnProperty.call(tag, 'Value') || typeof tag.Value !== 'string') {
         throw new Error(`Tag at index ${index} has missing or invalid 'Value' property`);
       }
     });
