@@ -345,7 +345,9 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       continue;
     }
 
-    const runnerOwner = enableOrgLevel ? payload.repositoryOwner : `${payload.repositoryOwner}/${payload.repositoryName}`;
+    const runnerOwner = enableOrgLevel
+      ? payload.repositoryOwner
+      : `${payload.repositoryOwner}/${payload.repositoryName}`;
 
     let key = runnerOwner;
     if (dynamicEc2ConfigEnabled && labels?.length) {
@@ -397,24 +399,19 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
     const queuedMessages: ActionRequestMessageSQS[] = [];
 
     if (messages.length > 0 && dynamicEc2ConfigEnabled) {
-      logger.debug('Dynamic EC2 config enabled, processing labels', {labels: messages[0].labels});
+      logger.debug('Dynamic EC2 config enabled, processing labels', { labels: messages[0].labels });
 
-      const dynamicEC2Labels =
-        messages[0].labels
-          ?.map(l => l.trim())
-          .filter(l => l.startsWith('ghr-ec2-')) ?? [];
+      const dynamicEC2Labels = messages[0].labels?.map((l) => l.trim()).filter((l) => l.startsWith('ghr-ec2-')) ?? [];
 
       if (dynamicEC2Labels.length > 0) {
         // Append all EC2 labels to runnerLabels
-        runnerLabels = runnerLabels
-          ? `${runnerLabels},${dynamicEC2Labels.join(',')}`
-          : dynamicEC2Labels.join(',');
+        runnerLabels = runnerLabels ? `${runnerLabels},${dynamicEC2Labels.join(',')}` : dynamicEC2Labels.join(',');
 
         logger.debug('Updated runner labels', { runnerLabels });
 
         // Extract instance type from EC2 labels
         const requestedInstanceType = dynamicEC2Labels
-          .find(l => l.startsWith('ghr-ec2-instance-type:'))
+          .find((l) => l.startsWith('ghr-ec2-instance-type:'))
           ?.replace('ghr-ec2-instance-type:', '');
 
         if (requestedInstanceType) {
@@ -429,7 +426,6 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
         logger.debug('No dynamic EC2 labels found on message');
       }
     }
-
 
     for (const message of messages) {
       const messageLogger = logger.createChild({

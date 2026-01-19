@@ -569,12 +569,7 @@ describe('scaleUp with GHES', () => {
       const testDataWithMultipleEc2Labels = [
         {
           ...TEST_DATA_SINGLE,
-          labels: [
-            'regular-label',
-            'ghr-ec2-instance-type:r5.2xlarge',
-            'ghr-ec2-ami:custom-ami',
-            'ghr-ec2-disk:200',
-          ],
+          labels: ['regular-label', 'ghr-ec2-instance-type:r5.2xlarge', 'ghr-ec2-ami:custom-ami', 'ghr-ec2-disk:200'],
           messageId: 'test-8',
         },
       ];
