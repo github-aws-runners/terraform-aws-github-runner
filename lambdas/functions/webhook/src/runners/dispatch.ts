@@ -56,6 +56,7 @@ async function handleWorkflowJob(
         installationId: body.installation?.id ?? 0,
         queueId: queue.id,
         repoOwnerType: body.repository.owner.type,
+        labels: body.workflow_job.labels,
       });
       logger.info(
         `Successfully dispatched job for ${body.repository.full_name} to the queue ${queue.id} - ` +
