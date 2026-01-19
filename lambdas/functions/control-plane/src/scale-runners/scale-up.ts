@@ -394,14 +394,20 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
     const queuedMessages: ActionRequestMessageSQS[] = [];
 
     if (messages.length > 0 && dynamicEc2ConfigEnabled) {
+      logger.info('Dynamic EC2 config enabled, processing labels');
+
       const ec2Labels =
         messages[0].labels?.filter(l => l.startsWith('ghr-ec2-')) ?? [];
+
+      logger.info('EC2 labels detected', { ec2Labels });
 
       if (ec2Labels.length > 0) {
         // Append all EC2 labels to runnerLabels
         runnerLabels = runnerLabels
           ? `${runnerLabels},${ec2Labels.join(',')}`
           : ec2Labels.join(',');
+
+        logger.info('Updated runner labels', { runnerLabels });
 
         // Extract instance type from EC2 labels
         const requestedInstanceType = ec2Labels
@@ -410,9 +416,17 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
 
         if (requestedInstanceType) {
           instanceTypes = [requestedInstanceType];
+          logger.info('EC2 instance type requested', {
+            instanceType: requestedInstanceType,
+          });
+        } else {
+          logger.info('No EC2 instance type label found');
         }
+      } else {
+        logger.info('No EC2 labels found on message');
       }
     }
+
 
     for (const message of messages) {
       const messageLogger = logger.createChild({

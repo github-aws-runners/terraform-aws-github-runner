@@ -405,6 +405,192 @@ describe('scaleUp with GHES', () => {
       10000,
     );
   });
+
+  describe('Dynamic EC2 Configuration', () => {
+    beforeEach(() => {
+      process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
+      process.env.ENABLE_DYNAMIC_EC2_CONFIG = 'true';
+      process.env.ENABLE_EPHEMERAL_RUNNERS = 'true';
+      process.env.ENABLE_JOB_QUEUED_CHECK = 'false';
+      process.env.RUNNER_LABELS = 'base-label';
+      process.env.INSTANCE_TYPES = 't3.medium,t3.large';
+      process.env.RUNNER_NAME_PREFIX = 'unit-test';
+      expectedRunnerParams = { ...EXPECTED_RUNNER_PARAMS };
+      mockSSMClient.reset();
+    });
+
+    it('appends EC2 labels to existing runner labels when EC2 labels are present', async () => {
+      const testDataWithEc2Labels = [
+        {
+          ...TEST_DATA_SINGLE,
+          labels: ['ghr-ec2-instance-type:c5.2xlarge', 'ghr-ec2-custom:value'],
+          messageId: 'test-1',
+        },
+      ];
+
+      await scaleUpModule.scaleUp(testDataWithEc2Labels);
+
+      // Verify createRunner was called with EC2 instance type extracted from labels
+      expect(createRunner).toBeCalledWith(
+        expect.objectContaining({
+          ec2instanceCriteria: expect.objectContaining({
+            instanceTypes: ['c5.2xlarge'],
+          }),
+        }),
+      );
+    });
+
+    it('extracts instance type from EC2 labels and overrides default instance types', async () => {
+      const testDataWithEc2Labels = [
+        {
+          ...TEST_DATA_SINGLE,
+          labels: ['ghr-ec2-instance-type:m5.xlarge', 'ghr-ec2-disk:100'],
+          messageId: 'test-2',
+        },
+      ];
+
+      await scaleUpModule.scaleUp(testDataWithEc2Labels);
+
+      expect(createRunner).toBeCalledWith(
+        expect.objectContaining({
+          ec2instanceCriteria: expect.objectContaining({
+            instanceTypes: ['m5.xlarge'],
+          }),
+        }),
+      );
+    });
+
+    it('uses default instance types when no instance type EC2 label is provided', async () => {
+      const testDataWithEc2Labels = [
+        {
+          ...TEST_DATA_SINGLE,
+          labels: ['ghr-ec2-custom:value'],
+          messageId: 'test-3',
+        },
+      ];
+
+      await scaleUpModule.scaleUp(testDataWithEc2Labels);
+
+      // Should use the default INSTANCE_TYPES from environment
+      expect(createRunner).toBeCalledWith(
+        expect.objectContaining({
+          ec2instanceCriteria: expect.objectContaining({
+            instanceTypes: ['t3.medium', 't3.large'],
+          }),
+        }),
+      );
+    });
+
+    it('does not modify labels when EC2 labels are not present', async () => {
+      const testDataWithoutEc2Labels = [
+        {
+          ...TEST_DATA_SINGLE,
+          labels: ['regular-label', 'another-label'],
+          messageId: 'test-4',
+        },
+      ];
+
+      await scaleUpModule.scaleUp(testDataWithoutEc2Labels);
+
+      // Should use default instance types
+      expect(createRunner).toBeCalledWith(
+        expect.objectContaining({
+          ec2instanceCriteria: expect.objectContaining({
+            instanceTypes: ['t3.medium', 't3.large'],
+          }),
+        }),
+      );
+    });
+
+    it('handles messages with no labels gracefully', async () => {
+      const testDataWithNoLabels = [
+        {
+          ...TEST_DATA_SINGLE,
+          labels: undefined,
+          messageId: 'test-5',
+        },
+      ];
+
+      await scaleUpModule.scaleUp(testDataWithNoLabels);
+
+      expect(createRunner).toBeCalledWith(
+        expect.objectContaining({
+          ec2instanceCriteria: expect.objectContaining({
+            instanceTypes: ['t3.medium', 't3.large'],
+          }),
+        }),
+      );
+    });
+
+    it('handles empty labels array', async () => {
+      const testDataWithEmptyLabels = [
+        {
+          ...TEST_DATA_SINGLE,
+          labels: [],
+          messageId: 'test-6',
+        },
+      ];
+
+      await scaleUpModule.scaleUp(testDataWithEmptyLabels);
+
+      expect(createRunner).toBeCalledWith(
+        expect.objectContaining({
+          ec2instanceCriteria: expect.objectContaining({
+            instanceTypes: ['t3.medium', 't3.large'],
+          }),
+        }),
+      );
+    });
+
+    it('does not process EC2 labels when ENABLE_DYNAMIC_EC2_CONFIG is disabled', async () => {
+      process.env.ENABLE_DYNAMIC_EC2_CONFIG = 'false';
+
+      const testDataWithEc2Labels = [
+        {
+          ...TEST_DATA_SINGLE,
+          labels: ['ghr-ec2-instance-type:c5.4xlarge'],
+          messageId: 'test-7',
+        },
+      ];
+
+      await scaleUpModule.scaleUp(testDataWithEc2Labels);
+
+      // Should ignore EC2 labels and use default instance types
+      expect(createRunner).toBeCalledWith(
+        expect.objectContaining({
+          ec2instanceCriteria: expect.objectContaining({
+            instanceTypes: ['t3.medium', 't3.large'],
+          }),
+        }),
+      );
+    });
+
+    it('handles multiple EC2 labels correctly', async () => {
+      const testDataWithMultipleEc2Labels = [
+        {
+          ...TEST_DATA_SINGLE,
+          labels: [
+            'regular-label',
+            'ghr-ec2-instance-type:r5.2xlarge',
+            'ghr-ec2-ami:custom-ami',
+            'ghr-ec2-disk:200',
+          ],
+          messageId: 'test-8',
+        },
+      ];
+
+      await scaleUpModule.scaleUp(testDataWithMultipleEc2Labels);
+
+      expect(createRunner).toBeCalledWith(
+        expect.objectContaining({
+          ec2instanceCriteria: expect.objectContaining({
+            instanceTypes: ['r5.2xlarge'],
+          }),
+        }),
+      );
+    });
+  });
+
   describe('on repo level', () => {
     beforeEach(() => {
       process.env.ENABLE_ORGANIZATION_RUNNERS = 'false';
