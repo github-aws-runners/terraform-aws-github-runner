@@ -272,7 +272,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
 
   const enableOrgLevel = yn(process.env.ENABLE_ORGANIZATION_RUNNERS, { default: true });
   const maximumRunners = parseInt(process.env.RUNNERS_MAXIMUM_COUNT || '3');
-  const runnerLabels = process.env.RUNNER_LABELS || '';
+  let runnerLabels = process.env.RUNNER_LABELS || '';
   const runnerGroup = process.env.RUNNER_GROUP_NAME || 'Default';
   const environment = process.env.ENVIRONMENT;
   const ssmTokenPath = process.env.SSM_TOKEN_PATH;
@@ -394,10 +394,24 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
     const queuedMessages: ActionRequestMessageSQS[] = [];
 
     if (messages.length > 0 && dynamicEc2ConfigEnabled) {
-      const requestedInstanceType = messages[0].labels
-        ?.find((label) => label.startsWith('ghr-ec2-instance-type'))
-        ?.replace('ghr-ec2-instance-type', '');
-      instanceTypes = requestedInstanceType ? [requestedInstanceType] : instanceTypes;
+      const ec2Labels =
+        messages[0].labels?.filter(l => l.startsWith('ghr-ec2-')) ?? [];
+
+      if (ec2Labels.length > 0) {
+        // Append all EC2 labels to runnerLabels
+        runnerLabels = runnerLabels
+          ? `${runnerLabels},${ec2Labels.join(',')}`
+          : ec2Labels.join(',');
+
+        // Extract instance type from EC2 labels
+        const requestedInstanceType = ec2Labels
+          .find(l => l.startsWith('ghr-ec2-instance-type:'))
+          ?.replace('ghr-ec2-instance-type:', '');
+
+        if (requestedInstanceType) {
+          instanceTypes = [requestedInstanceType];
+        }
+      }
     }
 
     for (const message of messages) {
