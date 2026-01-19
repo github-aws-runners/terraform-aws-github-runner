@@ -103,6 +103,7 @@ describe('Dispatcher', () => {
         installationId: 0,
         queueId: runnerConfig[0].id,
         repoOwnerType: 'Organization',
+        labels: ['self-hosted', 'Test']
       });
     });
 
@@ -150,6 +151,7 @@ describe('Dispatcher', () => {
         installationId: 0,
         queueId: 'match',
         repoOwnerType: 'Organization',
+        labels: ['self-hosted', 'match'],
       });
     });
 

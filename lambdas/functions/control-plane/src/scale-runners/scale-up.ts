@@ -335,6 +335,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
   type MessagesWithClient = {
     messages: ActionRequestMessageSQS[];
     githubInstallationClient: Octokit;
+    runnerOwner: string;
   };
 
   const validMessages = new Map<string, MessagesWithClient>();
@@ -364,8 +365,9 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       continue;
     }
 
-    let key = enableOrgLevel ? payload.repositoryOwner : `${payload.repositoryOwner}/${payload.repositoryName}`;
+    const runnerOwner = enableOrgLevel ? payload.repositoryOwner : `${payload.repositoryOwner}/${payload.repositoryName}`;
 
+    let key = runnerOwner;
     if (dynamicEc2ConfigEnabled && labels?.length) {
       const requestedDynamicEc2Config = labels.find((l) => l.startsWith('ghr-ec2-'))?.slice('ghr-ec2-'.length);
 
@@ -387,6 +389,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       entry = {
         messages: [],
         githubInstallationClient,
+        runnerOwner: runnerOwner,
       };
 
       validMessages.set(key, entry);
@@ -408,16 +411,18 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
 
   logger.info(`Received events`);
 
-  for (const [group, { githubInstallationClient, messages }] of validMessages.entries()) {
+  for (const [group, { githubInstallationClient, messages, runnerOwner }] of validMessages.entries()) {
     // Work out how much we want to scale up by.
     let scaleUp = 0;
     const queuedMessages: ActionRequestMessageSQS[] = [];
 
     if (messages.length > 0 && dynamicEc2ConfigEnabled) {
-      logger.info('Dynamic EC2 config enabled, processing labels');
+      logger.info('Dynamic EC2 config enabled, processing labels', {labels: messages[0].labels});
 
       const ec2Labels =
-        messages[0].labels?.filter(l => l.startsWith('ghr-ec2-')) ?? [];
+        messages[0].labels
+          ?.map(l => l.trim())
+          .filter(l => l.startsWith('ghr-ec2-')) ?? [];
 
       logger.info('EC2 labels detected', { ec2Labels });
 
@@ -477,7 +482,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
 
     // Don't call the EC2 API if we can create an unlimited number of runners.
     const currentRunners =
-      maximumRunners === -1 ? 0 : (await listEC2Runners({ environment, runnerType, runnerOwner: group })).length;
+      maximumRunners === -1 ? 0 : (await listEC2Runners({ environment, runnerType, runnerOwner: runnerOwner })).length;
 
     logger.info('Current runners', {
       currentRunners,
@@ -530,7 +535,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
         runnerLabels,
         runnerGroup,
         runnerNamePrefix,
-        runnerOwner: group,
+        runnerOwner: runnerOwner,
         runnerType,
         disableAutoUpdate,
         ssmTokenPath,
