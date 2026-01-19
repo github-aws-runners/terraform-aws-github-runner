@@ -103,7 +103,7 @@ describe('Dispatcher', () => {
         installationId: 0,
         queueId: runnerConfig[0].id,
         repoOwnerType: 'Organization',
-        labels: ['self-hosted', 'Test']
+        labels: ['self-hosted', 'Test'],
       });
     });
 
