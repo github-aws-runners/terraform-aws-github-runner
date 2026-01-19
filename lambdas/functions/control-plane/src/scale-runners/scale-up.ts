@@ -273,12 +273,11 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
   const enableOrgLevel = yn(process.env.ENABLE_ORGANIZATION_RUNNERS, { default: true });
   const maximumRunners = parseInt(process.env.RUNNERS_MAXIMUM_COUNT || '3');
   const runnerLabels = process.env.RUNNER_LABELS || '';
-
   const runnerGroup = process.env.RUNNER_GROUP_NAME || 'Default';
   const environment = process.env.ENVIRONMENT;
   const ssmTokenPath = process.env.SSM_TOKEN_PATH;
   const subnets = process.env.SUBNET_IDS.split(',');
-  const instanceTypes = process.env.INSTANCE_TYPES.split(',');
+  let instanceTypes = process.env.INSTANCE_TYPES.split(',');
   const instanceTargetCapacityType = process.env.INSTANCE_TARGET_CAPACITY_TYPE;
   const ephemeralEnabled = yn(process.env.ENABLE_EPHEMERAL_RUNNERS, { default: false });
   const dynamicEc2ConfigEnabled = yn(process.env.ENABLE_DYNAMIC_EC2_CONFIG, { default: false });
@@ -321,7 +320,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
   const validMessages = new Map<string, MessagesWithClient>();
   const rejectedMessageIds = new Set<string>();
   for (const payload of payloads) {
-    const { eventType, messageId, repositoryName, repositoryOwner } = payload;
+    const { eventType, messageId, repositoryName, repositoryOwner, labels } = payload;
     if (ephemeralEnabled && eventType !== 'workflow_job') {
       logger.warn(
         'Event is not supported in combination with ephemeral runners. Please ensure you have enabled workflow_job events.',
@@ -345,7 +344,19 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       continue;
     }
 
-    const key = enableOrgLevel ? payload.repositoryOwner : `${payload.repositoryOwner}/${payload.repositoryName}`;
+    let key = enableOrgLevel ? payload.repositoryOwner : `${payload.repositoryOwner}/${payload.repositoryName}`;
+
+    if (dynamicEc2ConfigEnabled && labels?.length) {
+      const requestedDynamicEc2Config = labels
+        .find(l => l.startsWith('ghr-ec2-'))
+        ?.slice('ghr-ec2-'.length);      
+
+      if (requestedDynamicEc2Config) {
+        const ec2Hash = ec2LabelsHash(labels);
+        key = `${key}/${ec2Hash}`;
+      }
+    }
+
 
     let entry = validMessages.get(key);
 
@@ -385,6 +396,12 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
     let scaleUp = 0;
     const queuedMessages: ActionRequestMessageSQS[] = [];
 
+    if (messages.length > 0 && dynamicEc2ConfigEnabled) {
+      const requestedInstanceType = messages[0].labels?.find(label => label.startsWith('ghr-ec2-instance-type'))?.replace('ghr-ec2-instance-type', '');          
+      instanceTypes = requestedInstanceType ? [requestedInstanceType] : instanceTypes;
+    } 
+
+
     for (const message of messages) {
       const messageLogger = logger.createChild({
         persistentKeys: {
@@ -392,6 +409,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
           group,
           messageId: message.messageId,
           repository: `${message.repositoryOwner}/${message.repositoryName}`,
+          labels: message.labels,
         },
       });
 
@@ -639,4 +657,21 @@ async function createJitConfig(githubRunnerConfig: CreateGitHubRunnerConfig, ins
       await delay(25);
     }
   }
+}
+
+function ec2LabelsHash(labels: string[]): string {
+  const prefix = 'ghr-ec2-';
+
+  const input = labels
+    .filter(l => l.startsWith(prefix))
+    .sort()               // ensure deterministic hash
+    .join('|');
+
+  let hash = 0;
+  for (let i = 0; i < input.length; i++) {
+    hash = (hash << 5) - hash + input.charCodeAt(i);
+    hash |= 0; // force 32-bit integer
+  }
+
+  return Math.abs(hash).toString(36);
 }
