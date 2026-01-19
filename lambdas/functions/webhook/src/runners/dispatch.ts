@@ -82,7 +82,7 @@ export function canRunJob(
   workflowLabelCheckAll: boolean,
 ): boolean {
   // Filter out ghr-ec2- labels as they are handled by the dynamic EC2 instance type feature
-  const filteredLabels = workflowJobLabels.filter(label => !label.startsWith('ghr-ec2-'));
+  const filteredLabels = workflowJobLabels.filter((label) => !label.startsWith('ghr-ec2-'));
 
   runnerLabelsMatchers = runnerLabelsMatchers.map((runnerLabel) => {
     return runnerLabel.map((label) => label.toLowerCase());
