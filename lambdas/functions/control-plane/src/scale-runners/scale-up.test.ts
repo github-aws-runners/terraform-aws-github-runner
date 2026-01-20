@@ -430,31 +430,14 @@ describe('scaleUp with GHES', () => {
 
       await scaleUpModule.scaleUp(testDataWithEc2Labels);
 
-      // Verify createRunner was called with EC2 instance type extracted from labels
+      // Verify createRunner was called with EC2 instance type in override config
       expect(createRunner).toBeCalledWith(
         expect.objectContaining({
           ec2instanceCriteria: expect.objectContaining({
-            instanceTypes: ['c5.2xlarge'],
+            instanceTypes: ['t3.medium', 't3.large'],
           }),
-        }),
-      );
-    });
-
-    it('extracts instance type from EC2 labels and overrides default instance types', async () => {
-      const testDataWithEc2Labels = [
-        {
-          ...TEST_DATA_SINGLE,
-          labels: ['ghr-ec2-instance-type:m5.xlarge', 'ghr-ec2-disk:100'],
-          messageId: 'test-2',
-        },
-      ];
-
-      await scaleUpModule.scaleUp(testDataWithEc2Labels);
-
-      expect(createRunner).toBeCalledWith(
-        expect.objectContaining({
-          ec2instanceCriteria: expect.objectContaining({
-            instanceTypes: ['m5.xlarge'],
+          ec2OverrideConfig: expect.objectContaining({
+            InstanceType: 'c5.2xlarge',
           }),
         }),
       );
@@ -472,27 +455,6 @@ describe('scaleUp with GHES', () => {
       await scaleUpModule.scaleUp(testDataWithEc2Labels);
 
       // Should use the default INSTANCE_TYPES from environment
-      expect(createRunner).toBeCalledWith(
-        expect.objectContaining({
-          ec2instanceCriteria: expect.objectContaining({
-            instanceTypes: ['t3.medium', 't3.large'],
-          }),
-        }),
-      );
-    });
-
-    it('does not modify labels when EC2 labels are not present', async () => {
-      const testDataWithoutEc2Labels = [
-        {
-          ...TEST_DATA_SINGLE,
-          labels: ['regular-label', 'another-label'],
-          messageId: 'test-4',
-        },
-      ];
-
-      await scaleUpModule.scaleUp(testDataWithoutEc2Labels);
-
-      // Should use default instance types
       expect(createRunner).toBeCalledWith(
         expect.objectContaining({
           ec2instanceCriteria: expect.objectContaining({
@@ -579,7 +541,230 @@ describe('scaleUp with GHES', () => {
       expect(createRunner).toBeCalledWith(
         expect.objectContaining({
           ec2instanceCriteria: expect.objectContaining({
-            instanceTypes: ['r5.2xlarge'],
+            instanceTypes: ['t3.medium', 't3.large'],
+          }),
+          ec2OverrideConfig: expect.objectContaining({
+            InstanceType: 'r5.2xlarge',
+          }),
+        }),
+      );
+    });
+
+    it('includes ec2OverrideConfig with VCpuCount requirements when specified', async () => {
+      const testDataWithVCpuLabels = [
+        {
+          ...TEST_DATA_SINGLE,
+          labels: ['self-hosted', 'ghr-ec2-vcpu-count-min:4', 'ghr-ec2-vcpu-count-max:16'],
+          messageId: 'test-9',
+        },
+      ];
+
+      await scaleUpModule.scaleUp(testDataWithVCpuLabels);
+
+      expect(createRunner).toBeCalledWith(
+        expect.objectContaining({
+          ec2OverrideConfig: expect.objectContaining({
+            InstanceRequirements: expect.objectContaining({
+              VCpuCount: {
+                Min: 4,
+                Max: 16,
+              },
+            }),
+          }),
+        }),
+      );
+    });
+
+    it('includes ec2OverrideConfig with MemoryMiB requirements when specified', async () => {
+      const testDataWithMemoryLabels = [
+        {
+          ...TEST_DATA_SINGLE,
+          labels: ['self-hosted', 'ghr-ec2-memory-mib-min:8192', 'ghr-ec2-memory-mib-max:32768'],
+          messageId: 'test-10',
+        },
+      ];
+
+      await scaleUpModule.scaleUp(testDataWithMemoryLabels);
+
+      expect(createRunner).toBeCalledWith(
+        expect.objectContaining({
+          ec2OverrideConfig: expect.objectContaining({
+            InstanceRequirements: expect.objectContaining({
+              MemoryMiB: {
+                Min: 8192,
+                Max: 32768,
+              },
+            }),
+          }),
+        }),
+      );
+    });
+
+    it('includes ec2OverrideConfig with CPU manufacturers when specified', async () => {
+      const testDataWithCpuLabels = [
+        {
+          ...TEST_DATA_SINGLE,
+          labels: ['self-hosted', 'ghr-ec2-cpu-manufacturers:intel,amd'],
+          messageId: 'test-11',
+        },
+      ];
+
+      await scaleUpModule.scaleUp(testDataWithCpuLabels);
+
+      expect(createRunner).toBeCalledWith(
+        expect.objectContaining({
+          ec2OverrideConfig: expect.objectContaining({
+            InstanceRequirements: expect.objectContaining({
+              CpuManufacturers: ['intel', 'amd'],
+            }),
+          }),
+        }),
+      );
+    });
+
+    it('includes ec2OverrideConfig with instance generations when specified', async () => {
+      const testDataWithGenerationLabels = [
+        {
+          ...TEST_DATA_SINGLE,
+          labels: ['self-hosted', 'ghr-ec2-instance-generations:current'],
+          messageId: 'test-12',
+        },
+      ];
+
+      await scaleUpModule.scaleUp(testDataWithGenerationLabels);
+
+      expect(createRunner).toBeCalledWith(
+        expect.objectContaining({
+          ec2OverrideConfig: expect.objectContaining({
+            InstanceRequirements: expect.objectContaining({
+              InstanceGenerations: ['current'],
+            }),
+          }),
+        }),
+      );
+    });
+
+    it('includes ec2OverrideConfig with accelerator requirements when specified', async () => {
+      const testDataWithAcceleratorLabels = [
+        {
+          ...TEST_DATA_SINGLE,
+          labels: ['self-hosted', 'ghr-ec2-accelerator-count-min:1', 'ghr-ec2-accelerator-types:gpu'],
+          messageId: 'test-13',
+        },
+      ];
+
+      await scaleUpModule.scaleUp(testDataWithAcceleratorLabels);
+
+      expect(createRunner).toBeCalledWith(
+        expect.objectContaining({
+          ec2OverrideConfig: expect.objectContaining({
+            InstanceRequirements: expect.objectContaining({
+              AcceleratorCount: {
+                Min: 1,
+              },
+              AcceleratorTypes: ['gpu'],
+            }),
+          }),
+        }),
+      );
+    });
+
+    it('includes ec2OverrideConfig with max price when specified', async () => {
+      const testDataWithMaxPrice = [
+        {
+          ...TEST_DATA_SINGLE,
+          labels: ['self-hosted', 'ghr-ec2-max-price:0.50'],
+          messageId: 'test-14',
+        },
+      ];
+
+      await scaleUpModule.scaleUp(testDataWithMaxPrice);
+
+      expect(createRunner).toBeCalledWith(
+        expect.objectContaining({
+          ec2OverrideConfig: expect.objectContaining({
+            MaxPrice: '0.50',
+          }),
+        }),
+      );
+    });
+
+    it('includes ec2OverrideConfig with priority and weighted capacity when specified', async () => {
+      const testDataWithPriorityWeight = [
+        {
+          ...TEST_DATA_SINGLE,
+          labels: ['self-hosted', 'ghr-ec2-priority:1', 'ghr-ec2-weighted-capacity:2'],
+          messageId: 'test-15',
+        },
+      ];
+
+      await scaleUpModule.scaleUp(testDataWithPriorityWeight);
+
+      expect(createRunner).toBeCalledWith(
+        expect.objectContaining({
+          ec2OverrideConfig: expect.objectContaining({
+            Priority: 1,
+            WeightedCapacity: 2,
+          }),
+        }),
+      );
+    });
+
+    it('includes ec2OverrideConfig with combined requirements', async () => {
+      const testDataWithCombinedLabels = [
+        {
+          ...TEST_DATA_SINGLE,
+          labels: [
+            'self-hosted',
+            'linux',
+            'ghr-ec2-vcpu-count-min:8',
+            'ghr-ec2-memory-mib-min:16384',
+            'ghr-ec2-cpu-manufacturers:intel',
+            'ghr-ec2-instance-generations:current',
+            'ghr-ec2-max-price:1.00',
+          ],
+          messageId: 'test-16',
+        },
+      ];
+
+      await scaleUpModule.scaleUp(testDataWithCombinedLabels);
+
+      expect(createRunner).toBeCalledWith(
+        expect.objectContaining({
+          ec2OverrideConfig: expect.objectContaining({
+            InstanceRequirements: expect.objectContaining({
+              VCpuCount: { Min: 8 },
+              MemoryMiB: { Min: 16384 },
+              CpuManufacturers: ['intel'],
+              InstanceGenerations: ['current'],
+            }),
+            MaxPrice: '1.00',
+          }),
+        }),
+      );
+    });
+
+    it('includes both instance type and ec2OverrideConfig when both specified', async () => {
+      const testDataWithBoth = [
+        {
+          ...TEST_DATA_SINGLE,
+          labels: ['self-hosted', 'ghr-ec2-instance-type:c5.xlarge', 'ghr-ec2-vcpu-count-min:4'],
+          messageId: 'test-18',
+        },
+      ];
+
+      await scaleUpModule.scaleUp(testDataWithBoth);
+
+      expect(createRunner).toBeCalledWith(
+        expect.objectContaining({
+          ec2instanceCriteria: expect.objectContaining({
+            instanceTypes: ['t3.medium', 't3.large'],
+          }),
+          ec2OverrideConfig: expect.objectContaining({
+            InstanceType: 'c5.xlarge',
+            InstanceRequirements: expect.objectContaining({
+              VCpuCount: { Min: 4 },
+            }),
           }),
         }),
       );

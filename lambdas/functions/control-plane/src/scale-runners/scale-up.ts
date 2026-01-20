@@ -5,7 +5,7 @@ import yn from 'yn';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
 import { createRunner, listEC2Runners, tag } from './../aws/runners';
-import { RunnerInputParameters } from './../aws/runners.d';
+import { Ec2OverrideConfig, RunnerInputParameters } from './../aws/runners.d';
 import { metricGitHubAppRateLimit } from '../github/rate-limit';
 import { publishRetryMessage } from './job-retry';
 
@@ -61,6 +61,7 @@ interface CreateEC2RunnerConfig {
   subnets: string[];
   launchTemplateName: string;
   ec2instanceCriteria: RunnerInputParameters['ec2instanceCriteria'];
+  ec2OverrideConfig?: RunnerInputParameters['ec2OverrideConfig'];
   numberOfRunners?: number;
   amiIdSsmParameterName?: string;
   tracingEnabled?: boolean;
@@ -398,6 +399,8 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
     let scaleUp = 0;
     const queuedMessages: ActionRequestMessageSQS[] = [];
 
+    let ec2OverrideConfig: Ec2OverrideConfig | undefined = undefined;
+
     if (messages.length > 0 && dynamicEc2ConfigEnabled) {
       logger.debug('Dynamic EC2 config enabled, processing labels', { labels: messages[0].labels });
 
@@ -409,18 +412,12 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
 
         logger.debug('Updated runner labels', { runnerLabels });
 
-        // Extract instance type from EC2 labels
-        const requestedInstanceType = dynamicEC2Labels
-          .find((l) => l.startsWith('ghr-ec2-instance-type:'))
-          ?.replace('ghr-ec2-instance-type:', '');
-
-        if (requestedInstanceType) {
-          instanceTypes = [requestedInstanceType];
-          logger.debug('EC2 instance type requested', {
-            instanceType: requestedInstanceType,
-          });
-        } else {
-          logger.debug('No dynamic EC2 instance type label found');
+        // Parse EC2 override configuration from labels
+        ec2OverrideConfig = parseEc2OverrideConfig(dynamicEC2Labels);
+        if (ec2OverrideConfig) {
+          logger.debug('EC2 override config parsed from labels', {
+            ec2OverrideConfig,
+          });        
         }
       } else {
         logger.debug('No dynamic EC2 labels found on message');
@@ -523,6 +520,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
           maxSpotPrice: instanceMaxSpotPrice,
           instanceAllocationStrategy: instanceAllocationStrategy,
         },
+        ec2OverrideConfig,
         environment,
         launchTemplateName,
         subnets,
@@ -682,6 +680,301 @@ async function createJitConfig(githubRunnerConfig: CreateGitHubRunnerConfig, ins
       await delay(25);
     }
   }
+}
+
+/**
+ * Parses EC2 override configuration from GitHub labels.
+ *
+ * Supported label formats:
+ *
+ * Basic Fleet Overrides:
+ * - ghr-ec2-instance-type:<type>              - Set specific instance type (e.g., c5.xlarge)
+ * - ghr-ec2-max-price:<price>                 - Set maximum spot price
+ * - ghr-ec2-subnet-id:<id>                    - Set subnet ID
+ * - ghr-ec2-availability-zone:<zone>          - Set availability zone
+ * - ghr-ec2-availability-zone-id:<id>         - Set availability zone ID
+ * - ghr-ec2-weighted-capacity:<number>        - Set weighted capacity
+ * - ghr-ec2-priority:<number>                 - Set launch priority
+ * - ghr-ec2-image-id:<ami-id>                 - Override AMI ID
+ *
+ * Instance Requirements (vCPU & Memory):
+ * - ghr-ec2-vcpu-count-min:<number>           - Set minimum vCPU count
+ * - ghr-ec2-vcpu-count-max:<number>           - Set maximum vCPU count
+ * - ghr-ec2-memory-mib-min:<number>           - Set minimum memory in MiB
+ * - ghr-ec2-memory-mib-max:<number>           - Set maximum memory in MiB
+ * - ghr-ec2-memory-gib-per-vcpu-min:<number>  - Set min memory per vCPU ratio
+ * - ghr-ec2-memory-gib-per-vcpu-max:<number>  - Set max memory per vCPU ratio
+ *
+ * Instance Requirements (CPU & Performance):
+ * - ghr-ec2-cpu-manufacturers:<list>          - CPU manufacturers (comma-separated: intel,amd,amazon-web-services)
+ * - ghr-ec2-instance-generations:<list>       - Instance generations (comma-separated: current,previous)
+ * - ghr-ec2-excluded-instance-types:<list>    - Exclude instance types (comma-separated)
+ * - ghr-ec2-allowed-instance-types:<list>     - Allow only specific instance types (comma-separated)
+ * - ghr-ec2-burstable-performance:<value>     - Burstable performance (included,excluded,required)
+ * - ghr-ec2-bare-metal:<value>                - Bare metal (included,excluded,required)
+ *
+ * Instance Requirements (Accelerators/GPU):
+ * - ghr-ec2-accelerator-types:<list>          - Accelerator types (comma-separated: gpu,fpga,inference)
+ * - ghr-ec2-accelerator-count-min:<num>       - Set minimum accelerator count
+ * - ghr-ec2-accelerator-count-max:<num>       - Set maximum accelerator count
+ * - ghr-ec2-accelerator-manufacturers:<list>  - Accelerator manufacturers (comma-separated: nvidia,amd,amazon-web-services,xilinx)
+ * - ghr-ec2-accelerator-names:<list>          - Specific accelerator names (comma-separated)
+ * - ghr-ec2-accelerator-memory-mib-min:<num>  - Min accelerator total memory in MiB
+ * - ghr-ec2-accelerator-memory-mib-max:<num>  - Max accelerator total memory in MiB
+ *
+ * Instance Requirements (Network & Storage):
+ * - ghr-ec2-network-interface-count-min:<num> - Min network interfaces
+ * - ghr-ec2-network-interface-count-max:<num> - Max network interfaces
+ * - ghr-ec2-network-bandwidth-gbps-min:<num>  - Min network bandwidth in Gbps
+ * - ghr-ec2-network-bandwidth-gbps-max:<num>  - Max network bandwidth in Gbps
+ * - ghr-ec2-local-storage:<value>             - Local storage (included,excluded,required)
+ * - ghr-ec2-local-storage-types:<list>        - Local storage types (comma-separated: hdd,ssd)
+ * - ghr-ec2-total-local-storage-gb-min:<num>  - Min total local storage in GB
+ * - ghr-ec2-total-local-storage-gb-max:<num>  - Max total local storage in GB
+ * - ghr-ec2-baseline-ebs-bandwidth-mbps-min:<num> - Min baseline EBS bandwidth in Mbps
+ * - ghr-ec2-baseline-ebs-bandwidth-mbps-max:<num> - Max baseline EBS bandwidth in Mbps
+ *
+ * Placement:
+ * - ghr-ec2-placement-group:<name>            - Placement group name
+ * - ghr-ec2-placement-tenancy:<value>         - Tenancy (default,dedicated,host)
+ * - ghr-ec2-placement-host-id:<id>            - Dedicated host ID
+ * - ghr-ec2-placement-affinity:<value>        - Affinity (default,host)
+ * - ghr-ec2-placement-partition-number:<num>  - Partition number
+ * - ghr-ec2-placement-availability-zone:<zone> - Placement availability zone
+ * - ghr-ec2-placement-spread-domain:<domain>  - Spread domain
+ * - ghr-ec2-placement-host-resource-group-arn:<arn> - Host resource group ARN
+ *
+ * Block Device Mappings:
+ * - ghr-ec2-ebs-volume-size:<size>            - EBS volume size in GB
+ * - ghr-ec2-ebs-volume-type:<type>            - EBS volume type (gp2,gp3,io1,io2,st1,sc1)
+ * - ghr-ec2-ebs-iops:<number>                 - EBS IOPS
+ * - ghr-ec2-ebs-throughput:<number>           - EBS throughput in MB/s (gp3 only)
+ * - ghr-ec2-ebs-encrypted:<boolean>           - EBS encryption (true,false)
+ * - ghr-ec2-ebs-kms-key-id:<id>               - KMS key ID for encryption
+ * - ghr-ec2-ebs-delete-on-termination:<bool>  - Delete on termination (true,false)
+ * - ghr-ec2-ebs-snapshot-id:<id>              - Snapshot ID for EBS volume
+ * - ghr-ec2-block-device-virtual-name:<name>  - Virtual device name (ephemeral storage)
+ * - ghr-ec2-block-device-no-device:<string>   - Suppresses device mapping
+ *
+ * Pricing:
+ * - ghr-ec2-spot-max-price-percentage:<num>   - Spot max price as % over lowest price
+ * - ghr-ec2-on-demand-max-price-percentage:<num> - On-demand max price as % over lowest price
+ * - ghr-ec2-max-spot-price-percentage-optimal:<num> - Max spot price as % of optimal on-demand
+ * - ghr-ec2-require-hibernate-support:<bool>  - Require hibernate support (true,false)
+ * - ghr-ec2-require-encryption-in-transit:<bool> - Require encryption in-transit (true,false)
+ * - ghr-ec2-baseline-performance-cpu-family:<family> - CPU baseline performance family
+ *
+ * Example:
+ *   runs-on: [self-hosted, linux, ghr-ec2-vcpu-count-min:4, ghr-ec2-memory-mib-min:16384, ghr-ec2-accelerator-types:gpu]
+ *
+ * @param labels - Array of GitHub workflow job labels
+ * @returns EC2 override configuration object or undefined if no valid config found
+ */
+function parseEc2OverrideConfig(labels: string[]): Ec2OverrideConfig | undefined {
+  const ec2Labels = labels.filter((l) => l.startsWith('ghr-ec2-'));
+  const config: Partial<Ec2OverrideConfig> = {};
+
+  for (const label of ec2Labels) {
+    const [key, ...valueParts] = label.replace('ghr-ec2-', '').split(':');
+    const value = valueParts.join(':');
+
+    if (!value) continue;
+
+    // Basic Fleet Overrides
+    if (key === 'instance-type') {
+      config.InstanceType = value;
+    } else if (key === 'subnet-id') {
+      config.SubnetId = value;
+    } else if (key === 'availability-zone') {
+      config.AvailabilityZone = value;
+    } else if (key === 'availability-zone-id') {
+      config.AvailabilityZoneId = value;
+    } else if (key === 'max-price') {
+      config.MaxPrice = value;
+    } else if (key === 'priority') {
+      config.Priority = parseFloat(value);
+    } else if (key === 'weighted-capacity') {
+      config.WeightedCapacity = parseFloat(value);
+    } else if (key === 'image-id') {
+      config.ImageId = value;
+    }
+
+    // Placement
+    else if (key.startsWith('placement-')) {
+      config.Placement = config.Placement || {};
+      const placementKey = key.replace('placement-', '');
+      if (placementKey === 'group') {
+        config.Placement.GroupName = value;
+      } else if (placementKey === 'tenancy') {
+        config.Placement.Tenancy = value;
+      } else if (placementKey === 'host-id') {
+        config.Placement.HostId = value;
+      } else if (placementKey === 'affinity') {
+        config.Placement.Affinity = value;
+      } else if (placementKey === 'partition-number') {
+        config.Placement.PartitionNumber = parseInt(value, 10);
+      } else if (placementKey === 'availability-zone') {
+        config.Placement.AvailabilityZone = value;
+      } else if (placementKey === 'spread-domain') {
+        config.Placement.SpreadDomain = value;
+      } else if (placementKey === 'host-resource-group-arn') {
+        config.Placement.HostResourceGroupArn = value;
+      }
+    }
+
+    // Block Device Mappings (EBS)
+    else if (key.startsWith('ebs-')) {
+      config.BlockDeviceMappings = config.BlockDeviceMappings || [{ DeviceName: '/dev/sda1', Ebs: {} }];
+      const ebsKey = key.replace('ebs-', '');
+      const ebs = config.BlockDeviceMappings[0].Ebs;
+
+      if (ebsKey === 'volume-size') {
+        ebs.VolumeSize = parseInt(value, 10);
+      } else if (ebsKey === 'volume-type') {
+        ebs.VolumeType = value;
+      } else if (ebsKey === 'iops') {
+        ebs.Iops = parseInt(value, 10);
+      } else if (ebsKey === 'throughput') {
+        ebs.Throughput = parseInt(value, 10);
+      } else if (ebsKey === 'encrypted') {
+        ebs.Encrypted = value.toLowerCase() === 'true';
+      } else if (ebsKey === 'kms-key-id') {
+        ebs.KmsKeyId = value;
+      } else if (ebsKey === 'delete-on-termination') {
+        ebs.DeleteOnTermination = value.toLowerCase() === 'true';
+      } else if (ebsKey === 'snapshot-id') {
+        ebs.SnapshotId = value;
+      }
+    }
+    
+    // Block Device Mappings (Non-EBS)
+    else if (key === 'block-device-virtual-name') {
+      config.BlockDeviceMappings = config.BlockDeviceMappings || [{ DeviceName: '/dev/sda1', Ebs: {} }];
+      config.BlockDeviceMappings[0].VirtualName = value;
+    } else if (key === 'block-device-no-device') {
+      config.BlockDeviceMappings = config.BlockDeviceMappings || [{ DeviceName: '/dev/sda1', Ebs: {} }];
+      config.BlockDeviceMappings[0].NoDevice = value;
+    }
+
+    // Instance Requirements - vCPU & Memory
+    else if (key.startsWith('vcpu-count-')) {
+      config.InstanceRequirements = config.InstanceRequirements || {};
+      config.InstanceRequirements.VCpuCount = config.InstanceRequirements.VCpuCount || {};
+      const subKey = key.replace('vcpu-count-', '');
+      config.InstanceRequirements.VCpuCount[subKey === 'min' ? 'Min' : 'Max'] = parseInt(value, 10);
+    } else if (key.startsWith('memory-mib-')) {
+      config.InstanceRequirements = config.InstanceRequirements || {};
+      config.InstanceRequirements.MemoryMiB = config.InstanceRequirements.MemoryMiB || {};
+      const subKey = key.replace('memory-mib-', '');
+      config.InstanceRequirements.MemoryMiB[subKey === 'min' ? 'Min' : 'Max'] = parseInt(value, 10);
+    } else if (key.startsWith('memory-gib-per-vcpu-')) {
+      config.InstanceRequirements = config.InstanceRequirements || {};
+      config.InstanceRequirements.MemoryGiBPerVCpu = config.InstanceRequirements.MemoryGiBPerVCpu || {};
+      const subKey = key.replace('memory-gib-per-vcpu-', '');
+      config.InstanceRequirements.MemoryGiBPerVCpu[subKey === 'min' ? 'Min' : 'Max'] = parseFloat(value);
+    }
+
+    // Instance Requirements - CPU & Performance
+    else if (key === 'cpu-manufacturers') {
+      config.InstanceRequirements = config.InstanceRequirements || {};
+      config.InstanceRequirements.CpuManufacturers = value.split(',');
+    } else if (key === 'instance-generations') {
+      config.InstanceRequirements = config.InstanceRequirements || {};
+      config.InstanceRequirements.InstanceGenerations = value.split(',');
+    } else if (key === 'excluded-instance-types') {
+      config.InstanceRequirements = config.InstanceRequirements || {};
+      config.InstanceRequirements.ExcludedInstanceTypes = value.split(',');
+    } else if (key === 'allowed-instance-types') {
+      config.InstanceRequirements = config.InstanceRequirements || {};
+      config.InstanceRequirements.AllowedInstanceTypes = value.split(',');
+    } else if (key === 'burstable-performance') {
+      config.InstanceRequirements = config.InstanceRequirements || {};
+      config.InstanceRequirements.BurstablePerformance = value;
+    } else if (key === 'bare-metal') {
+      config.InstanceRequirements = config.InstanceRequirements || {};
+      config.InstanceRequirements.BareMetal = value;
+    }
+
+    // Instance Requirements - Accelerators
+    else if (key.startsWith('accelerator-count-')) {
+      config.InstanceRequirements = config.InstanceRequirements || {};
+      config.InstanceRequirements.AcceleratorCount = config.InstanceRequirements.AcceleratorCount || {};
+      const subKey = key.replace('accelerator-count-', '');
+      config.InstanceRequirements.AcceleratorCount[subKey === 'min' ? 'Min' : 'Max'] = parseInt(value, 10);
+    } else if (key === 'accelerator-types') {
+      config.InstanceRequirements = config.InstanceRequirements || {};
+      config.InstanceRequirements.AcceleratorTypes = value.split(',');
+    } else if (key === 'accelerator-manufacturers') {
+      config.InstanceRequirements = config.InstanceRequirements || {};
+      config.InstanceRequirements.AcceleratorManufacturers = value.split(',');
+    } else if (key === 'accelerator-names') {
+      config.InstanceRequirements = config.InstanceRequirements || {};
+      config.InstanceRequirements.AcceleratorNames = value.split(',');
+    } else if (key.startsWith('accelerator-memory-mib-')) {
+      config.InstanceRequirements = config.InstanceRequirements || {};
+      config.InstanceRequirements.AcceleratorTotalMemoryMiB =
+        config.InstanceRequirements.AcceleratorTotalMemoryMiB || {};
+      const subKey = key.replace('accelerator-memory-mib-', '');
+      config.InstanceRequirements.AcceleratorTotalMemoryMiB[subKey === 'min' ? 'Min' : 'Max'] = parseInt(value, 10);
+    }
+
+    // Instance Requirements - Network
+    else if (key.startsWith('network-interface-count-')) {
+      config.InstanceRequirements = config.InstanceRequirements || {};
+      config.InstanceRequirements.NetworkInterfaceCount = config.InstanceRequirements.NetworkInterfaceCount || {};
+      const subKey = key.replace('network-interface-count-', '');
+      config.InstanceRequirements.NetworkInterfaceCount[subKey === 'min' ? 'Min' : 'Max'] = parseInt(value, 10);
+    } else if (key.startsWith('network-bandwidth-gbps-')) {
+      config.InstanceRequirements = config.InstanceRequirements || {};
+      config.InstanceRequirements.NetworkBandwidthGbps = config.InstanceRequirements.NetworkBandwidthGbps || {};
+      const subKey = key.replace('network-bandwidth-gbps-', '');
+      config.InstanceRequirements.NetworkBandwidthGbps[subKey === 'min' ? 'Min' : 'Max'] = parseFloat(value);
+    }
+
+    // Instance Requirements - Storage
+    else if (key === 'local-storage') {
+      config.InstanceRequirements = config.InstanceRequirements || {};
+      config.InstanceRequirements.LocalStorage = value;
+    } else if (key === 'local-storage-types') {
+      config.InstanceRequirements = config.InstanceRequirements || {};
+      config.InstanceRequirements.LocalStorageTypes = value.split(',');
+    } else if (key.startsWith('total-local-storage-gb-')) {
+      config.InstanceRequirements = config.InstanceRequirements || {};
+      config.InstanceRequirements.TotalLocalStorageGB = config.InstanceRequirements.TotalLocalStorageGB || {};
+      const subKey = key.replace('total-local-storage-gb-', '');
+      config.InstanceRequirements.TotalLocalStorageGB[subKey === 'min' ? 'Min' : 'Max'] = parseFloat(value);
+    } else if (key.startsWith('baseline-ebs-bandwidth-mbps-')) {
+      config.InstanceRequirements = config.InstanceRequirements || {};
+      config.InstanceRequirements.BaselineEbsBandwidthMbps = config.InstanceRequirements.BaselineEbsBandwidthMbps || {};
+      const subKey = key.replace('baseline-ebs-bandwidth-mbps-', '');
+      config.InstanceRequirements.BaselineEbsBandwidthMbps[subKey === 'min' ? 'Min' : 'Max'] = parseInt(value, 10);
+    }
+
+    // Instance Requirements - Pricing & Other
+    else if (key === 'spot-max-price-percentage') {
+      config.InstanceRequirements = config.InstanceRequirements || {};
+      config.InstanceRequirements.SpotMaxPricePercentageOverLowestPrice = parseInt(value, 10);
+    } else if (key === 'on-demand-max-price-percentage') {
+      config.InstanceRequirements = config.InstanceRequirements || {};
+      config.InstanceRequirements.OnDemandMaxPricePercentageOverLowestPrice = parseInt(value, 10);
+    } else if (key === 'max-spot-price-percentage-optimal') {
+      config.InstanceRequirements = config.InstanceRequirements || {};
+      config.InstanceRequirements.MaxSpotPriceAsPercentageOfOptimalOnDemandPrice = parseInt(value, 10);
+    } else if (key === 'require-hibernate-support') {
+      config.InstanceRequirements = config.InstanceRequirements || {};
+      config.InstanceRequirements.RequireHibernateSupport = value.toLowerCase() === 'true';
+    } else if (key === 'require-encryption-in-transit') {
+      config.InstanceRequirements = config.InstanceRequirements || {};
+      config.InstanceRequirements.RequireEncryptionInTransit = value.toLowerCase() === 'true';
+    } else if (key === 'baseline-performance-cpu-family') {
+      config.InstanceRequirements = config.InstanceRequirements || {};
+      config.InstanceRequirements.BaselinePerformanceFactors = config.InstanceRequirements.BaselinePerformanceFactors || {};
+      config.InstanceRequirements.BaselinePerformanceFactors.Cpu = config.InstanceRequirements.BaselinePerformanceFactors.Cpu || {};
+      config.InstanceRequirements.BaselinePerformanceFactors.Cpu.References = [{ InstanceFamily: value }];
+    }
+  }
+
+  return Object.keys(config).length > 0 ? config : undefined;
 }
 
 function ec2LabelsHash(labels: string[]): string {
