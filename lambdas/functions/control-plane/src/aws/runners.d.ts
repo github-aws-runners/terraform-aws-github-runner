@@ -1,4 +1,11 @@
-import { DefaultTargetCapacityType, InstanceRequirementsRequest, SpotAllocationStrategy, _InstanceType, Placement, FleetBlockDeviceMappingRequest } from '@aws-sdk/client-ec2';
+import {
+  DefaultTargetCapacityType,
+  InstanceRequirementsRequest,
+  SpotAllocationStrategy,
+  _InstanceType,
+  Placement,
+  FleetBlockDeviceMappingRequest,
+} from '@aws-sdk/client-ec2';
 import { LambdaRunnerSource } from '../scale-runners/scale-up';
 
 export type RunnerType = 'Org' | 'Repo';
@@ -31,17 +38,17 @@ export interface ListRunnerFilters {
 }
 
 export interface Ec2OverrideConfig {
-  InstanceType?: _InstanceType
-  MaxPrice?: string
-  SubnetId?: string
-  AvailabilityZone?: string
-  WeightedCapacity?: number
-  Priority?: number
-  Placement?: Placement
-  BlockDeviceMappings?: FleetBlockDeviceMappingRequest[]
-  InstanceRequirements?: InstanceRequirementsRequest
-  ImageId?: string
-  AvailabilityZoneId?: string
+  InstanceType?: _InstanceType;
+  MaxPrice?: string;
+  SubnetId?: string;
+  AvailabilityZone?: string;
+  WeightedCapacity?: number;
+  Priority?: number;
+  Placement?: Placement;
+  BlockDeviceMappings?: FleetBlockDeviceMappingRequest[];
+  InstanceRequirements?: InstanceRequirementsRequest;
+  ImageId?: string;
+  AvailabilityZoneId?: string;
 }
 
 export interface RunnerInputParameters {

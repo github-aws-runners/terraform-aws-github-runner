@@ -128,12 +128,12 @@ function generateFleetOverrides(
   ec2OverrideConfig?: Runners.Ec2OverrideConfig,
 ): FleetLaunchTemplateOverridesRequest[] {
   const result: FleetLaunchTemplateOverridesRequest[] = [];
-  
+
   // Use override values if available, otherwise use parameter arrays
   const subnetsToUse = ec2OverrideConfig?.SubnetId ? [ec2OverrideConfig.SubnetId] : subnetIds;
   const instanceTypesToUse = ec2OverrideConfig?.InstanceType ? [ec2OverrideConfig.InstanceType] : instancesTypes;
   const amiIdToUse = ec2OverrideConfig?.ImageId ?? amiId;
-  
+
   subnetsToUse.forEach((s) => {
     instanceTypesToUse.forEach((i) => {
       const item: FleetLaunchTemplateOverridesRequest = {
