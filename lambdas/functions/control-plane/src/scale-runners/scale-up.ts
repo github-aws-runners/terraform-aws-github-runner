@@ -789,13 +789,13 @@ async function createJitConfig(githubRunnerConfig: CreateGitHubRunnerConfig, ins
  * - ghr-ec2-block-device-virtual-name:<name>  - Virtual device name (ephemeral storage)
  * - ghr-ec2-block-device-no-device:<string>   - Suppresses device mapping
  *
- * Pricing:
- * - ghr-ec2-spot-max-price-percentage:<num>   - Spot max price as % over lowest price
- * - ghr-ec2-on-demand-max-price-percentage:<num> - On-demand max price as % over lowest price
- * - ghr-ec2-max-spot-price-percentage-optimal:<num> - Max spot price as % of optimal on-demand
+ * Pricing & Advanced:
+ * - ghr-ec2-spot-max-price-percentage-over-lowest-price:<num> - Spot max price as % over lowest price
+ * - ghr-ec2-on-demand-max-price-percentage-over-lowest-price:<num> - On-demand max price as % over lowest price
+ * - ghr-ec2-max-spot-price-as-percentage-of-optimal-on-demand-price:<num> - Max spot price as % of optimal on-demand
  * - ghr-ec2-require-hibernate-support:<bool>  - Require hibernate support (true,false)
  * - ghr-ec2-require-encryption-in-transit:<bool> - Require encryption in-transit (true,false)
- * - ghr-ec2-baseline-performance-cpu-family:<family> - CPU baseline performance family
+ * - ghr-ec2-baseline-performance-factors-cpu-reference-families:<families> - CPU baseline performance reference families (comma-separated)
  *
  * Example:
  *   runs-on: [self-hosted, linux, ghr-ec2-vcpu-count-min:4, ghr-ec2-memory-mib-min:16384, ghr-ec2-accelerator-types:gpu]
