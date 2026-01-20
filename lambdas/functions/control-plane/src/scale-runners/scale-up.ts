@@ -278,7 +278,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
   const environment = process.env.ENVIRONMENT;
   const ssmTokenPath = process.env.SSM_TOKEN_PATH;
   const subnets = process.env.SUBNET_IDS.split(',');
-  let instanceTypes = process.env.INSTANCE_TYPES.split(',');
+  const instanceTypes = process.env.INSTANCE_TYPES.split(',');
   const instanceTargetCapacityType = process.env.INSTANCE_TARGET_CAPACITY_TYPE;
   const ephemeralEnabled = yn(process.env.ENABLE_EPHEMERAL_RUNNERS, { default: false });
   const dynamicEc2ConfigEnabled = yn(process.env.ENABLE_DYNAMIC_EC2_CONFIG, { default: false });
