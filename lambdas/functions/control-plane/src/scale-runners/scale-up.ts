@@ -417,7 +417,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
         if (ec2OverrideConfig) {
           logger.debug('EC2 override config parsed from labels', {
             ec2OverrideConfig,
-          });        
+          });
         }
       } else {
         logger.debug('No dynamic EC2 labels found on message');
@@ -846,7 +846,7 @@ function parseEc2OverrideConfig(labels: string[]): Ec2OverrideConfig | undefined
         ebs.SnapshotId = value;
       }
     }
-    
+
     // Block Device Mappings (Non-EBS)
     else if (key === 'block-device-virtual-name') {
       config.BlockDeviceMappings = config.BlockDeviceMappings || [{ DeviceName: '/dev/sda1', Ebs: {} }];
@@ -968,8 +968,10 @@ function parseEc2OverrideConfig(labels: string[]): Ec2OverrideConfig | undefined
       config.InstanceRequirements.RequireEncryptionInTransit = value.toLowerCase() === 'true';
     } else if (key === 'baseline-performance-cpu-family') {
       config.InstanceRequirements = config.InstanceRequirements || {};
-      config.InstanceRequirements.BaselinePerformanceFactors = config.InstanceRequirements.BaselinePerformanceFactors || {};
-      config.InstanceRequirements.BaselinePerformanceFactors.Cpu = config.InstanceRequirements.BaselinePerformanceFactors.Cpu || {};
+      config.InstanceRequirements.BaselinePerformanceFactors =
+        config.InstanceRequirements.BaselinePerformanceFactors || {};
+      config.InstanceRequirements.BaselinePerformanceFactors.Cpu =
+        config.InstanceRequirements.BaselinePerformanceFactors.Cpu || {};
       config.InstanceRequirements.BaselinePerformanceFactors.Cpu.References = [{ InstanceFamily: value }];
     }
   }
