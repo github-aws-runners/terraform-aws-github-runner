@@ -1,4 +1,4 @@
-import { DefaultTargetCapacityType, SpotAllocationStrategy } from '@aws-sdk/client-ec2';
+import { DefaultTargetCapacityType, InstanceRequirementsRequest, SpotAllocationStrategy, _InstanceType, Placement, FleetBlockDeviceMappingRequest } from '@aws-sdk/client-ec2';
 
 export type RunnerType = 'Org' | 'Repo';
 
@@ -29,6 +29,20 @@ export interface ListRunnerFilters {
   statuses?: string[];
 }
 
+export interface Ec2OverrideConfig {
+  InstanceType?: _InstanceType
+  MaxPrice?: string
+  SubnetId?: string
+  AvailabilityZone?: string
+  WeightedCapacity?: number
+  Priority?: number
+  Placement?: Placement
+  BlockDeviceMappings?: FleetBlockDeviceMappingRequest[]
+  InstanceRequirements?: InstanceRequirementsRequest
+  ImageId?: string
+  AvailabilityZoneId?: string
+}
+
 export interface RunnerInputParameters {
   environment: string;
   runnerType: RunnerType;
@@ -41,6 +55,7 @@ export interface RunnerInputParameters {
     maxSpotPrice?: string;
     instanceAllocationStrategy: SpotAllocationStrategy;
   };
+  ec2OverrideConfig?: Ec2OverrideConfig;
   numberOfRunners: number;
   amiIdSsmParameterName?: string;
   tracingEnabled?: boolean;
