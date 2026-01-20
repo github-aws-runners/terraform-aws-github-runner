@@ -318,6 +318,7 @@ describe('create runner', () => {
     allocationStrategy: SpotAllocationStrategy.CAPACITY_OPTIMIZED,
     capacityType: 'spot',
     type: 'Org',
+    scaleErrors: ['UnfulfillableCapacity', 'MaxSpotInstanceCountExceeded'],
   };
 
   const defaultExpectedFleetRequestValues: ExpectedFleetRequestValues = {
@@ -755,6 +756,7 @@ describe('create runner with errors fail over to OnDemand', () => {
     capacityType: 'spot',
     type: 'Repo',
     onDemandFailoverOnError: ['InsufficientInstanceCapacity'],
+    scaleErrors: ['UnfulfillableCapacity', 'MaxSpotInstanceCountExceeded'],
   };
   const defaultExpectedFleetRequestValues: ExpectedFleetRequestValues = {
     type: 'Repo',

@@ -23,10 +23,42 @@ describe('ScaleError', () => {
 
   describe('toBatchItemFailures', () => {
     const mockMessages: ActionRequestMessageSQS[] = [
-      { messageId: 'msg-1', id: 1, eventType: 'workflow_job' },
-      { messageId: 'msg-2', id: 2, eventType: 'workflow_job' },
-      { messageId: 'msg-3', id: 3, eventType: 'workflow_job' },
-      { messageId: 'msg-4', id: 4, eventType: 'workflow_job' },
+      {
+        messageId: 'msg-1',
+        id: 1,
+        eventType: 'workflow_job',
+        repositoryName: 'repo',
+        repositoryOwner: 'owner',
+        installationId: 123,
+        repoOwnerType: 'Organization',
+      },
+      {
+        messageId: 'msg-2',
+        id: 2,
+        eventType: 'workflow_job',
+        repositoryName: 'repo',
+        repositoryOwner: 'owner',
+        installationId: 123,
+        repoOwnerType: 'Organization',
+      },
+      {
+        messageId: 'msg-3',
+        id: 3,
+        eventType: 'workflow_job',
+        repositoryName: 'repo',
+        repositoryOwner: 'owner',
+        installationId: 123,
+        repoOwnerType: 'Organization',
+      },
+      {
+        messageId: 'msg-4',
+        id: 4,
+        eventType: 'workflow_job',
+        repositoryName: 'repo',
+        repositoryOwner: 'owner',
+        installationId: 123,
+        repoOwnerType: 'Organization',
+      },
     ];
 
     it.each([
