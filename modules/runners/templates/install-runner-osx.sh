@@ -13,7 +13,7 @@ fi
 file_name="actions-runner.tar.gz"
 
 echo "Setting up GH Actions runner tool cache"
-mkdir -p /opt/hostedtoolcache
+mkdir -p /Users/runner/hostedtoolcache
 
 echo "Creating actions-runner directory for the GH Action installation"
 sudo mkdir -p /opt/actions-runner
@@ -55,4 +55,5 @@ fi
 
 echo "Set file ownership of action runner"
 sudo chown -R "$user_name":staff /opt/actions-runner
-sudo chown -R "$user_name":staff /opt/hostedtoolcache
+sudo chmod 755 "/Users/runner"
+sudo chown -R "$user_name":staff /Users/runner/hostedtoolcache
