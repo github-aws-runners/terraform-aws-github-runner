@@ -48,7 +48,14 @@ async function handleWorkflowJob(
     return a.matcherConfig.exactMatch === b.matcherConfig.exactMatch ? 0 : a.matcherConfig.exactMatch ? -1 : 1;
   });
   for (const queue of matcherConfig) {
-    if (canRunJob(body.workflow_job.labels, queue.matcherConfig.labelMatchers, queue.matcherConfig.exactMatch, enableDynamicLabels)) {
+    if (
+      canRunJob(
+        body.workflow_job.labels,
+        queue.matcherConfig.labelMatchers,
+        queue.matcherConfig.exactMatch,
+        enableDynamicLabels,
+      )
+    ) {
       await sendActionRequest({
         id: body.workflow_job.id,
         repositoryName: body.repository.name,
@@ -85,7 +92,7 @@ export function canRunJob(
   enableDynamicLabels: boolean,
 ): boolean {
   // Filter out ghr- and ghr-run- labels only if dynamic labels config is enabled
-  const filteredLabels = enableDynamicLabels 
+  const filteredLabels = enableDynamicLabels
     ? workflowJobLabels.filter((label) => !label.startsWith('ghr-'))
     : workflowJobLabels;
 
