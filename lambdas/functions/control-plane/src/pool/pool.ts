@@ -6,6 +6,7 @@ import { bootTimeExceeded, listEC2Runners } from '../aws/runners';
 import { RunnerList } from '../aws/runners.d';
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
 import { createRunners, getGitHubEnterpriseApiUrl } from '../scale-runners/scale-up';
+import { validateSsmParameterStoreTags } from '../scale-runners/scale-up';
 
 const logger = createChildLogger('pool');
 
@@ -41,6 +42,10 @@ export async function adjust(event: PoolEvent): Promise<void> {
   const onDemandFailoverOnError = process.env.ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS
     ? (JSON.parse(process.env.ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS) as [string])
     : [];
+  const ssmParameterStoreTags: { Key: string; Value: string }[] =
+    process.env.SSM_PARAMETER_STORE_TAGS && process.env.SSM_PARAMETER_STORE_TAGS.trim() !== ''
+      ? validateSsmParameterStoreTags(process.env.SSM_PARAMETER_STORE_TAGS)
+      : [];
   const scaleErrors = JSON.parse(process.env.SCALE_ERRORS) as [string];
 
   const { ghesApiUrl, ghesBaseUrl } = getGitHubEnterpriseApiUrl();
@@ -82,6 +87,7 @@ export async function adjust(event: PoolEvent): Promise<void> {
         disableAutoUpdate: disableAutoUpdate,
         ssmTokenPath,
         ssmConfigPath,
+        ssmParameterStoreTags,
       },
       {
         ec2instanceCriteria: {
