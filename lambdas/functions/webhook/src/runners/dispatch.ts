@@ -15,7 +15,7 @@ export async function dispatch(
 ): Promise<Response> {
   validateRepoInAllowList(event, config);
 
-  return await handleWorkflowJob(event, eventType, config.matcherConfig!);
+  return await handleWorkflowJob(event, eventType, config.matcherConfig!, config.enableDynamicLabels);
 }
 
 function validateRepoInAllowList(event: WorkflowJobEvent, config: ConfigDispatcher) {
@@ -29,6 +29,7 @@ async function handleWorkflowJob(
   body: WorkflowJobEvent,
   githubEvent: string,
   matcherConfig: Array<RunnerMatcherConfig>,
+  enableDynamicLabels: boolean,
 ): Promise<Response> {
   if (body.action !== 'queued') {
     return {
@@ -47,7 +48,7 @@ async function handleWorkflowJob(
     return a.matcherConfig.exactMatch === b.matcherConfig.exactMatch ? 0 : a.matcherConfig.exactMatch ? -1 : 1;
   });
   for (const queue of matcherConfig) {
-    if (canRunJob(body.workflow_job.labels, queue.matcherConfig.labelMatchers, queue.matcherConfig.exactMatch)) {
+    if (canRunJob(body.workflow_job.labels, queue.matcherConfig.labelMatchers, queue.matcherConfig.exactMatch, enableDynamicLabels)) {
       await sendActionRequest({
         id: body.workflow_job.id,
         repositoryName: body.repository.name,
@@ -81,9 +82,12 @@ export function canRunJob(
   workflowJobLabels: string[],
   runnerLabelsMatchers: string[][],
   workflowLabelCheckAll: boolean,
+  enableDynamicLabels: boolean,
 ): boolean {
-  // Filter out ghr-ec2- labels as they are handled by the dynamic EC2 instance type feature
-  const filteredLabels = workflowJobLabels.filter((label) => !label.startsWith('ghr-ec2-'));
+  // Filter out ghr- and ghr-run- labels only if dynamic labels config is enabled
+  const filteredLabels = enableDynamicLabels 
+    ? workflowJobLabels.filter((label) => !label.startsWith('ghr-'))
+    : workflowJobLabels;
 
   runnerLabelsMatchers = runnerLabelsMatchers.map((runnerLabel) => {
     return runnerLabel.map((label) => label.toLowerCase());
