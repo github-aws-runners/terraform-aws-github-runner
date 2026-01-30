@@ -446,7 +446,6 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
         logger.debug('Updated runner labels', { runnerLabels });
 
         if (dynamicEC2Labels.length > 0) {
-
           ec2OverrideConfig = parseEc2OverrideConfig(dynamicEC2Labels);
           if (ec2OverrideConfig) {
             logger.debug('EC2 override config parsed from labels', {
