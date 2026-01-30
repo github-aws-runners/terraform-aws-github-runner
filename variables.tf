@@ -661,7 +661,7 @@ variable "enable_ephemeral_runners" {
   default     = false
 }
 
-variable "enable_dynamic_ec2_config" {
+variable "enable_dynamic_labels" {
   description = "Enable dynamic EC2 configs based on workflow job labels. When enabled, jobs can request specific configs via the 'gh-ec2-<config type key>:<config type value>' label (e.g., 'gh-ec2-instance-type:t3.large')."
   type        = bool
   default     = false

@@ -35,7 +35,7 @@ module "runners" {
   scale_errors                         = each.value.runner_config.scale_errors
   enable_organization_runners          = each.value.runner_config.enable_organization_runners
   enable_ephemeral_runners             = each.value.runner_config.enable_ephemeral_runners
-  enable_dynamic_ec2_config            = each.value.runner_config.enable_dynamic_ec2_config
+  enable_dynamic_labels                = each.value.runner_config.enable_dynamic_labels
   enable_jit_config                    = each.value.runner_config.enable_jit_config
   enable_job_queued_check              = each.value.runner_config.enable_job_queued_check
   disable_runner_autoupdate            = each.value.runner_config.disable_runner_autoupdate

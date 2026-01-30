@@ -77,7 +77,6 @@ variable "multi_runner_config" {
       disable_runner_autoupdate            = optional(bool, false)
       ebs_optimized                        = optional(bool, false)
       enable_ephemeral_runners             = optional(bool, false)
-      enable_dynamic_ec2_config            = optional(bool, false)
       enable_job_queued_check              = optional(bool, null)
       enable_on_demand_failover_for_errors = optional(list(string), [])
       scale_errors = optional(list(string), [
@@ -207,7 +206,7 @@ variable "multi_runner_config" {
         disable_runner_autoupdate: "Disable the auto update of the github runner agent. Be aware there is a grace period of 30 days, see also the [GitHub article](https://github.blog/changelog/2022-02-01-github-actions-self-hosted-runners-can-now-disable-automatic-updates/)"
         ebs_optimized: "The EC2 EBS optimized configuration."
         enable_ephemeral_runners: "Enable ephemeral runners, runners will only be used once."
-        enable_dynamic_ec2_config: "Enable dynamic EC2 configs based on workflow job labels. When enabled, jobs can request specific configs via the 'gh-ec2-<config type key>:<config type value>' label (e.g., 'gh-ec2-instance-type:t3.large')."
+        enable_dynamic_labels: "Enable dynamic labels with 'ghr-' prefix. When enabled, jobs can use 'ghr-ec2-<config>:<value>' labels to dynamically configure EC2 instances (e.g., 'ghr-ec2-instance-type:t3.large') and 'ghr-run-<label>' to add unique labels dynamically to runners."
         enable_job_queued_check: "(Optional) Only scale if the job event received by the scale up lambda is is in the state queued. By default enabled for non ephemeral runners and disabled for ephemeral. Set this variable to overwrite the default behavior."
         enable_on_demand_failover_for_errors: "Enable on-demand failover. For example to fall back to on demand when no spot capacity is available the variable can be set to `InsufficientInstanceCapacity`. When not defined the default behavior is to retry later."
         scale_errors: "List of aws error codes that should trigger retry during scale up. This list will replace the default errors defined in the variable `defaultScaleErrors` in https://github.com/github-aws-runners/terraform-aws-github-runner/blob/main/lambdas/functions/control-plane/src/aws/runners.ts"
@@ -759,4 +758,10 @@ variable "parameter_store_tags" {
   description = "Map of tags that will be added to all the SSM Parameter Store parameters created by the Lambda function."
   type        = map(string)
   default     = {}
+}
+
+variable "enable_dynamic_labels" {
+  description = "Enable dynamic labels with 'ghr-' prefix. When enabled, jobs can use 'ghr-ec2-<config>:<value>' labels to dynamically configure EC2 instances (e.g., 'ghr-ec2-instance-type:t3.large') and 'ghr-run-<label>' to add unique labels dynamically to runners."
+  type        = bool
+  default     = false
 }

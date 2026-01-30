@@ -314,7 +314,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
   const instanceTypes = process.env.INSTANCE_TYPES.split(',');
   const instanceTargetCapacityType = process.env.INSTANCE_TARGET_CAPACITY_TYPE;
   const ephemeralEnabled = yn(process.env.ENABLE_EPHEMERAL_RUNNERS, { default: false });
-  const dynamicEc2ConfigEnabled = yn(process.env.ENABLE_DYNAMIC_EC2_CONFIG, { default: false });
+  const dynamicLabelsEnabled = yn(process.env.ENABLE_DYNAMIC_LABELS, { default: false });
   const enableJitConfig = yn(process.env.ENABLE_JIT_CONFIG, { default: ephemeralEnabled });
   const disableAutoUpdate = yn(process.env.DISABLE_RUNNER_AUTOUPDATE, { default: false });
   const launchTemplateName = process.env.LAUNCH_TEMPLATE_NAME;
@@ -384,12 +384,12 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       : `${payload.repositoryOwner}/${payload.repositoryName}`;
 
     let key = runnerOwner;
-    if (dynamicEc2ConfigEnabled && labels?.length) {
-      const requestedDynamicEc2Config = labels.find((l) => l.startsWith('ghr-ec2-'))?.slice('ghr-ec2-'.length);
+    if (dynamicLabelsEnabled && labels?.length) {
+      const dynamicLabels = labels.find((l) => l.startsWith('ghr-'))?.slice('ghr-'.length);
 
-      if (requestedDynamicEc2Config) {
-        const ec2Hash = ec2LabelsHash(labels);
-        key = `${key}/${ec2Hash}`;
+      if (dynamicLabels) {
+        const dynamicLabelsHash = labelsHash(labels);
+        key = `${key}/${dynamicLabelsHash}`;
       }
     }
 
@@ -434,26 +434,28 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
 
     let ec2OverrideConfig: Ec2OverrideConfig | undefined = undefined;
 
-    if (messages.length > 0 && dynamicEc2ConfigEnabled) {
+    if (messages.length > 0 && dynamicLabelsEnabled) {
       logger.debug('Dynamic EC2 config enabled, processing labels', { labels: messages[0].labels });
 
       const dynamicEC2Labels = messages[0].labels?.map((l) => l.trim()).filter((l) => l.startsWith('ghr-ec2-')) ?? [];
+      const allDynamicLabels = messages[0].labels?.map((l) => l.trim()).filter((l) => l.startsWith('ghr-')) ?? [];
 
-      if (dynamicEC2Labels.length > 0) {
-        // Append all EC2 labels to runnerLabels
-        runnerLabels = runnerLabels ? `${runnerLabels},${dynamicEC2Labels.join(',')}` : dynamicEC2Labels.join(',');
+      if (allDynamicLabels.length > 0) {
+        runnerLabels = runnerLabels ? `${runnerLabels},${allDynamicLabels.join(',')}` : allDynamicLabels.join(',');
 
         logger.debug('Updated runner labels', { runnerLabels });
 
-        // Parse EC2 override configuration from labels
-        ec2OverrideConfig = parseEc2OverrideConfig(dynamicEC2Labels);
-        if (ec2OverrideConfig) {
-          logger.debug('EC2 override config parsed from labels', {
-            ec2OverrideConfig,
-          });
+        if (dynamicEC2Labels.length > 0) {
+
+          ec2OverrideConfig = parseEc2OverrideConfig(dynamicEC2Labels);
+          if (ec2OverrideConfig) {
+            logger.debug('EC2 override config parsed from labels', {
+              ec2OverrideConfig,
+            });
+          }
         }
       } else {
-        logger.debug('No dynamic EC2 labels found on message');
+        logger.debug('No dynamic labels found on message');
       }
     }
 
@@ -1021,8 +1023,8 @@ export function parseEc2OverrideConfig(labels: string[]): Ec2OverrideConfig | un
   return Object.keys(config).length > 0 ? config : undefined;
 }
 
-function ec2LabelsHash(labels: string[]): string {
-  const prefix = 'ghr-ec2-';
+function labelsHash(labels: string[]): string {
+  const prefix = 'ghr-';
 
   const input = labels
     .filter((l) => l.startsWith(prefix))
