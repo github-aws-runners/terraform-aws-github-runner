@@ -183,49 +183,61 @@ describe('Dispatcher', () => {
     it('should accept job with an exact match and identical labels.', () => {
       const workflowLabels = ['self-hosted', 'linux', 'x64', 'ubuntu-latest'];
       const runnerLabels = [['self-hosted', 'linux', 'x64', 'ubuntu-latest']];
-      expect(canRunJob(workflowLabels, runnerLabels, true)).toBe(true);
+      expect(canRunJob(workflowLabels, runnerLabels, true, false)).toBe(true);
     });
 
     it('should accept job with an exact match and identical labels, ignoring cases.', () => {
       const workflowLabels = ['self-Hosted', 'Linux', 'X64', 'ubuntu-Latest'];
       const runnerLabels = [['self-hosted', 'linux', 'x64', 'ubuntu-latest']];
-      expect(canRunJob(workflowLabels, runnerLabels, true)).toBe(true);
+      expect(canRunJob(workflowLabels, runnerLabels, true, false)).toBe(true);
     });
 
     it('should accept job with an exact match and runner supports requested capabilities.', () => {
       const workflowLabels = ['self-hosted', 'linux', 'x64'];
       const runnerLabels = [['self-hosted', 'linux', 'x64', 'ubuntu-latest']];
-      expect(canRunJob(workflowLabels, runnerLabels, true)).toBe(true);
+      expect(canRunJob(workflowLabels, runnerLabels, true, false)).toBe(true);
     });
 
     it('should NOT accept job with an exact match and runner not matching requested capabilities.', () => {
       const workflowLabels = ['self-hosted', 'linux', 'x64', 'ubuntu-latest'];
       const runnerLabels = [['self-hosted', 'linux', 'x64']];
-      expect(canRunJob(workflowLabels, runnerLabels, true)).toBe(false);
+      expect(canRunJob(workflowLabels, runnerLabels, true, false)).toBe(false);
     });
 
     it('should accept job with for a non exact match. Any label that matches will accept the job.', () => {
       const workflowLabels = ['self-hosted', 'linux', 'x64', 'ubuntu-latest', 'gpu'];
       const runnerLabels = [['gpu']];
-      expect(canRunJob(workflowLabels, runnerLabels, false)).toBe(true);
+      expect(canRunJob(workflowLabels, runnerLabels, false, false)).toBe(true);
     });
 
     it('should NOT accept job with for an exact match. Not all requested capabilities are supported.', () => {
       const workflowLabels = ['self-hosted', 'linux', 'x64', 'ubuntu-latest', 'gpu'];
       const runnerLabels = [['gpu']];
-      expect(canRunJob(workflowLabels, runnerLabels, true)).toBe(false);
+      expect(canRunJob(workflowLabels, runnerLabels, true, false)).toBe(false);
     });
 
     it('should not accept jobs not providing labels if exact match is.', () => {
       const workflowLabels: string[] = [];
       const runnerLabels = [['self-hosted', 'linux', 'x64']];
-      expect(canRunJob(workflowLabels, runnerLabels, true)).toBe(false);
+      expect(canRunJob(workflowLabels, runnerLabels, true, false)).toBe(false);
     });
 
     it('should accept jobs not providing labels and exact match is set to false.', () => {
       const workflowLabels: string[] = [];
       const runnerLabels = [['self-hosted', 'linux', 'x64']];
-      expect(canRunJob(workflowLabels, runnerLabels, false)).toBe(true);
+      expect(canRunJob(workflowLabels, runnerLabels, false, false)).toBe(true);
+    });
+
+    it('should filter out ghr- and ghr-run- labels when enableDynamicLabels is true.', () => {
+      const workflowLabels = ['self-hosted', 'linux', 'x64', 'ghr-ec2-instance-type:t3.large', 'ghr-run-id:12345'];
+      const runnerLabels = [['self-hosted', 'linux', 'x64']];
+      expect(canRunJob(workflowLabels, runnerLabels, true, true)).toBe(true);
+    });
+
+    it('should NOT filter out ghr- and ghr-run- labels when enableDynamicLabels is false.', () => {
+      const workflowLabels = ['self-hosted', 'linux', 'x64', 'ghr-ec2-instance-type:t3.large'];
+      const runnerLabels = [['self-hosted', 'linux', 'x64']];
+      expect(canRunJob(workflowLabels, runnerLabels, true, false)).toBe(false);
     });
   });
 });
