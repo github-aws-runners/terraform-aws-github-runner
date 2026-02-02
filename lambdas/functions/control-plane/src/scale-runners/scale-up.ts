@@ -52,6 +52,7 @@ interface CreateGitHubRunnerConfig {
   disableAutoUpdate: boolean;
   ssmTokenPath: string;
   ssmConfigPath: string;
+  ssmParameterStoreTags: { Key: string; Value: string }[];
 }
 
 interface CreateEC2RunnerConfig {
@@ -89,6 +90,37 @@ function generateRunnerServiceConfig(githubRunnerConfig: CreateGitHubRunnerConfi
   }
 
   return config;
+}
+
+export function validateSsmParameterStoreTags(tagsJson: string): { Key: string; Value: string }[] {
+  try {
+    const tags = JSON.parse(tagsJson);
+
+    if (!Array.isArray(tags)) {
+      throw new Error('Tags must be an array');
+    }
+
+    if (tags.length === 0) {
+      return [];
+    }
+
+    tags.forEach((tag, index) => {
+      if (typeof tag !== 'object' || tag === null) {
+        throw new Error(`Tag at index ${index} must be an object`);
+      }
+      if (!tag.Key || typeof tag.Key !== 'string' || tag.Key.trim() === '') {
+        throw new Error(`Tag at index ${index} has missing or invalid 'Key' property`);
+      }
+      if (!Object.prototype.hasOwnProperty.call(tag, 'Value') || typeof tag.Value !== 'string') {
+        throw new Error(`Tag at index ${index} has missing or invalid 'Value' property`);
+      }
+    });
+
+    return tags;
+  } catch (err) {
+    logger.error('Invalid SSM_PARAMETER_STORE_TAGS format', { error: err });
+    throw new Error(`Failed to parse SSM_PARAMETER_STORE_TAGS: ${(err as Error).message}`);
+  }
 }
 
 async function getGithubRunnerRegistrationToken(githubRunnerConfig: CreateGitHubRunnerConfig, ghClient: Octokit) {
@@ -184,6 +216,9 @@ async function getRunnerGroupId(githubRunnerConfig: CreateGitHubRunnerConfig, gh
           `${githubRunnerConfig.ssmConfigPath}/runner-group/${githubRunnerConfig.runnerGroup}`,
           runnerGroupId.toString(),
           false,
+          {
+            tags: githubRunnerConfig.ssmParameterStoreTags,
+          },
         );
       } catch (err) {
         logger.debug('Error storing runner group id in SSM Parameter Store', err as Error);
@@ -257,6 +292,10 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
   const onDemandFailoverOnError = process.env.ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS
     ? (JSON.parse(process.env.ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS) as [string])
     : [];
+  const ssmParameterStoreTags: { Key: string; Value: string }[] =
+    process.env.SSM_PARAMETER_STORE_TAGS && process.env.SSM_PARAMETER_STORE_TAGS.trim() !== ''
+      ? validateSsmParameterStoreTags(process.env.SSM_PARAMETER_STORE_TAGS)
+      : [];
   const scaleErrors = JSON.parse(process.env.SCALE_ERRORS) as [string];
 
   const { ghesApiUrl, ghesBaseUrl } = getGitHubEnterpriseApiUrl();
@@ -429,6 +468,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
         disableAutoUpdate,
         ssmTokenPath,
         ssmConfigPath,
+        ssmParameterStoreTags,
       },
       {
         ec2instanceCriteria: {
@@ -531,7 +571,7 @@ async function createRegistrationTokenConfig(
 
   for (const instance of instances) {
     await putParameter(`${githubRunnerConfig.ssmTokenPath}/${instance}`, runnerServiceConfig.join(' '), true, {
-      tags: [{ Key: 'InstanceId', Value: instance }],
+      tags: [{ Key: 'InstanceId', Value: instance }, ...githubRunnerConfig.ssmParameterStoreTags],
     });
     if (isDelay) {
       // Delay to prevent AWS ssm rate limits by being within the max throughput limit
@@ -589,7 +629,7 @@ async function createJitConfig(githubRunnerConfig: CreateGitHubRunnerConfig, ins
       instance: instance,
     });
     await putParameter(`${githubRunnerConfig.ssmTokenPath}/${instance}`, runnerConfig.data.encoded_jit_config, true, {
-      tags: [{ Key: 'InstanceId', Value: instance }],
+      tags: [{ Key: 'InstanceId', Value: instance }, ...githubRunnerConfig.ssmParameterStoreTags],
     });
     if (isDelay) {
       // Delay to prevent AWS ssm rate limits by being within the max throughput limit
