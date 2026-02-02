@@ -29,7 +29,7 @@
     "@nx/js": "^22.2.7",
     "@nx/vite": "^22.2.7",
     "@swc-node/register": "~1.11.1",
-    "@swc/core": "~1.15.0",
+    "@swc/core": "~1.15.8",
     "@swc/helpers": "~0.5.17",
     "@trivago/prettier-plugin-sort-imports": "^6.0.0",
     "@typescript-eslint/eslint-plugin": "^8.47.0",
