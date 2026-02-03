@@ -7,6 +7,7 @@ import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient 
 import { createRunner, listEC2Runners, tag } from './../aws/runners';
 import { RunnerInputParameters } from './../aws/runners.d';
 import { metricGitHubAppRateLimit } from '../github/rate-limit';
+import { publishRetryMessage } from './job-retry';
 
 const logger = createChildLogger('scale-up');
 
@@ -315,7 +316,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
   };
 
   const validMessages = new Map<string, MessagesWithClient>();
-  const invalidMessages: string[] = [];
+  const rejectedMessageIds = new Set<string>();
   for (const payload of payloads) {
     const { eventType, messageId, repositoryName, repositoryOwner } = payload;
     if (ephemeralEnabled && eventType !== 'workflow_job') {
@@ -324,7 +325,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
         { eventType, messageId },
       );
 
-      invalidMessages.push(messageId);
+      rejectedMessageIds.add(messageId);
 
       continue;
     }
@@ -379,6 +380,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
   for (const [group, { githubInstallationClient, messages }] of validMessages.entries()) {
     // Work out how much we want to scale up by.
     let scaleUp = 0;
+    const queuedMessages: ActionRequestMessageSQS[] = [];
 
     for (const message of messages) {
       const messageLogger = logger.createChild({
@@ -397,6 +399,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       }
 
       scaleUp++;
+      queuedMessages.push(message);
     }
 
     if (scaleUp === 0) {
@@ -432,11 +435,18 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       if (ephemeralEnabled) {
         // This removes `missingInstanceCount` items from the start of the array
         // so that, if we retry more messages later, we pick fresh ones.
-        invalidMessages.push(...messages.splice(0, missingInstanceCount).map(({ messageId }) => messageId));
+        const removedMessages = messages.splice(0, missingInstanceCount);
+        removedMessages.forEach(({ messageId }) => rejectedMessageIds.add(messageId));
       }
 
       // No runners will be created, so skip calling the EC2 API.
-      if (missingInstanceCount === scaleUp) {
+      if (newRunners <= 0) {
+        // Publish retry messages for messages that are not rejected
+        for (const message of queuedMessages) {
+          if (!rejectedMessageIds.has(message.messageId)) {
+            await publishRetryMessage(message as ActionRequestMessageRetry);
+          }
+        }
         continue;
       }
     }
@@ -490,11 +500,19 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
         failedInstanceCount,
       });
 
-      invalidMessages.push(...messages.slice(0, failedInstanceCount).map(({ messageId }) => messageId));
+      const failedMessages = messages.slice(0, failedInstanceCount);
+      failedMessages.forEach(({ messageId }) => rejectedMessageIds.add(messageId));
+    }
+
+    // Publish retry messages for messages that are not rejected
+    for (const message of queuedMessages) {
+      if (!rejectedMessageIds.has(message.messageId)) {
+        await publishRetryMessage(message as ActionRequestMessageRetry);
+      }
     }
   }
 
-  return invalidMessages;
+  return Array.from(rejectedMessageIds);
 }
 
 export function getGitHubEnterpriseApiUrl() {
