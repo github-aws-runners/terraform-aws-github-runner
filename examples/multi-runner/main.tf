@@ -28,7 +28,7 @@ locals {
   aws_region  = var.aws_region
 
   # create map only with amazon linux 2023 x64 and arm64 to overwrite the default
-  al2023_arm64_name = "/${var.environment}/examples/multi-runner/aws-github-runners/ami/amazon-linux-2023-arm64"
+  al2023_arm64_name = "/${local.environment}/examples/multi-runner/aws-github-runners/ami/amazon-linux-2023-arm64"
   ssm_ami_arns = {
     "linux-x64" = data.aws_ssm_parameter.al2023_x64.arn
     # construct the arn to avoid terraform count errors
