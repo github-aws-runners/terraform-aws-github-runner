@@ -1,5 +1,22 @@
 # Changelog
 
+## [7.4.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v7.3.0...v7.4.0) (2026-02-04)
+
+
+### Features
+
+* **control-plane:** tag control plane created SSM Parameters ([#4833](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4833)) ([#4834](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4834)) ([7e1a0a1](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/7e1a0a1853ee2d90819fc6a87fbd789fa18f9d51))
+* use prefix variable for POWERTOOLS_SERVICE_NAME in Lambda functions ([#4948](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4948)) ([8bd61d2](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/8bd61d2b337a8ff9f2d5762fff5e9f1d15c61151))
+
+
+### Bug Fixes
+
+* add SSM AMI parameter permissions and environment-based naming ([#5016](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5016)) ([1a7158b](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/1a7158b6b6f74d64500317e30cff0e08602a0560))
+* job retry mechanism not triggering ([#4961](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4961)) ([5039ae5](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/5039ae5d63a50ec01bd098b36132b77699aaff71))
+* **lambda:** bump diff from 4.0.2 to 4.0.4 in /lambdas ([#5004](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5004)) ([cd86fe6](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/cd86fe6251523eea33163363a181c76f1c6ab550))
+* **lambda:** bump lodash-es from 4.17.21 to 4.17.23 in /lambdas ([#5006](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5006)) ([c638e38](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/c638e382b112b300448c1e339ab2a818f5e32405))
+* **lambda:** bump the aws group in /lambdas with 7 updates ([#4998](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4998)) ([d373bcc](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/d373bccbc7c4aa64b6e3250fa274e00dfaa5f9d2))
+
 ## [7.3.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v7.2.0...v7.3.0) (2026-01-13)
 
 
