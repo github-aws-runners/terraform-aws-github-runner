@@ -16,6 +16,7 @@ variable "config" {
       timeout                        = number
       zip                            = string
       subnet_ids                     = list(string)
+      parameter_store_tags           = string
     })
     tags = map(string)
     ghes = object({

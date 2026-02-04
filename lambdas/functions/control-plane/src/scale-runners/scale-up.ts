@@ -7,6 +7,7 @@ import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient 
 import { createRunner, listEC2Runners, tag } from './../aws/runners';
 import { RunnerInputParameters } from './../aws/runners.d';
 import { metricGitHubAppRateLimit } from '../github/rate-limit';
+import { publishRetryMessage } from './job-retry';
 
 const logger = createChildLogger('scale-up');
 
@@ -51,6 +52,7 @@ interface CreateGitHubRunnerConfig {
   disableAutoUpdate: boolean;
   ssmTokenPath: string;
   ssmConfigPath: string;
+  ssmParameterStoreTags: { Key: string; Value: string }[];
 }
 
 interface CreateEC2RunnerConfig {
@@ -88,6 +90,37 @@ function generateRunnerServiceConfig(githubRunnerConfig: CreateGitHubRunnerConfi
   }
 
   return config;
+}
+
+export function validateSsmParameterStoreTags(tagsJson: string): { Key: string; Value: string }[] {
+  try {
+    const tags = JSON.parse(tagsJson);
+
+    if (!Array.isArray(tags)) {
+      throw new Error('Tags must be an array');
+    }
+
+    if (tags.length === 0) {
+      return [];
+    }
+
+    tags.forEach((tag, index) => {
+      if (typeof tag !== 'object' || tag === null) {
+        throw new Error(`Tag at index ${index} must be an object`);
+      }
+      if (!tag.Key || typeof tag.Key !== 'string' || tag.Key.trim() === '') {
+        throw new Error(`Tag at index ${index} has missing or invalid 'Key' property`);
+      }
+      if (!Object.prototype.hasOwnProperty.call(tag, 'Value') || typeof tag.Value !== 'string') {
+        throw new Error(`Tag at index ${index} has missing or invalid 'Value' property`);
+      }
+    });
+
+    return tags;
+  } catch (err) {
+    logger.error('Invalid SSM_PARAMETER_STORE_TAGS format', { error: err });
+    throw new Error(`Failed to parse SSM_PARAMETER_STORE_TAGS: ${(err as Error).message}`);
+  }
 }
 
 async function getGithubRunnerRegistrationToken(githubRunnerConfig: CreateGitHubRunnerConfig, ghClient: Octokit) {
@@ -183,6 +216,9 @@ async function getRunnerGroupId(githubRunnerConfig: CreateGitHubRunnerConfig, gh
           `${githubRunnerConfig.ssmConfigPath}/runner-group/${githubRunnerConfig.runnerGroup}`,
           runnerGroupId.toString(),
           false,
+          {
+            tags: githubRunnerConfig.ssmParameterStoreTags,
+          },
         );
       } catch (err) {
         logger.debug('Error storing runner group id in SSM Parameter Store', err as Error);
@@ -256,6 +292,10 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
   const onDemandFailoverOnError = process.env.ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS
     ? (JSON.parse(process.env.ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS) as [string])
     : [];
+  const ssmParameterStoreTags: { Key: string; Value: string }[] =
+    process.env.SSM_PARAMETER_STORE_TAGS && process.env.SSM_PARAMETER_STORE_TAGS.trim() !== ''
+      ? validateSsmParameterStoreTags(process.env.SSM_PARAMETER_STORE_TAGS)
+      : [];
   const scaleErrors = JSON.parse(process.env.SCALE_ERRORS) as [string];
 
   const { ghesApiUrl, ghesBaseUrl } = getGitHubEnterpriseApiUrl();
@@ -276,7 +316,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
   };
 
   const validMessages = new Map<string, MessagesWithClient>();
-  const invalidMessages: string[] = [];
+  const rejectedMessageIds = new Set<string>();
   for (const payload of payloads) {
     const { eventType, messageId, repositoryName, repositoryOwner } = payload;
     if (ephemeralEnabled && eventType !== 'workflow_job') {
@@ -285,7 +325,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
         { eventType, messageId },
       );
 
-      invalidMessages.push(messageId);
+      rejectedMessageIds.add(messageId);
 
       continue;
     }
@@ -340,6 +380,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
   for (const [group, { githubInstallationClient, messages }] of validMessages.entries()) {
     // Work out how much we want to scale up by.
     let scaleUp = 0;
+    const queuedMessages: ActionRequestMessageSQS[] = [];
 
     for (const message of messages) {
       const messageLogger = logger.createChild({
@@ -358,6 +399,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       }
 
       scaleUp++;
+      queuedMessages.push(message);
     }
 
     if (scaleUp === 0) {
@@ -393,11 +435,18 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       if (ephemeralEnabled) {
         // This removes `missingInstanceCount` items from the start of the array
         // so that, if we retry more messages later, we pick fresh ones.
-        invalidMessages.push(...messages.splice(0, missingInstanceCount).map(({ messageId }) => messageId));
+        const removedMessages = messages.splice(0, missingInstanceCount);
+        removedMessages.forEach(({ messageId }) => rejectedMessageIds.add(messageId));
       }
 
       // No runners will be created, so skip calling the EC2 API.
-      if (missingInstanceCount === scaleUp) {
+      if (newRunners <= 0) {
+        // Publish retry messages for messages that are not rejected
+        for (const message of queuedMessages) {
+          if (!rejectedMessageIds.has(message.messageId)) {
+            await publishRetryMessage(message as ActionRequestMessageRetry);
+          }
+        }
         continue;
       }
     }
@@ -419,6 +468,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
         disableAutoUpdate,
         ssmTokenPath,
         ssmConfigPath,
+        ssmParameterStoreTags,
       },
       {
         ec2instanceCriteria: {
@@ -450,11 +500,19 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
         failedInstanceCount,
       });
 
-      invalidMessages.push(...messages.slice(0, failedInstanceCount).map(({ messageId }) => messageId));
+      const failedMessages = messages.slice(0, failedInstanceCount);
+      failedMessages.forEach(({ messageId }) => rejectedMessageIds.add(messageId));
+    }
+
+    // Publish retry messages for messages that are not rejected
+    for (const message of queuedMessages) {
+      if (!rejectedMessageIds.has(message.messageId)) {
+        await publishRetryMessage(message as ActionRequestMessageRetry);
+      }
     }
   }
 
-  return invalidMessages;
+  return Array.from(rejectedMessageIds);
 }
 
 export function getGitHubEnterpriseApiUrl() {
@@ -513,7 +571,7 @@ async function createRegistrationTokenConfig(
 
   for (const instance of instances) {
     await putParameter(`${githubRunnerConfig.ssmTokenPath}/${instance}`, runnerServiceConfig.join(' '), true, {
-      tags: [{ Key: 'InstanceId', Value: instance }],
+      tags: [{ Key: 'InstanceId', Value: instance }, ...githubRunnerConfig.ssmParameterStoreTags],
     });
     if (isDelay) {
       // Delay to prevent AWS ssm rate limits by being within the max throughput limit
@@ -571,7 +629,7 @@ async function createJitConfig(githubRunnerConfig: CreateGitHubRunnerConfig, ins
       instance: instance,
     });
     await putParameter(`${githubRunnerConfig.ssmTokenPath}/${instance}`, runnerConfig.data.encoded_jit_config, true, {
-      tags: [{ Key: 'InstanceId', Value: instance }],
+      tags: [{ Key: 'InstanceId', Value: instance }, ...githubRunnerConfig.ssmParameterStoreTags],
     });
     if (isDelay) {
       // Delay to prevent AWS ssm rate limits by being within the max throughput limit
