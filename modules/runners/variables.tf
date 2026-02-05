@@ -119,18 +119,18 @@ variable "instance_max_spot_price" {
 }
 
 variable "runner_os" {
-  description = "The EC2 Operating System type to use for action runner instances (linux,windows)."
+  description = "The EC2 Operating System type to use for action runner instances (linux, osx, windows)."
   type        = string
   default     = "linux"
 
   validation {
-    condition     = contains(["linux", "windows"], var.runner_os)
-    error_message = "Valid values for runner_os are (linux, windows)."
+    condition     = contains(["linux", "osx", "windows"], var.runner_os)
+    error_message = "Valid values for runner_os are (linux, osx, windows)."
   }
 }
 
 variable "instance_types" {
-  description = "List of instance types for the action runner. Defaults are based on runner_os (al2023 for linux and Windows Server Core for win)."
+  description = "List of instance types for the action runner. Defaults are based on runner_os (al2023 for linux, macOS Sequoia for osx, Windows Server Core for win)."
   type        = list(string)
   default     = null
 }
@@ -657,6 +657,14 @@ variable "placement" {
     partition_number        = optional(number)
   })
   default = null
+}
+
+variable "license_specifications" {
+  description = "The license specifications for the instance. See https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#license_specification for details."
+  type = list(object({
+    license_configuration_arn = string
+  }))
+  default = []
 }
 
 variable "enable_jit_config" {
