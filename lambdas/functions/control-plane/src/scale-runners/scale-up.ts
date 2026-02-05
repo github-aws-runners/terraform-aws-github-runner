@@ -7,9 +7,7 @@ import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient 
 import { createRunner, listEC2Runners, tag } from './../aws/runners';
 import { Ec2OverrideConfig, RunnerInputParameters } from './../aws/runners.d';
 import { metricGitHubAppRateLimit } from '../github/rate-limit';
-<<<<<<< HEAD
 import { publishRetryMessage } from './job-retry';
-=======
 import {
   _InstanceType,
   Tenancy,
@@ -40,7 +38,6 @@ import {
   TotalLocalStorageGBRequest,
   BaselineEbsBandwidthMbpsRequest,
 } from '@aws-sdk/client-ec2';
->>>>>>> 44df86d7 (test: fix test cases)
 
 const logger = createChildLogger('scale-up');
 

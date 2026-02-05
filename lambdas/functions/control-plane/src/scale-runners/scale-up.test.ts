@@ -2053,7 +2053,6 @@ describe('scaleUp with Github Data Residency', () => {
   });
 });
 
-<<<<<<< HEAD
 describe('Retry mechanism tests', () => {
   beforeEach(() => {
     process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
@@ -2195,7 +2194,30 @@ describe('Retry mechanism tests', () => {
           id: msg.id,
           messageId: msg.messageId,
         }),
-=======
+      );
+    });
+  });
+
+  it('calls publishRetryMessage after runner creation', async () => {
+    const messages = createTestMessages(1);
+    mockCreateRunner.mockResolvedValue(['i-12345']); // Create the requested runner
+
+    const callOrder: string[] = [];
+    mockPublishRetryMessage.mockImplementation(() => {
+      callOrder.push('publishRetryMessage');
+      return Promise.resolve();
+    });
+    mockCreateRunner.mockImplementation(async () => {
+      callOrder.push('createRunner');
+      return ['i-12345'];
+    });
+
+    await scaleUpModule.scaleUp(messages);
+
+    expect(callOrder).toEqual(['createRunner', 'publishRetryMessage']);
+  });
+});
+
 describe('parseEc2OverrideConfig', () => {
   describe('Basic Fleet Overrides', () => {
     it('should parse instance-type label', () => {
@@ -2692,30 +2714,10 @@ describe('parseEc2OverrideConfig', () => {
       );
       expect(result?.InstanceRequirements?.BaselinePerformanceFactors?.Cpu?.References?.[1]?.InstanceFamily).toBe(
         'amd',
->>>>>>> 44df86d7 (test: fix test cases)
       );
     });
   });
 
-<<<<<<< HEAD
-  it('calls publishRetryMessage after runner creation', async () => {
-    const messages = createTestMessages(1);
-    mockCreateRunner.mockResolvedValue(['i-12345']); // Create the requested runner
-
-    const callOrder: string[] = [];
-    mockPublishRetryMessage.mockImplementation(() => {
-      callOrder.push('publishRetryMessage');
-      return Promise.resolve();
-    });
-    mockCreateRunner.mockImplementation(async () => {
-      callOrder.push('createRunner');
-      return ['i-12345'];
-    });
-
-    await scaleUpModule.scaleUp(messages);
-
-    expect(callOrder).toEqual(['createRunner', 'publishRetryMessage']);
-=======
   describe('Edge Cases', () => {
     it('should return undefined when empty array is provided', () => {
       const result = scaleUpModule.parseEc2OverrideConfig([]);
@@ -2912,7 +2914,6 @@ describe('parseEc2OverrideConfig', () => {
       expect(result?.InstanceRequirements?.SpotMaxPricePercentageOverLowestPrice).toBe(100);
       expect(result?.InstanceRequirements?.OnDemandMaxPricePercentageOverLowestPrice).toBe(150);
     });
->>>>>>> 44df86d7 (test: fix test cases)
   });
 });
 
