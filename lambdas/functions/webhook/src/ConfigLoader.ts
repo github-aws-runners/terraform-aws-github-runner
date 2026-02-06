@@ -119,9 +119,11 @@ export class ConfigWebhook extends MatcherAwareConfig {
   repositoryAllowList: string[] = [];
   webhookSecret: string = '';
   workflowJobEventSecondaryQueue: string = '';
+  enableDynamicLabels: boolean = false;
 
   async loadConfig(): Promise<void> {
     this.loadEnvVar(process.env.REPOSITORY_ALLOW_LIST, 'repositoryAllowList', []);
+    this.loadEnvVar(process.env.ENABLE_DYNAMIC_LABELS, 'enableDynamicLabels', false);
 
     await Promise.all([
       this.loadMatcherConfig(process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH),
@@ -151,9 +153,11 @@ export class ConfigWebhookEventBridge extends BaseConfig {
 export class ConfigDispatcher extends MatcherAwareConfig {
   repositoryAllowList: string[] = [];
   workflowJobEventSecondaryQueue: string = ''; // Deprecated
+  enableDynamicLabels: boolean = false;
 
   async loadConfig(): Promise<void> {
     this.loadEnvVar(process.env.REPOSITORY_ALLOW_LIST, 'repositoryAllowList', []);
+    this.loadEnvVar(process.env.ENABLE_DYNAMIC_LABELS, 'enableDynamicLabels', false);
     await this.loadMatcherConfig(process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH);
 
     validateRunnerMatcherConfig(this);

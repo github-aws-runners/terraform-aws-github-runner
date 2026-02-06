@@ -38,5 +38,7 @@ module "webhook" {
   lambda_security_group_ids = var.lambda_security_group_ids
   aws_partition             = var.aws_partition
 
+  enable_dynamic_labels = var.enable_dynamic_labels
+
   log_level = var.log_level
 }
