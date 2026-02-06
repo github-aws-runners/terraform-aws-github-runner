@@ -118,9 +118,9 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@aws-github-runner/aws-powertools-util@workspace:libs/aws-powertools-util"
   dependencies:
-    "@aws-lambda-powertools/logger": "npm:^2.30.0"
-    "@aws-lambda-powertools/metrics": "npm:^2.30.0"
-    "@aws-lambda-powertools/tracer": "npm:^2.30.0"
+    "@aws-lambda-powertools/logger": "npm:^2.30.2"
+    "@aws-lambda-powertools/metrics": "npm:^2.30.2"
+    "@aws-lambda-powertools/tracer": "npm:^2.30.2"
     "@types/aws-lambda": "npm:^8.10.159"
     "@types/node": "npm:^22.19.3"
     aws-lambda: "npm:^1.0.7"
@@ -148,7 +148,7 @@ __metadata:
   dependencies:
     "@aws-github-runner/aws-powertools-util": "npm:*"
     "@aws-github-runner/aws-ssm-util": "npm:*"
-    "@aws-lambda-powertools/parameters": "npm:^2.30.0"
+    "@aws-lambda-powertools/parameters": "npm:^2.30.2"
     "@aws-sdk/client-ec2": "npm:^3.965.0"
     "@aws-sdk/client-sqs": "npm:^3.965.0"
     "@aws-sdk/types": "npm:^3.965.0"
@@ -232,60 +232,60 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@aws-lambda-powertools/commons@npm:2.30.1":
-  version: 2.30.1
-  resolution: "@aws-lambda-powertools/commons@npm:2.30.1"
+"@aws-lambda-powertools/commons@npm:2.30.2":
+  version: 2.30.2
+  resolution: "@aws-lambda-powertools/commons@npm:2.30.2"
   dependencies:
-    "@aws/lambda-invoke-store": "npm:0.2.2"
-  checksum: 10c0/4eee610cf3d900e24dd9bba3308cbc9cc19b988d4ba00cc09f144c2ac14a3f99251e8e5764e1f81f871339c11faff789e3a67809e89c6f1b5ca4be77885cfec5
+    "@aws/lambda-invoke-store": "npm:0.2.3"
+  checksum: 10c0/4147877b7f3621ff0c45d99a19a3a6bdf295ff4ff69b6c3bc49c9cb15b0f91d12650fc90377a968c659c9e1a5b3b059ef85d1e4c76b7ae36fb6335b66ed4b7d1
   languageName: node
   linkType: hard
 
-"@aws-lambda-powertools/logger@npm:^2.30.0":
-  version: 2.30.1
-  resolution: "@aws-lambda-powertools/logger@npm:2.30.1"
+"@aws-lambda-powertools/logger@npm:^2.30.2":
+  version: 2.30.2
+  resolution: "@aws-lambda-powertools/logger@npm:2.30.2"
   dependencies:
-    "@aws-lambda-powertools/commons": "npm:2.30.1"
-    "@aws/lambda-invoke-store": "npm:0.2.2"
+    "@aws-lambda-powertools/commons": "npm:2.30.2"
+    "@aws/lambda-invoke-store": "npm:0.2.3"
   peerDependencies:
-    "@aws-lambda-powertools/jmespath": 2.30.1
-    "@middy/core": 4.x || 5.x || 6.x
+    "@aws-lambda-powertools/jmespath": 2.30.2
+    "@middy/core": 4.x || 5.x || 6.x || 7.x
   peerDependenciesMeta:
     "@aws-lambda-powertools/jmespath":
       optional: true
     "@middy/core":
       optional: true
-  checksum: 10c0/5c3133e62acbc1383a2eafdd3cb490d8294eb9f4b5885b2c78e9e7ef77c54a6196cc239dc22fa30bd713b800108283980b5afa747090566b79c54fcfeb2d0c0c
+  checksum: 10c0/dad8ec43aa3e6d28a4ffb59f9e90c88a72b576bbb04c518645287b76ce6d2a3acb916ae23418ba4da52baf67ce8a82436848a9f443a371a1ab0a3636e1fae02f
   languageName: node
   linkType: hard
 
-"@aws-lambda-powertools/metrics@npm:^2.30.0":
-  version: 2.30.1
-  resolution: "@aws-lambda-powertools/metrics@npm:2.30.1"
+"@aws-lambda-powertools/metrics@npm:^2.30.2":
+  version: 2.30.2
+  resolution: "@aws-lambda-powertools/metrics@npm:2.30.2"
   dependencies:
-    "@aws-lambda-powertools/commons": "npm:2.30.1"
-    "@aws/lambda-invoke-store": "npm:0.2.2"
+    "@aws-lambda-powertools/commons": "npm:2.30.2"
+    "@aws/lambda-invoke-store": "npm:0.2.3"
   peerDependencies:
-    "@middy/core": 4.x || 5.x || 6.x
+    "@middy/core": 4.x || 5.x || 6.x || 7.x
   peerDependenciesMeta:
     "@middy/core":
       optional: true
-  checksum: 10c0/f31549e587929c98863ab6705a812c18e4019b7146c8d6719cb6c83952d2df97921440cb5fba0b65f6a61a76522c3329cc53f0dbccf35724bf9b3df18f32979f
+  checksum: 10c0/7d1e16a081d95c451dbb85d04c95119293adead4bf96948b77fe99757bc70d7dd38e5fe1b34f8cad5ceb58b11cd4ffe7b14bb1dd84b7fcb5997f099c344694bd
   languageName: node
   linkType: hard
 
-"@aws-lambda-powertools/parameters@npm:^2.30.0":
-  version: 2.30.1
-  resolution: "@aws-lambda-powertools/parameters@npm:2.30.1"
+"@aws-lambda-powertools/parameters@npm:^2.30.2":
+  version: 2.30.2
+  resolution: "@aws-lambda-powertools/parameters@npm:2.30.2"
   dependencies:
-    "@aws-lambda-powertools/commons": "npm:2.30.1"
+    "@aws-lambda-powertools/commons": "npm:2.30.2"
   peerDependencies:
     "@aws-sdk/client-appconfigdata": ">=3.x"
     "@aws-sdk/client-dynamodb": ">=3.x"
     "@aws-sdk/client-secrets-manager": ">=3.x"
     "@aws-sdk/client-ssm": ">=3.x"
     "@aws-sdk/util-dynamodb": ">=3.x"
-    "@middy/core": 4.x || 5.x || 6.x
+    "@middy/core": 4.x || 5.x || 6.x || 7.x
   peerDependenciesMeta:
     "@aws-sdk/client-appconfigdata":
       optional: true
@@ -299,22 +299,22 @@ __metadata:
       optional: true
     "@middy/core":
       optional: true
-  checksum: 10c0/7f2a9c3969eea43d2c3cce2998f73830620347747ba63a4e26fa5ca404bcf17cff23bb382f7d46dc3796f1cf238a62a506dde5ffc9f22b7dc7012d0520c5c604
+  checksum: 10c0/6e7265c823ddec1af031cc79b2d1b7d2aaa47a0e91f8c94b50c8c11595703f6d2037acb6f8ceb55f2c74bb54f7acef98f5db12c6d3ee9a032619006d843c3057
   languageName: node
   linkType: hard
 
-"@aws-lambda-powertools/tracer@npm:^2.30.0":
-  version: 2.30.1
-  resolution: "@aws-lambda-powertools/tracer@npm:2.30.1"
+"@aws-lambda-powertools/tracer@npm:^2.30.2":
+  version: 2.30.2
+  resolution: "@aws-lambda-powertools/tracer@npm:2.30.2"
   dependencies:
-    "@aws-lambda-powertools/commons": "npm:2.30.1"
+    "@aws-lambda-powertools/commons": "npm:2.30.2"
     aws-xray-sdk-core: "npm:^3.12.0"
   peerDependencies:
-    "@middy/core": 4.x || 5.x || 6.x
+    "@middy/core": 4.x || 5.x || 6.x || 7.x
   peerDependenciesMeta:
     "@middy/core":
       optional: true
-  checksum: 10c0/4015b6cb2294fcb73f6f3168c7a6c65f8fdcebda6c33cd9dd752e190305ee927634e2fd573ffb7d9dc25fb8f2b90fff05dab00615d5275d3ddc6c351ffd7b31c
+  checksum: 10c0/6a0deca827d81de9fbd16621a9b3d04c75e16b03b97ff01f4c60c9d12839e0d40d5719e675bf993e94baea10453d603c8cfe66f05a98df9a78c96a652b4b5f07
   languageName: node
   linkType: hard
 
@@ -1169,7 +1169,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@aws/lambda-invoke-store@npm:0.2.2, @aws/lambda-invoke-store@npm:^0.2.2":
+"@aws/lambda-invoke-store@npm:0.2.3":
+  version: 0.2.3
+  resolution: "@aws/lambda-invoke-store@npm:0.2.3"
+  checksum: 10c0/3869a5d2494ff81fba306d603c0f2e36c59f89c4efdffd1105a208a595da77059547209a163b6f0c1b716e9d273ce24f94dcbd5a08bad74b2602d13711b0cb3b
+  languageName: node
+  linkType: hard
+
+"@aws/lambda-invoke-store@npm:^0.2.2":
   version: 0.2.2
   resolution: "@aws/lambda-invoke-store@npm:0.2.2"
   checksum: 10c0/0ce2f527e2ab6b07372a08a137991163b99bf646b8dbbb01dbc5370f4e578aa6ddf7f09a63ecead576f04ce54e52cb927c12683f4d97e322dcb76ddfc5843784
