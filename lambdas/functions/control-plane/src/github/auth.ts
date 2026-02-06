@@ -20,7 +20,7 @@ import { request } from '@octokit/request';
 import { Octokit } from '@octokit/rest';
 import { throttling } from '@octokit/plugin-throttling';
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
-import { getParameter } from '@aws-github-runner/aws-ssm-util';
+import { getParameters } from '@aws-github-runner/aws-ssm-util';
 import { EndpointDefaults } from '@octokit/types';
 
 const logger = createChildLogger('gh-auth');
@@ -70,11 +70,25 @@ export async function createGithubInstallationAuth(
 }
 
 async function createAuth(installationId: number | undefined, ghesApiUrl: string): Promise<AuthInterface> {
-  const appId = parseInt(await getParameter(process.env.PARAMETER_GITHUB_APP_ID_NAME));
+  // Batch fetch both App ID and Private Key in a single SSM API call
+  const paramNames = [process.env.PARAMETER_GITHUB_APP_ID_NAME, process.env.PARAMETER_GITHUB_APP_KEY_BASE64_NAME];
+  const params = await getParameters(paramNames);
+
+  const appIdValue = params.get(process.env.PARAMETER_GITHUB_APP_ID_NAME);
+  const privateKeyBase64 = params.get(process.env.PARAMETER_GITHUB_APP_KEY_BASE64_NAME);
+
+  if (!appIdValue) {
+    throw new Error(`Parameter ${process.env.PARAMETER_GITHUB_APP_ID_NAME} not found`);
+  }
+  if (!privateKeyBase64) {
+    throw new Error(`Parameter ${process.env.PARAMETER_GITHUB_APP_KEY_BASE64_NAME} not found`);
+  }
+
+  const appId = parseInt(appIdValue);
   let authOptions: StrategyOptions = {
     appId,
     privateKey: Buffer.from(
-      await getParameter(process.env.PARAMETER_GITHUB_APP_KEY_BASE64_NAME),
+      privateKeyBase64,
       'base64',
       // replace literal \n characters with new lines to allow the key to be stored as a
       // single line variable. This logic should match how the GitHub Terraform provider

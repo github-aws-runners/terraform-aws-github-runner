@@ -1,4 +1,4 @@
-import { PutParameterCommand, SSMClient, Tag } from '@aws-sdk/client-ssm';
+import { GetParametersCommand, PutParameterCommand, SSMClient, Tag } from '@aws-sdk/client-ssm';
 import { getTracedAWSV3Client } from '@aws-github-runner/aws-powertools-util';
 import { SSMProvider } from '@aws-lambda-powertools/parameters/ssm';
 
@@ -14,6 +14,35 @@ export async function getParameter(parameter_name: string): Promise<string> {
   if (!result) {
     throw new Error(`Parameter ${parameter_name} not found`);
   }
+  return result;
+}
+
+export async function getParameters(parameter_names: string[]): Promise<Map<string, string>> {
+  if (parameter_names.length === 0) {
+    return new Map();
+  }
+
+  const ssmClient = getTracedAWSV3Client(new SSMClient({ region: process.env.AWS_REGION }));
+  const result = new Map<string, string>();
+
+  // AWS SSM GetParameters API has a limit of 10 parameters per call
+  const chunkSize = 10;
+  for (let i = 0; i < parameter_names.length; i += chunkSize) {
+    const chunk = parameter_names.slice(i, i + chunkSize);
+    const response = await ssmClient.send(
+      new GetParametersCommand({
+        Names: chunk,
+        WithDecryption: true,
+      }),
+    );
+
+    for (const param of response.Parameters ?? []) {
+      if (param.Name && param.Value) {
+        result.set(param.Name, param.Value);
+      }
+    }
+  }
+
   return result;
 }
 

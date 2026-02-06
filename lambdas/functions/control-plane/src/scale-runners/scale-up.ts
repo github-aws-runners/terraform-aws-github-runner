@@ -132,8 +132,6 @@ async function getGithubRunnerRegistrationToken(githubRunnerConfig: CreateGitHub
           repo: githubRunnerConfig.runnerOwner.split('/')[1],
         });
 
-  const appId = parseInt(await getParameter(process.env.PARAMETER_GITHUB_APP_ID_NAME));
-  logger.info('App id from SSM', { appId: appId });
   return registrationToken.data.token;
 }
 
