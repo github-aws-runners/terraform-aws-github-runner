@@ -70,18 +70,25 @@ export async function createGithubInstallationAuth(
 }
 
 async function createAuth(installationId: number | undefined, ghesApiUrl: string): Promise<AuthInterface> {
+  const appIdParamName = process.env.PARAMETER_GITHUB_APP_ID_NAME;
+  const appKeyParamName = process.env.PARAMETER_GITHUB_APP_KEY_BASE64_NAME;
+  if (!appIdParamName) {
+    throw new Error('Environment variable PARAMETER_GITHUB_APP_ID_NAME is not set');
+  }
+  if (!appKeyParamName) {
+    throw new Error('Environment variable PARAMETER_GITHUB_APP_KEY_BASE64_NAME is not set');
+  }
+
   // Batch fetch both App ID and Private Key in a single SSM API call
-  const paramNames = [process.env.PARAMETER_GITHUB_APP_ID_NAME, process.env.PARAMETER_GITHUB_APP_KEY_BASE64_NAME];
+  const paramNames = [appIdParamName, appKeyParamName];
   const params = await getParameters(paramNames);
-
-  const appIdValue = params.get(process.env.PARAMETER_GITHUB_APP_ID_NAME);
-  const privateKeyBase64 = params.get(process.env.PARAMETER_GITHUB_APP_KEY_BASE64_NAME);
-
+  const appIdValue = params.get(appIdParamName);
+  const privateKeyBase64 = params.get(appKeyParamName);
   if (!appIdValue) {
-    throw new Error(`Parameter ${process.env.PARAMETER_GITHUB_APP_ID_NAME} not found`);
+    throw new Error(`Parameter ${appIdParamName} not found`);
   }
   if (!privateKeyBase64) {
-    throw new Error(`Parameter ${process.env.PARAMETER_GITHUB_APP_KEY_BASE64_NAME} not found`);
+    throw new Error(`Parameter ${appKeyParamName} not found`);
   }
 
   const appId = parseInt(appIdValue);

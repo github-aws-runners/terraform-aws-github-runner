@@ -77,6 +77,24 @@ describe('Test createGithubAppAuth', () => {
     process.env.ENVIRONMENT = ENVIRONMENT;
   });
 
+  it('Throws early when PARAMETER_GITHUB_APP_ID_NAME is not set', async () => {
+    delete process.env.PARAMETER_GITHUB_APP_ID_NAME;
+
+    await expect(createGithubAppAuth(installationId)).rejects.toThrow(
+      'Environment variable PARAMETER_GITHUB_APP_ID_NAME is not set',
+    );
+    expect(mockedGetParameters).not.toHaveBeenCalled();
+  });
+
+  it('Throws early when PARAMETER_GITHUB_APP_KEY_BASE64_NAME is not set', async () => {
+    delete process.env.PARAMETER_GITHUB_APP_KEY_BASE64_NAME;
+
+    await expect(createGithubAppAuth(installationId)).rejects.toThrow(
+      'Environment variable PARAMETER_GITHUB_APP_KEY_BASE64_NAME is not set',
+    );
+    expect(mockedGetParameters).not.toHaveBeenCalled();
+  });
+
   it('Creates auth object with line breaks in SSH key.', async () => {
     // Arrange
     const authOptions = {
