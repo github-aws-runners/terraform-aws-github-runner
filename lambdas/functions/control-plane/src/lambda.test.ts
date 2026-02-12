@@ -3,7 +3,7 @@ import { Context, SQSEvent, SQSRecord } from 'aws-lambda';
 
 import { addMiddleware, adjustPool, scaleDownHandler, scaleUpHandler, ssmHousekeeper, jobRetryCheck } from './lambda';
 import { adjust } from './pool/pool';
-import ScaleError from './scale-runners/ScaleError';
+import ScaleError, { GHHttpError } from './scale-runners/ScaleError';
 import { scaleDown } from './scale-runners/scale-down';
 import { ActionRequestMessage, scaleUp } from './scale-runners/scale-up';
 import { cleanSSMTokens } from './scale-runners/ssm-housekeeper';
@@ -228,6 +228,43 @@ describe('Test scale up lambda wrapper.', () => {
       await expect(scaleUpHandler(multiRecordEvent, context)).resolves.toEqual({
         batchItemFailures: [{ itemIdentifier: 'message-0' }, { itemIdentifier: 'message-1' }],
       });
+    });
+
+    it('Should return all messages as batch item failures when scaleUp throws GHHttpError', async () => {
+      const records = createMultipleRecords(3);
+      const multiRecordEvent: SQSEvent = { Records: records };
+
+      const error = new GHHttpError('Validation Failed', 422);
+      vi.mocked(scaleUp).mockRejectedValue(error);
+
+      const result = await scaleUpHandler(multiRecordEvent, context);
+      expect(result).toEqual({
+        batchItemFailures: [
+          { itemIdentifier: 'message-0' },
+          { itemIdentifier: 'message-1' },
+          { itemIdentifier: 'message-2' },
+        ],
+      });
+    });
+
+    it('Should return single message as batch item failure when scaleUp throws GHHttpError', async () => {
+      const error = new GHHttpError('Bad credentials', 401);
+      vi.mocked(scaleUp).mockRejectedValue(error);
+
+      const result = await scaleUpHandler(sqsEvent, context);
+      expect(result).toEqual({
+        batchItemFailures: [{ itemIdentifier: sqsRecord.messageId }],
+      });
+    });
+
+    it('Should not return batch item failures for generic errors (not ScaleError or GHHttpError)', async () => {
+      const records = createMultipleRecords(2);
+      const multiRecordEvent: SQSEvent = { Records: records };
+
+      vi.mocked(scaleUp).mockRejectedValue(new Error('Some unexpected error'));
+
+      const result = await scaleUpHandler(multiRecordEvent, context);
+      expect(result).toEqual({ batchItemFailures: [] });
     });
   });
 });

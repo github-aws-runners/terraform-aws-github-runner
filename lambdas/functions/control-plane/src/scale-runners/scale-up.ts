@@ -8,6 +8,7 @@ import { createRunner, listEC2Runners, tag } from './../aws/runners';
 import { RunnerInputParameters } from './../aws/runners.d';
 import { metricGitHubAppRateLimit } from '../github/rate-limit';
 import { publishRetryMessage } from './job-retry';
+import { GHHttpError } from './ScaleError';
 
 const logger = createChildLogger('scale-up');
 
@@ -538,10 +539,23 @@ async function createStartRunnerConfig(
   instances: string[],
   ghClient: Octokit,
 ) {
-  if (githubRunnerConfig.enableJitConfig && githubRunnerConfig.ephemeral) {
-    await createJitConfig(githubRunnerConfig, instances, ghClient);
-  } else {
-    await createRegistrationTokenConfig(githubRunnerConfig, instances, ghClient);
+  try {
+    if (githubRunnerConfig.enableJitConfig && githubRunnerConfig.ephemeral) {
+      await createJitConfig(githubRunnerConfig, instances, ghClient);
+    } else {
+      await createRegistrationTokenConfig(githubRunnerConfig, instances, ghClient);
+    }
+  } catch (error) {
+    if (error instanceof Error && error.name === 'HttpError') {
+      const status = (error as Error & { status: number }).status;
+      logger.error('GitHub API HTTP error during runner config creation', {
+        status,
+        message: error.message,
+        instances,
+      });
+      throw new GHHttpError(`Failed to create runner start config: ${error.message}`, status);
+    }
+    throw error;
   }
 }
 

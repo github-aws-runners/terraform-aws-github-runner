@@ -26,4 +26,35 @@ class ScaleError extends Error {
   }
 }
 
+/**
+ * Custom error for GitHub HTTP API failures during runner config creation.
+ * Extends ScaleError so it is caught by the same handler in the Lambda entry point.
+ *
+ * Unlike a plain ScaleError (which retries only `failedInstanceCount` messages),
+ * a GHHttpError retries ALL messages because the GitHub API failure may affect
+ * every instance that was just launched.
+ */
+export class GHHttpError extends ScaleError {
+  public readonly status: number;
+
+  constructor(message: string, status: number) {
+    super();
+    this.message = message;
+    this.name = 'GHHttpError';
+    this.status = status;
+  }
+
+  public override get detailedMessage(): string {
+    return `GitHub API HTTP error (status ${this.status}): ${this.message}`;
+  }
+
+  /**
+   * Override: retry ALL messages because the GitHub API error affects the
+   * entire batch of instances that were already created.
+   */
+  public override toBatchItemFailures(messages: ActionRequestMessageSQS[]): SQSBatchItemFailure[] {
+    return messages.map(({ messageId }) => ({ itemIdentifier: messageId }));
+  }
+}
+
 export default ScaleError;
