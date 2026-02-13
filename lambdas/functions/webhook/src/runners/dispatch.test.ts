@@ -237,6 +237,24 @@ describe('Dispatcher', () => {
       const runnerLabels = [['self-hosted', 'linux', 'on-demand']];
       expect(canRunJob(workflowLabels, runnerLabels, true)).toBe(true);
     });
+
+    it('should match with exactMatch=true when labels are in different order.', () => {
+      const workflowLabels = ['linux', 'self-hosted', 'x64'];
+      const runnerLabels = [['self-hosted', 'linux', 'x64']];
+      expect(canRunJob(workflowLabels, runnerLabels, true)).toBe(true);
+    });
+
+    it('should match with exactMatch=true when labels are completely shuffled.', () => {
+      const workflowLabels = ['x64', 'ubuntu-latest', 'self-hosted', 'linux'];
+      const runnerLabels = [['self-hosted', 'linux', 'x64', 'ubuntu-latest']];
+      expect(canRunJob(workflowLabels, runnerLabels, true)).toBe(true);
+    });
+
+    it('should match with exactMatch=false when labels are in different order.', () => {
+      const workflowLabels = ['gpu', 'self-hosted'];
+      const runnerLabels = [['self-hosted', 'gpu']];
+      expect(canRunJob(workflowLabels, runnerLabels, false)).toBe(true);
+    });
   });
 });
 
