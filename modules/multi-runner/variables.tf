@@ -36,6 +36,38 @@ variable "github_app" {
 }
 
 
+variable "additional_github_apps" {
+  description = <<-EOF
+    Additional GitHub Apps for round-robin API rate limit distribution.
+
+    The primary app (var.github_app) is always included and is the one whose
+    webhook secret is used for incoming webhook signature validation. Only the
+    primary app needs a webhook configured in GitHub.
+
+    Additional apps listed here are used exclusively by the control-plane
+    lambdas (scale-up, scale-down, pool, job-retry) which randomly select an
+    app for each GitHub API call. Each additional app must be installed on the
+    same repositories/organizations as the primary app.
+  EOF
+  type = list(object({
+    key_base64          = optional(string)
+    key_base64_ssm      = optional(object({ arn = string, name = string }))
+    id                  = optional(string)
+    id_ssm              = optional(object({ arn = string, name = string }))
+    installation_id     = optional(string)
+    installation_id_ssm = optional(object({ arn = string, name = string }))
+  }))
+  default = []
+  validation {
+    condition = alltrue([
+      for app in var.additional_github_apps :
+      (app.key_base64 != null || app.key_base64_ssm != null) &&
+      (app.id != null || app.id_ssm != null)
+    ])
+    error_message = "Each additional GitHub app must provide either key_base64 or key_base64_ssm, and either id or id_ssm."
+  }
+}
+
 variable "prefix" {
   description = "The prefix used for naming resources"
   type        = string

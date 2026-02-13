@@ -67,6 +67,27 @@ variable "github_app" {
   }
 }
 
+variable "additional_github_apps" {
+  description = "Additional GitHub Apps for distributing API rate limit usage. Each must be installed on the same repos/orgs as the primary app."
+  type = list(object({
+    key_base64          = optional(string)
+    key_base64_ssm      = optional(object({ arn = string, name = string }))
+    id                  = optional(string)
+    id_ssm              = optional(object({ arn = string, name = string }))
+    installation_id     = optional(string)
+    installation_id_ssm = optional(object({ arn = string, name = string }))
+  }))
+  default = []
+  validation {
+    condition = alltrue([
+      for app in var.additional_github_apps :
+      (app.key_base64 != null || app.key_base64_ssm != null) &&
+      (app.id != null || app.id_ssm != null)
+    ])
+    error_message = "Each additional GitHub app must provide either key_base64 or key_base64_ssm, and either id or id_ssm."
+  }
+}
+
 variable "scale_down_schedule_expression" {
   description = "Scheduler expression to check every x for scale down."
   type        = string
