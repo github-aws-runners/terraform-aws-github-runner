@@ -1,6 +1,12 @@
 import { Octokit } from '@octokit/rest';
 import { ActionRequestMessage } from '../scale-runners/scale-up';
-import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from './auth';
+import {
+  createGithubAppAuth,
+  createGithubInstallationAuth,
+  createOctokitClient,
+  getAppCount,
+  getStoredInstallationId,
+} from './auth';
 
 function getErrorStatus(error: unknown): number | undefined {
   if (typeof error !== 'object' || error === null) {
@@ -15,7 +21,20 @@ async function resolveInstallationId(
   githubClient: Octokit,
   enableOrgLevel: boolean,
   payload: ActionRequestMessage,
+  appIndex?: number,
 ): Promise<number> {
+  // Use pre-stored installation ID when available (avoids an API call)
+  if (appIndex !== undefined) {
+    const storedId = await getStoredInstallationId(appIndex);
+    if (storedId !== undefined) return storedId;
+  }
+
+  const multiApp = (await getAppCount()) > 1;
+
+  if (!multiApp && payload.installationId !== 0) {
+    return payload.installationId;
+  }
+
   return enableOrgLevel
     ? (
         await githubClient.apps.getOrgInstallation({
@@ -57,36 +76,11 @@ export async function getOctokit(
   enableOrgLevel: boolean,
   payload: ActionRequestMessage,
 ): Promise<Octokit> {
-  let githubAppClient: Octokit | undefined;
-  let installationId = payload.installationId !== 0 ? payload.installationId : undefined;
+  // Select one app for this entire auth flow
+  const ghAuth = await createGithubAppAuth(undefined, ghesApiUrl);
+  const appIdx = ghAuth.appIndex;
 
-  const getGithubAppClient = async (): Promise<Octokit> => {
-    if (githubAppClient === undefined) {
-      const appAuth = await createGithubAppAuth(undefined, ghesApiUrl);
-      githubAppClient = await createOctokitClient(appAuth.token, ghesApiUrl);
-    }
-
-    return githubAppClient;
-  };
-
-  try {
-    if (installationId === undefined) {
-      installationId = await resolveInstallationId(await getGithubAppClient(), enableOrgLevel, payload);
-    }
-
-    const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl);
-    return await createOctokitClient(ghAuth.token, ghesApiUrl);
-  } catch (error) {
-    if (payload.installationId === 0 || getErrorStatus(error) !== 404) {
-      throw error;
-    }
-
-    const resolvedInstallationId = await resolveInstallationId(await getGithubAppClient(), enableOrgLevel, payload);
-    if (resolvedInstallationId === payload.installationId) {
-      throw error;
-    }
-
-    const ghAuth = await createGithubInstallationAuth(resolvedInstallationId, ghesApiUrl);
-    return await createOctokitClient(ghAuth.token, ghesApiUrl);
-  }
+  const installationId = await getInstallationId(ghesApiUrl, enableOrgLevel, payload, appIdx);
+  const installationAuth = await createGithubInstallationAuth(installationId, ghesApiUrl, appIdx);
+  return await createOctokitClient(installationAuth.token, ghesApiUrl);
 }
