@@ -4,6 +4,8 @@
 function Tag-InstanceWithRunnerId {
     Write-Host "Checking for .runner file to extract agent ID"
 
+    # Note: $pwd is usually C:\actions-runner since the Scheduled Task that calls
+    # start-runner.ps1 sets that as the working directory.
     $runnerFilePath = "$pwd\.runner"
     if (-not (Test-Path $runnerFilePath)) {
         Write-Host "Warning: .runner file not found"
@@ -177,30 +179,52 @@ ConvertTo-Json -InputObject $jsonBody | Set-Content -Path "$pwd\.setup_info"
 Write-Host "Starting the runner in $agent_mode mode"
 Write-Host "Starting runner after $(((get-date) - (gcim Win32_OperatingSystem).LastBootUpTime).tostring("hh':'mm':'ss''"))"
 
+$taskExecutable = "run.cmd"
+$taskArgument = $null
+
 if ($agent_mode -eq "ephemeral") {
+    $startRunnerService = "start-runner-service.ps1"
+    $taskExecutable = "PowerShell.exe"
+    $taskArgument = "-File $startRunnerService"
+    if (Test-Path $startRunnerService) {
+        Remove-Item "$startRunnerService"
+    }
     if ($enable_jit_config -eq "true") {
-        Write-Host "Starting with jit config"
-        Invoke-Expression ".\run.cmd --jitconfig $${config}"
+        Write-Output 'Write-Host "Starting with jit config"' | Out-File -Append -FilePath "$startRunnerService"
+        # Note: the double dollar signs are an artifact of Terraform since a single dollar sign and bracket would be
+        # interpreted by the template.
+        Write-Output ".\run.cmd --jitconfig $${config}" | Out-File -Append -FilePath "$startRunnerService"
     }
     else {
-        Write-Host "Starting without jit config"
-        Invoke-Expression ".\run.cmd"
+        Write-Output 'Write-Host "Starting without jit config"' | Out-File -Append -FilePath "$startRunnerService"
+        Write-Output ".\run.cmd" | Out-File -Append -FilePath "$startRunnerService"
     }
-    Write-Host "Runner has finished"
 
     if ($enable_cloudwatch_agent)
     {
-        Write-Host "Stopping CloudWatch Agent"
-        & 'C:\Program Files\Amazon\AmazonCloudWatchAgent\amazon-cloudwatch-agent-ctl.ps1' -a stop
+        $outputstring = @"
+Write-Host `"Stopping CloudWatch Agent`"
+& 'C:\Program Files\Amazon\AmazonCloudWatchAgent\amazon-cloudwatch-agent-ctl.ps1' -a stop
+"@
+
+        $outputstring | Out-File -Append -FilePath "$startRunnerService"
     }
 
-    Write-Host "Terminating instance"
-    aws ec2 terminate-instances --instance-ids "$InstanceId" --region "$Region"
-} else {
-    Write-Host  "Installing the runner as a service"
-
-    $action = New-ScheduledTaskAction -WorkingDirectory "$pwd" -Execute "run.cmd"
-    $trigger = Get-CimClass "MSFT_TaskRegistrationTrigger" -Namespace "Root/Microsoft/Windows/TaskScheduler"
-    Register-ScheduledTask -TaskName "runnertask" -Action $action -Trigger $trigger -User $username -Password $password -RunLevel Highest -Force
-    Write-Host "Starting runner after $(((get-date) - (gcim Win32_OperatingSystem).LastBootUpTime).tostring("hh':'mm':'ss''"))"
+        $outputstring = @"
+Write-Host `"Terminating instance`"
+aws ec2 terminate-instances --instance-ids `"$InstanceId`" --region `"$Region`"
+"@
+    $outputstring | Out-File -Append -FilePath "$startRunnerService"
 }
+
+Write-Host  "Installing the runner as a service"
+
+if ( $taskArgument ) {
+    $action = New-ScheduledTaskAction -WorkingDirectory "$pwd" -Execute "$taskExecutable" -Argument "$taskArgument"
+}
+else {
+    $action = New-ScheduledTaskAction -WorkingDirectory "$pwd" -Execute "$taskExecutable"
+}
+$trigger = Get-CimClass "MSFT_TaskRegistrationTrigger" -Namespace "Root/Microsoft/Windows/TaskScheduler"
+Register-ScheduledTask -TaskName "runnertask" -Action $action -Trigger $trigger -User $username -Password $password -RunLevel Highest -Force
+Write-Host "Starting runner after $(((get-date) - (gcim Win32_OperatingSystem).LastBootUpTime).tostring("hh':'mm':'ss''"))"
