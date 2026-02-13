@@ -84,10 +84,19 @@ export function canRunJob(
   runnerLabelsMatchers = runnerLabelsMatchers.map((runnerLabel) => {
     return runnerLabel.map((label) => label.toLowerCase());
   });
-  const matchLabels = workflowLabelCheckAll
-    ? runnerLabelsMatchers.some((rl) => workflowJobLabels.every((wl) => rl.includes(wl.toLowerCase())))
-    : runnerLabelsMatchers.some((rl) => workflowJobLabels.some((wl) => rl.includes(wl.toLowerCase())));
-  const match = workflowJobLabels.length === 0 ? !matchLabels : matchLabels;
+  const workflowLabelsLower = workflowJobLabels.map((wl) => wl.toLowerCase());
+
+  let match: boolean;
+  if (workflowLabelCheckAll) {
+    match = runnerLabelsMatchers.some(
+      (rl) => workflowLabelsLower.every((wl) => rl.includes(wl)) && rl.every((r) => workflowLabelsLower.includes(r)),
+    );
+  } else {
+    const matchLabels = runnerLabelsMatchers.some((rl) =>
+      workflowJobLabels.some((wl) => rl.includes(wl.toLowerCase())),
+    );
+    match = workflowJobLabels.length === 0 ? !matchLabels : matchLabels;
+  }
 
   logger.debug(
     `Received workflow job event with labels: '${JSON.stringify(workflowJobLabels)}'. The event does ${
