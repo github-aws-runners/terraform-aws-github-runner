@@ -153,7 +153,7 @@ __metadata:
     "@aws-sdk/client-sqs": "npm:^3.984.0"
     "@aws-sdk/types": "npm:^3.973.1"
     "@middy/core": "npm:^6.4.5"
-    "@octokit/auth-app": "npm:8.1.2"
+    "@octokit/auth-app": "npm:8.2.0"
     "@octokit/core": "npm:7.0.6"
     "@octokit/plugin-throttling": "npm:11.0.3"
     "@octokit/rest": "npm:22.0.1"
@@ -3810,9 +3810,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@octokit/auth-app@npm:8.1.2":
-  version: 8.1.2
-  resolution: "@octokit/auth-app@npm:8.1.2"
+"@octokit/auth-app@npm:8.2.0":
+  version: 8.2.0
+  resolution: "@octokit/auth-app@npm:8.2.0"
   dependencies:
     "@octokit/auth-oauth-app": "npm:^9.0.3"
     "@octokit/auth-oauth-user": "npm:^6.0.2"
@@ -3822,7 +3822,7 @@ __metadata:
     toad-cache: "npm:^3.7.0"
     universal-github-app-jwt: "npm:^2.2.0"
     universal-user-agent: "npm:^7.0.0"
-  checksum: 10c0/0888176d84a760cacdf0b546f677332583a6a221b1b5c4a1a44ecc8ad6505ce2408234b21fa8d99961f7d545423a83a6c3becf5a9eb9476ebcb614096ce267e0
+  checksum: 10c0/7f1b113c9f2ef4d0aac06ffb0b1930a256c6a8985744c709c36fe8c4565c5c184de742de4c4a52e4d9f25baef00c9b855732cfaeb81db8abe238d6c2ee54d6d6
   languageName: node
   linkType: hard
 
