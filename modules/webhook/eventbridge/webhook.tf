@@ -22,6 +22,7 @@ resource "aws_lambda_function" "webhook" {
     variables = {
       for k, v in {
         LOG_LEVEL                                = var.config.log_level
+        ENABLE_DYNAMIC_LABELS                    = var.config.enable_dynamic_labels
         POWERTOOLS_LOGGER_LOG_EVENT              = var.config.log_level == "debug" ? "true" : "false"
         POWERTOOLS_SERVICE_NAME                  = "${var.config.prefix}-webhook"
         POWERTOOLS_TRACE_ENABLED                 = var.config.tracing_config.mode != null ? true : false

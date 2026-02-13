@@ -318,6 +318,7 @@ describe('create runner', () => {
     allocationStrategy: SpotAllocationStrategy.CAPACITY_OPTIMIZED,
     capacityType: 'spot',
     type: 'Org',
+    scaleErrors: ['UnfulfillableCapacity', 'MaxSpotInstanceCountExceeded'],
   };
 
   const defaultExpectedFleetRequestValues: ExpectedFleetRequestValues = {
@@ -423,6 +424,215 @@ describe('create runner', () => {
         ...defaultExpectedFleetRequestValues,
         tracingEnabled: true,
       }),
+    });
+  });
+
+  it('overrides SubnetId when specified in ec2OverrideConfig', async () => {
+    await createRunner({
+      ...createRunnerConfig(defaultRunnerConfig),
+      ec2OverrideConfig: {
+        SubnetId: 'subnet-override',
+      },
+    });
+
+    expect(mockEC2Client).toHaveReceivedCommandWith(CreateFleetCommand, {
+      LaunchTemplateConfigs: [
+        {
+          LaunchTemplateSpecification: {
+            LaunchTemplateName: 'lt-1',
+            Version: '$Default',
+          },
+          Overrides: [
+            {
+              InstanceType: 'm5.large',
+              SubnetId: 'subnet-override',
+            },
+            {
+              InstanceType: 'c5.large',
+              SubnetId: 'subnet-override',
+            },
+          ],
+        },
+      ],
+      SpotOptions: {
+        AllocationStrategy: SpotAllocationStrategy.CAPACITY_OPTIMIZED,
+      },
+      TagSpecifications: expect.any(Array),
+      TargetCapacitySpecification: {
+        DefaultTargetCapacityType: 'spot',
+        TotalTargetCapacity: 1,
+      },
+      Type: 'instant',
+    });
+  });
+
+  it('overrides InstanceType when specified in ec2OverrideConfig', async () => {
+    await createRunner({
+      ...createRunnerConfig(defaultRunnerConfig),
+      ec2OverrideConfig: {
+        InstanceType: 't3.xlarge',
+      },
+    });
+
+    expect(mockEC2Client).toHaveReceivedCommandWith(CreateFleetCommand, {
+      LaunchTemplateConfigs: [
+        {
+          LaunchTemplateSpecification: {
+            LaunchTemplateName: 'lt-1',
+            Version: '$Default',
+          },
+          Overrides: [
+            {
+              InstanceType: 't3.xlarge',
+              SubnetId: 'subnet-123',
+            },
+            {
+              InstanceType: 't3.xlarge',
+              SubnetId: 'subnet-456',
+            },
+          ],
+        },
+      ],
+      SpotOptions: {
+        AllocationStrategy: SpotAllocationStrategy.CAPACITY_OPTIMIZED,
+      },
+      TagSpecifications: expect.any(Array),
+      TargetCapacitySpecification: {
+        DefaultTargetCapacityType: 'spot',
+        TotalTargetCapacity: 1,
+      },
+      Type: 'instant',
+    });
+  });
+
+  it('overrides ImageId when specified in ec2OverrideConfig', async () => {
+    await createRunner({
+      ...createRunnerConfig(defaultRunnerConfig),
+      ec2OverrideConfig: {
+        ImageId: 'ami-override-123',
+      },
+    });
+
+    expect(mockEC2Client).toHaveReceivedCommandWith(CreateFleetCommand, {
+      LaunchTemplateConfigs: [
+        {
+          LaunchTemplateSpecification: {
+            LaunchTemplateName: 'lt-1',
+            Version: '$Default',
+          },
+          Overrides: [
+            {
+              InstanceType: 'm5.large',
+              SubnetId: 'subnet-123',
+              ImageId: 'ami-override-123',
+            },
+            {
+              InstanceType: 'c5.large',
+              SubnetId: 'subnet-123',
+              ImageId: 'ami-override-123',
+            },
+            {
+              InstanceType: 'm5.large',
+              SubnetId: 'subnet-456',
+              ImageId: 'ami-override-123',
+            },
+            {
+              InstanceType: 'c5.large',
+              SubnetId: 'subnet-456',
+              ImageId: 'ami-override-123',
+            },
+          ],
+        },
+      ],
+      SpotOptions: {
+        AllocationStrategy: SpotAllocationStrategy.CAPACITY_OPTIMIZED,
+      },
+      TagSpecifications: expect.any(Array),
+      TargetCapacitySpecification: {
+        DefaultTargetCapacityType: 'spot',
+        TotalTargetCapacity: 1,
+      },
+      Type: 'instant',
+    });
+  });
+
+  it('overrides all three fields (SubnetId, InstanceType, ImageId) when specified in ec2OverrideConfig', async () => {
+    await createRunner({
+      ...createRunnerConfig(defaultRunnerConfig),
+      ec2OverrideConfig: {
+        SubnetId: 'subnet-custom',
+        InstanceType: 'c5.2xlarge',
+        ImageId: 'ami-custom-456',
+      },
+    });
+
+    expect(mockEC2Client).toHaveReceivedCommandWith(CreateFleetCommand, {
+      LaunchTemplateConfigs: [
+        {
+          LaunchTemplateSpecification: {
+            LaunchTemplateName: 'lt-1',
+            Version: '$Default',
+          },
+          Overrides: [
+            {
+              InstanceType: 'c5.2xlarge',
+              SubnetId: 'subnet-custom',
+              ImageId: 'ami-custom-456',
+            },
+          ],
+        },
+      ],
+      SpotOptions: {
+        AllocationStrategy: SpotAllocationStrategy.CAPACITY_OPTIMIZED,
+      },
+      TagSpecifications: expect.any(Array),
+      TargetCapacitySpecification: {
+        DefaultTargetCapacityType: 'spot',
+        TotalTargetCapacity: 1,
+      },
+      Type: 'instant',
+    });
+  });
+
+  it('spreads additional ec2OverrideConfig properties to Overrides', async () => {
+    await createRunner({
+      ...createRunnerConfig(defaultRunnerConfig),
+      ec2OverrideConfig: {
+        SubnetId: 'subnet-override',
+        InstanceType: 't3.medium',
+        MaxPrice: '0.05',
+        Priority: 1.5,
+        WeightedCapacity: 2.0,
+      },
+    });
+
+    expect(mockEC2Client).toHaveReceivedCommandWith(CreateFleetCommand, {
+      LaunchTemplateConfigs: [
+        {
+          LaunchTemplateSpecification: {
+            LaunchTemplateName: 'lt-1',
+            Version: '$Default',
+          },
+          Overrides: [
+            {
+              InstanceType: 't3.medium',
+              SubnetId: 'subnet-override',
+              MaxPrice: '0.05',
+              Priority: 1.5,
+              WeightedCapacity: 2.0,
+            },
+          ],
+        },
+      ],
+      SpotOptions: {
+        AllocationStrategy: SpotAllocationStrategy.CAPACITY_OPTIMIZED,
+      },
+      TagSpecifications: expect.any(Array),
+      TargetCapacitySpecification: {
+        DefaultTargetCapacityType: 'spot',
+        TotalTargetCapacity: 1,
+      },
+      Type: 'instant',
     });
   });
 });
@@ -546,6 +756,7 @@ describe('create runner with errors fail over to OnDemand', () => {
     capacityType: 'spot',
     type: 'Repo',
     onDemandFailoverOnError: ['InsufficientInstanceCapacity'],
+    scaleErrors: ['UnfulfillableCapacity', 'MaxSpotInstanceCountExceeded'],
   };
   const defaultExpectedFleetRequestValues: ExpectedFleetRequestValues = {
     type: 'Repo',
