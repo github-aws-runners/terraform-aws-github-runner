@@ -19,7 +19,7 @@ variable "region" {
 }
 
 variable "instance_type" {
-  description = "The instance type Packer will use for the builder"
+  description = "The instance type Packer will use for the builder, requires UEFI/nitro instance support"
   type        = string
   default     = "c8i-flex.xlarge"
 }
@@ -84,7 +84,7 @@ locals {
 }
 
 source "amazon-ebs" "githubrunner" {
-  ami_name                                  = "github-runner-windows-core-2022-${formatdate("YYYYMMDDhhmm", timestamp())}"
+  ami_name                                  = "github-runner-windows-core-2025-${formatdate("YYYYMMDDhhmm", timestamp())}"
   communicator                              = "winrm"
   instance_type                             = var.instance_type
   iam_instance_profile                      = var.iam_instance_profile
@@ -100,7 +100,7 @@ source "amazon-ebs" "githubrunner" {
 
   source_ami_filter {
     filters = {
-      name                = "Windows_Server-2022-English-Full-ECS_Optimized-*"
+      name                = "Windows_Server-2025-English-Full-ECS_Optimized-*"
       root-device-type    = "ebs"
       virtualization-type = "hvm"
     }
@@ -108,7 +108,7 @@ source "amazon-ebs" "githubrunner" {
     owners      = ["amazon"]
   }
   tags = {
-    OS_Version    = "windows-core-2022"
+    OS_Version    = "windows-core-2025"
     Release       = "Latest"
     Base_AMI_Name = "{{ .SourceAMIName }}"
   }
