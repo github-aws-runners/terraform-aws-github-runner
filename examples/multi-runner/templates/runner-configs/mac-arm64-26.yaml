@@ -1,0 +1,40 @@
+matcherConfig:
+  exactMatch: true
+  labelMatchers:
+    - [self-hosted, osx, arm64]
+fifo: true
+redrive_build_queue:
+  enabled: false
+  maxReceiveCount: null
+runner_config:
+  placement:
+    host_resource_group_arn: "<host_resource_group_arn>"
+    tenancy: host
+  license_specifications:
+    - license_configuration_arn: "<license_configuration_arn>"
+  runner_os: osx
+  runner_architecture: arm64
+  runner_user: ec2-user
+  runner_name_prefix: macos_26_
+  enable_ssm_on_runners: true
+  credit_specification: unlimited
+  instance_types:
+    - mac2.metal
+  ami:
+    id_ssm_parameter_arn: ${ami_id_ssm_parameter_arn}
+  ami:
+    owners:
+      - amazon
+    filter:
+      name:
+        - amzn-ec2-macos-26*
+      state:
+        - available    
+  runners_maximum_count: 1
+  delay_webhook_event: 0
+  scale_down_schedule_expression: cron(* * * * ? *)
+  runner_hook_job_started: |
+    echo "Running pre job hook as $(whoami)"
+  runner_hook_job_completed: |
+    echo "Running post job hook as $(whoami)"
+
