@@ -190,10 +190,10 @@ describe('Dispatcher', () => {
       expect(canRunJob(workflowLabels, runnerLabels, true)).toBe(true);
     });
 
-    it('should accept job with an exact match and runner supports requested capabilities.', () => {
+    it('should NOT accept job with exact match when runner has extra labels.', () => {
       const workflowLabels = ['self-hosted', 'linux', 'x64'];
       const runnerLabels = [['self-hosted', 'linux', 'x64', 'ubuntu-latest']];
-      expect(canRunJob(workflowLabels, runnerLabels, true)).toBe(true);
+      expect(canRunJob(workflowLabels, runnerLabels, true)).toBe(false);
     });
 
     it('should NOT accept job with an exact match and runner not matching requested capabilities.', () => {
@@ -224,6 +224,18 @@ describe('Dispatcher', () => {
       const workflowLabels: string[] = [];
       const runnerLabels = [['self-hosted', 'linux', 'x64']];
       expect(canRunJob(workflowLabels, runnerLabels, false)).toBe(true);
+    });
+
+    it('should NOT match when runner has more labels than workflow requests (exactMatch=true).', () => {
+      const workflowLabels = ['self-hosted', 'linux', 'x64', 'staging', 'ubuntu-2404'];
+      const runnerLabels = [['self-hosted', 'linux', 'x64', 'staging', 'ubuntu-2404', 'on-demand']];
+      expect(canRunJob(workflowLabels, runnerLabels, true)).toBe(false);
+    });
+
+    it('should match when labels are exactly identical with exactMatch=true.', () => {
+      const workflowLabels = ['self-hosted', 'linux', 'on-demand'];
+      const runnerLabels = [['self-hosted', 'linux', 'on-demand']];
+      expect(canRunJob(workflowLabels, runnerLabels, true)).toBe(true);
     });
   });
 });
