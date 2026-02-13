@@ -10,7 +10,7 @@ import {
 import {
   DescribeParametersCommand,
   DescribeParametersCommandOutput,
-  GetParameterCommand,
+  GetParametersCommand,
   SSMClient,
 } from '@aws-sdk/client-ssm';
 import { mockClient } from 'aws-sdk-client-mock';
@@ -83,21 +83,22 @@ describe("delete AMI's", () => {
     mockSSMClient.reset();
 
     mockSSMClient.on(DescribeParametersCommand).resolves(ssmParameters);
-    mockSSMClient.on(GetParameterCommand, { Name: 'ami-id/ami-ssm0001' }).resolves({
-      Parameter: {
-        Name: 'ami-id/ami-ssm0001',
-        Type: 'String',
-        Value: 'ami-ssm0001',
-        Version: 1,
-      },
-    });
-    mockSSMClient.on(GetParameterCommand, { Name: 'ami-id/ami-ssm0002' }).resolves({
-      Parameter: {
-        Name: 'ami-id/ami-ssm0002',
-        Type: 'String',
-        Value: 'ami-ssm0002',
-        Version: 1,
-      },
+    mockSSMClient.on(GetParametersCommand).resolves({
+      Parameters: [
+        {
+          Name: 'ami-id/ami-ssm0001',
+          Type: 'String',
+          Value: 'ami-ssm0001',
+          Version: 1,
+        },
+        {
+          Name: 'ami-id/ami-ssm0002',
+          Type: 'String',
+          Value: 'ami-ssm0002',
+          Version: 1,
+        },
+      ],
+      InvalidParameters: [],
     });
 
     mockEC2Client.on(DescribeLaunchTemplatesCommand).resolves({
@@ -143,12 +144,10 @@ describe("delete AMI's", () => {
     expect(mockEC2Client).toHaveReceivedCommand(DescribeLaunchTemplatesCommand);
     expect(mockEC2Client).toHaveReceivedCommand(DescribeLaunchTemplateVersionsCommand);
     expect(mockSSMClient).toHaveReceivedCommand(DescribeParametersCommand);
-    expect(mockSSMClient).toHaveReceivedCommandTimes(GetParameterCommand, 2);
-    expect(mockSSMClient).toHaveReceivedCommandWith(GetParameterCommand, {
-      Name: 'ami-id/ami-ssm0001',
-    });
-    expect(mockSSMClient).toHaveReceivedCommandWith(GetParameterCommand, {
-      Name: 'ami-id/ami-ssm0002',
+    expect(mockSSMClient).toHaveReceivedCommandTimes(GetParametersCommand, 1);
+    expect(mockSSMClient).toHaveReceivedCommandWith(GetParametersCommand, {
+      Names: ['ami-id/ami-ssm0001', 'ami-id/ami-ssm0002'],
+      WithDecryption: true,
     });
   });
 
@@ -485,13 +484,16 @@ describe("delete AMI's", () => {
         ],
       });
 
-      mockSSMClient.on(GetParameterCommand, { Name: '/github-runner/config/ami_id' }).resolves({
-        Parameter: {
-          Name: '/github-runner/config/ami_id',
-          Type: 'String',
-          Value: 'ami-underscore0001',
-          Version: 1,
-        },
+      mockSSMClient.on(GetParametersCommand).resolves({
+        Parameters: [
+          {
+            Name: '/github-runner/config/ami_id',
+            Type: 'String',
+            Value: 'ami-underscore0001',
+            Version: 1,
+          },
+        ],
+        InvalidParameters: [],
       });
 
       await amiCleanup({
@@ -501,8 +503,9 @@ describe("delete AMI's", () => {
 
       // AMI should not be deleted because it's referenced in SSM
       expect(mockEC2Client).not.toHaveReceivedCommand(DeregisterImageCommand);
-      expect(mockSSMClient).toHaveReceivedCommandWith(GetParameterCommand, {
-        Name: '/github-runner/config/ami_id',
+      expect(mockSSMClient).toHaveReceivedCommandWith(GetParametersCommand, {
+        Names: ['/github-runner/config/ami_id'],
+        WithDecryption: true,
       });
       expect(mockSSMClient).not.toHaveReceivedCommand(DescribeParametersCommand);
     });
@@ -518,13 +521,16 @@ describe("delete AMI's", () => {
         ],
       });
 
-      mockSSMClient.on(GetParameterCommand, { Name: '/github-runner/config/ami-id' }).resolves({
-        Parameter: {
-          Name: '/github-runner/config/ami-id',
-          Type: 'String',
-          Value: 'ami-hyphen0001',
-          Version: 1,
-        },
+      mockSSMClient.on(GetParametersCommand).resolves({
+        Parameters: [
+          {
+            Name: '/github-runner/config/ami-id',
+            Type: 'String',
+            Value: 'ami-hyphen0001',
+            Version: 1,
+          },
+        ],
+        InvalidParameters: [],
       });
 
       await amiCleanup({
@@ -534,8 +540,9 @@ describe("delete AMI's", () => {
 
       // AMI should not be deleted because it's referenced in SSM
       expect(mockEC2Client).not.toHaveReceivedCommand(DeregisterImageCommand);
-      expect(mockSSMClient).toHaveReceivedCommandWith(GetParameterCommand, {
-        Name: '/github-runner/config/ami-id',
+      expect(mockSSMClient).toHaveReceivedCommandWith(GetParametersCommand, {
+        Names: ['/github-runner/config/ami-id'],
+        WithDecryption: true,
       });
       expect(mockSSMClient).not.toHaveReceivedCommand(DescribeParametersCommand);
     });
@@ -561,13 +568,16 @@ describe("delete AMI's", () => {
         ],
       });
 
-      mockSSMClient.on(GetParameterCommand, { Name: '/some/path/ami-id' }).resolves({
-        Parameter: {
-          Name: '/some/path/ami-id',
-          Type: 'String',
-          Value: 'ami-wildcard0001',
-          Version: 1,
-        },
+      mockSSMClient.on(GetParametersCommand).resolves({
+        Parameters: [
+          {
+            Name: '/some/path/ami-id',
+            Type: 'String',
+            Value: 'ami-wildcard0001',
+            Version: 1,
+          },
+        ],
+        InvalidParameters: [],
       });
 
       await amiCleanup({
@@ -580,8 +590,9 @@ describe("delete AMI's", () => {
       expect(mockSSMClient).toHaveReceivedCommandWith(DescribeParametersCommand, {
         ParameterFilters: [{ Key: 'Name', Option: 'Contains', Values: ['ami-id'] }],
       });
-      expect(mockSSMClient).toHaveReceivedCommandWith(GetParameterCommand, {
-        Name: '/some/path/ami-id',
+      expect(mockSSMClient).toHaveReceivedCommandWith(GetParametersCommand, {
+        Names: ['/some/path/ami-id'],
+        WithDecryption: true,
       });
     });
 
@@ -606,13 +617,16 @@ describe("delete AMI's", () => {
         ],
       });
 
-      mockSSMClient.on(GetParameterCommand, { Name: '/github-runner/config/ami_id' }).resolves({
-        Parameter: {
-          Name: '/github-runner/config/ami_id',
-          Type: 'String',
-          Value: 'ami-wildcard-underscore0001',
-          Version: 1,
-        },
+      mockSSMClient.on(GetParametersCommand).resolves({
+        Parameters: [
+          {
+            Name: '/github-runner/config/ami_id',
+            Type: 'String',
+            Value: 'ami-wildcard-underscore0001',
+            Version: 1,
+          },
+        ],
+        InvalidParameters: [],
       });
 
       await amiCleanup({
@@ -625,8 +639,9 @@ describe("delete AMI's", () => {
       expect(mockSSMClient).toHaveReceivedCommandWith(DescribeParametersCommand, {
         ParameterFilters: [{ Key: 'Name', Option: 'Contains', Values: ['ami_id'] }],
       });
-      expect(mockSSMClient).toHaveReceivedCommandWith(GetParameterCommand, {
-        Name: '/github-runner/config/ami_id',
+      expect(mockSSMClient).toHaveReceivedCommandWith(GetParametersCommand, {
+        Names: ['/github-runner/config/ami_id'],
+        WithDecryption: true,
       });
     });
 
@@ -649,13 +664,16 @@ describe("delete AMI's", () => {
         ],
       });
 
-      mockSSMClient.on(GetParameterCommand, { Name: '/explicit/ami_id' }).resolves({
-        Parameter: {
-          Name: '/explicit/ami_id',
-          Type: 'String',
-          Value: 'ami-explicit0001',
-          Version: 1,
-        },
+      mockSSMClient.on(GetParametersCommand, { Names: ['/explicit/ami_id'], WithDecryption: true }).resolves({
+        Parameters: [
+          {
+            Name: '/explicit/ami_id',
+            Type: 'String',
+            Value: 'ami-explicit0001',
+            Version: 1,
+          },
+        ],
+        InvalidParameters: [],
       });
 
       mockSSMClient.on(DescribeParametersCommand).resolves({
@@ -668,13 +686,16 @@ describe("delete AMI's", () => {
         ],
       });
 
-      mockSSMClient.on(GetParameterCommand, { Name: '/discovered/ami-id' }).resolves({
-        Parameter: {
-          Name: '/discovered/ami-id',
-          Type: 'String',
-          Value: 'ami-wildcard0001',
-          Version: 1,
-        },
+      mockSSMClient.on(GetParametersCommand, { Names: ['/discovered/ami-id'], WithDecryption: true }).resolves({
+        Parameters: [
+          {
+            Name: '/discovered/ami-id',
+            Type: 'String',
+            Value: 'ami-wildcard0001',
+            Version: 1,
+          },
+        ],
+        InvalidParameters: [],
       });
 
       await amiCleanup({
@@ -688,14 +709,16 @@ describe("delete AMI's", () => {
         ImageId: 'ami-unused0001',
       });
 
-      expect(mockSSMClient).toHaveReceivedCommandWith(GetParameterCommand, {
-        Name: '/explicit/ami_id',
+      expect(mockSSMClient).toHaveReceivedCommandWith(GetParametersCommand, {
+        Names: ['/explicit/ami_id'],
+        WithDecryption: true,
       });
       expect(mockSSMClient).toHaveReceivedCommandWith(DescribeParametersCommand, {
         ParameterFilters: [{ Key: 'Name', Option: 'Contains', Values: ['ami-id'] }],
       });
-      expect(mockSSMClient).toHaveReceivedCommandWith(GetParameterCommand, {
-        Name: '/discovered/ami-id',
+      expect(mockSSMClient).toHaveReceivedCommandWith(GetParametersCommand, {
+        Names: ['/discovered/ami-id'],
+        WithDecryption: true,
       });
     });
 
@@ -710,7 +733,7 @@ describe("delete AMI's", () => {
         ],
       });
 
-      mockSSMClient.on(GetParameterCommand, { Name: '/nonexistent/ami_id' }).rejects(new Error('ParameterNotFound'));
+      mockSSMClient.on(GetParametersCommand).rejects(new Error('ParameterNotFound'));
 
       // Should not throw and should delete the AMI since SSM reference failed
       await amiCleanup({
@@ -768,7 +791,7 @@ describe("delete AMI's", () => {
         ImageId: 'ami-no-ssm0001',
       });
       expect(mockSSMClient).not.toHaveReceivedCommand(DescribeParametersCommand);
-      expect(mockSSMClient).not.toHaveReceivedCommand(GetParameterCommand);
+      expect(mockSSMClient).not.toHaveReceivedCommand(GetParametersCommand);
     });
   });
 });
