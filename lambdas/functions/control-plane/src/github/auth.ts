@@ -22,6 +22,8 @@ import { throttling } from '@octokit/plugin-throttling';
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
 import { EndpointDefaults } from '@octokit/types';
+import { getInstallationAuthObject, getAuthConfig, createAuthCacheKey, createAuthConfigCacheKey } from './cache';
+import type { GithubAppConfig } from './types';
 
 const logger = createChildLogger('gh-auth');
 
@@ -64,16 +66,21 @@ export async function createGithubInstallationAuth(
   installationId: number | undefined,
   ghesApiUrl = '',
 ): Promise<InstallationAccessTokenAuthentication> {
-  const auth = await createAuth(installationId, ghesApiUrl);
-  const installationAuthOptions: InstallationAuthOptions = { type: 'installation', installationId };
-  return auth(installationAuthOptions);
+  const cacheKey = createAuthCacheKey('installation', installationId, ghesApiUrl);
+
+  return getInstallationAuthObject(cacheKey, async () => {
+    const auth = await createAuth(installationId, ghesApiUrl);
+    const installationAuthOptions: InstallationAuthOptions = { type: 'installation', installationId };
+    return auth(installationAuthOptions);
+  });
 }
 
 async function createAuth(installationId: number | undefined, ghesApiUrl: string): Promise<AuthInterface> {
-  const appId = parseInt(await getParameter(process.env.PARAMETER_GITHUB_APP_ID_NAME));
-  let authOptions: StrategyOptions = {
-    appId,
-    privateKey: Buffer.from(
+  const configCacheKey = createAuthConfigCacheKey(ghesApiUrl);
+
+  const config = await getAuthConfig(configCacheKey, async (): Promise<GithubAppConfig> => {
+    const appId = parseInt(await getParameter(process.env.PARAMETER_GITHUB_APP_ID_NAME));
+    const privateKey = Buffer.from(
       await getParameter(process.env.PARAMETER_GITHUB_APP_KEY_BASE64_NAME),
       'base64',
       // replace literal \n characters with new lines to allow the key to be stored as a
@@ -81,7 +88,17 @@ async function createAuth(installationId: number | undefined, ghesApiUrl: string
       // processes private keys to retain compatibility between the projects
     )
       .toString()
-      .replace('/[\\n]/g', String.fromCharCode(10)),
+      .replace(/\\n/g, String.fromCharCode(10));
+
+    return {
+      appId,
+      privateKey,
+    };
+  });
+
+  let authOptions: StrategyOptions = {
+    appId: config.appId,
+    privateKey: config.privateKey,
   };
   if (installationId) authOptions = { ...authOptions, installationId };
 
@@ -89,7 +106,7 @@ async function createAuth(installationId: number | undefined, ghesApiUrl: string
   if (ghesApiUrl) {
     authOptions.request = request.defaults({
       baseUrl: ghesApiUrl,
-    });
+    }) as RequestInterface;
   }
   return createAppAuth(authOptions);
 }

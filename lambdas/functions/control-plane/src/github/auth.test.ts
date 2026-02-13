@@ -1,10 +1,9 @@
-import { createAppAuth } from '@octokit/auth-app';
-import { StrategyOptions } from '@octokit/auth-app/dist-types/types';
+import { createAppAuth, type StrategyOptions } from '@octokit/auth-app';
 import { request } from '@octokit/request';
 import { RequestInterface, RequestParameters } from '@octokit/types';
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
 import * as nock from 'nock';
-
+import { reset } from './cache';
 import { createGithubAppAuth, createOctokitClient } from './auth';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
@@ -29,6 +28,7 @@ const PARAMETER_GITHUB_APP_KEY_BASE64_NAME = `/actions-runner/${ENVIRONMENT}/git
 const mockedGet = vi.mocked(getParameter);
 
 beforeEach(() => {
+  reset(); // clear all caches before each test
   vi.resetModules();
   vi.clearAllMocks();
   process.env = { ...cleanEnv };
@@ -90,6 +90,34 @@ ${decryptedValue}`,
       'base64',
     );
     mockedGet.mockResolvedValueOnce(GITHUB_APP_ID).mockResolvedValueOnce(b64PrivateKeyWithLineBreaks);
+
+    const mockedAuth = vi.fn();
+    mockedAuth.mockResolvedValue({ token });
+    // Add the required hook method to make it compatible with AuthInterface
+    const mockWithHook = Object.assign(mockedAuth, { hook: vi.fn() });
+    mockedCreatAppAuth.mockReturnValue(mockWithHook);
+
+    // Act
+    await createGithubAppAuth(installationId);
+
+    // Assert
+    expect(mockedCreatAppAuth).toBeCalledTimes(1);
+    expect(mockedCreatAppAuth).toBeCalledWith({ ...authOptions });
+  });
+
+  it('Replaces literal newline characters with actual newlines in SSH key.', async () => {
+    // Arrange
+    const keyWithEscapedNewlines = `${decryptedValue}\\n${decryptedValue}`;
+    const keyWithActualNewlines = `${decryptedValue}\n${decryptedValue}`;
+
+    const authOptions = {
+      appId: parseInt(GITHUB_APP_ID),
+      privateKey: keyWithActualNewlines,
+      installationId,
+    };
+
+    const b64PrivateKeyWithEscapedNewlines = Buffer.from(keyWithEscapedNewlines, 'binary').toString('base64');
+    mockedGet.mockResolvedValueOnce(GITHUB_APP_ID).mockResolvedValueOnce(b64PrivateKeyWithEscapedNewlines);
 
     const mockedAuth = vi.fn();
     mockedAuth.mockResolvedValue({ token });
