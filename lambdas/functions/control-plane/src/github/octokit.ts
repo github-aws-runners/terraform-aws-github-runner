@@ -1,17 +1,32 @@
 import { Octokit } from '@octokit/rest';
 import { ActionRequestMessage } from '../scale-runners/scale-up';
-import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from './auth';
+import {
+  createGithubAppAuth,
+  createGithubInstallationAuth,
+  createOctokitClient,
+  getAppCount,
+  getStoredInstallationId,
+} from './auth';
 
 export async function getInstallationId(
   ghesApiUrl: string,
   enableOrgLevel: boolean,
   payload: ActionRequestMessage,
+  appIndex?: number,
 ): Promise<number> {
-  if (payload.installationId !== 0) {
+  // Use pre-stored installation ID when available (avoids an API call)
+  if (appIndex !== undefined) {
+    const storedId = await getStoredInstallationId(appIndex);
+    if (storedId !== undefined) return storedId;
+  }
+
+  const multiApp = (await getAppCount()) > 1;
+
+  if (!multiApp && payload.installationId !== 0) {
     return payload.installationId;
   }
 
-  const ghAuth = await createGithubAppAuth(undefined, ghesApiUrl);
+  const ghAuth = await createGithubAppAuth(undefined, ghesApiUrl, appIndex);
   const githubClient = await createOctokitClient(ghAuth.token, ghesApiUrl);
   return enableOrgLevel
     ? (
@@ -40,7 +55,11 @@ export async function getOctokit(
   enableOrgLevel: boolean,
   payload: ActionRequestMessage,
 ): Promise<Octokit> {
-  const installationId = await getInstallationId(ghesApiUrl, enableOrgLevel, payload);
-  const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl);
-  return await createOctokitClient(ghAuth.token, ghesApiUrl);
+  // Select one app for this entire auth flow
+  const ghAuth = await createGithubAppAuth(undefined, ghesApiUrl);
+  const appIdx = ghAuth.appIndex;
+
+  const installationId = await getInstallationId(ghesApiUrl, enableOrgLevel, payload, appIdx);
+  const installationAuth = await createGithubInstallationAuth(installationId, ghesApiUrl, appIdx);
+  return await createOctokitClient(installationAuth.token, ghesApiUrl);
 }

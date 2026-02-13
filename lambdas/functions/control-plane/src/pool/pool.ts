@@ -4,7 +4,12 @@ import yn from 'yn';
 
 import { bootTimeExceeded, listEC2Runners } from '../aws/runners';
 import { RunnerList } from '../aws/runners.d';
-import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
+import {
+  createGithubAppAuth,
+  createGithubInstallationAuth,
+  createOctokitClient,
+  getStoredInstallationId,
+} from '../github/auth';
 import { createRunners, getGitHubEnterpriseApiUrl } from '../scale-runners/scale-up';
 import { validateSsmParameterStoreTags } from '../scale-runners/scale-up';
 
@@ -50,8 +55,16 @@ export async function adjust(event: PoolEvent): Promise<void> {
 
   const { ghesApiUrl, ghesBaseUrl } = getGitHubEnterpriseApiUrl();
 
-  const installationId = await getInstallationId(ghesApiUrl, runnerOwner);
-  const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl);
+  const ghAppAuth = await createGithubAppAuth(undefined, ghesApiUrl);
+  const appIdx = ghAppAuth.appIndex;
+
+  // Use pre-stored installation ID when available (avoids an API call)
+  let installationId = await getStoredInstallationId(appIdx);
+  if (installationId === undefined) {
+    const githubAppClient = await createOctokitClient(ghAppAuth.token, ghesApiUrl);
+    installationId = (await githubAppClient.apps.getOrgInstallation({ org: runnerOwner })).data.id;
+  }
+  const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl, appIdx);
   const githubInstallationClient = await createOctokitClient(ghAuth.token, ghesApiUrl);
 
   // Get statuses of runners registered in GitHub
@@ -110,17 +123,6 @@ export async function adjust(event: PoolEvent): Promise<void> {
   } else {
     logger.info(`Pool will not be topped up. Found ${numberOfRunnersInPool} managed idle runners.`);
   }
-}
-
-async function getInstallationId(ghesApiUrl: string, org: string): Promise<number> {
-  const ghAuth = await createGithubAppAuth(undefined, ghesApiUrl);
-  const githubClient = await createOctokitClient(ghAuth.token, ghesApiUrl);
-
-  return (
-    await githubClient.apps.getOrgInstallation({
-      org,
-    })
-  ).data.id;
 }
 
 function calculatePooSize(ec2runners: RunnerList[], runnerStatus: Map<string, RunnerStatus>): number {

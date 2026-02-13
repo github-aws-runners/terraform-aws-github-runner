@@ -45,6 +45,7 @@ vi.mock('./../github/auth', async () => ({
   createGithubAppAuth: vi.fn(),
   createGithubInstallationAuth: vi.fn(),
   createOctokitClient: vi.fn(),
+  getStoredInstallationId: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('./cache', async () => ({
@@ -169,6 +170,7 @@ describe('Scale down runners', () => {
       token: 'token',
       appId: 1,
       expiresAt: 'some-date',
+      appIndex: 0,
     });
     mockedInstallationAuth.mockResolvedValue({
       type: 'token',
@@ -771,6 +773,30 @@ describe('Scale down runners', () => {
       expect(runnersTest[0].launchTime).toBeUndefined();
       expect(runnersTest[1].launchTime).toBeDefined();
       expect(runnersTest[2].launchTime).not.toBeDefined();
+    });
+  });
+
+  describe('Multi-app round-robin', () => {
+    it('passes the same appIndex to createGithubInstallationAuth', async () => {
+      mockedAppAuth.mockResolvedValue({
+        type: 'app',
+        token: 'token',
+        appId: 42,
+        expiresAt: 'some-date',
+        appIndex: 1,
+      });
+
+      const runners = [createRunnerTestData('idle-1', 'Org', MINIMUM_TIME_RUNNING_IN_MINUTES + 1, true, false, true)];
+      mockGitHubRunners(runners);
+      mockAwsRunners(runners);
+
+      await scaleDown();
+
+      expect(mockedInstallationAuth).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.any(String),
+        1, // appIndex must match the one from createGithubAppAuth
+      );
     });
   });
 });

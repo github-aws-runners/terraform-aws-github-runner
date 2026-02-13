@@ -3,7 +3,13 @@ import { addPersistentContextToChildLogger, createChildLogger } from '@aws-githu
 import { getParameter, putParameter } from '@aws-github-runner/aws-ssm-util';
 import yn from 'yn';
 
-import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
+import {
+  createGithubAppAuth,
+  createGithubInstallationAuth,
+  createOctokitClient,
+  getAppCount,
+  getStoredInstallationId,
+} from '../github/auth';
 import { createRunner, listEC2Runners, tag, terminateRunner } from './../aws/runners';
 import { RunnerInputParameters } from './../aws/runners.d';
 import { metricGitHubAppRateLimit } from '../github/rate-limit';
@@ -151,8 +157,16 @@ export async function getInstallationId(
   githubAppClient: Octokit,
   enableOrgLevel: boolean,
   payload: ActionRequestMessage,
+  multiApp = false,
+  appIndex?: number,
 ): Promise<number> {
-  if (payload.installationId !== 0) {
+  // Use pre-stored installation ID when available (avoids an API call)
+  if (appIndex !== undefined) {
+    const storedId = await getStoredInstallationId(appIndex);
+    if (storedId !== undefined) return storedId;
+  }
+
+  if (!multiApp && payload.installationId !== 0) {
     return payload.installationId;
   }
 
@@ -321,7 +335,9 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
   const { ghesApiUrl, ghesBaseUrl } = getGitHubEnterpriseApiUrl();
 
   const ghAuth = await createGithubAppAuth(undefined, ghesApiUrl);
+  const appIdx = ghAuth.appIndex;
   const githubAppClient = await createOctokitClient(ghAuth.token, ghesApiUrl);
+  const multiApp = (await getAppCount()) > 1;
 
   // A map of either owner or owner/repo name to Octokit client, so we use a
   // single client per installation (set of messages), depending on how the app
@@ -369,9 +385,9 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
     // If we've not seen this owner/repo before, we'll need to create a GitHub
     // client for it.
     if (entry === undefined) {
-      const installationId = await getInstallationId(githubAppClient, enableOrgLevel, payload);
-      const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl);
-      const githubInstallationClient = await createOctokitClient(ghAuth.token, ghesApiUrl);
+      const installationId = await getInstallationId(githubAppClient, enableOrgLevel, payload, multiApp, appIdx);
+      const ghInstallationAuth = await createGithubInstallationAuth(installationId, ghesApiUrl, appIdx);
+      const githubInstallationClient = await createOctokitClient(ghInstallationAuth.token, ghesApiUrl);
 
       entry = {
         messages: [],
