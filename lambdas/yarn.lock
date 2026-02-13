@@ -152,7 +152,7 @@ __metadata:
     "@aws-sdk/client-ec2": "npm:^3.984.0"
     "@aws-sdk/client-sqs": "npm:^3.984.0"
     "@aws-sdk/types": "npm:^3.973.1"
-    "@middy/core": "npm:^6.4.5"
+    "@middy/core": "npm:^7.0.2"
     "@octokit/auth-app": "npm:8.2.0"
     "@octokit/core": "npm:7.0.6"
     "@octokit/plugin-throttling": "npm:11.0.3"
@@ -179,7 +179,7 @@ __metadata:
     "@aws-sdk/client-s3": "npm:^3.984.0"
     "@aws-sdk/lib-storage": "npm:^3.984.0"
     "@aws-sdk/types": "npm:^3.973.1"
-    "@middy/core": "npm:^6.4.5"
+    "@middy/core": "npm:^7.0.2"
     "@octokit/rest": "npm:22.0.1"
     "@types/aws-lambda": "npm:^8.10.159"
     "@types/node": "npm:^22.19.3"
@@ -199,7 +199,7 @@ __metadata:
     "@aws-github-runner/aws-powertools-util": "npm:*"
     "@aws-sdk/client-ec2": "npm:^3.984.0"
     "@aws-sdk/types": "npm:^3.973.1"
-    "@middy/core": "npm:^6.4.5"
+    "@middy/core": "npm:^7.0.2"
     "@types/aws-lambda": "npm:^8.10.159"
     "@types/node": "npm:^22.19.3"
     "@vercel/ncc": "npm:^0.38.4"
@@ -216,7 +216,7 @@ __metadata:
     "@aws-github-runner/aws-ssm-util": "npm:*"
     "@aws-sdk/client-eventbridge": "npm:^3.984.0"
     "@aws-sdk/client-sqs": "npm:^3.984.0"
-    "@middy/core": "npm:^6.4.5"
+    "@middy/core": "npm:^7.0.2"
     "@octokit/rest": "npm:22.0.1"
     "@octokit/types": "npm:^16.0.0"
     "@octokit/webhooks": "npm:^14.2.0"
@@ -3301,10 +3301,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@middy/core@npm:^6.4.5":
-  version: 6.4.5
-  resolution: "@middy/core@npm:6.4.5"
-  checksum: 10c0/7fe05cafbaa6b3fe6f827b691808666f9d4bd96ca96496b2f70823d8b90e985488ea203d3fce4fd760605b7a1922c39cb399980a3bae39a905d467dd517ea666
+"@middy/core@npm:^7.0.2":
+  version: 7.0.2
+  resolution: "@middy/core@npm:7.0.2"
+  peerDependencies:
+    "@aws/durable-execution-sdk-js": ^1.0.0
+  peerDependenciesMeta:
+    "@aws/durable-execution-sdk-js":
+      optional: true
+  checksum: 10c0/dfd264d89c2bfab521026f062331c5942552bd7d382a088a784899ac2a8d9b04a7274e7c563ecbaa5dc1b08600ec86290ed71a21c564e9bda04c0a113b0d38a2
   languageName: node
   linkType: hard
 
