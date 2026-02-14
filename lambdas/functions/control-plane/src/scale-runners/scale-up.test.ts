@@ -9,6 +9,7 @@ import * as ghAuth from '../github/auth';
 import { createRunner, listEC2Runners } from './../aws/runners';
 import { RunnerInputParameters } from './../aws/runners.d';
 import * as scaleUpModule from './scale-up';
+import { GHHttpError } from './ScaleError';
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
 import { publishRetryMessage } from './job-retry';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -1849,6 +1850,69 @@ describe('Retry mechanism tests', () => {
     await scaleUpModule.scaleUp(messages);
 
     expect(callOrder).toEqual(['createRunner', 'publishRetryMessage']);
+  });
+});
+
+describe('GHHttpError', () => {
+  it('should have correct name, message, and status properties', () => {
+    const error = new GHHttpError('test error', 422);
+    expect(error).toBeInstanceOf(Error);
+    expect(error).toBeInstanceOf(GHHttpError);
+    expect(error.name).toBe('GHHttpError');
+    expect(error.message).toBe('test error');
+    expect(error.status).toBe(422);
+  });
+
+  describe('createRunners throws GHHttpError on GitHub API HTTP failure', () => {
+    beforeEach(() => {
+      process.env.GHES_URL = 'https://github.enterprise.something';
+      process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
+      process.env.ENABLE_EPHEMERAL_RUNNERS = 'true';
+      process.env.ENABLE_JIT_CONFIG = 'true';
+      process.env.RUNNER_NAME_PREFIX = 'unit-test-';
+      process.env.RUNNER_GROUP_NAME = 'Default';
+      process.env.SSM_CONFIG_PATH = '/github-action-runners/default/runners/config';
+      process.env.SSM_TOKEN_PATH = '/github-action-runners/default/runners/config';
+      process.env.RUNNER_LABELS = 'label1,label2';
+      process.env.RUNNERS_MAXIMUM_COUNT = '3';
+    });
+
+    it('wraps JIT config GitHub HTTP error as GHHttpError', async () => {
+      const httpError = new Error('Validation Failed') as Error & { status: number };
+      httpError.name = 'HttpError';
+      httpError.status = 422;
+      mockOctokit.actions.generateRunnerJitconfigForOrg.mockRejectedValue(httpError);
+
+      await expect(scaleUpModule.scaleUp(TEST_DATA)).rejects.toThrow(GHHttpError);
+      await expect(scaleUpModule.scaleUp(TEST_DATA)).rejects.toMatchObject({
+        status: 422,
+        message: expect.stringContaining('Validation Failed'),
+      });
+    });
+
+    it('wraps registration token GitHub HTTP error as GHHttpError', async () => {
+      process.env.ENABLE_EPHEMERAL_RUNNERS = 'false';
+      process.env.ENABLE_JIT_CONFIG = 'false';
+
+      const httpError = new Error('Bad credentials') as Error & { status: number };
+      httpError.name = 'HttpError';
+      httpError.status = 401;
+      mockOctokit.actions.createRegistrationTokenForOrg.mockRejectedValue(httpError);
+
+      await expect(scaleUpModule.scaleUp(TEST_DATA)).rejects.toThrow(GHHttpError);
+      await expect(scaleUpModule.scaleUp(TEST_DATA)).rejects.toMatchObject({
+        status: 401,
+        message: expect.stringContaining('Bad credentials'),
+      });
+    });
+
+    it('does not wrap non-HTTP errors as GHHttpError', async () => {
+      const genericError = new Error('Some SSM error');
+      mockOctokit.actions.generateRunnerJitconfigForOrg.mockRejectedValue(genericError);
+
+      await expect(scaleUpModule.scaleUp(TEST_DATA)).rejects.toThrow('Some SSM error');
+      await expect(scaleUpModule.scaleUp(TEST_DATA)).rejects.not.toBeInstanceOf(GHHttpError);
+    });
   });
 });
 
