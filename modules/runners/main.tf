@@ -191,7 +191,7 @@ resource "aws_launch_template" "runner" {
   }
 
   iam_instance_profile {
-    name = aws_iam_instance_profile.runner.name
+    name = var.iam_overrides["override_instance_profile"] ? var.iam_overrides["instance_profile_name"] : aws_iam_instance_profile.runner[0].name
   }
 
   instance_initiated_shutdown_behavior = "terminate"
