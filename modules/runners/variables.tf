@@ -395,12 +395,13 @@ variable "cloudwatch_config" {
 }
 
 variable "runner_log_files" {
-  description = "(optional) List of logfiles to send to CloudWatch, will only be used if `enable_cloudwatch_agent` is set to true. Object description: `log_group_name`: Name of the log group, `prefix_log_group`: If true, the log group name will be prefixed with `/github-self-hosted-runners/<var.prefix>`, `file_path`: path to the log file, `log_stream_name`: name of the log stream."
+  description = "(optional) List of logfiles to send to CloudWatch, will only be used if `enable_cloudwatch_agent` is set to true. Object description: `log_group_name`: Name of the log group, `prefix_log_group`: If true, the log group name will be prefixed with `/github-self-hosted-runners/<var.prefix>`, `file_path`: path to the log file, `log_stream_name`: name of the log stream, `log_class`: The log class of the log group. Valid values are `STANDARD` or `INFREQUENT_ACCESS`. Defaults to `STANDARD`."
   type = list(object({
     log_group_name   = string
     prefix_log_group = bool
     file_path        = string
     log_stream_name  = string
+    log_class        = optional(string, "STANDARD")
   }))
   default = null
 }

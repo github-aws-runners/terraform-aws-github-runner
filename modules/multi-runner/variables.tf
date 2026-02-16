@@ -152,6 +152,7 @@ variable "multi_runner_config" {
         prefix_log_group = bool
         file_path        = string
         log_stream_name  = string
+        log_class        = optional(string, "STANDARD")
       })), null)
       block_device_mappings = optional(list(object({
         delete_on_termination = optional(bool, true)

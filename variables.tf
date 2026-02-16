@@ -491,6 +491,7 @@ variable "runner_log_files" {
     prefix_log_group = bool
     file_path        = string
     log_stream_name  = string
+    log_class        = optional(string, "STANDARD")
   }))
   default = null
 }

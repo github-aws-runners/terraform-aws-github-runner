@@ -7,25 +7,29 @@ locals {
         "prefix_log_group" : true,
         "file_path" : "/var/log/messages",
         "log_group_name" : "messages",
-        "log_stream_name" : "{instance_id}"
+        "log_stream_name" : "{instance_id}",
+        "log_class" : "STANDARD"
       },
       {
         "log_group_name" : "user_data",
         "prefix_log_group" : true,
         "file_path" : var.runner_os == "windows" ? "C:/UserData.log" : "/var/log/user-data.log",
-        "log_stream_name" : "{instance_id}"
+        "log_stream_name" : "{instance_id}",
+        "log_class" : "STANDARD"
       },
       {
         "log_group_name" : "runner",
         "prefix_log_group" : true,
         "file_path" : var.runner_os == "windows" ? "C:/actions-runner/_diag/Runner_*.log" : "/opt/actions-runner/_diag/Runner_**.log",
-        "log_stream_name" : "{instance_id}"
+        "log_stream_name" : "{instance_id}",
+        "log_class" : "STANDARD"
       },
       {
         "log_group_name" : "runner-startup",
         "prefix_log_group" : true,
         "file_path" : var.runner_os == "windows" ? "C:/runner-startup.log" : "/var/log/runner-startup.log",
-        "log_stream_name" : "{instance_id}"
+        "log_stream_name" : "{instance_id}",
+        "log_class" : "STANDARD"
       }
     ]
   )
@@ -33,9 +37,10 @@ locals {
     "log_group_name" : l.prefix_log_group ? "/github-self-hosted-runners/${var.prefix}/${l.log_group_name}" : "/${l.log_group_name}"
     "log_stream_name" : l.log_stream_name
     "file_path" : l.file_path
+    "log_class" : try(l.log_class, "STANDARD")
   }] : []
 
-  loggroups_names = distinct([for l in local.logfiles : l.log_group_name])
+  loggroups = distinct([for l in local.logfiles : { name = l.log_group_name, log_class = l.log_class }])
 
 }
 
@@ -51,10 +56,11 @@ resource "aws_ssm_parameter" "cloudwatch_agent_config_runner" {
 }
 
 resource "aws_cloudwatch_log_group" "gh_runners" {
-  count             = length(local.loggroups_names)
-  name              = local.loggroups_names[count.index]
+  for_each          = { for lg in local.loggroups : lg.name => lg }
+  name              = each.value.name
   retention_in_days = var.logging_retention_in_days
   kms_key_id        = var.logging_kms_key_id
+  log_group_class   = each.value.log_class
   tags              = local.tags
 }
 
