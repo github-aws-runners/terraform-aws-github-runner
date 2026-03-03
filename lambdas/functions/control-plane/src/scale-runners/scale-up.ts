@@ -250,11 +250,13 @@ export async function createRunners(
   ec2RunnerConfig: CreateEC2RunnerConfig,
   numberOfRunners: number,
   ghClient: Octokit,
+  source: 'scale-up-lambda' | 'pool-lambda' = 'scale-up-lambda',
 ): Promise<string[]> {
   const instances = await createRunner({
     runnerType: githubRunnerConfig.runnerType,
     runnerOwner: githubRunnerConfig.runnerOwner,
     numberOfRunners,
+    source,
     ...ec2RunnerConfig,
   });
   if (instances.length !== 0) {
