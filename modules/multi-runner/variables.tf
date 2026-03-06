@@ -142,7 +142,7 @@ variable "multi_runner_config" {
         group_id                = optional(string)
         group_name              = optional(string)
         host_id                 = optional(string)
-        host_resource_group_arn = optional(number)
+        host_resource_group_arn = optional(string)
         spread_domain           = optional(string)
         tenancy                 = optional(string)
         partition_number        = optional(number)
@@ -751,4 +751,10 @@ variable "lambda_event_source_mapping_maximum_batching_window_in_seconds" {
   description = "Maximum amount of time to gather records before invoking the lambda function, in seconds. AWS requires this to be greater than 0 if batch_size is greater than 10. Defaults to 0."
   type        = number
   default     = 0
+}
+
+variable "parameter_store_tags" {
+  description = "Map of tags that will be added to all the SSM Parameter Store parameters created by the Lambda function."
+  type        = map(string)
+  default     = {}
 }

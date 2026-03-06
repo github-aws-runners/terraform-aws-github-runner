@@ -3,6 +3,7 @@ import { createSingleMetric } from '@aws-github-runner/aws-powertools-util';
 import { MetricUnit } from '@aws-lambda-powertools/metrics';
 import { metricGitHubAppRateLimit } from './rate-limit';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { getParameter } from '@aws-github-runner/aws-ssm-util';
 
 process.env.PARAMETER_GITHUB_APP_ID_NAME = 'test';
 vi.mock('@aws-github-runner/aws-ssm-util', async () => {
@@ -77,5 +78,28 @@ describe('metricGitHubAppRateLimit', () => {
     await metricGitHubAppRateLimit(undefined as unknown as ResponseHeaders);
 
     expect(createSingleMetric).not.toHaveBeenCalled();
+  });
+
+  it('should cache GitHub App ID and only call getParameter once', async () => {
+    // Reset modules to clear the appIdPromise cache
+    vi.resetModules();
+    const { metricGitHubAppRateLimit: freshMetricFunction } = await import('./rate-limit');
+
+    process.env.ENABLE_METRIC_GITHUB_APP_RATE_LIMIT = 'true';
+    const headers: ResponseHeaders = {
+      'x-ratelimit-remaining': '10',
+      'x-ratelimit-limit': '60',
+    };
+
+    const mockGetParameter = vi.mocked(getParameter);
+    mockGetParameter.mockClear();
+
+    await freshMetricFunction(headers);
+    await freshMetricFunction(headers);
+    await freshMetricFunction(headers);
+
+    // getParameter should only be called once due to caching
+    expect(mockGetParameter).toHaveBeenCalledTimes(1);
+    expect(mockGetParameter).toHaveBeenCalledWith(process.env.PARAMETER_GITHUB_APP_ID_NAME);
   });
 });
