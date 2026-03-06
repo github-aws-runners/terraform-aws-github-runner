@@ -22,13 +22,13 @@ locals {
   }
 
   config = merge(var.config, {
-    name                         = local.name,
-    handler                      = "index.interruptionWarning",
-    zip                          = local.lambda_zip,
-    environment_variables        = local.environment_variables
-    metrics_namespace            = var.config.metrics.namespace
-    _deregistration_env_vars     = local.deregistration_env_vars
-    _ssm_parameter_arns          = local.ssm_parameter_arns
+    name                          = local.name,
+    handler                       = "index.interruptionWarning",
+    zip                           = local.lambda_zip,
+    environment_variables         = local.environment_variables
+    metrics_namespace             = var.config.metrics.namespace
+    _deregistration_env_vars      = local.deregistration_env_vars
+    _ssm_parameter_arns           = local.ssm_parameter_arns
     _enable_runner_deregistration = local.enable_runner_deregistration
   })
 }

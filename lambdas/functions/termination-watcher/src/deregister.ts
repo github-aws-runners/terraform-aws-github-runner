@@ -25,10 +25,7 @@ export function createThrottleOptions() {
 
 async function getAppCredentials(): Promise<{ appId: number; privateKey: string }> {
   const appId = parseInt(await getParameter(process.env.PARAMETER_GITHUB_APP_ID_NAME!));
-  const privateKey = Buffer.from(
-    await getParameter(process.env.PARAMETER_GITHUB_APP_KEY_BASE64_NAME!),
-    'base64',
-  )
+  const privateKey = Buffer.from(await getParameter(process.env.PARAMETER_GITHUB_APP_KEY_BASE64_NAME!), 'base64')
     .toString()
     .replace('/[\\n]/g', String.fromCharCode(10));
   return { appId, privateKey };
@@ -142,12 +139,7 @@ async function findRunnerByInstanceId(
   return undefined;
 }
 
-async function deleteRunner(
-  octokit: Octokit,
-  owner: string,
-  runnerId: number,
-  runnerType: string,
-): Promise<void> {
+async function deleteRunner(octokit: Octokit, owner: string, runnerId: number, runnerType: string): Promise<void> {
   if (runnerType === 'Repo') {
     const [repoOwner, repo] = owner.split('/');
     await octokit.actions.deleteSelfHostedRunnerFromRepo({
