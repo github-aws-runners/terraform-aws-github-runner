@@ -326,7 +326,9 @@ async function createInstancesWithRunInstances(
 
   try {
     if (runnerParameters.ec2instanceCriteria.targetCapacityType === 'spot') {
-      throw new Error('Spot instances are not supported with RunInstances. Please set targetCapacityType to on-demand for dedicated hosts.');
+      throw new Error(
+        'Spot instances are not supported with RunInstances. Please set targetCapacityType to on-demand for dedicated hosts.',
+      );
     }
 
     const instanceType = runnerParameters.ec2instanceCriteria.instanceTypes[0] as _InstanceType;
@@ -366,7 +368,6 @@ async function createInstancesWithRunInstances(
     throw e;
   }
 }
-
 
 // If launchTime is undefined, this will return false
 export function bootTimeExceeded(ec2Runner: { launchTime?: Date }): boolean {

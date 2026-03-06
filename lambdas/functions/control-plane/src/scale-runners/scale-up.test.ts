@@ -2033,25 +2033,19 @@ describe('useDedicatedHost', () => {
   it('defaults to false when USE_DEDICATED_HOST env var is not set', async () => {
     delete process.env.USE_DEDICATED_HOST;
     await scaleUpModule.scaleUp(TEST_DATA);
-    expect(createRunner).toHaveBeenCalledWith(
-      expect.objectContaining({ useDedicatedHost: false }),
-    );
+    expect(createRunner).toHaveBeenCalledWith(expect.objectContaining({ useDedicatedHost: false }));
   });
 
   it('is true when USE_DEDICATED_HOST is "true"', async () => {
     process.env.USE_DEDICATED_HOST = 'true';
     await scaleUpModule.scaleUp(TEST_DATA);
-    expect(createRunner).toHaveBeenCalledWith(
-      expect.objectContaining({ useDedicatedHost: true }),
-    );
+    expect(createRunner).toHaveBeenCalledWith(expect.objectContaining({ useDedicatedHost: true }));
   });
 
   it('is false when USE_DEDICATED_HOST is "false"', async () => {
     process.env.USE_DEDICATED_HOST = 'false';
     await scaleUpModule.scaleUp(TEST_DATA);
-    expect(createRunner).toHaveBeenCalledWith(
-      expect.objectContaining({ useDedicatedHost: false }),
-    );
+    expect(createRunner).toHaveBeenCalledWith(expect.objectContaining({ useDedicatedHost: false }));
   });
 });
 

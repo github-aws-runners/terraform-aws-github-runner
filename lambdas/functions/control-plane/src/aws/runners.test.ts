@@ -846,10 +846,12 @@ describe('create runner with useDedicatedHost', () => {
   it('uses CreateFleet when useDedicatedHost is false', async () => {
     mockEC2Client.on(CreateFleetCommand).resolves({ Instances: [{ InstanceIds: ['i-fleet-1'] }] });
 
-    const result = await createRunner(createRunnerConfig({
-      ...dedicatedHostRunnerConfig,
-      useDedicatedHost: false,
-    }));
+    const result = await createRunner(
+      createRunnerConfig({
+        ...dedicatedHostRunnerConfig,
+        useDedicatedHost: false,
+      }),
+    );
 
     expect(result).toEqual(['i-fleet-1']);
     expect(mockEC2Client).toHaveReceivedCommand(CreateFleetCommand);
@@ -859,10 +861,12 @@ describe('create runner with useDedicatedHost', () => {
   it('uses CreateFleet when useDedicatedHost is undefined', async () => {
     mockEC2Client.on(CreateFleetCommand).resolves({ Instances: [{ InstanceIds: ['i-fleet-1'] }] });
 
-    const result = await createRunner(createRunnerConfig({
-      ...dedicatedHostRunnerConfig,
-      useDedicatedHost: undefined,
-    }));
+    const result = await createRunner(
+      createRunnerConfig({
+        ...dedicatedHostRunnerConfig,
+        useDedicatedHost: undefined,
+      }),
+    );
 
     expect(result).toEqual(['i-fleet-1']);
     expect(mockEC2Client).toHaveReceivedCommand(CreateFleetCommand);
@@ -949,10 +953,12 @@ describe('create runner with useDedicatedHost', () => {
 
   it('throws error when spot is used with dedicated host', async () => {
     await expect(
-      createRunner(createRunnerConfig({
-        ...dedicatedHostRunnerConfig,
-        capacityType: 'spot',
-      })),
+      createRunner(
+        createRunnerConfig({
+          ...dedicatedHostRunnerConfig,
+          capacityType: 'spot',
+        }),
+      ),
     ).rejects.toThrow('Spot instances are not supported with RunInstances');
     expect(mockEC2Client).not.toHaveReceivedCommand(RunInstancesCommand);
   });
@@ -960,17 +966,15 @@ describe('create runner with useDedicatedHost', () => {
   it('throws error when RunInstances returns no instances', async () => {
     mockEC2Client.on(RunInstancesCommand).resolves({ Instances: [] });
 
-    await expect(
-      createRunner(createRunnerConfig(dedicatedHostRunnerConfig)),
-    ).rejects.toThrow('RunInstances returned no instances for dedicated host.');
+    await expect(createRunner(createRunnerConfig(dedicatedHostRunnerConfig))).rejects.toThrow(
+      'RunInstances returned no instances for dedicated host.',
+    );
   });
 
   it('throws error when RunInstances fails', async () => {
     mockEC2Client.on(RunInstancesCommand).rejects(new Error('EC2 error'));
 
-    await expect(
-      createRunner(createRunnerConfig(dedicatedHostRunnerConfig)),
-    ).rejects.toThrow('EC2 error');
+    await expect(createRunner(createRunnerConfig(dedicatedHostRunnerConfig))).rejects.toThrow('EC2 error');
   });
 
   it('uses ami id override from ssm parameter', async () => {
@@ -981,10 +985,12 @@ describe('create runner with useDedicatedHost', () => {
     };
     mockSSMClient.on(GetParameterCommand).resolves(paramValue);
 
-    await createRunner(createRunnerConfig({
-      ...dedicatedHostRunnerConfig,
-      amiIdSsmParameterName: 'my-ami-id-param',
-    }));
+    await createRunner(
+      createRunnerConfig({
+        ...dedicatedHostRunnerConfig,
+        amiIdSsmParameterName: 'my-ami-id-param',
+      }),
+    );
 
     expect(mockEC2Client).toHaveReceivedCommandWith(RunInstancesCommand, {
       LaunchTemplate: {
