@@ -65,6 +65,7 @@ interface CreateEC2RunnerConfig {
   tracingEnabled?: boolean;
   onDemandFailoverOnError?: string[];
   scaleErrors: string[];
+  useDedicatedHost?: boolean;
 }
 
 function generateRunnerServiceConfig(githubRunnerConfig: CreateGitHubRunnerConfig, token: string) {
@@ -317,6 +318,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       ? validateSsmParameterStoreTags(process.env.SSM_PARAMETER_STORE_TAGS)
       : [];
   const scaleErrors = JSON.parse(process.env.SCALE_ERRORS) as [string];
+  const useDedicatedHost = yn(process.env.USE_DEDICATED_HOST, { default: false });
 
   const { ghesApiUrl, ghesBaseUrl } = getGitHubEnterpriseApiUrl();
 
@@ -504,6 +506,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
         tracingEnabled,
         onDemandFailoverOnError,
         scaleErrors,
+        useDedicatedHost,
       },
       newRunners,
       githubInstallationClient,

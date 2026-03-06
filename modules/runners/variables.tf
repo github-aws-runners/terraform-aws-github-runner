@@ -820,3 +820,9 @@ variable "parameter_store_tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "use_dedicated_host" {
+  description = "Use a dedicated host for the runner instances."
+  type        = bool
+  default     = false
+}

@@ -52,6 +52,7 @@ module "pool" {
       name_prefix                          = var.runner_name_prefix
       pool_owner                           = var.pool_runner_owner
       role                                 = aws_iam_role.runner
+      use_dedicated_host                   = var.use_dedicated_host
     }
     subnet_ids                           = var.subnet_ids
     ssm_token_path                       = "${var.ssm_paths.root}/${var.ssm_paths.tokens}"

@@ -150,6 +150,7 @@ variable "multi_runner_config" {
       license_specifications = optional(list(object({
         license_configuration_arn = string
       })), [])
+      use_dedicated_host = optional(bool, false)
       runner_log_files = optional(list(object({
         log_group_name   = string
         prefix_log_group = bool
