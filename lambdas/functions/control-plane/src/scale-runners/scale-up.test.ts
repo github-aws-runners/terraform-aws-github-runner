@@ -114,6 +114,7 @@ const EXPECTED_RUNNER_PARAMS: RunnerInputParameters = {
   onDemandFailoverOnError: [],
   scaleErrors: ['UnfulfillableCapacity', 'MaxSpotInstanceCountExceeded', 'TargetCapacityLimitExceededException'],
   source: 'scale-up-lambda',    
+  useDedicatedHost: false,
 };
 let expectedRunnerParams: RunnerInputParameters;
 
@@ -3081,6 +3082,42 @@ describe('parseEc2OverrideConfig', () => {
       expect(result?.InstanceRequirements?.SpotMaxPricePercentageOverLowestPrice).toBe(100);
       expect(result?.InstanceRequirements?.OnDemandMaxPricePercentageOverLowestPrice).toBe(150);
     });
+  });
+});
+
+describe('useDedicatedHost', () => {
+  beforeEach(() => {
+    process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
+    process.env.ENABLE_EPHEMERAL_RUNNERS = 'true';
+    process.env.RUNNER_NAME_PREFIX = 'unit-test-';
+    process.env.RUNNER_GROUP_NAME = 'Default';
+    process.env.SSM_CONFIG_PATH = '/github-action-runners/default/runners/config';
+    process.env.SSM_TOKEN_PATH = '/github-action-runners/default/runners/config';
+    process.env.RUNNER_LABELS = 'label1,label2';
+  });
+
+  it('defaults to false when USE_DEDICATED_HOST env var is not set', async () => {
+    delete process.env.USE_DEDICATED_HOST;
+    await scaleUpModule.scaleUp(TEST_DATA);
+    expect(createRunner).toHaveBeenCalledWith(
+      expect.objectContaining({ useDedicatedHost: false }),
+    );
+  });
+
+  it('is true when USE_DEDICATED_HOST is "true"', async () => {
+    process.env.USE_DEDICATED_HOST = 'true';
+    await scaleUpModule.scaleUp(TEST_DATA);
+    expect(createRunner).toHaveBeenCalledWith(
+      expect.objectContaining({ useDedicatedHost: true }),
+    );
+  });
+
+  it('is false when USE_DEDICATED_HOST is "false"', async () => {
+    process.env.USE_DEDICATED_HOST = 'false';
+    await scaleUpModule.scaleUp(TEST_DATA);
+    expect(createRunner).toHaveBeenCalledWith(
+      expect.objectContaining({ useDedicatedHost: false }),
+    );
   });
 });
 
