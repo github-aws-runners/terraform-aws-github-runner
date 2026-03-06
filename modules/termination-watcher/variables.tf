@@ -71,7 +71,7 @@ variable "config" {
       capture_http_requests = optional(bool, false)
       capture_error         = optional(bool, false)
     }), {})
-    zip = optional(string, null)
+    zip                          = optional(string, null)
     enable_runner_deregistration = optional(bool, false)
     github_app_parameters = optional(object({
       id         = map(string)
