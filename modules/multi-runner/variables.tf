@@ -686,11 +686,12 @@ variable "instance_termination_watcher" {
       enable_spot_termination_handler              = optional(bool, true)
       enable_spot_termination_notification_watcher = optional(bool, true)
     }), {})
-    memory_size       = optional(number, null)
-    s3_key            = optional(string, null)
-    s3_object_version = optional(string, null)
-    timeout           = optional(number, null)
-    zip               = optional(string, null)
+    enable_runner_deregistration = optional(bool, true)
+    memory_size                  = optional(number, null)
+    s3_key                       = optional(string, null)
+    s3_object_version            = optional(string, null)
+    timeout                      = optional(number, null)
+    zip                          = optional(string, null)
   })
   default = {}
 }
