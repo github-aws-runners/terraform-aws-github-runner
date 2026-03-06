@@ -4,10 +4,10 @@ locals {
   config = merge(var.config, {
     name    = local.name,
     handler = "index.termination",
-    environment_variables = {
+    environment_variables = merge({
       ENABLE_METRICS_SPOT_TERMINATION = var.config.metrics != null ? var.config.metrics.enable && var.config.metrics.metric.enable_spot_termination : false
       TAG_FILTERS                     = jsonencode(var.config.tag_filters)
-    }
+    }, var.config._deregistration_env_vars)
   })
 }
 
@@ -51,4 +51,22 @@ resource "aws_iam_role_policy" "lambda_policy" {
   role = module.termination_handler.lambda.role.name
 
   policy = templatefile("${path.module}/../policies/lambda.json", {})
+}
+
+resource "aws_iam_role_policy" "ssm_policy" {
+  count = var.config._enable_runner_deregistration ? 1 : 0
+
+  name = "ssm-policy"
+  role = module.termination_handler.lambda.role.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["ssm:GetParameter"]
+        Resource = var.config._ssm_parameter_arns
+      }
+    ]
+  })
 }

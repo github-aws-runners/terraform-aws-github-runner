@@ -18,6 +18,12 @@ locals {
     tracing_config            = var.tracing_config
     lambda_tags               = var.lambda_tags
     metrics                   = var.metrics
+    enable_runner_deregistration = var.instance_termination_watcher.enable_runner_deregistration
+    github_app_parameters        = var.instance_termination_watcher.enable_runner_deregistration ? {
+      id         = local.github_app_parameters.id
+      key_base64 = local.github_app_parameters.key_base64
+    } : null
+    ghes_url = var.ghes_url
   }
 }
 
