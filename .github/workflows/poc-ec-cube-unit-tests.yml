@@ -1,0 +1,95 @@
+name: "PoC EC-CUBE unit tests on self-hosted"
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_repository:
+        description: "Repository to checkout for PoC tests"
+        required: true
+        default: "joolen-oosawa/ec-cube-enterprise-mirror"
+      target_ref:
+        description: "Branch, tag, or SHA to test"
+        required: true
+        default: "develop"
+      test_group:
+        description: "PHPUnit test group"
+        required: true
+        default: "HARERUYA"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  poc-phpunit:
+    name: "PoC PHPUnit (${{ inputs.test_group }})"
+    runs-on: [self-hosted, Linux, X64, unit-test]
+    env:
+      APP_DIR: ec-cube-enterprise
+      PG_VOLUME: pg-database-poc-${{ github.run_id }}
+
+    steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ec-cube-enterprise-mirror
+
+      - name: Checkout target repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.target_repository }}
+          ref: ${{ inputs.target_ref }}
+          token: ${{ steps.app-token.outputs.token }}
+          path: ${{ env.APP_DIR }}
+
+      - name: Prepare docker-compose with unique volume
+        working-directory: ${{ env.APP_DIR }}
+        run: |
+          sed -i "s/pg-database/${PG_VOLUME}/g" docker-compose.dev.yml
+
+      - name: Build docker image
+        uses: ./ec-cube-enterprise/.github/actions/dockerbuild
+
+      - name: Setup environment
+        working-directory: ${{ env.APP_DIR }}
+        run: |
+          echo "COMPOSE_FILE=docker-compose.yml:docker-compose.pgsql.yml:docker-compose.dev.yml" >> $GITHUB_ENV
+          echo "APP_ENV=test" >> $GITHUB_ENV
+
+      - name: Start containers
+        working-directory: ${{ env.APP_DIR }}
+        run: docker compose up -d --wait
+
+      - name: Warmup cache
+        working-directory: ${{ env.APP_DIR }}
+        run: |
+          docker compose exec -T ec-cube bin/console cache:clear --no-warmup --env=test
+          docker compose exec -T ec-cube bin/console cache:warmup --no-optional-warmers --env=test
+
+      - name: Run PHPUnit
+        working-directory: ${{ env.APP_DIR }}
+        run: docker compose exec -T ec-cube vendor/bin/phpunit --group ${{ inputs.test_group }}
+
+      - name: Show ec-cube logs on failure
+        if: failure()
+        working-directory: ${{ env.APP_DIR }}
+        run: docker compose logs -n 200 ec-cube
+
+      - name: Show localstack logs on failure
+        if: failure()
+        working-directory: ${{ env.APP_DIR }}
+        run: docker compose logs localstack
+
+      - name: Upload logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: poc-unit-test-logs
+          path: ${{ env.APP_DIR }}/var/log/
