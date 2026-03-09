@@ -10,15 +10,17 @@ import {
 import {
   DescribeParametersCommand,
   DescribeParametersCommandOutput,
-  GetParametersCommand,
   SSMClient,
 } from '@aws-sdk/client-ssm';
+import { getParameters } from '@aws-github-runner/aws-ssm-util';
 import { mockClient } from 'aws-sdk-client-mock';
 import 'aws-sdk-client-mock-jest/vitest';
 
 import { AmiCleanupOptions, amiCleanup, defaultAmiCleanupOptions } from './ami';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { fail } from 'assert';
+
+vi.mock('@aws-github-runner/aws-ssm-util');
 
 process.env.AWS_REGION = 'eu-east-1';
 const deleteAmisOlderThenDays = 30;
@@ -83,23 +85,12 @@ describe("delete AMI's", () => {
     mockSSMClient.reset();
 
     mockSSMClient.on(DescribeParametersCommand).resolves(ssmParameters);
-    mockSSMClient.on(GetParametersCommand).resolves({
-      Parameters: [
-        {
-          Name: 'ami-id/ami-ssm0001',
-          Type: 'String',
-          Value: 'ami-ssm0001',
-          Version: 1,
-        },
-        {
-          Name: 'ami-id/ami-ssm0002',
-          Type: 'String',
-          Value: 'ami-ssm0002',
-          Version: 1,
-        },
-      ],
-      InvalidParameters: [],
-    });
+    vi.mocked(getParameters).mockResolvedValue(
+      new Map([
+        ['ami-id/ami-ssm0001', 'ami-ssm0001'],
+        ['ami-id/ami-ssm0002', 'ami-ssm0002'],
+      ]),
+    );
 
     mockEC2Client.on(DescribeLaunchTemplatesCommand).resolves({
       LaunchTemplates: [
@@ -144,11 +135,7 @@ describe("delete AMI's", () => {
     expect(mockEC2Client).toHaveReceivedCommand(DescribeLaunchTemplatesCommand);
     expect(mockEC2Client).toHaveReceivedCommand(DescribeLaunchTemplateVersionsCommand);
     expect(mockSSMClient).toHaveReceivedCommand(DescribeParametersCommand);
-    expect(mockSSMClient).toHaveReceivedCommandTimes(GetParametersCommand, 1);
-    expect(mockSSMClient).toHaveReceivedCommandWith(GetParametersCommand, {
-      Names: ['ami-id/ami-ssm0001', 'ami-id/ami-ssm0002'],
-      WithDecryption: true,
-    });
+    expect(getParameters).toHaveBeenCalledWith(['ami-id/ami-ssm0001', 'ami-id/ami-ssm0002']);
   });
 
   it('should NOT delete instances in use.', async () => {
@@ -484,17 +471,9 @@ describe("delete AMI's", () => {
         ],
       });
 
-      mockSSMClient.on(GetParametersCommand).resolves({
-        Parameters: [
-          {
-            Name: '/github-runner/config/ami_id',
-            Type: 'String',
-            Value: 'ami-underscore0001',
-            Version: 1,
-          },
-        ],
-        InvalidParameters: [],
-      });
+      vi.mocked(getParameters).mockResolvedValue(
+        new Map([['/github-runner/config/ami_id', 'ami-underscore0001']]),
+      );
 
       await amiCleanup({
         minimumDaysOld: 0,
@@ -503,10 +482,7 @@ describe("delete AMI's", () => {
 
       // AMI should not be deleted because it's referenced in SSM
       expect(mockEC2Client).not.toHaveReceivedCommand(DeregisterImageCommand);
-      expect(mockSSMClient).toHaveReceivedCommandWith(GetParametersCommand, {
-        Names: ['/github-runner/config/ami_id'],
-        WithDecryption: true,
-      });
+      expect(getParameters).toHaveBeenCalledWith(['/github-runner/config/ami_id']);
       expect(mockSSMClient).not.toHaveReceivedCommand(DescribeParametersCommand);
     });
 
@@ -521,17 +497,9 @@ describe("delete AMI's", () => {
         ],
       });
 
-      mockSSMClient.on(GetParametersCommand).resolves({
-        Parameters: [
-          {
-            Name: '/github-runner/config/ami-id',
-            Type: 'String',
-            Value: 'ami-hyphen0001',
-            Version: 1,
-          },
-        ],
-        InvalidParameters: [],
-      });
+      vi.mocked(getParameters).mockResolvedValue(
+        new Map([['/github-runner/config/ami-id', 'ami-hyphen0001']]),
+      );
 
       await amiCleanup({
         minimumDaysOld: 0,
@@ -540,10 +508,7 @@ describe("delete AMI's", () => {
 
       // AMI should not be deleted because it's referenced in SSM
       expect(mockEC2Client).not.toHaveReceivedCommand(DeregisterImageCommand);
-      expect(mockSSMClient).toHaveReceivedCommandWith(GetParametersCommand, {
-        Names: ['/github-runner/config/ami-id'],
-        WithDecryption: true,
-      });
+      expect(getParameters).toHaveBeenCalledWith(['/github-runner/config/ami-id']);
       expect(mockSSMClient).not.toHaveReceivedCommand(DescribeParametersCommand);
     });
 
@@ -568,17 +533,9 @@ describe("delete AMI's", () => {
         ],
       });
 
-      mockSSMClient.on(GetParametersCommand).resolves({
-        Parameters: [
-          {
-            Name: '/some/path/ami-id',
-            Type: 'String',
-            Value: 'ami-wildcard0001',
-            Version: 1,
-          },
-        ],
-        InvalidParameters: [],
-      });
+      vi.mocked(getParameters).mockResolvedValue(
+        new Map([['/some/path/ami-id', 'ami-wildcard0001']]),
+      );
 
       await amiCleanup({
         minimumDaysOld: 0,
@@ -590,10 +547,7 @@ describe("delete AMI's", () => {
       expect(mockSSMClient).toHaveReceivedCommandWith(DescribeParametersCommand, {
         ParameterFilters: [{ Key: 'Name', Option: 'Contains', Values: ['ami-id'] }],
       });
-      expect(mockSSMClient).toHaveReceivedCommandWith(GetParametersCommand, {
-        Names: ['/some/path/ami-id'],
-        WithDecryption: true,
-      });
+      expect(getParameters).toHaveBeenCalledWith(['/some/path/ami-id']);
     });
 
     it('handles wildcard SSM parameter patterns (*ami_id)', async () => {
@@ -617,17 +571,9 @@ describe("delete AMI's", () => {
         ],
       });
 
-      mockSSMClient.on(GetParametersCommand).resolves({
-        Parameters: [
-          {
-            Name: '/github-runner/config/ami_id',
-            Type: 'String',
-            Value: 'ami-wildcard-underscore0001',
-            Version: 1,
-          },
-        ],
-        InvalidParameters: [],
-      });
+      vi.mocked(getParameters).mockResolvedValue(
+        new Map([['/github-runner/config/ami_id', 'ami-wildcard-underscore0001']]),
+      );
 
       await amiCleanup({
         minimumDaysOld: 0,
@@ -639,10 +585,7 @@ describe("delete AMI's", () => {
       expect(mockSSMClient).toHaveReceivedCommandWith(DescribeParametersCommand, {
         ParameterFilters: [{ Key: 'Name', Option: 'Contains', Values: ['ami_id'] }],
       });
-      expect(mockSSMClient).toHaveReceivedCommandWith(GetParametersCommand, {
-        Names: ['/github-runner/config/ami_id'],
-        WithDecryption: true,
-      });
+      expect(getParameters).toHaveBeenCalledWith(['/github-runner/config/ami_id']);
     });
 
     it('handles mixed explicit names and wildcard patterns', async () => {
@@ -664,17 +607,9 @@ describe("delete AMI's", () => {
         ],
       });
 
-      mockSSMClient.on(GetParametersCommand, { Names: ['/explicit/ami_id'], WithDecryption: true }).resolves({
-        Parameters: [
-          {
-            Name: '/explicit/ami_id',
-            Type: 'String',
-            Value: 'ami-explicit0001',
-            Version: 1,
-          },
-        ],
-        InvalidParameters: [],
-      });
+      vi.mocked(getParameters)
+        .mockResolvedValueOnce(new Map([['/explicit/ami_id', 'ami-explicit0001']]))
+        .mockResolvedValueOnce(new Map([['/discovered/ami-id', 'ami-wildcard0001']]));
 
       mockSSMClient.on(DescribeParametersCommand).resolves({
         Parameters: [
@@ -684,18 +619,6 @@ describe("delete AMI's", () => {
             Version: 1,
           },
         ],
-      });
-
-      mockSSMClient.on(GetParametersCommand, { Names: ['/discovered/ami-id'], WithDecryption: true }).resolves({
-        Parameters: [
-          {
-            Name: '/discovered/ami-id',
-            Type: 'String',
-            Value: 'ami-wildcard0001',
-            Version: 1,
-          },
-        ],
-        InvalidParameters: [],
       });
 
       await amiCleanup({
@@ -709,17 +632,11 @@ describe("delete AMI's", () => {
         ImageId: 'ami-unused0001',
       });
 
-      expect(mockSSMClient).toHaveReceivedCommandWith(GetParametersCommand, {
-        Names: ['/explicit/ami_id'],
-        WithDecryption: true,
-      });
+      expect(getParameters).toHaveBeenCalledWith(['/explicit/ami_id']);
       expect(mockSSMClient).toHaveReceivedCommandWith(DescribeParametersCommand, {
         ParameterFilters: [{ Key: 'Name', Option: 'Contains', Values: ['ami-id'] }],
       });
-      expect(mockSSMClient).toHaveReceivedCommandWith(GetParametersCommand, {
-        Names: ['/discovered/ami-id'],
-        WithDecryption: true,
-      });
+      expect(getParameters).toHaveBeenCalledWith(['/discovered/ami-id']);
     });
 
     it('handles SSM parameter fetch failures gracefully', async () => {
@@ -733,7 +650,7 @@ describe("delete AMI's", () => {
         ],
       });
 
-      mockSSMClient.on(GetParametersCommand).rejects(new Error('ParameterNotFound'));
+      vi.mocked(getParameters).mockRejectedValue(new Error('ParameterNotFound'));
 
       // Should not throw and should delete the AMI since SSM reference failed
       await amiCleanup({
@@ -791,7 +708,7 @@ describe("delete AMI's", () => {
         ImageId: 'ami-no-ssm0001',
       });
       expect(mockSSMClient).not.toHaveReceivedCommand(DescribeParametersCommand);
-      expect(mockSSMClient).not.toHaveReceivedCommand(GetParametersCommand);
+      expect(getParameters).not.toHaveBeenCalled();
     });
   });
 });

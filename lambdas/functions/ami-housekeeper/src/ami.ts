@@ -8,9 +8,10 @@ import {
   Filter,
   Image,
 } from '@aws-sdk/client-ec2';
-import { GetParametersCommand, SSMClient, DescribeParametersCommand } from '@aws-sdk/client-ssm';
+import { SSMClient, DescribeParametersCommand } from '@aws-sdk/client-ssm';
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import { getTracedAWSV3Client } from '@aws-github-runner/aws-powertools-util';
+import { getParameters } from '@aws-github-runner/aws-ssm-util';
 
 const logger = createChildLogger('ami');
 
@@ -184,56 +185,37 @@ async function deleteSnapshot(options: AmiCleanupOptions, amiDetails: Image, ec2
 }
 
 /**
- * Resolves the values of multiple SSM parameters by their names in batched API calls.
+ * Resolves the values of multiple SSM parameters by their names.
+ * Delegates batching to the shared `getParameters` utility.
  * Doesn't fail on errors, but warns instead, as this process is best-effort.
  *
  * @param names - Array of SSM parameter names to resolve
- * @param ssmClient - Configured SSM client for making API calls
- * @returns Array of parameter values (may contain undefined for missing/failed parameters)
+ * @returns Array of parameter values in the same order as input (undefined for missing/failed parameters)
  */
-async function resolveSsmParameterValues(names: string[], ssmClient: SSMClient): Promise<(string | undefined)[]> {
+async function resolveSsmParameterValues(names: string[]): Promise<(string | undefined)[]> {
   if (names.length === 0) {
     return [];
   }
 
-  const results = new Map<string, string | undefined>();
+  try {
+    const parameterMap = await getParameters(names);
 
-  // AWS SSM GetParameters API has a limit of 10 parameters per call
-  const chunkSize = 10;
-  for (let i = 0; i < names.length; i += chunkSize) {
-    const chunk = names.slice(i, i + chunkSize);
-    try {
-      const response = await ssmClient.send(
-        new GetParametersCommand({
-          Names: chunk,
-          WithDecryption: true,
-        }),
-      );
-
-      for (const param of response.Parameters ?? []) {
-        if (param.Name) {
-          results.set(param.Name, param.Value);
-        }
-      }
-
-      // Log warnings for invalid parameters
-      for (const invalidParam of response.InvalidParameters ?? []) {
+    // Log warnings for parameters that couldn't be resolved
+    for (const name of names) {
+      if (!parameterMap.has(name)) {
         logger.warn(
-          `Failed to resolve image id from SSM parameter ${invalidParam}: Parameter not found or access denied`,
+          `Failed to resolve image id from SSM parameter ${name}: Parameter not found or access denied`,
         );
-        results.set(invalidParam, undefined);
-      }
-    } catch (error: unknown) {
-      logger.warn(`Failed to resolve image ids from SSM parameters ${chunk.join(', ')}`, { error });
-      // Mark all parameters in this chunk as undefined
-      for (const name of chunk) {
-        results.set(name, undefined);
       }
     }
-  }
 
-  // Return values in the same order as input names
-  return names.map((name) => results.get(name));
+    // Return values in the same order as input names
+    return names.map((name) => parameterMap.get(name));
+  } catch (error: unknown) {
+    logger.warn(`Failed to resolve image ids from SSM parameters ${names.join(', ')}`, { error });
+    // Mark all parameters as undefined on failure
+    return names.map(() => undefined);
+  }
 }
 
 /**
@@ -307,7 +289,7 @@ async function getAmisReferedInSSM(options: AmiCleanupOptions): Promise<(string 
   const wildcardPatterns = options.ssmParameterNames.filter((n) => n.startsWith('*'));
 
   // Batch fetch explicit parameter values in chunks of 10 (AWS API limit)
-  const explicitValuesPromise = resolveSsmParameterValues(explicitNames, ssmClient);
+  const explicitValuesPromise = resolveSsmParameterValues(explicitNames);
 
   // Handle wildcard patterns by first discovering matching parameters, then
   // fetching their values
@@ -332,7 +314,7 @@ async function getAmisReferedInSSM(options: AmiCleanupOptions): Promise<(string 
           .map((param) => param.Name)
           .filter((name): name is string => name !== undefined);
 
-        return resolveSsmParameterValues(discoveredNames, ssmClient);
+        return resolveSsmParameterValues(discoveredNames);
       } catch (e) {
         logger.warn('Failed to describe SSM parameters using wildcard patterns', { error: e });
         return [];
