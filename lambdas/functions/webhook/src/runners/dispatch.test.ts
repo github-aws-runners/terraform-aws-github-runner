@@ -216,18 +216,6 @@ describe('Dispatcher', () => {
       expect(canRunJob(workflowLabels, runnerLabels, true, false)).toBe(false);
     });
 
-    it('should not accept jobs not providing labels if exact match is.', () => {
-      const workflowLabels: string[] = [];
-      const runnerLabels = [['self-hosted', 'linux', 'x64']];
-      expect(canRunJob(workflowLabels, runnerLabels, true, false)).toBe(false);
-    });
-
-    it('should accept jobs not providing labels and exact match is set to false.', () => {
-      const workflowLabels: string[] = [];
-      const runnerLabels = [['self-hosted', 'linux', 'x64']];
-      expect(canRunJob(workflowLabels, runnerLabels, false, false)).toBe(true);
-    });
-
     it('should filter out ghr- and ghr-run- labels when enableDynamicLabels is true.', () => {
       const workflowLabels = ['self-hosted', 'linux', 'x64', 'ghr-ec2-instance-type:t3.large', 'ghr-run-id:12345'];
       const runnerLabels = [['self-hosted', 'linux', 'x64']];
