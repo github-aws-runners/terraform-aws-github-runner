@@ -12,10 +12,11 @@ type AuthInterface = {
 };
 type StrategyOptions = {
   appId: number;
-  privateKey: string;
+  createJwt: (appId: string | number, timeDifference?: number) => Promise<{ jwt: string; expiresAt: string }>;
   installationId?: number;
   request?: RequestInterface;
 };
+import { createSign, randomUUID } from 'node:crypto';
 import { request } from '@octokit/request';
 import { Octokit } from '@octokit/rest';
 import { throttling } from '@octokit/plugin-throttling';
@@ -69,20 +70,36 @@ export async function createGithubInstallationAuth(
   return auth(installationAuthOptions);
 }
 
+function signJwt(payload: Record<string, unknown>, privateKey: string): string {
+  const header = { alg: 'RS256', typ: 'JWT' };
+  const encode = (obj: unknown) => Buffer.from(JSON.stringify(obj)).toString('base64url');
+  const message = `${encode(header)}.${encode(payload)}`;
+  const signature = createSign('RSA-SHA256').update(message).sign(privateKey, 'base64url');
+  return `${message}.${signature}`;
+}
+
 async function createAuth(installationId: number | undefined, ghesApiUrl: string): Promise<AuthInterface> {
   const appId = parseInt(await getParameter(process.env.PARAMETER_GITHUB_APP_ID_NAME));
-  let authOptions: StrategyOptions = {
-    appId,
-    privateKey: Buffer.from(
-      await getParameter(process.env.PARAMETER_GITHUB_APP_KEY_BASE64_NAME),
-      'base64',
-      // replace literal \n characters with new lines to allow the key to be stored as a
-      // single line variable. This logic should match how the GitHub Terraform provider
-      // processes private keys to retain compatibility between the projects
-    )
-      .toString()
-      .replace('/[\\n]/g', String.fromCharCode(10)),
+  // replace literal \n characters with new lines to allow the key to be stored as a
+  // single line variable. This logic should match how the GitHub Terraform provider
+  // processes private keys to retain compatibility between the projects
+  const privateKey = Buffer.from(await getParameter(process.env.PARAMETER_GITHUB_APP_KEY_BASE64_NAME), 'base64')
+    .toString()
+    .replace('/[\\n]/g', String.fromCharCode(10));
+
+  // Use a custom createJwt callback to include a jti (JWT ID) claim in every token.
+  // Without this, concurrent Lambda invocations generating JWTs within the same second
+  // produce byte-identical tokens (same iat, exp, iss), which GitHub rejects as duplicates.
+  // See: https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5025
+  const createJwt = async (appId: string | number, timeDifference?: number) => {
+    const now = Math.floor(Date.now() / 1000) + (timeDifference ?? 0);
+    const iat = now - 30;
+    const exp = iat + 600;
+    const jwt = signJwt({ iat, exp, iss: appId, jti: randomUUID() }, privateKey);
+    return { jwt, expiresAt: new Date(exp * 1000).toISOString() };
   };
+
+  let authOptions: StrategyOptions = { appId, createJwt };
   if (installationId) authOptions = { ...authOptions, installationId };
 
   logger.debug(`GHES API URL: ${ghesApiUrl}`);
