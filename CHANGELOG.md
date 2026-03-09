@@ -1,5 +1,20 @@
 # Changelog
 
+## [7.4.1](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v7.4.0...v7.4.1) (2026-03-09)
+
+
+### Bug Fixes
+
+* gracefully handle JIT config failures and terminate unconfigured instance ([#4990](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4990)) ([c171550](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/c17155028fb685fc3afdfe677366f20a64e7c55d))
+* **install-runner.sh:** support Debian ([#5027](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5027)) ([7755b7f](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/7755b7f05dff5c9136d4d33cd977ebe2f4e6191c))
+* **lambda:** add jti claim to GitHub App JWTs to prevent concurrent collisions ([#5056](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5056)) ([07bd193](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/07bd193c08b40ff47f8bb047d3fe06d0225266f2)), closes [#5025](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5025)
+* **lambda:** bump @octokit/auth-app from 8.1.2 to 8.2.0 in /lambdas in the octokit group ([#5035](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5035)) ([1c8083e](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/1c8083eee0844d53c17836558811262c956f921d))
+* **lambda:** bump axios from 1.13.2 to 1.13.5 in /lambdas ([#5028](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5028)) ([0335e3a](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/0335e3aa1c087b5a24d22cf0d6144688be85147f))
+* **lambda:** bump qs from 6.14.1 to 6.14.2 in /lambdas ([#5032](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5032)) ([6dc97d5](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/6dc97d55d7b01c7c197573843b298236f891cda8))
+* **lambda:** bump rollup from 4.46.2 to 4.59.0 in /lambdas ([#5052](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5052)) ([1e798b1](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/1e798b1076be65340ad1e6e711a1ee27d26fe660))
+* **lambda:** bump the aws group in /lambdas with 7 updates ([#5021](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5021)) ([c3c158d](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/c3c158de3955693c82a737f88e7066f6304a7298))
+* **lambda:** bump the aws-powertools group in /lambdas with 4 updates ([#5022](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5022)) ([e8369cf](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/e8369cf5b660c344c7bb1e23729236c2779725d2))
+
 ## [7.4.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v7.3.0...v7.4.0) (2026-02-04)
 
 
