@@ -20,7 +20,7 @@
     "@aws-sdk/client-eventbridge": "^3.984.0",
     "@octokit/webhooks-types": "^7.6.1",
     "@types/aws-lambda": "^8.10.159",
-    "@types/express": "^5.0.3",
+    "@types/express": "^5.0.6",
     "@types/node": "^22.19.3",
     "@vercel/ncc": "0.38.4",
     "body-parser": "^2.2.1",
