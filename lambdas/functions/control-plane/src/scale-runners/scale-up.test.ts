@@ -228,6 +228,24 @@ describe('scaleUp with GHES', () => {
       expect(mockOctokit.actions.createRegistrationTokenForRepo).not.toBeCalled();
     });
 
+    it('does not create runners when current runners exceed maximum (race condition)', async () => {
+      process.env.RUNNERS_MAXIMUM_COUNT = '5';
+      process.env.ENABLE_EPHEMERAL_RUNNERS = 'false';
+      // Simulate race condition where pool lambda created more runners than max
+      mockListRunners.mockImplementation(async () =>
+        Array.from({ length: 10 }, (_, i) => ({
+          instanceId: `i-${i}`,
+          launchTime: new Date(),
+          type: 'Org',
+          owner: TEST_DATA_SINGLE.repositoryOwner,
+        })),
+      );
+      await scaleUpModule.scaleUp(TEST_DATA);
+      // Should not attempt to create runners (would be negative without fix)
+      expect(createRunner).not.toBeCalled();
+      expect(mockOctokit.actions.createRegistrationTokenForOrg).not.toBeCalled();
+    });
+
     it('does create a runner if maximum is set to -1', async () => {
       process.env.RUNNERS_MAXIMUM_COUNT = '-1';
       process.env.ENABLE_EPHEMERAL_RUNNERS = 'false';
