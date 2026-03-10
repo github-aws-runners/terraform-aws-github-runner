@@ -822,7 +822,7 @@ variable "parameter_store_tags" {
 }
 
 variable "use_dedicated_host" {
-  description = "Use a dedicated host for the runner instances."
+  description = "Experimental! Can be removed / changed without trigger a major release. Whether to use EC2 dedicated hosts for the runners. Needed for macos runners Note that using dedicated hosts can increase cost significantly."
   type        = bool
   default     = false
 }
