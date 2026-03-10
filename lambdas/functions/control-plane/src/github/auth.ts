@@ -36,6 +36,12 @@ interface GitHubAppCredential {
 let appCredentialsPromise: Promise<GitHubAppCredential[]> | null = null;
 
 async function loadAppCredentials(): Promise<GitHubAppCredential[]> {
+  if (!process.env.PARAMETER_GITHUB_APP_ID_NAME) {
+    throw new Error('Environment variable PARAMETER_GITHUB_APP_ID_NAME is not set');
+  }
+  if (!process.env.PARAMETER_GITHUB_APP_KEY_BASE64_NAME) {
+    throw new Error('Environment variable PARAMETER_GITHUB_APP_KEY_BASE64_NAME is not set');
+  }
   const idParams = process.env.PARAMETER_GITHUB_APP_ID_NAME.split(':').filter(Boolean);
   const keyParams = process.env.PARAMETER_GITHUB_APP_KEY_BASE64_NAME.split(':').filter(Boolean);
   const installationIdParams = (process.env.PARAMETER_GITHUB_APP_INSTALLATION_ID_NAME || '').split(':');
