@@ -203,9 +203,7 @@ async function resolveSsmParameterValues(names: string[]): Promise<(string | und
     // Log warnings for parameters that couldn't be resolved
     for (const name of names) {
       if (!parameterMap.has(name)) {
-        logger.warn(
-          `Failed to resolve image id from SSM parameter ${name}: Parameter not found or access denied`,
-        );
+        logger.warn(`Failed to resolve image id from SSM parameter ${name}: Parameter not found or access denied`);
       }
     }
 

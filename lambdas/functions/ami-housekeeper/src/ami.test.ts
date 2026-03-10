@@ -7,11 +7,7 @@ import {
   EC2Client,
   Image,
 } from '@aws-sdk/client-ec2';
-import {
-  DescribeParametersCommand,
-  DescribeParametersCommandOutput,
-  SSMClient,
-} from '@aws-sdk/client-ssm';
+import { DescribeParametersCommand, DescribeParametersCommandOutput, SSMClient } from '@aws-sdk/client-ssm';
 import { getParameters } from '@aws-github-runner/aws-ssm-util';
 import { mockClient } from 'aws-sdk-client-mock';
 import 'aws-sdk-client-mock-jest/vitest';
@@ -471,9 +467,7 @@ describe("delete AMI's", () => {
         ],
       });
 
-      vi.mocked(getParameters).mockResolvedValue(
-        new Map([['/github-runner/config/ami_id', 'ami-underscore0001']]),
-      );
+      vi.mocked(getParameters).mockResolvedValue(new Map([['/github-runner/config/ami_id', 'ami-underscore0001']]));
 
       await amiCleanup({
         minimumDaysOld: 0,
@@ -497,9 +491,7 @@ describe("delete AMI's", () => {
         ],
       });
 
-      vi.mocked(getParameters).mockResolvedValue(
-        new Map([['/github-runner/config/ami-id', 'ami-hyphen0001']]),
-      );
+      vi.mocked(getParameters).mockResolvedValue(new Map([['/github-runner/config/ami-id', 'ami-hyphen0001']]));
 
       await amiCleanup({
         minimumDaysOld: 0,
@@ -533,9 +525,7 @@ describe("delete AMI's", () => {
         ],
       });
 
-      vi.mocked(getParameters).mockResolvedValue(
-        new Map([['/some/path/ami-id', 'ami-wildcard0001']]),
-      );
+      vi.mocked(getParameters).mockResolvedValue(new Map([['/some/path/ami-id', 'ami-wildcard0001']]));
 
       await amiCleanup({
         minimumDaysOld: 0,

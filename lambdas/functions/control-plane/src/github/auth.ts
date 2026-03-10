@@ -116,9 +116,7 @@ async function createAuth(installationId: number | undefined, ghesApiUrl: string
   // replace literal \n characters with new lines to allow the key to be stored as a
   // single line variable. This logic should match how the GitHub Terraform provider
   // processes private keys to retain compatibility between the projects
-  const privateKey = Buffer.from(privateKeyBase64, 'base64')
-    .toString()
-    .replace('/[\\n]/g', String.fromCharCode(10));
+  const privateKey = Buffer.from(privateKeyBase64, 'base64').toString().replace('/[\\n]/g', String.fromCharCode(10));
 
   // Use a custom createJwt callback to include a jti (JWT ID) claim in every token.
   // Without this, concurrent Lambda invocations generating JWTs within the same second
