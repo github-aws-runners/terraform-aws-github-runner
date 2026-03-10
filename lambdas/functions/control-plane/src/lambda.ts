@@ -1,4 +1,5 @@
 import middy from '@middy/core';
+import type { MiddlewareObj } from '@middy/core';
 import { logger, setContext } from '@aws-github-runner/aws-powertools-util';
 import { captureLambdaHandler, tracer } from '@aws-github-runner/aws-powertools-util';
 import { Context, type SQSBatchItemFailure, type SQSBatchResponse, SQSEvent } from 'aws-lambda';
@@ -10,7 +11,13 @@ import { type ActionRequestMessage, type ActionRequestMessageSQS, scaleUp } from
 import { SSMCleanupOptions, cleanSSMTokens } from './scale-runners/ssm-housekeeper';
 import { checkAndRetryJob } from './scale-runners/job-retry';
 
-async function scaleUpHandlerFn(event: SQSEvent, context: Context): Promise<SQSBatchResponse> {
+// Type assertion helper for AWS PowerTools middleware compatibility with Middy v7
+// PowerTools returns MiddlewareLikeObj which is runtime-compatible but has stricter types
+const asMiddleware = <TEvent, TResult>(
+  middleware: ReturnType<typeof captureLambdaHandler>,
+): MiddlewareObj<TEvent, TResult, Error, Context> => middleware as MiddlewareObj<TEvent, TResult, Error, Context>;
+
+async function handleScaleUp(event: SQSEvent, context: Context): Promise<SQSBatchResponse> {
   setContext(context, 'lambda.ts');
   logger.logEventIfEnabled(event);
 
@@ -64,7 +71,7 @@ async function scaleUpHandlerFn(event: SQSEvent, context: Context): Promise<SQSB
   }
 }
 
-async function scaleDownHandlerFn(event: unknown, context: Context): Promise<void> {
+async function handleScaleDown(event: unknown, context: Context): Promise<void> {
   setContext(context, 'lambda.ts');
   logger.logEventIfEnabled(event);
 
@@ -75,7 +82,7 @@ async function scaleDownHandlerFn(event: unknown, context: Context): Promise<voi
   }
 }
 
-async function adjustPoolFn(event: PoolEvent, context: Context): Promise<void> {
+async function handleAdjustPool(event: PoolEvent, context: Context): Promise<void> {
   setContext(context, 'lambda.ts');
   logger.logEventIfEnabled(event);
 
@@ -87,7 +94,7 @@ async function adjustPoolFn(event: PoolEvent, context: Context): Promise<void> {
   return Promise.resolve();
 }
 
-async function ssmHousekeeperFn(event: unknown, context: Context): Promise<void> {
+async function handleSSMHousekeeper(event: unknown, context: Context): Promise<void> {
   setContext(context, 'lambda.ts');
   logger.logEventIfEnabled(event);
   const config = JSON.parse(process.env.SSM_CLEANUP_CONFIG) as SSMCleanupOptions;
@@ -99,16 +106,20 @@ async function ssmHousekeeperFn(event: unknown, context: Context): Promise<void>
   }
 }
 
-// Export wrapped handlers for middy v7
-const handler = captureLambdaHandler(tracer);
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const scaleUpHandler = handler ? middy(scaleUpHandlerFn).use(handler as any) : scaleUpHandlerFn;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const scaleDownHandler = handler ? middy(scaleDownHandlerFn).use(handler as any) : scaleDownHandlerFn;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const adjustPool = handler ? middy(adjustPoolFn).use(handler as any) : adjustPoolFn;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const ssmHousekeeper = handler ? middy(ssmHousekeeperFn).use(handler as any) : ssmHousekeeperFn;
+// Export handlers with AWS PowerTools middleware
+const powertoolsMiddleware = captureLambdaHandler(tracer);
+export const scaleUpHandler = powertoolsMiddleware
+  ? middy(handleScaleUp).use(asMiddleware<SQSEvent, SQSBatchResponse>(powertoolsMiddleware))
+  : handleScaleUp;
+export const scaleDownHandler = powertoolsMiddleware
+  ? middy(handleScaleDown).use(asMiddleware<unknown, void>(powertoolsMiddleware))
+  : handleScaleDown;
+export const adjustPool = powertoolsMiddleware
+  ? middy(handleAdjustPool).use(asMiddleware<PoolEvent, void>(powertoolsMiddleware))
+  : handleAdjustPool;
+export const ssmHousekeeper = powertoolsMiddleware
+  ? middy(handleSSMHousekeeper).use(asMiddleware<unknown, void>(powertoolsMiddleware))
+  : handleSSMHousekeeper;
 
 export async function jobRetryCheck(event: SQSEvent, context: Context): Promise<void> {
   setContext(context, 'lambda.ts');

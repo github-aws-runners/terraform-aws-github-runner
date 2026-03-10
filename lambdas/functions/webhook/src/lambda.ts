@@ -1,4 +1,5 @@
 import middy from '@middy/core';
+import type { MiddlewareObj } from '@middy/core';
 import { logger, setContext, captureLambdaHandler, tracer } from '@aws-github-runner/aws-powertools-util';
 import { APIGatewayEvent, Context } from 'aws-lambda';
 
@@ -10,12 +11,17 @@ import { WorkflowJobEvent } from '@octokit/webhooks-types';
 import { ConfigDispatcher, ConfigWebhook, ConfigWebhookEventBridge } from './ConfigLoader';
 import { dispatch } from './runners/dispatch';
 
+// Type assertion helper for AWS PowerTools middleware compatibility with Middy v7
+const asMiddleware = <TEvent, TResult>(
+  middleware: ReturnType<typeof captureLambdaHandler>,
+): MiddlewareObj<TEvent, TResult, Error, Context> => middleware as MiddlewareObj<TEvent, TResult, Error, Context>;
+
 export interface Response {
   statusCode: number;
   body: string;
 }
 
-async function directWebhookHandler(event: APIGatewayEvent, context: Context): Promise<Response> {
+async function handleDirectWebhook(event: APIGatewayEvent, context: Context): Promise<Response> {
   setContext(context, 'lambda.ts');
   logger.logEventIfEnabled(event);
 
@@ -92,6 +98,8 @@ function headersToLowerCase(headers: IncomingHttpHeaders): IncomingHttpHeaders {
   return headers;
 }
 
-// Export wrapped handlers for middy v7
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const directWebhook = middy(directWebhookHandler).use(captureLambdaHandler(tracer) as any);
+// Export handlers with AWS PowerTools middleware
+const powertoolsMiddleware = captureLambdaHandler(tracer);
+export const directWebhook = powertoolsMiddleware
+  ? middy(handleDirectWebhook).use(asMiddleware<APIGatewayEvent, Response>(powertoolsMiddleware))
+  : handleDirectWebhook;

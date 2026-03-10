@@ -1,12 +1,18 @@
 import middy from '@middy/core';
+import type { MiddlewareObj } from '@middy/core';
 import { logger, setContext } from '@aws-github-runner/aws-powertools-util';
 import { captureLambdaHandler, tracer } from '@aws-github-runner/aws-powertools-util';
 import { Context } from 'aws-lambda';
 
 import { sync } from './syncer/syncer';
 
+// Type assertion helper for AWS PowerTools middleware compatibility with Middy v7
+const asMiddleware = <TEvent, TResult>(
+  middleware: ReturnType<typeof captureLambdaHandler>,
+): MiddlewareObj<TEvent, TResult, Error, Context> => middleware as MiddlewareObj<TEvent, TResult, Error, Context>;
+
 // eslint-disable-next-line
-async function handlerFn(event: any, context: Context): Promise<void> {
+async function handleSync(event: any, context: Context): Promise<void> {
   setContext(context, 'lambda.ts');
   logger.logEventIfEnabled(event);
 
@@ -20,6 +26,8 @@ async function handlerFn(event: any, context: Context): Promise<void> {
   }
 }
 
-// Export wrapped handler for middy v7
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const handler = middy(handlerFn).use(captureLambdaHandler(tracer) as any);
+// Export handler with AWS PowerTools middleware
+const powertoolsMiddleware = captureLambdaHandler(tracer);
+export const handler = powertoolsMiddleware
+  ? middy(handleSync).use(asMiddleware<unknown, void>(powertoolsMiddleware))
+  : handleSync;
