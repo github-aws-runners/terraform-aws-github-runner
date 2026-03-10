@@ -1,14 +1,14 @@
-import { captureLambdaHandler, logger } from '@aws-github-runner/aws-powertools-util';
+import { logger } from '@aws-github-runner/aws-powertools-util';
 import { Context, SQSEvent, SQSRecord } from 'aws-lambda';
 
-import { addMiddleware, adjustPool, scaleDownHandler, scaleUpHandler, ssmHousekeeper, jobRetryCheck } from './lambda';
+import { adjustPool, scaleDownHandler, scaleUpHandler, ssmHousekeeper, jobRetryCheck } from './lambda';
 import { adjust } from './pool/pool';
 import ScaleError from './scale-runners/ScaleError';
 import { scaleDown } from './scale-runners/scale-down';
 import { ActionRequestMessage, scaleUp } from './scale-runners/scale-up';
 import { cleanSSMTokens } from './scale-runners/ssm-housekeeper';
 import { checkAndRetryJob } from './scale-runners/job-retry';
-import { describe, it, expect, vi, MockedFunction, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const body: ActionRequestMessage = {
   eventType: 'workflow_job',
@@ -257,14 +257,6 @@ describe('Adjust pool.', () => {
     const logSpy = vi.spyOn(logger, 'error');
     await adjustPool({ poolSize: 0 }, context);
     expect(logSpy).toHaveBeenCalledWith(`Handle error for adjusting pool. ${error.message}`, { error });
-  });
-});
-
-describe('Test middleware', () => {
-  it('Should have a working middleware', async () => {
-    const mockedLambdaHandler = captureLambdaHandler as MockedFunction<typeof captureLambdaHandler>;
-    mockedLambdaHandler.mockReturnValue({ before: vi.fn(), after: vi.fn(), onError: vi.fn() });
-    expect(addMiddleware).not.toThrowError();
   });
 });
 

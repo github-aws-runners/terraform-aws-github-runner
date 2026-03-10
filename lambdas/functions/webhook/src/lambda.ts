@@ -15,9 +15,7 @@ export interface Response {
   body: string;
 }
 
-middy(directWebhook).use(captureLambdaHandler(tracer));
-
-export async function directWebhook(event: APIGatewayEvent, context: Context): Promise<Response> {
+async function directWebhookHandler(event: APIGatewayEvent, context: Context): Promise<Response> {
   setContext(context, 'lambda.ts');
   logger.logEventIfEnabled(event);
 
@@ -93,3 +91,7 @@ function headersToLowerCase(headers: IncomingHttpHeaders): IncomingHttpHeaders {
   }
   return headers;
 }
+
+// Export wrapped handlers for middy v7
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const directWebhook = middy(directWebhookHandler).use(captureLambdaHandler(tracer) as any);

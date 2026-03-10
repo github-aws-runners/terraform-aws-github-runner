@@ -10,7 +10,7 @@ import { type ActionRequestMessage, type ActionRequestMessageSQS, scaleUp } from
 import { SSMCleanupOptions, cleanSSMTokens } from './scale-runners/ssm-housekeeper';
 import { checkAndRetryJob } from './scale-runners/job-retry';
 
-export async function scaleUpHandler(event: SQSEvent, context: Context): Promise<SQSBatchResponse> {
+async function scaleUpHandlerFn(event: SQSEvent, context: Context): Promise<SQSBatchResponse> {
   setContext(context, 'lambda.ts');
   logger.logEventIfEnabled(event);
 
@@ -64,7 +64,7 @@ export async function scaleUpHandler(event: SQSEvent, context: Context): Promise
   }
 }
 
-export async function scaleDownHandler(event: unknown, context: Context): Promise<void> {
+async function scaleDownHandlerFn(event: unknown, context: Context): Promise<void> {
   setContext(context, 'lambda.ts');
   logger.logEventIfEnabled(event);
 
@@ -75,7 +75,7 @@ export async function scaleDownHandler(event: unknown, context: Context): Promis
   }
 }
 
-export async function adjustPool(event: PoolEvent, context: Context): Promise<void> {
+async function adjustPoolFn(event: PoolEvent, context: Context): Promise<void> {
   setContext(context, 'lambda.ts');
   logger.logEventIfEnabled(event);
 
@@ -87,19 +87,7 @@ export async function adjustPool(event: PoolEvent, context: Context): Promise<vo
   return Promise.resolve();
 }
 
-export const addMiddleware = () => {
-  const handler = captureLambdaHandler(tracer);
-  if (!handler) {
-    return;
-  }
-  middy(scaleUpHandler).use(handler);
-  middy(scaleDownHandler).use(handler);
-  middy(adjustPool).use(handler);
-  middy(ssmHousekeeper).use(handler);
-};
-addMiddleware();
-
-export async function ssmHousekeeper(event: unknown, context: Context): Promise<void> {
+async function ssmHousekeeperFn(event: unknown, context: Context): Promise<void> {
   setContext(context, 'lambda.ts');
   logger.logEventIfEnabled(event);
   const config = JSON.parse(process.env.SSM_CLEANUP_CONFIG) as SSMCleanupOptions;
@@ -110,6 +98,17 @@ export async function ssmHousekeeper(event: unknown, context: Context): Promise<
     logger.error(`${(e as Error).message}`, { error: e as Error });
   }
 }
+
+// Export wrapped handlers for middy v7
+const handler = captureLambdaHandler(tracer);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const scaleUpHandler = handler ? middy(scaleUpHandlerFn).use(handler as any) : scaleUpHandlerFn;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const scaleDownHandler = handler ? middy(scaleDownHandlerFn).use(handler as any) : scaleDownHandlerFn;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const adjustPool = handler ? middy(adjustPoolFn).use(handler as any) : adjustPoolFn;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const ssmHousekeeper = handler ? middy(ssmHousekeeperFn).use(handler as any) : ssmHousekeeperFn;
 
 export async function jobRetryCheck(event: SQSEvent, context: Context): Promise<void> {
   setContext(context, 'lambda.ts');

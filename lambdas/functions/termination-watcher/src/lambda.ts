@@ -10,7 +10,7 @@ import { Config } from './ConfigResolver';
 
 const config = new Config();
 
-export async function interruptionWarning(
+async function interruptionWarningFn(
   event: SpotInterruptionWarning<SpotTerminationDetail>,
   context: Context,
 ): Promise<void> {
@@ -25,7 +25,7 @@ export async function interruptionWarning(
   }
 }
 
-export async function termination(event: BidEvictedEvent<BidEvictedDetail>, context: Context): Promise<void> {
+async function terminationFn(event: BidEvictedEvent<BidEvictedDetail>, context: Context): Promise<void> {
   setContext(context, 'lambda.ts');
   logger.logEventIfEnabled(event);
   logger.debug('Configuration of the lambda', { config });
@@ -37,20 +37,20 @@ export async function termination(event: BidEvictedEvent<BidEvictedDetail>, cont
   }
 }
 
-const addMiddleware = () => {
-  const middleware = middy(interruptionWarning);
+// Export wrapped handlers for middy v7
+const c = captureLambdaHandler(tracer);
+const l = logMetrics(metrics);
 
-  const c = captureLambdaHandler(tracer);
-  if (c) {
-    logger.debug('Adding captureLambdaHandler middleware');
-    middleware.use(c);
-  }
+export const interruptionWarning = middy(interruptionWarningFn);
+if (c) {
+  logger.debug('Adding captureLambdaHandler middleware');
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  interruptionWarning.use(c as any);
+}
+if (l) {
+  logger.debug('Adding logMetrics middleware');
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  interruptionWarning.use(l as any);
+}
 
-  const l = logMetrics(metrics);
-  if (l) {
-    logger.debug('Adding logMetrics middleware');
-    middleware.use(l);
-  }
-};
-
-addMiddleware();
+export const termination = terminationFn;

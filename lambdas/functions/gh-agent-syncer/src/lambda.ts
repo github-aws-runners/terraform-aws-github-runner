@@ -5,10 +5,8 @@ import { Context } from 'aws-lambda';
 
 import { sync } from './syncer/syncer';
 
-middy(handler).use(captureLambdaHandler(tracer));
-
 // eslint-disable-next-line
-export async function handler(event: any, context: Context): Promise<void> {
+async function handlerFn(event: any, context: Context): Promise<void> {
   setContext(context, 'lambda.ts');
   logger.logEventIfEnabled(event);
 
@@ -21,3 +19,7 @@ export async function handler(event: any, context: Context): Promise<void> {
     logger.debug('Ignoring error', { error: e });
   }
 }
+
+// Export wrapped handler for middy v7
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const handler = middy(handlerFn).use(captureLambdaHandler(tracer) as any);
