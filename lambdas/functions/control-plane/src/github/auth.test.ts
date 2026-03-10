@@ -313,16 +313,26 @@ describe('Test getStoredInstallationId', () => {
   it('returns stored installation ID when configured', async () => {
     const installationIdParam = `/actions-runner/${ENVIRONMENT}/github_app_installation_id`;
     process.env.PARAMETER_GITHUB_APP_INSTALLATION_ID_NAME = installationIdParam;
-    mockedGet.mockResolvedValueOnce(GITHUB_APP_ID).mockResolvedValueOnce(b64).mockResolvedValueOnce('12345');
+    mockedGetParameters.mockResolvedValueOnce(
+      new Map([
+        [PARAMETER_GITHUB_APP_ID_NAME, GITHUB_APP_ID],
+        [PARAMETER_GITHUB_APP_KEY_BASE64_NAME, b64],
+        [installationIdParam, '12345'],
+      ]),
+    );
 
     const result = await getStoredInstallationId(0);
     expect(result).toBe(12345);
-    expect(getParameter).toHaveBeenCalledWith(installationIdParam);
   });
 
   it('returns undefined when installation ID param is empty', async () => {
     process.env.PARAMETER_GITHUB_APP_INSTALLATION_ID_NAME = '';
-    mockedGet.mockResolvedValueOnce(GITHUB_APP_ID).mockResolvedValueOnce(b64);
+    mockedGetParameters.mockResolvedValueOnce(
+      new Map([
+        [PARAMETER_GITHUB_APP_ID_NAME, GITHUB_APP_ID],
+        [PARAMETER_GITHUB_APP_KEY_BASE64_NAME, b64],
+      ]),
+    );
 
     const result = await getStoredInstallationId(0);
     expect(result).toBeUndefined();
@@ -330,7 +340,12 @@ describe('Test getStoredInstallationId', () => {
 
   it('returns undefined when env var is not set', async () => {
     delete process.env.PARAMETER_GITHUB_APP_INSTALLATION_ID_NAME;
-    mockedGet.mockResolvedValueOnce(GITHUB_APP_ID).mockResolvedValueOnce(b64);
+    mockedGetParameters.mockResolvedValueOnce(
+      new Map([
+        [PARAMETER_GITHUB_APP_ID_NAME, GITHUB_APP_ID],
+        [PARAMETER_GITHUB_APP_KEY_BASE64_NAME, b64],
+      ]),
+    );
 
     const result = await getStoredInstallationId(0);
     expect(result).toBeUndefined();
@@ -338,7 +353,12 @@ describe('Test getStoredInstallationId', () => {
 
   it('returns undefined for out-of-bounds appIndex', async () => {
     process.env.PARAMETER_GITHUB_APP_INSTALLATION_ID_NAME = '';
-    mockedGet.mockResolvedValueOnce(GITHUB_APP_ID).mockResolvedValueOnce(b64);
+    mockedGetParameters.mockResolvedValueOnce(
+      new Map([
+        [PARAMETER_GITHUB_APP_ID_NAME, GITHUB_APP_ID],
+        [PARAMETER_GITHUB_APP_KEY_BASE64_NAME, b64],
+      ]),
+    );
 
     const result = await getStoredInstallationId(99);
     expect(result).toBeUndefined();
@@ -355,12 +375,15 @@ describe('Test getStoredInstallationId', () => {
     process.env.PARAMETER_GITHUB_APP_KEY_BASE64_NAME = `${app1KeyParam}:${app2KeyParam}`;
     process.env.PARAMETER_GITHUB_APP_INSTALLATION_ID_NAME = `:${app2InstallParam}`;
 
-    mockedGet
-      .mockResolvedValueOnce('1') // app1 id
-      .mockResolvedValueOnce(b64) // app1 key
-      .mockResolvedValueOnce('2') // app2 id
-      .mockResolvedValueOnce(b64) // app2 key
-      .mockResolvedValueOnce('67890'); // app2 installation id
+    mockedGetParameters.mockResolvedValueOnce(
+      new Map([
+        [app1IdParam, '1'],
+        [app1KeyParam, b64],
+        [app2IdParam, '2'],
+        [app2KeyParam, b64],
+        [app2InstallParam, '67890'],
+      ]),
+    );
 
     // Primary app (index 0) has no stored installation ID
     const result0 = await getStoredInstallationId(0);
