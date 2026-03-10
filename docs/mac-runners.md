@@ -171,7 +171,7 @@ minimum_running_time_in_minutes = 25
 - **Limited instance types.** Only `mac1.metal` (Intel x86), `mac2.metal` (M1 ARM64), and `mac2-m2.metal` (M2 ARM64) are available. Instance type availability varies by region.
 - **Longer startup.** Boot times of 6–20 minutes mean jobs will queue longer when no warm runners are available.
 - **No SSM Session Manager.** Unlike Linux instances, connecting via AWS Session Manager may not be available depending on your AMI.
-- **GHES not tested.** macOS runner support has not been validated against GitHub Enterprise Server.
+- **GHES limited testing.** macOS runner support has only been validated against GitHub Enterprise Server 3.17.3.
 
 ## Debugging
 
