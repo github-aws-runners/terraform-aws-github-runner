@@ -133,8 +133,10 @@ variable "multi_runner_config" {
         evictionStrategy = optional(string, "oldest_first")
       })), [])
       cpu_options = optional(object({
-        core_count       = number
-        threads_per_core = number
+        core_count            = optional(number)
+        threads_per_core      = optional(number)
+        amd_sev_snp           = optional(string)
+        nested_virtualization = optional(string)
       }), null)
       placement = optional(object({
         affinity                = optional(string)
