@@ -37,10 +37,18 @@ locals {
     "log_group_name" : l.prefix_log_group ? "/github-self-hosted-runners/${var.prefix}/${l.log_group_name}" : "/${l.log_group_name}"
     "log_stream_name" : l.log_stream_name
     "file_path" : l.file_path
-    "log_class" : try(l.log_class, "STANDARD")
+    "log_class" : l.log_class
   }] : []
 
-  loggroups = distinct([for l in local.logfiles : { name = l.log_group_name, log_class = l.log_class }])
+  loggroups_names = distinct([for l in local.logfiles : l.log_group_name])
+  # Create a list of unique log classes corresponding to each log group name
+  # This maintains the same order as loggroups_names for use with count
+  loggroups_classes = [
+    for name in local.loggroups_names : [
+      for l in local.logfiles : l.log_class
+      if l.log_group_name == name
+    ][0]
+  ]
 
 }
 
@@ -56,11 +64,11 @@ resource "aws_ssm_parameter" "cloudwatch_agent_config_runner" {
 }
 
 resource "aws_cloudwatch_log_group" "gh_runners" {
-  for_each          = { for lg in local.loggroups : lg.name => lg }
-  name              = each.value.name
+  count             = length(local.loggroups_names)
+  name              = local.loggroups_names[count.index]
   retention_in_days = var.logging_retention_in_days
   kms_key_id        = var.logging_kms_key_id
-  log_group_class   = each.value.log_class
+  log_group_class   = local.loggroups_classes[count.index]
   tags              = local.tags
 }
 
