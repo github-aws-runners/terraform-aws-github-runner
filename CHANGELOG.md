@@ -1,5 +1,13 @@
 # Changelog
 
+## [7.5.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v7.4.1...v7.5.0) (2026-03-11)
+
+
+### Features
+
+* **lambdas:** add batch SSM parameter fetching to reduce API calls ([#5017](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5017)) ([24857c2](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/24857c2a0d7d02e38cbd9b4dda2e652973fcf975))
+* **logging:** add log_class parameter to runner log files configuration ([#5036](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5036)) ([3509d4c](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/3509d4c7afaff751715db940403287aa16be3c44))
+
 ## [7.4.1](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v7.4.0...v7.4.1) (2026-03-09)
 
 
