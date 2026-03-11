@@ -13,6 +13,7 @@ locals {
     kms_key_arn                                                    = var.kms_key_arn
     lambda_tags                                                    = var.lambda_tags
     log_level                                                      = var.log_level
+    log_class                                                      = var.log_class
     logging_kms_key_id                                             = var.logging_kms_key_id
     logging_retention_in_days                                      = var.logging_retention_in_days
     metrics                                                        = var.metrics
