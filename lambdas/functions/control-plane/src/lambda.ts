@@ -1,4 +1,5 @@
 import middy from '@middy/core';
+import type { MiddlewareObj } from '@middy/core';
 import { logger, setContext } from '@aws-github-runner/aws-powertools-util';
 import { captureLambdaHandler, tracer } from '@aws-github-runner/aws-powertools-util';
 import { Context, type SQSBatchItemFailure, type SQSBatchResponse, SQSEvent } from 'aws-lambda';
@@ -10,7 +11,13 @@ import { type ActionRequestMessage, type ActionRequestMessageSQS, scaleUp } from
 import { SSMCleanupOptions, cleanSSMTokens } from './scale-runners/ssm-housekeeper';
 import { checkAndRetryJob } from './scale-runners/job-retry';
 
-export async function scaleUpHandler(event: SQSEvent, context: Context): Promise<SQSBatchResponse> {
+// Type assertion helper for AWS PowerTools middleware compatibility with Middy v7
+// PowerTools returns MiddlewareLikeObj which is runtime-compatible but has stricter types
+const asMiddleware = <TEvent, TResult>(
+  middleware: ReturnType<typeof captureLambdaHandler>,
+): MiddlewareObj<TEvent, TResult, Error, Context> => middleware as MiddlewareObj<TEvent, TResult, Error, Context>;
+
+async function handleScaleUp(event: SQSEvent, context: Context): Promise<SQSBatchResponse> {
   setContext(context, 'lambda.ts');
   logger.logEventIfEnabled(event);
 
@@ -64,7 +71,7 @@ export async function scaleUpHandler(event: SQSEvent, context: Context): Promise
   }
 }
 
-export async function scaleDownHandler(event: unknown, context: Context): Promise<void> {
+async function handleScaleDown(event: unknown, context: Context): Promise<void> {
   setContext(context, 'lambda.ts');
   logger.logEventIfEnabled(event);
 
@@ -75,7 +82,7 @@ export async function scaleDownHandler(event: unknown, context: Context): Promis
   }
 }
 
-export async function adjustPool(event: PoolEvent, context: Context): Promise<void> {
+async function handleAdjustPool(event: PoolEvent, context: Context): Promise<void> {
   setContext(context, 'lambda.ts');
   logger.logEventIfEnabled(event);
 
@@ -87,19 +94,7 @@ export async function adjustPool(event: PoolEvent, context: Context): Promise<vo
   return Promise.resolve();
 }
 
-export const addMiddleware = () => {
-  const handler = captureLambdaHandler(tracer);
-  if (!handler) {
-    return;
-  }
-  middy(scaleUpHandler).use(handler);
-  middy(scaleDownHandler).use(handler);
-  middy(adjustPool).use(handler);
-  middy(ssmHousekeeper).use(handler);
-};
-addMiddleware();
-
-export async function ssmHousekeeper(event: unknown, context: Context): Promise<void> {
+async function handleSSMHousekeeper(event: unknown, context: Context): Promise<void> {
   setContext(context, 'lambda.ts');
   logger.logEventIfEnabled(event);
   const config = JSON.parse(process.env.SSM_CLEANUP_CONFIG) as SSMCleanupOptions;
@@ -110,6 +105,21 @@ export async function ssmHousekeeper(event: unknown, context: Context): Promise<
     logger.error(`${(e as Error).message}`, { error: e as Error });
   }
 }
+
+// Export handlers with AWS PowerTools middleware
+const powertoolsMiddleware = captureLambdaHandler(tracer);
+export const scaleUpHandler = powertoolsMiddleware
+  ? middy(handleScaleUp).use(asMiddleware<SQSEvent, SQSBatchResponse>(powertoolsMiddleware))
+  : handleScaleUp;
+export const scaleDownHandler = powertoolsMiddleware
+  ? middy(handleScaleDown).use(asMiddleware<unknown, void>(powertoolsMiddleware))
+  : handleScaleDown;
+export const adjustPool = powertoolsMiddleware
+  ? middy(handleAdjustPool).use(asMiddleware<PoolEvent, void>(powertoolsMiddleware))
+  : handleAdjustPool;
+export const ssmHousekeeper = powertoolsMiddleware
+  ? middy(handleSSMHousekeeper).use(asMiddleware<unknown, void>(powertoolsMiddleware))
+  : handleSSMHousekeeper;
 
 export async function jobRetryCheck(event: SQSEvent, context: Context): Promise<void> {
   setContext(context, 'lambda.ts');

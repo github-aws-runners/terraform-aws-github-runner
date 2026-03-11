@@ -1,4 +1,5 @@
 import middy from '@middy/core';
+import type { MiddlewareObj } from '@middy/core';
 import { captureLambdaHandler, logger, metrics, setContext, tracer } from '@aws-github-runner/aws-powertools-util';
 import { logMetrics } from '@aws-lambda-powertools/metrics/middleware';
 import { Context } from 'aws-lambda';
@@ -8,9 +9,14 @@ import { handle as handleTermination } from './termination';
 import { BidEvictedDetail, BidEvictedEvent, SpotInterruptionWarning, SpotTerminationDetail } from './types';
 import { Config } from './ConfigResolver';
 
+// Type assertion helper for AWS PowerTools middleware compatibility with Middy v7
+const asMiddleware = <TEvent, TResult>(
+  middleware: ReturnType<typeof captureLambdaHandler> | ReturnType<typeof logMetrics>,
+): MiddlewareObj<TEvent, TResult, Error, Context> => middleware as MiddlewareObj<TEvent, TResult, Error, Context>;
+
 const config = new Config();
 
-export async function interruptionWarning(
+async function handleInterruptionWarning(
   event: SpotInterruptionWarning<SpotTerminationDetail>,
   context: Context,
 ): Promise<void> {
@@ -25,7 +31,7 @@ export async function interruptionWarning(
   }
 }
 
-export async function termination(event: BidEvictedEvent<BidEvictedDetail>, context: Context): Promise<void> {
+async function handleBidEvicted(event: BidEvictedEvent<BidEvictedDetail>, context: Context): Promise<void> {
   setContext(context, 'lambda.ts');
   logger.logEventIfEnabled(event);
   logger.debug('Configuration of the lambda', { config });
@@ -37,20 +43,19 @@ export async function termination(event: BidEvictedEvent<BidEvictedDetail>, cont
   }
 }
 
-const addMiddleware = () => {
-  const middleware = middy(interruptionWarning);
+// Export handlers with AWS PowerTools middleware
+const tracingMiddleware = captureLambdaHandler(tracer);
+const metricsMiddleware = logMetrics(metrics);
 
-  const c = captureLambdaHandler(tracer);
-  if (c) {
-    logger.debug('Adding captureLambdaHandler middleware');
-    middleware.use(c);
-  }
+const interruptionWarningHandler = middy(handleInterruptionWarning);
+if (tracingMiddleware) {
+  logger.debug('Adding captureLambdaHandler middleware');
+  interruptionWarningHandler.use(asMiddleware<SpotInterruptionWarning<SpotTerminationDetail>, void>(tracingMiddleware));
+}
+if (metricsMiddleware) {
+  logger.debug('Adding logMetrics middleware');
+  interruptionWarningHandler.use(asMiddleware<SpotInterruptionWarning<SpotTerminationDetail>, void>(metricsMiddleware));
+}
 
-  const l = logMetrics(metrics);
-  if (l) {
-    logger.debug('Adding logMetrics middleware');
-    middleware.use(l);
-  }
-};
-
-addMiddleware();
+export const interruptionWarning = interruptionWarningHandler;
+export const termination = handleBidEvicted;
