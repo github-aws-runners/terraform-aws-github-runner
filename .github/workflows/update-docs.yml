@@ -17,6 +17,7 @@ jobs:
   docs:
     name: Auto update terraform docs
     runs-on: ubuntu-latest
+    if: github.repository == 'github-aws-runners/terraform-aws-github-runner'
     permissions:
       contents: write # for terraform-docs/gh-actions to commit documentation updates
       pull-requests: write # for peter-evans/create-pull-request to create PRs with doc updates
@@ -68,6 +69,7 @@ jobs:
     name: Deploy documentation to GitHub Pages
     needs: [docs]
     runs-on: ubuntu-latest
+    if: github.repository == 'github-aws-runners/terraform-aws-github-runner'
     permissions:
       contents: write # for actions/checkout and mkdocs gh-deploy to push to gh-pages branch
     steps:
