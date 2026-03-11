@@ -282,6 +282,10 @@ In case the setup does not work as intended, trace the events through this seque
 
 ## Experimental features
 
+### macOS Runners
+
+This feature is in early stage and should be considered experimental. The module supports macOS-based GitHub Actions self-hosted runners on AWS EC2 Mac instances (`mac1.metal`, `mac2.metal`, `mac2-m2.metal`). macOS runners require dedicated hosts due to Apple's licensing requirements and have longer boot times (6–20 minutes). Set `runner_os = "osx"` and `use_dedicated_host = true` to enable. See the full [macOS Runners documentation](mac-runners.md) for details.
+
 ### Termination watcher
 
 This feature is in early stage and therefore disabled by default. To enable the watcher, set `instance_termination_watcher.enable = true`.

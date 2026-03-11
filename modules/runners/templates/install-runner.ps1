@@ -11,4 +11,3 @@ Expand-Archive -Path actions-runner.zip -DestinationPath .
 
 Write-Host "Delete zip file"
 Remove-Item actions-runner.zip
-

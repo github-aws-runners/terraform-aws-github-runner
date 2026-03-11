@@ -147,6 +147,10 @@ variable "multi_runner_config" {
         tenancy                 = optional(string)
         partition_number        = optional(number)
       }), null)
+      license_specifications = optional(list(object({
+        license_configuration_arn = string
+      })), [])
+      use_dedicated_host = optional(bool, false)
       runner_log_files = optional(list(object({
         log_group_name   = string
         prefix_log_group = bool
@@ -197,7 +201,7 @@ variable "multi_runner_config" {
   description = <<EOT
     multi_runner_config = {
       runner_config: {
-        runner_os: "The EC2 Operating System type to use for action runner instances (linux,windows)."
+        runner_os: "The EC2 Operating System type to use for action runner instances (linux, osx, windows)."
         runner_architecture: "The platform architecture of the runner instance_type."
         runner_metadata_options: "(Optional) Metadata options for the ec2 runner instances."
         ami: "(Optional) AMI configuration for the action runner instances. This object allows you to specify all AMI-related settings in one place."
@@ -217,7 +221,7 @@ variable "multi_runner_config" {
         instance_allocation_strategy: "The allocation strategy for spot instances. AWS recommends to use `capacity-optimized` however the AWS default is `lowest-price`."
         instance_max_spot_price: "Max price price for spot instances per hour. This variable will be passed to the create fleet as max spot price for the fleet."
         instance_target_capacity_type: "Default lifecycle used for runner instances, can be either `spot` or `on-demand`."
-        instance_types: "List of instance types for the action runner. Defaults are based on runner_os (al2023 for linux and Windows Server Core for win)."
+        instance_types: "List of instance types for the action runner. Defaults are based on runner_os (al2023 for linux, macOS Sequoia for osx, Windows Server Core for win)."
         job_queue_retention_in_seconds: "The number of seconds the job is held in the queue before it is purged"
         minimum_running_time_in_minutes: "The time an ec2 action runner should be running at minimum before terminated if not busy."
         pool_runner_owner: "The pool will deploy runners to the GitHub org ID, set this value to the org to which you want the runners deployed. Repo level is not supported."
@@ -246,6 +250,7 @@ variable "multi_runner_config" {
         vpc_id: "The VPC for security groups of the action runners. If not set uses the value of `var.vpc_id`."
         subnet_ids: "List of subnets in which the action runners will be launched, the subnets needs to be subnets in the `vpc_id`. If not set, uses the value of `var.subnet_ids`."
         idle_config: "List of time period that can be defined as cron expression to keep a minimum amount of runners active instead of scaling down to 0. By defining this list you can ensure that in time periods that match the cron expression within 5 seconds a runner is kept idle."
+        use_dedicated_host: "Experimental! Can be removed / changed without trigger a major release. Whether to use EC2 dedicated hosts for the runners. Needed for macos runners Note that using dedicated hosts can increase cost significantly."
         runner_log_files: "(optional) Replaces the module default cloudwatch log config. See https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-Configuration-File-Details.html for details."
         block_device_mappings: "The EC2 instance block device configuration. Takes the following keys: `device_name`, `delete_on_termination`, `volume_type`, `volume_size`, `encrypted`, `iops`, `throughput`, `kms_key_id`, `snapshot_id`."
         job_retry: "Experimental! Can be removed / changed without trigger a major release. Configure job retries. The configuration enables job retries (for ephemeral runners). After creating the instances a message will be published to a job retry queue. The job retry check lambda is checking after a delay if the job is queued. If not the message will be published again on the scale-up (build queue). Using this feature can impact the rate limit of the GitHub app."

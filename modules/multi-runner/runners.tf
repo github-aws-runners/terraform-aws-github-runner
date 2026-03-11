@@ -56,6 +56,8 @@ module "runners" {
   credit_specification                 = each.value.runner_config.credit_specification
   cpu_options                          = each.value.runner_config.cpu_options
   placement                            = each.value.runner_config.placement
+  license_specifications               = each.value.runner_config.license_specifications
+  use_dedicated_host                   = each.value.runner_config.use_dedicated_host
 
   enable_runner_binaries_syncer                                  = each.value.runner_config.enable_runner_binaries_syncer
   lambda_s3_bucket                                               = var.lambda_s3_bucket

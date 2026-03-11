@@ -5,6 +5,7 @@ import {
   DeleteTagsCommand,
   DescribeInstancesCommand,
   DescribeInstancesResult,
+  RunInstancesCommand,
   EC2Client,
   FleetLaunchTemplateOverridesRequest,
   Tag,
@@ -152,6 +153,15 @@ export async function createRunner(runnerParameters: Runners.RunnerInputParamete
   const ec2Client = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
   const amiIdOverride = await getAmiIdOverride(runnerParameters);
 
+  // EC2 Fleet (CreateFleet) does not support launching instances onto dedicated hosts
+  // for instance types like mac*.metal. Use RunInstances directly instead.
+  if (runnerParameters.useDedicatedHost) {
+    logger.info('Using RunInstances for dedicated host placement (CreateFleet does not support dedicated hosts).');
+    const instances = await createInstancesWithRunInstances(runnerParameters, amiIdOverride, ec2Client);
+    logger.info(`Created instance(s) via RunInstances: ${instances.join(',')}`);
+    return instances;
+  }
+
   const fleet: CreateFleetResult = await createInstances(runnerParameters, amiIdOverride, ec2Client);
 
   const instances: string[] = await processFleetResult(fleet, runnerParameters);
@@ -288,12 +298,75 @@ async function createInstances(
       ],
       Type: 'instant',
     });
+    logger.debug('CreateFleet request payload.', { payload: createFleetCommand.input });
     fleet = await ec2Client.send(createFleetCommand);
   } catch (e) {
     logger.warn('Create fleet request failed.', { error: e as Error });
     throw e;
   }
   return fleet;
+}
+
+async function createInstancesWithRunInstances(
+  runnerParameters: Runners.RunnerInputParameters,
+  amiIdOverride: string | undefined,
+  ec2Client: EC2Client,
+): Promise<string[]> {
+  const tags = [
+    { Key: 'ghr:Application', Value: 'github-action-runner' },
+    { Key: 'ghr:created_by', Value: runnerParameters.numberOfRunners === 1 ? 'scale-up-lambda' : 'pool-lambda' },
+    { Key: 'ghr:Type', Value: runnerParameters.runnerType },
+    { Key: 'ghr:Owner', Value: runnerParameters.runnerOwner },
+  ];
+
+  if (runnerParameters.tracingEnabled) {
+    const traceId = tracer.getRootXrayTraceId();
+    tags.push({ Key: 'ghr:trace_id', Value: traceId! });
+  }
+
+  try {
+    if (runnerParameters.ec2instanceCriteria.targetCapacityType === 'spot') {
+      throw new Error(
+        'Spot instances are not supported with RunInstances. Please set targetCapacityType to on-demand for dedicated hosts.',
+      );
+    }
+
+    const instanceType = runnerParameters.ec2instanceCriteria.instanceTypes[0] as _InstanceType;
+    const runInstancesCommand = new RunInstancesCommand({
+      LaunchTemplate: {
+        LaunchTemplateName: runnerParameters.launchTemplateName,
+        Version: '$Default',
+      },
+      InstanceType: instanceType,
+      MinCount: runnerParameters.numberOfRunners,
+      MaxCount: runnerParameters.numberOfRunners,
+      SubnetId: runnerParameters.subnets[0],
+      ...(amiIdOverride ? { ImageId: amiIdOverride } : {}),
+      TagSpecifications: [
+        {
+          ResourceType: 'instance',
+          Tags: tags,
+        },
+        {
+          ResourceType: 'volume',
+          Tags: tags,
+        },
+      ],
+    });
+
+    logger.debug('RunInstances request payload.', { payload: runInstancesCommand.input });
+    const result = await ec2Client.send(runInstancesCommand);
+    const instanceIds = result.Instances?.map((i) => i.InstanceId!).filter(Boolean) || [];
+
+    if (instanceIds.length === 0) {
+      throw new Error('RunInstances returned no instances for dedicated host.');
+    }
+
+    return instanceIds;
+  } catch (e) {
+    logger.warn('RunInstances request failed for dedicated host.', { error: e as Error });
+    throw e;
+  }
 }
 
 // If launchTime is undefined, this will return false
