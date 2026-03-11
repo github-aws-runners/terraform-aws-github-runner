@@ -1,4 +1,4 @@
-import { getParameter } from '@aws-github-runner/aws-ssm-util';
+import { getParameter, getParameters } from '@aws-github-runner/aws-ssm-util';
 import { RunnerMatcherConfig } from './sqs';
 import { logger } from '@aws-github-runner/aws-powertools-util';
 
@@ -101,16 +101,27 @@ abstract class MatcherAwareConfig extends BaseConfig {
       .split(':')
       .map((p) => p.trim())
       .filter(Boolean);
-    let combinedString = '';
-    for (const path of paths) {
-      await this.loadParameter(path, 'matcherConfig');
-      combinedString += this.matcherConfig;
-    }
 
+    // Batch fetch all matcher config paths in a single SSM API call
     try {
-      this.matcherConfig = JSON.parse(combinedString);
+      const params = await getParameters(paths);
+      let combinedString = '';
+      for (const path of paths) {
+        const value = params.get(path);
+        if (value) {
+          combinedString += value;
+        } else {
+          this.configLoadingErrors.push(
+            `Failed to load parameter for matcherConfig from path ${path}: Parameter not found`,
+          );
+        }
+      }
+
+      if (combinedString) {
+        this.matcherConfig = JSON.parse(combinedString);
+      }
     } catch (error) {
-      this.configLoadingErrors.push(`Failed to parse combined matcher config: ${(error as Error).message}`);
+      this.configLoadingErrors.push(`Failed to load/parse combined matcher config: ${(error as Error).message}`);
     }
   }
 }
