@@ -157,9 +157,21 @@ if ($disable_default_labels -eq "true") {
 }
 
 if ($enable_jit_config -eq "false" -or $agent_mode -ne "ephemeral") {
-  $configCmd = ".\config.cmd --unattended --name $runner_name_prefix$InstanceId --work `"_work`" $runnerExtraOptions $config"
   Write-Host "Configure GH Runner (non ephmeral / no JIT) as user $run_as"
-  Invoke-Expression $configCmd
+  Write-Host "Working directory: $pwd"
+
+  # Use call operator instead of Invoke-Expression to avoid parsing issues
+  $configArgs = @(
+    "--unattended"
+    "--name", "$runner_name_prefix$InstanceId"
+    "--work", "_work"
+  )
+  if ($runnerExtraOptions) {
+    $configArgs += $runnerExtraOptions -split ' '
+  }
+  $configArgs += $config -split ' '
+
+  & ".\config.cmd" @configArgs
 
   # Tag instance with GitHub runner agent ID for non-JIT runners
   Tag-InstanceWithRunnerId
