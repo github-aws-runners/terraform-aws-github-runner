@@ -185,6 +185,7 @@ yarn run dist
 | <a name="input_lambda_timeout_scale_down"></a> [lambda\_timeout\_scale\_down](#input\_lambda\_timeout\_scale\_down) | Time out for the scale down lambda in seconds. | `number` | `60` | no |
 | <a name="input_lambda_timeout_scale_up"></a> [lambda\_timeout\_scale\_up](#input\_lambda\_timeout\_scale\_up) | Time out for the scale up lambda in seconds. | `number` | `60` | no |
 | <a name="input_lambda_zip"></a> [lambda\_zip](#input\_lambda\_zip) | File location of the lambda zip file. | `string` | `null` | no |
+| <a name="input_license_specifications"></a> [license\_specifications](#input\_license\_specifications) | The license specifications for the instance. See https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#license_specification for details. | <pre>list(object({<br/>    license_configuration_arn = string<br/>  }))</pre> | `[]` | no |
 | <a name="input_log_class"></a> [log\_class](#input\_log\_class) | The log class of the CloudWatch log groups for the lambda functions. Valid values are `STANDARD` or `INFREQUENT_ACCESS`. | `string` | `"STANDARD"` | no |
 | <a name="input_log_level"></a> [log\_level](#input\_log\_level) | Logging level for lambda logging. Valid values are  'silly', 'trace', 'debug', 'info', 'warn', 'error', 'fatal'. | `string` | `"info"` | no |
 | <a name="input_logging_kms_key_id"></a> [logging\_kms\_key\_id](#input\_logging\_kms\_key\_id) | Specifies the kms key id to encrypt the logs with | `string` | `null` | no |
