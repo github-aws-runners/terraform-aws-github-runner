@@ -86,6 +86,7 @@ module "direct" {
         version = p.version
       }
     ]
+    enable_dynamic_labels = var.enable_dynamic_labels
   }
 }
 
@@ -128,7 +129,8 @@ module "eventbridge" {
         version = p.version
       }
     ]
-    accept_events = var.eventbridge.accept_events
+    accept_events         = var.eventbridge.accept_events
+    enable_dynamic_labels = var.enable_dynamic_labels
   }
 
 }
