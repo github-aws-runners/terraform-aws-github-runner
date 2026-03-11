@@ -42,6 +42,7 @@ export interface RunnerInputParameters {
     instanceAllocationStrategy: SpotAllocationStrategy;
   };
   numberOfRunners: number;
+  source: 'scale-up-lambda' | 'pool-lambda';
   amiIdSsmParameterName?: string;
   tracingEnabled?: boolean;
   onDemandFailoverOnError?: string[];
