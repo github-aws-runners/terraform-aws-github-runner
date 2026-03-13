@@ -49,11 +49,7 @@ async function loadAppCredentials(): Promise<GitHubAppCredential[]> {
     throw new Error(`GitHub App parameter count mismatch: ${idParams.length} IDs vs ${keyParams.length} keys`);
   }
   // Batch fetch all SSM parameters in a single call to reduce API calls
-  const allParamNames = [
-    ...idParams,
-    ...keyParams,
-    ...installationIdParams.filter((p) => p.length > 0),
-  ];
+  const allParamNames = [...idParams, ...keyParams, ...installationIdParams.filter((p) => p.length > 0)];
   const params = await getParameters(allParamNames);
 
   const credentials: GitHubAppCredential[] = [];
