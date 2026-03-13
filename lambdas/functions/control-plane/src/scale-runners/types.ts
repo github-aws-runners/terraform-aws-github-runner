@@ -1,5 +1,5 @@
 export type LambdaRunnerSource = 'scale-up-lambda' | 'pool-lambda';
-export type GitHubRunnerType = 'Org' | 'Repo';
+export type GitHubRunnerType = 'Org' | 'Repo' | 'Enterprise';
 
 export interface RunnerGroup {
   name: string;
@@ -34,6 +34,7 @@ export interface CreateGitHubRunnerConfig {
   runnerNamePrefix: string;
   runnerOwner: string;
   runnerType: GitHubRunnerType;
+  enterpriseSlug?: string;
   disableAutoUpdate: boolean;
   ssmTokenPath: string;
   ssmConfigPath: string;

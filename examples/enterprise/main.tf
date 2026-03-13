@@ -1,6 +1,10 @@
 locals {
-  environment = var.environment != null ? var.environment : "default"
+  environment = var.environment != null ? var.environment : "enterprise"
   aws_region  = var.aws_region
+}
+
+resource "random_id" "random" {
+  byte_length = 20
 }
 
 module "base" {
@@ -19,17 +23,26 @@ module "runners" {
 
   prefix = local.environment
   tags = {
-    Project = "ProjectX"
+    Project = "Enterprise Runners"
   }
 
+  # Enterprise runners do not require a GitHub App.
+  # Only the webhook_secret is needed to verify incoming webhook payloads.
   github_app = {
-    key_base64_ssm     = var.github_app_ssm_parameters.key_base64
-    id_ssm             = var.github_app_ssm_parameters.id
-    webhook_secret_ssm = var.github_app_ssm_parameters.webhook_secret
+    webhook_secret = random_id.random.hex
   }
 
-  runner_registration_level = "org"
-  runner_extra_labels       = ["default", "example"]
+  # Enterprise runner registration level
+  runner_registration_level = "enterprise"
+  enterprise_slug           = var.enterprise_slug
+
+  # Enterprise PAT for authentication
+  enterprise_pat = {
+    pat = var.enterprise_pat
+  }
+
+  # Runner labels
+  runner_extra_labels = ["enterprise", "example"]
 
   # enable access to the runners via SSM
   enable_ssm_on_runners = true
@@ -38,11 +51,11 @@ module "runners" {
 
   # override delay of events in seconds
   delay_webhook_event   = 5
-  runners_maximum_count = 2
+  runners_maximum_count = 5
 
   # override scaling down
   scale_down_schedule_expression = "cron(* * * * ? *)"
 
-  # prefix GitHub runners with the environment name
-  runner_name_prefix = "${local.environment}_"
+  enable_user_data_debug_logging_runner = true
 }
+

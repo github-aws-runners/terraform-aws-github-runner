@@ -18,10 +18,12 @@ export interface StartRunnerConfigOptions {
 }
 
 function generateRunnerServiceConfig(githubRunnerConfig: CreateGitHubRunnerConfig, token: string) {
-  const config = [
-    `--url ${githubRunnerConfig.ghesBaseUrl ?? 'https://github.com'}/${githubRunnerConfig.runnerOwner}`,
-    `--token ${token}`,
-  ];
+  const runnerUrl =
+    githubRunnerConfig.runnerType === 'Enterprise'
+      ? `${githubRunnerConfig.ghesBaseUrl ?? 'https://github.com'}/enterprises/${githubRunnerConfig.enterpriseSlug}`
+      : `${githubRunnerConfig.ghesBaseUrl ?? 'https://github.com'}/${githubRunnerConfig.runnerOwner}`;
+
+  const config = [`--url ${runnerUrl}`, `--token ${token}`];
 
   if (githubRunnerConfig.runnerLabels) {
     config.push(`--labels ${quoteRunnerLabelsForShell(githubRunnerConfig.runnerLabels)}`.trim());
@@ -31,7 +33,10 @@ function generateRunnerServiceConfig(githubRunnerConfig: CreateGitHubRunnerConfi
     config.push('--disableupdate');
   }
 
-  if (githubRunnerConfig.runnerType === 'Org' && githubRunnerConfig.runnerGroup !== undefined) {
+  if (
+    (githubRunnerConfig.runnerType === 'Org' || githubRunnerConfig.runnerType === 'Enterprise') &&
+    githubRunnerConfig.runnerGroup !== undefined
+  ) {
     config.push(`--runnergroup ${githubRunnerConfig.runnerGroup}`);
   }
 
@@ -83,12 +88,16 @@ export function validateSsmParameterStoreTags(tagsJson: string): { Key: string; 
 
 async function getGithubRunnerRegistrationToken(githubRunnerConfig: CreateGitHubRunnerConfig, ghClient: Octokit) {
   const registrationToken =
-    githubRunnerConfig.runnerType === 'Org'
-      ? await ghClient.actions.createRegistrationTokenForOrg({ org: githubRunnerConfig.runnerOwner })
-      : await ghClient.actions.createRegistrationTokenForRepo({
-          owner: githubRunnerConfig.runnerOwner.split('/')[0],
-          repo: githubRunnerConfig.runnerOwner.split('/')[1],
-        });
+    githubRunnerConfig.runnerType === 'Enterprise'
+      ? await ghClient.request('POST /enterprises/{enterprise}/actions/runners/registration-token', {
+          enterprise: githubRunnerConfig.enterpriseSlug!,
+        })
+      : githubRunnerConfig.runnerType === 'Org'
+        ? await ghClient.actions.createRegistrationTokenForOrg({ org: githubRunnerConfig.runnerOwner })
+        : await ghClient.actions.createRegistrationTokenForRepo({
+            owner: githubRunnerConfig.runnerOwner.split('/')[0],
+            repo: githubRunnerConfig.runnerOwner.split('/')[1],
+          });
 
   return registrationToken.data.token;
 }
@@ -169,7 +178,10 @@ export async function getRunnerGroupId(
 ): Promise<number> {
   // if the runnerType is Repo, then runnerGroupId is default to 1
   let runnerGroupId: number | undefined = 1;
-  if (githubRunnerConfig.runnerType === 'Org' && githubRunnerConfig.runnerGroup !== undefined) {
+  if (
+    (githubRunnerConfig.runnerType === 'Org' || githubRunnerConfig.runnerType === 'Enterprise') &&
+    githubRunnerConfig.runnerGroup !== undefined
+  ) {
     let runnerGroup: string | undefined;
     // check if runner group id is already stored in SSM Parameter Store and
     // use it if it exists to avoid API call to GitHub
@@ -209,10 +221,16 @@ export async function getRunnerGroupId(
 }
 
 async function getRunnerGroupByName(ghClient: Octokit, githubRunnerConfig: CreateGitHubRunnerConfig): Promise<number> {
-  const runnerGroups: RunnerGroup[] = await ghClient.paginate(`GET /orgs/{org}/actions/runner-groups`, {
-    org: githubRunnerConfig.runnerOwner,
-    per_page: 100,
-  });
+  const runnerGroups: RunnerGroup[] =
+    githubRunnerConfig.runnerType === 'Enterprise'
+      ? await ghClient.paginate('GET /enterprises/{enterprise}/actions/runner-groups', {
+          enterprise: githubRunnerConfig.enterpriseSlug!,
+          per_page: 100,
+        })
+      : await ghClient.paginate('GET /orgs/{org}/actions/runner-groups', {
+          org: githubRunnerConfig.runnerOwner,
+          per_page: 100,
+        });
   const runnerGroupId = runnerGroups.find((runnerGroup) => runnerGroup.name === githubRunnerConfig.runnerGroup)?.id;
 
   if (runnerGroupId === undefined) {
@@ -309,20 +327,27 @@ async function createJitConfig(
       };
       logger.debug(`Runner name: ${ephemeralRunnerConfig.runnerName}`);
       const runnerConfig =
-        githubRunnerConfig.runnerType === 'Org'
-          ? await ghClient.actions.generateRunnerJitconfigForOrg({
-              org: githubRunnerConfig.runnerOwner,
+        githubRunnerConfig.runnerType === 'Enterprise'
+          ? await ghClient.request('POST /enterprises/{enterprise}/actions/runners/generate-jitconfig', {
+              enterprise: githubRunnerConfig.enterpriseSlug!,
               name: ephemeralRunnerConfig.runnerName,
               runner_group_id: ephemeralRunnerConfig.runnerGroupId,
               labels: ephemeralRunnerConfig.runnerLabels,
             })
-          : await ghClient.actions.generateRunnerJitconfigForRepo({
-              owner: githubRunnerConfig.runnerOwner.split('/')[0],
-              repo: githubRunnerConfig.runnerOwner.split('/')[1],
-              name: ephemeralRunnerConfig.runnerName,
-              runner_group_id: ephemeralRunnerConfig.runnerGroupId,
-              labels: ephemeralRunnerConfig.runnerLabels,
-            });
+          : githubRunnerConfig.runnerType === 'Org'
+            ? await ghClient.actions.generateRunnerJitconfigForOrg({
+                org: githubRunnerConfig.runnerOwner,
+                name: ephemeralRunnerConfig.runnerName,
+                runner_group_id: ephemeralRunnerConfig.runnerGroupId,
+                labels: ephemeralRunnerConfig.runnerLabels,
+              })
+            : await ghClient.actions.generateRunnerJitconfigForRepo({
+                owner: githubRunnerConfig.runnerOwner.split('/')[0],
+                repo: githubRunnerConfig.runnerOwner.split('/')[1],
+                name: ephemeralRunnerConfig.runnerName,
+                runner_group_id: ephemeralRunnerConfig.runnerGroupId,
+                labels: ephemeralRunnerConfig.runnerLabels,
+              });
 
       metricGitHubAppRateLimit(runnerConfig.headers);
 

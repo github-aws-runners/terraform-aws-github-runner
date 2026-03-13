@@ -3,23 +3,30 @@ import { resolveRunnerProviderType } from '@aws-github-runner/runner-provider';
 import { Octokit } from '@octokit/rest';
 import yn from 'yn';
 
-import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
+import {
+  createEnterprisePATClient,
+  createGithubAppAuth,
+  createGithubInstallationAuth,
+  createOctokitClient,
+} from '../github/auth';
 import { createScaleUpRunnerProvider } from '../runner-provider-registry';
 import {
   getGitHubEnterpriseApiUrl,
   getInstallationId,
-  resolveInstallationId,
   isJobQueued,
+  resolveInstallationId,
   UnsupportedEventError,
   validateSsmParameterStoreTags,
 } from './github-runner';
 import { publishRetryMessage } from './job-retry';
+import { resolveRunnerType } from './runner-config';
 import type { CreateScaleUpRunnersResult } from './scale-up-provider';
 import type {
   ActionRequestMessage,
   ActionRequestMessageRetry,
   ActionRequestMessageSQS,
   CreateGitHubRunnerConfig,
+  GitHubRunnerType,
 } from './types';
 
 const logger = createChildLogger('scale-up');
@@ -71,7 +78,9 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
     n_requests: payloads.length,
   });
 
-  const enableOrgLevel = yn(process.env.ENABLE_ORGANIZATION_RUNNERS, { default: true });
+  const runnerType = resolveRunnerType();
+  const enableOrgLevel = runnerType !== 'Repo';
+  const enterpriseSlug = process.env.ENTERPRISE_SLUG;
   const maximumRunners = parseInt(process.env.RUNNERS_MAXIMUM_COUNT || '3');
   const runnerLabels = process.env.RUNNER_LABELS || '';
   const runnerGroup = process.env.RUNNER_GROUP_NAME || 'Default';
@@ -91,21 +100,26 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
 
   const { ghesApiUrl, ghesBaseUrl } = getGitHubEnterpriseApiUrl();
 
-  const ghAuth = await createGithubAppAuth(undefined, ghesApiUrl);
-  const githubAppClient = await createOctokitClient(ghAuth.token, ghesApiUrl);
+  if (runnerType === 'Enterprise' && !enterpriseSlug) {
+    throw new Error('ENTERPRISE_SLUG must be set when RUNNER_REGISTRATION_LEVEL is enterprise.');
+  }
 
-  // A map of either owner or owner/repo name to Octokit client, so we use a
-  // single client per installation (set of messages), depending on how the app
-  // is installed. This is for a couple of reasons:
-  // - Sharing clients opens up the possibility of caching API calls.
-  // - Fetching a client for an installation actually requires a couple of API
-  //   calls itself, which would get expensive if done for every message in a
-  //   batch.
+  let githubAppClient: Octokit | undefined;
+  if (runnerType !== 'Enterprise') {
+    const ghAuth = await createGithubAppAuth(undefined, ghesApiUrl);
+    githubAppClient = await createOctokitClient(ghAuth.token, ghesApiUrl);
+  }
+
   type MessagesWithClient = {
     messages: ActionRequestMessageSQS[];
     githubInstallationClient: Octokit;
     runnerOwner: string;
   };
+
+  let enterpriseClient: Octokit | undefined;
+  if (runnerType === 'Enterprise') {
+    enterpriseClient = await createEnterprisePATClient(ghesApiUrl);
+  }
 
   const validMessages = new Map<string, MessagesWithClient>();
   const retryMessageIds = new Set<string>();
@@ -118,57 +132,49 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       );
 
       retryMessageIds.add(messageId);
-
       continue;
     }
 
-    if (!isValidRepoOwnerTypeIfOrgLevelEnabled(payload, enableOrgLevel)) {
+    if (!isValidRepoOwnerType(payload, runnerType)) {
       logger.warn(
-        `Repository does not belong to a GitHub organization and organization runners are enabled. This is not supported. Not scaling up for this event. Not throwing error to prevent re-queueing and just ignoring the event.`,
+        'Repository does not belong to a GitHub organization and organization runners are enabled. This is not supported. Not scaling up for this event. Not throwing error to prevent re-queueing and just ignoring the event.',
         {
           repository: `${repositoryOwner}/${repositoryName}`,
           messageId,
         },
       );
-
       continue;
     }
 
-    const runnerOwner = enableOrgLevel
-      ? payload.repositoryOwner
-      : `${payload.repositoryOwner}/${payload.repositoryName}`;
+    const runnerOwner =
+      runnerType === 'Enterprise'
+        ? enterpriseSlug!
+        : runnerType === 'Org'
+          ? payload.repositoryOwner
+          : `${payload.repositoryOwner}/${payload.repositoryName}`;
 
     let key = runnerOwner;
-    if (labels?.some((l) => l.startsWith('ghr-'))) {
-      const dynamicLabelsHash = labelsHash(labels);
-      key = `${key}/${dynamicLabelsHash}`;
+    if (labels?.some((label) => label.startsWith('ghr-'))) {
+      key = `${key}/${labelsHash(labels)}`;
     }
 
     let entry = validMessages.get(key);
-
-    // If we've not seen this owner/repo before, we'll need to create a GitHub
-    // client for it.
     if (entry === undefined) {
-      const githubInstallationClient = await createGithubInstallationClient(
-        githubAppClient,
-        enableOrgLevel,
-        payload,
-        ghesApiUrl,
-      );
+      const githubInstallationClient =
+        runnerType === 'Enterprise'
+          ? enterpriseClient!
+          : await createGithubInstallationClient(githubAppClient!, enableOrgLevel, payload, ghesApiUrl);
 
       entry = {
         messages: [],
         githubInstallationClient,
-        runnerOwner: runnerOwner,
+        runnerOwner,
       };
-
       validMessages.set(key, entry);
     }
 
     entry.messages.push(payload);
   }
-
-  const runnerType = enableOrgLevel ? 'Org' : 'Repo';
 
   addPersistentContextToChildLogger({
     runner: {
@@ -179,14 +185,11 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
     },
   });
 
-  logger.info(`Received events`);
+  logger.info('Received events');
 
   for (const [group, { githubInstallationClient, messages, runnerOwner }] of validMessages.entries()) {
-    // Work out how much we want to scale up by.
     let scaleUp = 0;
     const queuedMessages: ActionRequestMessageSQS[] = [];
-
-    // Reset per group to avoid accumulating labels across iterations
     let groupRunnerLabels = runnerLabels;
 
     const messageLabels = messages.length > 0 ? (messages[0].labels ?? []) : [];
@@ -216,18 +219,17 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
         let jobQueued = true;
         try {
           jobQueued = await isJobQueued(githubInstallationClient, message);
-        } catch (e) {
-          // An unsupported event type is not a transient fault — the check can never
-          // succeed for it, so lets skip
-          if (e instanceof UnsupportedEventError) {
+        } catch (error) {
+          if (error instanceof UnsupportedEventError) {
             continue;
           }
-          const err = e as Error & { status?: number };
+          const err = error as Error & { status?: number };
           messageLogger.warn('isJobQueued check failed, assuming job is still queued (fail-open)', {
             error: err.message,
             status: err.status,
           });
         }
+
         if (!jobQueued) {
           messageLogger.info('No runner will be created, job is not queued.');
           continue;
@@ -240,11 +242,9 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
 
     if (scaleUp === 0) {
       logger.info('No runners will be created for this group, no valid messages found.');
-
       continue;
     }
 
-    // Don't query the provider if we can create an unlimited number of runners.
     const currentRunners =
       maximumRunners === -1
         ? 0
@@ -255,16 +255,8 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       maximumRunners,
     });
 
-    // Calculate how many runners we want to create.
-    // Use Math.max(0, ...) to ensure we never attempt to create a negative number of runners,
-    // which can happen when currentRunners exceeds maximumRunners due to pool/scale-up race conditions.
     const newRunners =
-      maximumRunners === -1
-        ? // If we don't have an upper limit, scale up by the number of new jobs.
-          scaleUp
-        : // Otherwise, we do have a limit, so work out if `scaleUp` would exceed it.
-          Math.max(0, Math.min(scaleUp, maximumRunners - currentRunners));
-
+      maximumRunners === -1 ? scaleUp : Math.max(0, Math.min(scaleUp, maximumRunners - currentRunners));
     const skippedRunnerCount = Math.max(0, scaleUp - newRunners);
 
     if (skippedRunnerCount > 0) {
@@ -273,15 +265,11 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       });
 
       if (ephemeralEnabled) {
-        // This removes `skippedRunnerCount` items from the start of the array
-        // so that, if we retry more messages later, we pick fresh ones.
         const removedMessages = messages.splice(0, skippedRunnerCount);
         removedMessages.forEach(({ messageId }) => retryMessageIds.add(messageId));
       }
 
-      // No runners will be created, so skip calling the provider.
       if (newRunners <= 0) {
-        // Publish retry messages for messages not already scheduled for SQS batch retry.
         for (const message of queuedMessages) {
           if (!retryMessageIds.has(message.messageId)) {
             await publishRetryMessage(message as ActionRequestMessageRetry);
@@ -291,7 +279,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       }
     }
 
-    logger.info(`Attempting to launch new runners`, {
+    logger.info('Attempting to launch new runners', {
       newRunners,
     });
 
@@ -302,8 +290,9 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       runnerLabels: groupRunnerLabels,
       runnerGroup,
       runnerNamePrefix,
-      runnerOwner: runnerOwner,
+      runnerOwner,
       runnerType,
+      enterpriseSlug,
       disableAutoUpdate,
       ssmTokenPath,
       ssmConfigPath,
@@ -349,7 +338,6 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       failedMessages.forEach(({ messageId }) => retryMessageIds.add(messageId));
     }
 
-    // Publish retry messages for messages not already scheduled for SQS batch retry.
     for (const message of queuedMessages) {
       if (!retryMessageIds.has(message.messageId)) {
         await publishRetryMessage(message as ActionRequestMessageRetry);
@@ -360,22 +348,27 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
   return Array.from(retryMessageIds);
 }
 
-function isValidRepoOwnerTypeIfOrgLevelEnabled(payload: ActionRequestMessage, enableOrgLevel: boolean): boolean {
-  return !(enableOrgLevel && payload.repoOwnerType !== 'Organization');
+export function isValidRepoOwnerType(payload: ActionRequestMessage, runnerType: GitHubRunnerType): boolean {
+  if (runnerType === 'Enterprise') {
+    return true;
+  }
+  if (runnerType === 'Org') {
+    return payload.repoOwnerType === 'Organization';
+  }
+  return true;
 }
 
 function labelsHash(labels: string[]): string {
   const prefix = 'ghr-';
-
   const input = labels
-    .filter((l) => l.startsWith(prefix))
-    .sort() // ensure deterministic hash
+    .filter((label) => label.startsWith(prefix))
+    .sort()
     .join('|');
 
   let hash = 0;
-  for (let i = 0; i < input.length; i++) {
-    hash = (hash << 5) - hash + input.charCodeAt(i);
-    hash |= 0; // force 32-bit integer
+  for (let index = 0; index < input.length; index++) {
+    hash = (hash << 5) - hash + input.charCodeAt(index);
+    hash |= 0;
   }
 
   return Math.abs(hash).toString(36);
