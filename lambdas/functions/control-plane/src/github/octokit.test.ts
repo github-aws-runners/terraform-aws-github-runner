@@ -15,7 +15,9 @@ vi.mock('../github/auth', async () => ({
     return { token: 'token', type: 'installation', installationId: installationId };
   }),
   createOctokitClient: vi.fn().mockImplementation(() => new Octokit()),
-  createGithubAppAuth: vi.fn().mockResolvedValue({ token: 'token' }),
+  createGithubAppAuth: vi.fn().mockResolvedValue({ token: 'token', appIndex: 0 }),
+  getAppCount: vi.fn().mockResolvedValue(1),
+  getStoredInstallationId: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('@octokit/rest', async () => ({

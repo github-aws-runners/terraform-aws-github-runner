@@ -3,14 +3,15 @@ locals {
   name       = "job-retry"
 
   environment_variables = {
-    ENABLE_ORGANIZATION_RUNNERS          = var.config.enable_organization_runners
-    ENABLE_METRIC_JOB_RETRY              = var.config.metrics.enable && var.config.metrics.metric.enable_job_retry
-    ENABLE_METRIC_GITHUB_APP_RATE_LIMIT  = var.config.metrics.enable && var.config.metrics.metric.enable_github_app_rate_limit
-    GHES_URL                             = var.config.ghes_url
-    USER_AGENT                           = var.config.user_agent
-    JOB_QUEUE_SCALE_UP_URL               = var.config.sqs_build_queue.url
-    PARAMETER_GITHUB_APP_ID_NAME         = var.config.github_app_parameters.id.name
-    PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.config.github_app_parameters.key_base64.name
+    ENABLE_ORGANIZATION_RUNNERS               = var.config.enable_organization_runners
+    ENABLE_METRIC_JOB_RETRY                   = var.config.metrics.enable && var.config.metrics.metric.enable_job_retry
+    ENABLE_METRIC_GITHUB_APP_RATE_LIMIT       = var.config.metrics.enable && var.config.metrics.metric.enable_github_app_rate_limit
+    GHES_URL                                  = var.config.ghes_url
+    USER_AGENT                                = var.config.user_agent
+    JOB_QUEUE_SCALE_UP_URL                    = var.config.sqs_build_queue.url
+    PARAMETER_GITHUB_APP_ID_NAME              = join(":", [for p in var.config.github_app_parameters.id : p.name])
+    PARAMETER_GITHUB_APP_KEY_BASE64_NAME      = join(":", [for p in var.config.github_app_parameters.key_base64 : p.name])
+    PARAMETER_GITHUB_APP_INSTALLATION_ID_NAME = join(":", [for p in var.config.github_app_parameters.installation_id : p != null ? p.name : ""])
   }
 
   config = merge(var.config, {
@@ -62,11 +63,14 @@ resource "aws_iam_role_policy" "job_retry" {
   name = "job_retry-policy"
   role = module.job_retry.lambda.role.name
   policy = templatefile("${path.module}/policies/lambda.json", {
-    kms_key_arn               = var.config.kms_key_arn != null ? var.config.kms_key_arn : ""
-    sqs_build_queue_arn       = var.config.sqs_build_queue.arn
-    sqs_job_retry_queue_arn   = aws_sqs_queue.job_retry_check_queue.arn
-    github_app_id_arn         = var.config.github_app_parameters.id.arn
-    github_app_key_base64_arn = var.config.github_app_parameters.key_base64.arn
+    kms_key_arn             = var.config.kms_key_arn != null ? var.config.kms_key_arn : ""
+    sqs_build_queue_arn     = var.config.sqs_build_queue.arn
+    sqs_job_retry_queue_arn = aws_sqs_queue.job_retry_check_queue.arn
+    github_app_parameter_arns = jsonencode(concat(
+      [for p in var.config.github_app_parameters.id : p.arn],
+      [for p in var.config.github_app_parameters.key_base64 : p.arn],
+      [for p in var.config.github_app_parameters.installation_id : p.arn if p != null],
+    ))
   })
 }
 

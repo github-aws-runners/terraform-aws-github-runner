@@ -192,10 +192,23 @@ variable "enable_organization_runners" {
 }
 
 variable "github_app_parameters" {
-  description = "Parameter Store for GitHub App Parameters."
+  description = <<-EOF
+    Parameter Store for GitHub App Parameters.
+
+    Supports multiple GitHub Apps for round-robin API rate limit distribution.
+    Each list element corresponds to one GitHub App and is a map containing
+    `name` and `arn` keys referencing SSM parameters. The first element is the
+    primary app (the one whose webhook secret is used for incoming webhook
+    validation). All apps must be installed on the same repositories/organizations.
+
+    The control-plane lambdas (scale-up, scale-down, pool, job-retry) randomly
+    select an app from the list for each GitHub API call, distributing rate
+    limit consumption across all configured apps.
+  EOF
   type = object({
-    key_base64 = map(string)
-    id         = map(string)
+    key_base64      = list(map(string))
+    id              = list(map(string))
+    installation_id = list(object({ name = string, arn = string }))
   })
 }
 
