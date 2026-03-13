@@ -78,6 +78,7 @@ nav:
     - External managed secrets: examples/external-managed-ssm-secrets.md
     - Custom AMI: examples/prebuilt.md
     - Termination watcher: examples/termination-watcher.md
+    - Enterprise: examples/enterprise.md
     - Lambda download: examples/lambda-download.md
     - Permissions boundary: examples/permissions-boundary.md
   - AMI examples: ami-examples/index.md

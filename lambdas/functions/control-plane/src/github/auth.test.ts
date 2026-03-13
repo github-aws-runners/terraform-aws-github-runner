@@ -6,7 +6,7 @@ import { getParameters } from '@aws-github-runner/aws-ssm-util';
 import { generateKeyPairSync } from 'node:crypto';
 import * as nock from 'nock';
 
-import { createGithubAppAuth, createOctokitClient } from './auth';
+import { createGithubAppAuth, createOctokitClient, selectRandomPat, createEnterprisePATClient } from './auth';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 type MockProxy<T> = T & {
@@ -295,5 +295,55 @@ describe('Test createGithubAppAuth', () => {
     expect(callArgs.request).toBeDefined();
     expect(mockedAuth).toBeCalledWith({ type: authType });
     expect(result.token).toBe(token);
+  });
+});
+
+describe('Test selectRandomPat', () => {
+  it('returns the single PAT when only one is provided', () => {
+    const result = selectRandomPat('ghp_singletoken');
+    expect(result).toBe('ghp_singletoken');
+  });
+
+  it('returns one of the PATs from a comma-separated list', () => {
+    const pats = ['ghp_token1', 'ghp_token2', 'ghp_token3'];
+    const result = selectRandomPat(pats.join(','));
+    expect(pats).toContain(result);
+  });
+
+  it('trims whitespace around PATs', () => {
+    const result = selectRandomPat('  ghp_token1 , ghp_token2  ');
+    expect(['ghp_token1', 'ghp_token2']).toContain(result);
+  });
+
+  it('ignores empty entries from extra commas', () => {
+    const result = selectRandomPat('ghp_token1,,ghp_token2,');
+    expect(['ghp_token1', 'ghp_token2']).toContain(result);
+  });
+
+  it('throws an error for empty string', () => {
+    expect(() => selectRandomPat('')).toThrow('Enterprise PAT parameter value is empty.');
+  });
+
+  it('throws an error for string with only commas and whitespace', () => {
+    expect(() => selectRandomPat(', , ,')).toThrow('Enterprise PAT parameter value is empty.');
+  });
+
+  it('distributes selection across multiple PATs', () => {
+    const pats = 'ghp_a,ghp_b,ghp_c';
+    const selections = new Set<string>();
+    // Run enough times to likely hit all PATs
+    for (let i = 0; i < 100; i++) {
+      selections.add(selectRandomPat(pats));
+    }
+    expect(selections.size).toBeGreaterThan(1);
+  });
+});
+
+describe('Test createEnterprisePATClient', () => {
+  it('throws when PARAMETER_ENTERPRISE_PAT_NAME is not set', async () => {
+    delete process.env.PARAMETER_ENTERPRISE_PAT_NAME;
+    await expect(createEnterprisePATClient()).rejects.toThrow(
+      'PARAMETER_ENTERPRISE_PAT_NAME environment variable is not set.',
+    );
   });
 });

@@ -186,9 +186,30 @@ variable "sqs_build_queue" {
   })
 }
 
-variable "enable_organization_runners" {
-  description = "Register runners to organization, instead of repo level"
-  type        = bool
+variable "runner_registration_level" {
+  description = "The level at which runners are registered in GitHub. Valid values: \"repo\", \"org\", \"enterprise\". Defaults to \"repo\" when not set."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.runner_registration_level == null || contains(["repo", "org", "enterprise"], var.runner_registration_level)
+    error_message = "Variable 'runner_registration_level' must be one of: \"repo\", \"org\", \"enterprise\"."
+  }
+}
+
+variable "enterprise_slug" {
+  description = "The slug (URL identifier) of the GitHub Enterprise account. Required when runner_registration_level is \"enterprise\"."
+  type        = string
+  default     = null
+}
+
+variable "enterprise_pat_parameter" {
+  description = "SSM parameter for the enterprise PAT. Object with name and arn."
+  type = object({
+    name = string
+    arn  = string
+  })
+  default = null
 }
 
 variable "github_app_parameters" {
@@ -551,7 +572,7 @@ variable "pool_lambda_memory_size" {
 }
 
 variable "pool_runner_owner" {
-  description = "The pool will deploy runners to the GitHub org ID, set this value to the org to which you want the runners deployed. Repo level is not supported."
+  description = "The pool will deploy runners to the GitHub org ID, set this value to the org to which you want the runners deployed. Repo level is not supported. For enterprise-level runners, defaults to the enterprise_slug if not set."
   type        = string
   default     = null
 }

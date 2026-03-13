@@ -8,8 +8,13 @@ import { getParameter } from '@aws-github-runner/aws-ssm-util';
 let appIdPromise: Promise<string> | null = null;
 
 async function getAppId(): Promise<string> {
+  const paramName = process.env.PARAMETER_GITHUB_APP_ID_NAME;
+  if (!paramName) {
+    // Enterprise runners don't have a GitHub App ID — use a descriptive label
+    return 'enterprise-pat';
+  }
   if (!appIdPromise) {
-    appIdPromise = getParameter(process.env.PARAMETER_GITHUB_APP_ID_NAME);
+    appIdPromise = getParameter(paramName);
   }
   return appIdPromise;
 }

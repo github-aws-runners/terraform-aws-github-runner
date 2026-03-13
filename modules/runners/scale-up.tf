@@ -31,7 +31,9 @@ resource "aws_lambda_function" "scale_up" {
       ENABLE_JIT_CONFIG                        = var.enable_jit_config
       ENABLE_JOB_QUEUED_CHECK                  = local.enable_job_queued_check
       ENABLE_METRIC_GITHUB_APP_RATE_LIMIT      = var.metrics.enable && var.metrics.metric.enable_github_app_rate_limit
-      ENABLE_ORGANIZATION_RUNNERS              = var.enable_organization_runners
+      RUNNER_REGISTRATION_LEVEL                = var.runner_registration_level != null ? var.runner_registration_level : ""
+      ENTERPRISE_SLUG                          = var.enterprise_slug != null ? var.enterprise_slug : ""
+      PARAMETER_ENTERPRISE_PAT_NAME            = var.enterprise_pat_parameter != null ? var.enterprise_pat_parameter.name : ""
       ENVIRONMENT                              = var.prefix
       GHES_URL                                 = var.ghes_url
       USER_AGENT                               = var.user_agent
@@ -126,6 +128,7 @@ resource "aws_iam_role_policy" "scale_up" {
     kms_key_arn               = local.kms_key_arn
     ami_kms_key_arn           = local.ami_kms_key_arn
     ssm_ami_id_parameter_arn  = local.ami_id_ssm_module_managed ? aws_ssm_parameter.runner_ami_id[0].arn : var.ami.id_ssm_parameter_arn
+    enterprise_pat_arn        = var.enterprise_pat_parameter != null ? var.enterprise_pat_parameter.arn : ""
   })
 }
 
