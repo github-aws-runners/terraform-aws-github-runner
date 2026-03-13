@@ -3,7 +3,8 @@ locals {
   name       = "job-retry"
 
   environment_variables = {
-    ENABLE_ORGANIZATION_RUNNERS          = var.config.enable_organization_runners
+    RUNNER_REGISTRATION_LEVEL            = var.config.runner_registration_level != null ? var.config.runner_registration_level : ""
+    ENTERPRISE_SLUG                      = var.config.enterprise_slug != null ? var.config.enterprise_slug : ""
     ENABLE_METRIC_JOB_RETRY              = var.config.metrics.enable && var.config.metrics.metric.enable_job_retry
     ENABLE_METRIC_GITHUB_APP_RATE_LIMIT  = var.config.metrics.enable && var.config.metrics.metric.enable_github_app_rate_limit
     GHES_URL                             = var.config.ghes_url
@@ -11,6 +12,7 @@ locals {
     JOB_QUEUE_SCALE_UP_URL               = var.config.sqs_build_queue.url
     PARAMETER_GITHUB_APP_ID_NAME         = var.config.github_app_parameters.id.name
     PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.config.github_app_parameters.key_base64.name
+    PARAMETER_ENTERPRISE_PAT_NAME        = try(var.config.enterprise_pat_parameter.name, "")
   }
 
   config = merge(var.config, {
@@ -59,15 +61,49 @@ resource "aws_lambda_permission" "job_retry" {
 }
 
 resource "aws_iam_role_policy" "job_retry" {
-  name = "job_retry-policy"
-  role = module.job_retry.lambda.role.name
-  policy = templatefile("${path.module}/policies/lambda.json", {
-    kms_key_arn               = var.config.kms_key_arn != null ? var.config.kms_key_arn : ""
-    sqs_build_queue_arn       = var.config.sqs_build_queue.arn
-    sqs_job_retry_queue_arn   = aws_sqs_queue.job_retry_check_queue.arn
-    github_app_id_arn         = var.config.github_app_parameters.id.arn
-    github_app_key_base64_arn = var.config.github_app_parameters.key_base64.arn
-  })
+  name   = "job_retry-policy"
+  role   = module.job_retry.lambda.role.name
+  policy = data.aws_iam_policy_document.job_retry.json
+}
+
+data "aws_iam_policy_document" "job_retry" {
+  dynamic "statement" {
+    for_each = length(compact([
+      var.config.github_app_parameters.id.arn,
+      var.config.github_app_parameters.key_base64.arn,
+      try(var.config.enterprise_pat_parameter.arn, ""),
+    ])) > 0 ? [1] : []
+    content {
+      effect  = "Allow"
+      actions = ["ssm:GetParameter", "ssm:GetParameters"]
+      resources = compact([
+        var.config.github_app_parameters.id.arn,
+        var.config.github_app_parameters.key_base64.arn,
+        try(var.config.enterprise_pat_parameter.arn, ""),
+      ])
+    }
+  }
+
+  statement {
+    effect    = "Allow"
+    actions   = ["sqs:ReceiveMessage", "sqs:GetQueueAttributes", "sqs:DeleteMessage"]
+    resources = [aws_sqs_queue.job_retry_check_queue.arn]
+  }
+
+  statement {
+    effect    = "Allow"
+    actions   = ["sqs:SendMessage", "sqs:GetQueueAttributes"]
+    resources = [var.config.sqs_build_queue.arn]
+  }
+
+  dynamic "statement" {
+    for_each = var.config.kms_key_arn != null && var.config.kms_key_arn != "" ? [var.config.kms_key_arn] : []
+    content {
+      effect    = "Allow"
+      actions   = ["kms:Encrypt", "kms:Decrypt", "kms:GenerateDataKey"]
+      resources = [statement.value]
+    }
+  }
 }
 
 data "aws_iam_policy_document" "deny_insecure_transport" {

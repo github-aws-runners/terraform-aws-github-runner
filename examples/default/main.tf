@@ -50,7 +50,7 @@ module "runners" {
   # runner_binaries_syncer_lambda_zip = "../lambdas-download/runner-binaries-syncer.zip"
   # runners_lambda_zip                = "../lambdas-download/runners.zip"
 
-  enable_organization_runners = true
+  runner_registration_level = "org"
   # Note: labels starting with `ghr-` are ignored during webhook label matching
   # when `enable_dynamic_labels` is enabled.
   runner_extra_labels = ["default", "example"]

@@ -9,7 +9,7 @@ import {
 } from '@aws-sdk/client-ec2';
 import { LambdaRunnerSource } from '../scale-runners/scale-up';
 
-export type RunnerType = 'Org' | 'Repo';
+export type RunnerType = 'Org' | 'Repo' | 'Enterprise';
 
 export interface RunnerList {
   instanceId: string;
@@ -18,6 +18,7 @@ export interface RunnerList {
   type?: string;
   repo?: string;
   org?: string;
+  enterprise?: string;
   orphan?: boolean;
   runnerId?: string;
   bypassRemoval?: boolean;
@@ -56,6 +57,7 @@ export interface RunnerInputParameters {
   environment: string;
   runnerType: RunnerType;
   runnerOwner: string;
+  enterpriseSlug?: string;
   subnets: string[];
   launchTemplateName: string;
   ec2instanceCriteria: {

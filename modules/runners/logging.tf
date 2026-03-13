@@ -79,7 +79,7 @@ resource "aws_iam_role_policy" "cloudwatch" {
   role  = aws_iam_role.runner[0].name
   policy = templatefile("${path.module}/policies/instance-cloudwatch-policy.json",
     {
-      ssm_parameter_arn = aws_ssm_parameter.cloudwatch_agent_config_runner[0].arn
+      ssm_parameter_arn = nonsensitive(aws_ssm_parameter.cloudwatch_agent_config_runner[0].arn)
     }
   )
 }

@@ -31,7 +31,9 @@ resource "aws_lambda_function" "scale_up" {
       ENABLE_JIT_CONFIG                        = var.enable_jit_config
       ENABLE_JOB_QUEUED_CHECK                  = local.enable_job_queued_check
       ENABLE_METRIC_GITHUB_APP_RATE_LIMIT      = var.metrics.enable && var.metrics.metric.enable_github_app_rate_limit
-      ENABLE_ORGANIZATION_RUNNERS              = var.enable_organization_runners
+      RUNNER_REGISTRATION_LEVEL                = var.runner_registration_level != null ? var.runner_registration_level : ""
+      ENTERPRISE_SLUG                          = var.enterprise_slug != null ? var.enterprise_slug : ""
+      PARAMETER_ENTERPRISE_PAT_NAME            = var.enterprise_pat_parameter != null ? var.enterprise_pat_parameter.name : ""
       ENVIRONMENT                              = var.prefix
       GHES_URL                                 = var.ghes_url
       USER_AGENT                               = var.user_agent
@@ -117,19 +119,114 @@ resource "aws_iam_role" "scale_up" {
 }
 
 resource "aws_iam_role_policy" "scale_up" {
-  name = "scale-up-policy"
-  role = aws_iam_role.scale_up.name
-  policy = templatefile("${path.module}/policies/lambda-scale-up.json", {
-    arn_runner_instance_role  = var.iam_overrides["override_runner_role"] ? var.iam_overrides["runner_role_arn"] : aws_iam_role.runner[0].arn
-    environment               = var.prefix
-    sqs_arn                   = var.sqs_build_queue.arn
-    github_app_id_arn         = var.github_app_parameters.id.arn
-    github_app_key_base64_arn = var.github_app_parameters.key_base64.arn
-    ssm_config_path           = "arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.ssm_paths.root}/${var.ssm_paths.config}"
-    kms_key_arn               = local.kms_key_arn
-    ami_kms_key_arn           = local.ami_kms_key_arn
-    ssm_ami_id_parameter_arn  = local.ami_id_ssm_module_managed ? aws_ssm_parameter.runner_ami_id[0].arn : var.ami.id_ssm_parameter_arn
-  })
+  name   = "scale-up-policy"
+  role   = aws_iam_role.scale_up.name
+  policy = data.aws_iam_policy_document.scale_up.json
+}
+
+data "aws_iam_policy_document" "scale_up" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "ec2:DescribeInstances",
+      "ec2:DescribeLaunchTemplateVersions",
+      "ec2:DescribeTags",
+      "ec2:RunInstances",
+      "ec2:CreateFleet",
+      "ec2:CreateTags",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    effect    = "Allow"
+    actions   = ["ec2:TerminateInstances"]
+    resources = ["*"]
+    condition {
+      test     = "StringEquals"
+      variable = "ec2:ResourceTag/ghr:Application"
+      values   = ["github-action-runner"]
+    }
+  }
+
+  statement {
+    effect    = "Allow"
+    actions   = ["ec2:TerminateInstances"]
+    resources = ["*"]
+    condition {
+      test     = "StringEquals"
+      variable = "ec2:ResourceTag/gh:environment"
+      values   = [var.prefix]
+    }
+  }
+
+  statement {
+    effect    = "Allow"
+    actions   = ["iam:PassRole"]
+    resources = [var.iam_overrides["override_runner_role"] ? var.iam_overrides["runner_role_arn"] : aws_iam_role.runner[0].arn]
+  }
+
+  statement {
+    effect    = "Allow"
+    actions   = ["ssm:PutParameter", "ssm:AddTagsToResource"]
+    resources = ["*"]
+  }
+
+  statement {
+    effect  = "Allow"
+    actions = ["ssm:GetParameter", "ssm:GetParameters"]
+    resources = compact([
+      "${local.arn_ssm_parameters_path_config}/*",
+      local.ami_id_ssm_module_managed ? aws_ssm_parameter.runner_ami_id[0].arn : var.ami.id_ssm_parameter_arn,
+      var.github_app_parameters.key_base64.arn,
+      var.github_app_parameters.id.arn,
+      try(var.enterprise_pat_parameter.arn, ""),
+    ])
+  }
+
+  statement {
+    effect    = "Allow"
+    actions   = ["ssm:GetParameters"]
+    resources = [local.ami_id_ssm_module_managed ? aws_ssm_parameter.runner_ami_id[0].arn : var.ami.id_ssm_parameter_arn]
+  }
+
+  statement {
+    effect    = "Allow"
+    actions   = ["sqs:ReceiveMessage", "sqs:GetQueueAttributes", "sqs:DeleteMessage"]
+    resources = [var.sqs_build_queue.arn]
+  }
+
+  dynamic "statement" {
+    for_each = local.kms_key_arn != "" ? [local.kms_key_arn] : []
+    content {
+      effect    = "Allow"
+      actions   = ["kms:Decrypt"]
+      resources = [statement.value]
+    }
+  }
+
+  dynamic "statement" {
+    for_each = local.ami_kms_key_arn != "" ? [local.ami_kms_key_arn] : []
+    content {
+      effect    = "Allow"
+      actions   = ["kms:DescribeKey", "kms:ReEncrypt*", "kms:Decrypt"]
+      resources = [statement.value]
+    }
+  }
+
+  dynamic "statement" {
+    for_each = local.ami_kms_key_arn != "" ? [local.ami_kms_key_arn] : []
+    content {
+      effect    = "Allow"
+      actions   = ["kms:CreateGrant"]
+      resources = [statement.value]
+      condition {
+        test     = "Bool"
+        variable = "aws:ViaAWSService"
+        values   = ["true"]
+      }
+    }
+  }
 }
 
 resource "aws_iam_role_policy" "scale_up_logging" {

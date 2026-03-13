@@ -22,7 +22,7 @@ import { Octokit } from '@octokit/rest';
 import { retry } from '@octokit/plugin-retry';
 import { throttling } from '@octokit/plugin-throttling';
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
-import { getParameters } from '@aws-github-runner/aws-ssm-util';
+import { getParameter, getParameters } from '@aws-github-runner/aws-ssm-util';
 import { EndpointDefaults } from '@octokit/types';
 
 const logger = createChildLogger('gh-auth');
@@ -140,4 +140,43 @@ async function createAuth(installationId: number | undefined, ghesApiUrl: string
     });
   }
   return createAppAuth(authOptions);
+}
+
+/**
+ * Select a random PAT from a comma-separated list of PATs.
+ * If only one PAT is provided, it is returned directly.
+ */
+export function selectRandomPat(patValue: string): string {
+  const pats = patValue
+    .split(',')
+    .map((p) => p.trim())
+    .filter((p) => p.length > 0);
+
+  if (pats.length === 0) {
+    throw new Error('Enterprise PAT parameter value is empty.');
+  }
+
+  const selected = pats[Math.floor(Math.random() * pats.length)];
+  logger.debug(`Selected enterprise PAT (1 of ${pats.length})`);
+  return selected;
+}
+
+/**
+ * Create an Octokit client authenticated with an enterprise PAT.
+ * Reads the PAT from SSM Parameter Store using PARAMETER_ENTERPRISE_PAT_NAME env var.
+ * The SSM parameter value may contain multiple comma-separated PATs; one is selected at random
+ * to distribute API calls and avoid rate limiting.
+ * Used for all enterprise-level GitHub API calls.
+ */
+export async function createEnterprisePATClient(ghesApiUrl = ''): Promise<Octokit> {
+  const patParameterName = process.env.PARAMETER_ENTERPRISE_PAT_NAME;
+  if (!patParameterName) {
+    throw new Error(
+      'PARAMETER_ENTERPRISE_PAT_NAME environment variable is not set. ' +
+        'Enterprise runner registration requires a PAT stored in SSM Parameter Store.',
+    );
+  }
+  const patValue = await getParameter(patParameterName);
+  const pat = selectRandomPat(patValue);
+  return createOctokitClient(pat, ghesApiUrl);
 }
