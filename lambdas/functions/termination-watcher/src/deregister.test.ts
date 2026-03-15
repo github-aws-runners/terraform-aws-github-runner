@@ -282,6 +282,77 @@ describe('deregisterRunner', () => {
     await deregisterRunner(instance, baseConfig);
     expect(mockCreateAppAuth).not.toHaveBeenCalled();
   });
+
+  it('should retry when runner is currently running a job (422)', async () => {
+    vi.useFakeTimers();
+    mockApps.getOrgInstallation.mockResolvedValue({ data: { id: 999 } });
+
+    async function* fakeIterator() {
+      yield { data: [{ id: 42, name: `runner-i-12345678901234567` }] };
+    }
+    mockPaginate.iterator.mockReturnValue(fakeIterator());
+
+    const busyError = Object.assign(new Error('Bad request - Runner runner-i-12345678901234567 is currently running a job and cannot be deleted.'), { status: 422 });
+    mockActions.deleteSelfHostedRunnerFromOrg
+      .mockRejectedValueOnce(busyError)
+      .mockRejectedValueOnce(busyError)
+      .mockResolvedValueOnce({});
+
+    const promise = deregisterRunner(orgInstance, baseConfig);
+
+    // Advance through retry delays (1s, 2s)
+    await vi.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTimeAsync(2000);
+
+    await promise;
+
+    expect(mockActions.deleteSelfHostedRunnerFromOrg).toHaveBeenCalledTimes(3);
+    vi.useRealTimers();
+  });
+
+  it('should not retry on non-422 errors', async () => {
+    mockApps.getOrgInstallation.mockResolvedValue({ data: { id: 999 } });
+
+    async function* fakeIterator() {
+      yield { data: [{ id: 42, name: `runner-i-12345678901234567` }] };
+    }
+    mockPaginate.iterator.mockReturnValue(fakeIterator());
+
+    mockActions.deleteSelfHostedRunnerFromOrg.mockRejectedValueOnce(
+      Object.assign(new Error('Internal Server Error'), { status: 500 }),
+    );
+
+    // Should not throw — outer catch handles it
+    await deregisterRunner(orgInstance, baseConfig);
+
+    expect(mockActions.deleteSelfHostedRunnerFromOrg).toHaveBeenCalledTimes(1);
+  });
+
+  it('should give up after max retries for runner busy error', async () => {
+    vi.useFakeTimers();
+    mockApps.getOrgInstallation.mockResolvedValue({ data: { id: 999 } });
+
+    async function* fakeIterator() {
+      yield { data: [{ id: 42, name: `runner-i-12345678901234567` }] };
+    }
+    mockPaginate.iterator.mockReturnValue(fakeIterator());
+
+    const busyError = Object.assign(new Error('Bad request - Runner is currently running a job and cannot be deleted.'), { status: 422 });
+    mockActions.deleteSelfHostedRunnerFromOrg.mockRejectedValue(busyError);
+
+    const promise = deregisterRunner(orgInstance, baseConfig);
+
+    // Advance through all retry delays (1s, 2s, 4s, 8s)
+    for (const delay of [1000, 2000, 4000, 8000]) {
+      await vi.advanceTimersByTimeAsync(delay);
+    }
+
+    await promise;
+
+    // 5 attempts total (initial + 4 retries)
+    expect(mockActions.deleteSelfHostedRunnerFromOrg).toHaveBeenCalledTimes(5);
+    vi.useRealTimers();
+  });
 });
 
 describe('createThrottleOptions', () => {

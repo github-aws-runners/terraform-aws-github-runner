@@ -155,6 +155,51 @@ async function deleteRunner(octokit: Octokit, owner: string, runnerId: number, r
   }
 }
 
+const MAX_DELETE_RETRIES = 5;
+const INITIAL_RETRY_DELAY_MS = 1000;
+
+async function deleteRunnerWithRetry(
+  octokit: Octokit,
+  owner: string,
+  runnerId: number,
+  runnerName: string,
+  runnerType: string,
+  instanceId: string,
+): Promise<void> {
+  for (let attempt = 1; attempt <= MAX_DELETE_RETRIES; attempt++) {
+    try {
+      await deleteRunner(octokit, owner, runnerId, runnerType);
+      logger.info('Successfully deregistered runner from GitHub', {
+        instanceId,
+        runnerId,
+        runnerName,
+        owner,
+      });
+      return;
+    } catch (error) {
+      const status = (error as { status?: number }).status;
+      const message = (error as Error).message ?? '';
+      const isRunnerBusy = status === 422 && message.includes('currently running a job');
+
+      if (isRunnerBusy && attempt < MAX_DELETE_RETRIES) {
+        const delay = INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt - 1);
+        logger.warn('Runner is currently running a job, retrying after delay', {
+          instanceId,
+          runnerId,
+          runnerName,
+          owner,
+          attempt,
+          maxRetries: MAX_DELETE_RETRIES,
+          delayMs: delay,
+        });
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      } else {
+        throw error;
+      }
+    }
+  }
+}
+
 export async function deregisterRunner(instance: Instance, config: Config): Promise<void> {
   if (!config.enableRunnerDeregistration) {
     logger.debug('Runner deregistration is disabled, skipping');
@@ -187,13 +232,7 @@ export async function deregisterRunner(instance: Instance, config: Config): Prom
       return;
     }
 
-    await deleteRunner(installationOctokit, owner, runner.id, runnerType);
-    logger.info('Successfully deregistered runner from GitHub', {
-      instanceId,
-      runnerId: runner.id,
-      runnerName: runner.name,
-      owner,
-    });
+    await deleteRunnerWithRetry(installationOctokit, owner, runner.id, runner.name, runnerType, instanceId);
   } catch (error) {
     logger.error('Failed to deregister runner from GitHub', {
       instanceId,
