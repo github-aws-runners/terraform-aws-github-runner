@@ -156,7 +156,9 @@ module "runners" {
   #     enable_spot_termination_warning = true
   #   }
   # }
-  enable_dynamic_labels = true
+
+  # Enable dyamic lables
+  # enable_dynamic_labels = true
 }
 
 module "webhook_github_app" {
