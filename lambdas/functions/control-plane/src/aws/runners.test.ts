@@ -21,6 +21,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ScaleError from './../scale-runners/ScaleError';
 import { createRunner, listEC2Runners, tag, terminateRunner, untag } from './runners';
 import type { RunnerInfo, RunnerInputParameters, RunnerType } from './runners.d';
+import { LambdaRunnerSource } from '../scale-runners/scale-up';
 
 process.env.AWS_REGION = 'eu-east-1';
 const mockEC2Client = mockClient(EC2Client);
@@ -753,7 +754,7 @@ interface RunnerConfig {
   tracingEnabled?: boolean;
   onDemandFailoverOnError?: string[];
   scaleErrors: string[];
-  source: 'scale-up-lambda' | 'pool-lambda';
+  source: LambdaRunnerSource;
 }
 
 function createRunnerConfig(runnerConfig: RunnerConfig): RunnerInputParameters {
@@ -786,7 +787,7 @@ interface ExpectedFleetRequestValues {
   totalTargetCapacity: number;
   imageId?: string;
   tracingEnabled?: boolean;
-  source: 'scale-up-lambda' | 'pool-lambda';
+  source: LambdaRunnerSource;
 }
 
 function expectedCreateFleetRequest(expectedValues: ExpectedFleetRequestValues): CreateFleetCommandInput {
