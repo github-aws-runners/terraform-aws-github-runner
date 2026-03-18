@@ -511,7 +511,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       },
       newRunners,
       githubInstallationClient,
-      'scale-up-lambda'
+      'scale-up-lambda',
     );
 
     // Not all runners we wanted were created, let's reject enough items so that
