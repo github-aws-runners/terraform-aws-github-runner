@@ -4,12 +4,14 @@ locals {
 
   enable_runner_deregistration = var.config.enable_runner_deregistration && var.config.github_app_parameters != null
 
-  deregistration_env_vars = local.enable_runner_deregistration ? {
+  deregistration_env_vars = local.enable_runner_deregistration ? merge({
     ENABLE_RUNNER_DEREGISTRATION         = "true"
     PARAMETER_GITHUB_APP_ID_NAME         = var.config.github_app_parameters.id.name
     PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.config.github_app_parameters.key_base64.name
     GHES_URL                             = var.config.ghes_url != null ? var.config.ghes_url : ""
-  } : {}
+  }, length(aws_sqs_queue.deregister_retry) > 0 ? {
+    DEREGISTER_RETRY_QUEUE_URL = aws_sqs_queue.deregister_retry[0].url
+  } : {}) : {}
 
   ssm_parameter_arns = local.enable_runner_deregistration ? [
     var.config.github_app_parameters.id.arn,
