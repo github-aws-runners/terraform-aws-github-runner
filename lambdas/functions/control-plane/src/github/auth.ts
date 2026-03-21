@@ -135,6 +135,7 @@ async function createAuth(installationId: number | undefined, ghesApiUrl: string
 
   logger.debug(`GHES API URL: ${ghesApiUrl}`);
   if (ghesApiUrl) {
+    // @ts-ignore - Type mismatch between @octokit/request and @octokit/types versions
     authOptions.request = request.defaults({
       baseUrl: ghesApiUrl,
     });
