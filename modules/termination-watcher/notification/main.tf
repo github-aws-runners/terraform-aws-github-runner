@@ -7,7 +7,7 @@ locals {
     environment_variables = merge({
       ENABLE_METRICS_SPOT_WARNING = var.config.metrics != null ? var.config.metrics.enable && var.config.metrics.metric.enable_spot_termination_warning : false
       TAG_FILTERS                 = jsonencode(var.config.tag_filters)
-    }, var.config._deregistration_env_vars)
+    }, var.config._deregistration_env_vars, var.config.environment_variables)
   })
 }
 

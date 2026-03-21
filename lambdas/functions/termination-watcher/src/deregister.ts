@@ -3,10 +3,21 @@ import { Octokit } from '@octokit/rest';
 import { throttling } from '@octokit/plugin-throttling';
 import { request } from '@octokit/request';
 import { Instance } from '@aws-sdk/client-ec2';
+import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
 import type { EndpointDefaults } from '@octokit/types';
 import type { Config } from './ConfigResolver';
+
+export interface DeregisterRetryMessage {
+  instanceId: string;
+  owner: string;
+  runnerType: string;
+  runnerId: number;
+  retryCount: number;
+}
+
+const sqsClient = new SQSClient({ region: process.env.AWS_REGION });
 
 const logger = createChildLogger('deregister');
 
@@ -198,20 +209,81 @@ export async function deregisterRunner(instance: Instance, config: Config): Prom
     });
   } catch (error) {
     // GitHub returns 422 when a runner is currently executing a job.
-    // The runner will become offline after the instance terminates, and the
-    // scale-down Lambda's reconciliation loop will clean it up on its next cycle.
+    // Queue a delayed retry — the instance will be terminated by EC2 shortly,
+    // and the runner will appear offline when we retry in 5 minutes.
     const isRunnerBusy = error instanceof Error && 'status' in error && (error as { status: number }).status === 422;
     if (isRunnerBusy) {
-      logger.warn('Runner is currently busy, cannot deregister now. Scale-down reconciliation will clean it up.', {
-        instanceId,
-        owner,
-      });
+      const queueUrl = process.env.DEREGISTER_RETRY_QUEUE_URL;
+      if (queueUrl) {
+        await queueDeregisterRetry(queueUrl, { instanceId, owner, runnerType, runnerId: 0, retryCount: 0 });
+        logger.warn('Runner is busy — queued deregistration retry in 5 minutes via SQS', { instanceId, owner });
+      } else {
+        logger.warn('Runner is busy and DEREGISTER_RETRY_QUEUE_URL is not set — deregistration skipped', {
+          instanceId,
+          owner,
+        });
+      }
     } else {
       logger.error('Failed to deregister runner from GitHub', {
         instanceId,
         owner,
         error: error as Error,
       });
+    }
+  }
+}
+
+async function queueDeregisterRetry(queueUrl: string, message: DeregisterRetryMessage): Promise<void> {
+  const command = new SendMessageCommand({
+    QueueUrl: queueUrl,
+    MessageBody: JSON.stringify(message),
+  });
+  await sqsClient.send(command);
+}
+
+export async function handleDeregisterRetry(queueUrl: string, message: DeregisterRetryMessage): Promise<void> {
+  const { instanceId, owner, runnerType, retryCount } = message;
+  logger.info('Processing deregistration retry from SQS', { instanceId, owner, runnerType, retryCount });
+
+  try {
+    const appOctokit = await createAuthenticatedClient('');
+    const installationOctokit = await createInstallationClient(appOctokit, owner, runnerType, '');
+
+    const runner = await findRunnerByInstanceId(installationOctokit, owner, instanceId, runnerType);
+    if (!runner) {
+      logger.info('Runner not found in GitHub — already deregistered or never registered', { instanceId, owner });
+      return;
+    }
+
+    await deleteRunner(installationOctokit, owner, runner.id, runnerType);
+    logger.info('Successfully deregistered runner via SQS retry', {
+      instanceId,
+      runnerId: runner.id,
+      runnerName: runner.name,
+      owner,
+      retryCount,
+    });
+  } catch (error) {
+    const isRunnerBusy = error instanceof Error && 'status' in error && (error as { status: number }).status === 422;
+    if (isRunnerBusy) {
+      // Re-enqueue for another retry — SQS maxReceiveCount DLQ will stop after 3 total attempts.
+      // Re-send explicitly so each retry resets the delay (SQS visibility timeout applies on re-receive,
+      // but re-sending gives us the full 5-minute DelaySeconds again).
+      await queueDeregisterRetry(queueUrl, { ...message, retryCount: retryCount + 1 });
+      logger.warn('Runner still busy on retry — re-queued for another attempt', {
+        instanceId,
+        owner,
+        retryCount: retryCount + 1,
+      });
+    } else {
+      logger.error('Failed to deregister runner on retry', {
+        instanceId,
+        owner,
+        retryCount,
+        error: error as Error,
+      });
+      // Re-throw so SQS treats this as a failure and routes to DLQ after maxReceiveCount
+      throw error;
     }
   }
 }
