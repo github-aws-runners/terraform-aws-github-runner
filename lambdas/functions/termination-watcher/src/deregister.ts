@@ -195,10 +195,21 @@ export async function deregisterRunner(instance: Instance, config: Config): Prom
       owner,
     });
   } catch (error) {
-    logger.error('Failed to deregister runner from GitHub', {
-      instanceId,
-      owner,
-      error: error as Error,
-    });
+    // GitHub returns 422 when a runner is currently executing a job.
+    // The runner will become offline after the instance terminates, and the
+    // scale-down Lambda's reconciliation loop will clean it up on its next cycle.
+    const isRunnerBusy = error instanceof Error && 'status' in error && (error as { status: number }).status === 422;
+    if (isRunnerBusy) {
+      logger.warn('Runner is currently busy, cannot deregister now. Scale-down reconciliation will clean it up.', {
+        instanceId,
+        owner,
+      });
+    } else {
+      logger.error('Failed to deregister runner from GitHub', {
+        instanceId,
+        owner,
+        error: error as Error,
+      });
+    }
   }
 }
