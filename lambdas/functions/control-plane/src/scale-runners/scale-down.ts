@@ -313,91 +313,6 @@ function filterRunners(ec2runners: RunnerList[]): RunnerInfo[] {
   return ec2runners.filter((ec2Runner) => ec2Runner.type && !ec2Runner.orphan) as RunnerInfo[];
 }
 
-async function reconcileGitHubRunners(environment: string, ec2Runners: RunnerList[]): Promise<void> {
-  const offlineThresholdMinutes = parseInt(process.env.OFFLINE_RUNNER_DEREGISTER_MINUTES ?? '10');
-  if (offlineThresholdMinutes <= 0) {
-    logger.debug('Offline runner reconciliation is disabled (threshold <= 0)');
-    return;
-  }
-
-  const ec2InstanceIds = new Set(ec2Runners.map((r) => r.instanceId));
-
-  // Build a set of unique owners/types from the EC2 runners we know about.
-  // If there are no EC2 runners, we still need at least one owner to query GitHub.
-  // Fall back to environment tags to find the org.
-  const ownerTypes = new Map<string, string>();
-  for (const r of ec2Runners) {
-    if (r.owner && r.type) {
-      ownerTypes.set(r.owner, r.type);
-    }
-  }
-
-  // If no EC2 runners exist, we can't determine the owner to query GitHub.
-  // This is fine — the scale-up Lambda will handle it once new runners register.
-  if (ownerTypes.size === 0) {
-    logger.debug('No EC2 runners with owner tags found, skipping GitHub runner reconciliation');
-    return;
-  }
-
-  for (const [owner, runnerType] of ownerTypes) {
-    try {
-      // Create a synthetic RunnerInfo to reuse the existing GitHub client helpers
-      const syntheticRunner: RunnerInfo = { instanceId: 'reconciler', owner, type: runnerType };
-      const ghRunners = await listGitHubRunners(syntheticRunner);
-
-      // Find GitHub runners whose name contains an environment prefix that matches ours,
-      // that are offline, and have no corresponding EC2 instance
-      const orphanedGhRunners = ghRunners.filter((ghRunner: { name: string; status: string; id: number }) => {
-        if (ghRunner.status !== 'offline') return false;
-        // Check if this runner's EC2 instance still exists
-        const matchesEc2 = Array.from(ec2InstanceIds).some((instanceId) => ghRunner.name.includes(instanceId));
-        return !matchesEc2;
-      });
-
-      if (orphanedGhRunners.length === 0) {
-        logger.debug(`No orphaned GitHub runners found for owner '${owner}'`);
-        continue;
-      }
-
-      logger.info(
-        `Found ${orphanedGhRunners.length} offline GitHub runner(s) with no EC2 instance for owner '${owner}'`,
-      );
-
-      const client = await getOrCreateOctokit(syntheticRunner);
-      for (const ghRunner of orphanedGhRunners) {
-        try {
-          if (runnerType === 'Org') {
-            await client.actions.deleteSelfHostedRunnerFromOrg({
-              org: owner,
-              runner_id: (ghRunner as { id: number }).id,
-            });
-          } else {
-            const [repoOwner, repo] = owner.split('/');
-            await client.actions.deleteSelfHostedRunnerFromRepo({
-              owner: repoOwner,
-              repo,
-              runner_id: (ghRunner as { id: number }).id,
-            });
-          }
-          logger.info(`Deregistered orphaned GitHub runner '${(ghRunner as { name: string }).name}' (ID: ${(ghRunner as { id: number }).id})`);
-        } catch (error) {
-          if (error instanceof RequestError && error.status === 422) {
-            logger.warn(
-              `Cannot deregister runner '${(ghRunner as { name: string }).name}' — still marked as busy. Will retry next cycle.`,
-            );
-          } else {
-            logger.error(`Failed to deregister orphaned runner '${(ghRunner as { name: string }).name}'`, {
-              error: error as Error,
-            });
-          }
-        }
-      }
-    } catch (error) {
-      logger.warn(`Failed to reconcile GitHub runners for owner '${owner}'`, { error: error as Error });
-    }
-  }
-}
-
 export async function scaleDown(): Promise<void> {
   githubCache.reset();
   const environment = process.env.ENVIRONMENT;
@@ -411,11 +326,6 @@ export async function scaleDown(): Promise<void> {
   const activeEc2RunnersCount = ec2Runners.length;
   logger.info(`Found: '${activeEc2RunnersCount}' active GitHub EC2 runner instances before clean-up.`);
   logger.debug(`Active GitHub EC2 runner instances: ${JSON.stringify(ec2Runners)}`);
-
-  // Reconcile: deregister GitHub runners whose EC2 instances no longer exist.
-  // This prevents deadlocks where offline ghost runners count toward the max,
-  // blocking scale-up from launching replacements.
-  await reconcileGitHubRunners(environment, ec2Runners);
 
   if (activeEc2RunnersCount === 0) {
     logger.debug(`No active runners found for environment: '${environment}'`);

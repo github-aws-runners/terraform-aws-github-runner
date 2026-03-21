@@ -23,7 +23,8 @@ locals {
       id         = local.github_app_parameters.id
       key_base64 = local.github_app_parameters.key_base64
     } : null
-    ghes_url = var.ghes_url
+    ghes_url              = var.ghes_url
+    environment_variables = var.instance_termination_watcher.environment_variables
   }
 }
 
