@@ -129,6 +129,7 @@ function generateFleetOverrides(
   instancesTypes: string[],
   amiId?: string,
   ec2OverrideConfig?: Runners.Ec2OverrideConfig,
+  instanceTypePriorities?: Record<string, number>,
 ): FleetLaunchTemplateOverridesRequest[] {
   const result: FleetLaunchTemplateOverridesRequest[] = [];
 
@@ -138,12 +139,13 @@ function generateFleetOverrides(
   const amiIdToUse = ec2OverrideConfig?.ImageId ?? amiId;
 
   subnetsToUse.forEach((s) => {
-    instanceTypesToUse.forEach((i) => {
+    instanceTypesToUse.forEach((i, index) => {
       const item: FleetLaunchTemplateOverridesRequest = {
         SubnetId: s,
         InstanceType: i as _InstanceType,
         ImageId: amiIdToUse,
         ...ec2OverrideConfig,
+        Priority: instanceTypePriorities?.[i] ?? index,
       };
       result.push(item);
     });
@@ -296,6 +298,7 @@ async function createInstances(
             runnerParameters.ec2instanceCriteria.instanceTypes,
             amiIdOverride,
             runnerParameters.ec2OverrideConfig,
+            runnerParameters.ec2instanceCriteria.instanceTypePriorities,
           ),
         },
       ],

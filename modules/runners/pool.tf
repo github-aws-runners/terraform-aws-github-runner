@@ -12,6 +12,7 @@ module "pool" {
     user_agent                    = var.user_agent
     github_app_parameters         = var.github_app_parameters
     instance_allocation_strategy  = var.instance_allocation_strategy
+    instance_type_priorities      = var.instance_type_priorities
     instance_max_spot_price       = var.instance_max_spot_price
     instance_target_capacity_type = var.instance_target_capacity_type
     instance_types                = var.instance_types

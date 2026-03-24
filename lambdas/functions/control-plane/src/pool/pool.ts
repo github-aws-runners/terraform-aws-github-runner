@@ -36,6 +36,9 @@ export async function adjust(event: PoolEvent): Promise<void> {
   const launchTemplateName = process.env.LAUNCH_TEMPLATE_NAME;
   const instanceMaxSpotPrice = process.env.INSTANCE_MAX_SPOT_PRICE;
   const instanceAllocationStrategy = process.env.INSTANCE_ALLOCATION_STRATEGY || 'lowest-price'; // same as AWS default
+  const instanceTypePriorities = process.env.INSTANCE_TYPE_PRIORITIES
+    ? (JSON.parse(process.env.INSTANCE_TYPE_PRIORITIES) as Record<string, number>)
+    : undefined;
   const runnerOwner = process.env.RUNNER_OWNER;
   const amiIdSsmParameterName = process.env.AMI_ID_SSM_PARAMETER_NAME;
   const tracingEnabled = yn(process.env.POWERTOOLS_TRACE_ENABLED, { default: false });
@@ -92,6 +95,7 @@ export async function adjust(event: PoolEvent): Promise<void> {
       {
         ec2instanceCriteria: {
           instanceTypes,
+          instanceTypePriorities,
           targetCapacityType: instanceTargetCapacityType,
           maxSpotPrice: instanceMaxSpotPrice,
           instanceAllocationStrategy: instanceAllocationStrategy,

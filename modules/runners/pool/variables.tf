@@ -49,6 +49,7 @@ variable "config" {
       use_dedicated_host = bool
     })
     instance_types                = list(string)
+    instance_type_priorities      = optional(map(number))
     instance_target_capacity_type = string
     instance_allocation_strategy  = string
     instance_max_spot_price       = string
