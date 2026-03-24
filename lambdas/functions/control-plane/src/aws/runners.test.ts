@@ -10,6 +10,7 @@ import {
   DescribeInstancesCommand,
   type DescribeInstancesResult,
   EC2Client,
+  FleetOnDemandAllocationStrategy,
   SpotAllocationStrategy,
   TerminateInstancesCommand,
 } from '@aws-sdk/client-ec2';
@@ -389,11 +390,31 @@ describe('create runner', () => {
   });
 
   it('calls create fleet of 1 instance with the on-demand capacity', async () => {
-    await createRunner(createRunnerConfig({ ...defaultRunnerConfig, capacityType: 'on-demand' }));
+    await createRunner(
+      createRunnerConfig({ ...defaultRunnerConfig, capacityType: 'on-demand', allocationStrategy: 'lowest-price' }),
+    );
     expect(mockEC2Client).toHaveReceivedCommandWith(CreateFleetCommand, {
       ...expectedCreateFleetRequest({
         ...defaultExpectedFleetRequestValues,
         capacityType: 'on-demand',
+        allocationStrategy: 'lowest-price',
+      }),
+    });
+  });
+
+  it('calls create fleet with on-demand capacity and prioritized allocation strategy', async () => {
+    await createRunner(
+      createRunnerConfig({
+        ...defaultRunnerConfig,
+        capacityType: 'on-demand',
+        allocationStrategy: FleetOnDemandAllocationStrategy.PRIORITIZED,
+      }),
+    );
+    expect(mockEC2Client).toHaveReceivedCommandWith(CreateFleetCommand, {
+      ...expectedCreateFleetRequest({
+        ...defaultExpectedFleetRequestValues,
+        capacityType: 'on-demand',
+        allocationStrategy: FleetOnDemandAllocationStrategy.PRIORITIZED,
       }),
     });
   });
@@ -631,12 +652,13 @@ describe('create runner with errors fail over to OnDemand', () => {
       }),
     });
 
-    // second call with with OnDemand fallback
+    // second call with with OnDemand fallback, allocation strategy defaults to lowest-price
     expect(mockEC2Client).toHaveReceivedNthCommandWith(2, CreateFleetCommand, {
       ...expectedCreateFleetRequest({
         ...defaultExpectedFleetRequestValues,
         totalTargetCapacity: 1,
         capacityType: 'on-demand',
+        allocationStrategy: 'lowest-price',
       }),
     });
   });
@@ -673,12 +695,13 @@ describe('create runner with errors fail over to OnDemand', () => {
       }),
     });
 
-    // second call with with OnDemand failback, capacity is reduced by 1
+    // second call with with OnDemand failback, capacity is reduced by 1, allocation strategy defaults to lowest-price
     expect(mockEC2Client).toHaveReceivedNthCommandWith(2, CreateFleetCommand, {
       ...expectedCreateFleetRequest({
         ...defaultExpectedFleetRequestValues,
         totalTargetCapacity: 1,
         capacityType: 'on-demand',
+        allocationStrategy: 'lowest-price',
       }),
     });
   });
@@ -748,7 +771,7 @@ function createFleetMockWithWithOnDemandFallback(errors: string[], instances?: s
 interface RunnerConfig {
   type: RunnerType;
   capacityType: DefaultTargetCapacityType;
-  allocationStrategy: SpotAllocationStrategy;
+  allocationStrategy: SpotAllocationStrategy | FleetOnDemandAllocationStrategy;
   maxSpotPrice?: string;
   amiIdSsmParameterName?: string;
   tracingEnabled?: boolean;
@@ -782,7 +805,7 @@ function createRunnerConfig(runnerConfig: RunnerConfig): RunnerInputParameters {
 interface ExpectedFleetRequestValues {
   type: 'Repo' | 'Org';
   capacityType: DefaultTargetCapacityType;
-  allocationStrategy: SpotAllocationStrategy;
+  allocationStrategy: SpotAllocationStrategy | FleetOnDemandAllocationStrategy;
   maxSpotPrice?: string;
   totalTargetCapacity: number;
   imageId?: string;
@@ -831,10 +854,18 @@ function expectedCreateFleetRequest(expectedValues: ExpectedFleetRequestValues):
         ],
       },
     ],
-    SpotOptions: {
-      AllocationStrategy: expectedValues.allocationStrategy,
-      MaxTotalPrice: expectedValues.maxSpotPrice,
-    },
+    ...(expectedValues.capacityType === 'spot'
+      ? {
+          SpotOptions: {
+            AllocationStrategy: expectedValues.allocationStrategy,
+            MaxTotalPrice: expectedValues.maxSpotPrice,
+          },
+        }
+      : {
+          OnDemandOptions: {
+            AllocationStrategy: expectedValues.allocationStrategy,
+          },
+        }),
     TagSpecifications: [
       {
         ResourceType: 'instance',
