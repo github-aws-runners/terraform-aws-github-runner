@@ -287,14 +287,14 @@ async function createInstances(
         ? {
             SpotOptions: {
               MaxTotalPrice: runnerParameters.ec2instanceCriteria.maxSpotPrice,
-              AllocationStrategy:
-                runnerParameters.ec2instanceCriteria.instanceAllocationStrategy as SpotAllocationStrategy,
+              AllocationStrategy: runnerParameters.ec2instanceCriteria
+                .instanceAllocationStrategy as SpotAllocationStrategy,
             },
           }
         : {
             OnDemandOptions: {
-              AllocationStrategy:
-                runnerParameters.ec2instanceCriteria.instanceAllocationStrategy as FleetOnDemandAllocationStrategy,
+              AllocationStrategy: runnerParameters.ec2instanceCriteria
+                .instanceAllocationStrategy as FleetOnDemandAllocationStrategy,
             },
           }),
       TargetCapacitySpecification: {
