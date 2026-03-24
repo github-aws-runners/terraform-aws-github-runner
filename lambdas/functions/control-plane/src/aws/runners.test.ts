@@ -861,22 +861,30 @@ function expectedCreateFleetRequest(expectedValues: ExpectedFleetRequestValues):
           {
             InstanceType: 'm5.large',
             SubnetId: 'subnet-123',
-            Priority: expectedValues.instanceTypePriorities?.['m5.large'] ?? 0,
+            ...(expectedValues.allocationStrategy === 'prioritized' && {
+              Priority: expectedValues.instanceTypePriorities?.['m5.large'] ?? 0,
+            }),
           },
           {
             InstanceType: 'c5.large',
             SubnetId: 'subnet-123',
-            Priority: expectedValues.instanceTypePriorities?.['c5.large'] ?? 1,
+            ...(expectedValues.allocationStrategy === 'prioritized' && {
+              Priority: expectedValues.instanceTypePriorities?.['c5.large'] ?? 1,
+            }),
           },
           {
             InstanceType: 'm5.large',
             SubnetId: 'subnet-456',
-            Priority: expectedValues.instanceTypePriorities?.['m5.large'] ?? 0,
+            ...(expectedValues.allocationStrategy === 'prioritized' && {
+              Priority: expectedValues.instanceTypePriorities?.['m5.large'] ?? 0,
+            }),
           },
           {
             InstanceType: 'c5.large',
             SubnetId: 'subnet-456',
-            Priority: expectedValues.instanceTypePriorities?.['c5.large'] ?? 1,
+            ...(expectedValues.allocationStrategy === 'prioritized' && {
+              Priority: expectedValues.instanceTypePriorities?.['c5.large'] ?? 1,
+            }),
           },
         ],
       },
