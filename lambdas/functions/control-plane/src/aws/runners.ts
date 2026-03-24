@@ -127,6 +127,7 @@ function generateFleetOverrides(
   subnetIds: string[],
   instancesTypes: string[],
   amiId?: string,
+  allocationStrategy?: string,
   instanceTypePriorities?: Record<string, number>,
 ): FleetLaunchTemplateOverridesRequest[] {
   const result: FleetLaunchTemplateOverridesRequest[] = [];
@@ -136,7 +137,7 @@ function generateFleetOverrides(
         SubnetId: s,
         InstanceType: i as _InstanceType,
         ImageId: amiId,
-        ...(instanceTypePriorities !== undefined && { Priority: instanceTypePriorities[i] ?? index }),
+        ...(allocationStrategy === 'prioritized' && { Priority: instanceTypePriorities?.[i] ?? index }),
       };
       result.push(item);
     });
@@ -279,9 +280,8 @@ async function createInstances(
             runnerParameters.subnets,
             runnerParameters.ec2instanceCriteria.instanceTypes,
             amiIdOverride,
-            runnerParameters.ec2instanceCriteria.instanceAllocationStrategy === 'prioritized'
-              ? (runnerParameters.ec2instanceCriteria.instanceTypePriorities ?? {})
-              : undefined,
+            runnerParameters.ec2instanceCriteria.instanceAllocationStrategy,
+            runnerParameters.ec2instanceCriteria.instanceTypePriorities,
           ),
         },
       ],
