@@ -145,7 +145,7 @@ function generateFleetOverrides(
         InstanceType: i as _InstanceType,
         ImageId: amiIdToUse,
         ...ec2OverrideConfig,
-        Priority: instanceTypePriorities?.[i] ?? index,
+        ...(instanceTypePriorities !== undefined && { Priority: instanceTypePriorities[i] ?? index }),
       };
       result.push(item);
     });
@@ -297,8 +297,14 @@ async function createInstances(
             runnerParameters.subnets,
             runnerParameters.ec2instanceCriteria.instanceTypes,
             amiIdOverride,
+<<<<<<< HEAD
             runnerParameters.ec2OverrideConfig,
             runnerParameters.ec2instanceCriteria.instanceTypePriorities,
+=======
+            runnerParameters.ec2instanceCriteria.instanceAllocationStrategy === 'prioritized'
+              ? (runnerParameters.ec2instanceCriteria.instanceTypePriorities ?? {})
+              : undefined,
+>>>>>>> 68c399a9 (refactor(runners): only set Priority on overrides for prioritized strategy)
           ),
         },
       ],
