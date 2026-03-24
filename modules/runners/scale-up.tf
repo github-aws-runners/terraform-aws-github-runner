@@ -38,6 +38,7 @@ resource "aws_lambda_function" "scale_up" {
       INSTANCE_ALLOCATION_STRATEGY             = var.instance_allocation_strategy
       INSTANCE_MAX_SPOT_PRICE                  = var.instance_max_spot_price
       INSTANCE_TARGET_CAPACITY_TYPE            = var.instance_target_capacity_type
+      INSTANCE_TYPE_PRIORITIES                 = var.instance_type_priorities != null ? jsonencode(var.instance_type_priorities) : ""
       INSTANCE_TYPES                           = join(",", var.instance_types)
       LAUNCH_TEMPLATE_NAME                     = aws_launch_template.runner.name
       LOG_LEVEL                                = var.log_level

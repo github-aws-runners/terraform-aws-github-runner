@@ -127,14 +127,16 @@ function generateFleetOverrides(
   subnetIds: string[],
   instancesTypes: string[],
   amiId?: string,
+  instanceTypePriorities?: Record<string, number>,
 ): FleetLaunchTemplateOverridesRequest[] {
   const result: FleetLaunchTemplateOverridesRequest[] = [];
   subnetIds.forEach((s) => {
-    instancesTypes.forEach((i) => {
+    instancesTypes.forEach((i, index) => {
       const item: FleetLaunchTemplateOverridesRequest = {
         SubnetId: s,
         InstanceType: i as _InstanceType,
         ImageId: amiId,
+        Priority: instanceTypePriorities?.[i] ?? index,
       };
       result.push(item);
     });
@@ -277,6 +279,7 @@ async function createInstances(
             runnerParameters.subnets,
             runnerParameters.ec2instanceCriteria.instanceTypes,
             amiIdOverride,
+            runnerParameters.ec2instanceCriteria.instanceTypePriorities,
           ),
         },
       ],

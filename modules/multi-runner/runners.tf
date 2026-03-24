@@ -22,6 +22,7 @@ module "runners" {
   instance_types                = each.value.runner_config.instance_types
   instance_target_capacity_type = each.value.runner_config.instance_target_capacity_type
   instance_allocation_strategy  = each.value.runner_config.instance_allocation_strategy
+  instance_type_priorities      = each.value.runner_config.instance_type_priorities
   instance_max_spot_price       = each.value.runner_config.instance_max_spot_price
   block_device_mappings         = each.value.runner_config.block_device_mappings
 

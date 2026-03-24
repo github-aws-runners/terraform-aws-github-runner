@@ -419,6 +419,26 @@ describe('create runner', () => {
     });
   });
 
+  it('calls create fleet with custom instance type priorities', async () => {
+    const priorities = { 'm5.large': 10, 'c5.large': 5 };
+    await createRunner(
+      createRunnerConfig({
+        ...defaultRunnerConfig,
+        capacityType: 'on-demand',
+        allocationStrategy: FleetOnDemandAllocationStrategy.PRIORITIZED,
+        instanceTypePriorities: priorities,
+      }),
+    );
+    expect(mockEC2Client).toHaveReceivedCommandWith(CreateFleetCommand, {
+      ...expectedCreateFleetRequest({
+        ...defaultExpectedFleetRequestValues,
+        capacityType: 'on-demand',
+        allocationStrategy: FleetOnDemandAllocationStrategy.PRIORITIZED,
+        instanceTypePriorities: priorities,
+      }),
+    });
+  });
+
   it('calls run instances with the on-demand capacity', async () => {
     await createRunner(createRunnerConfig({ ...defaultRunnerConfig, maxSpotPrice: '0.1' }));
     expect(mockEC2Client).toHaveReceivedCommandWith(CreateFleetCommand, {
@@ -772,6 +792,7 @@ interface RunnerConfig {
   type: RunnerType;
   capacityType: DefaultTargetCapacityType;
   allocationStrategy: SpotAllocationStrategy | FleetOnDemandAllocationStrategy;
+  instanceTypePriorities?: Record<string, number>;
   maxSpotPrice?: string;
   amiIdSsmParameterName?: string;
   tracingEnabled?: boolean;
@@ -789,6 +810,7 @@ function createRunnerConfig(runnerConfig: RunnerConfig): RunnerInputParameters {
     launchTemplateName: LAUNCH_TEMPLATE,
     ec2instanceCriteria: {
       instanceTypes: ['m5.large', 'c5.large'],
+      instanceTypePriorities: runnerConfig.instanceTypePriorities,
       targetCapacityType: runnerConfig.capacityType,
       maxSpotPrice: runnerConfig.maxSpotPrice,
       instanceAllocationStrategy: runnerConfig.allocationStrategy,
@@ -806,6 +828,7 @@ interface ExpectedFleetRequestValues {
   type: 'Repo' | 'Org';
   capacityType: DefaultTargetCapacityType;
   allocationStrategy: SpotAllocationStrategy | FleetOnDemandAllocationStrategy;
+  instanceTypePriorities?: Record<string, number>;
   maxSpotPrice?: string;
   totalTargetCapacity: number;
   imageId?: string;
@@ -838,18 +861,22 @@ function expectedCreateFleetRequest(expectedValues: ExpectedFleetRequestValues):
           {
             InstanceType: 'm5.large',
             SubnetId: 'subnet-123',
+            Priority: expectedValues.instanceTypePriorities?.['m5.large'] ?? 0,
           },
           {
             InstanceType: 'c5.large',
             SubnetId: 'subnet-123',
+            Priority: expectedValues.instanceTypePriorities?.['c5.large'] ?? 1,
           },
           {
             InstanceType: 'm5.large',
             SubnetId: 'subnet-456',
+            Priority: expectedValues.instanceTypePriorities?.['m5.large'] ?? 0,
           },
           {
             InstanceType: 'c5.large',
             SubnetId: 'subnet-456',
+            Priority: expectedValues.instanceTypePriorities?.['c5.large'] ?? 1,
           },
         ],
       },

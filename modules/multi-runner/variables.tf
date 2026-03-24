@@ -95,6 +95,7 @@ variable "multi_runner_config" {
       enable_ssm_on_runners                   = optional(bool, false)
       enable_userdata                         = optional(bool, true)
       instance_allocation_strategy            = optional(string, "lowest-price")
+      instance_type_priorities                = optional(map(number), null)
       instance_max_spot_price                 = optional(string, null)
       instance_target_capacity_type           = optional(string, "spot")
       instance_types                          = list(string)
@@ -215,6 +216,7 @@ variable "multi_runner_config" {
         enable_ssm_on_runners: "Enable to allow access the runner instances for debugging purposes via SSM. Note that this adds additional permissions to the runner instances."
         enable_userdata: "Should the userdata script be enabled for the runner. Set this to false if you are using your own prebuilt AMI."
         instance_allocation_strategy: "The allocation strategy for creating instances. For spot, AWS recommends `capacity-optimized`; for on-demand, use `lowest-price` or `prioritized`. The AWS default is `lowest-price`."
+        instance_type_priorities: "A map of instance type to priority for the `prioritized` allocation strategy. Lower numbers mean higher priority. If not provided, priorities are assigned based on the order of `instance_types`."
         instance_max_spot_price: "Max price price for spot instances per hour. This variable will be passed to the create fleet as max spot price for the fleet."
         instance_target_capacity_type: "Default lifecycle used for runner instances, can be either `spot` or `on-demand`."
         instance_types: "List of instance types for the action runner. Defaults are based on runner_os (al2023 for linux and Windows Server Core for win)."

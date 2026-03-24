@@ -563,6 +563,12 @@ variable "instance_allocation_strategy" {
   }
 }
 
+variable "instance_type_priorities" {
+  description = "A map of instance type to priority for the `prioritized` allocation strategy. Lower numbers mean higher priority. If not provided, priorities are assigned based on the order of `instance_types`."
+  type        = map(number)
+  default     = null
+}
+
 variable "instance_max_spot_price" {
   description = "Max price price for spot instances per hour. This variable will be passed to the create fleet as max spot price for the fleet."
   type        = string

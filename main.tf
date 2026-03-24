@@ -175,6 +175,7 @@ module "runners" {
   instance_types                = var.instance_types
   instance_target_capacity_type = var.instance_target_capacity_type
   instance_allocation_strategy  = var.instance_allocation_strategy
+  instance_type_priorities      = var.instance_type_priorities
   instance_max_spot_price       = var.instance_max_spot_price
   block_device_mappings         = var.block_device_mappings
 
