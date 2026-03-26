@@ -57,6 +57,7 @@ variable "config" {
       schedule_expression_timezone = string
       size                         = number
     }))
+    include_busy_runners                 = bool
     role_permissions_boundary            = string
     kms_key_arn                          = string
     ami_kms_key_arn                      = string

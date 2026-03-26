@@ -49,6 +49,7 @@ resource "aws_lambda_function" "pool" {
       ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS     = jsonencode(var.config.runner.enable_on_demand_failover_for_errors)
       SSM_PARAMETER_STORE_TAGS                 = var.config.lambda.parameter_store_tags
       SCALE_ERRORS                             = jsonencode(var.config.runner.scale_errors)
+      INCLUDE_BUSY_RUNNERS                     = var.config.include_busy_runners
     }
   }
 
