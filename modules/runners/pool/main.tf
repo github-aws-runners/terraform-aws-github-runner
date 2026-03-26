@@ -60,6 +60,7 @@ resource "aws_lambda_function" "pool" {
       SSM_PARAMETER_STORE_TAGS                 = var.config.lambda.parameter_store_tags
       SCALE_ERRORS                             = jsonencode(var.config.runner.scale_errors)
       USE_DEDICATED_HOST                       = var.config.runner.use_dedicated_host
+      INCLUDE_BUSY_RUNNERS                     = var.config.include_busy_runners
     }
   }
 
