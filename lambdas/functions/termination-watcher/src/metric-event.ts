@@ -13,7 +13,7 @@ export async function metricEvent(
   const instanceRunningTimeInSeconds = instance.LaunchTime
     ? (new Date(event.time).getTime() - new Date(instance.LaunchTime).getTime()) / 1000
     : undefined;
-  logger.info(`Received spot notification for ${metricName}`, {
+  logger.info(`Received spot notification${metricName ? ` for ${metricName}` : ''}`, {
     instanceId: instance.InstanceId,
     instanceType: instance.InstanceType ?? 'unknown',
     instanceName: instance.Tags?.find((tag) => tag.Key === 'Name')?.Value,
