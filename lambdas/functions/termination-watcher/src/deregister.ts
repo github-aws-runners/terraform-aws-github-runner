@@ -66,7 +66,6 @@ async function createAuthenticatedClient(ghesApiUrl: string): Promise<Octokit> {
   if (ghesApiUrl) {
     authOptions.request = request.defaults({ baseUrl: ghesApiUrl });
   }
-  // @ts-expect-error - Type mismatch between @octokit/request and @octokit/auth-app versions
   const auth = createAppAuth(authOptions);
   const appAuth = await auth({ type: 'app' });
   return createOctokitInstance(appAuth.token, ghesApiUrl);
@@ -113,7 +112,6 @@ async function createInstallationClient(
   if (ghesApiUrl) {
     authOptions.request = request.defaults({ baseUrl: ghesApiUrl });
   }
-  // @ts-expect-error - Type mismatch between @octokit/request and @octokit/auth-app versions
   const auth = createAppAuth(authOptions);
   const installationAuth = await auth({ type: 'installation' });
   return createOctokitInstance(installationAuth.token, ghesApiUrl);
