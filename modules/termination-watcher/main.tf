@@ -9,7 +9,7 @@ locals {
     PARAMETER_GITHUB_APP_ID_NAME         = var.config.github_app_parameters.id.name
     PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.config.github_app_parameters.key_base64.name
     GHES_URL                             = var.config.ghes_url != null ? var.config.ghes_url : ""
-  }, length(aws_sqs_queue.deregister_retry) > 0 ? {
+    }, length(aws_sqs_queue.deregister_retry) > 0 ? {
     DEREGISTER_RETRY_QUEUE_URL = aws_sqs_queue.deregister_retry[0].url
   } : {}) : {}
 
