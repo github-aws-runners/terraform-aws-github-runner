@@ -33,11 +33,12 @@ locals {
       }
     ]
   )
+  # CloudWatch agent collect_list schema expects log_group_class, not log_class
   logfiles = var.enable_cloudwatch_agent ? [for l in local.runner_log_files : {
     "log_group_name" : l.prefix_log_group ? "/github-self-hosted-runners/${var.prefix}/${l.log_group_name}" : "/${l.log_group_name}"
     "log_stream_name" : l.log_stream_name
     "file_path" : l.file_path
-    "log_class" : l.log_class
+    "log_group_class" : l.log_class
   }] : []
 
   loggroups_names = distinct([for l in local.logfiles : l.log_group_name])
@@ -45,7 +46,7 @@ locals {
   # This maintains the same order as loggroups_names for use with count
   loggroups_classes = [
     for name in local.loggroups_names : [
-      for l in local.logfiles : l.log_class
+      for l in local.logfiles : l.log_group_class
       if l.log_group_name == name
     ][0]
   ]

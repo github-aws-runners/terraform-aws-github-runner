@@ -11,6 +11,8 @@ import { publishRetryMessage } from './job-retry';
 
 const logger = createChildLogger('scale-up');
 
+export type LambdaRunnerSource = 'scale-up-lambda' | 'pool-lambda';
+
 export interface RunnerGroup {
   name: string;
   id: number;
@@ -249,11 +251,13 @@ export async function createRunners(
   ec2RunnerConfig: CreateEC2RunnerConfig,
   numberOfRunners: number,
   ghClient: Octokit,
+  source: LambdaRunnerSource = 'scale-up-lambda',
 ): Promise<string[]> {
   const instances = await createRunner({
     runnerType: githubRunnerConfig.runnerType,
     runnerOwner: githubRunnerConfig.runnerOwner,
     numberOfRunners,
+    source,
     ...ec2RunnerConfig,
   });
   if (instances.length !== 0) {
@@ -510,6 +514,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       },
       newRunners,
       githubInstallationClient,
+      'scale-up-lambda',
     );
 
     // Not all runners we wanted were created, let's reject enough items so that

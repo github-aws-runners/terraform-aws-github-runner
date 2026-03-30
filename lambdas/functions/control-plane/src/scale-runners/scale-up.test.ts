@@ -114,6 +114,7 @@ const EXPECTED_RUNNER_PARAMS: RunnerInputParameters = {
   onDemandFailoverOnError: [],
   scaleErrors: ['UnfulfillableCapacity', 'MaxSpotInstanceCountExceeded', 'TargetCapacityLimitExceededException'],
   useDedicatedHost: false,
+  source: 'scale-up-lambda',
 };
 let expectedRunnerParams: RunnerInputParameters;
 
