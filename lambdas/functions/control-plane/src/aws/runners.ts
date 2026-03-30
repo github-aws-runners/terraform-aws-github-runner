@@ -249,7 +249,7 @@ async function createInstances(
 ) {
   const tags = [
     { Key: 'ghr:Application', Value: 'github-action-runner' },
-    { Key: 'ghr:created_by', Value: runnerParameters.numberOfRunners === 1 ? 'scale-up-lambda' : 'pool-lambda' },
+    { Key: 'ghr:created_by', Value: runnerParameters.source },
     { Key: 'ghr:Type', Value: runnerParameters.runnerType },
     { Key: 'ghr:Owner', Value: runnerParameters.runnerOwner },
   ];

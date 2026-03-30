@@ -6,6 +6,7 @@ import {
   Placement,
   FleetBlockDeviceMappingRequest,
 } from '@aws-sdk/client-ec2';
+import { LambdaRunnerSource } from '../scale-runners/scale-up';
 
 export type RunnerType = 'Org' | 'Repo';
 
@@ -64,6 +65,7 @@ export interface RunnerInputParameters {
   };
   ec2OverrideConfig?: Ec2OverrideConfig;
   numberOfRunners: number;
+  source: LambdaRunnerSource;
   amiIdSsmParameterName?: string;
   tracingEnabled?: boolean;
   onDemandFailoverOnError?: string[];
