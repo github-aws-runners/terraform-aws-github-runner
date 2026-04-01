@@ -136,6 +136,7 @@ module "webhook" {
   tracing_config                                = var.tracing_config
   logging_retention_in_days                     = var.logging_retention_in_days
   logging_kms_key_id                            = var.logging_kms_key_id
+  log_class                                     = var.log_class
 
   role_path                 = var.role_path
   role_permissions_boundary = var.role_permissions_boundary
@@ -228,6 +229,7 @@ module "runners" {
   tracing_config                                                 = var.tracing_config
   logging_retention_in_days                                      = var.logging_retention_in_days
   logging_kms_key_id                                             = var.logging_kms_key_id
+  log_class                                                      = var.log_class
   enable_cloudwatch_agent                                        = var.enable_cloudwatch_agent
   cloudwatch_config                                              = var.cloudwatch_config
   runner_log_files                                               = var.runner_log_files
@@ -307,6 +309,7 @@ module "runner_binaries" {
   tracing_config                  = var.tracing_config
   logging_retention_in_days       = var.logging_retention_in_days
   logging_kms_key_id              = var.logging_kms_key_id
+  log_class                       = var.log_class
 
   state_event_rule_binaries_syncer     = var.state_event_rule_binaries_syncer
   server_side_encryption_configuration = var.runner_binaries_s3_sse_configuration
@@ -349,6 +352,7 @@ module "ami_housekeeper" {
 
   logging_retention_in_days = var.logging_retention_in_days
   logging_kms_key_id        = var.logging_kms_key_id
+  log_class                 = var.log_class
   log_level                 = var.log_level
 
   role_path                 = var.role_path
@@ -370,6 +374,7 @@ locals {
     subnet_ids                = var.lambda_subnet_ids
     lambda_tags               = var.lambda_tags
     log_level                 = var.log_level
+    log_class                 = var.log_class
     logging_kms_key_id        = var.logging_kms_key_id
     logging_retention_in_days = var.logging_retention_in_days
     role_path                 = var.role_path
