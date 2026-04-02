@@ -47,6 +47,7 @@ export async function adjust(event: PoolEvent): Promise<void> {
       ? validateSsmParameterStoreTags(process.env.SSM_PARAMETER_STORE_TAGS)
       : [];
   const scaleErrors = JSON.parse(process.env.SCALE_ERRORS) as [string];
+  const includeBusyRunners = yn(process.env.INCLUDE_BUSY_RUNNERS, { default: false });
 
   const { ghesApiUrl, ghesBaseUrl } = getGitHubEnterpriseApiUrl();
 
@@ -69,7 +70,7 @@ export async function adjust(event: PoolEvent): Promise<void> {
     statuses: ['running'],
   });
 
-  const numberOfRunnersInPool = calculatePooSize(ec2runners, runnerStatusses);
+  const numberOfRunnersInPool = calculatePooSize(ec2runners, runnerStatusses, includeBusyRunners);
   const topUp = event.poolSize - numberOfRunnersInPool;
 
   if (topUp > 0) {
@@ -124,12 +125,16 @@ async function getInstallationId(ghesApiUrl: string, org: string): Promise<numbe
   ).data.id;
 }
 
-function calculatePooSize(ec2runners: RunnerList[], runnerStatus: Map<string, RunnerStatus>): number {
+function calculatePooSize(
+  ec2runners: RunnerList[],
+  runnerStatus: Map<string, RunnerStatus>,
+  includeBusyRunners: boolean,
+): number {
   // Runner should be considered idle if it is still booting, or is idle in GitHub
   let numberOfRunnersInPool = 0;
   for (const ec2Instance of ec2runners) {
     if (
-      runnerStatus.get(ec2Instance.instanceId)?.busy === false &&
+      (runnerStatus.get(ec2Instance.instanceId)?.busy === false || includeBusyRunners) &&
       runnerStatus.get(ec2Instance.instanceId)?.status === 'online'
     ) {
       numberOfRunnersInPool++;

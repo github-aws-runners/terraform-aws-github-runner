@@ -37,6 +37,7 @@ module "pool" {
       parameter_store_tags           = local.parameter_store_tags
     }
     pool                      = var.pool_config
+    include_busy_runners      = var.pool_include_busy_runners
     role_path                 = local.role_path
     role_permissions_boundary = var.role_permissions_boundary
     runner = {

@@ -360,4 +360,22 @@ describe('Test simple pool.', () => {
       );
     });
   });
+
+  describe('With INCLUDE_BUSY_RUNNERS enabled', () => {
+    beforeEach(() => {
+      process.env.INCLUDE_BUSY_RUNNERS = 'true';
+    });
+
+    it('Should not top up when pool size matches runners including busy online runners.', async () => {
+      // Without INCLUDE_BUSY_RUNNERS: 2 in pool (i-1-idle, i-4-idle-older). With it: 3 (adds i-2-busy).
+      await adjust({ poolSize: 3 });
+      expect(createRunners).not.toHaveBeenCalled();
+    });
+
+    it('Should top up by two runners when pool size is 5 and busy runners count toward the pool.', async () => {
+      await adjust({ poolSize: 5 });
+      // 3 in pool (idle, busy, older idle); need 2 more
+      expect(createRunners).toHaveBeenCalledWith(expect.anything(), expect.anything(), 2, expect.anything());
+    });
+  });
 });
