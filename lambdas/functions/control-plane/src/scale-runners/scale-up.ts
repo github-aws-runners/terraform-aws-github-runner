@@ -442,12 +442,14 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
     });
 
     // Calculate how many runners we want to create.
+    // Use Math.max(0, ...) to ensure we never attempt to create a negative number of runners,
+    // which can happen when currentRunners exceeds maximumRunners due to pool/scale-up race conditions.
     const newRunners =
       maximumRunners === -1
         ? // If we don't have an upper limit, scale up by the number of new jobs.
           scaleUp
         : // Otherwise, we do have a limit, so work out if `scaleUp` would exceed it.
-          Math.min(scaleUp, maximumRunners - currentRunners);
+          Math.max(0, Math.min(scaleUp, maximumRunners - currentRunners));
 
     const missingInstanceCount = Math.max(0, scaleUp - newRunners);
 

@@ -631,6 +631,35 @@ describe('Scale down runners', () => {
         await expect(scaleDown()).resolves.not.toThrow();
       });
 
+      it(`Should not terminate instance when de-registration throws an error.`, async () => {
+        // setup - runner should NOT be terminated because de-registration fails
+        const runners = [createRunnerTestData('idle-1', type, MINIMUM_TIME_RUNNING_IN_MINUTES + 1, true, false, false)];
+
+        const error502 = new RequestError('Server Error', 502, {
+          request: {
+            method: 'DELETE',
+            url: 'https://api.github.com/test',
+            headers: {},
+          },
+        });
+
+        mockOctokit.actions.deleteSelfHostedRunnerFromOrg.mockImplementation(() => {
+          throw error502;
+        });
+        mockOctokit.actions.deleteSelfHostedRunnerFromRepo.mockImplementation(() => {
+          throw error502;
+        });
+
+        mockGitHubRunners(runners);
+        mockAwsRunners(runners);
+
+        // act
+        await expect(scaleDown()).resolves.not.toThrow();
+
+        // assert - should NOT terminate since de-registration failed
+        expect(terminateRunner).not.toHaveBeenCalled();
+      });
+
       const evictionStrategies = ['oldest_first', 'newest_first'];
       describe.each(evictionStrategies)('When idle config defined', (evictionStrategy) => {
         const defaultConfig = {
