@@ -64,7 +64,7 @@ jobs:
           key: tflint-${{ hashFiles('.tflint.hcl') }}
       - if: contains(matrix.terraform, '1.5.')
         name: Setup TFLint
-        uses: terraform-linters/setup-tflint@4cb9feea73331a35b422df102992a03a44a3bb33 # v6.2.1
+        uses: terraform-linters/setup-tflint@b480b8fcdaa6f2c577f8e4fa799e89e756bb7c93 # v6.2.2
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
       - if: contains(matrix.terraform, '1.5.')
@@ -130,7 +130,7 @@ jobs:
           key: tflint-${{ hashFiles('.tflint.hcl') }}
       - if: contains(matrix.terraform, '1.3.')
         name: Setup TFLint
-        uses: terraform-linters/setup-tflint@4cb9feea73331a35b422df102992a03a44a3bb33 # v6.2.1
+        uses: terraform-linters/setup-tflint@b480b8fcdaa6f2c577f8e4fa799e89e756bb7c93 # v6.2.2
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
       - if: contains(matrix.terraform, '1.3.')
@@ -195,7 +195,7 @@ jobs:
           key: tflint-${{ hashFiles('.tflint.hcl') }}
       - if: contains(matrix.terraform, '1.5.')
         name: Setup TFLint
-        uses: terraform-linters/setup-tflint@4cb9feea73331a35b422df102992a03a44a3bb33 # v6.2.1
+        uses: terraform-linters/setup-tflint@b480b8fcdaa6f2c577f8e4fa799e89e756bb7c93 # v6.2.2
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
       - if: contains(matrix.terraform, '1.5.')
