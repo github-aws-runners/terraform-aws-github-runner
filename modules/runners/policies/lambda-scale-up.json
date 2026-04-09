@@ -34,10 +34,17 @@
                 "ssm:GetParameters"
             ],
             "Resource": [
-                "${github_app_key_base64_arn}",
-                "${github_app_id_arn}",
                 "${ssm_config_path}/*",
                 "${ssm_ami_id_parameter_arn}"
+%{ if github_app_key_base64_arn != "" ~}
+                ,"${github_app_key_base64_arn}"
+%{ endif ~}
+%{ if github_app_id_arn != "" ~}
+                ,"${github_app_id_arn}"
+%{ endif ~}
+%{ if enterprise_pat_arn != "" ~}
+                ,"${enterprise_pat_arn}"
+%{ endif ~}
             ]
         },
         {

@@ -3,11 +3,30 @@ locals {
     "ghr:environment" = var.prefix
   })
 
+  # For enterprise runners, app id and key_base64 are not required.
+  # When not provided, use empty placeholder values so downstream Lambda env vars are set but unused.
   github_app_parameters = {
-    id             = coalesce(var.github_app.id_ssm, module.ssm.parameters.github_app_id)
-    key_base64     = coalesce(var.github_app.key_base64_ssm, module.ssm.parameters.github_app_key_base64)
+    id             = coalesce(var.github_app.id_ssm, module.ssm.parameters.github_app_id, { name = "", arn = "" })
+    key_base64     = coalesce(var.github_app.key_base64_ssm, module.ssm.parameters.github_app_key_base64, { name = "", arn = "" })
     webhook_secret = coalesce(var.github_app.webhook_secret_ssm, module.ssm.parameters.github_app_webhook_secret)
   }
+
+  runner_registration_level = coalesce(
+    var.runner_registration_level,
+    "repo"
+  )
+
+  # Enterprise PAT SSM parameters
+  enterprise_pat_parameters = var.enterprise_pat != null ? {
+    name = coalesce(
+      try(var.enterprise_pat.pat_ssm.name, null),
+      try(module.ssm.parameters.enterprise_pat.name, null)
+    )
+    arn = coalesce(
+      try(var.enterprise_pat.pat_ssm.arn, null),
+      try(module.ssm.parameters.enterprise_pat.arn, null)
+    )
+  } : null
 
   default_runner_labels = distinct(concat(["self-hosted", var.runner_os, var.runner_architecture]))
   runner_labels         = (var.runner_disable_default_labels == false) ? sort(concat(local.default_runner_labels, var.runner_extra_labels)) : var.runner_extra_labels
@@ -19,6 +38,29 @@ resource "random_string" "random" {
   length  = 24
   special = false
   upper   = false
+}
+
+resource "terraform_data" "enterprise_validation" {
+  lifecycle {
+    precondition {
+      condition     = local.runner_registration_level != "enterprise" || var.enterprise_slug != null
+      error_message = "Variable 'enterprise_slug' is required when runner_registration_level is \"enterprise\". Example: enterprise_slug = \"my-enterprise\""
+    }
+    precondition {
+      condition     = local.runner_registration_level != "enterprise" || var.enterprise_pat != null
+      error_message = "Variable 'enterprise_pat' is required when runner_registration_level is \"enterprise\". Example: enterprise_pat = { pat = \"ghp_xxxx\" }"
+    }
+    precondition {
+      condition = (
+        local.runner_registration_level == "enterprise" ||
+        (
+          (var.github_app.key_base64 != null || var.github_app.key_base64_ssm != null) &&
+          (var.github_app.id != null || var.github_app.id_ssm != null)
+        )
+      )
+      error_message = "For org/repo runners, you must set 'key_base64' (or 'key_base64_ssm') and 'id' (or 'id_ssm') in the 'github_app' variable. These are not required when runner_registration_level is \"enterprise\"."
+    }
+  }
 }
 
 data "aws_iam_policy_document" "deny_insecure_transport" {
@@ -88,11 +130,12 @@ resource "aws_sqs_queue" "queued_builds_dlq" {
 }
 
 module "ssm" {
-  source      = "./modules/ssm"
-  kms_key_arn = var.kms_key_arn
-  path_prefix = "${local.ssm_root_path}/${var.ssm_paths.app}"
-  github_app  = var.github_app
-  tags        = local.tags
+  source         = "./modules/ssm"
+  kms_key_arn    = var.kms_key_arn
+  path_prefix    = "${local.ssm_root_path}/${var.ssm_paths.app}"
+  github_app     = var.github_app
+  enterprise_pat = var.enterprise_pat
+  tags           = local.tags
 }
 
 module "webhook" {
@@ -183,7 +226,9 @@ module "runners" {
 
   sqs_build_queue                      = aws_sqs_queue.queued_builds
   github_app_parameters                = local.github_app_parameters
-  enable_organization_runners          = var.enable_organization_runners
+  runner_registration_level            = local.runner_registration_level
+  enterprise_slug                      = var.enterprise_slug
+  enterprise_pat_parameter             = local.enterprise_pat_parameters
   enable_ephemeral_runners             = var.enable_ephemeral_runners
   enable_jit_config                    = var.enable_jit_config
   enable_job_queued_check              = var.enable_job_queued_check
@@ -270,7 +315,7 @@ module "runners" {
   pool_config                                = var.pool_config
   pool_lambda_memory_size                    = var.pool_lambda_memory_size
   pool_lambda_timeout                        = var.pool_lambda_timeout
-  pool_runner_owner                          = var.pool_runner_owner
+  pool_runner_owner                          = try(coalesce(var.pool_runner_owner, var.enterprise_slug), null)
   pool_lambda_reserved_concurrent_executions = var.pool_lambda_reserved_concurrent_executions
 
   ssm_housekeeper = var.runners_ssm_housekeeper

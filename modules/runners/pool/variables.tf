@@ -42,7 +42,7 @@ variable "config" {
       })
       group_name  = string
       name_prefix = string
-      pool_owner  = string
+      pool_owner  = optional(string, null)
       role = object({
         arn = string
       })
@@ -69,6 +69,12 @@ variable "config" {
     arn_ssm_parameters_path_config       = string
     lambda_tags                          = map(string)
     user_agent                           = string
+    runner_registration_level            = optional(string, null)
+    enterprise_slug                      = optional(string, null)
+    enterprise_pat_parameter = optional(object({
+      name = string
+      arn  = string
+    }), null)
   })
 }
 

@@ -2,8 +2,10 @@ import { addPersistentContextToChildLogger, createSingleMetric, logger } from '@
 import { publishMessage } from '../aws/sqs';
 import { ActionRequestMessage, ActionRequestMessageRetry, isJobQueued, getGitHubEnterpriseApiUrl } from './scale-up';
 import { getOctokit } from '../github/octokit';
+import { createEnterprisePATClient } from '../github/auth';
 import { MetricUnit } from '@aws-lambda-powertools/metrics';
 import yn from 'yn';
+import { resolveRunnerType } from './runner-config';
 
 interface JobRetryConfig {
   enable: boolean;
@@ -37,9 +39,14 @@ export async function publishRetryMessage(payload: ActionRequestMessage): Promis
 }
 
 export async function checkAndRetryJob(payload: ActionRequestMessageRetry): Promise<void> {
-  const enableOrgLevel = yn(process.env.ENABLE_ORGANIZATION_RUNNERS, { default: true });
-  const runnerType = enableOrgLevel ? 'Org' : 'Repo';
-  const runnerOwner = enableOrgLevel ? payload.repositoryOwner : `${payload.repositoryOwner}/${payload.repositoryName}`;
+  const runnerType = resolveRunnerType();
+  const enableOrgLevel = runnerType !== 'Repo';
+  const runnerOwner =
+    runnerType === 'Enterprise'
+      ? (process.env.ENTERPRISE_SLUG ?? '')
+      : runnerType === 'Org'
+        ? payload.repositoryOwner
+        : `${payload.repositoryOwner}/${payload.repositoryName}`;
   const runnerNamePrefix = process.env.RUNNER_NAME_PREFIX ?? '';
   const jobQueueUrl = process.env.JOB_QUEUE_SCALE_UP_URL ?? '';
   const enableMetrics = yn(process.env.ENABLE_METRIC_JOB_RETRY, { default: false });
@@ -60,7 +67,10 @@ export async function checkAndRetryJob(payload: ActionRequestMessageRetry): Prom
   logger.info(`Received event`);
 
   const { ghesApiUrl } = getGitHubEnterpriseApiUrl();
-  const ghClient = await getOctokit(ghesApiUrl, enableOrgLevel, payload);
+  const ghClient =
+    runnerType === 'Enterprise'
+      ? await createEnterprisePATClient(ghesApiUrl)
+      : await getOctokit(ghesApiUrl, enableOrgLevel, payload);
 
   // check job is still queued
   if (await isJobQueued(ghClient, payload)) {
