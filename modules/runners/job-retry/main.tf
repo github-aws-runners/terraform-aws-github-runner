@@ -48,6 +48,8 @@ resource "aws_lambda_event_source_mapping" "job_retry" {
   function_name                      = module.job_retry.lambda.function.arn
   batch_size                         = var.config.lambda_event_source_mapping_batch_size
   maximum_batching_window_in_seconds = var.config.lambda_event_source_mapping_maximum_batching_window_in_seconds
+
+  depends_on = [aws_iam_role_policy.job_retry]
 }
 
 resource "aws_lambda_permission" "job_retry" {
