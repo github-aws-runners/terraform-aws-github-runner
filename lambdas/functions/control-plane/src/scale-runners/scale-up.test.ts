@@ -113,6 +113,7 @@ const EXPECTED_RUNNER_PARAMS: RunnerInputParameters = {
   tracingEnabled: false,
   onDemandFailoverOnError: [],
   scaleErrors: ['UnfulfillableCapacity', 'MaxSpotInstanceCountExceeded', 'TargetCapacityLimitExceededException'],
+  useDedicatedHost: false,
   source: 'scale-up-lambda',
 };
 let expectedRunnerParams: RunnerInputParameters;
@@ -2016,6 +2017,36 @@ describe('Retry mechanism tests', () => {
     await scaleUpModule.scaleUp(messages);
 
     expect(callOrder).toEqual(['createRunner', 'publishRetryMessage']);
+  });
+});
+
+describe('useDedicatedHost', () => {
+  beforeEach(() => {
+    process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
+    process.env.ENABLE_EPHEMERAL_RUNNERS = 'true';
+    process.env.RUNNER_NAME_PREFIX = 'unit-test-';
+    process.env.RUNNER_GROUP_NAME = 'Default';
+    process.env.SSM_CONFIG_PATH = '/github-action-runners/default/runners/config';
+    process.env.SSM_TOKEN_PATH = '/github-action-runners/default/runners/config';
+    process.env.RUNNER_LABELS = 'label1,label2';
+  });
+
+  it('defaults to false when USE_DEDICATED_HOST env var is not set', async () => {
+    delete process.env.USE_DEDICATED_HOST;
+    await scaleUpModule.scaleUp(TEST_DATA);
+    expect(createRunner).toHaveBeenCalledWith(expect.objectContaining({ useDedicatedHost: false }));
+  });
+
+  it('is true when USE_DEDICATED_HOST is "true"', async () => {
+    process.env.USE_DEDICATED_HOST = 'true';
+    await scaleUpModule.scaleUp(TEST_DATA);
+    expect(createRunner).toHaveBeenCalledWith(expect.objectContaining({ useDedicatedHost: true }));
+  });
+
+  it('is false when USE_DEDICATED_HOST is "false"', async () => {
+    process.env.USE_DEDICATED_HOST = 'false';
+    await scaleUpModule.scaleUp(TEST_DATA);
+    expect(createRunner).toHaveBeenCalledWith(expect.objectContaining({ useDedicatedHost: false }));
   });
 });
 

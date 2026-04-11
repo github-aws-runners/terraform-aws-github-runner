@@ -10,6 +10,7 @@ import {
   DescribeInstancesCommand,
   type DescribeInstancesResult,
   EC2Client,
+  RunInstancesCommand,
   SpotAllocationStrategy,
   TerminateInstancesCommand,
 } from '@aws-sdk/client-ec2';
@@ -754,6 +755,7 @@ interface RunnerConfig {
   tracingEnabled?: boolean;
   onDemandFailoverOnError?: string[];
   scaleErrors: string[];
+  useDedicatedHost?: boolean;
   source: LambdaRunnerSource;
 }
 
@@ -775,6 +777,7 @@ function createRunnerConfig(runnerConfig: RunnerConfig): RunnerInputParameters {
     tracingEnabled: runnerConfig.tracingEnabled,
     onDemandFailoverOnError: runnerConfig.onDemandFailoverOnError,
     scaleErrors: runnerConfig.scaleErrors,
+    useDedicatedHost: runnerConfig.useDedicatedHost,
     source: runnerConfig.source,
   };
 }
@@ -864,3 +867,217 @@ function expectedCreateFleetRequest(expectedValues: ExpectedFleetRequestValues):
 
   return request;
 }
+
+describe('create runner with useDedicatedHost', () => {
+  const dedicatedHostRunnerConfig: RunnerConfig = {
+    allocationStrategy: SpotAllocationStrategy.CAPACITY_OPTIMIZED,
+    capacityType: 'on-demand',
+    type: 'Org',
+    scaleErrors: [],
+    useDedicatedHost: true,
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockEC2Client.reset();
+    mockSSMClient.reset();
+
+    mockEC2Client.on(RunInstancesCommand).resolves({
+      Instances: [{ InstanceId: 'i-dedicated-1' }],
+    });
+    mockSSMClient.on(GetParameterCommand).resolves({});
+  });
+
+  it('uses RunInstances instead of CreateFleet when useDedicatedHost is true', async () => {
+    const result = await createRunner(createRunnerConfig(dedicatedHostRunnerConfig));
+
+    expect(result).toEqual(['i-dedicated-1']);
+    expect(mockEC2Client).toHaveReceivedCommand(RunInstancesCommand);
+    expect(mockEC2Client).not.toHaveReceivedCommand(CreateFleetCommand);
+  });
+
+  it('uses CreateFleet when useDedicatedHost is false', async () => {
+    mockEC2Client.on(CreateFleetCommand).resolves({ Instances: [{ InstanceIds: ['i-fleet-1'] }] });
+
+    const result = await createRunner(
+      createRunnerConfig({
+        ...dedicatedHostRunnerConfig,
+        useDedicatedHost: false,
+      }),
+    );
+
+    expect(result).toEqual(['i-fleet-1']);
+    expect(mockEC2Client).toHaveReceivedCommand(CreateFleetCommand);
+    expect(mockEC2Client).not.toHaveReceivedCommand(RunInstancesCommand);
+  });
+
+  it('uses CreateFleet when useDedicatedHost is undefined', async () => {
+    mockEC2Client.on(CreateFleetCommand).resolves({ Instances: [{ InstanceIds: ['i-fleet-1'] }] });
+
+    const result = await createRunner(
+      createRunnerConfig({
+        ...dedicatedHostRunnerConfig,
+        useDedicatedHost: undefined,
+      }),
+    );
+
+    expect(result).toEqual(['i-fleet-1']);
+    expect(mockEC2Client).toHaveReceivedCommand(CreateFleetCommand);
+    expect(mockEC2Client).not.toHaveReceivedCommand(RunInstancesCommand);
+  });
+
+  it('passes correct parameters to RunInstances', async () => {
+    await createRunner(createRunnerConfig(dedicatedHostRunnerConfig));
+
+    expect(mockEC2Client).toHaveReceivedCommandWith(RunInstancesCommand, {
+      LaunchTemplate: {
+        LaunchTemplateName: LAUNCH_TEMPLATE,
+        Version: '$Default',
+      },
+      InstanceType: 'm5.large',
+      MinCount: 1,
+      MaxCount: 1,
+      SubnetId: 'subnet-123',
+      TagSpecifications: [
+        {
+          ResourceType: 'instance',
+          Tags: [
+            { Key: 'ghr:Application', Value: 'github-action-runner' },
+            { Key: 'ghr:created_by', Value: 'scale-up-lambda' },
+            { Key: 'ghr:Type', Value: 'Org' },
+            { Key: 'ghr:Owner', Value: REPO_NAME },
+          ],
+        },
+        {
+          ResourceType: 'volume',
+          Tags: [
+            { Key: 'ghr:Application', Value: 'github-action-runner' },
+            { Key: 'ghr:created_by', Value: 'scale-up-lambda' },
+            { Key: 'ghr:Type', Value: 'Org' },
+            { Key: 'ghr:Owner', Value: REPO_NAME },
+          ],
+        },
+      ],
+    });
+  });
+
+  it('creates multiple instances via RunInstances', async () => {
+    mockEC2Client.on(RunInstancesCommand).resolves({
+      Instances: [{ InstanceId: 'i-dedicated-1' }, { InstanceId: 'i-dedicated-2' }],
+    });
+
+    const result = await createRunner({
+      ...createRunnerConfig(dedicatedHostRunnerConfig),
+      numberOfRunners: 2,
+    });
+
+    expect(result).toEqual(['i-dedicated-1', 'i-dedicated-2']);
+    expect(mockEC2Client).toHaveReceivedCommandWith(RunInstancesCommand, {
+      LaunchTemplate: {
+        LaunchTemplateName: LAUNCH_TEMPLATE,
+        Version: '$Default',
+      },
+      InstanceType: 'm5.large',
+      MinCount: 2,
+      MaxCount: 2,
+      SubnetId: 'subnet-123',
+      TagSpecifications: [
+        {
+          ResourceType: 'instance',
+          Tags: [
+            { Key: 'ghr:Application', Value: 'github-action-runner' },
+            { Key: 'ghr:created_by', Value: 'pool-lambda' },
+            { Key: 'ghr:Type', Value: 'Org' },
+            { Key: 'ghr:Owner', Value: REPO_NAME },
+          ],
+        },
+        {
+          ResourceType: 'volume',
+          Tags: [
+            { Key: 'ghr:Application', Value: 'github-action-runner' },
+            { Key: 'ghr:created_by', Value: 'pool-lambda' },
+            { Key: 'ghr:Type', Value: 'Org' },
+            { Key: 'ghr:Owner', Value: REPO_NAME },
+          ],
+        },
+      ],
+    });
+  });
+
+  it('throws error when spot is used with dedicated host', async () => {
+    await expect(
+      createRunner(
+        createRunnerConfig({
+          ...dedicatedHostRunnerConfig,
+          capacityType: 'spot',
+        }),
+      ),
+    ).rejects.toThrow('Spot instances are not supported with RunInstances');
+    expect(mockEC2Client).not.toHaveReceivedCommand(RunInstancesCommand);
+  });
+
+  it('throws error when RunInstances returns no instances', async () => {
+    mockEC2Client.on(RunInstancesCommand).resolves({ Instances: [] });
+
+    await expect(createRunner(createRunnerConfig(dedicatedHostRunnerConfig))).rejects.toThrow(
+      'RunInstances returned no instances for dedicated host.',
+    );
+  });
+
+  it('throws error when RunInstances fails', async () => {
+    mockEC2Client.on(RunInstancesCommand).rejects(new Error('EC2 error'));
+
+    await expect(createRunner(createRunnerConfig(dedicatedHostRunnerConfig))).rejects.toThrow('EC2 error');
+  });
+
+  it('uses ami id override from ssm parameter', async () => {
+    const paramValue: GetParameterResult = {
+      Parameter: {
+        Value: 'ami-dedicated',
+      },
+    };
+    mockSSMClient.on(GetParameterCommand).resolves(paramValue);
+
+    await createRunner(
+      createRunnerConfig({
+        ...dedicatedHostRunnerConfig,
+        amiIdSsmParameterName: 'my-ami-id-param',
+      }),
+    );
+
+    expect(mockEC2Client).toHaveReceivedCommandWith(RunInstancesCommand, {
+      LaunchTemplate: {
+        LaunchTemplateName: LAUNCH_TEMPLATE,
+        Version: '$Default',
+      },
+      InstanceType: 'm5.large',
+      MinCount: 1,
+      MaxCount: 1,
+      SubnetId: 'subnet-123',
+      ImageId: 'ami-dedicated',
+      TagSpecifications: [
+        {
+          ResourceType: 'instance',
+          Tags: [
+            { Key: 'ghr:Application', Value: 'github-action-runner' },
+            { Key: 'ghr:created_by', Value: 'scale-up-lambda' },
+            { Key: 'ghr:Type', Value: 'Org' },
+            { Key: 'ghr:Owner', Value: REPO_NAME },
+          ],
+        },
+        {
+          ResourceType: 'volume',
+          Tags: [
+            { Key: 'ghr:Application', Value: 'github-action-runner' },
+            { Key: 'ghr:created_by', Value: 'scale-up-lambda' },
+            { Key: 'ghr:Type', Value: 'Org' },
+            { Key: 'ghr:Owner', Value: REPO_NAME },
+          ],
+        },
+      ],
+    });
+    expect(mockSSMClient).toHaveReceivedCommandWith(GetParameterCommand, {
+      Name: 'my-ami-id-param',
+    });
+  });
+});

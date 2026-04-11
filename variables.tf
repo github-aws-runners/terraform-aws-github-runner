@@ -570,7 +570,7 @@ variable "instance_max_spot_price" {
 }
 
 variable "instance_types" {
-  description = "List of instance types for the action runner. Defaults are based on runner_os (al2023 for linux and Windows Server Core for win)."
+  description = "List of instance types for the action runner. Defaults are based on runner_os (al2023 for linux, macOS Sequoia for osx, Windows Server Core for win)."
   type        = list(string)
   default     = ["m5.large", "c5.large"]
 }
@@ -686,13 +686,13 @@ variable "enable_managed_runner_security_group" {
 }
 
 variable "runner_os" {
-  description = "The EC2 Operating System type to use for action runner instances (linux,windows)."
+  description = "The EC2 Operating System type to use for action runner instances (linux, osx, windows)."
   type        = string
   default     = "linux"
 
   validation {
-    condition     = contains(["linux", "windows"], var.runner_os)
-    error_message = "Valid values for runner_os are (linux, windows)."
+    condition     = contains(["linux", "osx", "windows"], var.runner_os)
+    error_message = "Valid values for runner_os are (linux, osx, windows)."
   }
 }
 
@@ -902,6 +902,14 @@ variable "runner_placement" {
   default = null
 }
 
+variable "runner_license_specifications" {
+  description = "The license specifications for the instance. See https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#license_specification for details."
+  type = list(object({
+    license_configuration_arn = string
+  }))
+  default = []
+}
+
 variable "enable_jit_config" {
   description = "Overwrite the default behavior for JIT configuration. By default JIT configuration is enabled for ephemeral runners and disabled for non-ephemeral runners. In case of GHES check first if the JIT config API is available. In case you are upgrading from 3.x to 4.x you can set `enable_jit_config` to `false` to avoid a breaking change when having your own AMI."
   type        = bool
@@ -1057,4 +1065,10 @@ variable "parameter_store_tags" {
   description = "Map of tags that will be added to all the SSM Parameter Store parameters created by the Lambda function."
   type        = map(string)
   default     = {}
+}
+
+variable "use_dedicated_host" {
+  description = "Use a dedicated host for the runner instances."
+  type        = bool
+  default     = false
 }
