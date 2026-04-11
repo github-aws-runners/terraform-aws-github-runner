@@ -7,6 +7,9 @@ redrive_build_queue:
   enabled: false
   maxReceiveCount: null
 runner_config:
+  # Replace <host_resource_group_arn> and <license_configuration_arn> with the actual
+  # values for your target region. These can be obtained from the outputs of the
+  # examples/dedicated-mac-hosts example.
   placement:
     host_resource_group_arn: "<host_resource_group_arn>"
     tenancy: host
