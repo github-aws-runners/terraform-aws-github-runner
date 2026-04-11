@@ -3084,7 +3084,6 @@ describe('parseEc2OverrideConfig', () => {
   });
 });
 
-
 function defaultOctokitMockImpl() {
   mockOctokit.actions.getJobForWorkflowRun.mockImplementation(() => ({
     data: {

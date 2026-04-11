@@ -281,9 +281,9 @@ describe('Dispatcher', () => {
       const workflowLabels = [
         'self-hosted',
         'linux',
-        'ghr-valid:value',        // valid, kept
-        'ghr-bad label',           // invalid chars, stripped
-        longLabel,                 // too long, stripped
+        'ghr-valid:value', // valid, kept
+        'ghr-bad label', // invalid chars, stripped
+        longLabel, // too long, stripped
       ];
       const runnerLabels = [['self-hosted', 'linux', 'ghr-valid:value']];
       expect(canRunJob(workflowLabels, runnerLabels, true, true)).toBe(true);

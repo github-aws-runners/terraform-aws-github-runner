@@ -470,7 +470,7 @@ describe('create runner', () => {
       }),
     });
   });
-  
+
   it('overrides SubnetId when specified in ec2OverrideConfig', async () => {
     await createRunner({
       ...createRunnerConfig(defaultRunnerConfig),
