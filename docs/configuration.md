@@ -330,6 +330,19 @@ Below is an example of the log messages created.
 
 ### Dynamic Labels
 
+[!WARNING]
+**Security implication:** Dynamic labels are extracted from the `runs-on` labels in incoming `workflow_job` webhook events. These labels originate from what 
+users define in their workflow files. Any user with permission to create or modify workflows can inject arbitrary EC2 configuration values — including instance types, AMI IDs, subnet IDs, EBS volumes, placement settings, and more. **These values are not sanitized or validated** against an allowlist before being passed to the EC2 CreateFleet API. This means a malicious or careless workflow author could, for example:
+- 
+
+- Launch expensive instance types (e.g., `p5.48xlarge`) to inflate costs
+- Override the AMI (`ghr-ec2-image-id`) to boot a compromised image
+- Target specific subnets (`ghr-ec2-subnet-id`) to escape network boundaries
+- Set arbitrarily large EBS volumes (`ghr-ec2-ebs-volume-size:10000`)
+
+**Only enable this feature in repositories where you trust all workflow contributors.** Consider combining it with [GitHub branch protection 
+rules](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-a-branch-rule/about-branch-rules) and required reviews for workflow file changes.
+
 This feature is in early stage and therefore disabled by default. To enable dynamic labels, set `enable_dynamic_labels = true`.
 
 Dynamic labels allow workflow authors to pass arbitrary metadata and EC2 instance overrides directly from the `runs-on` labels in their GitHub Actions workflows. All labels prefixed with `ghr-` are treated as dynamic labels. A deterministic hash of all `ghr-` prefixed labels is computed and used for runner matching, ensuring that each unique combination of dynamic labels routes to the correct runner configuration.
