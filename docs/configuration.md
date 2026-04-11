@@ -328,6 +328,225 @@ Below is an example of the log messages created.
 }
 ```
 
+### Dynamic Labels
+
+[!WARNING]
+**Security implication:** Dynamic labels are extracted from the `runs-on` labels in incoming `workflow_job` webhook events. These labels originate from what 
+users define in their workflow files. Any user with permission to create or modify workflows can inject arbitrary EC2 configuration values — including instance types, AMI IDs, subnet IDs, EBS volumes, placement settings, and more. **These values are not sanitized or validated** against an allowlist before being passed to the EC2 CreateFleet API. This means a malicious or careless workflow author could, for example:
+- 
+
+- Launch expensive instance types (e.g., `p5.48xlarge`) to inflate costs
+- Override the AMI (`ghr-ec2-image-id`) to boot a compromised image
+- Target specific subnets (`ghr-ec2-subnet-id`) to escape network boundaries
+- Set arbitrarily large EBS volumes (`ghr-ec2-ebs-volume-size:10000`)
+
+**Only enable this feature in repositories where you trust all workflow contributors.** Consider combining it with [GitHub branch protection 
+rules](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-a-branch-rule/about-branch-rules) and required reviews for workflow file changes.
+
+This feature is in early stage and therefore disabled by default. To enable dynamic labels, set `enable_dynamic_labels = true`.
+
+Dynamic labels allow workflow authors to pass arbitrary metadata and EC2 instance overrides directly from the `runs-on` labels in their GitHub Actions workflows. All labels prefixed with `ghr-` are treated as dynamic labels. A deterministic hash of all `ghr-` prefixed labels is computed and used for runner matching, ensuring that each unique combination of dynamic labels routes to the correct runner configuration.
+
+Dynamic labels serve two purposes:
+
+1. **Custom identity / restriction labels (`ghr-<key>:<value>`)** — Any `ghr-` prefixed label that is *not* `ghr-ec2-` acts as a custom identity label. These can represent a unique job ID, a team name, a cost center, an environment tag, or any arbitrary restriction. They do not affect EC2 configuration but are included in the label hash, guaranteeing unique runner matching per combination.
+2. **EC2 override labels (`ghr-ec2-<key>:<value>`)** — Labels prefixed with `ghr-ec2-` are parsed by the scale-up lambda to dynamically configure the EC2 fleet request — including instance type, vCPU/memory requirements, GPU/accelerator specs, EBS volumes, placement, and networking. This eliminates the need to create separate runner configurations for each hardware combination.
+
+#### How it works
+
+When `enable_dynamic_labels` is enabled, the webhook and scale-up lambdas inspect the `runs-on` labels of incoming `workflow_job` events. Labels starting with `ghr-ec2-` are parsed into an EC2 override configuration that is applied to the [CreateFleet](https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_CreateFleet.html) API call. All other `ghr-` prefixed labels are carried through as custom identity labels. A deterministic hash of **all** `ghr-` prefixed labels (both custom and EC2) is used to ensure consistent and unique runner matching.
+
+#### Configuration
+
+```hcl
+module "runners" {
+  source = "github-aws-runners/github-runners/aws"
+
+  ...
+  enable_dynamic_labels = true
+  ...
+}
+```
+
+#### Custom identity labels
+
+Any label matching `ghr-<key>:<value>` (where `<key>` does **not** start with `ec2-`) is a custom identity label. These labels have no effect on EC2 instance configuration but are included in the runner matching hash. Use them to:
+
+- Assign a **unique job identity** so each workflow run targets a dedicated runner (e.g., `ghr-job-id:abc123`).
+- Apply **team or cost-center restrictions** (e.g., `ghr-team:platform`, `ghr-cost-center:eng-42`).
+- Tag runners with **environment or deployment context** (e.g., `ghr-env:staging`, `ghr-region:us-west-2`).
+- Enforce **any custom constraint** that differentiates one runner request from another.
+
+```yaml
+jobs:
+  deploy:
+    runs-on:
+      - self-hosted
+      - linux
+      - ghr-team:platform
+      - ghr-env:staging
+      - ghr-job-id:${{ github.run_id }}
+```
+
+In the example above, the three `ghr-` labels produce a unique hash, ensuring this job is matched to a runner created specifically for this combination. No EC2 overrides are applied — the runner uses the default fleet configuration.
+
+#### EC2 override labels
+
+Labels using the format `ghr-ec2-<key>:<value>` override EC2 fleet configuration. Values with multiple items use comma-separated lists.
+
+##### Basic Fleet Overrides
+
+| Label                                        | Description                          | Example value       |
+| -------------------------------------------- | ------------------------------------ | ------------------- |
+| `ghr-ec2-instance-type:<type>`               | Set specific instance type           | `c5.xlarge`         |
+| `ghr-ec2-max-price:<price>`                  | Set maximum spot price               | `0.10`              |
+| `ghr-ec2-subnet-id:<id>`                     | Set subnet ID                        | `subnet-abc123`     |
+| `ghr-ec2-availability-zone:<zone>`           | Set availability zone                | `us-east-1a`        |
+| `ghr-ec2-availability-zone-id:<id>`          | Set availability zone ID             | `use1-az1`          |
+| `ghr-ec2-weighted-capacity:<number>`         | Set weighted capacity                | `2`                 |
+| `ghr-ec2-priority:<number>`                  | Set launch priority                  | `1`                 |
+| `ghr-ec2-image-id:<ami-id>`                  | Override AMI ID                      | `ami-0abcdef123`    |
+
+##### Instance Requirements — vCPU & Memory
+
+| Label                                        | Description                          | Example value       |
+| -------------------------------------------- | ------------------------------------ | ------------------- |
+| `ghr-ec2-vcpu-count-min:<number>`            | Minimum vCPU count                   | `4`                 |
+| `ghr-ec2-vcpu-count-max:<number>`            | Maximum vCPU count                   | `16`                |
+| `ghr-ec2-memory-mib-min:<number>`            | Minimum memory in MiB               | `16384`             |
+| `ghr-ec2-memory-mib-max:<number>`            | Maximum memory in MiB               | `65536`             |
+| `ghr-ec2-memory-gib-per-vcpu-min:<number>`   | Min memory per vCPU ratio (GiB)     | `2`                 |
+| `ghr-ec2-memory-gib-per-vcpu-max:<number>`   | Max memory per vCPU ratio (GiB)     | `8`                 |
+
+##### Instance Requirements — CPU & Performance
+
+| Label                                        | Description                                                       | Example value              |
+| -------------------------------------------- | ----------------------------------------------------------------- | -------------------------- |
+| `ghr-ec2-cpu-manufacturers:<list>`           | CPU manufacturers (comma-separated)                               | `intel,amd`                |
+| `ghr-ec2-instance-generations:<list>`        | Instance generations (comma-separated)                            | `current`                  |
+| `ghr-ec2-excluded-instance-types:<list>`     | Exclude instance types (comma-separated)                          | `t2.micro,t3.nano`        |
+| `ghr-ec2-allowed-instance-types:<list>`      | Allow only specific instance types (comma-separated)              | `c5.xlarge,c5.2xlarge`    |
+| `ghr-ec2-burstable-performance:<value>`      | Burstable performance (`included`, `excluded`, `required`)        | `excluded`                 |
+| `ghr-ec2-bare-metal:<value>`                 | Bare metal (`included`, `excluded`, `required`)                   | `excluded`                 |
+
+##### Instance Requirements — Accelerators / GPU
+
+| Label                                             | Description                                                              | Example value                    |
+| ------------------------------------------------- | ------------------------------------------------------------------------ | -------------------------------- |
+| `ghr-ec2-accelerator-types:<list>`                | Accelerator types (comma-separated: `gpu`, `fpga`, `inference`)          | `gpu`                            |
+| `ghr-ec2-accelerator-count-min:<number>`          | Minimum accelerator count                                                | `1`                              |
+| `ghr-ec2-accelerator-count-max:<number>`          | Maximum accelerator count                                                | `4`                              |
+| `ghr-ec2-accelerator-manufacturers:<list>`        | Accelerator manufacturers (comma-separated)                              | `nvidia`                         |
+| `ghr-ec2-accelerator-names:<list>`                | Specific accelerator names (comma-separated)                             | `t4,v100`                        |
+| `ghr-ec2-accelerator-memory-mib-min:<number>`     | Min accelerator total memory in MiB                                      | `8192`                           |
+| `ghr-ec2-accelerator-memory-mib-max:<number>`     | Max accelerator total memory in MiB                                      | `32768`                          |
+
+##### Instance Requirements — Network & Storage
+
+| Label                                              | Description                                                       | Example value       |
+| -------------------------------------------------- | ----------------------------------------------------------------- | ------------------- |
+| `ghr-ec2-network-interface-count-min:<number>`     | Min network interfaces                                            | `1`                 |
+| `ghr-ec2-network-interface-count-max:<number>`     | Max network interfaces                                            | `4`                 |
+| `ghr-ec2-network-bandwidth-gbps-min:<number>`      | Min network bandwidth in Gbps                                     | `10`                |
+| `ghr-ec2-network-bandwidth-gbps-max:<number>`      | Max network bandwidth in Gbps                                     | `25`                |
+| `ghr-ec2-local-storage:<value>`                    | Local storage (`included`, `excluded`, `required`)                | `required`          |
+| `ghr-ec2-local-storage-types:<list>`               | Local storage types (comma-separated: `hdd`, `ssd`)              | `ssd`               |
+| `ghr-ec2-total-local-storage-gb-min:<number>`      | Min total local storage in GB                                     | `100`               |
+| `ghr-ec2-total-local-storage-gb-max:<number>`      | Max total local storage in GB                                     | `500`               |
+| `ghr-ec2-baseline-ebs-bandwidth-mbps-min:<number>` | Min baseline EBS bandwidth in Mbps                                | `1000`              |
+| `ghr-ec2-baseline-ebs-bandwidth-mbps-max:<number>` | Max baseline EBS bandwidth in Mbps                                | `5000`              |
+
+##### Placement
+
+| Label                                                  | Description                                                | Example value         |
+| ------------------------------------------------------ | ---------------------------------------------------------- | --------------------- |
+| `ghr-ec2-placement-group:<name>`                       | Placement group name                                       | `my-cluster-group`    |
+| `ghr-ec2-placement-tenancy:<value>`                    | Tenancy (`default`, `dedicated`, `host`)                   | `dedicated`           |
+| `ghr-ec2-placement-host-id:<id>`                       | Dedicated host ID                                          | `h-abc123`            |
+| `ghr-ec2-placement-affinity:<value>`                   | Affinity (`default`, `host`)                               | `host`                |
+| `ghr-ec2-placement-partition-number:<number>`          | Partition number                                           | `1`                   |
+| `ghr-ec2-placement-availability-zone:<zone>`           | Placement availability zone                                | `us-east-1a`          |
+| `ghr-ec2-placement-spread-domain:<domain>`             | Spread domain                                              | `my-domain`           |
+| `ghr-ec2-placement-host-resource-group-arn:<arn>`      | Host resource group ARN                                    | `arn:aws:...`         |
+
+##### Block Device Mappings (EBS)
+
+| Label                                            | Description                                                    | Example value  |
+| ------------------------------------------------ | -------------------------------------------------------------- | -------------- |
+| `ghr-ec2-ebs-volume-size:<size>`                 | EBS volume size in GB                                          | `100`          |
+| `ghr-ec2-ebs-volume-type:<type>`                 | EBS volume type (`gp2`, `gp3`, `io1`, `io2`, `st1`, `sc1`)   | `gp3`          |
+| `ghr-ec2-ebs-iops:<number>`                      | EBS IOPS                                                       | `3000`         |
+| `ghr-ec2-ebs-throughput:<number>`                 | EBS throughput in MB/s (gp3 only)                              | `125`          |
+| `ghr-ec2-ebs-encrypted:<boolean>`                 | EBS encryption (`true`, `false`)                               | `true`         |
+| `ghr-ec2-ebs-kms-key-id:<id>`                    | KMS key ID for encryption                                      | `key-abc123`   |
+| `ghr-ec2-ebs-delete-on-termination:<boolean>`     | Delete on termination (`true`, `false`)                        | `true`         |
+| `ghr-ec2-ebs-snapshot-id:<id>`                    | Snapshot ID for EBS volume                                     | `snap-abc123`  |
+| `ghr-ec2-block-device-virtual-name:<name>`        | Virtual device name (ephemeral storage)                        | `ephemeral0`   |
+| `ghr-ec2-block-device-no-device:<string>`         | Suppresses device mapping                                      | `true`         |
+
+##### Pricing & Advanced
+
+| Label                                                                         | Description                                                        | Example value  |
+| ----------------------------------------------------------------------------- | ------------------------------------------------------------------ | -------------- |
+| `ghr-ec2-spot-max-price-percentage-over-lowest-price:<number>`                | Spot max price as % over lowest price                              | `20`           |
+| `ghr-ec2-on-demand-max-price-percentage-over-lowest-price:<number>`           | On-demand max price as % over lowest price                         | `10`           |
+| `ghr-ec2-max-spot-price-as-percentage-of-optimal-on-demand-price:<number>`    | Max spot price as % of optimal on-demand                           | `50`           |
+| `ghr-ec2-require-hibernate-support:<boolean>`                                 | Require hibernate support (`true`, `false`)                        | `true`         |
+| `ghr-ec2-require-encryption-in-transit:<boolean>`                             | Require encryption in-transit (`true`, `false`)                    | `true`         |
+| `ghr-ec2-baseline-performance-factors-cpu-reference-families:<list>`          | CPU baseline performance reference families (comma-separated)      | `c5,m5`        |
+
+#### Examples
+
+Custom identity labels only — unique runner per job run:
+
+```yaml
+jobs:
+  deploy:
+    runs-on:
+      - self-hosted
+      - linux
+      - ghr-job-id:${{ github.run_id }}
+```
+
+Specific instance type with a larger EBS volume:
+
+```yaml
+jobs:
+  build:
+    runs-on:
+      - self-hosted
+      - linux
+      - ghr-ec2-instance-type:c5.2xlarge
+      - ghr-ec2-ebs-volume-size:200
+      - ghr-ec2-ebs-volume-type:gp3
+```
+
+Attribute-based instance selection with Intel CPUs only:
+
+```yaml
+jobs:
+  test:
+    runs-on:
+      - self-hosted
+      - linux
+      - ghr-ec2-vcpu-count-min:2
+      - ghr-ec2-vcpu-count-max:8
+      - ghr-ec2-memory-mib-min:8192
+      - ghr-ec2-cpu-manufacturers:intel
+      - ghr-ec2-burstable-performance:excluded
+```
+
+#### Considerations
+
+- This feature requires `enable_dynamic_labels = true` in your Terraform configuration.
+- When using `ghr-ec2-instance-type`, the fleet request uses a direct instance type override. When using `ghr-ec2-vcpu-count-*`, `ghr-ec2-memory-mib-*`, or other instance requirement labels, the fleet request uses [attribute-based instance type selection](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-fleet-attribute-based-instance-type-selection.html).
+- Labels are parsed at the scale-up lambda level — they do not change after the instance is launched.
+- A deterministic hash of all `ghr-` prefixed labels (both custom identity and EC2 override) is used for runner matching. Different label combinations produce different hashes, ensuring each unique set of requirements gets its own runner.
+- Custom `ghr-` labels (non-`ec2`) are free-form — you can use any key/value pair. They are not validated by the module.
+- Multiple EBS labels apply to the same (first) block device mapping. If you need more complex block device configurations, use a custom AMI or launch template instead.
+- This feature is compatible with both org-level and repo-level runners, spot and on-demand instances, and ephemeral and non-ephemeral runners.
+- Be mindful of the security implications: enabling this feature allows workflow authors to influence EC2 instance configuration via `ghr-ec2-` labels. Ensure your IAM policies and subnet configurations provide appropriate guardrails.
+
 ### EventBridge
 
 This module can be deployed in `EventBridge` mode. The `EventBridge` mode will publish an event to an eventbus. Within the eventbus, there is a target rule set, sending events to the dispatch lambda. The `EventBridge` mode is enabled by default.
