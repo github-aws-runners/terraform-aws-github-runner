@@ -216,16 +216,77 @@ describe('Dispatcher', () => {
       expect(canRunJob(workflowLabels, runnerLabels, true, false)).toBe(false);
     });
 
-    it('should filter out ghr- and ghr-run- labels when enableDynamicLabels is true.', () => {
+    it('should filter out ghr- labels when enableDynamicLabels is true.', () => {
       const workflowLabels = ['self-hosted', 'linux', 'x64', 'ghr-ec2-instance-type:t3.large', 'ghr-run-id:12345'];
       const runnerLabels = [['self-hosted', 'linux', 'x64']];
       expect(canRunJob(workflowLabels, runnerLabels, true, true)).toBe(true);
     });
 
-    it('should NOT filter out ghr- and ghr-run- labels when enableDynamicLabels is false.', () => {
+    it('should NOT filter out ghr- labels when enableDynamicLabels is false.', () => {
       const workflowLabels = ['self-hosted', 'linux', 'x64', 'ghr-ec2-instance-type:t3.large'];
       const runnerLabels = [['self-hosted', 'linux', 'x64']];
       expect(canRunJob(workflowLabels, runnerLabels, true, false)).toBe(false);
+    });
+  });
+
+  describe('sanitizeGhrLabels (via canRunJob with enableDynamicLabels=true)', () => {
+    it('should keep valid ghr- labels with allowed characters (alphanumeric, dot, dash, colon, slash)', () => {
+      const workflowLabels = ['self-hosted', 'ghr-ec2-instance-type:t3.large'];
+      const runnerLabels = [['self-hosted', 'ghr-ec2-instance-type:t3.large']];
+      expect(canRunJob(workflowLabels, runnerLabels, true, true)).toBe(true);
+    });
+
+    it('should keep ghr- labels with path-like values containing slashes', () => {
+      const workflowLabels = ['self-hosted', 'ghr-image:my/custom/image'];
+      const runnerLabels = [['self-hosted', 'ghr-image:my/custom/image']];
+      expect(canRunJob(workflowLabels, runnerLabels, true, true)).toBe(true);
+    });
+
+    it('should strip ghr- labels that exceed 128 characters', () => {
+      const longLabel = 'ghr-' + 'a'.repeat(125); // 129 chars total, exceeds 128
+      const workflowLabels = ['self-hosted', 'linux', longLabel];
+      const runnerLabels = [['self-hosted', 'linux']];
+      // Long label is stripped, remaining labels match
+      expect(canRunJob(workflowLabels, runnerLabels, true, true)).toBe(true);
+    });
+
+    it('should keep ghr- labels that are exactly 128 characters', () => {
+      const exactLabel = 'ghr-' + 'a'.repeat(124); // exactly 128 chars
+      const workflowLabels = ['self-hosted', exactLabel];
+      const runnerLabels = [['self-hosted', exactLabel]];
+      expect(canRunJob(workflowLabels, runnerLabels, true, true)).toBe(true);
+    });
+
+    it('should strip ghr- labels with invalid characters (spaces)', () => {
+      const workflowLabels = ['self-hosted', 'linux', 'ghr-bad label'];
+      const runnerLabels = [['self-hosted', 'linux']];
+      // Invalid label is stripped, remaining labels match
+      expect(canRunJob(workflowLabels, runnerLabels, true, true)).toBe(true);
+    });
+
+    it('should strip ghr- labels with invalid characters (special chars)', () => {
+      const workflowLabels = ['self-hosted', 'linux', 'ghr-inject;rm -rf'];
+      const runnerLabels = [['self-hosted', 'linux']];
+      expect(canRunJob(workflowLabels, runnerLabels, true, true)).toBe(true);
+    });
+
+    it('should never strip non-ghr labels regardless of content', () => {
+      const workflowLabels = ['self-hosted', 'linux', 'x64'];
+      const runnerLabels = [['self-hosted', 'linux', 'x64']];
+      expect(canRunJob(workflowLabels, runnerLabels, true, true)).toBe(true);
+    });
+
+    it('should handle a mix of valid ghr-, invalid ghr-, and regular labels', () => {
+      const longLabel = 'ghr-' + 'x'.repeat(125); // 129 chars, will be stripped
+      const workflowLabels = [
+        'self-hosted',
+        'linux',
+        'ghr-valid:value',        // valid, kept
+        'ghr-bad label',           // invalid chars, stripped
+        longLabel,                 // too long, stripped
+      ];
+      const runnerLabels = [['self-hosted', 'linux', 'ghr-valid:value']];
+      expect(canRunJob(workflowLabels, runnerLabels, true, true)).toBe(true);
     });
   });
 });

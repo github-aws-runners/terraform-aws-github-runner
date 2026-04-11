@@ -92,7 +92,7 @@ variable "runner_disable_default_labels" {
 }
 
 variable "runner_extra_labels" {
-  description = "Extra (custom) labels for the runners (GitHub). Separate each label by a comma. Labels checks on the webhook can be enforced by setting `enable_workflow_job_labels_check`. GitHub read-only labels should not be provided."
+  description = "Extra (custom) labels for the runners (GitHub). Separate each label by a comma. Labels checks on the webhook can be enforced by setting `enable_workflow_job_labels_check`. GitHub read-only labels should not be provided. Note: labels starting with `ghr-` are ignored during webhook label matching when `enable_dynamic_labels` is enabled."
   type        = list(string)
   default     = []
 
@@ -674,7 +674,7 @@ variable "enable_ephemeral_runners" {
 }
 
 variable "enable_dynamic_labels" {
-  description = "Experimental! Can be removed / changed without trigger a major release. Enable dynamic EC2 configs based on workflow job labels. When enabled, jobs can request specific configs via the 'gh-ec2-<config type key>:<config type value>' label (e.g., 'gh-ec2-instance-type:t3.large')."
+  description = "Experimental! Can be removed / changed without trigger a major release. Enable dynamic EC2 configs based on workflow job labels. When enabled, jobs can request specific configs via the 'gh-ec2-<config type key>:<config type value>' label (e.g., 'gh-ec2-instance-type:t3.large'). When enabled, labels starting with `ghr-` are ignored during webhook label matching."
   type        = bool
   default     = false
 }
