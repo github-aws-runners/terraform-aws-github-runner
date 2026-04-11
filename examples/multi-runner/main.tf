@@ -157,7 +157,8 @@ module "runners" {
   #   }
   # }
 
-  # Enable dyamic lables
+  # Enable dynamic labels
+  # When enabled, labels starting with `ghr-` are ignored during webhook label matching.
   # enable_dynamic_labels = true
 }
 

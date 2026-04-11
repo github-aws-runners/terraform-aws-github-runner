@@ -85,24 +85,43 @@ async function handleWorkflowJob(
   return { statusCode: 202, body: notAcceptedErrorMsg };
 }
 
+function sanitizeGhrLabels(labels: string[]): string[] {
+  const GHR_LABEL_MAX_LENGTH = 128;
+  const GHR_LABEL_VALUE_PATTERN = /^[a-zA-Z0-9._/\-:]+$/;
+
+  return labels
+    .map((label) => {
+      if (!label.startsWith('ghr-')) return label;
+
+      if (label.length > GHR_LABEL_MAX_LENGTH) {
+        logger.warn('Dynamic label exceeds max length, stripping', { label: label.substring(0, 40) });
+        return null;
+      }
+      if (!GHR_LABEL_VALUE_PATTERN.test(label)) {
+        logger.warn('Dynamic label contains invalid characters, stripping', { label });
+        return null;
+      }
+      return null;
+    })
+    .filter((l): l is string => l !== null);
+}
+
 export function canRunJob(
   workflowJobLabels: string[],
   runnerLabelsMatchers: string[][],
   workflowLabelCheckAll: boolean,
   enableDynamicLabels: boolean,
 ): boolean {
-  // Filter out ghr- and ghr-run- labels only if dynamic labels config is enabled
-  const filteredLabels = enableDynamicLabels
-    ? workflowJobLabels.filter((label) => !label.startsWith('ghr-'))
-    : workflowJobLabels;
+  // Filter out ghr- labels only and sanitize them if dynamic labels is enabled, otherwise keep all labels as is for matching.
+  const sanitizedLabels = enableDynamicLabels ? sanitizeGhrLabels(workflowJobLabels) : workflowJobLabels;
 
   runnerLabelsMatchers = runnerLabelsMatchers.map((runnerLabel) => {
     return runnerLabel.map((label) => label.toLowerCase());
   });
   const matchLabels = workflowLabelCheckAll
-    ? runnerLabelsMatchers.some((rl) => filteredLabels.every((wl) => rl.includes(wl.toLowerCase())))
-    : runnerLabelsMatchers.some((rl) => filteredLabels.some((wl) => rl.includes(wl.toLowerCase())));
-  const match = filteredLabels.length === 0 ? !matchLabels : matchLabels;
+    ? runnerLabelsMatchers.some((rl) => sanitizedLabels.every((wl) => rl.includes(wl.toLowerCase())))
+    : runnerLabelsMatchers.some((rl) => sanitizedLabels.some((wl) => rl.includes(wl.toLowerCase())));
+  const match = sanitizedLabels.length === 0 ? !matchLabels : matchLabels;
 
   logger.debug(
     `Received workflow job event with labels: '${JSON.stringify(workflowJobLabels)}'. The event does ${
