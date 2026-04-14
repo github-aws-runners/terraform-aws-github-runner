@@ -62,6 +62,7 @@ describe('Test createOctoClient', () => {
     expect(result.request.endpoint.DEFAULTS.baseUrl).toBe(enterpriseServer);
     expect(result.request.endpoint.DEFAULTS.mediaType.previews).toStrictEqual(['antiope']);
   });
+
 });
 
 describe('Test createGithubAppAuth', () => {
