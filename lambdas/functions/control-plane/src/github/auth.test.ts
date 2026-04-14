@@ -63,18 +63,6 @@ describe('Test createOctoClient', () => {
     expect(result.request.endpoint.DEFAULTS.mediaType.previews).toStrictEqual(['antiope']);
   });
 
-  it('Configures throttle handlers to return true for retry', async () => {
-    const token = '123456';
-    const result = await createOctokitClient(token);
-
-    // Access the internal throttle options via the Octokit instance
-    // The onRateLimit and onSecondaryRateLimit should return true to enable retries
-    const throttleOptions = (result as unknown as { throttleOptions: Record<string, unknown> }).throttleOptions;
-
-    // Since we can't directly access internal plugin options, verify the behavior
-    // by checking that the client was created successfully with throttling plugin
-    expect(result).toBeDefined();
-  });
 });
 
 describe('Test createGithubAppAuth', () => {
