@@ -1,5 +1,20 @@
 # Changelog
 
+## [7.6.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v7.5.0...v7.6.0) (2026-04-01)
+
+
+### Features
+
+* **runner:** add source parameter to distinguish between scale-up and pool lambda ([#5054](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5054)) ([efbaa6f](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/efbaa6f23c7572b0a8973f5333e435e5e2def9b7))
+
+
+### Bug Fixes
+
+* **lambda:** bump flatted from 3.3.1 to 3.4.2 in /lambdas ([#5075](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5075)) ([67a70d7](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/67a70d7a50e37e223b0ab2071bc0d6ab010f9743))
+* **lambda:** bump path-to-regexp from 8.2.0 to 8.4.0 in /lambdas ([#5082](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5082)) ([25ec471](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/25ec47173863a1f11cce77c0eb33a97b160feaf6))
+* **lambda:** bump the aws group in /lambdas with 7 updates ([#5071](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5071)) ([c3dcce2](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/c3dcce224eaeb21abe74d0055a073b59a848aacf))
+* **logging:** update log_class to log_group_class in CloudWatch agent configuration ([#5073](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5073)) ([6d3b7db](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/6d3b7db78145bd839e52625eb5b712105fe9af31))
+
 ## [7.5.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v7.4.1...v7.5.0) (2026-03-11)
 
 
