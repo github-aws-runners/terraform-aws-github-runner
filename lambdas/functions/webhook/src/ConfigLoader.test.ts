@@ -165,7 +165,7 @@ describe('ConfigLoader Tests', () => {
       });
 
       await expect(ConfigWebhook.load()).rejects.toThrow(
-        'Failed to load config: Failed to load parameter for matcherConfig from path /path/to/matcher/config: Failed to load matcher config', // eslint-disable-line max-len
+        'Failed to load config: Failed to load parameter for matcherConfig from path /path/to/matcher/config: Failed to load matcher config',
       );
     });
 
@@ -256,7 +256,7 @@ describe('ConfigLoader Tests', () => {
       });
 
       await expect(ConfigWebhookEventBridge.load()).rejects.toThrow(
-        'Failed to load config: Environment variable for eventBusName is not set and no default value provided., Failed to load parameter for webhookSecret from path undefined: Parameter undefined not found', // eslint-disable-line max-len
+        'Failed to load config: Environment variable for eventBusName is not set and no default value provided., Failed to load parameter for webhookSecret from path undefined: Parameter undefined not found',
       );
     });
   });
@@ -323,7 +323,7 @@ describe('ConfigLoader Tests', () => {
       });
 
       await expect(ConfigDispatcher.load()).rejects.toThrow(
-        'Failed to load config: Failed to load parameter for matcherConfig from path undefined: Parameter undefined not found', // eslint-disable-line max-len
+        'Failed to load config: Failed to load parameter for matcherConfig from path undefined: Parameter undefined not found',
       );
     });
 

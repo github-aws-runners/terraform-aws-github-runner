@@ -182,9 +182,10 @@ variable "multi_runner_config" {
       }), {})
     })
     matcherConfig = object({
-      labelMatchers = list(list(string))
-      exactMatch    = optional(bool, false)
-      priority      = optional(number, 999)
+      labelMatchers           = list(list(string))
+      exactMatch              = optional(bool, false)
+      bidirectionalLabelMatch = optional(bool, false)
+      priority                = optional(number, 999)
     })
     redrive_build_queue = optional(object({
       enabled         = bool
@@ -253,7 +254,8 @@ variable "multi_runner_config" {
       }
       matcherConfig: {
         labelMatchers: "The list of list of labels supported by the runner configuration. `[[self-hosted, linux, x64, example]]`"
-        exactMatch: "If set to true all labels in the workflow job must match the GitHub labels (os, architecture and `self-hosted`). When false if __any__ workflow label matches it will trigger the webhook."
+        exactMatch: "DEPRECATED: Use `bidirectionalLabelMatch` instead. If set to true all labels in the workflow job must match the GitHub labels (os, architecture and `self-hosted`). When false if __any__ workflow label matches it will trigger the webhook. Note: this only checks that workflow labels are a subset of runner labels, not the reverse."
+        bidirectionalLabelMatch: "If set to true, the runner labels and workflow job labels must be an exact two-way match (same set, any order, no extras or missing labels). This is stricter than `exactMatch` which only checks that workflow labels are a subset of runner labels. When false, if __any__ workflow label matches it will trigger the webhook."
         priority: "If set it defines the priority of the matcher, the matcher with the lowest priority will be evaluated first. Default is 999, allowed values 0-999."
       }
       redrive_build_queue: "Set options to attach (optional) a dead letter queue to the build queue, the queue between the webhook and the scale up lambda. You have the following options. 1. Disable by setting `enabled` to false. 2. Enable by setting `enabled` to `true`, `maxReceiveCount` to a number of max retries."

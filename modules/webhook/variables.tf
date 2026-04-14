@@ -28,9 +28,10 @@ variable "runner_matcher_config" {
     arn = string
     id  = string
     matcherConfig = object({
-      labelMatchers = list(list(string))
-      exactMatch    = bool
-      priority      = optional(number, 999)
+      labelMatchers           = list(list(string))
+      exactMatch              = bool
+      bidirectionalLabelMatch = optional(bool, false)
+      priority                = optional(number, 999)
     })
   }))
   validation {

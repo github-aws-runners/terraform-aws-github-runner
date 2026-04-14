@@ -42,12 +42,21 @@ async function handleWorkflowJob(
       `Job ID: ${body.workflow_job.id}, Job Name: ${body.workflow_job.name}, ` +
       `Run ID: ${body.workflow_job.run_id}, Labels: ${JSON.stringify(body.workflow_job.labels)}`,
   );
-  // sort the queuesConfig by order of matcher config exact match, with all true matches lined up ahead.
+  // sort the queuesConfig by order of matcher config exact/bidirectional match, with all true matches lined up ahead.
   matcherConfig.sort((a, b) => {
-    return a.matcherConfig.exactMatch === b.matcherConfig.exactMatch ? 0 : a.matcherConfig.exactMatch ? -1 : 1;
+    const aStrict = a.matcherConfig.bidirectionalLabelMatch || a.matcherConfig.exactMatch;
+    const bStrict = b.matcherConfig.bidirectionalLabelMatch || b.matcherConfig.exactMatch;
+    return aStrict === bStrict ? 0 : aStrict ? -1 : 1;
   });
   for (const queue of matcherConfig) {
-    if (canRunJob(body.workflow_job.labels, queue.matcherConfig.labelMatchers, queue.matcherConfig.exactMatch)) {
+    if (
+      canRunJob(
+        body.workflow_job.labels,
+        queue.matcherConfig.labelMatchers,
+        queue.matcherConfig.exactMatch,
+        queue.matcherConfig.bidirectionalLabelMatch,
+      )
+    ) {
       await sendActionRequest({
         id: body.workflow_job.id,
         repositoryName: body.repository.name,
@@ -80,14 +89,24 @@ export function canRunJob(
   workflowJobLabels: string[],
   runnerLabelsMatchers: string[][],
   workflowLabelCheckAll: boolean,
+  bidirectionalLabelMatch = false,
 ): boolean {
   runnerLabelsMatchers = runnerLabelsMatchers.map((runnerLabel) => {
     return runnerLabel.map((label) => label.toLowerCase());
   });
-  const matchLabels = workflowLabelCheckAll
-    ? runnerLabelsMatchers.some((rl) => workflowJobLabels.every((wl) => rl.includes(wl.toLowerCase())))
-    : runnerLabelsMatchers.some((rl) => workflowJobLabels.some((wl) => rl.includes(wl.toLowerCase())));
-  const match = workflowJobLabels.length === 0 ? !matchLabels : matchLabels;
+
+  let match: boolean;
+  if (bidirectionalLabelMatch) {
+    const workflowLabelsLower = workflowJobLabels.map((wl) => wl.toLowerCase());
+    match = runnerLabelsMatchers.some(
+      (rl) => workflowLabelsLower.every((wl) => rl.includes(wl)) && rl.every((r) => workflowLabelsLower.includes(r)),
+    );
+  } else {
+    const matchLabels = workflowLabelCheckAll
+      ? runnerLabelsMatchers.some((rl) => workflowJobLabels.every((wl) => rl.includes(wl.toLowerCase())))
+      : runnerLabelsMatchers.some((rl) => workflowJobLabels.some((wl) => rl.includes(wl.toLowerCase())));
+    match = workflowJobLabels.length === 0 ? !matchLabels : matchLabels;
+  }
 
   logger.debug(
     `Received workflow job event with labels: '${JSON.stringify(workflowJobLabels)}'. The event does ${
