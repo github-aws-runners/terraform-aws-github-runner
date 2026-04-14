@@ -65,8 +65,8 @@ module "runners" {
   lambda_architecture                                            = var.lambda_architecture
   lambda_zip                                                     = var.runners_lambda_zip
   lambda_scale_up_memory_size                                    = var.scale_up_lambda_memory_size
-  lambda_event_source_mapping_batch_size                         = var.lambda_event_source_mapping_batch_size
-  lambda_event_source_mapping_maximum_batching_window_in_seconds = var.lambda_event_source_mapping_maximum_batching_window_in_seconds
+  lambda_event_source_mapping_batch_size                         = coalesce(each.value.runner_config.lambda_event_source_mapping_batch_size, var.lambda_event_source_mapping_batch_size)
+  lambda_event_source_mapping_maximum_batching_window_in_seconds = coalesce(each.value.runner_config.lambda_event_source_mapping_maximum_batching_window_in_seconds, var.lambda_event_source_mapping_maximum_batching_window_in_seconds)
   lambda_timeout_scale_up                                        = var.runners_scale_up_lambda_timeout
   lambda_scale_down_memory_size                                  = var.scale_down_lambda_memory_size
   lambda_timeout_scale_down                                      = var.runners_scale_down_lambda_timeout
