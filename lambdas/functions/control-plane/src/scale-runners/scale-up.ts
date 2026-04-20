@@ -308,6 +308,9 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
   const launchTemplateName = process.env.LAUNCH_TEMPLATE_NAME;
   const instanceMaxSpotPrice = process.env.INSTANCE_MAX_SPOT_PRICE;
   const instanceAllocationStrategy = process.env.INSTANCE_ALLOCATION_STRATEGY || 'lowest-price'; // same as AWS default
+  const instanceTypePriorities = process.env.INSTANCE_TYPE_PRIORITIES
+    ? (JSON.parse(process.env.INSTANCE_TYPE_PRIORITIES) as Record<string, number>)
+    : undefined;
   const enableJobQueuedCheck = yn(process.env.ENABLE_JOB_QUEUED_CHECK, { default: true });
   const amiIdSsmParameterName = process.env.AMI_ID_SSM_PARAMETER_NAME;
   const runnerNamePrefix = process.env.RUNNER_NAME_PREFIX || '';
@@ -497,6 +500,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       {
         ec2instanceCriteria: {
           instanceTypes,
+          instanceTypePriorities,
           targetCapacityType: instanceTargetCapacityType,
           maxSpotPrice: instanceMaxSpotPrice,
           instanceAllocationStrategy: instanceAllocationStrategy,

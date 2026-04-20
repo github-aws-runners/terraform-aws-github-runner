@@ -7,6 +7,8 @@ import {
   DescribeInstancesResult,
   EC2Client,
   FleetLaunchTemplateOverridesRequest,
+  FleetOnDemandAllocationStrategy,
+  SpotAllocationStrategy,
   Tag,
   TerminateInstancesCommand,
   _InstanceType,
@@ -125,14 +127,17 @@ function generateFleetOverrides(
   subnetIds: string[],
   instancesTypes: string[],
   amiId?: string,
+  allocationStrategy?: string,
+  instanceTypePriorities?: Record<string, number>,
 ): FleetLaunchTemplateOverridesRequest[] {
   const result: FleetLaunchTemplateOverridesRequest[] = [];
   subnetIds.forEach((s) => {
-    instancesTypes.forEach((i) => {
+    instancesTypes.forEach((i, index) => {
       const item: FleetLaunchTemplateOverridesRequest = {
         SubnetId: s,
         InstanceType: i as _InstanceType,
         ImageId: amiId,
+        ...(allocationStrategy === 'prioritized' && { Priority: instanceTypePriorities?.[i] ?? index }),
       };
       result.push(item);
     });
@@ -187,11 +192,21 @@ async function processFleetResult(
     logger.warn(`Create fleet failed, initatiing fall back to on demand instances.`);
     logger.debug('Create fleet failed.', { data: fleet.Errors });
     const numberOfInstances = runnerParameters.numberOfRunners - instances.length;
+    const onDemandValidStrategies = ['lowest-price', 'prioritized'];
+    const failoverAllocationStrategy = onDemandValidStrategies.includes(
+      runnerParameters.ec2instanceCriteria.instanceAllocationStrategy,
+    )
+      ? runnerParameters.ec2instanceCriteria.instanceAllocationStrategy
+      : 'lowest-price';
     const instancesOnDemand = await createRunner({
       ...runnerParameters,
       numberOfRunners: numberOfInstances,
       onDemandFailoverOnError: ['InsufficientInstanceCapacity'],
-      ec2instanceCriteria: { ...runnerParameters.ec2instanceCriteria, targetCapacityType: 'on-demand' },
+      ec2instanceCriteria: {
+        ...runnerParameters.ec2instanceCriteria,
+        targetCapacityType: 'on-demand',
+        instanceAllocationStrategy: failoverAllocationStrategy,
+      },
     });
     instances.push(...instancesOnDemand);
     return instances;
@@ -265,13 +280,25 @@ async function createInstances(
             runnerParameters.subnets,
             runnerParameters.ec2instanceCriteria.instanceTypes,
             amiIdOverride,
+            runnerParameters.ec2instanceCriteria.instanceAllocationStrategy,
+            runnerParameters.ec2instanceCriteria.instanceTypePriorities,
           ),
         },
       ],
-      SpotOptions: {
-        MaxTotalPrice: runnerParameters.ec2instanceCriteria.maxSpotPrice,
-        AllocationStrategy: runnerParameters.ec2instanceCriteria.instanceAllocationStrategy,
-      },
+      ...(runnerParameters.ec2instanceCriteria.targetCapacityType === 'spot'
+        ? {
+            SpotOptions: {
+              MaxTotalPrice: runnerParameters.ec2instanceCriteria.maxSpotPrice,
+              AllocationStrategy: runnerParameters.ec2instanceCriteria
+                .instanceAllocationStrategy as SpotAllocationStrategy,
+            },
+          }
+        : {
+            OnDemandOptions: {
+              AllocationStrategy: runnerParameters.ec2instanceCriteria
+                .instanceAllocationStrategy as FleetOnDemandAllocationStrategy,
+            },
+          }),
       TargetCapacitySpecification: {
         TotalTargetCapacity: runnerParameters.numberOfRunners,
         DefaultTargetCapacityType: runnerParameters.ec2instanceCriteria.targetCapacityType,
