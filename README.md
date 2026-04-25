@@ -26,6 +26,7 @@ This [Terraform](https://www.terraform.io/) module creates the required infrastr
 - GitHub cloud, GitHub Cloud with Data Residency and GitHub Enterprise Server (GHES) support.
 - Org and repo level runners. enterprise level runners are not supported (yet).
 
+This module requires terraform >= 1.3.0, the AWS provider >= 6.21, and the random provider ~> 3.0.
 
 ## Getting started
 

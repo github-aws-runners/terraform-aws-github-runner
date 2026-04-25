@@ -54,6 +54,7 @@ markdown_extensions:
 
 nav:
   - Introduction: index.md
+  - Best Practices: best-practices.md 
   - Configuration: configuration.md
   - Getting started: getting-started.md
   - Security: security.md
