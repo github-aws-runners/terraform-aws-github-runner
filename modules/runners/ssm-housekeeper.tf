@@ -32,7 +32,7 @@ resource "aws_lambda_function" "ssm_housekeeper" {
       ENVIRONMENT                              = var.prefix
       LOG_LEVEL                                = var.log_level
       SSM_CLEANUP_CONFIG                       = jsonencode(local.ssm_housekeeper.config)
-      POWERTOOLS_SERVICE_NAME                  = "ssm-housekeeper"
+      POWERTOOLS_SERVICE_NAME                  = "${var.prefix}-ssm-housekeeper"
       POWERTOOLS_TRACE_ENABLED                 = var.tracing_config.mode != null ? true : false
       POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.tracing_config.capture_http_requests
       POWERTOOLS_TRACER_CAPTURE_ERROR          = var.tracing_config.capture_error
@@ -59,6 +59,7 @@ resource "aws_cloudwatch_log_group" "ssm_housekeeper" {
   name              = "/aws/lambda/${aws_lambda_function.ssm_housekeeper.function_name}"
   retention_in_days = var.logging_retention_in_days
   kms_key_id        = var.logging_kms_key_id
+  log_group_class   = var.log_class
   tags              = var.tags
 }
 

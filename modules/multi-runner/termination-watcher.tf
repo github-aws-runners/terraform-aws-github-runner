@@ -9,6 +9,7 @@ locals {
     security_group_ids        = var.lambda_security_group_ids
     subnet_ids                = var.lambda_subnet_ids
     log_level                 = var.log_level
+    log_class                 = var.log_class
     logging_kms_key_id        = var.logging_kms_key_id
     logging_retention_in_days = var.logging_retention_in_days
     role_path                 = var.role_path

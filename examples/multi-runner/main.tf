@@ -28,7 +28,7 @@ locals {
   aws_region  = var.aws_region
 
   # create map only with amazon linux 2023 x64 and arm64 to overwrite the default
-  al2023_arm64_name = "/examples/multi-runner/aws-github-runners/ami/amazon-linux-2023-arm64"
+  al2023_arm64_name = "/${local.environment}/examples/multi-runner/aws-github-runners/ami/amazon-linux-2023-arm64"
   ssm_ami_arns = {
     "linux-x64" = data.aws_ssm_parameter.al2023_x64.arn
     # construct the arn to avoid terraform count errors
@@ -138,6 +138,9 @@ module "runners" {
 
   # Enable debug logging for the lambda functions
   # log_level = "debug"
+
+  # Set log class to INFREQUENT_ACCESS for cost savings
+  log_class = "STANDARD"
 
   # Enable to track the spot instance termination warning
   # instance_termination_watcher = {

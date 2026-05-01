@@ -5,6 +5,7 @@ variable "config" {
       log_level                      = string
       logging_retention_in_days      = number
       logging_kms_key_id             = string
+      log_class                      = string
       reserved_concurrent_executions = number
       s3_bucket                      = string
       s3_key                         = string
@@ -16,6 +17,7 @@ variable "config" {
       timeout                        = number
       zip                            = string
       subnet_ids                     = list(string)
+      parameter_store_tags           = string
     })
     tags = map(string)
     ghes = object({

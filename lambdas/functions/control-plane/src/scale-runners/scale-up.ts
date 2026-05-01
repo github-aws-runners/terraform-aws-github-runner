@@ -4,11 +4,14 @@ import { getParameter, putParameter } from '@aws-github-runner/aws-ssm-util';
 import yn from 'yn';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
-import { createRunner, listEC2Runners, tag } from './../aws/runners';
+import { createRunner, listEC2Runners, tag, terminateRunner } from './../aws/runners';
 import { RunnerInputParameters } from './../aws/runners.d';
 import { metricGitHubAppRateLimit } from '../github/rate-limit';
+import { publishRetryMessage } from './job-retry';
 
 const logger = createChildLogger('scale-up');
+
+export type LambdaRunnerSource = 'scale-up-lambda' | 'pool-lambda';
 
 export interface RunnerGroup {
   name: string;
@@ -51,6 +54,7 @@ interface CreateGitHubRunnerConfig {
   disableAutoUpdate: boolean;
   ssmTokenPath: string;
   ssmConfigPath: string;
+  ssmParameterStoreTags: { Key: string; Value: string }[];
 }
 
 interface CreateEC2RunnerConfig {
@@ -90,6 +94,37 @@ function generateRunnerServiceConfig(githubRunnerConfig: CreateGitHubRunnerConfi
   return config;
 }
 
+export function validateSsmParameterStoreTags(tagsJson: string): { Key: string; Value: string }[] {
+  try {
+    const tags = JSON.parse(tagsJson);
+
+    if (!Array.isArray(tags)) {
+      throw new Error('Tags must be an array');
+    }
+
+    if (tags.length === 0) {
+      return [];
+    }
+
+    tags.forEach((tag, index) => {
+      if (typeof tag !== 'object' || tag === null) {
+        throw new Error(`Tag at index ${index} must be an object`);
+      }
+      if (!tag.Key || typeof tag.Key !== 'string' || tag.Key.trim() === '') {
+        throw new Error(`Tag at index ${index} has missing or invalid 'Key' property`);
+      }
+      if (!Object.prototype.hasOwnProperty.call(tag, 'Value') || typeof tag.Value !== 'string') {
+        throw new Error(`Tag at index ${index} has missing or invalid 'Value' property`);
+      }
+    });
+
+    return tags;
+  } catch (err) {
+    logger.error('Invalid SSM_PARAMETER_STORE_TAGS format', { error: err });
+    throw new Error(`Failed to parse SSM_PARAMETER_STORE_TAGS: ${(err as Error).message}`);
+  }
+}
+
 async function getGithubRunnerRegistrationToken(githubRunnerConfig: CreateGitHubRunnerConfig, ghClient: Octokit) {
   const registrationToken =
     githubRunnerConfig.runnerType === 'Org'
@@ -99,8 +134,6 @@ async function getGithubRunnerRegistrationToken(githubRunnerConfig: CreateGitHub
           repo: githubRunnerConfig.runnerOwner.split('/')[1],
         });
 
-  const appId = parseInt(await getParameter(process.env.PARAMETER_GITHUB_APP_ID_NAME));
-  logger.info('App id from SSM', { appId: appId });
   return registrationToken.data.token;
 }
 
@@ -183,6 +216,9 @@ async function getRunnerGroupId(githubRunnerConfig: CreateGitHubRunnerConfig, gh
           `${githubRunnerConfig.ssmConfigPath}/runner-group/${githubRunnerConfig.runnerGroup}`,
           runnerGroupId.toString(),
           false,
+          {
+            tags: githubRunnerConfig.ssmParameterStoreTags,
+          },
         );
       } catch (err) {
         logger.debug('Error storing runner group id in SSM Parameter Store', err as Error);
@@ -214,15 +250,39 @@ export async function createRunners(
   ec2RunnerConfig: CreateEC2RunnerConfig,
   numberOfRunners: number,
   ghClient: Octokit,
+  source: LambdaRunnerSource = 'scale-up-lambda',
 ): Promise<string[]> {
   const instances = await createRunner({
     runnerType: githubRunnerConfig.runnerType,
     runnerOwner: githubRunnerConfig.runnerOwner,
     numberOfRunners,
+    source,
     ...ec2RunnerConfig,
   });
   if (instances.length !== 0) {
-    await createStartRunnerConfig(githubRunnerConfig, instances, ghClient);
+    const failedInstances = await createStartRunnerConfig(githubRunnerConfig, instances, ghClient);
+
+    // Terminate instances that failed to get configured to avoid waste
+    if (failedInstances.length > 0) {
+      logger.warn('Terminating instances that failed to get configured', {
+        failedInstances,
+        failedCount: failedInstances.length,
+      });
+
+      for (const instanceId of failedInstances) {
+        try {
+          await terminateRunner(instanceId);
+        } catch (error) {
+          logger.error('Failed to terminate instance', {
+            instanceId,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }
+
+      // Remove failed instances from the returned list
+      return instances.filter((id) => !failedInstances.includes(id));
+    }
   }
 
   return instances;
@@ -256,6 +316,10 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
   const onDemandFailoverOnError = process.env.ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS
     ? (JSON.parse(process.env.ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS) as [string])
     : [];
+  const ssmParameterStoreTags: { Key: string; Value: string }[] =
+    process.env.SSM_PARAMETER_STORE_TAGS && process.env.SSM_PARAMETER_STORE_TAGS.trim() !== ''
+      ? validateSsmParameterStoreTags(process.env.SSM_PARAMETER_STORE_TAGS)
+      : [];
   const scaleErrors = JSON.parse(process.env.SCALE_ERRORS) as [string];
 
   const { ghesApiUrl, ghesBaseUrl } = getGitHubEnterpriseApiUrl();
@@ -276,7 +340,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
   };
 
   const validMessages = new Map<string, MessagesWithClient>();
-  const invalidMessages: string[] = [];
+  const rejectedMessageIds = new Set<string>();
   for (const payload of payloads) {
     const { eventType, messageId, repositoryName, repositoryOwner } = payload;
     if (ephemeralEnabled && eventType !== 'workflow_job') {
@@ -285,7 +349,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
         { eventType, messageId },
       );
 
-      invalidMessages.push(messageId);
+      rejectedMessageIds.add(messageId);
 
       continue;
     }
@@ -340,6 +404,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
   for (const [group, { githubInstallationClient, messages }] of validMessages.entries()) {
     // Work out how much we want to scale up by.
     let scaleUp = 0;
+    const queuedMessages: ActionRequestMessageSQS[] = [];
 
     for (const message of messages) {
       const messageLogger = logger.createChild({
@@ -358,6 +423,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       }
 
       scaleUp++;
+      queuedMessages.push(message);
     }
 
     if (scaleUp === 0) {
@@ -393,11 +459,18 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       if (ephemeralEnabled) {
         // This removes `missingInstanceCount` items from the start of the array
         // so that, if we retry more messages later, we pick fresh ones.
-        invalidMessages.push(...messages.splice(0, missingInstanceCount).map(({ messageId }) => messageId));
+        const removedMessages = messages.splice(0, missingInstanceCount);
+        removedMessages.forEach(({ messageId }) => rejectedMessageIds.add(messageId));
       }
 
       // No runners will be created, so skip calling the EC2 API.
-      if (missingInstanceCount === scaleUp) {
+      if (newRunners <= 0) {
+        // Publish retry messages for messages that are not rejected
+        for (const message of queuedMessages) {
+          if (!rejectedMessageIds.has(message.messageId)) {
+            await publishRetryMessage(message as ActionRequestMessageRetry);
+          }
+        }
         continue;
       }
     }
@@ -419,6 +492,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
         disableAutoUpdate,
         ssmTokenPath,
         ssmConfigPath,
+        ssmParameterStoreTags,
       },
       {
         ec2instanceCriteria: {
@@ -437,6 +511,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       },
       newRunners,
       githubInstallationClient,
+      'scale-up-lambda',
     );
 
     // Not all runners we wanted were created, let's reject enough items so that
@@ -450,11 +525,19 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
         failedInstanceCount,
       });
 
-      invalidMessages.push(...messages.slice(0, failedInstanceCount).map(({ messageId }) => messageId));
+      const failedMessages = messages.slice(0, failedInstanceCount);
+      failedMessages.forEach(({ messageId }) => rejectedMessageIds.add(messageId));
+    }
+
+    // Publish retry messages for messages that are not rejected
+    for (const message of queuedMessages) {
+      if (!rejectedMessageIds.has(message.messageId)) {
+        await publishRetryMessage(message as ActionRequestMessageRetry);
+      }
     }
   }
 
-  return invalidMessages;
+  return Array.from(rejectedMessageIds);
 }
 
 export function getGitHubEnterpriseApiUrl() {
@@ -475,15 +558,21 @@ export function getGitHubEnterpriseApiUrl() {
   return { ghesApiUrl, ghesBaseUrl };
 }
 
+/**
+ * Creates the start configuration for runner instances by either generating JIT configs
+ * or registration tokens.
+ *
+ * @returns Array of instance IDs that failed to get configured
+ */
 async function createStartRunnerConfig(
   githubRunnerConfig: CreateGitHubRunnerConfig,
   instances: string[],
   ghClient: Octokit,
-) {
+): Promise<string[]> {
   if (githubRunnerConfig.enableJitConfig && githubRunnerConfig.ephemeral) {
-    await createJitConfig(githubRunnerConfig, instances, ghClient);
+    return await createJitConfig(githubRunnerConfig, instances, ghClient);
   } else {
-    await createRegistrationTokenConfig(githubRunnerConfig, instances, ghClient);
+    return await createRegistrationTokenConfig(githubRunnerConfig, instances, ghClient);
   }
 }
 
@@ -498,11 +587,16 @@ function addDelay(instances: string[]) {
   return { isDelay, delay };
 }
 
+/**
+ * Creates registration token configuration for non-ephemeral runners.
+ *
+ * @returns Empty array (this configuration method does not have failure cases)
+ */
 async function createRegistrationTokenConfig(
   githubRunnerConfig: CreateGitHubRunnerConfig,
   instances: string[],
   ghClient: Octokit,
-) {
+): Promise<string[]> {
   const { isDelay, delay } = addDelay(instances);
   const token = await getGithubRunnerRegistrationToken(githubRunnerConfig, ghClient);
   const runnerServiceConfig = generateRunnerServiceConfig(githubRunnerConfig, token);
@@ -513,13 +607,15 @@ async function createRegistrationTokenConfig(
 
   for (const instance of instances) {
     await putParameter(`${githubRunnerConfig.ssmTokenPath}/${instance}`, runnerServiceConfig.join(' '), true, {
-      tags: [{ Key: 'InstanceId', Value: instance }],
+      tags: [{ Key: 'InstanceId', Value: instance }, ...githubRunnerConfig.ssmParameterStoreTags],
     });
     if (isDelay) {
       // Delay to prevent AWS ssm rate limits by being within the max throughput limit
       await delay(25);
     }
   }
+
+  return [];
 }
 
 async function tagRunnerId(instanceId: string, runnerId: string): Promise<void> {
@@ -530,52 +626,81 @@ async function tagRunnerId(instanceId: string, runnerId: string): Promise<void> 
   }
 }
 
-async function createJitConfig(githubRunnerConfig: CreateGitHubRunnerConfig, instances: string[], ghClient: Octokit) {
+/**
+ * Creates JIT (Just-In-Time) configuration for ephemeral runners.
+ * Continues processing remaining instances even if some fail.
+ *
+ * @returns Array of instance IDs that failed to get JIT configuration
+ */
+async function createJitConfig(
+  githubRunnerConfig: CreateGitHubRunnerConfig,
+  instances: string[],
+  ghClient: Octokit,
+): Promise<string[]> {
   const runnerGroupId = await getRunnerGroupId(githubRunnerConfig, ghClient);
   const { isDelay, delay } = addDelay(instances);
   const runnerLabels = githubRunnerConfig.runnerLabels.split(',');
+  const failedInstances: string[] = [];
 
   logger.debug(`Runner group id: ${runnerGroupId}`);
   logger.debug(`Runner labels: ${runnerLabels}`);
   for (const instance of instances) {
-    // generate jit config for runner registration
-    const ephemeralRunnerConfig: EphemeralRunnerConfig = {
-      runnerName: `${githubRunnerConfig.runnerNamePrefix}${instance}`,
-      runnerGroupId: runnerGroupId,
-      runnerLabels: runnerLabels,
-    };
-    logger.debug(`Runner name: ${ephemeralRunnerConfig.runnerName}`);
-    const runnerConfig =
-      githubRunnerConfig.runnerType === 'Org'
-        ? await ghClient.actions.generateRunnerJitconfigForOrg({
-            org: githubRunnerConfig.runnerOwner,
-            name: ephemeralRunnerConfig.runnerName,
-            runner_group_id: ephemeralRunnerConfig.runnerGroupId,
-            labels: ephemeralRunnerConfig.runnerLabels,
-          })
-        : await ghClient.actions.generateRunnerJitconfigForRepo({
-            owner: githubRunnerConfig.runnerOwner.split('/')[0],
-            repo: githubRunnerConfig.runnerOwner.split('/')[1],
-            name: ephemeralRunnerConfig.runnerName,
-            runner_group_id: ephemeralRunnerConfig.runnerGroupId,
-            labels: ephemeralRunnerConfig.runnerLabels,
-          });
+    try {
+      // generate jit config for runner registration
+      const ephemeralRunnerConfig: EphemeralRunnerConfig = {
+        runnerName: `${githubRunnerConfig.runnerNamePrefix}${instance}`,
+        runnerGroupId: runnerGroupId,
+        runnerLabels: runnerLabels,
+      };
+      logger.debug(`Runner name: ${ephemeralRunnerConfig.runnerName}`);
+      const runnerConfig =
+        githubRunnerConfig.runnerType === 'Org'
+          ? await ghClient.actions.generateRunnerJitconfigForOrg({
+              org: githubRunnerConfig.runnerOwner,
+              name: ephemeralRunnerConfig.runnerName,
+              runner_group_id: ephemeralRunnerConfig.runnerGroupId,
+              labels: ephemeralRunnerConfig.runnerLabels,
+            })
+          : await ghClient.actions.generateRunnerJitconfigForRepo({
+              owner: githubRunnerConfig.runnerOwner.split('/')[0],
+              repo: githubRunnerConfig.runnerOwner.split('/')[1],
+              name: ephemeralRunnerConfig.runnerName,
+              runner_group_id: ephemeralRunnerConfig.runnerGroupId,
+              labels: ephemeralRunnerConfig.runnerLabels,
+            });
 
-    metricGitHubAppRateLimit(runnerConfig.headers);
+      metricGitHubAppRateLimit(runnerConfig.headers);
 
-    // tag the EC2 instance with the Github runner id
-    await tagRunnerId(instance, runnerConfig.data.runner.id.toString());
+      // tag the EC2 instance with the Github runner id
+      await tagRunnerId(instance, runnerConfig.data.runner.id.toString());
 
-    // store jit config in ssm parameter store
-    logger.debug('Runner JIT config for ephemeral runner generated.', {
-      instance: instance,
-    });
-    await putParameter(`${githubRunnerConfig.ssmTokenPath}/${instance}`, runnerConfig.data.encoded_jit_config, true, {
-      tags: [{ Key: 'InstanceId', Value: instance }],
-    });
-    if (isDelay) {
-      // Delay to prevent AWS ssm rate limits by being within the max throughput limit
-      await delay(25);
+      // store jit config in ssm parameter store
+      logger.debug('Runner JIT config for ephemeral runner generated.', {
+        instance: instance,
+      });
+      await putParameter(`${githubRunnerConfig.ssmTokenPath}/${instance}`, runnerConfig.data.encoded_jit_config, true, {
+        tags: [{ Key: 'InstanceId', Value: instance }, ...githubRunnerConfig.ssmParameterStoreTags],
+      });
+      if (isDelay) {
+        // Delay to prevent AWS ssm rate limits by being within the max throughput limit
+        await delay(25);
+      }
+    } catch (error) {
+      failedInstances.push(instance);
+      logger.warn('Failed to create JIT config for instance, continuing with remaining instances', {
+        instance: instance,
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
+
+  if (failedInstances.length > 0) {
+    logger.error('Failed to create JIT config for some instances', {
+      failedInstances: failedInstances,
+      totalInstances: instances.length,
+      successfulInstances: instances.length - failedInstances.length,
+    });
+  }
+
+  return failedInstances;
 }

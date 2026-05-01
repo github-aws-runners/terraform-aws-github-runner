@@ -34,7 +34,7 @@ resource "aws_lambda_function" "scale_down" {
       POWERTOOLS_LOGGER_LOG_EVENT              = var.log_level == "debug" ? "true" : "false"
       RUNNER_BOOT_TIME_IN_MINUTES              = var.runner_boot_time_in_minutes
       SCALE_DOWN_CONFIG                        = jsonencode(var.idle_config)
-      POWERTOOLS_SERVICE_NAME                  = "runners-scale-down"
+      POWERTOOLS_SERVICE_NAME                  = "${var.prefix}-scale-down"
       POWERTOOLS_METRICS_NAMESPACE             = var.metrics.namespace
       POWERTOOLS_TRACE_ENABLED                 = var.tracing_config.mode != null ? true : false
       POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.tracing_config.capture_http_requests
@@ -62,6 +62,7 @@ resource "aws_cloudwatch_log_group" "scale_down" {
   name              = "/aws/lambda/${aws_lambda_function.scale_down.function_name}"
   retention_in_days = var.logging_retention_in_days
   kms_key_id        = var.logging_kms_key_id
+  log_group_class   = var.log_class
   tags              = var.tags
 }
 

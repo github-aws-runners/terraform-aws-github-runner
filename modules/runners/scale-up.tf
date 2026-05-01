@@ -54,9 +54,10 @@ resource "aws_lambda_function" "scale_up" {
       RUNNER_GROUP_NAME                        = var.runner_group_name
       RUNNER_NAME_PREFIX                       = var.runner_name_prefix
       RUNNERS_MAXIMUM_COUNT                    = var.runners_maximum_count
-      POWERTOOLS_SERVICE_NAME                  = "runners-scale-up"
+      POWERTOOLS_SERVICE_NAME                  = "${var.prefix}-scale-up"
       SSM_TOKEN_PATH                           = local.token_path
       SSM_CONFIG_PATH                          = "${var.ssm_paths.root}/${var.ssm_paths.config}"
+      SSM_PARAMETER_STORE_TAGS                 = local.parameter_store_tags
       SUBNET_IDS                               = join(",", var.subnet_ids)
       ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS     = jsonencode(var.enable_on_demand_failover_for_errors)
       SCALE_ERRORS                             = jsonencode(var.scale_errors)
@@ -84,6 +85,7 @@ resource "aws_cloudwatch_log_group" "scale_up" {
   name              = "/aws/lambda/${aws_lambda_function.scale_up.function_name}"
   retention_in_days = var.logging_retention_in_days
   kms_key_id        = var.logging_kms_key_id
+  log_group_class   = var.log_class
   tags              = var.tags
 }
 
