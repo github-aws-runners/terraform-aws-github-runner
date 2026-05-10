@@ -30,6 +30,8 @@ locals {
     ghes_url                                                       = var.ghes_url
     lambda_event_source_mapping_batch_size                         = var.lambda_event_source_mapping_batch_size
     lambda_event_source_mapping_maximum_batching_window_in_seconds = var.lambda_event_source_mapping_maximum_batching_window_in_seconds
+    memory_size                                                    = var.job_retry.lambda_memory_size
+    timeout                                                        = var.job_retry.lambda_timeout
   }
 }
 
