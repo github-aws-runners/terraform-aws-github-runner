@@ -48,9 +48,16 @@ data "aws_iam_policy_document" "deny_insecure_transport" {
   }
 }
 
+data "aws_iam_policy_document" "build_queue_policy" {
+  source_policy_documents = compact([
+    data.aws_iam_policy_document.deny_insecure_transport.json,
+    var.sqs_build_queue_extra_policy_json,
+  ])
+}
+
 resource "aws_sqs_queue_policy" "build_queue_policy" {
   queue_url = aws_sqs_queue.queued_builds.id
-  policy    = data.aws_iam_policy_document.deny_insecure_transport.json
+  policy    = data.aws_iam_policy_document.build_queue_policy.json
 }
 
 resource "aws_sqs_queue" "queued_builds" {
@@ -97,6 +104,7 @@ module "ssm" {
 
 module "webhook" {
   source = "./modules/webhook"
+  count  = var.create_webhook_module ? 1 : 0
 
   ssm_paths = {
     root    = local.ssm_root_path
