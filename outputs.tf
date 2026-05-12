@@ -31,16 +31,16 @@ output "binaries_syncer" {
 }
 
 output "webhook" {
-  value = {
-    gateway          = module.webhook.gateway
-    lambda           = module.webhook.lambda
-    lambda_log_group = module.webhook.lambda_log_group
-    lambda_role      = module.webhook.role
-    endpoint         = "${module.webhook.gateway.api_endpoint}/${module.webhook.endpoint_relative_path}"
-    webhook          = module.webhook.webhook
-    dispatcher       = var.eventbridge.enable ? module.webhook.dispatcher : null
-    eventbridge      = var.eventbridge.enable ? module.webhook.eventbridge : null
-  }
+  value = var.create_webhook_module ? {
+    gateway          = module.webhook[0].gateway
+    lambda           = module.webhook[0].lambda
+    lambda_log_group = module.webhook[0].lambda_log_group
+    lambda_role      = module.webhook[0].role
+    endpoint         = "${module.webhook[0].gateway.api_endpoint}/${module.webhook[0].endpoint_relative_path}"
+    webhook          = module.webhook[0].webhook
+    dispatcher       = var.eventbridge.enable ? module.webhook[0].dispatcher : null
+    eventbridge      = var.eventbridge.enable ? module.webhook[0].eventbridge : null
+  } : null
 }
 
 output "ssm_parameters" {
@@ -56,6 +56,7 @@ output "queues" {
   description = "SQS queues."
   value = {
     build_queue_arn     = aws_sqs_queue.queued_builds.arn
+    build_queue_url     = aws_sqs_queue.queued_builds.url
     build_queue_dlq_arn = var.redrive_build_queue.enabled ? aws_sqs_queue.queued_builds_dlq[0].arn : null
   }
 }
