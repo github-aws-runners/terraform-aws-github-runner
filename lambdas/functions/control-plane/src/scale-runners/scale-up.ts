@@ -202,15 +202,20 @@ function removeTokenFromLogging(config: string[]): string[] {
   return result;
 }
 
-export async function getInstallationId(
+function getErrorStatus(error: unknown): number | undefined {
+  if (typeof error !== 'object' || error === null) {
+    return undefined;
+  }
+
+  const errorWithStatus = error as { status?: number; response?: { status?: number } };
+  return errorWithStatus.status ?? errorWithStatus.response?.status;
+}
+
+async function resolveInstallationId(
   githubAppClient: Octokit,
   enableOrgLevel: boolean,
   payload: ActionRequestMessage,
 ): Promise<number> {
-  if (payload.installationId !== 0) {
-    return payload.installationId;
-  }
-
   return enableOrgLevel
     ? (
         await githubAppClient.apps.getOrgInstallation({
@@ -223,6 +228,18 @@ export async function getInstallationId(
           repo: payload.repositoryName,
         })
       ).data.id;
+}
+
+export async function getInstallationId(
+  githubAppClient: Octokit,
+  enableOrgLevel: boolean,
+  payload: ActionRequestMessage,
+): Promise<number> {
+  if (payload.installationId !== 0) {
+    return payload.installationId;
+  }
+
+  return resolveInstallationId(githubAppClient, enableOrgLevel, payload);
 }
 
 export async function isJobQueued(githubInstallationClient: Octokit, payload: ActionRequestMessage): Promise<boolean> {
@@ -373,6 +390,39 @@ function packRunnerLabelsTagValues(labels: string[]): string[] {
   return tagValues;
 }
 
+async function createGithubInstallationClient(
+  githubAppClient: Octokit,
+  enableOrgLevel: boolean,
+  payload: ActionRequestMessage,
+  ghesApiUrl: string,
+): Promise<Octokit> {
+  let installationId = await getInstallationId(githubAppClient, enableOrgLevel, payload);
+
+  try {
+    const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl);
+    return await createOctokitClient(ghAuth.token, ghesApiUrl);
+  } catch (error) {
+    if (payload.installationId === 0 || getErrorStatus(error) !== 404) {
+      throw error;
+    }
+
+    installationId = await resolveInstallationId(githubAppClient, enableOrgLevel, payload);
+    if (installationId === payload.installationId) {
+      throw error;
+    }
+
+    logger.warn('Retrying GitHub installation auth with installation resolved for current app', {
+      eventInstallationId: payload.installationId,
+      resolvedInstallationId: installationId,
+      repositoryOwner: payload.repositoryOwner,
+      repositoryName: payload.repositoryName,
+    });
+
+    const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl);
+    return await createOctokitClient(ghAuth.token, ghesApiUrl);
+  }
+}
+
 export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<string[]> {
   logger.info('Received scale up requests', {
     n_requests: payloads.length,
@@ -471,9 +521,12 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
     // If we've not seen this owner/repo before, we'll need to create a GitHub
     // client for it.
     if (entry === undefined) {
-      const installationId = await getInstallationId(githubAppClient, enableOrgLevel, payload);
-      const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl);
-      const githubInstallationClient = await createOctokitClient(ghAuth.token, ghesApiUrl);
+      const githubInstallationClient = await createGithubInstallationClient(
+        githubAppClient,
+        enableOrgLevel,
+        payload,
+        ghesApiUrl,
+      );
 
       entry = {
         messages: [],

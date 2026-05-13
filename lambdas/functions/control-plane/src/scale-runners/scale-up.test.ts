@@ -1480,6 +1480,34 @@ describe('scaleUp with GHES', () => {
       expect(mockedInstallationAuth).toHaveBeenCalledWith(200, 'https://github.enterprise.something/api/v3');
     });
 
+    it('Should resolve installation again when event installation belongs to another app', async () => {
+      mockOctokit.apps.getOrgInstallation.mockReset();
+      mockOctokit.apps.getOrgInstallation.mockImplementation(() => ({
+        data: {
+          id: 123,
+        },
+      }));
+
+      mockedInstallationAuth
+        .mockRejectedValueOnce({ status: 404 })
+        .mockResolvedValueOnce({
+          type: 'token',
+          tokenType: 'installation',
+          token: 'token',
+          createdAt: 'some-date',
+          expiresAt: 'some-date',
+          permissions: {},
+          repositorySelection: 'all',
+          installationId: 123,
+        });
+
+      await scaleUpModule.scaleUp(TEST_DATA);
+
+      expect(mockOctokit.apps.getOrgInstallation).toHaveBeenCalledWith({ org: TEST_DATA_SINGLE.repositoryOwner });
+      expect(mockedInstallationAuth).toHaveBeenNthCalledWith(1, TEST_DATA_SINGLE.installationId, 'https://github.enterprise.something/api/v3');
+      expect(mockedInstallationAuth).toHaveBeenNthCalledWith(2, 123, 'https://github.enterprise.something/api/v3');
+    });
+
     it('Should reuse GitHub clients for same installation', async () => {
       const messages = createTestMessages(3, [
         { repositoryOwner: 'same-org' },
