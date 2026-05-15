@@ -95,16 +95,59 @@ resource "aws_iam_role" "scale_down" {
 }
 
 resource "aws_iam_role_policy" "scale_down" {
-  name = "scale-down-policy"
-  role = aws_iam_role.scale_down.name
-  policy = templatefile("${path.module}/policies/lambda-scale-down.json", {
-    environment               = var.prefix
-    github_app_id_arn         = nonsensitive(var.github_app_parameters.id.arn)
-    github_app_key_base64_arn = nonsensitive(var.github_app_parameters.key_base64.arn)
-    kms_key_arn               = local.kms_key_arn
-    enterprise_pat_arn        = var.enterprise_pat_parameter != null ? nonsensitive(var.enterprise_pat_parameter.arn) : ""
-    ssm_config_path           = "arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.ssm_paths.root}/${var.ssm_paths.config}"
-  })
+  name   = "scale-down-policy"
+  role   = aws_iam_role.scale_down.name
+  policy = data.aws_iam_policy_document.scale_down.json
+}
+
+data "aws_iam_policy_document" "scale_down" {
+  statement {
+    effect    = "Allow"
+    actions   = ["ec2:DescribeInstances", "ec2:DescribeTags"]
+    resources = ["*"]
+  }
+
+  statement {
+    effect    = "Allow"
+    actions   = ["ec2:TerminateInstances", "ec2:CreateTags", "ec2:DeleteTags"]
+    resources = ["*"]
+    condition {
+      test     = "StringEquals"
+      variable = "ec2:ResourceTag/ghr:Application"
+      values   = ["github-action-runner"]
+    }
+  }
+
+  statement {
+    effect    = "Allow"
+    actions   = ["ec2:TerminateInstances", "ec2:CreateTags", "ec2:DeleteTags"]
+    resources = ["*"]
+    condition {
+      test     = "StringEquals"
+      variable = "ec2:ResourceTag/gh:environment"
+      values   = [var.prefix]
+    }
+  }
+
+  statement {
+    effect  = "Allow"
+    actions = ["ssm:GetParameter", "ssm:GetParameters"]
+    resources = compact([
+      "${local.arn_ssm_parameters_path_config}/*",
+      var.github_app_parameters.key_base64.arn,
+      var.github_app_parameters.id.arn,
+      try(var.enterprise_pat_parameter.arn, ""),
+    ])
+  }
+
+  dynamic "statement" {
+    for_each = local.kms_key_arn != "" ? [local.kms_key_arn] : []
+    content {
+      effect    = "Allow"
+      actions   = ["kms:Decrypt"]
+      resources = [statement.value]
+    }
+  }
 }
 
 resource "aws_iam_role_policy" "scale_down_logging" {
