@@ -24,6 +24,7 @@ const mockOctokit = {
     getSelfHostedRunnerForRepo: vi.fn(),
   },
   paginate: vi.fn(),
+  request: vi.fn(),
 };
 vi.mock('@octokit/rest', () => ({
   Octokit: vi.fn().mockImplementation(function () {
@@ -45,6 +46,7 @@ vi.mock('./../github/auth', async () => ({
   createGithubAppAuth: vi.fn(),
   createGithubInstallationAuth: vi.fn(),
   createOctokitClient: vi.fn(),
+  createEnterprisePATClient: vi.fn(),
 }));
 
 vi.mock('./cache', async () => ({
@@ -771,6 +773,127 @@ describe('Scale down runners', () => {
       expect(runnersTest[0].launchTime).toBeUndefined();
       expect(runnersTest[1].launchTime).toBeDefined();
       expect(runnersTest[2].launchTime).not.toBeDefined();
+    });
+  });
+
+  describe('scale-down enterprise runner support', () => {
+    const mockedEnterprisePATClient = vi.mocked(ghAuth.createEnterprisePATClient);
+
+    beforeEach(() => {
+      process.env.PARAMETER_ENTERPRISE_PAT_NAME = '/ssm/enterprise-pat';
+      mockedEnterprisePATClient.mockResolvedValue(mockOctokit as unknown as Octokit);
+
+      // Enterprise endpoints use client.request() instead of client.actions.*
+      mockOctokit.request = vi.fn();
+      mockOctokit.paginate = vi.fn();
+    });
+
+    it('should use PAT client for enterprise runners and terminate idle runner', async () => {
+      const launchTime = moment(new Date())
+        .subtract(MINIMUM_TIME_RUNNING_IN_MINUTES + 5, 'minutes')
+        .toDate();
+      const enterpriseRunner: RunnerList = {
+        instanceId: 'i-enterprise-idle',
+        launchTime,
+        type: 'Enterprise',
+        owner: 'my-enterprise',
+        registered: true,
+        orphan: false,
+      };
+
+      mockListRunners.mockImplementation(async (filter) => {
+        if (filter?.orphan) return [];
+        return [enterpriseRunner];
+      });
+
+      // Mock paginate for listGitHubRunners - returns the runner as registered
+      mockOctokit.paginate.mockResolvedValue([{ id: 12345, name: 'i-enterprise-idle' }]);
+
+      // Mock request for getGitHubRunnerBusyState (GET runner) - runner is not busy
+      mockOctokit.request.mockImplementation(async (route: string) => {
+        if (route.startsWith('GET')) {
+          return { data: { busy: false, status: 'online' }, headers: {} };
+        }
+        if (route.startsWith('DELETE')) {
+          return { status: 204, headers: {} };
+        }
+        return { headers: {} };
+      });
+
+      await scaleDown();
+
+      expect(mockedEnterprisePATClient).toHaveBeenCalled();
+      expect(mockOctokit.paginate).toHaveBeenCalledWith(
+        'GET /enterprises/{enterprise}/actions/runners',
+        expect.objectContaining({ enterprise: 'my-enterprise' }),
+      );
+      expect(mockOctokit.request).toHaveBeenCalledWith(
+        'GET /enterprises/{enterprise}/actions/runners/{runner_id}',
+        expect.objectContaining({ enterprise: 'my-enterprise', runner_id: 12345 }),
+      );
+      expect(mockOctokit.request).toHaveBeenCalledWith(
+        'DELETE /enterprises/{enterprise}/actions/runners/{runner_id}',
+        expect.objectContaining({ enterprise: 'my-enterprise', runner_id: 12345 }),
+      );
+      expect(terminateRunner).toHaveBeenCalledWith('i-enterprise-idle');
+    });
+
+    it('should not terminate busy enterprise runner', async () => {
+      const launchTime = moment(new Date())
+        .subtract(MINIMUM_TIME_RUNNING_IN_MINUTES + 5, 'minutes')
+        .toDate();
+      const enterpriseRunner: RunnerList = {
+        instanceId: 'i-enterprise-busy',
+        launchTime,
+        type: 'Enterprise',
+        owner: 'my-enterprise',
+        registered: true,
+        orphan: false,
+      };
+
+      mockListRunners.mockImplementation(async (filter) => {
+        if (filter?.orphan) return [];
+        return [enterpriseRunner];
+      });
+
+      mockOctokit.paginate.mockResolvedValue([{ id: 12345, name: 'i-enterprise-busy' }]);
+
+      // Runner is busy
+      mockOctokit.request.mockResolvedValue({
+        data: { busy: true, status: 'online' },
+        headers: {},
+      });
+
+      await scaleDown();
+
+      expect(mockedEnterprisePATClient).toHaveBeenCalled();
+      expect(terminateRunner).not.toHaveBeenCalled();
+    });
+
+    it('should not use GitHub App auth for enterprise runners', async () => {
+      const launchTime = moment(new Date())
+        .subtract(MINIMUM_TIME_RUNNING_IN_MINUTES + 5, 'minutes')
+        .toDate();
+      const enterpriseRunner: RunnerList = {
+        instanceId: 'i-enterprise-noapp',
+        launchTime,
+        type: 'Enterprise',
+        owner: 'my-enterprise',
+        registered: true,
+        orphan: false,
+      };
+
+      mockListRunners.mockImplementation(async (filter) => {
+        if (filter?.orphan) return [];
+        return [enterpriseRunner];
+      });
+      mockOctokit.paginate.mockResolvedValue([]);
+
+      await scaleDown();
+
+      expect(mockedEnterprisePATClient).toHaveBeenCalled();
+      expect(mockedAppAuth).not.toHaveBeenCalled();
+      expect(mockedInstallationAuth).not.toHaveBeenCalled();
     });
   });
 });

@@ -4,7 +4,12 @@ import { RequestError } from '@octokit/request-error';
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import moment from 'moment';
 
-import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
+import {
+  createGithubAppAuth,
+  createGithubInstallationAuth,
+  createOctokitClient,
+  createEnterprisePATClient,
+} from '../github/auth';
 import { bootTimeExceeded, listEC2Runners, tag, untag, terminateRunner } from './../aws/runners';
 import { RunnerInfo, RunnerList } from './../aws/runners.d';
 import { GhRunners, githubCache } from './cache';
@@ -29,6 +34,15 @@ async function getOrCreateOctokit(runner: RunnerInfo): Promise<Octokit> {
 
   logger.debug(`[createGitHubClientForRunner] Cache miss for ${key}`);
   const { ghesApiUrl } = getGitHubEnterpriseApiUrl();
+
+  // Enterprise runners use PAT authentication
+  if (runner.type === 'Enterprise') {
+    const octokit = await createEnterprisePATClient(ghesApiUrl);
+    githubCache.clients.set(key, octokit);
+    return octokit;
+  }
+
+  // Org/Repo runners use GitHub App installation authentication
   const ghAuthPre = await createGithubAppAuth(undefined, ghesApiUrl);
   const githubClientPre = await createOctokitClient(ghAuthPre.token, ghesApiUrl);
 
@@ -59,19 +73,24 @@ async function getGitHubSelfHostedRunnerState(
 ): Promise<RunnerState | null> {
   try {
     const state =
-      ec2runner.type === 'Org'
-        ? await client.actions.getSelfHostedRunnerForOrg({
+      ec2runner.type === 'Enterprise'
+        ? await client.request('GET /enterprises/{enterprise}/actions/runners/{runner_id}', {
             runner_id: runnerId,
-            org: ec2runner.owner,
+            enterprise: ec2runner.owner,
           })
-        : await client.actions.getSelfHostedRunnerForRepo({
-            runner_id: runnerId,
-            owner: ec2runner.owner.split('/')[0],
-            repo: ec2runner.owner.split('/')[1],
-          });
+        : ec2runner.type === 'Org'
+          ? await client.actions.getSelfHostedRunnerForOrg({
+              runner_id: runnerId,
+              org: ec2runner.owner,
+            })
+          : await client.actions.getSelfHostedRunnerForRepo({
+              runner_id: runnerId,
+              owner: ec2runner.owner.split('/')[0],
+              repo: ec2runner.owner.split('/')[1],
+            });
     metricGitHubAppRateLimit(state.headers);
 
-    return state.data;
+    return state.data as RunnerState;
   } catch (error) {
     if (error instanceof RequestError && error.status === 404) {
       logger.info(`Runner '${ec2runner.instanceId}' with GitHub Runner ID '${runnerId}' not found on GitHub (404)`);
@@ -104,16 +123,21 @@ async function listGitHubRunners(runner: RunnerInfo): Promise<GhRunners> {
   logger.debug(`[listGithubRunners] Cache miss for ${key}`);
   const client = await getOrCreateOctokit(runner);
   const runners =
-    runner.type === 'Org'
-      ? await client.paginate(client.actions.listSelfHostedRunnersForOrg, {
-          org: runner.owner,
+    runner.type === 'Enterprise'
+      ? ((await client.paginate('GET /enterprises/{enterprise}/actions/runners', {
+          enterprise: runner.owner,
           per_page: 100,
-        })
-      : await client.paginate(client.actions.listSelfHostedRunnersForRepo, {
-          owner: runner.owner.split('/')[0],
-          repo: runner.owner.split('/')[1],
-          per_page: 100,
-        });
+        })) as GhRunners)
+      : runner.type === 'Org'
+        ? await client.paginate(client.actions.listSelfHostedRunnersForOrg, {
+            org: runner.owner,
+            per_page: 100,
+          })
+        : await client.paginate(client.actions.listSelfHostedRunnersForRepo, {
+            owner: runner.owner.split('/')[0],
+            repo: runner.owner.split('/')[1],
+            per_page: 100,
+          });
   githubCache.runners.set(key, runners);
   logger.debug(`[listGithubRunners] Cache set for ${key}`);
   logger.debug(`[listGithubRunners] Runners: ${JSON.stringify(runners)}`);
@@ -149,21 +173,26 @@ async function removeRunner(ec2runner: RunnerInfo, ghRunnerIds: number[]): Promi
       const statuses = await Promise.all(
         ghRunnerIds.map(async (ghRunnerId) => {
           return (
-            ec2runner.type === 'Org'
-              ? await githubAppClient.actions.deleteSelfHostedRunnerFromOrg({
+            ec2runner.type === 'Enterprise'
+              ? await githubAppClient.request('DELETE /enterprises/{enterprise}/actions/runners/{runner_id}', {
                   runner_id: ghRunnerId,
-                  org: ec2runner.owner,
+                  enterprise: ec2runner.owner,
                 })
-              : await githubAppClient.actions.deleteSelfHostedRunnerFromRepo({
-                  runner_id: ghRunnerId,
-                  owner: ec2runner.owner.split('/')[0],
-                  repo: ec2runner.owner.split('/')[1],
-                })
+              : ec2runner.type === 'Org'
+                ? await githubAppClient.actions.deleteSelfHostedRunnerFromOrg({
+                    runner_id: ghRunnerId,
+                    org: ec2runner.owner,
+                  })
+                : await githubAppClient.actions.deleteSelfHostedRunnerFromRepo({
+                    runner_id: ghRunnerId,
+                    owner: ec2runner.owner.split('/')[0],
+                    repo: ec2runner.owner.split('/')[1],
+                  })
           ).status;
         }),
       );
 
-      if (statuses.every((status) => status == 204)) {
+      if (statuses.every((status: number) => status == 204)) {
         await terminateRunner(ec2runner.instanceId);
         logger.info(`AWS runner instance '${ec2runner.instanceId}' is terminated and GitHub runner is de-registered.`);
       } else {

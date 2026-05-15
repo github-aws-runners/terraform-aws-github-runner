@@ -17,7 +17,7 @@ module "pool" {
     instance_types                = var.instance_types
     kms_key_arn                   = local.kms_key_arn
     ami_kms_key_arn               = local.ami_kms_key_arn
-    ami_id_ssm_parameter_arn      = local.ami_id_ssm_module_managed ? aws_ssm_parameter.runner_ami_id[0].arn : var.ami.id_ssm_parameter_arn
+    ami_id_ssm_parameter_arn      = local.ami_id_ssm_module_managed ? nonsensitive(aws_ssm_parameter.runner_ami_id[0].arn) : var.ami.id_ssm_parameter_arn
     lambda = {
       log_level                      = var.log_level
       logging_retention_in_days      = var.logging_retention_in_days
@@ -61,6 +61,9 @@ module "pool" {
     tags                                 = local.tags
     lambda_tags                          = var.lambda_tags
     arn_ssm_parameters_path_config       = local.arn_ssm_parameters_path_config
+    runner_registration_level            = var.runner_registration_level
+    enterprise_slug                      = var.enterprise_slug
+    enterprise_pat_parameter             = var.enterprise_pat_parameter
   }
 
   aws_partition  = var.aws_partition

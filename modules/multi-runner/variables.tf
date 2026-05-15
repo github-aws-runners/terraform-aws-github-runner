@@ -5,6 +5,9 @@ variable "github_app" {
   If you chose to provide the configuration values directly here,
   please ensure the key is the base64-encoded `.pem` file (the output of `base64 app.private-key.pem`, not the content of `private-key.pem`).
   Note: the provided SSM parameters arn and name have a precedence over the actual value (i.e `key_base64_ssm` has a precedence over `key_base64` etc).
+
+  For enterprise runners (runner_registration_level = "enterprise"), only `webhook_secret` (or `webhook_secret_ssm`) is required.
+  The `key_base64` and `id` fields are only needed for org/repo level runners.
   EOF
   type = object({
     key_base64 = optional(string)
@@ -25,13 +28,45 @@ variable "github_app" {
   })
 
   validation {
-    condition     = (var.github_app.key_base64 != null || var.github_app.key_base64_ssm != null) && (var.github_app.id != null || var.github_app.id_ssm != null) && (var.github_app.webhook_secret != null || var.github_app.webhook_secret_ssm != null)
-    error_message = <<EOF
-     You must set all of the following parameters, choosing one option from each pair:
-      - `key_base64` or `key_base64_ssm`
-      - `id` or `id_ssm`
-      - `webhook_secret` or `webhook_secret_ssm`
-    EOF
+    condition     = var.github_app.webhook_secret != null || var.github_app.webhook_secret_ssm != null
+    error_message = "You must set either `webhook_secret` or `webhook_secret_ssm`."
+  }
+}
+
+variable "enterprise_slug" {
+  description = "The slug (URL identifier) of the GitHub Enterprise account. Required when runner_registration_level is \"enterprise\". Example: \"my-enterprise\"."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.enterprise_slug == null ? true : (length(var.enterprise_slug) > 0 && can(regex("^[a-zA-Z0-9-]+$", var.enterprise_slug)))
+    error_message = "Variable 'enterprise_slug' must be a non-empty string containing only alphanumeric characters and hyphens. Example: enterprise_slug = \"my-enterprise\""
+  }
+}
+
+variable "enterprise_pat" {
+  description = <<EOF
+  Enterprise Personal Access Token(s) (PAT) for authenticating with GitHub Enterprise runner management APIs.
+  Required when runner_registration_level is "enterprise". Each PAT must have the 'manage_runners:enterprise' scope.
+  You can either provide the PAT value directly (Terraform creates the SSM parameter) or reference a pre-existing SSM parameter.
+  Note: the provided SSM parameter arn and name take precedence over the direct value.
+
+  To distribute API calls across multiple PATs and avoid rate limiting, provide a comma-separated list of PATs
+  in the 'pat' field or in the SSM parameter value. The Lambda functions will randomly select one PAT per invocation.
+  Example: enterprise_pat = { pat = "ghp_token1,ghp_token2,ghp_token3" }
+  EOF
+  type = object({
+    pat = optional(string)
+    pat_ssm = optional(object({
+      arn  = string
+      name = string
+    }))
+  })
+  default = null
+
+  validation {
+    condition     = var.enterprise_pat == null ? true : (var.enterprise_pat.pat != null || var.enterprise_pat.pat_ssm != null)
+    error_message = "When 'enterprise_pat' is provided, you must set either 'pat' (direct value) or 'pat_ssm' (pre-existing SSM parameter reference). Example: enterprise_pat = { pat = \"ghp_xxxx\" }"
   }
 }
 
@@ -90,7 +125,8 @@ variable "multi_runner_config" {
         "InsufficientInstanceCapacity",
         "InsufficientCapacityOnHost",
       ])
-      enable_organization_runners             = optional(bool, false)
+      enable_organization_runners             = optional(bool, false) # DEPRECATED: use runner_registration_level
+      runner_registration_level               = optional(string, null)
       enable_runner_binaries_syncer           = optional(bool, true)
       enable_ssm_on_runners                   = optional(bool, false)
       enable_userdata                         = optional(bool, true)
@@ -220,7 +256,7 @@ variable "multi_runner_config" {
         instance_types: "List of instance types for the action runner. Defaults are based on runner_os (al2023 for linux and Windows Server Core for win)."
         job_queue_retention_in_seconds: "The number of seconds the job is held in the queue before it is purged"
         minimum_running_time_in_minutes: "The time an ec2 action runner should be running at minimum before terminated if not busy."
-        pool_runner_owner: "The pool will deploy runners to the GitHub org ID, set this value to the org to which you want the runners deployed. Repo level is not supported."
+        pool_runner_owner: "The pool will deploy runners to the GitHub org ID, set this value to the org to which you want the runners deployed. Repo level is not supported. For enterprise-level runners, defaults to the enterprise_slug if not set."
         runner_additional_security_group_ids: "List of additional security groups IDs to apply to the runner. If added outside the multi_runner_config block, the additional security group(s) will be applied to all runner configs. If added inside the multi_runner_config, the additional security group(s) will be applied to the individual runner."
         runner_as_root: "Run the action runner under the root user. Variable `runner_run_as` will be ignored."
         runner_boot_time_in_minutes: "The minimum time for an EC2 runner to boot and register as a runner."

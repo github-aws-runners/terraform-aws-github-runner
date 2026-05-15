@@ -38,7 +38,10 @@ resource "aws_lambda_function" "pool" {
       RUNNER_LABELS                            = lower(join(",", var.config.runner.labels))
       RUNNER_GROUP_NAME                        = var.config.runner.group_name
       RUNNER_NAME_PREFIX                       = var.config.runner.name_prefix
-      RUNNER_OWNER                             = var.config.runner.pool_owner
+      RUNNER_OWNER                             = coalesce(var.config.runner.pool_owner, var.config.enterprise_slug, "")
+      RUNNER_REGISTRATION_LEVEL                = var.config.runner_registration_level != null ? var.config.runner_registration_level : ""
+      ENTERPRISE_SLUG                          = var.config.enterprise_slug != null ? var.config.enterprise_slug : ""
+      PARAMETER_ENTERPRISE_PAT_NAME            = try(var.config.enterprise_pat_parameter.name, "")
       SSM_TOKEN_PATH                           = var.config.ssm_token_path
       SSM_CONFIG_PATH                          = var.config.ssm_config_path
       SUBNET_IDS                               = join(",", var.config.subnet_ids)
@@ -85,17 +88,90 @@ resource "aws_iam_role" "pool" {
 }
 
 resource "aws_iam_role_policy" "pool" {
-  name = "pool-policy"
-  role = aws_iam_role.pool.name
-  policy = templatefile("${path.module}/policies/lambda-pool.json", {
-    arn_ssm_parameters_path_config = var.config.arn_ssm_parameters_path_config
-    arn_runner_instance_role       = var.config.runner.role.arn
-    github_app_id_arn              = var.config.github_app_parameters.id.arn
-    github_app_key_base64_arn      = var.config.github_app_parameters.key_base64.arn
-    kms_key_arn                    = var.config.kms_key_arn
-    ami_kms_key_arn                = var.config.ami_kms_key_arn
-    ssm_ami_id_parameter_arn       = var.config.ami_id_ssm_parameter_arn
-  })
+  name   = "pool-policy"
+  role   = aws_iam_role.pool.name
+  policy = data.aws_iam_policy_document.pool.json
+}
+
+data "aws_iam_policy_document" "pool" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "ec2:DescribeInstances",
+      "ec2:DescribeTags",
+      "ec2:RunInstances",
+      "ec2:CreateFleet",
+      "ec2:CreateTags",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    effect    = "Allow"
+    actions   = ["iam:PassRole"]
+    resources = [var.config.runner.role.arn]
+  }
+
+  statement {
+    effect    = "Allow"
+    actions   = ["ssm:AddTagsToResource", "ssm:PutParameter"]
+    resources = ["*"]
+  }
+
+  statement {
+    effect    = "Allow"
+    actions   = ["ssm:GetParameter", "ssm:GetParameters", "ssm:GetParametersByPath"]
+    resources = [var.config.arn_ssm_parameters_path_config, "${var.config.arn_ssm_parameters_path_config}/*"]
+  }
+
+  statement {
+    effect    = "Allow"
+    actions   = ["ssm:GetParameters"]
+    resources = [var.config.ami_id_ssm_parameter_arn]
+  }
+
+  statement {
+    effect  = "Allow"
+    actions = ["ssm:GetParameter", "ssm:GetParameters"]
+    resources = compact([
+      "${var.config.arn_ssm_parameters_path_config}/*",
+      var.config.github_app_parameters.key_base64.arn,
+      var.config.github_app_parameters.id.arn,
+      try(var.config.enterprise_pat_parameter.arn, ""),
+    ])
+  }
+
+  dynamic "statement" {
+    for_each = var.config.kms_key_arn != "" ? [var.config.kms_key_arn] : []
+    content {
+      effect    = "Allow"
+      actions   = ["kms:Decrypt"]
+      resources = [statement.value]
+    }
+  }
+
+  dynamic "statement" {
+    for_each = var.config.ami_kms_key_arn != "" ? [var.config.ami_kms_key_arn] : []
+    content {
+      effect    = "Allow"
+      actions   = ["kms:DescribeKey", "kms:ReEncrypt*", "kms:Decrypt"]
+      resources = [statement.value]
+    }
+  }
+
+  dynamic "statement" {
+    for_each = var.config.ami_kms_key_arn != "" ? [var.config.ami_kms_key_arn] : []
+    content {
+      effect    = "Allow"
+      actions   = ["kms:CreateGrant"]
+      resources = [statement.value]
+      condition {
+        test     = "Bool"
+        variable = "aws:ViaAWSService"
+        values   = ["true"]
+      }
+    }
+  }
 }
 
 resource "aws_iam_role_policy" "pool_logging" {
