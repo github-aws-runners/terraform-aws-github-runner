@@ -110,6 +110,55 @@ pool_config = [{
 
 The pool is NOT enabled by default and can be enabled by setting at least one object of the pool config list. The [ephemeral example](examples/ephemeral.md) contains configuration options (commented out).
 
+## Warm Pool (Stop/Restart)
+
+The warm pool feature provides a middle ground between always-on idle runners and cold-starting new instances. Instead of terminating idle runners, the module **stops** them (preserving the EBS volume, OS state, and runner binary). When a new job arrives, stopped instances are **restarted** in 10–30 seconds instead of going through a full 2–5 minute cold start.
+
+### How it works
+
+1. **Scale-down**: When an idle runner is no longer needed, instead of terminating, the lambda stops the EC2 instance and records it in a DynamoDB table.
+2. **Scale-up / Pool**: When a new runner is needed, the lambda checks DynamoDB for available stopped instances and starts them before creating new ones.
+3. **TTL cleanup**: A DynamoDB TTL automatically expires warm instances after `max_warm_age_hours` (default 7 days), at which point they are terminated on next scale-down.
+
+### Configuration
+
+```hcl
+# Enable warm pool with custom settings
+warm_pool_config = {
+  enabled                       = true
+  max_warm_instances            = 5     # max stopped instances per runner owner
+  max_warm_age_hours            = 168   # 7 days before TTL expiry
+  warm_pool_ready_delay_seconds = 30    # grace period before instance is eligible
+}
+
+# Use warm strategy (stop instead of terminate)
+pool_strategy = "warm"
+```
+
+### Strategy options
+
+| `pool_strategy` | Behavior |
+|---|---|
+| `hot` (default) | Traditional: pool lambda creates fresh instances, scale-down terminates idle ones |
+| `warm` | Idle instances are stopped instead of terminated. Scale-up restarts warm instances before creating new ones |
+
+### Metrics
+
+When `metrics.enable = true` and `metrics.metric.enable_warm_pool = true`, the following CloudWatch metrics are emitted:
+
+| Metric | Description |
+|---|---|
+| `WarmPoolInstanceStopped` | Instance stopped and added to warm pool |
+| `WarmPoolInstanceStarted` | Warm instance successfully restarted |
+| `WarmPoolStartFailed` | Failed to restart a warm instance (stale/terminated) |
+
+### Considerations
+
+- Works with both spot and on-demand instances (best-effort for spot — a spot instance may be reclaimed while stopped).
+- Requires a DynamoDB table (created automatically when `warm_pool_config.enabled = true`, using PAY_PER_REQUEST billing).
+- The `pool_strategy = "warm"` setting requires `warm_pool_config.enabled = true`.
+- Warm instances consume EBS storage costs while stopped but not compute costs.
+
 ## Idle runners
 
 The module will scale down to zero runners by default. By specifying a `idle_config` config, idle runners can be kept active. The scale down lambda checks if any of the cron expressions matches the current time with a margin of 5 seconds. When there is a match, the number of runners specified in the idle config will be kept active. In case multiple cron expressions match, the first one will be used. Below is an idle configuration for keeping runners active from 9:00am to 5:59pm on working days. The [cron expression generator by Cronhub](https://crontab.cronhub.io/) is a great resource to set up your idle config.
