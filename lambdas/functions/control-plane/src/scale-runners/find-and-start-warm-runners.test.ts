@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { startRunner, tag } from './../aws/runners';
+import { startRunner, tag, untag } from './../aws/runners';
 import {
   getWarmPoolConfig,
   getPoolStrategy,
@@ -46,6 +46,7 @@ vi.mock('./job-retry', () => ({
 
 const mockStartRunner = vi.mocked(startRunner);
 const mockTag = vi.mocked(tag);
+const mockUntag = vi.mocked(untag);
 const mockGetWarmPoolConfig = vi.mocked(getWarmPoolConfig);
 const mockGetPoolStrategy = vi.mocked(getPoolStrategy);
 const mockListWarmInstances = vi.mocked(listWarmInstancesByOwner);
@@ -144,6 +145,7 @@ describe('findAndStartWarmRunners', () => {
 
     expect(result).toEqual(['i-warm-1']);
     expect(mockTag).toHaveBeenCalledWith('i-warm-1', [{ Key: 'ghr:started-from-warm-pool', Value: 'true' }]);
+    expect(mockUntag).toHaveBeenCalledWith('i-warm-1', [{ Key: 'ghr:warm-pool-member' }]);
   });
 
   it('should succeed even if tag fails (best-effort)', async () => {

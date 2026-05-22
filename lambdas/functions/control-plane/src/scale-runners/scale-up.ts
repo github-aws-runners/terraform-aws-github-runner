@@ -4,7 +4,7 @@ import { getParameter, putParameter } from '@aws-github-runner/aws-ssm-util';
 import yn from 'yn';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
-import { createRunner, listEC2Runners, startRunner, tag, terminateRunner } from './../aws/runners';
+import { createRunner, listEC2Runners, startRunner, tag, untag, terminateRunner } from './../aws/runners';
 import { RunnerInputParameters } from './../aws/runners.d';
 import { metricGitHubAppRateLimit } from '../github/rate-limit';
 import { publishRetryMessage } from './job-retry';
@@ -282,9 +282,12 @@ export async function findAndStartWarmRunners(
       emitWarmPoolMetric('WarmPoolInstanceStarted', 1, { Owner: runnerOwner });
       logger.info(`Started warm instance '${entry.instanceId}' for owner '${runnerOwner}'`);
 
-      // Observability tag per ADR: marks this instance was started from warm pool (permanent, best-effort)
-      await tag(entry.instanceId, [{ Key: 'ghr:started-from-warm-pool', Value: 'true' }]).catch((e) => {
-        logger.warn(`Failed to tag '${entry.instanceId}' as started-from-warm-pool, continuing`, { error: e });
+      // Observability tags (best-effort): mark started from warm pool + remove membership tag
+      await Promise.all([
+        tag(entry.instanceId, [{ Key: 'ghr:started-from-warm-pool', Value: 'true' }]),
+        untag(entry.instanceId, [{ Key: 'ghr:warm-pool-member' }]),
+      ]).catch((e) => {
+        logger.warn(`Failed to update tags on '${entry.instanceId}', continuing`, { error: e });
       });
     } catch (e) {
       logger.warn(`Failed to start warm instance '${entry.instanceId}', skipping`, { error: e as Error });
