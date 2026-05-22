@@ -61,6 +61,14 @@ module "pool" {
     tags                                 = local.tags
     lambda_tags                          = var.lambda_tags
     arn_ssm_parameters_path_config       = local.arn_ssm_parameters_path_config
+    warm_pool_table_name                 = var.warm_pool_config.enabled ? aws_dynamodb_table.warm_pool[0].name : ""
+    warm_pool_config = {
+      enabled                       = var.warm_pool_config.enabled
+      max_warm_instances            = var.warm_pool_config.max_warm_instances
+      max_warm_age_hours            = var.warm_pool_config.max_warm_age_hours
+      warm_pool_ready_delay_seconds = var.warm_pool_config.warm_pool_ready_delay_seconds
+    }
+    pool_strategy = var.pool_strategy
   }
 
   aws_partition  = var.aws_partition

@@ -34,6 +34,14 @@ resource "aws_lambda_function" "scale_down" {
       POWERTOOLS_LOGGER_LOG_EVENT              = var.log_level == "debug" ? "true" : "false"
       RUNNER_BOOT_TIME_IN_MINUTES              = var.runner_boot_time_in_minutes
       SCALE_DOWN_CONFIG                        = jsonencode(var.idle_config)
+      WARM_POOL_CONFIG                         = jsonencode({
+        enabled                       = var.warm_pool_config.enabled
+        maxWarmInstances              = var.warm_pool_config.max_warm_instances
+        maxWarmAgeHours               = var.warm_pool_config.max_warm_age_hours
+        warmPoolReadyDelaySeconds     = var.warm_pool_config.warm_pool_ready_delay_seconds
+      })
+      WARM_POOL_TABLE_NAME                     = var.warm_pool_config.enabled ? aws_dynamodb_table.warm_pool[0].name : ""
+      POOL_STRATEGY                            = var.pool_strategy
       POWERTOOLS_SERVICE_NAME                  = "${var.prefix}-scale-down"
       POWERTOOLS_METRICS_NAMESPACE             = var.metrics.namespace
       POWERTOOLS_TRACE_ENABLED                 = var.tracing_config.mode != null ? true : false

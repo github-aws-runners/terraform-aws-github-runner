@@ -116,6 +116,8 @@ module "runners" {
   pool_lambda_timeout                        = var.pool_lambda_timeout
   pool_runner_owner                          = each.value.runner_config.pool_runner_owner
   pool_lambda_reserved_concurrent_executions = var.pool_lambda_reserved_concurrent_executions
+  warm_pool_config                           = each.value.runner_config.warm_pool_config
+  pool_strategy                              = each.value.runner_config.pool_strategy
   associate_public_ipv4_address              = var.associate_public_ipv4_address
 
   ssm_housekeeper = var.runners_ssm_housekeeper

@@ -49,6 +49,14 @@ resource "aws_lambda_function" "pool" {
       ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS     = jsonencode(var.config.runner.enable_on_demand_failover_for_errors)
       SSM_PARAMETER_STORE_TAGS                 = var.config.lambda.parameter_store_tags
       SCALE_ERRORS                             = jsonencode(var.config.runner.scale_errors)
+      WARM_POOL_CONFIG                         = jsonencode({
+        enabled                       = var.config.warm_pool_config.enabled
+        maxWarmInstances              = var.config.warm_pool_config.max_warm_instances
+        maxWarmAgeHours               = var.config.warm_pool_config.max_warm_age_hours
+        warmPoolReadyDelaySeconds     = var.config.warm_pool_config.warm_pool_ready_delay_seconds
+      })
+      WARM_POOL_TABLE_NAME                     = var.config.warm_pool_table_name
+      POOL_STRATEGY                            = var.config.pool_strategy
     }
   }
 

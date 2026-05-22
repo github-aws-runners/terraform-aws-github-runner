@@ -51,3 +51,8 @@ output "logfiles" {
   value       = local.logfiles
   description = "List of logfiles to send to CloudWatch. Object description: `log_group_name`: Name of the log group, `file_path`: path to the log file, `log_stream_name`: name of the log stream."
 }
+
+output "warm_pool_dynamodb_table" {
+  value       = try(aws_dynamodb_table.warm_pool[0], null)
+  description = "The DynamoDB table used for warm pool state tracking. Null when warm pool is disabled."
+}

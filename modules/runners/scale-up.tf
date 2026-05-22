@@ -62,6 +62,14 @@ resource "aws_lambda_function" "scale_up" {
       ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS     = jsonencode(var.enable_on_demand_failover_for_errors)
       SCALE_ERRORS                             = jsonencode(var.scale_errors)
       JOB_RETRY_CONFIG                         = jsonencode(local.job_retry_config)
+      WARM_POOL_CONFIG                         = jsonencode({
+        enabled                       = var.warm_pool_config.enabled
+        maxWarmInstances              = var.warm_pool_config.max_warm_instances
+        maxWarmAgeHours               = var.warm_pool_config.max_warm_age_hours
+        warmPoolReadyDelaySeconds     = var.warm_pool_config.warm_pool_ready_delay_seconds
+      })
+      WARM_POOL_TABLE_NAME                     = var.warm_pool_config.enabled ? aws_dynamodb_table.warm_pool[0].name : ""
+      POOL_STRATEGY                            = var.pool_strategy
     }
   }
 
