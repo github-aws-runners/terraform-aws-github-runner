@@ -24,6 +24,7 @@ resource "aws_lambda_function" "scale_down" {
     variables = {
       ENVIRONMENT                              = var.prefix
       ENABLE_METRIC_GITHUB_APP_RATE_LIMIT      = var.metrics.enable && var.metrics.metric.enable_github_app_rate_limit
+      ENABLE_METRIC_WARM_POOL                  = var.metrics.enable && var.metrics.metric.enable_warm_pool
       GHES_URL                                 = var.ghes_url
       USER_AGENT                               = var.user_agent
       LOG_LEVEL                                = var.log_level

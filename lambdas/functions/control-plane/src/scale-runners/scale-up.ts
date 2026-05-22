@@ -8,7 +8,7 @@ import { createRunner, listEC2Runners, startRunner, tag, terminateRunner } from 
 import { RunnerInputParameters } from './../aws/runners.d';
 import { metricGitHubAppRateLimit } from '../github/rate-limit';
 import { publishRetryMessage } from './job-retry';
-import { getWarmPoolConfig, getPoolStrategy, listWarmInstancesByOwner, removeFromWarmPool } from '../aws/warm-pool';
+import { getWarmPoolConfig, getPoolStrategy, listWarmInstancesByOwner, removeFromWarmPool, emitWarmPoolMetric } from '../aws/warm-pool';
 
 const logger = createChildLogger('scale-up');
 
@@ -267,9 +267,11 @@ export async function findAndStartWarmRunners(
       await startRunner(entry.instanceId);
       await removeFromWarmPool(entry.instanceId);
       startedInstances.push(entry.instanceId);
+      emitWarmPoolMetric('WarmPoolInstanceStarted', 1, { Owner: runnerOwner });
       logger.info(`Started warm instance '${entry.instanceId}' for owner '${runnerOwner}'`);
     } catch (e) {
       logger.warn(`Failed to start warm instance '${entry.instanceId}', skipping`, { error: e as Error });
+      emitWarmPoolMetric('WarmPoolStartFailed', 1, { Owner: runnerOwner });
       // Remove from DynamoDB anyway — the instance may be terminated/gone
       await removeFromWarmPool(entry.instanceId).catch(() => {});
     }

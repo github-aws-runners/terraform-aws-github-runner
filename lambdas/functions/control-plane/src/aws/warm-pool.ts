@@ -5,8 +5,10 @@ import {
   QueryCommand,
   GetItemCommand,
 } from '@aws-sdk/client-dynamodb';
-import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
+import { createChildLogger, createSingleMetric } from '@aws-github-runner/aws-powertools-util';
 import { getTracedAWSV3Client } from '@aws-github-runner/aws-powertools-util';
+import { MetricUnit } from '@aws-lambda-powertools/metrics';
+import yn from 'yn';
 
 const logger = createChildLogger('warm-pool');
 
@@ -141,4 +143,16 @@ function itemToEntry(item: any): WarmPoolEntry {
     stoppedAt: item.stoppedAt.S,
     expiresAt: Number(item.expiresAt.N),
   };
+}
+
+export function emitWarmPoolMetric(
+  metricName: 'WarmPoolInstanceStopped' | 'WarmPoolInstanceStarted' | 'WarmPoolStartFailed' | 'WarmPoolSize',
+  value: number,
+  dimensions: Record<string, string> = {},
+): void {
+  const enabled = yn(process.env.ENABLE_METRIC_WARM_POOL, { default: false });
+  if (!enabled) return;
+
+  const environment = process.env.ENVIRONMENT || '';
+  createSingleMetric(metricName, MetricUnit.Count, value, { Environment: environment, ...dimensions });
 }

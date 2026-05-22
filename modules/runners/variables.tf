@@ -744,6 +744,7 @@ variable "metrics" {
       enable_github_app_rate_limit    = optional(bool, true)
       enable_job_retry                = optional(bool, true)
       enable_spot_termination_warning = optional(bool, true)
+      enable_warm_pool                = optional(bool, true)
     }), {})
   })
   default = {}

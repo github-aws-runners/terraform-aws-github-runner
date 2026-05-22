@@ -11,7 +11,7 @@ import { GhRunners, githubCache } from './cache';
 import { ScalingDownConfig, getEvictionStrategy, getIdleRunnerCount } from './scale-down-config';
 import { metricGitHubAppRateLimit } from '../github/rate-limit';
 import { getGitHubEnterpriseApiUrl } from './scale-up';
-import { addToWarmPool, countWarmInstancesByOwner, getWarmPoolConfig, getPoolStrategy } from '../aws/warm-pool';
+import { addToWarmPool, countWarmInstancesByOwner, getWarmPoolConfig, getPoolStrategy, emitWarmPoolMetric } from '../aws/warm-pool';
 
 const logger = createChildLogger('scale-down');
 
@@ -182,6 +182,7 @@ async function removeRunner(ec2runner: RunnerInfo, ghRunnerIds: number[]): Promi
               `AWS runner instance '${ec2runner.instanceId}' is stopped and added to warm pool ` +
                 `(${warmCount + 1}/${warmPoolConfig.maxWarmInstances}).`,
             );
+            emitWarmPoolMetric('WarmPoolInstanceStopped', 1, { Owner: ec2runner.owner });
           } else {
             await terminateRunner(ec2runner.instanceId);
             logger.info(

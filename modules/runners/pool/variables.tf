@@ -77,6 +77,7 @@ variable "config" {
       warm_pool_ready_delay_seconds = number
     })
     pool_strategy = string
+    enable_metric_warm_pool = bool
   })
 }
 
