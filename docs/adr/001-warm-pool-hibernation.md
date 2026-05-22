@@ -203,7 +203,7 @@ The Lambda execution roles need additional permissions:
 - **Stale state risk**: A stopped instance may have outdated packages, expired credentials, or stale Docker caches. The startup script must handle re-registration and basic validation.
 - **Instance type lock-in**: A stopped instance retains its instance type. If the launch template or instance type config changes, warm instances become invalid and must be terminated.
 - **Complexity**: Three-state lifecycle is more complex than the current two-state (running/terminated) model.
-- **Spot instances**: Stopped spot instances can be reclaimed by AWS at any time. The warm pool works with spot (best-effort — if reclaimed, falls through to cold launch), but is most reliable with on-demand. **Future enhancement**: add a `warm_pool_capacity_type_override` setting that forces pool-created instances to use on-demand even when the runner config specifies spot. This gives cheap spot for reactive scale-up with a reliable on-demand warm pool as a failsafe.
+- **Spot instances**: Stopped spot instances can be reclaimed by AWS at any time. More critically, **one-time spot requests (the module default) cannot be stopped at all** — the EC2 API returns `UnsupportedOperation`. The warm pool works only with on-demand or persistent spot instances. The scale-down lambda handles this gracefully by falling back to terminate, but operators must set `instance_target_capacity_type = "on-demand"` for the warm pool to actually accumulate stopped instances. See [EC2 Instance Lifecycle and Warm Pool Compatibility](#ec2-instance-lifecycle-and-warm-pool-compatibility) for details.
 
 ### Risks & Mitigations
 
@@ -248,6 +248,63 @@ Take EBS snapshots of pool instances and use them for fast launch:
 - Fast Launch has availability zone constraints
 
 **Decision**: Stop/Start is simpler and achieves comparable startup times.
+
+## EC2 Instance Lifecycle and Warm Pool Compatibility
+
+The warm pool relies on the EC2 `StopInstances` / `StartInstances` APIs. Not all EC2 purchase options support stop/start:
+
+### Instance Types by Purchase Option
+
+| Purchase Option | Can Stop/Start? | Warm Pool Compatible? | Cost vs On-Demand |
+|----------------|----------------|----------------------|-------------------|
+| **On-demand** | Yes | Yes (fully reliable) | 100% (baseline) |
+| **Persistent Spot** | Yes | Yes (best-effort) | 60-90% discount |
+| **One-time Spot** | No | No — must terminate | 60-90% discount |
+
+### What is a Persistent Spot Request?
+
+AWS Spot Instances come in two request types:
+
+- **One-time request** (default in this module via EC2 Fleet): AWS fulfills the request once. The instance **cannot be stopped** — only terminated. If interrupted by AWS, it is terminated and gone. This is what `instance_target_capacity_type = "spot"` uses today.
+
+- **Persistent request**: AWS keeps the request active. The instance **can be stopped and restarted**. When you stop a persistent spot instance, the underlying capacity is released (no compute cost), but the request remains open. When you start it, AWS attempts to re-acquire capacity at the current spot price. If capacity is unavailable, the start may be delayed.
+
+### Cost Comparison for Warm Pool
+
+Assuming a `m5.large` in eu-west-1 (~$0.096/hr on-demand, ~$0.035/hr spot):
+
+| Strategy | Running Cost | Stopped Cost | Monthly idle cost (1 instance, 50% idle) |
+|----------|-------------|-------------|------------------------------------------|
+| Hot pool (on-demand) | $0.096/hr | N/A (always running) | ~$34.56 |
+| Hot pool (spot) | $0.035/hr | N/A (always running) | ~$12.60 |
+| Warm pool (on-demand) | $0.096/hr when active | ~$0.80/mo EBS only | ~$0.80 + active hours |
+| Warm pool (persistent spot) | $0.035/hr when active | ~$0.80/mo EBS only | ~$0.80 + active hours |
+
+The warm pool's value proposition is strongest when runners spend significant time idle: the stopped EBS cost ($0.80/mo for 10GB gp3) vs running compute ($12-35/mo).
+
+### Persistent Spot Caveats
+
+1. **Restart not guaranteed**: When starting a stopped persistent spot instance, AWS may not have capacity at the current spot price. The instance stays in `pending` until capacity is available. The scale-up lambda should implement a timeout and fall back to cold launch.
+
+2. **Price changes**: If the spot price has risen above your max price since the instance was stopped, the start will fail.
+
+3. **Reclamation while stopped**: AWS can reclaim (terminate) a stopped spot instance if it needs the capacity, though this is rare for stopped instances.
+
+4. **Not currently supported by this module**: The EC2 Fleet `CreateFleet` API used by this module creates one-time spot requests. Supporting persistent spot requires either:
+   - Using `RunInstances` with `InstanceMarketOptions.SpotOptions.SpotInstanceType = "persistent"`, or
+   - Using `CreateFleet` with `type = "maintain"` instead of `"instant"`
+
+### Recommended Configuration
+
+For warm pool deployments, use one of:
+
+1. **On-demand** (`instance_target_capacity_type = "on-demand"`): Fully reliable, higher cost when active but zero cost when stopped. Best for critical workloads.
+
+2. **Spot for scale-up, on-demand for pool** (future `warm_pool_capacity_type_override`): Scale-up launches cheap spot instances for burst jobs; pool maintains on-demand instances that reliably stop/start. Best cost-to-reliability ratio.
+
+3. **On-demand with warm pool only** (no hot pool): Set `pool_strategy = "warm"` with on-demand instances. Pool creates instances, immediately stops them. Scale-up starts them on demand. Zero idle compute cost, 10-30s start time, fully reliable.
+
+> **Current limitation**: If `instance_target_capacity_type = "spot"` (the default), the warm pool stop will fail because this module uses one-time spot requests. The scale-down lambda handles this gracefully by falling back to terminate, but no warm instances will accumulate. To use the warm pool effectively, set `instance_target_capacity_type = "on-demand"` for the runner config that uses warm pool.
 
 ## Implementation Plan
 

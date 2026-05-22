@@ -42,6 +42,7 @@
         {
             "Effect": "Allow",
             "Action": [
+              "ssm:GetParameter",
               "ssm:GetParameters"
             ],
             "Resource": [

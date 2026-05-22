@@ -18,7 +18,9 @@
       "Effect": "Allow",
       "Action": [
         "ec2:StopInstances",
-        "ec2:StartInstances"
+        "ec2:StartInstances",
+        "ec2:CreateTags",
+        "ec2:DeleteTags"
       ],
       "Resource": "*",
       "Condition": {
@@ -31,7 +33,9 @@
       "Effect": "Allow",
       "Action": [
         "ec2:StopInstances",
-        "ec2:StartInstances"
+        "ec2:StartInstances",
+        "ec2:CreateTags",
+        "ec2:DeleteTags"
       ],
       "Resource": "*",
       "Condition": {

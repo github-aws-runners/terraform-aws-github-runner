@@ -78,4 +78,30 @@ EOF
 echo ACTIONS_RUNNER_HOOK_JOB_COMPLETED=/opt/actions-runner/hook_job_completed.sh | tee -a /opt/actions-runner/.env
 %{ endif }
 
+# Write start-runner script to disk so it can be re-executed on warm pool restart
+cat > /opt/actions-runner/start-runner.sh <<'STARTRUNNEREOF'
 ${start_runner}
+STARTRUNNEREOF
+chmod +x /opt/actions-runner/start-runner.sh
+
+# Create a systemd service that runs start-runner on every boot
+cat > /etc/systemd/system/github-runner-start.service <<'SYSTEMDEOF'
+[Unit]
+Description=GitHub Actions Runner Start
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/actions-runner/start-runner.sh
+WorkingDirectory=/opt/actions-runner
+RemainAfterExit=no
+StandardOutput=journal+console
+StandardError=journal+console
+
+[Install]
+WantedBy=multi-user.target
+SYSTEMDEOF
+
+systemctl daemon-reload
+systemctl enable --now github-runner-start.service

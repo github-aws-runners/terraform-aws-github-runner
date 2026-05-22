@@ -4,7 +4,7 @@ import { getParameter, putParameter } from '@aws-github-runner/aws-ssm-util';
 import yn from 'yn';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
-import { createRunner, listEC2Runners, startRunner, tag, terminateRunner } from './../aws/runners';
+import { createRunner, listEC2Runners, startRunner, tag, untag, terminateRunner } from './../aws/runners';
 import { RunnerInputParameters } from './../aws/runners.d';
 import { metricGitHubAppRateLimit } from '../github/rate-limit';
 import { publishRetryMessage } from './job-retry';
@@ -249,6 +249,8 @@ async function getRunnerGroupByName(ghClient: Octokit, githubRunnerConfig: Creat
 export async function findAndStartWarmRunners(
   runnerOwner: string,
   count: number,
+  githubRunnerConfig?: CreateGitHubRunnerConfig,
+  ghClient?: Octokit,
 ): Promise<string[]> {
   const warmPoolConfig = getWarmPoolConfig();
   const poolStrategy = getPoolStrategy();
@@ -257,7 +259,16 @@ export async function findAndStartWarmRunners(
     return [];
   }
 
-  const warmInstances = await listWarmInstancesByOwner(runnerOwner);
+  let warmInstances = await listWarmInstancesByOwner(runnerOwner);
+  // If no warm instances found and owner contains a repo (org/repo), try org-level lookup
+  // Pool lambda may store instances under the org owner while scale-up uses repo-level owner
+  if (warmInstances.length === 0 && runnerOwner.includes('/')) {
+    const orgOwner = runnerOwner.split('/')[0];
+    warmInstances = await listWarmInstancesByOwner(orgOwner);
+    if (warmInstances.length > 0) {
+      logger.info(`Found ${warmInstances.length} warm instances under org owner '${orgOwner}'`);
+    }
+  }
   const startedInstances: string[] = [];
 
   for (const entry of warmInstances) {
@@ -269,11 +280,26 @@ export async function findAndStartWarmRunners(
       startedInstances.push(entry.instanceId);
       emitWarmPoolMetric('WarmPoolInstanceStarted', 1, { Owner: runnerOwner });
       logger.info(`Started warm instance '${entry.instanceId}' for owner '${runnerOwner}'`);
+
+      // Remove warm_pool tag (best-effort, non-fatal)
+      await untag(entry.instanceId, [{ Key: 'ghr:warm_pool', Value: 'true' }]).catch((e) => {
+        logger.warn(`Failed to remove ghr:warm_pool tag from '${entry.instanceId}', continuing`, { error: e });
+      });
     } catch (e) {
       logger.warn(`Failed to start warm instance '${entry.instanceId}', skipping`, { error: e as Error });
       emitWarmPoolMetric('WarmPoolStartFailed', 1, { Owner: runnerOwner });
       // Remove from DynamoDB anyway — the instance may be terminated/gone
       await removeFromWarmPool(entry.instanceId).catch(() => {});
+    }
+  }
+
+  // Write registration tokens for started warm instances so start-runner.sh can re-register
+  if (startedInstances.length > 0 && githubRunnerConfig && ghClient) {
+    const failedInstances = await createStartRunnerConfig(githubRunnerConfig, startedInstances, ghClient);
+    if (failedInstances.length > 0) {
+      logger.warn('Some warm instances failed to get runner config, they will fail to register', {
+        failedInstances,
+      });
     }
   }
 
@@ -515,7 +541,21 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
     });
 
     // Try to start warm instances before creating new ones
-    const warmInstances = await findAndStartWarmRunners(group, newRunners);
+    const warmRunnerConfig: CreateGitHubRunnerConfig = {
+      ephemeral: ephemeralEnabled,
+      enableJitConfig,
+      ghesBaseUrl,
+      runnerLabels,
+      runnerGroup,
+      runnerNamePrefix,
+      runnerOwner: group,
+      runnerType,
+      disableAutoUpdate,
+      ssmTokenPath,
+      ssmConfigPath,
+      ssmParameterStoreTags,
+    };
+    const warmInstances = await findAndStartWarmRunners(group, newRunners, warmRunnerConfig, githubInstallationClient);
     const remainingRunners = newRunners - warmInstances.length;
 
     if (warmInstances.length > 0) {

@@ -5,7 +5,8 @@ import nock from 'nock';
 
 import { RunnerInfo, RunnerList } from '../aws/runners.d';
 import * as ghAuth from '../github/auth';
-import { listEC2Runners, terminateRunner, tag, untag } from './../aws/runners';
+import { listEC2Runners, terminateRunner, tag, untag, stopRunner } from './../aws/runners';
+import { addToWarmPool, countWarmInstancesByOwner, emitWarmPoolMetric, getWarmPoolConfig, getPoolStrategy } from '../aws/warm-pool';
 import { githubCache } from './cache';
 import { newestFirstStrategy, oldestFirstStrategy, scaleDown } from './scale-down';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -39,8 +40,16 @@ vi.mock('./../aws/runners', async (importOriginal) => {
     untag: vi.fn(),
     terminateRunner: vi.fn(),
     listEC2Runners: vi.fn(),
+    stopRunner: vi.fn(),
   };
 });
+vi.mock('../aws/warm-pool', async () => ({
+  getWarmPoolConfig: vi.fn().mockReturnValue({ enabled: false, maxWarmInstances: 3, maxWarmAgeHours: 168, warmPoolReadyDelaySeconds: 30 }),
+  getPoolStrategy: vi.fn().mockReturnValue('hot'),
+  addToWarmPool: vi.fn(),
+  countWarmInstancesByOwner: vi.fn().mockResolvedValue(0),
+  emitWarmPoolMetric: vi.fn(),
+}));
 vi.mock('./../github/auth', async () => ({
   createGithubAppAuth: vi.fn(),
   createGithubInstallationAuth: vi.fn(),
@@ -68,6 +77,12 @@ const mockListRunners = vi.mocked(listEC2Runners);
 const mockTagRunners = vi.mocked(tag);
 const mockUntagRunners = vi.mocked(untag);
 const mockTerminateRunners = vi.mocked(terminateRunner);
+const mockStopRunner = vi.mocked(stopRunner);
+const mockAddToWarmPool = vi.mocked(addToWarmPool);
+const mockCountWarmInstances = vi.mocked(countWarmInstancesByOwner);
+const mockEmitWarmPoolMetric = vi.mocked(emitWarmPoolMetric);
+const mockGetWarmPoolConfig = vi.mocked(getWarmPoolConfig);
+const mockGetPoolStrategy = vi.mocked(getPoolStrategy);
 
 export interface TestData {
   repositoryName: string;
@@ -672,6 +687,169 @@ describe('Scale down runners', () => {
             expect(terminateRunner).not.toHaveBeenCalledWith(notTerminated.instanceId);
           }
         });
+      });
+    });
+  });
+
+  describe('Warm pool behavior', () => {
+    const runnerTypes: ('Org' | 'Repo')[] = ['Org', 'Repo'];
+
+    beforeEach(() => {
+      mockGetWarmPoolConfig.mockReturnValue({
+        enabled: true,
+        maxWarmInstances: 2,
+        maxWarmAgeHours: 168,
+        warmPoolReadyDelaySeconds: 30,
+      });
+      mockGetPoolStrategy.mockReturnValue('warm');
+      mockCountWarmInstances.mockResolvedValue(0);
+      mockStopRunner.mockResolvedValue(undefined);
+      mockAddToWarmPool.mockResolvedValue(undefined);
+    });
+
+    describe.each(runnerTypes)('For %s runners', (type) => {
+      it('Should stop idle runner into warm pool instead of terminating', async () => {
+        const runners = [
+          createRunnerTestData('idle-warm', type, MINIMUM_TIME_RUNNING_IN_MINUTES + 5, true, false, false),
+        ];
+
+        mockGitHubRunners(runners);
+        mockAwsRunners(runners);
+
+        await scaleDown();
+
+        expect(mockStopRunner).toHaveBeenCalledWith(runners[0].instanceId);
+        expect(mockTagRunners).toHaveBeenCalledWith(runners[0].instanceId, [
+          { Key: 'ghr:warm_pool', Value: 'true' },
+        ]);
+        expect(mockAddToWarmPool).toHaveBeenCalledWith({
+          instanceId: runners[0].instanceId,
+          runnerOwner: runners[0].owner,
+          environment: ENVIRONMENT,
+          runnerType: type,
+        });
+        expect(mockTerminateRunners).not.toHaveBeenCalled();
+      });
+
+      it('Should terminate runner when warm pool is full', async () => {
+        mockCountWarmInstances.mockResolvedValue(2); // at max
+
+        const runners = [
+          createRunnerTestData('idle-full', type, MINIMUM_TIME_RUNNING_IN_MINUTES + 5, true, false, true),
+        ];
+
+        mockGitHubRunners(runners);
+        mockAwsRunners(runners);
+
+        await scaleDown();
+
+        expect(mockStopRunner).not.toHaveBeenCalled();
+        expect(mockTerminateRunners).toHaveBeenCalledWith(runners[0].instanceId);
+      });
+
+      it('Should terminate runner when stopRunner fails (fallback)', async () => {
+        mockStopRunner.mockRejectedValue(new Error('Cannot stop spot instance'));
+
+        const runners = [
+          createRunnerTestData('idle-spot', type, MINIMUM_TIME_RUNNING_IN_MINUTES + 5, true, false, true),
+        ];
+
+        mockGitHubRunners(runners);
+        mockAwsRunners(runners);
+
+        await scaleDown();
+
+        expect(mockStopRunner).toHaveBeenCalledWith(runners[0].instanceId);
+        expect(mockTerminateRunners).toHaveBeenCalledWith(runners[0].instanceId);
+      });
+
+      it('Should terminate runner when warm pool is disabled', async () => {
+        mockGetWarmPoolConfig.mockReturnValue({
+          enabled: false,
+          maxWarmInstances: 2,
+          maxWarmAgeHours: 168,
+          warmPoolReadyDelaySeconds: 30,
+        });
+
+        const runners = [
+          createRunnerTestData('idle-no-pool', type, MINIMUM_TIME_RUNNING_IN_MINUTES + 5, true, false, true),
+        ];
+
+        mockGitHubRunners(runners);
+        mockAwsRunners(runners);
+
+        await scaleDown();
+
+        expect(mockStopRunner).not.toHaveBeenCalled();
+        expect(mockTerminateRunners).toHaveBeenCalledWith(runners[0].instanceId);
+      });
+
+      it('Should terminate runner when pool strategy is not warm', async () => {
+        mockGetPoolStrategy.mockReturnValue('hot');
+
+        const runners = [
+          createRunnerTestData('idle-hot', type, MINIMUM_TIME_RUNNING_IN_MINUTES + 5, true, false, true),
+        ];
+
+        mockGitHubRunners(runners);
+        mockAwsRunners(runners);
+
+        await scaleDown();
+
+        expect(mockStopRunner).not.toHaveBeenCalled();
+        expect(mockTerminateRunners).toHaveBeenCalledWith(runners[0].instanceId);
+      });
+
+      it('Should stop orphan into warm pool when capacity available', async () => {
+        const orphanRunner = createRunnerTestData('orphan-warm', type, MINIMUM_BOOT_TIME + 1, false, true, false);
+        const runners = [orphanRunner];
+
+        mockGitHubRunners([]);
+        mockAwsRunners(runners);
+
+        await scaleDown();
+
+        expect(mockStopRunner).toHaveBeenCalledWith(orphanRunner.instanceId);
+        expect(mockTagRunners).toHaveBeenCalledWith(orphanRunner.instanceId, [
+          { Key: 'ghr:warm_pool', Value: 'true' },
+        ]);
+        expect(mockAddToWarmPool).toHaveBeenCalledWith({
+          instanceId: orphanRunner.instanceId,
+          runnerOwner: orphanRunner.owner,
+          environment: ENVIRONMENT,
+          runnerType: type,
+        });
+        expect(mockTerminateRunners).not.toHaveBeenCalledWith(orphanRunner.instanceId);
+      });
+
+      it('Should terminate orphan when warm pool is full', async () => {
+        mockCountWarmInstances.mockResolvedValue(2);
+
+        const orphanRunner = createRunnerTestData('orphan-full', type, MINIMUM_BOOT_TIME + 1, false, true, true);
+        const runners = [orphanRunner];
+
+        mockGitHubRunners([]);
+        mockAwsRunners(runners);
+
+        await scaleDown();
+
+        expect(mockStopRunner).not.toHaveBeenCalled();
+        expect(mockTerminateRunners).toHaveBeenCalledWith(orphanRunner.instanceId);
+      });
+
+      it('Should terminate orphan when stop fails', async () => {
+        mockStopRunner.mockRejectedValue(new Error('Stop failed'));
+
+        const orphanRunner = createRunnerTestData('orphan-stop-fail', type, MINIMUM_BOOT_TIME + 1, false, true, true);
+        const runners = [orphanRunner];
+
+        mockGitHubRunners([]);
+        mockAwsRunners(runners);
+
+        await scaleDown();
+
+        expect(mockStopRunner).toHaveBeenCalledWith(orphanRunner.instanceId);
+        expect(mockTerminateRunners).toHaveBeenCalledWith(orphanRunner.instanceId);
       });
     });
   });

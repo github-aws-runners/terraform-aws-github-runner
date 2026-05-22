@@ -77,7 +77,21 @@ export async function adjust(event: PoolEvent): Promise<void> {
     logger.info(`The pool will be topped up with ${topUp} runners.`);
 
     // Try warm instances first when using warm strategy
-    const warmInstances = await findAndStartWarmRunners(runnerOwner, topUp);
+    const warmRunnerConfig = {
+      ephemeral,
+      enableJitConfig,
+      ghesBaseUrl,
+      runnerLabels,
+      runnerGroup,
+      runnerNamePrefix,
+      runnerOwner,
+      runnerType: 'Org' as const,
+      disableAutoUpdate,
+      ssmTokenPath,
+      ssmConfigPath,
+      ssmParameterStoreTags,
+    };
+    const warmInstances = await findAndStartWarmRunners(runnerOwner, topUp, warmRunnerConfig, githubInstallationClient);
     const remainingTopUp = topUp - warmInstances.length;
 
     if (warmInstances.length > 0) {

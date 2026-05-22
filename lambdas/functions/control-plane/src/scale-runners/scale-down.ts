@@ -147,6 +147,7 @@ async function removeRunner(ec2runner: RunnerInfo, ghRunnerIds: number[]): Promi
     );
 
     if (states.every((busy) => busy === false)) {
+      logger.info(`Runner '${ec2runner.instanceId}' is not busy, de-registering from GitHub.`);
       const statuses = await Promise.all(
         ghRunnerIds.map(async (ghRunnerId) => {
           return (
@@ -171,18 +172,28 @@ async function removeRunner(ec2runner: RunnerInfo, ghRunnerIds: number[]): Promi
         if (warmPoolConfig.enabled && poolStrategy === 'warm') {
           const warmCount = await countWarmInstancesByOwner(ec2runner.owner);
           if (warmCount < warmPoolConfig.maxWarmInstances) {
-            await stopRunner(ec2runner.instanceId);
-            await addToWarmPool({
-              instanceId: ec2runner.instanceId,
-              runnerOwner: ec2runner.owner,
-              environment: process.env.ENVIRONMENT || '',
-              runnerType: ec2runner.type,
-            });
-            logger.info(
-              `AWS runner instance '${ec2runner.instanceId}' is stopped and added to warm pool ` +
-                `(${warmCount + 1}/${warmPoolConfig.maxWarmInstances}).`,
-            );
-            emitWarmPoolMetric('WarmPoolInstanceStopped', 1, { Owner: ec2runner.owner });
+            try {
+              await stopRunner(ec2runner.instanceId);
+              await tag(ec2runner.instanceId, [{ Key: 'ghr:warm_pool', Value: 'true' }]);
+              await addToWarmPool({
+                instanceId: ec2runner.instanceId,
+                runnerOwner: ec2runner.owner,
+                environment: process.env.ENVIRONMENT || '',
+                runnerType: ec2runner.type,
+              });
+              logger.info(
+                `AWS runner instance '${ec2runner.instanceId}' is stopped and added to warm pool ` +
+                  `(${warmCount + 1}/${warmPoolConfig.maxWarmInstances}).`,
+              );
+              emitWarmPoolMetric('WarmPoolInstanceStopped', 1, { Owner: ec2runner.owner });
+            } catch (e) {
+              logger.warn(
+                `Failed to stop instance '${ec2runner.instanceId}' for warm pool (likely a spot instance). ` +
+                  `Falling back to terminate.`,
+                { error: e },
+              );
+              await terminateRunner(ec2runner.instanceId);
+            }
           } else {
             await terminateRunner(ec2runner.instanceId);
             logger.info(
@@ -200,7 +211,7 @@ async function removeRunner(ec2runner: RunnerInfo, ghRunnerIds: number[]): Promi
         logger.error(`Failed to de-register GitHub runner: ${statuses}`);
       }
     } else {
-      logger.info(`Runner '${ec2runner.instanceId}' cannot be de-registered, because it is still busy.`);
+      logger.info(`Runner '${ec2runner.instanceId}' is busy (states: [${states.join(', ')}]), skipping removal.`);
     }
   } catch (e) {
     logger.error(`Runner '${ec2runner.instanceId}' cannot be de-registered. Error: ${e}`, {
@@ -216,6 +227,7 @@ async function evaluateAndRemoveRunners(
   let idleCounter = getIdleRunnerCount(scaleDownConfigs);
   const evictionStrategy = getEvictionStrategy(scaleDownConfigs);
   const ownerTags = new Set(ec2Runners.map((runner) => runner.owner));
+  logger.info(`Scale-down config: idleCounter=${idleCounter}, evictionStrategy='${evictionStrategy}', owners=[${[...ownerTags].join(', ')}]`);
 
   for (const ownerTag of ownerTags) {
     const ec2RunnersFiltered = ec2Runners
@@ -238,14 +250,21 @@ async function evaluateAndRemoveRunners(
         if (runnerMinimumTimeExceeded(ec2Runner)) {
           if (idleCounter > 0) {
             idleCounter--;
-            logger.info(`Runner '${ec2Runner.instanceId}' will be kept idle.`);
+            logger.info(`Runner '${ec2Runner.instanceId}' kept idle (idleCounter remaining: ${idleCounter}).`);
           } else {
-            logger.info(`Terminating all non busy runners.`);
+            logger.info(
+              `Runner '${ec2Runner.instanceId}' is idle and minimum time exceeded, proceeding with removal.`,
+            );
             await removeRunner(
               ec2Runner,
               ghRunnersFiltered.map((runner: { id: number }) => runner.id),
             );
           }
+        } else {
+          logger.info(
+            `Runner '${ec2Runner.instanceId}' minimum running time NOT exceeded ` +
+              `(launched: ${ec2Runner.launchTime}, minimum: ${process.env.MINIMUM_RUNNING_TIME_IN_MINUTES}min). Skipping.`,
+          );
         }
       } else if (bootTimeExceeded(ec2Runner)) {
         await markOrphan(ec2Runner.instanceId);
@@ -300,25 +319,59 @@ async function lastChanceCheckOrphanRunner(runner: RunnerList): Promise<boolean>
 async function terminateOrphan(environment: string): Promise<void> {
   try {
     const orphanRunners = await listEC2Runners({ environment, orphan: true });
+    const warmPoolConfig = getWarmPoolConfig();
+    const poolStrategy = getPoolStrategy();
 
     for (const runner of orphanRunners) {
       if (runner.runnerId) {
         const isOrphan = await lastChanceCheckOrphanRunner(runner);
         if (isOrphan) {
-          await terminateRunner(runner.instanceId);
+          await stopOrTerminateOrphan(runner, warmPoolConfig, poolStrategy);
         } else {
           await unMarkOrphan(runner.instanceId);
         }
       } else {
-        logger.info(`Terminating orphan runner '${runner.instanceId}'`);
-        await terminateRunner(runner.instanceId).catch((e) => {
-          logger.error(`Failed to terminate orphan runner '${runner.instanceId}'`, { error: e });
-        });
+        logger.info(`Handling orphan runner '${runner.instanceId}'`);
+        await stopOrTerminateOrphan(runner, warmPoolConfig, poolStrategy);
       }
     }
   } catch (e) {
     logger.warn(`Failure during orphan termination processing.`, { error: e });
   }
+}
+
+async function stopOrTerminateOrphan(
+  runner: RunnerInfo | RunnerList,
+  warmPoolConfig: ReturnType<typeof getWarmPoolConfig>,
+  poolStrategy: string,
+): Promise<void> {
+  if (warmPoolConfig.enabled && poolStrategy === 'warm') {
+    const owner = runner.owner || '';
+    const warmCount = await countWarmInstancesByOwner(owner);
+    if (warmCount < warmPoolConfig.maxWarmInstances) {
+      try {
+        await stopRunner(runner.instanceId);
+        await tag(runner.instanceId, [{ Key: 'ghr:warm_pool', Value: 'true' }]);
+        await addToWarmPool({
+          instanceId: runner.instanceId,
+          runnerOwner: owner,
+          environment: process.env.ENVIRONMENT || '',
+          runnerType: runner.type || 'Org',
+        });
+        logger.info(
+          `Orphan runner '${runner.instanceId}' stopped and added to warm pool ` +
+            `(${warmCount + 1}/${warmPoolConfig.maxWarmInstances}).`,
+        );
+        emitWarmPoolMetric('WarmPoolInstanceStopped', 1, { Owner: owner });
+        return;
+      } catch (e) {
+        logger.warn(`Failed to stop orphan '${runner.instanceId}' for warm pool, terminating instead.`, { error: e });
+      }
+    }
+  }
+  await terminateRunner(runner.instanceId).catch((e) => {
+    logger.error(`Failed to terminate orphan runner '${runner.instanceId}'`, { error: e });
+  });
 }
 
 export function oldestFirstStrategy(a: RunnerInfo, b: RunnerInfo): number {

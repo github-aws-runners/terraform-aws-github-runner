@@ -19,7 +19,8 @@ runner_config:
   runners_maximum_count: 1
   enable_ephemeral_runners: true
   enable_on_demand_failover_for_errors: ['InsufficientInstanceCapacity']
-  create_service_linked_role_spot: true
+  create_service_linked_role_spot: false
+  instance_target_capacity_type: "on-demand"
   delay_webhook_event: 0
   scale_down_schedule_expression: cron(* * * * ? *)
   runner_metadata_options:
@@ -31,3 +32,12 @@ runner_config:
     enable: true
     max_attempts: 1
     delay_in_seconds: 180
+  pool_config:
+    - schedule_expression: "cron(*/5 * * * ? *)"
+      size: 1
+  pool_runner_owner: "philips-test-runners"
+  pool_strategy: "warm"
+  warm_pool_config:
+    enabled: true
+    max_warm_instances: 2
+    max_warm_age_hours: 24

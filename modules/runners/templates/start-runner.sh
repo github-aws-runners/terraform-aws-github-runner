@@ -249,6 +249,13 @@ echo "Starting the runner as user $run_as"
 # configure the runner if the runner is non ephemeral or jit config is disabled
 if [[ "$enable_jit_config" == "false" || $agent_mode != "ephemeral" ]]; then
   echo "Configure GH Runner as user $run_as"
+
+  # Remove old runner config if present (warm pool restart scenario)
+  if [[ -f "/opt/actions-runner/.runner" ]]; then
+    echo "Removing old runner configuration (warm pool restart)"
+    rm -f /opt/actions-runner/.runner /opt/actions-runner/.credentials /opt/actions-runner/.credentials_rsaparams
+  fi
+
   if [[ "$disable_default_labels" == "true" ]]; then
       extra_flags="--no-default-labels"
   else
