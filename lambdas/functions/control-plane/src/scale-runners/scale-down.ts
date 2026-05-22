@@ -5,12 +5,13 @@ import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import moment from 'moment';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
-import { bootTimeExceeded, listEC2Runners, tag, untag, terminateRunner } from './../aws/runners';
+import { bootTimeExceeded, listEC2Runners, tag, untag, terminateRunner, stopRunner } from './../aws/runners';
 import { RunnerInfo, RunnerList } from './../aws/runners.d';
 import { GhRunners, githubCache } from './cache';
 import { ScalingDownConfig, getEvictionStrategy, getIdleRunnerCount } from './scale-down-config';
 import { metricGitHubAppRateLimit } from '../github/rate-limit';
 import { getGitHubEnterpriseApiUrl } from './scale-up';
+import { addToWarmPool, countWarmInstancesByOwner, getWarmPoolConfig, getPoolStrategy } from '../aws/warm-pool';
 
 const logger = createChildLogger('scale-down');
 
@@ -164,8 +165,36 @@ async function removeRunner(ec2runner: RunnerInfo, ghRunnerIds: number[]): Promi
       );
 
       if (statuses.every((status) => status == 204)) {
-        await terminateRunner(ec2runner.instanceId);
-        logger.info(`AWS runner instance '${ec2runner.instanceId}' is terminated and GitHub runner is de-registered.`);
+        const warmPoolConfig = getWarmPoolConfig();
+        const poolStrategy = getPoolStrategy();
+
+        if (warmPoolConfig.enabled && poolStrategy === 'warm') {
+          const warmCount = await countWarmInstancesByOwner(ec2runner.owner);
+          if (warmCount < warmPoolConfig.maxWarmInstances) {
+            await stopRunner(ec2runner.instanceId);
+            await addToWarmPool({
+              instanceId: ec2runner.instanceId,
+              runnerOwner: ec2runner.owner,
+              environment: process.env.ENVIRONMENT || '',
+              runnerType: ec2runner.type,
+            });
+            logger.info(
+              `AWS runner instance '${ec2runner.instanceId}' is stopped and added to warm pool ` +
+                `(${warmCount + 1}/${warmPoolConfig.maxWarmInstances}).`,
+            );
+          } else {
+            await terminateRunner(ec2runner.instanceId);
+            logger.info(
+              `AWS runner instance '${ec2runner.instanceId}' is terminated (warm pool full: ` +
+                `${warmCount}/${warmPoolConfig.maxWarmInstances}).`,
+            );
+          }
+        } else {
+          await terminateRunner(ec2runner.instanceId);
+          logger.info(
+            `AWS runner instance '${ec2runner.instanceId}' is terminated and GitHub runner is de-registered.`,
+          );
+        }
       } else {
         logger.error(`Failed to de-register GitHub runner: ${statuses}`);
       }

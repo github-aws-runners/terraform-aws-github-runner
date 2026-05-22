@@ -7,6 +7,8 @@ import {
   DescribeInstancesResult,
   EC2Client,
   FleetLaunchTemplateOverridesRequest,
+  StartInstancesCommand,
+  StopInstancesCommand,
   Tag,
   TerminateInstancesCommand,
   _InstanceType,
@@ -107,6 +109,20 @@ export async function terminateRunner(instanceId: string): Promise<void> {
   const ec2 = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
   await ec2.send(new TerminateInstancesCommand({ InstanceIds: [instanceId] }));
   logger.debug(`Runner ${instanceId} has been terminated.`);
+}
+
+export async function stopRunner(instanceId: string): Promise<void> {
+  logger.debug(`Runner '${instanceId}' will be stopped.`);
+  const ec2 = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
+  await ec2.send(new StopInstancesCommand({ InstanceIds: [instanceId] }));
+  logger.info(`Runner '${instanceId}' has been stopped.`);
+}
+
+export async function startRunner(instanceId: string): Promise<void> {
+  logger.debug(`Runner '${instanceId}' will be started.`);
+  const ec2 = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
+  await ec2.send(new StartInstancesCommand({ InstanceIds: [instanceId] }));
+  logger.info(`Runner '${instanceId}' has been started.`);
 }
 
 export async function tag(instanceId: string, tags: Tag[]): Promise<void> {
