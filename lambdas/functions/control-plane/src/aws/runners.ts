@@ -7,6 +7,7 @@ import {
   DescribeInstancesResult,
   EC2Client,
   FleetLaunchTemplateOverridesRequest,
+  RunInstancesCommand,
   StartInstancesCommand,
   StopInstancesCommand,
   Tag,
@@ -267,6 +268,14 @@ async function createInstances(
     tags.push({ Key: 'ghr:trace_id', Value: traceId! });
   }
 
+  // Use RunInstances with persistent spot when warm pool needs stoppable spot instances
+  if (
+    runnerParameters.enablePersistentSpot &&
+    runnerParameters.ec2instanceCriteria.targetCapacityType === 'spot'
+  ) {
+    return await createPersistentSpotInstances(runnerParameters, amiIdOverride, ec2Client, tags);
+  }
+
   let fleet: CreateFleetResult;
   try {
     // see for spec https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_CreateFleet.html
@@ -310,6 +319,70 @@ async function createInstances(
     throw e;
   }
   return fleet;
+}
+
+/**
+ * Creates instances using RunInstances API with persistent spot requests.
+ * Persistent spot instances can be stopped and restarted, making them compatible with the warm pool.
+ * One-time spot (CreateFleet type=instant) cannot be stopped — only terminated.
+ */
+async function createPersistentSpotInstances(
+  runnerParameters: Runners.RunnerInputParameters,
+  amiIdOverride: string | undefined,
+  ec2Client: EC2Client,
+  tags: { Key: string; Value: string }[],
+): Promise<CreateFleetResult> {
+  const subnet = runnerParameters.subnets[Math.floor(Math.random() * runnerParameters.subnets.length)];
+  const instanceType = runnerParameters.ec2instanceCriteria.instanceTypes[0];
+
+  try {
+    const command = new RunInstancesCommand({
+      LaunchTemplate: {
+        LaunchTemplateName: runnerParameters.launchTemplateName,
+        Version: '$Default',
+      },
+      InstanceType: instanceType as _InstanceType,
+      MinCount: runnerParameters.numberOfRunners,
+      MaxCount: runnerParameters.numberOfRunners,
+      SubnetId: subnet,
+      ...(amiIdOverride && { ImageId: amiIdOverride }),
+      InstanceInitiatedShutdownBehavior: 'stop',
+      InstanceMarketOptions: {
+        MarketType: 'spot',
+        SpotOptions: {
+          SpotInstanceType: 'persistent',
+          InstanceInterruptionBehavior: 'stop',
+          ...(runnerParameters.ec2instanceCriteria.maxSpotPrice && {
+            MaxPrice: runnerParameters.ec2instanceCriteria.maxSpotPrice,
+          }),
+        },
+      },
+      TagSpecifications: [
+        {
+          ResourceType: 'instance',
+          Tags: tags as Tag[],
+        },
+        {
+          ResourceType: 'volume',
+          Tags: tags as Tag[],
+        },
+      ],
+    });
+
+    const result = await ec2Client.send(command);
+    const instanceIds = result.Instances?.map((i) => i.InstanceId!).filter(Boolean) || [];
+
+    logger.info(`Created ${instanceIds.length} persistent spot instance(s): ${instanceIds.join(',')}`);
+
+    // Return in CreateFleetResult shape for compatibility with processFleetResult
+    return {
+      Instances: [{ InstanceIds: instanceIds }],
+      Errors: [],
+    } as CreateFleetResult;
+  } catch (e) {
+    logger.warn('RunInstances (persistent spot) request failed.', { error: e as Error });
+    throw e;
+  }
 }
 
 // If launchTime is undefined, this will return false

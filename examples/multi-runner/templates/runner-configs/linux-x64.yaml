@@ -20,7 +20,7 @@ runner_config:
   enable_ephemeral_runners: true
   enable_on_demand_failover_for_errors: ['InsufficientInstanceCapacity']
   create_service_linked_role_spot: false
-  instance_target_capacity_type: "on-demand"
+  instance_target_capacity_type: "spot"
   delay_webhook_event: 0
   scale_down_schedule_expression: cron(* * * * ? *)
   runner_metadata_options:

@@ -48,6 +48,7 @@ export async function adjust(event: PoolEvent): Promise<void> {
       ? validateSsmParameterStoreTags(process.env.SSM_PARAMETER_STORE_TAGS)
       : [];
   const scaleErrors = JSON.parse(process.env.SCALE_ERRORS) as [string];
+  const enablePersistentSpot = yn(process.env.ENABLE_PERSISTENT_SPOT, { default: false });
 
   const { ghesApiUrl, ghesBaseUrl } = getGitHubEnterpriseApiUrl();
 
@@ -128,6 +129,7 @@ export async function adjust(event: PoolEvent): Promise<void> {
         tracingEnabled,
         onDemandFailoverOnError,
         scaleErrors,
+        enablePersistentSpot,
       },
       remainingTopUp,
       githubInstallationClient,

@@ -58,6 +58,7 @@ resource "aws_lambda_function" "pool" {
       WARM_POOL_TABLE_NAME                     = var.config.warm_pool_table_name
       POOL_STRATEGY                            = var.config.pool_strategy
       ENABLE_METRIC_WARM_POOL                  = var.config.enable_metric_warm_pool
+      ENABLE_PERSISTENT_SPOT                   = var.config.warm_pool_config.enabled && var.config.instance_target_capacity_type == "spot"
     }
   }
 

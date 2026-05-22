@@ -4,7 +4,7 @@ import * as nock from 'nock';
 
 import { listEC2Runners } from '../aws/runners';
 import * as ghAuth from '../github/auth';
-import { createRunners, getGitHubEnterpriseApiUrl } from '../scale-runners/scale-up';
+import { createRunners, findAndStartWarmRunners, getGitHubEnterpriseApiUrl, validateSsmParameterStoreTags } from '../scale-runners/scale-up';
 import { adjust } from './pool';
 import { describe, it, expect, beforeEach, vi, MockedClass } from 'vitest';
 
@@ -39,11 +39,12 @@ vi.mock('./../github/auth', async () => ({
 vi.mock('../scale-runners/scale-up', async () => ({
   scaleUp: vi.fn(),
   createRunners: vi.fn(),
+  findAndStartWarmRunners: vi.fn().mockResolvedValue([]),
+  validateSsmParameterStoreTags: vi.fn().mockReturnValue([]),
   getGitHubEnterpriseApiUrl: vi.fn().mockReturnValue({
     ghesApiUrl: '',
     ghesBaseUrl: '',
   }),
-  // Include any other functions that might be needed
 }));
 
 const mocktokit = Octokit as MockedClass<typeof Octokit>;

@@ -71,6 +71,7 @@ resource "aws_lambda_function" "scale_up" {
       })
       WARM_POOL_TABLE_NAME                     = var.warm_pool_config.enabled ? aws_dynamodb_table.warm_pool[0].name : ""
       POOL_STRATEGY                            = var.pool_strategy
+      ENABLE_PERSISTENT_SPOT                   = var.warm_pool_config.enabled && var.instance_target_capacity_type == "spot"
     }
   }
 
