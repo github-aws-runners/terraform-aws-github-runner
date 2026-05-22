@@ -5,8 +5,9 @@ import yn from 'yn';
 import { bootTimeExceeded, listEC2Runners } from '../aws/runners';
 import { RunnerList } from '../aws/runners.d';
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
-import { createRunners, getGitHubEnterpriseApiUrl } from '../scale-runners/scale-up';
+import { createRunners, findAndStartWarmRunners, getGitHubEnterpriseApiUrl } from '../scale-runners/scale-up';
 import { validateSsmParameterStoreTags } from '../scale-runners/scale-up';
+import { getPoolStrategy, getWarmPoolConfig } from '../aws/warm-pool';
 
 const logger = createChildLogger('pool');
 
@@ -74,7 +75,17 @@ export async function adjust(event: PoolEvent): Promise<void> {
 
   if (topUp > 0) {
     logger.info(`The pool will be topped up with ${topUp} runners.`);
-    await createRunners(
+
+    // Try warm instances first when using warm strategy
+    const warmInstances = await findAndStartWarmRunners(runnerOwner, topUp);
+    const remainingTopUp = topUp - warmInstances.length;
+
+    if (warmInstances.length > 0) {
+      logger.info(`Started ${warmInstances.length} warm runners for pool, need ${remainingTopUp} more from cold start`);
+    }
+
+    if (remainingTopUp > 0) {
+      await createRunners(
       {
         ephemeral,
         enableJitConfig,
@@ -104,10 +115,11 @@ export async function adjust(event: PoolEvent): Promise<void> {
         onDemandFailoverOnError,
         scaleErrors,
       },
-      topUp,
+      remainingTopUp,
       githubInstallationClient,
       'pool-lambda',
     );
+    }
   } else {
     logger.info(`Pool will not be topped up. Found ${numberOfRunnersInPool} managed idle runners.`);
   }
