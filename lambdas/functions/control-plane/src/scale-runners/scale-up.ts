@@ -4,10 +4,11 @@ import { getParameter, putParameter } from '@aws-github-runner/aws-ssm-util';
 import yn from 'yn';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
-import { createRunner, listEC2Runners, tag, terminateRunner } from './../aws/runners';
+import { createRunner, listEC2Runners, startRunner, tag, terminateRunner } from './../aws/runners';
 import { RunnerInputParameters } from './../aws/runners.d';
 import { metricGitHubAppRateLimit } from '../github/rate-limit';
 import { publishRetryMessage } from './job-retry';
+import { getWarmPoolConfig, getPoolStrategy, listWarmInstancesByOwner, removeFromWarmPool } from '../aws/warm-pool';
 
 const logger = createChildLogger('scale-up');
 
@@ -245,6 +246,38 @@ async function getRunnerGroupByName(ghClient: Octokit, githubRunnerConfig: Creat
   return runnerGroupId;
 }
 
+export async function findAndStartWarmRunners(
+  runnerOwner: string,
+  count: number,
+): Promise<string[]> {
+  const warmPoolConfig = getWarmPoolConfig();
+  const poolStrategy = getPoolStrategy();
+
+  if (!warmPoolConfig.enabled || poolStrategy !== 'warm' || count <= 0) {
+    return [];
+  }
+
+  const warmInstances = await listWarmInstancesByOwner(runnerOwner);
+  const startedInstances: string[] = [];
+
+  for (const entry of warmInstances) {
+    if (startedInstances.length >= count) break;
+
+    try {
+      await startRunner(entry.instanceId);
+      await removeFromWarmPool(entry.instanceId);
+      startedInstances.push(entry.instanceId);
+      logger.info(`Started warm instance '${entry.instanceId}' for owner '${runnerOwner}'`);
+    } catch (e) {
+      logger.warn(`Failed to start warm instance '${entry.instanceId}', skipping`, { error: e as Error });
+      // Remove from DynamoDB anyway — the instance may be terminated/gone
+      await removeFromWarmPool(entry.instanceId).catch(() => {});
+    }
+  }
+
+  return startedInstances;
+}
+
 export async function createRunners(
   githubRunnerConfig: CreateGitHubRunnerConfig,
   ec2RunnerConfig: CreateEC2RunnerConfig,
@@ -479,7 +512,17 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       newRunners,
     });
 
-    const instances = await createRunners(
+    // Try to start warm instances before creating new ones
+    const warmInstances = await findAndStartWarmRunners(group, newRunners);
+    const remainingRunners = newRunners - warmInstances.length;
+
+    if (warmInstances.length > 0) {
+      logger.info(`Started ${warmInstances.length} warm runners, need ${remainingRunners} more from cold start`);
+    }
+
+    let instances: string[] = [...warmInstances];
+    if (remainingRunners > 0) {
+      const coldInstances = await createRunners(
       {
         ephemeral: ephemeralEnabled,
         enableJitConfig,
@@ -509,10 +552,12 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
         onDemandFailoverOnError,
         scaleErrors,
       },
-      newRunners,
+      remainingRunners,
       githubInstallationClient,
       'scale-up-lambda',
     );
+      instances = [...instances, ...coldInstances];
+    }
 
     // Not all runners we wanted were created, let's reject enough items so that
     // number of entries will be retried.
