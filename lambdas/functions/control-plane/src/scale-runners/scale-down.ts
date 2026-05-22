@@ -174,7 +174,6 @@ async function removeRunner(ec2runner: RunnerInfo, ghRunnerIds: number[]): Promi
           if (warmCount < warmPoolConfig.maxWarmInstances) {
             try {
               await stopRunner(ec2runner.instanceId);
-              await tag(ec2runner.instanceId, [{ Key: 'ghr:warm_pool', Value: 'true' }]);
               await addToWarmPool({
                 instanceId: ec2runner.instanceId,
                 runnerOwner: ec2runner.owner,
@@ -351,7 +350,6 @@ async function stopOrTerminateOrphan(
     if (warmCount < warmPoolConfig.maxWarmInstances) {
       try {
         await stopRunner(runner.instanceId);
-        await tag(runner.instanceId, [{ Key: 'ghr:warm_pool', Value: 'true' }]);
         await addToWarmPool({
           instanceId: runner.instanceId,
           runnerOwner: owner,

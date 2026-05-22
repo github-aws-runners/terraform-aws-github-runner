@@ -719,9 +719,6 @@ describe('Scale down runners', () => {
         await scaleDown();
 
         expect(mockStopRunner).toHaveBeenCalledWith(runners[0].instanceId);
-        expect(mockTagRunners).toHaveBeenCalledWith(runners[0].instanceId, [
-          { Key: 'ghr:warm_pool', Value: 'true' },
-        ]);
         expect(mockAddToWarmPool).toHaveBeenCalledWith({
           instanceId: runners[0].instanceId,
           runnerOwner: runners[0].owner,
@@ -810,9 +807,6 @@ describe('Scale down runners', () => {
         await scaleDown();
 
         expect(mockStopRunner).toHaveBeenCalledWith(orphanRunner.instanceId);
-        expect(mockTagRunners).toHaveBeenCalledWith(orphanRunner.instanceId, [
-          { Key: 'ghr:warm_pool', Value: 'true' },
-        ]);
         expect(mockAddToWarmPool).toHaveBeenCalledWith({
           instanceId: orphanRunner.instanceId,
           runnerOwner: orphanRunner.owner,

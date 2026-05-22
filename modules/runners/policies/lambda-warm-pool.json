@@ -19,8 +19,7 @@
       "Action": [
         "ec2:StopInstances",
         "ec2:StartInstances",
-        "ec2:CreateTags",
-        "ec2:DeleteTags"
+        "ec2:CreateTags"
       ],
       "Resource": "*",
       "Condition": {
@@ -34,8 +33,7 @@
       "Action": [
         "ec2:StopInstances",
         "ec2:StartInstances",
-        "ec2:CreateTags",
-        "ec2:DeleteTags"
+        "ec2:CreateTags"
       ],
       "Resource": "*",
       "Condition": {

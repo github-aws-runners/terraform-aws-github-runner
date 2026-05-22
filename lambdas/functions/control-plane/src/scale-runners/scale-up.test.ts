@@ -113,6 +113,7 @@ const EXPECTED_RUNNER_PARAMS: RunnerInputParameters = {
   tracingEnabled: false,
   onDemandFailoverOnError: [],
   scaleErrors: ['UnfulfillableCapacity', 'MaxSpotInstanceCountExceeded', 'TargetCapacityLimitExceededException'],
+  enablePersistentSpot: false,
   source: 'scale-up-lambda',
 };
 let expectedRunnerParams: RunnerInputParameters;

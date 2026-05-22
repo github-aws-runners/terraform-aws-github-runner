@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { startRunner, untag } from './../aws/runners';
+import { startRunner, tag } from './../aws/runners';
 import {
   getWarmPoolConfig,
   getPoolStrategy,
@@ -45,7 +45,7 @@ vi.mock('./job-retry', () => ({
 }));
 
 const mockStartRunner = vi.mocked(startRunner);
-const mockUntag = vi.mocked(untag);
+const mockTag = vi.mocked(tag);
 const mockGetWarmPoolConfig = vi.mocked(getWarmPoolConfig);
 const mockGetPoolStrategy = vi.mocked(getPoolStrategy);
 const mockListWarmInstances = vi.mocked(listWarmInstancesByOwner);
@@ -66,7 +66,7 @@ describe('findAndStartWarmRunners', () => {
     mockGetPoolStrategy.mockReturnValue('warm');
     mockStartRunner.mockResolvedValue(undefined);
     mockRemoveFromWarmPool.mockResolvedValue(undefined);
-    mockUntag.mockResolvedValue(undefined);
+    mockTag.mockResolvedValue(undefined);
   });
 
   it('should return empty array when warm pool is disabled', async () => {
@@ -128,7 +128,7 @@ describe('findAndStartWarmRunners', () => {
     expect(mockEmitWarmPoolMetric).toHaveBeenCalledWith('WarmPoolInstanceStarted', 1, { Owner: 'my-org' });
   });
 
-  it('should remove ghr:warm_pool tag after successful start (best-effort)', async () => {
+  it('should tag instance as started-from-warm-pool after successful start', async () => {
     mockListWarmInstances.mockResolvedValue([
       {
         instanceId: 'i-warm-1',
@@ -143,11 +143,11 @@ describe('findAndStartWarmRunners', () => {
     const result = await findAndStartWarmRunners('my-org', 1);
 
     expect(result).toEqual(['i-warm-1']);
-    expect(mockUntag).toHaveBeenCalledWith('i-warm-1', [{ Key: 'ghr:warm_pool', Value: 'true' }]);
+    expect(mockTag).toHaveBeenCalledWith('i-warm-1', [{ Key: 'ghr:started-from-warm-pool', Value: 'true' }]);
   });
 
-  it('should succeed even if untag fails (best-effort)', async () => {
-    mockUntag.mockRejectedValue(new Error('UnauthorizedOperation'));
+  it('should succeed even if tag fails (best-effort)', async () => {
+    mockTag.mockRejectedValue(new Error('UnauthorizedOperation'));
     mockListWarmInstances.mockResolvedValue([
       {
         instanceId: 'i-warm-1',
