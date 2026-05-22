@@ -290,9 +290,7 @@ The warm pool's value proposition is strongest when runners spend significant ti
 
 3. **Reclamation while stopped**: AWS can reclaim (terminate) a stopped spot instance if it needs the capacity, though this is rare for stopped instances.
 
-4. **Not currently supported by this module**: The EC2 Fleet `CreateFleet` API used by this module creates one-time spot requests. Supporting persistent spot requires either:
-   - Using `RunInstances` with `InstanceMarketOptions.SpotOptions.SpotInstanceType = "persistent"`, or
-   - Using `CreateFleet` with `type = "maintain"` instead of `"instant"`
+4. **Implemented in this module**: When `warm_pool_config.enabled = true` and `instance_target_capacity_type = "spot"`, the module uses `RunInstances` with `InstanceMarketOptions.SpotOptions.SpotInstanceType = "persistent"` and `InstanceInterruptionBehavior = "stop"`. It also overrides `InstanceInitiatedShutdownBehavior = "stop"` (since the launch template defaults to `"terminate"`, which conflicts with the spot stop behavior). This is gated behind the `ENABLE_PERSISTENT_SPOT` environment variable, which is derived automatically by Terraform.
 
 ### Recommended Configuration
 
@@ -304,7 +302,7 @@ For warm pool deployments, use one of:
 
 3. **On-demand with warm pool only** (no hot pool): Set `pool_strategy = "warm"` with on-demand instances. Pool creates instances, immediately stops them. Scale-up starts them on demand. Zero idle compute cost, 10-30s start time, fully reliable.
 
-> **Current limitation**: If `instance_target_capacity_type = "spot"` (the default), the warm pool stop will fail because this module uses one-time spot requests. The scale-down lambda handles this gracefully by falling back to terminate, but no warm instances will accumulate. To use the warm pool effectively, set `instance_target_capacity_type = "on-demand"` for the runner config that uses warm pool.
+> **Resolved**: When `instance_target_capacity_type = "spot"` and `warm_pool_config.enabled = true`, the module automatically switches from `CreateFleet` (one-time spot) to `RunInstances` with `SpotInstanceType = "persistent"` and `InstanceInterruptionBehavior = "stop"`. This is transparent to the user — no additional configuration is needed. The Terraform variable `ENABLE_PERSISTENT_SPOT` is derived automatically.
 
 ## Implementation Plan
 

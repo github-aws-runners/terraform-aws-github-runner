@@ -154,10 +154,11 @@ When `metrics.enable = true` and `metrics.metric.enable_warm_pool = true`, the f
 
 ### Considerations
 
-- Works with both spot and on-demand instances (best-effort for spot — a spot instance may be reclaimed while stopped).
+- **Spot instances**: When `instance_target_capacity_type = "spot"` and `warm_pool_config.enabled = true`, the module automatically uses persistent spot requests (via `RunInstances` API) instead of the default one-time spot requests (via `CreateFleet`). Persistent spot instances can be stopped and restarted, making them fully compatible with the warm pool. Note that restarting a stopped spot instance is subject to capacity availability — if AWS cannot fulfill the request, scale-up falls back to creating a new instance.
+- **On-demand instances**: Fully reliable stop/start with no capacity concerns.
 - Requires a DynamoDB table (created automatically when `warm_pool_config.enabled = true`, using PAY_PER_REQUEST billing).
 - The `pool_strategy = "warm"` setting requires `warm_pool_config.enabled = true`.
-- Warm instances consume EBS storage costs while stopped but not compute costs.
+- Warm instances consume EBS storage costs while stopped (~$0.80/month for 10GB gp3) but zero compute costs.
 
 ## Idle runners
 
