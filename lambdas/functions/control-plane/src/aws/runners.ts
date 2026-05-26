@@ -201,9 +201,26 @@ async function processFleetResult(
 
   const failedCount = countScaleErrors(errors, scaleErrors);
   if (failedCount > 0) {
-    logger.warn('Create fleet failed, ScaleError will be thrown to trigger retry for ephemeral runners.');
+    if (instances.length > 0) {
+      logger.warn(
+        `Partial fleet success: ${instances.length}/${runnerParameters.numberOfRunners} instances created. ` +
+          `Returning partial results; caller will retry the shortfall via SQS.`,
+        { data: fleet.Errors },
+      );
+      return instances;
+    }
+    logger.warn('Create fleet failed with zero instances, ScaleError will be thrown to trigger retry.');
     logger.debug('Create fleet failed.', { data: fleet.Errors });
-    throw new ScaleError(failedCount);
+    throw new ScaleError(runnerParameters.numberOfRunners);
+  }
+
+  if (instances.length > 0) {
+    logger.warn(
+      `Partial fleet success: ${instances.length}/${runnerParameters.numberOfRunners} instances created. ` +
+        `Error not recognized as scaling error; returning partial results.`,
+      { data: fleet.Errors },
+    );
+    return instances;
   }
 
   logger.warn('Create fleet failed, error not recognized as scaling error.', { data: fleet.Errors });
