@@ -421,7 +421,11 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
         try {
           jobQueued = await isJobQueued(githubInstallationClient, message);
         } catch (e) {
-          messageLogger.warn('isJobQueued check failed, assuming job is still queued (fail-open)', { error: e });
+          const err = e as Error & { status?: number };
+          messageLogger.warn('isJobQueued check failed, assuming job is still queued (fail-open)', {
+            error: err.message,
+            status: err.status,
+          });
         }
         if (!jobQueued) {
           messageLogger.info('No runner will be created, job is not queued.');
