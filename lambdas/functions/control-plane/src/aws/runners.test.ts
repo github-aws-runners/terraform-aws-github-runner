@@ -783,13 +783,15 @@ describe('create runner with errors', () => {
   it('test ScaleError with multiple error.', async () => {
     createFleetMockWithErrors(['UnfulfillableCapacity', 'MaxSpotInstanceCountExceeded', 'NotMappedError']);
 
-    await expect(createRunner(createRunnerConfig(defaultRunnerConfig))).rejects.toMatchObject({
+    await expect(
+      createRunner({ ...createRunnerConfig(defaultRunnerConfig), numberOfRunners: 3 }),
+    ).rejects.toMatchObject({
       name: 'ScaleError',
-      failedInstanceCount: 1, // numberOfRunners when zero instances created
+      failedInstanceCount: 3, // numberOfRunners when zero instances created
     });
     expect(mockEC2Client).toHaveReceivedCommandWith(
       CreateFleetCommand,
-      expectedCreateFleetRequest(defaultExpectedFleetRequestValues),
+      expectedCreateFleetRequest({ ...defaultExpectedFleetRequestValues, totalTargetCapacity: 3 }),
     );
     expect(mockSSMClient).not.toHaveReceivedCommand(PutParameterCommand);
   });
@@ -818,10 +820,12 @@ describe('create runner with errors', () => {
   it('returns partial instances on recognized scale error instead of throwing', async () => {
     createFleetMockWithErrors(['UnfulfillableCapacity'], ['i-partial']);
 
-    await expect(createRunner(createRunnerConfig(defaultRunnerConfig))).resolves.toEqual(['i-partial']);
+    await expect(
+      createRunner({ ...createRunnerConfig(defaultRunnerConfig), numberOfRunners: 3 }),
+    ).resolves.toEqual(['i-partial']);
     expect(mockEC2Client).toHaveReceivedCommandWith(
       CreateFleetCommand,
-      expectedCreateFleetRequest(defaultExpectedFleetRequestValues),
+      expectedCreateFleetRequest({ ...defaultExpectedFleetRequestValues, totalTargetCapacity: 3 }),
     );
   });
 
