@@ -150,7 +150,7 @@ async function tryAcquireRefreshLock(
       new UpdateItemCommand({
         TableName: tableName,
         Key: { installation_id: { N: String(installationId) } },
-        UpdateExpression: 'SET lock_until_ms = :lockUntil',
+        UpdateExpression: 'SET lock_until_ms = :lockUntil, #ttl = :ttl',
         // Acquire if:
         //   1. No item exists, OR no lock, OR current lock expired
         //   AND
@@ -159,10 +159,14 @@ async function tryAcquireRefreshLock(
           '(attribute_not_exists(installation_id) OR attribute_not_exists(lock_until_ms) OR lock_until_ms < :now)' +
           ' AND ' +
           '(attribute_not_exists(expires_at_ms) OR expires_at_ms < :refreshAt)',
+        ExpressionAttributeNames: {
+          '#ttl': 'ttl',
+        },
         ExpressionAttributeValues: {
           ':lockUntil': { N: String(lockUntil) },
           ':now': { N: String(nowMs) },
           ':refreshAt': { N: String(nowMs + REFRESH_AHEAD_MS) },
+          ':ttl': { N: String(Math.floor(lockUntil / 1000) + 600) },
         },
       }),
     );
