@@ -218,9 +218,10 @@ describe('Test scale up lambda wrapper.', () => {
       vi.mocked(scaleUp).mockRejectedValue(new Error('Generic error'));
 
       const result = await scaleUpHandler(multiRecordEvent, context);
-      expect(result).toEqual({
-        batchItemFailures: [{ itemIdentifier: 'message-0' }, { itemIdentifier: 'message-1' }],
-      });
+      expect(result.batchItemFailures).toHaveLength(2);
+      expect(result.batchItemFailures).toEqual(
+        expect.arrayContaining([{ itemIdentifier: 'message-0' }, { itemIdentifier: 'message-1' }]),
+      );
     });
 
     it('Should log error with retry message when scaleUp throws non-ScaleError', async () => {
