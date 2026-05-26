@@ -17,6 +17,7 @@ export interface ActionRequestMessage {
 export interface MatcherConfig {
   labelMatchers: string[][];
   exactMatch: boolean;
+  priority?: number;
 }
 
 export type RunnerConfig = RunnerMatcherConfig[];
