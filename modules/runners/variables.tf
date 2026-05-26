@@ -876,3 +876,13 @@ variable "use_dedicated_host" {
   type        = bool
   default     = false
 }
+
+variable "installation_token_table_name" {
+  description = "Name of the DynamoDB table used to cache GitHub App installation tokens across Lambda invocations."
+  type        = string
+}
+
+variable "installation_token_table_arn" {
+  description = "ARN of the DynamoDB table used to cache GitHub App installation tokens."
+  type        = string
+}
