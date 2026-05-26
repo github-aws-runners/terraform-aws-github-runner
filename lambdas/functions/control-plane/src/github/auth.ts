@@ -1,6 +1,7 @@
 import { createAppAuth, type AppAuthentication, type InstallationAccessTokenAuthentication } from '@octokit/auth-app';
 import type { OctokitOptions } from '@octokit/core';
 import type { RequestInterface } from '@octokit/types';
+import { getCachedInstallationToken } from './token-cache';
 
 // Define types that are not directly exported
 type AppAuthOptions = { type: 'app' };
@@ -76,6 +77,26 @@ export async function createGithubAppAuth(
 export async function createGithubInstallationAuth(
   installationId: number | undefined,
   ghesApiUrl = '',
+): Promise<InstallationAccessTokenAuthentication> {
+  if (installationId && process.env.INSTALLATION_TOKEN_TABLE_NAME) {
+    const cached = await getCachedInstallationToken(installationId, () =>
+      mintInstallationToken(installationId, ghesApiUrl).then((r) => ({ token: r.token, expiresAt: r.expiresAt })),
+    );
+    return {
+      type: 'token',
+      tokenType: 'installation',
+      token: cached.token,
+      expiresAt: cached.expiresAt.toISOString(),
+      installationId,
+    } as InstallationAccessTokenAuthentication;
+  }
+
+  return mintInstallationToken(installationId, ghesApiUrl);
+}
+
+async function mintInstallationToken(
+  installationId: number | undefined,
+  ghesApiUrl: string,
 ): Promise<InstallationAccessTokenAuthentication> {
   const auth = await createAuth(installationId, ghesApiUrl);
   const installationAuthOptions: InstallationAuthOptions = { type: 'installation', installationId };

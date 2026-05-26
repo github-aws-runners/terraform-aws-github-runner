@@ -62,6 +62,7 @@ resource "aws_lambda_function" "scale_up" {
       ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS     = jsonencode(var.enable_on_demand_failover_for_errors)
       SCALE_ERRORS                             = jsonencode(var.scale_errors)
       JOB_RETRY_CONFIG                         = jsonencode(local.job_retry_config)
+      INSTALLATION_TOKEN_TABLE_NAME            = var.installation_token_table_name
     }
   }
 
@@ -135,6 +136,24 @@ resource "aws_iam_role_policy" "scale_up_logging" {
   policy = templatefile("${path.module}/policies/lambda-cloudwatch.json", {
     log_group_arn = aws_cloudwatch_log_group.scale_up.arn
   })
+}
+
+resource "aws_iam_role_policy" "scale_up_token_cache" {
+  name   = "token-cache-policy"
+  role   = aws_iam_role.scale_up.name
+  policy = data.aws_iam_policy_document.scale_up_token_cache.json
+}
+
+data "aws_iam_policy_document" "scale_up_token_cache" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "dynamodb:GetItem",
+      "dynamodb:PutItem",
+      "dynamodb:UpdateItem",
+    ]
+    resources = [var.installation_token_table_arn]
+  }
 }
 
 resource "aws_iam_role_policy" "service_linked_role" {

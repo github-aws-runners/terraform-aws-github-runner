@@ -49,6 +49,7 @@ resource "aws_lambda_function" "pool" {
       ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS     = jsonencode(var.config.runner.enable_on_demand_failover_for_errors)
       SSM_PARAMETER_STORE_TAGS                 = var.config.lambda.parameter_store_tags
       SCALE_ERRORS                             = jsonencode(var.config.runner.scale_errors)
+      INSTALLATION_TOKEN_TABLE_NAME            = var.config.installation_token_table_name
     }
   }
 
@@ -104,6 +105,24 @@ resource "aws_iam_role_policy" "pool_logging" {
   policy = templatefile("${path.module}/../policies/lambda-cloudwatch.json", {
     log_group_arn = aws_cloudwatch_log_group.pool.arn
   })
+}
+
+resource "aws_iam_role_policy" "pool_token_cache" {
+  name   = "token-cache-policy"
+  role   = aws_iam_role.pool.name
+  policy = data.aws_iam_policy_document.pool_token_cache.json
+}
+
+data "aws_iam_policy_document" "pool_token_cache" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "dynamodb:GetItem",
+      "dynamodb:PutItem",
+      "dynamodb:UpdateItem",
+    ]
+    resources = [var.config.installation_token_table_arn]
+  }
 }
 
 resource "aws_iam_role_policy_attachment" "pool_vpc_execution_role" {
