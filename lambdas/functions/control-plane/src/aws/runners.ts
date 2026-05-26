@@ -204,8 +204,8 @@ async function processFleetResult(
     if (instances.length > 0) {
       logger.warn(
         `Partial fleet success: ${instances.length}/${runnerParameters.numberOfRunners} instances created. ` +
-          `Returning partial results; caller will retry the shortfall via SQS.`,
-        { data: fleet.Errors },
+          `Returning partial results; unfulfilled requests remain for retry.`,
+        { data: fleet.Errors, created: instances.length, requested: runnerParameters.numberOfRunners },
       );
       return instances;
     }
@@ -218,7 +218,7 @@ async function processFleetResult(
     logger.warn(
       `Partial fleet success: ${instances.length}/${runnerParameters.numberOfRunners} instances created. ` +
         `Error not recognized as scaling error; returning partial results.`,
-      { data: fleet.Errors },
+      { data: fleet.Errors, created: instances.length, requested: runnerParameters.numberOfRunners },
     );
     return instances;
   }
