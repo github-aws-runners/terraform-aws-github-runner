@@ -54,11 +54,15 @@ export async function createOctokitClient(token: string, ghesApiUrl = ''): Promi
     throttle: {
       onRateLimit: (retryAfter: number, options: Required<EndpointDefaults>) => {
         logger.warn(
-          `GitHub rate limit: Request quota exhausted for request ${options.method} ${options.url}. Requested `,
+          `GitHub rate limit: Request quota exhausted for request ${options.method} ${options.url}, retrying after ${retryAfter}s`,
         );
+        return (options as unknown as { request: { retryCount: number } }).request.retryCount < 2;
       },
       onSecondaryRateLimit: (retryAfter: number, options: Required<EndpointDefaults>) => {
-        logger.warn(`GitHub rate limit: SecondaryRateLimit detected for request ${options.method} ${options.url}`);
+        logger.warn(
+          `GitHub rate limit: SecondaryRateLimit detected for request ${options.method} ${options.url}, retrying after ${retryAfter}s`,
+        );
+        return (options as unknown as { request: { retryCount: number } }).request.retryCount < 1;
       },
     },
   });
