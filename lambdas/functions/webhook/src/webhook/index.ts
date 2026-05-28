@@ -21,7 +21,7 @@ export async function publishForRunners(
 
   const checkBodySizeResult = checkBodySize(body, headers);
 
-  const { event, eventType } = readEvent(headers, body);
+  const { event, eventType } = readEvent(headers, body, ['workflow_job']);
   logger.info(`Github event ${event.action} accepted for ${event.repository.full_name}`);
   if (checkBodySizeResult.sizeExceeded) {
     // We only warn for large event, when moving the event bridge we can only can accept events up to 256KB
@@ -39,10 +39,9 @@ export async function publishOnEventBridge(
 
   await verifySignature(headers, body, config.webhookSecret);
 
-  const eventType = headers['x-github-event'] as string;
-  checkEventIsSupported(eventType, config.allowedEvents);
-
   const checkBodySizeResult = checkBodySize(body, headers);
+
+  const { eventType } = readEvent(headers, body, config.allowedEvents);
 
   logger.info(
     `Github event ${headers['x-github-event'] as string} accepted for ` +
@@ -127,9 +126,13 @@ function checkEventIsSupported(eventType: string, allowedEvents: string[]): void
   }
 }
 
-function readEvent(headers: IncomingHttpHeaders, body: string): { event: WorkflowJobEvent; eventType: string } {
+function readEvent(
+  headers: IncomingHttpHeaders,
+  body: string,
+  allowedEvents: string[],
+): { event: WorkflowJobEvent; eventType: string } {
   const eventType = headers['x-github-event'] as string;
-  checkEventIsSupported(eventType, ['workflow_job']);
+  checkEventIsSupported(eventType, allowedEvents);
 
   const event = JSON.parse(body) as WorkflowJobEvent;
   logger.appendPersistentKeys({

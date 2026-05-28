@@ -18,6 +18,7 @@ variable "config" {
     role_path                 = optional(string, null)
     logging_retention_in_days = optional(number, 180)
     logging_kms_key_id        = optional(string, null)
+    log_class                 = optional(string, "STANDARD")
     lambda_s3_bucket          = optional(string, null)
     lambda_s3_key             = optional(string, null)
     lambda_s3_object_version  = optional(string, null)

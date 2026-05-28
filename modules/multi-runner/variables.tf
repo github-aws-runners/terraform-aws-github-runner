@@ -152,6 +152,7 @@ variable "multi_runner_config" {
         prefix_log_group = bool
         file_path        = string
         log_stream_name  = string
+        log_class        = optional(string, "STANDARD")
       })), null)
       block_device_mappings = optional(list(object({
         delete_on_termination = optional(bool, true)
@@ -324,6 +325,17 @@ variable "logging_kms_key_id" {
   description = "Specifies the kms key id to encrypt the logs with"
   type        = string
   default     = null
+}
+
+variable "log_class" {
+  description = "The log class of the CloudWatch log groups. Valid values are `STANDARD` or `INFREQUENT_ACCESS`."
+  type        = string
+  default     = "STANDARD"
+
+  validation {
+    condition     = contains(["STANDARD", "INFREQUENT_ACCESS"], var.log_class)
+    error_message = "`log_class` must be either `STANDARD` or `INFREQUENT_ACCESS`."
+  }
 }
 
 variable "lambda_s3_bucket" {

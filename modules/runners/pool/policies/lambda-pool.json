@@ -51,7 +51,8 @@
         {
             "Effect": "Allow",
             "Action": [
-                "ssm:GetParameter"
+                "ssm:GetParameter",
+                "ssm:GetParameters"
             ],
             "Resource": [
                 "${github_app_key_base64_arn}",

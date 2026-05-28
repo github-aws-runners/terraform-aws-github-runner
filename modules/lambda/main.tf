@@ -56,6 +56,7 @@ resource "aws_cloudwatch_log_group" "main" {
   name              = "/aws/lambda/${aws_lambda_function.main.function_name}"
   retention_in_days = var.lambda.logging_retention_in_days
   kms_key_id        = var.lambda.logging_kms_key_id
+  log_group_class   = var.lambda.log_class
   tags              = var.lambda.tags
 }
 

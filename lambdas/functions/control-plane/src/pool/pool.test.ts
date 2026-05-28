@@ -192,7 +192,13 @@ describe('Test simple pool.', () => {
     it('Top up pool with pool size 2 registered.', async () => {
       await adjust({ poolSize: 3 });
       expect(createRunners).toHaveBeenCalledTimes(1);
-      expect(createRunners).toHaveBeenCalledWith(expect.anything(), expect.anything(), 1, expect.anything());
+      expect(createRunners).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        1,
+        expect.anything(),
+        'pool-lambda',
+      );
     });
 
     it('Should not top up if pool size is reached.', async () => {
@@ -268,7 +274,13 @@ describe('Test simple pool.', () => {
     it('Top up if the pool size is set to 5', async () => {
       await adjust({ poolSize: 5 });
       // 2 idle, top up with 3 to match a pool of 5
-      expect(createRunners).toHaveBeenCalledWith(expect.anything(), expect.anything(), 3, expect.anything());
+      expect(createRunners).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        3,
+        expect.anything(),
+        'pool-lambda',
+      );
     });
   });
 
@@ -283,7 +295,13 @@ describe('Test simple pool.', () => {
     it('Top up if the pool size is set to 5', async () => {
       await adjust({ poolSize: 5 });
       // 2 idle, top up with 3 to match a pool of 5
-      expect(createRunners).toHaveBeenCalledWith(expect.anything(), expect.anything(), 3, expect.anything());
+      expect(createRunners).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        3,
+        expect.anything(),
+        'pool-lambda',
+      );
     });
   });
 
@@ -333,7 +351,13 @@ describe('Test simple pool.', () => {
 
       await adjust({ poolSize: 5 });
       // 2 idle, 2 prefixed idle top up with 1 to match a pool of 5
-      expect(createRunners).toHaveBeenCalledWith(expect.anything(), expect.anything(), 1, expect.anything());
+      expect(createRunners).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        1,
+        expect.anything(),
+        'pool-lambda',
+      );
     });
   });
 });
