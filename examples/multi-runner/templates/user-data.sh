@@ -12,6 +12,17 @@ set +x
 set -x
 %{ endif }
 
+# Ubuntu's unattended-upgrades and apt-daily services start in the background
+# shortly after boot and can hold /var/lib/dpkg/lock-frontend. The runner
+# installer (install_runner.sh → installdependencies.sh) also needs apt-get;
+# a lock conflict causes dependency installation to fail.
+systemctl stop unattended-upgrades apt-daily.service apt-daily-upgrade.service 2>/dev/null || true
+systemctl mask unattended-upgrades apt-daily.service apt-daily-upgrade.service 2>/dev/null || true
+while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
+  echo "Waiting for dpkg lock to be released..."
+  sleep 5
+done
+
 ${pre_install}
 
 # Install AWS CLI
