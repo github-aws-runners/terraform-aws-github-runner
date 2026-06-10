@@ -46,20 +46,25 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           COMMIT_MESSAGE: "docs: auto update terraform docs"
         run: |
+          set -o pipefail
           # diff against HEAD because terraform-docs stages the files it updates
           if git diff --quiet HEAD; then
             echo "No documentation changes to commit."
             exit 0
           fi
-          additions=$(git diff --name-only HEAD | while IFS= read -r file; do
-            jq -n --arg path "$file" --arg contents "$(base64 -w0 "$file")" '{path: $path, contents: $contents}'
-          done | jq -s '.')
+          echo "Committing documentation changes:"
+          git diff --name-only HEAD
+          # pass file contents through a temp file to avoid the kernel's argument size limit
+          additions=$(mktemp)
+          git diff --name-only HEAD | while IFS= read -r file; do
+            jq -n --arg path "$file" --rawfile contents <(base64 -w0 "$file") '{path: $path, contents: $contents}'
+          done | jq -s '.' > "$additions"
           jq -n \
             --arg repository "$GITHUB_REPOSITORY" \
             --arg branch "$GITHUB_REF_NAME" \
             --arg expectedHeadOid "$(git rev-parse HEAD)" \
             --arg message "$COMMIT_MESSAGE" \
-            --argjson additions "$additions" \
+            --slurpfile additions "$additions" \
             '{
               query: "mutation ($input: CreateCommitOnBranchInput!) { createCommitOnBranch(input: $input) { commit { oid } } }",
               variables: {
@@ -67,7 +72,7 @@ jobs:
                   branch: { repositoryNameWithOwner: $repository, branchName: $branch },
                   expectedHeadOid: $expectedHeadOid,
                   message: { headline: $message },
-                  fileChanges: { additions: $additions }
+                  fileChanges: { additions: $additions[0] }
                 }
               }
             }' | gh api graphql --input -
