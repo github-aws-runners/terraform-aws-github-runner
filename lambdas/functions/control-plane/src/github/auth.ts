@@ -40,17 +40,6 @@ export async function createOctokitClient(token: string, ghesApiUrl = ''): Promi
   return new CustomOctokit({
     ...ocktokitOptions,
     userAgent: process.env.USER_AGENT || 'github-aws-runners',
-    retry: {
-      onRetry: (retryCount: number, error: Error, request: { method: string; url: string }) => {
-        logger.warn('GitHub API request retry attempt', {
-          retryCount,
-          method: request.method,
-          url: request.url,
-          error: error.message,
-          status: (error as Error & { status?: number }).status,
-        });
-      },
-    },
     throttle: {
       onRateLimit: (retryAfter: number, options: Required<EndpointDefaults>) => {
         logger.warn(
