@@ -1,7 +1,5 @@
 #!/bin/bash
 
-set -euo pipefail
-
 # macOS variant of start-runner.sh
 
 tag_instance_with_runner_id() {
@@ -112,18 +110,11 @@ token_path=$(echo "$parameters" | jq -r '.[] | select(.Name == "'$ssm_config_pat
 echo "Retrieved /$ssm_config_path/token_path parameter - ($token_path)"
 
 echo "Get GH Runner config from AWS SSM"
-config=$(aws ssm get-parameter \
-  --name "$token_path"/"$instance_id" \
-  --with-decryption \
-  --region "$region" | jq -r ".Parameter | .Value")
-
+config=$(aws ssm get-parameter --name "$token_path"/"$instance_id" --with-decryption --region "$region" | jq -r ".Parameter | .Value")
 while [[ -z "$config" ]]; do
   echo "Waiting for GH Runner config to become available in AWS SSM"
   sleep 1
-  config=$(aws ssm get-parameter \
-    --name "$token_path"/"$instance_id" \
-    --with-decryption \
-    --region "$region" | jq -r ".Parameter | .Value")
+  config=$(aws ssm get-parameter --name "$token_path"/"$instance_id" --with-decryption --region "$region" | jq -r ".Parameter | .Value")
 done
 
 echo "Delete GH Runner token from AWS SSM"
