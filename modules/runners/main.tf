@@ -166,8 +166,10 @@ resource "aws_launch_template" "runner" {
   dynamic "cpu_options" {
     for_each = var.cpu_options != null ? [var.cpu_options] : []
     content {
-      core_count       = try(cpu_options.value.core_count, null)
-      threads_per_core = try(cpu_options.value.threads_per_core, null)
+      core_count            = try(cpu_options.value.core_count, null)
+      threads_per_core      = try(cpu_options.value.threads_per_core, null)
+      amd_sev_snp           = try(cpu_options.value.amd_sev_snp, null)
+      nested_virtualization = try(cpu_options.value.nested_virtualization, null)
     }
   }
 

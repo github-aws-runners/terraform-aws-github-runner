@@ -92,7 +92,7 @@ variable "runner_disable_default_labels" {
 }
 
 variable "runner_extra_labels" {
-  description = "Extra (custom) labels for the runners (GitHub). Separate each label by a comma. Labels checks on the webhook can be enforced by setting `enable_workflow_job_labels_check`. GitHub read-only labels should not be provided."
+  description = "Extra (custom) labels for the runners (GitHub). Separate each label by a comma. Labels checks on the webhook can be enforced by setting `enable_workflow_job_labels_check`. GitHub read-only labels should not be provided. Note: labels starting with `ghr-` are ignored during webhook label matching when `enable_dynamic_labels` is enabled."
   type        = list(string)
   default     = []
 
@@ -673,6 +673,12 @@ variable "enable_ephemeral_runners" {
   default     = false
 }
 
+variable "enable_dynamic_labels" {
+  description = "Experimental! Can be removed / changed without trigger a major release. Enable dynamic EC2 configs based on workflow job labels. When enabled, jobs can request specific configs via the 'gh-ec2-<config type key>:<config type value>' label (e.g., 'gh-ec2-instance-type:t3.large'). When enabled, labels starting with `ghr-` are ignored during webhook label matching."
+  type        = bool
+  default     = false
+}
+
 variable "enable_job_queued_check" {
   description = "Only scale if the job event received by the scale up lambda is in the queued state. By default enabled for non ephemeral runners and disabled for ephemeral. Set this variable to overwrite the default behavior."
   type        = bool
@@ -880,10 +886,20 @@ variable "runner_credit_specification" {
 variable "runner_cpu_options" {
   description = "The CPU options for the instance. See https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#cpu-options for details. Note that not all instance types support CPU options, see https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-optimize-cpu.html#instance-cpu-options"
   type = object({
-    core_count       = number
-    threads_per_core = number
+    core_count            = optional(number)
+    threads_per_core      = optional(number)
+    amd_sev_snp           = optional(string)
+    nested_virtualization = optional(string)
   })
   default = null
+
+  validation {
+    condition = var.runner_cpu_options == null ? true : (
+      (var.runner_cpu_options.amd_sev_snp == null || contains(["enabled", "disabled"], var.runner_cpu_options.amd_sev_snp)) &&
+      (var.runner_cpu_options.nested_virtualization == null || contains(["enabled", "disabled"], var.runner_cpu_options.nested_virtualization))
+    )
+    error_message = "When set, runner_cpu_options.amd_sev_snp and runner_cpu_options.nested_virtualization must be one of: enabled, disabled."
+  }
 }
 
 variable "runner_placement" {

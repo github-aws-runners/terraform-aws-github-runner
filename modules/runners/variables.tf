@@ -532,6 +532,12 @@ variable "enable_ephemeral_runners" {
   default     = false
 }
 
+variable "enable_dynamic_labels" {
+  description = "Experimental! Can be removed / changed without trigger a major release. Enable dynamic labels with 'ghr-' prefix. When enabled, jobs can use 'ghr-ec2-<config>:<value>' labels to dynamically configure EC2 instances (e.g., 'ghr-ec2-instance-type:t3.large') and 'ghr-run-<label>' to add unique labels dynamically to runners."
+  type        = bool
+  default     = false
+}
+
 variable "enable_job_queued_check" {
   description = "Only scale if the job event received by the scale up lambda is is in the state queued. By default enabled for non ephemeral runners and disabled for ephemeral. Set this variable to overwrite the default behavior."
   type        = bool
@@ -649,10 +655,20 @@ variable "credit_specification" {
 variable "cpu_options" {
   description = "The CPU options for the instance. See https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#cpu-options for details. Note that not all instance types support CPU options, see https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-optimize-cpu.html#instance-cpu-options"
   type = object({
-    core_count       = number
-    threads_per_core = number
+    core_count            = optional(number)
+    threads_per_core      = optional(number)
+    amd_sev_snp           = optional(string)
+    nested_virtualization = optional(string)
   })
   default = null
+
+  validation {
+    condition = var.cpu_options == null ? true : (
+      (var.cpu_options.amd_sev_snp == null || contains(["enabled", "disabled"], var.cpu_options.amd_sev_snp)) &&
+      (var.cpu_options.nested_virtualization == null || contains(["enabled", "disabled"], var.cpu_options.nested_virtualization))
+    )
+    error_message = "When set, cpu_options.amd_sev_snp and cpu_options.nested_virtualization must be one of: enabled, disabled."
+  }
 }
 
 variable "placement" {
