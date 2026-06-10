@@ -21,7 +21,7 @@ Running macOS runners at scale introduces challenges that do not exist with Linu
 
 1. **1:1 host-to-VM ratio.** Unlike Linux where many instances share underlying hardware, each Mac VM requires its own dedicated host. To run N concurrent macOS jobs, you need at least N dedicated hosts.
 2. **Host recycle delay.** After a Mac instance is terminated, the dedicated host enters a ~50 minute cleanup cycle (scrubbing, software updates). During this window the host is unavailable. For bursty workloads, you need additional hosts to absorb demand while others recycle.
-3. **Capacity planning.** As a rule of thumb, if you expect N peak concurrent macOS jobs and each job takes T minutes, account for the extra ~50 minutes of host downtime per cycle when sizing your host pool.
+3. **Capacity planning.** Dedicated hosts must be allocated ahead of time and are limited by your AWS account quota. Reserve enough hosts for your maximum expected concurrent macOS jobs. After a job finishes and the Mac instance is terminated, add the job runtime plus approximately 50 minutes before that host can run another Mac instance. For example, a 30 minute job keeps its host unavailable for about 80 minutes total.
 
 ## Prerequisites
 
