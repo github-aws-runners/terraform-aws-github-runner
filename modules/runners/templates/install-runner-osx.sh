@@ -4,12 +4,10 @@ set -euo pipefail
 
 ## install the runner (macOS)
 
-s3_location=${S3_LOCATION_RUNNER_DISTRIBUTION:-}
-architecture=${RUNNER_ARCHITECTURE:-}
-runner_tarball_url=${RUNNER_TARBALL_URL:-}
-user_name=${user_name:-ec2-user}
+s3_location=${S3_LOCATION_RUNNER_DISTRIBUTION}
+architecture=${RUNNER_ARCHITECTURE}
 
-if [ -z "$runner_tarball_url" ] && [ -z "$s3_location" ]; then
+if [ -z "$RUNNER_TARBALL_URL" ] && [ -z "$s3_location" ]; then
   echo "Neither RUNNER_TARBALL_URL or s3_location are set"
   exit 1
 fi
