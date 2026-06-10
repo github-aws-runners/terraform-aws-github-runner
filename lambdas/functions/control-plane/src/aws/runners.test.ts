@@ -986,7 +986,7 @@ function createRunnerConfig(runnerConfig: RunnerConfig): RunnerInputParameters {
     tracingEnabled: runnerConfig.tracingEnabled,
     onDemandFailoverOnError: runnerConfig.onDemandFailoverOnError,
     scaleErrors: runnerConfig.scaleErrors,
-    source: runnerConfig.source,    
+    source: runnerConfig.source,
     useDedicatedHost: runnerConfig.useDedicatedHost,
   };
 }
