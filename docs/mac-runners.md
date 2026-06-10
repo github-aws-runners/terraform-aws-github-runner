@@ -57,6 +57,7 @@ module "runners" {
   runner_os           = "osx"
   runner_architecture = "arm64"  # or "x64" for Intel Mac instances
   instance_types      = ["mac2.metal"]
+  instance_target_capacity_type = "on-demand"
 
   # Dedicated host settings (required for macOS)
   use_dedicated_host = true
@@ -110,6 +111,7 @@ multi_runner_config = {
       runner_os           = "osx"
       runner_architecture = "arm64"
       instance_types      = ["mac2.metal"]
+      instance_target_capacity_type = "on-demand"
       use_dedicated_host  = true
       placement = {
         host_resource_group_arn = "<arn-of-your-host-resource-group>"
