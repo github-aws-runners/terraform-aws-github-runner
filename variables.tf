@@ -636,9 +636,15 @@ variable "log_level" {
 }
 
 variable "enable_runner_workflow_job_labels_check_all" {
-  description = "If set to true all labels in the workflow job must match the GitHub labels (os, architecture and `self-hosted`). When false if __any__ label matches it will trigger the webhook."
+  description = "DEPRECATED: Use `enable_runner_bidirectional_label_match` instead. If set to true all labels in the workflow job must match the GitHub labels (os, architecture and `self-hosted`). When false if __any__ label matches it will trigger the webhook. Note: this only checks that workflow labels are a subset of runner labels, not the reverse."
   type        = bool
   default     = true
+}
+
+variable "enable_runner_bidirectional_label_match" {
+  description = "If set to true, the runner labels and workflow job labels must be an exact two-way match (same set, any order, no extras or missing labels). This is stricter than `enable_runner_workflow_job_labels_check_all` which only checks that workflow labels are a subset of runner labels. When false, if __any__ label matches it will trigger the webhook."
+  type        = bool
+  default     = false
 }
 
 variable "matcher_config_parameter_store_tier" {

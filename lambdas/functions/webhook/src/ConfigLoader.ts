@@ -61,7 +61,7 @@ abstract class BaseConfig {
         this.loadProperty(propertyName, value);
       })
       .catch((error) => {
-        const errorMessage = `Failed to load parameter for ${String(propertyName)} from path ${paramPath}: ${(error as Error).message}`; // eslint-disable-line max-len
+        const errorMessage = `Failed to load parameter for ${String(propertyName)} from path ${paramPath}: ${(error as Error).message}`;
         this.configLoadingErrors.push(errorMessage);
       });
   }

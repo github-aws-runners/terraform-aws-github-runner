@@ -219,7 +219,7 @@ describe('Dispatcher', () => {
     it('should filter out ghr- labels when enableDynamicLabels is true.', () => {
       const workflowLabels = ['self-hosted', 'linux', 'x64', 'ghr-ec2-instance-type:t3.large', 'ghr-run-id:12345'];
       const runnerLabels = [['self-hosted', 'linux', 'x64']];
-      expect(canRunJob(workflowLabels, runnerLabels, true, true)).toBe(true);
+      expect(canRunJob(workflowLabels, runnerLabels, true, false, true)).toBe(true);
     });
 
     it('should NOT filter out ghr- labels when enableDynamicLabels is false.', () => {
@@ -233,13 +233,13 @@ describe('Dispatcher', () => {
     it('should keep valid ghr- labels with allowed characters (alphanumeric, dot, dash, colon, slash)', () => {
       const workflowLabels = ['self-hosted', 'ghr-ec2-instance-type:t3.large'];
       const runnerLabels = [['self-hosted', 'ghr-ec2-instance-type:t3.large']];
-      expect(canRunJob(workflowLabels, runnerLabels, true, true)).toBe(true);
+      expect(canRunJob(workflowLabels, runnerLabels, true, false, true)).toBe(true);
     });
 
     it('should keep ghr- labels with path-like values containing slashes', () => {
       const workflowLabels = ['self-hosted', 'ghr-image:my/custom/image'];
       const runnerLabels = [['self-hosted', 'ghr-image:my/custom/image']];
-      expect(canRunJob(workflowLabels, runnerLabels, true, true)).toBe(true);
+      expect(canRunJob(workflowLabels, runnerLabels, true, false, true)).toBe(true);
     });
 
     it('should strip ghr- labels that exceed 128 characters', () => {
@@ -247,33 +247,33 @@ describe('Dispatcher', () => {
       const workflowLabels = ['self-hosted', 'linux', longLabel];
       const runnerLabels = [['self-hosted', 'linux']];
       // Long label is stripped, remaining labels match
-      expect(canRunJob(workflowLabels, runnerLabels, true, true)).toBe(true);
+      expect(canRunJob(workflowLabels, runnerLabels, true, false, true)).toBe(true);
     });
 
     it('should keep ghr- labels that are exactly 128 characters', () => {
       const exactLabel = 'ghr-' + 'a'.repeat(124); // exactly 128 chars
       const workflowLabels = ['self-hosted', exactLabel];
       const runnerLabels = [['self-hosted', exactLabel]];
-      expect(canRunJob(workflowLabels, runnerLabels, true, true)).toBe(true);
+      expect(canRunJob(workflowLabels, runnerLabels, true, false, true)).toBe(true);
     });
 
     it('should strip ghr- labels with invalid characters (spaces)', () => {
       const workflowLabels = ['self-hosted', 'linux', 'ghr-bad label'];
       const runnerLabels = [['self-hosted', 'linux']];
       // Invalid label is stripped, remaining labels match
-      expect(canRunJob(workflowLabels, runnerLabels, true, true)).toBe(true);
+      expect(canRunJob(workflowLabels, runnerLabels, true, false, true)).toBe(true);
     });
 
     it('should strip ghr- labels with invalid characters (special chars)', () => {
       const workflowLabels = ['self-hosted', 'linux', 'ghr-inject;rm -rf'];
       const runnerLabels = [['self-hosted', 'linux']];
-      expect(canRunJob(workflowLabels, runnerLabels, true, true)).toBe(true);
+      expect(canRunJob(workflowLabels, runnerLabels, true, false, true)).toBe(true);
     });
 
     it('should never strip non-ghr labels regardless of content', () => {
       const workflowLabels = ['self-hosted', 'linux', 'x64'];
       const runnerLabels = [['self-hosted', 'linux', 'x64']];
-      expect(canRunJob(workflowLabels, runnerLabels, true, true)).toBe(true);
+      expect(canRunJob(workflowLabels, runnerLabels, true, false, true)).toBe(true);
     });
 
     it('should handle a mix of valid ghr-, invalid ghr-, and regular labels', () => {
@@ -286,7 +286,87 @@ describe('Dispatcher', () => {
         longLabel, // too long, stripped
       ];
       const runnerLabels = [['self-hosted', 'linux', 'ghr-valid:value']];
-      expect(canRunJob(workflowLabels, runnerLabels, true, true)).toBe(true);
+      expect(canRunJob(workflowLabels, runnerLabels, true, false, true)).toBe(true);
+    });
+
+    it('should match when runner has more labels than workflow requests with exactMatch=true (unidirectional).', () => {
+      const workflowLabels = ['self-hosted', 'linux', 'x64', 'staging', 'ubuntu-2404'];
+      const runnerLabels = [['self-hosted', 'linux', 'x64', 'staging', 'ubuntu-2404', 'on-demand']];
+      expect(canRunJob(workflowLabels, runnerLabels, true)).toBe(true);
+    });
+
+    it('should match when labels are exactly identical with exactMatch=true.', () => {
+      const workflowLabels = ['self-hosted', 'linux', 'on-demand'];
+      const runnerLabels = [['self-hosted', 'linux', 'on-demand']];
+      expect(canRunJob(workflowLabels, runnerLabels, true)).toBe(true);
+    });
+
+    it('should match with exactMatch=true when labels are in different order.', () => {
+      const workflowLabels = ['linux', 'self-hosted', 'x64'];
+      const runnerLabels = [['self-hosted', 'linux', 'x64']];
+      expect(canRunJob(workflowLabels, runnerLabels, true)).toBe(true);
+    });
+
+    it('should match with exactMatch=true when labels are completely shuffled.', () => {
+      const workflowLabels = ['x64', 'ubuntu-latest', 'self-hosted', 'linux'];
+      const runnerLabels = [['self-hosted', 'linux', 'x64', 'ubuntu-latest']];
+      expect(canRunJob(workflowLabels, runnerLabels, true)).toBe(true);
+    });
+
+    it('should match with exactMatch=false when labels are in different order.', () => {
+      const workflowLabels = ['gpu', 'self-hosted'];
+      const runnerLabels = [['self-hosted', 'gpu']];
+      expect(canRunJob(workflowLabels, runnerLabels, false)).toBe(true);
+    });
+
+    // bidirectionalLabelMatch tests
+    it('should NOT match when runner has more labels than workflow requests (bidirectionalLabelMatch=true).', () => {
+      const workflowLabels = ['self-hosted', 'linux', 'x64', 'staging', 'ubuntu-2404'];
+      const runnerLabels = [['self-hosted', 'linux', 'x64', 'staging', 'ubuntu-2404', 'on-demand']];
+      expect(canRunJob(workflowLabels, runnerLabels, false, true)).toBe(false);
+    });
+
+    it('should NOT match when workflow has more labels than runner (bidirectionalLabelMatch=true).', () => {
+      const workflowLabels = ['self-hosted', 'linux', 'x64', 'ubuntu-latest', 'gpu'];
+      const runnerLabels = [['self-hosted', 'linux', 'x64']];
+      expect(canRunJob(workflowLabels, runnerLabels, false, true)).toBe(false);
+    });
+
+    it('should match when labels are exactly identical with bidirectionalLabelMatch=true.', () => {
+      const workflowLabels = ['self-hosted', 'linux', 'on-demand'];
+      const runnerLabels = [['self-hosted', 'linux', 'on-demand']];
+      expect(canRunJob(workflowLabels, runnerLabels, false, true)).toBe(true);
+    });
+
+    it('should match with bidirectionalLabelMatch=true when labels are in different order.', () => {
+      const workflowLabels = ['linux', 'self-hosted', 'x64'];
+      const runnerLabels = [['self-hosted', 'linux', 'x64']];
+      expect(canRunJob(workflowLabels, runnerLabels, false, true)).toBe(true);
+    });
+
+    it('should match with bidirectionalLabelMatch=true when labels are completely shuffled.', () => {
+      const workflowLabels = ['x64', 'ubuntu-latest', 'self-hosted', 'linux'];
+      const runnerLabels = [['self-hosted', 'linux', 'x64', 'ubuntu-latest']];
+      expect(canRunJob(workflowLabels, runnerLabels, false, true)).toBe(true);
+    });
+
+    it('should match with bidirectionalLabelMatch=true ignoring case.', () => {
+      const workflowLabels = ['Self-Hosted', 'Linux', 'X64'];
+      const runnerLabels = [['self-hosted', 'linux', 'x64']];
+      expect(canRunJob(workflowLabels, runnerLabels, false, true)).toBe(true);
+    });
+
+    it('should NOT match empty workflow labels with bidirectionalLabelMatch=true.', () => {
+      const workflowLabels: string[] = [];
+      const runnerLabels = [['self-hosted', 'linux', 'x64']];
+      expect(canRunJob(workflowLabels, runnerLabels, false, true)).toBe(false);
+    });
+
+    it('bidirectionalLabelMatch takes precedence over exactMatch when both are true.', () => {
+      const workflowLabels = ['self-hosted', 'linux', 'x64'];
+      const runnerLabels = [['self-hosted', 'linux', 'x64', 'ubuntu-latest']];
+      // exactMatch alone would accept this (runner has extra labels), but bidirectional should reject
+      expect(canRunJob(workflowLabels, runnerLabels, true, true)).toBe(false);
     });
   });
 });
