@@ -46,11 +46,12 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           COMMIT_MESSAGE: "docs: auto update terraform docs"
         run: |
-          if git diff --quiet; then
+          # diff against HEAD because terraform-docs stages the files it updates
+          if git diff --quiet HEAD; then
             echo "No documentation changes to commit."
             exit 0
           fi
-          additions=$(git diff --name-only | while IFS= read -r file; do
+          additions=$(git diff --name-only HEAD | while IFS= read -r file; do
             jq -n --arg path "$file" --arg contents "$(base64 -w0 "$file")" '{path: $path, contents: $contents}'
           done | jq -s '.')
           jq -n \
