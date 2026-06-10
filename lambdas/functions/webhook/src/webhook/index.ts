@@ -43,6 +43,11 @@ export async function publishOnEventBridge(
   const eventType = headers['x-github-event'] as string;
   checkEventIsSupported(eventType, config.allowedEvents);
 
+  // If workflow_job event, read the event and log relevant information for monitoring and debugging purposes.
+  if (eventType === 'workflow_job') {
+    readWorkflowJobEvent(headers, body);
+  }
+
   const checkBodySizeResult = checkBodySize(body, headers);
 
   logger.info(
