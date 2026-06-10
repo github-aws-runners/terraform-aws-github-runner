@@ -15,7 +15,7 @@ export async function dispatch(
 ): Promise<Response> {
   validateRepoInAllowList(event, config);
 
-  return await handleWorkflowJob(event, eventType, config.matcherConfig!);
+  return await handleWorkflowJob(event, eventType, config.matcherConfig!, config.enableDynamicLabels);
 }
 
 function validateRepoInAllowList(event: WorkflowJobEvent, config: ConfigDispatcher) {
@@ -29,6 +29,7 @@ async function handleWorkflowJob(
   body: WorkflowJobEvent,
   githubEvent: string,
   matcherConfig: Array<RunnerMatcherConfig>,
+  enableDynamicLabels: boolean,
 ): Promise<Response> {
   if (body.action !== 'queued') {
     return {
@@ -55,6 +56,7 @@ async function handleWorkflowJob(
         queue.matcherConfig.labelMatchers,
         queue.matcherConfig.exactMatch,
         queue.matcherConfig.bidirectionalLabelMatch,
+        enableDynamicLabels,
       )
     ) {
       await sendActionRequest({
@@ -65,6 +67,7 @@ async function handleWorkflowJob(
         installationId: body.installation?.id ?? 0,
         queueId: queue.id,
         repoOwnerType: body.repository.owner.type,
+        labels: body.workflow_job.labels,
       });
       logger.info(
         `Successfully dispatched job for ${body.repository.full_name} to the queue ${queue.id} - ` +
@@ -85,27 +88,52 @@ async function handleWorkflowJob(
   return { statusCode: 202, body: notAcceptedErrorMsg };
 }
 
+function sanitizeGhrLabels(labels: string[]): string[] {
+  const GHR_LABEL_MAX_LENGTH = 128;
+  const GHR_LABEL_VALUE_PATTERN = /^[a-zA-Z0-9._/\-:]+$/;
+
+  return labels
+    .map((label) => {
+      if (!label.startsWith('ghr-')) return label;
+
+      if (label.length > GHR_LABEL_MAX_LENGTH) {
+        logger.warn('Dynamic label exceeds max length, stripping', { label: label.substring(0, 40) });
+        return null;
+      }
+      if (!GHR_LABEL_VALUE_PATTERN.test(label)) {
+        logger.warn('Dynamic label contains invalid characters, stripping', { label });
+        return null;
+      }
+      return null;
+    })
+    .filter((l): l is string => l !== null);
+}
+
 export function canRunJob(
   workflowJobLabels: string[],
   runnerLabelsMatchers: string[][],
   workflowLabelCheckAll: boolean,
   bidirectionalLabelMatch = false,
+  enableDynamicLabels = false,
 ): boolean {
+  // Filter out ghr- labels only and sanitize them if dynamic labels is enabled, otherwise keep all labels as is for matching.
+  const sanitizedLabels = enableDynamicLabels ? sanitizeGhrLabels(workflowJobLabels) : workflowJobLabels;
+
   runnerLabelsMatchers = runnerLabelsMatchers.map((runnerLabel) => {
     return runnerLabel.map((label) => label.toLowerCase());
   });
 
   let match: boolean;
   if (bidirectionalLabelMatch) {
-    const workflowLabelsLower = workflowJobLabels.map((wl) => wl.toLowerCase());
+    const sanitizedLabelsLower = sanitizedLabels.map((wl) => wl.toLowerCase());
     match = runnerLabelsMatchers.some(
-      (rl) => workflowLabelsLower.every((wl) => rl.includes(wl)) && rl.every((r) => workflowLabelsLower.includes(r)),
+      (rl) => sanitizedLabelsLower.every((wl) => rl.includes(wl)) && rl.every((r) => sanitizedLabelsLower.includes(r)),
     );
   } else {
     const matchLabels = workflowLabelCheckAll
-      ? runnerLabelsMatchers.some((rl) => workflowJobLabels.every((wl) => rl.includes(wl.toLowerCase())))
-      : runnerLabelsMatchers.some((rl) => workflowJobLabels.some((wl) => rl.includes(wl.toLowerCase())));
-    match = workflowJobLabels.length === 0 ? !matchLabels : matchLabels;
+      ? runnerLabelsMatchers.some((rl) => sanitizedLabels.every((wl) => rl.includes(wl.toLowerCase())))
+      : runnerLabelsMatchers.some((rl) => sanitizedLabels.some((wl) => rl.includes(wl.toLowerCase())));
+    match = sanitizedLabels.length === 0 ? !matchLabels : matchLabels;
   }
 
   logger.debug(
