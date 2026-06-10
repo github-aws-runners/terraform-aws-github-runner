@@ -11,7 +11,7 @@ variable "lambda_security_group_ids" {
 }
 
 variable "prefix" {
-  description = "The prefix used for naming resources"
+  description = "The prefix used for naming resources."
   type        = string
   default     = "github-actions"
 }
