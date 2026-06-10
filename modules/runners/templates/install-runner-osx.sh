@@ -1,11 +1,15 @@
 # shellcheck shell=bash
 
+set -euo pipefail
+
 ## install the runner (macOS)
 
-s3_location=${S3_LOCATION_RUNNER_DISTRIBUTION}
-architecture=${RUNNER_ARCHITECTURE}
+s3_location=${S3_LOCATION_RUNNER_DISTRIBUTION:-}
+architecture=${RUNNER_ARCHITECTURE:-}
+runner_tarball_url=${RUNNER_TARBALL_URL:-}
+user_name=${user_name:-ec2-user}
 
-if [ -z "$RUNNER_TARBALL_URL" ] && [ -z "$s3_location" ]; then
+if [ -z "$runner_tarball_url" ] && [ -z "$s3_location" ]; then
   echo "Neither RUNNER_TARBALL_URL or s3_location are set"
   exit 1
 fi
@@ -19,9 +23,9 @@ echo "Creating actions-runner directory for the GH Action installation"
 sudo mkdir -p /opt/actions-runner
 cd /opt/actions-runner || exit 1
 
-if [[ -n "$RUNNER_TARBALL_URL" ]]; then
-  echo "Downloading the GH Action runner from $RUNNER_TARBALL_URL to $file_name"
-  curl -s -o "$file_name" -L "$RUNNER_TARBALL_URL"
+if [[ -n "$runner_tarball_url" ]]; then
+  echo "Downloading the GH Action runner from $runner_tarball_url to $file_name"
+  curl -s -o "$file_name" -L "$runner_tarball_url"
 else
   echo "Retrieving REGION from AWS API"
   token="$(curl -s -f -X PUT "http://169.254.169.254/latest/api/token" \
