@@ -440,6 +440,26 @@ describe('create runner', () => {
     });
   });
 
+  it('calls create fleet with spot capacity-optimized-prioritized and instance type priorities', async () => {
+    const priorities = { 'm5.large': 10, 'c5.large': 5 };
+    await createRunner(
+      createRunnerConfig({
+        ...defaultRunnerConfig,
+        capacityType: 'spot',
+        allocationStrategy: SpotAllocationStrategy.CAPACITY_OPTIMIZED_PRIORITIZED,
+        instanceTypePriorities: priorities,
+      }),
+    );
+    expect(mockEC2Client).toHaveReceivedCommandWith(CreateFleetCommand, {
+      ...expectedCreateFleetRequest({
+        ...defaultExpectedFleetRequestValues,
+        capacityType: 'spot',
+        allocationStrategy: SpotAllocationStrategy.CAPACITY_OPTIMIZED_PRIORITIZED,
+        instanceTypePriorities: priorities,
+      }),
+    });
+  });
+
   it('calls run instances with the on-demand capacity', async () => {
     await createRunner(createRunnerConfig({ ...defaultRunnerConfig, maxSpotPrice: '0.1' }));
     expect(mockEC2Client).toHaveReceivedCommandWith(CreateFleetCommand, {
@@ -1062,6 +1082,9 @@ function expectedCreateFleetRequest(expectedValues: ExpectedFleetRequestValues):
     const traceId = tracer.getRootXrayTraceId();
     tags.push({ Key: 'ghr:trace_id', Value: traceId! });
   }
+  const usesPriority =
+    expectedValues.allocationStrategy === 'prioritized' ||
+    expectedValues.allocationStrategy === 'capacity-optimized-prioritized';
   const request: CreateFleetCommandInput = {
     LaunchTemplateConfigs: [
       {
@@ -1073,28 +1096,28 @@ function expectedCreateFleetRequest(expectedValues: ExpectedFleetRequestValues):
           {
             InstanceType: 'm5.large',
             SubnetId: 'subnet-123',
-            ...(expectedValues.allocationStrategy === 'prioritized' && {
+            ...(usesPriority && {
               Priority: expectedValues.instanceTypePriorities?.['m5.large'] ?? 0,
             }),
           },
           {
             InstanceType: 'c5.large',
             SubnetId: 'subnet-123',
-            ...(expectedValues.allocationStrategy === 'prioritized' && {
+            ...(usesPriority && {
               Priority: expectedValues.instanceTypePriorities?.['c5.large'] ?? 1,
             }),
           },
           {
             InstanceType: 'm5.large',
             SubnetId: 'subnet-456',
-            ...(expectedValues.allocationStrategy === 'prioritized' && {
+            ...(usesPriority && {
               Priority: expectedValues.instanceTypePriorities?.['m5.large'] ?? 0,
             }),
           },
           {
             InstanceType: 'c5.large',
             SubnetId: 'subnet-456',
-            ...(expectedValues.allocationStrategy === 'prioritized' && {
+            ...(usesPriority && {
               Priority: expectedValues.instanceTypePriorities?.['c5.large'] ?? 1,
             }),
           },
