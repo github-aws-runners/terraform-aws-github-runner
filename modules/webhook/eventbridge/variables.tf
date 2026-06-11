@@ -47,6 +47,7 @@ variable "config" {
       arn     = string
       version = string
     }))
-    accept_events = optional(list(string), null)
+    accept_events         = optional(list(string), null)
+    enable_dynamic_labels = optional(bool, false)
   })
 }

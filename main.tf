@@ -137,6 +137,7 @@ module "webhook" {
   logging_retention_in_days                     = var.logging_retention_in_days
   logging_kms_key_id                            = var.logging_kms_key_id
   log_class                                     = var.log_class
+  enable_dynamic_labels                         = var.enable_dynamic_labels
 
   role_path                 = var.role_path
   role_permissions_boundary = var.role_permissions_boundary
@@ -158,6 +159,7 @@ module "runners" {
   subnet_ids    = var.subnet_ids
   prefix        = var.prefix
   tags          = local.tags
+  iam_overrides = var.iam_overrides
 
   ssm_paths = {
     root   = local.ssm_root_path
@@ -185,8 +187,9 @@ module "runners" {
   github_app_parameters                = local.github_app_parameters
   enable_organization_runners          = var.enable_organization_runners
   enable_ephemeral_runners             = var.enable_ephemeral_runners
-  enable_jit_config                    = var.enable_jit_config
+  enable_dynamic_labels                = var.enable_dynamic_labels
   enable_job_queued_check              = var.enable_job_queued_check
+  enable_jit_config                    = var.enable_jit_config
   enable_on_demand_failover_for_errors = var.enable_runner_on_demand_failover_for_errors
   scale_errors                         = var.scale_errors
   disable_runner_autoupdate            = var.disable_runner_autoupdate
@@ -208,6 +211,8 @@ module "runners" {
   credit_specification                 = var.runner_credit_specification
   cpu_options                          = var.runner_cpu_options
   placement                            = var.runner_placement
+  license_specifications               = var.runner_license_specifications
+  use_dedicated_host                   = var.use_dedicated_host
 
   enable_runner_binaries_syncer                                  = var.enable_runner_binaries_syncer
   lambda_s3_bucket                                               = var.lambda_s3_bucket

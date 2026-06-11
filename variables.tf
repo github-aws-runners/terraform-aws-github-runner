@@ -92,7 +92,7 @@ variable "runner_disable_default_labels" {
 }
 
 variable "runner_extra_labels" {
-  description = "Extra (custom) labels for the runners (GitHub). Separate each label by a comma. Labels checks on the webhook can be enforced by setting `enable_workflow_job_labels_check`. GitHub read-only labels should not be provided."
+  description = "Extra (custom) labels for the runners (GitHub). Separate each label by a comma. Labels checks on the webhook can be enforced by setting `enable_workflow_job_labels_check`. GitHub read-only labels should not be provided. Note: labels starting with `ghr-` are ignored during webhook label matching when `enable_dynamic_labels` is enabled."
   type        = list(string)
   default     = []
 
@@ -106,6 +106,33 @@ variable "runner_group_name" {
   description = "Name of the runner group."
   type        = string
   default     = "Default"
+}
+
+variable "iam_overrides" {
+  description = "This map provides the possibility to override some IAM defaults. Note that when using this variable, you are responsible for ensuring the role has necessary permissions to access required resources. `override_instance_profile`: When set to true, uses the instance profile name specified in `instance_profile_name` instead of creating a new instance profile. `override_runner_role`: When set to true, uses the role ARN specified in `runner_role_arn` instead of creating a new IAM role."
+  type = object({
+    override_instance_profile = optional(bool, null)
+    instance_profile_name     = optional(string, null)
+    override_runner_role      = optional(bool, null)
+    runner_role_arn           = optional(string, null)
+  })
+
+  default = {
+    override_instance_profile = false
+    instance_profile_name     = null
+    override_runner_role      = false
+    runner_role_arn           = null
+  }
+
+  validation {
+    condition     = !var.iam_overrides.override_instance_profile || var.iam_overrides.instance_profile_name != null
+    error_message = "instance_profile_name must be provided when override_instance_profile is true."
+  }
+
+  validation {
+    condition     = !var.iam_overrides.override_runner_role || var.iam_overrides.runner_role_arn != null
+    error_message = "runner_role_arn must be provided when override_runner_role is true."
+  }
 }
 
 variable "scale_up_reserved_concurrent_executions" {
@@ -570,7 +597,7 @@ variable "instance_max_spot_price" {
 }
 
 variable "instance_types" {
-  description = "List of instance types for the action runner. Defaults are based on runner_os (al2023 for linux and Windows Server Core for win)."
+  description = "List of instance types for the action runner. Defaults are based on runner_os (al2023 for linux, macOS Sequoia for osx, Windows Server Core for win)."
   type        = list(string)
   default     = ["m5.large", "c5.large"]
 }
@@ -673,6 +700,12 @@ variable "enable_ephemeral_runners" {
   default     = false
 }
 
+variable "enable_dynamic_labels" {
+  description = "Experimental! Can be removed / changed without trigger a major release. Enable dynamic EC2 configs based on workflow job labels. When enabled, jobs can request specific configs via the 'gh-ec2-<config type key>:<config type value>' label (e.g., 'gh-ec2-instance-type:t3.large'). When enabled, labels starting with `ghr-` are ignored during webhook label matching."
+  type        = bool
+  default     = false
+}
+
 variable "enable_job_queued_check" {
   description = "Only scale if the job event received by the scale up lambda is in the queued state. By default enabled for non ephemeral runners and disabled for ephemeral. Set this variable to overwrite the default behavior."
   type        = bool
@@ -686,13 +719,13 @@ variable "enable_managed_runner_security_group" {
 }
 
 variable "runner_os" {
-  description = "The EC2 Operating System type to use for action runner instances (linux,windows)."
+  description = "The EC2 Operating System type to use for action runner instances (linux, osx, windows)."
   type        = string
   default     = "linux"
 
   validation {
-    condition     = contains(["linux", "windows"], var.runner_os)
-    error_message = "Valid values for runner_os are (linux, windows)."
+    condition     = contains(["linux", "osx", "windows"], var.runner_os)
+    error_message = "Valid values for runner_os are (linux, osx, windows)."
   }
 }
 
@@ -880,10 +913,20 @@ variable "runner_credit_specification" {
 variable "runner_cpu_options" {
   description = "The CPU options for the instance. See https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#cpu-options for details. Note that not all instance types support CPU options, see https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-optimize-cpu.html#instance-cpu-options"
   type = object({
-    core_count       = number
-    threads_per_core = number
+    core_count            = optional(number)
+    threads_per_core      = optional(number)
+    amd_sev_snp           = optional(string)
+    nested_virtualization = optional(string)
   })
   default = null
+
+  validation {
+    condition = var.runner_cpu_options == null ? true : (
+      (var.runner_cpu_options.amd_sev_snp == null || contains(["enabled", "disabled"], var.runner_cpu_options.amd_sev_snp)) &&
+      (var.runner_cpu_options.nested_virtualization == null || contains(["enabled", "disabled"], var.runner_cpu_options.nested_virtualization))
+    )
+    error_message = "When set, runner_cpu_options.amd_sev_snp and runner_cpu_options.nested_virtualization must be one of: enabled, disabled."
+  }
 }
 
 variable "runner_placement" {
@@ -900,6 +943,14 @@ variable "runner_placement" {
     partition_number        = optional(number)
   })
   default = null
+}
+
+variable "runner_license_specifications" {
+  description = "Optional EC2 License Manager license configuration ARNs for the runner launch template. Required for macOS dedicated-host runners when the host resource group uses a Mac dedicated host license configuration. See https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#license_specification for details."
+  type = list(object({
+    license_configuration_arn = string
+  }))
+  default = []
 }
 
 variable "enable_jit_config" {
@@ -1057,4 +1108,10 @@ variable "parameter_store_tags" {
   description = "Map of tags that will be added to all the SSM Parameter Store parameters created by the Lambda function."
   type        = map(string)
   default     = {}
+}
+
+variable "use_dedicated_host" {
+  description = "Use a dedicated host for the runner instances."
+  type        = bool
+  default     = false
 }

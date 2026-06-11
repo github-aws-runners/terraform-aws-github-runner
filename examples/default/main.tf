@@ -51,7 +51,9 @@ module "runners" {
   # runners_lambda_zip                = "../lambdas-download/runners.zip"
 
   enable_organization_runners = true
-  runner_extra_labels         = ["default", "example"]
+  # Note: labels starting with `ghr-` are ignored during webhook label matching
+  # when `enable_dynamic_labels` is enabled.
+  runner_extra_labels = ["default", "example"]
 
   # enable access to the runners via SSM
   enable_ssm_on_runners = true

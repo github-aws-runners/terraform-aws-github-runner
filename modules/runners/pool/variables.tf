@@ -46,6 +46,7 @@ variable "config" {
       role = object({
         arn = string
       })
+      use_dedicated_host = bool
     })
     instance_types                = list(string)
     instance_target_capacity_type = string
