@@ -28,6 +28,7 @@ declare namespace NodeJS {
       | 'price-capacity-optimized'
       | 'diversified'
       | 'capacity-optimized'
-      | 'capacity-optimized-prioritized';
+      | 'capacity-optimized-prioritized'
+      | 'prioritized';
   }
 }
