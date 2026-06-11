@@ -35,6 +35,7 @@ module "runners" {
   scale_errors                         = each.value.runner_config.scale_errors
   enable_organization_runners          = each.value.runner_config.enable_organization_runners
   enable_ephemeral_runners             = each.value.runner_config.enable_ephemeral_runners
+  enable_dynamic_labels                = var.enable_dynamic_labels
   enable_jit_config                    = each.value.runner_config.enable_jit_config
   enable_job_queued_check              = each.value.runner_config.enable_job_queued_check
   disable_runner_autoupdate            = each.value.runner_config.disable_runner_autoupdate
@@ -56,6 +57,8 @@ module "runners" {
   credit_specification                 = each.value.runner_config.credit_specification
   cpu_options                          = each.value.runner_config.cpu_options
   placement                            = each.value.runner_config.placement
+  license_specifications               = each.value.runner_config.license_specifications
+  use_dedicated_host                   = each.value.runner_config.use_dedicated_host
 
   enable_runner_binaries_syncer                                  = each.value.runner_config.enable_runner_binaries_syncer
   lambda_s3_bucket                                               = var.lambda_s3_bucket
@@ -76,6 +79,7 @@ module "runners" {
   tracing_config                                                 = var.tracing_config
   logging_retention_in_days                                      = var.logging_retention_in_days
   logging_kms_key_id                                             = var.logging_kms_key_id
+  log_class                                                      = var.log_class
   enable_cloudwatch_agent                                        = each.value.runner_config.enable_cloudwatch_agent
   cloudwatch_config                                              = try(coalesce(each.value.runner_config.cloudwatch_config, var.cloudwatch_config), null)
   runner_log_files                                               = each.value.runner_config.runner_log_files
@@ -102,6 +106,7 @@ module "runners" {
   create_service_linked_role_spot = each.value.runner_config.create_service_linked_role_spot
 
   runner_iam_role_managed_policy_arns = each.value.runner_config.runner_iam_role_managed_policy_arns
+  iam_overrides                       = each.value.runner_config.iam_overrides
 
   ghes_url        = var.ghes_url
   ghes_ssl_verify = var.ghes_ssl_verify

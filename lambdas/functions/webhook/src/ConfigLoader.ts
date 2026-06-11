@@ -1,4 +1,4 @@
-import { getParameter } from '@aws-github-runner/aws-ssm-util';
+import { getParameter, getParameters } from '@aws-github-runner/aws-ssm-util';
 import { RunnerMatcherConfig } from './sqs';
 import { logger } from '@aws-github-runner/aws-powertools-util';
 
@@ -101,16 +101,27 @@ abstract class MatcherAwareConfig extends BaseConfig {
       .split(':')
       .map((p) => p.trim())
       .filter(Boolean);
-    let combinedString = '';
-    for (const path of paths) {
-      await this.loadParameter(path, 'matcherConfig');
-      combinedString += this.matcherConfig;
-    }
 
+    // Batch fetch all matcher config paths in a single SSM API call
     try {
-      this.matcherConfig = JSON.parse(combinedString);
+      const params = await getParameters(paths);
+      let combinedString = '';
+      for (const path of paths) {
+        const value = params.get(path);
+        if (value) {
+          combinedString += value;
+        } else {
+          this.configLoadingErrors.push(
+            `Failed to load parameter for matcherConfig from path ${path}: Parameter not found`,
+          );
+        }
+      }
+
+      if (combinedString) {
+        this.matcherConfig = JSON.parse(combinedString);
+      }
     } catch (error) {
-      this.configLoadingErrors.push(`Failed to parse combined matcher config: ${(error as Error).message}`);
+      this.configLoadingErrors.push(`Failed to load/parse combined matcher config: ${(error as Error).message}`);
     }
   }
 }
@@ -119,9 +130,11 @@ export class ConfigWebhook extends MatcherAwareConfig {
   repositoryAllowList: string[] = [];
   webhookSecret: string = '';
   workflowJobEventSecondaryQueue: string = '';
+  enableDynamicLabels: boolean = false;
 
   async loadConfig(): Promise<void> {
     this.loadEnvVar(process.env.REPOSITORY_ALLOW_LIST, 'repositoryAllowList', []);
+    this.loadEnvVar(process.env.ENABLE_DYNAMIC_LABELS, 'enableDynamicLabels', false);
 
     await Promise.all([
       this.loadMatcherConfig(process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH),
@@ -151,9 +164,11 @@ export class ConfigWebhookEventBridge extends BaseConfig {
 export class ConfigDispatcher extends MatcherAwareConfig {
   repositoryAllowList: string[] = [];
   workflowJobEventSecondaryQueue: string = ''; // Deprecated
+  enableDynamicLabels: boolean = false;
 
   async loadConfig(): Promise<void> {
     this.loadEnvVar(process.env.REPOSITORY_ALLOW_LIST, 'repositoryAllowList', []);
+    this.loadEnvVar(process.env.ENABLE_DYNAMIC_LABELS, 'enableDynamicLabels', false);
     await this.loadMatcherConfig(process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH);
 
     validateRunnerMatcherConfig(this);

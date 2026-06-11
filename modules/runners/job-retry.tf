@@ -13,6 +13,7 @@ locals {
     kms_key_arn                                                    = var.kms_key_arn
     lambda_tags                                                    = var.lambda_tags
     log_level                                                      = var.log_level
+    log_class                                                      = var.log_class
     logging_kms_key_id                                             = var.logging_kms_key_id
     logging_retention_in_days                                      = var.logging_retention_in_days
     metrics                                                        = var.metrics
@@ -29,6 +30,8 @@ locals {
     ghes_url                                                       = var.ghes_url
     lambda_event_source_mapping_batch_size                         = var.lambda_event_source_mapping_batch_size
     lambda_event_source_mapping_maximum_batching_window_in_seconds = var.lambda_event_source_mapping_maximum_batching_window_in_seconds
+    memory_size                                                    = var.job_retry.lambda_memory_size
+    timeout                                                        = var.job_retry.lambda_timeout
   }
 }
 

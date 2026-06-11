@@ -51,6 +51,7 @@ resource "aws_cloudwatch_log_group" "ami_housekeeper" {
   name              = "/aws/lambda/${aws_lambda_function.ami_housekeeper.function_name}"
   retention_in_days = var.logging_retention_in_days
   kms_key_id        = var.logging_kms_key_id
+  log_group_class   = var.log_class
   tags              = var.tags
 }
 

@@ -19,6 +19,7 @@ resource "aws_lambda_function" "webhook" {
   environment {
     variables = {
       for k, v in {
+        ENABLE_DYNAMIC_LABELS                    = var.config.enable_dynamic_labels
         LOG_LEVEL                                = var.config.log_level
         POWERTOOLS_LOGGER_LOG_EVENT              = var.config.log_level == "debug" ? "true" : "false"
         POWERTOOLS_TRACE_ENABLED                 = var.config.tracing_config.mode != null ? true : false
@@ -58,6 +59,7 @@ resource "aws_cloudwatch_log_group" "webhook" {
   name              = "/aws/lambda/${aws_lambda_function.webhook.function_name}"
   retention_in_days = var.config.logging_retention_in_days
   kms_key_id        = var.config.logging_kms_key_id
+  log_group_class   = var.config.log_class
   tags              = var.config.tags
 }
 

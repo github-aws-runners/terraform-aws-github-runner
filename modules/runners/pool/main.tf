@@ -49,6 +49,7 @@ resource "aws_lambda_function" "pool" {
       ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS     = jsonencode(var.config.runner.enable_on_demand_failover_for_errors)
       SSM_PARAMETER_STORE_TAGS                 = var.config.lambda.parameter_store_tags
       SCALE_ERRORS                             = jsonencode(var.config.runner.scale_errors)
+      USE_DEDICATED_HOST                       = var.config.runner.use_dedicated_host
     }
   }
 
@@ -72,6 +73,7 @@ resource "aws_cloudwatch_log_group" "pool" {
   name              = "/aws/lambda/${aws_lambda_function.pool.function_name}"
   retention_in_days = var.config.lambda.logging_retention_in_days
   kms_key_id        = var.config.lambda.logging_kms_key_id
+  log_group_class   = var.config.lambda.log_class
   tags              = var.config.tags
 }
 

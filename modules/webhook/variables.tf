@@ -81,6 +81,17 @@ variable "logging_kms_key_id" {
   default     = null
 }
 
+variable "log_class" {
+  description = "The log class of the CloudWatch log group. Valid values are `STANDARD` or `INFREQUENT_ACCESS`."
+  type        = string
+  default     = "STANDARD"
+
+  validation {
+    condition     = contains(["STANDARD", "INFREQUENT_ACCESS"], var.log_class)
+    error_message = "`log_class` must be either `STANDARD` or `INFREQUENT_ACCESS`."
+  }
+}
+
 variable "lambda_s3_bucket" {
   description = "S3 bucket from which to specify lambda functions. This is an alternative to providing local files directly."
   type        = string
@@ -214,3 +225,10 @@ EOF
     accept_events = optional(list(string), null)
   })
 }
+
+variable "enable_dynamic_labels" {
+  description = "Experimental! Can be removed / changed without trigger a major release. Enable dynamic labels with 'ghr-' prefix. When enabled, jobs can use 'ghr-ec2-<config>:<value>' labels to dynamically configure EC2 instances (e.g., 'ghr-ec2-instance-type:t3.large') and 'ghr-run-<label>' to add unique labels dynamically to runners."
+  type        = bool
+  default     = false
+}
+

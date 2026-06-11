@@ -99,13 +99,13 @@ variable "role_path" {
 }
 
 variable "runner_os" {
-  description = "The EC2 Operating System type to use for action runner instances (linux,windows)."
+  description = "The EC2 Operating System type to use for action runner instances (linux, osx, windows)."
   type        = string
   default     = "linux"
 
   validation {
-    condition     = contains(["linux", "windows"], var.runner_os)
-    error_message = "Valid values for runner_os are (linux, windows)."
+    condition     = contains(["linux", "osx", "windows"], var.runner_os)
+    error_message = "Valid values for runner_os are (linux, osx, windows)."
   }
 }
 
@@ -132,6 +132,17 @@ variable "logging_kms_key_id" {
   description = "Specifies the kms key id to encrypt the logs with"
   type        = string
   default     = null
+}
+
+variable "log_class" {
+  description = "The log class of the CloudWatch log group. Valid values are `STANDARD` or `INFREQUENT_ACCESS`."
+  type        = string
+  default     = "STANDARD"
+
+  validation {
+    condition     = contains(["STANDARD", "INFREQUENT_ACCESS"], var.log_class)
+    error_message = "`log_class` must be either `STANDARD` or `INFREQUENT_ACCESS`."
+  }
 }
 
 variable "lambda_s3_bucket" {

@@ -64,6 +64,7 @@ module "direct" {
     role_path                             = local.role_path,
     logging_retention_in_days             = var.logging_retention_in_days,
     logging_kms_key_id                    = var.logging_kms_key_id,
+    log_class                             = var.log_class,
     lambda_s3_bucket                      = var.lambda_s3_bucket,
     lambda_s3_key                         = var.webhook_lambda_s3_key,
     lambda_s3_object_version              = var.webhook_lambda_s3_object_version,
@@ -85,6 +86,7 @@ module "direct" {
         version = p.version
       }
     ]
+    enable_dynamic_labels = var.enable_dynamic_labels
   }
 }
 
@@ -105,6 +107,7 @@ module "eventbridge" {
     role_path                             = local.role_path,
     logging_retention_in_days             = var.logging_retention_in_days,
     logging_kms_key_id                    = var.logging_kms_key_id,
+    log_class                             = var.log_class,
     lambda_s3_bucket                      = var.lambda_s3_bucket,
     lambda_s3_key                         = var.webhook_lambda_s3_key,
     lambda_s3_object_version              = var.webhook_lambda_s3_object_version,
@@ -126,7 +129,8 @@ module "eventbridge" {
         version = p.version
       }
     ]
-    accept_events = var.eventbridge.accept_events
+    accept_events         = var.eventbridge.accept_events
+    enable_dynamic_labels = var.enable_dynamic_labels
   }
 
 }

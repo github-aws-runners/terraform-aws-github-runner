@@ -21,7 +21,7 @@ export async function publishForRunners(
 
   const checkBodySizeResult = checkBodySize(body, headers);
 
-  const { event, eventType } = readEvent(headers, body);
+  const { event, eventType } = readWorkflowJobEvent(headers, body);
   logger.info(`Github event ${event.action} accepted for ${event.repository.full_name}`);
   if (checkBodySizeResult.sizeExceeded) {
     // We only warn for large event, when moving the event bridge we can only can accept events up to 256KB
@@ -39,8 +39,14 @@ export async function publishOnEventBridge(
 
   await verifySignature(headers, body, config.webhookSecret);
 
+  // Check for supported event types allowed to send to event bridge
   const eventType = headers['x-github-event'] as string;
   checkEventIsSupported(eventType, config.allowedEvents);
+
+  // If workflow_job event, read the event and log relevant information for monitoring and debugging purposes.
+  if (eventType === 'workflow_job') {
+    readWorkflowJobEvent(headers, body);
+  }
 
   const checkBodySizeResult = checkBodySize(body, headers);
 
@@ -127,7 +133,11 @@ function checkEventIsSupported(eventType: string, allowedEvents: string[]): void
   }
 }
 
-function readEvent(headers: IncomingHttpHeaders, body: string): { event: WorkflowJobEvent; eventType: string } {
+// Reads the workflow_job event from the request body and headers, and logs relevant information for monitoring and debugging purposes.
+function readWorkflowJobEvent(
+  headers: IncomingHttpHeaders,
+  body: string,
+): { event: WorkflowJobEvent; eventType: string } {
   const eventType = headers['x-github-event'] as string;
   checkEventIsSupported(eventType, ['workflow_job']);
 
