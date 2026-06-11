@@ -145,8 +145,8 @@ function generateFleetOverrides(
         SubnetId: s,
         InstanceType: i as _InstanceType,
         ImageId: amiIdToUse,
-        ...ec2OverrideConfig,
         ...(allocationStrategy === 'prioritized' && { Priority: instanceTypePriorities?.[i] ?? index }),
+        ...ec2OverrideConfig,
       };
       result.push(item);
     });
