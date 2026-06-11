@@ -129,7 +129,7 @@ variable "instance_target_capacity_type" {
 }
 
 variable "instance_allocation_strategy" {
-  description = "The allocation strategy for creating instances. For spot, AWS recommends `capacity-optimized`; for on-demand, use `lowest-price` or `prioritized`. The AWS default is `lowest-price`."
+  description = "The allocation strategy for creating instances. For spot, AWS recommends `price-capacity-optimized`; for on-demand, use `lowest-price` or `prioritized`. The AWS default is `lowest-price`."
   type        = string
   default     = "lowest-price"
 
