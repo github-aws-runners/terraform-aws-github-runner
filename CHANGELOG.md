@@ -1,5 +1,25 @@
 # Changelog
 
+## [7.7.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v7.6.1...v7.7.0) (2026-06-11)
+
+
+### Features
+
+* Add feature to enable dynamic ec2 config via workflow labels ([#5003](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5003)) ([c68445d](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/c68445da11b72aeab17f2cf656be800b21adb3db))
+* add support for macos runners ([#4930](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4930)) ([3e179a3](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/3e179a30c478d41469511032d5b9029a04d7d86d))
+* Introduce Amazon Linux 2023 ARM image ([#4780](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4780)) ([e572ae5](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/e572ae5e634a019926fbb2947e67b42d7bbe1030))
+* relax cpu_options schema and add amd_sev_snp + nested_virtualization support ([#5039](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5039)) ([5a3746d](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/5a3746dccf474b0e247c814936b552862743b906))
+* **runner-role:** Enable using separate IAM role for runners ([#4875](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/4875)) ([6642e57](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/6642e57dfdb1ce1a470de81c8d7136d9b8d89e76))
+
+
+### Bug Fixes
+
+* **ci:** sign auto-generated docs commits ([#5154](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5154)) ([a6af4d2](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/a6af4d291195ef57530fe0a08bef7f6fe1951639))
+* **runners:** wire job_retry.lambda_memory_size and lambda_timeout ([#5120](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5120)) ([404785e](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/404785e877e4165c477ec37e49a020a7f7288b1f))
+* **scale-up:** Add ec2:TerminateInstances permission to scale-up Lambda IAM policy ([#5152](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5152)) ([94c4e12](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/94c4e1237af8a5138350327cf9809e594434edbb))
+* **scale-up:** prevent negative TotalTargetCapacity when runners exceed maximum ([#5062](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5062)) ([9ab7410](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/9ab741021809c74accdf3a3251419c5186d7884a))
+* **webhook:** Fix publish events to EventBridge ([#5143](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5143)) ([a72b737](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/a72b737553e2f9321046b4617b8d95cf8e0e4677))
+
 ## [7.6.1](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v7.6.0...v7.6.1) (2026-06-10)
 
 
