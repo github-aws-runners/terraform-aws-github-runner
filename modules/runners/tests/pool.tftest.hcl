@@ -28,6 +28,10 @@ variables {
   enable_ssm_on_runners       = true
   runner_labels               = ["self-hosted", "linux", "x64"]
 
+  # Use S3 bucket to avoid filebase64sha256 needing local zip files
+  lambda_s3_bucket     = "my-lambda-bucket"
+  runners_lambda_s3_key = "runners.zip"
+
   github_app_parameters = {
     key_base64 = { name = "/github-runner/key-base64", arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64" }
     id         = { name = "/github-runner/app-id", arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id" }
