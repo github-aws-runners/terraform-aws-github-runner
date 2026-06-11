@@ -16,6 +16,34 @@
         },
         {
             "Effect": "Allow",
+            "Action": [
+                "ec2:TerminateInstances"
+            ],
+            "Resource": [
+                "*"
+            ],
+            "Condition": {
+                "StringEquals": {
+                    "ec2:ResourceTag/ghr:Application": "github-action-runner"
+                }
+            }
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ec2:TerminateInstances"
+            ],
+            "Resource": [
+                "*"
+            ],
+            "Condition": {
+                "StringEquals": {
+                    "ec2:ResourceTag/gh:environment": "${environment}"
+                }
+            }
+        },
+        {
+            "Effect": "Allow",
             "Action": "iam:PassRole",
             "Resource": "${arn_runner_instance_role}"
         },

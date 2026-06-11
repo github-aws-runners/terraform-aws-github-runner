@@ -32,16 +32,50 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           persist-credentials: true
 
-      # use an app to ensure CI is triggered
       - name: Generate TF docs
         if: github.repository_owner == 'github-aws-runners'
         uses: terraform-docs/gh-actions@6de6da0cefcc6b4b7a5cbea4d79d97060733093c # v1.4.1
         with:
           find-dir: .
-          git-commit-message: "docs: auto update terraform docs"
-          git-push: ${{ github.ref != 'refs/heads/main' || github.repository_owner != 'github-aws-runners' }}
-          git-push-user-name: github-aws-runners-pr|bot
-          git-push-user-email: "github-aws-runners-pr[bot]@users.noreply.github.com"
+          git-push: false
+
+      # commit via the GitHub API so commits are signed by GitHub and show as verified
+      - name: Commit and push docs changes (branches only)
+        if: github.ref != 'refs/heads/main' && github.repository_owner == 'github-aws-runners'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMIT_MESSAGE: "docs: auto update terraform docs"
+        run: |
+          set -o pipefail
+          # diff against HEAD because terraform-docs stages the files it updates
+          if git diff --quiet HEAD; then
+            echo "No documentation changes to commit."
+            exit 0
+          fi
+          echo "Committing documentation changes:"
+          git diff --name-only HEAD
+          # pass file contents through a temp file to avoid the kernel's argument size limit
+          additions=$(mktemp)
+          git diff --name-only HEAD | while IFS= read -r file; do
+            jq -n --arg path "$file" --rawfile contents <(base64 -w0 "$file") '{path: $path, contents: $contents}'
+          done | jq -s '.' > "$additions"
+          jq -n \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --arg branch "$GITHUB_REF_NAME" \
+            --arg expectedHeadOid "$(git rev-parse HEAD)" \
+            --arg message "$COMMIT_MESSAGE" \
+            --slurpfile additions "$additions" \
+            '{
+              query: "mutation ($input: CreateCommitOnBranchInput!) { createCommitOnBranch(input: $input) { commit { oid } } }",
+              variables: {
+                input: {
+                  branch: { repositoryNameWithOwner: $repository, branchName: $branch },
+                  expectedHeadOid: $expectedHeadOid,
+                  message: { headline: $message },
+                  fileChanges: { additions: $additions[0] }
+                }
+              }
+            }' | gh api graphql --input -
 
       - name: Generate TF docs (forks)
         if: github.repository_owner != 'github-aws-runners'
@@ -57,6 +91,7 @@ jobs:
         uses: peter-evans/create-pull-request@c0f553fe549906ede9cf27b5156039d195d2ece0 # v8.1.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          sign-commits: true
           commit-message: "docs: auto update terraform docs"
           title: "docs: Update Terraform docs"
           branch: update-docs
