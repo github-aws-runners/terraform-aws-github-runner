@@ -161,15 +161,16 @@ variable "multi_runner_config" {
         log_class        = optional(string, "STANDARD")
       })), null)
       block_device_mappings = optional(list(object({
-        delete_on_termination = optional(bool, true)
-        device_name           = optional(string, "/dev/xvda")
-        encrypted             = optional(bool, true)
-        iops                  = optional(number)
-        kms_key_id            = optional(string)
-        snapshot_id           = optional(string)
-        throughput            = optional(number)
-        volume_size           = number
-        volume_type           = optional(string, "gp3")
+        delete_on_termination      = optional(bool, true)
+        device_name                = optional(string, "/dev/xvda")
+        encrypted                  = optional(bool, true)
+        iops                       = optional(number)
+        kms_key_id                 = optional(string)
+        snapshot_id                = optional(string)
+        throughput                 = optional(number)
+        volume_initialization_rate = optional(number)
+        volume_size                = number
+        volume_type                = optional(string, "gp3")
         })), [{
         volume_size = 30
       }])
@@ -267,7 +268,7 @@ variable "multi_runner_config" {
         license_specifications: "Optional EC2 License Manager license configuration ARNs for the runner launch template. Required for macOS dedicated-host runners when the host resource group uses a Mac dedicated host license configuration."
         use_dedicated_host: "Experimental! Can be removed / changed without trigger a major release. Whether to use EC2 dedicated hosts for the runners. Needed for macos runners Note that using dedicated hosts can increase cost significantly."
         runner_log_files: "(optional) Replaces the module default cloudwatch log config. See https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-Configuration-File-Details.html for details."
-        block_device_mappings: "The EC2 instance block device configuration. Takes the following keys: `device_name`, `delete_on_termination`, `volume_type`, `volume_size`, `encrypted`, `iops`, `throughput`, `kms_key_id`, `snapshot_id`."
+        block_device_mappings: "The EC2 instance block device configuration. Takes the following keys: `device_name`, `delete_on_termination`, `volume_type`, `volume_size`, `encrypted`, `iops`, `throughput`, `kms_key_id`, `snapshot_id`, `volume_initialization_rate`."
         job_retry: "Experimental! Can be removed / changed without trigger a major release. Configure job retries. The configuration enables job retries (for ephemeral runners). After creating the instances a message will be published to a job retry queue. The job retry check lambda is checking after a delay if the job is queued. If not the message will be published again on the scale-up (build queue). Using this feature can impact the rate limit of the GitHub app."
         pool_config: "The configuration for updating the pool. The `pool_size` to adjust to by the events triggered by the `schedule_expression`. For example you can configure a cron expression for week days to adjust the pool to 10 and another expression for the weekend to adjust the pool to 1. Use `schedule_expression_timezone` to override the schedule time zone (defaults to UTC)."
         iam_overrides: "Allows to (optionally) override the instance profile and runner role created by the module. Set `override_instance_profile` to true and provide the `instance_profile_name` to use an existing instance profile. Set `override_runner_role` to true and provide the `runner_role_arn` to use an existing role for the runner instances."
