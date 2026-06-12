@@ -47,6 +47,5 @@ variable "config" {
       arn     = string
       version = string
     }))
-    enable_dynamic_labels = optional(bool, false)
   })
 }
