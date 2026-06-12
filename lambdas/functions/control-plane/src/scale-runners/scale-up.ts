@@ -336,7 +336,6 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
   const instanceTypes = process.env.INSTANCE_TYPES.split(',');
   const instanceTargetCapacityType = process.env.INSTANCE_TARGET_CAPACITY_TYPE;
   const ephemeralEnabled = yn(process.env.ENABLE_EPHEMERAL_RUNNERS, { default: false });
-  const dynamicLabelsEnabled = yn(process.env.ENABLE_DYNAMIC_LABELS, { default: false });
   const enableJitConfig = yn(process.env.ENABLE_JIT_CONFIG, { default: ephemeralEnabled });
   const disableAutoUpdate = yn(process.env.DISABLE_RUNNER_AUTOUPDATE, { default: false });
   const launchTemplateName = process.env.LAUNCH_TEMPLATE_NAME;
@@ -407,13 +406,9 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       : `${payload.repositoryOwner}/${payload.repositoryName}`;
 
     let key = runnerOwner;
-    if (dynamicLabelsEnabled && labels?.length) {
-      const dynamicLabels = labels.find((l) => l.startsWith('ghr-'))?.slice('ghr-'.length);
-
-      if (dynamicLabels) {
-        const dynamicLabelsHash = labelsHash(labels);
-        key = `${key}/${dynamicLabelsHash}`;
-      }
+    if (labels?.some((l) => l.startsWith('ghr-'))) {
+      const dynamicLabelsHash = labelsHash(labels);
+      key = `${key}/${dynamicLabelsHash}`;
     }
 
     let entry = validMessages.get(key);
@@ -457,27 +452,23 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
 
     let ec2OverrideConfig: Ec2OverrideConfig | undefined = undefined;
 
-    if (messages.length > 0 && dynamicLabelsEnabled) {
-      logger.debug('Dynamic EC2 config enabled, processing labels', { labels: messages[0].labels });
+    const messageLabels = messages.length > 0 ? messages[0].labels ?? [] : [];
+    const dynamicEC2Labels = messageLabels.map((l) => l.trim()).filter((l) => l.startsWith('ghr-ec2-'));
+    const nonEc2DynamicLabels = messageLabels
+      .map((l) => l.trim())
+      .filter((l) => l.startsWith('ghr-') && !l.startsWith('ghr-ec2-'));
+    const allDynamicLabels = [...nonEc2DynamicLabels, ...dynamicEC2Labels];
 
-      const dynamicEC2Labels = messages[0].labels?.map((l) => l.trim()).filter((l) => l.startsWith('ghr-ec2-')) ?? [];
-      const allDynamicLabels = messages[0].labels?.map((l) => l.trim()).filter((l) => l.startsWith('ghr-')) ?? [];
+    if (allDynamicLabels.length > 0) {
+      logger.debug('Dynamic labels present on message', { labels: allDynamicLabels });
+      runnerLabels = runnerLabels ? `${runnerLabels},${allDynamicLabels.join(',')}` : allDynamicLabels.join(',');
+      logger.debug('Updated runner labels', { runnerLabels });
 
-      if (allDynamicLabels.length > 0) {
-        runnerLabels = runnerLabels ? `${runnerLabels},${allDynamicLabels.join(',')}` : allDynamicLabels.join(',');
-
-        logger.debug('Updated runner labels', { runnerLabels });
-
-        if (dynamicEC2Labels.length > 0) {
-          ec2OverrideConfig = parseEc2OverrideConfig(dynamicEC2Labels);
-          if (ec2OverrideConfig) {
-            logger.debug('EC2 override config parsed from labels', {
-              ec2OverrideConfig,
-            });
-          }
+      if (dynamicEC2Labels.length > 0) {
+        ec2OverrideConfig = parseEc2OverrideConfig(dynamicEC2Labels);
+        if (ec2OverrideConfig) {
+          logger.debug('EC2 override config parsed from labels', { ec2OverrideConfig });
         }
-      } else {
-        logger.debug('No dynamic labels found on message');
       }
     }
 
@@ -822,8 +813,8 @@ async function createJitConfig(
  * - ghr-ec2-accelerator-count-max:<num>       - Set maximum accelerator count
  * - ghr-ec2-accelerator-manufacturers:<list>  - Accelerator manufacturers (comma-separated: nvidia,amd,amazon-web-services,xilinx)
  * - ghr-ec2-accelerator-names:<list>          - Specific accelerator names (comma-separated)
- * - ghr-ec2-accelerator-memory-mib-min:<num>  - Min accelerator total memory in MiB
- * - ghr-ec2-accelerator-memory-mib-max:<num>  - Max accelerator total memory in MiB
+ * - ghr-ec2-accelerator-total-memory-mib-min:<num> - Min accelerator total memory in MiB
+ * - ghr-ec2-accelerator-total-memory-mib-max:<num> - Max accelerator total memory in MiB
  *
  * Instance Requirements (Network & Storage):
  * - ghr-ec2-network-interface-count-min:<num> - Min network interfaces
@@ -839,6 +830,7 @@ async function createJitConfig(
  *
  * Placement:
  * - ghr-ec2-placement-group:<name>            - Placement group name
+ * - ghr-ec2-placement-group-id:<id>           - Placement group ID (alternative to placement-group)
  * - ghr-ec2-placement-tenancy:<value>         - Tenancy (default,dedicated,host)
  * - ghr-ec2-placement-host-id:<id>            - Dedicated host ID
  * - ghr-ec2-placement-affinity:<value>        - Affinity (default,host)
@@ -848,6 +840,7 @@ async function createJitConfig(
  * - ghr-ec2-placement-host-resource-group-arn:<arn> - Host resource group ARN
  *
  * Block Device Mappings:
+ * - ghr-ec2-block-device-name:<name>          - Device name (e.g. /dev/xvda) — must match the launch template entry being overridden
  * - ghr-ec2-ebs-volume-size:<size>            - EBS volume size in GB
  * - ghr-ec2-ebs-volume-type:<type>            - EBS volume type (gp2,gp3,io1,io2,st1,sc1)
  * - ghr-ec2-ebs-iops:<number>                 - EBS IOPS
@@ -908,6 +901,8 @@ export function parseEc2OverrideConfig(labels: string[]): Ec2OverrideConfig | un
       const placementKey = key.replace('placement-', '');
       if (placementKey === 'group') {
         config.Placement.GroupName = value;
+      } else if (placementKey === 'group-id') {
+        config.Placement.GroupId = value;
       } else if (placementKey === 'tenancy') {
         config.Placement.Tenancy = value as Tenancy;
       } else if (placementKey === 'host-id') {
@@ -952,7 +947,10 @@ export function parseEc2OverrideConfig(labels: string[]): Ec2OverrideConfig | un
     }
 
     // Block Device Mappings (Non-EBS)
-    else if (key === 'block-device-virtual-name') {
+    else if (key === 'block-device-name') {
+      config.BlockDeviceMappings = config.BlockDeviceMappings || ([{}] as FleetBlockDeviceMappingRequest[]);
+      config.BlockDeviceMappings[0].DeviceName = value;
+    } else if (key === 'block-device-virtual-name') {
       config.BlockDeviceMappings = config.BlockDeviceMappings || ([{}] as FleetBlockDeviceMappingRequest[]);
       config.BlockDeviceMappings[0].VirtualName = value;
     } else if (key === 'block-device-no-device') {
