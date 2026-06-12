@@ -706,6 +706,24 @@ variable "enable_dynamic_labels" {
   default     = false
 }
 
+variable "dynamic_labels_policy" {
+  description = <<-EOT
+    Optional allow/deny policy for dynamic `ghr-ec2-*` labels evaluated by the
+    webhook dispatcher. Only effective when `enable_dynamic_labels = true`.
+    Jobs whose dynamic labels violate the policy are rejected with a 202
+    (a warning is logged).
+
+    Schema (flat):
+      - `allowed_keys`: when set, only labels whose key is listed are accepted.
+      - `denied_keys`:  keys to reject outright (takes precedence over `allowed_keys`).
+      - `<key>`:        per-key value rule `{ allowed = [globs], denied = [globs], max = number|string }`.
+
+    Keys must use the same hyphenated form as the labels (e.g. `instance-type`).
+  EOT
+  type        = any
+  default     = null
+}
+
 variable "enable_job_queued_check" {
   description = "Only scale if the job event received by the scale up lambda is in the queued state. By default enabled for non ephemeral runners and disabled for ephemeral. Set this variable to overwrite the default behavior."
   type        = bool
