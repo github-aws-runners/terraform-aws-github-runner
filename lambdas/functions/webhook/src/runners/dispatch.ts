@@ -81,9 +81,7 @@ async function handleWorkflowJob(
     let compliant: RunnerMatcherConfig | undefined;
     for (const q of matches) {
       if (!q.matcherConfig.enableDynamicLabels) {
-        logger.warn(
-          `Queue ${q.id} matches non-dynamic labels but does not allow dynamic labels; trying next match`,
-        );
+        logger.warn(`Queue ${q.id} matches non-dynamic labels but does not allow dynamic labels; trying next match`);
         continue;
       }
       const violations = violationsAgainstPolicy(sanitizedGhrLabels, q.matcherConfig.dynamicLabelsPolicy);
@@ -92,9 +90,7 @@ async function handleWorkflowJob(
         break;
       }
       for (const v of violations) {
-        logger.warn(
-          `Queue ${q.id}: dynamic label '${v.label}' does not match policy (${v.reason}); trying next match`,
-        );
+        logger.warn(`Queue ${q.id}: dynamic label '${v.label}' does not match policy (${v.reason}); trying next match`);
       }
     }
 
@@ -103,10 +99,9 @@ async function handleWorkflowJob(
       labelsToSend = [...nonGhrLabels, ...sanitizedGhrLabels];
     } else {
       // No queue accepts the dynamic labels under its policy: refuse the job.
-      logger.warn(
-        `No queue accepts the dynamic labels for this job; not dispatching`,
-        { dynamicLabels: sanitizedGhrLabels },
-      );
+      logger.warn(`No queue accepts the dynamic labels for this job; not dispatching`, {
+        dynamicLabels: sanitizedGhrLabels,
+      });
       return notAccepted(body);
     }
   }

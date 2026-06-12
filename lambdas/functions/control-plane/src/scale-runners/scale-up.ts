@@ -452,7 +452,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
 
     let ec2OverrideConfig: Ec2OverrideConfig | undefined = undefined;
 
-    const messageLabels = messages.length > 0 ? messages[0].labels ?? [] : [];
+    const messageLabels = messages.length > 0 ? (messages[0].labels ?? []) : [];
     const dynamicEC2Labels = messageLabels.map((l) => l.trim()).filter((l) => l.startsWith('ghr-ec2-'));
     const nonEc2DynamicLabels = messageLabels
       .map((l) => l.trim())

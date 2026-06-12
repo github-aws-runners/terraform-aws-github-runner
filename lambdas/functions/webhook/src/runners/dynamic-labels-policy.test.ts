@@ -15,17 +15,12 @@ describe('violationsAgainstPolicy', () => {
 
   it('accepts any key when both lists are absent', () => {
     const policy: DynamicLabelsPolicy = {};
-    expect(
-      violationsAgainstPolicy(['ghr-ec2-instance-type:m5.large', 'ghr-ec2-image-id:ami-1'], policy),
-    ).toEqual([]);
+    expect(violationsAgainstPolicy(['ghr-ec2-instance-type:m5.large', 'ghr-ec2-image-id:ami-1'], policy)).toEqual([]);
   });
 
   it('flags keys not in allowed_keys', () => {
     const policy: DynamicLabelsPolicy = { allowed_keys: ['instance-type'] };
-    const v = violationsAgainstPolicy(
-      ['ghr-ec2-instance-type:m5.large', 'ghr-ec2-image-id:ami-1'],
-      policy,
-    );
+    const v = violationsAgainstPolicy(['ghr-ec2-instance-type:m5.large', 'ghr-ec2-image-id:ami-1'], policy);
     expect(v).toHaveLength(1);
     expect(v[0].label).toBe('ghr-ec2-image-id:ami-1');
   });
@@ -35,30 +30,21 @@ describe('violationsAgainstPolicy', () => {
       allowed_keys: ['instance-type', 'image-id'],
       denied_keys: ['image-id'],
     };
-    const v = violationsAgainstPolicy(
-      ['ghr-ec2-instance-type:m5.large', 'ghr-ec2-image-id:ami-1'],
-      policy,
-    );
+    const v = violationsAgainstPolicy(['ghr-ec2-instance-type:m5.large', 'ghr-ec2-image-id:ami-1'], policy);
     expect(v).toHaveLength(1);
     expect(v[0].label).toBe('ghr-ec2-image-id:ami-1');
   });
 
   it('per-key allowed glob with `*`', () => {
     const policy: DynamicLabelsPolicy = { 'instance-type': { allowed: ['m5.*', 'c5.*'] } };
-    const v = violationsAgainstPolicy(
-      ['ghr-ec2-instance-type:m5.large', 'ghr-ec2-instance-type:r5.large'],
-      policy,
-    );
+    const v = violationsAgainstPolicy(['ghr-ec2-instance-type:m5.large', 'ghr-ec2-instance-type:r5.large'], policy);
     expect(v).toHaveLength(1);
     expect(v[0].label).toBe('ghr-ec2-instance-type:r5.large');
   });
 
   it('per-key allowed glob with `?`', () => {
     const policy: DynamicLabelsPolicy = { 'image-id': { allowed: ['ami-?????????'] } };
-    const v = violationsAgainstPolicy(
-      ['ghr-ec2-image-id:ami-123456789', 'ghr-ec2-image-id:ami-12345'],
-      policy,
-    );
+    const v = violationsAgainstPolicy(['ghr-ec2-image-id:ami-123456789', 'ghr-ec2-image-id:ami-12345'], policy);
     expect(v).toHaveLength(1);
     expect(v[0].label).toBe('ghr-ec2-image-id:ami-12345');
   });
@@ -76,20 +62,14 @@ describe('violationsAgainstPolicy', () => {
 
   it('denied glob flags matches', () => {
     const policy: DynamicLabelsPolicy = { 'instance-type': { denied: ['*.metal*'] } };
-    const v = violationsAgainstPolicy(
-      ['ghr-ec2-instance-type:m5.large', 'ghr-ec2-instance-type:m5.metal'],
-      policy,
-    );
+    const v = violationsAgainstPolicy(['ghr-ec2-instance-type:m5.large', 'ghr-ec2-instance-type:m5.metal'], policy);
     expect(v).toHaveLength(1);
     expect(v[0].label).toBe('ghr-ec2-instance-type:m5.metal');
   });
 
   it('max flags values that exceed', () => {
     const policy: DynamicLabelsPolicy = { 'ebs-volume-size': { max: 200 } };
-    const v = violationsAgainstPolicy(
-      ['ghr-ec2-ebs-volume-size:100', 'ghr-ec2-ebs-volume-size:300'],
-      policy,
-    );
+    const v = violationsAgainstPolicy(['ghr-ec2-ebs-volume-size:100', 'ghr-ec2-ebs-volume-size:300'], policy);
     expect(v).toHaveLength(1);
     expect(v[0].label).toBe('ghr-ec2-ebs-volume-size:300');
   });
