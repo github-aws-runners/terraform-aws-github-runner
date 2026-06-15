@@ -328,7 +328,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
 
   const enableOrgLevel = yn(process.env.ENABLE_ORGANIZATION_RUNNERS, { default: true });
   const maximumRunners = parseInt(process.env.RUNNERS_MAXIMUM_COUNT || '3');
-  let runnerLabels = process.env.RUNNER_LABELS || '';
+  const runnerLabels = process.env.RUNNER_LABELS || '';
   const runnerGroup = process.env.RUNNER_GROUP_NAME || 'Default';
   const environment = process.env.ENVIRONMENT;
   const ssmTokenPath = process.env.SSM_TOKEN_PATH;
@@ -457,6 +457,9 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
 
     let ec2OverrideConfig: Ec2OverrideConfig | undefined = undefined;
 
+    // Reset per group to avoid accumulating labels across iterations
+    let groupRunnerLabels = runnerLabels;
+
     if (messages.length > 0 && dynamicLabelsEnabled) {
       logger.debug('Dynamic EC2 config enabled, processing labels', { labels: messages[0].labels });
 
@@ -464,9 +467,11 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       const allDynamicLabels = messages[0].labels?.map((l) => l.trim()).filter((l) => l.startsWith('ghr-')) ?? [];
 
       if (allDynamicLabels.length > 0) {
-        runnerLabels = runnerLabels ? `${runnerLabels},${allDynamicLabels.join(',')}` : allDynamicLabels.join(',');
+        groupRunnerLabels = groupRunnerLabels
+          ? `${groupRunnerLabels},${allDynamicLabels.join(',')}`
+          : allDynamicLabels.join(',');
 
-        logger.debug('Updated runner labels', { runnerLabels });
+        logger.debug('Updated runner labels', { runnerLabels: groupRunnerLabels });
 
         if (dynamicEC2Labels.length > 0) {
           ec2OverrideConfig = parseEc2OverrideConfig(dynamicEC2Labels);
@@ -562,7 +567,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
         ephemeral: ephemeralEnabled,
         enableJitConfig,
         ghesBaseUrl,
-        runnerLabels,
+        runnerLabels: groupRunnerLabels,
         runnerGroup,
         runnerNamePrefix,
         runnerOwner: runnerOwner,
