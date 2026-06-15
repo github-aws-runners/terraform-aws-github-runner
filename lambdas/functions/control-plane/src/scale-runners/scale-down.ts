@@ -2,7 +2,7 @@ import { Octokit } from '@octokit/rest';
 import { Endpoints } from '@octokit/types';
 import { RequestError } from '@octokit/request-error';
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
-import moment from 'moment';
+import { Temporal } from 'temporal-polyfill';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
 import { bootTimeExceeded, listEC2Runners, tag, untag, terminateRunner } from './../aws/runners';
@@ -121,10 +121,14 @@ async function listGitHubRunners(runner: RunnerInfo): Promise<GhRunners> {
 }
 
 function runnerMinimumTimeExceeded(runner: RunnerInfo): boolean {
-  const minimumRunningTimeInMinutes = process.env.MINIMUM_RUNNING_TIME_IN_MINUTES;
-  const launchTimePlusMinimum = moment(runner.launchTime).utc().add(minimumRunningTimeInMinutes, 'minutes');
-  const now = moment(new Date()).utc();
-  return launchTimePlusMinimum < now;
+  const minimumRunningTimeInMinutes = Number(process.env.MINIMUM_RUNNING_TIME_IN_MINUTES);
+  if (runner.launchTime === undefined || !Number.isFinite(minimumRunningTimeInMinutes)) {
+    return false;
+  }
+  const launchTimePlusMinimum = Temporal.Instant.fromEpochMilliseconds(runner.launchTime.getTime()).add({
+    minutes: minimumRunningTimeInMinutes,
+  });
+  return Temporal.Instant.compare(launchTimePlusMinimum, Temporal.Now.instant()) < 0;
 }
 
 async function removeRunner(ec2runner: RunnerInfo, ghRunnerIds: number[]): Promise<void> {

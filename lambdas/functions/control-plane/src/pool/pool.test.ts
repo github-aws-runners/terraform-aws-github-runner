@@ -1,5 +1,5 @@
 import { Octokit } from '@octokit/rest';
-import moment from 'moment-timezone';
+import { Temporal } from 'temporal-polyfill';
 import * as nock from 'nock';
 
 import { listEC2Runners } from '../aws/runners';
@@ -57,6 +57,10 @@ const cleanEnv = process.env;
 const ORG = 'my-org';
 const MINIMUM_TIME_RUNNING = 15;
 
+function minutesAgo(minutes: number): Date {
+  return new Date(Temporal.Now.instant().subtract({ minutes }).epochMilliseconds);
+}
+
 const ec2InstancesRegistered = [
   {
     instanceId: 'i-1-idle',
@@ -78,9 +82,7 @@ const ec2InstancesRegistered = [
   },
   {
     instanceId: 'i-4-idle-older-than-minimum-time-running',
-    launchTime: moment(new Date())
-      .subtract(MINIMUM_TIME_RUNNING + 3, 'minutes')
-      .toDate(),
+    launchTime: minutesAgo(MINIMUM_TIME_RUNNING + 3),
     type: 'Org',
     owner: ORG,
   },
@@ -211,17 +213,13 @@ describe('Test simple pool.', () => {
         ...ec2InstancesRegistered,
         {
           instanceId: 'i-4-still-booting',
-          launchTime: moment(new Date())
-            .subtract(MINIMUM_TIME_RUNNING - 3, 'minutes')
-            .toDate(),
+          launchTime: minutesAgo(MINIMUM_TIME_RUNNING - 3),
           type: 'Org',
           owner: ORG,
         },
         {
           instanceId: 'i-5-orphan',
-          launchTime: moment(new Date())
-            .subtract(MINIMUM_TIME_RUNNING + 3, 'minutes')
-            .toDate(),
+          launchTime: minutesAgo(MINIMUM_TIME_RUNNING + 3),
           type: 'Org',
           owner: ORG,
         },
@@ -242,17 +240,13 @@ describe('Test simple pool.', () => {
         ...ec2InstancesRegistered,
         {
           instanceId: 'i-4-still-booting',
-          launchTime: moment(new Date())
-            .subtract(MINIMUM_TIME_RUNNING - 3, 'minutes')
-            .toDate(),
+          launchTime: minutesAgo(MINIMUM_TIME_RUNNING - 3),
           type: 'Org',
           owner: ORG,
         },
         {
           instanceId: 'i-5-orphan',
-          launchTime: moment(new Date())
-            .subtract(MINIMUM_TIME_RUNNING + 3, 'minutes')
-            .toDate(),
+          launchTime: minutesAgo(MINIMUM_TIME_RUNNING + 3),
           type: 'Org',
           owner: ORG,
         },
