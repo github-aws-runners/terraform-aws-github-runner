@@ -24,7 +24,6 @@
     "@vercel/ncc": "^0.38.4",
     "aws-sdk-client-mock": "^4.1.0",
     "aws-sdk-client-mock-jest": "^4.1.0",
-    "moment-timezone": "^0.6.0",
     "nock": "^14.0.10",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0"
@@ -41,7 +40,8 @@
     "@octokit/plugin-retry": "8.0.3",
     "@octokit/plugin-throttling": "11.0.3",
     "@octokit/rest": "22.0.1",
-    "cron-parser": "^5.4.0"
+    "cron-parser": "^5.4.0",
+    "temporal-polyfill": "^0.3.2"
   },
   "nx": {
     "includedScripts": [
