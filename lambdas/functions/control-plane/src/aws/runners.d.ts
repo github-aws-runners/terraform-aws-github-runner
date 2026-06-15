@@ -70,4 +70,5 @@ export interface RunnerInputParameters {
   tracingEnabled?: boolean;
   onDemandFailoverOnError?: string[];
   scaleErrors: string[];
+  useDedicatedHost?: boolean;
 }

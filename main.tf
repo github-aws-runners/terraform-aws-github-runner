@@ -159,6 +159,7 @@ module "runners" {
   subnet_ids    = var.subnet_ids
   prefix        = var.prefix
   tags          = local.tags
+  iam_overrides = var.iam_overrides
 
   ssm_paths = {
     root   = local.ssm_root_path
@@ -210,6 +211,8 @@ module "runners" {
   credit_specification                 = var.runner_credit_specification
   cpu_options                          = var.runner_cpu_options
   placement                            = var.runner_placement
+  license_specifications               = var.runner_license_specifications
+  use_dedicated_host                   = var.use_dedicated_host
 
   enable_runner_binaries_syncer                                  = var.enable_runner_binaries_syncer
   lambda_s3_bucket                                               = var.lambda_s3_bucket

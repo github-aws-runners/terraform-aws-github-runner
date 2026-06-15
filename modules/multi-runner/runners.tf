@@ -57,6 +57,8 @@ module "runners" {
   credit_specification                 = each.value.runner_config.credit_specification
   cpu_options                          = each.value.runner_config.cpu_options
   placement                            = each.value.runner_config.placement
+  license_specifications               = each.value.runner_config.license_specifications
+  use_dedicated_host                   = each.value.runner_config.use_dedicated_host
 
   enable_runner_binaries_syncer                                  = each.value.runner_config.enable_runner_binaries_syncer
   lambda_s3_bucket                                               = var.lambda_s3_bucket
@@ -104,6 +106,7 @@ module "runners" {
   create_service_linked_role_spot = each.value.runner_config.create_service_linked_role_spot
 
   runner_iam_role_managed_policy_arns = each.value.runner_config.runner_iam_role_managed_policy_arns
+  iam_overrides                       = each.value.runner_config.iam_overrides
 
   ghes_url        = var.ghes_url
   ghes_ssl_verify = var.ghes_ssl_verify

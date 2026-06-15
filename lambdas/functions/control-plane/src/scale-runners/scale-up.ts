@@ -99,6 +99,7 @@ interface CreateEC2RunnerConfig {
   tracingEnabled?: boolean;
   onDemandFailoverOnError?: string[];
   scaleErrors: string[];
+  useDedicatedHost?: boolean;
 }
 
 function generateRunnerServiceConfig(githubRunnerConfig: CreateGitHubRunnerConfig, token: string) {
@@ -354,6 +355,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       ? validateSsmParameterStoreTags(process.env.SSM_PARAMETER_STORE_TAGS)
       : [];
   const scaleErrors = JSON.parse(process.env.SCALE_ERRORS) as [string];
+  const useDedicatedHost = yn(process.env.USE_DEDICATED_HOST, { default: false });
 
   const { ghesApiUrl, ghesBaseUrl } = getGitHubEnterpriseApiUrl();
 
@@ -516,12 +518,14 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
     });
 
     // Calculate how many runners we want to create.
+    // Use Math.max(0, ...) to ensure we never attempt to create a negative number of runners,
+    // which can happen when currentRunners exceeds maximumRunners due to pool/scale-up race conditions.
     const newRunners =
       maximumRunners === -1
         ? // If we don't have an upper limit, scale up by the number of new jobs.
           scaleUp
         : // Otherwise, we do have a limit, so work out if `scaleUp` would exceed it.
-          Math.min(scaleUp, maximumRunners - currentRunners);
+          Math.max(0, Math.min(scaleUp, maximumRunners - currentRunners));
 
     const missingInstanceCount = Math.max(0, scaleUp - newRunners);
 
@@ -583,6 +587,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
         tracingEnabled,
         onDemandFailoverOnError,
         scaleErrors,
+        useDedicatedHost,
       },
       newRunners,
       githubInstallationClient,
