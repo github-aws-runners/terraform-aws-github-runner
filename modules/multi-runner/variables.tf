@@ -199,11 +199,11 @@ variable "multi_runner_config" {
       })
     })
     matcherConfig = object({
-      labelMatchers       = list(list(string))
-      exactMatch          = optional(bool, false)
-      priority            = optional(number, 999)
-      enableDynamicLabels = optional(bool, false)
-      dynamicLabelsPolicy = optional(any, null)
+      labelMatchers          = list(list(string))
+      exactMatch             = optional(bool, false)
+      priority               = optional(number, 999)
+      enableDynamicLabels    = optional(bool, false)
+      ec2DynamicLabelsPolicy = optional(any, null)
     })
     redrive_build_queue = optional(object({
       enabled         = bool
@@ -278,7 +278,7 @@ variable "multi_runner_config" {
         exactMatch: "If set to true all labels in the workflow job must match the GitHub labels (os, architecture and `self-hosted`). When false if __any__ workflow label matches it will trigger the webhook."
         priority: "If set it defines the priority of the matcher, the matcher with the lowest priority will be evaluated first. Default is 999, allowed values 0-999."
         enableDynamicLabels: "Experimental! When true the dispatcher allows `ghr-*` dynamic labels for jobs routed to this runner. Default false."
-        dynamicLabelsPolicy: "Optional allow/deny policy for `ghr-ec2-*` labels evaluated by the dispatcher. Only effective when `enableDynamicLabels = true`. Jobs whose dynamic labels violate every matching runner's policy are rejected with a 202 (a warning is logged). Schema: `{ allowed_keys = [<key>], denied_keys = [<key>], <key> = { allowed = [globs], denied = [globs], max = number|string } }`. Keys must use the same hyphenated form as the labels (e.g. `instance-type`)."
+        ec2DynamicLabelsPolicy: "Optional policy for `ghr-ec2-*` labels evaluated by the dispatcher. Only effective when `enableDynamicLabels = true`. Jobs whose EC2 dynamic labels violate every matching runner's policy are rejected with a 202 (a warning is logged). Evaluation: keys in `blocked_keys` are always rejected; keys in `restricted_keys` are allowed only when their value passes the rule; unlisted keys are allowed. Schema: `{ blocked_keys = [<key>], restricted_keys = { <key> = { allowed = [globs], denied = [globs], max = number|string } } }`. Keys use the dynamic label suffix, e.g. `instance-type` for `ghr-ec2-instance-type`."
       }
       redrive_build_queue: "Set options to attach (optional) a dead letter queue to the build queue, the queue between the webhook and the scale up lambda. You have the following options. 1. Disable by setting `enabled` to false. 2. Enable by setting `enabled` to `true`, `maxReceiveCount` to a number of max retries."
     }
@@ -821,4 +821,3 @@ variable "parameter_store_tags" {
   type        = map(string)
   default     = {}
 }
-

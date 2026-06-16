@@ -303,9 +303,10 @@ describe('Dispatcher', () => {
             labelMatchers: [['self-hosted', 'linux']],
             exactMatch: true,
             enableDynamicLabels: true,
-            dynamicLabelsPolicy: {
-              allowed_keys: ['instance-type'],
-              'instance-type': { allowed: ['m5.*'] },
+            ec2DynamicLabelsPolicy: {
+              restricted_keys: {
+                'instance-type': { allowed: ['m5.*'] },
+              },
             },
           },
         },
@@ -345,9 +346,10 @@ describe('Dispatcher', () => {
             labelMatchers: [['self-hosted', 'linux']],
             exactMatch: true,
             enableDynamicLabels: true,
-            dynamicLabelsPolicy: {
-              allowed_keys: ['instance-type'],
-              'instance-type': { allowed: ['m5.*'] },
+            ec2DynamicLabelsPolicy: {
+              restricted_keys: {
+                'instance-type': { allowed: ['m5.*'] },
+              },
             },
           },
         },
@@ -382,7 +384,7 @@ describe('Dispatcher', () => {
             labelMatchers: [['self-hosted', 'linux']],
             exactMatch: true,
             enableDynamicLabels: true,
-            dynamicLabelsPolicy: { allowed_keys: [] },
+            ec2DynamicLabelsPolicy: {},
           },
         },
       ]);

@@ -84,7 +84,7 @@ async function handleWorkflowJob(
         logger.warn(`Queue ${q.id} matches non-dynamic labels but does not allow dynamic labels; trying next match`);
         continue;
       }
-      const violations = violationsAgainstPolicy(sanitizedGhrLabels, q.matcherConfig.dynamicLabelsPolicy);
+      const violations = violationsAgainstPolicy(sanitizedGhrLabels, q.matcherConfig.ec2DynamicLabelsPolicy);
       if (violations.length === 0) {
         compliant = q;
         break;

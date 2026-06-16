@@ -115,7 +115,7 @@ module "webhook" {
         labelMatchers : [local.runner_labels]
         exactMatch : var.enable_runner_workflow_job_labels_check_all
         enableDynamicLabels : var.enable_dynamic_labels
-        dynamicLabelsPolicy : var.dynamic_labels_policy
+        ec2DynamicLabelsPolicy : var.ec2_dynamic_labels_policy
       }
     }
   }

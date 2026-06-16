@@ -701,24 +701,32 @@ variable "enable_ephemeral_runners" {
 }
 
 variable "enable_dynamic_labels" {
-  description = "Experimental! Can be removed / changed without trigger a major release. Enable dynamic EC2 configs based on workflow job labels. When enabled, jobs can request specific configs via the 'gh-ec2-<config type key>:<config type value>' label (e.g., 'gh-ec2-instance-type:t3.large'). When enabled, labels starting with `ghr-` are ignored during webhook label matching."
+  description = "Experimental! Can be removed / changed without trigger a major release. Enable dynamic EC2 configs based on workflow job labels. When enabled, jobs can request specific configs via the 'ghr-ec2-<config type key>:<config type value>' label (e.g., 'ghr-ec2-instance-type:t3.large'). When enabled, labels starting with `ghr-` are ignored during webhook label matching."
   type        = bool
   default     = false
 }
 
-variable "dynamic_labels_policy" {
+variable "ec2_dynamic_labels_policy" {
   description = <<-EOT
-    Optional allow/deny policy for dynamic `ghr-ec2-*` labels evaluated by the
-    webhook dispatcher. Only effective when `enable_dynamic_labels = true`.
-    Jobs whose dynamic labels violate the policy are rejected with a 202
-    (a warning is logged).
+    Experimental! Can be removed / changed without trigger a major release.
+    Optional policy for dynamic EC2 override labels evaluated by the webhook
+    dispatcher. Only effective when `enable_dynamic_labels = true`.
 
-    Schema (flat):
-      - `allowed_keys`: when set, only labels whose key is listed are accepted.
-      - `denied_keys`:  keys to reject outright (takes precedence over `allowed_keys`).
-      - `<key>`:        per-key value rule `{ allowed = [globs], denied = [globs], max = number|string }`.
+    Jobs whose EC2 dynamic labels violate the policy are rejected with a 202 and a
+    warning is logged.
 
-    Keys must use the same hyphenated form as the labels (e.g. `instance-type`).
+    Evaluation:
+      1. Keys in `blocked_keys` are always rejected.
+      2. Keys in `restricted_keys` are allowed only when their value passes the rule.
+      3. Keys not listed in `blocked_keys` or `restricted_keys` are allowed.
+
+    Schema:
+      - `blocked_keys`: keys to reject outright.
+      - `restricted_keys`: map of key to value rule:
+          `{ allowed = [globs], denied = [globs], max = number|string }`.
+
+    Keys use the `ghr-ec2-*` dynamic label suffix, not the full label. For example, use
+    `instance-type` for `ghr-ec2-instance-type`.
   EOT
   type        = any
   default     = null

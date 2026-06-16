@@ -1,19 +1,18 @@
-export interface DynamicLabelsValueRule {
+export interface Ec2DynamicLabelsValueRule {
   allowed?: string[];
   denied?: string[];
   max?: number | string;
 }
 
 /**
- * Flat policy schema. `allowed_keys` and `denied_keys` are reserved meta-keys;
- * any other entry is a per-key value rule keyed by the `<key>` segment of a
- * `ghr-ec2-<key>:<value>` label. Keys must use the same hyphenated form as
- * the labels themselves (e.g. `instance-type`).
+ * EC2 dynamic labels policy schema. `blocked_keys` rejects keys outright;
+ * `restricted_keys` applies optional per-key value rules. Keys use the
+ * `<key>` segment of a `ghr-ec2-<key>:<value>` label in the same hyphenated
+ * form as the labels themselves (e.g. `instance-type`).
  */
-export interface DynamicLabelsPolicy {
-  allowed_keys?: string[];
-  denied_keys?: string[];
-  [key: string]: string[] | DynamicLabelsValueRule | undefined;
+export interface Ec2DynamicLabelsPolicy {
+  blocked_keys?: string[];
+  restricted_keys?: Record<string, Ec2DynamicLabelsValueRule>;
 }
 
 function globToRegExp(glob: string): RegExp {
@@ -27,22 +26,18 @@ function matchesAny(value: string, patterns: string[] | undefined): boolean {
   return patterns.some((p) => globToRegExp(p).test(value));
 }
 
-function evaluateLabel(label: string, policy: DynamicLabelsPolicy): string | null {
+function evaluateLabel(label: string, policy: Ec2DynamicLabelsPolicy): string | null {
   const stripped = label.replace(/^ghr-ec2-/, '');
   const colonIdx = stripped.indexOf(':');
   const key = colonIdx === -1 ? stripped : stripped.slice(0, colonIdx);
   const value = colonIdx === -1 ? undefined : stripped.slice(colonIdx + 1);
 
-  if (policy.denied_keys?.includes(key)) {
-    return `key '${key}' is in denied_keys`;
-  }
-  if (policy.allowed_keys && policy.allowed_keys.length > 0 && !policy.allowed_keys.includes(key)) {
-    return `key '${key}' is not in allowed_keys`;
+  if (policy.blocked_keys?.includes(key)) {
+    return `key '${key}' is in blocked_keys`;
   }
 
-  if (key === 'allowed_keys' || key === 'denied_keys') return null;
-  const rule = policy[key];
-  if (!rule || Array.isArray(rule)) return null;
+  const rule = policy.restricted_keys?.[key];
+  if (!rule) return null;
   if (value === undefined) return null;
 
   if (rule.allowed && rule.allowed.length > 0 && !matchesAny(value, rule.allowed)) {
@@ -70,7 +65,7 @@ function evaluateLabel(label: string, policy: DynamicLabelsPolicy): string | nul
  */
 export function violationsAgainstPolicy(
   labels: string[],
-  policy: DynamicLabelsPolicy | null | undefined,
+  policy: Ec2DynamicLabelsPolicy | null | undefined,
 ): { label: string; reason: string }[] {
   if (!policy) return [];
   const violations: { label: string; reason: string }[] = [];
