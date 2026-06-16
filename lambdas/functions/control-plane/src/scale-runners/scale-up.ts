@@ -1,5 +1,9 @@
 import { Octokit } from '@octokit/rest';
-import { addPersistentContextToChildLogger, createChildLogger } from '@aws-github-runner/aws-powertools-util';
+import {
+  addPersistentContextToChildLogger,
+  createChildLogger,
+  getTracedAWSV3Client,
+} from '@aws-github-runner/aws-powertools-util';
 import { getParameter, putParameter } from '@aws-github-runner/aws-ssm-util';
 import yn from 'yn';
 
@@ -37,6 +41,8 @@ import {
   NetworkBandwidthGbpsRequest,
   TotalLocalStorageGBRequest,
   BaselineEbsBandwidthMbpsRequest,
+  DescribeLaunchTemplateVersionsCommand,
+  EC2Client,
 } from '@aws-sdk/client-ec2';
 
 const logger = createChildLogger('scale-up');
@@ -469,7 +475,11 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
         logger.debug('Updated runner labels', { runnerLabels });
 
         if (dynamicEC2Labels.length > 0) {
-          ec2OverrideConfig = parseEc2OverrideConfig(dynamicEC2Labels);
+          const defaultBlockDeviceName = shouldLoadLaunchTemplateBlockDeviceName(dynamicEC2Labels)
+            ? await getDefaultBlockDeviceNameFromLaunchTemplate(launchTemplateName)
+            : undefined;
+
+          ec2OverrideConfig = parseEc2OverrideConfig(dynamicEC2Labels, defaultBlockDeviceName);
           if (ec2OverrideConfig) {
             logger.debug('EC2 override config parsed from labels', {
               ec2OverrideConfig,
@@ -838,7 +848,6 @@ async function createJitConfig(
  * - ghr-ec2-baseline-ebs-bandwidth-mbps-max:<num> - Max baseline EBS bandwidth in Mbps
  *
  * Placement:
- * - ghr-ec2-placement-group:<name>            - Placement group name
  * - ghr-ec2-placement-group-name:<name>       - Placement group name
  * - ghr-ec2-placement-group-id:<id>           - Placement group ID
  * - ghr-ec2-placement-tenancy:<value>         - Tenancy (default,dedicated,host)
@@ -851,7 +860,6 @@ async function createJitConfig(
  * - ghr-ec2-placement-host-resource-group-arn:<arn> - Host resource group ARN
  *
  * Block Device Mappings:
- * - ghr-ec2-block-device-device-name:<name>   - Block device name
  * - ghr-ec2-block-device-name:<name>          - Block device name
  * - ghr-ec2-ebs-volume-size:<size>            - EBS volume size in GB
  * - ghr-ec2-ebs-volume-type:<type>            - EBS volume type (gp2,gp3,io1,io2,st1,sc1)
@@ -876,9 +884,13 @@ async function createJitConfig(
  *   runs-on: [self-hosted, linux, ghr-ec2-vcpu-count-min:4, ghr-ec2-memory-mib-min:16384, ghr-ec2-accelerator-types:gpu]
  *
  * @param labels - Array of GitHub workflow job labels
+ * @param defaultBlockDeviceName - Device name to use when dynamic block device labels create a mapping
  * @returns EC2 override configuration object or undefined if no valid config found
  */
-export function parseEc2OverrideConfig(labels: string[]): Ec2OverrideConfig | undefined {
+export function parseEc2OverrideConfig(
+  labels: string[],
+  defaultBlockDeviceName?: string,
+): Ec2OverrideConfig | undefined {
   const ec2Labels = labels.filter((l) => l.startsWith('ghr-ec2-'));
   const config: Ec2OverrideConfig = {};
 
@@ -915,7 +927,7 @@ export function parseEc2OverrideConfig(labels: string[]): Ec2OverrideConfig | un
         config.Placement.AvailabilityZoneId = value;
       } else if (placementKey === 'affinity') {
         config.Placement.Affinity = value;
-      } else if (placementKey === 'group' || placementKey === 'group-name') {
+      } else if (placementKey === 'group-name') {
         config.Placement.GroupName = value;
       } else if (placementKey === 'partition-number') {
         config.Placement.PartitionNumber = parseInt(value, 10);
@@ -935,17 +947,14 @@ export function parseEc2OverrideConfig(labels: string[]): Ec2OverrideConfig | un
     }
 
     // Block Device Mappings
-    else if (key === 'block-device-device-name' || key === 'block-device-name') {
-      config.BlockDeviceMappings = config.BlockDeviceMappings || ([{}] as FleetBlockDeviceMappingRequest[]);
-      config.BlockDeviceMappings[0].DeviceName = value;
+    else if (key === 'block-device-name') {
+      getOrCreateBlockDeviceMapping(config, defaultBlockDeviceName).DeviceName = value;
     } else if (key === 'block-device-virtual-name') {
-      config.BlockDeviceMappings = config.BlockDeviceMappings || ([{}] as FleetBlockDeviceMappingRequest[]);
-      config.BlockDeviceMappings[0].VirtualName = value;
+      getOrCreateBlockDeviceMapping(config, defaultBlockDeviceName).VirtualName = value;
     } else if (key.startsWith('ebs-')) {
-      config.BlockDeviceMappings = config.BlockDeviceMappings || ([{}] as FleetBlockDeviceMappingRequest[]);
+      const blockDeviceMapping = getOrCreateBlockDeviceMapping(config, defaultBlockDeviceName);
       const ebsKey = key.replace('ebs-', '');
-      const ebs =
-        config.BlockDeviceMappings[0].Ebs || (config.BlockDeviceMappings[0].Ebs = {} as FleetEbsBlockDeviceRequest);
+      const ebs = blockDeviceMapping.Ebs || (blockDeviceMapping.Ebs = {} as FleetEbsBlockDeviceRequest);
 
       if (ebsKey === 'encrypted') {
         ebs.Encrypted = value.toLowerCase() === 'true';
@@ -965,8 +974,7 @@ export function parseEc2OverrideConfig(labels: string[]): Ec2OverrideConfig | un
         ebs.VolumeType = value as VolumeType;
       }
     } else if (key === 'block-device-no-device') {
-      config.BlockDeviceMappings = config.BlockDeviceMappings || ([{}] as FleetBlockDeviceMappingRequest[]);
-      config.BlockDeviceMappings[0].NoDevice = value;
+      getOrCreateBlockDeviceMapping(config, defaultBlockDeviceName).NoDevice = value;
     }
 
     // Instance Requirements
@@ -1083,6 +1091,53 @@ export function parseEc2OverrideConfig(labels: string[]): Ec2OverrideConfig | un
   }
 
   return Object.keys(config).length > 0 ? config : undefined;
+}
+
+function getOrCreateBlockDeviceMapping(
+  config: Ec2OverrideConfig,
+  defaultBlockDeviceName?: string,
+): FleetBlockDeviceMappingRequest {
+  config.BlockDeviceMappings =
+    config.BlockDeviceMappings ||
+    ([defaultBlockDeviceName ? { DeviceName: defaultBlockDeviceName } : {}] as FleetBlockDeviceMappingRequest[]);
+  return config.BlockDeviceMappings[0];
+}
+
+function shouldLoadLaunchTemplateBlockDeviceName(labels: string[]): boolean {
+  const blockDeviceNameLabel = 'ghr-ec2-block-device-name:';
+  let hasBlockDeviceOverride = false;
+  let hasBlockDeviceName = false;
+
+  for (const label of labels) {
+    hasBlockDeviceOverride =
+      hasBlockDeviceOverride || label.startsWith('ghr-ec2-ebs-') || label.startsWith('ghr-ec2-block-device-');
+
+    hasBlockDeviceName =
+      hasBlockDeviceName || (label.startsWith(blockDeviceNameLabel) && label.slice(blockDeviceNameLabel.length) !== '');
+  }
+
+  return hasBlockDeviceOverride && !hasBlockDeviceName;
+}
+
+async function getDefaultBlockDeviceNameFromLaunchTemplate(launchTemplateName: string): Promise<string> {
+  const ec2Client = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
+  const launchTemplateVersions = await ec2Client.send(
+    new DescribeLaunchTemplateVersionsCommand({
+      LaunchTemplateName: launchTemplateName,
+      Versions: ['$Default'],
+    }),
+  );
+  const blockDeviceMappings =
+    launchTemplateVersions.LaunchTemplateVersions?.[0]?.LaunchTemplateData?.BlockDeviceMappings;
+  const blockDeviceName =
+    blockDeviceMappings?.find((blockDeviceMapping) => blockDeviceMapping.DeviceName && blockDeviceMapping.Ebs)
+      ?.DeviceName ?? blockDeviceMappings?.find((blockDeviceMapping) => blockDeviceMapping.DeviceName)?.DeviceName;
+
+  if (!blockDeviceName) {
+    throw new Error(`Failed to determine block device name from launch template '${launchTemplateName}'.`);
+  }
+
+  return blockDeviceName;
 }
 
 function labelsHash(labels: string[]): string {
