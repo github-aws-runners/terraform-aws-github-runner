@@ -830,7 +830,6 @@ async function createJitConfig(
  *
  * Placement:
  * - ghr-ec2-placement-group:<name>            - Placement group name
- * - ghr-ec2-placement-group-id:<id>           - Placement group ID (alternative to placement-group)
  * - ghr-ec2-placement-tenancy:<value>         - Tenancy (default,dedicated,host)
  * - ghr-ec2-placement-host-id:<id>            - Dedicated host ID
  * - ghr-ec2-placement-affinity:<value>        - Affinity (default,host)
@@ -840,7 +839,6 @@ async function createJitConfig(
  * - ghr-ec2-placement-host-resource-group-arn:<arn> - Host resource group ARN
  *
  * Block Device Mappings:
- * - ghr-ec2-block-device-name:<name>          - Device name (e.g. /dev/xvda) — must match the launch template entry being overridden
  * - ghr-ec2-ebs-volume-size:<size>            - EBS volume size in GB
  * - ghr-ec2-ebs-volume-type:<type>            - EBS volume type (gp2,gp3,io1,io2,st1,sc1)
  * - ghr-ec2-ebs-iops:<number>                 - EBS IOPS
@@ -901,8 +899,6 @@ export function parseEc2OverrideConfig(labels: string[]): Ec2OverrideConfig | un
       const placementKey = key.replace('placement-', '');
       if (placementKey === 'group') {
         config.Placement.GroupName = value;
-      } else if (placementKey === 'group-id') {
-        config.Placement.GroupId = value;
       } else if (placementKey === 'tenancy') {
         config.Placement.Tenancy = value as Tenancy;
       } else if (placementKey === 'host-id') {
@@ -947,10 +943,7 @@ export function parseEc2OverrideConfig(labels: string[]): Ec2OverrideConfig | un
     }
 
     // Block Device Mappings (Non-EBS)
-    else if (key === 'block-device-name') {
-      config.BlockDeviceMappings = config.BlockDeviceMappings || ([{}] as FleetBlockDeviceMappingRequest[]);
-      config.BlockDeviceMappings[0].DeviceName = value;
-    } else if (key === 'block-device-virtual-name') {
+    else if (key === 'block-device-virtual-name') {
       config.BlockDeviceMappings = config.BlockDeviceMappings || ([{}] as FleetBlockDeviceMappingRequest[]);
       config.BlockDeviceMappings[0].VirtualName = value;
     } else if (key === 'block-device-no-device') {
