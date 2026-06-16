@@ -2464,6 +2464,16 @@ describe('parseEc2OverrideConfig', () => {
       expect(result?.Placement?.GroupName).toBe('my-placement-group');
     });
 
+    it('should parse placement-group-name label', () => {
+      const result = scaleUpModule.parseEc2OverrideConfig(['ghr-ec2-placement-group-name:my-placement-group']);
+      expect(result?.Placement?.GroupName).toBe('my-placement-group');
+    });
+
+    it('should parse placement-group-id label', () => {
+      const result = scaleUpModule.parseEc2OverrideConfig(['ghr-ec2-placement-group-id:pg-1234567890abcdef0']);
+      expect(result?.Placement?.GroupId).toBe('pg-1234567890abcdef0');
+    });
+
     it('should parse placement-tenancy label', () => {
       const result = scaleUpModule.parseEc2OverrideConfig(['ghr-ec2-placement-tenancy:dedicated']);
       expect(result?.Placement?.Tenancy).toBe('dedicated');
@@ -2487,6 +2497,11 @@ describe('parseEc2OverrideConfig', () => {
     it('should parse placement-availability-zone label', () => {
       const result = scaleUpModule.parseEc2OverrideConfig(['ghr-ec2-placement-availability-zone:us-west-2b']);
       expect(result?.Placement?.AvailabilityZone).toBe('us-west-2b');
+    });
+
+    it('should parse placement-availability-zone-id label', () => {
+      const result = scaleUpModule.parseEc2OverrideConfig(['ghr-ec2-placement-availability-zone-id:use1-az1']);
+      expect(result?.Placement?.AvailabilityZoneId).toBe('use1-az1');
     });
 
     it('should parse placement-spread-domain label', () => {
@@ -2516,6 +2531,16 @@ describe('parseEc2OverrideConfig', () => {
   });
 
   describe('Block Device Mappings', () => {
+    it('should parse block-device-device-name label', () => {
+      const result = scaleUpModule.parseEc2OverrideConfig(['ghr-ec2-block-device-device-name:/dev/sdf']);
+      expect(result?.BlockDeviceMappings?.[0]?.DeviceName).toBe('/dev/sdf');
+    });
+
+    it('should parse block-device-name label', () => {
+      const result = scaleUpModule.parseEc2OverrideConfig(['ghr-ec2-block-device-name:/dev/sdg']);
+      expect(result?.BlockDeviceMappings?.[0]?.DeviceName).toBe('/dev/sdg');
+    });
+
     it('should parse ebs-volume-size label as number', () => {
       const result = scaleUpModule.parseEc2OverrideConfig(['ghr-ec2-ebs-volume-size:100']);
       expect(result?.BlockDeviceMappings?.[0]?.Ebs?.VolumeSize).toBe(100);
@@ -2596,7 +2621,6 @@ describe('parseEc2OverrideConfig', () => {
     it('should initialize BlockDeviceMappings when not present', () => {
       const result = scaleUpModule.parseEc2OverrideConfig(['ghr-ec2-ebs-volume-size:50']);
       expect(result?.BlockDeviceMappings).toBeDefined();
-      // expect(result?.BlockDeviceMappings?.[0]?.DeviceName).toBe('/dev/sda1');
     });
   });
 
