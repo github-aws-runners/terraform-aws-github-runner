@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write # for terraform-docs/gh-actions to commit documentation updates
-      pull-requests: write # for peter-evans/create-pull-request to create PRs with doc updates
+      pull-requests: write # for `gh pr create` to open PRs with doc updates
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@f808768d1510423e83855289c910610ca9b43176 # v2.17.0
@@ -88,16 +88,55 @@ jobs:
       # change docs via PR in case of locked main branch
       - name: Create Pull Request (main branch only)
         if: github.ref == 'refs/heads/main' && github.repository_owner == 'github-aws-runners'
-        uses: peter-evans/create-pull-request@c0f553fe549906ede9cf27b5156039d195d2ece0 # v8.1.0
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          sign-commits: true
-          commit-message: "docs: auto update terraform docs"
-          title: "docs: Update Terraform docs"
-          branch: update-docs
-          branch-suffix: random
-          base: ${{ github.event.pull_request.base.ref }}
-          delete-branch: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMIT_MESSAGE: "docs: auto update terraform docs"
+          PR_TITLE: "docs: Update Terraform docs"
+          PR_BODY: "Automated Terraform docs update."
+          BASE_BRANCH: ${{ github.ref_name }}
+        run: |
+          set -o pipefail
+          if git diff --quiet HEAD; then
+            echo "No documentation changes to open a PR for."
+            exit 0
+          fi
+
+          BASE_SHA=$(git rev-parse HEAD)
+          BRANCH="update-docs-$(openssl rand -hex 4)"
+
+          echo "Creating branch ${BRANCH} from ${BASE_SHA}"
+          gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+            -f "ref=refs/heads/${BRANCH}" \
+            -f "sha=${BASE_SHA}" >/dev/null
+
+          # commit via the GitHub API so commits are signed by GitHub and show as verified
+          additions=$(mktemp)
+          git diff --name-only HEAD | while IFS= read -r file; do
+            jq -n --arg path "$file" --rawfile contents <(base64 -w0 "$file") '{path: $path, contents: $contents}'
+          done | jq -s '.' > "$additions"
+          jq -n \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --arg branch "$BRANCH" \
+            --arg expectedHeadOid "$BASE_SHA" \
+            --arg message "$COMMIT_MESSAGE" \
+            --slurpfile additions "$additions" \
+            '{
+              query: "mutation ($input: CreateCommitOnBranchInput!) { createCommitOnBranch(input: $input) { commit { oid } } }",
+              variables: {
+                input: {
+                  branch: { repositoryNameWithOwner: $repository, branchName: $branch },
+                  expectedHeadOid: $expectedHeadOid,
+                  message: { headline: $message },
+                  fileChanges: { additions: $additions[0] }
+                }
+              }
+            }' | gh api graphql --input -
+
+          gh pr create \
+            --title "$PR_TITLE" \
+            --body "$PR_BODY" \
+            --base "$BASE_BRANCH" \
+            --head "$BRANCH"
 
   deploy-pages:
     name: Deploy documentation to GitHub Pages
