@@ -2,8 +2,23 @@ import { GetParametersCommand, PutParameterCommand, SSMClient, Tag } from '@aws-
 import { getTracedAWSV3Client } from '@aws-github-runner/aws-powertools-util';
 import { SSMProvider } from '@aws-lambda-powertools/parameters/ssm';
 
+// SSM PutParameter has a per-account, per-region rate limit (~40 TPS standard
+// throughput). Under burst load with multiple concurrent Lambdas each writing
+// JIT configs, the default retry (standard, 3 attempts, ~3s budget) is
+// insufficient and throws ThrottlingException.
+//
+// `adaptive` retry mode adds client-side rate-sensing via a token bucket:
+// when the SDK sees ThrottlingException it slows further calls to match the
+// observed budget. Combined with maxAttempts=10 this gives ~30s of retry
+// per call without hammering the API.
+const SSM_CLIENT_CONFIG = {
+  region: process.env.AWS_REGION,
+  maxAttempts: 10,
+  retryMode: 'adaptive' as const,
+};
+
 export async function getParameter(parameter_name: string): Promise<string> {
-  const ssmClient = getTracedAWSV3Client(new SSMClient({ region: process.env.AWS_REGION }));
+  const ssmClient = getTracedAWSV3Client(new SSMClient(SSM_CLIENT_CONFIG));
   const client = new SSMProvider({ awsSdkV3Client: ssmClient }); //getTracedAWSV3Client();
   const result = await client.get(parameter_name, {
     decrypt: true,
@@ -48,7 +63,7 @@ export async function getParameters(parameter_names: string[]): Promise<Map<stri
     return new Map();
   }
 
-  const ssmClient = getTracedAWSV3Client(new SSMClient({ region: process.env.AWS_REGION }));
+  const ssmClient = getTracedAWSV3Client(new SSMClient(SSM_CLIENT_CONFIG));
   const result = new Map<string, string>();
 
   // AWS SSM GetParameters API has a limit of 10 parameters per call
@@ -80,7 +95,7 @@ export async function putParameter(
   secure: boolean,
   options: { tags?: Tag[] } = {},
 ): Promise<void> {
-  const client = getTracedAWSV3Client(new SSMClient({ region: process.env.AWS_REGION }));
+  const client = getTracedAWSV3Client(new SSMClient(SSM_CLIENT_CONFIG));
 
   // Determine tier based on parameter_value size
   const valueSizeBytes = Buffer.byteLength(parameter_value, 'utf8');
