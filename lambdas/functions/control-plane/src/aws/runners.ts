@@ -6,6 +6,7 @@ import {
   DescribeInstancesCommand,
   DescribeInstancesResult,
   RunInstancesCommand,
+  RunInstancesCommandOutput,
   EC2Client,
   FleetLaunchTemplateOverridesRequest,
   Tag,
@@ -232,6 +233,27 @@ function countScaleErrors(errors: string[], scaleErrors: string[]): number {
   return errors.reduce((acc, e) => (scaleErrors.includes(e) ? acc + 1 : acc), 0);
 }
 
+function processRunInstanceResult(
+  result: RunInstancesCommandOutput,
+  runnerParameters: Runners.RunnerInputParameters,
+): string[] {
+  const instances = result.Instances?.map((i) => i.InstanceId!).filter(Boolean) || [];
+
+  if (instances.length === runnerParameters.numberOfRunners) {
+    return instances;
+  }
+
+  logger.warn(
+    `${
+      instances.length === 0 ? 'No' : instances.length + ' off ' + runnerParameters.numberOfRunners
+    } instances created.`,
+    { data: result },
+  );
+
+  logger.warn('RunInstances failed, error not recognized as scaling error.', { data: result });
+  throw Error('RunInstances failed, no instance created.');
+}
+
 async function getAmiIdOverride(runnerParameters: Runners.RunnerInputParameters): Promise<string | undefined> {
   if (!runnerParameters.amiIdSsmParameterName) {
     return undefined;
@@ -333,6 +355,7 @@ async function createInstancesWithRunInstances(
     tags.push({ Key: 'ghr:trace_id', Value: traceId! });
   }
 
+  let result: RunInstancesCommandOutput;
   try {
     if (runnerParameters.ec2instanceCriteria.targetCapacityType === 'spot') {
       throw new Error(
@@ -364,18 +387,22 @@ async function createInstancesWithRunInstances(
     });
 
     logger.debug('RunInstances request payload.', { payload: runInstancesCommand.input });
-    const result = await ec2Client.send(runInstancesCommand);
-    const instanceIds = result.Instances?.map((i) => i.InstanceId!).filter(Boolean) || [];
-
-    if (instanceIds.length === 0) {
-      throw new Error('RunInstances returned no instances for dedicated host.');
+    result = await ec2Client.send(runInstancesCommand);
+  } catch (e) {
+    const errorName = (e as Error).name;
+    if (errorName && runnerParameters.scaleErrors.includes(errorName)) {
+      logger.warn('RunInstances failed with a scale error, ScaleError will be thrown to trigger retry.', {
+        error: e as Error,
+        errorName,
+      });
+      throw new ScaleError(runnerParameters.numberOfRunners);
     }
 
-    return instanceIds;
-  } catch (e) {
     logger.warn('RunInstances request failed for dedicated host.', { error: e as Error });
     throw e;
   }
+
+  return processRunInstanceResult(result, runnerParameters);
 }
 
 // If launchTime is undefined, this will return false
