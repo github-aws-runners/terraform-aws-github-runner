@@ -1,0 +1,1 @@
+--8<-- "examples/dedicated-mac-hosts/README.md"
