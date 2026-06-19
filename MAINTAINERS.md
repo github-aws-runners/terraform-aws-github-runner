@@ -1,17 +1,27 @@
 # Maintainers guide
 
-Roles and responsibilities of the maintainers of the project.
+Roles and responsibilities of the maintainers of the project. For the full governance model — including how decisions are made, how roles are assigned, and how maintainers can step down or be removed — see [GOVERNANCE.md](GOVERNANCE.md).
+
+## Collaborators
+
+Collaborators are contributors who have shown sustained interest in the project and have been invited to take a more active role. See [GOVERNANCE.md](GOVERNANCE.md) for details on the path from contributor to collaborator to maintainer.
+
+If you are interested in becoming a collaborator or maintainer, open a pull request to add yourself to this file. The existing maintainers will use that PR as a place for a joint discussion on whether the timing is right.
+
+| Name | GitHub Handle | Affiliation |
+| ---- | ------------- | ----------- |
+| -    | -             | -           |
 
 ## Maintainers
 
-| Name              | GitHub              | Affiliation      |
-| ----------------- | ------------------- | ---------------- |
-| Niek Palm         | [@npalm]            | Philips          |
-| Koen de Laat      | [@koendelaat]       | Philips          |
-| Guilherme Caulada | [@guicaulada]       | Grafana Labs     |
-| Ederson Brilhante | [@edersonbrilhante] | Cisco            |
-| Brend Smits       | [@Brend-Smits]      | Philips          |
-| Stuart Pearson    | [@stuartp44]        | Philips          |
+| Name              | GitHub Handle       | Affiliation  |
+| ----------------- | ------------------- | ------------ |
+| Niek Palm         | [@npalm]            | Philips      |
+| Koen de Laat      | [@koendelaat]       | Philips      |
+| Guilherme Caulada | [@guicaulada]       | Grafana Labs |
+| Ederson Brilhante | [@edersonbrilhante] | Cisco        |
+| Brend Smits       | [@Brend-Smits]      | Philips      |
+| Stuart Pearson    | [@stuartp44]        | Philips      |
 
 ## Responsibilities
 
@@ -21,6 +31,8 @@ Maintainers are responsible to review and merge pull requests. Currently we have
 
 #### Guidelines
 
+- A pull request can be merged once it has **at least one maintainer approval**, provided no other maintainer has explicitly requested changes.
+- **Maintainers from the same company must not be the sole approver of each other's pull requests.** At least one approval from a maintainer at a different organisation is required before such a PR can be merged.
 - Check if changes are implemented for both modules (root and multi-runner)
 - Check backwards compatibility, we strive to keep the module compatible with previous versions
 - Check complexity of the changes, if the changes are too complex. Think about how does impact the PR on the long term maintaining the module.

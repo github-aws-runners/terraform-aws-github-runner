@@ -37,6 +37,7 @@ resource "aws_lambda_function" "dispatcher" {
   environment {
     variables = {
       for k, v in {
+        ENABLE_DYNAMIC_LABELS                    = var.config.enable_dynamic_labels
         LOG_LEVEL                                = var.config.log_level
         POWERTOOLS_LOGGER_LOG_EVENT              = var.config.log_level == "debug" ? "true" : "false"
         POWERTOOLS_SERVICE_NAME                  = "${var.config.prefix}-dispatcher"

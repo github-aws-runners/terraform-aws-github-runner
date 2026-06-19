@@ -133,8 +133,10 @@ variable "multi_runner_config" {
         evictionStrategy = optional(string, "oldest_first")
       })), [])
       cpu_options = optional(object({
-        core_count       = number
-        threads_per_core = number
+        core_count            = optional(number)
+        threads_per_core      = optional(number)
+        amd_sev_snp           = optional(string)
+        nested_virtualization = optional(string)
       }), null)
       placement = optional(object({
         affinity                = optional(string)
@@ -147,6 +149,10 @@ variable "multi_runner_config" {
         tenancy                 = optional(string)
         partition_number        = optional(number)
       }), null)
+      license_specifications = optional(list(object({
+        license_configuration_arn = string
+      })), [])
+      use_dedicated_host = optional(bool, false)
       runner_log_files = optional(list(object({
         log_group_name   = string
         prefix_log_group = bool
@@ -155,15 +161,16 @@ variable "multi_runner_config" {
         log_class        = optional(string, "STANDARD")
       })), null)
       block_device_mappings = optional(list(object({
-        delete_on_termination = optional(bool, true)
-        device_name           = optional(string, "/dev/xvda")
-        encrypted             = optional(bool, true)
-        iops                  = optional(number)
-        kms_key_id            = optional(string)
-        snapshot_id           = optional(string)
-        throughput            = optional(number)
-        volume_size           = number
-        volume_type           = optional(string, "gp3")
+        delete_on_termination      = optional(bool, true)
+        device_name                = optional(string, "/dev/xvda")
+        encrypted                  = optional(bool, true)
+        iops                       = optional(number)
+        kms_key_id                 = optional(string)
+        snapshot_id                = optional(string)
+        throughput                 = optional(number)
+        volume_initialization_rate = optional(number)
+        volume_size                = number
+        volume_type                = optional(string, "gp3")
         })), [{
         volume_size = 30
       }])
@@ -180,6 +187,17 @@ variable "multi_runner_config" {
         lambda_timeout     = optional(number, 30)
         max_attempts       = optional(number, 1)
       }), {})
+      iam_overrides = optional(object({
+        override_instance_profile = optional(bool, null)
+        instance_profile_name     = optional(string, null)
+        override_runner_role      = optional(bool, null)
+        runner_role_arn           = optional(string, null)
+        }), {
+        override_instance_profile = false
+        instance_profile_name     = null
+        override_runner_role      = false
+        runner_role_arn           = null
+      })
     })
     matcherConfig = object({
       labelMatchers = list(list(string))
@@ -197,7 +215,7 @@ variable "multi_runner_config" {
   description = <<EOT
     multi_runner_config = {
       runner_config: {
-        runner_os: "The EC2 Operating System type to use for action runner instances (linux,windows)."
+        runner_os: "The EC2 Operating System type to use for action runner instances (linux, osx, windows)."
         runner_architecture: "The platform architecture of the runner instance_type."
         runner_metadata_options: "(Optional) Metadata options for the ec2 runner instances."
         ami: "(Optional) AMI configuration for the action runner instances. This object allows you to specify all AMI-related settings in one place."
@@ -207,7 +225,8 @@ variable "multi_runner_config" {
         disable_runner_autoupdate: "Disable the auto update of the github runner agent. Be aware there is a grace period of 30 days, see also the [GitHub article](https://github.blog/changelog/2022-02-01-github-actions-self-hosted-runners-can-now-disable-automatic-updates/)"
         ebs_optimized: "The EC2 EBS optimized configuration."
         enable_ephemeral_runners: "Enable ephemeral runners, runners will only be used once."
-        enable_job_queued_check: "Enables JIT configuration for creating runners instead of registration token based registraton. JIT configuration will only be applied for ephemeral runners. By default JIT configuration is enabled for ephemeral runners an can be disabled via this override. When running on GHES without support for JIT configuration this variable should be set to true for ephemeral runners."
+        enable_dynamic_labels: "Experimental! Can be removed / changed without trigger a major release. Enable dynamic labels with 'ghr-' prefix. When enabled, jobs can use 'ghr-ec2-<config>:<value>' labels to dynamically configure EC2 instances (e.g., 'ghr-ec2-instance-type:t3.large') and 'ghr-run-<label>' to add unique labels dynamically to runners."
+        enable_job_queued_check: Enables JIT configuration for creating runners instead of registration token based registraton. JIT configuration will only be applied for ephemeral runners. By default JIT configuration is enabled for ephemeral runners an can be disabled via this override. When running on GHES without support for JIT configuration this variable should be set to true for ephemeral runners."
         enable_on_demand_failover_for_errors: "Enable on-demand failover. For example to fall back to on demand when no spot capacity is available the variable can be set to `InsufficientInstanceCapacity`. When not defined the default behavior is to retry later."
         scale_errors: "List of aws error codes that should trigger retry during scale up. This list will replace the default errors defined in the variable `defaultScaleErrors` in https://github.com/github-aws-runners/terraform-aws-github-runner/blob/main/lambdas/functions/control-plane/src/aws/runners.ts"
         enable_organization_runners: "Register runners to organization, instead of repo level"
@@ -217,7 +236,7 @@ variable "multi_runner_config" {
         instance_allocation_strategy: "The allocation strategy for spot instances. AWS recommends to use `capacity-optimized` however the AWS default is `lowest-price`."
         instance_max_spot_price: "Max price price for spot instances per hour. This variable will be passed to the create fleet as max spot price for the fleet."
         instance_target_capacity_type: "Default lifecycle used for runner instances, can be either `spot` or `on-demand`."
-        instance_types: "List of instance types for the action runner. Defaults are based on runner_os (al2023 for linux and Windows Server Core for win)."
+        instance_types: "List of instance types for the action runner. Defaults are based on runner_os (al2023 for linux, macOS Sequoia for osx, Windows Server Core for win)."
         job_queue_retention_in_seconds: "The number of seconds the job is held in the queue before it is purged"
         minimum_running_time_in_minutes: "The time an ec2 action runner should be running at minimum before terminated if not busy."
         pool_runner_owner: "The pool will deploy runners to the GitHub org ID, set this value to the org to which you want the runners deployed. Repo level is not supported."
@@ -246,10 +265,13 @@ variable "multi_runner_config" {
         vpc_id: "The VPC for security groups of the action runners. If not set uses the value of `var.vpc_id`."
         subnet_ids: "List of subnets in which the action runners will be launched, the subnets needs to be subnets in the `vpc_id`. If not set, uses the value of `var.subnet_ids`."
         idle_config: "List of time period that can be defined as cron expression to keep a minimum amount of runners active instead of scaling down to 0. By defining this list you can ensure that in time periods that match the cron expression within 5 seconds a runner is kept idle."
+        license_specifications: "Optional EC2 License Manager license configuration ARNs for the runner launch template. Required for macOS dedicated-host runners when the host resource group uses a Mac dedicated host license configuration."
+        use_dedicated_host: "Experimental! Can be removed / changed without trigger a major release. Whether to use EC2 dedicated hosts for the runners. Needed for macos runners Note that using dedicated hosts can increase cost significantly."
         runner_log_files: "(optional) Replaces the module default cloudwatch log config. See https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-Configuration-File-Details.html for details."
-        block_device_mappings: "The EC2 instance block device configuration. Takes the following keys: `device_name`, `delete_on_termination`, `volume_type`, `volume_size`, `encrypted`, `iops`, `throughput`, `kms_key_id`, `snapshot_id`."
+        block_device_mappings: "The EC2 instance block device configuration. Takes the following keys: `device_name`, `delete_on_termination`, `volume_type`, `volume_size`, `encrypted`, `iops`, `throughput`, `kms_key_id`, `snapshot_id`, `volume_initialization_rate`."
         job_retry: "Experimental! Can be removed / changed without trigger a major release. Configure job retries. The configuration enables job retries (for ephemeral runners). After creating the instances a message will be published to a job retry queue. The job retry check lambda is checking after a delay if the job is queued. If not the message will be published again on the scale-up (build queue). Using this feature can impact the rate limit of the GitHub app."
         pool_config: "The configuration for updating the pool. The `pool_size` to adjust to by the events triggered by the `schedule_expression`. For example you can configure a cron expression for week days to adjust the pool to 10 and another expression for the weekend to adjust the pool to 1. Use `schedule_expression_timezone` to override the schedule time zone (defaults to UTC)."
+        iam_overrides: "Allows to (optionally) override the instance profile and runner role created by the module. Set `override_instance_profile` to true and provide the `instance_profile_name` to use an existing instance profile. Set `override_runner_role` to true and provide the `runner_role_arn` to use an existing role for the runner instances."
       }
       matcherConfig: {
         labelMatchers: "The list of list of labels supported by the runner configuration. `[[self-hosted, linux, x64, example]]`"
@@ -753,6 +775,33 @@ variable "user_agent" {
   default     = "github-aws-runners"
 }
 
+variable "iam_overrides" {
+  description = "This map provides the possibility to override some IAM defaults. The following attributes are supported: `instance_profile_name` overrides the instance profile name used in the launch template. `runner_role_arn` overrides the IAM role ARN used for the runner instances."
+  type = object({
+    override_instance_profile = optional(bool, null)
+    instance_profile_name     = optional(string, null)
+    override_runner_role      = optional(bool, null)
+    runner_role_arn           = optional(string, null)
+  })
+
+  default = {
+    override_instance_profile = false
+    instance_profile_name     = null
+    override_runner_role      = false
+    runner_role_arn           = null
+  }
+
+  validation {
+    condition     = !var.iam_overrides.override_instance_profile || var.iam_overrides.instance_profile_name != null
+    error_message = "instance_profile_name must be provided when override_instance_profile is true."
+  }
+
+  validation {
+    condition     = !var.iam_overrides.override_runner_role || var.iam_overrides.runner_role_arn != null
+    error_message = "runner_role_arn must be provided when override_runner_role is true."
+  }
+}
+
 variable "lambda_event_source_mapping_batch_size" {
   description = "Maximum number of records to pass to the lambda function in a single batch for the event source mapping. When not set, the AWS default of 10 events will be used."
   type        = number
@@ -769,4 +818,10 @@ variable "parameter_store_tags" {
   description = "Map of tags that will be added to all the SSM Parameter Store parameters created by the Lambda function."
   type        = map(string)
   default     = {}
+}
+
+variable "enable_dynamic_labels" {
+  description = "Experimental! Can be removed / changed without trigger a major release. Enable dynamic labels with 'ghr-' prefix. When enabled, jobs can use 'ghr-ec2-<config>:<value>' labels to dynamically configure EC2 instances (e.g., 'ghr-ec2-instance-type:t3.large') and 'ghr-run-<label>' to add unique labels dynamically to runners."
+  type        = bool
+  default     = false
 }
