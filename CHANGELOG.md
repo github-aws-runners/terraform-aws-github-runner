@@ -1,5 +1,12 @@
 # Changelog
 
+## [7.7.1](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v7.7.0...v7.7.1) (2026-06-11)
+
+
+### Bug Fixes
+
+* **runners:** fix type mismatch in pool role conditional ([#5156](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5156)) ([60de50f](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/60de50f995794fe03f109234c79ca361ab86feaf))
+
 ## [7.7.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v7.6.1...v7.7.0) (2026-06-11)
 
 

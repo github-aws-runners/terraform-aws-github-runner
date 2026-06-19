@@ -1,3 +1,4 @@
+import { DescribeLaunchTemplateVersionsCommand, EC2Client } from '@aws-sdk/client-ec2';
 import { PutParameterCommand, SSMClient } from '@aws-sdk/client-ssm';
 import { mockClient } from 'aws-sdk-client-mock';
 import 'aws-sdk-client-mock-jest/vitest';
@@ -32,6 +33,7 @@ const mockOctokit = {
 
 const mockCreateRunner = vi.mocked(createRunner);
 const mockListRunners = vi.mocked(listEC2Runners);
+const mockEC2Client = mockClient(EC2Client);
 const mockSSMClient = mockClient(SSMClient);
 const mockSSMgetParameter = vi.mocked(getParameter);
 const mockPublishRetryMessage = vi.mocked(publishRetryMessage);
@@ -141,6 +143,22 @@ beforeEach(() => {
   vi.resetModules();
   vi.clearAllMocks();
   setDefaults();
+
+  mockEC2Client.reset();
+  mockEC2Client.on(DescribeLaunchTemplateVersionsCommand).resolves({
+    LaunchTemplateVersions: [
+      {
+        LaunchTemplateData: {
+          BlockDeviceMappings: [
+            {
+              DeviceName: '/dev/sda1',
+              Ebs: {},
+            },
+          ],
+        },
+      },
+    ],
+  });
 
   defaultSSMGetParameterMockImpl();
   defaultOctokitMockImpl();
@@ -649,6 +667,86 @@ describe('scaleUp with GHES', () => {
       );
     });
 
+    it('loads the launch template block device name for dynamic EBS labels without DeviceName', async () => {
+      mockEC2Client.on(DescribeLaunchTemplateVersionsCommand).resolves({
+        LaunchTemplateVersions: [
+          {
+            LaunchTemplateData: {
+              BlockDeviceMappings: [
+                {
+                  DeviceName: '/dev/sdb',
+                  VirtualName: 'ephemeral0',
+                },
+                {
+                  DeviceName: '/dev/sdf',
+                  Ebs: {},
+                },
+              ],
+            },
+          },
+        ],
+      });
+
+      const testDataWithEbsLabels = [
+        {
+          ...TEST_DATA_SINGLE,
+          labels: ['ghr-ec2-ebs-volume-size:100', 'ghr-ec2-ebs-volume-type:gp3'],
+          messageId: 'test-ebs-device-name',
+        },
+      ];
+
+      await scaleUpModule.scaleUp(testDataWithEbsLabels);
+
+      expect(mockEC2Client).toHaveReceivedCommandWith(DescribeLaunchTemplateVersionsCommand, {
+        LaunchTemplateName: 'lt-1',
+        Versions: ['$Default'],
+      });
+      expect(createRunner).toBeCalledWith(
+        expect.objectContaining({
+          ec2OverrideConfig: expect.objectContaining({
+            BlockDeviceMappings: [
+              {
+                DeviceName: '/dev/sdf',
+                Ebs: {
+                  VolumeSize: 100,
+                  VolumeType: 'gp3',
+                },
+              },
+            ],
+          }),
+        }),
+      );
+    });
+
+    it('does not load launch template block device name when DeviceName is provided by labels', async () => {
+      const testDataWithEbsLabels = [
+        {
+          ...TEST_DATA_SINGLE,
+          labels: ['ghr-ec2-block-device-name:/dev/sdg', 'ghr-ec2-ebs-volume-size:100', 'ghr-ec2-ebs-volume-type:gp3'],
+          messageId: 'test-explicit-ebs-device-name',
+        },
+      ];
+
+      await scaleUpModule.scaleUp(testDataWithEbsLabels);
+
+      expect(mockEC2Client).not.toHaveReceivedCommand(DescribeLaunchTemplateVersionsCommand);
+      expect(createRunner).toBeCalledWith(
+        expect.objectContaining({
+          ec2OverrideConfig: expect.objectContaining({
+            BlockDeviceMappings: [
+              {
+                DeviceName: '/dev/sdg',
+                Ebs: {
+                  VolumeSize: 100,
+                  VolumeType: 'gp3',
+                },
+              },
+            ],
+          }),
+        }),
+      );
+    });
+
     it('handles messages with no labels gracefully', async () => {
       const testDataWithNoLabels = [
         {
@@ -930,6 +1028,100 @@ describe('scaleUp with GHES', () => {
           }),
         }),
       );
+    });
+
+    it('does not accumulate labels across groups when multiple messages have different dynamic labels', async () => {
+      const testDataMultipleGroups = [
+        {
+          ...TEST_DATA_SINGLE,
+          labels: ['self-hosted', 'linux', 'ghr-ec2-instance-type:m7a.large', 'ghr-job-id:run-1-inst-0'],
+          messageId: 'msg-1',
+        },
+        {
+          ...TEST_DATA_SINGLE,
+          labels: ['self-hosted', 'linux', 'ghr-ec2-instance-type:m7i.xlarge', 'ghr-job-id:run-1-inst-1'],
+          messageId: 'msg-2',
+        },
+        {
+          ...TEST_DATA_SINGLE,
+          labels: ['self-hosted', 'linux', 'ghr-ec2-instance-type:c7a.large', 'ghr-job-id:run-1-inst-2'],
+          messageId: 'msg-3',
+        },
+      ];
+
+      await scaleUpModule.scaleUp(testDataMultipleGroups);
+
+      expect(createRunner).toBeCalledTimes(3);
+
+      const jitCalls = mockOctokit.actions.generateRunnerJitconfigForOrg.mock.calls;
+      expect(jitCalls).toHaveLength(3);
+
+      for (const call of jitCalls) {
+        const labels = call[0].labels as string[];
+
+        if (labels.includes('ghr-ec2-instance-type:m7a.large')) {
+          expect(labels).toContain('ghr-job-id:run-1-inst-0');
+          expect(labels).not.toContain('ghr-job-id:run-1-inst-1');
+          expect(labels).not.toContain('ghr-job-id:run-1-inst-2');
+          expect(labels).not.toContain('ghr-ec2-instance-type:m7i.xlarge');
+          expect(labels).not.toContain('ghr-ec2-instance-type:c7a.large');
+        } else if (labels.includes('ghr-ec2-instance-type:m7i.xlarge')) {
+          expect(labels).toContain('ghr-job-id:run-1-inst-1');
+          expect(labels).not.toContain('ghr-job-id:run-1-inst-0');
+          expect(labels).not.toContain('ghr-job-id:run-1-inst-2');
+          expect(labels).not.toContain('ghr-ec2-instance-type:m7a.large');
+          expect(labels).not.toContain('ghr-ec2-instance-type:c7a.large');
+        } else if (labels.includes('ghr-ec2-instance-type:c7a.large')) {
+          expect(labels).toContain('ghr-job-id:run-1-inst-2');
+          expect(labels).not.toContain('ghr-job-id:run-1-inst-0');
+          expect(labels).not.toContain('ghr-job-id:run-1-inst-1');
+          expect(labels).not.toContain('ghr-ec2-instance-type:m7a.large');
+          expect(labels).not.toContain('ghr-ec2-instance-type:m7i.xlarge');
+        } else {
+          throw new Error(`Unexpected labels combination: ${labels.join(',')}`);
+        }
+      }
+    });
+
+    it('preserves base RUNNER_LABELS for each group without mutation', async () => {
+      process.env.RUNNER_LABELS = 'ubuntu-2404,x64';
+
+      const testDataTwoGroups = [
+        {
+          ...TEST_DATA_SINGLE,
+          labels: ['self-hosted', 'ghr-ec2-instance-type:m7a.large', 'ghr-team:alpha'],
+          messageId: 'msg-a',
+        },
+        {
+          ...TEST_DATA_SINGLE,
+          labels: ['self-hosted', 'ghr-ec2-instance-type:c7i.large', 'ghr-team:beta'],
+          messageId: 'msg-b',
+        },
+      ];
+
+      await scaleUpModule.scaleUp(testDataTwoGroups);
+
+      expect(createRunner).toBeCalledTimes(2);
+
+      const jitCalls = mockOctokit.actions.generateRunnerJitconfigForOrg.mock.calls;
+      expect(jitCalls).toHaveLength(2);
+
+      for (const call of jitCalls) {
+        const labels = call[0].labels as string[];
+
+        expect(labels).toContain('ubuntu-2404');
+        expect(labels).toContain('x64');
+
+        if (labels.includes('ghr-team:alpha')) {
+          expect(labels).not.toContain('ghr-team:beta');
+          expect(labels).not.toContain('ghr-ec2-instance-type:c7i.large');
+        } else if (labels.includes('ghr-team:beta')) {
+          expect(labels).not.toContain('ghr-team:alpha');
+          expect(labels).not.toContain('ghr-ec2-instance-type:m7a.large');
+        } else {
+          throw new Error(`Unexpected labels combination: ${labels.join(',')}`);
+        }
+      }
     });
   });
 
@@ -2435,9 +2627,14 @@ describe('parseEc2OverrideConfig', () => {
   });
 
   describe('Placement', () => {
-    it('should parse placement-group label', () => {
-      const result = scaleUpModule.parseEc2OverrideConfig(['ghr-ec2-placement-group:my-placement-group']);
+    it('should parse placement-group-name label', () => {
+      const result = scaleUpModule.parseEc2OverrideConfig(['ghr-ec2-placement-group-name:my-placement-group']);
       expect(result?.Placement?.GroupName).toBe('my-placement-group');
+    });
+
+    it('should parse placement-group-id label', () => {
+      const result = scaleUpModule.parseEc2OverrideConfig(['ghr-ec2-placement-group-id:pg-1234567890abcdef0']);
+      expect(result?.Placement?.GroupId).toBe('pg-1234567890abcdef0');
     });
 
     it('should parse placement-tenancy label', () => {
@@ -2465,6 +2662,11 @@ describe('parseEc2OverrideConfig', () => {
       expect(result?.Placement?.AvailabilityZone).toBe('us-west-2b');
     });
 
+    it('should parse placement-availability-zone-id label', () => {
+      const result = scaleUpModule.parseEc2OverrideConfig(['ghr-ec2-placement-availability-zone-id:use1-az1']);
+      expect(result?.Placement?.AvailabilityZoneId).toBe('use1-az1');
+    });
+
     it('should parse placement-spread-domain label', () => {
       const result = scaleUpModule.parseEc2OverrideConfig(['ghr-ec2-placement-spread-domain:my-spread-domain']);
       expect(result?.Placement?.SpreadDomain).toBe('my-spread-domain');
@@ -2481,7 +2683,7 @@ describe('parseEc2OverrideConfig', () => {
 
     it('should parse multiple placement labels', () => {
       const result = scaleUpModule.parseEc2OverrideConfig([
-        'ghr-ec2-placement-group:group-1',
+        'ghr-ec2-placement-group-name:group-1',
         'ghr-ec2-placement-tenancy:dedicated',
         'ghr-ec2-placement-availability-zone:us-east-1b',
       ]);
@@ -2492,6 +2694,17 @@ describe('parseEc2OverrideConfig', () => {
   });
 
   describe('Block Device Mappings', () => {
+    it('should parse block-device-name label', () => {
+      const result = scaleUpModule.parseEc2OverrideConfig(['ghr-ec2-block-device-name:/dev/sdg']);
+      expect(result?.BlockDeviceMappings?.[0]?.DeviceName).toBe('/dev/sdg');
+    });
+
+    it('should use default block device name when provided', () => {
+      const result = scaleUpModule.parseEc2OverrideConfig(['ghr-ec2-ebs-volume-size:100'], '/dev/sda1');
+      expect(result?.BlockDeviceMappings?.[0]?.DeviceName).toBe('/dev/sda1');
+      expect(result?.BlockDeviceMappings?.[0]?.Ebs?.VolumeSize).toBe(100);
+    });
+
     it('should parse ebs-volume-size label as number', () => {
       const result = scaleUpModule.parseEc2OverrideConfig(['ghr-ec2-ebs-volume-size:100']);
       expect(result?.BlockDeviceMappings?.[0]?.Ebs?.VolumeSize).toBe(100);
@@ -2572,7 +2785,6 @@ describe('parseEc2OverrideConfig', () => {
     it('should initialize BlockDeviceMappings when not present', () => {
       const result = scaleUpModule.parseEc2OverrideConfig(['ghr-ec2-ebs-volume-size:50']);
       expect(result?.BlockDeviceMappings).toBeDefined();
-      // expect(result?.BlockDeviceMappings?.[0]?.DeviceName).toBe('/dev/sda1');
     });
   });
 
@@ -2988,7 +3200,7 @@ describe('parseEc2OverrideConfig', () => {
         'ghr-ec2-max-price:0.75',
         'ghr-ec2-priority:1',
         // Placement
-        'ghr-ec2-placement-group:my-group',
+        'ghr-ec2-placement-group-name:my-group',
         'ghr-ec2-placement-tenancy:dedicated',
         // Block Device
         'ghr-ec2-ebs-volume-size:200',
