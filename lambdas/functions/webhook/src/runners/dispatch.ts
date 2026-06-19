@@ -43,9 +43,12 @@ async function handleWorkflowJob(
       `Job ID: ${body.workflow_job.id}, Job Name: ${body.workflow_job.name}, ` +
       `Run ID: ${body.workflow_job.run_id}, Labels: ${JSON.stringify(body.workflow_job.labels)}`,
   );
-  // sort the queuesConfig by order of matcher config exact match, with all true matches lined up ahead.
+  // Sort: exact-match first, then by ascending priority (lower = preferred/cheaper).
   matcherConfig.sort((a, b) => {
-    return a.matcherConfig.exactMatch === b.matcherConfig.exactMatch ? 0 : a.matcherConfig.exactMatch ? -1 : 1;
+    if (a.matcherConfig.exactMatch !== b.matcherConfig.exactMatch) {
+      return a.matcherConfig.exactMatch ? -1 : 1;
+    }
+    return (a.matcherConfig.priority ?? 999) - (b.matcherConfig.priority ?? 999);
   });
   for (const queue of matcherConfig) {
     if (

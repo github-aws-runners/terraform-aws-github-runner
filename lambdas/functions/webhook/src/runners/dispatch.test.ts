@@ -155,6 +155,54 @@ describe('Dispatcher', () => {
       });
     });
 
+    it('should dispatch to lowest priority pool when multiple pools match the same labels', async () => {
+      config = await createConfig(undefined, [
+        {
+          ...runnerConfig[0],
+          id: 'large-ondemand',
+          matcherConfig: {
+            labelMatchers: [['self-hosted', 'linux', 'x64', 'large', 'ondemand']],
+            exactMatch: true,
+            priority: 100,
+          },
+        },
+        {
+          ...runnerConfig[0],
+          id: 'medium-spot',
+          matcherConfig: {
+            labelMatchers: [['self-hosted', 'linux', 'x64', 'medium', 'spot']],
+            exactMatch: true,
+            priority: 5,
+          },
+        },
+        {
+          ...runnerConfig[0],
+          id: 'small-spot',
+          matcherConfig: {
+            labelMatchers: [['self-hosted', 'linux', 'x64', 'small', 'spot']],
+            exactMatch: true,
+            priority: 1,
+          },
+        },
+      ]);
+
+      // Job requests only the common subset — all pools match
+      const event = {
+        ...workFlowJobEvent,
+        workflow_job: {
+          ...workFlowJobEvent.workflow_job,
+          labels: ['self-hosted', 'linux', 'x64'],
+        },
+      } as unknown as WorkflowJobEvent;
+      const resp = await dispatch(event, 'workflow_job', config);
+      expect(resp.statusCode).toBe(201);
+      expect(sendActionRequest).toHaveBeenCalledWith(
+        expect.objectContaining({
+          queueId: 'small-spot',
+        }),
+      );
+    });
+
     it('should not accept jobs where not all labels are supported (single matcher).', async () => {
       config = await createConfig(undefined, [
         {
