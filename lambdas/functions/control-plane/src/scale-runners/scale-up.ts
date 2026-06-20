@@ -507,10 +507,21 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
         },
       });
 
-      if (enableJobQueuedCheck && !(await isJobQueued(githubInstallationClient, message))) {
-        messageLogger.info('No runner will be created, job is not queued.');
-
-        continue;
+      if (enableJobQueuedCheck) {
+        let jobQueued = true;
+        try {
+          jobQueued = await isJobQueued(githubInstallationClient, message);
+        } catch (e) {
+          const err = e as Error & { status?: number };
+          messageLogger.warn('isJobQueued check failed, assuming job is still queued (fail-open)', {
+            error: err.message,
+            status: err.status,
+          });
+        }
+        if (!jobQueued) {
+          messageLogger.info('No runner will be created, job is not queued.');
+          continue;
+        }
       }
 
       scaleUp++;
