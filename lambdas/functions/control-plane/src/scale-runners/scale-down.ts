@@ -79,6 +79,8 @@ async function getGitHubSelfHostedRunnerState(
             owner: ec2runner.owner.split('/')[0],
             repo: ec2runner.owner.split('/')[1],
           });
+    // appIndex is not threaded here: the octokit client is cached per-owner and does not
+    // retain which app authenticated it, so the rate-limit metric labels the primary app (index 0).
     metricGitHubAppRateLimit(state.headers);
 
     return state.data;

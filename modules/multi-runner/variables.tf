@@ -38,7 +38,7 @@ variable "github_app" {
 
 variable "additional_github_apps" {
   description = <<-EOF
-    Additional GitHub Apps for round-robin API rate limit distribution.
+    Additional GitHub Apps for random API rate limit distribution.
 
     The primary app (var.github_app) is always included and is the one whose
     webhook secret is used for incoming webhook signature validation. Only the

@@ -229,7 +229,7 @@ variable "github_app_parameters" {
   description = <<-EOF
     Parameter Store for GitHub App Parameters.
 
-    Supports multiple GitHub Apps for round-robin API rate limit distribution.
+    Supports multiple GitHub Apps for random API rate limit distribution.
     Each list element corresponds to one GitHub App and is a map containing
     `name` and `arn` keys referencing SSM parameters. The first element is the
     primary app (the one whose webhook secret is used for incoming webhook

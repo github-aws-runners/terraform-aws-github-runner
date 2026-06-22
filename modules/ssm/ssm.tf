@@ -44,7 +44,7 @@ resource "aws_ssm_parameter" "additional_github_app_key_base64" {
 }
 
 resource "aws_ssm_parameter" "additional_github_app_installation_id" {
-  for_each = { for idx, app in var.additional_github_apps : idx => app if app.installation_id_ssm == null && nonsensitive(app.installation_id != null) }
+  for_each = { for idx, app in var.additional_github_apps : idx => app if app.installation_id_ssm == null && app.installation_id != null }
   name     = "${var.path_prefix}/additional_github_app_${each.key}_installation_id"
   type     = "SecureString"
   value    = each.value.installation_id

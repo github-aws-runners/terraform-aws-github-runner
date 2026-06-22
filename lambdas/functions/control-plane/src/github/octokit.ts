@@ -4,18 +4,8 @@ import {
   createGithubAppAuth,
   createGithubInstallationAuth,
   createOctokitClient,
-  getAppCount,
   getStoredInstallationId,
 } from './auth';
-
-function getErrorStatus(error: unknown): number | undefined {
-  if (typeof error !== 'object' || error === null) {
-    return undefined;
-  }
-
-  const errorWithStatus = error as { status?: number; response?: { status?: number } };
-  return errorWithStatus.status ?? errorWithStatus.response?.status;
-}
 
 async function resolveInstallationId(
   githubClient: Octokit,
@@ -29,9 +19,11 @@ async function resolveInstallationId(
     if (storedId !== undefined) return storedId;
   }
 
-  const multiApp = (await getAppCount()) > 1;
-
-  if (!multiApp && payload.installationId !== 0) {
+  // The primary app (index 0, or the single-app case where appIndex is undefined) can reuse
+  // the installation id carried on the webhook payload, since the webhook is delivered by the
+  // primary app. Additional apps must resolve their own installation id via the API.
+  const isPrimaryApp = appIndex === undefined || appIndex === 0;
+  if (isPrimaryApp && payload.installationId !== 0) {
     return payload.installationId;
   }
 
@@ -53,14 +45,11 @@ export async function getInstallationId(
   ghesApiUrl: string,
   enableOrgLevel: boolean,
   payload: ActionRequestMessage,
+  appIndex?: number,
 ): Promise<number> {
-  if (payload.installationId !== 0) {
-    return payload.installationId;
-  }
-
-  const ghAuth = await createGithubAppAuth(undefined, ghesApiUrl);
+  const ghAuth = await createGithubAppAuth(undefined, ghesApiUrl, appIndex);
   const githubClient = await createOctokitClient(ghAuth.token, ghesApiUrl);
-  return resolveInstallationId(githubClient, enableOrgLevel, payload);
+  return resolveInstallationId(githubClient, enableOrgLevel, payload, appIndex);
 }
 
 /**
