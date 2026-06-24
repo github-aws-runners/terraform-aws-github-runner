@@ -7,7 +7,7 @@ import nock from 'nock';
 import { performance } from 'perf_hooks';
 
 import * as ghAuth from '../github/auth';
-import { createRunner, listEC2Runners } from './../aws/runners';
+import { createRunner, listEC2Runners, tag } from './../aws/runners';
 import { RunnerInputParameters } from './../aws/runners.d';
 import * as scaleUpModule from './scale-up';
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
@@ -33,6 +33,7 @@ const mockOctokit = {
 
 const mockCreateRunner = vi.mocked(createRunner);
 const mockListRunners = vi.mocked(listEC2Runners);
+const mockTag = vi.mocked(tag);
 const mockEC2Client = mockClient(EC2Client);
 const mockSSMClient = mockClient(SSMClient);
 const mockSSMgetParameter = vi.mocked(getParameter);
@@ -286,6 +287,29 @@ describe('scaleUp with GHES', () => {
     it('creates a runner with correct config', async () => {
       await scaleUpModule.scaleUp(TEST_DATA);
       expect(createRunner).toBeCalledWith(expectedRunnerParams);
+    });
+
+    it('tags the EC2 runner with the GitHub runner metadata returned by JIT config', async () => {
+      await scaleUpModule.scaleUp(TEST_DATA);
+      expect(mockTag).toHaveBeenCalledWith('i-12345', [
+        { Key: 'ghr:github_runner_id', Value: '9876543210' },
+        { Key: 'ghr:runner_labels', Value: 'label1,label2' },
+      ]);
+    });
+
+    it('splits GitHub runner labels over multiple EC2 tags when the tag value would be too long', async () => {
+      const firstLabel = `label-${'a'.repeat(120)}`;
+      const secondLabel = `label-${'b'.repeat(120)}`;
+      const thirdLabel = `label-${'c'.repeat(120)}`;
+      process.env.RUNNER_LABELS = [firstLabel, secondLabel, thirdLabel].join(',');
+
+      await scaleUpModule.scaleUp(TEST_DATA);
+
+      expect(mockTag).toHaveBeenCalledWith('i-12345', [
+        { Key: 'ghr:github_runner_id', Value: '9876543210' },
+        { Key: 'ghr:runner_labels', Value: `${firstLabel},${secondLabel}` },
+        { Key: 'ghr:runner_labels:2', Value: thirdLabel },
+      ]);
     });
 
     it('creates a runner with labels in a specific group', async () => {
@@ -644,6 +668,16 @@ describe('scaleUp with GHES', () => {
           }),
         }),
       );
+      expect(mockTag).toHaveBeenCalledWith('i-12345', [
+        {
+          Key: 'ghr:github_runner_id',
+          Value: '9876543210',
+        },
+        {
+          Key: 'ghr:runner_labels',
+          Value: 'base-label,ghr-ec2-instance-type:c5.2xlarge,ghr-ec2-custom:value',
+        },
+      ]);
     });
 
     it('uses default instance types when no instance type EC2 label is provided', async () => {
@@ -3333,15 +3367,15 @@ function defaultOctokitMockImpl() {
       name: 'Default',
     },
   ]);
-  mockOctokit.actions.generateRunnerJitconfigForOrg.mockImplementation(() => ({
+  mockOctokit.actions.generateRunnerJitconfigForOrg.mockImplementation(({ labels }: { labels: string[] }) => ({
     data: {
-      runner: { id: 9876543210 },
+      runner: { id: 9876543210, labels: labels.map((name: string) => ({ name })) },
       encoded_jit_config: 'TEST_JIT_CONFIG_ORG',
     },
   }));
-  mockOctokit.actions.generateRunnerJitconfigForRepo.mockImplementation(() => ({
+  mockOctokit.actions.generateRunnerJitconfigForRepo.mockImplementation(({ labels }: { labels: string[] }) => ({
     data: {
-      runner: { id: 9876543210 },
+      runner: { id: 9876543210, labels: labels.map((name: string) => ({ name })) },
       encoded_jit_config: 'TEST_JIT_CONFIG_REPO',
     },
   }));
