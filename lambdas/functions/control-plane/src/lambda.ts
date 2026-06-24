@@ -55,9 +55,11 @@ export async function scaleUpHandler(event: SQSEvent, context: Context): Promise
       batchItemFailures.push(...e.toBatchItemFailures(sqsMessages));
       logger.warn(`${e.detailedMessage} A retry will be attempted via SQS.`, { error: e });
     } else {
-      logger.error(`Error processing batch (size: ${sqsMessages.length}): ${(e as Error).message}, ignoring batch`, {
-        error: e,
-      });
+      batchItemFailures.push(...sqsMessages.map(({ messageId }) => ({ itemIdentifier: messageId })));
+      logger.error(
+        `Error processing batch (size: ${sqsMessages.length}): ${(e as Error).message}, all messages will be retried via SQS.`,
+        { error: e },
+      );
     }
 
     return { batchItemFailures };
