@@ -16,6 +16,13 @@ type StrategyOptions = {
   installationId?: number;
   request?: RequestInterface;
 };
+type RetryLogOptions = {
+  method?: string;
+  url?: string;
+  request?: {
+    retryCount?: number;
+  };
+};
 import { createSign, randomUUID } from 'node:crypto';
 import { request } from '@octokit/request';
 import { Octokit } from '@octokit/rest';
@@ -37,20 +44,9 @@ export async function createOctokitClient(token: string, ghesApiUrl = ''): Promi
     ocktokitOptions.previews = ['antiope'];
   }
 
-  return new CustomOctokit({
+  const client = new CustomOctokit({
     ...ocktokitOptions,
     userAgent: process.env.USER_AGENT || 'github-aws-runners',
-    retry: {
-      onRetry: (retryCount: number, error: Error, request: { method: string; url: string }) => {
-        logger.warn('GitHub API request retry attempt', {
-          retryCount,
-          method: request.method,
-          url: request.url,
-          error: error.message,
-          status: (error as Error & { status?: number }).status,
-        });
-      },
-    },
     throttle: {
       onRateLimit: (retryAfter: number, options: Required<EndpointDefaults>) => {
         logger.warn(
@@ -62,6 +58,20 @@ export async function createOctokitClient(token: string, ghesApiUrl = ''): Promi
       },
     },
   });
+
+  client.hook.wrap('request', async (request, options) => {
+    const retryCount = (options as RetryLogOptions).request?.retryCount;
+    if (typeof retryCount === 'number' && retryCount > 0) {
+      logger.warn('GitHub API request retry attempt', {
+        retryCount,
+        method: (options as RetryLogOptions).method,
+        url: (options as RetryLogOptions).url,
+      });
+    }
+    return request(options);
+  });
+
+  return client;
 }
 
 export async function createGithubAppAuth(
