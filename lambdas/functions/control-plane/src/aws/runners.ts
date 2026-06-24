@@ -9,6 +9,8 @@ import {
   RunInstancesCommandOutput,
   EC2Client,
   FleetLaunchTemplateOverridesRequest,
+  FleetOnDemandAllocationStrategy,
+  SpotAllocationStrategy,
   Tag,
   TerminateInstancesCommand,
   _InstanceType,
@@ -123,11 +125,37 @@ export async function untag(instanceId: string, tags: Tag[]): Promise<void> {
   await ec2.send(new DeleteTagsCommand({ Resources: [instanceId], Tags: tags }));
 }
 
+const SPOT_ALLOCATION_STRATEGIES = [
+  'lowest-price',
+  'diversified',
+  'capacity-optimized',
+  'capacity-optimized-prioritized',
+  'price-capacity-optimized',
+];
+const ON_DEMAND_ALLOCATION_STRATEGIES = ['lowest-price', 'prioritized'];
+
+// The instance_allocation_strategy variable accepts the union of spot and on-demand strategies,
+// so a value valid for one capacity type can be invalid for the other. AWS rejects CreateFleet
+// when the strategy is not valid for the target capacity type, so fall back to 'lowest-price'
+// (the AWS default) when the configured value is invalid for the given capacity type.
+function sanitizeAllocationStrategy(
+  strategy: string,
+  targetCapacityType: string,
+): SpotAllocationStrategy | FleetOnDemandAllocationStrategy {
+  const validStrategies =
+    targetCapacityType === 'spot' ? SPOT_ALLOCATION_STRATEGIES : ON_DEMAND_ALLOCATION_STRATEGIES;
+  return (validStrategies.includes(strategy) ? strategy : 'lowest-price') as
+    | SpotAllocationStrategy
+    | FleetOnDemandAllocationStrategy;
+}
+
 function generateFleetOverrides(
   subnetIds: string[],
   instancesTypes: string[],
   amiId?: string,
   ec2OverrideConfig?: Runners.Ec2OverrideConfig,
+  allocationStrategy?: string,
+  instanceTypePriorities?: Record<string, number>,
 ): FleetLaunchTemplateOverridesRequest[] {
   const result: FleetLaunchTemplateOverridesRequest[] = [];
 
@@ -136,12 +164,18 @@ function generateFleetOverrides(
   const instanceTypesToUse = ec2OverrideConfig?.InstanceType ? [ec2OverrideConfig.InstanceType] : instancesTypes;
   const amiIdToUse = ec2OverrideConfig?.ImageId ?? amiId;
 
+  // Both the on-demand 'prioritized' and the spot 'capacity-optimized-prioritized' strategies
+  // honor the Priority field of the launch template overrides.
+  const usesPriority =
+    allocationStrategy === 'prioritized' || allocationStrategy === 'capacity-optimized-prioritized';
+
   subnetsToUse.forEach((s) => {
-    instanceTypesToUse.forEach((i) => {
+    instanceTypesToUse.forEach((i, index) => {
       const item: FleetLaunchTemplateOverridesRequest = {
         SubnetId: s,
         InstanceType: i as _InstanceType,
         ImageId: amiIdToUse,
+        ...(usesPriority && { Priority: instanceTypePriorities?.[i] ?? index }),
         ...ec2OverrideConfig,
       };
       result.push(item);
@@ -206,11 +240,19 @@ async function processFleetResult(
     logger.warn(`Create fleet failed, initatiing fall back to on demand instances.`);
     logger.debug('Create fleet failed.', { data: fleet.Errors });
     const numberOfInstances = runnerParameters.numberOfRunners - instances.length;
+    const failoverAllocationStrategy = sanitizeAllocationStrategy(
+      runnerParameters.ec2instanceCriteria.instanceAllocationStrategy,
+      'on-demand',
+    );
     const instancesOnDemand = await createRunner({
       ...runnerParameters,
       numberOfRunners: numberOfInstances,
       onDemandFailoverOnError: ['InsufficientInstanceCapacity'],
-      ec2instanceCriteria: { ...runnerParameters.ec2instanceCriteria, targetCapacityType: 'on-demand' },
+      ec2instanceCriteria: {
+        ...runnerParameters.ec2instanceCriteria,
+        targetCapacityType: 'on-demand',
+        instanceAllocationStrategy: failoverAllocationStrategy,
+      },
     });
     instances.push(...instancesOnDemand);
     return instances;
@@ -291,6 +333,12 @@ async function createInstances(
     tags.push({ Key: 'ghr:trace_id', Value: traceId! });
   }
 
+  const targetCapacityType = runnerParameters.ec2instanceCriteria.targetCapacityType;
+  const allocationStrategy = sanitizeAllocationStrategy(
+    runnerParameters.ec2instanceCriteria.instanceAllocationStrategy,
+    targetCapacityType,
+  );
+
   let fleet: CreateFleetResult;
   try {
     // see for spec https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_CreateFleet.html
@@ -306,16 +354,26 @@ async function createInstances(
             runnerParameters.ec2instanceCriteria.instanceTypes,
             amiIdOverride,
             runnerParameters.ec2OverrideConfig,
+            allocationStrategy,
+            runnerParameters.ec2instanceCriteria.instanceTypePriorities,
           ),
         },
       ],
-      SpotOptions: {
-        MaxTotalPrice: runnerParameters.ec2instanceCriteria.maxSpotPrice,
-        AllocationStrategy: runnerParameters.ec2instanceCriteria.instanceAllocationStrategy,
-      },
+      ...(targetCapacityType === 'spot'
+        ? {
+            SpotOptions: {
+              MaxTotalPrice: runnerParameters.ec2instanceCriteria.maxSpotPrice,
+              AllocationStrategy: allocationStrategy as SpotAllocationStrategy,
+            },
+          }
+        : {
+            OnDemandOptions: {
+              AllocationStrategy: allocationStrategy as FleetOnDemandAllocationStrategy,
+            },
+          }),
       TargetCapacitySpecification: {
         TotalTargetCapacity: runnerParameters.numberOfRunners,
-        DefaultTargetCapacityType: runnerParameters.ec2instanceCriteria.targetCapacityType,
+        DefaultTargetCapacityType: targetCapacityType,
       },
       TagSpecifications: [
         {

@@ -27,6 +27,7 @@ resource "aws_lambda_function" "pool" {
       INSTANCE_ALLOCATION_STRATEGY             = var.config.instance_allocation_strategy
       INSTANCE_MAX_SPOT_PRICE                  = var.config.instance_max_spot_price
       INSTANCE_TARGET_CAPACITY_TYPE            = var.config.instance_target_capacity_type
+      INSTANCE_TYPE_PRIORITIES                 = var.config.instance_type_priorities != null ? jsonencode(var.config.instance_type_priorities) : ""
       INSTANCE_TYPES                           = join(",", var.config.instance_types)
       LAUNCH_TEMPLATE_NAME                     = var.config.runner.launch_template.name
       LOG_LEVEL                                = var.config.lambda.log_level
