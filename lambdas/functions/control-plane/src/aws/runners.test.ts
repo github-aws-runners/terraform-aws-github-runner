@@ -721,13 +721,15 @@ describe('create runner with errors', () => {
   it('test ScaleError with multiple error.', async () => {
     createFleetMockWithErrors(['UnfulfillableCapacity', 'MaxSpotInstanceCountExceeded', 'NotMappedError']);
 
-    await expect(createRunner(createRunnerConfig(defaultRunnerConfig))).rejects.toMatchObject({
+    await expect(
+      createRunner({ ...createRunnerConfig(defaultRunnerConfig), numberOfRunners: 3 }),
+    ).rejects.toMatchObject({
       name: 'ScaleError',
-      failedInstanceCount: 2,
+      failedInstanceCount: 3, // numberOfRunners when zero instances created
     });
     expect(mockEC2Client).toHaveReceivedCommandWith(
       CreateFleetCommand,
-      expectedCreateFleetRequest(defaultExpectedFleetRequestValues),
+      expectedCreateFleetRequest({ ...defaultExpectedFleetRequestValues, totalTargetCapacity: 3 }),
     );
     expect(mockSSMClient).not.toHaveReceivedCommand(PutParameterCommand);
   });
@@ -750,6 +752,18 @@ describe('create runner with errors', () => {
     expect(mockEC2Client).toHaveReceivedCommandWith(
       CreateFleetCommand,
       expectedCreateFleetRequest(defaultExpectedFleetRequestValues),
+    );
+  });
+
+  it('returns partial instances on recognized scale error instead of throwing', async () => {
+    createFleetMockWithErrors(['UnfulfillableCapacity'], ['i-partial']);
+
+    await expect(
+      createRunner({ ...createRunnerConfig(defaultRunnerConfig), numberOfRunners: 3 }),
+    ).resolves.toEqual(['i-partial']);
+    expect(mockEC2Client).toHaveReceivedCommandWith(
+      CreateFleetCommand,
+      expectedCreateFleetRequest({ ...defaultExpectedFleetRequestValues, totalTargetCapacity: 3 }),
     );
   });
 
@@ -898,12 +912,14 @@ describe('create runner with errors fail over to OnDemand', () => {
     // fallback to on demand for UnfulfillableCapacity but InsufficientInstanceCapacity is thrown
     createFleetMockWithWithOnDemandFallback(['UnfulfillableCapacity'], instancesIds);
 
+    // Partial success: 1 instance created, unrecognized error for the rest.
+    // Returns partial instances instead of throwing to prevent orphans.
     await expect(
       createRunner({
         ...createRunnerConfig(defaultRunnerConfig),
         numberOfRunners: 2,
       }),
-    ).rejects.toBeInstanceOf(Error);
+    ).resolves.toEqual(['i-123']);
 
     expect(mockEC2Client).toHaveReceivedCommandTimes(CreateFleetCommand, 1);
 
