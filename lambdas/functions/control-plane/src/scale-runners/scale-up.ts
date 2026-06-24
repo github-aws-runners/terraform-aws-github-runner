@@ -43,9 +43,12 @@ import {
   BaselineEbsBandwidthMbpsRequest,
   DescribeLaunchTemplateVersionsCommand,
   EC2Client,
+  Tag,
 } from '@aws-sdk/client-ec2';
 
 const logger = createChildLogger('scale-up');
+const RUNNER_LABELS_TAG_KEY = 'ghr:runner_labels';
+const EC2_TAG_VALUE_MAX_LENGTH = 256;
 
 export type LambdaRunnerSource = 'scale-up-lambda' | 'pool-lambda';
 
@@ -325,6 +328,67 @@ export async function createRunners(
   }
 
   return instances;
+}
+
+function generateRunnerLabelsTags(labels: string[]): Tag[] {
+  if (labels.length === 0) {
+    return [];
+  }
+
+  const tagValues: string[] = [];
+  let currentValue = '';
+
+  for (const label of labels) {
+    if (label.length > EC2_TAG_VALUE_MAX_LENGTH) {
+      if (currentValue) {
+        tagValues.push(currentValue);
+        currentValue = '';
+      }
+      for (let start = 0; start < label.length; start += EC2_TAG_VALUE_MAX_LENGTH) {
+        tagValues.push(label.slice(start, start + EC2_TAG_VALUE_MAX_LENGTH));
+      }
+      continue;
+    }
+
+    const nextValue = currentValue ? `${currentValue},${label}` : label;
+    if (nextValue.length <= EC2_TAG_VALUE_MAX_LENGTH) {
+      currentValue = nextValue;
+      continue;
+    }
+
+    if (currentValue) {
+      tagValues.push(currentValue);
+    }
+    currentValue = label;
+  }
+
+  if (currentValue) {
+    tagValues.push(currentValue);
+  }
+
+  return tagValues.map((value, index) => ({
+    Key: index === 0 ? RUNNER_LABELS_TAG_KEY : `${RUNNER_LABELS_TAG_KEY}:${index + 1}`,
+    Value: value,
+  }));
+}
+
+function getRunnerLabelNames(labels: unknown): string[] {
+  if (!Array.isArray(labels)) {
+    return [];
+  }
+
+  return labels
+    .map((label) => {
+      if (typeof label === 'string') {
+        return label;
+      }
+      if (label !== null && typeof label === 'object' && 'name' in label && typeof label.name === 'string') {
+        return label.name;
+      }
+      return '';
+    })
+    .map((label) => label.trim())
+    .filter(Boolean);
 }
 
 export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<string[]> {
@@ -704,11 +768,16 @@ async function createRegistrationTokenConfig(
   return [];
 }
 
-async function tagRunnerId(instanceId: string, runnerId: string): Promise<void> {
+async function tagRunnerMetadata(instanceId: string, runnerId: string, runnerLabels: unknown): Promise<void> {
+  const tags = [
+    { Key: 'ghr:github_runner_id', Value: runnerId },
+    ...generateRunnerLabelsTags(getRunnerLabelNames(runnerLabels)),
+  ];
+
   try {
-    await tag(instanceId, [{ Key: 'ghr:github_runner_id', Value: runnerId }]);
+    await tag(instanceId, tags);
   } catch (e) {
-    logger.error(`Failed to mark runner '${instanceId}' with ${runnerId}.`, { error: e });
+    logger.error(`Failed to mark runner '${instanceId}' with GitHub runner metadata.`, { error: e });
   }
 }
 
@@ -757,8 +826,8 @@ async function createJitConfig(
 
       metricGitHubAppRateLimit(runnerConfig.headers);
 
-      // tag the EC2 instance with the Github runner id
-      await tagRunnerId(instance, runnerConfig.data.runner.id.toString());
+      // tag the EC2 instance with GitHub runner metadata
+      await tagRunnerMetadata(instance, runnerConfig.data.runner.id.toString(), runnerConfig.data.runner.labels);
 
       // store jit config in ssm parameter store
       logger.debug('Runner JIT config for ephemeral runner generated.', {
