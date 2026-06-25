@@ -4,6 +4,7 @@ import { EC2Client, Instance } from '@aws-sdk/client-ec2';
 import { Config } from './ConfigResolver';
 import { tagFilter, getInstances } from './ec2';
 import { metricEvent } from './metric-event';
+import { deregisterRunner } from './deregister';
 
 const logger = createChildLogger('termination-warning');
 
@@ -26,6 +27,7 @@ async function createMetricForInstances(
 
     if (matchFilter) {
       metricEvent(instance, event, config.createSpotWarningMetric ? 'SpotInterruptionWarning' : undefined, logger);
+      await deregisterRunner(instance, config);
     } else {
       logger.debug(
         `Received spot termination notification warning but ` +

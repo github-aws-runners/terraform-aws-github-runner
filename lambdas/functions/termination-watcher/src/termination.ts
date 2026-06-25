@@ -4,6 +4,7 @@ import { EC2Client } from '@aws-sdk/client-ec2';
 import { Config } from './ConfigResolver';
 import { metricEvent } from './metric-event';
 import { getInstances, tagFilter } from './ec2';
+import { deregisterRunner } from './deregister';
 
 const logger = createChildLogger('termination-handler');
 
@@ -30,6 +31,7 @@ async function createMetricForInstances(
 
     if (matchFilter) {
       metricEvent(instance, event, config.createSpotTerminationMetric ? 'SpotTermination' : undefined, logger);
+      await deregisterRunner(instance, config);
     } else {
       logger.debug(
         `Received spot termination but ` +
