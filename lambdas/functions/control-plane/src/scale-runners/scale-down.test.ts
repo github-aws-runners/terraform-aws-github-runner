@@ -1,6 +1,6 @@
 import { Octokit } from '@octokit/rest';
 import { RequestError } from '@octokit/request-error';
-import moment from 'moment';
+import { Temporal } from 'temporal-polyfill';
 import nock from 'nock';
 
 import { RunnerInfo, RunnerList } from '../aws/runners.d';
@@ -75,6 +75,10 @@ export interface TestData {
 }
 
 const cleanEnv = process.env;
+
+function minutesAgo(minutes: number): Date {
+  return new Date(Temporal.Now.instant().subtract({ minutes }).epochMilliseconds);
+}
 
 const ENVIRONMENT = 'unit-test-environment';
 const MINIMUM_TIME_RUNNING_IN_MINUTES = 30;
@@ -680,25 +684,25 @@ describe('Scale down runners', () => {
     const runners: RunnerInfo[] = [
       {
         instanceId: '1',
-        launchTime: moment(new Date()).subtract(1, 'minute').toDate(),
+        launchTime: minutesAgo(1),
         owner: 'owner',
         type: 'type',
       },
       {
         instanceId: '3',
-        launchTime: moment(new Date()).subtract(3, 'minute').toDate(),
+        launchTime: minutesAgo(3),
         owner: 'owner',
         type: 'type',
       },
       {
         instanceId: '2',
-        launchTime: moment(new Date()).subtract(2, 'minute').toDate(),
+        launchTime: minutesAgo(2),
         owner: 'owner',
         type: 'type',
       },
       {
         instanceId: '0',
-        launchTime: moment(new Date()).subtract(0, 'minute').toDate(),
+        launchTime: minutesAgo(0),
         owner: 'owner',
         type: 'type',
       },
@@ -722,7 +726,7 @@ describe('Scale down runners', () => {
 
     it('Should sort runners with equal launch time.', () => {
       const runnersTest = [...runners];
-      const same = moment(new Date()).subtract(4, 'minute').toDate();
+      const same = minutesAgo(4);
       runnersTest.push({
         instanceId: '4',
         launchTime: same,
@@ -756,7 +760,7 @@ describe('Scale down runners', () => {
         },
         {
           instanceId: '1',
-          launchTime: moment(new Date()).subtract(3, 'minute').toDate(),
+          launchTime: minutesAgo(3),
           owner: 'owner',
           type: 'type',
         },
@@ -821,7 +825,7 @@ function createRunnerTestData(
 ): RunnerTestItem {
   return {
     instanceId: `i-${name}-${type.toLowerCase()}`,
-    launchTime: moment(new Date()).subtract(minutesLaunchedAgo, 'minutes').toDate(),
+    launchTime: minutesAgo(minutesLaunchedAgo),
     type,
     owner: owner
       ? owner

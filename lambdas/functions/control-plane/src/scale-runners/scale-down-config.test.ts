@@ -1,4 +1,4 @@
-import moment from 'moment-timezone';
+import { Temporal } from 'temporal-polyfill';
 
 import { EvictionStrategy, ScalingDownConfigList, getEvictionStrategy, getIdleRunnerCount } from './scale-down-config';
 import { describe, it, expect } from 'vitest';
@@ -6,7 +6,8 @@ import { describe, it, expect } from 'vitest';
 const DEFAULT_TIMEZONE = 'America/Los_Angeles';
 const DEFAULT_IDLE_COUNT = 1;
 const DEFAULT_EVICTION_STRATEGY: EvictionStrategy = 'oldest_first';
-const now = moment.tz(new Date(), 'America/Los_Angeles');
+const now = Temporal.Now.zonedDateTimeISO('America/Los_Angeles');
+const nowDay = now.dayOfWeek % 7;
 
 function getConfig(
   cronTabs: string[],
@@ -28,12 +29,12 @@ describe('scaleDownConfig', () => {
     });
 
     it('No active cron configuration', async () => {
-      const scaleDownConfig = getConfig(['* * * * * ' + ((now.day() + 1) % 7)]);
+      const scaleDownConfig = getConfig(['* * * * * ' + ((nowDay + 1) % 7)]);
       expect(getIdleRunnerCount(scaleDownConfig)).toEqual(0);
     });
 
     it('1 of 2 cron configurations be active', async () => {
-      const scaleDownConfig = getConfig(['* * * * * ' + ((now.day() + 1) % 7), '* * * * * ' + (now.day() % 7)]);
+      const scaleDownConfig = getConfig(['* * * * * ' + ((nowDay + 1) % 7), '* * * * * ' + (nowDay % 7)]);
       expect(getIdleRunnerCount(scaleDownConfig)).toEqual(DEFAULT_IDLE_COUNT);
     });
   });
@@ -50,7 +51,7 @@ describe('scaleDownConfig', () => {
     });
 
     it('No active cron configuration', async () => {
-      const scaleDownConfig = getConfig(['* * * * * ' + ((now.day() + 1) % 7)]);
+      const scaleDownConfig = getConfig(['* * * * * ' + ((nowDay + 1) % 7)]);
       expect(getEvictionStrategy(scaleDownConfig)).toEqual(DEFAULT_EVICTION_STRATEGY);
     });
   });

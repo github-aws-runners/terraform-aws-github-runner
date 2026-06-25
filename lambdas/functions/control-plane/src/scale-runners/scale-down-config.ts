@@ -1,6 +1,6 @@
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import parser from 'cron-parser';
-import moment from 'moment';
+import { Temporal } from 'temporal-polyfill';
 
 export type ScalingDownConfigList = ScalingDownConfig[];
 export type EvictionStrategy = 'newest_first' | 'oldest_first';
@@ -14,12 +14,13 @@ export interface ScalingDownConfig {
 const logger = createChildLogger('scale-down-config.ts');
 
 function inPeriod(period: ScalingDownConfig): boolean {
-  const now = moment(new Date());
+  const now = Temporal.Now.instant();
   const expr = parser.parse(period.cron, {
     tz: period.timeZone,
   });
-  const next = moment(expr.next().toDate());
-  return Math.abs(next.diff(now, 'seconds')) < 5; // we keep a range of 5 seconds
+  const next = Temporal.Instant.fromEpochMilliseconds(expr.next().toDate().getTime());
+  const diffInSeconds = Math.trunc(now.until(next).total('seconds'));
+  return Math.abs(diffInSeconds) < 5; // we keep a range of 5 seconds
 }
 
 export function getIdleRunnerCount(scalingDownConfigs: ScalingDownConfigList): number {
