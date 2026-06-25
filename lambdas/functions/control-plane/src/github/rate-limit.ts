@@ -9,7 +9,8 @@ let appIdPromise: Promise<string> | null = null;
 
 async function getAppId(): Promise<string> {
   if (!appIdPromise) {
-    appIdPromise = getParameter(process.env.PARAMETER_GITHUB_APP_ID_NAME);
+    const paramName = process.env.PARAMETER_GITHUB_APP_ID_NAME.split(':')[0];
+    appIdPromise = getParameter(paramName);
   }
   return appIdPromise;
 }

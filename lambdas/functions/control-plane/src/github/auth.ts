@@ -27,6 +27,75 @@ import { EndpointDefaults } from '@octokit/types';
 
 const logger = createChildLogger('gh-auth');
 
+interface GitHubAppCredential {
+  appId: number;
+  privateKey: string;
+  installationId?: number;
+}
+
+let appCredentialsPromise: Promise<GitHubAppCredential[]> | null = null;
+
+async function loadAppCredentials(): Promise<GitHubAppCredential[]> {
+  if (!process.env.PARAMETER_GITHUB_APP_ID_NAME) {
+    throw new Error('Environment variable PARAMETER_GITHUB_APP_ID_NAME is not set');
+  }
+  if (!process.env.PARAMETER_GITHUB_APP_KEY_BASE64_NAME) {
+    throw new Error('Environment variable PARAMETER_GITHUB_APP_KEY_BASE64_NAME is not set');
+  }
+  const idParams = process.env.PARAMETER_GITHUB_APP_ID_NAME.split(':').filter(Boolean);
+  const keyParams = process.env.PARAMETER_GITHUB_APP_KEY_BASE64_NAME.split(':').filter(Boolean);
+  const installationIdParams = (process.env.PARAMETER_GITHUB_APP_INSTALLATION_ID_NAME || '').split(':');
+  if (idParams.length !== keyParams.length) {
+    throw new Error(`GitHub App parameter count mismatch: ${idParams.length} IDs vs ${keyParams.length} keys`);
+  }
+  // Batch fetch all SSM parameters in a single call to reduce API calls
+  const allParamNames = [...idParams, ...keyParams, ...installationIdParams.filter((p) => p.length > 0)];
+  const params = await getParameters(allParamNames);
+
+  const credentials: GitHubAppCredential[] = [];
+  for (let i = 0; i < idParams.length; i++) {
+    const appIdValue = params.get(idParams[i]);
+    if (!appIdValue) {
+      throw new Error(`Parameter ${idParams[i]} not found`);
+    }
+    const appId = parseInt(appIdValue);
+    const privateKeyBase64 = params.get(keyParams[i]);
+    if (!privateKeyBase64) {
+      throw new Error(`Parameter ${keyParams[i]} not found`);
+    }
+    // replace literal \n characters with new lines to allow the key to be stored as a
+    // single line variable. This logic should match how the GitHub Terraform provider
+    // processes private keys to retain compatibility between the projects
+    const privateKey = Buffer.from(privateKeyBase64, 'base64').toString().replace('/[\\n]/g', String.fromCharCode(10));
+    const installationIdParam = installationIdParams[i];
+    const installationId =
+      installationIdParam && installationIdParam.length > 0
+        ? parseInt(params.get(installationIdParam) || '')
+        : undefined;
+    credentials.push({ appId, privateKey, installationId });
+  }
+  logger.info(`Loaded ${credentials.length} GitHub App credential(s)`);
+  return credentials;
+}
+
+function getAppCredentials(): Promise<GitHubAppCredential[]> {
+  if (!appCredentialsPromise) appCredentialsPromise = loadAppCredentials();
+  return appCredentialsPromise;
+}
+
+export async function getAppCount(): Promise<number> {
+  return (await getAppCredentials()).length;
+}
+
+export function resetAppCredentialsCache(): void {
+  appCredentialsPromise = null;
+}
+
+export async function getStoredInstallationId(appIndex: number): Promise<number | undefined> {
+  const credentials = await getAppCredentials();
+  return credentials[appIndex]?.installationId;
+}
+
 export async function createOctokitClient(token: string, ghesApiUrl = ''): Promise<Octokit> {
   const CustomOctokit = Octokit.plugin(retry, throttling);
   const ocktokitOptions: OctokitOptions = {
@@ -67,19 +136,24 @@ export async function createOctokitClient(token: string, ghesApiUrl = ''): Promi
 export async function createGithubAppAuth(
   installationId: number | undefined,
   ghesApiUrl = '',
-): Promise<AppAuthentication> {
-  const auth = await createAuth(installationId, ghesApiUrl);
-  const appAuthOptions: AppAuthOptions = { type: 'app' };
-  return auth(appAuthOptions);
+  appIndex?: number,
+): Promise<AppAuthentication & { appIndex: number }> {
+  const credentials = await getAppCredentials();
+  const idx = appIndex ?? Math.floor(Math.random() * credentials.length);
+  const auth = await createAuth(installationId, ghesApiUrl, idx);
+  const result = await auth({ type: 'app' });
+  return { ...result, appIndex: idx };
 }
 
 export async function createGithubInstallationAuth(
   installationId: number | undefined,
   ghesApiUrl = '',
+  appIndex?: number,
 ): Promise<InstallationAccessTokenAuthentication> {
-  const auth = await createAuth(installationId, ghesApiUrl);
-  const installationAuthOptions: InstallationAuthOptions = { type: 'installation', installationId };
-  return auth(installationAuthOptions);
+  const credentials = await getAppCredentials();
+  const idx = appIndex ?? Math.floor(Math.random() * credentials.length);
+  const auth = await createAuth(installationId, ghesApiUrl, idx);
+  return auth({ type: 'installation', installationId });
 }
 
 function signJwt(payload: Record<string, unknown>, privateKey: string): string {
@@ -90,33 +164,16 @@ function signJwt(payload: Record<string, unknown>, privateKey: string): string {
   return `${message}.${signature}`;
 }
 
-async function createAuth(installationId: number | undefined, ghesApiUrl: string): Promise<AuthInterface> {
-  const appIdParamName = process.env.PARAMETER_GITHUB_APP_ID_NAME;
-  const appKeyParamName = process.env.PARAMETER_GITHUB_APP_KEY_BASE64_NAME;
-  if (!appIdParamName) {
-    throw new Error('Environment variable PARAMETER_GITHUB_APP_ID_NAME is not set');
-  }
-  if (!appKeyParamName) {
-    throw new Error('Environment variable PARAMETER_GITHUB_APP_KEY_BASE64_NAME is not set');
-  }
+async function createAuth(
+  installationId: number | undefined,
+  ghesApiUrl: string,
+  appIndex?: number,
+): Promise<AuthInterface> {
+  const credentials = await getAppCredentials();
+  const selected =
+    appIndex !== undefined ? credentials[appIndex] : credentials[Math.floor(Math.random() * credentials.length)];
 
-  // Batch fetch both App ID and Private Key in a single SSM API call
-  const paramNames = [appIdParamName, appKeyParamName];
-  const params = await getParameters(paramNames);
-  const appIdValue = params.get(appIdParamName);
-  const privateKeyBase64 = params.get(appKeyParamName);
-  if (!appIdValue) {
-    throw new Error(`Parameter ${appIdParamName} not found`);
-  }
-  if (!privateKeyBase64) {
-    throw new Error(`Parameter ${appKeyParamName} not found`);
-  }
-
-  const appId = parseInt(appIdValue);
-  // replace literal \n characters with new lines to allow the key to be stored as a
-  // single line variable. This logic should match how the GitHub Terraform provider
-  // processes private keys to retain compatibility between the projects
-  const privateKey = Buffer.from(privateKeyBase64, 'base64').toString().replace('/[\\n]/g', String.fromCharCode(10));
+  logger.debug(`Selected GitHub App ${selected.appId} for authentication`);
 
   // Use a custom createJwt callback to include a jti (JWT ID) claim in every token.
   // Without this, concurrent Lambda invocations generating JWTs within the same second
@@ -126,11 +183,11 @@ async function createAuth(installationId: number | undefined, ghesApiUrl: string
     const now = Math.floor(Date.now() / 1000) + (timeDifference ?? 0);
     const iat = now - 30;
     const exp = iat + 600;
-    const jwt = signJwt({ iat, exp, iss: appId, jti: randomUUID() }, privateKey);
+    const jwt = signJwt({ iat, exp, iss: appId, jti: randomUUID() }, selected.privateKey);
     return { jwt, expiresAt: new Date(exp * 1000).toISOString() };
   };
 
-  let authOptions: StrategyOptions = { appId, createJwt };
+  let authOptions: StrategyOptions = { appId: selected.appId, createJwt };
   if (installationId) authOptions = { ...authOptions, installationId };
 
   logger.debug(`GHES API URL: ${ghesApiUrl}`);
