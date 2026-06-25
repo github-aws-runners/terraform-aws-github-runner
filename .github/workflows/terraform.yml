@@ -206,3 +206,30 @@ jobs:
         run: |
           tflint --init -c ${GITHUB_WORKSPACE}/.tflint.hcl --chdir "examples/${EXAMPLE_NAME}"
           tflint -f compact -c ${GITHUB_WORKSPACE}/.tflint.hcl --var-file ${GITHUB_WORKSPACE}/.github/lint/tflint.tfvars --chdir "examples/${EXAMPLE_NAME}"
+
+  terraform_test:
+    name: Terraform test
+    strategy:
+      fail-fast: false
+      matrix:
+        module:
+          - modules/runners
+    defaults:
+      run:
+        working-directory: ${{ matrix.module }}
+    runs-on: ubuntu-latest
+    container:
+      image: hashicorp/terraform@sha256:1d10ec4073f4ddbdf34a28540a3b9250852ab500cb1c53f68c8bd17d82f474d8 # 1.14
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@f808768d1510423e83855289c910610ca9b43176 # v2.17.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+      - name: terraform init
+        run: terraform init -backend=false -input=false
+      - name: terraform test
+        run: terraform test -test-directory=tests
