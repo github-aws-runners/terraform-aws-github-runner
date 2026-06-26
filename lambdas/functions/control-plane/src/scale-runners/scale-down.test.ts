@@ -336,6 +336,82 @@ describe('Scale down runners', () => {
         checkNonTerminated(runners);
       });
 
+      it(`Should not terminate a runner that became busy between deregister and post-deregister check.`, async () => {
+        // setup: runner appears idle on first check, deregister succeeds,
+        // but post-deregister re-check finds it busy (race condition)
+        const runners = [
+          createRunnerTestData(
+            'race-condition-1',
+            type,
+            MINIMUM_TIME_RUNNING_IN_MINUTES + 1,
+            true,
+            false,
+            false,
+          ),
+        ];
+
+        mockGitHubRunners(runners);
+        mockAwsRunners(runners);
+
+        // First call returns not-busy (pre-deregister), second returns busy (post-deregister)
+        let callCount = 0;
+        const busyCheckMock = () => {
+          callCount++;
+          if (callCount <= 1) {
+            return { data: { busy: false } };
+          }
+          return { data: { busy: true } };
+        };
+        mockOctokit.actions.getSelfHostedRunnerForRepo.mockImplementation(busyCheckMock);
+        mockOctokit.actions.getSelfHostedRunnerForOrg.mockImplementation(busyCheckMock);
+
+        // act
+        await expect(scaleDown()).resolves.not.toThrow();
+
+        // assert: runner should NOT be terminated
+        checkTerminated(runners);
+        checkNonTerminated(runners);
+      });
+
+      it(`Should terminate a runner when post-deregister busy check returns 404.`, async () => {
+        // setup: after deregistration, GitHub API returns 404 (runner fully removed)
+        const runners = [
+          createRunnerTestData(
+            'deregistered-404',
+            type,
+            MINIMUM_TIME_RUNNING_IN_MINUTES + 1,
+            true,
+            false,
+            true,
+          ),
+        ];
+
+        mockGitHubRunners(runners);
+        mockAwsRunners(runners);
+
+        // First call returns not-busy, second throws 404
+        let callCount = 0;
+        const busyCheckMock = () => {
+          callCount++;
+          if (callCount <= 1) {
+            return { data: { busy: false } };
+          }
+          const error = new Error('Not Found');
+          (error as any).status = 404;
+          Object.setPrototypeOf(error, RequestError.prototype);
+          throw error;
+        };
+        mockOctokit.actions.getSelfHostedRunnerForRepo.mockImplementation(busyCheckMock);
+        mockOctokit.actions.getSelfHostedRunnerForOrg.mockImplementation(busyCheckMock);
+
+        // act
+        await expect(scaleDown()).resolves.not.toThrow();
+
+        // assert: runner should be terminated (404 = not busy)
+        checkTerminated(runners);
+        checkNonTerminated(runners);
+      });
+
       it(`Should terminate orphan (Non JIT)`, async () => {
         // setup
         const orphanRunner = createRunnerTestData('orphan-1', type, MINIMUM_BOOT_TIME + 1, false, false, false);
