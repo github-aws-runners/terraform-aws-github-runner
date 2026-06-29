@@ -87,8 +87,14 @@ abstract class BaseConfig {
   }
 }
 
+export type QueueSelectionStrategy = 'first' | 'random' | 'all';
+
 abstract class MatcherAwareConfig extends BaseConfig {
   matcherConfig: RunnerMatcherConfig[] = [];
+  // How to pick a queue when several runner configs match a job equally well.
+  // 'first' keeps the historical deterministic behaviour; 'random' spreads jobs
+  // across the matching queues to avoid concentrating load on a single one.
+  queueSelectionStrategy: QueueSelectionStrategy = 'first';
 
   protected async loadMatcherConfig(paramPathsEnv: string) {
     if (!paramPathsEnv || paramPathsEnv === 'undefined' || paramPathsEnv === 'null' || !paramPathsEnv.includes(':')) {
@@ -133,6 +139,7 @@ export class ConfigWebhook extends MatcherAwareConfig {
 
   async loadConfig(): Promise<void> {
     this.loadEnvVar(process.env.REPOSITORY_ALLOW_LIST, 'repositoryAllowList', []);
+    this.loadEnvVar(process.env.QUEUE_SELECTION_STRATEGY, 'queueSelectionStrategy', 'first');
 
     await Promise.all([
       this.loadMatcherConfig(process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH),
@@ -141,6 +148,7 @@ export class ConfigWebhook extends MatcherAwareConfig {
 
     validateWebhookSecret(this);
     validateRunnerMatcherConfig(this);
+    validateQueueSelectionStrategy(this);
   }
 }
 
@@ -165,9 +173,11 @@ export class ConfigDispatcher extends MatcherAwareConfig {
 
   async loadConfig(): Promise<void> {
     this.loadEnvVar(process.env.REPOSITORY_ALLOW_LIST, 'repositoryAllowList', []);
+    this.loadEnvVar(process.env.QUEUE_SELECTION_STRATEGY, 'queueSelectionStrategy', 'first');
     await this.loadMatcherConfig(process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH);
 
     validateRunnerMatcherConfig(this);
+    validateQueueSelectionStrategy(this);
   }
 }
 
@@ -186,5 +196,14 @@ function validateWebhookSecret(config: ConfigWebhookEventBridge | ConfigWebhook)
 function validateRunnerMatcherConfig(config: ConfigDispatcher | ConfigWebhook): void {
   if (config.matcherConfig.length === 0) {
     config.configLoadingErrors.push('Matcher config is empty');
+  }
+}
+
+function validateQueueSelectionStrategy(config: ConfigDispatcher | ConfigWebhook): void {
+  const allowed: QueueSelectionStrategy[] = ['first', 'random', 'all'];
+  if (!allowed.includes(config.queueSelectionStrategy)) {
+    config.configLoadingErrors.push(
+      `Invalid queue selection strategy '${config.queueSelectionStrategy}', expected one of: ${allowed.join(', ')}`,
+    );
   }
 }
