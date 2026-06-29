@@ -1,6 +1,7 @@
 import {
   type BlockDeviceMapping,
   CreateFleetCommand,
+  type CreateFleetCommandInput,
   CreateFleetResult,
   CreateTagsCommand,
   DeleteTagsCommand,
@@ -350,7 +351,7 @@ async function createInstances(
   let fleet: CreateFleetResult;
   try {
     // see for spec https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_CreateFleet.html
-    const createFleetCommand = new CreateFleetCommand({
+    const createFleetInput: CreateFleetCommandInput = {
       LaunchTemplateConfigs: [
         {
           LaunchTemplateSpecification: {
@@ -384,8 +385,9 @@ async function createInstances(
         },
       ],
       Type: 'instant',
-    });
-    logger.debug('CreateFleet request payload.', { payload: createFleetCommand.input });
+    };
+    logger.debug('CreateFleet request payload.', { payload: createFleetInput });
+    const createFleetCommand = new CreateFleetCommand(createFleetInput);
     fleet = await ec2Client.send(createFleetCommand);
   } catch (e) {
     logger.warn('Create fleet request failed.', { error: e as Error });
@@ -419,7 +421,7 @@ async function createInstancesWithRunInstances(
       );
     }
 
-    const runInstancesCommand = new RunInstancesCommand({
+    const runInstancesInput: RunInstancesCommandInput = {
       LaunchTemplate: {
         LaunchTemplateName: runnerParameters.launchTemplateName,
         Version: '$Default',
@@ -441,9 +443,10 @@ async function createInstancesWithRunInstances(
           Tags: tags,
         },
       ],
-    });
+    };
 
-    logger.debug('RunInstances request payload.', { payload: runInstancesCommand.input });
+    logger.debug('RunInstances request payload.', { payload: runInstancesInput });
+    const runInstancesCommand = new RunInstancesCommand(runInstancesInput);
     result = await ec2Client.send(runInstancesCommand);
   } catch (e) {
     const errorName = (e as Error).name;
