@@ -179,6 +179,70 @@ describe('Dispatcher', () => {
     });
   });
 
+  describe('queue selection strategy', () => {
+    const twoExactMatches: RunnerConfig = [
+      { ...runnerConfig[0], id: 'q1', matcherConfig: { labelMatchers: [['self-hosted', 'any']], exactMatch: true } },
+      { ...runnerConfig[0], id: 'q2', matcherConfig: { labelMatchers: [['self-hosted', 'any']], exactMatch: true } },
+    ];
+    const jobEvent = (labels: string[]) =>
+      ({
+        ...workFlowJobEvent,
+        workflow_job: { ...workFlowJobEvent.workflow_job, labels },
+      }) as unknown as WorkflowJobEvent;
+
+    it('defaults to the first matching queue', async () => {
+      config = await createConfig(undefined, twoExactMatches);
+      await dispatch(jobEvent(['self-hosted', 'any']), 'workflow_job', config);
+      expect(sendActionRequest).toHaveBeenCalledWith(expect.objectContaining({ queueId: 'q1' }));
+    });
+
+    it('random spreads across equally-matching queues', async () => {
+      process.env.QUEUE_SELECTION_STRATEGY = 'random';
+      config = await createConfig(undefined, twoExactMatches);
+      const rand = vi.spyOn(Math, 'random').mockReturnValue(0.99);
+      await dispatch(jobEvent(['self-hosted', 'any']), 'workflow_job', config);
+      expect(sendActionRequest).toHaveBeenCalledWith(expect.objectContaining({ queueId: 'q2' }));
+      rand.mockRestore();
+    });
+
+    it('random still respects exactMatch priority (never a lower-priority match)', async () => {
+      process.env.QUEUE_SELECTION_STRATEGY = 'random';
+      config = await createConfig(undefined, [
+        { ...runnerConfig[0], id: 'loose', matcherConfig: { labelMatchers: [['self-hosted']], exactMatch: false } },
+        {
+          ...runnerConfig[0],
+          id: 'exact',
+          matcherConfig: { labelMatchers: [['self-hosted', 'any']], exactMatch: true },
+        },
+      ]);
+      const rand = vi.spyOn(Math, 'random').mockReturnValue(0.99);
+      await dispatch(jobEvent(['self-hosted', 'any']), 'workflow_job', config);
+      expect(sendActionRequest).toHaveBeenCalledWith(expect.objectContaining({ queueId: 'exact' }));
+      rand.mockRestore();
+    });
+
+    it('all dispatches to every equally-matching queue but not lower-priority ones', async () => {
+      process.env.QUEUE_SELECTION_STRATEGY = 'all';
+      config = await createConfig(undefined, [
+        { ...runnerConfig[0], id: 'loose', matcherConfig: { labelMatchers: [['self-hosted']], exactMatch: false } },
+        { ...runnerConfig[0], id: 'q1', matcherConfig: { labelMatchers: [['self-hosted', 'any']], exactMatch: true } },
+        { ...runnerConfig[0], id: 'q2', matcherConfig: { labelMatchers: [['self-hosted', 'any']], exactMatch: true } },
+      ]);
+      await dispatch(jobEvent(['self-hosted', 'any']), 'workflow_job', config);
+      expect(sendActionRequest).toHaveBeenCalledTimes(2);
+      expect(sendActionRequest).toHaveBeenCalledWith(expect.objectContaining({ queueId: 'q1' }));
+      expect(sendActionRequest).toHaveBeenCalledWith(expect.objectContaining({ queueId: 'q2' }));
+      expect(sendActionRequest).not.toHaveBeenCalledWith(expect.objectContaining({ queueId: 'loose' }));
+    });
+
+    it('rejects an invalid strategy at config load', async () => {
+      process.env.QUEUE_SELECTION_STRATEGY = 'bogus';
+      ConfigDispatcher.reset();
+      mockSSMResponse(twoExactMatches);
+      await expect(ConfigDispatcher.load()).rejects.toThrow(/queue selection strategy/i);
+    });
+  });
+
   describe('decides can run job based on label and config (canRunJob)', () => {
     it('should accept job with an exact match and identical labels.', () => {
       const workflowLabels = ['self-hosted', 'linux', 'x64', 'ubuntu-latest'];
