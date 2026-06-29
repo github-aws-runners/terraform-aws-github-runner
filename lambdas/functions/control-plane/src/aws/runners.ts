@@ -386,8 +386,8 @@ async function createInstances(
       ],
       Type: 'instant',
     };
-    logger.debug('CreateFleet request payload.', { payload: createFleetInput });
     const createFleetCommand = new CreateFleetCommand(createFleetInput);
+    logger.debug('CreateFleet request payload.', { payload: createFleetCommand.input });
     fleet = await ec2Client.send(createFleetCommand);
   } catch (e) {
     logger.warn('Create fleet request failed.', { error: e as Error });
@@ -445,8 +445,8 @@ async function createInstancesWithRunInstances(
       ],
     };
 
-    logger.debug('RunInstances request payload.', { payload: runInstancesInput });
     const runInstancesCommand = new RunInstancesCommand(runInstancesInput);
+    logger.debug('RunInstances request payload.', { payload: runInstancesCommand.input });
     result = await ec2Client.send(runInstancesCommand);
   } catch (e) {
     const errorName = (e as Error).name;
