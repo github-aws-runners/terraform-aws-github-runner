@@ -1,7 +1,6 @@
 import {
   type BlockDeviceMapping,
   CreateFleetCommand,
-  type CreateFleetCommandInput,
   CreateFleetResult,
   CreateTagsCommand,
   DeleteTagsCommand,
@@ -351,7 +350,7 @@ async function createInstances(
   let fleet: CreateFleetResult;
   try {
     // see for spec https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_CreateFleet.html
-    const createFleetInput: CreateFleetCommandInput = {
+    const createFleetCommand = new CreateFleetCommand({
       LaunchTemplateConfigs: [
         {
           LaunchTemplateSpecification: {
@@ -385,8 +384,7 @@ async function createInstances(
         },
       ],
       Type: 'instant',
-    };
-    const createFleetCommand = new CreateFleetCommand(createFleetInput);
+    });
     logger.debug('CreateFleet request payload.', { payload: createFleetCommand.input });
     fleet = await ec2Client.send(createFleetCommand);
   } catch (e) {
@@ -421,7 +419,7 @@ async function createInstancesWithRunInstances(
       );
     }
 
-    const runInstancesInput: RunInstancesCommandInput = {
+    const runInstancesCommand = new RunInstancesCommand({
       LaunchTemplate: {
         LaunchTemplateName: runnerParameters.launchTemplateName,
         Version: '$Default',
@@ -443,9 +441,8 @@ async function createInstancesWithRunInstances(
           Tags: tags,
         },
       ],
-    };
+    });
 
-    const runInstancesCommand = new RunInstancesCommand(runInstancesInput);
     logger.debug('RunInstances request payload.', { payload: runInstancesCommand.input });
     result = await ec2Client.send(runInstancesCommand);
   } catch (e) {
