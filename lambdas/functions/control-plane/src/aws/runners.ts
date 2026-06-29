@@ -1,4 +1,5 @@
 import {
+  type BlockDeviceMapping,
   CreateFleetCommand,
   CreateFleetResult,
   CreateTagsCommand,
@@ -6,6 +7,7 @@ import {
   DescribeInstancesCommand,
   DescribeInstancesResult,
   RunInstancesCommand,
+  type RunInstancesCommandInput,
   RunInstancesCommandOutput,
   EC2Client,
   FleetLaunchTemplateOverridesRequest,
@@ -148,6 +150,60 @@ function generateFleetOverrides(
     });
   });
   return result;
+}
+
+// Keep this allow-list explicit so Fleet-only override fields are not sent to RunInstances.
+type RunInstancesLaunchOverrides = Pick<
+  RunInstancesCommandInput,
+  'BlockDeviceMappings' | 'ImageId' | 'InstanceType' | 'Placement' | 'SubnetId'
+>;
+
+interface RunInstancesLaunchDefaults {
+  imageId?: string;
+  instanceType: _InstanceType;
+  subnetId: string;
+}
+
+function buildRunInstancesOverrides(
+  ec2OverrideConfig: Runners.Ec2OverrideConfig | undefined,
+  defaults: RunInstancesLaunchDefaults,
+): RunInstancesLaunchOverrides {
+  const imageIdToUse = ec2OverrideConfig?.ImageId ?? defaults.imageId;
+  const placement = {
+    ...ec2OverrideConfig?.Placement,
+  };
+
+  if (!placement.AvailabilityZone && !placement.AvailabilityZoneId) {
+    if (ec2OverrideConfig?.AvailabilityZone) {
+      placement.AvailabilityZone = ec2OverrideConfig.AvailabilityZone;
+    } else if (ec2OverrideConfig?.AvailabilityZoneId) {
+      placement.AvailabilityZoneId = ec2OverrideConfig.AvailabilityZoneId;
+    }
+  }
+
+  const overrides: RunInstancesLaunchOverrides = {
+    InstanceType: ec2OverrideConfig?.InstanceType ?? defaults.instanceType,
+    SubnetId: ec2OverrideConfig?.SubnetId ?? defaults.subnetId,
+  };
+
+  if (imageIdToUse) {
+    overrides.ImageId = imageIdToUse;
+  }
+
+  if (Object.keys(placement).length > 0) {
+    overrides.Placement = placement;
+  }
+
+  if (ec2OverrideConfig?.BlockDeviceMappings) {
+    overrides.BlockDeviceMappings = ec2OverrideConfig.BlockDeviceMappings.map(
+      (blockDeviceMapping): BlockDeviceMapping => ({
+        ...blockDeviceMapping,
+        ...(blockDeviceMapping.Ebs ? { Ebs: { ...blockDeviceMapping.Ebs } } : {}),
+      }),
+    );
+  }
+
+  return overrides;
 }
 
 export async function createRunner(runnerParameters: Runners.RunnerInputParameters): Promise<string[]> {
@@ -363,17 +419,18 @@ async function createInstancesWithRunInstances(
       );
     }
 
-    const instanceType = runnerParameters.ec2instanceCriteria.instanceTypes[0] as _InstanceType;
     const runInstancesCommand = new RunInstancesCommand({
       LaunchTemplate: {
         LaunchTemplateName: runnerParameters.launchTemplateName,
         Version: '$Default',
       },
-      InstanceType: instanceType,
+      ...buildRunInstancesOverrides(runnerParameters.ec2OverrideConfig, {
+        imageId: amiIdOverride,
+        instanceType: runnerParameters.ec2instanceCriteria.instanceTypes[0] as _InstanceType,
+        subnetId: runnerParameters.subnets[0],
+      }),
       MinCount: runnerParameters.numberOfRunners,
       MaxCount: runnerParameters.numberOfRunners,
-      SubnetId: runnerParameters.subnets[0],
-      ...(amiIdOverride ? { ImageId: amiIdOverride } : {}),
       TagSpecifications: [
         {
           ResourceType: 'instance',
