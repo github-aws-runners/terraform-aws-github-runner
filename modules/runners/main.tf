@@ -20,21 +20,25 @@ locals {
   default_ami = {
     "windows" = { name = ["Windows_Server-2022-English-Full-ECS_Optimized-*"] }
     "linux"   = var.runner_architecture == "arm64" ? { name = ["al2023-ami-2023.*-kernel-6.*-arm64"] } : { name = ["al2023-ami-2023.*-kernel-6.*-x86_64"] }
+    "osx"     = var.runner_architecture == "arm64" ? { name = ["amzn-ec2-macos-15.*-arm64"] } : { name = ["amzn-ec2-macos-15.*"] }
   }
 
   default_userdata_template = {
     "windows" = "${path.module}/templates/user-data.ps1"
     "linux"   = "${path.module}/templates/user-data.sh"
+    "osx"     = "${path.module}/templates/user-data-osx.sh"
   }
 
   userdata_install_runner = {
     "windows" = "${path.module}/templates/install-runner.ps1"
     "linux"   = "${path.module}/templates/install-runner.sh"
+    "osx"     = "${path.module}/templates/install-runner-osx.sh"
   }
 
   userdata_start_runner = {
     "windows" = "${path.module}/templates/start-runner.ps1"
     "linux"   = "${path.module}/templates/start-runner.sh"
+    "osx"     = "${path.module}/templates/start-runner-osx.sh"
   }
 
   # Handle AMI configuration
@@ -78,6 +82,13 @@ locals {
     enable_cloudwatch_agent         = var.enable_cloudwatch_agent
     ssm_key_cloudwatch_agent_config = var.enable_cloudwatch_agent ? aws_ssm_parameter.cloudwatch_agent_config_runner[0].name : ""
   }) : var.userdata_content) : ""
+
+  encoded_user_data = (
+    var.runner_os == "linux" ? base64gzip(local.user_data) :
+    var.runner_os == "windows" ? base64encode(local.user_data) :
+    var.runner_os == "osx" ? base64encode(local.user_data) :
+    null
+  )
 }
 
 data "aws_ami" "runner" {
@@ -125,14 +136,15 @@ resource "aws_launch_template" "runner" {
       device_name = block_device_mappings.value.device_name
 
       ebs {
-        delete_on_termination = block_device_mappings.value.delete_on_termination
-        encrypted             = block_device_mappings.value.encrypted
-        iops                  = block_device_mappings.value.iops
-        kms_key_id            = block_device_mappings.value.kms_key_id
-        snapshot_id           = block_device_mappings.value.snapshot_id
-        throughput            = block_device_mappings.value.throughput
-        volume_size           = block_device_mappings.value.volume_size
-        volume_type           = block_device_mappings.value.volume_type
+        delete_on_termination      = block_device_mappings.value.delete_on_termination
+        encrypted                  = block_device_mappings.value.encrypted
+        iops                       = block_device_mappings.value.iops
+        kms_key_id                 = block_device_mappings.value.kms_key_id
+        snapshot_id                = block_device_mappings.value.snapshot_id
+        throughput                 = block_device_mappings.value.throughput
+        volume_initialization_rate = block_device_mappings.value.volume_initialization_rate
+        volume_size                = block_device_mappings.value.volume_size
+        volume_type                = block_device_mappings.value.volume_type
       }
     }
   }
@@ -166,8 +178,10 @@ resource "aws_launch_template" "runner" {
   dynamic "cpu_options" {
     for_each = var.cpu_options != null ? [var.cpu_options] : []
     content {
-      core_count       = try(cpu_options.value.core_count, null)
-      threads_per_core = try(cpu_options.value.threads_per_core, null)
+      core_count            = try(cpu_options.value.core_count, null)
+      threads_per_core      = try(cpu_options.value.threads_per_core, null)
+      amd_sev_snp           = try(cpu_options.value.amd_sev_snp, null)
+      nested_virtualization = try(cpu_options.value.nested_virtualization, null)
     }
   }
 
@@ -186,12 +200,19 @@ resource "aws_launch_template" "runner" {
     }
   }
 
+  dynamic "license_specification" {
+    for_each = var.license_specifications
+    content {
+      license_configuration_arn = license_specification.value.license_configuration_arn
+    }
+  }
+
   monitoring {
     enabled = var.enable_runner_detailed_monitoring
   }
 
   iam_instance_profile {
-    name = aws_iam_instance_profile.runner.name
+    name = var.iam_overrides["override_instance_profile"] ? var.iam_overrides["instance_profile_name"] : aws_iam_instance_profile.runner[0].name
   }
 
   instance_initiated_shutdown_behavior = "terminate"
@@ -267,7 +288,7 @@ resource "aws_launch_template" "runner" {
     )
   }
 
-  user_data = var.runner_os == "windows" ? base64encode(local.user_data) : base64gzip(local.user_data)
+  user_data = local.encoded_user_data
 
   tags = local.tags
 
