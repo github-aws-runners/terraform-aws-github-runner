@@ -114,6 +114,8 @@ module "webhook" {
       matcherConfig : {
         labelMatchers : [local.runner_labels]
         exactMatch : var.enable_runner_workflow_job_labels_check_all
+        enableDynamicLabels : var.enable_dynamic_labels
+        ec2DynamicLabelsPolicy : var.ec2_dynamic_labels_policy
       }
     }
   }
@@ -158,6 +160,7 @@ module "runners" {
   subnet_ids    = var.subnet_ids
   prefix        = var.prefix
   tags          = local.tags
+  iam_overrides = var.iam_overrides
 
   ssm_paths = {
     root   = local.ssm_root_path
@@ -185,8 +188,8 @@ module "runners" {
   github_app_parameters                = local.github_app_parameters
   enable_organization_runners          = var.enable_organization_runners
   enable_ephemeral_runners             = var.enable_ephemeral_runners
-  enable_jit_config                    = var.enable_jit_config
   enable_job_queued_check              = var.enable_job_queued_check
+  enable_jit_config                    = var.enable_jit_config
   enable_on_demand_failover_for_errors = var.enable_runner_on_demand_failover_for_errors
   scale_errors                         = var.scale_errors
   disable_runner_autoupdate            = var.disable_runner_autoupdate
@@ -208,6 +211,8 @@ module "runners" {
   credit_specification                 = var.runner_credit_specification
   cpu_options                          = var.runner_cpu_options
   placement                            = var.runner_placement
+  license_specifications               = var.runner_license_specifications
+  use_dedicated_host                   = var.use_dedicated_host
 
   enable_runner_binaries_syncer                                  = var.enable_runner_binaries_syncer
   lambda_s3_bucket                                               = var.lambda_s3_bucket
