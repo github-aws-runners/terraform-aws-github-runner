@@ -12,6 +12,7 @@ export type RunnerType = 'Org' | 'Repo';
 
 export interface RunnerList {
   instanceId: string;
+  fleetId?: string;
   launchTime?: Date;
   owner?: string;
   type?: string;
@@ -24,6 +25,7 @@ export interface RunnerList {
 
 export interface RunnerInfo {
   instanceId: string;
+  fleetId?: string;
   launchTime?: Date;
   owner: string;
   type: string;
