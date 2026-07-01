@@ -35,7 +35,6 @@ module "runners" {
   scale_errors                         = each.value.runner_config.scale_errors
   enable_organization_runners          = each.value.runner_config.enable_organization_runners
   enable_ephemeral_runners             = each.value.runner_config.enable_ephemeral_runners
-  enable_dynamic_labels                = var.enable_dynamic_labels
   enable_jit_config                    = each.value.runner_config.enable_jit_config
   enable_job_queued_check              = each.value.runner_config.enable_job_queued_check
   disable_runner_autoupdate            = each.value.runner_config.disable_runner_autoupdate
@@ -106,6 +105,7 @@ module "runners" {
   create_service_linked_role_spot = each.value.runner_config.create_service_linked_role_spot
 
   runner_iam_role_managed_policy_arns = each.value.runner_config.runner_iam_role_managed_policy_arns
+  iam_overrides                       = each.value.runner_config.iam_overrides
 
   ghes_url        = var.ghes_url
   ghes_ssl_verify = var.ghes_ssl_verify

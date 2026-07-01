@@ -183,110 +183,37 @@ describe('Dispatcher', () => {
     it('should accept job with an exact match and identical labels.', () => {
       const workflowLabels = ['self-hosted', 'linux', 'x64', 'ubuntu-latest'];
       const runnerLabels = [['self-hosted', 'linux', 'x64', 'ubuntu-latest']];
-      expect(canRunJob(workflowLabels, runnerLabels, true, false)).toBe(true);
+      expect(canRunJob(workflowLabels, runnerLabels, true)).toBe(true);
     });
 
     it('should accept job with an exact match and identical labels, ignoring cases.', () => {
       const workflowLabels = ['self-Hosted', 'Linux', 'X64', 'ubuntu-Latest'];
       const runnerLabels = [['self-hosted', 'linux', 'x64', 'ubuntu-latest']];
-      expect(canRunJob(workflowLabels, runnerLabels, true, false)).toBe(true);
+      expect(canRunJob(workflowLabels, runnerLabels, true)).toBe(true);
     });
 
     it('should accept job with an exact match and runner supports requested capabilities.', () => {
       const workflowLabels = ['self-hosted', 'linux', 'x64'];
       const runnerLabels = [['self-hosted', 'linux', 'x64', 'ubuntu-latest']];
-      expect(canRunJob(workflowLabels, runnerLabels, true, false)).toBe(true);
+      expect(canRunJob(workflowLabels, runnerLabels, true)).toBe(true);
     });
 
     it('should NOT accept job with an exact match and runner not matching requested capabilities.', () => {
       const workflowLabels = ['self-hosted', 'linux', 'x64', 'ubuntu-latest'];
       const runnerLabels = [['self-hosted', 'linux', 'x64']];
-      expect(canRunJob(workflowLabels, runnerLabels, true, false)).toBe(false);
+      expect(canRunJob(workflowLabels, runnerLabels, true)).toBe(false);
     });
 
     it('should accept job with for a non exact match. Any label that matches will accept the job.', () => {
       const workflowLabels = ['self-hosted', 'linux', 'x64', 'ubuntu-latest', 'gpu'];
       const runnerLabels = [['gpu']];
-      expect(canRunJob(workflowLabels, runnerLabels, false, false)).toBe(true);
+      expect(canRunJob(workflowLabels, runnerLabels, false)).toBe(true);
     });
 
     it('should NOT accept job with for an exact match. Not all requested capabilities are supported.', () => {
       const workflowLabels = ['self-hosted', 'linux', 'x64', 'ubuntu-latest', 'gpu'];
       const runnerLabels = [['gpu']];
-      expect(canRunJob(workflowLabels, runnerLabels, true, false)).toBe(false);
-    });
-
-    it('should filter out ghr- labels when enableDynamicLabels is true.', () => {
-      const workflowLabels = ['self-hosted', 'linux', 'x64', 'ghr-ec2-instance-type:t3.large', 'ghr-run-id:12345'];
-      const runnerLabels = [['self-hosted', 'linux', 'x64']];
-      expect(canRunJob(workflowLabels, runnerLabels, true, false, true)).toBe(true);
-    });
-
-    it('should NOT filter out ghr- labels when enableDynamicLabels is false.', () => {
-      const workflowLabels = ['self-hosted', 'linux', 'x64', 'ghr-ec2-instance-type:t3.large'];
-      const runnerLabels = [['self-hosted', 'linux', 'x64']];
-      expect(canRunJob(workflowLabels, runnerLabels, true, false)).toBe(false);
-    });
-  });
-
-  describe('sanitizeGhrLabels (via canRunJob with enableDynamicLabels=true)', () => {
-    it('should keep valid ghr- labels with allowed characters (alphanumeric, dot, dash, colon, slash)', () => {
-      const workflowLabels = ['self-hosted', 'ghr-ec2-instance-type:t3.large'];
-      const runnerLabels = [['self-hosted', 'ghr-ec2-instance-type:t3.large']];
-      expect(canRunJob(workflowLabels, runnerLabels, true, false, true)).toBe(true);
-    });
-
-    it('should keep ghr- labels with path-like values containing slashes', () => {
-      const workflowLabels = ['self-hosted', 'ghr-image:my/custom/image'];
-      const runnerLabels = [['self-hosted', 'ghr-image:my/custom/image']];
-      expect(canRunJob(workflowLabels, runnerLabels, true, false, true)).toBe(true);
-    });
-
-    it('should strip ghr- labels that exceed 128 characters', () => {
-      const longLabel = 'ghr-' + 'a'.repeat(125); // 129 chars total, exceeds 128
-      const workflowLabels = ['self-hosted', 'linux', longLabel];
-      const runnerLabels = [['self-hosted', 'linux']];
-      // Long label is stripped, remaining labels match
-      expect(canRunJob(workflowLabels, runnerLabels, true, false, true)).toBe(true);
-    });
-
-    it('should keep ghr- labels that are exactly 128 characters', () => {
-      const exactLabel = 'ghr-' + 'a'.repeat(124); // exactly 128 chars
-      const workflowLabels = ['self-hosted', exactLabel];
-      const runnerLabels = [['self-hosted', exactLabel]];
-      expect(canRunJob(workflowLabels, runnerLabels, true, false, true)).toBe(true);
-    });
-
-    it('should strip ghr- labels with invalid characters (spaces)', () => {
-      const workflowLabels = ['self-hosted', 'linux', 'ghr-bad label'];
-      const runnerLabels = [['self-hosted', 'linux']];
-      // Invalid label is stripped, remaining labels match
-      expect(canRunJob(workflowLabels, runnerLabels, true, false, true)).toBe(true);
-    });
-
-    it('should strip ghr- labels with invalid characters (special chars)', () => {
-      const workflowLabels = ['self-hosted', 'linux', 'ghr-inject;rm -rf'];
-      const runnerLabels = [['self-hosted', 'linux']];
-      expect(canRunJob(workflowLabels, runnerLabels, true, false, true)).toBe(true);
-    });
-
-    it('should never strip non-ghr labels regardless of content', () => {
-      const workflowLabels = ['self-hosted', 'linux', 'x64'];
-      const runnerLabels = [['self-hosted', 'linux', 'x64']];
-      expect(canRunJob(workflowLabels, runnerLabels, true, false, true)).toBe(true);
-    });
-
-    it('should handle a mix of valid ghr-, invalid ghr-, and regular labels', () => {
-      const longLabel = 'ghr-' + 'x'.repeat(125); // 129 chars, will be stripped
-      const workflowLabels = [
-        'self-hosted',
-        'linux',
-        'ghr-valid:value', // valid, kept
-        'ghr-bad label', // invalid chars, stripped
-        longLabel, // too long, stripped
-      ];
-      const runnerLabels = [['self-hosted', 'linux', 'ghr-valid:value']];
-      expect(canRunJob(workflowLabels, runnerLabels, true, false, true)).toBe(true);
+      expect(canRunJob(workflowLabels, runnerLabels, true)).toBe(false);
     });
 
     it('should match when runner has more labels than workflow requests with exactMatch=true (unidirectional).', () => {
@@ -367,6 +294,193 @@ describe('Dispatcher', () => {
       const runnerLabels = [['self-hosted', 'linux', 'x64', 'ubuntu-latest']];
       // exactMatch alone would accept this (runner has extra labels), but bidirectional should reject
       expect(canRunJob(workflowLabels, runnerLabels, true, true)).toBe(false);
+    });
+  });
+
+
+  describe('per-matcher dynamic labels handling', () => {
+    const baseRunner = runnerConfig[0];
+
+    it('strips invalid ghr- labels (too long, bad chars) before policy and dispatch', async () => {
+      const longLabel = 'ghr-' + 'a'.repeat(125); // 129 chars
+      config = await createConfig(undefined, [
+        {
+          ...baseRunner,
+          matcherConfig: {
+            labelMatchers: [['self-hosted', 'linux']],
+            exactMatch: true,
+            enableDynamicLabels: true,
+          },
+        },
+      ]);
+      const event = {
+        ...workFlowJobEvent,
+        workflow_job: {
+          ...workFlowJobEvent.workflow_job,
+          labels: ['self-hosted', 'linux', 'ghr-valid:value', 'ghr-bad label', longLabel],
+        },
+      } as unknown as WorkflowJobEvent;
+      const resp = await dispatch(event, 'workflow_job', config);
+      expect(resp.statusCode).toBe(201);
+      expect(sendActionRequest).toHaveBeenCalledWith(
+        expect.objectContaining({ labels: ['self-hosted', 'linux', 'ghr-valid:value'] }),
+      );
+    });
+
+    it('rejects the job (202) when the only matching runner has enableDynamicLabels=false', async () => {
+      config = await createConfig(undefined, [
+        {
+          ...baseRunner,
+          matcherConfig: {
+            labelMatchers: [['self-hosted', 'linux']],
+            exactMatch: true,
+            enableDynamicLabels: false,
+          },
+        },
+      ]);
+      const event = {
+        ...workFlowJobEvent,
+        workflow_job: {
+          ...workFlowJobEvent.workflow_job,
+          labels: ['self-hosted', 'linux', 'ghr-ec2-instance-type:t3.large'],
+        },
+      } as unknown as WorkflowJobEvent;
+      const resp = await dispatch(event, 'workflow_job', config);
+      expect(resp.statusCode).toBe(202);
+      expect(sendActionRequest).not.toHaveBeenCalled();
+    });
+
+    it('keeps dynamic labels when the matched runner enables them and has no policy', async () => {
+      config = await createConfig(undefined, [
+        {
+          ...baseRunner,
+          matcherConfig: {
+            labelMatchers: [['self-hosted', 'linux']],
+            exactMatch: true,
+            enableDynamicLabels: true,
+          },
+        },
+      ]);
+      const event = {
+        ...workFlowJobEvent,
+        workflow_job: {
+          ...workFlowJobEvent.workflow_job,
+          labels: ['self-hosted', 'linux', 'ghr-ec2-instance-type:t3.large'],
+        },
+      } as unknown as WorkflowJobEvent;
+      const resp = await dispatch(event, 'workflow_job', config);
+      expect(resp.statusCode).toBe(201);
+      expect(sendActionRequest).toHaveBeenCalledWith(
+        expect.objectContaining({ labels: ['self-hosted', 'linux', 'ghr-ec2-instance-type:t3.large'] }),
+      );
+    });
+
+    it('skips a matching runner whose policy rejects the dynamic labels and uses the next compliant one', async () => {
+      config = await createConfig(undefined, [
+        {
+          ...baseRunner,
+          id: 'strict',
+          matcherConfig: {
+            labelMatchers: [['self-hosted', 'linux']],
+            exactMatch: true,
+            enableDynamicLabels: true,
+            ec2DynamicLabelsPolicy: {
+              restricted_keys: {
+                'instance-type': { allowed: ['m5.*'] },
+              },
+            },
+          },
+        },
+        {
+          ...baseRunner,
+          id: 'permissive',
+          matcherConfig: {
+            labelMatchers: [['self-hosted', 'linux']],
+            exactMatch: true,
+            enableDynamicLabels: true,
+          },
+        },
+      ]);
+      const event = {
+        ...workFlowJobEvent,
+        workflow_job: {
+          ...workFlowJobEvent.workflow_job,
+          labels: ['self-hosted', 'linux', 'ghr-ec2-instance-type:t3.large'],
+        },
+      } as unknown as WorkflowJobEvent;
+      const resp = await dispatch(event, 'workflow_job', config);
+      expect(resp.statusCode).toBe(201);
+      expect(sendActionRequest).toHaveBeenCalledWith(
+        expect.objectContaining({
+          queueId: 'permissive',
+          labels: ['self-hosted', 'linux', 'ghr-ec2-instance-type:t3.large'],
+        }),
+      );
+    });
+
+    it('rejects the job (202) when no runner accepts the policy', async () => {
+      config = await createConfig(undefined, [
+        {
+          ...baseRunner,
+          id: 'first',
+          matcherConfig: {
+            labelMatchers: [['self-hosted', 'linux']],
+            exactMatch: true,
+            enableDynamicLabels: true,
+            ec2DynamicLabelsPolicy: {
+              restricted_keys: {
+                'instance-type': { allowed: ['m5.*'] },
+              },
+            },
+          },
+        },
+        {
+          ...baseRunner,
+          id: 'second',
+          matcherConfig: {
+            labelMatchers: [['self-hosted', 'linux']],
+            exactMatch: true,
+            enableDynamicLabels: false,
+          },
+        },
+      ]);
+      const event = {
+        ...workFlowJobEvent,
+        workflow_job: {
+          ...workFlowJobEvent.workflow_job,
+          labels: ['self-hosted', 'linux', 'ghr-ec2-instance-type:t3.large'],
+        },
+      } as unknown as WorkflowJobEvent;
+      const resp = await dispatch(event, 'workflow_job', config);
+      expect(resp.statusCode).toBe(202);
+      expect(sendActionRequest).not.toHaveBeenCalled();
+    });
+
+    it('forwards non-dynamic jobs as-is to the first match', async () => {
+      config = await createConfig(undefined, [
+        {
+          ...baseRunner,
+          id: 'first',
+          matcherConfig: {
+            labelMatchers: [['self-hosted', 'linux']],
+            exactMatch: true,
+            enableDynamicLabels: true,
+            ec2DynamicLabelsPolicy: {},
+          },
+        },
+      ]);
+      const event = {
+        ...workFlowJobEvent,
+        workflow_job: {
+          ...workFlowJobEvent.workflow_job,
+          labels: ['self-hosted', 'linux'],
+        },
+      } as unknown as WorkflowJobEvent;
+      const resp = await dispatch(event, 'workflow_job', config);
+      expect(resp.statusCode).toBe(201);
+      expect(sendActionRequest).toHaveBeenCalledWith(
+        expect.objectContaining({ queueId: 'first', labels: ['self-hosted', 'linux'] }),
+      );
     });
   });
 });

@@ -2,6 +2,8 @@ import { SQS, SendMessageCommandInput } from '@aws-sdk/client-sqs';
 import { WorkflowJobEvent } from '@octokit/webhooks-types';
 import { createChildLogger, getTracedAWSV3Client } from '@aws-github-runner/aws-powertools-util';
 
+import { Ec2DynamicLabelsPolicy } from '../runners/dynamic-labels-policy';
+
 const logger = createChildLogger('sqs');
 
 export interface ActionRequestMessage {
@@ -19,6 +21,8 @@ export interface MatcherConfig {
   labelMatchers: string[][];
   exactMatch: boolean;
   bidirectionalLabelMatch?: boolean;
+  enableDynamicLabels?: boolean;
+  ec2DynamicLabelsPolicy?: Ec2DynamicLabelsPolicy | null;
 }
 
 export type RunnerConfig = RunnerMatcherConfig[];

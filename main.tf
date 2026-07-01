@@ -115,6 +115,8 @@ module "webhook" {
         labelMatchers : [local.runner_labels]
         exactMatch : var.enable_runner_workflow_job_labels_check_all
         bidirectionalLabelMatch : var.enable_runner_bidirectional_label_match
+        enableDynamicLabels : var.enable_dynamic_labels
+        ec2DynamicLabelsPolicy : var.ec2_dynamic_labels_policy
       }
     }
   }
@@ -138,7 +140,6 @@ module "webhook" {
   logging_retention_in_days                     = var.logging_retention_in_days
   logging_kms_key_id                            = var.logging_kms_key_id
   log_class                                     = var.log_class
-  enable_dynamic_labels                         = var.enable_dynamic_labels
 
   role_path                 = var.role_path
   role_permissions_boundary = var.role_permissions_boundary
@@ -160,6 +161,7 @@ module "runners" {
   subnet_ids    = var.subnet_ids
   prefix        = var.prefix
   tags          = local.tags
+  iam_overrides = var.iam_overrides
 
   ssm_paths = {
     root   = local.ssm_root_path
@@ -187,7 +189,6 @@ module "runners" {
   github_app_parameters                = local.github_app_parameters
   enable_organization_runners          = var.enable_organization_runners
   enable_ephemeral_runners             = var.enable_ephemeral_runners
-  enable_dynamic_labels                = var.enable_dynamic_labels
   enable_job_queued_check              = var.enable_job_queued_check
   enable_jit_config                    = var.enable_jit_config
   enable_on_demand_failover_for_errors = var.enable_runner_on_demand_failover_for_errors

@@ -23,7 +23,7 @@ variable "tags" {
 }
 
 variable "runner_matcher_config" {
-  description = "SQS queue to publish accepted build events based on the runner type. When exact match is disabled the webhook accepts the event if one of the workflow job labels is part of the matcher. The priority defines the order the matchers are applied."
+  description = "SQS queue to publish accepted build events based on the runner type. When exact match is disabled the webhook accepts the event if one of the workflow job labels is part of the matcher. The priority defines the order the matchers are applied. Optional `matcherConfig.enableDynamicLabels` and `matcherConfig.ec2DynamicLabelsPolicy` are evaluated by the dispatcher to gate `ghr-ec2-*` labels per runner. The policy supports `blocked_keys = [<key>]` and `restricted_keys = { <key> = { allowed = [globs], denied = [globs], max = number|string } }`; keys use the `ghr-ec2-*` suffix form, for example `instance-type`."
   type = map(object({
     arn = string
     id  = string
@@ -32,6 +32,8 @@ variable "runner_matcher_config" {
       exactMatch              = bool
       bidirectionalLabelMatch = optional(bool, false)
       priority                = optional(number, 999)
+      enableDynamicLabels    = optional(bool, false)
+      ec2DynamicLabelsPolicy = optional(any, null)
     })
   }))
   validation {
@@ -226,10 +228,3 @@ EOF
     accept_events = optional(list(string), null)
   })
 }
-
-variable "enable_dynamic_labels" {
-  description = "Experimental! Can be removed / changed without trigger a major release. Enable dynamic labels with 'ghr-' prefix. When enabled, jobs can use 'ghr-ec2-<config>:<value>' labels to dynamically configure EC2 instances (e.g., 'ghr-ec2-instance-type:t3.large') and 'ghr-run-<label>' to add unique labels dynamically to runners."
-  type        = bool
-  default     = false
-}
-

@@ -28,7 +28,6 @@ resource "aws_lambda_function" "scale_up" {
       AMI_ID_SSM_PARAMETER_NAME                = local.ami_id_ssm_parameter_name
       DISABLE_RUNNER_AUTOUPDATE                = var.disable_runner_autoupdate
       ENABLE_EPHEMERAL_RUNNERS                 = var.enable_ephemeral_runners
-      ENABLE_DYNAMIC_LABELS                    = var.enable_dynamic_labels
       ENABLE_JIT_CONFIG                        = var.enable_jit_config
       ENABLE_JOB_QUEUED_CHECK                  = local.enable_job_queued_check
       ENABLE_METRIC_GITHUB_APP_RATE_LIMIT      = var.metrics.enable && var.metrics.metric.enable_github_app_rate_limit
@@ -120,7 +119,8 @@ resource "aws_iam_role_policy" "scale_up" {
   name = "scale-up-policy"
   role = aws_iam_role.scale_up.name
   policy = templatefile("${path.module}/policies/lambda-scale-up.json", {
-    arn_runner_instance_role  = aws_iam_role.runner.arn
+    arn_runner_instance_role  = var.iam_overrides["override_runner_role"] ? var.iam_overrides["runner_role_arn"] : aws_iam_role.runner[0].arn
+    environment               = var.prefix
     sqs_arn                   = var.sqs_build_queue.arn
     github_app_id_arn         = var.github_app_parameters.id.arn
     github_app_key_base64_arn = var.github_app_parameters.key_base64.arn
