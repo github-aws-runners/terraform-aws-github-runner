@@ -6,7 +6,9 @@ import {
   type CreateFleetResult,
   CreateTagsCommand,
   type DefaultTargetCapacityType,
+  DeleteFleetsCommand,
   DeleteTagsCommand,
+  DescribeFleetsCommand,
   DescribeInstancesCommand,
   type DescribeInstancesResult,
   EC2Client,
@@ -20,7 +22,7 @@ import 'aws-sdk-client-mock-jest/vitest';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ScaleError from './../scale-runners/ScaleError';
-import { createRunner, listEC2Runners, tag, terminateRunner, untag } from './runners';
+import { cleanupFleet, createRunner, listEC2Runners, tag, terminateRunner, untag } from './runners';
 import type { RunnerInfo, RunnerInputParameters, RunnerType } from './runners.d';
 import { LambdaRunnerSource } from '../scale-runners/scale-up';
 
@@ -108,6 +110,42 @@ describe('list instances', () => {
       owner: 'CoderToCat',
       orphan: false,
       runnerId: '9876543210',
+      bypassRemoval: false,
+    });
+  });
+
+  it('returns the fleet id from the instance fleet tag', async () => {
+    const instances: DescribeInstancesResult = {
+      Reservations: [
+        {
+          Instances: [
+            {
+              LaunchTime: new Date('2020-10-10T14:48:00.000+09:00'),
+              InstanceId: 'i-1234',
+              Tags: [
+                { Key: 'ghr:Application', Value: 'github-action-runner' },
+                { Key: 'ghr:runner_name_prefix', Value: RUNNER_NAME_PREFIX },
+                { Key: 'ghr:created_by', Value: 'scale-up-lambda' },
+                { Key: 'ghr:Type', Value: 'Org' },
+                { Key: 'ghr:Owner', Value: 'CoderToCat' },
+                { Key: 'aws:ec2:fleet-id', Value: 'fleet-1234' },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    mockEC2Client.on(DescribeInstancesCommand).resolves(instances);
+
+    const resp = await listEC2Runners();
+
+    expect(resp).toContainEqual({
+      instanceId: 'i-1234',
+      fleetId: 'fleet-1234',
+      launchTime: new Date('2020-10-10T14:48:00.000+09:00'),
+      type: 'Org',
+      owner: 'CoderToCat',
+      orphan: false,
       bypassRemoval: false,
     });
   });
@@ -248,6 +286,58 @@ describe('list instances', () => {
         { Name: 'instance-state-name', Values: ['running', 'pending'] },
         { Name: 'tag:ghr:Application', Values: ['github-action-runner'] },
       ],
+    });
+  });
+});
+
+describe('cleanup fleet', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockEC2Client.reset();
+  });
+
+  it('does not delete the fleet when it still has a running instance', async () => {
+    mockEC2Client.on(DescribeFleetsCommand).resolves({
+      Fleets: [
+        {
+          FleetId: 'fleet-1234',
+          FleetState: 'active',
+          Instances: [{ InstanceIds: ['i-running'] }],
+        },
+      ],
+    });
+    mockEC2Client.on(DescribeInstancesCommand, { InstanceIds: ['i-running'] }).resolves({
+      Reservations: [{ Instances: [{ InstanceId: 'i-running', State: { Name: 'running' } }] }],
+    });
+    mockEC2Client.on(DeleteFleetsCommand).resolves({});
+
+    await cleanupFleet('fleet-1234');
+
+    expect(mockEC2Client).not.toHaveReceivedCommand(DeleteFleetsCommand);
+  });
+
+  it('deletes the fleet when associated instances are terminated or missing', async () => {
+    const notFound = Object.assign(new Error('not found'), { name: 'InvalidInstanceID.NotFound' });
+    mockEC2Client.on(DescribeFleetsCommand).resolves({
+      Fleets: [
+        {
+          FleetId: 'fleet-1234',
+          FleetState: 'active',
+          Instances: [{ InstanceIds: ['i-terminated', 'i-missing'] }],
+        },
+      ],
+    });
+    mockEC2Client.on(DescribeInstancesCommand, { InstanceIds: ['i-terminated'] }).resolves({
+      Reservations: [{ Instances: [{ InstanceId: 'i-terminated', State: { Name: 'terminated' } }] }],
+    });
+    mockEC2Client.on(DescribeInstancesCommand, { InstanceIds: ['i-missing'] }).rejects(notFound);
+    mockEC2Client.on(DeleteFleetsCommand).resolves({});
+
+    await cleanupFleet('fleet-1234');
+
+    expect(mockEC2Client).toHaveReceivedCommandWith(DeleteFleetsCommand, {
+      FleetIds: ['fleet-1234'],
+      TerminateInstances: false,
     });
   });
 });
@@ -1054,6 +1144,10 @@ function expectedCreateFleetRequest(expectedValues: ExpectedFleetRequestValues):
       },
       {
         ResourceType: 'volume',
+        Tags: tags,
+      },
+      {
+        ResourceType: 'fleet',
         Tags: tags,
       },
     ],

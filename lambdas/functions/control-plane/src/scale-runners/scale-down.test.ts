@@ -5,7 +5,7 @@ import nock from 'nock';
 
 import { RunnerInfo, RunnerList } from '../aws/runners.d';
 import * as ghAuth from '../github/auth';
-import { listEC2Runners, terminateRunner, tag, untag } from './../aws/runners';
+import { cleanupFleet, listEC2Runners, terminateRunner, tag, untag } from './../aws/runners';
 import { githubCache } from './cache';
 import { newestFirstStrategy, oldestFirstStrategy, scaleDown } from './scale-down';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -37,6 +37,7 @@ vi.mock('./../aws/runners', async (importOriginal) => {
     ...actual,
     tag: vi.fn(),
     untag: vi.fn(),
+    cleanupFleet: vi.fn(),
     terminateRunner: vi.fn(),
     listEC2Runners: vi.fn(),
   };
@@ -67,6 +68,7 @@ const mockCreateClient = vi.mocked(ghAuth.createOctokitClient);
 const mockListRunners = vi.mocked(listEC2Runners);
 const mockTagRunners = vi.mocked(tag);
 const mockUntagRunners = vi.mocked(untag);
+const mockCleanupFleet = vi.mocked(cleanupFleet);
 const mockTerminateRunners = vi.mocked(terminateRunner);
 
 export interface TestData {
@@ -164,6 +166,7 @@ describe('Scale down runners', () => {
     mockTerminateRunners.mockImplementation(async () => {
       return;
     });
+    mockCleanupFleet.mockResolvedValue(undefined);
     mockedAppAuth.mockResolvedValue({
       type: 'app',
       token: 'token',
@@ -239,6 +242,22 @@ describe('Scale down runners', () => {
 
         checkTerminated(runners);
         checkNonTerminated(runners);
+      });
+
+      it(`Should cleanup fleet after terminating runner ${type} runners.`, async () => {
+        // setup
+        const runners = [
+          createRunnerTestData('idle-with-fleet', type, MINIMUM_TIME_RUNNING_IN_MINUTES + 4, true, false, true),
+        ];
+        runners[0].fleetId = 'fleet-1234';
+
+        mockGitHubRunners(runners);
+        mockAwsRunners(runners);
+
+        await scaleDown();
+
+        expect(terminateRunner).toHaveBeenCalledWith(runners[0].instanceId);
+        expect(cleanupFleet).toHaveBeenCalledWith('fleet-1234');
       });
 
       it(`Should respect idle runner with minimum running time not exceeded.`, async () => {

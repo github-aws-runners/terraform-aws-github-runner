@@ -2,7 +2,9 @@ import {
   CreateFleetCommand,
   CreateFleetResult,
   CreateTagsCommand,
+  DeleteFleetsCommand,
   DeleteTagsCommand,
+  DescribeFleetsCommand,
   DescribeInstancesCommand,
   DescribeInstancesResult,
   RunInstancesCommand,
@@ -22,6 +24,7 @@ import ScaleError from './../scale-runners/ScaleError';
 import * as Runners from './runners.d';
 
 const logger = createChildLogger('runners');
+const FLEET_ID_TAG_KEYS = ['ghr:FleetId', 'aws:ec2:fleet-id', 'aws:ec2spot:fleet-request-id'];
 
 interface Ec2Filter {
   Name: string;
@@ -80,6 +83,10 @@ async function getRunners(ec2Filters: Ec2Filter[]): Promise<Runners.RunnerList[]
   return runners;
 }
 
+function fleetIdFromTags(tags: Tag[] | undefined): string | undefined {
+  return tags?.find((tag) => FLEET_ID_TAG_KEYS.includes(tag.Key ?? ''))?.Value;
+}
+
 function getRunnerInfo(runningInstances: DescribeInstancesResult) {
   const runners: Runners.RunnerList[] = [];
   if (runningInstances.Reservations) {
@@ -88,6 +95,7 @@ function getRunnerInfo(runningInstances: DescribeInstancesResult) {
         for (const i of r.Instances) {
           runners.push({
             instanceId: i.InstanceId as string,
+            fleetId: fleetIdFromTags(i.Tags),
             launchTime: i.LaunchTime,
             owner: i.Tags?.find((e) => e.Key === 'ghr:Owner')?.Value as string,
             type: i.Tags?.find((e) => e.Key === 'ghr:Type')?.Value as string,
@@ -109,6 +117,90 @@ export async function terminateRunner(instanceId: string): Promise<void> {
   const ec2 = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
   await ec2.send(new TerminateInstancesCommand({ InstanceIds: [instanceId] }));
   logger.debug(`Runner ${instanceId} has been terminated.`);
+}
+
+export async function cleanupFleet(fleetId: string): Promise<void> {
+  const ec2 = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
+  const fleetInstanceIds = await getFleetInstanceIds(fleetId, ec2);
+
+  if (fleetInstanceIds === undefined) {
+    return;
+  }
+
+  const activeInstanceIds = await getActiveFleetInstanceIds(fleetInstanceIds, ec2);
+  if (activeInstanceIds.length > 0) {
+    logger.info(`EC2 Fleet '${fleetId}' still has active instance(s), skipping delete.`, {
+      activeInstanceIds,
+    });
+    return;
+  }
+
+  await deleteFleet(fleetId, ec2);
+}
+
+async function getFleetInstanceIds(fleetId: string, ec2: EC2Client): Promise<string[] | undefined> {
+  try {
+    const fleet = await ec2.send(new DescribeFleetsCommand({ FleetIds: [fleetId] }));
+    const fleetData = fleet.Fleets?.[0];
+
+    if (!fleetData) {
+      logger.debug(`EC2 Fleet '${fleetId}' was not returned by DescribeFleets.`);
+      return undefined;
+    }
+
+    if (fleetData.FleetState?.startsWith('deleted')) {
+      logger.debug(`EC2 Fleet '${fleetId}' is already deleted.`, { fleetState: fleetData.FleetState });
+      return undefined;
+    }
+
+    return fleetData.Instances?.flatMap((instance) => instance.InstanceIds ?? []) ?? [];
+  } catch (e) {
+    if (isNotFoundError(e)) {
+      logger.debug(`EC2 Fleet '${fleetId}' no longer exists.`);
+      return undefined;
+    }
+    throw e;
+  }
+}
+
+async function getActiveFleetInstanceIds(instanceIds: string[], ec2: EC2Client): Promise<string[]> {
+  const activeInstanceIds: string[] = [];
+
+  for (const instanceId of instanceIds) {
+    const state = await getInstanceState(instanceId, ec2);
+    if (state && state !== 'terminated') {
+      activeInstanceIds.push(instanceId);
+    }
+  }
+
+  return activeInstanceIds;
+}
+
+async function getInstanceState(instanceId: string, ec2: EC2Client): Promise<string | undefined> {
+  try {
+    const instances = await ec2.send(new DescribeInstancesCommand({ InstanceIds: [instanceId] }));
+    return instances.Reservations?.flatMap((reservation) => reservation.Instances ?? [])[0]?.State?.Name;
+  } catch (e) {
+    if (isNotFoundError(e)) {
+      logger.debug(`EC2 Fleet instance '${instanceId}' no longer exists.`);
+      return undefined;
+    }
+    throw e;
+  }
+}
+
+async function deleteFleet(fleetId: string, ec2: EC2Client): Promise<void> {
+  logger.info(`Deleting EC2 Fleet '${fleetId}'.`);
+  const result = await ec2.send(new DeleteFleetsCommand({ FleetIds: [fleetId], TerminateInstances: false }));
+  const unsuccessful = result.UnsuccessfulFleetDeletions ?? [];
+  if (unsuccessful.length > 0) {
+    logger.warn(`EC2 Fleet '${fleetId}' was not deleted.`, { unsuccessful });
+  }
+}
+
+function isNotFoundError(e: unknown): boolean {
+  const name = (e as { name?: string }).name ?? '';
+  return name.includes('NotFound');
 }
 
 export async function tag(instanceId: string, tags: Tag[]): Promise<void> {
@@ -324,6 +416,10 @@ async function createInstances(
         },
         {
           ResourceType: 'volume',
+          Tags: tags,
+        },
+        {
+          ResourceType: 'fleet',
           Tags: tags,
         },
       ],

@@ -5,7 +5,7 @@ import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import moment from 'moment';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
-import { bootTimeExceeded, listEC2Runners, tag, untag, terminateRunner } from './../aws/runners';
+import { bootTimeExceeded, cleanupFleet, listEC2Runners, tag, untag, terminateRunner } from './../aws/runners';
 import { RunnerInfo, RunnerList } from './../aws/runners.d';
 import { GhRunners, githubCache } from './cache';
 import { ScalingDownConfig, getEvictionStrategy, getIdleRunnerCount } from './scale-down-config';
@@ -13,6 +13,7 @@ import { metricGitHubAppRateLimit } from '../github/rate-limit';
 import { getGitHubEnterpriseApiUrl } from './scale-up';
 
 const logger = createChildLogger('scale-down');
+const FLEET_CLEANUP_INSTANCE_STATES = ['pending', 'running', 'shutting-down', 'stopping', 'stopped', 'terminated'];
 
 type OrgRunnerList = Endpoints['GET /orgs/{org}/actions/runners']['response']['data']['runners'];
 type RepoRunnerList = Endpoints['GET /repos/{owner}/{repo}/actions/runners']['response']['data']['runners'];
@@ -127,6 +128,37 @@ function runnerMinimumTimeExceeded(runner: RunnerInfo): boolean {
   return launchTimePlusMinimum < now;
 }
 
+async function cleanupFleetForRunner(ec2runner: Pick<RunnerList, 'instanceId' | 'fleetId'>): Promise<void> {
+  if (!ec2runner.fleetId) {
+    return;
+  }
+
+  try {
+    await cleanupFleet(ec2runner.fleetId);
+  } catch (e) {
+    logger.warn(`Failed to cleanup EC2 Fleet '${ec2runner.fleetId}' for runner '${ec2runner.instanceId}'.`, {
+      error: e as Error,
+    });
+  }
+}
+
+async function cleanupDiscoveredFleets(environment: string): Promise<void> {
+  try {
+    const runners = await listEC2Runners({ environment, statuses: FLEET_CLEANUP_INSTANCE_STATES });
+    const fleetIds = [
+      ...new Set(runners.map((runner) => runner.fleetId).filter((fleetId): fleetId is string => Boolean(fleetId))),
+    ];
+
+    for (const fleetId of fleetIds) {
+      await cleanupFleet(fleetId).catch((e) => {
+        logger.warn(`Failed to cleanup EC2 Fleet '${fleetId}'.`, { error: e as Error });
+      });
+    }
+  } catch (e) {
+    logger.warn(`Failure during EC2 Fleet cleanup processing.`, { error: e as Error });
+  }
+}
+
 async function removeRunner(ec2runner: RunnerInfo, ghRunnerIds: number[]): Promise<void> {
   const githubAppClient = await getOrCreateOctokit(ec2runner);
   try {
@@ -165,6 +197,7 @@ async function removeRunner(ec2runner: RunnerInfo, ghRunnerIds: number[]): Promi
 
       if (statuses.every((status) => status == 204)) {
         await terminateRunner(ec2runner.instanceId);
+        await cleanupFleetForRunner(ec2runner);
         logger.info(`AWS runner instance '${ec2runner.instanceId}' is terminated and GitHub runner is de-registered.`);
       } else {
         logger.error(`Failed to de-register GitHub runner: ${statuses}`);
@@ -276,14 +309,17 @@ async function terminateOrphan(environment: string): Promise<void> {
         const isOrphan = await lastChanceCheckOrphanRunner(runner);
         if (isOrphan) {
           await terminateRunner(runner.instanceId);
+          await cleanupFleetForRunner(runner);
         } else {
           await unMarkOrphan(runner.instanceId);
         }
       } else {
         logger.info(`Terminating orphan runner '${runner.instanceId}'`);
-        await terminateRunner(runner.instanceId).catch((e) => {
-          logger.error(`Failed to terminate orphan runner '${runner.instanceId}'`, { error: e });
-        });
+        await terminateRunner(runner.instanceId)
+          .then(() => cleanupFleetForRunner(runner))
+          .catch((e) => {
+            logger.error(`Failed to terminate orphan runner '${runner.instanceId}'`, { error: e });
+          });
       }
     }
   } catch (e) {
@@ -320,6 +356,7 @@ export async function scaleDown(): Promise<void> {
 
   // first runners marked to be orphan.
   await terminateOrphan(environment);
+  await cleanupDiscoveredFleets(environment);
 
   // next scale down idle runners with respect to config and mark potential orphans
   const ec2Runners = await listRunners(environment);
@@ -337,4 +374,5 @@ export async function scaleDown(): Promise<void> {
 
   const activeEc2RunnersCountAfter = (await listRunners(environment)).length;
   logger.info(`Found: '${activeEc2RunnersCountAfter}' active GitHub EC2 runners instances after clean-up.`);
+  await cleanupDiscoveredFleets(environment);
 }
