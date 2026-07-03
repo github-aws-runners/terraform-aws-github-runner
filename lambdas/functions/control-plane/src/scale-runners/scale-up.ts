@@ -50,12 +50,8 @@ const logger = createChildLogger('scale-up');
 const RUNNER_LABELS_TAG_KEY = 'ghr:runner_labels';
 const RUNNER_LABELS_TAG_VALUE_SEPARATOR = ',';
 const EC2_OVERRIDE_LIST_VALUE_SEPARATOR = ';';
-const RUNNER_INSTANCE_BASE_TAG_MAX_COUNT = 5;
-const RUNNER_METADATA_RESERVED_TAG_COUNT = 1;
-const EC2_RESOURCE_MAX_TAGS = 50;
 const EC2_TAG_VALUE_MAX_LENGTH = 256;
-const RUNNER_LABELS_TAG_MAX_COUNT =
-  EC2_RESOURCE_MAX_TAGS - RUNNER_INSTANCE_BASE_TAG_MAX_COUNT - RUNNER_METADATA_RESERVED_TAG_COUNT;
+const RUNNER_LABELS_TAG_MAX_COUNT = 5;
 
 export type LambdaRunnerSource = 'scale-up-lambda' | 'pool-lambda';
 
@@ -408,29 +404,6 @@ function splitEc2TagValue(value: string): string[] {
   }
 
   return values;
-}
-
-function truncateEc2TagValue(value: string): string {
-  return Array.from(value).slice(0, EC2_TAG_VALUE_MAX_LENGTH).join('');
-}
-
-function getRunnerLabelNames(labels: unknown): string[] {
-  if (!Array.isArray(labels)) {
-    return [];
-  }
-
-  return labels
-    .map((label) => {
-      if (typeof label === 'string') {
-        return label;
-      }
-      if (label !== null && typeof label === 'object' && 'name' in label && typeof label.name === 'string') {
-        return label.name;
-      }
-      return '';
-    })
-    .map((label) => label.trim())
-    .filter(Boolean);
 }
 
 export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<string[]> {
@@ -809,11 +782,8 @@ async function createRegistrationTokenConfig(
   return [];
 }
 
-async function tagRunnerMetadata(instanceId: string, runnerId: string, runnerLabels: unknown): Promise<void> {
-  const tags = [
-    { Key: 'ghr:github_runner_id', Value: truncateEc2TagValue(runnerId) },
-    ...generateRunnerLabelsTags(getRunnerLabelNames(runnerLabels)),
-  ];
+async function tagRunnerMetadata(instanceId: string, runnerId: string, runnerLabels: string[]): Promise<void> {
+  const tags = [{ Key: 'ghr:github_runner_id', Value: runnerId }, ...generateRunnerLabelsTags(runnerLabels)];
 
   try {
     await tag(instanceId, tags);
@@ -868,7 +838,7 @@ async function createJitConfig(
       metricGitHubAppRateLimit(runnerConfig.headers);
 
       // tag the EC2 instance with GitHub runner metadata
-      await tagRunnerMetadata(instance, runnerConfig.data.runner.id.toString(), runnerConfig.data.runner.labels);
+      await tagRunnerMetadata(instance, runnerConfig.data.runner.id.toString(), runnerLabels);
 
       // store jit config in ssm parameter store
       logger.debug('Runner JIT config for ephemeral runner generated.', {

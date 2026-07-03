@@ -310,6 +310,28 @@ describe('scaleUp with GHES', () => {
       ]);
     });
 
+    it('limits GitHub runner label metadata to five EC2 tags', async () => {
+      process.env.RUNNER_LABELS = [
+        'a'.repeat(256),
+        'b'.repeat(256),
+        'c'.repeat(256),
+        'd'.repeat(256),
+        'e'.repeat(256),
+        'f'.repeat(256),
+      ].join(',');
+
+      await scaleUpModule.scaleUp(TEST_DATA);
+
+      expect(mockTag).toHaveBeenCalledWith('i-12345', [
+        { Key: 'ghr:github_runner_id', Value: '9876543210' },
+        { Key: 'ghr:runner_labels', Value: 'a'.repeat(256) },
+        { Key: 'ghr:runner_labels:2', Value: 'b'.repeat(256) },
+        { Key: 'ghr:runner_labels:3', Value: 'c'.repeat(256) },
+        { Key: 'ghr:runner_labels:4', Value: 'd'.repeat(256) },
+        { Key: 'ghr:runner_labels:5', Value: 'e'.repeat(256) },
+      ]);
+    });
+
     it('uses a reserved separator when packing GitHub runner labels into EC2 tags', async () => {
       process.env.RUNNER_LABELS = ['label:with/slash', 'label+with+plus'].join(',');
       const testDataWithSemicolonDynamicLabel = [

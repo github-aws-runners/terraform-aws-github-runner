@@ -568,7 +568,7 @@ jobs:
       - ghr-ec2-vcpu-count-min:2
       - ghr-ec2-vcpu-count-max:8
       - ghr-ec2-memory-mib-min:8192
-      - "ghr-ec2-cpu-manufacturers:intel;amd"
+      - ghr-ec2-cpu-manufacturers:intel;amd
       - ghr-ec2-burstable-performance:excluded
 ```
 
@@ -579,6 +579,7 @@ jobs:
 - Labels are parsed at the scale-up lambda level — they do not change after the instance is launched.
 - A deterministic hash of all `ghr-` prefixed labels (both custom identity and EC2 override) is used for runner matching. Different label combinations produce different hashes, ensuring each unique set of requirements gets its own runner.
 - Dynamic `ghr-` labels can contain letters, numbers, `.`, `_`, `/`, `-`, `:`, and `;`. Comma is not allowed because it is reserved as a runner label separator.
+- GitHub runner labels are copied to EC2 as comma-separated values in `ghr:runner_labels` tags, capped at five label tags (`ghr:runner_labels` through `ghr:runner_labels:5`) to avoid consuming too many of the EC2 50 tags per resource.
 - Multiple EBS labels apply to the same (first) block device mapping. If you need more complex block device configurations, use a custom AMI or launch template instead.
 - This feature is compatible with both org-level and repo-level runners, spot and on-demand instances, and ephemeral and non-ephemeral runners.
 - Be mindful of the security implications: enabling this feature allows workflow authors to influence EC2 instance configuration via `ghr-ec2-` labels. Ensure your IAM policies and subnet configurations provide appropriate guardrails.
