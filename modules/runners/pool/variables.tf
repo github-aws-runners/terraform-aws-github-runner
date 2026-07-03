@@ -48,6 +48,7 @@ variable "config" {
       })
       use_dedicated_host = bool
     })
+    runners_maximum_count         = number
     instance_types                = list(string)
     instance_target_capacity_type = string
     instance_allocation_strategy  = string

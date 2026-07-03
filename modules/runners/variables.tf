@@ -94,17 +94,18 @@ variable "s3_runner_binaries" {
 }
 
 variable "block_device_mappings" {
-  description = "The EC2 instance block device configuration. Takes the following keys: `device_name`, `delete_on_termination`, `volume_type`, `volume_size`, `encrypted`, `iops`, `throughput`, `kms_key_id`, `snapshot_id`."
+  description = "The EC2 instance block device configuration. Takes the following keys: `device_name`, `delete_on_termination`, `volume_type`, `volume_size`, `encrypted`, `iops`, `throughput`, `kms_key_id`, `snapshot_id`, `volume_initialization_rate`."
   type = list(object({
-    delete_on_termination = optional(bool, true)
-    device_name           = optional(string, "/dev/xvda")
-    encrypted             = optional(bool, true)
-    iops                  = optional(number)
-    kms_key_id            = optional(string)
-    snapshot_id           = optional(string)
-    throughput            = optional(number)
-    volume_size           = number
-    volume_type           = optional(string, "gp3")
+    delete_on_termination      = optional(bool, true)
+    device_name                = optional(string, "/dev/xvda")
+    encrypted                  = optional(bool, true)
+    iops                       = optional(number)
+    kms_key_id                 = optional(string)
+    snapshot_id                = optional(string)
+    throughput                 = optional(number)
+    volume_initialization_rate = optional(number)
+    volume_size                = number
+    volume_type                = optional(string, "gp3")
   }))
   default = [{
     volume_size = 30
@@ -555,12 +556,6 @@ variable "metadata_options" {
 
 variable "enable_ephemeral_runners" {
   description = "Enable ephemeral runners, runners will only be used once."
-  type        = bool
-  default     = false
-}
-
-variable "enable_dynamic_labels" {
-  description = "Experimental! Can be removed / changed without trigger a major release. Enable dynamic labels with 'ghr-' prefix. When enabled, jobs can use 'ghr-ec2-<config>:<value>' labels to dynamically configure EC2 instances (e.g., 'ghr-ec2-instance-type:t3.large') and 'ghr-run-<label>' to add unique labels dynamically to runners."
   type        = bool
   default     = false
 }

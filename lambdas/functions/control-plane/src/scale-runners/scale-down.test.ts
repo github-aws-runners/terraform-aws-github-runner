@@ -305,6 +305,30 @@ describe('Scale down runners', () => {
         checkNonTerminated(runners);
       });
 
+      it(`Should not terminate orphaned runner with bypass-removal tag set.`, async () => {
+        // setup - orphan runner with bypass-removal tag
+        const orphanRunner = createRunnerTestData('orphan-bypass', type, MINIMUM_BOOT_TIME + 1, false, false, false);
+        orphanRunner.bypassRemoval = true;
+
+        const idleRunner = createRunnerTestData('idle-1', type, MINIMUM_BOOT_TIME + 1, true, false, false);
+        const runners = [orphanRunner, idleRunner];
+
+        mockGitHubRunners([idleRunner]);
+        mockAwsRunners(runners);
+
+        // act - first cycle marks orphan
+        await scaleDown();
+
+        // mark as orphan for next cycle
+        orphanRunner.orphan = true;
+
+        // act - second cycle should skip termination due to bypass-removal
+        await scaleDown();
+
+        // assert - orphan runner should NOT be terminated
+        expect(terminateRunner).not.toHaveBeenCalledWith(orphanRunner.instanceId);
+      });
+
       it(`Should not terminate a runner that became busy just before deregister runner.`, async () => {
         // setup
         const runners = [
@@ -629,6 +653,35 @@ describe('Scale down runners', () => {
 
         // act
         await expect(scaleDown()).resolves.not.toThrow();
+      });
+
+      it(`Should not terminate instance when de-registration throws an error.`, async () => {
+        // setup - runner should NOT be terminated because de-registration fails
+        const runners = [createRunnerTestData('idle-1', type, MINIMUM_TIME_RUNNING_IN_MINUTES + 1, true, false, false)];
+
+        const error502 = new RequestError('Server Error', 502, {
+          request: {
+            method: 'DELETE',
+            url: 'https://api.github.com/test',
+            headers: {},
+          },
+        });
+
+        mockOctokit.actions.deleteSelfHostedRunnerFromOrg.mockImplementation(() => {
+          throw error502;
+        });
+        mockOctokit.actions.deleteSelfHostedRunnerFromRepo.mockImplementation(() => {
+          throw error502;
+        });
+
+        mockGitHubRunners(runners);
+        mockAwsRunners(runners);
+
+        // act
+        await expect(scaleDown()).resolves.not.toThrow();
+
+        // assert - should NOT terminate since de-registration failed
+        expect(terminateRunner).not.toHaveBeenCalled();
       });
 
       const evictionStrategies = ['oldest_first', 'newest_first'];

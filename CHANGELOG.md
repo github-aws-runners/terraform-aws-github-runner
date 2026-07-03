@@ -1,5 +1,22 @@
 # Changelog
 
+## [7.8.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v7.7.1...v7.8.0) (2026-06-24)
+
+
+### Features
+
+* **runners:** add volume_initialization_rate to block_device_mappings ([#5165](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5165)) ([449df46](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/449df465b17d3ae514c0e7945e9eff3fb17b25db)), closes [#5163](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5163)
+* support dynamic EC2 placement and block device overrides ([#5178](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5178)) ([58fd1c2](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/58fd1c215c45aec1438ddae717a8f0b84792c68f))
+* **webhook:** enforce per-runner dynamic labels policy in dispatcher ([#5172](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5172)) ([d624d96](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/d624d96ee49d4713e0fbc181ba42265247102e76))
+
+
+### Bug Fixes
+
+* **ci:** restore persist-credentials for gh-pages deploy ([#5162](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5162)) ([9955d73](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/9955d73d1ed2a8e5eb9811f30a2d9eab8cd46edf))
+* **codeowners:** require admin review for nested .github paths ([#5164](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5164)) ([83ea30c](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/83ea30c4bb4fa0925d55d149eed651b526d9c71c))
+* **mac:** handle RunInstances scale errors ([#5183](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5183)) ([7d8c576](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/7d8c57649caeb7e49ad6d83516d902cb0983ba9d))
+* **scale-up:** prevent runnerLabels accumulation across dynamic label groups ([#5176](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5176)) ([246949e](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/246949e8fc186d3a83e4423aa7f743803b90291b)), closes [#5175](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5175)
+
 ## [7.7.1](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v7.7.0...v7.7.1) (2026-06-11)
 
 

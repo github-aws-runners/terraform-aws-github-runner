@@ -1,4 +1,5 @@
 import {
+  type BlockDeviceMapping,
   CreateFleetCommand,
   CreateFleetResult,
   CreateTagsCommand,
@@ -6,6 +7,8 @@ import {
   DescribeInstancesCommand,
   DescribeInstancesResult,
   RunInstancesCommand,
+  type RunInstancesCommandInput,
+  RunInstancesCommandOutput,
   EC2Client,
   FleetLaunchTemplateOverridesRequest,
   Tag,
@@ -149,6 +152,60 @@ function generateFleetOverrides(
   return result;
 }
 
+// Keep this allow-list explicit so Fleet-only override fields are not sent to RunInstances.
+type RunInstancesLaunchOverrides = Pick<
+  RunInstancesCommandInput,
+  'BlockDeviceMappings' | 'ImageId' | 'InstanceType' | 'Placement' | 'SubnetId'
+>;
+
+interface RunInstancesLaunchDefaults {
+  imageId?: string;
+  instanceType: _InstanceType;
+  subnetId: string;
+}
+
+function buildRunInstancesOverrides(
+  ec2OverrideConfig: Runners.Ec2OverrideConfig | undefined,
+  defaults: RunInstancesLaunchDefaults,
+): RunInstancesLaunchOverrides {
+  const imageIdToUse = ec2OverrideConfig?.ImageId ?? defaults.imageId;
+  const placement = {
+    ...ec2OverrideConfig?.Placement,
+  };
+
+  if (!placement.AvailabilityZone && !placement.AvailabilityZoneId) {
+    if (ec2OverrideConfig?.AvailabilityZone) {
+      placement.AvailabilityZone = ec2OverrideConfig.AvailabilityZone;
+    } else if (ec2OverrideConfig?.AvailabilityZoneId) {
+      placement.AvailabilityZoneId = ec2OverrideConfig.AvailabilityZoneId;
+    }
+  }
+
+  const overrides: RunInstancesLaunchOverrides = {
+    InstanceType: ec2OverrideConfig?.InstanceType ?? defaults.instanceType,
+    SubnetId: ec2OverrideConfig?.SubnetId ?? defaults.subnetId,
+  };
+
+  if (imageIdToUse) {
+    overrides.ImageId = imageIdToUse;
+  }
+
+  if (Object.keys(placement).length > 0) {
+    overrides.Placement = placement;
+  }
+
+  if (ec2OverrideConfig?.BlockDeviceMappings) {
+    overrides.BlockDeviceMappings = ec2OverrideConfig.BlockDeviceMappings.map(
+      (blockDeviceMapping): BlockDeviceMapping => ({
+        ...blockDeviceMapping,
+        ...(blockDeviceMapping.Ebs ? { Ebs: { ...blockDeviceMapping.Ebs } } : {}),
+      }),
+    );
+  }
+
+  return overrides;
+}
+
 export async function createRunner(runnerParameters: Runners.RunnerInputParameters): Promise<string[]> {
   logger.debug('Runner configuration.', {
     runner: {
@@ -230,6 +287,27 @@ async function processFleetResult(
 
 function countScaleErrors(errors: string[], scaleErrors: string[]): number {
   return errors.reduce((acc, e) => (scaleErrors.includes(e) ? acc + 1 : acc), 0);
+}
+
+function processRunInstanceResult(
+  result: RunInstancesCommandOutput,
+  runnerParameters: Runners.RunnerInputParameters,
+): string[] {
+  const instances = result.Instances?.map((i) => i.InstanceId!).filter(Boolean) || [];
+
+  if (instances.length === runnerParameters.numberOfRunners) {
+    return instances;
+  }
+
+  logger.warn(
+    `${
+      instances.length === 0 ? 'No' : instances.length + ' off ' + runnerParameters.numberOfRunners
+    } instances created.`,
+    { data: result },
+  );
+
+  logger.warn('RunInstances failed, error not recognized as scaling error.', { data: result });
+  throw Error('RunInstances failed, no instance created.');
 }
 
 async function getAmiIdOverride(runnerParameters: Runners.RunnerInputParameters): Promise<string | undefined> {
@@ -333,6 +411,7 @@ async function createInstancesWithRunInstances(
     tags.push({ Key: 'ghr:trace_id', Value: traceId! });
   }
 
+  let result: RunInstancesCommandOutput;
   try {
     if (runnerParameters.ec2instanceCriteria.targetCapacityType === 'spot') {
       throw new Error(
@@ -340,17 +419,18 @@ async function createInstancesWithRunInstances(
       );
     }
 
-    const instanceType = runnerParameters.ec2instanceCriteria.instanceTypes[0] as _InstanceType;
     const runInstancesCommand = new RunInstancesCommand({
       LaunchTemplate: {
         LaunchTemplateName: runnerParameters.launchTemplateName,
         Version: '$Default',
       },
-      InstanceType: instanceType,
+      ...buildRunInstancesOverrides(runnerParameters.ec2OverrideConfig, {
+        imageId: amiIdOverride,
+        instanceType: runnerParameters.ec2instanceCriteria.instanceTypes[0] as _InstanceType,
+        subnetId: runnerParameters.subnets[0],
+      }),
       MinCount: runnerParameters.numberOfRunners,
       MaxCount: runnerParameters.numberOfRunners,
-      SubnetId: runnerParameters.subnets[0],
-      ...(amiIdOverride ? { ImageId: amiIdOverride } : {}),
       TagSpecifications: [
         {
           ResourceType: 'instance',
@@ -364,18 +444,22 @@ async function createInstancesWithRunInstances(
     });
 
     logger.debug('RunInstances request payload.', { payload: runInstancesCommand.input });
-    const result = await ec2Client.send(runInstancesCommand);
-    const instanceIds = result.Instances?.map((i) => i.InstanceId!).filter(Boolean) || [];
-
-    if (instanceIds.length === 0) {
-      throw new Error('RunInstances returned no instances for dedicated host.');
+    result = await ec2Client.send(runInstancesCommand);
+  } catch (e) {
+    const errorName = (e as Error).name;
+    if (errorName && runnerParameters.scaleErrors.includes(errorName)) {
+      logger.warn('RunInstances failed with a scale error, ScaleError will be thrown to trigger retry.', {
+        error: e as Error,
+        errorName,
+      });
+      throw new ScaleError(runnerParameters.numberOfRunners);
     }
 
-    return instanceIds;
-  } catch (e) {
     logger.warn('RunInstances request failed for dedicated host.', { error: e as Error });
     throw e;
   }
+
+  return processRunInstanceResult(result, runnerParameters);
 }
 
 // If launchTime is undefined, this will return false

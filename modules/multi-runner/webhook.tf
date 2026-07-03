@@ -34,12 +34,11 @@ module "webhook" {
   role_path                 = var.role_path
   role_permissions_boundary = var.role_permissions_boundary
   repository_white_list     = var.repository_white_list
+  queue_selection_strategy  = var.queue_selection_strategy
 
   lambda_subnet_ids         = var.lambda_subnet_ids
   lambda_security_group_ids = var.lambda_security_group_ids
   aws_partition             = var.aws_partition
-
-  enable_dynamic_labels = var.enable_dynamic_labels
 
   log_level = var.log_level
 }

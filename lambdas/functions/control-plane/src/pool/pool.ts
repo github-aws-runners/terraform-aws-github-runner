@@ -47,6 +47,9 @@ export async function adjust(event: PoolEvent): Promise<void> {
       ? validateSsmParameterStoreTags(process.env.SSM_PARAMETER_STORE_TAGS)
       : [];
   const scaleErrors = JSON.parse(process.env.SCALE_ERRORS) as [string];
+  // -1 disables the maximum check, matching the scale-up lambda's semantics. Defaults to unlimited
+  // when unset so the pool keeps its previous behavior on stacks that do not provide the variable.
+  const maximumRunners = parseInt(process.env.RUNNERS_MAXIMUM_COUNT || '-1');
 
   const { ghesApiUrl, ghesBaseUrl } = getGitHubEnterpriseApiUrl();
 
@@ -70,7 +73,22 @@ export async function adjust(event: PoolEvent): Promise<void> {
   });
 
   const numberOfRunnersInPool = calculatePooSize(ec2runners, runnerStatusses);
-  const topUp = event.poolSize - numberOfRunnersInPool;
+  let topUp = event.poolSize - numberOfRunnersInPool;
+
+  // The pool must never push the total number of runners (busy + idle) past the configured maximum.
+  // ec2runners contains every running runner for this type, so its length is the current total and no
+  // extra API call is needed. Without this clamp the pool keeps topping up against idle-only counts and
+  // can overshoot runners_maximum_count, while the scale-up lambda correctly refuses to launch.
+  if (maximumRunners !== -1 && topUp > 0) {
+    const headroom = maximumRunners - ec2runners.length;
+    if (topUp > headroom) {
+      logger.info(
+        `Capping pool top-up from ${topUp} to ${Math.max(headroom, 0)} to respect the maximum of ` +
+          `${maximumRunners} runners (currently ${ec2runners.length} running).`,
+      );
+      topUp = headroom;
+    }
+  }
 
   if (topUp > 0) {
     logger.info(`The pool will be topped up with ${topUp} runners.`);
