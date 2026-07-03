@@ -48,7 +48,14 @@ import {
 
 const logger = createChildLogger('scale-up');
 const RUNNER_LABELS_TAG_KEY = 'ghr:runner_labels';
+const RUNNER_LABELS_TAG_VALUE_SEPARATOR = ',';
+const EC2_OVERRIDE_LIST_VALUE_SEPARATOR = ';';
+const RUNNER_INSTANCE_BASE_TAG_MAX_COUNT = 5;
+const RUNNER_METADATA_RESERVED_TAG_COUNT = 1;
+const EC2_RESOURCE_MAX_TAGS = 50;
 const EC2_TAG_VALUE_MAX_LENGTH = 256;
+const RUNNER_LABELS_TAG_MAX_COUNT =
+  EC2_RESOURCE_MAX_TAGS - RUNNER_INSTANCE_BASE_TAG_MAX_COUNT - RUNNER_METADATA_RESERVED_TAG_COUNT;
 
 export type LambdaRunnerSource = 'scale-up-lambda' | 'pool-lambda';
 
@@ -118,7 +125,7 @@ function generateRunnerServiceConfig(githubRunnerConfig: CreateGitHubRunnerConfi
   ];
 
   if (githubRunnerConfig.runnerLabels) {
-    config.push(`--labels ${githubRunnerConfig.runnerLabels}`.trim());
+    config.push(`--labels ${quoteRunnerLabelsForShell(githubRunnerConfig.runnerLabels)}`.trim());
   }
 
   if (githubRunnerConfig.disableAutoUpdate) {
@@ -134,6 +141,14 @@ function generateRunnerServiceConfig(githubRunnerConfig: CreateGitHubRunnerConfi
   }
 
   return config;
+}
+
+function quoteRunnerLabelsForShell(labels: string): string {
+  return /[\s;&|<>()$`"'*?[\\\]{}!]/.test(labels) ? quoteShellArg(labels) : labels;
+}
+
+function quoteShellArg(value: string): string {
+  return `'${value.replace(/'/g, `'\\''`)}'`;
 }
 
 export function validateSsmParameterStoreTags(tagsJson: string): { Key: string; Value: string }[] {
@@ -330,46 +345,73 @@ export async function createRunners(
   return instances;
 }
 
+export function parseRunnerLabels(runnerLabels: string): string[] {
+  return runnerLabels
+    .split(',')
+    .map((label) => label.trim())
+    .filter(Boolean);
+}
+
 function generateRunnerLabelsTags(labels: string[]): Tag[] {
   if (labels.length === 0) {
     return [];
   }
 
-  const tagValues: string[] = [];
-  let currentValue = '';
+  const generatedTagValues = packRunnerLabelsTagValues(labels);
+  const tagValues = generatedTagValues.slice(0, RUNNER_LABELS_TAG_MAX_COUNT);
 
-  for (const label of labels) {
-    if (label.length > EC2_TAG_VALUE_MAX_LENGTH) {
-      if (currentValue) {
-        tagValues.push(currentValue);
-        currentValue = '';
-      }
-      for (let start = 0; start < label.length; start += EC2_TAG_VALUE_MAX_LENGTH) {
-        tagValues.push(label.slice(start, start + EC2_TAG_VALUE_MAX_LENGTH));
-      }
-      continue;
-    }
-
-    const nextValue = currentValue ? `${currentValue},${label}` : label;
-    if (nextValue.length <= EC2_TAG_VALUE_MAX_LENGTH) {
-      currentValue = nextValue;
-      continue;
-    }
-
-    if (currentValue) {
-      tagValues.push(currentValue);
-    }
-    currentValue = label;
-  }
-
-  if (currentValue) {
-    tagValues.push(currentValue);
+  if (generatedTagValues.length > RUNNER_LABELS_TAG_MAX_COUNT) {
+    logger.warn('GitHub runner label EC2 tags were truncated to avoid exceeding EC2 tag limits.', {
+      maxRunnerLabelsTagCount: RUNNER_LABELS_TAG_MAX_COUNT,
+    });
   }
 
   return tagValues.map((value, index) => ({
     Key: index === 0 ? RUNNER_LABELS_TAG_KEY : `${RUNNER_LABELS_TAG_KEY}:${index + 1}`,
     Value: value,
   }));
+}
+
+function packRunnerLabelsTagValues(labels: string[]): string[] {
+  const tagValues: string[] = [];
+  let currentValue = '';
+
+  for (const label of labels) {
+    for (const labelPart of splitEc2TagValue(label)) {
+      const nextValue = currentValue ? `${currentValue}${RUNNER_LABELS_TAG_VALUE_SEPARATOR}${labelPart}` : labelPart;
+
+      if (Array.from(nextValue).length <= EC2_TAG_VALUE_MAX_LENGTH) {
+        currentValue = nextValue;
+        continue;
+      }
+
+      if (currentValue) {
+        tagValues.push(currentValue);
+      }
+      currentValue = labelPart;
+    }
+  }
+
+  if (currentValue) {
+    tagValues.push(currentValue);
+  }
+
+  return tagValues;
+}
+
+function splitEc2TagValue(value: string): string[] {
+  const characters = Array.from(value);
+  const values: string[] = [];
+
+  for (let start = 0; start < characters.length; start += EC2_TAG_VALUE_MAX_LENGTH) {
+    values.push(characters.slice(start, start + EC2_TAG_VALUE_MAX_LENGTH).join(''));
+  }
+
+  return values;
+}
+
+function truncateEc2TagValue(value: string): string {
+  return Array.from(value).slice(0, EC2_TAG_VALUE_MAX_LENGTH).join('');
 }
 
 function getRunnerLabelNames(labels: unknown): string[] {
@@ -534,9 +576,8 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
 
     if (allDynamicLabels.length > 0) {
       logger.debug('Dynamic labels present on message', { labels: allDynamicLabels });
-      groupRunnerLabels = groupRunnerLabels
-        ? `${groupRunnerLabels},${allDynamicLabels.join(',')}`
-        : allDynamicLabels.join(',');
+      const dynamicRunnerLabels = allDynamicLabels.join(',');
+      groupRunnerLabels = groupRunnerLabels ? `${groupRunnerLabels},${dynamicRunnerLabels}` : dynamicRunnerLabels;
       logger.debug('Updated runner labels', { runnerLabels: groupRunnerLabels });
 
       if (dynamicEC2Labels.length > 0) {
@@ -770,7 +811,7 @@ async function createRegistrationTokenConfig(
 
 async function tagRunnerMetadata(instanceId: string, runnerId: string, runnerLabels: unknown): Promise<void> {
   const tags = [
-    { Key: 'ghr:github_runner_id', Value: runnerId },
+    { Key: 'ghr:github_runner_id', Value: truncateEc2TagValue(runnerId) },
     ...generateRunnerLabelsTags(getRunnerLabelNames(runnerLabels)),
   ];
 
@@ -794,7 +835,7 @@ async function createJitConfig(
 ): Promise<string[]> {
   const runnerGroupId = await getRunnerGroupId(githubRunnerConfig, ghClient);
   const { isDelay, delay } = addDelay(instances);
-  const runnerLabels = githubRunnerConfig.runnerLabels.split(',');
+  const runnerLabels = parseRunnerLabels(githubRunnerConfig.runnerLabels);
   const failedInstances: string[] = [];
 
   logger.debug(`Runner group id: ${runnerGroupId}`);
@@ -884,19 +925,19 @@ async function createJitConfig(
  * - ghr-ec2-memory-gib-per-vcpu-max:<number>  - Set max memory per vCPU ratio
  *
  * Instance Requirements (CPU & Performance):
- * - ghr-ec2-cpu-manufacturers:<list>          - CPU manufacturers (comma-separated: intel,amd,amazon-web-services)
- * - ghr-ec2-instance-generations:<list>       - Instance generations (comma-separated: current,previous)
- * - ghr-ec2-excluded-instance-types:<list>    - Exclude instance types (comma-separated)
- * - ghr-ec2-allowed-instance-types:<list>     - Allow only specific instance types (comma-separated)
+ * - ghr-ec2-cpu-manufacturers:<list>          - CPU manufacturers (semicolon-separated: intel;amd;amazon-web-services)
+ * - ghr-ec2-instance-generations:<list>       - Instance generations (semicolon-separated: current;previous)
+ * - ghr-ec2-excluded-instance-types:<list>    - Exclude instance types (semicolon-separated)
+ * - ghr-ec2-allowed-instance-types:<list>     - Allow only specific instance types (semicolon-separated)
  * - ghr-ec2-burstable-performance:<value>     - Burstable performance (included,excluded,required)
  * - ghr-ec2-bare-metal:<value>                - Bare metal (included,excluded,required)
  *
  * Instance Requirements (Accelerators/GPU):
- * - ghr-ec2-accelerator-types:<list>          - Accelerator types (comma-separated: gpu,fpga,inference)
+ * - ghr-ec2-accelerator-types:<list>          - Accelerator types (semicolon-separated: gpu;fpga;inference)
  * - ghr-ec2-accelerator-count-min:<num>       - Set minimum accelerator count
  * - ghr-ec2-accelerator-count-max:<num>       - Set maximum accelerator count
- * - ghr-ec2-accelerator-manufacturers:<list>  - Accelerator manufacturers (comma-separated: nvidia,amd,amazon-web-services,xilinx)
- * - ghr-ec2-accelerator-names:<list>          - Specific accelerator names (comma-separated)
+ * - ghr-ec2-accelerator-manufacturers:<list>  - Accelerator manufacturers (semicolon-separated: nvidia;amd;amazon-web-services;xilinx)
+ * - ghr-ec2-accelerator-names:<list>          - Specific accelerator names (semicolon-separated)
  * - ghr-ec2-accelerator-total-memory-mib-min:<num> - Min accelerator total memory in MiB
  * - ghr-ec2-accelerator-total-memory-mib-max:<num> - Max accelerator total memory in MiB
  *
@@ -906,7 +947,7 @@ async function createJitConfig(
  * - ghr-ec2-network-bandwidth-gbps-min:<num>  - Min network bandwidth in Gbps
  * - ghr-ec2-network-bandwidth-gbps-max:<num>  - Max network bandwidth in Gbps
  * - ghr-ec2-local-storage:<value>             - Local storage (included,excluded,required)
- * - ghr-ec2-local-storage-types:<list>        - Local storage types (comma-separated: hdd,ssd)
+ * - ghr-ec2-local-storage-types:<list>        - Local storage types (semicolon-separated: hdd;ssd)
  * - ghr-ec2-total-local-storage-gb-min:<num>  - Min total local storage in GB
  * - ghr-ec2-total-local-storage-gb-max:<num>  - Max total local storage in GB
  * - ghr-ec2-baseline-ebs-bandwidth-mbps-min:<num> - Min baseline EBS bandwidth in Mbps
@@ -943,7 +984,7 @@ async function createJitConfig(
  * - ghr-ec2-max-spot-price-as-percentage-of-optimal-on-demand-price:<num> - Max spot price as % of optimal on-demand
  * - ghr-ec2-require-hibernate-support:<bool>  - Require hibernate support (true,false)
  * - ghr-ec2-require-encryption-in-transit:<bool> - Require encryption in-transit (true,false)
- * - ghr-ec2-baseline-performance-factors-cpu-reference-families:<families> - CPU baseline performance reference families (comma-separated)
+ * - ghr-ec2-baseline-performance-factors-cpu-reference-families:<families> - CPU baseline performance reference families (semicolon-separated)
  *
  * Example:
  *   runs-on: [self-hosted, linux, ghr-ec2-vcpu-count-min:4, ghr-ec2-memory-mib-min:16384, ghr-ec2-accelerator-types:gpu]
@@ -1055,7 +1096,7 @@ export function parseEc2OverrideConfig(
       config.InstanceRequirements.MemoryMiB![subKey === 'min' ? 'Min' : 'Max'] = parseInt(value, 10);
     } else if (key === 'cpu-manufacturers') {
       config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
-      config.InstanceRequirements.CpuManufacturers = value.split(',') as CpuManufacturer[];
+      config.InstanceRequirements.CpuManufacturers = splitEc2OverrideListValue(value) as CpuManufacturer[];
     } else if (key.startsWith('memory-gib-per-vcpu-')) {
       config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
       config.InstanceRequirements.MemoryGiBPerVCpu =
@@ -1064,10 +1105,10 @@ export function parseEc2OverrideConfig(
       config.InstanceRequirements.MemoryGiBPerVCpu![subKey === 'min' ? 'Min' : 'Max'] = parseFloat(value);
     } else if (key === 'excluded-instance-types') {
       config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
-      config.InstanceRequirements.ExcludedInstanceTypes = value.split(',');
+      config.InstanceRequirements.ExcludedInstanceTypes = splitEc2OverrideListValue(value);
     } else if (key === 'instance-generations') {
       config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
-      config.InstanceRequirements.InstanceGenerations = value.split(',') as InstanceGeneration[];
+      config.InstanceRequirements.InstanceGenerations = splitEc2OverrideListValue(value) as InstanceGeneration[];
     } else if (key === 'spot-max-price-percentage-over-lowest-price') {
       config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
       config.InstanceRequirements.SpotMaxPricePercentageOverLowestPrice = parseInt(value, 10);
@@ -1094,7 +1135,7 @@ export function parseEc2OverrideConfig(
       config.InstanceRequirements.LocalStorage = value as LocalStorage;
     } else if (key === 'local-storage-types') {
       config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
-      config.InstanceRequirements.LocalStorageTypes = value.split(',') as LocalStorageType[];
+      config.InstanceRequirements.LocalStorageTypes = splitEc2OverrideListValue(value) as LocalStorageType[];
     } else if (key.startsWith('total-local-storage-gb-')) {
       config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
       config.InstanceRequirements.TotalLocalStorageGB =
@@ -1109,7 +1150,7 @@ export function parseEc2OverrideConfig(
       config.InstanceRequirements.BaselineEbsBandwidthMbps![subKey === 'min' ? 'Min' : 'Max'] = parseInt(value, 10);
     } else if (key === 'accelerator-types') {
       config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
-      config.InstanceRequirements.AcceleratorTypes = value.split(',') as AcceleratorType[];
+      config.InstanceRequirements.AcceleratorTypes = splitEc2OverrideListValue(value) as AcceleratorType[];
     } else if (key.startsWith('accelerator-count-')) {
       config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
       config.InstanceRequirements.AcceleratorCount =
@@ -1118,10 +1159,12 @@ export function parseEc2OverrideConfig(
       config.InstanceRequirements.AcceleratorCount![subKey === 'min' ? 'Min' : 'Max'] = parseInt(value, 10);
     } else if (key === 'accelerator-manufacturers') {
       config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
-      config.InstanceRequirements.AcceleratorManufacturers = value.split(',') as AcceleratorManufacturer[];
+      config.InstanceRequirements.AcceleratorManufacturers = splitEc2OverrideListValue(
+        value,
+      ) as AcceleratorManufacturer[];
     } else if (key === 'accelerator-names') {
       config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
-      config.InstanceRequirements.AcceleratorNames = value.split(',') as AcceleratorName[];
+      config.InstanceRequirements.AcceleratorNames = splitEc2OverrideListValue(value) as AcceleratorName[];
     } else if (key.startsWith('accelerator-total-memory-mib-')) {
       config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
       config.InstanceRequirements.AcceleratorTotalMemoryMiB =
@@ -1136,7 +1179,7 @@ export function parseEc2OverrideConfig(
       config.InstanceRequirements.NetworkBandwidthGbps![subKey === 'min' ? 'Min' : 'Max'] = parseFloat(value);
     } else if (key === 'allowed-instance-types') {
       config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
-      config.InstanceRequirements.AllowedInstanceTypes = value.split(',');
+      config.InstanceRequirements.AllowedInstanceTypes = splitEc2OverrideListValue(value);
     } else if (key === 'max-spot-price-as-percentage-of-optimal-on-demand-price') {
       config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
       config.InstanceRequirements.MaxSpotPriceAsPercentageOfOptimalOnDemandPrice = parseInt(value, 10);
@@ -1146,9 +1189,9 @@ export function parseEc2OverrideConfig(
         config.InstanceRequirements.BaselinePerformanceFactors || ({} as BaselinePerformanceFactorsRequest);
       config.InstanceRequirements.BaselinePerformanceFactors.Cpu =
         config.InstanceRequirements.BaselinePerformanceFactors.Cpu || ({} as CpuPerformanceFactorRequest);
-      config.InstanceRequirements.BaselinePerformanceFactors.Cpu.References = value
-        .split(',')
-        .map((family) => ({ InstanceFamily: family })) as PerformanceFactorReferenceRequest[];
+      config.InstanceRequirements.BaselinePerformanceFactors.Cpu.References = splitEc2OverrideListValue(value).map(
+        (family) => ({ InstanceFamily: family }),
+      ) as PerformanceFactorReferenceRequest[];
     } else if (key === 'require-encryption-in-transit') {
       config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
       config.InstanceRequirements.RequireEncryptionInTransit = value.toLowerCase() === 'true';
@@ -1156,6 +1199,10 @@ export function parseEc2OverrideConfig(
   }
 
   return Object.keys(config).length > 0 ? config : undefined;
+}
+
+function splitEc2OverrideListValue(value: string): string[] {
+  return value.split(EC2_OVERRIDE_LIST_VALUE_SEPARATOR);
 }
 
 function getOrCreateBlockDeviceMapping(

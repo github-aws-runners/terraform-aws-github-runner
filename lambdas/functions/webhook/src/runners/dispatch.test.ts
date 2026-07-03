@@ -380,13 +380,22 @@ describe('Dispatcher', () => {
         ...workFlowJobEvent,
         workflow_job: {
           ...workFlowJobEvent.workflow_job,
-          labels: ['self-hosted', 'linux', 'ghr-valid:value', 'ghr-bad label', longLabel],
+          labels: [
+            'self-hosted',
+            'linux',
+            'ghr-valid:value',
+            'ghr-list:value;another',
+            'ghr-bad,separator',
+            'ghr-bad|separator',
+            'ghr-bad label',
+            longLabel,
+          ],
         },
       } as unknown as WorkflowJobEvent;
       const resp = await dispatch(event, 'workflow_job', config);
       expect(resp.statusCode).toBe(201);
       expect(sendActionRequest).toHaveBeenCalledWith(
-        expect.objectContaining({ labels: ['self-hosted', 'linux', 'ghr-valid:value'] }),
+        expect.objectContaining({ labels: ['self-hosted', 'linux', 'ghr-valid:value', 'ghr-list:value;another'] }),
       );
     });
 

@@ -10,7 +10,7 @@ import { violationsAgainstPolicy } from './dynamic-labels-policy';
 const logger = createChildLogger('handler');
 
 const GHR_LABEL_MAX_LENGTH = 128;
-const GHR_LABEL_VALUE_PATTERN = /^[a-zA-Z0-9._/\-:]+$/;
+const GHR_LABEL_VALUE_PATTERN = /^[a-zA-Z0-9._/;\-:]+$/;
 
 export async function dispatch(
   event: WorkflowJobEvent,
