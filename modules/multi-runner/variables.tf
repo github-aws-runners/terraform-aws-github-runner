@@ -200,11 +200,12 @@ variable "multi_runner_config" {
       })
     })
     matcherConfig = object({
-      labelMatchers          = list(list(string))
-      exactMatch             = optional(bool, false)
-      priority               = optional(number, 999)
-      enableDynamicLabels    = optional(bool, false)
-      ec2DynamicLabelsPolicy = optional(any, null)
+      labelMatchers           = list(list(string))
+      exactMatch              = optional(bool, false)
+      bidirectionalLabelMatch = optional(bool, false)
+      priority                = optional(number, 999)
+      enableDynamicLabels     = optional(bool, false)
+      ec2DynamicLabelsPolicy  = optional(any, null)
     })
     redrive_build_queue = optional(object({
       enabled         = bool
@@ -276,7 +277,8 @@ variable "multi_runner_config" {
       }
       matcherConfig: {
         labelMatchers: "The list of list of labels supported by the runner configuration. `[[self-hosted, linux, x64, example]]`"
-        exactMatch: "If set to true all labels in the workflow job must match the GitHub labels (os, architecture and `self-hosted`). When false if __any__ workflow label matches it will trigger the webhook."
+        exactMatch: "DEPRECATED: Use `bidirectionalLabelMatch` instead. If set to true all labels in the workflow job must match the GitHub labels (os, architecture and `self-hosted`). When false if __any__ workflow label matches it will trigger the webhook. Note: this only checks that workflow labels are a subset of runner labels, not the reverse."
+        bidirectionalLabelMatch: "If set to true, the runner labels and workflow job labels must be an exact two-way match (same set, any order, no extras or missing labels). This is stricter than `exactMatch` which only checks that workflow labels are a subset of runner labels. When false, if __any__ workflow label matches it will trigger the webhook."
         priority: "If set it defines the priority of the matcher, the matcher with the lowest priority will be evaluated first. Default is 999, allowed values 0-999."
         enableDynamicLabels: "Experimental! When true the dispatcher allows `ghr-*` dynamic labels for jobs routed to this runner. Default false."
         ec2DynamicLabelsPolicy: "Optional policy for `ghr-ec2-*` labels evaluated by the dispatcher. Only effective when `enableDynamicLabels = true`. Jobs whose EC2 dynamic labels violate every matching runner's policy are rejected with a 202 (a warning is logged). Evaluation: keys in `blocked_keys` are always rejected; keys in `restricted_keys` are allowed only when their value passes the rule; unlisted keys are allowed. Schema: `{ blocked_keys = [<key>], restricted_keys = { <key> = { allowed = [globs], denied = [globs], max = number|string } } }`. Keys use the dynamic label suffix, e.g. `instance-type` for `ghr-ec2-instance-type`."

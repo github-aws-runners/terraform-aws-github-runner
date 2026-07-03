@@ -48,9 +48,11 @@ async function handleWorkflowJob(
       `Run ID: ${body.workflow_job.run_id}, Labels: ${JSON.stringify(body.workflow_job.labels)}`,
   );
 
-  // Sort queues by priority (exactMatch first), as before.
+  // Sort queues by priority (exact/bidirectional match first), as before.
   matcherConfig.sort((a, b) => {
-    return a.matcherConfig.exactMatch === b.matcherConfig.exactMatch ? 0 : a.matcherConfig.exactMatch ? -1 : 1;
+    const aStrict = a.matcherConfig.bidirectionalLabelMatch || a.matcherConfig.exactMatch;
+    const bStrict = b.matcherConfig.bidirectionalLabelMatch || b.matcherConfig.exactMatch;
+    return aStrict === bStrict ? 0 : aStrict ? -1 : 1;
   });
 
   const allLabels = body.workflow_job.labels;
@@ -61,7 +63,12 @@ async function handleWorkflowJob(
 
   // 1. Collect all queues whose non-dynamic labels match the job.
   const matches: RunnerMatcherConfig[] = matcherConfig.filter((q) =>
-    canRunJob(nonGhrLabels, q.matcherConfig.labelMatchers, q.matcherConfig.exactMatch),
+    canRunJob(
+      nonGhrLabels,
+      q.matcherConfig.labelMatchers,
+      q.matcherConfig.exactMatch,
+      q.matcherConfig.bidirectionalLabelMatch,
+    ),
   );
 
   if (matches.length === 0) {
@@ -190,12 +197,22 @@ export function canRunJob(
   workflowJobLabels: string[],
   runnerLabelsMatchers: string[][],
   workflowLabelCheckAll: boolean,
+  bidirectionalLabelMatch = false,
 ): boolean {
   const lowered = runnerLabelsMatchers.map((rl) => rl.map((l) => l.toLowerCase()));
-  const matchLabels = workflowLabelCheckAll
-    ? lowered.some((rl) => workflowJobLabels.every((wl) => rl.includes(wl.toLowerCase())))
-    : lowered.some((rl) => workflowJobLabels.some((wl) => rl.includes(wl.toLowerCase())));
-  const match = workflowJobLabels.length === 0 ? !matchLabels : matchLabels;
+
+  let match: boolean;
+  if (bidirectionalLabelMatch) {
+    const workflowLabelsLower = workflowJobLabels.map((wl) => wl.toLowerCase());
+    match = lowered.some(
+      (rl) => workflowLabelsLower.every((wl) => rl.includes(wl)) && rl.every((r) => workflowLabelsLower.includes(r)),
+    );
+  } else {
+    const matchLabels = workflowLabelCheckAll
+      ? lowered.some((rl) => workflowJobLabels.every((wl) => rl.includes(wl.toLowerCase())))
+      : lowered.some((rl) => workflowJobLabels.some((wl) => rl.includes(wl.toLowerCase())));
+    match = workflowJobLabels.length === 0 ? !matchLabels : matchLabels;
+  }
 
   logger.debug(
     `Received workflow job event with labels: '${JSON.stringify(workflowJobLabels)}'. The event does ${
