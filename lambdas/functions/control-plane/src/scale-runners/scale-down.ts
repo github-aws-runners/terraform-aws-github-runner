@@ -194,6 +194,10 @@ async function evaluateAndRemoveRunners(
     logger.debug(`Found: '${ec2RunnersFiltered.length}' active GitHub runners with owner tag: '${ownerTag}'`);
     logger.debug(`Active GitHub runners with owner tag: '${ownerTag}': ${JSON.stringify(ec2RunnersFiltered)}`);
     for (const ec2Runner of ec2RunnersFiltered) {
+      if ((ec2Runner as unknown as RunnerList).bypassRemoval) {
+        logger.debug(`Runner '${ec2Runner.instanceId}' has bypass-removal tag set, skipping evaluation.`);
+        continue;
+      }
       const ghRunners = await listGitHubRunners(ec2Runner);
       const ghRunnersFiltered = ghRunners.filter((runner: { name: string }) =>
         runner.name.endsWith(ec2Runner.instanceId),
@@ -272,6 +276,10 @@ async function terminateOrphan(environment: string): Promise<void> {
     const orphanRunners = await listEC2Runners({ environment, orphan: true });
 
     for (const runner of orphanRunners) {
+      if (runner.bypassRemoval) {
+        logger.info(`Orphan runner '${runner.instanceId}' has bypass-removal tag set, skipping termination.`);
+        continue;
+      }
       if (runner.runnerId) {
         const isOrphan = await lastChanceCheckOrphanRunner(runner);
         if (isOrphan) {
