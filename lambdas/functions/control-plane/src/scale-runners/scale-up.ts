@@ -773,10 +773,7 @@ async function createJitConfig(
 ): Promise<string[]> {
   const runnerGroupId = await getRunnerGroupId(githubRunnerConfig, ghClient);
   const { isDelay, delay } = addDelay(instances);
-  const runnerLabels = githubRunnerConfig.runnerLabels
-    .split(',')
-    .map((label) => label.trim())
-    .filter(Boolean);
+  const runnerLabels = githubRunnerConfig.runnerLabels.split(',');
   const failedInstances: string[] = [];
 
   logger.debug(`Runner group id: ${runnerGroupId}`);
