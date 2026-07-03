@@ -341,13 +341,6 @@ export async function createRunners(
   return instances;
 }
 
-export function parseRunnerLabels(runnerLabels: string): string[] {
-  return runnerLabels
-    .split(',')
-    .map((label) => label.trim())
-    .filter(Boolean);
-}
-
 function generateRunnerLabelsTags(labels: string[]): Tag[] {
   if (labels.length === 0) {
     return [];
@@ -523,8 +516,9 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
 
     if (allDynamicLabels.length > 0) {
       logger.debug('Dynamic labels present on message', { labels: allDynamicLabels });
-      const dynamicRunnerLabels = allDynamicLabels.join(',');
-      groupRunnerLabels = groupRunnerLabels ? `${groupRunnerLabels},${dynamicRunnerLabels}` : dynamicRunnerLabels;
+      groupRunnerLabels = groupRunnerLabels
+        ? `${groupRunnerLabels},${allDynamicLabels.join(',')}`
+        : allDynamicLabels.join(',');
       logger.debug('Updated runner labels', { runnerLabels: groupRunnerLabels });
 
       if (dynamicEC2Labels.length > 0) {
@@ -779,7 +773,10 @@ async function createJitConfig(
 ): Promise<string[]> {
   const runnerGroupId = await getRunnerGroupId(githubRunnerConfig, ghClient);
   const { isDelay, delay } = addDelay(instances);
-  const runnerLabels = parseRunnerLabels(githubRunnerConfig.runnerLabels);
+  const runnerLabels = githubRunnerConfig.runnerLabels
+    .split(',')
+    .map((label) => label.trim())
+    .filter(Boolean);
   const failedInstances: string[] = [];
 
   logger.debug(`Runner group id: ${runnerGroupId}`);
