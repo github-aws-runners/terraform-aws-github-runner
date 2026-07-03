@@ -130,7 +130,7 @@ beforeEach(() => {
   process.env.GITHUB_APP_ID = '1337';
   process.env.GITHUB_APP_CLIENT_ID = 'TEST_CLIENT_ID';
   process.env.GITHUB_APP_CLIENT_SECRET = 'TEST_CLIENT_SECRET';
-  process.env.RUNNERS_MAXIMUM_COUNT = '3';
+  process.env.RUNNERS_MAXIMUM_COUNT = '-1';
   process.env.ENVIRONMENT = 'unit-test-environment';
   process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
   process.env.LAUNCH_TEMPLATE_NAME = 'lt-1';
@@ -355,6 +355,70 @@ describe('Test simple pool.', () => {
         expect.anything(),
         expect.anything(),
         1,
+        expect.anything(),
+        'pool-lambda',
+      );
+    });
+  });
+
+  describe('Respecting runners_maximum_count', () => {
+    beforeEach(() => {
+      (getGitHubEnterpriseApiUrl as ReturnType<typeof vi.fn>).mockReturnValue({
+        ghesApiUrl: '',
+        ghesBaseUrl: '',
+      });
+    });
+
+    it('Should not top up when the total number of running runners is at the maximum.', async () => {
+      // 4 running runners (2 idle, 1 busy, 1 offline) already meet the maximum, so a large pool size
+      // must not create more. This is the over-provisioning case from issue #5186.
+      process.env.RUNNERS_MAXIMUM_COUNT = '4';
+      await adjust({ poolSize: 10 });
+      expect(createRunners).not.toHaveBeenCalled();
+    });
+
+    it('Should not top up when the total number of running runners exceeds the maximum.', async () => {
+      process.env.RUNNERS_MAXIMUM_COUNT = '3';
+      await adjust({ poolSize: 10 });
+      expect(createRunners).not.toHaveBeenCalled();
+    });
+
+    it('Should clamp the top-up to the remaining headroom under the maximum.', async () => {
+      // 4 running runners with a maximum of 6 leaves headroom for 2, even though the pool of 10 and the
+      // 2 idle runners would otherwise request a top-up of 8.
+      process.env.RUNNERS_MAXIMUM_COUNT = '6';
+      await adjust({ poolSize: 10 });
+      expect(createRunners).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        2,
+        expect.anything(),
+        'pool-lambda',
+      );
+    });
+
+    it('Should top up against the pool size when below the maximum headroom.', async () => {
+      // Headroom (6 - 4 = 2) is larger than the pool demand (5 - 2 idle = 3 would exceed it, so use a
+      // pool that stays within headroom): pool of 3 with 2 idle requests 1, which is under the cap.
+      process.env.RUNNERS_MAXIMUM_COUNT = '6';
+      await adjust({ poolSize: 3 });
+      expect(createRunners).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        1,
+        expect.anything(),
+        'pool-lambda',
+      );
+    });
+
+    it('Should ignore the maximum when set to -1 (unlimited).', async () => {
+      process.env.RUNNERS_MAXIMUM_COUNT = '-1';
+      // 2 idle of 4 running, pool of 10 tops up with 8 regardless of how many are already running.
+      await adjust({ poolSize: 10 });
+      expect(createRunners).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        8,
         expect.anything(),
         'pool-lambda',
       );

@@ -1229,7 +1229,7 @@ describe('create runner with useDedicatedHost', () => {
     mockEC2Client.on(RunInstancesCommand).resolves({ Instances: [] });
 
     await expect(createRunner(createRunnerConfig(dedicatedHostRunnerConfig))).rejects.toThrow(
-      'RunInstances returned no instances for dedicated host.',
+      'RunInstances failed, no instance created.',
     );
   });
 
@@ -1237,6 +1237,37 @@ describe('create runner with useDedicatedHost', () => {
     mockEC2Client.on(RunInstancesCommand).rejects(new Error('EC2 error'));
 
     await expect(createRunner(createRunnerConfig(dedicatedHostRunnerConfig))).rejects.toThrow('EC2 error');
+  });
+
+  it('throws ScaleError when RunInstances fails with configured scale error', async () => {
+    const error = Object.assign(new Error('Insufficient capacity'), { name: 'InsufficientInstanceCapacity' });
+    mockEC2Client.on(RunInstancesCommand).rejects(error);
+
+    await expect(
+      createRunner({
+        ...createRunnerConfig({
+          ...dedicatedHostRunnerConfig,
+          scaleErrors: ['InsufficientInstanceCapacity'],
+        }),
+        numberOfRunners: 2,
+      }),
+    ).rejects.toMatchObject({
+      name: 'ScaleError',
+      failedInstanceCount: 2,
+    });
+  });
+
+  it('throws error when RunInstances returns fewer instances', async () => {
+    mockEC2Client.on(RunInstancesCommand).resolves({
+      Instances: [{ InstanceId: 'i-dedicated-1' }],
+    });
+
+    await expect(
+      createRunner({
+        ...createRunnerConfig(dedicatedHostRunnerConfig),
+        numberOfRunners: 2,
+      }),
+    ).rejects.toThrow('RunInstances failed, no instance created.');
   });
 
   it('uses ami id override from ssm parameter', async () => {

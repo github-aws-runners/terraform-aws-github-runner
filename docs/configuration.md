@@ -336,8 +336,7 @@ Below is an example of the log messages created.
 
 [!WARNING]
 **Security implication:** Dynamic labels are extracted from the `runs-on` labels in incoming `workflow_job` webhook events. These labels originate from what 
-users define in their workflow files. Any user with permission to create or modify workflows can inject arbitrary EC2 configuration values — including instance types, AMI IDs, subnet IDs, EBS volumes, placement settings, and more. **These values are not sanitized or validated** against an allowlist before being passed to the EC2 CreateFleet API. This means a malicious or careless workflow author could, for example:
-- 
+users define in their workflow files. Any user with permission to create or modify workflows can inject arbitrary EC2 configuration values — including instance types, AMI IDs, subnet IDs, EBS volumes, placement settings, and more. Unless constrained with `ec2_dynamic_labels_policy`, these values are not validated against label-specific rules before being passed to the EC2 CreateFleet API. This means a malicious or careless workflow author could, for example:
 
 - Launch expensive instance types (e.g., `p5.48xlarge`) to inflate costs
 - Override the AMI (`ghr-ec2-image-id`) to boot a compromised image
@@ -368,9 +367,31 @@ module "runners" {
 
   ...
   enable_dynamic_labels = true
+  ec2_dynamic_labels_policy = {
+    blocked_keys = ["image-id", "subnet-id"]
+
+    restricted_keys = {
+      "instance-type" = {
+        allowed = ["m5.*", "c5.*"]
+        denied  = ["m5.metal"]
+      }
+
+      "ebs-volume-size" = {
+        max = 200
+      }
+    }
+  }
   ...
 }
 ```
+
+The policy is evaluated by dynamic label key:
+
+1. Keys in `blocked_keys` are always rejected.
+2. Keys in `restricted_keys` are allowed only when their value passes the rule.
+3. Keys not listed in `blocked_keys` or `restricted_keys` are allowed.
+
+Policy keys use the dynamic label suffix, not the full label. For example, use `instance-type` for `ghr-ec2-instance-type`.
 
 #### Custom identity labels
 

@@ -15,6 +15,7 @@ module "pool" {
     instance_max_spot_price       = var.instance_max_spot_price
     instance_target_capacity_type = var.instance_target_capacity_type
     instance_types                = var.instance_types
+    runners_maximum_count         = var.runners_maximum_count
     kms_key_arn                   = local.kms_key_arn
     ami_kms_key_arn               = local.ami_kms_key_arn
     ami_id_ssm_parameter_arn      = local.ami_id_ssm_module_managed ? aws_ssm_parameter.runner_ami_id[0].arn : var.ami.id_ssm_parameter_arn
