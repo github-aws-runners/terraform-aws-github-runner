@@ -1,5 +1,9 @@
 import { Octokit } from '@octokit/rest';
-import { addPersistentContextToChildLogger, createChildLogger } from '@aws-github-runner/aws-powertools-util';
+import {
+  addPersistentContextToChildLogger,
+  createChildLogger,
+  getTracedAWSV3Client,
+} from '@aws-github-runner/aws-powertools-util';
 import { getParameter, putParameter } from '@aws-github-runner/aws-ssm-util';
 import yn from 'yn';
 
@@ -37,6 +41,8 @@ import {
   NetworkBandwidthGbpsRequest,
   TotalLocalStorageGBRequest,
   BaselineEbsBandwidthMbpsRequest,
+  DescribeLaunchTemplateVersionsCommand,
+  EC2Client,
 } from '@aws-sdk/client-ec2';
 
 const logger = createChildLogger('scale-up');
@@ -328,7 +334,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
 
   const enableOrgLevel = yn(process.env.ENABLE_ORGANIZATION_RUNNERS, { default: true });
   const maximumRunners = parseInt(process.env.RUNNERS_MAXIMUM_COUNT || '3');
-  let runnerLabels = process.env.RUNNER_LABELS || '';
+  const runnerLabels = process.env.RUNNER_LABELS || '';
   const runnerGroup = process.env.RUNNER_GROUP_NAME || 'Default';
   const environment = process.env.ENVIRONMENT;
   const ssmTokenPath = process.env.SSM_TOKEN_PATH;
@@ -336,7 +342,6 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
   const instanceTypes = process.env.INSTANCE_TYPES.split(',');
   const instanceTargetCapacityType = process.env.INSTANCE_TARGET_CAPACITY_TYPE;
   const ephemeralEnabled = yn(process.env.ENABLE_EPHEMERAL_RUNNERS, { default: false });
-  const dynamicLabelsEnabled = yn(process.env.ENABLE_DYNAMIC_LABELS, { default: false });
   const enableJitConfig = yn(process.env.ENABLE_JIT_CONFIG, { default: ephemeralEnabled });
   const disableAutoUpdate = yn(process.env.DISABLE_RUNNER_AUTOUPDATE, { default: false });
   const launchTemplateName = process.env.LAUNCH_TEMPLATE_NAME;
@@ -410,13 +415,9 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       : `${payload.repositoryOwner}/${payload.repositoryName}`;
 
     let key = runnerOwner;
-    if (dynamicLabelsEnabled && labels?.length) {
-      const dynamicLabels = labels.find((l) => l.startsWith('ghr-'))?.slice('ghr-'.length);
-
-      if (dynamicLabels) {
-        const dynamicLabelsHash = labelsHash(labels);
-        key = `${key}/${dynamicLabelsHash}`;
-      }
+    if (labels?.some((l) => l.startsWith('ghr-'))) {
+      const dynamicLabelsHash = labelsHash(labels);
+      key = `${key}/${dynamicLabelsHash}`;
     }
 
     let entry = validMessages.get(key);
@@ -460,27 +461,32 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
 
     let ec2OverrideConfig: Ec2OverrideConfig | undefined = undefined;
 
-    if (messages.length > 0 && dynamicLabelsEnabled) {
-      logger.debug('Dynamic EC2 config enabled, processing labels', { labels: messages[0].labels });
+    // Reset per group to avoid accumulating labels across iterations
+    let groupRunnerLabels = runnerLabels;
 
-      const dynamicEC2Labels = messages[0].labels?.map((l) => l.trim()).filter((l) => l.startsWith('ghr-ec2-')) ?? [];
-      const allDynamicLabels = messages[0].labels?.map((l) => l.trim()).filter((l) => l.startsWith('ghr-')) ?? [];
+    const messageLabels = messages.length > 0 ? (messages[0].labels ?? []) : [];
+    const dynamicEC2Labels = messageLabels.map((l) => l.trim()).filter((l) => l.startsWith('ghr-ec2-'));
+    const nonEc2DynamicLabels = messageLabels
+      .map((l) => l.trim())
+      .filter((l) => l.startsWith('ghr-') && !l.startsWith('ghr-ec2-'));
+    const allDynamicLabels = [...nonEc2DynamicLabels, ...dynamicEC2Labels];
 
-      if (allDynamicLabels.length > 0) {
-        runnerLabels = runnerLabels ? `${runnerLabels},${allDynamicLabels.join(',')}` : allDynamicLabels.join(',');
+    if (allDynamicLabels.length > 0) {
+      logger.debug('Dynamic labels present on message', { labels: allDynamicLabels });
+      groupRunnerLabels = groupRunnerLabels
+        ? `${groupRunnerLabels},${allDynamicLabels.join(',')}`
+        : allDynamicLabels.join(',');
+      logger.debug('Updated runner labels', { runnerLabels: groupRunnerLabels });
 
-        logger.debug('Updated runner labels', { runnerLabels });
+      if (dynamicEC2Labels.length > 0) {
+        const defaultBlockDeviceName = shouldLoadLaunchTemplateBlockDeviceName(dynamicEC2Labels)
+          ? await getDefaultBlockDeviceNameFromLaunchTemplate(launchTemplateName)
+          : undefined;
 
-        if (dynamicEC2Labels.length > 0) {
-          ec2OverrideConfig = parseEc2OverrideConfig(dynamicEC2Labels);
-          if (ec2OverrideConfig) {
-            logger.debug('EC2 override config parsed from labels', {
-              ec2OverrideConfig,
-            });
-          }
+        ec2OverrideConfig = parseEc2OverrideConfig(dynamicEC2Labels, defaultBlockDeviceName);
+        if (ec2OverrideConfig) {
+          logger.debug('EC2 override config parsed from labels', { ec2OverrideConfig });
         }
-      } else {
-        logger.debug('No dynamic labels found on message');
       }
     }
 
@@ -565,7 +571,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
         ephemeral: ephemeralEnabled,
         enableJitConfig,
         ghesBaseUrl,
-        runnerLabels,
+        runnerLabels: groupRunnerLabels,
         runnerGroup,
         runnerNamePrefix,
         runnerOwner: runnerOwner,
@@ -826,8 +832,8 @@ async function createJitConfig(
  * - ghr-ec2-accelerator-count-max:<num>       - Set maximum accelerator count
  * - ghr-ec2-accelerator-manufacturers:<list>  - Accelerator manufacturers (comma-separated: nvidia,amd,amazon-web-services,xilinx)
  * - ghr-ec2-accelerator-names:<list>          - Specific accelerator names (comma-separated)
- * - ghr-ec2-accelerator-memory-mib-min:<num>  - Min accelerator total memory in MiB
- * - ghr-ec2-accelerator-memory-mib-max:<num>  - Max accelerator total memory in MiB
+ * - ghr-ec2-accelerator-total-memory-mib-min:<num> - Min accelerator total memory in MiB
+ * - ghr-ec2-accelerator-total-memory-mib-max:<num> - Max accelerator total memory in MiB
  *
  * Instance Requirements (Network & Storage):
  * - ghr-ec2-network-interface-count-min:<num> - Min network interfaces
@@ -842,16 +848,19 @@ async function createJitConfig(
  * - ghr-ec2-baseline-ebs-bandwidth-mbps-max:<num> - Max baseline EBS bandwidth in Mbps
  *
  * Placement:
- * - ghr-ec2-placement-group:<name>            - Placement group name
+ * - ghr-ec2-placement-group-name:<name>       - Placement group name
+ * - ghr-ec2-placement-group-id:<id>           - Placement group ID
  * - ghr-ec2-placement-tenancy:<value>         - Tenancy (default,dedicated,host)
  * - ghr-ec2-placement-host-id:<id>            - Dedicated host ID
  * - ghr-ec2-placement-affinity:<value>        - Affinity (default,host)
  * - ghr-ec2-placement-partition-number:<num>  - Partition number
  * - ghr-ec2-placement-availability-zone:<zone> - Placement availability zone
+ * - ghr-ec2-placement-availability-zone-id:<id> - Placement availability zone ID
  * - ghr-ec2-placement-spread-domain:<domain>  - Spread domain
  * - ghr-ec2-placement-host-resource-group-arn:<arn> - Host resource group ARN
  *
  * Block Device Mappings:
+ * - ghr-ec2-block-device-name:<name>          - Block device name
  * - ghr-ec2-ebs-volume-size:<size>            - EBS volume size in GB
  * - ghr-ec2-ebs-volume-type:<type>            - EBS volume type (gp2,gp3,io1,io2,st1,sc1)
  * - ghr-ec2-ebs-iops:<number>                 - EBS IOPS
@@ -875,9 +884,13 @@ async function createJitConfig(
  *   runs-on: [self-hosted, linux, ghr-ec2-vcpu-count-min:4, ghr-ec2-memory-mib-min:16384, ghr-ec2-accelerator-types:gpu]
  *
  * @param labels - Array of GitHub workflow job labels
+ * @param defaultBlockDeviceName - Device name to use when dynamic block device labels create a mapping
  * @returns EC2 override configuration object or undefined if no valid config found
  */
-export function parseEc2OverrideConfig(labels: string[]): Ec2OverrideConfig | undefined {
+export function parseEc2OverrideConfig(
+  labels: string[],
+  defaultBlockDeviceName?: string,
+): Ec2OverrideConfig | undefined {
   const ec2Labels = labels.filter((l) => l.startsWith('ghr-ec2-'));
   const config: Ec2OverrideConfig = {};
 
@@ -910,61 +923,61 @@ export function parseEc2OverrideConfig(labels: string[]): Ec2OverrideConfig | un
     else if (key.startsWith('placement-')) {
       config.Placement = config.Placement || ({} as Placement);
       const placementKey = key.replace('placement-', '');
-      if (placementKey === 'group') {
-        config.Placement.GroupName = value;
-      } else if (placementKey === 'tenancy') {
-        config.Placement.Tenancy = value as Tenancy;
-      } else if (placementKey === 'host-id') {
-        config.Placement.HostId = value;
+      if (placementKey === 'availability-zone-id') {
+        config.Placement.AvailabilityZoneId = value;
       } else if (placementKey === 'affinity') {
         config.Placement.Affinity = value;
+      } else if (placementKey === 'group-name') {
+        config.Placement.GroupName = value;
       } else if (placementKey === 'partition-number') {
         config.Placement.PartitionNumber = parseInt(value, 10);
-      } else if (placementKey === 'availability-zone') {
-        config.Placement.AvailabilityZone = value;
+      } else if (placementKey === 'host-id') {
+        config.Placement.HostId = value;
+      } else if (placementKey === 'tenancy') {
+        config.Placement.Tenancy = value as Tenancy;
       } else if (placementKey === 'spread-domain') {
         config.Placement.SpreadDomain = value;
       } else if (placementKey === 'host-resource-group-arn') {
         config.Placement.HostResourceGroupArn = value;
+      } else if (placementKey === 'group-id') {
+        config.Placement.GroupId = value;
+      } else if (placementKey === 'availability-zone') {
+        config.Placement.AvailabilityZone = value;
       }
     }
 
-    // Block Device Mappings (EBS)
-    else if (key.startsWith('ebs-')) {
-      config.BlockDeviceMappings = config.BlockDeviceMappings || ([{}] as FleetBlockDeviceMappingRequest[]);
+    // Block Device Mappings
+    else if (key === 'block-device-name') {
+      getOrCreateBlockDeviceMapping(config, defaultBlockDeviceName).DeviceName = value;
+    } else if (key === 'block-device-virtual-name') {
+      getOrCreateBlockDeviceMapping(config, defaultBlockDeviceName).VirtualName = value;
+    } else if (key.startsWith('ebs-')) {
+      const blockDeviceMapping = getOrCreateBlockDeviceMapping(config, defaultBlockDeviceName);
       const ebsKey = key.replace('ebs-', '');
-      const ebs =
-        config.BlockDeviceMappings[0].Ebs || (config.BlockDeviceMappings[0].Ebs = {} as FleetEbsBlockDeviceRequest);
+      const ebs = blockDeviceMapping.Ebs || (blockDeviceMapping.Ebs = {} as FleetEbsBlockDeviceRequest);
 
-      if (ebsKey === 'volume-size') {
-        ebs.VolumeSize = parseInt(value, 10);
-      } else if (ebsKey === 'volume-type') {
-        ebs.VolumeType = value as VolumeType;
+      if (ebsKey === 'encrypted') {
+        ebs.Encrypted = value.toLowerCase() === 'true';
+      } else if (ebsKey === 'delete-on-termination') {
+        ebs.DeleteOnTermination = value.toLowerCase() === 'true';
       } else if (ebsKey === 'iops') {
         ebs.Iops = parseInt(value, 10);
       } else if (ebsKey === 'throughput') {
         ebs.Throughput = parseInt(value, 10);
-      } else if (ebsKey === 'encrypted') {
-        ebs.Encrypted = value.toLowerCase() === 'true';
       } else if (ebsKey === 'kms-key-id') {
         ebs.KmsKeyId = value;
-      } else if (ebsKey === 'delete-on-termination') {
-        ebs.DeleteOnTermination = value.toLowerCase() === 'true';
       } else if (ebsKey === 'snapshot-id') {
         ebs.SnapshotId = value;
+      } else if (ebsKey === 'volume-size') {
+        ebs.VolumeSize = parseInt(value, 10);
+      } else if (ebsKey === 'volume-type') {
+        ebs.VolumeType = value as VolumeType;
       }
-    }
-
-    // Block Device Mappings (Non-EBS)
-    else if (key === 'block-device-virtual-name') {
-      config.BlockDeviceMappings = config.BlockDeviceMappings || ([{}] as FleetBlockDeviceMappingRequest[]);
-      config.BlockDeviceMappings[0].VirtualName = value;
     } else if (key === 'block-device-no-device') {
-      config.BlockDeviceMappings = config.BlockDeviceMappings || ([{}] as FleetBlockDeviceMappingRequest[]);
-      config.BlockDeviceMappings[0].NoDevice = value;
+      getOrCreateBlockDeviceMapping(config, defaultBlockDeviceName).NoDevice = value;
     }
 
-    // Instance Requirements - vCPU & Memory
+    // Instance Requirements
     else if (key.startsWith('vcpu-count-')) {
       config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
       config.InstanceRequirements.VCpuCount = config.InstanceRequirements.VCpuCount || ({} as VCpuCountRangeRequest);
@@ -975,76 +988,43 @@ export function parseEc2OverrideConfig(labels: string[]): Ec2OverrideConfig | un
       config.InstanceRequirements.MemoryMiB = config.InstanceRequirements.MemoryMiB || ({} as MemoryMiBRequest);
       const subKey = key.replace('memory-mib-', '');
       config.InstanceRequirements.MemoryMiB![subKey === 'min' ? 'Min' : 'Max'] = parseInt(value, 10);
+    } else if (key === 'cpu-manufacturers') {
+      config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
+      config.InstanceRequirements.CpuManufacturers = value.split(',') as CpuManufacturer[];
     } else if (key.startsWith('memory-gib-per-vcpu-')) {
       config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
       config.InstanceRequirements.MemoryGiBPerVCpu =
         config.InstanceRequirements.MemoryGiBPerVCpu || ({} as MemoryGiBPerVCpuRequest);
       const subKey = key.replace('memory-gib-per-vcpu-', '');
       config.InstanceRequirements.MemoryGiBPerVCpu![subKey === 'min' ? 'Min' : 'Max'] = parseFloat(value);
-    }
-
-    // Instance Requirements - CPU & Performance
-    else if (key === 'cpu-manufacturers') {
-      config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
-      config.InstanceRequirements.CpuManufacturers = value.split(',') as CpuManufacturer[];
-    } else if (key === 'instance-generations') {
-      config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
-      config.InstanceRequirements.InstanceGenerations = value.split(',') as InstanceGeneration[];
     } else if (key === 'excluded-instance-types') {
       config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
       config.InstanceRequirements.ExcludedInstanceTypes = value.split(',');
-    } else if (key === 'allowed-instance-types') {
+    } else if (key === 'instance-generations') {
       config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
-      config.InstanceRequirements.AllowedInstanceTypes = value.split(',');
-    } else if (key === 'burstable-performance') {
+      config.InstanceRequirements.InstanceGenerations = value.split(',') as InstanceGeneration[];
+    } else if (key === 'spot-max-price-percentage-over-lowest-price') {
       config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
-      config.InstanceRequirements.BurstablePerformance = value as BurstablePerformance;
+      config.InstanceRequirements.SpotMaxPricePercentageOverLowestPrice = parseInt(value, 10);
+    } else if (key === 'on-demand-max-price-percentage-over-lowest-price') {
+      config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
+      config.InstanceRequirements.OnDemandMaxPricePercentageOverLowestPrice = parseInt(value, 10);
     } else if (key === 'bare-metal') {
       config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
       config.InstanceRequirements.BareMetal = value as BareMetal;
-    }
-
-    // Instance Requirements - Accelerators
-    else if (key.startsWith('accelerator-count-')) {
+    } else if (key === 'burstable-performance') {
       config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
-      config.InstanceRequirements.AcceleratorCount =
-        config.InstanceRequirements.AcceleratorCount || ({} as AcceleratorCountRequest);
-      const subKey = key.replace('accelerator-count-', '');
-      config.InstanceRequirements.AcceleratorCount![subKey === 'min' ? 'Min' : 'Max'] = parseInt(value, 10);
-    } else if (key === 'accelerator-types') {
+      config.InstanceRequirements.BurstablePerformance = value as BurstablePerformance;
+    } else if (key === 'require-hibernate-support') {
       config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
-      config.InstanceRequirements.AcceleratorTypes = value.split(',') as AcceleratorType[];
-    } else if (key === 'accelerator-manufacturers') {
-      config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
-      config.InstanceRequirements.AcceleratorManufacturers = value.split(',') as AcceleratorManufacturer[];
-    } else if (key === 'accelerator-names') {
-      config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
-      config.InstanceRequirements.AcceleratorNames = value.split(',') as AcceleratorName[];
-    } else if (key.startsWith('accelerator-total-memory-mib-')) {
-      config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
-      config.InstanceRequirements.AcceleratorTotalMemoryMiB =
-        config.InstanceRequirements.AcceleratorTotalMemoryMiB || ({} as AcceleratorTotalMemoryMiBRequest);
-      const subKey = key.replace('accelerator-total-memory-mib-', '');
-      config.InstanceRequirements.AcceleratorTotalMemoryMiB![subKey === 'min' ? 'Min' : 'Max'] = parseInt(value, 10);
-    }
-
-    // Instance Requirements - Network
-    else if (key.startsWith('network-interface-count-')) {
+      config.InstanceRequirements.RequireHibernateSupport = value.toLowerCase() === 'true';
+    } else if (key.startsWith('network-interface-count-')) {
       config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
       config.InstanceRequirements.NetworkInterfaceCount =
         config.InstanceRequirements.NetworkInterfaceCount || ({} as NetworkInterfaceCountRequest);
       const subKey = key.replace('network-interface-count-', '');
       config.InstanceRequirements.NetworkInterfaceCount![subKey === 'min' ? 'Min' : 'Max'] = parseInt(value, 10);
-    } else if (key.startsWith('network-bandwidth-gbps-')) {
-      config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
-      config.InstanceRequirements.NetworkBandwidthGbps =
-        config.InstanceRequirements.NetworkBandwidthGbps || ({} as NetworkBandwidthGbpsRequest);
-      const subKey = key.replace('network-bandwidth-gbps-', '');
-      config.InstanceRequirements.NetworkBandwidthGbps![subKey === 'min' ? 'Min' : 'Max'] = parseFloat(value);
-    }
-
-    // Instance Requirements - Storage
-    else if (key === 'local-storage') {
+    } else if (key === 'local-storage') {
       config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
       config.InstanceRequirements.LocalStorage = value as LocalStorage;
     } else if (key === 'local-storage-types') {
@@ -1062,24 +1042,39 @@ export function parseEc2OverrideConfig(labels: string[]): Ec2OverrideConfig | un
         config.InstanceRequirements.BaselineEbsBandwidthMbps || ({} as BaselineEbsBandwidthMbpsRequest);
       const subKey = key.replace('baseline-ebs-bandwidth-mbps-', '');
       config.InstanceRequirements.BaselineEbsBandwidthMbps![subKey === 'min' ? 'Min' : 'Max'] = parseInt(value, 10);
-    }
-
-    // Instance Requirements - Pricing & Other
-    else if (key === 'spot-max-price-percentage-over-lowest-price') {
+    } else if (key === 'accelerator-types') {
       config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
-      config.InstanceRequirements.SpotMaxPricePercentageOverLowestPrice = parseInt(value, 10);
-    } else if (key === 'on-demand-max-price-percentage-over-lowest-price') {
+      config.InstanceRequirements.AcceleratorTypes = value.split(',') as AcceleratorType[];
+    } else if (key.startsWith('accelerator-count-')) {
       config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
-      config.InstanceRequirements.OnDemandMaxPricePercentageOverLowestPrice = parseInt(value, 10);
+      config.InstanceRequirements.AcceleratorCount =
+        config.InstanceRequirements.AcceleratorCount || ({} as AcceleratorCountRequest);
+      const subKey = key.replace('accelerator-count-', '');
+      config.InstanceRequirements.AcceleratorCount![subKey === 'min' ? 'Min' : 'Max'] = parseInt(value, 10);
+    } else if (key === 'accelerator-manufacturers') {
+      config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
+      config.InstanceRequirements.AcceleratorManufacturers = value.split(',') as AcceleratorManufacturer[];
+    } else if (key === 'accelerator-names') {
+      config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
+      config.InstanceRequirements.AcceleratorNames = value.split(',') as AcceleratorName[];
+    } else if (key.startsWith('accelerator-total-memory-mib-')) {
+      config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
+      config.InstanceRequirements.AcceleratorTotalMemoryMiB =
+        config.InstanceRequirements.AcceleratorTotalMemoryMiB || ({} as AcceleratorTotalMemoryMiBRequest);
+      const subKey = key.replace('accelerator-total-memory-mib-', '');
+      config.InstanceRequirements.AcceleratorTotalMemoryMiB![subKey === 'min' ? 'Min' : 'Max'] = parseInt(value, 10);
+    } else if (key.startsWith('network-bandwidth-gbps-')) {
+      config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
+      config.InstanceRequirements.NetworkBandwidthGbps =
+        config.InstanceRequirements.NetworkBandwidthGbps || ({} as NetworkBandwidthGbpsRequest);
+      const subKey = key.replace('network-bandwidth-gbps-', '');
+      config.InstanceRequirements.NetworkBandwidthGbps![subKey === 'min' ? 'Min' : 'Max'] = parseFloat(value);
+    } else if (key === 'allowed-instance-types') {
+      config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
+      config.InstanceRequirements.AllowedInstanceTypes = value.split(',');
     } else if (key === 'max-spot-price-as-percentage-of-optimal-on-demand-price') {
       config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
       config.InstanceRequirements.MaxSpotPriceAsPercentageOfOptimalOnDemandPrice = parseInt(value, 10);
-    } else if (key === 'require-hibernate-support') {
-      config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
-      config.InstanceRequirements.RequireHibernateSupport = value.toLowerCase() === 'true';
-    } else if (key === 'require-encryption-in-transit') {
-      config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
-      config.InstanceRequirements.RequireEncryptionInTransit = value.toLowerCase() === 'true';
     } else if (key === 'baseline-performance-factors-cpu-reference-families') {
       config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
       config.InstanceRequirements.BaselinePerformanceFactors =
@@ -1089,10 +1084,60 @@ export function parseEc2OverrideConfig(labels: string[]): Ec2OverrideConfig | un
       config.InstanceRequirements.BaselinePerformanceFactors.Cpu.References = value
         .split(',')
         .map((family) => ({ InstanceFamily: family })) as PerformanceFactorReferenceRequest[];
+    } else if (key === 'require-encryption-in-transit') {
+      config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
+      config.InstanceRequirements.RequireEncryptionInTransit = value.toLowerCase() === 'true';
     }
   }
 
   return Object.keys(config).length > 0 ? config : undefined;
+}
+
+function getOrCreateBlockDeviceMapping(
+  config: Ec2OverrideConfig,
+  defaultBlockDeviceName?: string,
+): FleetBlockDeviceMappingRequest {
+  config.BlockDeviceMappings =
+    config.BlockDeviceMappings ||
+    ([defaultBlockDeviceName ? { DeviceName: defaultBlockDeviceName } : {}] as FleetBlockDeviceMappingRequest[]);
+  return config.BlockDeviceMappings[0];
+}
+
+function shouldLoadLaunchTemplateBlockDeviceName(labels: string[]): boolean {
+  const blockDeviceNameLabel = 'ghr-ec2-block-device-name:';
+  let hasBlockDeviceOverride = false;
+  let hasBlockDeviceName = false;
+
+  for (const label of labels) {
+    hasBlockDeviceOverride =
+      hasBlockDeviceOverride || label.startsWith('ghr-ec2-ebs-') || label.startsWith('ghr-ec2-block-device-');
+
+    hasBlockDeviceName =
+      hasBlockDeviceName || (label.startsWith(blockDeviceNameLabel) && label.slice(blockDeviceNameLabel.length) !== '');
+  }
+
+  return hasBlockDeviceOverride && !hasBlockDeviceName;
+}
+
+async function getDefaultBlockDeviceNameFromLaunchTemplate(launchTemplateName: string): Promise<string> {
+  const ec2Client = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
+  const launchTemplateVersions = await ec2Client.send(
+    new DescribeLaunchTemplateVersionsCommand({
+      LaunchTemplateName: launchTemplateName,
+      Versions: ['$Default'],
+    }),
+  );
+  const blockDeviceMappings =
+    launchTemplateVersions.LaunchTemplateVersions?.[0]?.LaunchTemplateData?.BlockDeviceMappings;
+  const blockDeviceName =
+    blockDeviceMappings?.find((blockDeviceMapping) => blockDeviceMapping.DeviceName && blockDeviceMapping.Ebs)
+      ?.DeviceName ?? blockDeviceMappings?.find((blockDeviceMapping) => blockDeviceMapping.DeviceName)?.DeviceName;
+
+  if (!blockDeviceName) {
+    throw new Error(`Failed to determine block device name from launch template '${launchTemplateName}'.`);
+  }
+
+  return blockDeviceName;
 }
 
 function labelsHash(labels: string[]): string {

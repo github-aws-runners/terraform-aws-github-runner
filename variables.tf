@@ -409,17 +409,18 @@ variable "log_class" {
 }
 
 variable "block_device_mappings" {
-  description = "The EC2 instance block device configuration. Takes the following keys: `device_name`, `delete_on_termination`, `volume_type`, `volume_size`, `encrypted`, `iops`, `throughput`, `kms_key_id`, `snapshot_id`."
+  description = "The EC2 instance block device configuration. Takes the following keys: `device_name`, `delete_on_termination`, `volume_type`, `volume_size`, `encrypted`, `iops`, `throughput`, `kms_key_id`, `snapshot_id`, `volume_initialization_rate`."
   type = list(object({
-    delete_on_termination = optional(bool, true)
-    device_name           = optional(string, "/dev/xvda")
-    encrypted             = optional(bool, true)
-    iops                  = optional(number)
-    kms_key_id            = optional(string)
-    snapshot_id           = optional(string)
-    throughput            = optional(number)
-    volume_size           = number
-    volume_type           = optional(string, "gp3")
+    delete_on_termination      = optional(bool, true)
+    device_name                = optional(string, "/dev/xvda")
+    encrypted                  = optional(bool, true)
+    iops                       = optional(number)
+    kms_key_id                 = optional(string)
+    snapshot_id                = optional(string)
+    throughput                 = optional(number)
+    volume_initialization_rate = optional(number)
+    volume_size                = number
+    volume_type                = optional(string, "gp3")
   }))
   default = [{
     volume_size = 30
@@ -614,6 +615,16 @@ variable "repository_white_list" {
   default     = []
 }
 
+variable "queue_selection_strategy" {
+  description = "Strategy used to pick a queue when multiple runner configurations match a job equally well. `first` keeps the historical deterministic behaviour (the first matching queue by priority). `random` spreads jobs across the matching queues to avoid concentrating load on a single one. `all` scales up one runner per matching queue and lets the first to become available take the job (favouring speed over cost; this multiplies instance launches and runner registrations per job)."
+  type        = string
+  default     = "first"
+  validation {
+    condition     = contains(["first", "random", "all"], var.queue_selection_strategy)
+    error_message = "`queue_selection_strategy` value not valid. Valid values are 'first', 'random', 'all'."
+  }
+}
+
 variable "delay_webhook_event" {
   description = "The number of seconds the event accepted by the webhook is invisible on the queue before the scale up lambda will receive the event."
   type        = number
@@ -707,9 +718,35 @@ variable "enable_ephemeral_runners" {
 }
 
 variable "enable_dynamic_labels" {
-  description = "Experimental! Can be removed / changed without trigger a major release. Enable dynamic EC2 configs based on workflow job labels. When enabled, jobs can request specific configs via the 'gh-ec2-<config type key>:<config type value>' label (e.g., 'gh-ec2-instance-type:t3.large'). When enabled, labels starting with `ghr-` are ignored during webhook label matching."
+  description = "Experimental! Can be removed / changed without trigger a major release. Enable dynamic EC2 configs based on workflow job labels. When enabled, jobs can request specific configs via the 'ghr-ec2-<config type key>:<config type value>' label (e.g., 'ghr-ec2-instance-type:t3.large'). When enabled, labels starting with `ghr-` are ignored during webhook label matching."
   type        = bool
   default     = false
+}
+
+variable "ec2_dynamic_labels_policy" {
+  description = <<-EOT
+    Experimental! Can be removed / changed without trigger a major release.
+    Optional policy for dynamic EC2 override labels evaluated by the webhook
+    dispatcher. Only effective when `enable_dynamic_labels = true`.
+
+    Jobs whose EC2 dynamic labels violate the policy are rejected with a 202 and a
+    warning is logged.
+
+    Evaluation:
+      1. Keys in `blocked_keys` are always rejected.
+      2. Keys in `restricted_keys` are allowed only when their value passes the rule.
+      3. Keys not listed in `blocked_keys` or `restricted_keys` are allowed.
+
+    Schema:
+      - `blocked_keys`: keys to reject outright.
+      - `restricted_keys`: map of key to value rule:
+          `{ allowed = [globs], denied = [globs], max = number|string }`.
+
+    Keys use the `ghr-ec2-*` dynamic label suffix, not the full label. For example, use
+    `instance-type` for `ghr-ec2-instance-type`.
+  EOT
+  type        = any
+  default     = null
 }
 
 variable "enable_job_queued_check" {
