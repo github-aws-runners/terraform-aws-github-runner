@@ -50,8 +50,8 @@ const logger = createChildLogger('scale-up');
 const RUNNER_LABELS_TAG_KEY = 'ghr:runner_labels';
 const RUNNER_LABELS_TAG_VALUE_SEPARATOR = ',';
 const EC2_OVERRIDE_LIST_VALUE_SEPARATOR = ';';
-const EC2_TAG_VALUE_MAX_LENGTH = 256;
-const RUNNER_LABELS_TAG_MAX_COUNT = 5;
+export const EC2_TAG_VALUE_MAX_LENGTH = 256;
+export const RUNNER_LABELS_TAG_MAX_COUNT = 5;
 
 export type LambdaRunnerSource = 'scale-up-lambda' | 'pool-lambda';
 
@@ -369,41 +369,15 @@ function generateRunnerLabelsTags(labels: string[]): Tag[] {
 }
 
 function packRunnerLabelsTagValues(labels: string[]): string[] {
+  const runnerLabelsValue = labels.join(RUNNER_LABELS_TAG_VALUE_SEPARATOR);
+  const characters = Array.from(runnerLabelsValue);
   const tagValues: string[] = [];
-  let currentValue = '';
 
-  for (const label of labels) {
-    for (const labelPart of splitEc2TagValue(label)) {
-      const nextValue = currentValue ? `${currentValue}${RUNNER_LABELS_TAG_VALUE_SEPARATOR}${labelPart}` : labelPart;
-
-      if (Array.from(nextValue).length <= EC2_TAG_VALUE_MAX_LENGTH) {
-        currentValue = nextValue;
-        continue;
-      }
-
-      if (currentValue) {
-        tagValues.push(currentValue);
-      }
-      currentValue = labelPart;
-    }
-  }
-
-  if (currentValue) {
-    tagValues.push(currentValue);
+  for (let start = 0; start < characters.length; start += EC2_TAG_VALUE_MAX_LENGTH) {
+    tagValues.push(characters.slice(start, start + EC2_TAG_VALUE_MAX_LENGTH).join(''));
   }
 
   return tagValues;
-}
-
-function splitEc2TagValue(value: string): string[] {
-  const characters = Array.from(value);
-  const values: string[] = [];
-
-  for (let start = 0; start < characters.length; start += EC2_TAG_VALUE_MAX_LENGTH) {
-    values.push(characters.slice(start, start + EC2_TAG_VALUE_MAX_LENGTH).join(''));
-  }
-
-  return values;
 }
 
 export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<string[]> {

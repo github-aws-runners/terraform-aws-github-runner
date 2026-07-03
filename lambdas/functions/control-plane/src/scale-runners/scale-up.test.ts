@@ -297,38 +297,39 @@ describe('scaleUp with GHES', () => {
       ]);
     });
 
-    it('splits a GitHub runner label over multiple EC2 tags when the tag value would be too long', async () => {
-      const longLabel = `label-${'a'.repeat(300)}`;
-      process.env.RUNNER_LABELS = longLabel;
+    it('chunks comma-joined GitHub runner labels by the EC2 tag value max length', async () => {
+      const runnerLabels = ['a'.repeat(scaleUpModule.EC2_TAG_VALUE_MAX_LENGTH), 'b'].join(',');
+      process.env.RUNNER_LABELS = runnerLabels;
 
       await scaleUpModule.scaleUp(TEST_DATA);
 
       expect(mockTag).toHaveBeenCalledWith('i-12345', [
         { Key: 'ghr:github_runner_id', Value: '9876543210' },
-        { Key: 'ghr:runner_labels', Value: `label-${'a'.repeat(250)}` },
-        { Key: 'ghr:runner_labels:2', Value: 'a'.repeat(50) },
+        { Key: 'ghr:runner_labels', Value: runnerLabels.slice(0, scaleUpModule.EC2_TAG_VALUE_MAX_LENGTH) },
+        {
+          Key: 'ghr:runner_labels:2',
+          Value: runnerLabels.slice(scaleUpModule.EC2_TAG_VALUE_MAX_LENGTH),
+        },
       ]);
     });
 
     it('limits GitHub runner label metadata to five EC2 tags', async () => {
-      process.env.RUNNER_LABELS = [
-        'a'.repeat(256),
-        'b'.repeat(256),
-        'c'.repeat(256),
-        'd'.repeat(256),
-        'e'.repeat(256),
-        'f'.repeat(256),
-      ].join(',');
+      const runnerLabels = Array.from({ length: scaleUpModule.RUNNER_LABELS_TAG_MAX_COUNT + 1 }, (_, index) =>
+        String.fromCharCode('a'.charCodeAt(0) + index).repeat(scaleUpModule.EC2_TAG_VALUE_MAX_LENGTH),
+      ).join(',');
+      process.env.RUNNER_LABELS = runnerLabels;
 
       await scaleUpModule.scaleUp(TEST_DATA);
 
       expect(mockTag).toHaveBeenCalledWith('i-12345', [
         { Key: 'ghr:github_runner_id', Value: '9876543210' },
-        { Key: 'ghr:runner_labels', Value: 'a'.repeat(256) },
-        { Key: 'ghr:runner_labels:2', Value: 'b'.repeat(256) },
-        { Key: 'ghr:runner_labels:3', Value: 'c'.repeat(256) },
-        { Key: 'ghr:runner_labels:4', Value: 'd'.repeat(256) },
-        { Key: 'ghr:runner_labels:5', Value: 'e'.repeat(256) },
+        ...Array.from({ length: scaleUpModule.RUNNER_LABELS_TAG_MAX_COUNT }, (_, index) => ({
+          Key: index === 0 ? 'ghr:runner_labels' : `ghr:runner_labels:${index + 1}`,
+          Value: runnerLabels.slice(
+            index * scaleUpModule.EC2_TAG_VALUE_MAX_LENGTH,
+            (index + 1) * scaleUpModule.EC2_TAG_VALUE_MAX_LENGTH,
+          ),
+        })),
       ]);
     });
 
