@@ -1,5 +1,31 @@
 # Changelog
 
+## [7.9.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v7.8.0...v7.9.0) (2026-07-04)
+
+
+### Features
+
+* add bidirectionalLabelMatch option and deprecate exactMatch ([#5031](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5031)) ([4ccbde6](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/4ccbde658ad3f44552be9168f119e3357fa98a9c))
+* **runners:** tag EC2 fleets ([#5197](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5197)) ([7c0b62b](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/7c0b62bcb6c5b348e6f0cdd0096d5ec23c239cd1))
+* support dedicated host ec2 overrides ([#5191](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5191)) ([37fa3a8](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/37fa3a878e9676f4b943630dd56811ded291d540))
+* support per-runner-flavor SQS batch size and window in multi_runner_config ([#5108](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5108)) ([ecfdfdb](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/ecfdfdb7b0c405698cb0f7f2fe764f8c7237dd73))
+* tag runners with github labels ([#5185](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5185)) ([d3097b4](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/d3097b4268633fc7ddada9fe25fde5fab003c691))
+* **webhook:** configurable queue selection for matching runners ([#5190](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5190)) ([5f69910](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/5f69910b2543ab0ef434b73abe7bb5ebbd1d3e74))
+
+
+### Bug Fixes
+
+* **deps:** bump step-security/harden-runner from 2.17.0 to 2.19.4 ([#5200](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5200)) ([c00d4c2](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/c00d4c2c2c0c80063d7a62d2c3f2cde1ad91a5f6))
+* **deps:** bump the github group with 4 updates ([#5198](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5198)) ([43d77fe](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/43d77fea0490d436b814e6aa6c82f2c375b8f9eb))
+* **deps:** bump zizmorcore/zizmor-action from 0.5.6 to 0.5.7 ([#5199](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5199)) ([521efb7](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/521efb783d978858bceadb4703c89f702bb07dfb))
+* **examples:** disable background apt services in multi-runner user-data ([#5141](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5141)) ([b738b86](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/b738b86fd473cd2611f191e4571475cbe5cfaf0b))
+* **lambda:** bump form-data from 2.5.5 to 2.5.6 in /lambdas ([#5196](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5196)) ([a487f7d](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/a487f7dad2ad4daef45e46949e2580b4df588402))
+* **pool:** clamp pool top-up to runners_maximum_count ([#5187](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5187)) ([a4ecd11](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/a4ecd111c5c57820eeff15d8e4d4eab029a820d5))
+* prevent EC2 termination when GitHub runner de-registration fails ([#5061](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5061)) ([8068fa6](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/8068fa6a2c751c145dc2f75a909ba4f200b49417))
+* remove unused aws-lambda package to eliminate aws-sdk v2 dependency ([#5088](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5088)) ([56f9ae8](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/56f9ae871ce752ab227f8c623288ca232e423a21))
+* **runner:** handle long prefixes in pool scheduler and IAM resource names ([#5139](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5139)) ([76a572a](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/76a572ab5e7e545b597dda76a82669c1d32215bf))
+* **scale-down:** respect bypass-removal tag for orphaned runners ([#5194](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5194)) ([5c9f9b4](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/5c9f9b47e9e43d98a7419a26006a812ae7e06953))
+
 ## [7.8.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v7.7.1...v7.8.0) (2026-06-24)
 
 
