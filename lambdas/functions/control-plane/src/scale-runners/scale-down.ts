@@ -172,6 +172,7 @@ async function removeRunner(ec2runner: RunnerInfo, ghRunnerIds: number[]): Promi
       return;
     }
 
+    // Step 1: Check busy state as a fast-path to skip runners that are obviously busy.
     const states = await Promise.all(
       ghRunnerIds.map(async (ghRunnerId) => {
         // Get busy state instead of using the output of listGitHubRunners(...) to minimize to race condition.
@@ -179,28 +180,52 @@ async function removeRunner(ec2runner: RunnerInfo, ghRunnerIds: number[]): Promi
       }),
     );
 
-    if (states.every((busy) => busy === false)) {
-      const results = await Promise.all(
-        ghRunnerIds.map((ghRunnerId) => deleteGitHubRunner(githubInstallationClient, ec2runner, ghRunnerId)),
-      );
-
-      const allSucceeded = results.every((r) => r.success);
-      const failedRunners = results.filter((r) => !r.success);
-
-      if (allSucceeded) {
-        await terminateRunner(ec2runner.instanceId);
-        logger.info(`AWS runner instance '${ec2runner.instanceId}' is terminated and GitHub runner is de-registered.`);
-      } else {
-        // Only terminate EC2 if we successfully de-registered from GitHub
-        // Otherwise, leave the instance running so the next scale-down cycle can retry
-        logger.error(
-          `Failed to de-register ${failedRunners.length} GitHub runner(s) for instance '${ec2runner.instanceId}'. ` +
-            `Instance will NOT be terminated to allow retry on next scale-down cycle. ` +
-            `Failed runner IDs: ${failedRunners.map((r) => r.ghRunnerId).join(', ')}`,
-        );
-      }
-    } else {
+    if (!states.every((busy) => busy === false)) {
       logger.info(`Runner '${ec2runner.instanceId}' cannot be de-registered, because it is still busy.`);
+      return;
+    }
+
+    // Step 2: De-register the runner from GitHub. This prevents GitHub from assigning new jobs
+    // to this runner, closing the race window where a job could be assigned between the busy
+    // check above and the termination below.
+    const results = await Promise.all(
+      ghRunnerIds.map((ghRunnerId) => deleteGitHubRunner(githubInstallationClient, ec2runner, ghRunnerId)),
+    );
+
+    const allSucceeded = results.every((r) => r.success);
+    const failedRunners = results.filter((r) => !r.success);
+
+    if (!allSucceeded) {
+      // Only terminate EC2 if we successfully de-registered from GitHub
+      // Otherwise, leave the instance running so the next scale-down cycle can retry
+      logger.error(
+        `Failed to de-register ${failedRunners.length} GitHub runner(s) for instance '${ec2runner.instanceId}'. ` +
+          `Instance will NOT be terminated to allow retry on next scale-down cycle. ` +
+          `Failed runner IDs: ${failedRunners.map((r) => r.ghRunnerId).join(', ')}`,
+      );
+      return;
+    }
+
+    // Step 3: Re-check busy state after de-registration. A job may have been assigned between
+    // step 1 and step 2. After de-registration no new jobs can be assigned, so this check is
+    // now stable. If the runner is busy, the in-flight job will complete using its job-scoped
+    // OAuth token (the runner worker uses credentials from the job message, not the runner
+    // registration). We leave the instance running and it will be cleaned up as an orphan.
+    const postDeregisterStates = await Promise.all(
+      ghRunnerIds.map(async (ghRunnerId) => {
+        return await getGitHubRunnerBusyState(githubInstallationClient, ec2runner, ghRunnerId);
+      }),
+    );
+
+    if (postDeregisterStates.every((busy) => busy === false)) {
+      await terminateRunner(ec2runner.instanceId);
+      logger.info(`AWS runner instance '${ec2runner.instanceId}' is terminated and GitHub runner is de-registered.`);
+    } else {
+      logger.warn(
+        `Runner '${ec2runner.instanceId}' became busy between idle check and de-registration. ` +
+          `Skipping termination to allow the in-flight job to complete. ` +
+          `The instance will be cleaned up as an orphan on a subsequent cycle.`,
+      );
     }
   } catch (e) {
     logger.error(
