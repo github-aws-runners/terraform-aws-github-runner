@@ -43,9 +43,15 @@ import {
   BaselineEbsBandwidthMbpsRequest,
   DescribeLaunchTemplateVersionsCommand,
   EC2Client,
+  Tag,
 } from '@aws-sdk/client-ec2';
 
 const logger = createChildLogger('scale-up');
+const RUNNER_LABELS_TAG_KEY = 'ghr:runner_labels';
+const RUNNER_LABELS_TAG_VALUE_SEPARATOR = ',';
+const EC2_OVERRIDE_LIST_VALUE_SEPARATOR = ';';
+export const EC2_TAG_VALUE_MAX_LENGTH = 256;
+export const RUNNER_LABELS_TAG_MAX_COUNT = 5;
 
 export type LambdaRunnerSource = 'scale-up-lambda' | 'pool-lambda';
 
@@ -115,7 +121,7 @@ function generateRunnerServiceConfig(githubRunnerConfig: CreateGitHubRunnerConfi
   ];
 
   if (githubRunnerConfig.runnerLabels) {
-    config.push(`--labels ${githubRunnerConfig.runnerLabels}`.trim());
+    config.push(`--labels ${quoteRunnerLabelsForShell(githubRunnerConfig.runnerLabels)}`.trim());
   }
 
   if (githubRunnerConfig.disableAutoUpdate) {
@@ -131,6 +137,14 @@ function generateRunnerServiceConfig(githubRunnerConfig: CreateGitHubRunnerConfi
   }
 
   return config;
+}
+
+function quoteRunnerLabelsForShell(labels: string): string {
+  return /[\s;&|<>()$`"'*?[\\\]{}!]/.test(labels) ? quoteShellArg(labels) : labels;
+}
+
+function quoteShellArg(value: string): string {
+  return `'${value.replace(/'/g, `'\\''`)}'`;
 }
 
 export function validateSsmParameterStoreTags(tagsJson: string): { Key: string; Value: string }[] {
@@ -325,6 +339,38 @@ export async function createRunners(
   }
 
   return instances;
+}
+
+function generateRunnerLabelsTags(labels: string[]): Tag[] {
+  if (labels.length === 0) {
+    return [];
+  }
+
+  const generatedTagValues = packRunnerLabelsTagValues(labels);
+  const tagValues = generatedTagValues.slice(0, RUNNER_LABELS_TAG_MAX_COUNT);
+
+  if (generatedTagValues.length > RUNNER_LABELS_TAG_MAX_COUNT) {
+    logger.warn('GitHub runner label EC2 tags were truncated to avoid exceeding EC2 tag limits.', {
+      maxRunnerLabelsTagCount: RUNNER_LABELS_TAG_MAX_COUNT,
+    });
+  }
+
+  return tagValues.map((value, index) => ({
+    Key: index === 0 ? RUNNER_LABELS_TAG_KEY : `${RUNNER_LABELS_TAG_KEY}:${index + 1}`,
+    Value: value,
+  }));
+}
+
+function packRunnerLabelsTagValues(labels: string[]): string[] {
+  const runnerLabelsValue = labels.join(RUNNER_LABELS_TAG_VALUE_SEPARATOR);
+  const characters = Array.from(runnerLabelsValue);
+  const tagValues: string[] = [];
+
+  for (let start = 0; start < characters.length; start += EC2_TAG_VALUE_MAX_LENGTH) {
+    tagValues.push(characters.slice(start, start + EC2_TAG_VALUE_MAX_LENGTH).join(''));
+  }
+
+  return tagValues;
 }
 
 export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<string[]> {
@@ -704,11 +750,13 @@ async function createRegistrationTokenConfig(
   return [];
 }
 
-async function tagRunnerId(instanceId: string, runnerId: string): Promise<void> {
+async function tagRunnerMetadata(instanceId: string, runnerId: string, runnerLabels: string[]): Promise<void> {
+  const tags = [{ Key: 'ghr:github_runner_id', Value: runnerId }, ...generateRunnerLabelsTags(runnerLabels)];
+
   try {
-    await tag(instanceId, [{ Key: 'ghr:github_runner_id', Value: runnerId }]);
+    await tag(instanceId, tags);
   } catch (e) {
-    logger.error(`Failed to mark runner '${instanceId}' with ${runnerId}.`, { error: e });
+    logger.error(`Failed to mark runner '${instanceId}' with GitHub runner metadata.`, { error: e });
   }
 }
 
@@ -757,8 +805,8 @@ async function createJitConfig(
 
       metricGitHubAppRateLimit(runnerConfig.headers);
 
-      // tag the EC2 instance with the Github runner id
-      await tagRunnerId(instance, runnerConfig.data.runner.id.toString());
+      // tag the EC2 instance with GitHub runner metadata
+      await tagRunnerMetadata(instance, runnerConfig.data.runner.id.toString(), runnerLabels);
 
       // store jit config in ssm parameter store
       logger.debug('Runner JIT config for ephemeral runner generated.', {
@@ -815,19 +863,19 @@ async function createJitConfig(
  * - ghr-ec2-memory-gib-per-vcpu-max:<number>  - Set max memory per vCPU ratio
  *
  * Instance Requirements (CPU & Performance):
- * - ghr-ec2-cpu-manufacturers:<list>          - CPU manufacturers (comma-separated: intel,amd,amazon-web-services)
- * - ghr-ec2-instance-generations:<list>       - Instance generations (comma-separated: current,previous)
- * - ghr-ec2-excluded-instance-types:<list>    - Exclude instance types (comma-separated)
- * - ghr-ec2-allowed-instance-types:<list>     - Allow only specific instance types (comma-separated)
+ * - ghr-ec2-cpu-manufacturers:<list>          - CPU manufacturers (semicolon-separated: intel;amd;amazon-web-services)
+ * - ghr-ec2-instance-generations:<list>       - Instance generations (semicolon-separated: current;previous)
+ * - ghr-ec2-excluded-instance-types:<list>    - Exclude instance types (semicolon-separated)
+ * - ghr-ec2-allowed-instance-types:<list>     - Allow only specific instance types (semicolon-separated)
  * - ghr-ec2-burstable-performance:<value>     - Burstable performance (included,excluded,required)
  * - ghr-ec2-bare-metal:<value>                - Bare metal (included,excluded,required)
  *
  * Instance Requirements (Accelerators/GPU):
- * - ghr-ec2-accelerator-types:<list>          - Accelerator types (comma-separated: gpu,fpga,inference)
+ * - ghr-ec2-accelerator-types:<list>          - Accelerator types (semicolon-separated: gpu;fpga;inference)
  * - ghr-ec2-accelerator-count-min:<num>       - Set minimum accelerator count
  * - ghr-ec2-accelerator-count-max:<num>       - Set maximum accelerator count
- * - ghr-ec2-accelerator-manufacturers:<list>  - Accelerator manufacturers (comma-separated: nvidia,amd,amazon-web-services,xilinx)
- * - ghr-ec2-accelerator-names:<list>          - Specific accelerator names (comma-separated)
+ * - ghr-ec2-accelerator-manufacturers:<list>  - Accelerator manufacturers (semicolon-separated: nvidia;amd;amazon-web-services;xilinx)
+ * - ghr-ec2-accelerator-names:<list>          - Specific accelerator names (semicolon-separated)
  * - ghr-ec2-accelerator-total-memory-mib-min:<num> - Min accelerator total memory in MiB
  * - ghr-ec2-accelerator-total-memory-mib-max:<num> - Max accelerator total memory in MiB
  *
@@ -837,7 +885,7 @@ async function createJitConfig(
  * - ghr-ec2-network-bandwidth-gbps-min:<num>  - Min network bandwidth in Gbps
  * - ghr-ec2-network-bandwidth-gbps-max:<num>  - Max network bandwidth in Gbps
  * - ghr-ec2-local-storage:<value>             - Local storage (included,excluded,required)
- * - ghr-ec2-local-storage-types:<list>        - Local storage types (comma-separated: hdd,ssd)
+ * - ghr-ec2-local-storage-types:<list>        - Local storage types (semicolon-separated: hdd;ssd)
  * - ghr-ec2-total-local-storage-gb-min:<num>  - Min total local storage in GB
  * - ghr-ec2-total-local-storage-gb-max:<num>  - Max total local storage in GB
  * - ghr-ec2-baseline-ebs-bandwidth-mbps-min:<num> - Min baseline EBS bandwidth in Mbps
@@ -874,7 +922,7 @@ async function createJitConfig(
  * - ghr-ec2-max-spot-price-as-percentage-of-optimal-on-demand-price:<num> - Max spot price as % of optimal on-demand
  * - ghr-ec2-require-hibernate-support:<bool>  - Require hibernate support (true,false)
  * - ghr-ec2-require-encryption-in-transit:<bool> - Require encryption in-transit (true,false)
- * - ghr-ec2-baseline-performance-factors-cpu-reference-families:<families> - CPU baseline performance reference families (comma-separated)
+ * - ghr-ec2-baseline-performance-factors-cpu-reference-families:<families> - CPU baseline performance reference families (semicolon-separated)
  *
  * Example:
  *   runs-on: [self-hosted, linux, ghr-ec2-vcpu-count-min:4, ghr-ec2-memory-mib-min:16384, ghr-ec2-accelerator-types:gpu]
@@ -986,7 +1034,7 @@ export function parseEc2OverrideConfig(
       config.InstanceRequirements.MemoryMiB![subKey === 'min' ? 'Min' : 'Max'] = parseInt(value, 10);
     } else if (key === 'cpu-manufacturers') {
       config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
-      config.InstanceRequirements.CpuManufacturers = value.split(',') as CpuManufacturer[];
+      config.InstanceRequirements.CpuManufacturers = splitEc2OverrideListValue(value) as CpuManufacturer[];
     } else if (key.startsWith('memory-gib-per-vcpu-')) {
       config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
       config.InstanceRequirements.MemoryGiBPerVCpu =
@@ -995,10 +1043,10 @@ export function parseEc2OverrideConfig(
       config.InstanceRequirements.MemoryGiBPerVCpu![subKey === 'min' ? 'Min' : 'Max'] = parseFloat(value);
     } else if (key === 'excluded-instance-types') {
       config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
-      config.InstanceRequirements.ExcludedInstanceTypes = value.split(',');
+      config.InstanceRequirements.ExcludedInstanceTypes = splitEc2OverrideListValue(value);
     } else if (key === 'instance-generations') {
       config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
-      config.InstanceRequirements.InstanceGenerations = value.split(',') as InstanceGeneration[];
+      config.InstanceRequirements.InstanceGenerations = splitEc2OverrideListValue(value) as InstanceGeneration[];
     } else if (key === 'spot-max-price-percentage-over-lowest-price') {
       config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
       config.InstanceRequirements.SpotMaxPricePercentageOverLowestPrice = parseInt(value, 10);
@@ -1025,7 +1073,7 @@ export function parseEc2OverrideConfig(
       config.InstanceRequirements.LocalStorage = value as LocalStorage;
     } else if (key === 'local-storage-types') {
       config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
-      config.InstanceRequirements.LocalStorageTypes = value.split(',') as LocalStorageType[];
+      config.InstanceRequirements.LocalStorageTypes = splitEc2OverrideListValue(value) as LocalStorageType[];
     } else if (key.startsWith('total-local-storage-gb-')) {
       config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
       config.InstanceRequirements.TotalLocalStorageGB =
@@ -1040,7 +1088,7 @@ export function parseEc2OverrideConfig(
       config.InstanceRequirements.BaselineEbsBandwidthMbps![subKey === 'min' ? 'Min' : 'Max'] = parseInt(value, 10);
     } else if (key === 'accelerator-types') {
       config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
-      config.InstanceRequirements.AcceleratorTypes = value.split(',') as AcceleratorType[];
+      config.InstanceRequirements.AcceleratorTypes = splitEc2OverrideListValue(value) as AcceleratorType[];
     } else if (key.startsWith('accelerator-count-')) {
       config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
       config.InstanceRequirements.AcceleratorCount =
@@ -1049,10 +1097,12 @@ export function parseEc2OverrideConfig(
       config.InstanceRequirements.AcceleratorCount![subKey === 'min' ? 'Min' : 'Max'] = parseInt(value, 10);
     } else if (key === 'accelerator-manufacturers') {
       config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
-      config.InstanceRequirements.AcceleratorManufacturers = value.split(',') as AcceleratorManufacturer[];
+      config.InstanceRequirements.AcceleratorManufacturers = splitEc2OverrideListValue(
+        value,
+      ) as AcceleratorManufacturer[];
     } else if (key === 'accelerator-names') {
       config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
-      config.InstanceRequirements.AcceleratorNames = value.split(',') as AcceleratorName[];
+      config.InstanceRequirements.AcceleratorNames = splitEc2OverrideListValue(value) as AcceleratorName[];
     } else if (key.startsWith('accelerator-total-memory-mib-')) {
       config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
       config.InstanceRequirements.AcceleratorTotalMemoryMiB =
@@ -1067,7 +1117,7 @@ export function parseEc2OverrideConfig(
       config.InstanceRequirements.NetworkBandwidthGbps![subKey === 'min' ? 'Min' : 'Max'] = parseFloat(value);
     } else if (key === 'allowed-instance-types') {
       config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
-      config.InstanceRequirements.AllowedInstanceTypes = value.split(',');
+      config.InstanceRequirements.AllowedInstanceTypes = splitEc2OverrideListValue(value);
     } else if (key === 'max-spot-price-as-percentage-of-optimal-on-demand-price') {
       config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
       config.InstanceRequirements.MaxSpotPriceAsPercentageOfOptimalOnDemandPrice = parseInt(value, 10);
@@ -1077,9 +1127,9 @@ export function parseEc2OverrideConfig(
         config.InstanceRequirements.BaselinePerformanceFactors || ({} as BaselinePerformanceFactorsRequest);
       config.InstanceRequirements.BaselinePerformanceFactors.Cpu =
         config.InstanceRequirements.BaselinePerformanceFactors.Cpu || ({} as CpuPerformanceFactorRequest);
-      config.InstanceRequirements.BaselinePerformanceFactors.Cpu.References = value
-        .split(',')
-        .map((family) => ({ InstanceFamily: family })) as PerformanceFactorReferenceRequest[];
+      config.InstanceRequirements.BaselinePerformanceFactors.Cpu.References = splitEc2OverrideListValue(value).map(
+        (family) => ({ InstanceFamily: family }),
+      ) as PerformanceFactorReferenceRequest[];
     } else if (key === 'require-encryption-in-transit') {
       config.InstanceRequirements = config.InstanceRequirements || ({} as InstanceRequirementsRequest);
       config.InstanceRequirements.RequireEncryptionInTransit = value.toLowerCase() === 'true';
@@ -1087,6 +1137,10 @@ export function parseEc2OverrideConfig(
   }
 
   return Object.keys(config).length > 0 ? config : undefined;
+}
+
+function splitEc2OverrideListValue(value: string): string[] {
+  return value.split(EC2_OVERRIDE_LIST_VALUE_SEPARATOR);
 }
 
 function getOrCreateBlockDeviceMapping(

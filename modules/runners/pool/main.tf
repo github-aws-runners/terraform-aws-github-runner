@@ -1,3 +1,11 @@
+locals {
+  pool_name_prefix = (
+    length("${var.config.prefix}-pool") <= 38
+    ? "${var.config.prefix}-pool"
+    : "${substr("${var.config.prefix}-pool", 0, 29)}-${substr(md5("${var.config.prefix}-pool"), 0, 8)}"
+  )
+}
+
 resource "aws_lambda_function" "pool" {
 
   s3_bucket                      = var.config.lambda.s3_bucket != null ? var.config.lambda.s3_bucket : null
@@ -157,7 +165,7 @@ resource "aws_iam_role_policy" "pool_xray" {
 }
 
 resource "aws_scheduler_schedule_group" "pool" {
-  name_prefix = "${var.config.prefix}-pool"
+  name_prefix = local.pool_name_prefix
 
   tags = var.config.tags
 }
@@ -188,7 +196,7 @@ data "aws_iam_policy_document" "scheduler" {
 }
 
 resource "aws_iam_role" "scheduler" {
-  name_prefix = "${var.config.prefix}-pool"
+  name_prefix = local.pool_name_prefix
 
   path                 = var.config.role_path
   permissions_boundary = var.config.role_permissions_boundary

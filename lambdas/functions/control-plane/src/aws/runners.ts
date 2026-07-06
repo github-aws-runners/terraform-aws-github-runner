@@ -382,6 +382,10 @@ async function createInstances(
           ResourceType: 'volume',
           Tags: tags,
         },
+        {
+          ResourceType: 'fleet',
+          Tags: tags,
+        },
       ],
       Type: 'instant',
     });

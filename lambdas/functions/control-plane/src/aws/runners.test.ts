@@ -1059,6 +1059,10 @@ function expectedCreateFleetRequest(expectedValues: ExpectedFleetRequestValues):
         ResourceType: 'volume',
         Tags: tags,
       },
+      {
+        ResourceType: 'fleet',
+        Tags: tags,
+      },
     ],
     TargetCapacitySpecification: {
       DefaultTargetCapacityType: expectedValues.capacityType,

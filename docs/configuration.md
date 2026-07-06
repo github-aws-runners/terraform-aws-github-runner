@@ -21,9 +21,9 @@ The module uses the AWS System Manager Parameter Store to store configuration fo
 
 Furthermore, to accommodate larger JIT configurations or other stored values, the module implements automatic tier selection for SSM parameters:
 
--   **Parameter Tiering**: If the size of a parameter's value exceeds 4KB (specifically, 4000 bytes), the module will automatically use the 'Advanced' tier for that SSM parameter. Values smaller than this threshold will use the 'Standard' tier.
--   **Cost Implications**: While the 'Standard' tier is generally free for a certain number of parameters and operations, the 'Advanced' tier incurs costs. These costs are typically pro-rated per hour for each parameter stored using the Advanced tier. For detailed and up-to-date pricing, please refer to the [AWS Systems Manager Pricing page](https://aws.amazon.com/systems-manager/pricing/#Parameter_Store).
--   **Housekeeping Recommendation**: The last sentence of the "AWS SSM Parameters" section already mentions that "data not deleted after a day will be deleted by a SSM housekeeper lambda." It is crucial to ensure this or a similar housekeeping mechanism is active and correctly configured, especially considering the potential costs associated with 'Advanced' tier parameters. This utility should identify and delete any orphaned parameters to help manage costs and maintain a clean SSM environment.
+- **Parameter Tiering**: If the size of a parameter's value exceeds 4KB (specifically, 4000 bytes), the module will automatically use the 'Advanced' tier for that SSM parameter. Values smaller than this threshold will use the 'Standard' tier.
+- **Cost Implications**: While the 'Standard' tier is generally free for a certain number of parameters and operations, the 'Advanced' tier incurs costs. These costs are typically pro-rated per hour for each parameter stored using the Advanced tier. For detailed and up-to-date pricing, please refer to the [AWS Systems Manager Pricing page](https://aws.amazon.com/systems-manager/pricing/#Parameter_Store).
+- **Housekeeping Recommendation**: The last sentence of the "AWS SSM Parameters" section already mentions that "data not deleted after a day will be deleted by a SSM housekeeper lambda." It is crucial to ensure this or a similar housekeeping mechanism is active and correctly configured, especially considering the potential costs associated with 'Advanced' tier parameters. This utility should identify and delete any orphaned parameters to help manage costs and maintain a clean SSM environment.
 
 | Path                                                          | Description                                                                                                                                                                                                                     |
 | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -335,7 +335,7 @@ Below is an example of the log messages created.
 ### Dynamic Labels
 
 [!WARNING]
-**Security implication:** Dynamic labels are extracted from the `runs-on` labels in incoming `workflow_job` webhook events. These labels originate from what 
+**Security implication:** Dynamic labels are extracted from the `runs-on` labels in incoming `workflow_job` webhook events. These labels originate from what
 users define in their workflow files. Any user with permission to create or modify workflows can inject arbitrary EC2 configuration values — including instance types, AMI IDs, subnet IDs, EBS volumes, placement settings, and more. Unless constrained with `ec2_dynamic_labels_policy`, these values are not validated against label-specific rules before being passed to the EC2 CreateFleet API. This means a malicious or careless workflow author could, for example:
 
 - Launch expensive instance types (e.g., `p5.48xlarge`) to inflate costs
@@ -343,7 +343,7 @@ users define in their workflow files. Any user with permission to create or modi
 - Target specific subnets (`ghr-ec2-subnet-id`) to escape network boundaries
 - Set arbitrarily large EBS volumes (`ghr-ec2-ebs-volume-size:10000`)
 
-**Only enable this feature in repositories where you trust all workflow contributors.** Consider combining it with [GitHub branch protection 
+**Only enable this feature in repositories where you trust all workflow contributors.** Consider combining it with [GitHub branch protection
 rules](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-a-branch-rule/about-branch-rules) and required reviews for workflow file changes.
 
 This feature is in early stage and therefore disabled by default. To enable dynamic labels, set `enable_dynamic_labels = true`.
@@ -352,7 +352,7 @@ Dynamic labels allow workflow authors to pass arbitrary metadata and EC2 instanc
 
 Dynamic labels serve two purposes:
 
-1. **Custom identity / restriction labels (`ghr-<key>:<value>`)** — Any `ghr-` prefixed label that is *not* `ghr-ec2-` acts as a custom identity label. These can represent a unique job ID, a team name, a cost center, an environment tag, or any arbitrary restriction. They do not affect EC2 configuration but are included in the label hash, guaranteeing unique runner matching per combination.
+1. **Custom identity / restriction labels (`ghr-<key>:<value>`)** — Any `ghr-` prefixed label that is _not_ `ghr-ec2-` acts as a custom identity label. These can represent a unique job ID, a team name, a cost center, an environment tag, or any arbitrary restriction. They do not affect EC2 configuration but are included in the label hash, guaranteeing unique runner matching per combination.
 2. **EC2 override labels (`ghr-ec2-<key>:<value>`)** — Labels prefixed with `ghr-ec2-` are parsed by the scale-up lambda to dynamically configure the EC2 launch request. For EC2 Fleet launches this can include instance type, vCPU/memory requirements, GPU/accelerator specs, EBS volumes, placement, and networking. For dedicated-host launches, only labels that map to `RunInstances` launch parameters are applied. This eliminates the need to create separate runner configurations for each hardware combination.
 
 #### How it works
@@ -417,7 +417,7 @@ In the example above, the three `ghr-` labels produce a unique hash, ensuring th
 
 #### EC2 override labels
 
-Labels using the format `ghr-ec2-<key>:<value>` override EC2 launch configuration. Values with multiple items use comma-separated lists.
+Labels using the format `ghr-ec2-<key>:<value>` override EC2 launch configuration. Values with multiple items use semicolon-separated lists, for example `ghr-ec2-cpu-manufacturers:intel;amd`. Comma is reserved as a runner label separator, so do not use comma inside dynamic `ghr-*` labels.
 
 For default EC2 Fleet launches (`use_dedicated_host = false`), labels in this section are parsed into the `CreateFleet` request. Basic fleet overrides, placement, and block device labels are sent as launch template overrides where EC2 Fleet accepts them. Instance requirement labels become `InstanceRequirements`; pricing labels set either the fleet override price (`ghr-ec2-max-price`) or instance requirement price preferences.
 
@@ -429,107 +429,107 @@ When `use_dedicated_host = true`, runner instances are launched with `RunInstanc
 
 ##### Basic Fleet Overrides
 
-| Label                                        | Description                          | Example value       | EC2 Fleet | Dedicated host |
-| -------------------------------------------- | ------------------------------------ | ------------------- | --------- | -------------- |
-| `ghr-ec2-instance-type:<type>`               | Set specific instance type           | `c5.xlarge`         | Yes       | Yes            |
-| `ghr-ec2-max-price:<price>`                  | Set maximum spot price               | `0.10`              | Yes       | No             |
-| `ghr-ec2-subnet-id:<id>`                     | Set subnet ID                        | `subnet-abc123`     | Yes       | Yes            |
-| `ghr-ec2-availability-zone:<zone>`           | Set availability zone                | `us-east-1a`        | Yes       | Yes            |
-| `ghr-ec2-availability-zone-id:<id>`          | Set availability zone ID             | `use1-az1`          | Yes       | Yes            |
-| `ghr-ec2-weighted-capacity:<number>`         | Set weighted capacity                | `2`                 | Yes       | No             |
-| `ghr-ec2-priority:<number>`                  | Set launch priority                  | `1`                 | Yes       | No             |
-| `ghr-ec2-image-id:<ami-id>`                  | Override AMI ID                      | `ami-0abcdef123`    | Yes       | Yes            |
+| Label                                | Description                | Example value    | EC2 Fleet | Dedicated host |
+| ------------------------------------ | -------------------------- | ---------------- | --------- | -------------- |
+| `ghr-ec2-instance-type:<type>`       | Set specific instance type | `c5.xlarge`      | Yes       | Yes            |
+| `ghr-ec2-max-price:<price>`          | Set maximum spot price     | `0.10`           | Yes       | No             |
+| `ghr-ec2-subnet-id:<id>`             | Set subnet ID              | `subnet-abc123`  | Yes       | Yes            |
+| `ghr-ec2-availability-zone:<zone>`   | Set availability zone      | `us-east-1a`     | Yes       | Yes            |
+| `ghr-ec2-availability-zone-id:<id>`  | Set availability zone ID   | `use1-az1`       | Yes       | Yes            |
+| `ghr-ec2-weighted-capacity:<number>` | Set weighted capacity      | `2`              | Yes       | No             |
+| `ghr-ec2-priority:<number>`          | Set launch priority        | `1`              | Yes       | No             |
+| `ghr-ec2-image-id:<ami-id>`          | Override AMI ID            | `ami-0abcdef123` | Yes       | Yes            |
 
 ##### Instance Requirements — vCPU & Memory
 
-| Label                                        | Description                          | Example value       | EC2 Fleet | Dedicated host |
-| -------------------------------------------- | ------------------------------------ | ------------------- | --------- | -------------- |
-| `ghr-ec2-vcpu-count-min:<number>`            | Minimum vCPU count                   | `4`                 | Yes       | No             |
-| `ghr-ec2-vcpu-count-max:<number>`            | Maximum vCPU count                   | `16`                | Yes       | No             |
-| `ghr-ec2-memory-mib-min:<number>`            | Minimum memory in MiB               | `16384`             | Yes       | No             |
-| `ghr-ec2-memory-mib-max:<number>`            | Maximum memory in MiB               | `65536`             | Yes       | No             |
-| `ghr-ec2-memory-gib-per-vcpu-min:<number>`   | Min memory per vCPU ratio (GiB)     | `2`                 | Yes       | No             |
-| `ghr-ec2-memory-gib-per-vcpu-max:<number>`   | Max memory per vCPU ratio (GiB)     | `8`                 | Yes       | No             |
+| Label                                      | Description                     | Example value | EC2 Fleet | Dedicated host |
+| ------------------------------------------ | ------------------------------- | ------------- | --------- | -------------- |
+| `ghr-ec2-vcpu-count-min:<number>`          | Minimum vCPU count              | `4`           | Yes       | No             |
+| `ghr-ec2-vcpu-count-max:<number>`          | Maximum vCPU count              | `16`          | Yes       | No             |
+| `ghr-ec2-memory-mib-min:<number>`          | Minimum memory in MiB           | `16384`       | Yes       | No             |
+| `ghr-ec2-memory-mib-max:<number>`          | Maximum memory in MiB           | `65536`       | Yes       | No             |
+| `ghr-ec2-memory-gib-per-vcpu-min:<number>` | Min memory per vCPU ratio (GiB) | `2`           | Yes       | No             |
+| `ghr-ec2-memory-gib-per-vcpu-max:<number>` | Max memory per vCPU ratio (GiB) | `8`           | Yes       | No             |
 
 ##### Instance Requirements — CPU & Performance
 
-| Label                                        | Description                                                       | Example value              | EC2 Fleet | Dedicated host |
-| -------------------------------------------- | ----------------------------------------------------------------- | -------------------------- | --------- | -------------- |
-| `ghr-ec2-cpu-manufacturers:<list>`           | CPU manufacturers (comma-separated: `intel`, `amd`, `amazon-web-services`) | `intel,amd`                | Yes       | No             |
-| `ghr-ec2-instance-generations:<list>`        | Instance generations (comma-separated)                            | `current`                  | Yes       | No             |
-| `ghr-ec2-excluded-instance-types:<list>`     | Exclude instance types (comma-separated)                          | `t2.micro,t3.nano`        | Yes       | No             |
-| `ghr-ec2-allowed-instance-types:<list>`      | Allow only specific instance types (comma-separated)              | `c5.xlarge,c5.2xlarge`    | Yes       | No             |
-| `ghr-ec2-burstable-performance:<value>`      | Burstable performance (`included`, `excluded`, `required`)        | `excluded`                 | Yes       | No             |
-| `ghr-ec2-bare-metal:<value>`                 | Bare metal (`included`, `excluded`, `required`)                   | `excluded`                 | Yes       | No             |
+| Label                                    | Description                                                                    | Example value          | EC2 Fleet | Dedicated host |
+| ---------------------------------------- | ------------------------------------------------------------------------------ | ---------------------- | --------- | -------------- |
+| `ghr-ec2-cpu-manufacturers:<list>`       | CPU manufacturers (semicolon-separated: `intel`, `amd`, `amazon-web-services`) | `intel;amd`            | Yes       | No             |
+| `ghr-ec2-instance-generations:<list>`    | Instance generations (semicolon-separated)                                     | `current`              | Yes       | No             |
+| `ghr-ec2-excluded-instance-types:<list>` | Exclude instance types (semicolon-separated)                                   | `t2.micro;t3.nano`     | Yes       | No             |
+| `ghr-ec2-allowed-instance-types:<list>`  | Allow only specific instance types (semicolon-separated)                       | `c5.xlarge;c5.2xlarge` | Yes       | No             |
+| `ghr-ec2-burstable-performance:<value>`  | Burstable performance (`included`, `excluded`, `required`)                     | `excluded`             | Yes       | No             |
+| `ghr-ec2-bare-metal:<value>`             | Bare metal (`included`, `excluded`, `required`)                                | `excluded`             | Yes       | No             |
 
 ##### Instance Requirements — Accelerators / GPU
 
-| Label                                             | Description                                                              | Example value                    | EC2 Fleet | Dedicated host |
-| ------------------------------------------------- | ------------------------------------------------------------------------ | -------------------------------- | --------- | -------------- |
-| `ghr-ec2-accelerator-types:<list>`                | Accelerator types (comma-separated: `gpu`, `fpga`, `inference`)          | `gpu`                            | Yes       | No             |
-| `ghr-ec2-accelerator-count-min:<number>`          | Minimum accelerator count                                                | `1`                              | Yes       | No             |
-| `ghr-ec2-accelerator-count-max:<number>`          | Maximum accelerator count                                                | `4`                              | Yes       | No             |
-| `ghr-ec2-accelerator-manufacturers:<list>`        | Accelerator manufacturers (comma-separated: `nvidia`, `amd`, `amazon-web-services`, `xilinx`) | `nvidia`                         | Yes       | No             |
-| `ghr-ec2-accelerator-names:<list>`                | Specific accelerator names (comma-separated)                             | `t4,v100`                        | Yes       | No             |
-| `ghr-ec2-accelerator-total-memory-mib-min:<number>` | Min accelerator total memory in MiB                                    | `8192`                           | Yes       | No             |
-| `ghr-ec2-accelerator-total-memory-mib-max:<number>` | Max accelerator total memory in MiB                                    | `32768`                          | Yes       | No             |
+| Label                                               | Description                                                                                       | Example value | EC2 Fleet | Dedicated host |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ------------- | --------- | -------------- |
+| `ghr-ec2-accelerator-types:<list>`                  | Accelerator types (semicolon-separated: `gpu`, `fpga`, `inference`)                               | `gpu`         | Yes       | No             |
+| `ghr-ec2-accelerator-count-min:<number>`            | Minimum accelerator count                                                                         | `1`           | Yes       | No             |
+| `ghr-ec2-accelerator-count-max:<number>`            | Maximum accelerator count                                                                         | `4`           | Yes       | No             |
+| `ghr-ec2-accelerator-manufacturers:<list>`          | Accelerator manufacturers (semicolon-separated: `nvidia`, `amd`, `amazon-web-services`, `xilinx`) | `nvidia`      | Yes       | No             |
+| `ghr-ec2-accelerator-names:<list>`                  | Specific accelerator names (semicolon-separated)                                                  | `t4;v100`     | Yes       | No             |
+| `ghr-ec2-accelerator-total-memory-mib-min:<number>` | Min accelerator total memory in MiB                                                               | `8192`        | Yes       | No             |
+| `ghr-ec2-accelerator-total-memory-mib-max:<number>` | Max accelerator total memory in MiB                                                               | `32768`       | Yes       | No             |
 
 ##### Instance Requirements — Network & Storage
 
-| Label                                              | Description                                                       | Example value       | EC2 Fleet | Dedicated host |
-| -------------------------------------------------- | ----------------------------------------------------------------- | ------------------- | --------- | -------------- |
-| `ghr-ec2-network-interface-count-min:<number>`     | Min network interfaces                                            | `1`                 | Yes       | No             |
-| `ghr-ec2-network-interface-count-max:<number>`     | Max network interfaces                                            | `4`                 | Yes       | No             |
-| `ghr-ec2-network-bandwidth-gbps-min:<number>`      | Min network bandwidth in Gbps                                     | `10`                | Yes       | No             |
-| `ghr-ec2-network-bandwidth-gbps-max:<number>`      | Max network bandwidth in Gbps                                     | `25`                | Yes       | No             |
-| `ghr-ec2-local-storage:<value>`                    | Local storage (`included`, `excluded`, `required`)                | `required`          | Yes       | No             |
-| `ghr-ec2-local-storage-types:<list>`               | Local storage types (comma-separated: `hdd`, `ssd`)              | `ssd`               | Yes       | No             |
-| `ghr-ec2-total-local-storage-gb-min:<number>`      | Min total local storage in GB                                     | `100`               | Yes       | No             |
-| `ghr-ec2-total-local-storage-gb-max:<number>`      | Max total local storage in GB                                     | `500`               | Yes       | No             |
-| `ghr-ec2-baseline-ebs-bandwidth-mbps-min:<number>` | Min baseline EBS bandwidth in Mbps                                | `1000`              | Yes       | No             |
-| `ghr-ec2-baseline-ebs-bandwidth-mbps-max:<number>` | Max baseline EBS bandwidth in Mbps                                | `5000`              | Yes       | No             |
+| Label                                              | Description                                             | Example value | EC2 Fleet | Dedicated host |
+| -------------------------------------------------- | ------------------------------------------------------- | ------------- | --------- | -------------- |
+| `ghr-ec2-network-interface-count-min:<number>`     | Min network interfaces                                  | `1`           | Yes       | No             |
+| `ghr-ec2-network-interface-count-max:<number>`     | Max network interfaces                                  | `4`           | Yes       | No             |
+| `ghr-ec2-network-bandwidth-gbps-min:<number>`      | Min network bandwidth in Gbps                           | `10`          | Yes       | No             |
+| `ghr-ec2-network-bandwidth-gbps-max:<number>`      | Max network bandwidth in Gbps                           | `25`          | Yes       | No             |
+| `ghr-ec2-local-storage:<value>`                    | Local storage (`included`, `excluded`, `required`)      | `required`    | Yes       | No             |
+| `ghr-ec2-local-storage-types:<list>`               | Local storage types (semicolon-separated: `hdd`, `ssd`) | `ssd`         | Yes       | No             |
+| `ghr-ec2-total-local-storage-gb-min:<number>`      | Min total local storage in GB                           | `100`         | Yes       | No             |
+| `ghr-ec2-total-local-storage-gb-max:<number>`      | Max total local storage in GB                           | `500`         | Yes       | No             |
+| `ghr-ec2-baseline-ebs-bandwidth-mbps-min:<number>` | Min baseline EBS bandwidth in Mbps                      | `1000`        | Yes       | No             |
+| `ghr-ec2-baseline-ebs-bandwidth-mbps-max:<number>` | Max baseline EBS bandwidth in Mbps                      | `5000`        | Yes       | No             |
 
 ##### Placement
 
-| Label                                                  | Description                                                | Example value         | EC2 Fleet | Dedicated host |
-| ------------------------------------------------------ | ---------------------------------------------------------- | --------------------- | --------- | -------------- |
-| `ghr-ec2-placement-group-name:<name>`                  | Placement group name                                       | `my-cluster-group`    | Yes       | Yes            |
-| `ghr-ec2-placement-group-id:<id>`                      | Placement group ID                                         | `pg-abc123`           | Yes       | Yes            |
-| `ghr-ec2-placement-tenancy:<value>`                    | Tenancy (`default`, `dedicated`, `host`)                   | `dedicated`           | Yes       | Yes            |
-| `ghr-ec2-placement-host-id:<id>`                       | Dedicated host ID                                          | `h-abc123`            | Yes       | Yes            |
-| `ghr-ec2-placement-affinity:<value>`                   | Affinity (`default`, `host`)                               | `host`                | Yes       | Yes            |
-| `ghr-ec2-placement-partition-number:<number>`          | Partition number                                           | `1`                   | Yes       | Yes            |
-| `ghr-ec2-placement-availability-zone:<zone>`           | Placement availability zone                                | `us-east-1a`          | Yes       | Yes            |
-| `ghr-ec2-placement-availability-zone-id:<id>`          | Placement availability zone ID                             | `use1-az1`            | Yes       | Yes            |
-| `ghr-ec2-placement-spread-domain:<domain>`             | Spread domain                                              | `my-domain`           | Yes       | Yes            |
-| `ghr-ec2-placement-host-resource-group-arn:<arn>`      | Host resource group ARN                                    | `arn:aws:...`         | Yes       | Yes            |
+| Label                                             | Description                              | Example value      | EC2 Fleet | Dedicated host |
+| ------------------------------------------------- | ---------------------------------------- | ------------------ | --------- | -------------- |
+| `ghr-ec2-placement-group-name:<name>`             | Placement group name                     | `my-cluster-group` | Yes       | Yes            |
+| `ghr-ec2-placement-group-id:<id>`                 | Placement group ID                       | `pg-abc123`        | Yes       | Yes            |
+| `ghr-ec2-placement-tenancy:<value>`               | Tenancy (`default`, `dedicated`, `host`) | `dedicated`        | Yes       | Yes            |
+| `ghr-ec2-placement-host-id:<id>`                  | Dedicated host ID                        | `h-abc123`         | Yes       | Yes            |
+| `ghr-ec2-placement-affinity:<value>`              | Affinity (`default`, `host`)             | `host`             | Yes       | Yes            |
+| `ghr-ec2-placement-partition-number:<number>`     | Partition number                         | `1`                | Yes       | Yes            |
+| `ghr-ec2-placement-availability-zone:<zone>`      | Placement availability zone              | `us-east-1a`       | Yes       | Yes            |
+| `ghr-ec2-placement-availability-zone-id:<id>`     | Placement availability zone ID           | `use1-az1`         | Yes       | Yes            |
+| `ghr-ec2-placement-spread-domain:<domain>`        | Spread domain                            | `my-domain`        | Yes       | Yes            |
+| `ghr-ec2-placement-host-resource-group-arn:<arn>` | Host resource group ARN                  | `arn:aws:...`      | Yes       | Yes            |
 
 ##### Block Device Mappings (EBS)
 
-| Label                                            | Description                                                    | Example value  | EC2 Fleet | Dedicated host |
-| ------------------------------------------------ | -------------------------------------------------------------- | -------------- | --------- | -------------- |
-| `ghr-ec2-block-device-name:<name>`               | Block device name                                              | `/dev/sda1`    | Yes       | Yes            |
-| `ghr-ec2-ebs-volume-size:<size>`                 | EBS volume size in GB                                          | `100`          | Yes       | Yes            |
-| `ghr-ec2-ebs-volume-type:<type>`                 | EBS volume type (`gp2`, `gp3`, `io1`, `io2`, `st1`, `sc1`)   | `gp3`          | Yes       | Yes            |
-| `ghr-ec2-ebs-iops:<number>`                      | EBS IOPS                                                       | `3000`         | Yes       | Yes            |
-| `ghr-ec2-ebs-throughput:<number>`                 | EBS throughput in MB/s (gp3 only)                              | `125`          | Yes       | Yes            |
-| `ghr-ec2-ebs-encrypted:<boolean>`                 | EBS encryption (`true`, `false`)                               | `true`         | Yes       | Yes            |
-| `ghr-ec2-ebs-kms-key-id:<id>`                    | KMS key ID for encryption                                      | `key-abc123`   | Yes       | Yes            |
-| `ghr-ec2-ebs-delete-on-termination:<boolean>`     | Delete on termination (`true`, `false`)                        | `true`         | Yes       | Yes            |
-| `ghr-ec2-ebs-snapshot-id:<id>`                    | Snapshot ID for EBS volume                                     | `snap-abc123`  | Yes       | Yes            |
-| `ghr-ec2-block-device-virtual-name:<name>`        | Virtual device name (ephemeral storage)                        | `ephemeral0`   | Yes       | Yes            |
-| `ghr-ec2-block-device-no-device:<string>`         | Suppresses device mapping                                      | `true`         | Yes       | Yes            |
+| Label                                         | Description                                                | Example value | EC2 Fleet | Dedicated host |
+| --------------------------------------------- | ---------------------------------------------------------- | ------------- | --------- | -------------- |
+| `ghr-ec2-block-device-name:<name>`            | Block device name                                          | `/dev/sda1`   | Yes       | Yes            |
+| `ghr-ec2-ebs-volume-size:<size>`              | EBS volume size in GB                                      | `100`         | Yes       | Yes            |
+| `ghr-ec2-ebs-volume-type:<type>`              | EBS volume type (`gp2`, `gp3`, `io1`, `io2`, `st1`, `sc1`) | `gp3`         | Yes       | Yes            |
+| `ghr-ec2-ebs-iops:<number>`                   | EBS IOPS                                                   | `3000`        | Yes       | Yes            |
+| `ghr-ec2-ebs-throughput:<number>`             | EBS throughput in MB/s (gp3 only)                          | `125`         | Yes       | Yes            |
+| `ghr-ec2-ebs-encrypted:<boolean>`             | EBS encryption (`true`, `false`)                           | `true`        | Yes       | Yes            |
+| `ghr-ec2-ebs-kms-key-id:<id>`                 | KMS key ID for encryption                                  | `key-abc123`  | Yes       | Yes            |
+| `ghr-ec2-ebs-delete-on-termination:<boolean>` | Delete on termination (`true`, `false`)                    | `true`        | Yes       | Yes            |
+| `ghr-ec2-ebs-snapshot-id:<id>`                | Snapshot ID for EBS volume                                 | `snap-abc123` | Yes       | Yes            |
+| `ghr-ec2-block-device-virtual-name:<name>`    | Virtual device name (ephemeral storage)                    | `ephemeral0`  | Yes       | Yes            |
+| `ghr-ec2-block-device-no-device:<string>`     | Suppresses device mapping                                  | `true`        | Yes       | Yes            |
 
 ##### Pricing & Advanced
 
-| Label                                                                         | Description                                                        | Example value  | EC2 Fleet | Dedicated host |
-| ----------------------------------------------------------------------------- | ------------------------------------------------------------------ | -------------- | --------- | -------------- |
-| `ghr-ec2-spot-max-price-percentage-over-lowest-price:<number>`                | Spot max price as % over lowest price                              | `20`           | Yes       | No             |
-| `ghr-ec2-on-demand-max-price-percentage-over-lowest-price:<number>`           | On-demand max price as % over lowest price                         | `10`           | Yes       | No             |
-| `ghr-ec2-max-spot-price-as-percentage-of-optimal-on-demand-price:<number>`    | Max spot price as % of optimal on-demand                           | `50`           | Yes       | No             |
-| `ghr-ec2-require-hibernate-support:<boolean>`                                 | Require hibernate support (`true`, `false`)                        | `true`         | Yes       | No             |
-| `ghr-ec2-require-encryption-in-transit:<boolean>`                             | Require encryption in-transit (`true`, `false`)                    | `true`         | Yes       | No             |
-| `ghr-ec2-baseline-performance-factors-cpu-reference-families:<list>`          | CPU baseline performance reference families (comma-separated)      | `c5,m5`        | Yes       | No             |
+| Label                                                                      | Description                                                       | Example value | EC2 Fleet | Dedicated host |
+| -------------------------------------------------------------------------- | ----------------------------------------------------------------- | ------------- | --------- | -------------- |
+| `ghr-ec2-spot-max-price-percentage-over-lowest-price:<number>`             | Spot max price as % over lowest price                             | `20`          | Yes       | No             |
+| `ghr-ec2-on-demand-max-price-percentage-over-lowest-price:<number>`        | On-demand max price as % over lowest price                        | `10`          | Yes       | No             |
+| `ghr-ec2-max-spot-price-as-percentage-of-optimal-on-demand-price:<number>` | Max spot price as % of optimal on-demand                          | `50`          | Yes       | No             |
+| `ghr-ec2-require-hibernate-support:<boolean>`                              | Require hibernate support (`true`, `false`)                       | `true`        | Yes       | No             |
+| `ghr-ec2-require-encryption-in-transit:<boolean>`                          | Require encryption in-transit (`true`, `false`)                   | `true`        | Yes       | No             |
+| `ghr-ec2-baseline-performance-factors-cpu-reference-families:<list>`       | CPU baseline performance reference families (semicolon-separated) | `c5;m5`       | Yes       | No             |
 
 #### Examples
 
@@ -557,7 +557,7 @@ jobs:
       - ghr-ec2-ebs-volume-type:gp3
 ```
 
-Attribute-based instance selection with Intel CPUs only:
+Attribute-based instance selection with Intel or AMD CPUs:
 
 ```yaml
 jobs:
@@ -568,7 +568,7 @@ jobs:
       - ghr-ec2-vcpu-count-min:2
       - ghr-ec2-vcpu-count-max:8
       - ghr-ec2-memory-mib-min:8192
-      - ghr-ec2-cpu-manufacturers:intel
+      - ghr-ec2-cpu-manufacturers:intel;amd
       - ghr-ec2-burstable-performance:excluded
 ```
 
@@ -578,7 +578,8 @@ jobs:
 - When using `ghr-ec2-instance-type`, the fleet request uses a direct instance type override. When using `ghr-ec2-vcpu-count-*`, `ghr-ec2-memory-mib-*`, or other instance requirement labels, the fleet request uses [attribute-based instance type selection](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-fleet-attribute-based-instance-type-selection.html).
 - Labels are parsed at the scale-up lambda level — they do not change after the instance is launched.
 - A deterministic hash of all `ghr-` prefixed labels (both custom identity and EC2 override) is used for runner matching. Different label combinations produce different hashes, ensuring each unique set of requirements gets its own runner.
-- Custom `ghr-` labels (non-`ec2`) are free-form — you can use any key/value pair. They are not validated by the module.
+- Dynamic `ghr-` labels can contain letters, numbers, `.`, `_`, `/`, `-`, `:`, and `;`. Comma is not allowed because it is reserved as a runner label separator.
+- GitHub runner labels are copied to EC2 as comma-separated values in `ghr:runner_labels` tags, capped at five label tags (`ghr:runner_labels` through `ghr:runner_labels:5`) to avoid consuming too many of the EC2 50 tags per resource. The comma-separated label value is split across those EC2 tags when it exceeds the tag value length limit.
 - Multiple EBS labels apply to the same (first) block device mapping. If you need more complex block device configurations, use a custom AMI or launch template instead.
 - This feature is compatible with both org-level and repo-level runners, spot and on-demand instances, and ephemeral and non-ephemeral runners.
 - Be mindful of the security implications: enabling this feature allows workflow authors to influence EC2 instance configuration via `ghr-ec2-` labels. Ensure your IAM policies and subnet configurations provide appropriate guardrails.
