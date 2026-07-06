@@ -142,8 +142,7 @@ function sanitizeAllocationStrategy(
   strategy: string,
   targetCapacityType: string,
 ): SpotAllocationStrategy | FleetOnDemandAllocationStrategy {
-  const validStrategies =
-    targetCapacityType === 'spot' ? SPOT_ALLOCATION_STRATEGIES : ON_DEMAND_ALLOCATION_STRATEGIES;
+  const validStrategies = targetCapacityType === 'spot' ? SPOT_ALLOCATION_STRATEGIES : ON_DEMAND_ALLOCATION_STRATEGIES;
   return (validStrategies.includes(strategy) ? strategy : 'lowest-price') as
     | SpotAllocationStrategy
     | FleetOnDemandAllocationStrategy;
@@ -166,8 +165,7 @@ function generateFleetOverrides(
 
   // Both the on-demand 'prioritized' and the spot 'capacity-optimized-prioritized' strategies
   // honor the Priority field of the launch template overrides.
-  const usesPriority =
-    allocationStrategy === 'prioritized' || allocationStrategy === 'capacity-optimized-prioritized';
+  const usesPriority = allocationStrategy === 'prioritized' || allocationStrategy === 'capacity-optimized-prioritized';
 
   subnetsToUse.forEach((s) => {
     instanceTypesToUse.forEach((i, index) => {
