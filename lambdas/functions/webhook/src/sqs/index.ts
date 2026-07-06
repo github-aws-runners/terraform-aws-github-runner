@@ -20,6 +20,7 @@ export interface ActionRequestMessage {
 export interface MatcherConfig {
   labelMatchers: string[][];
   exactMatch: boolean;
+  bidirectionalLabelMatch?: boolean;
   enableDynamicLabels?: boolean;
   ec2DynamicLabelsPolicy?: Ec2DynamicLabelsPolicy | null;
 }

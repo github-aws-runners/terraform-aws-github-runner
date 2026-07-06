@@ -114,6 +114,7 @@ module "webhook" {
       matcherConfig : {
         labelMatchers : [local.runner_labels]
         exactMatch : var.enable_runner_workflow_job_labels_check_all
+        bidirectionalLabelMatch : var.enable_runner_bidirectional_label_match
         enableDynamicLabels : var.enable_dynamic_labels
         ec2DynamicLabelsPolicy : var.ec2_dynamic_labels_policy
       }

@@ -14,6 +14,7 @@ import {
   RunInstancesCommand,
   SpotAllocationStrategy,
   TerminateInstancesCommand,
+  type _InstanceType,
 } from '@aws-sdk/client-ec2';
 import { GetParameterCommand, type GetParameterResult, PutParameterCommand, SSMClient } from '@aws-sdk/client-ssm';
 import { mockClient } from 'aws-sdk-client-mock';
@@ -22,7 +23,7 @@ import 'aws-sdk-client-mock-jest/vitest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ScaleError from './../scale-runners/ScaleError';
 import { createRunner, listEC2Runners, tag, terminateRunner, untag } from './runners';
-import type { RunnerInfo, RunnerInputParameters, RunnerType } from './runners.d';
+import type { Ec2OverrideConfig, RunnerInfo, RunnerInputParameters, RunnerType } from './runners.d';
 import { LambdaRunnerSource } from '../scale-runners/scale-up';
 
 process.env.AWS_REGION = 'eu-east-1';
@@ -1030,6 +1031,7 @@ interface RunnerConfig {
   scaleErrors: string[];
   source: LambdaRunnerSource;
   useDedicatedHost?: boolean;
+  ec2OverrideConfig?: Ec2OverrideConfig;
 }
 
 function createRunnerConfig(runnerConfig: RunnerConfig): RunnerInputParameters {
@@ -1053,6 +1055,7 @@ function createRunnerConfig(runnerConfig: RunnerConfig): RunnerInputParameters {
     scaleErrors: runnerConfig.scaleErrors,
     source: runnerConfig.source,
     useDedicatedHost: runnerConfig.useDedicatedHost,
+    ec2OverrideConfig: runnerConfig.ec2OverrideConfig,
   };
 }
 
@@ -1143,6 +1146,10 @@ function expectedCreateFleetRequest(expectedValues: ExpectedFleetRequestValues):
       },
       {
         ResourceType: 'volume',
+        Tags: tags,
+      },
+      {
+        ResourceType: 'fleet',
         Tags: tags,
       },
     ],
@@ -1408,5 +1415,87 @@ describe('create runner with useDedicatedHost', () => {
     expect(mockSSMClient).toHaveReceivedCommandWith(GetParameterCommand, {
       Name: 'my-ami-id-param',
     });
+  });
+
+  it('applies supported EC2 override config values to RunInstances', async () => {
+    const paramValue: GetParameterResult = {
+      Parameter: {
+        Value: 'ami-from-ssm',
+      },
+    };
+    mockSSMClient.on(GetParameterCommand).resolves(paramValue);
+
+    const ec2OverrideConfig: Ec2OverrideConfig = {
+      InstanceType: 'm7i.large' as _InstanceType,
+      SubnetId: 'subnet-dynamic',
+      AvailabilityZone: 'us-east-1a',
+      ImageId: 'ami-from-dynamic-label',
+      Placement: {
+        Affinity: 'host',
+        HostResourceGroupArn: 'arn:aws:ec2:us-east-1:123456789012:host-resource-group/hrg-1234',
+        Tenancy: 'host',
+      },
+      BlockDeviceMappings: [
+        {
+          DeviceName: '/dev/sda1',
+          Ebs: {
+            DeleteOnTermination: false,
+            Encrypted: true,
+            VolumeSize: 100,
+            VolumeType: 'gp3',
+          },
+        },
+      ],
+      InstanceRequirements: {
+        VCpuCount: {
+          Min: 4,
+        },
+        MemoryMiB: {
+          Min: 16384,
+        },
+      },
+      MaxPrice: '0.50',
+      Priority: 10,
+      WeightedCapacity: 2,
+    };
+
+    await createRunner(
+      createRunnerConfig({
+        ...dedicatedHostRunnerConfig,
+        amiIdSsmParameterName: 'my-ami-id-param',
+        ec2OverrideConfig,
+      }),
+    );
+
+    const runInstancesInput = mockEC2Client.commandCalls(RunInstancesCommand)[0].args[0].input;
+
+    expect(runInstancesInput).toEqual(
+      expect.objectContaining({
+        InstanceType: 'm7i.large',
+        SubnetId: 'subnet-dynamic',
+        ImageId: 'ami-from-dynamic-label',
+        Placement: {
+          Affinity: 'host',
+          AvailabilityZone: 'us-east-1a',
+          HostResourceGroupArn: 'arn:aws:ec2:us-east-1:123456789012:host-resource-group/hrg-1234',
+          Tenancy: 'host',
+        },
+        BlockDeviceMappings: [
+          {
+            DeviceName: '/dev/sda1',
+            Ebs: {
+              DeleteOnTermination: false,
+              Encrypted: true,
+              VolumeSize: 100,
+              VolumeType: 'gp3',
+            },
+          },
+        ],
+      }),
+    );
+    expect(runInstancesInput).not.toHaveProperty('InstanceRequirements');
+    expect(runInstancesInput).not.toHaveProperty('MaxPrice');
+    expect(runInstancesInput).not.toHaveProperty('Priority');
+    expect(runInstancesInput).not.toHaveProperty('WeightedCapacity');
   });
 });

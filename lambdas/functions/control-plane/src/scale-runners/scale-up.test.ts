@@ -7,7 +7,7 @@ import nock from 'nock';
 import { performance } from 'perf_hooks';
 
 import * as ghAuth from '../github/auth';
-import { createRunner, listEC2Runners } from './../aws/runners';
+import { createRunner, listEC2Runners, tag } from './../aws/runners';
 import { RunnerInputParameters } from './../aws/runners.d';
 import * as scaleUpModule from './scale-up';
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
@@ -33,6 +33,7 @@ const mockOctokit = {
 
 const mockCreateRunner = vi.mocked(createRunner);
 const mockListRunners = vi.mocked(listEC2Runners);
+const mockTag = vi.mocked(tag);
 const mockEC2Client = mockClient(EC2Client);
 const mockSSMClient = mockClient(SSMClient);
 const mockSSMgetParameter = vi.mocked(getParameter);
@@ -288,6 +289,71 @@ describe('scaleUp with GHES', () => {
       expect(createRunner).toBeCalledWith(expectedRunnerParams);
     });
 
+    it('tags the EC2 runner with the GitHub runner metadata returned by JIT config', async () => {
+      await scaleUpModule.scaleUp(TEST_DATA);
+      expect(mockTag).toHaveBeenCalledWith('i-12345', [
+        { Key: 'ghr:github_runner_id', Value: '9876543210' },
+        { Key: 'ghr:runner_labels', Value: 'label1,label2' },
+      ]);
+    });
+
+    it('chunks comma-joined GitHub runner labels by the EC2 tag value max length', async () => {
+      const runnerLabels = ['a'.repeat(scaleUpModule.EC2_TAG_VALUE_MAX_LENGTH), 'b'].join(',');
+      process.env.RUNNER_LABELS = runnerLabels;
+
+      await scaleUpModule.scaleUp(TEST_DATA);
+
+      expect(mockTag).toHaveBeenCalledWith('i-12345', [
+        { Key: 'ghr:github_runner_id', Value: '9876543210' },
+        { Key: 'ghr:runner_labels', Value: runnerLabels.slice(0, scaleUpModule.EC2_TAG_VALUE_MAX_LENGTH) },
+        {
+          Key: 'ghr:runner_labels:2',
+          Value: runnerLabels.slice(scaleUpModule.EC2_TAG_VALUE_MAX_LENGTH),
+        },
+      ]);
+    });
+
+    it('limits GitHub runner label metadata to five EC2 tags', async () => {
+      const runnerLabels = Array.from({ length: scaleUpModule.RUNNER_LABELS_TAG_MAX_COUNT + 1 }, (_, index) =>
+        String.fromCharCode('a'.charCodeAt(0) + index).repeat(scaleUpModule.EC2_TAG_VALUE_MAX_LENGTH),
+      ).join(',');
+      process.env.RUNNER_LABELS = runnerLabels;
+
+      await scaleUpModule.scaleUp(TEST_DATA);
+
+      expect(mockTag).toHaveBeenCalledWith('i-12345', [
+        { Key: 'ghr:github_runner_id', Value: '9876543210' },
+        ...Array.from({ length: scaleUpModule.RUNNER_LABELS_TAG_MAX_COUNT }, (_, index) => ({
+          Key: index === 0 ? 'ghr:runner_labels' : `ghr:runner_labels:${index + 1}`,
+          Value: runnerLabels.slice(
+            index * scaleUpModule.EC2_TAG_VALUE_MAX_LENGTH,
+            (index + 1) * scaleUpModule.EC2_TAG_VALUE_MAX_LENGTH,
+          ),
+        })),
+      ]);
+    });
+
+    it('uses a reserved separator when packing GitHub runner labels into EC2 tags', async () => {
+      process.env.RUNNER_LABELS = ['label:with/slash', 'label+with+plus'].join(',');
+      const testDataWithSemicolonDynamicLabel = [
+        {
+          ...TEST_DATA_SINGLE,
+          labels: ['ghr-ec2-cpu-manufacturers:intel;amd'],
+          messageId: 'test-semicolon-dynamic-label',
+        },
+      ];
+
+      await scaleUpModule.scaleUp(testDataWithSemicolonDynamicLabel);
+
+      expect(mockTag).toHaveBeenCalledWith('i-12345', [
+        { Key: 'ghr:github_runner_id', Value: '9876543210' },
+        {
+          Key: 'ghr:runner_labels',
+          Value: 'label:with/slash,label+with+plus,ghr-ec2-cpu-manufacturers:intel;amd',
+        },
+      ]);
+    });
+
     it('creates a runner with labels in a specific group', async () => {
       process.env.RUNNER_LABELS = 'label1,label2';
       process.env.RUNNER_GROUP_NAME = 'TEST_GROUP';
@@ -372,6 +438,33 @@ describe('scaleUp with GHES', () => {
         Value:
           '--url https://github.enterprise.something/Codertocat --token 1234abcd ' +
           '--labels label1,label2 --runnergroup Default',
+        Type: 'SecureString',
+        Tags: [
+          {
+            Key: 'InstanceId',
+            Value: 'i-12345',
+          },
+        ],
+      });
+    });
+
+    it('quotes runner labels with semicolon separators in non-ephemeral runner config', async () => {
+      process.env.ENABLE_EPHEMERAL_RUNNERS = 'false';
+      process.env.RUNNERS_MAXIMUM_COUNT = '2';
+
+      await scaleUpModule.scaleUp([
+        {
+          ...TEST_DATA_SINGLE,
+          labels: ['ghr-ec2-cpu-manufacturers:intel;amd'],
+          messageId: 'test-semicolon-labels',
+        },
+      ]);
+
+      expect(mockSSMClient).toHaveReceivedNthSpecificCommandWith(1, PutParameterCommand, {
+        Name: '/github-action-runners/default/runners/config/i-12345',
+        Value:
+          '--url https://github.enterprise.something/Codertocat --token 1234abcd ' +
+          "--labels 'label1,label2,ghr-ec2-cpu-manufacturers:intel;amd' --runnergroup Default",
         Type: 'SecureString',
         Tags: [
           {
@@ -644,6 +737,16 @@ describe('scaleUp with GHES', () => {
           }),
         }),
       );
+      expect(mockTag).toHaveBeenCalledWith('i-12345', [
+        {
+          Key: 'ghr:github_runner_id',
+          Value: '9876543210',
+        },
+        {
+          Key: 'ghr:runner_labels',
+          Value: 'base-label,ghr-ec2-instance-type:c5.2xlarge,ghr-ec2-custom:value',
+        },
+      ]);
     });
 
     it('uses default instance types when no instance type EC2 label is provided', async () => {
@@ -864,7 +967,7 @@ describe('scaleUp with GHES', () => {
       const testDataWithCpuLabels = [
         {
           ...TEST_DATA_SINGLE,
-          labels: ['self-hosted', 'ghr-ec2-cpu-manufacturers:intel,amd'],
+          labels: ['self-hosted', 'ghr-ec2-cpu-manufacturers:intel;amd'],
           messageId: 'test-11',
         },
       ];
@@ -2854,8 +2957,8 @@ describe('parseEc2OverrideConfig', () => {
       expect(result?.InstanceRequirements?.CpuManufacturers).toEqual(['intel']);
     });
 
-    it('should parse cpu-manufacturers as comma-separated list', () => {
-      const result = scaleUpModule.parseEc2OverrideConfig(['ghr-ec2-cpu-manufacturers:intel,amd']);
+    it('should parse cpu-manufacturers as semicolon-separated list', () => {
+      const result = scaleUpModule.parseEc2OverrideConfig(['ghr-ec2-cpu-manufacturers:intel;amd']);
       expect(result?.InstanceRequirements?.CpuManufacturers).toEqual(['intel', 'amd']);
     });
 
@@ -2864,8 +2967,8 @@ describe('parseEc2OverrideConfig', () => {
       expect(result?.InstanceRequirements?.InstanceGenerations).toEqual(['current']);
     });
 
-    it('should parse instance-generations as comma-separated list', () => {
-      const result = scaleUpModule.parseEc2OverrideConfig(['ghr-ec2-instance-generations:current,previous']);
+    it('should parse instance-generations as semicolon-separated list', () => {
+      const result = scaleUpModule.parseEc2OverrideConfig(['ghr-ec2-instance-generations:current;previous']);
       expect(result?.InstanceRequirements?.InstanceGenerations).toEqual(['current', 'previous']);
     });
 
@@ -2874,8 +2977,8 @@ describe('parseEc2OverrideConfig', () => {
       expect(result?.InstanceRequirements?.ExcludedInstanceTypes).toEqual(['t2.micro']);
     });
 
-    it('should parse excluded-instance-types as comma-separated list', () => {
-      const result = scaleUpModule.parseEc2OverrideConfig(['ghr-ec2-excluded-instance-types:t2.micro,t2.small']);
+    it('should parse excluded-instance-types as semicolon-separated list', () => {
+      const result = scaleUpModule.parseEc2OverrideConfig(['ghr-ec2-excluded-instance-types:t2.micro;t2.small']);
       expect(result?.InstanceRequirements?.ExcludedInstanceTypes).toEqual(['t2.micro', 't2.small']);
     });
 
@@ -2884,8 +2987,8 @@ describe('parseEc2OverrideConfig', () => {
       expect(result?.InstanceRequirements?.AllowedInstanceTypes).toEqual(['c5.xlarge']);
     });
 
-    it('should parse allowed-instance-types as comma-separated list', () => {
-      const result = scaleUpModule.parseEc2OverrideConfig(['ghr-ec2-allowed-instance-types:c5.xlarge,c5.2xlarge']);
+    it('should parse allowed-instance-types as semicolon-separated list', () => {
+      const result = scaleUpModule.parseEc2OverrideConfig(['ghr-ec2-allowed-instance-types:c5.xlarge;c5.2xlarge']);
       expect(result?.InstanceRequirements?.AllowedInstanceTypes).toEqual(['c5.xlarge', 'c5.2xlarge']);
     });
 
@@ -2925,8 +3028,8 @@ describe('parseEc2OverrideConfig', () => {
       expect(result?.InstanceRequirements?.AcceleratorTypes).toEqual(['gpu']);
     });
 
-    it('should parse accelerator-types as comma-separated list', () => {
-      const result = scaleUpModule.parseEc2OverrideConfig(['ghr-ec2-accelerator-types:gpu,fpga']);
+    it('should parse accelerator-types as semicolon-separated list', () => {
+      const result = scaleUpModule.parseEc2OverrideConfig(['ghr-ec2-accelerator-types:gpu;fpga']);
       expect(result?.InstanceRequirements?.AcceleratorTypes).toEqual(['gpu', 'fpga']);
     });
 
@@ -2935,8 +3038,8 @@ describe('parseEc2OverrideConfig', () => {
       expect(result?.InstanceRequirements?.AcceleratorManufacturers).toEqual(['nvidia']);
     });
 
-    it('should parse accelerator-manufacturers as comma-separated list', () => {
-      const result = scaleUpModule.parseEc2OverrideConfig(['ghr-ec2-accelerator-manufacturers:nvidia,amd']);
+    it('should parse accelerator-manufacturers as semicolon-separated list', () => {
+      const result = scaleUpModule.parseEc2OverrideConfig(['ghr-ec2-accelerator-manufacturers:nvidia;amd']);
       expect(result?.InstanceRequirements?.AcceleratorManufacturers).toEqual(['nvidia', 'amd']);
     });
 
@@ -2945,8 +3048,8 @@ describe('parseEc2OverrideConfig', () => {
       expect(result?.InstanceRequirements?.AcceleratorNames).toEqual(['a100']);
     });
 
-    it('should parse accelerator-names as comma-separated list', () => {
-      const result = scaleUpModule.parseEc2OverrideConfig(['ghr-ec2-accelerator-names:a100,v100']);
+    it('should parse accelerator-names as semicolon-separated list', () => {
+      const result = scaleUpModule.parseEc2OverrideConfig(['ghr-ec2-accelerator-names:a100;v100']);
       expect(result?.InstanceRequirements?.AcceleratorNames).toEqual(['a100', 'v100']);
     });
 
@@ -3005,8 +3108,8 @@ describe('parseEc2OverrideConfig', () => {
       expect(result?.InstanceRequirements?.LocalStorageTypes).toEqual(['ssd']);
     });
 
-    it('should parse local-storage-types as comma-separated list', () => {
-      const result = scaleUpModule.parseEc2OverrideConfig(['ghr-ec2-local-storage-types:hdd,ssd']);
+    it('should parse local-storage-types as semicolon-separated list', () => {
+      const result = scaleUpModule.parseEc2OverrideConfig(['ghr-ec2-local-storage-types:hdd;ssd']);
       expect(result?.InstanceRequirements?.LocalStorageTypes).toEqual(['hdd', 'ssd']);
     });
 
@@ -3081,7 +3184,7 @@ describe('parseEc2OverrideConfig', () => {
     });
     it('should parse baseline-performance-factors-cpu-reference-families list label', () => {
       const result = scaleUpModule.parseEc2OverrideConfig([
-        'ghr-ec2-baseline-performance-factors-cpu-reference-families:intel,amd',
+        'ghr-ec2-baseline-performance-factors-cpu-reference-families:intel;amd',
       ]);
       expect(result?.InstanceRequirements?.BaselinePerformanceFactors?.Cpu?.References?.[0]?.InstanceFamily).toBe(
         'intel',
@@ -3171,8 +3274,8 @@ describe('parseEc2OverrideConfig', () => {
       expect(result?.MaxPrice).toBe('0.12345');
     });
 
-    it('should handle whitespace in comma-separated lists', () => {
-      const result = scaleUpModule.parseEc2OverrideConfig(['ghr-ec2-cpu-manufacturers: intel , amd ']);
+    it('should handle whitespace in semicolon-separated lists', () => {
+      const result = scaleUpModule.parseEc2OverrideConfig(['ghr-ec2-cpu-manufacturers: intel ; amd ']);
       expect(result?.InstanceRequirements?.CpuManufacturers).toEqual([' intel ', ' amd ']);
     });
 
@@ -3210,7 +3313,7 @@ describe('parseEc2OverrideConfig', () => {
         'ghr-ec2-vcpu-count-min:8',
         'ghr-ec2-vcpu-count-max:32',
         'ghr-ec2-memory-mib-min:32768',
-        'ghr-ec2-cpu-manufacturers:intel,amd',
+        'ghr-ec2-cpu-manufacturers:intel;amd',
         'ghr-ec2-instance-generations:current',
       ]);
 
@@ -3235,7 +3338,7 @@ describe('parseEc2OverrideConfig', () => {
         'ghr-ec2-accelerator-count-max:4',
         'ghr-ec2-accelerator-types:gpu',
         'ghr-ec2-accelerator-manufacturers:nvidia',
-        'ghr-ec2-accelerator-names:a100,v100',
+        'ghr-ec2-accelerator-names:a100;v100',
         'ghr-ec2-accelerator-total-memory-mib-min:16384',
       ]);
 
@@ -3333,15 +3436,15 @@ function defaultOctokitMockImpl() {
       name: 'Default',
     },
   ]);
-  mockOctokit.actions.generateRunnerJitconfigForOrg.mockImplementation(() => ({
+  mockOctokit.actions.generateRunnerJitconfigForOrg.mockImplementation(({ labels }: { labels: string[] }) => ({
     data: {
-      runner: { id: 9876543210 },
+      runner: { id: 9876543210, labels: labels.map((name: string) => ({ name })) },
       encoded_jit_config: 'TEST_JIT_CONFIG_ORG',
     },
   }));
-  mockOctokit.actions.generateRunnerJitconfigForRepo.mockImplementation(() => ({
+  mockOctokit.actions.generateRunnerJitconfigForRepo.mockImplementation(({ labels }: { labels: string[] }) => ({
     data: {
-      runner: { id: 9876543210 },
+      runner: { id: 9876543210, labels: labels.map((name: string) => ({ name })) },
       encoded_jit_config: 'TEST_JIT_CONFIG_REPO',
     },
   }));
