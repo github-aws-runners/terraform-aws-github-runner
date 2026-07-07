@@ -2,9 +2,12 @@ import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import parser from 'cron-parser';
 import moment from 'moment';
 
+import type { ScaleDownRunnerProviderType } from './scale-down-provider';
+
 export type ScalingDownConfigList = ScalingDownConfig[];
 export type EvictionStrategy = 'newest_first' | 'oldest_first';
 export interface ScalingDownConfig {
+  type?: ScaleDownRunnerProviderType;
   cron: string;
   idleCount: number;
   timeZone: string;
@@ -40,4 +43,19 @@ export function getEvictionStrategy(scalingDownConfigs: ScalingDownConfigList): 
     }
   }
   return 'oldest_first';
+}
+
+export function getScaleDownRunnerProviderType(
+  scalingDownConfigs: ScalingDownConfigList,
+  defaultType: ScaleDownRunnerProviderType,
+): ScaleDownRunnerProviderType {
+  const configuredTypes = new Set<ScaleDownRunnerProviderType>(
+    scalingDownConfigs.map((scalingDownConfig) => scalingDownConfig.type ?? defaultType),
+  );
+
+  if (configuredTypes.size > 1) {
+    throw new Error(`Multiple scale-down runner provider types are not supported in a single scale-down config.`);
+  }
+
+  return configuredTypes.values().next().value ?? defaultType;
 }
