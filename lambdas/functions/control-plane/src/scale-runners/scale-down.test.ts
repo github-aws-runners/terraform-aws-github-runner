@@ -1,21 +1,14 @@
+import { Octokit } from '@octokit/rest';
+import { RequestError } from '@octokit/request-error';
 import moment from 'moment';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import nock from 'nock';
 
+import { RunnerInfo, RunnerList } from '../aws/ec2-runners.d';
 import * as ghAuth from '../github/auth';
+import { listEC2Runners, terminateRunner, tag, untag } from './../aws/ec2-runners';
 import { githubCache } from './cache';
 import { newestFirstStrategy, oldestFirstStrategy, scaleDown } from './scale-down';
-import { createScaleDownRunnerProvider, getDefaultScaleDownRunnerProviderType } from './scale-down-provider-registry';
-import type { Octokit } from '@octokit/rest';
-import type { RunnerInfo, RunnerList } from './scale-down-provider';
-
-const testProvider = vi.hoisted(() => ({
-  name: 'TestProvider',
-  list: vi.fn(),
-  bootTimeExceeded: vi.fn(),
-  markOrphan: vi.fn(),
-  unmarkOrphan: vi.fn(),
-  terminate: vi.fn(),
-}));
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 const mockOctokit = {
   apps: {
@@ -23,178 +16,875 @@ const mockOctokit = {
     getRepoInstallation: vi.fn(),
   },
   actions: {
-    listSelfHostedRunnersForOrg: vi.fn(),
     listSelfHostedRunnersForRepo: vi.fn(),
+    listSelfHostedRunnersForOrg: vi.fn(),
+    deleteSelfHostedRunnerFromOrg: vi.fn(),
+    deleteSelfHostedRunnerFromRepo: vi.fn(),
     getSelfHostedRunnerForOrg: vi.fn(),
     getSelfHostedRunnerForRepo: vi.fn(),
   },
   paginate: vi.fn(),
 };
+vi.mock('@octokit/rest', () => ({
+  Octokit: vi.fn().mockImplementation(function () {
+    return mockOctokit;
+  }),
+}));
 
-vi.mock('../github/auth', async () => ({
+vi.mock('./../aws/ec2-runners', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    tag: vi.fn(),
+    untag: vi.fn(),
+    terminateRunner: vi.fn(),
+    listEC2Runners: vi.fn(),
+  };
+});
+vi.mock('./../github/auth', async () => ({
   createGithubAppAuth: vi.fn(),
   createGithubInstallationAuth: vi.fn(),
   createOctokitClient: vi.fn(),
 }));
 
-vi.mock('./scale-down-provider-registry', () => ({
-  createScaleDownRunnerProvider: vi.fn(() => testProvider),
-  getDefaultScaleDownRunnerProviderType: vi.fn(() => 'test-provider'),
+vi.mock('./cache', async () => ({
+  githubCache: {
+    getRunner: vi.fn(),
+    addRunner: vi.fn(),
+    clients: new Map(),
+    runners: new Map(),
+    reset: vi.fn().mockImplementation(() => {
+      githubCache.clients.clear();
+      githubCache.runners.clear();
+    }),
+  },
 }));
 
-const cleanEnv = process.env;
-const mockedCreateGithubAppAuth = vi.mocked(ghAuth.createGithubAppAuth);
-const mockedCreateGithubInstallationAuth = vi.mocked(ghAuth.createGithubInstallationAuth);
-const mockedCreateOctokitClient = vi.mocked(ghAuth.createOctokitClient);
-const mockedCreateScaleDownRunnerProvider = vi.mocked(createScaleDownRunnerProvider);
-const mockedGetDefaultScaleDownRunnerProviderType = vi.mocked(getDefaultScaleDownRunnerProviderType);
+const mocktokit = Octokit as vi.MockedClass<typeof Octokit>;
+const mockedAppAuth = vi.mocked(ghAuth.createGithubAppAuth);
+const mockedInstallationAuth = vi.mocked(ghAuth.createGithubInstallationAuth);
+const mockCreateClient = vi.mocked(ghAuth.createOctokitClient);
+const mockListRunners = vi.mocked(listEC2Runners);
+const mockTagRunners = vi.mocked(tag);
+const mockUntagRunners = vi.mocked(untag);
+const mockTerminateRunners = vi.mocked(terminateRunner);
 
-function setDefaults() {
-  process.env = { ...cleanEnv };
-  process.env.GITHUB_APP_KEY_BASE64 = 'TEST_CERTIFICATE_DATA';
-  process.env.GITHUB_APP_ID = '1337';
-  process.env.GITHUB_APP_CLIENT_ID = 'TEST_CLIENT_ID';
-  process.env.GITHUB_APP_CLIENT_SECRET = 'TEST_CLIENT_SECRET';
-  process.env.SCALE_DOWN_CONFIG = '[]';
-  process.env.ENVIRONMENT = 'unit-test-environment';
-  process.env.MINIMUM_RUNNING_TIME_IN_MINUTES = '30';
-  process.env.RUNNER_BOOT_TIME_IN_MINUTES = '5';
+export interface TestData {
+  repositoryName: string;
+  repositoryOwner: string;
 }
 
-beforeEach(() => {
-  vi.clearAllMocks();
-  setDefaults();
-  githubCache.clients.clear();
-  githubCache.runners.clear();
+const cleanEnv = process.env;
 
-  testProvider.list.mockResolvedValue([]);
-  testProvider.bootTimeExceeded.mockReturnValue(false);
-  testProvider.markOrphan.mockResolvedValue(undefined);
-  testProvider.unmarkOrphan.mockResolvedValue(undefined);
-  testProvider.terminate.mockResolvedValue(undefined);
+const ENVIRONMENT = 'unit-test-environment';
+const MINIMUM_TIME_RUNNING_IN_MINUTES = 30;
+const MINIMUM_BOOT_TIME = 5;
+const TEST_DATA: TestData = {
+  repositoryName: 'hello-world',
+  repositoryOwner: 'Codertocat',
+};
 
-  mockedCreateGithubAppAuth.mockResolvedValue({
-    type: 'app',
-    token: 'app-token',
-    appId: 1,
-    expiresAt: 'some-date',
-  });
-  mockedCreateGithubInstallationAuth.mockResolvedValue({
-    type: 'token',
-    tokenType: 'installation',
-    token: 'installation-token',
-    createdAt: 'some-date',
-    expiresAt: 'some-date',
-    permissions: {},
-    repositorySelection: 'all',
-    installationId: 2,
-  });
-  mockedCreateOctokitClient.mockResolvedValue(mockOctokit as unknown as Octokit);
-  mockOctokit.apps.getOrgInstallation.mockResolvedValue({ data: { id: 2 } });
-  mockOctokit.apps.getRepoInstallation.mockResolvedValue({ data: { id: 2 } });
-  mockOctokit.paginate.mockResolvedValue([]);
-});
+interface RunnerTestItem extends RunnerList {
+  registered: boolean;
+  orphan: boolean;
+  shouldBeTerminated: boolean;
+}
 
-describe('scaleDown runner provider orchestration', () => {
-  it('creates the default provider and lists orphan and active runners', async () => {
-    await scaleDown();
+describe('Scale down runners', () => {
+  beforeEach(() => {
+    process.env = { ...cleanEnv };
+    process.env.GITHUB_APP_KEY_BASE64 = 'TEST_CERTIFICATE_DATA';
+    process.env.GITHUB_APP_ID = '1337';
+    process.env.GITHUB_APP_CLIENT_ID = 'TEST_CLIENT_ID';
+    process.env.GITHUB_APP_CLIENT_SECRET = 'TEST_CLIENT_SECRET';
+    process.env.RUNNERS_MAXIMUM_COUNT = '3';
+    process.env.SCALE_DOWN_CONFIG = '[]';
+    process.env.ENVIRONMENT = ENVIRONMENT;
+    process.env.MINIMUM_RUNNING_TIME_IN_MINUTES = MINIMUM_TIME_RUNNING_IN_MINUTES.toString();
+    process.env.RUNNER_BOOT_TIME_IN_MINUTES = MINIMUM_BOOT_TIME.toString();
 
-    expect(mockedGetDefaultScaleDownRunnerProviderType).toHaveBeenCalled();
-    expect(mockedCreateScaleDownRunnerProvider).toHaveBeenCalledWith('test-provider');
-    expect(testProvider.list).toHaveBeenNthCalledWith(1, 'unit-test-environment', true);
-    expect(testProvider.list).toHaveBeenNthCalledWith(2, 'unit-test-environment');
-    expect(testProvider.terminate).not.toHaveBeenCalled();
-  });
-
-  it('creates the provider type configured on idle config', async () => {
-    process.env.SCALE_DOWN_CONFIG = JSON.stringify([
-      {
-        idleCount: 0,
-        cron: '* * * * *',
-        timeZone: 'UTC',
-        type: 'custom-provider',
+    nock.disableNetConnect();
+    vi.clearAllMocks();
+    vi.resetModules();
+    githubCache.clients.clear();
+    githubCache.runners.clear();
+    mockOctokit.apps.getOrgInstallation.mockImplementation(() => ({
+      data: {
+        id: 'ORG',
       },
-    ]);
+    }));
+    mockOctokit.apps.getRepoInstallation.mockImplementation(() => ({
+      data: {
+        id: 'REPO',
+      },
+    }));
 
-    await scaleDown();
+    mockOctokit.paginate.mockResolvedValue([]);
+    mockOctokit.actions.deleteSelfHostedRunnerFromRepo.mockImplementation((repo) => {
+      // check if repo.runner_id contains the word "busy". If yes, throw an error else return 204
+      if (repo.runner_id.includes('busy')) {
+        throw Error();
+      } else {
+        return { status: 204 };
+      }
+    });
 
-    expect(mockedCreateScaleDownRunnerProvider).toHaveBeenCalledWith('custom-provider');
+    mockOctokit.actions.deleteSelfHostedRunnerFromOrg.mockImplementation((repo) => {
+      // check if repo.runner_id contains the word "busy". If yes, throw an error else return 204
+      if (repo.runner_id.includes('busy')) {
+        throw Error();
+      } else {
+        return { status: 204 };
+      }
+    });
+
+    mockOctokit.actions.getSelfHostedRunnerForRepo.mockImplementation((repo) => {
+      if (repo.runner_id.includes('busy')) {
+        return {
+          data: { busy: true },
+        };
+      } else {
+        return {
+          data: { busy: false },
+        };
+      }
+    });
+    mockOctokit.actions.getSelfHostedRunnerForOrg.mockImplementation((repo) => {
+      if (repo.runner_id.includes('busy')) {
+        return {
+          data: { busy: true },
+        };
+      } else {
+        return {
+          data: { busy: false },
+        };
+      }
+    });
+
+    mockTerminateRunners.mockImplementation(async () => {
+      return;
+    });
+    mockedAppAuth.mockResolvedValue({
+      type: 'app',
+      token: 'token',
+      appId: 1,
+      expiresAt: 'some-date',
+    });
+    mockedInstallationAuth.mockResolvedValue({
+      type: 'token',
+      tokenType: 'installation',
+      token: 'token',
+      createdAt: 'some-date',
+      expiresAt: 'some-date',
+      permissions: {},
+      repositorySelection: 'all',
+      installationId: 0,
+    });
+    mockCreateClient.mockResolvedValue(new mocktokit());
   });
 
-  it('marks a provider runner as orphan when it is not registered and boot time is exceeded', async () => {
-    const runner: RunnerInfo = {
-      id: 'runner-1',
-      launchTime: moment(new Date()).subtract(10, 'minutes').toDate(),
-      owner: 'Codertocat',
-      type: 'Org',
-    };
-    testProvider.list.mockImplementation(async (_environment: string, orphan?: boolean) => (orphan ? [] : [runner]));
-    testProvider.bootTimeExceeded.mockReturnValue(true);
+  const endpoints = ['https://api.github.com', 'https://github.enterprise.something', 'https://companyname.ghe.com'];
 
-    await scaleDown();
+  describe.each(endpoints)('for %s', (endpoint) => {
+    beforeEach(() => {
+      if (endpoint.includes('enterprise') || endpoint.endsWith('.ghe.com')) {
+        process.env.GHES_URL = endpoint;
+      }
+    });
 
-    expect(testProvider.bootTimeExceeded).toHaveBeenCalledWith(runner);
-    expect(testProvider.markOrphan).toHaveBeenCalledWith('runner-1');
-    expect(testProvider.terminate).not.toHaveBeenCalledWith('runner-1');
+    type RunnerType = 'Repo' | 'Org';
+    const runnerTypes: RunnerType[] = ['Org', 'Repo'];
+    describe.each(runnerTypes)('For %s runners.', (type) => {
+      it('Should not call terminate when no runners online.', async () => {
+        // setup
+        mockAwsRunners([]);
+
+        // act
+        await scaleDown();
+
+        // assert
+        expect(listEC2Runners).toHaveBeenCalledWith({
+          environment: ENVIRONMENT,
+        });
+        expect(terminateRunner).not.toHaveBeenCalled();
+        expect(mockOctokit.apps.getRepoInstallation).not.toHaveBeenCalled();
+        expect(mockOctokit.apps.getRepoInstallation).not.toHaveBeenCalled();
+      });
+
+      it(`Should terminate runner without idle config ${type} runners.`, async () => {
+        // setup
+        const runners = [
+          createRunnerTestData('idle-1', type, MINIMUM_TIME_RUNNING_IN_MINUTES - 1, true, false, false),
+          createRunnerTestData('idle-2', type, MINIMUM_TIME_RUNNING_IN_MINUTES + 4, true, false, true),
+          createRunnerTestData('busy-1', type, MINIMUM_TIME_RUNNING_IN_MINUTES + 3, true, false, false),
+          createRunnerTestData('booting-1', type, MINIMUM_BOOT_TIME - 1, false, false, false),
+        ];
+
+        mockGitHubRunners(runners);
+        mockListRunners.mockResolvedValue(runners);
+        mockAwsRunners(runners);
+
+        await scaleDown();
+
+        // assert
+        expect(listEC2Runners).toHaveBeenCalledWith({
+          environment: ENVIRONMENT,
+        });
+
+        if (type === 'Repo') {
+          expect(mockOctokit.apps.getRepoInstallation).toHaveBeenCalled();
+        } else {
+          expect(mockOctokit.apps.getOrgInstallation).toHaveBeenCalled();
+        }
+
+        checkTerminated(runners);
+        checkNonTerminated(runners);
+      });
+
+      it(`Should respect idle runner with minimum running time not exceeded.`, async () => {
+        // setup
+        const runners = [createRunnerTestData('idle-1', type, MINIMUM_TIME_RUNNING_IN_MINUTES - 1, true, false, false)];
+
+        mockGitHubRunners(runners);
+        mockAwsRunners(runners);
+
+        // act
+        await scaleDown();
+
+        // assert
+        checkTerminated(runners);
+        checkNonTerminated(runners);
+      });
+
+      it(`Should respect booting runner.`, async () => {
+        // setup
+        const runners = [createRunnerTestData('booting-1', type, MINIMUM_BOOT_TIME - 1, false, false, false)];
+
+        mockGitHubRunners(runners);
+        mockAwsRunners(runners);
+
+        // act
+        await scaleDown();
+
+        // assert
+        checkTerminated(runners);
+        checkNonTerminated(runners);
+      });
+
+      it(`Should respect busy runner.`, async () => {
+        // setup
+        const runners = [createRunnerTestData('busy-1', type, MINIMUM_TIME_RUNNING_IN_MINUTES + 1, true, false, false)];
+
+        mockGitHubRunners(runners);
+        mockAwsRunners(runners);
+
+        // act
+        await scaleDown();
+
+        // assert
+        checkTerminated(runners);
+        checkNonTerminated(runners);
+      });
+
+      it(`Should not terminate runner with bypass-removal tag set.`, async () => {
+        // setup
+        const runners = [
+          createRunnerTestData('idle-with-bypass', type, MINIMUM_TIME_RUNNING_IN_MINUTES + 10, true, false, false),
+        ];
+        // Set bypass-removal tag
+        runners[0].bypassRemoval = true;
+
+        mockGitHubRunners(runners);
+        mockAwsRunners(runners);
+
+        // act
+        await scaleDown();
+
+        // assert
+        expect(terminateRunner).not.toHaveBeenCalled();
+        checkNonTerminated(runners);
+      });
+
+      it(`Should not terminate orphaned runner with bypass-removal tag set.`, async () => {
+        // setup - orphan runner with bypass-removal tag
+        const orphanRunner = createRunnerTestData('orphan-bypass', type, MINIMUM_BOOT_TIME + 1, false, false, false);
+        orphanRunner.bypassRemoval = true;
+
+        const idleRunner = createRunnerTestData('idle-1', type, MINIMUM_BOOT_TIME + 1, true, false, false);
+        const runners = [orphanRunner, idleRunner];
+
+        mockGitHubRunners([idleRunner]);
+        mockAwsRunners(runners);
+
+        // act - first cycle marks orphan
+        await scaleDown();
+
+        // mark as orphan for next cycle
+        orphanRunner.orphan = true;
+
+        // act - second cycle should skip termination due to bypass-removal
+        await scaleDown();
+
+        // assert - orphan runner should NOT be terminated
+        expect(terminateRunner).not.toHaveBeenCalledWith(orphanRunner.instanceId);
+      });
+
+      it(`Should not terminate a runner that became busy just before deregister runner.`, async () => {
+        // setup
+        const runners = [
+          createRunnerTestData(
+            'job-just-start-at-deregister-1',
+            type,
+            MINIMUM_TIME_RUNNING_IN_MINUTES + 1,
+            true,
+            false,
+            false,
+          ),
+        ];
+
+        mockGitHubRunners(runners);
+        mockAwsRunners(runners);
+        mockOctokit.actions.deleteSelfHostedRunnerFromRepo.mockImplementation(() => {
+          return { status: 500 };
+        });
+
+        mockOctokit.actions.deleteSelfHostedRunnerFromOrg.mockImplementation(() => {
+          return { status: 500 };
+        });
+
+        // act and ensure no exception is thrown
+        await expect(scaleDown()).resolves.not.toThrow();
+
+        // assert
+        checkTerminated(runners);
+        checkNonTerminated(runners);
+      });
+
+      it(`Should terminate orphan (Non JIT)`, async () => {
+        // setup
+        const orphanRunner = createRunnerTestData('orphan-1', type, MINIMUM_BOOT_TIME + 1, false, false, false);
+        const idleRunner = createRunnerTestData('idle-1', type, MINIMUM_BOOT_TIME + 1, true, false, false);
+        const runners = [orphanRunner, idleRunner];
+
+        mockGitHubRunners([idleRunner]);
+        mockAwsRunners(runners);
+
+        // act
+        await scaleDown();
+
+        // assert
+        checkTerminated(runners);
+        checkNonTerminated(runners);
+
+        expect(mockTagRunners).toHaveBeenCalledWith(orphanRunner.instanceId, [
+          {
+            Key: 'ghr:orphan',
+            Value: 'true',
+          },
+        ]);
+
+        expect(mockTagRunners).not.toHaveBeenCalledWith(idleRunner.instanceId, expect.anything());
+
+        // next cycle, update test data set orphan to true and terminate should be true
+        orphanRunner.orphan = true;
+        orphanRunner.shouldBeTerminated = true;
+
+        // act
+        await scaleDown();
+
+        // assert
+        checkTerminated(runners);
+        checkNonTerminated(runners);
+      });
+
+      it('Should test if orphaned runner, untag if online and busy, else terminate (JIT)', async () => {
+        // arrange
+        const orphanRunner = createRunnerTestData(
+          'orphan-jit',
+          type,
+          MINIMUM_BOOT_TIME + 1,
+          false,
+          true,
+          false,
+          undefined,
+          1234567890,
+        );
+        const runners = [orphanRunner];
+
+        mockGitHubRunners([]);
+        mockAwsRunners(runners);
+
+        if (type === 'Repo') {
+          mockOctokit.actions.getSelfHostedRunnerForRepo.mockResolvedValueOnce({
+            data: { id: 1234567890, name: orphanRunner.instanceId, busy: true, status: 'online' },
+          });
+        } else {
+          mockOctokit.actions.getSelfHostedRunnerForOrg.mockResolvedValueOnce({
+            data: { id: 1234567890, name: orphanRunner.instanceId, busy: true, status: 'online' },
+          });
+        }
+
+        // act
+        await scaleDown();
+
+        // assert
+        expect(mockUntagRunners).toHaveBeenCalledWith(orphanRunner.instanceId, [{ Key: 'ghr:orphan', Value: 'true' }]);
+        expect(mockTerminateRunners).not.toHaveBeenCalledWith(orphanRunner.instanceId);
+
+        // arrange
+        if (type === 'Repo') {
+          mockOctokit.actions.getSelfHostedRunnerForRepo.mockResolvedValueOnce({
+            data: { runnerId: 1234567890, name: orphanRunner.instanceId, busy: true, status: 'offline' },
+          });
+        } else {
+          mockOctokit.actions.getSelfHostedRunnerForOrg.mockResolvedValueOnce({
+            data: { runnerId: 1234567890, name: orphanRunner.instanceId, busy: true, status: 'offline' },
+          });
+        }
+
+        // act
+        await scaleDown();
+
+        // assert
+        expect(mockTerminateRunners).toHaveBeenCalledWith(orphanRunner.instanceId);
+      });
+
+      it('Should handle 404 error when checking orphaned runner (JIT) - treat as orphaned', async () => {
+        // arrange
+        const orphanRunner = createRunnerTestData(
+          'orphan-jit-404',
+          type,
+          MINIMUM_BOOT_TIME + 1,
+          false,
+          true,
+          true, // should be terminated when 404
+          undefined,
+          1234567890,
+        );
+        const runners = [orphanRunner];
+
+        mockGitHubRunners([]);
+        mockAwsRunners(runners);
+
+        // Mock 404 error response
+        const error404 = new RequestError('Runner not found', 404, {
+          request: {
+            method: 'GET',
+            url: 'https://api.github.com/test',
+            headers: {},
+          },
+        });
+
+        if (type === 'Repo') {
+          mockOctokit.actions.getSelfHostedRunnerForRepo.mockRejectedValueOnce(error404);
+        } else {
+          mockOctokit.actions.getSelfHostedRunnerForOrg.mockRejectedValueOnce(error404);
+        }
+
+        // act
+        await scaleDown();
+
+        // assert - should terminate since 404 means runner doesn't exist on GitHub
+        expect(mockTerminateRunners).toHaveBeenCalledWith(orphanRunner.instanceId);
+      });
+
+      it('Should handle 404 error when checking runner busy state - treat as not busy', async () => {
+        // arrange
+        const runner = createRunnerTestData(
+          'runner-404',
+          type,
+          MINIMUM_TIME_RUNNING_IN_MINUTES + 1,
+          true,
+          false,
+          true, // should be terminated since not busy due to 404
+        );
+        const runners = [runner];
+
+        mockGitHubRunners(runners);
+        mockAwsRunners(runners);
+
+        // Mock 404 error response for busy state check
+        const error404 = new RequestError('Runner not found', 404, {
+          request: {
+            method: 'GET',
+            url: 'https://api.github.com/test',
+            headers: {},
+          },
+        });
+
+        if (type === 'Repo') {
+          mockOctokit.actions.getSelfHostedRunnerForRepo.mockRejectedValueOnce(error404);
+        } else {
+          mockOctokit.actions.getSelfHostedRunnerForOrg.mockRejectedValueOnce(error404);
+        }
+
+        // act
+        await scaleDown();
+
+        // assert - should terminate since 404 means runner is not busy
+        checkTerminated(runners);
+      });
+
+      it('Should re-throw non-404 errors when checking runner state', async () => {
+        // arrange
+        const orphanRunner = createRunnerTestData(
+          'orphan-error',
+          type,
+          MINIMUM_BOOT_TIME + 1,
+          false,
+          true,
+          false,
+          undefined,
+          1234567890,
+        );
+        const runners = [orphanRunner];
+
+        mockGitHubRunners([]);
+        mockAwsRunners(runners);
+
+        // Mock non-404 error response
+        const error500 = new RequestError('Internal server error', 500, {
+          request: {
+            method: 'GET',
+            url: 'https://api.github.com/test',
+            headers: {},
+          },
+        });
+
+        if (type === 'Repo') {
+          mockOctokit.actions.getSelfHostedRunnerForRepo.mockRejectedValueOnce(error500);
+        } else {
+          mockOctokit.actions.getSelfHostedRunnerForOrg.mockRejectedValueOnce(error500);
+        }
+
+        // act & assert - should not throw because error handling is in terminateOrphan
+        await expect(scaleDown()).resolves.not.toThrow();
+
+        // Should not terminate since the error was not a 404
+        expect(terminateRunner).not.toHaveBeenCalledWith(orphanRunner.instanceId);
+      });
+
+      it(`Should ignore errors when termination orphan fails.`, async () => {
+        // setup
+        const orphanRunner = createRunnerTestData('orphan-1', type, MINIMUM_BOOT_TIME + 1, false, true, true);
+        const runners = [orphanRunner];
+
+        mockGitHubRunners([]);
+        mockAwsRunners(runners);
+        mockTerminateRunners.mockImplementation(() => {
+          throw new Error('Failed to terminate');
+        });
+
+        // act
+        await scaleDown();
+
+        // assert
+        checkTerminated(runners);
+        checkNonTerminated(runners);
+      });
+
+      describe('When orphan termination fails', () => {
+        it(`Should not throw in case of list runner exception.`, async () => {
+          // setup
+          const runners = [createRunnerTestData('orphan-1', type, MINIMUM_BOOT_TIME + 1, false, true, true)];
+
+          mockGitHubRunners([]);
+          mockListRunners.mockRejectedValueOnce(new Error('Failed to list runners'));
+          mockAwsRunners(runners);
+
+          // ac
+          await scaleDown();
+
+          // assert
+          checkNonTerminated(runners);
+        });
+
+        it(`Should not throw in case of terminate runner exception.`, async () => {
+          // setup
+          const runners = [createRunnerTestData('orphan-1', type, MINIMUM_BOOT_TIME + 1, false, true, true)];
+
+          mockGitHubRunners([]);
+          mockAwsRunners(runners);
+          mockTerminateRunners.mockRejectedValue(new Error('Failed to terminate'));
+
+          // act and ensure no exception is thrown
+          await scaleDown();
+
+          // assert
+          checkNonTerminated(runners);
+        });
+      });
+
+      it(`Should not terminate instance in case de-register fails.`, async () => {
+        // setup
+        const runners = [createRunnerTestData('idle-1', type, MINIMUM_TIME_RUNNING_IN_MINUTES + 1, true, false, false)];
+
+        mockOctokit.actions.deleteSelfHostedRunnerFromOrg.mockImplementation(() => {
+          return { status: 500 };
+        });
+        mockOctokit.actions.deleteSelfHostedRunnerFromRepo.mockImplementation(() => {
+          return { status: 500 };
+        });
+
+        mockGitHubRunners(runners);
+        mockAwsRunners(runners);
+
+        // act and should resolve
+        await expect(scaleDown()).resolves.not.toThrow();
+
+        // assert
+        checkTerminated(runners);
+        checkNonTerminated(runners);
+      });
+
+      it(`Should not throw an exception in case of failure during removing a runner.`, async () => {
+        // setup
+        const runners = [createRunnerTestData('idle-1', type, MINIMUM_TIME_RUNNING_IN_MINUTES + 1, true, true, false)];
+
+        mockOctokit.actions.deleteSelfHostedRunnerFromOrg.mockImplementation(() => {
+          throw new Error('Failed to delete runner');
+        });
+        mockOctokit.actions.deleteSelfHostedRunnerFromRepo.mockImplementation(() => {
+          throw new Error('Failed to delete runner');
+        });
+
+        mockGitHubRunners(runners);
+        mockAwsRunners(runners);
+
+        // act
+        await expect(scaleDown()).resolves.not.toThrow();
+      });
+
+      it(`Should not terminate instance when de-registration throws an error.`, async () => {
+        // setup - runner should NOT be terminated because de-registration fails
+        const runners = [createRunnerTestData('idle-1', type, MINIMUM_TIME_RUNNING_IN_MINUTES + 1, true, false, false)];
+
+        const error502 = new RequestError('Server Error', 502, {
+          request: {
+            method: 'DELETE',
+            url: 'https://api.github.com/test',
+            headers: {},
+          },
+        });
+
+        mockOctokit.actions.deleteSelfHostedRunnerFromOrg.mockImplementation(() => {
+          throw error502;
+        });
+        mockOctokit.actions.deleteSelfHostedRunnerFromRepo.mockImplementation(() => {
+          throw error502;
+        });
+
+        mockGitHubRunners(runners);
+        mockAwsRunners(runners);
+
+        // act
+        await expect(scaleDown()).resolves.not.toThrow();
+
+        // assert - should NOT terminate since de-registration failed
+        expect(terminateRunner).not.toHaveBeenCalled();
+      });
+
+      const evictionStrategies = ['oldest_first', 'newest_first'];
+      describe.each(evictionStrategies)('When idle config defined', (evictionStrategy) => {
+        const defaultConfig = {
+          idleCount: 1,
+          cron: '* * * * * *',
+          timeZone: 'Europe/Amsterdam',
+          evictionStrategy,
+        };
+
+        beforeEach(() => {
+          process.env.SCALE_DOWN_CONFIG = JSON.stringify([defaultConfig]);
+        });
+
+        it(`Should terminate based on the the idle config with ${evictionStrategy} eviction strategy`, async () => {
+          // setup
+          const runnerToTerminateTime =
+            evictionStrategy === 'oldest_first'
+              ? MINIMUM_TIME_RUNNING_IN_MINUTES + 5
+              : MINIMUM_TIME_RUNNING_IN_MINUTES + 1;
+          const runners = [
+            createRunnerTestData('idle-1', type, MINIMUM_TIME_RUNNING_IN_MINUTES + 4, true, false, false),
+            createRunnerTestData('idle-to-terminate', type, runnerToTerminateTime, true, false, true),
+          ];
+
+          mockGitHubRunners(runners);
+          mockAwsRunners(runners);
+
+          // act
+          await scaleDown();
+
+          // assert
+          const runnersToTerminate = runners.filter((r) => r.shouldBeTerminated);
+          for (const toTerminate of runnersToTerminate) {
+            expect(terminateRunner).toHaveBeenCalledWith(toTerminate.instanceId);
+          }
+
+          const runnersNotToTerminate = runners.filter((r) => !r.shouldBeTerminated);
+          for (const notTerminated of runnersNotToTerminate) {
+            expect(terminateRunner).not.toHaveBeenCalledWith(notTerminated.instanceId);
+          }
+        });
+      });
+    });
   });
 
-  it('terminates orphan runners through the selected provider', async () => {
-    const orphanRunner: RunnerList = {
-      id: 'orphan-1',
-      launchTime: moment(new Date()).subtract(10, 'minutes').toDate(),
-      owner: 'Codertocat',
-      type: 'Org',
-      orphan: true,
-    };
-    testProvider.list.mockImplementation(async (_environment: string, orphan?: boolean) =>
-      orphan ? [orphanRunner] : [],
-    );
+  describe('When runners are sorted', () => {
+    const runners: RunnerInfo[] = [
+      {
+        instanceId: '1',
+        launchTime: moment(new Date()).subtract(1, 'minute').toDate(),
+        owner: 'owner',
+        type: 'type',
+      },
+      {
+        instanceId: '3',
+        launchTime: moment(new Date()).subtract(3, 'minute').toDate(),
+        owner: 'owner',
+        type: 'type',
+      },
+      {
+        instanceId: '2',
+        launchTime: moment(new Date()).subtract(2, 'minute').toDate(),
+        owner: 'owner',
+        type: 'type',
+      },
+      {
+        instanceId: '0',
+        launchTime: moment(new Date()).subtract(0, 'minute').toDate(),
+        owner: 'owner',
+        type: 'type',
+      },
+    ];
 
-    await scaleDown();
+    it('Should sort runners descending for eviction strategy oldest first te keep the youngest.', () => {
+      runners.sort(oldestFirstStrategy);
+      expect(runners[0].instanceId).toEqual('0');
+      expect(runners[1].instanceId).toEqual('1');
+      expect(runners[2].instanceId).toEqual('2');
+      expect(runners[3].instanceId).toEqual('3');
+    });
 
-    expect(testProvider.terminate).toHaveBeenCalledWith('orphan-1');
+    it('Should sort runners ascending for eviction strategy newest first te keep oldest.', () => {
+      runners.sort(newestFirstStrategy);
+      expect(runners[0].instanceId).toEqual('3');
+      expect(runners[1].instanceId).toEqual('2');
+      expect(runners[2].instanceId).toEqual('1');
+      expect(runners[3].instanceId).toEqual('0');
+    });
+
+    it('Should sort runners with equal launch time.', () => {
+      const runnersTest = [...runners];
+      const same = moment(new Date()).subtract(4, 'minute').toDate();
+      runnersTest.push({
+        instanceId: '4',
+        launchTime: same,
+        owner: 'owner',
+        type: 'type',
+      });
+      runnersTest.push({
+        instanceId: '5',
+        launchTime: same,
+        owner: 'owner',
+        type: 'type',
+      });
+      runnersTest.sort(oldestFirstStrategy);
+      expect(runnersTest[3].launchTime).not.toEqual(same);
+      expect(runnersTest[4].launchTime).toEqual(same);
+      expect(runnersTest[5].launchTime).toEqual(same);
+
+      runnersTest.sort(newestFirstStrategy);
+      expect(runnersTest[3].launchTime).not.toEqual(same);
+      expect(runnersTest[1].launchTime).toEqual(same);
+      expect(runnersTest[0].launchTime).toEqual(same);
+    });
+
+    it('Should sort runners even when launch time is undefined.', () => {
+      const runnersTest = [
+        {
+          instanceId: '0',
+          launchTime: undefined,
+          owner: 'owner',
+          type: 'type',
+        },
+        {
+          instanceId: '1',
+          launchTime: moment(new Date()).subtract(3, 'minute').toDate(),
+          owner: 'owner',
+          type: 'type',
+        },
+        {
+          instanceId: '0',
+          launchTime: undefined,
+          owner: 'owner',
+          type: 'type',
+        },
+      ];
+      runnersTest.sort(oldestFirstStrategy);
+      expect(runnersTest[0].launchTime).toBeUndefined();
+      expect(runnersTest[1].launchTime).toBeDefined();
+      expect(runnersTest[2].launchTime).not.toBeDefined();
+    });
   });
 });
 
-describe('scaleDown runner sort strategies', () => {
-  const createRunners = (): RunnerInfo[] => [
-    {
-      id: '1',
-      launchTime: moment(new Date()).subtract(1, 'minute').toDate(),
-      owner: 'owner',
-      type: 'type',
-    },
-    {
-      id: '3',
-      launchTime: moment(new Date()).subtract(3, 'minute').toDate(),
-      owner: 'owner',
-      type: 'type',
-    },
-    {
-      id: '2',
-      launchTime: moment(new Date()).subtract(2, 'minute').toDate(),
-      owner: 'owner',
-      type: 'type',
-    },
-    {
-      id: '0',
-      launchTime: moment(new Date()).subtract(0, 'minute').toDate(),
-      owner: 'owner',
-      type: 'type',
-    },
-  ];
-
-  it('sorts runners descending for oldest first to keep the youngest', () => {
-    const runners = createRunners();
-
-    runners.sort(oldestFirstStrategy);
-    expect(runners.map((runner) => runner.id)).toEqual(['0', '1', '2', '3']);
+function mockAwsRunners(runners: RunnerTestItem[]) {
+  mockListRunners.mockImplementation(async (filter) => {
+    return runners.filter((r) => !filter?.orphan || filter?.orphan === r.orphan);
   });
+}
 
-  it('sorts runners ascending for newest first to keep the oldest', () => {
-    const runners = createRunners();
+function checkNonTerminated(runners: RunnerTestItem[]) {
+  const notTerminated = runners.filter((r) => !r.shouldBeTerminated);
+  for (const toTerminate of notTerminated) {
+    expect(terminateRunner).not.toHaveBeenCalledWith(toTerminate.instanceId);
+  }
+}
 
-    runners.sort(newestFirstStrategy);
-    expect(runners.map((runner) => runner.id)).toEqual(['3', '2', '1', '0']);
-  });
-});
+function checkTerminated(runners: RunnerTestItem[]) {
+  const runnersToTerminate = runners.filter((r) => r.shouldBeTerminated);
+  expect(terminateRunner).toHaveBeenCalledTimes(runnersToTerminate.length);
+  for (const toTerminate of runnersToTerminate) {
+    expect(terminateRunner).toHaveBeenCalledWith(toTerminate.instanceId);
+  }
+}
+
+function mockGitHubRunners(runners: RunnerTestItem[]) {
+  mockOctokit.paginate.mockResolvedValue(
+    runners
+      .filter((r) => r.registered)
+      .map((r) => {
+        return {
+          id: r.instanceId,
+          name: r.instanceId,
+        };
+      }),
+  );
+}
+
+function createRunnerTestData(
+  name: string,
+  type: 'Org' | 'Repo',
+  minutesLaunchedAgo: number,
+  registered: boolean,
+  orphan: boolean,
+  shouldBeTerminated: boolean,
+  owner?: string,
+  runnerId?: number,
+): RunnerTestItem {
+  return {
+    instanceId: `i-${name}-${type.toLowerCase()}`,
+    launchTime: moment(new Date()).subtract(minutesLaunchedAgo, 'minutes').toDate(),
+    type,
+    owner: owner
+      ? owner
+      : type === 'Repo'
+        ? `${TEST_DATA.repositoryOwner}/${TEST_DATA.repositoryName}`
+        : `${TEST_DATA.repositoryOwner}`,
+    registered,
+    orphan,
+    shouldBeTerminated,
+    runnerId: runnerId !== undefined ? String(runnerId) : undefined,
+    bypassRemoval: false,
+  };
+}
