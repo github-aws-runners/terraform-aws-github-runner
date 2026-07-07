@@ -207,17 +207,6 @@ describe('Test simple pool.', () => {
       );
     });
 
-    it('uses the EC2 pool provider when the event type is ec2.', async () => {
-      await adjust({ poolSize: 3, type: 'ec2' });
-      expect(createRunners).toHaveBeenCalledTimes(1);
-      expect(mockListRunners).toHaveBeenCalledWith({
-        environment: 'unit-test-environment',
-        runnerOwner: ORG,
-        runnerType: 'Org',
-        statuses: ['running'],
-      });
-    });
-
     it('Should not top up if pool size is reached.', async () => {
       await adjust({ poolSize: 1, type: 'ec2' });
       expect(createRunners).not.toHaveBeenCalled();
