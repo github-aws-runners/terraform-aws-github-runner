@@ -118,8 +118,6 @@ By default, the oldest instances are evicted. This helps keep your environment u
 
 ```hcl
 idle_config = [{
-   # Defaults to 'ec2'
-   type             = "ec2"
    cron             = "* * 9-17 * * 1-5"
    timeZone         = "Europe/Amsterdam"
    idleCount        = 2
