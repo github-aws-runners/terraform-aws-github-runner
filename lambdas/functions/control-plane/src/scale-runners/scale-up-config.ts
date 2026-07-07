@@ -4,5 +4,6 @@ export function getScaleUpRunnerProviderType(
   type: string | undefined,
   defaultType: ScaleUpRunnerProviderType,
 ): ScaleUpRunnerProviderType {
-  return type ?? defaultType;
+  const normalizedType = type?.trim();
+  return normalizedType || defaultType;
 }
