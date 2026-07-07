@@ -2,11 +2,13 @@ import { SQS, SendMessageCommandInput } from '@aws-sdk/client-sqs';
 import { WorkflowJobEvent } from '@octokit/webhooks-types';
 import { createChildLogger, getTracedAWSV3Client } from '@aws-github-runner/aws-powertools-util';
 
-import { Ec2DynamicLabelsPolicy } from '../runners/dynamic-labels-policy';
+import type { AwsDynamicLabelsPolicy } from '../runners/aws-dynamic-labels-policy';
 
 const logger = createChildLogger('sqs');
 
 const sqsClientsByRegion = new Map<string, SQS>();
+
+export type RunnerProvider = string;
 
 export interface ActionRequestMessage {
   id: number;
@@ -24,13 +26,14 @@ export interface MatcherConfig {
   exactMatch: boolean;
   bidirectionalLabelMatch?: boolean;
   enableDynamicLabels?: boolean;
-  ec2DynamicLabelsPolicy?: Ec2DynamicLabelsPolicy | null;
+  awsDynamicLabelsPolicy?: AwsDynamicLabelsPolicy | null;
 }
 
 export type RunnerConfig = RunnerMatcherConfig[];
 
 export interface RunnerMatcherConfig {
   matcherConfig: MatcherConfig;
+  runnerProvider?: RunnerProvider;
   id: string;
   arn: string;
 }

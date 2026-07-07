@@ -5,12 +5,10 @@ import { Response } from '../lambda';
 import { RunnerMatcherConfig, sendActionRequest } from '../sqs';
 import ValidationError from '../ValidationError';
 import { ConfigDispatcher, ConfigWebhook, QueueSelectionStrategy } from '../ConfigLoader';
-import { violationsAgainstPolicy } from './dynamic-labels-policy';
+import { selectAwsDynamicLabelQueue } from './aws-dynamic-labels';
+import { canRunJob, splitWorkflowJobLabels } from './labels';
 
 const logger = createChildLogger('handler');
-
-const GHR_LABEL_MAX_LENGTH = 128;
-const GHR_LABEL_VALUE_PATTERN = /^[a-zA-Z0-9._/;\-:]+$/;
 
 export async function dispatch(
   event: WorkflowJobEvent,
@@ -55,11 +53,7 @@ async function handleWorkflowJob(
     return aStrict === bStrict ? 0 : aStrict ? -1 : 1;
   });
 
-  const allLabels = body.workflow_job.labels;
-  const ghrLabels = allLabels.filter((l) => l.startsWith('ghr-'));
-  const sanitizedGhrLabels = sanitizeGhrLabels(ghrLabels);
-  const nonGhrLabels = allLabels.filter((l) => !l.startsWith('ghr-'));
-  const hasDynamicLabels = sanitizedGhrLabels.length > 0;
+  const { nonGhrLabels, sanitizedGhrLabels, hasDynamicLabels } = splitWorkflowJobLabels(body.workflow_job.labels);
 
   // 1. Collect all queues whose non-dynamic labels match the job.
   const matches: RunnerMatcherConfig[] = matcherConfig.filter((q) =>
@@ -87,29 +81,14 @@ async function handleWorkflowJob(
     targets = selectQueues(topMatches, queueSelectionStrategy);
     labelsToSend = nonGhrLabels;
   } else {
-    // Dynamic labels present: prefer the first match that has dynamic labels
-    // enabled AND accepts these labels under its policy. The queue selection
-    // strategy applies to standard jobs only; dynamic-label jobs always use the
-    // first compliant queue.
-    let compliant: RunnerMatcherConfig | undefined;
-    for (const q of matches) {
-      if (!q.matcherConfig.enableDynamicLabels) {
-        logger.warn(`Queue ${q.id} matches non-dynamic labels but does not allow dynamic labels; trying next match`);
-        continue;
-      }
-      const violations = violationsAgainstPolicy(sanitizedGhrLabels, q.matcherConfig.ec2DynamicLabelsPolicy);
-      if (violations.length === 0) {
-        compliant = q;
-        break;
-      }
-      for (const v of violations) {
-        logger.warn(`Queue ${q.id}: dynamic label '${v.label}' does not match policy (${v.reason}); trying next match`);
-      }
-    }
+    // Dynamic labels present: prefer the first provider-compliant queue. The
+    // queue selection strategy applies to standard jobs only; dynamic-label jobs
+    // always use the first compliant queue.
+    const dynamicTarget = selectAwsDynamicLabelQueue(matches, nonGhrLabels, sanitizedGhrLabels);
 
-    if (compliant) {
-      targets = [compliant];
-      labelsToSend = [...nonGhrLabels, ...sanitizedGhrLabels];
+    if (dynamicTarget) {
+      targets = [dynamicTarget.queue];
+      labelsToSend = dynamicTarget.labels;
     } else {
       // No queue accepts the dynamic labels under its policy: refuse the job.
       logger.warn(`No queue accepts the dynamic labels for this job; not dispatching`, {
@@ -152,7 +131,7 @@ async function handleWorkflowJob(
  *   so a single pool's queue does not become a bottleneck.
  * - 'all'    returns every candidate, scaling up one runner per matching pool and
  *   letting the first to become available take the job (speed over cost). Note
- *   this multiplies instance launches and runner registrations per job.
+ *   this multiplies AWS launches and runner registrations per job.
  */
 function selectQueues(candidates: RunnerMatcherConfig[], strategy: QueueSelectionStrategy): RunnerMatcherConfig[] {
   switch (strategy) {
@@ -173,51 +152,4 @@ function notAccepted(body: WorkflowJobEvent): Response {
     `${notAcceptedErrorMsg} - Job ID: ${body.workflow_job.id}, Job Name: ${body.workflow_job.name}, Run ID: ${body.workflow_job.run_id}`,
   );
   return { statusCode: 202, body: notAcceptedErrorMsg };
-}
-
-function sanitizeGhrLabels(labels: string[]): string[] {
-  return labels.filter((label) => {
-    if (label.length > GHR_LABEL_MAX_LENGTH) {
-      logger.warn('Dynamic label exceeds max length, stripping', { label: label.substring(0, 40) });
-      return false;
-    }
-    if (!GHR_LABEL_VALUE_PATTERN.test(label)) {
-      logger.warn('Dynamic label contains invalid characters, stripping', { label });
-      return false;
-    }
-    return true;
-  });
-}
-
-/**
- * Pure label match against a runner's `labelMatchers`. Caller is expected to
- * pass only non-dynamic labels.
- */
-export function canRunJob(
-  workflowJobLabels: string[],
-  runnerLabelsMatchers: string[][],
-  workflowLabelCheckAll: boolean,
-  bidirectionalLabelMatch = false,
-): boolean {
-  const lowered = runnerLabelsMatchers.map((rl) => rl.map((l) => l.toLowerCase()));
-
-  let match: boolean;
-  if (bidirectionalLabelMatch) {
-    const workflowLabelsLower = workflowJobLabels.map((wl) => wl.toLowerCase());
-    match = lowered.some(
-      (rl) => workflowLabelsLower.every((wl) => rl.includes(wl)) && rl.every((r) => workflowLabelsLower.includes(r)),
-    );
-  } else {
-    const matchLabels = workflowLabelCheckAll
-      ? lowered.some((rl) => workflowJobLabels.every((wl) => rl.includes(wl.toLowerCase())))
-      : lowered.some((rl) => workflowJobLabels.some((wl) => rl.includes(wl.toLowerCase())));
-    match = workflowJobLabels.length === 0 ? !matchLabels : matchLabels;
-  }
-
-  logger.debug(
-    `Received workflow job event with labels: '${JSON.stringify(workflowJobLabels)}'. The event does ${
-      match ? '' : 'NOT '
-    }match the runner labels: '${Array.from(lowered).join(',')}'`,
-  );
-  return match;
 }
