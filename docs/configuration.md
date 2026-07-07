@@ -118,6 +118,8 @@ By default, the oldest instances are evicted. This helps keep your environment u
 
 ```hcl
 idle_config = [{
+   # Defaults to 'ec2'
+   type             = "ec2"
    cron             = "* * 9-17 * * 1-5"
    timeZone         = "Europe/Amsterdam"
    idleCount        = 2
@@ -336,7 +338,7 @@ Below is an example of the log messages created.
 
 [!WARNING]
 **Security implication:** Dynamic labels are extracted from the `runs-on` labels in incoming `workflow_job` webhook events. These labels originate from what
-users define in their workflow files. Any user with permission to create or modify workflows can inject arbitrary EC2 configuration values — including instance types, AMI IDs, subnet IDs, EBS volumes, placement settings, and more. Unless constrained with `ec2_dynamic_labels_policy`, these values are not validated against label-specific rules before being passed to the EC2 CreateFleet API. This means a malicious or careless workflow author could, for example:
+users define in their workflow files. Any user with permission to create or modify workflows can inject arbitrary EC2 configuration values — including instance types, AMI IDs, subnet IDs, EBS volumes, placement settings, and more. Unless constrained with `aws_dynamic_labels_policy` in the root module, or `matcherConfig.awsDynamicLabelsPolicy` when configuring matcher entries directly, these values are not validated against label-specific rules before being passed to the EC2 CreateFleet API. This means a malicious or careless workflow author could, for example:
 
 - Launch expensive instance types (e.g., `p5.48xlarge`) to inflate costs
 - Override the AMI (`ghr-ec2-image-id`) to boot a compromised image
@@ -367,7 +369,7 @@ module "runners" {
 
   ...
   enable_dynamic_labels = true
-  ec2_dynamic_labels_policy = {
+  aws_dynamic_labels_policy = {
     blocked_keys = ["image-id", "subnet-id"]
 
     restricted_keys = {
@@ -384,6 +386,8 @@ module "runners" {
   ...
 }
 ```
+
+The root module variable is named `aws_dynamic_labels_policy`. The webhook matcher config receives the same policy under `matcherConfig.awsDynamicLabelsPolicy`. If you configure `runner_matcher_config` or `multi_runner_config.matcherConfig` directly, use `awsDynamicLabelsPolicy` for this policy.
 
 The policy is evaluated by dynamic label key:
 

@@ -349,6 +349,7 @@ variable "runner_architecture" {
 variable "idle_config" {
   description = "List of time period that can be defined as cron expression to keep a minimum amount of runners active instead of scaling down to 0. By defining this list you can ensure that in time periods that match the cron expression within 5 seconds a runner is kept idle."
   type = list(object({
+    type             = optional(string, "ec2")
     cron             = string
     timeZone         = string
     idleCount        = number
@@ -772,7 +773,7 @@ variable "enable_on_demand_failover_for_errors" {
 }
 
 variable "scale_errors" {
-  description = "List of aws error codes that should trigger retry during scale up. This list will replace the default errors defined in the variable `defaultScaleErrors` in https://github.com/github-aws-runners/terraform-aws-github-runner/blob/main/lambdas/functions/control-plane/src/aws/runners.ts"
+  description = "List of AWS error codes that should trigger retry during scale up. This list replaces the module default scale-up retry errors"
   type        = list(string)
   default = [
     "UnfulfillableCapacity",

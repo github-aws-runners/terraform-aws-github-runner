@@ -130,6 +130,7 @@ variable "multi_runner_config" {
       vpc_id                                                         = optional(string, null)
       subnet_ids                                                     = optional(list(string), null)
       idle_config = optional(list(object({
+        type             = optional(string, "ec2")
         cron             = string
         timeZone         = string
         idleCount        = number
@@ -208,7 +209,7 @@ variable "multi_runner_config" {
       bidirectionalLabelMatch = optional(bool, false)
       priority                = optional(number, 999)
       enableDynamicLabels     = optional(bool, false)
-      ec2DynamicLabelsPolicy  = optional(any, null)
+      awsDynamicLabelsPolicy  = optional(any, null)
     })
     redrive_build_queue = optional(object({
       enabled         = bool
@@ -233,7 +234,7 @@ variable "multi_runner_config" {
         enable_ephemeral_runners: "Enable ephemeral runners, runners will only be used once."
         enable_job_queued_check: Enables JIT configuration for creating runners instead of registration token based registraton. JIT configuration will only be applied for ephemeral runners. By default JIT configuration is enabled for ephemeral runners an can be disabled via this override. When running on GHES without support for JIT configuration this variable should be set to true for ephemeral runners."
         enable_on_demand_failover_for_errors: "Enable on-demand failover. For example to fall back to on demand when no spot capacity is available the variable can be set to `InsufficientInstanceCapacity`. When not defined the default behavior is to retry later."
-        scale_errors: "List of aws error codes that should trigger retry during scale up. This list will replace the default errors defined in the variable `defaultScaleErrors` in https://github.com/github-aws-runners/terraform-aws-github-runner/blob/main/lambdas/functions/control-plane/src/aws/runners.ts"
+        scale_errors: "List of AWS error codes that should trigger retry during scale up. This list replaces the module default scale-up retry errors"
         enable_organization_runners: "Register runners to organization, instead of repo level"
         enable_runner_binaries_syncer: "Option to disable the lambda to sync GitHub runner distribution, useful when using a pre-build AMI."
         enable_ssm_on_runners: "Enable to allow access the runner instances for debugging purposes via SSM. Note that this adds additional permissions to the runner instances."
@@ -287,7 +288,7 @@ variable "multi_runner_config" {
         bidirectionalLabelMatch: "If set to true, the runner labels and workflow job labels must be an exact two-way match (same set, any order, no extras or missing labels). This is stricter than `exactMatch` which only checks that workflow labels are a subset of runner labels. When false, if __any__ workflow label matches it will trigger the webhook."
         priority: "If set it defines the priority of the matcher, the matcher with the lowest priority will be evaluated first. Default is 999, allowed values 0-999."
         enableDynamicLabels: "Experimental! When true the dispatcher allows `ghr-*` dynamic labels for jobs routed to this runner. Default false."
-        ec2DynamicLabelsPolicy: "Optional policy for `ghr-ec2-*` labels evaluated by the dispatcher. Only effective when `enableDynamicLabels = true`. Jobs whose EC2 dynamic labels violate every matching runner's policy are rejected with a 202 (a warning is logged). Evaluation: keys in `blocked_keys` are always rejected; keys in `restricted_keys` are allowed only when their value passes the rule; unlisted keys are allowed. Schema: `{ blocked_keys = [<key>], restricted_keys = { <key> = { allowed = [globs], denied = [globs], max = number|string } } }`. Keys use the dynamic label suffix, e.g. `instance-type` for `ghr-ec2-instance-type`."
+        awsDynamicLabelsPolicy: "Optional AWS dynamic label policy evaluated by the dispatcher. Only effective when `enableDynamicLabels = true`. Jobs whose provider dynamic labels violate every matching runner's policy are rejected with a 202 (a warning is logged). Evaluation: keys in `blocked_keys` are always rejected; keys in `restricted_keys` are allowed only when their value passes the rule; unlisted keys are allowed. Schema: `{ blocked_keys = [<key>], restricted_keys = { <key> = { allowed = [globs], denied = [globs], max = number|string } } }`. Keys use the dynamic label suffix, e.g. `instance-type` for `ghr-ec2-instance-type`."
       }
       redrive_build_queue: "Set options to attach (optional) a dead letter queue to the build queue, the queue between the webhook and the scale up lambda. You have the following options. 1. Disable by setting `enabled` to false. 2. Enable by setting `enabled` to `true`, `maxReceiveCount` to a number of max retries."
     }
