@@ -130,7 +130,6 @@ variable "multi_runner_config" {
       vpc_id                                                         = optional(string, null)
       subnet_ids                                                     = optional(list(string), null)
       idle_config = optional(list(object({
-        type             = optional(string, "ec2")
         cron             = string
         timeZone         = string
         idleCount        = number
