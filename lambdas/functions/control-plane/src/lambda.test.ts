@@ -5,7 +5,8 @@ import { addMiddleware, adjustPool, scaleDownHandler, scaleUpHandler, ssmHouseke
 import { adjust } from './pool/pool';
 import ScaleError from './scale-runners/ScaleError';
 import { scaleDown } from './scale-runners/scale-down';
-import { ActionRequestMessage, scaleUp } from './scale-runners/scale-up';
+import { scaleUp } from './scale-runners/scale-up';
+import type { ActionRequestMessage } from './scale-runners/types';
 import { cleanSSMTokens } from './scale-runners/ssm-housekeeper';
 import { checkAndRetryJob } from './scale-runners/job-retry';
 import { describe, it, expect, vi, MockedFunction, beforeEach } from 'vitest';
@@ -248,14 +249,14 @@ describe('Test scale down lambda wrapper.', () => {
 describe('Adjust pool.', () => {
   it('Receive message to adjust pool.', async () => {
     vi.mocked(adjust).mockResolvedValue();
-    await expect(adjustPool({ poolSize: 2 }, context)).resolves.not.toThrow();
+    await expect(adjustPool({ poolSize: 2, type: 'ec2' }, context)).resolves.not.toThrow();
   });
 
   it('Handle error for adjusting pool.', async () => {
     const error = new Error('Handle error for adjusting pool.');
     vi.mocked(adjust).mockRejectedValue(error);
     const logSpy = vi.spyOn(logger, 'error');
-    await adjustPool({ poolSize: 0 }, context);
+    await adjustPool({ poolSize: 0, type: 'ec2' }, context);
     expect(logSpy).toHaveBeenCalledWith(`Handle error for adjusting pool. ${error.message}`, { error });
   });
 });

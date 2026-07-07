@@ -6,7 +6,8 @@ import { Context, type SQSBatchItemFailure, type SQSBatchResponse, SQSEvent } fr
 import { PoolEvent, adjust } from './pool/pool';
 import ScaleError from './scale-runners/ScaleError';
 import { scaleDown } from './scale-runners/scale-down';
-import { type ActionRequestMessage, type ActionRequestMessageSQS, scaleUp } from './scale-runners/scale-up';
+import { scaleUp } from './scale-runners/scale-up';
+import type { ActionRequestMessage, ActionRequestMessageSQS } from './scale-runners/types';
 import { SSMCleanupOptions, cleanSSMTokens } from './scale-runners/ssm-housekeeper';
 import { checkAndRetryJob } from './scale-runners/job-retry';
 
