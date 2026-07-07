@@ -23,7 +23,7 @@ import { getParameter } from '@aws-github-runner/aws-ssm-util';
 import moment from 'moment';
 
 import ScaleError from './../scale-runners/ScaleError';
-import * as Runners from './runners.d';
+import * as Runners from './ec2-runners.d';
 
 const logger = createChildLogger('runners');
 
