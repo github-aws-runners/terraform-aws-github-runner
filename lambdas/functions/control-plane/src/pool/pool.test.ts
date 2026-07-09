@@ -4,7 +4,7 @@ import * as nock from 'nock';
 
 import { listEC2Runners } from '../aws/runners';
 import * as ghAuth from '../github/auth';
-import { createRunners, getGitHubEnterpriseApiUrl } from '../scale-runners/scale-up';
+import { createRunners, findAndStartWarmRunners, getGitHubEnterpriseApiUrl } from '../scale-runners/scale-up';
 import { adjust } from './pool';
 import { describe, it, expect, beforeEach, vi, MockedClass } from 'vitest';
 
@@ -39,11 +39,18 @@ vi.mock('./../github/auth', async () => ({
 vi.mock('../scale-runners/scale-up', async () => ({
   scaleUp: vi.fn(),
   createRunners: vi.fn(),
+  findAndStartWarmRunners: vi.fn().mockResolvedValue([]),
   getGitHubEnterpriseApiUrl: vi.fn().mockReturnValue({
     ghesApiUrl: '',
     ghesBaseUrl: '',
   }),
-  // Include any other functions that might be needed
+  validateSsmParameterStoreTags: vi.fn().mockReturnValue([]),
+}));
+
+vi.mock('../aws/warm-pool', async () => ({
+  getPoolStrategy: vi.fn().mockReturnValue('hot'),
+  getWarmPoolConfig: vi.fn().mockReturnValue({ enabled: false, maxWarmInstances: 3, maxWarmAgeHours: 168, warmPoolReadyDelaySeconds: 30 }),
+  countWarmInstancesByOwner: vi.fn().mockResolvedValue(0),
 }));
 
 const mocktokit = Octokit as MockedClass<typeof Octokit>;
