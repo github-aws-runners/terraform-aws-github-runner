@@ -5,8 +5,9 @@ import yn from 'yn';
 import { bootTimeExceeded, listEC2Runners } from '../aws/runners';
 import { RunnerList } from '../aws/runners.d';
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
-import { createRunners, getGitHubEnterpriseApiUrl } from '../scale-runners/scale-up';
+import { createRunners, findAndStartWarmRunners, getGitHubEnterpriseApiUrl } from '../scale-runners/scale-up';
 import { validateSsmParameterStoreTags } from '../scale-runners/scale-up';
+import { getPoolStrategy, getWarmPoolConfig, countWarmInstancesByOwner } from '../aws/warm-pool';
 
 const logger = createChildLogger('pool');
 
@@ -76,7 +77,18 @@ export async function adjust(event: PoolEvent): Promise<void> {
   });
 
   const numberOfRunnersInPool = calculatePooSize(ec2runners, runnerStatusses);
-  let topUp = event.poolSize - numberOfRunnersInPool;
+  const poolStrategy = getPoolStrategy();
+  const warmPoolConfig = getWarmPoolConfig();
+
+  // For warm strategy, count warm (stopped) instances toward pool target
+  let effectivePoolSize = numberOfRunnersInPool;
+  if (poolStrategy === 'warm' && warmPoolConfig.enabled) {
+    const warmCount = await countWarmInstancesByOwner(runnerOwner);
+    effectivePoolSize = numberOfRunnersInPool + warmCount;
+    logger.info(`Warm strategy: ${numberOfRunnersInPool} running idle + ${warmCount} warm stopped = ${effectivePoolSize} effective pool size`);
+  }
+
+  let topUp = event.poolSize - effectivePoolSize;
 
   // The pool must never push the total number of runners (busy + idle) past the configured maximum.
   // ec2runners contains every running runner for this type, so its length is the current total and no
@@ -95,7 +107,31 @@ export async function adjust(event: PoolEvent): Promise<void> {
 
   if (topUp > 0) {
     logger.info(`The pool will be topped up with ${topUp} runners.`);
-    await createRunners(
+
+    // Try warm instances first (applies to both hot and warm strategies)
+    const warmRunnerConfig = {
+      ephemeral,
+      enableJitConfig,
+      ghesBaseUrl,
+      runnerLabels,
+      runnerGroup,
+      runnerNamePrefix,
+      runnerOwner,
+      runnerType: 'Org' as const,
+      disableAutoUpdate,
+      ssmTokenPath,
+      ssmConfigPath,
+      ssmParameterStoreTags,
+    };
+    const warmInstances = await findAndStartWarmRunners(runnerOwner, topUp, warmRunnerConfig, githubInstallationClient);
+    const remainingTopUp = topUp - warmInstances.length;
+
+    if (warmInstances.length > 0) {
+      logger.info(`Started ${warmInstances.length} warm runners for pool, need ${remainingTopUp} more from cold start`);
+    }
+
+    if (remainingTopUp > 0) {
+      await createRunners(
       {
         ephemeral,
         enableJitConfig,
@@ -126,12 +162,13 @@ export async function adjust(event: PoolEvent): Promise<void> {
         onDemandFailoverOnError,
         scaleErrors,
       },
-      topUp,
+      remainingTopUp,
       githubInstallationClient,
       'pool-lambda',
     );
+    }
   } else {
-    logger.info(`Pool will not be topped up. Found ${numberOfRunnersInPool} managed idle runners.`);
+    logger.info(`Pool will not be topped up. Found ${effectivePoolSize} effective pool runners (${numberOfRunnersInPool} running + warm).`);
   }
 }
 
