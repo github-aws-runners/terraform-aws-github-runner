@@ -334,11 +334,14 @@ export async function findAndStartWarmRunners(
     if (startedInstances.length >= count) break;
 
     try {
+      const startTime = Date.now();
       await startRunner(entry.instanceId);
+      const startLatencyMs = Date.now() - startTime;
       await removeFromWarmPool(entry.instanceId);
       startedInstances.push(entry.instanceId);
       emitWarmPoolMetric('WarmPoolInstanceStarted', 1, { Owner: runnerOwner });
-      logger.info(`Started warm instance '${entry.instanceId}' for owner '${runnerOwner}'`);
+      emitWarmPoolMetric('WarmPoolStartLatency', startLatencyMs, { Owner: runnerOwner });
+      logger.info(`Started warm instance '${entry.instanceId}' for owner '${runnerOwner}' (${startLatencyMs}ms)`);
 
       // Observability tags (best-effort)
       await Promise.all([

@@ -149,7 +149,13 @@ function itemToEntry(item: any): WarmPoolEntry {
 }
 
 export function emitWarmPoolMetric(
-  metricName: 'WarmPoolInstanceStopped' | 'WarmPoolInstanceStarted' | 'WarmPoolStartFailed' | 'WarmPoolSize',
+  metricName:
+    | 'WarmPoolInstanceStopped'
+    | 'WarmPoolInstanceStarted'
+    | 'WarmPoolStartFailed'
+    | 'WarmPoolSize'
+    | 'WarmPoolStartLatency'
+    | 'WarmPoolEvicted',
   value: number,
   dimensions: Record<string, string> = {},
 ): void {
@@ -157,5 +163,6 @@ export function emitWarmPoolMetric(
   if (!enabled) return;
 
   const environment = process.env.ENVIRONMENT || '';
-  createSingleMetric(metricName, MetricUnit.Count, value, { Environment: environment, ...dimensions });
+  const unit = metricName === 'WarmPoolStartLatency' ? MetricUnit.Milliseconds : MetricUnit.Count;
+  createSingleMetric(metricName, unit, value, { Environment: environment, ...dimensions });
 }

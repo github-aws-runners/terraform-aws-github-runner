@@ -453,6 +453,7 @@ async function evictStaleWarmInstances(environment: string): Promise<void> {
       }
 
       if (evictedCount > 0) {
+        emitWarmPoolMetric('WarmPoolEvicted', evictedCount, { Owner: owner });
         emitWarmPoolMetric('WarmPoolSize', warmInstances.length - evictedCount, { Owner: owner });
       }
     } catch (e) {
