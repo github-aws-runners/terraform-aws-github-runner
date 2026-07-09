@@ -8,10 +8,17 @@ import { getParameter, putParameter } from '@aws-github-runner/aws-ssm-util';
 import yn from 'yn';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
-import { createRunner, listEC2Runners, tag, terminateRunner } from './../aws/runners';
+import { createRunner, listEC2Runners, startRunner, tag, untag, terminateRunner } from './../aws/runners';
 import { Ec2OverrideConfig, RunnerInputParameters } from './../aws/runners.d';
 import { metricGitHubAppRateLimit } from '../github/rate-limit';
 import { publishRetryMessage } from './job-retry';
+import {
+  getWarmPoolConfig,
+  getPoolStrategy,
+  listWarmInstancesByOwner,
+  removeFromWarmPool,
+  emitWarmPoolMetric,
+} from '../aws/warm-pool';
 import {
   _InstanceType,
   Tenancy,
@@ -296,6 +303,64 @@ async function getRunnerGroupByName(ghClient: Octokit, githubRunnerConfig: Creat
   }
 
   return runnerGroupId;
+}
+
+export async function findAndStartWarmRunners(
+  runnerOwner: string,
+  count: number,
+  githubRunnerConfig?: CreateGitHubRunnerConfig,
+  ghClient?: Octokit,
+): Promise<string[]> {
+  const warmPoolConfig = getWarmPoolConfig();
+  const poolStrategy = getPoolStrategy();
+
+  if (!warmPoolConfig.enabled || poolStrategy !== 'warm' || count <= 0) {
+    return [];
+  }
+
+  let warmInstances = await listWarmInstancesByOwner(runnerOwner);
+  // If no warm instances found and owner contains a repo (org/repo), try org-level lookup
+  if (warmInstances.length === 0 && runnerOwner.includes('/')) {
+    const orgOwner = runnerOwner.split('/')[0];
+    warmInstances = await listWarmInstancesByOwner(orgOwner);
+    if (warmInstances.length > 0) {
+      logger.info(`Found ${warmInstances.length} warm instances under org owner '${orgOwner}'`);
+    }
+  }
+
+  const startedInstances: string[] = [];
+
+  for (const entry of warmInstances) {
+    if (startedInstances.length >= count) break;
+
+    try {
+      await startRunner(entry.instanceId);
+      await removeFromWarmPool(entry.instanceId);
+      startedInstances.push(entry.instanceId);
+      emitWarmPoolMetric('WarmPoolInstanceStarted', 1, { Owner: runnerOwner });
+      logger.info(`Started warm instance '${entry.instanceId}' for owner '${runnerOwner}'`);
+
+      // Observability tags (best-effort)
+      await Promise.all([
+        tag(entry.instanceId, [{ Key: 'ghr:started-from-warm-pool', Value: 'true' }]),
+        untag(entry.instanceId, [{ Key: 'ghr:warm-pool-member' }]),
+      ]).catch((e) => {
+        logger.warn(`Failed to update tags on '${entry.instanceId}', continuing`, { error: e });
+      });
+    } catch (e) {
+      logger.warn(`Failed to start warm instance '${entry.instanceId}', skipping`, { error: e as Error });
+      emitWarmPoolMetric('WarmPoolStartFailed', 1, { Owner: runnerOwner });
+      // Remove stale DynamoDB record — instance may already be terminated
+      await removeFromWarmPool(entry.instanceId).catch(() => {});
+    }
+  }
+
+  // Write runner config (registration tokens) for started warm instances
+  if (startedInstances.length > 0 && githubRunnerConfig && ghClient) {
+    await createStartRunnerConfig(githubRunnerConfig, startedInstances, ghClient);
+  }
+
+  return startedInstances;
 }
 
 export async function createRunners(
@@ -612,7 +677,10 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       newRunners,
     });
 
-    const instances = await createRunners(
+    // Try to start warm instances before creating new ones
+    const warmInstances = await findAndStartWarmRunners(
+      runnerOwner,
+      newRunners,
       {
         ephemeral: ephemeralEnabled,
         enableJitConfig,
@@ -627,28 +695,56 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
         ssmConfigPath,
         ssmParameterStoreTags,
       },
-      {
-        ec2instanceCriteria: {
-          instanceTypes,
-          instanceTypePriorities,
-          targetCapacityType: instanceTargetCapacityType,
-          maxSpotPrice: instanceMaxSpotPrice,
-          instanceAllocationStrategy: instanceAllocationStrategy,
-        },
-        ec2OverrideConfig,
-        environment,
-        launchTemplateName,
-        subnets,
-        amiIdSsmParameterName,
-        tracingEnabled,
-        onDemandFailoverOnError,
-        scaleErrors,
-        useDedicatedHost,
-      },
-      newRunners,
       githubInstallationClient,
-      'scale-up-lambda',
     );
+    const remainingRunners = newRunners - warmInstances.length;
+
+    if (warmInstances.length > 0) {
+      logger.info(`Started ${warmInstances.length} warm runners, need ${remainingRunners} more from cold start`);
+    }
+
+    let instances: string[] = [...warmInstances];
+
+    if (remainingRunners > 0) {
+      const coldInstances = await createRunners(
+        {
+          ephemeral: ephemeralEnabled,
+          enableJitConfig,
+          ghesBaseUrl,
+          runnerLabels: groupRunnerLabels,
+          runnerGroup,
+          runnerNamePrefix,
+          runnerOwner: runnerOwner,
+          runnerType,
+          disableAutoUpdate,
+          ssmTokenPath,
+          ssmConfigPath,
+          ssmParameterStoreTags,
+        },
+        {
+          ec2instanceCriteria: {
+            instanceTypes,
+            instanceTypePriorities,
+            targetCapacityType: instanceTargetCapacityType,
+            maxSpotPrice: instanceMaxSpotPrice,
+            instanceAllocationStrategy: instanceAllocationStrategy,
+          },
+          ec2OverrideConfig,
+          environment,
+          launchTemplateName,
+          subnets,
+          amiIdSsmParameterName,
+          tracingEnabled,
+          onDemandFailoverOnError,
+          scaleErrors,
+          useDedicatedHost,
+        },
+        remainingRunners,
+        githubInstallationClient,
+        'scale-up-lambda',
+      );
+      instances = [...instances, ...coldInstances];
+    }
 
     // Not all runners we wanted were created, let's reject enough items so that
     // number of entries will be retried.
