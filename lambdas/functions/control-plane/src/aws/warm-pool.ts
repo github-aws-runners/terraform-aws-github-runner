@@ -26,6 +26,7 @@ export interface WarmPoolEntry {
   runnerType: string;
   instanceType?: string;
   az?: string;
+  amiId?: string;
   stoppedAt: string;
   expiresAt: number;
 }
@@ -68,6 +69,7 @@ export async function addToWarmPool(entry: Omit<WarmPoolEntry, 'stoppedAt' | 'ex
         runnerType: { S: entry.runnerType },
         ...(entry.instanceType && { instanceType: { S: entry.instanceType } }),
         ...(entry.az && { az: { S: entry.az } }),
+        ...(entry.amiId && { amiId: { S: entry.amiId } }),
         stoppedAt: { S: stoppedAt },
         expiresAt: { N: String(expiresAt) },
       },
@@ -140,6 +142,7 @@ function itemToEntry(item: any): WarmPoolEntry {
     runnerType: item.runnerType.S,
     instanceType: item.instanceType?.S,
     az: item.az?.S,
+    amiId: item.amiId?.S,
     stoppedAt: item.stoppedAt.S,
     expiresAt: Number(item.expiresAt.N),
   };

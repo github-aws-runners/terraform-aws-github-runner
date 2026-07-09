@@ -2,6 +2,7 @@ import { Octokit } from '@octokit/rest';
 import { Endpoints } from '@octokit/types';
 import { RequestError } from '@octokit/request-error';
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
+import { getParameter } from '@aws-github-runner/aws-ssm-util';
 import moment from 'moment';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
@@ -204,11 +205,19 @@ async function removeRunner(ec2runner: RunnerInfo, ghRunnerIds: number[]): Promi
           const warmCount = await countWarmInstancesByOwner(ec2runner.owner);
           if (warmCount < warmPoolConfig.maxWarmInstances) {
             await stopRunner(ec2runner.instanceId);
+            let amiId: string | undefined;
+            const amiSsmParam = process.env.AMI_ID_SSM_PARAMETER_NAME;
+            if (amiSsmParam) {
+              try {
+                amiId = await getParameter(amiSsmParam);
+              } catch { /* best-effort */ }
+            }
             await addToWarmPool({
               instanceId: ec2runner.instanceId,
               runnerOwner: ec2runner.owner,
               environment: process.env.ENVIRONMENT || '',
               runnerType: ec2runner.type,
+              amiId,
             });
             await tag(ec2runner.instanceId, [{ Key: 'ghr:warm-pool-member', Value: 'true' }]);
             emitWarmPoolMetric('WarmPoolInstanceStopped', 1, { Owner: ec2runner.owner });
@@ -401,6 +410,17 @@ async function evictStaleWarmInstances(environment: string): Promise<void> {
     if (runner.owner) ownerTags.add(runner.owner);
   }
 
+  // Resolve the current AMI ID for staleness comparison
+  let currentAmiId: string | undefined;
+  const amiSsmParam = process.env.AMI_ID_SSM_PARAMETER_NAME;
+  if (amiSsmParam) {
+    try {
+      currentAmiId = await getParameter(amiSsmParam);
+    } catch (e) {
+      logger.warn('Failed to resolve current AMI ID for warm pool staleness check', { error: e });
+    }
+  }
+
   for (const owner of ownerTags) {
     try {
       const warmInstances = await listWarmInstancesByOwner(owner);
@@ -413,15 +433,16 @@ async function evictStaleWarmInstances(environment: string): Promise<void> {
         const ageHours = (now - new Date(entry.stoppedAt).getTime() / 1000) / 3600;
         const exceedsAge = ageHours > warmPoolConfig.maxWarmAgeHours;
         const exceedsCount = warmInstances.length - evictedCount > warmPoolConfig.maxWarmInstances;
+        const staleAmi = currentAmiId && entry.amiId && entry.amiId !== currentAmiId;
 
-        if (exceedsAge || exceedsCount) {
+        if (exceedsAge || exceedsCount || staleAmi) {
           try {
             await terminateRunner(entry.instanceId);
             await removeFromWarmPool(entry.instanceId);
             evictedCount++;
+            const reason = staleAmi ? 'stale_ami' : exceedsAge ? 'max_age_exceeded' : 'max_count_exceeded';
             logger.info(
-              `Evicted warm instance '${entry.instanceId}' (age: ${ageHours.toFixed(1)}h, ` +
-                `reason: ${exceedsAge ? 'max_age_exceeded' : 'max_count_exceeded'}).`,
+              `Evicted warm instance '${entry.instanceId}' (age: ${ageHours.toFixed(1)}h, reason: ${reason}).`,
             );
           } catch (e) {
             logger.warn(`Failed to evict warm instance '${entry.instanceId}'`, { error: e });

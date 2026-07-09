@@ -51,6 +51,7 @@ resource "aws_lambda_function" "scale_down" {
       })
       WARM_POOL_TABLE_NAME                     = var.warm_pool_config.enabled ? aws_dynamodb_table.warm_pool[0].name : ""
       POOL_STRATEGY                            = var.pool_strategy
+      AMI_ID_SSM_PARAMETER_NAME                = local.ami_id_ssm_parameter_name
     }
   }
 
@@ -128,6 +129,12 @@ resource "aws_iam_role_policy_attachment" "scale_down_vpc_execution_role" {
   count      = length(var.lambda_subnet_ids) > 0 ? 1 : 0
   role       = aws_iam_role.scale_down.name
   policy_arn = "arn:${var.aws_partition}:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+}
+
+resource "aws_iam_role_policy_attachment" "scale_down_ami_id_ssm_parameter_read" {
+  count      = local.ami_id_ssm_parameter_name != null ? 1 : 0
+  role       = aws_iam_role.scale_down.name
+  policy_arn = aws_iam_policy.ami_id_ssm_parameter_read[0].arn
 }
 
 resource "aws_iam_role_policy" "scale_down_xray" {
