@@ -914,9 +914,4 @@ variable "pool_strategy" {
     condition     = contains(["hot", "warm"], var.pool_strategy)
     error_message = "pool_strategy must be either \"hot\" or \"warm\"."
   }
-
-  validation {
-    condition     = var.pool_strategy != "warm" || var.warm_pool_config.enabled
-    error_message = "pool_strategy = \"warm\" requires warm_pool_config.enabled = true."
-  }
 }
