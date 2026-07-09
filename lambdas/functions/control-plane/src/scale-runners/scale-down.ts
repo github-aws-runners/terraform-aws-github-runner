@@ -5,12 +5,21 @@ import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import moment from 'moment';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
-import { bootTimeExceeded, listEC2Runners, tag, untag, terminateRunner } from './../aws/runners';
+import { bootTimeExceeded, listEC2Runners, tag, untag, terminateRunner, stopRunner } from './../aws/runners';
 import { RunnerInfo, RunnerList } from './../aws/runners.d';
 import { GhRunners, githubCache } from './cache';
 import { ScalingDownConfig, getEvictionStrategy, getIdleRunnerCount } from './scale-down-config';
 import { metricGitHubAppRateLimit } from '../github/rate-limit';
 import { getGitHubEnterpriseApiUrl } from './scale-up';
+import {
+  addToWarmPool,
+  countWarmInstancesByOwner,
+  listWarmInstancesByOwner,
+  removeFromWarmPool,
+  getWarmPoolConfig,
+  getPoolStrategy,
+  emitWarmPoolMetric,
+} from '../aws/warm-pool';
 
 const logger = createChildLogger('scale-down');
 
@@ -188,8 +197,38 @@ async function removeRunner(ec2runner: RunnerInfo, ghRunnerIds: number[]): Promi
       const failedRunners = results.filter((r) => !r.success);
 
       if (allSucceeded) {
-        await terminateRunner(ec2runner.instanceId);
-        logger.info(`AWS runner instance '${ec2runner.instanceId}' is terminated and GitHub runner is de-registered.`);
+        const warmPoolConfig = getWarmPoolConfig();
+        const poolStrategy = getPoolStrategy();
+
+        if (warmPoolConfig.enabled && poolStrategy === 'warm') {
+          const warmCount = await countWarmInstancesByOwner(ec2runner.owner);
+          if (warmCount < warmPoolConfig.maxWarmInstances) {
+            await stopRunner(ec2runner.instanceId);
+            await addToWarmPool({
+              instanceId: ec2runner.instanceId,
+              runnerOwner: ec2runner.owner,
+              environment: process.env.ENVIRONMENT || '',
+              runnerType: ec2runner.type,
+            });
+            await tag(ec2runner.instanceId, [{ Key: 'ghr:warm-pool-member', Value: 'true' }]);
+            emitWarmPoolMetric('WarmPoolInstanceStopped', 1, { Owner: ec2runner.owner });
+            logger.info(
+              `Runner '${ec2runner.instanceId}' stopped and added to warm pool ` +
+                `(${warmCount + 1}/${warmPoolConfig.maxWarmInstances}).`,
+            );
+          } else {
+            await terminateRunner(ec2runner.instanceId);
+            logger.info(
+              `Runner '${ec2runner.instanceId}' terminated (warm pool full: ` +
+                `${warmCount}/${warmPoolConfig.maxWarmInstances}).`,
+            );
+          }
+        } else {
+          await terminateRunner(ec2runner.instanceId);
+          logger.info(
+            `AWS runner instance '${ec2runner.instanceId}' is terminated and GitHub runner is de-registered.`,
+          );
+        }
       } else {
         // Only terminate EC2 if we successfully de-registered from GitHub
         // Otherwise, leave the instance running so the next scale-down cycle can retry
@@ -352,6 +391,55 @@ function filterRunners(ec2runners: RunnerList[]): RunnerInfo[] {
   return ec2runners.filter((ec2Runner) => ec2Runner.type && !ec2Runner.orphan) as RunnerInfo[];
 }
 
+async function evictStaleWarmInstances(environment: string): Promise<void> {
+  const warmPoolConfig = getWarmPoolConfig();
+  if (!warmPoolConfig.enabled) return;
+
+  const ownerTags = new Set<string>();
+  const ec2runners = await listEC2Runners({ environment });
+  for (const runner of ec2runners) {
+    if (runner.owner) ownerTags.add(runner.owner);
+  }
+
+  for (const owner of ownerTags) {
+    try {
+      const warmInstances = await listWarmInstancesByOwner(owner);
+      if (warmInstances.length === 0) continue;
+
+      const now = Date.now() / 1000;
+      let evictedCount = 0;
+
+      for (const entry of warmInstances) {
+        const ageHours = (now - new Date(entry.stoppedAt).getTime() / 1000) / 3600;
+        const exceedsAge = ageHours > warmPoolConfig.maxWarmAgeHours;
+        const exceedsCount = warmInstances.length - evictedCount > warmPoolConfig.maxWarmInstances;
+
+        if (exceedsAge || exceedsCount) {
+          try {
+            await terminateRunner(entry.instanceId);
+            await removeFromWarmPool(entry.instanceId);
+            evictedCount++;
+            logger.info(
+              `Evicted warm instance '${entry.instanceId}' (age: ${ageHours.toFixed(1)}h, ` +
+                `reason: ${exceedsAge ? 'max_age_exceeded' : 'max_count_exceeded'}).`,
+            );
+          } catch (e) {
+            logger.warn(`Failed to evict warm instance '${entry.instanceId}'`, { error: e });
+            // Remove stale DynamoDB record anyway if EC2 termination fails (instance may already be gone)
+            await removeFromWarmPool(entry.instanceId).catch(() => {});
+          }
+        }
+      }
+
+      if (evictedCount > 0) {
+        emitWarmPoolMetric('WarmPoolSize', warmInstances.length - evictedCount, { Owner: owner });
+      }
+    } catch (e) {
+      logger.warn(`Failed to process warm pool eviction for owner '${owner}'`, { error: e });
+    }
+  }
+}
+
 export async function scaleDown(): Promise<void> {
   githubCache.reset();
   const environment = process.env.ENVIRONMENT;
@@ -373,6 +461,9 @@ export async function scaleDown(): Promise<void> {
 
   const runners = filterRunners(ec2Runners);
   await evaluateAndRemoveRunners(runners, scaleDownConfigs);
+
+  // Evict warm pool instances that exceed age or count limits
+  await evictStaleWarmInstances(environment);
 
   const activeEc2RunnersCountAfter = (await listRunners(environment)).length;
   logger.info(`Found: '${activeEc2RunnersCountAfter}' active GitHub EC2 runners instances after clean-up.`);
