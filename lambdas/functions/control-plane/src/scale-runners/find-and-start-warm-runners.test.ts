@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { startRunner, tag, untag } from './../aws/runners';
 import {
   getWarmPoolConfig,
-  getPoolStrategy,
   listWarmInstancesByOwner,
   removeFromWarmPool,
   emitWarmPoolMetric,
@@ -48,7 +47,6 @@ const mockStartRunner = vi.mocked(startRunner);
 const mockTag = vi.mocked(tag);
 const mockUntag = vi.mocked(untag);
 const mockGetWarmPoolConfig = vi.mocked(getWarmPoolConfig);
-const mockGetPoolStrategy = vi.mocked(getPoolStrategy);
 const mockListWarmInstances = vi.mocked(listWarmInstancesByOwner);
 const mockRemoveFromWarmPool = vi.mocked(removeFromWarmPool);
 const mockEmitWarmPoolMetric = vi.mocked(emitWarmPoolMetric);
@@ -64,9 +62,8 @@ describe('findAndStartWarmRunners', () => {
       maxWarmAgeHours: 168,
       warmPoolReadyDelaySeconds: 30,
     });
-    mockGetPoolStrategy.mockReturnValue('warm');
     mockStartRunner.mockResolvedValue(undefined);
-    mockRemoveFromWarmPool.mockResolvedValue(undefined);
+    mockRemoveFromWarmPool.mockResolvedValue(true);
     mockTag.mockResolvedValue(undefined);
   });
 
@@ -84,8 +81,13 @@ describe('findAndStartWarmRunners', () => {
     expect(mockListWarmInstances).not.toHaveBeenCalled();
   });
 
-  it('should return empty array when pool strategy is not warm', async () => {
-    mockGetPoolStrategy.mockReturnValue('hot');
+  it('should return empty array when pool strategy is hot and warm pool is disabled', async () => {
+    mockGetWarmPoolConfig.mockReturnValue({
+      enabled: false,
+      maxWarmInstances: 3,
+      maxWarmAgeHours: 168,
+      warmPoolReadyDelaySeconds: 30,
+    });
 
     const result = await findAndStartWarmRunners('my-org', 1);
 
@@ -206,6 +208,9 @@ describe('findAndStartWarmRunners', () => {
   });
 
   it('should skip failed instances and continue with next', async () => {
+    mockRemoveFromWarmPool
+      .mockResolvedValueOnce(true)  // i-bad claimed
+      .mockResolvedValueOnce(true); // i-good claimed
     mockStartRunner
       .mockRejectedValueOnce(new Error('Instance terminated'))
       .mockResolvedValueOnce(undefined);
@@ -235,6 +240,9 @@ describe('findAndStartWarmRunners', () => {
   });
 
   it('should remove failed instance from DynamoDB', async () => {
+    mockRemoveFromWarmPool
+      .mockResolvedValueOnce(true)   // claim succeeds
+      .mockResolvedValueOnce(true);  // cleanup in catch
     mockStartRunner.mockRejectedValue(new Error('Instance terminated'));
     mockListWarmInstances.mockResolvedValue([
       {
@@ -252,6 +260,25 @@ describe('findAndStartWarmRunners', () => {
     expect(result).toEqual([]);
     // removeFromWarmPool called in the catch block for cleanup
     expect(mockRemoveFromWarmPool).toHaveBeenCalledWith('i-gone');
+  });
+
+  it('should skip instance already claimed by another invocation', async () => {
+    mockRemoveFromWarmPool.mockResolvedValue(false);
+    mockListWarmInstances.mockResolvedValue([
+      {
+        instanceId: 'i-claimed',
+        runnerOwner: 'my-org',
+        environment: 'test-env',
+        runnerType: 'Org',
+        stoppedAt: '2026-01-01T00:00:00Z',
+        expiresAt: 9999999999,
+      },
+    ]);
+
+    const result = await findAndStartWarmRunners('my-org', 1);
+
+    expect(result).toEqual([]);
+    expect(mockStartRunner).not.toHaveBeenCalled();
   });
 
   it('should fallback to org-level lookup when repo-level owner has no instances', async () => {

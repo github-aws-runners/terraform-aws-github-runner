@@ -8,6 +8,7 @@ import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient 
 import { createRunners, findAndStartWarmRunners, getGitHubEnterpriseApiUrl } from '../scale-runners/scale-up';
 import { validateSsmParameterStoreTags } from '../scale-runners/scale-up';
 import { addToWarmPool, getPoolStrategy, getWarmPoolConfig, countWarmInstancesByOwner, emitWarmPoolMetric } from '../aws/warm-pool';
+import { getParameter } from '@aws-github-runner/aws-ssm-util';
 
 const logger = createChildLogger('pool');
 
@@ -198,6 +199,15 @@ async function warmPoolGracePeriod(
   // Re-check runner statuses after grace period
   const runnerStatuses = await getGitHubRegisteredRunnnerStatusses(ghClient, runnerOwner, runnerNamePrefix);
 
+  // Resolve current AMI ID for staleness tracking (best-effort)
+  let amiId: string | undefined;
+  const amiSsmParam = process.env.AMI_ID_SSM_PARAMETER_NAME;
+  if (amiSsmParam) {
+    try {
+      amiId = await getParameter(amiSsmParam);
+    } catch { /* best-effort */ }
+  }
+
   for (const instanceId of instanceIds) {
     const status = runnerStatuses.get(instanceId);
     if (status?.busy) {
@@ -214,6 +224,7 @@ async function warmPoolGracePeriod(
           runnerOwner,
           environment,
           runnerType: 'Org',
+          amiId,
         });
         await tag(instanceId, [{ Key: 'ghr:warm-pool-member', Value: 'true' }]).catch(() => {});
         emitWarmPoolMetric('WarmPoolInstanceStopped', 1, { Owner: runnerOwner });

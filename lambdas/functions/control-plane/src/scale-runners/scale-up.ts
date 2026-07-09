@@ -14,7 +14,6 @@ import { metricGitHubAppRateLimit } from '../github/rate-limit';
 import { publishRetryMessage } from './job-retry';
 import {
   getWarmPoolConfig,
-  getPoolStrategy,
   listWarmInstancesByOwner,
   removeFromWarmPool,
   emitWarmPoolMetric,
@@ -312,9 +311,8 @@ export async function findAndStartWarmRunners(
   ghClient?: Octokit,
 ): Promise<string[]> {
   const warmPoolConfig = getWarmPoolConfig();
-  const poolStrategy = getPoolStrategy();
 
-  if (!warmPoolConfig.enabled || poolStrategy !== 'warm' || count <= 0) {
+  if (!warmPoolConfig.enabled || count <= 0) {
     return [];
   }
 
@@ -334,10 +332,16 @@ export async function findAndStartWarmRunners(
     if (startedInstances.length >= count) break;
 
     try {
+      // Atomically claim the warm instance — prevents concurrent scale-up from using the same one
+      const claimed = await removeFromWarmPool(entry.instanceId);
+      if (!claimed) {
+        logger.info(`Warm instance '${entry.instanceId}' already claimed by another invocation, skipping`);
+        continue;
+      }
+
       const startTime = Date.now();
       await startRunner(entry.instanceId);
       const startLatencyMs = Date.now() - startTime;
-      await removeFromWarmPool(entry.instanceId);
       startedInstances.push(entry.instanceId);
       emitWarmPoolMetric('WarmPoolInstanceStarted', 1, { Owner: runnerOwner });
       emitWarmPoolMetric('WarmPoolStartLatency', startLatencyMs, { Owner: runnerOwner });

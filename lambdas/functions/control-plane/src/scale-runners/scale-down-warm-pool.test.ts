@@ -1,10 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { terminateRunner, stopRunner, tag, listEC2Runners } from './../aws/runners';
+import { terminateRunner, listEC2Runners } from './../aws/runners';
 import {
   getWarmPoolConfig,
   getPoolStrategy,
-  addToWarmPool,
-  countWarmInstancesByOwner,
   listWarmInstancesByOwner,
   removeFromWarmPool,
   emitWarmPoolMetric,

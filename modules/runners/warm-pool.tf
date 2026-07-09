@@ -1,14 +1,6 @@
 # Warm Pool DynamoDB table and IAM policies
 # Only created when warm_pool_config.enabled = true
 
-# Cross-variable validation
-check "warm_pool_strategy_requires_enabled" {
-  assert {
-    condition     = var.pool_strategy != "warm" || var.warm_pool_config.enabled
-    error_message = "pool_strategy = \"warm\" requires warm_pool_config.enabled = true."
-  }
-}
-
 resource "aws_dynamodb_table" "warm_pool" {
   count = var.warm_pool_config.enabled ? 1 : 0
 

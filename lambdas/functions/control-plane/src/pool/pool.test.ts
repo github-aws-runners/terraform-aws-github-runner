@@ -4,7 +4,7 @@ import * as nock from 'nock';
 
 import { listEC2Runners } from '../aws/runners';
 import * as ghAuth from '../github/auth';
-import { createRunners, findAndStartWarmRunners, getGitHubEnterpriseApiUrl } from '../scale-runners/scale-up';
+import { createRunners, getGitHubEnterpriseApiUrl } from '../scale-runners/scale-up';
 import { adjust } from './pool';
 import { describe, it, expect, beforeEach, vi, MockedClass } from 'vitest';
 

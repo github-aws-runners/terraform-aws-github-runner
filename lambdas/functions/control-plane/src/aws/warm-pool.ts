@@ -1,4 +1,5 @@
 import {
+  ConditionalCheckFailedException,
   DynamoDBClient,
   PutItemCommand,
   DeleteItemCommand,
@@ -78,15 +79,25 @@ export async function addToWarmPool(entry: Omit<WarmPoolEntry, 'stoppedAt' | 'ex
   logger.info(`Added instance '${entry.instanceId}' to warm pool for owner '${entry.runnerOwner}'`);
 }
 
-export async function removeFromWarmPool(instanceId: string): Promise<void> {
+export async function removeFromWarmPool(instanceId: string): Promise<boolean> {
   const client = getClient();
-  await client.send(
-    new DeleteItemCommand({
-      TableName: getTableName(),
-      Key: { instanceId: { S: instanceId } },
-    }),
-  );
-  logger.info(`Removed instance '${instanceId}' from warm pool`);
+  try {
+    await client.send(
+      new DeleteItemCommand({
+        TableName: getTableName(),
+        Key: { instanceId: { S: instanceId } },
+        ConditionExpression: 'attribute_exists(instanceId)',
+      }),
+    );
+    logger.info(`Removed instance '${instanceId}' from warm pool`);
+    return true;
+  } catch (e) {
+    if (e instanceof ConditionalCheckFailedException) {
+      logger.info(`Instance '${instanceId}' already claimed from warm pool`);
+      return false;
+    }
+    throw e;
+  }
 }
 
 export async function getWarmInstance(instanceId: string): Promise<WarmPoolEntry | null> {

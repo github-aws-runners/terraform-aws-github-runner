@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { listEC2Runners } from '../aws/runners';
-import * as ghAuth from '../github/auth';
-import { createRunners, findAndStartWarmRunners, getGitHubEnterpriseApiUrl } from '../scale-runners/scale-up';
+import { createRunners, findAndStartWarmRunners } from '../scale-runners/scale-up';
 import { getPoolStrategy, getWarmPoolConfig, countWarmInstancesByOwner } from '../aws/warm-pool';
 import { adjust } from './pool';
 

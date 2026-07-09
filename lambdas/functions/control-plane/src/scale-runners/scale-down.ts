@@ -204,27 +204,35 @@ async function removeRunner(ec2runner: RunnerInfo, ghRunnerIds: number[]): Promi
         if (warmPoolConfig.enabled && poolStrategy === 'warm') {
           const warmCount = await countWarmInstancesByOwner(ec2runner.owner);
           if (warmCount < warmPoolConfig.maxWarmInstances) {
-            await stopRunner(ec2runner.instanceId);
-            let amiId: string | undefined;
-            const amiSsmParam = process.env.AMI_ID_SSM_PARAMETER_NAME;
-            if (amiSsmParam) {
-              try {
-                amiId = await getParameter(amiSsmParam);
-              } catch { /* best-effort */ }
+            try {
+              await stopRunner(ec2runner.instanceId);
+              let amiId: string | undefined;
+              const amiSsmParam = process.env.AMI_ID_SSM_PARAMETER_NAME;
+              if (amiSsmParam) {
+                try {
+                  amiId = await getParameter(amiSsmParam);
+                } catch { /* best-effort */ }
+              }
+              await addToWarmPool({
+                instanceId: ec2runner.instanceId,
+                runnerOwner: ec2runner.owner,
+                environment: process.env.ENVIRONMENT || '',
+                runnerType: ec2runner.type,
+                amiId,
+              });
+              await tag(ec2runner.instanceId, [{ Key: 'ghr:warm-pool-member', Value: 'true' }]);
+              emitWarmPoolMetric('WarmPoolInstanceStopped', 1, { Owner: ec2runner.owner });
+              logger.info(
+                `Runner '${ec2runner.instanceId}' stopped and added to warm pool ` +
+                  `(${warmCount + 1}/${warmPoolConfig.maxWarmInstances}).`,
+              );
+            } catch (warmPoolError) {
+              logger.warn(
+                `Failed to stop runner '${ec2runner.instanceId}' into warm pool, terminating instead.`,
+                { error: warmPoolError },
+              );
+              await terminateRunner(ec2runner.instanceId);
             }
-            await addToWarmPool({
-              instanceId: ec2runner.instanceId,
-              runnerOwner: ec2runner.owner,
-              environment: process.env.ENVIRONMENT || '',
-              runnerType: ec2runner.type,
-              amiId,
-            });
-            await tag(ec2runner.instanceId, [{ Key: 'ghr:warm-pool-member', Value: 'true' }]);
-            emitWarmPoolMetric('WarmPoolInstanceStopped', 1, { Owner: ec2runner.owner });
-            logger.info(
-              `Runner '${ec2runner.instanceId}' stopped and added to warm pool ` +
-                `(${warmCount + 1}/${warmPoolConfig.maxWarmInstances}).`,
-            );
           } else {
             await terminateRunner(ec2runner.instanceId);
             logger.info(
@@ -405,7 +413,7 @@ async function evictStaleWarmInstances(environment: string): Promise<void> {
   if (!warmPoolConfig.enabled) return;
 
   const ownerTags = new Set<string>();
-  const ec2runners = await listEC2Runners({ environment });
+  const ec2runners = await listEC2Runners({ environment, statuses: ['running', 'pending', 'stopped', 'stopping'] });
   for (const runner of ec2runners) {
     if (runner.owner) ownerTags.add(runner.owner);
   }
