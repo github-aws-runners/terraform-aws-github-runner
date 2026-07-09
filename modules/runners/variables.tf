@@ -796,6 +796,7 @@ variable "metrics" {
       enable_github_app_rate_limit    = optional(bool, true)
       enable_job_retry                = optional(bool, true)
       enable_spot_termination_warning = optional(bool, true)
+      enable_warm_pool                = optional(bool, true)
     }), {})
   })
   default = {}
@@ -869,4 +870,48 @@ variable "use_dedicated_host" {
   description = "Experimental! Can be removed / changed without trigger a major release. Whether to use EC2 dedicated hosts for the runners. Needed for macos runners Note that using dedicated hosts can increase cost significantly."
   type        = bool
   default     = false
+}
+
+variable "warm_pool_config" {
+  description = <<-EOF
+    Configuration for the warm pool feature. When enabled, idle runners are stopped instead of terminated,
+    allowing 10-30s restart times instead of 2-5 minute cold starts.
+
+    `enabled`: Enable or disable the warm pool feature. When enabled, a DynamoDB table is created to track stopped instances.
+    `max_warm_instances`: Maximum number of stopped instances to keep in the warm pool per runner owner.
+    `max_warm_age_hours`: Maximum age in hours before a warm instance is terminated by TTL.
+    `warm_pool_ready_delay_seconds`: Grace period in seconds before a newly launched instance is eligible for warm pool (allows time to pick up jobs).
+  EOF
+  type = object({
+    enabled                       = optional(bool, false)
+    max_warm_instances            = optional(number, 3)
+    max_warm_age_hours            = optional(number, 168)
+    warm_pool_ready_delay_seconds = optional(number, 30)
+  })
+  default = {}
+
+  validation {
+    condition     = var.warm_pool_config.max_warm_instances >= 1
+    error_message = "max_warm_instances must be at least 1."
+  }
+
+  validation {
+    condition     = var.warm_pool_config.max_warm_age_hours >= 1
+    error_message = "max_warm_age_hours must be at least 1 hour."
+  }
+}
+
+variable "pool_strategy" {
+  description = <<-EOF
+    Strategy for maintaining idle runners.
+    - `hot`: (default) Traditional behavior. Pool lambda creates fresh instances on a schedule. Idle instances are terminated by scale-down.
+    - `warm`: Idle instances are stopped (hibernated) instead of terminated. Scale-up will restart warm instances before creating new ones. Requires `warm_pool_config.enabled = true`.
+  EOF
+  type        = string
+  default     = "hot"
+
+  validation {
+    condition     = contains(["hot", "warm"], var.pool_strategy)
+    error_message = "pool_strategy must be either \"hot\" or \"warm\"."
+  }
 }

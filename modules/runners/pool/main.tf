@@ -60,6 +60,15 @@ resource "aws_lambda_function" "pool" {
       SSM_PARAMETER_STORE_TAGS                 = var.config.lambda.parameter_store_tags
       SCALE_ERRORS                             = jsonencode(var.config.runner.scale_errors)
       USE_DEDICATED_HOST                       = var.config.runner.use_dedicated_host
+      WARM_POOL_CONFIG = jsonencode({
+        enabled                   = var.config.warm_pool_config.enabled
+        maxWarmInstances          = var.config.warm_pool_config.max_warm_instances
+        maxWarmAgeHours           = var.config.warm_pool_config.max_warm_age_hours
+        warmPoolReadyDelaySeconds = var.config.warm_pool_config.warm_pool_ready_delay_seconds
+      })
+      WARM_POOL_TABLE_NAME    = var.config.warm_pool_table_name
+      POOL_STRATEGY           = var.config.pool_strategy
+      ENABLE_METRIC_WARM_POOL = var.config.enable_metric_warm_pool
     }
   }
 
