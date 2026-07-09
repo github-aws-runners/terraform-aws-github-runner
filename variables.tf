@@ -847,6 +847,28 @@ variable "pool_config" {
   default = []
 }
 
+variable "pool_strategy" {
+  description = "Strategy for maintaining idle runners: `hot` (default, traditional) or `warm` (stop instead of terminate). Requires `warm_pool_config.enabled = true` when set to `warm`."
+  type        = string
+  default     = "hot"
+
+  validation {
+    condition     = contains(["hot", "warm"], var.pool_strategy)
+    error_message = "pool_strategy must be either \"hot\" or \"warm\"."
+  }
+}
+
+variable "warm_pool_config" {
+  description = "Configuration for the warm pool feature. When enabled, idle runners are stopped instead of terminated, allowing 10-30s restart times instead of 2-5 minute cold starts."
+  type = object({
+    enabled                       = optional(bool, false)
+    max_warm_instances            = optional(number, 3)
+    max_warm_age_hours            = optional(number, 168)
+    warm_pool_ready_delay_seconds = optional(number, 30)
+  })
+  default = {}
+}
+
 variable "aws_partition" {
   description = "(optiona) partition in the arn namespace to use if not 'aws'"
   type        = string
@@ -1047,6 +1069,7 @@ variable "metrics" {
       enable_github_app_rate_limit    = optional(bool, true)
       enable_job_retry                = optional(bool, true)
       enable_spot_termination_warning = optional(bool, true)
+      enable_warm_pool                = optional(bool, true)
     }), {})
   })
   default = {}

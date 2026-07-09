@@ -27,6 +27,7 @@ resource "aws_lambda_function" "scale_down" {
     variables = {
       ENVIRONMENT                              = var.prefix
       ENABLE_METRIC_GITHUB_APP_RATE_LIMIT      = var.metrics.enable && var.metrics.metric.enable_github_app_rate_limit
+      ENABLE_METRIC_WARM_POOL                  = var.metrics.enable && var.metrics.metric.enable_warm_pool
       GHES_URL                                 = var.ghes_url
       USER_AGENT                               = var.user_agent
       LOG_LEVEL                                = var.log_level
@@ -42,6 +43,14 @@ resource "aws_lambda_function" "scale_down" {
       POWERTOOLS_TRACE_ENABLED                 = var.tracing_config.mode != null ? true : false
       POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.tracing_config.capture_http_requests
       POWERTOOLS_TRACER_CAPTURE_ERROR          = var.tracing_config.capture_error
+      WARM_POOL_CONFIG                         = jsonencode({
+        enabled                   = var.warm_pool_config.enabled
+        maxWarmInstances          = var.warm_pool_config.max_warm_instances
+        maxWarmAgeHours           = var.warm_pool_config.max_warm_age_hours
+        warmPoolReadyDelaySeconds = var.warm_pool_config.warm_pool_ready_delay_seconds
+      })
+      WARM_POOL_TABLE_NAME                     = var.warm_pool_config.enabled ? aws_dynamodb_table.warm_pool[0].name : ""
+      POOL_STRATEGY                            = var.pool_strategy
     }
   }
 
