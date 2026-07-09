@@ -71,8 +71,8 @@ module "pool" {
       max_warm_age_hours            = var.warm_pool_config.max_warm_age_hours
       warm_pool_ready_delay_seconds = var.warm_pool_config.warm_pool_ready_delay_seconds
     }
-    pool_strategy                        = var.pool_strategy
-    enable_metric_warm_pool              = var.metrics.enable && var.metrics.metric.enable_warm_pool
+    pool_strategy           = var.pool_strategy
+    enable_metric_warm_pool = var.metrics.enable && var.metrics.metric.enable_warm_pool
   }
 
   aws_partition  = var.aws_partition

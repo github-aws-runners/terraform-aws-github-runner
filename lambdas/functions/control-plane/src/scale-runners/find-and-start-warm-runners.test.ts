@@ -1,11 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { startRunner, tag, untag } from './../aws/runners';
-import {
-  getWarmPoolConfig,
-  listWarmInstancesByOwner,
-  removeFromWarmPool,
-  emitWarmPoolMetric,
-} from '../aws/warm-pool';
+import { getWarmPoolConfig, listWarmInstancesByOwner, removeFromWarmPool, emitWarmPoolMetric } from '../aws/warm-pool';
 import { findAndStartWarmRunners } from './scale-up';
 
 vi.mock('./../aws/runners', async () => ({
@@ -209,11 +204,9 @@ describe('findAndStartWarmRunners', () => {
 
   it('should skip failed instances and continue with next', async () => {
     mockRemoveFromWarmPool
-      .mockResolvedValueOnce(true)  // i-bad claimed
+      .mockResolvedValueOnce(true) // i-bad claimed
       .mockResolvedValueOnce(true); // i-good claimed
-    mockStartRunner
-      .mockRejectedValueOnce(new Error('Instance terminated'))
-      .mockResolvedValueOnce(undefined);
+    mockStartRunner.mockRejectedValueOnce(new Error('Instance terminated')).mockResolvedValueOnce(undefined);
     mockListWarmInstances.mockResolvedValue([
       {
         instanceId: 'i-bad',
@@ -241,8 +234,8 @@ describe('findAndStartWarmRunners', () => {
 
   it('should remove failed instance from DynamoDB', async () => {
     mockRemoveFromWarmPool
-      .mockResolvedValueOnce(true)   // claim succeeds
-      .mockResolvedValueOnce(true);  // cleanup in catch
+      .mockResolvedValueOnce(true) // claim succeeds
+      .mockResolvedValueOnce(true); // cleanup in catch
     mockStartRunner.mockRejectedValue(new Error('Instance terminated'));
     mockListWarmInstances.mockResolvedValue([
       {

@@ -101,9 +101,7 @@ describe('scale-down warm pool eviction', () => {
   });
 
   it('should evict warm instances exceeding max age', async () => {
-    mockListEC2Runners.mockResolvedValue([
-      { instanceId: 'i-running', owner: 'my-org', type: 'Org' } as any,
-    ]);
+    mockListEC2Runners.mockResolvedValue([{ instanceId: 'i-running', owner: 'my-org', type: 'Org' } as any]);
     const oldDate = new Date(Date.now() - 200 * 3600 * 1000).toISOString(); // 200 hours ago
     mockListWarmInstances.mockResolvedValue([
       {
@@ -125,9 +123,7 @@ describe('scale-down warm pool eviction', () => {
   });
 
   it('should evict warm instances exceeding max count', async () => {
-    mockListEC2Runners.mockResolvedValue([
-      { instanceId: 'i-running', owner: 'my-org', type: 'Org' } as any,
-    ]);
+    mockListEC2Runners.mockResolvedValue([{ instanceId: 'i-running', owner: 'my-org', type: 'Org' } as any]);
     const recentDate = new Date(Date.now() - 1 * 3600 * 1000).toISOString(); // 1 hour ago
     mockListWarmInstances.mockResolvedValue([
       {
@@ -161,16 +157,14 @@ describe('scale-down warm pool eviction', () => {
     await scaleDown();
 
     // maxWarmInstances is 2, so at least 1 warm instance should be evicted (i-warm-*)
-    const warmEvictionCalls = mockTerminateRunner.mock.calls.filter(
-      (call) => (call[0] as string).startsWith('i-warm-'),
+    const warmEvictionCalls = mockTerminateRunner.mock.calls.filter((call) =>
+      (call[0] as string).startsWith('i-warm-'),
     );
     expect(warmEvictionCalls).toHaveLength(1);
   });
 
   it('should emit WarmPoolSize metric after eviction', async () => {
-    mockListEC2Runners.mockResolvedValue([
-      { instanceId: 'i-running', owner: 'my-org', type: 'Org' } as any,
-    ]);
+    mockListEC2Runners.mockResolvedValue([{ instanceId: 'i-running', owner: 'my-org', type: 'Org' } as any]);
     const oldDate = new Date(Date.now() - 200 * 3600 * 1000).toISOString();
     mockListWarmInstances.mockResolvedValue([
       {

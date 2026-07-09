@@ -211,7 +211,9 @@ async function removeRunner(ec2runner: RunnerInfo, ghRunnerIds: number[]): Promi
               if (amiSsmParam) {
                 try {
                   amiId = await getParameter(amiSsmParam);
-                } catch { /* best-effort */ }
+                } catch {
+                  /* best-effort */
+                }
               }
               await addToWarmPool({
                 instanceId: ec2runner.instanceId,
@@ -227,10 +229,9 @@ async function removeRunner(ec2runner: RunnerInfo, ghRunnerIds: number[]): Promi
                   `(${warmCount + 1}/${warmPoolConfig.maxWarmInstances}).`,
               );
             } catch (warmPoolError) {
-              logger.warn(
-                `Failed to stop runner '${ec2runner.instanceId}' into warm pool, terminating instead.`,
-                { error: warmPoolError },
-              );
+              logger.warn(`Failed to stop runner '${ec2runner.instanceId}' into warm pool, terminating instead.`, {
+                error: warmPoolError,
+              });
               await terminateRunner(ec2runner.instanceId);
             }
           } else {

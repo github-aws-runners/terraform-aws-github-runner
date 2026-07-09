@@ -29,7 +29,7 @@ variables {
   runner_labels               = ["self-hosted", "linux", "x64"]
 
   # Use S3 bucket to avoid filebase64sha256 needing local zip files
-  lambda_s3_bucket     = "my-lambda-bucket"
+  lambda_s3_bucket      = "my-lambda-bucket"
   runners_lambda_s3_key = "runners.zip"
 
   github_app_parameters = {

@@ -907,8 +907,8 @@ variable "pool_strategy" {
     - `hot`: (default) Traditional behavior. Pool lambda creates fresh instances on a schedule. Idle instances are terminated by scale-down.
     - `warm`: Idle instances are stopped (hibernated) instead of terminated. Scale-up will restart warm instances before creating new ones. Requires `warm_pool_config.enabled = true`.
   EOF
-  type    = string
-  default = "hot"
+  type        = string
+  default     = "hot"
 
   validation {
     condition     = contains(["hot", "warm"], var.pool_strategy)

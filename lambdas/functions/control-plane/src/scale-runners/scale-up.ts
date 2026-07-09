@@ -12,12 +12,7 @@ import { createRunner, listEC2Runners, startRunner, tag, untag, terminateRunner 
 import { Ec2OverrideConfig, RunnerInputParameters } from './../aws/runners.d';
 import { metricGitHubAppRateLimit } from '../github/rate-limit';
 import { publishRetryMessage } from './job-retry';
-import {
-  getWarmPoolConfig,
-  listWarmInstancesByOwner,
-  removeFromWarmPool,
-  emitWarmPoolMetric,
-} from '../aws/warm-pool';
+import { getWarmPoolConfig, listWarmInstancesByOwner, removeFromWarmPool, emitWarmPoolMetric } from '../aws/warm-pool';
 import {
   _InstanceType,
   Tenancy,

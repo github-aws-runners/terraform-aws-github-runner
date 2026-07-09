@@ -43,7 +43,9 @@ vi.mock('../scale-runners/scale-up', async () => ({
 
 vi.mock('../aws/warm-pool', async () => ({
   getPoolStrategy: vi.fn().mockReturnValue('hot'),
-  getWarmPoolConfig: vi.fn().mockReturnValue({ enabled: false, maxWarmInstances: 3, maxWarmAgeHours: 168, warmPoolReadyDelaySeconds: 30 }),
+  getWarmPoolConfig: vi
+    .fn()
+    .mockReturnValue({ enabled: false, maxWarmInstances: 3, maxWarmAgeHours: 168, warmPoolReadyDelaySeconds: 30 }),
   countWarmInstancesByOwner: vi.fn().mockResolvedValue(0),
   addToWarmPool: vi.fn().mockResolvedValue(undefined),
   emitWarmPoolMetric: vi.fn(),
@@ -89,7 +91,12 @@ describe('pool warm strategy', () => {
 
   it('should count warm instances toward pool target with warm strategy', async () => {
     mockGetPoolStrategy.mockReturnValue('warm');
-    mockGetWarmPoolConfig.mockReturnValue({ enabled: true, maxWarmInstances: 3, maxWarmAgeHours: 168, warmPoolReadyDelaySeconds: 30 });
+    mockGetWarmPoolConfig.mockReturnValue({
+      enabled: true,
+      maxWarmInstances: 3,
+      maxWarmAgeHours: 168,
+      warmPoolReadyDelaySeconds: 30,
+    });
     mockCountWarmInstances.mockResolvedValue(2);
     // 0 running + 2 warm = 2 effective, pool size = 2 → no top-up needed
     mockListRunners.mockResolvedValue([]);
@@ -103,7 +110,12 @@ describe('pool warm strategy', () => {
 
   it('should try warm instances first when topping up', async () => {
     mockGetPoolStrategy.mockReturnValue('warm');
-    mockGetWarmPoolConfig.mockReturnValue({ enabled: true, maxWarmInstances: 3, maxWarmAgeHours: 168, warmPoolReadyDelaySeconds: 30 });
+    mockGetWarmPoolConfig.mockReturnValue({
+      enabled: true,
+      maxWarmInstances: 3,
+      maxWarmAgeHours: 168,
+      warmPoolReadyDelaySeconds: 30,
+    });
     mockCountWarmInstances.mockResolvedValue(0);
     // Pool wants 3, has 0 → needs 3, warm start returns 2 → 1 cold needed
     mockFindAndStartWarmRunners.mockResolvedValue(['i-warm-1', 'i-warm-2']);
@@ -122,7 +134,12 @@ describe('pool warm strategy', () => {
 
   it('should not cold-launch if warm instances satisfy the full top-up', async () => {
     mockGetPoolStrategy.mockReturnValue('warm');
-    mockGetWarmPoolConfig.mockReturnValue({ enabled: true, maxWarmInstances: 3, maxWarmAgeHours: 168, warmPoolReadyDelaySeconds: 30 });
+    mockGetWarmPoolConfig.mockReturnValue({
+      enabled: true,
+      maxWarmInstances: 3,
+      maxWarmAgeHours: 168,
+      warmPoolReadyDelaySeconds: 30,
+    });
     mockCountWarmInstances.mockResolvedValue(0);
     mockFindAndStartWarmRunners.mockResolvedValue(['i-warm-1', 'i-warm-2']);
 
@@ -134,7 +151,12 @@ describe('pool warm strategy', () => {
 
   it('should not count warm instances when strategy is hot', async () => {
     mockGetPoolStrategy.mockReturnValue('hot');
-    mockGetWarmPoolConfig.mockReturnValue({ enabled: true, maxWarmInstances: 3, maxWarmAgeHours: 168, warmPoolReadyDelaySeconds: 30 });
+    mockGetWarmPoolConfig.mockReturnValue({
+      enabled: true,
+      maxWarmInstances: 3,
+      maxWarmAgeHours: 168,
+      warmPoolReadyDelaySeconds: 30,
+    });
     // With hot strategy, warm instances should NOT be counted even if warm pool is enabled
     mockListRunners.mockResolvedValue([]);
 

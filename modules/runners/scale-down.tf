@@ -43,15 +43,15 @@ resource "aws_lambda_function" "scale_down" {
       POWERTOOLS_TRACE_ENABLED                 = var.tracing_config.mode != null ? true : false
       POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.tracing_config.capture_http_requests
       POWERTOOLS_TRACER_CAPTURE_ERROR          = var.tracing_config.capture_error
-      WARM_POOL_CONFIG                         = jsonencode({
+      WARM_POOL_CONFIG = jsonencode({
         enabled                   = var.warm_pool_config.enabled
         maxWarmInstances          = var.warm_pool_config.max_warm_instances
         maxWarmAgeHours           = var.warm_pool_config.max_warm_age_hours
         warmPoolReadyDelaySeconds = var.warm_pool_config.warm_pool_ready_delay_seconds
       })
-      WARM_POOL_TABLE_NAME                     = var.warm_pool_config.enabled ? aws_dynamodb_table.warm_pool[0].name : ""
-      POOL_STRATEGY                            = var.pool_strategy
-      AMI_ID_SSM_PARAMETER_NAME                = local.ami_id_ssm_parameter_name
+      WARM_POOL_TABLE_NAME      = var.warm_pool_config.enabled ? aws_dynamodb_table.warm_pool[0].name : ""
+      POOL_STRATEGY             = var.pool_strategy
+      AMI_ID_SSM_PARAMETER_NAME = local.ami_id_ssm_parameter_name
     }
   }
 

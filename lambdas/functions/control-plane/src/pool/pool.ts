@@ -7,7 +7,13 @@ import { RunnerList } from '../aws/runners.d';
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
 import { createRunners, findAndStartWarmRunners, getGitHubEnterpriseApiUrl } from '../scale-runners/scale-up';
 import { validateSsmParameterStoreTags } from '../scale-runners/scale-up';
-import { addToWarmPool, getPoolStrategy, getWarmPoolConfig, countWarmInstancesByOwner, emitWarmPoolMetric } from '../aws/warm-pool';
+import {
+  addToWarmPool,
+  getPoolStrategy,
+  getWarmPoolConfig,
+  countWarmInstancesByOwner,
+  emitWarmPoolMetric,
+} from '../aws/warm-pool';
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
 
 const logger = createChildLogger('pool');
@@ -86,7 +92,9 @@ export async function adjust(event: PoolEvent): Promise<void> {
   if (poolStrategy === 'warm' && warmPoolConfig.enabled) {
     const warmCount = await countWarmInstancesByOwner(runnerOwner);
     effectivePoolSize = numberOfRunnersInPool + warmCount;
-    logger.info(`Warm strategy: ${numberOfRunnersInPool} running idle + ${warmCount} warm stopped = ${effectivePoolSize} effective pool size`);
+    logger.info(
+      `Warm strategy: ${numberOfRunnersInPool} running idle + ${warmCount} warm stopped = ${effectivePoolSize} effective pool size`,
+    );
   }
 
   let topUp = event.poolSize - effectivePoolSize;
@@ -133,40 +141,40 @@ export async function adjust(event: PoolEvent): Promise<void> {
 
     if (remainingTopUp > 0) {
       const newInstances = await createRunners(
-      {
-        ephemeral,
-        enableJitConfig,
-        ghesBaseUrl,
-        runnerLabels,
-        runnerGroup,
-        runnerOwner,
-        runnerNamePrefix,
-        runnerType: 'Org',
-        disableAutoUpdate: disableAutoUpdate,
-        ssmTokenPath,
-        ssmConfigPath,
-        ssmParameterStoreTags,
-      },
-      {
-        ec2instanceCriteria: {
-          instanceTypes,
-          instanceTypePriorities,
-          targetCapacityType: instanceTargetCapacityType,
-          maxSpotPrice: instanceMaxSpotPrice,
-          instanceAllocationStrategy: instanceAllocationStrategy,
+        {
+          ephemeral,
+          enableJitConfig,
+          ghesBaseUrl,
+          runnerLabels,
+          runnerGroup,
+          runnerOwner,
+          runnerNamePrefix,
+          runnerType: 'Org',
+          disableAutoUpdate: disableAutoUpdate,
+          ssmTokenPath,
+          ssmConfigPath,
+          ssmParameterStoreTags,
         },
-        environment,
-        launchTemplateName,
-        subnets,
-        amiIdSsmParameterName,
-        tracingEnabled,
-        onDemandFailoverOnError,
-        scaleErrors,
-      },
-      remainingTopUp,
-      githubInstallationClient,
-      'pool-lambda',
-    );
+        {
+          ec2instanceCriteria: {
+            instanceTypes,
+            instanceTypePriorities,
+            targetCapacityType: instanceTargetCapacityType,
+            maxSpotPrice: instanceMaxSpotPrice,
+            instanceAllocationStrategy: instanceAllocationStrategy,
+          },
+          environment,
+          launchTemplateName,
+          subnets,
+          amiIdSsmParameterName,
+          tracingEnabled,
+          onDemandFailoverOnError,
+          scaleErrors,
+        },
+        remainingTopUp,
+        githubInstallationClient,
+        'pool-lambda',
+      );
 
       // Warm strategy grace period: wait for runners to register, then stop idle ones
       if (poolStrategy === 'warm' && warmPoolConfig.enabled && newInstances.length > 0) {
@@ -181,7 +189,9 @@ export async function adjust(event: PoolEvent): Promise<void> {
       }
     }
   } else {
-    logger.info(`Pool will not be topped up. Found ${effectivePoolSize} effective pool runners (${numberOfRunnersInPool} running + warm).`);
+    logger.info(
+      `Pool will not be topped up. Found ${effectivePoolSize} effective pool runners (${numberOfRunnersInPool} running + warm).`,
+    );
   }
 }
 
@@ -205,7 +215,9 @@ async function warmPoolGracePeriod(
   if (amiSsmParam) {
     try {
       amiId = await getParameter(amiSsmParam);
-    } catch { /* best-effort */ }
+    } catch {
+      /* best-effort */
+    }
   }
 
   for (const instanceId of instanceIds) {

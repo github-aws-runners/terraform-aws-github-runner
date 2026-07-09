@@ -50,7 +50,9 @@ vi.mock('../scale-runners/scale-up', async () => ({
 
 vi.mock('../aws/warm-pool', async () => ({
   getPoolStrategy: vi.fn().mockReturnValue('hot'),
-  getWarmPoolConfig: vi.fn().mockReturnValue({ enabled: false, maxWarmInstances: 3, maxWarmAgeHours: 168, warmPoolReadyDelaySeconds: 30 }),
+  getWarmPoolConfig: vi
+    .fn()
+    .mockReturnValue({ enabled: false, maxWarmInstances: 3, maxWarmAgeHours: 168, warmPoolReadyDelaySeconds: 30 }),
   countWarmInstancesByOwner: vi.fn().mockResolvedValue(0),
   addToWarmPool: vi.fn().mockResolvedValue(undefined),
   emitWarmPoolMetric: vi.fn(),
