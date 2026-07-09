@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { terminateRunner, listEC2Runners } from './../aws/runners';
+import { RunnerList } from '../aws/runners.d';
 import {
   getWarmPoolConfig,
   getPoolStrategy,
@@ -101,7 +102,7 @@ describe('scale-down warm pool eviction', () => {
   });
 
   it('should evict warm instances exceeding max age', async () => {
-    mockListEC2Runners.mockResolvedValue([{ instanceId: 'i-running', owner: 'my-org', type: 'Org' } as any]);
+    mockListEC2Runners.mockResolvedValue([{ instanceId: 'i-running', owner: 'my-org', type: 'Org' } as RunnerList]);
     const oldDate = new Date(Date.now() - 200 * 3600 * 1000).toISOString(); // 200 hours ago
     mockListWarmInstances.mockResolvedValue([
       {
@@ -123,7 +124,7 @@ describe('scale-down warm pool eviction', () => {
   });
 
   it('should evict warm instances exceeding max count', async () => {
-    mockListEC2Runners.mockResolvedValue([{ instanceId: 'i-running', owner: 'my-org', type: 'Org' } as any]);
+    mockListEC2Runners.mockResolvedValue([{ instanceId: 'i-running', owner: 'my-org', type: 'Org' } as RunnerList]);
     const recentDate = new Date(Date.now() - 1 * 3600 * 1000).toISOString(); // 1 hour ago
     mockListWarmInstances.mockResolvedValue([
       {
@@ -164,7 +165,7 @@ describe('scale-down warm pool eviction', () => {
   });
 
   it('should emit WarmPoolSize metric after eviction', async () => {
-    mockListEC2Runners.mockResolvedValue([{ instanceId: 'i-running', owner: 'my-org', type: 'Org' } as any]);
+    mockListEC2Runners.mockResolvedValue([{ instanceId: 'i-running', owner: 'my-org', type: 'Org' } as RunnerList]);
     const oldDate = new Date(Date.now() - 200 * 3600 * 1000).toISOString();
     mockListWarmInstances.mockResolvedValue([
       {
