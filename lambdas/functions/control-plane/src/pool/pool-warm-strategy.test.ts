@@ -24,6 +24,8 @@ vi.mock('@octokit/rest', () => ({
 vi.mock('./../aws/runners', async () => ({
   listEC2Runners: vi.fn().mockResolvedValue([]),
   bootTimeExceeded: vi.fn().mockReturnValue(false),
+  stopRunner: vi.fn().mockResolvedValue(undefined),
+  tag: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('./../github/auth', async () => ({
@@ -34,7 +36,7 @@ vi.mock('./../github/auth', async () => ({
 
 vi.mock('../scale-runners/scale-up', async () => ({
   scaleUp: vi.fn(),
-  createRunners: vi.fn(),
+  createRunners: vi.fn().mockResolvedValue([]),
   findAndStartWarmRunners: vi.fn().mockResolvedValue([]),
   getGitHubEnterpriseApiUrl: vi.fn().mockReturnValue({ ghesApiUrl: '', ghesBaseUrl: '' }),
   validateSsmParameterStoreTags: vi.fn().mockReturnValue([]),
@@ -44,6 +46,8 @@ vi.mock('../aws/warm-pool', async () => ({
   getPoolStrategy: vi.fn().mockReturnValue('hot'),
   getWarmPoolConfig: vi.fn().mockReturnValue({ enabled: false, maxWarmInstances: 3, maxWarmAgeHours: 168, warmPoolReadyDelaySeconds: 30 }),
   countWarmInstancesByOwner: vi.fn().mockResolvedValue(0),
+  addToWarmPool: vi.fn().mockResolvedValue(undefined),
+  emitWarmPoolMetric: vi.fn(),
 }));
 
 const mockListRunners = vi.mocked(listEC2Runners);

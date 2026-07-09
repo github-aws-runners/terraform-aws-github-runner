@@ -27,8 +27,9 @@ vi.mock('@octokit/rest', () => ({
 
 vi.mock('./../aws/runners', async () => ({
   listEC2Runners: vi.fn(),
-  // Include any other functions from the module that might be used
   bootTimeExceeded: vi.fn(),
+  stopRunner: vi.fn().mockResolvedValue(undefined),
+  tag: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock('./../github/auth', async () => ({
   createGithubAppAuth: vi.fn(),
@@ -38,7 +39,7 @@ vi.mock('./../github/auth', async () => ({
 
 vi.mock('../scale-runners/scale-up', async () => ({
   scaleUp: vi.fn(),
-  createRunners: vi.fn(),
+  createRunners: vi.fn().mockResolvedValue([]),
   findAndStartWarmRunners: vi.fn().mockResolvedValue([]),
   getGitHubEnterpriseApiUrl: vi.fn().mockReturnValue({
     ghesApiUrl: '',
@@ -51,6 +52,8 @@ vi.mock('../aws/warm-pool', async () => ({
   getPoolStrategy: vi.fn().mockReturnValue('hot'),
   getWarmPoolConfig: vi.fn().mockReturnValue({ enabled: false, maxWarmInstances: 3, maxWarmAgeHours: 168, warmPoolReadyDelaySeconds: 30 }),
   countWarmInstancesByOwner: vi.fn().mockResolvedValue(0),
+  addToWarmPool: vi.fn().mockResolvedValue(undefined),
+  emitWarmPoolMetric: vi.fn(),
 }));
 
 const mocktokit = Octokit as MockedClass<typeof Octokit>;

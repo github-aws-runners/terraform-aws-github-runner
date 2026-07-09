@@ -2,12 +2,12 @@ import { Octokit } from '@octokit/rest';
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import yn from 'yn';
 
-import { bootTimeExceeded, listEC2Runners } from '../aws/runners';
+import { bootTimeExceeded, listEC2Runners, stopRunner, tag } from '../aws/runners';
 import { RunnerList } from '../aws/runners.d';
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
 import { createRunners, findAndStartWarmRunners, getGitHubEnterpriseApiUrl } from '../scale-runners/scale-up';
 import { validateSsmParameterStoreTags } from '../scale-runners/scale-up';
-import { getPoolStrategy, getWarmPoolConfig, countWarmInstancesByOwner } from '../aws/warm-pool';
+import { addToWarmPool, getPoolStrategy, getWarmPoolConfig, countWarmInstancesByOwner, emitWarmPoolMetric } from '../aws/warm-pool';
 
 const logger = createChildLogger('pool');
 
@@ -131,7 +131,7 @@ export async function adjust(event: PoolEvent): Promise<void> {
     }
 
     if (remainingTopUp > 0) {
-      await createRunners(
+      const newInstances = await createRunners(
       {
         ephemeral,
         enableJitConfig,
@@ -166,9 +166,62 @@ export async function adjust(event: PoolEvent): Promise<void> {
       githubInstallationClient,
       'pool-lambda',
     );
+
+      // Warm strategy grace period: wait for runners to register, then stop idle ones
+      if (poolStrategy === 'warm' && warmPoolConfig.enabled && newInstances.length > 0) {
+        await warmPoolGracePeriod(
+          newInstances,
+          warmPoolConfig.warmPoolReadyDelaySeconds,
+          runnerOwner,
+          runnerNamePrefix,
+          environment,
+          githubInstallationClient,
+        );
+      }
     }
   } else {
     logger.info(`Pool will not be topped up. Found ${effectivePoolSize} effective pool runners (${numberOfRunnersInPool} running + warm).`);
+  }
+}
+
+async function warmPoolGracePeriod(
+  instanceIds: string[],
+  delaySeconds: number,
+  runnerOwner: string,
+  runnerNamePrefix: string,
+  environment: string,
+  ghClient: Octokit,
+): Promise<void> {
+  logger.info(`Warm strategy: waiting ${delaySeconds}s grace period for ${instanceIds.length} new instances`);
+  await new Promise((resolve) => setTimeout(resolve, delaySeconds * 1000));
+
+  // Re-check runner statuses after grace period
+  const runnerStatuses = await getGitHubRegisteredRunnnerStatusses(ghClient, runnerOwner, runnerNamePrefix);
+
+  for (const instanceId of instanceIds) {
+    const status = runnerStatuses.get(instanceId);
+    if (status?.busy) {
+      // Runner picked up a job during grace window — leave it running
+      logger.info(`Runner '${instanceId}' picked up a job during grace period, leaving running`);
+      await tag(instanceId, [{ Key: 'ghr:warm-pool-grace-hit', Value: 'true' }]).catch(() => {});
+      emitWarmPoolMetric('WarmPoolInstanceStarted', 1, { Owner: runnerOwner });
+    } else {
+      // Runner is idle after grace period — stop and add to warm pool
+      try {
+        await stopRunner(instanceId);
+        await addToWarmPool({
+          instanceId,
+          runnerOwner,
+          environment,
+          runnerType: 'Org',
+        });
+        await tag(instanceId, [{ Key: 'ghr:warm-pool-member', Value: 'true' }]).catch(() => {});
+        emitWarmPoolMetric('WarmPoolInstanceStopped', 1, { Owner: runnerOwner });
+        logger.info(`Warm strategy: stopped idle runner '${instanceId}' after grace period`);
+      } catch (e) {
+        logger.warn(`Failed to stop runner '${instanceId}' after grace period`, { error: e });
+      }
+    }
   }
 }
 
