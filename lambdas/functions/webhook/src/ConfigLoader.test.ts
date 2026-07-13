@@ -225,7 +225,7 @@ describe('ConfigLoader Tests', () => {
       });
 
       await expect(ConfigWebhook.load()).rejects.toThrow(
-        "Failed to load config: Failed to load/parse combined matcher config: Expected ',' or ']' after array element in JSON at position 196", // eslint-disable-line max-len
+        "Failed to load config: Failed to load/parse combined matcher config: Expected ',' or ']' after array element in JSON at position 196",
       );
     });
   });

@@ -75,7 +75,9 @@ function getRegionFromQueueUrl(queueUrl: string): string | undefined {
     if (parts.length >= 3 && parts[0] === 'sqs') {
       return parts[1];
     }
-  } catch {}
+  } catch {
+    // Ignore invalid queue URLs and fall back to the default region.
+  }
 
   return undefined;
 }
