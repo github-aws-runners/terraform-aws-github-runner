@@ -1488,23 +1488,25 @@ describe('scaleUp with GHES', () => {
         },
       }));
 
-      mockedInstallationAuth
-        .mockRejectedValueOnce({ status: 404 })
-        .mockResolvedValueOnce({
-          type: 'token',
-          tokenType: 'installation',
-          token: 'token',
-          createdAt: 'some-date',
-          expiresAt: 'some-date',
-          permissions: {},
-          repositorySelection: 'all',
-          installationId: 123,
-        });
+      mockedInstallationAuth.mockRejectedValueOnce({ status: 404 }).mockResolvedValueOnce({
+        type: 'token',
+        tokenType: 'installation',
+        token: 'token',
+        createdAt: 'some-date',
+        expiresAt: 'some-date',
+        permissions: {},
+        repositorySelection: 'all',
+        installationId: 123,
+      });
 
       await scaleUpModule.scaleUp(TEST_DATA);
 
       expect(mockOctokit.apps.getOrgInstallation).toHaveBeenCalledWith({ org: TEST_DATA_SINGLE.repositoryOwner });
-      expect(mockedInstallationAuth).toHaveBeenNthCalledWith(1, TEST_DATA_SINGLE.installationId, 'https://github.enterprise.something/api/v3');
+      expect(mockedInstallationAuth).toHaveBeenNthCalledWith(
+        1,
+        TEST_DATA_SINGLE.installationId,
+        'https://github.enterprise.something/api/v3',
+      );
       expect(mockedInstallationAuth).toHaveBeenNthCalledWith(2, 123, 'https://github.enterprise.something/api/v3');
     });
 
