@@ -1,10 +1,10 @@
 import { addPersistentContextToChildLogger, createChildLogger } from '@aws-github-runner/aws-powertools-util';
+import { resolveRunnerProviderType } from '@aws-github-runner/runner-provider';
 import { Octokit } from '@octokit/rest';
 import yn from 'yn';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
 import { createScaleUpRunnerProvider } from '../runner-provider-registry';
-import { resolveRunnerProviderType } from '../runner-provider';
 import {
   getGitHubEnterpriseApiUrl,
   getInstallationId,

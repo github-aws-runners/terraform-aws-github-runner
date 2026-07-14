@@ -13,3 +13,16 @@ export function normalizeRunnerProviderType(type: unknown): RunnerProviderType |
 
   return runnerProviderTypes.find((runnerProviderType) => runnerProviderType === normalizedType);
 }
+
+export function resolveRunnerProviderType(type: unknown): RunnerProviderType {
+  const normalizedType = normalizeRunnerProviderType(type);
+  if (!normalizedType) {
+    throw new Error(`Unsupported runner provider type '${String(type)}'`);
+  }
+
+  return normalizedType;
+}
+
+export interface RunnerProvider {
+  type: RunnerProviderType;
+}

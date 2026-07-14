@@ -1,10 +1,10 @@
 import { Octokit } from '@octokit/rest';
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
+import { resolveRunnerProviderType } from '@aws-github-runner/runner-provider';
 import yn from 'yn';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
 import { createPoolRunnerProvider } from '../runner-provider-registry';
-import { resolveRunnerProviderType } from '../runner-provider';
 import { getGitHubEnterpriseApiUrl, validateSsmParameterStoreTags } from '../scale-runners/github-runner';
 import type { RunnerStatus } from './pool-provider';
 

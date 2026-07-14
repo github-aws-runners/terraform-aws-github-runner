@@ -1,4 +1,4 @@
-import type { RunnerProvider } from '../runner-provider';
+import type { RunnerProvider } from '@aws-github-runner/runner-provider';
 
 export interface RunnerList {
   id: string;

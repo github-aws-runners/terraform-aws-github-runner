@@ -1,6 +1,6 @@
 import type { Octokit } from '@octokit/rest';
+import type { RunnerProvider } from '@aws-github-runner/runner-provider';
 
-import type { RunnerProvider } from '../runner-provider';
 import type { ActionRequestMessageSQS, CreateGitHubRunnerConfig, GitHubRunnerType } from './types';
 
 export interface CurrentRunnersInput {

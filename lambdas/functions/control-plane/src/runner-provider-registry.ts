@@ -1,6 +1,7 @@
+import type { RunnerProviderType } from '@aws-github-runner/runner-provider';
+
 import { createEc2PoolProvider } from './pool/ec2-pool';
 import type { PoolRunnerProvider } from './pool/pool-provider';
-import type { RunnerProviderType } from './runner-provider';
 import { createEc2ScaleDownProvider } from './scale-runners/ec2-scale-down';
 import { createEc2ScaleUpProvider } from './scale-runners/ec2-scale-up';
 import type { ScaleDownRunnerProvider } from './scale-runners/scale-down-provider';
