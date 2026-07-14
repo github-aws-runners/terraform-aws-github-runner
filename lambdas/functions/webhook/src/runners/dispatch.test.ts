@@ -6,8 +6,9 @@ import { WorkflowJobEvent } from '@octokit/webhooks-types';
 import workFlowJobEvent from '../../test/resources/github_workflowjob_event.json';
 import runnerConfig from '../../test/resources/multi_runner_configurations.json';
 
+import type { RunnerProvider } from '../runner-provider';
 import { RunnerConfig, sendActionRequest } from '../sqs';
-import type { RunnerMatcherConfig, RunnerProvider } from '../sqs';
+import type { RunnerMatcherConfig } from '../sqs';
 import { dispatch } from './dispatch';
 import { selectAwsDynamicLabelQueue } from './aws-dynamic-labels';
 import { canRunJob } from './labels';
@@ -601,10 +602,13 @@ describe('selectAwsDynamicLabelQueue', () => {
     });
   });
 
-  it('does not select a provider strategy that is planned but not implemented', () => {
-    const queue = runnerQueue('microvm', 'microvm');
+  it('does not select an unsupported provider strategy', () => {
+    const queue = runnerQueue('unsupported-provider');
+    (queue as unknown as { runnerProvider: string }).runnerProvider = 'unsupported';
 
-    expect(selectAwsDynamicLabelQueue([queue], ['self-hosted', 'linux'], ['ghr-microvm-cpu-count:2'])).toBeUndefined();
+    expect(
+      selectAwsDynamicLabelQueue([queue], ['self-hosted', 'linux'], ['ghr-ec2-instance-type:t3.large']),
+    ).toBeUndefined();
   });
 
   it('rejects a malformed non-string runner provider without throwing', () => {

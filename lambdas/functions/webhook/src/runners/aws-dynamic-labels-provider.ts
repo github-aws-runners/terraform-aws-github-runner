@@ -1,4 +1,5 @@
-import type { RunnerMatcherConfig, RunnerProvider } from '../sqs';
+import type { RunnerProvider } from '../runner-provider';
+import type { RunnerMatcherConfig } from '../sqs';
 
 export interface AwsDynamicLabelDispatchTarget {
   queue: RunnerMatcherConfig;

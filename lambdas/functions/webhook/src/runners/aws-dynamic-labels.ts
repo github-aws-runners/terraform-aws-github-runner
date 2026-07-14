@@ -1,24 +1,13 @@
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 
-import { RunnerMatcherConfig, RunnerProvider } from '../sqs';
+import { normalizeRunnerProvider } from '../runner-provider';
+import type { RunnerMatcherConfig } from '../sqs';
 import { AwsDynamicLabelDispatchTarget, AwsDynamicLabelProviderStrategy } from './aws-dynamic-labels-provider';
 import { ec2DynamicLabelProviderStrategy } from './ec2-dynamic-labels';
 
 const logger = createChildLogger('handler');
 
 const awsDynamicLabelProviderStrategies: AwsDynamicLabelProviderStrategy[] = [ec2DynamicLabelProviderStrategy];
-const defaultRunnerProvider: RunnerProvider = 'ec2';
-
-function normalizeRunnerProvider(provider: unknown): RunnerProvider | undefined {
-  if (provider === undefined) return defaultRunnerProvider;
-  if (typeof provider !== 'string') return undefined;
-
-  const normalizedProvider = provider.trim().toLowerCase();
-  if (!normalizedProvider) return defaultRunnerProvider;
-  if (normalizedProvider === 'ec2' || normalizedProvider === 'microvm') return normalizedProvider;
-
-  return undefined;
-}
 
 export function selectAwsDynamicLabelQueue(
   matches: RunnerMatcherConfig[],

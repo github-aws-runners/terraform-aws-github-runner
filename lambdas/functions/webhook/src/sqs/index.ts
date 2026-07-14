@@ -3,13 +3,13 @@ import { WorkflowJobEvent } from '@octokit/webhooks-types';
 import { createChildLogger, getTracedAWSV3Client } from '@aws-github-runner/aws-powertools-util';
 
 import type { AwsDynamicLabelsPolicy } from '../runners/aws-dynamic-labels-policy';
+import type { RunnerProvider } from '../runner-provider';
 
 const logger = createChildLogger('sqs');
 
 const sqsClientsByRegion = new Map<string, SQS>();
 
-// EC2 is the only implemented provider; MicroVM is reserved for future support.
-export type RunnerProvider = 'ec2' | 'microvm';
+export type { RunnerProvider };
 
 export interface ActionRequestMessage {
   id: number;
