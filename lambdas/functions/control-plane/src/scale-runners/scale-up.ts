@@ -3,6 +3,7 @@ import { Octokit } from '@octokit/rest';
 import yn from 'yn';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
+import { defaultRunnerProvider } from '../runner-provider';
 import {
   getGitHubEnterpriseApiUrl,
   getInstallationId,
@@ -12,7 +13,7 @@ import {
 } from './github-runner';
 import { publishRetryMessage } from './job-retry';
 import { getScaleUpRunnerProviderType } from './scale-up-config';
-import { createScaleUpRunnerProviderFromEnv, getDefaultScaleUpRunnerProviderType } from './scale-up-provider-registry';
+import { createScaleUpRunnerProviderFromEnv } from './scale-up-provider-registry';
 import type {
   ActionRequestMessage,
   ActionRequestMessageRetry,
@@ -86,10 +87,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       ? validateSsmParameterStoreTags(process.env.SSM_PARAMETER_STORE_TAGS)
       : [];
   const scaleErrors = JSON.parse(process.env.SCALE_ERRORS) as [string];
-  const runnerProviderType = getScaleUpRunnerProviderType(
-    process.env.RUNNER_PROVIDER_TYPE,
-    getDefaultScaleUpRunnerProviderType(),
-  );
+  const runnerProviderType = getScaleUpRunnerProviderType(process.env.RUNNER_PROVIDER_TYPE, defaultRunnerProvider);
   const runnerProvider = createScaleUpRunnerProviderFromEnv(runnerProviderType, environment, scaleErrors);
 
   const { ghesApiUrl, ghesBaseUrl } = getGitHubEnterpriseApiUrl();

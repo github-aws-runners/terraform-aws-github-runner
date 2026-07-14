@@ -5,6 +5,7 @@ import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import moment from 'moment';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
+import { defaultRunnerProvider } from '../runner-provider';
 import { GhRunners, githubCache } from './cache';
 import {
   ScalingDownConfig,
@@ -12,10 +13,7 @@ import {
   getIdleRunnerCount,
   getScaleDownRunnerProviderType,
 } from './scale-down-config';
-import {
-  createScaleDownRunnerProviderFromEnv,
-  getDefaultScaleDownRunnerProviderType,
-} from './scale-down-provider-registry';
+import { createScaleDownRunnerProviderFromEnv } from './scale-down-provider-registry';
 import { metricGitHubAppRateLimit } from '../github/rate-limit';
 import { getGitHubEnterpriseApiUrl } from './github-runner';
 import type { RunnerInfo, RunnerList, ScaleDownRunnerProvider } from './scale-down-provider';
@@ -358,7 +356,7 @@ export async function scaleDown(): Promise<void> {
   githubCache.reset();
   const environment = process.env.ENVIRONMENT;
   const scaleDownConfigs = JSON.parse(process.env.SCALE_DOWN_CONFIG) as [ScalingDownConfig];
-  const runnerProviderType = getScaleDownRunnerProviderType(scaleDownConfigs, getDefaultScaleDownRunnerProviderType());
+  const runnerProviderType = getScaleDownRunnerProviderType(scaleDownConfigs, defaultRunnerProvider);
   const runnerProvider = createScaleDownRunnerProviderFromEnv(runnerProviderType);
 
   // first runners marked to be orphan.

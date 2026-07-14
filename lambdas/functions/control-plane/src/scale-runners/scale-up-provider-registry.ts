@@ -1,10 +1,6 @@
 import { normalizeRunnerProviderType } from '../runner-provider';
 import { createEc2ScaleUpProviderFromEnv } from './ec2-scale-up';
-import type { ScaleUpRunnerProvider, ScaleUpRunnerProviderType } from './scale-up-provider';
-
-export function getDefaultScaleUpRunnerProviderType(): ScaleUpRunnerProviderType {
-  return 'ec2';
-}
+import type { ScaleUpRunnerProvider } from './scale-up-provider';
 
 export function createScaleUpRunnerProviderFromEnv(
   type: string,
