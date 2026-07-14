@@ -10,7 +10,7 @@ import {
 } from './ec2-labels';
 import { createRunners } from './ec2';
 import type { CreateEC2RunnerConfig } from './ec2';
-import type { ScaleUpRunnerProvider, ScaleUpRunnerProviderStrategy } from './scale-up-provider';
+import type { ScaleUpRunnerProvider } from './scale-up-provider';
 
 const logger = createChildLogger('ec2-scale-up');
 
@@ -87,8 +87,3 @@ export function createEc2ScaleUpProviderFromEnv(
     useDedicatedHost: yn(process.env.USE_DEDICATED_HOST, { default: false }),
   });
 }
-
-export const ec2ScaleUpRunnerProviderStrategy: ScaleUpRunnerProviderStrategy<Ec2ScaleUpState> = {
-  type: 'ec2',
-  createFromEnv: ({ environment, scaleErrors }) => createEc2ScaleUpProviderFromEnv(environment, scaleErrors),
-};

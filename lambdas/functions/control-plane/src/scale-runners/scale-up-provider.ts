@@ -1,6 +1,6 @@
 import type { Octokit } from '@octokit/rest';
 
-import type { RunnerProvider, RunnerProviderStrategy, RunnerProviderType } from '../runner-provider';
+import type { RunnerProvider, RunnerProviderType } from '../runner-provider';
 import type { ActionRequestMessageSQS, CreateGitHubRunnerConfig, GitHubRunnerType } from './types';
 
 export interface CurrentRunnersInput {
@@ -28,13 +28,3 @@ export interface ScaleUpRunnerProvider<TState = unknown> extends RunnerProvider 
   getCurrentRunners(state: TState, input: CurrentRunnersInput): Promise<number>;
   createRunners(input: CreateScaleUpRunnersInput<TState>): Promise<string[]>;
 }
-
-export interface CreateScaleUpRunnerProviderInput {
-  environment: string;
-  scaleErrors: string[];
-}
-
-export type ScaleUpRunnerProviderStrategy<TState = unknown> = RunnerProviderStrategy<
-  ScaleUpRunnerProvider<TState>,
-  [input: CreateScaleUpRunnerProviderInput]
->;

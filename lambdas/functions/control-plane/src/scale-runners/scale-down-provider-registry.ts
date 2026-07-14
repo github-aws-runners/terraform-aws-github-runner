@@ -1,24 +1,15 @@
 import { normalizeRunnerProviderType } from '../runner-provider';
-import { ec2ScaleDownRunnerProviderStrategy } from './ec2-scale-down';
-import type {
-  ScaleDownRunnerProvider,
-  ScaleDownRunnerProviderStrategy,
-  ScaleDownRunnerProviderType,
-} from './scale-down-provider';
-
-const scaleDownRunnerProviderStrategies: ScaleDownRunnerProviderStrategy[] = [ec2ScaleDownRunnerProviderStrategy];
+import { createEc2ScaleDownProvider } from './ec2-scale-down';
+import type { ScaleDownRunnerProvider, ScaleDownRunnerProviderType } from './scale-down-provider';
 
 export function getDefaultScaleDownRunnerProviderType(): ScaleDownRunnerProviderType {
-  return scaleDownRunnerProviderStrategies[0].type;
+  return 'ec2';
 }
 
 export function createScaleDownRunnerProviderFromEnv(type: string): ScaleDownRunnerProvider {
-  const normalizedType = normalizeRunnerProviderType(type);
-  const strategy = scaleDownRunnerProviderStrategies.find((strategy) => strategy.type === normalizedType);
-
-  if (!strategy) {
+  if (normalizeRunnerProviderType(type) !== 'ec2') {
     throw new Error(`Unsupported scale-down runner provider type '${type}'`);
   }
 
-  return strategy.createFromEnv();
+  return createEc2ScaleDownProvider();
 }

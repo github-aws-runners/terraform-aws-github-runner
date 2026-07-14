@@ -5,7 +5,7 @@ import { bootTimeExceeded, listEC2Runners } from '../aws/ec2-runners';
 import type { RunnerList } from '../aws/ec2-runners.d';
 import { createRunners } from '../scale-runners/ec2';
 import type { CreateEC2RunnerConfig } from '../scale-runners/ec2';
-import type { PoolRunnerProvider, PoolRunnerProviderStrategy, RunnerStatus } from './pool-provider';
+import type { PoolRunnerProvider, RunnerStatus } from './pool-provider';
 
 const logger = createChildLogger('pool');
 
@@ -44,11 +44,6 @@ export function createEc2PoolProviderFromEnv(): PoolRunnerProvider {
     scaleErrors,
   });
 }
-
-export const ec2PoolRunnerProviderStrategy: PoolRunnerProviderStrategy = {
-  type: 'ec2',
-  createFromEnv: createEc2PoolProviderFromEnv,
-};
 
 function createEc2PoolProvider(config: Ec2PoolProviderConfig): PoolRunnerProvider {
   return {

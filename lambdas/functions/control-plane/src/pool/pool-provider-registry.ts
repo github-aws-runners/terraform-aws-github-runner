@@ -1,20 +1,15 @@
 import { normalizeRunnerProviderType } from '../runner-provider';
-import { ec2PoolRunnerProviderStrategy } from './ec2-pool';
-import type { PoolRunnerProvider, PoolRunnerProviderStrategy, PoolRunnerProviderType } from './pool-provider';
-
-const poolRunnerProviderStrategies: PoolRunnerProviderStrategy[] = [ec2PoolRunnerProviderStrategy];
+import { createEc2PoolProviderFromEnv } from './ec2-pool';
+import type { PoolRunnerProvider, PoolRunnerProviderType } from './pool-provider';
 
 export function getDefaultPoolRunnerProviderType(): PoolRunnerProviderType {
-  return poolRunnerProviderStrategies[0].type;
+  return 'ec2';
 }
 
 export function createPoolRunnerProviderFromEnv(type: string): PoolRunnerProvider {
-  const normalizedType = normalizeRunnerProviderType(type);
-  const strategy = poolRunnerProviderStrategies.find((strategy) => strategy.type === normalizedType);
-
-  if (!strategy) {
+  if (normalizeRunnerProviderType(type) !== 'ec2') {
     throw new Error(`Unsupported pool runner provider type '${type}'`);
   }
 
-  return strategy.createFromEnv();
+  return createEc2PoolProviderFromEnv();
 }

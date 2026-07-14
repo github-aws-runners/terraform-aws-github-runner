@@ -1,4 +1,4 @@
-import type { RunnerProvider, RunnerProviderStrategy, RunnerProviderType } from '../runner-provider';
+import type { RunnerProvider, RunnerProviderType } from '../runner-provider';
 
 export interface RunnerList {
   id: string;
@@ -26,5 +26,3 @@ export interface ScaleDownRunnerProvider extends RunnerProvider {
   unmarkOrphan(id: string): Promise<void>;
   terminate(id: string): Promise<void>;
 }
-
-export type ScaleDownRunnerProviderStrategy = RunnerProviderStrategy<ScaleDownRunnerProvider>;

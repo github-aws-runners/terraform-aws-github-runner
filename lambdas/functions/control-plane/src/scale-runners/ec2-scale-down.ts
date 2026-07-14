@@ -1,10 +1,6 @@
 import { bootTimeExceeded, listEC2Runners, tag, terminateRunner, untag } from './../aws/ec2-runners';
 import type { RunnerList } from './../aws/ec2-runners.d';
-import type {
-  RunnerList as ScaleDownRunnerList,
-  ScaleDownRunnerProvider,
-  ScaleDownRunnerProviderStrategy,
-} from './scale-down-provider';
+import type { RunnerList as ScaleDownRunnerList, ScaleDownRunnerProvider } from './scale-down-provider';
 
 export function createEc2ScaleDownProvider(): ScaleDownRunnerProvider {
   return {
@@ -16,11 +12,6 @@ export function createEc2ScaleDownProvider(): ScaleDownRunnerProvider {
     terminate: terminateRunner,
   };
 }
-
-export const ec2ScaleDownRunnerProviderStrategy: ScaleDownRunnerProviderStrategy = {
-  type: 'ec2',
-  createFromEnv: createEc2ScaleDownProvider,
-};
 
 function toScaleDownRunner(runner: RunnerList): ScaleDownRunnerList {
   return {
