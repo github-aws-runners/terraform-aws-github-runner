@@ -82,6 +82,7 @@ export function createEc2PoolProvider(): PoolRunnerProvider {
   const config = loadEc2PoolProviderConfig();
 
   return {
+    type: 'ec2',
     listRunners: listEc2PoolRunners,
     countAvailableRunners: calculateEc2PoolSize,
     createRunners: createEc2PoolRunners.bind(undefined, config),

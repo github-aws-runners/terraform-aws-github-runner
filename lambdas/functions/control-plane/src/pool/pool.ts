@@ -18,7 +18,7 @@ export interface PoolEvent {
 export async function adjust(event: PoolEvent): Promise<void> {
   const runnerProviderType = resolveRunnerProviderType(event.type);
   const runnerProvider = createPoolRunnerProvider(runnerProviderType);
-  logger.info(`Checking current ${runnerProviderType} pool size against pool of size: ${event.poolSize}`);
+  logger.info(`Checking current ${runnerProvider.type} pool size against pool of size: ${event.poolSize}`);
   const runnerLabels = process.env.RUNNER_LABELS || '';
   const runnerGroup = process.env.RUNNER_GROUP_NAME || '';
   const runnerNamePrefix = process.env.RUNNER_NAME_PREFIX || '';
