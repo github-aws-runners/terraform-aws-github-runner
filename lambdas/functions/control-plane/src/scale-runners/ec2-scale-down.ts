@@ -9,7 +9,6 @@ import type {
 export function createEc2ScaleDownProvider(): ScaleDownRunnerProvider {
   return {
     type: 'ec2',
-    name: 'EC2',
     list: async (environment, orphan) => (await listEC2Runners({ environment, orphan })).map(toScaleDownRunner),
     bootTimeExceeded,
     markOrphan: async (id) => await tag(id, [{ Key: 'ghr:orphan', Value: 'true' }]),

@@ -20,7 +20,6 @@ export interface RunnerInfo extends RunnerList {
 export type ScaleDownRunnerProviderType = RunnerProviderType;
 
 export interface ScaleDownRunnerProvider extends RunnerProvider {
-  name: string;
   list(environment: string, orphan?: boolean): Promise<RunnerList[]>;
   bootTimeExceeded(runner: RunnerInfo): boolean;
   markOrphan(id: string): Promise<void>;

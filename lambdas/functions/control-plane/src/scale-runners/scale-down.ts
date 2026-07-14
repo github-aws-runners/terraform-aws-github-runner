@@ -198,7 +198,9 @@ async function removeRunner(
 
       if (allSucceeded) {
         await runnerProvider.terminate(runner.id);
-        logger.info(`${runnerProvider.name} runner '${runner.id}' is terminated and GitHub runner is de-registered.`);
+        logger.info(
+          `${runnerProvider.type.toUpperCase()} runner '${runner.id}' is terminated and GitHub runner is de-registered.`,
+        );
       } else {
         // Only terminate the provider runner if it was successfully de-registered from GitHub.
         logger.error(
@@ -365,8 +367,10 @@ export async function scaleDown(): Promise<void> {
   // next scale down idle runners with respect to config and mark potential orphans
   const providerRunners = await listRunners(environment, runnerProvider);
   const activeProviderRunnersCount = providerRunners.length;
-  logger.info(`Found: '${activeProviderRunnersCount}' active ${runnerProvider.name} runners before clean-up.`);
-  logger.debug(`Active ${runnerProvider.name} runners: ${JSON.stringify(providerRunners)}`);
+  logger.info(
+    `Found: '${activeProviderRunnersCount}' active ${runnerProvider.type.toUpperCase()} runners before clean-up.`,
+  );
+  logger.debug(`Active ${runnerProvider.type.toUpperCase()} runners: ${JSON.stringify(providerRunners)}`);
 
   if (activeProviderRunnersCount === 0) {
     logger.debug(`No active runners found for environment: '${environment}'`);
@@ -377,5 +381,7 @@ export async function scaleDown(): Promise<void> {
   await evaluateAndRemoveRunners(runners, scaleDownConfigs, runnerProvider);
 
   const activeProviderRunnersCountAfter = (await listRunners(environment, runnerProvider)).length;
-  logger.info(`Found: '${activeProviderRunnersCountAfter}' active ${runnerProvider.name} runners after clean-up.`);
+  logger.info(
+    `Found: '${activeProviderRunnersCountAfter}' active ${runnerProvider.type.toUpperCase()} runners after clean-up.`,
+  );
 }

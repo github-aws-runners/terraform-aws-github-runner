@@ -13,7 +13,6 @@ describe('runner provider selection', () => {
   it('selects the EC2 scale-down provider case-insensitively', () => {
     expect(createScaleDownRunnerProviderFromEnv(' EC2 ')).toMatchObject({
       type: 'ec2',
-      name: 'EC2',
     });
   });
 
