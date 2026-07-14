@@ -1,9 +1,7 @@
 import type { Octokit } from '@octokit/rest';
 
-import type { RunnerProvider, RunnerProviderType } from '../runner-provider';
+import type { RunnerProvider } from '../runner-provider';
 import type { CreateGitHubRunnerConfig, GitHubRunnerType } from '../scale-runners/types';
-
-export type PoolRunnerProviderType = RunnerProviderType;
 
 export interface RunnerStatus {
   busy: boolean;
