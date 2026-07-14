@@ -56,10 +56,13 @@ async function listEc2PoolRunners({
   });
 }
 
-async function createEc2PoolRunners(
-  config: Ec2PoolProviderConfig,
-  { githubRunnerConfig, numberOfRunners, githubInstallationClient }: CreatePoolRunnersInput,
-): Promise<string[]> {
+async function createEc2PoolRunners({
+  githubRunnerConfig,
+  numberOfRunners,
+  githubInstallationClient,
+}: CreatePoolRunnersInput): Promise<string[]> {
+  const config = loadEc2PoolProviderConfig();
+
   return await createRunners(
     githubRunnerConfig,
     {
@@ -79,13 +82,11 @@ async function createEc2PoolRunners(
 }
 
 export function createEc2PoolProvider(): PoolRunnerProvider {
-  const config = loadEc2PoolProviderConfig();
-
   return {
     type: 'ec2',
     listRunners: listEc2PoolRunners,
     countAvailableRunners: calculateEc2PoolSize,
-    createRunners: createEc2PoolRunners.bind(undefined, config),
+    createRunners: createEc2PoolRunners,
   };
 }
 
