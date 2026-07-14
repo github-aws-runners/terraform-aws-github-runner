@@ -20,10 +20,10 @@ interface Ec2PoolProviderConfig {
   scaleErrors: string[];
 }
 
-export function createEc2PoolProviderFromEnv(): PoolRunnerProvider {
+function loadEc2PoolProviderConfig(): Ec2PoolProviderConfig {
   const scaleErrors = JSON.parse(process.env.SCALE_ERRORS) as [string];
 
-  return createEc2PoolProvider({
+  return {
     environment: process.env.ENVIRONMENT,
     subnets: process.env.SUBNET_IDS.split(','),
     launchTemplateName: process.env.LAUNCH_TEMPLATE_NAME,
@@ -42,10 +42,12 @@ export function createEc2PoolProviderFromEnv(): PoolRunnerProvider {
       ? (JSON.parse(process.env.ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS) as [string])
       : [],
     scaleErrors,
-  });
+  };
 }
 
-function createEc2PoolProvider(config: Ec2PoolProviderConfig): PoolRunnerProvider {
+export function createEc2PoolProvider(): PoolRunnerProvider {
+  const config = loadEc2PoolProviderConfig();
+
   async function listEc2PoolRunners({
     environment,
     runnerOwner,
