@@ -57,11 +57,7 @@ export async function adjust(event: PoolEvent): Promise<void> {
     runnerType: 'Org',
   });
 
-  const numberOfRunnersInPool = runnerProvider.countAvailableRunners(
-    poolRunners,
-    runnerStatusses,
-    includeBusyRunners,
-  );
+  const numberOfRunnersInPool = runnerProvider.countAvailableRunners(poolRunners, runnerStatusses, includeBusyRunners);
   let topUp = event.poolSize - numberOfRunnersInPool;
 
   // The pool must never push the total number of runners (busy + idle) past the configured maximum.
