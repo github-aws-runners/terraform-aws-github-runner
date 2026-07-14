@@ -1,11 +1,6 @@
-import { normalizeRunnerProviderType } from '../runner-provider';
 import { createEc2PoolProviderFromEnv } from './ec2-pool';
 import type { PoolRunnerProvider } from './pool-provider';
 
-export function createPoolRunnerProviderFromEnv(type: string): PoolRunnerProvider {
-  if (normalizeRunnerProviderType(type) !== 'ec2') {
-    throw new Error(`Unsupported pool runner provider type '${type}'`);
-  }
-
+export function createPoolRunnerProviderFromEnv(): PoolRunnerProvider {
   return createEc2PoolProviderFromEnv();
 }

@@ -11,7 +11,6 @@ import { createRunner, listEC2Runners, tag } from './../aws/ec2-runners';
 import { RunnerInputParameters } from './../aws/ec2-runners.d';
 import * as scaleUpModule from './scale-up';
 import { parseEc2OverrideConfig } from './ec2-labels';
-import { getScaleUpRunnerProviderType } from './scale-up-config';
 import { EC2_TAG_VALUE_MAX_LENGTH, RUNNER_LABELS_TAG_MAX_COUNT } from './ec2';
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
 import { publishRetryMessage } from './job-retry';
@@ -3505,13 +3504,11 @@ describe('parseEc2OverrideConfig', () => {
   });
 });
 
-describe('getScaleUpRunnerProviderType', () => {
-  it('defaults to ec2 when no type is defined', () => {
-    expect(getScaleUpRunnerProviderType(undefined, 'ec2')).toEqual('ec2');
-  });
+describe('runner provider selection', () => {
+  it('rejects unsupported scale-up provider types', async () => {
+    process.env.RUNNER_PROVIDER_TYPE = 'microvm';
 
-  it('defaults to ec2 when the configured type is blank', () => {
-    expect(getScaleUpRunnerProviderType('', 'ec2')).toEqual('ec2');
-    expect(getScaleUpRunnerProviderType('   ', 'ec2')).toEqual('ec2');
+    await expect(scaleUpModule.scaleUp(TEST_DATA)).rejects.toThrow("Unsupported runner provider type 'microvm'");
+    expect(mockedAppAuth).not.toHaveBeenCalled();
   });
 });

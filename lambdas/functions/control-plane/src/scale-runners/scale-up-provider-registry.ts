@@ -1,15 +1,6 @@
-import { normalizeRunnerProviderType } from '../runner-provider';
 import { createEc2ScaleUpProviderFromEnv } from './ec2-scale-up';
 import type { ScaleUpRunnerProvider } from './scale-up-provider';
 
-export function createScaleUpRunnerProviderFromEnv(
-  type: string,
-  environment: string,
-  scaleErrors: string[],
-): ScaleUpRunnerProvider {
-  if (normalizeRunnerProviderType(type) !== 'ec2') {
-    throw new Error(`Unsupported scale-up runner provider type '${type}'`);
-  }
-
+export function createScaleUpRunnerProviderFromEnv(environment: string, scaleErrors: string[]): ScaleUpRunnerProvider {
   return createEc2ScaleUpProviderFromEnv(environment, scaleErrors);
 }

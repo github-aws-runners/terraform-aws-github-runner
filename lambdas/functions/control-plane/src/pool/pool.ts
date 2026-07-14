@@ -3,7 +3,7 @@ import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import yn from 'yn';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
-import { defaultRunnerProvider } from '../runner-provider';
+import { resolveRunnerProviderType } from '../runner-provider';
 import { getGitHubEnterpriseApiUrl, validateSsmParameterStoreTags } from '../scale-runners/github-runner';
 import { createPoolRunnerProviderFromEnv } from './pool-provider-registry';
 import type { RunnerStatus } from './pool-provider';
@@ -16,7 +16,7 @@ export interface PoolEvent {
 }
 
 export async function adjust(event: PoolEvent): Promise<void> {
-  const runnerProviderType = event.type?.trim() ? event.type : defaultRunnerProvider;
+  const runnerProviderType = resolveRunnerProviderType(event.type);
   logger.info(`Checking current ${runnerProviderType} pool size against pool of size: ${event.poolSize}`);
   const runnerLabels = process.env.RUNNER_LABELS || '';
   const runnerGroup = process.env.RUNNER_GROUP_NAME || '';
@@ -36,7 +36,7 @@ export async function adjust(event: PoolEvent): Promise<void> {
   // when unset so the pool keeps its previous behavior on stacks that do not provide the variable.
   const maximumRunners = parseInt(process.env.RUNNERS_MAXIMUM_COUNT || '-1');
   const includeBusyRunners = yn(process.env.INCLUDE_BUSY_RUNNERS, { default: false });
-  const runnerProvider = createPoolRunnerProviderFromEnv(runnerProviderType);
+  const runnerProvider = createPoolRunnerProviderFromEnv();
 
   const { ghesApiUrl, ghesBaseUrl } = getGitHubEnterpriseApiUrl();
 
