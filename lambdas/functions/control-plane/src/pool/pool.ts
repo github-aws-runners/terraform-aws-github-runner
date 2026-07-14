@@ -4,18 +4,18 @@ import yn from 'yn';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
 import { getGitHubEnterpriseApiUrl, validateSsmParameterStoreTags } from '../scale-runners/github-runner';
-import { createPoolRunnerProviderFromEnv } from './pool-provider-registry';
-import type { PoolRunnerProviderType, RunnerStatus } from './pool-provider';
+import { createPoolRunnerProviderFromEnv, getDefaultPoolRunnerProviderType } from './pool-provider-registry';
+import type { RunnerStatus } from './pool-provider';
 
 const logger = createChildLogger('pool');
 
 export interface PoolEvent {
   poolSize: number;
-  type: PoolRunnerProviderType;
+  type?: string;
 }
 
 export async function adjust(event: PoolEvent): Promise<void> {
-  const runnerProviderType = event.type;
+  const runnerProviderType = event.type?.trim() ? event.type : getDefaultPoolRunnerProviderType();
   logger.info(`Checking current ${runnerProviderType} pool size against pool of size: ${event.poolSize}`);
   const runnerLabels = process.env.RUNNER_LABELS || '';
   const runnerGroup = process.env.RUNNER_GROUP_NAME || '';

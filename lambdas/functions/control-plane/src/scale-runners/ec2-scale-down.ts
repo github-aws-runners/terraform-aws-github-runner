@@ -8,6 +8,7 @@ import type {
 
 export function createEc2ScaleDownProvider(): ScaleDownRunnerProvider {
   return {
+    type: 'ec2',
     name: 'EC2',
     list: async (environment, orphan) => (await listEC2Runners({ environment, orphan })).map(toScaleDownRunner),
     bootTimeExceeded,
@@ -19,7 +20,7 @@ export function createEc2ScaleDownProvider(): ScaleDownRunnerProvider {
 
 export const ec2ScaleDownRunnerProviderStrategy: ScaleDownRunnerProviderStrategy = {
   type: 'ec2',
-  create: createEc2ScaleDownProvider,
+  createFromEnv: createEc2ScaleDownProvider,
 };
 
 function toScaleDownRunner(runner: RunnerList): ScaleDownRunnerList {

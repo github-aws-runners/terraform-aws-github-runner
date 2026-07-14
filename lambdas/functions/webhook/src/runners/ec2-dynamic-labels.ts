@@ -8,6 +8,23 @@ const logger = createChildLogger('handler');
 
 export type Ec2DynamicLabelDispatchTarget = AwsDynamicLabelDispatchTarget;
 
+function resolveEc2DynamicLabelsPolicy(queue: RunnerMatcherConfig) {
+  const hasAwsDynamicLabelsPolicy = Object.prototype.hasOwnProperty.call(queue.matcherConfig, 'awsDynamicLabelsPolicy');
+  const hasLegacyEc2DynamicLabelsPolicy = Object.prototype.hasOwnProperty.call(
+    queue.matcherConfig,
+    'ec2DynamicLabelsPolicy',
+  );
+
+  if (!hasAwsDynamicLabelsPolicy && hasLegacyEc2DynamicLabelsPolicy) {
+    logger.warn(
+      `Queue ${queue.id}: using deprecated matcherConfig.ec2DynamicLabelsPolicy; migrate to matcherConfig.awsDynamicLabelsPolicy`,
+    );
+    return queue.matcherConfig.ec2DynamicLabelsPolicy;
+  }
+
+  return queue.matcherConfig.awsDynamicLabelsPolicy;
+}
+
 export function selectEc2DynamicLabelQueue(
   matches: RunnerMatcherConfig[],
   nonGhrLabels: string[],
@@ -19,7 +36,7 @@ export function selectEc2DynamicLabelQueue(
       continue;
     }
 
-    const violations = violationsAgainstPolicy(sanitizedGhrLabels, queue.matcherConfig.awsDynamicLabelsPolicy);
+    const violations = violationsAgainstPolicy(sanitizedGhrLabels, resolveEc2DynamicLabelsPolicy(queue));
     if (violations.length === 0) {
       return {
         queue,

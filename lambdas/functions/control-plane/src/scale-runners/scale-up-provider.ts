@@ -1,5 +1,6 @@
 import type { Octokit } from '@octokit/rest';
 
+import type { RunnerProvider, RunnerProviderStrategy, RunnerProviderType } from '../runner-provider';
 import type { ActionRequestMessageSQS, CreateGitHubRunnerConfig, GitHubRunnerType } from './types';
 
 export interface CurrentRunnersInput {
@@ -7,26 +8,25 @@ export interface CurrentRunnersInput {
   runnerOwner: string;
 }
 
-export interface CreateScaleUpRunnersInput {
+export interface CreateScaleUpRunnersInput<TState = unknown> {
   githubRunnerConfig: CreateGitHubRunnerConfig;
   numberOfRunners: number;
   githubInstallationClient: Octokit;
   messages: ActionRequestMessageSQS[];
-  state: unknown;
+  state: TState;
 }
 
-export interface PreparedScaleUpRunnerGroup {
+export interface PreparedScaleUpRunnerGroup<TState = unknown> {
   runnerLabels: string[];
-  state: unknown;
+  state: TState;
 }
 
-export type ScaleUpRunnerProviderType = string;
+export type ScaleUpRunnerProviderType = RunnerProviderType;
 
-export interface ScaleUpRunnerProvider {
-  type: ScaleUpRunnerProviderType;
-  prepareGroup(messageLabels: string[]): Promise<PreparedScaleUpRunnerGroup>;
-  getCurrentRunners(state: unknown, input: CurrentRunnersInput): Promise<number>;
-  createRunners(input: CreateScaleUpRunnersInput): Promise<string[]>;
+export interface ScaleUpRunnerProvider<TState = unknown> extends RunnerProvider {
+  prepareGroup(messageLabels: string[]): Promise<PreparedScaleUpRunnerGroup<TState>>;
+  getCurrentRunners(state: TState, input: CurrentRunnersInput): Promise<number>;
+  createRunners(input: CreateScaleUpRunnersInput<TState>): Promise<string[]>;
 }
 
 export interface CreateScaleUpRunnerProviderInput {
@@ -34,7 +34,7 @@ export interface CreateScaleUpRunnerProviderInput {
   scaleErrors: string[];
 }
 
-export interface ScaleUpRunnerProviderStrategy {
-  type: ScaleUpRunnerProviderType;
-  createFromEnv(input: CreateScaleUpRunnerProviderInput): ScaleUpRunnerProvider;
-}
+export type ScaleUpRunnerProviderStrategy<TState = unknown> = RunnerProviderStrategy<
+  ScaleUpRunnerProvider<TState>,
+  [input: CreateScaleUpRunnerProviderInput]
+>;

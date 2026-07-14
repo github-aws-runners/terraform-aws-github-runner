@@ -313,7 +313,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       logger.warn('Some runners failed to be created, rejecting some messages so the requests are retried', {
         wanted: newRunners,
         got: createdRunners.length,
-        failedRunnerCount,
+        failedInstanceCount: failedRunnerCount,
       });
 
       const failedMessages = messages.slice(0, failedRunnerCount);

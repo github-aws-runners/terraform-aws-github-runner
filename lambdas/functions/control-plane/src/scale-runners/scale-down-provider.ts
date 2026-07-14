@@ -1,3 +1,5 @@
+import type { RunnerProvider, RunnerProviderStrategy, RunnerProviderType } from '../runner-provider';
+
 export interface RunnerList {
   id: string;
   launchTime?: Date;
@@ -15,9 +17,9 @@ export interface RunnerInfo extends RunnerList {
   type: string;
 }
 
-export type ScaleDownRunnerProviderType = string;
+export type ScaleDownRunnerProviderType = RunnerProviderType;
 
-export interface ScaleDownRunnerProvider {
+export interface ScaleDownRunnerProvider extends RunnerProvider {
   name: string;
   list(environment: string, orphan?: boolean): Promise<RunnerList[]>;
   bootTimeExceeded(runner: RunnerInfo): boolean;
@@ -26,7 +28,4 @@ export interface ScaleDownRunnerProvider {
   terminate(id: string): Promise<void>;
 }
 
-export interface ScaleDownRunnerProviderStrategy {
-  type: ScaleDownRunnerProviderType;
-  create(): ScaleDownRunnerProvider;
-}
+export type ScaleDownRunnerProviderStrategy = RunnerProviderStrategy<ScaleDownRunnerProvider>;

@@ -323,7 +323,7 @@ async function createJitConfig(
 
       // store jit config in ssm parameter store
       logger.debug('Runner JIT config for ephemeral runner generated.', {
-        runnerId,
+        instance: runnerId,
       });
       await putParameter(`${githubRunnerConfig.ssmTokenPath}/${runnerId}`, runnerConfig.data.encoded_jit_config, true, {
         tags: [...(options.getSsmParameterTags?.(runnerId) ?? []), ...githubRunnerConfig.ssmParameterStoreTags],
@@ -334,18 +334,18 @@ async function createJitConfig(
       }
     } catch (error) {
       failedRunnerIds.push(runnerId);
-      logger.warn('Failed to create JIT config for runner, continuing with remaining runners', {
-        runnerId,
+      logger.warn('Failed to create JIT config for instance, continuing with remaining instances', {
+        instance: runnerId,
         error: error instanceof Error ? error.message : String(error),
       });
     }
   }
 
   if (failedRunnerIds.length > 0) {
-    logger.error('Failed to create JIT config for some runners', {
-      failedRunnerIds,
-      totalRunners: runnerIds.length,
-      successfulRunners: runnerIds.length - failedRunnerIds.length,
+    logger.error('Failed to create JIT config for some instances', {
+      failedInstances: failedRunnerIds,
+      totalInstances: runnerIds.length,
+      successfulInstances: runnerIds.length - failedRunnerIds.length,
     });
   }
 

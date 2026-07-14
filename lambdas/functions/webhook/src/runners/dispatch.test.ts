@@ -590,6 +590,55 @@ describe('selectAwsDynamicLabelQueue', () => {
       labels: ['self-hosted', 'linux', 'ghr-ec2-instance-type:t3.large'],
     });
   });
+
+  it('normalizes runner provider casing and surrounding whitespace', () => {
+    const queue = runnerQueue('normalized-ec2');
+    (queue as unknown as { runnerProvider: string }).runnerProvider = ' EC2 ';
+
+    expect(selectAwsDynamicLabelQueue([queue], ['self-hosted', 'linux'], ['ghr-ec2-instance-type:t3.large'])).toEqual({
+      queue,
+      labels: ['self-hosted', 'linux', 'ghr-ec2-instance-type:t3.large'],
+    });
+  });
+
+  it('does not select a provider strategy that is planned but not implemented', () => {
+    const queue = runnerQueue('microvm', 'microvm');
+
+    expect(selectAwsDynamicLabelQueue([queue], ['self-hosted', 'linux'], ['ghr-microvm-cpu-count:2'])).toBeUndefined();
+  });
+
+  it('rejects a malformed non-string runner provider without throwing', () => {
+    const queue = runnerQueue('malformed-provider');
+    (queue as unknown as { runnerProvider: number }).runnerProvider = 42;
+
+    expect(
+      selectAwsDynamicLabelQueue([queue], ['self-hosted', 'linux'], ['ghr-ec2-instance-type:t3.large']),
+    ).toBeUndefined();
+  });
+
+  it('enforces a legacy EC2 dynamic labels policy when the new key is absent', () => {
+    const queue = runnerQueue('legacy-ec2-policy');
+    queue.matcherConfig.ec2DynamicLabelsPolicy = {
+      blocked_keys: ['instance-type'],
+    };
+
+    expect(
+      selectAwsDynamicLabelQueue([queue], ['self-hosted', 'linux'], ['ghr-ec2-instance-type:t3.large']),
+    ).toBeUndefined();
+  });
+
+  it('prefers the new AWS dynamic labels policy when both keys are present', () => {
+    const queue = runnerQueue('new-policy-precedence');
+    queue.matcherConfig.ec2DynamicLabelsPolicy = {
+      blocked_keys: ['instance-type'],
+    };
+    queue.matcherConfig.awsDynamicLabelsPolicy = null;
+
+    expect(selectAwsDynamicLabelQueue([queue], ['self-hosted', 'linux'], ['ghr-ec2-instance-type:t3.large'])).toEqual({
+      queue,
+      labels: ['self-hosted', 'linux', 'ghr-ec2-instance-type:t3.large'],
+    });
+  });
 });
 
 function runnerQueue(id: string, runnerProvider?: RunnerProvider): RunnerMatcherConfig {

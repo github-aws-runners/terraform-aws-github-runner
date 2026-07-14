@@ -20,7 +20,7 @@ interface Ec2ScaleUpState {
   ec2OverrideConfig?: Ec2OverrideConfig;
 }
 
-export function createEc2ScaleUpProvider(config: Ec2ScaleUpProviderConfig): ScaleUpRunnerProvider {
+export function createEc2ScaleUpProvider(config: Ec2ScaleUpProviderConfig): ScaleUpRunnerProvider<Ec2ScaleUpState> {
   return {
     type: 'ec2',
     prepareGroup: async (messageLabels) => {
@@ -47,24 +47,24 @@ export function createEc2ScaleUpProvider(config: Ec2ScaleUpProviderConfig): Scal
     },
     getCurrentRunners: async (_state, { runnerType, runnerOwner }) =>
       (await listEC2Runners({ environment: config.environment, runnerType, runnerOwner })).length,
-    createRunners: async ({ githubRunnerConfig, numberOfRunners, githubInstallationClient, state }) => {
-      const ec2State = state as Ec2ScaleUpState;
-
-      return await createRunners(
+    createRunners: async ({ githubRunnerConfig, numberOfRunners, githubInstallationClient, state }) =>
+      await createRunners(
         githubRunnerConfig,
         {
           ...config,
-          ec2OverrideConfig: ec2State.ec2OverrideConfig,
+          ec2OverrideConfig: state.ec2OverrideConfig,
         },
         numberOfRunners,
         githubInstallationClient,
         'scale-up-lambda',
-      );
-    },
+      ),
   };
 }
 
-export function createEc2ScaleUpProviderFromEnv(environment: string, scaleErrors: string[]): ScaleUpRunnerProvider {
+export function createEc2ScaleUpProviderFromEnv(
+  environment: string,
+  scaleErrors: string[],
+): ScaleUpRunnerProvider<Ec2ScaleUpState> {
   return createEc2ScaleUpProvider({
     ec2instanceCriteria: {
       instanceTypes: process.env.INSTANCE_TYPES.split(','),
@@ -88,7 +88,7 @@ export function createEc2ScaleUpProviderFromEnv(environment: string, scaleErrors
   });
 }
 
-export const ec2ScaleUpRunnerProviderStrategy: ScaleUpRunnerProviderStrategy = {
+export const ec2ScaleUpRunnerProviderStrategy: ScaleUpRunnerProviderStrategy<Ec2ScaleUpState> = {
   type: 'ec2',
   createFromEnv: ({ environment, scaleErrors }) => createEc2ScaleUpProviderFromEnv(environment, scaleErrors),
 };

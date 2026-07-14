@@ -8,7 +8,7 @@ const logger = createChildLogger('sqs');
 
 const sqsClientsByRegion = new Map<string, SQS>();
 
-export type RunnerProvider = string;
+export type RunnerProvider = 'ec2' | 'microvm';
 
 export interface ActionRequestMessage {
   id: number;
@@ -27,6 +27,9 @@ export interface MatcherConfig {
   bidirectionalLabelMatch?: boolean;
   enableDynamicLabels?: boolean;
   awsDynamicLabelsPolicy?: AwsDynamicLabelsPolicy | null;
+  // TODO: Remove this legacy compatibility field and fallback in the next release.
+  /** @deprecated Use awsDynamicLabelsPolicy. Retained while existing SSM configurations migrate. */
+  ec2DynamicLabelsPolicy?: AwsDynamicLabelsPolicy | null;
 }
 
 export type RunnerConfig = RunnerMatcherConfig[];

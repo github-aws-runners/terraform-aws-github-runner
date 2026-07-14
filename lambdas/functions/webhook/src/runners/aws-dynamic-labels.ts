@@ -7,6 +7,18 @@ import { ec2DynamicLabelProviderStrategy } from './ec2-dynamic-labels';
 const logger = createChildLogger('handler');
 
 const awsDynamicLabelProviderStrategies: AwsDynamicLabelProviderStrategy[] = [ec2DynamicLabelProviderStrategy];
+const defaultRunnerProvider: RunnerProvider = 'ec2';
+
+function normalizeRunnerProvider(provider: unknown): RunnerProvider | undefined {
+  if (provider === undefined) return defaultRunnerProvider;
+  if (typeof provider !== 'string') return undefined;
+
+  const normalizedProvider = provider.trim().toLowerCase();
+  if (!normalizedProvider) return defaultRunnerProvider;
+  if (normalizedProvider === 'ec2' || normalizedProvider === 'microvm') return normalizedProvider;
+
+  return undefined;
+}
 
 export function selectAwsDynamicLabelQueue(
   matches: RunnerMatcherConfig[],
@@ -14,11 +26,13 @@ export function selectAwsDynamicLabelQueue(
   sanitizedGhrLabels: string[],
 ): AwsDynamicLabelDispatchTarget | undefined {
   for (const queue of matches) {
-    const provider: RunnerProvider | string = queue.runnerProvider ?? 'ec2';
-    const strategy = awsDynamicLabelProviderStrategies.find((strategy) => strategy.type === provider);
+    const provider = normalizeRunnerProvider(queue.runnerProvider);
+    const strategy = provider
+      ? awsDynamicLabelProviderStrategies.find((strategy) => strategy.type === provider)
+      : undefined;
 
     if (!strategy) {
-      logger.warn(`Queue ${queue.id} has unsupported runner provider '${provider}'`);
+      logger.warn(`Queue ${queue.id} has unsupported runner provider '${provider ?? String(queue.runnerProvider)}'`);
       continue;
     }
 

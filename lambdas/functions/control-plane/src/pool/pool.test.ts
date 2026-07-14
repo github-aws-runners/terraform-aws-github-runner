@@ -207,6 +207,34 @@ describe('Test simple pool.', () => {
       );
     });
 
+    it('Defaults legacy pool events without a provider type to EC2.', async () => {
+      await adjust({ poolSize: 10 });
+      expect(mockListRunners).toHaveBeenCalledWith({
+        environment: 'unit-test-environment',
+        runnerOwner: ORG,
+        runnerType: 'Org',
+        statuses: ['running'],
+      });
+      expect(createRunners).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        8,
+        expect.anything(),
+        'pool-lambda',
+      );
+    });
+
+    it('Selects the EC2 pool provider case-insensitively.', async () => {
+      await adjust({ poolSize: 10, type: ' EC2 ' });
+      expect(createRunners).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        8,
+        expect.anything(),
+        'pool-lambda',
+      );
+    });
+
     it('Should not top up if pool size is reached.', async () => {
       await adjust({ poolSize: 1, type: 'ec2' });
       expect(createRunners).not.toHaveBeenCalled();

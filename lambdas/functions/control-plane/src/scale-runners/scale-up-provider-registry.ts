@@ -1,3 +1,4 @@
+import { normalizeRunnerProviderType } from '../runner-provider';
 import { ec2ScaleUpRunnerProviderStrategy } from './ec2-scale-up';
 import type {
   ScaleUpRunnerProvider,
@@ -12,14 +13,15 @@ export function getDefaultScaleUpRunnerProviderType(): ScaleUpRunnerProviderType
 }
 
 export function createScaleUpRunnerProviderFromEnv(
-  type: ScaleUpRunnerProviderType,
+  type: string,
   environment: string,
   scaleErrors: string[],
 ): ScaleUpRunnerProvider {
-  const strategy = scaleUpRunnerProviderStrategies.find((strategy) => strategy.type === type);
+  const normalizedType = normalizeRunnerProviderType(type);
+  const strategy = scaleUpRunnerProviderStrategies.find((strategy) => strategy.type === normalizedType);
 
   if (!strategy) {
-    throw new Error(`Unsupported scale-up runner provider type: ${type}`);
+    throw new Error(`Unsupported scale-up runner provider type '${type}'`);
   }
 
   return strategy.createFromEnv({ environment, scaleErrors });
