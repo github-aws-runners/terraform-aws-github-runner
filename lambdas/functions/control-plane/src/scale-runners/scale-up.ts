@@ -3,6 +3,7 @@ import { Octokit } from '@octokit/rest';
 import yn from 'yn';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
+import { createScaleUpRunnerProvider } from '../runner-provider-registry';
 import { resolveRunnerProviderType } from '../runner-provider';
 import {
   getGitHubEnterpriseApiUrl,
@@ -12,7 +13,6 @@ import {
   validateSsmParameterStoreTags,
 } from './github-runner';
 import { publishRetryMessage } from './job-retry';
-import { createScaleUpRunnerProvider } from './scale-up-provider-registry';
 import type {
   ActionRequestMessage,
   ActionRequestMessageRetry,

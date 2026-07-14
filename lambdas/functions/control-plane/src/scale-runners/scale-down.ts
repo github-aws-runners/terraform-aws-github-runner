@@ -5,10 +5,10 @@ import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import moment from 'moment';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
+import { createScaleDownRunnerProvider } from '../runner-provider-registry';
 import { resolveRunnerProviderType } from '../runner-provider';
 import { GhRunners, githubCache } from './cache';
 import { ScalingDownConfigList, getEvictionStrategy, getIdleRunnerCount } from './scale-down-config';
-import { createScaleDownRunnerProvider } from './scale-down-provider-registry';
 import { metricGitHubAppRateLimit } from '../github/rate-limit';
 import { getGitHubEnterpriseApiUrl } from './github-runner';
 import type { RunnerInfo, RunnerList, ScaleDownRunnerProvider } from './scale-down-provider';
