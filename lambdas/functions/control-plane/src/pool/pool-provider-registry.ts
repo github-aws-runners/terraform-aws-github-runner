@@ -1,6 +1,12 @@
 import { createEc2PoolProvider } from './ec2-pool';
-import type { PoolRunnerProvider } from './pool-provider';
+import type { PoolRunnerProvider, PoolRunnerProviderType } from './pool-provider';
 
-export function createPoolRunnerProviderFromEnv(): PoolRunnerProvider {
-  return createEc2PoolProvider();
+type PoolRunnerProviderFactory = () => PoolRunnerProvider;
+
+const poolRunnerProviderFactories: Record<PoolRunnerProviderType, PoolRunnerProviderFactory> = {
+  ec2: createEc2PoolProvider,
+};
+
+export function createPoolRunnerProviderFromEnv(type: PoolRunnerProviderType): PoolRunnerProvider {
+  return poolRunnerProviderFactories[type]();
 }

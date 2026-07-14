@@ -36,7 +36,7 @@ export async function adjust(event: PoolEvent): Promise<void> {
   // when unset so the pool keeps its previous behavior on stacks that do not provide the variable.
   const maximumRunners = parseInt(process.env.RUNNERS_MAXIMUM_COUNT || '-1');
   const includeBusyRunners = yn(process.env.INCLUDE_BUSY_RUNNERS, { default: false });
-  const runnerProvider = createPoolRunnerProviderFromEnv();
+  const runnerProvider = createPoolRunnerProviderFromEnv(runnerProviderType);
 
   const { ghesApiUrl, ghesBaseUrl } = getGitHubEnterpriseApiUrl();
 
