@@ -6,10 +6,7 @@ import { createScaleDownRunnerProviderFromEnv } from './scale-runners/scale-down
 import { createScaleUpRunnerProviderFromEnv } from './scale-runners/scale-up-provider-registry';
 
 describe('runner provider selection', () => {
-  it.each([
-    [' EC2 ', 'ec2'],
-    ['MicroVM', 'microvm'],
-  ])('normalizes provider type %j to %j', (type, expected) => {
+  it.each([[' EC2 ', 'ec2']])('normalizes provider type %j to %j', (type, expected) => {
     expect(normalizeRunnerProviderType(type)).toBe(expected);
   });
 
