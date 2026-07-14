@@ -8,6 +8,6 @@ const poolRunnerProviderFactories: Record<RunnerProviderType, PoolRunnerProvider
   ec2: createEc2PoolProvider,
 };
 
-export function createPoolRunnerProviderFromEnv(type: RunnerProviderType): PoolRunnerProvider {
+export function createPoolRunnerProvider(type: RunnerProviderType): PoolRunnerProvider {
   return poolRunnerProviderFactories[type]();
 }
