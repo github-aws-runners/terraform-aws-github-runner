@@ -8,6 +8,7 @@ const logger = createChildLogger('sqs');
 
 const sqsClientsByRegion = new Map<string, SQS>();
 
+// EC2 is the only implemented provider; MicroVM is reserved for future support.
 export type RunnerProvider = 'ec2' | 'microvm';
 
 export interface ActionRequestMessage {
