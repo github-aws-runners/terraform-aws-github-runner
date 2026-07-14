@@ -582,9 +582,8 @@ async function createConfig(repositoryAllowList?: string[], runnerConfig?: Runne
 }
 
 describe('selectAwsDynamicLabelQueue', () => {
-  it('defensively defaults queues with a missing provider to EC2 dynamic label handling', () => {
+  it('defaults queues without a provider to EC2 dynamic label handling', () => {
     const queue = runnerQueue('default-ec2');
-    delete (queue as Partial<RunnerMatcherConfig>).runnerProvider;
 
     expect(selectAwsDynamicLabelQueue([queue], ['self-hosted', 'linux'], ['ghr-ec2-instance-type:t3.large'])).toEqual({
       queue,
@@ -653,7 +652,7 @@ describe('selectAwsDynamicLabelQueue', () => {
   });
 });
 
-function runnerQueue(id: string, runnerProvider: RunnerProviderType = 'ec2'): RunnerMatcherConfig {
+function runnerQueue(id: string, runnerProvider?: RunnerProviderType): RunnerMatcherConfig {
   return {
     id,
     arn: `arn:${id}`,

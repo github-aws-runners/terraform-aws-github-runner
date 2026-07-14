@@ -30,13 +30,12 @@ describe('ConfigLoader Tests', () => {
         {
           id: '1',
           arn: 'arn:aws:sqs:us-east-1:123456789012:queue1',
-          runnerProvider: 'ec2',
           matcherConfig: {
             labelMatchers: [['label1', 'label2']],
             exactMatch: true,
           },
         },
-      ] satisfies RunnerMatcherConfig[];
+      ];
       vi.mocked(getParameter).mockImplementation(async (paramPath: string) => {
         if (paramPath === '/path/to/matcher/config') {
           return JSON.stringify(matcherConfig);
@@ -101,13 +100,12 @@ describe('ConfigLoader Tests', () => {
         {
           id: '1',
           arn: 'arn:aws:sqs:us-east-1:123456789012:queue1',
-          runnerProvider: 'ec2',
           matcherConfig: {
             labelMatchers: [['label1', 'label2']],
             exactMatch: true,
           },
         },
-      ] satisfies RunnerMatcherConfig[];
+      ];
       vi.mocked(getParameter).mockImplementation(async (paramPath: string) => {
         if (paramPath === '/path/to/matcher/config') {
           return JSON.stringify(matcherConfig);
@@ -132,13 +130,12 @@ describe('ConfigLoader Tests', () => {
         {
           id: '1',
           arn: 'arn:aws:sqs:us-east-1:123456789012:queue1',
-          runnerProvider: 'ec2',
           matcherConfig: {
             labelMatchers: [['label1', 'label2']],
             exactMatch: true,
           },
         },
-      ] satisfies RunnerMatcherConfig[];
+      ];
       vi.mocked(getParameter).mockImplementation(async (paramPath: string) => {
         if (paramPath === '/path/to/matcher/config') {
           return JSON.stringify(matcherConfig);
@@ -177,24 +174,14 @@ describe('ConfigLoader Tests', () => {
       process.env.PARAMETER_GITHUB_APP_WEBHOOK_SECRET = '/path/to/webhook/secret';
 
       const partialMatcher1 =
-        '[{"id":"1","arn":"arn:aws:sqs:queue1","runnerProvider":"ec2","matcherConfig":{"labelMatchers":[["a"]],"exactMatch":true}}';
+        '[{"id":"1","arn":"arn:aws:sqs:queue1","matcherConfig":{"labelMatchers":[["a"]],"exactMatch":true}}';
       const partialMatcher2 =
-        ',{"id":"2","arn":"arn:aws:sqs:queue2","runnerProvider":"ec2","matcherConfig":{"labelMatchers":[["b"]],"exactMatch":true}}]';
+        ',{"id":"2","arn":"arn:aws:sqs:queue2","matcherConfig":{"labelMatchers":[["b"]],"exactMatch":true}}]';
 
       const combinedMatcherConfig = [
-        {
-          id: '1',
-          arn: 'arn:aws:sqs:queue1',
-          runnerProvider: 'ec2',
-          matcherConfig: { labelMatchers: [['a']], exactMatch: true },
-        },
-        {
-          id: '2',
-          arn: 'arn:aws:sqs:queue2',
-          runnerProvider: 'ec2',
-          matcherConfig: { labelMatchers: [['b']], exactMatch: true },
-        },
-      ] satisfies RunnerMatcherConfig[];
+        { id: '1', arn: 'arn:aws:sqs:queue1', matcherConfig: { labelMatchers: [['a']], exactMatch: true } },
+        { id: '2', arn: 'arn:aws:sqs:queue2', matcherConfig: { labelMatchers: [['b']], exactMatch: true } },
+      ];
 
       // Mock getParameters for batch fetching multiple paths
       vi.mocked(getParameters).mockResolvedValue(
@@ -283,7 +270,6 @@ describe('ConfigLoader Tests', () => {
         {
           arn: 'arn:aws:sqs:eu-central-1:123456:npalm-default-queued-builds',
           id: 'https://sqs.eu-central-1.amazonaws.com/123456/npalm-default-queued-builds',
-          runnerProvider: 'ec2',
           matcherConfig: {
             exactMatch: true,
             labelMatchers: [['default', 'example', 'linux', 'self-hosted', 'x64']],
@@ -308,23 +294,13 @@ describe('ConfigLoader Tests', () => {
       process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH = '/path/to/matcher/config-1:/path/to/matcher/config-2';
 
       const partial1 =
-        '[{"id":"1","arn":"arn:aws:sqs:queue1","runnerProvider":"ec2","matcherConfig":{"labelMatchers":[["x"]],"exactMatch":true}}';
+        '[{"id":"1","arn":"arn:aws:sqs:queue1","matcherConfig":{"labelMatchers":[["x"]],"exactMatch":true}}';
       const partial2 =
-        ',{"id":"2","arn":"arn:aws:sqs:queue2","runnerProvider":"ec2","matcherConfig":{"labelMatchers":[["y"]],"exactMatch":true}}]';
+        ',{"id":"2","arn":"arn:aws:sqs:queue2","matcherConfig":{"labelMatchers":[["y"]],"exactMatch":true}}]';
 
       const combined: RunnerMatcherConfig[] = [
-        {
-          id: '1',
-          arn: 'arn:aws:sqs:queue1',
-          runnerProvider: 'ec2',
-          matcherConfig: { labelMatchers: [['x']], exactMatch: true },
-        },
-        {
-          id: '2',
-          arn: 'arn:aws:sqs:queue2',
-          runnerProvider: 'ec2',
-          matcherConfig: { labelMatchers: [['y']], exactMatch: true },
-        },
+        { id: '1', arn: 'arn:aws:sqs:queue1', matcherConfig: { labelMatchers: [['x']], exactMatch: true } },
+        { id: '2', arn: 'arn:aws:sqs:queue2', matcherConfig: { labelMatchers: [['y']], exactMatch: true } },
       ];
 
       // Mock getParameters for batch fetching multiple paths
@@ -358,7 +334,6 @@ describe('ConfigLoader Tests', () => {
         {
           arn: 'arn:aws:sqs:eu-central-1:123456:npalm-default-queued-builds',
           id: 'https://sqs.eu-central-1.amazonaws.com/123456/npalm-default-queued-builds',
-          runnerProvider: 'ec2',
           matcherConfig: {
             exactMatch: true,
             labelMatchers: [['default', 'example', 'linux', 'self-hosted', 'x64']],
