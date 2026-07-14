@@ -7,12 +7,7 @@ import moment from 'moment';
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
 import { defaultRunnerProvider } from '../runner-provider';
 import { GhRunners, githubCache } from './cache';
-import {
-  ScalingDownConfig,
-  getEvictionStrategy,
-  getIdleRunnerCount,
-  getScaleDownRunnerProviderType,
-} from './scale-down-config';
+import { ScalingDownConfigList, getEvictionStrategy, getIdleRunnerCount } from './scale-down-config';
 import { createScaleDownRunnerProviderFromEnv } from './scale-down-provider-registry';
 import { metricGitHubAppRateLimit } from '../github/rate-limit';
 import { getGitHubEnterpriseApiUrl } from './github-runner';
@@ -220,7 +215,7 @@ async function removeRunner(
 
 async function evaluateAndRemoveRunners(
   runners: RunnerInfo[],
-  scaleDownConfigs: ScalingDownConfig[],
+  scaleDownConfigs: ScalingDownConfigList,
   runnerProvider: ScaleDownRunnerProvider,
 ): Promise<void> {
   let idleCounter = getIdleRunnerCount(scaleDownConfigs);
@@ -355,9 +350,8 @@ function filterRunners(runners: RunnerList[]): RunnerInfo[] {
 export async function scaleDown(): Promise<void> {
   githubCache.reset();
   const environment = process.env.ENVIRONMENT;
-  const scaleDownConfigs = JSON.parse(process.env.SCALE_DOWN_CONFIG) as [ScalingDownConfig];
-  const runnerProviderType = getScaleDownRunnerProviderType(scaleDownConfigs, defaultRunnerProvider);
-  const runnerProvider = createScaleDownRunnerProviderFromEnv(runnerProviderType);
+  const scaleDownConfigs = JSON.parse(process.env.SCALE_DOWN_CONFIG) as ScalingDownConfigList;
+  const runnerProvider = createScaleDownRunnerProviderFromEnv(defaultRunnerProvider);
 
   // first runners marked to be orphan.
   await terminateOrphan(environment, runnerProvider);

@@ -1,12 +1,6 @@
 import moment from 'moment-timezone';
 
-import {
-  EvictionStrategy,
-  ScalingDownConfigList,
-  getEvictionStrategy,
-  getIdleRunnerCount,
-  getScaleDownRunnerProviderType,
-} from './scale-down-config';
+import { EvictionStrategy, ScalingDownConfigList, getEvictionStrategy, getIdleRunnerCount } from './scale-down-config';
 import { describe, it, expect } from 'vitest';
 
 const DEFAULT_TIMEZONE = 'America/Los_Angeles';
@@ -58,26 +52,6 @@ describe('scaleDownConfig', () => {
     it('No active cron configuration', async () => {
       const scaleDownConfig = getConfig(['* * * * * ' + ((now.day() + 1) % 7)]);
       expect(getEvictionStrategy(scaleDownConfig)).toEqual(DEFAULT_EVICTION_STRATEGY);
-    });
-  });
-
-  describe('Determine runner provider type.', () => {
-    it('Defaults to ec2 when no idle config is defined', async () => {
-      expect(getScaleDownRunnerProviderType([], 'ec2')).toEqual('ec2');
-    });
-
-    it('Defaults to ec2 when config has no type', async () => {
-      const scaleDownConfig = getConfig(['* * * * * *']);
-      expect(getScaleDownRunnerProviderType(scaleDownConfig, 'ec2')).toEqual('ec2');
-    });
-
-    it('Treats provider types case-insensitively when checking for multiple types', async () => {
-      const scaleDownConfig = getConfig(['* * * * * *', '* * * * * *']).map((config, index) => ({
-        ...config,
-        type: index === 0 ? ' EC2 ' : 'ec2',
-      }));
-
-      expect(() => getScaleDownRunnerProviderType(scaleDownConfig, 'ec2')).not.toThrow();
     });
   });
 });
