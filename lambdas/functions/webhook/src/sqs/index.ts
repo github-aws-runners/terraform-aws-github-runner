@@ -37,7 +37,7 @@ export type RunnerConfig = RunnerMatcherConfig[];
 
 export interface RunnerMatcherConfig {
   matcherConfig: MatcherConfig;
-  runnerProvider?: RunnerProviderType;
+  runnerProvider: RunnerProviderType;
   id: string;
   arn: string;
 }
