@@ -43,49 +43,48 @@ function loadEc2PoolProviderConfig(): Ec2PoolProviderConfig {
   };
 }
 
-export function createEc2PoolProvider(): PoolRunnerProvider {
-  const config = loadEc2PoolProviderConfig();
-
-  async function listEc2PoolRunners({
+async function listEc2PoolRunners({
+  environment,
+  runnerOwner,
+  runnerType,
+}: ListPoolRunnersInput): Promise<RunnerList[]> {
+  return await listEC2Runners({
     environment,
     runnerOwner,
     runnerType,
-  }: ListPoolRunnersInput): Promise<RunnerList[]> {
-    return await listEC2Runners({
-      environment,
-      runnerOwner,
-      runnerType,
-      statuses: ['running'],
-    });
-  }
+    statuses: ['running'],
+  });
+}
 
-  async function createEc2PoolRunners({
+async function createEc2PoolRunners(
+  config: Ec2PoolProviderConfig,
+  { githubRunnerConfig, numberOfRunners, githubInstallationClient }: CreatePoolRunnersInput,
+): Promise<string[]> {
+  return await createRunners(
     githubRunnerConfig,
+    {
+      ec2instanceCriteria: config.ec2instanceCriteria,
+      environment: config.environment,
+      launchTemplateName: config.launchTemplateName,
+      subnets: config.subnets,
+      amiIdSsmParameterName: config.amiIdSsmParameterName,
+      tracingEnabled: config.tracingEnabled,
+      onDemandFailoverOnError: config.onDemandFailoverOnError,
+      scaleErrors: config.scaleErrors,
+    },
     numberOfRunners,
     githubInstallationClient,
-  }: CreatePoolRunnersInput): Promise<string[]> {
-    return await createRunners(
-      githubRunnerConfig,
-      {
-        ec2instanceCriteria: config.ec2instanceCriteria,
-        environment: config.environment,
-        launchTemplateName: config.launchTemplateName,
-        subnets: config.subnets,
-        amiIdSsmParameterName: config.amiIdSsmParameterName,
-        tracingEnabled: config.tracingEnabled,
-        onDemandFailoverOnError: config.onDemandFailoverOnError,
-        scaleErrors: config.scaleErrors,
-      },
-      numberOfRunners,
-      githubInstallationClient,
-      'pool-lambda',
-    );
-  }
+    'pool-lambda',
+  );
+}
+
+export function createEc2PoolProvider(): PoolRunnerProvider {
+  const config = loadEc2PoolProviderConfig();
 
   return {
     listRunners: listEc2PoolRunners,
     countAvailableRunners: calculateEc2PoolSize,
-    createRunners: createEc2PoolRunners,
+    createRunners: createEc2PoolRunners.bind(undefined, config),
   };
 }
 
