@@ -1,4 +1,5 @@
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
+import type { RunnerProviderType } from '@aws-github-runner/runner-provider';
 
 import nock from 'nock';
 import { WorkflowJobEvent } from '@octokit/webhooks-types';
@@ -7,7 +8,7 @@ import workFlowJobEvent from '../../test/resources/github_workflowjob_event.json
 import runnerConfig from '../../test/resources/multi_runner_configurations.json';
 
 import { RunnerConfig, sendActionRequest } from '../sqs';
-import type { RunnerMatcherConfig, RunnerProviderType } from '../sqs';
+import type { RunnerMatcherConfig } from '../sqs';
 import { dispatch } from './dispatch';
 import { selectAwsDynamicLabelQueue } from './aws-dynamic-labels';
 import { canRunJob } from './labels';

@@ -9,8 +9,6 @@ const logger = createChildLogger('sqs');
 
 const sqsClientsByRegion = new Map<string, SQS>();
 
-export type { RunnerProviderType } from '@aws-github-runner/runner-provider';
-
 export interface ActionRequestMessage {
   id: number;
   eventType: string;
