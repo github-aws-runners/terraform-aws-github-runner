@@ -21,8 +21,6 @@ interface Ec2PoolProviderConfig {
 }
 
 function loadEc2PoolProviderConfig(): Ec2PoolProviderConfig {
-  const scaleErrors = JSON.parse(process.env.SCALE_ERRORS) as [string];
-
   return {
     environment: process.env.ENVIRONMENT,
     subnets: process.env.SUBNET_IDS.split(','),
@@ -41,7 +39,7 @@ function loadEc2PoolProviderConfig(): Ec2PoolProviderConfig {
     onDemandFailoverOnError: process.env.ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS
       ? (JSON.parse(process.env.ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS) as [string])
       : [],
-    scaleErrors,
+    scaleErrors: JSON.parse(process.env.SCALE_ERRORS) as [string],
   };
 }
 
