@@ -1,7 +1,12 @@
 // TODO: Add MicroVM when its control-plane provider implementations are available.
-export type RunnerProviderType = 'ec2';
+const runnerProviderTypes = ['ec2'] as const;
+export type RunnerProviderType = (typeof runnerProviderTypes)[number];
 
 const defaultRunnerProvider: RunnerProviderType = 'ec2';
+
+function isRunnerProviderType(type: string): type is RunnerProviderType {
+  return runnerProviderTypes.some((runnerProviderType) => runnerProviderType === type);
+}
 
 export function resolveRunnerProviderType(type: unknown): RunnerProviderType {
   if (type === undefined) return defaultRunnerProvider;
@@ -11,7 +16,7 @@ export function resolveRunnerProviderType(type: unknown): RunnerProviderType {
 
   const normalizedType = type.trim().toLowerCase();
   if (!normalizedType) return defaultRunnerProvider;
-  if (normalizedType !== 'ec2') {
+  if (!isRunnerProviderType(normalizedType)) {
     throw new Error(`Unsupported runner provider type '${type}'`);
   }
 
