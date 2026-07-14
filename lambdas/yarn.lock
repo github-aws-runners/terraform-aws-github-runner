@@ -147,6 +147,7 @@ __metadata:
   dependencies:
     "@aws-github-runner/aws-powertools-util": "npm:*"
     "@aws-github-runner/aws-ssm-util": "npm:*"
+    "@aws-github-runner/runner-provider": "npm:*"
     "@aws-lambda-powertools/parameters": "npm:^2.31.0"
     "@aws-sdk/client-ec2": "npm:^3.1009.0"
     "@aws-sdk/client-sqs": "npm:^3.1009.0"
@@ -192,6 +193,12 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@aws-github-runner/runner-provider@npm:*, @aws-github-runner/runner-provider@workspace:libs/runner-provider":
+  version: 0.0.0-use.local
+  resolution: "@aws-github-runner/runner-provider@workspace:libs/runner-provider"
+  languageName: unknown
+  linkType: soft
+
 "@aws-github-runner/termination-watcher@workspace:functions/termination-watcher":
   version: 0.0.0-use.local
   resolution: "@aws-github-runner/termination-watcher@workspace:functions/termination-watcher"
@@ -221,6 +228,7 @@ __metadata:
   dependencies:
     "@aws-github-runner/aws-powertools-util": "npm:*"
     "@aws-github-runner/aws-ssm-util": "npm:*"
+    "@aws-github-runner/runner-provider": "npm:*"
     "@aws-sdk/client-eventbridge": "npm:^3.1009.0"
     "@aws-sdk/client-sqs": "npm:^3.1009.0"
     "@middy/core": "npm:^6.4.5"

@@ -6,9 +6,8 @@ import { WorkflowJobEvent } from '@octokit/webhooks-types';
 import workFlowJobEvent from '../../test/resources/github_workflowjob_event.json';
 import runnerConfig from '../../test/resources/multi_runner_configurations.json';
 
-import type { RunnerProvider } from '../runner-provider';
 import { RunnerConfig, sendActionRequest } from '../sqs';
-import type { RunnerMatcherConfig } from '../sqs';
+import type { RunnerMatcherConfig, RunnerProviderType } from '../sqs';
 import { dispatch } from './dispatch';
 import { selectAwsDynamicLabelQueue } from './aws-dynamic-labels';
 import { canRunJob } from './labels';
@@ -602,13 +601,21 @@ describe('selectAwsDynamicLabelQueue', () => {
     });
   });
 
-  it('does not select an unsupported provider strategy', () => {
-    const queue = runnerQueue('unsupported-provider');
-    (queue as unknown as { runnerProvider: string }).runnerProvider = 'unsupported';
+  it('skips an unsupported provider strategy and selects the next supported queue', () => {
+    const unsupportedQueue = runnerQueue('unsupported-provider');
+    (unsupportedQueue as unknown as { runnerProvider: string }).runnerProvider = 'unsupported';
+    const ec2Queue = runnerQueue('ec2');
 
     expect(
-      selectAwsDynamicLabelQueue([queue], ['self-hosted', 'linux'], ['ghr-ec2-instance-type:t3.large']),
-    ).toBeUndefined();
+      selectAwsDynamicLabelQueue(
+        [unsupportedQueue, ec2Queue],
+        ['self-hosted', 'linux'],
+        ['ghr-ec2-instance-type:t3.large'],
+      ),
+    ).toEqual({
+      queue: ec2Queue,
+      labels: ['self-hosted', 'linux', 'ghr-ec2-instance-type:t3.large'],
+    });
   });
 
   it('rejects a malformed non-string runner provider without throwing', () => {
@@ -645,7 +652,7 @@ describe('selectAwsDynamicLabelQueue', () => {
   });
 });
 
-function runnerQueue(id: string, runnerProvider?: RunnerProvider): RunnerMatcherConfig {
+function runnerQueue(id: string, runnerProvider?: RunnerProviderType): RunnerMatcherConfig {
   return {
     id,
     arn: `arn:${id}`,

@@ -1,6 +1,6 @@
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
+import { normalizeRunnerProviderType } from '@aws-github-runner/runner-provider';
 
-import { normalizeRunnerProvider } from '../runner-provider';
 import type { RunnerMatcherConfig } from '../sqs';
 import { AwsDynamicLabelDispatchTarget, AwsDynamicLabelProviderStrategy } from './aws-dynamic-labels-provider';
 import { ec2DynamicLabelProviderStrategy } from './ec2-dynamic-labels';
@@ -15,7 +15,7 @@ export function selectAwsDynamicLabelQueue(
   sanitizedGhrLabels: string[],
 ): AwsDynamicLabelDispatchTarget | undefined {
   for (const queue of matches) {
-    const provider = normalizeRunnerProvider(queue.runnerProvider);
+    const provider = normalizeRunnerProviderType(queue.runnerProvider);
     const strategy = provider
       ? awsDynamicLabelProviderStrategies.find((strategy) => strategy.type === provider)
       : undefined;

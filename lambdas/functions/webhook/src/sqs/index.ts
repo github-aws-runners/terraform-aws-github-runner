@@ -1,15 +1,15 @@
 import { SQS, SendMessageCommandInput } from '@aws-sdk/client-sqs';
 import { WorkflowJobEvent } from '@octokit/webhooks-types';
 import { createChildLogger, getTracedAWSV3Client } from '@aws-github-runner/aws-powertools-util';
+import type { RunnerProviderType } from '@aws-github-runner/runner-provider';
 
 import type { AwsDynamicLabelsPolicy } from '../runners/aws-dynamic-labels-policy';
-import type { RunnerProvider } from '../runner-provider';
 
 const logger = createChildLogger('sqs');
 
 const sqsClientsByRegion = new Map<string, SQS>();
 
-export type { RunnerProvider };
+export type { RunnerProviderType } from '@aws-github-runner/runner-provider';
 
 export interface ActionRequestMessage {
   id: number;
@@ -37,7 +37,7 @@ export type RunnerConfig = RunnerMatcherConfig[];
 
 export interface RunnerMatcherConfig {
   matcherConfig: MatcherConfig;
-  runnerProvider?: RunnerProvider;
+  runnerProvider?: RunnerProviderType;
   id: string;
   arn: string;
 }

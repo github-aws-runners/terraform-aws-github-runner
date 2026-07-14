@@ -1,4 +1,5 @@
-import type { RunnerProvider } from '../runner-provider';
+import type { RunnerProviderType } from '@aws-github-runner/runner-provider';
+
 import type { RunnerMatcherConfig } from '../sqs';
 
 export interface AwsDynamicLabelDispatchTarget {
@@ -13,6 +14,6 @@ export interface SelectAwsDynamicLabelQueueInput {
 }
 
 export interface AwsDynamicLabelProviderStrategy {
-  type: RunnerProvider;
+  type: RunnerProviderType;
   selectQueue(input: SelectAwsDynamicLabelQueueInput): AwsDynamicLabelDispatchTarget | undefined;
 }
