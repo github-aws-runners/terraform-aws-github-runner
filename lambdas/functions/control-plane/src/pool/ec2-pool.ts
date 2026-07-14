@@ -5,7 +5,7 @@ import { bootTimeExceeded, listEC2Runners } from '../aws/ec2-runners';
 import type { RunnerList } from '../aws/ec2-runners.d';
 import { createRunners } from '../scale-runners/ec2';
 import type { CreateEC2RunnerConfig } from '../scale-runners/ec2';
-import type { PoolRunnerProvider, RunnerStatus } from './pool-provider';
+import type { CreatePoolRunnersInput, ListPoolRunnersInput, PoolRunnerProvider, RunnerStatus } from './pool-provider';
 
 const logger = createChildLogger('pool');
 
@@ -46,33 +46,47 @@ export function createEc2PoolProviderFromEnv(): PoolRunnerProvider {
 }
 
 function createEc2PoolProvider(config: Ec2PoolProviderConfig): PoolRunnerProvider {
+  async function listEc2PoolRunners({
+    environment,
+    runnerOwner,
+    runnerType,
+  }: ListPoolRunnersInput): Promise<RunnerList[]> {
+    return await listEC2Runners({
+      environment,
+      runnerOwner,
+      runnerType,
+      statuses: ['running'],
+    });
+  }
+
+  async function createEc2PoolRunners({
+    githubRunnerConfig,
+    numberOfRunners,
+    githubInstallationClient,
+  }: CreatePoolRunnersInput): Promise<string[]> {
+    return await createRunners(
+      githubRunnerConfig,
+      {
+        ec2instanceCriteria: config.ec2instanceCriteria,
+        environment: config.environment,
+        launchTemplateName: config.launchTemplateName,
+        subnets: config.subnets,
+        amiIdSsmParameterName: config.amiIdSsmParameterName,
+        tracingEnabled: config.tracingEnabled,
+        onDemandFailoverOnError: config.onDemandFailoverOnError,
+        scaleErrors: config.scaleErrors,
+      },
+      numberOfRunners,
+      githubInstallationClient,
+      'pool-lambda',
+    );
+  }
+
   return {
     type: 'ec2',
-    listRunners: async ({ environment, runnerOwner, runnerType }) =>
-      await listEC2Runners({
-        environment,
-        runnerOwner,
-        runnerType,
-        statuses: ['running'],
-      }),
+    listRunners: listEc2PoolRunners,
     countAvailableRunners: calculateEc2PoolSize,
-    createRunners: async ({ githubRunnerConfig, numberOfRunners, githubInstallationClient }) =>
-      await createRunners(
-        githubRunnerConfig,
-        {
-          ec2instanceCriteria: config.ec2instanceCriteria,
-          environment: config.environment,
-          launchTemplateName: config.launchTemplateName,
-          subnets: config.subnets,
-          amiIdSsmParameterName: config.amiIdSsmParameterName,
-          tracingEnabled: config.tracingEnabled,
-          onDemandFailoverOnError: config.onDemandFailoverOnError,
-          scaleErrors: config.scaleErrors,
-        },
-        numberOfRunners,
-        githubInstallationClient,
-        'pool-lambda',
-      ),
+    createRunners: createEc2PoolRunners,
   };
 }
 
