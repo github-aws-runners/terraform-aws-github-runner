@@ -14,9 +14,8 @@ async function unmarkEc2RunnerOrphan(id: string): Promise<void> {
   await untag(id, [{ Key: 'ghr:orphan', Value: 'true' }]);
 }
 
-export function createEc2ScaleDownProvider(): ScaleDownRunnerProvider {
+export function createEc2ScaleDownProvider(): Omit<ScaleDownRunnerProvider, 'type'> {
   return {
-    type: 'ec2',
     list: listEc2ScaleDownRunners,
     bootTimeExceeded,
     markOrphan: markEc2RunnerOrphan,

@@ -81,9 +81,8 @@ async function createEc2PoolRunners({
   );
 }
 
-export function createEc2PoolProvider(): PoolRunnerProvider {
+export function createEc2PoolProvider(): Omit<PoolRunnerProvider, 'type'> {
   return {
-    type: 'ec2',
     listRunners: listEc2PoolRunners,
     countAvailableRunners: calculateEc2PoolSize,
     createRunners: createEc2PoolRunners,

@@ -99,9 +99,8 @@ async function createEc2ScaleUpRunners({
   );
 }
 
-export function createEc2ScaleUpProvider(): ScaleUpRunnerProvider<Ec2ScaleUpState> {
+export function createEc2ScaleUpProvider(): Omit<ScaleUpRunnerProvider<Ec2ScaleUpState>, 'type'> {
   return {
-    type: 'ec2',
     prepareGroup: prepareEc2ScaleUpGroup,
     getCurrentRunners: getCurrentEc2Runners,
     createRunners: createEc2ScaleUpRunners,

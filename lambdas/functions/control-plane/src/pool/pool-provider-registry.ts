@@ -2,12 +2,12 @@ import type { RunnerProviderType } from '../runner-provider';
 import { createEc2PoolProvider } from './ec2-pool';
 import type { PoolRunnerProvider } from './pool-provider';
 
-type PoolRunnerProviderFactory = () => PoolRunnerProvider;
+type PoolRunnerProviderFactory = () => Omit<PoolRunnerProvider, 'type'>;
 
 const poolRunnerProviderFactories: Record<RunnerProviderType, PoolRunnerProviderFactory> = {
   ec2: createEc2PoolProvider,
 };
 
 export function createPoolRunnerProvider(type: RunnerProviderType): PoolRunnerProvider {
-  return poolRunnerProviderFactories[type]();
+  return { ...poolRunnerProviderFactories[type](), type };
 }
