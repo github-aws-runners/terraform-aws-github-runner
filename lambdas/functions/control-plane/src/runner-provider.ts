@@ -1,4 +1,5 @@
-export type RunnerProviderType = 'ec2' | 'microvm';
+// TODO: Add MicroVM when its control-plane provider strategies are implemented.
+export type RunnerProviderType = 'ec2';
 
 export function normalizeRunnerProviderType(type: string): string {
   return type.trim().toLowerCase();

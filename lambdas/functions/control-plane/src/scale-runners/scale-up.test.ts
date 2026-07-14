@@ -3514,8 +3514,4 @@ describe('getScaleUpRunnerProviderType', () => {
     expect(getScaleUpRunnerProviderType('', 'ec2')).toEqual('ec2');
     expect(getScaleUpRunnerProviderType('   ', 'ec2')).toEqual('ec2');
   });
-
-  it('uses configured ec2 type', () => {
-    expect(getScaleUpRunnerProviderType('ec2', 'microvm')).toEqual('ec2');
-  });
 });

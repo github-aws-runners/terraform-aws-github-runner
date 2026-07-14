@@ -71,18 +71,13 @@ describe('scaleDownConfig', () => {
       expect(getScaleDownRunnerProviderType(scaleDownConfig, 'ec2')).toEqual('ec2');
     });
 
-    it('Uses configured ec2 type', async () => {
-      const scaleDownConfig = getConfig(['* * * * * *']).map((config) => ({ ...config, type: 'ec2' as const }));
-      expect(getScaleDownRunnerProviderType(scaleDownConfig, 'microvm')).toEqual('ec2');
-    });
-
     it('Treats provider types case-insensitively when checking for multiple types', async () => {
       const scaleDownConfig = getConfig(['* * * * * *', '* * * * * *']).map((config, index) => ({
         ...config,
         type: index === 0 ? ' EC2 ' : 'ec2',
       }));
 
-      expect(() => getScaleDownRunnerProviderType(scaleDownConfig, 'microvm')).not.toThrow();
+      expect(() => getScaleDownRunnerProviderType(scaleDownConfig, 'ec2')).not.toThrow();
     });
   });
 });
