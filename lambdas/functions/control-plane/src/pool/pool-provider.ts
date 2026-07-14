@@ -1,6 +1,5 @@
 import type { Octokit } from '@octokit/rest';
 
-import type { RunnerProvider } from '../runner-provider';
 import type { CreateGitHubRunnerConfig, GitHubRunnerType } from '../scale-runners/types';
 
 export interface RunnerStatus {
@@ -20,7 +19,7 @@ export interface CreatePoolRunnersInput {
   githubInstallationClient: Octokit;
 }
 
-export interface PoolRunnerProvider<TRunner = unknown> extends RunnerProvider {
+export interface PoolRunnerProvider<TRunner = unknown> {
   listRunners(input: ListPoolRunnersInput): Promise<TRunner[]>;
   countAvailableRunners(
     runners: TRunner[],
