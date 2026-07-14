@@ -1,6 +1,13 @@
-import { createEc2ScaleUpProviderFromEnv } from './ec2-scale-up';
+import type { RunnerProviderType } from '../runner-provider';
+import { createEc2ScaleUpProvider } from './ec2-scale-up';
 import type { ScaleUpRunnerProvider } from './scale-up-provider';
 
-export function createScaleUpRunnerProviderFromEnv(environment: string, scaleErrors: string[]): ScaleUpRunnerProvider {
-  return createEc2ScaleUpProviderFromEnv(environment, scaleErrors);
+type ScaleUpRunnerProviderFactory = () => ScaleUpRunnerProvider;
+
+const scaleUpRunnerProviderFactories: Record<RunnerProviderType, ScaleUpRunnerProviderFactory> = {
+  ec2: createEc2ScaleUpProvider,
+};
+
+export function createScaleUpRunnerProvider(type: RunnerProviderType): ScaleUpRunnerProvider {
+  return scaleUpRunnerProviderFactories[type]();
 }

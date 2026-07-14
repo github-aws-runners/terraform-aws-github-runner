@@ -10,7 +10,12 @@ import {
 } from './ec2-labels';
 import { createRunners } from './ec2';
 import type { CreateEC2RunnerConfig } from './ec2';
-import type { ScaleUpRunnerProvider } from './scale-up-provider';
+import type {
+  CreateScaleUpRunnersInput,
+  CurrentRunnersInput,
+  PreparedScaleUpRunnerGroup,
+  ScaleUpRunnerProvider,
+} from './scale-up-provider';
 
 const logger = createChildLogger('ec2-scale-up');
 
@@ -20,52 +25,8 @@ interface Ec2ScaleUpState {
   ec2OverrideConfig?: Ec2OverrideConfig;
 }
 
-export function createEc2ScaleUpProvider(config: Ec2ScaleUpProviderConfig): ScaleUpRunnerProvider<Ec2ScaleUpState> {
+function loadEc2ScaleUpProviderConfig(): Ec2ScaleUpProviderConfig {
   return {
-    type: 'ec2',
-    prepareGroup: async (messageLabels) => {
-      const trimmedLabels = messageLabels.map((label) => label.trim());
-      const dynamicEC2Labels = trimmedLabels.filter((label) => label.startsWith('ghr-ec2-'));
-      const nonEc2DynamicLabels = trimmedLabels.filter(
-        (label) => label.startsWith('ghr-') && !label.startsWith('ghr-ec2-'),
-      );
-      const runnerLabels = [...nonEc2DynamicLabels, ...dynamicEC2Labels];
-      let ec2OverrideConfig: Ec2OverrideConfig | undefined;
-
-      if (dynamicEC2Labels.length > 0) {
-        const defaultBlockDeviceName = shouldLoadLaunchTemplateBlockDeviceName(dynamicEC2Labels)
-          ? await getDefaultBlockDeviceNameFromLaunchTemplate(config.launchTemplateName)
-          : undefined;
-
-        ec2OverrideConfig = parseEc2OverrideConfig(dynamicEC2Labels, defaultBlockDeviceName);
-        if (ec2OverrideConfig) {
-          logger.debug('EC2 override config parsed from labels', { ec2OverrideConfig });
-        }
-      }
-
-      return { runnerLabels, state: { ec2OverrideConfig } };
-    },
-    getCurrentRunners: async (_state, { runnerType, runnerOwner }) =>
-      (await listEC2Runners({ environment: config.environment, runnerType, runnerOwner })).length,
-    createRunners: async ({ githubRunnerConfig, numberOfRunners, githubInstallationClient, state }) =>
-      await createRunners(
-        githubRunnerConfig,
-        {
-          ...config,
-          ec2OverrideConfig: state.ec2OverrideConfig,
-        },
-        numberOfRunners,
-        githubInstallationClient,
-        'scale-up-lambda',
-      ),
-  };
-}
-
-export function createEc2ScaleUpProviderFromEnv(
-  environment: string,
-  scaleErrors: string[],
-): ScaleUpRunnerProvider<Ec2ScaleUpState> {
-  return createEc2ScaleUpProvider({
     ec2instanceCriteria: {
       instanceTypes: process.env.INSTANCE_TYPES.split(','),
       instanceTypePriorities: process.env.INSTANCE_TYPE_PRIORITIES
@@ -75,7 +36,7 @@ export function createEc2ScaleUpProviderFromEnv(
       maxSpotPrice: process.env.INSTANCE_MAX_SPOT_PRICE,
       instanceAllocationStrategy: process.env.INSTANCE_ALLOCATION_STRATEGY || 'lowest-price',
     },
-    environment,
+    environment: process.env.ENVIRONMENT,
     launchTemplateName: process.env.LAUNCH_TEMPLATE_NAME,
     subnets: process.env.SUBNET_IDS.split(','),
     amiIdSsmParameterName: process.env.AMI_ID_SSM_PARAMETER_NAME,
@@ -83,7 +44,66 @@ export function createEc2ScaleUpProviderFromEnv(
     onDemandFailoverOnError: process.env.ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS
       ? (JSON.parse(process.env.ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS) as [string])
       : [],
-    scaleErrors,
+    scaleErrors: JSON.parse(process.env.SCALE_ERRORS) as [string],
     useDedicatedHost: yn(process.env.USE_DEDICATED_HOST, { default: false }),
-  });
+  };
+}
+
+async function prepareEc2ScaleUpGroup(messageLabels: string[]): Promise<PreparedScaleUpRunnerGroup<Ec2ScaleUpState>> {
+  const trimmedLabels = messageLabels.map((label) => label.trim());
+  const dynamicEC2Labels = trimmedLabels.filter((label) => label.startsWith('ghr-ec2-'));
+  const nonEc2DynamicLabels = trimmedLabels.filter(
+    (label) => label.startsWith('ghr-') && !label.startsWith('ghr-ec2-'),
+  );
+  const runnerLabels = [...nonEc2DynamicLabels, ...dynamicEC2Labels];
+  let ec2OverrideConfig: Ec2OverrideConfig | undefined;
+
+  if (dynamicEC2Labels.length > 0) {
+    const defaultBlockDeviceName = shouldLoadLaunchTemplateBlockDeviceName(dynamicEC2Labels)
+      ? await getDefaultBlockDeviceNameFromLaunchTemplate(process.env.LAUNCH_TEMPLATE_NAME)
+      : undefined;
+
+    ec2OverrideConfig = parseEc2OverrideConfig(dynamicEC2Labels, defaultBlockDeviceName);
+    if (ec2OverrideConfig) {
+      logger.debug('EC2 override config parsed from labels', { ec2OverrideConfig });
+    }
+  }
+
+  return { runnerLabels, state: { ec2OverrideConfig } };
+}
+
+async function getCurrentEc2Runners(
+  _state: Ec2ScaleUpState,
+  { runnerType, runnerOwner }: CurrentRunnersInput,
+): Promise<number> {
+  return (await listEC2Runners({ environment: process.env.ENVIRONMENT, runnerType, runnerOwner })).length;
+}
+
+async function createEc2ScaleUpRunners({
+  githubRunnerConfig,
+  numberOfRunners,
+  githubInstallationClient,
+  state,
+}: CreateScaleUpRunnersInput<Ec2ScaleUpState>): Promise<string[]> {
+  const config = loadEc2ScaleUpProviderConfig();
+
+  return await createRunners(
+    githubRunnerConfig,
+    {
+      ...config,
+      ec2OverrideConfig: state.ec2OverrideConfig,
+    },
+    numberOfRunners,
+    githubInstallationClient,
+    'scale-up-lambda',
+  );
+}
+
+export function createEc2ScaleUpProvider(): ScaleUpRunnerProvider<Ec2ScaleUpState> {
+  return {
+    type: 'ec2',
+    prepareGroup: prepareEc2ScaleUpGroup,
+    getCurrentRunners: getCurrentEc2Runners,
+    createRunners: createEc2ScaleUpRunners,
+  };
 }

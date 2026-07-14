@@ -12,7 +12,7 @@ import {
   validateSsmParameterStoreTags,
 } from './github-runner';
 import { publishRetryMessage } from './job-retry';
-import { createScaleUpRunnerProviderFromEnv } from './scale-up-provider-registry';
+import { createScaleUpRunnerProvider } from './scale-up-provider-registry';
 import type {
   ActionRequestMessage,
   ActionRequestMessageRetry,
@@ -73,7 +73,6 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
   const maximumRunners = parseInt(process.env.RUNNERS_MAXIMUM_COUNT || '3');
   const runnerLabels = process.env.RUNNER_LABELS || '';
   const runnerGroup = process.env.RUNNER_GROUP_NAME || 'Default';
-  const environment = process.env.ENVIRONMENT;
   const ssmTokenPath = process.env.SSM_TOKEN_PATH;
   const ephemeralEnabled = yn(process.env.ENABLE_EPHEMERAL_RUNNERS, { default: false });
   const enableJitConfig = yn(process.env.ENABLE_JIT_CONFIG, { default: ephemeralEnabled });
@@ -85,9 +84,8 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
     process.env.SSM_PARAMETER_STORE_TAGS && process.env.SSM_PARAMETER_STORE_TAGS.trim() !== ''
       ? validateSsmParameterStoreTags(process.env.SSM_PARAMETER_STORE_TAGS)
       : [];
-  const scaleErrors = JSON.parse(process.env.SCALE_ERRORS) as [string];
-  resolveRunnerProviderType(process.env.RUNNER_PROVIDER_TYPE);
-  const runnerProvider = createScaleUpRunnerProviderFromEnv(environment, scaleErrors);
+  const runnerProviderType = resolveRunnerProviderType(process.env.RUNNER_PROVIDER_TYPE);
+  const runnerProvider = createScaleUpRunnerProvider(runnerProviderType);
 
   const { ghesApiUrl, ghesBaseUrl } = getGitHubEnterpriseApiUrl();
 

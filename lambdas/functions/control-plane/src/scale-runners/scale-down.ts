@@ -5,9 +5,10 @@ import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import moment from 'moment';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
+import { resolveRunnerProviderType } from '../runner-provider';
 import { GhRunners, githubCache } from './cache';
 import { ScalingDownConfigList, getEvictionStrategy, getIdleRunnerCount } from './scale-down-config';
-import { createScaleDownRunnerProviderFromEnv } from './scale-down-provider-registry';
+import { createScaleDownRunnerProvider } from './scale-down-provider-registry';
 import { metricGitHubAppRateLimit } from '../github/rate-limit';
 import { getGitHubEnterpriseApiUrl } from './github-runner';
 import type { RunnerInfo, RunnerList, ScaleDownRunnerProvider } from './scale-down-provider';
@@ -350,7 +351,8 @@ export async function scaleDown(): Promise<void> {
   githubCache.reset();
   const environment = process.env.ENVIRONMENT;
   const scaleDownConfigs = JSON.parse(process.env.SCALE_DOWN_CONFIG) as ScalingDownConfigList;
-  const runnerProvider = createScaleDownRunnerProviderFromEnv();
+  const runnerProviderType = resolveRunnerProviderType(process.env.RUNNER_PROVIDER_TYPE);
+  const runnerProvider = createScaleDownRunnerProvider(runnerProviderType);
 
   // first runners marked to be orphan.
   await terminateOrphan(environment, runnerProvider);

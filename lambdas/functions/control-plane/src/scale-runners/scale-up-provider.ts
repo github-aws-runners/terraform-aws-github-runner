@@ -1,6 +1,6 @@
 import type { Octokit } from '@octokit/rest';
 
-import type { RunnerProvider, RunnerProviderType } from '../runner-provider';
+import type { RunnerProvider } from '../runner-provider';
 import type { ActionRequestMessageSQS, CreateGitHubRunnerConfig, GitHubRunnerType } from './types';
 
 export interface CurrentRunnersInput {
@@ -20,8 +20,6 @@ export interface PreparedScaleUpRunnerGroup<TState = unknown> {
   runnerLabels: string[];
   state: TState;
 }
-
-export type ScaleUpRunnerProviderType = RunnerProviderType;
 
 export interface ScaleUpRunnerProvider<TState = unknown> extends RunnerProvider {
   prepareGroup(messageLabels: string[]): Promise<PreparedScaleUpRunnerGroup<TState>>;

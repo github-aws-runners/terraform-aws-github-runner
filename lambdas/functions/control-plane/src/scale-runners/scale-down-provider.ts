@@ -1,4 +1,4 @@
-import type { RunnerProvider, RunnerProviderType } from '../runner-provider';
+import type { RunnerProvider } from '../runner-provider';
 
 export interface RunnerList {
   id: string;
@@ -16,8 +16,6 @@ export interface RunnerInfo extends RunnerList {
   owner: string;
   type: string;
 }
-
-export type ScaleDownRunnerProviderType = RunnerProviderType;
 
 export interface ScaleDownRunnerProvider extends RunnerProvider {
   list(environment: string, orphan?: boolean): Promise<RunnerList[]>;

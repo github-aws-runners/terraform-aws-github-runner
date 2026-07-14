@@ -2,13 +2,25 @@ import { bootTimeExceeded, listEC2Runners, tag, terminateRunner, untag } from '.
 import type { RunnerList } from './../aws/ec2-runners.d';
 import type { RunnerList as ScaleDownRunnerList, ScaleDownRunnerProvider } from './scale-down-provider';
 
+async function listEc2ScaleDownRunners(environment: string, orphan?: boolean): Promise<ScaleDownRunnerList[]> {
+  return (await listEC2Runners({ environment, orphan })).map(toScaleDownRunner);
+}
+
+async function markEc2RunnerOrphan(id: string): Promise<void> {
+  await tag(id, [{ Key: 'ghr:orphan', Value: 'true' }]);
+}
+
+async function unmarkEc2RunnerOrphan(id: string): Promise<void> {
+  await untag(id, [{ Key: 'ghr:orphan', Value: 'true' }]);
+}
+
 export function createEc2ScaleDownProvider(): ScaleDownRunnerProvider {
   return {
     type: 'ec2',
-    list: async (environment, orphan) => (await listEC2Runners({ environment, orphan })).map(toScaleDownRunner),
+    list: listEc2ScaleDownRunners,
     bootTimeExceeded,
-    markOrphan: async (id) => await tag(id, [{ Key: 'ghr:orphan', Value: 'true' }]),
-    unmarkOrphan: async (id) => await untag(id, [{ Key: 'ghr:orphan', Value: 'true' }]),
+    markOrphan: markEc2RunnerOrphan,
+    unmarkOrphan: unmarkEc2RunnerOrphan,
     terminate: terminateRunner,
   };
 }
