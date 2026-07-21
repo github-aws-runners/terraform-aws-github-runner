@@ -27,6 +27,42 @@ import { EndpointDefaults } from '@octokit/types';
 
 const logger = createChildLogger('gh-auth');
 
+// Retry caps for the throttling plugin. Returning `true` from a limit handler tells
+// the plugin to retry after the interval GitHub asked for; returning `false` gives up.
+// Primary rate limits reset on a fixed schedule, so a couple of retries is worthwhile.
+// Secondary rate limits are abuse-detection signals — retry once, then back off and
+// let the message return to the queue rather than pushing harder.
+const MAX_RATE_LIMIT_RETRIES = 2;
+const MAX_SECONDARY_RATE_LIMIT_RETRIES = 1;
+
+// Exported for tests: the plugin only surfaces these via the client constructor,
+// so there is no other seam to assert the retry cap against.
+export function onRateLimit(
+  retryAfter: number,
+  options: Required<EndpointDefaults>,
+  _octokit: Octokit,
+  retryCount: number,
+): boolean {
+  logger.warn(
+    `GitHub rate limit: Request quota exhausted for request ${options.method} ${options.url}, ` +
+      `retrying after ${retryAfter}s`,
+  );
+  return retryCount < MAX_RATE_LIMIT_RETRIES;
+}
+
+export function onSecondaryRateLimit(
+  retryAfter: number,
+  options: Required<EndpointDefaults>,
+  _octokit: Octokit,
+  retryCount: number,
+): boolean {
+  logger.warn(
+    `GitHub rate limit: SecondaryRateLimit detected for request ${options.method} ${options.url}, ` +
+      `retrying after ${retryAfter}s`,
+  );
+  return retryCount < MAX_SECONDARY_RATE_LIMIT_RETRIES;
+}
+
 export async function createOctokitClient(token: string, ghesApiUrl = ''): Promise<Octokit> {
   const CustomOctokit = Octokit.plugin(retry, throttling);
   const ocktokitOptions: OctokitOptions = {
@@ -52,18 +88,8 @@ export async function createOctokitClient(token: string, ghesApiUrl = ''): Promi
       },
     },
     throttle: {
-      onRateLimit: (retryAfter: number, options: Required<EndpointDefaults>) => {
-        logger.warn(
-          `GitHub rate limit: Request quota exhausted for request ${options.method} ${options.url}, retrying after ${retryAfter}s`,
-        );
-        return (options as unknown as { request: { retryCount: number } }).request.retryCount < 2;
-      },
-      onSecondaryRateLimit: (retryAfter: number, options: Required<EndpointDefaults>) => {
-        logger.warn(
-          `GitHub rate limit: SecondaryRateLimit detected for request ${options.method} ${options.url}, retrying after ${retryAfter}s`,
-        );
-        return (options as unknown as { request: { retryCount: number } }).request.retryCount < 1;
-      },
+      onRateLimit,
+      onSecondaryRateLimit,
     },
   });
 }
