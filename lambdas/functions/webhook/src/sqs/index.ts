@@ -22,6 +22,13 @@ export interface ActionRequestMessage {
 export interface MatcherConfig {
   labelMatchers: string[][];
   exactMatch: boolean;
+  /**
+   * Evaluation order, lower is preferred. Applied in Terraform, which emits the
+   * matcher list already ordered by it (see modules/webhook/webhook.tf); the
+   * dispatcher does not sort on it. Declared here for fidelity with the config
+   * the lambda actually receives.
+   */
+  priority?: number;
   bidirectionalLabelMatch?: boolean;
   enableDynamicLabels?: boolean;
   ec2DynamicLabelsPolicy?: Ec2DynamicLabelsPolicy | null;

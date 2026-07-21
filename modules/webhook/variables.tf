@@ -23,7 +23,7 @@ variable "tags" {
 }
 
 variable "runner_matcher_config" {
-  description = "SQS queue to publish accepted build events based on the runner type. When exact match is disabled the webhook accepts the event if one of the workflow job labels is part of the matcher. The priority defines the order the matchers are applied. Optional `matcherConfig.enableDynamicLabels` and `matcherConfig.ec2DynamicLabelsPolicy` are evaluated by the dispatcher to gate `ghr-ec2-*` labels per runner. The policy supports `blocked_keys = [<key>]` and `restricted_keys = { <key> = { allowed = [globs], denied = [globs], max = number|string } }`; keys use the `ghr-ec2-*` suffix form, for example `instance-type`."
+  description = "SQS queue to publish accepted build events based on the runner type. When exact match is disabled the webhook accepts the event if one of the workflow job labels is part of the matcher. The priority defines the order the matchers are applied; matchers with an exact or bidirectional label match are evaluated first, then by ascending priority. The order is resolved here and consumed as-is by the dispatcher. Optional `matcherConfig.enableDynamicLabels` and `matcherConfig.ec2DynamicLabelsPolicy` are evaluated by the dispatcher to gate `ghr-ec2-*` labels per runner. The policy supports `blocked_keys = [<key>]` and `restricted_keys = { <key> = { allowed = [globs], denied = [globs], max = number|string } }`; keys use the `ghr-ec2-*` suffix form, for example `instance-type`."
   type = map(object({
     arn = string
     id  = string
@@ -36,10 +36,6 @@ variable "runner_matcher_config" {
       ec2DynamicLabelsPolicy  = optional(any, null)
     })
   }))
-  validation {
-    condition     = try(var.runner_matcher_config.matcherConfig.priority, 999) >= 0 && try(var.runner_matcher_config.matcherConfig.priority, 999) < 1000
-    error_message = "The priority of the matcher must be between 0 and 999."
-  }
 }
 
 variable "lambda_zip" {

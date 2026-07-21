@@ -107,15 +107,10 @@ describe('Dispatcher', () => {
       });
     });
 
-    it('should sort matcher with exact first.', async () => {
+    it('should respect the strict-first order it is given.', async () => {
+      // Terraform emits the matchers already ordered (strict first, then priority),
+      // so the fixture is in that order rather than relying on the dispatcher to sort.
       config = await createConfig(undefined, [
-        {
-          ...runnerConfig[0],
-          matcherConfig: {
-            labelMatchers: [['self-hosted', 'match', 'not-select']],
-            exactMatch: false,
-          },
-        },
         {
           ...runnerConfig[0],
           matcherConfig: {
@@ -129,6 +124,13 @@ describe('Dispatcher', () => {
           matcherConfig: {
             labelMatchers: [['self-hosted', 'match']],
             exactMatch: true,
+          },
+        },
+        {
+          ...runnerConfig[0],
+          matcherConfig: {
+            labelMatchers: [['self-hosted', 'match', 'not-select']],
+            exactMatch: false,
           },
         },
         runnerConfig[1],
@@ -207,13 +209,14 @@ describe('Dispatcher', () => {
 
     it('random still respects exactMatch priority (never a lower-priority match)', async () => {
       process.env.QUEUE_SELECTION_STRATEGY = 'random';
+      // Ordered as Terraform emits it: strict matchers ahead of loose ones.
       config = await createConfig(undefined, [
-        { ...runnerConfig[0], id: 'loose', matcherConfig: { labelMatchers: [['self-hosted']], exactMatch: false } },
         {
           ...runnerConfig[0],
           id: 'exact',
           matcherConfig: { labelMatchers: [['self-hosted', 'any']], exactMatch: true },
         },
+        { ...runnerConfig[0], id: 'loose', matcherConfig: { labelMatchers: [['self-hosted']], exactMatch: false } },
       ]);
       const rand = vi.spyOn(Math, 'random').mockReturnValue(0.99);
       await dispatch(jobEvent(['self-hosted', 'any']), 'workflow_job', config);
@@ -223,10 +226,11 @@ describe('Dispatcher', () => {
 
     it('all dispatches to every equally-matching queue but not lower-priority ones', async () => {
       process.env.QUEUE_SELECTION_STRATEGY = 'all';
+      // Ordered as Terraform emits it: strict matchers ahead of loose ones.
       config = await createConfig(undefined, [
-        { ...runnerConfig[0], id: 'loose', matcherConfig: { labelMatchers: [['self-hosted']], exactMatch: false } },
         { ...runnerConfig[0], id: 'q1', matcherConfig: { labelMatchers: [['self-hosted', 'any']], exactMatch: true } },
         { ...runnerConfig[0], id: 'q2', matcherConfig: { labelMatchers: [['self-hosted', 'any']], exactMatch: true } },
+        { ...runnerConfig[0], id: 'loose', matcherConfig: { labelMatchers: [['self-hosted']], exactMatch: false } },
       ]);
       await dispatch(jobEvent(['self-hosted', 'any']), 'workflow_job', config);
       expect(sendActionRequest).toHaveBeenCalledTimes(2);
