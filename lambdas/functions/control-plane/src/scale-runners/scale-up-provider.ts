@@ -20,8 +20,14 @@ export interface PreparedScaleUpRunnerGroup<TState = unknown> {
   state: TState;
 }
 
+export interface CreateScaleUpRunnersResult {
+  instances: string[];
+  retryableErrorCount: number;
+  nonRetryableErrorCount: number;
+}
+
 export interface ScaleUpRunnerProvider<TState = unknown> extends RunnerProvider {
   prepareGroup(messageLabels: string[]): Promise<PreparedScaleUpRunnerGroup<TState>>;
   getCurrentRunners(state: TState, input: CurrentRunnersInput): Promise<number>;
-  createRunners(input: CreateScaleUpRunnersInput<TState>): Promise<string[]>;
+  createRunners(input: CreateScaleUpRunnersInput<TState>): Promise<CreateScaleUpRunnersResult>;
 }

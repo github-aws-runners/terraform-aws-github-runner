@@ -74,3 +74,9 @@ export interface RunnerInputParameters {
   scaleErrors: string[];
   useDedicatedHost?: boolean;
 }
+
+export interface CreateRunnerResult {
+  instances: string[];
+  retryableErrorCount: number;
+  nonRetryableErrorCount: number;
+}

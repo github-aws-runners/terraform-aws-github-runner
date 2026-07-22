@@ -14,6 +14,7 @@ import {
   validateSsmParameterStoreTags,
 } from './github-runner';
 import { publishRetryMessage } from './job-retry';
+import type { CreateScaleUpRunnersResult } from './scale-up-provider';
 import type {
   ActionRequestMessage,
   ActionRequestMessageRetry,
@@ -217,9 +218,9 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
           jobQueued = await isJobQueued(githubInstallationClient, message);
         } catch (e) {
           // An unsupported event type is not a transient fault — the check can never
-          // succeed for it, so let it propagate rather than silently scaling up.
+          // succeed for it, so lets skip
           if (e instanceof UnsupportedEventError) {
-            throw e;
+            continue;
           }
           const err = e as Error & { status?: number };
           messageLogger.warn('isJobQueued check failed, assuming job is still queued (fail-open)', {
@@ -309,25 +310,32 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       ssmParameterStoreTags,
     };
 
-    const createdRunners = await runnerProvider.createRunners({
-      githubRunnerConfig,
-      numberOfRunners: newRunners,
-      githubInstallationClient,
-      state: preparedRunnerGroup.state,
-    });
+    let createRunnersResult: CreateScaleUpRunnersResult;
+    try {
+      createRunnersResult = await runnerProvider.createRunners({
+        githubRunnerConfig,
+        numberOfRunners: newRunners,
+        githubInstallationClient,
+        state: preparedRunnerGroup.state,
+      });
+    } catch (error) {
+      logger.error('Runner provider threw an unexpected error.', { error });
+      createRunnersResult = {
+        instances: [],
+        retryableErrorCount: newRunners,
+        nonRetryableErrorCount: 0,
+      };
+    }
 
-    // Not all runners we wanted were created, let's reject enough items so that
-    // number of entries will be retried.
-    if (createdRunners.length !== newRunners) {
-      const failedRunnerCount = newRunners - createdRunners.length;
-
-      logger.warn('Some runners failed to be created, rejecting some messages so the requests are retried', {
+    if (createRunnersResult.retryableErrorCount > 0) {
+      logger.warn('Some runners failed with retryable errors, rejecting messages so the requests are retried', {
         wanted: newRunners,
-        got: createdRunners.length,
-        failedInstanceCount: failedRunnerCount,
+        got: createRunnersResult.instances.length,
+        retryableErrorCount: createRunnersResult.retryableErrorCount,
+        nonRetryableErrorCount: createRunnersResult.nonRetryableErrorCount,
       });
 
-      const failedMessages = messages.slice(0, failedRunnerCount);
+      const failedMessages = messages.slice(0, createRunnersResult.retryableErrorCount);
       failedMessages.forEach(({ messageId }) => rejectedMessageIds.add(messageId));
     }
 

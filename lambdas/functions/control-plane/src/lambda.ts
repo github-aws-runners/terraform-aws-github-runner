@@ -4,7 +4,6 @@ import { captureLambdaHandler, tracer } from '@aws-github-runner/aws-powertools-
 import { Context, type SQSBatchItemFailure, type SQSBatchResponse, SQSEvent } from 'aws-lambda';
 
 import { PoolEvent, adjust } from './pool/pool';
-import ScaleError from './scale-runners/ScaleError';
 import { scaleDown } from './scale-runners/scale-down';
 import { scaleUp } from './scale-runners/scale-up';
 import type { ActionRequestMessage, ActionRequestMessageSQS } from './scale-runners/types';
@@ -71,14 +70,9 @@ export async function scaleUpHandler(event: SQSEvent, context: Context): Promise
 
     return { batchItemFailures };
   } catch (e) {
-    if (e instanceof ScaleError) {
-      batchItemFailures.push(...e.toBatchItemFailures(sqsMessages));
-      logger.warn(`${e.detailedMessage} A retry will be attempted via SQS.`, { error: e });
-    } else {
-      logger.error(`Error processing batch (size: ${sqsMessages.length}): ${(e as Error).message}, ignoring batch`, {
-        error: e,
-      });
-    }
+    logger.error(`Error processing batch (size: ${sqsMessages.length}): ${(e as Error).message}, ignoring batch`, {
+      error: e,
+    });
 
     return { batchItemFailures };
   }
