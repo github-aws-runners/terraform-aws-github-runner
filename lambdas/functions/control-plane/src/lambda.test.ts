@@ -116,6 +116,49 @@ describe('Test scale up lambda wrapper.', () => {
       vi.clearAllMocks();
     });
 
+    const malformedRecord = (messageId: string): SQSRecord =>
+      ({ ...sqsRecord, eventSource: 'aws:sqs', messageId, body: 'not-json{' }) as SQSRecord;
+
+    it('Should not let one malformed message fail the whole invocation', async () => {
+      // Previously JSON.parse ran outside the try/catch, so an unparseable body threw
+      // straight out of the handler, failing the invocation and making SQS redeliver
+      // every message in the batch.
+      const records = [...createMultipleRecords(2), malformedRecord('message-bad')];
+      vi.mocked(scaleUp).mockResolvedValue([]);
+
+      await expect(scaleUpHandler({ Records: records }, context)).resolves.not.toThrow();
+    });
+
+    it('Should report only the malformed message as a batch item failure', async () => {
+      const records = [...createMultipleRecords(2), malformedRecord('message-bad')];
+      vi.mocked(scaleUp).mockResolvedValue([]);
+
+      await expect(scaleUpHandler({ Records: records }, context)).resolves.toEqual({
+        batchItemFailures: [{ itemIdentifier: 'message-bad' }],
+      });
+    });
+
+    it('Should still process the valid messages alongside a malformed one', async () => {
+      const records = [...createMultipleRecords(2), malformedRecord('message-bad')];
+      vi.mocked(scaleUp).mockResolvedValue([]);
+
+      await scaleUpHandler({ Records: records }, context);
+
+      expect(scaleUp).toHaveBeenCalledWith([
+        expect.objectContaining({ messageId: 'message-0' }),
+        expect.objectContaining({ messageId: 'message-1' }),
+      ]);
+    });
+
+    it('Should combine malformed and rejected messages in batch item failures', async () => {
+      const records = [...createMultipleRecords(2), malformedRecord('message-bad')];
+      vi.mocked(scaleUp).mockResolvedValue(['message-1']);
+
+      await expect(scaleUpHandler({ Records: records }, context)).resolves.toEqual({
+        batchItemFailures: [{ itemIdentifier: 'message-bad' }, { itemIdentifier: 'message-1' }],
+      });
+    });
+
     const createMultipleRecords = (count: number, eventSource = 'aws:sqs'): SQSRecord[] => {
       return Array.from({ length: count }, (_, i) => ({
         ...sqsRecord,
