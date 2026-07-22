@@ -27,7 +27,7 @@ async function createEc2PoolRunners({
 }: CreatePoolRunnersInput): Promise<string[]> {
   const config = loadEc2ProviderConfig();
 
-  return await createRunners(
+  const { instances } = await createRunners(
     githubRunnerConfig,
     {
       ec2instanceCriteria: config.ec2instanceCriteria,
@@ -43,6 +43,7 @@ async function createEc2PoolRunners({
     githubInstallationClient,
     'pool-lambda',
   );
+  return instances;
 }
 
 export function createEc2PoolProvider(): Omit<PoolRunnerProvider, 'type'> {
