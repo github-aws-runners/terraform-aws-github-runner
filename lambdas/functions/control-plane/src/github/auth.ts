@@ -1,5 +1,5 @@
 import { createAppAuth, type AppAuthentication, type InstallationAccessTokenAuthentication } from '@octokit/auth-app';
-import type { OctokitOptions } from '@octokit/core';
+import type { OctokitOptions, Octokit as CoreOctokit } from '@octokit/core';
 import type { RequestInterface } from '@octokit/types';
 
 // Define types that are not directly exported
@@ -40,7 +40,10 @@ const MAX_SECONDARY_RATE_LIMIT_RETRIES = 1;
 export function onRateLimit(
   retryAfter: number,
   options: Required<EndpointDefaults>,
-  _octokit: Octokit,
+  // The throttling plugin types this as @octokit/core's Octokit, not the wider
+  // @octokit/rest one imported above; matching it keeps the handler assignable to
+  // the plugin's LimitHandler. Unused here regardless.
+  _octokit: CoreOctokit,
   retryCount: number,
 ): boolean {
   logger.warn(
@@ -53,7 +56,10 @@ export function onRateLimit(
 export function onSecondaryRateLimit(
   retryAfter: number,
   options: Required<EndpointDefaults>,
-  _octokit: Octokit,
+  // The throttling plugin types this as @octokit/core's Octokit, not the wider
+  // @octokit/rest one imported above; matching it keeps the handler assignable to
+  // the plugin's LimitHandler. Unused here regardless.
+  _octokit: CoreOctokit,
   retryCount: number,
 ): boolean {
   logger.warn(
