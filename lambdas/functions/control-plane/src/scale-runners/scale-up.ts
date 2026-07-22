@@ -313,7 +313,6 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       githubRunnerConfig,
       numberOfRunners: newRunners,
       githubInstallationClient,
-      messages: queuedMessages.slice(0, newRunners),
       state: preparedRunnerGroup.state,
     });
 
