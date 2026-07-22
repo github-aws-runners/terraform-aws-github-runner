@@ -820,9 +820,9 @@ describe('create runner with errors', () => {
   it('returns partial instances on recognized scale error instead of throwing', async () => {
     createFleetMockWithErrors(['UnfulfillableCapacity'], ['i-partial']);
 
-    await expect(
-      createRunner({ ...createRunnerConfig(defaultRunnerConfig), numberOfRunners: 3 }),
-    ).resolves.toEqual(['i-partial']);
+    await expect(createRunner({ ...createRunnerConfig(defaultRunnerConfig), numberOfRunners: 3 })).resolves.toEqual([
+      'i-partial',
+    ]);
     expect(mockEC2Client).toHaveReceivedCommandWith(
       CreateFleetCommand,
       expectedCreateFleetRequest({ ...defaultExpectedFleetRequestValues, totalTargetCapacity: 3 }),
