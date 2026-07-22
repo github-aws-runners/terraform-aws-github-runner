@@ -1,5 +1,22 @@
 # Changelog
 
+## [7.10.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v7.9.0...v7.10.0) (2026-07-17)
+
+
+### Features
+
+* **pool:** Allow to optionally include busy runners into the pool ([#5078](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5078)) ([c3eeb0f](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/c3eeb0ff6f564d540d2955d21c6247f8b276cc8e))
+* **runners:** support OnDemandOptions.AllocationStrategy in EC2 Fleet ([#5077](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5077)) ([28b90f4](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/28b90f4692223eb9a02fb6da3c7b713c220768cc))
+* **termination-watcher:** deregister runners from GitHub on EC2 termination ([#5055](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5055)) ([c7494c1](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/c7494c1f0e8667b950d369066bf6f2da4f97e856))
+* **webhook:** support multi-region SQS dispatch in runner webhook ([#5099](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5099)) ([768d08b](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/768d08be1b2dfc62cc219814b8ac4f21bda39217))
+
+
+### Bug Fixes
+
+* **deps:** bump actions/stale from 10.3.0 to 10.4.0 in the github group ([#5210](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5210)) ([ef8719e](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/ef8719edac91c5f7d997bdd00c3b5a261a944c61))
+* **deps:** bump github/codeql-action/upload-sarif from 4.36.2 to 4.36.3 ([#5207](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5207)) ([c7a8096](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/c7a80965cc2369ee4635ef0ab550fb5337d8d265))
+* retry installation auth for regional GitHub App events ([#5123](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5123)) ([8222052](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/82220521c2299e971a5d689e1c73686bd7aacd9d))
+
 ## [7.9.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v7.8.0...v7.9.0) (2026-07-04)
 
 

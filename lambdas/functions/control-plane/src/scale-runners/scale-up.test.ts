@@ -1549,6 +1549,30 @@ describe('scaleUp with GHES', () => {
         }),
       );
     });
+
+    it('Should assume job is queued when isJobQueued throws (fail-open)', async () => {
+      mockOctokit.actions.getJobForWorkflowRun.mockRejectedValue(new Error('GitHub API 502'));
+
+      const messages = createTestMessages(2);
+      await scaleUpModule.scaleUp(messages);
+
+      // All messages processed despite API error — fail-open prevents job drops
+      expect(createRunner).toHaveBeenCalledWith(
+        expect.objectContaining({
+          numberOfRunners: 2,
+        }),
+      );
+    });
+
+    it('Should not fail-open for unsupported event types', async () => {
+      // An unsupported event can never become answerable, so fail-open must not
+      // swallow it — otherwise every check_run event silently scales up a runner.
+      process.env.ENABLE_EPHEMERAL_RUNNERS = 'false';
+      const messages = createTestMessages(1).map((m) => ({ ...m, eventType: 'check_run' as const }));
+
+      await expect(scaleUpModule.scaleUp(messages)).rejects.toThrow('Event check_run is not supported');
+      expect(createRunner).not.toHaveBeenCalled();
+    });
   });
 });
 

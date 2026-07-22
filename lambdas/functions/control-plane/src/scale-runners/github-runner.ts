@@ -136,6 +136,16 @@ export async function getInstallationId(
   return resolveInstallationId(githubAppClient, enableOrgLevel, payload);
 }
 
+// Raised when the queued-check is asked about an event type it cannot interpret.
+// Distinct from an API failure: no amount of retrying makes a check_run event
+// answerable, so callers must not treat this as a transient fault.
+export class UnsupportedEventError extends Error {
+  constructor(eventType: string) {
+    super(`Event ${eventType} is not supported`);
+    this.name = 'UnsupportedEventError';
+  }
+}
+
 export async function isJobQueued(githubInstallationClient: Octokit, payload: ActionRequestMessage): Promise<boolean> {
   let isQueued = false;
   if (payload.eventType === 'workflow_job') {
@@ -148,7 +158,7 @@ export async function isJobQueued(githubInstallationClient: Octokit, payload: Ac
     isQueued = jobForWorkflowRun.data.status === 'queued';
     logger.debug(`The job ${payload.id} is${isQueued ? ' ' : 'not'} queued`);
   } else {
-    throw Error(`Event ${payload.eventType} is not supported`);
+    throw new UnsupportedEventError(payload.eventType);
   }
   return isQueued;
 }
