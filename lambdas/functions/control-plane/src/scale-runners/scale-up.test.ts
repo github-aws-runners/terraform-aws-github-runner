@@ -17,6 +17,7 @@ import type { Octokit } from '@octokit/rest';
 
 const mockOctokit = {
   paginate: vi.fn(),
+  request: vi.fn(),
   checks: { get: vi.fn() },
   actions: {
     createRegistrationTokenForOrg: vi.fn(),
@@ -55,6 +56,7 @@ vi.mock('./../github/auth', async () => ({
   createGithubAppAuth: vi.fn(),
   createGithubInstallationAuth: vi.fn(),
   createOctokitClient: vi.fn(),
+  createEnterprisePATClient: vi.fn(),
 }));
 
 vi.mock('@aws-github-runner/aws-ssm-util', async () => {
@@ -220,7 +222,7 @@ describe('scaleUp with GHES', () => {
 
   describe('on org level', () => {
     beforeEach(() => {
-      process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
+      process.env.RUNNER_REGISTRATION_LEVEL = 'org';
       process.env.ENABLE_EPHEMERAL_RUNNERS = 'true';
       process.env.RUNNER_NAME_PREFIX = 'unit-test-';
       process.env.RUNNER_GROUP_NAME = 'Default';
@@ -377,7 +379,7 @@ describe('scaleUp with GHES', () => {
     });
 
     it('Discards event if it is a User repo and org level runners is enabled', async () => {
-      process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
+      process.env.RUNNER_REGISTRATION_LEVEL = 'org';
       const USER_REPO_TEST_DATA = structuredClone(TEST_DATA);
       USER_REPO_TEST_DATA[0].repoOwnerType = 'User';
       await scaleUpModule.scaleUp(USER_REPO_TEST_DATA);
@@ -705,7 +707,8 @@ describe('scaleUp with GHES', () => {
 
   describe('Dynamic EC2 Configuration', () => {
     beforeEach(() => {
-      process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
+      process.env.ENABLE_ORGANIZATION_RUNNERS = 'true'; // DEPRECATED: use RUNNER_REGISTRATION_LEVEL
+      process.env.RUNNER_REGISTRATION_LEVEL = 'org';
       process.env.ENABLE_EPHEMERAL_RUNNERS = 'true';
       process.env.ENABLE_JOB_QUEUED_CHECK = 'false';
       process.env.RUNNER_LABELS = 'base-label';
@@ -1230,7 +1233,7 @@ describe('scaleUp with GHES', () => {
 
   describe('on repo level', () => {
     beforeEach(() => {
-      process.env.ENABLE_ORGANIZATION_RUNNERS = 'false';
+      process.env.RUNNER_REGISTRATION_LEVEL = 'repo';
       process.env.RUNNER_NAME_PREFIX = 'unit-test';
       expectedRunnerParams = { ...EXPECTED_RUNNER_PARAMS };
       expectedRunnerParams.runnerType = 'Repo';
@@ -1298,7 +1301,7 @@ describe('scaleUp with GHES', () => {
 
   describe('Batch processing', () => {
     beforeEach(() => {
-      process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
+      process.env.RUNNER_REGISTRATION_LEVEL = 'org';
       process.env.ENABLE_EPHEMERAL_RUNNERS = 'true';
       process.env.RUNNERS_MAXIMUM_COUNT = '10';
     });
@@ -1353,7 +1356,7 @@ describe('scaleUp with GHES', () => {
     });
 
     it('Should handle multiple messages for different repositories when org-level is disabled', async () => {
-      process.env.ENABLE_ORGANIZATION_RUNNERS = 'false';
+      process.env.RUNNER_REGISTRATION_LEVEL = 'repo';
       const messages = createTestMessages(3, [
         { repositoryOwner: 'owner1', repositoryName: 'repo1' },
         { repositoryOwner: 'owner1', repositoryName: 'repo2' },
@@ -1602,7 +1605,7 @@ describe('scaleUp with public GH', () => {
 
   describe('on org level', () => {
     beforeEach(() => {
-      process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
+      process.env.RUNNER_REGISTRATION_LEVEL = 'org';
       process.env.RUNNER_NAME_PREFIX = 'unit-test';
       expectedRunnerParams = { ...EXPECTED_RUNNER_PARAMS };
     });
@@ -1648,7 +1651,7 @@ describe('scaleUp with public GH', () => {
     beforeEach(() => {
       mockSSMClient.reset();
 
-      process.env.ENABLE_ORGANIZATION_RUNNERS = 'false';
+      process.env.RUNNER_REGISTRATION_LEVEL = 'repo';
       process.env.RUNNER_NAME_PREFIX = 'unit-test';
       expectedRunnerParams = { ...EXPECTED_RUNNER_PARAMS };
       expectedRunnerParams.runnerType = 'Repo';
@@ -1825,7 +1828,7 @@ describe('scaleUp with public GH', () => {
 
     beforeEach(() => {
       setDefaults();
-      process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
+      process.env.RUNNER_REGISTRATION_LEVEL = 'org';
       process.env.ENABLE_EPHEMERAL_RUNNERS = 'true';
       process.env.RUNNERS_MAXIMUM_COUNT = '10';
     });
@@ -1868,7 +1871,7 @@ describe('scaleUp with public GH', () => {
     });
 
     it('Should handle multiple messages for different repositories when org-level is disabled', async () => {
-      process.env.ENABLE_ORGANIZATION_RUNNERS = 'false';
+      process.env.RUNNER_REGISTRATION_LEVEL = 'repo';
       const messages = createTestMessages(3, [
         { repositoryOwner: 'owner1', repositoryName: 'repo1' },
         { repositoryOwner: 'owner1', repositoryName: 'repo2' },
@@ -2061,7 +2064,7 @@ describe('scaleUp with Github Data Residency', () => {
 
   describe('on org level', () => {
     beforeEach(() => {
-      process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
+      process.env.RUNNER_REGISTRATION_LEVEL = 'org';
       process.env.ENABLE_EPHEMERAL_RUNNERS = 'true';
       process.env.RUNNER_NAME_PREFIX = 'unit-test-';
       process.env.RUNNER_GROUP_NAME = 'Default';
@@ -2135,7 +2138,7 @@ describe('scaleUp with Github Data Residency', () => {
     });
 
     it('Discards event if it is a User repo and org level runners is enabled', async () => {
-      process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
+      process.env.RUNNER_REGISTRATION_LEVEL = 'org';
       const USER_REPO_TEST_DATA = structuredClone(TEST_DATA);
       USER_REPO_TEST_DATA[0].repoOwnerType = 'User';
       await scaleUpModule.scaleUp(USER_REPO_TEST_DATA);
@@ -2269,7 +2272,7 @@ describe('scaleUp with Github Data Residency', () => {
   });
   describe('on repo level', () => {
     beforeEach(() => {
-      process.env.ENABLE_ORGANIZATION_RUNNERS = 'false';
+      process.env.RUNNER_REGISTRATION_LEVEL = 'repo';
       process.env.RUNNER_NAME_PREFIX = 'unit-test';
       expectedRunnerParams = { ...EXPECTED_RUNNER_PARAMS };
       expectedRunnerParams.runnerType = 'Repo';
@@ -2350,7 +2353,7 @@ describe('scaleUp with Github Data Residency', () => {
 
     beforeEach(() => {
       setDefaults();
-      process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
+      process.env.RUNNER_REGISTRATION_LEVEL = 'org';
       process.env.ENABLE_EPHEMERAL_RUNNERS = 'true';
       process.env.RUNNERS_MAXIMUM_COUNT = '10';
     });
@@ -2393,7 +2396,7 @@ describe('scaleUp with Github Data Residency', () => {
     });
 
     it('Should handle multiple messages for different repositories when org-level is disabled', async () => {
-      process.env.ENABLE_ORGANIZATION_RUNNERS = 'false';
+      process.env.RUNNER_REGISTRATION_LEVEL = 'repo';
       const messages = createTestMessages(3, [
         { repositoryOwner: 'owner1', repositoryName: 'repo1' },
         { repositoryOwner: 'owner1', repositoryName: 'repo2' },
@@ -2566,7 +2569,7 @@ describe('scaleUp with Github Data Residency', () => {
 
 describe('Retry mechanism tests', () => {
   beforeEach(() => {
-    process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
+    process.env.RUNNER_REGISTRATION_LEVEL = 'org';
     process.env.ENABLE_EPHEMERAL_RUNNERS = 'true';
     process.env.ENABLE_JOB_QUEUED_CHECK = 'true';
     process.env.RUNNERS_MAXIMUM_COUNT = '10';
@@ -3526,6 +3529,22 @@ function defaultOctokitMockImpl() {
 
   mockOctokit.actions.createRegistrationTokenForOrg.mockImplementation(() => mockTokenReturnValue);
   mockOctokit.actions.createRegistrationTokenForRepo.mockImplementation(() => mockTokenReturnValue);
+  // Enterprise API calls use ghClient.request() instead of typed action methods
+  mockOctokit.request.mockImplementation((route: string) => {
+    if (route === 'POST /enterprises/{enterprise}/actions/runners/registration-token') {
+      return mockTokenReturnValue;
+    }
+    if (route === 'POST /enterprises/{enterprise}/actions/runners/generate-jitconfig') {
+      return {
+        data: {
+          runner: { id: 9876543210 },
+          encoded_jit_config: 'TEST_JIT_CONFIG_ENTERPRISE',
+        },
+        headers: {},
+      };
+    }
+    throw new Error(`Unexpected request route: ${route}`);
+  });
   mockOctokit.apps.getOrgInstallation.mockImplementation(() => mockInstallationIdReturnValueOrgs);
   mockOctokit.apps.getRepoInstallation.mockImplementation(() => mockInstallationIdReturnValueRepos);
 }
@@ -3541,3 +3560,77 @@ function defaultSSMGetParameterMockImpl() {
     }
   });
 }
+
+describe('scaleUp with enterprise runner registration level', () => {
+  const mockedEnterprisePATClient = vi.mocked(ghAuth.createEnterprisePATClient);
+
+  beforeEach(() => {
+    process.env.RUNNER_REGISTRATION_LEVEL = 'enterprise';
+    process.env.ENTERPRISE_SLUG = 'my-enterprise';
+    process.env.PARAMETER_ENTERPRISE_PAT_NAME = '/ssm/enterprise-pat';
+    mockedEnterprisePATClient.mockResolvedValue(mockOctokit as unknown as Octokit);
+  });
+
+  it('should use PAT client for enterprise runners', async () => {
+    await scaleUpModule.scaleUp(TEST_DATA);
+    expect(mockedEnterprisePATClient).toHaveBeenCalled();
+  });
+
+  it('should not use GitHub App auth for enterprise runners', async () => {
+    await scaleUpModule.scaleUp(TEST_DATA);
+    expect(mockedAppAuth).not.toHaveBeenCalled();
+    expect(mockedInstallationAuth).not.toHaveBeenCalled();
+  });
+
+  it('should call createRegistrationTokenForEnterprise', async () => {
+    await scaleUpModule.scaleUp(TEST_DATA);
+    expect(mockOctokit.request).toHaveBeenCalledWith(
+      'POST /enterprises/{enterprise}/actions/runners/registration-token',
+      {
+        enterprise: 'my-enterprise',
+      },
+    );
+  });
+
+  it('should pass enterprise runner type to createRunner', async () => {
+    await scaleUpModule.scaleUp(TEST_DATA);
+    expect(mockCreateRunner).toHaveBeenCalledWith(
+      expect.objectContaining({
+        runnerType: 'Enterprise',
+        runnerOwner: 'my-enterprise',
+        enterpriseSlug: 'my-enterprise',
+      }),
+    );
+  });
+
+  it('should accept non-Organization owner types for enterprise runners', () => {
+    const payload: scaleUpModule.ActionRequestMessage = {
+      ...TEST_DATA_SINGLE,
+      repoOwnerType: 'User',
+    };
+    expect(scaleUpModule.isValidRepoOwnerType(payload, 'Enterprise')).toBe(true);
+  });
+
+  it('should reject non-Organization owner types for org runners', () => {
+    const payload: scaleUpModule.ActionRequestMessage = {
+      ...TEST_DATA_SINGLE,
+      repoOwnerType: 'User',
+    };
+    expect(scaleUpModule.isValidRepoOwnerType(payload, 'Org')).toBe(false);
+  });
+
+  it('should use RUNNER_REGISTRATION_LEVEL to determine runner type', async () => {
+    process.env.RUNNER_REGISTRATION_LEVEL = 'repo';
+    await scaleUpModule.scaleUp(TEST_DATA);
+    expect(mockOctokit.actions.createRegistrationTokenForRepo).toHaveBeenCalled();
+  });
+});
+
+describe('scaleUp defaults', () => {
+  it('should default to repo level when RUNNER_REGISTRATION_LEVEL is not set', async () => {
+    delete process.env.RUNNER_REGISTRATION_LEVEL;
+    const repoPayload = [{ ...TEST_DATA_SINGLE, repoOwnerType: 'User', messageId: 'msg1' }];
+    await scaleUpModule.scaleUp(repoPayload);
+    expect(mockOctokit.actions.createRegistrationTokenForRepo).toHaveBeenCalled();
+  });
+});

@@ -80,7 +80,7 @@ locals {
     ## retain these for backwards compatibility
     environment                     = var.prefix
     enable_cloudwatch_agent         = var.enable_cloudwatch_agent
-    ssm_key_cloudwatch_agent_config = var.enable_cloudwatch_agent ? aws_ssm_parameter.cloudwatch_agent_config_runner[0].name : ""
+    ssm_key_cloudwatch_agent_config = var.enable_cloudwatch_agent ? nonsensitive(aws_ssm_parameter.cloudwatch_agent_config_runner[0].name) : ""
   }) : var.userdata_content) : ""
 
   encoded_user_data = (
@@ -216,7 +216,7 @@ resource "aws_launch_template" "runner" {
   }
 
   instance_initiated_shutdown_behavior = "terminate"
-  image_id                             = "resolve:ssm:${local.ami_id_ssm_module_managed ? aws_ssm_parameter.runner_ami_id[0].arn : var.ami.id_ssm_parameter_arn}"
+  image_id                             = "resolve:ssm:${local.ami_id_ssm_module_managed ? nonsensitive(aws_ssm_parameter.runner_ami_id[0].arn) : var.ami.id_ssm_parameter_arn}"
   key_name                             = var.key_name
   ebs_optimized                        = var.ebs_optimized
 
