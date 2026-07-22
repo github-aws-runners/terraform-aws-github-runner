@@ -409,17 +409,18 @@ variable "log_class" {
 }
 
 variable "block_device_mappings" {
-  description = "The EC2 instance block device configuration. Takes the following keys: `device_name`, `delete_on_termination`, `volume_type`, `volume_size`, `encrypted`, `iops`, `throughput`, `kms_key_id`, `snapshot_id`."
+  description = "The EC2 instance block device configuration. Takes the following keys: `device_name`, `delete_on_termination`, `volume_type`, `volume_size`, `encrypted`, `iops`, `throughput`, `kms_key_id`, `snapshot_id`, `volume_initialization_rate`."
   type = list(object({
-    delete_on_termination = optional(bool, true)
-    device_name           = optional(string, "/dev/xvda")
-    encrypted             = optional(bool, true)
-    iops                  = optional(number)
-    kms_key_id            = optional(string)
-    snapshot_id           = optional(string)
-    throughput            = optional(number)
-    volume_size           = number
-    volume_type           = optional(string, "gp3")
+    delete_on_termination      = optional(bool, true)
+    device_name                = optional(string, "/dev/xvda")
+    encrypted                  = optional(bool, true)
+    iops                       = optional(number)
+    kms_key_id                 = optional(string)
+    snapshot_id                = optional(string)
+    throughput                 = optional(number)
+    volume_initialization_rate = optional(number)
+    volume_size                = number
+    volume_type                = optional(string, "gp3")
   }))
   default = [{
     volume_size = 30
@@ -581,13 +582,19 @@ variable "instance_target_capacity_type" {
 }
 
 variable "instance_allocation_strategy" {
-  description = "The allocation strategy for spot instances. AWS recommends using `price-capacity-optimized` however the AWS default is `lowest-price`."
+  description = "The allocation strategy for creating instances. For spot, AWS recommends `price-capacity-optimized`; for on-demand, use `lowest-price` or `prioritized`. The AWS default is `lowest-price`."
   type        = string
   default     = "lowest-price"
   validation {
-    condition     = contains(["lowest-price", "diversified", "capacity-optimized", "capacity-optimized-prioritized", "price-capacity-optimized"], var.instance_allocation_strategy)
+    condition     = contains(["lowest-price", "diversified", "capacity-optimized", "capacity-optimized-prioritized", "price-capacity-optimized", "prioritized"], var.instance_allocation_strategy)
     error_message = "The instance allocation strategy does not match the allowed values."
   }
+}
+
+variable "instance_type_priorities" {
+  description = "A map of instance type to priority for the `prioritized` and `capacity-optimized-prioritized` allocation strategies. Lower numbers mean higher priority. If not provided, priorities are assigned based on the order of `instance_types`."
+  type        = map(number)
+  default     = null
 }
 
 variable "instance_max_spot_price" {
@@ -606,6 +613,16 @@ variable "repository_white_list" {
   description = "List of github repository full names (owner/repo_name) that will be allowed to use the github app. Leave empty for no filtering."
   type        = list(string)
   default     = []
+}
+
+variable "queue_selection_strategy" {
+  description = "Strategy used to pick a queue when multiple runner configurations match a job equally well. `first` keeps the historical deterministic behaviour (the first matching queue by priority). `random` spreads jobs across the matching queues to avoid concentrating load on a single one. `all` scales up one runner per matching queue and lets the first to become available take the job (favouring speed over cost; this multiplies instance launches and runner registrations per job)."
+  type        = string
+  default     = "first"
+  validation {
+    condition     = contains(["first", "random", "all"], var.queue_selection_strategy)
+    error_message = "`queue_selection_strategy` value not valid. Valid values are 'first', 'random', 'all'."
+  }
 }
 
 variable "delay_webhook_event" {
@@ -663,9 +680,15 @@ variable "log_level" {
 }
 
 variable "enable_runner_workflow_job_labels_check_all" {
-  description = "If set to true all labels in the workflow job must match the GitHub labels (os, architecture and `self-hosted`). When false if __any__ label matches it will trigger the webhook."
+  description = "DEPRECATED: Use `enable_runner_bidirectional_label_match` instead. If set to true all labels in the workflow job must match the GitHub labels (os, architecture and `self-hosted`). When false if __any__ label matches it will trigger the webhook. Note: this only checks that workflow labels are a subset of runner labels, not the reverse."
   type        = bool
   default     = true
+}
+
+variable "enable_runner_bidirectional_label_match" {
+  description = "If set to true, the runner labels and workflow job labels must be an exact two-way match (same set, any order, no extras or missing labels). This is stricter than `enable_runner_workflow_job_labels_check_all` which only checks that workflow labels are a subset of runner labels. When false, if __any__ label matches it will trigger the webhook."
+  type        = bool
+  default     = false
 }
 
 variable "matcher_config_parameter_store_tier" {
@@ -701,9 +724,35 @@ variable "enable_ephemeral_runners" {
 }
 
 variable "enable_dynamic_labels" {
-  description = "Experimental! Can be removed / changed without trigger a major release. Enable dynamic EC2 configs based on workflow job labels. When enabled, jobs can request specific configs via the 'gh-ec2-<config type key>:<config type value>' label (e.g., 'gh-ec2-instance-type:t3.large'). When enabled, labels starting with `ghr-` are ignored during webhook label matching."
+  description = "Experimental! Can be removed / changed without trigger a major release. Enable dynamic EC2 configs based on workflow job labels. When enabled, jobs can request specific configs via the 'ghr-ec2-<config type key>:<config type value>' label (e.g., 'ghr-ec2-instance-type:t3.large'). When enabled, labels starting with `ghr-` are ignored during webhook label matching."
   type        = bool
   default     = false
+}
+
+variable "ec2_dynamic_labels_policy" {
+  description = <<-EOT
+    Experimental! Can be removed / changed without trigger a major release.
+    Optional policy for dynamic EC2 override labels evaluated by the webhook
+    dispatcher. Only effective when `enable_dynamic_labels = true`.
+
+    Jobs whose EC2 dynamic labels violate the policy are rejected with a 202 and a
+    warning is logged.
+
+    Evaluation:
+      1. Keys in `blocked_keys` are always rejected.
+      2. Keys in `restricted_keys` are allowed only when their value passes the rule.
+      3. Keys not listed in `blocked_keys` or `restricted_keys` are allowed.
+
+    Schema:
+      - `blocked_keys`: keys to reject outright.
+      - `restricted_keys`: map of key to value rule:
+          `{ allowed = [globs], denied = [globs], max = number|string }`.
+
+    Keys use the `ghr-ec2-*` dynamic label suffix, not the full label. For example, use
+    `instance-type` for `ghr-ec2-instance-type`.
+  EOT
+  type        = any
+  default     = null
 }
 
 variable "enable_job_queued_check" {
@@ -796,6 +845,12 @@ variable "pool_config" {
     size                         = number
   }))
   default = []
+}
+
+variable "pool_include_busy_runners" {
+  description = "Include busy runners in the pool calculation. By default busy runners are not included in the pool."
+  type        = bool
+  default     = false
 }
 
 variable "aws_partition" {
@@ -1009,6 +1064,7 @@ variable "instance_termination_watcher" {
 
     `enable`: Enable or disable the spot termination watcher.
     'features': Enable or disable features of the termination watcher.
+    `enable_runner_deregistration`: Enable or disable deregistering the runner from GitHub when its EC2 instance is terminated.
     `memory_size`: Memory size limit in MB of the lambda.
     `s3_key`: S3 key for syncer lambda function. Required if using S3 bucket to specify lambdas.
     `s3_object_version`: S3 object version for syncer lambda function. Useful if S3 versioning is enabled on source bucket.
@@ -1022,11 +1078,12 @@ variable "instance_termination_watcher" {
       enable_spot_termination_handler              = optional(bool, true)
       enable_spot_termination_notification_watcher = optional(bool, true)
     }), {})
-    memory_size       = optional(number, null)
-    s3_key            = optional(string, null)
-    s3_object_version = optional(string, null)
-    timeout           = optional(number, null)
-    zip               = optional(string, null)
+    enable_runner_deregistration = optional(bool, true)
+    memory_size                  = optional(number, null)
+    s3_key                       = optional(string, null)
+    s3_object_version            = optional(string, null)
+    timeout                      = optional(number, null)
+    zip                          = optional(string, null)
   })
   default = {}
 

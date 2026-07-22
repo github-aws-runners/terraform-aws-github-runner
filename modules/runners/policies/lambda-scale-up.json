@@ -5,6 +5,7 @@
             "Effect": "Allow",
             "Action": [
                 "ec2:DescribeInstances",
+                "ec2:DescribeLaunchTemplateVersions",
                 "ec2:DescribeTags",
                 "ec2:RunInstances",
                 "ec2:CreateFleet",

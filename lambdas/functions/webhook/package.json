@@ -23,7 +23,7 @@
     "@types/express": "^5.0.6",
     "@types/node": "^22.19.3",
     "@vercel/ncc": "0.38.4",
-    "body-parser": "^2.2.1",
+    "body-parser": "^2.3.0",
     "express": "^5.2.0",
     "ts-node-dev": "^2.0.0"
   },
@@ -34,8 +34,7 @@
     "@middy/core": "^6.4.5",
     "@octokit/rest": "22.0.1",
     "@octokit/types": "^16.0.0",
-    "@octokit/webhooks": "^14.2.0",
-    "aws-lambda": "^1.0.7"
+    "@octokit/webhooks": "^14.2.0"
   },
   "nx": {
     "includedScripts": [

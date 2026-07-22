@@ -1,3 +1,11 @@
+locals {
+  pool_name_prefix = (
+    length("${var.config.prefix}-pool") <= 38
+    ? "${var.config.prefix}-pool"
+    : "${substr("${var.config.prefix}-pool", 0, 29)}-${substr(md5("${var.config.prefix}-pool"), 0, 8)}"
+  )
+}
+
 resource "aws_lambda_function" "pool" {
 
   s3_bucket                      = var.config.lambda.s3_bucket != null ? var.config.lambda.s3_bucket : null
@@ -27,6 +35,7 @@ resource "aws_lambda_function" "pool" {
       INSTANCE_ALLOCATION_STRATEGY             = var.config.instance_allocation_strategy
       INSTANCE_MAX_SPOT_PRICE                  = var.config.instance_max_spot_price
       INSTANCE_TARGET_CAPACITY_TYPE            = var.config.instance_target_capacity_type
+      INSTANCE_TYPE_PRIORITIES                 = var.config.instance_type_priorities != null ? jsonencode(var.config.instance_type_priorities) : ""
       INSTANCE_TYPES                           = join(",", var.config.instance_types)
       LAUNCH_TEMPLATE_NAME                     = var.config.runner.launch_template.name
       LOG_LEVEL                                = var.config.lambda.log_level
@@ -39,6 +48,7 @@ resource "aws_lambda_function" "pool" {
       RUNNER_GROUP_NAME                        = var.config.runner.group_name
       RUNNER_NAME_PREFIX                       = var.config.runner.name_prefix
       RUNNER_OWNER                             = var.config.runner.pool_owner
+      RUNNERS_MAXIMUM_COUNT                    = var.config.runners_maximum_count
       SSM_TOKEN_PATH                           = var.config.ssm_token_path
       SSM_CONFIG_PATH                          = var.config.ssm_config_path
       SUBNET_IDS                               = join(",", var.config.subnet_ids)
@@ -50,6 +60,7 @@ resource "aws_lambda_function" "pool" {
       SSM_PARAMETER_STORE_TAGS                 = var.config.lambda.parameter_store_tags
       SCALE_ERRORS                             = jsonencode(var.config.runner.scale_errors)
       USE_DEDICATED_HOST                       = var.config.runner.use_dedicated_host
+      INCLUDE_BUSY_RUNNERS                     = var.config.include_busy_runners
     }
   }
 
@@ -156,7 +167,7 @@ resource "aws_iam_role_policy" "pool_xray" {
 }
 
 resource "aws_scheduler_schedule_group" "pool" {
-  name_prefix = "${var.config.prefix}-pool"
+  name_prefix = local.pool_name_prefix
 
   tags = var.config.tags
 }
@@ -187,7 +198,7 @@ data "aws_iam_policy_document" "scheduler" {
 }
 
 resource "aws_iam_role" "scheduler" {
-  name_prefix = "${var.config.prefix}-pool"
+  name_prefix = local.pool_name_prefix
 
   path                 = var.config.role_path
   permissions_boundary = var.config.role_permissions_boundary

@@ -1,5 +1,6 @@
 import {
   DefaultTargetCapacityType,
+  FleetOnDemandAllocationStrategy,
   InstanceRequirementsRequest,
   SpotAllocationStrategy,
   _InstanceType,
@@ -59,9 +60,10 @@ export interface RunnerInputParameters {
   launchTemplateName: string;
   ec2instanceCriteria: {
     instanceTypes: string[];
+    instanceTypePriorities?: Record<string, number>;
     targetCapacityType: DefaultTargetCapacityType;
     maxSpotPrice?: string;
-    instanceAllocationStrategy: SpotAllocationStrategy;
+    instanceAllocationStrategy: SpotAllocationStrategy | FleetOnDemandAllocationStrategy;
   };
   ec2OverrideConfig?: Ec2OverrideConfig;
   numberOfRunners: number;

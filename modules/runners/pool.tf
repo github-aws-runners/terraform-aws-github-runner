@@ -12,9 +12,11 @@ module "pool" {
     user_agent                    = var.user_agent
     github_app_parameters         = var.github_app_parameters
     instance_allocation_strategy  = var.instance_allocation_strategy
+    instance_type_priorities      = var.instance_type_priorities
     instance_max_spot_price       = var.instance_max_spot_price
     instance_target_capacity_type = var.instance_target_capacity_type
     instance_types                = var.instance_types
+    runners_maximum_count         = var.runners_maximum_count
     kms_key_arn                   = local.kms_key_arn
     ami_kms_key_arn               = local.ami_kms_key_arn
     ami_id_ssm_parameter_arn      = local.ami_id_ssm_module_managed ? aws_ssm_parameter.runner_ami_id[0].arn : var.ami.id_ssm_parameter_arn
@@ -37,6 +39,7 @@ module "pool" {
       parameter_store_tags           = local.parameter_store_tags
     }
     pool                      = var.pool_config
+    include_busy_runners      = var.pool_include_busy_runners
     role_path                 = local.role_path
     role_permissions_boundary = var.role_permissions_boundary
     runner = {

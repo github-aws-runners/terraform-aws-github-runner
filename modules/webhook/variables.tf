@@ -23,14 +23,17 @@ variable "tags" {
 }
 
 variable "runner_matcher_config" {
-  description = "SQS queue to publish accepted build events based on the runner type. When exact match is disabled the webhook accepts the event if one of the workflow job labels is part of the matcher. The priority defines the order the matchers are applied."
+  description = "SQS queue to publish accepted build events based on the runner type. When exact match is disabled the webhook accepts the event if one of the workflow job labels is part of the matcher. The priority defines the order the matchers are applied. Optional `matcherConfig.enableDynamicLabels` and `matcherConfig.ec2DynamicLabelsPolicy` are evaluated by the dispatcher to gate `ghr-ec2-*` labels per runner. The policy supports `blocked_keys = [<key>]` and `restricted_keys = { <key> = { allowed = [globs], denied = [globs], max = number|string } }`; keys use the `ghr-ec2-*` suffix form, for example `instance-type`."
   type = map(object({
     arn = string
     id  = string
     matcherConfig = object({
-      labelMatchers = list(list(string))
-      exactMatch    = bool
-      priority      = optional(number, 999)
+      labelMatchers           = list(list(string))
+      exactMatch              = bool
+      bidirectionalLabelMatch = optional(bool, false)
+      priority                = optional(number, 999)
+      enableDynamicLabels     = optional(bool, false)
+      ec2DynamicLabelsPolicy  = optional(any, null)
     })
   }))
   validation {
@@ -123,6 +126,16 @@ variable "repository_white_list" {
   description = "List of github repository full names (owner/repo_name) that will be allowed to use the github app. Leave empty for no filtering."
   type        = list(string)
   default     = []
+}
+
+variable "queue_selection_strategy" {
+  description = "Strategy used to pick a queue when multiple runner configurations match a job equally well. `first` keeps the historical deterministic behaviour (the first matching queue by priority). `random` spreads jobs across the matching queues to avoid concentrating load on a single one. `all` scales up one runner per matching queue and lets the first to become available take the job (favouring speed over cost; this multiplies instance launches and runner registrations per job)."
+  type        = string
+  default     = "first"
+  validation {
+    condition     = contains(["first", "random", "all"], var.queue_selection_strategy)
+    error_message = "`queue_selection_strategy` value not valid. Valid values are 'first', 'random', 'all'."
+  }
 }
 
 variable "kms_key_arn" {
@@ -225,10 +238,3 @@ EOF
     accept_events = optional(list(string), null)
   })
 }
-
-variable "enable_dynamic_labels" {
-  description = "Experimental! Can be removed / changed without trigger a major release. Enable dynamic labels with 'ghr-' prefix. When enabled, jobs can use 'ghr-ec2-<config>:<value>' labels to dynamically configure EC2 instances (e.g., 'ghr-ec2-instance-type:t3.large') and 'ghr-run-<label>' to add unique labels dynamically to runners."
-  type        = bool
-  default     = false
-}
-

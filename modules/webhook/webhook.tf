@@ -70,6 +70,7 @@ module "direct" {
     lambda_s3_object_version              = var.webhook_lambda_s3_object_version,
     lambda_apigateway_access_log_settings = var.webhook_lambda_apigateway_access_log_settings,
     repository_white_list                 = var.repository_white_list,
+    queue_selection_strategy              = var.queue_selection_strategy,
     kms_key_arn                           = var.kms_key_arn,
     log_level                             = var.log_level,
     lambda_runtime                        = var.lambda_runtime,
@@ -86,7 +87,6 @@ module "direct" {
         version = p.version
       }
     ]
-    enable_dynamic_labels = var.enable_dynamic_labels
   }
 }
 
@@ -113,6 +113,7 @@ module "eventbridge" {
     lambda_s3_object_version              = var.webhook_lambda_s3_object_version,
     lambda_apigateway_access_log_settings = var.webhook_lambda_apigateway_access_log_settings,
     repository_white_list                 = var.repository_white_list,
+    queue_selection_strategy              = var.queue_selection_strategy,
     kms_key_arn                           = var.kms_key_arn,
     log_level                             = var.log_level,
     lambda_runtime                        = var.lambda_runtime,
@@ -129,8 +130,7 @@ module "eventbridge" {
         version = p.version
       }
     ]
-    accept_events         = var.eventbridge.accept_events
-    enable_dynamic_labels = var.enable_dynamic_labels
+    accept_events = var.eventbridge.accept_events
   }
 
 }

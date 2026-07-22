@@ -94,17 +94,18 @@ variable "s3_runner_binaries" {
 }
 
 variable "block_device_mappings" {
-  description = "The EC2 instance block device configuration. Takes the following keys: `device_name`, `delete_on_termination`, `volume_type`, `volume_size`, `encrypted`, `iops`, `throughput`, `kms_key_id`, `snapshot_id`."
+  description = "The EC2 instance block device configuration. Takes the following keys: `device_name`, `delete_on_termination`, `volume_type`, `volume_size`, `encrypted`, `iops`, `throughput`, `kms_key_id`, `snapshot_id`, `volume_initialization_rate`."
   type = list(object({
-    delete_on_termination = optional(bool, true)
-    device_name           = optional(string, "/dev/xvda")
-    encrypted             = optional(bool, true)
-    iops                  = optional(number)
-    kms_key_id            = optional(string)
-    snapshot_id           = optional(string)
-    throughput            = optional(number)
-    volume_size           = number
-    volume_type           = optional(string, "gp3")
+    delete_on_termination      = optional(bool, true)
+    device_name                = optional(string, "/dev/xvda")
+    encrypted                  = optional(bool, true)
+    iops                       = optional(number)
+    kms_key_id                 = optional(string)
+    snapshot_id                = optional(string)
+    throughput                 = optional(number)
+    volume_initialization_rate = optional(number)
+    volume_size                = number
+    volume_type                = optional(string, "gp3")
   }))
   default = [{
     volume_size = 30
@@ -129,14 +130,20 @@ variable "instance_target_capacity_type" {
 }
 
 variable "instance_allocation_strategy" {
-  description = "The allocation strategy for spot instances. AWS recommends to use `capacity-optimized` however the AWS default is `lowest-price`."
+  description = "The allocation strategy for creating instances. For spot, AWS recommends `price-capacity-optimized`; for on-demand, use `lowest-price` or `prioritized`. The AWS default is `lowest-price`."
   type        = string
   default     = "lowest-price"
 
   validation {
-    condition     = contains(["lowest-price", "diversified", "capacity-optimized", "capacity-optimized-prioritized", "price-capacity-optimized"], var.instance_allocation_strategy)
+    condition     = contains(["lowest-price", "diversified", "capacity-optimized", "capacity-optimized-prioritized", "price-capacity-optimized", "prioritized"], var.instance_allocation_strategy)
     error_message = "The instance allocation strategy does not match the allowed values."
   }
+}
+
+variable "instance_type_priorities" {
+  description = "A map of instance type to priority for the `prioritized` and `capacity-optimized-prioritized` allocation strategies. Lower numbers mean higher priority. If not provided, priorities are assigned based on the order of `instance_types`."
+  type        = map(number)
+  default     = null
 }
 
 variable "instance_max_spot_price" {
@@ -559,12 +566,6 @@ variable "enable_ephemeral_runners" {
   default     = false
 }
 
-variable "enable_dynamic_labels" {
-  description = "Experimental! Can be removed / changed without trigger a major release. Enable dynamic labels with 'ghr-' prefix. When enabled, jobs can use 'ghr-ec2-<config>:<value>' labels to dynamically configure EC2 instances (e.g., 'ghr-ec2-instance-type:t3.large') and 'ghr-run-<label>' to add unique labels dynamically to runners."
-  type        = bool
-  default     = false
-}
-
 variable "enable_job_queued_check" {
   description = "Only scale if the job event received by the scale up lambda is is in the state queued. By default enabled for non ephemeral runners and disabled for ephemeral. Set this variable to overwrite the default behavior."
   type        = bool
@@ -603,6 +604,12 @@ variable "pool_config" {
     size                         = number
   }))
   default = []
+}
+
+variable "pool_include_busy_runners" {
+  description = "Include busy runners in the pool calculation. By default busy runners are not included in the pool."
+  type        = bool
+  default     = false
 }
 
 variable "disable_runner_autoupdate" {

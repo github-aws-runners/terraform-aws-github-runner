@@ -22,6 +22,7 @@ module "runners" {
   instance_types                = each.value.runner_config.instance_types
   instance_target_capacity_type = each.value.runner_config.instance_target_capacity_type
   instance_allocation_strategy  = each.value.runner_config.instance_allocation_strategy
+  instance_type_priorities      = each.value.runner_config.instance_type_priorities
   instance_max_spot_price       = each.value.runner_config.instance_max_spot_price
   block_device_mappings         = each.value.runner_config.block_device_mappings
 
@@ -35,7 +36,6 @@ module "runners" {
   scale_errors                         = each.value.runner_config.scale_errors
   enable_organization_runners          = each.value.runner_config.enable_organization_runners
   enable_ephemeral_runners             = each.value.runner_config.enable_ephemeral_runners
-  enable_dynamic_labels                = var.enable_dynamic_labels
   enable_jit_config                    = each.value.runner_config.enable_jit_config
   enable_job_queued_check              = each.value.runner_config.enable_job_queued_check
   disable_runner_autoupdate            = each.value.runner_config.disable_runner_autoupdate
@@ -68,8 +68,8 @@ module "runners" {
   lambda_architecture                                            = var.lambda_architecture
   lambda_zip                                                     = var.runners_lambda_zip
   lambda_scale_up_memory_size                                    = var.scale_up_lambda_memory_size
-  lambda_event_source_mapping_batch_size                         = var.lambda_event_source_mapping_batch_size
-  lambda_event_source_mapping_maximum_batching_window_in_seconds = var.lambda_event_source_mapping_maximum_batching_window_in_seconds
+  lambda_event_source_mapping_batch_size                         = coalesce(each.value.runner_config.lambda_event_source_mapping_batch_size, var.lambda_event_source_mapping_batch_size)
+  lambda_event_source_mapping_maximum_batching_window_in_seconds = coalesce(each.value.runner_config.lambda_event_source_mapping_maximum_batching_window_in_seconds, var.lambda_event_source_mapping_maximum_batching_window_in_seconds)
   lambda_timeout_scale_up                                        = var.runners_scale_up_lambda_timeout
   lambda_scale_down_memory_size                                  = var.scale_down_lambda_memory_size
   lambda_timeout_scale_down                                      = var.runners_scale_down_lambda_timeout

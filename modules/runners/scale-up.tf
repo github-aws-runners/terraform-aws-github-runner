@@ -28,7 +28,6 @@ resource "aws_lambda_function" "scale_up" {
       AMI_ID_SSM_PARAMETER_NAME                = local.ami_id_ssm_parameter_name
       DISABLE_RUNNER_AUTOUPDATE                = var.disable_runner_autoupdate
       ENABLE_EPHEMERAL_RUNNERS                 = var.enable_ephemeral_runners
-      ENABLE_DYNAMIC_LABELS                    = var.enable_dynamic_labels
       ENABLE_JIT_CONFIG                        = var.enable_jit_config
       ENABLE_JOB_QUEUED_CHECK                  = local.enable_job_queued_check
       ENABLE_METRIC_GITHUB_APP_RATE_LIMIT      = var.metrics.enable && var.metrics.metric.enable_github_app_rate_limit
@@ -39,6 +38,7 @@ resource "aws_lambda_function" "scale_up" {
       INSTANCE_ALLOCATION_STRATEGY             = var.instance_allocation_strategy
       INSTANCE_MAX_SPOT_PRICE                  = var.instance_max_spot_price
       INSTANCE_TARGET_CAPACITY_TYPE            = var.instance_target_capacity_type
+      INSTANCE_TYPE_PRIORITIES                 = var.instance_type_priorities != null ? jsonencode(var.instance_type_priorities) : ""
       INSTANCE_TYPES                           = join(",", var.instance_types)
       LAUNCH_TEMPLATE_NAME                     = aws_launch_template.runner.name
       LOG_LEVEL                                = var.log_level

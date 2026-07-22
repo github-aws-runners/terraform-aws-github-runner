@@ -19,7 +19,6 @@ resource "aws_lambda_function" "webhook" {
   environment {
     variables = {
       for k, v in {
-        ENABLE_DYNAMIC_LABELS                    = var.config.enable_dynamic_labels
         LOG_LEVEL                                = var.config.log_level
         POWERTOOLS_LOGGER_LOG_EVENT              = var.config.log_level == "debug" ? "true" : "false"
         POWERTOOLS_TRACE_ENABLED                 = var.config.tracing_config.mode != null ? true : false
@@ -27,6 +26,7 @@ resource "aws_lambda_function" "webhook" {
         POWERTOOLS_TRACER_CAPTURE_ERROR          = var.config.tracing_config.capture_error
         PARAMETER_GITHUB_APP_WEBHOOK_SECRET      = var.config.github_app_parameters.webhook_secret.name
         REPOSITORY_ALLOW_LIST                    = jsonencode(var.config.repository_white_list)
+        QUEUE_SELECTION_STRATEGY                 = var.config.queue_selection_strategy
         PARAMETER_RUNNER_MATCHER_CONFIG_PATH     = join(":", [for p in var.config.ssm_parameter_runner_matcher_config : p.name])
         PARAMETER_RUNNER_MATCHER_VERSION         = join(":", [for p in var.config.ssm_parameter_runner_matcher_config : p.version]) # enforce cold start after Changes in SSM parameter
       } : k => v if v != null
