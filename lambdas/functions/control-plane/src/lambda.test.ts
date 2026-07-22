@@ -129,12 +129,12 @@ describe('Test scale up lambda wrapper.', () => {
       await expect(scaleUpHandler({ Records: records }, context)).resolves.not.toThrow();
     });
 
-    it('Should report only the malformed message as a batch item failure', async () => {
+    it('Should acknowledge a malformed message without retrying it', async () => {
       const records = [...createMultipleRecords(2), malformedRecord('message-bad')];
       vi.mocked(scaleUp).mockResolvedValue([]);
 
       await expect(scaleUpHandler({ Records: records }, context)).resolves.toEqual({
-        batchItemFailures: [{ itemIdentifier: 'message-bad' }],
+        batchItemFailures: [],
       });
     });
 
@@ -150,12 +150,12 @@ describe('Test scale up lambda wrapper.', () => {
       ]);
     });
 
-    it('Should combine malformed and rejected messages in batch item failures', async () => {
+    it('Should report rejected messages but acknowledge malformed messages', async () => {
       const records = [...createMultipleRecords(2), malformedRecord('message-bad')];
       vi.mocked(scaleUp).mockResolvedValue(['message-1']);
 
       await expect(scaleUpHandler({ Records: records }, context)).resolves.toEqual({
-        batchItemFailures: [{ itemIdentifier: 'message-bad' }, { itemIdentifier: 'message-1' }],
+        batchItemFailures: [{ itemIdentifier: 'message-1' }],
       });
     });
 
