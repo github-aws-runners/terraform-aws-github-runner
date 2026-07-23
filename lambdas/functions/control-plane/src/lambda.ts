@@ -16,7 +16,6 @@ export async function scaleUpHandler(event: SQSEvent, context: Context): Promise
 
   const sqsMessages: ActionRequestMessageSQS[] = [];
   const warnedEventSources = new Set<string>();
-  const malformedMessageIds: string[] = [];
 
   for (const { body, eventSource, messageId } of event.Records) {
     if (eventSource !== 'aws:sqs') {
@@ -32,18 +31,10 @@ export async function scaleUpHandler(event: SQSEvent, context: Context): Promise
     try {
       payload = JSON.parse(body) as ActionRequestMessage;
     } catch (e) {
-      // Parsing happens outside the try/catch below, so an unparseable body used to
-      // throw straight out of the handler. That failed the whole invocation and made
-      // SQS redeliver the entire batch, so one malformed message held up every valid
-      // message alongside it, indefinitely.
-      //
-      // Report it as an individual failure instead: the rest of the batch proceeds,
-      // and the malformed message exhausts maxReceiveCount on its own. It cannot be
-      // acknowledged and discarded here — reporting it is the only way to single it
-      // out — so configure redrive_build_queue if these should be captured rather
-      // than expire.
+      // A malformed body is a permanent, non-retryable failure. Keep it out of
+      // batchItemFailures so the event source mapping acknowledges and deletes it,
+      // while valid records in the same batch continue to scale up normally.
       logger.error(`Ignoring message ${messageId}, body is not valid JSON`, { error: e, messageId });
-      malformedMessageIds.push(messageId);
 
       continue;
     }
@@ -57,7 +48,11 @@ export async function scaleUpHandler(event: SQSEvent, context: Context): Promise
     return (l.retryCounter ?? 0) - (r.retryCounter ?? 0);
   });
 
-  const batchItemFailures: SQSBatchItemFailure[] = malformedMessageIds.map((itemIdentifier) => ({ itemIdentifier }));
+  // The SQS event source mapping owns message acknowledgement and deletion. Because
+  // ReportBatchItemFailures is enabled, a successful handler response makes Lambda
+  // delete every record not listed here; listed records remain in SQS and become
+  // available for retry after their visibility timeout expires.
+  const batchItemFailures: SQSBatchItemFailure[] = [];
 
   try {
     const rejectedMessageIds = await scaleUp(sqsMessages);
