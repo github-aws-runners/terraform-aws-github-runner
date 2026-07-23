@@ -1,5 +1,17 @@
 # Changelog
 
+## [7.10.1](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v7.10.0...v7.10.1) (2026-07-23)
+
+
+### Bug Fixes
+
+* **control-plane:** discard malformed SQS messages ([#5219](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5219)) ([8ca5816](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/8ca5816738754e4a5591981a5dd42282ca896db8))
+* enable Octokit throttle retry and SSM adaptive retry under burst ([#5136](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5136)) ([cbdd916](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/cbdd916617ed614f094a5a65fd987db1f1ab7807)), closes [#5135](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5135)
+* **lambda:** bump axios from 1.17.0 to 1.18.0 in /lambdas ([#5211](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5211)) ([67bfdf8](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/67bfdf856583d64a3ba0f22a0e7966fc7d2c646e))
+* **lambda:** bump js-yaml from 3.14.2 to 3.15.0 in /lambdas ([#5212](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5212)) ([facea4e](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/facea4e6bd4f8fa507ce44269cb6987b428d7430))
+* **lambda:** fail-open isJobQueued — assume queued on API errors ([#5130](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5130)) ([8fa06ee](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/8fa06ee7c6e5c32bc07315dca620e055d944fb9c))
+* stop a malformed SQS body from poisoning the whole batch ([#5215](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5215)) ([69e06b1](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/69e06b166504e3a62303a529778ee85bbfa87334))
+
 ## [7.10.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v7.9.0...v7.10.0) (2026-07-17)
 
 
