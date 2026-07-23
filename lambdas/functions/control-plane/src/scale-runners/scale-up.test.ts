@@ -55,6 +55,8 @@ vi.mock('./../github/auth', async () => ({
   createGithubAppAuth: vi.fn(),
   createGithubInstallationAuth: vi.fn(),
   createOctokitClient: vi.fn(),
+  getAppCount: vi.fn().mockResolvedValue(1),
+  getStoredInstallationId: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('@aws-github-runner/aws-ssm-util', async () => {
@@ -181,6 +183,7 @@ beforeEach(() => {
     token: 'token',
     appId: TEST_DATA_SINGLE.installationId,
     expiresAt: 'some-date',
+    appIndex: 0,
   });
   mockedInstallationAuth.mockResolvedValue({
     type: 'token',
@@ -1476,38 +1479,8 @@ describe('scaleUp with GHES', () => {
       await scaleUpModule.scaleUp(messages);
 
       expect(mockCreateClient).toHaveBeenCalledTimes(3); // 1 app client, 2 repo installation clients
-      expect(mockedInstallationAuth).toHaveBeenCalledWith(100, 'https://github.enterprise.something/api/v3');
-      expect(mockedInstallationAuth).toHaveBeenCalledWith(200, 'https://github.enterprise.something/api/v3');
-    });
-
-    it('Should resolve installation again when event installation belongs to another app', async () => {
-      mockOctokit.apps.getOrgInstallation.mockReset();
-      mockOctokit.apps.getOrgInstallation.mockImplementation(() => ({
-        data: {
-          id: 123,
-        },
-      }));
-
-      mockedInstallationAuth.mockRejectedValueOnce({ status: 404 }).mockResolvedValueOnce({
-        type: 'token',
-        tokenType: 'installation',
-        token: 'token',
-        createdAt: 'some-date',
-        expiresAt: 'some-date',
-        permissions: {},
-        repositorySelection: 'all',
-        installationId: 123,
-      });
-
-      await scaleUpModule.scaleUp(TEST_DATA);
-
-      expect(mockOctokit.apps.getOrgInstallation).toHaveBeenCalledWith({ org: TEST_DATA_SINGLE.repositoryOwner });
-      expect(mockedInstallationAuth).toHaveBeenNthCalledWith(
-        1,
-        TEST_DATA_SINGLE.installationId,
-        'https://github.enterprise.something/api/v3',
-      );
-      expect(mockedInstallationAuth).toHaveBeenNthCalledWith(2, 123, 'https://github.enterprise.something/api/v3');
+      expect(mockedInstallationAuth).toHaveBeenCalledWith(100, 'https://github.enterprise.something/api/v3', 0);
+      expect(mockedInstallationAuth).toHaveBeenCalledWith(200, 'https://github.enterprise.something/api/v3', 0);
     });
 
     it('Should reuse GitHub clients for same installation', async () => {
@@ -1991,8 +1964,8 @@ describe('scaleUp with public GH', () => {
       await scaleUpModule.scaleUp(messages);
 
       expect(mockCreateClient).toHaveBeenCalledTimes(3); // 1 app client, 2 repo installation clients
-      expect(mockedInstallationAuth).toHaveBeenCalledWith(100, '');
-      expect(mockedInstallationAuth).toHaveBeenCalledWith(200, '');
+      expect(mockedInstallationAuth).toHaveBeenCalledWith(100, '', 0);
+      expect(mockedInstallationAuth).toHaveBeenCalledWith(200, '', 0);
     });
 
     it('Should reuse GitHub clients for same installation', async () => {
@@ -2518,8 +2491,8 @@ describe('scaleUp with Github Data Residency', () => {
       await scaleUpModule.scaleUp(messages);
 
       expect(mockCreateClient).toHaveBeenCalledTimes(3); // 1 app client, 2 repo installation clients
-      expect(mockedInstallationAuth).toHaveBeenCalledWith(100, '');
-      expect(mockedInstallationAuth).toHaveBeenCalledWith(200, '');
+      expect(mockedInstallationAuth).toHaveBeenCalledWith(100, '', 0);
+      expect(mockedInstallationAuth).toHaveBeenCalledWith(200, '', 0);
     });
 
     it('Should reuse GitHub clients for same installation', async () => {
@@ -3475,6 +3448,124 @@ describe('useDedicatedHost', () => {
     process.env.USE_DEDICATED_HOST = 'false';
     await scaleUpModule.scaleUp(TEST_DATA);
     expect(createRunner).toHaveBeenCalledWith(expect.objectContaining({ useDedicatedHost: false }));
+  });
+});
+
+describe('Multi-app round-robin', () => {
+  const mockedGetAppCount = vi.mocked(ghAuth.getAppCount);
+  const mockedGetStoredInstallationId = vi.mocked(ghAuth.getStoredInstallationId);
+
+  beforeEach(() => {
+    process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
+    process.env.ENABLE_EPHEMERAL_RUNNERS = 'true';
+    process.env.ENABLE_JOB_QUEUED_CHECK = 'false';
+    process.env.RUNNERS_MAXIMUM_COUNT = '10';
+    process.env.RUNNER_NAME_PREFIX = 'unit-test-';
+    process.env.RUNNER_GROUP_NAME = 'Default';
+    process.env.SSM_CONFIG_PATH = '/github-action-runners/default/runners/config';
+    process.env.SSM_TOKEN_PATH = '/github-action-runners/default/runners/config';
+    process.env.RUNNER_LABELS = 'label1,label2';
+    expectedRunnerParams = { ...EXPECTED_RUNNER_PARAMS };
+    mockSSMClient.reset();
+  });
+
+  it('passes the same appIndex to createGithubInstallationAuth when multi-app is active', async () => {
+    mockedGetAppCount.mockResolvedValue(2);
+    mockedAppAuth.mockResolvedValue({
+      type: 'app',
+      token: 'token',
+      appId: 42,
+      expiresAt: 'some-date',
+      appIndex: 1,
+    });
+
+    await scaleUpModule.scaleUp([{ ...TEST_DATA_SINGLE, installationId: 0 }]);
+
+    expect(mockedInstallationAuth).toHaveBeenCalledWith(
+      expect.any(Number),
+      expect.any(String),
+      1, // appIndex must match the one from createGithubAppAuth
+    );
+  });
+
+  it('looks up installationId via API for additional (non-primary) app, even if webhook has installationId', async () => {
+    mockedGetAppCount.mockResolvedValue(2);
+    mockedAppAuth.mockResolvedValue({
+      type: 'app',
+      token: 'token',
+      appId: 42,
+      expiresAt: 'some-date',
+      appIndex: 1, // additional app — must not reuse webhook installationId
+    });
+
+    // webhook payload has installationId = 999 (belongs to primary app, not to this additional app)
+    await scaleUpModule.scaleUp([{ ...TEST_DATA_SINGLE, installationId: 999 }]);
+
+    // Should NOT use 999 from webhook — should look up via API instead
+    expect(mockOctokit.apps.getOrgInstallation).toHaveBeenCalledWith({
+      org: TEST_DATA_SINGLE.repositoryOwner,
+    });
+    // installationId passed to createGithubInstallationAuth should come from API (2), not webhook (999)
+    expect(mockedInstallationAuth).toHaveBeenCalledWith(
+      TEST_DATA_SINGLE.installationId, // from mockOctokit.apps.getOrgInstallation mock
+      expect.any(String),
+      1,
+    );
+  });
+
+  it('uses webhook installationId when single-app (no API lookup needed)', async () => {
+    mockedGetAppCount.mockResolvedValue(1);
+    mockedAppAuth.mockResolvedValue({
+      type: 'app',
+      token: 'token',
+      appId: 42,
+      expiresAt: 'some-date',
+      appIndex: 0,
+    });
+
+    await scaleUpModule.scaleUp([{ ...TEST_DATA_SINGLE, installationId: 999 }]);
+
+    // Should use 999 from webhook directly — no API lookup
+    expect(mockOctokit.apps.getOrgInstallation).not.toHaveBeenCalled();
+    expect(mockedInstallationAuth).toHaveBeenCalledWith(999, expect.any(String), 0);
+  });
+
+  it('primary app (appIndex 0) reuses webhook installationId even in multi-app deployment', async () => {
+    // Fix B regression: primary app must reuse webhook payload even when getAppCount > 1
+    mockedGetAppCount.mockResolvedValue(2);
+    mockedGetStoredInstallationId.mockResolvedValue(undefined);
+    mockedAppAuth.mockResolvedValue({
+      type: 'app',
+      token: 'token',
+      appId: 42,
+      expiresAt: 'some-date',
+      appIndex: 0, // primary app selected
+    });
+
+    await scaleUpModule.scaleUp([{ ...TEST_DATA_SINGLE, installationId: 999 }]);
+
+    // Primary app must NOT do an API lookup — reuses webhook installationId
+    expect(mockOctokit.apps.getOrgInstallation).not.toHaveBeenCalled();
+    expect(mockedInstallationAuth).toHaveBeenCalledWith(999, expect.any(String), 0);
+  });
+
+  it('stored installationId takes precedence over webhook payload for additional app', async () => {
+    // Additional app (index 1) with a pre-configured installation id stored in SSM
+    mockedGetAppCount.mockResolvedValue(2);
+    mockedGetStoredInstallationId.mockResolvedValue(77);
+    mockedAppAuth.mockResolvedValue({
+      type: 'app',
+      token: 'token',
+      appId: 42,
+      expiresAt: 'some-date',
+      appIndex: 1,
+    });
+
+    await scaleUpModule.scaleUp([{ ...TEST_DATA_SINGLE, installationId: 999 }]);
+
+    // Stored id (77) wins — no API lookup needed
+    expect(mockOctokit.apps.getOrgInstallation).not.toHaveBeenCalled();
+    expect(mockedInstallationAuth).toHaveBeenCalledWith(77, expect.any(String), 1);
   });
 });
 

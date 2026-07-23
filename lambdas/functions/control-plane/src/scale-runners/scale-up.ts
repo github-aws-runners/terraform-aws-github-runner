@@ -7,7 +7,12 @@ import {
 import { getParameter, putParameter } from '@aws-github-runner/aws-ssm-util';
 import yn from 'yn';
 
-import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
+import {
+  createGithubAppAuth,
+  createGithubInstallationAuth,
+  createOctokitClient,
+  getStoredInstallationId,
+} from '../github/auth';
 import { createRunner, listEC2Runners, tag, terminateRunner } from './../aws/runners';
 import { Ec2OverrideConfig, RunnerInputParameters } from './../aws/runners.d';
 import { metricGitHubAppRateLimit } from '../github/rate-limit';
@@ -202,20 +207,26 @@ function removeTokenFromLogging(config: string[]): string[] {
   return result;
 }
 
-function getErrorStatus(error: unknown): number | undefined {
-  if (typeof error !== 'object' || error === null) {
-    return undefined;
-  }
-
-  const errorWithStatus = error as { status?: number; response?: { status?: number } };
-  return errorWithStatus.status ?? errorWithStatus.response?.status;
-}
-
-async function resolveInstallationId(
+export async function getInstallationId(
   githubAppClient: Octokit,
   enableOrgLevel: boolean,
   payload: ActionRequestMessage,
+  appIndex?: number,
 ): Promise<number> {
+  // Use pre-stored installation ID when available (avoids an API call)
+  if (appIndex !== undefined) {
+    const storedId = await getStoredInstallationId(appIndex);
+    if (storedId !== undefined) return storedId;
+  }
+
+  // The primary app (index 0, or the single-app case where appIndex is undefined) can reuse
+  // the installation id carried on the webhook payload, since the webhook is delivered by the
+  // primary app. Additional apps must resolve their own installation id via the API.
+  const isPrimaryApp = appIndex === undefined || appIndex === 0;
+  if (isPrimaryApp && payload.installationId !== 0) {
+    return payload.installationId;
+  }
+
   return enableOrgLevel
     ? (
         await githubAppClient.apps.getOrgInstallation({
@@ -230,18 +241,6 @@ async function resolveInstallationId(
       ).data.id;
 }
 
-export async function getInstallationId(
-  githubAppClient: Octokit,
-  enableOrgLevel: boolean,
-  payload: ActionRequestMessage,
-): Promise<number> {
-  if (payload.installationId !== 0) {
-    return payload.installationId;
-  }
-
-  return resolveInstallationId(githubAppClient, enableOrgLevel, payload);
-}
-
 // Raised when the queued-check is asked about an event type it cannot interpret.
 // Distinct from an API failure: no amount of retrying makes a check_run event
 // answerable, so callers must not treat this as a transient fault.
@@ -252,7 +251,11 @@ export class UnsupportedEventError extends Error {
   }
 }
 
-export async function isJobQueued(githubInstallationClient: Octokit, payload: ActionRequestMessage): Promise<boolean> {
+export async function isJobQueued(
+  githubInstallationClient: Octokit,
+  payload: ActionRequestMessage,
+  appIndex?: number,
+): Promise<boolean> {
   let isQueued = false;
   if (payload.eventType === 'workflow_job') {
     const jobForWorkflowRun = await githubInstallationClient.actions.getJobForWorkflowRun({
@@ -260,7 +263,7 @@ export async function isJobQueued(githubInstallationClient: Octokit, payload: Ac
       owner: payload.repositoryOwner,
       repo: payload.repositoryName,
     });
-    metricGitHubAppRateLimit(jobForWorkflowRun.headers);
+    metricGitHubAppRateLimit(jobForWorkflowRun.headers, appIndex);
     isQueued = jobForWorkflowRun.data.status === 'queued';
     logger.debug(`The job ${payload.id} is${isQueued ? ' ' : 'not'} queued`);
   } else {
@@ -331,6 +334,7 @@ export async function createRunners(
   numberOfRunners: number,
   ghClient: Octokit,
   source: LambdaRunnerSource = 'scale-up-lambda',
+  appIndex?: number,
 ): Promise<string[]> {
   const instances = await createRunner({
     runnerType: githubRunnerConfig.runnerType,
@@ -340,7 +344,7 @@ export async function createRunners(
     ...ec2RunnerConfig,
   });
   if (instances.length !== 0) {
-    const failedInstances = await createStartRunnerConfig(githubRunnerConfig, instances, ghClient);
+    const failedInstances = await createStartRunnerConfig(githubRunnerConfig, instances, ghClient, appIndex);
 
     // Terminate instances that failed to get configured to avoid waste
     if (failedInstances.length > 0) {
@@ -400,39 +404,6 @@ function packRunnerLabelsTagValues(labels: string[]): string[] {
   return tagValues;
 }
 
-async function createGithubInstallationClient(
-  githubAppClient: Octokit,
-  enableOrgLevel: boolean,
-  payload: ActionRequestMessage,
-  ghesApiUrl: string,
-): Promise<Octokit> {
-  let installationId = await getInstallationId(githubAppClient, enableOrgLevel, payload);
-
-  try {
-    const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl);
-    return await createOctokitClient(ghAuth.token, ghesApiUrl);
-  } catch (error) {
-    if (payload.installationId === 0 || getErrorStatus(error) !== 404) {
-      throw error;
-    }
-
-    installationId = await resolveInstallationId(githubAppClient, enableOrgLevel, payload);
-    if (installationId === payload.installationId) {
-      throw error;
-    }
-
-    logger.warn('Retrying GitHub installation auth with installation resolved for current app', {
-      eventInstallationId: payload.installationId,
-      resolvedInstallationId: installationId,
-      repositoryOwner: payload.repositoryOwner,
-      repositoryName: payload.repositoryName,
-    });
-
-    const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl);
-    return await createOctokitClient(ghAuth.token, ghesApiUrl);
-  }
-}
-
 export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<string[]> {
   logger.info('Received scale up requests', {
     n_requests: payloads.length,
@@ -474,8 +445,8 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
   const { ghesApiUrl, ghesBaseUrl } = getGitHubEnterpriseApiUrl();
 
   const ghAuth = await createGithubAppAuth(undefined, ghesApiUrl);
+  const appIdx = ghAuth.appIndex;
   const githubAppClient = await createOctokitClient(ghAuth.token, ghesApiUrl);
-
   // A map of either owner or owner/repo name to Octokit client, so we use a
   // single client per installation (set of messages), depending on how the app
   // is installed. This is for a couple of reasons:
@@ -531,12 +502,9 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
     // If we've not seen this owner/repo before, we'll need to create a GitHub
     // client for it.
     if (entry === undefined) {
-      const githubInstallationClient = await createGithubInstallationClient(
-        githubAppClient,
-        enableOrgLevel,
-        payload,
-        ghesApiUrl,
-      );
+      const installationId = await getInstallationId(githubAppClient, enableOrgLevel, payload, appIdx);
+      const ghInstallationAuth = await createGithubInstallationAuth(installationId, ghesApiUrl, appIdx);
+      const githubInstallationClient = await createOctokitClient(ghInstallationAuth.token, ghesApiUrl);
 
       entry = {
         messages: [],
@@ -613,7 +581,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       if (enableJobQueuedCheck) {
         let jobQueued = true;
         try {
-          jobQueued = await isJobQueued(githubInstallationClient, message);
+          jobQueued = await isJobQueued(githubInstallationClient, message, appIdx);
         } catch (e) {
           // An unsupported event type is not a transient fault — the check can never
           // succeed for it, so let it propagate rather than silently scaling up.
@@ -727,6 +695,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       newRunners,
       githubInstallationClient,
       'scale-up-lambda',
+      appIdx,
     );
 
     // Not all runners we wanted were created, let's reject enough items so that
@@ -783,9 +752,10 @@ async function createStartRunnerConfig(
   githubRunnerConfig: CreateGitHubRunnerConfig,
   instances: string[],
   ghClient: Octokit,
+  appIndex?: number,
 ): Promise<string[]> {
   if (githubRunnerConfig.enableJitConfig && githubRunnerConfig.ephemeral) {
-    return await createJitConfig(githubRunnerConfig, instances, ghClient);
+    return await createJitConfig(githubRunnerConfig, instances, ghClient, appIndex);
   } else {
     return await createRegistrationTokenConfig(githubRunnerConfig, instances, ghClient);
   }
@@ -853,6 +823,7 @@ async function createJitConfig(
   githubRunnerConfig: CreateGitHubRunnerConfig,
   instances: string[],
   ghClient: Octokit,
+  appIndex?: number,
 ): Promise<string[]> {
   const runnerGroupId = await getRunnerGroupId(githubRunnerConfig, ghClient);
   const { isDelay, delay } = addDelay(instances);
@@ -886,7 +857,7 @@ async function createJitConfig(
               labels: ephemeralRunnerConfig.runnerLabels,
             });
 
-      metricGitHubAppRateLimit(runnerConfig.headers);
+      metricGitHubAppRateLimit(runnerConfig.headers, appIndex);
 
       // tag the EC2 instance with GitHub runner metadata
       await tagRunnerMetadata(instance, runnerConfig.data.runner.id.toString(), runnerLabels);
