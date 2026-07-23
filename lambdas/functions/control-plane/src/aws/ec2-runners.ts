@@ -22,7 +22,6 @@ import { getTracedAWSV3Client, tracer } from '@aws-github-runner/aws-powertools-
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
 import moment from 'moment';
 
-import ScaleError from './../scale-runners/ScaleError';
 import * as Runners from './ec2-runners.d';
 
 const logger = createChildLogger('runners');
@@ -31,6 +30,8 @@ interface Ec2Filter {
   Name: string;
   Values: string[];
 }
+
+type FleetError = NonNullable<CreateFleetResult['Errors']>[number];
 
 export async function listEC2Runners(
   filters: Runners.ListRunnerFilters | undefined = undefined,
@@ -136,6 +137,61 @@ const SPOT_ALLOCATION_STRATEGIES = [
 ];
 const ON_DEMAND_ALLOCATION_STRATEGIES = ['lowest-price', 'prioritized'];
 
+interface AwsErrorLike extends Error {
+  code?: string;
+  $fault?: 'client' | 'server';
+  $metadata?: {
+    httpStatusCode?: number;
+  };
+}
+
+const RETRYABLE_AWS_ERROR_NAMES = new Set([
+  'EC2ThrottledException',
+  'InternalError',
+  'RequestLimitExceeded',
+  'RequestTimeout',
+  'RequestTimeoutException',
+  'ServiceUnavailable',
+  'Throttling',
+  'ThrottlingException',
+]);
+
+const RETRYABLE_NETWORK_ERROR_CODES = new Set([
+  'EAI_AGAIN',
+  'ECONNREFUSED',
+  'ECONNRESET',
+  'ENETUNREACH',
+  'ENOTFOUND',
+  'ETIMEDOUT',
+]);
+
+function isRetryableAwsError(error: unknown, configuredRetryableErrors: string[]): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const awsError = error as AwsErrorLike;
+  if (isRetryableAwsErrorName(awsError.name, configuredRetryableErrors)) {
+    return true;
+  }
+
+  const httpStatusCode = awsError.$metadata?.httpStatusCode;
+  if (
+    awsError.$fault === 'server' ||
+    httpStatusCode === 429 ||
+    (httpStatusCode !== undefined && httpStatusCode >= 500) ||
+    (awsError.code !== undefined && RETRYABLE_NETWORK_ERROR_CODES.has(awsError.code))
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+function isRetryableAwsErrorName(errorName: string, configuredRetryableErrors: string[]): boolean {
+  return configuredRetryableErrors.includes(errorName) || RETRYABLE_AWS_ERROR_NAMES.has(errorName);
+}
+
 // The instance_allocation_strategy variable accepts the union of spot and on-demand strategies,
 // so a value valid for one capacity type can be invalid for the other. AWS rejects CreateFleet
 // when the strategy is not valid for the target capacity type, so fall back to 'lowest-price'
@@ -238,7 +294,9 @@ function buildRunInstancesOverrides(
   return overrides;
 }
 
-export async function createRunner(runnerParameters: Runners.RunnerInputParameters): Promise<string[]> {
+export async function createRunner(
+  runnerParameters: Runners.RunnerInputParameters,
+): Promise<Runners.CreateRunnerResult> {
   logger.debug('Runner configuration.', {
     runner: {
       configuration: {
@@ -248,34 +306,51 @@ export async function createRunner(runnerParameters: Runners.RunnerInputParamete
   });
 
   const ec2Client = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
-  const amiIdOverride = await getAmiIdOverride(runnerParameters);
+  let amiIdOverride: string | undefined;
+  try {
+    amiIdOverride = await getAmiIdOverride(runnerParameters);
+  } catch (error) {
+    logger.warn('Runner creation failed before an EC2 request could be made.', {
+      error: error as Error,
+      retryable: true,
+      failedInstanceCount: runnerParameters.numberOfRunners,
+    });
+    return failedCreateRunnerResult(runnerParameters.numberOfRunners, true);
+  }
 
   // EC2 Fleet (CreateFleet) does not support launching instances onto dedicated hosts
   // for instance types like mac*.metal. Use RunInstances directly instead.
   if (runnerParameters.useDedicatedHost) {
     logger.info('Using RunInstances for dedicated host placement (CreateFleet does not support dedicated hosts).');
-    const instances = await createInstancesWithRunInstances(runnerParameters, amiIdOverride, ec2Client);
-    logger.info(`Created instance(s) via RunInstances: ${instances.join(',')}`);
-    return instances;
+    const result = await createInstancesWithRunInstances(runnerParameters, amiIdOverride, ec2Client);
+    logger.info(`Created instance(s) via RunInstances: ${result.instances.join(',')}`);
+    return result;
   }
 
-  const fleet: CreateFleetResult = await createInstances(runnerParameters, amiIdOverride, ec2Client);
+  let fleet: CreateFleetResult;
+  try {
+    fleet = await createInstances(runnerParameters, amiIdOverride, ec2Client);
+  } catch (error) {
+    const retryable = isRetryableAwsError(error, runnerParameters.scaleErrors);
+    logger.warn('Create fleet request failed.', { error: error as Error, retryable });
+    return failedCreateRunnerResult(runnerParameters.numberOfRunners, retryable);
+  }
 
-  const instances: string[] = await processFleetResult(fleet, runnerParameters);
+  const result = await processFleetResult(fleet, runnerParameters);
 
-  logger.info(`Created instance(s): ${instances.join(',')}`);
+  logger.info(`Created instance(s): ${result.instances.join(',')}`);
 
-  return instances;
+  return result;
 }
 
 async function processFleetResult(
   fleet: CreateFleetResult,
   runnerParameters: Runners.RunnerInputParameters,
-): Promise<string[]> {
+): Promise<Runners.CreateRunnerResult> {
   const instances: string[] = fleet.Instances?.flatMap((i) => i.InstanceIds?.flatMap((j) => j) || []) || [];
 
   if (instances.length === runnerParameters.numberOfRunners) {
-    return instances;
+    return successfulCreateRunnerResult(instances);
   }
 
   logger.warn(
@@ -298,7 +373,7 @@ async function processFleetResult(
       runnerParameters.ec2instanceCriteria.instanceAllocationStrategy,
       'on-demand',
     );
-    const instancesOnDemand = await createRunner({
+    const onDemandResult = await createRunner({
       ...runnerParameters,
       numberOfRunners: numberOfInstances,
       onDemandFailoverOnError: ['InsufficientInstanceCapacity'],
@@ -308,35 +383,64 @@ async function processFleetResult(
         instanceAllocationStrategy: failoverAllocationStrategy,
       },
     });
-    instances.push(...instancesOnDemand);
-    return instances;
+    instances.push(...onDemandResult.instances);
+    return {
+      instances,
+      retryableErrorCount: onDemandResult.retryableErrorCount,
+      nonRetryableErrorCount: onDemandResult.nonRetryableErrorCount,
+    };
   }
 
-  const scaleErrors = runnerParameters.scaleErrors;
+  const configuredRetryableErrors = runnerParameters.scaleErrors;
+  const { fleetErrorsTriggeringRetry, fleetErrorsNotTriggeringRetry } = classifyFleetErrors(
+    fleet.Errors || [],
+    configuredRetryableErrors,
+  );
 
-  const failedCount = countScaleErrors(errors, scaleErrors);
-  if (failedCount > 0) {
-    logger.warn('Create fleet failed, ScaleError will be thrown to trigger retry for ephemeral runners.');
-    logger.debug('Create fleet failed.', { data: fleet.Errors });
-    throw new ScaleError(failedCount);
-  }
+  const missingInstanceCount = runnerParameters.numberOfRunners - instances.length;
+  // CreateFleet errors describe failed launch-template overrides, not individual instances.
+  // A retryable override failure can therefore account for any number of missing instances.
+  const retryableErrorCount = fleetErrorsTriggeringRetry.length > 0 ? missingInstanceCount : 0;
+  const nonRetryableErrorCount = missingInstanceCount - retryableErrorCount;
 
-  logger.warn('Create fleet failed, error not recognized as scaling error.', { data: fleet.Errors });
-  throw Error('Create fleet failed, no instance created.');
+  logger.warn('Create fleet did not create every requested instance.', {
+    data: fleet.Errors,
+    retryableErrorCount,
+    nonRetryableErrorCount,
+    fleetErrorsTriggeringRetry: structuredClone(fleetErrorsTriggeringRetry),
+    fleetErrorsNotTriggeringRetry: structuredClone(fleetErrorsNotTriggeringRetry),
+  });
+  return { instances, retryableErrorCount, nonRetryableErrorCount };
 }
 
-function countScaleErrors(errors: string[], scaleErrors: string[]): number {
-  return errors.reduce((acc, e) => (scaleErrors.includes(e) ? acc + 1 : acc), 0);
+function classifyFleetErrors(
+  errors: FleetError[],
+  configuredRetryableErrors: string[],
+): { fleetErrorsTriggeringRetry: FleetError[]; fleetErrorsNotTriggeringRetry: FleetError[] } {
+  return errors.reduce<{
+    fleetErrorsTriggeringRetry: FleetError[];
+    fleetErrorsNotTriggeringRetry: FleetError[];
+  }>(
+    (classifiedErrors, error) => {
+      if (isRetryableAwsErrorName(error.ErrorCode || '', configuredRetryableErrors)) {
+        classifiedErrors.fleetErrorsTriggeringRetry.push(error);
+      } else {
+        classifiedErrors.fleetErrorsNotTriggeringRetry.push(error);
+      }
+      return classifiedErrors;
+    },
+    { fleetErrorsTriggeringRetry: [], fleetErrorsNotTriggeringRetry: [] },
+  );
 }
 
 function processRunInstanceResult(
   result: RunInstancesCommandOutput,
   runnerParameters: Runners.RunnerInputParameters,
-): string[] {
+): Runners.CreateRunnerResult {
   const instances = result.Instances?.map((i) => i.InstanceId!).filter(Boolean) || [];
 
   if (instances.length === runnerParameters.numberOfRunners) {
-    return instances;
+    return successfulCreateRunnerResult(instances);
   }
 
   logger.warn(
@@ -346,8 +450,25 @@ function processRunInstanceResult(
     { data: result },
   );
 
-  logger.warn('RunInstances failed, error not recognized as scaling error.', { data: result });
-  throw Error('RunInstances failed, no instance created.');
+  const nonRetryableErrorCount = runnerParameters.numberOfRunners - instances.length;
+  logger.warn('RunInstances did not create every requested instance.', {
+    data: result,
+    retryable: false,
+    nonRetryableErrorCount,
+  });
+  return { instances, retryableErrorCount: 0, nonRetryableErrorCount };
+}
+
+function successfulCreateRunnerResult(instances: string[]): Runners.CreateRunnerResult {
+  return { instances, retryableErrorCount: 0, nonRetryableErrorCount: 0 };
+}
+
+function failedCreateRunnerResult(failedInstanceCount: number, isRetryable: boolean): Runners.CreateRunnerResult {
+  return {
+    instances: [],
+    retryableErrorCount: isRetryable ? failedInstanceCount : 0,
+    nonRetryableErrorCount: isRetryable ? 0 : failedInstanceCount,
+  };
 }
 
 async function getAmiIdOverride(runnerParameters: Runners.RunnerInputParameters): Promise<string | undefined> {
@@ -458,7 +579,7 @@ async function createInstancesWithRunInstances(
   runnerParameters: Runners.RunnerInputParameters,
   amiIdOverride: string | undefined,
   ec2Client: EC2Client,
-): Promise<string[]> {
+): Promise<Runners.CreateRunnerResult> {
   const tags = [
     { Key: 'ghr:Application', Value: 'github-action-runner' },
     { Key: 'ghr:created_by', Value: runnerParameters.numberOfRunners === 1 ? 'scale-up-lambda' : 'pool-lambda' },
@@ -471,14 +592,14 @@ async function createInstancesWithRunInstances(
     tags.push({ Key: 'ghr:trace_id', Value: traceId! });
   }
 
-  let result: RunInstancesCommandOutput;
-  try {
-    if (runnerParameters.ec2instanceCriteria.targetCapacityType === 'spot') {
-      throw new Error(
-        'Spot instances are not supported with RunInstances. Please set targetCapacityType to on-demand for dedicated hosts.',
-      );
-    }
+  if (runnerParameters.ec2instanceCriteria.targetCapacityType === 'spot') {
+    logger.warn(
+      'Spot instances are not supported with RunInstances. Please set targetCapacityType to on-demand for dedicated hosts.',
+    );
+    return failedCreateRunnerResult(runnerParameters.numberOfRunners, false);
+  }
 
+  try {
     const runInstancesCommand = new RunInstancesCommand({
       LaunchTemplate: {
         LaunchTemplateName: runnerParameters.launchTemplateName,
@@ -504,22 +625,13 @@ async function createInstancesWithRunInstances(
     });
 
     logger.debug('RunInstances request payload.', { payload: runInstancesCommand.input });
-    result = await ec2Client.send(runInstancesCommand);
-  } catch (e) {
-    const errorName = (e as Error).name;
-    if (errorName && runnerParameters.scaleErrors.includes(errorName)) {
-      logger.warn('RunInstances failed with a scale error, ScaleError will be thrown to trigger retry.', {
-        error: e as Error,
-        errorName,
-      });
-      throw new ScaleError(runnerParameters.numberOfRunners);
-    }
-
-    logger.warn('RunInstances request failed for dedicated host.', { error: e as Error });
-    throw e;
+    const result = await ec2Client.send(runInstancesCommand);
+    return processRunInstanceResult(result, runnerParameters);
+  } catch (error) {
+    const retryable = isRetryableAwsError(error, runnerParameters.scaleErrors);
+    logger.warn('RunInstances request failed for dedicated host.', { error: error as Error, retryable });
+    return failedCreateRunnerResult(runnerParameters.numberOfRunners, retryable);
   }
-
-  return processRunInstanceResult(result, runnerParameters);
 }
 
 // If launchTime is undefined, this will return false

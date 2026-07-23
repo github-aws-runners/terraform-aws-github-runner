@@ -3,7 +3,6 @@ import { Context, SQSEvent, SQSRecord } from 'aws-lambda';
 
 import { addMiddleware, adjustPool, scaleDownHandler, scaleUpHandler, ssmHousekeeper, jobRetryCheck } from './lambda';
 import { adjust } from './pool/pool';
-import ScaleError from './scale-runners/ScaleError';
 import { scaleDown } from './scale-runners/scale-down';
 import { scaleUp } from './scale-runners/scale-up';
 import type { ActionRequestMessage } from './scale-runners/types';
@@ -104,14 +103,6 @@ describe('Test scale up lambda wrapper.', () => {
     await expect(scaleUpHandler(sqsEvent, context)).resolves.not.toThrow();
   });
 
-  it('Scale should create a batch failure message', async () => {
-    const error = new ScaleError();
-    vi.mocked(scaleUp).mockRejectedValue(error);
-    await expect(scaleUpHandler(sqsEvent, context)).resolves.toEqual({
-      batchItemFailures: [{ itemIdentifier: sqsRecord.messageId }],
-    });
-  });
-
   describe('Batch processing', () => {
     beforeEach(() => {
       vi.clearAllMocks();
@@ -198,6 +189,9 @@ describe('Test scale up lambda wrapper.', () => {
       expect(result).toEqual({
         batchItemFailures: [{ itemIdentifier: 'message-1' }, { itemIdentifier: 'message-2' }],
       });
+      expect(logger.warn).toHaveBeenCalledWith('SQS messages will be retried.', {
+        messageIds: ['message-1', 'message-2'],
+      });
     });
 
     it('Should filter out non-SQS event sources', async () => {
@@ -252,7 +246,7 @@ describe('Test scale up lambda wrapper.', () => {
       await scaleUpHandler(multiRecordEvent, context);
     });
 
-    it('Should return all failed messages when scaleUp throws non-ScaleError', async () => {
+    it('Should ignore the batch when scaleUp throws an unexpected error', async () => {
       const records = createMultipleRecords(2);
       const multiRecordEvent: SQSEvent = { Records: records };
 
@@ -260,18 +254,6 @@ describe('Test scale up lambda wrapper.', () => {
 
       const result = await scaleUpHandler(multiRecordEvent, context);
       expect(result).toEqual({ batchItemFailures: [] });
-    });
-
-    it('Should throw when scaleUp throws ScaleError', async () => {
-      const records = createMultipleRecords(2);
-      const multiRecordEvent: SQSEvent = { Records: records };
-
-      const error = new ScaleError(2);
-      vi.mocked(scaleUp).mockRejectedValue(error);
-
-      await expect(scaleUpHandler(multiRecordEvent, context)).resolves.toEqual({
-        batchItemFailures: [{ itemIdentifier: 'message-0' }, { itemIdentifier: 'message-1' }],
-      });
     });
   });
 });

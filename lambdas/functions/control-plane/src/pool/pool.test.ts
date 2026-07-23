@@ -159,6 +159,11 @@ beforeEach(() => {
   mockOctokit.paginate.mockImplementation(() => githubRunnersRegistered);
 
   mockListRunners.mockImplementation(async () => ec2InstancesRegistered);
+  vi.mocked(createRunners).mockResolvedValue({
+    instances: [],
+    retryableErrorCount: 0,
+    nonRetryableErrorCount: 0,
+  });
 
   const mockInstallationIdReturnValueOrgs = {
     data: {

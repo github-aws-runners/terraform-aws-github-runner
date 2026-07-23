@@ -7,7 +7,7 @@ import nock from 'nock';
 import { performance } from 'perf_hooks';
 
 import * as ghAuth from '../github/auth';
-import { createRunner, listEC2Runners, tag } from './../aws/ec2-runners';
+import { createRunner, listEC2Runners, tag, terminateRunner } from './../aws/ec2-runners';
 import { RunnerInputParameters } from './../aws/ec2-runners.d';
 import * as scaleUpModule from './scale-up';
 import { parseEc2OverrideConfig } from './ec2-labels';
@@ -37,10 +37,15 @@ const mockOctokit = {
 const mockCreateRunner = vi.mocked(createRunner);
 const mockListRunners = vi.mocked(listEC2Runners);
 const mockTag = vi.mocked(tag);
+const mockTerminateRunner = vi.mocked(terminateRunner);
 const mockEC2Client = mockClient(EC2Client);
 const mockSSMClient = mockClient(SSMClient);
 const mockSSMgetParameter = vi.mocked(getParameter);
 const mockPublishRetryMessage = vi.mocked(publishRetryMessage);
+
+function createRunnerResult(instances: string[], retryableErrorCount = 0, nonRetryableErrorCount = 0) {
+  return { instances, retryableErrorCount, nonRetryableErrorCount };
+}
 
 vi.mock('@octokit/rest', () => ({
   Octokit: vi.fn().mockImplementation(function () {
@@ -52,6 +57,7 @@ vi.mock('./../aws/ec2-runners', async () => ({
   createRunner: vi.fn(),
   listEC2Runners: vi.fn(),
   tag: vi.fn(),
+  terminateRunner: vi.fn(),
 }));
 
 vi.mock('./../github/auth', async () => ({
@@ -168,7 +174,7 @@ beforeEach(() => {
   defaultOctokitMockImpl();
 
   mockCreateRunner.mockImplementation(async () => {
-    return ['i-12345'];
+    return createRunnerResult(['i-12345']);
   });
   mockListRunners.mockImplementation(async () => [
     {
@@ -367,13 +373,14 @@ describe('scaleUp with GHES', () => {
       expect(createRunner).toBeCalledWith({ ...expectedRunnerParams, amiIdSsmParameterName: 'my-ami-id-param' });
     });
 
-    it('Throws an error if runner group does not exist for ephemeral runners', async () => {
+    it('returns a retryable failure if runner group lookup fails for ephemeral runners', async () => {
       process.env.RUNNER_GROUP_NAME = 'test-runner-group';
       mockSSMgetParameter.mockImplementation(async () => {
         throw new Error('ParameterNotFound');
       });
-      await expect(scaleUpModule.scaleUp(TEST_DATA)).rejects.toBeInstanceOf(Error);
+      await expect(scaleUpModule.scaleUp(TEST_DATA)).resolves.toEqual(['foobar']);
       expect(mockOctokit.paginate).toHaveBeenCalledTimes(1);
+      expect(mockTerminateRunner).toHaveBeenCalledWith('i-12345');
     });
 
     it('Discards event if it is a User repo and org level runners is enabled', async () => {
@@ -478,7 +485,7 @@ describe('scaleUp with GHES', () => {
     it('should create JIT config for all remaining instances even when GitHub API fails for one instance', async () => {
       process.env.RUNNERS_MAXIMUM_COUNT = '5';
       mockCreateRunner.mockImplementation(async () => {
-        return ['i-instance-1', 'i-instance-2', 'i-instance-3'];
+        return createRunnerResult(['i-instance-1', 'i-instance-2', 'i-instance-3']);
       });
       mockListRunners.mockImplementation(async () => {
         return [];
@@ -507,7 +514,9 @@ describe('scaleUp with GHES', () => {
         };
       });
 
-      await scaleUpModule.scaleUp(TEST_DATA);
+      const rejectedMessages = await scaleUpModule.scaleUp(TEST_DATA);
+
+      expect(rejectedMessages).toEqual(['foobar']);
 
       expect(mockOctokit.actions.generateRunnerJitconfigForOrg).toHaveBeenCalledWith({
         org: TEST_DATA_SINGLE.repositoryOwner,
@@ -552,7 +561,7 @@ describe('scaleUp with GHES', () => {
     it('should handle retryable errors with error handling logic', async () => {
       process.env.RUNNERS_MAXIMUM_COUNT = '5';
       mockCreateRunner.mockImplementation(async () => {
-        return ['i-instance-1', 'i-instance-2'];
+        return createRunnerResult(['i-instance-1', 'i-instance-2']);
       });
       mockListRunners.mockImplementation(async () => {
         return [];
@@ -597,7 +606,7 @@ describe('scaleUp with GHES', () => {
     it('should handle non-retryable 4xx errors gracefully', async () => {
       process.env.RUNNERS_MAXIMUM_COUNT = '5';
       mockCreateRunner.mockImplementation(async () => {
-        return ['i-instance-1', 'i-instance-2'];
+        return createRunnerResult(['i-instance-1', 'i-instance-2']);
       });
       mockListRunners.mockImplementation(async () => {
         return [];
@@ -646,7 +655,7 @@ describe('scaleUp with GHES', () => {
         process.env.ENABLE_EPHEMERAL_RUNNERS = type === 'ephemeral' ? 'true' : 'false';
         process.env.RUNNERS_MAXIMUM_COUNT = '40';
         mockCreateRunner.mockImplementation(async () => {
-          return instances;
+          return createRunnerResult(instances);
         });
         mockListRunners.mockImplementation(async () => {
           return [];
@@ -1288,11 +1297,15 @@ describe('scaleUp with GHES', () => {
       expect(createRunner).toBeCalledWith(expectedRunnerParams);
     });
 
-    it('Check error is thrown', async () => {
-      const mockCreateRunners = vi.mocked(createRunner);
-      mockCreateRunners.mockRejectedValue(new Error('no retry'));
-      await expect(scaleUpModule.scaleUp(TEST_DATA)).rejects.toThrow('no retry');
-      mockCreateRunners.mockReset();
+    it('converts an unexpected EC2 creation error into a retryable result', async () => {
+      mockCreateRunner.mockRejectedValueOnce(new Error('unexpected EC2 error'));
+      await expect(scaleUpModule.scaleUp(TEST_DATA)).resolves.toEqual(['foobar']);
+    });
+
+    it('converts an unexpected provider error into a retryable result', async () => {
+      vi.mocked(createRunner).mockResolvedValue(undefined as never);
+
+      await expect(scaleUpModule.scaleUp(TEST_DATA)).resolves.toEqual(['foobar']);
     });
   });
 
@@ -1396,13 +1409,30 @@ describe('scaleUp with GHES', () => {
     });
 
     it('Should handle partial EC2 instance creation failures', async () => {
-      mockCreateRunner.mockImplementation(async () => ['i-12345']); // Only creates 1 instead of requested 3
+      mockCreateRunner.mockImplementation(async () => createRunnerResult(['i-12345'], 2)); // Only creates 1 instead of requested 3
 
       const messages = createTestMessages(3);
       const rejectedMessages = await scaleUpModule.scaleUp(messages);
 
       expect(rejectedMessages).toHaveLength(2); // 3 requested - 1 created = 2 failed
       expect(rejectedMessages).toEqual(['message-0', 'message-1']);
+    });
+
+    it('Should reject only retryable partial EC2 instance creation failures', async () => {
+      mockCreateRunner.mockResolvedValue(createRunnerResult(['i-12345'], 1, 1));
+
+      const messages = createTestMessages(3);
+      const rejectedMessages = await scaleUpModule.scaleUp(messages);
+
+      expect(rejectedMessages).toEqual(['message-0']);
+    });
+
+    it('does not retry partial EC2 instance creation failures that are not retryable', async () => {
+      mockCreateRunner.mockImplementation(async () => createRunnerResult(['i-12345'], 0, 2));
+
+      const rejectedMessages = await scaleUpModule.scaleUp(createTestMessages(3));
+
+      expect(rejectedMessages).toEqual([]);
     });
 
     it('Should filter out invalid event types for ephemeral runners', async () => {
@@ -1564,13 +1594,11 @@ describe('scaleUp with GHES', () => {
       );
     });
 
-    it('Should not fail-open for unsupported event types', async () => {
-      // An unsupported event can never become answerable, so fail-open must not
-      // swallow it — otherwise every check_run event silently scales up a runner.
+    it('Should skip unsupported event types without scaling up', async () => {
       process.env.ENABLE_EPHEMERAL_RUNNERS = 'false';
       const messages = createTestMessages(1).map((m) => ({ ...m, eventType: 'check_run' as const }));
 
-      await expect(scaleUpModule.scaleUp(messages)).rejects.toThrow('Event check_run is not supported');
+      await expect(scaleUpModule.scaleUp(messages)).resolves.toEqual([]);
       expect(createRunner).not.toHaveBeenCalled();
     });
   });
@@ -1911,7 +1939,7 @@ describe('scaleUp with public GH', () => {
     });
 
     it('Should handle partial EC2 instance creation failures', async () => {
-      mockCreateRunner.mockImplementation(async () => ['i-12345']); // Only creates 1 instead of requested 3
+      mockCreateRunner.mockImplementation(async () => createRunnerResult(['i-12345'], 2)); // Only creates 1 instead of requested 3
 
       const messages = createTestMessages(3);
       const rejectedMessages = await scaleUpModule.scaleUp(messages);
@@ -2125,13 +2153,14 @@ describe('scaleUp with Github Data Residency', () => {
       expect(createRunner).toBeCalledWith({ ...expectedRunnerParams, amiIdSsmParameterName: 'my-ami-id-param' });
     });
 
-    it('Throws an error if runner group does not exist for ephemeral runners', async () => {
+    it('returns a retryable failure if runner group lookup fails for ephemeral runners', async () => {
       process.env.RUNNER_GROUP_NAME = 'test-runner-group';
       mockSSMgetParameter.mockImplementation(async () => {
         throw new Error('ParameterNotFound');
       });
-      await expect(scaleUpModule.scaleUp(TEST_DATA)).rejects.toBeInstanceOf(Error);
+      await expect(scaleUpModule.scaleUp(TEST_DATA)).resolves.toEqual(['foobar']);
       expect(mockOctokit.paginate).toHaveBeenCalledTimes(1);
+      expect(mockTerminateRunner).toHaveBeenCalledWith('i-12345');
     });
 
     it('Discards event if it is a User repo and org level runners is enabled', async () => {
@@ -2211,7 +2240,7 @@ describe('scaleUp with Github Data Residency', () => {
         process.env.ENABLE_EPHEMERAL_RUNNERS = type === 'ephemeral' ? 'true' : 'false';
         process.env.RUNNERS_MAXIMUM_COUNT = '40';
         mockCreateRunner.mockImplementation(async () => {
-          return instances;
+          return createRunnerResult(instances);
         });
         mockListRunners.mockImplementation(async () => {
           return [];
@@ -2327,11 +2356,9 @@ describe('scaleUp with Github Data Residency', () => {
       expect(createRunner).toBeCalledWith(expectedRunnerParams);
     });
 
-    it('Check error is thrown', async () => {
-      const mockCreateRunners = vi.mocked(createRunner);
-      mockCreateRunners.mockRejectedValue(new Error('no retry'));
-      await expect(scaleUpModule.scaleUp(TEST_DATA)).rejects.toThrow('no retry');
-      mockCreateRunners.mockReset();
+    it('converts an unexpected EC2 creation error into a retryable result', async () => {
+      mockCreateRunner.mockRejectedValueOnce(new Error('unexpected EC2 error'));
+      await expect(scaleUpModule.scaleUp(TEST_DATA)).resolves.toEqual(['foobar']);
     });
   });
 
@@ -2440,7 +2467,7 @@ describe('scaleUp with Github Data Residency', () => {
     });
 
     it('Should handle partial EC2 instance creation failures', async () => {
-      mockCreateRunner.mockImplementation(async () => ['i-12345']); // Only creates 1 instead of requested 3
+      mockCreateRunner.mockImplementation(async () => createRunnerResult(['i-12345'], 2)); // Only creates 1 instead of requested 3
 
       const messages = createTestMessages(3);
       const rejectedMessages = await scaleUpModule.scaleUp(messages);
@@ -2588,7 +2615,7 @@ describe('Retry mechanism tests', () => {
 
   it('calls publishRetryMessage for each valid message when job is queued', async () => {
     const messages = createTestMessages(3);
-    mockCreateRunner.mockResolvedValue(['i-12345', 'i-67890', 'i-abcdef']); // Create all requested runners
+    mockCreateRunner.mockResolvedValue(createRunnerResult(['i-12345', 'i-67890', 'i-abcdef'])); // Create all requested runners
 
     await scaleUpModule.scaleUp(messages);
 
@@ -2680,7 +2707,7 @@ describe('Retry mechanism tests', () => {
 
   it('calls publishRetryMessage when ENABLE_JOB_QUEUED_CHECK is false', async () => {
     process.env.ENABLE_JOB_QUEUED_CHECK = 'false';
-    mockCreateRunner.mockResolvedValue(['i-12345', 'i-67890']); // Create all requested runners
+    mockCreateRunner.mockResolvedValue(createRunnerResult(['i-12345', 'i-67890'])); // Create all requested runners
 
     const messages = createTestMessages(2);
 
@@ -2692,7 +2719,7 @@ describe('Retry mechanism tests', () => {
   });
 
   it('calls publishRetryMessage for each message in a multi-runner scenario', async () => {
-    mockCreateRunner.mockResolvedValue(['i-12345', 'i-67890', 'i-abcdef', 'i-11111', 'i-22222']); // Create all requested runners
+    mockCreateRunner.mockResolvedValue(createRunnerResult(['i-12345', 'i-67890', 'i-abcdef', 'i-11111', 'i-22222'])); // Create all requested runners
     const messages = createTestMessages(5);
 
     await scaleUpModule.scaleUp(messages);
@@ -2711,7 +2738,7 @@ describe('Retry mechanism tests', () => {
 
   it('calls publishRetryMessage after runner creation', async () => {
     const messages = createTestMessages(1);
-    mockCreateRunner.mockResolvedValue(['i-12345']); // Create the requested runner
+    mockCreateRunner.mockResolvedValue(createRunnerResult(['i-12345'])); // Create the requested runner
 
     const callOrder: string[] = [];
     mockPublishRetryMessage.mockImplementation(() => {
@@ -2720,7 +2747,7 @@ describe('Retry mechanism tests', () => {
     });
     mockCreateRunner.mockImplementation(async () => {
       callOrder.push('createRunner');
-      return ['i-12345'];
+      return createRunnerResult(['i-12345']);
     });
 
     await scaleUpModule.scaleUp(messages);

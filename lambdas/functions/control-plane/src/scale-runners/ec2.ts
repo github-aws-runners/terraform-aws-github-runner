@@ -6,6 +6,7 @@ import { createRunner, tag, terminateRunner } from '../aws/ec2-runners';
 import type { RunnerInputParameters } from '../aws/ec2-runners.d';
 import { createStartRunnerConfig } from './github-runner';
 import type { GitHubRunnerMetadata, StartRunnerConfigOptions } from './github-runner';
+import type { CreateScaleUpRunnersResult } from './scale-up-provider';
 import type { CreateGitHubRunnerConfig, LambdaRunnerSource } from './types';
 
 const logger = createChildLogger('ec2-scale-up');
@@ -34,46 +35,76 @@ export async function createRunners(
   numberOfRunners: number,
   ghClient: Octokit,
   source: LambdaRunnerSource = 'scale-up-lambda',
-): Promise<string[]> {
-  const instances = await createRunner({
-    runnerType: githubRunnerConfig.runnerType,
-    runnerOwner: githubRunnerConfig.runnerOwner,
-    numberOfRunners,
-    source,
-    ...ec2RunnerConfig,
-  });
-  if (instances.length !== 0) {
-    const failedInstances = await createStartRunnerConfig(
-      githubRunnerConfig,
-      instances,
-      ghClient,
-      createEc2StartRunnerConfigOptions(),
-    );
+): Promise<CreateScaleUpRunnersResult> {
+  let result: CreateScaleUpRunnersResult;
+  try {
+    result = await createRunner({
+      runnerType: githubRunnerConfig.runnerType,
+      runnerOwner: githubRunnerConfig.runnerOwner,
+      numberOfRunners,
+      source,
+      ...ec2RunnerConfig,
+    });
+  } catch (error) {
+    logger.error('Unexpected error while creating EC2 runner instances.', {
+      error,
+      retryable: true,
+      failedInstanceCount: numberOfRunners,
+    });
+    return { instances: [], retryableErrorCount: numberOfRunners, nonRetryableErrorCount: 0 };
+  }
+
+  if (result.instances.length !== 0) {
+    let failedInstances: string[];
+    try {
+      failedInstances = await createStartRunnerConfig(
+        githubRunnerConfig,
+        result.instances,
+        ghClient,
+        createEc2StartRunnerConfigOptions(),
+      );
+    } catch (error) {
+      logger.error('Unexpected error while registering GitHub runners.', {
+        error,
+        retryable: true,
+        failedInstances: result.instances,
+        failedInstanceCount: result.instances.length,
+      });
+      failedInstances = result.instances;
+    }
 
     // Terminate instances that failed to get configured to avoid waste
     if (failedInstances.length > 0) {
       logger.warn('Terminating instances that failed to get configured', {
         failedInstances,
-        failedCount: failedInstances.length,
+        failedInstanceCount: failedInstances.length,
+        retryable: true,
       });
 
-      for (const instanceId of failedInstances) {
-        try {
-          await terminateRunner(instanceId);
-        } catch (error) {
-          logger.error('Failed to terminate instance', {
-            instanceId,
-            error: error instanceof Error ? error.message : String(error),
-          });
-        }
-      }
+      await terminateFailedInstances(failedInstances);
 
-      // Remove failed instances from the returned list
-      return instances.filter((id) => !failedInstances.includes(id));
+      return {
+        instances: result.instances.filter((id) => !failedInstances.includes(id)),
+        retryableErrorCount: result.retryableErrorCount + failedInstances.length,
+        nonRetryableErrorCount: result.nonRetryableErrorCount,
+      };
     }
   }
 
-  return instances;
+  return result;
+}
+
+async function terminateFailedInstances(instanceIds: string[]): Promise<void> {
+  for (const instanceId of instanceIds) {
+    try {
+      await terminateRunner(instanceId);
+    } catch (error) {
+      logger.error('Failed to terminate instance', {
+        instanceId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
 }
 
 function createEc2StartRunnerConfigOptions(): StartRunnerConfigOptions {

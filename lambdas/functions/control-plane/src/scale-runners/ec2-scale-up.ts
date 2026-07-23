@@ -12,6 +12,7 @@ import { createRunners } from './ec2';
 import type { CreateEC2RunnerConfig } from './ec2';
 import type {
   CreateScaleUpRunnersInput,
+  CreateScaleUpRunnersResult,
   CurrentRunnersInput,
   PreparedScaleUpRunnerGroup,
   ScaleUpRunnerProvider,
@@ -84,7 +85,7 @@ async function createEc2ScaleUpRunners({
   numberOfRunners,
   githubInstallationClient,
   state,
-}: CreateScaleUpRunnersInput<Ec2ScaleUpState>): Promise<string[]> {
+}: CreateScaleUpRunnersInput<Ec2ScaleUpState>): Promise<CreateScaleUpRunnersResult> {
   const config = loadEc2ScaleUpProviderConfig();
 
   return await createRunners(
