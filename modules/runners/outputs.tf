@@ -2,8 +2,14 @@ output "launch_template" {
   value = aws_launch_template.runner
 }
 
+# Role outputs expose selected attributes instead of the whole resource to
+# avoid "Value derived from a deprecated source" warnings (managed_policy_arns).
 output "role_runner" {
-  value = aws_iam_role.runner
+  value = [for role in aws_iam_role.runner : {
+    id   = role.id
+    arn  = role.arn
+    name = role.name
+  }]
 }
 
 output "lambda_scale_up" {
@@ -15,7 +21,11 @@ output "lambda_scale_up_log_group" {
 }
 
 output "role_scale_up" {
-  value = aws_iam_role.scale_up
+  value = {
+    id   = aws_iam_role.scale_up.id
+    arn  = aws_iam_role.scale_up.arn
+    name = aws_iam_role.scale_up.name
+  }
 }
 
 output "lambda_scale_down" {
@@ -27,7 +37,11 @@ output "lambda_scale_down_log_group" {
 }
 
 output "role_scale_down" {
-  value = aws_iam_role.scale_down
+  value = {
+    id   = aws_iam_role.scale_down.id
+    arn  = aws_iam_role.scale_down.arn
+    name = aws_iam_role.scale_down.name
+  }
 }
 
 output "lambda_pool" {
