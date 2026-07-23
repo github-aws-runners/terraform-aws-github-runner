@@ -200,6 +200,7 @@ describe('Test simple pool.', () => {
         1,
         expect.anything(),
         'pool-lambda',
+        expect.any(Number),
       );
     });
 
@@ -282,6 +283,7 @@ describe('Test simple pool.', () => {
         3,
         expect.anything(),
         'pool-lambda',
+        expect.any(Number),
       );
     });
   });
@@ -303,6 +305,7 @@ describe('Test simple pool.', () => {
         3,
         expect.anything(),
         'pool-lambda',
+        expect.any(Number),
       );
     });
   });
@@ -359,6 +362,7 @@ describe('Test simple pool.', () => {
         1,
         expect.anything(),
         'pool-lambda',
+        expect.any(Number),
       );
     });
   });
@@ -396,6 +400,7 @@ describe('Test simple pool.', () => {
         2,
         expect.anything(),
         'pool-lambda',
+        expect.any(Number),
       );
     });
 
@@ -410,6 +415,7 @@ describe('Test simple pool.', () => {
         1,
         expect.anything(),
         'pool-lambda',
+        expect.any(Number),
       );
     });
 
@@ -423,6 +429,7 @@ describe('Test simple pool.', () => {
         8,
         expect.anything(),
         'pool-lambda',
+        expect.any(Number),
       );
     });
   });
@@ -447,6 +454,7 @@ describe('Test simple pool.', () => {
         2,
         expect.anything(),
         'pool-lambda',
+        expect.any(Number),
       );
     });
   });
@@ -490,6 +498,27 @@ describe('Test simple pool.', () => {
 
       // Should look up installationId via the API
       expect(mockOctokit.apps.getOrgInstallation).toHaveBeenCalledWith({ org: ORG });
+    });
+
+    it('passes appIndex to createRunners so rate-limit metrics are attributed to the correct app', async () => {
+      mockedAppAuth.mockResolvedValue({
+        type: 'app',
+        token: 'token',
+        appId: 42,
+        expiresAt: 'some-date',
+        appIndex: 2,
+      });
+
+      await adjust({ poolSize: 3 });
+
+      expect(createRunners).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.any(Number),
+        expect.anything(),
+        'pool-lambda',
+        2, // appIndex must match the one returned by createGithubAppAuth
+      );
     });
   });
 });

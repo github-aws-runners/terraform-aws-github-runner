@@ -143,6 +143,7 @@ export async function adjust(event: PoolEvent): Promise<void> {
       topUp,
       githubInstallationClient,
       'pool-lambda',
+      appIdx,
     );
   } else {
     logger.info(`Pool will not be topped up. Found ${numberOfRunnersInPool} managed idle runners.`);
