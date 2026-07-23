@@ -327,14 +327,20 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       };
     }
 
-    if (createRunnersResult.retryableErrorCount > 0) {
-      logger.warn('Some runners failed with retryable errors, rejecting messages so the requests are retried', {
-        wanted: newRunners,
-        got: createRunnersResult.instances.length,
-        retryableErrorCount: createRunnersResult.retryableErrorCount,
+    logger.info('Runner creation summary.', {
+      requestedMessageCount: newRunners,
+      successfulRunnerCount: createRunnersResult.instances.length,
+      retryableErrorCount: createRunnersResult.retryableErrorCount,
+      nonRetryableErrorCount: createRunnersResult.nonRetryableErrorCount,
+    });
+
+    if (createRunnersResult.nonRetryableErrorCount > 0) {
+      logger.warn('Some runner creation messages will not be retried through the current SQS batch.', {
         nonRetryableErrorCount: createRunnersResult.nonRetryableErrorCount,
       });
+    }
 
+    if (createRunnersResult.retryableErrorCount > 0) {
       const failedMessages = messages.slice(0, createRunnersResult.retryableErrorCount);
       failedMessages.forEach(({ messageId }) => rejectedMessageIds.add(messageId));
     }
