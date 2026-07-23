@@ -347,6 +347,7 @@ async function createJitConfig(
       logger.warn('Failed to create JIT config for instance, continuing with remaining instances', {
         instance: runnerId,
         error: error instanceof Error ? error.message : String(error),
+        retryable: true,
       });
     }
   }
@@ -356,6 +357,7 @@ async function createJitConfig(
       failedInstances: failedRunnerIds,
       totalInstances: runnerIds.length,
       successfulInstances: runnerIds.length - failedRunnerIds.length,
+      retryable: true,
     });
   }
 

@@ -31,6 +31,8 @@ interface Ec2Filter {
   Values: string[];
 }
 
+type FleetError = NonNullable<CreateFleetResult['Errors']>[number];
+
 export async function listEC2Runners(
   filters: Runners.ListRunnerFilters | undefined = undefined,
 ): Promise<Runners.RunnerList[]> {
@@ -308,7 +310,11 @@ export async function createRunner(
   try {
     amiIdOverride = await getAmiIdOverride(runnerParameters);
   } catch (error) {
-    logger.warn('Runner creation failed before an EC2 request could be made.', { error: error as Error });
+    logger.warn('Runner creation failed before an EC2 request could be made.', {
+      error: error as Error,
+      retryable: true,
+      failedInstanceCount: runnerParameters.numberOfRunners,
+    });
     return failedCreateRunnerResult(runnerParameters.numberOfRunners, true);
   }
 
@@ -385,24 +391,46 @@ async function processFleetResult(
     };
   }
 
-  const retryableErrors = runnerParameters.scaleErrors;
+  const configuredRetryableErrors = runnerParameters.scaleErrors;
+  const { fleetErrorsTriggeringRetry, fleetErrorsNotTriggeringRetry } = classifyFleetErrors(
+    fleet.Errors || [],
+    configuredRetryableErrors,
+  );
 
   const missingInstanceCount = runnerParameters.numberOfRunners - instances.length;
-  const retryableErrorCount = Math.min(missingInstanceCount, countRetryableErrors(errors, retryableErrors));
+  // CreateFleet errors describe failed launch-template overrides, not individual instances.
+  // A retryable override failure can therefore account for any number of missing instances.
+  const retryableErrorCount = fleetErrorsTriggeringRetry.length > 0 ? missingInstanceCount : 0;
   const nonRetryableErrorCount = missingInstanceCount - retryableErrorCount;
 
   logger.warn('Create fleet did not create every requested instance.', {
     data: fleet.Errors,
     retryableErrorCount,
     nonRetryableErrorCount,
+    fleetErrorsTriggeringRetry: structuredClone(fleetErrorsTriggeringRetry),
+    fleetErrorsNotTriggeringRetry: structuredClone(fleetErrorsNotTriggeringRetry),
   });
   return { instances, retryableErrorCount, nonRetryableErrorCount };
 }
 
-function countRetryableErrors(errors: string[], retryableErrors: string[]): number {
-  return errors.reduce((count, errorName) => {
-    return isRetryableAwsErrorName(errorName, retryableErrors) ? count + 1 : count;
-  }, 0);
+function classifyFleetErrors(
+  errors: FleetError[],
+  configuredRetryableErrors: string[],
+): { fleetErrorsTriggeringRetry: FleetError[]; fleetErrorsNotTriggeringRetry: FleetError[] } {
+  return errors.reduce<{
+    fleetErrorsTriggeringRetry: FleetError[];
+    fleetErrorsNotTriggeringRetry: FleetError[];
+  }>(
+    (classifiedErrors, error) => {
+      if (isRetryableAwsErrorName(error.ErrorCode || '', configuredRetryableErrors)) {
+        classifiedErrors.fleetErrorsTriggeringRetry.push(error);
+      } else {
+        classifiedErrors.fleetErrorsNotTriggeringRetry.push(error);
+      }
+      return classifiedErrors;
+    },
+    { fleetErrorsTriggeringRetry: [], fleetErrorsNotTriggeringRetry: [] },
+  );
 }
 
 function processRunInstanceResult(
@@ -423,7 +451,11 @@ function processRunInstanceResult(
   );
 
   const nonRetryableErrorCount = runnerParameters.numberOfRunners - instances.length;
-  logger.warn('RunInstances did not create every requested instance.', { data: result, nonRetryableErrorCount });
+  logger.warn('RunInstances did not create every requested instance.', {
+    data: result,
+    retryable: false,
+    nonRetryableErrorCount,
+  });
   return { instances, retryableErrorCount: 0, nonRetryableErrorCount };
 }
 

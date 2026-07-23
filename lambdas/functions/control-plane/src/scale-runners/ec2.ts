@@ -46,7 +46,11 @@ export async function createRunners(
       ...ec2RunnerConfig,
     });
   } catch (error) {
-    logger.error('Unexpected error while creating EC2 runner instances.', { error });
+    logger.error('Unexpected error while creating EC2 runner instances.', {
+      error,
+      retryable: true,
+      failedInstanceCount: numberOfRunners,
+    });
     return { instances: [], retryableErrorCount: numberOfRunners, nonRetryableErrorCount: 0 };
   }
 
@@ -60,7 +64,12 @@ export async function createRunners(
         createEc2StartRunnerConfigOptions(),
       );
     } catch (error) {
-      logger.error('Unexpected error while registering GitHub runners.', { error });
+      logger.error('Unexpected error while registering GitHub runners.', {
+        error,
+        retryable: true,
+        failedInstances: result.instances,
+        failedInstanceCount: result.instances.length,
+      });
       failedInstances = result.instances;
     }
 
@@ -68,7 +77,8 @@ export async function createRunners(
     if (failedInstances.length > 0) {
       logger.warn('Terminating instances that failed to get configured', {
         failedInstances,
-        failedCount: failedInstances.length,
+        failedInstanceCount: failedInstances.length,
+        retryable: true,
       });
 
       await terminateFailedInstances(failedInstances);
