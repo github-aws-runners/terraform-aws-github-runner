@@ -1,8 +1,6 @@
-export interface Ec2DynamicLabelsValueRule {
-  allowed?: string[];
-  denied?: string[];
-  max?: number | string;
-}
+import type { AwsDynamicLabelsPolicy, AwsDynamicLabelsValueRule } from './aws-dynamic-labels-policy';
+
+export type Ec2DynamicLabelsValueRule = AwsDynamicLabelsValueRule;
 
 /**
  * EC2 dynamic labels policy schema. `blocked_keys` rejects keys outright;
@@ -10,10 +8,7 @@ export interface Ec2DynamicLabelsValueRule {
  * `<key>` segment of a `ghr-ec2-<key>:<value>` label in the same hyphenated
  * form as the labels themselves (e.g. `instance-type`).
  */
-export interface Ec2DynamicLabelsPolicy {
-  blocked_keys?: string[];
-  restricted_keys?: Record<string, Ec2DynamicLabelsValueRule>;
-}
+export type Ec2DynamicLabelsPolicy = AwsDynamicLabelsPolicy;
 
 function globToRegExp(glob: string): RegExp {
   const escaped = glob.replace(/[.+^${}()|[\]\\]/g, '\\$&');

@@ -1,6 +1,6 @@
 import { publishMessage } from '../aws/sqs';
 import { publishRetryMessage, checkAndRetryJob } from './job-retry';
-import { ActionRequestMessage, ActionRequestMessageRetry } from './scale-up';
+import type { ActionRequestMessage, ActionRequestMessageRetry } from './types';
 import { getOctokit } from '../github/octokit';
 import { jobRetryCheck } from '../lambda';
 import { Octokit } from '@octokit/rest';

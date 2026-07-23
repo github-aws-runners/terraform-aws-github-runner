@@ -772,7 +772,7 @@ variable "enable_on_demand_failover_for_errors" {
 }
 
 variable "scale_errors" {
-  description = "List of aws error codes that should trigger retry during scale up. This list will replace the default errors defined in the variable `defaultScaleErrors` in https://github.com/github-aws-runners/terraform-aws-github-runner/blob/main/lambdas/functions/control-plane/src/aws/runners.ts"
+  description = "List of AWS error codes that should trigger retry during scale up. This list replaces the module default scale-up retry errors"
   type        = list(string)
   default = [
     "UnfulfillableCapacity",

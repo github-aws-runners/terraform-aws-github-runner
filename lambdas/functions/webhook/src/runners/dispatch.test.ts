@@ -1,4 +1,5 @@
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
+import type { RunnerProviderType } from '@aws-github-runner/runner-provider';
 
 import nock from 'nock';
 import { WorkflowJobEvent } from '@octokit/webhooks-types';
@@ -7,7 +8,10 @@ import workFlowJobEvent from '../../test/resources/github_workflowjob_event.json
 import runnerConfig from '../../test/resources/multi_runner_configurations.json';
 
 import { RunnerConfig, sendActionRequest } from '../sqs';
-import { canRunJob, dispatch } from './dispatch';
+import type { RunnerMatcherConfig } from '../sqs';
+import { dispatch } from './dispatch';
+import { selectAwsDynamicLabelQueue } from './aws-dynamic-labels';
+import { canRunJob } from './labels';
 import { ConfigDispatcher } from '../ConfigLoader';
 import { logger } from '@aws-github-runner/aws-powertools-util';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -456,7 +460,7 @@ describe('Dispatcher', () => {
             labelMatchers: [['self-hosted', 'linux']],
             exactMatch: true,
             enableDynamicLabels: true,
-            ec2DynamicLabelsPolicy: {
+            awsDynamicLabelsPolicy: {
               restricted_keys: {
                 'instance-type': { allowed: ['m5.*'] },
               },
@@ -499,7 +503,7 @@ describe('Dispatcher', () => {
             labelMatchers: [['self-hosted', 'linux']],
             exactMatch: true,
             enableDynamicLabels: true,
-            ec2DynamicLabelsPolicy: {
+            awsDynamicLabelsPolicy: {
               restricted_keys: {
                 'instance-type': { allowed: ['m5.*'] },
               },
@@ -537,7 +541,7 @@ describe('Dispatcher', () => {
             labelMatchers: [['self-hosted', 'linux']],
             exactMatch: true,
             enableDynamicLabels: true,
-            ec2DynamicLabelsPolicy: {},
+            awsDynamicLabelsPolicy: {},
           },
         },
       ]);
@@ -576,4 +580,88 @@ async function createConfig(repositoryAllowList?: string[], runnerConfig?: Runne
   ConfigDispatcher.reset();
   mockSSMResponse(runnerConfig);
   return await ConfigDispatcher.load();
+}
+
+describe('selectAwsDynamicLabelQueue', () => {
+  it('defaults queues without a provider to EC2 dynamic label handling', () => {
+    const queue = runnerQueue('default-ec2');
+
+    expect(selectAwsDynamicLabelQueue([queue], ['self-hosted', 'linux'], ['ghr-ec2-instance-type:t3.large'])).toEqual({
+      queue,
+      labels: ['self-hosted', 'linux', 'ghr-ec2-instance-type:t3.large'],
+    });
+  });
+
+  it('normalizes runner provider casing and surrounding whitespace', () => {
+    const queue = runnerQueue('normalized-ec2');
+    (queue as unknown as { runnerProvider: string }).runnerProvider = ' EC2 ';
+
+    expect(selectAwsDynamicLabelQueue([queue], ['self-hosted', 'linux'], ['ghr-ec2-instance-type:t3.large'])).toEqual({
+      queue,
+      labels: ['self-hosted', 'linux', 'ghr-ec2-instance-type:t3.large'],
+    });
+  });
+
+  it('skips an unsupported provider strategy and selects the next supported queue', () => {
+    const unsupportedQueue = runnerQueue('unsupported-provider');
+    (unsupportedQueue as unknown as { runnerProvider: string }).runnerProvider = 'unsupported';
+    const ec2Queue = runnerQueue('ec2');
+
+    expect(
+      selectAwsDynamicLabelQueue(
+        [unsupportedQueue, ec2Queue],
+        ['self-hosted', 'linux'],
+        ['ghr-ec2-instance-type:t3.large'],
+      ),
+    ).toEqual({
+      queue: ec2Queue,
+      labels: ['self-hosted', 'linux', 'ghr-ec2-instance-type:t3.large'],
+    });
+  });
+
+  it('rejects a malformed non-string runner provider without throwing', () => {
+    const queue = runnerQueue('malformed-provider');
+    (queue as unknown as { runnerProvider: number }).runnerProvider = 42;
+
+    expect(
+      selectAwsDynamicLabelQueue([queue], ['self-hosted', 'linux'], ['ghr-ec2-instance-type:t3.large']),
+    ).toBeUndefined();
+  });
+
+  it('enforces a legacy EC2 dynamic labels policy when the new key is absent', () => {
+    const queue = runnerQueue('legacy-ec2-policy');
+    queue.matcherConfig.ec2DynamicLabelsPolicy = {
+      blocked_keys: ['instance-type'],
+    };
+
+    expect(
+      selectAwsDynamicLabelQueue([queue], ['self-hosted', 'linux'], ['ghr-ec2-instance-type:t3.large']),
+    ).toBeUndefined();
+  });
+
+  it('prefers the new AWS dynamic labels policy when both keys are present', () => {
+    const queue = runnerQueue('new-policy-precedence');
+    queue.matcherConfig.ec2DynamicLabelsPolicy = {
+      blocked_keys: ['instance-type'],
+    };
+    queue.matcherConfig.awsDynamicLabelsPolicy = null;
+
+    expect(selectAwsDynamicLabelQueue([queue], ['self-hosted', 'linux'], ['ghr-ec2-instance-type:t3.large'])).toEqual({
+      queue,
+      labels: ['self-hosted', 'linux', 'ghr-ec2-instance-type:t3.large'],
+    });
+  });
+});
+
+function runnerQueue(id: string, runnerProvider?: RunnerProviderType): RunnerMatcherConfig {
+  return {
+    id,
+    arn: `arn:${id}`,
+    runnerProvider,
+    matcherConfig: {
+      labelMatchers: [['self-hosted', 'linux']],
+      exactMatch: true,
+      enableDynamicLabels: true,
+    },
+  };
 }

@@ -2,10 +2,13 @@ import { Octokit } from '@octokit/rest';
 import moment from 'moment-timezone';
 import * as nock from 'nock';
 
-import { listEC2Runners } from '../aws/runners';
+import { bootTimeExceeded, listEC2Runners } from '../aws/ec2-runners';
+import type { RunnerList } from '../aws/ec2-runners.d';
 import * as ghAuth from '../github/auth';
-import { createRunners, getGitHubEnterpriseApiUrl } from '../scale-runners/scale-up';
+import { createRunners } from '../scale-runners/ec2';
+import { getGitHubEnterpriseApiUrl } from '../scale-runners/github-runner';
 import { adjust } from './pool';
+import { calculateEc2PoolSize } from './ec2-pool';
 import { describe, it, expect, beforeEach, vi, MockedClass } from 'vitest';
 
 const mockOctokit = {
@@ -25,7 +28,7 @@ vi.mock('@octokit/rest', () => ({
   }),
 }));
 
-vi.mock('./../aws/runners', async () => ({
+vi.mock('./../aws/ec2-runners', async () => ({
   listEC2Runners: vi.fn(),
   // Include any other functions from the module that might be used
   bootTimeExceeded: vi.fn(),
@@ -36,14 +39,16 @@ vi.mock('./../github/auth', async () => ({
   createOctokitClient: vi.fn(),
 }));
 
-vi.mock('../scale-runners/scale-up', async () => ({
-  scaleUp: vi.fn(),
+vi.mock('../scale-runners/ec2', async () => ({
   createRunners: vi.fn(),
+}));
+
+vi.mock('../scale-runners/github-runner', async () => ({
   getGitHubEnterpriseApiUrl: vi.fn().mockReturnValue({
     ghesApiUrl: '',
     ghesBaseUrl: '',
   }),
-  // Include any other functions that might be needed
+  validateSsmParameterStoreTags: vi.fn().mockReturnValue([]),
 }));
 
 const mocktokit = Octokit as MockedClass<typeof Octokit>;
@@ -51,6 +56,7 @@ const mockedAppAuth = vi.mocked(ghAuth.createGithubAppAuth);
 const mockedInstallationAuth = vi.mocked(ghAuth.createGithubInstallationAuth);
 const mockCreateClient = vi.mocked(ghAuth.createOctokitClient);
 const mockListRunners = vi.mocked(listEC2Runners);
+const mockBootTimeExceeded = vi.mocked(bootTimeExceeded);
 
 const cleanEnv = process.env;
 
@@ -190,7 +196,7 @@ describe('Test simple pool.', () => {
       });
     });
     it('Top up pool with pool size 2 registered.', async () => {
-      await adjust({ poolSize: 3 });
+      await adjust({ poolSize: 3, type: 'ec2' });
       expect(createRunners).toHaveBeenCalledTimes(1);
       expect(createRunners).toHaveBeenCalledWith(
         expect.anything(),
@@ -201,8 +207,43 @@ describe('Test simple pool.', () => {
       );
     });
 
+    it('Defaults legacy pool events without a provider type to EC2.', async () => {
+      await adjust({ poolSize: 10 });
+      expect(mockListRunners).toHaveBeenCalledWith({
+        environment: 'unit-test-environment',
+        runnerOwner: ORG,
+        runnerType: 'Org',
+        statuses: ['running'],
+      });
+      expect(createRunners).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        8,
+        expect.anything(),
+        'pool-lambda',
+      );
+    });
+
+    it('Selects the EC2 pool provider case-insensitively.', async () => {
+      await adjust({ poolSize: 10, type: ' EC2 ' });
+      expect(createRunners).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        8,
+        expect.anything(),
+        'pool-lambda',
+      );
+    });
+
+    it('Rejects unsupported pool provider types.', async () => {
+      await expect(adjust({ poolSize: 10, type: 'microvm' })).rejects.toThrow(
+        "Unsupported runner provider type 'microvm'",
+      );
+      expect(mockListRunners).not.toHaveBeenCalled();
+    });
+
     it('Should not top up if pool size is reached.', async () => {
-      await adjust({ poolSize: 1 });
+      await adjust({ poolSize: 1, type: 'ec2' });
       expect(createRunners).not.toHaveBeenCalled();
     });
 
@@ -228,7 +269,7 @@ describe('Test simple pool.', () => {
       ]);
 
       // 2 idle + 1 booting = 3, top up with 2 to match a pool of 5
-      await adjust({ poolSize: 5 });
+      await adjust({ poolSize: 5, type: 'ec2' });
       expect(createRunners).toHaveBeenCalled();
       // Access the numberOfRunners without assuming a specific position
       // Just test that the function was called
@@ -258,7 +299,7 @@ describe('Test simple pool.', () => {
         },
       ]);
 
-      await adjust({ poolSize: 2 });
+      await adjust({ poolSize: 2, type: 'ec2' });
       expect(createRunners).not.toHaveBeenCalled();
     });
   });
@@ -272,7 +313,7 @@ describe('Test simple pool.', () => {
     });
 
     it('Top up if the pool size is set to 5', async () => {
-      await adjust({ poolSize: 5 });
+      await adjust({ poolSize: 5, type: 'ec2' });
       // 2 idle, top up with 3 to match a pool of 5
       expect(createRunners).toHaveBeenCalledWith(
         expect.anything(),
@@ -293,7 +334,7 @@ describe('Test simple pool.', () => {
     });
 
     it('Top up if the pool size is set to 5', async () => {
-      await adjust({ poolSize: 5 });
+      await adjust({ poolSize: 5, type: 'ec2' });
       // 2 idle, top up with 3 to match a pool of 5
       expect(createRunners).toHaveBeenCalledWith(
         expect.anything(),
@@ -349,7 +390,7 @@ describe('Test simple pool.', () => {
         },
       ]);
 
-      await adjust({ poolSize: 5 });
+      await adjust({ poolSize: 5, type: 'ec2' });
       // 2 idle, 2 prefixed idle top up with 1 to match a pool of 5
       expect(createRunners).toHaveBeenCalledWith(
         expect.anything(),
@@ -373,13 +414,13 @@ describe('Test simple pool.', () => {
       // 4 running runners (2 idle, 1 busy, 1 offline) already meet the maximum, so a large pool size
       // must not create more. This is the over-provisioning case from issue #5186.
       process.env.RUNNERS_MAXIMUM_COUNT = '4';
-      await adjust({ poolSize: 10 });
+      await adjust({ poolSize: 10, type: 'ec2' });
       expect(createRunners).not.toHaveBeenCalled();
     });
 
     it('Should not top up when the total number of running runners exceeds the maximum.', async () => {
       process.env.RUNNERS_MAXIMUM_COUNT = '3';
-      await adjust({ poolSize: 10 });
+      await adjust({ poolSize: 10, type: 'ec2' });
       expect(createRunners).not.toHaveBeenCalled();
     });
 
@@ -387,7 +428,7 @@ describe('Test simple pool.', () => {
       // 4 running runners with a maximum of 6 leaves headroom for 2, even though the pool of 10 and the
       // 2 idle runners would otherwise request a top-up of 8.
       process.env.RUNNERS_MAXIMUM_COUNT = '6';
-      await adjust({ poolSize: 10 });
+      await adjust({ poolSize: 10, type: 'ec2' });
       expect(createRunners).toHaveBeenCalledWith(
         expect.anything(),
         expect.anything(),
@@ -401,7 +442,7 @@ describe('Test simple pool.', () => {
       // Headroom (6 - 4 = 2) is larger than the pool demand (5 - 2 idle = 3 would exceed it, so use a
       // pool that stays within headroom): pool of 3 with 2 idle requests 1, which is under the cap.
       process.env.RUNNERS_MAXIMUM_COUNT = '6';
-      await adjust({ poolSize: 3 });
+      await adjust({ poolSize: 3, type: 'ec2' });
       expect(createRunners).toHaveBeenCalledWith(
         expect.anything(),
         expect.anything(),
@@ -414,7 +455,7 @@ describe('Test simple pool.', () => {
     it('Should ignore the maximum when set to -1 (unlimited).', async () => {
       process.env.RUNNERS_MAXIMUM_COUNT = '-1';
       // 2 idle of 4 running, pool of 10 tops up with 8 regardless of how many are already running.
-      await adjust({ poolSize: 10 });
+      await adjust({ poolSize: 10, type: 'ec2' });
       expect(createRunners).toHaveBeenCalledWith(
         expect.anything(),
         expect.anything(),
@@ -432,12 +473,12 @@ describe('Test simple pool.', () => {
 
     it('Should not top up when pool size matches runners including busy online runners.', async () => {
       // Without INCLUDE_BUSY_RUNNERS: 2 in pool (i-1-idle, i-4-idle-older). With it: 3 (adds i-2-busy).
-      await adjust({ poolSize: 3 });
+      await adjust({ poolSize: 3, type: 'ec2' });
       expect(createRunners).not.toHaveBeenCalled();
     });
 
     it('Should top up by two runners when pool size is 5 and busy runners count toward the pool.', async () => {
-      await adjust({ poolSize: 5 });
+      await adjust({ poolSize: 5, type: 'ec2' });
       // 3 in pool (idle, busy, older idle); need 2 more
       expect(createRunners).toHaveBeenCalledWith(
         expect.anything(),
@@ -447,5 +488,44 @@ describe('Test simple pool.', () => {
         'pool-lambda',
       );
     });
+  });
+});
+
+describe('calculateEc2PoolSize', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('counts registered online idle runners', () => {
+    const runners: RunnerList[] = [{ instanceId: 'i-idle' }];
+    const runnerStatus = new Map([['i-idle', { busy: false, status: 'online' }]]);
+
+    expect(calculateEc2PoolSize(runners, runnerStatus)).toBe(1);
+    expect(mockBootTimeExceeded).not.toHaveBeenCalled();
+  });
+
+  it('does not count registered busy or offline runners', () => {
+    const runners: RunnerList[] = [{ instanceId: 'i-busy' }, { instanceId: 'i-offline' }];
+    const runnerStatus = new Map([
+      ['i-busy', { busy: true, status: 'online' }],
+      ['i-offline', { busy: false, status: 'offline' }],
+    ]);
+
+    expect(calculateEc2PoolSize(runners, runnerStatus)).toBe(0);
+    expect(mockBootTimeExceeded).not.toHaveBeenCalled();
+  });
+
+  it('counts unregistered runners that are still booting', () => {
+    const runners: RunnerList[] = [{ instanceId: 'i-booting' }];
+    mockBootTimeExceeded.mockReturnValue(false);
+
+    expect(calculateEc2PoolSize(runners, new Map())).toBe(1);
+  });
+
+  it('does not count unregistered runners whose boot time expired', () => {
+    const runners: RunnerList[] = [{ instanceId: 'i-expired' }];
+    mockBootTimeExceeded.mockReturnValue(true);
+
+    expect(calculateEc2PoolSize(runners, new Map())).toBe(0);
   });
 });

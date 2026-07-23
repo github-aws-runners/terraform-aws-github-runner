@@ -311,7 +311,7 @@ variable "enable_runner_on_demand_failover_for_errors" {
 }
 
 variable "scale_errors" {
-  description = "List of aws error codes that should trigger retry during scale up. This list will replace the default errors defined in the variable `defaultScaleErrors` in https://github.com/github-aws-runners/terraform-aws-github-runner/blob/main/lambdas/functions/control-plane/src/aws/runners.ts"
+  description = "List of AWS error codes that should trigger retry during scale up. This list replaces the module default scale-up retry errors"
   type        = list(string)
   default = [
     "UnfulfillableCapacity",
@@ -729,14 +729,15 @@ variable "enable_dynamic_labels" {
   default     = false
 }
 
-variable "ec2_dynamic_labels_policy" {
+variable "aws_dynamic_labels_policy" {
   description = <<-EOT
     Experimental! Can be removed / changed without trigger a major release.
-    Optional policy for dynamic EC2 override labels evaluated by the webhook
-    dispatcher. Only effective when `enable_dynamic_labels = true`.
+    Optional AWS dynamic label policy evaluated by the webhook dispatcher.
+    Only effective when `enable_dynamic_labels = true`.
 
-    Jobs whose EC2 dynamic labels violate the policy are rejected with a 202 and a
-    warning is logged.
+    Jobs whose provider-specific dynamic labels violate the policy are rejected
+    with a 202 and a warning is logged. Currently this policy applies to EC2
+    override labels using the `ghr-ec2-*` prefix.
 
     Evaluation:
       1. Keys in `blocked_keys` are always rejected.
@@ -748,8 +749,8 @@ variable "ec2_dynamic_labels_policy" {
       - `restricted_keys`: map of key to value rule:
           `{ allowed = [globs], denied = [globs], max = number|string }`.
 
-    Keys use the `ghr-ec2-*` dynamic label suffix, not the full label. For example, use
-    `instance-type` for `ghr-ec2-instance-type`.
+    Keys use the provider dynamic label suffix, not the full label. For example,
+    use `instance-type` for `ghr-ec2-instance-type`.
   EOT
   type        = any
   default     = null

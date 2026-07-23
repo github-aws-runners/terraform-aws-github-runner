@@ -231,6 +231,7 @@ resource "aws_scheduler_schedule" "pool" {
     role_arn = aws_iam_role.scheduler.arn
     input = jsonencode({
       poolSize = each.value.size
+      type     = "ec2"
     })
   }
 }

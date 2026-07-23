@@ -1,8 +1,9 @@
 import { SQS, SendMessageCommandInput } from '@aws-sdk/client-sqs';
 import { WorkflowJobEvent } from '@octokit/webhooks-types';
 import { createChildLogger, getTracedAWSV3Client } from '@aws-github-runner/aws-powertools-util';
+import type { RunnerProviderType } from '@aws-github-runner/runner-provider';
 
-import { Ec2DynamicLabelsPolicy } from '../runners/dynamic-labels-policy';
+import type { AwsDynamicLabelsPolicy } from '../runners/aws-dynamic-labels-policy';
 
 const logger = createChildLogger('sqs');
 
@@ -24,13 +25,17 @@ export interface MatcherConfig {
   exactMatch: boolean;
   bidirectionalLabelMatch?: boolean;
   enableDynamicLabels?: boolean;
-  ec2DynamicLabelsPolicy?: Ec2DynamicLabelsPolicy | null;
+  awsDynamicLabelsPolicy?: AwsDynamicLabelsPolicy | null;
+  // TODO: Remove this legacy compatibility field and fallback in the next release.
+  /** @deprecated Use awsDynamicLabelsPolicy. Retained while existing SSM configurations migrate. */
+  ec2DynamicLabelsPolicy?: AwsDynamicLabelsPolicy | null;
 }
 
 export type RunnerConfig = RunnerMatcherConfig[];
 
 export interface RunnerMatcherConfig {
   matcherConfig: MatcherConfig;
+  runnerProvider?: RunnerProviderType;
   id: string;
   arn: string;
 }
