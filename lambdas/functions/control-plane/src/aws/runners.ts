@@ -20,7 +20,7 @@ import {
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import { getTracedAWSV3Client, tracer } from '@aws-github-runner/aws-powertools-util';
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
-import moment from 'moment';
+import { Temporal } from 'temporal-polyfill';
 
 import ScaleError from './../scale-runners/ScaleError';
 import * as Runners from './runners.d';
@@ -524,7 +524,12 @@ async function createInstancesWithRunInstances(
 
 // If launchTime is undefined, this will return false
 export function bootTimeExceeded(ec2Runner: { launchTime?: Date }): boolean {
-  const runnerBootTimeInMinutes = process.env.RUNNER_BOOT_TIME_IN_MINUTES;
-  const launchTimePlusBootTime = moment(ec2Runner.launchTime).utc().add(runnerBootTimeInMinutes, 'minutes');
-  return launchTimePlusBootTime < moment(new Date()).utc();
+  const runnerBootTimeInMinutes = Number(process.env.RUNNER_BOOT_TIME_IN_MINUTES);
+  if (ec2Runner.launchTime === undefined || !Number.isFinite(runnerBootTimeInMinutes)) {
+    return false;
+  }
+  const launchTimePlusBootTime = Temporal.Instant.fromEpochMilliseconds(ec2Runner.launchTime.getTime()).add({
+    minutes: runnerBootTimeInMinutes,
+  });
+  return Temporal.Instant.compare(launchTimePlusBootTime, Temporal.Now.instant()) < 0;
 }
