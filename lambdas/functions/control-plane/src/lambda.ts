@@ -57,6 +57,12 @@ export async function scaleUpHandler(event: SQSEvent, context: Context): Promise
   try {
     const rejectedMessageIds = await scaleUp(sqsMessages);
 
+    if (rejectedMessageIds.length > 0) {
+      logger.warn('SQS messages will be retried.', {
+        messageIds: rejectedMessageIds,
+      });
+    }
+
     for (const messageId of rejectedMessageIds) {
       batchItemFailures.push({
         itemIdentifier: messageId,

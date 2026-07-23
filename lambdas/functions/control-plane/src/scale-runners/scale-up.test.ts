@@ -7,7 +7,7 @@ import nock from 'nock';
 import { performance } from 'perf_hooks';
 
 import * as ghAuth from '../github/auth';
-import { createRunner, listEC2Runners, tag } from './../aws/ec2-runners';
+import { createRunner, listEC2Runners, tag, terminateRunner } from './../aws/ec2-runners';
 import { RunnerInputParameters } from './../aws/ec2-runners.d';
 import * as scaleUpModule from './scale-up';
 import { parseEc2OverrideConfig } from './ec2-labels';
@@ -37,6 +37,7 @@ const mockOctokit = {
 const mockCreateRunner = vi.mocked(createRunner);
 const mockListRunners = vi.mocked(listEC2Runners);
 const mockTag = vi.mocked(tag);
+const mockTerminateRunner = vi.mocked(terminateRunner);
 const mockEC2Client = mockClient(EC2Client);
 const mockSSMClient = mockClient(SSMClient);
 const mockSSMgetParameter = vi.mocked(getParameter);
@@ -56,6 +57,7 @@ vi.mock('./../aws/ec2-runners', async () => ({
   createRunner: vi.fn(),
   listEC2Runners: vi.fn(),
   tag: vi.fn(),
+  terminateRunner: vi.fn(),
 }));
 
 vi.mock('./../github/auth', async () => ({
@@ -378,6 +380,7 @@ describe('scaleUp with GHES', () => {
       });
       await expect(scaleUpModule.scaleUp(TEST_DATA)).resolves.toEqual(['foobar']);
       expect(mockOctokit.paginate).toHaveBeenCalledTimes(1);
+      expect(mockTerminateRunner).toHaveBeenCalledWith('i-12345');
     });
 
     it('Discards event if it is a User repo and org level runners is enabled', async () => {
@@ -1295,10 +1298,8 @@ describe('scaleUp with GHES', () => {
     });
 
     it('converts an unexpected EC2 creation error into a retryable result', async () => {
-      const mockCreateRunners = vi.mocked(createRunner);
-      mockCreateRunners.mockRejectedValue(new Error('no retry'));
+      mockCreateRunner.mockRejectedValueOnce(new Error('unexpected EC2 error'));
       await expect(scaleUpModule.scaleUp(TEST_DATA)).resolves.toEqual(['foobar']);
-      mockCreateRunners.mockReset();
     });
 
     it('converts an unexpected provider error into a retryable result', async () => {
@@ -1415,6 +1416,15 @@ describe('scaleUp with GHES', () => {
 
       expect(rejectedMessages).toHaveLength(2); // 3 requested - 1 created = 2 failed
       expect(rejectedMessages).toEqual(['message-0', 'message-1']);
+    });
+
+    it('Should reject only retryable partial EC2 instance creation failures', async () => {
+      mockCreateRunner.mockResolvedValue(createRunnerResult(['i-12345'], 1, 1));
+
+      const messages = createTestMessages(3);
+      const rejectedMessages = await scaleUpModule.scaleUp(messages);
+
+      expect(rejectedMessages).toEqual(['message-0']);
     });
 
     it('does not retry partial EC2 instance creation failures that are not retryable', async () => {
@@ -1584,13 +1594,11 @@ describe('scaleUp with GHES', () => {
       );
     });
 
-    it('Should not fail-open for unsupported event types', async () => {
-      // An unsupported event can never become answerable, so fail-open must not
-      // swallow it — otherwise every check_run event silently scales up a runner.
+    it('Should skip unsupported event types without scaling up', async () => {
       process.env.ENABLE_EPHEMERAL_RUNNERS = 'false';
       const messages = createTestMessages(1).map((m) => ({ ...m, eventType: 'check_run' as const }));
 
-      await expect(scaleUpModule.scaleUp(messages)).rejects.toThrow('Event check_run is not supported');
+      await expect(scaleUpModule.scaleUp(messages)).resolves.toEqual([]);
       expect(createRunner).not.toHaveBeenCalled();
     });
   });
@@ -2152,6 +2160,7 @@ describe('scaleUp with Github Data Residency', () => {
       });
       await expect(scaleUpModule.scaleUp(TEST_DATA)).resolves.toEqual(['foobar']);
       expect(mockOctokit.paginate).toHaveBeenCalledTimes(1);
+      expect(mockTerminateRunner).toHaveBeenCalledWith('i-12345');
     });
 
     it('Discards event if it is a User repo and org level runners is enabled', async () => {
@@ -2348,10 +2357,8 @@ describe('scaleUp with Github Data Residency', () => {
     });
 
     it('converts an unexpected EC2 creation error into a retryable result', async () => {
-      const mockCreateRunners = vi.mocked(createRunner);
-      mockCreateRunners.mockRejectedValue(new Error('no retry'));
+      mockCreateRunner.mockRejectedValueOnce(new Error('unexpected EC2 error'));
       await expect(scaleUpModule.scaleUp(TEST_DATA)).resolves.toEqual(['foobar']);
-      mockCreateRunners.mockReset();
     });
   });
 

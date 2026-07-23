@@ -189,6 +189,9 @@ describe('Test scale up lambda wrapper.', () => {
       expect(result).toEqual({
         batchItemFailures: [{ itemIdentifier: 'message-1' }, { itemIdentifier: 'message-2' }],
       });
+      expect(logger.warn).toHaveBeenCalledWith('SQS messages will be retried.', {
+        messageIds: ['message-1', 'message-2'],
+      });
     });
 
     it('Should filter out non-SQS event sources', async () => {
