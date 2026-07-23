@@ -797,19 +797,37 @@ describe('create runner with errors', () => {
     });
   });
 
-  it('separates retryable and non-retryable failure counts.', async () => {
+  it('retries every missing instance when Fleet reports any retryable error.', async () => {
     createFleetMockWithErrors(['UnfulfillableCapacity', 'MaxSpotInstanceCountExceeded', 'NotMappedError']);
 
     await expect(createRunner({ ...createRunnerConfig(defaultRunnerConfig), numberOfRunners: 3 })).resolves.toEqual({
       instances: [],
-      retryableErrorCount: 2,
-      nonRetryableErrorCount: 1,
+      retryableErrorCount: 3,
+      nonRetryableErrorCount: 0,
     });
     expect(mockEC2Client).toHaveReceivedCommandWith(
       CreateFleetCommand,
       expectedCreateFleetRequest({ ...defaultExpectedFleetRequestValues, totalTargetCapacity: 3 }),
     );
     expect(mockSSMClient).not.toHaveReceivedCommand(PutParameterCommand);
+  });
+
+  it('does not treat Fleet override error count as failed instance count.', async () => {
+    createFleetMockWithErrors(Array(12).fill('InsufficientFreeAddressesInSubnet'));
+
+    await expect(
+      createRunner({
+        ...createRunnerConfig({
+          ...defaultRunnerConfig,
+          scaleErrors: [...defaultRunnerConfig.scaleErrors, 'InsufficientFreeAddressesInSubnet'],
+        }),
+        numberOfRunners: 35,
+      }),
+    ).resolves.toEqual({
+      instances: [],
+      retryableErrorCount: 35,
+      nonRetryableErrorCount: 0,
+    });
   });
 
   it('returns a non-retryable error count for an unmapped error', async () => {

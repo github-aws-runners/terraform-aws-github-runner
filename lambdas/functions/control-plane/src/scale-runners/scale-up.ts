@@ -319,7 +319,11 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
         state: preparedRunnerGroup.state,
       });
     } catch (error) {
-      logger.error('Runner provider threw an unexpected error.', { error });
+      logger.error('Runner provider threw an unexpected error.', {
+        error,
+        retryable: true,
+        failedMessageCount: newRunners,
+      });
       createRunnersResult = {
         instances: [],
         retryableErrorCount: newRunners,
