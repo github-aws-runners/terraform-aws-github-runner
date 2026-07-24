@@ -288,6 +288,9 @@ module "runners" {
   metrics = var.metrics
 
   job_retry = var.job_retry
+
+  installation_token_table_name = aws_dynamodb_table.installation_tokens.name
+  installation_token_table_arn  = aws_dynamodb_table.installation_tokens.arn
 }
 
 module "runner_binaries" {

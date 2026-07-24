@@ -73,6 +73,8 @@ variable "config" {
     arn_ssm_parameters_path_config       = string
     lambda_tags                          = map(string)
     user_agent                           = string
+    installation_token_table_name        = string
+    installation_token_table_arn         = string
   })
 }
 
