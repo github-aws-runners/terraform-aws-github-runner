@@ -97,10 +97,13 @@ describe('Test scale up lambda wrapper.', () => {
     await expect(scaleUpHandler(sqsEvent, context)).resolves.not.toThrow();
   });
 
-  it('Non scale should resolve.', async () => {
+  it('Non scale error should return message as batch failure for retry.', async () => {
     const error = new Error('Non scale should resolve.');
     vi.mocked(scaleUp).mockRejectedValue(error);
-    await expect(scaleUpHandler(sqsEvent, context)).resolves.not.toThrow();
+    const result = await scaleUpHandler(sqsEvent, context);
+    expect(result).toEqual({
+      batchItemFailures: [{ itemIdentifier: sqsRecord.messageId }],
+    });
   });
 
   it('Scale should create a batch failure message', async () => {
@@ -251,14 +254,32 @@ describe('Test scale up lambda wrapper.', () => {
       await scaleUpHandler(multiRecordEvent, context);
     });
 
-    it('Should return all failed messages when scaleUp throws non-ScaleError', async () => {
+    it('Should return all messages as batch failures when scaleUp throws non-ScaleError', async () => {
       const records = createMultipleRecords(2);
       const multiRecordEvent: SQSEvent = { Records: records };
 
       vi.mocked(scaleUp).mockRejectedValue(new Error('Generic error'));
 
       const result = await scaleUpHandler(multiRecordEvent, context);
-      expect(result).toEqual({ batchItemFailures: [] });
+      expect(result.batchItemFailures).toHaveLength(2);
+      expect(result.batchItemFailures).toEqual(
+        expect.arrayContaining([{ itemIdentifier: 'message-0' }, { itemIdentifier: 'message-1' }]),
+      );
+    });
+
+    it('Should log error with retry message when scaleUp throws non-ScaleError', async () => {
+      const records = createMultipleRecords(3);
+      const multiRecordEvent: SQSEvent = { Records: records };
+      const error = new Error('GitHub API timeout');
+
+      vi.mocked(scaleUp).mockRejectedValue(error);
+      const logSpy = vi.spyOn(logger, 'error');
+
+      await scaleUpHandler(multiRecordEvent, context);
+      expect(logSpy).toHaveBeenCalledWith(
+        expect.stringContaining('returning batch for retry'),
+        expect.objectContaining({ error }),
+      );
     });
 
     it('Should throw when scaleUp throws ScaleError', async () => {
