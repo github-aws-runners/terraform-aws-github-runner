@@ -1,5 +1,6 @@
 module "webhook" {
   source                              = "../webhook"
+  count                               = var.create_webhook_module ? 1 : 0
   prefix                              = var.prefix
   tags                                = local.tags
   kms_key_arn                         = var.kms_key_arn

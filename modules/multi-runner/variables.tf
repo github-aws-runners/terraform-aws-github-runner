@@ -844,3 +844,15 @@ variable "parameter_store_tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "sqs_build_queue_extra_policy_json" {
+  description = "Optional additional SQS policy statements (JSON) merged into the build queue policy for all runner types. Useful for cross-account access, e.g. allowing an SNS topic from another account to send messages."
+  type        = string
+  default     = null
+}
+
+variable "create_webhook_module" {
+  description = "Set to false to skip deploying the webhook Lambda and API Gateway. Use when webhook delivery is handled externally (e.g. a centralised proxy in another account)."
+  type        = bool
+  default     = true
+}
