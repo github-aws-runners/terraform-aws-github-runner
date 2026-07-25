@@ -885,6 +885,19 @@ describe('create runner with errors', () => {
     });
   });
 
+  it.each(['InvalidAMIID.NotFound', 'InvalidParameterValue', 'InvalidIamInstanceProfile.NotFound'])(
+    'returns a non-retryable error count when CreateFleet fails with %s',
+    async (errorName) => {
+      mockEC2Client.on(CreateFleetCommand).rejects(Object.assign(new Error(errorName), { name: errorName }));
+
+      await expect(createRunner(createRunnerConfig(defaultRunnerConfig))).resolves.toEqual({
+        instances: [],
+        retryableErrorCount: 0,
+        nonRetryableErrorCount: 1,
+      });
+    },
+  );
+
   it('returns a retryable error count when the create fleet request fails with an AWS server error.', async () => {
     const error = Object.assign(new Error('Service unavailable'), {
       name: 'UnknownServiceError',
@@ -900,8 +913,31 @@ describe('create runner with errors', () => {
     });
   });
 
-  it('returns a retryable error count when the ami id lookup fails', async () => {
-    mockSSMClient.on(GetParameterCommand).rejects(new Error('Some error'));
+  it('returns a non-retryable error count when an AMI parameter is missing', async () => {
+    mockSSMClient
+      .on(GetParameterCommand)
+      .rejects(Object.assign(new Error('Parameter does not exist'), { name: 'ParameterNotFound' }));
+
+    await expect(
+      createRunner(
+        createRunnerConfig({
+          ...defaultRunnerConfig,
+          amiIdSsmParameterName: 'missing-ami-id-param',
+        }),
+      ),
+    ).resolves.toEqual({ instances: [], retryableErrorCount: 0, nonRetryableErrorCount: 1 });
+    expect(mockEC2Client).not.toHaveReceivedCommand(CreateFleetCommand);
+    expect(mockSSMClient).not.toHaveReceivedCommand(PutParameterCommand);
+  });
+
+  it('returns a retryable error count when the AMI lookup has a transient failure', async () => {
+    mockSSMClient.on(GetParameterCommand).rejects(
+      Object.assign(new Error('Service unavailable'), {
+        name: 'InternalServerError',
+        $fault: 'server',
+        $metadata: { httpStatusCode: 503 },
+      }),
+    );
 
     await expect(
       createRunner(
@@ -911,6 +947,21 @@ describe('create runner with errors', () => {
         }),
       ),
     ).resolves.toEqual({ instances: [], retryableErrorCount: 1, nonRetryableErrorCount: 0 });
+    expect(mockEC2Client).not.toHaveReceivedCommand(CreateFleetCommand);
+    expect(mockSSMClient).not.toHaveReceivedCommand(PutParameterCommand);
+  });
+
+  it('returns a non-retryable error count when the AMI lookup fails with an unknown exception', async () => {
+    mockSSMClient.on(GetParameterCommand).rejects(new Error('Some error'));
+
+    await expect(
+      createRunner(
+        createRunnerConfig({
+          ...defaultRunnerConfig,
+          amiIdSsmParameterName: 'my-ami-id-param',
+        }),
+      ),
+    ).resolves.toEqual({ instances: [], retryableErrorCount: 0, nonRetryableErrorCount: 1 });
     expect(mockEC2Client).not.toHaveReceivedCommand(CreateFleetCommand);
     expect(mockSSMClient).not.toHaveReceivedCommand(PutParameterCommand);
   });

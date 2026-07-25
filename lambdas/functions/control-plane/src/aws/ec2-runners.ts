@@ -139,6 +139,7 @@ const ON_DEMAND_ALLOCATION_STRATEGIES = ['lowest-price', 'prioritized'];
 
 interface AwsErrorLike extends Error {
   code?: string;
+  cause?: unknown;
   $fault?: 'client' | 'server';
   $metadata?: {
     httpStatusCode?: number;
@@ -183,6 +184,10 @@ function isRetryableAwsError(error: unknown, configuredRetryableErrors: string[]
     (awsError.code !== undefined && RETRYABLE_NETWORK_ERROR_CODES.has(awsError.code))
   ) {
     return true;
+  }
+
+  if (awsError.cause && awsError.cause !== error) {
+    return isRetryableAwsError(awsError.cause, configuredRetryableErrors);
   }
 
   return false;
@@ -310,12 +315,13 @@ export async function createRunner(
   try {
     amiIdOverride = await getAmiIdOverride(runnerParameters);
   } catch (error) {
+    const retryable = isRetryableAwsError(error, runnerParameters.scaleErrors);
     logger.warn('Runner creation failed before an EC2 request could be made.', {
       error: error as Error,
-      retryable: true,
+      retryable,
       failedInstanceCount: runnerParameters.numberOfRunners,
     });
-    return failedCreateRunnerResult(runnerParameters.numberOfRunners, true);
+    return failedCreateRunnerResult(runnerParameters.numberOfRunners, retryable);
   }
 
   // EC2 Fleet (CreateFleet) does not support launching instances onto dedicated hosts
@@ -486,8 +492,7 @@ async function getAmiIdOverride(runnerParameters: Runners.RunnerInputParameters)
         'Please ensure that the given parameter exists on this region and contains a valid runner AMI ID',
       { error: e },
     );
-    throw new Error(`Failed to lookup runner AMI ID from SSM parameter: ${runnerParameters.amiIdSsmParameterName},
-       ${e}`);
+    throw e;
   }
 }
 
