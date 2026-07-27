@@ -2,13 +2,23 @@ output "launch_template" {
   value = aws_launch_template.runner
 }
 
-# Role outputs expose selected attributes instead of the whole resource to
-# avoid "Value derived from a deprecated source" warnings (managed_policy_arns).
+# Export explicit attributes, not the whole resource, to avoid deprecated-source warnings (#5159).
 output "role_runner" {
   value = [for role in aws_iam_role.runner : {
-    id   = role.id
-    arn  = role.arn
-    name = role.name
+    arn                   = role.arn
+    assume_role_policy    = role.assume_role_policy
+    create_date           = role.create_date
+    description           = role.description
+    force_detach_policies = role.force_detach_policies
+    id                    = role.id
+    max_session_duration  = role.max_session_duration
+    name                  = role.name
+    name_prefix           = role.name_prefix
+    path                  = role.path
+    permissions_boundary  = role.permissions_boundary
+    tags                  = role.tags
+    tags_all              = role.tags_all
+    unique_id             = role.unique_id
   }]
 }
 
@@ -22,9 +32,20 @@ output "lambda_scale_up_log_group" {
 
 output "role_scale_up" {
   value = {
-    id   = aws_iam_role.scale_up.id
-    arn  = aws_iam_role.scale_up.arn
-    name = aws_iam_role.scale_up.name
+    arn                   = aws_iam_role.scale_up.arn
+    assume_role_policy    = aws_iam_role.scale_up.assume_role_policy
+    create_date           = aws_iam_role.scale_up.create_date
+    description           = aws_iam_role.scale_up.description
+    force_detach_policies = aws_iam_role.scale_up.force_detach_policies
+    id                    = aws_iam_role.scale_up.id
+    max_session_duration  = aws_iam_role.scale_up.max_session_duration
+    name                  = aws_iam_role.scale_up.name
+    name_prefix           = aws_iam_role.scale_up.name_prefix
+    path                  = aws_iam_role.scale_up.path
+    permissions_boundary  = aws_iam_role.scale_up.permissions_boundary
+    tags                  = aws_iam_role.scale_up.tags
+    tags_all              = aws_iam_role.scale_up.tags_all
+    unique_id             = aws_iam_role.scale_up.unique_id
   }
 }
 
@@ -38,9 +59,20 @@ output "lambda_scale_down_log_group" {
 
 output "role_scale_down" {
   value = {
-    id   = aws_iam_role.scale_down.id
-    arn  = aws_iam_role.scale_down.arn
-    name = aws_iam_role.scale_down.name
+    arn                   = aws_iam_role.scale_down.arn
+    assume_role_policy    = aws_iam_role.scale_down.assume_role_policy
+    create_date           = aws_iam_role.scale_down.create_date
+    description           = aws_iam_role.scale_down.description
+    force_detach_policies = aws_iam_role.scale_down.force_detach_policies
+    id                    = aws_iam_role.scale_down.id
+    max_session_duration  = aws_iam_role.scale_down.max_session_duration
+    name                  = aws_iam_role.scale_down.name
+    name_prefix           = aws_iam_role.scale_down.name_prefix
+    path                  = aws_iam_role.scale_down.path
+    permissions_boundary  = aws_iam_role.scale_down.permissions_boundary
+    tags                  = aws_iam_role.scale_down.tags
+    tags_all              = aws_iam_role.scale_down.tags_all
+    unique_id             = aws_iam_role.scale_down.unique_id
   }
 }
 
