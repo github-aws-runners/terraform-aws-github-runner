@@ -201,6 +201,7 @@ module "runners" {
   scale_down_schedule_expression       = var.scale_down_schedule_expression
   minimum_running_time_in_minutes      = var.minimum_running_time_in_minutes
   runner_boot_time_in_minutes          = var.runner_boot_time_in_minutes
+  scale_down_idle_confirmation_seconds = var.scale_down_idle_confirmation_seconds
   runner_disable_default_labels        = var.runner_disable_default_labels
   runner_labels                        = local.runner_labels
   runner_as_root                       = var.runner_as_root

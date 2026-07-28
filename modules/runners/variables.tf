@@ -257,6 +257,12 @@ variable "runner_boot_time_in_minutes" {
   default     = 5
 }
 
+variable "scale_down_idle_confirmation_seconds" {
+  description = "Number of seconds a runner must consistently report not-busy before scale-down terminates it. GitHub's busy flag can be stale (it can read false for a runner that is actively executing a job), so a single not-busy reading is not sufficient evidence a runner is idle. Set to at least one scale-down schedule interval to require two consecutive not-busy evaluations; a busy reading resets the window. 0 keeps the previous single-reading behaviour."
+  type        = number
+  default     = 0
+}
+
 variable "runner_disable_default_labels" {
   description = "Disable default labels for the runners (os, architecture and `self-hosted`). If enabled, the runner will only have the extra labels provided in `runner_extra_labels`."
   type        = bool

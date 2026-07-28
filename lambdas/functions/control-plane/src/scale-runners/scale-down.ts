@@ -161,7 +161,63 @@ async function deleteGitHubRunner(
   }
 }
 
-async function removeRunner(ec2runner: RunnerInfo, ghRunnerIds: number[]): Promise<void> {
+export const IDLE_DETECTED_TAG = 'ghr:idle_detected_at';
+
+function idleConfirmationSeconds(): number {
+  const raw = process.env.SCALE_DOWN_IDLE_CONFIRMATION_SECONDS;
+  const parsed = raw === undefined || raw === '' ? 0 : Number(raw);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+}
+
+// GitHub's busy flag can be stale: it reads false for runners that are actively executing
+// a job, both shortly after job assignment (observed 25-60s lag) and deep into a running
+// job (observed 12+ minutes). See #5085. A single busy=false reading is therefore not
+// sufficient evidence that a runner is idle. When SCALE_DOWN_IDLE_CONFIRMATION_SECONDS > 0,
+// require busy=false readings spanning at least that window before terminating; any
+// busy=true reading in between resets the window (see clearIdleDetection).
+async function idleConfirmed(ec2runner: RunnerInfo): Promise<boolean> {
+  const confirmationSeconds = idleConfirmationSeconds();
+  if (confirmationSeconds === 0) {
+    return true;
+  }
+  const idleDetectedAt = (ec2runner as unknown as RunnerList).idleDetectedAt;
+  const idleForSeconds = idleDetectedAt ? (Date.now() - Date.parse(idleDetectedAt)) / 1000 : NaN;
+  if (Number.isNaN(idleForSeconds)) {
+    // No tag yet, or an unparsable one: (re)start the confirmation window.
+    await tag(ec2runner.instanceId, [{ Key: IDLE_DETECTED_TAG, Value: new Date().toISOString() }]);
+    logger.info(
+      `Runner '${ec2runner.instanceId}' reads idle; deferring termination for at least ` +
+        `${confirmationSeconds}s to confirm the busy state is not stale.`,
+    );
+    return false;
+  }
+  if (idleForSeconds < confirmationSeconds) {
+    logger.info(
+      `Runner '${ec2runner.instanceId}' reads idle since '${idleDetectedAt}' ` +
+        `(${Math.round(idleForSeconds)}s < ${confirmationSeconds}s); deferring termination.`,
+    );
+    return false;
+  }
+  logger.info(
+    `Runner '${ec2runner.instanceId}' confirmed idle since '${idleDetectedAt}' ` +
+      `(${Math.round(idleForSeconds)}s >= ${confirmationSeconds}s).`,
+  );
+  return true;
+}
+
+async function clearIdleDetection(ec2runner: RunnerInfo): Promise<void> {
+  if (idleConfirmationSeconds() === 0) {
+    return;
+  }
+  if ((ec2runner as unknown as RunnerList).idleDetectedAt) {
+    await untag(ec2runner.instanceId, [{ Key: IDLE_DETECTED_TAG }]);
+    logger.info(`Runner '${ec2runner.instanceId}' is busy again; idle-detection window reset.`);
+  }
+}
+
+export type RemoveRunnerResult = 'bypassed' | 'busy' | 'idle-deferred' | 'terminated' | 'delete-failed' | 'error';
+
+async function removeRunner(ec2runner: RunnerInfo, ghRunnerIds: number[]): Promise<RemoveRunnerResult> {
   const githubInstallationClient = await getOrCreateOctokit(ec2runner);
   try {
     const runnerList = ec2runner as unknown as RunnerList;
@@ -169,7 +225,7 @@ async function removeRunner(ec2runner: RunnerInfo, ghRunnerIds: number[]): Promi
       logger.info(
         `Runner '${ec2runner.instanceId}' has bypass-removal tag set, skipping removal. Remove the tag to allow scale-down.`,
       );
-      return;
+      return 'bypassed';
     }
 
     const states = await Promise.all(
@@ -180,6 +236,9 @@ async function removeRunner(ec2runner: RunnerInfo, ghRunnerIds: number[]): Promi
     );
 
     if (states.every((busy) => busy === false)) {
+      if (!(await idleConfirmed(ec2runner))) {
+        return 'idle-deferred';
+      }
       const results = await Promise.all(
         ghRunnerIds.map((ghRunnerId) => deleteGitHubRunner(githubInstallationClient, ec2runner, ghRunnerId)),
       );
@@ -190,6 +249,7 @@ async function removeRunner(ec2runner: RunnerInfo, ghRunnerIds: number[]): Promi
       if (allSucceeded) {
         await terminateRunner(ec2runner.instanceId);
         logger.info(`AWS runner instance '${ec2runner.instanceId}' is terminated and GitHub runner is de-registered.`);
+        return 'terminated';
       } else {
         // Only terminate EC2 if we successfully de-registered from GitHub
         // Otherwise, leave the instance running so the next scale-down cycle can retry
@@ -198,15 +258,19 @@ async function removeRunner(ec2runner: RunnerInfo, ghRunnerIds: number[]): Promi
             `Instance will NOT be terminated to allow retry on next scale-down cycle. ` +
             `Failed runner IDs: ${failedRunners.map((r) => r.ghRunnerId).join(', ')}`,
         );
+        return 'delete-failed';
       }
     } else {
+      await clearIdleDetection(ec2runner);
       logger.info(`Runner '${ec2runner.instanceId}' cannot be de-registered, because it is still busy.`);
+      return 'busy';
     }
   } catch (e) {
     logger.error(
       `Runner '${ec2runner.instanceId}' cannot be de-registered. Error: ${e instanceof Error ? e.message : String(e)}`,
       { error: e },
     );
+    return 'error';
   }
 }
 
@@ -217,6 +281,17 @@ async function evaluateAndRemoveRunners(
   let idleCounter = getIdleRunnerCount(scaleDownConfigs);
   const evictionStrategy = getEvictionStrategy(scaleDownConfigs);
   const ownerTags = new Set(ec2Runners.map((runner) => runner.owner));
+  const census: Record<RemoveRunnerResult | 'kept-idle' | 'orphan-marked' | 'not-booted', number> = {
+    bypassed: 0,
+    busy: 0,
+    'idle-deferred': 0,
+    terminated: 0,
+    'delete-failed': 0,
+    error: 0,
+    'kept-idle': 0,
+    'orphan-marked': 0,
+    'not-booted': 0,
+  };
 
   for (const ownerTag of ownerTags) {
     const ec2RunnersFiltered = ec2Runners
@@ -244,21 +319,31 @@ async function evaluateAndRemoveRunners(
           if (idleCounter > 0) {
             idleCounter--;
             logger.info(`Runner '${ec2Runner.instanceId}' will be kept idle.`);
+            census['kept-idle']++;
           } else {
             logger.info(`Terminating all non busy runners.`);
-            await removeRunner(
+            const result = await removeRunner(
               ec2Runner,
               ghRunnersFiltered.map((runner: { id: number }) => runner.id),
             );
+            census[result]++;
           }
         }
       } else if (bootTimeExceeded(ec2Runner)) {
         await markOrphan(ec2Runner.instanceId);
+        census['orphan-marked']++;
       } else {
         logger.debug(`Runner ${ec2Runner.instanceId} has not yet booted.`);
+        census['not-booted']++;
       }
     }
   }
+  logger.info(
+    `Scale-down census: evaluated ${ec2Runners.length} runner(s): ` +
+      Object.entries(census)
+        .map(([key, value]) => `${key}=${value}`)
+        .join(' '),
+  );
 }
 
 async function markOrphan(instanceId: string): Promise<void> {
