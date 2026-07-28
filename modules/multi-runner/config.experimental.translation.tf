@@ -436,6 +436,7 @@ locals {
       storage_provider = {
         aws = {
           ssm = {
+            token_ttl_seconds = v.runner_config.ssm_token_ttl_seconds
             paths = {
               root   = null
               tokens = null
