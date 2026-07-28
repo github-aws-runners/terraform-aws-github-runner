@@ -59,6 +59,7 @@ module "pool" {
     }
     subnet_ids                           = var.subnet_ids
     ssm_token_path                       = "${var.ssm_paths.root}/${var.ssm_paths.tokens}"
+    ssm_token_ttl_seconds                = var.ssm_token_ttl_seconds
     ssm_config_path                      = "${var.ssm_paths.root}/${var.ssm_paths.config}"
     ami_id_ssm_parameter_name            = local.ami_id_ssm_parameter_name
     ami_id_ssm_parameter_read_policy_arn = local.ami_id_ssm_parameter_name != null ? aws_iam_policy.ami_id_ssm_parameter_read[0].arn : null

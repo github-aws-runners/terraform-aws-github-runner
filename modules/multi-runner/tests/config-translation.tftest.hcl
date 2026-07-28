@@ -336,6 +336,7 @@ run "empty_v2_map_translates_stable_inputs" {
           instance_types        = ["m5.large"]
           runners_maximum_count = 2
           runner_group_name     = "stable-group"
+          ssm_token_ttl_seconds = 3600
           runner_iam_role_managed_policy_arns = [
             "arn:aws:iam::123456789012:policy/stable-runner",
           ]
@@ -417,6 +418,7 @@ run "empty_v2_map_translates_stable_inputs" {
   assert {
     condition = (
       local.normalized_config.multi_runner_config["stable"].runner.os == "linux"
+      && local.effective_config.multi_runner_config["stable"].ssm.token_ttl_seconds == 3600
       && local.normalized_config.multi_runner_config["stable"].runner.architecture == "x64"
       && local.normalized_config.multi_runner_config["stable"].runner.group_name == "stable-group"
       && local.normalized_config.multi_runner_config["stable"].runner.iam.managed_policy_arns["legacy-0"] == "arn:aws:iam::123456789012:policy/stable-runner"
