@@ -21,6 +21,7 @@ export interface RunnerList {
   orphan?: boolean;
   runnerId?: string;
   bypassRemoval?: boolean;
+  idleDetectedAt?: string;
 }
 
 export interface RunnerInfo {
