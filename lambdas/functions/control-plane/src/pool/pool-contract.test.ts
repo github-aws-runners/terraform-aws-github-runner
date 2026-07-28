@@ -16,7 +16,8 @@ vi.mock('../github/auth', () => ({
   createOctokitClient: vi.fn(),
 }));
 
-vi.mock('../scale-runners/github-runner', () => ({
+vi.mock('../scale-runners/github-runner', async (importActual) => ({
+  ...(await importActual<typeof import('../scale-runners/github-runner')>()),
   createStartRunnerConfig: vi.fn(),
   getGitHubEnterpriseApiUrl: vi.fn(),
   validateSsmParameterStoreTags: vi.fn(),

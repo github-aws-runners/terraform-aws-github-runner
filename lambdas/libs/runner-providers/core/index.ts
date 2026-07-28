@@ -20,6 +20,7 @@ export interface CreateGitHubRunnerConfig {
   runnerType: GitHubRunnerType;
   disableAutoUpdate: boolean;
   ssmTokenPath: string;
+  ssmTokenTtlSeconds?: number;
   ssmConfigPath: string;
   ssmParameterStoreTags: { Key: string; Value: string }[];
 }

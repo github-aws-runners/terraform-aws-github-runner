@@ -17,6 +17,7 @@ module "runners" {
     tokens = "${var.ssm_paths.runners}/tokens"
     config = "${var.ssm_paths.runners}/config"
   }
+  ssm_token_ttl_seconds = each.value.runner_config.ssm_token_ttl_seconds
 
   runner_os                     = each.value.runner_config.runner_os
   instance_types                = each.value.runner_config.instance_types

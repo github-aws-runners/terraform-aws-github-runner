@@ -81,6 +81,17 @@ export function validateSsmParameterStoreTags(tagsJson: string): { Key: string; 
   }
 }
 
+export function parseSsmTokenTtlSeconds(ttl: string | undefined): number | undefined {
+  if (!ttl || ttl.trim() === '') {
+    return undefined;
+  }
+  const ttlSeconds = parseInt(ttl);
+  if (isNaN(ttlSeconds) || ttlSeconds <= 0) {
+    throw new Error(`SSM_TOKEN_TTL_SECONDS must be a positive number, got "${ttl}"`);
+  }
+  return ttlSeconds;
+}
+
 async function getGithubRunnerRegistrationToken(githubRunnerConfig: CreateGitHubRunnerConfig, ghClient: Octokit) {
   const registrationToken =
     githubRunnerConfig.runnerType === 'Org'
@@ -270,6 +281,7 @@ async function createRegistrationTokenConfig(
   for (const runnerId of runnerIds) {
     await putParameter(`${githubRunnerConfig.ssmTokenPath}/${runnerId}`, runnerServiceConfig.join(' '), true, {
       tags: [...(options.getSsmParameterTags?.(runnerId) ?? []), ...githubRunnerConfig.ssmParameterStoreTags],
+      ttlSeconds: githubRunnerConfig.ssmTokenTtlSeconds,
     });
     if (isDelay) {
       // Delay to prevent AWS ssm rate limits by being within the max throughput limit
@@ -337,6 +349,7 @@ async function createJitConfig(
       });
       await putParameter(`${githubRunnerConfig.ssmTokenPath}/${runnerId}`, runnerConfig.data.encoded_jit_config, true, {
         tags: [...(options.getSsmParameterTags?.(runnerId) ?? []), ...githubRunnerConfig.ssmParameterStoreTags],
+        ttlSeconds: githubRunnerConfig.ssmTokenTtlSeconds,
       });
       if (isDelay) {
         // Delay to prevent AWS ssm rate limits by being within the max throughput limit

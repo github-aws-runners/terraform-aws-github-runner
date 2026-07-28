@@ -17,7 +17,7 @@ To be able to support a number of use-cases, the module has quite a lot of confi
 
 ## AWS SSM Parameters
 
-The module uses the AWS System Manager Parameter Store to store configuration for the runners, as well as registration tokens and secrets for the Lambdas. Paths for the parameters can be configured via the variable `ssm_paths`. The location of the configuration parameters is retrieved by the runners via the instance tag `ghr:ssm_config_path`. The following default paths will be used. Tokens or JIT config stored in the token path will be deleted after retrieval by instance, data not deleted after a day will be deleted by a SSM housekeeper lambda.
+The module uses the AWS System Manager Parameter Store to store configuration for the runners, as well as registration tokens and secrets for the Lambdas. Paths for the parameters can be configured via the variable `ssm_paths`. The location of the configuration parameters is retrieved by the runners via the instance tag `ghr:ssm_config_path`. The following default paths will be used. Tokens or JIT config stored in the token path will be deleted after retrieval by instance, data not deleted after a day will be deleted by a SSM housekeeper lambda. Alternatively you can set `ssm_token_ttl_seconds` to attach a native SSM expiration policy to the token / JIT config parameters so SSM deletes leftovers itself after the TTL passes. Be aware that parameter policies require the Advanced parameter tier for every token parameter, which incurs additional costs, and that expiration is enforced asynchronously by SSM. The housekeeper lambda remains active as a backstop.
 
 Furthermore, to accommodate larger JIT configurations or other stored values, the module implements automatic tier selection for SSM parameters:
 

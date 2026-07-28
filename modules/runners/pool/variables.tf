@@ -67,6 +67,7 @@ variable "config" {
     ami_id_ssm_parameter_arn             = string
     role_path                            = string
     ssm_token_path                       = string
+    ssm_token_ttl_seconds                = optional(number, null)
     ssm_config_path                      = string
     ami_id_ssm_parameter_name            = string
     ami_id_ssm_parameter_read_policy_arn = string
