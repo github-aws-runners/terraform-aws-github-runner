@@ -71,11 +71,15 @@ export async function scaleUpHandler(event: SQSEvent, context: Context): Promise
 
     return { batchItemFailures };
   } catch (e) {
-    logger.error(`Error processing batch (size: ${sqsMessages.length}): ${(e as Error).message}, ignoring batch`, {
+    logger.error(`Error processing batch (size: ${sqsMessages.length}): ${(e as Error).message}, retrying batch`, {
       error: e,
     });
 
-    return { batchItemFailures };
+    return {
+      batchItemFailures: sqsMessages.map(({ messageId }) => ({
+        itemIdentifier: messageId,
+      })),
+    };
   }
 }
 

@@ -246,14 +246,16 @@ describe('Test scale up lambda wrapper.', () => {
       await scaleUpHandler(multiRecordEvent, context);
     });
 
-    it('Should ignore the batch when scaleUp throws an unexpected error', async () => {
+    it('Should retry the entire batch when scaleUp throws an unexpected error', async () => {
       const records = createMultipleRecords(2);
       const multiRecordEvent: SQSEvent = { Records: records };
 
       vi.mocked(scaleUp).mockRejectedValue(new Error('Generic error'));
 
       const result = await scaleUpHandler(multiRecordEvent, context);
-      expect(result).toEqual({ batchItemFailures: [] });
+      expect(result).toEqual({
+        batchItemFailures: [{ itemIdentifier: 'message-0' }, { itemIdentifier: 'message-1' }],
+      });
     });
   });
 });
