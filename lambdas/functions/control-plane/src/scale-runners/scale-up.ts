@@ -108,7 +108,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
   };
 
   const validMessages = new Map<string, MessagesWithClient>();
-  const rejectedMessageIds = new Set<string>();
+  const retryMessageIds = new Set<string>();
   for (const payload of payloads) {
     const { eventType, messageId, repositoryName, repositoryOwner, labels } = payload;
     if (ephemeralEnabled && eventType !== 'workflow_job') {
@@ -117,7 +117,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
         { eventType, messageId },
       );
 
-      rejectedMessageIds.add(messageId);
+      retryMessageIds.add(messageId);
 
       continue;
     }
@@ -276,14 +276,14 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
         // This removes `skippedRunnerCount` items from the start of the array
         // so that, if we retry more messages later, we pick fresh ones.
         const removedMessages = messages.splice(0, skippedRunnerCount);
-        removedMessages.forEach(({ messageId }) => rejectedMessageIds.add(messageId));
+        removedMessages.forEach(({ messageId }) => retryMessageIds.add(messageId));
       }
 
       // No runners will be created, so skip calling the provider.
       if (newRunners <= 0) {
-        // Publish retry messages for messages that are not rejected
+        // Publish retry messages for messages not already scheduled for SQS batch retry.
         for (const message of queuedMessages) {
-          if (!rejectedMessageIds.has(message.messageId)) {
+          if (!retryMessageIds.has(message.messageId)) {
             await publishRetryMessage(message as ActionRequestMessageRetry);
           }
         }
@@ -346,18 +346,18 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
 
     if (createRunnersResult.retryableErrorCount > 0) {
       const failedMessages = messages.slice(0, createRunnersResult.retryableErrorCount);
-      failedMessages.forEach(({ messageId }) => rejectedMessageIds.add(messageId));
+      failedMessages.forEach(({ messageId }) => retryMessageIds.add(messageId));
     }
 
-    // Publish retry messages for messages that are not rejected
+    // Publish retry messages for messages not already scheduled for SQS batch retry.
     for (const message of queuedMessages) {
-      if (!rejectedMessageIds.has(message.messageId)) {
+      if (!retryMessageIds.has(message.messageId)) {
         await publishRetryMessage(message as ActionRequestMessageRetry);
       }
     }
   }
 
-  return Array.from(rejectedMessageIds);
+  return Array.from(retryMessageIds);
 }
 
 function isValidRepoOwnerTypeIfOrgLevelEnabled(payload: ActionRequestMessage, enableOrgLevel: boolean): boolean {
