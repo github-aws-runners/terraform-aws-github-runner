@@ -90,42 +90,45 @@ variable "multi_runner_config" {
         "InsufficientInstanceCapacity",
         "InsufficientCapacityOnHost",
       ])
-      enable_organization_runners             = optional(bool, false)
-      enable_runner_binaries_syncer           = optional(bool, true)
-      enable_ssm_on_runners                   = optional(bool, false)
-      enable_userdata                         = optional(bool, true)
-      instance_allocation_strategy            = optional(string, "lowest-price")
-      instance_max_spot_price                 = optional(string, null)
-      instance_target_capacity_type           = optional(string, "spot")
-      instance_types                          = list(string)
-      job_queue_retention_in_seconds          = optional(number, 86400)
-      minimum_running_time_in_minutes         = optional(number, null)
-      pool_runner_owner                       = optional(string, null)
-      runner_as_root                          = optional(bool, false)
-      runner_boot_time_in_minutes             = optional(number, 5)
-      runner_disable_default_labels           = optional(bool, false)
-      runner_extra_labels                     = optional(list(string), [])
-      runner_group_name                       = optional(string, "Default")
-      runner_name_prefix                      = optional(string, "")
-      runner_run_as                           = optional(string, "ec2-user")
-      runners_maximum_count                   = number
-      runner_additional_security_group_ids    = optional(list(string), [])
-      scale_down_schedule_expression          = optional(string, "cron(*/5 * * * ? *)")
-      scale_up_reserved_concurrent_executions = optional(number, 1)
-      userdata_template                       = optional(string, null)
-      userdata_content                        = optional(string, null)
-      enable_jit_config                       = optional(bool, null)
-      enable_runner_detailed_monitoring       = optional(bool, false)
-      enable_cloudwatch_agent                 = optional(bool, true)
-      cloudwatch_config                       = optional(string, null)
-      userdata_pre_install                    = optional(string, "")
-      userdata_post_install                   = optional(string, "")
-      runner_hook_job_started                 = optional(string, "")
-      runner_hook_job_completed               = optional(string, "")
-      runner_ec2_tags                         = optional(map(string), {})
-      runner_iam_role_managed_policy_arns     = optional(list(string), [])
-      vpc_id                                  = optional(string, null)
-      subnet_ids                              = optional(list(string), null)
+      enable_organization_runners                                    = optional(bool, false)
+      enable_runner_binaries_syncer                                  = optional(bool, true)
+      enable_ssm_on_runners                                          = optional(bool, false)
+      enable_userdata                                                = optional(bool, true)
+      instance_allocation_strategy                                   = optional(string, "lowest-price")
+      instance_type_priorities                                       = optional(map(number), null)
+      instance_max_spot_price                                        = optional(string, null)
+      instance_target_capacity_type                                  = optional(string, "spot")
+      instance_types                                                 = list(string)
+      job_queue_retention_in_seconds                                 = optional(number, 86400)
+      minimum_running_time_in_minutes                                = optional(number, null)
+      pool_runner_owner                                              = optional(string, null)
+      runner_as_root                                                 = optional(bool, false)
+      runner_boot_time_in_minutes                                    = optional(number, 5)
+      runner_disable_default_labels                                  = optional(bool, false)
+      runner_extra_labels                                            = optional(list(string), [])
+      runner_group_name                                              = optional(string, "Default")
+      runner_name_prefix                                             = optional(string, "")
+      runner_run_as                                                  = optional(string, "ec2-user")
+      runners_maximum_count                                          = number
+      runner_additional_security_group_ids                           = optional(list(string), [])
+      scale_down_schedule_expression                                 = optional(string, "cron(*/5 * * * ? *)")
+      scale_up_reserved_concurrent_executions                        = optional(number, 1)
+      lambda_event_source_mapping_batch_size                         = optional(number, null)
+      lambda_event_source_mapping_maximum_batching_window_in_seconds = optional(number, null)
+      userdata_template                                              = optional(string, null)
+      userdata_content                                               = optional(string, null)
+      enable_jit_config                                              = optional(bool, null)
+      enable_runner_detailed_monitoring                              = optional(bool, false)
+      enable_cloudwatch_agent                                        = optional(bool, true)
+      cloudwatch_config                                              = optional(string, null)
+      userdata_pre_install                                           = optional(string, "")
+      userdata_post_install                                          = optional(string, "")
+      runner_hook_job_started                                        = optional(string, "")
+      runner_hook_job_completed                                      = optional(string, "")
+      runner_ec2_tags                                                = optional(map(string), {})
+      runner_iam_role_managed_policy_arns                            = optional(list(string), [])
+      vpc_id                                                         = optional(string, null)
+      subnet_ids                                                     = optional(list(string), null)
       idle_config = optional(list(object({
         cron             = string
         timeZone         = string
@@ -133,8 +136,10 @@ variable "multi_runner_config" {
         evictionStrategy = optional(string, "oldest_first")
       })), [])
       cpu_options = optional(object({
-        core_count       = number
-        threads_per_core = number
+        core_count            = optional(number)
+        threads_per_core      = optional(number)
+        amd_sev_snp           = optional(string)
+        nested_virtualization = optional(string)
       }), null)
       placement = optional(object({
         affinity                = optional(string)
@@ -147,6 +152,10 @@ variable "multi_runner_config" {
         tenancy                 = optional(string)
         partition_number        = optional(number)
       }), null)
+      license_specifications = optional(list(object({
+        license_configuration_arn = string
+      })), [])
+      use_dedicated_host = optional(bool, false)
       runner_log_files = optional(list(object({
         log_group_name   = string
         prefix_log_group = bool
@@ -155,15 +164,16 @@ variable "multi_runner_config" {
         log_class        = optional(string, "STANDARD")
       })), null)
       block_device_mappings = optional(list(object({
-        delete_on_termination = optional(bool, true)
-        device_name           = optional(string, "/dev/xvda")
-        encrypted             = optional(bool, true)
-        iops                  = optional(number)
-        kms_key_id            = optional(string)
-        snapshot_id           = optional(string)
-        throughput            = optional(number)
-        volume_size           = number
-        volume_type           = optional(string, "gp3")
+        delete_on_termination      = optional(bool, true)
+        device_name                = optional(string, "/dev/xvda")
+        encrypted                  = optional(bool, true)
+        iops                       = optional(number)
+        kms_key_id                 = optional(string)
+        snapshot_id                = optional(string)
+        throughput                 = optional(number)
+        volume_initialization_rate = optional(number)
+        volume_size                = number
+        volume_type                = optional(string, "gp3")
         })), [{
         volume_size = 30
       }])
@@ -180,11 +190,25 @@ variable "multi_runner_config" {
         lambda_timeout     = optional(number, 30)
         max_attempts       = optional(number, 1)
       }), {})
+      iam_overrides = optional(object({
+        override_instance_profile = optional(bool, null)
+        instance_profile_name     = optional(string, null)
+        override_runner_role      = optional(bool, null)
+        runner_role_arn           = optional(string, null)
+        }), {
+        override_instance_profile = false
+        instance_profile_name     = null
+        override_runner_role      = false
+        runner_role_arn           = null
+      })
     })
     matcherConfig = object({
-      labelMatchers = list(list(string))
-      exactMatch    = optional(bool, false)
-      priority      = optional(number, 999)
+      labelMatchers           = list(list(string))
+      exactMatch              = optional(bool, false)
+      bidirectionalLabelMatch = optional(bool, false)
+      priority                = optional(number, 999)
+      enableDynamicLabels     = optional(bool, false)
+      awsDynamicLabelsPolicy  = optional(any, null)
     })
     redrive_build_queue = optional(object({
       enabled         = bool
@@ -197,7 +221,7 @@ variable "multi_runner_config" {
   description = <<EOT
     multi_runner_config = {
       runner_config: {
-        runner_os: "The EC2 Operating System type to use for action runner instances (linux,windows)."
+        runner_os: "The EC2 Operating System type to use for action runner instances (linux, osx, windows)."
         runner_architecture: "The platform architecture of the runner instance_type."
         runner_metadata_options: "(Optional) Metadata options for the ec2 runner instances."
         ami: "(Optional) AMI configuration for the action runner instances. This object allows you to specify all AMI-related settings in one place."
@@ -207,17 +231,18 @@ variable "multi_runner_config" {
         disable_runner_autoupdate: "Disable the auto update of the github runner agent. Be aware there is a grace period of 30 days, see also the [GitHub article](https://github.blog/changelog/2022-02-01-github-actions-self-hosted-runners-can-now-disable-automatic-updates/)"
         ebs_optimized: "The EC2 EBS optimized configuration."
         enable_ephemeral_runners: "Enable ephemeral runners, runners will only be used once."
-        enable_job_queued_check: "Enables JIT configuration for creating runners instead of registration token based registraton. JIT configuration will only be applied for ephemeral runners. By default JIT configuration is enabled for ephemeral runners an can be disabled via this override. When running on GHES without support for JIT configuration this variable should be set to true for ephemeral runners."
+        enable_job_queued_check: Enables JIT configuration for creating runners instead of registration token based registraton. JIT configuration will only be applied for ephemeral runners. By default JIT configuration is enabled for ephemeral runners an can be disabled via this override. When running on GHES without support for JIT configuration this variable should be set to true for ephemeral runners."
         enable_on_demand_failover_for_errors: "Enable on-demand failover. For example to fall back to on demand when no spot capacity is available the variable can be set to `InsufficientInstanceCapacity`. When not defined the default behavior is to retry later."
-        scale_errors: "List of aws error codes that should trigger retry during scale up. This list will replace the default errors defined in the variable `defaultScaleErrors` in https://github.com/github-aws-runners/terraform-aws-github-runner/blob/main/lambdas/functions/control-plane/src/aws/runners.ts"
+        scale_errors: "List of AWS error codes that should trigger retry during scale up. This list replaces the module default scale-up retry errors"
         enable_organization_runners: "Register runners to organization, instead of repo level"
         enable_runner_binaries_syncer: "Option to disable the lambda to sync GitHub runner distribution, useful when using a pre-build AMI."
         enable_ssm_on_runners: "Enable to allow access the runner instances for debugging purposes via SSM. Note that this adds additional permissions to the runner instances."
         enable_userdata: "Should the userdata script be enabled for the runner. Set this to false if you are using your own prebuilt AMI."
-        instance_allocation_strategy: "The allocation strategy for spot instances. AWS recommends to use `capacity-optimized` however the AWS default is `lowest-price`."
+        instance_allocation_strategy: "The allocation strategy for creating instances. For spot, AWS recommends `price-capacity-optimized`; for on-demand, use `lowest-price` or `prioritized`. The AWS default is `lowest-price`."
+        instance_type_priorities: "A map of instance type to priority for the `prioritized` and `capacity-optimized-prioritized` allocation strategies. Lower numbers mean higher priority. If not provided, priorities are assigned based on the order of `instance_types`."
         instance_max_spot_price: "Max price price for spot instances per hour. This variable will be passed to the create fleet as max spot price for the fleet."
         instance_target_capacity_type: "Default lifecycle used for runner instances, can be either `spot` or `on-demand`."
-        instance_types: "List of instance types for the action runner. Defaults are based on runner_os (al2023 for linux and Windows Server Core for win)."
+        instance_types: "List of instance types for the action runner. Defaults are based on runner_os (al2023 for linux, macOS Sequoia for osx, Windows Server Core for win)."
         job_queue_retention_in_seconds: "The number of seconds the job is held in the queue before it is purged"
         minimum_running_time_in_minutes: "The time an ec2 action runner should be running at minimum before terminated if not busy."
         pool_runner_owner: "The pool will deploy runners to the GitHub org ID, set this value to the org to which you want the runners deployed. Repo level is not supported."
@@ -229,11 +254,13 @@ variable "multi_runner_config" {
         runner_group_name: "Name of the runner group."
         runner_name_prefix: "Prefix for the GitHub runner name."
         runner_run_as: "Run the GitHub actions agent as user."
-        runners_maximum_count: "The maximum number of runners that will be created. Setting the variable to `-1` desiables the maximum check."
+        runners_maximum_count: "The maximum number of runners that will be created. Setting the variable to `-1` disables the maximum check."
         scale_down_schedule_expression: "Scheduler expression to check every x for scale down."
         scale_up_reserved_concurrent_executions: "Amount of reserved concurrent executions for the scale-up lambda function. A value of 0 disables lambda from being triggered and -1 removes any concurrency limitations."
+        lambda_event_source_mapping_batch_size: "(Optional) Maximum number of records per Lambda invocation for this runner flavor. Overrides the module-level `lambda_event_source_mapping_batch_size` when set."
+        lambda_event_source_mapping_maximum_batching_window_in_seconds: "(Optional) Maximum seconds to gather records before invoking Lambda for this runner flavor. Overrides the module-level `lambda_event_source_mapping_maximum_batching_window_in_seconds` when set."
         userdata_template: "Alternative user-data template, replacing the default template. By providing your own user_data you have to take care of installing all required software, including the action runner. Variables userdata_pre/post_install are ignored."
-        enable_jit_config "Overwrite the default behavior for JIT configuration. By default JIT configuration is enabled for ephemeral runners and disabled for non-ephemeral runners. In case of GHES check first if the JIT config API is available. In case you are upgrading from 3.x to 4.x you can set `enable_jit_config` to `false` to avoid a breaking change when having your own AMI."
+        enable_jit_config: "Overwrite the default behavior for JIT configuration. By default JIT configuration is enabled for ephemeral runners and disabled for non-ephemeral runners. In case of GHES check first if the JIT config API is available. In case you are upgrading from 3.x to 4.x you can set `enable_jit_config` to `false` to avoid a breaking change when having your own AMI."
         enable_runner_detailed_monitoring: "Should detailed monitoring be enabled for the runner. Set this to true if you want to use detailed monitoring. See https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-cloudwatch-new.html for details."
         enable_cloudwatch_agent: "Enabling the cloudwatch agent on the ec2 runner instances, the runner contains default config. Configuration can be overridden via `cloudwatch_config`."
         cloudwatch_config: "(optional) Replaces the module default cloudwatch log config. See https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-Configuration-File-Details.html for details."
@@ -246,15 +273,21 @@ variable "multi_runner_config" {
         vpc_id: "The VPC for security groups of the action runners. If not set uses the value of `var.vpc_id`."
         subnet_ids: "List of subnets in which the action runners will be launched, the subnets needs to be subnets in the `vpc_id`. If not set, uses the value of `var.subnet_ids`."
         idle_config: "List of time period that can be defined as cron expression to keep a minimum amount of runners active instead of scaling down to 0. By defining this list you can ensure that in time periods that match the cron expression within 5 seconds a runner is kept idle."
+        license_specifications: "Optional EC2 License Manager license configuration ARNs for the runner launch template. Required for macOS dedicated-host runners when the host resource group uses a Mac dedicated host license configuration."
+        use_dedicated_host: "Experimental! Can be removed / changed without trigger a major release. Whether to use EC2 dedicated hosts for the runners. Needed for macos runners Note that using dedicated hosts can increase cost significantly."
         runner_log_files: "(optional) Replaces the module default cloudwatch log config. See https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-Configuration-File-Details.html for details."
-        block_device_mappings: "The EC2 instance block device configuration. Takes the following keys: `device_name`, `delete_on_termination`, `volume_type`, `volume_size`, `encrypted`, `iops`, `throughput`, `kms_key_id`, `snapshot_id`."
+        block_device_mappings: "The EC2 instance block device configuration. Takes the following keys: `device_name`, `delete_on_termination`, `volume_type`, `volume_size`, `encrypted`, `iops`, `throughput`, `kms_key_id`, `snapshot_id`, `volume_initialization_rate`."
         job_retry: "Experimental! Can be removed / changed without trigger a major release. Configure job retries. The configuration enables job retries (for ephemeral runners). After creating the instances a message will be published to a job retry queue. The job retry check lambda is checking after a delay if the job is queued. If not the message will be published again on the scale-up (build queue). Using this feature can impact the rate limit of the GitHub app."
         pool_config: "The configuration for updating the pool. The `pool_size` to adjust to by the events triggered by the `schedule_expression`. For example you can configure a cron expression for week days to adjust the pool to 10 and another expression for the weekend to adjust the pool to 1. Use `schedule_expression_timezone` to override the schedule time zone (defaults to UTC)."
+        iam_overrides: "Allows to (optionally) override the instance profile and runner role created by the module. Set `override_instance_profile` to true and provide the `instance_profile_name` to use an existing instance profile. Set `override_runner_role` to true and provide the `runner_role_arn` to use an existing role for the runner instances."
       }
       matcherConfig: {
         labelMatchers: "The list of list of labels supported by the runner configuration. `[[self-hosted, linux, x64, example]]`"
-        exactMatch: "If set to true all labels in the workflow job must match the GitHub labels (os, architecture and `self-hosted`). When false if __any__ workflow label matches it will trigger the webhook."
+        exactMatch: "DEPRECATED: Use `bidirectionalLabelMatch` instead. If set to true all labels in the workflow job must match the GitHub labels (os, architecture and `self-hosted`). When false if __any__ workflow label matches it will trigger the webhook. Note: this only checks that workflow labels are a subset of runner labels, not the reverse."
+        bidirectionalLabelMatch: "If set to true, the runner labels and workflow job labels must be an exact two-way match (same set, any order, no extras or missing labels). This is stricter than `exactMatch` which only checks that workflow labels are a subset of runner labels. When false, if __any__ workflow label matches it will trigger the webhook."
         priority: "If set it defines the priority of the matcher, the matcher with the lowest priority will be evaluated first. Default is 999, allowed values 0-999."
+        enableDynamicLabels: "Experimental! When true the dispatcher allows `ghr-*` dynamic labels for jobs routed to this runner. Default false."
+        awsDynamicLabelsPolicy: "Optional AWS dynamic label policy evaluated by the dispatcher. Only effective when `enableDynamicLabels = true`. Jobs whose provider dynamic labels violate every matching runner's policy are rejected with a 202 (a warning is logged). Evaluation: keys in `blocked_keys` are always rejected; keys in `restricted_keys` are allowed only when their value passes the rule; unlisted keys are allowed. Schema: `{ blocked_keys = [<key>], restricted_keys = { <key> = { allowed = [globs], denied = [globs], max = number|string } } }`. Keys use the dynamic label suffix, e.g. `instance-type` for `ghr-ec2-instance-type`."
       }
       redrive_build_queue: "Set options to attach (optional) a dead letter queue to the build queue, the queue between the webhook and the scale up lambda. You have the following options. 1. Disable by setting `enabled` to false. 2. Enable by setting `enabled` to `true`, `maxReceiveCount` to a number of max retries."
     }
@@ -369,6 +402,16 @@ variable "repository_white_list" {
   description = "List of github repository full names (owner/repo_name) that will be allowed to use the github app. Leave empty for no filtering."
   type        = list(string)
   default     = []
+}
+
+variable "queue_selection_strategy" {
+  description = "Strategy used to pick a queue when multiple runner configurations match a job equally well. `first` keeps the historical deterministic behaviour (the first matching queue by priority). `random` spreads jobs across the matching queues to avoid concentrating load on a single one. `all` scales up one runner per matching queue and lets the first to become available take the job (favouring speed over cost; this multiplies instance launches and runner registrations per job)."
+  type        = string
+  default     = "first"
+  validation {
+    condition     = contains(["first", "random", "all"], var.queue_selection_strategy)
+    error_message = "`queue_selection_strategy` value not valid. Valid values are 'first', 'random', 'all'."
+  }
 }
 
 variable "log_level" {
@@ -685,6 +728,8 @@ variable "instance_termination_watcher" {
     Configuration for the spot termination watcher lambda function. This feature is Beta, changes will not trigger a major release as long in beta.
 
     `enable`: Enable or disable the spot termination watcher.
+    `enable_runner_deregistration`: Enable or disable deregistering the runner from GitHub when its EC2 instance is terminated.
+    `environment_variables`: Additional environment variables to merge into the Lambda configuration.
     `memory_size`: Memory size limit in MB of the lambda.
     `s3_key`: S3 key for syncer lambda function. Required if using S3 bucket to specify lambdas.
     `s3_object_version`: S3 object version for syncer lambda function. Useful if S3 versioning is enabled on source bucket.
@@ -698,11 +743,13 @@ variable "instance_termination_watcher" {
       enable_spot_termination_handler              = optional(bool, true)
       enable_spot_termination_notification_watcher = optional(bool, true)
     }), {})
-    memory_size       = optional(number, null)
-    s3_key            = optional(string, null)
-    s3_object_version = optional(string, null)
-    timeout           = optional(number, null)
-    zip               = optional(string, null)
+    enable_runner_deregistration = optional(bool, true)
+    environment_variables        = optional(map(string), {})
+    memory_size                  = optional(number, null)
+    s3_key                       = optional(string, null)
+    s3_object_version            = optional(string, null)
+    timeout                      = optional(number, null)
+    zip                          = optional(string, null)
   })
   default = {}
 }
@@ -751,6 +798,33 @@ variable "user_agent" {
   description = "User agent used for API calls by lambda functions."
   type        = string
   default     = "github-aws-runners"
+}
+
+variable "iam_overrides" {
+  description = "This map provides the possibility to override some IAM defaults. The following attributes are supported: `instance_profile_name` overrides the instance profile name used in the launch template. `runner_role_arn` overrides the IAM role ARN used for the runner instances."
+  type = object({
+    override_instance_profile = optional(bool, null)
+    instance_profile_name     = optional(string, null)
+    override_runner_role      = optional(bool, null)
+    runner_role_arn           = optional(string, null)
+  })
+
+  default = {
+    override_instance_profile = false
+    instance_profile_name     = null
+    override_runner_role      = false
+    runner_role_arn           = null
+  }
+
+  validation {
+    condition     = !var.iam_overrides.override_instance_profile || var.iam_overrides.instance_profile_name != null
+    error_message = "instance_profile_name must be provided when override_instance_profile is true."
+  }
+
+  validation {
+    condition     = !var.iam_overrides.override_runner_role || var.iam_overrides.runner_role_arn != null
+    error_message = "runner_role_arn must be provided when override_runner_role is true."
+  }
 }
 
 variable "lambda_event_source_mapping_batch_size" {

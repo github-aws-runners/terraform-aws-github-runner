@@ -1,23 +1,30 @@
 locals {
   lambda_instance_termination_watcher = {
-    prefix                    = var.prefix
-    tags                      = local.tags
-    aws_partition             = var.aws_partition
-    architecture              = var.lambda_architecture
-    principals                = var.lambda_principals
-    runtime                   = var.lambda_runtime
-    security_group_ids        = var.lambda_security_group_ids
-    subnet_ids                = var.lambda_subnet_ids
-    log_level                 = var.log_level
-    log_class                 = var.log_class
-    logging_kms_key_id        = var.logging_kms_key_id
-    logging_retention_in_days = var.logging_retention_in_days
-    role_path                 = var.role_path
-    role_permissions_boundary = var.role_permissions_boundary
-    s3_bucket                 = var.lambda_s3_bucket
-    tracing_config            = var.tracing_config
-    lambda_tags               = var.lambda_tags
-    metrics                   = var.metrics
+    prefix                       = var.prefix
+    tags                         = local.tags
+    aws_partition                = var.aws_partition
+    architecture                 = var.lambda_architecture
+    principals                   = var.lambda_principals
+    runtime                      = var.lambda_runtime
+    security_group_ids           = var.lambda_security_group_ids
+    subnet_ids                   = var.lambda_subnet_ids
+    log_level                    = var.log_level
+    log_class                    = var.log_class
+    logging_kms_key_id           = var.logging_kms_key_id
+    logging_retention_in_days    = var.logging_retention_in_days
+    role_path                    = var.role_path
+    role_permissions_boundary    = var.role_permissions_boundary
+    s3_bucket                    = var.lambda_s3_bucket
+    tracing_config               = var.tracing_config
+    lambda_tags                  = var.lambda_tags
+    metrics                      = var.metrics
+    enable_runner_deregistration = var.instance_termination_watcher.enable_runner_deregistration
+    github_app_parameters = var.instance_termination_watcher.enable_runner_deregistration ? {
+      id         = local.github_app_parameters.id
+      key_base64 = local.github_app_parameters.key_base64
+    } : null
+    ghes_url              = var.ghes_url
+    environment_variables = var.instance_termination_watcher.environment_variables
   }
 }
 

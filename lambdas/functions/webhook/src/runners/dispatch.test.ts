@@ -1,4 +1,5 @@
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
+import type { RunnerProviderType } from '@aws-github-runner/runner-provider';
 
 import nock from 'nock';
 import { WorkflowJobEvent } from '@octokit/webhooks-types';
@@ -7,7 +8,10 @@ import workFlowJobEvent from '../../test/resources/github_workflowjob_event.json
 import runnerConfig from '../../test/resources/multi_runner_configurations.json';
 
 import { RunnerConfig, sendActionRequest } from '../sqs';
-import { canRunJob, dispatch } from './dispatch';
+import type { RunnerMatcherConfig } from '../sqs';
+import { dispatch } from './dispatch';
+import { selectAwsDynamicLabelQueue } from './aws-dynamic-labels';
+import { canRunJob } from './labels';
 import { ConfigDispatcher } from '../ConfigLoader';
 import { logger } from '@aws-github-runner/aws-powertools-util';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -103,6 +107,7 @@ describe('Dispatcher', () => {
         installationId: 0,
         queueId: runnerConfig[0].id,
         repoOwnerType: 'Organization',
+        labels: ['self-hosted', 'Test'],
       });
     });
 
@@ -150,6 +155,7 @@ describe('Dispatcher', () => {
         installationId: 0,
         queueId: 'match',
         repoOwnerType: 'Organization',
+        labels: ['self-hosted', 'match'],
       });
     });
 
@@ -174,6 +180,70 @@ describe('Dispatcher', () => {
       const resp = await dispatch(event, 'workflow_job', config);
       expect(resp.statusCode).toBe(202);
       expect(sendActionRequest).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('queue selection strategy', () => {
+    const twoExactMatches: RunnerConfig = [
+      { ...runnerConfig[0], id: 'q1', matcherConfig: { labelMatchers: [['self-hosted', 'any']], exactMatch: true } },
+      { ...runnerConfig[0], id: 'q2', matcherConfig: { labelMatchers: [['self-hosted', 'any']], exactMatch: true } },
+    ];
+    const jobEvent = (labels: string[]) =>
+      ({
+        ...workFlowJobEvent,
+        workflow_job: { ...workFlowJobEvent.workflow_job, labels },
+      }) as unknown as WorkflowJobEvent;
+
+    it('defaults to the first matching queue', async () => {
+      config = await createConfig(undefined, twoExactMatches);
+      await dispatch(jobEvent(['self-hosted', 'any']), 'workflow_job', config);
+      expect(sendActionRequest).toHaveBeenCalledWith(expect.objectContaining({ queueId: 'q1' }));
+    });
+
+    it('random spreads across equally-matching queues', async () => {
+      process.env.QUEUE_SELECTION_STRATEGY = 'random';
+      config = await createConfig(undefined, twoExactMatches);
+      const rand = vi.spyOn(Math, 'random').mockReturnValue(0.99);
+      await dispatch(jobEvent(['self-hosted', 'any']), 'workflow_job', config);
+      expect(sendActionRequest).toHaveBeenCalledWith(expect.objectContaining({ queueId: 'q2' }));
+      rand.mockRestore();
+    });
+
+    it('random still respects exactMatch priority (never a lower-priority match)', async () => {
+      process.env.QUEUE_SELECTION_STRATEGY = 'random';
+      config = await createConfig(undefined, [
+        { ...runnerConfig[0], id: 'loose', matcherConfig: { labelMatchers: [['self-hosted']], exactMatch: false } },
+        {
+          ...runnerConfig[0],
+          id: 'exact',
+          matcherConfig: { labelMatchers: [['self-hosted', 'any']], exactMatch: true },
+        },
+      ]);
+      const rand = vi.spyOn(Math, 'random').mockReturnValue(0.99);
+      await dispatch(jobEvent(['self-hosted', 'any']), 'workflow_job', config);
+      expect(sendActionRequest).toHaveBeenCalledWith(expect.objectContaining({ queueId: 'exact' }));
+      rand.mockRestore();
+    });
+
+    it('all dispatches to every equally-matching queue but not lower-priority ones', async () => {
+      process.env.QUEUE_SELECTION_STRATEGY = 'all';
+      config = await createConfig(undefined, [
+        { ...runnerConfig[0], id: 'loose', matcherConfig: { labelMatchers: [['self-hosted']], exactMatch: false } },
+        { ...runnerConfig[0], id: 'q1', matcherConfig: { labelMatchers: [['self-hosted', 'any']], exactMatch: true } },
+        { ...runnerConfig[0], id: 'q2', matcherConfig: { labelMatchers: [['self-hosted', 'any']], exactMatch: true } },
+      ]);
+      await dispatch(jobEvent(['self-hosted', 'any']), 'workflow_job', config);
+      expect(sendActionRequest).toHaveBeenCalledTimes(2);
+      expect(sendActionRequest).toHaveBeenCalledWith(expect.objectContaining({ queueId: 'q1' }));
+      expect(sendActionRequest).toHaveBeenCalledWith(expect.objectContaining({ queueId: 'q2' }));
+      expect(sendActionRequest).not.toHaveBeenCalledWith(expect.objectContaining({ queueId: 'loose' }));
+    });
+
+    it('rejects an invalid strategy at config load', async () => {
+      process.env.QUEUE_SELECTION_STRATEGY = 'bogus';
+      ConfigDispatcher.reset();
+      mockSSMResponse(twoExactMatches);
+      await expect(ConfigDispatcher.load()).rejects.toThrow(/queue selection strategy/i);
     });
   });
 
@@ -214,16 +284,279 @@ describe('Dispatcher', () => {
       expect(canRunJob(workflowLabels, runnerLabels, true)).toBe(false);
     });
 
-    it('should not accept jobs not providing labels if exact match is.', () => {
-      const workflowLabels: string[] = [];
-      const runnerLabels = [['self-hosted', 'linux', 'x64']];
-      expect(canRunJob(workflowLabels, runnerLabels, true)).toBe(false);
+    it('should match when runner has more labels than workflow requests with exactMatch=true (unidirectional).', () => {
+      const workflowLabels = ['self-hosted', 'linux', 'x64', 'staging', 'ubuntu-2404'];
+      const runnerLabels = [['self-hosted', 'linux', 'x64', 'staging', 'ubuntu-2404', 'on-demand']];
+      expect(canRunJob(workflowLabels, runnerLabels, true)).toBe(true);
     });
 
-    it('should accept jobs not providing labels and exact match is set to false.', () => {
+    it('should match when labels are exactly identical with exactMatch=true.', () => {
+      const workflowLabels = ['self-hosted', 'linux', 'on-demand'];
+      const runnerLabels = [['self-hosted', 'linux', 'on-demand']];
+      expect(canRunJob(workflowLabels, runnerLabels, true)).toBe(true);
+    });
+
+    it('should match with exactMatch=true when labels are in different order.', () => {
+      const workflowLabels = ['linux', 'self-hosted', 'x64'];
+      const runnerLabels = [['self-hosted', 'linux', 'x64']];
+      expect(canRunJob(workflowLabels, runnerLabels, true)).toBe(true);
+    });
+
+    it('should match with exactMatch=true when labels are completely shuffled.', () => {
+      const workflowLabels = ['x64', 'ubuntu-latest', 'self-hosted', 'linux'];
+      const runnerLabels = [['self-hosted', 'linux', 'x64', 'ubuntu-latest']];
+      expect(canRunJob(workflowLabels, runnerLabels, true)).toBe(true);
+    });
+
+    it('should match with exactMatch=false when labels are in different order.', () => {
+      const workflowLabels = ['gpu', 'self-hosted'];
+      const runnerLabels = [['self-hosted', 'gpu']];
+      expect(canRunJob(workflowLabels, runnerLabels, false)).toBe(true);
+    });
+
+    // bidirectionalLabelMatch tests
+    it('should NOT match when runner has more labels than workflow requests (bidirectionalLabelMatch=true).', () => {
+      const workflowLabels = ['self-hosted', 'linux', 'x64', 'staging', 'ubuntu-2404'];
+      const runnerLabels = [['self-hosted', 'linux', 'x64', 'staging', 'ubuntu-2404', 'on-demand']];
+      expect(canRunJob(workflowLabels, runnerLabels, false, true)).toBe(false);
+    });
+
+    it('should NOT match when workflow has more labels than runner (bidirectionalLabelMatch=true).', () => {
+      const workflowLabels = ['self-hosted', 'linux', 'x64', 'ubuntu-latest', 'gpu'];
+      const runnerLabels = [['self-hosted', 'linux', 'x64']];
+      expect(canRunJob(workflowLabels, runnerLabels, false, true)).toBe(false);
+    });
+
+    it('should match when labels are exactly identical with bidirectionalLabelMatch=true.', () => {
+      const workflowLabels = ['self-hosted', 'linux', 'on-demand'];
+      const runnerLabels = [['self-hosted', 'linux', 'on-demand']];
+      expect(canRunJob(workflowLabels, runnerLabels, false, true)).toBe(true);
+    });
+
+    it('should match with bidirectionalLabelMatch=true when labels are in different order.', () => {
+      const workflowLabels = ['linux', 'self-hosted', 'x64'];
+      const runnerLabels = [['self-hosted', 'linux', 'x64']];
+      expect(canRunJob(workflowLabels, runnerLabels, false, true)).toBe(true);
+    });
+
+    it('should match with bidirectionalLabelMatch=true when labels are completely shuffled.', () => {
+      const workflowLabels = ['x64', 'ubuntu-latest', 'self-hosted', 'linux'];
+      const runnerLabels = [['self-hosted', 'linux', 'x64', 'ubuntu-latest']];
+      expect(canRunJob(workflowLabels, runnerLabels, false, true)).toBe(true);
+    });
+
+    it('should match with bidirectionalLabelMatch=true ignoring case.', () => {
+      const workflowLabels = ['Self-Hosted', 'Linux', 'X64'];
+      const runnerLabels = [['self-hosted', 'linux', 'x64']];
+      expect(canRunJob(workflowLabels, runnerLabels, false, true)).toBe(true);
+    });
+
+    it('should NOT match empty workflow labels with bidirectionalLabelMatch=true.', () => {
       const workflowLabels: string[] = [];
       const runnerLabels = [['self-hosted', 'linux', 'x64']];
-      expect(canRunJob(workflowLabels, runnerLabels, false)).toBe(true);
+      expect(canRunJob(workflowLabels, runnerLabels, false, true)).toBe(false);
+    });
+
+    it('bidirectionalLabelMatch takes precedence over exactMatch when both are true.', () => {
+      const workflowLabels = ['self-hosted', 'linux', 'x64'];
+      const runnerLabels = [['self-hosted', 'linux', 'x64', 'ubuntu-latest']];
+      // exactMatch alone would accept this (runner has extra labels), but bidirectional should reject
+      expect(canRunJob(workflowLabels, runnerLabels, true, true)).toBe(false);
+    });
+  });
+
+  describe('per-matcher dynamic labels handling', () => {
+    const baseRunner = runnerConfig[0];
+
+    it('strips invalid ghr- labels (too long, bad chars) before policy and dispatch', async () => {
+      const longLabel = 'ghr-' + 'a'.repeat(125); // 129 chars
+      config = await createConfig(undefined, [
+        {
+          ...baseRunner,
+          matcherConfig: {
+            labelMatchers: [['self-hosted', 'linux']],
+            exactMatch: true,
+            enableDynamicLabels: true,
+          },
+        },
+      ]);
+      const event = {
+        ...workFlowJobEvent,
+        workflow_job: {
+          ...workFlowJobEvent.workflow_job,
+          labels: [
+            'self-hosted',
+            'linux',
+            'ghr-valid:value',
+            'ghr-list:value;another',
+            'ghr-bad,separator',
+            'ghr-bad|separator',
+            'ghr-bad label',
+            longLabel,
+          ],
+        },
+      } as unknown as WorkflowJobEvent;
+      const resp = await dispatch(event, 'workflow_job', config);
+      expect(resp.statusCode).toBe(201);
+      expect(sendActionRequest).toHaveBeenCalledWith(
+        expect.objectContaining({ labels: ['self-hosted', 'linux', 'ghr-valid:value', 'ghr-list:value;another'] }),
+      );
+    });
+
+    it('rejects the job (202) when the only matching runner has enableDynamicLabels=false', async () => {
+      config = await createConfig(undefined, [
+        {
+          ...baseRunner,
+          matcherConfig: {
+            labelMatchers: [['self-hosted', 'linux']],
+            exactMatch: true,
+            enableDynamicLabels: false,
+          },
+        },
+      ]);
+      const event = {
+        ...workFlowJobEvent,
+        workflow_job: {
+          ...workFlowJobEvent.workflow_job,
+          labels: ['self-hosted', 'linux', 'ghr-ec2-instance-type:t3.large'],
+        },
+      } as unknown as WorkflowJobEvent;
+      const resp = await dispatch(event, 'workflow_job', config);
+      expect(resp.statusCode).toBe(202);
+      expect(sendActionRequest).not.toHaveBeenCalled();
+    });
+
+    it('keeps dynamic labels when the matched runner enables them and has no policy', async () => {
+      config = await createConfig(undefined, [
+        {
+          ...baseRunner,
+          matcherConfig: {
+            labelMatchers: [['self-hosted', 'linux']],
+            exactMatch: true,
+            enableDynamicLabels: true,
+          },
+        },
+      ]);
+      const event = {
+        ...workFlowJobEvent,
+        workflow_job: {
+          ...workFlowJobEvent.workflow_job,
+          labels: ['self-hosted', 'linux', 'ghr-ec2-instance-type:t3.large'],
+        },
+      } as unknown as WorkflowJobEvent;
+      const resp = await dispatch(event, 'workflow_job', config);
+      expect(resp.statusCode).toBe(201);
+      expect(sendActionRequest).toHaveBeenCalledWith(
+        expect.objectContaining({ labels: ['self-hosted', 'linux', 'ghr-ec2-instance-type:t3.large'] }),
+      );
+    });
+
+    it('skips a matching runner whose policy rejects the dynamic labels and uses the next compliant one', async () => {
+      config = await createConfig(undefined, [
+        {
+          ...baseRunner,
+          id: 'strict',
+          matcherConfig: {
+            labelMatchers: [['self-hosted', 'linux']],
+            exactMatch: true,
+            enableDynamicLabels: true,
+            awsDynamicLabelsPolicy: {
+              restricted_keys: {
+                'instance-type': { allowed: ['m5.*'] },
+              },
+            },
+          },
+        },
+        {
+          ...baseRunner,
+          id: 'permissive',
+          matcherConfig: {
+            labelMatchers: [['self-hosted', 'linux']],
+            exactMatch: true,
+            enableDynamicLabels: true,
+          },
+        },
+      ]);
+      const event = {
+        ...workFlowJobEvent,
+        workflow_job: {
+          ...workFlowJobEvent.workflow_job,
+          labels: ['self-hosted', 'linux', 'ghr-ec2-instance-type:t3.large'],
+        },
+      } as unknown as WorkflowJobEvent;
+      const resp = await dispatch(event, 'workflow_job', config);
+      expect(resp.statusCode).toBe(201);
+      expect(sendActionRequest).toHaveBeenCalledWith(
+        expect.objectContaining({
+          queueId: 'permissive',
+          labels: ['self-hosted', 'linux', 'ghr-ec2-instance-type:t3.large'],
+        }),
+      );
+    });
+
+    it('rejects the job (202) when no runner accepts the policy', async () => {
+      config = await createConfig(undefined, [
+        {
+          ...baseRunner,
+          id: 'first',
+          matcherConfig: {
+            labelMatchers: [['self-hosted', 'linux']],
+            exactMatch: true,
+            enableDynamicLabels: true,
+            awsDynamicLabelsPolicy: {
+              restricted_keys: {
+                'instance-type': { allowed: ['m5.*'] },
+              },
+            },
+          },
+        },
+        {
+          ...baseRunner,
+          id: 'second',
+          matcherConfig: {
+            labelMatchers: [['self-hosted', 'linux']],
+            exactMatch: true,
+            enableDynamicLabels: false,
+          },
+        },
+      ]);
+      const event = {
+        ...workFlowJobEvent,
+        workflow_job: {
+          ...workFlowJobEvent.workflow_job,
+          labels: ['self-hosted', 'linux', 'ghr-ec2-instance-type:t3.large'],
+        },
+      } as unknown as WorkflowJobEvent;
+      const resp = await dispatch(event, 'workflow_job', config);
+      expect(resp.statusCode).toBe(202);
+      expect(sendActionRequest).not.toHaveBeenCalled();
+    });
+
+    it('forwards non-dynamic jobs as-is to the first match', async () => {
+      config = await createConfig(undefined, [
+        {
+          ...baseRunner,
+          id: 'first',
+          matcherConfig: {
+            labelMatchers: [['self-hosted', 'linux']],
+            exactMatch: true,
+            enableDynamicLabels: true,
+            awsDynamicLabelsPolicy: {},
+          },
+        },
+      ]);
+      const event = {
+        ...workFlowJobEvent,
+        workflow_job: {
+          ...workFlowJobEvent.workflow_job,
+          labels: ['self-hosted', 'linux'],
+        },
+      } as unknown as WorkflowJobEvent;
+      const resp = await dispatch(event, 'workflow_job', config);
+      expect(resp.statusCode).toBe(201);
+      expect(sendActionRequest).toHaveBeenCalledWith(
+        expect.objectContaining({ queueId: 'first', labels: ['self-hosted', 'linux'] }),
+      );
     });
   });
 });
@@ -247,4 +580,102 @@ async function createConfig(repositoryAllowList?: string[], runnerConfig?: Runne
   ConfigDispatcher.reset();
   mockSSMResponse(runnerConfig);
   return await ConfigDispatcher.load();
+}
+
+describe('selectAwsDynamicLabelQueue', () => {
+  it('defaults queues without a provider to EC2 dynamic label handling', () => {
+    const queue = runnerQueue('default-ec2');
+
+    expect(selectAwsDynamicLabelQueue([queue], ['self-hosted', 'linux'], ['ghr-ec2-instance-type:t3.large'])).toEqual({
+      queue,
+      labels: ['self-hosted', 'linux', 'ghr-ec2-instance-type:t3.large'],
+    });
+  });
+
+  it('normalizes runner provider casing and surrounding whitespace', () => {
+    const queue = runnerQueue('normalized-ec2');
+    (queue as unknown as { runnerProvider: string }).runnerProvider = ' EC2 ';
+
+    expect(selectAwsDynamicLabelQueue([queue], ['self-hosted', 'linux'], ['ghr-ec2-instance-type:t3.large'])).toEqual({
+      queue,
+      labels: ['self-hosted', 'linux', 'ghr-ec2-instance-type:t3.large'],
+    });
+  });
+
+  it('skips an unsupported provider strategy and selects the next supported queue', () => {
+    const unsupportedQueue = runnerQueue('unsupported-provider');
+    (unsupportedQueue as unknown as { runnerProvider: string }).runnerProvider = 'unsupported';
+    const ec2Queue = runnerQueue('ec2');
+
+    expect(
+      selectAwsDynamicLabelQueue(
+        [unsupportedQueue, ec2Queue],
+        ['self-hosted', 'linux'],
+        ['ghr-ec2-instance-type:t3.large'],
+      ),
+    ).toEqual({
+      queue: ec2Queue,
+      labels: ['self-hosted', 'linux', 'ghr-ec2-instance-type:t3.large'],
+    });
+  });
+
+  it('rejects a malformed non-string runner provider without throwing', () => {
+    const queue = runnerQueue('malformed-provider');
+    (queue as unknown as { runnerProvider: number }).runnerProvider = 42;
+
+    expect(
+      selectAwsDynamicLabelQueue([queue], ['self-hosted', 'linux'], ['ghr-ec2-instance-type:t3.large']),
+    ).toBeUndefined();
+  });
+
+  it('enforces a legacy EC2 dynamic labels policy when the new key is absent', () => {
+    const queue = runnerQueue('legacy-ec2-policy');
+    queue.matcherConfig.ec2DynamicLabelsPolicy = {
+      blocked_keys: ['instance-type'],
+    };
+
+    expect(
+      selectAwsDynamicLabelQueue([queue], ['self-hosted', 'linux'], ['ghr-ec2-instance-type:t3.large']),
+    ).toBeUndefined();
+  });
+
+  it('falls back to the legacy EC2 dynamic labels policy when the new policy is null', () => {
+    const queue = runnerQueue('null-new-policy');
+    queue.matcherConfig.ec2DynamicLabelsPolicy = {
+      blocked_keys: ['instance-type'],
+    };
+    queue.matcherConfig.awsDynamicLabelsPolicy = null;
+
+    expect(
+      selectAwsDynamicLabelQueue([queue], ['self-hosted', 'linux'], ['ghr-ec2-instance-type:t3.large']),
+    ).toBeUndefined();
+  });
+
+  it('prefers a configured AWS dynamic labels policy over the legacy policy', () => {
+    const queue = runnerQueue('new-policy-precedence');
+    queue.matcherConfig.ec2DynamicLabelsPolicy = {
+      blocked_keys: ['instance-type'],
+    };
+    queue.matcherConfig.awsDynamicLabelsPolicy = {
+      blocked_keys: [],
+    };
+
+    expect(selectAwsDynamicLabelQueue([queue], ['self-hosted', 'linux'], ['ghr-ec2-instance-type:t3.large'])).toEqual({
+      queue,
+      labels: ['self-hosted', 'linux', 'ghr-ec2-instance-type:t3.large'],
+    });
+  });
+});
+
+function runnerQueue(id: string, runnerProvider?: RunnerProviderType): RunnerMatcherConfig {
+  return {
+    id,
+    arn: `arn:${id}`,
+    runnerProvider,
+    matcherConfig: {
+      labelMatchers: [['self-hosted', 'linux']],
+      exactMatch: true,
+      enableDynamicLabels: true,
+    },
+  };
 }

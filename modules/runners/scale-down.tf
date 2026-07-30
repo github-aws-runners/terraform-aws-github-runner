@@ -1,8 +1,11 @@
 locals {
   # Windows Runners can take their sweet time to do anything
+  # For an AWS vended AMI with an x86 Mac instance or an Apple silicon Mac instance,
+  # the launch time can range from approximately 6 minutes to 20 minutes. 
   min_runtime_defaults = {
     "windows" = 15
     "linux"   = 5
+    "osx"     = 20
   }
 }
 resource "aws_lambda_function" "scale_down" {
@@ -39,6 +42,7 @@ resource "aws_lambda_function" "scale_down" {
       POWERTOOLS_TRACE_ENABLED                 = var.tracing_config.mode != null ? true : false
       POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.tracing_config.capture_http_requests
       POWERTOOLS_TRACER_CAPTURE_ERROR          = var.tracing_config.capture_error
+      RUNNER_PROVIDER_TYPE                     = "ec2"
     }
   }
 

@@ -1,5 +1,5 @@
 import type { SQSBatchItemFailure } from 'aws-lambda';
-import type { ActionRequestMessageSQS } from './scale-up';
+import type { ActionRequestMessageSQS } from './types';
 
 class ScaleError extends Error {
   constructor(public readonly failedInstanceCount: number = 1) {

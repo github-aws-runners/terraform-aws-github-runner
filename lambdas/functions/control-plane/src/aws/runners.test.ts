@@ -10,8 +10,11 @@ import {
   DescribeInstancesCommand,
   type DescribeInstancesResult,
   EC2Client,
+  FleetOnDemandAllocationStrategy,
+  RunInstancesCommand,
   SpotAllocationStrategy,
   TerminateInstancesCommand,
+  type _InstanceType,
 } from '@aws-sdk/client-ec2';
 import { GetParameterCommand, type GetParameterResult, PutParameterCommand, SSMClient } from '@aws-sdk/client-ssm';
 import { mockClient } from 'aws-sdk-client-mock';
@@ -19,9 +22,9 @@ import 'aws-sdk-client-mock-jest/vitest';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ScaleError from './../scale-runners/ScaleError';
-import { createRunner, listEC2Runners, tag, terminateRunner, untag } from './runners';
-import type { RunnerInfo, RunnerInputParameters, RunnerType } from './runners.d';
-import { LambdaRunnerSource } from '../scale-runners/scale-up';
+import { createRunner, listEC2Runners, tag, terminateRunner, untag } from './ec2-runners';
+import type { Ec2OverrideConfig, RunnerInfo, RunnerInputParameters, RunnerType } from './ec2-runners.d';
+import type { LambdaRunnerSource } from '../scale-runners/types';
 
 process.env.AWS_REGION = 'eu-east-1';
 const mockEC2Client = mockClient(EC2Client);
@@ -319,7 +322,7 @@ describe('create runner', () => {
     allocationStrategy: SpotAllocationStrategy.CAPACITY_OPTIMIZED,
     capacityType: 'spot',
     type: 'Org',
-    scaleErrors: [],
+    scaleErrors: ['UnfulfillableCapacity', 'MaxSpotInstanceCountExceeded'],
     source: 'scale-up-lambda',
   };
 
@@ -389,11 +392,71 @@ describe('create runner', () => {
   });
 
   it('calls create fleet of 1 instance with the on-demand capacity', async () => {
-    await createRunner(createRunnerConfig({ ...defaultRunnerConfig, capacityType: 'on-demand' }));
+    await createRunner(
+      createRunnerConfig({ ...defaultRunnerConfig, capacityType: 'on-demand', allocationStrategy: 'lowest-price' }),
+    );
     expect(mockEC2Client).toHaveReceivedCommandWith(CreateFleetCommand, {
       ...expectedCreateFleetRequest({
         ...defaultExpectedFleetRequestValues,
         capacityType: 'on-demand',
+        allocationStrategy: 'lowest-price',
+      }),
+    });
+  });
+
+  it('calls create fleet with on-demand capacity and prioritized allocation strategy', async () => {
+    await createRunner(
+      createRunnerConfig({
+        ...defaultRunnerConfig,
+        capacityType: 'on-demand',
+        allocationStrategy: FleetOnDemandAllocationStrategy.PRIORITIZED,
+      }),
+    );
+    expect(mockEC2Client).toHaveReceivedCommandWith(CreateFleetCommand, {
+      ...expectedCreateFleetRequest({
+        ...defaultExpectedFleetRequestValues,
+        capacityType: 'on-demand',
+        allocationStrategy: FleetOnDemandAllocationStrategy.PRIORITIZED,
+      }),
+    });
+  });
+
+  it('calls create fleet with custom instance type priorities', async () => {
+    const priorities = { 'm5.large': 10, 'c5.large': 5 };
+    await createRunner(
+      createRunnerConfig({
+        ...defaultRunnerConfig,
+        capacityType: 'on-demand',
+        allocationStrategy: FleetOnDemandAllocationStrategy.PRIORITIZED,
+        instanceTypePriorities: priorities,
+      }),
+    );
+    expect(mockEC2Client).toHaveReceivedCommandWith(CreateFleetCommand, {
+      ...expectedCreateFleetRequest({
+        ...defaultExpectedFleetRequestValues,
+        capacityType: 'on-demand',
+        allocationStrategy: FleetOnDemandAllocationStrategy.PRIORITIZED,
+        instanceTypePriorities: priorities,
+      }),
+    });
+  });
+
+  it('calls create fleet with spot capacity-optimized-prioritized and instance type priorities', async () => {
+    const priorities = { 'm5.large': 10, 'c5.large': 5 };
+    await createRunner(
+      createRunnerConfig({
+        ...defaultRunnerConfig,
+        capacityType: 'spot',
+        allocationStrategy: SpotAllocationStrategy.CAPACITY_OPTIMIZED_PRIORITIZED,
+        instanceTypePriorities: priorities,
+      }),
+    );
+    expect(mockEC2Client).toHaveReceivedCommandWith(CreateFleetCommand, {
+      ...expectedCreateFleetRequest({
+        ...defaultExpectedFleetRequestValues,
+        capacityType: 'spot',
+        allocationStrategy: SpotAllocationStrategy.CAPACITY_OPTIMIZED_PRIORITIZED,
+        instanceTypePriorities: priorities,
       }),
     });
   });
@@ -468,6 +531,215 @@ describe('create runner', () => {
         ...defaultExpectedFleetRequestValues,
         source: 'pool-lambda',
       }),
+    });
+  });
+
+  it('overrides SubnetId when specified in ec2OverrideConfig', async () => {
+    await createRunner({
+      ...createRunnerConfig(defaultRunnerConfig),
+      ec2OverrideConfig: {
+        SubnetId: 'subnet-override',
+      },
+    });
+
+    expect(mockEC2Client).toHaveReceivedCommandWith(CreateFleetCommand, {
+      LaunchTemplateConfigs: [
+        {
+          LaunchTemplateSpecification: {
+            LaunchTemplateName: 'lt-1',
+            Version: '$Default',
+          },
+          Overrides: [
+            {
+              InstanceType: 'm5.large',
+              SubnetId: 'subnet-override',
+            },
+            {
+              InstanceType: 'c5.large',
+              SubnetId: 'subnet-override',
+            },
+          ],
+        },
+      ],
+      SpotOptions: {
+        AllocationStrategy: SpotAllocationStrategy.CAPACITY_OPTIMIZED,
+      },
+      TagSpecifications: expect.any(Array),
+      TargetCapacitySpecification: {
+        DefaultTargetCapacityType: 'spot',
+        TotalTargetCapacity: 1,
+      },
+      Type: 'instant',
+    });
+  });
+
+  it('overrides InstanceType when specified in ec2OverrideConfig', async () => {
+    await createRunner({
+      ...createRunnerConfig(defaultRunnerConfig),
+      ec2OverrideConfig: {
+        InstanceType: 't3.xlarge',
+      },
+    });
+
+    expect(mockEC2Client).toHaveReceivedCommandWith(CreateFleetCommand, {
+      LaunchTemplateConfigs: [
+        {
+          LaunchTemplateSpecification: {
+            LaunchTemplateName: 'lt-1',
+            Version: '$Default',
+          },
+          Overrides: [
+            {
+              InstanceType: 't3.xlarge',
+              SubnetId: 'subnet-123',
+            },
+            {
+              InstanceType: 't3.xlarge',
+              SubnetId: 'subnet-456',
+            },
+          ],
+        },
+      ],
+      SpotOptions: {
+        AllocationStrategy: SpotAllocationStrategy.CAPACITY_OPTIMIZED,
+      },
+      TagSpecifications: expect.any(Array),
+      TargetCapacitySpecification: {
+        DefaultTargetCapacityType: 'spot',
+        TotalTargetCapacity: 1,
+      },
+      Type: 'instant',
+    });
+  });
+
+  it('overrides ImageId when specified in ec2OverrideConfig', async () => {
+    await createRunner({
+      ...createRunnerConfig(defaultRunnerConfig),
+      ec2OverrideConfig: {
+        ImageId: 'ami-override-123',
+      },
+    });
+
+    expect(mockEC2Client).toHaveReceivedCommandWith(CreateFleetCommand, {
+      LaunchTemplateConfigs: [
+        {
+          LaunchTemplateSpecification: {
+            LaunchTemplateName: 'lt-1',
+            Version: '$Default',
+          },
+          Overrides: [
+            {
+              InstanceType: 'm5.large',
+              SubnetId: 'subnet-123',
+              ImageId: 'ami-override-123',
+            },
+            {
+              InstanceType: 'c5.large',
+              SubnetId: 'subnet-123',
+              ImageId: 'ami-override-123',
+            },
+            {
+              InstanceType: 'm5.large',
+              SubnetId: 'subnet-456',
+              ImageId: 'ami-override-123',
+            },
+            {
+              InstanceType: 'c5.large',
+              SubnetId: 'subnet-456',
+              ImageId: 'ami-override-123',
+            },
+          ],
+        },
+      ],
+      SpotOptions: {
+        AllocationStrategy: SpotAllocationStrategy.CAPACITY_OPTIMIZED,
+      },
+      TagSpecifications: expect.any(Array),
+      TargetCapacitySpecification: {
+        DefaultTargetCapacityType: 'spot',
+        TotalTargetCapacity: 1,
+      },
+      Type: 'instant',
+    });
+  });
+
+  it('overrides all three fields (SubnetId, InstanceType, ImageId) when specified in ec2OverrideConfig', async () => {
+    await createRunner({
+      ...createRunnerConfig(defaultRunnerConfig),
+      ec2OverrideConfig: {
+        SubnetId: 'subnet-custom',
+        InstanceType: 'c5.2xlarge',
+        ImageId: 'ami-custom-456',
+      },
+    });
+
+    expect(mockEC2Client).toHaveReceivedCommandWith(CreateFleetCommand, {
+      LaunchTemplateConfigs: [
+        {
+          LaunchTemplateSpecification: {
+            LaunchTemplateName: 'lt-1',
+            Version: '$Default',
+          },
+          Overrides: [
+            {
+              InstanceType: 'c5.2xlarge',
+              SubnetId: 'subnet-custom',
+              ImageId: 'ami-custom-456',
+            },
+          ],
+        },
+      ],
+      SpotOptions: {
+        AllocationStrategy: SpotAllocationStrategy.CAPACITY_OPTIMIZED,
+      },
+      TagSpecifications: expect.any(Array),
+      TargetCapacitySpecification: {
+        DefaultTargetCapacityType: 'spot',
+        TotalTargetCapacity: 1,
+      },
+      Type: 'instant',
+    });
+  });
+
+  it('spreads additional ec2OverrideConfig properties to Overrides', async () => {
+    await createRunner({
+      ...createRunnerConfig(defaultRunnerConfig),
+      ec2OverrideConfig: {
+        SubnetId: 'subnet-override',
+        InstanceType: 't3.medium',
+        MaxPrice: '0.05',
+        Priority: 1.5,
+        WeightedCapacity: 2.0,
+      },
+    });
+
+    expect(mockEC2Client).toHaveReceivedCommandWith(CreateFleetCommand, {
+      LaunchTemplateConfigs: [
+        {
+          LaunchTemplateSpecification: {
+            LaunchTemplateName: 'lt-1',
+            Version: '$Default',
+          },
+          Overrides: [
+            {
+              InstanceType: 't3.medium',
+              SubnetId: 'subnet-override',
+              MaxPrice: '0.05',
+              Priority: 1.5,
+              WeightedCapacity: 2.0,
+            },
+          ],
+        },
+      ],
+      SpotOptions: {
+        AllocationStrategy: SpotAllocationStrategy.CAPACITY_OPTIMIZED,
+      },
+      TagSpecifications: expect.any(Array),
+      TargetCapacitySpecification: {
+        DefaultTargetCapacityType: 'spot',
+        TotalTargetCapacity: 1,
+      },
+      Type: 'instant',
     });
   });
 });
@@ -593,7 +865,7 @@ describe('create runner with errors fail over to OnDemand', () => {
     capacityType: 'spot',
     type: 'Repo',
     onDemandFailoverOnError: ['InsufficientInstanceCapacity'],
-    scaleErrors: [],
+    scaleErrors: ['UnfulfillableCapacity', 'MaxSpotInstanceCountExceeded'],
     source: 'scale-up-lambda',
   };
   const defaultExpectedFleetRequestValues: ExpectedFleetRequestValues = {
@@ -631,12 +903,13 @@ describe('create runner with errors fail over to OnDemand', () => {
       }),
     });
 
-    // second call with with OnDemand fallback
+    // second call with with OnDemand fallback, allocation strategy defaults to lowest-price
     expect(mockEC2Client).toHaveReceivedNthCommandWith(2, CreateFleetCommand, {
       ...expectedCreateFleetRequest({
         ...defaultExpectedFleetRequestValues,
         totalTargetCapacity: 1,
         capacityType: 'on-demand',
+        allocationStrategy: 'lowest-price',
       }),
     });
   });
@@ -673,12 +946,13 @@ describe('create runner with errors fail over to OnDemand', () => {
       }),
     });
 
-    // second call with with OnDemand failback, capacity is reduced by 1
+    // second call with with OnDemand failback, capacity is reduced by 1, allocation strategy defaults to lowest-price
     expect(mockEC2Client).toHaveReceivedNthCommandWith(2, CreateFleetCommand, {
       ...expectedCreateFleetRequest({
         ...defaultExpectedFleetRequestValues,
         totalTargetCapacity: 1,
         capacityType: 'on-demand',
+        allocationStrategy: 'lowest-price',
       }),
     });
   });
@@ -748,13 +1022,16 @@ function createFleetMockWithWithOnDemandFallback(errors: string[], instances?: s
 interface RunnerConfig {
   type: RunnerType;
   capacityType: DefaultTargetCapacityType;
-  allocationStrategy: SpotAllocationStrategy;
+  allocationStrategy: SpotAllocationStrategy | FleetOnDemandAllocationStrategy;
+  instanceTypePriorities?: Record<string, number>;
   maxSpotPrice?: string;
   amiIdSsmParameterName?: string;
   tracingEnabled?: boolean;
   onDemandFailoverOnError?: string[];
   scaleErrors: string[];
   source: LambdaRunnerSource;
+  useDedicatedHost?: boolean;
+  ec2OverrideConfig?: Ec2OverrideConfig;
 }
 
 function createRunnerConfig(runnerConfig: RunnerConfig): RunnerInputParameters {
@@ -766,6 +1043,7 @@ function createRunnerConfig(runnerConfig: RunnerConfig): RunnerInputParameters {
     launchTemplateName: LAUNCH_TEMPLATE,
     ec2instanceCriteria: {
       instanceTypes: ['m5.large', 'c5.large'],
+      instanceTypePriorities: runnerConfig.instanceTypePriorities,
       targetCapacityType: runnerConfig.capacityType,
       maxSpotPrice: runnerConfig.maxSpotPrice,
       instanceAllocationStrategy: runnerConfig.allocationStrategy,
@@ -776,13 +1054,16 @@ function createRunnerConfig(runnerConfig: RunnerConfig): RunnerInputParameters {
     onDemandFailoverOnError: runnerConfig.onDemandFailoverOnError,
     scaleErrors: runnerConfig.scaleErrors,
     source: runnerConfig.source,
+    useDedicatedHost: runnerConfig.useDedicatedHost,
+    ec2OverrideConfig: runnerConfig.ec2OverrideConfig,
   };
 }
 
 interface ExpectedFleetRequestValues {
   type: 'Repo' | 'Org';
   capacityType: DefaultTargetCapacityType;
-  allocationStrategy: SpotAllocationStrategy;
+  allocationStrategy: SpotAllocationStrategy | FleetOnDemandAllocationStrategy;
+  instanceTypePriorities?: Record<string, number>;
   maxSpotPrice?: string;
   totalTargetCapacity: number;
   imageId?: string;
@@ -804,6 +1085,9 @@ function expectedCreateFleetRequest(expectedValues: ExpectedFleetRequestValues):
     const traceId = tracer.getRootXrayTraceId();
     tags.push({ Key: 'ghr:trace_id', Value: traceId! });
   }
+  const usesPriority =
+    expectedValues.allocationStrategy === 'prioritized' ||
+    expectedValues.allocationStrategy === 'capacity-optimized-prioritized';
   const request: CreateFleetCommandInput = {
     LaunchTemplateConfigs: [
       {
@@ -815,26 +1099,46 @@ function expectedCreateFleetRequest(expectedValues: ExpectedFleetRequestValues):
           {
             InstanceType: 'm5.large',
             SubnetId: 'subnet-123',
+            ...(usesPriority && {
+              Priority: expectedValues.instanceTypePriorities?.['m5.large'] ?? 0,
+            }),
           },
           {
             InstanceType: 'c5.large',
             SubnetId: 'subnet-123',
+            ...(usesPriority && {
+              Priority: expectedValues.instanceTypePriorities?.['c5.large'] ?? 1,
+            }),
           },
           {
             InstanceType: 'm5.large',
             SubnetId: 'subnet-456',
+            ...(usesPriority && {
+              Priority: expectedValues.instanceTypePriorities?.['m5.large'] ?? 0,
+            }),
           },
           {
             InstanceType: 'c5.large',
             SubnetId: 'subnet-456',
+            ...(usesPriority && {
+              Priority: expectedValues.instanceTypePriorities?.['c5.large'] ?? 1,
+            }),
           },
         ],
       },
     ],
-    SpotOptions: {
-      AllocationStrategy: expectedValues.allocationStrategy,
-      MaxTotalPrice: expectedValues.maxSpotPrice,
-    },
+    ...(expectedValues.capacityType === 'spot'
+      ? {
+          SpotOptions: {
+            AllocationStrategy: expectedValues.allocationStrategy,
+            MaxTotalPrice: expectedValues.maxSpotPrice,
+          },
+        }
+      : {
+          OnDemandOptions: {
+            AllocationStrategy: expectedValues.allocationStrategy,
+          },
+        }),
     TagSpecifications: [
       {
         ResourceType: 'instance',
@@ -842,6 +1146,10 @@ function expectedCreateFleetRequest(expectedValues: ExpectedFleetRequestValues):
       },
       {
         ResourceType: 'volume',
+        Tags: tags,
+      },
+      {
+        ResourceType: 'fleet',
         Tags: tags,
       },
     ],
@@ -864,3 +1172,330 @@ function expectedCreateFleetRequest(expectedValues: ExpectedFleetRequestValues):
 
   return request;
 }
+
+describe('create runner with useDedicatedHost', () => {
+  const dedicatedHostRunnerConfig: RunnerConfig = {
+    allocationStrategy: SpotAllocationStrategy.CAPACITY_OPTIMIZED,
+    capacityType: 'on-demand',
+    type: 'Org',
+    scaleErrors: [],
+    useDedicatedHost: true,
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockEC2Client.reset();
+    mockSSMClient.reset();
+
+    mockEC2Client.on(RunInstancesCommand).resolves({
+      Instances: [{ InstanceId: 'i-dedicated-1' }],
+    });
+    mockSSMClient.on(GetParameterCommand).resolves({});
+  });
+
+  it('uses RunInstances instead of CreateFleet when useDedicatedHost is true', async () => {
+    const result = await createRunner(createRunnerConfig(dedicatedHostRunnerConfig));
+
+    expect(result).toEqual(['i-dedicated-1']);
+    expect(mockEC2Client).toHaveReceivedCommand(RunInstancesCommand);
+    expect(mockEC2Client).not.toHaveReceivedCommand(CreateFleetCommand);
+  });
+
+  it('uses CreateFleet when useDedicatedHost is false', async () => {
+    mockEC2Client.on(CreateFleetCommand).resolves({ Instances: [{ InstanceIds: ['i-fleet-1'] }] });
+
+    const result = await createRunner(
+      createRunnerConfig({
+        ...dedicatedHostRunnerConfig,
+        useDedicatedHost: false,
+      }),
+    );
+
+    expect(result).toEqual(['i-fleet-1']);
+    expect(mockEC2Client).toHaveReceivedCommand(CreateFleetCommand);
+    expect(mockEC2Client).not.toHaveReceivedCommand(RunInstancesCommand);
+  });
+
+  it('uses CreateFleet when useDedicatedHost is undefined', async () => {
+    mockEC2Client.on(CreateFleetCommand).resolves({ Instances: [{ InstanceIds: ['i-fleet-1'] }] });
+
+    const result = await createRunner(
+      createRunnerConfig({
+        ...dedicatedHostRunnerConfig,
+        useDedicatedHost: undefined,
+      }),
+    );
+
+    expect(result).toEqual(['i-fleet-1']);
+    expect(mockEC2Client).toHaveReceivedCommand(CreateFleetCommand);
+    expect(mockEC2Client).not.toHaveReceivedCommand(RunInstancesCommand);
+  });
+
+  it('passes correct parameters to RunInstances', async () => {
+    await createRunner(createRunnerConfig(dedicatedHostRunnerConfig));
+
+    expect(mockEC2Client).toHaveReceivedCommandWith(RunInstancesCommand, {
+      LaunchTemplate: {
+        LaunchTemplateName: LAUNCH_TEMPLATE,
+        Version: '$Default',
+      },
+      InstanceType: 'm5.large',
+      MinCount: 1,
+      MaxCount: 1,
+      SubnetId: 'subnet-123',
+      TagSpecifications: [
+        {
+          ResourceType: 'instance',
+          Tags: [
+            { Key: 'ghr:Application', Value: 'github-action-runner' },
+            { Key: 'ghr:created_by', Value: 'scale-up-lambda' },
+            { Key: 'ghr:Type', Value: 'Org' },
+            { Key: 'ghr:Owner', Value: REPO_NAME },
+          ],
+        },
+        {
+          ResourceType: 'volume',
+          Tags: [
+            { Key: 'ghr:Application', Value: 'github-action-runner' },
+            { Key: 'ghr:created_by', Value: 'scale-up-lambda' },
+            { Key: 'ghr:Type', Value: 'Org' },
+            { Key: 'ghr:Owner', Value: REPO_NAME },
+          ],
+        },
+      ],
+    });
+  });
+
+  it('creates multiple instances via RunInstances', async () => {
+    mockEC2Client.on(RunInstancesCommand).resolves({
+      Instances: [{ InstanceId: 'i-dedicated-1' }, { InstanceId: 'i-dedicated-2' }],
+    });
+
+    const result = await createRunner({
+      ...createRunnerConfig(dedicatedHostRunnerConfig),
+      numberOfRunners: 2,
+    });
+
+    expect(result).toEqual(['i-dedicated-1', 'i-dedicated-2']);
+    expect(mockEC2Client).toHaveReceivedCommandWith(RunInstancesCommand, {
+      LaunchTemplate: {
+        LaunchTemplateName: LAUNCH_TEMPLATE,
+        Version: '$Default',
+      },
+      InstanceType: 'm5.large',
+      MinCount: 2,
+      MaxCount: 2,
+      SubnetId: 'subnet-123',
+      TagSpecifications: [
+        {
+          ResourceType: 'instance',
+          Tags: [
+            { Key: 'ghr:Application', Value: 'github-action-runner' },
+            { Key: 'ghr:created_by', Value: 'pool-lambda' },
+            { Key: 'ghr:Type', Value: 'Org' },
+            { Key: 'ghr:Owner', Value: REPO_NAME },
+          ],
+        },
+        {
+          ResourceType: 'volume',
+          Tags: [
+            { Key: 'ghr:Application', Value: 'github-action-runner' },
+            { Key: 'ghr:created_by', Value: 'pool-lambda' },
+            { Key: 'ghr:Type', Value: 'Org' },
+            { Key: 'ghr:Owner', Value: REPO_NAME },
+          ],
+        },
+      ],
+    });
+  });
+
+  it('throws error when spot is used with dedicated host', async () => {
+    await expect(
+      createRunner(
+        createRunnerConfig({
+          ...dedicatedHostRunnerConfig,
+          capacityType: 'spot',
+        }),
+      ),
+    ).rejects.toThrow('Spot instances are not supported with RunInstances');
+    expect(mockEC2Client).not.toHaveReceivedCommand(RunInstancesCommand);
+  });
+
+  it('throws error when RunInstances returns no instances', async () => {
+    mockEC2Client.on(RunInstancesCommand).resolves({ Instances: [] });
+
+    await expect(createRunner(createRunnerConfig(dedicatedHostRunnerConfig))).rejects.toThrow(
+      'RunInstances failed, no instance created.',
+    );
+  });
+
+  it('throws error when RunInstances fails', async () => {
+    mockEC2Client.on(RunInstancesCommand).rejects(new Error('EC2 error'));
+
+    await expect(createRunner(createRunnerConfig(dedicatedHostRunnerConfig))).rejects.toThrow('EC2 error');
+  });
+
+  it('throws ScaleError when RunInstances fails with configured scale error', async () => {
+    const error = Object.assign(new Error('Insufficient capacity'), { name: 'InsufficientInstanceCapacity' });
+    mockEC2Client.on(RunInstancesCommand).rejects(error);
+
+    await expect(
+      createRunner({
+        ...createRunnerConfig({
+          ...dedicatedHostRunnerConfig,
+          scaleErrors: ['InsufficientInstanceCapacity'],
+        }),
+        numberOfRunners: 2,
+      }),
+    ).rejects.toMatchObject({
+      name: 'ScaleError',
+      failedInstanceCount: 2,
+    });
+  });
+
+  it('throws error when RunInstances returns fewer instances', async () => {
+    mockEC2Client.on(RunInstancesCommand).resolves({
+      Instances: [{ InstanceId: 'i-dedicated-1' }],
+    });
+
+    await expect(
+      createRunner({
+        ...createRunnerConfig(dedicatedHostRunnerConfig),
+        numberOfRunners: 2,
+      }),
+    ).rejects.toThrow('RunInstances failed, no instance created.');
+  });
+
+  it('uses ami id override from ssm parameter', async () => {
+    const paramValue: GetParameterResult = {
+      Parameter: {
+        Value: 'ami-dedicated',
+      },
+    };
+    mockSSMClient.on(GetParameterCommand).resolves(paramValue);
+
+    await createRunner(
+      createRunnerConfig({
+        ...dedicatedHostRunnerConfig,
+        amiIdSsmParameterName: 'my-ami-id-param',
+      }),
+    );
+
+    expect(mockEC2Client).toHaveReceivedCommandWith(RunInstancesCommand, {
+      LaunchTemplate: {
+        LaunchTemplateName: LAUNCH_TEMPLATE,
+        Version: '$Default',
+      },
+      InstanceType: 'm5.large',
+      MinCount: 1,
+      MaxCount: 1,
+      SubnetId: 'subnet-123',
+      ImageId: 'ami-dedicated',
+      TagSpecifications: [
+        {
+          ResourceType: 'instance',
+          Tags: [
+            { Key: 'ghr:Application', Value: 'github-action-runner' },
+            { Key: 'ghr:created_by', Value: 'scale-up-lambda' },
+            { Key: 'ghr:Type', Value: 'Org' },
+            { Key: 'ghr:Owner', Value: REPO_NAME },
+          ],
+        },
+        {
+          ResourceType: 'volume',
+          Tags: [
+            { Key: 'ghr:Application', Value: 'github-action-runner' },
+            { Key: 'ghr:created_by', Value: 'scale-up-lambda' },
+            { Key: 'ghr:Type', Value: 'Org' },
+            { Key: 'ghr:Owner', Value: REPO_NAME },
+          ],
+        },
+      ],
+    });
+    expect(mockSSMClient).toHaveReceivedCommandWith(GetParameterCommand, {
+      Name: 'my-ami-id-param',
+    });
+  });
+
+  it('applies supported EC2 override config values to RunInstances', async () => {
+    const paramValue: GetParameterResult = {
+      Parameter: {
+        Value: 'ami-from-ssm',
+      },
+    };
+    mockSSMClient.on(GetParameterCommand).resolves(paramValue);
+
+    const ec2OverrideConfig: Ec2OverrideConfig = {
+      InstanceType: 'm7i.large' as _InstanceType,
+      SubnetId: 'subnet-dynamic',
+      AvailabilityZone: 'us-east-1a',
+      ImageId: 'ami-from-dynamic-label',
+      Placement: {
+        Affinity: 'host',
+        HostResourceGroupArn: 'arn:aws:ec2:us-east-1:123456789012:host-resource-group/hrg-1234',
+        Tenancy: 'host',
+      },
+      BlockDeviceMappings: [
+        {
+          DeviceName: '/dev/sda1',
+          Ebs: {
+            DeleteOnTermination: false,
+            Encrypted: true,
+            VolumeSize: 100,
+            VolumeType: 'gp3',
+          },
+        },
+      ],
+      InstanceRequirements: {
+        VCpuCount: {
+          Min: 4,
+        },
+        MemoryMiB: {
+          Min: 16384,
+        },
+      },
+      MaxPrice: '0.50',
+      Priority: 10,
+      WeightedCapacity: 2,
+    };
+
+    await createRunner(
+      createRunnerConfig({
+        ...dedicatedHostRunnerConfig,
+        amiIdSsmParameterName: 'my-ami-id-param',
+        ec2OverrideConfig,
+      }),
+    );
+
+    const runInstancesInput = mockEC2Client.commandCalls(RunInstancesCommand)[0].args[0].input;
+
+    expect(runInstancesInput).toEqual(
+      expect.objectContaining({
+        InstanceType: 'm7i.large',
+        SubnetId: 'subnet-dynamic',
+        ImageId: 'ami-from-dynamic-label',
+        Placement: {
+          Affinity: 'host',
+          AvailabilityZone: 'us-east-1a',
+          HostResourceGroupArn: 'arn:aws:ec2:us-east-1:123456789012:host-resource-group/hrg-1234',
+          Tenancy: 'host',
+        },
+        BlockDeviceMappings: [
+          {
+            DeviceName: '/dev/sda1',
+            Ebs: {
+              DeleteOnTermination: false,
+              Encrypted: true,
+              VolumeSize: 100,
+              VolumeType: 'gp3',
+            },
+          },
+        ],
+      }),
+    );
+    expect(runInstancesInput).not.toHaveProperty('InstanceRequirements');
+    expect(runInstancesInput).not.toHaveProperty('MaxPrice');
+    expect(runInstancesInput).not.toHaveProperty('Priority');
+    expect(runInstancesInput).not.toHaveProperty('WeightedCapacity');
+  });
+});

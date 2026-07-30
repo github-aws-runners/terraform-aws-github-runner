@@ -3,9 +3,9 @@ import { RequestError } from '@octokit/request-error';
 import moment from 'moment';
 import nock from 'nock';
 
-import { RunnerInfo, RunnerList } from '../aws/runners.d';
+import { RunnerInfo, RunnerList } from '../aws/ec2-runners.d';
 import * as ghAuth from '../github/auth';
-import { listEC2Runners, terminateRunner, tag, untag } from './../aws/runners';
+import { listEC2Runners, terminateRunner, tag, untag } from './../aws/ec2-runners';
 import { githubCache } from './cache';
 import { newestFirstStrategy, oldestFirstStrategy, scaleDown } from './scale-down';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -31,7 +31,7 @@ vi.mock('@octokit/rest', () => ({
   }),
 }));
 
-vi.mock('./../aws/runners', async (importOriginal) => {
+vi.mock('./../aws/ec2-runners', async (importOriginal) => {
   const actual = await importOriginal();
   return {
     ...actual,
@@ -305,6 +305,30 @@ describe('Scale down runners', () => {
         checkNonTerminated(runners);
       });
 
+      it(`Should not terminate orphaned runner with bypass-removal tag set.`, async () => {
+        // setup - orphan runner with bypass-removal tag
+        const orphanRunner = createRunnerTestData('orphan-bypass', type, MINIMUM_BOOT_TIME + 1, false, false, false);
+        orphanRunner.bypassRemoval = true;
+
+        const idleRunner = createRunnerTestData('idle-1', type, MINIMUM_BOOT_TIME + 1, true, false, false);
+        const runners = [orphanRunner, idleRunner];
+
+        mockGitHubRunners([idleRunner]);
+        mockAwsRunners(runners);
+
+        // act - first cycle marks orphan
+        await scaleDown();
+
+        // mark as orphan for next cycle
+        orphanRunner.orphan = true;
+
+        // act - second cycle should skip termination due to bypass-removal
+        await scaleDown();
+
+        // assert - orphan runner should NOT be terminated
+        expect(terminateRunner).not.toHaveBeenCalledWith(orphanRunner.instanceId);
+      });
+
       it(`Should not terminate a runner that became busy just before deregister runner.`, async () => {
         // setup
         const runners = [
@@ -340,14 +364,7 @@ describe('Scale down runners', () => {
         // setup: runner appears idle on first check, deregister succeeds,
         // but post-deregister re-check finds it busy (race condition)
         const runners = [
-          createRunnerTestData(
-            'race-condition-1',
-            type,
-            MINIMUM_TIME_RUNNING_IN_MINUTES + 1,
-            true,
-            false,
-            false,
-          ),
+          createRunnerTestData('race-condition-1', type, MINIMUM_TIME_RUNNING_IN_MINUTES + 1, true, false, false),
         ];
 
         mockGitHubRunners(runners);
@@ -376,14 +393,7 @@ describe('Scale down runners', () => {
       it(`Should terminate a runner when post-deregister busy check returns 404.`, async () => {
         // setup: after deregistration, GitHub API returns 404 (runner fully removed)
         const runners = [
-          createRunnerTestData(
-            'deregistered-404',
-            type,
-            MINIMUM_TIME_RUNNING_IN_MINUTES + 1,
-            true,
-            false,
-            true,
-          ),
+          createRunnerTestData('deregistered-404', type, MINIMUM_TIME_RUNNING_IN_MINUTES + 1, true, false, true),
         ];
 
         mockGitHubRunners(runners);
@@ -396,10 +406,13 @@ describe('Scale down runners', () => {
           if (callCount <= 1) {
             return { data: { busy: false } };
           }
-          const error = new Error('Not Found');
-          (error as any).status = 404;
-          Object.setPrototypeOf(error, RequestError.prototype);
-          throw error;
+          throw new RequestError('Not Found', 404, {
+            request: {
+              method: 'GET',
+              url: 'https://api.github.com/test',
+              headers: {},
+            },
+          });
         };
         mockOctokit.actions.getSelfHostedRunnerForRepo.mockImplementation(busyCheckMock);
         mockOctokit.actions.getSelfHostedRunnerForOrg.mockImplementation(busyCheckMock);
@@ -705,6 +718,35 @@ describe('Scale down runners', () => {
 
         // act
         await expect(scaleDown()).resolves.not.toThrow();
+      });
+
+      it(`Should not terminate instance when de-registration throws an error.`, async () => {
+        // setup - runner should NOT be terminated because de-registration fails
+        const runners = [createRunnerTestData('idle-1', type, MINIMUM_TIME_RUNNING_IN_MINUTES + 1, true, false, false)];
+
+        const error502 = new RequestError('Server Error', 502, {
+          request: {
+            method: 'DELETE',
+            url: 'https://api.github.com/test',
+            headers: {},
+          },
+        });
+
+        mockOctokit.actions.deleteSelfHostedRunnerFromOrg.mockImplementation(() => {
+          throw error502;
+        });
+        mockOctokit.actions.deleteSelfHostedRunnerFromRepo.mockImplementation(() => {
+          throw error502;
+        });
+
+        mockGitHubRunners(runners);
+        mockAwsRunners(runners);
+
+        // act
+        await expect(scaleDown()).resolves.not.toThrow();
+
+        // assert - should NOT terminate since de-registration failed
+        expect(terminateRunner).not.toHaveBeenCalled();
       });
 
       const evictionStrategies = ['oldest_first', 'newest_first'];

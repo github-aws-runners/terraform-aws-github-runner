@@ -4,6 +4,7 @@ locals {
   gh_binary_os_label = {
     windows = "win",
     linux   = "linux"
+    osx     = "osx"
   }
 }
 

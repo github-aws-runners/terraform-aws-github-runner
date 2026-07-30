@@ -22,7 +22,7 @@ variable "aws_region" {
 }
 
 variable "runner_os" {
-  description = "The EC2 Operating System type to use for action runner instances (linux,windows)."
+  description = "The EC2 Operating System type to use for action runner instances (linux, osx, windows)."
 
   type    = string
   default = "linux"

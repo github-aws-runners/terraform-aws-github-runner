@@ -4,12 +4,17 @@ import 'aws-sdk-client-mock-jest';
 import { handle } from './termination';
 import { BidEvictedDetail, BidEvictedEvent } from './types';
 import { metricEvent } from './metric-event';
+import { deregisterRunner } from './deregister';
 
 import { getInstances } from './ec2';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 vi.mock('./metric-event', () => ({
   metricEvent: vi.fn(),
+}));
+
+vi.mock('./deregister', () => ({
+  deregisterRunner: vi.fn(),
 }));
 
 vi.mock('./ec2', async (importOriginal) => {
@@ -27,6 +32,8 @@ const config = {
   createSpotTerminationMetric: true,
   tagFilters: { 'ghr:environment': 'test' },
   prefix: 'runners',
+  enableRunnerDeregistration: true,
+  ghesApiUrl: '',
 };
 
 const event: BidEvictedEvent<BidEvictedDetail> = {
@@ -88,13 +95,16 @@ describe('handle termination warning', () => {
 
     expect(metricEvent).toHaveBeenCalled();
     expect(metricEvent).toHaveBeenCalledWith(instance, event, 'SpotTermination', expect.anything());
+    expect(deregisterRunner).toHaveBeenCalledWith(instance, config);
   });
 
   it('should log details and not create a metric', async () => {
     vi.mocked(getInstances).mockResolvedValue([instance]);
 
-    await handle(event, { ...config, createSpotTerminationMetric: false });
+    const noMetricConfig = { ...config, createSpotTerminationMetric: false };
+    await handle(event, noMetricConfig);
     expect(metricEvent).toHaveBeenCalledWith(instance, event, undefined, expect.anything());
+    expect(deregisterRunner).toHaveBeenCalledWith(instance, noMetricConfig);
   });
 
   it('should not create a metric if filter not matched.', async () => {
@@ -105,8 +115,11 @@ describe('handle termination warning', () => {
       createSpotTerminationMetric: true,
       tagFilters: { 'ghr:environment': '_NO_MATCH_' },
       prefix: 'runners',
+      enableRunnerDeregistration: true,
+      ghesApiUrl: '',
     });
 
     expect(metricEvent).not.toHaveBeenCalled();
+    expect(deregisterRunner).not.toHaveBeenCalled();
   });
 });

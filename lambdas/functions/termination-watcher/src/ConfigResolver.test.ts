@@ -37,6 +37,8 @@ describe('Test ConfigResolver', () => {
       delete process.env.ENABLE_METRICS_SPOT_WARNING;
       delete process.env.PREFIX;
       delete process.env.TAG_FILTERS;
+      delete process.env.ENABLE_RUNNER_DEREGISTRATION;
+      delete process.env.GHES_URL;
     });
 
     it(description, async () => {
@@ -53,6 +55,31 @@ describe('Test ConfigResolver', () => {
       const config = new Config();
       expect(config.createSpotWarningMetric).toBe(output.createSpotWarningMetric);
       expect(config.tagFilters).toEqual(output.tagFilters);
+    });
+  });
+
+  describe('runner deregistration config', () => {
+    beforeEach(() => {
+      delete process.env.ENABLE_RUNNER_DEREGISTRATION;
+      delete process.env.GHES_URL;
+    });
+
+    it('should default to disabled', () => {
+      const config = new Config();
+      expect(config.enableRunnerDeregistration).toBe(false);
+      expect(config.ghesApiUrl).toBe('');
+    });
+
+    it('should enable deregistration when env var is true', () => {
+      process.env.ENABLE_RUNNER_DEREGISTRATION = 'true';
+      const config = new Config();
+      expect(config.enableRunnerDeregistration).toBe(true);
+    });
+
+    it('should set GHES URL when provided', () => {
+      process.env.GHES_URL = 'https://github.internal.co/api/v3';
+      const config = new Config();
+      expect(config.ghesApiUrl).toBe('https://github.internal.co/api/v3');
     });
   });
 });

@@ -4,7 +4,9 @@ import { WorkflowJobEvent } from '@octokit/webhooks-types';
 import { Response } from '../lambda';
 import { RunnerMatcherConfig, sendActionRequest } from '../sqs';
 import ValidationError from '../ValidationError';
-import { ConfigDispatcher, ConfigWebhook } from '../ConfigLoader';
+import { ConfigDispatcher, ConfigWebhook, QueueSelectionStrategy } from '../ConfigLoader';
+import { selectAwsDynamicLabelQueue } from './aws-dynamic-labels';
+import { canRunJob, splitWorkflowJobLabels } from './labels';
 
 const logger = createChildLogger('handler');
 
@@ -15,7 +17,7 @@ export async function dispatch(
 ): Promise<Response> {
   validateRepoInAllowList(event, config);
 
-  return await handleWorkflowJob(event, eventType, config.matcherConfig!);
+  return await handleWorkflowJob(event, eventType, config.matcherConfig!, config.queueSelectionStrategy);
 }
 
 function validateRepoInAllowList(event: WorkflowJobEvent, config: ConfigDispatcher) {
@@ -29,6 +31,7 @@ async function handleWorkflowJob(
   body: WorkflowJobEvent,
   githubEvent: string,
   matcherConfig: Array<RunnerMatcherConfig>,
+  queueSelectionStrategy: QueueSelectionStrategy = 'first',
 ): Promise<Response> {
   if (body.action !== 'queued') {
     return {
@@ -42,13 +45,62 @@ async function handleWorkflowJob(
       `Job ID: ${body.workflow_job.id}, Job Name: ${body.workflow_job.name}, ` +
       `Run ID: ${body.workflow_job.run_id}, Labels: ${JSON.stringify(body.workflow_job.labels)}`,
   );
-  // sort the queuesConfig by order of matcher config exact match, with all true matches lined up ahead.
+
+  // Sort queues by priority (exact/bidirectional match first), as before.
   matcherConfig.sort((a, b) => {
-    return a.matcherConfig.exactMatch === b.matcherConfig.exactMatch ? 0 : a.matcherConfig.exactMatch ? -1 : 1;
+    const aStrict = a.matcherConfig.bidirectionalLabelMatch || a.matcherConfig.exactMatch;
+    const bStrict = b.matcherConfig.bidirectionalLabelMatch || b.matcherConfig.exactMatch;
+    return aStrict === bStrict ? 0 : aStrict ? -1 : 1;
   });
-  for (const queue of matcherConfig) {
-    if (canRunJob(body.workflow_job.labels, queue.matcherConfig.labelMatchers, queue.matcherConfig.exactMatch)) {
-      await sendActionRequest({
+
+  const { nonGhrLabels, sanitizedGhrLabels, hasDynamicLabels } = splitWorkflowJobLabels(body.workflow_job.labels);
+
+  // 1. Collect all queues whose non-dynamic labels match the job.
+  const matches: RunnerMatcherConfig[] = matcherConfig.filter((q) =>
+    canRunJob(
+      nonGhrLabels,
+      q.matcherConfig.labelMatchers,
+      q.matcherConfig.exactMatch,
+      q.matcherConfig.bidirectionalLabelMatch,
+    ),
+  );
+
+  if (matches.length === 0) {
+    return notAccepted(body);
+  }
+
+  // 2. Pick the target queue(s).
+  let targets: RunnerMatcherConfig[];
+  let labelsToSend: string[];
+
+  if (!hasDynamicLabels) {
+    // No dynamic labels in the job: select among the equally-best matches (those
+    // sharing the top priority, i.e. the same exactMatch as the first match)
+    // according to the configured strategy, and forward as-is.
+    const topMatches = matches.filter((q) => q.matcherConfig.exactMatch === matches[0].matcherConfig.exactMatch);
+    targets = selectQueues(topMatches, queueSelectionStrategy);
+    labelsToSend = nonGhrLabels;
+  } else {
+    // Dynamic labels present: prefer the first provider-compliant queue. The
+    // queue selection strategy applies to standard jobs only; dynamic-label jobs
+    // always use the first compliant queue.
+    const dynamicTarget = selectAwsDynamicLabelQueue(matches, nonGhrLabels, sanitizedGhrLabels);
+
+    if (dynamicTarget) {
+      targets = [dynamicTarget.queue];
+      labelsToSend = dynamicTarget.labels;
+    } else {
+      // No queue accepts the dynamic labels under its policy: refuse the job.
+      logger.warn(`No queue accepts the dynamic labels for this job; not dispatching`, {
+        dynamicLabels: sanitizedGhrLabels,
+      });
+      return notAccepted(body);
+    }
+  }
+
+  await Promise.all(
+    targets.map((queue) =>
+      sendActionRequest({
         id: body.workflow_job.id,
         repositoryName: body.repository.name,
         repositoryOwner: body.repository.owner.login,
@@ -56,17 +108,43 @@ async function handleWorkflowJob(
         installationId: body.installation?.id ?? 0,
         queueId: queue.id,
         repoOwnerType: body.repository.owner.type,
-      });
-      logger.info(
-        `Successfully dispatched job for ${body.repository.full_name} to the queue ${queue.id} - ` +
-          `Job ID: ${body.workflow_job.id}, Job Name: ${body.workflow_job.name}, Run ID: ${body.workflow_job.run_id}`,
-      );
-      return {
-        statusCode: 201,
-        body: `Successfully queued job for ${body.repository.full_name} to the queue ${queue.id}`,
-      };
-    }
+        labels: labelsToSend,
+      }),
+    ),
+  );
+
+  const queueIds = targets.map((q) => q.id).join(', ');
+  logger.info(
+    `Successfully dispatched job for ${body.repository.full_name} to the queue(s) ${queueIds} - ` +
+      `Job ID: ${body.workflow_job.id}, Job Name: ${body.workflow_job.name}, Run ID: ${body.workflow_job.run_id}`,
+  );
+  return {
+    statusCode: 201,
+    body: `Successfully queued job for ${body.repository.full_name} to the queue(s) ${queueIds}`,
+  };
+}
+
+/**
+ * Select the target queue(s) from a set of equally-matching candidates.
+ * - 'first'  keeps the historical deterministic choice (the first candidate).
+ * - 'random' picks one uniformly random candidate, spreading jobs across queues
+ *   so a single pool's queue does not become a bottleneck.
+ * - 'all'    returns every candidate, scaling up one runner per matching pool and
+ *   letting the first to become available take the job (speed over cost). Note
+ *   this multiplies AWS launches and runner registrations per job.
+ */
+function selectQueues(candidates: RunnerMatcherConfig[], strategy: QueueSelectionStrategy): RunnerMatcherConfig[] {
+  switch (strategy) {
+    case 'all':
+      return candidates;
+    case 'random':
+      return [candidates[Math.floor(Math.random() * candidates.length)]];
+    default:
+      return [candidates[0]];
   }
+}
+
+function notAccepted(body: WorkflowJobEvent): Response {
   const notAcceptedErrorMsg = `Received event contains runner labels '${body.workflow_job.labels}' from '${
     body.repository.full_name
   }' that are not accepted.`;
@@ -74,25 +152,4 @@ async function handleWorkflowJob(
     `${notAcceptedErrorMsg} - Job ID: ${body.workflow_job.id}, Job Name: ${body.workflow_job.name}, Run ID: ${body.workflow_job.run_id}`,
   );
   return { statusCode: 202, body: notAcceptedErrorMsg };
-}
-
-export function canRunJob(
-  workflowJobLabels: string[],
-  runnerLabelsMatchers: string[][],
-  workflowLabelCheckAll: boolean,
-): boolean {
-  runnerLabelsMatchers = runnerLabelsMatchers.map((runnerLabel) => {
-    return runnerLabel.map((label) => label.toLowerCase());
-  });
-  const matchLabels = workflowLabelCheckAll
-    ? runnerLabelsMatchers.some((rl) => workflowJobLabels.every((wl) => rl.includes(wl.toLowerCase())))
-    : runnerLabelsMatchers.some((rl) => workflowJobLabels.some((wl) => rl.includes(wl.toLowerCase())));
-  const match = workflowJobLabels.length === 0 ? !matchLabels : matchLabels;
-
-  logger.debug(
-    `Received workflow job event with labels: '${JSON.stringify(workflowJobLabels)}'. The event does ${
-      match ? '' : 'NOT '
-    }match the runner labels: '${Array.from(runnerLabelsMatchers).join(',')}'`,
-  );
-  return match;
 }

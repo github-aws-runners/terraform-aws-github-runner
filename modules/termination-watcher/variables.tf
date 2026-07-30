@@ -27,6 +27,9 @@ variable "config" {
     `timeout`: Time out of the lambda in seconds.
     `tracing_config`: Configuration for lambda tracing.
     `zip`: File location of the lambda zip file.
+    `enable_runner_deregistration`: Enable or disable deregistering the runner from GitHub when its EC2 instance is terminated.
+    `github_app_parameters`: GitHub App SSM parameters (`id` and `key_base64`, each a map of `arn`/`name`) used to authenticate to GitHub when deregistering runners.
+    `ghes_url`: GitHub Enterprise Server URL used to target the GHES API when deregistering runners. Leave `null` for github.com.
   EOF
   type = object({
     aws_partition         = optional(string, null)
@@ -71,6 +74,12 @@ variable "config" {
       capture_http_requests = optional(bool, false)
       capture_error         = optional(bool, false)
     }), {})
-    zip = optional(string, null)
+    zip                          = optional(string, null)
+    enable_runner_deregistration = optional(bool, false)
+    github_app_parameters = optional(object({
+      id         = map(string)
+      key_base64 = map(string)
+    }), null)
+    ghes_url = optional(string, null)
   })
 }

@@ -38,6 +38,7 @@ resource "aws_lambda_function" "scale_up" {
       INSTANCE_ALLOCATION_STRATEGY             = var.instance_allocation_strategy
       INSTANCE_MAX_SPOT_PRICE                  = var.instance_max_spot_price
       INSTANCE_TARGET_CAPACITY_TYPE            = var.instance_target_capacity_type
+      INSTANCE_TYPE_PRIORITIES                 = var.instance_type_priorities != null ? jsonencode(var.instance_type_priorities) : ""
       INSTANCE_TYPES                           = join(",", var.instance_types)
       LAUNCH_TEMPLATE_NAME                     = aws_launch_template.runner.name
       LOG_LEVEL                                = var.log_level
@@ -53,6 +54,7 @@ resource "aws_lambda_function" "scale_up" {
       RUNNER_LABELS                            = lower(join(",", var.runner_labels))
       RUNNER_GROUP_NAME                        = var.runner_group_name
       RUNNER_NAME_PREFIX                       = var.runner_name_prefix
+      RUNNER_PROVIDER_TYPE                     = "ec2"
       RUNNERS_MAXIMUM_COUNT                    = var.runners_maximum_count
       POWERTOOLS_SERVICE_NAME                  = "${var.prefix}-scale-up"
       SSM_TOKEN_PATH                           = local.token_path
@@ -62,6 +64,7 @@ resource "aws_lambda_function" "scale_up" {
       ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS     = jsonencode(var.enable_on_demand_failover_for_errors)
       SCALE_ERRORS                             = jsonencode(var.scale_errors)
       JOB_RETRY_CONFIG                         = jsonencode(local.job_retry_config)
+      USE_DEDICATED_HOST                       = var.use_dedicated_host
     }
   }
 
@@ -118,7 +121,8 @@ resource "aws_iam_role_policy" "scale_up" {
   name = "scale-up-policy"
   role = aws_iam_role.scale_up.name
   policy = templatefile("${path.module}/policies/lambda-scale-up.json", {
-    arn_runner_instance_role  = aws_iam_role.runner.arn
+    arn_runner_instance_role  = var.iam_overrides["override_runner_role"] ? var.iam_overrides["runner_role_arn"] : aws_iam_role.runner[0].arn
+    environment               = var.prefix
     sqs_arn                   = var.sqs_build_queue.arn
     github_app_id_arn         = var.github_app_parameters.id.arn
     github_app_key_base64_arn = var.github_app_parameters.key_base64.arn
