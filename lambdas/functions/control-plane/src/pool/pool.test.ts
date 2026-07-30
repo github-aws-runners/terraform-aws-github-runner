@@ -2,13 +2,11 @@ import { Octokit } from '@octokit/rest';
 import moment from 'moment-timezone';
 import * as nock from 'nock';
 
-import { bootTimeExceeded, listEC2Runners } from '../aws/ec2-runners';
-import type { RunnerList } from '../aws/ec2-runners.d';
+import { listEC2Runners } from '../aws/ec2-runners';
 import * as ghAuth from '../github/auth';
 import { createRunners } from '../scale-runners/ec2';
 import { getGitHubEnterpriseApiUrl } from '../scale-runners/github-runner';
 import { adjust } from './pool';
-import { calculateEc2PoolSize } from './ec2-pool';
 import { describe, it, expect, beforeEach, vi, MockedClass } from 'vitest';
 
 const mockOctokit = {
@@ -57,7 +55,6 @@ const mockedAppAuth = vi.mocked(ghAuth.createGithubAppAuth);
 const mockedInstallationAuth = vi.mocked(ghAuth.createGithubInstallationAuth);
 const mockCreateClient = vi.mocked(ghAuth.createOctokitClient);
 const mockListRunners = vi.mocked(listEC2Runners);
-const mockBootTimeExceeded = vi.mocked(bootTimeExceeded);
 
 const cleanEnv = process.env;
 
@@ -494,44 +491,5 @@ describe('Test simple pool.', () => {
         'pool-lambda',
       );
     });
-  });
-});
-
-describe('calculateEc2PoolSize', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('counts registered online idle runners', () => {
-    const runners: RunnerList[] = [{ instanceId: 'i-idle' }];
-    const runnerStatus = new Map([['i-idle', { busy: false, status: 'online' }]]);
-
-    expect(calculateEc2PoolSize(runners, runnerStatus)).toBe(1);
-    expect(mockBootTimeExceeded).not.toHaveBeenCalled();
-  });
-
-  it('does not count registered busy or offline runners', () => {
-    const runners: RunnerList[] = [{ instanceId: 'i-busy' }, { instanceId: 'i-offline' }];
-    const runnerStatus = new Map([
-      ['i-busy', { busy: true, status: 'online' }],
-      ['i-offline', { busy: false, status: 'offline' }],
-    ]);
-
-    expect(calculateEc2PoolSize(runners, runnerStatus)).toBe(0);
-    expect(mockBootTimeExceeded).not.toHaveBeenCalled();
-  });
-
-  it('counts unregistered runners that are still booting', () => {
-    const runners: RunnerList[] = [{ instanceId: 'i-booting' }];
-    mockBootTimeExceeded.mockReturnValue(false);
-
-    expect(calculateEc2PoolSize(runners, new Map())).toBe(1);
-  });
-
-  it('does not count unregistered runners whose boot time expired', () => {
-    const runners: RunnerList[] = [{ instanceId: 'i-expired' }];
-    mockBootTimeExceeded.mockReturnValue(true);
-
-    expect(calculateEc2PoolSize(runners, new Map())).toBe(0);
   });
 });
