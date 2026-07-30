@@ -1,5 +1,5 @@
 import { Octokit } from '@octokit/rest';
-import { ActionRequestMessage } from '../scale-runners/scale-up';
+import type { ActionRequestMessage } from '../scale-runners/types';
 import { getOctokit } from './octokit';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createGithubAppAuth, createGithubInstallationAuth } from '../github/auth';

@@ -1,0 +1,23 @@
+{
+  "name": "@aws-github-runner/runner-provider",
+  "version": "1.0.0",
+  "main": "src/index.ts",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "test": "NODE_ENV=test nx test",
+    "test:watch": "NODE_ENV=test nx test --watch",
+    "lint": "eslint src",
+    "format": "prettier --write \"**/*.ts\"",
+    "format-check": "prettier --check \"**/*.ts\"",
+    "all": "yarn format && yarn lint && yarn test"
+  },
+  "nx": {
+    "includedScripts": [
+      "format",
+      "format-check",
+      "lint",
+      "all"
+    ]
+  }
+}

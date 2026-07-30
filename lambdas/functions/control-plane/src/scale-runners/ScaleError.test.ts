@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ActionRequestMessageSQS } from './scale-up';
+import type { ActionRequestMessageSQS } from './types';
 import ScaleError from './ScaleError';
 
 describe('ScaleError', () => {

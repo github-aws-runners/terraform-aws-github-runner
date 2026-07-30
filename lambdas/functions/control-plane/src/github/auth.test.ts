@@ -6,7 +6,7 @@ import { getParameters } from '@aws-github-runner/aws-ssm-util';
 import { generateKeyPairSync } from 'node:crypto';
 import * as nock from 'nock';
 
-import { createGithubAppAuth, createOctokitClient } from './auth';
+import { createGithubAppAuth, createOctokitClient, onRateLimit, onSecondaryRateLimit } from './auth';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 type MockProxy<T> = T & {
@@ -295,5 +295,29 @@ describe('Test createGithubAppAuth', () => {
     expect(callArgs.request).toBeDefined();
     expect(mockedAuth).toBeCalledWith({ type: authType });
     expect(result.token).toBe(token);
+  });
+});
+
+describe('Test throttling retry caps', () => {
+  // The plugin passes retryCount as the 4th argument and uses the boolean return
+  // value to decide whether to retry (see @octokit/plugin-throttling wrap-request).
+  const options = { method: 'GET', url: '/repos/o/r' } as never;
+  const octokit = {} as never;
+
+  it.each([
+    [0, true],
+    [1, true],
+    [2, false],
+    [3, false],
+  ])('onRateLimit retries at retryCount=%i -> %s', (retryCount, expected) => {
+    expect(onRateLimit(60, options, octokit, retryCount)).toBe(expected);
+  });
+
+  it.each([
+    [0, true],
+    [1, false],
+    [2, false],
+  ])('onSecondaryRateLimit retries at retryCount=%i -> %s', (retryCount, expected) => {
+    expect(onSecondaryRateLimit(60, options, octokit, retryCount)).toBe(expected);
   });
 });

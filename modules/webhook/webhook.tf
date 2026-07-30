@@ -1,6 +1,11 @@
 locals {
   # config with combined key and order
-  runner_matcher_config = { for k, v in var.runner_matcher_config : format("%03d-%s", v.matcherConfig.priority, k) => merge(v, { key = k }) }
+  runner_matcher_config = {
+    for k, v in var.runner_matcher_config : format("%03d-%s", v.matcherConfig.priority, k) => merge(v, {
+      key            = k
+      runnerProvider = lower(trimspace(v.runnerProvider))
+    })
+  }
 
   # sorted list
   runner_matcher_config_sorted = [for k in sort(keys(local.runner_matcher_config)) : local.runner_matcher_config[k]]

@@ -1,5 +1,5 @@
 import { Octokit } from '@octokit/rest';
-import { ActionRequestMessage } from '../scale-runners/scale-up';
+import type { ActionRequestMessage } from '../scale-runners/types';
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from './auth';
 
 function getErrorStatus(error: unknown): number | undefined {

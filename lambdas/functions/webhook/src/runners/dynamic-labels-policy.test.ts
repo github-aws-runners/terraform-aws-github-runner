@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-import { violationsAgainstPolicy, type Ec2DynamicLabelsPolicy } from './dynamic-labels-policy';
+import { violationsAgainstPolicy, type Ec2DynamicLabelsPolicy } from './ec2-dynamic-labels-policy';
 
 describe('violationsAgainstPolicy', () => {
   it('returns [] when policy is null/undefined', () => {

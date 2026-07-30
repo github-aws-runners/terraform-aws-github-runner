@@ -3,9 +3,9 @@ import { RequestError } from '@octokit/request-error';
 import moment from 'moment';
 import nock from 'nock';
 
-import { RunnerInfo, RunnerList } from '../aws/runners.d';
+import { RunnerInfo, RunnerList } from '../aws/ec2-runners.d';
 import * as ghAuth from '../github/auth';
-import { listEC2Runners, terminateRunner, tag, untag } from './../aws/runners';
+import { listEC2Runners, terminateRunner, tag, untag } from './../aws/ec2-runners';
 import { githubCache } from './cache';
 import { newestFirstStrategy, oldestFirstStrategy, scaleDown } from './scale-down';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -31,7 +31,7 @@ vi.mock('@octokit/rest', () => ({
   }),
 }));
 
-vi.mock('./../aws/runners', async (importOriginal) => {
+vi.mock('./../aws/ec2-runners', async (importOriginal) => {
   const actual = await importOriginal();
   return {
     ...actual,
