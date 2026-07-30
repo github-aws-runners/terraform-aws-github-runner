@@ -9,13 +9,12 @@ const logger = createChildLogger('handler');
 export type Ec2DynamicLabelDispatchTarget = AwsDynamicLabelDispatchTarget;
 
 function resolveEc2DynamicLabelsPolicy(queue: RunnerMatcherConfig) {
-  const hasAwsDynamicLabelsPolicy = Object.prototype.hasOwnProperty.call(queue.matcherConfig, 'awsDynamicLabelsPolicy');
   const hasLegacyEc2DynamicLabelsPolicy = Object.prototype.hasOwnProperty.call(
     queue.matcherConfig,
     'ec2DynamicLabelsPolicy',
   );
 
-  if (!hasAwsDynamicLabelsPolicy && hasLegacyEc2DynamicLabelsPolicy) {
+  if (queue.matcherConfig.awsDynamicLabelsPolicy == null && hasLegacyEc2DynamicLabelsPolicy) {
     logger.warn(
       `Queue ${queue.id}: using deprecated matcherConfig.ec2DynamicLabelsPolicy; migrate to matcherConfig.awsDynamicLabelsPolicy`,
     );

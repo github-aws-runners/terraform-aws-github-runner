@@ -42,6 +42,7 @@ resource "aws_lambda_function" "scale_down" {
       POWERTOOLS_TRACE_ENABLED                 = var.tracing_config.mode != null ? true : false
       POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.tracing_config.capture_http_requests
       POWERTOOLS_TRACER_CAPTURE_ERROR          = var.tracing_config.capture_error
+      RUNNER_PROVIDER_TYPE                     = "ec2"
     }
   }
 

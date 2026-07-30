@@ -1,6 +1,7 @@
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import { Octokit } from '@octokit/rest';
 import type { Tag } from '@aws-sdk/client-ec2';
+import yn from 'yn';
 
 import { createRunner, tag, terminateRunner } from '../aws/ec2-runners';
 import type { RunnerInputParameters } from '../aws/ec2-runners.d';
@@ -8,24 +9,50 @@ import { createStartRunnerConfig } from './github-runner';
 import type { GitHubRunnerMetadata, StartRunnerConfigOptions } from './github-runner';
 import type { CreateGitHubRunnerConfig, LambdaRunnerSource } from './types';
 
-const logger = createChildLogger('ec2-scale-up');
+const logger = createChildLogger('ec2-runners');
 const RUNNER_LABELS_TAG_KEY = 'ghr:runner_labels';
 const RUNNER_LABELS_TAG_VALUE_SEPARATOR = ',';
 export const EC2_TAG_VALUE_MAX_LENGTH = 256;
 export const RUNNER_LABELS_TAG_MAX_COUNT = 5;
 
-export interface CreateEC2RunnerConfig {
+export interface Ec2ProviderConfig {
   environment: string;
   subnets: string[];
   launchTemplateName: string;
   ec2instanceCriteria: RunnerInputParameters['ec2instanceCriteria'];
-  ec2OverrideConfig?: RunnerInputParameters['ec2OverrideConfig'];
-  numberOfRunners?: number;
   amiIdSsmParameterName?: string;
   tracingEnabled?: boolean;
   onDemandFailoverOnError?: string[];
   scaleErrors: string[];
+}
+
+export interface CreateEC2RunnerConfig extends Ec2ProviderConfig {
+  ec2OverrideConfig?: RunnerInputParameters['ec2OverrideConfig'];
+  numberOfRunners?: number;
   useDedicatedHost?: boolean;
+}
+
+export function loadEc2ProviderConfig(): Ec2ProviderConfig {
+  return {
+    environment: process.env.ENVIRONMENT,
+    subnets: process.env.SUBNET_IDS.split(','),
+    launchTemplateName: process.env.LAUNCH_TEMPLATE_NAME,
+    ec2instanceCriteria: {
+      instanceTypes: process.env.INSTANCE_TYPES.split(','),
+      instanceTypePriorities: process.env.INSTANCE_TYPE_PRIORITIES
+        ? (JSON.parse(process.env.INSTANCE_TYPE_PRIORITIES) as Record<string, number>)
+        : undefined,
+      targetCapacityType: process.env.INSTANCE_TARGET_CAPACITY_TYPE,
+      maxSpotPrice: process.env.INSTANCE_MAX_SPOT_PRICE,
+      instanceAllocationStrategy: process.env.INSTANCE_ALLOCATION_STRATEGY || 'lowest-price',
+    },
+    amiIdSsmParameterName: process.env.AMI_ID_SSM_PARAMETER_NAME,
+    tracingEnabled: yn(process.env.POWERTOOLS_TRACE_ENABLED, { default: false }),
+    onDemandFailoverOnError: process.env.ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS
+      ? (JSON.parse(process.env.ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS) as string[])
+      : [],
+    scaleErrors: JSON.parse(process.env.SCALE_ERRORS) as string[],
+  };
 }
 
 export async function createRunners(

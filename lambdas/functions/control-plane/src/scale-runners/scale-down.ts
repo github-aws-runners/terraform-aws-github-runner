@@ -344,6 +344,8 @@ async function listRunners(environment: string, runnerProvider: ScaleDownRunnerP
 }
 
 function filterRunners(runners: RunnerList[]): RunnerInfo[] {
+  // Managed runners are launched with owner and type tags together. Exclude incomplete records because both
+  // values are required to select the GitHub owner and runner API used during scale-down.
   return runners.filter((runner) => runner.owner && runner.type && !runner.orphan) as RunnerInfo[];
 }
 

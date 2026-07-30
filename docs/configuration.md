@@ -361,6 +361,12 @@ When `enable_dynamic_labels` is enabled, the webhook and scale-up lambdas inspec
 
 #### Configuration
 
+[!IMPORTANT]
+This change renames `ec2_dynamic_labels_policy` to `aws_dynamic_labels_policy`. Before upgrading, rename the
+root module input and rename `matcherConfig.ec2DynamicLabelsPolicy` to `matcherConfig.awsDynamicLabelsPolicy`
+in `runner_matcher_config` or `multi_runner_config`. Terraform object validation rejects the legacy attribute
+names.
+
 ```hcl
 module "runners" {
   source = "github-aws-runners/github-runners/aws"

@@ -39,7 +39,8 @@ vi.mock('./../github/auth', async () => ({
   createOctokitClient: vi.fn(),
 }));
 
-vi.mock('../scale-runners/ec2', async () => ({
+vi.mock('../scale-runners/ec2', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../scale-runners/ec2')>()),
   createRunners: vi.fn(),
 }));
 

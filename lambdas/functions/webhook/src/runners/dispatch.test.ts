@@ -639,12 +639,26 @@ describe('selectAwsDynamicLabelQueue', () => {
     ).toBeUndefined();
   });
 
-  it('prefers the new AWS dynamic labels policy when both keys are present', () => {
-    const queue = runnerQueue('new-policy-precedence');
+  it('falls back to the legacy EC2 dynamic labels policy when the new policy is null', () => {
+    const queue = runnerQueue('null-new-policy');
     queue.matcherConfig.ec2DynamicLabelsPolicy = {
       blocked_keys: ['instance-type'],
     };
     queue.matcherConfig.awsDynamicLabelsPolicy = null;
+
+    expect(
+      selectAwsDynamicLabelQueue([queue], ['self-hosted', 'linux'], ['ghr-ec2-instance-type:t3.large']),
+    ).toBeUndefined();
+  });
+
+  it('prefers a configured AWS dynamic labels policy over the legacy policy', () => {
+    const queue = runnerQueue('new-policy-precedence');
+    queue.matcherConfig.ec2DynamicLabelsPolicy = {
+      blocked_keys: ['instance-type'],
+    };
+    queue.matcherConfig.awsDynamicLabelsPolicy = {
+      blocked_keys: [],
+    };
 
     expect(selectAwsDynamicLabelQueue([queue], ['self-hosted', 'linux'], ['ghr-ec2-instance-type:t3.large'])).toEqual({
       queue,
