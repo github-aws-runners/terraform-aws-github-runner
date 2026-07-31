@@ -9,6 +9,13 @@ completed provider, import its module and add it once to
 the corresponding plugin automatically, and the generic control-plane
 contracts will include the new lane type.
 
+Every provider entry point exports its module as `provider`. Alias that export
+to the lane name when enabling it, for example:
+
+```ts
+import { provider as codebuild } from './aws/codebuild';
+```
+
 Implement every capability before registering the provider:
 
 - `pool`: list managed runners, count available runners, and create runners.

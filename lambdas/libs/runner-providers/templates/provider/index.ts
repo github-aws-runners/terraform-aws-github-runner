@@ -7,7 +7,7 @@ import { createTemplateWebhookPlugin } from './webhook';
  * Copy this module for a new provider and register the completed module once in
  * providers.config.ts. Do not register this template itself.
  */
-export const templateProvider = {
+export const provider = {
   type: 'template',
   createControlPlanePlugin: createTemplateControlPlanePlugin,
   createWebhookPlugin: createTemplateWebhookPlugin,

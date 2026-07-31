@@ -3,7 +3,7 @@ import type { RunnerProviderModule } from '../../contracts';
 import { createEc2ControlPlanePlugin } from './control-plane';
 import { createEc2WebhookPlugin } from './webhook';
 
-export const ec2Provider = {
+export const provider = {
   type: 'ec2',
   createControlPlanePlugin: createEc2ControlPlanePlugin,
   createWebhookPlugin: createEc2WebhookPlugin,
