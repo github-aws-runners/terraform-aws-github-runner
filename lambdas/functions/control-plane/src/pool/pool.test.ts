@@ -38,9 +38,7 @@ vi.mock('./../github/auth', async () => ({
 }));
 
 vi.mock('@aws-github-runner/runner-providers/aws/ec2/control-plane/runner-config', async (importOriginal) => ({
-  ...(await importOriginal<
-    typeof import('@aws-github-runner/runner-providers/aws/ec2/control-plane/runner-config')
-  >()),
+  ...(await importOriginal<typeof import('@aws-github-runner/runner-providers/aws/ec2/control-plane/runner-config')>()),
   createRunners: vi.fn(),
 }));
 
