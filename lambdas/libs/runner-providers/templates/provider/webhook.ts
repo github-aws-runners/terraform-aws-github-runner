@@ -10,7 +10,9 @@ export const templateDynamicLabelProvider: DynamicLabelProvider = {
   },
 };
 
-export const templateWebhookPlugin: RunnerProviderPlugin<WebhookProviderCapabilities, 'template'> = {
-  type: 'template',
-  capabilities: { dynamicLabels: templateDynamicLabelProvider },
-};
+export function createTemplateWebhookPlugin(): RunnerProviderPlugin<WebhookProviderCapabilities, 'template'> {
+  return {
+    type: 'template',
+    capabilities: { dynamicLabels: templateDynamicLabelProvider },
+  };
+}

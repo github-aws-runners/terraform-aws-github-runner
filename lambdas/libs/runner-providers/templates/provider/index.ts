@@ -1,7 +1,7 @@
 import type { RunnerProviderModule } from '../../contracts';
 
 import { createTemplateControlPlanePlugin } from './control-plane';
-import { templateWebhookPlugin } from './webhook';
+import { createTemplateWebhookPlugin } from './webhook';
 
 /**
  * Copy this module for a new provider and register the completed module once in
@@ -10,5 +10,5 @@ import { templateWebhookPlugin } from './webhook';
 export const templateProvider = {
   type: 'template',
   createControlPlanePlugin: createTemplateControlPlanePlugin,
-  webhookPlugin: templateWebhookPlugin,
+  createWebhookPlugin: createTemplateWebhookPlugin,
 } satisfies RunnerProviderModule<'template'>;

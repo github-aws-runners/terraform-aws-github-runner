@@ -7,6 +7,7 @@ it('exposes every runner provider capability from one module', () => {
   const pool = controlPlanePlugin.capabilities.pool();
   const scaleUp = controlPlanePlugin.capabilities.scaleUp();
   const scaleDown = controlPlanePlugin.capabilities.scaleDown();
+  const webhookPlugin = templateProvider.createWebhookPlugin();
 
   expect(controlPlanePlugin.type).toBe(templateProvider.type);
   expect(pool).toEqual({
@@ -26,6 +27,6 @@ it('exposes every runner provider capability from one module', () => {
     unmarkOrphan: expect.any(Function),
     terminate: expect.any(Function),
   });
-  expect(templateProvider.webhookPlugin.type).toBe(templateProvider.type);
-  expect(templateProvider.webhookPlugin.capabilities.dynamicLabels.selectQueue).toEqual(expect.any(Function));
+  expect(webhookPlugin.type).toBe(templateProvider.type);
+  expect(webhookPlugin.capabilities.dynamicLabels.selectQueue).toEqual(expect.any(Function));
 });

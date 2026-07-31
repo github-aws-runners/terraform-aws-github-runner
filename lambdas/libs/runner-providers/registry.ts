@@ -5,7 +5,7 @@ import type { ControlPlaneProviderCapabilities, WebhookProviderCapabilities } fr
 import { enabledRunnerProviders } from './providers.config';
 
 const webhook = createRunnerProviderRegistry<WebhookProviderCapabilities>(
-  enabledRunnerProviders.map((provider) => provider.webhookPlugin),
+  enabledRunnerProviders.map((provider) => provider.createWebhookPlugin()),
 );
 
 export const providerRegistry = {

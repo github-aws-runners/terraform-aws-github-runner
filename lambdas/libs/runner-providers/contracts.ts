@@ -59,5 +59,5 @@ export interface RunnerProviderModule<TType extends string = string> {
   createControlPlanePlugin(
     createStartRunnerConfig: CreateStartRunnerConfig,
   ): RunnerProviderPlugin<ControlPlaneProviderCapabilities, TType>;
-  webhookPlugin: RunnerProviderPlugin<WebhookProviderCapabilities, TType>;
+  createWebhookPlugin(): RunnerProviderPlugin<WebhookProviderCapabilities, TType>;
 }

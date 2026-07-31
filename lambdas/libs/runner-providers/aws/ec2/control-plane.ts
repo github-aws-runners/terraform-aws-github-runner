@@ -1,8 +1,7 @@
-/// <reference path="./src/environment.d.ts" />
-
 import type { CreateStartRunnerConfig, RunnerProviderPlugin } from '../../core';
 
 import type { ControlPlaneProviderCapabilities } from '../../contracts';
+import type {} from './src/environment';
 import { createEc2PoolProvider } from './src/control-plane/pool';
 import { createEc2ScaleDownProvider } from './src/control-plane/scale-down';
 import { createEc2ScaleUpProvider } from './src/control-plane/scale-up';
