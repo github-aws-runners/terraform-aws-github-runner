@@ -1,8 +1,8 @@
 import type { Octokit } from '@octokit/rest';
 import { beforeEach, vi } from 'vitest';
 
-import { providerTypes } from '../test-framework/runner-provider/provider-types';
-import { defineScaleUpContractTests } from '../test-framework/runner-provider/scale-up';
+import { providerTypes } from '../test/runner-provider-contracts/provider-types';
+import { defineScaleUpContractTests } from '../test/runner-provider-contracts/scale-up';
 import * as ghAuth from '../github/auth';
 import { controlPlaneProviderRegistry } from '../control-plane-providers';
 import * as githubRunner from './github-runner';

@@ -2,8 +2,8 @@ import type { Octokit } from '@octokit/rest';
 import type { RunnerProviderType } from '@aws-github-runner/runner-providers/core';
 import { beforeEach, vi } from 'vitest';
 
-import { definePoolContractTests } from '../test-framework/runner-provider/pool';
-import { providerTypes } from '../test-framework/runner-provider/provider-types';
+import { definePoolContractTests } from '../test/runner-provider-contracts/pool';
+import { providerTypes } from '../test/runner-provider-contracts/provider-types';
 import * as ghAuth from '../github/auth';
 import { controlPlaneProviderRegistry } from '../control-plane-providers';
 import * as githubRunner from '../scale-runners/github-runner';
