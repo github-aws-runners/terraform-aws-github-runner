@@ -5,7 +5,6 @@ import defaultConfig from '../../vitest.base.config';
 
 export default mergeConfig(defaultConfig, {
   test: {
-    globals: true,
     setupFiles: [resolve(__dirname, '../../aws-vitest-setup.ts')],
     coverage: {
       include: ['contracts.ts', 'providers.config.ts', 'registry.ts', 'core/**/*.ts', 'aws/**/*.ts'],
