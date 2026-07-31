@@ -1,9 +1,9 @@
-import { bootTimeExceeded } from '../aws/ec2-runners';
-import type { RunnerList } from '../aws/ec2-runners.d';
-import { calculateEc2PoolSize } from './ec2-pool';
+import { bootTimeExceeded } from './runners';
+import type { RunnerList } from './runners.d';
+import { calculateEc2PoolSize } from './pool';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('../aws/ec2-runners', () => ({
+vi.mock('./runners', () => ({
   bootTimeExceeded: vi.fn(),
 }));
 

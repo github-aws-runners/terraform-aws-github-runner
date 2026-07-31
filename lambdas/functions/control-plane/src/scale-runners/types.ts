@@ -1,5 +1,8 @@
-export type LambdaRunnerSource = 'scale-up-lambda' | 'pool-lambda';
-export type GitHubRunnerType = 'Org' | 'Repo';
+export type {
+  CreateGitHubRunnerConfig,
+  GitHubRunnerType,
+  LambdaRunnerSource,
+} from '@aws-github-runner/runner-providers/core';
 
 export interface RunnerGroup {
   name: string;
@@ -23,21 +26,6 @@ export interface ActionRequestMessageSQS extends ActionRequestMessage {
 
 export interface ActionRequestMessageRetry extends ActionRequestMessage {
   retryCounter: number;
-}
-
-export interface CreateGitHubRunnerConfig {
-  ephemeral: boolean;
-  ghesBaseUrl?: string;
-  enableJitConfig: boolean;
-  runnerLabels: string;
-  runnerGroup: string;
-  runnerNamePrefix: string;
-  runnerOwner: string;
-  runnerType: GitHubRunnerType;
-  disableAutoUpdate: boolean;
-  ssmTokenPath: string;
-  ssmConfigPath: string;
-  ssmParameterStoreTags: { Key: string; Value: string }[];
 }
 
 export interface EphemeralRunnerConfig {

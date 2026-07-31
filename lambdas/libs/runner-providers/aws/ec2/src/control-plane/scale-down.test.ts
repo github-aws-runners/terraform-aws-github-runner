@@ -3,11 +3,11 @@ import { RequestError } from '@octokit/request-error';
 import moment from 'moment';
 import nock from 'nock';
 
-import { RunnerList } from '../aws/ec2-runners.d';
-import * as ghAuth from '../github/auth';
-import { listEC2Runners, terminateRunner, tag, untag } from './../aws/ec2-runners';
-import { githubCache } from './cache';
-import { scaleDown } from './scale-down';
+import * as ghAuth from '../../../../../../functions/control-plane/src/github/auth';
+import { githubCache } from '../../../../../../functions/control-plane/src/scale-runners/cache';
+import { scaleDown } from '../../../../../../functions/control-plane/src/scale-runners/scale-down';
+import { listEC2Runners, terminateRunner, tag, untag } from './runners';
+import { RunnerList } from './runners.d';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 const mockOctokit = {
@@ -31,7 +31,7 @@ vi.mock('@octokit/rest', () => ({
   }),
 }));
 
-vi.mock('./../aws/ec2-runners', async (importOriginal) => {
+vi.mock('./runners', async (importOriginal) => {
   const actual = await importOriginal();
   return {
     ...actual,
@@ -41,13 +41,13 @@ vi.mock('./../aws/ec2-runners', async (importOriginal) => {
     listEC2Runners: vi.fn(),
   };
 });
-vi.mock('./../github/auth', async () => ({
+vi.mock('../../../../../../functions/control-plane/src/github/auth', async () => ({
   createGithubAppAuth: vi.fn(),
   createGithubInstallationAuth: vi.fn(),
   createOctokitClient: vi.fn(),
 }));
 
-vi.mock('./cache', async () => ({
+vi.mock('../../../../../../functions/control-plane/src/scale-runners/cache', async () => ({
   githubCache: {
     getRunner: vi.fn(),
     addRunner: vi.fn(),

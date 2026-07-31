@@ -7,7 +7,7 @@ import {
   Placement,
   FleetBlockDeviceMappingRequest,
 } from '@aws-sdk/client-ec2';
-import type { LambdaRunnerSource } from '../scale-runners/types';
+import type { LambdaRunnerSource } from '../../../../core';
 
 export type RunnerType = 'Org' | 'Repo';
 

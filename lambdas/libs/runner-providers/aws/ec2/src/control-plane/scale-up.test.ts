@@ -6,17 +6,17 @@ import 'aws-sdk-client-mock-jest/vitest';
 import nock from 'nock';
 import { performance } from 'perf_hooks';
 
-import * as ghAuth from '../github/auth';
-import { createRunner, listEC2Runners, tag, terminateRunner } from './../aws/ec2-runners';
-import { RunnerInputParameters } from './../aws/ec2-runners.d';
-import * as scaleUpModule from './scale-up';
-import { parseEc2OverrideConfig } from './ec2-labels';
-import { EC2_TAG_VALUE_MAX_LENGTH, RUNNER_LABELS_TAG_MAX_COUNT } from './ec2';
+import * as ghAuth from '../../../../../../functions/control-plane/src/github/auth';
+import { publishRetryMessage } from '../../../../../../functions/control-plane/src/scale-runners/job-retry';
+import * as scaleUpModule from '../../../../../../functions/control-plane/src/scale-runners/scale-up';
+import type { ActionRequestMessageSQS } from '../../../../../../functions/control-plane/src/scale-runners/types';
+import { parseEc2OverrideConfig } from './dynamic-labels';
+import { EC2_TAG_VALUE_MAX_LENGTH, RUNNER_LABELS_TAG_MAX_COUNT } from './runner-config';
+import { createRunner, listEC2Runners, tag, terminateRunner } from './runners';
+import { RunnerInputParameters } from './runners.d';
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
-import { publishRetryMessage } from './job-retry';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { Octokit } from '@octokit/rest';
-import type { ActionRequestMessageSQS } from './types';
 
 const mockOctokit = {
   paginate: vi.fn(),
@@ -53,14 +53,14 @@ vi.mock('@octokit/rest', () => ({
   }),
 }));
 
-vi.mock('./../aws/ec2-runners', async () => ({
+vi.mock('./runners', async () => ({
   createRunner: vi.fn(),
   listEC2Runners: vi.fn(),
   tag: vi.fn(),
   terminateRunner: vi.fn(),
 }));
 
-vi.mock('./../github/auth', async () => ({
+vi.mock('../../../../../../functions/control-plane/src/github/auth', async () => ({
   createGithubAppAuth: vi.fn(),
   createGithubInstallationAuth: vi.fn(),
   createOctokitClient: vi.fn(),
@@ -77,7 +77,7 @@ vi.mock('@aws-github-runner/aws-ssm-util', async () => {
   };
 });
 
-vi.mock('./job-retry', () => ({
+vi.mock('../../../../../../functions/control-plane/src/scale-runners/job-retry', () => ({
   publishRetryMessage: vi.fn(),
   checkAndRetryJob: vi.fn(),
 }));

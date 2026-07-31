@@ -1,7 +1,7 @@
 import { SQS, SendMessageCommandInput } from '@aws-sdk/client-sqs';
 import { WorkflowJobEvent } from '@octokit/webhooks-types';
 import { createChildLogger, getTracedAWSV3Client } from '@aws-github-runner/aws-powertools-util';
-import type { RunnerProviderType } from '@aws-github-runner/runner-provider';
+import type { RunnerProviderType } from '@aws-github-runner/runner-providers/core';
 
 import type { AwsDynamicLabelsPolicy } from '../runners/aws-dynamic-labels-policy';
 

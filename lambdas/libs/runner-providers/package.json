@@ -1,0 +1,37 @@
+{
+  "name": "@aws-github-runner/runner-providers",
+  "version": "1.0.0",
+  "main": "contracts.ts",
+  "exports": {
+    ".": "./contracts.ts",
+    "./control-plane": "./control-plane.ts",
+    "./core": "./core/index.ts",
+    "./webhook": "./webhook.ts",
+    "./aws/ec2": "./aws/ec2/index.ts",
+    "./aws/ec2/control-plane/runners": "./aws/ec2/src/control-plane/runners.ts",
+    "./aws/ec2/control-plane/runner-config": "./aws/ec2/src/control-plane/runner-config.ts"
+  },
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "test": "NODE_ENV=test nx test",
+    "test:watch": "NODE_ENV=test nx test --watch",
+    "lint": "eslint .",
+    "format": "prettier --write \"**/*.ts\"",
+    "format-check": "prettier --check \"**/*.ts\"",
+    "all": "yarn format && yarn lint && yarn test"
+  },
+  "dependencies": {
+    "@aws-github-runner/aws-powertools-util": "*",
+    "@aws-github-runner/aws-ssm-util": "*",
+    "@aws-sdk/client-ec2": "^3.1009.0",
+    "@octokit/rest": "22.0.1",
+    "moment": "2.29.4",
+    "yn": "3.1.1"
+  },
+  "devDependencies": {
+    "aws-sdk-client-mock": "^4.1.0",
+    "aws-sdk-client-mock-jest": "^4.1.0",
+    "nock": "^14.0.10"
+  }
+}

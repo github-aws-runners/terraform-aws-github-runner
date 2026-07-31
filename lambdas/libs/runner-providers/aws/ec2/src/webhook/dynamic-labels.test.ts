@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import type { RunnerMatcherConfig } from '../sqs';
-import { selectEc2DynamicLabelQueue } from './ec2-dynamic-labels';
+import { selectEc2DynamicLabelQueue } from './dynamic-labels';
+import type { Ec2RunnerMatcherConfig } from './types';
 
 describe('selectEc2DynamicLabelQueue', () => {
   it('enforces a legacy EC2 dynamic labels policy when the new key is absent', () => {
@@ -43,7 +43,7 @@ describe('selectEc2DynamicLabelQueue', () => {
   });
 });
 
-function runnerQueue(id: string): RunnerMatcherConfig {
+function runnerQueue(id: string): Ec2RunnerMatcherConfig {
   return {
     id,
     arn: `arn:${id}`,

@@ -1,22 +1,23 @@
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
+import type {
+  CreateScaleUpRunnersInput,
+  CreateScaleUpRunnersResult,
+  CreateStartRunnerConfig,
+  CurrentRunnersInput,
+  PreparedScaleUpRunnerGroup,
+  ScaleUpRunnerProvider,
+} from '../../../../core';
 import yn from 'yn';
 
-import { listEC2Runners } from '../aws/ec2-runners';
-import type { Ec2OverrideConfig } from './../aws/ec2-runners.d';
+import { listEC2Runners } from './runners';
+import type { Ec2OverrideConfig } from './runners.d';
 import {
   getDefaultBlockDeviceNameFromLaunchTemplate,
   parseEc2OverrideConfig,
   shouldLoadLaunchTemplateBlockDeviceName,
-} from './ec2-labels';
-import { createRunners, loadEc2ProviderConfig } from './ec2';
-import type { CreateEC2RunnerConfig } from './ec2';
-import type {
-  CreateScaleUpRunnersInput,
-  CreateScaleUpRunnersResult,
-  CurrentRunnersInput,
-  PreparedScaleUpRunnerGroup,
-  ScaleUpRunnerProvider,
-} from './scale-up-provider';
+} from './dynamic-labels';
+import { createRunners, loadEc2ProviderConfig } from './runner-config';
+import type { CreateEC2RunnerConfig } from './runner-config';
 
 const logger = createChildLogger('ec2-scale-up');
 
@@ -61,12 +62,10 @@ async function getCurrentEc2Runners(
   return (await listEC2Runners({ environment: process.env.ENVIRONMENT, runnerType, runnerOwner })).length;
 }
 
-async function createEc2ScaleUpRunners({
-  githubRunnerConfig,
-  numberOfRunners,
-  githubInstallationClient,
-  state,
-}: CreateScaleUpRunnersInput<Ec2ScaleUpState>): Promise<CreateScaleUpRunnersResult> {
+async function createEc2ScaleUpRunners(
+  { githubRunnerConfig, numberOfRunners, githubInstallationClient, state }: CreateScaleUpRunnersInput<Ec2ScaleUpState>,
+  createStartRunnerConfig: CreateStartRunnerConfig,
+): Promise<CreateScaleUpRunnersResult> {
   const config = loadEc2ScaleUpProviderConfig();
 
   return await createRunners(
@@ -77,14 +76,17 @@ async function createEc2ScaleUpRunners({
     },
     numberOfRunners,
     githubInstallationClient,
+    createStartRunnerConfig,
     'scale-up-lambda',
   );
 }
 
-export function createEc2ScaleUpProvider(): Omit<ScaleUpRunnerProvider<Ec2ScaleUpState>, 'type'> {
+export function createEc2ScaleUpProvider(
+  createStartRunnerConfig: CreateStartRunnerConfig,
+): Omit<ScaleUpRunnerProvider<Ec2ScaleUpState>, 'type'> {
   return {
     prepareGroup: prepareEc2ScaleUpGroup,
     getCurrentRunners: getCurrentEc2Runners,
-    createRunners: createEc2ScaleUpRunners,
+    createRunners: (input) => createEc2ScaleUpRunners(input, createStartRunnerConfig),
   };
 }

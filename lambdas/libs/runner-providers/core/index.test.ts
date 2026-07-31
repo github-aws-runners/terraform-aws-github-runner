@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { normalizeRunnerProviderType, resolveRunnerProviderType } from './index';
+import { createRunnerProviderRegistry, normalizeRunnerProviderType, resolveRunnerProviderType } from './index';
 
 describe('runner provider normalization', () => {
   it.each([
@@ -29,5 +29,25 @@ describe('runner provider resolution', () => {
 
   it.each([[' Unknown '], ['microvm'], [null], [1]])('rejects unsupported provider type %j', (type) => {
     expect(() => resolveRunnerProviderType(type)).toThrow(`Unsupported runner provider type '${String(type)}'`);
+  });
+});
+
+describe('runner provider registry', () => {
+  const plugin = {
+    type: 'ec2' as const,
+    capabilities: {
+      scaleUp: () => 'scale-up',
+      pool: () => 'pool',
+    },
+  };
+  const registry = createRunnerProviderRegistry([plugin]);
+
+  it('lists the registered provider types', () => {
+    expect(registry.types).toEqual(['ec2']);
+  });
+
+  it('resolves capabilities dynamically', () => {
+    expect(registry.capability('ec2', 'scaleUp')()).toBe('scale-up');
+    expect(registry.capability('ec2', 'pool')()).toBe('pool');
   });
 });

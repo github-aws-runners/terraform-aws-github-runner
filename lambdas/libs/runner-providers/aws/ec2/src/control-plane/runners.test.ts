@@ -21,9 +21,9 @@ import { mockClient } from 'aws-sdk-client-mock';
 import 'aws-sdk-client-mock-jest/vitest';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createRunner, listEC2Runners, tag, terminateRunner, untag } from './ec2-runners';
-import type { Ec2OverrideConfig, RunnerInfo, RunnerInputParameters, RunnerType } from './ec2-runners.d';
-import type { LambdaRunnerSource } from '../scale-runners/types';
+import type { LambdaRunnerSource } from '../../../../core';
+import { createRunner, listEC2Runners, tag, terminateRunner, untag } from './runners';
+import type { Ec2OverrideConfig, RunnerInfo, RunnerInputParameters, RunnerType } from './runners.d';
 
 process.env.AWS_REGION = 'eu-east-1';
 const mockEC2Client = mockClient(EC2Client);

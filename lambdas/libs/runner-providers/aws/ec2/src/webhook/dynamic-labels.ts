@@ -1,14 +1,13 @@
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 
-import { RunnerMatcherConfig } from '../sqs';
-import { AwsDynamicLabelDispatchTarget, AwsDynamicLabelProviderStrategy } from './aws-dynamic-labels-provider';
-import { violationsAgainstPolicy } from './ec2-dynamic-labels-policy';
+import { violationsAgainstPolicy } from './dynamic-labels-policy';
+import type { DynamicLabelDispatchTarget, DynamicLabelProvider, Ec2RunnerMatcherConfig } from './types';
 
 const logger = createChildLogger('handler');
 
-export type Ec2DynamicLabelDispatchTarget = AwsDynamicLabelDispatchTarget;
+export type Ec2DynamicLabelDispatchTarget = DynamicLabelDispatchTarget;
 
-function resolveEc2DynamicLabelsPolicy(queue: RunnerMatcherConfig) {
+function resolveEc2DynamicLabelsPolicy(queue: Ec2RunnerMatcherConfig) {
   const hasLegacyEc2DynamicLabelsPolicy = Object.prototype.hasOwnProperty.call(
     queue.matcherConfig,
     'ec2DynamicLabelsPolicy',
@@ -25,7 +24,7 @@ function resolveEc2DynamicLabelsPolicy(queue: RunnerMatcherConfig) {
 }
 
 export function selectEc2DynamicLabelQueue(
-  matches: RunnerMatcherConfig[],
+  matches: Ec2RunnerMatcherConfig[],
   nonGhrLabels: string[],
   sanitizedGhrLabels: string[],
 ): Ec2DynamicLabelDispatchTarget | undefined {
@@ -53,8 +52,7 @@ export function selectEc2DynamicLabelQueue(
   return undefined;
 }
 
-export const ec2DynamicLabelProviderStrategy: AwsDynamicLabelProviderStrategy = {
-  type: 'ec2',
+export const ec2DynamicLabelProvider: DynamicLabelProvider = {
   selectQueue: ({ queue, nonGhrLabels, sanitizedGhrLabels }) =>
     selectEc2DynamicLabelQueue([queue], nonGhrLabels, sanitizedGhrLabels),
 };

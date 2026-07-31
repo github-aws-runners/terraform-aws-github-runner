@@ -22,7 +22,7 @@ import { getTracedAWSV3Client, tracer } from '@aws-github-runner/aws-powertools-
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
 import moment from 'moment';
 
-import * as Runners from './ec2-runners.d';
+import * as Runners from './runners.d';
 
 const logger = createChildLogger('runners');
 

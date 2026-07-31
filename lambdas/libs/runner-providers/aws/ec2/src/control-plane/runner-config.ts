@@ -1,14 +1,18 @@
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
+import type {
+  CreateGitHubRunnerConfig,
+  CreateScaleUpRunnersResult,
+  CreateStartRunnerConfig,
+  GitHubRunnerMetadata,
+  LambdaRunnerSource,
+  StartRunnerConfigOptions,
+} from '../../../../core';
 import { Octokit } from '@octokit/rest';
 import type { Tag } from '@aws-sdk/client-ec2';
 import yn from 'yn';
 
-import { createRunner, tag, terminateRunner } from '../aws/ec2-runners';
-import type { RunnerInputParameters } from '../aws/ec2-runners.d';
-import { createStartRunnerConfig } from './github-runner';
-import type { GitHubRunnerMetadata, StartRunnerConfigOptions } from './github-runner';
-import type { CreateScaleUpRunnersResult } from './scale-up-provider';
-import type { CreateGitHubRunnerConfig, LambdaRunnerSource } from './types';
+import { createRunner, tag, terminateRunner } from './runners';
+import type { RunnerInputParameters } from './runners.d';
 
 const logger = createChildLogger('ec2-runners');
 const RUNNER_LABELS_TAG_KEY = 'ghr:runner_labels';
@@ -61,6 +65,7 @@ export async function createRunners(
   ec2RunnerConfig: CreateEC2RunnerConfig,
   numberOfRunners: number,
   ghClient: Octokit,
+  createStartRunnerConfig: CreateStartRunnerConfig,
   source: LambdaRunnerSource = 'scale-up-lambda',
 ): Promise<CreateScaleUpRunnersResult> {
   let result: CreateScaleUpRunnersResult;

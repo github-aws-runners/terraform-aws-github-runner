@@ -1,6 +1,6 @@
-import { bootTimeExceeded, listEC2Runners, tag, terminateRunner, untag } from './../aws/ec2-runners';
-import type { RunnerList } from './../aws/ec2-runners.d';
-import type { RunnerList as ScaleDownRunnerList, ScaleDownRunnerProvider } from './scale-down-provider';
+import type { ScaleDownRunnerList, ScaleDownRunnerProvider } from '../../../../core';
+import { bootTimeExceeded, listEC2Runners, tag, terminateRunner, untag } from './runners';
+import type { RunnerList } from './runners.d';
 
 async function listEc2ScaleDownRunners(environment: string, orphan?: boolean): Promise<ScaleDownRunnerList[]> {
   return (await listEC2Runners({ environment, orphan })).map(toScaleDownRunner);

@@ -1,9 +1,14 @@
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
-
-import { bootTimeExceeded, listEC2Runners } from '../aws/ec2-runners';
-import type { RunnerList } from '../aws/ec2-runners.d';
-import { createRunners, loadEc2ProviderConfig } from '../scale-runners/ec2';
-import type { CreatePoolRunnersInput, ListPoolRunnersInput, PoolRunnerProvider, RunnerStatus } from './pool-provider';
+import type {
+  CreateStartRunnerConfig,
+  CreatePoolRunnersInput,
+  ListPoolRunnersInput,
+  PoolRunnerProvider,
+  RunnerStatus,
+} from '../../../../core';
+import { createRunners, loadEc2ProviderConfig } from './runner-config';
+import { bootTimeExceeded, listEC2Runners } from './runners';
+import type { RunnerList } from './runners.d';
 
 const logger = createChildLogger('pool');
 
@@ -20,11 +25,10 @@ async function listEc2PoolRunners({
   });
 }
 
-async function createEc2PoolRunners({
-  githubRunnerConfig,
-  numberOfRunners,
-  githubInstallationClient,
-}: CreatePoolRunnersInput): Promise<string[]> {
+async function createEc2PoolRunners(
+  { githubRunnerConfig, numberOfRunners, githubInstallationClient }: CreatePoolRunnersInput,
+  createStartRunnerConfig: CreateStartRunnerConfig,
+): Promise<string[]> {
   const config = loadEc2ProviderConfig();
 
   const { instances } = await createRunners(
@@ -41,16 +45,19 @@ async function createEc2PoolRunners({
     },
     numberOfRunners,
     githubInstallationClient,
+    createStartRunnerConfig,
     'pool-lambda',
   );
   return instances;
 }
 
-export function createEc2PoolProvider(): Omit<PoolRunnerProvider, 'type'> {
+export function createEc2PoolProvider(
+  createStartRunnerConfig: CreateStartRunnerConfig,
+): Omit<PoolRunnerProvider, 'type'> {
   return {
     listRunners: listEc2PoolRunners,
     countAvailableRunners: calculateEc2PoolSize,
-    createRunners: createEc2PoolRunners,
+    createRunners: (input) => createEc2PoolRunners(input, createStartRunnerConfig),
   };
 }
 
