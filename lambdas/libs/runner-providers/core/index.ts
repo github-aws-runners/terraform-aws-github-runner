@@ -162,7 +162,6 @@ export function createRunnerProviderRegistry<TCapabilities, TType extends string
   }
 
   return {
-    types: plugins.map(({ type }) => type),
     get,
     capability: <TKey extends keyof TCapabilities>(type: TType, capability: TKey): TCapabilities[TKey] =>
       get(type).capabilities[capability],

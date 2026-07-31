@@ -3,14 +3,12 @@ import { expect, it, vi } from 'vitest';
 import { enabledRunnerProviders } from './providers.config';
 import { providerRegistry } from './registry';
 
-it('enables every configured provider in both runtime registries', () => {
+it('exposes every configured provider through both capability registries', () => {
   const createStartRunnerConfig = vi.fn(async () => []);
   const controlPlaneRegistry = providerRegistry.controlPlane(createStartRunnerConfig);
   const enabledTypes = enabledRunnerProviders.map(({ type }) => type);
 
   expect(providerRegistry.types).toEqual(enabledTypes);
-  expect(controlPlaneRegistry.types).toEqual(enabledTypes);
-  expect(providerRegistry.webhook.types).toEqual(enabledTypes);
 
   for (const type of enabledTypes) {
     expect(controlPlaneRegistry.capability(type, 'pool')).toEqual(expect.any(Function));

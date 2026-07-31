@@ -42,10 +42,6 @@ describe('runner provider registry', () => {
   };
   const registry = createRunnerProviderRegistry([plugin]);
 
-  it('lists the registered provider types', () => {
-    expect(registry.types).toEqual(['ec2']);
-  });
-
   it('resolves capabilities dynamically', () => {
     expect(registry.capability('ec2', 'scaleUp')()).toBe('scale-up');
     expect(registry.capability('ec2', 'pool')()).toBe('pool');
