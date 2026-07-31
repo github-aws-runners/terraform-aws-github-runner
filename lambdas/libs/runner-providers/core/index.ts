@@ -1,17 +1,19 @@
 import type { Octokit } from '@octokit/rest';
 
-import { enabledRunnerProviderTypes } from '../providers.config';
+import { enabledRunnerProviders } from '../providers.config';
+
+const providerTypes = enabledRunnerProviders.map(({ type }) => type);
 
 export type RunnerProviderType = (typeof import('../providers.config').enabledRunnerProviders)[number]['type'];
 
 export function normalizeRunnerProviderType(type: unknown): RunnerProviderType | undefined {
-  if (type === undefined) return enabledRunnerProviderTypes[0];
+  if (type === undefined) return providerTypes[0];
   if (typeof type !== 'string') return undefined;
 
   const normalizedType = type.trim().toLowerCase();
-  if (!normalizedType) return enabledRunnerProviderTypes[0];
+  if (!normalizedType) return providerTypes[0];
 
-  return enabledRunnerProviderTypes.find((runnerProviderType) => runnerProviderType === normalizedType);
+  return providerTypes.find((runnerProviderType) => runnerProviderType === normalizedType);
 }
 
 export function resolveRunnerProviderType(type: unknown): RunnerProviderType {

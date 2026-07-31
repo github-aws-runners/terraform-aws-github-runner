@@ -6,5 +6,3 @@ import type { RunnerProviderModule } from './contracts';
  * Installing and enabling a provider requires adding it only to this list.
  */
 export const enabledRunnerProviders = [ec2Provider] satisfies readonly RunnerProviderModule[];
-
-export const enabledRunnerProviderTypes = enabledRunnerProviders.map(({ type }) => type);

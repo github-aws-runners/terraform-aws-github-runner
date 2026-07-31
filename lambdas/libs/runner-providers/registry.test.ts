@@ -1,12 +1,12 @@
 import { expect, it, vi } from 'vitest';
 
-import { enabledRunnerProviderTypes } from './providers.config';
+import { enabledRunnerProviders } from './providers.config';
 import { providerRegistry } from './registry';
 
 it('enables every configured provider in both runtime registries', () => {
   const createStartRunnerConfig = vi.fn(async () => []);
   const controlPlaneRegistry = providerRegistry.controlPlane(createStartRunnerConfig);
-  const enabledTypes = enabledRunnerProviderTypes;
+  const enabledTypes = enabledRunnerProviders.map(({ type }) => type);
 
   expect(providerRegistry.types).toEqual(enabledTypes);
   expect(controlPlaneRegistry.types).toEqual(enabledTypes);
