@@ -2,19 +2,16 @@ import type { Octokit } from '@octokit/rest';
 
 import { enabledRunnerProviderTypes } from '../providers.config';
 
-export const runnerProviderTypes = enabledRunnerProviderTypes;
-export type RunnerProviderType = (typeof runnerProviderTypes)[number];
-
-const defaultRunnerProvider: RunnerProviderType = 'ec2';
+export type RunnerProviderType = (typeof import('../providers.config').enabledRunnerProviders)[number]['type'];
 
 export function normalizeRunnerProviderType(type: unknown): RunnerProviderType | undefined {
-  if (type === undefined) return defaultRunnerProvider;
+  if (type === undefined) return enabledRunnerProviderTypes[0];
   if (typeof type !== 'string') return undefined;
 
   const normalizedType = type.trim().toLowerCase();
-  if (!normalizedType) return defaultRunnerProvider;
+  if (!normalizedType) return enabledRunnerProviderTypes[0];
 
-  return runnerProviderTypes.find((runnerProviderType) => runnerProviderType === normalizedType);
+  return enabledRunnerProviderTypes.find((runnerProviderType) => runnerProviderType === normalizedType);
 }
 
 export function resolveRunnerProviderType(type: unknown): RunnerProviderType {
@@ -146,7 +143,7 @@ export interface PoolRunnerProvider<TRunner = unknown> extends RunnerProvider {
   createRunners(input: CreatePoolRunnersInput): Promise<string[]>;
 }
 
-export interface RunnerProviderPlugin<TCapabilities, TType extends string = RunnerProviderType> {
+export interface RunnerProviderPlugin<TCapabilities, TType extends string = string> {
   type: TType;
   capabilities: TCapabilities;
 }

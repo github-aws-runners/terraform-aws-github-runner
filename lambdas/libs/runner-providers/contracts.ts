@@ -1,4 +1,10 @@
-import type { PoolRunnerProvider, RunnerProviderType, ScaleDownRunnerProvider, ScaleUpRunnerProvider } from './core';
+import type {
+  CreateStartRunnerConfig,
+  PoolRunnerProvider,
+  RunnerProviderPlugin,
+  ScaleDownRunnerProvider,
+  ScaleUpRunnerProvider,
+} from './core';
 
 export interface AwsDynamicLabelsValueRule {
   allowed?: string[];
@@ -14,7 +20,7 @@ export interface AwsDynamicLabelsPolicy {
 export interface AwsRunnerMatcherConfig {
   id: string;
   arn: string;
-  runnerProvider?: RunnerProviderType;
+  runnerProvider?: string;
   matcherConfig: {
     labelMatchers: string[][];
     exactMatch: boolean;
@@ -46,4 +52,12 @@ export interface ControlPlaneProviderCapabilities {
 
 export interface WebhookProviderCapabilities {
   dynamicLabels: DynamicLabelProvider;
+}
+
+export interface RunnerProviderModule<TType extends string = string> {
+  type: TType;
+  createControlPlanePlugin(
+    createStartRunnerConfig: CreateStartRunnerConfig,
+  ): RunnerProviderPlugin<ControlPlaneProviderCapabilities, TType>;
+  webhookPlugin: RunnerProviderPlugin<WebhookProviderCapabilities, TType>;
 }

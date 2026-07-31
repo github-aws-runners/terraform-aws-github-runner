@@ -1,5 +1,10 @@
+import { ec2Provider } from './aws/ec2';
+import type { RunnerProviderModule } from './contracts';
+
 /**
- * Provider types enabled in webhook and control-plane bundles.
- * Installing a provider does not activate it; add its type to this list explicitly.
+ * Provider plugins enabled in webhook and control-plane bundles.
+ * Installing and enabling a provider requires adding it only to this list.
  */
-export const enabledRunnerProviderTypes = ['ec2'] as const;
+export const enabledRunnerProviders = [ec2Provider] satisfies readonly RunnerProviderModule[];
+
+export const enabledRunnerProviderTypes = enabledRunnerProviders.map(({ type }) => type);

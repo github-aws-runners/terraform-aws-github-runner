@@ -1,3 +1,5 @@
+/// <reference path="./src/environment.d.ts" />
+
 import type { CreateStartRunnerConfig, RunnerProviderPlugin } from '../../core';
 
 import type { ControlPlaneProviderCapabilities } from '../../contracts';
@@ -7,7 +9,7 @@ import { createEc2ScaleUpProvider } from './src/control-plane/scale-up';
 
 export function createEc2ControlPlanePlugin(
   createStartRunnerConfig: CreateStartRunnerConfig,
-): RunnerProviderPlugin<ControlPlaneProviderCapabilities> {
+): RunnerProviderPlugin<ControlPlaneProviderCapabilities, 'ec2'> {
   return {
     type: 'ec2',
     capabilities: {

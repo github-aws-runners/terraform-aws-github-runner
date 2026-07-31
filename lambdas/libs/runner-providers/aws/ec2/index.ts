@@ -1,5 +1,15 @@
-export { createEc2ControlPlanePlugin } from './control-plane';
-export { ec2WebhookPlugin } from './webhook';
+import type { RunnerProviderModule } from '../../contracts';
+
+import { createEc2ControlPlanePlugin } from './control-plane';
+import { ec2WebhookPlugin } from './webhook';
+
+export const ec2Provider = {
+  type: 'ec2',
+  createControlPlanePlugin: createEc2ControlPlanePlugin,
+  webhookPlugin: ec2WebhookPlugin,
+} satisfies RunnerProviderModule;
+
+export { createEc2ControlPlanePlugin, ec2WebhookPlugin };
 
 export * from './src/control-plane/dynamic-labels';
 export * from './src/control-plane/pool';
