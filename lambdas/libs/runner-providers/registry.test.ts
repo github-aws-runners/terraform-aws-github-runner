@@ -1,8 +1,7 @@
 import { expect, it, vi } from 'vitest';
 
-import { createControlPlaneProviderRegistry } from './control-plane';
 import { enabledRunnerProviderTypes } from './providers.config';
-import { webhookProviderRegistry } from './webhook';
+import { createControlPlaneProviderRegistry, webhookProviderRegistry } from './registry';
 
 it('enables every configured provider in both runtime registries', () => {
   const createStartRunnerConfig = vi.fn(async () => []);

@@ -1,7 +1,7 @@
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import type { DynamicLabelDispatchTarget } from '@aws-github-runner/runner-providers';
 import { normalizeRunnerProviderType } from '@aws-github-runner/runner-providers/core';
-import { webhookProviderRegistry } from '@aws-github-runner/runner-providers/webhook';
+import { webhookProviderRegistry } from '@aws-github-runner/runner-providers/registry';
 
 import type { RunnerMatcherConfig } from '../sqs';
 

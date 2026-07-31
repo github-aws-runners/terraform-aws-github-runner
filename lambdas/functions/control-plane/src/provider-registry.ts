@@ -1,4 +1,4 @@
-import { createControlPlaneProviderRegistry } from '@aws-github-runner/runner-providers/control-plane';
+import { createControlPlaneProviderRegistry } from '@aws-github-runner/runner-providers/registry';
 
 import { createStartRunnerConfig } from './scale-runners/github-runner';
 
