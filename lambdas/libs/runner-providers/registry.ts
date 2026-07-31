@@ -4,12 +4,15 @@ import { createRunnerProviderRegistry } from './core';
 import type { ControlPlaneProviderCapabilities, WebhookProviderCapabilities } from './contracts';
 import { enabledRunnerProviders } from './providers.config';
 
-export function createControlPlaneProviderRegistry(createStartRunnerConfig: CreateStartRunnerConfig) {
-  return createRunnerProviderRegistry<ControlPlaneProviderCapabilities>(
-    enabledRunnerProviders.map((provider) => provider.createControlPlanePlugin(createStartRunnerConfig)),
-  );
-}
-
-export const webhookProviderRegistry = createRunnerProviderRegistry<WebhookProviderCapabilities>(
+const webhook = createRunnerProviderRegistry<WebhookProviderCapabilities>(
   enabledRunnerProviders.map((provider) => provider.webhookPlugin),
 );
+
+export const providerRegistry = {
+  types: webhook.types,
+  webhook,
+  controlPlane: (createStartRunnerConfig: CreateStartRunnerConfig) =>
+    createRunnerProviderRegistry<ControlPlaneProviderCapabilities>(
+      enabledRunnerProviders.map((provider) => provider.createControlPlanePlugin(createStartRunnerConfig)),
+    ),
+};

@@ -1,7 +1,7 @@
-import { createControlPlaneProviderRegistry } from '@aws-github-runner/runner-providers/registry';
+import { providerRegistry } from '@aws-github-runner/runner-providers/registry';
 
 import { createStartRunnerConfig } from './scale-runners/github-runner';
 
-export const controlPlaneProviderRegistry = createControlPlaneProviderRegistry(createStartRunnerConfig);
+export const controlPlaneProviderRegistry = providerRegistry.controlPlane(createStartRunnerConfig);
 
-export const runnerProviderTypes = controlPlaneProviderRegistry.types;
+export const runnerProviderTypes = providerRegistry.types;

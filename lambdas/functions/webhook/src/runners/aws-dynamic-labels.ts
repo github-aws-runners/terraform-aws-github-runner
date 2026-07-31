@@ -1,7 +1,7 @@
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import type { DynamicLabelDispatchTarget } from '@aws-github-runner/runner-providers';
 import { normalizeRunnerProviderType } from '@aws-github-runner/runner-providers/core';
-import { webhookProviderRegistry } from '@aws-github-runner/runner-providers/registry';
+import { providerRegistry } from '@aws-github-runner/runner-providers/registry';
 
 import type { RunnerMatcherConfig } from '../sqs';
 
@@ -14,7 +14,7 @@ export function selectAwsDynamicLabelQueue(
 ): DynamicLabelDispatchTarget | undefined {
   for (const queue of matches) {
     const provider = normalizeRunnerProviderType(queue.runnerProvider);
-    const dynamicLabels = provider ? webhookProviderRegistry.capability(provider, 'dynamicLabels') : undefined;
+    const dynamicLabels = provider ? providerRegistry.webhook.capability(provider, 'dynamicLabels') : undefined;
 
     if (!dynamicLabels) {
       logger.warn(`Queue ${queue.id} has unsupported runner provider '${provider ?? String(queue.runnerProvider)}'`);
