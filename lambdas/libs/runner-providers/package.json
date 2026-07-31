@@ -32,5 +32,13 @@
     "aws-sdk-client-mock": "^4.1.0",
     "aws-sdk-client-mock-jest": "^4.1.0",
     "nock": "^14.0.10"
+  },
+  "nx": {
+    "includedScripts": [
+      "format",
+      "format-check",
+      "lint",
+      "all"
+    ]
   }
 }

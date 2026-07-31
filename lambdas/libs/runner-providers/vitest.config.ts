@@ -1,8 +1,11 @@
-import { defineConfig } from 'vitest/config';
+import { resolve } from 'path';
 
-export default defineConfig({
+import { mergeConfig } from 'vitest/config';
+import defaultConfig from '../../vitest.base.config';
+
+export default mergeConfig(defaultConfig, {
   test: {
     globals: true,
-    setupFiles: '../../aws-vitest-setup.ts',
+    setupFiles: [resolve(__dirname, '../../aws-vitest-setup.ts')],
   },
 });
