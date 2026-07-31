@@ -6,7 +6,7 @@ import { resolveRunnerProviderType } from '@aws-github-runner/runner-providers/c
 import moment from 'moment';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
-import { controlPlaneProviderRegistry } from '../provider-registry';
+import { controlPlaneProviderRegistry } from '../control-plane-providers';
 import { GhRunners, githubCache } from './cache';
 import { ScalingDownConfigList, getEvictionStrategy, getIdleRunnerCount } from './scale-down-config';
 import { metricGitHubAppRateLimit } from '../github/rate-limit';

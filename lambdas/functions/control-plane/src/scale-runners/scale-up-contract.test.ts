@@ -4,7 +4,7 @@ import { beforeEach, vi } from 'vitest';
 import { providerTypes } from '../test-framework/runner-provider/provider-types';
 import { defineScaleUpContractTests } from '../test-framework/runner-provider/scale-up';
 import * as ghAuth from '../github/auth';
-import { controlPlaneProviderRegistry } from '../provider-registry';
+import { controlPlaneProviderRegistry } from '../control-plane-providers';
 import * as githubRunner from './github-runner';
 import { scaleUp } from './scale-up';
 import type { ScaleUpRunnerProvider } from './scale-up-provider';

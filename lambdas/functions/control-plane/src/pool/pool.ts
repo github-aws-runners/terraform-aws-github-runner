@@ -4,7 +4,7 @@ import { resolveRunnerProviderType } from '@aws-github-runner/runner-providers/c
 import yn from 'yn';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
-import { controlPlaneProviderRegistry } from '../provider-registry';
+import { controlPlaneProviderRegistry } from '../control-plane-providers';
 import { getGitHubEnterpriseApiUrl, validateSsmParameterStoreTags } from '../scale-runners/github-runner';
 import type { RunnerStatus } from './pool-provider';
 

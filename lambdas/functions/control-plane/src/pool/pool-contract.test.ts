@@ -5,7 +5,7 @@ import { beforeEach, vi } from 'vitest';
 import { definePoolContractTests } from '../test-framework/runner-provider/pool';
 import { providerTypes } from '../test-framework/runner-provider/provider-types';
 import * as ghAuth from '../github/auth';
-import { controlPlaneProviderRegistry } from '../provider-registry';
+import { controlPlaneProviderRegistry } from '../control-plane-providers';
 import * as githubRunner from '../scale-runners/github-runner';
 import { adjust } from './pool';
 import type { PoolRunnerProvider } from './pool-provider';

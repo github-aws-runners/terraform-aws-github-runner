@@ -4,7 +4,7 @@ import { Octokit } from '@octokit/rest';
 import yn from 'yn';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
-import { controlPlaneProviderRegistry } from '../provider-registry';
+import { controlPlaneProviderRegistry } from '../control-plane-providers';
 import {
   getGitHubEnterpriseApiUrl,
   getInstallationId,

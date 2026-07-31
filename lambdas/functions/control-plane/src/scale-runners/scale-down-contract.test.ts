@@ -3,7 +3,7 @@ import { beforeEach, vi } from 'vitest';
 
 import { providerTypes } from '../test-framework/runner-provider/provider-types';
 import { defineScaleDownContractTests } from '../test-framework/runner-provider/scale-down';
-import { controlPlaneProviderRegistry } from '../provider-registry';
+import { controlPlaneProviderRegistry } from '../control-plane-providers';
 import { scaleDown } from './scale-down';
 import type { ScaleDownRunnerProvider } from './scale-down-provider';
 
