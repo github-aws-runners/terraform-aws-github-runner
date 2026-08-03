@@ -14,6 +14,7 @@ import {
   validateSsmParameterStoreTags,
 } from './github-runner';
 import { publishRetryMessage } from './job-retry';
+import type { CreateScaleUpRunnersResult } from './scale-up-provider';
 import type {
   ActionRequestMessage,
   ActionRequestMessageRetry,
@@ -107,7 +108,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
   };
 
   const validMessages = new Map<string, MessagesWithClient>();
-  const rejectedMessageIds = new Set<string>();
+  const retryMessageIds = new Set<string>();
   for (const payload of payloads) {
     const { eventType, messageId, repositoryName, repositoryOwner, labels } = payload;
     if (ephemeralEnabled && eventType !== 'workflow_job') {
@@ -116,7 +117,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
         { eventType, messageId },
       );
 
-      rejectedMessageIds.add(messageId);
+      retryMessageIds.add(messageId);
 
       continue;
     }
@@ -217,9 +218,9 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
           jobQueued = await isJobQueued(githubInstallationClient, message);
         } catch (e) {
           // An unsupported event type is not a transient fault — the check can never
-          // succeed for it, so let it propagate rather than silently scaling up.
+          // succeed for it, so lets skip
           if (e instanceof UnsupportedEventError) {
-            throw e;
+            continue;
           }
           const err = e as Error & { status?: number };
           messageLogger.warn('isJobQueued check failed, assuming job is still queued (fail-open)', {
@@ -275,14 +276,14 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
         // This removes `skippedRunnerCount` items from the start of the array
         // so that, if we retry more messages later, we pick fresh ones.
         const removedMessages = messages.splice(0, skippedRunnerCount);
-        removedMessages.forEach(({ messageId }) => rejectedMessageIds.add(messageId));
+        removedMessages.forEach(({ messageId }) => retryMessageIds.add(messageId));
       }
 
       // No runners will be created, so skip calling the provider.
       if (newRunners <= 0) {
-        // Publish retry messages for messages that are not rejected
+        // Publish retry messages for messages not already scheduled for SQS batch retry.
         for (const message of queuedMessages) {
-          if (!rejectedMessageIds.has(message.messageId)) {
+          if (!retryMessageIds.has(message.messageId)) {
             await publishRetryMessage(message as ActionRequestMessageRetry);
           }
         }
@@ -309,37 +310,54 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       ssmParameterStoreTags,
     };
 
-    const createdRunners = await runnerProvider.createRunners({
-      githubRunnerConfig,
-      numberOfRunners: newRunners,
-      githubInstallationClient,
-      state: preparedRunnerGroup.state,
-    });
-
-    // Not all runners we wanted were created, let's reject enough items so that
-    // number of entries will be retried.
-    if (createdRunners.length !== newRunners) {
-      const failedRunnerCount = newRunners - createdRunners.length;
-
-      logger.warn('Some runners failed to be created, rejecting some messages so the requests are retried', {
-        wanted: newRunners,
-        got: createdRunners.length,
-        failedInstanceCount: failedRunnerCount,
+    let createRunnersResult: CreateScaleUpRunnersResult;
+    try {
+      createRunnersResult = await runnerProvider.createRunners({
+        githubRunnerConfig,
+        numberOfRunners: newRunners,
+        githubInstallationClient,
+        state: preparedRunnerGroup.state,
       });
-
-      const failedMessages = messages.slice(0, failedRunnerCount);
-      failedMessages.forEach(({ messageId }) => rejectedMessageIds.add(messageId));
+    } catch (error) {
+      logger.error('Runner provider threw an unexpected error.', {
+        error,
+        retryable: true,
+        failedMessageCount: newRunners,
+      });
+      createRunnersResult = {
+        instances: [],
+        retryableErrorCount: newRunners,
+        nonRetryableErrorCount: 0,
+      };
     }
 
-    // Publish retry messages for messages that are not rejected
+    logger.info('Runner creation summary.', {
+      requestedMessageCount: newRunners,
+      successfulRunnerCount: createRunnersResult.instances.length,
+      retryableErrorCount: createRunnersResult.retryableErrorCount,
+      nonRetryableErrorCount: createRunnersResult.nonRetryableErrorCount,
+    });
+
+    if (createRunnersResult.nonRetryableErrorCount > 0) {
+      logger.warn('Some runner creation messages will not be retried through the current SQS batch.', {
+        nonRetryableErrorCount: createRunnersResult.nonRetryableErrorCount,
+      });
+    }
+
+    if (createRunnersResult.retryableErrorCount > 0) {
+      const failedMessages = messages.slice(0, createRunnersResult.retryableErrorCount);
+      failedMessages.forEach(({ messageId }) => retryMessageIds.add(messageId));
+    }
+
+    // Publish retry messages for messages not already scheduled for SQS batch retry.
     for (const message of queuedMessages) {
-      if (!rejectedMessageIds.has(message.messageId)) {
+      if (!retryMessageIds.has(message.messageId)) {
         await publishRetryMessage(message as ActionRequestMessageRetry);
       }
     }
   }
 
-  return Array.from(rejectedMessageIds);
+  return Array.from(retryMessageIds);
 }
 
 function isValidRepoOwnerTypeIfOrgLevelEnabled(payload: ActionRequestMessage, enableOrgLevel: boolean): boolean {
