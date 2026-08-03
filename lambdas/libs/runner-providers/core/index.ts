@@ -2,8 +2,6 @@ import type { Octokit } from '@octokit/rest';
 
 import type { RunnerProviderType } from '../provider-types';
 
-export type { RunnerProviderType } from '../provider-types';
-
 export interface RunnerProvider {
   type: RunnerProviderType;
 }

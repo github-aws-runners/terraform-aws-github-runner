@@ -1,4 +1,4 @@
-import type { AwsDynamicLabelsPolicy, AwsDynamicLabelsValueRule } from './types';
+import type { AwsDynamicLabelsPolicy, AwsDynamicLabelsValueRule } from '../../../../contracts';
 
 export type Ec2DynamicLabelsValueRule = AwsDynamicLabelsValueRule;
 
