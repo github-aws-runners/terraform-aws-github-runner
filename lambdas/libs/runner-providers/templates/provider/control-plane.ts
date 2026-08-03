@@ -6,7 +6,7 @@ import type {
   ScaleUpRunnerProvider,
 } from '../../core';
 
-import type { ControlPlaneProviderCapabilities } from '../../contracts';
+import type { ControlPlaneProviderCapabilities, ControlPlaneProviderModule } from '../../contracts';
 
 export interface TemplateScaleUpState {
   resourceGroupId: string;
@@ -83,3 +83,8 @@ export function createTemplateControlPlanePlugin(
     },
   };
 }
+
+export const provider = {
+  type: 'template',
+  createPlugin: createTemplateControlPlanePlugin,
+} satisfies ControlPlaneProviderModule<'template'>;

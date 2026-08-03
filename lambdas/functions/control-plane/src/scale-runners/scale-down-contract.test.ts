@@ -1,4 +1,4 @@
-import type { RunnerProviderType } from '@aws-github-runner/runner-providers/core';
+import type { RunnerProviderType } from '@aws-github-runner/runner-providers/provider-types';
 import { beforeEach, vi } from 'vitest';
 
 import { providerTypes } from '../test/runner-provider-contracts/provider-types';

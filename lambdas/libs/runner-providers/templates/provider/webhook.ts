@@ -1,6 +1,6 @@
 import type { RunnerProviderPlugin } from '../../core';
 
-import type { DynamicLabelProvider, WebhookProviderCapabilities } from '../../contracts';
+import type { DynamicLabelProvider, WebhookProviderCapabilities, WebhookProviderModule } from '../../contracts';
 
 export const templateDynamicLabelProvider: DynamicLabelProvider = {
   selectQueue: (input) => {
@@ -16,3 +16,8 @@ export function createTemplateWebhookPlugin(): RunnerProviderPlugin<WebhookProvi
     capabilities: { dynamicLabels: templateDynamicLabelProvider },
   };
 }
+
+export const provider = {
+  type: 'template',
+  createPlugin: createTemplateWebhookPlugin,
+} satisfies WebhookProviderModule<'template'>;

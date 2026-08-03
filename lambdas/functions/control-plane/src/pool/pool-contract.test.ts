@@ -1,5 +1,5 @@
 import type { Octokit } from '@octokit/rest';
-import type { RunnerProviderType } from '@aws-github-runner/runner-providers/core';
+import type { RunnerProviderType } from '@aws-github-runner/runner-providers/provider-types';
 import { beforeEach, vi } from 'vitest';
 
 import { definePoolContractTests } from '../test/runner-provider-contracts/pool';

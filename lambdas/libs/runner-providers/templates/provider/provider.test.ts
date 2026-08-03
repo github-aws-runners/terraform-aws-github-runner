@@ -1,15 +1,16 @@
 import { expect, it, vi } from 'vitest';
 
-import { provider } from './index';
+import { provider as controlPlaneProvider } from './control-plane';
+import { provider as webhookProvider } from './webhook';
 
-it('exposes every runner provider capability from one module', () => {
-  const controlPlanePlugin = provider.createControlPlanePlugin(vi.fn(async () => []));
+it('exposes every runner provider capability from its lane entry point', () => {
+  const controlPlanePlugin = controlPlaneProvider.createPlugin(vi.fn(async () => []));
   const pool = controlPlanePlugin.capabilities.pool();
   const scaleUp = controlPlanePlugin.capabilities.scaleUp();
   const scaleDown = controlPlanePlugin.capabilities.scaleDown();
-  const webhookPlugin = provider.createWebhookPlugin();
+  const webhookPlugin = webhookProvider.createPlugin();
 
-  expect(controlPlanePlugin.type).toBe(provider.type);
+  expect(controlPlanePlugin.type).toBe(controlPlaneProvider.type);
   expect(pool).toEqual({
     listRunners: expect.any(Function),
     countAvailableRunners: expect.any(Function),
@@ -27,6 +28,6 @@ it('exposes every runner provider capability from one module', () => {
     unmarkOrphan: expect.any(Function),
     terminate: expect.any(Function),
   });
-  expect(webhookPlugin.type).toBe(provider.type);
+  expect(webhookPlugin.type).toBe(webhookProvider.type);
   expect(webhookPlugin.capabilities.dynamicLabels.selectQueue).toEqual(expect.any(Function));
 });
