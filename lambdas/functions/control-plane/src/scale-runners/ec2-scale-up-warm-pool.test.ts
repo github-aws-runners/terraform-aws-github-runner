@@ -1,9 +1,10 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { startRunner, tag, untag } from './../aws/runners';
-import { getWarmPoolConfig, listWarmInstancesByOwner, removeFromWarmPool, emitWarmPoolMetric } from '../aws/warm-pool';
-import { findAndStartWarmRunners } from './scale-up';
 
-vi.mock('./../aws/runners', async () => ({
+import { startRunner, tag, untag } from './../aws/ec2-runners';
+import { getWarmPoolConfig, listWarmInstancesByOwner, removeFromWarmPool, emitWarmPoolMetric } from '../aws/warm-pool';
+import { startWarmInstances } from './ec2-scale-up';
+
+vi.mock('./../aws/ec2-runners', async () => ({
   createRunner: vi.fn(),
   listEC2Runners: vi.fn(),
   startRunner: vi.fn(),
@@ -22,36 +23,19 @@ vi.mock('../aws/warm-pool', async () => ({
   countWarmInstancesByOwner: vi.fn(),
 }));
 
-vi.mock('./../github/auth', async () => ({
-  createGithubAppAuth: vi.fn(),
-  createGithubInstallationAuth: vi.fn(),
-  createOctokitClient: vi.fn(),
-}));
-
-vi.mock('@aws-github-runner/aws-ssm-util', async () => ({
-  getParameter: vi.fn(),
-  putParameter: vi.fn(),
-}));
-
-vi.mock('./job-retry', () => ({
-  publishRetryMessage: vi.fn(),
-  checkAndRetryJob: vi.fn(),
-}));
-
 const mockStartRunner = vi.mocked(startRunner);
 const mockTag = vi.mocked(tag);
 const mockUntag = vi.mocked(untag);
-const mockGetWarmPoolConfig = vi.mocked(getWarmPoolConfig);
 const mockListWarmInstances = vi.mocked(listWarmInstancesByOwner);
 const mockRemoveFromWarmPool = vi.mocked(removeFromWarmPool);
 const mockEmitWarmPoolMetric = vi.mocked(emitWarmPoolMetric);
 
-describe('findAndStartWarmRunners', () => {
+describe('startWarmInstances', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.ENVIRONMENT = 'test-env';
 
-    mockGetWarmPoolConfig.mockReturnValue({
+    vi.mocked(getWarmPoolConfig).mockReturnValue({
       enabled: true,
       maxWarmInstances: 3,
       maxWarmAgeHours: 168,
@@ -60,38 +44,11 @@ describe('findAndStartWarmRunners', () => {
     mockStartRunner.mockResolvedValue(undefined);
     mockRemoveFromWarmPool.mockResolvedValue(true);
     mockTag.mockResolvedValue(undefined);
-  });
-
-  it('should return empty array when warm pool is disabled', async () => {
-    mockGetWarmPoolConfig.mockReturnValue({
-      enabled: false,
-      maxWarmInstances: 3,
-      maxWarmAgeHours: 168,
-      warmPoolReadyDelaySeconds: 30,
-    });
-
-    const result = await findAndStartWarmRunners('my-org', 1);
-
-    expect(result).toEqual([]);
-    expect(mockListWarmInstances).not.toHaveBeenCalled();
-  });
-
-  it('should return empty array when pool strategy is hot and warm pool is disabled', async () => {
-    mockGetWarmPoolConfig.mockReturnValue({
-      enabled: false,
-      maxWarmInstances: 3,
-      maxWarmAgeHours: 168,
-      warmPoolReadyDelaySeconds: 30,
-    });
-
-    const result = await findAndStartWarmRunners('my-org', 1);
-
-    expect(result).toEqual([]);
-    expect(mockListWarmInstances).not.toHaveBeenCalled();
+    mockUntag.mockResolvedValue(undefined);
   });
 
   it('should return empty array when count is 0', async () => {
-    const result = await findAndStartWarmRunners('my-org', 0);
+    const result = await startWarmInstances('my-org', 0);
 
     expect(result).toEqual([]);
     expect(mockListWarmInstances).not.toHaveBeenCalled();
@@ -100,7 +57,7 @@ describe('findAndStartWarmRunners', () => {
   it('should return empty array when no warm instances available', async () => {
     mockListWarmInstances.mockResolvedValue([]);
 
-    const result = await findAndStartWarmRunners('my-org', 1);
+    const result = await startWarmInstances('my-org', 1);
 
     expect(result).toEqual([]);
     expect(mockStartRunner).not.toHaveBeenCalled();
@@ -118,7 +75,7 @@ describe('findAndStartWarmRunners', () => {
       },
     ]);
 
-    const result = await findAndStartWarmRunners('my-org', 1);
+    const result = await startWarmInstances('my-org', 1);
 
     expect(result).toEqual(['i-warm-1']);
     expect(mockStartRunner).toHaveBeenCalledWith('i-warm-1');
@@ -138,7 +95,7 @@ describe('findAndStartWarmRunners', () => {
       },
     ]);
 
-    const result = await findAndStartWarmRunners('my-org', 1);
+    const result = await startWarmInstances('my-org', 1);
 
     expect(result).toEqual(['i-warm-1']);
     expect(mockTag).toHaveBeenCalledWith('i-warm-1', [{ Key: 'ghr:started-from-warm-pool', Value: 'true' }]);
@@ -158,9 +115,9 @@ describe('findAndStartWarmRunners', () => {
       },
     ]);
 
-    const result = await findAndStartWarmRunners('my-org', 1);
+    const result = await startWarmInstances('my-org', 1);
 
-    // Instance should still be in the result — untag failure is non-fatal
+    // Instance should still be in the result — tag failure is non-fatal.
     expect(result).toEqual(['i-warm-1']);
     expect(mockStartRunner).toHaveBeenCalledWith('i-warm-1');
     expect(mockRemoveFromWarmPool).toHaveBeenCalledWith('i-warm-1');
@@ -194,7 +151,7 @@ describe('findAndStartWarmRunners', () => {
       },
     ]);
 
-    const result = await findAndStartWarmRunners('my-org', 2);
+    const result = await startWarmInstances('my-org', 2);
 
     expect(result).toEqual(['i-warm-1', 'i-warm-2']);
     expect(mockStartRunner).toHaveBeenCalledTimes(2);
@@ -203,9 +160,7 @@ describe('findAndStartWarmRunners', () => {
   });
 
   it('should skip failed instances and continue with next', async () => {
-    mockRemoveFromWarmPool
-      .mockResolvedValueOnce(true) // i-bad claimed
-      .mockResolvedValueOnce(true); // i-good claimed
+    mockRemoveFromWarmPool.mockResolvedValueOnce(true).mockResolvedValueOnce(true);
     mockStartRunner.mockRejectedValueOnce(new Error('Instance terminated')).mockResolvedValueOnce(undefined);
     mockListWarmInstances.mockResolvedValue([
       {
@@ -226,16 +181,14 @@ describe('findAndStartWarmRunners', () => {
       },
     ]);
 
-    const result = await findAndStartWarmRunners('my-org', 2);
+    const result = await startWarmInstances('my-org', 2);
 
     expect(result).toEqual(['i-good']);
     expect(mockEmitWarmPoolMetric).toHaveBeenCalledWith('WarmPoolStartFailed', 1, { Owner: 'my-org' });
   });
 
   it('should remove failed instance from DynamoDB', async () => {
-    mockRemoveFromWarmPool
-      .mockResolvedValueOnce(true) // claim succeeds
-      .mockResolvedValueOnce(true); // cleanup in catch
+    mockRemoveFromWarmPool.mockResolvedValueOnce(true).mockResolvedValueOnce(true);
     mockStartRunner.mockRejectedValue(new Error('Instance terminated'));
     mockListWarmInstances.mockResolvedValue([
       {
@@ -248,10 +201,10 @@ describe('findAndStartWarmRunners', () => {
       },
     ]);
 
-    const result = await findAndStartWarmRunners('my-org', 1);
+    const result = await startWarmInstances('my-org', 1);
 
     expect(result).toEqual([]);
-    // removeFromWarmPool called in the catch block for cleanup
+    // removeFromWarmPool called in the catch block for cleanup.
     expect(mockRemoveFromWarmPool).toHaveBeenCalledWith('i-gone');
   });
 
@@ -268,27 +221,25 @@ describe('findAndStartWarmRunners', () => {
       },
     ]);
 
-    const result = await findAndStartWarmRunners('my-org', 1);
+    const result = await startWarmInstances('my-org', 1);
 
     expect(result).toEqual([]);
     expect(mockStartRunner).not.toHaveBeenCalled();
   });
 
   it('should fallback to org-level lookup when repo-level owner has no instances', async () => {
-    mockListWarmInstances
-      .mockResolvedValueOnce([]) // repo-level lookup: empty
-      .mockResolvedValueOnce([
-        {
-          instanceId: 'i-org-warm',
-          runnerOwner: 'my-org',
-          environment: 'test-env',
-          runnerType: 'Org',
-          stoppedAt: '2026-01-01T00:00:00Z',
-          expiresAt: 9999999999,
-        },
-      ]);
+    mockListWarmInstances.mockResolvedValueOnce([]).mockResolvedValueOnce([
+      {
+        instanceId: 'i-org-warm',
+        runnerOwner: 'my-org',
+        environment: 'test-env',
+        runnerType: 'Org',
+        stoppedAt: '2026-01-01T00:00:00Z',
+        expiresAt: 9999999999,
+      },
+    ]);
 
-    const result = await findAndStartWarmRunners('my-org/my-repo', 1);
+    const result = await startWarmInstances('my-org/my-repo', 1);
 
     expect(result).toEqual(['i-org-warm']);
     expect(mockListWarmInstances).toHaveBeenCalledWith('my-org/my-repo');
@@ -298,7 +249,7 @@ describe('findAndStartWarmRunners', () => {
   it('should not fallback to org-level when owner has no slash', async () => {
     mockListWarmInstances.mockResolvedValue([]);
 
-    const result = await findAndStartWarmRunners('my-org', 1);
+    const result = await startWarmInstances('my-org', 1);
 
     expect(result).toEqual([]);
     expect(mockListWarmInstances).toHaveBeenCalledTimes(1);

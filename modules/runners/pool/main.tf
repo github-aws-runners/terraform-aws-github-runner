@@ -69,6 +69,7 @@ resource "aws_lambda_function" "pool" {
       WARM_POOL_TABLE_NAME    = var.config.warm_pool_table_name
       POOL_STRATEGY           = var.config.pool_strategy
       ENABLE_METRIC_WARM_POOL = var.config.enable_metric_warm_pool
+      INCLUDE_BUSY_RUNNERS    = var.config.include_busy_runners
     }
   }
 
@@ -239,6 +240,7 @@ resource "aws_scheduler_schedule" "pool" {
     role_arn = aws_iam_role.scheduler.arn
     input = jsonencode({
       poolSize = each.value.size
+      type     = "ec2"
     })
   }
 }

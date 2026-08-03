@@ -1,5 +1,5 @@
 import { createAppAuth, type AppAuthentication, type InstallationAccessTokenAuthentication } from '@octokit/auth-app';
-import type { OctokitOptions } from '@octokit/core';
+import type { OctokitOptions, Octokit as CoreOctokit } from '@octokit/core';
 import type { RequestInterface } from '@octokit/types';
 
 // Define types that are not directly exported
@@ -27,6 +27,48 @@ import { EndpointDefaults } from '@octokit/types';
 
 const logger = createChildLogger('gh-auth');
 
+// Retry caps for the throttling plugin. Returning `true` from a limit handler tells
+// the plugin to retry after the interval GitHub asked for; returning `false` gives up.
+// Primary rate limits reset on a fixed schedule, so a couple of retries is worthwhile.
+// Secondary rate limits are abuse-detection signals — retry once, then back off and
+// let the message return to the queue rather than pushing harder.
+const MAX_RATE_LIMIT_RETRIES = 2;
+const MAX_SECONDARY_RATE_LIMIT_RETRIES = 1;
+
+// Exported for tests: the plugin only surfaces these via the client constructor,
+// so there is no other seam to assert the retry cap against.
+export function onRateLimit(
+  retryAfter: number,
+  options: Required<EndpointDefaults>,
+  // The throttling plugin types this as @octokit/core's Octokit, not the wider
+  // @octokit/rest one imported above; matching it keeps the handler assignable to
+  // the plugin's LimitHandler. Unused here regardless.
+  _octokit: CoreOctokit,
+  retryCount: number,
+): boolean {
+  logger.warn(
+    `GitHub rate limit: Request quota exhausted for request ${options.method} ${options.url}, ` +
+      `retrying after ${retryAfter}s`,
+  );
+  return retryCount < MAX_RATE_LIMIT_RETRIES;
+}
+
+export function onSecondaryRateLimit(
+  retryAfter: number,
+  options: Required<EndpointDefaults>,
+  // The throttling plugin types this as @octokit/core's Octokit, not the wider
+  // @octokit/rest one imported above; matching it keeps the handler assignable to
+  // the plugin's LimitHandler. Unused here regardless.
+  _octokit: CoreOctokit,
+  retryCount: number,
+): boolean {
+  logger.warn(
+    `GitHub rate limit: SecondaryRateLimit detected for request ${options.method} ${options.url}, ` +
+      `retrying after ${retryAfter}s`,
+  );
+  return retryCount < MAX_SECONDARY_RATE_LIMIT_RETRIES;
+}
+
 export async function createOctokitClient(token: string, ghesApiUrl = ''): Promise<Octokit> {
   const CustomOctokit = Octokit.plugin(retry, throttling);
   const ocktokitOptions: OctokitOptions = {
@@ -52,14 +94,8 @@ export async function createOctokitClient(token: string, ghesApiUrl = ''): Promi
       },
     },
     throttle: {
-      onRateLimit: (retryAfter: number, options: Required<EndpointDefaults>) => {
-        logger.warn(
-          `GitHub rate limit: Request quota exhausted for request ${options.method} ${options.url}. Requested `,
-        );
-      },
-      onSecondaryRateLimit: (retryAfter: number, options: Required<EndpointDefaults>) => {
-        logger.warn(`GitHub rate limit: SecondaryRateLimit detected for request ${options.method} ${options.url}`);
-      },
+      onRateLimit,
+      onSecondaryRateLimit,
     },
   });
 }

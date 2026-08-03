@@ -161,7 +161,7 @@ The example for [ephemeral runners](examples/ephemeral.md) is based on the [defa
 
 You can enable the job retry function to retry a job after a delay for a configured number of times. The function is disabled by default. To enable the function set `job_retry.enable` to `true`. The function will check the job status after a delay, and when the is still queued, it will create a new runner. The new runner is created in the same way as the others via the scale-up function. Hence the same configuration applies.
 
-For checking the job status a API call is made to GitHub. Which can exhaust the GitHub API more quickly for larger deployments and cause rate limits. For larger deployment with a lot of frequent jobs having a small pool available could be a better choice.
+For checking the job status a API call is made to GitHub. Which can exhaust the GitHub API more quickly for larger deployments and cause rate limits. For larger deployment with a lot of frequent jobs having a small pool available could be a better choice. See [Rate Limits and Batch Size Tuning](rate-limits-and-tuning.md) for details on GitHub and AWS rate limits.
 
 The option `job_retry.delay_in_seconds` is the delay before the job status is checked. The delay is increased by the factor `job_retry.delay_backoff` for each attempt. The upper bound for a delay is 900 seconds, which is the max message delay on SQS. The maximum number of attempts is configured via `job_retry.max_attempts`. The delay should be set to a higher value than the time it takes to start a runner.
 
@@ -336,7 +336,7 @@ Below is an example of the log messages created.
 
 [!WARNING]
 **Security implication:** Dynamic labels are extracted from the `runs-on` labels in incoming `workflow_job` webhook events. These labels originate from what
-users define in their workflow files. Any user with permission to create or modify workflows can inject arbitrary EC2 configuration values — including instance types, AMI IDs, subnet IDs, EBS volumes, placement settings, and more. Unless constrained with `ec2_dynamic_labels_policy`, these values are not validated against label-specific rules before being passed to the EC2 CreateFleet API. This means a malicious or careless workflow author could, for example:
+users define in their workflow files. Any user with permission to create or modify workflows can inject arbitrary EC2 configuration values — including instance types, AMI IDs, subnet IDs, EBS volumes, placement settings, and more. Unless constrained with `aws_dynamic_labels_policy` in the root module, or `matcherConfig.awsDynamicLabelsPolicy` when configuring matcher entries directly, these values are not validated against label-specific rules before being passed to the EC2 CreateFleet API. This means a malicious or careless workflow author could, for example:
 
 - Launch expensive instance types (e.g., `p5.48xlarge`) to inflate costs
 - Override the AMI (`ghr-ec2-image-id`) to boot a compromised image
@@ -361,13 +361,19 @@ When `enable_dynamic_labels` is enabled, the webhook and scale-up lambdas inspec
 
 #### Configuration
 
+[!IMPORTANT]
+This change renames `ec2_dynamic_labels_policy` to `aws_dynamic_labels_policy`. Before upgrading, rename the
+root module input and rename `matcherConfig.ec2DynamicLabelsPolicy` to `matcherConfig.awsDynamicLabelsPolicy`
+in `runner_matcher_config` or `multi_runner_config`. Terraform object validation rejects the legacy attribute
+names.
+
 ```hcl
 module "runners" {
   source = "github-aws-runners/github-runners/aws"
 
   ...
   enable_dynamic_labels = true
-  ec2_dynamic_labels_policy = {
+  aws_dynamic_labels_policy = {
     blocked_keys = ["image-id", "subnet-id"]
 
     restricted_keys = {
@@ -384,6 +390,8 @@ module "runners" {
   ...
 }
 ```
+
+The root module variable is named `aws_dynamic_labels_policy`. The webhook matcher config receives the same policy under `matcherConfig.awsDynamicLabelsPolicy`. If you configure `runner_matcher_config` or `multi_runner_config.matcherConfig` directly, use `awsDynamicLabelsPolicy` for this policy.
 
 The policy is evaluated by dynamic label key:
 

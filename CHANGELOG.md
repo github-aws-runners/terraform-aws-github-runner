@@ -1,5 +1,36 @@
 # Changelog
 
+## [7.10.1](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v7.10.0...v7.10.1) (2026-07-31)
+
+
+### Bug Fixes
+
+* **control-plane:** discard malformed SQS messages ([#5219](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5219)) ([8ca5816](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/8ca5816738754e4a5591981a5dd42282ca896db8))
+* enable Octokit throttle retry and SSM adaptive retry under burst ([#5136](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5136)) ([cbdd916](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/cbdd916617ed614f094a5a65fd987db1f1ab7807)), closes [#5135](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5135)
+* **lambda:** bump axios from 1.17.0 to 1.18.0 in /lambdas ([#5211](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5211)) ([67bfdf8](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/67bfdf856583d64a3ba0f22a0e7966fc7d2c646e))
+* **lambda:** bump js-yaml from 3.14.2 to 3.15.0 in /lambdas ([#5212](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5212)) ([facea4e](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/facea4e6bd4f8fa507ce44269cb6987b428d7430))
+* **lambda:** bump postcss from 8.5.15 to 8.5.22 in /lambdas ([#5231](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5231)) ([8ee045d](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/8ee045d574f03d6e845f5bee8b7e3c5f7d90c199))
+* **lambda:** fail-open isJobQueued — assume queued on API errors ([#5130](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5130)) ([8fa06ee](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/8fa06ee7c6e5c32bc07315dca620e055d944fb9c))
+* **scale-up:** return partial runner creation results ([#5220](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5220)) ([9045340](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/9045340a56df19cb1a946387daef3174e316fcdf))
+* stop a malformed SQS body from poisoning the whole batch ([#5215](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5215)) ([69e06b1](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/69e06b166504e3a62303a529778ee85bbfa87334))
+
+## [7.10.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v7.9.0...v7.10.0) (2026-07-17)
+
+
+### Features
+
+* **pool:** Allow to optionally include busy runners into the pool ([#5078](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5078)) ([c3eeb0f](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/c3eeb0ff6f564d540d2955d21c6247f8b276cc8e))
+* **runners:** support OnDemandOptions.AllocationStrategy in EC2 Fleet ([#5077](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5077)) ([28b90f4](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/28b90f4692223eb9a02fb6da3c7b713c220768cc))
+* **termination-watcher:** deregister runners from GitHub on EC2 termination ([#5055](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5055)) ([c7494c1](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/c7494c1f0e8667b950d369066bf6f2da4f97e856))
+* **webhook:** support multi-region SQS dispatch in runner webhook ([#5099](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5099)) ([768d08b](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/768d08be1b2dfc62cc219814b8ac4f21bda39217))
+
+
+### Bug Fixes
+
+* **deps:** bump actions/stale from 10.3.0 to 10.4.0 in the github group ([#5210](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5210)) ([ef8719e](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/ef8719edac91c5f7d997bdd00c3b5a261a944c61))
+* **deps:** bump github/codeql-action/upload-sarif from 4.36.2 to 4.36.3 ([#5207](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5207)) ([c7a8096](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/c7a80965cc2369ee4635ef0ab550fb5337d8d265))
+* retry installation auth for regional GitHub App events ([#5123](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5123)) ([8222052](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/82220521c2299e971a5d689e1c73686bd7aacd9d))
+
 ## [7.9.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v7.8.0...v7.9.0) (2026-07-04)
 
 

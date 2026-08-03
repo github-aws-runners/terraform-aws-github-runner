@@ -4,9 +4,9 @@ import { captureLambdaHandler, tracer } from '@aws-github-runner/aws-powertools-
 import { Context, type SQSBatchItemFailure, type SQSBatchResponse, SQSEvent } from 'aws-lambda';
 
 import { PoolEvent, adjust } from './pool/pool';
-import ScaleError from './scale-runners/ScaleError';
 import { scaleDown } from './scale-runners/scale-down';
-import { type ActionRequestMessage, type ActionRequestMessageSQS, scaleUp } from './scale-runners/scale-up';
+import { scaleUp } from './scale-runners/scale-up';
+import type { ActionRequestMessage, ActionRequestMessageSQS } from './scale-runners/types';
 import { SSMCleanupOptions, cleanSSMTokens } from './scale-runners/ssm-housekeeper';
 import { checkAndRetryJob } from './scale-runners/job-retry';
 
@@ -27,7 +27,17 @@ export async function scaleUpHandler(event: SQSEvent, context: Context): Promise
       continue;
     }
 
-    const payload = JSON.parse(body) as ActionRequestMessage;
+    let payload: ActionRequestMessage;
+    try {
+      payload = JSON.parse(body) as ActionRequestMessage;
+    } catch (e) {
+      // A malformed body is a permanent, non-retryable failure. Keep it out of
+      // batchItemFailures so the event source mapping acknowledges and deletes it,
+      // while valid records in the same batch continue to scale up normally.
+      logger.error(`Ignoring message ${messageId}, body is not valid JSON`, { error: e, messageId });
+
+      continue;
+    }
     sqsMessages.push({ ...payload, messageId });
   }
 
@@ -38,12 +48,22 @@ export async function scaleUpHandler(event: SQSEvent, context: Context): Promise
     return (l.retryCounter ?? 0) - (r.retryCounter ?? 0);
   });
 
+  // The SQS event source mapping owns message acknowledgement and deletion. Because
+  // ReportBatchItemFailures is enabled, a successful handler response makes Lambda
+  // delete every record not listed here; listed records remain in SQS and become
+  // available for retry after their visibility timeout expires.
   const batchItemFailures: SQSBatchItemFailure[] = [];
 
   try {
-    const rejectedMessageIds = await scaleUp(sqsMessages);
+    const retryMessageIds = await scaleUp(sqsMessages);
 
-    for (const messageId of rejectedMessageIds) {
+    if (retryMessageIds.length > 0) {
+      logger.warn('SQS messages will be retried.', {
+        messageIds: retryMessageIds,
+      });
+    }
+
+    for (const messageId of retryMessageIds) {
       batchItemFailures.push({
         itemIdentifier: messageId,
       });
@@ -51,16 +71,15 @@ export async function scaleUpHandler(event: SQSEvent, context: Context): Promise
 
     return { batchItemFailures };
   } catch (e) {
-    if (e instanceof ScaleError) {
-      batchItemFailures.push(...e.toBatchItemFailures(sqsMessages));
-      logger.warn(`${e.detailedMessage} A retry will be attempted via SQS.`, { error: e });
-    } else {
-      logger.error(`Error processing batch (size: ${sqsMessages.length}): ${(e as Error).message}, ignoring batch`, {
-        error: e,
-      });
-    }
+    logger.error(`Error processing batch (size: ${sqsMessages.length}): ${(e as Error).message}, retrying batch`, {
+      error: e,
+    });
 
-    return { batchItemFailures };
+    return {
+      batchItemFailures: sqsMessages.map(({ messageId }) => ({
+        itemIdentifier: messageId,
+      })),
+    };
   }
 }
 

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { terminateRunner, listEC2Runners } from './../aws/runners';
-import { RunnerList } from '../aws/runners.d';
+import { terminateRunner, listEC2Runners } from './../aws/ec2-runners';
+import { RunnerList } from '../aws/ec2-runners.d';
 import {
   getWarmPoolConfig,
   getPoolStrategy,
@@ -9,7 +9,7 @@ import {
   emitWarmPoolMetric,
 } from '../aws/warm-pool';
 
-vi.mock('./../aws/runners', async () => ({
+vi.mock('./../aws/ec2-runners', async () => ({
   createRunner: vi.fn(),
   listEC2Runners: vi.fn().mockResolvedValue([]),
   startRunner: vi.fn(),

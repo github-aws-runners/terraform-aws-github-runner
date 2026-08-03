@@ -606,6 +606,12 @@ variable "pool_config" {
   default = []
 }
 
+variable "pool_include_busy_runners" {
+  description = "Include busy runners in the pool calculation. By default busy runners are not included in the pool."
+  type        = bool
+  default     = false
+}
+
 variable "disable_runner_autoupdate" {
   description = "Disable the auto update of the github runner agent. Be aware there is a grace period of 30 days, see also the [GitHub article](https://github.blog/changelog/2022-02-01-github-actions-self-hosted-runners-can-now-disable-automatic-updates/)"
   type        = bool
@@ -766,7 +772,7 @@ variable "enable_on_demand_failover_for_errors" {
 }
 
 variable "scale_errors" {
-  description = "List of aws error codes that should trigger retry during scale up. This list will replace the default errors defined in the variable `defaultScaleErrors` in https://github.com/github-aws-runners/terraform-aws-github-runner/blob/main/lambdas/functions/control-plane/src/aws/runners.ts"
+  description = "List of AWS error codes that should trigger retry during scale up. This list replaces the module default scale-up retry errors"
   type        = list(string)
   default = [
     "UnfulfillableCapacity",

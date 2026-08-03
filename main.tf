@@ -116,7 +116,7 @@ module "webhook" {
         exactMatch : var.enable_runner_workflow_job_labels_check_all
         bidirectionalLabelMatch : var.enable_runner_bidirectional_label_match
         enableDynamicLabels : var.enable_dynamic_labels
-        ec2DynamicLabelsPolicy : var.ec2_dynamic_labels_policy
+        awsDynamicLabelsPolicy : var.aws_dynamic_labels_policy
       }
     }
   }
@@ -282,6 +282,7 @@ module "runners" {
   pool_lambda_reserved_concurrent_executions = var.pool_lambda_reserved_concurrent_executions
   pool_strategy                              = var.pool_strategy
   warm_pool_config                           = var.warm_pool_config
+  pool_include_busy_runners                  = var.pool_include_busy_runners
 
   ssm_housekeeper = var.runners_ssm_housekeeper
   ebs_optimized   = var.runners_ebs_optimized

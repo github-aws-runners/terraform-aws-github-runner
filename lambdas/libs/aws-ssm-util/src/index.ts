@@ -2,9 +2,41 @@ import { GetParametersCommand, PutParameterCommand, SSMClient, Tag } from '@aws-
 import { getTracedAWSV3Client } from '@aws-github-runner/aws-powertools-util';
 import { SSMProvider } from '@aws-lambda-powertools/parameters/ssm';
 
+// SSM PutParameter has a per-account, per-region rate limit (~40 TPS standard
+// throughput). Under burst load with multiple concurrent Lambdas each writing
+// JIT configs, the default retry (standard, 3 attempts, ~3s budget) is
+// insufficient and throws ThrottlingException.
+//
+// `adaptive` retry mode adds client-side rate-sensing via a token bucket:
+// when the SDK sees ThrottlingException it slows further calls to match the
+// observed budget. Combined with maxAttempts=10 this gives ~30s of retry
+// per call without hammering the API.
+//
+// The client is memoised deliberately. Adaptive retry keeps its rate-sensing
+// token bucket on the client instance, so constructing a fresh SSMClient per
+// call would discard what it learned and reduce `adaptive` to plain retries.
+// Reusing one client per Lambda container lets the backoff carry across calls
+// (and saves the per-call construction cost).
+let memoisedClient: SSMClient | undefined;
+
+export function ssmClient(): SSMClient {
+  memoisedClient ??= getTracedAWSV3Client(
+    new SSMClient({
+      region: process.env.AWS_REGION,
+      maxAttempts: 10,
+      retryMode: 'adaptive',
+    }),
+  );
+  return memoisedClient;
+}
+
+// Exposed for tests, which need a fresh client per case to assert construction.
+export function resetSSMClient(): void {
+  memoisedClient = undefined;
+}
+
 export async function getParameter(parameter_name: string): Promise<string> {
-  const ssmClient = getTracedAWSV3Client(new SSMClient({ region: process.env.AWS_REGION }));
-  const client = new SSMProvider({ awsSdkV3Client: ssmClient }); //getTracedAWSV3Client();
+  const client = new SSMProvider({ awsSdkV3Client: ssmClient() });
   const result = await client.get(parameter_name, {
     decrypt: true,
     maxAge: 30, // 30 seconds override default 5 seconds
@@ -48,14 +80,13 @@ export async function getParameters(parameter_names: string[]): Promise<Map<stri
     return new Map();
   }
 
-  const ssmClient = getTracedAWSV3Client(new SSMClient({ region: process.env.AWS_REGION }));
   const result = new Map<string, string>();
 
   // AWS SSM GetParameters API has a limit of 10 parameters per call
   const chunkSize = 10;
   for (let i = 0; i < parameter_names.length; i += chunkSize) {
     const chunk = parameter_names.slice(i, i + chunkSize);
-    const response = await ssmClient.send(
+    const response = await ssmClient().send(
       new GetParametersCommand({
         Names: chunk,
         WithDecryption: true,
@@ -80,7 +111,7 @@ export async function putParameter(
   secure: boolean,
   options: { tags?: Tag[] } = {},
 ): Promise<void> {
-  const client = getTracedAWSV3Client(new SSMClient({ region: process.env.AWS_REGION }));
+  const client = ssmClient();
 
   // Determine tier based on parameter_value size
   const valueSizeBytes = Buffer.byteLength(parameter_value, 'utf8');

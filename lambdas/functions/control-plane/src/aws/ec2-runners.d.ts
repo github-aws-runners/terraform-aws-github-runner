@@ -7,7 +7,7 @@ import {
   Placement,
   FleetBlockDeviceMappingRequest,
 } from '@aws-sdk/client-ec2';
-import { LambdaRunnerSource } from '../scale-runners/scale-up';
+import type { LambdaRunnerSource } from '../scale-runners/types';
 
 export type RunnerType = 'Org' | 'Repo';
 
@@ -73,4 +73,10 @@ export interface RunnerInputParameters {
   onDemandFailoverOnError?: string[];
   scaleErrors: string[];
   useDedicatedHost?: boolean;
+}
+
+export interface CreateRunnerResult {
+  instances: string[];
+  retryableErrorCount: number;
+  nonRetryableErrorCount: number;
 }

@@ -52,6 +52,7 @@ resource "aws_lambda_function" "scale_down" {
       WARM_POOL_TABLE_NAME      = var.warm_pool_config.enabled ? aws_dynamodb_table.warm_pool[0].name : ""
       POOL_STRATEGY             = var.pool_strategy
       AMI_ID_SSM_PARAMETER_NAME = local.ami_id_ssm_parameter_name
+      RUNNER_PROVIDER_TYPE      = "ec2"
     }
   }
 

@@ -3,9 +3,9 @@ import { Context, SQSEvent, SQSRecord } from 'aws-lambda';
 
 import { addMiddleware, adjustPool, scaleDownHandler, scaleUpHandler, ssmHousekeeper, jobRetryCheck } from './lambda';
 import { adjust } from './pool/pool';
-import ScaleError from './scale-runners/ScaleError';
 import { scaleDown } from './scale-runners/scale-down';
-import { ActionRequestMessage, scaleUp } from './scale-runners/scale-up';
+import { scaleUp } from './scale-runners/scale-up';
+import type { ActionRequestMessage } from './scale-runners/types';
 import { cleanSSMTokens } from './scale-runners/ssm-housekeeper';
 import { checkAndRetryJob } from './scale-runners/job-retry';
 import { describe, it, expect, vi, MockedFunction, beforeEach } from 'vitest';
@@ -103,17 +103,52 @@ describe('Test scale up lambda wrapper.', () => {
     await expect(scaleUpHandler(sqsEvent, context)).resolves.not.toThrow();
   });
 
-  it('Scale should create a batch failure message', async () => {
-    const error = new ScaleError();
-    vi.mocked(scaleUp).mockRejectedValue(error);
-    await expect(scaleUpHandler(sqsEvent, context)).resolves.toEqual({
-      batchItemFailures: [{ itemIdentifier: sqsRecord.messageId }],
-    });
-  });
-
   describe('Batch processing', () => {
     beforeEach(() => {
       vi.clearAllMocks();
+    });
+
+    const malformedRecord = (messageId: string): SQSRecord =>
+      ({ ...sqsRecord, eventSource: 'aws:sqs', messageId, body: 'not-json{' }) as SQSRecord;
+
+    it('Should not let one malformed message fail the whole invocation', async () => {
+      // Previously JSON.parse ran outside the try/catch, so an unparseable body threw
+      // straight out of the handler, failing the invocation and making SQS redeliver
+      // every message in the batch.
+      const records = [...createMultipleRecords(2), malformedRecord('message-bad')];
+      vi.mocked(scaleUp).mockResolvedValue([]);
+
+      await expect(scaleUpHandler({ Records: records }, context)).resolves.not.toThrow();
+    });
+
+    it('Should acknowledge a malformed message without retrying it', async () => {
+      const records = [...createMultipleRecords(2), malformedRecord('message-bad')];
+      vi.mocked(scaleUp).mockResolvedValue([]);
+
+      await expect(scaleUpHandler({ Records: records }, context)).resolves.toEqual({
+        batchItemFailures: [],
+      });
+    });
+
+    it('Should still process the valid messages alongside a malformed one', async () => {
+      const records = [...createMultipleRecords(2), malformedRecord('message-bad')];
+      vi.mocked(scaleUp).mockResolvedValue([]);
+
+      await scaleUpHandler({ Records: records }, context);
+
+      expect(scaleUp).toHaveBeenCalledWith([
+        expect.objectContaining({ messageId: 'message-0' }),
+        expect.objectContaining({ messageId: 'message-1' }),
+      ]);
+    });
+
+    it('Should report rejected messages but acknowledge malformed messages', async () => {
+      const records = [...createMultipleRecords(2), malformedRecord('message-bad')];
+      vi.mocked(scaleUp).mockResolvedValue(['message-1']);
+
+      await expect(scaleUpHandler({ Records: records }, context)).resolves.toEqual({
+        batchItemFailures: [{ itemIdentifier: 'message-1' }],
+      });
     });
 
     const createMultipleRecords = (count: number, eventSource = 'aws:sqs'): SQSRecord[] => {
@@ -153,6 +188,9 @@ describe('Test scale up lambda wrapper.', () => {
       const result = await scaleUpHandler(multiRecordEvent, context);
       expect(result).toEqual({
         batchItemFailures: [{ itemIdentifier: 'message-1' }, { itemIdentifier: 'message-2' }],
+      });
+      expect(logger.warn).toHaveBeenCalledWith('SQS messages will be retried.', {
+        messageIds: ['message-1', 'message-2'],
       });
     });
 
@@ -208,24 +246,14 @@ describe('Test scale up lambda wrapper.', () => {
       await scaleUpHandler(multiRecordEvent, context);
     });
 
-    it('Should return all failed messages when scaleUp throws non-ScaleError', async () => {
+    it('Should retry the entire batch when scaleUp throws an unexpected error', async () => {
       const records = createMultipleRecords(2);
       const multiRecordEvent: SQSEvent = { Records: records };
 
       vi.mocked(scaleUp).mockRejectedValue(new Error('Generic error'));
 
       const result = await scaleUpHandler(multiRecordEvent, context);
-      expect(result).toEqual({ batchItemFailures: [] });
-    });
-
-    it('Should throw when scaleUp throws ScaleError', async () => {
-      const records = createMultipleRecords(2);
-      const multiRecordEvent: SQSEvent = { Records: records };
-
-      const error = new ScaleError(2);
-      vi.mocked(scaleUp).mockRejectedValue(error);
-
-      await expect(scaleUpHandler(multiRecordEvent, context)).resolves.toEqual({
+      expect(result).toEqual({
         batchItemFailures: [{ itemIdentifier: 'message-0' }, { itemIdentifier: 'message-1' }],
       });
     });
@@ -248,14 +276,14 @@ describe('Test scale down lambda wrapper.', () => {
 describe('Adjust pool.', () => {
   it('Receive message to adjust pool.', async () => {
     vi.mocked(adjust).mockResolvedValue();
-    await expect(adjustPool({ poolSize: 2 }, context)).resolves.not.toThrow();
+    await expect(adjustPool({ poolSize: 2, type: 'ec2' }, context)).resolves.not.toThrow();
   });
 
   it('Handle error for adjusting pool.', async () => {
     const error = new Error('Handle error for adjusting pool.');
     vi.mocked(adjust).mockRejectedValue(error);
     const logSpy = vi.spyOn(logger, 'error');
-    await adjustPool({ poolSize: 0 }, context);
+    await adjustPool({ poolSize: 0, type: 'ec2' }, context);
     expect(logSpy).toHaveBeenCalledWith(`Handle error for adjusting pool. ${error.message}`, { error });
   });
 });

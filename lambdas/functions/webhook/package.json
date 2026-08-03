@@ -23,13 +23,14 @@
     "@types/express": "^5.0.6",
     "@types/node": "^22.19.3",
     "@vercel/ncc": "0.38.4",
-    "body-parser": "^2.2.1",
+    "body-parser": "^2.3.0",
     "express": "^5.2.0",
     "ts-node-dev": "^2.0.0"
   },
   "dependencies": {
     "@aws-github-runner/aws-powertools-util": "*",
     "@aws-github-runner/aws-ssm-util": "*",
+    "@aws-github-runner/runner-provider": "*",
     "@aws-sdk/client-sqs": "^3.1009.0",
     "@middy/core": "^6.4.5",
     "@octokit/rest": "22.0.1",
