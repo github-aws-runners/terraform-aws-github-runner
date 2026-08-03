@@ -5,6 +5,7 @@ import type {
   ScaleDownRunnerProvider,
   ScaleUpRunnerProvider,
 } from './core';
+import type { RunnerProviderType } from './provider-types';
 
 export interface AwsDynamicLabelsValueRule {
   allowed?: string[];
@@ -17,28 +18,34 @@ export interface AwsDynamicLabelsPolicy {
   restricted_keys?: Record<string, AwsDynamicLabelsValueRule>;
 }
 
-export interface AwsRunnerMatcherConfig {
-  id: string;
-  arn: string;
-  runnerProvider?: string;
-  matcherConfig: {
-    labelMatchers: string[][];
-    exactMatch: boolean;
-    bidirectionalLabelMatch?: boolean;
-    enableDynamicLabels?: boolean;
-    awsDynamicLabelsPolicy?: AwsDynamicLabelsPolicy | null;
-    ec2DynamicLabelsPolicy?: AwsDynamicLabelsPolicy | null;
-  };
+export interface MatcherConfig {
+  labelMatchers: string[][];
+  exactMatch: boolean;
+  bidirectionalLabelMatch?: boolean;
+  enableDynamicLabels?: boolean;
+  awsDynamicLabelsPolicy?: AwsDynamicLabelsPolicy | null;
+  // TODO: Remove this legacy compatibility field and fallback in the next release.
+  /** @deprecated Use awsDynamicLabelsPolicy. Retained while existing SSM configurations migrate. */
+  ec2DynamicLabelsPolicy?: AwsDynamicLabelsPolicy | null;
 }
 
+export interface RunnerMatcherConfig {
+  id: string;
+  arn: string;
+  runnerProvider?: RunnerProviderType;
+  matcherConfig: MatcherConfig;
+}
+
+export type RunnerConfig = RunnerMatcherConfig[];
+
 export interface DynamicLabelDispatchTarget {
-  queue: AwsRunnerMatcherConfig;
+  queue: RunnerMatcherConfig;
   labels: string[];
 }
 
 export interface DynamicLabelProvider {
   selectQueue(input: {
-    queue: AwsRunnerMatcherConfig;
+    queue: RunnerMatcherConfig;
     nonGhrLabels: string[];
     sanitizedGhrLabels: string[];
   }): DynamicLabelDispatchTarget | undefined;
@@ -54,10 +61,14 @@ export interface WebhookProviderCapabilities {
   dynamicLabels: DynamicLabelProvider;
 }
 
-export interface RunnerProviderModule<TType extends string = string> {
+export interface ControlPlaneProviderModule<TType extends string = string> {
   type: TType;
-  createControlPlanePlugin(
+  createPlugin(
     createStartRunnerConfig: CreateStartRunnerConfig,
   ): RunnerProviderPlugin<ControlPlaneProviderCapabilities, TType>;
-  createWebhookPlugin(): RunnerProviderPlugin<WebhookProviderCapabilities, TType>;
+}
+
+export interface WebhookProviderModule<TType extends string = string> {
+  type: TType;
+  createPlugin(): RunnerProviderPlugin<WebhookProviderCapabilities, TType>;
 }

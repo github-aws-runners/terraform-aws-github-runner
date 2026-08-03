@@ -1,5 +1,5 @@
 import { addPersistentContextToChildLogger, createChildLogger } from '@aws-github-runner/aws-powertools-util';
-import { resolveRunnerProviderType } from '@aws-github-runner/runner-providers/core';
+import { resolveRunnerProviderType } from '@aws-github-runner/runner-providers/provider-types';
 import { Octokit } from '@octokit/rest';
 import yn from 'yn';
 

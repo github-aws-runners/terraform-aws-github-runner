@@ -1,6 +1,6 @@
 import type { CreateStartRunnerConfig, RunnerProviderPlugin } from '../../core';
 
-import type { ControlPlaneProviderCapabilities } from '../../contracts';
+import type { ControlPlaneProviderCapabilities, ControlPlaneProviderModule } from '../../contracts';
 import type {} from './src/environment';
 import { createEc2PoolProvider } from './src/control-plane/pool';
 import { createEc2ScaleDownProvider } from './src/control-plane/scale-down';
@@ -18,3 +18,8 @@ export function createEc2ControlPlanePlugin(
     },
   };
 }
+
+export const provider = {
+  type: 'ec2',
+  createPlugin: createEc2ControlPlanePlugin,
+} satisfies ControlPlaneProviderModule<'ec2'>;

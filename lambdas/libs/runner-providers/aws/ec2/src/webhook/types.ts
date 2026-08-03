@@ -1,7 +1,7 @@
 export type {
   AwsDynamicLabelsPolicy,
   AwsDynamicLabelsValueRule,
-  AwsRunnerMatcherConfig as Ec2RunnerMatcherConfig,
   DynamicLabelDispatchTarget,
   DynamicLabelProvider,
+  RunnerMatcherConfig as Ec2RunnerMatcherConfig,
 } from '../../../../contracts';

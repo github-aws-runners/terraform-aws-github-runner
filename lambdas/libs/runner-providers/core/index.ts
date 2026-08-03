@@ -1,29 +1,8 @@
 import type { Octokit } from '@octokit/rest';
 
-import { enabledRunnerProviders } from '../providers.config';
+import type { RunnerProviderType } from '../provider-types';
 
-const providerTypes = enabledRunnerProviders.map(({ type }) => type);
-
-export type RunnerProviderType = (typeof import('../providers.config').enabledRunnerProviders)[number]['type'];
-
-export function normalizeRunnerProviderType(type: unknown): RunnerProviderType | undefined {
-  if (type === undefined) return providerTypes[0];
-  if (typeof type !== 'string') return undefined;
-
-  const normalizedType = type.trim().toLowerCase();
-  if (!normalizedType) return providerTypes[0];
-
-  return providerTypes.find((runnerProviderType) => runnerProviderType === normalizedType);
-}
-
-export function resolveRunnerProviderType(type: unknown): RunnerProviderType {
-  const normalizedType = normalizeRunnerProviderType(type);
-  if (!normalizedType) {
-    throw new Error(`Unsupported runner provider type '${String(type)}'`);
-  }
-
-  return normalizedType;
-}
+export type { RunnerProviderType } from '../provider-types';
 
 export interface RunnerProvider {
   type: RunnerProviderType;
