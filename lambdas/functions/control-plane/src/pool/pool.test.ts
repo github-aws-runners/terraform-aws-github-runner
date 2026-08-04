@@ -35,6 +35,7 @@ vi.mock('./../github/auth', async () => ({
   createGithubAppAuth: vi.fn(),
   createGithubInstallationAuth: vi.fn(),
   createOctokitClient: vi.fn(),
+  createEnterprisePATClient: vi.fn(),
 }));
 
 vi.mock('../scale-runners/ec2', async (importOriginal) => ({
@@ -136,7 +137,7 @@ beforeEach(() => {
   process.env.GITHUB_APP_CLIENT_SECRET = 'TEST_CLIENT_SECRET';
   process.env.RUNNERS_MAXIMUM_COUNT = '-1';
   process.env.ENVIRONMENT = 'unit-test-environment';
-  process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
+  process.env.RUNNER_REGISTRATION_LEVEL = 'org';
   process.env.LAUNCH_TEMPLATE_NAME = 'lt-1';
   process.env.SUBNET_IDS = 'subnet-123';
   process.env.SSM_TOKEN_PATH = '/github-action-runners/default/runners/tokens';

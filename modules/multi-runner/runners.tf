@@ -34,7 +34,12 @@ module "runners" {
   ebs_optimized                        = each.value.runner_config.ebs_optimized
   enable_on_demand_failover_for_errors = each.value.runner_config.enable_on_demand_failover_for_errors
   scale_errors                         = each.value.runner_config.scale_errors
-  enable_organization_runners          = each.value.runner_config.enable_organization_runners
+  # `enable_organization_runners` is deprecated in favor of `runner_registration_level`, but is kept
+  # working for backwards compatibility. When set to `true` it takes priority over
+  # `runner_registration_level` so existing configurations continue to behave as before.
+  runner_registration_level            = each.value.runner_config.enable_organization_runners ? "org" : coalesce(each.value.runner_config.runner_registration_level, "repo")
+  enterprise_slug                      = var.enterprise_slug
+  enterprise_pat_parameter             = local.enterprise_pat_parameters
   enable_ephemeral_runners             = each.value.runner_config.enable_ephemeral_runners
   enable_jit_config                    = each.value.runner_config.enable_jit_config
   enable_job_queued_check              = each.value.runner_config.enable_job_queued_check
@@ -118,7 +123,7 @@ module "runners" {
 
   pool_config                                = each.value.runner_config.pool_config
   pool_lambda_timeout                        = var.pool_lambda_timeout
-  pool_runner_owner                          = each.value.runner_config.pool_runner_owner
+  pool_runner_owner                          = try(coalesce(each.value.runner_config.pool_runner_owner, var.enterprise_slug), null)
   pool_lambda_reserved_concurrent_executions = var.pool_lambda_reserved_concurrent_executions
   associate_public_ipv4_address              = var.associate_public_ipv4_address
 

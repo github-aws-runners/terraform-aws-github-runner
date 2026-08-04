@@ -52,6 +52,9 @@
       "Resource": [
         "${github_app_key_base64_arn}",
         "${github_app_id_arn}"
+%{ if enterprise_pat_arn != "" ~}
+        ,"${enterprise_pat_arn}"
+%{ endif ~}
       ]
 %{ if kms_key_arn != "" ~}
     },

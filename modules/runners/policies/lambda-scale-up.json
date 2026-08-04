@@ -67,6 +67,9 @@
                 "${github_app_id_arn}",
                 "${ssm_config_path}/*",
                 "${ssm_ami_id_parameter_arn}"
+%{ if enterprise_pat_arn != "" ~}
+                ,"${enterprise_pat_arn}"
+%{ endif ~}
             ]
         },
         {

@@ -230,6 +230,7 @@ describe('scaleUp with GHES', () => {
   describe('on org level', () => {
     beforeEach(() => {
       process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
+      process.env.RUNNER_REGISTRATION_LEVEL = 'org';
       process.env.ENABLE_EPHEMERAL_RUNNERS = 'true';
       process.env.RUNNER_NAME_PREFIX = 'unit-test-';
       process.env.RUNNER_GROUP_NAME = 'Default';
@@ -385,6 +386,7 @@ describe('scaleUp with GHES', () => {
 
     it('Discards event if it is a User repo and org level runners is enabled', async () => {
       process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
+      process.env.RUNNER_REGISTRATION_LEVEL = 'org';
       const USER_REPO_TEST_DATA = structuredClone(TEST_DATA);
       USER_REPO_TEST_DATA[0].repoOwnerType = 'User';
       await scaleUpModule.scaleUp(USER_REPO_TEST_DATA);
@@ -715,6 +717,7 @@ describe('scaleUp with GHES', () => {
   describe('Dynamic EC2 Configuration', () => {
     beforeEach(() => {
       process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
+      process.env.RUNNER_REGISTRATION_LEVEL = 'org';
       process.env.ENABLE_EPHEMERAL_RUNNERS = 'true';
       process.env.ENABLE_JOB_QUEUED_CHECK = 'false';
       process.env.RUNNER_LABELS = 'base-label';
@@ -1240,6 +1243,7 @@ describe('scaleUp with GHES', () => {
   describe('on repo level', () => {
     beforeEach(() => {
       process.env.ENABLE_ORGANIZATION_RUNNERS = 'false';
+      process.env.RUNNER_REGISTRATION_LEVEL = 'repo';
       process.env.RUNNER_NAME_PREFIX = 'unit-test';
       expectedRunnerParams = { ...EXPECTED_RUNNER_PARAMS };
       expectedRunnerParams.runnerType = 'Repo';
@@ -1312,6 +1316,7 @@ describe('scaleUp with GHES', () => {
   describe('Batch processing', () => {
     beforeEach(() => {
       process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
+      process.env.RUNNER_REGISTRATION_LEVEL = 'org';
       process.env.ENABLE_EPHEMERAL_RUNNERS = 'true';
       process.env.RUNNERS_MAXIMUM_COUNT = '10';
     });
@@ -1367,6 +1372,7 @@ describe('scaleUp with GHES', () => {
 
     it('Should handle multiple messages for different repositories when org-level is disabled', async () => {
       process.env.ENABLE_ORGANIZATION_RUNNERS = 'false';
+      process.env.RUNNER_REGISTRATION_LEVEL = 'repo';
       const messages = createTestMessages(3, [
         { repositoryOwner: 'owner1', repositoryName: 'repo1' },
         { repositoryOwner: 'owner1', repositoryName: 'repo2' },
@@ -1631,6 +1637,7 @@ describe('scaleUp with public GH', () => {
   describe('on org level', () => {
     beforeEach(() => {
       process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
+      process.env.RUNNER_REGISTRATION_LEVEL = 'org';
       process.env.RUNNER_NAME_PREFIX = 'unit-test';
       expectedRunnerParams = { ...EXPECTED_RUNNER_PARAMS };
     });
@@ -1677,6 +1684,7 @@ describe('scaleUp with public GH', () => {
       mockSSMClient.reset();
 
       process.env.ENABLE_ORGANIZATION_RUNNERS = 'false';
+      process.env.RUNNER_REGISTRATION_LEVEL = 'repo';
       process.env.RUNNER_NAME_PREFIX = 'unit-test';
       expectedRunnerParams = { ...EXPECTED_RUNNER_PARAMS };
       expectedRunnerParams.runnerType = 'Repo';
@@ -1854,6 +1862,7 @@ describe('scaleUp with public GH', () => {
     beforeEach(() => {
       setDefaults();
       process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
+      process.env.RUNNER_REGISTRATION_LEVEL = 'org';
       process.env.ENABLE_EPHEMERAL_RUNNERS = 'true';
       process.env.RUNNERS_MAXIMUM_COUNT = '10';
     });
@@ -1897,6 +1906,7 @@ describe('scaleUp with public GH', () => {
 
     it('Should handle multiple messages for different repositories when org-level is disabled', async () => {
       process.env.ENABLE_ORGANIZATION_RUNNERS = 'false';
+      process.env.RUNNER_REGISTRATION_LEVEL = 'repo';
       const messages = createTestMessages(3, [
         { repositoryOwner: 'owner1', repositoryName: 'repo1' },
         { repositoryOwner: 'owner1', repositoryName: 'repo2' },
@@ -2090,6 +2100,7 @@ describe('scaleUp with Github Data Residency', () => {
   describe('on org level', () => {
     beforeEach(() => {
       process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
+      process.env.RUNNER_REGISTRATION_LEVEL = 'org';
       process.env.ENABLE_EPHEMERAL_RUNNERS = 'true';
       process.env.RUNNER_NAME_PREFIX = 'unit-test-';
       process.env.RUNNER_GROUP_NAME = 'Default';
@@ -2165,6 +2176,7 @@ describe('scaleUp with Github Data Residency', () => {
 
     it('Discards event if it is a User repo and org level runners is enabled', async () => {
       process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
+      process.env.RUNNER_REGISTRATION_LEVEL = 'org';
       const USER_REPO_TEST_DATA = structuredClone(TEST_DATA);
       USER_REPO_TEST_DATA[0].repoOwnerType = 'User';
       await scaleUpModule.scaleUp(USER_REPO_TEST_DATA);
@@ -2299,6 +2311,7 @@ describe('scaleUp with Github Data Residency', () => {
   describe('on repo level', () => {
     beforeEach(() => {
       process.env.ENABLE_ORGANIZATION_RUNNERS = 'false';
+      process.env.RUNNER_REGISTRATION_LEVEL = 'repo';
       process.env.RUNNER_NAME_PREFIX = 'unit-test';
       expectedRunnerParams = { ...EXPECTED_RUNNER_PARAMS };
       expectedRunnerParams.runnerType = 'Repo';
@@ -2378,6 +2391,7 @@ describe('scaleUp with Github Data Residency', () => {
     beforeEach(() => {
       setDefaults();
       process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
+      process.env.RUNNER_REGISTRATION_LEVEL = 'org';
       process.env.ENABLE_EPHEMERAL_RUNNERS = 'true';
       process.env.RUNNERS_MAXIMUM_COUNT = '10';
     });
@@ -2421,6 +2435,7 @@ describe('scaleUp with Github Data Residency', () => {
 
     it('Should handle multiple messages for different repositories when org-level is disabled', async () => {
       process.env.ENABLE_ORGANIZATION_RUNNERS = 'false';
+      process.env.RUNNER_REGISTRATION_LEVEL = 'repo';
       const messages = createTestMessages(3, [
         { repositoryOwner: 'owner1', repositoryName: 'repo1' },
         { repositoryOwner: 'owner1', repositoryName: 'repo2' },
@@ -2594,6 +2609,7 @@ describe('scaleUp with Github Data Residency', () => {
 describe('Retry mechanism tests', () => {
   beforeEach(() => {
     process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
+    process.env.RUNNER_REGISTRATION_LEVEL = 'org';
     process.env.ENABLE_EPHEMERAL_RUNNERS = 'true';
     process.env.ENABLE_JOB_QUEUED_CHECK = 'true';
     process.env.RUNNERS_MAXIMUM_COUNT = '10';
@@ -2759,6 +2775,7 @@ describe('Retry mechanism tests', () => {
 describe('useDedicatedHost', () => {
   beforeEach(() => {
     process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
+    process.env.RUNNER_REGISTRATION_LEVEL = 'org';
     process.env.ENABLE_EPHEMERAL_RUNNERS = 'true';
     process.env.RUNNER_NAME_PREFIX = 'unit-test-';
     process.env.RUNNER_GROUP_NAME = 'Default';

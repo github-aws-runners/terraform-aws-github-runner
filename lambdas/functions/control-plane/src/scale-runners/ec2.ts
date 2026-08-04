@@ -68,6 +68,7 @@ export async function createRunners(
     result = await createRunner({
       runnerType: githubRunnerConfig.runnerType,
       runnerOwner: githubRunnerConfig.runnerOwner,
+      enterpriseSlug: githubRunnerConfig.enterpriseSlug,
       numberOfRunners,
       source,
       ...ec2RunnerConfig,

@@ -1,23 +1,28 @@
-import { Octokit } from '@octokit/rest';
-import { Endpoints } from '@octokit/types';
-import { RequestError } from '@octokit/request-error';
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import { resolveRunnerProviderType } from '@aws-github-runner/runner-provider';
+import { RequestError } from '@octokit/request-error';
+import { Octokit } from '@octokit/rest';
 import moment from 'moment';
 
-import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
+import {
+  createEnterprisePATClient,
+  createGithubAppAuth,
+  createGithubInstallationAuth,
+  createOctokitClient,
+} from '../github/auth';
 import { createScaleDownRunnerProvider } from '../runner-provider-registry';
-import { GhRunners, githubCache } from './cache';
-import { ScalingDownConfigList, getEvictionStrategy, getIdleRunnerCount } from './scale-down-config';
 import { metricGitHubAppRateLimit } from '../github/rate-limit';
+import { GhRunners, githubCache } from './cache';
 import { getGitHubEnterpriseApiUrl } from './github-runner';
+import { ScalingDownConfigList, getEvictionStrategy, getIdleRunnerCount } from './scale-down-config';
 import type { RunnerInfo, RunnerList, ScaleDownRunnerProvider } from './scale-down-provider';
 
 const logger = createChildLogger('scale-down');
 
-type OrgRunnerList = Endpoints['GET /orgs/{org}/actions/runners']['response']['data']['runners'];
-type RepoRunnerList = Endpoints['GET /repos/{owner}/{repo}/actions/runners']['response']['data']['runners'];
-type RunnerState = OrgRunnerList[number] | RepoRunnerList[number];
+interface RunnerState {
+  busy: boolean;
+  status: string;
+}
 
 async function getOrCreateOctokit(runner: RunnerInfo): Promise<Octokit> {
   const key = runner.owner;
@@ -30,6 +35,13 @@ async function getOrCreateOctokit(runner: RunnerInfo): Promise<Octokit> {
 
   logger.debug(`[createGitHubClientForRunner] Cache miss for ${key}`);
   const { ghesApiUrl } = getGitHubEnterpriseApiUrl();
+
+  if (runner.type === 'Enterprise') {
+    const octokit = await createEnterprisePATClient(ghesApiUrl);
+    githubCache.clients.set(key, octokit);
+    return octokit;
+  }
+
   const ghAuthPre = await createGithubAppAuth(undefined, ghesApiUrl);
   const githubClientPre = await createOctokitClient(ghAuthPre.token, ghesApiUrl);
 
@@ -60,19 +72,24 @@ async function getGitHubSelfHostedRunnerState(
 ): Promise<RunnerState | null> {
   try {
     const state =
-      runner.type === 'Org'
-        ? await client.actions.getSelfHostedRunnerForOrg({
+      runner.type === 'Enterprise'
+        ? await client.request('GET /enterprises/{enterprise}/actions/runners/{runner_id}', {
             runner_id: runnerId,
-            org: runner.owner,
+            enterprise: runner.owner,
           })
-        : await client.actions.getSelfHostedRunnerForRepo({
-            runner_id: runnerId,
-            owner: runner.owner.split('/')[0],
-            repo: runner.owner.split('/')[1],
-          });
+        : runner.type === 'Org'
+          ? await client.actions.getSelfHostedRunnerForOrg({
+              runner_id: runnerId,
+              org: runner.owner,
+            })
+          : await client.actions.getSelfHostedRunnerForRepo({
+              runner_id: runnerId,
+              owner: runner.owner.split('/')[0],
+              repo: runner.owner.split('/')[1],
+            });
     metricGitHubAppRateLimit(state.headers);
 
-    return state.data;
+    return state.data as RunnerState;
   } catch (error) {
     if (error instanceof RequestError && error.status === 404) {
       logger.info(`Runner '${runner.id}' with GitHub Runner ID '${runnerId}' not found on GitHub (404)`);
@@ -93,7 +110,7 @@ async function getGitHubRunnerBusyState(client: Octokit, runner: RunnerInfo, run
 }
 
 async function listGitHubRunners(runner: RunnerInfo): Promise<GhRunners> {
-  const key = runner.owner as string;
+  const key = runner.owner;
   const cachedRunners = githubCache.runners.get(key);
   if (cachedRunners) {
     logger.debug(`[listGithubRunners] Cache hit for ${key}`);
@@ -102,20 +119,22 @@ async function listGitHubRunners(runner: RunnerInfo): Promise<GhRunners> {
 
   logger.debug(`[listGithubRunners] Cache miss for ${key}`);
   const client = await getOrCreateOctokit(runner);
-  let runners;
-  if (runner.type === 'Org') {
-    runners = await client.paginate(client.actions.listSelfHostedRunnersForOrg, {
-      org: runner.owner,
-      per_page: 100,
-    });
-  } else {
-    const [owner, repo] = runner.owner.split('/');
-    runners = await client.paginate(client.actions.listSelfHostedRunnersForRepo, {
-      owner,
-      repo,
-      per_page: 100,
-    });
-  }
+  const runners =
+    runner.type === 'Enterprise'
+      ? ((await client.paginate('GET /enterprises/{enterprise}/actions/runners', {
+          enterprise: runner.owner,
+          per_page: 100,
+        })) as GhRunners)
+      : runner.type === 'Org'
+        ? await client.paginate(client.actions.listSelfHostedRunnersForOrg, {
+            org: runner.owner,
+            per_page: 100,
+          })
+        : await client.paginate(client.actions.listSelfHostedRunnersForRepo, {
+            owner: runner.owner.split('/')[0],
+            repo: runner.owner.split('/')[1],
+            per_page: 100,
+          });
   githubCache.runners.set(key, runners);
   logger.debug(`[listGithubRunners] Cache set for ${key}`);
   logger.debug(`[listGithubRunners] Runners: ${JSON.stringify(runners)}`);
@@ -136,7 +155,15 @@ async function deleteGitHubRunner(
 ): Promise<{ ghRunnerId: number; status: number; success: boolean }> {
   try {
     let response;
-    if (runner.type === 'Org') {
+    if (runner.type === 'Enterprise') {
+      response = await githubInstallationClient.request(
+        'DELETE /enterprises/{enterprise}/actions/runners/{runner_id}',
+        {
+          runner_id: ghRunnerId,
+          enterprise: runner.owner,
+        },
+      );
+    } else if (runner.type === 'Org') {
       response = await githubInstallationClient.actions.deleteSelfHostedRunnerFromOrg({
         runner_id: ghRunnerId,
         org: runner.owner,
@@ -175,10 +202,9 @@ async function removeRunner(
     }
 
     const states = await Promise.all(
-      ghRunnerIds.map(async (ghRunnerId) => {
-        // Get busy state instead of using the output of listGitHubRunners(...) to minimize to race condition.
-        return await getGitHubRunnerBusyState(githubInstallationClient, runner, ghRunnerId);
-      }),
+      ghRunnerIds.map(
+        async (ghRunnerId) => await getGitHubRunnerBusyState(githubInstallationClient, runner, ghRunnerId),
+      ),
     );
 
     if (states.every((busy) => busy === false)) {
@@ -186,8 +212,8 @@ async function removeRunner(
         ghRunnerIds.map((ghRunnerId) => deleteGitHubRunner(githubInstallationClient, runner, ghRunnerId)),
       );
 
-      const allSucceeded = results.every((r) => r.success);
-      const failedRunners = results.filter((r) => !r.success);
+      const allSucceeded = results.every((result) => result.success);
+      const failedRunners = results.filter((result) => !result.success);
 
       if (allSucceeded) {
         await runnerProvider.terminate(runner.id);
@@ -195,20 +221,19 @@ async function removeRunner(
           `${runnerProvider.type.toUpperCase()} runner '${runner.id}' is terminated and GitHub runner is de-registered.`,
         );
       } else {
-        // Only terminate the provider runner if it was successfully de-registered from GitHub.
         logger.error(
           `Failed to de-register ${failedRunners.length} GitHub runner(s) for runner '${runner.id}'. ` +
             `Runner will NOT be terminated to allow retry on next scale-down cycle. ` +
-            `Failed runner IDs: ${failedRunners.map((r) => r.ghRunnerId).join(', ')}`,
+            `Failed runner IDs: ${failedRunners.map((result) => result.ghRunnerId).join(', ')}`,
         );
       }
     } else {
       logger.info(`Runner '${runner.id}' cannot be de-registered, because it is still busy.`);
     }
-  } catch (e) {
+  } catch (error) {
     logger.error(
-      `Runner '${runner.id}' cannot be de-registered. Error: ${e instanceof Error ? e.message : String(e)}`,
-      { error: e },
+      `Runner '${runner.id}' cannot be de-registered. Error: ${error instanceof Error ? error.message : String(error)}`,
+      { error },
     );
   }
 }
@@ -243,10 +268,10 @@ async function evaluateAndRemoveRunners(
             idleCounter--;
             logger.info(`Runner '${runner.id}' will be kept idle.`);
           } else {
-            logger.info(`Terminating all non busy runners.`);
+            logger.info('Terminating all non busy runners.');
             await removeRunner(
               runner,
-              ghRunnersFiltered.map((runner: { id: number }) => runner.id),
+              ghRunnersFiltered.map((ghRunner: { id: number }) => ghRunner.id),
               runnerProvider,
             );
           }
@@ -264,8 +289,8 @@ async function markOrphan(id: string, runnerProvider: ScaleDownRunnerProvider): 
   try {
     await runnerProvider.markOrphan(id);
     logger.info(`Runner '${id}' tagged as orphan.`);
-  } catch (e) {
-    logger.error(`Failed to tag runner '${id}' as orphan.`, { error: e });
+  } catch (error) {
+    logger.error(`Failed to tag runner '${id}' as orphan.`, { error });
   }
 }
 
@@ -273,8 +298,8 @@ async function unMarkOrphan(id: string, runnerProvider: ScaleDownRunnerProvider)
   try {
     await runnerProvider.unmarkOrphan(id);
     logger.info(`Runner '${id}' untagged as orphan.`);
-  } catch (e) {
-    logger.error(`Failed to un-tag runner '${id}' as orphan.`, { error: e });
+  } catch (error) {
+    logger.error(`Failed to un-tag runner '${id}' as orphan.`, { error });
   }
 }
 
@@ -290,10 +315,7 @@ async function lastChanceCheckOrphanRunner(runner: RunnerList): Promise<boolean>
     isOrphan = true;
   } else {
     logger.debug(`Runner '${runner.id}' is '${state.status}' and is currently '${state.busy ? 'busy' : 'idle'}'.`);
-    const isOfflineAndBusy = state.status === 'offline' && state.busy;
-    if (isOfflineAndBusy) {
-      isOrphan = true;
-    }
+    isOrphan = state.status === 'offline' && state.busy;
   }
   logger.info(`Runner '${runner.id}' is judged to ${isOrphan ? 'be' : 'not be'} orphaned.`);
   return isOrphan;
@@ -317,13 +339,13 @@ async function terminateOrphan(environment: string, runnerProvider: ScaleDownRun
         }
       } else {
         logger.info(`Terminating orphan runner '${runner.id}'`);
-        await runnerProvider.terminate(runner.id).catch((e) => {
-          logger.error(`Failed to terminate orphan runner '${runner.id}'`, { error: e });
+        await runnerProvider.terminate(runner.id).catch((error) => {
+          logger.error(`Failed to terminate orphan runner '${runner.id}'`, { error });
         });
       }
     }
-  } catch (e) {
-    logger.warn(`Failure during orphan termination processing.`, { error: e });
+  } catch (error) {
+    logger.warn('Failure during orphan termination processing.', { error });
   }
 }
 
@@ -344,8 +366,6 @@ async function listRunners(environment: string, runnerProvider: ScaleDownRunnerP
 }
 
 function filterRunners(runners: RunnerList[]): RunnerInfo[] {
-  // Managed runners are launched with owner and type tags together. Exclude incomplete records because both
-  // values are required to select the GitHub owner and runner API used during scale-down.
   return runners.filter((runner) => runner.owner && runner.type && !runner.orphan) as RunnerInfo[];
 }
 
@@ -356,10 +376,8 @@ export async function scaleDown(): Promise<void> {
   const runnerProviderType = resolveRunnerProviderType(process.env.RUNNER_PROVIDER_TYPE);
   const runnerProvider = createScaleDownRunnerProvider(runnerProviderType);
 
-  // first runners marked to be orphan.
   await terminateOrphan(environment, runnerProvider);
 
-  // next scale down idle runners with respect to config and mark potential orphans
   const providerRunners = await listRunners(environment, runnerProvider);
   const activeProviderRunnersCount = providerRunners.length;
   logger.info(
