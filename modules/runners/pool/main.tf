@@ -38,7 +38,7 @@ resource "aws_lambda_function" "pool" {
       INSTANCE_TYPE_PRIORITIES                 = var.config.instance_type_priorities != null ? jsonencode(var.config.instance_type_priorities) : ""
       INSTANCE_TYPES                           = join(",", var.config.instance_types)
       LAUNCH_TEMPLATE_NAME                     = var.config.runner.launch_template.name
-      LOG_LEVEL                                = var.config.lambda.log_level
+      LOG_LEVEL                                = upper(var.config.lambda.log_level)
       NODE_TLS_REJECT_UNAUTHORIZED             = var.config.ghes.url != null && !var.config.ghes.ssl_verify ? 0 : 1
       PARAMETER_GITHUB_APP_ID_NAME             = var.config.github_app_parameters.id.name
       PARAMETER_GITHUB_APP_KEY_BASE64_NAME     = var.config.github_app_parameters.key_base64.name

@@ -1,4 +1,4 @@
-import type { RunnerProviderType } from '@aws-github-runner/runner-provider';
+import type { RunnerProviderType } from '@aws-github-runner/runner-providers/provider-types';
 import { describe, expect, it } from 'vitest';
 
 import type { RunnerMatcherConfig } from '../sqs';

@@ -1,31 +1,31 @@
 import moment from 'moment';
 import { describe, expect, it } from 'vitest';
 
-import { RunnerInfo } from '../aws/ec2-runners.d';
 import { newestFirstStrategy, oldestFirstStrategy } from './scale-down';
+import type { RunnerInfo } from './scale-down-provider';
 
 describe('When runners are sorted', () => {
   const runners: RunnerInfo[] = [
     {
-      instanceId: '1',
+      id: '1',
       launchTime: moment(new Date()).subtract(1, 'minute').toDate(),
       owner: 'owner',
       type: 'type',
     },
     {
-      instanceId: '3',
+      id: '3',
       launchTime: moment(new Date()).subtract(3, 'minute').toDate(),
       owner: 'owner',
       type: 'type',
     },
     {
-      instanceId: '2',
+      id: '2',
       launchTime: moment(new Date()).subtract(2, 'minute').toDate(),
       owner: 'owner',
       type: 'type',
     },
     {
-      instanceId: '0',
+      id: '0',
       launchTime: moment(new Date()).subtract(0, 'minute').toDate(),
       owner: 'owner',
       type: 'type',
@@ -34,31 +34,31 @@ describe('When runners are sorted', () => {
 
   it('Should sort runners descending for eviction strategy oldest first te keep the youngest.', () => {
     runners.sort(oldestFirstStrategy);
-    expect(runners[0].instanceId).toEqual('0');
-    expect(runners[1].instanceId).toEqual('1');
-    expect(runners[2].instanceId).toEqual('2');
-    expect(runners[3].instanceId).toEqual('3');
+    expect(runners[0].id).toEqual('0');
+    expect(runners[1].id).toEqual('1');
+    expect(runners[2].id).toEqual('2');
+    expect(runners[3].id).toEqual('3');
   });
 
   it('Should sort runners ascending for eviction strategy newest first te keep oldest.', () => {
     runners.sort(newestFirstStrategy);
-    expect(runners[0].instanceId).toEqual('3');
-    expect(runners[1].instanceId).toEqual('2');
-    expect(runners[2].instanceId).toEqual('1');
-    expect(runners[3].instanceId).toEqual('0');
+    expect(runners[0].id).toEqual('3');
+    expect(runners[1].id).toEqual('2');
+    expect(runners[2].id).toEqual('1');
+    expect(runners[3].id).toEqual('0');
   });
 
   it('Should sort runners with equal launch time.', () => {
     const runnersTest = [...runners];
     const same = moment(new Date()).subtract(4, 'minute').toDate();
     runnersTest.push({
-      instanceId: '4',
+      id: '4',
       launchTime: same,
       owner: 'owner',
       type: 'type',
     });
     runnersTest.push({
-      instanceId: '5',
+      id: '5',
       launchTime: same,
       owner: 'owner',
       type: 'type',
@@ -77,19 +77,19 @@ describe('When runners are sorted', () => {
   it('Should sort runners even when launch time is undefined.', () => {
     const runnersTest = [
       {
-        instanceId: '0',
+        id: '0',
         launchTime: undefined,
         owner: 'owner',
         type: 'type',
       },
       {
-        instanceId: '1',
+        id: '1',
         launchTime: moment(new Date()).subtract(3, 'minute').toDate(),
         owner: 'owner',
         type: 'type',
       },
       {
-        instanceId: '0',
+        id: '0',
         launchTime: undefined,
         owner: 'owner',
         type: 'type',

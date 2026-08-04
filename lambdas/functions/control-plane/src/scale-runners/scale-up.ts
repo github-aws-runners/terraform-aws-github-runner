@@ -1,10 +1,10 @@
 import { addPersistentContextToChildLogger, createChildLogger } from '@aws-github-runner/aws-powertools-util';
-import { resolveRunnerProviderType } from '@aws-github-runner/runner-provider';
+import { resolveRunnerProviderType } from '@aws-github-runner/runner-providers/provider-types';
 import { Octokit } from '@octokit/rest';
 import yn from 'yn';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
-import { createScaleUpRunnerProvider } from '../runner-provider-registry';
+import { controlPlaneProviderRegistry } from '../control-plane-providers';
 import {
   getGitHubEnterpriseApiUrl,
   getInstallationId,
@@ -87,7 +87,10 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       ? validateSsmParameterStoreTags(process.env.SSM_PARAMETER_STORE_TAGS)
       : [];
   const runnerProviderType = resolveRunnerProviderType(process.env.RUNNER_PROVIDER_TYPE);
-  const runnerProvider = createScaleUpRunnerProvider(runnerProviderType);
+  const runnerProvider = {
+    ...controlPlaneProviderRegistry.capability(runnerProviderType, 'scaleUp')(),
+    type: runnerProviderType,
+  };
 
   const { ghesApiUrl, ghesBaseUrl } = getGitHubEnterpriseApiUrl();
 

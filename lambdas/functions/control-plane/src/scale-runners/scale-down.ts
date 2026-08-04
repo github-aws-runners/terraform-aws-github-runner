@@ -2,11 +2,11 @@ import { Octokit } from '@octokit/rest';
 import { Endpoints } from '@octokit/types';
 import { RequestError } from '@octokit/request-error';
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
-import { resolveRunnerProviderType } from '@aws-github-runner/runner-provider';
+import { resolveRunnerProviderType } from '@aws-github-runner/runner-providers/provider-types';
 import moment from 'moment';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
-import { createScaleDownRunnerProvider } from '../runner-provider-registry';
+import { controlPlaneProviderRegistry } from '../control-plane-providers';
 import { GhRunners, githubCache } from './cache';
 import { ScalingDownConfigList, getEvictionStrategy, getIdleRunnerCount } from './scale-down-config';
 import { metricGitHubAppRateLimit } from '../github/rate-limit';
@@ -354,7 +354,10 @@ export async function scaleDown(): Promise<void> {
   const environment = process.env.ENVIRONMENT;
   const scaleDownConfigs = JSON.parse(process.env.SCALE_DOWN_CONFIG) as ScalingDownConfigList;
   const runnerProviderType = resolveRunnerProviderType(process.env.RUNNER_PROVIDER_TYPE);
-  const runnerProvider = createScaleDownRunnerProvider(runnerProviderType);
+  const runnerProvider = {
+    ...controlPlaneProviderRegistry.capability(runnerProviderType, 'scaleDown')(),
+    type: runnerProviderType,
+  };
 
   // first runners marked to be orphan.
   await terminateOrphan(environment, runnerProvider);

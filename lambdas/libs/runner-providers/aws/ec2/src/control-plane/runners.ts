@@ -1,0 +1,647 @@
+import {
+  type BlockDeviceMapping,
+  CreateFleetCommand,
+  CreateFleetResult,
+  CreateTagsCommand,
+  DeleteTagsCommand,
+  DescribeInstancesCommand,
+  DescribeInstancesResult,
+  RunInstancesCommand,
+  type RunInstancesCommandInput,
+  RunInstancesCommandOutput,
+  EC2Client,
+  FleetLaunchTemplateOverridesRequest,
+  FleetOnDemandAllocationStrategy,
+  SpotAllocationStrategy,
+  Tag,
+  TerminateInstancesCommand,
+  _InstanceType,
+} from '@aws-sdk/client-ec2';
+import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
+import { getTracedAWSV3Client, tracer } from '@aws-github-runner/aws-powertools-util';
+import { getParameter } from '@aws-github-runner/aws-ssm-util';
+import moment from 'moment';
+
+import * as Runners from './runners.d';
+
+const logger = createChildLogger('runners');
+
+interface Ec2Filter {
+  Name: string;
+  Values: string[];
+}
+
+type FleetError = NonNullable<CreateFleetResult['Errors']>[number];
+
+export async function listEC2Runners(
+  filters: Runners.ListRunnerFilters | undefined = undefined,
+): Promise<Runners.RunnerList[]> {
+  const ec2Filters = constructFilters(filters);
+  const runners: Runners.RunnerList[] = [];
+  for (const filter of ec2Filters) {
+    runners.push(...(await getRunners(filter)));
+  }
+  return runners;
+}
+
+function constructFilters(filters?: Runners.ListRunnerFilters): Ec2Filter[][] {
+  const ec2Statuses = filters?.statuses ? filters.statuses : ['running', 'pending'];
+  const ec2Filters: Ec2Filter[][] = [];
+  const ec2FiltersBase = [{ Name: 'instance-state-name', Values: ec2Statuses }];
+  if (filters) {
+    if (filters.environment !== undefined) {
+      ec2FiltersBase.push({ Name: 'tag:ghr:environment', Values: [filters.environment] });
+    }
+    if (filters.runnerType && filters.runnerOwner) {
+      ec2FiltersBase.push({ Name: `tag:ghr:Type`, Values: [filters.runnerType] });
+      ec2FiltersBase.push({ Name: `tag:ghr:Owner`, Values: [filters.runnerOwner] });
+    }
+    if (filters.orphan) {
+      ec2FiltersBase.push({ Name: 'tag:ghr:orphan', Values: ['true'] });
+    }
+  }
+
+  for (const key of ['tag:ghr:Application']) {
+    const filter = [...ec2FiltersBase];
+    filter.push({ Name: key, Values: ['github-action-runner'] });
+    ec2Filters.push(filter);
+  }
+  return ec2Filters;
+}
+
+async function getRunners(ec2Filters: Ec2Filter[]): Promise<Runners.RunnerList[]> {
+  const ec2 = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
+  const runners: Runners.RunnerList[] = [];
+  let nextToken;
+  let hasNext = true;
+  while (hasNext) {
+    const instances: DescribeInstancesResult = await ec2.send(
+      new DescribeInstancesCommand({ Filters: ec2Filters, NextToken: nextToken }),
+    );
+    hasNext = instances.NextToken ? true : false;
+    nextToken = instances.NextToken;
+    runners.push(...getRunnerInfo(instances));
+  }
+  return runners;
+}
+
+function getRunnerInfo(runningInstances: DescribeInstancesResult) {
+  const runners: Runners.RunnerList[] = [];
+  if (runningInstances.Reservations) {
+    for (const r of runningInstances.Reservations) {
+      if (r.Instances) {
+        for (const i of r.Instances) {
+          runners.push({
+            instanceId: i.InstanceId as string,
+            launchTime: i.LaunchTime,
+            owner: i.Tags?.find((e) => e.Key === 'ghr:Owner')?.Value as string,
+            type: i.Tags?.find((e) => e.Key === 'ghr:Type')?.Value as string,
+            repo: i.Tags?.find((e) => e.Key === 'ghr:Repo')?.Value as string,
+            org: i.Tags?.find((e) => e.Key === 'ghr:Org')?.Value as string,
+            orphan: i.Tags?.find((e) => e.Key === 'ghr:orphan')?.Value === 'true',
+            runnerId: i.Tags?.find((e) => e.Key === 'ghr:github_runner_id')?.Value as string,
+            bypassRemoval: i.Tags?.find((e) => e.Key === 'ghr:bypass-removal')?.Value === 'true',
+          });
+        }
+      }
+    }
+  }
+  return runners;
+}
+
+export async function terminateRunner(instanceId: string): Promise<void> {
+  logger.debug(`Runner '${instanceId}' will be terminated.`);
+  const ec2 = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
+  await ec2.send(new TerminateInstancesCommand({ InstanceIds: [instanceId] }));
+  logger.debug(`Runner ${instanceId} has been terminated.`);
+}
+
+export async function tag(instanceId: string, tags: Tag[]): Promise<void> {
+  logger.debug(`Tagging '${instanceId}'`, { tags });
+  const ec2 = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
+  await ec2.send(new CreateTagsCommand({ Resources: [instanceId], Tags: tags }));
+}
+
+export async function untag(instanceId: string, tags: Tag[]): Promise<void> {
+  logger.debug(`Untagging '${instanceId}'`, { tags });
+  const ec2 = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
+  await ec2.send(new DeleteTagsCommand({ Resources: [instanceId], Tags: tags }));
+}
+
+const SPOT_ALLOCATION_STRATEGIES = [
+  'lowest-price',
+  'diversified',
+  'capacity-optimized',
+  'capacity-optimized-prioritized',
+  'price-capacity-optimized',
+];
+const ON_DEMAND_ALLOCATION_STRATEGIES = ['lowest-price', 'prioritized'];
+
+interface AwsErrorLike extends Error {
+  code?: string;
+  cause?: unknown;
+  $fault?: 'client' | 'server';
+  $metadata?: {
+    httpStatusCode?: number;
+  };
+}
+
+const RETRYABLE_AWS_ERROR_NAMES = new Set([
+  'EC2ThrottledException',
+  'InternalError',
+  'RequestLimitExceeded',
+  'RequestTimeout',
+  'RequestTimeoutException',
+  'ServiceUnavailable',
+  'Throttling',
+  'ThrottlingException',
+]);
+
+const RETRYABLE_NETWORK_ERROR_CODES = new Set([
+  'EAI_AGAIN',
+  'ECONNREFUSED',
+  'ECONNRESET',
+  'ENETUNREACH',
+  'ENOTFOUND',
+  'ETIMEDOUT',
+]);
+
+function isRetryableAwsError(error: unknown, configuredRetryableErrors: string[]): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const awsError = error as AwsErrorLike;
+  if (isRetryableAwsErrorName(awsError.name, configuredRetryableErrors)) {
+    return true;
+  }
+
+  const httpStatusCode = awsError.$metadata?.httpStatusCode;
+  if (
+    awsError.$fault === 'server' ||
+    httpStatusCode === 429 ||
+    (httpStatusCode !== undefined && httpStatusCode >= 500) ||
+    (awsError.code !== undefined && RETRYABLE_NETWORK_ERROR_CODES.has(awsError.code))
+  ) {
+    return true;
+  }
+
+  if (awsError.cause && awsError.cause !== error) {
+    return isRetryableAwsError(awsError.cause, configuredRetryableErrors);
+  }
+
+  return false;
+}
+
+function isRetryableAwsErrorName(errorName: string, configuredRetryableErrors: string[]): boolean {
+  return configuredRetryableErrors.includes(errorName) || RETRYABLE_AWS_ERROR_NAMES.has(errorName);
+}
+
+// The instance_allocation_strategy variable accepts the union of spot and on-demand strategies,
+// so a value valid for one capacity type can be invalid for the other. AWS rejects CreateFleet
+// when the strategy is not valid for the target capacity type, so fall back to 'lowest-price'
+// (the AWS default) when the configured value is invalid for the given capacity type.
+function sanitizeAllocationStrategy(
+  strategy: string,
+  targetCapacityType: string,
+): SpotAllocationStrategy | FleetOnDemandAllocationStrategy {
+  const validStrategies = targetCapacityType === 'spot' ? SPOT_ALLOCATION_STRATEGIES : ON_DEMAND_ALLOCATION_STRATEGIES;
+  return (validStrategies.includes(strategy) ? strategy : 'lowest-price') as
+    | SpotAllocationStrategy
+    | FleetOnDemandAllocationStrategy;
+}
+
+function generateFleetOverrides(
+  subnetIds: string[],
+  instancesTypes: string[],
+  amiId?: string,
+  ec2OverrideConfig?: Runners.Ec2OverrideConfig,
+  allocationStrategy?: string,
+  instanceTypePriorities?: Record<string, number>,
+): FleetLaunchTemplateOverridesRequest[] {
+  const result: FleetLaunchTemplateOverridesRequest[] = [];
+
+  // Use override values if available, otherwise use parameter arrays
+  const subnetsToUse = ec2OverrideConfig?.SubnetId ? [ec2OverrideConfig.SubnetId] : subnetIds;
+  const instanceTypesToUse = ec2OverrideConfig?.InstanceType ? [ec2OverrideConfig.InstanceType] : instancesTypes;
+  const amiIdToUse = ec2OverrideConfig?.ImageId ?? amiId;
+
+  // Both the on-demand 'prioritized' and the spot 'capacity-optimized-prioritized' strategies
+  // honor the Priority field of the launch template overrides.
+  const usesPriority = allocationStrategy === 'prioritized' || allocationStrategy === 'capacity-optimized-prioritized';
+
+  subnetsToUse.forEach((s) => {
+    instanceTypesToUse.forEach((i, index) => {
+      const item: FleetLaunchTemplateOverridesRequest = {
+        SubnetId: s,
+        InstanceType: i as _InstanceType,
+        ImageId: amiIdToUse,
+        ...(usesPriority && { Priority: instanceTypePriorities?.[i] ?? index }),
+        ...ec2OverrideConfig,
+      };
+      result.push(item);
+    });
+  });
+  return result;
+}
+
+// Keep this allow-list explicit so Fleet-only override fields are not sent to RunInstances.
+type RunInstancesLaunchOverrides = Pick<
+  RunInstancesCommandInput,
+  'BlockDeviceMappings' | 'ImageId' | 'InstanceType' | 'Placement' | 'SubnetId'
+>;
+
+interface RunInstancesLaunchDefaults {
+  imageId?: string;
+  instanceType: _InstanceType;
+  subnetId: string;
+}
+
+function buildRunInstancesOverrides(
+  ec2OverrideConfig: Runners.Ec2OverrideConfig | undefined,
+  defaults: RunInstancesLaunchDefaults,
+): RunInstancesLaunchOverrides {
+  const imageIdToUse = ec2OverrideConfig?.ImageId ?? defaults.imageId;
+  const placement = {
+    ...ec2OverrideConfig?.Placement,
+  };
+
+  if (!placement.AvailabilityZone && !placement.AvailabilityZoneId) {
+    if (ec2OverrideConfig?.AvailabilityZone) {
+      placement.AvailabilityZone = ec2OverrideConfig.AvailabilityZone;
+    } else if (ec2OverrideConfig?.AvailabilityZoneId) {
+      placement.AvailabilityZoneId = ec2OverrideConfig.AvailabilityZoneId;
+    }
+  }
+
+  const overrides: RunInstancesLaunchOverrides = {
+    InstanceType: ec2OverrideConfig?.InstanceType ?? defaults.instanceType,
+    SubnetId: ec2OverrideConfig?.SubnetId ?? defaults.subnetId,
+  };
+
+  if (imageIdToUse) {
+    overrides.ImageId = imageIdToUse;
+  }
+
+  if (Object.keys(placement).length > 0) {
+    overrides.Placement = placement;
+  }
+
+  if (ec2OverrideConfig?.BlockDeviceMappings) {
+    overrides.BlockDeviceMappings = ec2OverrideConfig.BlockDeviceMappings.map(
+      (blockDeviceMapping): BlockDeviceMapping => ({
+        ...blockDeviceMapping,
+        ...(blockDeviceMapping.Ebs ? { Ebs: { ...blockDeviceMapping.Ebs } } : {}),
+      }),
+    );
+  }
+
+  return overrides;
+}
+
+export async function createRunner(
+  runnerParameters: Runners.RunnerInputParameters,
+): Promise<Runners.CreateRunnerResult> {
+  logger.debug('Runner configuration.', {
+    runner: {
+      configuration: {
+        ...runnerParameters,
+      },
+    },
+  });
+
+  const ec2Client = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
+  let amiIdOverride: string | undefined;
+  try {
+    amiIdOverride = await getAmiIdOverride(runnerParameters);
+  } catch (error) {
+    const retryable = isRetryableAwsError(error, runnerParameters.scaleErrors);
+    logger.warn('Runner creation failed before an EC2 request could be made.', {
+      error: error as Error,
+      retryable,
+      failedInstanceCount: runnerParameters.numberOfRunners,
+    });
+    return failedCreateRunnerResult(runnerParameters.numberOfRunners, retryable);
+  }
+
+  // EC2 Fleet (CreateFleet) does not support launching instances onto dedicated hosts
+  // for instance types like mac*.metal. Use RunInstances directly instead.
+  if (runnerParameters.useDedicatedHost) {
+    logger.info('Using RunInstances for dedicated host placement (CreateFleet does not support dedicated hosts).');
+    const result = await createInstancesWithRunInstances(runnerParameters, amiIdOverride, ec2Client);
+    logger.info(`Created instance(s) via RunInstances: ${result.instances.join(',')}`);
+    return result;
+  }
+
+  let fleet: CreateFleetResult;
+  try {
+    fleet = await createInstances(runnerParameters, amiIdOverride, ec2Client);
+  } catch (error) {
+    const retryable = isRetryableAwsError(error, runnerParameters.scaleErrors);
+    logger.warn('Create fleet request failed.', { error: error as Error, retryable });
+    return failedCreateRunnerResult(runnerParameters.numberOfRunners, retryable);
+  }
+
+  const result = await processFleetResult(fleet, runnerParameters);
+
+  logger.info(`Created instance(s): ${result.instances.join(',')}`);
+
+  return result;
+}
+
+async function processFleetResult(
+  fleet: CreateFleetResult,
+  runnerParameters: Runners.RunnerInputParameters,
+): Promise<Runners.CreateRunnerResult> {
+  const instances: string[] = fleet.Instances?.flatMap((i) => i.InstanceIds?.flatMap((j) => j) || []) || [];
+
+  if (instances.length === runnerParameters.numberOfRunners) {
+    return successfulCreateRunnerResult(instances);
+  }
+
+  logger.warn(
+    `${
+      instances.length === 0 ? 'No' : instances.length + ' off ' + runnerParameters.numberOfRunners
+    } instances created.`,
+    { data: fleet },
+  );
+
+  const errors = fleet.Errors?.flatMap((e) => e.ErrorCode || '') || [];
+
+  if (
+    errors.some((e) => runnerParameters.onDemandFailoverOnError?.includes(e)) &&
+    runnerParameters.ec2instanceCriteria.targetCapacityType === 'spot'
+  ) {
+    logger.warn(`Create fleet failed, initatiing fall back to on demand instances.`);
+    logger.debug('Create fleet failed.', { data: fleet.Errors });
+    const numberOfInstances = runnerParameters.numberOfRunners - instances.length;
+    const failoverAllocationStrategy = sanitizeAllocationStrategy(
+      runnerParameters.ec2instanceCriteria.instanceAllocationStrategy,
+      'on-demand',
+    );
+    const onDemandResult = await createRunner({
+      ...runnerParameters,
+      numberOfRunners: numberOfInstances,
+      onDemandFailoverOnError: ['InsufficientInstanceCapacity'],
+      ec2instanceCriteria: {
+        ...runnerParameters.ec2instanceCriteria,
+        targetCapacityType: 'on-demand',
+        instanceAllocationStrategy: failoverAllocationStrategy,
+      },
+    });
+    instances.push(...onDemandResult.instances);
+    return {
+      instances,
+      retryableErrorCount: onDemandResult.retryableErrorCount,
+      nonRetryableErrorCount: onDemandResult.nonRetryableErrorCount,
+    };
+  }
+
+  const configuredRetryableErrors = runnerParameters.scaleErrors;
+  const { fleetErrorsTriggeringRetry, fleetErrorsNotTriggeringRetry } = classifyFleetErrors(
+    fleet.Errors || [],
+    configuredRetryableErrors,
+  );
+
+  const missingInstanceCount = runnerParameters.numberOfRunners - instances.length;
+  // CreateFleet errors describe failed launch-template overrides, not individual instances.
+  // A retryable override failure can therefore account for any number of missing instances.
+  const retryableErrorCount = fleetErrorsTriggeringRetry.length > 0 ? missingInstanceCount : 0;
+  const nonRetryableErrorCount = missingInstanceCount - retryableErrorCount;
+
+  logger.warn('Create fleet did not create every requested instance.', {
+    data: fleet.Errors,
+    retryableErrorCount,
+    nonRetryableErrorCount,
+    fleetErrorsTriggeringRetry: structuredClone(fleetErrorsTriggeringRetry),
+    fleetErrorsNotTriggeringRetry: structuredClone(fleetErrorsNotTriggeringRetry),
+  });
+  return { instances, retryableErrorCount, nonRetryableErrorCount };
+}
+
+function classifyFleetErrors(
+  errors: FleetError[],
+  configuredRetryableErrors: string[],
+): { fleetErrorsTriggeringRetry: FleetError[]; fleetErrorsNotTriggeringRetry: FleetError[] } {
+  return errors.reduce<{
+    fleetErrorsTriggeringRetry: FleetError[];
+    fleetErrorsNotTriggeringRetry: FleetError[];
+  }>(
+    (classifiedErrors, error) => {
+      if (isRetryableAwsErrorName(error.ErrorCode || '', configuredRetryableErrors)) {
+        classifiedErrors.fleetErrorsTriggeringRetry.push(error);
+      } else {
+        classifiedErrors.fleetErrorsNotTriggeringRetry.push(error);
+      }
+      return classifiedErrors;
+    },
+    { fleetErrorsTriggeringRetry: [], fleetErrorsNotTriggeringRetry: [] },
+  );
+}
+
+function processRunInstanceResult(
+  result: RunInstancesCommandOutput,
+  runnerParameters: Runners.RunnerInputParameters,
+): Runners.CreateRunnerResult {
+  const instances = result.Instances?.map((i) => i.InstanceId!).filter(Boolean) || [];
+
+  if (instances.length === runnerParameters.numberOfRunners) {
+    return successfulCreateRunnerResult(instances);
+  }
+
+  logger.warn(
+    `${
+      instances.length === 0 ? 'No' : instances.length + ' off ' + runnerParameters.numberOfRunners
+    } instances created.`,
+    { data: result },
+  );
+
+  const nonRetryableErrorCount = runnerParameters.numberOfRunners - instances.length;
+  logger.warn('RunInstances did not create every requested instance.', {
+    data: result,
+    retryable: false,
+    nonRetryableErrorCount,
+  });
+  return { instances, retryableErrorCount: 0, nonRetryableErrorCount };
+}
+
+function successfulCreateRunnerResult(instances: string[]): Runners.CreateRunnerResult {
+  return { instances, retryableErrorCount: 0, nonRetryableErrorCount: 0 };
+}
+
+function failedCreateRunnerResult(failedInstanceCount: number, isRetryable: boolean): Runners.CreateRunnerResult {
+  return {
+    instances: [],
+    retryableErrorCount: isRetryable ? failedInstanceCount : 0,
+    nonRetryableErrorCount: isRetryable ? 0 : failedInstanceCount,
+  };
+}
+
+async function getAmiIdOverride(runnerParameters: Runners.RunnerInputParameters): Promise<string | undefined> {
+  if (!runnerParameters.amiIdSsmParameterName) {
+    return undefined;
+  }
+
+  try {
+    const amiIdOverride = await getParameter(runnerParameters.amiIdSsmParameterName);
+    logger.debug(`AMI override SSM parameter (${runnerParameters.amiIdSsmParameterName}) set to: ${amiIdOverride}`);
+    return amiIdOverride;
+  } catch (e) {
+    logger.debug(
+      `Failed to lookup runner AMI ID from SSM parameter: ${runnerParameters.amiIdSsmParameterName}. ` +
+        'Please ensure that the given parameter exists on this region and contains a valid runner AMI ID',
+      { error: e },
+    );
+    throw e;
+  }
+}
+
+async function createInstances(
+  runnerParameters: Runners.RunnerInputParameters,
+  amiIdOverride: string | undefined,
+  ec2Client: EC2Client,
+) {
+  const tags = [
+    { Key: 'ghr:Application', Value: 'github-action-runner' },
+    { Key: 'ghr:created_by', Value: runnerParameters.source },
+    { Key: 'ghr:Type', Value: runnerParameters.runnerType },
+    { Key: 'ghr:Owner', Value: runnerParameters.runnerOwner },
+  ];
+
+  if (runnerParameters.tracingEnabled) {
+    const traceId = tracer.getRootXrayTraceId();
+    tags.push({ Key: 'ghr:trace_id', Value: traceId! });
+  }
+
+  const targetCapacityType = runnerParameters.ec2instanceCriteria.targetCapacityType;
+  const allocationStrategy = sanitizeAllocationStrategy(
+    runnerParameters.ec2instanceCriteria.instanceAllocationStrategy,
+    targetCapacityType,
+  );
+
+  let fleet: CreateFleetResult;
+  try {
+    // see for spec https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_CreateFleet.html
+    const createFleetCommand = new CreateFleetCommand({
+      LaunchTemplateConfigs: [
+        {
+          LaunchTemplateSpecification: {
+            LaunchTemplateName: runnerParameters.launchTemplateName,
+            Version: '$Default',
+          },
+          Overrides: generateFleetOverrides(
+            runnerParameters.subnets,
+            runnerParameters.ec2instanceCriteria.instanceTypes,
+            amiIdOverride,
+            runnerParameters.ec2OverrideConfig,
+            allocationStrategy,
+            runnerParameters.ec2instanceCriteria.instanceTypePriorities,
+          ),
+        },
+      ],
+      ...(targetCapacityType === 'spot'
+        ? {
+            SpotOptions: {
+              MaxTotalPrice: runnerParameters.ec2instanceCriteria.maxSpotPrice,
+              AllocationStrategy: allocationStrategy as SpotAllocationStrategy,
+            },
+          }
+        : {
+            OnDemandOptions: {
+              AllocationStrategy: allocationStrategy as FleetOnDemandAllocationStrategy,
+            },
+          }),
+      TargetCapacitySpecification: {
+        TotalTargetCapacity: runnerParameters.numberOfRunners,
+        DefaultTargetCapacityType: targetCapacityType,
+      },
+      TagSpecifications: [
+        {
+          ResourceType: 'instance',
+          Tags: tags,
+        },
+        {
+          ResourceType: 'volume',
+          Tags: tags,
+        },
+        {
+          ResourceType: 'fleet',
+          Tags: tags,
+        },
+      ],
+      Type: 'instant',
+    });
+    logger.debug('CreateFleet request payload.', { payload: createFleetCommand.input });
+    fleet = await ec2Client.send(createFleetCommand);
+  } catch (e) {
+    logger.warn('Create fleet request failed.', { error: e as Error });
+    throw e;
+  }
+  return fleet;
+}
+
+async function createInstancesWithRunInstances(
+  runnerParameters: Runners.RunnerInputParameters,
+  amiIdOverride: string | undefined,
+  ec2Client: EC2Client,
+): Promise<Runners.CreateRunnerResult> {
+  const tags = [
+    { Key: 'ghr:Application', Value: 'github-action-runner' },
+    { Key: 'ghr:created_by', Value: runnerParameters.numberOfRunners === 1 ? 'scale-up-lambda' : 'pool-lambda' },
+    { Key: 'ghr:Type', Value: runnerParameters.runnerType },
+    { Key: 'ghr:Owner', Value: runnerParameters.runnerOwner },
+  ];
+
+  if (runnerParameters.tracingEnabled) {
+    const traceId = tracer.getRootXrayTraceId();
+    tags.push({ Key: 'ghr:trace_id', Value: traceId! });
+  }
+
+  if (runnerParameters.ec2instanceCriteria.targetCapacityType === 'spot') {
+    logger.warn(
+      'Spot instances are not supported with RunInstances. Please set targetCapacityType to on-demand for dedicated hosts.',
+    );
+    return failedCreateRunnerResult(runnerParameters.numberOfRunners, false);
+  }
+
+  try {
+    const runInstancesCommand = new RunInstancesCommand({
+      LaunchTemplate: {
+        LaunchTemplateName: runnerParameters.launchTemplateName,
+        Version: '$Default',
+      },
+      ...buildRunInstancesOverrides(runnerParameters.ec2OverrideConfig, {
+        imageId: amiIdOverride,
+        instanceType: runnerParameters.ec2instanceCriteria.instanceTypes[0] as _InstanceType,
+        subnetId: runnerParameters.subnets[0],
+      }),
+      MinCount: runnerParameters.numberOfRunners,
+      MaxCount: runnerParameters.numberOfRunners,
+      TagSpecifications: [
+        {
+          ResourceType: 'instance',
+          Tags: tags,
+        },
+        {
+          ResourceType: 'volume',
+          Tags: tags,
+        },
+      ],
+    });
+
+    logger.debug('RunInstances request payload.', { payload: runInstancesCommand.input });
+    const result = await ec2Client.send(runInstancesCommand);
+    return processRunInstanceResult(result, runnerParameters);
+  } catch (error) {
+    const retryable = isRetryableAwsError(error, runnerParameters.scaleErrors);
+    logger.warn('RunInstances request failed for dedicated host.', { error: error as Error, retryable });
+    return failedCreateRunnerResult(runnerParameters.numberOfRunners, retryable);
+  }
+}
+
+// If launchTime is undefined, this will return false
+export function bootTimeExceeded(ec2Runner: { launchTime?: Date }): boolean {
+  const runnerBootTimeInMinutes = process.env.RUNNER_BOOT_TIME_IN_MINUTES;
+  const launchTimePlusBootTime = moment(ec2Runner.launchTime).utc().add(runnerBootTimeInMinutes, 'minutes');
+  return launchTimePlusBootTime < moment(new Date()).utc();
+}

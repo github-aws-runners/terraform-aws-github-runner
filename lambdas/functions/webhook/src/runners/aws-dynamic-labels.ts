@@ -1,31 +1,27 @@
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
-import { normalizeRunnerProviderType } from '@aws-github-runner/runner-provider';
+import type { DynamicLabelDispatchTarget } from '@aws-github-runner/runner-providers';
+import { normalizeRunnerProviderType } from '@aws-github-runner/runner-providers/provider-types';
+import { webhookProviderRegistry } from '@aws-github-runner/runner-providers/webhook';
 
 import type { RunnerMatcherConfig } from '../sqs';
-import { AwsDynamicLabelDispatchTarget, AwsDynamicLabelProviderStrategy } from './aws-dynamic-labels-provider';
-import { ec2DynamicLabelProviderStrategy } from './ec2-dynamic-labels';
 
 const logger = createChildLogger('handler');
-
-const awsDynamicLabelProviderStrategies: AwsDynamicLabelProviderStrategy[] = [ec2DynamicLabelProviderStrategy];
 
 export function selectAwsDynamicLabelQueue(
   matches: RunnerMatcherConfig[],
   nonGhrLabels: string[],
   sanitizedGhrLabels: string[],
-): AwsDynamicLabelDispatchTarget | undefined {
+): DynamicLabelDispatchTarget | undefined {
   for (const queue of matches) {
     const provider = normalizeRunnerProviderType(queue.runnerProvider);
-    const strategy = provider
-      ? awsDynamicLabelProviderStrategies.find((strategy) => strategy.type === provider)
-      : undefined;
+    const dynamicLabels = provider ? webhookProviderRegistry.capability(provider, 'dynamicLabels') : undefined;
 
-    if (!strategy) {
+    if (!dynamicLabels) {
       logger.warn(`Queue ${queue.id} has unsupported runner provider '${provider ?? String(queue.runnerProvider)}'`);
       continue;
     }
 
-    const target = strategy.selectQueue({ queue, nonGhrLabels, sanitizedGhrLabels });
+    const target = dynamicLabels.selectQueue({ queue, nonGhrLabels, sanitizedGhrLabels });
     if (target) return target;
   }
 

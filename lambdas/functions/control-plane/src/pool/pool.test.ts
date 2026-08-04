@@ -2,9 +2,9 @@ import { Octokit } from '@octokit/rest';
 import moment from 'moment-timezone';
 import * as nock from 'nock';
 
-import { listEC2Runners } from '../aws/ec2-runners';
+import { createRunners } from '@aws-github-runner/runner-providers/aws/ec2/control-plane/runner-config';
+import { listEC2Runners } from '@aws-github-runner/runner-providers/aws/ec2/control-plane/runners';
 import * as ghAuth from '../github/auth';
-import { createRunners } from '../scale-runners/ec2';
 import { getGitHubEnterpriseApiUrl } from '../scale-runners/github-runner';
 import { adjust } from './pool';
 import { describe, it, expect, beforeEach, vi, MockedClass } from 'vitest';
@@ -26,7 +26,7 @@ vi.mock('@octokit/rest', () => ({
   }),
 }));
 
-vi.mock('./../aws/ec2-runners', async () => ({
+vi.mock('@aws-github-runner/runner-providers/aws/ec2/control-plane/runners', async () => ({
   listEC2Runners: vi.fn(),
   // Include any other functions from the module that might be used
   bootTimeExceeded: vi.fn(),
@@ -37,12 +37,13 @@ vi.mock('./../github/auth', async () => ({
   createOctokitClient: vi.fn(),
 }));
 
-vi.mock('../scale-runners/ec2', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../scale-runners/ec2')>()),
+vi.mock('@aws-github-runner/runner-providers/aws/ec2/control-plane/runner-config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@aws-github-runner/runner-providers/aws/ec2/control-plane/runner-config')>()),
   createRunners: vi.fn(),
 }));
 
 vi.mock('../scale-runners/github-runner', async () => ({
+  createStartRunnerConfig: vi.fn(),
   getGitHubEnterpriseApiUrl: vi.fn().mockReturnValue({
     ghesApiUrl: '',
     ghesBaseUrl: '',
@@ -206,6 +207,7 @@ describe('Test simple pool.', () => {
         expect.anything(),
         1,
         expect.anything(),
+        expect.anything(),
         'pool-lambda',
       );
     });
@@ -223,6 +225,7 @@ describe('Test simple pool.', () => {
         expect.anything(),
         8,
         expect.anything(),
+        expect.anything(),
         'pool-lambda',
       );
     });
@@ -233,6 +236,7 @@ describe('Test simple pool.', () => {
         expect.anything(),
         expect.anything(),
         8,
+        expect.anything(),
         expect.anything(),
         'pool-lambda',
       );
@@ -323,6 +327,7 @@ describe('Test simple pool.', () => {
         expect.anything(),
         3,
         expect.anything(),
+        expect.anything(),
         'pool-lambda',
       );
     });
@@ -343,6 +348,7 @@ describe('Test simple pool.', () => {
         expect.anything(),
         expect.anything(),
         3,
+        expect.anything(),
         expect.anything(),
         'pool-lambda',
       );
@@ -400,6 +406,7 @@ describe('Test simple pool.', () => {
         expect.anything(),
         1,
         expect.anything(),
+        expect.anything(),
         'pool-lambda',
       );
     });
@@ -437,6 +444,7 @@ describe('Test simple pool.', () => {
         expect.anything(),
         2,
         expect.anything(),
+        expect.anything(),
         'pool-lambda',
       );
     });
@@ -451,6 +459,7 @@ describe('Test simple pool.', () => {
         expect.anything(),
         1,
         expect.anything(),
+        expect.anything(),
         'pool-lambda',
       );
     });
@@ -463,6 +472,7 @@ describe('Test simple pool.', () => {
         expect.anything(),
         expect.anything(),
         8,
+        expect.anything(),
         expect.anything(),
         'pool-lambda',
       );
@@ -487,6 +497,7 @@ describe('Test simple pool.', () => {
         expect.anything(),
         expect.anything(),
         2,
+        expect.anything(),
         expect.anything(),
         'pool-lambda',
       );

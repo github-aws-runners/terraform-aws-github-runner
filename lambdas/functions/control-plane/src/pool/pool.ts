@@ -1,10 +1,10 @@
 import { Octokit } from '@octokit/rest';
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
-import { resolveRunnerProviderType } from '@aws-github-runner/runner-provider';
+import { resolveRunnerProviderType } from '@aws-github-runner/runner-providers/provider-types';
 import yn from 'yn';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
-import { createPoolRunnerProvider } from '../runner-provider-registry';
+import { controlPlaneProviderRegistry } from '../control-plane-providers';
 import { getGitHubEnterpriseApiUrl, validateSsmParameterStoreTags } from '../scale-runners/github-runner';
 import type { RunnerStatus } from './pool-provider';
 
@@ -17,7 +17,10 @@ export interface PoolEvent {
 
 export async function adjust(event: PoolEvent): Promise<void> {
   const runnerProviderType = resolveRunnerProviderType(event.type);
-  const runnerProvider = createPoolRunnerProvider(runnerProviderType);
+  const runnerProvider = {
+    ...controlPlaneProviderRegistry.capability(runnerProviderType, 'pool')(),
+    type: runnerProviderType,
+  };
   logger.info(`Checking current ${runnerProvider.type} pool size against pool of size: ${event.poolSize}`);
   const runnerLabels = process.env.RUNNER_LABELS || '';
   const runnerGroup = process.env.RUNNER_GROUP_NAME || '';
