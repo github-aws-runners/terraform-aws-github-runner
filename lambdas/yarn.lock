@@ -9616,13 +9616,13 @@ __metadata:
   linkType: hard
 
 "postcss@npm:^8.5.15, postcss@npm:^8.5.6":
-  version: 8.5.22
-  resolution: "postcss@npm:8.5.22"
+  version: 8.5.24
+  resolution: "postcss@npm:8.5.24"
   dependencies:
     nanoid: "npm:^3.3.16"
     picocolors: "npm:^1.1.1"
     source-map-js: "npm:^1.2.1"
-  checksum: 10c0/9e143ee457988049d5f187116fd37f2750ae9d8d71cc99eae690b776e549e134b34086cbaa2f0360ecd1729b15d918227bd0fc3a2ffbe341f7212d0827080793
+  checksum: 10c0/b3854840ffee4604249a1bad97291105a974009d63b068b716dbee1d2e034bb965353a9fb4d6e957ede475b2acf4167cd4b1d41074f8dd3ce2fe488b60c8ce44
   languageName: node
   linkType: hard
 
