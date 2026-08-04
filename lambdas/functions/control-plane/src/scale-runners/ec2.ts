@@ -81,6 +81,19 @@ export async function createRunners(
     return { instances: [], retryableErrorCount: numberOfRunners, nonRetryableErrorCount: 0 };
   }
 
+  return await registerRunners(githubRunnerConfig, result, ghClient);
+}
+
+/**
+ * Registers already-provisioned EC2 instances with GitHub (JIT config or registration token) and
+ * terminates any instance that fails to get configured. Shared by the cold-start (`createRunners`)
+ * and warm-pool restart paths so both apply the same registration and clean-up behavior.
+ */
+export async function registerRunners(
+  githubRunnerConfig: CreateGitHubRunnerConfig,
+  result: CreateScaleUpRunnersResult,
+  ghClient: Octokit,
+): Promise<CreateScaleUpRunnersResult> {
   if (result.instances.length !== 0) {
     let failedInstances: string[];
     try {

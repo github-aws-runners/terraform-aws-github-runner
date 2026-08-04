@@ -58,7 +58,14 @@ export async function adjust(event: PoolEvent): Promise<void> {
     runnerType: 'Org',
   });
 
-  const numberOfRunnersInPool = runnerProvider.countAvailableRunners(poolRunners, runnerStatusses, includeBusyRunners);
+  const runningRunnersInPool = runnerProvider.countAvailableRunners(poolRunners, runnerStatusses, includeBusyRunners);
+
+  // Count any additional reserve capacity (e.g. warm/stopped instances) toward the pool target so the
+  // pool does not repeatedly launch and stop instances when enough reserve capacity already exists.
+  const additionalCapacity = runnerProvider.additionalPoolCapacity
+    ? await runnerProvider.additionalPoolCapacity({ environment, runnerOwner, runnerType: 'Org' })
+    : 0;
+  const numberOfRunnersInPool = runningRunnersInPool + additionalCapacity;
   let topUp = event.poolSize - numberOfRunnersInPool;
 
   // The pool must never push the total number of runners (busy + idle) past the configured maximum.

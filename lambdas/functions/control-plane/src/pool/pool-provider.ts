@@ -28,4 +28,7 @@ export interface PoolRunnerProvider<TRunner = unknown> extends RunnerProvider {
     includeBusyRunners: boolean,
   ): number;
   createRunners(input: CreatePoolRunnersInput): Promise<string[]>;
+  // Optional extra capacity to count toward the pool target (e.g. EC2 warm/stopped instances that can
+  // be restarted quickly). Returns 0 when not implemented.
+  additionalPoolCapacity?(input: ListPoolRunnersInput): Promise<number>;
 }

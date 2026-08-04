@@ -182,6 +182,13 @@ variable "multi_runner_config" {
         schedule_expression_timezone = optional(string)
         size                         = number
       })), [])
+      pool_strategy = optional(string, "hot")
+      warm_pool_config = optional(object({
+        enabled                       = optional(bool, false)
+        max_warm_instances            = optional(number, 3)
+        max_warm_age_hours            = optional(number, 168)
+        warm_pool_ready_delay_seconds = optional(number, 30)
+      }), {})
       job_retry = optional(object({
         enable             = optional(bool, false)
         delay_in_seconds   = optional(number, 300)
@@ -279,6 +286,8 @@ variable "multi_runner_config" {
         block_device_mappings: "The EC2 instance block device configuration. Takes the following keys: `device_name`, `delete_on_termination`, `volume_type`, `volume_size`, `encrypted`, `iops`, `throughput`, `kms_key_id`, `snapshot_id`, `volume_initialization_rate`."
         job_retry: "Experimental! Can be removed / changed without trigger a major release. Configure job retries. The configuration enables job retries (for ephemeral runners). After creating the instances a message will be published to a job retry queue. The job retry check lambda is checking after a delay if the job is queued. If not the message will be published again on the scale-up (build queue). Using this feature can impact the rate limit of the GitHub app."
         pool_config: "The configuration for updating the pool. The `pool_size` to adjust to by the events triggered by the `schedule_expression`. For example you can configure a cron expression for week days to adjust the pool to 10 and another expression for the weekend to adjust the pool to 1. Use `schedule_expression_timezone` to override the schedule time zone (defaults to UTC)."
+        pool_strategy: "Strategy for maintaining idle runners: `hot` (default, traditional) or `warm` (stop instead of terminate)."
+        warm_pool_config: "Configuration for the warm pool feature. When enabled, idle runners are stopped instead of terminated for faster restart."
         iam_overrides: "Allows to (optionally) override the instance profile and runner role created by the module. Set `override_instance_profile` to true and provide the `instance_profile_name` to use an existing instance profile. Set `override_runner_role` to true and provide the `runner_role_arn` to use an existing role for the runner instances."
       }
       matcherConfig: {

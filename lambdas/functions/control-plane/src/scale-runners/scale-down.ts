@@ -190,9 +190,9 @@ async function removeRunner(
       const failedRunners = results.filter((r) => !r.success);
 
       if (allSucceeded) {
-        await runnerProvider.terminate(runner.id);
+        await retireRunner(runner, runnerProvider);
         logger.info(
-          `${runnerProvider.type.toUpperCase()} runner '${runner.id}' is terminated and GitHub runner is de-registered.`,
+          `${runnerProvider.type.toUpperCase()} runner '${runner.id}' is disposed and GitHub runner is de-registered.`,
         );
       } else {
         // Only terminate the provider runner if it was successfully de-registered from GitHub.
@@ -266,6 +266,16 @@ async function markOrphan(id: string, runnerProvider: ScaleDownRunnerProvider): 
     logger.info(`Runner '${id}' tagged as orphan.`);
   } catch (e) {
     logger.error(`Failed to tag runner '${id}' as orphan.`, { error: e });
+  }
+}
+
+// Dispose of an idle runner that has been de-registered from GitHub. Prefer the provider's `retire`
+// hook (e.g. stop into the warm pool) and fall back to terminate for providers that do not implement it.
+async function retireRunner(runner: RunnerInfo, runnerProvider: ScaleDownRunnerProvider): Promise<void> {
+  if (runnerProvider.retire) {
+    await runnerProvider.retire(runner);
+  } else {
+    await runnerProvider.terminate(runner.id);
   }
 }
 
@@ -358,6 +368,12 @@ export async function scaleDown(): Promise<void> {
 
   // first runners marked to be orphan.
   await terminateOrphan(environment, runnerProvider);
+
+  // provider maintenance (e.g. evict stale warm-pool instances) — runs regardless of the number of
+  // active running runners, because warm/stopped instances are not counted below.
+  if (runnerProvider.maintain) {
+    await runnerProvider.maintain(environment);
+  }
 
   // next scale down idle runners with respect to config and mark potential orphans
   const providerRunners = await listRunners(environment, runnerProvider);

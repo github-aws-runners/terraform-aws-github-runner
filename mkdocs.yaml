@@ -81,3 +81,6 @@ nav:
     - Lambda download: examples/lambda-download.md
     - Permissions boundary: examples/permissions-boundary.md
   - AMI examples: ami-examples/index.md
+  - Warm Pool: warm-pool.md
+  - Additional notes: additional_notes.md
+  - Mac runners: mac-runners.md
