@@ -43,6 +43,9 @@ variables {
     config = "config"
   }
 
+  installation_token_table_name = "github-runner-installation-tokens"
+  installation_token_table_arn  = "arn:aws:dynamodb:eu-west-1:123456789012:table/github-runner-installation-tokens"
+
   # Enable pool to exercise the pool module and its role type
   pool_config = [{
     schedule_expression = "cron(0 8 * * ? *)"
