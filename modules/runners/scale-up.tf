@@ -41,7 +41,7 @@ resource "aws_lambda_function" "scale_up" {
       INSTANCE_TYPE_PRIORITIES                 = var.instance_type_priorities != null ? jsonencode(var.instance_type_priorities) : ""
       INSTANCE_TYPES                           = join(",", var.instance_types)
       LAUNCH_TEMPLATE_NAME                     = aws_launch_template.runner.name
-      LOG_LEVEL                                = var.log_level
+      LOG_LEVEL                                = upper(var.log_level)
       MINIMUM_RUNNING_TIME_IN_MINUTES          = coalesce(var.minimum_running_time_in_minutes, local.min_runtime_defaults[var.runner_os])
       NODE_TLS_REJECT_UNAUTHORIZED             = var.ghes_url != null && !var.ghes_ssl_verify ? 0 : 1
       PARAMETER_GITHUB_APP_ID_NAME             = var.github_app_parameters.id.name

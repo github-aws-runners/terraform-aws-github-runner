@@ -21,7 +21,7 @@ resource "aws_lambda_function" "webhook" {
   environment {
     variables = {
       for k, v in {
-        LOG_LEVEL                                = var.config.log_level
+        LOG_LEVEL                                = upper(var.config.log_level)
         POWERTOOLS_LOGGER_LOG_EVENT              = var.config.log_level == "debug" ? "true" : "false"
         POWERTOOLS_SERVICE_NAME                  = "${var.config.prefix}-webhook"
         POWERTOOLS_TRACE_ENABLED                 = var.config.tracing_config.mode != null ? true : false
