@@ -27,7 +27,7 @@ resource "aws_lambda_function" "syncer" {
       ENVIRONMENT                              = var.prefix
       GITHUB_RUNNER_ARCHITECTURE               = var.runner_architecture
       GITHUB_RUNNER_OS                         = local.gh_binary_os_label[var.runner_os]
-      LOG_LEVEL                                = var.log_level
+      LOG_LEVEL                                = upper(var.log_level)
       POWERTOOLS_LOGGER_LOG_EVENT              = var.log_level == "debug" ? "true" : "false"
       POWERTOOLS_TRACE_ENABLED                 = var.tracing_config.mode != null ? true : false
       POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.tracing_config.capture_http_requests

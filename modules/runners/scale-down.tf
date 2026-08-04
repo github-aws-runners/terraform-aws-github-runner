@@ -30,7 +30,7 @@ resource "aws_lambda_function" "scale_down" {
       ENABLE_METRIC_WARM_POOL                  = var.metrics.enable && var.metrics.metric.enable_warm_pool
       GHES_URL                                 = var.ghes_url
       USER_AGENT                               = var.user_agent
-      LOG_LEVEL                                = var.log_level
+      LOG_LEVEL                                = upper(var.log_level)
       MINIMUM_RUNNING_TIME_IN_MINUTES          = coalesce(var.minimum_running_time_in_minutes, local.min_runtime_defaults[var.runner_os])
       NODE_TLS_REJECT_UNAUTHORIZED             = var.ghes_url != null && !var.ghes_ssl_verify ? 0 : 1
       PARAMETER_GITHUB_APP_ID_NAME             = var.github_app_parameters.id.name

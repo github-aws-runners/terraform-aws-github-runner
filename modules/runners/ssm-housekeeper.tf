@@ -30,7 +30,7 @@ resource "aws_lambda_function" "ssm_housekeeper" {
   environment {
     variables = {
       ENVIRONMENT                              = var.prefix
-      LOG_LEVEL                                = var.log_level
+      LOG_LEVEL                                = upper(var.log_level)
       SSM_CLEANUP_CONFIG                       = jsonencode(local.ssm_housekeeper.config)
       POWERTOOLS_SERVICE_NAME                  = "${var.prefix}-ssm-housekeeper"
       POWERTOOLS_TRACE_ENABLED                 = var.tracing_config.mode != null ? true : false
