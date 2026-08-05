@@ -86,10 +86,10 @@ function expectedRunnerParams(
 }
 
 async function createProviderRunners(options: CreateProviderRunnersOptions = {}) {
-  const prepared = await provider.prepareGroup(options.labels ?? []);
+  const runnerLabelResolution = await provider.resolveLabelsForRunners(options.labels ?? []);
   const baseRunnerLabels = options.baseRunnerLabels ?? 'label1,label2';
   const githubRunnerConfig = runnerConfig({
-    runnerLabels: [baseRunnerLabels, ...prepared.runnerLabels].filter(Boolean).join(','),
+    runnerLabels: [baseRunnerLabels, ...runnerLabelResolution.runnerLabels].filter(Boolean).join(','),
     ...options.githubRunnerConfig,
   });
 
@@ -97,14 +97,16 @@ async function createProviderRunners(options: CreateProviderRunnersOptions = {})
     githubRunnerConfig,
     numberOfRunners: 1,
     githubInstallationClient: githubClient,
-    state: prepared.state,
+    state: runnerLabelResolution.state,
   });
 }
 
 async function expectCurrentRunners(runnerType: RunnerType, owner: string) {
-  const prepared = await provider.prepareGroup([]);
+  const runnerLabelResolution = await provider.resolveLabelsForRunners([]);
 
-  await expect(provider.getCurrentRunners(prepared.state, { runnerType, runnerOwner: owner })).resolves.toBe(1);
+  await expect(
+    provider.getCurrentRunners(runnerLabelResolution.state, { runnerType, runnerOwner: owner }),
+  ).resolves.toBe(1);
   expect(mockListRunners).toHaveBeenCalledWith({
     environment: 'unit-test-environment',
     runnerType,

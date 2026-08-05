@@ -4,7 +4,7 @@ import type {
   CreateScaleUpRunnersInput,
   CreateStartRunnerConfig,
   CurrentRunnersInput,
-  PreparedScaleUpRunnerGroup,
+  RunnerLabelResolution,
   ScaleUpRunnerProvider,
 } from '../../../../core';
 import yn from 'yn';
@@ -32,7 +32,7 @@ function loadEc2ScaleUpProviderConfig(): CreateEC2RunnerConfig {
   };
 }
 
-async function prepareEc2ScaleUpGroup(messageLabels: string[]): Promise<PreparedScaleUpRunnerGroup<Ec2ScaleUpState>> {
+async function resolveEc2LabelsForRunners(messageLabels: string[]): Promise<RunnerLabelResolution<Ec2ScaleUpState>> {
   const trimmedLabels = messageLabels.map((label) => label.trim());
   const dynamicEC2Labels = trimmedLabels.filter((label) => label.startsWith('ghr-ec2-'));
   const nonEc2DynamicLabels = trimmedLabels.filter(
@@ -85,7 +85,7 @@ export function createEc2ScaleUpProvider(
   createStartRunnerConfig: CreateStartRunnerConfig,
 ): Omit<ScaleUpRunnerProvider<Ec2ScaleUpState>, 'type'> {
   return {
-    prepareGroup: prepareEc2ScaleUpGroup,
+    resolveLabelsForRunners: resolveEc2LabelsForRunners,
     getCurrentRunners: getCurrentEc2Runners,
     createRunners: (input) => createEc2ScaleUpRunners(input, createStartRunnerConfig),
   };

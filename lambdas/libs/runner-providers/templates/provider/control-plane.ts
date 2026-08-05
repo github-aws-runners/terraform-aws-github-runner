@@ -35,9 +35,9 @@ export function createTemplateScaleUpProvider(
   createStartRunnerConfig: CreateStartRunnerConfig,
 ): Omit<ScaleUpRunnerProvider, 'type'> {
   return {
-    prepareGroup: async (messageLabels) => {
+    resolveLabelsForRunners: async (messageLabels) => {
       void messageLabels;
-      return notImplemented('scaleUp.prepareGroup');
+      return notImplemented('scaleUp.resolveLabelsForRunners');
     },
     getCurrentRunners: async (state, input) => {
       const templateState = state as TemplateScaleUpState;
