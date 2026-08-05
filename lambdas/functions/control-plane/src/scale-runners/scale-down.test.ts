@@ -7,7 +7,7 @@ import { controlPlaneProviderRegistry } from '../control-plane-providers';
 import * as ghAuth from '../github/auth';
 import { githubCache } from './cache';
 import { newestFirstStrategy, oldestFirstStrategy, scaleDown } from './scale-down';
-import type { RunnerInfo, ScaleDownRunnerProvider } from './scale-down-provider';
+import type { RunnerInfo, RunnerType, ScaleDownRunnerProvider } from './types';
 
 vi.mock('../github/auth', () => ({
   createGithubAppAuth: vi.fn(),
@@ -72,25 +72,25 @@ describe('When runners are sorted', () => {
       id: '1',
       launchTime: moment(new Date()).subtract(1, 'minute').toDate(),
       owner: 'owner',
-      type: 'type',
+      type: 'Org',
     },
     {
       id: '3',
       launchTime: moment(new Date()).subtract(3, 'minute').toDate(),
       owner: 'owner',
-      type: 'type',
+      type: 'Org',
     },
     {
       id: '2',
       launchTime: moment(new Date()).subtract(2, 'minute').toDate(),
       owner: 'owner',
-      type: 'type',
+      type: 'Org',
     },
     {
       id: '0',
       launchTime: moment(new Date()).subtract(0, 'minute').toDate(),
       owner: 'owner',
-      type: 'type',
+      type: 'Org',
     },
   ];
 
@@ -117,13 +117,13 @@ describe('When runners are sorted', () => {
       id: '4',
       launchTime: same,
       owner: 'owner',
-      type: 'type',
+      type: 'Org',
     });
     runnersTest.push({
       id: '5',
       launchTime: same,
       owner: 'owner',
-      type: 'type',
+      type: 'Org',
     });
     runnersTest.sort(oldestFirstStrategy);
     expect(runnersTest[3].launchTime).not.toEqual(same);
@@ -142,19 +142,19 @@ describe('When runners are sorted', () => {
         id: '0',
         launchTime: undefined,
         owner: 'owner',
-        type: 'type',
+        type: 'Org',
       },
       {
         id: '1',
         launchTime: moment(new Date()).subtract(3, 'minute').toDate(),
         owner: 'owner',
-        type: 'type',
+        type: 'Org',
       },
       {
         id: '0',
         launchTime: undefined,
         owner: 'owner',
-        type: 'type',
+        type: 'Org',
       },
     ];
     runnersTest.sort(oldestFirstStrategy);
@@ -266,7 +266,6 @@ describe('Scale down runners', () => {
       }
     });
 
-    type RunnerType = 'Repo' | 'Org';
     const runnerTypes: RunnerType[] = ['Org', 'Repo'];
     describe.each(runnerTypes)('For %s runners.', (type) => {
       it(`Should terminate runner without idle config ${type} runners.`, async () => {
@@ -729,7 +728,7 @@ function mockGitHubRunners(runners: RunnerTestItem[]) {
 
 function createRunnerTestData(
   name: string,
-  type: 'Org' | 'Repo',
+  type: RunnerType,
   minutesLaunchedAgo: number,
   registered: boolean,
   orphan: boolean,

@@ -4,11 +4,11 @@ import type {
   CreatePoolRunnersInput,
   ListPoolRunnersInput,
   PoolRunnerProvider,
+  RunnerInfo,
   RunnerStatus,
 } from '../../../../core';
 import { createRunners, loadEc2ProviderConfig } from './runner-config';
 import { bootTimeExceeded, listEC2Runners } from './runners';
-import type { RunnerList } from './runners.d';
 
 const logger = createChildLogger('pool');
 
@@ -16,7 +16,7 @@ async function listEc2PoolRunners({
   environment,
   runnerOwner,
   runnerType,
-}: ListPoolRunnersInput): Promise<RunnerList[]> {
+}: ListPoolRunnersInput): Promise<RunnerInfo[]> {
   return await listEC2Runners({
     environment,
     runnerOwner,
@@ -53,7 +53,7 @@ async function createEc2PoolRunners(
 
 export function createEc2PoolProvider(
   createStartRunnerConfig: CreateStartRunnerConfig,
-): Omit<PoolRunnerProvider, 'type'> {
+): Omit<PoolRunnerProvider<RunnerInfo>, 'type'> {
   return {
     listRunners: listEc2PoolRunners,
     countAvailableRunners: calculateEc2PoolSize,
@@ -62,7 +62,7 @@ export function createEc2PoolProvider(
 }
 
 export function calculateEc2PoolSize(
-  ec2runners: RunnerList[],
+  ec2runners: RunnerInfo[],
   runnerStatus: Map<string, RunnerStatus>,
   includeBusyRunners = false,
 ): number {
@@ -70,20 +70,18 @@ export function calculateEc2PoolSize(
   let numberOfRunnersInPool = 0;
   for (const ec2Instance of ec2runners) {
     if (
-      (runnerStatus.get(ec2Instance.instanceId)?.busy === false || includeBusyRunners) &&
-      runnerStatus.get(ec2Instance.instanceId)?.status === 'online'
+      (runnerStatus.get(ec2Instance.id)?.busy === false || includeBusyRunners) &&
+      runnerStatus.get(ec2Instance.id)?.status === 'online'
     ) {
       numberOfRunnersInPool++;
-      logger.debug(`Runner ${ec2Instance.instanceId} is idle in GitHub and counted as part of the pool`);
-    } else if (runnerStatus.get(ec2Instance.instanceId) != null) {
-      logger.debug(`Runner ${ec2Instance.instanceId} is not idle in GitHub and NOT counted as part of the pool`);
+      logger.debug(`Runner ${ec2Instance.id} is idle in GitHub and counted as part of the pool`);
+    } else if (runnerStatus.get(ec2Instance.id) != null) {
+      logger.debug(`Runner ${ec2Instance.id} is not idle in GitHub and NOT counted as part of the pool`);
     } else if (!bootTimeExceeded(ec2Instance)) {
       numberOfRunnersInPool++;
-      logger.info(`Runner ${ec2Instance.instanceId} is still booting and counted as part of the pool`);
+      logger.info(`Runner ${ec2Instance.id} is still booting and counted as part of the pool`);
     } else {
-      logger.debug(
-        `Runner ${ec2Instance.instanceId} is not idle in GitHub nor booting and not counted as part of the pool`,
-      );
+      logger.debug(`Runner ${ec2Instance.id} is not idle in GitHub nor booting and not counted as part of the pool`);
     }
   }
   return numberOfRunnersInPool;

@@ -64,25 +64,25 @@ const MINIMUM_TIME_RUNNING = 15;
 
 const ec2InstancesRegistered = [
   {
-    instanceId: 'i-1-idle',
+    id: 'i-1-idle',
     launchTime: new Date(),
     type: 'Org',
     owner: ORG,
   },
   {
-    instanceId: 'i-2-busy',
+    id: 'i-2-busy',
     launchTime: new Date(),
     type: 'Org',
     owner: ORG,
   },
   {
-    instanceId: 'i-3-offline',
+    id: 'i-3-offline',
     launchTime: new Date(),
     type: 'Org',
     owner: ORG,
   },
   {
-    instanceId: 'i-4-idle-older-than-minimum-time-running',
+    id: 'i-4-idle-older-than-minimum-time-running',
     launchTime: moment(new Date())
       .subtract(MINIMUM_TIME_RUNNING + 3, 'minutes')
       .toDate(),
@@ -258,7 +258,7 @@ describe('Test simple pool.', () => {
       mockListRunners.mockImplementation(async () => [
         ...ec2InstancesRegistered,
         {
-          instanceId: 'i-4-still-booting',
+          id: 'i-4-still-booting',
           launchTime: moment(new Date())
             .subtract(MINIMUM_TIME_RUNNING - 3, 'minutes')
             .toDate(),
@@ -266,7 +266,7 @@ describe('Test simple pool.', () => {
           owner: ORG,
         },
         {
-          instanceId: 'i-5-orphan',
+          id: 'i-5-orphan',
           launchTime: moment(new Date())
             .subtract(MINIMUM_TIME_RUNNING + 3, 'minutes')
             .toDate(),
@@ -289,7 +289,7 @@ describe('Test simple pool.', () => {
       mockListRunners.mockImplementation(async () => [
         ...ec2InstancesRegistered,
         {
-          instanceId: 'i-4-still-booting',
+          id: 'i-4-still-booting',
           launchTime: moment(new Date())
             .subtract(MINIMUM_TIME_RUNNING - 3, 'minutes')
             .toDate(),
@@ -297,7 +297,7 @@ describe('Test simple pool.', () => {
           owner: ORG,
         },
         {
-          instanceId: 'i-5-orphan',
+          id: 'i-5-orphan',
           launchTime: moment(new Date())
             .subtract(MINIMUM_TIME_RUNNING + 3, 'minutes')
             .toDate(),
@@ -386,13 +386,13 @@ describe('Test simple pool.', () => {
       mockListRunners.mockImplementation(async () => [
         ...ec2InstancesRegistered,
         {
-          instanceId: 'i-5-idle',
+          id: 'i-5-idle',
           launchTime: new Date(),
           type: 'Org',
           owner: ORG,
         },
         {
-          instanceId: 'i-6-idle',
+          id: 'i-6-idle',
           launchTime: new Date(),
           type: 'Org',
           owner: ORG,

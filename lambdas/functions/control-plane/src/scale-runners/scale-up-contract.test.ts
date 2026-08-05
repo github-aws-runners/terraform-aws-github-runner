@@ -7,8 +7,7 @@ import * as ghAuth from '../github/auth';
 import { controlPlaneProviderRegistry } from '../control-plane-providers';
 import * as githubRunner from './github-runner';
 import { scaleUp } from './scale-up';
-import type { ScaleUpRunnerProvider } from './scale-up-provider';
-import type { ActionRequestMessageSQS } from './types';
+import type { ActionRequestMessageSQS, ScaleUpRunnerProvider } from './types';
 
 vi.mock('../github/auth', () => ({
   createGithubAppAuth: vi.fn(),
