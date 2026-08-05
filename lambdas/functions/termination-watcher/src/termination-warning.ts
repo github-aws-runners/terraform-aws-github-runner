@@ -1,5 +1,5 @@
 import { createChildLogger, getTracedAWSV3Client } from '@aws-github-runner/aws-powertools-util';
-import { SpotInterruptionWarning, SpotTerminationDetail } from './types';
+import { TerminationWatcherEvent } from './types';
 import { EC2Client, Instance } from '@aws-sdk/client-ec2';
 import { Config } from './ConfigResolver';
 import { tagFilter, getInstances } from './ec2';
@@ -8,7 +8,7 @@ import { deregisterRunner } from './deregister';
 
 const logger = createChildLogger('termination-warning');
 
-async function handle(event: SpotInterruptionWarning<SpotTerminationDetail>, config: Config): Promise<void> {
+async function handle(event: TerminationWatcherEvent, config: Config): Promise<void> {
   logger.debug('Received spot notification warning:', { event });
   const ec2 = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
   const instances = await getInstances(ec2, [event.detail['instance-id']]);
@@ -19,7 +19,7 @@ async function handle(event: SpotInterruptionWarning<SpotTerminationDetail>, con
 
 async function createMetricForInstances(
   instances: Instance[],
-  event: SpotInterruptionWarning<SpotTerminationDetail>,
+  event: TerminationWatcherEvent,
   config: Config,
 ): Promise<void> {
   for (const instance of instances) {
