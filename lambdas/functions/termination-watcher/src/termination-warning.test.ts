@@ -2,7 +2,7 @@ import { EC2Client, Instance } from '@aws-sdk/client-ec2';
 import { mockClient } from 'aws-sdk-client-mock';
 import 'aws-sdk-client-mock-jest';
 import { handle } from './termination-warning';
-import { SpotInterruptionWarning, SpotTerminationDetail, InstanceStateChangeEvent, InstanceStateChangeDetail } from './types';
+import { SpotInterruptionWarning, SpotTerminationDetail, InstanceStateChangeEvent } from './types';
 import { metricEvent } from './metric-event';
 import { deregisterRunner } from './deregister';
 
