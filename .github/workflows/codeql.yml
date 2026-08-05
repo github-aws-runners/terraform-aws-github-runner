@@ -4,7 +4,6 @@ on:
   push:
     branches: [ "main", "develop", "v1" ]
   pull_request:
-    branches: [ "main", "develop", "v1" ]
     paths-ignore:
       - '**/*.md'
   schedule:
