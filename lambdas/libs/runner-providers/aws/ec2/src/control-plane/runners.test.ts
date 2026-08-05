@@ -21,9 +21,9 @@ import { mockClient } from 'aws-sdk-client-mock';
 import 'aws-sdk-client-mock-jest/vitest';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { LambdaRunnerSource } from '../../../../core';
+import type { LambdaRunnerSource, RunnerInfo, RunnerType } from '../../../../core';
 import { createRunner, listEC2Runners, tag, terminateRunner, untag } from './runners';
-import type { Ec2OverrideConfig, RunnerInfo, RunnerInputParameters, RunnerType } from './runners.d';
+import type { Ec2OverrideConfig, RunnerInputParameters } from './runners.d';
 
 process.env.AWS_REGION = 'eu-east-1';
 const mockEC2Client = mockClient(EC2Client);
@@ -89,7 +89,7 @@ describe('list instances', () => {
     const resp = await listEC2Runners();
     expect(resp.length).toBe(1);
     expect(resp).toContainEqual({
-      instanceId: 'i-1234',
+      id: 'i-1234',
       launchTime: new Date('2020-10-10T14:48:00.000+09:00'),
       type: 'Org',
       owner: 'CoderToCat',
@@ -103,12 +103,12 @@ describe('list instances', () => {
     const resp = await listEC2Runners();
     expect(resp.length).toBe(1);
     expect(resp).toContainEqual({
-      instanceId: 'i-1234',
+      id: 'i-1234',
       launchTime: new Date('2020-10-10T14:48:00.000+09:00'),
       type: 'Org',
       owner: 'CoderToCat',
       orphan: false,
-      runnerId: '9876543210',
+      githubRunnerId: '9876543210',
       bypassRemoval: false,
     });
   });
@@ -124,7 +124,7 @@ describe('list instances', () => {
     const resp = await listEC2Runners();
     expect(resp.length).toBe(1);
     expect(resp).toContainEqual({
-      instanceId: instances.Reservations![0].Instances![0].InstanceId!,
+      id: instances.Reservations![0].Instances![0].InstanceId!,
       launchTime: instances.Reservations![0].Instances![0].LaunchTime!,
       type: 'Org',
       owner: 'CoderToCat',
@@ -260,14 +260,14 @@ describe('terminate runner', () => {
   it('calls terminate instances with the right instance ids', async () => {
     mockEC2Client.on(TerminateInstancesCommand).resolves({});
     const runner: RunnerInfo = {
-      instanceId: 'instance-2',
+      id: 'instance-2',
       owner: 'owner-2',
       type: 'Repo',
     };
-    await terminateRunner(runner.instanceId);
+    await terminateRunner(runner.id);
 
     expect(mockEC2Client).toHaveReceivedCommandWith(TerminateInstancesCommand, {
-      InstanceIds: [runner.instanceId],
+      InstanceIds: [runner.id],
     });
   });
 });
@@ -279,14 +279,14 @@ describe('tag runner', () => {
   it('adding extra tag', async () => {
     mockEC2Client.on(CreateTagsCommand).resolves({});
     const runner: RunnerInfo = {
-      instanceId: 'instance-2',
+      id: 'instance-2',
       owner: 'owner-2',
       type: 'Repo',
     };
-    await tag(runner.instanceId, [{ Key: 'ghr:orphan', Value: 'true' }]);
+    await tag(runner.id, [{ Key: 'ghr:orphan', Value: 'true' }]);
 
     expect(mockEC2Client).toHaveReceivedCommandWith(CreateTagsCommand, {
-      Resources: [runner.instanceId],
+      Resources: [runner.id],
       Tags: [{ Key: 'ghr:orphan', Value: 'true' }],
     });
   });
@@ -299,18 +299,18 @@ describe('untag runner', () => {
   it('removing extra tag', async () => {
     mockEC2Client.on(DeleteTagsCommand).resolves({});
     const runner: RunnerInfo = {
-      instanceId: 'instance-2',
+      id: 'instance-2',
       owner: 'owner-2',
       type: 'Repo',
     };
-    await tag(runner.instanceId, [{ Key: 'ghr:orphan', Value: 'true' }]);
+    await tag(runner.id, [{ Key: 'ghr:orphan', Value: 'true' }]);
     expect(mockEC2Client).toHaveReceivedCommandWith(CreateTagsCommand, {
-      Resources: [runner.instanceId],
+      Resources: [runner.id],
       Tags: [{ Key: 'ghr:orphan', Value: 'true' }],
     });
-    await untag(runner.instanceId, [{ Key: 'ghr:orphan', Value: 'true' }]);
+    await untag(runner.id, [{ Key: 'ghr:orphan', Value: 'true' }]);
     expect(mockEC2Client).toHaveReceivedCommandWith(DeleteTagsCommand, {
-      Resources: [runner.instanceId],
+      Resources: [runner.id],
       Tags: [{ Key: 'ghr:orphan', Value: 'true' }],
     });
   });
@@ -1201,7 +1201,7 @@ function createRunnerConfig(runnerConfig: RunnerConfig): RunnerInputParameters {
 }
 
 interface ExpectedFleetRequestValues {
-  type: 'Repo' | 'Org';
+  type: RunnerType;
   capacityType: DefaultTargetCapacityType;
   allocationStrategy: SpotAllocationStrategy | FleetOnDemandAllocationStrategy;
   instanceTypePriorities?: Record<string, number>;

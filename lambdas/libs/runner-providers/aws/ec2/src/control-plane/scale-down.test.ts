@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { RunnerInfo, RunnerType } from '../../../../core';
 import { createEc2ScaleDownProvider } from './scale-down';
 import { listEC2Runners, tag, terminateRunner, untag } from './runners';
-import type { RunnerList } from './runners.d';
 
 vi.mock('./runners', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./runners')>();
@@ -28,19 +28,18 @@ describe('Scale down runners', () => {
   const endpoints = ['https://api.github.com', 'https://github.enterprise.something', 'https://companyname.ghe.com'];
 
   describe.each(endpoints)('for %s', () => {
-    type RunnerType = 'Repo' | 'Org';
     const runnerTypes: RunnerType[] = ['Org', 'Repo'];
 
     describe.each(runnerTypes)('For %s runners.', (type) => {
-      const runner: RunnerList = {
-        instanceId: `i-runner-${type.toLowerCase()}`,
+      const runner: RunnerInfo = {
+        id: `i-runner-${type.toLowerCase()}`,
         launchTime: new Date('2026-08-05T10:00:00.000Z'),
         owner: type === 'Repo' ? 'Codertocat/hello-world' : 'Codertocat',
         type,
         repo: 'hello-world',
         org: 'Codertocat',
         orphan: true,
-        runnerId: '1234567890',
+        githubRunnerId: '1234567890',
         bypassRemoval: true,
       };
 
@@ -51,19 +50,7 @@ describe('Scale down runners', () => {
         const provider = createEc2ScaleDownProvider();
 
         await expect(provider.list('unit-test-environment')).resolves.toEqual([]);
-        await expect(provider.list('unit-test-environment', true)).resolves.toEqual([
-          {
-            id: runner.instanceId,
-            launchTime: runner.launchTime,
-            owner: runner.owner,
-            type: runner.type,
-            repo: runner.repo,
-            org: runner.org,
-            orphan: runner.orphan,
-            githubRunnerId: runner.runnerId,
-            bypassRemoval: runner.bypassRemoval,
-          },
-        ]);
+        await expect(provider.list('unit-test-environment', true)).resolves.toEqual([runner]);
         expect(mockListRunners).toHaveBeenNthCalledWith(1, {
           environment: 'unit-test-environment',
           orphan: undefined,
@@ -71,19 +58,17 @@ describe('Scale down runners', () => {
         expect(mockListRunners).toHaveBeenNthCalledWith(2, { environment: 'unit-test-environment', orphan: true });
         expect(mockTerminateRunner).not.toHaveBeenCalled();
 
-        await provider.markOrphan(runner.instanceId);
-        await provider.unmarkOrphan(runner.instanceId);
+        await provider.markOrphan(runner.id);
+        await provider.unmarkOrphan(runner.id);
 
-        expect(mockTagRunner).toHaveBeenCalledWith(runner.instanceId, [{ Key: 'ghr:orphan', Value: 'true' }]);
-        expect(mockUntagRunner).toHaveBeenCalledWith(runner.instanceId, [{ Key: 'ghr:orphan', Value: 'true' }]);
+        expect(mockTagRunner).toHaveBeenCalledWith(runner.id, [{ Key: 'ghr:orphan', Value: 'true' }]);
+        expect(mockUntagRunner).toHaveBeenCalledWith(runner.id, [{ Key: 'ghr:orphan', Value: 'true' }]);
       });
 
       it(`Should respect booting runner.`, async () => {
-        const scaleDownRunner = {
-          id: runner.instanceId,
+        const scaleDownRunner: RunnerInfo = {
+          ...runner,
           launchTime: new Date(),
-          owner: runner.owner as string,
-          type: runner.type as string,
         };
         process.env.RUNNER_BOOT_TIME_IN_MINUTES = '5';
         const provider = createEc2ScaleDownProvider();
@@ -91,9 +76,9 @@ describe('Scale down runners', () => {
         expect(provider.bootTimeExceeded(scaleDownRunner)).toBe(false);
         expect(mockTerminateRunner).not.toHaveBeenCalled();
         mockTerminateRunner.mockResolvedValue();
-        await provider.terminate(runner.instanceId);
+        await provider.terminate(runner.id);
 
-        expect(mockTerminateRunner).toHaveBeenCalledWith(runner.instanceId);
+        expect(mockTerminateRunner).toHaveBeenCalledWith(runner.id);
       });
     });
   });

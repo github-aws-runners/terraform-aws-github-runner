@@ -7,7 +7,7 @@ export interface RunnerProvider {
 }
 
 export type LambdaRunnerSource = 'scale-up-lambda' | 'pool-lambda';
-export type GitHubRunnerType = 'Org' | 'Repo';
+export type RunnerType = 'Org' | 'Repo';
 
 export interface CreateGitHubRunnerConfig {
   ephemeral: boolean;
@@ -17,7 +17,7 @@ export interface CreateGitHubRunnerConfig {
   runnerGroup: string;
   runnerNamePrefix: string;
   runnerOwner: string;
-  runnerType: GitHubRunnerType;
+  runnerType: RunnerType;
   disableAutoUpdate: boolean;
   ssmTokenPath: string;
   ssmConfigPath: string;
@@ -42,7 +42,7 @@ export type CreateStartRunnerConfig = (
 ) => Promise<string[]>;
 
 export interface CurrentRunnersInput {
-  runnerType: GitHubRunnerType;
+  runnerType: RunnerType;
   runnerOwner: string;
 }
 
@@ -58,7 +58,7 @@ export interface PreparedScaleUpRunnerGroup<TState = unknown> {
   state: TState;
 }
 
-export interface CreateScaleUpRunnersResult {
+export interface CreateRunnerResult {
   instances: string[];
   retryableErrorCount: number;
   nonRetryableErrorCount: number;
@@ -67,14 +67,14 @@ export interface CreateScaleUpRunnersResult {
 export interface ScaleUpRunnerProvider<TState = unknown> extends RunnerProvider {
   prepareGroup(messageLabels: string[]): Promise<PreparedScaleUpRunnerGroup<TState>>;
   getCurrentRunners(state: TState, input: CurrentRunnersInput): Promise<number>;
-  createRunners(input: CreateScaleUpRunnersInput<TState>): Promise<CreateScaleUpRunnersResult>;
+  createRunners(input: CreateScaleUpRunnersInput<TState>): Promise<CreateRunnerResult>;
 }
 
-export interface ScaleDownRunnerList {
+export interface RunnerInfo {
   id: string;
   launchTime?: Date;
-  owner?: string;
-  type?: string;
+  owner: string;
+  type: RunnerType;
   repo?: string;
   org?: string;
   orphan?: boolean;
@@ -82,14 +82,16 @@ export interface ScaleDownRunnerList {
   bypassRemoval?: boolean;
 }
 
-export interface ScaleDownRunnerInfo extends ScaleDownRunnerList {
-  owner: string;
-  type: string;
+export interface ListRunnerFilters {
+  runnerType?: RunnerType;
+  runnerOwner?: string;
+  environment?: string;
+  orphan?: boolean;
 }
 
 export interface ScaleDownRunnerProvider extends RunnerProvider {
-  list(environment: string, orphan?: boolean): Promise<ScaleDownRunnerList[]>;
-  bootTimeExceeded(runner: ScaleDownRunnerInfo): boolean;
+  list(environment: string, orphan?: boolean): Promise<RunnerInfo[]>;
+  bootTimeExceeded(runner: RunnerInfo): boolean;
   markOrphan(id: string): Promise<void>;
   unmarkOrphan(id: string): Promise<void>;
   terminate(id: string): Promise<void>;
@@ -103,7 +105,7 @@ export interface RunnerStatus {
 export interface ListPoolRunnersInput {
   environment: string;
   runnerOwner: string;
-  runnerType: GitHubRunnerType;
+  runnerType: RunnerType;
 }
 
 export interface CreatePoolRunnersInput {

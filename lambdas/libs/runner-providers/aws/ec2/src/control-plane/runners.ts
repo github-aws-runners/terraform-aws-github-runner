@@ -22,7 +22,8 @@ import { getTracedAWSV3Client, tracer } from '@aws-github-runner/aws-powertools-
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
 import moment from 'moment';
 
-import * as Runners from './runners.d';
+import type { CreateRunnerResult, RunnerInfo } from '../../../../core';
+import type { Ec2ListRunnerFilters, Ec2OverrideConfig, RunnerInputParameters } from './runners.d';
 
 const logger = createChildLogger('runners');
 
@@ -33,18 +34,16 @@ interface Ec2Filter {
 
 type FleetError = NonNullable<CreateFleetResult['Errors']>[number];
 
-export async function listEC2Runners(
-  filters: Runners.ListRunnerFilters | undefined = undefined,
-): Promise<Runners.RunnerList[]> {
+export async function listEC2Runners(filters: Ec2ListRunnerFilters | undefined = undefined): Promise<RunnerInfo[]> {
   const ec2Filters = constructFilters(filters);
-  const runners: Runners.RunnerList[] = [];
+  const runners: RunnerInfo[] = [];
   for (const filter of ec2Filters) {
     runners.push(...(await getRunners(filter)));
   }
   return runners;
 }
 
-function constructFilters(filters?: Runners.ListRunnerFilters): Ec2Filter[][] {
+function constructFilters(filters?: Ec2ListRunnerFilters): Ec2Filter[][] {
   const ec2Statuses = filters?.statuses ? filters.statuses : ['running', 'pending'];
   const ec2Filters: Ec2Filter[][] = [];
   const ec2FiltersBase = [{ Name: 'instance-state-name', Values: ec2Statuses }];
@@ -69,9 +68,9 @@ function constructFilters(filters?: Runners.ListRunnerFilters): Ec2Filter[][] {
   return ec2Filters;
 }
 
-async function getRunners(ec2Filters: Ec2Filter[]): Promise<Runners.RunnerList[]> {
+async function getRunners(ec2Filters: Ec2Filter[]): Promise<RunnerInfo[]> {
   const ec2 = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
-  const runners: Runners.RunnerList[] = [];
+  const runners: RunnerInfo[] = [];
   let nextToken;
   let hasNext = true;
   while (hasNext) {
@@ -86,20 +85,20 @@ async function getRunners(ec2Filters: Ec2Filter[]): Promise<Runners.RunnerList[]
 }
 
 function getRunnerInfo(runningInstances: DescribeInstancesResult) {
-  const runners: Runners.RunnerList[] = [];
+  const runners: RunnerInfo[] = [];
   if (runningInstances.Reservations) {
     for (const r of runningInstances.Reservations) {
       if (r.Instances) {
         for (const i of r.Instances) {
           runners.push({
-            instanceId: i.InstanceId as string,
+            id: i.InstanceId as string,
             launchTime: i.LaunchTime,
             owner: i.Tags?.find((e) => e.Key === 'ghr:Owner')?.Value as string,
-            type: i.Tags?.find((e) => e.Key === 'ghr:Type')?.Value as string,
+            type: i.Tags?.find((e) => e.Key === 'ghr:Type')?.Value as RunnerInfo['type'],
             repo: i.Tags?.find((e) => e.Key === 'ghr:Repo')?.Value as string,
             org: i.Tags?.find((e) => e.Key === 'ghr:Org')?.Value as string,
             orphan: i.Tags?.find((e) => e.Key === 'ghr:orphan')?.Value === 'true',
-            runnerId: i.Tags?.find((e) => e.Key === 'ghr:github_runner_id')?.Value as string,
+            githubRunnerId: i.Tags?.find((e) => e.Key === 'ghr:github_runner_id')?.Value as string,
             bypassRemoval: i.Tags?.find((e) => e.Key === 'ghr:bypass-removal')?.Value === 'true',
           });
         }
@@ -215,7 +214,7 @@ function generateFleetOverrides(
   subnetIds: string[],
   instancesTypes: string[],
   amiId?: string,
-  ec2OverrideConfig?: Runners.Ec2OverrideConfig,
+  ec2OverrideConfig?: Ec2OverrideConfig,
   allocationStrategy?: string,
   instanceTypePriorities?: Record<string, number>,
 ): FleetLaunchTemplateOverridesRequest[] {
@@ -258,7 +257,7 @@ interface RunInstancesLaunchDefaults {
 }
 
 function buildRunInstancesOverrides(
-  ec2OverrideConfig: Runners.Ec2OverrideConfig | undefined,
+  ec2OverrideConfig: Ec2OverrideConfig | undefined,
   defaults: RunInstancesLaunchDefaults,
 ): RunInstancesLaunchOverrides {
   const imageIdToUse = ec2OverrideConfig?.ImageId ?? defaults.imageId;
@@ -299,9 +298,7 @@ function buildRunInstancesOverrides(
   return overrides;
 }
 
-export async function createRunner(
-  runnerParameters: Runners.RunnerInputParameters,
-): Promise<Runners.CreateRunnerResult> {
+export async function createRunner(runnerParameters: RunnerInputParameters): Promise<CreateRunnerResult> {
   logger.debug('Runner configuration.', {
     runner: {
       configuration: {
@@ -351,8 +348,8 @@ export async function createRunner(
 
 async function processFleetResult(
   fleet: CreateFleetResult,
-  runnerParameters: Runners.RunnerInputParameters,
-): Promise<Runners.CreateRunnerResult> {
+  runnerParameters: RunnerInputParameters,
+): Promise<CreateRunnerResult> {
   const instances: string[] = fleet.Instances?.flatMap((i) => i.InstanceIds?.flatMap((j) => j) || []) || [];
 
   if (instances.length === runnerParameters.numberOfRunners) {
@@ -441,8 +438,8 @@ function classifyFleetErrors(
 
 function processRunInstanceResult(
   result: RunInstancesCommandOutput,
-  runnerParameters: Runners.RunnerInputParameters,
-): Runners.CreateRunnerResult {
+  runnerParameters: RunnerInputParameters,
+): CreateRunnerResult {
   const instances = result.Instances?.map((i) => i.InstanceId!).filter(Boolean) || [];
 
   if (instances.length === runnerParameters.numberOfRunners) {
@@ -465,11 +462,11 @@ function processRunInstanceResult(
   return { instances, retryableErrorCount: 0, nonRetryableErrorCount };
 }
 
-function successfulCreateRunnerResult(instances: string[]): Runners.CreateRunnerResult {
+function successfulCreateRunnerResult(instances: string[]): CreateRunnerResult {
   return { instances, retryableErrorCount: 0, nonRetryableErrorCount: 0 };
 }
 
-function failedCreateRunnerResult(failedInstanceCount: number, isRetryable: boolean): Runners.CreateRunnerResult {
+function failedCreateRunnerResult(failedInstanceCount: number, isRetryable: boolean): CreateRunnerResult {
   return {
     instances: [],
     retryableErrorCount: isRetryable ? failedInstanceCount : 0,
@@ -477,7 +474,7 @@ function failedCreateRunnerResult(failedInstanceCount: number, isRetryable: bool
   };
 }
 
-async function getAmiIdOverride(runnerParameters: Runners.RunnerInputParameters): Promise<string | undefined> {
+async function getAmiIdOverride(runnerParameters: RunnerInputParameters): Promise<string | undefined> {
   if (!runnerParameters.amiIdSsmParameterName) {
     return undefined;
   }
@@ -497,7 +494,7 @@ async function getAmiIdOverride(runnerParameters: Runners.RunnerInputParameters)
 }
 
 async function createInstances(
-  runnerParameters: Runners.RunnerInputParameters,
+  runnerParameters: RunnerInputParameters,
   amiIdOverride: string | undefined,
   ec2Client: EC2Client,
 ) {
@@ -581,10 +578,10 @@ async function createInstances(
 }
 
 async function createInstancesWithRunInstances(
-  runnerParameters: Runners.RunnerInputParameters,
+  runnerParameters: RunnerInputParameters,
   amiIdOverride: string | undefined,
   ec2Client: EC2Client,
-): Promise<Runners.CreateRunnerResult> {
+): Promise<CreateRunnerResult> {
   const tags = [
     { Key: 'ghr:Application', Value: 'github-action-runner' },
     { Key: 'ghr:created_by', Value: runnerParameters.numberOfRunners === 1 ? 'scale-up-lambda' : 'pool-lambda' },

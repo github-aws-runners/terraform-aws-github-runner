@@ -1,4 +1,4 @@
-import type { CreateGitHubRunnerConfig, CreateStartRunnerConfig } from '../../../../core';
+import type { CreateGitHubRunnerConfig, CreateStartRunnerConfig, RunnerType } from '../../../../core';
 import type { Octokit } from '@octokit/rest';
 import { DescribeLaunchTemplateVersionsCommand, EC2Client } from '@aws-sdk/client-ec2';
 import { mockClient } from 'aws-sdk-client-mock';
@@ -59,7 +59,7 @@ function runnerConfig(overrides: Partial<CreateGitHubRunnerConfig> = {}): Create
 }
 
 function expectedRunnerParams(
-  type: 'Org' | 'Repo' = 'Org',
+  type: RunnerType = 'Org',
   owner = runnerOwner,
   overrides: Partial<RunnerInputParameters> = {},
 ): RunnerInputParameters {
@@ -101,7 +101,7 @@ async function createProviderRunners(options: CreateProviderRunnersOptions = {})
   });
 }
 
-async function expectCurrentRunners(runnerType: 'Org' | 'Repo', owner: string) {
+async function expectCurrentRunners(runnerType: RunnerType, owner: string) {
   const prepared = await provider.prepareGroup([]);
 
   await expect(provider.getCurrentRunners(prepared.state, { runnerType, runnerOwner: owner })).resolves.toBe(1);
@@ -144,7 +144,7 @@ beforeEach(() => {
   mockCreateRunner.mockResolvedValue(createRunnerResult(['i-12345']));
   mockListRunners.mockResolvedValue([
     {
-      instanceId: 'i-1234',
+      id: 'i-1234',
       launchTime: new Date(),
       type: 'Org',
       owner: runnerOwner,

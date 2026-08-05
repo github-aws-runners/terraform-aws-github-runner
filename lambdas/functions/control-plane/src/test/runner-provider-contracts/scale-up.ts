@@ -1,8 +1,7 @@
 import type { Octokit } from '@octokit/rest';
 import { beforeEach, describe, expect, it, type MockInstance, vi } from 'vitest';
 
-import type { ScaleUpRunnerProvider } from '../../scale-runners/scale-up-provider';
-import type { ActionRequestMessageSQS } from '../../scale-runners/types';
+import type { ActionRequestMessageSQS, ScaleUpRunnerProvider } from '../../scale-runners/types';
 
 type TestScaleUpProvider<TType extends string> = Omit<ScaleUpRunnerProvider, 'type'> & { type: TType };
 

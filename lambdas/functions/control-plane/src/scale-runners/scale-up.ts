@@ -14,12 +14,12 @@ import {
   validateSsmParameterStoreTags,
 } from './github-runner';
 import { publishRetryMessage } from './job-retry';
-import type { CreateScaleUpRunnersResult } from './scale-up-provider';
 import type {
   ActionRequestMessage,
   ActionRequestMessageRetry,
   ActionRequestMessageSQS,
   CreateGitHubRunnerConfig,
+  CreateRunnerResult,
 } from './types';
 
 const logger = createChildLogger('scale-up');
@@ -313,7 +313,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       ssmParameterStoreTags,
     };
 
-    let createRunnersResult: CreateScaleUpRunnersResult;
+    let createRunnersResult: CreateRunnerResult;
     try {
       createRunnersResult = await runnerProvider.createRunners({
         githubRunnerConfig,

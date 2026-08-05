@@ -1,9 +1,8 @@
-import type { ScaleDownRunnerList, ScaleDownRunnerProvider } from '../../../../core';
+import type { RunnerInfo, ScaleDownRunnerProvider } from '../../../../core';
 import { bootTimeExceeded, listEC2Runners, tag, terminateRunner, untag } from './runners';
-import type { RunnerList } from './runners.d';
 
-async function listEc2ScaleDownRunners(environment: string, orphan?: boolean): Promise<ScaleDownRunnerList[]> {
-  return (await listEC2Runners({ environment, orphan })).map(toScaleDownRunner);
+async function listEc2ScaleDownRunners(environment: string, orphan?: boolean): Promise<RunnerInfo[]> {
+  return await listEC2Runners({ environment, orphan });
 }
 
 async function markEc2RunnerOrphan(id: string): Promise<void> {
@@ -21,19 +20,5 @@ export function createEc2ScaleDownProvider(): Omit<ScaleDownRunnerProvider, 'typ
     markOrphan: markEc2RunnerOrphan,
     unmarkOrphan: unmarkEc2RunnerOrphan,
     terminate: terminateRunner,
-  };
-}
-
-function toScaleDownRunner(runner: RunnerList): ScaleDownRunnerList {
-  return {
-    id: runner.instanceId,
-    launchTime: runner.launchTime,
-    owner: runner.owner,
-    type: runner.type,
-    repo: runner.repo,
-    org: runner.org,
-    orphan: runner.orphan,
-    githubRunnerId: runner.runnerId,
-    bypassRemoval: runner.bypassRemoval,
   };
 }

@@ -1,7 +1,7 @@
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import type {
   CreateGitHubRunnerConfig,
-  CreateScaleUpRunnersResult,
+  CreateRunnerResult,
   CreateStartRunnerConfig,
   GitHubRunnerMetadata,
   LambdaRunnerSource,
@@ -67,8 +67,8 @@ export async function createRunners(
   ghClient: Octokit,
   createStartRunnerConfig: CreateStartRunnerConfig,
   source: LambdaRunnerSource = 'scale-up-lambda',
-): Promise<CreateScaleUpRunnersResult> {
-  let result: CreateScaleUpRunnersResult;
+): Promise<CreateRunnerResult> {
+  let result: CreateRunnerResult;
   try {
     result = await createRunner({
       runnerType: githubRunnerConfig.runnerType,

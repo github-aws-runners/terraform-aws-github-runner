@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, type MockInstance, vi } from 'vitest';
 
-import type { ScaleDownRunnerProvider } from '../../scale-runners/scale-down-provider';
+import type { ScaleDownRunnerProvider } from '../../scale-runners/types';
 
 type TestScaleDownProvider<TType extends string> = Omit<ScaleDownRunnerProvider, 'type'> & { type: TType };
 
@@ -47,7 +47,7 @@ export function defineScaleDownContractTests<TType extends string>({
 
       it('terminates an orphan that has no GitHub runner identity', async () => {
         vi.mocked(provider.list)
-          .mockResolvedValueOnce([{ id: 'orphan-runner', orphan: true }])
+          .mockResolvedValueOnce([{ id: 'orphan-runner', owner: 'owner', type: 'Org', orphan: true }])
           .mockResolvedValue([]);
 
         await scaleDown();
@@ -57,7 +57,9 @@ export function defineScaleDownContractTests<TType extends string>({
 
       it('does not terminate an orphan with bypass removal enabled', async () => {
         vi.mocked(provider.list)
-          .mockResolvedValueOnce([{ id: 'protected-runner', orphan: true, bypassRemoval: true }])
+          .mockResolvedValueOnce([
+            { id: 'protected-runner', owner: 'owner', type: 'Org', orphan: true, bypassRemoval: true },
+          ])
           .mockResolvedValue([]);
 
         await scaleDown();

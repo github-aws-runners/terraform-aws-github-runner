@@ -10,8 +10,12 @@ import * as ghAuth from '../github/auth';
 import { createStartRunnerConfig } from './github-runner';
 import { publishRetryMessage } from './job-retry';
 import * as scaleUpModule from './scale-up';
-import type { CreateScaleUpRunnersInput, CreateScaleUpRunnersResult, ScaleUpRunnerProvider } from './scale-up-provider';
-import type { ActionRequestMessageSQS } from './types';
+import type {
+  ActionRequestMessageSQS,
+  CreateRunnerResult,
+  CreateScaleUpRunnersInput,
+  ScaleUpRunnerProvider,
+} from './types';
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Octokit } from '@octokit/rest';
@@ -45,7 +49,7 @@ interface TestRunnerLookupInput {
   runnerOwner: string;
 }
 
-const createRunner = vi.fn<(input: TestRunnerCreationInput) => Promise<CreateScaleUpRunnersResult>>();
+const createRunner = vi.fn<(input: TestRunnerCreationInput) => Promise<CreateRunnerResult>>();
 const listRunners = vi.fn<(input: TestRunnerLookupInput) => Promise<unknown[]>>();
 const mockCreateRunner = vi.mocked(createRunner);
 const mockListRunners = vi.mocked(listRunners);
@@ -96,10 +100,10 @@ vi.mock('./job-retry', () => ({
   checkAndRetryJob: vi.fn(),
 }));
 
-export type RunnerType = 'ephemeral' | 'non-ephemeral';
+export type RunnerLifecycle = 'ephemeral' | 'non-ephemeral';
 
 // for ephemeral and non-ephemeral runners
-const RUNNER_TYPES: RunnerType[] = ['ephemeral', 'non-ephemeral'];
+const RUNNER_TYPES: RunnerLifecycle[] = ['ephemeral', 'non-ephemeral'];
 
 const mockedAppAuth = vi.mocked(ghAuth.createGithubAppAuth);
 const mockedInstallationAuth = vi.mocked(ghAuth.createGithubInstallationAuth);
@@ -143,9 +147,7 @@ function setDefaults() {
   process.env.ENVIRONMENT = EXPECTED_RUNNER_PARAMS.environment;
 }
 
-async function createTestProviderRunners(
-  input: CreateScaleUpRunnersInput<unknown>,
-): Promise<CreateScaleUpRunnersResult> {
+async function createTestProviderRunners(input: CreateScaleUpRunnersInput<unknown>): Promise<CreateRunnerResult> {
   const result = await mockCreateRunner({
     environment: process.env.ENVIRONMENT,
     runnerType: input.githubRunnerConfig.runnerType,
@@ -208,7 +210,7 @@ beforeEach(() => {
   });
   mockListRunners.mockImplementation(async () => [
     {
-      instanceId: 'i-1234',
+      id: 'i-1234',
       launchTime: new Date(),
       type: 'Org',
       owner: TEST_DATA_SINGLE.repositoryOwner,
@@ -285,7 +287,7 @@ describe('scaleUp with GHES', () => {
       // Simulate race condition where pool lambda created more runners than max
       mockListRunners.mockImplementation(async () =>
         Array.from({ length: 10 }, (_, i) => ({
-          instanceId: `i-${i}`,
+          id: `i-${i}`,
           launchTime: new Date(),
           type: 'Org',
           owner: TEST_DATA_SINGLE.repositoryOwner,
@@ -600,7 +602,7 @@ describe('scaleUp with GHES', () => {
 
     it.each(RUNNER_TYPES)(
       'calls create start runner config of 40' + ' instances (ssm rate limit condition) to test time delay ',
-      async (type: RunnerType) => {
+      async (type: RunnerLifecycle) => {
         process.env.ENABLE_EPHEMERAL_RUNNERS = type === 'ephemeral' ? 'true' : 'false';
         process.env.RUNNERS_MAXIMUM_COUNT = '40';
         mockCreateRunner.mockImplementation(async () => {
@@ -909,7 +911,7 @@ describe('scaleUp with GHES', () => {
       process.env.RUNNERS_MAXIMUM_COUNT = '1'; // Set to 1 so with 1 existing, no new ones can be created
       mockListRunners.mockImplementation(async () => [
         {
-          instanceId: 'i-existing',
+          id: 'i-existing',
           launchTime: new Date(),
           type: 'Org',
           owner: TEST_DATA_SINGLE.repositoryOwner,
@@ -1390,7 +1392,7 @@ describe('scaleUp with public GH', () => {
       process.env.RUNNERS_MAXIMUM_COUNT = '1'; // Set to 1 so with 1 existing, no new ones can be created
       mockListRunners.mockImplementation(async () => [
         {
-          instanceId: 'i-existing',
+          id: 'i-existing',
           launchTime: new Date(),
           type: 'Org',
           owner: TEST_DATA_SINGLE.repositoryOwner,
@@ -1672,7 +1674,7 @@ describe('scaleUp with Github Data Residency', () => {
     });
     it.each(RUNNER_TYPES)(
       'calls create start runner config of 40' + ' instances (ssm rate limit condition) to test time delay ',
-      async (type: RunnerType) => {
+      async (type: RunnerLifecycle) => {
         process.env.ENABLE_EPHEMERAL_RUNNERS = type === 'ephemeral' ? 'true' : 'false';
         process.env.RUNNERS_MAXIMUM_COUNT = '40';
         mockCreateRunner.mockImplementation(async () => {
@@ -1864,7 +1866,7 @@ describe('scaleUp with Github Data Residency', () => {
       process.env.RUNNERS_MAXIMUM_COUNT = '2';
       mockListRunners.mockImplementation(async () => [
         {
-          instanceId: 'i-existing',
+          id: 'i-existing',
           launchTime: new Date(),
           type: 'Org',
           owner: TEST_DATA_SINGLE.repositoryOwner,
