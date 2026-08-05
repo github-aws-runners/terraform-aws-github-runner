@@ -46,7 +46,7 @@ const cleanEnv = process.env;
 const lanes = providerTypes.map((type) => ({
   provider: {
     type,
-    prepareGroup: vi.fn(),
+    resolveLabelsForRunners: vi.fn(),
     getCurrentRunners: vi.fn(),
     createRunners: vi.fn(),
   } satisfies ScaleUpRunnerProvider,

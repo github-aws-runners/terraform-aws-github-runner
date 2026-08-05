@@ -42,7 +42,7 @@ export function defineScaleUpContractTests<TType extends string>({
         process.env.RUNNER_PROVIDER_TYPE = provider.type;
 
         resolveCapability.mockReturnValue(() => provider);
-        vi.mocked(provider.prepareGroup).mockResolvedValue({ runnerLabels: [], state });
+        vi.mocked(provider.resolveLabelsForRunners).mockResolvedValue({ runnerLabels: [], state });
         vi.mocked(provider.getCurrentRunners).mockResolvedValue(0);
         vi.mocked(provider.createRunners).mockResolvedValue(createResult);
       });
@@ -54,7 +54,7 @@ export function defineScaleUpContractTests<TType extends string>({
         await scaleUp(payloads);
 
         expect(resolveCapability).toHaveBeenCalledWith(provider.type, 'scaleUp');
-        expect(provider.prepareGroup).toHaveBeenCalledWith(['lane-label']);
+        expect(provider.resolveLabelsForRunners).toHaveBeenCalledWith(['lane-label']);
         expect(provider.getCurrentRunners).toHaveBeenCalledWith(state, {
           runnerOwner: payloads[0].repositoryOwner,
           runnerType: 'Org',

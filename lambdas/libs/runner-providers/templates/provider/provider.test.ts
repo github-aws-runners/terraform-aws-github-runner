@@ -17,7 +17,7 @@ it('exposes every runner provider capability from its lane entry point', () => {
     createRunners: expect.any(Function),
   });
   expect(scaleUp).toEqual({
-    prepareGroup: expect.any(Function),
+    resolveLabelsForRunners: expect.any(Function),
     getCurrentRunners: expect.any(Function),
     createRunners: expect.any(Function),
   });

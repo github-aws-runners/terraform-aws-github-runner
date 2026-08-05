@@ -22,7 +22,7 @@ it('exposes every configured provider through both capability registries', () =>
       createRunners: expect.any(Function),
     });
     expect(controlPlaneRegistry.capability(type, 'scaleUp')()).toEqual({
-      prepareGroup: expect.any(Function),
+      resolveLabelsForRunners: expect.any(Function),
       getCurrentRunners: expect.any(Function),
       createRunners: expect.any(Function),
     });

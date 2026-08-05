@@ -53,7 +53,7 @@ export interface CreateScaleUpRunnersInput<TState = unknown> {
   state: TState;
 }
 
-export interface PreparedScaleUpRunnerGroup<TState = unknown> {
+export interface RunnerLabelResolution<TState = unknown> {
   runnerLabels: string[];
   state: TState;
 }
@@ -65,7 +65,7 @@ export interface CreateRunnerResult {
 }
 
 export interface ScaleUpRunnerProvider<TState = unknown> extends RunnerProvider {
-  prepareGroup(messageLabels: string[]): Promise<PreparedScaleUpRunnerGroup<TState>>;
+  resolveLabelsForRunners(messageLabels: string[]): Promise<RunnerLabelResolution<TState>>;
   getCurrentRunners(state: TState, input: CurrentRunnersInput): Promise<number>;
   createRunners(input: CreateScaleUpRunnersInput<TState>): Promise<CreateRunnerResult>;
 }

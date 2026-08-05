@@ -59,11 +59,11 @@ const mockPublishRetryMessage = vi.mocked(publishRetryMessage);
 const testProviderState = { provider: 'test' };
 const mockRunnerProvider: ScaleUpRunnerProvider = {
   type: 'ec2',
-  prepareGroup: vi.fn(),
+  resolveLabelsForRunners: vi.fn(),
   getCurrentRunners: vi.fn(),
   createRunners: vi.fn(),
 };
-const mockPrepareGroup = vi.mocked(mockRunnerProvider.prepareGroup);
+const mockResolveLabelsForRunners = vi.mocked(mockRunnerProvider.resolveLabelsForRunners);
 const mockGetCurrentRunners = vi.mocked(mockRunnerProvider.getCurrentRunners);
 const mockCreateRunners = vi.mocked(mockRunnerProvider.createRunners);
 const mockedResolveCapability = vi.spyOn(controlPlaneProviderRegistry, 'capability');
@@ -190,7 +190,7 @@ beforeEach(() => {
   defaultOctokitMockImpl();
 
   mockedResolveCapability.mockReturnValue(() => mockRunnerProvider);
-  mockPrepareGroup.mockImplementation(async (labels) => ({
+  mockResolveLabelsForRunners.mockImplementation(async (labels) => ({
     runnerLabels: labels.filter((label) => label.startsWith('ghr-')),
     state: testProviderState,
   }));
@@ -673,7 +673,7 @@ describe('scaleUp with GHES', () => {
       expectedRunnerParams = { ...EXPECTED_RUNNER_PARAMS };
       mockSSMClient.reset();
 
-      mockPrepareGroup.mockImplementation(async (labels) => ({
+      mockResolveLabelsForRunners.mockImplementation(async (labels) => ({
         runnerLabels: labels.filter((label) => label.startsWith('ghr-')),
         state: testProviderState,
       }));
