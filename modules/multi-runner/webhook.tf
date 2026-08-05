@@ -4,7 +4,7 @@ module "webhook" {
   tags                                = local.tags
   kms_key_arn                         = var.kms_key_arn
   eventbridge                         = var.eventbridge
-  runner_matcher_config               = local.runner_config
+  runner_matcher_config               = local.runner_matcher_config
   matcher_config_parameter_store_tier = var.matcher_config_parameter_store_tier
 
   ssm_paths = {
