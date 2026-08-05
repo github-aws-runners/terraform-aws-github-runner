@@ -26,7 +26,9 @@ async function createMetricForInstances(
     const matchFilter = tagFilter(instance, config.tagFilters);
 
     if (matchFilter) {
-      metricEvent(instance, event, config.createSpotWarningMetric ? 'SpotInterruptionWarning' : undefined, logger);
+      const isSpotInterruption = event['detail-type'] === 'EC2 Spot Instance Interruption Warning';
+      const metricName = isSpotInterruption && config.createSpotWarningMetric ? 'SpotInterruptionWarning' : undefined;
+      metricEvent(instance, event, metricName, logger);
       await deregisterRunner(instance, config);
     } else {
       logger.debug(

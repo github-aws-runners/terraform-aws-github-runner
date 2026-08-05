@@ -68,7 +68,7 @@ describe('handle termination warning', () => {
     vi.clearAllMocks();
   });
 
-  it('should log and create an metric', async () => {
+  it('should log and create a metric for spot interruption events', async () => {
     vi.mocked(getInstances).mockResolvedValue([instance]);
     await handle(event, config);
 
@@ -100,5 +100,19 @@ describe('handle termination warning', () => {
 
     expect(metricEvent).not.toHaveBeenCalled();
     expect(deregisterRunner).not.toHaveBeenCalled();
+  });
+
+  it('should not emit metric for instance state-change events but still deregister', async () => {
+    vi.mocked(getInstances).mockResolvedValue([instance]);
+
+    const stateChangeEvent = {
+      ...event,
+      'detail-type': 'EC2 Instance State-change Notification' as const,
+    };
+
+    await handle(stateChangeEvent as unknown as SpotInterruptionWarning<SpotTerminationDetail>, config);
+
+    expect(metricEvent).toHaveBeenCalledWith(instance, stateChangeEvent, undefined, expect.anything());
+    expect(deregisterRunner).toHaveBeenCalledWith(instance, config);
   });
 });
