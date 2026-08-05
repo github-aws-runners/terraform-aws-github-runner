@@ -193,14 +193,14 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
     let groupRunnerLabels = runnerLabels;
 
     const messageLabels = messages.length > 0 ? (messages[0].labels ?? []) : [];
-    const preparedRunnerGroup = await runnerProvider.prepareGroup(messageLabels);
-    const dynamicLabels = preparedRunnerGroup.runnerLabels;
+    const runnerLabelResolution = await runnerProvider.resolveLabelsForRunners(messageLabels);
+    const resolvedRunnerLabels = runnerLabelResolution.runnerLabels;
 
-    if (dynamicLabels.length > 0) {
-      logger.debug('Dynamic labels present on message', { labels: dynamicLabels });
+    if (resolvedRunnerLabels.length > 0) {
+      logger.debug('Dynamic labels present on message', { labels: resolvedRunnerLabels });
       groupRunnerLabels = groupRunnerLabels
-        ? `${groupRunnerLabels},${dynamicLabels.join(',')}`
-        : dynamicLabels.join(',');
+        ? `${groupRunnerLabels},${resolvedRunnerLabels.join(',')}`
+        : resolvedRunnerLabels.join(',');
       logger.debug('Updated runner labels', { runnerLabels: groupRunnerLabels });
     }
 
@@ -251,7 +251,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
     const currentRunners =
       maximumRunners === -1
         ? 0
-        : await runnerProvider.getCurrentRunners(preparedRunnerGroup.state, { runnerType, runnerOwner });
+        : await runnerProvider.getCurrentRunners(runnerLabelResolution.state, { runnerType, runnerOwner });
 
     logger.info('Current runners', {
       currentRunners,
@@ -319,7 +319,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
         githubRunnerConfig,
         numberOfRunners: newRunners,
         githubInstallationClient,
-        state: preparedRunnerGroup.state,
+        state: runnerLabelResolution.state,
       });
     } catch (error) {
       logger.error('Runner provider threw an unexpected error.', {

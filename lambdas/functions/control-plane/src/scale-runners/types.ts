@@ -4,7 +4,7 @@ export type {
   CreateScaleUpRunnersInput,
   CurrentRunnersInput,
   LambdaRunnerSource,
-  PreparedScaleUpRunnerGroup,
+  RunnerLabelResolution,
   RunnerInfo,
   RunnerType,
   ScaleDownRunnerProvider,
