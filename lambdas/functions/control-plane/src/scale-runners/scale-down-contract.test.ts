@@ -5,7 +5,7 @@ import { providerTypes } from '../test/runner-provider-contracts/provider-types'
 import { defineScaleDownContractTests } from '../test/runner-provider-contracts/scale-down';
 import { controlPlaneProviderRegistry } from '../control-plane-providers';
 import { scaleDown } from './scale-down';
-import type { ScaleDownRunnerProvider } from './scale-down-provider';
+import type { ScaleDownRunnerProvider } from './types';
 
 const mockedResolveCapability = vi.spyOn(controlPlaneProviderRegistry, 'capability');
 

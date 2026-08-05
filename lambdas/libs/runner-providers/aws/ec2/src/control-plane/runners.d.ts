@@ -7,34 +7,9 @@ import {
   Placement,
   FleetBlockDeviceMappingRequest,
 } from '@aws-sdk/client-ec2';
-import type { LambdaRunnerSource } from '../../../../core';
+import type { LambdaRunnerSource, ListRunnerFilters, RunnerType } from '../../../../core';
 
-export type RunnerType = 'Org' | 'Repo';
-
-export interface RunnerList {
-  instanceId: string;
-  launchTime?: Date;
-  owner?: string;
-  type?: string;
-  repo?: string;
-  org?: string;
-  orphan?: boolean;
-  runnerId?: string;
-  bypassRemoval?: boolean;
-}
-
-export interface RunnerInfo {
-  instanceId: string;
-  launchTime?: Date;
-  owner: string;
-  type: string;
-}
-
-export interface ListRunnerFilters {
-  runnerType?: RunnerType;
-  runnerOwner?: string;
-  environment?: string;
-  orphan?: boolean;
+export interface Ec2ListRunnerFilters extends ListRunnerFilters {
   statuses?: string[];
 }
 
@@ -73,10 +48,4 @@ export interface RunnerInputParameters {
   onDemandFailoverOnError?: string[];
   scaleErrors: string[];
   useDedicatedHost?: boolean;
-}
-
-export interface CreateRunnerResult {
-  instances: string[];
-  retryableErrorCount: number;
-  nonRetryableErrorCount: number;
 }

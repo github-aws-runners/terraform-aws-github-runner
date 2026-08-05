@@ -11,7 +11,7 @@ import { GhRunners, githubCache } from './cache';
 import { ScalingDownConfigList, getEvictionStrategy, getIdleRunnerCount } from './scale-down-config';
 import { metricGitHubAppRateLimit } from '../github/rate-limit';
 import { getGitHubEnterpriseApiUrl } from './github-runner';
-import type { RunnerInfo, RunnerList, ScaleDownRunnerProvider } from './scale-down-provider';
+import type { RunnerInfo, ScaleDownRunnerProvider } from './types';
 
 const logger = createChildLogger('scale-down');
 
@@ -93,7 +93,7 @@ async function getGitHubRunnerBusyState(client: Octokit, runner: RunnerInfo, run
 }
 
 async function listGitHubRunners(runner: RunnerInfo): Promise<GhRunners> {
-  const key = runner.owner as string;
+  const key = runner.owner;
   const cachedRunners = githubCache.runners.get(key);
   if (cachedRunners) {
     logger.debug(`[listGithubRunners] Cache hit for ${key}`);
@@ -278,11 +278,10 @@ async function unMarkOrphan(id: string, runnerProvider: ScaleDownRunnerProvider)
   }
 }
 
-async function lastChanceCheckOrphanRunner(runner: RunnerList): Promise<boolean> {
-  const registeredRunner = runner as RunnerInfo;
-  const client = await getOrCreateOctokit(registeredRunner);
+async function lastChanceCheckOrphanRunner(runner: RunnerInfo): Promise<boolean> {
+  const client = await getOrCreateOctokit(runner);
   const runnerId = parseInt(runner.githubRunnerId || '0');
-  const state = await getGitHubSelfHostedRunnerState(client, registeredRunner, runnerId);
+  const state = await getGitHubSelfHostedRunnerState(client, runner, runnerId);
   let isOrphan = false;
 
   if (state === null) {
@@ -343,10 +342,10 @@ async function listRunners(environment: string, runnerProvider: ScaleDownRunnerP
   return await runnerProvider.list(environment);
 }
 
-function filterRunners(runners: RunnerList[]): RunnerInfo[] {
+function filterRunners(runners: RunnerInfo[]): RunnerInfo[] {
   // Managed runners are launched with owner and type tags together. Exclude incomplete records because both
   // values are required to select the GitHub owner and runner API used during scale-down.
-  return runners.filter((runner) => runner.owner && runner.type && !runner.orphan) as RunnerInfo[];
+  return runners.filter((runner) => runner.owner && runner.type && !runner.orphan);
 }
 
 export async function scaleDown(): Promise<void> {

@@ -1,7 +1,7 @@
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import type {
+  CreateRunnerResult,
   CreateScaleUpRunnersInput,
-  CreateScaleUpRunnersResult,
   CreateStartRunnerConfig,
   CurrentRunnersInput,
   PreparedScaleUpRunnerGroup,
@@ -65,7 +65,7 @@ async function getCurrentEc2Runners(
 async function createEc2ScaleUpRunners(
   { githubRunnerConfig, numberOfRunners, githubInstallationClient, state }: CreateScaleUpRunnersInput<Ec2ScaleUpState>,
   createStartRunnerConfig: CreateStartRunnerConfig,
-): Promise<CreateScaleUpRunnersResult> {
+): Promise<CreateRunnerResult> {
   const config = loadEc2ScaleUpProviderConfig();
 
   return await createRunners(
