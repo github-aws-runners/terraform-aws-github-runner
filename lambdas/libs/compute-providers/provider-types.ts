@@ -1,4 +1,4 @@
-export const computeProviderTypes = ['ec2'] as const;
+export const computeProviderTypes = ['ec2', 'microvm'] as const;
 
 export type ComputeProviderType = (typeof computeProviderTypes)[number];
 
