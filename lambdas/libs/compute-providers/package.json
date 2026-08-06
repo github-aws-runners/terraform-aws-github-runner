@@ -27,6 +27,7 @@
     "@aws-github-runner/aws-powertools-util": "*",
     "@aws-github-runner/aws-ssm-util": "*",
     "@aws-sdk/client-ec2": "^3.1009.0",
+    "@aws-sdk/client-lambda-microvms": "^3.1074.0",
     "@octokit/rest": "22.0.1",
     "moment": "2.29.4",
     "yn": "3.1.1"
