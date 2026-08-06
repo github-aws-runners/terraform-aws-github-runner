@@ -24,30 +24,13 @@ describe('selectDynamicLabelQueue', () => {
     });
   });
 
-  it('skips an unsupported provider strategy and selects the next supported queue', () => {
-    const unsupportedQueue = runnerQueue('unsupported-provider');
-    (unsupportedQueue as unknown as { runnerProvider: string }).runnerProvider = 'unsupported';
-    const ec2Queue = runnerQueue('ec2');
+  it.each([['unsupported'], [42]])('throws for unsupported runner provider %j', (runnerProvider) => {
+    const queue = runnerQueue('unsupported-provider');
+    (queue as unknown as { runnerProvider: unknown }).runnerProvider = runnerProvider;
 
-    expect(
-      selectDynamicLabelQueue(
-        [unsupportedQueue, ec2Queue],
-        ['self-hosted', 'linux'],
-        ['ghr-ec2-instance-type:t3.large'],
-      ),
-    ).toEqual({
-      queue: ec2Queue,
-      labels: ['self-hosted', 'linux', 'ghr-ec2-instance-type:t3.large'],
-    });
-  });
-
-  it('rejects a malformed non-string runner provider without throwing', () => {
-    const queue = runnerQueue('malformed-provider');
-    (queue as unknown as { runnerProvider: number }).runnerProvider = 42;
-
-    expect(
+    expect(() =>
       selectDynamicLabelQueue([queue], ['self-hosted', 'linux'], ['ghr-ec2-instance-type:t3.large']),
-    ).toBeUndefined();
+    ).toThrow(`Unsupported runner provider type '${String(runnerProvider)}'`);
   });
 });
 

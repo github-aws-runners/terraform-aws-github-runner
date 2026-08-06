@@ -1,11 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  defaultRunnerProvider,
-  normalizeRunnerProviderType,
-  resolveRunnerProviderType,
-  runnerProviderTypes,
-} from './provider-types';
+import { defaultRunnerProvider, resolveRunnerProviderType, runnerProviderTypes } from './provider-types';
+
+const defaultProviderInputs = [undefined, '', '   '] as const;
+const supportedProviderCases = runnerProviderTypes.flatMap(
+  (provider) =>
+    [
+      [provider, provider],
+      [` ${provider.toUpperCase()} `, provider],
+    ] as const,
+);
 
 describe('runner provider configuration', () => {
   it('defines an explicit default provider', () => {
@@ -13,31 +17,12 @@ describe('runner provider configuration', () => {
   });
 });
 
-describe('runner provider normalization', () => {
-  it.each([
-    [undefined, 'ec2'],
-    ['', 'ec2'],
-    ['   ', 'ec2'],
-    [' EC2 ', 'ec2'],
-  ])('normalizes provider type %j to %j', (type, expected) => {
-    expect(normalizeRunnerProviderType(type)).toBe(expected);
+describe('runner provider resolution', () => {
+  it.each(defaultProviderInputs)('resolves default provider input %j', (type) => {
+    expect(resolveRunnerProviderType(type)).toBe(defaultRunnerProvider);
   });
 
-  it.each([[' Unknown '], ['unsupported-provider'], [null], [1]])(
-    'returns undefined for unsupported provider type %j',
-    (type) => {
-      expect(normalizeRunnerProviderType(type)).toBeUndefined();
-    },
-  );
-});
-
-describe('runner provider resolution', () => {
-  it.each([
-    [undefined, 'ec2'],
-    ['', 'ec2'],
-    ['   ', 'ec2'],
-    [' EC2 ', 'ec2'],
-  ])('resolves provider type %j to %j', (type, expected) => {
+  it.each(supportedProviderCases)('resolves provider type %j to %j', (type, expected) => {
     expect(resolveRunnerProviderType(type)).toBe(expected);
   });
 
