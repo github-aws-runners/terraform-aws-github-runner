@@ -6,6 +6,12 @@ This module creates many runners with a single GitHub app. The module utilizes t
 
 The module takes a configuration as input containing a matcher for the labels. The [webhook](https://github-aws-runners.github.io/terraform-aws-github-runner/modules/internal/webhook/) lambda is using the configuration to delegate events based on the labels in the workflow job and sent them to a dedicated queue based on the configuration. Events on each queue are processed by a dedicated lambda per configuration to scale runners.
 
+## Provider boundary
+
+The multi-runner module owns provider-neutral lane normalization, queues, shared runner-binary discovery, and webhook routing. Normalized EC2 lanes are delegated to the internal `providers/ec2` adapter, which owns the EC2 runner, pool, and EC2-specific IAM implementation.
+
+Both the stable `multi_runner_config` input and experimental `multi_runner_config_v2` input use this same boundary. EC2 remains the only Terraform-managed runner provider; microVM, CodeBuild, and other provider modules are future work. Existing lane keys are retained, and a Terraform `moved` block migrates the previous per-lane runner module addresses into the EC2 provider module without replacing resources.
+
 For each configuration:
 
 - When enabled, the [distribution syncer](https://github-aws-runners.github.io/terraform-aws-github-runner/modules/internal/runner-binaries-syncer/) is deployed for each unique combination of OS and architecture.
@@ -94,9 +100,9 @@ module "multi-runner" {
 | Name | Source | Version |
 |------|--------|---------|
 | <a name="module_ami_housekeeper"></a> [ami\_housekeeper](#module\_ami\_housekeeper) | ../ami-housekeeper | n/a |
+| <a name="module_ec2"></a> [ec2](#module\_ec2) | ./providers/ec2 | n/a |
 | <a name="module_instance_termination_watcher"></a> [instance\_termination\_watcher](#module\_instance\_termination\_watcher) | ../termination-watcher | n/a |
 | <a name="module_runner_binaries"></a> [runner\_binaries](#module\_runner\_binaries) | ../runner-binaries-syncer | n/a |
-| <a name="module_runners"></a> [runners](#module\_runners) | ../runners | n/a |
 | <a name="module_ssm"></a> [ssm](#module\_ssm) | ../ssm | n/a |
 | <a name="module_webhook"></a> [webhook](#module\_webhook) | ../webhook | n/a |
 

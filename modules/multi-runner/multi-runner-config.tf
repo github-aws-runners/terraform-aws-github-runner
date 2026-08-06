@@ -105,13 +105,15 @@ locals {
     }
   }
 
-  ec2_runner_config = {
-    for k, v in local.runner_config : k => v
-    if v.runnerProvider == "ec2"
+  runner_config_by_provider = {
+    ec2 = {
+      for k, v in local.runner_config : k => v
+      if v.runnerProvider == "ec2"
+    }
   }
 
   tmp_distinct_list_unique_os_and_arch = distinct([
-    for _, config in local.ec2_runner_config : {
+    for _, config in local.runner_config_by_provider.ec2 : {
       "os_type" : config.runner.runner_os,
       "architecture" : config.runner.runner_architecture
     }

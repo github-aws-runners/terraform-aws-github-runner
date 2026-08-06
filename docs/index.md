@@ -101,7 +101,7 @@ Besides these permissions, the lambdas also need permission to CloudWatch (for l
 
 ## Terraform main modules
 
-Currently we support two main modules. The `runners` module is the main module for creating runners. And the 'multi-runner' module is a wrapper around the `runners` module to create multiple runners in one go. The `multi-runner` module is useful for creating runners for multiple repositories or organizations.
+Currently we support two main modules. The `runners` module is the main module for creating runners. The `multi-runner` module adds provider-neutral lane normalization, queues, and webhook routing so multiple runners can be created in one deployment. Its internal EC2 provider owns the runner, pool, and EC2-specific IAM implementation. EC2 is the only Terraform-managed provider today; microVM, CodeBuild, and other provider modules are future work.
 
 Both modules are built on top of the same base modules. When using the multi-runner module you can deploy different runners with only one deployment.
 
