@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { DynamicLabelProvider, DynamicLabelViolation, RunnerMatcherConfig } from './contracts';
-import type { ComputeProviderType } from './provider-types';
 import { createDynamicLabelQueueSelector } from './webhook';
+
+type TestProvider = 'provider-a' | 'provider-b';
 
 describe('createDynamicLabelQueueSelector', () => {
   it('returns the first queue accepted by its provider', () => {
@@ -55,31 +56,27 @@ describe('createDynamicLabelQueueSelector', () => {
     expect(selectQueue([queue], ['self-hosted'], ['ghr-test-size:large'])).toBeUndefined();
   });
 
-  /* TODO: Re-enable this scenario when the MicroVM provider is added.
-  it('skips EC2 and selects the MicroVM queue for MicroVM override labels', () => {
-    const ec2Queue = runnerQueue('ec2');
-    const microvmQueue = runnerQueue('microvm');
-    const imageVersionLabel = 'ghr-microvm-image-version:3.0';
+  it('skips queues when labels target another provider', () => {
+    const firstQueue = runnerQueue('first');
+    const secondQueue = runnerQueue('second');
     const { getViolations, selectQueue } = selector({
-      providerByQueue: { ec2: 'ec2', microvm: 'microvm' },
-      labelsForOtherProvider: (labels, provider) =>
-        provider === 'ec2' ? labels.filter((label) => label.startsWith('ghr-microvm-')) : [],
+      providerByQueue: { first: 'provider-a', second: 'provider-b' },
+      labelsForOtherProvider: (_labels, provider) => (provider === 'provider-a' ? ['ghr-provider-b-size:large'] : []),
     });
 
-    expect(selectQueue([ec2Queue, microvmQueue], ['self-hosted', 'linux'], [imageVersionLabel])).toEqual({
-      queue: microvmQueue,
-      labels: ['self-hosted', 'linux', imageVersionLabel],
+    expect(selectQueue([firstQueue, secondQueue], ['self-hosted'], ['ghr-provider-b-size:large'])).toEqual({
+      queue: secondQueue,
+      labels: ['self-hosted', 'ghr-provider-b-size:large'],
     });
     expect(getViolations).toHaveBeenCalledOnce();
-    expect(getViolations).toHaveBeenCalledWith({ queue: microvmQueue, labels: [imageVersionLabel] });
+    expect(getViolations).toHaveBeenCalledWith({ queue: secondQueue, labels: ['ghr-provider-b-size:large'] });
   });
-  */
 });
 
 function selector(options?: {
-  providerByQueue?: Record<string, ComputeProviderType>;
+  providerByQueue?: Record<string, TestProvider>;
   violationsByQueue?: Record<string, DynamicLabelViolation[]>;
-  labelsForOtherProvider?: (labels: string[], provider: ComputeProviderType) => string[];
+  labelsForOtherProvider?: (labels: string[], provider: TestProvider) => string[];
 }) {
   const getViolations = vi.fn<DynamicLabelProvider['getViolations']>(({ queue }) => {
     return options?.violationsByQueue?.[queue.id] ?? [];
@@ -87,9 +84,9 @@ function selector(options?: {
 
   return {
     getViolations,
-    selectQueue: createDynamicLabelQueueSelector<ComputeProviderType>({
+    selectQueue: createDynamicLabelQueueSelector<TestProvider>({
       resolveProvider: (queue) => ({
-        type: options?.providerByQueue?.[queue.id] ?? 'ec2',
+        type: options?.providerByQueue?.[queue.id] ?? 'provider-a',
         dynamicLabels: { getViolations },
       }),
       dynamicLabelsForOtherProvider: options?.labelsForOtherProvider ?? (() => []),
