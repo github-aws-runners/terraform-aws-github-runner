@@ -1,11 +1,11 @@
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
+import { selectDynamicLabelQueue } from '@aws-github-runner/compute-providers/webhook';
 import { WorkflowJobEvent } from '@octokit/webhooks-types';
 
 import { Response } from '../lambda';
 import { RunnerMatcherConfig, sendActionRequest } from '../sqs';
 import ValidationError from '../ValidationError';
 import { ConfigDispatcher, ConfigWebhook, QueueSelectionStrategy } from '../ConfigLoader';
-import { selectAwsDynamicLabelQueue } from './aws-dynamic-labels';
 import { canRunJob, splitWorkflowJobLabels } from './labels';
 
 const logger = createChildLogger('handler');
@@ -84,7 +84,7 @@ async function handleWorkflowJob(
     // Dynamic labels present: prefer the first provider-compliant queue. The
     // queue selection strategy applies to standard jobs only; dynamic-label jobs
     // always use the first compliant queue.
-    const dynamicTarget = selectAwsDynamicLabelQueue(matches, nonGhrLabels, sanitizedGhrLabels);
+    const dynamicTarget = selectDynamicLabelQueue(matches, nonGhrLabels, sanitizedGhrLabels);
 
     if (dynamicTarget) {
       targets = [dynamicTarget.queue];
