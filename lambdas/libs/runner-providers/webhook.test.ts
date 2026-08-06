@@ -32,6 +32,28 @@ describe('selectDynamicLabelQueue', () => {
       selectDynamicLabelQueue([queue], ['self-hosted', 'linux'], ['ghr-ec2-instance-type:t3.large']),
     ).toThrow(`Unsupported runner provider type '${String(runnerProvider)}'`);
   });
+
+  it('skips EC2 and selects the MicroVM queue for MicroVM override labels', () => {
+    const ec2Queue = runnerQueue('ec2', 'ec2');
+    const microvmQueue = runnerQueue('microvm', 'microvm');
+    const imageVersionLabel = 'ghr-microvm-image-version:3.0';
+
+    expect(selectDynamicLabelQueue([ec2Queue, microvmQueue], ['self-hosted', 'linux'], [imageVersionLabel])).toEqual({
+      queue: microvmQueue,
+      labels: ['self-hosted', 'linux', imageVersionLabel],
+    });
+  });
+
+  it('skips MicroVM and selects the EC2 queue for EC2 override labels', () => {
+    const microvmQueue = runnerQueue('microvm', 'microvm');
+    const ec2Queue = runnerQueue('ec2', 'ec2');
+    const instanceTypeLabel = 'ghr-ec2-instance-type:m7i.large';
+
+    expect(selectDynamicLabelQueue([microvmQueue, ec2Queue], ['self-hosted', 'linux'], [instanceTypeLabel])).toEqual({
+      queue: ec2Queue,
+      labels: ['self-hosted', 'linux', instanceTypeLabel],
+    });
+  });
 });
 
 function runnerQueue(id: string, runnerProvider?: RunnerProviderType): RunnerMatcherConfig {
