@@ -8,9 +8,15 @@ The module takes a configuration as input containing a matcher for the labels. T
 
 ## Provider boundary
 
-The multi-runner module owns provider-neutral lane normalization, queues, shared runner-binary discovery, and webhook routing. Each normalized lane is deployed through `modules/runners`, which selects its internal compute provider with `provider_type`. The EC2 child owns EC2 compute, runner-instance IAM, bootstrap, and provider-specific Lambda fragments; the shared runner module owns scale-up, scale-down, pool, retry, and Lambda roles.
+The multi-runner module owns provider-neutral lane normalization, queues, shared runner-binary discovery, and webhook routing. Stable `multi_runner_config` lanes continue to use the existing `modules/runners` module at their historical `module.runners["lane"]` addresses. The stable module and its state layout are not part of the experimental provider refactor.
 
-Both the stable `multi_runner_config` input and experimental `multi_runner_config_v2` input use this same boundary. EC2 remains the only Terraform-managed runner provider; microVM, CodeBuild, and other provider modules are future work. Existing lane keys and common control-plane addresses remain stable. Internal `moved` blocks migrate only the resources that are now owned by the EC2 child.
+Setting `multi_runner_config_v2` opts all selected lanes into `modules/runner-stack` at `module.runner_stacks["lane"]`. That stack owns the common scale-up, scale-down, pool, retry, and Lambda-role resources and dispatches provider-specific compute, IAM, bootstrap, and Lambda fragments using `provider.type`. The v1 and v2 runner module maps are mutually exclusive, while queue, webhook, and public output lane keys remain unchanged. EC2 remains the only Terraform-managed runner provider; microVM, CodeBuild, and other provider modules are future work.
+
+Stable v1 entries in `runners_map` retain their existing flat output shape. Experimental v2 entries keep common control-plane Lambda and role outputs at the lane level, while compute-provider resources are available only under `provider`. For EC2 lanes, use `runners_map["lane"].provider.ec2.launch_template`, `.role_runner`, `.runners_log_groups`, and `.logfiles`; the corresponding flat v1 attributes are intentionally not duplicated in v2 entries.
+
+### Experimental v2 migration
+
+`multi_runner_config_v2` is experimental. Deployments that already used an earlier v2 implementation may have runner state at `module.runners["lane"]`; the provider-oriented stack uses `module.runner_stacks["lane"]` instead. Terraform cannot apply a generic automatic move because the original `module.runners` address remains reserved for stable v1 deployments. Review the plan and migrate experimental v2 state explicitly before upgrading, or allow those experimental runner resources to be replaced. Deployments that continue using stable `multi_runner_config` require no address migration.
 
 For each configuration:
 
@@ -102,6 +108,7 @@ module "multi-runner" {
 | <a name="module_ami_housekeeper"></a> [ami\_housekeeper](#module\_ami\_housekeeper) | ../ami-housekeeper | n/a |
 | <a name="module_instance_termination_watcher"></a> [instance\_termination\_watcher](#module\_instance\_termination\_watcher) | ../termination-watcher | n/a |
 | <a name="module_runner_binaries"></a> [runner\_binaries](#module\_runner\_binaries) | ../runner-binaries-syncer | n/a |
+| <a name="module_runner_stacks"></a> [runner\_stacks](#module\_runner\_stacks) | ../runner-stack | n/a |
 | <a name="module_runners"></a> [runners](#module\_runners) | ../runners | n/a |
 | <a name="module_ssm"></a> [ssm](#module\_ssm) | ../ssm | n/a |
 | <a name="module_webhook"></a> [webhook](#module\_webhook) | ../webhook | n/a |

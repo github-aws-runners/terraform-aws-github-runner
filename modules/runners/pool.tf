@@ -9,10 +9,17 @@ module "pool" {
       ssl_verify = var.ghes_ssl_verify
       url        = var.ghes_url
     }
-    user_agent            = var.user_agent
-    github_app_parameters = var.github_app_parameters
-    runners_maximum_count = var.runners_maximum_count
-    kms_key_arn           = local.kms_key_arn
+    user_agent                    = var.user_agent
+    github_app_parameters         = var.github_app_parameters
+    instance_allocation_strategy  = var.instance_allocation_strategy
+    instance_type_priorities      = var.instance_type_priorities
+    instance_max_spot_price       = var.instance_max_spot_price
+    instance_target_capacity_type = var.instance_target_capacity_type
+    instance_types                = var.instance_types
+    runners_maximum_count         = var.runners_maximum_count
+    kms_key_arn                   = local.kms_key_arn
+    ami_kms_key_arn               = local.ami_kms_key_arn
+    ami_id_ssm_parameter_arn      = local.ami_id_ssm_module_managed ? aws_ssm_parameter.runner_ami_id[0].arn : var.ami.id_ssm_parameter_arn
     lambda = {
       log_level                      = var.log_level
       logging_retention_in_days      = var.logging_retention_in_days
@@ -36,28 +43,30 @@ module "pool" {
     role_path                 = local.role_path
     role_permissions_boundary = var.role_permissions_boundary
     runner = {
-      disable_runner_autoupdate = var.disable_runner_autoupdate
-      ephemeral                 = var.enable_ephemeral_runners
-      enable_jit_config         = var.enable_jit_config
-      labels                    = var.runner_labels
-      group_name                = var.runner_group_name
-      name_prefix               = var.runner_name_prefix
-      pool_owner                = var.pool_runner_owner
+      disable_runner_autoupdate            = var.disable_runner_autoupdate
+      ephemeral                            = var.enable_ephemeral_runners
+      enable_jit_config                    = var.enable_jit_config
+      enable_on_demand_failover_for_errors = var.enable_on_demand_failover_for_errors
+      scale_errors                         = var.scale_errors
+      boot_time_in_minutes                 = var.runner_boot_time_in_minutes
+      labels                               = var.runner_labels
+      launch_template                      = aws_launch_template.runner
+      group_name                           = var.runner_group_name
+      name_prefix                          = var.runner_name_prefix
+      pool_owner                           = var.pool_runner_owner
+      role                                 = { arn = var.iam_overrides["override_runner_role"] ? var.iam_overrides["runner_role_arn"] : aws_iam_role.runner[0].arn }
+      use_dedicated_host                   = var.use_dedicated_host
     }
-    ssm_token_path                 = "${var.ssm_paths.root}/${var.ssm_paths.tokens}"
-    ssm_config_path                = "${var.ssm_paths.root}/${var.ssm_paths.config}"
-    tags                           = local.tags
-    lambda_tags                    = var.lambda_tags
-    arn_ssm_parameters_path_config = local.arn_ssm_parameters_path_config
+    subnet_ids                           = var.subnet_ids
+    ssm_token_path                       = "${var.ssm_paths.root}/${var.ssm_paths.tokens}"
+    ssm_config_path                      = "${var.ssm_paths.root}/${var.ssm_paths.config}"
+    ami_id_ssm_parameter_name            = local.ami_id_ssm_parameter_name
+    ami_id_ssm_parameter_read_policy_arn = local.ami_id_ssm_parameter_name != null ? aws_iam_policy.ami_id_ssm_parameter_read[0].arn : null
+    tags                                 = local.tags
+    lambda_tags                          = var.lambda_tags
+    arn_ssm_parameters_path_config       = local.arn_ssm_parameters_path_config
   }
 
   aws_partition  = var.aws_partition
   tracing_config = var.tracing_config
-  runner_provider = {
-    type                   = local.provider.type
-    environment_variables  = local.provider.pool.environment_variables
-    iam_policy_json        = local.provider.pool.iam_policy_json
-    managed_policy_enabled = local.provider.pool.managed_policy_enabled
-    managed_policy_arn     = local.provider.pool.managed_policy_arn
-  }
 }

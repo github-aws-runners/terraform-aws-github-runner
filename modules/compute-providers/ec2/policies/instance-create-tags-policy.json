@@ -1,0 +1,20 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Action": "ec2:CreateTags",
+            "Condition": {
+                "ForAllValues:StringEquals": {
+                    "aws:TagKeys": [
+                        "ghr:github_runner_id"
+                    ]
+                },
+                "StringEquals": {
+                    "aws:ARN": "$${ec2:SourceInstanceARN}"
+                }
+            },
+            "Effect": "Allow",
+            "Resource": "arn:*:ec2:*:*:instance/*"
+        }
+    ]
+}

@@ -80,7 +80,8 @@ locals {
     }
   }
 
-  multi_runner_config = length(var.multi_runner_config_v2) > 0 ? var.multi_runner_config_v2 : local.multi_runner_config_v1_as_v2
+  use_multi_runner_config_v2 = length(var.multi_runner_config_v2) > 0
+  multi_runner_config        = local.use_multi_runner_config_v2 ? var.multi_runner_config_v2 : local.multi_runner_config_v1_as_v2
 
   runner_extra_labels = {
     for k, v in local.multi_runner_config : k => sort(setunion(flatten(v.matcherConfig.labelMatchers), compact(v.runner.runner_extra_labels)))
@@ -94,6 +95,18 @@ locals {
       runnerProvider = lower(trimspace(v.provider.type))
       runner         = merge(v.runner, { runner_extra_labels = local.runner_extra_labels[k] })
     })
+  }
+
+  # Keep stable v1 lanes at their historical module.runners addresses. The
+  # experimental v2 input opts into the new provider-oriented runner stack.
+  runner_config_v1 = {
+    for k, v in local.runner_config : k => v
+    if !local.use_multi_runner_config_v2
+  }
+
+  runner_config_v2 = {
+    for k, v in local.runner_config : k => v
+    if local.use_multi_runner_config_v2
   }
 
   runner_matcher_config = {

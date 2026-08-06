@@ -26,7 +26,6 @@ locals {
     tracing_config                                                 = var.tracing_config
     github_app_parameters                                          = var.github_app_parameters
     enable_organization_runners                                    = var.enable_organization_runners
-    runner_name_prefix                                             = var.runner_name_prefix
     sqs_build_queue                                                = var.sqs_build_queue
     ghes_url                                                       = var.ghes_url
     lambda_event_source_mapping_batch_size                         = var.lambda_event_source_mapping_batch_size

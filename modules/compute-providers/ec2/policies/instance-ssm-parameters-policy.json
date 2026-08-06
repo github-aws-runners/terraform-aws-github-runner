@@ -1,0 +1,31 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ssm:DeleteParameter",
+        "ssm:GetParameters",
+        "ssm:GetParameter"
+      ],
+      "Resource": "${arn_ssm_parameters_path_tokens}/*",
+      "Condition": {
+        "StringLike": {
+          "ec2:SourceInstanceARN": "*/$${aws:ResourceTag/InstanceId}"
+        }
+      }
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ssm:GetParameter",
+        "ssm:GetParameters",
+        "ssm:GetParametersByPath"
+      ],
+      "Resource": [
+        "${arn_ssm_parameters_path_config}",
+        "${arn_ssm_parameters_path_config}/*"
+      ]
+    }
+  ]
+}

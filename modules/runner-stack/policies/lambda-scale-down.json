@@ -1,0 +1,17 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["ssm:GetParameter", "ssm:GetParameters"],
+      "Resource": ["${github_app_key_base64_arn}", "${github_app_id_arn}"]
+    }
+%{ if kms_key_arn != "" ~}
+    ,{
+      "Effect": "Allow",
+      "Action": ["kms:Decrypt"],
+      "Resource": "${kms_key_arn}"
+    }
+%{ endif ~}
+  ]
+}

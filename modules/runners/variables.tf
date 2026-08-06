@@ -1,14 +1,3 @@
-variable "provider_type" {
-  description = "Compute provider used by the common runner control plane."
-  type        = string
-  default     = "ec2"
-
-  validation {
-    condition     = contains(["ec2"], lower(trimspace(var.provider_type)))
-    error_message = "Supported runner providers: ec2."
-  }
-}
-
 variable "ami" {
   description = <<EOT
 AMI configuration for the action runner instances. This object allows you to specify all AMI-related settings in one place.

@@ -24,7 +24,8 @@ resource "aws_lambda_function" "scale_up" {
   tags                           = merge(local.tags, var.lambda_tags)
   architectures                  = [var.lambda_architecture]
   environment {
-    variables = merge(local.provider.scale_up.environment_variables, {
+    variables = {
+      AMI_ID_SSM_PARAMETER_NAME                = local.ami_id_ssm_parameter_name
       DISABLE_RUNNER_AUTOUPDATE                = var.disable_runner_autoupdate
       ENABLE_EPHEMERAL_RUNNERS                 = var.enable_ephemeral_runners
       ENABLE_JIT_CONFIG                        = var.enable_jit_config
@@ -34,6 +35,12 @@ resource "aws_lambda_function" "scale_up" {
       ENVIRONMENT                              = var.prefix
       GHES_URL                                 = var.ghes_url
       USER_AGENT                               = var.user_agent
+      INSTANCE_ALLOCATION_STRATEGY             = var.instance_allocation_strategy
+      INSTANCE_MAX_SPOT_PRICE                  = var.instance_max_spot_price
+      INSTANCE_TARGET_CAPACITY_TYPE            = var.instance_target_capacity_type
+      INSTANCE_TYPE_PRIORITIES                 = var.instance_type_priorities != null ? jsonencode(var.instance_type_priorities) : ""
+      INSTANCE_TYPES                           = join(",", var.instance_types)
+      LAUNCH_TEMPLATE_NAME                     = aws_launch_template.runner.name
       LOG_LEVEL                                = upper(var.log_level)
       MINIMUM_RUNNING_TIME_IN_MINUTES          = coalesce(var.minimum_running_time_in_minutes, local.min_runtime_defaults[var.runner_os])
       NODE_TLS_REJECT_UNAUTHORIZED             = var.ghes_url != null && !var.ghes_ssl_verify ? 0 : 1
@@ -47,14 +54,18 @@ resource "aws_lambda_function" "scale_up" {
       RUNNER_LABELS                            = lower(join(",", var.runner_labels))
       RUNNER_GROUP_NAME                        = var.runner_group_name
       RUNNER_NAME_PREFIX                       = var.runner_name_prefix
-      RUNNER_PROVIDER_TYPE                     = local.provider.type
+      RUNNER_PROVIDER_TYPE                     = "ec2"
       RUNNERS_MAXIMUM_COUNT                    = var.runners_maximum_count
       POWERTOOLS_SERVICE_NAME                  = "${var.prefix}-scale-up"
       SSM_TOKEN_PATH                           = local.token_path
       SSM_CONFIG_PATH                          = "${var.ssm_paths.root}/${var.ssm_paths.config}"
       SSM_PARAMETER_STORE_TAGS                 = local.parameter_store_tags
+      SUBNET_IDS                               = join(",", var.subnet_ids)
+      ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS     = jsonencode(var.enable_on_demand_failover_for_errors)
+      SCALE_ERRORS                             = jsonencode(var.scale_errors)
       JOB_RETRY_CONFIG                         = jsonencode(local.job_retry_config)
-    })
+      USE_DEDICATED_HOST                       = var.use_dedicated_host
+    }
   }
 
   dynamic "vpc_config" {
@@ -107,22 +118,19 @@ resource "aws_iam_role" "scale_up" {
 }
 
 resource "aws_iam_role_policy" "scale_up" {
-  name   = "scale-up-policy"
-  role   = aws_iam_role.scale_up.name
-  policy = data.aws_iam_policy_document.scale_up.json
-}
-
-data "aws_iam_policy_document" "scale_up" {
-  source_policy_documents = [
-    templatefile("${path.module}/policies/lambda-scale-up.json", {
-      sqs_arn                   = var.sqs_build_queue.arn
-      github_app_id_arn         = var.github_app_parameters.id.arn
-      github_app_key_base64_arn = var.github_app_parameters.key_base64.arn
-      ssm_config_path           = "arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.ssm_paths.root}/${var.ssm_paths.config}"
-      kms_key_arn               = local.kms_key_arn
-    }),
-    local.provider.scale_up.iam_policy_json,
-  ]
+  name = "scale-up-policy"
+  role = aws_iam_role.scale_up.name
+  policy = templatefile("${path.module}/policies/lambda-scale-up.json", {
+    arn_runner_instance_role  = var.iam_overrides["override_runner_role"] ? var.iam_overrides["runner_role_arn"] : aws_iam_role.runner[0].arn
+    environment               = var.prefix
+    sqs_arn                   = var.sqs_build_queue.arn
+    github_app_id_arn         = var.github_app_parameters.id.arn
+    github_app_key_base64_arn = var.github_app_parameters.key_base64.arn
+    ssm_config_path           = "arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.ssm_paths.root}/${var.ssm_paths.config}"
+    kms_key_arn               = local.kms_key_arn
+    ami_kms_key_arn           = local.ami_kms_key_arn
+    ssm_ami_id_parameter_arn  = local.ami_id_ssm_module_managed ? aws_ssm_parameter.runner_ami_id[0].arn : var.ami.id_ssm_parameter_arn
+  })
 }
 
 resource "aws_iam_role_policy" "scale_up_logging" {
@@ -134,10 +142,10 @@ resource "aws_iam_role_policy" "scale_up_logging" {
 }
 
 resource "aws_iam_role_policy" "service_linked_role" {
-  count  = local.provider.scale_up.additional_iam_policy_json != null ? 1 : 0
+  count  = var.create_service_linked_role_spot ? 1 : 0
   name   = "service_linked_role"
   role   = aws_iam_role.scale_up.name
-  policy = local.provider.scale_up.additional_iam_policy_json
+  policy = templatefile("${path.module}/policies/service-linked-role-create-policy.json", { aws_partition = var.aws_partition })
 }
 
 resource "aws_iam_role_policy_attachment" "scale_up_vpc_execution_role" {
@@ -147,9 +155,9 @@ resource "aws_iam_role_policy_attachment" "scale_up_vpc_execution_role" {
 }
 
 resource "aws_iam_role_policy_attachment" "ami_id_ssm_parameter_read" {
-  count      = local.provider.scale_up.managed_policy_enabled ? 1 : 0
+  count      = local.ami_id_ssm_parameter_name != null ? 1 : 0
   role       = aws_iam_role.scale_up.name
-  policy_arn = local.provider.scale_up.managed_policy_arn
+  policy_arn = aws_iam_policy.ami_id_ssm_parameter_read[0].arn
 }
 
 resource "aws_iam_role_policy" "scale_up_xray" {
