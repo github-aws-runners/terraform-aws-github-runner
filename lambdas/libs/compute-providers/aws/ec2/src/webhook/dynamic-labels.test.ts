@@ -4,6 +4,64 @@ import type { RunnerMatcherConfig } from '../../../../contracts';
 import { selectEc2DynamicLabelQueue } from './dynamic-labels';
 
 describe('selectEc2DynamicLabelQueue', () => {
+  it('rejects dynamic labels when the queue disables them', () => {
+    const queue = runnerQueue('dynamic-labels-disabled');
+    queue.matcherConfig.enableDynamicLabels = false;
+
+    expect(
+      selectEc2DynamicLabelQueue([queue], ['self-hosted', 'linux'], ['ghr-ec2-instance-type:t3.large']),
+    ).toBeUndefined();
+  });
+
+  it('accepts dynamic labels when the queue has no policy', () => {
+    const queue = runnerQueue('no-policy');
+
+    expect(selectEc2DynamicLabelQueue([queue], ['self-hosted', 'linux'], ['ghr-ec2-instance-type:t3.large'])).toEqual({
+      queue,
+      labels: ['self-hosted', 'linux', 'ghr-ec2-instance-type:t3.large'],
+    });
+  });
+
+  it('skips a policy-rejected queue and returns the next compliant queue', () => {
+    const strictQueue = runnerQueue('strict');
+    strictQueue.matcherConfig.awsDynamicLabelsPolicy = {
+      restricted_keys: {
+        'instance-type': { allowed: ['m5.*'] },
+      },
+    };
+    const permissiveQueue = runnerQueue('permissive');
+
+    expect(
+      selectEc2DynamicLabelQueue(
+        [strictQueue, permissiveQueue],
+        ['self-hosted', 'linux'],
+        ['ghr-ec2-instance-type:t3.large'],
+      ),
+    ).toEqual({
+      queue: permissiveQueue,
+      labels: ['self-hosted', 'linux', 'ghr-ec2-instance-type:t3.large'],
+    });
+  });
+
+  it('returns undefined when no queue accepts the dynamic labels', () => {
+    const strictQueue = runnerQueue('strict');
+    strictQueue.matcherConfig.awsDynamicLabelsPolicy = {
+      restricted_keys: {
+        'instance-type': { allowed: ['m5.*'] },
+      },
+    };
+    const disabledQueue = runnerQueue('disabled');
+    disabledQueue.matcherConfig.enableDynamicLabels = false;
+
+    expect(
+      selectEc2DynamicLabelQueue(
+        [strictQueue, disabledQueue],
+        ['self-hosted', 'linux'],
+        ['ghr-ec2-instance-type:t3.large'],
+      ),
+    ).toBeUndefined();
+  });
+
   it('enforces a legacy EC2 dynamic labels policy when the new key is absent', () => {
     const queue = runnerQueue('legacy-ec2-policy');
     queue.matcherConfig.ec2DynamicLabelsPolicy = {

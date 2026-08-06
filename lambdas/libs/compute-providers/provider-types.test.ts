@@ -23,9 +23,12 @@ describe('compute provider normalization', () => {
     expect(normalizeComputeProviderType(type)).toBe(expected);
   });
 
-  it.each([[' Unknown '], ['microvm'], [null], [1]])('returns undefined for unsupported provider type %j', (type) => {
-    expect(normalizeComputeProviderType(type)).toBeUndefined();
-  });
+  it.each([[' Unknown '], ['unsupported-provider'], [null], [1]])(
+    'returns undefined for unsupported provider type %j',
+    (type) => {
+      expect(normalizeComputeProviderType(type)).toBeUndefined();
+    },
+  );
 });
 
 describe('compute provider resolution', () => {
@@ -38,7 +41,7 @@ describe('compute provider resolution', () => {
     expect(resolveComputeProviderType(type)).toBe(expected);
   });
 
-  it.each([[' Unknown '], ['microvm'], [null], [1]])('rejects unsupported provider type %j', (type) => {
+  it.each([[' Unknown '], ['unsupported-provider'], [null], [1]])('rejects unsupported provider type %j', (type) => {
     expect(() => resolveComputeProviderType(type)).toThrow(`Unsupported compute provider type '${String(type)}'`);
   });
 });
