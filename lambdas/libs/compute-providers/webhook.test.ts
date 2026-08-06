@@ -24,30 +24,13 @@ describe('selectDynamicLabelQueue', () => {
     });
   });
 
-  it('skips an unsupported provider strategy and selects the next supported queue', () => {
-    const unsupportedQueue = runnerQueue('unsupported-provider');
-    (unsupportedQueue as unknown as { computeProvider: string }).computeProvider = 'unsupported';
-    const ec2Queue = runnerQueue('ec2');
+  it.each([['unsupported'], [42]])('throws for unsupported compute provider %j', (computeProvider) => {
+    const queue = runnerQueue('unsupported-provider');
+    (queue as unknown as { computeProvider: unknown }).computeProvider = computeProvider;
 
-    expect(
-      selectDynamicLabelQueue(
-        [unsupportedQueue, ec2Queue],
-        ['self-hosted', 'linux'],
-        ['ghr-ec2-instance-type:t3.large'],
-      ),
-    ).toEqual({
-      queue: ec2Queue,
-      labels: ['self-hosted', 'linux', 'ghr-ec2-instance-type:t3.large'],
-    });
-  });
-
-  it('rejects a malformed non-string compute provider without throwing', () => {
-    const queue = runnerQueue('malformed-provider');
-    (queue as unknown as { computeProvider: number }).computeProvider = 42;
-
-    expect(
+    expect(() =>
       selectDynamicLabelQueue([queue], ['self-hosted', 'linux'], ['ghr-ec2-instance-type:t3.large']),
-    ).toBeUndefined();
+    ).toThrow(`Unsupported compute provider type '${String(computeProvider)}'`);
   });
 });
 
