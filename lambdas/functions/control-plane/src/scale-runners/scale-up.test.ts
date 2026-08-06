@@ -2157,9 +2157,11 @@ describe('compute provider selection', () => {
   });
 
   it('rejects unsupported scale-up provider types', async () => {
-    process.env.COMPUTE_PROVIDER_TYPE = 'microvm';
+    process.env.COMPUTE_PROVIDER_TYPE = 'unsupported-provider';
 
-    await expect(scaleUpModule.scaleUp(TEST_DATA)).rejects.toThrow("Unsupported compute provider type 'microvm'");
+    await expect(scaleUpModule.scaleUp(TEST_DATA)).rejects.toThrow(
+      "Unsupported compute provider type 'unsupported-provider'",
+    );
     expect(mockedAppAuth).not.toHaveBeenCalled();
   });
 });
