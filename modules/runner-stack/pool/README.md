@@ -9,14 +9,14 @@ The pool is an opt-in feature. To be able to use the count on a module level to 
 ## Requirements
 
 | Name | Version |
-| ---- | ------- |
+|------|---------|
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.3.0 |
 | <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 6.21 |
 
 ## Providers
 
 | Name | Version |
-| ---- | ------- |
+|------|---------|
 | <a name="provider_aws"></a> [aws](#provider\_aws) | >= 6.21 |
 
 ## Modules
@@ -26,7 +26,7 @@ No modules.
 ## Resources
 
 | Name | Type |
-| ---- | ---- |
+|------|------|
 | [aws_cloudwatch_log_group.pool](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_log_group) | resource |
 | [aws_iam_role.pool](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
 | [aws_iam_role.scheduler](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
@@ -48,7 +48,7 @@ No modules.
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-| ---- | ----------- | ---- | ------- | :------: |
+|------|-------------|------|---------|:--------:|
 | <a name="input_aws_partition"></a> [aws\_partition](#input\_aws\_partition) | (optional) partition for the arn if not 'aws' | `string` | `"aws"` | no |
 | <a name="input_config"></a> [config](#input\_config) | Lookup details in parent module. | <pre>object({<br/>    lambda = object({<br/>      log_level                      = string<br/>      logging_retention_in_days      = number<br/>      logging_kms_key_id             = string<br/>      log_class                      = string<br/>      reserved_concurrent_executions = number<br/>      s3_bucket                      = string<br/>      s3_key                         = string<br/>      s3_object_version              = string<br/>      security_group_ids             = list(string)<br/>      runtime                        = string<br/>      architecture                   = string<br/>      memory_size                    = number<br/>      timeout                        = number<br/>      zip                            = string<br/>      subnet_ids                     = list(string)<br/>      parameter_store_tags           = string<br/>    })<br/>    tags = map(string)<br/>    ghes = object({<br/>      url        = string<br/>      ssl_verify = string<br/>    })<br/>    github_app_parameters = object({<br/>      key_base64 = map(string)<br/>      id         = map(string)<br/>    })<br/>    runner = object({<br/>      disable_runner_autoupdate = bool<br/>      ephemeral                 = bool<br/>      enable_jit_config         = bool<br/>      labels                    = list(string)<br/>      group_name                = string<br/>      name_prefix               = string<br/>      pool_owner                = string<br/>    })<br/>    runners_maximum_count = number<br/>    prefix                = string<br/>    pool = list(object({<br/>      schedule_expression          = string<br/>      schedule_expression_timezone = string<br/>      size                         = number<br/>    }))<br/>    include_busy_runners           = bool<br/>    role_permissions_boundary      = string<br/>    kms_key_arn                    = string<br/>    role_path                      = string<br/>    ssm_token_path                 = string<br/>    ssm_config_path                = string<br/>    arn_ssm_parameters_path_config = string<br/>    lambda_tags                    = map(string)<br/>    user_agent                     = string<br/>  })</pre> | n/a | yes |
 | <a name="input_runner_provider"></a> [runner\_provider](#input\_runner\_provider) | Compute provider configuration for the pool Lambda. | <pre>object({<br/>    type                   = string<br/>    environment_variables  = map(string)<br/>    iam_policy_json        = string<br/>    managed_policy_enabled = bool<br/>    managed_policy_arn     = optional(string, null)<br/>  })</pre> | n/a | yes |
@@ -57,7 +57,7 @@ No modules.
 ## Outputs
 
 | Name | Description |
-| ---- | ----------- |
+|------|-------------|
 | <a name="output_lambda"></a> [lambda](#output\_lambda) | n/a |
 | <a name="output_lambda_log_group"></a> [lambda\_log\_group](#output\_lambda\_log\_group) | n/a |
 | <a name="output_role_pool"></a> [role\_pool](#output\_role\_pool) | n/a |
