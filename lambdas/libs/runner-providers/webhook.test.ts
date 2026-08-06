@@ -33,6 +33,49 @@ describe('selectDynamicLabelQueue', () => {
     ).toThrow(`Unsupported runner provider type '${String(runnerProvider)}'`);
   });
 
+  it('skips queues that disable dynamic labels', () => {
+    const disabledQueue = runnerQueue('disabled', 'ec2');
+    disabledQueue.matcherConfig.enableDynamicLabels = false;
+    const enabledQueue = runnerQueue('enabled', 'ec2');
+    const instanceTypeLabel = 'ghr-ec2-instance-type:t3.large';
+
+    expect(
+      selectDynamicLabelQueue([disabledQueue, enabledQueue], ['self-hosted', 'linux'], [instanceTypeLabel]),
+    ).toEqual({
+      queue: enabledQueue,
+      labels: ['self-hosted', 'linux', instanceTypeLabel],
+    });
+  });
+
+  it('skips queues whose provider rejects the dynamic labels', () => {
+    const strictQueue = runnerQueue('strict', 'ec2');
+    strictQueue.matcherConfig.awsDynamicLabelsPolicy = {
+      restricted_keys: {
+        'instance-type': { allowed: ['m5.*'] },
+      },
+    };
+    const permissiveQueue = runnerQueue('permissive', 'ec2');
+    const instanceTypeLabel = 'ghr-ec2-instance-type:t3.large';
+
+    expect(
+      selectDynamicLabelQueue([strictQueue, permissiveQueue], ['self-hosted', 'linux'], [instanceTypeLabel]),
+    ).toEqual({
+      queue: permissiveQueue,
+      labels: ['self-hosted', 'linux', instanceTypeLabel],
+    });
+  });
+
+  it('returns undefined when no queue accepts the dynamic labels', () => {
+    const strictQueue = runnerQueue('strict', 'ec2');
+    strictQueue.matcherConfig.awsDynamicLabelsPolicy = {
+      blocked_keys: ['instance-type'],
+    };
+
+    expect(
+      selectDynamicLabelQueue([strictQueue], ['self-hosted', 'linux'], ['ghr-ec2-instance-type:t3.large']),
+    ).toBeUndefined();
+  });
+
   it('skips EC2 and selects the MicroVM queue for MicroVM override labels', () => {
     const ec2Queue = runnerQueue('ec2', 'ec2');
     const microvmQueue = runnerQueue('microvm', 'microvm');

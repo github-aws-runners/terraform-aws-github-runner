@@ -16,46 +16,16 @@ describe('microvmDynamicLabelProvider', () => {
       'ghr-microvm-maximum-duration-in-seconds:7200',
     ];
 
-    expect(
-      microvmDynamicLabelProvider.selectQueue({
-        queue,
-        nonGhrLabels: ['self-hosted', 'microvm'],
-        sanitizedGhrLabels: dynamicLabels,
-      }),
-    ).toEqual({ queue, labels: ['self-hosted', 'microvm', ...dynamicLabels] });
+    expect(getViolations(queue, dynamicLabels)).toEqual([]);
   });
 
   it('rejects unsupported MicroVM resource overrides', () => {
-    expect(
-      microvmDynamicLabelProvider.selectQueue({
-        queue: microvmQueue(),
-        nonGhrLabels: ['self-hosted', 'microvm'],
-        sanitizedGhrLabels: ['ghr-microvm-memory:8192'],
-      }),
-    ).toBeUndefined();
-  });
-
-  it('rejects labels owned by another runner provider', () => {
-    expect(
-      microvmDynamicLabelProvider.selectQueue({
-        queue: microvmQueue(),
-        nonGhrLabels: ['self-hosted', 'microvm'],
-        sanitizedGhrLabels: ['ghr-ec2-instance-type:m7i.large'],
-      }),
-    ).toBeUndefined();
-  });
-
-  it('requires dynamic labels to be enabled for the queue', () => {
-    const queue = microvmQueue();
-    queue.matcherConfig.enableDynamicLabels = false;
-
-    expect(
-      microvmDynamicLabelProvider.selectQueue({
-        queue,
-        nonGhrLabels: ['self-hosted', 'microvm'],
-        sanitizedGhrLabels: ['ghr-microvm-image-version:3.0'],
-      }),
-    ).toBeUndefined();
+    expect(getViolations(microvmQueue(), ['ghr-microvm-memory:8192'])).toEqual([
+      {
+        label: 'ghr-microvm-memory:8192',
+        reason: "key 'memory' is not a supported MicroVM override",
+      },
+    ]);
   });
 
   it('enforces the AWS dynamic-label policy', () => {
@@ -64,13 +34,12 @@ describe('microvmDynamicLabelProvider', () => {
       restricted_keys: { 'maximum-duration-in-seconds': { max: 3600 } },
     };
 
-    expect(
-      microvmDynamicLabelProvider.selectQueue({
-        queue,
-        nonGhrLabels: ['self-hosted', 'microvm'],
-        sanitizedGhrLabels: ['ghr-microvm-maximum-duration-in-seconds:7200'],
-      }),
-    ).toBeUndefined();
+    expect(getViolations(queue, ['ghr-microvm-maximum-duration-in-seconds:7200'])).toEqual([
+      {
+        label: 'ghr-microvm-maximum-duration-in-seconds:7200',
+        reason: "value '7200' exceeds max '3600'",
+      },
+    ]);
   });
 
   it('applies allowed patterns to the complete image ARN', () => {
@@ -84,21 +53,13 @@ describe('microvmDynamicLabelProvider', () => {
     };
 
     expect(
-      microvmDynamicLabelProvider.selectQueue({
-        queue,
-        nonGhrLabels: ['self-hosted', 'microvm'],
-        sanitizedGhrLabels: [
-          'ghr-microvm-image-arn:arn:aws:lambda:eu-west-1:123456789012:microvm-image:approved-large',
-        ],
-      }),
-    ).toBeDefined();
+      getViolations(queue, [
+        'ghr-microvm-image-arn:arn:aws:lambda:eu-west-1:123456789012:microvm-image:approved-large',
+      ]),
+    ).toEqual([]);
     expect(
-      microvmDynamicLabelProvider.selectQueue({
-        queue,
-        nonGhrLabels: ['self-hosted', 'microvm'],
-        sanitizedGhrLabels: ['ghr-microvm-image-arn:arn:aws:lambda:eu-west-1:123456789012:microvm-image:unapproved'],
-      }),
-    ).toBeUndefined();
+      getViolations(queue, ['ghr-microvm-image-arn:arn:aws:lambda:eu-west-1:123456789012:microvm-image:unapproved']),
+    ).toHaveLength(1);
   });
 
   it('applies the policy to each egress connector label', () => {
@@ -112,25 +73,21 @@ describe('microvmDynamicLabelProvider', () => {
     };
 
     expect(
-      microvmDynamicLabelProvider.selectQueue({
-        queue,
-        nonGhrLabels: ['self-hosted', 'microvm'],
-        sanitizedGhrLabels: [
-          'ghr-microvm-egress-network-connectors:arn:aws:lambda:eu-west-1:123456789012:network-connector:approved-private',
-        ],
-      }),
-    ).toBeDefined();
+      getViolations(queue, [
+        'ghr-microvm-egress-network-connectors:arn:aws:lambda:eu-west-1:123456789012:network-connector:approved-private',
+      ]),
+    ).toEqual([]);
     expect(
-      microvmDynamicLabelProvider.selectQueue({
-        queue,
-        nonGhrLabels: ['self-hosted', 'microvm'],
-        sanitizedGhrLabels: [
-          'ghr-microvm-egress-network-connectors:arn:aws:lambda:eu-west-1:123456789012:network-connector:unapproved',
-        ],
-      }),
-    ).toBeUndefined();
+      getViolations(queue, [
+        'ghr-microvm-egress-network-connectors:arn:aws:lambda:eu-west-1:123456789012:network-connector:unapproved',
+      ]),
+    ).toHaveLength(1);
   });
 });
+
+function getViolations(queue: RunnerMatcherConfig, labels: string[]) {
+  return microvmDynamicLabelProvider.getViolations({ queue, labels });
+}
 
 function microvmQueue(): RunnerMatcherConfig {
   return {
