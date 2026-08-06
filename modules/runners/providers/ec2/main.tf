@@ -1,5 +1,5 @@
 module "runners" {
-  source   = "../../../runners"
+  source   = "../.."
   for_each = var.lanes
 
   aws_region    = var.aws_region

@@ -1,6 +1,6 @@
-# Multi-runner EC2 provider
+# EC2 multi-runner provider adapter
 
-This internal module adapts normalized multi-runner lanes to the existing EC2 runner implementation. It owns the per-lane EC2 runner module calls, including launch templates, scaling Lambdas, pools, and EC2-specific IAM policies.
+This internal provider module lives with the existing EC2 runner implementation and adapts normalized multi-runner lanes into per-lane runner module calls, including launch templates, scaling Lambdas, pools, and EC2-specific IAM policies.
 
 Provider-neutral lane normalization, SQS queues, shared runner-binary discovery, and webhook routing remain in the parent `multi-runner` module. Lane map keys pass through unchanged so Terraform `for_each` identities and the public `runners_map` keys remain stable.
 
@@ -22,7 +22,7 @@ No providers.
 
 | Name | Source | Version |
 |------|--------|---------|
-| <a name="module_runners"></a> [runners](#module\_runners) | ../../../runners | n/a |
+| <a name="module_runners"></a> [runners](#module\_runners) | ../.. | n/a |
 
 ## Resources
 

@@ -1,5 +1,5 @@
 module "ec2" {
-  source = "./providers/ec2"
+  source = "../runners/providers/ec2"
 
   lanes = {
     for lane_key, lane in local.runner_config_by_provider.ec2 : lane_key => {
