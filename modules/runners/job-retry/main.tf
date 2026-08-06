@@ -11,6 +11,7 @@ locals {
     JOB_QUEUE_SCALE_UP_URL               = var.config.sqs_build_queue.url
     PARAMETER_GITHUB_APP_ID_NAME         = var.config.github_app_parameters.id.name
     PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.config.github_app_parameters.key_base64.name
+    RUNNER_NAME_PREFIX                   = var.config.runner_name_prefix
   }
 
   config = merge(var.config, {

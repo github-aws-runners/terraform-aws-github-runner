@@ -10,13 +10,19 @@ Each lane has:
 EOT
   type = map(object({
     runner = object({
-      runner_os                               = string
-      runner_architecture                     = string
-      disable_runner_autoupdate               = optional(bool, false)
-      enable_ephemeral_runners                = optional(bool, false)
-      enable_job_queued_check                 = optional(bool, null)
-      enable_jit_config                       = optional(bool, null)
-      enable_organization_runners             = optional(bool, false)
+      runner_os                   = string
+      runner_architecture         = string
+      disable_runner_autoupdate   = optional(bool, false)
+      enable_ephemeral_runners    = optional(bool, false)
+      enable_job_queued_check     = optional(bool, null)
+      enable_jit_config           = optional(bool, null)
+      enable_organization_runners = optional(bool, false)
+      idle_config = optional(list(object({
+        cron             = string
+        timeZone         = string
+        idleCount        = number
+        evictionStrategy = optional(string, "oldest_first")
+      })), [])
       minimum_running_time_in_minutes         = optional(number, null)
       pool_runner_owner                       = optional(string, null)
       runner_as_root                          = optional(bool, false)
@@ -27,7 +33,6 @@ EOT
       runner_name_prefix                      = optional(string, "")
       runner_run_as                           = optional(string, "ec2-user")
       runners_maximum_count                   = number
-      runner_iam_role_managed_policy_arns     = optional(list(string), [])
       scale_down_schedule_expression          = optional(string, "cron(*/5 * * * ? *)")
       scale_up_reserved_concurrent_executions = optional(number, 1)
       pool_config = optional(list(object({
@@ -43,17 +48,6 @@ EOT
         lambda_timeout     = optional(number, 30)
         max_attempts       = optional(number, 1)
       }), {})
-      iam_overrides = optional(object({
-        override_instance_profile = optional(bool, null)
-        instance_profile_name     = optional(string, null)
-        override_runner_role      = optional(bool, null)
-        runner_role_arn           = optional(string, null)
-        }), {
-        override_instance_profile = false
-        instance_profile_name     = null
-        override_runner_role      = false
-        runner_role_arn           = null
-      })
     })
 
     provider = object({
@@ -101,6 +95,18 @@ EOT
         instance_type_priorities             = optional(map(number), null)
         instance_types                       = list(string)
         runner_additional_security_group_ids = optional(list(string), [])
+        runner_iam_role_managed_policy_arns  = optional(list(string), [])
+        iam_overrides = optional(object({
+          override_instance_profile = optional(bool, null)
+          instance_profile_name     = optional(string, null)
+          override_runner_role      = optional(bool, null)
+          runner_role_arn           = optional(string, null)
+          }), {
+          override_instance_profile = false
+          instance_profile_name     = null
+          override_runner_role      = false
+          runner_role_arn           = null
+        })
         enable_on_demand_failover_for_errors = optional(list(string), [])
         scale_errors = optional(list(string), [
           "UnfulfillableCapacity",
@@ -115,12 +121,6 @@ EOT
         ])
         subnet_ids = optional(list(string), null)
         vpc_id     = optional(string, null)
-        idle_config = optional(list(object({
-          cron             = string
-          timeZone         = string
-          idleCount        = number
-          evictionStrategy = optional(string, "oldest_first")
-        })), [])
         cpu_options = optional(object({
           core_count            = optional(number)
           threads_per_core      = optional(number)

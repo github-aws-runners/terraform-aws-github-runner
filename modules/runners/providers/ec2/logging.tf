@@ -1,3 +1,4 @@
+# EC2 runner log collection and CloudWatch resources.
 locals {
   runner_log_files = (
     var.runner_log_files != null

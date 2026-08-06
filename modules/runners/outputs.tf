@@ -1,9 +1,11 @@
 output "launch_template" {
-  value = aws_launch_template.runner
+  description = "EC2 launch template when the selected compute provider exposes one."
+  value       = try(local.provider.launch_template, null)
 }
 
 output "role_runner" {
-  value = aws_iam_role.runner
+  description = "EC2 runner roles when the selected compute provider exposes them."
+  value       = try(local.provider.role_runner, [])
 }
 
 output "lambda_scale_up" {
@@ -44,10 +46,10 @@ output "role_pool" {
 
 output "runners_log_groups" {
   description = "List of log groups from different log files of runner machine."
-  value       = try(aws_cloudwatch_log_group.gh_runners, [])
+  value       = try(local.provider.runners_log_groups, [])
 }
 
 output "logfiles" {
-  value       = local.logfiles
+  value       = try(local.provider.logfiles, [])
   description = "List of logfiles to send to CloudWatch. Object description: `log_group_name`: Name of the log group, `file_path`: path to the log file, `log_stream_name`: name of the log stream."
 }

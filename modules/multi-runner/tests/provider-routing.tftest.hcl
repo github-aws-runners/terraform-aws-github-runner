@@ -52,6 +52,11 @@ run "stable_v1_routes_through_ec2_provider" {
   }
 
   assert {
+    condition     = keys(module.runners) == keys(local.runner_config)
+    error_message = "The common runners facade must dispatch every normalized lane."
+  }
+
+  assert {
     condition     = keys(aws_sqs_queue.queued_builds) == ["linux"]
     error_message = "Common queue ownership must preserve the stable lane key."
   }
@@ -73,6 +78,11 @@ run "experimental_v2_routes_through_ec2_provider" {
           runner_architecture         = "x64"
           runners_maximum_count       = 2
           enable_organization_runners = true
+          idle_config = [{
+            cron      = "* * * * *"
+            timeZone  = "UTC"
+            idleCount = 1
+          }]
           pool_config = [{
             schedule_expression = "cron(0 8 * * ? *)"
             size                = 1
@@ -81,8 +91,9 @@ run "experimental_v2_routes_through_ec2_provider" {
         provider = {
           type = "ec2"
           ec2 = {
-            instance_types                = ["m5.large"]
-            enable_runner_binaries_syncer = false
+            instance_types                      = ["m5.large"]
+            enable_runner_binaries_syncer       = false
+            runner_iam_role_managed_policy_arns = ["arn:aws:iam::aws:policy/ReadOnlyAccess"]
           }
         }
         matcherConfig = {
@@ -98,6 +109,11 @@ run "experimental_v2_routes_through_ec2_provider" {
   }
 
   assert {
+    condition     = keys(module.runners) == keys(local.runner_config)
+    error_message = "The common runners facade must dispatch every normalized experimental lane."
+  }
+
+  assert {
     condition     = keys(aws_sqs_queue.queued_builds) == ["linux"]
     error_message = "Common queue ownership must preserve the experimental lane key."
   }
@@ -105,6 +121,16 @@ run "experimental_v2_routes_through_ec2_provider" {
   assert {
     condition     = keys(output.runners_map) == ["linux"]
     error_message = "Experimental multi_runner_config_v2 must preserve the public runner map key."
+  }
+
+  assert {
+    condition     = local.runner_config_by_provider.ec2["linux"].runner.idle_config[0].idleCount == 1
+    error_message = "Provider-neutral idle configuration must remain in the common runner contract."
+  }
+
+  assert {
+    condition     = local.runner_config_by_provider.ec2["linux"].provider.ec2.runner_iam_role_managed_policy_arns[0] == "arn:aws:iam::aws:policy/ReadOnlyAccess"
+    error_message = "EC2 runner-role policies must remain in the EC2 provider contract."
   }
 }
 

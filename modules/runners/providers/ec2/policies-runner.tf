@@ -1,3 +1,4 @@
+# IAM used by EC2 runner instances.
 data "aws_caller_identity" "current" {}
 
 resource "aws_iam_role" "runner" {

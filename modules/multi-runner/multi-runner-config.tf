@@ -9,6 +9,7 @@ locals {
         enable_job_queued_check                 = v.runner_config.enable_job_queued_check
         enable_jit_config                       = v.runner_config.enable_jit_config
         enable_organization_runners             = v.runner_config.enable_organization_runners
+        idle_config                             = v.runner_config.idle_config
         minimum_running_time_in_minutes         = v.runner_config.minimum_running_time_in_minutes
         pool_runner_owner                       = v.runner_config.pool_runner_owner
         runner_as_root                          = v.runner_config.runner_as_root
@@ -19,12 +20,10 @@ locals {
         runner_name_prefix                      = v.runner_config.runner_name_prefix
         runner_run_as                           = v.runner_config.runner_run_as
         runners_maximum_count                   = v.runner_config.runners_maximum_count
-        runner_iam_role_managed_policy_arns     = v.runner_config.runner_iam_role_managed_policy_arns
         scale_down_schedule_expression          = v.runner_config.scale_down_schedule_expression
         scale_up_reserved_concurrent_executions = v.runner_config.scale_up_reserved_concurrent_executions
         pool_config                             = v.runner_config.pool_config
         job_retry                               = v.runner_config.job_retry
-        iam_overrides                           = v.runner_config.iam_overrides
       }
 
       provider = {
@@ -48,11 +47,12 @@ locals {
           instance_type_priorities             = v.runner_config.instance_type_priorities
           instance_types                       = v.runner_config.instance_types
           runner_additional_security_group_ids = v.runner_config.runner_additional_security_group_ids
+          runner_iam_role_managed_policy_arns  = v.runner_config.runner_iam_role_managed_policy_arns
+          iam_overrides                        = v.runner_config.iam_overrides
           enable_on_demand_failover_for_errors = v.runner_config.enable_on_demand_failover_for_errors
           scale_errors                         = v.runner_config.scale_errors
           subnet_ids                           = v.runner_config.subnet_ids
           vpc_id                               = v.runner_config.vpc_id
-          idle_config                          = v.runner_config.idle_config
           cpu_options                          = v.runner_config.cpu_options
           placement                            = v.runner_config.placement
           license_specifications               = v.runner_config.license_specifications

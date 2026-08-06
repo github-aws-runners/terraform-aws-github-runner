@@ -101,7 +101,7 @@ Besides these permissions, the lambdas also need permission to CloudWatch (for l
 
 ## Terraform main modules
 
-Currently we support two main modules. The `runners` module is the main module for creating runners and contains the current EC2 implementation. The `multi-runner` module adds provider-neutral lane normalization, queues, and webhook routing so multiple runners can be created in one deployment, delegating normalized EC2 lanes through the provider adapter under `modules/runners/providers/ec2`. EC2 is the only Terraform-managed provider today; microVM, CodeBuild, and other provider modules are future work.
+Currently we support two main modules. The `runners` module creates the provider-neutral control plane and selects an internal compute implementation with `provider_type`. The `multi-runner` module adds lane normalization, queues, and webhook routing so multiple runners can be created in one deployment. EC2 is the only Terraform-managed provider today; its child module owns EC2 compute and runner-instance permissions while the shared layer owns scale-up, scale-down, pool, retry, and Lambda roles. microVM, CodeBuild, and other providers are future work.
 
 Both modules are built on top of the same base modules. When using the multi-runner module you can deploy different runners with only one deployment.
 

@@ -23,6 +23,7 @@ variable "config" {
     `prefix`: The prefix used for naming resources.
     `role_path`: The path that will be added to the role, if not set the environment name will be used.
     `role_permissions_boundary`: Permissions boundary that will be added to the created role for the lambda.
+    `runner_name_prefix`: Prefix used to identify runners belonging to this lane.
     `runtime`: AWS Lambda runtime.
     `s3_bucket`: S3 bucket from which to specify lambda functions. This is an alternative to providing local files directly.
     `s3_key`: S3 key for syncer lambda function. Required if using S3 bucket to specify lambdas.
@@ -75,6 +76,7 @@ variable "config" {
     }), {})
     role_path                 = optional(string, null)
     role_permissions_boundary = optional(string, null)
+    runner_name_prefix        = optional(string, "")
     runtime                   = optional(string, null)
     security_group_ids        = optional(list(string), [])
     subnet_ids                = optional(list(string), [])

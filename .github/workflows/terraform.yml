@@ -216,6 +216,7 @@ jobs:
         module:
           - modules/runners
           - modules/multi-runner
+          - modules/runners/pool
           - modules/runners/providers/ec2
     defaults:
       run:
@@ -236,9 +237,14 @@ jobs:
         run: terraform init -backend=false -input=false
       - name: terraform test
         run: terraform test -test-directory=tests
-      - if: matrix.module == 'modules/multi-runner'
-        name: terraform init state migration test
+      - if: matrix.module == 'modules/runners'
+        name: Install state-upgrade test tools
+        run: apk add --no-cache jq
+      - if: matrix.module == 'modules/runners'
+        name: terraform init state upgrade test
         run: terraform init -backend=false -input=false -test-directory=tests-upgrade
-      - if: matrix.module == 'modules/multi-runner'
-        name: terraform test state migration
-        run: terraform test -test-directory=tests-upgrade
+      - if: matrix.module == 'modules/runners'
+        name: terraform test state upgrade
+        run: |
+          terraform test -test-directory=tests-upgrade -json -verbose > state-upgrade-test.json
+          jq -e -s -f tests-upgrade/verify-moves.jq state-upgrade-test.json
