@@ -243,8 +243,8 @@ describe('Test simple pool.', () => {
     });
 
     it('Rejects unsupported pool provider types.', async () => {
-      await expect(adjust({ poolSize: 10, type: 'microvm' })).rejects.toThrow(
-        "Unsupported runner provider type 'microvm'",
+      await expect(adjust({ poolSize: 10, type: 'unsupported-provider' })).rejects.toThrow(
+        "Unsupported runner provider type 'unsupported-provider'",
       );
       expect(mockListRunners).not.toHaveBeenCalled();
     });

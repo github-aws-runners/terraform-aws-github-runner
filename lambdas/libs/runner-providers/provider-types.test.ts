@@ -23,9 +23,12 @@ describe('runner provider normalization', () => {
     expect(normalizeRunnerProviderType(type)).toBe(expected);
   });
 
-  it.each([[' Unknown '], ['microvm'], [null], [1]])('returns undefined for unsupported provider type %j', (type) => {
-    expect(normalizeRunnerProviderType(type)).toBeUndefined();
-  });
+  it.each([[' Unknown '], ['unsupported-provider'], [null], [1]])(
+    'returns undefined for unsupported provider type %j',
+    (type) => {
+      expect(normalizeRunnerProviderType(type)).toBeUndefined();
+    },
+  );
 });
 
 describe('runner provider resolution', () => {
@@ -38,7 +41,7 @@ describe('runner provider resolution', () => {
     expect(resolveRunnerProviderType(type)).toBe(expected);
   });
 
-  it.each([[' Unknown '], ['microvm'], [null], [1]])('rejects unsupported provider type %j', (type) => {
+  it.each([[' Unknown '], ['unsupported-provider'], [null], [1]])('rejects unsupported provider type %j', (type) => {
     expect(() => resolveRunnerProviderType(type)).toThrow(`Unsupported runner provider type '${String(type)}'`);
   });
 });
