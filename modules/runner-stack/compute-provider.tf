@@ -9,7 +9,5 @@ locals {
     microvm = one(module.microvm[*].provider)
   }
 
-  provider = merge(local.provider_modules[local.provider_type], {
-    assume_role_policy = local.provider_assume_role_policy
-  })
+  provider = local.provider_modules[local.provider_type]
 }

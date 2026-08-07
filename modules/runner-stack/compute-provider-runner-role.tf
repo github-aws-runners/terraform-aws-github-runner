@@ -1,10 +1,5 @@
 locals {
-  provider_assume_role_policies = {
-    ec2     = one(module.ec2_runner_role[*].assume_role_policy)
-    microvm = one(module.microvm_runner_role[*].assume_role_policy)
-  }
-
-  # Trust policies come from role-independent provider contracts because the
-  # full provider modules consume the common runner role created from them.
-  provider_assume_role_policy = local.provider_assume_role_policies[local.provider_type]
+  # Direct indexing preserves the dedicated output dependency. A full splat
+  # adds the counted module's close node and creates a cycle through runner_role.
+  provider_assume_role_policy = local.provider_type == "ec2" ? module.ec2[0].assume_role_policy : module.microvm[0].assume_role_policy
 }

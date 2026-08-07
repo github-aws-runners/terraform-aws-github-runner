@@ -180,3 +180,38 @@ run "rejects_empty_image_identifier" {
 
   expect_failures = [terraform_data.validate_config]
 }
+
+run "returns_microvm_assume_role_policy" {
+  command = plan
+
+  assert {
+    condition     = toset(data.aws_iam_policy_document.assume_role.statement[0].actions) == toset(["sts:AssumeRole", "sts:TagSession"])
+    error_message = "The MicroVM runner role must allow assume-role and tagged sessions."
+  }
+
+  assert {
+    condition = anytrue([
+      for principal in data.aws_iam_policy_document.assume_role.statement[0].principals :
+      principal.type == "Service" && toset(principal.identifiers) == toset(["lambda.amazonaws.com"])
+    ])
+    error_message = "The MicroVM runner role must trust the configured service principals."
+  }
+
+  assert {
+    condition     = output.assume_role_policy == data.aws_iam_policy_document.assume_role.json
+    error_message = "The MicroVM provider must return its rendered assume-role policy."
+  }
+}
+
+run "rejects_empty_trust_services" {
+  command = plan
+
+  variables {
+    config = {
+      image_identifier           = "arn:aws:lambdamicrovms:eu-west-1:123456789012:image/runner"
+      runner_role_trust_services = []
+    }
+  }
+
+  expect_failures = [terraform_data.validate_config]
+}

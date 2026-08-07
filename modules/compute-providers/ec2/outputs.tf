@@ -48,6 +48,11 @@ output "resources" {
   value       = local.provider_resources
 }
 
+output "assume_role_policy" {
+  description = "EC2 runner-role trust policy."
+  value       = local.assume_role_policy
+}
+
 output "provider" {
   description = "Nested EC2 compute-provider contract consumed by runner-stack."
   value = {

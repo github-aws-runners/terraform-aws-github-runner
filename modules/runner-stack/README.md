@@ -78,10 +78,8 @@ yarn run dist
 | Name | Source | Version |
 |------|--------|---------|
 | <a name="module_ec2"></a> [ec2](#module\_ec2) | ../compute-providers/ec2 | n/a |
-| <a name="module_ec2_runner_role"></a> [ec2\_runner\_role](#module\_ec2\_runner\_role) | ../compute-providers/ec2/runner-role | n/a |
 | <a name="module_job_retry"></a> [job\_retry](#module\_job\_retry) | ./job-retry | n/a |
 | <a name="module_microvm"></a> [microvm](#module\_microvm) | ../compute-providers/microvm | n/a |
-| <a name="module_microvm_runner_role"></a> [microvm\_runner\_role](#module\_microvm\_runner\_role) | ../compute-providers/microvm/runner-role | n/a |
 | <a name="module_pool"></a> [pool](#module\_pool) | ./pool | n/a |
 | <a name="module_scale_runners"></a> [scale\_runners](#module\_scale\_runners) | ./scale-runners | n/a |
 | <a name="module_ssm_housekeeper"></a> [ssm\_housekeeper](#module\_ssm\_housekeeper) | ./ssm-housekeeper | n/a |

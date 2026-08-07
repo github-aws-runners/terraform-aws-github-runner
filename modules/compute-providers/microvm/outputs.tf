@@ -48,6 +48,11 @@ output "resources" {
   value       = local.provider_resources
 }
 
+output "assume_role_policy" {
+  description = "Lambda MicroVM runner-role trust policy."
+  value       = local.assume_role_policy
+}
+
 output "provider" {
   description = "Nested Lambda MicroVM compute-provider contract consumed by runner-stack."
   value = {

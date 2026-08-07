@@ -113,7 +113,7 @@ run "plan_with_pool_enabled" {
   }
 
   assert {
-    condition     = aws_iam_role.runner[0].assume_role_policy == module.ec2_runner_role[0].assume_role_policy
+    condition     = aws_iam_role.runner[0].assume_role_policy == module.ec2[0].assume_role_policy
     error_message = "The common runner role must use the assume-role policy returned by the selected EC2 provider."
   }
 
@@ -207,7 +207,7 @@ run "plan_with_microvm_provider_enabled" {
   }
 
   assert {
-    condition     = aws_iam_role.runner[0].assume_role_policy == module.microvm_runner_role[0].assume_role_policy
+    condition     = aws_iam_role.runner[0].assume_role_policy == module.microvm[0].assume_role_policy
     error_message = "The common runner role must use the assume-role policy returned by the selected MicroVM provider."
   }
 

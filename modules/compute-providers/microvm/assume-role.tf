@@ -8,7 +8,11 @@ data "aws_iam_policy_document" "assume_role" {
 
     principals {
       type        = "Service"
-      identifiers = var.trust_services
+      identifiers = var.config.runner_role_trust_services
     }
   }
+}
+
+locals {
+  assume_role_policy = data.aws_iam_policy_document.assume_role.json
 }

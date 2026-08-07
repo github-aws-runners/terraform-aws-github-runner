@@ -42,6 +42,7 @@ No modules.
 | [aws_ami.runner](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/ami) | data source |
 | [aws_caller_identity.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/caller_identity) | data source |
 | [aws_iam_policy_document.ami_id_ssm_parameter_read](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
+| [aws_iam_policy_document.assume_role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 | [aws_iam_policy_document.cloudwatch](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 | [aws_iam_policy_document.create_tags](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 | [aws_iam_policy_document.describe_tags](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
@@ -72,6 +73,7 @@ No modules.
 
 | Name | Description |
 |------|-------------|
+| <a name="output_assume_role_policy"></a> [assume\_role\_policy](#output\_assume\_role\_policy) | EC2 runner-role trust policy. |
 | <a name="output_environment_variables"></a> [environment\_variables](#output\_environment\_variables) | Provider-specific Lambda environment variable fragments consumed by runner-stack. |
 | <a name="output_policies"></a> [policies](#output\_policies) | Provider-specific IAM policy fragments consumed by runner-stack. |
 | <a name="output_provider"></a> [provider](#output\_provider) | Nested EC2 compute-provider contract consumed by runner-stack. |
