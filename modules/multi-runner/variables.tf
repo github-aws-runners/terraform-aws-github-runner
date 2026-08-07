@@ -208,7 +208,14 @@ variable "multi_runner_config" {
       bidirectionalLabelMatch = optional(bool, false)
       priority                = optional(number, 999)
       enableDynamicLabels     = optional(bool, false)
-      awsDynamicLabelsPolicy  = optional(any, null)
+      awsDynamicLabelsPolicy = optional(object({
+        blocked_keys = optional(list(string), [])
+        restricted_keys = optional(map(object({
+          allowed = optional(list(string), [])
+          denied  = optional(list(string), [])
+          max     = optional(string, null)
+        })), {})
+      }), null)
     })
     redrive_build_queue = optional(object({
       enabled         = bool

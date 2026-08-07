@@ -8,6 +8,56 @@ locals {
         extra_labels = sort(setunion(flatten(v.matcherConfig.labelMatchers), compact(v.runner.extra_labels)))
       })
     })
+    if contains(local.experimental_multi_runner_config_v2_valid_runner_stack_keys, k)
+  }
+
+  runner_config_v2_compute_provider = {
+    for k, v in local.runner_config_v2 : k => {
+      ec2 = local.compute_provider_types[k] == "ec2" ? {
+        ami                                  = v.compute_provider.ec2.ami
+        vpc_id                               = coalesce(v.compute_provider.ec2.vpc_id, var.vpc_id)
+        subnet_ids                           = coalesce(v.compute_provider.ec2.subnet_ids, var.subnet_ids)
+        instance_types                       = v.compute_provider.ec2.instance_types
+        instance_target_capacity_type        = v.compute_provider.ec2.instance_target_capacity_type
+        instance_allocation_strategy         = v.compute_provider.ec2.instance_allocation_strategy
+        instance_type_priorities             = v.compute_provider.ec2.instance_type_priorities
+        instance_max_spot_price              = v.compute_provider.ec2.instance_max_spot_price
+        block_device_mappings                = v.compute_provider.ec2.block_device_mappings
+        ebs_optimized                        = v.compute_provider.ec2.ebs_optimized
+        instance_profile                     = v.compute_provider.ec2.instance_profile
+        instance_profile_path                = var.instance_profile_path
+        enable_on_demand_failover_for_errors = v.compute_provider.ec2.enable_on_demand_failover_for_errors
+        scale_errors                         = v.compute_provider.ec2.scale_errors
+        managed_security_group_enabled       = var.enable_managed_runner_security_group
+        detailed_monitoring_enabled          = v.compute_provider.ec2.detailed_monitoring_enabled
+        ssm_enabled                          = v.compute_provider.ec2.ssm_enabled
+        egress_rules                         = var.runner_egress_rules
+        additional_security_group_ids        = try(coalescelist(v.compute_provider.ec2.additional_security_group_ids, var.runner_additional_security_group_ids), [])
+        metadata_options                     = v.compute_provider.ec2.metadata_options
+        credit_specification                 = v.compute_provider.ec2.credit_specification
+        cpu_options                          = v.compute_provider.ec2.cpu_options
+        placement                            = v.compute_provider.ec2.placement
+        license_specifications               = v.compute_provider.ec2.license_specifications
+        use_dedicated_host                   = v.compute_provider.ec2.use_dedicated_host
+        binaries_syncer = {
+          enabled = v.compute_provider.ec2.binaries_syncer.enabled
+          s3      = v.compute_provider.ec2.binaries_syncer.enabled ? local.runner_binaries_by_os_and_arch_map["${v.runner.os}_${v.runner.architecture}"] : null
+        }
+        cloudwatch_agent = {
+          enabled = v.compute_provider.ec2.cloudwatch_agent.enabled
+          config  = try(coalesce(v.compute_provider.ec2.cloudwatch_agent.config, var.cloudwatch_config), null)
+        }
+        log_files = v.compute_provider.ec2.log_files
+        user_data = v.compute_provider.ec2.user_data
+        key_name  = var.key_name
+        tags      = v.compute_provider.ec2.tags
+
+        create_service_linked_role_spot = v.compute_provider.ec2.create_service_linked_role_spot
+        associate_public_ipv4_address   = var.associate_public_ipv4_address
+      } : null
+
+      microvm = local.compute_provider_types[k] == "microvm" ? v.compute_provider.microvm : null
+    }
   }
 }
 
@@ -149,48 +199,5 @@ module "runner_stacks" {
     metrics = var.metrics
   }
 
-  compute_provider = {
-    ec2 = {
-      ami                                  = each.value.compute_provider.ec2.ami
-      vpc_id                               = coalesce(each.value.compute_provider.ec2.vpc_id, var.vpc_id)
-      subnet_ids                           = coalesce(each.value.compute_provider.ec2.subnet_ids, var.subnet_ids)
-      instance_types                       = each.value.compute_provider.ec2.instance_types
-      instance_target_capacity_type        = each.value.compute_provider.ec2.instance_target_capacity_type
-      instance_allocation_strategy         = each.value.compute_provider.ec2.instance_allocation_strategy
-      instance_type_priorities             = each.value.compute_provider.ec2.instance_type_priorities
-      instance_max_spot_price              = each.value.compute_provider.ec2.instance_max_spot_price
-      block_device_mappings                = each.value.compute_provider.ec2.block_device_mappings
-      ebs_optimized                        = each.value.compute_provider.ec2.ebs_optimized
-      instance_profile                     = each.value.compute_provider.ec2.instance_profile
-      instance_profile_path                = var.instance_profile_path
-      enable_on_demand_failover_for_errors = each.value.compute_provider.ec2.enable_on_demand_failover_for_errors
-      scale_errors                         = each.value.compute_provider.ec2.scale_errors
-      managed_security_group_enabled       = var.enable_managed_runner_security_group
-      detailed_monitoring_enabled          = each.value.compute_provider.ec2.detailed_monitoring_enabled
-      ssm_enabled                          = each.value.compute_provider.ec2.ssm_enabled
-      egress_rules                         = var.runner_egress_rules
-      additional_security_group_ids        = try(coalescelist(each.value.compute_provider.ec2.additional_security_group_ids, var.runner_additional_security_group_ids), [])
-      metadata_options                     = each.value.compute_provider.ec2.metadata_options
-      credit_specification                 = each.value.compute_provider.ec2.credit_specification
-      cpu_options                          = each.value.compute_provider.ec2.cpu_options
-      placement                            = each.value.compute_provider.ec2.placement
-      license_specifications               = each.value.compute_provider.ec2.license_specifications
-      use_dedicated_host                   = each.value.compute_provider.ec2.use_dedicated_host
-      binaries_syncer = {
-        enabled = each.value.compute_provider.ec2.binaries_syncer.enabled
-        s3      = each.value.compute_provider.ec2.binaries_syncer.enabled ? local.runner_binaries_by_os_and_arch_map["${each.value.runner.os}_${each.value.runner.architecture}"] : null
-      }
-      cloudwatch_agent = {
-        enabled = each.value.compute_provider.ec2.cloudwatch_agent.enabled
-        config  = try(coalesce(each.value.compute_provider.ec2.cloudwatch_agent.config, var.cloudwatch_config), null)
-      }
-      log_files = each.value.compute_provider.ec2.log_files
-      user_data = each.value.compute_provider.ec2.user_data
-      key_name  = var.key_name
-      tags      = each.value.compute_provider.ec2.tags
-
-      create_service_linked_role_spot = each.value.compute_provider.ec2.create_service_linked_role_spot
-      associate_public_ipv4_address   = var.associate_public_ipv4_address
-    }
-  }
+  compute_provider = local.runner_config_v2_compute_provider[each.key]
 }

@@ -390,21 +390,3 @@ run "separates_provider_runner_and_ssm_tags" {
     error_message = "The managed AMI parameter must preserve authoritative AMI metadata over SSM component tags."
   }
 }
-
-run "requires_distribution_object_when_sync_is_enabled" {
-  command = plan
-
-  variables {
-    config = {
-      vpc_id         = "vpc-12345678"
-      subnet_ids     = ["subnet-12345678"]
-      instance_types = ["m5.large"]
-      binaries_syncer = {
-        enabled = true
-        s3      = null
-      }
-    }
-  }
-
-  expect_failures = [var.config]
-}

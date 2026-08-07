@@ -99,7 +99,7 @@ run "plan_with_pool_enabled" {
 
   assert {
     condition     = toset(keys(output.provider)) == toset(["ec2"])
-    error_message = "The runner stack must identify provider resources through the populated provider key without a duplicate type field."
+    error_message = "The runner stack must expose resources only under the selected provider key."
   }
 
   assert {
@@ -114,7 +114,7 @@ run "plan_with_pool_enabled" {
 
   assert {
     condition = anytrue([
-      for principal in data.aws_iam_policy_document.runner_assume_role.statement[0].principals :
+      for principal in data.aws_iam_policy_document.runner_assume_role[0].statement[0].principals :
       principal.type == "Service" && toset(principal.identifiers) == toset(["ec2.amazonaws.com"])
     ])
     error_message = "The common runner role must use the selected EC2 provider trust relationship before EC2 consumes it."
@@ -174,6 +174,77 @@ run "plan_with_pool_enabled" {
     error_message = "The scale-runners child module must forward the nested scale-up and scale-down resource contracts."
   }
 
+}
+
+run "plan_with_microvm_provider_enabled" {
+  command = plan
+
+  variables {
+    runner = {
+      labels      = ["self-hosted", "linux", "arm64", "microvm"]
+      name_prefix = "microvm-"
+    }
+
+    compute_provider = {
+      microvm = {
+        image_identifier = "arn:aws:lambdamicrovms:eu-west-1:123456789012:image/runner"
+        image_version    = "1"
+        environment_variables = {
+          MICROVM_CLUSTER = "runner-cluster"
+        }
+        tags = {
+          Lane = "microvm"
+        }
+      }
+    }
+  }
+
+  assert {
+    condition = (
+      length(module.ec2) == 0
+      && length(module.microvm) == 1
+      && toset(keys(output.provider)) == toset(["microvm"])
+      && toset(keys(output.provider.microvm)) == toset(["image_identifier", "image_version", "execution_role_arn"])
+    )
+    error_message = "The runner stack must instantiate only the selected MicroVM provider and expose resources under provider.microvm."
+  }
+
+  assert {
+    condition = anytrue([
+      for principal in data.aws_iam_policy_document.runner_assume_role[0].statement[0].principals :
+      principal.type == "Service" && toset(principal.identifiers) == toset(["lambdamicrovms.amazonaws.com"])
+    ])
+    error_message = "The common runner role must use the selected MicroVM provider trust relationship before MicroVM consumes it."
+  }
+
+  assert {
+    condition = (
+      length(aws_iam_role_policy.runner_provider) == 0
+      && output.provider.microvm.image_identifier == "arn:aws:lambdamicrovms:eu-west-1:123456789012:image/runner"
+      && output.provider.microvm.image_version == "1"
+    )
+    error_message = "MicroVM must not attach EC2 runner policies and must expose its selected image metadata."
+  }
+
+  assert {
+    condition = (
+      module.scale_runners.scale_up.lambda.environment[0].variables["RUNNER_PROVIDER_TYPE"] == "microvm"
+      && module.scale_runners.scale_up.lambda.environment[0].variables["MICROVM_IMAGE_IDENTIFIER"] == "arn:aws:lambdamicrovms:eu-west-1:123456789012:image/runner"
+      && module.scale_runners.scale_up.lambda.environment[0].variables["MICROVM_CLUSTER"] == "runner-cluster"
+      && module.scale_runners.scale_down.lambda.environment[0].variables["RUNNER_BOOT_TIME_IN_MINUTES"] == "5"
+      && !contains(keys(module.scale_runners.scale_up.lambda.environment[0].variables), "INSTANCE_TYPES")
+    )
+    error_message = "Scale-up and scale-down must receive MicroVM provider fragments without EC2 environment variables."
+  }
+
+  assert {
+    condition = (
+      output.pool != null
+      && module.pool[0].pool.lambda.environment[0].variables["MICROVM_IMAGE_IDENTIFIER"] == "arn:aws:lambdamicrovms:eu-west-1:123456789012:image/runner"
+      && module.pool[0].pool.lambda.environment[0].variables["RUNNER_BOOT_TIME_IN_MINUTES"] == "5"
+    )
+    error_message = "The pool component must receive MicroVM provider fragments when a MicroVM lane has pool config."
+  }
 }
 
 run "external_runner_role_is_not_managed_by_common" {
@@ -264,7 +335,7 @@ run "external_profile_requires_external_role" {
     }
   }
 
-  expect_failures = [aws_iam_role.runner]
+  expect_failures = [terraform_data.validate_compute_provider_ec2[0]]
 }
 
 run "empty_runner_iam_uses_common_role" {
@@ -320,7 +391,7 @@ run "requires_distribution_object_when_sync_is_enabled" {
     }
   }
 
-  expect_failures = [var.compute_provider]
+  expect_failures = [terraform_data.validate_compute_provider_ec2[0]]
 }
 
 run "rejects_empty_compute_provider" {
@@ -330,7 +401,21 @@ run "rejects_empty_compute_provider" {
     compute_provider = {}
   }
 
-  expect_failures = [var.compute_provider]
+  expect_failures = [terraform_data.validate_compute_provider_selection]
+}
+
+run "rejects_empty_microvm_image_identifier" {
+  command = plan
+
+  variables {
+    compute_provider = {
+      microvm = {
+        image_identifier = " "
+      }
+    }
+  }
+
+  expect_failures = [terraform_data.validate_compute_provider_microvm[0]]
 }
 
 run "job_retry_uses_common_runner_configuration_identity" {

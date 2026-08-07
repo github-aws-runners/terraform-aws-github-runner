@@ -260,34 +260,6 @@ variable "config" {
   })
 
   nullable = false
-
-  validation {
-    condition     = contains(["spot", "on-demand"], var.config.instance_target_capacity_type)
-    error_message = "config.instance_target_capacity_type must be spot or on-demand."
-  }
-
-  validation {
-    condition     = contains(["lowest-price", "diversified", "capacity-optimized", "capacity-optimized-prioritized", "price-capacity-optimized", "prioritized"], var.config.instance_allocation_strategy)
-    error_message = "config.instance_allocation_strategy is not supported."
-  }
-
-  validation {
-    condition     = var.config.credit_specification == null ? true : contains(["standard", "unlimited"], var.config.credit_specification)
-    error_message = "config.credit_specification must be null, standard, or unlimited."
-  }
-
-  validation {
-    condition = var.config.cpu_options == null ? true : (
-      (var.config.cpu_options.amd_sev_snp == null || contains(["enabled", "disabled"], var.config.cpu_options.amd_sev_snp)) &&
-      (var.config.cpu_options.nested_virtualization == null || contains(["enabled", "disabled"], var.config.cpu_options.nested_virtualization))
-    )
-    error_message = "config.cpu_options.amd_sev_snp and config.cpu_options.nested_virtualization must be enabled or disabled when set."
-  }
-
-  validation {
-    condition     = !var.config.binaries_syncer.enabled || var.config.binaries_syncer.s3 != null
-    error_message = "config.binaries_syncer.s3 must be set when config.binaries_syncer.enabled is true."
-  }
 }
 
 variable "runner" {

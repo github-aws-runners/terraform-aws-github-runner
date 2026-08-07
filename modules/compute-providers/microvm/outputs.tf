@@ -7,29 +7,29 @@ locals {
 
   provider_policies = {
     runner = {
-      inline_policies     = local.runner_inline_policies
+      inline_policies     = {}
       managed_policy_arns = {}
     }
     scale_up = {
-      iam_policy_json            = local.scale_up_iam_policy_json
-      additional_iam_policy_json = local.service_linked_role_policy_json
-      managed_policy_enabled     = local.ami_id_ssm_external
-      managed_policy_arn         = local.ami_id_ssm_external ? aws_iam_policy.ami_id_ssm_parameter_read[0].arn : null
+      iam_policy_json            = data.aws_iam_policy_document.scale_up.json
+      additional_iam_policy_json = var.config.iam.additional_policy_json.scale_up
+      managed_policy_enabled     = var.config.iam.managed_policy_arns.scale_up != null
+      managed_policy_arn         = var.config.iam.managed_policy_arns.scale_up
     }
     scale_down = {
-      iam_policy_json = local.scale_down_iam_policy_json
+      iam_policy_json = data.aws_iam_policy_document.scale_down.json
     }
     pool = {
-      iam_policy_json        = local.pool_iam_policy_json
-      managed_policy_enabled = local.ami_id_ssm_external
-      managed_policy_arn     = local.ami_id_ssm_external ? aws_iam_policy.ami_id_ssm_parameter_read[0].arn : null
+      iam_policy_json        = data.aws_iam_policy_document.scale_up.json
+      managed_policy_enabled = var.config.iam.managed_policy_arns.pool != null
+      managed_policy_arn     = var.config.iam.managed_policy_arns.pool
     }
   }
 
   provider_resources = {
-    launch_template    = aws_launch_template.runner
-    runners_log_groups = try(aws_cloudwatch_log_group.gh_runners, [])
-    logfiles           = local.logfiles
+    image_identifier   = var.config.image_identifier
+    image_version      = var.config.image_version
+    execution_role_arn = local.execution_role_arn
   }
 }
 
@@ -44,12 +44,12 @@ output "policies" {
 }
 
 output "resources" {
-  description = "Provider-specific EC2 resources exposed by runner-stack."
+  description = "Provider-specific MicroVM resources exposed by runner-stack."
   value       = local.provider_resources
 }
 
 output "provider" {
-  description = "Nested EC2 compute-provider contract consumed by runner-stack."
+  description = "Nested Lambda MicroVM compute-provider contract consumed by runner-stack."
   value = {
     environment_variables = local.provider_environment_variables
     policies              = local.provider_policies

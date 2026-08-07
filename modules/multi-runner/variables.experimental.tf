@@ -68,7 +68,7 @@ variable "experimental" {
     - `ssm.housekeeper.tags`: Tags for SSM housekeeper resources. These override entry-level, shared Lambda, shared log, and `ssm.tags` values.
     - `observability.logs.tags`: Shared tags for CloudWatch log groups. Component tags override this map.
     - `compute_provider`: Typed compute-provider blocks. Exactly one block must be non-null, and the populated block selects the provider. Its presence must be known during planning; values inside it may remain unknown until apply.
-    - `compute_provider.ec2`: EC2-specific configuration. EC2 is the only provider currently implemented.
+    - `compute_provider.ec2`: EC2-specific configuration.
     - `compute_provider.ec2.ami.filter`: EC2 AMI filters combined with the default AMI-name filter.
     - `compute_provider.ec2.ami.owners`: AWS account IDs or aliases allowed to own the selected AMI.
     - `compute_provider.ec2.ami.id_ssm_parameter`: Optional externally managed SSM parameter containing the AMI ID. The wrapper's presence selects external ownership at plan time.
@@ -137,6 +137,19 @@ variable "experimental" {
     - `compute_provider.ec2.metadata_options.http_endpoint`: Enables or disables the Instance Metadata Service endpoint.
     - `compute_provider.ec2.metadata_options.http_tokens`: Controls whether IMDSv2 session tokens are optional or required.
     - `compute_provider.ec2.metadata_options.http_put_response_hop_limit`: Network hop limit for Instance Metadata Service token responses.
+    - `compute_provider.microvm`: Lambda MicroVM-specific configuration.
+    - `compute_provider.microvm.image_identifier`: ARN or ID of the MicroVM image used to run GitHub runners.
+    - `compute_provider.microvm.image_version`: Optional MicroVM image version.
+    - `compute_provider.microvm.execution_role.arn`: Optional externally managed execution role assumed by MicroVMs. Null uses the common runner role.
+    - `compute_provider.microvm.runner_role_trust_services`: Service principals trusted by the common runner role when it is used as the MicroVM execution role.
+    - `compute_provider.microvm.egress_network_connectors`: Egress network connectors passed to RunMicrovm.
+    - `compute_provider.microvm.idle_policy`: Optional auto-suspend and auto-resume configuration passed to RunMicrovm.
+    - `compute_provider.microvm.logging`: Optional RunMicrovm logging union. Exactly one of `cloud_watch` or `disabled` must be selected when set.
+    - `compute_provider.microvm.run_hook_payload`: Optional payload delivered to the MicroVM `/run` hook. Maximum 16,384 characters.
+    - `compute_provider.microvm.maximum_duration_in_seconds`: Optional maximum MicroVM lifetime. Valid range is 1 through 28,800 seconds.
+    - `compute_provider.microvm.environment_variables`: Additional provider-specific Lambda environment variables merged into scale-up, scale-down, and pool.
+    - `compute_provider.microvm.tags`: Tags encoded into the MicroVM runner configuration.
+    - `compute_provider.microvm.iam`: Optional MicroVM control-plane IAM overrides and managed policy attachments.
     - `matcherConfig.labelMatchers`: Groups of labels used to match webhook jobs to this configuration.
     - `matcherConfig.exactMatch`: Requires the job labels to exactly match a configured label group.
     - `matcherConfig.bidirectionalLabelMatch`: Requires labels to match in both directions instead of allowing configured subsets.
@@ -369,12 +382,45 @@ variable "experimental" {
           tags = optional(map(string), {})
         }), null)
 
-        # Future provider references only. Do not uncomment until the Terraform
-        # resources for these compute providers are implemented.
-        #
-        # microvm = optional(object({
-        #   environment_variables = optional(map(string), {})
-        # }), null)
+        microvm = optional(object({
+          image_identifier = string
+          image_version    = optional(string, null)
+          execution_role = optional(object({
+            arn = string
+          }), null)
+          runner_role_trust_services = optional(list(string), ["lambdamicrovms.amazonaws.com"])
+          egress_network_connectors  = optional(list(string), [])
+          idle_policy = optional(object({
+            max_idle_duration_seconds  = number
+            suspended_duration_seconds = number
+            auto_resume_enabled        = bool
+          }), null)
+          logging = optional(object({
+            cloud_watch = optional(object({
+              log_group  = optional(string, null)
+              log_stream = optional(string, null)
+            }), null)
+            disabled = optional(bool, false)
+          }), null)
+          run_hook_payload            = optional(string, null)
+          maximum_duration_in_seconds = optional(number, null)
+          environment_variables       = optional(map(string), {})
+          tags                        = optional(map(string), {})
+          iam = optional(object({
+            resource_arns = optional(list(string), ["*"])
+            actions = optional(object({
+              scale_up   = optional(list(string), null)
+              scale_down = optional(list(string), null)
+            }), {})
+            additional_policy_json = optional(object({
+              scale_up = optional(string, null)
+            }), {})
+            managed_policy_arns = optional(object({
+              scale_up = optional(string, null)
+              pool     = optional(string, null)
+            }), {})
+          }), {})
+        }), null)
       })
 
       matcherConfig = object({
@@ -383,38 +429,16 @@ variable "experimental" {
         bidirectionalLabelMatch = optional(bool, false)
         priority                = optional(number, 999)
         enableDynamicLabels     = optional(bool, false)
-        awsDynamicLabelsPolicy  = optional(any, null)
+        awsDynamicLabelsPolicy = optional(object({
+          blocked_keys = optional(list(string), [])
+          restricted_keys = optional(map(object({
+            allowed = optional(list(string), [])
+            denied  = optional(list(string), [])
+            max     = optional(string, null)
+          })), {})
+        }), null)
       })
     })), {})
   })
   default = {}
-
-  validation {
-    condition = alltrue([
-      for _, runner_config in var.experimental.multi_runner_config_v2 :
-      length([
-        for provider_type, provider_config in runner_config.compute_provider : provider_type
-        if provider_config != null
-      ]) == 1
-    ])
-    error_message = "Each experimental runner configuration must set exactly one compute-provider block. Supported compute-provider blocks: ec2."
-  }
-
-  validation {
-    condition = alltrue([
-      for _, runner_config in var.experimental.multi_runner_config_v2 :
-      runner_config.compute_provider.ec2 == null ? true : (
-        runner_config.compute_provider.ec2.instance_profile == null || runner_config.runner.iam.role != null
-      )
-    ])
-    error_message = "runner.iam.role must be set when compute_provider.ec2.instance_profile selects an external instance profile."
-  }
-
-  validation {
-    condition = alltrue([
-      for _, runner_config in var.experimental.multi_runner_config_v2 :
-      runner_config.runner.iam.role == null || length(runner_config.runner.iam.managed_policy_arns) == 0
-    ])
-    error_message = "runner.iam.managed_policy_arns cannot be set with an external runner.iam.role because external roles are not managed by this module."
-  }
 }

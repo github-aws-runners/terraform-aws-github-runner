@@ -5,7 +5,7 @@ variable "compute_provider" {
 
     Exactly one compute-provider block must be non-null. The populated block selects the provider, and its presence must be known during planning. Values inside the selected block may remain unknown until apply.
 
-    - `ec2`: EC2 compute-provider configuration. EC2 is the only provider currently implemented.
+    - `ec2`: EC2 compute-provider configuration.
     - `ec2.ami`: Optional AMI discovery or external AMI-parameter configuration. Null uses the operating-system and architecture defaults.
     - `ec2.ami.filter`: EC2 AMI filters combined with the provider's default AMI-name filter.
     - `ec2.ami.owners`: AWS account IDs or aliases allowed to own the selected AMI.
@@ -104,6 +104,19 @@ variable "compute_provider" {
     - `ec2.enable_on_demand_failover_for_errors`: EC2 error codes that trigger an on-demand fallback after a Spot launch failure.
     - `ec2.scale_errors`: EC2 error codes treated as retryable scale-up failures.
     - `ec2.use_dedicated_host`: Enables the dedicated-host launch path, required for macOS runners.
+    - `microvm`: Lambda MicroVM compute-provider configuration.
+    - `microvm.image_identifier`: ARN or ID of the MicroVM image used to run GitHub runners.
+    - `microvm.image_version`: Optional MicroVM image version.
+    - `microvm.execution_role.arn`: Optional externally managed execution role assumed by MicroVMs. Null uses the common runner role.
+    - `microvm.runner_role_trust_services`: Service principals trusted by the common runner role when it is used as the MicroVM execution role.
+    - `microvm.egress_network_connectors`: Egress network connectors passed to RunMicrovm.
+    - `microvm.idle_policy`: Optional auto-suspend and auto-resume configuration passed to RunMicrovm.
+    - `microvm.logging`: Optional RunMicrovm logging union. Exactly one of `cloud_watch` or `disabled` must be selected when set.
+    - `microvm.run_hook_payload`: Optional payload delivered to the MicroVM `/run` hook. Maximum 16,384 characters.
+    - `microvm.maximum_duration_in_seconds`: Optional maximum MicroVM lifetime. Valid range is 1 through 28,800 seconds.
+    - `microvm.environment_variables`: Additional provider-specific Lambda environment variables merged into scale-up, scale-down, and pool.
+    - `microvm.tags`: Tags encoded into the MicroVM runner configuration.
+    - `microvm.iam`: Optional MicroVM control-plane IAM overrides and managed policy attachments.
   EOT
 
   type = object({
@@ -243,56 +256,46 @@ variable "compute_provider" {
       ])
       use_dedicated_host = optional(bool, false)
     }), null)
+
+    microvm = optional(object({
+      image_identifier = string
+      image_version    = optional(string, null)
+      execution_role = optional(object({
+        arn = string
+      }), null)
+      runner_role_trust_services = optional(list(string), ["lambdamicrovms.amazonaws.com"])
+      egress_network_connectors  = optional(list(string), [])
+      idle_policy = optional(object({
+        max_idle_duration_seconds  = number
+        suspended_duration_seconds = number
+        auto_resume_enabled        = bool
+      }), null)
+      logging = optional(object({
+        cloud_watch = optional(object({
+          log_group  = optional(string, null)
+          log_stream = optional(string, null)
+        }), null)
+        disabled = optional(bool, false)
+      }), null)
+      run_hook_payload            = optional(string, null)
+      maximum_duration_in_seconds = optional(number, null)
+      environment_variables       = optional(map(string), {})
+      tags                        = optional(map(string), {})
+      iam = optional(object({
+        resource_arns = optional(list(string), ["*"])
+        actions = optional(object({
+          scale_up   = optional(list(string), null)
+          scale_down = optional(list(string), null)
+        }), {})
+        additional_policy_json = optional(object({
+          scale_up = optional(string, null)
+        }), {})
+        managed_policy_arns = optional(object({
+          scale_up = optional(string, null)
+          pool     = optional(string, null)
+        }), {})
+      }), {})
+    }), null)
   })
 
-  validation {
-    condition = length([
-      for provider_type, provider_config in var.compute_provider : provider_type
-      if provider_config != null
-    ]) == 1
-    error_message = "Exactly one compute-provider block must be set. Supported compute-provider blocks: ec2."
-  }
-
-  validation {
-    condition = var.compute_provider.ec2 == null ? true : contains(
-      ["spot", "on-demand"],
-      var.compute_provider.ec2.instance_target_capacity_type,
-    )
-    error_message = "compute_provider.ec2.instance_target_capacity_type must be spot or on-demand."
-  }
-
-  validation {
-    condition = var.compute_provider.ec2 == null ? true : contains(
-      ["lowest-price", "diversified", "capacity-optimized", "capacity-optimized-prioritized", "price-capacity-optimized", "prioritized"],
-      var.compute_provider.ec2.instance_allocation_strategy,
-    )
-    error_message = "compute_provider.ec2.instance_allocation_strategy is not supported."
-  }
-
-  validation {
-    condition = var.compute_provider.ec2 == null ? true : (
-      var.compute_provider.ec2.credit_specification == null ? true : contains(
-        ["standard", "unlimited"],
-        var.compute_provider.ec2.credit_specification,
-      )
-    )
-    error_message = "compute_provider.ec2.credit_specification must be null, standard, or unlimited."
-  }
-
-  validation {
-    condition = var.compute_provider.ec2 == null ? true : (
-      var.compute_provider.ec2.cpu_options == null ? true : (
-        (var.compute_provider.ec2.cpu_options.amd_sev_snp == null ? true : contains(["enabled", "disabled"], var.compute_provider.ec2.cpu_options.amd_sev_snp)) &&
-        (var.compute_provider.ec2.cpu_options.nested_virtualization == null ? true : contains(["enabled", "disabled"], var.compute_provider.ec2.cpu_options.nested_virtualization))
-      )
-    )
-    error_message = "compute_provider.ec2.cpu_options amd_sev_snp and nested_virtualization must be enabled or disabled when set."
-  }
-
-  validation {
-    condition = var.compute_provider.ec2 == null ? true : (
-      !var.compute_provider.ec2.binaries_syncer.enabled || var.compute_provider.ec2.binaries_syncer.s3 != null
-    )
-    error_message = "compute_provider.ec2.binaries_syncer.s3 must be set when compute_provider.ec2.binaries_syncer.enabled is true."
-  }
 }
