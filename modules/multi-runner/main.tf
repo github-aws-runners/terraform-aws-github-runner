@@ -22,9 +22,9 @@ locals {
     webhook_secret = coalesce(var.github_app.webhook_secret_ssm, module.ssm.parameters.github_app_webhook_secret)
   }
 
-  runner_extra_labels = { for k, v in local.selected_multi_runner_config_v1 : k => sort(setunion(flatten(v.matcherConfig.labelMatchers), compact(v.runner_config.runner_extra_labels))) }
+  runner_extra_labels = { for k, v in var.multi_runner_config : k => sort(setunion(flatten(v.matcherConfig.labelMatchers), compact(v.runner_config.runner_extra_labels))) }
 
-  runner_config = { for k, v in local.selected_multi_runner_config_v1 : k => merge(
+  runner_config = { for k, v in var.multi_runner_config : k => merge(
     {
       id  = aws_sqs_queue.queued_builds[k].id
       arn = aws_sqs_queue.queued_builds[k].arn
@@ -32,6 +32,15 @@ locals {
     },
     merge(v, { runner_config = merge(v.runner_config, { runner_extra_labels = local.runner_extra_labels[k] }) }),
   ) }
+
+  tmp_distinct_list_unique_os_and_arch = distinct([
+    for _, config in local.runner_config_by_provider.ec2 : {
+      "os_type" : config.runner.os,
+      "architecture" : config.runner.architecture
+    }
+    if config.compute_provider.ec2.binaries_syncer.enabled
+  ])
+  unique_os_and_arch = { for _, v in local.tmp_distinct_list_unique_os_and_arch : "${v.os_type}_${v.architecture}" => v }
 
   ssm_root_path = "/${var.ssm_paths.root}/${var.prefix}"
 }
