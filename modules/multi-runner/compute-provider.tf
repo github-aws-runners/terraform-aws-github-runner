@@ -12,13 +12,10 @@ locals {
   }
 
   runner_config_by_provider = {
-    ec2 = {
+    for provider_type in toset(values(local.compute_provider_types)) :
+    provider_type => {
       for runner_key, runner_config in local.multi_runner_config : runner_key => runner_config
-      if local.compute_provider_types[runner_key] == "ec2"
-    }
-    microvm = {
-      for runner_key, runner_config in local.multi_runner_config : runner_key => runner_config
-      if local.compute_provider_types[runner_key] == "microvm"
+      if local.compute_provider_types[runner_key] == provider_type
     }
   }
 }

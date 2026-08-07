@@ -364,7 +364,7 @@ run "experimental_v2_routes_microvm_through_provider_stack" {
 
   assert {
     condition = (
-      keys(local.runner_config_by_provider.ec2) == []
+      keys(try(local.runner_config_by_provider.ec2, {})) == []
       && keys(local.runner_config_by_provider.microvm) == ["micro"]
       && local.compute_provider_types["micro"] == "microvm"
       && local.runner_matcher_config["micro"].runnerProvider == "microvm"
