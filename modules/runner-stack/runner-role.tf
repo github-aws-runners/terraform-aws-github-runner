@@ -5,8 +5,9 @@ locals {
   create_runner_role = var.runner.iam.role == null
 
   runner_role = {
-    arn  = local.create_runner_role ? one(aws_iam_role.runner[*].arn) : var.runner.iam.role.arn
-    name = local.create_runner_role ? one(aws_iam_role.runner[*].name) : basename(var.runner.iam.role.arn)
+    arn     = local.create_runner_role ? one(aws_iam_role.runner[*].arn) : var.runner.iam.role.arn
+    name    = local.create_runner_role ? one(aws_iam_role.runner[*].name) : basename(var.runner.iam.role.arn)
+    managed = local.create_runner_role
   }
 
   provider_runner_policies = local.provider.policies.runner

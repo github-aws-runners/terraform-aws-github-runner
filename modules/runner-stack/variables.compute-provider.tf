@@ -298,4 +298,11 @@ variable "compute_provider" {
     }), null)
   })
 
+  validation {
+    condition = length([
+      for provider_type, provider_config in var.compute_provider : provider_type
+      if provider_config != null
+    ]) == 1
+    error_message = "Exactly one compute-provider block must be set. Supported compute-provider blocks: ec2, microvm."
+  }
 }

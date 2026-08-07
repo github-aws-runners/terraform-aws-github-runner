@@ -441,4 +441,23 @@ variable "experimental" {
     })), {})
   })
   default = {}
+
+  validation {
+    condition = alltrue([
+      for runner_config in values(var.experimental.multi_runner_config_v2) :
+      length([
+        for provider_type, provider_config in runner_config.compute_provider : provider_type
+        if provider_config != null
+      ]) == 1
+    ])
+    error_message = "Each experimental runner configuration must set exactly one compute-provider block. Supported compute-provider blocks: ec2, microvm."
+  }
+
+  validation {
+    condition = alltrue([
+      for runner_config in values(var.experimental.multi_runner_config_v2) :
+      runner_config.runner.iam.role == null || length(runner_config.runner.iam.managed_policy_arns) == 0
+    ])
+    error_message = "runner.iam.managed_policy_arns cannot be set with an external runner.iam.role because external roles are not managed by this module."
+  }
 }

@@ -168,3 +168,15 @@ run "accepts_external_execution_role_and_policy_overrides" {
     error_message = "Optional MicroVM policy attachments must stay controlled by object presence."
   }
 }
+
+run "rejects_empty_image_identifier" {
+  command = plan
+
+  variables {
+    config = {
+      image_identifier = " "
+    }
+  }
+
+  expect_failures = [terraform_data.validate_config]
+}

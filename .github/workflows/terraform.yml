@@ -87,6 +87,7 @@ jobs:
             "multi-runner",
             "compute-providers/ec2",
             "compute-providers/ec2/runner-role",
+            "compute-providers/microvm",
             "compute-providers/microvm/runner-role",
             "runner-binaries-syncer",
             "runner-stack",
@@ -229,6 +230,7 @@ jobs:
           - modules/runner-stack/ssm-housekeeper
           - modules/compute-providers/ec2
           - modules/compute-providers/ec2/runner-role
+          - modules/compute-providers/microvm
           - modules/compute-providers/microvm/runner-role
     defaults:
       run:

@@ -310,28 +310,6 @@ run "external_runner_role_and_profile_remain_external" {
   }
 }
 
-run "external_profile_requires_external_role" {
-  command = plan
-
-  variables {
-    compute_provider = {
-      ec2 = {
-        vpc_id         = "vpc-12345678"
-        subnet_ids     = ["subnet-12345678"]
-        instance_types = ["m5.large"]
-        instance_profile = {
-          name = "external-runner-profile"
-        }
-        binaries_syncer = {
-          enabled = false
-        }
-      }
-    }
-  }
-
-  expect_failures = [terraform_data.validate_compute_provider_ec2[0]]
-}
-
 run "empty_runner_iam_uses_common_role" {
   command = plan
 
@@ -368,26 +346,6 @@ run "external_role_rejects_managed_policy_attachments" {
   expect_failures = [var.runner]
 }
 
-run "requires_distribution_object_when_sync_is_enabled" {
-  command = plan
-
-  variables {
-    compute_provider = {
-      ec2 = {
-        vpc_id         = "vpc-12345678"
-        subnet_ids     = ["subnet-12345678"]
-        instance_types = ["m5.large"]
-        binaries_syncer = {
-          enabled = true
-          s3      = null
-        }
-      }
-    }
-  }
-
-  expect_failures = [terraform_data.validate_compute_provider_ec2[0]]
-}
-
 run "rejects_empty_compute_provider" {
   command = plan
 
@@ -395,21 +353,7 @@ run "rejects_empty_compute_provider" {
     compute_provider = {}
   }
 
-  expect_failures = [terraform_data.validate_compute_provider_selection]
-}
-
-run "rejects_empty_microvm_image_identifier" {
-  command = plan
-
-  variables {
-    compute_provider = {
-      microvm = {
-        image_identifier = " "
-      }
-    }
-  }
-
-  expect_failures = [terraform_data.validate_compute_provider_microvm[0]]
+  expect_failures = [var.compute_provider]
 }
 
 run "job_retry_uses_common_runner_configuration_identity" {

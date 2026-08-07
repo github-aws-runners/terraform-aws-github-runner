@@ -276,6 +276,7 @@ variable "runner" {
     - `hooks.job_completed`: Script installed as the runner job-completed hook.
     - `iam.role.arn`: Resolved runner-role ARN referenced by EC2 control-plane policies.
     - `iam.role.name`: Resolved runner-role name used by the provider-managed instance profile.
+    - `iam.role.managed`: Whether runner-stack manages the resolved runner role.
     - `iam.path`: IAM path used for provider-managed policies. Null derives the path from `prefix`.
   EOT
   type = object({
@@ -291,8 +292,9 @@ variable "runner" {
     }), {})
     iam = object({
       role = object({
-        arn  = string
-        name = string
+        arn     = string
+        name    = string
+        managed = optional(bool, true)
       })
       path = optional(string, null)
     })

@@ -390,3 +390,51 @@ run "separates_provider_runner_and_ssm_tags" {
     error_message = "The managed AMI parameter must preserve authoritative AMI metadata over SSM component tags."
   }
 }
+
+run "rejects_external_instance_profile_with_managed_role" {
+  command = plan
+
+  variables {
+    config = {
+      vpc_id         = "vpc-12345678"
+      subnet_ids     = ["subnet-12345678"]
+      instance_types = ["m5.large"]
+      instance_profile = {
+        name = "external-runner-profile"
+      }
+      binaries_syncer = {
+        enabled = false
+      }
+    }
+
+    runner = {
+      iam = {
+        role = {
+          arn     = "arn:aws:iam::123456789012:role/provider-test-runner"
+          name    = "provider-test-runner"
+          managed = true
+        }
+      }
+    }
+  }
+
+  expect_failures = [terraform_data.validate_config]
+}
+
+run "requires_distribution_object_when_sync_is_enabled" {
+  command = plan
+
+  variables {
+    config = {
+      vpc_id         = "vpc-12345678"
+      subnet_ids     = ["subnet-12345678"]
+      instance_types = ["m5.large"]
+      binaries_syncer = {
+        enabled = true
+        s3      = null
+      }
+    }
+  }
+
+  expect_failures = [terraform_data.validate_config]
+}
