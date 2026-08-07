@@ -202,7 +202,8 @@ run "assembles_provider_neutral_scaling_control_plane" {
 
   assert {
     condition = (
-      aws_lambda_function.scale_up.environment[0].variables["RUNNER_PROVIDER_TYPE"] == "microvm"
+      aws_lambda_function.scale_up.environment[0].variables["COMPUTE_PROVIDER_TYPE"] == "microvm"
+      && aws_lambda_function.scale_down.environment[0].variables["COMPUTE_PROVIDER_TYPE"] == "microvm"
       && aws_lambda_function.scale_up.environment[0].variables["MICROVM_CLUSTER"] == "runner-cluster"
       && aws_lambda_function.scale_down.environment[0].variables["MICROVM_CLUSTER"] == "runner-cluster"
       && !contains(keys(aws_lambda_function.scale_up.environment[0].variables), "INSTANCE_TYPES")
