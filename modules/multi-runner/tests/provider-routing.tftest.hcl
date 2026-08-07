@@ -190,9 +190,6 @@ run "experimental_v2_routes_through_provider_stack" {
   assert {
     condition = (
       output.runners_map["linux"].provider.type == "ec2"
-      && can(output.runners_map["linux"].provider.ec2.launch_template)
-      && can(output.runners_map["linux"].provider.ec2.runners_log_groups)
-      && can(output.runners_map["linux"].provider.ec2.logfiles)
       && toset(keys(output.runners_map["linux"].provider.ec2)) == toset([
         "launch_template",
         "runners_log_groups",
@@ -204,11 +201,11 @@ run "experimental_v2_routes_through_provider_stack" {
 
   assert {
     condition = (
-      !can(output.runners_map["linux"].launch_template_name)
-      && can(output.runners_map["linux"].role_runner)
-      && !can(output.runners_map["linux"].provider.ec2.role_runner)
-      && !can(output.runners_map["linux"].runners_log_groups)
-      && !can(output.runners_map["linux"].logfiles)
+      !contains(keys(output.runners_map["linux"]), "launch_template_name")
+      && contains(keys(output.runners_map["linux"]), "role_runner")
+      && !contains(keys(output.runners_map["linux"].provider.ec2), "role_runner")
+      && !contains(keys(output.runners_map["linux"]), "runners_log_groups")
+      && !contains(keys(output.runners_map["linux"]), "logfiles")
     )
     error_message = "Experimental v2 must expose the common runner role at lane level without duplicating EC2 resources."
   }
