@@ -26,5 +26,5 @@ it('exposes every MicroVM provider capability from its lane entry point', () => 
     terminate: expect.any(Function),
   });
   expect(webhookPlugin.type).toBe('microvm');
-  expect(webhookPlugin.capabilities.dynamicLabels.selectQueue).toEqual(expect.any(Function));
+  expect(webhookPlugin.capabilities.dynamicLabels.getViolations).toEqual(expect.any(Function));
 });

@@ -1,65 +1,29 @@
 import { describe, expect, it } from 'vitest';
 
 import type { RunnerMatcherConfig } from '../../../../contracts';
-import { selectEc2DynamicLabelQueue } from './dynamic-labels';
+import { ec2DynamicLabelProvider } from './dynamic-labels';
 
-describe('selectEc2DynamicLabelQueue', () => {
-  it('rejects dynamic labels when the queue disables them', () => {
-    const queue = runnerQueue('dynamic-labels-disabled');
-    queue.matcherConfig.enableDynamicLabels = false;
-
-    expect(
-      selectEc2DynamicLabelQueue([queue], ['self-hosted', 'linux'], ['ghr-ec2-instance-type:t3.large']),
-    ).toBeUndefined();
-  });
-
-  it('accepts dynamic labels when the queue has no policy', () => {
+describe('ec2DynamicLabelProvider', () => {
+  it('returns no violations when the queue has no policy', () => {
     const queue = runnerQueue('no-policy');
 
-    expect(selectEc2DynamicLabelQueue([queue], ['self-hosted', 'linux'], ['ghr-ec2-instance-type:t3.large'])).toEqual({
-      queue,
-      labels: ['self-hosted', 'linux', 'ghr-ec2-instance-type:t3.large'],
-    });
+    expect(getViolations(queue)).toEqual([]);
   });
 
-  it('skips a policy-rejected queue and returns the next compliant queue', () => {
+  it('returns violations for labels rejected by the policy', () => {
     const strictQueue = runnerQueue('strict');
     strictQueue.matcherConfig.awsDynamicLabelsPolicy = {
       restricted_keys: {
         'instance-type': { allowed: ['m5.*'] },
       },
     };
-    const permissiveQueue = runnerQueue('permissive');
 
-    expect(
-      selectEc2DynamicLabelQueue(
-        [strictQueue, permissiveQueue],
-        ['self-hosted', 'linux'],
-        ['ghr-ec2-instance-type:t3.large'],
-      ),
-    ).toEqual({
-      queue: permissiveQueue,
-      labels: ['self-hosted', 'linux', 'ghr-ec2-instance-type:t3.large'],
-    });
-  });
-
-  it('returns undefined when no queue accepts the dynamic labels', () => {
-    const strictQueue = runnerQueue('strict');
-    strictQueue.matcherConfig.awsDynamicLabelsPolicy = {
-      restricted_keys: {
-        'instance-type': { allowed: ['m5.*'] },
+    expect(getViolations(strictQueue)).toEqual([
+      {
+        label: 'ghr-ec2-instance-type:t3.large',
+        reason: "value 't3.large' not in allowed list",
       },
-    };
-    const disabledQueue = runnerQueue('disabled');
-    disabledQueue.matcherConfig.enableDynamicLabels = false;
-
-    expect(
-      selectEc2DynamicLabelQueue(
-        [strictQueue, disabledQueue],
-        ['self-hosted', 'linux'],
-        ['ghr-ec2-instance-type:t3.large'],
-      ),
-    ).toBeUndefined();
+    ]);
   });
 
   it('enforces a legacy EC2 dynamic labels policy when the new key is absent', () => {
@@ -68,9 +32,7 @@ describe('selectEc2DynamicLabelQueue', () => {
       blocked_keys: ['instance-type'],
     };
 
-    expect(
-      selectEc2DynamicLabelQueue([queue], ['self-hosted', 'linux'], ['ghr-ec2-instance-type:t3.large']),
-    ).toBeUndefined();
+    expect(getViolations(queue)).toHaveLength(1);
   });
 
   it('falls back to the legacy EC2 dynamic labels policy when the new policy is null', () => {
@@ -80,9 +42,7 @@ describe('selectEc2DynamicLabelQueue', () => {
     };
     queue.matcherConfig.awsDynamicLabelsPolicy = null;
 
-    expect(
-      selectEc2DynamicLabelQueue([queue], ['self-hosted', 'linux'], ['ghr-ec2-instance-type:t3.large']),
-    ).toBeUndefined();
+    expect(getViolations(queue)).toHaveLength(1);
   });
 
   it('prefers a configured AWS dynamic labels policy over the legacy policy', () => {
@@ -94,12 +54,16 @@ describe('selectEc2DynamicLabelQueue', () => {
       blocked_keys: [],
     };
 
-    expect(selectEc2DynamicLabelQueue([queue], ['self-hosted', 'linux'], ['ghr-ec2-instance-type:t3.large'])).toEqual({
-      queue,
-      labels: ['self-hosted', 'linux', 'ghr-ec2-instance-type:t3.large'],
-    });
+    expect(getViolations(queue)).toEqual([]);
   });
 });
+
+function getViolations(queue: RunnerMatcherConfig) {
+  return ec2DynamicLabelProvider.getViolations({
+    queue,
+    labels: ['ghr-ec2-instance-type:t3.large'],
+  });
+}
 
 function runnerQueue(id: string): RunnerMatcherConfig {
   return {

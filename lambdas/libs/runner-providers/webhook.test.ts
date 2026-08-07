@@ -1,66 +1,103 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import type { RunnerMatcherConfig } from './contracts';
-import type { RunnerProviderType } from './provider-types';
-import { selectDynamicLabelQueue } from './webhook';
+import type { DynamicLabelProvider, DynamicLabelViolation, RunnerMatcherConfig } from './contracts';
+import { createDynamicLabelQueueSelector } from './webhook';
 
-describe('selectDynamicLabelQueue', () => {
-  it('defaults queues without a provider to EC2 dynamic label handling', () => {
-    const queue = runnerQueue('default-ec2');
+type TestProvider = 'provider-a' | 'provider-b';
 
-    expect(selectDynamicLabelQueue([queue], ['self-hosted', 'linux'], ['ghr-ec2-instance-type:t3.large'])).toEqual({
+describe('createDynamicLabelQueueSelector', () => {
+  it('returns the first queue accepted by its provider', () => {
+    const queue = runnerQueue('accepted');
+    const { selectQueue } = selector();
+
+    expect(selectQueue([queue], ['self-hosted', 'linux'], ['ghr-test-size:large'])).toEqual({
       queue,
-      labels: ['self-hosted', 'linux', 'ghr-ec2-instance-type:t3.large'],
+      labels: ['self-hosted', 'linux', 'ghr-test-size:large'],
     });
   });
 
-  it('normalizes runner provider casing and surrounding whitespace', () => {
-    const queue = runnerQueue('normalized-ec2');
-    (queue as unknown as { runnerProvider: string }).runnerProvider = ' EC2 ';
+  it('skips queues that disable dynamic labels', () => {
+    const disabledQueue = runnerQueue('disabled');
+    disabledQueue.matcherConfig.enableDynamicLabels = false;
+    const enabledQueue = runnerQueue('enabled');
+    const { getViolations, selectQueue } = selector();
 
-    expect(selectDynamicLabelQueue([queue], ['self-hosted', 'linux'], ['ghr-ec2-instance-type:t3.large'])).toEqual({
-      queue,
-      labels: ['self-hosted', 'linux', 'ghr-ec2-instance-type:t3.large'],
+    expect(selectQueue([disabledQueue, enabledQueue], ['self-hosted'], ['ghr-test-size:large'])).toEqual({
+      queue: enabledQueue,
+      labels: ['self-hosted', 'ghr-test-size:large'],
+    });
+    expect(getViolations).toHaveBeenCalledOnce();
+    expect(getViolations).toHaveBeenCalledWith({ queue: enabledQueue, labels: ['ghr-test-size:large'] });
+  });
+
+  it('skips queues whose provider reports violations', () => {
+    const rejectedQueue = runnerQueue('rejected');
+    const acceptedQueue = runnerQueue('accepted');
+    const { selectQueue } = selector({
+      violationsByQueue: {
+        rejected: [{ label: 'ghr-test-size:large', reason: 'size is unavailable' }],
+      },
+    });
+
+    expect(selectQueue([rejectedQueue, acceptedQueue], ['self-hosted'], ['ghr-test-size:large'])).toEqual({
+      queue: acceptedQueue,
+      labels: ['self-hosted', 'ghr-test-size:large'],
     });
   });
 
-  it.each([['unsupported'], [42]])('throws for unsupported runner provider %j', (runnerProvider) => {
-    const queue = runnerQueue('unsupported-provider');
-    (queue as unknown as { runnerProvider: unknown }).runnerProvider = runnerProvider;
+  it('returns undefined when every provider reports violations', () => {
+    const queue = runnerQueue('rejected');
+    const { selectQueue } = selector({
+      violationsByQueue: {
+        rejected: [{ label: 'ghr-test-size:large', reason: 'size is unavailable' }],
+      },
+    });
 
-    expect(() =>
-      selectDynamicLabelQueue([queue], ['self-hosted', 'linux'], ['ghr-ec2-instance-type:t3.large']),
-    ).toThrow(`Unsupported runner provider type '${String(runnerProvider)}'`);
+    expect(selectQueue([queue], ['self-hosted'], ['ghr-test-size:large'])).toBeUndefined();
   });
 
-  it('skips EC2 and selects the MicroVM queue for MicroVM override labels', () => {
-    const ec2Queue = runnerQueue('ec2', 'ec2');
-    const microvmQueue = runnerQueue('microvm', 'microvm');
-    const imageVersionLabel = 'ghr-microvm-image-version:3.0';
-
-    expect(selectDynamicLabelQueue([ec2Queue, microvmQueue], ['self-hosted', 'linux'], [imageVersionLabel])).toEqual({
-      queue: microvmQueue,
-      labels: ['self-hosted', 'linux', imageVersionLabel],
+  it('skips queues when labels target another provider', () => {
+    const firstQueue = runnerQueue('first');
+    const secondQueue = runnerQueue('second');
+    const { getViolations, selectQueue } = selector({
+      providerByQueue: { first: 'provider-a', second: 'provider-b' },
+      labelsForOtherProvider: (_labels, provider) => (provider === 'provider-a' ? ['ghr-provider-b-size:large'] : []),
     });
-  });
 
-  it('skips MicroVM and selects the EC2 queue for EC2 override labels', () => {
-    const microvmQueue = runnerQueue('microvm', 'microvm');
-    const ec2Queue = runnerQueue('ec2', 'ec2');
-    const instanceTypeLabel = 'ghr-ec2-instance-type:m7i.large';
-
-    expect(selectDynamicLabelQueue([microvmQueue, ec2Queue], ['self-hosted', 'linux'], [instanceTypeLabel])).toEqual({
-      queue: ec2Queue,
-      labels: ['self-hosted', 'linux', instanceTypeLabel],
+    expect(selectQueue([firstQueue, secondQueue], ['self-hosted'], ['ghr-provider-b-size:large'])).toEqual({
+      queue: secondQueue,
+      labels: ['self-hosted', 'ghr-provider-b-size:large'],
     });
+    expect(getViolations).toHaveBeenCalledOnce();
+    expect(getViolations).toHaveBeenCalledWith({ queue: secondQueue, labels: ['ghr-provider-b-size:large'] });
   });
 });
 
-function runnerQueue(id: string, runnerProvider?: RunnerProviderType): RunnerMatcherConfig {
+function selector(options?: {
+  providerByQueue?: Record<string, TestProvider>;
+  violationsByQueue?: Record<string, DynamicLabelViolation[]>;
+  labelsForOtherProvider?: (labels: string[], provider: TestProvider) => string[];
+}) {
+  const getViolations = vi.fn<DynamicLabelProvider['getViolations']>(({ queue }) => {
+    return options?.violationsByQueue?.[queue.id] ?? [];
+  });
+
+  return {
+    getViolations,
+    selectQueue: createDynamicLabelQueueSelector<TestProvider>({
+      resolveProvider: (queue) => ({
+        type: options?.providerByQueue?.[queue.id] ?? 'provider-a',
+        dynamicLabels: { getViolations },
+      }),
+      dynamicLabelsForOtherProvider: options?.labelsForOtherProvider ?? (() => []),
+    }),
+  };
+}
+
+function runnerQueue(id: string): RunnerMatcherConfig {
   return {
     id,
     arn: `arn:${id}`,
-    runnerProvider,
     matcherConfig: {
       labelMatchers: [['self-hosted', 'linux']],
       exactMatch: true,
