@@ -832,7 +832,7 @@ variable "user_agent" {
   default     = "github-aws-runners"
 }
 
-# TODO: Remove this standalone multi-runner input in a future breaking cleanup; per-lane runner_config.iam_overrides is the value used by EC2 runner modules.
+# TODO: Remove this standalone multi-runner input in a future breaking cleanup; per-configuration runner_config.iam_overrides is the value used by EC2 runner modules.
 # tflint-ignore: terraform_unused_declarations
 variable "iam_overrides" {
   description = "This map provides the possibility to override some IAM defaults. The following attributes are supported: `instance_profile_name` overrides the instance profile name used in the launch template. `runner_role_arn` overrides the IAM role ARN used for the runner instances."
