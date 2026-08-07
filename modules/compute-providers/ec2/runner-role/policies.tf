@@ -3,7 +3,7 @@ data "aws_caller_identity" "current" {}
 
 locals {
   ssm_parameter_arn_prefix = "arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter"
-  ssm_config_arn           = "${local.ssm_parameter_arn_prefix}${var.ssm_paths.root}/${var.ssm_paths.config}"
+  ssm_config_arn           = "${local.ssm_parameter_arn_prefix}${var.ssm.paths.root}/${var.ssm.paths.config}"
   cloudwatch_config_arn    = "${local.ssm_config_arn}/cloudwatch_agent_config_runner"
 }
 
@@ -28,7 +28,7 @@ data "aws_iam_policy_document" "ssm_parameters" {
       "ssm:GetParameter",
     ]
     resources = [
-      "${local.ssm_parameter_arn_prefix}${var.ssm_paths.root}/${var.ssm_paths.tokens}/*",
+      "${local.ssm_parameter_arn_prefix}${var.ssm.paths.root}/${var.ssm.paths.tokens}/*",
     ]
 
     condition {
@@ -99,20 +99,13 @@ data "aws_iam_policy_document" "session_manager" {
 }
 
 data "aws_iam_policy_document" "distribution_bucket" {
-  count = var.enable_runner_binaries_syncer ? 1 : 0
-
-  lifecycle {
-    precondition {
-      condition     = var.s3_runner_binaries != null
-      error_message = "s3_runner_binaries must be set when enable_runner_binaries_syncer is true."
-    }
-  }
+  count = var.config.binaries_syncer.enabled ? 1 : 0
 
   statement {
     sid       = "githubActionDist"
     effect    = "Allow"
     actions   = ["s3:GetObject", "s3:GetObjectAcl"]
-    resources = ["${try(var.s3_runner_binaries.arn, "")}/${try(var.s3_runner_binaries.key, "")}"]
+    resources = ["${try(var.config.binaries_syncer.s3.arn, "")}/${try(var.config.binaries_syncer.s3.key, "")}"]
   }
 }
 
@@ -159,7 +152,7 @@ data "aws_iam_policy_document" "terminate_self" {
 }
 
 data "aws_iam_policy_document" "cloudwatch" {
-  count = var.enable_cloudwatch_agent ? 1 : 0
+  count = var.config.cloudwatch_agent.enabled ? 1 : 0
 
   statement {
     effect = "Allow"
@@ -202,19 +195,19 @@ locals {
         policy_json = data.aws_iam_policy_document.terminate_self.json
       }
     },
-    var.enable_ssm_on_runners ? {
+    var.config.ssm_enabled ? {
       session_manager = {
         name        = "runner-ssm-session"
         policy_json = data.aws_iam_policy_document.session_manager.json
       }
     } : {},
-    var.enable_runner_binaries_syncer ? {
+    var.config.binaries_syncer.enabled ? {
       distribution_bucket = {
         name        = "distribution-bucket"
         policy_json = data.aws_iam_policy_document.distribution_bucket[0].json
       }
     } : {},
-    var.enable_cloudwatch_agent ? {
+    var.config.cloudwatch_agent.enabled ? {
       cloudwatch = {
         name        = "CloudWatchLogginAndMetrics"
         policy_json = data.aws_iam_policy_document.cloudwatch[0].json

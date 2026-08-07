@@ -8,29 +8,40 @@ locals {
     var.tags,
   )
 
-  name_sg     = var.overrides.name_sg == "" ? local.provider_tags["Name"] : var.overrides.name_sg
-  name_runner = var.overrides.name_runner == "" ? local.provider_tags["Name"] : var.overrides.name_runner
+  ssm_parameter_tags = merge(
+    local.provider_tags,
+    var.ssm.tags,
+    var.ssm.parameters.tags,
+  )
+
+  log_group_tags = merge(
+    local.provider_tags,
+    var.observability.logs.tags,
+  )
+
+  name_sg     = var.config.overrides.name_sg == "" ? local.provider_tags["Name"] : var.config.overrides.name_sg
+  name_runner = var.config.overrides.name_runner == "" ? local.provider_tags["Name"] : var.config.overrides.name_runner
   runner_tags = merge(
     local.provider_tags,
     {
       "Name" = local.name_runner
     },
-    var.runner_ec2_tags,
+    var.config.tags,
     {
       "ghr:environment"        = var.prefix
-      "ghr:ssm_config_path"    = "${var.ssm_paths.root}/${var.ssm_paths.config}"
-      "ghr:runner_name_prefix" = var.runner_name_prefix
+      "ghr:ssm_config_path"    = "${var.ssm.paths.root}/${var.ssm.paths.config}"
+      "ghr:runner_name_prefix" = var.runner.name_prefix
     },
   )
 
-  role_path                       = var.role_path == null ? "/${var.prefix}/" : var.role_path
-  instance_profile_path           = var.instance_profile_path == null ? "/${var.prefix}/" : var.instance_profile_path
-  userdata_template               = var.userdata_template == null ? local.default_userdata_template[var.runner_os] : var.userdata_template
-  s3_location_runner_distribution = var.enable_runner_binaries_syncer ? "s3://${try(var.s3_runner_binaries.id, "")}/${try(var.s3_runner_binaries.key, "")}" : ""
+  role_path                       = var.runner.iam.path == null ? "/${var.prefix}/" : var.runner.iam.path
+  instance_profile_path           = var.config.instance_profile_path == null ? "/${var.prefix}/" : var.config.instance_profile_path
+  userdata_template               = var.config.user_data.template == null ? local.default_userdata_template[var.runner.os] : var.config.user_data.template
+  s3_location_runner_distribution = var.config.binaries_syncer.enabled ? "s3://${try(var.config.binaries_syncer.s3.id, "")}/${try(var.config.binaries_syncer.s3.key, "")}" : ""
   default_ami = {
     "windows" = { name = ["Windows_Server-2022-English-Full-ECS_Optimized-*"] }
-    "linux"   = var.runner_architecture == "arm64" ? { name = ["al2023-ami-2023.*-kernel-6.*-arm64"] } : { name = ["al2023-ami-2023.*-kernel-6.*-x86_64"] }
-    "osx"     = var.runner_architecture == "arm64" ? { name = ["amzn-ec2-macos-15.*-arm64"] } : { name = ["amzn-ec2-macos-15.*"] }
+    "linux"   = var.runner.architecture == "arm64" ? { name = ["al2023-ami-2023.*-kernel-6.*-arm64"] } : { name = ["al2023-ami-2023.*-kernel-6.*-x86_64"] }
+    "osx"     = var.runner.architecture == "arm64" ? { name = ["amzn-ec2-macos-15.*-arm64"] } : { name = ["amzn-ec2-macos-15.*"] }
   }
 
   default_userdata_template = {
@@ -52,48 +63,48 @@ locals {
   }
 
   # Handle AMI configuration
-  ami_config = var.ami != null ? var.ami : {
-    filter           = local.default_ami[var.runner_os]
+  ami_config = var.config.ami != null ? var.config.ami : {
+    filter           = local.default_ami[var.runner.os]
     owners           = ["amazon"]
     id_ssm_parameter = null
     kms_key          = null
   }
   ami_kms_key_enabled       = local.ami_config.kms_key != null
   ami_kms_key_arn           = local.ami_kms_key_enabled ? local.ami_config.kms_key.arn : null
-  ami_filter                = merge(local.default_ami[var.runner_os], local.ami_config.filter)
+  ami_filter                = merge(local.default_ami[var.runner.os], local.ami_config.filter)
   ami_id_ssm_external       = local.ami_config.id_ssm_parameter != null
   ami_id_ssm_module_managed = !local.ami_id_ssm_external
   ami_id_ssm_parameter_arn  = local.ami_id_ssm_external ? local.ami_config.id_ssm_parameter.arn : null
   # Extract parameter name from ARN (format: arn:aws:ssm:region:account:parameter/path/to/param)
   ami_id_ssm_parameter_name = local.ami_id_ssm_external ? try(regex("parameter(/.+)$", local.ami_id_ssm_parameter_arn)[0], null) : null
 
-  user_data = var.enable_userdata ? (var.userdata_content == null ? templatefile(local.userdata_template, {
-    enable_debug_logging            = var.enable_user_data_debug_logging
+  user_data = var.config.user_data.enabled ? (var.config.user_data.content == null ? templatefile(local.userdata_template, {
+    enable_debug_logging            = var.config.user_data.debug_logging_enabled
     s3_location_runner_distribution = local.s3_location_runner_distribution
-    pre_install                     = var.userdata_pre_install
-    install_runner = templatefile(local.userdata_install_runner[var.runner_os], {
+    pre_install                     = var.config.user_data.pre_install
+    install_runner = templatefile(local.userdata_install_runner[var.runner.os], {
       S3_LOCATION_RUNNER_DISTRIBUTION = local.s3_location_runner_distribution
-      RUNNER_ARCHITECTURE             = var.runner_architecture
+      RUNNER_ARCHITECTURE             = var.runner.architecture
     })
-    post_install       = var.userdata_post_install
-    hook_job_started   = var.runner_hook_job_started
-    hook_job_completed = var.runner_hook_job_completed
-    start_runner = templatefile(local.userdata_start_runner[var.runner_os], {
-      metadata_tags = var.metadata_options != null ? var.metadata_options.instance_metadata_tags : "enabled"
+    post_install       = var.config.user_data.post_install
+    hook_job_started   = var.runner.hooks.job_started
+    hook_job_completed = var.runner.hooks.job_completed
+    start_runner = templatefile(local.userdata_start_runner[var.runner.os], {
+      metadata_tags = var.config.metadata_options != null ? var.config.metadata_options.instance_metadata_tags : "enabled"
     })
-    ghes_url        = var.ghes_url
-    ghes_ssl_verify = var.ghes_ssl_verify
+    ghes_url        = var.github.enterprise_server.url
+    ghes_ssl_verify = var.github.enterprise_server.ssl_verify
 
     ## retain these for backwards compatibility
     environment                     = var.prefix
-    enable_cloudwatch_agent         = var.enable_cloudwatch_agent
-    ssm_key_cloudwatch_agent_config = var.enable_cloudwatch_agent ? aws_ssm_parameter.cloudwatch_agent_config_runner[0].name : ""
-  }) : var.userdata_content) : ""
+    enable_cloudwatch_agent         = var.config.cloudwatch_agent.enabled
+    ssm_key_cloudwatch_agent_config = var.config.cloudwatch_agent.enabled ? aws_ssm_parameter.cloudwatch_agent_config_runner[0].name : ""
+  }) : var.config.user_data.content) : ""
 
   encoded_user_data = (
-    var.runner_os == "linux" ? base64gzip(local.user_data) :
-    var.runner_os == "windows" ? base64encode(local.user_data) :
-    var.runner_os == "osx" ? base64encode(local.user_data) :
+    var.runner.os == "linux" ? base64gzip(local.user_data) :
+    var.runner.os == "windows" ? base64encode(local.user_data) :
+    var.runner.os == "osx" ? base64encode(local.user_data) :
     null
   )
 }
@@ -114,14 +125,14 @@ data "aws_ami" "runner" {
 
 resource "aws_ssm_parameter" "runner_ami_id" {
   count     = local.ami_id_ssm_module_managed ? 1 : 0
-  name      = "${var.ssm_paths.root}/${var.ssm_paths.config}/ami_id"
+  name      = "${var.ssm.paths.root}/${var.ssm.paths.config}/ami_id"
   type      = "String"
   data_type = "aws:ec2:image"
   value     = data.aws_ami.runner.id
 
   tags = merge(
     local.provider_tags,
-    var.ssm_parameter_tags,
+    local.ssm_parameter_tags,
     {
       # Remove parentheses from AMI name to comply with AWS tag constraints
       "ghr:ami_name" = replace(data.aws_ami.runner.name, "/[()]/", "")
@@ -140,13 +151,13 @@ resource "aws_launch_template" "runner" {
 
   lifecycle {
     precondition {
-      condition     = !var.enable_runner_binaries_syncer || var.s3_runner_binaries != null
-      error_message = "s3_runner_binaries must be set when enable_runner_binaries_syncer is true."
+      condition     = !var.config.binaries_syncer.enabled || var.config.binaries_syncer.s3 != null
+      error_message = "config.binaries_syncer.s3 must be set when config.binaries_syncer.enabled is true."
     }
   }
 
   dynamic "block_device_mappings" {
-    for_each = var.block_device_mappings != null ? var.block_device_mappings : []
+    for_each = var.config.block_device_mappings != null ? var.config.block_device_mappings : []
     content {
       device_name = block_device_mappings.value.device_name
 
@@ -165,7 +176,7 @@ resource "aws_launch_template" "runner" {
   }
 
   dynamic "metadata_options" {
-    for_each = var.metadata_options != null ? [var.metadata_options] : []
+    for_each = var.config.metadata_options != null ? [var.config.metadata_options] : []
 
     content {
       http_endpoint               = metadata_options.value.http_endpoint
@@ -176,7 +187,7 @@ resource "aws_launch_template" "runner" {
   }
 
   dynamic "metadata_options" {
-    for_each = var.metadata_options != null ? [] : [0]
+    for_each = var.config.metadata_options != null ? [] : [0]
 
     content {
       instance_metadata_tags = "enabled"
@@ -184,14 +195,14 @@ resource "aws_launch_template" "runner" {
   }
 
   dynamic "credit_specification" {
-    for_each = var.credit_specification != null ? [var.credit_specification] : []
+    for_each = var.config.credit_specification != null ? [var.config.credit_specification] : []
     content {
       cpu_credits = credit_specification.value
     }
   }
 
   dynamic "cpu_options" {
-    for_each = var.cpu_options != null ? [var.cpu_options] : []
+    for_each = var.config.cpu_options != null ? [var.config.cpu_options] : []
     content {
       core_count            = try(cpu_options.value.core_count, null)
       threads_per_core      = try(cpu_options.value.threads_per_core, null)
@@ -201,7 +212,7 @@ resource "aws_launch_template" "runner" {
   }
 
   dynamic "placement" {
-    for_each = var.placement != null ? [var.placement] : []
+    for_each = var.config.placement != null ? [var.config.placement] : []
     content {
       affinity                = try(placement.value.affinity, null)
       availability_zone       = try(placement.value.availability_zone, null)
@@ -216,28 +227,28 @@ resource "aws_launch_template" "runner" {
   }
 
   dynamic "license_specification" {
-    for_each = var.license_specifications
+    for_each = var.config.license_specifications
     content {
       license_configuration_arn = license_specification.value.license_configuration_arn
     }
   }
 
   monitoring {
-    enabled = var.enable_runner_detailed_monitoring
+    enabled = var.config.detailed_monitoring_enabled
   }
 
   iam_instance_profile {
-    name = var.iam_overrides.override_instance_profile ? var.iam_overrides.instance_profile_name : aws_iam_instance_profile.runner[0].name
+    name = var.config.instance_profile != null ? var.config.instance_profile.name : aws_iam_instance_profile.runner[0].name
   }
 
   instance_initiated_shutdown_behavior = "terminate"
   image_id                             = "resolve:ssm:${local.ami_id_ssm_module_managed ? aws_ssm_parameter.runner_ami_id[0].arn : local.ami_id_ssm_parameter_arn}"
-  key_name                             = var.key_name
-  ebs_optimized                        = var.ebs_optimized
+  key_name                             = var.config.key_name
+  ebs_optimized                        = var.config.ebs_optimized
 
-  vpc_security_group_ids = !var.associate_public_ipv4_address ? compact(concat(
-    var.enable_managed_runner_security_group ? [aws_security_group.runner_sg[0].id] : [],
-    var.runner_additional_security_group_ids,
+  vpc_security_group_ids = !var.config.associate_public_ipv4_address ? compact(concat(
+    var.config.managed_security_group_enabled ? [aws_security_group.runner_sg[0].id] : [],
+    var.config.additional_security_group_ids,
   )) : []
 
   tag_specifications {
@@ -255,7 +266,7 @@ resource "aws_launch_template" "runner" {
   # Additionally, tagging spot requests via the CreateFleetCommand in the Lambda function does not work as expected,
   # so we rely on Terraform to manage these tags only when spot is exclusively used without on-demand failover.
   dynamic "tag_specifications" {
-    for_each = var.instance_target_capacity_type == "spot" && length(var.enable_on_demand_failover_for_errors) == 0 ? [1] : [] # Include the block only if the value is "spot" and on_demand_failover_for_errors is not enabled
+    for_each = var.config.instance_target_capacity_type == "spot" && length(var.config.enable_on_demand_failover_for_errors) == 0 ? [1] : [] # Include the block only if the value is "spot" and on_demand_failover_for_errors is not enabled
     content {
       resource_type = "spot-instances-request"
       tags          = local.runner_tags
@@ -274,29 +285,29 @@ resource "aws_launch_template" "runner" {
   update_default_version = true
 
   dynamic "network_interfaces" {
-    for_each = var.associate_public_ipv4_address ? [var.associate_public_ipv4_address] : []
+    for_each = var.config.associate_public_ipv4_address ? [var.config.associate_public_ipv4_address] : []
     iterator = associate_public_ipv4_address
     content {
       associate_public_ip_address = associate_public_ipv4_address.value
       security_groups = compact(concat(
-        var.enable_managed_runner_security_group ? [aws_security_group.runner_sg[0].id] : [],
-        var.runner_additional_security_group_ids,
+        var.config.managed_security_group_enabled ? [aws_security_group.runner_sg[0].id] : [],
+        var.config.additional_security_group_ids,
       ))
     }
   }
 }
 
 resource "aws_security_group" "runner_sg" {
-  count       = var.enable_managed_runner_security_group ? 1 : 0
+  count       = var.config.managed_security_group_enabled ? 1 : 0
   name_prefix = "${var.prefix}-github-actions-runner-sg"
   description = "Github Actions Runner security group"
 
-  vpc_id = var.vpc_id
+  vpc_id = var.config.vpc_id
 
   ingress = []
 
   dynamic "egress" {
-    for_each = var.egress_rules
+    for_each = var.config.egress_rules
     iterator = each
 
     content {

@@ -9,35 +9,52 @@ variable "aws_region" {
   type        = string
 }
 
-variable "enable_cloudwatch_agent" {
-  description = "Include the CloudWatch agent policy in the runner role contract."
-  type        = bool
-}
+variable "config" {
+  description = <<-EOT
+    EC2 configuration that controls provider-owned runner policies.
 
-variable "enable_runner_binaries_syncer" {
-  description = "Include access to the runner distribution object in the runner role contract."
-  type        = bool
-}
+    - `cloudwatch_agent.enabled`: Includes the CloudWatch agent policy in the runner-role contract.
+    - `binaries_syncer.enabled`: Includes access to the synchronized runner distribution.
+    - `binaries_syncer.s3`: S3 object containing the runner distribution. Required when synchronization is enabled.
+    - `binaries_syncer.s3.arn`: ARN of the runner-distribution bucket.
+    - `binaries_syncer.s3.key`: Object key of the runner distribution.
+    - `ssm_enabled`: Includes Session Manager permissions in the runner-role contract.
+  EOT
 
-variable "enable_ssm_on_runners" {
-  description = "Include Session Manager permissions in the runner role contract."
-  type        = bool
-}
-
-variable "s3_runner_binaries" {
-  description = "S3 object containing the cached runner distribution; required when runner binary sync is enabled."
   type = object({
-    arn = string
-    key = string
+    cloudwatch_agent = optional(object({
+      enabled = optional(bool, true)
+    }), {})
+    binaries_syncer = optional(object({
+      enabled = optional(bool, true)
+      s3 = optional(object({
+        arn = string
+        key = string
+      }), null)
+    }), {})
+    ssm_enabled = optional(bool, false)
   })
-  default = null
+
+  validation {
+    condition     = !var.config.binaries_syncer.enabled || var.config.binaries_syncer.s3 != null
+    error_message = "config.binaries_syncer.s3 must be set when config.binaries_syncer.enabled is true."
+  }
 }
 
-variable "ssm_paths" {
-  description = "SSM paths used for runner tokens and configuration."
+variable "ssm" {
+  description = <<-EOT
+    Parameter Store configuration used by the EC2 runner-role policies.
+
+    - `paths.root`: Root path for this runner stack.
+    - `paths.tokens`: Path segment containing registration tokens and just-in-time configuration.
+    - `paths.config`: Path segment containing persistent runner configuration.
+  EOT
+
   type = object({
-    root   = string
-    tokens = string
-    config = string
+    paths = object({
+      root   = string
+      tokens = string
+      config = string
+    })
   })
 }

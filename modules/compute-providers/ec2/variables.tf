@@ -1,585 +1,396 @@
-variable "ami" {
-  description = <<-EOT
-    AMI selection and encryption configuration for runner instances. Null selects the default AMI configuration for `runner_os`.
-
-    - `filter`: AMI filter names mapped to accepted values. These values are merged over the default filter for `runner_os`.
-    - `owners`: AWS account IDs or aliases allowed to own the selected AMI.
-    - `id_ssm_parameter`: Optional externally managed SSM parameter containing the AMI ID. Null creates a provider-managed AMI-ID parameter from the selected AMI. The wrapper's presence is the plan-time ownership discriminator, so keep the object literal even when its ARN comes from another resource.
-    - `id_ssm_parameter.arn`: ARN of the externally managed SSM parameter. The ARN may be unknown until apply.
-    - `kms_key`: Optional customer-managed KMS key required to launch an encrypted AMI or snapshot. The wrapper's presence is the plan-time policy discriminator.
-    - `kms_key.arn`: ARN of the customer-managed KMS key. The ARN may be unknown until apply.
-  EOT
-  type = object({
-    filter = optional(map(list(string)), { state = ["available"] })
-    owners = optional(list(string), ["amazon"])
-    id_ssm_parameter = optional(object({
-      arn = string
-    }), null)
-    kms_key = optional(object({
-      arn = string
-    }), null)
-  })
-  default = null
-}
-
-variable "vpc_id" {
-  description = "The VPC for the security groups."
-  type        = string
-}
-
-variable "subnet_ids" {
-  description = "List of subnets in which the action runners will be launched, the subnets needs to be subnets in the `vpc_id`."
-  type        = list(string)
-}
-
-variable "overrides" {
-  description = <<-EOT
-    Optional resource-name overrides.
-
-    - `name_runner`: Name tag assigned to runner compute resources. An empty value uses the generated provider name.
-    - `name_sg`: Name tag assigned to the managed runner security group. An empty value uses the generated provider name.
-  EOT
-  type = object({
-    name_runner = optional(string, "")
-    name_sg     = optional(string, "")
-  })
-
-  default = {}
-}
-
-variable "iam_overrides" {
-  description = <<-EOT
-    EC2 instance-profile ownership and selection.
-
-    - `override_instance_profile`: Uses an externally managed instance profile when true; otherwise this module creates an instance profile for `runner_role`.
-    - `instance_profile_name`: Name of the externally managed instance profile used by the launch template. Required when `override_instance_profile` is true.
-  EOT
-  type = object({
-    override_instance_profile = optional(bool, false)
-    instance_profile_name     = optional(string, null)
-  })
-
-  default = {
-    override_instance_profile = false
-    instance_profile_name     = null
-  }
-
-  validation {
-    condition     = !var.iam_overrides.override_instance_profile || var.iam_overrides.instance_profile_name != null
-    error_message = "instance_profile_name must be provided when override_instance_profile is true."
-  }
-}
-
-variable "runner_role" {
-  description = <<-EOT
-    Runner IAM role created or selected by the common runner stack.
-
-    - `arn`: Role ARN referenced by the EC2 control-plane policies.
-    - `name`: Role name associated with the provider-managed EC2 instance profile.
-  EOT
-  type = object({
-    arn  = string
-    name = string
-  })
-}
-
-variable "tags" {
-  description = "Map of tags that will be added to created resources. By default resources will be tagged with name."
-  type        = map(string)
-  default     = {}
-}
-
-variable "ssm_parameter_tags" {
-  description = "Map of tags that will be added to SSM parameters created by the EC2 provider. These tags override provider tags with the same key."
-  type        = map(string)
-  default     = {}
-}
-
-variable "log_group_tags" {
-  description = "Map of tags that will be added to CloudWatch log groups created by the EC2 provider. These tags override provider tags with the same key."
-  type        = map(string)
-  default     = {}
-}
-
-variable "prefix" {
-  description = "The prefix used for naming resources"
-  type        = string
-  default     = "github-actions"
-}
-
-variable "s3_runner_binaries" {
-  description = <<-EOT
-    S3 location of the synchronized GitHub runner distribution.
-
-    - `arn`: Bucket ARN referenced by the runner IAM policy.
-    - `id`: Bucket name used to construct the runner-distribution S3 URI.
-    - `key`: Object key of the synchronized runner distribution.
-  EOT
-  type = object({
-    arn = string
-    id  = string
-    key = string
-  })
-}
-
-variable "block_device_mappings" {
-  description = <<-EOT
-    EBS block-device mappings added to the runner launch template.
-
-    - `delete_on_termination`: Deletes the EBS volume when its runner instance terminates.
-    - `device_name`: Device name exposed to the runner instance.
-    - `encrypted`: Enables encryption for the EBS volume.
-    - `iops`: Provisioned IOPS for volume types that support configurable IOPS.
-    - `kms_key_id`: KMS key ID or ARN used to encrypt the EBS volume.
-    - `snapshot_id`: Snapshot used to initialize the EBS volume.
-    - `throughput`: Provisioned throughput in MiB/s for volume types that support configurable throughput.
-    - `volume_initialization_rate`: Fixed volume initialization rate in MiB/s for supported snapshot-backed volumes.
-    - `volume_size`: EBS volume size in GiB.
-    - `volume_type`: EBS volume type.
-  EOT
-  type = list(object({
-    delete_on_termination      = optional(bool, true)
-    device_name                = optional(string, "/dev/xvda")
-    encrypted                  = optional(bool, true)
-    iops                       = optional(number)
-    kms_key_id                 = optional(string)
-    snapshot_id                = optional(string)
-    throughput                 = optional(number)
-    volume_initialization_rate = optional(number)
-    volume_size                = number
-    volume_type                = optional(string, "gp3")
-  }))
-  default = [{
-    volume_size = 30
-  }]
-}
-
-variable "ebs_optimized" {
-  description = "The EC2 EBS optimized configuration."
-  type        = bool
-  default     = false
-}
-
-variable "instance_target_capacity_type" {
-  description = "Default lifecycle used runner instances, can be either `spot` or `on-demand`."
-  type        = string
-  default     = "spot"
-
-  validation {
-    condition     = contains(["spot", "on-demand"], var.instance_target_capacity_type)
-    error_message = "The instance target capacity should be either spot or on-demand."
-  }
-}
-
-variable "instance_allocation_strategy" {
-  description = "The allocation strategy for creating instances. For spot, AWS recommends `price-capacity-optimized`; for on-demand, use `lowest-price` or `prioritized`. The AWS default is `lowest-price`."
-  type        = string
-  default     = "lowest-price"
-
-  validation {
-    condition     = contains(["lowest-price", "diversified", "capacity-optimized", "capacity-optimized-prioritized", "price-capacity-optimized", "prioritized"], var.instance_allocation_strategy)
-    error_message = "The instance allocation strategy does not match the allowed values."
-  }
-}
-
-variable "instance_type_priorities" {
-  description = "A map of instance type to priority for the `prioritized` and `capacity-optimized-prioritized` allocation strategies. Lower numbers mean higher priority. If not provided, priorities are assigned based on the order of `instance_types`."
-  type        = map(number)
-  default     = null
-}
-
-variable "instance_max_spot_price" {
-  description = "Max price price for spot instances per hour. This variable will be passed to the create fleet as max spot price for the fleet."
-  type        = string
-  default     = null
-}
-
-variable "runner_os" {
-  description = "The EC2 Operating System type to use for action runner instances (linux, osx, windows)."
-  type        = string
-  default     = "linux"
-
-  validation {
-    condition     = contains(["linux", "osx", "windows"], var.runner_os)
-    error_message = "Valid values for runner_os are (linux, osx, windows)."
-  }
-}
-
-variable "instance_types" {
-  description = "List of EC2 instance types available when launching runner capacity."
-  type        = list(string)
-  default     = null
-}
-
-
-variable "enable_userdata" {
-  description = "Should the userdata script be enabled for the runner. Set this to false if you are using your own prebuilt AMI"
-  type        = bool
-  default     = true
-}
-
-variable "userdata_template" {
-  description = "Alternative user-data template file path replacing the default template. The template receives the standard bootstrap values, including `pre_install` and `post_install`; a custom template decides how to use them and must install the required runner software."
-  type        = string
-  default     = null
-}
-
-variable "userdata_content" {
-  description = "Alternative user-data content, replacing the templated one. By providing your own user_data you have to take care of installing all required software, including the action runner and registering the runner.  Be-aware configuration parameters in SSM as well as tags are treated as internals. Changes will not trigger a breaking release."
-  type        = string
-  default     = null
-}
-
-variable "userdata_pre_install" {
-  description = "User-data script snippet to insert before GitHub action runner install"
-  type        = string
-  default     = ""
-}
-
-variable "userdata_post_install" {
-  description = "User-data script snippet to insert after GitHub action runner install"
-  type        = string
-  default     = ""
-}
-
-variable "runner_hook_job_started" {
-  description = "Script to be ran in the runner environment at the beginning of every job"
-  type        = string
-  default     = ""
-}
-
-variable "runner_hook_job_completed" {
-  description = "Script to be ran in the runner environment at the end of every job"
-  type        = string
-  default     = ""
-}
-
-variable "runner_boot_time_in_minutes" {
-  description = "The minimum time for an EC2 runner to boot and register as a runner."
-  type        = number
-  default     = 5
-}
-
-variable "role_path" {
-  description = "The path that will be added to the role; if not set, the prefix will be used."
-  type        = string
-  default     = null
-}
-
-variable "instance_profile_path" {
-  description = "The path that will be added to the instance_profile, if not set the prefix will be used."
-  type        = string
-  default     = null
-}
-
-variable "runner_as_root" {
-  description = "Run the action runner under the root user. Variable `runner_run_as` will be ignored."
-  type        = bool
-  default     = false
-}
-
-variable "runner_run_as" {
-  description = "Run the GitHub actions agent as user."
-  type        = string
-  default     = "ec2-user"
-}
-
-variable "runner_architecture" {
-  description = "The platform architecture of the runner instance_type."
-  type        = string
-  default     = "x64"
-}
-
-variable "logging_retention_in_days" {
-  description = "Number of days to retain events in the EC2 runner log groups. Possible values are: 0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, and 3653."
-  type        = number
-  default     = 180
-}
-
-variable "logging_kms_key_id" {
-  description = "Specifies the kms key id to encrypt the logs with"
-  type        = string
-  default     = null
-}
-
-variable "create_service_linked_role_spot" {
-  description = "(optional) create the service linked role for spot instances that is required by the scale-up lambda."
-  type        = bool
-  default     = false
-}
-
 variable "aws_partition" {
-  description = "(optional) partition for the base arn if not 'aws'"
+  description = "AWS partition used to construct IAM ARNs."
   type        = string
   default     = "aws"
 }
 
-variable "enable_cloudwatch_agent" {
-  description = "Enabling the cloudwatch agent on the ec2 runner instances, the runner contains default config. Configuration can be overridden via `cloudwatch_config`."
-  type        = bool
-  default     = true
-}
-
-variable "enable_managed_runner_security_group" {
-  description = "Enabling the default managed security group creation. Unmanaged security groups can be specified via `runner_additional_security_group_ids`."
-  type        = bool
-  default     = true
-}
-
-variable "cloudwatch_config" {
-  description = "(optional) Replaces the module default cloudwatch log config. See https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-Configuration-File-Details.html for details."
+variable "prefix" {
+  description = "Prefix used to name EC2 provider resources."
   type        = string
-  default     = null
+  default     = "github-actions"
 }
 
-variable "runner_log_files" {
-  description = "(optional) List of logfiles to send to CloudWatch, will only be used if `enable_cloudwatch_agent` is set to true. Object description: `log_group_name`: Name of the log group, `prefix_log_group`: If true, the log group name will be prefixed with `/github-self-hosted-runners/<var.prefix>`, `file_path`: path to the log file, `log_stream_name`: name of the log stream, `log_class`: The log class of the log group. Valid values are `STANDARD` or `INFREQUENT_ACCESS`. Defaults to `STANDARD`."
-  type = list(object({
-    log_group_name   = string
-    prefix_log_group = bool
-    file_path        = string
-    log_stream_name  = string
-    log_class        = optional(string, "STANDARD")
-  }))
-  default = null
-}
-
-variable "ghes_url" {
-  description = "GitHub Enterprise Server URL. DO NOT SET IF USING PUBLIC GITHUB..However if you are using GitHub Enterprise Cloud with data-residency (ghe.com), set the endpoint here. Example - https://companyname.ghe.com|"
-  type        = string
-  default     = null
-}
-
-variable "ghes_ssl_verify" {
-  description = "GitHub Enterprise SSL verification. Set to 'false' when custom certificate (chains) is used for GitHub Enterprise Server (insecure)."
-  type        = bool
-  default     = true
-}
-
-variable "key_name" {
-  description = "Key pair name"
-  type        = string
-  default     = null
-}
-
-variable "runner_additional_security_group_ids" {
-  description = "(optional) List of additional security groups IDs to apply to the runner"
-  type        = list(string)
-  default     = []
-}
-
-variable "enable_runner_detailed_monitoring" {
-  description = "Enable detailed monitoring for runners"
-  type        = bool
-  default     = false
-}
-
-variable "egress_rules" {
-  description = <<-EOT
-    Egress rules created on the provider-managed runner security group.
-
-    - `cidr_blocks`: IPv4 CIDR destinations allowed by the rule.
-    - `ipv6_cidr_blocks`: IPv6 CIDR destinations allowed by the rule.
-    - `prefix_list_ids`: AWS prefix-list destinations allowed by the rule.
-    - `from_port`: First destination port in the permitted range.
-    - `protocol`: IP protocol name or number. Use `-1` for all protocols.
-    - `security_groups`: Destination security-group IDs allowed by the rule.
-    - `self`: Allows traffic to the managed runner security group itself when true.
-    - `to_port`: Last destination port in the permitted range.
-    - `description`: Optional description assigned to the security-group rule.
-  EOT
-  type = list(object({
-    cidr_blocks      = list(string)
-    ipv6_cidr_blocks = list(string)
-    prefix_list_ids  = list(string)
-    from_port        = number
-    protocol         = string
-    security_groups  = list(string)
-    self             = bool
-    to_port          = number
-    description      = string
-  }))
-  default = [{
-    cidr_blocks      = ["0.0.0.0/0"]
-    ipv6_cidr_blocks = ["::/0"]
-    prefix_list_ids  = null
-    from_port        = 0
-    protocol         = "-1"
-    security_groups  = null
-    self             = null
-    to_port          = 0
-    description      = null
-  }]
-}
-
-variable "runner_ec2_tags" {
-  description = "Tags added to runner instance, volume, network-interface, and eligible Spot-request tag specifications. These override module tags and the generated runner `Name`; provider-required `ghr:environment`, `ghr:ssm_config_path`, and `ghr:runner_name_prefix` tags take final precedence."
+variable "tags" {
+  description = "Base tags added to taggable EC2 provider resources. Nested SSM, log, and runner tags override this map within their documented scopes."
   type        = map(string)
   default     = {}
 }
 
-variable "metadata_options" {
+variable "config" {
   description = <<-EOT
-    Instance Metadata Service configuration in the runner launch template. The default bootstrap flow reads runner configuration from instance tags, so disable metadata tags only when supplying a custom startup flow.
+    EC2 compute-provider configuration. Paths match `compute_provider.ec2` in the runner stack.
 
-    - `instance_metadata_tags`: Exposes instance tags through Instance Metadata Service when set to `enabled`.
-    - `http_endpoint`: Enables or disables the Instance Metadata Service endpoint.
-    - `http_tokens`: Controls whether IMDSv2 session tokens are optional or required.
-    - `http_put_response_hop_limit`: Network hop limit for Instance Metadata Service token responses.
+    - `ami`: Optional AMI discovery and encryption configuration. Null selects defaults for `runner.os` and `runner.architecture`.
+    - `ami.filter`: AMI filter names mapped to accepted values and merged over the provider defaults.
+    - `ami.owners`: AWS account IDs or aliases allowed to own the selected AMI.
+    - `ami.id_ssm_parameter`: Optional externally managed SSM parameter containing the AMI ID. Its object presence is the plan-time ownership discriminator.
+    - `ami.id_ssm_parameter.arn`: ARN of the external AMI-ID parameter. The ARN may remain unknown until apply.
+    - `ami.kms_key`: Optional customer-managed KMS key required for encrypted AMIs or snapshots. Its object presence is the plan-time policy discriminator.
+    - `ami.kms_key.arn`: ARN of the AMI KMS key. The ARN may remain unknown until apply.
+    - `vpc_id`: VPC in which runner networking resources are created.
+    - `subnet_ids`: Subnets from which the control plane may launch runners.
+    - `overrides.name_runner`: Optional Name tag override for runner compute resources.
+    - `overrides.name_sg`: Optional Name tag override for the managed security group.
+    - `instance_profile`: Optional externally managed instance profile. Its object presence is the plan-time ownership discriminator.
+    - `instance_profile.name`: Name of the external instance profile. The name may remain unknown until apply.
+    - `instance_profile_path`: IAM path for the provider-managed instance profile. Null derives the path from `prefix`.
+    - `binaries_syncer.enabled`: Uses the synchronized runner distribution from S3 during bootstrap.
+    - `binaries_syncer.s3`: S3 object containing the synchronized runner distribution. Required when synchronization is enabled.
+    - `binaries_syncer.s3.arn`: Runner-distribution bucket ARN used by IAM policies.
+    - `binaries_syncer.s3.id`: Runner-distribution bucket name used in the bootstrap URI.
+    - `binaries_syncer.s3.key`: Runner-distribution object key.
+    - `block_device_mappings`: EBS mappings added to the launch template.
+    - `block_device_mappings[].delete_on_termination`: Deletes the volume when its runner terminates.
+    - `block_device_mappings[].device_name`: Device name exposed to the runner instance.
+    - `block_device_mappings[].encrypted`: Enables EBS encryption.
+    - `block_device_mappings[].iops`: Provisioned IOPS for volume types that support configurable IOPS.
+    - `block_device_mappings[].kms_key_id`: KMS key ID or ARN used to encrypt the volume.
+    - `block_device_mappings[].snapshot_id`: Snapshot used to initialize the volume.
+    - `block_device_mappings[].throughput`: Provisioned throughput for volume types that support it.
+    - `block_device_mappings[].volume_initialization_rate`: Fixed initialization rate for supported snapshot-backed volumes.
+    - `block_device_mappings[].volume_size`: EBS volume size in GiB.
+    - `block_device_mappings[].volume_type`: EBS volume type.
+    - `ebs_optimized`: Requests EBS-optimized instances.
+    - `instance_target_capacity_type`: Primary capacity type, either `spot` or `on-demand`.
+    - `instance_allocation_strategy`: EC2 Fleet allocation strategy.
+    - `instance_type_priorities`: Optional numeric priorities keyed by instance type.
+    - `instance_max_spot_price`: Optional maximum hourly Spot price.
+    - `instance_types`: EC2 instance types available to the control plane.
+    - `user_data`: Runner bootstrap user-data configuration.
+    - `user_data.enabled`: Enables launch-template user data.
+    - `user_data.template`: Optional path to a custom user-data template.
+    - `user_data.content`: Optional complete user-data content used instead of a template.
+    - `user_data.pre_install`: Script inserted before runner installation.
+    - `user_data.post_install`: Script inserted after runner installation.
+    - `user_data.debug_logging_enabled`: Enables verbose user-data tracing, which can expose secrets.
+    - `ssm_enabled`: Provider runner-role setting consumed by the EC2 runner-role contract.
+    - `create_service_linked_role_spot`: Allows scale-up to create the EC2 Spot service-linked role.
+    - `cloudwatch_agent.enabled`: Enables CloudWatch agent configuration for runner instances.
+    - `cloudwatch_agent.config`: Optional complete CloudWatch agent configuration.
+    - `managed_security_group_enabled`: Creates and attaches the provider-managed security group.
+    - `log_files`: Optional files collected by the CloudWatch agent. Null uses provider defaults.
+    - `log_files[].log_group_name`: CloudWatch log-group name before optional prefixing.
+    - `log_files[].prefix_log_group`: Prefixes the log-group name with the runner stack path.
+    - `log_files[].file_path`: File or glob read by the CloudWatch agent.
+    - `log_files[].log_stream_name`: CloudWatch log-stream name template.
+    - `log_files[].log_class`: CloudWatch log-group class for the collected file.
+    - `key_name`: Optional EC2 key-pair name.
+    - `additional_security_group_ids`: Existing security groups attached to runners.
+    - `detailed_monitoring_enabled`: Enables detailed EC2 monitoring.
+    - `egress_rules`: Rules created on the managed security group.
+    - `egress_rules[].cidr_blocks`: IPv4 CIDR destinations.
+    - `egress_rules[].ipv6_cidr_blocks`: IPv6 CIDR destinations.
+    - `egress_rules[].prefix_list_ids`: AWS prefix-list destinations.
+    - `egress_rules[].from_port`: First destination port in the permitted range.
+    - `egress_rules[].protocol`: IP protocol name or number. Use `-1` for all protocols.
+    - `egress_rules[].security_groups`: Destination security-group IDs.
+    - `egress_rules[].self`: Allows traffic to the managed security group itself.
+    - `egress_rules[].to_port`: Last destination port in the permitted range.
+    - `egress_rules[].description`: Optional rule description.
+    - `tags`: Runner instance, volume, network-interface, and eligible Spot-request tags. Provider-required bootstrap tags take final precedence.
+    - `metadata_options`: Instance Metadata Service configuration.
+    - `metadata_options.instance_metadata_tags`: Exposes instance tags through Instance Metadata Service when enabled.
+    - `metadata_options.http_endpoint`: Enables or disables the Instance Metadata Service endpoint.
+    - `metadata_options.http_tokens`: Controls whether IMDSv2 session tokens are optional or required.
+    - `metadata_options.http_put_response_hop_limit`: Network hop limit for Instance Metadata Service token responses.
+    - `credit_specification`: CPU credit mode for burstable instance types.
+    - `cpu_options`: CPU topology and processor-feature configuration.
+    - `cpu_options.core_count`: Number of CPU cores exposed to the runner instance.
+    - `cpu_options.threads_per_core`: Number of hardware threads exposed per CPU core.
+    - `cpu_options.amd_sev_snp`: Enables or disables AMD SEV-SNP on supported instance types.
+    - `cpu_options.nested_virtualization`: Enables or disables nested virtualization on supported instance types.
+    - `placement`: EC2 placement configuration.
+    - `placement.affinity`: Dedicated Host affinity setting.
+    - `placement.availability_zone`: Availability Zone in which runner instances are placed.
+    - `placement.group_id`: Placement-group ID.
+    - `placement.group_name`: Placement-group name.
+    - `placement.host_id`: Dedicated Host ID.
+    - `placement.host_resource_group_arn`: ARN of the host resource group used for placement.
+    - `placement.spread_domain`: Spread-domain placement value.
+    - `placement.tenancy`: Instance tenancy, such as `default`, `dedicated`, or `host`.
+    - `placement.partition_number`: Placement-group partition number.
+    - `license_specifications`: License Manager configurations added to the launch template.
+    - `license_specifications[].license_configuration_arn`: ARN of an AWS License Manager license configuration.
+    - `associate_public_ipv4_address`: Associates a public IPv4 address with runner network interfaces.
+    - `enable_on_demand_failover_for_errors`: EC2 errors that trigger on-demand fallback after a Spot failure.
+    - `scale_errors`: EC2 errors treated as retryable scale-up failures.
+    - `use_dedicated_host`: Enables the dedicated-host launch path.
   EOT
+
   type = object({
-    instance_metadata_tags      = optional(string, "enabled")
-    http_endpoint               = optional(string, "enabled")
-    http_tokens                 = optional(string, "required")
-    http_put_response_hop_limit = optional(number, 1)
+    ami = optional(object({
+      filter = optional(map(list(string)), { state = ["available"] })
+      owners = optional(list(string), ["amazon"])
+      id_ssm_parameter = optional(object({
+        arn = string
+      }), null)
+      kms_key = optional(object({
+        arn = string
+      }), null)
+    }), null)
+    vpc_id     = string
+    subnet_ids = list(string)
+    overrides = optional(object({
+      name_runner = optional(string, "")
+      name_sg     = optional(string, "")
+    }), {})
+    instance_profile = optional(object({
+      name = string
+    }), null)
+    instance_profile_path = optional(string, null)
+    binaries_syncer = optional(object({
+      enabled = optional(bool, true)
+      s3 = optional(object({
+        arn = string
+        id  = string
+        key = string
+      }), null)
+    }), {})
+    block_device_mappings = optional(list(object({
+      delete_on_termination      = optional(bool, true)
+      device_name                = optional(string, "/dev/xvda")
+      encrypted                  = optional(bool, true)
+      iops                       = optional(number)
+      kms_key_id                 = optional(string)
+      snapshot_id                = optional(string)
+      throughput                 = optional(number)
+      volume_initialization_rate = optional(number)
+      volume_size                = number
+      volume_type                = optional(string, "gp3")
+    })), [{ volume_size = 30 }])
+    ebs_optimized                 = optional(bool, false)
+    instance_target_capacity_type = optional(string, "spot")
+    instance_allocation_strategy  = optional(string, "lowest-price")
+    instance_type_priorities      = optional(map(number), null)
+    instance_max_spot_price       = optional(string, null)
+    instance_types                = list(string)
+    user_data = optional(object({
+      enabled               = optional(bool, true)
+      template              = optional(string, null)
+      content               = optional(string, null)
+      pre_install           = optional(string, "")
+      post_install          = optional(string, "")
+      debug_logging_enabled = optional(bool, false)
+    }), {})
+    ssm_enabled                     = optional(bool, false)
+    create_service_linked_role_spot = optional(bool, false)
+    cloudwatch_agent = optional(object({
+      enabled = optional(bool, true)
+      config  = optional(string, null)
+    }), {})
+    managed_security_group_enabled = optional(bool, true)
+    log_files = optional(list(object({
+      log_group_name   = string
+      prefix_log_group = bool
+      file_path        = string
+      log_stream_name  = string
+      log_class        = optional(string, "STANDARD")
+    })), null)
+    key_name                      = optional(string, null)
+    additional_security_group_ids = optional(list(string), [])
+    detailed_monitoring_enabled   = optional(bool, false)
+    egress_rules = optional(list(object({
+      cidr_blocks      = list(string)
+      ipv6_cidr_blocks = list(string)
+      prefix_list_ids  = list(string)
+      from_port        = number
+      protocol         = string
+      security_groups  = list(string)
+      self             = bool
+      to_port          = number
+      description      = string
+      })), [{
+      cidr_blocks      = ["0.0.0.0/0"]
+      ipv6_cidr_blocks = ["::/0"]
+      prefix_list_ids  = null
+      from_port        = 0
+      protocol         = "-1"
+      security_groups  = null
+      self             = null
+      to_port          = 0
+      description      = null
+    }])
+    tags = optional(map(string), {})
+    metadata_options = optional(object({
+      instance_metadata_tags      = optional(string, "enabled")
+      http_endpoint               = optional(string, "enabled")
+      http_tokens                 = optional(string, "required")
+      http_put_response_hop_limit = optional(number, 1)
+    }), {})
+    credit_specification = optional(string, null)
+    cpu_options = optional(object({
+      core_count            = optional(number)
+      threads_per_core      = optional(number)
+      amd_sev_snp           = optional(string)
+      nested_virtualization = optional(string)
+    }), null)
+    placement = optional(object({
+      affinity                = optional(string)
+      availability_zone       = optional(string)
+      group_id                = optional(string)
+      group_name              = optional(string)
+      host_id                 = optional(string)
+      host_resource_group_arn = optional(string)
+      spread_domain           = optional(string)
+      tenancy                 = optional(string)
+      partition_number        = optional(number)
+    }), null)
+    license_specifications = optional(list(object({
+      license_configuration_arn = string
+    })), [])
+    associate_public_ipv4_address        = optional(bool, false)
+    enable_on_demand_failover_for_errors = optional(list(string), [])
+    scale_errors = optional(list(string), [
+      "UnfulfillableCapacity",
+      "MaxSpotInstanceCountExceeded",
+      "TargetCapacityLimitExceededException",
+      "RequestLimitExceeded",
+      "ResourceLimitExceeded",
+      "MaxSpotInstanceCountExceeded",
+      "MaxSpotFleetRequestCountExceeded",
+      "InsufficientInstanceCapacity",
+      "InsufficientCapacityOnHost",
+    ])
+    use_dedicated_host = optional(bool, false)
   })
-  default = {}
-}
 
-variable "enable_runner_binaries_syncer" {
-  description = "Uses a synchronized GitHub runner distribution from `s3_runner_binaries` during bootstrap. Disable this when the runner distribution is already present in a prebuilt AMI. This module does not create the synchronization Lambda."
-  type        = bool
-  default     = true
-}
+  nullable = false
 
-variable "enable_user_data_debug_logging" {
-  description = "Option to enable debug logging for user-data, this logs all secrets as well."
-  type        = bool
-  default     = false
-}
-
-variable "ssm_paths" {
-  description = <<-EOT
-    Parameter Store paths used by the EC2 provider and runner bootstrap flow.
-
-    - `root`: Root Parameter Store path for this runner stack.
-    - `tokens`: Path segment under `root` used for registration tokens and just-in-time configuration.
-    - `config`: Path segment under `root` used for persistent runner and provider configuration.
-  EOT
-  type = object({
-    root   = string
-    tokens = string
-    config = string
-  })
-}
-
-variable "runner_name_prefix" {
-  description = "The prefix used for the GitHub runner name. The prefix will be used in the default start script to prefix the instance name when register the runner in GitHub. The value is available via an EC2 tag 'ghr:runner_name_prefix'."
-  type        = string
-  default     = ""
   validation {
-    condition     = length(var.runner_name_prefix) <= 45
-    error_message = "The prefix used for the GitHub runner name must be less than 32 characters. AWS instances id are 17 chars, https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/resource-ids.html"
+    condition     = contains(["spot", "on-demand"], var.config.instance_target_capacity_type)
+    error_message = "config.instance_target_capacity_type must be spot or on-demand."
   }
-}
-
-variable "credit_specification" {
-  description = "The credit option for CPU usage of a T instance. Can be unset, \"standard\" or \"unlimited\"."
-  type        = string
-  default     = null
 
   validation {
-    condition     = var.credit_specification == null ? true : contains(["standard", "unlimited"], var.credit_specification)
-    error_message = "Valid values for credit_specification are (null, \"standard\", \"unlimited\")."
+    condition     = contains(["lowest-price", "diversified", "capacity-optimized", "capacity-optimized-prioritized", "price-capacity-optimized", "prioritized"], var.config.instance_allocation_strategy)
+    error_message = "config.instance_allocation_strategy is not supported."
   }
-}
-
-variable "cpu_options" {
-  description = <<-EOT
-    CPU topology and processor-feature configuration for runner instances. Not all instance types support these options.
-
-    - `core_count`: Number of CPU cores exposed to the runner instance.
-    - `threads_per_core`: Number of hardware threads exposed per CPU core.
-    - `amd_sev_snp`: Enables or disables AMD SEV-SNP on supported instance types.
-    - `nested_virtualization`: Enables or disables nested virtualization on supported instance types.
-  EOT
-  type = object({
-    core_count            = optional(number)
-    threads_per_core      = optional(number)
-    amd_sev_snp           = optional(string)
-    nested_virtualization = optional(string)
-  })
-  default = null
 
   validation {
-    condition = var.cpu_options == null ? true : (
-      (var.cpu_options.amd_sev_snp == null || contains(["enabled", "disabled"], var.cpu_options.amd_sev_snp)) &&
-      (var.cpu_options.nested_virtualization == null || contains(["enabled", "disabled"], var.cpu_options.nested_virtualization))
+    condition     = var.config.credit_specification == null ? true : contains(["standard", "unlimited"], var.config.credit_specification)
+    error_message = "config.credit_specification must be null, standard, or unlimited."
+  }
+
+  validation {
+    condition = var.config.cpu_options == null ? true : (
+      (var.config.cpu_options.amd_sev_snp == null || contains(["enabled", "disabled"], var.config.cpu_options.amd_sev_snp)) &&
+      (var.config.cpu_options.nested_virtualization == null || contains(["enabled", "disabled"], var.config.cpu_options.nested_virtualization))
     )
-    error_message = "When set, cpu_options.amd_sev_snp and cpu_options.nested_virtualization must be one of: enabled, disabled."
+    error_message = "config.cpu_options.amd_sev_snp and config.cpu_options.nested_virtualization must be enabled or disabled when set."
+  }
+
+  validation {
+    condition     = !var.config.binaries_syncer.enabled || var.config.binaries_syncer.s3 != null
+    error_message = "config.binaries_syncer.s3 must be set when config.binaries_syncer.enabled is true."
   }
 }
 
-variable "placement" {
+variable "runner" {
   description = <<-EOT
-    EC2 placement configuration for runner instances.
+    Provider-neutral runner settings consumed by EC2.
 
-    - `affinity`: Dedicated Host affinity setting.
-    - `availability_zone`: Availability Zone in which runner instances are placed.
-    - `group_id`: Placement-group ID.
-    - `group_name`: Placement-group name.
-    - `host_id`: Dedicated Host ID.
-    - `host_resource_group_arn`: ARN of the host resource group used for placement.
-    - `spread_domain`: Spread-domain placement value.
-    - `tenancy`: Instance tenancy, such as `default`, `dedicated`, or `host`.
-    - `partition_number`: Placement-group partition number.
+    - `os`: Runner operating system. Supported values are `linux`, `osx`, and `windows`.
+    - `architecture`: Runner distribution architecture.
+    - `boot_time_in_minutes`: Expected boot and registration duration used by scale-down and pool.
+    - `name_prefix`: Prefix added to registered runner names.
+    - `run_as_root`: Runs the runner service as root.
+    - `run_as`: Operating-system user used when `run_as_root` is false.
+    - `hooks.job_started`: Script installed as the runner job-started hook.
+    - `hooks.job_completed`: Script installed as the runner job-completed hook.
+    - `iam.role.arn`: Resolved runner-role ARN referenced by EC2 control-plane policies.
+    - `iam.role.name`: Resolved runner-role name used by the provider-managed instance profile.
+    - `iam.path`: IAM path used for provider-managed policies. Null derives the path from `prefix`.
   EOT
   type = object({
-    affinity                = optional(string)
-    availability_zone       = optional(string)
-    group_id                = optional(string)
-    group_name              = optional(string)
-    host_id                 = optional(string)
-    host_resource_group_arn = optional(string)
-    spread_domain           = optional(string)
-    tenancy                 = optional(string)
-    partition_number        = optional(number)
+    os                   = optional(string, "linux")
+    architecture         = optional(string, "x64")
+    boot_time_in_minutes = optional(number, 5)
+    name_prefix          = optional(string, "")
+    run_as_root          = optional(bool, false)
+    run_as               = optional(string, "ec2-user")
+    hooks = optional(object({
+      job_started   = optional(string, "")
+      job_completed = optional(string, "")
+    }), {})
+    iam = object({
+      role = object({
+        arn  = string
+        name = string
+      })
+      path = optional(string, null)
+    })
   })
-  default = null
+
+  nullable = false
+
+  validation {
+    condition     = contains(["linux", "osx", "windows"], var.runner.os)
+    error_message = "runner.os must be linux, osx, or windows."
+  }
+
+  validation {
+    condition     = length(var.runner.name_prefix) <= 45
+    error_message = "runner.name_prefix must be at most 45 characters."
+  }
 }
 
-variable "license_specifications" {
+variable "github" {
   description = <<-EOT
-    License Manager configurations added to the runner launch template. These may be required for macOS dedicated-host runners when the host resource group uses a Mac dedicated-host license configuration.
+    GitHub Enterprise Server settings used to render runner bootstrap data.
 
-    - `license_configuration_arn`: ARN of an AWS License Manager license configuration.
+    - `enterprise_server.url`: Optional GitHub Enterprise Server base URL. Null selects GitHub.com.
+    - `enterprise_server.ssl_verify`: Enables TLS certificate verification for GitHub Enterprise Server.
   EOT
-  type = list(object({
-    license_configuration_arn = string
-  }))
-  default = []
+  type = object({
+    enterprise_server = optional(object({
+      url        = optional(string, null)
+      ssl_verify = optional(bool, true)
+    }), {})
+  })
+  default  = {}
+  nullable = false
 }
 
-variable "associate_public_ipv4_address" {
-  description = "Associate public IPv4 with the runner. Only tested with IPv4"
-  type        = bool
-  default     = false
+variable "ssm" {
+  description = <<-EOT
+    Parameter Store paths and tag scopes used by EC2 runner bootstrap resources.
+
+    - `paths.root`: Root Parameter Store path for the runner stack.
+    - `paths.tokens`: Path segment used for registration tokens and just-in-time configuration.
+    - `paths.config`: Path segment used for persistent runner and provider configuration.
+    - `tags`: Shared SSM tags that override module-level `tags`.
+    - `parameters.tags`: Parameter-specific tags that override module-level and shared SSM tags.
+  EOT
+  type = object({
+    paths = object({
+      root   = string
+      tokens = string
+      config = string
+    })
+    tags = optional(map(string), {})
+    parameters = optional(object({
+      tags = optional(map(string), {})
+    }), {})
+  })
+
+  nullable = false
 }
 
-variable "enable_on_demand_failover_for_errors" {
-  description = "Enable on-demand failover. For example to fall back to on demand when no spot capacity is available the variable can be set to `InsufficientInstanceCapacity`. When not defined the default behavior is to retry later."
-  type        = list(string)
-  default     = []
-}
+variable "observability" {
+  description = <<-EOT
+    CloudWatch Logs settings used by EC2 runner log groups.
 
-variable "scale_errors" {
-  description = "List of AWS error codes that should trigger retry during scale up. This list replaces the module default scale-up retry errors"
-  type        = list(string)
-  default = [
-    "UnfulfillableCapacity",
-    "MaxSpotInstanceCountExceeded",
-    "TargetCapacityLimitExceededException",
-    "RequestLimitExceeded",
-    "ResourceLimitExceeded",
-    "MaxSpotInstanceCountExceeded",
-    "MaxSpotFleetRequestCountExceeded",
-    "InsufficientInstanceCapacity",
-    "InsufficientCapacityOnHost",
-  ]
-}
-
-variable "use_dedicated_host" {
-  description = "Experimental! Can be removed / changed without trigger a major release. Whether to use EC2 dedicated hosts for the runners. Needed for macos runners Note that using dedicated hosts can increase cost significantly."
-  type        = bool
-  default     = false
+    - `logs.retention_in_days`: Retention period for EC2 runner log groups.
+    - `logs.kms_key_id`: Optional KMS key ID or ARN used to encrypt runner log groups.
+    - `logs.tags`: Shared log-group tags that override module-level `tags`.
+  EOT
+  type = object({
+    logs = optional(object({
+      retention_in_days = optional(number, 180)
+      kms_key_id        = optional(string, null)
+      tags              = optional(map(string), {})
+    }), {})
+  })
+  default  = {}
+  nullable = false
 }

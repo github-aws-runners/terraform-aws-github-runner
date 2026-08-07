@@ -20,20 +20,28 @@ override_data {
 }
 
 variables {
-  aws_region                    = "eu-west-1"
-  enable_cloudwatch_agent       = true
-  enable_runner_binaries_syncer = true
-  enable_ssm_on_runners         = true
+  aws_region = "eu-west-1"
 
-  s3_runner_binaries = {
-    arn = "arn:aws:s3:::runner-distribution"
-    key = "runner.zip"
+  config = {
+    cloudwatch_agent = {
+      enabled = true
+    }
+    binaries_syncer = {
+      enabled = true
+      s3 = {
+        arn = "arn:aws:s3:::runner-distribution"
+        key = "runner.zip"
+      }
+    }
+    ssm_enabled = true
   }
 
-  ssm_paths = {
-    root   = "/github-runner/provider-test"
-    tokens = "tokens"
-    config = "config"
+  ssm = {
+    paths = {
+      root   = "/github-runner/provider-test"
+      tokens = "tokens"
+      config = "config"
+    }
   }
 }
 
@@ -73,10 +81,15 @@ run "omits_disabled_optional_policies" {
   command = plan
 
   variables {
-    enable_cloudwatch_agent       = false
-    enable_runner_binaries_syncer = false
-    enable_ssm_on_runners         = false
-    s3_runner_binaries            = null
+    config = {
+      cloudwatch_agent = {
+        enabled = false
+      }
+      binaries_syncer = {
+        enabled = false
+      }
+      ssm_enabled = false
+    }
   }
 
   assert {
@@ -89,9 +102,13 @@ run "requires_distribution_object_when_sync_is_enabled" {
   command = plan
 
   variables {
-    enable_runner_binaries_syncer = true
-    s3_runner_binaries            = null
+    config = {
+      binaries_syncer = {
+        enabled = true
+        s3      = null
+      }
+    }
   }
 
-  expect_failures = [data.aws_iam_policy_document.distribution_bucket]
+  expect_failures = [var.config]
 }

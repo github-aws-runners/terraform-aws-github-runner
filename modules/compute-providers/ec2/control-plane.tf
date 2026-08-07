@@ -60,7 +60,7 @@ data "aws_iam_policy_document" "scale_up" {
   statement {
     effect    = "Allow"
     actions   = ["iam:PassRole"]
-    resources = [var.runner_role.arn]
+    resources = [var.runner.iam.role.arn]
   }
 
   statement {
@@ -144,7 +144,7 @@ data "aws_iam_policy_document" "pool" {
   statement {
     effect    = "Allow"
     actions   = ["iam:PassRole"]
-    resources = [var.runner_role.arn]
+    resources = [var.runner.iam.role.arn]
   }
 
   statement {
@@ -181,7 +181,7 @@ data "aws_iam_policy_document" "pool" {
 }
 
 data "aws_iam_policy_document" "service_linked_role" {
-  count = var.create_service_linked_role_spot ? 1 : 0
+  count = var.config.create_service_linked_role_spot ? 1 : 0
 
   statement {
     effect    = "Allow"
@@ -193,28 +193,28 @@ data "aws_iam_policy_document" "service_linked_role" {
 locals {
   scale_up_environment_variables = {
     AMI_ID_SSM_PARAMETER_NAME            = local.ami_id_ssm_parameter_name
-    INSTANCE_ALLOCATION_STRATEGY         = var.instance_allocation_strategy
-    INSTANCE_MAX_SPOT_PRICE              = var.instance_max_spot_price
-    INSTANCE_TARGET_CAPACITY_TYPE        = var.instance_target_capacity_type
-    INSTANCE_TYPE_PRIORITIES             = var.instance_type_priorities != null ? jsonencode(var.instance_type_priorities) : ""
-    INSTANCE_TYPES                       = join(",", var.instance_types)
+    INSTANCE_ALLOCATION_STRATEGY         = var.config.instance_allocation_strategy
+    INSTANCE_MAX_SPOT_PRICE              = var.config.instance_max_spot_price
+    INSTANCE_TARGET_CAPACITY_TYPE        = var.config.instance_target_capacity_type
+    INSTANCE_TYPE_PRIORITIES             = var.config.instance_type_priorities != null ? jsonencode(var.config.instance_type_priorities) : ""
+    INSTANCE_TYPES                       = join(",", var.config.instance_types)
     LAUNCH_TEMPLATE_NAME                 = aws_launch_template.runner.name
-    SUBNET_IDS                           = join(",", var.subnet_ids)
-    ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS = jsonencode(var.enable_on_demand_failover_for_errors)
-    SCALE_ERRORS                         = jsonencode(var.scale_errors)
-    USE_DEDICATED_HOST                   = var.use_dedicated_host
+    SUBNET_IDS                           = join(",", var.config.subnet_ids)
+    ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS = jsonencode(var.config.enable_on_demand_failover_for_errors)
+    SCALE_ERRORS                         = jsonencode(var.config.scale_errors)
+    USE_DEDICATED_HOST                   = var.config.use_dedicated_host
   }
 
   scale_down_environment_variables = {
-    RUNNER_BOOT_TIME_IN_MINUTES = var.runner_boot_time_in_minutes
+    RUNNER_BOOT_TIME_IN_MINUTES = var.runner.boot_time_in_minutes
   }
 
   pool_environment_variables = merge(local.scale_up_environment_variables, {
-    RUNNER_BOOT_TIME_IN_MINUTES = var.runner_boot_time_in_minutes
+    RUNNER_BOOT_TIME_IN_MINUTES = var.runner.boot_time_in_minutes
   })
 
   scale_up_iam_policy_json        = data.aws_iam_policy_document.scale_up.json
   scale_down_iam_policy_json      = data.aws_iam_policy_document.scale_down.json
   pool_iam_policy_json            = data.aws_iam_policy_document.pool.json
-  service_linked_role_policy_json = var.create_service_linked_role_spot ? data.aws_iam_policy_document.service_linked_role[0].json : null
+  service_linked_role_policy_json = var.config.create_service_linked_role_spot ? data.aws_iam_policy_document.service_linked_role[0].json : null
 }

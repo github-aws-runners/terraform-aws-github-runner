@@ -22,6 +22,8 @@ The implementation is split into three layers:
 
 The EC2 provider currently owns the instance profile, launch template, security group, AMI and bootstrap parameters, runner log groups, EC2 policy statements, and EC2 Lambda environment variables. EC2 is the only implemented Terraform compute provider today.
 
+`runner-stack` passes the canonical `compute_provider.ec2` configuration to the EC2 module as one nested `config` object. It also passes the provider-neutral `runner`, `github`, `ssm`, and `observability` objects without expanding them back into prefixed scalar inputs. The EC2 runner-role policy module consumes the same provider `config` and shared `ssm` boundaries. This keeps ownership visible at every module boundary and gives future compute providers an equivalent contract to implement.
+
 The common stack creates or selects the runner IAM role. A provider supplies the trust policy, inline policy documents, and optional managed-policy requirements; the common stack attaches them. This keeps role ownership provider-neutral while allowing each compute provider to define its permissions.
 
 ## Phase 1 dispatch and compatibility

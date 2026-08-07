@@ -4,13 +4,10 @@ module "ec2_runner_role" {
   count  = local.provider_type == "ec2" ? 1 : 0
   source = "../compute-providers/ec2/runner-role"
 
-  aws_partition                 = var.aws_partition
-  aws_region                    = var.aws_region
-  enable_cloudwatch_agent       = local.ec2.cloudwatch_agent.enabled
-  enable_runner_binaries_syncer = local.ec2.binaries_syncer.enabled
-  enable_ssm_on_runners         = local.ec2.ssm_enabled
-  s3_runner_binaries            = local.ec2.binaries_syncer.s3
-  ssm_paths                     = var.ssm.paths
+  aws_partition = var.aws_partition
+  aws_region    = var.aws_region
+  config        = local.ec2
+  ssm           = var.ssm
 }
 
 locals {

@@ -30,40 +30,45 @@ override_data {
 }
 
 variables {
-  vpc_id     = "vpc-12345678"
-  subnet_ids = ["subnet-12345678"]
-  prefix     = "provider-test"
+  prefix = "provider-test"
 
-  ami = {
-    filter = { state = ["available"] }
-    owners = ["amazon"]
-    id_ssm_parameter = {
-      arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/ami-id"
+  config = {
+    vpc_id         = "vpc-12345678"
+    subnet_ids     = ["subnet-12345678"]
+    instance_types = ["m5.large"]
+    ami = {
+      filter = { state = ["available"] }
+      owners = ["amazon"]
+      id_ssm_parameter = {
+        arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/ami-id"
+      }
+      kms_key = null
     }
-    kms_key = null
+    binaries_syncer = {
+      enabled = false
+      s3      = null
+    }
+    cloudwatch_agent = {
+      enabled = false
+    }
+    managed_security_group_enabled = true
   }
 
-  instance_types = ["m5.large"]
-
-  s3_runner_binaries                   = null
-  enable_runner_binaries_syncer        = false
-  enable_cloudwatch_agent              = false
-  enable_managed_runner_security_group = true
-
-  iam_overrides = {
-    override_instance_profile = false
-    instance_profile_name     = null
+  runner = {
+    iam = {
+      role = {
+        arn  = "arn:aws:iam::123456789012:role/provider-test-runner"
+        name = "provider-test-runner"
+      }
+    }
   }
 
-  runner_role = {
-    arn  = "arn:aws:iam::123456789012:role/provider-test-runner"
-    name = "provider-test-runner"
-  }
-
-  ssm_paths = {
-    root   = "/github-runner/provider-test"
-    tokens = "tokens"
-    config = "config"
+  ssm = {
+    paths = {
+      root   = "/github-runner/provider-test"
+      tokens = "tokens"
+      config = "config"
+    }
   }
 }
 
@@ -167,11 +172,32 @@ run "accepts_partial_typed_compute_options" {
   command = plan
 
   variables {
-    overrides = {
-      name_runner = "custom-runner"
-    }
-    metadata_options = {
-      http_tokens = "optional"
+    config = {
+      vpc_id         = "vpc-12345678"
+      subnet_ids     = ["subnet-12345678"]
+      instance_types = ["m5.large"]
+      ami = {
+        filter = { state = ["available"] }
+        owners = ["amazon"]
+        id_ssm_parameter = {
+          arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/ami-id"
+        }
+        kms_key = null
+      }
+      binaries_syncer = {
+        enabled = false
+        s3      = null
+      }
+      cloudwatch_agent = {
+        enabled = false
+      }
+      managed_security_group_enabled = true
+      overrides = {
+        name_runner = "custom-runner"
+      }
+      metadata_options = {
+        http_tokens = "optional"
+      }
     }
   }
 
@@ -195,38 +221,71 @@ run "separates_provider_runner_and_ssm_tags" {
   command = plan
 
   variables {
-    ami = {
-      filter           = { state = ["available"] }
-      owners           = ["amazon"]
-      id_ssm_parameter = null
-      kms_key          = null
+    config = {
+      vpc_id         = "vpc-12345678"
+      subnet_ids     = ["subnet-12345678"]
+      instance_types = ["m5.large"]
+      ami = {
+        filter           = { state = ["available"] }
+        owners           = ["amazon"]
+        id_ssm_parameter = null
+        kms_key          = null
+      }
+      binaries_syncer = {
+        enabled = false
+        s3      = null
+      }
+      cloudwatch_agent = {
+        enabled = true
+      }
+      managed_security_group_enabled = true
+      tags = {
+        Name                     = "runner-name"
+        Scope                    = "runner"
+        RunnerOnly               = "runner"
+        "ghr:environment"        = "runner-override"
+        "ghr:ssm_config_path"    = "/runner/override"
+        "ghr:runner_name_prefix" = "runner-override"
+      }
     }
     tags = {
       Name  = "provider-name"
       Scope = "provider"
     }
-    runner_ec2_tags = {
-      Name                     = "runner-name"
-      Scope                    = "runner"
-      RunnerOnly               = "runner"
-      "ghr:environment"        = "runner-override"
-      "ghr:ssm_config_path"    = "/runner/override"
-      "ghr:runner_name_prefix" = "runner-override"
+    runner = {
+      name_prefix = "required-prefix"
+      iam = {
+        role = {
+          arn  = "arn:aws:iam::123456789012:role/provider-test-runner"
+          name = "provider-test-runner"
+        }
+      }
     }
-    runner_name_prefix = "required-prefix"
-    ssm_parameter_tags = {
-      Name                       = "ssm-name"
-      Scope                      = "ssm"
-      SsmOnly                    = "ssm"
-      "ghr:ami_name"             = "ssm-override"
-      "ghr:ami_creation_date"    = "ssm-override"
-      "ghr:ami_deprecation_time" = "ssm-override"
+    ssm = {
+      paths = {
+        root   = "/github-runner/provider-test"
+        tokens = "tokens"
+        config = "config"
+      }
+      parameters = {
+        tags = {
+          Name                       = "ssm-name"
+          Scope                      = "ssm"
+          SsmOnly                    = "ssm"
+          "ghr:ami_name"             = "ssm-override"
+          "ghr:ami_creation_date"    = "ssm-override"
+          "ghr:ami_deprecation_time" = "ssm-override"
+        }
+      }
     }
-    enable_cloudwatch_agent = true
-    log_group_tags = {
-      Name    = "log-name"
-      Scope   = "log"
-      LogOnly = "log"
+    observability = {
+      logs = {
+        tags = {
+          Name    = "log-name"
+          Scope   = "log"
+          LogOnly = "log"
+        }
+      }
     }
   }
 
@@ -306,9 +365,16 @@ run "requires_distribution_object_when_sync_is_enabled" {
   command = plan
 
   variables {
-    enable_runner_binaries_syncer = true
-    s3_runner_binaries            = null
+    config = {
+      vpc_id         = "vpc-12345678"
+      subnet_ids     = ["subnet-12345678"]
+      instance_types = ["m5.large"]
+      binaries_syncer = {
+        enabled = true
+        s3      = null
+      }
+    }
   }
 
-  expect_failures = [aws_launch_template.runner]
+  expect_failures = [var.config]
 }
