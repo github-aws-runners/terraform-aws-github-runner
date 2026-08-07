@@ -6,7 +6,7 @@ This internal module implements the experimental provider-neutral runner control
 
 The stack coordinates internal modules for [`scale-runners`](./scale-runners), [`pool`](./pool), [`job-retry`](./job-retry), and [`ssm-housekeeper`](./ssm-housekeeper). These modules own their provider-neutral Lambda, scheduler, logging, and IAM resources. The stack also creates or selects the runner IAM role, manages shared runner configuration in SSM, and dispatches the selected compute provider.
 
-Provider-owned settings are typed and nested under the selected provider block; for example, AMI, VPC, instance-profile, capacity, userdata, and runner-host logging settings live under `compute_provider.ec2`. Exactly one provider block must be populated, and its presence must be known during planning; there is no separate input discriminator. The common stack creates or selects the runner role, then passes it into [`../compute-providers/ec2`](../compute-providers/ec2), which owns the instance profile, launch template, EC2 bootstrap parameters, runner log groups, and a nested contract of provider policies and Lambda environment variables. The common stack attaches each returned policy group to its runner, scale-up, scale-down, or pool role. EC2 is the only active provider today; future providers can implement the same contract without copying the control plane. The nested provider output may include a computed type derived from the populated block, but that value is output metadata rather than an input selector.
+Provider-owned settings are typed and nested under the selected provider block; for example, AMI, VPC, instance-profile, capacity, userdata, and runner-host logging settings live under `compute_provider.ec2`. Exactly one provider block must be populated, and its presence must be known during planning; there is no separate input discriminator. The common stack creates or selects the runner role, then passes it into [`../compute-providers/ec2`](../compute-providers/ec2), which owns the instance profile, launch template, EC2 bootstrap parameters, runner log groups, and a nested contract of provider policies and Lambda environment variables. The common stack attaches each returned policy group to its runner, scale-up, scale-down, or pool role. EC2 is the only active provider today; future providers can implement the same contract without copying the control plane. Provider outputs identify ownership through their populated provider key rather than a duplicate type field.
 
 ## Tagging
 
@@ -122,7 +122,7 @@ yarn run dist
 | Name | Description |
 |------|-------------|
 | <a name="output_pool"></a> [pool](#output\_pool) | Scheduled pool resources. Null when no pool configuration is supplied. |
-| <a name="output_provider"></a> [provider](#output\_provider) | Selected compute provider type and its provider-specific resources. |
+| <a name="output_provider"></a> [provider](#output\_provider) | Provider-specific resources grouped by compute provider. |
 | <a name="output_runner"></a> [runner](#output\_runner) | Common runner resources. The role is null when an external runner role is used. |
 | <a name="output_scale_down"></a> [scale\_down](#output\_scale\_down) | Scale-down control-plane resources. |
 | <a name="output_scale_up"></a> [scale\_up](#output\_scale\_up) | Scale-up control-plane resources. |

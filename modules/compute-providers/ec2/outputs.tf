@@ -1,7 +1,6 @@
 output "provider" {
   description = "Nested EC2 compute-provider contract consumed by runner-stack."
   value = {
-    type = "ec2"
     environment_variables = {
       scale_up   = local.scale_up_environment_variables
       scale_down = local.scale_down_environment_variables

@@ -98,8 +98,8 @@ run "plan_with_pool_enabled" {
   }
 
   assert {
-    condition     = output.provider.type == "ec2"
-    error_message = "The runner stack must expose the selected compute provider type."
+    condition     = toset(keys(output.provider)) == toset(["ec2"])
+    error_message = "The runner stack must identify provider resources through the populated provider key without a duplicate type field."
   }
 
   assert {
