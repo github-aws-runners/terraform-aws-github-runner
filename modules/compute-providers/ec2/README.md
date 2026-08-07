@@ -10,14 +10,14 @@ EC2 is the only active compute provider. A future provider must implement the sa
 ## Requirements
 
 | Name | Version |
-| ---- | ------- |
+|------|---------|
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.3.0 |
 | <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 6.33 |
 
 ## Providers
 
 | Name | Version |
-| ---- | ------- |
+|------|---------|
 | <a name="provider_aws"></a> [aws](#provider\_aws) | >= 6.33 |
 
 ## Modules
@@ -27,7 +27,7 @@ No modules.
 ## Resources
 
 | Name | Type |
-| ---- | ---- |
+|------|------|
 | [aws_cloudwatch_log_group.gh_runners](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_log_group) | resource |
 | [aws_iam_instance_profile.runner](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_instance_profile) | resource |
 | [aws_iam_policy.ami_id_ssm_parameter_read](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy) | resource |
@@ -47,7 +47,7 @@ No modules.
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-| ---- | ----------- | ---- | ------- | :------: |
+|------|-------------|------|---------|:--------:|
 | <a name="input_ami"></a> [ami](#input\_ami) | AMI selection and encryption configuration for runner instances. Null selects the default AMI configuration for `runner_os`.<br/><br/>- `filter`: AMI filter names mapped to accepted values. These values are merged over the default filter for `runner_os`.<br/>- `owners`: AWS account IDs or aliases allowed to own the selected AMI.<br/>- `id_ssm_parameter`: Optional externally managed SSM parameter containing the AMI ID. Null creates a provider-managed AMI-ID parameter from the selected AMI. The wrapper's presence is the plan-time ownership discriminator, so keep the object literal even when its ARN comes from another resource.<br/>- `id_ssm_parameter.arn`: ARN of the externally managed SSM parameter. The ARN may be unknown until apply.<br/>- `kms_key`: Optional customer-managed KMS key required to launch an encrypted AMI or snapshot. The wrapper's presence is the plan-time policy discriminator.<br/>- `kms_key.arn`: ARN of the customer-managed KMS key. The ARN may be unknown until apply. | <pre>object({<br/>    filter = optional(map(list(string)), { state = ["available"] })<br/>    owners = optional(list(string), ["amazon"])<br/>    id_ssm_parameter = optional(object({<br/>      arn = string<br/>    }), null)<br/>    kms_key = optional(object({<br/>      arn = string<br/>    }), null)<br/>  })</pre> | `null` | no |
 | <a name="input_associate_public_ipv4_address"></a> [associate\_public\_ipv4\_address](#input\_associate\_public\_ipv4\_address) | Associate public IPv4 with the runner. Only tested with IPv4 | `bool` | `false` | no |
 | <a name="input_aws_partition"></a> [aws\_partition](#input\_aws\_partition) | (optional) partition for the base arn if not 'aws' | `string` | `"aws"` | no |
@@ -112,7 +112,7 @@ No modules.
 ## Outputs
 
 | Name | Description |
-| ---- | ----------- |
+|------|-------------|
 | <a name="output_control_plane"></a> [control\_plane](#output\_control\_plane) | Provider-neutral control-plane contract containing the EC2 environment and IAM fragments. |
 | <a name="output_resources"></a> [resources](#output\_resources) | EC2-specific resources and bootstrap logging details. |
 <!-- END_TF_DOCS -->
