@@ -171,9 +171,9 @@ module "generated_policy" {
 }
 
 output "external_role_runner_count" {
-  value = length(module.external_iam.role_runner)
+  value = module.external_iam.runner.role == null ? 0 : 1
 }
 
 output "generated_policy_role_runner_count" {
-  value = length(module.generated_policy.role_runner)
+  value = module.generated_policy.runner.role == null ? 0 : 1
 }

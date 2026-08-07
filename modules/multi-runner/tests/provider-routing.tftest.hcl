@@ -211,19 +211,23 @@ run "experimental_v2_routes_through_provider_stack" {
     condition = toset(keys(output.runners_map["linux"])) == toset(
       [
         "provider",
-        "lambda_up",
-        "lambda_up_log_group",
-        "lambda_down",
-        "lambda_down_log_group",
-        "lambda_pool",
-        "lambda_pool_log_group",
-        "role_runner",
-        "role_scale_up",
-        "role_scale_down",
-        "role_pool",
+        "runner",
+        "scale_up",
+        "scale_down",
+        "pool",
       ]
     )
-    error_message = "Experimental v2 runners_map entries must expose provider resources only through the nested provider object."
+    error_message = "Experimental v2 runners_map entries must group common and provider resources by owner."
+  }
+
+  assert {
+    condition = (
+      toset(keys(output.runners_map["linux"].runner)) == toset(["role"])
+      && toset(keys(output.runners_map["linux"].scale_up)) == toset(["lambda", "log_group", "role"])
+      && toset(keys(output.runners_map["linux"].scale_down)) == toset(["lambda", "log_group", "role"])
+      && toset(keys(output.runners_map["linux"].pool)) == toset(["lambda", "log_group", "role"])
+    )
+    error_message = "Experimental v2 common resources must use the nested runner, scale-up, scale-down, and pool contracts."
   }
 
   assert {
@@ -241,12 +245,12 @@ run "experimental_v2_routes_through_provider_stack" {
   assert {
     condition = (
       !contains(keys(output.runners_map["linux"]), "launch_template_name")
-      && contains(keys(output.runners_map["linux"]), "role_runner")
+      && output.runners_map["linux"].runner.role != null
       && !contains(keys(output.runners_map["linux"].provider.ec2), "role_runner")
       && !contains(keys(output.runners_map["linux"]), "runners_log_groups")
       && !contains(keys(output.runners_map["linux"]), "logfiles")
     )
-    error_message = "Experimental v2 must expose the common runner role at runner-configuration level without duplicating EC2 resources."
+    error_message = "Experimental v2 must expose the common runner role under runner without duplicating EC2 resources."
   }
 
   assert {
@@ -380,7 +384,7 @@ run "experimental_v2_layers_shared_and_component_tags" {
   }
 
   assert {
-    condition = module.runner_stacks["tagged"].lambda_scale_up.tags == tomap({
+    condition = module.runner_stacks["tagged"].scale_up.lambda.tags == tomap({
       GlobalOnly       = "global"
       RunnerConfigOnly = "runner-config"
       SharedLambdaOnly = "shared-lambda"
@@ -392,7 +396,7 @@ run "experimental_v2_layers_shared_and_component_tags" {
   }
 
   assert {
-    condition = module.runner_stacks["tagged"].lambda_scale_up_log_group.tags == tomap({
+    condition = module.runner_stacks["tagged"].scale_up.log_group.tags == tomap({
       GlobalOnly       = "global"
       RunnerConfigOnly = "runner-config"
       SharedLogOnly    = "shared-log"
@@ -403,7 +407,7 @@ run "experimental_v2_layers_shared_and_component_tags" {
   }
 
   assert {
-    condition = module.runner_stacks["tagged"].role_scale_up.tags == tomap({
+    condition = module.runner_stacks["tagged"].scale_up.role.tags == tomap({
       GlobalOnly       = "global"
       RunnerConfigOnly = "runner-config"
       ScaleUpOnly      = "scale-up"
@@ -413,7 +417,7 @@ run "experimental_v2_layers_shared_and_component_tags" {
   }
 
   assert {
-    condition = module.runner_stacks["tagged"].role_runner[0].tags == tomap({
+    condition = module.runner_stacks["tagged"].runner.role.tags == tomap({
       GlobalOnly       = "global"
       RunnerConfigOnly = "runner-config"
       RunnerOnly       = "runner"
@@ -423,7 +427,7 @@ run "experimental_v2_layers_shared_and_component_tags" {
   }
 
   assert {
-    condition = module.runner_stacks["tagged"].lambda_scale_down.tags == tomap({
+    condition = module.runner_stacks["tagged"].scale_down.lambda.tags == tomap({
       GlobalOnly       = "global"
       RunnerConfigOnly = "runner-config"
       SharedLambdaOnly = "shared-lambda"
@@ -435,7 +439,7 @@ run "experimental_v2_layers_shared_and_component_tags" {
   }
 
   assert {
-    condition = module.runner_stacks["tagged"].lambda_scale_down_log_group.tags == tomap({
+    condition = module.runner_stacks["tagged"].scale_down.log_group.tags == tomap({
       GlobalOnly       = "global"
       RunnerConfigOnly = "runner-config"
       SharedLogOnly    = "shared-log"
@@ -443,6 +447,11 @@ run "experimental_v2_layers_shared_and_component_tags" {
       Precedence       = "scale-down"
     })
     error_message = "Scale-down log-group tags must preserve shared log tags before applying scale-down component tags."
+  }
+
+  assert {
+    condition     = output.runners_map["tagged"].pool == null
+    error_message = "Experimental v2 must expose a null pool object when no pool configuration is supplied."
   }
 }
 

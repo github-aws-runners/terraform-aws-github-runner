@@ -160,15 +160,9 @@ yarn run dist
 
 | Name | Description |
 |------|-------------|
-| <a name="output_lambda_pool"></a> [lambda\_pool](#output\_lambda\_pool) | n/a |
-| <a name="output_lambda_pool_log_group"></a> [lambda\_pool\_log\_group](#output\_lambda\_pool\_log\_group) | n/a |
-| <a name="output_lambda_scale_down"></a> [lambda\_scale\_down](#output\_lambda\_scale\_down) | n/a |
-| <a name="output_lambda_scale_down_log_group"></a> [lambda\_scale\_down\_log\_group](#output\_lambda\_scale\_down\_log\_group) | n/a |
-| <a name="output_lambda_scale_up"></a> [lambda\_scale\_up](#output\_lambda\_scale\_up) | n/a |
-| <a name="output_lambda_scale_up_log_group"></a> [lambda\_scale\_up\_log\_group](#output\_lambda\_scale\_up\_log\_group) | n/a |
+| <a name="output_pool"></a> [pool](#output\_pool) | Scheduled pool resources. Null when no pool configuration is supplied. |
 | <a name="output_provider"></a> [provider](#output\_provider) | Selected compute provider type and its provider-specific resources. |
-| <a name="output_role_pool"></a> [role\_pool](#output\_role\_pool) | n/a |
-| <a name="output_role_runner"></a> [role\_runner](#output\_role\_runner) | Runner IAM role created by the common stack. Empty when an external runner role is used. |
-| <a name="output_role_scale_down"></a> [role\_scale\_down](#output\_role\_scale\_down) | n/a |
-| <a name="output_role_scale_up"></a> [role\_scale\_up](#output\_role\_scale\_up) | n/a |
+| <a name="output_runner"></a> [runner](#output\_runner) | Common runner resources. The role is null when an external runner role is used. |
+| <a name="output_scale_down"></a> [scale\_down](#output\_scale\_down) | Scale-down control-plane resources. |
+| <a name="output_scale_up"></a> [scale\_up](#output\_scale\_up) | Scale-up control-plane resources. |
 <!-- END_TF_DOCS -->

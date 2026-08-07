@@ -21,17 +21,11 @@ output "runners_map" {
       }
     },
     { for runner_key, runner in module.runner_stacks : runner_key => {
-      provider              = runner.provider
-      lambda_up             = runner.lambda_scale_up
-      lambda_up_log_group   = runner.lambda_scale_up_log_group
-      lambda_down           = runner.lambda_scale_down
-      lambda_down_log_group = runner.lambda_scale_down_log_group
-      lambda_pool           = runner.lambda_pool
-      lambda_pool_log_group = runner.lambda_pool_log_group
-      role_runner           = runner.role_runner
-      role_scale_up         = runner.role_scale_up
-      role_scale_down       = runner.role_scale_down
-      role_pool             = runner.role_pool
+      runner     = runner.runner
+      scale_up   = runner.scale_up
+      scale_down = runner.scale_down
+      pool       = runner.pool
+      provider   = runner.provider
       }
     }
   )

@@ -109,8 +109,16 @@ run "plan_with_pool_enabled" {
   }
 
   assert {
-    condition     = length(aws_iam_role.runner) == 1 && length(output.role_runner) == 1
+    condition     = length(aws_iam_role.runner) == 1 && output.runner.role != null
     error_message = "The common runner stack must create and expose the runner role."
+  }
+
+  assert {
+    condition = (
+      output.pool != null
+      && toset(keys(output.pool)) == toset(["lambda", "log_group", "role"])
+    )
+    error_message = "An enabled pool must expose its Lambda, log group, and role through the nested pool output."
   }
 
   assert {
@@ -178,8 +186,8 @@ run "external_runner_role_is_not_managed_by_common" {
   }
 
   assert {
-    condition     = length(output.role_runner) == 0
-    error_message = "The role_runner output must be empty when an external role is selected."
+    condition     = output.runner.role == null
+    error_message = "The nested runner role output must be null when an external role is selected."
   }
 
 

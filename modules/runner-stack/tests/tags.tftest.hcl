@@ -267,17 +267,17 @@ run "layered_component_tags" {
   }
 
   assert {
-    condition = module.pool[0].lambda.tags == tomap({
+    condition = module.pool[0].pool.lambda.tags == tomap({
       precedence = "pool"
       module     = "yes"
       lambda     = "yes"
       pool       = "yes"
-      }) && module.pool[0].lambda_log_group.tags == tomap({
+      }) && module.pool[0].pool.log_group.tags == tomap({
       precedence = "pool"
       module     = "yes"
       log        = "yes"
       pool       = "yes"
-      }) && module.pool[0].role_pool.tags == tomap({
+      }) && module.pool[0].pool.role.tags == tomap({
       precedence = "pool"
       module     = "yes"
       pool       = "yes"

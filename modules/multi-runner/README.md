@@ -8,7 +8,7 @@ The module takes a configuration as input containing a matcher for the labels. T
 
 ## Provider boundary
 
-See [Experimental compute-provider refactor](https://github-aws-runners.github.io/terraform-aws-github-runner/compute-provider-refactor/) for the motivation, ownership contract, opt-in flow, state guarantees, and migration phases.
+See [Experimental compute-provider refactor](https://github-aws-runners.github.io/terraform-aws-github-runner/modules/internal/compute-provider-refactor/) for the motivation, ownership contract, opt-in flow, state guarantees, and migration phases.
 
 The multi-runner module owns provider-neutral runner-configuration normalization, queues, shared runner-binary discovery, and webhook routing. Stable `multi_runner_config` entries continue to use the existing `modules/runners` module at their historical `module.runners["configuration"]` addresses.
 
@@ -22,7 +22,7 @@ The two input maps can be used in the same module instance during phase 1, provi
 
 For v2 runner configurations, top-level module `tags` are merged with configuration `tags`. Shared `lambda.tags`, `queue.tags`, and `observability.logs.tags` are then merged with component tags such as `runner.tags`, `scale_up.tags`, `scale_down.tags`, `pool.tags`, `job_retry.tags`, and the nested SSM tag scopes. Narrower scopes win repeated keys. Queue tags also apply to the configuration build queue and dead-letter queue owned by multi-runner. Stable v1 configurations keep their existing tag behavior unchanged.
 
-Stable v1 entries in `runners_map` retain their existing flat output shape. Experimental v2 entries keep common control-plane Lambda and runner-role outputs at the runner-configuration level, while compute-provider resources are available only under `provider`. For EC2 configurations, use `runners_map["configuration"].provider.ec2.launch_template`, `.runners_log_groups`, and `.logfiles`; use `runners_map["configuration"].role_runner` for the common runner role. The corresponding flat EC2 attributes are intentionally not duplicated in v2 entries.
+Stable v1 entries in `runners_map` retain their existing flat output shape. Experimental v2 entries group common resources under `runner`, `scale_up`, `scale_down`, and `pool`, while compute-provider resources are available only under `provider`. Use `runners_map["configuration"].runner.role` for the common runner role and `runners_map["configuration"].scale_up.lambda`, `.log_group`, and `.role` for the scale-up resources. The same resource shape is used for `scale_down` and an enabled `pool`; `pool` is null when it is disabled. For EC2 configurations, launch-template and runner-log resources remain under `runners_map["configuration"].provider.ec2`. The stable flat attributes are intentionally not duplicated in v2 entries.
 
 ### Multi-runner v2 migration roadmap
 

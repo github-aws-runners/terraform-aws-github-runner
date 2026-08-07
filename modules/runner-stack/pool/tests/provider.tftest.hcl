@@ -94,6 +94,11 @@ run "provider_supplies_only_compute_specific_pool_configuration" {
   command = plan
 
   assert {
+    condition     = toset(keys(output.pool)) == toset(["lambda", "log_group", "role"])
+    error_message = "The pool module must expose its resources through one nested output."
+  }
+
+  assert {
     condition     = aws_lambda_function.pool.environment[0].variables["RUNNER_OWNER"] == "example"
     error_message = "The pool module must continue to assemble common runner environment variables."
   }

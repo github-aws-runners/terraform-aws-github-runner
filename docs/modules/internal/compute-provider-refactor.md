@@ -107,7 +107,7 @@ Tags follow the same ownership model. Module tags are defaults; shared Lambda, q
 
 Application logging settings stay together under `observability.logs`, including `level`, retention, encryption, class, and shared log-group tags.
 
-Stable `runners_map` entries retain their flat output fields. Experimental entries expose common resources at the entry level and provider-specific resources under `provider.<type>`. For EC2, launch-template and runner-log artifacts are under `runners_map["configuration"].provider.ec2`.
+Stable `runners_map` entries retain their flat output fields. Experimental entries group common resources under `runner`, `scale_up`, `scale_down`, and `pool`; provider-specific resources remain under `provider.<type>`. For example, the common runner role is available at `runners_map["configuration"].runner.role`, while EC2 launch-template and runner-log artifacts are under `runners_map["configuration"].provider.ec2`. The `pool` value is null when no pool configuration is supplied.
 
 ## Plan-time ownership wrappers
 

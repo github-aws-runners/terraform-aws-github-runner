@@ -60,7 +60,5 @@ No modules.
 
 | Name | Description |
 |------|-------------|
-| <a name="output_lambda"></a> [lambda](#output\_lambda) | n/a |
-| <a name="output_lambda_log_group"></a> [lambda\_log\_group](#output\_lambda\_log\_group) | n/a |
-| <a name="output_role_pool"></a> [role\_pool](#output\_role\_pool) | n/a |
+| <a name="output_pool"></a> [pool](#output\_pool) | Scheduled pool Lambda resources. |
 <!-- END_TF_DOCS -->
