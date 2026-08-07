@@ -1,4 +1,5 @@
-# EC2 compute implementation selected by the parent runners module.
+# AMI selection, bootstrap rendering, launch template, and security group for
+# EC2 runner instances.
 locals {
   tags = merge(
     {
@@ -10,12 +11,12 @@ locals {
     var.tags,
   )
 
-  name_sg                         = var.overrides["name_sg"] == "" ? local.tags["Name"] : var.overrides["name_sg"]
-  name_runner                     = var.overrides["name_runner"] == "" ? local.tags["Name"] : var.overrides["name_runner"]
+  name_sg                         = var.overrides.name_sg == "" ? local.tags["Name"] : var.overrides.name_sg
+  name_runner                     = var.overrides.name_runner == "" ? local.tags["Name"] : var.overrides.name_runner
   role_path                       = var.role_path == null ? "/${var.prefix}/" : var.role_path
   instance_profile_path           = var.instance_profile_path == null ? "/${var.prefix}/" : var.instance_profile_path
   userdata_template               = var.userdata_template == null ? local.default_userdata_template[var.runner_os] : var.userdata_template
-  s3_location_runner_distribution = var.enable_runner_binaries_syncer ? "s3://${var.s3_runner_binaries.id}/${var.s3_runner_binaries.key}" : ""
+  s3_location_runner_distribution = var.enable_runner_binaries_syncer ? "s3://${try(var.s3_runner_binaries.id, "")}/${try(var.s3_runner_binaries.key, "")}" : ""
   default_ami = {
     "windows" = { name = ["Windows_Server-2022-English-Full-ECS_Optimized-*"] }
     "linux"   = var.runner_architecture == "arm64" ? { name = ["al2023-ami-2023.*-kernel-6.*-arm64"] } : { name = ["al2023-ami-2023.*-kernel-6.*-x86_64"] }
@@ -52,8 +53,6 @@ locals {
   ami_id_ssm_module_managed = local.ami_config.id_ssm_parameter_arn == null
   # Extract parameter name from ARN (format: arn:aws:ssm:region:account:parameter/path/to/param)
   ami_id_ssm_parameter_name = local.ami_id_ssm_module_managed ? null : try(regex("parameter(/.+)$", local.ami_config.id_ssm_parameter_arn)[0], null)
-
-  arn_ssm_parameters_path_config = "arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.ssm_paths.root}/${var.ssm_paths.config}"
 
   user_data = var.enable_userdata ? (var.userdata_content == null ? templatefile(local.userdata_template, {
     enable_debug_logging            = var.enable_user_data_debug_logging
@@ -124,6 +123,13 @@ resource "aws_ssm_parameter" "runner_ami_id" {
 
 resource "aws_launch_template" "runner" {
   name = "${var.prefix}-action-runner"
+
+  lifecycle {
+    precondition {
+      condition     = !var.enable_runner_binaries_syncer || var.s3_runner_binaries != null
+      error_message = "s3_runner_binaries must be set when enable_runner_binaries_syncer is true."
+    }
+  }
 
   dynamic "block_device_mappings" {
     for_each = var.block_device_mappings != null ? var.block_device_mappings : []
@@ -207,7 +213,7 @@ resource "aws_launch_template" "runner" {
   }
 
   iam_instance_profile {
-    name = var.iam_overrides["override_instance_profile"] ? var.iam_overrides["instance_profile_name"] : aws_iam_instance_profile.runner[0].name
+    name = var.iam_overrides.override_instance_profile ? var.iam_overrides.instance_profile_name : aws_iam_instance_profile.runner[0].name
   }
 
   instance_initiated_shutdown_behavior = "terminate"

@@ -86,6 +86,7 @@ jobs:
             "lambda",
             "multi-runner",
             "compute-providers/ec2",
+            "compute-providers/ec2/runner-role",
             "runner-binaries-syncer",
             "runner-stack",
             "runners",
@@ -220,6 +221,7 @@ jobs:
           - modules/runner-stack
           - modules/runner-stack/pool
           - modules/compute-providers/ec2
+          - modules/compute-providers/ec2/runner-role
     defaults:
       run:
         working-directory: ${{ matrix.module }}

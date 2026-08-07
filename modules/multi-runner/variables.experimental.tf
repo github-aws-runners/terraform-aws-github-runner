@@ -1,6 +1,6 @@
 variable "multi_runner_config_v2" {
   description = <<EOT
-Experimental runner lane configuration keyed by lane name. This v2 shape separates common runner routing from provider-specific backend configuration. The schema can change while the provider model is being finalized. When set, this variable takes precedence over stable `multi_runner_config`.
+Experimental runner lane configuration keyed by lane name. This v2 shape separates common runner routing from provider-specific backend configuration. The schema can change while the provider model is being finalized. V1 and v2 maps can be used together when their lane keys do not overlap.
 
 Each lane has:
 - `runner`: GitHub runner behavior shared by all providers.
@@ -35,6 +35,12 @@ EOT
       runners_maximum_count                   = number
       scale_down_schedule_expression          = optional(string, "cron(*/5 * * * ? *)")
       scale_up_reserved_concurrent_executions = optional(number, 1)
+      iam = optional(object({
+        role = optional(object({
+          arn = string
+        }), null)
+        managed_policy_arns = optional(map(string), {})
+      }), {})
       pool_config = optional(list(object({
         schedule_expression          = string
         schedule_expression_timezone = optional(string)
@@ -54,12 +60,12 @@ EOT
       type = string
 
       ec2 = optional(object({
-        runner_metadata_options = optional(map(any), {
-          instance_metadata_tags      = "enabled"
-          http_endpoint               = "enabled"
-          http_tokens                 = "required"
-          http_put_response_hop_limit = 1
-        })
+        runner_metadata_options = optional(object({
+          instance_metadata_tags      = optional(string, "enabled")
+          http_endpoint               = optional(string, "enabled")
+          http_tokens                 = optional(string, "required")
+          http_put_response_hop_limit = optional(number, 1)
+        }), {})
         ami = optional(object({
           filter               = optional(map(list(string)), { state = ["available"] })
           owners               = optional(list(string), ["amazon"])
@@ -95,18 +101,9 @@ EOT
         instance_type_priorities             = optional(map(number), null)
         instance_types                       = list(string)
         runner_additional_security_group_ids = optional(list(string), [])
-        runner_iam_role_managed_policy_arns  = optional(list(string), [])
-        iam_overrides = optional(object({
-          override_instance_profile = optional(bool, null)
-          instance_profile_name     = optional(string, null)
-          override_runner_role      = optional(bool, null)
-          runner_role_arn           = optional(string, null)
-          }), {
-          override_instance_profile = false
-          instance_profile_name     = null
-          override_runner_role      = false
-          runner_role_arn           = null
-        })
+        instance_profile = optional(object({
+          name = string
+        }), null)
         enable_on_demand_failover_for_errors = optional(list(string), [])
         scale_errors = optional(list(string), [
           "UnfulfillableCapacity",
@@ -205,5 +202,23 @@ EOT
       lane.provider.ec2 != null
     ])
     error_message = "Each lane must set provider.ec2."
+  }
+
+  validation {
+    condition = alltrue([
+      for _, lane in var.multi_runner_config_v2 :
+      lane.provider.ec2 == null ? true : (
+        lane.provider.ec2.instance_profile == null || lane.runner.iam.role != null
+      )
+    ])
+    error_message = "runner.iam.role must be set when provider.ec2.instance_profile selects an external instance profile."
+  }
+
+  validation {
+    condition = alltrue([
+      for _, lane in var.multi_runner_config_v2 :
+      lane.runner.iam.role == null || length(lane.runner.iam.managed_policy_arns) == 0
+    ])
+    error_message = "runner.iam.managed_policy_arns cannot be set with an external runner.iam.role because external roles are not managed by this module."
   }
 }

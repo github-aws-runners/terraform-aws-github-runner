@@ -37,39 +37,38 @@ variable "subnet_ids" {
 
 variable "overrides" {
   description = "This map provides the possibility to override some defaults. The following attributes are supported: `name_sg` overrides the `Name` tag for all security groups created by this module. `name_runner_agent_instance` overrides the `Name` tag for the ec2 instance defined in the auto launch configuration. `name_docker_machine_runners` overrides the `Name` tag spot instances created by the runner agent."
-  type        = map(string)
+  type = object({
+    name_runner = optional(string, "")
+    name_sg     = optional(string, "")
+  })
 
-  default = {
-    name_runner = ""
-    name_sg     = ""
-  }
+  default = {}
 }
 
 variable "iam_overrides" {
-  description = "This map provides the possibility to override some IAM defaults. The following attributes are supported: `instance_profile_name` overrides the instance profile name used in the launch template. `runner_role_arn` overrides the IAM role ARN used for the runner instances."
+  description = "Overrides for the EC2 instance profile used by the launch template."
   type = object({
-    override_instance_profile = optional(bool, null)
+    override_instance_profile = optional(bool, false)
     instance_profile_name     = optional(string, null)
-    override_runner_role      = optional(bool, null)
-    runner_role_arn           = optional(string, null)
   })
 
   default = {
     override_instance_profile = false
     instance_profile_name     = null
-    override_runner_role      = false
-    runner_role_arn           = null
   }
 
   validation {
     condition     = !var.iam_overrides.override_instance_profile || var.iam_overrides.instance_profile_name != null
     error_message = "instance_profile_name must be provided when override_instance_profile is true."
   }
+}
 
-  validation {
-    condition     = !var.iam_overrides.override_runner_role || var.iam_overrides.runner_role_arn != null
-    error_message = "runner_role_arn must be provided when override_runner_role is true."
-  }
+variable "runner_role" {
+  description = "Runner IAM role created or selected by the common runner stack."
+  type = object({
+    arn  = string
+    name = string
+  })
 }
 
 variable "tags" {
@@ -218,12 +217,6 @@ variable "runner_boot_time_in_minutes" {
   default     = 5
 }
 
-variable "role_permissions_boundary" {
-  description = "Permissions boundary that will be added to the created role for the lambda."
-  type        = string
-  default     = null
-}
-
 variable "role_path" {
   description = "The path that will be added to the role; if not set, the prefix will be used."
   type        = string
@@ -266,11 +259,6 @@ variable "logging_kms_key_id" {
   default     = null
 }
 
-variable "enable_ssm_on_runners" {
-  description = "Enable to allow access to the runner instances for debugging purposes via SSM. Note that this adds additional permissions to the runner instances."
-  type        = bool
-}
-
 variable "create_service_linked_role_spot" {
   description = "(optional) create the service linked role for spot instances that is required by the scale-up lambda."
   type        = bool
@@ -281,12 +269,6 @@ variable "aws_partition" {
   description = "(optional) partition for the base arn if not 'aws'"
   type        = string
   default     = "aws"
-}
-
-variable "runner_iam_role_managed_policy_arns" {
-  description = "Attach AWS or customer-managed IAM policies (by ARN) to the runner IAM role"
-  type        = list(string)
-  default     = []
 }
 
 variable "enable_cloudwatch_agent" {
@@ -383,13 +365,13 @@ variable "runner_ec2_tags" {
 
 variable "metadata_options" {
   description = "Metadata options for the ec2 runner instances. By default, the module uses metadata tags for bootstrapping the runner, only disable `instance_metadata_tags` when using custom scripts for starting the runner."
-  type        = map(any)
-  default = {
-    instance_metadata_tags      = "enabled"
-    http_endpoint               = "enabled"
-    http_tokens                 = "required"
-    http_put_response_hop_limit = 1
-  }
+  type = object({
+    instance_metadata_tags      = optional(string, "enabled")
+    http_endpoint               = optional(string, "enabled")
+    http_tokens                 = optional(string, "required")
+    http_put_response_hop_limit = optional(number, 1)
+  })
+  default = {}
 }
 
 variable "enable_runner_binaries_syncer" {
@@ -422,17 +404,6 @@ variable "runner_name_prefix" {
     error_message = "The prefix used for the GitHub runner name must be less than 32 characters. AWS instances id are 17 chars, https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/resource-ids.html"
   }
 }
-
-variable "tracing_config" {
-  description = "Configuration for lambda tracing."
-  type = object({
-    mode                  = optional(string, null)
-    capture_http_requests = optional(bool, false)
-    capture_error         = optional(bool, false)
-  })
-  default = {}
-}
-
 
 variable "credit_specification" {
   description = "The credit option for CPU usage of a T instance. Can be unset, \"standard\" or \"unlimited\"."

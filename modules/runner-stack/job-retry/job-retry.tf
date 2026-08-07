@@ -1,3 +1,4 @@
+# Provider-neutral job-retry queue and Lambda wiring.
 locals {
   lambda_zip = var.config.zip == null ? "${path.module}/../../../lambdas/functions/control-plane/runners.zip" : var.config.zip
   name       = "job-retry"

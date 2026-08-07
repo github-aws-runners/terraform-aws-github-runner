@@ -41,3 +41,8 @@ output "lambda_pool_log_group" {
 output "role_pool" {
   value = try(module.pool[0].role_pool, null)
 }
+
+output "role_runner" {
+  description = "Runner IAM role created by the common stack. Empty when an external runner role is used."
+  value       = aws_iam_role.runner
+}

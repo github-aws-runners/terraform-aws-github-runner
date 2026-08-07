@@ -1,4 +1,10 @@
 mock_provider "aws" {
+  mock_data "aws_caller_identity" {
+    defaults = {
+      account_id = "123456789012"
+    }
+  }
+
   mock_data "aws_iam_policy_document" {
     defaults = {
       json = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"lambda.amazonaws.com\"},\"Action\":\"sts:AssumeRole\"}]}"
@@ -23,6 +29,7 @@ variables {
   lambda_s3_bucket      = "lambda-artifacts"
   webhook_lambda_s3_key = "webhook.zip"
   runners_lambda_s3_key = "runners.zip"
+  syncer_lambda_s3_key  = "runner-binaries-syncer.zip"
 }
 
 run "stable_v1_keeps_legacy_runner_module" {
@@ -116,13 +123,17 @@ run "experimental_v2_routes_through_provider_stack" {
             schedule_expression = "cron(0 8 * * ? *)"
             size                = 1
           }]
+          iam = {
+            managed_policy_arns = {
+              readonly = "arn:aws:iam::aws:policy/ReadOnlyAccess"
+            }
+          }
         }
         provider = {
           type = "ec2"
           ec2 = {
-            instance_types                      = ["m5.large"]
-            enable_runner_binaries_syncer       = false
-            runner_iam_role_managed_policy_arns = ["arn:aws:iam::aws:policy/ReadOnlyAccess"]
+            instance_types                = ["m5.large"]
+            enable_runner_binaries_syncer = false
           }
         }
         matcherConfig = {
@@ -167,6 +178,7 @@ run "experimental_v2_routes_through_provider_stack" {
         "lambda_down_log_group",
         "lambda_pool",
         "lambda_pool_log_group",
+        "role_runner",
         "role_scale_up",
         "role_scale_down",
         "role_pool",
@@ -179,21 +191,26 @@ run "experimental_v2_routes_through_provider_stack" {
     condition = (
       output.runners_map["linux"].provider.type == "ec2"
       && can(output.runners_map["linux"].provider.ec2.launch_template)
-      && can(output.runners_map["linux"].provider.ec2.role_runner)
       && can(output.runners_map["linux"].provider.ec2.runners_log_groups)
       && can(output.runners_map["linux"].provider.ec2.logfiles)
+      && toset(keys(output.runners_map["linux"].provider.ec2)) == toset([
+        "launch_template",
+        "runners_log_groups",
+        "logfiles",
+      ])
     )
-    error_message = "Experimental v2 EC2 resources must be available under runners_map.<lane>.provider.ec2."
+    error_message = "Experimental v2 must expose only EC2-owned resources under runners_map.<lane>.provider.ec2."
   }
 
   assert {
     condition = (
       !can(output.runners_map["linux"].launch_template_name)
-      && !can(output.runners_map["linux"].role_runner)
+      && can(output.runners_map["linux"].role_runner)
+      && !can(output.runners_map["linux"].provider.ec2.role_runner)
       && !can(output.runners_map["linux"].runners_log_groups)
       && !can(output.runners_map["linux"].logfiles)
     )
-    error_message = "Experimental v2 entries must not duplicate provider resources as flat output attributes."
+    error_message = "Experimental v2 must expose the common runner role at lane level without duplicating EC2 resources."
   }
 
   assert {
@@ -202,12 +219,12 @@ run "experimental_v2_routes_through_provider_stack" {
   }
 
   assert {
-    condition     = local.runner_config_by_provider.ec2["linux"].provider.ec2.runner_iam_role_managed_policy_arns[0] == "arn:aws:iam::aws:policy/ReadOnlyAccess"
-    error_message = "EC2 runner-role policies must remain in the EC2 provider contract."
+    condition     = local.runner_config_by_provider.ec2["linux"].runner.iam.managed_policy_arns.readonly == "arn:aws:iam::aws:policy/ReadOnlyAccess"
+    error_message = "Runner-role policies must remain in the common runner contract."
   }
 }
 
-run "experimental_v2_takes_precedence_without_legacy_addresses" {
+run "stable_v1_and_experimental_v2_coexist" {
   command = plan
 
   variables {
@@ -218,7 +235,7 @@ run "experimental_v2_takes_precedence_without_legacy_addresses" {
           runner_architecture           = "x64"
           instance_types                = ["m5.large"]
           runners_maximum_count         = 2
-          enable_runner_binaries_syncer = false
+          enable_runner_binaries_syncer = true
           enable_organization_runners   = true
         }
         matcherConfig = {
@@ -231,9 +248,107 @@ run "experimental_v2_takes_precedence_without_legacy_addresses" {
       experimental = {
         runner = {
           runner_os                   = "linux"
-          runner_architecture         = "x64"
+          runner_architecture         = "arm64"
           runners_maximum_count       = 2
           enable_organization_runners = true
+        }
+        provider = {
+          type = "ec2"
+          ec2 = {
+            instance_types                = ["m7g.large"]
+            enable_runner_binaries_syncer = true
+          }
+        }
+        matcherConfig = {
+          labelMatchers = [["self-hosted", "linux", "arm64", "experimental"]]
+        }
+      }
+    }
+  }
+
+  assert {
+    condition     = keys(local.runner_config_v1) == ["legacy"] && keys(local.runner_config_v2) == ["experimental"]
+    error_message = "Stable and experimental lanes must remain isolated in their respective lane maps."
+  }
+
+  assert {
+    condition     = keys(module.runners) == ["legacy"] && keys(module.runner_stacks) == ["experimental"]
+    error_message = "Stable lanes must keep module.runners addresses while v2 lanes use module.runner_stacks."
+  }
+
+  assert {
+    condition = (
+      toset(keys(aws_sqs_queue.queued_builds)) == toset(["legacy", "experimental"])
+      && toset(keys(local.runner_matcher_config)) == toset(["legacy", "experimental"])
+    )
+    error_message = "Queues and webhook routing must use the union of stable and experimental lane keys."
+  }
+
+  assert {
+    condition     = toset(keys(module.runner_binaries)) == toset(["linux_x64", "linux_arm64"])
+    error_message = "Runner binary synchronization must include operating-system and architecture combinations from both input versions."
+  }
+
+  assert {
+    condition     = toset(keys(output.runners_map)) == toset(["legacy", "experimental"])
+    error_message = "The public runner map must expose both stable and experimental lane keys."
+  }
+
+  assert {
+    condition = toset(keys(output.runners_map["legacy"])) == toset(
+      [
+        "launch_template_name",
+        "launch_template_id",
+        "launch_template_version",
+        "launch_template_ami_id",
+        "lambda_up",
+        "lambda_up_log_group",
+        "lambda_down",
+        "lambda_down_log_group",
+        "lambda_pool",
+        "lambda_pool_log_group",
+        "role_runner",
+        "role_scale_up",
+        "role_scale_down",
+        "role_pool",
+        "runners_log_groups",
+        "logfiles",
+      ]
+    )
+    error_message = "A coexisting stable lane must retain the legacy flat runners_map entry shape."
+  }
+
+  assert {
+    condition     = output.runners_map["experimental"].provider.type == "ec2" && can(output.runners_map["experimental"].provider.ec2.launch_template)
+    error_message = "A coexisting v2 lane must retain its nested EC2 provider output."
+  }
+}
+
+run "duplicate_lane_keys_are_rejected" {
+  command = plan
+
+  variables {
+    multi_runner_config = {
+      duplicate = {
+        runner_config = {
+          runner_os                     = "linux"
+          runner_architecture           = "x64"
+          instance_types                = ["m5.large"]
+          runners_maximum_count         = 2
+          enable_runner_binaries_syncer = false
+        }
+        matcherConfig = {
+          labelMatchers = [["self-hosted", "linux", "x64"]]
+        }
+      }
+    }
+
+    multi_runner_config_v2 = {
+      duplicate = {
+        runner = {
+          runner_os             = "linux"
+          runner_architecture   = "x64"
+          runners_maximum_count = 2
         }
         provider = {
           type = "ec2"
@@ -249,25 +364,7 @@ run "experimental_v2_takes_precedence_without_legacy_addresses" {
     }
   }
 
-  assert {
-    condition     = length(module.runners) == 0 && keys(module.runner_stacks) == ["experimental"]
-    error_message = "Setting multi_runner_config_v2 must not instantiate any stable v1 runner modules."
-  }
-
-  assert {
-    condition     = keys(aws_sqs_queue.queued_builds) == ["experimental"] && keys(local.runner_matcher_config) == ["experimental"]
-    error_message = "Queues and webhook routing must use only the selected v2 lane keys."
-  }
-
-  assert {
-    condition     = keys(output.runners_map) == ["experimental"]
-    error_message = "The merged public runner map must expose only the selected v2 lane keys."
-  }
-
-  assert {
-    condition     = output.runners_map["experimental"].provider.type == "ec2" && can(output.runners_map["experimental"].provider.ec2.launch_template)
-    error_message = "The selected v2 lane must retain its nested EC2 provider output."
-  }
+  expect_failures = [random_string.random]
 }
 
 run "experimental_v2_rejects_future_providers" {
@@ -283,6 +380,36 @@ run "experimental_v2_rejects_future_providers" {
         }
         provider = {
           type = "microvm"
+        }
+        matcherConfig = {
+          labelMatchers = [["self-hosted", "linux", "x64"]]
+        }
+      }
+    }
+  }
+
+  expect_failures = [var.multi_runner_config_v2]
+}
+
+run "experimental_v2_rejects_profile_without_role" {
+  command = plan
+
+  variables {
+    multi_runner_config_v2 = {
+      invalid_profile = {
+        runner = {
+          runner_os             = "linux"
+          runner_architecture   = "x64"
+          runners_maximum_count = 2
+        }
+        provider = {
+          type = "ec2"
+          ec2 = {
+            instance_types = ["m5.large"]
+            instance_profile = {
+              name = "external-profile"
+            }
+          }
         }
         matcherConfig = {
           labelMatchers = [["self-hosted", "linux", "x64"]]

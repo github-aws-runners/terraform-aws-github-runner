@@ -26,7 +26,6 @@ output "resources" {
   description = "EC2-specific resources and bootstrap logging details."
   value = {
     launch_template    = aws_launch_template.runner
-    role_runner        = aws_iam_role.runner
     runners_log_groups = try(aws_cloudwatch_log_group.gh_runners, [])
     logfiles           = local.logfiles
   }

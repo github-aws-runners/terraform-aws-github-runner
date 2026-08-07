@@ -1,3 +1,4 @@
+# Provider-neutral pool Lambda and scheduler wiring.
 locals {
   pool_name_prefix = (
     length("${var.config.prefix}-pool") <= 38

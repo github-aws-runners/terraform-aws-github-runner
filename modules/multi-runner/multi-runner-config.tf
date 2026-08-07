@@ -22,8 +22,17 @@ locals {
         runners_maximum_count                   = v.runner_config.runners_maximum_count
         scale_down_schedule_expression          = v.runner_config.scale_down_schedule_expression
         scale_up_reserved_concurrent_executions = v.runner_config.scale_up_reserved_concurrent_executions
-        pool_config                             = v.runner_config.pool_config
-        job_retry                               = v.runner_config.job_retry
+        iam = {
+          role = v.runner_config.iam_overrides.override_runner_role == true ? {
+            arn = v.runner_config.iam_overrides.runner_role_arn
+          } : null
+          managed_policy_arns = {
+            for policy_index, policy_arn in v.runner_config.runner_iam_role_managed_policy_arns :
+            "legacy-${policy_index}" => policy_arn
+          }
+        }
+        pool_config = v.runner_config.pool_config
+        job_retry   = v.runner_config.job_retry
       }
 
       provider = {
@@ -47,6 +56,9 @@ locals {
           instance_type_priorities             = v.runner_config.instance_type_priorities
           instance_types                       = v.runner_config.instance_types
           runner_additional_security_group_ids = v.runner_config.runner_additional_security_group_ids
+          instance_profile = v.runner_config.iam_overrides.override_instance_profile == true ? {
+            name = v.runner_config.iam_overrides.instance_profile_name
+          } : null
           runner_iam_role_managed_policy_arns  = v.runner_config.runner_iam_role_managed_policy_arns
           iam_overrides                        = v.runner_config.iam_overrides
           enable_on_demand_failover_for_errors = v.runner_config.enable_on_demand_failover_for_errors
@@ -80,8 +92,15 @@ locals {
     }
   }
 
-  use_multi_runner_config_v2 = length(var.multi_runner_config_v2) > 0
-  multi_runner_config        = local.use_multi_runner_config_v2 ? var.multi_runner_config_v2 : local.multi_runner_config_v1_as_v2
+  duplicate_runner_config_keys = setintersection(
+    toset(keys(var.multi_runner_config)),
+    toset(keys(var.multi_runner_config_v2)),
+  )
+
+  # Phase 1 keeps stable v1 lanes and experimental v2 lanes side by side. A
+  # lane key must belong to exactly one input so its module address and output
+  # contract remain unambiguous.
+  multi_runner_config = merge(local.multi_runner_config_v1_as_v2, var.multi_runner_config_v2)
 
   runner_extra_labels = {
     for k, v in local.multi_runner_config : k => sort(setunion(flatten(v.matcherConfig.labelMatchers), compact(v.runner.runner_extra_labels)))
@@ -97,16 +116,30 @@ locals {
     })
   }
 
-  # Keep stable v1 lanes at their historical module.runners addresses. The
-  # experimental v2 input opts into the new provider-oriented runner stack.
+  # Keep stable v1 lanes at their historical module.runners addresses while
+  # v2 lanes opt into the provider-oriented runner stack.
   runner_config_v1 = {
-    for k, v in local.runner_config : k => v
-    if !local.use_multi_runner_config_v2
+    for k, v in local.multi_runner_config_v1_as_v2 : k => merge(v, {
+      id             = aws_sqs_queue.queued_builds[k].id
+      arn            = aws_sqs_queue.queued_builds[k].arn
+      url            = aws_sqs_queue.queued_builds[k].url
+      runnerProvider = lower(trimspace(v.provider.type))
+      runner = merge(v.runner, {
+        runner_extra_labels = sort(setunion(flatten(v.matcherConfig.labelMatchers), compact(v.runner.runner_extra_labels)))
+      })
+    })
   }
 
   runner_config_v2 = {
-    for k, v in local.runner_config : k => v
-    if local.use_multi_runner_config_v2
+    for k, v in var.multi_runner_config_v2 : k => merge(v, {
+      id             = aws_sqs_queue.queued_builds[k].id
+      arn            = aws_sqs_queue.queued_builds[k].arn
+      url            = aws_sqs_queue.queued_builds[k].url
+      runnerProvider = lower(trimspace(v.provider.type))
+      runner = merge(v.runner, {
+        runner_extra_labels = sort(setunion(flatten(v.matcherConfig.labelMatchers), compact(v.runner.runner_extra_labels)))
+      })
+    })
   }
 
   runner_matcher_config = {
