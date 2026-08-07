@@ -456,7 +456,10 @@ run "returns_ec2_assume_role_policy" {
   }
 
   assert {
-    condition     = output.assume_role_policy == data.aws_iam_policy_document.assume_role.json
+    condition = (
+      output.assume_role_policy == data.aws_iam_policy_document.assume_role.json
+      && output.policies.runner.assume_role_policy == data.aws_iam_policy_document.assume_role.json
+    )
     error_message = "The EC2 provider must return its rendered assume-role policy."
   }
 }

@@ -30,7 +30,7 @@ locals {
 resource "aws_iam_role" "runner" {
   count                = local.create_runner_role ? 1 : 0
   name                 = "${substr("${var.prefix}-runner", 0, 54)}-${substr(md5("${var.prefix}-runner"), 0, 8)}"
-  assume_role_policy   = local.provider.assume_role_policy
+  assume_role_policy   = local.provider_assume_role_policy
   path                 = local.runner_role_path
   permissions_boundary = var.runner.iam.permissions_boundary
   tags                 = local.runner_tags

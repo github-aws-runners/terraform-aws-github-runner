@@ -1,4 +1,10 @@
 locals {
+  provider_runner_policies = {
+    inline_policies     = local.runner_inline_policies
+    managed_policy_arns = {}
+    assume_role_policy  = local.assume_role_policy
+  }
+
   provider_environment_variables = {
     scale_up   = local.scale_up_environment_variables
     scale_down = local.scale_down_environment_variables
@@ -6,10 +12,7 @@ locals {
   }
 
   provider_policies = {
-    runner = {
-      inline_policies     = local.runner_inline_policies
-      managed_policy_arns = {}
-    }
+    runner = local.provider_runner_policies
     scale_up = {
       iam_policy_json            = local.scale_up_iam_policy_json
       additional_iam_policy_json = local.service_linked_role_policy_json
