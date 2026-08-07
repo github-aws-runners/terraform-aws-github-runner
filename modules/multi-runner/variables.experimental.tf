@@ -2,7 +2,7 @@ variable "experimental" {
   description = <<-EOT
     Opt-in experimental features. Omit this object to retain only the stable `multi_runner_config` behavior. Experimental schemas can change before they become stable.
 
-    - `multi_runner_config_v2`: Provider-oriented runner configurations keyed by configuration name. A non-empty map selects v2 for the entire module and ignores `multi_runner_config`. When this map is empty, stable `multi_runner_config` entries continue to use the unchanged `runners` module.
+    - `multi_runner_config_v2`: Provider-oriented runner configurations keyed by configuration name. To opt into v2, leave `multi_runner_config` empty and populate this map. When this map is empty, stable `multi_runner_config` entries continue to use the unchanged `runners` module. Populating both maps in the same module instance is unsupported.
 
     Each `multi_runner_config_v2` entry supports the following nested fields:
 
