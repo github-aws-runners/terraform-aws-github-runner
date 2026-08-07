@@ -4,12 +4,12 @@ import type { ScaleDownRunnerProvider } from '../../scale-runners/types';
 
 type TestScaleDownProvider<TType extends string> = Omit<ScaleDownRunnerProvider, 'type'> & { type: TType };
 
-export interface ScaleDownContractProvider<TType extends string> {
+export interface ScaleDownContractLane<TType extends string> {
   provider: TestScaleDownProvider<TType>;
 }
 
 interface ScaleDownContractOptions<TType extends string> {
-  computeProviders: readonly ScaleDownContractProvider<TType>[];
+  lanes: readonly ScaleDownContractLane<TType>[];
   resolveCapability: MockInstance<
     (type: TType, capability: 'scaleDown') => () => Omit<TestScaleDownProvider<TType>, 'type'>
   >;
@@ -17,11 +17,11 @@ interface ScaleDownContractOptions<TType extends string> {
 }
 
 export function defineScaleDownContractTests<TType extends string>({
-  computeProviders,
+  lanes,
   resolveCapability,
   scaleDown,
 }: ScaleDownContractOptions<TType>): void {
-  describe.each(computeProviders.map((computeProvider) => [computeProvider.provider.type, computeProvider] as const))(
+  describe.each(lanes.map((lane) => [lane.provider.type, lane] as const))(
     '%s scale-down orchestration contract',
     (_, { provider }) => {
       beforeEach(() => {

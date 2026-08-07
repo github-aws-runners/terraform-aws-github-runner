@@ -5,15 +5,15 @@ import type { ActionRequestMessageSQS, ScaleUpRunnerProvider } from '../../scale
 
 type TestScaleUpProvider<TType extends string> = Omit<ScaleUpRunnerProvider, 'type'> & { type: TType };
 
-export interface ScaleUpContractProvider<TType extends string> {
+export interface ScaleUpContractLane<TType extends string> {
   provider: TestScaleUpProvider<TType>;
   state: unknown;
 }
 
 interface ScaleUpContractOptions<TType extends string> {
   createPayloads: () => ActionRequestMessageSQS[];
-  computeProviders: readonly ScaleUpContractProvider<TType>[];
   githubInstallationClient: Octokit;
+  lanes: readonly ScaleUpContractLane<TType>[];
   resolveCapability: MockInstance<
     (type: TType, capability: 'scaleUp') => () => Omit<TestScaleUpProvider<TType>, 'type'>
   >;
@@ -27,13 +27,13 @@ const createResult = {
 };
 
 export function defineScaleUpContractTests<TType extends string>({
-  computeProviders,
   createPayloads,
   githubInstallationClient,
+  lanes,
   resolveCapability,
   scaleUp,
 }: ScaleUpContractOptions<TType>): void {
-  describe.each(computeProviders.map((computeProvider) => [computeProvider.provider.type, computeProvider] as const))(
+  describe.each(lanes.map((lane) => [lane.provider.type, lane] as const))(
     '%s scale-up orchestration contract',
     (_, { provider, state }) => {
       beforeEach(() => {
@@ -47,14 +47,14 @@ export function defineScaleUpContractTests<TType extends string>({
         vi.mocked(provider.createRunners).mockResolvedValue(createResult);
       });
 
-      it('forwards the prepared compute-provider state through runner lookup and creation', async () => {
+      it('forwards the prepared lane state through runner lookup and creation', async () => {
         const payloads = createPayloads();
-        payloads[0].labels = ['compute-provider-label'];
+        payloads[0].labels = ['lane-label'];
 
         await scaleUp(payloads);
 
         expect(resolveCapability).toHaveBeenCalledWith(provider.type, 'scaleUp');
-        expect(provider.resolveLabelsForRunners).toHaveBeenCalledWith(['compute-provider-label']);
+        expect(provider.resolveLabelsForRunners).toHaveBeenCalledWith(['lane-label']);
         expect(provider.getCurrentRunners).toHaveBeenCalledWith(state, {
           runnerOwner: payloads[0].repositoryOwner,
           runnerType: 'Org',
@@ -68,7 +68,7 @@ export function defineScaleUpContractTests<TType extends string>({
         );
       });
 
-      it('does not query current runners when the compute provider has unlimited capacity', async () => {
+      it('does not query current runners when the lane has unlimited capacity', async () => {
         process.env.RUNNERS_MAXIMUM_COUNT = '-1';
         const payloads = createPayloads();
         payloads.push({ ...payloads[0], id: 2, messageId: 'message-2' });
@@ -79,7 +79,7 @@ export function defineScaleUpContractTests<TType extends string>({
         expect(provider.createRunners).toHaveBeenCalledWith(expect.objectContaining({ numberOfRunners: 2 }));
       });
 
-      it('does not create runners when the compute provider has reached maximum capacity', async () => {
+      it('does not create runners when the lane has reached maximum capacity', async () => {
         process.env.RUNNERS_MAXIMUM_COUNT = '1';
         vi.mocked(provider.getCurrentRunners).mockResolvedValue(1);
 

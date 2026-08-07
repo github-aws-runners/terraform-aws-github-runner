@@ -6,24 +6,24 @@ import type { PoolRunnerProvider } from '../../pool/pool-provider';
 
 type TestPoolProvider<TType extends string> = Omit<PoolRunnerProvider, 'type'> & { type: TType };
 
-export interface PoolContractProvider<TType extends string> {
+export interface PoolContractLane<TType extends string> {
   provider: TestPoolProvider<TType>;
 }
 
 interface PoolContractOptions<TType extends string> {
   adjust: (event: PoolEvent) => Promise<void>;
   githubInstallationClient: Octokit;
-  computeProviders: readonly PoolContractProvider<TType>[];
+  lanes: readonly PoolContractLane<TType>[];
   resolveCapability: MockInstance<(type: TType, capability: 'pool') => () => Omit<TestPoolProvider<TType>, 'type'>>;
 }
 
 export function definePoolContractTests<TType extends string>({
   adjust,
-  computeProviders,
   githubInstallationClient,
+  lanes,
   resolveCapability,
 }: PoolContractOptions<TType>): void {
-  describe.each(computeProviders.map((computeProvider) => [computeProvider.provider.type, computeProvider] as const))(
+  describe.each(lanes.map((lane) => [lane.provider.type, lane] as const))(
     '%s pool orchestration contract',
     (_, { provider }) => {
       beforeEach(() => {

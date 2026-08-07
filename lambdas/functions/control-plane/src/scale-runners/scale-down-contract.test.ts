@@ -11,7 +11,7 @@ const mockedResolveCapability = vi.spyOn(controlPlaneProviderRegistry, 'capabili
 
 const cleanEnv = process.env;
 
-const computeProviders = providerTypes.map((type) => ({
+const lanes = providerTypes.map((type) => ({
   provider: {
     type,
     list: vi.fn(),
@@ -28,7 +28,7 @@ beforeEach(() => {
 });
 
 defineScaleDownContractTests<RunnerProviderType>({
-  computeProviders,
+  lanes,
   resolveCapability: mockedResolveCapability,
   scaleDown,
 });
