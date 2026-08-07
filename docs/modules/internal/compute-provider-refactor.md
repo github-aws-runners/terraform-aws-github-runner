@@ -8,7 +8,7 @@
 
 The scale-up, scale-down, pool, job-retry, queue, SSM housekeeping, and GitHub registration workflows are not inherently EC2-specific. The legacy `runners` module combines that common control plane with EC2 launch templates, instance profiles, bootstrap parameters, log groups, IAM permissions, and Lambda environment variables. Adding another compute provider in that structure would require copying common behavior or adding provider conditionals throughout the module.
 
-The refactor introduces a provider boundary so a future microVM or other backend can reuse the control plane. Only the policy statements, environment variables, and resources required by the selected compute provider should change.
+The refactor introduces a provider boundary so MicroVM and other backends can reuse the control plane. Only the policy statements, environment variables, and resources required by the selected compute provider should change.
 
 ## Ownership model
 
@@ -24,11 +24,11 @@ The implementation is split into orchestration, provider-neutral control-plane c
 | `runner-stack/ssm-housekeeper` | Parameter Store cleanup Lambda, schedule, logging, and IAM resources. |
 | `compute-providers/<provider>` | Provider-specific resources, runner-role policy requirements, and the IAM and environment-variable fragments consumed by the common control plane. |
 
-The EC2 provider currently owns the instance profile, launch template, security group, AMI and bootstrap parameters, runner log groups, EC2 policy statements, and EC2 Lambda environment variables. EC2 is the only implemented Terraform compute provider today.
+The EC2 provider owns the instance profile, launch template, security group, AMI and bootstrap parameters, runner log groups, EC2 policy statements, and EC2 Lambda environment variables. The MicroVM provider owns the Lambda MicroVM runtime configuration, execution-role policy, and MicroVM Lambda environment variables. Terraform does not manage MicroVM lifecycle resources directly; the runtime control plane creates and terminates MicroVM runners.
 
 The modules below `runner-stack` are internal implementation boundaries, not standalone public modules. Callers opt into the experimental interface through `experimental.multi_runner_config_v2`; `multi-runner` calls `runner-stack`, which composes the internal modules. Their direct input and output contracts may change while v2 remains experimental.
 
-`runner-stack` selects a compute provider from the single populated typed block under `compute_provider`. For example, `compute_provider = { ec2 = { ... } }` selects EC2; there is no separate `type` input that can disagree with the populated block. Exactly one provider block must be populated, and its presence must be known during planning because it determines the module graph. The stack passes `compute_provider.ec2` to the EC2 module as one nested `config` object. It also passes the provider-neutral `runner`, `github`, `ssm`, and `observability` objects without expanding them back into prefixed scalar inputs. This keeps ownership visible at the module boundary and gives future compute providers an equivalent contract to implement.
+`runner-stack` selects a compute provider from the single populated typed block under `compute_provider`. For example, `compute_provider = { ec2 = { ... } }` selects EC2 and `compute_provider = { microvm = { ... } }` selects MicroVM; there is no separate `type` input that can disagree with the populated block. Exactly one provider block must be populated, and its presence must be known during planning because it determines the module graph. The stack passes `compute_provider.<provider>` to the selected provider module as one nested `config` object. It also passes the provider-neutral `runner`, `github`, `ssm`, and `observability` objects without expanding them back into prefixed scalar inputs. This keeps ownership visible at the module boundary and gives future compute providers an equivalent contract to implement.
 
 The common stack creates or selects the runner IAM role and owns the role trust relationship. The selected provider returns a single nested contract containing `policies.runner`, `policies.scale_up`, `policies.scale_down`, and `policies.pool`, along with component environment variables and provider resources. The common stack attaches those permission documents to the roles owned by the corresponding common components. A provider never creates or attaches a common IAM role.
 
@@ -59,7 +59,7 @@ flowchart TD
   Stack --> Pool["runner-stack/pool"]
   Stack --> Retry["runner-stack/job-retry"]
   Stack --> Housekeeper["runner-stack/ssm-housekeeper"]
-  Stack --> Provider["compute-providers/ec2"]
+  Stack --> Provider["compute-providers/<provider>"]
   Provider --> Scaling
   Provider --> Pool
 ```
@@ -117,7 +117,7 @@ Tags follow the same ownership model. Module tags are defaults; shared Lambda, q
 
 Application logging settings stay together under `observability.logs`, including `level`, retention, encryption, class, and shared log-group tags.
 
-In v1 mode, entries remain exclusively in `runners_map` and retain their flat output fields; `runners_map_v2` is empty. In v2 mode, entries are exposed exclusively through `runners_map_v2` and `runners_map` is empty. Common resources are grouped under `runner`, `scale_up`, `scale_down`, and `pool`, while provider-specific resources remain under `provider.<provider>`. For example, the common runner role is available at `runners_map_v2["configuration"].runner.role`, while EC2 launch-template and runner-log artifacts are under `runners_map_v2["configuration"].provider.ec2`. The populated provider key identifies the compute provider without a duplicate type field. The `pool` value is null when no pool configuration is supplied.
+In v1 mode, entries remain exclusively in `runners_map` and retain their flat output fields; `runners_map_v2` is empty. In v2 mode, entries are exposed exclusively through `runners_map_v2` and `runners_map` is empty. Common resources are grouped under `runner`, `scale_up`, `scale_down`, and `pool`, while provider-specific resources remain under `provider.<provider>`. The provider key is derived dynamically from the selected input block and therefore also identifies the compute provider. For example, the common runner role is available at `runners_map_v2["configuration"].runner.role`, an EC2 selection places launch-template and runner-log artifacts under `runners_map_v2["configuration"].provider.ec2`, and a MicroVM selection places image and execution-role references under `runners_map_v2["configuration"].provider.microvm`. The `pool` value is null when no pool configuration is supplied.
 
 ## Plan-time provider selection and ownership wrappers
 

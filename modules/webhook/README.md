@@ -34,7 +34,7 @@ yarn run dist
 ## Requirements
 
 | Name | Version |
-|------|---------|
+| ---- | ------- |
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.3.0 |
 | <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 6.21 |
 | <a name="requirement_null"></a> [null](#requirement\_null) | ~> 3 |
@@ -42,20 +42,20 @@ yarn run dist
 ## Providers
 
 | Name | Version |
-|------|---------|
+| ---- | ------- |
 | <a name="provider_aws"></a> [aws](#provider\_aws) | >= 6.21 |
 
 ## Modules
 
 | Name | Source | Version |
-|------|--------|---------|
+| ---- | ------ | ------- |
 | <a name="module_direct"></a> [direct](#module\_direct) | ./direct | n/a |
 | <a name="module_eventbridge"></a> [eventbridge](#module\_eventbridge) | ./eventbridge | n/a |
 
 ## Resources
 
 | Name | Type |
-|------|------|
+| ---- | ---- |
 | [aws_apigatewayv2_api.webhook](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/apigatewayv2_api) | resource |
 | [aws_apigatewayv2_integration.webhook](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/apigatewayv2_integration) | resource |
 | [aws_apigatewayv2_route.webhook](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/apigatewayv2_route) | resource |
@@ -65,7 +65,7 @@ yarn run dist
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
+| ---- | ----------- | ---- | ------- | :------: |
 | <a name="input_aws_partition"></a> [aws\_partition](#input\_aws\_partition) | (optional) partition for the base arn if not 'aws' | `string` | `"aws"` | no |
 | <a name="input_eventbridge"></a> [eventbridge](#input\_eventbridge) | Enable the use of EventBridge by the module. By enabling this feature events will be put on the EventBridge by the webhook instead of directly dispatching to queues for scaling.<br/><br/>    `enable`: Enable the EventBridge feature.<br/>    `accept_events`: List can be used to only allow specific events to be putted on the EventBridge. By default all events, empty list will be be interpreted as all events. | <pre>object({<br/>    enable        = optional(bool, false)<br/>    accept_events = optional(list(string), null)<br/>  })</pre> | n/a | yes |
 | <a name="input_github_app_parameters"></a> [github\_app\_parameters](#input\_github\_app\_parameters) | Parameter Store for GitHub App Parameters. | <pre>object({<br/>    webhook_secret = map(string)<br/>  })</pre> | n/a | yes |
@@ -89,7 +89,7 @@ yarn run dist
 | <a name="input_repository_white_list"></a> [repository\_white\_list](#input\_repository\_white\_list) | List of github repository full names (owner/repo\_name) that will be allowed to use the github app. Leave empty for no filtering. | `list(string)` | `[]` | no |
 | <a name="input_role_path"></a> [role\_path](#input\_role\_path) | The path that will be added to the role; if not set, the environment name will be used. | `string` | `null` | no |
 | <a name="input_role_permissions_boundary"></a> [role\_permissions\_boundary](#input\_role\_permissions\_boundary) | Permissions boundary that will be added to the created role for the lambda. | `string` | `null` | no |
-| <a name="input_runner_matcher_config"></a> [runner\_matcher\_config](#input\_runner\_matcher\_config) | SQS queue to publish accepted build events based on the runner type. `runnerProvider` defaults to `ec2`; EC2 is the only provider currently implemented. When exact match is disabled the webhook accepts the event if one of the workflow job labels is part of the matcher. The priority defines the order the matchers are applied. Optional `matcherConfig.enableDynamicLabels` and `matcherConfig.awsDynamicLabelsPolicy` are evaluated by the dispatcher to gate provider dynamic labels per runner. The policy supports `blocked_keys = [<key>]` and `restricted_keys = { <key> = { allowed = [globs], denied = [globs], max = number|string } }`; keys use the provider dynamic label suffix form, for example `instance-type` for `ghr-ec2-instance-type`. | <pre>map(object({<br/>    arn            = string<br/>    id             = string<br/>    runnerProvider = optional(string, "ec2")<br/>    matcherConfig = object({<br/>      labelMatchers           = list(list(string))<br/>      exactMatch              = bool<br/>      bidirectionalLabelMatch = optional(bool, false)<br/>      priority                = optional(number, 999)<br/>      enableDynamicLabels     = optional(bool, false)<br/>      awsDynamicLabelsPolicy  = optional(any, null)<br/>    })<br/>  }))</pre> | n/a | yes |
+| <a name="input_runner_matcher_config"></a> [runner\_matcher\_config](#input\_runner\_matcher\_config) | SQS queue to publish accepted build events based on the runner type. `runnerProvider` defaults to `ec2`; supported values are `ec2` and `microvm`. When exact match is disabled the webhook accepts the event if one of the workflow job labels is part of the matcher. The priority defines the order the matchers are applied. Optional `matcherConfig.enableDynamicLabels` and `matcherConfig.awsDynamicLabelsPolicy` are evaluated by the dispatcher to gate provider dynamic labels per runner. The policy supports `blocked_keys = [<key>]` and `restricted_keys = { <key> = { allowed = [globs], denied = [globs], max = number|string } }`; keys use the provider dynamic label suffix form, for example `instance-type` for `ghr-ec2-instance-type`. | <pre>map(object({<br/>    arn            = string<br/>    id             = string<br/>    runnerProvider = optional(string, "ec2")<br/>    matcherConfig = object({<br/>      labelMatchers           = list(list(string))<br/>      exactMatch              = bool<br/>      bidirectionalLabelMatch = optional(bool, false)<br/>      priority                = optional(number, 999)<br/>      enableDynamicLabels     = optional(bool, false)<br/>      awsDynamicLabelsPolicy = optional(object({<br/>        blocked_keys = optional(list(string), [])<br/>        restricted_keys = optional(map(object({<br/>          allowed = optional(list(string), [])<br/>          denied  = optional(list(string), [])<br/>          max     = optional(string, null)<br/>        })), {})<br/>      }), null)<br/>    })<br/>  }))</pre> | n/a | yes |
 | <a name="input_ssm_paths"></a> [ssm\_paths](#input\_ssm\_paths) | The root path used in SSM to store configuration and secrets. | <pre>object({<br/>    root    = string<br/>    webhook = string<br/>  })</pre> | n/a | yes |
 | <a name="input_tags"></a> [tags](#input\_tags) | Map of tags that will be added to created resources. By default resources will be tagged with name and environment. | `map(string)` | `{}` | no |
 | <a name="input_tracing_config"></a> [tracing\_config](#input\_tracing\_config) | Configuration for lambda tracing. | <pre>object({<br/>    mode                  = optional(string, null)<br/>    capture_http_requests = optional(bool, false)<br/>    capture_error         = optional(bool, false)<br/>  })</pre> | `{}` | no |
@@ -100,7 +100,7 @@ yarn run dist
 ## Outputs
 
 | Name | Description |
-|------|-------------|
+| ---- | ----------- |
 | <a name="output_dispatcher"></a> [dispatcher](#output\_dispatcher) | n/a |
 | <a name="output_endpoint_relative_path"></a> [endpoint\_relative\_path](#output\_endpoint\_relative\_path) | n/a |
 | <a name="output_eventbridge"></a> [eventbridge](#output\_eventbridge) | n/a |
