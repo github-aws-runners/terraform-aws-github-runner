@@ -21,9 +21,8 @@ output "pool" {
 }
 
 output "provider" {
-  description = "Selected compute provider type and its provider-specific resources."
+  description = "Provider-specific resources grouped by compute provider."
   value = {
-    type = local.provider.type
-    ec2  = local.provider.resources
+    ec2 = local.provider.resources
   }
 }
