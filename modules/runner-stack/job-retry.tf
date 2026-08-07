@@ -1,0 +1,62 @@
+
+locals {
+  job_retry_enabled = var.job_retry.enabled
+}
+
+module "job_retry" {
+  source = "./job-retry"
+  count  = local.job_retry_enabled ? 1 : 0
+
+  config = {
+    prefix        = var.prefix
+    aws_partition = var.aws_partition
+    lambda = {
+      artifact = {
+        zip = local.lambda_zip
+        s3  = var.lambda.s3
+      }
+      runtime                        = var.lambda.runtime
+      architecture                   = var.lambda.architecture
+      memory_size                    = var.job_retry.lambda.memory_size
+      timeout                        = var.job_retry.lambda.timeout
+      reserved_concurrent_executions = var.job_retry.lambda.reserved_concurrent_executions
+      environment_variables          = {}
+      vpc = {
+        subnet_ids         = var.lambda.subnet_ids
+        security_group_ids = var.lambda.security_group_ids
+      }
+      role = {
+        path                 = local.lambda_role_path
+        permissions_boundary = var.lambda.role.permissions_boundary
+        principals           = []
+      }
+    }
+    runner = {
+      name_prefix = var.runner.name_prefix
+    }
+    github = var.github
+    queue = {
+      build = var.queue.build
+      event_source_mapping = {
+        batch_size                         = var.queue.event_source_mapping.batch_size
+        maximum_batching_window_in_seconds = var.queue.event_source_mapping.maximum_batching_window_in_seconds
+      }
+      encryption = {
+        sqs_managed_sse_enabled           = true
+        kms_master_key_id                 = null
+        kms_data_key_reuse_period_seconds = null
+      }
+    }
+    ssm = {
+      kms_key = local.kms_key
+    }
+    observability = var.observability
+    tags = {
+      resources            = local.job_retry_tags
+      lambda               = local.job_retry_lambda_tags
+      log_group            = local.job_retry_log_tags
+      queue                = local.job_retry_queue_tags
+      event_source_mapping = local.job_retry_queue_tags
+    }
+  }
+}
