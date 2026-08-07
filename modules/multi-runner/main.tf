@@ -20,7 +20,7 @@ resource "random_string" "random" {
   lifecycle {
     precondition {
       condition     = length(local.duplicate_runner_config_keys) == 0
-      error_message = "Lane keys must be unique across multi_runner_config and multi_runner_config_v2. Duplicate keys: ${join(", ", sort(tolist(local.duplicate_runner_config_keys)))}."
+      error_message = "Runner configuration keys must be unique across multi_runner_config and experimental.multi_runner_config_v2. Duplicate keys: ${join(", ", sort(tolist(local.duplicate_runner_config_keys)))}."
     }
   }
 }

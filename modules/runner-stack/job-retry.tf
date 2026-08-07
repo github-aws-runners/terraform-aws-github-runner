@@ -4,15 +4,17 @@ locals {
 
   job_retry = {
     prefix                                                         = var.prefix
-    tags                                                           = local.tags
+    tags                                                           = local.job_retry_tags
     aws_partition                                                  = var.aws_partition
     architecture                                                   = var.lambda.architecture
     runtime                                                        = var.lambda.runtime
     security_group_ids                                             = var.lambda.security_group_ids
     subnet_ids                                                     = var.lambda.subnet_ids
-    kms_key_arn                                                    = var.ssm.kms_key_arn
-    lambda_tags                                                    = var.lambda.tags
-    log_level                                                      = var.observability.log_level
+    kms_key                                                        = var.ssm.kms_key
+    lambda_tags                                                    = local.job_retry_lambda_tags
+    log_group_tags                                                 = local.job_retry_log_tags
+    queue_tags                                                     = local.job_retry_queue_tags
+    log_level                                                      = var.observability.logs.level
     log_class                                                      = var.observability.logs.class
     logging_kms_key_id                                             = var.observability.logs.kms_key_id
     logging_retention_in_days                                      = var.observability.logs.retention_in_days

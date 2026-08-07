@@ -59,9 +59,11 @@ variables {
       schedule_expression_timezone = "UTC"
       size                         = 2
     }]
-    include_busy_runners           = false
-    role_permissions_boundary      = null
-    kms_key_arn                    = ""
+    include_busy_runners      = false
+    role_permissions_boundary = null
+    kms_key = {
+      arn = "arn:aws:kms:eu-west-1:123456789012:key/pool-test"
+    }
     role_path                      = "/"
     ssm_token_path                 = "/github-runner/tokens"
     ssm_config_path                = "/github-runner/config"
@@ -114,6 +116,11 @@ run "provider_supplies_only_compute_specific_pool_configuration" {
   assert {
     condition     = length(data.aws_iam_policy_document.pool.source_policy_documents) == 2
     error_message = "The pool role policy must merge the common and compute-provider policy documents."
+  }
+
+  assert {
+    condition     = length(data.aws_iam_policy_document.pool_common.statement) == 4
+    error_message = "A present KMS key object must add the pool KMS policy statement."
   }
 
   assert {

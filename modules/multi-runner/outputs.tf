@@ -2,10 +2,10 @@
 output "runners_map" {
   value = merge(
     { for runner_key, runner in module.runners : runner_key => {
-      launch_template_name    = try(runner.launch_template.name, null)
-      launch_template_id      = try(runner.launch_template.id, null)
-      launch_template_version = try(runner.launch_template.latest_version, null)
-      launch_template_ami_id  = try(runner.launch_template.image_id, null)
+      launch_template_name    = runner.launch_template.name
+      launch_template_id      = runner.launch_template.id
+      launch_template_version = runner.launch_template.latest_version
+      launch_template_ami_id  = runner.launch_template.image_id
       lambda_up               = runner.lambda_scale_up
       lambda_up_log_group     = runner.lambda_scale_up_log_group
       lambda_down             = runner.lambda_scale_down

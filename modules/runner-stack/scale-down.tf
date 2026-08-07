@@ -19,7 +19,7 @@ resource "aws_lambda_function" "scale_down" {
   handler           = "index.scaleDownHandler"
   runtime           = var.lambda.runtime
   timeout           = var.scale_down.timeout
-  tags              = merge(local.tags, var.lambda.tags)
+  tags              = local.scale_down_lambda_tags
   memory_size       = var.scale_down.memory_size
   architectures     = [var.lambda.architecture]
 
@@ -29,12 +29,12 @@ resource "aws_lambda_function" "scale_down" {
       ENABLE_METRIC_GITHUB_APP_RATE_LIMIT      = var.observability.metrics.enable && var.observability.metrics.metric.enable_github_app_rate_limit
       GHES_URL                                 = var.github.enterprise_server.url
       USER_AGENT                               = var.github.user_agent
-      LOG_LEVEL                                = upper(var.observability.log_level)
+      LOG_LEVEL                                = upper(var.observability.logs.level)
       MINIMUM_RUNNING_TIME_IN_MINUTES          = coalesce(var.scale_down.minimum_running_time_in_minutes, local.min_runtime_defaults[var.runner.os])
       NODE_TLS_REJECT_UNAUTHORIZED             = var.github.enterprise_server.url != null && !var.github.enterprise_server.ssl_verify ? 0 : 1
       PARAMETER_GITHUB_APP_ID_NAME             = var.github.app_parameters.id.name
       PARAMETER_GITHUB_APP_KEY_BASE64_NAME     = var.github.app_parameters.key_base64.name
-      POWERTOOLS_LOGGER_LOG_EVENT              = var.observability.log_level == "debug" ? "true" : "false"
+      POWERTOOLS_LOGGER_LOG_EVENT              = var.observability.logs.level == "debug" ? "true" : "false"
       SCALE_DOWN_CONFIG                        = jsonencode(var.scale_down.idle_config)
       POWERTOOLS_SERVICE_NAME                  = "${var.prefix}-scale-down"
       POWERTOOLS_METRICS_NAMESPACE             = var.observability.metrics.namespace
@@ -66,13 +66,13 @@ resource "aws_cloudwatch_log_group" "scale_down" {
   retention_in_days = var.observability.logs.retention_in_days
   kms_key_id        = var.observability.logs.kms_key_id
   log_group_class   = var.observability.logs.class
-  tags              = var.tags
+  tags              = local.scale_down_log_tags
 }
 
 resource "aws_cloudwatch_event_rule" "scale_down" {
   name                = "${var.prefix}-scale-down-rule"
   schedule_expression = var.scale_down.schedule_expression
-  tags                = var.tags
+  tags                = local.scale_down_tags
 }
 
 resource "aws_cloudwatch_event_target" "scale_down" {
@@ -93,7 +93,7 @@ resource "aws_iam_role" "scale_down" {
   assume_role_policy   = data.aws_iam_policy_document.lambda_assume_role_policy.json
   path                 = local.lambda_role_path
   permissions_boundary = var.lambda.role.permissions_boundary
-  tags                 = local.tags
+  tags                 = local.scale_down_tags
 }
 
 resource "aws_iam_role_policy" "scale_down" {

@@ -62,7 +62,7 @@ resource "aws_ssm_parameter" "cloudwatch_agent_config_runner" {
   value = var.cloudwatch_config != null ? var.cloudwatch_config : templatefile("${path.module}/templates/cloudwatch_config.json", {
     logfiles = jsonencode(local.logfiles)
   })
-  tags = local.tags
+  tags = merge(local.provider_tags, var.ssm_parameter_tags)
 }
 
 resource "aws_cloudwatch_log_group" "gh_runners" {
@@ -71,5 +71,5 @@ resource "aws_cloudwatch_log_group" "gh_runners" {
   retention_in_days = var.logging_retention_in_days
   kms_key_id        = var.logging_kms_key_id
   log_group_class   = local.loggroups_classes[count.index]
-  tags              = local.tags
+  tags              = merge(local.provider_tags, var.log_group_tags)
 }

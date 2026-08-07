@@ -76,7 +76,7 @@ resource "aws_cloudwatch_log_group" "pool" {
   retention_in_days = var.config.lambda.logging_retention_in_days
   kms_key_id        = var.config.lambda.logging_kms_key_id
   log_group_class   = var.config.lambda.log_class
-  tags              = var.config.tags
+  tags              = merge(var.config.tags, var.config.log_group_tags)
 }
 
 resource "aws_iam_role" "pool" {

@@ -61,6 +61,7 @@ nav:
     - Runners (main): modules/runners.md
     - Submodules (public):
       - Multi Runners: modules/public/multi-runner.md
+      - Compute provider refactor (experimental): compute-provider-refactor.md
       - AMI Housekeeper: modules/public/ami-housekeeper.md
       - Lambda Downloader: modules/public/download-lambda.md
       - Setup IAM permissions: modules/public/setup-iam-permissions.md

@@ -23,14 +23,14 @@ resource "aws_lambda_function" "ssm_housekeeper" {
   handler           = "index.ssmHousekeeper"
   runtime           = var.lambda.runtime
   timeout           = local.ssm_housekeeper.lambda_timeout
-  tags              = merge(local.tags, var.lambda.tags)
+  tags              = local.ssm_housekeeper_lambda_tags
   memory_size       = local.ssm_housekeeper.lambda_memory_size
   architectures     = [var.lambda.architecture]
 
   environment {
     variables = {
       ENVIRONMENT                              = var.prefix
-      LOG_LEVEL                                = upper(var.observability.log_level)
+      LOG_LEVEL                                = upper(var.observability.logs.level)
       SSM_CLEANUP_CONFIG                       = jsonencode(local.ssm_housekeeper.config)
       POWERTOOLS_SERVICE_NAME                  = "${var.prefix}-ssm-housekeeper"
       POWERTOOLS_TRACE_ENABLED                 = var.observability.tracing.mode != null ? true : false
@@ -60,13 +60,13 @@ resource "aws_cloudwatch_log_group" "ssm_housekeeper" {
   retention_in_days = var.observability.logs.retention_in_days
   kms_key_id        = var.observability.logs.kms_key_id
   log_group_class   = var.observability.logs.class
-  tags              = var.tags
+  tags              = local.ssm_housekeeper_log_tags
 }
 
 resource "aws_cloudwatch_event_rule" "ssm_housekeeper" {
   name                = "${var.prefix}-ssm-housekeeper"
   schedule_expression = local.ssm_housekeeper.schedule_expression
-  tags                = var.tags
+  tags                = local.ssm_housekeeper_tags
   state               = local.ssm_housekeeper.state
 }
 
@@ -89,7 +89,7 @@ resource "aws_iam_role" "ssm_housekeeper" {
   assume_role_policy   = data.aws_iam_policy_document.lambda_assume_role_policy.json
   path                 = local.lambda_role_path
   permissions_boundary = var.lambda.role.permissions_boundary
-  tags                 = local.tags
+  tags                 = local.ssm_housekeeper_tags
 }
 
 resource "aws_iam_role_policy" "ssm_housekeeper" {

@@ -6,8 +6,8 @@ output "control_plane" {
       environment_variables      = local.scale_up_environment_variables
       iam_policy_json            = local.scale_up_iam_policy_json
       additional_iam_policy_json = local.service_linked_role_policy_json
-      managed_policy_enabled     = local.ami_id_ssm_parameter_name != null
-      managed_policy_arn         = local.ami_id_ssm_parameter_name != null ? aws_iam_policy.ami_id_ssm_parameter_read[0].arn : null
+      managed_policy_enabled     = local.ami_id_ssm_external
+      managed_policy_arn         = local.ami_id_ssm_external ? aws_iam_policy.ami_id_ssm_parameter_read[0].arn : null
     }
     scale_down = {
       environment_variables = local.scale_down_environment_variables
@@ -16,8 +16,8 @@ output "control_plane" {
     pool = {
       environment_variables  = local.pool_environment_variables
       iam_policy_json        = local.pool_iam_policy_json
-      managed_policy_enabled = local.ami_id_ssm_parameter_name != null
-      managed_policy_arn     = local.ami_id_ssm_parameter_name != null ? aws_iam_policy.ami_id_ssm_parameter_read[0].arn : null
+      managed_policy_enabled = local.ami_id_ssm_external
+      managed_policy_arn     = local.ami_id_ssm_external ? aws_iam_policy.ami_id_ssm_parameter_read[0].arn : null
     }
   }
 }

@@ -1,4 +1,7 @@
-# Plan-time regression fixture for computed role, profile, and policy values.
+# A .tftest.hcl variable block supplies plan-known values. This wrapper uses
+# random_id results to exercise caller inputs that remain unknown during plan,
+# which catches invalid count, for_each, and dynamic-block expressions in the
+# IAM boundary.
 resource "random_id" "external" {
   byte_length = 4
 }
@@ -19,6 +22,14 @@ module "external_iam" {
       vpc_id         = "vpc-12345678"
       subnet_ids     = ["subnet-12345678"]
       instance_types = ["m5.large"]
+      ami = {
+        id_ssm_parameter = {
+          arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/external-ami-${random_id.external.hex}"
+        }
+        kms_key = {
+          arn = "arn:aws:kms:eu-west-1:123456789012:key/${random_id.external.hex}"
+        }
+      }
       instance_profile = {
         name = "external-runner-${random_id.external.hex}"
       }
@@ -54,6 +65,18 @@ module "external_iam" {
     }
   }
 
+  job_retry = {
+    enabled = true
+  }
+
+  pool = {
+    runner_owner = "example"
+    config = [{
+      schedule_expression = "cron(0 8 * * ? *)"
+      size                = 1
+    }]
+  }
+
   github = {
     organization_runners = true
     app_parameters = {
@@ -69,6 +92,9 @@ module "external_iam" {
   }
 
   ssm = {
+    kms_key = {
+      arn = "arn:aws:kms:eu-west-1:123456789012:key/${random_id.external.hex}"
+    }
     paths = {
       root   = "/github-runner/computed-external"
       tokens = "tokens"

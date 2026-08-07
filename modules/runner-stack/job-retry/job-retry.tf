@@ -19,7 +19,7 @@ locals {
     name                  = local.name,
     handler               = "index.jobRetryCheck",
     zip                   = local.lambda_zip,
-    environment_variables = local.environment_variables
+    environment_variables = merge(var.config.environment_variables, local.environment_variables)
     metrics_namespace     = var.config.metrics.namespace
   })
 }
@@ -37,7 +37,7 @@ resource "aws_sqs_queue" "job_retry_check_queue" {
   kms_master_key_id                 = var.config.queue_encryption.kms_master_key_id
   kms_data_key_reuse_period_seconds = var.config.queue_encryption.kms_data_key_reuse_period_seconds
 
-  tags = var.config.tags
+  tags = var.config.queue_tags
 }
 
 module "job_retry" {
@@ -50,6 +50,7 @@ resource "aws_lambda_event_source_mapping" "job_retry" {
   function_name                      = module.job_retry.lambda.function.arn
   batch_size                         = var.config.lambda_event_source_mapping_batch_size
   maximum_batching_window_in_seconds = var.config.lambda_event_source_mapping_maximum_batching_window_in_seconds
+  tags                               = var.config.queue_tags
 }
 
 resource "aws_lambda_permission" "job_retry" {

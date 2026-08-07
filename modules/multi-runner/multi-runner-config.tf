@@ -3,6 +3,8 @@ locals {
   # multi-runner consumers can use the same ownership model as experimental v2.
   multi_runner_config_v1_as_v2 = {
     for k, v in var.multi_runner_config : k => {
+      tags = {}
+
       runner = {
         os                     = v.runner_config.runner_os
         architecture           = v.runner_config.runner_architecture
@@ -17,6 +19,7 @@ locals {
         ephemeral              = v.runner_config.enable_ephemeral_runners
         jit_config_enabled     = v.runner_config.enable_jit_config
         auto_update_disabled   = v.runner_config.disable_runner_autoupdate
+        tags                   = {}
         hooks = {
           job_started   = v.runner_config.runner_hook_job_started
           job_completed = v.runner_config.runner_hook_job_completed
@@ -38,6 +41,10 @@ locals {
         organization_runners = v.runner_config.enable_organization_runners
       }
 
+      lambda = {
+        tags = {}
+      }
+
       queue = {
         delay_webhook_event            = v.runner_config.delay_webhook_event
         job_queue_retention_in_seconds = v.runner_config.job_queue_retention_in_seconds
@@ -46,22 +53,26 @@ locals {
           maximum_batching_window_in_seconds = v.runner_config.lambda_event_source_mapping_maximum_batching_window_in_seconds
         }
         redrive_build_queue = v.redrive_build_queue
+        tags                = {}
       }
 
       scale_up = {
         reserved_concurrent_executions = v.runner_config.scale_up_reserved_concurrent_executions
         job_queued_check_enabled       = v.runner_config.enable_job_queued_check
+        tags                           = {}
       }
 
       scale_down = {
         schedule_expression             = v.runner_config.scale_down_schedule_expression
         minimum_running_time_in_minutes = v.runner_config.minimum_running_time_in_minutes
         idle_config                     = v.runner_config.idle_config
+        tags                            = {}
       }
 
       pool = {
         config       = v.runner_config.pool_config
         runner_owner = v.runner_config.pool_runner_owner
+        tags         = {}
       }
 
       job_retry = {
@@ -69,6 +80,7 @@ locals {
         delay_in_seconds = v.runner_config.job_retry.delay_in_seconds
         delay_backoff    = v.runner_config.job_retry.delay_backoff
         max_attempts     = v.runner_config.job_retry.max_attempts
+        tags             = {}
         lambda = {
           memory_size                    = v.runner_config.job_retry.lambda_memory_size
           timeout                        = v.runner_config.job_retry.lambda_timeout
@@ -76,11 +88,40 @@ locals {
         }
       }
 
+      ssm = {
+        tags    = {}
+        kms_key = null
+        parameters = {
+          tags = {}
+        }
+        housekeeper = {
+          tags = {}
+        }
+      }
+
+      observability = {
+        logs = {
+          tags = {}
+        }
+      }
+
       compute_provider = {
         type = "ec2"
         ec2 = {
-          metadata_options                = v.runner_config.runner_metadata_options
-          ami                             = v.runner_config.ami
+          metadata_options = v.runner_config.runner_metadata_options
+          # Stable v1 keeps its nullable `id_ssm_parameter_arn` leaf. Translate
+          # it once into v2's caller-known ownership wrapper without changing
+          # the input passed to the legacy runners module.
+          ami = v.runner_config.ami == null ? null : {
+            filter = v.runner_config.ami.filter
+            owners = v.runner_config.ami.owners
+            id_ssm_parameter = v.runner_config.ami.id_ssm_parameter_arn == null ? null : {
+              arn = v.runner_config.ami.id_ssm_parameter_arn
+            }
+            kms_key = v.runner_config.ami.kms_key_arn == null ? null : {
+              arn = v.runner_config.ami.kms_key_arn
+            }
+          }
           block_device_mappings           = v.runner_config.block_device_mappings
           create_service_linked_role_spot = v.runner_config.create_service_linked_role_spot
           credit_specification            = v.runner_config.credit_specification
@@ -130,13 +171,13 @@ locals {
 
   duplicate_runner_config_keys = setintersection(
     toset(keys(var.multi_runner_config)),
-    toset(keys(var.multi_runner_config_v2)),
+    toset(keys(var.experimental.multi_runner_config_v2)),
   )
 
-  # Phase 1 keeps stable v1 lanes and experimental v2 lanes side by side. A
-  # lane key must belong to exactly one input so its module address and output
+  # Phase 1 keeps stable v1 and experimental v2 runner configurations side by
+  # side. A configuration key must belong to exactly one input so its module address and output
   # contract remain unambiguous.
-  multi_runner_config = merge(local.multi_runner_config_v1_as_v2, var.multi_runner_config_v2)
+  multi_runner_config = merge(local.multi_runner_config_v1_as_v2, var.experimental.multi_runner_config_v2)
 
   runner_extra_labels = {
     for k, v in local.multi_runner_config : k => sort(setunion(flatten(v.matcherConfig.labelMatchers), compact(v.runner.extra_labels)))
@@ -152,16 +193,31 @@ locals {
     })
   }
 
-  # Keep stable v1 lanes at their historical module.runners addresses while
-  # v2 lanes opt into the provider-oriented runner stack.
+  # Preserve the exact stable v1 shape for the legacy module call. The v1-to-v2
+  # translation above is intentionally limited to shared multi-runner consumers.
+  runner_extra_labels_v1 = {
+    for k, v in var.multi_runner_config :
+    k => sort(setunion(flatten(v.matcherConfig.labelMatchers), compact(v.runner_config.runner_extra_labels)))
+  }
+
   runner_config_v1 = {
-    for k, v in local.runner_config : k => v
-    if contains(keys(var.multi_runner_config), k)
+    for k, v in var.multi_runner_config : k => merge(
+      {
+        id  = aws_sqs_queue.queued_builds[k].id
+        arn = aws_sqs_queue.queued_builds[k].arn
+        url = aws_sqs_queue.queued_builds[k].url
+      },
+      merge(v, {
+        runner_config = merge(v.runner_config, {
+          runner_extra_labels = local.runner_extra_labels_v1[k]
+        })
+      }),
+    )
   }
 
   runner_config_v2 = {
     for k, v in local.runner_config : k => v
-    if contains(keys(var.multi_runner_config_v2), k)
+    if contains(keys(var.experimental.multi_runner_config_v2), k)
   }
 
   runner_matcher_config = {

@@ -47,7 +47,7 @@ resource "aws_iam_role" "runner" {
   assume_role_policy   = local.provider_runner_role.assume_role_policy_json
   path                 = local.runner_role_path
   permissions_boundary = var.runner.iam.permissions_boundary
-  tags                 = local.tags
+  tags                 = local.runner_tags
 
   lifecycle {
     precondition {

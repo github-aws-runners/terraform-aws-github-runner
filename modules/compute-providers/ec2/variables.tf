@@ -1,28 +1,25 @@
 variable "ami" {
-  description = <<EOT
-AMI configuration for the action runner instances. This object allows you to specify all AMI-related settings in one place.
+  description = <<-EOT
+    AMI selection and encryption configuration for runner instances. Null selects the default AMI configuration for `runner_os`.
 
-Parameters:
-- `filter`: Map of lists to filter AMIs by various criteria (e.g., { name = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-*"], state = ["available"] })
-- `owners`: List of AMI owners to limit the search. Common values: ["amazon"], ["self"], or specific AWS account IDs
-- `id_ssm_parameter_name`: Name of an SSM parameter containing the AMI ID. If specified, this overrides the AMI filter
-- `id_ssm_parameter_arn`: ARN of an SSM parameter containing the AMI ID. If specified, this overrides both AMI filter and parameter name
-- `kms_key_arn`: Optional KMS key ARN if the AMI is encrypted with a customer managed key
-
-Defaults to null, in which case the module falls back to individual AMI variables (deprecated).
-EOT
+    - `filter`: AMI filter names mapped to accepted values. These values are merged over the default filter for `runner_os`.
+    - `owners`: AWS account IDs or aliases allowed to own the selected AMI.
+    - `id_ssm_parameter`: Optional externally managed SSM parameter containing the AMI ID. Null creates a provider-managed AMI-ID parameter from the selected AMI. The wrapper's presence is the plan-time ownership discriminator, so keep the object literal even when its ARN comes from another resource.
+    - `id_ssm_parameter.arn`: ARN of the externally managed SSM parameter. The ARN may be unknown until apply.
+    - `kms_key`: Optional customer-managed KMS key required to launch an encrypted AMI or snapshot. The wrapper's presence is the plan-time policy discriminator.
+    - `kms_key.arn`: ARN of the customer-managed KMS key. The ARN may be unknown until apply.
+  EOT
   type = object({
-    filter               = optional(map(list(string)), { state = ["available"] })
-    owners               = optional(list(string), ["amazon"])
-    id_ssm_parameter_arn = optional(string, null)
-    kms_key_arn          = optional(string, null)
+    filter = optional(map(list(string)), { state = ["available"] })
+    owners = optional(list(string), ["amazon"])
+    id_ssm_parameter = optional(object({
+      arn = string
+    }), null)
+    kms_key = optional(object({
+      arn = string
+    }), null)
   })
   default = null
-}
-
-variable "aws_region" {
-  description = "AWS region."
-  type        = string
 }
 
 variable "vpc_id" {
@@ -36,7 +33,12 @@ variable "subnet_ids" {
 }
 
 variable "overrides" {
-  description = "This map provides the possibility to override some defaults. The following attributes are supported: `name_sg` overrides the `Name` tag for all security groups created by this module. `name_runner_agent_instance` overrides the `Name` tag for the ec2 instance defined in the auto launch configuration. `name_docker_machine_runners` overrides the `Name` tag spot instances created by the runner agent."
+  description = <<-EOT
+    Optional resource-name overrides.
+
+    - `name_runner`: Name tag assigned to runner compute resources. An empty value uses the generated provider name.
+    - `name_sg`: Name tag assigned to the managed runner security group. An empty value uses the generated provider name.
+  EOT
   type = object({
     name_runner = optional(string, "")
     name_sg     = optional(string, "")
@@ -46,7 +48,12 @@ variable "overrides" {
 }
 
 variable "iam_overrides" {
-  description = "Overrides for the EC2 instance profile used by the launch template."
+  description = <<-EOT
+    EC2 instance-profile ownership and selection.
+
+    - `override_instance_profile`: Uses an externally managed instance profile when true; otherwise this module creates an instance profile for `runner_role`.
+    - `instance_profile_name`: Name of the externally managed instance profile used by the launch template. Required when `override_instance_profile` is true.
+  EOT
   type = object({
     override_instance_profile = optional(bool, false)
     instance_profile_name     = optional(string, null)
@@ -64,7 +71,12 @@ variable "iam_overrides" {
 }
 
 variable "runner_role" {
-  description = "Runner IAM role created or selected by the common runner stack."
+  description = <<-EOT
+    Runner IAM role created or selected by the common runner stack.
+
+    - `arn`: Role ARN referenced by the EC2 control-plane policies.
+    - `name`: Role name associated with the provider-managed EC2 instance profile.
+  EOT
   type = object({
     arn  = string
     name = string
@@ -77,6 +89,18 @@ variable "tags" {
   default     = {}
 }
 
+variable "ssm_parameter_tags" {
+  description = "Map of tags that will be added to SSM parameters created by the EC2 provider. These tags override provider tags with the same key."
+  type        = map(string)
+  default     = {}
+}
+
+variable "log_group_tags" {
+  description = "Map of tags that will be added to CloudWatch log groups created by the EC2 provider. These tags override provider tags with the same key."
+  type        = map(string)
+  default     = {}
+}
+
 variable "prefix" {
   description = "The prefix used for naming resources"
   type        = string
@@ -84,7 +108,13 @@ variable "prefix" {
 }
 
 variable "s3_runner_binaries" {
-  description = "Bucket details for cached GitHub binary."
+  description = <<-EOT
+    S3 location of the synchronized GitHub runner distribution.
+
+    - `arn`: Bucket ARN referenced by the runner IAM policy.
+    - `id`: Bucket name used to construct the runner-distribution S3 URI.
+    - `key`: Object key of the synchronized runner distribution.
+  EOT
   type = object({
     arn = string
     id  = string
@@ -93,7 +123,20 @@ variable "s3_runner_binaries" {
 }
 
 variable "block_device_mappings" {
-  description = "The EC2 instance block device configuration. Takes the following keys: `device_name`, `delete_on_termination`, `volume_type`, `volume_size`, `encrypted`, `iops`, `throughput`, `kms_key_id`, `snapshot_id`, `volume_initialization_rate`."
+  description = <<-EOT
+    EBS block-device mappings added to the runner launch template.
+
+    - `delete_on_termination`: Deletes the EBS volume when its runner instance terminates.
+    - `device_name`: Device name exposed to the runner instance.
+    - `encrypted`: Enables encryption for the EBS volume.
+    - `iops`: Provisioned IOPS for volume types that support configurable IOPS.
+    - `kms_key_id`: KMS key ID or ARN used to encrypt the EBS volume.
+    - `snapshot_id`: Snapshot used to initialize the EBS volume.
+    - `throughput`: Provisioned throughput in MiB/s for volume types that support configurable throughput.
+    - `volume_initialization_rate`: Fixed volume initialization rate in MiB/s for supported snapshot-backed volumes.
+    - `volume_size`: EBS volume size in GiB.
+    - `volume_type`: EBS volume type.
+  EOT
   type = list(object({
     delete_on_termination      = optional(bool, true)
     device_name                = optional(string, "/dev/xvda")
@@ -163,7 +206,7 @@ variable "runner_os" {
 }
 
 variable "instance_types" {
-  description = "List of instance types for the action runner. Defaults are based on runner_os (al2023 for linux, macOS Sequoia for osx, Windows Server Core for win)."
+  description = "List of EC2 instance types available when launching runner capacity."
   type        = list(string)
   default     = null
 }
@@ -176,7 +219,7 @@ variable "enable_userdata" {
 }
 
 variable "userdata_template" {
-  description = "Alternative user-data template file path, replacing the default template. By providing your own user_data you have to take care of installing all required software, including the action runner. Variables userdata_pre/post_install are ignored."
+  description = "Alternative user-data template file path replacing the default template. The template receives the standard bootstrap values, including `pre_install` and `post_install`; a custom template decides how to use them and must install the required runner software."
   type        = string
   default     = null
 }
@@ -248,7 +291,7 @@ variable "runner_architecture" {
 }
 
 variable "logging_retention_in_days" {
-  description = "Specifies the number of days you want to retain log events for the lambda log group. Possible values are: 0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, and 3653."
+  description = "Number of days to retain events in the EC2 runner log groups. Possible values are: 0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, and 3653."
   type        = number
   default     = 180
 }
@@ -332,7 +375,19 @@ variable "enable_runner_detailed_monitoring" {
 }
 
 variable "egress_rules" {
-  description = "List of egress rules for the GitHub runner instances."
+  description = <<-EOT
+    Egress rules created on the provider-managed runner security group.
+
+    - `cidr_blocks`: IPv4 CIDR destinations allowed by the rule.
+    - `ipv6_cidr_blocks`: IPv6 CIDR destinations allowed by the rule.
+    - `prefix_list_ids`: AWS prefix-list destinations allowed by the rule.
+    - `from_port`: First destination port in the permitted range.
+    - `protocol`: IP protocol name or number. Use `-1` for all protocols.
+    - `security_groups`: Destination security-group IDs allowed by the rule.
+    - `self`: Allows traffic to the managed runner security group itself when true.
+    - `to_port`: Last destination port in the permitted range.
+    - `description`: Optional description assigned to the security-group rule.
+  EOT
   type = list(object({
     cidr_blocks      = list(string)
     ipv6_cidr_blocks = list(string)
@@ -358,13 +413,20 @@ variable "egress_rules" {
 }
 
 variable "runner_ec2_tags" {
-  description = "Map of tags that will be added to the launch template instance tag specifications."
+  description = "Tags added to runner instance, volume, network-interface, and eligible Spot-request tag specifications. These override module tags and the generated runner `Name`; provider-required `ghr:environment`, `ghr:ssm_config_path`, and `ghr:runner_name_prefix` tags take final precedence."
   type        = map(string)
   default     = {}
 }
 
 variable "metadata_options" {
-  description = "Metadata options for the ec2 runner instances. By default, the module uses metadata tags for bootstrapping the runner, only disable `instance_metadata_tags` when using custom scripts for starting the runner."
+  description = <<-EOT
+    Instance Metadata Service configuration in the runner launch template. The default bootstrap flow reads runner configuration from instance tags, so disable metadata tags only when supplying a custom startup flow.
+
+    - `instance_metadata_tags`: Exposes instance tags through Instance Metadata Service when set to `enabled`.
+    - `http_endpoint`: Enables or disables the Instance Metadata Service endpoint.
+    - `http_tokens`: Controls whether IMDSv2 session tokens are optional or required.
+    - `http_put_response_hop_limit`: Network hop limit for Instance Metadata Service token responses.
+  EOT
   type = object({
     instance_metadata_tags      = optional(string, "enabled")
     http_endpoint               = optional(string, "enabled")
@@ -375,7 +437,7 @@ variable "metadata_options" {
 }
 
 variable "enable_runner_binaries_syncer" {
-  description = "Option to disable the lambda to sync GitHub runner distribution, useful when using a pre-build AMI."
+  description = "Uses a synchronized GitHub runner distribution from `s3_runner_binaries` during bootstrap. Disable this when the runner distribution is already present in a prebuilt AMI. This module does not create the synchronization Lambda."
   type        = bool
   default     = true
 }
@@ -387,7 +449,13 @@ variable "enable_user_data_debug_logging" {
 }
 
 variable "ssm_paths" {
-  description = "The root path used in SSM to store configuration and secrets."
+  description = <<-EOT
+    Parameter Store paths used by the EC2 provider and runner bootstrap flow.
+
+    - `root`: Root Parameter Store path for this runner stack.
+    - `tokens`: Path segment under `root` used for registration tokens and just-in-time configuration.
+    - `config`: Path segment under `root` used for persistent runner and provider configuration.
+  EOT
   type = object({
     root   = string
     tokens = string
@@ -417,7 +485,14 @@ variable "credit_specification" {
 }
 
 variable "cpu_options" {
-  description = "The CPU options for the instance. See https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#cpu-options for details. Note that not all instance types support CPU options, see https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-optimize-cpu.html#instance-cpu-options"
+  description = <<-EOT
+    CPU topology and processor-feature configuration for runner instances. Not all instance types support these options.
+
+    - `core_count`: Number of CPU cores exposed to the runner instance.
+    - `threads_per_core`: Number of hardware threads exposed per CPU core.
+    - `amd_sev_snp`: Enables or disables AMD SEV-SNP on supported instance types.
+    - `nested_virtualization`: Enables or disables nested virtualization on supported instance types.
+  EOT
   type = object({
     core_count            = optional(number)
     threads_per_core      = optional(number)
@@ -436,7 +511,19 @@ variable "cpu_options" {
 }
 
 variable "placement" {
-  description = "The placement options for the instance. See https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#placement for details."
+  description = <<-EOT
+    EC2 placement configuration for runner instances.
+
+    - `affinity`: Dedicated Host affinity setting.
+    - `availability_zone`: Availability Zone in which runner instances are placed.
+    - `group_id`: Placement-group ID.
+    - `group_name`: Placement-group name.
+    - `host_id`: Dedicated Host ID.
+    - `host_resource_group_arn`: ARN of the host resource group used for placement.
+    - `spread_domain`: Spread-domain placement value.
+    - `tenancy`: Instance tenancy, such as `default`, `dedicated`, or `host`.
+    - `partition_number`: Placement-group partition number.
+  EOT
   type = object({
     affinity                = optional(string)
     availability_zone       = optional(string)
@@ -452,7 +539,11 @@ variable "placement" {
 }
 
 variable "license_specifications" {
-  description = "Optional EC2 License Manager license configuration ARNs for the runner launch template. Required for macOS dedicated-host runners when the host resource group uses a Mac dedicated host license configuration. See https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#license_specification for details."
+  description = <<-EOT
+    License Manager configurations added to the runner launch template. These may be required for macOS dedicated-host runners when the host resource group uses a Mac dedicated-host license configuration.
+
+    - `license_configuration_arn`: ARN of an AWS License Manager license configuration.
+  EOT
   type = list(object({
     license_configuration_arn = string
   }))

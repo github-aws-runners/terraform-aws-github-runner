@@ -1,18 +1,28 @@
 # AMI selection, bootstrap rendering, launch template, and security group for
 # EC2 runner instances.
 locals {
-  tags = merge(
+  provider_tags = merge(
     {
       "Name" = format("%s-action-runner", var.prefix)
-    },
-    {
-      "ghr:ssm_config_path" = "${var.ssm_paths.root}/${var.ssm_paths.config}"
     },
     var.tags,
   )
 
-  name_sg                         = var.overrides.name_sg == "" ? local.tags["Name"] : var.overrides.name_sg
-  name_runner                     = var.overrides.name_runner == "" ? local.tags["Name"] : var.overrides.name_runner
+  name_sg     = var.overrides.name_sg == "" ? local.provider_tags["Name"] : var.overrides.name_sg
+  name_runner = var.overrides.name_runner == "" ? local.provider_tags["Name"] : var.overrides.name_runner
+  runner_tags = merge(
+    local.provider_tags,
+    {
+      "Name" = local.name_runner
+    },
+    var.runner_ec2_tags,
+    {
+      "ghr:environment"        = var.prefix
+      "ghr:ssm_config_path"    = "${var.ssm_paths.root}/${var.ssm_paths.config}"
+      "ghr:runner_name_prefix" = var.runner_name_prefix
+    },
+  )
+
   role_path                       = var.role_path == null ? "/${var.prefix}/" : var.role_path
   instance_profile_path           = var.instance_profile_path == null ? "/${var.prefix}/" : var.instance_profile_path
   userdata_template               = var.userdata_template == null ? local.default_userdata_template[var.runner_os] : var.userdata_template
@@ -43,16 +53,19 @@ locals {
 
   # Handle AMI configuration
   ami_config = var.ami != null ? var.ami : {
-    filter               = local.default_ami[var.runner_os]
-    owners               = ["amazon"]
-    id_ssm_parameter_arn = null
-    kms_key_arn          = null
+    filter           = local.default_ami[var.runner_os]
+    owners           = ["amazon"]
+    id_ssm_parameter = null
+    kms_key          = null
   }
-  ami_kms_key_arn           = local.ami_config.kms_key_arn != null ? local.ami_config.kms_key_arn : ""
+  ami_kms_key_enabled       = local.ami_config.kms_key != null
+  ami_kms_key_arn           = local.ami_kms_key_enabled ? local.ami_config.kms_key.arn : null
   ami_filter                = merge(local.default_ami[var.runner_os], local.ami_config.filter)
-  ami_id_ssm_module_managed = local.ami_config.id_ssm_parameter_arn == null
+  ami_id_ssm_external       = local.ami_config.id_ssm_parameter != null
+  ami_id_ssm_module_managed = !local.ami_id_ssm_external
+  ami_id_ssm_parameter_arn  = local.ami_id_ssm_external ? local.ami_config.id_ssm_parameter.arn : null
   # Extract parameter name from ARN (format: arn:aws:ssm:region:account:parameter/path/to/param)
-  ami_id_ssm_parameter_name = local.ami_id_ssm_module_managed ? null : try(regex("parameter(/.+)$", local.ami_config.id_ssm_parameter_arn)[0], null)
+  ami_id_ssm_parameter_name = local.ami_id_ssm_external ? try(regex("parameter(/.+)$", local.ami_id_ssm_parameter_arn)[0], null) : null
 
   user_data = var.enable_userdata ? (var.userdata_content == null ? templatefile(local.userdata_template, {
     enable_debug_logging            = var.enable_user_data_debug_logging
@@ -107,7 +120,8 @@ resource "aws_ssm_parameter" "runner_ami_id" {
   value     = data.aws_ami.runner.id
 
   tags = merge(
-    local.tags,
+    local.provider_tags,
+    var.ssm_parameter_tags,
     {
       # Remove parentheses from AMI name to comply with AWS tag constraints
       "ghr:ami_name" = replace(data.aws_ami.runner.name, "/[()]/", "")
@@ -217,7 +231,7 @@ resource "aws_launch_template" "runner" {
   }
 
   instance_initiated_shutdown_behavior = "terminate"
-  image_id                             = "resolve:ssm:${local.ami_id_ssm_module_managed ? aws_ssm_parameter.runner_ami_id[0].arn : var.ami.id_ssm_parameter_arn}"
+  image_id                             = "resolve:ssm:${local.ami_id_ssm_module_managed ? aws_ssm_parameter.runner_ami_id[0].arn : local.ami_id_ssm_parameter_arn}"
   key_name                             = var.key_name
   ebs_optimized                        = var.ebs_optimized
 
@@ -228,30 +242,12 @@ resource "aws_launch_template" "runner" {
 
   tag_specifications {
     resource_type = "instance"
-    tags = merge(
-      local.tags,
-      {
-        "Name" = format("%s", local.name_runner)
-      },
-      {
-        "ghr:runner_name_prefix" = var.runner_name_prefix
-      },
-      var.runner_ec2_tags
-    )
+    tags          = local.runner_tags
   }
 
   tag_specifications {
     resource_type = "volume"
-    tags = merge(
-      local.tags,
-      {
-        "Name" = format("%s", local.name_runner)
-      },
-      {
-        "ghr:runner_name_prefix" = var.runner_name_prefix
-      },
-      var.runner_ec2_tags
-    )
+    tags          = local.runner_tags
   }
 
   # We avoid including the "spot-instances-request" tag_specifications block when on_demand_failover_for_errors is defined,
@@ -262,36 +258,18 @@ resource "aws_launch_template" "runner" {
     for_each = var.instance_target_capacity_type == "spot" && length(var.enable_on_demand_failover_for_errors) == 0 ? [1] : [] # Include the block only if the value is "spot" and on_demand_failover_for_errors is not enabled
     content {
       resource_type = "spot-instances-request"
-      tags = merge(
-        local.tags,
-        {
-          "Name" = format("%s", local.name_runner)
-        },
-        {
-          "ghr:runner_name_prefix" = var.runner_name_prefix
-        },
-        var.runner_ec2_tags
-      )
+      tags          = local.runner_tags
     }
   }
 
   tag_specifications {
     resource_type = "network-interface"
-    tags = merge(
-      local.tags,
-      {
-        "Name" = format("%s", local.name_runner)
-      },
-      {
-        "ghr:runner_name_prefix" = var.runner_name_prefix
-      },
-      var.runner_ec2_tags
-    )
+    tags          = local.runner_tags
   }
 
   user_data = local.encoded_user_data
 
-  tags = local.tags
+  tags = local.provider_tags
 
   update_default_version = true
 
@@ -335,7 +313,7 @@ resource "aws_security_group" "runner_sg" {
   }
 
   tags = merge(
-    local.tags,
+    local.provider_tags,
     {
       "Name" = format("%s", local.name_sg)
     },

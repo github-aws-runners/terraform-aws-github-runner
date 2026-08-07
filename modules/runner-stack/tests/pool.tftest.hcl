@@ -28,10 +28,12 @@ variables {
       subnet_ids     = ["subnet-12345678"]
       instance_types = ["m5.large"]
       ami = {
-        filter               = { state = ["available"] }
-        owners               = ["amazon"]
-        id_ssm_parameter_arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/external-ami-id"
-        kms_key_arn          = null
+        filter = { state = ["available"] }
+        owners = ["amazon"]
+        id_ssm_parameter = {
+          arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/external-ami-id"
+        }
+        kms_key = null
       }
       binaries_syncer = {
         s3 = {
@@ -112,14 +114,8 @@ run "plan_with_pool_enabled" {
   }
 
   assert {
-    condition = tomap({
-      for tag in jsondecode(aws_lambda_function.scale_up.environment[0].variables["SSM_PARAMETER_STORE_TAGS"]) :
-      tag.Key => tag.Value
-      }) == tomap({
-      Name                  = "github-actions-action-runner"
-      "ghr:ssm_config_path" = "/github-runner/config"
-    })
-    error_message = "Parameter Store tags must include the normalized common stack tags."
+    condition     = length(jsondecode(aws_lambda_function.scale_up.environment[0].variables["SSM_PARAMETER_STORE_TAGS"])) == 0
+    error_message = "Runtime Parameter Store tags must remain empty when no module or SSM tags are configured; EC2 bootstrap tags must not leak into them."
   }
 
   assert {
@@ -324,7 +320,7 @@ run "rejects_unimplemented_compute_provider" {
   expect_failures = [var.compute_provider]
 }
 
-run "job_retry_uses_common_lane_identity" {
+run "job_retry_uses_common_runner_configuration_identity" {
   command = plan
 
   variables {
@@ -342,7 +338,7 @@ run "job_retry_uses_common_lane_identity" {
 
   assert {
     condition     = module.job_retry[0].lambda.function.function.environment[0].variables["RUNNER_NAME_PREFIX"] == "provider-neutral-"
-    error_message = "Job retry must receive the common lane runner-name prefix."
+    error_message = "Job retry must receive the common runner-configuration name prefix."
   }
 
   assert {

@@ -12,9 +12,9 @@ module "pool" {
     user_agent            = var.github.user_agent
     github_app_parameters = var.github.app_parameters
     runners_maximum_count = var.runner.maximum_count
-    kms_key_arn           = local.kms_key_arn
+    kms_key               = local.kms_key
     lambda = {
-      log_level                      = var.observability.log_level
+      log_level                      = var.observability.logs.level
       logging_retention_in_days      = var.observability.logs.retention_in_days
       logging_kms_key_id             = var.observability.logs.kms_key_id
       log_class                      = var.observability.logs.class
@@ -46,8 +46,9 @@ module "pool" {
     }
     ssm_token_path                 = "${var.ssm.paths.root}/${var.ssm.paths.tokens}"
     ssm_config_path                = "${var.ssm.paths.root}/${var.ssm.paths.config}"
-    tags                           = local.tags
-    lambda_tags                    = var.lambda.tags
+    tags                           = local.pool_tags
+    lambda_tags                    = local.pool_lambda_tags
+    log_group_tags                 = local.pool_log_tags
     arn_ssm_parameters_path_config = local.arn_ssm_parameters_path_config
   }
 

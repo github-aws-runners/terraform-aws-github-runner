@@ -5,5 +5,5 @@ resource "aws_iam_instance_profile" "runner" {
   name  = "${var.prefix}-runner-profile"
   role  = var.runner_role.name
   path  = local.instance_profile_path
-  tags  = local.tags
+  tags  = local.provider_tags
 }

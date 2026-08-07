@@ -33,12 +33,12 @@ data "aws_iam_policy_document" "scale_up_common" {
   }
 
   dynamic "statement" {
-    for_each = local.kms_key_arn == "" ? [] : [local.kms_key_arn]
+    for_each = local.kms_key == null ? [] : [local.kms_key]
 
     content {
       effect    = "Allow"
       actions   = ["kms:Decrypt"]
-      resources = [statement.value]
+      resources = [statement.value.arn]
     }
   }
 }

@@ -30,16 +30,17 @@ override_data {
 }
 
 variables {
-  aws_region = "eu-west-1"
   vpc_id     = "vpc-12345678"
   subnet_ids = ["subnet-12345678"]
   prefix     = "provider-test"
 
   ami = {
-    filter               = { state = ["available"] }
-    owners               = ["amazon"]
-    id_ssm_parameter_arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/ami-id"
-    kms_key_arn          = null
+    filter = { state = ["available"] }
+    owners = ["amazon"]
+    id_ssm_parameter = {
+      arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/ami-id"
+    }
+    kms_key = null
   }
 
   instance_types = ["m5.large"]
@@ -115,6 +116,32 @@ run "separates_control_plane_contract_from_ec2_resources" {
   }
 
   assert {
+    condition = (
+      contains(flatten([
+        for statement in data.aws_iam_policy_document.scale_up.statement : [
+          for condition in statement.condition : condition.variable
+        ]
+      ]), "ec2:ResourceTag/ghr:environment")
+      && contains(flatten([
+        for statement in data.aws_iam_policy_document.scale_down.statement : [
+          for condition in statement.condition : condition.variable
+        ]
+      ]), "ec2:ResourceTag/ghr:environment")
+      && !contains(flatten([
+        for statement in data.aws_iam_policy_document.scale_up.statement : [
+          for condition in statement.condition : condition.variable
+        ]
+      ]), "ec2:ResourceTag/gh:environment")
+      && !contains(flatten([
+        for statement in data.aws_iam_policy_document.scale_down.statement : [
+          for condition in statement.condition : condition.variable
+        ]
+      ]), "ec2:ResourceTag/gh:environment")
+    )
+    error_message = "EC2 scale policies must authorize resources by the protected ghr:environment tag."
+  }
+
+  assert {
     condition     = !contains(keys(output.control_plane), "launch_template")
     error_message = "The common control-plane contract must not expose EC2 resources."
   }
@@ -161,6 +188,117 @@ run "accepts_partial_typed_compute_options" {
       && aws_launch_template.runner.metadata_options[0].instance_metadata_tags == "enabled"
     )
     error_message = "Partial metadata options must retain typed defaults for omitted attributes."
+  }
+}
+
+run "separates_provider_runner_and_ssm_tags" {
+  command = plan
+
+  variables {
+    ami = {
+      filter           = { state = ["available"] }
+      owners           = ["amazon"]
+      id_ssm_parameter = null
+      kms_key          = null
+    }
+    tags = {
+      Name  = "provider-name"
+      Scope = "provider"
+    }
+    runner_ec2_tags = {
+      Name                     = "runner-name"
+      Scope                    = "runner"
+      RunnerOnly               = "runner"
+      "ghr:environment"        = "runner-override"
+      "ghr:ssm_config_path"    = "/runner/override"
+      "ghr:runner_name_prefix" = "runner-override"
+    }
+    runner_name_prefix = "required-prefix"
+    ssm_parameter_tags = {
+      Name                       = "ssm-name"
+      Scope                      = "ssm"
+      SsmOnly                    = "ssm"
+      "ghr:ami_name"             = "ssm-override"
+      "ghr:ami_creation_date"    = "ssm-override"
+      "ghr:ami_deprecation_time" = "ssm-override"
+    }
+    enable_cloudwatch_agent = true
+    log_group_tags = {
+      Name    = "log-name"
+      Scope   = "log"
+      LogOnly = "log"
+    }
+  }
+
+  assert {
+    condition = (
+      aws_launch_template.runner.tags["Name"] == "provider-name"
+      && aws_launch_template.runner.tags["Scope"] == "provider"
+      && !contains(keys(aws_launch_template.runner.tags), "RunnerOnly")
+      && !contains(keys(aws_launch_template.runner.tags), "SsmOnly")
+      && !contains(keys(aws_launch_template.runner.tags), "ghr:environment")
+      && !contains(keys(aws_launch_template.runner.tags), "ghr:ssm_config_path")
+      && !contains(keys(aws_launch_template.runner.tags), "ghr:runner_name_prefix")
+    )
+    error_message = "Non-runner EC2 resources must use provider tags without runner or SSM component tags."
+  }
+
+  assert {
+    condition = toset([
+      for tag_specification in aws_launch_template.runner.tag_specifications : tag_specification.resource_type
+    ]) == toset(["instance", "volume", "network-interface", "spot-instances-request"])
+    error_message = "The launch template must define runner tags for every supported runner resource type."
+  }
+
+  assert {
+    condition = alltrue([
+      for tag_specification in aws_launch_template.runner.tag_specifications : (
+        tag_specification.tags["Name"] == "runner-name"
+        && tag_specification.tags["Scope"] == "runner"
+        && tag_specification.tags["RunnerOnly"] == "runner"
+        && !contains(keys(tag_specification.tags), "SsmOnly")
+        && tag_specification.tags["ghr:environment"] == "provider-test"
+        && tag_specification.tags["ghr:ssm_config_path"] == "/github-runner/provider-test/config"
+        && tag_specification.tags["ghr:runner_name_prefix"] == "required-prefix"
+      )
+    ])
+    error_message = "Runner resource tags must apply runner overrides while protecting mandatory bootstrap tags."
+  }
+
+  assert {
+    condition = (
+      aws_ssm_parameter.runner_config_run_as.tags["Name"] == "ssm-name"
+      && aws_ssm_parameter.runner_config_run_as.tags["Scope"] == "ssm"
+      && aws_ssm_parameter.runner_config_run_as.tags["SsmOnly"] == "ssm"
+      && !contains(keys(aws_ssm_parameter.runner_config_run_as.tags), "RunnerOnly")
+      && !contains(keys(aws_ssm_parameter.runner_config_run_as.tags), "ghr:environment")
+    )
+    error_message = "EC2 SSM parameters must merge SSM component tags over provider tags."
+  }
+
+  assert {
+    condition = alltrue([
+      for log_group in aws_cloudwatch_log_group.gh_runners : (
+        log_group.tags["Name"] == "log-name"
+        && log_group.tags["Scope"] == "log"
+        && log_group.tags["LogOnly"] == "log"
+        && !contains(keys(log_group.tags), "RunnerOnly")
+        && !contains(keys(log_group.tags), "SsmOnly")
+      )
+    ])
+    error_message = "EC2 log groups must merge shared log tags over provider tags without runner or SSM tags."
+  }
+
+  assert {
+    condition = (
+      aws_ssm_parameter.runner_ami_id[0].tags["Name"] == "ssm-name"
+      && aws_ssm_parameter.runner_ami_id[0].tags["Scope"] == "ssm"
+      && aws_ssm_parameter.runner_ami_id[0].tags["SsmOnly"] == "ssm"
+      && aws_ssm_parameter.runner_ami_id[0].tags["ghr:ami_name"] == "runner-test"
+      && aws_ssm_parameter.runner_ami_id[0].tags["ghr:ami_creation_date"] == "2026-01-01T00:00:00.000Z"
+      && aws_ssm_parameter.runner_ami_id[0].tags["ghr:ami_deprecation_time"] == ""
+    )
+    error_message = "The managed AMI parameter must preserve authoritative AMI metadata over SSM component tags."
   }
 }
 

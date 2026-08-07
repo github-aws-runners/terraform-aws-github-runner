@@ -38,7 +38,7 @@ data "aws_iam_policy_document" "job_retry" {
   }
 
   dynamic "statement" {
-    for_each = var.config.kms_key_arn == null ? [] : var.config.kms_key_arn == "" ? [] : [var.config.kms_key_arn]
+    for_each = var.config.kms_key == null ? [] : [var.config.kms_key]
 
     content {
       effect = "Allow"
@@ -49,7 +49,7 @@ data "aws_iam_policy_document" "job_retry" {
         "kms:GenerateDataKey",
       ]
 
-      resources = [statement.value]
+      resources = [statement.value.arn]
     }
   }
 }

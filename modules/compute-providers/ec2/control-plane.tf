@@ -1,23 +1,21 @@
 # EC2-specific IAM and environment fragments consumed by the common control
 # plane in runner-stack.
-data "aws_caller_identity" "current" {}
-
 data "aws_iam_policy_document" "ami_id_ssm_parameter_read" {
-  count = local.ami_id_ssm_parameter_name != null ? 1 : 0
+  count = local.ami_id_ssm_external ? 1 : 0
 
   statement {
     effect    = "Allow"
     actions   = ["ssm:GetParameter"]
-    resources = ["arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${trimprefix(local.ami_id_ssm_parameter_name, "/")}"]
+    resources = [local.ami_id_ssm_parameter_arn]
   }
 }
 
 resource "aws_iam_policy" "ami_id_ssm_parameter_read" {
-  count       = local.ami_id_ssm_parameter_name != null ? 1 : 0
+  count       = local.ami_id_ssm_external ? 1 : 0
   name        = "${var.prefix}-ami-id-ssm-parameter-read"
   path        = local.role_path
   description = "Allows for reading ${var.prefix} GitHub runner AMI ID from an SSM parameter"
-  tags        = local.tags
+  tags        = local.provider_tags
   policy      = data.aws_iam_policy_document.ami_id_ssm_parameter_read[0].json
 }
 
@@ -54,7 +52,7 @@ data "aws_iam_policy_document" "scale_up" {
 
     condition {
       test     = "StringEquals"
-      variable = "ec2:ResourceTag/gh:environment"
+      variable = "ec2:ResourceTag/ghr:environment"
       values   = [var.prefix]
     }
   }
@@ -68,11 +66,11 @@ data "aws_iam_policy_document" "scale_up" {
   statement {
     effect    = "Allow"
     actions   = ["ssm:GetParameter", "ssm:GetParameters"]
-    resources = [local.ami_id_ssm_module_managed ? aws_ssm_parameter.runner_ami_id[0].arn : var.ami.id_ssm_parameter_arn]
+    resources = [local.ami_id_ssm_module_managed ? aws_ssm_parameter.runner_ami_id[0].arn : local.ami_id_ssm_parameter_arn]
   }
 
   dynamic "statement" {
-    for_each = local.ami_kms_key_arn != "" ? [local.ami_kms_key_arn] : []
+    for_each = local.ami_kms_key_enabled ? [local.ami_kms_key_arn] : []
 
     content {
       effect    = "Allow"
@@ -82,7 +80,7 @@ data "aws_iam_policy_document" "scale_up" {
   }
 
   dynamic "statement" {
-    for_each = local.ami_kms_key_arn != "" ? [local.ami_kms_key_arn] : []
+    for_each = local.ami_kms_key_enabled ? [local.ami_kms_key_arn] : []
 
     content {
       effect    = "Allow"
@@ -124,7 +122,7 @@ data "aws_iam_policy_document" "scale_down" {
 
     condition {
       test     = "StringEquals"
-      variable = "ec2:ResourceTag/gh:environment"
+      variable = "ec2:ResourceTag/ghr:environment"
       values   = [var.prefix]
     }
   }
@@ -152,11 +150,11 @@ data "aws_iam_policy_document" "pool" {
   statement {
     effect    = "Allow"
     actions   = ["ssm:GetParameters"]
-    resources = [local.ami_id_ssm_module_managed ? aws_ssm_parameter.runner_ami_id[0].arn : var.ami.id_ssm_parameter_arn]
+    resources = [local.ami_id_ssm_module_managed ? aws_ssm_parameter.runner_ami_id[0].arn : local.ami_id_ssm_parameter_arn]
   }
 
   dynamic "statement" {
-    for_each = local.ami_kms_key_arn != "" ? [local.ami_kms_key_arn] : []
+    for_each = local.ami_kms_key_enabled ? [local.ami_kms_key_arn] : []
 
     content {
       effect    = "Allow"
@@ -166,7 +164,7 @@ data "aws_iam_policy_document" "pool" {
   }
 
   dynamic "statement" {
-    for_each = local.ami_kms_key_arn != "" ? [local.ami_kms_key_arn] : []
+    for_each = local.ami_kms_key_enabled ? [local.ami_kms_key_arn] : []
 
     content {
       effect    = "Allow"

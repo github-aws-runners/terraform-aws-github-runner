@@ -21,7 +21,7 @@ resource "aws_lambda_function" "scale_up" {
   timeout                        = var.scale_up.timeout
   reserved_concurrent_executions = var.scale_up.reserved_concurrent_executions
   memory_size                    = var.scale_up.memory_size
-  tags                           = merge(local.tags, var.lambda.tags)
+  tags                           = local.scale_up_lambda_tags
   architectures                  = [var.lambda.architecture]
   environment {
     variables = merge(local.provider.scale_up.environment_variables, {
@@ -34,12 +34,12 @@ resource "aws_lambda_function" "scale_up" {
       ENVIRONMENT                              = var.prefix
       GHES_URL                                 = var.github.enterprise_server.url
       USER_AGENT                               = var.github.user_agent
-      LOG_LEVEL                                = upper(var.observability.log_level)
+      LOG_LEVEL                                = upper(var.observability.logs.level)
       MINIMUM_RUNNING_TIME_IN_MINUTES          = coalesce(var.scale_down.minimum_running_time_in_minutes, local.min_runtime_defaults[var.runner.os])
       NODE_TLS_REJECT_UNAUTHORIZED             = var.github.enterprise_server.url != null && !var.github.enterprise_server.ssl_verify ? 0 : 1
       PARAMETER_GITHUB_APP_ID_NAME             = var.github.app_parameters.id.name
       PARAMETER_GITHUB_APP_KEY_BASE64_NAME     = var.github.app_parameters.key_base64.name
-      POWERTOOLS_LOGGER_LOG_EVENT              = var.observability.log_level == "debug" ? "true" : "false"
+      POWERTOOLS_LOGGER_LOG_EVENT              = var.observability.logs.level == "debug" ? "true" : "false"
       POWERTOOLS_METRICS_NAMESPACE             = var.observability.metrics.namespace
       POWERTOOLS_TRACE_ENABLED                 = var.observability.tracing.mode != null ? true : false
       POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.observability.tracing.capture_http_requests
@@ -78,7 +78,7 @@ resource "aws_cloudwatch_log_group" "scale_up" {
   retention_in_days = var.observability.logs.retention_in_days
   kms_key_id        = var.observability.logs.kms_key_id
   log_group_class   = var.observability.logs.class
-  tags              = var.tags
+  tags              = local.scale_up_log_tags
 }
 
 resource "aws_lambda_event_source_mapping" "scale_up" {
@@ -87,7 +87,7 @@ resource "aws_lambda_event_source_mapping" "scale_up" {
   function_response_types            = ["ReportBatchItemFailures"]
   batch_size                         = var.queue.event_source_mapping.batch_size
   maximum_batching_window_in_seconds = var.queue.event_source_mapping.maximum_batching_window_in_seconds
-  tags                               = var.tags
+  tags                               = local.scale_up_queue_tags
 }
 
 resource "aws_lambda_permission" "scale_runners_lambda" {
@@ -103,7 +103,7 @@ resource "aws_iam_role" "scale_up" {
   assume_role_policy   = data.aws_iam_policy_document.lambda_assume_role_policy.json
   path                 = local.lambda_role_path
   permissions_boundary = var.lambda.role.permissions_boundary
-  tags                 = local.tags
+  tags                 = local.scale_up_tags
 }
 
 resource "aws_iam_role_policy" "scale_up" {

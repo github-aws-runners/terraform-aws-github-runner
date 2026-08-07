@@ -9,7 +9,6 @@ module "ec2" {
   source = "../compute-providers/ec2"
 
   ami        = local.ec2.ami
-  aws_region = var.aws_region
   vpc_id     = local.ec2.vpc_id
   subnet_ids = local.ec2.subnet_ids
   overrides  = local.ec2.overrides
@@ -45,6 +44,7 @@ module "ec2" {
   runner_architecture                  = var.runner.architecture
   logging_retention_in_days            = var.observability.logs.retention_in_days
   logging_kms_key_id                   = var.observability.logs.kms_key_id
+  log_group_tags                       = local.observability_log_tags
   create_service_linked_role_spot      = local.ec2.create_service_linked_role_spot
   aws_partition                        = var.aws_partition
   enable_cloudwatch_agent              = local.ec2.cloudwatch_agent.enabled
@@ -61,6 +61,7 @@ module "ec2" {
   metadata_options                     = local.ec2.metadata_options
   enable_runner_binaries_syncer        = local.ec2.binaries_syncer.enabled
   ssm_paths                            = var.ssm.paths
+  ssm_parameter_tags                   = local.ssm_parameter_tags
   runner_name_prefix                   = var.runner.name_prefix
   credit_specification                 = local.ec2.credit_specification
   cpu_options                          = local.ec2.cpu_options

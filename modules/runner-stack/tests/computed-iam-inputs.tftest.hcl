@@ -6,7 +6,7 @@ mock_provider "aws" {
   }
 }
 
-run "computed_iam_values_keep_plan_shape_known" {
+run "computed_external_values_keep_plan_shape_known" {
   command = plan
 
   module {
@@ -15,7 +15,7 @@ run "computed_iam_values_keep_plan_shape_known" {
 
   assert {
     condition     = output.external_role_runner_count == 0
-    error_message = "A computed external role ARN and profile name must not make role or profile counts unknown."
+    error_message = "Computed external AMI parameter, KMS key, role, and profile values must not make resource or policy-block counts unknown."
   }
 
   assert {
