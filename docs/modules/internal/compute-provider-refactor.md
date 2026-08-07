@@ -2,7 +2,7 @@
 
 !!! warning "Experimental opt-in"
 
-    The provider-oriented Terraform interface is experimental. It is enabled for the whole module instance when `experimental.multi_runner_config_v2` is non-empty. Its schema can change before it becomes stable. When that map is empty, existing `multi_runner_config` deployments continue to use the unchanged legacy implementation. When it is non-empty, only v2 configurations are used and `multi_runner_config` is ignored.
+    The provider-oriented Terraform interface is experimental. Its schema can change before it becomes stable. To enable it for the whole module instance, leave `multi_runner_config` empty and populate `experimental.multi_runner_config_v2`. When the v2 map is empty, existing `multi_runner_config` deployments continue to use the unchanged legacy implementation. Populating both maps is unsupported.
 
 ## Why this refactor exists
 
@@ -43,14 +43,14 @@ Returning the runner trust policy from the same resource-bearing provider module
 
 ## Phase 1 dispatch and compatibility
 
-Phase 1 makes one module-level choice. An empty `experimental.multi_runner_config_v2` selects the stable v1 path; a non-empty map selects the experimental v2 path and ignores `multi_runner_config`. The maps are never merged, so one module instance cannot dispatch some configurations through v1 and others through v2.
+Phase 1 exposes both contracts but requires callers to populate only one runner configuration map per module instance. An empty `experimental.multi_runner_config_v2` selects the stable v1 path. To select the experimental v2 path, `multi_runner_config` must be empty and the v2 map must be populated. The maps are never merged, and supplying both is unsupported.
 
 ```mermaid
 flowchart TD
   Stable["multi_runner_config"] --> Select{"Is experimental.multi_runner_config_v2 non-empty?"}
   Experimental["experimental.multi_runner_config_v2"] --> Select
   Select -->|No| V1["Select and normalize v1"]
-  Select -->|Yes| V2["Select v2 and ignore v1"]
+  Select -->|Yes, with v1 empty| V2["Select v2"]
   V1 --> Shared["Queues, webhook matching, binary discovery"]
   V2 --> Shared
   V1 --> Legacy["module.runners[configuration]"]
@@ -69,9 +69,9 @@ The selected input is normalized once so shared resources can consume one repres
 - When `experimental.multi_runner_config_v2` is empty, every key in `multi_runner_config` continues to call `modules/runners` at its historical `module.runners["configuration"]` address.
 - The stable module call receives the original v1 values for compatibility-sensitive inputs.
 - Stable queue tagging and the flat `runners_map` output remain unchanged.
-- When `experimental.multi_runner_config_v2` is non-empty, every key in that map calls `modules/runner-stack` at `module.runner_stacks["configuration"]`; no resources are created from the ignored v1 map.
+- When `multi_runner_config` is empty and `experimental.multi_runner_config_v2` is non-empty, every key in the v2 map calls `modules/runner-stack` at `module.runner_stacks["configuration"]`.
 - Experimental resources are exposed separately through the nested `runners_map_v2` output.
-- The maps are not combined and duplicate keys do not need special precedence: v2 is the complete selected configuration whenever it is non-empty.
+- The maps are not combined, and there is no precedence rule between them. Populating both maps is unsupported.
 
 No state move is included in phase 1. Enabling v2 for a module instance that already manages v1 runners changes its implementation addresses; phase 1 does not migrate that state. Existing deployments should keep v2 empty until the documented state-migration phase. The current v2 path is intended for new or explicitly experimental deployments.
 
@@ -83,8 +83,8 @@ Set the complete runner configuration map inside the nested experimental object 
 module "multi_runner" {
   source = "github-aws-runners/github-runner/aws//modules/multi-runner"
 
-  # A non-empty v2 map is the module-level experimental opt-in. Any
-  # multi_runner_config value is ignored while this map is non-empty.
+  # A non-empty v2 map is the module-level experimental opt-in. Leave
+  # multi_runner_config empty when using it.
   experimental = {
     multi_runner_config_v2 = {
       arm = {
@@ -117,7 +117,7 @@ Tags follow the same ownership model. Module tags are defaults; shared Lambda, q
 
 Application logging settings stay together under `observability.logs`, including `level`, retention, encryption, class, and shared log-group tags.
 
-In v1 mode, entries remain exclusively in `runners_map` and retain their flat output fields; `runners_map_v2` is empty. In v2 mode, entries are exposed exclusively through `runners_map_v2` and `runners_map` is empty. Common resources are grouped under `runner`, `scale_up`, `scale_down`, and `pool`, while provider-specific resources remain under `provider.<provider>`. For example, the common runner role is available at `runners_map_v2["configuration"].runner.role`, while EC2 launch-template and runner-log artifacts are under `runners_map_v2["configuration"].provider.ec2`. The returned provider contract may also expose a computed `provider.type` derived from the populated input block; it is output metadata, not an input discriminator. The `pool` value is null when no pool configuration is supplied.
+In v1 mode, entries remain exclusively in `runners_map` and retain their flat output fields; `runners_map_v2` is empty. In v2 mode, entries are exposed exclusively through `runners_map_v2` and `runners_map` is empty. Common resources are grouped under `runner`, `scale_up`, `scale_down`, and `pool`, while provider-specific resources remain under `provider.<provider>`. For example, the common runner role is available at `runners_map_v2["configuration"].runner.role`, while EC2 launch-template and runner-log artifacts are under `runners_map_v2["configuration"].provider.ec2`. The populated provider key identifies the compute provider without a duplicate type field. The `pool` value is null when no pool configuration is supplied.
 
 ## Plan-time provider selection and ownership wrappers
 

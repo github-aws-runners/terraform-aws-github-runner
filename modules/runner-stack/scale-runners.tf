@@ -69,7 +69,7 @@ module "scale_runners" {
   }
 
   runner_provider = {
-    type = local.provider.type
+    type = local.provider_type
     scale_up = {
       environment_variables      = local.provider.environment_variables.scale_up
       iam_policy_json            = local.provider.policies.scale_up.iam_policy_json
