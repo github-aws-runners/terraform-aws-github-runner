@@ -53,20 +53,20 @@ yarn run dist
 ## Requirements
 
 | Name | Version |
-| ---- | ------- |
+|------|---------|
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.3.0 |
 | <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 6.33 |
 
 ## Providers
 
 | Name | Version |
-| ---- | ------- |
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.58.0 |
+|------|---------|
+| <a name="provider_aws"></a> [aws](#provider\_aws) | >= 6.33 |
 
 ## Modules
 
 | Name | Source | Version |
-| ---- | ------ | ------- |
+|------|--------|---------|
 | <a name="module_ec2"></a> [ec2](#module\_ec2) | ../compute-providers/ec2 | n/a |
 | <a name="module_ec2_runner_role"></a> [ec2\_runner\_role](#module\_ec2\_runner\_role) | ../compute-providers/ec2/runner-role | n/a |
 | <a name="module_job_retry"></a> [job\_retry](#module\_job\_retry) | ./job-retry | n/a |
@@ -75,7 +75,7 @@ yarn run dist
 ## Resources
 
 | Name | Type |
-| ---- | ---- |
+|------|------|
 | [aws_cloudwatch_event_rule.scale_down](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_event_rule) | resource |
 | [aws_cloudwatch_event_rule.ssm_housekeeper](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_event_rule) | resource |
 | [aws_cloudwatch_event_target.scale_down](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_event_target) | resource |
@@ -124,7 +124,7 @@ yarn run dist
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-| ---- | ----------- | ---- | ------- | :------: |
+|------|-------------|------|---------|:--------:|
 | <a name="input_aws_partition"></a> [aws\_partition](#input\_aws\_partition) | (optional) partition for the base arn if not 'aws' | `string` | `"aws"` | no |
 | <a name="input_aws_region"></a> [aws\_region](#input\_aws\_region) | AWS region. | `string` | n/a | yes |
 | <a name="input_compute_provider"></a> [compute\_provider](#input\_compute\_provider) | Typed compute-provider configuration. Provider-owned settings must remain inside the selected provider block. | <pre>object({<br/>    type = string<br/><br/>    ec2 = optional(object({<br/>      ami = optional(object({<br/>        filter               = optional(map(list(string)), { state = ["available"] })<br/>        owners               = optional(list(string), ["amazon"])<br/>        id_ssm_parameter_arn = optional(string, null)<br/>        kms_key_arn          = optional(string, null)<br/>      }), null)<br/>      vpc_id     = string<br/>      subnet_ids = list(string)<br/>      overrides = optional(object({<br/>        name_runner = optional(string, "")<br/>        name_sg     = optional(string, "")<br/>      }), {})<br/>      instance_profile = optional(object({<br/>        name = string<br/>      }), null)<br/>      instance_profile_path = optional(string, null)<br/>      s3_runner_binaries = optional(object({<br/>        arn = string<br/>        id  = string<br/>        key = string<br/>      }), null)<br/>      block_device_mappings = optional(list(object({<br/>        delete_on_termination      = optional(bool, true)<br/>        device_name                = optional(string, "/dev/xvda")<br/>        encrypted                  = optional(bool, true)<br/>        iops                       = optional(number)<br/>        kms_key_id                 = optional(string)<br/>        snapshot_id                = optional(string)<br/>        throughput                 = optional(number)<br/>        volume_initialization_rate = optional(number)<br/>        volume_size                = number<br/>        volume_type                = optional(string, "gp3")<br/>      })), [{ volume_size = 30 }])<br/>      ebs_optimized                        = optional(bool, false)<br/>      instance_target_capacity_type        = optional(string, "spot")<br/>      instance_allocation_strategy         = optional(string, "lowest-price")<br/>      instance_type_priorities             = optional(map(number), null)<br/>      instance_max_spot_price              = optional(string, null)<br/>      instance_types                       = list(string)<br/>      enable_userdata                      = optional(bool, true)<br/>      userdata_template                    = optional(string, null)<br/>      userdata_content                     = optional(string, null)<br/>      userdata_pre_install                 = optional(string, "")<br/>      userdata_post_install                = optional(string, "")<br/>      runner_hook_job_started              = optional(string, "")<br/>      runner_hook_job_completed            = optional(string, "")<br/>      enable_ssm_on_runners                = optional(bool, false)<br/>      create_service_linked_role_spot      = optional(bool, false)<br/>      enable_cloudwatch_agent              = optional(bool, true)<br/>      enable_managed_runner_security_group = optional(bool, true)<br/>      cloudwatch_config                    = optional(string, null)<br/>      runner_log_files = optional(list(object({<br/>        log_group_name   = string<br/>        prefix_log_group = bool<br/>        file_path        = string<br/>        log_stream_name  = string<br/>        log_class        = optional(string, "STANDARD")<br/>      })), null)<br/>      key_name                             = optional(string, null)<br/>      runner_additional_security_group_ids = optional(list(string), [])<br/>      enable_runner_detailed_monitoring    = optional(bool, false)<br/>      egress_rules = optional(list(object({<br/>        cidr_blocks      = list(string)<br/>        ipv6_cidr_blocks = list(string)<br/>        prefix_list_ids  = list(string)<br/>        from_port        = number<br/>        protocol         = string<br/>        security_groups  = list(string)<br/>        self             = bool<br/>        to_port          = number<br/>        description      = string<br/>        })), [{<br/>        cidr_blocks      = ["0.0.0.0/0"]<br/>        ipv6_cidr_blocks = ["::/0"]<br/>        prefix_list_ids  = null<br/>        from_port        = 0<br/>        protocol         = "-1"<br/>        security_groups  = null<br/>        self             = null<br/>        to_port          = 0<br/>        description      = null<br/>      }])<br/>      runner_ec2_tags = optional(map(string), {})<br/>      metadata_options = optional(object({<br/>        instance_metadata_tags      = optional(string, "enabled")<br/>        http_endpoint               = optional(string, "enabled")<br/>        http_tokens                 = optional(string, "required")<br/>        http_put_response_hop_limit = optional(number, 1)<br/>      }), {})<br/>      enable_runner_binaries_syncer  = optional(bool, true)<br/>      enable_user_data_debug_logging = optional(bool, false)<br/>      credit_specification           = optional(string, null)<br/>      cpu_options = optional(object({<br/>        core_count            = optional(number)<br/>        threads_per_core      = optional(number)<br/>        amd_sev_snp           = optional(string)<br/>        nested_virtualization = optional(string)<br/>      }), null)<br/>      placement = optional(object({<br/>        affinity                = optional(string)<br/>        availability_zone       = optional(string)<br/>        group_id                = optional(string)<br/>        group_name              = optional(string)<br/>        host_id                 = optional(string)<br/>        host_resource_group_arn = optional(string)<br/>        spread_domain           = optional(string)<br/>        tenancy                 = optional(string)<br/>        partition_number        = optional(number)<br/>      }), null)<br/>      license_specifications = optional(list(object({<br/>        license_configuration_arn = string<br/>      })), [])<br/>      associate_public_ipv4_address        = optional(bool, false)<br/>      enable_on_demand_failover_for_errors = optional(list(string), [])<br/>      scale_errors = optional(list(string), [<br/>        "UnfulfillableCapacity",<br/>        "MaxSpotInstanceCountExceeded",<br/>        "TargetCapacityLimitExceededException",<br/>        "RequestLimitExceeded",<br/>        "ResourceLimitExceeded",<br/>        "MaxSpotInstanceCountExceeded",<br/>        "MaxSpotFleetRequestCountExceeded",<br/>        "InsufficientInstanceCapacity",<br/>        "InsufficientCapacityOnHost",<br/>      ])<br/>      use_dedicated_host = optional(bool, false)<br/>    }), null)<br/>  })</pre> | n/a | yes |
@@ -193,7 +193,7 @@ yarn run dist
 ## Outputs
 
 | Name | Description |
-| ---- | ----------- |
+|------|-------------|
 | <a name="output_lambda_pool"></a> [lambda\_pool](#output\_lambda\_pool) | n/a |
 | <a name="output_lambda_pool_log_group"></a> [lambda\_pool\_log\_group](#output\_lambda\_pool\_log\_group) | n/a |
 | <a name="output_lambda_scale_down"></a> [lambda\_scale\_down](#output\_lambda\_scale\_down) | n/a |

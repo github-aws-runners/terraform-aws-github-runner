@@ -6,15 +6,15 @@ This internal module builds only the EC2-specific IAM documents required by a ru
 ## Requirements
 
 | Name | Version |
-| ---- | ------- |
+|------|---------|
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.3.0 |
 | <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 6.33 |
 
 ## Providers
 
 | Name | Version |
-| ---- | ------- |
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.58.0 |
+|------|---------|
+| <a name="provider_aws"></a> [aws](#provider\_aws) | >= 6.33 |
 
 ## Modules
 
@@ -23,7 +23,7 @@ No modules.
 ## Resources
 
 | Name | Type |
-| ---- | ---- |
+|------|------|
 | [aws_caller_identity.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/caller_identity) | data source |
 | [aws_iam_policy_document.assume_role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 | [aws_iam_policy_document.cloudwatch](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
@@ -37,7 +37,7 @@ No modules.
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-| ---- | ----------- | ---- | ------- | :------: |
+|------|-------------|------|---------|:--------:|
 | <a name="input_aws_partition"></a> [aws\_partition](#input\_aws\_partition) | AWS partition used to build IAM and SSM ARNs. | `string` | `"aws"` | no |
 | <a name="input_aws_region"></a> [aws\_region](#input\_aws\_region) | AWS region containing the runner configuration parameters. | `string` | n/a | yes |
 | <a name="input_enable_cloudwatch_agent"></a> [enable\_cloudwatch\_agent](#input\_enable\_cloudwatch\_agent) | Include the CloudWatch agent policy in the runner role contract. | `bool` | n/a | yes |
@@ -49,7 +49,7 @@ No modules.
 ## Outputs
 
 | Name | Description |
-| ---- | ----------- |
+|------|-------------|
 | <a name="output_assume_role_policy_json"></a> [assume\_role\_policy\_json](#output\_assume\_role\_policy\_json) | EC2 runner-role trust policy document. |
 | <a name="output_inline_policies"></a> [inline\_policies](#output\_inline\_policies) | EC2 runner-role inline policies keyed by stable provider policy identifiers. |
 | <a name="output_managed_policy_arns"></a> [managed\_policy\_arns](#output\_managed\_policy\_arns) | EC2 provider-managed runner-role policy ARNs keyed by stable identifiers. |
