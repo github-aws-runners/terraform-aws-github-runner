@@ -316,7 +316,7 @@ run "stable_v1_and_experimental_v2_coexist" {
   }
 
   assert {
-    condition     = output.runners_map["experimental"].provider.type == "ec2" && can(output.runners_map["experimental"].provider.ec2.launch_template)
+    condition     = output.runners_map["experimental"].provider.type == "ec2" && contains(keys(output.runners_map["experimental"].provider.ec2), "launch_template")
     error_message = "A coexisting v2 lane must retain its nested EC2 provider output."
   }
 }
