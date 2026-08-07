@@ -2176,9 +2176,11 @@ describe('Retry mechanism tests', () => {
 
 describe('runner provider selection', () => {
   it('rejects unsupported scale-up provider types', async () => {
-    process.env.RUNNER_PROVIDER_TYPE = 'microvm';
+    process.env.RUNNER_PROVIDER_TYPE = 'unsupported-provider';
 
-    await expect(scaleUpModule.scaleUp(TEST_DATA)).rejects.toThrow("Unsupported runner provider type 'microvm'");
+    await expect(scaleUpModule.scaleUp(TEST_DATA)).rejects.toThrow(
+      "Unsupported runner provider type 'unsupported-provider'",
+    );
     expect(mockedAppAuth).not.toHaveBeenCalled();
   });
 });
