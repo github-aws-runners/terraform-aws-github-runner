@@ -8,7 +8,7 @@ locals {
 
   compute_provider_types = {
     for runner_key, provider_types in local.compute_provider_type_candidates :
-    runner_key => length(provider_types) == 1 ? provider_types[0] : null
+    runner_key => one(provider_types)
   }
 
   runner_config_by_provider = {

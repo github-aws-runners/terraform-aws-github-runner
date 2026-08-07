@@ -55,7 +55,7 @@ module "pool" {
   aws_partition  = var.aws_partition
   tracing_config = var.observability.tracing
   runner_provider = {
-    type                   = local.provider_type_for_integrations
+    type                   = local.provider_type
     environment_variables  = local.provider.environment_variables.pool
     iam_policy_json        = local.provider.policies.pool.iam_policy_json
     managed_policy_enabled = local.provider.policies.pool.managed_policy_enabled

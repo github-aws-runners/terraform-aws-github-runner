@@ -22,8 +22,7 @@ output "pool" {
 
 output "provider" {
   description = "Provider-specific resources grouped under the selected provider key."
-  value = merge(
-    { for resources in module.ec2[*].resources : "ec2" => resources },
-    { for resources in module.microvm[*].resources : "microvm" => resources },
-  )
+  value = {
+    (local.provider_type) = local.provider.resources
+  }
 }
