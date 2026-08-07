@@ -15,7 +15,11 @@ module "ec2_runner_role" {
 
 locals {
   provider_runner_role = one(module.ec2_runner_role[*])
-  create_runner_role   = local.provider_type == "ec2" && var.runner.iam.role == null
+
+  # Role ownership belongs to the common stack. The selected compute provider
+  # contributes its trust and permission documents, but does not decide whether
+  # the role is created.
+  create_runner_role = var.runner.iam.role == null
 
   runner_role = {
     arn  = local.create_runner_role ? one(aws_iam_role.runner[*].arn) : var.runner.iam.role.arn
@@ -47,7 +51,7 @@ resource "aws_iam_role" "runner" {
 
   lifecycle {
     precondition {
-      condition     = local.ec2.instance_profile == null || var.runner.iam.role != null
+      condition     = try(local.ec2.instance_profile, null) == null || var.runner.iam.role != null
       error_message = "runner.iam.role must be set when compute_provider.ec2.instance_profile selects an external instance profile."
     }
   }
