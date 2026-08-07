@@ -127,4 +127,27 @@ variable "config" {
     }), {})
     zip = optional(string, null)
   })
+
+  validation {
+    condition     = contains(["arm64", "x86_64"], coalesce(var.config.architecture, "arm64"))
+    error_message = "config.architecture must be arm64 or x86_64."
+  }
+
+  validation {
+    condition = contains([
+      "silly",
+      "trace",
+      "debug",
+      "info",
+      "warn",
+      "error",
+      "fatal",
+    ], coalesce(var.config.log_level, "info"))
+    error_message = "config.log_level must be one of silly, trace, debug, info, warn, error, or fatal."
+  }
+
+  validation {
+    condition     = var.config.prefix == null ? false : length(var.config.prefix) + length("job-retry") <= 63
+    error_message = "config.prefix is required and its length plus job-retry must be less than or equal to 63."
+  }
 }

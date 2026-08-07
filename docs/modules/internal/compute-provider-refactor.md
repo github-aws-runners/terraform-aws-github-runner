@@ -12,15 +12,21 @@ The refactor introduces a provider boundary so a future microVM or other backend
 
 ## Ownership model
 
-The implementation is split into three layers:
+The implementation is split into orchestration, provider-neutral control-plane components, and compute-provider implementations:
 
 | Layer | Owns |
 | --- | --- |
 | `multi-runner` | Stable-to-canonical normalization, configuration keys, build queues, webhook matching, and runner-binary discovery. |
-| `runner-stack` | Scale-up, scale-down, pool, job retry, SSM housekeeper, common Lambda roles and policies, the runner role, and provider dispatch. |
+| `runner-stack` | Provider dispatch, internal component wiring, shared runner configuration in SSM, and the common runner role and policy attachments. |
+| `runner-stack/scale-runners` | Provider-neutral scale-up and scale-down Lambdas, schedules and queue integration, and their execution roles and policies. |
+| `runner-stack/pool` | Optional scheduled runner-pool resources and their Lambda and IAM wiring. |
+| `runner-stack/job-retry` | Optional queued-job retry resources and their Lambda and IAM wiring. |
+| `runner-stack/ssm-housekeeper` | Parameter Store cleanup Lambda, schedule, logging, and IAM resources. |
 | `compute-providers/<type>` | Provider-specific resources, runner-role policy requirements, and the IAM and environment-variable fragments consumed by the common control plane. |
 
 The EC2 provider currently owns the instance profile, launch template, security group, AMI and bootstrap parameters, runner log groups, EC2 policy statements, and EC2 Lambda environment variables. EC2 is the only implemented Terraform compute provider today.
+
+The modules below `runner-stack` are internal implementation boundaries, not standalone public modules. Callers opt into the experimental interface through `experimental.multi_runner_config_v2`; `multi-runner` calls `runner-stack`, which composes the internal modules. Their direct input and output contracts may change while v2 remains experimental.
 
 `runner-stack` passes the canonical `compute_provider.ec2` configuration to the EC2 module as one nested `config` object. It also passes the provider-neutral `runner`, `github`, `ssm`, and `observability` objects without expanding them back into prefixed scalar inputs. The EC2 runner-role policy module consumes the same provider `config` and shared `ssm` boundaries. This keeps ownership visible at every module boundary and gives future compute providers an equivalent contract to implement.
 
@@ -37,7 +43,13 @@ flowchart TD
   Normalize --> Shared["Queues, webhook matching, binary discovery"]
   Stable --> Legacy["module.runners[configuration]"]
   Experimental --> Stack["module.runner_stacks[configuration]"]
+  Stack --> Scaling["runner-stack/scale-runners"]
+  Stack --> Pool["runner-stack/pool"]
+  Stack --> Retry["runner-stack/job-retry"]
+  Stack --> Housekeeper["runner-stack/ssm-housekeeper"]
   Stack --> Provider["compute-providers/ec2"]
+  Provider --> Scaling
+  Provider --> Pool
 ```
 
 Stable input is translated once into the canonical internal shape so shared resources can consume one representation. That translation does not change stable runner dispatch:
@@ -46,6 +58,7 @@ Stable input is translated once into the canonical internal shape so shared reso
 - The stable module call receives the original v1 values for compatibility-sensitive inputs.
 - Stable queue tagging and the flat `runners_map` output remain unchanged.
 - A key present in `experimental.multi_runner_config_v2` calls `modules/runner-stack` at `module.runner_stacks["configuration"]`.
+- Experimental resources are exposed separately through the nested `runners_map_v2` output.
 - Duplicate keys are rejected instead of silently changing a module address or output shape.
 
 No state move is included in phase 1. Moving an existing key from the stable map to the experimental map changes its implementation address and must wait for the documented state-migration phase.
@@ -107,7 +120,7 @@ Tags follow the same ownership model. Module tags are defaults; shared Lambda, q
 
 Application logging settings stay together under `observability.logs`, including `level`, retention, encryption, class, and shared log-group tags.
 
-Stable `runners_map` entries retain their flat output fields. Experimental entries group common resources under `runner`, `scale_up`, `scale_down`, and `pool`; provider-specific resources remain under `provider.<type>`. For example, the common runner role is available at `runners_map["configuration"].runner.role`, while EC2 launch-template and runner-log artifacts are under `runners_map["configuration"].provider.ec2`. The `pool` value is null when no pool configuration is supplied.
+Stable entries remain exclusively in `runners_map` and retain their flat output fields. Experimental entries are exposed exclusively through `runners_map_v2`; common resources are grouped under `runner`, `scale_up`, `scale_down`, and `pool`, while provider-specific resources remain under `provider.<type>`. For example, the common runner role is available at `runners_map_v2["configuration"].runner.role`, while EC2 launch-template and runner-log artifacts are under `runners_map_v2["configuration"].provider.ec2`. The `pool` value is null when no pool configuration is supplied. Keeping the maps separate prevents consumers from having to handle mixed entry schemas when v1 and v2 coexist.
 
 ## Plan-time ownership wrappers
 

@@ -1,4 +1,3 @@
-# IAM policies attached to the scale-up Lambda role.
 data "aws_iam_policy_document" "scale_up_common" {
   statement {
     effect = "Allow"
@@ -16,9 +15,9 @@ data "aws_iam_policy_document" "scale_up_common" {
       "ssm:GetParameters",
     ]
     resources = [
-      var.github.app_parameters.key_base64.arn,
-      var.github.app_parameters.id.arn,
-      "arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.ssm.paths.root}/${var.ssm.paths.config}/*",
+      var.config.github.app_parameters.key_base64.arn,
+      var.config.github.app_parameters.id.arn,
+      "${var.config.ssm.config_path_arn}/*",
     ]
   }
 
@@ -29,11 +28,11 @@ data "aws_iam_policy_document" "scale_up_common" {
       "sqs:GetQueueAttributes",
       "sqs:DeleteMessage",
     ]
-    resources = [var.queue.build.arn]
+    resources = [var.config.queue.build.arn]
   }
 
   dynamic "statement" {
-    for_each = local.kms_key == null ? [] : [local.kms_key]
+    for_each = var.config.ssm.kms_key == null ? [] : [var.config.ssm.kms_key]
 
     content {
       effect    = "Allow"
@@ -46,7 +45,7 @@ data "aws_iam_policy_document" "scale_up_common" {
 data "aws_iam_policy_document" "scale_up" {
   source_policy_documents = [
     data.aws_iam_policy_document.scale_up_common.json,
-    local.provider.scale_up.iam_policy_json,
+    var.runner_provider.scale_up.iam_policy_json,
   ]
 }
 
@@ -62,7 +61,7 @@ data "aws_iam_policy_document" "scale_up_logging" {
 }
 
 data "aws_iam_policy_document" "scale_up_job_retry_publish" {
-  count = local.job_retry_enabled ? 1 : 0
+  count = var.config.job_retry.enabled ? 1 : 0
 
   statement {
     effect = "Allow"
@@ -70,6 +69,6 @@ data "aws_iam_policy_document" "scale_up_job_retry_publish" {
       "sqs:SendMessage",
       "sqs:GetQueueAttributes",
     ]
-    resources = [module.job_retry[0].job_retry_check_queue.arn]
+    resources = [var.config.job_retry.queue.arn]
   }
 }

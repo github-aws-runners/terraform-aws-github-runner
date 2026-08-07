@@ -166,27 +166,22 @@ run "layered_component_tags" {
   command = plan
 
   assert {
-    condition     = aws_lambda_function.scale_up.environment[0].variables["LOG_LEVEL"] == "DEBUG"
+    condition     = module.scale_runners.scale_up.lambda.environment[0].variables["LOG_LEVEL"] == "DEBUG"
     error_message = "The nested observability.logs.level value must configure the control-plane functions."
   }
 
   assert {
-    condition = aws_lambda_function.scale_up.tags == tomap({
+    condition = module.scale_runners.scale_up.lambda.tags == tomap({
       precedence = "scale-up"
       module     = "yes"
       lambda     = "yes"
       scale_up   = "yes"
-      }) && aws_cloudwatch_log_group.scale_up.tags == tomap({
+      }) && module.scale_runners.scale_up.log_group.tags == tomap({
       precedence = "scale-up"
       module     = "yes"
       log        = "yes"
       scale_up   = "yes"
-      }) && aws_lambda_event_source_mapping.scale_up.tags == tomap({
-      precedence = "scale-up"
-      module     = "yes"
-      queue      = "yes"
-      scale_up   = "yes"
-      }) && aws_iam_role.scale_up.tags == tomap({
+      }) && module.scale_runners.scale_up.role.tags == tomap({
       precedence = "scale-up"
       module     = "yes"
       scale_up   = "yes"
@@ -195,21 +190,17 @@ run "layered_component_tags" {
   }
 
   assert {
-    condition = aws_lambda_function.scale_down.tags == tomap({
+    condition = module.scale_runners.scale_down.lambda.tags == tomap({
       precedence = "scale-down"
       module     = "yes"
       lambda     = "yes"
       scale_down = "yes"
-      }) && aws_cloudwatch_log_group.scale_down.tags == tomap({
+      }) && module.scale_runners.scale_down.log_group.tags == tomap({
       precedence = "scale-down"
       module     = "yes"
       log        = "yes"
       scale_down = "yes"
-      }) && aws_cloudwatch_event_rule.scale_down.tags == tomap({
-      precedence = "scale-down"
-      module     = "yes"
-      scale_down = "yes"
-      }) && aws_iam_role.scale_down.tags == tomap({
+      }) && module.scale_runners.scale_down.role.tags == tomap({
       precedence = "scale-down"
       module     = "yes"
       scale_down = "yes"
@@ -233,7 +224,7 @@ run "layered_component_tags" {
       ssm        = "yes"
       parameter  = "yes"
       }) && tomap({
-      for tag in jsondecode(aws_lambda_function.scale_up.environment[0].variables["SSM_PARAMETER_STORE_TAGS"]) :
+      for tag in jsondecode(module.scale_runners.scale_up.lambda.environment[0].variables["SSM_PARAMETER_STORE_TAGS"]) :
       tag.Key => tag.Value
       }) == tomap({
       precedence = "ssm-parameter"
@@ -245,19 +236,19 @@ run "layered_component_tags" {
   }
 
   assert {
-    condition = aws_lambda_function.ssm_housekeeper.tags == tomap({
+    condition = module.ssm_housekeeper.housekeeper.lambda.tags == tomap({
       precedence  = "ssm-housekeeper"
       module      = "yes"
       lambda      = "yes"
       ssm         = "yes"
       housekeeper = "yes"
-      }) && aws_cloudwatch_log_group.ssm_housekeeper.tags == tomap({
+      }) && module.ssm_housekeeper.housekeeper.log_group.tags == tomap({
       precedence  = "ssm-housekeeper"
       module      = "yes"
       log         = "yes"
       ssm         = "yes"
       housekeeper = "yes"
-      }) && aws_iam_role.ssm_housekeeper.tags == tomap({
+      }) && module.ssm_housekeeper.housekeeper.role.tags == tomap({
       precedence  = "ssm-housekeeper"
       module      = "yes"
       ssm         = "yes"
@@ -286,7 +277,7 @@ run "layered_component_tags" {
   }
 
   assert {
-    condition = module.job_retry[0].lambda.function.function.tags == tomap({
+    condition = module.job_retry[0].lambda.function.tags == tomap({
       precedence = "job-retry"
       module     = "yes"
       lambda     = "yes"

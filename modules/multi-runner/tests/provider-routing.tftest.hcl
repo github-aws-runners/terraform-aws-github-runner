@@ -32,6 +32,15 @@ variables {
   syncer_lambda_s3_key  = "runner-binaries-syncer.zip"
 }
 
+run "empty_runner_configurations_return_empty_output_maps" {
+  command = plan
+
+  assert {
+    condition     = length(output.runners_map) == 0 && length(output.runners_map_v2) == 0
+    error_message = "Stable and experimental runner outputs must both be empty when no runner configurations are supplied."
+  }
+}
+
 run "stable_v1_keeps_legacy_runner_module" {
   command = plan
 
@@ -102,6 +111,11 @@ run "stable_v1_keeps_legacy_runner_module" {
   assert {
     condition     = keys(output.runners_map) == ["linux"]
     error_message = "Stable multi_runner_config must preserve the public runner map key."
+  }
+
+  assert {
+    condition     = length(output.runners_map_v2) == 0
+    error_message = "Stable multi_runner_config must not add entries to the experimental runners_map_v2 output."
   }
 
   assert {
@@ -203,12 +217,17 @@ run "experimental_v2_routes_through_provider_stack" {
   }
 
   assert {
-    condition     = keys(output.runners_map) == ["linux"]
-    error_message = "Experimental multi_runner_config_v2 must preserve the public runner map key."
+    condition     = length(output.runners_map) == 0
+    error_message = "Experimental multi_runner_config_v2 must not add nested entries to the stable runners_map output."
   }
 
   assert {
-    condition = toset(keys(output.runners_map["linux"])) == toset(
+    condition     = keys(output.runners_map_v2) == ["linux"]
+    error_message = "Experimental multi_runner_config_v2 must expose its runner configuration key through runners_map_v2."
+  }
+
+  assert {
+    condition = toset(keys(output.runners_map_v2["linux"])) == toset(
       [
         "provider",
         "runner",
@@ -217,40 +236,40 @@ run "experimental_v2_routes_through_provider_stack" {
         "pool",
       ]
     )
-    error_message = "Experimental v2 runners_map entries must group common and provider resources by owner."
+    error_message = "Experimental v2 runners_map_v2 entries must group common and provider resources by owner."
   }
 
   assert {
     condition = (
-      toset(keys(output.runners_map["linux"].runner)) == toset(["role"])
-      && toset(keys(output.runners_map["linux"].scale_up)) == toset(["lambda", "log_group", "role"])
-      && toset(keys(output.runners_map["linux"].scale_down)) == toset(["lambda", "log_group", "role"])
-      && toset(keys(output.runners_map["linux"].pool)) == toset(["lambda", "log_group", "role"])
+      toset(keys(output.runners_map_v2["linux"].runner)) == toset(["role"])
+      && toset(keys(output.runners_map_v2["linux"].scale_up)) == toset(["lambda", "log_group", "role"])
+      && toset(keys(output.runners_map_v2["linux"].scale_down)) == toset(["lambda", "log_group", "role"])
+      && toset(keys(output.runners_map_v2["linux"].pool)) == toset(["lambda", "log_group", "role"])
     )
     error_message = "Experimental v2 common resources must use the nested runner, scale-up, scale-down, and pool contracts."
   }
 
   assert {
     condition = (
-      output.runners_map["linux"].provider.type == "ec2"
-      && toset(keys(output.runners_map["linux"].provider.ec2)) == toset([
+      output.runners_map_v2["linux"].provider.type == "ec2"
+      && toset(keys(output.runners_map_v2["linux"].provider.ec2)) == toset([
         "launch_template",
         "runners_log_groups",
         "logfiles",
       ])
     )
-    error_message = "Experimental v2 must expose only EC2-owned resources under runners_map.<configuration>.provider.ec2."
+    error_message = "Experimental v2 must expose only EC2-owned resources under runners_map_v2.<configuration>.provider.ec2."
   }
 
   assert {
     condition = (
-      !contains(keys(output.runners_map["linux"]), "launch_template_name")
-      && output.runners_map["linux"].runner.role != null
-      && !contains(keys(output.runners_map["linux"].provider.ec2), "role_runner")
-      && !contains(keys(output.runners_map["linux"]), "runners_log_groups")
-      && !contains(keys(output.runners_map["linux"]), "logfiles")
+      !contains(keys(output.runners_map_v2["linux"]), "launch_template_name")
+      && output.runners_map_v2["linux"].runner.role != null
+      && !contains(keys(output.runners_map_v2["linux"].provider.ec2), "role_runner")
+      && !contains(keys(output.runners_map_v2["linux"]), "runners_log_groups")
+      && !contains(keys(output.runners_map_v2["linux"]), "logfiles")
     )
-    error_message = "Experimental v2 must expose the common runner role under runner without duplicating EC2 resources."
+    error_message = "Experimental v2 must expose only its nested schema through runners_map_v2 without legacy flat fields."
   }
 
   assert {
@@ -450,7 +469,7 @@ run "experimental_v2_layers_shared_and_component_tags" {
   }
 
   assert {
-    condition     = output.runners_map["tagged"].pool == null
+    condition     = output.runners_map_v2["tagged"].pool == null
     error_message = "Experimental v2 must expose a null pool object when no pool configuration is supplied."
   }
 }
@@ -527,8 +546,11 @@ run "stable_v1_and_experimental_v2_coexist" {
   }
 
   assert {
-    condition     = toset(keys(output.runners_map)) == toset(["legacy", "experimental"])
-    error_message = "The public runner map must expose both stable and experimental runner configuration keys."
+    condition = (
+      keys(output.runners_map) == ["legacy"]
+      && keys(output.runners_map_v2) == ["experimental"]
+    )
+    error_message = "Stable and experimental runner configuration keys must remain separated across runners_map and runners_map_v2."
   }
 
   assert {
@@ -556,8 +578,18 @@ run "stable_v1_and_experimental_v2_coexist" {
   }
 
   assert {
-    condition     = output.runners_map["experimental"].provider.type == "ec2" && contains(keys(output.runners_map["experimental"].provider.ec2), "launch_template")
+    condition     = output.runners_map_v2["experimental"].provider.type == "ec2" && contains(keys(output.runners_map_v2["experimental"].provider.ec2), "launch_template")
     error_message = "A coexisting v2 runner configuration must retain its nested EC2 provider output."
+  }
+
+  assert {
+    condition = (
+      !contains(keys(output.runners_map["legacy"]), "provider")
+      && !contains(keys(output.runners_map["legacy"]), "runner")
+      && !contains(keys(output.runners_map_v2["experimental"]), "launch_template_name")
+      && !contains(keys(output.runners_map_v2["experimental"]), "lambda_up")
+    )
+    error_message = "Coexisting outputs must not mix the stable flat schema with the experimental nested schema."
   }
 }
 

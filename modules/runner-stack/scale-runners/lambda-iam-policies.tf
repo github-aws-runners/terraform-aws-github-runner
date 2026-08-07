@@ -1,5 +1,4 @@
-# Shared IAM policies used by the control-plane Lambda functions.
-data "aws_iam_policy_document" "lambda_assume_role_policy" {
+data "aws_iam_policy_document" "lambda_assume_role" {
   statement {
     actions = ["sts:AssumeRole"]
 
@@ -11,18 +10,17 @@ data "aws_iam_policy_document" "lambda_assume_role_policy" {
 }
 
 data "aws_iam_policy_document" "lambda_xray" {
-  count = var.observability.tracing.mode != null ? 1 : 0
+  count = var.config.observability.tracing.mode != null ? 1 : 0
+
   statement {
+    sid    = "AllowXRay"
+    effect = "Allow"
     actions = [
       "xray:BatchGetTraces",
       "xray:GetTraceSummaries",
       "xray:PutTelemetryRecords",
-      "xray:PutTraceSegments"
+      "xray:PutTraceSegments",
     ]
-    effect = "Allow"
-    resources = [
-      "*"
-    ]
-    sid = "AllowXRay"
+    resources = ["*"]
   }
 }

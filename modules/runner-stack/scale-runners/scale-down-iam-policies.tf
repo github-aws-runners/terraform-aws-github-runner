@@ -1,4 +1,3 @@
-# IAM policies attached to the scale-down Lambda role.
 data "aws_iam_policy_document" "scale_down_common" {
   statement {
     effect = "Allow"
@@ -7,13 +6,13 @@ data "aws_iam_policy_document" "scale_down_common" {
       "ssm:GetParameters",
     ]
     resources = [
-      var.github.app_parameters.key_base64.arn,
-      var.github.app_parameters.id.arn,
+      var.config.github.app_parameters.key_base64.arn,
+      var.config.github.app_parameters.id.arn,
     ]
   }
 
   dynamic "statement" {
-    for_each = local.kms_key == null ? [] : [local.kms_key]
+    for_each = var.config.ssm.kms_key == null ? [] : [var.config.ssm.kms_key]
 
     content {
       effect    = "Allow"
@@ -26,7 +25,7 @@ data "aws_iam_policy_document" "scale_down_common" {
 data "aws_iam_policy_document" "scale_down" {
   source_policy_documents = [
     data.aws_iam_policy_document.scale_down_common.json,
-    local.provider.scale_down.iam_policy_json,
+    var.runner_provider.scale_down.iam_policy_json,
   ]
 }
 

@@ -89,6 +89,8 @@ jobs:
             "compute-providers/ec2/runner-role",
             "runner-binaries-syncer",
             "runner-stack",
+            "runner-stack/scale-runners",
+            "runner-stack/ssm-housekeeper",
             "runners",
             "setup-iam-permissions",
             "ssm",
@@ -220,6 +222,8 @@ jobs:
           - modules/multi-runner
           - modules/runner-stack
           - modules/runner-stack/pool
+          - modules/runner-stack/scale-runners
+          - modules/runner-stack/ssm-housekeeper
           - modules/compute-providers/ec2
           - modules/compute-providers/ec2/runner-role
     defaults:

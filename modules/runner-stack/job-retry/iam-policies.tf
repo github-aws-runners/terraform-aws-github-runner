@@ -1,4 +1,53 @@
 # IAM policies attached to the job-retry Lambda role.
+data "aws_iam_policy_document" "lambda_assume_role" {
+  statement {
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["lambda.amazonaws.com"]
+    }
+
+    dynamic "principals" {
+      for_each = var.config.principals
+
+      content {
+        type        = principals.value.type
+        identifiers = principals.value.identifiers
+      }
+    }
+  }
+}
+
+data "aws_iam_policy_document" "job_retry_logging" {
+  statement {
+    effect = "Allow"
+
+    actions = [
+      "logs:CreateLogStream",
+      "logs:PutLogEvents",
+    ]
+
+    resources = ["${aws_cloudwatch_log_group.job_retry.arn}*"]
+  }
+}
+
+data "aws_iam_policy_document" "lambda_xray" {
+  count = var.config.tracing_config.mode != null ? 1 : 0
+
+  statement {
+    sid    = "AllowXRay"
+    effect = "Allow"
+    actions = [
+      "xray:BatchGetTraces",
+      "xray:GetTraceSummaries",
+      "xray:PutTelemetryRecords",
+      "xray:PutTraceSegments",
+    ]
+    resources = ["*"]
+  }
+}
+
 data "aws_iam_policy_document" "job_retry" {
   statement {
     effect = "Allow"

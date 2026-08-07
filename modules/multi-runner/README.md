@@ -12,7 +12,7 @@ See [Experimental compute-provider refactor](https://github-aws-runners.github.i
 
 The multi-runner module owns provider-neutral runner-configuration normalization, queues, shared runner-binary discovery, and webhook routing. Stable `multi_runner_config` entries continue to use the existing `modules/runners` module at their historical `module.runners["configuration"]` addresses.
 
-Entries under `experimental.multi_runner_config_v2` opt into `modules/runner-stack` at `module.runner_stacks["configuration"]`. That stack owns common scale-up, scale-down, pool, retry, Lambda roles, and the runner role and attachments. It dispatches typed provider configuration through `compute_provider.type`; the EC2 provider owns EC2 policy requirements, the instance profile, launch template, bootstrap resources, and provider-specific Lambda fragments. EC2 remains the only Terraform-managed runner provider; microVM, CodeBuild, and other provider modules are future work.
+Entries under `experimental.multi_runner_config_v2` opt into `modules/runner-stack` at `module.runner_stacks["configuration"]`. That stack coordinates internal provider-neutral modules for scale-up and scale-down, pool, job retry, and SSM housekeeping, and owns the common runner role and attachments. It dispatches typed provider configuration through `compute_provider.type`; the EC2 provider owns EC2 policy requirements, the instance profile, launch template, bootstrap resources, and provider-specific Lambda fragments. The runner-stack child modules are implementation details rather than standalone public entry points. EC2 remains the only Terraform-managed runner provider; microVM, CodeBuild, and other provider modules are future work.
 
 In v2, common runner-role configuration belongs under `runner.iam`; EC2's optional external instance-profile selection belongs under `compute_provider.ec2.instance_profile`. Provider policy documents are generated internally and attached by the common stack when it creates the role. An external role remains unmanaged and must already contain the required policies.
 
@@ -22,7 +22,7 @@ The two input maps can be used in the same module instance during phase 1, provi
 
 For v2 runner configurations, top-level module `tags` are merged with configuration `tags`. Shared `lambda.tags`, `queue.tags`, and `observability.logs.tags` are then merged with component tags such as `runner.tags`, `scale_up.tags`, `scale_down.tags`, `pool.tags`, `job_retry.tags`, and the nested SSM tag scopes. Narrower scopes win repeated keys. Queue tags also apply to the configuration build queue and dead-letter queue owned by multi-runner. Stable v1 configurations keep their existing tag behavior unchanged.
 
-Stable v1 entries in `runners_map` retain their existing flat output shape. Experimental v2 entries group common resources under `runner`, `scale_up`, `scale_down`, and `pool`, while compute-provider resources are available only under `provider`. Use `runners_map["configuration"].runner.role` for the common runner role and `runners_map["configuration"].scale_up.lambda`, `.log_group`, and `.role` for the scale-up resources. The same resource shape is used for `scale_down` and an enabled `pool`; `pool` is null when it is disabled. For EC2 configurations, launch-template and runner-log resources remain under `runners_map["configuration"].provider.ec2`. The stable flat attributes are intentionally not duplicated in v2 entries.
+The output contracts are separated so a single map never contains two incompatible entry schemas. Stable v1 entries remain exclusively in `runners_map` with their existing flat shape. Experimental v2 entries are exposed exclusively through `runners_map_v2`, grouped under `runner`, `scale_up`, `scale_down`, `pool`, and `provider`. Use `runners_map_v2["configuration"].runner.role` for the common runner role and `runners_map_v2["configuration"].scale_up.lambda`, `.log_group`, and `.role` for the scale-up resources. The same resource shape is used for `scale_down` and an enabled `pool`; `pool` is null when it is disabled. For EC2 configurations, launch-template and runner-log resources remain under `runners_map_v2["configuration"].provider.ec2`. When only one input version is configured, the other output map is empty.
 
 ### Multi-runner v2 migration roadmap
 
@@ -30,7 +30,7 @@ Here, v1 and v2 refer to `multi_runner_config` and `experimental.multi_runner_co
 
 #### Phase 1 — Add v2 alongside v1 (current)
 
-Both input contracts are available in the same module release and can manage different runner configuration keys in one module instance. Existing `multi_runner_config` entries continue through the unchanged `modules/runners` implementation at `module.runners["configuration"]`, retaining their input contract, flat `runners_map` output, and Terraform addresses. Experimental `experimental.multi_runner_config_v2` entries use `module.runner_stacks["configuration"]` and the provider-oriented output shape.
+Both input contracts are available in the same module release and can manage different runner configuration keys in one module instance. Existing `multi_runner_config` entries continue through the unchanged `modules/runners` implementation at `module.runners["configuration"]`, retaining their input contract, flat `runners_map` output, and Terraform addresses. Experimental `experimental.multi_runner_config_v2` entries use `module.runner_stacks["configuration"]` and the nested `runners_map_v2` output shape.
 
 Compatibility guarantee: upgrading without moving a runner configuration from `multi_runner_config` to `experimental.multi_runner_config_v2` requires no state migration and must not move or replace legacy runner resources. Moving an existing configuration key to v2 is deliberately deferred until phase 2 supplies the state mapping.
 
@@ -121,7 +121,7 @@ module "multi-runner" {
 ## Requirements
 
 | Name | Version |
-|------|---------|
+| ---- | ------- |
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.3 |
 | <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 6.33 |
 | <a name="requirement_random"></a> [random](#requirement\_random) | ~> 3.0 |
@@ -129,14 +129,14 @@ module "multi-runner" {
 ## Providers
 
 | Name | Version |
-|------|---------|
+| ---- | ------- |
 | <a name="provider_aws"></a> [aws](#provider\_aws) | >= 6.33 |
 | <a name="provider_random"></a> [random](#provider\_random) | ~> 3.0 |
 
 ## Modules
 
 | Name | Source | Version |
-|------|--------|---------|
+| ---- | ------ | ------- |
 | <a name="module_ami_housekeeper"></a> [ami\_housekeeper](#module\_ami\_housekeeper) | ../ami-housekeeper | n/a |
 | <a name="module_instance_termination_watcher"></a> [instance\_termination\_watcher](#module\_instance\_termination\_watcher) | ../termination-watcher | n/a |
 | <a name="module_runner_binaries"></a> [runner\_binaries](#module\_runner\_binaries) | ../runner-binaries-syncer | n/a |
@@ -148,7 +148,7 @@ module "multi-runner" {
 ## Resources
 
 | Name | Type |
-|------|------|
+| ---- | ---- |
 | [aws_sqs_queue.queued_builds](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sqs_queue) | resource |
 | [aws_sqs_queue.queued_builds_dlq](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sqs_queue) | resource |
 | [aws_sqs_queue_policy.build_queue_dlq_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sqs_queue_policy) | resource |
@@ -159,7 +159,7 @@ module "multi-runner" {
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
+| ---- | ----------- | ---- | ------- | :------: |
 | <a name="input_ami_housekeeper_cleanup_config"></a> [ami\_housekeeper\_cleanup\_config](#input\_ami\_housekeeper\_cleanup\_config) | Configuration for AMI cleanup. | <pre>object({<br/>    maxItems       = optional(number)<br/>    minimumDaysOld = optional(number)<br/>    amiFilters = optional(list(object({<br/>      Name   = string<br/>      Values = list(string)<br/>    })))<br/>    launchTemplateNames = optional(list(string))<br/>    ssmParameterNames   = optional(list(string))<br/>    dryRun              = optional(bool)<br/>  })</pre> | `{}` | no |
 | <a name="input_ami_housekeeper_lambda_memory_size"></a> [ami\_housekeeper\_lambda\_memory\_size](#input\_ami\_housekeeper\_lambda\_memory\_size) | Memory size limit in MB of the lambda. | `number` | `256` | no |
 | <a name="input_ami_housekeeper_lambda_s3_key"></a> [ami\_housekeeper\_lambda\_s3\_key](#input\_ami\_housekeeper\_lambda\_s3\_key) | S3 key for syncer lambda function. Required if using S3 bucket to specify lambdas. | `string` | `null` | no |
@@ -243,11 +243,12 @@ module "multi-runner" {
 ## Outputs
 
 | Name | Description |
-|------|-------------|
+| ---- | ----------- |
 | <a name="output_binaries_syncer_map"></a> [binaries\_syncer\_map](#output\_binaries\_syncer\_map) | n/a |
 | <a name="output_instance_termination_handler"></a> [instance\_termination\_handler](#output\_instance\_termination\_handler) | n/a |
 | <a name="output_instance_termination_watcher"></a> [instance\_termination\_watcher](#output\_instance\_termination\_watcher) | n/a |
-| <a name="output_runners_map"></a> [runners\_map](#output\_runners\_map) | n/a |
+| <a name="output_runners_map"></a> [runners\_map](#output\_runners\_map) | Stable v1 runner resources keyed by runner configuration. Entries retain the historical flat output shape. |
+| <a name="output_runners_map_v2"></a> [runners\_map\_v2](#output\_runners\_map\_v2) | Experimental v2 runner resources keyed by runner configuration and grouped by common or compute-provider ownership. |
 | <a name="output_ssm_parameters"></a> [ssm\_parameters](#output\_ssm\_parameters) | n/a |
 | <a name="output_webhook"></a> [webhook](#output\_webhook) | n/a |
 <!-- END_TF_DOCS -->

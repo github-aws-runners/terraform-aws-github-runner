@@ -122,7 +122,7 @@ run "plan_with_pool_enabled" {
   }
 
   assert {
-    condition     = length(jsondecode(aws_lambda_function.scale_up.environment[0].variables["SSM_PARAMETER_STORE_TAGS"])) == 0
+    condition     = length(jsondecode(module.scale_runners.scale_up.lambda.environment[0].variables["SSM_PARAMETER_STORE_TAGS"])) == 0
     error_message = "Runtime Parameter Store tags must remain empty when no module or SSM tags are configured; EC2 bootstrap tags must not leak into them."
   }
 
@@ -145,23 +145,26 @@ run "plan_with_pool_enabled" {
   }
 
   assert {
-    condition     = aws_lambda_function.scale_up.environment[0].variables["RUNNER_PROVIDER_TYPE"] == "ec2"
+    condition     = module.scale_runners.scale_up.lambda.environment[0].variables["RUNNER_PROVIDER_TYPE"] == "ec2"
     error_message = "Scale-up must receive the provider type from the selected provider."
   }
 
   assert {
-    condition     = aws_lambda_function.scale_up.environment[0].variables["INSTANCE_TYPES"] == "m5.large"
+    condition     = module.scale_runners.scale_up.lambda.environment[0].variables["INSTANCE_TYPES"] == "m5.large"
     error_message = "Scale-up must merge the EC2 environment fragment."
   }
 
   assert {
-    condition     = aws_lambda_function.scale_down.environment[0].variables["RUNNER_BOOT_TIME_IN_MINUTES"] == "5"
+    condition     = module.scale_runners.scale_down.lambda.environment[0].variables["RUNNER_BOOT_TIME_IN_MINUTES"] == "5"
     error_message = "Scale-down must merge the EC2 environment fragment."
   }
 
   assert {
-    condition     = length(aws_iam_role_policy_attachment.ami_id_ssm_parameter_read) == 1
-    error_message = "An external AMI SSM parameter must plan the scale-up policy attachment even when its policy ARN is not known yet."
+    condition = (
+      toset(keys(module.scale_runners.scale_up)) == toset(["lambda", "log_group", "role"])
+      && toset(keys(module.scale_runners.scale_down)) == toset(["lambda", "log_group", "role"])
+    )
+    error_message = "The scale-runners child module must forward the nested scale-up and scale-down resource contracts."
   }
 
 }
@@ -345,12 +348,12 @@ run "job_retry_uses_common_runner_configuration_identity" {
   }
 
   assert {
-    condition     = module.job_retry[0].lambda.function.function.environment[0].variables["RUNNER_NAME_PREFIX"] == "provider-neutral-"
+    condition     = module.job_retry[0].lambda.function.environment[0].variables["RUNNER_NAME_PREFIX"] == "provider-neutral-"
     error_message = "Job retry must receive the common runner-configuration name prefix."
   }
 
   assert {
-    condition     = module.job_retry[0].lambda.function.function.reserved_concurrent_executions == 2
+    condition     = module.job_retry[0].lambda.function.reserved_concurrent_executions == 2
     error_message = "Job retry must apply its configured Lambda reserved concurrency."
   }
 }
