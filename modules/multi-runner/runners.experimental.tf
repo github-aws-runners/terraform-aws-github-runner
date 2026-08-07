@@ -1,3 +1,16 @@
+locals {
+  runner_config_v2 = {
+    for k, v in local.selected_multi_runner_config_v2 : k => merge(v, {
+      id  = aws_sqs_queue.queued_builds[k].id
+      arn = aws_sqs_queue.queued_builds[k].arn
+      url = aws_sqs_queue.queued_builds[k].url
+      runner = merge(v.runner, {
+        extra_labels = sort(setunion(flatten(v.matcherConfig.labelMatchers), compact(v.runner.extra_labels)))
+      })
+    })
+  }
+}
+
 module "runner_stacks" {
   source   = "../runner-stack"
   for_each = local.runner_config_v2
