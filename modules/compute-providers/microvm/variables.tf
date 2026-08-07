@@ -101,15 +101,20 @@ variable "runner" {
     - `boot_time_in_minutes`: Expected boot and registration duration used by scale-down and pool.
     - `name_prefix`: Prefix added to registered runner names.
     - `iam.role.arn`: Resolved common runner role ARN used as the default MicroVM execution role.
+    - `iam.role.name`: Resolved common runner role name.
+    - `iam.role.managed`: Whether runner-stack manages the resolved runner role.
+    - `iam.path`: IAM path associated with the resolved runner role. Null derives the path from `prefix`.
   EOT
   type = object({
     boot_time_in_minutes = optional(number, 5)
     name_prefix          = optional(string, "")
     iam = object({
       role = object({
-        arn  = string
-        name = string
+        arn     = string
+        name    = string
+        managed = optional(bool, true)
       })
+      path = optional(string, null)
     })
   })
 
