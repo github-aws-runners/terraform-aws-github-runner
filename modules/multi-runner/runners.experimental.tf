@@ -56,8 +56,8 @@ locals {
           associate_public_ipv4_address   = var.associate_public_ipv4_address
         }
       } : {},
-      local.compute_provider_types[k] == "microvm" ? {
-        (local.compute_provider_types[k]) = v.compute_provider.microvm
+      local.compute_provider_types[k] != "ec2" ? {
+        (local.compute_provider_types[k]) = v.compute_provider[local.compute_provider_types[k]]
       } : {},
     )
   }
