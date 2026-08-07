@@ -9,7 +9,7 @@ data "aws_iam_policy_document" "lambda_assume_role" {
     }
 
     dynamic "principals" {
-      for_each = var.config.principals
+      for_each = var.config.lambda.role.principals
 
       content {
         type        = principals.value.type
@@ -33,7 +33,7 @@ data "aws_iam_policy_document" "job_retry_logging" {
 }
 
 data "aws_iam_policy_document" "lambda_xray" {
-  count = var.config.tracing_config.mode != null ? 1 : 0
+  count = var.config.observability.tracing.mode != null ? 1 : 0
 
   statement {
     sid    = "AllowXRay"
@@ -58,8 +58,8 @@ data "aws_iam_policy_document" "job_retry" {
     ]
 
     resources = [
-      var.config.github_app_parameters.key_base64.arn,
-      var.config.github_app_parameters.id.arn,
+      var.config.github.app_parameters.key_base64.arn,
+      var.config.github.app_parameters.id.arn,
     ]
   }
 
@@ -83,11 +83,11 @@ data "aws_iam_policy_document" "job_retry" {
       "sqs:GetQueueAttributes",
     ]
 
-    resources = [var.config.sqs_build_queue.arn]
+    resources = [var.config.queue.build.arn]
   }
 
   dynamic "statement" {
-    for_each = var.config.kms_key == null ? [] : [var.config.kms_key]
+    for_each = var.config.ssm.kms_key == null ? [] : [var.config.ssm.kms_key]
 
     content {
       effect = "Allow"

@@ -17,7 +17,6 @@ module "external_iam" {
   prefix     = "computed-external"
 
   compute_provider = {
-    type = "ec2"
     ec2 = {
       vpc_id         = "vpc-12345678"
       subnet_ids     = ["subnet-12345678"]
@@ -110,7 +109,6 @@ module "generated_policy" {
   prefix     = "computed-policy"
 
   compute_provider = {
-    type = "ec2"
     ec2 = {
       vpc_id         = "vpc-12345678"
       subnet_ids     = ["subnet-12345678"]

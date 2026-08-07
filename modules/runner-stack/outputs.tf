@@ -24,6 +24,6 @@ output "provider" {
   description = "Selected compute provider type and its provider-specific resources."
   value = {
     type = local.provider.type
-    ec2  = one(module.ec2[*].resources)
+    ec2  = local.provider.resources
   }
 }

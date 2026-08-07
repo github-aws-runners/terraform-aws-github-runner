@@ -22,7 +22,6 @@ variables {
   aws_region = "eu-west-1"
 
   compute_provider = {
-    type = "ec2"
     ec2 = {
       vpc_id         = "vpc-12345678"
       subnet_ids     = ["subnet-12345678"]
@@ -111,6 +110,14 @@ run "plan_with_pool_enabled" {
   assert {
     condition     = length(aws_iam_role.runner) == 1 && output.runner.role != null
     error_message = "The common runner stack must create and expose the runner role."
+  }
+
+  assert {
+    condition = anytrue([
+      for principal in data.aws_iam_policy_document.runner_assume_role.statement[0].principals :
+      principal.type == "Service" && toset(principal.identifiers) == toset(["ec2.amazonaws.com"])
+    ])
+    error_message = "The common runner role must use the selected EC2 provider trust relationship before EC2 consumes it."
   }
 
   assert {
@@ -213,7 +220,6 @@ run "external_runner_role_and_profile_remain_external" {
       }
     }
     compute_provider = {
-      type = "ec2"
       ec2 = {
         vpc_id         = "vpc-12345678"
         subnet_ids     = ["subnet-12345678"]
@@ -244,7 +250,6 @@ run "external_profile_requires_external_role" {
 
   variables {
     compute_provider = {
-      type = "ec2"
       ec2 = {
         vpc_id         = "vpc-12345678"
         subnet_ids     = ["subnet-12345678"]
@@ -303,7 +308,6 @@ run "requires_distribution_object_when_sync_is_enabled" {
 
   variables {
     compute_provider = {
-      type = "ec2"
       ec2 = {
         vpc_id         = "vpc-12345678"
         subnet_ids     = ["subnet-12345678"]
@@ -319,13 +323,11 @@ run "requires_distribution_object_when_sync_is_enabled" {
   expect_failures = [var.compute_provider]
 }
 
-run "rejects_unimplemented_compute_provider" {
+run "rejects_empty_compute_provider" {
   command = plan
 
   variables {
-    compute_provider = {
-      type = "microvm"
-    }
+    compute_provider = {}
   }
 
   expect_failures = [var.compute_provider]

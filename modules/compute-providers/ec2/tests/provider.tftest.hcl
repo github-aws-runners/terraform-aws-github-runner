@@ -13,6 +13,12 @@ mock_provider "aws" {
       deprecation_time = ""
     }
   }
+
+  mock_data "aws_caller_identity" {
+    defaults = {
+      account_id = "123456789012"
+    }
+  }
 }
 
 override_data {
@@ -30,7 +36,8 @@ override_data {
 }
 
 variables {
-  prefix = "provider-test"
+  aws_region = "eu-west-1"
+  prefix     = "provider-test"
 
   config = {
     vpc_id         = "vpc-12345678"
@@ -45,12 +52,17 @@ variables {
       kms_key = null
     }
     binaries_syncer = {
-      enabled = false
-      s3      = null
+      enabled = true
+      s3 = {
+        arn = "arn:aws:s3:::runner-distribution"
+        id  = "runner-distribution"
+        key = "runner.zip"
+      }
     }
     cloudwatch_agent = {
-      enabled = false
+      enabled = true
     }
+    ssm_enabled                    = true
     managed_security_group_enabled = true
   }
 
@@ -76,47 +88,47 @@ run "separates_control_plane_contract_from_ec2_resources" {
   command = plan
 
   assert {
-    condition     = output.control_plane.type == "ec2"
+    condition     = output.provider.type == "ec2"
     error_message = "The provider contract must identify EC2."
   }
 
   assert {
-    condition     = output.control_plane.scale_up.environment_variables["INSTANCE_TYPES"] == "m5.large"
+    condition     = output.provider.environment_variables.scale_up["INSTANCE_TYPES"] == "m5.large"
     error_message = "The provider contract must expose EC2 scale-up environment variables."
   }
 
   assert {
-    condition     = output.control_plane.scale_down.environment_variables["RUNNER_BOOT_TIME_IN_MINUTES"] == 5
+    condition     = output.provider.environment_variables.scale_down["RUNNER_BOOT_TIME_IN_MINUTES"] == 5
     error_message = "The provider contract must expose the EC2 scale-down boot grace period."
   }
 
   assert {
-    condition     = strcontains(output.control_plane.scale_up.iam_policy_json, "ec2:RunInstances")
+    condition     = strcontains(output.provider.policies.scale_up.iam_policy_json, "ec2:RunInstances")
     error_message = "The EC2 provider must own EC2 scale-up permissions."
   }
 
   assert {
-    condition     = !strcontains(output.control_plane.scale_up.iam_policy_json, "sqs:ReceiveMessage")
+    condition     = !strcontains(output.provider.policies.scale_up.iam_policy_json, "sqs:ReceiveMessage")
     error_message = "The EC2 provider must not own common build-queue permissions."
   }
 
   assert {
-    condition     = strcontains(output.control_plane.pool.iam_policy_json, "iam:PassRole")
+    condition     = strcontains(output.provider.policies.pool.iam_policy_json, "iam:PassRole")
     error_message = "The EC2 provider must expose pool permissions for its runner role."
   }
 
   assert {
-    condition     = strcontains(output.control_plane.scale_up.iam_policy_json, "arn:aws:iam::123456789012:role/provider-test-runner")
+    condition     = strcontains(output.provider.policies.scale_up.iam_policy_json, "arn:aws:iam::123456789012:role/provider-test-runner")
     error_message = "The EC2 provider must use the common runner role ARN for PassRole."
   }
 
   assert {
-    condition     = output.control_plane.scale_up.managed_policy_enabled
+    condition     = output.provider.policies.scale_up.managed_policy_enabled
     error_message = "An external AMI SSM parameter must enable the scale-up managed policy attachment at plan time."
   }
 
   assert {
-    condition     = output.control_plane.pool.managed_policy_enabled
+    condition     = output.provider.policies.pool.managed_policy_enabled
     error_message = "An external AMI SSM parameter must enable the pool managed policy attachment at plan time."
   }
 
@@ -147,18 +159,26 @@ run "separates_control_plane_contract_from_ec2_resources" {
   }
 
   assert {
-    condition     = !contains(keys(output.control_plane), "launch_template")
-    error_message = "The common control-plane contract must not expose EC2 resources."
+    condition     = toset(keys(output.provider.policies)) == toset(["runner", "scale_up", "scale_down", "pool"])
+    error_message = "The EC2 provider must expose policies grouped by their owning common component."
   }
 
   assert {
-    condition     = toset(keys(output.resources)) == toset(["launch_template", "runners_log_groups", "logfiles"])
-    error_message = "EC2-specific artifacts must be exposed only through the resources output."
+    condition = toset(keys(output.provider.policies.runner.inline_policies)) == toset([
+      "ssm_parameters",
+      "describe_tags",
+      "create_tags",
+      "terminate_self",
+      "session_manager",
+      "distribution_bucket",
+      "cloudwatch",
+    ])
+    error_message = "The EC2 provider must return the enabled runner permission documents."
   }
 
   assert {
-    condition     = !contains(keys(output.resources), "scale_up")
-    error_message = "The EC2 resources output must not contain the common control-plane contract."
+    condition     = toset(keys(output.provider.resources)) == toset(["launch_template", "runners_log_groups", "logfiles"])
+    error_message = "EC2-specific artifacts must remain nested under provider resources."
   }
 
   assert {
@@ -214,6 +234,16 @@ run "accepts_partial_typed_compute_options" {
       && aws_launch_template.runner.metadata_options[0].instance_metadata_tags == "enabled"
     )
     error_message = "Partial metadata options must retain typed defaults for omitted attributes."
+  }
+
+  assert {
+    condition = toset(keys(output.provider.policies.runner.inline_policies)) == toset([
+      "ssm_parameters",
+      "describe_tags",
+      "create_tags",
+      "terminate_self",
+    ])
+    error_message = "Disabled optional EC2 features must remove only their corresponding runner policies."
   }
 }
 

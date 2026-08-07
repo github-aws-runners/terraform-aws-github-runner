@@ -56,9 +56,9 @@ module "pool" {
   tracing_config = var.observability.tracing
   runner_provider = {
     type                   = local.provider.type
-    environment_variables  = local.provider.pool.environment_variables
-    iam_policy_json        = local.provider.pool.iam_policy_json
-    managed_policy_enabled = local.provider.pool.managed_policy_enabled
-    managed_policy_arn     = local.provider.pool.managed_policy_arn
+    environment_variables  = local.provider.environment_variables.pool
+    iam_policy_json        = local.provider.policies.pool.iam_policy_json
+    managed_policy_enabled = local.provider.policies.pool.managed_policy_enabled
+    managed_policy_arn     = local.provider.policies.pool.managed_policy_arn
   }
 }

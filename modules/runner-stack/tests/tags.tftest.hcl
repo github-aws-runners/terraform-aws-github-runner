@@ -27,7 +27,6 @@ variables {
   }
 
   compute_provider = {
-    type = "ec2"
     ec2 = {
       vpc_id         = "vpc-12345678"
       subnet_ids     = ["subnet-12345678"]

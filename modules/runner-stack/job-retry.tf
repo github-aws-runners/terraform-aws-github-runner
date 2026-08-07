@@ -1,48 +1,62 @@
 
 locals {
   job_retry_enabled = var.job_retry.enabled
-
-  job_retry = {
-    prefix                                                         = var.prefix
-    tags                                                           = local.job_retry_tags
-    aws_partition                                                  = var.aws_partition
-    architecture                                                   = var.lambda.architecture
-    runtime                                                        = var.lambda.runtime
-    security_group_ids                                             = var.lambda.security_group_ids
-    subnet_ids                                                     = var.lambda.subnet_ids
-    kms_key                                                        = var.ssm.kms_key
-    lambda_tags                                                    = local.job_retry_lambda_tags
-    log_group_tags                                                 = local.job_retry_log_tags
-    queue_tags                                                     = local.job_retry_queue_tags
-    log_level                                                      = var.observability.logs.level
-    log_class                                                      = var.observability.logs.class
-    logging_kms_key_id                                             = var.observability.logs.kms_key_id
-    logging_retention_in_days                                      = var.observability.logs.retention_in_days
-    metrics                                                        = var.observability.metrics
-    role_path                                                      = var.lambda.role.path
-    role_permissions_boundary                                      = var.lambda.role.permissions_boundary
-    s3_bucket                                                      = var.lambda.s3.bucket
-    s3_key                                                         = var.lambda.s3.key
-    s3_object_version                                              = var.lambda.s3.object_version
-    zip                                                            = var.lambda.zip
-    tracing_config                                                 = var.observability.tracing
-    github_app_parameters                                          = var.github.app_parameters
-    enable_organization_runners                                    = var.github.organization_runners
-    runner_name_prefix                                             = var.runner.name_prefix
-    sqs_build_queue                                                = var.queue.build
-    ghes_url                                                       = var.github.enterprise_server.url
-    user_agent                                                     = var.github.user_agent
-    lambda_event_source_mapping_batch_size                         = var.queue.event_source_mapping.batch_size
-    lambda_event_source_mapping_maximum_batching_window_in_seconds = var.queue.event_source_mapping.maximum_batching_window_in_seconds
-    memory_size                                                    = var.job_retry.lambda.memory_size
-    reserved_concurrent_executions                                 = var.job_retry.lambda.reserved_concurrent_executions
-    timeout                                                        = var.job_retry.lambda.timeout
-  }
 }
 
 module "job_retry" {
   source = "./job-retry"
   count  = local.job_retry_enabled ? 1 : 0
 
-  config = local.job_retry
+  config = {
+    prefix        = var.prefix
+    aws_partition = var.aws_partition
+    lambda = {
+      artifact = {
+        zip = local.lambda_zip
+        s3  = var.lambda.s3
+      }
+      runtime                        = var.lambda.runtime
+      architecture                   = var.lambda.architecture
+      memory_size                    = var.job_retry.lambda.memory_size
+      timeout                        = var.job_retry.lambda.timeout
+      reserved_concurrent_executions = var.job_retry.lambda.reserved_concurrent_executions
+      environment_variables          = {}
+      vpc = {
+        subnet_ids         = var.lambda.subnet_ids
+        security_group_ids = var.lambda.security_group_ids
+      }
+      role = {
+        path                 = local.lambda_role_path
+        permissions_boundary = var.lambda.role.permissions_boundary
+        principals           = []
+      }
+    }
+    runner = {
+      name_prefix = var.runner.name_prefix
+    }
+    github = var.github
+    queue = {
+      build = var.queue.build
+      event_source_mapping = {
+        batch_size                         = var.queue.event_source_mapping.batch_size
+        maximum_batching_window_in_seconds = var.queue.event_source_mapping.maximum_batching_window_in_seconds
+      }
+      encryption = {
+        sqs_managed_sse_enabled           = true
+        kms_master_key_id                 = null
+        kms_data_key_reuse_period_seconds = null
+      }
+    }
+    ssm = {
+      kms_key = local.kms_key
+    }
+    observability = var.observability
+    tags = {
+      resources            = local.job_retry_tags
+      lambda               = local.job_retry_lambda_tags
+      log_group            = local.job_retry_log_tags
+      queue                = local.job_retry_queue_tags
+      event_source_mapping = local.job_retry_queue_tags
+    }
+  }
 }

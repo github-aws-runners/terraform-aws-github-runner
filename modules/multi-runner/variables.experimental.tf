@@ -2,7 +2,7 @@ variable "experimental" {
   description = <<-EOT
     Opt-in experimental features. Omit this object to retain only the stable `multi_runner_config` behavior. Experimental schemas can change before they become stable.
 
-    - `multi_runner_config_v2`: Provider-oriented runner configurations keyed by configuration name. Each entry is deployed with `runner-stack`; stable `multi_runner_config` entries continue to use the unchanged `runners` module.
+    - `multi_runner_config_v2`: Provider-oriented runner configurations keyed by configuration name. A non-empty map selects v2 for the entire module and ignores `multi_runner_config`. When this map is empty, stable `multi_runner_config` entries continue to use the unchanged `runners` module.
 
     Each `multi_runner_config_v2` entry supports the following nested fields:
 
@@ -67,8 +67,8 @@ variable "experimental" {
     - `ssm.parameters.tags`: Tags for Terraform-managed and runtime-created runner configuration parameters. These override `ssm.tags`.
     - `ssm.housekeeper.tags`: Tags for SSM housekeeper resources. These override entry-level, shared Lambda, shared log, and `ssm.tags` values.
     - `observability.logs.tags`: Shared tags for CloudWatch log groups. Component tags override this map.
-    - `compute_provider.type`: Compute-provider discriminator. The only currently implemented value is `ec2`.
-    - `compute_provider.ec2`: EC2-specific configuration. This object is required when `type` is `ec2`.
+    - `compute_provider`: Typed compute-provider blocks. Exactly one block must be non-null, and the populated block selects the provider. Its presence must be known during planning; values inside it may remain unknown until apply.
+    - `compute_provider.ec2`: EC2-specific configuration. EC2 is the only provider currently implemented.
     - `compute_provider.ec2.ami.filter`: EC2 AMI filters combined with the default AMI-name filter.
     - `compute_provider.ec2.ami.owners`: AWS account IDs or aliases allowed to own the selected AMI.
     - `compute_provider.ec2.ami.id_ssm_parameter`: Optional externally managed SSM parameter containing the AMI ID. The wrapper's presence selects external ownership at plan time.
@@ -264,8 +264,6 @@ variable "experimental" {
       }), {})
 
       compute_provider = object({
-        type = string
-
         ec2 = optional(object({
           metadata_options = optional(object({
             instance_metadata_tags      = optional(string, "enabled")
@@ -394,17 +392,12 @@ variable "experimental" {
   validation {
     condition = alltrue([
       for _, runner_config in var.experimental.multi_runner_config_v2 :
-      lower(trimspace(runner_config.compute_provider.type)) == "ec2"
+      length([
+        for provider_type, provider_config in runner_config.compute_provider : provider_type
+        if provider_config != null
+      ]) == 1
     ])
-    error_message = "compute_provider.type must be ec2. microvm and codebuild are reserved for future Terraform support."
-  }
-
-  validation {
-    condition = alltrue([
-      for _, runner_config in var.experimental.multi_runner_config_v2 :
-      runner_config.compute_provider.ec2 != null
-    ])
-    error_message = "Each experimental runner configuration must set compute_provider.ec2."
+    error_message = "Each experimental runner configuration must set exactly one compute-provider block. Supported compute-provider blocks: ec2."
   }
 
   validation {

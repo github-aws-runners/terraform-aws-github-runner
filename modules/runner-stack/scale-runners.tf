@@ -71,16 +71,16 @@ module "scale_runners" {
   runner_provider = {
     type = local.provider.type
     scale_up = {
-      environment_variables      = local.provider.scale_up.environment_variables
-      iam_policy_json            = local.provider.scale_up.iam_policy_json
-      additional_iam_policy_json = local.provider.scale_up.additional_iam_policy_json
-      managed_policy = local.provider.scale_up.managed_policy_enabled ? {
-        arn = local.provider.scale_up.managed_policy_arn
+      environment_variables      = local.provider.environment_variables.scale_up
+      iam_policy_json            = local.provider.policies.scale_up.iam_policy_json
+      additional_iam_policy_json = local.provider.policies.scale_up.additional_iam_policy_json
+      managed_policy = local.provider.policies.scale_up.managed_policy_enabled ? {
+        arn = local.provider.policies.scale_up.managed_policy_arn
       } : null
     }
     scale_down = {
-      environment_variables = local.provider.scale_down.environment_variables
-      iam_policy_json       = local.provider.scale_down.iam_policy_json
+      environment_variables = local.provider.environment_variables.scale_down
+      iam_policy_json       = local.provider.policies.scale_down.iam_policy_json
     }
   }
 }

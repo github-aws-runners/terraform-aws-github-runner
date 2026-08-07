@@ -1,8 +1,12 @@
 locals {
+  use_multi_runner_config_v2      = length(var.experimental.multi_runner_config_v2) > 0
+  selected_multi_runner_config_v1 = local.use_multi_runner_config_v2 ? {} : var.multi_runner_config
+  selected_multi_runner_config_v2 = local.use_multi_runner_config_v2 ? var.experimental.multi_runner_config_v2 : {}
+
   # Stable v1 remains an external flat contract. Normalize it once so common
   # multi-runner consumers can use the same ownership model as experimental v2.
   multi_runner_config_v1_as_v2 = {
-    for k, v in var.multi_runner_config : k => {
+    for k, v in local.selected_multi_runner_config_v1 : k => {
       tags = {}
 
       runner = {
@@ -106,7 +110,6 @@ locals {
       }
 
       compute_provider = {
-        type = "ec2"
         ec2 = {
           metadata_options = v.runner_config.runner_metadata_options
           # Stable v1 keeps its nullable `id_ssm_parameter_arn` leaf. Translate
@@ -169,15 +172,17 @@ locals {
     }
   }
 
-  duplicate_runner_config_keys = setintersection(
-    toset(keys(var.multi_runner_config)),
-    toset(keys(var.experimental.multi_runner_config_v2)),
-  )
+  # A non-empty v2 map is a module-level opt-in. Never combine v1 and v2 in one
+  # deployment: this keeps module addresses and output contracts unambiguous.
+  multi_runner_config = local.use_multi_runner_config_v2 ? local.selected_multi_runner_config_v2 : local.multi_runner_config_v1_as_v2
 
-  # Phase 1 keeps stable v1 and experimental v2 runner configurations side by
-  # side. A configuration key must belong to exactly one input so its module address and output
-  # contract remain unambiguous.
-  multi_runner_config = merge(local.multi_runner_config_v1_as_v2, var.experimental.multi_runner_config_v2)
+  sqs_tags = {
+    for k, v in local.multi_runner_config : k => merge(
+      var.tags,
+      v.tags,
+      v.queue.tags,
+    )
+  }
 
   runner_extra_labels = {
     for k, v in local.multi_runner_config : k => sort(setunion(flatten(v.matcherConfig.labelMatchers), compact(v.runner.extra_labels)))
@@ -185,23 +190,26 @@ locals {
 
   runner_config = {
     for k, v in local.multi_runner_config : k => merge(v, {
-      id             = aws_sqs_queue.queued_builds[k].id
-      arn            = aws_sqs_queue.queued_builds[k].arn
-      url            = aws_sqs_queue.queued_builds[k].url
-      runnerProvider = lower(trimspace(v.compute_provider.type))
-      runner         = merge(v.runner, { extra_labels = local.runner_extra_labels[k] })
+      id  = aws_sqs_queue.queued_builds[k].id
+      arn = aws_sqs_queue.queued_builds[k].arn
+      url = aws_sqs_queue.queued_builds[k].url
+      runnerProvider = one([
+        for provider_type, provider_config in v.compute_provider : provider_type
+        if provider_config != null
+      ])
+      runner = merge(v.runner, { extra_labels = local.runner_extra_labels[k] })
     })
   }
 
   # Preserve the exact stable v1 shape for the legacy module call. The v1-to-v2
   # translation above is intentionally limited to shared multi-runner consumers.
   runner_extra_labels_v1 = {
-    for k, v in var.multi_runner_config :
+    for k, v in local.selected_multi_runner_config_v1 :
     k => sort(setunion(flatten(v.matcherConfig.labelMatchers), compact(v.runner_config.runner_extra_labels)))
   }
 
   runner_config_v1 = {
-    for k, v in var.multi_runner_config : k => merge(
+    for k, v in local.selected_multi_runner_config_v1 : k => merge(
       {
         id  = aws_sqs_queue.queued_builds[k].id
         arn = aws_sqs_queue.queued_builds[k].arn
@@ -217,7 +225,7 @@ locals {
 
   runner_config_v2 = {
     for k, v in local.runner_config : k => v
-    if contains(keys(var.experimental.multi_runner_config_v2), k)
+    if local.use_multi_runner_config_v2
   }
 
   runner_matcher_config = {

@@ -14,45 +14,106 @@ mock_provider "aws" {
 
 variables {
   config = {
-    prefix                      = "job-retry-test"
-    architecture                = "arm64"
-    runtime                     = "nodejs24.x"
-    log_level                   = "trace"
-    log_class                   = "INFREQUENT_ACCESS"
-    enable_organization_runners = false
-    ghes_url                    = ""
-    user_agent                  = "job-retry-test"
-    runner_name_prefix          = "required-prefix-"
-    environment_variables = {
-      CUSTOM_ENV         = "preserved"
-      RUNNER_NAME_PREFIX = "caller-prefix-"
-    }
-    github_app_parameters = {
-      key_base64 = {
-        name = "/github-runner/key-base64"
-        arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64"
+    prefix        = "job-retry-test"
+    aws_partition = "aws"
+    lambda = {
+      artifact = {
+        zip = "unused.zip"
+        s3 = {
+          bucket = "lambda-artifacts"
+          key    = "job-retry.zip"
+        }
       }
-      id = {
-        name = "/github-runner/app-id"
-        arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id"
+      architecture                   = "arm64"
+      runtime                        = "nodejs24.x"
+      memory_size                    = 256
+      timeout                        = 30
+      reserved_concurrent_executions = 1
+      environment_variables = {
+        CUSTOM_ENV         = "preserved"
+        RUNNER_NAME_PREFIX = "caller-prefix-"
+      }
+      vpc = {
+        security_group_ids = ["sg-12345678"]
+        subnet_ids         = ["subnet-12345678"]
+      }
+      role = {
+        path = "/job-retry-test/"
+        principals = [{
+          type        = "AWS"
+          identifiers = ["arn:aws:iam::123456789012:root"]
+        }]
       }
     }
-    kms_key = {
-      arn = "arn:aws:kms:eu-west-1:123456789012:key/job-retry-test"
+    runner = {
+      name_prefix = "required-prefix-"
     }
-    metrics = {
-      namespace = "JobRetryTest"
+    github = {
+      organization_runners = false
+      enterprise_server = {
+        url = ""
+      }
+      user_agent = "job-retry-test"
+      app_parameters = {
+        key_base64 = {
+          name = "/github-runner/key-base64"
+          arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64"
+        }
+        id = {
+          name = "/github-runner/app-id"
+          arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id"
+        }
+      }
     }
-    s3_bucket = "lambda-artifacts"
-    s3_key    = "job-retry.zip"
-    sqs_build_queue = {
-      url = "https://sqs.eu-west-1.amazonaws.com/123456789012/build-queue"
-      arn = "arn:aws:sqs:eu-west-1:123456789012:build-queue"
+    queue = {
+      build = {
+        url = "https://sqs.eu-west-1.amazonaws.com/123456789012/build-queue"
+        arn = "arn:aws:sqs:eu-west-1:123456789012:build-queue"
+      }
+      event_source_mapping = {
+        batch_size                         = 10
+        maximum_batching_window_in_seconds = 0
+      }
+      encryption = {
+        sqs_managed_sse_enabled = true
+      }
+    }
+    ssm = {
+      kms_key = {
+        arn = "arn:aws:kms:eu-west-1:123456789012:key/job-retry-test"
+      }
+    }
+    observability = {
+      logs = {
+        level             = "trace"
+        class             = "INFREQUENT_ACCESS"
+        retention_in_days = 180
+      }
+      tracing = {
+        mode                  = "Active"
+        capture_http_requests = false
+        capture_error         = false
+      }
+      metrics = {
+        enable    = false
+        namespace = "JobRetryTest"
+        metric = {
+          enable_github_app_rate_limit = true
+          enable_job_retry             = true
+        }
+      }
+    }
+    tags = {
+      resources            = { scope = "resources" }
+      lambda               = { scope = "lambda" }
+      log_group            = { scope = "log-group" }
+      queue                = { scope = "queue" }
+      event_source_mapping = { scope = "event-source-mapping" }
     }
   }
 }
 
-run "preserves_optional_lambda_configuration" {
+run "preserves_nested_job_retry_configuration" {
   command = plan
 
   assert {
@@ -70,64 +131,32 @@ run "preserves_optional_lambda_configuration" {
       toset(keys(output.lambda)) == toset(["function", "log_group", "role"])
       && output.lambda.function.s3_bucket == "lambda-artifacts"
       && output.lambda.function.s3_key == "job-retry.zip"
+      && output.lambda.function.reserved_concurrent_executions == 1
     )
-    error_message = "The job-retry module must expose its direct Lambda resources and preserve the S3 artifact configuration."
-  }
-
-  assert {
-    condition     = output.lambda.log_group.log_group_class == "INFREQUENT_ACCESS"
-    error_message = "The job-retry log-group class must be preserved through the typed child-module boundary."
-  }
-
-  assert {
-    condition     = length(data.aws_iam_policy_document.job_retry.statement) == 4
-    error_message = "A present KMS key object must add the job-retry KMS policy statement."
-  }
-}
-
-run "configures_role_tracing_and_complete_vpc" {
-  command = plan
-
-  variables {
-    config = {
-      prefix                      = "job-retry-test"
-      enable_organization_runners = false
-      principals = [{
-        type        = "AWS"
-        identifiers = ["arn:aws:iam::123456789012:root"]
-      }]
-      security_group_ids = ["sg-12345678"]
-      subnet_ids         = ["subnet-12345678"]
-      tracing_config = {
-        mode = "Active"
-      }
-      github_app_parameters = {
-        key_base64 = {
-          name = "/github-runner/key-base64"
-          arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64"
-        }
-        id = {
-          name = "/github-runner/app-id"
-          arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id"
-        }
-      }
-      s3_bucket = "lambda-artifacts"
-      s3_key    = "job-retry.zip"
-      sqs_build_queue = {
-        url = "https://sqs.eu-west-1.amazonaws.com/123456789012/build-queue"
-        arn = "arn:aws:sqs:eu-west-1:123456789012:build-queue"
-      }
-    }
+    error_message = "The nested Lambda configuration and direct resource output contract must be preserved."
   }
 
   assert {
     condition = (
-      length(aws_lambda_function.job_retry.vpc_config) == 1
+      output.lambda.function.tags == tomap({ scope = "lambda" })
+      && output.lambda.log_group.tags == tomap({ scope = "log-group" })
+      && output.lambda.role.tags == tomap({ scope = "resources" })
+      && output.job_retry_check_queue.tags == tomap({ scope = "queue" })
+      && aws_lambda_event_source_mapping.job_retry.tags == tomap({ scope = "event-source-mapping" })
+    )
+    error_message = "Resolved nested tag maps must be applied to their owned resources."
+  }
+
+  assert {
+    condition = (
+      output.lambda.log_group.log_group_class == "INFREQUENT_ACCESS"
+      && length(data.aws_iam_policy_document.job_retry.statement) == 4
+      && length(aws_lambda_function.job_retry.vpc_config) == 1
       && length(aws_iam_role_policy_attachment.job_retry_vpc_execution_role) == 1
       && length(aws_iam_role_policy.job_retry_xray) == 1
       && length(data.aws_iam_policy_document.lambda_assume_role.statement[0].principals) == 2
     )
-    error_message = "Complete VPC, tracing, and extra assume-role principal configuration must be applied to the direct Lambda resources."
+    error_message = "Logging, KMS, complete VPC, tracing, and extra role-principal configuration must be preserved."
   }
 }
 
@@ -136,24 +165,87 @@ run "does_not_enable_partial_vpc_configuration" {
 
   variables {
     config = {
-      prefix                      = "job-retry-test"
-      enable_organization_runners = false
-      subnet_ids                  = ["subnet-12345678"]
-      github_app_parameters = {
-        key_base64 = {
-          name = "/github-runner/key-base64"
-          arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64"
+      prefix        = "job-retry-test"
+      aws_partition = "aws"
+      lambda = {
+        artifact = {
+          zip = "unused.zip"
+          s3 = {
+            bucket = "lambda-artifacts"
+            key    = "job-retry.zip"
+          }
         }
-        id = {
-          name = "/github-runner/app-id"
-          arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id"
+        architecture                   = "arm64"
+        runtime                        = "nodejs24.x"
+        memory_size                    = 256
+        timeout                        = 30
+        reserved_concurrent_executions = 1
+        environment_variables          = {}
+        vpc = {
+          security_group_ids = []
+          subnet_ids         = ["subnet-12345678"]
+        }
+        role = {
+          path       = "/job-retry-test/"
+          principals = []
         }
       }
-      s3_bucket = "lambda-artifacts"
-      s3_key    = "job-retry.zip"
-      sqs_build_queue = {
-        url = "https://sqs.eu-west-1.amazonaws.com/123456789012/build-queue"
-        arn = "arn:aws:sqs:eu-west-1:123456789012:build-queue"
+      runner = {
+        name_prefix = ""
+      }
+      github = {
+        organization_runners = false
+        enterprise_server    = {}
+        app_parameters = {
+          key_base64 = {
+            name = "/github-runner/key-base64"
+            arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64"
+          }
+          id = {
+            name = "/github-runner/app-id"
+            arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id"
+          }
+        }
+      }
+      queue = {
+        build = {
+          url = "https://sqs.eu-west-1.amazonaws.com/123456789012/build-queue"
+          arn = "arn:aws:sqs:eu-west-1:123456789012:build-queue"
+        }
+        event_source_mapping = {
+          batch_size                         = 10
+          maximum_batching_window_in_seconds = 0
+        }
+        encryption = {
+          sqs_managed_sse_enabled = true
+        }
+      }
+      ssm = {}
+      observability = {
+        logs = {
+          level             = "info"
+          class             = "STANDARD"
+          retention_in_days = 180
+        }
+        tracing = {
+          capture_http_requests = false
+          capture_error         = false
+        }
+        metrics = {
+          enable    = false
+          namespace = "GitHub Runners"
+          metric = {
+            enable_github_app_rate_limit = true
+            enable_job_retry             = true
+          }
+        }
+      }
+      tags = {
+        resources            = {}
+        lambda               = {}
+        log_group            = {}
+        queue                = {}
+        event_source_mapping = {}
       }
     }
   }

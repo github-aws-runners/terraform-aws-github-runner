@@ -4,6 +4,11 @@ variable "aws_partition" {
   default     = "aws"
 }
 
+variable "aws_region" {
+  description = "AWS region used to construct provider-owned runner policy ARNs."
+  type        = string
+}
+
 variable "prefix" {
   description = "Prefix used to name EC2 provider resources."
   type        = string
@@ -63,7 +68,7 @@ variable "config" {
     - `user_data.pre_install`: Script inserted before runner installation.
     - `user_data.post_install`: Script inserted after runner installation.
     - `user_data.debug_logging_enabled`: Enables verbose user-data tracing, which can expose secrets.
-    - `ssm_enabled`: Provider runner-role setting consumed by the EC2 runner-role contract.
+    - `ssm_enabled`: Includes Session Manager permissions in the provider's runner policy group.
     - `create_service_linked_role_spot`: Allows scale-up to create the EC2 Spot service-linked role.
     - `cloudwatch_agent.enabled`: Enables CloudWatch agent configuration for runner instances.
     - `cloudwatch_agent.config`: Optional complete CloudWatch agent configuration.

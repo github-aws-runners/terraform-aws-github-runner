@@ -2,7 +2,7 @@
 
 !!! warning "Experimental opt-in"
 
-    The provider-oriented Terraform interface is experimental. It is enabled only by setting `experimental.multi_runner_config_v2`. Its schema can change before it becomes stable. Existing `multi_runner_config` deployments do not opt in and continue to use the legacy implementation.
+    The provider-oriented Terraform interface is experimental. It is enabled for the whole module instance when `experimental.multi_runner_config_v2` is non-empty. Its schema can change before it becomes stable. When that map is empty, existing `multi_runner_config` deployments continue to use the unchanged legacy implementation. When it is non-empty, only v2 configurations are used and `multi_runner_config` is ignored.
 
 ## Why this refactor exists
 
@@ -16,33 +16,45 @@ The implementation is split into orchestration, provider-neutral control-plane c
 
 | Layer | Owns |
 | --- | --- |
-| `multi-runner` | Stable-to-canonical normalization, configuration keys, build queues, webhook matching, and runner-binary discovery. |
+| `multi-runner` | Module-level v1/v2 mode selection, canonical normalization, configuration keys, build queues, webhook matching, and runner-binary discovery. |
 | `runner-stack` | Provider dispatch, internal component wiring, shared runner configuration in SSM, and the common runner role and policy attachments. |
 | `runner-stack/scale-runners` | Provider-neutral scale-up and scale-down Lambdas, schedules and queue integration, and their execution roles and policies. |
 | `runner-stack/pool` | Optional scheduled runner-pool resources and their Lambda and IAM wiring. |
 | `runner-stack/job-retry` | Optional queued-job retry resources and their Lambda and IAM wiring. |
 | `runner-stack/ssm-housekeeper` | Parameter Store cleanup Lambda, schedule, logging, and IAM resources. |
-| `compute-providers/<type>` | Provider-specific resources, runner-role policy requirements, and the IAM and environment-variable fragments consumed by the common control plane. |
+| `compute-providers/<provider>` | Provider-specific resources, runner-role policy requirements, and the IAM and environment-variable fragments consumed by the common control plane. |
 
 The EC2 provider currently owns the instance profile, launch template, security group, AMI and bootstrap parameters, runner log groups, EC2 policy statements, and EC2 Lambda environment variables. EC2 is the only implemented Terraform compute provider today.
 
 The modules below `runner-stack` are internal implementation boundaries, not standalone public modules. Callers opt into the experimental interface through `experimental.multi_runner_config_v2`; `multi-runner` calls `runner-stack`, which composes the internal modules. Their direct input and output contracts may change while v2 remains experimental.
 
-`runner-stack` passes the canonical `compute_provider.ec2` configuration to the EC2 module as one nested `config` object. It also passes the provider-neutral `runner`, `github`, `ssm`, and `observability` objects without expanding them back into prefixed scalar inputs. The EC2 runner-role policy module consumes the same provider `config` and shared `ssm` boundaries. This keeps ownership visible at every module boundary and gives future compute providers an equivalent contract to implement.
+`runner-stack` selects a compute provider from the single populated typed block under `compute_provider`. For example, `compute_provider = { ec2 = { ... } }` selects EC2; there is no separate `type` input that can disagree with the populated block. Exactly one provider block must be populated, and its presence must be known during planning because it determines the module graph. The stack passes `compute_provider.ec2` to the EC2 module as one nested `config` object. It also passes the provider-neutral `runner`, `github`, `ssm`, and `observability` objects without expanding them back into prefixed scalar inputs. This keeps ownership visible at the module boundary and gives future compute providers an equivalent contract to implement.
 
-The common stack creates or selects the runner IAM role. A provider supplies the trust policy, inline policy documents, and optional managed-policy requirements; the common stack attaches them. This keeps role ownership provider-neutral while allowing each compute provider to define its permissions.
+The common stack creates or selects the runner IAM role and owns the role trust relationship. The selected provider returns a single nested contract containing `policies.runner`, `policies.scale_up`, `policies.scale_down`, and `policies.pool`, along with component environment variables and provider resources. The common stack attaches those permission documents to the roles owned by the corresponding common components. A provider never creates or attaches a common IAM role.
+
+The trust relationship is deliberately resolved before the provider is called:
+
+1. `runner-stack` creates or selects the runner role using the service principal associated with the populated provider block.
+2. The compute provider receives that role so it can create resources such as the EC2 instance profile and render `iam:PassRole` statements.
+3. The provider returns its nested policy and environment-variable contract.
+4. The common components attach the returned policies to the runner, scale-up, scale-down, and pool roles they own.
+
+Returning the runner trust policy from the same resource-bearing provider module would create a Terraform dependency cycle: the role would depend on the provider output while the provider already depends on the role input. Keeping trust establishment in `runner-stack` and attaching provider permissions afterward preserves a one-way graph.
 
 ## Phase 1 dispatch and compatibility
 
-Phase 1 accepts stable and experimental configurations together, provided their keys do not overlap.
+Phase 1 makes one module-level choice. An empty `experimental.multi_runner_config_v2` selects the stable v1 path; a non-empty map selects the experimental v2 path and ignores `multi_runner_config`. The maps are never merged, so one module instance cannot dispatch some configurations through v1 and others through v2.
 
 ```mermaid
 flowchart TD
-  Stable["multi_runner_config"] --> Normalize["Canonical internal configuration"]
-  Experimental["experimental.multi_runner_config_v2"] --> Normalize
-  Normalize --> Shared["Queues, webhook matching, binary discovery"]
-  Stable --> Legacy["module.runners[configuration]"]
-  Experimental --> Stack["module.runner_stacks[configuration]"]
+  Stable["multi_runner_config"] --> Select{"Is experimental.multi_runner_config_v2 non-empty?"}
+  Experimental["experimental.multi_runner_config_v2"] --> Select
+  Select -->|No| V1["Select and normalize v1"]
+  Select -->|Yes| V2["Select v2 and ignore v1"]
+  V1 --> Shared["Queues, webhook matching, binary discovery"]
+  V2 --> Shared
+  V1 --> Legacy["module.runners[configuration]"]
+  V2 --> Stack["module.runner_stacks[configuration]"]
   Stack --> Scaling["runner-stack/scale-runners"]
   Stack --> Pool["runner-stack/pool"]
   Stack --> Retry["runner-stack/job-retry"]
@@ -52,41 +64,27 @@ flowchart TD
   Provider --> Pool
 ```
 
-Stable input is translated once into the canonical internal shape so shared resources can consume one representation. That translation does not change stable runner dispatch:
+The selected input is normalized once so shared resources can consume one representation. Stable normalization does not change stable runner dispatch:
 
-- A key present in `multi_runner_config` continues to call `modules/runners` at its historical `module.runners["configuration"]` address.
+- When `experimental.multi_runner_config_v2` is empty, every key in `multi_runner_config` continues to call `modules/runners` at its historical `module.runners["configuration"]` address.
 - The stable module call receives the original v1 values for compatibility-sensitive inputs.
 - Stable queue tagging and the flat `runners_map` output remain unchanged.
-- A key present in `experimental.multi_runner_config_v2` calls `modules/runner-stack` at `module.runner_stacks["configuration"]`.
+- When `experimental.multi_runner_config_v2` is non-empty, every key in that map calls `modules/runner-stack` at `module.runner_stacks["configuration"]`; no resources are created from the ignored v1 map.
 - Experimental resources are exposed separately through the nested `runners_map_v2` output.
-- Duplicate keys are rejected instead of silently changing a module address or output shape.
+- The maps are not combined and duplicate keys do not need special precedence: v2 is the complete selected configuration whenever it is non-empty.
 
-No state move is included in phase 1. Moving an existing key from the stable map to the experimental map changes its implementation address and must wait for the documented state-migration phase.
+No state move is included in phase 1. Enabling v2 for a module instance that already manages v1 runners changes its implementation addresses; phase 1 does not migrate that state. Existing deployments should keep v2 empty until the documented state-migration phase. The current v2 path is intended for new or explicitly experimental deployments.
 
 ## Opting in
 
-Only configurations inside the nested experimental object use the provider-oriented stack:
+Set the complete runner configuration map inside the nested experimental object to use the provider-oriented stack:
 
 ```hcl
 module "multi_runner" {
   source = "github-aws-runners/github-runner/aws//modules/multi-runner"
 
-  # Existing configurations remain on modules/runners.
-  multi_runner_config = {
-    existing = {
-      runner_config = {
-        runner_os             = "linux"
-        runner_architecture   = "x64"
-        instance_types       = ["m5.large"]
-        runners_maximum_count = 2
-      }
-      matcherConfig = {
-        labelMatchers = [["self-hosted", "linux", "x64"]]
-      }
-    }
-  }
-
-  # Setting this nested map is the explicit experimental opt-in.
+  # A non-empty v2 map is the module-level experimental opt-in. Any
+  # multi_runner_config value is ignored while this map is non-empty.
   experimental = {
     multi_runner_config_v2 = {
       arm = {
@@ -97,7 +95,6 @@ module "multi_runner" {
         }
 
         compute_provider = {
-          type = "ec2"
           ec2 = {
             instance_types = ["m7g.large"]
           }
@@ -114,15 +111,15 @@ module "multi_runner" {
 
 ## Inputs, tags, and outputs
 
-The v2 object groups provider-neutral settings by owner: `runner`, `github`, `queue`, `lambda`, `scale_up`, `scale_down`, `pool`, `job_retry`, `ssm`, and `observability`. Backend settings live only under `compute_provider.<type>`.
+The v2 object groups provider-neutral settings by owner: `runner`, `github`, `queue`, `lambda`, `scale_up`, `scale_down`, `pool`, `job_retry`, `ssm`, and `observability`. Backend settings live only under `compute_provider.<provider>`. Exactly one typed provider block must be populated; that block selects the provider without a second discriminator field.
 
 Tags follow the same ownership model. Module tags are defaults; shared Lambda, queue, and log-group tags override those defaults; component and subcomponent tags are applied last. EC2 runtime tags belong under `compute_provider.ec2.tags`. The EC2 bootstrap tags required by the runner are protected inside the provider and are not propagated to common resources.
 
 Application logging settings stay together under `observability.logs`, including `level`, retention, encryption, class, and shared log-group tags.
 
-Stable entries remain exclusively in `runners_map` and retain their flat output fields. Experimental entries are exposed exclusively through `runners_map_v2`; common resources are grouped under `runner`, `scale_up`, `scale_down`, and `pool`, while provider-specific resources remain under `provider.<type>`. For example, the common runner role is available at `runners_map_v2["configuration"].runner.role`, while EC2 launch-template and runner-log artifacts are under `runners_map_v2["configuration"].provider.ec2`. The `pool` value is null when no pool configuration is supplied. Keeping the maps separate prevents consumers from having to handle mixed entry schemas when v1 and v2 coexist.
+In v1 mode, entries remain exclusively in `runners_map` and retain their flat output fields; `runners_map_v2` is empty. In v2 mode, entries are exposed exclusively through `runners_map_v2` and `runners_map` is empty. Common resources are grouped under `runner`, `scale_up`, `scale_down`, and `pool`, while provider-specific resources remain under `provider.<provider>`. For example, the common runner role is available at `runners_map_v2["configuration"].runner.role`, while EC2 launch-template and runner-log artifacts are under `runners_map_v2["configuration"].provider.ec2`. The returned provider contract may also expose a computed `provider.type` derived from the populated input block; it is output metadata, not an input discriminator. The `pool` value is null when no pool configuration is supplied.
 
-## Plan-time ownership wrappers
+## Plan-time provider selection and ownership wrappers
 
 Terraform must know resource and dynamic-block shape during planning, even when an ARN is produced by another resource and remains unknown until apply. Optional inputs that enable IAM policies therefore use a caller-known object as the discriminator and keep the computed value in an `arn` leaf. The relevant configuration fragments are:
 
@@ -134,7 +131,6 @@ ssm = {
 }
 
 compute_provider = {
-  type = "ec2"
   ec2 = {
     ami = {
       id_ssm_parameter = {
@@ -148,15 +144,15 @@ compute_provider = {
 }
 ```
 
-The object literal tells Terraform that the corresponding policy exists; its `arn` may safely be computed. Values such as `observability.logs.kms_key_id`, which configure an existing resource without changing graph shape, remain nullable scalar inputs.
+The populated `ec2` block tells Terraform which provider module exists and must therefore be known during planning. Within that block, each ownership-wrapper object tells Terraform that the corresponding policy exists; its `arn` may safely be computed. Values such as `observability.logs.kms_key_id`, which configure an existing resource without changing graph shape, remain nullable scalar inputs.
 
 For experimental multi-runner entries, set `ssm.kms_key` to the key that encrypts the shared GitHub App and runner parameters. The stable root `kms_key_arn` input continues to serve v1 and is not used as a graph-shape discriminator for v2.
 
 ## Migration phases
 
-1. **Phase 1 — experimental opt-in:** Run stable and experimental configurations side by side. Stable resources and addresses do not move.
+1. **Phase 1 — experimental opt-in:** Keep v1 unchanged when the v2 map is empty, or select v2 for the whole module instance when the v2 map is non-empty. Existing v1 deployments do not move and should not use the v2 switch as an in-place migration mechanism.
 2. **Phase 2 — translate and migrate:** Deprecate the stable input, dispatch its translated representation through `runner-stack`, and provide tested `moved` blocks plus commands for addresses Terraform cannot move declaratively.
 3. **Phase 3 — remove v1:** After a release window in which phase 2 is available, remove the stable input and flat output adapter in a breaking release.
 4. **Future — retire `modules/runners`:** Handle direct consumers of the legacy module in a separate deprecation and migration effort.
 
-A future compute provider must implement the same control-plane and runner-role contracts before it can be selected in Terraform. Adding a discriminator value without those resources is intentionally rejected.
+A future compute provider must add a typed input block and return the same nested environment-variable, policy, and resource contract before it can be selected in Terraform. Populating more than one provider block, or selecting a block whose resources are not implemented, is intentionally rejected.

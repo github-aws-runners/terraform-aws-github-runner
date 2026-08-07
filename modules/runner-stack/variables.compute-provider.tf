@@ -1,10 +1,11 @@
-# Typed input boundary between the common control plane and compute implementations.
+# Typed compute-provider input boundary between the common control plane and compute implementations.
 variable "compute_provider" {
   description = <<-EOT
     Typed compute-provider configuration. Provider-owned settings remain inside the selected compute-provider block.
 
-    - `type`: Compute-provider discriminator. The currently supported value is `ec2`.
-    - `ec2`: EC2 compute-provider configuration. This object is required when `type` is `ec2`.
+    Exactly one compute-provider block must be non-null. The populated block selects the provider, and its presence must be known during planning. Values inside the selected block may remain unknown until apply.
+
+    - `ec2`: EC2 compute-provider configuration. EC2 is the only provider currently implemented.
     - `ec2.ami`: Optional AMI discovery or external AMI-parameter configuration. Null uses the operating-system and architecture defaults.
     - `ec2.ami.filter`: EC2 AMI filters combined with the provider's default AMI-name filter.
     - `ec2.ami.owners`: AWS account IDs or aliases allowed to own the selected AMI.
@@ -106,8 +107,6 @@ variable "compute_provider" {
   EOT
 
   type = object({
-    type = string
-
     ec2 = optional(object({
       ami = optional(object({
         filter = optional(map(list(string)), { state = ["available"] })
@@ -247,13 +246,11 @@ variable "compute_provider" {
   })
 
   validation {
-    condition     = contains(["ec2"], lower(trimspace(var.compute_provider.type)))
-    error_message = "Supported compute providers: ec2."
-  }
-
-  validation {
-    condition     = lower(trimspace(var.compute_provider.type)) != "ec2" || var.compute_provider.ec2 != null
-    error_message = "compute_provider.ec2 must be set when compute_provider.type is ec2."
+    condition = length([
+      for provider_type, provider_config in var.compute_provider : provider_type
+      if provider_config != null
+    ]) == 1
+    error_message = "Exactly one compute-provider block must be set. Supported compute-provider blocks: ec2."
   }
 
   validation {

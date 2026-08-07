@@ -180,7 +180,6 @@ run "experimental_v2_routes_through_provider_stack" {
             }]
           }
           compute_provider = {
-            type = "ec2"
             ec2 = {
               instance_types = ["m5.large"]
               binaries_syncer = {
@@ -365,7 +364,6 @@ run "experimental_v2_layers_shared_and_component_tags" {
           }
 
           compute_provider = {
-            type = "ec2"
             ec2 = {
               instance_types = ["m5.large"]
               binaries_syncer = {
@@ -474,7 +472,7 @@ run "experimental_v2_layers_shared_and_component_tags" {
   }
 }
 
-run "stable_v1_and_experimental_v2_coexist" {
+run "experimental_v2_replaces_stable_v1" {
   command = plan
 
   variables {
@@ -506,7 +504,6 @@ run "stable_v1_and_experimental_v2_coexist" {
             organization_runners = true
           }
           compute_provider = {
-            type = "ec2"
             ec2 = {
               instance_types = ["m7g.large"]
               binaries_syncer = {
@@ -523,77 +520,51 @@ run "stable_v1_and_experimental_v2_coexist" {
   }
 
   assert {
-    condition     = keys(local.runner_config_v1) == ["legacy"] && keys(local.runner_config_v2) == ["experimental"]
-    error_message = "Stable and experimental runner configurations must remain isolated in their respective configuration maps."
+    condition     = length(local.runner_config_v1) == 0 && keys(local.runner_config_v2) == ["experimental"]
+    error_message = "A non-empty experimental configuration must select only the v2 configuration map."
   }
 
   assert {
-    condition     = keys(module.runners) == ["legacy"] && keys(module.runner_stacks) == ["experimental"]
-    error_message = "Stable runner configurations must keep module.runners addresses while v2 configurations use module.runner_stacks."
+    condition     = length(module.runners) == 0 && keys(module.runner_stacks) == ["experimental"]
+    error_message = "Selecting v2 must not create any legacy runner modules."
   }
 
   assert {
     condition = (
-      toset(keys(aws_sqs_queue.queued_builds)) == toset(["legacy", "experimental"])
-      && toset(keys(local.runner_matcher_config)) == toset(["legacy", "experimental"])
+      keys(aws_sqs_queue.queued_builds) == ["experimental"]
+      && keys(local.runner_matcher_config) == ["experimental"]
     )
-    error_message = "Queues and webhook routing must use the union of stable and experimental runner configuration keys."
+    error_message = "Queues and webhook routing must use only v2 runner configuration keys when v2 is selected."
   }
 
   assert {
-    condition     = toset(keys(module.runner_binaries)) == toset(["linux_x64", "linux_arm64"])
-    error_message = "Runner binary synchronization must include operating-system and architecture combinations from both input versions."
+    condition     = keys(module.runner_binaries) == ["linux_arm64"]
+    error_message = "Runner binary synchronization must ignore stable v1 configurations when v2 is selected."
   }
 
   assert {
     condition = (
-      keys(output.runners_map) == ["legacy"]
+      length(output.runners_map) == 0
       && keys(output.runners_map_v2) == ["experimental"]
     )
-    error_message = "Stable and experimental runner configuration keys must remain separated across runners_map and runners_map_v2."
-  }
-
-  assert {
-    condition = toset(keys(output.runners_map["legacy"])) == toset(
-      [
-        "launch_template_name",
-        "launch_template_id",
-        "launch_template_version",
-        "launch_template_ami_id",
-        "lambda_up",
-        "lambda_up_log_group",
-        "lambda_down",
-        "lambda_down_log_group",
-        "lambda_pool",
-        "lambda_pool_log_group",
-        "role_runner",
-        "role_scale_up",
-        "role_scale_down",
-        "role_pool",
-        "runners_log_groups",
-        "logfiles",
-      ]
-    )
-    error_message = "A coexisting stable runner configuration must retain the legacy flat runners_map entry shape."
+    error_message = "Selecting v2 must leave the stable output empty and expose only runners_map_v2."
   }
 
   assert {
     condition     = output.runners_map_v2["experimental"].provider.type == "ec2" && contains(keys(output.runners_map_v2["experimental"].provider.ec2), "launch_template")
-    error_message = "A coexisting v2 runner configuration must retain its nested EC2 provider output."
+    error_message = "The selected v2 configuration must retain its nested EC2 provider output."
   }
 
   assert {
     condition = (
-      !contains(keys(output.runners_map["legacy"]), "provider")
-      && !contains(keys(output.runners_map["legacy"]), "runner")
-      && !contains(keys(output.runners_map_v2["experimental"]), "launch_template_name")
+      !contains(keys(output.runners_map_v2["experimental"]), "launch_template_name")
       && !contains(keys(output.runners_map_v2["experimental"]), "lambda_up")
     )
-    error_message = "Coexisting outputs must not mix the stable flat schema with the experimental nested schema."
+    error_message = "The v2 output must not contain fields from the legacy flat schema."
   }
 }
 
-run "duplicate_runner_configuration_keys_are_rejected" {
+run "experimental_v2_replaces_same_key_stable_v1" {
   command = plan
 
   variables {
@@ -621,7 +592,6 @@ run "duplicate_runner_configuration_keys_are_rejected" {
             maximum_count = 2
           }
           compute_provider = {
-            type = "ec2"
             ec2 = {
               instance_types = ["m5.large"]
               binaries_syncer = {
@@ -637,10 +607,28 @@ run "duplicate_runner_configuration_keys_are_rejected" {
     }
   }
 
-  expect_failures = [random_string.random]
+  assert {
+    condition = (
+      length(local.runner_config_v1) == 0
+      && keys(local.runner_config_v2) == ["duplicate"]
+      && length(module.runners) == 0
+      && keys(module.runner_stacks) == ["duplicate"]
+    )
+    error_message = "A same-key v2 configuration must replace v1 without creating legacy modules."
+  }
+
+  assert {
+    condition = (
+      length(local.runner_config_v2["duplicate"].matcherConfig.labelMatchers) == 1
+      && toset(local.runner_config_v2["duplicate"].matcherConfig.labelMatchers[0]) == toset(["self-hosted", "linux", "x64", "experimental"])
+      && length(output.runners_map) == 0
+      && keys(output.runners_map_v2) == ["duplicate"]
+    )
+    error_message = "Same-key selection must use the v2 matcher and expose only the v2 output."
+  }
 }
 
-run "experimental_v2_rejects_future_providers" {
+run "experimental_v2_rejects_empty_compute_provider" {
   command = plan
 
   variables {
@@ -652,9 +640,7 @@ run "experimental_v2_rejects_future_providers" {
             architecture  = "x64"
             maximum_count = 2
           }
-          compute_provider = {
-            type = "microvm"
-          }
+          compute_provider = {}
           matcherConfig = {
             labelMatchers = [["self-hosted", "linux", "x64"]]
           }
@@ -679,7 +665,6 @@ run "experimental_v2_rejects_profile_without_role" {
             maximum_count = 2
           }
           compute_provider = {
-            type = "ec2"
             ec2 = {
               instance_types = ["m5.large"]
               instance_profile = {

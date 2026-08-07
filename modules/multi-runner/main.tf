@@ -16,11 +16,4 @@ resource "random_string" "random" {
   length  = 24
   special = false
   upper   = false
-
-  lifecycle {
-    precondition {
-      condition     = length(local.duplicate_runner_config_keys) == 0
-      error_message = "Runner configuration keys must be unique across multi_runner_config and experimental.multi_runner_config_v2. Duplicate keys: ${join(", ", sort(tolist(local.duplicate_runner_config_keys)))}."
-    }
-  }
 }

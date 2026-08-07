@@ -1,22 +1,11 @@
-# EC2 runner-role trust and permission documents returned to runner-stack.
+# EC2 runner permission documents returned to runner-stack for attachment to
+# the common runner role.
 data "aws_caller_identity" "current" {}
 
 locals {
   ssm_parameter_arn_prefix = "arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter"
   ssm_config_arn           = "${local.ssm_parameter_arn_prefix}${var.ssm.paths.root}/${var.ssm.paths.config}"
   cloudwatch_config_arn    = "${local.ssm_config_arn}/cloudwatch_agent_config_runner"
-}
-
-data "aws_iam_policy_document" "assume_role" {
-  statement {
-    effect  = "Allow"
-    actions = ["sts:AssumeRole"]
-
-    principals {
-      type        = "Service"
-      identifiers = ["ec2.amazonaws.com"]
-    }
-  }
 }
 
 data "aws_iam_policy_document" "ssm_parameters" {
@@ -176,7 +165,7 @@ data "aws_iam_policy_document" "cloudwatch" {
 }
 
 locals {
-  inline_policies = merge(
+  runner_inline_policies = merge(
     {
       ssm_parameters = {
         name        = "runner-ssm-parameters"
