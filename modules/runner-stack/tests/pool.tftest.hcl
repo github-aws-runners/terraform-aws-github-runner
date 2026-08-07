@@ -152,8 +152,11 @@ run "plan_with_pool_enabled" {
   }
 
   assert {
-    condition     = module.scale_runners.scale_up.lambda.environment[0].variables["RUNNER_PROVIDER_TYPE"] == "ec2"
-    error_message = "Scale-up must receive the provider type from the selected provider."
+    condition = (
+      module.scale_runners.scale_up.lambda.environment[0].variables["COMPUTE_PROVIDER_TYPE"] == "ec2"
+      && module.scale_runners.scale_down.lambda.environment[0].variables["COMPUTE_PROVIDER_TYPE"] == "ec2"
+    )
+    error_message = "Scaling Lambdas must receive the provider type from the selected provider."
   }
 
   assert {

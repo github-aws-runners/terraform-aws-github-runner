@@ -122,7 +122,7 @@ yarn run dist
 | Name | Description |
 |------|-------------|
 | <a name="output_pool"></a> [pool](#output\_pool) | Scheduled pool resources. Null when no pool configuration is supplied. |
-| <a name="output_provider"></a> [provider](#output\_provider) | Provider-specific resources grouped by compute provider. |
+| <a name="output_provider"></a> [provider](#output\_provider) | Provider-specific resources grouped under the selected provider key. |
 | <a name="output_runner"></a> [runner](#output\_runner) | Common runner resources. The role is null when an external runner role is used. |
 | <a name="output_scale_down"></a> [scale\_down](#output\_scale\_down) | Scale-down control-plane resources. |
 | <a name="output_scale_up"></a> [scale\_up](#output\_scale\_up) | Scale-up control-plane resources. |

@@ -38,7 +38,7 @@ resource "aws_lambda_function" "scale_up" {
       RUNNER_LABELS                            = lower(join(",", var.config.runner.labels))
       RUNNER_GROUP_NAME                        = var.config.runner.group_name
       RUNNER_NAME_PREFIX                       = var.config.runner.name_prefix
-      RUNNER_PROVIDER_TYPE                     = var.runner_provider.type
+      COMPUTE_PROVIDER_TYPE                    = var.runner_provider.type
       RUNNERS_MAXIMUM_COUNT                    = var.config.runner.maximum_count
       POWERTOOLS_SERVICE_NAME                  = "${var.config.prefix}-scale-up"
       SSM_TOKEN_PATH                           = var.config.ssm.token_path

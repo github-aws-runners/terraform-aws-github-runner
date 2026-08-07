@@ -31,7 +31,7 @@ resource "aws_lambda_function" "scale_down" {
       POWERTOOLS_TRACE_ENABLED                 = var.config.observability.tracing.mode != null
       POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.config.observability.tracing.capture_http_requests
       POWERTOOLS_TRACER_CAPTURE_ERROR          = var.config.observability.tracing.capture_error
-      RUNNER_PROVIDER_TYPE                     = var.runner_provider.type
+      COMPUTE_PROVIDER_TYPE                    = var.runner_provider.type
     })
   }
 

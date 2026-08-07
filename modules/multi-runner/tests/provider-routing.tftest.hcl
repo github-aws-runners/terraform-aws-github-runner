@@ -203,7 +203,7 @@ run "experimental_v2_routes_through_provider_stack" {
   assert {
     condition = (
       local.compute_provider_types["linux"] == "ec2"
-      && local.runner_matcher_config["linux"].runnerProvider == "ec2"
+      && local.runner_matcher_config["linux"].computeProvider == "ec2"
     )
     error_message = "Compute-provider selection must supply the webhook routing contract."
   }
