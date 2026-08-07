@@ -1,7 +1,6 @@
 module "runners" {
-  source   = "../runners"
-  for_each = local.runner_config_v1
-
+  source        = "../runners"
+  for_each      = local.runner_config
   aws_region    = var.aws_region
   aws_partition = var.aws_partition
   vpc_id        = coalesce(each.value.runner_config.vpc_id, var.vpc_id)
