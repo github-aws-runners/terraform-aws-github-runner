@@ -112,6 +112,17 @@ run "plan_with_pool_enabled" {
   }
 
   assert {
+    condition = tomap({
+      for tag in jsondecode(aws_lambda_function.scale_up.environment[0].variables["SSM_PARAMETER_STORE_TAGS"]) :
+      tag.Key => tag.Value
+      }) == tomap({
+      Name                  = "github-actions-action-runner"
+      "ghr:ssm_config_path" = "/github-runner/config"
+    })
+    error_message = "Parameter Store tags must include the normalized common stack tags."
+  }
+
+  assert {
     condition     = !contains(keys(output.provider.ec2), "role_runner")
     error_message = "The common runner role must not be duplicated in the EC2 resource output."
   }

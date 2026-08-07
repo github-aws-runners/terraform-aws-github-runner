@@ -19,7 +19,7 @@ locals {
   arn_ssm_parameters_path_config = "arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.ssm.paths.root}/${var.ssm.paths.config}"
 
   parameter_store_tags = jsonencode([
-    for key, value in merge(var.tags, var.ssm.parameter_tags) : {
+    for key, value in merge(local.tags, var.ssm.parameter_tags) : {
       Key   = key
       Value = value
     }
