@@ -1,3 +1,12 @@
+locals {
+  sqs_tags = {
+    for k, v in local.multi_runner_config : k => merge(
+      var.tags,
+      v.tags,
+      v.queue.tags,
+    )
+  }
+}
 
 data "aws_iam_policy_document" "deny_insecure_transport" {
   statement {

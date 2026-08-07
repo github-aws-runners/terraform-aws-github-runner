@@ -77,17 +77,17 @@ run "stable_v1_keeps_legacy_runner_module" {
   }
 
   assert {
-    condition     = keys(local.runner_config_v1) == ["linux"] && length(local.runner_config_v2) == 0
-    error_message = "Stable multi_runner_config entries must remain isolated in the v1 configuration map."
+    condition     = keys(local.runner_config) == ["linux"] && length(local.runner_config_v2) == 0
+    error_message = "Stable multi_runner_config entries must keep the original runner configuration and remain isolated from v2."
   }
 
   assert {
     condition = (
-      contains(keys(local.runner_config_v1["linux"]), "runner_config")
-      && !contains(keys(local.runner_config_v1["linux"]), "compute_provider")
-      && local.runner_config_v1["linux"].runner_config.enable_organization_runners
+      contains(keys(local.runner_config["linux"]), "runner_config")
+      && !contains(keys(local.runner_config["linux"]), "compute_provider")
+      && local.runner_config["linux"].runner_config.enable_organization_runners
     )
-    error_message = "Stable module inputs must retain the original v1 shape instead of being reconstructed from the v1-to-v2 translation."
+    error_message = "Stable module inputs must retain the original local.runner_config shape instead of using the v1-to-v2 translation."
   }
 
   assert {
@@ -201,8 +201,21 @@ run "experimental_v2_routes_through_provider_stack" {
   }
 
   assert {
-    condition     = length(local.runner_config_v1) == 0 && keys(local.runner_config_v2) == ["linux"]
+    condition = (
+      local.compute_provider_types["linux"] == "ec2"
+      && local.runner_matcher_config["linux"].runnerProvider == "ec2"
+    )
+    error_message = "Compute-provider selection must supply the webhook routing contract."
+  }
+
+  assert {
+    condition     = length(local.runner_config) == 0 && keys(local.runner_config_v2) == ["linux"]
     error_message = "Experimental multi_runner_config_v2 entries must remain isolated in the v2 configuration map."
+  }
+
+  assert {
+    condition     = toset(local.runner_config_v2["linux"].runner.extra_labels) == toset(["self-hosted", "linux", "x64"])
+    error_message = "Experimental runner labels must include labels declared by its matcher configuration."
   }
 
   assert {
@@ -520,7 +533,7 @@ run "experimental_v2_replaces_stable_v1" {
   }
 
   assert {
-    condition     = length(local.runner_config_v1) == 0 && keys(local.runner_config_v2) == ["experimental"]
+    condition     = length(local.runner_config) == 0 && keys(local.runner_config_v2) == ["experimental"]
     error_message = "A non-empty experimental configuration must select only the v2 configuration map."
   }
 
@@ -609,7 +622,7 @@ run "experimental_v2_replaces_same_key_stable_v1" {
 
   assert {
     condition = (
-      length(local.runner_config_v1) == 0
+      length(local.runner_config) == 0
       && keys(local.runner_config_v2) == ["duplicate"]
       && length(module.runners) == 0
       && keys(module.runner_stacks) == ["duplicate"]
