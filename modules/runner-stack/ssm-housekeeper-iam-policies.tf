@@ -1,3 +1,4 @@
+# IAM policies attached to the SSM housekeeper Lambda role.
 data "aws_iam_policy_document" "ssm_housekeeper" {
   statement {
     effect = "Allow"

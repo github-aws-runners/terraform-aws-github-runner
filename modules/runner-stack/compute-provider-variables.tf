@@ -1,4 +1,4 @@
-# Typed boundary between the common control plane and compute implementations.
+# Typed input boundary between the common control plane and compute implementations.
 variable "compute_provider" {
   description = "Typed compute-provider configuration. Provider-owned settings must remain inside the selected provider block."
 

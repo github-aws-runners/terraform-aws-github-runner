@@ -1,3 +1,4 @@
+# Shared runner configuration stored in SSM Parameter Store.
 resource "aws_ssm_parameter" "runner_agent_mode" {
   name  = "${var.ssm_paths.root}/${var.ssm_paths.config}/agent_mode"
   type  = "String"

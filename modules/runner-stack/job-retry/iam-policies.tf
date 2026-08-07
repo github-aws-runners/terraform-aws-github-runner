@@ -1,3 +1,4 @@
+# IAM policies attached to the job-retry Lambda role.
 data "aws_iam_policy_document" "job_retry" {
   statement {
     effect = "Allow"

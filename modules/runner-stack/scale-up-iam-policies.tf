@@ -1,3 +1,4 @@
+# IAM policies attached to the scale-up Lambda role.
 data "aws_iam_policy_document" "scale_up_common" {
   statement {
     effect = "Allow"

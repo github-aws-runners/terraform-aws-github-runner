@@ -1,3 +1,4 @@
+# IAM policies attached to the pool Lambda role.
 data "aws_iam_policy_document" "pool_common" {
   statement {
     effect = "Allow"

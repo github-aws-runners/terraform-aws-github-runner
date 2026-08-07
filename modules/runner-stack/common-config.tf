@@ -1,4 +1,4 @@
-# Shared control-plane naming, paths, and tags.
+# Shared control-plane configuration: naming, paths, tags, and normalized values.
 locals {
   tags = merge(
     {
