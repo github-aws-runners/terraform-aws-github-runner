@@ -1,3 +1,14 @@
+locals {
+  runner_matcher_config = {
+    for k, v in local.multi_runner_config : k => {
+      id             = aws_sqs_queue.queued_builds[k].id
+      arn            = aws_sqs_queue.queued_builds[k].arn
+      runnerProvider = local.compute_provider_types[k]
+      matcherConfig  = v.matcherConfig
+    }
+  }
+}
+
 module "webhook" {
   source                              = "../webhook"
   prefix                              = var.prefix
