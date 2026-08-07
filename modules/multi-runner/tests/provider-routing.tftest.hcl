@@ -110,30 +110,41 @@ run "experimental_v2_routes_through_provider_stack" {
     multi_runner_config_v2 = {
       linux = {
         runner = {
-          runner_os                   = "linux"
-          runner_architecture         = "x64"
-          runners_maximum_count       = 2
-          enable_organization_runners = true
-          idle_config = [{
-            cron      = "* * * * *"
-            timeZone  = "UTC"
-            idleCount = 1
-          }]
-          pool_config = [{
-            schedule_expression = "cron(0 8 * * ? *)"
-            size                = 1
-          }]
+          os            = "linux"
+          architecture  = "x64"
+          maximum_count = 2
+          hooks = {
+            job_started = "/opt/actions/job-started.sh"
+          }
           iam = {
             managed_policy_arns = {
               readonly = "arn:aws:iam::aws:policy/ReadOnlyAccess"
             }
           }
         }
-        provider = {
+        github = {
+          organization_runners = true
+        }
+        scale_down = {
+          idle_config = [{
+            cron      = "* * * * *"
+            timeZone  = "UTC"
+            idleCount = 1
+          }]
+        }
+        pool = {
+          config = [{
+            schedule_expression = "cron(0 8 * * ? *)"
+            size                = 1
+          }]
+        }
+        compute_provider = {
           type = "ec2"
           ec2 = {
-            instance_types                = ["m5.large"]
-            enable_runner_binaries_syncer = false
+            instance_types = ["m5.large"]
+            binaries_syncer = {
+              enabled = false
+            }
           }
         }
         matcherConfig = {
@@ -211,13 +222,21 @@ run "experimental_v2_routes_through_provider_stack" {
   }
 
   assert {
-    condition     = local.runner_config_by_provider.ec2["linux"].runner.idle_config[0].idleCount == 1
+    condition     = local.runner_config_by_provider.ec2["linux"].scale_down.idle_config[0].idleCount == 1
     error_message = "Provider-neutral idle configuration must remain in the common runner contract."
   }
 
   assert {
     condition     = local.runner_config_by_provider.ec2["linux"].runner.iam.managed_policy_arns.readonly == "arn:aws:iam::aws:policy/ReadOnlyAccess"
     error_message = "Runner-role policies must remain in the common runner contract."
+  }
+
+  assert {
+    condition = (
+      local.runner_config_by_provider.ec2["linux"].runner.hooks.job_started == "/opt/actions/job-started.sh"
+      && !contains(keys(local.runner_config_by_provider.ec2["linux"].compute_provider.ec2), "hooks")
+    )
+    error_message = "Runner lifecycle hooks must remain in the common runner contract."
   }
 }
 
@@ -244,16 +263,20 @@ run "stable_v1_and_experimental_v2_coexist" {
     multi_runner_config_v2 = {
       experimental = {
         runner = {
-          runner_os                   = "linux"
-          runner_architecture         = "arm64"
-          runners_maximum_count       = 2
-          enable_organization_runners = true
+          os            = "linux"
+          architecture  = "arm64"
+          maximum_count = 2
         }
-        provider = {
+        github = {
+          organization_runners = true
+        }
+        compute_provider = {
           type = "ec2"
           ec2 = {
-            instance_types                = ["m7g.large"]
-            enable_runner_binaries_syncer = true
+            instance_types = ["m7g.large"]
+            binaries_syncer = {
+              enabled = true
+            }
           }
         }
         matcherConfig = {
@@ -343,15 +366,17 @@ run "duplicate_lane_keys_are_rejected" {
     multi_runner_config_v2 = {
       duplicate = {
         runner = {
-          runner_os             = "linux"
-          runner_architecture   = "x64"
-          runners_maximum_count = 2
+          os            = "linux"
+          architecture  = "x64"
+          maximum_count = 2
         }
-        provider = {
+        compute_provider = {
           type = "ec2"
           ec2 = {
-            instance_types                = ["m5.large"]
-            enable_runner_binaries_syncer = false
+            instance_types = ["m5.large"]
+            binaries_syncer = {
+              enabled = false
+            }
           }
         }
         matcherConfig = {
@@ -371,11 +396,11 @@ run "experimental_v2_rejects_future_providers" {
     multi_runner_config_v2 = {
       microvm = {
         runner = {
-          runner_os             = "linux"
-          runner_architecture   = "x64"
-          runners_maximum_count = 2
+          os            = "linux"
+          architecture  = "x64"
+          maximum_count = 2
         }
-        provider = {
+        compute_provider = {
           type = "microvm"
         }
         matcherConfig = {
@@ -395,11 +420,11 @@ run "experimental_v2_rejects_profile_without_role" {
     multi_runner_config_v2 = {
       invalid_profile = {
         runner = {
-          runner_os             = "linux"
-          runner_architecture   = "x64"
-          runners_maximum_count = 2
+          os            = "linux"
+          architecture  = "x64"
+          maximum_count = 2
         }
-        provider = {
+        compute_provider = {
           type = "ec2"
           ec2 = {
             instance_types = ["m5.large"]

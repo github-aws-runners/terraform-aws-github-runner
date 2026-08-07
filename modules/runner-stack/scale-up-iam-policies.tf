@@ -16,9 +16,9 @@ data "aws_iam_policy_document" "scale_up_common" {
       "ssm:GetParameters",
     ]
     resources = [
-      var.github_app_parameters.key_base64.arn,
-      var.github_app_parameters.id.arn,
-      "arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.ssm_paths.root}/${var.ssm_paths.config}/*",
+      var.github.app_parameters.key_base64.arn,
+      var.github.app_parameters.id.arn,
+      "arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.ssm.paths.root}/${var.ssm.paths.config}/*",
     ]
   }
 
@@ -29,7 +29,7 @@ data "aws_iam_policy_document" "scale_up_common" {
       "sqs:GetQueueAttributes",
       "sqs:DeleteMessage",
     ]
-    resources = [var.sqs_build_queue.arn]
+    resources = [var.queue.build.arn]
   }
 
   dynamic "statement" {

@@ -13,6 +13,7 @@ variable "lambda" {
     `logging_retention_in_days`: Specifies the number of days you want to retain log events for the lambda log group. Possible values are: 0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, and 3653.
     `log_class`: The log class of the CloudWatch log group. Valid values are `STANDARD` or `INFREQUENT_ACCESS`.
     `memory_size`: Memory size limit in MB of the lambda.
+    `reserved_concurrent_executions`: Reserved concurrency for the lambda. Use -1 for no reservation.
     `metrics_namespace`: Namespace for the metrics emitted by the lambda.
     `name`: The name of the lambda function.
     `prefix`: The prefix used for naming resources.
@@ -30,19 +31,20 @@ variable "lambda" {
     `zip`: File location of the lambda zip file.
   EOF
   type = object({
-    aws_partition             = optional(string, "aws")
-    architecture              = optional(string, "arm64")
-    environment_variables     = optional(map(string), {})
-    handler                   = string
-    lambda_tags               = optional(map(string), {})
-    log_level                 = optional(string, "info")
-    log_class                 = optional(string, "STANDARD")
-    logging_kms_key_id        = optional(string, null)
-    logging_retention_in_days = optional(number, 180)
-    memory_size               = optional(number, 256)
-    metrics_namespace         = optional(string, "GitHub Runners")
-    name                      = string
-    prefix                    = optional(string, null)
+    aws_partition                  = optional(string, "aws")
+    architecture                   = optional(string, "arm64")
+    environment_variables          = optional(map(string), {})
+    handler                        = string
+    lambda_tags                    = optional(map(string), {})
+    log_level                      = optional(string, "info")
+    log_class                      = optional(string, "STANDARD")
+    logging_kms_key_id             = optional(string, null)
+    logging_retention_in_days      = optional(number, 180)
+    memory_size                    = optional(number, 256)
+    reserved_concurrent_executions = optional(number, null)
+    metrics_namespace              = optional(string, "GitHub Runners")
+    name                           = string
+    prefix                         = optional(string, null)
     principals = optional(list(object({
       type        = string
       identifiers = list(string)

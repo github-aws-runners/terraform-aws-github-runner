@@ -1,66 +1,107 @@
 variable "multi_runner_config_v2" {
   description = <<EOT
-Experimental runner lane configuration keyed by lane name. This v2 shape separates common runner routing from provider-specific backend configuration. The schema can change while the provider model is being finalized. V1 and v2 maps can be used together when their lane keys do not overlap.
+Experimental runner lane configuration keyed by lane name. This v2 shape uses the same canonical ownership groups as runner-stack. The schema can change while the provider model is being finalized. V1 and v2 maps can be used together when their lane keys do not overlap.
 
 Each lane has:
-- `runner`: GitHub runner behavior shared by all providers.
-- `provider`: backend discriminator plus typed provider configuration.
+- `runner`: runner identity, registration, runtime, and IAM configuration.
+- `github`: GitHub registration scope for the lane.
+- `scale_up`, `scale_down`, `pool`, and `job_retry`: control-plane behavior.
+- `compute_provider`: backend discriminator plus typed provider configuration.
 - `queue`: queue and event-source settings for the lane.
 - `matcherConfig`: webhook routing labels and priority.
 EOT
+
   type = map(object({
     runner = object({
-      runner_os                   = string
-      runner_architecture         = string
-      disable_runner_autoupdate   = optional(bool, false)
-      enable_ephemeral_runners    = optional(bool, false)
-      enable_job_queued_check     = optional(bool, null)
-      enable_jit_config           = optional(bool, null)
-      enable_organization_runners = optional(bool, false)
+      os                     = string
+      architecture           = string
+      boot_time_in_minutes   = optional(number, 5)
+      disable_default_labels = optional(bool, false)
+      extra_labels           = optional(list(string), [])
+      group_name             = optional(string, "Default")
+      name_prefix            = optional(string, "")
+      run_as_root            = optional(bool, false)
+      run_as                 = optional(string, "ec2-user")
+      maximum_count          = number
+      ephemeral              = optional(bool, false)
+      jit_config_enabled     = optional(bool, null)
+      auto_update_disabled   = optional(bool, false)
+      hooks = optional(object({
+        job_started   = optional(string, "")
+        job_completed = optional(string, "")
+      }), {})
+      iam = optional(object({
+        role = optional(object({
+          arn = string
+        }), null)
+        managed_policy_arns  = optional(map(string), {})
+        path                 = optional(string, null)
+        permissions_boundary = optional(string, null)
+      }), {})
+    })
+
+    github = optional(object({
+      organization_runners = optional(bool, false)
+    }), {})
+
+    queue = optional(object({
+      delay_webhook_event            = optional(number, 30)
+      job_queue_retention_in_seconds = optional(number, 86400)
+      event_source_mapping = optional(object({
+        batch_size                         = optional(number, null)
+        maximum_batching_window_in_seconds = optional(number, null)
+      }), {})
+      redrive_build_queue = optional(object({
+        enabled         = bool
+        maxReceiveCount = number
+        }), {
+        enabled         = false
+        maxReceiveCount = null
+      })
+    }), {})
+
+    scale_up = optional(object({
+      reserved_concurrent_executions = optional(number, 1)
+      job_queued_check_enabled       = optional(bool, null)
+    }), {})
+
+    scale_down = optional(object({
+      schedule_expression             = optional(string, "cron(*/5 * * * ? *)")
+      minimum_running_time_in_minutes = optional(number, null)
       idle_config = optional(list(object({
         cron             = string
         timeZone         = string
         idleCount        = number
         evictionStrategy = optional(string, "oldest_first")
       })), [])
-      minimum_running_time_in_minutes         = optional(number, null)
-      pool_runner_owner                       = optional(string, null)
-      runner_as_root                          = optional(bool, false)
-      runner_boot_time_in_minutes             = optional(number, 5)
-      runner_disable_default_labels           = optional(bool, false)
-      runner_extra_labels                     = optional(list(string), [])
-      runner_group_name                       = optional(string, "Default")
-      runner_name_prefix                      = optional(string, "")
-      runner_run_as                           = optional(string, "ec2-user")
-      runners_maximum_count                   = number
-      scale_down_schedule_expression          = optional(string, "cron(*/5 * * * ? *)")
-      scale_up_reserved_concurrent_executions = optional(number, 1)
-      iam = optional(object({
-        role = optional(object({
-          arn = string
-        }), null)
-        managed_policy_arns = optional(map(string), {})
-      }), {})
-      pool_config = optional(list(object({
+    }), {})
+
+    pool = optional(object({
+      config = optional(list(object({
         schedule_expression          = string
         schedule_expression_timezone = optional(string)
         size                         = number
       })), [])
-      job_retry = optional(object({
-        enable             = optional(bool, false)
-        delay_in_seconds   = optional(number, 300)
-        delay_backoff      = optional(number, 2)
-        lambda_memory_size = optional(number, 256)
-        lambda_timeout     = optional(number, 30)
-        max_attempts       = optional(number, 1)
-      }), {})
-    })
+      runner_owner = optional(string, null)
+    }), {})
 
-    provider = object({
+    job_retry = optional(object({
+      enabled          = optional(bool, false)
+      delay_in_seconds = optional(number, 300)
+      delay_backoff    = optional(number, 2)
+      max_attempts     = optional(number, 1)
+      lambda = optional(object({
+        memory_size                    = optional(number, 256)
+        reserved_concurrent_executions = optional(number, 1)
+        timeout                        = optional(number, 30)
+      }), {})
+    }), {})
+
+    compute_provider = object({
       type = string
 
       ec2 = optional(object({
-        runner_metadata_options = optional(object({
+        metadata_options = optional(object({
           instance_metadata_tags      = optional(string, "enabled")
           http_endpoint               = optional(string, "enabled")
           http_tokens                 = optional(string, "required")
@@ -86,21 +127,32 @@ EOT
           })), [{
           volume_size = 30
         }])
-        cloudwatch_config                    = optional(string, null)
-        create_service_linked_role_spot      = optional(bool, false)
-        credit_specification                 = optional(string, null)
-        ebs_optimized                        = optional(bool, false)
-        enable_cloudwatch_agent              = optional(bool, true)
-        enable_runner_binaries_syncer        = optional(bool, true)
-        enable_runner_detailed_monitoring    = optional(bool, false)
-        enable_ssm_on_runners                = optional(bool, false)
-        enable_userdata                      = optional(bool, true)
-        instance_allocation_strategy         = optional(string, "lowest-price")
-        instance_max_spot_price              = optional(string, null)
-        instance_target_capacity_type        = optional(string, "spot")
-        instance_type_priorities             = optional(map(number), null)
-        instance_types                       = list(string)
-        runner_additional_security_group_ids = optional(list(string), [])
+        create_service_linked_role_spot = optional(bool, false)
+        credit_specification            = optional(string, null)
+        ebs_optimized                   = optional(bool, false)
+        cloudwatch_agent = optional(object({
+          enabled = optional(bool, true)
+          config  = optional(string, null)
+        }), {})
+        binaries_syncer = optional(object({
+          enabled = optional(bool, true)
+        }), {})
+        detailed_monitoring_enabled = optional(bool, false)
+        ssm_enabled                 = optional(bool, false)
+        user_data = optional(object({
+          enabled               = optional(bool, true)
+          template              = optional(string, null)
+          content               = optional(string, null)
+          pre_install           = optional(string, "")
+          post_install          = optional(string, "")
+          debug_logging_enabled = optional(bool, false)
+        }), {})
+        instance_allocation_strategy  = optional(string, "lowest-price")
+        instance_max_spot_price       = optional(string, null)
+        instance_target_capacity_type = optional(string, "spot")
+        instance_type_priorities      = optional(map(number), null)
+        instance_types                = list(string)
+        additional_security_group_ids = optional(list(string), [])
         instance_profile = optional(object({
           name = string
         }), null)
@@ -139,20 +191,14 @@ EOT
           license_configuration_arn = string
         })), [])
         use_dedicated_host = optional(bool, false)
-        runner_log_files = optional(list(object({
+        log_files = optional(list(object({
           log_group_name   = string
           prefix_log_group = bool
           file_path        = string
           log_stream_name  = string
           log_class        = optional(string, "STANDARD")
         })), null)
-        runner_ec2_tags           = optional(map(string), {})
-        runner_hook_job_completed = optional(string, "")
-        runner_hook_job_started   = optional(string, "")
-        userdata_content          = optional(string, null)
-        userdata_post_install     = optional(string, "")
-        userdata_pre_install      = optional(string, "")
-        userdata_template         = optional(string, null)
+        tags = optional(map(string), {})
       }), null)
 
       # Future provider references only. Do not uncomment until the Terraform
@@ -162,20 +208,6 @@ EOT
       #   environment_variables = optional(map(string), {})
       # }), null)
     })
-
-    queue = optional(object({
-      delay_webhook_event                                            = optional(number, 30)
-      job_queue_retention_in_seconds                                 = optional(number, 86400)
-      lambda_event_source_mapping_batch_size                         = optional(number, null)
-      lambda_event_source_mapping_maximum_batching_window_in_seconds = optional(number, null)
-      redrive_build_queue = optional(object({
-        enabled         = bool
-        maxReceiveCount = number
-        }), {
-        enabled         = false
-        maxReceiveCount = null
-      })
-    }), {})
 
     matcherConfig = object({
       labelMatchers           = list(list(string))
@@ -191,27 +223,27 @@ EOT
   validation {
     condition = alltrue([
       for _, lane in var.multi_runner_config_v2 :
-      lower(trimspace(lane.provider.type)) == "ec2"
+      lower(trimspace(lane.compute_provider.type)) == "ec2"
     ])
-    error_message = "provider.type must be ec2. microvm and codebuild are reserved for future Terraform support."
+    error_message = "compute_provider.type must be ec2. microvm and codebuild are reserved for future Terraform support."
   }
 
   validation {
     condition = alltrue([
       for _, lane in var.multi_runner_config_v2 :
-      lane.provider.ec2 != null
+      lane.compute_provider.ec2 != null
     ])
-    error_message = "Each lane must set provider.ec2."
+    error_message = "Each lane must set compute_provider.ec2."
   }
 
   validation {
     condition = alltrue([
       for _, lane in var.multi_runner_config_v2 :
-      lane.provider.ec2 == null ? true : (
-        lane.provider.ec2.instance_profile == null || lane.runner.iam.role != null
+      lane.compute_provider.ec2 == null ? true : (
+        lane.compute_provider.ec2.instance_profile == null || lane.runner.iam.role != null
       )
     ])
-    error_message = "runner.iam.role must be set when provider.ec2.instance_profile selects an external instance profile."
+    error_message = "runner.iam.role must be set when compute_provider.ec2.instance_profile selects an external instance profile."
   }
 
   validation {

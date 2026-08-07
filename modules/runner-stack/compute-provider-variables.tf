@@ -22,11 +22,14 @@ variable "compute_provider" {
         name = string
       }), null)
       instance_profile_path = optional(string, null)
-      s3_runner_binaries = optional(object({
-        arn = string
-        id  = string
-        key = string
-      }), null)
+      binaries_syncer = optional(object({
+        enabled = optional(bool, true)
+        s3 = optional(object({
+          arn = string
+          id  = string
+          key = string
+        }), null)
+      }), {})
       block_device_mappings = optional(list(object({
         delete_on_termination      = optional(bool, true)
         device_name                = optional(string, "/dev/xvda")
@@ -39,34 +42,37 @@ variable "compute_provider" {
         volume_size                = number
         volume_type                = optional(string, "gp3")
       })), [{ volume_size = 30 }])
-      ebs_optimized                        = optional(bool, false)
-      instance_target_capacity_type        = optional(string, "spot")
-      instance_allocation_strategy         = optional(string, "lowest-price")
-      instance_type_priorities             = optional(map(number), null)
-      instance_max_spot_price              = optional(string, null)
-      instance_types                       = list(string)
-      enable_userdata                      = optional(bool, true)
-      userdata_template                    = optional(string, null)
-      userdata_content                     = optional(string, null)
-      userdata_pre_install                 = optional(string, "")
-      userdata_post_install                = optional(string, "")
-      runner_hook_job_started              = optional(string, "")
-      runner_hook_job_completed            = optional(string, "")
-      enable_ssm_on_runners                = optional(bool, false)
-      create_service_linked_role_spot      = optional(bool, false)
-      enable_cloudwatch_agent              = optional(bool, true)
-      enable_managed_runner_security_group = optional(bool, true)
-      cloudwatch_config                    = optional(string, null)
-      runner_log_files = optional(list(object({
+      ebs_optimized                 = optional(bool, false)
+      instance_target_capacity_type = optional(string, "spot")
+      instance_allocation_strategy  = optional(string, "lowest-price")
+      instance_type_priorities      = optional(map(number), null)
+      instance_max_spot_price       = optional(string, null)
+      instance_types                = list(string)
+      user_data = optional(object({
+        enabled               = optional(bool, true)
+        template              = optional(string, null)
+        content               = optional(string, null)
+        pre_install           = optional(string, "")
+        post_install          = optional(string, "")
+        debug_logging_enabled = optional(bool, false)
+      }), {})
+      ssm_enabled                     = optional(bool, false)
+      create_service_linked_role_spot = optional(bool, false)
+      cloudwatch_agent = optional(object({
+        enabled = optional(bool, true)
+        config  = optional(string, null)
+      }), {})
+      managed_security_group_enabled = optional(bool, true)
+      log_files = optional(list(object({
         log_group_name   = string
         prefix_log_group = bool
         file_path        = string
         log_stream_name  = string
         log_class        = optional(string, "STANDARD")
       })), null)
-      key_name                             = optional(string, null)
-      runner_additional_security_group_ids = optional(list(string), [])
-      enable_runner_detailed_monitoring    = optional(bool, false)
+      key_name                      = optional(string, null)
+      additional_security_group_ids = optional(list(string), [])
+      detailed_monitoring_enabled   = optional(bool, false)
       egress_rules = optional(list(object({
         cidr_blocks      = list(string)
         ipv6_cidr_blocks = list(string)
@@ -88,16 +94,14 @@ variable "compute_provider" {
         to_port          = 0
         description      = null
       }])
-      runner_ec2_tags = optional(map(string), {})
+      tags = optional(map(string), {})
       metadata_options = optional(object({
         instance_metadata_tags      = optional(string, "enabled")
         http_endpoint               = optional(string, "enabled")
         http_tokens                 = optional(string, "required")
         http_put_response_hop_limit = optional(number, 1)
       }), {})
-      enable_runner_binaries_syncer  = optional(bool, true)
-      enable_user_data_debug_logging = optional(bool, false)
-      credit_specification           = optional(string, null)
+      credit_specification = optional(string, null)
       cpu_options = optional(object({
         core_count            = optional(number)
         threads_per_core      = optional(number)
@@ -183,29 +187,8 @@ variable "compute_provider" {
 
   validation {
     condition = var.compute_provider.ec2 == null ? true : (
-      !var.compute_provider.ec2.enable_runner_binaries_syncer || var.compute_provider.ec2.s3_runner_binaries != null
+      !var.compute_provider.ec2.binaries_syncer.enabled || var.compute_provider.ec2.binaries_syncer.s3 != null
     )
-    error_message = "compute_provider.ec2.s3_runner_binaries must be set when enable_runner_binaries_syncer is true."
-  }
-}
-
-variable "runner_iam" {
-  description = "Common runner-role configuration. Provider and user-managed policies are attached only when the runner stack creates the role; an external role must already contain all required policies."
-  type = object({
-    role = optional(object({
-      arn = string
-    }), null)
-    managed_policy_arns = optional(map(string), {})
-  })
-  default = {}
-
-  validation {
-    condition     = var.runner_iam.role == null ? true : trimspace(var.runner_iam.role.arn) != ""
-    error_message = "runner_iam.role.arn must be a non-empty ARN when set."
-  }
-
-  validation {
-    condition     = var.runner_iam.role == null || length(var.runner_iam.managed_policy_arns) == 0
-    error_message = "runner_iam.managed_policy_arns cannot be set with an external runner_iam.role because external roles are not managed by this module."
+    error_message = "compute_provider.ec2.binaries_syncer.s3 must be set when compute_provider.ec2.binaries_syncer.enabled is true."
   }
 }

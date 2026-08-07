@@ -1,65 +1,65 @@
 locals {
   ssm_housekeeper = {
-    schedule_expression = var.ssm_housekeeper.schedule_expression
-    state               = var.ssm_housekeeper.state
-    lambda_timeout      = var.ssm_housekeeper.lambda_timeout
-    lambda_memory_size  = var.ssm_housekeeper.lambda_memory_size
+    schedule_expression = var.ssm.housekeeper.schedule_expression
+    state               = var.ssm.housekeeper.state
+    lambda_timeout      = var.ssm.housekeeper.lambda.timeout
+    lambda_memory_size  = var.ssm.housekeeper.lambda.memory_size
     config = {
-      tokenPath      = var.ssm_housekeeper.config.tokenPath == null ? local.token_path : var.ssm_housekeeper.config.tokenPath
-      minimumDaysOld = var.ssm_housekeeper.config.minimumDaysOld
-      dryRun         = var.ssm_housekeeper.config.dryRun
+      tokenPath      = var.ssm.housekeeper.config.tokenPath == null ? local.token_path : var.ssm.housekeeper.config.tokenPath
+      minimumDaysOld = var.ssm.housekeeper.config.minimumDaysOld
+      dryRun         = var.ssm.housekeeper.config.dryRun
     }
   }
 }
 
 resource "aws_lambda_function" "ssm_housekeeper" {
-  s3_bucket         = var.lambda_s3_bucket != null ? var.lambda_s3_bucket : null
-  s3_key            = var.runners_lambda_s3_key != null ? var.runners_lambda_s3_key : null
-  s3_object_version = var.runners_lambda_s3_object_version != null ? var.runners_lambda_s3_object_version : null
-  filename          = var.lambda_s3_bucket == null ? local.lambda_zip : null
-  source_code_hash  = var.lambda_s3_bucket == null ? filebase64sha256(local.lambda_zip) : null
+  s3_bucket         = var.lambda.s3.bucket != null ? var.lambda.s3.bucket : null
+  s3_key            = var.lambda.s3.key != null ? var.lambda.s3.key : null
+  s3_object_version = var.lambda.s3.object_version != null ? var.lambda.s3.object_version : null
+  filename          = var.lambda.s3.bucket == null ? local.lambda_zip : null
+  source_code_hash  = var.lambda.s3.bucket == null ? filebase64sha256(local.lambda_zip) : null
   function_name     = "${var.prefix}-ssm-housekeeper"
   role              = aws_iam_role.ssm_housekeeper.arn
   handler           = "index.ssmHousekeeper"
-  runtime           = var.lambda_runtime
+  runtime           = var.lambda.runtime
   timeout           = local.ssm_housekeeper.lambda_timeout
-  tags              = merge(local.tags, var.lambda_tags)
+  tags              = merge(local.tags, var.lambda.tags)
   memory_size       = local.ssm_housekeeper.lambda_memory_size
-  architectures     = [var.lambda_architecture]
+  architectures     = [var.lambda.architecture]
 
   environment {
     variables = {
       ENVIRONMENT                              = var.prefix
-      LOG_LEVEL                                = upper(var.log_level)
+      LOG_LEVEL                                = upper(var.observability.log_level)
       SSM_CLEANUP_CONFIG                       = jsonencode(local.ssm_housekeeper.config)
       POWERTOOLS_SERVICE_NAME                  = "${var.prefix}-ssm-housekeeper"
-      POWERTOOLS_TRACE_ENABLED                 = var.tracing_config.mode != null ? true : false
-      POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.tracing_config.capture_http_requests
-      POWERTOOLS_TRACER_CAPTURE_ERROR          = var.tracing_config.capture_error
+      POWERTOOLS_TRACE_ENABLED                 = var.observability.tracing.mode != null ? true : false
+      POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.observability.tracing.capture_http_requests
+      POWERTOOLS_TRACER_CAPTURE_ERROR          = var.observability.tracing.capture_error
     }
   }
 
   dynamic "vpc_config" {
-    for_each = var.lambda_subnet_ids != null && var.lambda_security_group_ids != null ? [true] : []
+    for_each = var.lambda.subnet_ids != null && var.lambda.security_group_ids != null ? [true] : []
     content {
-      security_group_ids = var.lambda_security_group_ids
-      subnet_ids         = var.lambda_subnet_ids
+      security_group_ids = var.lambda.security_group_ids
+      subnet_ids         = var.lambda.subnet_ids
     }
   }
 
   dynamic "tracing_config" {
-    for_each = var.tracing_config.mode != null ? [true] : []
+    for_each = var.observability.tracing.mode != null ? [true] : []
     content {
-      mode = var.tracing_config.mode
+      mode = var.observability.tracing.mode
     }
   }
 }
 
 resource "aws_cloudwatch_log_group" "ssm_housekeeper" {
   name              = "/aws/lambda/${aws_lambda_function.ssm_housekeeper.function_name}"
-  retention_in_days = var.logging_retention_in_days
-  kms_key_id        = var.logging_kms_key_id
-  log_group_class   = var.log_class
+  retention_in_days = var.observability.logs.retention_in_days
+  kms_key_id        = var.observability.logs.kms_key_id
+  log_group_class   = var.observability.logs.class
   tags              = var.tags
 }
 
@@ -87,8 +87,8 @@ resource "aws_iam_role" "ssm_housekeeper" {
   name                 = "${substr("${var.prefix}-ssm-hk-lambda", 0, 54)}-${substr(md5("${var.prefix}-ssm-hk-lambda"), 0, 8)}"
   description          = "Lambda role for SSM Housekeeper (${var.prefix})"
   assume_role_policy   = data.aws_iam_policy_document.lambda_assume_role_policy.json
-  path                 = local.role_path
-  permissions_boundary = var.role_permissions_boundary
+  path                 = local.lambda_role_path
+  permissions_boundary = var.lambda.role.permissions_boundary
   tags                 = local.tags
 }
 
@@ -105,13 +105,13 @@ resource "aws_iam_role_policy" "ssm_housekeeper_logging" {
 }
 
 resource "aws_iam_role_policy_attachment" "ssm_housekeeper_vpc_execution_role" {
-  count      = length(var.lambda_subnet_ids) > 0 ? 1 : 0
+  count      = length(var.lambda.subnet_ids) > 0 ? 1 : 0
   role       = aws_iam_role.ssm_housekeeper.name
   policy_arn = "arn:${var.aws_partition}:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }
 
 resource "aws_iam_role_policy" "ssm_housekeeper_xray" {
-  count  = var.tracing_config.mode != null ? 1 : 0
+  count  = var.observability.tracing.mode != null ? 1 : 0
   name   = "xray-policy"
   policy = data.aws_iam_policy_document.lambda_xray[0].json
   role   = aws_iam_role.ssm_housekeeper.name

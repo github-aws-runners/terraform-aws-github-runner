@@ -33,43 +33,59 @@ variables {
         id_ssm_parameter_arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/external-ami-id"
         kms_key_arn          = null
       }
-      s3_runner_binaries = {
-        arn = "arn:aws:s3:::my-bucket"
-        id  = "my-bucket"
-        key = "runners/linux/actions-runner.tar.gz"
+      binaries_syncer = {
+        s3 = {
+          arn = "arn:aws:s3:::my-bucket"
+          id  = "my-bucket"
+          key = "runners/linux/actions-runner.tar.gz"
+        }
       }
-      enable_ssm_on_runners = true
+      ssm_enabled = true
     }
   }
 
-  sqs_build_queue = {
-    arn = "arn:aws:sqs:eu-west-1:123456789012:build-queue"
-    url = "https://sqs.eu-west-1.amazonaws.com/123456789012/build-queue"
+  runner = {
+    labels = ["self-hosted", "linux", "x64"]
   }
 
-  enable_organization_runners = true
-  runner_labels               = ["self-hosted", "linux", "x64"]
+  queue = {
+    build = {
+      arn = "arn:aws:sqs:eu-west-1:123456789012:build-queue"
+      url = "https://sqs.eu-west-1.amazonaws.com/123456789012/build-queue"
+    }
+  }
 
   # Use S3 bucket to avoid filebase64sha256 needing local zip files
-  lambda_s3_bucket      = "my-lambda-bucket"
-  runners_lambda_s3_key = "runners.zip"
-
-  github_app_parameters = {
-    key_base64 = { name = "/github-runner/key-base64", arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64" }
-    id         = { name = "/github-runner/app-id", arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id" }
+  lambda = {
+    s3 = {
+      bucket = "my-lambda-bucket"
+      key    = "runners.zip"
+    }
   }
 
-  ssm_paths = {
-    root   = "/github-runner"
-    tokens = "tokens"
-    config = "config"
+  github = {
+    organization_runners = true
+    app_parameters = {
+      key_base64 = { name = "/github-runner/key-base64", arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64" }
+      id         = { name = "/github-runner/app-id", arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id" }
+    }
+  }
+
+  ssm = {
+    paths = {
+      root   = "/github-runner"
+      tokens = "tokens"
+      config = "config"
+    }
   }
 
   # Enable pool to exercise the pool module and its role type
-  pool_config = [{
-    schedule_expression = "cron(0 8 * * ? *)"
-    size                = 1
-  }]
+  pool = {
+    config = [{
+      schedule_expression = "cron(0 8 * * ? *)"
+      size                = 1
+    }]
+  }
 }
 
 run "plan_with_pool_enabled" {
@@ -77,7 +93,7 @@ run "plan_with_pool_enabled" {
 
   assert {
     condition     = length(module.pool) == 1
-    error_message = "Pool module should be enabled when pool_config is non-empty"
+    error_message = "Pool module should be enabled when pool.config is non-empty"
   }
 
   assert {
@@ -139,9 +155,12 @@ run "external_runner_role_is_not_managed_by_common" {
   command = plan
 
   variables {
-    runner_iam = {
-      role = {
-        arn = "arn:aws:iam::123456789012:role/external/runner-role"
+    runner = {
+      labels = ["self-hosted", "linux", "x64"]
+      iam = {
+        role = {
+          arn = "arn:aws:iam::123456789012:role/external/runner-role"
+        }
       }
     }
   }
@@ -167,9 +186,12 @@ run "external_runner_role_and_profile_remain_external" {
   command = plan
 
   variables {
-    runner_iam = {
-      role = {
-        arn = "arn:aws:iam::123456789012:role/external/runner-role"
+    runner = {
+      labels = ["self-hosted", "linux", "x64"]
+      iam = {
+        role = {
+          arn = "arn:aws:iam::123456789012:role/external/runner-role"
+        }
       }
     }
     compute_provider = {
@@ -181,7 +203,9 @@ run "external_runner_role_and_profile_remain_external" {
         instance_profile = {
           name = "external-runner-profile"
         }
-        enable_runner_binaries_syncer = false
+        binaries_syncer = {
+          enabled = false
+        }
       }
     }
   }
@@ -210,7 +234,9 @@ run "external_profile_requires_external_role" {
         instance_profile = {
           name = "external-runner-profile"
         }
-        enable_runner_binaries_syncer = false
+        binaries_syncer = {
+          enabled = false
+        }
       }
     }
   }
@@ -222,12 +248,15 @@ run "empty_runner_iam_uses_common_role" {
   command = plan
 
   variables {
-    runner_iam = {}
+    runner = {
+      labels = ["self-hosted", "linux", "x64"]
+      iam    = {}
+    }
   }
 
   assert {
     condition     = length(aws_iam_role.runner) == 1
-    error_message = "An empty runner_iam object must use common role ownership."
+    error_message = "An empty runner.iam object must use common role ownership."
   }
 }
 
@@ -235,17 +264,20 @@ run "external_role_rejects_managed_policy_attachments" {
   command = plan
 
   variables {
-    runner_iam = {
-      role = {
-        arn = "arn:aws:iam::123456789012:role/external/runner-role"
-      }
-      managed_policy_arns = {
-        readonly = "arn:aws:iam::aws:policy/ReadOnlyAccess"
+    runner = {
+      labels = ["self-hosted", "linux", "x64"]
+      iam = {
+        role = {
+          arn = "arn:aws:iam::123456789012:role/external/runner-role"
+        }
+        managed_policy_arns = {
+          readonly = "arn:aws:iam::aws:policy/ReadOnlyAccess"
+        }
       }
     }
   }
 
-  expect_failures = [var.runner_iam]
+  expect_failures = [var.runner]
 }
 
 run "requires_distribution_object_when_sync_is_enabled" {
@@ -255,11 +287,13 @@ run "requires_distribution_object_when_sync_is_enabled" {
     compute_provider = {
       type = "ec2"
       ec2 = {
-        vpc_id                        = "vpc-12345678"
-        subnet_ids                    = ["subnet-12345678"]
-        instance_types                = ["m5.large"]
-        enable_runner_binaries_syncer = true
-        s3_runner_binaries            = null
+        vpc_id         = "vpc-12345678"
+        subnet_ids     = ["subnet-12345678"]
+        instance_types = ["m5.large"]
+        binaries_syncer = {
+          enabled = true
+          s3      = null
+        }
       }
     }
   }
@@ -283,14 +317,25 @@ run "job_retry_uses_common_lane_identity" {
   command = plan
 
   variables {
-    runner_name_prefix = "provider-neutral-"
+    runner = {
+      labels      = ["self-hosted", "linux", "x64"]
+      name_prefix = "provider-neutral-"
+    }
     job_retry = {
-      enable = true
+      enabled = true
+      lambda = {
+        reserved_concurrent_executions = 2
+      }
     }
   }
 
   assert {
     condition     = module.job_retry[0].lambda.function.function.environment[0].variables["RUNNER_NAME_PREFIX"] == "provider-neutral-"
     error_message = "Job retry must receive the common lane runner-name prefix."
+  }
+
+  assert {
+    condition     = module.job_retry[0].lambda.function.function.reserved_concurrent_executions == 2
+    error_message = "Job retry must apply its configured Lambda reserved concurrency."
   }
 }

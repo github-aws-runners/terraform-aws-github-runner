@@ -1,58 +1,58 @@
 module "pool" {
-  count = length(var.pool_config) == 0 ? 0 : 1
+  count = length(var.pool.config) == 0 ? 0 : 1
 
   source = "./pool"
 
   config = {
     prefix = var.prefix
     ghes = {
-      ssl_verify = var.ghes_ssl_verify
-      url        = var.ghes_url
+      ssl_verify = var.github.enterprise_server.ssl_verify
+      url        = var.github.enterprise_server.url
     }
-    user_agent            = var.user_agent
-    github_app_parameters = var.github_app_parameters
-    runners_maximum_count = var.runners_maximum_count
+    user_agent            = var.github.user_agent
+    github_app_parameters = var.github.app_parameters
+    runners_maximum_count = var.runner.maximum_count
     kms_key_arn           = local.kms_key_arn
     lambda = {
-      log_level                      = var.log_level
-      logging_retention_in_days      = var.logging_retention_in_days
-      logging_kms_key_id             = var.logging_kms_key_id
-      log_class                      = var.log_class
-      reserved_concurrent_executions = var.pool_lambda_reserved_concurrent_executions
-      s3_bucket                      = var.lambda_s3_bucket
-      s3_key                         = var.runners_lambda_s3_key
-      s3_object_version              = var.runners_lambda_s3_object_version
-      security_group_ids             = var.lambda_security_group_ids
-      subnet_ids                     = var.lambda_subnet_ids
-      architecture                   = var.lambda_architecture
-      memory_size                    = var.pool_lambda_memory_size
-      runtime                        = var.lambda_runtime
-      timeout                        = var.pool_lambda_timeout
+      log_level                      = var.observability.log_level
+      logging_retention_in_days      = var.observability.logs.retention_in_days
+      logging_kms_key_id             = var.observability.logs.kms_key_id
+      log_class                      = var.observability.logs.class
+      reserved_concurrent_executions = var.pool.lambda.reserved_concurrent_executions
+      s3_bucket                      = var.lambda.s3.bucket
+      s3_key                         = var.lambda.s3.key
+      s3_object_version              = var.lambda.s3.object_version
+      security_group_ids             = var.lambda.security_group_ids
+      subnet_ids                     = var.lambda.subnet_ids
+      architecture                   = var.lambda.architecture
+      memory_size                    = var.pool.lambda.memory_size
+      runtime                        = var.lambda.runtime
+      timeout                        = var.pool.lambda.timeout
       zip                            = local.lambda_zip
       parameter_store_tags           = local.parameter_store_tags
     }
-    pool                      = var.pool_config
-    include_busy_runners      = var.pool_include_busy_runners
-    role_path                 = local.role_path
-    role_permissions_boundary = var.role_permissions_boundary
+    pool                      = var.pool.config
+    include_busy_runners      = var.pool.include_busy_runners
+    role_path                 = local.lambda_role_path
+    role_permissions_boundary = var.lambda.role.permissions_boundary
     runner = {
-      disable_runner_autoupdate = var.disable_runner_autoupdate
-      ephemeral                 = var.enable_ephemeral_runners
-      enable_jit_config         = var.enable_jit_config
-      labels                    = var.runner_labels
-      group_name                = var.runner_group_name
-      name_prefix               = var.runner_name_prefix
-      pool_owner                = var.pool_runner_owner
+      disable_runner_autoupdate = var.runner.auto_update_disabled
+      ephemeral                 = var.runner.ephemeral
+      enable_jit_config         = var.runner.jit_config_enabled
+      labels                    = var.runner.labels
+      group_name                = var.runner.group_name
+      name_prefix               = var.runner.name_prefix
+      pool_owner                = var.pool.runner_owner
     }
-    ssm_token_path                 = "${var.ssm_paths.root}/${var.ssm_paths.tokens}"
-    ssm_config_path                = "${var.ssm_paths.root}/${var.ssm_paths.config}"
+    ssm_token_path                 = "${var.ssm.paths.root}/${var.ssm.paths.tokens}"
+    ssm_config_path                = "${var.ssm.paths.root}/${var.ssm.paths.config}"
     tags                           = local.tags
-    lambda_tags                    = var.lambda_tags
+    lambda_tags                    = var.lambda.tags
     arn_ssm_parameters_path_config = local.arn_ssm_parameters_path_config
   }
 
   aws_partition  = var.aws_partition
-  tracing_config = var.tracing_config
+  tracing_config = var.observability.tracing
   runner_provider = {
     type                   = local.provider.type
     environment_variables  = local.provider.pool.environment_variables

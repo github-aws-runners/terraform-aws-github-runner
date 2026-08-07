@@ -11,7 +11,7 @@ data "aws_iam_policy_document" "lambda_assume_role_policy" {
 }
 
 data "aws_iam_policy_document" "lambda_xray" {
-  count = var.tracing_config.mode != null ? 1 : 0
+  count = var.observability.tracing.mode != null ? 1 : 0
   statement {
     actions = [
       "xray:BatchGetTraces",

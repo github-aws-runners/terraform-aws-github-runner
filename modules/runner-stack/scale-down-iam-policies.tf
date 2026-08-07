@@ -7,8 +7,8 @@ data "aws_iam_policy_document" "scale_down_common" {
       "ssm:GetParameters",
     ]
     resources = [
-      var.github_app_parameters.key_base64.arn,
-      var.github_app_parameters.id.arn,
+      var.github.app_parameters.key_base64.arn,
+      var.github.app_parameters.id.arn,
     ]
   }
 
