@@ -85,7 +85,12 @@ jobs:
             "download-lambda",
             "lambda",
             "multi-runner",
+            "compute-providers/ec2",
             "runner-binaries-syncer",
+            "runner-stack",
+            "runner-stack/job-retry",
+            "runner-stack/scale-runners",
+            "runner-stack/ssm-housekeeper",
             "runners",
             "setup-iam-permissions",
             "ssm",
@@ -214,6 +219,13 @@ jobs:
       matrix:
         module:
           - modules/runners
+          - modules/multi-runner
+          - modules/runner-stack
+          - modules/runner-stack/job-retry
+          - modules/runner-stack/pool
+          - modules/runner-stack/scale-runners
+          - modules/runner-stack/ssm-housekeeper
+          - modules/compute-providers/ec2
     defaults:
       run:
         working-directory: ${{ matrix.module }}

@@ -20,8 +20,14 @@ locals {
     merge(v, { runner_config = merge(v.runner_config, { runner_extra_labels = local.runner_extra_labels[k] }) }),
   ) }
 
-  tmp_distinct_list_unique_os_and_arch = distinct([for i, config in local.runner_config : { "os_type" : config.runner_config.runner_os, "architecture" : config.runner_config.runner_architecture } if config.runner_config.enable_runner_binaries_syncer])
-  unique_os_and_arch                   = { for i, v in local.tmp_distinct_list_unique_os_and_arch : "${v.os_type}_${v.architecture}" => v }
+  tmp_distinct_list_unique_os_and_arch = distinct([
+    for _, config in local.runner_config_by_provider.ec2 : {
+      "os_type" : config.runner.os,
+      "architecture" : config.runner.architecture
+    }
+    if config.compute_provider.ec2.binaries_syncer.enabled
+  ])
+  unique_os_and_arch = { for _, v in local.tmp_distinct_list_unique_os_and_arch : "${v.os_type}_${v.architecture}" => v }
 
   ssm_root_path = "/${var.ssm_paths.root}/${var.prefix}"
 }

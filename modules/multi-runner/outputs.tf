@@ -1,5 +1,6 @@
 
 output "runners_map" {
+  description = "Stable v1 runner resources keyed by runner configuration. Entries retain the historical flat output shape."
   value = { for runner_key, runner in module.runners : runner_key => {
     launch_template_name    = runner.launch_template.name
     launch_template_id      = runner.launch_template.id
@@ -17,6 +18,18 @@ output "runners_map" {
     role_pool               = runner.role_pool
     runners_log_groups      = runner.runners_log_groups
     logfiles                = runner.logfiles
+    }
+  }
+}
+
+output "runners_map_v2" {
+  description = "Experimental v2 runner resources keyed by runner configuration and grouped by common or compute-provider ownership."
+  value = { for runner_key, runner in module.runner_stacks : runner_key => {
+    runner     = runner.runner
+    scale_up   = runner.scale_up
+    scale_down = runner.scale_down
+    pool       = runner.pool
+    provider   = runner.provider
     }
   }
 }
