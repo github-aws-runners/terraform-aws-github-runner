@@ -112,25 +112,10 @@ resource "aws_iam_role_policy" "scale_up" {
   policy = data.aws_iam_policy_document.scale_up.json
 }
 
-data "aws_iam_policy_document" "scale_up" {
-  source_policy_documents = [
-    templatefile("${path.module}/policies/lambda-scale-up.json", {
-      sqs_arn                   = var.sqs_build_queue.arn
-      github_app_id_arn         = var.github_app_parameters.id.arn
-      github_app_key_base64_arn = var.github_app_parameters.key_base64.arn
-      ssm_config_path           = "arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.ssm_paths.root}/${var.ssm_paths.config}"
-      kms_key_arn               = local.kms_key_arn
-    }),
-    local.provider.scale_up.iam_policy_json,
-  ]
-}
-
 resource "aws_iam_role_policy" "scale_up_logging" {
-  name = "logging-policy"
-  role = aws_iam_role.scale_up.name
-  policy = templatefile("${path.module}/policies/lambda-cloudwatch.json", {
-    log_group_arn = aws_cloudwatch_log_group.scale_up.arn
-  })
+  name   = "logging-policy"
+  role   = aws_iam_role.scale_up.name
+  policy = data.aws_iam_policy_document.scale_up_logging.json
 }
 
 resource "aws_iam_role_policy" "service_linked_role" {
@@ -160,12 +145,8 @@ resource "aws_iam_role_policy" "scale_up_xray" {
 }
 
 resource "aws_iam_role_policy" "job_retry_sqs_publish" {
-  count = local.job_retry_enabled ? 1 : 0
-  name  = "publish-retry-check-sqs-policy"
-  role  = aws_iam_role.scale_up.name
-
-  policy = templatefile("${path.module}/policies/lambda-publish-sqs-policy.json", {
-    sqs_resource_arns = jsonencode([module.job_retry[0].job_retry_check_queue.arn])
-    kms_key_arn       = var.kms_key_arn != null ? var.kms_key_arn : ""
-  })
+  count  = local.job_retry_enabled ? 1 : 0
+  name   = "publish-retry-check-sqs-policy"
+  role   = aws_iam_role.scale_up.name
+  policy = data.aws_iam_policy_document.scale_up_job_retry_publish[0].json
 }

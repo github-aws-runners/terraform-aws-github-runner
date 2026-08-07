@@ -61,15 +61,9 @@ resource "aws_lambda_permission" "job_retry" {
 }
 
 resource "aws_iam_role_policy" "job_retry" {
-  name = "job_retry-policy"
-  role = module.job_retry.lambda.role.name
-  policy = templatefile("${path.module}/policies/lambda.json", {
-    kms_key_arn               = var.config.kms_key_arn != null ? var.config.kms_key_arn : ""
-    sqs_build_queue_arn       = var.config.sqs_build_queue.arn
-    sqs_job_retry_queue_arn   = aws_sqs_queue.job_retry_check_queue.arn
-    github_app_id_arn         = var.config.github_app_parameters.id.arn
-    github_app_key_base64_arn = var.config.github_app_parameters.key_base64.arn
-  })
+  name   = "job_retry-policy"
+  role   = module.job_retry.lambda.role.name
+  policy = data.aws_iam_policy_document.job_retry.json
 }
 
 data "aws_iam_policy_document" "deny_insecure_transport" {

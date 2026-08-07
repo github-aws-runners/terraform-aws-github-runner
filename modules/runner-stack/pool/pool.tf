@@ -95,22 +95,15 @@ resource "aws_iam_role_policy" "pool" {
 
 data "aws_iam_policy_document" "pool" {
   source_policy_documents = [
-    templatefile("${path.module}/policies/lambda-pool.json", {
-      arn_ssm_parameters_path_config = var.config.arn_ssm_parameters_path_config
-      github_app_id_arn              = var.config.github_app_parameters.id.arn
-      github_app_key_base64_arn      = var.config.github_app_parameters.key_base64.arn
-      kms_key_arn                    = var.config.kms_key_arn
-    }),
+    data.aws_iam_policy_document.pool_common.json,
     var.runner_provider.iam_policy_json,
   ]
 }
 
 resource "aws_iam_role_policy" "pool_logging" {
-  name = "logging-policy"
-  role = aws_iam_role.pool.name
-  policy = templatefile("${path.module}/../policies/lambda-cloudwatch.json", {
-    log_group_arn = aws_cloudwatch_log_group.pool.arn
-  })
+  name   = "logging-policy"
+  role   = aws_iam_role.pool.name
+  policy = data.aws_iam_policy_document.pool_logging.json
 }
 
 resource "aws_iam_role_policy_attachment" "pool_vpc_execution_role" {

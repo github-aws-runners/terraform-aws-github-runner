@@ -102,23 +102,10 @@ resource "aws_iam_role_policy" "scale_down" {
   policy = data.aws_iam_policy_document.scale_down.json
 }
 
-data "aws_iam_policy_document" "scale_down" {
-  source_policy_documents = [
-    templatefile("${path.module}/policies/lambda-scale-down.json", {
-      github_app_id_arn         = var.github_app_parameters.id.arn
-      github_app_key_base64_arn = var.github_app_parameters.key_base64.arn
-      kms_key_arn               = local.kms_key_arn
-    }),
-    local.provider.scale_down.iam_policy_json,
-  ]
-}
-
 resource "aws_iam_role_policy" "scale_down_logging" {
-  name = "logging-policy"
-  role = aws_iam_role.scale_down.name
-  policy = templatefile("${path.module}/policies/lambda-cloudwatch.json", {
-    log_group_arn = aws_cloudwatch_log_group.scale_down.arn
-  })
+  name   = "logging-policy"
+  role   = aws_iam_role.scale_down.name
+  policy = data.aws_iam_policy_document.scale_down_logging.json
 }
 
 resource "aws_iam_role_policy_attachment" "scale_down_vpc_execution_role" {
