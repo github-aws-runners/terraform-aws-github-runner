@@ -35,7 +35,7 @@ const githubClient = {
 
 const cleanEnv = process.env;
 
-const lanes = providerTypes.map((type) => ({
+const computeProviders = providerTypes.map((type) => ({
   provider: {
     type,
     listRunners: vi.fn(),
@@ -68,7 +68,7 @@ beforeEach(() => {
 
 definePoolContractTests<ComputeProviderType>({
   adjust,
+  computeProviders,
   githubInstallationClient: githubClient,
-  lanes,
   resolveCapability: mockedResolveCapability,
 });

@@ -43,14 +43,14 @@ const payloads: ActionRequestMessageSQS[] = [
 
 const cleanEnv = process.env;
 
-const lanes = providerTypes.map((type) => ({
+const computeProviders = providerTypes.map((type) => ({
   provider: {
     type,
     resolveLabelsForRunners: vi.fn(),
     getCurrentRunners: vi.fn(),
     createRunners: vi.fn(),
   } satisfies ScaleUpComputeProvider,
-  state: { lane: type },
+  state: { computeProvider: type },
 }));
 
 beforeEach(() => {
@@ -75,9 +75,9 @@ beforeEach(() => {
 });
 
 defineScaleUpContractTests({
+  computeProviders,
   createPayloads: () => structuredClone(payloads),
   githubInstallationClient: githubClient,
-  lanes,
   resolveCapability: mockedResolveCapability,
   scaleUp,
 });
