@@ -48,13 +48,6 @@ variable "runner_matcher_config" {
     condition     = try(var.runner_matcher_config.matcherConfig.priority, 999) >= 0 && try(var.runner_matcher_config.matcherConfig.priority, 999) < 1000
     error_message = "The priority of the matcher must be between 0 and 999."
   }
-  validation {
-    condition = alltrue([
-      for config in values(var.runner_matcher_config) :
-      contains(["ec2", "microvm"], lower(trimspace(config.runnerProvider)))
-    ])
-    error_message = "runnerProvider must be ec2 or microvm."
-  }
 }
 
 variable "lambda_zip" {
