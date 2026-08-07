@@ -1,3 +1,10 @@
+module "microvm_runner_role" {
+  count  = local.provider_type == "microvm" ? 1 : 0
+  source = "../compute-providers/microvm/runner-role"
+
+  trust_services = local.provider_type == "microvm" ? var.compute_provider.microvm.runner_role_trust_services : []
+}
+
 module "microvm" {
   count  = local.provider_type == "microvm" ? 1 : 0
   source = "../compute-providers/microvm"

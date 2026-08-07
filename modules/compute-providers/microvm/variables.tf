@@ -29,7 +29,6 @@ variable "config" {
     - `image_version`: Optional MicroVM image version.
     - `execution_role`: Optional externally managed execution role assumed by MicroVMs. Null uses the common runner role.
     - `execution_role.arn`: ARN of the externally managed MicroVM execution role.
-    - `runner_role_trust_services`: Service principals trusted by the common runner role when it is used as the MicroVM execution role.
     - `egress_network_connectors`: Egress network connectors passed to RunMicrovm.
     - `idle_policy`: Optional auto-suspend and auto-resume configuration passed to RunMicrovm.
     - `idle_policy.max_idle_duration_seconds`: Maximum idle time before MicroVM auto-suspend.
@@ -57,8 +56,7 @@ variable "config" {
     execution_role = optional(object({
       arn = string
     }), null)
-    runner_role_trust_services = optional(list(string), ["lambdamicrovms.amazonaws.com"])
-    egress_network_connectors  = optional(list(string), [])
+    egress_network_connectors = optional(list(string), [])
     idle_policy = optional(object({
       max_idle_duration_seconds  = number
       suspended_duration_seconds = number

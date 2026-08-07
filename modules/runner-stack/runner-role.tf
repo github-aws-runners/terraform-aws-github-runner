@@ -4,13 +4,6 @@ locals {
   # the role is created.
   create_runner_role = var.runner.iam.role == null
 
-  runner_role_trust_services_by_provider = {
-    ec2     = ["ec2.amazonaws.com"]
-    microvm = var.compute_provider.microvm == null ? [] : var.compute_provider.microvm.runner_role_trust_services
-  }
-
-  runner_role_trust_services = local.provider_type == null ? [] : lookup(local.runner_role_trust_services_by_provider, local.provider_type, [])
-
   runner_role = {
     arn  = local.create_runner_role ? one(aws_iam_role.runner[*].arn) : var.runner.iam.role.arn
     name = local.create_runner_role ? one(aws_iam_role.runner[*].name) : basename(var.runner.iam.role.arn)
@@ -33,24 +26,10 @@ locals {
   )
 }
 
-data "aws_iam_policy_document" "runner_assume_role" {
-  count = local.create_runner_role ? 1 : 0
-
-  statement {
-    effect  = "Allow"
-    actions = ["sts:AssumeRole"]
-
-    principals {
-      type        = "Service"
-      identifiers = local.runner_role_trust_services
-    }
-  }
-}
-
 resource "aws_iam_role" "runner" {
   count                = local.create_runner_role ? 1 : 0
   name                 = "${substr("${var.prefix}-runner", 0, 54)}-${substr(md5("${var.prefix}-runner"), 0, 8)}"
-  assume_role_policy   = data.aws_iam_policy_document.runner_assume_role[0].json
+  assume_role_policy   = local.provider_assume_role_policy
   path                 = local.runner_role_path
   permissions_boundary = var.runner.iam.permissions_boundary
   tags                 = local.runner_tags

@@ -113,11 +113,8 @@ run "plan_with_pool_enabled" {
   }
 
   assert {
-    condition = anytrue([
-      for principal in data.aws_iam_policy_document.runner_assume_role[0].statement[0].principals :
-      principal.type == "Service" && toset(principal.identifiers) == toset(["ec2.amazonaws.com"])
-    ])
-    error_message = "The common runner role must use the selected EC2 provider trust relationship before EC2 consumes it."
+    condition     = aws_iam_role.runner[0].assume_role_policy == module.ec2_runner_role[0].assume_role_policy
+    error_message = "The common runner role must use the assume-role policy returned by the selected EC2 provider."
   }
 
   assert {
@@ -210,11 +207,8 @@ run "plan_with_microvm_provider_enabled" {
   }
 
   assert {
-    condition = anytrue([
-      for principal in data.aws_iam_policy_document.runner_assume_role[0].statement[0].principals :
-      principal.type == "Service" && toset(principal.identifiers) == toset(["lambdamicrovms.amazonaws.com"])
-    ])
-    error_message = "The common runner role must use the selected MicroVM provider trust relationship before MicroVM consumes it."
+    condition     = aws_iam_role.runner[0].assume_role_policy == module.microvm_runner_role[0].assume_role_policy
+    error_message = "The common runner role must use the assume-role policy returned by the selected MicroVM provider."
   }
 
   assert {

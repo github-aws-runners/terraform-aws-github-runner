@@ -23,6 +23,7 @@ The implementation is split into orchestration, provider-neutral control-plane c
 | `runner-stack/job-retry` | Optional queued-job retry resources and their Lambda and IAM wiring. |
 | `runner-stack/ssm-housekeeper` | Parameter Store cleanup Lambda, schedule, logging, and IAM resources. |
 | `compute-providers/<provider>` | Provider-specific resources, runner-role policy requirements, and the IAM and environment-variable fragments consumed by the common control plane. |
+| `compute-providers/<provider>/runner-role` | Role-independent provider trust policy rendered before the common runner role is created. |
 
 The EC2 provider owns the instance profile, launch template, security group, AMI and bootstrap parameters, runner log groups, EC2 policy statements, and EC2 Lambda environment variables. The MicroVM provider owns the Lambda MicroVM runtime configuration, execution-role policy, and MicroVM Lambda environment variables. Terraform does not manage MicroVM lifecycle resources directly; the runtime control plane creates and terminates MicroVM runners.
 
@@ -30,16 +31,18 @@ The modules below `runner-stack` are internal implementation boundaries, not sta
 
 `runner-stack` selects a compute provider from the single populated typed block under `compute_provider`. For example, `compute_provider = { ec2 = { ... } }` selects EC2 and `compute_provider = { microvm = { ... } }` selects MicroVM; there is no separate `type` input that can disagree with the populated block. Exactly one provider block must be populated, and its presence must be known during planning because it determines the module graph. The stack passes `compute_provider.<provider>` to the selected provider module as one nested `config` object. It also passes the provider-neutral `runner`, `github`, `ssm`, and `observability` objects without expanding them back into prefixed scalar inputs. This keeps ownership visible at the module boundary and gives future compute providers an equivalent contract to implement.
 
-The common stack creates or selects the runner IAM role and owns the role trust relationship. The selected provider returns a single nested contract containing `policies.runner`, `policies.scale_up`, `policies.scale_down`, and `policies.pool`, along with component environment variables and provider resources. The common stack attaches those permission documents to the roles owned by the corresponding common components. A provider never creates or attaches a common IAM role.
+The common stack creates or selects the runner IAM role, but the selected provider owns the role's trust-policy document. The provider returns a single nested contract containing the rendered `assume_role_policy`, `policies.runner`, `policies.scale_up`, `policies.scale_down`, and `policies.pool`, along with component environment variables and provider resources. The common stack uses the trust document when it creates the runner role and attaches the returned permission documents to the roles owned by the corresponding common components. A provider never creates or attaches a common IAM role.
 
-The trust relationship is deliberately resolved before the provider is called:
+The trust relationship is deliberately rendered through a role-independent provider contract before the resource-bearing provider is called:
 
-1. `runner-stack` creates or selects the runner role using the service principal associated with the populated provider block.
-2. The compute provider receives that role so it can create resources such as the EC2 instance profile and render `iam:PassRole` statements.
-3. The provider returns its nested policy and environment-variable contract.
-4. The common components attach the returned policies to the runner, scale-up, scale-down, and pool roles they own.
+1. `runner-stack` selects the provider from the populated typed block.
+2. `compute-providers/<provider>/runner-role` renders the provider-specific assume-role policy without consuming the runner role.
+3. `runner-stack` creates or selects the common runner role from that policy.
+4. The full compute provider receives the resolved role so it can create resources such as the EC2 instance profile and render `iam:PassRole` statements.
+5. The provider returns its nested policy, environment-variable, and resource contract.
+6. The common components attach the returned policies to the runner, scale-up, scale-down, and pool roles they own.
 
-Returning the runner trust policy from the same resource-bearing provider module would create a Terraform dependency cycle: the role would depend on the provider output while the provider already depends on the role input. Keeping trust establishment in `runner-stack` and attaching provider permissions afterward preserves a one-way graph.
+Returning the runner trust policy from the same resource-bearing provider module would create a Terraform dependency cycle: the role would depend on the provider output while the provider already depends on the role input. The small role-independent provider contract preserves provider ownership of the trust document and keeps the dependency graph one-way.
 
 ## Phase 1 dispatch and compatibility
 
@@ -59,6 +62,9 @@ flowchart TD
   Stack --> Pool["runner-stack/pool"]
   Stack --> Retry["runner-stack/job-retry"]
   Stack --> Housekeeper["runner-stack/ssm-housekeeper"]
+  Stack --> Trust["compute-providers/provider/runner-role"]
+  Trust --> Role["common runner role"]
+  Role --> Provider
   Stack --> Provider["compute-providers/<provider>"]
   Provider --> Scaling
   Provider --> Pool

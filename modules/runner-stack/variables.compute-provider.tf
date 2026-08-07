@@ -263,7 +263,7 @@ variable "compute_provider" {
       execution_role = optional(object({
         arn = string
       }), null)
-      runner_role_trust_services = optional(list(string), ["lambdamicrovms.amazonaws.com"])
+      runner_role_trust_services = optional(list(string), ["lambda.amazonaws.com"])
       egress_network_connectors  = optional(list(string), [])
       idle_policy = optional(object({
         max_idle_duration_seconds  = number

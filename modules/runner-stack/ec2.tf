@@ -1,3 +1,8 @@
+module "ec2_runner_role" {
+  count  = local.provider_type == "ec2" ? 1 : 0
+  source = "../compute-providers/ec2/runner-role"
+}
+
 module "ec2" {
   count  = local.provider_type == "ec2" ? 1 : 0
   source = "../compute-providers/ec2"
