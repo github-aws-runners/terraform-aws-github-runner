@@ -1,6 +1,7 @@
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 
 import type { DynamicLabelDispatchTarget, DynamicLabelProvider, RunnerMatcherConfig } from '../../../../contracts';
+import { dynamicLabelsForOtherProvider } from '../../../../dynamic-labels';
 import { violationsAgainstPolicy } from './dynamic-labels-policy';
 
 const logger = createChildLogger('handler');
@@ -31,6 +32,14 @@ export function selectEc2DynamicLabelQueue(
   for (const queue of matches) {
     if (!queue.matcherConfig.enableDynamicLabels) {
       logger.warn(`Queue ${queue.id} matches non-dynamic labels but does not allow dynamic labels; trying next match`);
+      continue;
+    }
+
+    const labelsForOtherProvider = dynamicLabelsForOtherProvider(sanitizedGhrLabels, 'ec2');
+    if (labelsForOtherProvider.length > 0) {
+      logger.warn(`Queue ${queue.id}: dynamic labels target another runner provider; trying next match`, {
+        dynamicLabels: labelsForOtherProvider,
+      });
       continue;
     }
 

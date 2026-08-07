@@ -1,4 +1,4 @@
-export const runnerProviderTypes = ['ec2'] as const;
+export const runnerProviderTypes = ['ec2', 'microvm'] as const;
 
 export type RunnerProviderType = (typeof runnerProviderTypes)[number];
 
