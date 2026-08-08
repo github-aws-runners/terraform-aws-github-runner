@@ -446,29 +446,3 @@ run "requires_distribution_object_when_sync_is_enabled" {
 
   expect_failures = [terraform_data.validate_config]
 }
-
-run "returns_ec2_assume_role_policy" {
-  command = plan
-
-  assert {
-    condition     = toset(data.aws_iam_policy_document.assume_role.statement[0].actions) == toset(["sts:AssumeRole"])
-    error_message = "The EC2 runner role must allow sts:AssumeRole."
-  }
-
-  assert {
-    condition = anytrue([
-      for principal in data.aws_iam_policy_document.assume_role.statement[0].principals :
-      principal.type == "Service" && toset(principal.identifiers) == toset(["ec2.amazonaws.com"])
-    ])
-    error_message = "The EC2 runner role must trust the EC2 service principal."
-  }
-
-  assert {
-    condition = (
-      toset(keys(output.runner_role)) == toset(["trust_policy_json"])
-      && output.runner_role.trust_policy_json == data.aws_iam_policy_document.assume_role.json
-      && !contains(keys(output.policies.runner), "assume_role_policy")
-    )
-    error_message = "The EC2 provider must return trust through only the role-independent runner_role contract."
-  }
-}

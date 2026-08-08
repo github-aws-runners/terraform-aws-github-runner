@@ -13,11 +13,6 @@ output "resources" {
   value       = local.provider_resources
 }
 
-output "runner_role" {
-  description = "Role-independent Lambda MicroVM runner-role contract consumed before runner-stack creates the role."
-  value       = local.provider_runner_role
-}
-
 output "provider" {
   description = "Nested Lambda MicroVM compute-provider contract consumed by runner-stack."
   value = {

@@ -192,29 +192,3 @@ run "rejects_empty_image_identifier" {
 
   expect_failures = [terraform_data.validate_config]
 }
-
-run "returns_microvm_assume_role_policy" {
-  command = plan
-
-  assert {
-    condition     = toset(data.aws_iam_policy_document.assume_role.statement[0].actions) == toset(["sts:AssumeRole", "sts:TagSession"])
-    error_message = "The MicroVM runner role must allow assume-role and tagged sessions."
-  }
-
-  assert {
-    condition = anytrue([
-      for principal in data.aws_iam_policy_document.assume_role.statement[0].principals :
-      principal.type == "Service" && toset(principal.identifiers) == toset(["lambda.amazonaws.com"])
-    ])
-    error_message = "The MicroVM runner role must trust the Lambda service principal required by the provider."
-  }
-
-  assert {
-    condition = (
-      toset(keys(output.runner_role)) == toset(["trust_policy_json"])
-      && output.runner_role.trust_policy_json == data.aws_iam_policy_document.assume_role.json
-      && !contains(keys(output.policies.runner), "assume_role_policy")
-    )
-    error_message = "The MicroVM provider must return trust through only the role-independent runner_role contract."
-  }
-}

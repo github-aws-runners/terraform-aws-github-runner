@@ -22,7 +22,8 @@ The implementation is split into orchestration, provider-neutral control-plane c
 | `runner-stack/pool` | Optional scheduled runner-pool resources and their Lambda and IAM wiring. |
 | `runner-stack/job-retry` | Optional queued-job retry resources and their Lambda and IAM wiring. |
 | `runner-stack/ssm-housekeeper` | Parameter Store cleanup Lambda, schedule, logging, and IAM resources. |
-| `compute-providers/<provider>` | Provider-specific resources, runner-role trust and permission requirements, and the IAM and environment-variable fragments consumed by the common control plane. |
+| `compute-providers/<provider>/trust-policy` | Provider-specific default runner-role trust, merged with the optional caller-provided trust document before the common role is created. |
+| `compute-providers/<provider>` | Provider-specific resources, permission requirements, and the IAM and environment-variable fragments consumed by the common control plane after the runner role is resolved. |
 
 The EC2 provider owns the instance profile, launch template, security group, AMI and bootstrap parameters, runner log groups, EC2 policy statements, and EC2 Lambda environment variables. The MicroVM provider owns the Lambda MicroVM runtime configuration, execution-role policy, and MicroVM Lambda environment variables. Terraform does not manage MicroVM lifecycle resources directly; the runtime control plane creates and terminates MicroVM runners.
 
@@ -30,18 +31,18 @@ The modules below `runner-stack` are internal implementation boundaries, not sta
 
 `runner-stack` selects a compute provider from the single populated typed block under `compute_provider`. For example, `compute_provider = { ec2 = { ... } }` selects EC2 and `compute_provider = { microvm = { ... } }` selects MicroVM; there is no separate `type` input that can disagree with the populated block. Exactly one provider block must be populated, and its presence must be known during planning because it determines the module graph. Native input validation enforces this common selection rule, while each compute-provider module owns its provider-specific semantic validation. The stack passes `compute_provider.<provider>` to the selected provider module as one nested `config` object. It also passes the provider-neutral `runner`, `github`, `ssm`, and `observability` objects without expanding them back into prefixed scalar inputs. This keeps ownership visible at the module boundary and gives future compute providers an equivalent contract to implement.
 
-The common stack creates or selects the runner IAM role, but the selected provider owns the role's trust-policy document. Each provider exposes that document through a dedicated `assume_role_policy` output and separately returns its nested `provider` contract containing `policies.runner`, `policies.scale_up`, `policies.scale_down`, and `policies.pool`, component environment variables, and provider resources. The common stack uses the trust document when it creates the runner role and attaches the returned permission documents to the roles owned by the corresponding common components. A provider never creates or attaches a common IAM role.
+The common stack creates or selects the runner IAM role, but the selected provider owns the role's default trust-policy document. Each provider implements a small `trust-policy` submodule that accepts `additional_trust_policy_json` and returns the final `assume_role_policy`. The full provider separately returns its nested `provider` contract containing `policies.runner`, `policies.scale_up`, `policies.scale_down`, and `policies.pool`, component environment variables, and provider resources. The common stack uses the isolated trust-policy output when it creates the runner role and attaches the full provider's permission documents to the roles owned by the corresponding common components. A provider never creates or attaches a common IAM role.
 
-The trust relationship is deliberately rendered by a dedicated file and output inside each compute-provider module:
+The trust relationship is deliberately rendered by an isolated provider submodule:
 
 1. `runner-stack` selects the provider from the populated typed block.
-2. `compute-providers/<provider>/assume-role.tf` renders the provider-specific policy without referencing the runner-role input.
-3. `runner-stack` creates or selects the common runner role from that policy.
+2. `compute-providers/<provider>/trust-policy` combines the provider default with `runner.iam.additional_trust_policy_json` without referencing the runner-role input.
+3. `runner-stack` creates or selects the common runner role from the returned `assume_role_policy`.
 4. The full compute provider receives the resolved role so it can create resources such as the EC2 instance profile and render `iam:PassRole` statements.
 5. The provider returns its nested policy, environment-variable, and resource contract.
 6. The common components attach the returned policies to the runner, scale-up, scale-down, and pool roles they own.
 
-The dedicated `assume_role_policy` output depends only on the provider's trust document, not on resources that consume the runner role. `runner-stack` accesses the selected counted module through a direct `[0]` reference so Terraform preserves that output-level dependency; a full splat would add the module-close dependency and recreate the role cycle. This preserves provider ownership of the trust relationship while keeping the dependency graph one-way.
+The trust-policy output depends only on its input documents, not on the full provider resources that consume the runner role. This preserves provider ownership of the trust relationship while keeping the dependency graph one-way.
 
 ## Phase 1 dispatch and compatibility
 
@@ -61,7 +62,7 @@ flowchart TD
   Stack --> Pool["runner-stack/pool"]
   Stack --> Retry["runner-stack/job-retry"]
   Stack --> Housekeeper["runner-stack/ssm-housekeeper"]
-  Stack --> Trust["compute-providers/provider/assume-role.tf"]
+  Stack --> Trust["compute-providers/provider/trust-policy"]
   Trust --> Role["common runner role"]
   Role --> Provider
   Stack --> Provider["compute-providers/<provider>"]

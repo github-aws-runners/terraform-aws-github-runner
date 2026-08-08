@@ -1,3 +1,10 @@
+module "ec2_trust_policy" {
+  count  = local.provider_type == "ec2" ? 1 : 0
+  source = "../compute-providers/ec2/trust-policy"
+
+  additional_trust_policy_json = var.runner.iam.additional_trust_policy_json
+}
+
 module "ec2" {
   count  = local.provider_type == "ec2" ? 1 : 0
   source = "../compute-providers/ec2"

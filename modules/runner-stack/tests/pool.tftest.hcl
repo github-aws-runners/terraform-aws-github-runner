@@ -127,23 +127,12 @@ run "plan_with_pool_enabled" {
   }
 
   assert {
-    condition     = aws_iam_role.runner[0].assume_role_policy == data.aws_iam_policy_document.runner_assume_role.json
-    error_message = "The common runner role must use the merged assume-role policy."
-  }
-
-  assert {
     condition = (
-      length(data.aws_iam_policy_document.runner_assume_role.source_policy_documents) == 2
-      && contains(
-        data.aws_iam_policy_document.runner_assume_role.source_policy_documents,
-        module.ec2[0].runner_role.trust_policy_json,
-      )
-      && anytrue([
-        for policy_json in data.aws_iam_policy_document.runner_assume_role.source_policy_documents :
-        try(jsondecode(policy_json).Statement[0].Sid, null) == "AdditionalTrustedAccount"
-      ])
+      length(module.ec2_trust_policy) == 1
+      && length(module.microvm_trust_policy) == 0
+      && aws_iam_role.runner[0].assume_role_policy == module.ec2_trust_policy[0].assume_role_policy
     )
-    error_message = "The common runner role must extend the provider trust policy with the caller policy document."
+    error_message = "The common runner role must use the selected EC2 trust-policy submodule output."
   }
 
   assert {
@@ -246,13 +235,12 @@ run "plan_with_microvm_provider_enabled" {
   }
 
   assert {
-    condition     = aws_iam_role.runner[0].assume_role_policy == data.aws_iam_policy_document.runner_assume_role.json
-    error_message = "The common runner role must use the selected MicroVM provider's merged assume-role policy."
-  }
-
-  assert {
-    condition     = length(data.aws_iam_policy_document.runner_assume_role.source_policy_documents) == 1
-    error_message = "The selected provider's default trust policy must be used unchanged when no extension is configured."
+    condition = (
+      length(module.ec2_trust_policy) == 0
+      && length(module.microvm_trust_policy) == 1
+      && aws_iam_role.runner[0].assume_role_policy == module.microvm_trust_policy[0].assume_role_policy
+    )
+    error_message = "The common runner role must use the selected MicroVM trust-policy submodule output."
   }
 
   assert {

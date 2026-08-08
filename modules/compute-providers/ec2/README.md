@@ -43,7 +43,6 @@ No modules.
 | [aws_ami.runner](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/ami) | data source |
 | [aws_caller_identity.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/caller_identity) | data source |
 | [aws_iam_policy_document.ami_id_ssm_parameter_read](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
-| [aws_iam_policy_document.assume_role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 | [aws_iam_policy_document.cloudwatch](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 | [aws_iam_policy_document.create_tags](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 | [aws_iam_policy_document.describe_tags](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
@@ -78,5 +77,4 @@ No modules.
 | <a name="output_policies"></a> [policies](#output\_policies) | Provider-specific IAM policy fragments consumed by runner-stack. |
 | <a name="output_provider"></a> [provider](#output\_provider) | Nested EC2 compute-provider contract consumed by runner-stack. |
 | <a name="output_resources"></a> [resources](#output\_resources) | Provider-specific EC2 resources exposed by runner-stack. |
-| <a name="output_runner_role"></a> [runner\_role](#output\_runner\_role) | Role-independent EC2 runner-role contract consumed before runner-stack creates the role. |
 <!-- END_TF_DOCS -->

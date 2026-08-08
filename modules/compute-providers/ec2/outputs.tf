@@ -13,11 +13,6 @@ output "resources" {
   value       = local.provider_resources
 }
 
-output "runner_role" {
-  description = "Role-independent EC2 runner-role contract consumed before runner-stack creates the role."
-  value       = local.provider_runner_role
-}
-
 output "provider" {
   description = "Nested EC2 compute-provider contract consumed by runner-stack."
   value = {

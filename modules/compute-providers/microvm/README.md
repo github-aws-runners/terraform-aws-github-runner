@@ -23,7 +23,6 @@ No modules.
 |------|------|
 | [terraform_data.validate_config](https://registry.terraform.io/providers/hashicorp/terraform/latest/docs/resources/data) | resource |
 | [terraform_data.validate_runner](https://registry.terraform.io/providers/hashicorp/terraform/latest/docs/resources/data) | resource |
-| [aws_iam_policy_document.assume_role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 | [aws_iam_policy_document.scale_down](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 | [aws_iam_policy_document.scale_up](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 
@@ -49,5 +48,4 @@ No modules.
 | <a name="output_policies"></a> [policies](#output\_policies) | Provider-specific IAM policy fragments consumed by runner-stack. |
 | <a name="output_provider"></a> [provider](#output\_provider) | Nested Lambda MicroVM compute-provider contract consumed by runner-stack. |
 | <a name="output_resources"></a> [resources](#output\_resources) | Provider-specific MicroVM resources exposed by runner-stack. |
-| <a name="output_runner_role"></a> [runner\_role](#output\_runner\_role) | Role-independent Lambda MicroVM runner-role contract consumed before runner-stack creates the role. |
 <!-- END_TF_DOCS -->

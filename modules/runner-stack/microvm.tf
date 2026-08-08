@@ -1,3 +1,10 @@
+module "microvm_trust_policy" {
+  count  = local.provider_type == "microvm" ? 1 : 0
+  source = "../compute-providers/microvm/trust-policy"
+
+  additional_trust_policy_json = var.runner.iam.additional_trust_policy_json
+}
+
 module "microvm" {
   count  = local.provider_type == "microvm" ? 1 : 0
   source = "../compute-providers/microvm"

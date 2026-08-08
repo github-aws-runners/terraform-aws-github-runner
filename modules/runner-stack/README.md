@@ -6,7 +6,7 @@ This internal module implements the experimental provider-neutral runner control
 
 The stack coordinates internal modules for [`scale-runners`](./scale-runners), [`pool`](./pool), [`job-retry`](./job-retry), and [`ssm-housekeeper`](./ssm-housekeeper). These modules own their provider-neutral Lambda, scheduler, logging, and IAM resources. The stack also creates or selects the runner IAM role, manages shared runner configuration in SSM, and dispatches the selected compute provider.
 
-Provider-owned settings are typed and nested under the selected provider block; for example, AMI, VPC, instance-profile, capacity, userdata, and runner-host logging settings live under `compute_provider.ec2`, while Lambda MicroVM image and runtime settings live under `compute_provider.microvm`. Exactly one provider block must be populated, and its presence must be known during planning; there is no separate input discriminator. The common stack creates or selects the runner role, then passes it into the selected module under [`../compute-providers`](../compute-providers). EC2 owns the instance profile, launch template, EC2 bootstrap parameters, runner log groups, and its provider policies and Lambda environment variables. MicroVM owns runtime configuration, execution-role policy, and its provider Lambda environment variables; the runtime Lambdas create and terminate MicroVMs. The common stack attaches each returned policy group to its runner, scale-up, scale-down, or pool role. The runner-stack output groups provider-specific resources under the matching dynamic provider key, which also identifies the selected provider.
+Provider-owned settings are typed and nested under the selected provider block; for example, AMI, VPC, instance-profile, capacity, userdata, and runner-host logging settings live under `compute_provider.ec2`, while Lambda MicroVM image and runtime settings live under `compute_provider.microvm`. Exactly one provider block must be populated, and its presence must be known during planning; there is no separate input discriminator. Before creating the common runner role, the stack calls the selected provider's isolated `trust-policy` module to combine its default trust with `runner.iam.additional_trust_policy_json`. The resulting assume-role policy does not depend on the full compute-provider module, which receives the resolved runner role only after it is created. EC2 owns the instance profile, launch template, EC2 bootstrap parameters, runner log groups, and its provider policies and Lambda environment variables. MicroVM owns runtime configuration, execution-role policy, and its provider Lambda environment variables; the runtime Lambdas create and terminate MicroVMs. The common stack attaches each returned policy group to its runner, scale-up, scale-down, or pool role. The runner-stack output groups provider-specific resources under the matching dynamic provider key, which also identifies the selected provider.
 
 ## Tagging
 
@@ -78,8 +78,10 @@ yarn run dist
 | Name | Source | Version |
 |------|--------|---------|
 | <a name="module_ec2"></a> [ec2](#module\_ec2) | ../compute-providers/ec2 | n/a |
+| <a name="module_ec2_trust_policy"></a> [ec2\_trust\_policy](#module\_ec2\_trust\_policy) | ../compute-providers/ec2/trust-policy | n/a |
 | <a name="module_job_retry"></a> [job\_retry](#module\_job\_retry) | ./job-retry | n/a |
 | <a name="module_microvm"></a> [microvm](#module\_microvm) | ../compute-providers/microvm | n/a |
+| <a name="module_microvm_trust_policy"></a> [microvm\_trust\_policy](#module\_microvm\_trust\_policy) | ../compute-providers/microvm/trust-policy | n/a |
 | <a name="module_pool"></a> [pool](#module\_pool) | ./pool | n/a |
 | <a name="module_scale_runners"></a> [scale\_runners](#module\_scale\_runners) | ./scale-runners | n/a |
 | <a name="module_ssm_housekeeper"></a> [ssm\_housekeeper](#module\_ssm\_housekeeper) | ./ssm-housekeeper | n/a |
@@ -96,7 +98,6 @@ yarn run dist
 | [aws_ssm_parameter.runner_agent_mode](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_parameter) | resource |
 | [aws_ssm_parameter.token_path](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_parameter) | resource |
 | [aws_caller_identity.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/caller_identity) | data source |
-| [aws_iam_policy_document.runner_assume_role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 
 ## Inputs
 
