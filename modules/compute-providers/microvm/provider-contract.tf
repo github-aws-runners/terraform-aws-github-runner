@@ -9,7 +9,6 @@ locals {
     runner = {
       inline_policies     = {}
       managed_policy_arns = var.runner.iam.managed_policy_arns
-      assume_role_policy  = local.assume_role_policy
     }
     scale_up = {
       iam_policy_json            = data.aws_iam_policy_document.scale_up.json

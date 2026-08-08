@@ -25,6 +25,7 @@ variable "experimental" {
     - `runner.hooks.job_completed`: Script content installed as the runner job-completed hook.
     - `runner.iam.role.arn`: ARN of an externally managed runner role. When set, `runner-stack` does not create or modify that role.
     - `runner.iam.managed_policy_arns`: Named managed-policy ARNs attached to the module-managed runner role.
+    - `runner.iam.additional_trust_policy_json`: Optional IAM policy document merged with the selected compute provider's default runner-role trust policy.
     - `runner.iam.path`: IAM path for the module-managed runner role.
     - `runner.iam.permissions_boundary`: Permissions-boundary ARN for the module-managed runner role.
     - `github.organization_runners`: Registers runners at organization scope when true; otherwise repository-scoped registration is used.
@@ -184,9 +185,10 @@ variable "experimental" {
           role = optional(object({
             arn = string
           }), null)
-          managed_policy_arns  = optional(map(string), {})
-          path                 = optional(string, null)
-          permissions_boundary = optional(string, null)
+          managed_policy_arns          = optional(map(string), {})
+          additional_trust_policy_json = optional(string, null)
+          path                         = optional(string, null)
+          permissions_boundary         = optional(string, null)
         }), {})
       })
 

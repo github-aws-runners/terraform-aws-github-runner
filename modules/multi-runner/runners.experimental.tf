@@ -89,10 +89,11 @@ module "runner_stacks" {
     tags                   = each.value.runner.tags
     hooks                  = each.value.runner.hooks
     iam = {
-      role                 = each.value.runner.iam.role
-      managed_policy_arns  = each.value.runner.iam.managed_policy_arns
-      path                 = each.value.runner.iam.path != null ? each.value.runner.iam.path : var.role_path
-      permissions_boundary = each.value.runner.iam.permissions_boundary != null ? each.value.runner.iam.permissions_boundary : var.role_permissions_boundary
+      role                         = each.value.runner.iam.role
+      managed_policy_arns          = each.value.runner.iam.managed_policy_arns
+      additional_trust_policy_json = each.value.runner.iam.additional_trust_policy_json
+      path                         = each.value.runner.iam.path != null ? each.value.runner.iam.path : var.role_path
+      permissions_boundary         = each.value.runner.iam.permissions_boundary != null ? each.value.runner.iam.permissions_boundary : var.role_permissions_boundary
     }
   }
 

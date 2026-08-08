@@ -23,10 +23,17 @@ locals {
   provider_runner_policies = local.provider_contract.policies.runner
 }
 
+data "aws_iam_policy_document" "runner_assume_role" {
+  source_policy_documents = compact([
+    local.provider_runner_role_contract.trust_policy_json,
+    var.runner.iam.additional_trust_policy_json,
+  ])
+}
+
 resource "aws_iam_role" "runner" {
   count                = local.create_runner_role ? 1 : 0
   name                 = "${substr("${var.prefix}-runner", 0, 54)}-${substr(md5("${var.prefix}-runner"), 0, 8)}"
-  assume_role_policy   = local.provider_assume_role_policy
+  assume_role_policy   = data.aws_iam_policy_document.runner_assume_role.json
   path                 = local.runner_role_path
   permissions_boundary = var.runner.iam.permissions_boundary
   tags                 = local.runner_tags

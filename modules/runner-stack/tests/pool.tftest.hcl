@@ -51,6 +51,15 @@ variables {
       managed_policy_arns = {
         readonly = "arn:aws:iam::aws:policy/ReadOnlyAccess"
       }
+      additional_trust_policy_json = jsonencode({
+        Version = "2012-10-17"
+        Statement = [{
+          Sid       = "AdditionalTrustedAccount"
+          Effect    = "Allow"
+          Action    = "sts:AssumeRole"
+          Principal = { AWS = "arn:aws:iam::210987654321:root" }
+        }]
+      })
     }
   }
 
@@ -118,8 +127,23 @@ run "plan_with_pool_enabled" {
   }
 
   assert {
-    condition     = aws_iam_role.runner[0].assume_role_policy == module.ec2[0].policies.runner.assume_role_policy
-    error_message = "The common runner role must use the assume-role policy returned by the selected EC2 provider."
+    condition     = aws_iam_role.runner[0].assume_role_policy == data.aws_iam_policy_document.runner_assume_role.json
+    error_message = "The common runner role must use the merged assume-role policy."
+  }
+
+  assert {
+    condition = (
+      length(data.aws_iam_policy_document.runner_assume_role.source_policy_documents) == 2
+      && contains(
+        data.aws_iam_policy_document.runner_assume_role.source_policy_documents,
+        module.ec2[0].runner_role.trust_policy_json,
+      )
+      && anytrue([
+        for policy_json in data.aws_iam_policy_document.runner_assume_role.source_policy_documents :
+        try(jsondecode(policy_json).Statement[0].Sid, null) == "AdditionalTrustedAccount"
+      ])
+    )
+    error_message = "The common runner role must extend the provider trust policy with the caller policy document."
   }
 
   assert {
@@ -222,8 +246,13 @@ run "plan_with_microvm_provider_enabled" {
   }
 
   assert {
-    condition     = aws_iam_role.runner[0].assume_role_policy == module.microvm[0].policies.runner.assume_role_policy
-    error_message = "The common runner role must use the assume-role policy returned by the selected MicroVM provider."
+    condition     = aws_iam_role.runner[0].assume_role_policy == data.aws_iam_policy_document.runner_assume_role.json
+    error_message = "The common runner role must use the selected MicroVM provider's merged assume-role policy."
+  }
+
+  assert {
+    condition     = length(data.aws_iam_policy_document.runner_assume_role.source_policy_documents) == 1
+    error_message = "The selected provider's default trust policy must be used unchanged when no extension is configured."
   }
 
   assert {
@@ -355,6 +384,39 @@ run "external_role_rejects_managed_policy_attachments" {
         managed_policy_arns = {
           readonly = "arn:aws:iam::aws:policy/ReadOnlyAccess"
         }
+      }
+    }
+  }
+
+  expect_failures = [var.runner]
+}
+
+run "external_role_rejects_trust_policy_extension" {
+  command = plan
+
+  variables {
+    runner = {
+      labels = ["self-hosted", "linux", "x64"]
+      iam = {
+        role = {
+          arn = "arn:aws:iam::123456789012:role/external/runner-role"
+        }
+        additional_trust_policy_json = "{\"Version\":\"2012-10-17\",\"Statement\":[]}"
+      }
+    }
+  }
+
+  expect_failures = [var.runner]
+}
+
+run "rejects_invalid_trust_policy_extension" {
+  command = plan
+
+  variables {
+    runner = {
+      labels = ["self-hosted", "linux", "x64"]
+      iam = {
+        additional_trust_policy_json = "{"
       }
     }
   }

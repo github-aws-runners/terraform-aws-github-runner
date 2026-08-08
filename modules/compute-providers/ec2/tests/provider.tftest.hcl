@@ -464,7 +464,11 @@ run "returns_ec2_assume_role_policy" {
   }
 
   assert {
-    condition     = output.policies.runner.assume_role_policy == data.aws_iam_policy_document.assume_role.json
-    error_message = "The EC2 provider must return its rendered assume-role policy."
+    condition = (
+      toset(keys(output.runner_role)) == toset(["trust_policy_json"])
+      && output.runner_role.trust_policy_json == data.aws_iam_policy_document.assume_role.json
+      && !contains(keys(output.policies.runner), "assume_role_policy")
+    )
+    error_message = "The EC2 provider must return trust through only the role-independent runner_role contract."
   }
 }

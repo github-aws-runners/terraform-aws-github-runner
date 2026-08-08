@@ -78,4 +78,5 @@ No modules.
 | <a name="output_policies"></a> [policies](#output\_policies) | Provider-specific IAM policy fragments consumed by runner-stack. |
 | <a name="output_provider"></a> [provider](#output\_provider) | Nested EC2 compute-provider contract consumed by runner-stack. |
 | <a name="output_resources"></a> [resources](#output\_resources) | Provider-specific EC2 resources exposed by runner-stack. |
+| <a name="output_runner_role"></a> [runner\_role](#output\_runner\_role) | Role-independent EC2 runner-role contract consumed before runner-stack creates the role. |
 <!-- END_TF_DOCS -->
