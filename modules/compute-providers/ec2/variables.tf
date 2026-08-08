@@ -277,6 +277,8 @@ variable "runner" {
     - `iam.role.arn`: Resolved runner-role ARN referenced by provider policies and resources.
     - `iam.role.name`: Resolved runner-role name used by provider resources.
     - `iam.role.managed`: Whether runner-stack manages the resolved runner role.
+    - `iam.inline_policies`: Common inline policies returned with the provider-specific runner policies for attachment by runner-stack.
+    - `iam.managed_policy_arns`: Common managed-policy ARNs returned with the provider-specific runner policies for attachment by runner-stack.
     - `iam.path`: IAM path available to provider-managed IAM resources. Null derives the path from `prefix`.
   EOT
   type = object({
@@ -296,7 +298,12 @@ variable "runner" {
         name    = string
         managed = optional(bool, true)
       })
-      path = optional(string, null)
+      inline_policies = optional(map(object({
+        name        = string
+        policy_json = string
+      })), {})
+      managed_policy_arns = optional(map(string), {})
+      path                = optional(string, null)
     })
   })
 

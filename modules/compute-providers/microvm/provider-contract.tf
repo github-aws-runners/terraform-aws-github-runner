@@ -1,7 +1,7 @@
 locals {
   provider_runner_policies = {
-    inline_policies     = {}
-    managed_policy_arns = {}
+    inline_policies     = var.runner.iam.inline_policies
+    managed_policy_arns = var.runner.iam.managed_policy_arns
     assume_role_policy  = local.assume_role_policy
   }
 

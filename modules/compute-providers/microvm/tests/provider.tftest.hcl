@@ -49,6 +49,15 @@ variables {
         arn  = "arn:aws:iam::123456789012:role/microvm-test-runner"
         name = "microvm-test-runner"
       }
+      inline_policies = {
+        caller = {
+          name        = "caller-inline"
+          policy_json = "{\"Version\":\"2012-10-17\",\"Statement\":[]}"
+        }
+      }
+      managed_policy_arns = {
+        readonly = "arn:aws:iam::aws:policy/ReadOnlyAccess"
+      }
     }
   }
 
@@ -107,7 +116,9 @@ run "exposes_microvm_control_plane_contract" {
   assert {
     condition = (
       toset(keys(output.provider.policies)) == toset(["runner", "scale_up", "scale_down", "pool"])
-      && length(output.provider.policies.runner.inline_policies) == 0
+      && output.provider.policies.runner.inline_policies["caller"].name == "caller-inline"
+      && output.provider.policies.runner.inline_policies["caller"].policy_json == "{\"Version\":\"2012-10-17\",\"Statement\":[]}"
+      && output.provider.policies.runner.managed_policy_arns["readonly"] == "arn:aws:iam::aws:policy/ReadOnlyAccess"
       && !output.provider.policies.scale_up.managed_policy_enabled
       && !output.provider.policies.pool.managed_policy_enabled
     )

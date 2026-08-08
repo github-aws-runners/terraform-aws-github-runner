@@ -10,9 +10,12 @@ locals {
     managed = local.create_runner_role
   }
 
-  provider_runner_policies = local.provider_contract.policies.runner
+  common_runner_inline_policies = {
+    for policy_name, policy in var.runner.iam.inline_policies :
+    "user-${policy_name}" => policy
+  }
 
-  runner_managed_policy_arns = merge(
+  common_runner_managed_policy_arns = merge(
     {
       for policy_name, policy_arn in var.runner.iam.managed_policy_arns :
       "user-${policy_name}" => policy_arn
@@ -20,11 +23,9 @@ locals {
     var.observability.tracing.mode != null ? {
       xray = "arn:${var.aws_partition}:iam::aws:policy/AWSXRayDaemonWriteAccess"
     } : {},
-    {
-      for policy_name, policy_arn in local.provider_runner_policies.managed_policy_arns :
-      "provider-${policy_name}" => policy_arn
-    },
   )
+
+  provider_runner_policies = local.provider_contract.policies.runner
 }
 
 resource "aws_iam_role" "runner" {
@@ -45,7 +46,7 @@ resource "aws_iam_role_policy" "runner_provider" {
 }
 
 resource "aws_iam_role_policy_attachment" "runner" {
-  for_each = local.create_runner_role ? local.runner_managed_policy_arns : {}
+  for_each = local.create_runner_role ? local.provider_runner_policies.managed_policy_arns : {}
 
   role       = aws_iam_role.runner[0].name
   policy_arn = each.value

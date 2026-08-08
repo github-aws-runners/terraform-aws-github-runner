@@ -158,6 +158,12 @@ run "experimental_v2_routes_through_provider_stack" {
               job_started = "/opt/actions/job-started.sh"
             }
             iam = {
+              inline_policies = {
+                custom = {
+                  name        = "runner-custom"
+                  policy_json = "{\"Version\":\"2012-10-17\",\"Statement\":[]}"
+                }
+              }
               managed_policy_arns = {
                 readonly = "arn:aws:iam::aws:policy/ReadOnlyAccess"
               }
@@ -315,6 +321,14 @@ run "experimental_v2_routes_through_provider_stack" {
   assert {
     condition     = local.runner_config_by_provider.ec2["linux"].runner.iam.managed_policy_arns.readonly == "arn:aws:iam::aws:policy/ReadOnlyAccess"
     error_message = "Runner-role policies must remain in the common runner contract."
+  }
+
+  assert {
+    condition = (
+      local.runner_config_by_provider.ec2["linux"].runner.iam.inline_policies.custom.name == "runner-custom"
+      && local.runner_config_by_provider.ec2["linux"].runner.iam.inline_policies.custom.policy_json == "{\"Version\":\"2012-10-17\",\"Statement\":[]}"
+    )
+    error_message = "Runner-role inline policies must remain in the common runner contract."
   }
 
   assert {
@@ -598,6 +612,45 @@ run "experimental_v2_rejects_empty_compute_provider" {
             maximum_count = 2
           }
           compute_provider = {}
+          matcherConfig = {
+            labelMatchers = [["self-hosted", "linux", "x64"]]
+          }
+        }
+      }
+    }
+  }
+
+  expect_failures = [var.experimental]
+}
+
+run "experimental_v2_rejects_inline_policies_with_external_runner_role" {
+  command = plan
+
+  variables {
+    experimental = {
+      multi_runner_config_v2 = {
+        external = {
+          runner = {
+            os            = "linux"
+            architecture  = "x64"
+            maximum_count = 2
+            iam = {
+              role = {
+                arn = "arn:aws:iam::123456789012:role/external-runner"
+              }
+              inline_policies = {
+                custom = {
+                  name        = "runner-custom"
+                  policy_json = "{\"Version\":\"2012-10-17\",\"Statement\":[]}"
+                }
+              }
+            }
+          }
+          compute_provider = {
+            microvm = {
+              image_identifier = "arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner"
+            }
+          }
           matcherConfig = {
             labelMatchers = [["self-hosted", "linux", "x64"]]
           }

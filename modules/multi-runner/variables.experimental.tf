@@ -24,6 +24,7 @@ variable "experimental" {
     - `runner.hooks.job_started`: Script content installed as the runner job-started hook.
     - `runner.hooks.job_completed`: Script content installed as the runner job-completed hook.
     - `runner.iam.role.arn`: ARN of an externally managed runner role. When set, `runner-stack` does not create or modify that role.
+    - `runner.iam.inline_policies`: Named inline policies attached to the module-managed runner role. Each value provides the IAM policy name and JSON document.
     - `runner.iam.managed_policy_arns`: Named managed-policy ARNs attached to the module-managed runner role.
     - `runner.iam.path`: IAM path for the module-managed runner role.
     - `runner.iam.permissions_boundary`: Permissions-boundary ARN for the module-managed runner role.
@@ -185,6 +186,10 @@ variable "experimental" {
           role = optional(object({
             arn = string
           }), null)
+          inline_policies = optional(map(object({
+            name        = string
+            policy_json = string
+          })), {})
           managed_policy_arns  = optional(map(string), {})
           path                 = optional(string, null)
           permissions_boundary = optional(string, null)
@@ -441,6 +446,14 @@ variable "experimental" {
     })), {})
   })
   default = {}
+
+  validation {
+    condition = alltrue([
+      for runner_config in values(var.experimental.multi_runner_config_v2) :
+      runner_config.runner.iam.role == null || length(runner_config.runner.iam.inline_policies) == 0
+    ])
+    error_message = "runner.iam.inline_policies cannot be set with an external runner.iam.role because external roles are not managed by this module."
+  }
 
   validation {
     condition = alltrue([

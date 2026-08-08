@@ -10,7 +10,9 @@ module "ec2" {
   config = var.compute_provider.ec2
   runner = merge(var.runner, {
     iam = merge(var.runner.iam, {
-      role = local.runner_role
+      role                = local.runner_role
+      inline_policies     = local.common_runner_inline_policies
+      managed_policy_arns = local.common_runner_managed_policy_arns
     })
   })
   github        = var.github

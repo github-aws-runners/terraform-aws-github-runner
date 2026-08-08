@@ -90,6 +90,7 @@ module "runner_stacks" {
     hooks                  = each.value.runner.hooks
     iam = {
       role                 = each.value.runner.iam.role
+      inline_policies      = each.value.runner.iam.inline_policies
       managed_policy_arns  = each.value.runner.iam.managed_policy_arns
       path                 = each.value.runner.iam.path != null ? each.value.runner.iam.path : var.role_path
       permissions_boundary = each.value.runner.iam.permissions_boundary != null ? each.value.runner.iam.permissions_boundary : var.role_permissions_boundary

@@ -15,7 +15,7 @@ output "resources" {
 
 output "assume_role_policy" {
   description = "EC2 runner-role trust policy."
-  value       = local.provider_runner_policies.assume_role_policy
+  value       = local.assume_role_policy
 }
 
 output "provider" {

@@ -72,6 +72,15 @@ variables {
         arn  = "arn:aws:iam::123456789012:role/provider-test-runner"
         name = "provider-test-runner"
       }
+      inline_policies = {
+        caller = {
+          name        = "caller-inline"
+          policy_json = "{\"Version\":\"2012-10-17\",\"Statement\":[]}"
+        }
+      }
+      managed_policy_arns = {
+        readonly = "arn:aws:iam::aws:policy/ReadOnlyAccess"
+      }
     }
   }
 
@@ -172,8 +181,18 @@ run "separates_control_plane_contract_from_ec2_resources" {
       "session_manager",
       "distribution_bucket",
       "cloudwatch",
+      "caller",
     ])
     error_message = "The EC2 provider must return the enabled runner permission documents."
+  }
+
+  assert {
+    condition = (
+      output.provider.policies.runner.inline_policies["caller"].name == "caller-inline"
+      && output.provider.policies.runner.inline_policies["caller"].policy_json == "{\"Version\":\"2012-10-17\",\"Statement\":[]}"
+      && output.provider.policies.runner.managed_policy_arns["readonly"] == "arn:aws:iam::aws:policy/ReadOnlyAccess"
+    )
+    error_message = "The EC2 provider must return common runner IAM policy inputs with its provider policies."
   }
 
   assert {
@@ -242,6 +261,7 @@ run "accepts_partial_typed_compute_options" {
       "describe_tags",
       "create_tags",
       "terminate_self",
+      "caller",
     ])
     error_message = "Disabled optional EC2 features must remove only their corresponding runner policies."
   }
