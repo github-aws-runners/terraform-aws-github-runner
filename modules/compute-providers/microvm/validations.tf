@@ -37,3 +37,17 @@ resource "terraform_data" "validate_config" {
     }
   }
 }
+
+resource "terraform_data" "validate_runner" {
+  lifecycle {
+    precondition {
+      condition     = contains(["linux", "osx", "windows"], var.runner.os)
+      error_message = "runner.os must be linux, osx, or windows."
+    }
+
+    precondition {
+      condition     = length(var.runner.name_prefix) <= 45
+      error_message = "runner.name_prefix must be at most 45 characters."
+    }
+  }
+}

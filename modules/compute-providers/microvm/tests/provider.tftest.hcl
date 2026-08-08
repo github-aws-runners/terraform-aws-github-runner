@@ -51,6 +51,14 @@ variables {
       }
     }
   }
+
+  ssm = {
+    paths = {
+      root   = "/github-action-runners"
+      tokens = "tokens"
+      config = "config"
+    }
+  }
 }
 
 run "exposes_microvm_control_plane_contract" {

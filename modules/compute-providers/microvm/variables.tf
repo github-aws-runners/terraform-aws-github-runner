@@ -5,18 +5,18 @@ variable "aws_partition" {
 }
 
 variable "aws_region" {
-  description = "AWS region used by the MicroVM runtime provider."
+  description = "AWS region used by compute-provider resources and policy documents."
   type        = string
 }
 
 variable "prefix" {
-  description = "Prefix used to identify MicroVM runners created for this runner stack."
+  description = "Prefix used to identify resources created for the runner stack."
   type        = string
   default     = "github-actions"
 }
 
 variable "tags" {
-  description = "Base tags encoded into the MicroVM runner configuration. Nested MicroVM tags override this map."
+  description = "Base tags available to taggable compute-provider resources. Provider-specific tags override this map within their documented scopes."
   type        = map(string)
   default     = {}
 }
@@ -96,18 +96,32 @@ variable "config" {
 
 variable "runner" {
   description = <<-EOT
-    Provider-neutral runner settings consumed by MicroVM.
+    Provider-neutral runner settings consumed by compute providers.
 
+    - `os`: Runner operating system. Supported values are `linux`, `osx`, and `windows`.
+    - `architecture`: Runner distribution architecture.
     - `boot_time_in_minutes`: Expected boot and registration duration used by scale-down and pool.
     - `name_prefix`: Prefix added to registered runner names.
-    - `iam.role.arn`: Resolved common runner role ARN used as the default MicroVM execution role.
-    - `iam.role.name`: Resolved common runner role name.
+    - `run_as_root`: Runs the runner service as root.
+    - `run_as`: Operating-system user used when `run_as_root` is false.
+    - `hooks.job_started`: Script installed as the runner job-started hook.
+    - `hooks.job_completed`: Script installed as the runner job-completed hook.
+    - `iam.role.arn`: Resolved runner-role ARN referenced by provider policies and resources.
+    - `iam.role.name`: Resolved runner-role name used by provider resources.
     - `iam.role.managed`: Whether runner-stack manages the resolved runner role.
-    - `iam.path`: IAM path associated with the resolved runner role. Null derives the path from `prefix`.
+    - `iam.path`: IAM path available to provider-managed IAM resources. Null derives the path from `prefix`.
   EOT
   type = object({
+    os                   = optional(string, "linux")
+    architecture         = optional(string, "x64")
     boot_time_in_minutes = optional(number, 5)
     name_prefix          = optional(string, "")
+    run_as_root          = optional(bool, false)
+    run_as               = optional(string, "ec2-user")
+    hooks = optional(object({
+      job_started   = optional(string, "")
+      job_completed = optional(string, "")
+    }), {})
     iam = object({
       role = object({
         arn     = string
@@ -123,21 +137,64 @@ variable "runner" {
 
 # tflint-ignore: terraform_unused_declarations
 variable "github" {
-  description = "GitHub settings reserved for future MicroVM bootstrap integration."
-  type        = any
-  default     = {}
+  description = <<-EOT
+    GitHub Enterprise Server settings available to compute-provider bootstrap data.
+
+    - `enterprise_server.url`: Optional GitHub Enterprise Server base URL. Null selects GitHub.com.
+    - `enterprise_server.ssl_verify`: Enables TLS certificate verification for GitHub Enterprise Server.
+  EOT
+  type = object({
+    enterprise_server = optional(object({
+      url        = optional(string, null)
+      ssl_verify = optional(bool, true)
+    }), {})
+  })
+  default  = {}
+  nullable = false
 }
 
 # tflint-ignore: terraform_unused_declarations
 variable "ssm" {
-  description = "SSM settings reserved for future MicroVM bootstrap integration."
-  type        = any
-  default     = {}
+  description = <<-EOT
+    Parameter Store paths and tag scopes available to compute-provider bootstrap resources.
+
+    - `paths.root`: Root Parameter Store path for the runner stack.
+    - `paths.tokens`: Path segment used for registration tokens and just-in-time configuration.
+    - `paths.config`: Path segment used for persistent runner and provider configuration.
+    - `tags`: Shared SSM tags that override module-level `tags`.
+    - `parameters.tags`: Parameter-specific tags that override module-level and shared SSM tags.
+  EOT
+  type = object({
+    paths = object({
+      root   = string
+      tokens = string
+      config = string
+    })
+    tags = optional(map(string), {})
+    parameters = optional(object({
+      tags = optional(map(string), {})
+    }), {})
+  })
+
+  nullable = false
 }
 
 # tflint-ignore: terraform_unused_declarations
 variable "observability" {
-  description = "Observability settings reserved for future MicroVM bootstrap integration."
-  type        = any
-  default     = {}
+  description = <<-EOT
+    CloudWatch Logs settings available to compute-provider runner log groups.
+
+    - `logs.retention_in_days`: Retention period for provider-owned runner log groups.
+    - `logs.kms_key_id`: Optional KMS key ID or ARN used to encrypt runner log groups.
+    - `logs.tags`: Shared log-group tags that override module-level `tags`.
+  EOT
+  type = object({
+    logs = optional(object({
+      retention_in_days = optional(number, 180)
+      kms_key_id        = optional(string, null)
+      tags              = optional(map(string), {})
+    }), {})
+  })
+  default  = {}
+  nullable = false
 }
