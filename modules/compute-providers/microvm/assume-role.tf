@@ -8,7 +8,7 @@ data "aws_iam_policy_document" "assume_role" {
 
     principals {
       type        = "Service"
-      identifiers = var.config.runner_role_trust_services
+      identifiers = ["lambda.amazonaws.com"]
     }
   }
 }

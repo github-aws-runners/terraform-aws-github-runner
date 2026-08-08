@@ -48,12 +48,6 @@ variables {
   runner = {
     labels = ["self-hosted", "linux", "x64"]
     iam = {
-      inline_policies = {
-        custom = {
-          name        = "runner-custom"
-          policy_json = "{\"Version\":\"2012-10-17\",\"Statement\":[]}"
-        }
-      }
       managed_policy_arns = {
         readonly = "arn:aws:iam::aws:policy/ReadOnlyAccess"
       }
@@ -124,7 +118,7 @@ run "plan_with_pool_enabled" {
   }
 
   assert {
-    condition     = aws_iam_role.runner[0].assume_role_policy == module.ec2[0].assume_role_policy
+    condition     = aws_iam_role.runner[0].assume_role_policy == module.ec2[0].policies.runner.assume_role_policy
     error_message = "The common runner role must use the assume-role policy returned by the selected EC2 provider."
   }
 
@@ -155,17 +149,13 @@ run "plan_with_pool_enabled" {
       "session_manager",
       "distribution_bucket",
       "cloudwatch",
-      "user-custom",
     ])
     error_message = "The common stack must attach every enabled EC2 runner policy by its stable provider key."
   }
 
   assert {
-    condition = (
-      aws_iam_role_policy.runner_provider["user-custom"].name == "runner-custom"
-      && aws_iam_role_policy_attachment.runner["user-readonly"].policy_arn == "arn:aws:iam::aws:policy/ReadOnlyAccess"
-    )
-    error_message = "The selected EC2 provider contract must return common runner policies for one attachment path."
+    condition     = aws_iam_role_policy_attachment.runner["user-readonly"].policy_arn == "arn:aws:iam::aws:policy/ReadOnlyAccess"
+    error_message = "The selected EC2 provider contract must return common managed runner policies for one attachment path."
   }
 
   assert {
@@ -201,12 +191,6 @@ run "plan_with_microvm_provider_enabled" {
       labels      = ["self-hosted", "linux", "arm64", "microvm"]
       name_prefix = "microvm-"
       iam = {
-        inline_policies = {
-          custom = {
-            name        = "runner-custom"
-            policy_json = "{\"Version\":\"2012-10-17\",\"Statement\":[]}"
-          }
-        }
         managed_policy_arns = {
           readonly = "arn:aws:iam::aws:policy/ReadOnlyAccess"
         }
@@ -238,14 +222,13 @@ run "plan_with_microvm_provider_enabled" {
   }
 
   assert {
-    condition     = aws_iam_role.runner[0].assume_role_policy == module.microvm[0].assume_role_policy
+    condition     = aws_iam_role.runner[0].assume_role_policy == module.microvm[0].policies.runner.assume_role_policy
     error_message = "The common runner role must use the assume-role policy returned by the selected MicroVM provider."
   }
 
   assert {
     condition = (
-      keys(aws_iam_role_policy.runner_provider) == ["user-custom"]
-      && aws_iam_role_policy.runner_provider["user-custom"].name == "runner-custom"
+      length(aws_iam_role_policy.runner_provider) == 0
       && aws_iam_role_policy_attachment.runner["user-readonly"].policy_arn == "arn:aws:iam::aws:policy/ReadOnlyAccess"
       && output.provider.microvm.image_identifier == "arn:aws:lambdamicrovms:eu-west-1:123456789012:image/runner"
       && output.provider.microvm.image_version == "1"
@@ -371,29 +354,6 @@ run "external_role_rejects_managed_policy_attachments" {
         }
         managed_policy_arns = {
           readonly = "arn:aws:iam::aws:policy/ReadOnlyAccess"
-        }
-      }
-    }
-  }
-
-  expect_failures = [var.runner]
-}
-
-run "external_role_rejects_inline_policy_attachments" {
-  command = plan
-
-  variables {
-    runner = {
-      labels = ["self-hosted", "linux", "x64"]
-      iam = {
-        role = {
-          arn = "arn:aws:iam::123456789012:role/external/runner-role"
-        }
-        inline_policies = {
-          custom = {
-            name        = "runner-custom"
-            policy_json = "{\"Version\":\"2012-10-17\",\"Statement\":[]}"
-          }
         }
       }
     }

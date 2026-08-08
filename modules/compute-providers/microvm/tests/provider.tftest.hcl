@@ -49,12 +49,6 @@ variables {
         arn  = "arn:aws:iam::123456789012:role/microvm-test-runner"
         name = "microvm-test-runner"
       }
-      inline_policies = {
-        caller = {
-          name        = "caller-inline"
-          policy_json = "{\"Version\":\"2012-10-17\",\"Statement\":[]}"
-        }
-      }
       managed_policy_arns = {
         readonly = "arn:aws:iam::aws:policy/ReadOnlyAccess"
       }
@@ -116,8 +110,7 @@ run "exposes_microvm_control_plane_contract" {
   assert {
     condition = (
       toset(keys(output.provider.policies)) == toset(["runner", "scale_up", "scale_down", "pool"])
-      && output.provider.policies.runner.inline_policies["caller"].name == "caller-inline"
-      && output.provider.policies.runner.inline_policies["caller"].policy_json == "{\"Version\":\"2012-10-17\",\"Statement\":[]}"
+      && length(output.provider.policies.runner.inline_policies) == 0
       && output.provider.policies.runner.managed_policy_arns["readonly"] == "arn:aws:iam::aws:policy/ReadOnlyAccess"
       && !output.provider.policies.scale_up.managed_policy_enabled
       && !output.provider.policies.pool.managed_policy_enabled
@@ -213,27 +206,11 @@ run "returns_microvm_assume_role_policy" {
       for principal in data.aws_iam_policy_document.assume_role.statement[0].principals :
       principal.type == "Service" && toset(principal.identifiers) == toset(["lambda.amazonaws.com"])
     ])
-    error_message = "The MicroVM runner role must trust the configured service principals."
+    error_message = "The MicroVM runner role must trust the Lambda service principal required by the provider."
   }
 
   assert {
-    condition = (
-      output.assume_role_policy == data.aws_iam_policy_document.assume_role.json
-      && output.policies.runner.assume_role_policy == data.aws_iam_policy_document.assume_role.json
-    )
+    condition     = output.policies.runner.assume_role_policy == data.aws_iam_policy_document.assume_role.json
     error_message = "The MicroVM provider must return its rendered assume-role policy."
   }
-}
-
-run "rejects_empty_trust_services" {
-  command = plan
-
-  variables {
-    config = {
-      image_identifier           = "arn:aws:lambdamicrovms:eu-west-1:123456789012:image/runner"
-      runner_role_trust_services = []
-    }
-  }
-
-  expect_failures = [terraform_data.validate_config]
 }

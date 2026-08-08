@@ -24,7 +24,6 @@ variable "experimental" {
     - `runner.hooks.job_started`: Script content installed as the runner job-started hook.
     - `runner.hooks.job_completed`: Script content installed as the runner job-completed hook.
     - `runner.iam.role.arn`: ARN of an externally managed runner role. When set, `runner-stack` does not create or modify that role.
-    - `runner.iam.inline_policies`: Named inline policies attached to the module-managed runner role. Each value provides the IAM policy name and JSON document.
     - `runner.iam.managed_policy_arns`: Named managed-policy ARNs attached to the module-managed runner role.
     - `runner.iam.path`: IAM path for the module-managed runner role.
     - `runner.iam.permissions_boundary`: Permissions-boundary ARN for the module-managed runner role.
@@ -142,7 +141,6 @@ variable "experimental" {
     - `compute_provider.microvm.image_identifier`: ARN or ID of the MicroVM image used to run GitHub runners.
     - `compute_provider.microvm.image_version`: Optional MicroVM image version.
     - `compute_provider.microvm.execution_role.arn`: Optional externally managed execution role assumed by MicroVMs. Null uses the common runner role.
-    - `compute_provider.microvm.runner_role_trust_services`: Service principals trusted by the common runner role when it is used as the MicroVM execution role.
     - `compute_provider.microvm.egress_network_connectors`: Egress network connectors passed to RunMicrovm.
     - `compute_provider.microvm.idle_policy`: Optional auto-suspend and auto-resume configuration passed to RunMicrovm.
     - `compute_provider.microvm.logging`: Optional RunMicrovm logging union. Exactly one of `cloud_watch` or `disabled` must be selected when set.
@@ -186,10 +184,6 @@ variable "experimental" {
           role = optional(object({
             arn = string
           }), null)
-          inline_policies = optional(map(object({
-            name        = string
-            policy_json = string
-          })), {})
           managed_policy_arns  = optional(map(string), {})
           path                 = optional(string, null)
           permissions_boundary = optional(string, null)
@@ -393,8 +387,7 @@ variable "experimental" {
           execution_role = optional(object({
             arn = string
           }), null)
-          runner_role_trust_services = optional(list(string), ["lambda.amazonaws.com"])
-          egress_network_connectors  = optional(list(string), [])
+          egress_network_connectors = optional(list(string), [])
           idle_policy = optional(object({
             max_idle_duration_seconds  = number
             suspended_duration_seconds = number
@@ -446,14 +439,6 @@ variable "experimental" {
     })), {})
   })
   default = {}
-
-  validation {
-    condition = alltrue([
-      for runner_config in values(var.experimental.multi_runner_config_v2) :
-      runner_config.runner.iam.role == null || length(runner_config.runner.iam.inline_policies) == 0
-    ])
-    error_message = "runner.iam.inline_policies cannot be set with an external runner.iam.role because external roles are not managed by this module."
-  }
 
   validation {
     condition = alltrue([

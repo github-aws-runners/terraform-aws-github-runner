@@ -108,7 +108,6 @@ variable "compute_provider" {
     - `microvm.image_identifier`: ARN or ID of the MicroVM image used to run GitHub runners.
     - `microvm.image_version`: Optional MicroVM image version.
     - `microvm.execution_role.arn`: Optional externally managed execution role assumed by MicroVMs. Null uses the common runner role.
-    - `microvm.runner_role_trust_services`: Service principals trusted by the common runner role when it is used as the MicroVM execution role.
     - `microvm.egress_network_connectors`: Egress network connectors passed to RunMicrovm.
     - `microvm.idle_policy`: Optional auto-suspend and auto-resume configuration passed to RunMicrovm.
     - `microvm.logging`: Optional RunMicrovm logging union. Exactly one of `cloud_watch` or `disabled` must be selected when set.
@@ -263,8 +262,7 @@ variable "compute_provider" {
       execution_role = optional(object({
         arn = string
       }), null)
-      runner_role_trust_services = optional(list(string), ["lambda.amazonaws.com"])
-      egress_network_connectors  = optional(list(string), [])
+      egress_network_connectors = optional(list(string), [])
       idle_policy = optional(object({
         max_idle_duration_seconds  = number
         suspended_duration_seconds = number

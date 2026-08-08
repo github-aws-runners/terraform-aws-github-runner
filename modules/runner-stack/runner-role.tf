@@ -10,11 +10,6 @@ locals {
     managed = local.create_runner_role
   }
 
-  common_runner_inline_policies = {
-    for policy_name, policy in var.runner.iam.inline_policies :
-    "user-${policy_name}" => policy
-  }
-
   common_runner_managed_policy_arns = merge(
     {
       for policy_name, policy_arn in var.runner.iam.managed_policy_arns :

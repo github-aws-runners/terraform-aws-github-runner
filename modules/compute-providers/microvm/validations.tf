@@ -6,11 +6,6 @@ resource "terraform_data" "validate_config" {
     }
 
     precondition {
-      condition     = length(var.config.runner_role_trust_services) > 0
-      error_message = "compute_provider.microvm.runner_role_trust_services must contain at least one service principal."
-    }
-
-    precondition {
       condition = var.config.maximum_duration_in_seconds == null ? true : (
         var.config.maximum_duration_in_seconds >= 1 &&
         var.config.maximum_duration_in_seconds <= 28800
