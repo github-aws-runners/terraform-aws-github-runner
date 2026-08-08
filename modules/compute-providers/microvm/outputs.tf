@@ -9,12 +9,12 @@ output "policies" {
 }
 
 output "resources" {
-  description = "Provider-specific EC2 resources exposed by runner-stack."
+  description = "Provider-specific MicroVM resources exposed by runner-stack."
   value       = local.provider_resources
 }
 
 output "provider" {
-  description = "Nested EC2 compute-provider contract consumed by runner-stack."
+  description = "Nested Lambda MicroVM compute-provider contract consumed by runner-stack."
   value = {
     environment_variables = local.provider_environment_variables
     policies              = local.provider_policies

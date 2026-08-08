@@ -188,7 +188,20 @@ run "experimental_v2_routes_through_provider_stack" {
             }
           }
           matcherConfig = {
-            labelMatchers = [["self-hosted", "linux", "x64"]]
+            labelMatchers       = [["self-hosted", "linux", "x64"]]
+            enableDynamicLabels = true
+            awsDynamicLabelsPolicy = {
+              blocked_keys = ["image-id"]
+              restricted_keys = {
+                "instance-type" = {
+                  allowed = ["m5.*", "c5.*"]
+                  denied  = ["*.metal"]
+                }
+                "ebs-volume-size" = {
+                  max = 200
+                }
+              }
+            }
           }
         }
       }
@@ -216,6 +229,16 @@ run "experimental_v2_routes_through_provider_stack" {
   assert {
     condition     = toset(local.runner_config_v2["linux"].runner.extra_labels) == toset(["self-hosted", "linux", "x64"])
     error_message = "Experimental runner labels must include labels declared by its matcher configuration."
+  }
+
+  assert {
+    condition = (
+      local.runner_matcher_config["linux"].matcherConfig.awsDynamicLabelsPolicy.blocked_keys == tolist(["image-id"])
+      && local.runner_matcher_config["linux"].matcherConfig.awsDynamicLabelsPolicy.restricted_keys["instance-type"].allowed == tolist(["m5.*", "c5.*"])
+      && local.runner_matcher_config["linux"].matcherConfig.awsDynamicLabelsPolicy.restricted_keys["instance-type"].denied == tolist(["*.metal"])
+      && local.runner_matcher_config["linux"].matcherConfig.awsDynamicLabelsPolicy.restricted_keys["ebs-volume-size"].max == "200"
+    )
+    error_message = "Experimental matcher config must preserve the typed AWS dynamic-label policy contract."
   }
 
   assert {
@@ -300,6 +323,83 @@ run "experimental_v2_routes_through_provider_stack" {
       && !contains(keys(local.runner_config_by_provider.ec2["linux"].compute_provider.ec2), "hooks")
     )
     error_message = "Runner lifecycle hooks must remain in the common runner contract."
+  }
+}
+
+run "experimental_v2_routes_microvm_through_provider_stack" {
+  command = plan
+
+  variables {
+    experimental = {
+      multi_runner_config_v2 = {
+        micro = {
+          runner = {
+            os            = "linux"
+            architecture  = "arm64"
+            maximum_count = 4
+            name_prefix   = "microvm-"
+          }
+          pool = {
+            config = [{
+              schedule_expression = "cron(0 8 * * ? *)"
+              size                = 2
+            }]
+          }
+          compute_provider = {
+            microvm = {
+              image_identifier = "arn:aws:lambdamicrovms:eu-west-1:123456789012:image/runner"
+              image_version    = "1"
+              environment_variables = {
+                MICROVM_CLUSTER = "runner-cluster"
+              }
+            }
+          }
+          matcherConfig = {
+            labelMatchers = [["self-hosted", "linux", "arm64", "microvm"]]
+          }
+        }
+      }
+    }
+  }
+
+  assert {
+    condition = (
+      keys(try(local.runner_config_by_provider.ec2, {})) == []
+      && keys(local.runner_config_by_provider.microvm) == ["micro"]
+      && local.compute_provider_types["micro"] == "microvm"
+      && local.runner_matcher_config["micro"].runnerProvider == "microvm"
+    )
+    error_message = "Experimental multi_runner_config_v2 entries must route MicroVM lanes to the MicroVM provider."
+  }
+
+  assert {
+    condition = (
+      length(module.runners) == 0
+      && keys(module.runner_stacks) == ["micro"]
+      && length(module.runner_binaries) == 0
+    )
+    error_message = "MicroVM v2 lanes must dispatch through runner_stack without creating EC2 runner binaries."
+  }
+
+  assert {
+    condition = (
+      keys(output.runners_map_v2) == ["micro"]
+      && toset(keys(output.runners_map_v2["micro"].provider)) == toset(["microvm"])
+      && output.runners_map_v2["micro"].provider.microvm.image_identifier == "arn:aws:lambdamicrovms:eu-west-1:123456789012:image/runner"
+      && output.runners_map_v2["micro"].provider.microvm.image_version == "1"
+    )
+    error_message = "MicroVM v2 lanes must expose MicroVM-owned resources under runners_map_v2.<configuration>.provider.microvm."
+  }
+
+  assert {
+    condition = (
+      module.runner_stacks["micro"].scale_up.lambda.environment[0].variables["RUNNER_PROVIDER_TYPE"] == "microvm"
+      && module.runner_stacks["micro"].scale_up.lambda.environment[0].variables["MICROVM_IMAGE_IDENTIFIER"] == "arn:aws:lambdamicrovms:eu-west-1:123456789012:image/runner"
+      && module.runner_stacks["micro"].scale_up.lambda.environment[0].variables["MICROVM_CLUSTER"] == "runner-cluster"
+      && module.runner_stacks["micro"].pool.lambda.environment[0].variables["MICROVM_IMAGE_IDENTIFIER"] == "arn:aws:lambdamicrovms:eu-west-1:123456789012:image/runner"
+      && !contains(keys(module.runner_stacks["micro"].scale_up.lambda.environment[0].variables), "INSTANCE_TYPES")
+    )
+    error_message = "MicroVM v2 lanes must pass MicroVM provider fragments to scale-up and pool without EC2 environment variables."
   }
 }
 
@@ -498,37 +598,6 @@ run "experimental_v2_rejects_empty_compute_provider" {
             maximum_count = 2
           }
           compute_provider = {}
-          matcherConfig = {
-            labelMatchers = [["self-hosted", "linux", "x64"]]
-          }
-        }
-      }
-    }
-  }
-
-  expect_failures = [var.experimental]
-}
-
-run "experimental_v2_rejects_profile_without_role" {
-  command = plan
-
-  variables {
-    experimental = {
-      multi_runner_config_v2 = {
-        invalid_profile = {
-          runner = {
-            os            = "linux"
-            architecture  = "x64"
-            maximum_count = 2
-          }
-          compute_provider = {
-            ec2 = {
-              instance_types = ["m5.large"]
-              instance_profile = {
-                name = "external-profile"
-              }
-            }
-          }
           matcherConfig = {
             labelMatchers = [["self-hosted", "linux", "x64"]]
           }

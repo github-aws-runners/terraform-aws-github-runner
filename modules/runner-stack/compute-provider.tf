@@ -4,9 +4,17 @@ locals {
     if provider_config != null
   ])
 
-  provider_modules = {
-    ec2 = one(module.ec2[*].provider)
+  provider_assume_role_policies = {
+    ec2     = try(module.ec2_trust_policy[0].assume_role_policy, null)
+    microvm = try(module.microvm_trust_policy[0].assume_role_policy, null)
   }
 
-  provider = local.provider_modules[local.provider_type]
+  provider_assume_role_policy = local.provider_assume_role_policies[local.provider_type]
+
+  provider_contracts = {
+    ec2     = one(module.ec2[*].provider)
+    microvm = one(module.microvm[*].provider)
+  }
+
+  provider_contract = local.provider_contracts[local.provider_type]
 }

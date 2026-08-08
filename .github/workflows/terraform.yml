@@ -86,6 +86,9 @@ jobs:
             "lambda",
             "multi-runner",
             "compute-providers/ec2",
+            "compute-providers/ec2/trust-policy",
+            "compute-providers/microvm",
+            "compute-providers/microvm/trust-policy",
             "runner-binaries-syncer",
             "runner-stack",
             "runner-stack/job-retry",
@@ -226,6 +229,9 @@ jobs:
           - modules/runner-stack/scale-runners
           - modules/runner-stack/ssm-housekeeper
           - modules/compute-providers/ec2
+          - modules/compute-providers/ec2/trust-policy
+          - modules/compute-providers/microvm
+          - modules/compute-providers/microvm/trust-policy
     defaults:
       run:
         working-directory: ${{ matrix.module }}

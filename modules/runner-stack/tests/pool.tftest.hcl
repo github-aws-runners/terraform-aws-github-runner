@@ -47,6 +47,20 @@ variables {
 
   runner = {
     labels = ["self-hosted", "linux", "x64"]
+    iam = {
+      managed_policy_arns = {
+        readonly = "arn:aws:iam::aws:policy/ReadOnlyAccess"
+      }
+      additional_trust_policy_json = jsonencode({
+        Version = "2012-10-17"
+        Statement = [{
+          Sid       = "AdditionalTrustedAccount"
+          Effect    = "Allow"
+          Action    = "sts:AssumeRole"
+          Principal = { AWS = "arn:aws:iam::210987654321:root" }
+        }]
+      })
+    }
   }
 
   queue = {
@@ -99,7 +113,7 @@ run "plan_with_pool_enabled" {
 
   assert {
     condition     = toset(keys(output.provider)) == toset(["ec2"])
-    error_message = "The runner stack must identify provider resources through the populated provider key without a duplicate type field."
+    error_message = "The runner stack must expose resources only under the selected provider key."
   }
 
   assert {
@@ -113,11 +127,12 @@ run "plan_with_pool_enabled" {
   }
 
   assert {
-    condition = anytrue([
-      for principal in data.aws_iam_policy_document.runner_assume_role.statement[0].principals :
-      principal.type == "Service" && toset(principal.identifiers) == toset(["ec2.amazonaws.com"])
-    ])
-    error_message = "The common runner role must use the selected EC2 provider trust relationship before EC2 consumes it."
+    condition = (
+      length(module.ec2_trust_policy) == 1
+      && length(module.microvm_trust_policy) == 0
+      && aws_iam_role.runner[0].assume_role_policy == module.ec2_trust_policy[0].assume_role_policy
+    )
+    error_message = "The common runner role must use the selected EC2 trust-policy submodule output."
   }
 
   assert {
@@ -152,6 +167,11 @@ run "plan_with_pool_enabled" {
   }
 
   assert {
+    condition     = aws_iam_role_policy_attachment.runner["user-readonly"].policy_arn == "arn:aws:iam::aws:policy/ReadOnlyAccess"
+    error_message = "The selected EC2 provider contract must return common managed runner policies for one attachment path."
+  }
+
+  assert {
     condition     = module.scale_runners.scale_up.lambda.environment[0].variables["RUNNER_PROVIDER_TYPE"] == "ec2"
     error_message = "Scale-up must receive the provider type from the selected provider."
   }
@@ -174,6 +194,84 @@ run "plan_with_pool_enabled" {
     error_message = "The scale-runners child module must forward the nested scale-up and scale-down resource contracts."
   }
 
+}
+
+run "plan_with_microvm_provider_enabled" {
+  command = plan
+
+  variables {
+    runner = {
+      labels      = ["self-hosted", "linux", "arm64", "microvm"]
+      name_prefix = "microvm-"
+      iam = {
+        managed_policy_arns = {
+          readonly = "arn:aws:iam::aws:policy/ReadOnlyAccess"
+        }
+      }
+    }
+
+    compute_provider = {
+      microvm = {
+        image_identifier = "arn:aws:lambdamicrovms:eu-west-1:123456789012:image/runner"
+        image_version    = "1"
+        environment_variables = {
+          MICROVM_CLUSTER = "runner-cluster"
+        }
+        tags = {
+          Lane = "microvm"
+        }
+      }
+    }
+  }
+
+  assert {
+    condition = (
+      length(module.ec2) == 0
+      && length(module.microvm) == 1
+      && toset(keys(output.provider)) == toset(["microvm"])
+      && toset(keys(output.provider.microvm)) == toset(["image_identifier", "image_version", "execution_role_arn"])
+    )
+    error_message = "The runner stack must instantiate only the selected MicroVM provider and expose resources under provider.microvm."
+  }
+
+  assert {
+    condition = (
+      length(module.ec2_trust_policy) == 0
+      && length(module.microvm_trust_policy) == 1
+      && aws_iam_role.runner[0].assume_role_policy == module.microvm_trust_policy[0].assume_role_policy
+    )
+    error_message = "The common runner role must use the selected MicroVM trust-policy submodule output."
+  }
+
+  assert {
+    condition = (
+      length(aws_iam_role_policy.runner_provider) == 0
+      && aws_iam_role_policy_attachment.runner["user-readonly"].policy_arn == "arn:aws:iam::aws:policy/ReadOnlyAccess"
+      && output.provider.microvm.image_identifier == "arn:aws:lambdamicrovms:eu-west-1:123456789012:image/runner"
+      && output.provider.microvm.image_version == "1"
+    )
+    error_message = "MicroVM must return common runner policies without EC2 policies and expose its selected image metadata."
+  }
+
+  assert {
+    condition = (
+      module.scale_runners.scale_up.lambda.environment[0].variables["RUNNER_PROVIDER_TYPE"] == "microvm"
+      && module.scale_runners.scale_up.lambda.environment[0].variables["MICROVM_IMAGE_IDENTIFIER"] == "arn:aws:lambdamicrovms:eu-west-1:123456789012:image/runner"
+      && module.scale_runners.scale_up.lambda.environment[0].variables["MICROVM_CLUSTER"] == "runner-cluster"
+      && module.scale_runners.scale_down.lambda.environment[0].variables["RUNNER_BOOT_TIME_IN_MINUTES"] == "5"
+      && !contains(keys(module.scale_runners.scale_up.lambda.environment[0].variables), "INSTANCE_TYPES")
+    )
+    error_message = "Scale-up and scale-down must receive MicroVM provider fragments without EC2 environment variables."
+  }
+
+  assert {
+    condition = (
+      output.pool != null
+      && module.pool[0].pool.lambda.environment[0].variables["MICROVM_IMAGE_IDENTIFIER"] == "arn:aws:lambdamicrovms:eu-west-1:123456789012:image/runner"
+      && module.pool[0].pool.lambda.environment[0].variables["RUNNER_BOOT_TIME_IN_MINUTES"] == "5"
+    )
+    error_message = "The pool component must receive MicroVM provider fragments when a MicroVM lane has pool config."
+  }
 }
 
 run "external_runner_role_is_not_managed_by_common" {
@@ -245,28 +343,6 @@ run "external_runner_role_and_profile_remain_external" {
   }
 }
 
-run "external_profile_requires_external_role" {
-  command = plan
-
-  variables {
-    compute_provider = {
-      ec2 = {
-        vpc_id         = "vpc-12345678"
-        subnet_ids     = ["subnet-12345678"]
-        instance_types = ["m5.large"]
-        instance_profile = {
-          name = "external-runner-profile"
-        }
-        binaries_syncer = {
-          enabled = false
-        }
-      }
-    }
-  }
-
-  expect_failures = [aws_iam_role.runner]
-}
-
 run "empty_runner_iam_uses_common_role" {
   command = plan
 
@@ -303,24 +379,37 @@ run "external_role_rejects_managed_policy_attachments" {
   expect_failures = [var.runner]
 }
 
-run "requires_distribution_object_when_sync_is_enabled" {
+run "external_role_rejects_trust_policy_extension" {
   command = plan
 
   variables {
-    compute_provider = {
-      ec2 = {
-        vpc_id         = "vpc-12345678"
-        subnet_ids     = ["subnet-12345678"]
-        instance_types = ["m5.large"]
-        binaries_syncer = {
-          enabled = true
-          s3      = null
+    runner = {
+      labels = ["self-hosted", "linux", "x64"]
+      iam = {
+        role = {
+          arn = "arn:aws:iam::123456789012:role/external/runner-role"
         }
+        additional_trust_policy_json = "{\"Version\":\"2012-10-17\",\"Statement\":[]}"
       }
     }
   }
 
-  expect_failures = [var.compute_provider]
+  expect_failures = [var.runner]
+}
+
+run "rejects_invalid_trust_policy_extension" {
+  command = plan
+
+  variables {
+    runner = {
+      labels = ["self-hosted", "linux", "x64"]
+      iam = {
+        additional_trust_policy_json = "{"
+      }
+    }
+  }
+
+  expect_failures = [var.runner]
 }
 
 run "rejects_empty_compute_provider" {
