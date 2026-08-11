@@ -11,6 +11,7 @@ import {
   resolveInstallationId,
   isJobQueued,
   UnsupportedEventError,
+  parseSsmTokenTtlSeconds,
   validateSsmParameterStoreTags,
 } from './github-runner';
 import { publishRetryMessage } from './job-retry';
@@ -76,6 +77,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
   const runnerLabels = process.env.RUNNER_LABELS || '';
   const runnerGroup = process.env.RUNNER_GROUP_NAME || 'Default';
   const ssmTokenPath = process.env.SSM_TOKEN_PATH;
+  const ssmTokenTtlSeconds = parseSsmTokenTtlSeconds(process.env.SSM_TOKEN_TTL_SECONDS);
   const ephemeralEnabled = yn(process.env.ENABLE_EPHEMERAL_RUNNERS, { default: false });
   const enableJitConfig = yn(process.env.ENABLE_JIT_CONFIG, { default: ephemeralEnabled });
   const disableAutoUpdate = yn(process.env.DISABLE_RUNNER_AUTOUPDATE, { default: false });
@@ -309,6 +311,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       runnerType,
       disableAutoUpdate,
       ssmTokenPath,
+      ssmTokenTtlSeconds,
       ssmConfigPath,
       ssmParameterStoreTags,
     };

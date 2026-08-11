@@ -42,7 +42,8 @@ vi.mock('@aws-github-runner/runner-providers/aws/ec2/control-plane/runner-config
   createRunners: vi.fn(),
 }));
 
-vi.mock('../scale-runners/github-runner', async () => ({
+vi.mock('../scale-runners/github-runner', async (importActual) => ({
+  ...(await importActual<typeof import('../scale-runners/github-runner')>()),
   createStartRunnerConfig: vi.fn(),
   getGitHubEnterpriseApiUrl: vi.fn().mockReturnValue({
     ghesApiUrl: '',

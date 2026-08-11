@@ -654,6 +654,17 @@ variable "ssm_paths" {
   })
 }
 
+variable "ssm_token_ttl_seconds" {
+  description = "Optional TTL in seconds for the SSM parameters holding the runner registration token / JIT config. When set, the parameters are created with an SSM expiration policy so SSM deletes them itself after the TTL passes. Requires the Advanced parameter tier for every token parameter, which incurs additional costs. Expiration is enforced asynchronously by SSM; the SSM housekeeper lambda remains as a backstop. Must be a positive number, and should comfortably exceed the runner boot time so the config does not expire before the instance reads it."
+  type        = number
+  default     = null
+
+  validation {
+    condition     = var.ssm_token_ttl_seconds == null ? true : var.ssm_token_ttl_seconds > 0
+    error_message = "`ssm_token_ttl_seconds` must be a positive number."
+  }
+}
+
 variable "runner_name_prefix" {
   description = "The prefix used for the GitHub runner name. The prefix will be used in the default start script to prefix the instance name when register the runner in GitHub. The value is available via an EC2 tag 'ghr:runner_name_prefix'."
   type        = string

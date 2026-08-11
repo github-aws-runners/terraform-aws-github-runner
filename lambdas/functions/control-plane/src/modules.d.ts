@@ -19,6 +19,7 @@ declare namespace NodeJS {
     RUNNER_PROVIDER_TYPE?: string;
     SCALE_DOWN_CONFIG: string;
     SSM_TOKEN_PATH: string;
+    SSM_TOKEN_TTL_SECONDS: string;
     SSM_CLEANUP_CONFIG: string;
     SUBNET_IDS: string;
     INSTANCE_TYPES: string;

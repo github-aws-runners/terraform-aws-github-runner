@@ -58,6 +58,7 @@ resource "aws_lambda_function" "scale_up" {
       RUNNERS_MAXIMUM_COUNT                    = var.runners_maximum_count
       POWERTOOLS_SERVICE_NAME                  = "${var.prefix}-scale-up"
       SSM_TOKEN_PATH                           = local.token_path
+      SSM_TOKEN_TTL_SECONDS                    = var.ssm_token_ttl_seconds != null ? var.ssm_token_ttl_seconds : ""
       SSM_CONFIG_PATH                          = "${var.ssm_paths.root}/${var.ssm_paths.config}"
       SSM_PARAMETER_STORE_TAGS                 = local.parameter_store_tags
       SUBNET_IDS                               = join(",", var.subnet_ids)
