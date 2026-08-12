@@ -65,6 +65,8 @@ module "pool" {
     tags                                 = local.tags
     lambda_tags                          = var.lambda_tags
     arn_ssm_parameters_path_config       = local.arn_ssm_parameters_path_config
+    installation_token_table_name        = var.installation_token_table_name
+    installation_token_table_arn         = var.installation_token_table_arn
   }
 
   aws_partition  = var.aws_partition
