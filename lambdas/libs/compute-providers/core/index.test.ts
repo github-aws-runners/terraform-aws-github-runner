@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import { createRunnerProviderRegistry } from './index';
+import { createComputeProviderRegistry } from './index';
 
-describe('runner provider registry', () => {
+describe('compute provider registry', () => {
   const plugin = {
     type: 'ec2' as const,
     capabilities: {
@@ -10,7 +10,7 @@ describe('runner provider registry', () => {
       pool: () => 'pool',
     },
   };
-  const registry = createRunnerProviderRegistry([plugin]);
+  const registry = createComputeProviderRegistry([plugin]);
 
   it('resolves capabilities dynamically', () => {
     expect(registry.capability('ec2', 'scaleUp')()).toBe('scale-up');

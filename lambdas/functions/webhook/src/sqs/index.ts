@@ -2,7 +2,7 @@ import { SQS, SendMessageCommandInput } from '@aws-sdk/client-sqs';
 import { WorkflowJobEvent } from '@octokit/webhooks-types';
 import { createChildLogger, getTracedAWSV3Client } from '@aws-github-runner/aws-powertools-util';
 
-export type { MatcherConfig, RunnerConfig, RunnerMatcherConfig } from '@aws-github-runner/runner-providers';
+export type { MatcherConfig, RunnerConfig, RunnerMatcherConfig } from '@aws-github-runner/compute-providers';
 
 const logger = createChildLogger('sqs');
 

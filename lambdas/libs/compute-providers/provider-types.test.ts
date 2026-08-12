@@ -1,44 +1,44 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  defaultRunnerProvider,
-  normalizeRunnerProviderType,
-  resolveRunnerProviderType,
-  runnerProviderTypes,
+  defaultComputeProvider,
+  normalizeComputeProviderType,
+  resolveComputeProviderType,
+  computeProviderTypes,
 } from './provider-types';
 
-describe('runner provider configuration', () => {
+describe('compute provider configuration', () => {
   it('defines an explicit default provider', () => {
-    expect(runnerProviderTypes).toContain(defaultRunnerProvider);
+    expect(computeProviderTypes).toContain(defaultComputeProvider);
   });
 });
 
-describe('runner provider normalization', () => {
+describe('compute provider normalization', () => {
   it.each([
     [undefined, 'ec2'],
     ['', 'ec2'],
     ['   ', 'ec2'],
     [' EC2 ', 'ec2'],
   ])('normalizes provider type %j to %j', (type, expected) => {
-    expect(normalizeRunnerProviderType(type)).toBe(expected);
+    expect(normalizeComputeProviderType(type)).toBe(expected);
   });
 
   it.each([[' Unknown '], ['microvm'], [null], [1]])('returns undefined for unsupported provider type %j', (type) => {
-    expect(normalizeRunnerProviderType(type)).toBeUndefined();
+    expect(normalizeComputeProviderType(type)).toBeUndefined();
   });
 });
 
-describe('runner provider resolution', () => {
+describe('compute provider resolution', () => {
   it.each([
     [undefined, 'ec2'],
     ['', 'ec2'],
     ['   ', 'ec2'],
     [' EC2 ', 'ec2'],
   ])('resolves provider type %j to %j', (type, expected) => {
-    expect(resolveRunnerProviderType(type)).toBe(expected);
+    expect(resolveComputeProviderType(type)).toBe(expected);
   });
 
   it.each([[' Unknown '], ['microvm'], [null], [1]])('rejects unsupported provider type %j', (type) => {
-    expect(() => resolveRunnerProviderType(type)).toThrow(`Unsupported runner provider type '${String(type)}'`);
+    expect(() => resolveComputeProviderType(type)).toThrow(`Unsupported compute provider type '${String(type)}'`);
   });
 });

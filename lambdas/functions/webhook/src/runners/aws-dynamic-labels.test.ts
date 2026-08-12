@@ -1,4 +1,4 @@
-import type { RunnerProviderType } from '@aws-github-runner/runner-providers/provider-types';
+import type { ComputeProviderType } from '@aws-github-runner/compute-providers/provider-types';
 import { describe, expect, it } from 'vitest';
 
 import type { RunnerMatcherConfig } from '../sqs';
@@ -14,7 +14,7 @@ describe('selectAwsDynamicLabelQueue', () => {
     });
   });
 
-  it('normalizes runner provider casing and surrounding whitespace', () => {
+  it('normalizes compute provider casing and surrounding whitespace', () => {
     const queue = runnerQueue('normalized-ec2');
     (queue as unknown as { runnerProvider: string }).runnerProvider = ' EC2 ';
 
@@ -41,7 +41,7 @@ describe('selectAwsDynamicLabelQueue', () => {
     });
   });
 
-  it('rejects a malformed non-string runner provider without throwing', () => {
+  it('rejects a malformed non-string compute provider without throwing', () => {
     const queue = runnerQueue('malformed-provider');
     (queue as unknown as { runnerProvider: number }).runnerProvider = 42;
 
@@ -51,7 +51,7 @@ describe('selectAwsDynamicLabelQueue', () => {
   });
 });
 
-function runnerQueue(id: string, runnerProvider?: RunnerProviderType): RunnerMatcherConfig {
+function runnerQueue(id: string, runnerProvider?: ComputeProviderType): RunnerMatcherConfig {
   return {
     id,
     arn: `arn:${id}`,

@@ -7,7 +7,7 @@ import { controlPlaneProviderRegistry } from '../control-plane-providers';
 import * as ghAuth from '../github/auth';
 import { githubCache } from './cache';
 import { newestFirstStrategy, oldestFirstStrategy, scaleDown } from './scale-down';
-import type { RunnerInfo, RunnerType, ScaleDownRunnerProvider } from './types';
+import type { RunnerInfo, RunnerType, ScaleDownComputeProvider } from './types';
 
 vi.mock('../github/auth', () => ({
   createGithubAppAuth: vi.fn(),
@@ -31,24 +31,24 @@ const mockOctokit = {
   paginate: vi.fn(),
 };
 
-const mockRunnerProvider = {
+const mockComputeProvider = {
   type: 'ec2',
   list: vi.fn(),
   bootTimeExceeded: vi.fn(),
   markOrphan: vi.fn(),
   unmarkOrphan: vi.fn(),
   terminate: vi.fn(),
-} satisfies ScaleDownRunnerProvider;
+} satisfies ScaleDownComputeProvider;
 
 const mockedResolveCapability = vi.spyOn(controlPlaneProviderRegistry, 'capability');
 const mockedAppAuth = vi.mocked(ghAuth.createGithubAppAuth);
 const mockedInstallationAuth = vi.mocked(ghAuth.createGithubInstallationAuth);
 const mockCreateClient = vi.mocked(ghAuth.createOctokitClient);
-const mockListRunners = vi.mocked(mockRunnerProvider.list);
-const mockBootTimeExceeded = vi.mocked(mockRunnerProvider.bootTimeExceeded);
-const mockMarkOrphan = vi.mocked(mockRunnerProvider.markOrphan);
-const mockUnmarkOrphan = vi.mocked(mockRunnerProvider.unmarkOrphan);
-const mockTerminateRunners = vi.mocked(mockRunnerProvider.terminate);
+const mockListRunners = vi.mocked(mockComputeProvider.list);
+const mockBootTimeExceeded = vi.mocked(mockComputeProvider.bootTimeExceeded);
+const mockMarkOrphan = vi.mocked(mockComputeProvider.markOrphan);
+const mockUnmarkOrphan = vi.mocked(mockComputeProvider.unmarkOrphan);
+const mockTerminateRunners = vi.mocked(mockComputeProvider.terminate);
 
 const cleanEnv = process.env;
 
@@ -176,13 +176,13 @@ describe('Scale down runners', () => {
     process.env.ENVIRONMENT = ENVIRONMENT;
     process.env.MINIMUM_RUNNING_TIME_IN_MINUTES = MINIMUM_TIME_RUNNING_IN_MINUTES.toString();
     process.env.RUNNER_BOOT_TIME_IN_MINUTES = MINIMUM_BOOT_TIME.toString();
-    process.env.RUNNER_PROVIDER_TYPE = mockRunnerProvider.type;
+    process.env.RUNNER_PROVIDER_TYPE = mockComputeProvider.type;
 
     vi.clearAllMocks();
     githubCache.clients.clear();
     githubCache.runners.clear();
 
-    mockedResolveCapability.mockReturnValue(() => mockRunnerProvider);
+    mockedResolveCapability.mockReturnValue(() => mockComputeProvider);
     mockBootTimeExceeded.mockImplementation((runner) => {
       const launchTimePlusBootTime = moment(runner.launchTime).utc().add(MINIMUM_BOOT_TIME, 'minutes');
       return launchTimePlusBootTime < moment(new Date()).utc();

@@ -1,8 +1,8 @@
-import { createRunnerProviderRegistry } from './core';
+import { createComputeProviderRegistry } from './core';
 
 import type { WebhookProviderCapabilities } from './contracts';
 import { enabledWebhookProviders } from './providers.config.webhook';
 
-export const webhookProviderRegistry = createRunnerProviderRegistry<WebhookProviderCapabilities>(
+export const webhookProviderRegistry = createComputeProviderRegistry<WebhookProviderCapabilities>(
   enabledWebhookProviders.map((provider) => provider.createPlugin()),
 );

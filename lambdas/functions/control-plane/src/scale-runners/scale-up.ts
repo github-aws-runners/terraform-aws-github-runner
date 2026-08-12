@@ -1,5 +1,5 @@
 import { addPersistentContextToChildLogger, createChildLogger } from '@aws-github-runner/aws-powertools-util';
-import { resolveRunnerProviderType } from '@aws-github-runner/runner-providers/provider-types';
+import { resolveComputeProviderType } from '@aws-github-runner/compute-providers/provider-types';
 import { Octokit } from '@octokit/rest';
 import yn from 'yn';
 
@@ -86,10 +86,10 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
     process.env.SSM_PARAMETER_STORE_TAGS && process.env.SSM_PARAMETER_STORE_TAGS.trim() !== ''
       ? validateSsmParameterStoreTags(process.env.SSM_PARAMETER_STORE_TAGS)
       : [];
-  const runnerProviderType = resolveRunnerProviderType(process.env.RUNNER_PROVIDER_TYPE);
-  const runnerProvider = {
-    ...controlPlaneProviderRegistry.capability(runnerProviderType, 'scaleUp')(),
-    type: runnerProviderType,
+  const computeProviderType = resolveComputeProviderType(process.env.RUNNER_PROVIDER_TYPE);
+  const computeProvider = {
+    ...controlPlaneProviderRegistry.capability(computeProviderType, 'scaleUp')(),
+    type: computeProviderType,
   };
 
   const { ghesApiUrl, ghesBaseUrl } = getGitHubEnterpriseApiUrl();
@@ -193,7 +193,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
     let groupRunnerLabels = runnerLabels;
 
     const messageLabels = messages.length > 0 ? (messages[0].labels ?? []) : [];
-    const runnerLabelResolution = await runnerProvider.resolveLabelsForRunners(messageLabels);
+    const runnerLabelResolution = await computeProvider.resolveLabelsForRunners(messageLabels);
     const resolvedRunnerLabels = runnerLabelResolution.runnerLabels;
 
     if (resolvedRunnerLabels.length > 0) {
@@ -251,7 +251,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
     const currentRunners =
       maximumRunners === -1
         ? 0
-        : await runnerProvider.getCurrentRunners(runnerLabelResolution.state, { runnerType, runnerOwner });
+        : await computeProvider.getCurrentRunners(runnerLabelResolution.state, { runnerType, runnerOwner });
 
     logger.info('Current runners', {
       currentRunners,
@@ -315,14 +315,14 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
 
     let createRunnersResult: CreateRunnerResult;
     try {
-      createRunnersResult = await runnerProvider.createRunners({
+      createRunnersResult = await computeProvider.createRunners({
         githubRunnerConfig,
         numberOfRunners: newRunners,
         githubInstallationClient,
         state: runnerLabelResolution.state,
       });
     } catch (error) {
-      logger.error('Runner provider threw an unexpected error.', {
+      logger.error('Compute provider threw an unexpected error.', {
         error,
         retryable: true,
         failedMessageCount: newRunners,

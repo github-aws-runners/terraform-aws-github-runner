@@ -1,6 +1,6 @@
 export type {
   CreatePoolRunnersInput,
   ListPoolRunnersInput,
-  PoolRunnerProvider,
+  PoolComputeProvider,
   RunnerStatus,
-} from '@aws-github-runner/runner-providers/core';
+} from '@aws-github-runner/compute-providers/core';

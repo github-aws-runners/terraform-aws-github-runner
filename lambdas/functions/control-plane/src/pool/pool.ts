@@ -1,6 +1,6 @@
 import { Octokit } from '@octokit/rest';
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
-import { resolveRunnerProviderType } from '@aws-github-runner/runner-providers/provider-types';
+import { resolveComputeProviderType } from '@aws-github-runner/compute-providers/provider-types';
 import yn from 'yn';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
@@ -16,12 +16,12 @@ export interface PoolEvent {
 }
 
 export async function adjust(event: PoolEvent): Promise<void> {
-  const runnerProviderType = resolveRunnerProviderType(event.type);
-  const runnerProvider = {
-    ...controlPlaneProviderRegistry.capability(runnerProviderType, 'pool')(),
-    type: runnerProviderType,
+  const computeProviderType = resolveComputeProviderType(event.type);
+  const computeProvider = {
+    ...controlPlaneProviderRegistry.capability(computeProviderType, 'pool')(),
+    type: computeProviderType,
   };
-  logger.info(`Checking current ${runnerProvider.type} pool size against pool of size: ${event.poolSize}`);
+  logger.info(`Checking current ${computeProvider.type} pool size against pool of size: ${event.poolSize}`);
   const runnerLabels = process.env.RUNNER_LABELS || '';
   const runnerGroup = process.env.RUNNER_GROUP_NAME || '';
   const runnerNamePrefix = process.env.RUNNER_NAME_PREFIX || '';
@@ -55,13 +55,13 @@ export async function adjust(event: PoolEvent): Promise<void> {
   );
 
   // Look up the managed provider runners, but running does not mean idle.
-  const poolRunners = await runnerProvider.listRunners({
+  const poolRunners = await computeProvider.listRunners({
     environment,
     runnerOwner,
     runnerType: 'Org',
   });
 
-  const numberOfRunnersInPool = runnerProvider.countAvailableRunners(poolRunners, runnerStatusses, includeBusyRunners);
+  const numberOfRunnersInPool = computeProvider.countAvailableRunners(poolRunners, runnerStatusses, includeBusyRunners);
   let topUp = event.poolSize - numberOfRunnersInPool;
 
   // The pool must never push the total number of runners (busy + idle) past the configured maximum.
@@ -81,7 +81,7 @@ export async function adjust(event: PoolEvent): Promise<void> {
 
   if (topUp > 0) {
     logger.info(`The pool will be topped up with ${topUp} runners.`);
-    await runnerProvider.createRunners({
+    await computeProvider.createRunners({
       githubRunnerConfig: {
         ephemeral,
         enableJitConfig,

@@ -3,7 +3,7 @@ import { expect, it, vi } from 'vitest';
 import { provider as controlPlaneProvider } from './control-plane';
 import { provider as webhookProvider } from './webhook';
 
-it('exposes every runner provider capability from its lane entry point', () => {
+it('exposes every compute provider capability from its lane entry point', () => {
   const controlPlanePlugin = controlPlaneProvider.createPlugin(vi.fn(async () => []));
   const pool = controlPlanePlugin.capabilities.pool();
   const scaleUp = controlPlanePlugin.capabilities.scaleUp();

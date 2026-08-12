@@ -1,4 +1,4 @@
-# Runner provider template
+# Compute provider template
 
 Copy this directory to the appropriate provider namespace, for example
 `aws/codebuild`, and replace `template` with the new lane type.

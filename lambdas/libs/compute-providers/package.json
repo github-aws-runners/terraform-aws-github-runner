@@ -1,5 +1,5 @@
 {
-  "name": "@aws-github-runner/runner-providers",
+  "name": "@aws-github-runner/compute-providers",
   "version": "1.0.0",
   "main": "contracts.ts",
   "exports": {

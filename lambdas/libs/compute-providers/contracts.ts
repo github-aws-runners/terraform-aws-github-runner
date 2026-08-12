@@ -1,11 +1,11 @@
 import type {
   CreateStartRunnerConfig,
-  PoolRunnerProvider,
-  RunnerProviderPlugin,
-  ScaleDownRunnerProvider,
-  ScaleUpRunnerProvider,
+  PoolComputeProvider,
+  ComputeProviderPlugin,
+  ScaleDownComputeProvider,
+  ScaleUpComputeProvider,
 } from './core';
-import type { RunnerProviderType } from './provider-types';
+import type { ComputeProviderType } from './provider-types';
 
 export interface AwsDynamicLabelsValueRule {
   allowed?: string[];
@@ -32,7 +32,7 @@ export interface MatcherConfig {
 export interface RunnerMatcherConfig {
   id: string;
   arn: string;
-  runnerProvider?: RunnerProviderType;
+  runnerProvider?: ComputeProviderType;
   matcherConfig: MatcherConfig;
 }
 
@@ -52,9 +52,9 @@ export interface DynamicLabelProvider {
 }
 
 export interface ControlPlaneProviderCapabilities {
-  pool: () => Omit<PoolRunnerProvider, 'type'>;
-  scaleUp: () => Omit<ScaleUpRunnerProvider, 'type'>;
-  scaleDown: () => Omit<ScaleDownRunnerProvider, 'type'>;
+  pool: () => Omit<PoolComputeProvider, 'type'>;
+  scaleUp: () => Omit<ScaleUpComputeProvider, 'type'>;
+  scaleDown: () => Omit<ScaleDownComputeProvider, 'type'>;
 }
 
 export interface WebhookProviderCapabilities {
@@ -65,10 +65,10 @@ export interface ControlPlaneProviderModule<TType extends string = string> {
   type: TType;
   createPlugin(
     createStartRunnerConfig: CreateStartRunnerConfig,
-  ): RunnerProviderPlugin<ControlPlaneProviderCapabilities, TType>;
+  ): ComputeProviderPlugin<ControlPlaneProviderCapabilities, TType>;
 }
 
 export interface WebhookProviderModule<TType extends string = string> {
   type: TType;
-  createPlugin(): RunnerProviderPlugin<WebhookProviderCapabilities, TType>;
+  createPlugin(): ComputeProviderPlugin<WebhookProviderCapabilities, TType>;
 }

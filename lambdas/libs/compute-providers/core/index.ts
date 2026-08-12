@@ -1,9 +1,9 @@
 import type { Octokit } from '@octokit/rest';
 
-import type { RunnerProviderType } from '../provider-types';
+import type { ComputeProviderType } from '../provider-types';
 
-export interface RunnerProvider {
-  type: RunnerProviderType;
+export interface ComputeProvider {
+  type: ComputeProviderType;
 }
 
 export type LambdaRunnerSource = 'scale-up-lambda' | 'pool-lambda';
@@ -64,7 +64,7 @@ export interface CreateRunnerResult {
   nonRetryableErrorCount: number;
 }
 
-export interface ScaleUpRunnerProvider<TState = unknown> extends RunnerProvider {
+export interface ScaleUpComputeProvider<TState = unknown> extends ComputeProvider {
   resolveLabelsForRunners(messageLabels: string[]): Promise<RunnerLabelResolution<TState>>;
   getCurrentRunners(state: TState, input: CurrentRunnersInput): Promise<number>;
   createRunners(input: CreateScaleUpRunnersInput<TState>): Promise<CreateRunnerResult>;
@@ -89,7 +89,7 @@ export interface ListRunnerFilters {
   orphan?: boolean;
 }
 
-export interface ScaleDownRunnerProvider extends RunnerProvider {
+export interface ScaleDownComputeProvider extends ComputeProvider {
   list(environment: string, orphan?: boolean): Promise<RunnerInfo[]>;
   bootTimeExceeded(runner: RunnerInfo): boolean;
   markOrphan(id: string): Promise<void>;
@@ -114,7 +114,7 @@ export interface CreatePoolRunnersInput {
   githubInstallationClient: Octokit;
 }
 
-export interface PoolRunnerProvider<TRunner = unknown> extends RunnerProvider {
+export interface PoolComputeProvider<TRunner = unknown> extends ComputeProvider {
   listRunners(input: ListPoolRunnersInput): Promise<TRunner[]>;
   countAvailableRunners(
     runners: TRunner[],
@@ -124,19 +124,19 @@ export interface PoolRunnerProvider<TRunner = unknown> extends RunnerProvider {
   createRunners(input: CreatePoolRunnersInput): Promise<string[]>;
 }
 
-export interface RunnerProviderPlugin<TCapabilities, TType extends string = string> {
+export interface ComputeProviderPlugin<TCapabilities, TType extends string = string> {
   type: TType;
   capabilities: TCapabilities;
 }
 
-export function createRunnerProviderRegistry<TCapabilities, TType extends string = RunnerProviderType>(
-  plugins: readonly RunnerProviderPlugin<TCapabilities, TType>[],
+export function createComputeProviderRegistry<TCapabilities, TType extends string = ComputeProviderType>(
+  plugins: readonly ComputeProviderPlugin<TCapabilities, TType>[],
 ) {
   const pluginsByType = new Map(plugins.map((plugin) => [plugin.type, plugin]));
 
-  function get(type: TType): RunnerProviderPlugin<TCapabilities, TType> {
+  function get(type: TType): ComputeProviderPlugin<TCapabilities, TType> {
     const plugin = pluginsByType.get(type);
-    if (!plugin) throw new Error(`No runner provider plugin registered for '${type}'`);
+    if (!plugin) throw new Error(`No compute provider plugin registered for '${type}'`);
     return plugin;
   }
 

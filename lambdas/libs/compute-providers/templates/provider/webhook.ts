@@ -1,4 +1,4 @@
-import type { RunnerProviderPlugin } from '../../core';
+import type { ComputeProviderPlugin } from '../../core';
 
 import type { DynamicLabelProvider, WebhookProviderCapabilities, WebhookProviderModule } from '../../contracts';
 
@@ -10,7 +10,7 @@ export const templateDynamicLabelProvider: DynamicLabelProvider = {
   },
 };
 
-export function createTemplateWebhookPlugin(): RunnerProviderPlugin<WebhookProviderCapabilities, 'template'> {
+export function createTemplateWebhookPlugin(): ComputeProviderPlugin<WebhookProviderCapabilities, 'template'> {
   return {
     type: 'template',
     capabilities: { dynamicLabels: templateDynamicLabelProvider },

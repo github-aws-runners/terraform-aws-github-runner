@@ -1,7 +1,7 @@
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
-import type { DynamicLabelDispatchTarget } from '@aws-github-runner/runner-providers';
-import { normalizeRunnerProviderType } from '@aws-github-runner/runner-providers/provider-types';
-import { webhookProviderRegistry } from '@aws-github-runner/runner-providers/webhook';
+import type { DynamicLabelDispatchTarget } from '@aws-github-runner/compute-providers';
+import { normalizeComputeProviderType } from '@aws-github-runner/compute-providers/provider-types';
+import { webhookProviderRegistry } from '@aws-github-runner/compute-providers/webhook';
 
 import type { RunnerMatcherConfig } from '../sqs';
 
@@ -13,11 +13,11 @@ export function selectAwsDynamicLabelQueue(
   sanitizedGhrLabels: string[],
 ): DynamicLabelDispatchTarget | undefined {
   for (const queue of matches) {
-    const provider = normalizeRunnerProviderType(queue.runnerProvider);
+    const provider = normalizeComputeProviderType(queue.runnerProvider);
     const dynamicLabels = provider ? webhookProviderRegistry.capability(provider, 'dynamicLabels') : undefined;
 
     if (!dynamicLabels) {
-      logger.warn(`Queue ${queue.id} has unsupported runner provider '${provider ?? String(queue.runnerProvider)}'`);
+      logger.warn(`Queue ${queue.id} has unsupported compute provider '${provider ?? String(queue.runnerProvider)}'`);
       continue;
     }
 

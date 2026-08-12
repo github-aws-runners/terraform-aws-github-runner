@@ -7,9 +7,9 @@ export type {
   RunnerLabelResolution,
   RunnerInfo,
   RunnerType,
-  ScaleDownRunnerProvider,
-  ScaleUpRunnerProvider,
-} from '@aws-github-runner/runner-providers/core';
+  ScaleDownComputeProvider,
+  ScaleUpComputeProvider,
+} from '@aws-github-runner/compute-providers/core';
 
 export interface RunnerGroup {
   name: string;

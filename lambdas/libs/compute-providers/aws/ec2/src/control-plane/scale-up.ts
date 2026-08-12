@@ -5,7 +5,7 @@ import type {
   CreateStartRunnerConfig,
   CurrentRunnersInput,
   RunnerLabelResolution,
-  ScaleUpRunnerProvider,
+  ScaleUpComputeProvider,
 } from '../../../../core';
 import yn from 'yn';
 
@@ -83,7 +83,7 @@ async function createEc2ScaleUpRunners(
 
 export function createEc2ScaleUpProvider(
   createStartRunnerConfig: CreateStartRunnerConfig,
-): Omit<ScaleUpRunnerProvider<Ec2ScaleUpState>, 'type'> {
+): Omit<ScaleUpComputeProvider<Ec2ScaleUpState>, 'type'> {
   return {
     resolveLabelsForRunners: resolveEc2LabelsForRunners,
     getCurrentRunners: getCurrentEc2Runners,

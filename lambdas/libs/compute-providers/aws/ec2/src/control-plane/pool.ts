@@ -3,7 +3,7 @@ import type {
   CreateStartRunnerConfig,
   CreatePoolRunnersInput,
   ListPoolRunnersInput,
-  PoolRunnerProvider,
+  PoolComputeProvider,
   RunnerInfo,
   RunnerStatus,
 } from '../../../../core';
@@ -53,7 +53,7 @@ async function createEc2PoolRunners(
 
 export function createEc2PoolProvider(
   createStartRunnerConfig: CreateStartRunnerConfig,
-): Omit<PoolRunnerProvider<RunnerInfo>, 'type'> {
+): Omit<PoolComputeProvider<RunnerInfo>, 'type'> {
   return {
     listRunners: listEc2PoolRunners,
     countAvailableRunners: calculateEc2PoolSize,

@@ -2,9 +2,9 @@ import type { Octokit } from '@octokit/rest';
 import { beforeEach, describe, expect, it, type MockInstance, vi } from 'vitest';
 
 import type { PoolEvent } from '../../pool/pool';
-import type { PoolRunnerProvider } from '../../pool/pool-provider';
+import type { PoolComputeProvider } from '../../pool/pool-provider';
 
-type TestPoolProvider<TType extends string> = Omit<PoolRunnerProvider, 'type'> & { type: TType };
+type TestPoolProvider<TType extends string> = Omit<PoolComputeProvider, 'type'> & { type: TType };
 
 export interface PoolContractLane<TType extends string> {
   provider: TestPoolProvider<TType>;

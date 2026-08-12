@@ -2,7 +2,7 @@ import { Octokit } from '@octokit/rest';
 import { Endpoints } from '@octokit/types';
 import { RequestError } from '@octokit/request-error';
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
-import { resolveRunnerProviderType } from '@aws-github-runner/runner-providers/provider-types';
+import { resolveComputeProviderType } from '@aws-github-runner/compute-providers/provider-types';
 import moment from 'moment';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
@@ -11,7 +11,7 @@ import { GhRunners, githubCache } from './cache';
 import { ScalingDownConfigList, getEvictionStrategy, getIdleRunnerCount } from './scale-down-config';
 import { metricGitHubAppRateLimit } from '../github/rate-limit';
 import { getGitHubEnterpriseApiUrl } from './github-runner';
-import type { RunnerInfo, ScaleDownRunnerProvider } from './types';
+import type { RunnerInfo, ScaleDownComputeProvider } from './types';
 
 const logger = createChildLogger('scale-down');
 
@@ -163,7 +163,7 @@ async function deleteGitHubRunner(
 async function removeRunner(
   runner: RunnerInfo,
   ghRunnerIds: number[],
-  runnerProvider: ScaleDownRunnerProvider,
+  computeProvider: ScaleDownComputeProvider,
 ): Promise<void> {
   const githubInstallationClient = await getOrCreateOctokit(runner);
   try {
@@ -190,9 +190,9 @@ async function removeRunner(
       const failedRunners = results.filter((r) => !r.success);
 
       if (allSucceeded) {
-        await runnerProvider.terminate(runner.id);
+        await computeProvider.terminate(runner.id);
         logger.info(
-          `${runnerProvider.type.toUpperCase()} runner '${runner.id}' is terminated and GitHub runner is de-registered.`,
+          `${computeProvider.type.toUpperCase()} runner '${runner.id}' is terminated and GitHub runner is de-registered.`,
         );
       } else {
         // Only terminate the provider runner if it was successfully de-registered from GitHub.
@@ -216,7 +216,7 @@ async function removeRunner(
 async function evaluateAndRemoveRunners(
   runners: RunnerInfo[],
   scaleDownConfigs: ScalingDownConfigList,
-  runnerProvider: ScaleDownRunnerProvider,
+  computeProvider: ScaleDownComputeProvider,
 ): Promise<void> {
   let idleCounter = getIdleRunnerCount(scaleDownConfigs);
   const evictionStrategy = getEvictionStrategy(scaleDownConfigs);
@@ -247,12 +247,12 @@ async function evaluateAndRemoveRunners(
             await removeRunner(
               runner,
               ghRunnersFiltered.map((runner: { id: number }) => runner.id),
-              runnerProvider,
+              computeProvider,
             );
           }
         }
-      } else if (runnerProvider.bootTimeExceeded(runner)) {
-        await markOrphan(runner.id, runnerProvider);
+      } else if (computeProvider.bootTimeExceeded(runner)) {
+        await markOrphan(runner.id, computeProvider);
       } else {
         logger.debug(`Runner ${runner.id} has not yet booted.`);
       }
@@ -260,18 +260,18 @@ async function evaluateAndRemoveRunners(
   }
 }
 
-async function markOrphan(id: string, runnerProvider: ScaleDownRunnerProvider): Promise<void> {
+async function markOrphan(id: string, computeProvider: ScaleDownComputeProvider): Promise<void> {
   try {
-    await runnerProvider.markOrphan(id);
+    await computeProvider.markOrphan(id);
     logger.info(`Runner '${id}' tagged as orphan.`);
   } catch (e) {
     logger.error(`Failed to tag runner '${id}' as orphan.`, { error: e });
   }
 }
 
-async function unMarkOrphan(id: string, runnerProvider: ScaleDownRunnerProvider): Promise<void> {
+async function unMarkOrphan(id: string, computeProvider: ScaleDownComputeProvider): Promise<void> {
   try {
-    await runnerProvider.unmarkOrphan(id);
+    await computeProvider.unmarkOrphan(id);
     logger.info(`Runner '${id}' untagged as orphan.`);
   } catch (e) {
     logger.error(`Failed to un-tag runner '${id}' as orphan.`, { error: e });
@@ -298,9 +298,9 @@ async function lastChanceCheckOrphanRunner(runner: RunnerInfo): Promise<boolean>
   return isOrphan;
 }
 
-async function terminateOrphan(environment: string, runnerProvider: ScaleDownRunnerProvider): Promise<void> {
+async function terminateOrphan(environment: string, computeProvider: ScaleDownComputeProvider): Promise<void> {
   try {
-    const orphanRunners = await runnerProvider.list(environment, true);
+    const orphanRunners = await computeProvider.list(environment, true);
 
     for (const runner of orphanRunners) {
       if (runner.bypassRemoval) {
@@ -310,13 +310,13 @@ async function terminateOrphan(environment: string, runnerProvider: ScaleDownRun
       if (runner.githubRunnerId) {
         const isOrphan = await lastChanceCheckOrphanRunner(runner);
         if (isOrphan) {
-          await runnerProvider.terminate(runner.id);
+          await computeProvider.terminate(runner.id);
         } else {
-          await unMarkOrphan(runner.id, runnerProvider);
+          await unMarkOrphan(runner.id, computeProvider);
         }
       } else {
         logger.info(`Terminating orphan runner '${runner.id}'`);
-        await runnerProvider.terminate(runner.id).catch((e) => {
+        await computeProvider.terminate(runner.id).catch((e) => {
           logger.error(`Failed to terminate orphan runner '${runner.id}'`, { error: e });
         });
       }
@@ -338,8 +338,8 @@ export function newestFirstStrategy(a: RunnerInfo, b: RunnerInfo): number {
   return oldestFirstStrategy(a, b) * -1;
 }
 
-async function listRunners(environment: string, runnerProvider: ScaleDownRunnerProvider) {
-  return await runnerProvider.list(environment);
+async function listRunners(environment: string, computeProvider: ScaleDownComputeProvider) {
+  return await computeProvider.list(environment);
 }
 
 function filterRunners(runners: RunnerInfo[]): RunnerInfo[] {
@@ -352,22 +352,22 @@ export async function scaleDown(): Promise<void> {
   githubCache.reset();
   const environment = process.env.ENVIRONMENT;
   const scaleDownConfigs = JSON.parse(process.env.SCALE_DOWN_CONFIG) as ScalingDownConfigList;
-  const runnerProviderType = resolveRunnerProviderType(process.env.RUNNER_PROVIDER_TYPE);
-  const runnerProvider = {
-    ...controlPlaneProviderRegistry.capability(runnerProviderType, 'scaleDown')(),
-    type: runnerProviderType,
+  const computeProviderType = resolveComputeProviderType(process.env.RUNNER_PROVIDER_TYPE);
+  const computeProvider = {
+    ...controlPlaneProviderRegistry.capability(computeProviderType, 'scaleDown')(),
+    type: computeProviderType,
   };
 
   // first runners marked to be orphan.
-  await terminateOrphan(environment, runnerProvider);
+  await terminateOrphan(environment, computeProvider);
 
   // next scale down idle runners with respect to config and mark potential orphans
-  const providerRunners = await listRunners(environment, runnerProvider);
+  const providerRunners = await listRunners(environment, computeProvider);
   const activeProviderRunnersCount = providerRunners.length;
   logger.info(
-    `Found: '${activeProviderRunnersCount}' active ${runnerProvider.type.toUpperCase()} runners before clean-up.`,
+    `Found: '${activeProviderRunnersCount}' active ${computeProvider.type.toUpperCase()} runners before clean-up.`,
   );
-  logger.debug(`Active ${runnerProvider.type.toUpperCase()} runners: ${JSON.stringify(providerRunners)}`);
+  logger.debug(`Active ${computeProvider.type.toUpperCase()} runners: ${JSON.stringify(providerRunners)}`);
 
   if (activeProviderRunnersCount === 0) {
     logger.debug(`No active runners found for environment: '${environment}'`);
@@ -375,10 +375,10 @@ export async function scaleDown(): Promise<void> {
   }
 
   const runners = filterRunners(providerRunners);
-  await evaluateAndRemoveRunners(runners, scaleDownConfigs, runnerProvider);
+  await evaluateAndRemoveRunners(runners, scaleDownConfigs, computeProvider);
 
-  const activeProviderRunnersCountAfter = (await listRunners(environment, runnerProvider)).length;
+  const activeProviderRunnersCountAfter = (await listRunners(environment, computeProvider)).length;
   logger.info(
-    `Found: '${activeProviderRunnersCountAfter}' active ${runnerProvider.type.toUpperCase()} runners after clean-up.`,
+    `Found: '${activeProviderRunnersCountAfter}' active ${computeProvider.type.toUpperCase()} runners after clean-up.`,
   );
 }

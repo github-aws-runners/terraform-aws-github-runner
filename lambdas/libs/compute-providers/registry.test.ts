@@ -1,7 +1,7 @@
 import { expect, it, vi } from 'vitest';
 
 import { createControlPlaneProviderRegistry } from './control-plane';
-import { runnerProviderTypes } from './provider-types';
+import { computeProviderTypes } from './provider-types';
 import { enabledControlPlaneProviders } from './providers.config.control-plane';
 import { enabledWebhookProviders } from './providers.config.webhook';
 import { webhookProviderRegistry } from './webhook';
@@ -12,10 +12,10 @@ it('exposes every configured provider through both capability registries', () =>
   const controlPlaneTypes = enabledControlPlaneProviders.map(({ type }) => type);
   const webhookTypes = enabledWebhookProviders.map(({ type }) => type);
 
-  expect(controlPlaneTypes).toEqual(runnerProviderTypes);
-  expect(webhookTypes).toEqual(runnerProviderTypes);
+  expect(controlPlaneTypes).toEqual(computeProviderTypes);
+  expect(webhookTypes).toEqual(computeProviderTypes);
 
-  for (const type of runnerProviderTypes) {
+  for (const type of computeProviderTypes) {
     expect(controlPlaneRegistry.capability(type, 'pool')()).toEqual({
       listRunners: expect.any(Function),
       countAvailableRunners: expect.any(Function),

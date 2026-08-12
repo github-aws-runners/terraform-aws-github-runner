@@ -14,7 +14,7 @@ import type {
   ActionRequestMessageSQS,
   CreateRunnerResult,
   CreateScaleUpRunnersInput,
-  ScaleUpRunnerProvider,
+  ScaleUpComputeProvider,
 } from './types';
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -57,15 +57,15 @@ const mockSSMClient = mockClient(SSMClient);
 const mockSSMgetParameter = vi.mocked(getParameter);
 const mockPublishRetryMessage = vi.mocked(publishRetryMessage);
 const testProviderState = { provider: 'test' };
-const mockRunnerProvider: ScaleUpRunnerProvider = {
+const mockComputeProvider: ScaleUpComputeProvider = {
   type: 'ec2',
   resolveLabelsForRunners: vi.fn(),
   getCurrentRunners: vi.fn(),
   createRunners: vi.fn(),
 };
-const mockResolveLabelsForRunners = vi.mocked(mockRunnerProvider.resolveLabelsForRunners);
-const mockGetCurrentRunners = vi.mocked(mockRunnerProvider.getCurrentRunners);
-const mockCreateRunners = vi.mocked(mockRunnerProvider.createRunners);
+const mockResolveLabelsForRunners = vi.mocked(mockComputeProvider.resolveLabelsForRunners);
+const mockGetCurrentRunners = vi.mocked(mockComputeProvider.getCurrentRunners);
+const mockCreateRunners = vi.mocked(mockComputeProvider.createRunners);
 const mockedResolveCapability = vi.spyOn(controlPlaneProviderRegistry, 'capability');
 
 function createRunnerResult(instances: string[], retryableErrorCount = 0, nonRetryableErrorCount = 0) {
@@ -189,7 +189,7 @@ beforeEach(() => {
   defaultSSMGetParameterMockImpl();
   defaultOctokitMockImpl();
 
-  mockedResolveCapability.mockReturnValue(() => mockRunnerProvider);
+  mockedResolveCapability.mockReturnValue(() => mockComputeProvider);
   mockResolveLabelsForRunners.mockImplementation(async (labels) => ({
     runnerLabels: labels.filter((label) => label.startsWith('ghr-')),
     state: testProviderState,
@@ -2174,11 +2174,11 @@ describe('Retry mechanism tests', () => {
   });
 });
 
-describe('runner provider selection', () => {
+describe('compute provider selection', () => {
   it('rejects unsupported scale-up provider types', async () => {
     process.env.RUNNER_PROVIDER_TYPE = 'microvm';
 
-    await expect(scaleUpModule.scaleUp(TEST_DATA)).rejects.toThrow("Unsupported runner provider type 'microvm'");
+    await expect(scaleUpModule.scaleUp(TEST_DATA)).rejects.toThrow("Unsupported compute provider type 'microvm'");
     expect(mockedAppAuth).not.toHaveBeenCalled();
   });
 });

@@ -141,13 +141,29 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@aws-github-runner/compute-providers@npm:*, @aws-github-runner/compute-providers@workspace:libs/compute-providers":
+  version: 0.0.0-use.local
+  resolution: "@aws-github-runner/compute-providers@workspace:libs/compute-providers"
+  dependencies:
+    "@aws-github-runner/aws-powertools-util": "npm:*"
+    "@aws-github-runner/aws-ssm-util": "npm:*"
+    "@aws-sdk/client-ec2": "npm:^3.1009.0"
+    "@octokit/rest": "npm:22.0.1"
+    aws-sdk-client-mock: "npm:^4.1.0"
+    aws-sdk-client-mock-jest: "npm:^4.1.0"
+    moment: "npm:2.29.4"
+    nock: "npm:^14.0.10"
+    yn: "npm:3.1.1"
+  languageName: unknown
+  linkType: soft
+
 "@aws-github-runner/control-plane@workspace:functions/control-plane":
   version: 0.0.0-use.local
   resolution: "@aws-github-runner/control-plane@workspace:functions/control-plane"
   dependencies:
     "@aws-github-runner/aws-powertools-util": "npm:*"
     "@aws-github-runner/aws-ssm-util": "npm:*"
-    "@aws-github-runner/runner-providers": "npm:*"
+    "@aws-github-runner/compute-providers": "npm:*"
     "@aws-lambda-powertools/parameters": "npm:^2.31.0"
     "@aws-sdk/client-ec2": "npm:^3.1009.0"
     "@aws-sdk/client-sqs": "npm:^3.1009.0"
@@ -193,22 +209,6 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@aws-github-runner/runner-providers@npm:*, @aws-github-runner/runner-providers@workspace:libs/runner-providers":
-  version: 0.0.0-use.local
-  resolution: "@aws-github-runner/runner-providers@workspace:libs/runner-providers"
-  dependencies:
-    "@aws-github-runner/aws-powertools-util": "npm:*"
-    "@aws-github-runner/aws-ssm-util": "npm:*"
-    "@aws-sdk/client-ec2": "npm:^3.1009.0"
-    "@octokit/rest": "npm:22.0.1"
-    aws-sdk-client-mock: "npm:^4.1.0"
-    aws-sdk-client-mock-jest: "npm:^4.1.0"
-    moment: "npm:2.29.4"
-    nock: "npm:^14.0.10"
-    yn: "npm:3.1.1"
-  languageName: unknown
-  linkType: soft
-
 "@aws-github-runner/termination-watcher@workspace:functions/termination-watcher":
   version: 0.0.0-use.local
   resolution: "@aws-github-runner/termination-watcher@workspace:functions/termination-watcher"
@@ -238,7 +238,7 @@ __metadata:
   dependencies:
     "@aws-github-runner/aws-powertools-util": "npm:*"
     "@aws-github-runner/aws-ssm-util": "npm:*"
-    "@aws-github-runner/runner-providers": "npm:*"
+    "@aws-github-runner/compute-providers": "npm:*"
     "@aws-sdk/client-eventbridge": "npm:^3.1009.0"
     "@aws-sdk/client-sqs": "npm:^3.1009.0"
     "@middy/core": "npm:^6.4.5"

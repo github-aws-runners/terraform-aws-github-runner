@@ -1,9 +1,9 @@
 import type {
   CreateStartRunnerConfig,
-  PoolRunnerProvider,
-  RunnerProviderPlugin,
-  ScaleDownRunnerProvider,
-  ScaleUpRunnerProvider,
+  PoolComputeProvider,
+  ComputeProviderPlugin,
+  ScaleDownComputeProvider,
+  ScaleUpComputeProvider,
 } from '../../core';
 
 import type { ControlPlaneProviderCapabilities, ControlPlaneProviderModule } from '../../contracts';
@@ -13,12 +13,12 @@ export interface TemplateScaleUpState {
 }
 
 function notImplemented(operation: string): never {
-  throw new Error(`Template runner provider must implement ${operation}`);
+  throw new Error(`Template compute provider must implement ${operation}`);
 }
 
 export function createTemplatePoolProvider(
   createStartRunnerConfig: CreateStartRunnerConfig,
-): Omit<PoolRunnerProvider, 'type'> {
+): Omit<PoolComputeProvider, 'type'> {
   return {
     listRunners: async () => notImplemented('pool.listRunners'),
     countAvailableRunners: () => notImplemented('pool.countAvailableRunners'),
@@ -33,7 +33,7 @@ export function createTemplatePoolProvider(
 
 export function createTemplateScaleUpProvider(
   createStartRunnerConfig: CreateStartRunnerConfig,
-): Omit<ScaleUpRunnerProvider, 'type'> {
+): Omit<ScaleUpComputeProvider, 'type'> {
   return {
     resolveLabelsForRunners: async (messageLabels) => {
       void messageLabels;
@@ -54,7 +54,7 @@ export function createTemplateScaleUpProvider(
   };
 }
 
-export function createTemplateScaleDownProvider(): Omit<ScaleDownRunnerProvider, 'type'> {
+export function createTemplateScaleDownProvider(): Omit<ScaleDownComputeProvider, 'type'> {
   return {
     list: async (environment, orphan) => {
       void environment;
@@ -73,7 +73,7 @@ export function createTemplateScaleDownProvider(): Omit<ScaleDownRunnerProvider,
 
 export function createTemplateControlPlanePlugin(
   createStartRunnerConfig: CreateStartRunnerConfig,
-): RunnerProviderPlugin<ControlPlaneProviderCapabilities, 'template'> {
+): ComputeProviderPlugin<ControlPlaneProviderCapabilities, 'template'> {
   return {
     type: 'template',
     capabilities: {

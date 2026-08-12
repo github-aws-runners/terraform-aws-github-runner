@@ -2,8 +2,8 @@ import { Octokit } from '@octokit/rest';
 import moment from 'moment-timezone';
 import * as nock from 'nock';
 
-import { createRunners } from '@aws-github-runner/runner-providers/aws/ec2/control-plane/runner-config';
-import { listEC2Runners } from '@aws-github-runner/runner-providers/aws/ec2/control-plane/runners';
+import { createRunners } from '@aws-github-runner/compute-providers/aws/ec2/control-plane/runner-config';
+import { listEC2Runners } from '@aws-github-runner/compute-providers/aws/ec2/control-plane/runners';
 import * as ghAuth from '../github/auth';
 import { getGitHubEnterpriseApiUrl } from '../scale-runners/github-runner';
 import { adjust } from './pool';
@@ -26,7 +26,7 @@ vi.mock('@octokit/rest', () => ({
   }),
 }));
 
-vi.mock('@aws-github-runner/runner-providers/aws/ec2/control-plane/runners', async () => ({
+vi.mock('@aws-github-runner/compute-providers/aws/ec2/control-plane/runners', async () => ({
   listEC2Runners: vi.fn(),
   // Include any other functions from the module that might be used
   bootTimeExceeded: vi.fn(),
@@ -37,8 +37,10 @@ vi.mock('./../github/auth', async () => ({
   createOctokitClient: vi.fn(),
 }));
 
-vi.mock('@aws-github-runner/runner-providers/aws/ec2/control-plane/runner-config', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@aws-github-runner/runner-providers/aws/ec2/control-plane/runner-config')>()),
+vi.mock('@aws-github-runner/compute-providers/aws/ec2/control-plane/runner-config', async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import('@aws-github-runner/compute-providers/aws/ec2/control-plane/runner-config')
+  >()),
   createRunners: vi.fn(),
 }));
 
@@ -244,7 +246,7 @@ describe('Test simple pool.', () => {
 
     it('Rejects unsupported pool provider types.', async () => {
       await expect(adjust({ poolSize: 10, type: 'microvm' })).rejects.toThrow(
-        "Unsupported runner provider type 'microvm'",
+        "Unsupported compute provider type 'microvm'",
       );
       expect(mockListRunners).not.toHaveBeenCalled();
     });

@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, type MockInstance, vi } from 'vitest';
 
-import type { ScaleDownRunnerProvider } from '../../scale-runners/types';
+import type { ScaleDownComputeProvider } from '../../scale-runners/types';
 
-type TestScaleDownProvider<TType extends string> = Omit<ScaleDownRunnerProvider, 'type'> & { type: TType };
+type TestScaleDownProvider<TType extends string> = Omit<ScaleDownComputeProvider, 'type'> & { type: TType };
 
 export interface ScaleDownContractLane<TType extends string> {
   provider: TestScaleDownProvider<TType>;

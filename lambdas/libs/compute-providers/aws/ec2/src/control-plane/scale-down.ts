@@ -1,4 +1,4 @@
-import type { RunnerInfo, ScaleDownRunnerProvider } from '../../../../core';
+import type { RunnerInfo, ScaleDownComputeProvider } from '../../../../core';
 import { bootTimeExceeded, listEC2Runners, tag, terminateRunner, untag } from './runners';
 
 async function listEc2ScaleDownRunners(environment: string, orphan?: boolean): Promise<RunnerInfo[]> {
@@ -13,7 +13,7 @@ async function unmarkEc2RunnerOrphan(id: string): Promise<void> {
   await untag(id, [{ Key: 'ghr:orphan', Value: 'true' }]);
 }
 
-export function createEc2ScaleDownProvider(): Omit<ScaleDownRunnerProvider, 'type'> {
+export function createEc2ScaleDownProvider(): Omit<ScaleDownComputeProvider, 'type'> {
   return {
     list: listEc2ScaleDownRunners,
     bootTimeExceeded,
