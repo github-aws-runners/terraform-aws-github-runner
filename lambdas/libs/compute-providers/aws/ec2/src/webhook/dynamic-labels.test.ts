@@ -47,7 +47,7 @@ function runnerQueue(id: string): RunnerMatcherConfig {
   return {
     id,
     arn: `arn:${id}`,
-    runnerProvider: 'ec2',
+    computeProvider: 'ec2',
     matcherConfig: {
       labelMatchers: [['self-hosted', 'linux']],
       exactMatch: true,

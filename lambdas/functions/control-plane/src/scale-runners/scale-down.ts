@@ -352,7 +352,7 @@ export async function scaleDown(): Promise<void> {
   githubCache.reset();
   const environment = process.env.ENVIRONMENT;
   const scaleDownConfigs = JSON.parse(process.env.SCALE_DOWN_CONFIG) as ScalingDownConfigList;
-  const computeProviderType = resolveComputeProviderType(process.env.RUNNER_PROVIDER_TYPE);
+  const computeProviderType = resolveComputeProviderType(process.env.COMPUTE_PROVIDER_TYPE);
   const computeProvider = {
     ...controlPlaneProviderRegistry.capability(computeProviderType, 'scaleDown')(),
     type: computeProviderType,

@@ -176,7 +176,7 @@ describe('Scale down runners', () => {
     process.env.ENVIRONMENT = ENVIRONMENT;
     process.env.MINIMUM_RUNNING_TIME_IN_MINUTES = MINIMUM_TIME_RUNNING_IN_MINUTES.toString();
     process.env.RUNNER_BOOT_TIME_IN_MINUTES = MINIMUM_BOOT_TIME.toString();
-    process.env.RUNNER_PROVIDER_TYPE = mockComputeProvider.type;
+    process.env.COMPUTE_PROVIDER_TYPE = mockComputeProvider.type;
 
     vi.clearAllMocks();
     githubCache.clients.clear();

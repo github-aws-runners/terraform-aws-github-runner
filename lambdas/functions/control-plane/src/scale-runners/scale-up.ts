@@ -86,7 +86,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
     process.env.SSM_PARAMETER_STORE_TAGS && process.env.SSM_PARAMETER_STORE_TAGS.trim() !== ''
       ? validateSsmParameterStoreTags(process.env.SSM_PARAMETER_STORE_TAGS)
       : [];
-  const computeProviderType = resolveComputeProviderType(process.env.RUNNER_PROVIDER_TYPE);
+  const computeProviderType = resolveComputeProviderType(process.env.COMPUTE_PROVIDER_TYPE);
   const computeProvider = {
     ...controlPlaneProviderRegistry.capability(computeProviderType, 'scaleUp')(),
     type: computeProviderType,

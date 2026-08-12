@@ -26,7 +26,7 @@ export function defineScaleDownContractTests<TType extends string>({
     (_, { provider }) => {
       beforeEach(() => {
         process.env.ENVIRONMENT = 'test-environment';
-        process.env.RUNNER_PROVIDER_TYPE = provider.type;
+        process.env.COMPUTE_PROVIDER_TYPE = provider.type;
         process.env.SCALE_DOWN_CONFIG = '[]';
 
         resolveCapability.mockReturnValue(() => provider);

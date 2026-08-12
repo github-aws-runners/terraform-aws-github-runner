@@ -32,7 +32,7 @@ export interface MatcherConfig {
 export interface RunnerMatcherConfig {
   id: string;
   arn: string;
-  runnerProvider?: ComputeProviderType;
+  computeProvider?: ComputeProviderType;
   matcherConfig: MatcherConfig;
 }
 

@@ -39,7 +39,7 @@ export function defineScaleUpContractTests<TType extends string>({
       beforeEach(() => {
         process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
         process.env.RUNNERS_MAXIMUM_COUNT = '3';
-        process.env.RUNNER_PROVIDER_TYPE = provider.type;
+        process.env.COMPUTE_PROVIDER_TYPE = provider.type;
 
         resolveCapability.mockReturnValue(() => provider);
         vi.mocked(provider.resolveLabelsForRunners).mockResolvedValue({ runnerLabels: [], state });

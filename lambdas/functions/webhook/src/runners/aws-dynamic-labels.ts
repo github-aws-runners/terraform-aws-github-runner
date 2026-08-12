@@ -13,11 +13,11 @@ export function selectAwsDynamicLabelQueue(
   sanitizedGhrLabels: string[],
 ): DynamicLabelDispatchTarget | undefined {
   for (const queue of matches) {
-    const provider = normalizeComputeProviderType(queue.runnerProvider);
+    const provider = normalizeComputeProviderType(queue.computeProvider);
     const dynamicLabels = provider ? webhookProviderRegistry.capability(provider, 'dynamicLabels') : undefined;
 
     if (!dynamicLabels) {
-      logger.warn(`Queue ${queue.id} has unsupported compute provider '${provider ?? String(queue.runnerProvider)}'`);
+      logger.warn(`Queue ${queue.id} has unsupported compute provider '${provider ?? String(queue.computeProvider)}'`);
       continue;
     }
 

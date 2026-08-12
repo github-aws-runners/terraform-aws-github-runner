@@ -16,7 +16,7 @@ describe('selectAwsDynamicLabelQueue', () => {
 
   it('normalizes compute provider casing and surrounding whitespace', () => {
     const queue = runnerQueue('normalized-ec2');
-    (queue as unknown as { runnerProvider: string }).runnerProvider = ' EC2 ';
+    (queue as unknown as { computeProvider: string }).computeProvider = ' EC2 ';
 
     expect(selectAwsDynamicLabelQueue([queue], ['self-hosted', 'linux'], ['ghr-ec2-instance-type:t3.large'])).toEqual({
       queue,
@@ -26,7 +26,7 @@ describe('selectAwsDynamicLabelQueue', () => {
 
   it('skips an unsupported provider strategy and selects the next supported queue', () => {
     const unsupportedQueue = runnerQueue('unsupported-provider');
-    (unsupportedQueue as unknown as { runnerProvider: string }).runnerProvider = 'unsupported';
+    (unsupportedQueue as unknown as { computeProvider: string }).computeProvider = 'unsupported';
     const ec2Queue = runnerQueue('ec2');
 
     expect(
@@ -43,7 +43,7 @@ describe('selectAwsDynamicLabelQueue', () => {
 
   it('rejects a malformed non-string compute provider without throwing', () => {
     const queue = runnerQueue('malformed-provider');
-    (queue as unknown as { runnerProvider: number }).runnerProvider = 42;
+    (queue as unknown as { computeProvider: number }).computeProvider = 42;
 
     expect(
       selectAwsDynamicLabelQueue([queue], ['self-hosted', 'linux'], ['ghr-ec2-instance-type:t3.large']),
@@ -51,11 +51,11 @@ describe('selectAwsDynamicLabelQueue', () => {
   });
 });
 
-function runnerQueue(id: string, runnerProvider?: ComputeProviderType): RunnerMatcherConfig {
+function runnerQueue(id: string, computeProvider?: ComputeProviderType): RunnerMatcherConfig {
   return {
     id,
     arn: `arn:${id}`,
-    runnerProvider,
+    computeProvider,
     matcherConfig: {
       labelMatchers: [['self-hosted', 'linux']],
       exactMatch: true,

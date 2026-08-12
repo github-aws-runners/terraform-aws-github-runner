@@ -2176,7 +2176,7 @@ describe('Retry mechanism tests', () => {
 
 describe('compute provider selection', () => {
   it('rejects unsupported scale-up provider types', async () => {
-    process.env.RUNNER_PROVIDER_TYPE = 'microvm';
+    process.env.COMPUTE_PROVIDER_TYPE = 'microvm';
 
     await expect(scaleUpModule.scaleUp(TEST_DATA)).rejects.toThrow("Unsupported compute provider type 'microvm'");
     expect(mockedAppAuth).not.toHaveBeenCalled();
