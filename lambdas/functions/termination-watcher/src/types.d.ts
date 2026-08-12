@@ -42,14 +42,3 @@ interface UserIdentity {
 interface ServiceEventDetails {
   instanceIdSet: string[];
 }
-
-export interface InstanceStateChangeDetail {
-  'instance-id': string;
-  state: string;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-export interface InstanceStateChangeEvent
-  extends EventBridgeEvent<'EC2 Instance State-change Notification', InstanceStateChangeDetail> {}
-
-export type TerminationWatcherEvent = SpotInterruptionWarning<SpotTerminationDetail> | InstanceStateChangeEvent;

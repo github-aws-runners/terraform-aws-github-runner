@@ -1,0 +1,36 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "dynamodb:DescribeTable"
+            ],
+            "Resource": "${table_arn}"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "dynamodb:GetItem",
+                "dynamodb:PutItem"
+            ],
+            "Resource": "${table_arn}",
+            "Condition": {
+                "ForAllValues:StringLike": {
+                    "dynamodb:LeadingKeys": ${leading_keys_json}
+                }
+            }
+        }%{ if kms_key_arn != "" ~},
+        {
+            "Effect": "Allow",
+            "Action": [
+                "kms:Decrypt",
+                "kms:DescribeKey",
+                "kms:Encrypt",
+                "kms:GenerateDataKey"
+            ],
+            "Resource": "${kms_key_arn}"
+        }
+%{ endif ~}
+    ]
+}

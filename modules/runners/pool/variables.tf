@@ -60,19 +60,36 @@ variable "config" {
       schedule_expression_timezone = string
       size                         = number
     }))
-    include_busy_runners                 = bool
-    role_permissions_boundary            = string
-    kms_key_arn                          = string
-    ami_kms_key_arn                      = string
-    ami_id_ssm_parameter_arn             = string
-    role_path                            = string
-    ssm_token_path                       = string
-    ssm_config_path                      = string
-    ami_id_ssm_parameter_name            = string
-    ami_id_ssm_parameter_read_policy_arn = string
-    arn_ssm_parameters_path_config       = string
-    lambda_tags                          = map(string)
-    user_agent                           = string
+    include_busy_runners                                      = bool
+    role_permissions_boundary                                 = string
+    kms_key_arn                                               = string
+    ami_kms_key_arn                                           = string
+    ami_id_ssm_parameter_arn                                  = string
+    role_path                                                 = string
+    ssm_token_path                                            = string
+    ssm_config_path                                           = string
+    runner_config_storage_backend                             = string
+    runner_config_dynamodb_table_name                         = string
+    runner_config_dynamodb_table_arn                          = string
+    runner_config_dynamodb_partition_key_name                 = string
+    runner_config_dynamodb_value_attribute_name               = string
+    runner_config_dynamodb_config_key_prefix                  = string
+    runner_config_dynamodb_consistent_read                    = bool
+    runner_config_dynamodb_token_overwrite_protection_enabled = bool
+    runner_config_dynamodb_token_key_prefix                   = string
+    runner_config_dynamodb_ttl_seconds                        = number
+    runner_config_dynamodb_ttl_attribute_name                 = string
+    runner_config_dynamodb_client_max_attempts                = number
+    runner_config_dynamodb_client_retry_mode                  = string
+    runner_config_dynamodb_client_http_keep_alive             = bool
+    runner_config_dynamodb_client_http_max_sockets            = number
+    runner_config_dynamodb_client_http_keep_alive_msecs       = string
+    runner_config_dynamodb_kms_key_arn                        = string
+    ami_id_ssm_parameter_name                                 = string
+    ami_id_ssm_parameter_read_policy_arn                      = string
+    arn_ssm_parameters_path_config                            = string
+    lambda_tags                                               = map(string)
+    user_agent                                                = string
   })
 }
 
@@ -91,5 +108,3 @@ variable "tracing_config" {
   })
   default = {}
 }
-
-

@@ -8,6 +8,22 @@ export interface RunnerProvider {
 
 export type LambdaRunnerSource = 'scale-up-lambda' | 'pool-lambda';
 export type GitHubRunnerType = 'Org' | 'Repo';
+export type RunnerConfigStorageBackend = 'ssm' | 'dynamodb';
+
+export interface RunnerConfigStorage {
+  backend: RunnerConfigStorageBackend;
+  dynamodb?: {
+    tableName: string;
+    partitionKeyName?: string;
+    valueAttributeName?: string;
+    configKeyPrefix?: string;
+    consistentRead?: boolean;
+    tokenOverwriteProtectionEnabled?: boolean;
+    tokenKeyPrefix: string;
+    tokenTtlSeconds: number;
+    ttlAttributeName?: string;
+  };
+}
 
 export interface CreateGitHubRunnerConfig {
   ephemeral: boolean;
@@ -22,6 +38,7 @@ export interface CreateGitHubRunnerConfig {
   ssmTokenPath: string;
   ssmConfigPath: string;
   ssmParameterStoreTags: { Key: string; Value: string }[];
+  runnerConfigStorage?: RunnerConfigStorage;
 }
 
 export interface GitHubRunnerMetadata {

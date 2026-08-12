@@ -13,13 +13,14 @@
                 "logs:CreateLogStream"
             ],
             "Resource": "*"
-        },
+        }%{ if ssm_parameter_arn != "" ~},
         {
             "Effect": "Allow",
             "Action": [
                 "ssm:GetParameter"
             ],
-            "Resource": "${ssm_parameter_arn}/*"
+            "Resource": "${ssm_parameter_arn}"
         }
+%{ endif ~}
     ]
 }

@@ -72,7 +72,14 @@ locals {
     hook_job_started   = var.runner_hook_job_started
     hook_job_completed = var.runner_hook_job_completed
     start_runner = templatefile(local.userdata_start_runner[var.runner_os], {
-      metadata_tags = var.metadata_options != null ? var.metadata_options.instance_metadata_tags : "enabled"
+      metadata_tags                               = var.metadata_options != null ? var.metadata_options.instance_metadata_tags : "enabled"
+      runner_config_storage_backend               = local.runner_config_storage_backend
+      runner_config_dynamodb_table_name           = local.runner_config_dynamodb_table_name
+      runner_config_dynamodb_partition_key_name   = local.runner_config_dynamodb_partition_key_name
+      runner_config_dynamodb_value_attribute_name = local.runner_config_dynamodb_value_attribute_name
+      runner_config_dynamodb_config_key_prefix    = local.runner_config_dynamodb_config_key_prefix
+      runner_config_dynamodb_consistent_read      = local.runner_config_dynamodb_consistent_read
+      runner_config_dynamodb_token_key_prefix     = local.runner_config_dynamodb_token_key_prefix
     })
     ghes_url        = var.ghes_url
     ghes_ssl_verify = var.ghes_ssl_verify
@@ -80,7 +87,7 @@ locals {
     ## retain these for backwards compatibility
     environment                     = var.prefix
     enable_cloudwatch_agent         = var.enable_cloudwatch_agent
-    ssm_key_cloudwatch_agent_config = var.enable_cloudwatch_agent ? aws_ssm_parameter.cloudwatch_agent_config_runner[0].name : ""
+    ssm_key_cloudwatch_agent_config = var.enable_cloudwatch_agent && local.runner_config_storage_ssm ? aws_ssm_parameter.cloudwatch_agent_config_runner[0].name : ""
   }) : var.userdata_content) : ""
 
   encoded_user_data = (

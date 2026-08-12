@@ -1,22 +1,24 @@
 output "runners" {
   value = {
-    launch_template_name    = module.runners.launch_template.name
-    launch_template_id      = module.runners.launch_template.id
-    launch_template_version = module.runners.launch_template.latest_version
-    launch_template_ami_id  = module.runners.launch_template.image_id
-    lambda_up               = module.runners.lambda_scale_up
-    lambda_up_log_group     = module.runners.lambda_scale_up_log_group
-    lambda_down             = module.runners.lambda_scale_down
-    lambda_down_log_group   = module.runners.lambda_scale_down_log_group
-    lambda_pool             = module.runners.lambda_pool
-    lambda_pool_log_group   = module.runners.lambda_pool_log_group
-    role_runner             = module.runners.role_runner
-    role_scale_up           = module.runners.role_scale_up
-    role_scale_down         = module.runners.role_scale_down
-    role_pool               = module.runners.role_pool
-    runners_log_groups      = module.runners.runners_log_groups
-    labels                  = local.runner_labels
-    logfiles                = module.runners.logfiles
+    launch_template_name          = module.runners.launch_template.name
+    launch_template_id            = module.runners.launch_template.id
+    launch_template_version       = module.runners.launch_template.latest_version
+    launch_template_ami_id        = module.runners.launch_template.image_id
+    lambda_up                     = module.runners.lambda_scale_up
+    lambda_up_log_group           = module.runners.lambda_scale_up_log_group
+    lambda_down                   = module.runners.lambda_scale_down
+    lambda_down_log_group         = module.runners.lambda_scale_down_log_group
+    lambda_pool                   = module.runners.lambda_pool
+    lambda_pool_log_group         = module.runners.lambda_pool_log_group
+    role_runner                   = module.runners.role_runner
+    role_scale_up                 = module.runners.role_scale_up
+    role_scale_down               = module.runners.role_scale_down
+    role_pool                     = module.runners.role_pool
+    runners_log_groups            = module.runners.runners_log_groups
+    runner_config_storage_backend = module.runners.runner_config_storage_backend
+    runner_config_dynamodb_table  = module.runners.runner_config_dynamodb_table
+    labels                        = local.runner_labels
+    logfiles                      = module.runners.logfiles
   }
 }
 

@@ -49,6 +49,48 @@ cleanup() {
 
 trap 'cleanup $?' EXIT
 
+runner_config_storage_backend="${runner_config_storage_backend}"
+runner_config_dynamodb_table_name="${runner_config_dynamodb_table_name}"
+runner_config_dynamodb_partition_key_name="${runner_config_dynamodb_partition_key_name}"
+runner_config_dynamodb_value_attribute_name="${runner_config_dynamodb_value_attribute_name}"
+runner_config_dynamodb_config_key_prefix="${runner_config_dynamodb_config_key_prefix}"
+runner_config_dynamodb_consistent_read="${runner_config_dynamodb_consistent_read}"
+runner_config_dynamodb_token_key_prefix="${runner_config_dynamodb_token_key_prefix}"
+
+get_dynamodb_item_value() {
+  local item_id="$1"
+  local key_json
+  local expression_attribute_names
+  local item_json
+  local consistent_read_args=()
+  local value
+  key_json=$(jq -cn --arg key_attr "$runner_config_dynamodb_partition_key_name" --arg id "$item_id" '{($key_attr):{S:$id}}')
+  expression_attribute_names=$(jq -cn --arg value_attr "$runner_config_dynamodb_value_attribute_name" '{"#value":$value_attr}')
+  if [[ "$runner_config_dynamodb_consistent_read" == "true" ]]; then
+    consistent_read_args=(--consistent-read)
+  fi
+  item_json=$(aws dynamodb get-item \
+    --table-name "$runner_config_dynamodb_table_name" \
+    --key "$key_json" \
+    "$${consistent_read_args[@]}" \
+    --projection-expression "#value" \
+    --expression-attribute-names "$expression_attribute_names" \
+    --region "$region" \
+    --output json 2>/dev/null || true)
+  value=$(jq -r --arg value_attr "$runner_config_dynamodb_value_attribute_name" '.Item[$value_attr].S // ""' <<< "$item_json" 2>/dev/null || true)
+  printf '%s' "$value"
+}
+
+delete_dynamodb_item() {
+  local item_id="$1"
+  local key_json
+  key_json=$(jq -cn --arg key_attr "$runner_config_dynamodb_partition_key_name" --arg id "$item_id" '{($key_attr):{S:$id}}')
+  aws dynamodb delete-item \
+    --table-name "$runner_config_dynamodb_table_name" \
+    --key "$key_json" \
+    --region "$region"
+}
+
 echo "Retrieving TOKEN from AWS API"
 token=$(curl -f -X PUT "http://169.254.169.254/latest/api/token" \
   -H "X-aws-ec2-metadata-token-ttl-seconds: 180" || true)
@@ -88,37 +130,57 @@ echo "Retrieved ghr:environment tag - ($environment)"
 echo "Retrieved ghr:ssm_config_path tag - ($ssm_config_path)"
 echo "Retrieved ghr:runner_name_prefix tag - ($runner_name_prefix)"
 
-parameters=$(aws ssm get-parameters-by-path \
-  --path "$ssm_config_path" \
-  --region "$region" \
-  --query "Parameters[*].{Name:Name,Value:Value}")
-echo "Retrieved parameters from AWS SSM ($parameters)"
+if [[ "$runner_config_storage_backend" == "dynamodb" ]]; then
+  echo "Retrieving runner bootstrap config from AWS DynamoDB ($runner_config_dynamodb_table_name)"
+  run_as=$(get_dynamodb_item_value "$${runner_config_dynamodb_config_key_prefix}run_as")
+  agent_mode=$(get_dynamodb_item_value "$${runner_config_dynamodb_config_key_prefix}agent_mode")
+  disable_default_labels=$(get_dynamodb_item_value "$${runner_config_dynamodb_config_key_prefix}disable_default_labels")
+  enable_jit_config=$(get_dynamodb_item_value "$${runner_config_dynamodb_config_key_prefix}enable_jit_config")
 
-run_as=$(echo "$parameters" | jq -r '.[] | select(.Name == "'$ssm_config_path'/run_as") | .Value')
-echo "Retrieved /$ssm_config_path/run_as parameter - ($run_as)"
+  echo "Get GH Runner config from AWS DynamoDB"
+  runner_config_key="$runner_config_dynamodb_token_key_prefix$instance_id"
+  config=$(get_dynamodb_item_value "$runner_config_key")
+  while [[ -z "$config" ]]; do
+    echo "Waiting for GH Runner config to become available in AWS DynamoDB"
+    sleep 1
+    config=$(get_dynamodb_item_value "$runner_config_key")
+  done
 
-agent_mode=$(echo "$parameters" | jq -r '.[] | select(.Name == "'$ssm_config_path'/agent_mode") | .Value')
-echo "Retrieved /$ssm_config_path/agent_mode parameter - ($agent_mode)"
+  echo "Delete GH Runner token from AWS DynamoDB"
+  delete_dynamodb_item "$runner_config_key"
+else
+  parameters=$(aws ssm get-parameters-by-path \
+    --path "$ssm_config_path" \
+    --region "$region" \
+    --query "Parameters[*].{Name:Name,Value:Value}")
+  echo "Retrieved parameters from AWS SSM ($parameters)"
 
-disable_default_labels=$(echo "$parameters" | jq -r '.[] | select(.Name == "'$ssm_config_path'/disable_default_labels") | .Value')
-echo "Retrieved /$ssm_config_path/disable_default_labels parameter - ($disable_default_labels)"
+  run_as=$(echo "$parameters" | jq -r '.[] | select(.Name == "'$ssm_config_path'/run_as") | .Value')
+  echo "Retrieved /$ssm_config_path/run_as parameter - ($run_as)"
 
-enable_jit_config=$(echo "$parameters" | jq -r '.[] | select(.Name == "'$ssm_config_path'/enable_jit_config") | .Value')
-echo "Retrieved /$ssm_config_path/enable_jit_config parameter - ($enable_jit_config)"
+  agent_mode=$(echo "$parameters" | jq -r '.[] | select(.Name == "'$ssm_config_path'/agent_mode") | .Value')
+  echo "Retrieved /$ssm_config_path/agent_mode parameter - ($agent_mode)"
 
-token_path=$(echo "$parameters" | jq -r '.[] | select(.Name == "'$ssm_config_path'/token_path") | .Value')
-echo "Retrieved /$ssm_config_path/token_path parameter - ($token_path)"
+  disable_default_labels=$(echo "$parameters" | jq -r '.[] | select(.Name == "'$ssm_config_path'/disable_default_labels") | .Value')
+  echo "Retrieved /$ssm_config_path/disable_default_labels parameter - ($disable_default_labels)"
 
-echo "Get GH Runner config from AWS SSM"
-config=$(aws ssm get-parameter --name "$token_path"/"$instance_id" --with-decryption --region "$region" | jq -r ".Parameter | .Value")
-while [[ -z "$config" ]]; do
-  echo "Waiting for GH Runner config to become available in AWS SSM"
-  sleep 1
+  enable_jit_config=$(echo "$parameters" | jq -r '.[] | select(.Name == "'$ssm_config_path'/enable_jit_config") | .Value')
+  echo "Retrieved /$ssm_config_path/enable_jit_config parameter - ($enable_jit_config)"
+
+  token_path=$(echo "$parameters" | jq -r '.[] | select(.Name == "'$ssm_config_path'/token_path") | .Value')
+  echo "Retrieved /$ssm_config_path/token_path parameter - ($token_path)"
+
+  echo "Get GH Runner config from AWS SSM"
   config=$(aws ssm get-parameter --name "$token_path"/"$instance_id" --with-decryption --region "$region" | jq -r ".Parameter | .Value")
-done
+  while [[ -z "$config" ]]; do
+    echo "Waiting for GH Runner config to become available in AWS SSM"
+    sleep 1
+    config=$(aws ssm get-parameter --name "$token_path"/"$instance_id" --with-decryption --region "$region" | jq -r ".Parameter | .Value")
+  done
 
-echo "Delete GH Runner token from AWS SSM"
-aws ssm delete-parameter --name "$token_path"/"$instance_id" --region "$region"
+  echo "Delete GH Runner token from AWS SSM"
+  aws ssm delete-parameter --name "$token_path"/"$instance_id" --region "$region"
+fi
 
 if [ -z "$run_as" ]; then
   echo "No user specified, using default ec2-user account"

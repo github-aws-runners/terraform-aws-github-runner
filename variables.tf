@@ -935,6 +935,130 @@ variable "ssm_paths" {
   default = {}
 }
 
+variable "runner_config_storage" {
+  description = "Storage backend for label-scoped runner bootstrap config and one-time registration/JIT config. Common GitHub App secrets and webhook routing config continue to use SSM Parameter Store. Set `backend` to `dynamodb` to create and use a DynamoDB table for the runner label. When `token_ttl_seconds` is null, DynamoDB token expiry uses the SSM housekeeper minimum-days retention."
+  type = object({
+    backend = optional(string, "ssm")
+    dynamodb = optional(object({
+      table_name                         = optional(string, null)
+      partition_key_name                 = optional(string, "id")
+      value_attribute_name               = optional(string, "value")
+      config_key_prefix                  = optional(string, "config#")
+      token_key_prefix                   = optional(string, null)
+      consistent_read                    = optional(bool, true)
+      token_overwrite_protection_enabled = optional(bool, true)
+      billing_mode                       = optional(string, "PAY_PER_REQUEST")
+      read_capacity                      = optional(number, 5)
+      write_capacity                     = optional(number, 5)
+      autoscaling_enabled                = optional(bool, false)
+      autoscaling_read_min_capacity      = optional(number, 5)
+      autoscaling_read_max_capacity      = optional(number, 100)
+      autoscaling_read_target_value      = optional(number, 70)
+      autoscaling_write_min_capacity     = optional(number, 5)
+      autoscaling_write_max_capacity     = optional(number, 100)
+      autoscaling_write_target_value     = optional(number, 70)
+      token_ttl_seconds                  = optional(number, null)
+      ttl_enabled                        = optional(bool, true)
+      ttl_attribute_name                 = optional(string, "expires_at")
+      client_max_attempts                = optional(number, 10)
+      client_retry_mode                  = optional(string, "adaptive")
+      client_http_keep_alive             = optional(bool, true)
+      client_http_max_sockets            = optional(number, 50)
+      client_http_keep_alive_msecs       = optional(number, null)
+      server_side_encryption_enabled     = optional(bool, true)
+      point_in_time_recovery_enabled     = optional(bool, true)
+      deletion_protection_enabled        = optional(bool, true)
+      kms_key_arn                        = optional(string, null)
+      alarms_enabled                     = optional(bool, true)
+      alarm_actions                      = optional(list(string), [])
+      ok_actions                         = optional(list(string), [])
+      insufficient_data_actions          = optional(list(string), [])
+      alarm_evaluation_periods           = optional(number, 1)
+      alarm_datapoints_to_alarm          = optional(number, 1)
+      alarm_period                       = optional(number, 300)
+      alarm_treat_missing_data           = optional(string, "notBreaching")
+      read_throttle_alarm_threshold      = optional(number, 0)
+      write_throttle_alarm_threshold     = optional(number, 0)
+      system_errors_alarm_threshold      = optional(number, 0)
+      user_errors_alarm_threshold        = optional(number, 0)
+      consumed_read_capacity_threshold   = optional(number, null)
+      consumed_write_capacity_threshold  = optional(number, null)
+    }), {})
+  })
+  default = {}
+
+  validation {
+    condition     = contains(["ssm", "dynamodb"], lower(var.runner_config_storage.backend))
+    error_message = "`runner_config_storage.backend` must be either `ssm` or `dynamodb`."
+  }
+
+  validation {
+    condition     = contains(["PAY_PER_REQUEST", "PROVISIONED"], var.runner_config_storage.dynamodb.billing_mode)
+    error_message = "`runner_config_storage.dynamodb.billing_mode` must be either `PAY_PER_REQUEST` or `PROVISIONED`."
+  }
+
+  validation {
+    condition     = var.runner_config_storage.dynamodb.autoscaling_enabled == false || var.runner_config_storage.dynamodb.billing_mode == "PROVISIONED"
+    error_message = "`runner_config_storage.dynamodb.autoscaling_enabled` can only be true when billing mode is `PROVISIONED`."
+  }
+
+  validation {
+    condition     = var.runner_config_storage.dynamodb.token_ttl_seconds == null ? true : var.runner_config_storage.dynamodb.token_ttl_seconds > 0
+    error_message = "`runner_config_storage.dynamodb.token_ttl_seconds` must be null or greater than zero."
+  }
+
+  validation {
+    condition = alltrue([
+      for value in [
+        var.runner_config_storage.dynamodb.partition_key_name,
+        var.runner_config_storage.dynamodb.value_attribute_name,
+        var.runner_config_storage.dynamodb.config_key_prefix,
+        var.runner_config_storage.dynamodb.ttl_attribute_name,
+      ] : trimspace(value) != ""
+    ])
+    error_message = "`runner_config_storage.dynamodb` attribute names and `config_key_prefix` must not be empty."
+  }
+
+  validation {
+    condition = length(distinct([
+      var.runner_config_storage.dynamodb.partition_key_name,
+      var.runner_config_storage.dynamodb.value_attribute_name,
+      var.runner_config_storage.dynamodb.ttl_attribute_name,
+    ])) == 3
+    error_message = "`runner_config_storage.dynamodb` attribute names must be distinct."
+  }
+
+  validation {
+    condition     = var.runner_config_storage.dynamodb.token_key_prefix == null ? true : trimspace(var.runner_config_storage.dynamodb.token_key_prefix) != ""
+    error_message = "`runner_config_storage.dynamodb.token_key_prefix` must be null or non-empty."
+  }
+
+  validation {
+    condition     = var.runner_config_storage.dynamodb.client_max_attempts > 0
+    error_message = "`runner_config_storage.dynamodb.client_max_attempts` must be greater than zero."
+  }
+
+  validation {
+    condition     = contains(["standard", "adaptive"], var.runner_config_storage.dynamodb.client_retry_mode)
+    error_message = "`runner_config_storage.dynamodb.client_retry_mode` must be either `standard` or `adaptive`."
+  }
+
+  validation {
+    condition     = var.runner_config_storage.dynamodb.client_http_max_sockets > 0
+    error_message = "`runner_config_storage.dynamodb.client_http_max_sockets` must be greater than zero."
+  }
+
+  validation {
+    condition     = var.runner_config_storage.dynamodb.client_http_keep_alive_msecs == null ? true : var.runner_config_storage.dynamodb.client_http_keep_alive_msecs >= 0
+    error_message = "`runner_config_storage.dynamodb.client_http_keep_alive_msecs` must be null or greater than or equal to zero."
+  }
+
+  validation {
+    condition     = contains(["breaching", "notBreaching", "ignore", "missing"], var.runner_config_storage.dynamodb.alarm_treat_missing_data)
+    error_message = "`runner_config_storage.dynamodb.alarm_treat_missing_data` must be one of `breaching`, `notBreaching`, `ignore`, or `missing`."
+  }
+}
+
 variable "runner_name_prefix" {
   description = "The prefix used for the GitHub runner name. The prefix will be used in the default start script to prefix the instance name when register the runner in GitHub. The value is available via an EC2 tag 'ghr:runner_name_prefix'."
   type        = string
@@ -1026,12 +1150,14 @@ variable "runners_ssm_housekeeper" {
   Configuration for the SSM housekeeper lambda. This lambda deletes token / JIT config from SSM.
 
   `schedule_expression`: is used to configure the schedule for the lambda.
-  `enabled`: enable or disable the lambda trigger via the EventBridge.
+  `create`: create or remove the SSM housekeeper lambda resources.
+  `enabled`: enable or disable only the lambda trigger via the EventBridge.
   `lambda_memory_size`: lambda memory size limit.
   `lambda_timeout`: timeout for the lambda in seconds.
   `config`: configuration for the lambda function. Token path will be read by default from the module.
   EOF
   type = object({
+    create              = optional(bool, true)
     schedule_expression = optional(string, "rate(1 day)")
     enabled             = optional(bool, true)
     lambda_memory_size  = optional(number, 512)

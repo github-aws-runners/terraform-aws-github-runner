@@ -169,6 +169,7 @@ module "runners" {
     tokens = "${var.ssm_paths.runners}/tokens"
     config = "${var.ssm_paths.runners}/config"
   }
+  runner_config_storage = var.runner_config_storage
 
   s3_runner_binaries = var.enable_runner_binaries_syncer ? {
     arn = module.runner_binaries[0].bucket.arn
@@ -282,8 +283,15 @@ module "runners" {
   pool_lambda_reserved_concurrent_executions = var.pool_lambda_reserved_concurrent_executions
   pool_include_busy_runners                  = var.pool_include_busy_runners
 
-  ssm_housekeeper = var.runners_ssm_housekeeper
-  ebs_optimized   = var.runners_ebs_optimized
+  ssm_housekeeper = {
+    create              = var.runners_ssm_housekeeper.create
+    schedule_expression = var.runners_ssm_housekeeper.schedule_expression
+    state               = var.runners_ssm_housekeeper.enabled ? "ENABLED" : "DISABLED"
+    lambda_memory_size  = var.runners_ssm_housekeeper.lambda_memory_size
+    lambda_timeout      = var.runners_ssm_housekeeper.lambda_timeout
+    config              = var.runners_ssm_housekeeper.config
+  }
+  ebs_optimized = var.runners_ebs_optimized
 
   metrics = var.metrics
 

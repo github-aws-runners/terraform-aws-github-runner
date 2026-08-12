@@ -2,6 +2,8 @@ export type {
   CreateGitHubRunnerConfig,
   GitHubRunnerType,
   LambdaRunnerSource,
+  RunnerConfigStorage,
+  RunnerConfigStorageBackend,
 } from '@aws-github-runner/runner-providers/core';
 
 export interface RunnerGroup {

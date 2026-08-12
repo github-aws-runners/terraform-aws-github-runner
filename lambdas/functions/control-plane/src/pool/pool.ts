@@ -6,6 +6,7 @@ import yn from 'yn';
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
 import { controlPlaneProviderRegistry } from '../control-plane-providers';
 import { getGitHubEnterpriseApiUrl, validateSsmParameterStoreTags } from '../scale-runners/github-runner';
+import { loadRunnerConfigStorageFromEnv } from '../scale-runners/runner-config-storage';
 import type { RunnerStatus } from './pool-provider';
 
 const logger = createChildLogger('pool');
@@ -28,6 +29,7 @@ export async function adjust(event: PoolEvent): Promise<void> {
   const environment = process.env.ENVIRONMENT;
   const ssmTokenPath = process.env.SSM_TOKEN_PATH;
   const ssmConfigPath = process.env.SSM_CONFIG_PATH || '';
+  const runnerConfigStorage = loadRunnerConfigStorageFromEnv();
   const ephemeral = yn(process.env.ENABLE_EPHEMERAL_RUNNERS, { default: false });
   const enableJitConfig = yn(process.env.ENABLE_JIT_CONFIG, { default: ephemeral });
   const disableAutoUpdate = yn(process.env.DISABLE_RUNNER_AUTOUPDATE, { default: false });
@@ -95,6 +97,7 @@ export async function adjust(event: PoolEvent): Promise<void> {
         ssmTokenPath,
         ssmConfigPath,
         ssmParameterStoreTags,
+        runnerConfigStorage,
       },
       numberOfRunners: topUp,
       githubInstallationClient,

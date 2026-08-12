@@ -14,6 +14,7 @@ import {
   validateSsmParameterStoreTags,
 } from './github-runner';
 import { publishRetryMessage } from './job-retry';
+import { loadRunnerConfigStorageFromEnv } from './runner-config-storage';
 import type { CreateScaleUpRunnersResult } from './scale-up-provider';
 import type {
   ActionRequestMessage,
@@ -82,6 +83,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
   const enableJobQueuedCheck = yn(process.env.ENABLE_JOB_QUEUED_CHECK, { default: true });
   const runnerNamePrefix = process.env.RUNNER_NAME_PREFIX || '';
   const ssmConfigPath = process.env.SSM_CONFIG_PATH || '';
+  const runnerConfigStorage = loadRunnerConfigStorageFromEnv();
   const ssmParameterStoreTags: { Key: string; Value: string }[] =
     process.env.SSM_PARAMETER_STORE_TAGS && process.env.SSM_PARAMETER_STORE_TAGS.trim() !== ''
       ? validateSsmParameterStoreTags(process.env.SSM_PARAMETER_STORE_TAGS)
@@ -311,6 +313,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       ssmTokenPath,
       ssmConfigPath,
       ssmParameterStoreTags,
+      runnerConfigStorage,
     };
 
     let createRunnersResult: CreateScaleUpRunnersResult;

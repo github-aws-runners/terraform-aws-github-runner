@@ -57,14 +57,31 @@ module "pool" {
       role                                 = { arn = var.iam_overrides["override_runner_role"] ? var.iam_overrides["runner_role_arn"] : aws_iam_role.runner[0].arn }
       use_dedicated_host                   = var.use_dedicated_host
     }
-    subnet_ids                           = var.subnet_ids
-    ssm_token_path                       = "${var.ssm_paths.root}/${var.ssm_paths.tokens}"
-    ssm_config_path                      = "${var.ssm_paths.root}/${var.ssm_paths.config}"
-    ami_id_ssm_parameter_name            = local.ami_id_ssm_parameter_name
-    ami_id_ssm_parameter_read_policy_arn = local.ami_id_ssm_parameter_name != null ? aws_iam_policy.ami_id_ssm_parameter_read[0].arn : null
-    tags                                 = local.tags
-    lambda_tags                          = var.lambda_tags
-    arn_ssm_parameters_path_config       = local.arn_ssm_parameters_path_config
+    subnet_ids                                                = var.subnet_ids
+    ssm_token_path                                            = "${var.ssm_paths.root}/${var.ssm_paths.tokens}"
+    ssm_config_path                                           = "${var.ssm_paths.root}/${var.ssm_paths.config}"
+    runner_config_storage_backend                             = local.runner_config_storage_backend
+    runner_config_dynamodb_table_name                         = local.runner_config_dynamodb_table_name
+    runner_config_dynamodb_table_arn                          = local.runner_config_storage_dynamodb ? aws_dynamodb_table.runner_config[0].arn : ""
+    runner_config_dynamodb_partition_key_name                 = local.runner_config_dynamodb_partition_key_name
+    runner_config_dynamodb_value_attribute_name               = local.runner_config_dynamodb_value_attribute_name
+    runner_config_dynamodb_config_key_prefix                  = local.runner_config_dynamodb_config_key_prefix
+    runner_config_dynamodb_consistent_read                    = local.runner_config_dynamodb_consistent_read
+    runner_config_dynamodb_token_overwrite_protection_enabled = local.runner_config_dynamodb_token_overwrite_protection_enabled
+    runner_config_dynamodb_token_key_prefix                   = local.runner_config_dynamodb_token_key_prefix
+    runner_config_dynamodb_ttl_seconds                        = local.runner_config_dynamodb_ttl_seconds
+    runner_config_dynamodb_ttl_attribute_name                 = var.runner_config_storage.dynamodb.ttl_attribute_name
+    runner_config_dynamodb_client_max_attempts                = var.runner_config_storage.dynamodb.client_max_attempts
+    runner_config_dynamodb_client_retry_mode                  = var.runner_config_storage.dynamodb.client_retry_mode
+    runner_config_dynamodb_client_http_keep_alive             = var.runner_config_storage.dynamodb.client_http_keep_alive
+    runner_config_dynamodb_client_http_max_sockets            = var.runner_config_storage.dynamodb.client_http_max_sockets
+    runner_config_dynamodb_client_http_keep_alive_msecs       = var.runner_config_storage.dynamodb.client_http_keep_alive_msecs == null ? "" : var.runner_config_storage.dynamodb.client_http_keep_alive_msecs
+    runner_config_dynamodb_kms_key_arn                        = var.runner_config_storage.dynamodb.kms_key_arn != null ? var.runner_config_storage.dynamodb.kms_key_arn : ""
+    ami_id_ssm_parameter_name                                 = local.ami_id_ssm_parameter_name
+    ami_id_ssm_parameter_read_policy_arn                      = local.ami_id_ssm_parameter_name != null ? aws_iam_policy.ami_id_ssm_parameter_read[0].arn : null
+    tags                                                      = local.tags
+    lambda_tags                                               = var.lambda_tags
+    arn_ssm_parameters_path_config                            = local.arn_ssm_parameters_path_config
   }
 
   aws_partition  = var.aws_partition

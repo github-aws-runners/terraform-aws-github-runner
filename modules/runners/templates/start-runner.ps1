@@ -37,6 +37,55 @@ function Tag-InstanceWithRunnerId {
     }
 }
 
+$RunnerConfigStorageBackend = "${runner_config_storage_backend}"
+$RunnerConfigDynamodbTableName = "${runner_config_dynamodb_table_name}"
+$RunnerConfigDynamodbPartitionKeyName = "${runner_config_dynamodb_partition_key_name}"
+$RunnerConfigDynamodbValueAttributeName = "${runner_config_dynamodb_value_attribute_name}"
+$RunnerConfigDynamodbConfigKeyPrefix = "${runner_config_dynamodb_config_key_prefix}"
+$RunnerConfigDynamodbConsistentRead = "${runner_config_dynamodb_consistent_read}"
+$RunnerConfigDynamodbTokenKeyPrefix = "${runner_config_dynamodb_token_key_prefix}"
+$cloudwatchAgentConfig = $null
+
+function Get-DynamodbItemValue {
+    param (
+        [string]$Id
+    )
+
+    $key = @{}
+    $key[$RunnerConfigDynamodbPartitionKeyName] = @{ S = $Id }
+    $keyJson = $key | ConvertTo-Json -Compress -Depth 5
+
+    $expressionAttributeNames = @{ "#value" = $RunnerConfigDynamodbValueAttributeName } | ConvertTo-Json -Compress -Depth 5
+    $consistentReadArgs = @()
+    if ($RunnerConfigDynamodbConsistentRead -eq "true") {
+        $consistentReadArgs += "--consistent-read"
+    }
+
+    $item = aws dynamodb get-item --table-name "$RunnerConfigDynamodbTableName" --key "$keyJson" @consistentReadArgs --projection-expression "#value" --expression-attribute-names "$expressionAttributeNames" --region "$Region" --output json 2>$null | ConvertFrom-Json
+
+    if ($LASTEXITCODE -ne 0 -or $null -eq $item.Item) {
+        return $null
+    }
+
+    $valueAttribute = $item.Item.PSObject.Properties[$RunnerConfigDynamodbValueAttributeName].Value
+    if ($null -eq $valueAttribute) {
+        return $null
+    }
+
+    return $valueAttribute.S
+}
+
+function Remove-DynamodbItem {
+    param (
+        [string]$Id
+    )
+
+    $key = @{}
+    $key[$RunnerConfigDynamodbPartitionKeyName] = @{ S = $Id }
+    $keyJson = $key | ConvertTo-Json -Compress -Depth 5
+    aws dynamodb delete-item --table-name "$RunnerConfigDynamodbTableName" --key "$keyJson" --region "$Region"
+}
+
 ## Retrieve instance metadata
 
 Write-Host  "Retrieving TOKEN from AWS API"
@@ -77,48 +126,87 @@ Write-Host  "Retrieved ghr:runner_name_prefix tag - ($runner_name_prefix)"
 $ssm_config_path=$tags.Tags.where( {$_.Key -eq 'ghr:ssm_config_path'}).value
 Write-Host  "Retrieved ghr:ssm_config_path tag - ($ssm_config_path)"
 
-$parameters=$(aws ssm get-parameters-by-path --path "$ssm_config_path" --region "$Region" --query "Parameters[*].{Name:Name,Value:Value}") | ConvertFrom-Json
-Write-Host  "Retrieved parameters from AWS SSM"
+if ($RunnerConfigStorageBackend -eq "dynamodb")
+{
+    Write-Host  "Retrieving runner bootstrap config from AWS DynamoDB ($RunnerConfigDynamodbTableName)"
+    $run_as=Get-DynamodbItemValue -Id "$${RunnerConfigDynamodbConfigKeyPrefix}run_as"
+    $enable_cloudwatch_agent=Get-DynamodbItemValue -Id "$${RunnerConfigDynamodbConfigKeyPrefix}enable_cloudwatch"
+    $agent_mode=Get-DynamodbItemValue -Id "$${RunnerConfigDynamodbConfigKeyPrefix}agent_mode"
+    $disable_default_labels=Get-DynamodbItemValue -Id "$${RunnerConfigDynamodbConfigKeyPrefix}disable_default_labels"
+    $enable_jit_config=Get-DynamodbItemValue -Id "$${RunnerConfigDynamodbConfigKeyPrefix}enable_jit_config"
+    $cloudwatchAgentConfig=Get-DynamodbItemValue -Id "$${RunnerConfigDynamodbConfigKeyPrefix}cloudwatch_agent_config_runner"
+}
+else
+{
+    $parameters=$(aws ssm get-parameters-by-path --path "$ssm_config_path" --region "$Region" --query "Parameters[*].{Name:Name,Value:Value}") | ConvertFrom-Json
+    Write-Host  "Retrieved parameters from AWS SSM"
 
-$run_as=$parameters.where( {$_.Name -eq "$ssm_config_path/run_as"}).value
-Write-Host  "Retrieved $ssm_config_path/run_as parameter - ($run_as)"
+    $run_as=$parameters.where( {$_.Name -eq "$ssm_config_path/run_as"}).value
+    Write-Host  "Retrieved $ssm_config_path/run_as parameter - ($run_as)"
 
-$enable_cloudwatch_agent=$parameters.where( {$_.Name -eq "$ssm_config_path/enable_cloudwatch"}).value
-Write-Host  "Retrieved $ssm_config_path/enable_cloudwatch parameter - ($enable_cloudwatch_agent)"
+    $enable_cloudwatch_agent=$parameters.where( {$_.Name -eq "$ssm_config_path/enable_cloudwatch"}).value
+    Write-Host  "Retrieved $ssm_config_path/enable_cloudwatch parameter - ($enable_cloudwatch_agent)"
 
-$agent_mode=$parameters.where( {$_.Name -eq "$ssm_config_path/agent_mode"}).value
-Write-Host  "Retrieved $ssm_config_path/agent_mode parameter - ($agent_mode)"
+    $agent_mode=$parameters.where( {$_.Name -eq "$ssm_config_path/agent_mode"}).value
+    Write-Host  "Retrieved $ssm_config_path/agent_mode parameter - ($agent_mode)"
 
-$disable_default_labels=$parameters.where( {$_.Name -eq "$ssm_config_path/disable_default_labels"}).value
-Write-Host  "Retrieved $ssm_config_path/disable_default_labels parameter - ($disable_default_labels)"
+    $disable_default_labels=$parameters.where( {$_.Name -eq "$ssm_config_path/disable_default_labels"}).value
+    Write-Host  "Retrieved $ssm_config_path/disable_default_labels parameter - ($disable_default_labels)"
 
-$enable_jit_config=$parameters.where( {$_.Name -eq "$ssm_config_path/enable_jit_config"}).value
-Write-Host  "Retrieved $ssm_config_path/enable_jit_config parameter - ($enable_jit_config)"
+    $enable_jit_config=$parameters.where( {$_.Name -eq "$ssm_config_path/enable_jit_config"}).value
+    Write-Host  "Retrieved $ssm_config_path/enable_jit_config parameter - ($enable_jit_config)"
 
-$token_path=$parameters.where( {$_.Name -eq "$ssm_config_path/token_path"}).value
-Write-Host  "Retrieved $ssm_config_path/token_path parameter - ($token_path)"
+    $token_path=$parameters.where( {$_.Name -eq "$ssm_config_path/token_path"}).value
+    Write-Host  "Retrieved $ssm_config_path/token_path parameter - ($token_path)"
+}
 
 
 if ($enable_cloudwatch_agent -eq "true")
 {
     Write-Host  "Enabling CloudWatch Agent"
-    & 'C:\Program Files\Amazon\AmazonCloudWatchAgent\amazon-cloudwatch-agent-ctl.ps1' -a fetch-config -m ec2 -s -c "ssm:$ssm_config_path/cloudwatch_agent_config_runner"
+    if ($RunnerConfigStorageBackend -eq "dynamodb")
+    {
+        $cloudwatchAgentConfigPath = "$env:TEMP\github-runner-cloudwatch-agent.json"
+        Set-Content -Path "$cloudwatchAgentConfigPath" -Value "$cloudwatchAgentConfig"
+        & 'C:\Program Files\Amazon\AmazonCloudWatchAgent\amazon-cloudwatch-agent-ctl.ps1' -a fetch-config -m ec2 -s -c "file:$cloudwatchAgentConfigPath"
+    }
+    else
+    {
+        & 'C:\Program Files\Amazon\AmazonCloudWatchAgent\amazon-cloudwatch-agent-ctl.ps1' -a fetch-config -m ec2 -s -c "ssm:$ssm_config_path/cloudwatch_agent_config_runner"
+    }
 }
 
 ## Configure the runner
 
-Write-Host "Get GH Runner config from AWS SSM"
 $config = $null
 $i = 0
-do {
-    $config = (aws ssm get-parameters --names "$token_path/$InstanceId" --with-decryption --region $Region  --query "Parameters[*].{Name:Name,Value:Value}" | ConvertFrom-Json)[0].value
-    Write-Host "Waiting for GH Runner config to become available in AWS SSM ($i/30)"
-    Start-Sleep 1
-    $i++
-} while (($null -eq $config) -and ($i -lt 30))
+if ($RunnerConfigStorageBackend -eq "dynamodb")
+{
+    Write-Host "Get GH Runner config from AWS DynamoDB"
+    $runnerConfigKey = "$RunnerConfigDynamodbTokenKeyPrefix$InstanceId"
+    do {
+        $config = Get-DynamodbItemValue -Id "$runnerConfigKey"
+        Write-Host "Waiting for GH Runner config to become available in AWS DynamoDB ($i/30)"
+        Start-Sleep 1
+        $i++
+    } while (($null -eq $config) -and ($i -lt 30))
 
-Write-Host "Delete GH Runner token from AWS SSM"
-aws ssm delete-parameter --name "$token_path/$InstanceId" --region $Region
+    Write-Host "Delete GH Runner token from AWS DynamoDB"
+    Remove-DynamodbItem -Id "$runnerConfigKey"
+}
+else
+{
+    Write-Host "Get GH Runner config from AWS SSM"
+    do {
+        $config = (aws ssm get-parameters --names "$token_path/$InstanceId" --with-decryption --region $Region  --query "Parameters[*].{Name:Name,Value:Value}" | ConvertFrom-Json)[0].value
+        Write-Host "Waiting for GH Runner config to become available in AWS SSM ($i/30)"
+        Start-Sleep 1
+        $i++
+    } while (($null -eq $config) -and ($i -lt 30))
+
+    Write-Host "Delete GH Runner token from AWS SSM"
+    aws ssm delete-parameter --name "$token_path/$InstanceId" --region $Region
+}
 
 # Create or update user
 if (-not($run_as)) {

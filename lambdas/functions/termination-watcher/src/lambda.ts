@@ -6,12 +6,15 @@ import { Context, SQSEvent } from 'aws-lambda';
 import { handle as handleTerminationWarning } from './termination-warning';
 import { handle as handleTermination } from './termination';
 import { handleDeregisterRetry, DeregisterRetryMessage } from './deregister';
-import { BidEvictedDetail, BidEvictedEvent, TerminationWatcherEvent } from './types';
+import { BidEvictedDetail, BidEvictedEvent, SpotInterruptionWarning, SpotTerminationDetail } from './types';
 import { Config } from './ConfigResolver';
 
 const config = new Config();
 
-export async function interruptionWarning(event: TerminationWatcherEvent, context: Context): Promise<void> {
+export async function interruptionWarning(
+  event: SpotInterruptionWarning<SpotTerminationDetail>,
+  context: Context,
+): Promise<void> {
   setContext(context, 'lambda.ts');
   logger.logEventIfEnabled(event);
   logger.debug('Configuration of the lambda', { config });

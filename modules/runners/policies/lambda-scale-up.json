@@ -48,6 +48,7 @@
             "Action": "iam:PassRole",
             "Resource": "${arn_runner_instance_role}"
         },
+%{ if runner_config_storage_backend == "ssm" ~}
         {
             "Effect": "Allow",
             "Action": [
@@ -56,6 +57,7 @@
             ],
             "Resource": "*"
         },
+%{ endif ~}
         {
             "Effect": "Allow",
             "Action": [
@@ -65,19 +67,21 @@
             "Resource": [
                 "${github_app_key_base64_arn}",
                 "${github_app_id_arn}",
-                "${ssm_config_path}/*",
                 "${ssm_ami_id_parameter_arn}"
             ]
         },
+%{ if runner_config_storage_backend == "ssm" ~}
         {
             "Effect": "Allow",
             "Action": [
-              "ssm:GetParameters"
+                "ssm:GetParameter",
+                "ssm:GetParameters"
             ],
             "Resource": [
-                "${ssm_ami_id_parameter_arn}"
+                "${ssm_config_path}/*"
             ]
         },
+%{ endif ~}
         {
             "Effect": "Allow",
             "Action": [

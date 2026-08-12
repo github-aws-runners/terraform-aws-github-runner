@@ -51,17 +51,18 @@ locals {
     ][0]
   ]
 
+  cloudwatch_agent_config_runner = var.cloudwatch_config != null ? var.cloudwatch_config : templatefile("${path.module}/templates/cloudwatch_config.json", {
+    logfiles = jsonencode(local.logfiles)
+  })
 }
 
 
 resource "aws_ssm_parameter" "cloudwatch_agent_config_runner" {
-  count = var.enable_cloudwatch_agent ? 1 : 0
+  count = var.enable_cloudwatch_agent && local.runner_config_storage_ssm ? 1 : 0
   name  = "${var.ssm_paths.root}/${var.ssm_paths.config}/cloudwatch_agent_config_runner"
   type  = "String"
-  value = var.cloudwatch_config != null ? var.cloudwatch_config : templatefile("${path.module}/templates/cloudwatch_config.json", {
-    logfiles = jsonencode(local.logfiles)
-  })
-  tags = local.tags
+  value = local.cloudwatch_agent_config_runner
+  tags  = local.tags
 }
 
 resource "aws_cloudwatch_log_group" "gh_runners" {
@@ -79,7 +80,7 @@ resource "aws_iam_role_policy" "cloudwatch" {
   role  = aws_iam_role.runner[0].name
   policy = templatefile("${path.module}/policies/instance-cloudwatch-policy.json",
     {
-      ssm_parameter_arn = aws_ssm_parameter.cloudwatch_agent_config_runner[0].arn
+      ssm_parameter_arn = local.runner_config_storage_ssm ? aws_ssm_parameter.cloudwatch_agent_config_runner[0].arn : ""
     }
   )
 }

@@ -25,46 +25,61 @@ resource "aws_lambda_function" "scale_up" {
   architectures                  = [var.lambda_architecture]
   environment {
     variables = {
-      AMI_ID_SSM_PARAMETER_NAME                = local.ami_id_ssm_parameter_name
-      DISABLE_RUNNER_AUTOUPDATE                = var.disable_runner_autoupdate
-      ENABLE_EPHEMERAL_RUNNERS                 = var.enable_ephemeral_runners
-      ENABLE_JIT_CONFIG                        = var.enable_jit_config
-      ENABLE_JOB_QUEUED_CHECK                  = local.enable_job_queued_check
-      ENABLE_METRIC_GITHUB_APP_RATE_LIMIT      = var.metrics.enable && var.metrics.metric.enable_github_app_rate_limit
-      ENABLE_ORGANIZATION_RUNNERS              = var.enable_organization_runners
-      ENVIRONMENT                              = var.prefix
-      GHES_URL                                 = var.ghes_url
-      USER_AGENT                               = var.user_agent
-      INSTANCE_ALLOCATION_STRATEGY             = var.instance_allocation_strategy
-      INSTANCE_MAX_SPOT_PRICE                  = var.instance_max_spot_price
-      INSTANCE_TARGET_CAPACITY_TYPE            = var.instance_target_capacity_type
-      INSTANCE_TYPE_PRIORITIES                 = var.instance_type_priorities != null ? jsonencode(var.instance_type_priorities) : ""
-      INSTANCE_TYPES                           = join(",", var.instance_types)
-      LAUNCH_TEMPLATE_NAME                     = aws_launch_template.runner.name
-      LOG_LEVEL                                = upper(var.log_level)
-      MINIMUM_RUNNING_TIME_IN_MINUTES          = coalesce(var.minimum_running_time_in_minutes, local.min_runtime_defaults[var.runner_os])
-      NODE_TLS_REJECT_UNAUTHORIZED             = var.ghes_url != null && !var.ghes_ssl_verify ? 0 : 1
-      PARAMETER_GITHUB_APP_ID_NAME             = var.github_app_parameters.id.name
-      PARAMETER_GITHUB_APP_KEY_BASE64_NAME     = var.github_app_parameters.key_base64.name
-      POWERTOOLS_LOGGER_LOG_EVENT              = var.log_level == "debug" ? "true" : "false"
-      POWERTOOLS_METRICS_NAMESPACE             = var.metrics.namespace
-      POWERTOOLS_TRACE_ENABLED                 = var.tracing_config.mode != null ? true : false
-      POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.tracing_config.capture_http_requests
-      POWERTOOLS_TRACER_CAPTURE_ERROR          = var.tracing_config.capture_error
-      RUNNER_LABELS                            = lower(join(",", var.runner_labels))
-      RUNNER_GROUP_NAME                        = var.runner_group_name
-      RUNNER_NAME_PREFIX                       = var.runner_name_prefix
-      RUNNER_PROVIDER_TYPE                     = "ec2"
-      RUNNERS_MAXIMUM_COUNT                    = var.runners_maximum_count
-      POWERTOOLS_SERVICE_NAME                  = "${var.prefix}-scale-up"
-      SSM_TOKEN_PATH                           = local.token_path
-      SSM_CONFIG_PATH                          = "${var.ssm_paths.root}/${var.ssm_paths.config}"
-      SSM_PARAMETER_STORE_TAGS                 = local.parameter_store_tags
-      SUBNET_IDS                               = join(",", var.subnet_ids)
-      ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS     = jsonencode(var.enable_on_demand_failover_for_errors)
-      SCALE_ERRORS                             = jsonencode(var.scale_errors)
-      JOB_RETRY_CONFIG                         = jsonencode(local.job_retry_config)
-      USE_DEDICATED_HOST                       = var.use_dedicated_host
+      AMI_ID_SSM_PARAMETER_NAME                                 = local.ami_id_ssm_parameter_name
+      DISABLE_RUNNER_AUTOUPDATE                                 = var.disable_runner_autoupdate
+      ENABLE_EPHEMERAL_RUNNERS                                  = var.enable_ephemeral_runners
+      ENABLE_JIT_CONFIG                                         = var.enable_jit_config
+      ENABLE_JOB_QUEUED_CHECK                                   = local.enable_job_queued_check
+      ENABLE_METRIC_GITHUB_APP_RATE_LIMIT                       = var.metrics.enable && var.metrics.metric.enable_github_app_rate_limit
+      ENABLE_ORGANIZATION_RUNNERS                               = var.enable_organization_runners
+      ENVIRONMENT                                               = var.prefix
+      GHES_URL                                                  = var.ghes_url
+      USER_AGENT                                                = var.user_agent
+      INSTANCE_ALLOCATION_STRATEGY                              = var.instance_allocation_strategy
+      INSTANCE_MAX_SPOT_PRICE                                   = var.instance_max_spot_price
+      INSTANCE_TARGET_CAPACITY_TYPE                             = var.instance_target_capacity_type
+      INSTANCE_TYPE_PRIORITIES                                  = var.instance_type_priorities != null ? jsonencode(var.instance_type_priorities) : ""
+      INSTANCE_TYPES                                            = join(",", var.instance_types)
+      LAUNCH_TEMPLATE_NAME                                      = aws_launch_template.runner.name
+      LOG_LEVEL                                                 = upper(var.log_level)
+      MINIMUM_RUNNING_TIME_IN_MINUTES                           = coalesce(var.minimum_running_time_in_minutes, local.min_runtime_defaults[var.runner_os])
+      NODE_TLS_REJECT_UNAUTHORIZED                              = var.ghes_url != null && !var.ghes_ssl_verify ? 0 : 1
+      PARAMETER_GITHUB_APP_ID_NAME                              = var.github_app_parameters.id.name
+      PARAMETER_GITHUB_APP_KEY_BASE64_NAME                      = var.github_app_parameters.key_base64.name
+      POWERTOOLS_LOGGER_LOG_EVENT                               = var.log_level == "debug" ? "true" : "false"
+      POWERTOOLS_METRICS_NAMESPACE                              = var.metrics.namespace
+      POWERTOOLS_TRACE_ENABLED                                  = var.tracing_config.mode != null ? true : false
+      POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS                  = var.tracing_config.capture_http_requests
+      POWERTOOLS_TRACER_CAPTURE_ERROR                           = var.tracing_config.capture_error
+      RUNNER_LABELS                                             = lower(join(",", var.runner_labels))
+      RUNNER_GROUP_NAME                                         = var.runner_group_name
+      RUNNER_NAME_PREFIX                                        = var.runner_name_prefix
+      RUNNER_PROVIDER_TYPE                                      = "ec2"
+      RUNNER_CONFIG_STORAGE_BACKEND                             = local.runner_config_storage_backend
+      RUNNER_CONFIG_DYNAMODB_TABLE_NAME                         = local.runner_config_dynamodb_table_name
+      RUNNER_CONFIG_DYNAMODB_PARTITION_KEY_NAME                 = local.runner_config_dynamodb_partition_key_name
+      RUNNER_CONFIG_DYNAMODB_VALUE_ATTRIBUTE_NAME               = local.runner_config_dynamodb_value_attribute_name
+      RUNNER_CONFIG_DYNAMODB_CONFIG_KEY_PREFIX                  = local.runner_config_dynamodb_config_key_prefix
+      RUNNER_CONFIG_DYNAMODB_CONSISTENT_READ                    = local.runner_config_dynamodb_consistent_read
+      RUNNER_CONFIG_DYNAMODB_TOKEN_OVERWRITE_PROTECTION_ENABLED = local.runner_config_dynamodb_token_overwrite_protection_enabled
+      RUNNER_CONFIG_DYNAMODB_TOKEN_KEY_PREFIX                   = local.runner_config_dynamodb_token_key_prefix
+      RUNNER_CONFIG_DYNAMODB_TTL_SECONDS                        = local.runner_config_dynamodb_ttl_seconds
+      RUNNER_CONFIG_DYNAMODB_TTL_ATTRIBUTE_NAME                 = var.runner_config_storage.dynamodb.ttl_attribute_name
+      RUNNER_CONFIG_DYNAMODB_CLIENT_MAX_ATTEMPTS                = var.runner_config_storage.dynamodb.client_max_attempts
+      RUNNER_CONFIG_DYNAMODB_CLIENT_RETRY_MODE                  = var.runner_config_storage.dynamodb.client_retry_mode
+      RUNNER_CONFIG_DYNAMODB_CLIENT_HTTP_KEEP_ALIVE             = var.runner_config_storage.dynamodb.client_http_keep_alive
+      RUNNER_CONFIG_DYNAMODB_CLIENT_HTTP_MAX_SOCKETS            = var.runner_config_storage.dynamodb.client_http_max_sockets
+      RUNNER_CONFIG_DYNAMODB_CLIENT_HTTP_KEEP_ALIVE_MSECS       = var.runner_config_storage.dynamodb.client_http_keep_alive_msecs == null ? "" : var.runner_config_storage.dynamodb.client_http_keep_alive_msecs
+      RUNNERS_MAXIMUM_COUNT                                     = var.runners_maximum_count
+      POWERTOOLS_SERVICE_NAME                                   = "${var.prefix}-scale-up"
+      SSM_TOKEN_PATH                                            = local.token_path
+      SSM_CONFIG_PATH                                           = "${var.ssm_paths.root}/${var.ssm_paths.config}"
+      SSM_PARAMETER_STORE_TAGS                                  = local.parameter_store_tags
+      SUBNET_IDS                                                = join(",", var.subnet_ids)
+      ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS                      = jsonencode(var.enable_on_demand_failover_for_errors)
+      SCALE_ERRORS                                              = jsonencode(var.scale_errors)
+      JOB_RETRY_CONFIG                                          = jsonencode(local.job_retry_config)
+      USE_DEDICATED_HOST                                        = var.use_dedicated_host
     }
   }
 
@@ -121,15 +136,30 @@ resource "aws_iam_role_policy" "scale_up" {
   name = "scale-up-policy"
   role = aws_iam_role.scale_up.name
   policy = templatefile("${path.module}/policies/lambda-scale-up.json", {
-    arn_runner_instance_role  = var.iam_overrides["override_runner_role"] ? var.iam_overrides["runner_role_arn"] : aws_iam_role.runner[0].arn
-    environment               = var.prefix
-    sqs_arn                   = var.sqs_build_queue.arn
-    github_app_id_arn         = var.github_app_parameters.id.arn
-    github_app_key_base64_arn = var.github_app_parameters.key_base64.arn
-    ssm_config_path           = "arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.ssm_paths.root}/${var.ssm_paths.config}"
-    kms_key_arn               = local.kms_key_arn
-    ami_kms_key_arn           = local.ami_kms_key_arn
-    ssm_ami_id_parameter_arn  = local.ami_id_ssm_module_managed ? aws_ssm_parameter.runner_ami_id[0].arn : var.ami.id_ssm_parameter_arn
+    arn_runner_instance_role      = var.iam_overrides["override_runner_role"] ? var.iam_overrides["runner_role_arn"] : aws_iam_role.runner[0].arn
+    environment                   = var.prefix
+    sqs_arn                       = var.sqs_build_queue.arn
+    github_app_id_arn             = var.github_app_parameters.id.arn
+    github_app_key_base64_arn     = var.github_app_parameters.key_base64.arn
+    ssm_config_path               = "arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.ssm_paths.root}/${var.ssm_paths.config}"
+    kms_key_arn                   = local.kms_key_arn
+    ami_kms_key_arn               = local.ami_kms_key_arn
+    ssm_ami_id_parameter_arn      = local.ami_id_ssm_module_managed ? aws_ssm_parameter.runner_ami_id[0].arn : var.ami.id_ssm_parameter_arn
+    runner_config_storage_backend = local.runner_config_storage_backend
+  })
+}
+
+resource "aws_iam_role_policy" "scale_up_runner_config_dynamodb" {
+  count = local.runner_config_storage_dynamodb ? 1 : 0
+  name  = "dynamodb-runner-config-policy"
+  role  = aws_iam_role.scale_up.name
+  policy = templatefile("${path.module}/policies/lambda-dynamodb-runner-config.json", {
+    table_arn = aws_dynamodb_table.runner_config[0].arn
+    leading_keys_json = jsonencode([
+      "${local.runner_config_dynamodb_config_key_prefix}*",
+      "${local.runner_config_dynamodb_token_key_prefix}*",
+    ])
+    kms_key_arn = var.runner_config_storage.dynamodb.kms_key_arn != null ? var.runner_config_storage.dynamodb.kms_key_arn : ""
   })
 }
 

@@ -25,42 +25,57 @@ resource "aws_lambda_function" "pool" {
 
   environment {
     variables = {
-      AMI_ID_SSM_PARAMETER_NAME                = var.config.ami_id_ssm_parameter_name
-      DISABLE_RUNNER_AUTOUPDATE                = var.config.runner.disable_runner_autoupdate
-      ENABLE_EPHEMERAL_RUNNERS                 = var.config.runner.ephemeral
-      ENABLE_JIT_CONFIG                        = var.config.runner.enable_jit_config
-      ENVIRONMENT                              = var.config.prefix
-      GHES_URL                                 = var.config.ghes.url
-      USER_AGENT                               = var.config.user_agent
-      INSTANCE_ALLOCATION_STRATEGY             = var.config.instance_allocation_strategy
-      INSTANCE_MAX_SPOT_PRICE                  = var.config.instance_max_spot_price
-      INSTANCE_TARGET_CAPACITY_TYPE            = var.config.instance_target_capacity_type
-      INSTANCE_TYPE_PRIORITIES                 = var.config.instance_type_priorities != null ? jsonencode(var.config.instance_type_priorities) : ""
-      INSTANCE_TYPES                           = join(",", var.config.instance_types)
-      LAUNCH_TEMPLATE_NAME                     = var.config.runner.launch_template.name
-      LOG_LEVEL                                = upper(var.config.lambda.log_level)
-      NODE_TLS_REJECT_UNAUTHORIZED             = var.config.ghes.url != null && !var.config.ghes.ssl_verify ? 0 : 1
-      PARAMETER_GITHUB_APP_ID_NAME             = var.config.github_app_parameters.id.name
-      PARAMETER_GITHUB_APP_KEY_BASE64_NAME     = var.config.github_app_parameters.key_base64.name
-      POWERTOOLS_LOGGER_LOG_EVENT              = var.config.lambda.log_level == "debug" ? "true" : "false"
-      RUNNER_BOOT_TIME_IN_MINUTES              = var.config.runner.boot_time_in_minutes
-      RUNNER_LABELS                            = lower(join(",", var.config.runner.labels))
-      RUNNER_GROUP_NAME                        = var.config.runner.group_name
-      RUNNER_NAME_PREFIX                       = var.config.runner.name_prefix
-      RUNNER_OWNER                             = var.config.runner.pool_owner
-      RUNNERS_MAXIMUM_COUNT                    = var.config.runners_maximum_count
-      SSM_TOKEN_PATH                           = var.config.ssm_token_path
-      SSM_CONFIG_PATH                          = var.config.ssm_config_path
-      SUBNET_IDS                               = join(",", var.config.subnet_ids)
-      POWERTOOLS_SERVICE_NAME                  = "${var.config.prefix}-pool"
-      POWERTOOLS_TRACE_ENABLED                 = var.tracing_config.mode != null ? true : false
-      POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.tracing_config.capture_http_requests
-      POWERTOOLS_TRACER_CAPTURE_ERROR          = var.tracing_config.capture_error
-      ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS     = jsonencode(var.config.runner.enable_on_demand_failover_for_errors)
-      SSM_PARAMETER_STORE_TAGS                 = var.config.lambda.parameter_store_tags
-      SCALE_ERRORS                             = jsonencode(var.config.runner.scale_errors)
-      USE_DEDICATED_HOST                       = var.config.runner.use_dedicated_host
-      INCLUDE_BUSY_RUNNERS                     = var.config.include_busy_runners
+      AMI_ID_SSM_PARAMETER_NAME                                 = var.config.ami_id_ssm_parameter_name
+      DISABLE_RUNNER_AUTOUPDATE                                 = var.config.runner.disable_runner_autoupdate
+      ENABLE_EPHEMERAL_RUNNERS                                  = var.config.runner.ephemeral
+      ENABLE_JIT_CONFIG                                         = var.config.runner.enable_jit_config
+      ENVIRONMENT                                               = var.config.prefix
+      GHES_URL                                                  = var.config.ghes.url
+      USER_AGENT                                                = var.config.user_agent
+      INSTANCE_ALLOCATION_STRATEGY                              = var.config.instance_allocation_strategy
+      INSTANCE_MAX_SPOT_PRICE                                   = var.config.instance_max_spot_price
+      INSTANCE_TARGET_CAPACITY_TYPE                             = var.config.instance_target_capacity_type
+      INSTANCE_TYPE_PRIORITIES                                  = var.config.instance_type_priorities != null ? jsonencode(var.config.instance_type_priorities) : ""
+      INSTANCE_TYPES                                            = join(",", var.config.instance_types)
+      LAUNCH_TEMPLATE_NAME                                      = var.config.runner.launch_template.name
+      LOG_LEVEL                                                 = upper(var.config.lambda.log_level)
+      NODE_TLS_REJECT_UNAUTHORIZED                              = var.config.ghes.url != null && !var.config.ghes.ssl_verify ? 0 : 1
+      PARAMETER_GITHUB_APP_ID_NAME                              = var.config.github_app_parameters.id.name
+      PARAMETER_GITHUB_APP_KEY_BASE64_NAME                      = var.config.github_app_parameters.key_base64.name
+      POWERTOOLS_LOGGER_LOG_EVENT                               = var.config.lambda.log_level == "debug" ? "true" : "false"
+      RUNNER_BOOT_TIME_IN_MINUTES                               = var.config.runner.boot_time_in_minutes
+      RUNNER_LABELS                                             = lower(join(",", var.config.runner.labels))
+      RUNNER_GROUP_NAME                                         = var.config.runner.group_name
+      RUNNER_NAME_PREFIX                                        = var.config.runner.name_prefix
+      RUNNER_OWNER                                              = var.config.runner.pool_owner
+      RUNNER_CONFIG_STORAGE_BACKEND                             = var.config.runner_config_storage_backend
+      RUNNER_CONFIG_DYNAMODB_TABLE_NAME                         = var.config.runner_config_dynamodb_table_name
+      RUNNER_CONFIG_DYNAMODB_PARTITION_KEY_NAME                 = var.config.runner_config_dynamodb_partition_key_name
+      RUNNER_CONFIG_DYNAMODB_VALUE_ATTRIBUTE_NAME               = var.config.runner_config_dynamodb_value_attribute_name
+      RUNNER_CONFIG_DYNAMODB_CONFIG_KEY_PREFIX                  = var.config.runner_config_dynamodb_config_key_prefix
+      RUNNER_CONFIG_DYNAMODB_CONSISTENT_READ                    = var.config.runner_config_dynamodb_consistent_read
+      RUNNER_CONFIG_DYNAMODB_TOKEN_OVERWRITE_PROTECTION_ENABLED = var.config.runner_config_dynamodb_token_overwrite_protection_enabled
+      RUNNER_CONFIG_DYNAMODB_TOKEN_KEY_PREFIX                   = var.config.runner_config_dynamodb_token_key_prefix
+      RUNNER_CONFIG_DYNAMODB_TTL_SECONDS                        = var.config.runner_config_dynamodb_ttl_seconds
+      RUNNER_CONFIG_DYNAMODB_TTL_ATTRIBUTE_NAME                 = var.config.runner_config_dynamodb_ttl_attribute_name
+      RUNNER_CONFIG_DYNAMODB_CLIENT_MAX_ATTEMPTS                = var.config.runner_config_dynamodb_client_max_attempts
+      RUNNER_CONFIG_DYNAMODB_CLIENT_RETRY_MODE                  = var.config.runner_config_dynamodb_client_retry_mode
+      RUNNER_CONFIG_DYNAMODB_CLIENT_HTTP_KEEP_ALIVE             = var.config.runner_config_dynamodb_client_http_keep_alive
+      RUNNER_CONFIG_DYNAMODB_CLIENT_HTTP_MAX_SOCKETS            = var.config.runner_config_dynamodb_client_http_max_sockets
+      RUNNER_CONFIG_DYNAMODB_CLIENT_HTTP_KEEP_ALIVE_MSECS       = var.config.runner_config_dynamodb_client_http_keep_alive_msecs
+      RUNNERS_MAXIMUM_COUNT                                     = var.config.runners_maximum_count
+      SSM_TOKEN_PATH                                            = var.config.ssm_token_path
+      SSM_CONFIG_PATH                                           = var.config.ssm_config_path
+      SUBNET_IDS                                                = join(",", var.config.subnet_ids)
+      POWERTOOLS_SERVICE_NAME                                   = "${var.config.prefix}-pool"
+      POWERTOOLS_TRACE_ENABLED                                  = var.tracing_config.mode != null ? true : false
+      POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS                  = var.tracing_config.capture_http_requests
+      POWERTOOLS_TRACER_CAPTURE_ERROR                           = var.tracing_config.capture_error
+      ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS                      = jsonencode(var.config.runner.enable_on_demand_failover_for_errors)
+      SSM_PARAMETER_STORE_TAGS                                  = var.config.lambda.parameter_store_tags
+      SCALE_ERRORS                                              = jsonencode(var.config.runner.scale_errors)
+      USE_DEDICATED_HOST                                        = var.config.runner.use_dedicated_host
+      INCLUDE_BUSY_RUNNERS                                      = var.config.include_busy_runners
     }
   }
 
@@ -107,6 +122,21 @@ resource "aws_iam_role_policy" "pool" {
     kms_key_arn                    = var.config.kms_key_arn
     ami_kms_key_arn                = var.config.ami_kms_key_arn
     ssm_ami_id_parameter_arn       = var.config.ami_id_ssm_parameter_arn
+    runner_config_storage_backend  = var.config.runner_config_storage_backend
+  })
+}
+
+resource "aws_iam_role_policy" "pool_runner_config_dynamodb" {
+  count = var.config.runner_config_storage_backend == "dynamodb" ? 1 : 0
+  name  = "dynamodb-runner-config-policy"
+  role  = aws_iam_role.pool.name
+  policy = templatefile("${path.module}/../policies/lambda-dynamodb-runner-config.json", {
+    table_arn = var.config.runner_config_dynamodb_table_arn
+    leading_keys_json = jsonencode([
+      "${var.config.runner_config_dynamodb_config_key_prefix}*",
+      "${var.config.runner_config_dynamodb_token_key_prefix}*",
+    ])
+    kms_key_arn = var.config.runner_config_dynamodb_kms_key_arn
   })
 }
 

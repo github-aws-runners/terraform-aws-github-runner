@@ -25,13 +25,27 @@ resource "aws_iam_role_policy" "runner_session_manager_aws_managed" {
 }
 
 resource "aws_iam_role_policy" "ssm_parameters" {
-  count = (var.iam_overrides["override_runner_role"] || var.iam_overrides["override_instance_profile"]) ? 0 : 1
+  count = (var.iam_overrides["override_runner_role"] || var.iam_overrides["override_instance_profile"]) ? 0 : (local.runner_config_storage_ssm ? 1 : 0)
   name  = "runner-ssm-parameters"
   role  = aws_iam_role.runner[0].name
   policy = templatefile("${path.module}/policies/instance-ssm-parameters-policy.json",
     {
       arn_ssm_parameters_path_tokens = "arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.ssm_paths.root}/${var.ssm_paths.tokens}"
       arn_ssm_parameters_path_config = local.arn_ssm_parameters_path_config
+    }
+  )
+}
+
+resource "aws_iam_role_policy" "dynamodb_runner_config" {
+  count = (var.iam_overrides["override_runner_role"] || var.iam_overrides["override_instance_profile"]) ? 0 : (local.runner_config_storage_dynamodb ? 1 : 0)
+  name  = "runner-dynamodb-config"
+  role  = aws_iam_role.runner[0].name
+  policy = templatefile("${path.module}/policies/instance-dynamodb-runner-config-policy.json",
+    {
+      config_key_prefix       = local.runner_config_dynamodb_config_key_prefix
+      table_arn               = aws_dynamodb_table.runner_config[0].arn
+      token_leading_keys_json = jsonencode(local.runner_config_dynamodb_token_leading_keys)
+      kms_key_arn             = var.runner_config_storage.dynamodb.kms_key_arn != null ? var.runner_config_storage.dynamodb.kms_key_arn : ""
     }
   )
 }

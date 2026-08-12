@@ -17,6 +17,7 @@ module "runners" {
     tokens = "${var.ssm_paths.runners}/tokens"
     config = "${var.ssm_paths.runners}/config"
   }
+  runner_config_storage = each.value.runner_config.runner_config_storage
 
   runner_os                     = each.value.runner_config.runner_os
   instance_types                = each.value.runner_config.instance_types
@@ -122,7 +123,14 @@ module "runners" {
   pool_lambda_reserved_concurrent_executions = var.pool_lambda_reserved_concurrent_executions
   associate_public_ipv4_address              = var.associate_public_ipv4_address
 
-  ssm_housekeeper = var.runners_ssm_housekeeper
+  ssm_housekeeper = {
+    create              = var.runners_ssm_housekeeper.create
+    schedule_expression = var.runners_ssm_housekeeper.schedule_expression
+    state               = var.runners_ssm_housekeeper.enabled ? "ENABLED" : "DISABLED"
+    lambda_memory_size  = var.runners_ssm_housekeeper.lambda_memory_size
+    lambda_timeout      = var.runners_ssm_housekeeper.lambda_timeout
+    config              = var.runners_ssm_housekeeper.config
+  }
 
   job_retry = each.value.runner_config.job_retry
 

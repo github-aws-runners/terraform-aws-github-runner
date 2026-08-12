@@ -42,6 +42,16 @@ output "role_pool" {
   value = try(module.pool[0].role_pool, null)
 }
 
+output "runner_config_storage_backend" {
+  description = "Storage backend used for label-scoped runner bootstrap config and one-time registration/JIT config."
+  value       = local.runner_config_storage_backend
+}
+
+output "runner_config_dynamodb_table" {
+  description = "DynamoDB table used for label-scoped runner bootstrap config and one-time registration/JIT config when the DynamoDB backend is enabled."
+  value       = try(aws_dynamodb_table.runner_config[0], null)
+}
+
 output "runners_log_groups" {
   description = "List of log groups from different log files of runner machine."
   value       = try(aws_cloudwatch_log_group.gh_runners, [])
