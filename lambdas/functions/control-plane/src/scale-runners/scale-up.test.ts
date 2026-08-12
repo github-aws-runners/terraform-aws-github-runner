@@ -2175,6 +2175,14 @@ describe('Retry mechanism tests', () => {
 });
 
 describe('compute provider selection', () => {
+  it('defaults scale-up to EC2 when no compute provider is configured', async () => {
+    delete process.env.COMPUTE_PROVIDER_TYPE;
+
+    await scaleUpModule.scaleUp(TEST_DATA);
+
+    expect(mockedResolveCapability).toHaveBeenCalledWith('ec2', 'scaleUp');
+  });
+
   it('rejects unsupported scale-up provider types', async () => {
     process.env.COMPUTE_PROVIDER_TYPE = 'microvm';
 
