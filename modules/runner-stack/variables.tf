@@ -43,6 +43,7 @@ variable "runner" {
     - `hooks.job_completed`: Script content installed as the runner job-completed hook.
     - `iam.role.arn`: ARN of an externally managed runner role. When set, this module does not create or modify that role.
     - `iam.managed_policy_arns`: Named managed-policy ARNs attached to the module-managed runner role.
+    - `iam.additional_trust_policy_json`: Optional IAM policy document merged with the selected compute provider's default runner-role trust policy.
     - `iam.path`: IAM path for the module-managed runner role. Defaults to a path derived from `prefix`.
     - `iam.permissions_boundary`: Permissions-boundary ARN for the module-managed runner role.
   EOT
@@ -69,9 +70,10 @@ variable "runner" {
       role = optional(object({
         arn = string
       }), null)
-      managed_policy_arns  = optional(map(string), {})
-      path                 = optional(string, null)
-      permissions_boundary = optional(string, null)
+      managed_policy_arns          = optional(map(string), {})
+      additional_trust_policy_json = optional(string, null)
+      path                         = optional(string, null)
+      permissions_boundary         = optional(string, null)
     }), {})
   })
 
@@ -93,6 +95,16 @@ variable "runner" {
   validation {
     condition     = var.runner.iam.role == null || length(var.runner.iam.managed_policy_arns) == 0
     error_message = "runner.iam.managed_policy_arns cannot be set with an external runner.iam.role because external roles are not managed by this module."
+  }
+
+  validation {
+    condition     = var.runner.iam.additional_trust_policy_json == null ? true : can(jsondecode(var.runner.iam.additional_trust_policy_json))
+    error_message = "runner.iam.additional_trust_policy_json must be valid JSON when set."
+  }
+
+  validation {
+    condition     = var.runner.iam.role == null || var.runner.iam.additional_trust_policy_json == null
+    error_message = "runner.iam.additional_trust_policy_json cannot be set with an external runner.iam.role because external role trust is not managed by this module."
   }
 }
 

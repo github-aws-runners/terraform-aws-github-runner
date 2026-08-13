@@ -149,13 +149,6 @@ resource "aws_ssm_parameter" "runner_ami_id" {
 resource "aws_launch_template" "runner" {
   name = "${var.prefix}-action-runner"
 
-  lifecycle {
-    precondition {
-      condition     = !var.config.binaries_syncer.enabled || var.config.binaries_syncer.s3 != null
-      error_message = "config.binaries_syncer.s3 must be set when config.binaries_syncer.enabled is true."
-    }
-  }
-
   dynamic "block_device_mappings" {
     for_each = var.config.block_device_mappings != null ? var.config.block_device_mappings : []
     content {

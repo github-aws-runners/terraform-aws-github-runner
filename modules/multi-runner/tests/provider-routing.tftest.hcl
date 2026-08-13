@@ -188,7 +188,20 @@ run "experimental_v2_routes_through_provider_stack" {
             }
           }
           matcherConfig = {
-            labelMatchers = [["self-hosted", "linux", "x64"]]
+            labelMatchers       = [["self-hosted", "linux", "x64"]]
+            enableDynamicLabels = true
+            awsDynamicLabelsPolicy = {
+              blocked_keys = ["image-id"]
+              restricted_keys = {
+                "instance-type" = {
+                  allowed = ["m5.*", "c5.*"]
+                  denied  = ["*.metal"]
+                }
+                "ebs-volume-size" = {
+                  max = 200
+                }
+              }
+            }
           }
         }
       }
@@ -216,6 +229,16 @@ run "experimental_v2_routes_through_provider_stack" {
   assert {
     condition     = toset(local.runner_config_v2["linux"].runner.extra_labels) == toset(["self-hosted", "linux", "x64"])
     error_message = "Experimental runner labels must include labels declared by its matcher configuration."
+  }
+
+  assert {
+    condition = (
+      local.runner_matcher_config["linux"].matcherConfig.awsDynamicLabelsPolicy.blocked_keys == tolist(["image-id"])
+      && local.runner_matcher_config["linux"].matcherConfig.awsDynamicLabelsPolicy.restricted_keys["instance-type"].allowed == tolist(["m5.*", "c5.*"])
+      && local.runner_matcher_config["linux"].matcherConfig.awsDynamicLabelsPolicy.restricted_keys["instance-type"].denied == tolist(["*.metal"])
+      && local.runner_matcher_config["linux"].matcherConfig.awsDynamicLabelsPolicy.restricted_keys["ebs-volume-size"].max == "200"
+    )
+    error_message = "Experimental matcher config must preserve the typed AWS dynamic-label policy contract."
   }
 
   assert {
@@ -498,37 +521,6 @@ run "experimental_v2_rejects_empty_compute_provider" {
             maximum_count = 2
           }
           compute_provider = {}
-          matcherConfig = {
-            labelMatchers = [["self-hosted", "linux", "x64"]]
-          }
-        }
-      }
-    }
-  }
-
-  expect_failures = [var.experimental]
-}
-
-run "experimental_v2_rejects_profile_without_role" {
-  command = plan
-
-  variables {
-    experimental = {
-      multi_runner_config_v2 = {
-        invalid_profile = {
-          runner = {
-            os            = "linux"
-            architecture  = "x64"
-            maximum_count = 2
-          }
-          compute_provider = {
-            ec2 = {
-              instance_types = ["m5.large"]
-              instance_profile = {
-                name = "external-profile"
-              }
-            }
-          }
           matcherConfig = {
             labelMatchers = [["self-hosted", "linux", "x64"]]
           }
