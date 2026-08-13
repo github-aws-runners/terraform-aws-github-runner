@@ -34,7 +34,7 @@ locals {
   ) }
 
   tmp_distinct_list_unique_os_and_arch = distinct([
-    for _, config in local.runner_config_by_provider.ec2 : {
+    for _, config in try(local.runner_config_by_provider.ec2, {}) : {
       "os_type" : config.runner.os,
       "architecture" : config.runner.architecture
     }

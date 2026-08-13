@@ -5,7 +5,7 @@ variable "compute_provider" {
 
     Exactly one compute-provider block must be non-null. The populated block selects the provider, and its presence must be known during planning. Values inside the selected block may remain unknown until apply.
 
-    - `ec2`: EC2 compute-provider configuration. EC2 is the only provider currently implemented.
+    - `ec2`: EC2 compute-provider configuration.
     - `ec2.ami`: Optional AMI discovery or external AMI-parameter configuration. Null uses the operating-system and architecture defaults.
     - `ec2.ami.filter`: EC2 AMI filters combined with the provider's default AMI-name filter.
     - `ec2.ami.owners`: AWS account IDs or aliases allowed to own the selected AMI.
@@ -251,48 +251,5 @@ variable "compute_provider" {
       if provider_config != null
     ]) == 1
     error_message = "Exactly one compute-provider block must be set. Supported compute-provider blocks: ec2."
-  }
-
-  validation {
-    condition = var.compute_provider.ec2 == null ? true : contains(
-      ["spot", "on-demand"],
-      var.compute_provider.ec2.instance_target_capacity_type,
-    )
-    error_message = "compute_provider.ec2.instance_target_capacity_type must be spot or on-demand."
-  }
-
-  validation {
-    condition = var.compute_provider.ec2 == null ? true : contains(
-      ["lowest-price", "diversified", "capacity-optimized", "capacity-optimized-prioritized", "price-capacity-optimized", "prioritized"],
-      var.compute_provider.ec2.instance_allocation_strategy,
-    )
-    error_message = "compute_provider.ec2.instance_allocation_strategy is not supported."
-  }
-
-  validation {
-    condition = var.compute_provider.ec2 == null ? true : (
-      var.compute_provider.ec2.credit_specification == null ? true : contains(
-        ["standard", "unlimited"],
-        var.compute_provider.ec2.credit_specification,
-      )
-    )
-    error_message = "compute_provider.ec2.credit_specification must be null, standard, or unlimited."
-  }
-
-  validation {
-    condition = var.compute_provider.ec2 == null ? true : (
-      var.compute_provider.ec2.cpu_options == null ? true : (
-        (var.compute_provider.ec2.cpu_options.amd_sev_snp == null ? true : contains(["enabled", "disabled"], var.compute_provider.ec2.cpu_options.amd_sev_snp)) &&
-        (var.compute_provider.ec2.cpu_options.nested_virtualization == null ? true : contains(["enabled", "disabled"], var.compute_provider.ec2.cpu_options.nested_virtualization))
-      )
-    )
-    error_message = "compute_provider.ec2.cpu_options amd_sev_snp and nested_virtualization must be enabled or disabled when set."
-  }
-
-  validation {
-    condition = var.compute_provider.ec2 == null ? true : (
-      !var.compute_provider.ec2.binaries_syncer.enabled || var.compute_provider.ec2.binaries_syncer.s3 != null
-    )
-    error_message = "compute_provider.ec2.binaries_syncer.s3 must be set when compute_provider.ec2.binaries_syncer.enabled is true."
   }
 }

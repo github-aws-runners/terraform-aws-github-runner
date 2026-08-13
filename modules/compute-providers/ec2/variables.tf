@@ -5,18 +5,18 @@ variable "aws_partition" {
 }
 
 variable "aws_region" {
-  description = "AWS region used to construct provider-owned runner policy ARNs."
+  description = "AWS region used by compute-provider resources and policy documents."
   type        = string
 }
 
 variable "prefix" {
-  description = "Prefix used to name EC2 provider resources."
+  description = "Prefix used to identify resources created for the runner stack."
   type        = string
   default     = "github-actions"
 }
 
 variable "tags" {
-  description = "Base tags added to taggable EC2 provider resources. Nested SSM, log, and runner tags override this map within their documented scopes."
+  description = "Base tags available to taggable compute-provider resources. Provider-specific tags override this map within their documented scopes."
   type        = map(string)
   default     = {}
 }
@@ -260,39 +260,11 @@ variable "config" {
   })
 
   nullable = false
-
-  validation {
-    condition     = contains(["spot", "on-demand"], var.config.instance_target_capacity_type)
-    error_message = "config.instance_target_capacity_type must be spot or on-demand."
-  }
-
-  validation {
-    condition     = contains(["lowest-price", "diversified", "capacity-optimized", "capacity-optimized-prioritized", "price-capacity-optimized", "prioritized"], var.config.instance_allocation_strategy)
-    error_message = "config.instance_allocation_strategy is not supported."
-  }
-
-  validation {
-    condition     = var.config.credit_specification == null ? true : contains(["standard", "unlimited"], var.config.credit_specification)
-    error_message = "config.credit_specification must be null, standard, or unlimited."
-  }
-
-  validation {
-    condition = var.config.cpu_options == null ? true : (
-      (var.config.cpu_options.amd_sev_snp == null || contains(["enabled", "disabled"], var.config.cpu_options.amd_sev_snp)) &&
-      (var.config.cpu_options.nested_virtualization == null || contains(["enabled", "disabled"], var.config.cpu_options.nested_virtualization))
-    )
-    error_message = "config.cpu_options.amd_sev_snp and config.cpu_options.nested_virtualization must be enabled or disabled when set."
-  }
-
-  validation {
-    condition     = !var.config.binaries_syncer.enabled || var.config.binaries_syncer.s3 != null
-    error_message = "config.binaries_syncer.s3 must be set when config.binaries_syncer.enabled is true."
-  }
 }
 
 variable "runner" {
   description = <<-EOT
-    Provider-neutral runner settings consumed by EC2.
+    Provider-neutral runner settings consumed by compute providers.
 
     - `os`: Runner operating system. Supported values are `linux`, `osx`, and `windows`.
     - `architecture`: Runner distribution architecture.
@@ -302,9 +274,11 @@ variable "runner" {
     - `run_as`: Operating-system user used when `run_as_root` is false.
     - `hooks.job_started`: Script installed as the runner job-started hook.
     - `hooks.job_completed`: Script installed as the runner job-completed hook.
-    - `iam.role.arn`: Resolved runner-role ARN referenced by EC2 control-plane policies.
-    - `iam.role.name`: Resolved runner-role name used by the provider-managed instance profile.
-    - `iam.path`: IAM path used for provider-managed policies. Null derives the path from `prefix`.
+    - `iam.role.arn`: Resolved runner-role ARN referenced by provider policies and resources.
+    - `iam.role.name`: Resolved runner-role name used by provider resources.
+    - `iam.role.managed`: Whether runner-stack manages the resolved runner role.
+    - `iam.managed_policy_arns`: Common managed-policy ARNs returned with the provider-specific runner policies for attachment by runner-stack.
+    - `iam.path`: IAM path available to provider-managed IAM resources. Null derives the path from `prefix`.
   EOT
   type = object({
     os                   = optional(string, "linux")
@@ -319,29 +293,21 @@ variable "runner" {
     }), {})
     iam = object({
       role = object({
-        arn  = string
-        name = string
+        arn     = string
+        name    = string
+        managed = optional(bool, true)
       })
-      path = optional(string, null)
+      managed_policy_arns = optional(map(string), {})
+      path                = optional(string, null)
     })
   })
 
   nullable = false
-
-  validation {
-    condition     = contains(["linux", "osx", "windows"], var.runner.os)
-    error_message = "runner.os must be linux, osx, or windows."
-  }
-
-  validation {
-    condition     = length(var.runner.name_prefix) <= 45
-    error_message = "runner.name_prefix must be at most 45 characters."
-  }
 }
 
 variable "github" {
   description = <<-EOT
-    GitHub Enterprise Server settings used to render runner bootstrap data.
+    GitHub Enterprise Server settings available to compute-provider bootstrap data.
 
     - `enterprise_server.url`: Optional GitHub Enterprise Server base URL. Null selects GitHub.com.
     - `enterprise_server.ssl_verify`: Enables TLS certificate verification for GitHub Enterprise Server.
@@ -358,7 +324,7 @@ variable "github" {
 
 variable "ssm" {
   description = <<-EOT
-    Parameter Store paths and tag scopes used by EC2 runner bootstrap resources.
+    Parameter Store paths and tag scopes available to compute-provider bootstrap resources.
 
     - `paths.root`: Root Parameter Store path for the runner stack.
     - `paths.tokens`: Path segment used for registration tokens and just-in-time configuration.
@@ -383,9 +349,9 @@ variable "ssm" {
 
 variable "observability" {
   description = <<-EOT
-    CloudWatch Logs settings used by EC2 runner log groups.
+    CloudWatch Logs settings available to compute-provider runner log groups.
 
-    - `logs.retention_in_days`: Retention period for EC2 runner log groups.
+    - `logs.retention_in_days`: Retention period for provider-owned runner log groups.
     - `logs.kms_key_id`: Optional KMS key ID or ARN used to encrypt runner log groups.
     - `logs.tags`: Shared log-group tags that override module-level `tags`.
   EOT

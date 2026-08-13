@@ -23,6 +23,6 @@ output "pool" {
 output "provider" {
   description = "Provider-specific resources grouped under the selected provider key."
   value = {
-    (local.provider_type) = local.provider.resources
+    (local.provider_type) = local.provider_contract.resources
   }
 }

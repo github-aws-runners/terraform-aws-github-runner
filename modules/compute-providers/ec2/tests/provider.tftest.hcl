@@ -72,6 +72,9 @@ variables {
         arn  = "arn:aws:iam::123456789012:role/provider-test-runner"
         name = "provider-test-runner"
       }
+      managed_policy_arns = {
+        readonly = "arn:aws:iam::aws:policy/ReadOnlyAccess"
+      }
     }
   }
 
@@ -174,6 +177,11 @@ run "separates_control_plane_contract_from_ec2_resources" {
       "cloudwatch",
     ])
     error_message = "The EC2 provider must return the enabled runner permission documents."
+  }
+
+  assert {
+    condition     = output.provider.policies.runner.managed_policy_arns["readonly"] == "arn:aws:iam::aws:policy/ReadOnlyAccess"
+    error_message = "The EC2 provider must return common managed runner policy inputs with its provider policies."
   }
 
   assert {
@@ -391,6 +399,36 @@ run "separates_provider_runner_and_ssm_tags" {
   }
 }
 
+run "rejects_external_instance_profile_with_managed_role" {
+  command = plan
+
+  variables {
+    config = {
+      vpc_id         = "vpc-12345678"
+      subnet_ids     = ["subnet-12345678"]
+      instance_types = ["m5.large"]
+      instance_profile = {
+        name = "external-runner-profile"
+      }
+      binaries_syncer = {
+        enabled = false
+      }
+    }
+
+    runner = {
+      iam = {
+        role = {
+          arn     = "arn:aws:iam::123456789012:role/provider-test-runner"
+          name    = "provider-test-runner"
+          managed = true
+        }
+      }
+    }
+  }
+
+  expect_failures = [terraform_data.validate_config]
+}
+
 run "requires_distribution_object_when_sync_is_enabled" {
   command = plan
 
@@ -406,5 +444,5 @@ run "requires_distribution_object_when_sync_is_enabled" {
     }
   }
 
-  expect_failures = [var.config]
+  expect_failures = [terraform_data.validate_config]
 }
