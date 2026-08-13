@@ -25,6 +25,7 @@ variable "experimental" {
     - `runner.hooks.job_completed`: Script content installed as the runner job-completed hook.
     - `runner.iam.role.arn`: ARN of an externally managed runner role. When set, `runner-stack` does not create or modify that role.
     - `runner.iam.managed_policy_arns`: Named managed-policy ARNs attached to the module-managed runner role.
+    - `runner.iam.additional_trust_policy_json`: Optional IAM policy document merged with the selected compute provider's default runner-role trust policy.
     - `runner.iam.path`: IAM path for the module-managed runner role.
     - `runner.iam.permissions_boundary`: Permissions-boundary ARN for the module-managed runner role.
     - `github.organization_runners`: Registers runners at organization scope when true; otherwise repository-scoped registration is used.
@@ -68,7 +69,7 @@ variable "experimental" {
     - `ssm.housekeeper.tags`: Tags for SSM housekeeper resources. These override entry-level, shared Lambda, shared log, and `ssm.tags` values.
     - `observability.logs.tags`: Shared tags for CloudWatch log groups. Component tags override this map.
     - `compute_provider`: Typed compute-provider blocks. Exactly one block must be non-null, and the populated block selects the provider. Its presence must be known during planning; values inside it may remain unknown until apply.
-    - `compute_provider.ec2`: EC2-specific configuration. EC2 is the only provider currently implemented.
+    - `compute_provider.ec2`: EC2-specific configuration.
     - `compute_provider.ec2.ami.filter`: EC2 AMI filters combined with the default AMI-name filter.
     - `compute_provider.ec2.ami.owners`: AWS account IDs or aliases allowed to own the selected AMI.
     - `compute_provider.ec2.ami.id_ssm_parameter`: Optional externally managed SSM parameter containing the AMI ID. The wrapper's presence selects external ownership at plan time.
@@ -172,9 +173,10 @@ variable "experimental" {
           role = optional(object({
             arn = string
           }), null)
-          managed_policy_arns  = optional(map(string), {})
-          path                 = optional(string, null)
-          permissions_boundary = optional(string, null)
+          managed_policy_arns          = optional(map(string), {})
+          additional_trust_policy_json = optional(string, null)
+          path                         = optional(string, null)
+          permissions_boundary         = optional(string, null)
         }), {})
       })
 
@@ -368,13 +370,6 @@ variable "experimental" {
           })), null)
           tags = optional(map(string), {})
         }), null)
-
-        # Future provider references only. Do not uncomment until the Terraform
-        # resources for these compute providers are implemented.
-        #
-        # microvm = optional(object({
-        #   environment_variables = optional(map(string), {})
-        # }), null)
       })
 
       matcherConfig = object({
@@ -383,7 +378,14 @@ variable "experimental" {
         bidirectionalLabelMatch = optional(bool, false)
         priority                = optional(number, 999)
         enableDynamicLabels     = optional(bool, false)
-        awsDynamicLabelsPolicy  = optional(any, null)
+        awsDynamicLabelsPolicy = optional(object({
+          blocked_keys = optional(list(string), [])
+          restricted_keys = optional(map(object({
+            allowed = optional(list(string), [])
+            denied  = optional(list(string), [])
+            max     = optional(string, null)
+          })), {})
+        }), null)
       })
     })), {})
   })
@@ -391,7 +393,7 @@ variable "experimental" {
 
   validation {
     condition = alltrue([
-      for _, runner_config in var.experimental.multi_runner_config_v2 :
+      for runner_config in values(var.experimental.multi_runner_config_v2) :
       length([
         for provider_type, provider_config in runner_config.compute_provider : provider_type
         if provider_config != null
@@ -402,17 +404,7 @@ variable "experimental" {
 
   validation {
     condition = alltrue([
-      for _, runner_config in var.experimental.multi_runner_config_v2 :
-      runner_config.compute_provider.ec2 == null ? true : (
-        runner_config.compute_provider.ec2.instance_profile == null || runner_config.runner.iam.role != null
-      )
-    ])
-    error_message = "runner.iam.role must be set when compute_provider.ec2.instance_profile selects an external instance profile."
-  }
-
-  validation {
-    condition = alltrue([
-      for _, runner_config in var.experimental.multi_runner_config_v2 :
+      for runner_config in values(var.experimental.multi_runner_config_v2) :
       runner_config.runner.iam.role == null || length(runner_config.runner.iam.managed_policy_arns) == 0
     ])
     error_message = "runner.iam.managed_policy_arns cannot be set with an external runner.iam.role because external roles are not managed by this module."
