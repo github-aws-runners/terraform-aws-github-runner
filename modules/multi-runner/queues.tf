@@ -45,10 +45,19 @@ resource "aws_sqs_queue" "queued_builds" {
   tags = var.tags
 }
 
+data "aws_iam_policy_document" "build_queue_policy" {
+  for_each = var.multi_runner_config
+
+  source_policy_documents = compact([
+    data.aws_iam_policy_document.deny_insecure_transport.json,
+    var.sqs_build_queue_extra_policy_json,
+  ])
+}
+
 resource "aws_sqs_queue_policy" "build_queue_policy" {
   for_each  = var.multi_runner_config
   queue_url = aws_sqs_queue.queued_builds[each.key].id
-  policy    = data.aws_iam_policy_document.deny_insecure_transport.json
+  policy    = data.aws_iam_policy_document.build_queue_policy[each.key].json
 }
 
 resource "aws_sqs_queue" "queued_builds_dlq" {

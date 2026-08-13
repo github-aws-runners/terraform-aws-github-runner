@@ -32,16 +32,16 @@ output "binaries_syncer_map" {
 }
 
 output "webhook" {
-  value = {
-    gateway          = module.webhook.gateway
-    lambda           = module.webhook.lambda
-    lambda_log_group = module.webhook.lambda_log_group
-    lambda_role      = module.webhook.role
-    endpoint         = "${module.webhook.gateway.api_endpoint}/${module.webhook.endpoint_relative_path}"
-    webhook          = module.webhook.webhook
-    dispatcher       = var.eventbridge.enable ? module.webhook.dispatcher : null
-    eventbridge      = var.eventbridge.enable ? module.webhook.eventbridge : null
-  }
+  value = var.create_webhook_module ? {
+    gateway          = module.webhook[0].gateway
+    lambda           = module.webhook[0].lambda
+    lambda_log_group = module.webhook[0].lambda_log_group
+    lambda_role      = module.webhook[0].role
+    endpoint         = "${module.webhook[0].gateway.api_endpoint}/${module.webhook[0].endpoint_relative_path}"
+    webhook          = module.webhook[0].webhook
+    dispatcher       = var.eventbridge.enable ? module.webhook[0].dispatcher : null
+    eventbridge      = var.eventbridge.enable ? module.webhook[0].eventbridge : null
+  } : null
 }
 
 output "ssm_parameters" {
@@ -66,4 +66,14 @@ output "instance_termination_handler" {
     lambda_log_group = module.instance_termination_watcher[0].spot_termination_handler.lambda_log_group
     lambda_role      = module.instance_termination_watcher[0].spot_termination_handler.lambda_role
   } : null
+}
+
+output "queues" {
+  description = "SQS build queues per runner type."
+  value = {
+    for key in keys(var.multi_runner_config) : key => {
+      build_queue_arn = aws_sqs_queue.queued_builds[key].arn
+      build_queue_url = aws_sqs_queue.queued_builds[key].url
+    }
+  }
 }
