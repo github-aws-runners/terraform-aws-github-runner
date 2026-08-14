@@ -8,11 +8,13 @@ import { selectDynamicLabelQueue } from '../webhook';
 interface WebhookProviderContractOptions<TProvider extends ComputeProviderType> {
   provider: WebhookProviderModule<TProvider>;
   acceptedDynamicLabels: readonly [string, ...string[]];
+  applyRejectingPolicy(queue: RunnerMatcherConfig): void;
 }
 
 export function defineWebhookProviderContractTests<TProvider extends ComputeProviderType>({
   provider,
   acceptedDynamicLabels,
+  applyRejectingPolicy,
 }: WebhookProviderContractOptions<TProvider>): void {
   const nonGhrLabels = ['self-hosted', 'linux'];
   const dynamicLabels = [...acceptedDynamicLabels];
@@ -32,6 +34,13 @@ export function defineWebhookProviderContractTests<TProvider extends ComputeProv
     it('skips the provider when dynamic labels are disabled', () => {
       const queue = runnerQueue(`${provider.type}-disabled`, provider.type);
       queue.matcherConfig.enableDynamicLabels = false;
+
+      expect(selectDynamicLabelQueue([queue], nonGhrLabels, dynamicLabels)).toBeUndefined();
+    });
+
+    it('skips the provider when its dynamic label policy rejects the labels', () => {
+      const queue = runnerQueue(`${provider.type}-policy-rejected`, provider.type);
+      applyRejectingPolicy(queue);
 
       expect(selectDynamicLabelQueue([queue], nonGhrLabels, dynamicLabels)).toBeUndefined();
     });
