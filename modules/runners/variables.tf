@@ -868,6 +868,12 @@ variable "lambda_event_source_mapping_batch_size" {
   }
 }
 
+variable "enable_scale_up_event_source_mapping" {
+  description = "Enable the SQS event source mapping that invokes the scale-up lambda. Disable to drive scale-up from an external consumer of the build queue, for example a rate limiter that paces CreateFleet calls. When disabled, nothing consumes the build queue unless you provide your own consumer."
+  type        = bool
+  default     = true
+}
+
 variable "lambda_event_source_mapping_maximum_batching_window_in_seconds" {
   description = "Maximum amount of time to gather records before invoking the lambda function, in seconds. AWS requires this to be greater than 0 if batch_size is greater than 10. Defaults to 0."
   type        = number

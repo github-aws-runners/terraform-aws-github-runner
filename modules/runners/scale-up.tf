@@ -99,6 +99,7 @@ resource "aws_lambda_event_source_mapping" "scale_up" {
   function_response_types            = ["ReportBatchItemFailures"]
   batch_size                         = var.lambda_event_source_mapping_batch_size
   maximum_batching_window_in_seconds = var.lambda_event_source_mapping_maximum_batching_window_in_seconds
+  enabled                            = var.enable_scale_up_event_source_mapping
   tags                               = var.tags
 }
 
