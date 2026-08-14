@@ -1,29 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { DynamicLabelProvider, DynamicLabelViolation, RunnerMatcherConfig } from './contracts';
-import type { ComputeProviderType } from './provider-types';
+import { createDynamicLabelsForOtherProvider } from './dynamic-labels';
 import { createDynamicLabelQueueSelector, selectDynamicLabelQueue } from './webhook';
 
+const testProviderTypes = ['alpha', 'beta'] as const;
+type TestProviderType = (typeof testProviderTypes)[number];
+const dynamicLabelsForOtherProvider = createDynamicLabelsForOtherProvider(testProviderTypes);
+
 describe('selectDynamicLabelQueue', () => {
-  it('defaults queues without a provider to EC2 dynamic label handling', () => {
-    const queue = runnerQueue('default-ec2');
-
-    expect(selectDynamicLabelQueue([queue], ['self-hosted', 'linux'], ['ghr-ec2-instance-type:t3.large'])).toEqual({
-      queue,
-      labels: ['self-hosted', 'linux', 'ghr-ec2-instance-type:t3.large'],
-    });
-  });
-
-  it('normalizes compute provider casing and surrounding whitespace', () => {
-    const queue = runnerQueue('normalized-ec2');
-    (queue as unknown as { computeProvider: string }).computeProvider = ' EC2 ';
-
-    expect(selectDynamicLabelQueue([queue], ['self-hosted', 'linux'], ['ghr-ec2-instance-type:t3.large'])).toEqual({
-      queue,
-      labels: ['self-hosted', 'linux', 'ghr-ec2-instance-type:t3.large'],
-    });
-  });
-
   it.each([
     ['unsupported string', 'unsupported-provider'],
     ['non-string', 42],
@@ -31,13 +16,9 @@ describe('selectDynamicLabelQueue', () => {
     const invalidQueue = runnerQueue('invalid-provider');
     (invalidQueue as unknown as { computeProvider: unknown }).computeProvider = computeProvider;
 
-    expect(() =>
-      selectDynamicLabelQueue(
-        [invalidQueue, runnerQueue('valid-ec2')],
-        ['self-hosted', 'linux'],
-        ['ghr-ec2-instance-type:t3.large'],
-      ),
-    ).toThrow(`Unsupported compute provider type '${String(computeProvider)}'`);
+    expect(() => selectDynamicLabelQueue([invalidQueue], [], [])).toThrow(
+      `Unsupported compute provider type '${String(computeProvider)}'`,
+    );
   });
 });
 
@@ -92,31 +73,26 @@ describe('createDynamicLabelQueueSelector', () => {
     expect(selectQueue([queue], ['self-hosted'], ['ghr-test-size:large'])).toBeUndefined();
   });
 
-  /* TODO: Re-enable this scenario when the MicroVM provider is added.
-  it('skips EC2 and selects the MicroVM queue for MicroVM override labels', () => {
-    const ec2Queue = runnerQueue('ec2');
-    const microvmQueue = runnerQueue('microvm');
-    const imageVersionLabel = 'ghr-microvm-image-version:3.0';
+  it('selects the queue targeted by provider-specific labels', () => {
+    const alphaQueue = runnerQueue('alpha');
+    const betaQueue = runnerQueue('beta');
+    const betaLabel = 'ghr-beta-size:large';
     const { getViolations, selectQueue } = selector({
-      providerByQueue: { ec2: 'ec2', microvm: 'microvm' },
-      labelsForOtherProvider: (labels, provider) =>
-        provider === 'ec2' ? labels.filter((label) => label.startsWith('ghr-microvm-')) : [],
+      providerByQueue: { alpha: 'alpha', beta: 'beta' },
     });
 
-    expect(selectQueue([ec2Queue, microvmQueue], ['self-hosted', 'linux'], [imageVersionLabel])).toEqual({
-      queue: microvmQueue,
-      labels: ['self-hosted', 'linux', imageVersionLabel],
+    expect(selectQueue([alphaQueue, betaQueue], ['self-hosted', 'linux'], [betaLabel])).toEqual({
+      queue: betaQueue,
+      labels: ['self-hosted', 'linux', betaLabel],
     });
     expect(getViolations).toHaveBeenCalledOnce();
-    expect(getViolations).toHaveBeenCalledWith({ queue: microvmQueue, labels: [imageVersionLabel] });
+    expect(getViolations).toHaveBeenCalledWith({ queue: betaQueue, labels: [betaLabel] });
   });
-  */
 });
 
 function selector(options?: {
-  providerByQueue?: Record<string, ComputeProviderType>;
+  providerByQueue?: Record<string, TestProviderType>;
   violationsByQueue?: Record<string, DynamicLabelViolation[]>;
-  labelsForOtherProvider?: (labels: string[], provider: ComputeProviderType) => string[];
 }) {
   const getViolations = vi.fn<DynamicLabelProvider['getViolations']>(({ queue }) => {
     return options?.violationsByQueue?.[queue.id] ?? [];
@@ -124,12 +100,12 @@ function selector(options?: {
 
   return {
     getViolations,
-    selectQueue: createDynamicLabelQueueSelector<ComputeProviderType>({
+    selectQueue: createDynamicLabelQueueSelector<TestProviderType>({
       resolveProvider: (queue) => ({
-        type: options?.providerByQueue?.[queue.id] ?? 'ec2',
+        type: options?.providerByQueue?.[queue.id] ?? 'alpha',
         dynamicLabels: { getViolations },
       }),
-      dynamicLabelsForOtherProvider: options?.labelsForOtherProvider ?? (() => []),
+      dynamicLabelsForOtherProvider,
     }),
   };
 }
