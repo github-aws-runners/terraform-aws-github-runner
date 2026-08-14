@@ -1,12 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { DynamicLabelProvider, DynamicLabelViolation, RunnerMatcherConfig } from './contracts';
-import { createDynamicLabelsForOtherProvider } from './dynamic-labels';
+import { dynamicLabelsForOtherProvider } from './dynamic-labels';
 import { createDynamicLabelQueueSelector, selectDynamicLabelQueue } from './webhook';
 
 const testProviderTypes = ['alpha', 'beta'] as const;
 type TestProviderType = (typeof testProviderTypes)[number];
-const dynamicLabelsForOtherProvider = createDynamicLabelsForOtherProvider(testProviderTypes);
 
 describe('selectDynamicLabelQueue', () => {
   it.each([
@@ -105,7 +104,8 @@ function selector(options?: {
         type: options?.providerByQueue?.[queue.id] ?? 'alpha',
         dynamicLabels: { getViolations },
       }),
-      dynamicLabelsForOtherProvider,
+      dynamicLabelsForOtherProvider: (labels, provider) =>
+        dynamicLabelsForOtherProvider(labels, provider, testProviderTypes),
     }),
   };
 }
