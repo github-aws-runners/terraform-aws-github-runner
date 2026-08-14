@@ -2,7 +2,44 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { DynamicLabelProvider, DynamicLabelViolation, RunnerMatcherConfig } from './contracts';
 import type { ComputeProviderType } from './provider-types';
-import { createDynamicLabelQueueSelector } from './webhook';
+import { createDynamicLabelQueueSelector, selectDynamicLabelQueue } from './webhook';
+
+describe('selectDynamicLabelQueue', () => {
+  it('defaults queues without a provider to EC2 dynamic label handling', () => {
+    const queue = runnerQueue('default-ec2');
+
+    expect(selectDynamicLabelQueue([queue], ['self-hosted', 'linux'], ['ghr-ec2-instance-type:t3.large'])).toEqual({
+      queue,
+      labels: ['self-hosted', 'linux', 'ghr-ec2-instance-type:t3.large'],
+    });
+  });
+
+  it('normalizes compute provider casing and surrounding whitespace', () => {
+    const queue = runnerQueue('normalized-ec2');
+    (queue as unknown as { computeProvider: string }).computeProvider = ' EC2 ';
+
+    expect(selectDynamicLabelQueue([queue], ['self-hosted', 'linux'], ['ghr-ec2-instance-type:t3.large'])).toEqual({
+      queue,
+      labels: ['self-hosted', 'linux', 'ghr-ec2-instance-type:t3.large'],
+    });
+  });
+
+  it.each([
+    ['unsupported string', 'unsupported-provider'],
+    ['non-string', 42],
+  ])('strictly rejects an %s compute provider', (_description, computeProvider) => {
+    const invalidQueue = runnerQueue('invalid-provider');
+    (invalidQueue as unknown as { computeProvider: unknown }).computeProvider = computeProvider;
+
+    expect(() =>
+      selectDynamicLabelQueue(
+        [invalidQueue, runnerQueue('valid-ec2')],
+        ['self-hosted', 'linux'],
+        ['ghr-ec2-instance-type:t3.large'],
+      ),
+    ).toThrow(`Unsupported compute provider type '${String(computeProvider)}'`);
+  });
+});
 
 describe('createDynamicLabelQueueSelector', () => {
   it('returns the first queue accepted by its provider', () => {
