@@ -34,10 +34,11 @@ data "aws_iam_policy_document" "pool_common" {
       "ssm:GetParameters",
     ]
 
-    resources = [
-      var.config.github_app_parameters.key_base64.arn,
-      var.config.github_app_parameters.id.arn,
-    ]
+    resources = concat(
+      [for p in var.config.github_app_parameters.id : p.arn],
+      [for p in var.config.github_app_parameters.key_base64 : p.arn],
+      [for p in var.config.github_app_parameters.installation_id : p.arn if p != null],
+    )
   }
 
   dynamic "statement" {
