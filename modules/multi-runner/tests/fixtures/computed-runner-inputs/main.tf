@@ -1,0 +1,62 @@
+# Keep the runner lane key and provider selection caller-known while passing an
+# apply-time value through the lane, matching callers that attach a policy
+# created in the same plan.
+resource "random_id" "managed_policy" {
+  byte_length = 4
+}
+
+module "multi_runner" {
+  source = "../../.."
+
+  aws_region = "eu-west-1"
+  prefix     = "computed-inputs"
+  vpc_id     = "vpc-12345678"
+  subnet_ids = ["subnet-12345678"]
+
+  github_app = {
+    id             = "123456"
+    key_base64     = "dGVzdA=="
+    webhook_secret = "test-secret"
+  }
+
+  lambda_s3_bucket      = "lambda-artifacts"
+  webhook_lambda_s3_key = "webhook.zip"
+  runners_lambda_s3_key = "runners.zip"
+  syncer_lambda_s3_key  = "runner-binaries-syncer.zip"
+
+  experimental = {
+    multi_runner_config_v2 = {
+      linux = {
+        runner = {
+          os            = "linux"
+          architecture  = "x64"
+          maximum_count = 2
+          iam = {
+            managed_policy_arns = {
+              generated = "arn:aws:iam::123456789012:policy/generated-${random_id.managed_policy.hex}"
+            }
+          }
+        }
+        compute_provider = {
+          ec2 = {
+            instance_types = ["m5.large"]
+            binaries_syncer = {
+              enabled = false
+            }
+          }
+        }
+        matcherConfig = {
+          labelMatchers = [["self-hosted", "linux", "x64"]]
+        }
+      }
+    }
+  }
+}
+
+output "runner_stack_keys" {
+  value = keys(module.multi_runner.runners_map_v2)
+}
+
+output "binaries_syncer_keys" {
+  value = keys(module.multi_runner.binaries_syncer_map)
+}

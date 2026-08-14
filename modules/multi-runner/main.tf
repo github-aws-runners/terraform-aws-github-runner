@@ -33,8 +33,9 @@ locals {
     merge(v, { runner_config = merge(v.runner_config, { runner_extra_labels = local.runner_extra_labels[k] }) }),
   ) }
 
+  # Keep a concrete map type when unrelated configuration values are unknown until apply.
   tmp_distinct_list_unique_os_and_arch = distinct([
-    for _, config in try(local.runner_config_by_provider.ec2, {}) : {
+    for _, config in lookup(local.runner_config_by_provider, "ec2", {}) : {
       "os_type" : config.runner.os,
       "architecture" : config.runner.architecture
     }
