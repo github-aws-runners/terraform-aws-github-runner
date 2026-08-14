@@ -147,6 +147,21 @@ run "experimental_v2_routes_through_provider_stack" {
   command = plan
 
   variables {
+    additional_github_apps = [{
+      id_ssm = {
+        name = "/github-runner/additional-app-id"
+        arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/additional-app-id"
+      }
+      key_base64_ssm = {
+        name = "/github-runner/additional-key-base64"
+        arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/additional-key-base64"
+      }
+      installation_id_ssm = {
+        name = "/github-runner/additional-installation-id"
+        arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/additional-installation-id"
+      }
+    }]
+
     experimental = {
       multi_runner_config_v2 = {
         linux = {
@@ -244,6 +259,16 @@ run "experimental_v2_routes_through_provider_stack" {
   assert {
     condition     = length(module.runners) == 0 && keys(module.runner_stacks) == ["linux"]
     error_message = "Experimental multi_runner_config_v2 entries must dispatch through module.runner_stacks."
+  }
+
+  assert {
+    condition = (
+      length(local.github_app_parameters.id) == 2
+      && module.runner_stacks["linux"].scale_up.lambda.environment[0].variables["PARAMETER_GITHUB_APP_ID_NAME"] == join(":", [for p in local.github_app_parameters.id : p.name])
+      && module.runner_stacks["linux"].scale_down.lambda.environment[0].variables["PARAMETER_GITHUB_APP_KEY_BASE64_NAME"] == join(":", [for p in local.github_app_parameters.key_base64 : p.name])
+      && module.runner_stacks["linux"].pool.lambda.environment[0].variables["PARAMETER_GITHUB_APP_INSTALLATION_ID_NAME"] == join(":", [for p in local.github_app_parameters.installation_id : p != null ? p.name : ""])
+    )
+    error_message = "Experimental v2 control-plane Lambdas must preserve the complete multi-app parameter lists from the shared multi-runner configuration."
   }
 
   assert {

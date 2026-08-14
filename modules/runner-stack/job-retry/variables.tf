@@ -23,8 +23,9 @@ variable "config" {
     - `github.organization_runners`: Enables organization runners.
     - `github.enterprise_server.url`: Optional GitHub Enterprise Server URL.
     - `github.user_agent`: Optional User-Agent sent to GitHub.
-    - `github.app_parameters.key_base64`: Name and ARN of the GitHub App private-key parameter.
-    - `github.app_parameters.id`: Name and ARN of the GitHub App ID parameter.
+    - `github.app_parameters.key_base64`: Ordered Parameter Store references for GitHub App private keys.
+    - `github.app_parameters.id`: Ordered Parameter Store references for GitHub App IDs.
+    - `github.app_parameters.installation_id`: Ordered optional Parameter Store references for GitHub App installation IDs.
     - `queue.build`: URL and ARN of the build queue to which retry messages are published.
     - `queue.event_source_mapping.batch_size`: Maximum records delivered per job-retry invocation.
     - `queue.event_source_mapping.maximum_batching_window_in_seconds`: Maximum event batching window.
@@ -81,14 +82,9 @@ variable "config" {
       })
       user_agent = optional(string, null)
       app_parameters = object({
-        key_base64 = object({
-          name = string
-          arn  = string
-        })
-        id = object({
-          name = string
-          arn  = string
-        })
+        key_base64      = list(map(string))
+        id              = list(map(string))
+        installation_id = list(object({ name = string, arn = string }))
       })
     })
     queue = object({
