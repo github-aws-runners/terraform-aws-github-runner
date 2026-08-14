@@ -55,14 +55,33 @@ variables {
       }
       user_agent = "job-retry-test"
       app_parameters = {
-        key_base64 = {
-          name = "/github-runner/key-base64"
-          arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64"
-        }
-        id = {
-          name = "/github-runner/app-id"
-          arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id"
-        }
+        key_base64 = [
+          {
+            name = "/github-runner/key-base64"
+            arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64"
+          },
+          {
+            name = "/github-runner/key-base64-2"
+            arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64-2"
+          },
+        ]
+        id = [
+          {
+            name = "/github-runner/app-id"
+            arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id"
+          },
+          {
+            name = "/github-runner/app-id-2"
+            arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id-2"
+          },
+        ]
+        installation_id = [
+          null,
+          {
+            name = "/github-runner/installation-id-2"
+            arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/installation-id-2"
+          },
+        ]
       }
     }
     queue = {
@@ -124,6 +143,18 @@ run "preserves_nested_job_retry_configuration" {
   assert {
     condition     = output.lambda.function.environment[0].variables["RUNNER_NAME_PREFIX"] == "required-prefix-"
     error_message = "Required job-retry environment variables must override caller-provided values."
+  }
+
+  assert {
+    condition = (
+      output.lambda.function.environment[0].variables["PARAMETER_GITHUB_APP_ID_NAME"] == "/github-runner/app-id:/github-runner/app-id-2"
+      && output.lambda.function.environment[0].variables["PARAMETER_GITHUB_APP_KEY_BASE64_NAME"] == "/github-runner/key-base64:/github-runner/key-base64-2"
+      && output.lambda.function.environment[0].variables["PARAMETER_GITHUB_APP_INSTALLATION_ID_NAME"] == ":/github-runner/installation-id-2"
+      && contains(data.aws_iam_policy_document.job_retry.statement[0].resources, "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id-2")
+      && contains(data.aws_iam_policy_document.job_retry.statement[0].resources, "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64-2")
+      && contains(data.aws_iam_policy_document.job_retry.statement[0].resources, "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/installation-id-2")
+    )
+    error_message = "Job retry must pass every GitHub App parameter and grant access to every corresponding SSM ARN."
   }
 
   assert {
@@ -197,14 +228,15 @@ run "does_not_enable_partial_vpc_configuration" {
         organization_runners = false
         enterprise_server    = {}
         app_parameters = {
-          key_base64 = {
+          key_base64 = [{
             name = "/github-runner/key-base64"
             arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64"
-          }
-          id = {
+          }]
+          id = [{
             name = "/github-runner/app-id"
             arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id"
-          }
+          }]
+          installation_id = [null]
         }
       }
       queue = {

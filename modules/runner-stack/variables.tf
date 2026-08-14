@@ -112,12 +112,9 @@ variable "github" {
   description = <<-EOT
     GitHub API and runner-registration configuration.
 
-    - `app_parameters.key_base64`: Parameter Store reference for the GitHub App private key.
-    - `app_parameters.key_base64.name`: Name of the private-key parameter supplied to the control-plane functions.
-    - `app_parameters.key_base64.arn`: ARN of the private-key parameter used by IAM policies.
-    - `app_parameters.id`: Parameter Store reference for the GitHub App ID.
-    - `app_parameters.id.name`: Name of the App-ID parameter supplied to the control-plane functions.
-    - `app_parameters.id.arn`: ARN of the App-ID parameter used by IAM policies.
+    - `app_parameters.key_base64`: Ordered Parameter Store references for GitHub App private keys.
+    - `app_parameters.id`: Ordered Parameter Store references for GitHub App IDs.
+    - `app_parameters.installation_id`: Ordered optional Parameter Store references for GitHub App installation IDs.
     - `organization_runners`: Registers runners at organization scope when true; otherwise repository-scoped registration is used.
     - `enterprise_server.url`: Optional GitHub Enterprise Server base URL. Null selects GitHub.com.
     - `enterprise_server.ssl_verify`: Enables TLS certificate verification for GitHub Enterprise Server requests.
@@ -125,8 +122,9 @@ variable "github" {
   EOT
   type = object({
     app_parameters = object({
-      key_base64 = map(string)
-      id         = map(string)
+      key_base64      = list(map(string))
+      id              = list(map(string))
+      installation_id = list(object({ name = string, arn = string }))
     })
     organization_runners = bool
     enterprise_server = optional(object({

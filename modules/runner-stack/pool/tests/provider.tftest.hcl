@@ -34,14 +34,33 @@ variables {
       ssl_verify = true
     }
     github_app_parameters = {
-      key_base64 = {
-        name = "/github-runner/key-base64"
-        arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64"
-      }
-      id = {
-        name = "/github-runner/app-id"
-        arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id"
-      }
+      key_base64 = [
+        {
+          name = "/github-runner/key-base64"
+          arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64"
+        },
+        {
+          name = "/github-runner/key-base64-2"
+          arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64-2"
+        },
+      ]
+      id = [
+        {
+          name = "/github-runner/app-id"
+          arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id"
+        },
+        {
+          name = "/github-runner/app-id-2"
+          arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id-2"
+        },
+      ]
+      installation_id = [
+        null,
+        {
+          name = "/github-runner/installation-id-2"
+          arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/installation-id-2"
+        },
+      ]
     }
     runner = {
       disable_runner_autoupdate = false
@@ -101,6 +120,18 @@ run "provider_supplies_only_compute_specific_pool_configuration" {
   assert {
     condition     = aws_lambda_function.pool.environment[0].variables["RUNNER_OWNER"] == "example"
     error_message = "The pool module must continue to assemble common runner environment variables."
+  }
+
+  assert {
+    condition = (
+      aws_lambda_function.pool.environment[0].variables["PARAMETER_GITHUB_APP_ID_NAME"] == "/github-runner/app-id:/github-runner/app-id-2"
+      && aws_lambda_function.pool.environment[0].variables["PARAMETER_GITHUB_APP_KEY_BASE64_NAME"] == "/github-runner/key-base64:/github-runner/key-base64-2"
+      && aws_lambda_function.pool.environment[0].variables["PARAMETER_GITHUB_APP_INSTALLATION_ID_NAME"] == ":/github-runner/installation-id-2"
+      && contains(data.aws_iam_policy_document.pool_common.statement[2].resources, "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id-2")
+      && contains(data.aws_iam_policy_document.pool_common.statement[2].resources, "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64-2")
+      && contains(data.aws_iam_policy_document.pool_common.statement[2].resources, "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/installation-id-2")
+    )
+    error_message = "Pool must pass every GitHub App parameter and grant access to every corresponding SSM ARN."
   }
 
   assert {

@@ -19,15 +19,16 @@ locals {
   }
 
   job_retry_environment_variables = {
-    ENABLE_ORGANIZATION_RUNNERS          = var.config.github.organization_runners
-    ENABLE_METRIC_JOB_RETRY              = var.config.observability.metrics.enable && var.config.observability.metrics.metric.enable_job_retry
-    ENABLE_METRIC_GITHUB_APP_RATE_LIMIT  = var.config.observability.metrics.enable && var.config.observability.metrics.metric.enable_github_app_rate_limit
-    GHES_URL                             = var.config.github.enterprise_server.url
-    USER_AGENT                           = var.config.github.user_agent
-    JOB_QUEUE_SCALE_UP_URL               = var.config.queue.build.url
-    PARAMETER_GITHUB_APP_ID_NAME         = var.config.github.app_parameters.id.name
-    PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.config.github.app_parameters.key_base64.name
-    RUNNER_NAME_PREFIX                   = var.config.runner.name_prefix
+    ENABLE_ORGANIZATION_RUNNERS               = var.config.github.organization_runners
+    ENABLE_METRIC_JOB_RETRY                   = var.config.observability.metrics.enable && var.config.observability.metrics.metric.enable_job_retry
+    ENABLE_METRIC_GITHUB_APP_RATE_LIMIT       = var.config.observability.metrics.enable && var.config.observability.metrics.metric.enable_github_app_rate_limit
+    GHES_URL                                  = var.config.github.enterprise_server.url
+    USER_AGENT                                = var.config.github.user_agent
+    JOB_QUEUE_SCALE_UP_URL                    = var.config.queue.build.url
+    PARAMETER_GITHUB_APP_ID_NAME              = join(":", [for p in var.config.github.app_parameters.id : p.name])
+    PARAMETER_GITHUB_APP_KEY_BASE64_NAME      = join(":", [for p in var.config.github.app_parameters.key_base64 : p.name])
+    PARAMETER_GITHUB_APP_INSTALLATION_ID_NAME = join(":", [for p in var.config.github.app_parameters.installation_id : p != null ? p.name : ""])
+    RUNNER_NAME_PREFIX                        = var.config.runner.name_prefix
   }
 
   environment_variables = merge(

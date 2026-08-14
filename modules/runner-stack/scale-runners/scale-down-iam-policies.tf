@@ -5,10 +5,11 @@ data "aws_iam_policy_document" "scale_down_common" {
       "ssm:GetParameter",
       "ssm:GetParameters",
     ]
-    resources = [
-      var.config.github.app_parameters.key_base64.arn,
-      var.config.github.app_parameters.id.arn,
-    ]
+    resources = concat(
+      [for p in var.config.github.app_parameters.id : p.arn],
+      [for p in var.config.github.app_parameters.key_base64 : p.arn],
+      [for p in var.config.github.app_parameters.installation_id : p.arn if p != null],
+    )
   }
 
   dynamic "statement" {

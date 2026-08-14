@@ -15,23 +15,24 @@ resource "aws_lambda_function" "scale_down" {
 
   environment {
     variables = merge(var.runner_provider.scale_down.environment_variables, {
-      ENVIRONMENT                              = var.config.prefix
-      ENABLE_METRIC_GITHUB_APP_RATE_LIMIT      = var.config.observability.metrics.enable && var.config.observability.metrics.metric.enable_github_app_rate_limit
-      GHES_URL                                 = var.config.github.enterprise_server.url
-      USER_AGENT                               = var.config.github.user_agent
-      LOG_LEVEL                                = upper(var.config.observability.logs.level)
-      MINIMUM_RUNNING_TIME_IN_MINUTES          = coalesce(var.config.scale_down.minimum_running_time_in_minutes, local.min_runtime_defaults[var.config.runner.os])
-      NODE_TLS_REJECT_UNAUTHORIZED             = var.config.github.enterprise_server.url != null && !var.config.github.enterprise_server.ssl_verify ? 0 : 1
-      PARAMETER_GITHUB_APP_ID_NAME             = var.config.github.app_parameters.id.name
-      PARAMETER_GITHUB_APP_KEY_BASE64_NAME     = var.config.github.app_parameters.key_base64.name
-      POWERTOOLS_LOGGER_LOG_EVENT              = var.config.observability.logs.level == "debug" ? "true" : "false"
-      SCALE_DOWN_CONFIG                        = jsonencode(var.config.scale_down.idle_config)
-      POWERTOOLS_SERVICE_NAME                  = "${var.config.prefix}-scale-down"
-      POWERTOOLS_METRICS_NAMESPACE             = var.config.observability.metrics.namespace
-      POWERTOOLS_TRACE_ENABLED                 = var.config.observability.tracing.mode != null
-      POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.config.observability.tracing.capture_http_requests
-      POWERTOOLS_TRACER_CAPTURE_ERROR          = var.config.observability.tracing.capture_error
-      COMPUTE_PROVIDER_TYPE                    = var.runner_provider.type
+      ENVIRONMENT                               = var.config.prefix
+      ENABLE_METRIC_GITHUB_APP_RATE_LIMIT       = var.config.observability.metrics.enable && var.config.observability.metrics.metric.enable_github_app_rate_limit
+      GHES_URL                                  = var.config.github.enterprise_server.url
+      USER_AGENT                                = var.config.github.user_agent
+      LOG_LEVEL                                 = upper(var.config.observability.logs.level)
+      MINIMUM_RUNNING_TIME_IN_MINUTES           = coalesce(var.config.scale_down.minimum_running_time_in_minutes, local.min_runtime_defaults[var.config.runner.os])
+      NODE_TLS_REJECT_UNAUTHORIZED              = var.config.github.enterprise_server.url != null && !var.config.github.enterprise_server.ssl_verify ? 0 : 1
+      PARAMETER_GITHUB_APP_ID_NAME              = join(":", [for p in var.config.github.app_parameters.id : p.name])
+      PARAMETER_GITHUB_APP_KEY_BASE64_NAME      = join(":", [for p in var.config.github.app_parameters.key_base64 : p.name])
+      PARAMETER_GITHUB_APP_INSTALLATION_ID_NAME = join(":", [for p in var.config.github.app_parameters.installation_id : p != null ? p.name : ""])
+      POWERTOOLS_LOGGER_LOG_EVENT               = var.config.observability.logs.level == "debug" ? "true" : "false"
+      SCALE_DOWN_CONFIG                         = jsonencode(var.config.scale_down.idle_config)
+      POWERTOOLS_SERVICE_NAME                   = "${var.config.prefix}-scale-down"
+      POWERTOOLS_METRICS_NAMESPACE              = var.config.observability.metrics.namespace
+      POWERTOOLS_TRACE_ENABLED                  = var.config.observability.tracing.mode != null
+      POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS  = var.config.observability.tracing.capture_http_requests
+      POWERTOOLS_TRACER_CAPTURE_ERROR           = var.config.observability.tracing.capture_error
+      COMPUTE_PROVIDER_TYPE                     = var.runner_provider.type
     })
   }
 
