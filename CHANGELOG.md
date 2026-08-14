@@ -1,5 +1,12 @@
 # Changelog
 
+## [7.11.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v7.10.2...v7.11.0) (2026-08-14)
+
+
+### Features
+
+* **github-app:** allow several github apps to be used ([#5269](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5269)) ([82cb0fd](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/82cb0fde0687471a9b7c29631883a4a94a7c91dc))
+
 ## [7.10.2](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v7.10.1...v7.10.2) (2026-08-10)
 
 
