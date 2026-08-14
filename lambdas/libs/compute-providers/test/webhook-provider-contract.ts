@@ -29,6 +29,13 @@ export function defineWebhookProviderContractTests<TProvider extends ComputeProv
       expectProviderSelected(runnerQueue(`${provider.type}-configured`, provider.type));
     });
 
+    it('skips the provider when dynamic labels are disabled', () => {
+      const queue = runnerQueue(`${provider.type}-disabled`, provider.type);
+      queue.matcherConfig.enableDynamicLabels = false;
+
+      expect(selectDynamicLabelQueue([queue], nonGhrLabels, dynamicLabels)).toBeUndefined();
+    });
+
     it('normalizes provider configuration before registry selection', () => {
       const queue = runnerQueue(`${provider.type}-normalized`);
       (queue as unknown as { computeProvider: string }).computeProvider = ` ${provider.type.toUpperCase()} `;
