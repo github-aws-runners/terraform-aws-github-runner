@@ -117,6 +117,17 @@ module "runners" {
     webhook_secret = random_id.random.hex
   }
 
+  # Uncomment to distribute GitHub API rate limit usage across multiple GitHub Apps.
+  # Each additional app must be installed on the same repos/orgs as the primary app.
+  # The control-plane lambdas will randomly select an app for each API call.
+  # additional_github_apps = [
+  #   {
+  #     key_base64      = var.additional_github_app_0.key_base64
+  #     id              = var.additional_github_app_0.id
+  #     installation_id = var.additional_github_app_0.installation_id  # optional, avoids an API call
+  #   },
+  # ]
+
   # Deploy webhook using the EventBridge
   eventbridge = {
     enable = true

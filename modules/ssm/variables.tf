@@ -45,6 +45,19 @@ variable "kms_key_arn" {
   default     = null
 }
 
+variable "additional_github_apps" {
+  description = "Additional GitHub Apps for distributing API rate limit usage."
+  type = list(object({
+    key_base64          = optional(string)
+    key_base64_ssm      = optional(object({ arn = string, name = string }))
+    id                  = optional(string)
+    id_ssm              = optional(object({ arn = string, name = string }))
+    installation_id     = optional(string)
+    installation_id_ssm = optional(object({ arn = string, name = string }))
+  }))
+  default = []
+}
+
 variable "tags" {
   description = "Map of tags that will be added to created resources. By default resources will be tagged with name and environment."
   type        = map(string)

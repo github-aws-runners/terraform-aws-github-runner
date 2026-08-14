@@ -13,6 +13,7 @@ vi.mock('../github/auth', () => ({
   createGithubAppAuth: vi.fn(),
   createGithubInstallationAuth: vi.fn(),
   createOctokitClient: vi.fn(),
+  getStoredInstallationId: vi.fn().mockResolvedValue(undefined),
 }));
 
 const mockOctokit = {

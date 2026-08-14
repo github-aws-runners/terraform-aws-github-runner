@@ -2,6 +2,7 @@ import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import { getParameter, putParameter } from '@aws-github-runner/aws-ssm-util';
 import { Octokit } from '@octokit/rest';
 
+import { getStoredInstallationId } from '../github/auth';
 import { metricGitHubAppRateLimit } from '../github/rate-limit';
 import { ActionRequestMessage, CreateGitHubRunnerConfig, EphemeralRunnerConfig, RunnerGroup } from './types';
 
@@ -128,8 +129,19 @@ export async function getInstallationId(
   githubAppClient: Octokit,
   enableOrgLevel: boolean,
   payload: ActionRequestMessage,
+  appIndex?: number,
 ): Promise<number> {
-  if (payload.installationId !== 0) {
+  // Use the pre-configured installation ID when available (avoids an API call).
+  if (appIndex !== undefined) {
+    const storedId = await getStoredInstallationId(appIndex);
+    if (storedId !== undefined) return storedId;
+  }
+
+  // The primary app (index 0, or the single-app case where appIndex is undefined) can reuse
+  // the installation id carried on the webhook payload, since the webhook is delivered by the
+  // primary app. Additional apps must resolve their own installation id via the API.
+  const isPrimaryApp = appIndex === undefined || appIndex === 0;
+  if (isPrimaryApp && payload.installationId !== 0) {
     return payload.installationId;
   }
 
@@ -146,7 +158,11 @@ export class UnsupportedEventError extends Error {
   }
 }
 
-export async function isJobQueued(githubInstallationClient: Octokit, payload: ActionRequestMessage): Promise<boolean> {
+export async function isJobQueued(
+  githubInstallationClient: Octokit,
+  payload: ActionRequestMessage,
+  appIndex?: number,
+): Promise<boolean> {
   let isQueued = false;
   if (payload.eventType === 'workflow_job') {
     const jobForWorkflowRun = await githubInstallationClient.actions.getJobForWorkflowRun({
@@ -154,7 +170,7 @@ export async function isJobQueued(githubInstallationClient: Octokit, payload: Ac
       owner: payload.repositoryOwner,
       repo: payload.repositoryName,
     });
-    metricGitHubAppRateLimit(jobForWorkflowRun.headers);
+    metricGitHubAppRateLimit(jobForWorkflowRun.headers, appIndex);
     isQueued = jobForWorkflowRun.data.status === 'queued';
     logger.debug(`The job ${payload.id} is${isQueued ? ' ' : 'not'} queued`);
   } else {
@@ -324,7 +340,7 @@ async function createJitConfig(
               labels: ephemeralRunnerConfig.runnerLabels,
             });
 
-      metricGitHubAppRateLimit(runnerConfig.headers);
+      metricGitHubAppRateLimit(runnerConfig.headers, githubRunnerConfig.appIndex);
 
       await options.onJitConfigCreated?.(runnerId, {
         githubRunnerId: runnerConfig.data.runner.id.toString(),

@@ -66,7 +66,7 @@ Join our discord community via [this invite link](https://discord.gg/bxgXW8jJGh)
 ## Requirements
 
 | Name | Version |
-|------|---------|
+| ---- | ------- |
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.3.0 |
 | <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 6.33 |
 | <a name="requirement_random"></a> [random](#requirement\_random) | ~> 3.0 |
@@ -74,14 +74,14 @@ Join our discord community via [this invite link](https://discord.gg/bxgXW8jJGh)
 ## Providers
 
 | Name | Version |
-|------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | >= 6.33 |
-| <a name="provider_random"></a> [random](#provider\_random) | ~> 3.0 |
+| ---- | ------- |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.60.0 |
+| <a name="provider_random"></a> [random](#provider\_random) | 3.9.0 |
 
 ## Modules
 
 | Name | Source | Version |
-|------|--------|---------|
+| ---- | ------ | ------- |
 | <a name="module_ami_housekeeper"></a> [ami\_housekeeper](#module\_ami\_housekeeper) | ./modules/ami-housekeeper | n/a |
 | <a name="module_instance_termination_watcher"></a> [instance\_termination\_watcher](#module\_instance\_termination\_watcher) | ./modules/termination-watcher | n/a |
 | <a name="module_runner_binaries"></a> [runner\_binaries](#module\_runner\_binaries) | ./modules/runner-binaries-syncer | n/a |
@@ -92,7 +92,7 @@ Join our discord community via [this invite link](https://discord.gg/bxgXW8jJGh)
 ## Resources
 
 | Name | Type |
-|------|------|
+| ---- | ---- |
 | [aws_sqs_queue.queued_builds](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sqs_queue) | resource |
 | [aws_sqs_queue.queued_builds_dlq](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sqs_queue) | resource |
 | [aws_sqs_queue_policy.build_queue_dlq_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sqs_queue_policy) | resource |
@@ -103,7 +103,8 @@ Join our discord community via [this invite link](https://discord.gg/bxgXW8jJGh)
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
+| ---- | ----------- | ---- | ------- | :------: |
+| <a name="input_additional_github_apps"></a> [additional\_github\_apps](#input\_additional\_github\_apps) | Additional GitHub Apps for distributing API rate limit usage. Each must be installed on the same repos/orgs as the primary app. | <pre>list(object({<br/>    key_base64          = optional(string)<br/>    key_base64_ssm      = optional(object({ arn = string, name = string }))<br/>    id                  = optional(string)<br/>    id_ssm              = optional(object({ arn = string, name = string }))<br/>    installation_id     = optional(string)<br/>    installation_id_ssm = optional(object({ arn = string, name = string }))<br/>  }))</pre> | `[]` | no |
 | <a name="input_ami"></a> [ami](#input\_ami) | AMI configuration for the action runner instances. This object allows you to specify all AMI-related settings in one place.<br/><br/>Parameters:<br/>- `filter`: Map of lists to filter AMIs by various criteria (e.g., { name = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-*"], state = ["available"] })<br/>- `owners`: List of AMI owners to limit the search. Common values: ["amazon"], ["self"], or specific AWS account IDs<br/>- `id_ssm_parameter_arn`: ARN of an SSM parameter containing the AMI ID. If specified, this overrides both AMI filter and parameter name<br/>- `kms_key_arn`: Optional KMS key ARN if the AMI is encrypted with a customer managed key<br/><br/>Defaults to null, in which case the module falls back to individual AMI variables (deprecated). | <pre>object({<br/>    filter               = optional(map(list(string)), { state = ["available"] })<br/>    owners               = optional(list(string), ["amazon"])<br/>    id_ssm_parameter_arn = optional(string, null)<br/>    kms_key_arn          = optional(string, null)<br/>  })</pre> | `null` | no |
 | <a name="input_ami_housekeeper_cleanup_config"></a> [ami\_housekeeper\_cleanup\_config](#input\_ami\_housekeeper\_cleanup\_config) | Configuration for AMI cleanup.<br/><br/>    `amiFilters` - Filters to use when searching for AMIs to cleanup. Default filter for images owned by the account and that are available.<br/>    `dryRun` - If true, no AMIs will be deregistered. Default false.<br/>    `launchTemplateNames` - Launch template names to use when searching for AMIs to cleanup. Default no launch templates.<br/>    `maxItems` - The maximum number of AMIs that will be queried for cleanup. Default no maximum.<br/>    `minimumDaysOld` - Minimum number of days old an AMI must be to be considered for cleanup. Default 30.<br/>    `ssmParameterNames` - SSM parameter names to use when searching for AMIs to cleanup. This parameter should be set when using SSM to configure the AMI to use. Default no SSM parameters. | <pre>object({<br/>    amiFilters = optional(list(object({<br/>      Name   = string<br/>      Values = list(string)<br/>      })),<br/>      [{<br/>        Name : "state",<br/>        Values : ["available"],<br/>        },<br/>        {<br/>          Name : "image-type",<br/>          Values : ["machine"],<br/>      }]<br/>    )<br/>    dryRun              = optional(bool, false)<br/>    launchTemplateNames = optional(list(string))<br/>    maxItems            = optional(number)<br/>    minimumDaysOld      = optional(number, 30)<br/>    ssmParameterNames   = optional(list(string))<br/>  })</pre> | `{}` | no |
 | <a name="input_ami_housekeeper_lambda_s3_key"></a> [ami\_housekeeper\_lambda\_s3\_key](#input\_ami\_housekeeper\_lambda\_s3\_key) | S3 key for syncer lambda function. Required if using S3 bucket to specify lambdas. | `string` | `null` | no |
@@ -249,7 +250,7 @@ Join our discord community via [this invite link](https://discord.gg/bxgXW8jJGh)
 ## Outputs
 
 | Name | Description |
-|------|-------------|
+| ---- | ----------- |
 | <a name="output_binaries_syncer"></a> [binaries\_syncer](#output\_binaries\_syncer) | n/a |
 | <a name="output_instance_termination_handler"></a> [instance\_termination\_handler](#output\_instance\_termination\_handler) | n/a |
 | <a name="output_instance_termination_watcher"></a> [instance\_termination\_watcher](#output\_instance\_termination\_watcher) | n/a |

@@ -3,7 +3,12 @@ import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import { resolveComputeProviderType } from '@aws-github-runner/compute-providers/provider-types';
 import yn from 'yn';
 
-import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
+import {
+  createGithubAppAuth,
+  createGithubInstallationAuth,
+  createOctokitClient,
+  getStoredInstallationId,
+} from '../github/auth';
 import { controlPlaneProviderRegistry } from '../control-plane-providers';
 import { getGitHubEnterpriseApiUrl, validateSsmParameterStoreTags } from '../scale-runners/github-runner';
 import type { RunnerStatus } from './pool-provider';
@@ -43,8 +48,13 @@ export async function adjust(event: PoolEvent): Promise<void> {
 
   const { ghesApiUrl, ghesBaseUrl } = getGitHubEnterpriseApiUrl();
 
-  const installationId = await getInstallationId(ghesApiUrl, runnerOwner);
-  const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl);
+  // Select one GitHub App for this entire invocation so every API call draws
+  // from the same rate-limit bucket.
+  const ghAppAuth = await createGithubAppAuth(undefined, ghesApiUrl);
+  const appIdx = ghAppAuth.appIndex;
+
+  const installationId = await getInstallationId(ghAppAuth.token, ghesApiUrl, runnerOwner, appIdx);
+  const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl, appIdx);
   const githubInstallationClient = await createOctokitClient(ghAuth.token, ghesApiUrl);
 
   // Get statuses of runners registered in GitHub
@@ -83,6 +93,7 @@ export async function adjust(event: PoolEvent): Promise<void> {
     logger.info(`The pool will be topped up with ${topUp} runners.`);
     await computeProvider.createRunners({
       githubRunnerConfig: {
+        appIndex: appIdx,
         ephemeral,
         enableJitConfig,
         ghesBaseUrl,
@@ -104,9 +115,12 @@ export async function adjust(event: PoolEvent): Promise<void> {
   }
 }
 
-async function getInstallationId(ghesApiUrl: string, org: string): Promise<number> {
-  const ghAuth = await createGithubAppAuth(undefined, ghesApiUrl);
-  const githubClient = await createOctokitClient(ghAuth.token, ghesApiUrl);
+async function getInstallationId(appToken: string, ghesApiUrl: string, org: string, appIndex: number): Promise<number> {
+  // Use the pre-configured installation ID when available (avoids an API call).
+  const storedId = await getStoredInstallationId(appIndex);
+  if (storedId !== undefined) return storedId;
+
+  const githubClient = await createOctokitClient(appToken, ghesApiUrl);
 
   return (
     await githubClient.apps.getOrgInstallation({

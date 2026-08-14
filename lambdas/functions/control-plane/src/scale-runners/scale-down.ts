@@ -5,7 +5,12 @@ import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import { resolveComputeProviderType } from '@aws-github-runner/compute-providers/provider-types';
 import moment from 'moment';
 
-import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
+import {
+  createGithubAppAuth,
+  createGithubInstallationAuth,
+  createOctokitClient,
+  getStoredInstallationId,
+} from '../github/auth';
 import { controlPlaneProviderRegistry } from '../control-plane-providers';
 import { GhRunners, githubCache } from './cache';
 import { ScalingDownConfigList, getEvictionStrategy, getIdleRunnerCount } from './scale-down-config';
@@ -31,22 +36,27 @@ async function getOrCreateOctokit(runner: RunnerInfo): Promise<Octokit> {
   logger.debug(`[createGitHubClientForRunner] Cache miss for ${key}`);
   const { ghesApiUrl } = getGitHubEnterpriseApiUrl();
   const ghAuthPre = await createGithubAppAuth(undefined, ghesApiUrl);
-  const githubClientPre = await createOctokitClient(ghAuthPre.token, ghesApiUrl);
+  const appIdx = ghAuthPre.appIndex;
 
-  const installationId =
-    runner.type === 'Org'
-      ? (
-          await githubClientPre.apps.getOrgInstallation({
-            org: runner.owner,
-          })
-        ).data.id
-      : (
-          await githubClientPre.apps.getRepoInstallation({
-            owner: runner.owner.split('/')[0],
-            repo: runner.owner.split('/')[1],
-          })
-        ).data.id;
-  const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl);
+  // Use the pre-configured installation ID when available (avoids an API call).
+  let installationId = await getStoredInstallationId(appIdx);
+  if (installationId === undefined) {
+    const githubClientPre = await createOctokitClient(ghAuthPre.token, ghesApiUrl);
+    installationId =
+      runner.type === 'Org'
+        ? (
+            await githubClientPre.apps.getOrgInstallation({
+              org: runner.owner,
+            })
+          ).data.id
+        : (
+            await githubClientPre.apps.getRepoInstallation({
+              owner: runner.owner.split('/')[0],
+              repo: runner.owner.split('/')[1],
+            })
+          ).data.id;
+  }
+  const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl, appIdx);
   const octokit = await createOctokitClient(ghAuth.token, ghesApiUrl);
   githubCache.clients.set(key, octokit);
 

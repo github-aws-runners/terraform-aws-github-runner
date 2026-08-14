@@ -1,6 +1,14 @@
 import { Octokit } from '@octokit/rest';
+import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import type { ActionRequestMessage } from '../scale-runners/types';
-import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from './auth';
+import {
+  createGithubAppAuth,
+  createGithubInstallationAuth,
+  createOctokitClient,
+  getStoredInstallationId,
+} from './auth';
+
+const logger = createChildLogger('octokit');
 
 function getErrorStatus(error: unknown): number | undefined {
   if (typeof error !== 'object' || error === null) {
@@ -11,7 +19,7 @@ function getErrorStatus(error: unknown): number | undefined {
   return errorWithStatus.status ?? errorWithStatus.response?.status;
 }
 
-async function resolveInstallationId(
+async function resolveInstallationIdFromApi(
   githubClient: Octokit,
   enableOrgLevel: boolean,
   payload: ActionRequestMessage,
@@ -30,18 +38,38 @@ async function resolveInstallationId(
       ).data.id;
 }
 
+async function resolveInstallationId(
+  githubClient: Octokit,
+  enableOrgLevel: boolean,
+  payload: ActionRequestMessage,
+  appIndex?: number,
+): Promise<number> {
+  // Use pre-stored installation ID when available (avoids an API call)
+  if (appIndex !== undefined) {
+    const storedId = await getStoredInstallationId(appIndex);
+    if (storedId !== undefined) return storedId;
+  }
+
+  // The primary app (index 0, or the single-app case where appIndex is undefined) can reuse
+  // the installation id carried on the webhook payload, since the webhook is delivered by the
+  // primary app. Additional apps must resolve their own installation id via the API.
+  const isPrimaryApp = appIndex === undefined || appIndex === 0;
+  if (isPrimaryApp && payload.installationId !== 0) {
+    return payload.installationId;
+  }
+
+  return resolveInstallationIdFromApi(githubClient, enableOrgLevel, payload);
+}
+
 export async function getInstallationId(
   ghesApiUrl: string,
   enableOrgLevel: boolean,
   payload: ActionRequestMessage,
+  appIndex?: number,
 ): Promise<number> {
-  if (payload.installationId !== 0) {
-    return payload.installationId;
-  }
-
-  const ghAuth = await createGithubAppAuth(undefined, ghesApiUrl);
+  const ghAuth = await createGithubAppAuth(undefined, ghesApiUrl, appIndex);
   const githubClient = await createOctokitClient(ghAuth.token, ghesApiUrl);
-  return resolveInstallationId(githubClient, enableOrgLevel, payload);
+  return resolveInstallationId(githubClient, enableOrgLevel, payload, appIndex);
 }
 
 /**
@@ -57,36 +85,38 @@ export async function getOctokit(
   enableOrgLevel: boolean,
   payload: ActionRequestMessage,
 ): Promise<Octokit> {
-  let githubAppClient: Octokit | undefined;
-  let installationId = payload.installationId !== 0 ? payload.installationId : undefined;
+  // Select one app for this entire auth flow
+  const ghAuth = await createGithubAppAuth(undefined, ghesApiUrl);
+  const appIdx = ghAuth.appIndex;
+  const githubAppClient = await createOctokitClient(ghAuth.token, ghesApiUrl);
 
-  const getGithubAppClient = async (): Promise<Octokit> => {
-    if (githubAppClient === undefined) {
-      const appAuth = await createGithubAppAuth(undefined, ghesApiUrl);
-      githubAppClient = await createOctokitClient(appAuth.token, ghesApiUrl);
-    }
-
-    return githubAppClient;
-  };
+  const installationId = await resolveInstallationId(githubAppClient, enableOrgLevel, payload, appIdx);
 
   try {
-    if (installationId === undefined) {
-      installationId = await resolveInstallationId(await getGithubAppClient(), enableOrgLevel, payload);
-    }
-
-    const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl);
-    return await createOctokitClient(ghAuth.token, ghesApiUrl);
+    const installationAuth = await createGithubInstallationAuth(installationId, ghesApiUrl, appIdx);
+    return await createOctokitClient(installationAuth.token, ghesApiUrl);
   } catch (error) {
-    if (payload.installationId === 0 || getErrorStatus(error) !== 404) {
+    // The installation id can be stale when it was reused from the webhook payload or from the
+    // pre-configured per-app value while the app was uninstalled and reinstalled. Re-resolve the
+    // installation via the API once and retry with the same app before giving up.
+    if (getErrorStatus(error) !== 404) {
       throw error;
     }
 
-    const resolvedInstallationId = await resolveInstallationId(await getGithubAppClient(), enableOrgLevel, payload);
-    if (resolvedInstallationId === payload.installationId) {
+    const resolvedInstallationId = await resolveInstallationIdFromApi(githubAppClient, enableOrgLevel, payload);
+    if (resolvedInstallationId === installationId) {
       throw error;
     }
 
-    const ghAuth = await createGithubInstallationAuth(resolvedInstallationId, ghesApiUrl);
-    return await createOctokitClient(ghAuth.token, ghesApiUrl);
+    logger.warn('Retrying GitHub installation auth with installation resolved for the selected app', {
+      staleInstallationId: installationId,
+      resolvedInstallationId,
+      appIndex: appIdx,
+      repositoryOwner: payload.repositoryOwner,
+      repositoryName: payload.repositoryName,
+    });
+
+    const installationAuth = await createGithubInstallationAuth(resolvedInstallationId, ghesApiUrl, appIdx);
+    return await createOctokitClient(installationAuth.token, ghesApiUrl);
   }
 }

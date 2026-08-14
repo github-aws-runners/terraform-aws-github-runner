@@ -38,30 +38,35 @@ async function createGithubInstallationClient(
   enableOrgLevel: boolean,
   payload: ActionRequestMessage,
   ghesApiUrl: string,
+  appIndex?: number,
 ): Promise<Octokit> {
-  let installationId = await getInstallationId(githubAppClient, enableOrgLevel, payload);
+  const installationId = await getInstallationId(githubAppClient, enableOrgLevel, payload, appIndex);
 
   try {
-    const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl);
+    const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl, appIndex);
     return await createOctokitClient(ghAuth.token, ghesApiUrl);
   } catch (error) {
-    if (payload.installationId === 0 || getErrorStatus(error) !== 404) {
+    // The installation id can be stale when it was reused from the webhook payload or from the
+    // pre-configured per-app value while the app was uninstalled and reinstalled. Re-resolve the
+    // installation via the API once and retry with the same app before giving up.
+    if (getErrorStatus(error) !== 404) {
       throw error;
     }
 
-    installationId = await resolveInstallationId(githubAppClient, enableOrgLevel, payload);
-    if (installationId === payload.installationId) {
+    const resolvedInstallationId = await resolveInstallationId(githubAppClient, enableOrgLevel, payload);
+    if (resolvedInstallationId === installationId) {
       throw error;
     }
 
-    logger.warn('Retrying GitHub installation auth with installation resolved for current app', {
-      eventInstallationId: payload.installationId,
-      resolvedInstallationId: installationId,
+    logger.warn('Retrying GitHub installation auth with installation resolved for the selected app', {
+      staleInstallationId: installationId,
+      resolvedInstallationId,
+      appIndex,
       repositoryOwner: payload.repositoryOwner,
       repositoryName: payload.repositoryName,
     });
 
-    const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl);
+    const ghAuth = await createGithubInstallationAuth(resolvedInstallationId, ghesApiUrl, appIndex);
     return await createOctokitClient(ghAuth.token, ghesApiUrl);
   }
 }
@@ -94,7 +99,10 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
 
   const { ghesApiUrl, ghesBaseUrl } = getGitHubEnterpriseApiUrl();
 
+  // Select one GitHub App for this entire invocation so every API call in the
+  // batch draws from the same rate-limit bucket.
   const ghAuth = await createGithubAppAuth(undefined, ghesApiUrl);
+  const appIdx = ghAuth.appIndex;
   const githubAppClient = await createOctokitClient(ghAuth.token, ghesApiUrl);
 
   // A map of either owner or owner/repo name to Octokit client, so we use a
@@ -157,6 +165,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
         enableOrgLevel,
         payload,
         ghesApiUrl,
+        appIdx,
       );
 
       entry = {
@@ -218,7 +227,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       if (enableJobQueuedCheck) {
         let jobQueued = true;
         try {
-          jobQueued = await isJobQueued(githubInstallationClient, message);
+          jobQueued = await isJobQueued(githubInstallationClient, message, appIdx);
         } catch (e) {
           // An unsupported event type is not a transient fault — the check can never
           // succeed for it, so lets skip
@@ -299,6 +308,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
     });
 
     const githubRunnerConfig: CreateGitHubRunnerConfig = {
+      appIndex: appIdx,
       ephemeral: ephemeralEnabled,
       enableJitConfig,
       ghesBaseUrl,

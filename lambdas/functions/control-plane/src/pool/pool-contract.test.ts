@@ -14,6 +14,7 @@ vi.mock('../github/auth', () => ({
   createGithubAppAuth: vi.fn(),
   createGithubInstallationAuth: vi.fn(),
   createOctokitClient: vi.fn(),
+  getStoredInstallationId: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('../scale-runners/github-runner', () => ({

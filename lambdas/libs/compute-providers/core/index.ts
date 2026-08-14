@@ -10,6 +10,8 @@ export type LambdaRunnerSource = 'scale-up-lambda' | 'pool-lambda';
 export type RunnerType = 'Org' | 'Repo';
 
 export interface CreateGitHubRunnerConfig {
+  /** Index of the GitHub App selected for this flow; used to attribute rate-limit metrics per app. */
+  appIndex?: number;
   ephemeral: boolean;
   ghesBaseUrl?: string;
   enableJitConfig: boolean;
