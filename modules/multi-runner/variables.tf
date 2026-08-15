@@ -23,18 +23,8 @@ variable "github_app" {
       name = string
     }))
   })
-
-  validation {
-    condition     = (var.github_app.key_base64 != null || var.github_app.key_base64_ssm != null) && (var.github_app.id != null || var.github_app.id_ssm != null) && (var.github_app.webhook_secret != null || var.github_app.webhook_secret_ssm != null)
-    error_message = <<EOF
-     You must set all of the following parameters, choosing one option from each pair:
-      - `key_base64` or `key_base64_ssm`
-      - `id` or `id_ssm`
-      - `webhook_secret` or `webhook_secret_ssm`
-    EOF
-  }
+  default = null
 }
-
 
 variable "additional_github_apps" {
   description = <<-EOF
@@ -593,11 +583,13 @@ variable "aws_region" {
 variable "vpc_id" {
   description = "The VPC for security groups of the action runners."
   type        = string
+  default     = null
 }
 
 variable "subnet_ids" {
   description = "List of subnets in which the action runners will be launched, the subnets needs to be subnets in the `vpc_id`."
   type        = list(string)
+  default     = null
 }
 
 variable "enable_managed_runner_security_group" {
