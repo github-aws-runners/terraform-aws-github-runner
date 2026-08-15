@@ -137,15 +137,15 @@ module "multi_runner" {
       repository_white_list = [
         "example/example-repository",
       ]
-    }
 
-    # The URL also configures the shared termination watcher. TLS verification
-    # and the User-Agent remain runner-stack GitHub-client settings.
-    enterprise_server = {
-      url        = var.ghes_url
-      ssl_verify = true
+      # The URL also configures the shared termination watcher. TLS verification
+      # and the User-Agent remain runner-stack GitHub-client settings.
+      enterprise_server = {
+        url        = var.ghes_url
+        ssl_verify = true
+      }
+      user_agent = "github-aws-runners"
     }
-    user_agent = "github-aws-runners"
 
     # Shared-webhook routing and matcher storage are global-only.
     webhook = {
@@ -431,7 +431,7 @@ module "multi_runner" {
 
 ## Inputs, tags, and outputs
 
-The `experimental` object has global siblings for `tags`, `roles`, `runner`, `github`, `enterprise_server`, `user_agent`, `webhook`, `lambda`, `queue`, `ssm`, `observability`, and `compute_provider`, in addition to its lane map at `multi_runner_config`. Global `lambda` settings include runner-stack artifact selection, the shared artifact bucket, runtime, architecture, principals, networking, role, and tag values plus nested `scale_up`, `scale_down`, `webhook`, and `pool` blocks. Runtime, architecture, networking, role, and tag globals configure v2 runner stacks and the shared webhook, runner-binary syncer, termination watcher, and AMI housekeeper. `lambda.principals` configures v2 runner-stack, runner-binary-syncer, termination-watcher, and AMI-housekeeper roles, but not the shared webhook role. Root `webhook` owns shared routing and matcher storage; `lambda.webhook` owns the webhook artifact, API Gateway access logs, sizing, and component tags. The termination watcher, AMI housekeeper, and runner-binary syncer have nested component owners under `compute_provider.ec2`. The active flat-only settings are `prefix`, `aws_partition`, and `aws_region`; legacy `iam_overrides` remains in the schema without an active consumer.
+The `experimental` object has global siblings for `tags`, `roles`, `runner`, `github`, `webhook`, `lambda`, `queue`, `ssm`, `observability`, and `compute_provider`, in addition to its lane map at `multi_runner_config`. Global `lambda` settings include runner-stack artifact selection, the shared artifact bucket, runtime, architecture, principals, networking, role, and tag values plus nested `scale_up`, `scale_down`, `webhook`, and `pool` blocks. Runtime, architecture, networking, role, and tag globals configure v2 runner stacks and the shared webhook, runner-binary syncer, termination watcher, and AMI housekeeper. `lambda.principals` configures v2 runner-stack, runner-binary-syncer, termination-watcher, and AMI-housekeeper roles, but not the shared webhook role. Root `webhook` owns shared routing and matcher storage; `lambda.webhook` owns the webhook artifact, API Gateway access logs, sizing, and component tags. The termination watcher, AMI housekeeper, and runner-binary syncer have nested component owners under `compute_provider.ec2`. The active flat-only settings are `prefix`, `aws_partition`, and `aws_region`; legacy `iam_overrides` remains in the schema without an active consumer.
 
 Each v2 lane groups provider-neutral settings by owner: `runner`, `github`, `queue`, `lambda` (with nested `scale_up`, `scale_down`, and `pool`), `job_retry`, `ssm`, and `observability`. Backend settings live under `compute_provider.<provider>`. A nullable lane field inherits its corresponding experimental global when omitted or null, except that an external lane runner role suppresses inherited IAM management inputs. Precedence within a runner stack is therefore a non-null lane override followed by the global nested value, including that field's nested schema default. Per-lane precedence does not extend to singleton shared resources: the webhook, runner-binary syncer, termination watcher, AMI housekeeper, and shared GitHub App Parameter Store module consume global translated values only. The lane runner-binary enable switch is an exception only in that it determines whether its OS/architecture pair participates in the shared syncer set; all syncer and distribution-bucket settings remain global.
 
@@ -439,7 +439,7 @@ Global `experimental.queue` owns v2 build-queue defaults. `delay_webhook_event` 
 
 Queue encryption is global-only. Omitting the entire `experimental.queue.encryption` block defaults `sqs_managed_sse_enabled` to `true` and the KMS fields to null, matching flat `queue_encryption`. If callers supply an explicit block, all three leaf keys are required: use explicit nulls for inactive fields, with a non-null SQS-managed switch for the non-KMS mode or a non-null `kms_master_key_id` for KMS mode. It configures only the multi-runner build queues and their dead-letter queues, not runner-stack job-retry queues. Lanes cannot override encryption. The queue CMK and `experimental.ssm.kms_key_id` are independent. A distinct queue CMK reaches SQS, but current v2 webhook, scale-up, and job-retry IAM policies do not derive KMS grants from it; callers must grant those roles the required key permissions. The v1 translation retains the flat contract: lane delay, retention, redrive, and tags keep their stable sources, build-queue visibility comes from `runners_scale_up_lambda_timeout`, and encryption comes from `queue_encryption`.
 
-Global `experimental.github` owns the GitHub App credentials persisted or selected by shared SSM and used by v2 runner stacks: `app` is required and `additional_apps` defaults to `[]`. `github.repository_white_list` defaults to `[]` and filters the shared webhook when populated. Root `experimental.enterprise_server.url` defaults to `null` and configures both runner-stack GitHub clients and the shared termination watcher. `experimental.enterprise_server.ssl_verify` defaults to `true`, and `experimental.user_agent` defaults to `github-aws-runners`; both remain runner-stack client settings. Per-lane `github.organization_runners` remains a separate lane-owned registration-scope setting; lanes do not override credentials, repository filtering, the enterprise endpoint, or the User-Agent.
+Global `experimental.github` owns the GitHub App credentials persisted or selected by shared SSM and used by v2 runner stacks: `app` is required and `additional_apps` defaults to `[]`. `github.repository_white_list` defaults to `[]` and filters the shared webhook when populated. `experimental.github.enterprise_server.url` defaults to `null` and configures both runner-stack GitHub clients and the shared termination watcher. `experimental.github.enterprise_server.ssl_verify` defaults to `true`, and `experimental.github.user_agent` defaults to `github-aws-runners`; both remain runner-stack client settings. Per-lane `github.organization_runners` remains a separate lane-owned registration-scope setting; lanes do not override credentials, repository filtering, the enterprise endpoint, or the User-Agent.
 
 Shared SSM creates or selects Parameter Store credentials from the authoritative `experimental.github` object, and the webhook and every v2 runner stack consume the resulting references. Flat `github_app` and `additional_github_apps` seed only the stable-mode translation and impose no equality requirement in v2. The webhook does not make GitHub API requests.
 
