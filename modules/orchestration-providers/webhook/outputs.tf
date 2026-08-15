@@ -20,3 +20,11 @@ output "job_retry" {
     queue  = one(module.job_retry[*].job_retry_check_queue)
   } : null
 }
+
+output "runner_lifecycle" {
+  description = "Effective webhook-owned runner lifecycle consumed by runner-config bootstrap parameters."
+  value = {
+    ephemeral          = local.resolved_config.runner.ephemeral
+    jit_config_enabled = local.resolved_config.runner.jit_config_enabled
+  }
+}

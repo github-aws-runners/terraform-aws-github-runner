@@ -90,6 +90,18 @@ resource "terraform_data" "validate_experimental" {
         for runner_config in values(var.experimental.multi_runner_config) :
         runner_config.orchestration.webhook == null ? true :
         try(coalesce(
+          runner_config.orchestration.webhook.runner.boot_time_in_minutes,
+          var.experimental.orchestration.webhook.runner.boot_time_in_minutes,
+        ), null) != null
+      ])
+      error_message = "Each experimental webhook runner configuration must resolve orchestration.webhook.runner.boot_time_in_minutes from the configuration or experimental global webhook defaults."
+    }
+
+    precondition {
+      condition = alltrue([
+        for runner_config in values(var.experimental.multi_runner_config) :
+        runner_config.orchestration.webhook == null ? true :
+        try(coalesce(
           runner_config.orchestration.webhook.runner.maximum_count,
           var.experimental.orchestration.webhook.runner.maximum_count,
         ), null) != null
@@ -116,12 +128,12 @@ resource "terraform_data" "validate_experimental" {
             runner_config.orchestration.webhook.queue.visibility_timeout_seconds,
             var.experimental.orchestration.webhook.queue.visibility_timeout_seconds,
             ) >= 6 * coalesce(
-            runner_config.orchestration.webhook.lambda.scale_up.timeout,
-            var.experimental.orchestration.webhook.lambda.scale_up.timeout,
+            runner_config.orchestration.webhook.lambda.scale.up.timeout,
+            var.experimental.orchestration.webhook.lambda.scale.up.timeout,
           )
         )
       ])
-      error_message = "Each experimental orchestration.webhook.queue.visibility_timeout_seconds must be at least six times the resolved orchestration.webhook.lambda.scale_up.timeout."
+      error_message = "Each experimental orchestration.webhook.queue.visibility_timeout_seconds must be at least six times the resolved orchestration.webhook.lambda.scale.up.timeout."
     }
 
     precondition {
@@ -266,16 +278,16 @@ resource "terraform_data" "validate_experimental" {
     precondition {
       condition = !local.use_multi_runner_config_v2 || (
         !(
-          var.experimental.orchestration.webhook.lambda.scale.artifact.zip != null &&
-          var.experimental.orchestration.webhook.lambda.scale.artifact.s3 != null
+          var.experimental.orchestration.webhook.lambda.artifact.zip != null &&
+          var.experimental.orchestration.webhook.lambda.artifact.s3 != null
           ) && (
-          var.experimental.orchestration.webhook.lambda.scale.artifact.s3 == null || (
+          var.experimental.orchestration.webhook.lambda.artifact.s3 == null || (
             var.experimental.lambda.artifact.s3.bucket != null &&
-            try(var.experimental.orchestration.webhook.lambda.scale.artifact.s3.key != null, false)
+            try(var.experimental.orchestration.webhook.lambda.artifact.s3.key != null, false)
           )
         )
       )
-      error_message = "experimental.orchestration.webhook.lambda.scale.artifact must set at most one of zip or s3; an s3 wrapper requires experimental.lambda.artifact.s3.bucket and a non-null key."
+      error_message = "experimental.orchestration.webhook.lambda.artifact must set at most one of zip or s3; an s3 wrapper requires experimental.lambda.artifact.s3.bucket and a non-null key."
     }
 
     precondition {

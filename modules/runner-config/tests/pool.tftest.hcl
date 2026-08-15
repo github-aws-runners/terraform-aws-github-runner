@@ -88,7 +88,10 @@ variables {
   orchestration = {
     webhook = {
       runner = {
-        maximum_count = 9
+        boot_time_in_minutes = 8
+        ephemeral            = true
+        jit_config_enabled   = null
+        maximum_count        = 9
       }
       github = {
         organization_runners = true
@@ -100,11 +103,9 @@ variables {
         }
       }
       lambda = {
-        scale = {
-          artifact = {
-            s3 = {
-              key = "runners.zip"
-            }
+        artifact = {
+          s3 = {
+            key = "runners.zip"
           }
         }
         pool = {
@@ -138,11 +139,27 @@ run "plan_with_pool_enabled" {
   assert {
     condition = (
       !contains(keys(var.runner), "maximum_count")
+      && !contains(keys(var.runner), "boot_time_in_minutes")
+      && !contains(keys(var.runner), "ephemeral")
+      && !contains(keys(var.runner), "jit_config_enabled")
+      && var.orchestration.webhook.runner.boot_time_in_minutes == 8
+      && var.orchestration.webhook.runner.ephemeral
+      && var.orchestration.webhook.runner.jit_config_enabled == null
       && var.orchestration.webhook.runner.maximum_count == 9
       && module.webhook["webhook"].scale_up.lambda.environment[0].variables["RUNNERS_MAXIMUM_COUNT"] == "9"
+      && module.webhook["webhook"].scale_down.lambda.environment[0].variables["RUNNER_BOOT_TIME_IN_MINUTES"] == "8"
       && module.webhook["webhook"].pool.lambda.environment[0].variables["RUNNERS_MAXIMUM_COUNT"] == "9"
+      && module.webhook["webhook"].pool.lambda.environment[0].variables["RUNNER_BOOT_TIME_IN_MINUTES"] == "8"
     )
-    error_message = "Runner capacity must be owned by orchestration.webhook.runner and routed to webhook scale-up and pool, not retained in the common runner contract."
+    error_message = "Runner capacity and boot time must be owned by orchestration.webhook.runner and routed to webhook controls, not retained in the common runner contract."
+  }
+
+  assert {
+    condition = (
+      aws_ssm_parameter.runner_agent_mode.value == "ephemeral"
+      && aws_ssm_parameter.jit_config_enabled.value == "true"
+    )
+    error_message = "Runner-config must serialize the webhook provider's resolved lifecycle contract without duplicating its JIT fallback."
   }
 
   assert {
@@ -239,8 +256,8 @@ run "plan_with_pool_enabled" {
   }
 
   assert {
-    condition     = module.webhook["webhook"].scale_down.lambda.environment[0].variables["RUNNER_BOOT_TIME_IN_MINUTES"] == "5"
-    error_message = "Scale-down must merge the EC2 environment fragment."
+    condition     = module.webhook["webhook"].scale_down.lambda.environment[0].variables["RUNNER_BOOT_TIME_IN_MINUTES"] == "8"
+    error_message = "Scale-down must receive boot time from the webhook orchestration configuration."
   }
 
   assert {
@@ -556,11 +573,9 @@ run "job_retry_uses_common_runner_configuration_identity" {
           }
         }
         lambda = {
-          scale = {
-            artifact = {
-              s3 = {
-                key = "runners.zip"
-              }
+          artifact = {
+            s3 = {
+              key = "runners.zip"
             }
           }
         }

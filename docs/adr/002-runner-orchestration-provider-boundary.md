@@ -48,7 +48,10 @@ experimental = {
       orchestration = {
         webhook = {
           runner = {
-            maximum_count = 4
+            boot_time_in_minutes = 5
+            ephemeral            = true
+            jit_config_enabled   = null
+            maximum_count        = 4
           }
 
           github = {
@@ -81,23 +84,26 @@ Validation counts non-null provider blocks rather than naming one special case. 
 
 The webhook global namespace owns:
 
+- the default runner boot timeout used by webhook scale-down and pool components;
+- the default ephemeral and just-in-time registration lifecycle used by webhook controls and runner bootstrap;
 - the default maximum runner count enforced by webhook scale-up and pool components;
+- the repository allow list enforced by the shared webhook;
 - queue-selection strategy, EventBridge routing, and matcher-parameter tier;
 - build-queue defaults, redrive behavior, tags, and encryption;
 - the shared webhook Lambda configuration and artifact selection;
-- the scale-control artifact selection; and
+- the runner-control artifact shared by scale, pool, and job-retry; and
 - default scale-up, scale-down, and pool component settings.
 
 Job-retry remains a per-runner-configuration webhook setting in this phase; its
 typed block supplies its own defaults rather than inheriting a global block.
 
-The maximum runner count is likewise provider-owned rather than common runner identity. Its canonical paths are `experimental.orchestration.webhook.runner.maximum_count` for the global default and `experimental.multi_runner_config.<configuration>.orchestration.webhook.runner.maximum_count` for a runner-configuration override. Stable-v1 translation maps the existing required `runners_maximum_count` into the latter path, and the unchanged stable `modules/runners` call reads it from that canonical provider block. No `runner.maximum_count` compatibility alias is retained in the experimental object.
+Runner boot time, ephemeral mode, JIT configuration, and maximum runner count are webhook-provider settings rather than common runner identity. Their canonical paths live under `experimental.orchestration.webhook.runner`, with matching paths under `experimental.multi_runner_config.<configuration>.orchestration.webhook.runner` for runner-configuration overrides. Stable-v1 translation maps the existing lifecycle, boot-time, and capacity inputs into those provider paths, and the unchanged stable `modules/runners` call reads from the canonical provider block. No compatibility aliases are retained under the experimental common `runner` object. The webhook provider resolves a null JIT setting to the effective ephemeral mode, exposes that lifecycle contract to runner-config bootstrap, injects boot time into scale-down and pool, and keeps these settings out of compute-provider capabilities.
 
-The common `experimental.github` block continues to own GitHub API client settings shared across implementations, including `enterprise_server` and `user_agent`. Webhook-specific GitHub settings are limited to fields such as `organization_runners`.
+The common `experimental.github` block continues to own credentials and GitHub API client settings shared across implementations, including `enterprise_server` and `user_agent`. Repository filtering belongs to the shared webhook at `experimental.orchestration.webhook.github.repository_white_list`; per-configuration `organization_runners` remains in the same provider-owned GitHub block.
 
 The common `experimental.lambda` block contains only provider-neutral Lambda substrate: runtime, architecture, networking, role settings, additional principals, tags, and an optional shared artifact bucket. It does not select a provider archive. Each component owner supplies its own local zip or S3 object key and version.
 
-The provider-neutral SSM housekeeper owns its artifact selector under `ssm.housekeeper.lambda.artifact`. A runner-configuration selection overrides the global `experimental.ssm.housekeeper.lambda.artifact`; an S3 selection combines its key and optional object version with the common Lambda artifact bucket, a zip selection uses its local path, and no selection uses runner-config's packaged runner control-plane archive. This selector is independent of the webhook scale artifact. Stable-v1 translation maps the existing runner artifact into both canonical component contracts so the translated representation remains complete without changing the stable resource path.
+The webhook provider owns one runner-control artifact at `orchestration.webhook.lambda.artifact`, shared by scale, pool, and job-retry. Its `lambda.scale` child contains only `up` and `down` configuration, while the ingress webhook retains its separate `lambda.webhook.artifact`. The provider-neutral SSM housekeeper owns its artifact selector under `ssm.housekeeper.lambda.artifact`. A runner-configuration selection overrides the global `experimental.ssm.housekeeper.lambda.artifact`; an S3 selection combines its key and optional object version with the common Lambda artifact bucket, a zip selection uses its local path, and no selection uses runner-config's packaged runner control-plane archive. This selector is independent of the webhook runner-control artifact. Stable-v1 translation maps the existing runner artifact into both canonical component contracts so the translated representation remains complete without changing the stable resource path.
 
 For a selected webhook provider, resolution follows:
 

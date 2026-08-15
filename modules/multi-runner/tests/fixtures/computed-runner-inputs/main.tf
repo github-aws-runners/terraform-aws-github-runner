@@ -52,11 +52,9 @@ module "multi_runner" {
         }
 
         lambda = {
-          scale = {
-            artifact = {
-              s3 = {
-                key = "nested-runners.zip"
-              }
+          artifact = {
+            s3 = {
+              key = "nested-runners.zip"
             }
           }
 

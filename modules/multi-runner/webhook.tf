@@ -49,7 +49,7 @@ module "webhook" {
 
   role_path                 = try(coalesce(local.translated_experimental.lambda.role.path, local.translated_experimental.roles.path), null)
   role_permissions_boundary = try(coalesce(local.translated_experimental.lambda.role.permissions_boundary, local.translated_experimental.roles.permissions_boundary), null)
-  repository_white_list     = local.translated_experimental.github.repository_white_list
+  repository_white_list     = local.translated_experimental.orchestration.webhook.github.repository_white_list
   queue_selection_strategy  = local.translated_experimental.orchestration.webhook.queue_selection_strategy
 
   lambda_subnet_ids         = local.translated_experimental.lambda.subnet_ids

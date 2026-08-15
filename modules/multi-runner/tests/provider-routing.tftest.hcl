@@ -328,7 +328,6 @@ run "stable_v1_keeps_legacy_runner_module" {
       && toset(keys(local.raw_translated_experimental.github)) == toset([
         "app",
         "additional_apps",
-        "repository_white_list",
         "enterprise_server",
         "user_agent",
       ])
@@ -350,15 +349,28 @@ run "stable_v1_keeps_legacy_runner_module" {
         "eventbridge",
         "matcher_config_parameter_store_tier",
         "runner",
+        "github",
         "lambda",
         "queue",
       ])
+      && toset(keys(local.raw_translated_experimental.orchestration.webhook.runner)) == toset([
+        "boot_time_in_minutes",
+        "ephemeral",
+        "jit_config_enabled",
+        "maximum_count",
+      ])
+      && toset(keys(local.raw_translated_experimental.orchestration.webhook.github)) == toset([
+        "repository_white_list",
+      ])
       && toset(keys(local.raw_translated_experimental.orchestration.webhook.lambda)) == toset([
+        "artifact",
         "scale",
-        "scale_up",
-        "scale_down",
         "webhook",
         "pool",
+      ])
+      && toset(keys(local.raw_translated_experimental.orchestration.webhook.lambda.scale)) == toset([
+        "up",
+        "down",
       ])
       && toset(keys(local.raw_translated_experimental.multi_runner_config["linux"])) == toset([
         "tags",
@@ -389,9 +401,12 @@ run "stable_v1_keeps_legacy_runner_module" {
         "matcherConfig",
       ])
       && toset(keys(local.raw_translated_experimental.multi_runner_config["linux"].orchestration.webhook.lambda)) == toset([
-        "scale_up",
-        "scale_down",
+        "scale",
         "pool",
+      ])
+      && toset(keys(local.raw_translated_experimental.multi_runner_config["linux"].orchestration.webhook.lambda.scale)) == toset([
+        "up",
+        "down",
       ])
       && toset(keys(local.raw_translated_experimental.multi_runner_config["linux"].orchestration.webhook.queue)) == toset([
         "delay_webhook_event",
@@ -411,8 +426,15 @@ run "stable_v1_keeps_legacy_runner_module" {
       && toset(keys(local.raw_translated_experimental.multi_runner_config["linux"].compute_provider)) == toset(["ec2"])
       && toset(keys(local.raw_translated_experimental.multi_runner_config["linux"].compute_provider.ec2.binaries_syncer)) == toset(["enabled"])
       && !contains(keys(local.raw_translated_experimental.multi_runner_config["linux"].ssm), "kms_key_id")
+      && !contains(keys(local.raw_translated_experimental.runner), "boot_time_in_minutes")
+      && !contains(keys(local.raw_translated_experimental.runner), "ephemeral")
+      && !contains(keys(local.raw_translated_experimental.runner), "jit_config_enabled")
       && !contains(keys(local.raw_translated_experimental.runner), "maximum_count")
+      && !contains(keys(local.raw_translated_experimental.multi_runner_config["linux"].runner), "boot_time_in_minutes")
+      && !contains(keys(local.raw_translated_experimental.multi_runner_config["linux"].runner), "ephemeral")
+      && !contains(keys(local.raw_translated_experimental.multi_runner_config["linux"].runner), "jit_config_enabled")
       && !contains(keys(local.raw_translated_experimental.multi_runner_config["linux"].runner), "maximum_count")
+      && local.raw_translated_experimental.orchestration.webhook.runner.boot_time_in_minutes == 5
       && !contains(keys(local.raw_translated_experimental.multi_runner_config["linux"]), "scale_up")
     )
     error_message = "Stable v1 must translate into the exact raw experimental schema before defaults, queue event-source mappings, binary artifacts, or runner-config component shapes are resolved."
@@ -436,25 +458,25 @@ run "stable_v1_keeps_legacy_runner_module" {
       && local.raw_translated_experimental.roles.permissions_boundary == var.role_permissions_boundary
       && local.raw_translated_experimental.github.app == var.github_app
       && local.raw_translated_experimental.github.additional_apps == var.additional_github_apps
-      && local.raw_translated_experimental.github.repository_white_list == var.repository_white_list
+      && local.raw_translated_experimental.orchestration.webhook.github.repository_white_list == var.repository_white_list
       && local.raw_translated_experimental.github.enterprise_server.url == var.ghes_url
       && local.raw_translated_experimental.github.enterprise_server.ssl_verify == var.ghes_ssl_verify
       && local.raw_translated_experimental.github.user_agent == var.user_agent
       && local.raw_translated_experimental.orchestration.webhook.queue_selection_strategy == var.queue_selection_strategy
       && local.raw_translated_experimental.orchestration.webhook.eventbridge == var.eventbridge
       && local.raw_translated_experimental.orchestration.webhook.matcher_config_parameter_store_tier == var.matcher_config_parameter_store_tier
-      && local.raw_translated_experimental.orchestration.webhook.lambda.scale.artifact.zip == null
+      && local.raw_translated_experimental.orchestration.webhook.lambda.artifact.zip == null
       && local.raw_translated_experimental.lambda.artifact.s3.bucket == var.lambda_s3_bucket
-      && local.raw_translated_experimental.orchestration.webhook.lambda.scale.artifact.s3.key == var.runners_lambda_s3_key
-      && local.raw_translated_experimental.orchestration.webhook.lambda.scale.artifact.s3.object_version == var.runners_lambda_s3_object_version
+      && local.raw_translated_experimental.orchestration.webhook.lambda.artifact.s3.key == var.runners_lambda_s3_key
+      && local.raw_translated_experimental.orchestration.webhook.lambda.artifact.s3.object_version == var.runners_lambda_s3_object_version
       && local.raw_translated_experimental.lambda.runtime == var.lambda_runtime
       && local.raw_translated_experimental.lambda.architecture == var.lambda_architecture
       && local.raw_translated_experimental.lambda.principals == var.lambda_principals
       && local.raw_translated_experimental.lambda.subnet_ids == var.lambda_subnet_ids
       && local.raw_translated_experimental.lambda.security_group_ids == var.lambda_security_group_ids
       && local.raw_translated_experimental.lambda.tags == var.lambda_tags
-      && local.raw_translated_experimental.orchestration.webhook.lambda.scale_up.event_source_mapping.batch_size == var.lambda_event_source_mapping_batch_size
-      && local.raw_translated_experimental.orchestration.webhook.lambda.scale_up.event_source_mapping.maximum_batching_window_in_seconds == var.lambda_event_source_mapping_maximum_batching_window_in_seconds
+      && local.raw_translated_experimental.orchestration.webhook.lambda.scale.up.event_source_mapping.batch_size == var.lambda_event_source_mapping_batch_size
+      && local.raw_translated_experimental.orchestration.webhook.lambda.scale.up.event_source_mapping.maximum_batching_window_in_seconds == var.lambda_event_source_mapping_maximum_batching_window_in_seconds
       && local.raw_translated_experimental.orchestration.webhook.lambda.webhook.artifact.zip == null
       && local.raw_translated_experimental.orchestration.webhook.lambda.webhook.artifact.s3.key == var.webhook_lambda_s3_key
       && local.raw_translated_experimental.orchestration.webhook.lambda.webhook.artifact.s3.object_version == var.webhook_lambda_s3_object_version
@@ -517,9 +539,15 @@ run "stable_v1_keeps_legacy_runner_module" {
       && local.raw_translated_experimental.compute_provider.ec2.runner_binaries.syncer.schedule.state == var.state_event_rule_binaries_syncer
       && local.raw_translated_experimental.multi_runner_config["linux"].runner.os == var.multi_runner_config["linux"].runner_config.runner_os
       && local.raw_translated_experimental.multi_runner_config["linux"].runner.architecture == var.multi_runner_config["linux"].runner_config.runner_architecture
+      && !contains(keys(local.raw_translated_experimental.multi_runner_config["linux"].runner), "boot_time_in_minutes")
+      && !contains(keys(local.raw_translated_experimental.multi_runner_config["linux"].runner), "ephemeral")
+      && !contains(keys(local.raw_translated_experimental.multi_runner_config["linux"].runner), "jit_config_enabled")
+      && local.raw_translated_experimental.multi_runner_config["linux"].orchestration.webhook.runner.boot_time_in_minutes == var.multi_runner_config["linux"].runner_config.runner_boot_time_in_minutes
+      && local.raw_translated_experimental.multi_runner_config["linux"].orchestration.webhook.runner.ephemeral == var.multi_runner_config["linux"].runner_config.enable_ephemeral_runners
+      && local.raw_translated_experimental.multi_runner_config["linux"].orchestration.webhook.runner.jit_config_enabled == var.multi_runner_config["linux"].runner_config.enable_jit_config
       && local.raw_translated_experimental.multi_runner_config["linux"].orchestration.webhook.runner.maximum_count == var.multi_runner_config["linux"].runner_config.runners_maximum_count
       && local.raw_translated_experimental.multi_runner_config["linux"].orchestration.webhook.github.organization_runners == var.multi_runner_config["linux"].runner_config.enable_organization_runners
-      && local.raw_translated_experimental.multi_runner_config["linux"].orchestration.webhook.lambda.scale_up.event_source_mapping.batch_size == var.multi_runner_config["linux"].runner_config.lambda_event_source_mapping_batch_size
+      && local.raw_translated_experimental.multi_runner_config["linux"].orchestration.webhook.lambda.scale.up.event_source_mapping.batch_size == var.multi_runner_config["linux"].runner_config.lambda_event_source_mapping_batch_size
       && local.raw_translated_experimental.multi_runner_config["linux"].orchestration.webhook.queue.delay_webhook_event == var.multi_runner_config["linux"].runner_config.delay_webhook_event
       && local.raw_translated_experimental.multi_runner_config["linux"].orchestration.webhook.queue.job_queue_retention_in_seconds == var.multi_runner_config["linux"].runner_config.job_queue_retention_in_seconds
       && local.raw_translated_experimental.multi_runner_config["linux"].orchestration.webhook.queue.visibility_timeout_seconds == var.runners_scale_up_lambda_timeout
@@ -981,10 +1009,8 @@ run "experimental_v2_routes_through_provider_stack" {
       orchestration = {
         webhook = {
           lambda = {
-            scale = {
-              artifact = {
-                zip = "README.md"
-              }
+            artifact = {
+              zip = "README.md"
             }
 
             webhook = {
@@ -1046,12 +1072,14 @@ run "experimental_v2_routes_through_provider_stack" {
               }
 
               lambda = {
-                scale_down = {
-                  idle_config = [{
-                    cron      = "* * * * *"
-                    timeZone  = "UTC"
-                    idleCount = 1
-                  }]
+                scale = {
+                  down = {
+                    idle_config = [{
+                      cron      = "* * * * *"
+                      timeZone  = "UTC"
+                      idleCount = 1
+                    }]
+                  }
                 }
 
                 pool = {
@@ -1155,30 +1183,35 @@ run "experimental_v2_routes_through_provider_stack" {
       length(local.translated_experimental.tags) == 0
       && local.translated_experimental.roles.path == null
       && local.translated_experimental.roles.permissions_boundary == null
-      && local.translated_experimental.multi_runner_config["linux"].runner.boot_time_in_minutes == 5
       && !local.translated_experimental.multi_runner_config["linux"].runner.disable_default_labels
       && local.translated_experimental.multi_runner_config["linux"].runner.group_name == "Default"
       && local.translated_experimental.multi_runner_config["linux"].runner.name_prefix == ""
       && !local.translated_experimental.multi_runner_config["linux"].runner.run_as_root
       && local.translated_experimental.multi_runner_config["linux"].runner.run_as == "ec2-user"
-      && !local.translated_experimental.multi_runner_config["linux"].runner.ephemeral
-      && local.translated_experimental.multi_runner_config["linux"].runner.jit_config_enabled == null
       && !local.translated_experimental.multi_runner_config["linux"].runner.auto_update_disabled
       && local.translated_experimental.multi_runner_config["linux"].runner.hooks.job_completed == ""
       && local.translated_experimental.multi_runner_config["linux"].runner.iam.path == null
       && local.translated_experimental.multi_runner_config["linux"].runner.iam.permissions_boundary == null
+      && !contains(keys(local.translated_experimental.multi_runner_config["linux"].runner), "boot_time_in_minutes")
+      && !contains(keys(local.translated_experimental.multi_runner_config["linux"].runner), "ephemeral")
+      && !contains(keys(local.translated_experimental.multi_runner_config["linux"].runner), "jit_config_enabled")
       && !contains(keys(local.translated_experimental.multi_runner_config["linux"].runner), "maximum_count")
+      && local.translated_experimental.multi_runner_config["linux"].orchestration.webhook.runner.boot_time_in_minutes == 5
+      && !local.translated_experimental.multi_runner_config["linux"].orchestration.webhook.runner.ephemeral
+      && local.translated_experimental.multi_runner_config["linux"].orchestration.webhook.runner.jit_config_enabled == null
       && local.translated_experimental.multi_runner_config["linux"].orchestration.webhook.runner.maximum_count == 2
       && module.runner_configs["linux"].orchestration.webhook.scale_up.lambda.environment[0].variables["RUNNERS_MAXIMUM_COUNT"] == "2"
+      && module.runner_configs["linux"].orchestration.webhook.scale_down.lambda.environment[0].variables["RUNNER_BOOT_TIME_IN_MINUTES"] == "5"
       && module.runner_configs["linux"].orchestration.webhook.pool.lambda.environment[0].variables["RUNNERS_MAXIMUM_COUNT"] == "2"
+      && module.runner_configs["linux"].orchestration.webhook.pool.lambda.environment[0].variables["RUNNER_BOOT_TIME_IN_MINUTES"] == "5"
     )
-    error_message = "Experimental v2 common runner defaults must stay provider-neutral while webhook-owned capacity reaches scale-up and pool without stable-input fallback."
+    error_message = "Experimental v2 common runner defaults must stay provider-neutral while webhook-owned lifecycle, capacity, and boot time reach their controls without stable-input fallback."
   }
 
   assert {
     condition = (
-      local.translated_experimental.orchestration.webhook.lambda.scale.artifact.zip == "README.md"
-      && local.translated_experimental.orchestration.webhook.lambda.scale.artifact.s3 == null
+      local.translated_experimental.orchestration.webhook.lambda.artifact.zip == "README.md"
+      && local.translated_experimental.orchestration.webhook.lambda.artifact.s3 == null
       && local.translated_experimental.lambda.artifact.s3.bucket == null
       && local.translated_experimental.multi_runner_config["linux"].lambda.artifact.s3.bucket == null
       && toset(keys(local.translated_experimental.multi_runner_config["linux"].lambda)) == toset([
@@ -1193,13 +1226,16 @@ run "experimental_v2_routes_through_provider_stack" {
       ])
       && !contains(keys(local.translated_experimental.multi_runner_config["linux"].lambda), "zip")
       && !contains(keys(local.translated_experimental.multi_runner_config["linux"].lambda), "s3")
-      && local.translated_experimental.multi_runner_config["linux"].orchestration.webhook.lambda.scale.artifact.zip == "README.md"
-      && local.translated_experimental.multi_runner_config["linux"].orchestration.webhook.lambda.scale.artifact.s3 == null
+      && local.translated_experimental.multi_runner_config["linux"].orchestration.webhook.lambda.artifact.zip == "README.md"
+      && local.translated_experimental.multi_runner_config["linux"].orchestration.webhook.lambda.artifact.s3 == null
       && toset(keys(local.translated_experimental.multi_runner_config["linux"].orchestration.webhook.lambda)) == toset([
+        "artifact",
         "scale",
-        "scale_up",
-        "scale_down",
         "pool",
+      ])
+      && toset(keys(local.translated_experimental.multi_runner_config["linux"].orchestration.webhook.lambda.scale)) == toset([
+        "up",
+        "down",
       ])
       && toset(keys(local.translated_experimental.multi_runner_config["linux"].orchestration.webhook.queue)) == toset([
         "delay_webhook_event",
@@ -1222,14 +1258,14 @@ run "experimental_v2_routes_through_provider_stack" {
       && module.runner_configs["linux"].orchestration.webhook.scale_up.lambda.s3_bucket == null
       && module.runner_configs["linux"].orchestration.webhook.scale_up.lambda.memory_size == 512
       && module.runner_configs["linux"].orchestration.webhook.scale_up.lambda.timeout == 30
-      && local.translated_experimental.multi_runner_config["linux"].orchestration.webhook.lambda.scale_up.reserved_concurrent_executions == 1
-      && local.translated_experimental.multi_runner_config["linux"].orchestration.webhook.lambda.scale_up.job_queued_check_enabled == null
-      && local.translated_experimental.multi_runner_config["linux"].orchestration.webhook.lambda.scale_up.event_source_mapping.batch_size == 10
-      && local.translated_experimental.multi_runner_config["linux"].orchestration.webhook.lambda.scale_up.event_source_mapping.maximum_batching_window_in_seconds == 0
+      && local.translated_experimental.multi_runner_config["linux"].orchestration.webhook.lambda.scale.up.reserved_concurrent_executions == 1
+      && local.translated_experimental.multi_runner_config["linux"].orchestration.webhook.lambda.scale.up.job_queued_check_enabled == null
+      && local.translated_experimental.multi_runner_config["linux"].orchestration.webhook.lambda.scale.up.event_source_mapping.batch_size == 10
+      && local.translated_experimental.multi_runner_config["linux"].orchestration.webhook.lambda.scale.up.event_source_mapping.maximum_batching_window_in_seconds == 0
       && module.runner_configs["linux"].orchestration.webhook.scale_down.lambda.memory_size == 512
       && module.runner_configs["linux"].orchestration.webhook.scale_down.lambda.timeout == 60
-      && local.translated_experimental.multi_runner_config["linux"].orchestration.webhook.lambda.scale_down.schedule_expression == "cron(*/5 * * * ? *)"
-      && local.translated_experimental.multi_runner_config["linux"].orchestration.webhook.lambda.scale_down.minimum_running_time_in_minutes == null
+      && local.translated_experimental.multi_runner_config["linux"].orchestration.webhook.lambda.scale.down.schedule_expression == "cron(*/5 * * * ? *)"
+      && local.translated_experimental.multi_runner_config["linux"].orchestration.webhook.lambda.scale.down.minimum_running_time_in_minutes == null
       && module.runner_configs["linux"].orchestration.webhook.pool.lambda.memory_size == 512
       && module.runner_configs["linux"].orchestration.webhook.pool.lambda.timeout == 60
       && local.translated_experimental.multi_runner_config["linux"].orchestration.webhook.lambda.pool.reserved_concurrent_executions == 1
@@ -1263,7 +1299,7 @@ run "experimental_v2_routes_through_provider_stack" {
     condition = (
       local.translated_experimental.github.app == var.experimental.github.app
       && local.translated_experimental.github.additional_apps == var.experimental.github.additional_apps
-      && length(local.translated_experimental.github.repository_white_list) == 0
+      && length(local.translated_experimental.orchestration.webhook.github.repository_white_list) == 0
       && !contains(keys(local.translated_experimental), "enterprise_server")
       && !contains(keys(local.translated_experimental), "user_agent")
       && local.translated_experimental.github.enterprise_server == var.experimental.github.enterprise_server
@@ -1277,7 +1313,7 @@ run "experimental_v2_routes_through_provider_stack" {
       && module.runner_configs["linux"].orchestration.webhook.scale_down.lambda.environment[0].variables["USER_AGENT"] == "github-aws-runners"
       && module.runner_configs["linux"].orchestration.webhook.pool.lambda.environment[0].variables["USER_AGENT"] == "github-aws-runners"
     )
-    error_message = "V2 runner configurations must use concrete nested GitHub connection defaults rather than deliberately different flat GHES and user-agent inputs."
+    error_message = "V2 runner configurations must use concrete nested GitHub connection defaults and the webhook-owned repository allow-list rather than deliberately different flat inputs."
   }
 
   assert {
@@ -1289,8 +1325,8 @@ run "experimental_v2_routes_through_provider_stack" {
       && local.translated_experimental.orchestration.webhook.lambda.webhook.artifact.zip == "README.md"
       && local.translated_experimental.orchestration.webhook.lambda.webhook.artifact.s3 == null
       && local.translated_experimental.orchestration.webhook.lambda.webhook.api_gateway_access_log_settings == null
-      && local.translated_experimental.orchestration.webhook.lambda.scale_up.event_source_mapping.batch_size == 10
-      && local.translated_experimental.orchestration.webhook.lambda.scale_up.event_source_mapping.maximum_batching_window_in_seconds == 0
+      && local.translated_experimental.orchestration.webhook.lambda.scale.up.event_source_mapping.batch_size == 10
+      && local.translated_experimental.orchestration.webhook.lambda.scale.up.event_source_mapping.maximum_batching_window_in_seconds == 0
     )
     error_message = "V2 webhook controls, the explicitly nested local artifact, API access-log defaults, and scale-up event-source mappings must avoid flat-input fallback."
   }
@@ -1548,8 +1584,8 @@ run "experimental_v2_routes_through_provider_stack" {
   }
 
   assert {
-    condition     = local.runner_config_by_provider.ec2["linux"].orchestration.webhook.lambda.scale_down.idle_config[0].idleCount == 1
-    error_message = "Provider-neutral idle configuration must remain in the common runner contract."
+    condition     = local.runner_config_by_provider.ec2["linux"].orchestration.webhook.lambda.scale.down.idle_config[0].idleCount == 1
+    error_message = "Webhook-owned idle configuration must remain in the orchestration provider input contract."
   }
 
   assert {
@@ -1717,7 +1753,6 @@ run "experimental_v2_applies_global_defaults_and_configuration_overrides" {
           key_base64     = "dGVzdA=="
           webhook_secret = "test-secret"
         }
-        repository_white_list = ["nested-owner/nested-repository"]
         enterprise_server = {
           url        = "https://experimental-shared.example.com"
           ssl_verify = false
@@ -1741,7 +1776,14 @@ run "experimental_v2_applies_global_defaults_and_configuration_overrides" {
       orchestration = {
         webhook = {
           runner = {
-            maximum_count = 2
+            boot_time_in_minutes = 6
+            ephemeral            = true
+            jit_config_enabled   = true
+            maximum_count        = 2
+          }
+
+          github = {
+            repository_white_list = ["nested-owner/nested-repository"]
           }
 
           queue_selection_strategy = "all"
@@ -1752,25 +1794,25 @@ run "experimental_v2_applies_global_defaults_and_configuration_overrides" {
           matcher_config_parameter_store_tier = "Advanced"
 
           lambda = {
+            artifact = {
+              s3 = {
+                key            = "nested-runners.zip"
+                object_version = "nested-runners-version"
+              }
+            }
+
             scale = {
-              artifact = {
-                s3 = {
-                  key            = "nested-runners.zip"
-                  object_version = "nested-runners-version"
+              up = {
+                memory_size = 768
+                timeout     = 40
+                event_source_mapping = {
+                  batch_size = 25
                 }
               }
-            }
 
-            scale_up = {
-              memory_size = 768
-              timeout     = 40
-              event_source_mapping = {
-                batch_size = 25
+              down = {
+                timeout = 75
               }
-            }
-
-            scale_down = {
-              timeout = 75
             }
 
             webhook = {
@@ -1936,14 +1978,19 @@ run "experimental_v2_applies_global_defaults_and_configuration_overrides" {
           orchestration = {
             webhook = {
               runner = {
-                maximum_count = 4
+                boot_time_in_minutes = 7
+                ephemeral            = false
+                jit_config_enabled   = false
+                maximum_count        = 4
               }
 
               lambda = {
-                scale_up = {
-                  memory_size = 896
-                  event_source_mapping = {
-                    batch_size = 50
+                scale = {
+                  up = {
+                    memory_size = 896
+                    event_source_mapping = {
+                      batch_size = 50
+                    }
                   }
                 }
 
@@ -1989,13 +2036,19 @@ run "experimental_v2_applies_global_defaults_and_configuration_overrides" {
     condition = (
       local.translated_experimental.multi_runner_config["resolved"].runner.os == "linux"
       && local.translated_experimental.multi_runner_config["resolved"].runner.architecture == "x64"
+      && !contains(keys(local.translated_experimental.multi_runner_config["resolved"].runner), "boot_time_in_minutes")
+      && !contains(keys(local.translated_experimental.multi_runner_config["resolved"].runner), "ephemeral")
+      && !contains(keys(local.translated_experimental.multi_runner_config["resolved"].runner), "jit_config_enabled")
+      && local.translated_experimental.multi_runner_config["resolved"].orchestration.webhook.runner.boot_time_in_minutes == 7
+      && !local.translated_experimental.multi_runner_config["resolved"].orchestration.webhook.runner.ephemeral
+      && !local.translated_experimental.multi_runner_config["resolved"].orchestration.webhook.runner.jit_config_enabled
       && local.translated_experimental.multi_runner_config["resolved"].orchestration.webhook.runner.maximum_count == 4
       && local.translated_experimental.multi_runner_config["resolved"].runner.group_name == "lane-group"
       && local.translated_experimental.ssm.housekeeper.lambda.artifact.s3.key == "global-ssm-housekeeper.zip"
       && local.translated_experimental.multi_runner_config["resolved"].ssm.housekeeper.lambda.artifact.zip == "README.md"
       && local.translated_experimental.multi_runner_config["resolved"].ssm.housekeeper.lambda.artifact.s3 == null
     )
-    error_message = "Common runner fields and webhook-owned capacity must resolve from their experimental global defaults before applying per-configuration overrides."
+    error_message = "Common runner fields and webhook-owned lifecycle, capacity, and boot time must resolve from their experimental global defaults before applying per-configuration overrides."
   }
 
   assert {
@@ -2053,16 +2106,16 @@ run "experimental_v2_applies_global_defaults_and_configuration_overrides" {
   assert {
     condition = (
       module.runner_configs["resolved"].orchestration.webhook.scale_up.lambda.runtime == "nodejs22.x"
-      && local.translated_experimental.orchestration.webhook.lambda.scale.artifact.zip == null
-      && local.translated_experimental.orchestration.webhook.lambda.scale.artifact.s3.key == "nested-runners.zip"
-      && local.translated_experimental.orchestration.webhook.lambda.scale.artifact.s3.object_version == "nested-runners-version"
+      && local.translated_experimental.orchestration.webhook.lambda.artifact.zip == null
+      && local.translated_experimental.orchestration.webhook.lambda.artifact.s3.key == "nested-runners.zip"
+      && local.translated_experimental.orchestration.webhook.lambda.artifact.s3.object_version == "nested-runners-version"
       && local.translated_experimental.lambda.artifact.s3.bucket == "experimental-lambda-artifacts"
       && local.translated_experimental.multi_runner_config["resolved"].lambda.artifact.s3.bucket == "experimental-lambda-artifacts"
       && !contains(keys(local.translated_experimental.multi_runner_config["resolved"].lambda), "zip")
       && !contains(keys(local.translated_experimental.multi_runner_config["resolved"].lambda), "s3")
-      && local.translated_experimental.multi_runner_config["resolved"].orchestration.webhook.lambda.scale.artifact.zip == null
-      && local.translated_experimental.multi_runner_config["resolved"].orchestration.webhook.lambda.scale.artifact.s3.key == "nested-runners.zip"
-      && local.translated_experimental.multi_runner_config["resolved"].orchestration.webhook.lambda.scale.artifact.s3.object_version == "nested-runners-version"
+      && local.translated_experimental.multi_runner_config["resolved"].orchestration.webhook.lambda.artifact.zip == null
+      && local.translated_experimental.multi_runner_config["resolved"].orchestration.webhook.lambda.artifact.s3.key == "nested-runners.zip"
+      && local.translated_experimental.multi_runner_config["resolved"].orchestration.webhook.lambda.artifact.s3.object_version == "nested-runners-version"
       && local.translated_experimental.lambda.principals == tolist([{
         type        = "Service"
         identifiers = tolist(["states.amazonaws.com"])
@@ -2074,7 +2127,7 @@ run "experimental_v2_applies_global_defaults_and_configuration_overrides" {
       && module.runner_configs["resolved"].orchestration.webhook.scale_up.lambda.timeout == 40
       && module.runner_configs["resolved"].orchestration.webhook.scale_down.lambda.timeout == 75
       && module.runner_configs["resolved"].orchestration.webhook.pool.lambda.memory_size == 448
-      && local.translated_experimental.multi_runner_config["resolved"].orchestration.webhook.lambda.scale_up.event_source_mapping.batch_size == 50
+      && local.translated_experimental.multi_runner_config["resolved"].orchestration.webhook.lambda.scale.up.event_source_mapping.batch_size == 50
       && module.runner_configs["resolved"].runner.role.path == "/experimental/"
       && module.runner_configs["resolved"].orchestration.webhook.scale_up.role.path == "/lane-lambda/"
     )
@@ -2119,6 +2172,7 @@ run "experimental_v2_applies_global_defaults_and_configuration_overrides" {
     condition = (
       local.translated_experimental.github.app == var.experimental.github.app
       && local.translated_experimental.github.additional_apps == var.experimental.github.additional_apps
+      && local.translated_experimental.orchestration.webhook.github.repository_white_list == var.experimental.orchestration.webhook.github.repository_white_list
       && !contains(keys(local.translated_experimental), "enterprise_server")
       && !contains(keys(local.translated_experimental), "user_agent")
       && local.translated_experimental.github.enterprise_server == var.experimental.github.enterprise_server
@@ -2192,11 +2246,11 @@ run "experimental_v2_applies_global_defaults_and_configuration_overrides" {
       && output.webhook.dispatcher == null
       && local.translated_experimental.orchestration.webhook.matcher_config_parameter_store_tier == "Advanced"
       && local.translated_experimental.orchestration.webhook.lambda.webhook.api_gateway_access_log_settings.destination_arn == "arn:aws:logs:eu-west-1:123456789012:log-group:nested-api-access"
-      && local.translated_experimental.orchestration.webhook.lambda.scale_up.event_source_mapping.batch_size == 25
-      && local.translated_experimental.orchestration.webhook.lambda.scale_up.event_source_mapping.maximum_batching_window_in_seconds == 0
+      && local.translated_experimental.orchestration.webhook.lambda.scale.up.event_source_mapping.batch_size == 25
+      && local.translated_experimental.orchestration.webhook.lambda.scale.up.event_source_mapping.maximum_batching_window_in_seconds == 0
       && !contains(keys(output.webhook.lambda.environment[0].variables), "GHES_URL")
     )
-    error_message = "The shared webhook must consume nested GitHub, routing, eventbridge, matcher-tier, artifact, API-access-log, Lambda, and role globals without flat-input leakage."
+    error_message = "The shared webhook must consume its provider-owned repository allow-list plus nested GitHub connection, routing, eventbridge, matcher-tier, artifact, API-access-log, Lambda, and role globals without flat-input leakage."
   }
 }
 
@@ -2279,10 +2333,8 @@ run "experimental_v2_layers_observability_and_ssm" {
           }
 
           lambda = {
-            scale = {
-              artifact = {
-                zip = "README.md"
-              }
+            artifact = {
+              zip = "README.md"
             }
 
             webhook = {
@@ -2912,10 +2964,8 @@ run "experimental_v2_prefers_nested_primary_github_app_over_flat" {
       orchestration = {
         webhook = {
           lambda = {
-            scale = {
-              artifact = {
-                zip = "README.md"
-              }
+            artifact = {
+              zip = "README.md"
             }
 
             webhook = {
@@ -3011,10 +3061,8 @@ run "experimental_v2_prefers_nested_additional_github_apps_over_flat" {
       orchestration = {
         webhook = {
           lambda = {
-            scale = {
-              artifact = {
-                zip = "README.md"
-              }
+            artifact = {
+              zip = "README.md"
             }
 
             webhook = {
@@ -3108,10 +3156,8 @@ run "experimental_v2_allows_mismatched_watcher_ghes_when_deregistration_disabled
       orchestration = {
         webhook = {
           lambda = {
-            scale = {
-              artifact = {
-                zip = "README.md"
-              }
+            artifact = {
+              zip = "README.md"
             }
 
             webhook = {
@@ -3213,10 +3259,8 @@ run "experimental_v2_termination_watcher_ignores_mismatched_flat_ghes_url" {
       orchestration = {
         webhook = {
           lambda = {
-            scale = {
-              artifact = {
-                zip = "README.md"
-              }
+            artifact = {
+              zip = "README.md"
             }
 
             webhook = {
@@ -3316,10 +3360,8 @@ run "experimental_v2_ignores_flat_only_shared_ssm_kms_key" {
           }
 
           lambda = {
-            scale = {
-              artifact = {
-                zip = "README.md"
-              }
+            artifact = {
+              zip = "README.md"
             }
 
             webhook = {
@@ -3404,10 +3446,8 @@ run "experimental_v2_uses_experimental_only_shared_ssm_kms_key" {
           }
 
           lambda = {
-            scale = {
-              artifact = {
-                zip = "README.md"
-              }
+            artifact = {
+              zip = "README.md"
             }
 
             webhook = {
@@ -3495,10 +3535,8 @@ run "experimental_v2_prefers_nested_shared_ssm_kms_key_over_flat" {
           }
 
           lambda = {
-            scale = {
-              artifact = {
-                zip = "README.md"
-              }
+            artifact = {
+              zip = "README.md"
             }
 
             webhook = {
@@ -3579,10 +3617,8 @@ run "experimental_v2_external_role_ignores_global_iam_management" {
       orchestration = {
         webhook = {
           lambda = {
-            scale = {
-              artifact = {
-                zip = "README.md"
-              }
+            artifact = {
+              zip = "README.md"
             }
 
             webhook = {
@@ -3789,10 +3825,8 @@ run "experimental_v2_layers_shared_and_component_tags" {
       orchestration = {
         webhook = {
           lambda = {
-            scale = {
-              artifact = {
-                zip = "README.md"
-              }
+            artifact = {
+              zip = "README.md"
             }
 
             webhook = {
@@ -3841,17 +3875,19 @@ run "experimental_v2_layers_shared_and_component_tags" {
               }
 
               lambda = {
-                scale_up = {
-                  tags = {
-                    ScaleUpOnly = "scale-up"
-                    Precedence  = "scale-up"
+                scale = {
+                  up = {
+                    tags = {
+                      ScaleUpOnly = "scale-up"
+                      Precedence  = "scale-up"
+                    }
                   }
-                }
 
-                scale_down = {
-                  tags = {
-                    ScaleDownOnly = "scale-down"
-                    Precedence    = "scale-down"
+                  down = {
+                    tags = {
+                      ScaleDownOnly = "scale-down"
+                      Precedence    = "scale-down"
+                    }
                   }
                 }
               }
@@ -4022,8 +4058,10 @@ run "experimental_v2_rejects_visibility_timeout_shorter_than_lambda_retry_window
       orchestration = {
         webhook = {
           lambda = {
-            scale_up = {
-              timeout = 40
+            scale = {
+              up = {
+                timeout = 40
+              }
             }
           }
         }
@@ -4445,12 +4483,10 @@ run "experimental_v2_rejects_runner_artifact_zip_and_s3" {
       orchestration = {
         webhook = {
           lambda = {
-            scale = {
-              artifact = {
-                zip = "README.md"
-                s3 = {
-                  key = "runners.zip"
-                }
+            artifact = {
+              zip = "README.md"
+              s3 = {
+                key = "runners.zip"
               }
             }
           }
@@ -4521,11 +4557,9 @@ run "experimental_v2_rejects_runner_artifact_bucket_without_key" {
       orchestration = {
         webhook = {
           lambda = {
-            scale = {
-              artifact = {
-                s3 = {
-                  key = null
-                }
+            artifact = {
+              s3 = {
+                key = null
               }
             }
           }
@@ -4588,11 +4622,9 @@ run "experimental_v2_rejects_runner_artifact_s3_without_bucket" {
       orchestration = {
         webhook = {
           lambda = {
-            scale = {
-              artifact = {
-                s3 = {
-                  key = "runners.zip"
-                }
+            artifact = {
+              s3 = {
+                key = "runners.zip"
               }
             }
           }
@@ -4995,10 +5027,8 @@ run "experimental_v2_accepts_distinct_queue_and_ssm_kms_keys" {
       orchestration = {
         webhook = {
           lambda = {
-            scale = {
-              artifact = {
-                zip = "README.md"
-              }
+            artifact = {
+              zip = "README.md"
             }
 
             webhook = {
