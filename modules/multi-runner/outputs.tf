@@ -23,14 +23,14 @@ output "runners_map" {
 }
 
 output "runners_map_v2" {
-  description = "Experimental v2 runner resources keyed by runner configuration. The orchestration object is canonical; scale_up, scale_down, and pool remain compatibility aliases."
+  description = "Experimental v2 runner resources keyed by runner configuration. The `orchestration_provider` object is canonical; `scale_up`, `scale_down`, and `pool` remain compatibility aliases."
   value = { for runner_key, runner in module.runner_configs : runner_key => {
-    runner        = runner.runner
-    orchestration = runner.orchestration
-    scale_up      = runner.scale_up
-    scale_down    = runner.scale_down
-    pool          = runner.pool
-    provider      = runner.provider
+    runner                 = runner.runner
+    orchestration_provider = runner.orchestration_provider
+    scale_up               = runner.scale_up
+    scale_down             = runner.scale_down
+    pool                   = runner.pool
+    provider               = runner.provider
     }
   }
 }
@@ -53,8 +53,8 @@ output "webhook" {
     lambda_role      = module.webhook.role
     endpoint         = "${module.webhook.gateway.api_endpoint}/${module.webhook.endpoint_relative_path}"
     webhook          = module.webhook.webhook
-    dispatcher       = local.translated_experimental.orchestration.webhook.eventbridge.enable ? module.webhook.dispatcher : null
-    eventbridge      = local.translated_experimental.orchestration.webhook.eventbridge.enable ? module.webhook.eventbridge : null
+    dispatcher       = local.translated_experimental.orchestration_provider.webhook.eventbridge.enable ? module.webhook.dispatcher : null
+    eventbridge      = local.translated_experimental.orchestration_provider.webhook.eventbridge.enable ? module.webhook.eventbridge : null
   }
 }
 

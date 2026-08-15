@@ -69,35 +69,6 @@ variable "runner" {
     }), {})
   })
 
-  validation {
-    condition     = contains(["linux", "osx", "windows"], var.runner.os)
-    error_message = "Valid values for runner.os are linux, osx, and windows."
-  }
-
-  validation {
-    condition     = length(var.runner.name_prefix) <= 45
-    error_message = "runner.name_prefix must be at most 45 characters."
-  }
-
-  validation {
-    condition     = var.runner.iam.role == null ? true : trimspace(var.runner.iam.role.arn) != ""
-    error_message = "runner.iam.role.arn must be a non-empty ARN when set."
-  }
-
-  validation {
-    condition     = var.runner.iam.role == null || length(var.runner.iam.managed_policy_arns) == 0
-    error_message = "runner.iam.managed_policy_arns cannot be set with an external runner.iam.role because external roles are not managed by this module."
-  }
-
-  validation {
-    condition     = var.runner.iam.additional_trust_policy_json == null ? true : can(jsondecode(var.runner.iam.additional_trust_policy_json))
-    error_message = "runner.iam.additional_trust_policy_json must be valid JSON when set."
-  }
-
-  validation {
-    condition     = var.runner.iam.role == null || var.runner.iam.additional_trust_policy_json == null
-    error_message = "runner.iam.additional_trust_policy_json cannot be set with an external runner.iam.role because external role trust is not managed by this module."
-  }
 }
 
 variable "github" {
@@ -161,10 +132,6 @@ variable "lambda" {
   })
   default = {}
 
-  validation {
-    condition     = contains(["arm64", "x86_64"], var.lambda.architecture)
-    error_message = "lambda.architecture must be arm64 or x86_64."
-  }
 }
 
 variable "ssm" {
@@ -225,13 +192,6 @@ variable "ssm" {
     }), {})
   })
 
-  validation {
-    condition = !(
-      var.ssm.housekeeper.lambda.artifact.zip != null &&
-      var.ssm.housekeeper.lambda.artifact.s3 != null
-    )
-    error_message = "ssm.housekeeper.lambda.artifact must select at most one of zip or s3."
-  }
 }
 
 variable "observability" {
@@ -277,21 +237,4 @@ variable "observability" {
   })
   default = {}
 
-  validation {
-    condition     = contains(["STANDARD", "INFREQUENT_ACCESS"], var.observability.logs.class)
-    error_message = "observability.logs.class must be STANDARD or INFREQUENT_ACCESS."
-  }
-
-  validation {
-    condition = contains([
-      "silly",
-      "trace",
-      "debug",
-      "info",
-      "warn",
-      "error",
-      "fatal",
-    ], var.observability.logs.level)
-    error_message = "observability.logs.level must be one of silly, trace, debug, info, warn, error, or fatal."
-  }
 }

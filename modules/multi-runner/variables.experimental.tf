@@ -71,69 +71,69 @@ variable "experimental" {
     - `lambda.tags`: Default tags for v2 runner-config functions and the shared webhook, runner-binary syncer, termination watcher, and AMI housekeeper. The default is `{}`.
     - `lambda.role.path`: IAM path for module-managed v2 Lambda roles and the shared webhook, runner-binary syncer, termination-watcher, and AMI-housekeeper roles. The default is null, which falls back to `roles.path`.
     - `lambda.role.permissions_boundary`: Permissions-boundary ARN for module-managed v2 Lambda roles and the shared webhook, runner-binary syncer, termination-watcher, and AMI-housekeeper roles. The default is null, which falls back to `roles.permissions_boundary`.
-    - `orchestration.webhook`: Global defaults for the workflow-job webhook control plane. This is a defaults namespace; every runner configuration still selects its demand controller independently under `multi_runner_config[].orchestration`, where exactly one typed provider block must be non-null.
-    - `orchestration.webhook.queue_selection_strategy`: Queue-selection strategy when multiple runner configurations match a job equally well. The default is `first`, which deterministically selects the first matching queue by priority. `random` spreads jobs across equally matched queues. `all` dispatches to every matching queue, favoring startup speed at the cost of multiple runner launches and registrations for one job.
-    - `orchestration.webhook.eventbridge.enable`: Routes accepted webhook events through EventBridge when true. The default is `true`, and the value must be known during planning because it selects the webhook implementation.
-    - `orchestration.webhook.eventbridge.accept_events`: EventBridge event types accepted by the shared webhook. The default is `[]`, which accepts all supported events.
-    - `orchestration.webhook.matcher_config_parameter_store_tier`: Parameter Store tier for the shared matcher configuration. The default is `Standard`; valid values are `Standard` and `Advanced`. The value must be known during planning because it determines the matcher-parameter chunks.
-    - `orchestration.webhook.github.repository_white_list`: Repository full names allowed to use the shared webhook. The default is `[]`, which disables repository filtering.
-    - `orchestration.webhook.runner.boot_time_in_minutes`: Default expected runner boot duration used by webhook scale-down and pool controls. The default is `5`.
-    - `orchestration.webhook.runner.ephemeral`: Registers webhook-orchestrated runners in ephemeral mode by default. The default is `false`.
-    - `orchestration.webhook.runner.jit_config_enabled`: Explicit default for just-in-time runner configuration. The default is null, which follows the resolved `ephemeral` mode.
-    - `orchestration.webhook.runner.maximum_count`: Default maximum number of runners managed by the webhook orchestration provider per runner configuration. The default is null; every webhook runner configuration must resolve this field globally or locally.
-    - `orchestration.webhook.lambda.artifact`: Shared runner-control-plane artifact used by webhook scale, pool, and job-retry components. Set at most one of `zip` or `s3`; when both are null, the packaged runner archive is used.
-    - `orchestration.webhook.lambda.artifact.zip`: Optional local path to the shared runner-control-plane Lambda archive. The default is null.
-    - `orchestration.webhook.lambda.artifact.s3`: Optional key and object version in the shared `lambda.artifact.s3.bucket`. Wrapper presence selects S3 for runner-control-plane Lambdas, must be known during planning, and requires a non-null shared bucket and key.
-    - `orchestration.webhook.lambda.artifact.s3.key`: Object key of the shared runner-control-plane Lambda archive.
-    - `orchestration.webhook.lambda.artifact.s3.object_version`: Optional object version of the shared runner-control-plane Lambda archive. The default is null.
-    - `orchestration.webhook.lambda.scale.up.memory_size`: Scale-up Lambda memory in MB. The default is `512`.
-    - `orchestration.webhook.lambda.scale.up.timeout`: Scale-up Lambda timeout in seconds. The default is `30`.
-    - `orchestration.webhook.lambda.scale.up.reserved_concurrent_executions`: Reserved concurrency for scale-up. The default is `1`; use `-1` for unreserved concurrency.
-    - `orchestration.webhook.lambda.scale.up.job_queued_check_enabled`: Enables queued-job verification before scaling. The default is null, which follows the resolved runner mode.
-    - `orchestration.webhook.lambda.scale.up.event_source_mapping.batch_size`: Maximum build-queue records delivered per scale-up invocation. The default is `10`.
-    - `orchestration.webhook.lambda.scale.up.event_source_mapping.maximum_batching_window_in_seconds`: Maximum build-queue batching window. The default is `0`.
-    - `orchestration.webhook.lambda.scale.up.tags`: Default tags for scale-up resources. The default is `{}`.
-    - `orchestration.webhook.lambda.scale.down.memory_size`: Scale-down Lambda memory in MB. The default is `512`.
-    - `orchestration.webhook.lambda.scale.down.timeout`: Scale-down Lambda timeout in seconds. The default is `60`.
-    - `orchestration.webhook.lambda.scale.down.schedule_expression`: EventBridge schedule for scale-down. The default is `cron(*/5 * * * ? *)`.
-    - `orchestration.webhook.lambda.scale.down.minimum_running_time_in_minutes`: Minimum runner age before scale-down may terminate it. The default is null, which selects the operating-system default.
-    - `orchestration.webhook.lambda.scale.down.idle_config`: Default time-based desired idle-runner configurations. The default is `[]`.
-    - `orchestration.webhook.lambda.scale.down.idle_config[].cron`: Cron expression identifying when the idle configuration applies.
-    - `orchestration.webhook.lambda.scale.down.idle_config[].timeZone`: IANA time zone used to evaluate the cron expression.
-    - `orchestration.webhook.lambda.scale.down.idle_config[].idleCount`: Number of idle runners retained during the matching period.
-    - `orchestration.webhook.lambda.scale.down.idle_config[].evictionStrategy`: Selection strategy used when excess idle runners are removed. The default is `oldest_first`.
-    - `orchestration.webhook.lambda.scale.down.tags`: Default tags for scale-down resources. The default is `{}`.
-    - `orchestration.webhook.lambda.webhook.artifact`: Shared-webhook artifact selection. Set at most one of `zip` or `s3`; when both are null, the packaged archive is used.
-    - `orchestration.webhook.lambda.webhook.artifact.zip`: Optional local path to the shared-webhook Lambda archive. The default is null.
-    - `orchestration.webhook.lambda.webhook.artifact.s3`: Optional key and object version in the shared `lambda.artifact.s3.bucket`. Wrapper presence selects S3 for the webhook and requires a non-null shared bucket and key.
-    - `orchestration.webhook.lambda.webhook.artifact.s3.key`: Object key of the shared-webhook Lambda archive.
-    - `orchestration.webhook.lambda.webhook.artifact.s3.object_version`: Optional object version of the shared-webhook Lambda archive. The default is null.
-    - `orchestration.webhook.lambda.webhook.api_gateway_access_log_settings`: Optional API Gateway access-log destination and format for the shared webhook. The default is null, and wrapper presence must be known during planning because it controls the access-log block.
-    - `orchestration.webhook.lambda.webhook.api_gateway_access_log_settings.destination_arn`: CloudWatch Logs destination ARN for API Gateway access logs.
-    - `orchestration.webhook.lambda.webhook.api_gateway_access_log_settings.format`: API Gateway access-log format.
-    - `orchestration.webhook.lambda.webhook.memory_size`: Shared-webhook Lambda memory in MB. The default is `256`.
-    - `orchestration.webhook.lambda.webhook.timeout`: Shared-webhook Lambda timeout in seconds. The default is `10`.
-    - `orchestration.webhook.lambda.webhook.tags`: Additional tags for the shared webhook Lambda, merged after `lambda.tags`. The default is `{}`.
-    - `orchestration.webhook.lambda.pool.memory_size`: Pool Lambda memory in MB. The default is `512`.
-    - `orchestration.webhook.lambda.pool.timeout`: Pool Lambda timeout in seconds. The default is `60`.
-    - `orchestration.webhook.lambda.pool.reserved_concurrent_executions`: Reserved concurrency for the pool Lambda. The default is `1`; use `-1` for unreserved concurrency.
-    - `orchestration.webhook.lambda.pool.config`: Default scheduled target pool sizes. The default is `[]`, which disables the pool component.
-    - `orchestration.webhook.lambda.pool.config[].schedule_expression`: Scheduler expression that activates the target size.
-    - `orchestration.webhook.lambda.pool.config[].schedule_expression_timezone`: Optional IANA time zone used to evaluate the schedule.
-    - `orchestration.webhook.lambda.pool.config[].size`: Desired runner-pool size for the schedule.
-    - `orchestration.webhook.lambda.pool.include_busy_runners`: Includes busy runners when reconciling scheduled pool capacity. The default is `false`.
-    - `orchestration.webhook.lambda.pool.runner_owner`: Optional GitHub organization or repository owner used for pooled runners. The default is null.
-    - `orchestration.webhook.lambda.pool.tags`: Default tags for pool resources. The default is `{}`.
-    - `orchestration.webhook.queue.delay_webhook_event`: Default delay in seconds applied to accepted webhook jobs. The default is `30`.
-    - `orchestration.webhook.queue.job_queue_retention_in_seconds`: Default build-queue message retention period in seconds. The default is `86400`.
-    - `orchestration.webhook.queue.visibility_timeout_seconds`: Default build-queue visibility timeout. The default is `180`; set it to at least six times every resolved `orchestration.webhook.lambda.scale.up.timeout` that inherits it.
-    - `orchestration.webhook.queue.redrive_build_queue.enabled`: Creates and attaches a dead-letter queue to every v2 build queue by default. The default is `false`.
-    - `orchestration.webhook.queue.redrive_build_queue.maxReceiveCount`: Default number of receives before a message moves to the dead-letter queue. The default is null while redrive is disabled and must resolve to a value greater than zero when redrive is enabled.
-    - `orchestration.webhook.queue.tags`: Default tags for v2 build queues and dead-letter queues. The default is `{}`.
-    - `orchestration.webhook.queue.encryption`: Global at-rest encryption configuration for the multi-runner build queues and their dead-letter queues. It does not configure runner-config job-retry queues. Omitting the whole block selects SQS-managed encryption and defaults the two KMS attributes to null. When supplying the block explicitly, provide all three leaf attributes and use null for the inactive mode.
-    - `orchestration.webhook.queue.encryption.kms_data_key_reuse_period_seconds`: KMS data-key reuse period in seconds. This key is required syntactically in an explicit `queue.encryption` object but may be null; it is used only with `kms_master_key_id`.
-    - `orchestration.webhook.queue.encryption.kms_master_key_id`: KMS key ARN used for queue encryption. This AWS-facing field name is retained for compatibility, but non-null values must be key ARNs because runner-config IAM policies cannot use key IDs or aliases as resources. The field is required syntactically in an explicit `queue.encryption` object but may be null, and a computed ARN may remain unknown until apply. It is independent from `ssm.kms_key_id` and is forwarded separately to each webhook runner configuration so runner-config scale-up and job-retry roles receive only the build-queue KMS permissions they require.
-    - `orchestration.webhook.queue.encryption.sqs_managed_sse_enabled`: Selects the non-KMS mode: `true` enables SQS-managed encryption and `false` explicitly disables queue encryption. This key is required syntactically in an explicit `queue.encryption` object and must be null when `kms_master_key_id` is set. Omitting the whole encryption block defaults it to `true`.
+    - `orchestration_provider.webhook`: Global defaults for the workflow-job webhook control plane. This is a defaults namespace; every runner configuration still selects its demand controller independently under `multi_runner_config[].orchestration_provider`, where exactly one typed provider block must be non-null.
+    - `orchestration_provider.webhook.queue_selection_strategy`: Queue-selection strategy when multiple runner configurations match a job equally well. The default is `first`, which deterministically selects the first matching queue by priority. `random` spreads jobs across equally matched queues. `all` dispatches to every matching queue, favoring startup speed at the cost of multiple runner launches and registrations for one job.
+    - `orchestration_provider.webhook.eventbridge.enable`: Routes accepted webhook events through EventBridge when true. The default is `true`, and the value must be known during planning because it selects the webhook implementation.
+    - `orchestration_provider.webhook.eventbridge.accept_events`: EventBridge event types accepted by the shared webhook. The default is `[]`, which accepts all supported events.
+    - `orchestration_provider.webhook.matcher_config_parameter_store_tier`: Parameter Store tier for the shared matcher configuration. The default is `Standard`; valid values are `Standard` and `Advanced`. The value must be known during planning because it determines the matcher-parameter chunks.
+    - `orchestration_provider.webhook.github.repository_white_list`: Repository full names allowed to use the shared webhook. The default is `[]`, which disables repository filtering.
+    - `orchestration_provider.webhook.runner.boot_time_in_minutes`: Default expected runner boot duration used by webhook scale-down and pool controls. The default is `5`.
+    - `orchestration_provider.webhook.runner.ephemeral`: Registers webhook-orchestrated runners in ephemeral mode by default. The default is `false`.
+    - `orchestration_provider.webhook.runner.jit_config_enabled`: Explicit default for just-in-time runner configuration. The default is null, which follows the resolved `ephemeral` mode.
+    - `orchestration_provider.webhook.runner.maximum_count`: Default maximum number of runners managed by the webhook orchestration provider per runner configuration. The default is null; every webhook runner configuration must resolve this field globally or locally.
+    - `orchestration_provider.webhook.lambda.artifact`: Shared runner-control-plane artifact used by webhook scale, pool, and job-retry components. Set at most one of `zip` or `s3`; when both are null, the packaged runner archive is used.
+    - `orchestration_provider.webhook.lambda.artifact.zip`: Optional local path to the shared runner-control-plane Lambda archive. The default is null.
+    - `orchestration_provider.webhook.lambda.artifact.s3`: Optional key and object version in the shared `lambda.artifact.s3.bucket`. Wrapper presence selects S3 for runner-control-plane Lambdas, must be known during planning, and requires a non-null shared bucket and key.
+    - `orchestration_provider.webhook.lambda.artifact.s3.key`: Object key of the shared runner-control-plane Lambda archive.
+    - `orchestration_provider.webhook.lambda.artifact.s3.object_version`: Optional object version of the shared runner-control-plane Lambda archive. The default is null.
+    - `orchestration_provider.webhook.lambda.scale.up.memory_size`: Scale-up Lambda memory in MB. The default is `512`.
+    - `orchestration_provider.webhook.lambda.scale.up.timeout`: Scale-up Lambda timeout in seconds. The default is `30`.
+    - `orchestration_provider.webhook.lambda.scale.up.reserved_concurrent_executions`: Reserved concurrency for scale-up. The default is `1`; use `-1` for unreserved concurrency.
+    - `orchestration_provider.webhook.lambda.scale.up.job_queued_check_enabled`: Enables queued-job verification before scaling. The default is null, which follows the resolved runner mode.
+    - `orchestration_provider.webhook.lambda.scale.up.event_source_mapping.batch_size`: Maximum build-queue records delivered per scale-up invocation. The default is `10`.
+    - `orchestration_provider.webhook.lambda.scale.up.event_source_mapping.maximum_batching_window_in_seconds`: Maximum build-queue batching window. The default is `0`.
+    - `orchestration_provider.webhook.lambda.scale.up.tags`: Default tags for scale-up resources. The default is `{}`.
+    - `orchestration_provider.webhook.lambda.scale.down.memory_size`: Scale-down Lambda memory in MB. The default is `512`.
+    - `orchestration_provider.webhook.lambda.scale.down.timeout`: Scale-down Lambda timeout in seconds. The default is `60`.
+    - `orchestration_provider.webhook.lambda.scale.down.schedule_expression`: EventBridge schedule for scale-down. The default is `cron(*/5 * * * ? *)`.
+    - `orchestration_provider.webhook.lambda.scale.down.minimum_running_time_in_minutes`: Minimum runner age before scale-down may terminate it. The default is null, which selects the operating-system default.
+    - `orchestration_provider.webhook.lambda.scale.down.idle_config`: Default time-based desired idle-runner configurations. The default is `[]`.
+    - `orchestration_provider.webhook.lambda.scale.down.idle_config[].cron`: Cron expression identifying when the idle configuration applies.
+    - `orchestration_provider.webhook.lambda.scale.down.idle_config[].timeZone`: IANA time zone used to evaluate the cron expression.
+    - `orchestration_provider.webhook.lambda.scale.down.idle_config[].idleCount`: Number of idle runners retained during the matching period.
+    - `orchestration_provider.webhook.lambda.scale.down.idle_config[].evictionStrategy`: Selection strategy used when excess idle runners are removed. The default is `oldest_first`.
+    - `orchestration_provider.webhook.lambda.scale.down.tags`: Default tags for scale-down resources. The default is `{}`.
+    - `orchestration_provider.webhook.lambda.webhook.artifact`: Shared-webhook artifact selection. Set at most one of `zip` or `s3`; when both are null, the packaged archive is used.
+    - `orchestration_provider.webhook.lambda.webhook.artifact.zip`: Optional local path to the shared-webhook Lambda archive. The default is null.
+    - `orchestration_provider.webhook.lambda.webhook.artifact.s3`: Optional key and object version in the shared `lambda.artifact.s3.bucket`. Wrapper presence selects S3 for the webhook and requires a non-null shared bucket and key.
+    - `orchestration_provider.webhook.lambda.webhook.artifact.s3.key`: Object key of the shared-webhook Lambda archive.
+    - `orchestration_provider.webhook.lambda.webhook.artifact.s3.object_version`: Optional object version of the shared-webhook Lambda archive. The default is null.
+    - `orchestration_provider.webhook.lambda.webhook.api_gateway_access_log_settings`: Optional API Gateway access-log destination and format for the shared webhook. The default is null, and wrapper presence must be known during planning because it controls the access-log block.
+    - `orchestration_provider.webhook.lambda.webhook.api_gateway_access_log_settings.destination_arn`: CloudWatch Logs destination ARN for API Gateway access logs.
+    - `orchestration_provider.webhook.lambda.webhook.api_gateway_access_log_settings.format`: API Gateway access-log format.
+    - `orchestration_provider.webhook.lambda.webhook.memory_size`: Shared-webhook Lambda memory in MB. The default is `256`.
+    - `orchestration_provider.webhook.lambda.webhook.timeout`: Shared-webhook Lambda timeout in seconds. The default is `10`.
+    - `orchestration_provider.webhook.lambda.webhook.tags`: Additional tags for the shared webhook Lambda, merged after `lambda.tags`. The default is `{}`.
+    - `orchestration_provider.webhook.lambda.pool.memory_size`: Pool Lambda memory in MB. The default is `512`.
+    - `orchestration_provider.webhook.lambda.pool.timeout`: Pool Lambda timeout in seconds. The default is `60`.
+    - `orchestration_provider.webhook.lambda.pool.reserved_concurrent_executions`: Reserved concurrency for the pool Lambda. The default is `1`; use `-1` for unreserved concurrency.
+    - `orchestration_provider.webhook.lambda.pool.config`: Default scheduled target pool sizes. The default is `[]`, which disables the pool component.
+    - `orchestration_provider.webhook.lambda.pool.config[].schedule_expression`: Scheduler expression that activates the target size.
+    - `orchestration_provider.webhook.lambda.pool.config[].schedule_expression_timezone`: Optional IANA time zone used to evaluate the schedule.
+    - `orchestration_provider.webhook.lambda.pool.config[].size`: Desired runner-pool size for the schedule.
+    - `orchestration_provider.webhook.lambda.pool.include_busy_runners`: Includes busy runners when reconciling scheduled pool capacity. The default is `false`.
+    - `orchestration_provider.webhook.lambda.pool.runner_owner`: Optional GitHub organization or repository owner used for pooled runners. The default is null.
+    - `orchestration_provider.webhook.lambda.pool.tags`: Default tags for pool resources. The default is `{}`.
+    - `orchestration_provider.webhook.queue.delay_webhook_event`: Default delay in seconds applied to accepted webhook jobs. The default is `30`.
+    - `orchestration_provider.webhook.queue.job_queue_retention_in_seconds`: Default build-queue message retention period in seconds. The default is `86400`.
+    - `orchestration_provider.webhook.queue.visibility_timeout_seconds`: Default build-queue visibility timeout. The default is `180`; set it to at least six times every resolved `orchestration_provider.webhook.lambda.scale.up.timeout` that inherits it.
+    - `orchestration_provider.webhook.queue.redrive_build_queue.enabled`: Creates and attaches a dead-letter queue to every v2 build queue by default. The default is `false`.
+    - `orchestration_provider.webhook.queue.redrive_build_queue.maxReceiveCount`: Default number of receives before a message moves to the dead-letter queue. The default is null while redrive is disabled and must resolve to a value greater than zero when redrive is enabled.
+    - `orchestration_provider.webhook.queue.tags`: Default tags for v2 build queues and dead-letter queues. The default is `{}`.
+    - `orchestration_provider.webhook.queue.encryption`: Global at-rest encryption configuration for the multi-runner build queues and their dead-letter queues. It does not configure runner-config job-retry queues. Omitting the whole block selects SQS-managed encryption and defaults the two KMS attributes to null. When supplying the block explicitly, provide all three leaf attributes and use null for the inactive mode.
+    - `orchestration_provider.webhook.queue.encryption.kms_data_key_reuse_period_seconds`: KMS data-key reuse period in seconds. This key is required syntactically in an explicit `queue.encryption` object but may be null; it is used only with `kms_master_key_id`.
+    - `orchestration_provider.webhook.queue.encryption.kms_master_key_id`: KMS key ARN used for queue encryption. This AWS-facing field name is retained for compatibility, but non-null values must be key ARNs because runner-config IAM policies cannot use key IDs or aliases as resources. The field is required syntactically in an explicit `queue.encryption` object but may be null, and a computed ARN may remain unknown until apply. It is independent from `ssm.kms_key_id` and is forwarded separately to each webhook runner configuration so runner-config scale-up and job-retry roles receive only the build-queue KMS permissions they require.
+    - `orchestration_provider.webhook.queue.encryption.sqs_managed_sse_enabled`: Selects the non-KMS mode: `true` enables SQS-managed encryption and `false` explicitly disables queue encryption. This key is required syntactically in an explicit `queue.encryption` object and must be null when `kms_master_key_id` is set. Omitting the whole encryption block defaults it to `true`.
     - `ssm.paths.root`: Base Parameter Store path for shared GitHub App and webhook parameters and for all v2 runner configurations. The schema default is null, which derives `/github-action-runners/<prefix>`; normalization appends the configuration key only for configuration-owned paths.
     - `ssm.paths.app`: Shared GitHub App credential path segment below `ssm.paths.root`. The default is `app`.
     - `ssm.paths.webhook`: Shared webhook matcher-configuration path segment below `ssm.paths.root`. The default is `webhook`.
@@ -250,7 +250,7 @@ variable "experimental" {
     - `multi_runner_config[].runner.os`: Runner operating system.
     - `multi_runner_config[].runner.architecture`: Runner distribution architecture.
     - `multi_runner_config[].runner.disable_default_labels`: Prevents GitHub default labels from being registered.
-    - `multi_runner_config[].runner.extra_labels`: Additional labels combined with `orchestration.webhook.matcherConfig.labelMatchers` for webhook runner configurations. Default self-hosted, operating-system, and architecture labels are also included unless `runner.disable_default_labels` is true.
+    - `multi_runner_config[].runner.extra_labels`: Additional labels combined with `orchestration_provider.webhook.matcherConfig.labelMatchers` for webhook runner configurations. Default self-hosted, operating-system, and architecture labels are also included unless `runner.disable_default_labels` is true.
     - `multi_runner_config[].runner.group_name`: GitHub runner group used during registration.
     - `multi_runner_config[].runner.name_prefix`: Prefix added to registered runner names.
     - `multi_runner_config[].runner.run_as_root`: Runs the runner service as root when supported by the compute provider.
@@ -265,7 +265,7 @@ variable "experimental" {
     - `multi_runner_config[].runner.iam.additional_trust_policy_json`: Optional IAM policy document merged with the selected compute provider's default runner-role trust policy. Keep it null when the runner configuration selects an external `runner.iam.role`.
     - `multi_runner_config[].runner.iam.path`: IAM path for the module-managed runner role.
     - `multi_runner_config[].runner.iam.permissions_boundary`: Permissions-boundary ARN for the module-managed runner role.
-    - `multi_runner_config[].lambda`: Lambda runtime, architecture, networking, tags, and role substrate shared by orchestration and the runner-configuration SSM housekeeper. Scale function settings belong under `orchestration.webhook.lambda`.
+    - `multi_runner_config[].lambda`: Lambda runtime, architecture, networking, tags, and role substrate shared by orchestration and the runner-configuration SSM housekeeper. Scale function settings belong under `orchestration_provider.webhook.lambda`.
     - `multi_runner_config[].lambda.runtime`: Per-configuration runtime override for runner-config Lambda functions.
     - `multi_runner_config[].lambda.architecture`: Per-configuration architecture override for runner-config Lambda functions.
     - `multi_runner_config[].lambda.subnet_ids`: Per-configuration subnet override for runner-config Lambda functions.
@@ -273,65 +273,65 @@ variable "experimental" {
     - `multi_runner_config[].lambda.tags`: Per-configuration tags for control-plane Lambda functions. Component tags override this map.
     - `multi_runner_config[].lambda.role.path`: Per-configuration IAM path for module-managed Lambda roles. Null inherits `experimental.lambda.role.path`, then `experimental.roles.path`.
     - `multi_runner_config[].lambda.role.permissions_boundary`: Per-configuration permissions-boundary ARN for module-managed Lambda roles. Null inherits `experimental.lambda.role.permissions_boundary`, then `experimental.roles.permissions_boundary`.
-    - `multi_runner_config[].orchestration`: Demand-controller selection. Exactly one typed provider block must be non-null. Only `webhook` is supported today; additional providers can be added without moving the webhook contract.
-    - `multi_runner_config[].orchestration.webhook`: Selects the workflow-job webhook control plane, including its SQS build queue, scale-up, scheduled scale-down/pool, and optional job-retry resources.
-    - `multi_runner_config[].orchestration.webhook.runner.boot_time_in_minutes`: Expected runner boot duration used by webhook scale-down and pool controls. Null inherits `experimental.orchestration.webhook.runner.boot_time_in_minutes`.
-    - `multi_runner_config[].orchestration.webhook.runner.ephemeral`: Registers webhook-orchestrated runners in ephemeral mode. Null inherits `experimental.orchestration.webhook.runner.ephemeral`.
-    - `multi_runner_config[].orchestration.webhook.runner.jit_config_enabled`: Explicitly enables or disables just-in-time configuration. Null inherits the global webhook value; if both are null, behavior follows the resolved webhook `ephemeral` mode.
-    - `multi_runner_config[].orchestration.webhook.runner.maximum_count`: Maximum number of runners managed by the webhook orchestration provider for this configuration. Null inherits `experimental.orchestration.webhook.runner.maximum_count`.
-    - `multi_runner_config[].orchestration.webhook.github.organization_runners`: Registers runners at organization scope when true; otherwise repository-scoped registration is used.
-    - `multi_runner_config[].orchestration.webhook.matcherConfig.labelMatchers`: Groups of labels used to match webhook jobs to this configuration.
-    - `multi_runner_config[].orchestration.webhook.matcherConfig.exactMatch`: Deprecated one-way match. When true, every workflow-job label must appear in a configured label group, but that group may contain additional labels.
-    - `multi_runner_config[].orchestration.webhook.matcherConfig.bidirectionalLabelMatch`: Requires an exact two-way set match between workflow-job labels and a configured label group, with no extra or missing labels.
-    - `multi_runner_config[].orchestration.webhook.matcherConfig.priority`: Ordering used when multiple configurations match the same job.
-    - `multi_runner_config[].orchestration.webhook.matcherConfig.enableDynamicLabels`: Enables runtime interpretation of supported dynamic AWS labels.
-    - `multi_runner_config[].orchestration.webhook.matcherConfig.awsDynamicLabelsPolicy`: Optional policy restricting values accepted from dynamic AWS labels.
-    - `multi_runner_config[].orchestration.webhook.matcherConfig.awsDynamicLabelsPolicy.blocked_keys`: Dynamic-label keys rejected for this runner configuration. The default is `[]`.
-    - `multi_runner_config[].orchestration.webhook.matcherConfig.awsDynamicLabelsPolicy.restricted_keys`: Per-key allow, deny, and maximum-value restrictions. The default is `{}`.
-    - `multi_runner_config[].orchestration.webhook.matcherConfig.awsDynamicLabelsPolicy.restricted_keys.<key>.allowed`: Values explicitly allowed for the dynamic-label key. The default is `[]`.
-    - `multi_runner_config[].orchestration.webhook.matcherConfig.awsDynamicLabelsPolicy.restricted_keys.<key>.denied`: Values explicitly denied for the dynamic-label key. The default is `[]`.
-    - `multi_runner_config[].orchestration.webhook.matcherConfig.awsDynamicLabelsPolicy.restricted_keys.<key>.max`: Optional maximum accepted value for the dynamic-label key. The default is null.
-    - `multi_runner_config[].orchestration.webhook.queue.delay_webhook_event`: Delay in seconds applied to webhook job messages. Null inherits the global queue default.
-    - `multi_runner_config[].orchestration.webhook.queue.job_queue_retention_in_seconds`: Build-queue message retention period in seconds. Null inherits the global queue default.
-    - `multi_runner_config[].orchestration.webhook.queue.visibility_timeout_seconds`: Build-queue visibility timeout. Null inherits the global queue default; the resolved value must be at least six times the resolved `orchestration.webhook.lambda.scale.up.timeout` so Lambda has enough time to retry throttled invocations.
-    - `multi_runner_config[].orchestration.webhook.queue.redrive_build_queue.enabled`: Creates and attaches a dead-letter queue for the build queue. A null wrapper or null leaf inherits the corresponding global value.
-    - `multi_runner_config[].orchestration.webhook.queue.redrive_build_queue.maxReceiveCount`: Number of receives before a build message moves to the dead-letter queue. A null wrapper or null leaf inherits the corresponding global value, and the resolved value must be greater than zero when redrive is enabled.
-    - `multi_runner_config[].orchestration.webhook.queue.tags`: Tags for configuration-owned queue resources. These merge after global queue tags and entry-level `tags`; component tags override this map.
-    - `multi_runner_config[].orchestration.webhook.lambda.scale.up.memory_size`: Memory allocated to the scale-up Lambda in MB.
-    - `multi_runner_config[].orchestration.webhook.lambda.scale.up.timeout`: Scale-up Lambda timeout in seconds.
-    - `multi_runner_config[].orchestration.webhook.lambda.scale.up.reserved_concurrent_executions`: Reserved concurrency for the scale-up Lambda. Use `-1` for unreserved concurrency.
-    - `multi_runner_config[].orchestration.webhook.lambda.scale.up.job_queued_check_enabled`: Enables the queued-job verification before scaling. Null inherits the global value; if both are null, behavior follows the resolved runner mode.
-    - `multi_runner_config[].orchestration.webhook.lambda.scale.up.event_source_mapping.batch_size`: Maximum build-queue records delivered to one scale-up Lambda invocation.
-    - `multi_runner_config[].orchestration.webhook.lambda.scale.up.event_source_mapping.maximum_batching_window_in_seconds`: Maximum batching window for build-queue records.
-    - `multi_runner_config[].orchestration.webhook.lambda.scale.up.tags`: Tags for scale-up resources. These override entry-level and shared Lambda, queue, and log-group tags within their resource scopes.
-    - `multi_runner_config[].orchestration.webhook.lambda.scale.down.memory_size`: Memory allocated to the scale-down Lambda in MB.
-    - `multi_runner_config[].orchestration.webhook.lambda.scale.down.timeout`: Scale-down Lambda timeout in seconds.
-    - `multi_runner_config[].orchestration.webhook.lambda.scale.down.schedule_expression`: EventBridge schedule expression that invokes scale-down.
-    - `multi_runner_config[].orchestration.webhook.lambda.scale.down.minimum_running_time_in_minutes`: Minimum runner age before scale-down may terminate it. Null inherits the global value; if both are null, the operating-system default is selected.
-    - `multi_runner_config[].orchestration.webhook.lambda.scale.down.idle_config`: Time-based desired idle-runner configurations.
-    - `multi_runner_config[].orchestration.webhook.lambda.scale.down.idle_config[].cron`: Cron expression identifying when the idle configuration applies.
-    - `multi_runner_config[].orchestration.webhook.lambda.scale.down.idle_config[].timeZone`: IANA time zone used to evaluate `cron`.
-    - `multi_runner_config[].orchestration.webhook.lambda.scale.down.idle_config[].idleCount`: Number of idle runners to retain during the matching period.
-    - `multi_runner_config[].orchestration.webhook.lambda.scale.down.idle_config[].evictionStrategy`: Selection strategy used when excess idle runners are removed.
-    - `multi_runner_config[].orchestration.webhook.lambda.scale.down.tags`: Tags for scale-down resources. These override entry-level and shared Lambda and log-group tags within their resource scopes.
-    - `multi_runner_config[].orchestration.webhook.lambda.pool.memory_size`: Memory allocated to the pool Lambda in MB.
-    - `multi_runner_config[].orchestration.webhook.lambda.pool.timeout`: Pool Lambda timeout in seconds.
-    - `multi_runner_config[].orchestration.webhook.lambda.pool.reserved_concurrent_executions`: Reserved concurrency for the pool Lambda. Use `-1` for unreserved concurrency.
-    - `multi_runner_config[].orchestration.webhook.lambda.pool.config`: Scheduled target pool sizes. An empty list disables the pool component.
-    - `multi_runner_config[].orchestration.webhook.lambda.pool.config[].schedule_expression`: Scheduler expression that activates the target size.
-    - `multi_runner_config[].orchestration.webhook.lambda.pool.config[].schedule_expression_timezone`: Optional IANA time zone used to evaluate the schedule.
-    - `multi_runner_config[].orchestration.webhook.lambda.pool.config[].size`: Desired number of runners for the schedule.
-    - `multi_runner_config[].orchestration.webhook.lambda.pool.include_busy_runners`: Includes busy runners when reconciling scheduled pool capacity.
-    - `multi_runner_config[].orchestration.webhook.lambda.pool.runner_owner`: Optional GitHub organization or repository owner used when creating pooled runners.
-    - `multi_runner_config[].orchestration.webhook.lambda.pool.tags`: Tags for pool resources. These override entry-level and shared Lambda and log-group tags within their resource scopes.
-    - `multi_runner_config[].orchestration.webhook.job_retry.enabled`: Creates the retry queue, Lambda function, event-source mapping, and related IAM resources.
-    - `multi_runner_config[].orchestration.webhook.job_retry.delay_in_seconds`: Initial delay before a queued-job retry check.
-    - `multi_runner_config[].orchestration.webhook.job_retry.delay_backoff`: Multiplier applied to the delay after each unsuccessful check.
-    - `multi_runner_config[].orchestration.webhook.job_retry.max_attempts`: Maximum retry-check attempts before the message is no longer republished.
-    - `multi_runner_config[].orchestration.webhook.job_retry.tags`: Tags for job-retry resources. These override entry-level and shared Lambda, queue, and log-group tags within their resource scopes.
-    - `multi_runner_config[].orchestration.webhook.job_retry.lambda.memory_size`: Memory allocated to the job-retry Lambda in MB.
-    - `multi_runner_config[].orchestration.webhook.job_retry.lambda.reserved_concurrent_executions`: Reserved concurrency for the job-retry Lambda. Use `-1` for unreserved concurrency.
-    - `multi_runner_config[].orchestration.webhook.job_retry.lambda.timeout`: Job-retry Lambda timeout in seconds and visibility timeout for its retry queue.
+    - `multi_runner_config[].orchestration_provider`: Demand-controller selection. Exactly one typed provider block must be non-null. Only `webhook` is supported today; additional providers can be added without moving the webhook contract.
+    - `multi_runner_config[].orchestration_provider.webhook`: Selects the workflow-job webhook control plane, including its SQS build queue, scale-up, scheduled scale-down/pool, and optional job-retry resources.
+    - `multi_runner_config[].orchestration_provider.webhook.runner.boot_time_in_minutes`: Expected runner boot duration used by webhook scale-down and pool controls. Null inherits `experimental.orchestration_provider.webhook.runner.boot_time_in_minutes`.
+    - `multi_runner_config[].orchestration_provider.webhook.runner.ephemeral`: Registers webhook-orchestrated runners in ephemeral mode. Null inherits `experimental.orchestration_provider.webhook.runner.ephemeral`.
+    - `multi_runner_config[].orchestration_provider.webhook.runner.jit_config_enabled`: Explicitly enables or disables just-in-time configuration. Null inherits the global webhook value; if both are null, behavior follows the resolved webhook `ephemeral` mode.
+    - `multi_runner_config[].orchestration_provider.webhook.runner.maximum_count`: Maximum number of runners managed by the webhook orchestration provider for this configuration. Null inherits `experimental.orchestration_provider.webhook.runner.maximum_count`.
+    - `multi_runner_config[].orchestration_provider.webhook.github.organization_runners`: Registers runners at organization scope when true; otherwise repository-scoped registration is used.
+    - `multi_runner_config[].orchestration_provider.webhook.matcherConfig.labelMatchers`: Groups of labels used to match webhook jobs to this configuration.
+    - `multi_runner_config[].orchestration_provider.webhook.matcherConfig.exactMatch`: Deprecated one-way match. When true, every workflow-job label must appear in a configured label group, but that group may contain additional labels.
+    - `multi_runner_config[].orchestration_provider.webhook.matcherConfig.bidirectionalLabelMatch`: Requires an exact two-way set match between workflow-job labels and a configured label group, with no extra or missing labels.
+    - `multi_runner_config[].orchestration_provider.webhook.matcherConfig.priority`: Ordering used when multiple configurations match the same job.
+    - `multi_runner_config[].orchestration_provider.webhook.matcherConfig.enableDynamicLabels`: Enables runtime interpretation of supported dynamic AWS labels.
+    - `multi_runner_config[].orchestration_provider.webhook.matcherConfig.awsDynamicLabelsPolicy`: Optional policy restricting values accepted from dynamic AWS labels.
+    - `multi_runner_config[].orchestration_provider.webhook.matcherConfig.awsDynamicLabelsPolicy.blocked_keys`: Dynamic-label keys rejected for this runner configuration. The default is `[]`.
+    - `multi_runner_config[].orchestration_provider.webhook.matcherConfig.awsDynamicLabelsPolicy.restricted_keys`: Per-key allow, deny, and maximum-value restrictions. The default is `{}`.
+    - `multi_runner_config[].orchestration_provider.webhook.matcherConfig.awsDynamicLabelsPolicy.restricted_keys.<key>.allowed`: Values explicitly allowed for the dynamic-label key. The default is `[]`.
+    - `multi_runner_config[].orchestration_provider.webhook.matcherConfig.awsDynamicLabelsPolicy.restricted_keys.<key>.denied`: Values explicitly denied for the dynamic-label key. The default is `[]`.
+    - `multi_runner_config[].orchestration_provider.webhook.matcherConfig.awsDynamicLabelsPolicy.restricted_keys.<key>.max`: Optional maximum accepted value for the dynamic-label key. The default is null.
+    - `multi_runner_config[].orchestration_provider.webhook.queue.delay_webhook_event`: Delay in seconds applied to webhook job messages. Null inherits the global queue default.
+    - `multi_runner_config[].orchestration_provider.webhook.queue.job_queue_retention_in_seconds`: Build-queue message retention period in seconds. Null inherits the global queue default.
+    - `multi_runner_config[].orchestration_provider.webhook.queue.visibility_timeout_seconds`: Build-queue visibility timeout. Null inherits the global queue default; the resolved value must be at least six times the resolved `orchestration_provider.webhook.lambda.scale.up.timeout` so Lambda has enough time to retry throttled invocations.
+    - `multi_runner_config[].orchestration_provider.webhook.queue.redrive_build_queue.enabled`: Creates and attaches a dead-letter queue for the build queue. A null wrapper or null leaf inherits the corresponding global value.
+    - `multi_runner_config[].orchestration_provider.webhook.queue.redrive_build_queue.maxReceiveCount`: Number of receives before a build message moves to the dead-letter queue. A null wrapper or null leaf inherits the corresponding global value, and the resolved value must be greater than zero when redrive is enabled.
+    - `multi_runner_config[].orchestration_provider.webhook.queue.tags`: Tags for configuration-owned queue resources. These merge after global queue tags and entry-level `tags`; component tags override this map.
+    - `multi_runner_config[].orchestration_provider.webhook.lambda.scale.up.memory_size`: Memory allocated to the scale-up Lambda in MB.
+    - `multi_runner_config[].orchestration_provider.webhook.lambda.scale.up.timeout`: Scale-up Lambda timeout in seconds.
+    - `multi_runner_config[].orchestration_provider.webhook.lambda.scale.up.reserved_concurrent_executions`: Reserved concurrency for the scale-up Lambda. Use `-1` for unreserved concurrency.
+    - `multi_runner_config[].orchestration_provider.webhook.lambda.scale.up.job_queued_check_enabled`: Enables the queued-job verification before scaling. Null inherits the global value; if both are null, behavior follows the resolved runner mode.
+    - `multi_runner_config[].orchestration_provider.webhook.lambda.scale.up.event_source_mapping.batch_size`: Maximum build-queue records delivered to one scale-up Lambda invocation.
+    - `multi_runner_config[].orchestration_provider.webhook.lambda.scale.up.event_source_mapping.maximum_batching_window_in_seconds`: Maximum batching window for build-queue records.
+    - `multi_runner_config[].orchestration_provider.webhook.lambda.scale.up.tags`: Tags for scale-up resources. These override entry-level and shared Lambda, queue, and log-group tags within their resource scopes.
+    - `multi_runner_config[].orchestration_provider.webhook.lambda.scale.down.memory_size`: Memory allocated to the scale-down Lambda in MB.
+    - `multi_runner_config[].orchestration_provider.webhook.lambda.scale.down.timeout`: Scale-down Lambda timeout in seconds.
+    - `multi_runner_config[].orchestration_provider.webhook.lambda.scale.down.schedule_expression`: EventBridge schedule expression that invokes scale-down.
+    - `multi_runner_config[].orchestration_provider.webhook.lambda.scale.down.minimum_running_time_in_minutes`: Minimum runner age before scale-down may terminate it. Null inherits the global value; if both are null, the operating-system default is selected.
+    - `multi_runner_config[].orchestration_provider.webhook.lambda.scale.down.idle_config`: Time-based desired idle-runner configurations.
+    - `multi_runner_config[].orchestration_provider.webhook.lambda.scale.down.idle_config[].cron`: Cron expression identifying when the idle configuration applies.
+    - `multi_runner_config[].orchestration_provider.webhook.lambda.scale.down.idle_config[].timeZone`: IANA time zone used to evaluate `cron`.
+    - `multi_runner_config[].orchestration_provider.webhook.lambda.scale.down.idle_config[].idleCount`: Number of idle runners to retain during the matching period.
+    - `multi_runner_config[].orchestration_provider.webhook.lambda.scale.down.idle_config[].evictionStrategy`: Selection strategy used when excess idle runners are removed.
+    - `multi_runner_config[].orchestration_provider.webhook.lambda.scale.down.tags`: Tags for scale-down resources. These override entry-level and shared Lambda and log-group tags within their resource scopes.
+    - `multi_runner_config[].orchestration_provider.webhook.lambda.pool.memory_size`: Memory allocated to the pool Lambda in MB.
+    - `multi_runner_config[].orchestration_provider.webhook.lambda.pool.timeout`: Pool Lambda timeout in seconds.
+    - `multi_runner_config[].orchestration_provider.webhook.lambda.pool.reserved_concurrent_executions`: Reserved concurrency for the pool Lambda. Use `-1` for unreserved concurrency.
+    - `multi_runner_config[].orchestration_provider.webhook.lambda.pool.config`: Scheduled target pool sizes. An empty list disables the pool component.
+    - `multi_runner_config[].orchestration_provider.webhook.lambda.pool.config[].schedule_expression`: Scheduler expression that activates the target size.
+    - `multi_runner_config[].orchestration_provider.webhook.lambda.pool.config[].schedule_expression_timezone`: Optional IANA time zone used to evaluate the schedule.
+    - `multi_runner_config[].orchestration_provider.webhook.lambda.pool.config[].size`: Desired number of runners for the schedule.
+    - `multi_runner_config[].orchestration_provider.webhook.lambda.pool.include_busy_runners`: Includes busy runners when reconciling scheduled pool capacity.
+    - `multi_runner_config[].orchestration_provider.webhook.lambda.pool.runner_owner`: Optional GitHub organization or repository owner used when creating pooled runners.
+    - `multi_runner_config[].orchestration_provider.webhook.lambda.pool.tags`: Tags for pool resources. These override entry-level and shared Lambda and log-group tags within their resource scopes.
+    - `multi_runner_config[].orchestration_provider.webhook.job_retry.enabled`: Creates the retry queue, Lambda function, event-source mapping, and related IAM resources.
+    - `multi_runner_config[].orchestration_provider.webhook.job_retry.delay_in_seconds`: Initial delay before a queued-job retry check.
+    - `multi_runner_config[].orchestration_provider.webhook.job_retry.delay_backoff`: Multiplier applied to the delay after each unsuccessful check.
+    - `multi_runner_config[].orchestration_provider.webhook.job_retry.max_attempts`: Maximum retry-check attempts before the message is no longer republished.
+    - `multi_runner_config[].orchestration_provider.webhook.job_retry.tags`: Tags for job-retry resources. These override entry-level and shared Lambda, queue, and log-group tags within their resource scopes.
+    - `multi_runner_config[].orchestration_provider.webhook.job_retry.lambda.memory_size`: Memory allocated to the job-retry Lambda in MB.
+    - `multi_runner_config[].orchestration_provider.webhook.job_retry.lambda.reserved_concurrent_executions`: Reserved concurrency for the job-retry Lambda. Use `-1` for unreserved concurrency.
+    - `multi_runner_config[].orchestration_provider.webhook.job_retry.lambda.timeout`: Job-retry Lambda timeout in seconds and visibility timeout for its retry queue.
     - `multi_runner_config[].ssm.paths.root`: Base Parameter Store root for this runner configuration. The configuration key is always appended to preserve configuration isolation. The omitted global root derives `/github-action-runners/<prefix>`.
     - `multi_runner_config[].ssm.paths.tokens`: Path segment below the runner-configuration root used for runner registration tokens and just-in-time configuration.
     - `multi_runner_config[].ssm.paths.config`: Path segment below the runner-configuration root used for persistent runner configuration.
@@ -536,7 +536,7 @@ variable "experimental" {
       }), {})
     }), {})
 
-    orchestration = optional(object({
+    orchestration_provider = optional(object({
       webhook = optional(object({
         queue_selection_strategy = optional(string, "first")
         eventbridge = optional(object({
@@ -868,7 +868,7 @@ variable "experimental" {
         }), {})
       }), {})
 
-      orchestration = object({
+      orchestration_provider = object({
         webhook = optional(object({
           runner = optional(object({
             boot_time_in_minutes = optional(number, null)

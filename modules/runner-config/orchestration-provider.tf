@@ -1,6 +1,6 @@
 locals {
   orchestration_providers = {
-    for provider_type, provider_config in var.orchestration : provider_type => provider_config
+    for provider_type, provider_config in var.orchestration_provider : provider_type => provider_config
     if provider_config != null
   }
 
@@ -23,7 +23,7 @@ module "orchestration_webhook" {
   prefix        = var.prefix
   tags          = var.tags
 
-  config = var.orchestration.webhook
+  config = var.orchestration_provider.webhook
   runner = var.runner
   github = var.github
   lambda = {

@@ -136,21 +136,6 @@ variable "runner_provider" {
     managed_policy_enabled = bool
     managed_policy_arn     = optional(string, null)
   })
-
-  validation {
-    condition     = trimspace(var.runner_provider.type) != ""
-    error_message = "The compute provider type must not be empty."
-  }
-
-  validation {
-    condition     = can(jsondecode(var.runner_provider.iam_policy_json))
-    error_message = "The compute provider IAM policy must be valid JSON."
-  }
-
-  validation {
-    condition     = !var.runner_provider.managed_policy_enabled || var.runner_provider.managed_policy_arn != null
-    error_message = "The compute provider managed policy ARN must be set when its attachment is enabled."
-  }
 }
 
 variable "aws_partition" {

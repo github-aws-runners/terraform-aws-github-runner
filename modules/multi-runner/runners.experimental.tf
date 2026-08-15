@@ -18,18 +18,18 @@ module "runner_configs" {
     app_parameters = local.github_app_parameters
   })
   lambda = each.value.lambda
-  orchestration = {
-    webhook = each.value.orchestration.webhook == null ? null : {
-      runner = each.value.orchestration.webhook.runner
-      github = each.value.orchestration.webhook.github
-      queue = merge(each.value.orchestration.webhook.queue, {
+  orchestration_provider = {
+    webhook = each.value.orchestration_provider.webhook == null ? null : {
+      runner = each.value.orchestration_provider.webhook.runner
+      github = each.value.orchestration_provider.webhook.github
+      queue = merge(each.value.orchestration_provider.webhook.queue, {
         build = {
           arn = aws_sqs_queue.queued_builds[each.key].arn
           url = aws_sqs_queue.queued_builds[each.key].url
         }
       })
-      lambda    = each.value.orchestration.webhook.lambda
-      job_retry = each.value.orchestration.webhook.job_retry
+      lambda    = each.value.orchestration_provider.webhook.lambda
+      job_retry = each.value.orchestration_provider.webhook.job_retry
     }
   }
   ssm              = each.value.ssm
