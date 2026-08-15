@@ -294,7 +294,7 @@ Implementation and review must verify the boundary at several levels.
 - Null SSM or queue KMS keys omit their IAM statements.
 - Queue and Parameter Store KMS permissions remain separate and use the least actions required.
 - SSM writes are limited to the configured token and runner-configuration paths.
-- Any wildcard IAM resource has an AWS API limitation documented next to it.
+- Existing wildcard queue-policy behavior remains unchanged by this refactor; new provider IAM permissions use exact resources unless AWS lacks resource scoping.
 
 ### Compatibility checks
 

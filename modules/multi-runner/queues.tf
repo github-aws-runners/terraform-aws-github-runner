@@ -1,6 +1,4 @@
-data "aws_iam_policy_document" "deny_insecure_transport_build" {
-  for_each = local.webhook_runner_config
-
+data "aws_iam_policy_document" "deny_insecure_transport" {
   statement {
     sid = "DenyInsecureTransport"
 
@@ -15,7 +13,9 @@ data "aws_iam_policy_document" "deny_insecure_transport_build" {
       "sqs:*"
     ]
 
-    resources = [aws_sqs_queue.queued_builds[each.key].arn]
+    resources = [
+      "*"
+    ]
 
     condition {
       test     = "Bool"
@@ -50,7 +50,7 @@ resource "aws_sqs_queue" "queued_builds" {
 resource "aws_sqs_queue_policy" "build_queue_policy" {
   for_each  = local.webhook_runner_config
   queue_url = aws_sqs_queue.queued_builds[each.key].id
-  policy    = data.aws_iam_policy_document.deny_insecure_transport_build[each.key].json
+  policy    = data.aws_iam_policy_document.deny_insecure_transport.json
 }
 
 resource "aws_sqs_queue" "queued_builds_dlq" {
@@ -67,35 +67,8 @@ resource "aws_sqs_queue" "queued_builds_dlq" {
   )
 }
 
-data "aws_iam_policy_document" "deny_insecure_transport_build_dlq" {
-  for_each = { for config, values in local.webhook_runner_config : config => values if values.orchestration_provider.webhook.queue.redrive_build_queue.enabled }
-
-  statement {
-    sid = "DenyInsecureTransport"
-
-    effect = "Deny"
-
-    principals {
-      type        = "AWS"
-      identifiers = ["*"]
-    }
-
-    actions = [
-      "sqs:*"
-    ]
-
-    resources = [aws_sqs_queue.queued_builds_dlq[each.key].arn]
-
-    condition {
-      test     = "Bool"
-      variable = "aws:SecureTransport"
-      values   = ["false"]
-    }
-  }
-}
-
 resource "aws_sqs_queue_policy" "build_queue_dlq_policy" {
   for_each  = { for config, values in local.webhook_runner_config : config => values if values.orchestration_provider.webhook.queue.redrive_build_queue.enabled }
   queue_url = aws_sqs_queue.queued_builds_dlq[each.key].id
-  policy    = data.aws_iam_policy_document.deny_insecure_transport_build_dlq[each.key].json
+  policy    = data.aws_iam_policy_document.deny_insecure_transport.json
 }
