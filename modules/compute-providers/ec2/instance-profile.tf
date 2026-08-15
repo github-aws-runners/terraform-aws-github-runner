@@ -1,4 +1,4 @@
-# The common runner stack owns the role; EC2 owns the profile consumed by its
+# The common runner configuration owns the role; EC2 owns the profile consumed by its
 # launch template.
 resource "aws_iam_instance_profile" "runner" {
   count = var.config.instance_profile == null ? 1 : 0

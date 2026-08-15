@@ -88,10 +88,12 @@ jobs:
             "compute-providers/ec2",
             "compute-providers/ec2/trust-policy",
             "runner-binaries-syncer",
-            "runner-stack",
-            "runner-stack/job-retry",
-            "runner-stack/scale-runners",
-            "runner-stack/ssm-housekeeper",
+            "orchestration-providers/webhook",
+            "orchestration-providers/webhook/job-retry",
+            "orchestration-providers/webhook/pool",
+            "orchestration-providers/webhook/scale-runners",
+            "runner-config",
+            "runner-config/ssm-housekeeper",
             "runners",
             "setup-iam-permissions",
             "ssm",
@@ -221,11 +223,12 @@ jobs:
         module:
           - modules/runners
           - modules/multi-runner
-          - modules/runner-stack
-          - modules/runner-stack/job-retry
-          - modules/runner-stack/pool
-          - modules/runner-stack/scale-runners
-          - modules/runner-stack/ssm-housekeeper
+          - modules/orchestration-providers/webhook
+          - modules/orchestration-providers/webhook/job-retry
+          - modules/orchestration-providers/webhook/pool
+          - modules/orchestration-providers/webhook/scale-runners
+          - modules/runner-config
+          - modules/runner-config/ssm-housekeeper
           - modules/compute-providers/ec2
           - modules/compute-providers/ec2/trust-policy
     defaults:

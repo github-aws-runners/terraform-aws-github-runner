@@ -56,12 +56,12 @@ run "computed_lane_values_keep_binary_syncer_instances_plannable" {
   }
 
   assert {
-    condition     = output.runner_stack_keys == ["linux"]
-    error_message = "Apply-time values inside a statically keyed runner lane must not make binary-syncer module instances unknown."
+    condition     = output.runner_config_keys == ["linux"]
+    error_message = "Apply-time values inside a statically keyed runner configuration must not make binary-syncer module instances unknown."
   }
 
   assert {
     condition     = output.binaries_syncer_keys == []
-    error_message = "A lane with the binary syncer disabled must not create a binary-syncer module instance."
+    error_message = "A runner configuration with the binary syncer disabled must not create a binary-syncer module instance."
   }
 }

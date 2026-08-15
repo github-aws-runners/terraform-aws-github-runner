@@ -1,6 +1,9 @@
 module "runners" {
-  source   = "../runners"
-  for_each = local.use_multi_runner_config_v2 ? {} : local.translated_experimental.multi_runner_config
+  source = "../runners"
+  for_each = {
+    for runner_key, runner_config in local.translated_experimental.multi_runner_config :
+    runner_key => runner_config if !local.use_multi_runner_config_v2
+  }
 
   aws_region    = var.aws_region
   aws_partition = var.aws_partition
@@ -39,22 +42,22 @@ module "runners" {
   ebs_optimized                        = each.value.compute_provider.ec2.ebs_optimized
   enable_on_demand_failover_for_errors = each.value.compute_provider.ec2.enable_on_demand_failover_for_errors
   scale_errors                         = each.value.compute_provider.ec2.scale_errors
-  enable_organization_runners          = each.value.github.organization_runners
+  enable_organization_runners          = each.value.orchestration.webhook.github.organization_runners
   enable_ephemeral_runners             = each.value.runner.ephemeral
   enable_jit_config                    = each.value.runner.jit_config_enabled
-  enable_job_queued_check              = each.value.lambda.scale_up.job_queued_check_enabled
+  enable_job_queued_check              = each.value.orchestration.webhook.lambda.scale_up.job_queued_check_enabled
   disable_runner_autoupdate            = each.value.runner.auto_update_disabled
   enable_managed_runner_security_group = each.value.compute_provider.ec2.managed_security_group_enabled
   enable_runner_detailed_monitoring    = each.value.compute_provider.ec2.detailed_monitoring_enabled
-  scale_down_schedule_expression       = each.value.lambda.scale_down.schedule_expression
-  minimum_running_time_in_minutes      = each.value.lambda.scale_down.minimum_running_time_in_minutes
+  scale_down_schedule_expression       = each.value.orchestration.webhook.lambda.scale_down.schedule_expression
+  minimum_running_time_in_minutes      = each.value.orchestration.webhook.lambda.scale_down.minimum_running_time_in_minutes
   runner_boot_time_in_minutes          = each.value.runner.boot_time_in_minutes
   runner_disable_default_labels        = each.value.runner.disable_default_labels
   runner_labels                        = each.value.runner.labels
   runner_as_root                       = each.value.runner.run_as_root
   runner_run_as                        = each.value.runner.run_as
-  runners_maximum_count                = each.value.runner.maximum_count
-  idle_config                          = each.value.lambda.scale_down.idle_config
+  runners_maximum_count                = each.value.orchestration.webhook.runner.maximum_count
+  idle_config                          = each.value.orchestration.webhook.lambda.scale_down.idle_config
   enable_ssm_on_runners                = each.value.compute_provider.ec2.ssm_enabled
   egress_rules                         = each.value.compute_provider.ec2.egress_rules
   runner_additional_security_group_ids = each.value.compute_provider.ec2.additional_security_group_ids
@@ -66,18 +69,18 @@ module "runners" {
   use_dedicated_host                   = each.value.compute_provider.ec2.use_dedicated_host
 
   enable_runner_binaries_syncer                                  = each.value.compute_provider.ec2.binaries_syncer.enabled
-  lambda_s3_bucket                                               = local.translated_experimental.lambda.scale.artifact.s3 == null ? null : local.translated_experimental.lambda.artifact.s3.bucket
-  runners_lambda_s3_key                                          = try(local.translated_experimental.lambda.scale.artifact.s3.key, null)
-  runners_lambda_s3_object_version                               = try(local.translated_experimental.lambda.scale.artifact.s3.object_version, null)
+  lambda_s3_bucket                                               = local.translated_experimental.orchestration.webhook.lambda.scale.artifact.s3 == null ? null : local.translated_experimental.lambda.artifact.s3.bucket
+  runners_lambda_s3_key                                          = try(local.translated_experimental.orchestration.webhook.lambda.scale.artifact.s3.key, null)
+  runners_lambda_s3_object_version                               = try(local.translated_experimental.orchestration.webhook.lambda.scale.artifact.s3.object_version, null)
   lambda_runtime                                                 = each.value.lambda.runtime
   lambda_architecture                                            = each.value.lambda.architecture
-  lambda_zip                                                     = local.translated_experimental.lambda.scale.artifact.zip
-  lambda_scale_up_memory_size                                    = each.value.lambda.scale_up.memory_size
-  lambda_event_source_mapping_batch_size                         = each.value.queue.event_source_mapping.batch_size
-  lambda_event_source_mapping_maximum_batching_window_in_seconds = each.value.queue.event_source_mapping.maximum_batching_window_in_seconds
-  lambda_timeout_scale_up                                        = each.value.lambda.scale_up.timeout
-  lambda_scale_down_memory_size                                  = each.value.lambda.scale_down.memory_size
-  lambda_timeout_scale_down                                      = each.value.lambda.scale_down.timeout
+  lambda_zip                                                     = local.translated_experimental.orchestration.webhook.lambda.scale.artifact.zip
+  lambda_scale_up_memory_size                                    = each.value.orchestration.webhook.lambda.scale_up.memory_size
+  lambda_event_source_mapping_batch_size                         = each.value.orchestration.webhook.lambda.scale_up.event_source_mapping.batch_size
+  lambda_event_source_mapping_maximum_batching_window_in_seconds = each.value.orchestration.webhook.lambda.scale_up.event_source_mapping.maximum_batching_window_in_seconds
+  lambda_timeout_scale_up                                        = each.value.orchestration.webhook.lambda.scale_up.timeout
+  lambda_scale_down_memory_size                                  = each.value.orchestration.webhook.lambda.scale_down.memory_size
+  lambda_timeout_scale_down                                      = each.value.orchestration.webhook.lambda.scale_down.timeout
   lambda_subnet_ids                                              = each.value.lambda.subnet_ids
   lambda_security_group_ids                                      = each.value.lambda.security_group_ids
   lambda_tags                                                    = each.value.lambda.tags
@@ -92,7 +95,7 @@ module "runners" {
   runner_name_prefix                                             = each.value.runner.name_prefix
   parameter_store_tags                                           = each.value.ssm.parameters.tags
 
-  scale_up_reserved_concurrent_executions = each.value.lambda.scale_up.reserved_concurrent_executions
+  scale_up_reserved_concurrent_executions = each.value.orchestration.webhook.lambda.scale_up.reserved_concurrent_executions
 
   instance_profile_path     = each.value.compute_provider.ec2.instance_profile_path
   role_path                 = each.value.runner.iam.path
@@ -127,12 +130,12 @@ module "runners" {
 
   log_level = each.value.observability.logs.level
 
-  pool_config                                = each.value.lambda.pool.config
-  pool_lambda_timeout                        = each.value.lambda.pool.lambda.timeout
-  pool_lambda_memory_size                    = each.value.lambda.pool.lambda.memory_size
-  pool_runner_owner                          = each.value.lambda.pool.runner_owner
-  pool_include_busy_runners                  = each.value.lambda.pool.include_busy_runners
-  pool_lambda_reserved_concurrent_executions = each.value.lambda.pool.lambda.reserved_concurrent_executions
+  pool_config                                = each.value.orchestration.webhook.lambda.pool.config
+  pool_lambda_timeout                        = each.value.orchestration.webhook.lambda.pool.timeout
+  pool_lambda_memory_size                    = each.value.orchestration.webhook.lambda.pool.memory_size
+  pool_runner_owner                          = each.value.orchestration.webhook.lambda.pool.runner_owner
+  pool_include_busy_runners                  = each.value.orchestration.webhook.lambda.pool.include_busy_runners
+  pool_lambda_reserved_concurrent_executions = each.value.orchestration.webhook.lambda.pool.reserved_concurrent_executions
   associate_public_ipv4_address              = each.value.compute_provider.ec2.associate_public_ipv4_address
 
   ssm_housekeeper = {
@@ -144,13 +147,13 @@ module "runners" {
   }
 
   job_retry = {
-    enable                                = each.value.job_retry.enabled
-    delay_in_seconds                      = each.value.job_retry.delay_in_seconds
-    delay_backoff                         = each.value.job_retry.delay_backoff
-    lambda_memory_size                    = each.value.job_retry.lambda.memory_size
-    lambda_reserved_concurrent_executions = each.value.job_retry.lambda.reserved_concurrent_executions
-    lambda_timeout                        = each.value.job_retry.lambda.timeout
-    max_attempts                          = each.value.job_retry.max_attempts
+    enable                                = each.value.orchestration.webhook.job_retry.enabled
+    delay_in_seconds                      = each.value.orchestration.webhook.job_retry.delay_in_seconds
+    delay_backoff                         = each.value.orchestration.webhook.job_retry.delay_backoff
+    lambda_memory_size                    = each.value.orchestration.webhook.job_retry.lambda.memory_size
+    lambda_reserved_concurrent_executions = each.value.orchestration.webhook.job_retry.lambda.reserved_concurrent_executions
+    lambda_timeout                        = each.value.orchestration.webhook.job_retry.lambda.timeout
+    max_attempts                          = each.value.orchestration.webhook.job_retry.max_attempts
   }
 
   metrics = {

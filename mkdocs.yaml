@@ -57,6 +57,8 @@ nav:
   - Configuration: configuration.md
   - Getting started: getting-started.md
   - Security: security.md
+  - Architecture decisions:
+    - ADR-002 Runner orchestration provider boundary: adr/002-runner-orchestration-provider-boundary.md
   - Modules:
     - Runners (main): modules/runners.md
     - Submodules (public):
