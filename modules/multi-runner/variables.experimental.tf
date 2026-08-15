@@ -138,7 +138,7 @@ variable "experimental" {
     - `ssm.paths.webhook`: Shared webhook matcher-configuration path segment below `ssm.paths.root`. The default is `webhook`.
     - `ssm.paths.tokens`: Runner registration-token and JIT-configuration path segment below each lane root. The default is `runners/tokens`.
     - `ssm.paths.config`: Persistent runner-configuration path segment below each lane root. The default is `runners/config`.
-    - `ssm.kms_key_id`: Optional global KMS key ARN that encrypts shared GitHub App parameters, configures the webhook and termination watcher, and adds matching decrypt permissions to every v2 runner stack. The default is null and its value may be unknown until apply. It does not select encryption for runtime-created lane runner parameters.
+    - `ssm.kms_key_id`: Optional global KMS key ARN that encrypts shared GitHub App parameters, configures the webhook, and adds matching decrypt permissions to every v2 runner stack. The default is null and its value may be unknown until apply. It does not select encryption for runtime-created lane runner parameters.
     - `ssm.tags`: Default tags for the shared GitHub App Parameter Store module and lane-owned SSM resources. The default is `{}`.
     - `ssm.parameters.tags`: Default tags for Terraform-managed and runtime-created lane runner parameters. The default is `{}`.
     - `ssm.housekeeper.schedule_expression`: Default EventBridge schedule for each lane SSM housekeeper. The default is `rate(1 day)`.
