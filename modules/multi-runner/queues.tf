@@ -1,13 +1,3 @@
-locals {
-  sqs_tags = {
-    for k, v in local.multi_runner_config : k => merge(
-      var.tags,
-      v.tags,
-      v.queue.tags,
-    )
-  }
-}
-
 data "aws_iam_policy_document" "deny_insecure_transport" {
   statement {
     sid = "DenyInsecureTransport"
@@ -36,10 +26,10 @@ data "aws_iam_policy_document" "deny_insecure_transport" {
 }
 
 resource "aws_sqs_queue" "queued_builds" {
-  for_each                   = local.multi_runner_config
+  for_each                   = local.translated_experimental.multi_runner_config
   name                       = "${var.prefix}-${each.key}-queued-builds"
   delay_seconds              = each.value.queue.delay_webhook_event
-  visibility_timeout_seconds = var.runners_scale_up_lambda_timeout
+  visibility_timeout_seconds = each.value.queue.visibility_timeout_seconds
   message_retention_seconds  = each.value.queue.job_queue_retention_in_seconds
   receive_wait_time_seconds  = 0
   redrive_policy = each.value.queue.redrive_build_queue.enabled ? jsonencode({
@@ -47,31 +37,38 @@ resource "aws_sqs_queue" "queued_builds" {
     maxReceiveCount     = each.value.queue.redrive_build_queue.maxReceiveCount
   }) : null
 
-  sqs_managed_sse_enabled           = var.queue_encryption.sqs_managed_sse_enabled
-  kms_master_key_id                 = var.queue_encryption.kms_master_key_id
-  kms_data_key_reuse_period_seconds = var.queue_encryption.kms_data_key_reuse_period_seconds
+  sqs_managed_sse_enabled           = local.translated_experimental.queue.encryption.sqs_managed_sse_enabled
+  kms_master_key_id                 = local.translated_experimental.queue.encryption.kms_master_key_id
+  kms_data_key_reuse_period_seconds = local.translated_experimental.queue.encryption.kms_data_key_reuse_period_seconds
 
-  tags = local.sqs_tags[each.key]
+  tags = merge(
+    local.translated_experimental.tags,
+    each.value.tags,
+    each.value.queue.tags,
+  )
 }
-
 resource "aws_sqs_queue_policy" "build_queue_policy" {
-  for_each  = local.multi_runner_config
+  for_each  = local.translated_experimental.multi_runner_config
   queue_url = aws_sqs_queue.queued_builds[each.key].id
   policy    = data.aws_iam_policy_document.deny_insecure_transport.json
 }
 
 resource "aws_sqs_queue" "queued_builds_dlq" {
-  for_each = { for config, values in local.multi_runner_config : config => values if values.queue.redrive_build_queue.enabled }
+  for_each = { for config, values in local.translated_experimental.multi_runner_config : config => values if values.queue.redrive_build_queue.enabled }
   name     = "${var.prefix}-${each.key}-queued-builds_dead_letter"
 
-  sqs_managed_sse_enabled           = var.queue_encryption.sqs_managed_sse_enabled
-  kms_master_key_id                 = var.queue_encryption.kms_master_key_id
-  kms_data_key_reuse_period_seconds = var.queue_encryption.kms_data_key_reuse_period_seconds
-  tags                              = local.sqs_tags[each.key]
+  sqs_managed_sse_enabled           = local.translated_experimental.queue.encryption.sqs_managed_sse_enabled
+  kms_master_key_id                 = local.translated_experimental.queue.encryption.kms_master_key_id
+  kms_data_key_reuse_period_seconds = local.translated_experimental.queue.encryption.kms_data_key_reuse_period_seconds
+  tags = merge(
+    local.translated_experimental.tags,
+    each.value.tags,
+    each.value.queue.tags,
+  )
 }
 
 resource "aws_sqs_queue_policy" "build_queue_dlq_policy" {
-  for_each  = { for config, values in local.multi_runner_config : config => values if values.queue.redrive_build_queue.enabled }
+  for_each  = { for config, values in local.translated_experimental.multi_runner_config : config => values if values.queue.redrive_build_queue.enabled }
   queue_url = aws_sqs_queue.queued_builds_dlq[each.key].id
   policy    = data.aws_iam_policy_document.deny_insecure_transport.json
 }

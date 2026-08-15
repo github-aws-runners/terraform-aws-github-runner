@@ -33,7 +33,7 @@ locals {
   lambda_role_path               = var.lambda.role.path == null ? "/${var.prefix}/" : var.lambda.role.path
   runner_role_path               = var.runner.iam.path == null ? "/${var.prefix}/" : var.runner.iam.path
   lambda_zip                     = var.lambda.zip == null ? "${path.module}/../../lambdas/functions/control-plane/runners.zip" : var.lambda.zip
-  kms_key                        = var.ssm.kms_key
+  kms_key_id                     = var.ssm.kms_key_id
   enable_job_queued_check        = var.scale_up.job_queued_check_enabled == null ? !var.runner.ephemeral : var.scale_up.job_queued_check_enabled
   token_path                     = "${var.ssm.paths.root}/${var.ssm.paths.tokens}"
   arn_ssm_parameters_path_config = "arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.ssm.paths.root}/${var.ssm.paths.config}"

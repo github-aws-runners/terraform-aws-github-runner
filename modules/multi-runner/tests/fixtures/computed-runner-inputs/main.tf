@@ -1,6 +1,5 @@
-# Keep the runner lane key and provider selection caller-known while passing an
-# apply-time value through the lane, matching callers that attach a policy
-# created in the same plan.
+# Keep the runner lane key, provider selection, and optional KMS scalar
+# caller-known while passing apply-time ARNs through the configuration.
 resource "random_id" "managed_policy" {
   byte_length = 4
 }
@@ -8,10 +7,11 @@ resource "random_id" "managed_policy" {
 module "multi_runner" {
   source = "../../.."
 
-  aws_region = "eu-west-1"
-  prefix     = "computed-inputs"
-  vpc_id     = "vpc-12345678"
-  subnet_ids = ["subnet-12345678"]
+  aws_region  = "eu-west-1"
+  prefix      = "computed-inputs"
+  vpc_id      = "vpc-12345678"
+  subnet_ids  = ["subnet-12345678"]
+  kms_key_arn = "arn:aws:kms:eu-west-1:123456789012:key/generated-${random_id.managed_policy.hex}"
 
   github_app = {
     id             = "123456"
@@ -25,7 +25,48 @@ module "multi_runner" {
   syncer_lambda_s3_key  = "runner-binaries-syncer.zip"
 
   experimental = {
-    multi_runner_config_v2 = {
+    github = {
+      app = {
+        id             = "123456"
+        key_base64     = "dGVzdA=="
+        webhook_secret = "test-secret"
+      }
+    }
+
+    lambda = {
+      artifact = {
+        s3 = {
+          bucket = "nested-lambda-artifacts"
+        }
+      }
+      scale = {
+        artifact = {
+          s3 = {
+            key = "nested-runners.zip"
+          }
+        }
+      }
+      webhook = {
+        artifact = {
+          s3 = {
+            key = "webhook.zip"
+          }
+        }
+      }
+    }
+
+    compute_provider = {
+      ec2 = {
+        vpc_id     = "vpc-nested-12345678"
+        subnet_ids = ["subnet-nested-12345678"]
+      }
+    }
+
+    ssm = {
+      kms_key_id = "arn:aws:kms:eu-west-1:123456789012:key/generated-${random_id.managed_policy.hex}"
+    }
+
+    multi_runner_config = {
       linux = {
         runner = {
           os            = "linux"

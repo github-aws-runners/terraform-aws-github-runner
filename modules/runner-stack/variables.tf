@@ -181,6 +181,7 @@ variable "lambda" {
     - `subnet_ids`: Subnets used for Lambda VPC configuration.
     - `security_group_ids`: Security groups used for Lambda VPC configuration.
     - `tags`: Shared tags applied to Lambda function resources only. These override module-level `tags`; component `tags` override this map when keys conflict.
+    - `principals`: Additional principals allowed to assume the control-plane Lambda roles.
     - `role.path`: IAM path for module-managed Lambda execution roles. Defaults to a path derived from `prefix`.
     - `role.permissions_boundary`: Permissions-boundary ARN applied to module-managed Lambda execution roles.
   EOT
@@ -196,6 +197,10 @@ variable "lambda" {
     subnet_ids         = optional(list(string), [])
     security_group_ids = optional(list(string), [])
     tags               = optional(map(string), {})
+    principals = optional(list(object({
+      type        = string
+      identifiers = list(string)
+    })), [])
     role = optional(object({
       path                 = optional(string, null)
       permissions_boundary = optional(string, null)
@@ -333,8 +338,7 @@ variable "ssm" {
     - `paths.root`: Root Parameter Store path for this runner stack.
     - `paths.tokens`: Path segment under `paths.root` used for registration tokens and just-in-time configuration.
     - `paths.config`: Path segment under `paths.root` used for persistent runner configuration.
-    - `kms_key`: Optional customer-managed KMS key used to encrypt temporary registration parameters. The wrapper's presence is the plan-time policy discriminator.
-    - `kms_key.arn`: ARN of the customer-managed KMS key. The ARN may be unknown until apply.
+    - `kms_key_id`: Optional customer-managed KMS key ARN used by control-plane IAM policies to decrypt shared GitHub App parameters. The ARN may be unknown until apply; IAM policy shape remains static. It does not select encryption for runtime-created runner parameters.
     - `tags`: Shared tags for SSM-related resources. These override module-level `tags` and are inherited by parameter and housekeeper resources.
     - `parameters.tags`: Tags for Terraform-managed runner configuration parameters and temporary parameters created by the scale-up and pool Lambdas. These override module-level and `ssm.tags` values with the same key.
     - `housekeeper.schedule_expression`: EventBridge schedule expression that invokes the SSM housekeeper.
@@ -352,10 +356,8 @@ variable "ssm" {
       tokens = string
       config = string
     })
-    kms_key = optional(object({
-      arn = string
-    }), null)
-    tags = optional(map(string), {})
+    kms_key_id = optional(string, null)
+    tags       = optional(map(string), {})
     parameters = optional(object({
       tags = optional(map(string), {})
     }), {})

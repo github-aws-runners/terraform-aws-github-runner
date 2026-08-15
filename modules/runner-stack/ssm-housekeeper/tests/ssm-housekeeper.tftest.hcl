@@ -64,6 +64,10 @@ variables {
       role = {
         path                 = "/runner-stack/"
         permissions_boundary = null
+        principals = [{
+          type        = "AWS"
+          identifiers = ["arn:aws-us-gov:iam::123456789012:role/local-testing"]
+        }]
       }
     }
     observability = {
@@ -97,6 +101,14 @@ variables {
 
 run "configures_schedule_cleanup_and_outputs" {
   command = plan
+
+  assert {
+    condition = (
+      length(data.aws_iam_policy_document.lambda_assume_role.statement[0].principals) == 2 &&
+      contains(data.aws_iam_policy_document.lambda_assume_role.statement[0].principals[*].type, "AWS")
+    )
+    error_message = "The housekeeper Lambda trust policy must include configured additional principals."
+  }
 
   assert {
     condition = (
