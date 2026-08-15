@@ -1,8 +1,3 @@
-moved {
-  from = module.runner_stacks
-  to   = module.runner_configs
-}
-
 module "runner_configs" {
   source = "../runner-config"
   for_each = {

@@ -15,26 +15,6 @@ locals {
   }[local.orchestration_provider_type]
 }
 
-moved {
-  from = module.scale_runners
-  to   = module.webhook["webhook"].module.scale_runners
-}
-
-moved {
-  from = module.pool
-  to   = module.webhook["webhook"].module.pool
-}
-
-moved {
-  from = module.job_retry
-  to   = module.webhook["webhook"].module.job_retry
-}
-
-moved {
-  from = module.webhook["webhook"]
-  to   = module.orchestration_webhook[0]
-}
-
 module "orchestration_webhook" {
   source = "../orchestration-providers/webhook"
   count  = local.orchestration_provider_enabled.webhook ? 1 : 0
