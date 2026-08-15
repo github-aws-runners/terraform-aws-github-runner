@@ -184,22 +184,22 @@ run "layered_component_tags" {
   command = plan
 
   assert {
-    condition     = module.webhook["webhook"].scale_up.lambda.environment[0].variables["LOG_LEVEL"] == "DEBUG"
+    condition     = module.orchestration_webhook[0].scale_up.lambda.environment[0].variables["LOG_LEVEL"] == "DEBUG"
     error_message = "The nested observability.logs.level value must configure the control-plane functions."
   }
 
   assert {
-    condition = module.webhook["webhook"].scale_up.lambda.tags == tomap({
+    condition = module.orchestration_webhook[0].scale_up.lambda.tags == tomap({
       precedence = "scale-up"
       module     = "yes"
       lambda     = "yes"
       scale_up   = "yes"
-      }) && module.webhook["webhook"].scale_up.log_group.tags == tomap({
+      }) && module.orchestration_webhook[0].scale_up.log_group.tags == tomap({
       precedence = "scale-up"
       module     = "yes"
       log        = "yes"
       scale_up   = "yes"
-      }) && module.webhook["webhook"].scale_up.role.tags == tomap({
+      }) && module.orchestration_webhook[0].scale_up.role.tags == tomap({
       precedence = "scale-up"
       module     = "yes"
       scale_up   = "yes"
@@ -208,17 +208,17 @@ run "layered_component_tags" {
   }
 
   assert {
-    condition = module.webhook["webhook"].scale_down.lambda.tags == tomap({
+    condition = module.orchestration_webhook[0].scale_down.lambda.tags == tomap({
       precedence = "scale-down"
       module     = "yes"
       lambda     = "yes"
       scale_down = "yes"
-      }) && module.webhook["webhook"].scale_down.log_group.tags == tomap({
+      }) && module.orchestration_webhook[0].scale_down.log_group.tags == tomap({
       precedence = "scale-down"
       module     = "yes"
       log        = "yes"
       scale_down = "yes"
-      }) && module.webhook["webhook"].scale_down.role.tags == tomap({
+      }) && module.orchestration_webhook[0].scale_down.role.tags == tomap({
       precedence = "scale-down"
       module     = "yes"
       scale_down = "yes"
@@ -242,7 +242,7 @@ run "layered_component_tags" {
       ssm        = "yes"
       parameter  = "yes"
       }) && tomap({
-      for tag in jsondecode(module.webhook["webhook"].scale_up.lambda.environment[0].variables["SSM_PARAMETER_STORE_TAGS"]) :
+      for tag in jsondecode(module.orchestration_webhook[0].scale_up.lambda.environment[0].variables["SSM_PARAMETER_STORE_TAGS"]) :
       tag.Key => tag.Value
       }) == tomap({
       precedence = "ssm-parameter"
@@ -276,17 +276,17 @@ run "layered_component_tags" {
   }
 
   assert {
-    condition = module.webhook["webhook"].pool.lambda.tags == tomap({
+    condition = module.orchestration_webhook[0].pool.lambda.tags == tomap({
       precedence = "pool"
       module     = "yes"
       lambda     = "yes"
       pool       = "yes"
-      }) && module.webhook["webhook"].pool.log_group.tags == tomap({
+      }) && module.orchestration_webhook[0].pool.log_group.tags == tomap({
       precedence = "pool"
       module     = "yes"
       log        = "yes"
       pool       = "yes"
-      }) && module.webhook["webhook"].pool.role.tags == tomap({
+      }) && module.orchestration_webhook[0].pool.role.tags == tomap({
       precedence = "pool"
       module     = "yes"
       pool       = "yes"
@@ -295,21 +295,21 @@ run "layered_component_tags" {
   }
 
   assert {
-    condition = module.webhook["webhook"].job_retry.lambda.function.tags == tomap({
+    condition = module.orchestration_webhook[0].job_retry.lambda.function.tags == tomap({
       precedence = "job-retry"
       module     = "yes"
       lambda     = "yes"
       job_retry  = "yes"
-      }) && module.webhook["webhook"].job_retry.lambda.log_group.tags == tomap({
+      }) && module.orchestration_webhook[0].job_retry.lambda.log_group.tags == tomap({
       precedence = "job-retry"
       module     = "yes"
       log        = "yes"
       job_retry  = "yes"
-      }) && module.webhook["webhook"].job_retry.lambda.role.tags == tomap({
+      }) && module.orchestration_webhook[0].job_retry.lambda.role.tags == tomap({
       precedence = "job-retry"
       module     = "yes"
       job_retry  = "yes"
-      }) && module.webhook["webhook"].job_retry.queue.tags == tomap({
+      }) && module.orchestration_webhook[0].job_retry.queue.tags == tomap({
       precedence = "job-retry"
       module     = "yes"
       queue      = "yes"

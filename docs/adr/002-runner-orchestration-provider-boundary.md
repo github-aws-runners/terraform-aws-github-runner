@@ -169,9 +169,12 @@ Stable inputs are translated into the same internal canonical representation so 
 The experimental implementation preserves in-progress v2 state with declarative moves:
 
 - `module.runner_stacks` moves to `module.runner_configs`;
-- scale-up/scale-down resources move beneath `module.webhook["webhook"].module.scale_runners`;
-- pool resources move beneath `module.webhook["webhook"].module.pool`; and
-- job-retry resources move beneath `module.webhook["webhook"].module.job_retry`.
+- EC2 compute resources move from `module.ec2[0]` to `module.compute_ec2[0]`;
+- scale-up/scale-down resources move beneath `module.orchestration_webhook[0].module.scale_runners`;
+- pool resources move beneath `module.orchestration_webhook[0].module.pool`; and
+- job-retry resources move beneath `module.orchestration_webhook[0].module.job_retry`.
+
+The runner configuration uses one explicitly named, count-addressed module per concrete provider. Compute modules follow `module.compute_<type>[0]`, while orchestration modules follow `module.orchestration_<type>[0]`. This avoids duplicating the provider name in addresses such as `module.webhook["webhook"]` and gives future providers symmetric addresses such as `module.compute_microvm[0]` and `module.orchestration_scale_set[0]`. Chained moves from the previously published module addresses preserve existing experimental state.
 
 The canonical v2 output groups resources under `orchestration.webhook`. Direct `scale_up`, `scale_down`, and `pool` outputs remain compatibility aliases during the experimental transition.
 
