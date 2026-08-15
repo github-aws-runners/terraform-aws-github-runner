@@ -43,6 +43,7 @@ module "pool" {
       group_name                = local.resolved_config.runner.group_name
       name_prefix               = local.resolved_config.runner.name_prefix
       pool_owner                = local.resolved_config.pool.runner_owner
+      boot_time_in_minutes      = local.resolved_config.runner.boot_time_in_minutes
     }
     ssm_token_path                 = local.resolved_config.ssm.token_path
     ssm_token_path_arn             = local.resolved_config.ssm.token_path_arn

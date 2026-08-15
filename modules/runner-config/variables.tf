@@ -27,15 +27,12 @@ variable "runner" {
 
     - `os`: Runner operating system. Supported values are `linux`, `osx`, and `windows`.
     - `architecture`: Runner distribution architecture, such as `x64` or `arm64`.
-    - `boot_time_in_minutes`: Expected instance boot duration used before a runner is considered stale.
     - `disable_default_labels`: Prevents GitHub's default self-hosted, operating-system, and architecture labels from being registered.
     - `labels`: Complete set of labels supplied to the control-plane functions.
     - `group_name`: GitHub runner group used during registration.
     - `name_prefix`: Prefix added to registered runner names.
     - `run_as_root`: Runs the runner service as root when supported by the compute provider.
     - `run_as`: Operating-system user used when `run_as_root` is false.
-    - `ephemeral`: Registers runners in ephemeral mode.
-    - `jit_config_enabled`: Explicitly enables or disables just-in-time configuration. When null, runtime behavior follows `ephemeral`.
     - `auto_update_disabled`: Disables the GitHub runner application's built-in updater.
     - `tags`: Additional tags for common runner resources, currently the managed runner IAM role. These override module-level `tags` with the same key.
     - `hooks.job_started`: Script content installed as the runner job-started hook.
@@ -49,15 +46,12 @@ variable "runner" {
   type = object({
     os                     = optional(string, "linux")
     architecture           = optional(string, "x64")
-    boot_time_in_minutes   = optional(number, 5)
     disable_default_labels = optional(bool, false)
     labels                 = list(string)
     group_name             = optional(string, "Default")
     name_prefix            = optional(string, "")
     run_as_root            = optional(bool, false)
     run_as                 = optional(string, "ec2-user")
-    ephemeral              = optional(bool, false)
-    jit_config_enabled     = optional(bool, null)
     auto_update_disabled   = optional(bool, false)
     tags                   = optional(map(string), {})
     hooks = optional(object({

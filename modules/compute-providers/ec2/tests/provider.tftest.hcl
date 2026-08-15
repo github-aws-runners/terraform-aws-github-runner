@@ -101,8 +101,11 @@ run "separates_control_plane_contract_from_ec2_resources" {
   }
 
   assert {
-    condition     = output.provider.environment_variables.scale_down["RUNNER_BOOT_TIME_IN_MINUTES"] == 5
-    error_message = "The provider contract must expose the EC2 scale-down boot grace period."
+    condition = (
+      length(output.provider.environment_variables.scale_down) == 0
+      && !contains(keys(output.provider.environment_variables.pool), "RUNNER_BOOT_TIME_IN_MINUTES")
+    )
+    error_message = "The EC2 provider must not expose webhook-owned runner boot-time configuration."
   }
 
   assert {

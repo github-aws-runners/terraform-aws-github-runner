@@ -268,7 +268,6 @@ variable "runner" {
 
     - `os`: Runner operating system. Supported values are `linux`, `osx`, and `windows`.
     - `architecture`: Runner distribution architecture.
-    - `boot_time_in_minutes`: Expected boot and registration duration used by scale-down and pool.
     - `name_prefix`: Prefix added to registered runner names.
     - `run_as_root`: Runs the runner service as root.
     - `run_as`: Operating-system user used when `run_as_root` is false.
@@ -281,12 +280,11 @@ variable "runner" {
     - `iam.path`: IAM path available to provider-managed IAM resources. Null derives the path from `prefix`.
   EOT
   type = object({
-    os                   = optional(string, "linux")
-    architecture         = optional(string, "x64")
-    boot_time_in_minutes = optional(number, 5)
-    name_prefix          = optional(string, "")
-    run_as_root          = optional(bool, false)
-    run_as               = optional(string, "ec2-user")
+    os           = optional(string, "linux")
+    architecture = optional(string, "x64")
+    name_prefix  = optional(string, "")
+    run_as_root  = optional(bool, false)
+    run_as       = optional(string, "ec2-user")
     hooks = optional(object({
       job_started   = optional(string, "")
       job_completed = optional(string, "")

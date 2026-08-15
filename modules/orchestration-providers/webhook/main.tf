@@ -1,33 +1,37 @@
 locals {
-  packaged_runners_lambda_zip = "${path.module}/../../../lambdas/functions/control-plane/runners.zip"
-  scale_artifact_s3_selected  = var.config.lambda.scale.artifact.s3 != null
-  scale_artifact = {
-    zip = local.scale_artifact_s3_selected ? null : coalesce(
-      var.config.lambda.scale.artifact.zip,
+  packaged_runners_lambda_zip         = "${path.module}/../../../lambdas/functions/control-plane/runners.zip"
+  runner_control_artifact_s3_selected = var.config.lambda.artifact.s3 != null
+  runner_control_artifact = {
+    zip = local.runner_control_artifact_s3_selected ? null : coalesce(
+      var.config.lambda.artifact.zip,
       local.packaged_runners_lambda_zip,
     )
     s3 = {
-      bucket         = local.scale_artifact_s3_selected ? var.lambda.artifact.s3.bucket : null
-      key            = try(var.config.lambda.scale.artifact.s3.key, null)
-      object_version = try(var.config.lambda.scale.artifact.s3.object_version, null)
+      bucket         = local.runner_control_artifact_s3_selected ? var.lambda.artifact.s3.bucket : null
+      key            = try(var.config.lambda.artifact.s3.key, null)
+      object_version = try(var.config.lambda.artifact.s3.object_version, null)
     }
   }
 
   resolved_config = {
     prefix = var.prefix
     tags   = var.tags
-    runner = merge(var.runner, {
-      maximum_count = var.config.runner.maximum_count
+    runner = merge(var.runner, var.config.runner, {
+      jit_config_enabled = (
+        var.config.runner.jit_config_enabled == null
+        ? var.config.runner.ephemeral
+        : var.config.runner.jit_config_enabled
+      )
     })
     github = merge(var.github, var.config.github)
     lambda = merge(var.lambda, {
-      artifact = local.scale_artifact
+      artifact = local.runner_control_artifact
     })
     queue = merge(var.config.queue, {
-      event_source_mapping = var.config.lambda.scale_up.event_source_mapping
+      event_source_mapping = var.config.lambda.scale.up.event_source_mapping
     })
-    scale_up      = var.config.lambda.scale_up
-    scale_down    = var.config.lambda.scale_down
+    scale_up      = var.config.lambda.scale.up
+    scale_down    = var.config.lambda.scale.down
     pool          = var.config.lambda.pool
     job_retry     = var.config.job_retry
     ssm           = var.ssm

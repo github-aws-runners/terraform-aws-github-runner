@@ -36,6 +36,7 @@ variable "config" {
     - `runner.group_name`: GitHub runner group assigned to runners created by the pool Lambda.
     - `runner.name_prefix`: Prefix used for runner names.
     - `runner.pool_owner`: GitHub organization or repository that owns the runner pool.
+    - `runner.boot_time_in_minutes`: Webhook-provider runner boot timeout used by pool reconciliation.
     - `runners_maximum_count`: Webhook-provider runner capacity limit enforced by the pool Lambda.
     - `prefix`: Prefix used to name pool resources.
     - `pool`: Scheduled pool targets.
@@ -95,6 +96,7 @@ variable "config" {
       group_name                = string
       name_prefix               = string
       pool_owner                = string
+      boot_time_in_minutes      = number
     })
     runners_maximum_count = number
     prefix                = string

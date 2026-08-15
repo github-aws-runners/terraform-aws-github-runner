@@ -23,7 +23,7 @@ module "ssm_housekeeper" {
     }
     lambda = {
       # The housekeeper resolves only its component-owned selector and never
-      # inherits the selected orchestration provider's scale artifact.
+      # inherits the selected orchestration provider's runner-control artifact.
       artifact     = local.ssm_housekeeper_artifact
       runtime      = var.lambda.runtime
       architecture = var.lambda.architecture

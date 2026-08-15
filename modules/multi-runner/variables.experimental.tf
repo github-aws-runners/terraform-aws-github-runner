@@ -15,15 +15,12 @@ variable "experimental" {
     - `roles.permissions_boundary`: Default permissions-boundary ARN for module-managed v2 runner and Lambda roles and for the shared webhook, runner-binary syncer, termination-watcher, and AMI-housekeeper Lambda roles. The default is null.
     - `runner.os`: Default runner operating system. The default is null; every runner configuration must resolve this field globally or locally.
     - `runner.architecture`: Default runner distribution architecture. The default is null; every runner configuration must resolve this field globally or locally.
-    - `runner.boot_time_in_minutes`: Default expected runner boot duration before a runner is considered stale. The default is `5`.
     - `runner.disable_default_labels`: Omits the default self-hosted, operating-system, and architecture labels when true. The default is `false`.
     - `runner.extra_labels`: Default additional labels combined with each runner configuration's matcher labels. The default is `[]`.
     - `runner.group_name`: Default GitHub runner group. The default is `Default`.
     - `runner.name_prefix`: Default prefix added to registered runner names. The default is an empty string.
     - `runner.run_as_root`: Runs the runner service as root when supported by the provider. The default is `false`.
     - `runner.run_as`: Default operating-system user when `run_as_root` is false. The default is `ec2-user`.
-    - `runner.ephemeral`: Registers runners in ephemeral mode by default. The default is `false`.
-    - `runner.jit_config_enabled`: Explicit default for just-in-time runner configuration. The default is null, which follows the resolved `ephemeral` mode.
     - `runner.auto_update_disabled`: Disables the GitHub runner application's built-in updater. The default is `false`.
     - `runner.tags`: Default tags for common runner resources, currently the module-managed runner IAM role. The default is `{}`.
     - `runner.hooks.job_started`: Default script content installed as the runner job-started hook. The default is an empty string.
@@ -60,7 +57,6 @@ variable "experimental" {
     - `github.additional_apps[].installation_id_ssm`: Optional existing Parameter Store installation-ID parameter wrapper.
     - `github.additional_apps[].installation_id_ssm.arn`: ARN of the existing installation-ID parameter.
     - `github.additional_apps[].installation_id_ssm.name`: Name of the existing installation-ID parameter.
-    - `github.repository_white_list`: Repository full names allowed to use the shared webhook. The default is `[]`, which disables repository filtering.
     - `github.enterprise_server.url`: GitHub Enterprise Server URL used by v2 runner-config GitHub clients and the shared termination watcher. The default is null.
     - `github.enterprise_server.ssl_verify`: Enables TLS certificate verification for v2 runner-config GitHub clients. The default is `true`.
     - `github.user_agent`: HTTP User-Agent used by v2 runner-config GitHub clients. The default is `github-aws-runners`.
@@ -80,29 +76,33 @@ variable "experimental" {
     - `orchestration.webhook.eventbridge.enable`: Routes accepted webhook events through EventBridge when true. The default is `true`, and the value must be known during planning because it selects the webhook implementation.
     - `orchestration.webhook.eventbridge.accept_events`: EventBridge event types accepted by the shared webhook. The default is `[]`, which accepts all supported events.
     - `orchestration.webhook.matcher_config_parameter_store_tier`: Parameter Store tier for the shared matcher configuration. The default is `Standard`; valid values are `Standard` and `Advanced`. The value must be known during planning because it determines the matcher-parameter chunks.
+    - `orchestration.webhook.github.repository_white_list`: Repository full names allowed to use the shared webhook. The default is `[]`, which disables repository filtering.
+    - `orchestration.webhook.runner.boot_time_in_minutes`: Default expected runner boot duration used by webhook scale-down and pool controls. The default is `5`.
+    - `orchestration.webhook.runner.ephemeral`: Registers webhook-orchestrated runners in ephemeral mode by default. The default is `false`.
+    - `orchestration.webhook.runner.jit_config_enabled`: Explicit default for just-in-time runner configuration. The default is null, which follows the resolved `ephemeral` mode.
     - `orchestration.webhook.runner.maximum_count`: Default maximum number of runners managed by the webhook orchestration provider per runner configuration. The default is null; every webhook runner configuration must resolve this field globally or locally.
-    - `orchestration.webhook.lambda.scale.artifact`: Runner-config scale-control-plane artifact selection. Set at most one of `zip` or `s3`; when both are null, the packaged runner archive is used.
-    - `orchestration.webhook.lambda.scale.artifact.zip`: Optional local path to the runner-config scale-control-plane Lambda archive. The default is null.
-    - `orchestration.webhook.lambda.scale.artifact.s3`: Optional key and object version in the shared `lambda.artifact.s3.bucket`. Wrapper presence selects S3 for runner-config scale-control-plane Lambdas, must be known during planning, and requires a non-null shared bucket and key.
-    - `orchestration.webhook.lambda.scale.artifact.s3.key`: Object key of the runner-config scale-control-plane Lambda archive.
-    - `orchestration.webhook.lambda.scale.artifact.s3.object_version`: Optional object version of the runner-config scale-control-plane Lambda archive. The default is null.
-    - `orchestration.webhook.lambda.scale_up.memory_size`: Scale-up Lambda memory in MB. The default is `512`.
-    - `orchestration.webhook.lambda.scale_up.timeout`: Scale-up Lambda timeout in seconds. The default is `30`.
-    - `orchestration.webhook.lambda.scale_up.reserved_concurrent_executions`: Reserved concurrency for scale-up. The default is `1`; use `-1` for unreserved concurrency.
-    - `orchestration.webhook.lambda.scale_up.job_queued_check_enabled`: Enables queued-job verification before scaling. The default is null, which follows the resolved runner mode.
-    - `orchestration.webhook.lambda.scale_up.event_source_mapping.batch_size`: Maximum build-queue records delivered per scale-up invocation. The default is `10`.
-    - `orchestration.webhook.lambda.scale_up.event_source_mapping.maximum_batching_window_in_seconds`: Maximum build-queue batching window. The default is `0`.
-    - `orchestration.webhook.lambda.scale_up.tags`: Default tags for scale-up resources. The default is `{}`.
-    - `orchestration.webhook.lambda.scale_down.memory_size`: Scale-down Lambda memory in MB. The default is `512`.
-    - `orchestration.webhook.lambda.scale_down.timeout`: Scale-down Lambda timeout in seconds. The default is `60`.
-    - `orchestration.webhook.lambda.scale_down.schedule_expression`: EventBridge schedule for scale-down. The default is `cron(*/5 * * * ? *)`.
-    - `orchestration.webhook.lambda.scale_down.minimum_running_time_in_minutes`: Minimum runner age before scale-down may terminate it. The default is null, which selects the operating-system default.
-    - `orchestration.webhook.lambda.scale_down.idle_config`: Default time-based desired idle-runner configurations. The default is `[]`.
-    - `orchestration.webhook.lambda.scale_down.idle_config[].cron`: Cron expression identifying when the idle configuration applies.
-    - `orchestration.webhook.lambda.scale_down.idle_config[].timeZone`: IANA time zone used to evaluate the cron expression.
-    - `orchestration.webhook.lambda.scale_down.idle_config[].idleCount`: Number of idle runners retained during the matching period.
-    - `orchestration.webhook.lambda.scale_down.idle_config[].evictionStrategy`: Selection strategy used when excess idle runners are removed. The default is `oldest_first`.
-    - `orchestration.webhook.lambda.scale_down.tags`: Default tags for scale-down resources. The default is `{}`.
+    - `orchestration.webhook.lambda.artifact`: Shared runner-control-plane artifact used by webhook scale, pool, and job-retry components. Set at most one of `zip` or `s3`; when both are null, the packaged runner archive is used.
+    - `orchestration.webhook.lambda.artifact.zip`: Optional local path to the shared runner-control-plane Lambda archive. The default is null.
+    - `orchestration.webhook.lambda.artifact.s3`: Optional key and object version in the shared `lambda.artifact.s3.bucket`. Wrapper presence selects S3 for runner-control-plane Lambdas, must be known during planning, and requires a non-null shared bucket and key.
+    - `orchestration.webhook.lambda.artifact.s3.key`: Object key of the shared runner-control-plane Lambda archive.
+    - `orchestration.webhook.lambda.artifact.s3.object_version`: Optional object version of the shared runner-control-plane Lambda archive. The default is null.
+    - `orchestration.webhook.lambda.scale.up.memory_size`: Scale-up Lambda memory in MB. The default is `512`.
+    - `orchestration.webhook.lambda.scale.up.timeout`: Scale-up Lambda timeout in seconds. The default is `30`.
+    - `orchestration.webhook.lambda.scale.up.reserved_concurrent_executions`: Reserved concurrency for scale-up. The default is `1`; use `-1` for unreserved concurrency.
+    - `orchestration.webhook.lambda.scale.up.job_queued_check_enabled`: Enables queued-job verification before scaling. The default is null, which follows the resolved runner mode.
+    - `orchestration.webhook.lambda.scale.up.event_source_mapping.batch_size`: Maximum build-queue records delivered per scale-up invocation. The default is `10`.
+    - `orchestration.webhook.lambda.scale.up.event_source_mapping.maximum_batching_window_in_seconds`: Maximum build-queue batching window. The default is `0`.
+    - `orchestration.webhook.lambda.scale.up.tags`: Default tags for scale-up resources. The default is `{}`.
+    - `orchestration.webhook.lambda.scale.down.memory_size`: Scale-down Lambda memory in MB. The default is `512`.
+    - `orchestration.webhook.lambda.scale.down.timeout`: Scale-down Lambda timeout in seconds. The default is `60`.
+    - `orchestration.webhook.lambda.scale.down.schedule_expression`: EventBridge schedule for scale-down. The default is `cron(*/5 * * * ? *)`.
+    - `orchestration.webhook.lambda.scale.down.minimum_running_time_in_minutes`: Minimum runner age before scale-down may terminate it. The default is null, which selects the operating-system default.
+    - `orchestration.webhook.lambda.scale.down.idle_config`: Default time-based desired idle-runner configurations. The default is `[]`.
+    - `orchestration.webhook.lambda.scale.down.idle_config[].cron`: Cron expression identifying when the idle configuration applies.
+    - `orchestration.webhook.lambda.scale.down.idle_config[].timeZone`: IANA time zone used to evaluate the cron expression.
+    - `orchestration.webhook.lambda.scale.down.idle_config[].idleCount`: Number of idle runners retained during the matching period.
+    - `orchestration.webhook.lambda.scale.down.idle_config[].evictionStrategy`: Selection strategy used when excess idle runners are removed. The default is `oldest_first`.
+    - `orchestration.webhook.lambda.scale.down.tags`: Default tags for scale-down resources. The default is `{}`.
     - `orchestration.webhook.lambda.webhook.artifact`: Shared-webhook artifact selection. Set at most one of `zip` or `s3`; when both are null, the packaged archive is used.
     - `orchestration.webhook.lambda.webhook.artifact.zip`: Optional local path to the shared-webhook Lambda archive. The default is null.
     - `orchestration.webhook.lambda.webhook.artifact.s3`: Optional key and object version in the shared `lambda.artifact.s3.bucket`. Wrapper presence selects S3 for the webhook and requires a non-null shared bucket and key.
@@ -126,7 +126,7 @@ variable "experimental" {
     - `orchestration.webhook.lambda.pool.tags`: Default tags for pool resources. The default is `{}`.
     - `orchestration.webhook.queue.delay_webhook_event`: Default delay in seconds applied to accepted webhook jobs. The default is `30`.
     - `orchestration.webhook.queue.job_queue_retention_in_seconds`: Default build-queue message retention period in seconds. The default is `86400`.
-    - `orchestration.webhook.queue.visibility_timeout_seconds`: Default build-queue visibility timeout. The default is `180`; set it to at least six times every resolved `orchestration.webhook.lambda.scale_up.timeout` that inherits it.
+    - `orchestration.webhook.queue.visibility_timeout_seconds`: Default build-queue visibility timeout. The default is `180`; set it to at least six times every resolved `orchestration.webhook.lambda.scale.up.timeout` that inherits it.
     - `orchestration.webhook.queue.redrive_build_queue.enabled`: Creates and attaches a dead-letter queue to every v2 build queue by default. The default is `false`.
     - `orchestration.webhook.queue.redrive_build_queue.maxReceiveCount`: Default number of receives before a message moves to the dead-letter queue. The default is null while redrive is disabled and must resolve to a value greater than zero when redrive is enabled.
     - `orchestration.webhook.queue.tags`: Default tags for v2 build queues and dead-letter queues. The default is `{}`.
@@ -249,15 +249,12 @@ variable "experimental" {
     - `multi_runner_config[].tags`: Configuration-wide tags. These override global `experimental.tags`; narrower component and compute-provider tag maps take precedence for their resources. Flat `tags` are not merged into v2 queues or runner configurations.
     - `multi_runner_config[].runner.os`: Runner operating system.
     - `multi_runner_config[].runner.architecture`: Runner distribution architecture.
-    - `multi_runner_config[].runner.boot_time_in_minutes`: Expected boot duration used before a runner is considered stale.
     - `multi_runner_config[].runner.disable_default_labels`: Prevents GitHub default labels from being registered.
     - `multi_runner_config[].runner.extra_labels`: Additional labels combined with `orchestration.webhook.matcherConfig.labelMatchers` for webhook runner configurations. Default self-hosted, operating-system, and architecture labels are also included unless `runner.disable_default_labels` is true.
     - `multi_runner_config[].runner.group_name`: GitHub runner group used during registration.
     - `multi_runner_config[].runner.name_prefix`: Prefix added to registered runner names.
     - `multi_runner_config[].runner.run_as_root`: Runs the runner service as root when supported by the compute provider.
     - `multi_runner_config[].runner.run_as`: Operating-system user used when `run_as_root` is false.
-    - `multi_runner_config[].runner.ephemeral`: Registers runners in ephemeral mode.
-    - `multi_runner_config[].runner.jit_config_enabled`: Explicitly enables or disables just-in-time configuration. Null inherits the global value; if both are null, behavior follows the resolved `ephemeral` mode.
     - `multi_runner_config[].runner.auto_update_disabled`: Disables the GitHub runner application's built-in updater.
     - `multi_runner_config[].runner.tags`: Tags for common runner resources, currently the managed runner IAM role. These override entry-level `tags`.
     - `multi_runner_config[].runner.hooks.job_started`: Script content installed as the runner job-started hook.
@@ -278,6 +275,9 @@ variable "experimental" {
     - `multi_runner_config[].lambda.role.permissions_boundary`: Per-configuration permissions-boundary ARN for module-managed Lambda roles. Null inherits `experimental.lambda.role.permissions_boundary`, then `experimental.roles.permissions_boundary`.
     - `multi_runner_config[].orchestration`: Demand-controller selection. Exactly one typed provider block must be non-null. Only `webhook` is supported today; additional providers can be added without moving the webhook contract.
     - `multi_runner_config[].orchestration.webhook`: Selects the workflow-job webhook control plane, including its SQS build queue, scale-up, scheduled scale-down/pool, and optional job-retry resources.
+    - `multi_runner_config[].orchestration.webhook.runner.boot_time_in_minutes`: Expected runner boot duration used by webhook scale-down and pool controls. Null inherits `experimental.orchestration.webhook.runner.boot_time_in_minutes`.
+    - `multi_runner_config[].orchestration.webhook.runner.ephemeral`: Registers webhook-orchestrated runners in ephemeral mode. Null inherits `experimental.orchestration.webhook.runner.ephemeral`.
+    - `multi_runner_config[].orchestration.webhook.runner.jit_config_enabled`: Explicitly enables or disables just-in-time configuration. Null inherits the global webhook value; if both are null, behavior follows the resolved webhook `ephemeral` mode.
     - `multi_runner_config[].orchestration.webhook.runner.maximum_count`: Maximum number of runners managed by the webhook orchestration provider for this configuration. Null inherits `experimental.orchestration.webhook.runner.maximum_count`.
     - `multi_runner_config[].orchestration.webhook.github.organization_runners`: Registers runners at organization scope when true; otherwise repository-scoped registration is used.
     - `multi_runner_config[].orchestration.webhook.matcherConfig.labelMatchers`: Groups of labels used to match webhook jobs to this configuration.
@@ -293,27 +293,27 @@ variable "experimental" {
     - `multi_runner_config[].orchestration.webhook.matcherConfig.awsDynamicLabelsPolicy.restricted_keys.<key>.max`: Optional maximum accepted value for the dynamic-label key. The default is null.
     - `multi_runner_config[].orchestration.webhook.queue.delay_webhook_event`: Delay in seconds applied to webhook job messages. Null inherits the global queue default.
     - `multi_runner_config[].orchestration.webhook.queue.job_queue_retention_in_seconds`: Build-queue message retention period in seconds. Null inherits the global queue default.
-    - `multi_runner_config[].orchestration.webhook.queue.visibility_timeout_seconds`: Build-queue visibility timeout. Null inherits the global queue default; the resolved value must be at least six times the resolved `orchestration.webhook.lambda.scale_up.timeout` so Lambda has enough time to retry throttled invocations.
+    - `multi_runner_config[].orchestration.webhook.queue.visibility_timeout_seconds`: Build-queue visibility timeout. Null inherits the global queue default; the resolved value must be at least six times the resolved `orchestration.webhook.lambda.scale.up.timeout` so Lambda has enough time to retry throttled invocations.
     - `multi_runner_config[].orchestration.webhook.queue.redrive_build_queue.enabled`: Creates and attaches a dead-letter queue for the build queue. A null wrapper or null leaf inherits the corresponding global value.
     - `multi_runner_config[].orchestration.webhook.queue.redrive_build_queue.maxReceiveCount`: Number of receives before a build message moves to the dead-letter queue. A null wrapper or null leaf inherits the corresponding global value, and the resolved value must be greater than zero when redrive is enabled.
     - `multi_runner_config[].orchestration.webhook.queue.tags`: Tags for configuration-owned queue resources. These merge after global queue tags and entry-level `tags`; component tags override this map.
-    - `multi_runner_config[].orchestration.webhook.lambda.scale_up.memory_size`: Memory allocated to the scale-up Lambda in MB.
-    - `multi_runner_config[].orchestration.webhook.lambda.scale_up.timeout`: Scale-up Lambda timeout in seconds.
-    - `multi_runner_config[].orchestration.webhook.lambda.scale_up.reserved_concurrent_executions`: Reserved concurrency for the scale-up Lambda. Use `-1` for unreserved concurrency.
-    - `multi_runner_config[].orchestration.webhook.lambda.scale_up.job_queued_check_enabled`: Enables the queued-job verification before scaling. Null inherits the global value; if both are null, behavior follows the resolved runner mode.
-    - `multi_runner_config[].orchestration.webhook.lambda.scale_up.event_source_mapping.batch_size`: Maximum build-queue records delivered to one scale-up Lambda invocation.
-    - `multi_runner_config[].orchestration.webhook.lambda.scale_up.event_source_mapping.maximum_batching_window_in_seconds`: Maximum batching window for build-queue records.
-    - `multi_runner_config[].orchestration.webhook.lambda.scale_up.tags`: Tags for scale-up resources. These override entry-level and shared Lambda, queue, and log-group tags within their resource scopes.
-    - `multi_runner_config[].orchestration.webhook.lambda.scale_down.memory_size`: Memory allocated to the scale-down Lambda in MB.
-    - `multi_runner_config[].orchestration.webhook.lambda.scale_down.timeout`: Scale-down Lambda timeout in seconds.
-    - `multi_runner_config[].orchestration.webhook.lambda.scale_down.schedule_expression`: EventBridge schedule expression that invokes scale-down.
-    - `multi_runner_config[].orchestration.webhook.lambda.scale_down.minimum_running_time_in_minutes`: Minimum runner age before scale-down may terminate it. Null inherits the global value; if both are null, the operating-system default is selected.
-    - `multi_runner_config[].orchestration.webhook.lambda.scale_down.idle_config`: Time-based desired idle-runner configurations.
-    - `multi_runner_config[].orchestration.webhook.lambda.scale_down.idle_config[].cron`: Cron expression identifying when the idle configuration applies.
-    - `multi_runner_config[].orchestration.webhook.lambda.scale_down.idle_config[].timeZone`: IANA time zone used to evaluate `cron`.
-    - `multi_runner_config[].orchestration.webhook.lambda.scale_down.idle_config[].idleCount`: Number of idle runners to retain during the matching period.
-    - `multi_runner_config[].orchestration.webhook.lambda.scale_down.idle_config[].evictionStrategy`: Selection strategy used when excess idle runners are removed.
-    - `multi_runner_config[].orchestration.webhook.lambda.scale_down.tags`: Tags for scale-down resources. These override entry-level and shared Lambda and log-group tags within their resource scopes.
+    - `multi_runner_config[].orchestration.webhook.lambda.scale.up.memory_size`: Memory allocated to the scale-up Lambda in MB.
+    - `multi_runner_config[].orchestration.webhook.lambda.scale.up.timeout`: Scale-up Lambda timeout in seconds.
+    - `multi_runner_config[].orchestration.webhook.lambda.scale.up.reserved_concurrent_executions`: Reserved concurrency for the scale-up Lambda. Use `-1` for unreserved concurrency.
+    - `multi_runner_config[].orchestration.webhook.lambda.scale.up.job_queued_check_enabled`: Enables the queued-job verification before scaling. Null inherits the global value; if both are null, behavior follows the resolved runner mode.
+    - `multi_runner_config[].orchestration.webhook.lambda.scale.up.event_source_mapping.batch_size`: Maximum build-queue records delivered to one scale-up Lambda invocation.
+    - `multi_runner_config[].orchestration.webhook.lambda.scale.up.event_source_mapping.maximum_batching_window_in_seconds`: Maximum batching window for build-queue records.
+    - `multi_runner_config[].orchestration.webhook.lambda.scale.up.tags`: Tags for scale-up resources. These override entry-level and shared Lambda, queue, and log-group tags within their resource scopes.
+    - `multi_runner_config[].orchestration.webhook.lambda.scale.down.memory_size`: Memory allocated to the scale-down Lambda in MB.
+    - `multi_runner_config[].orchestration.webhook.lambda.scale.down.timeout`: Scale-down Lambda timeout in seconds.
+    - `multi_runner_config[].orchestration.webhook.lambda.scale.down.schedule_expression`: EventBridge schedule expression that invokes scale-down.
+    - `multi_runner_config[].orchestration.webhook.lambda.scale.down.minimum_running_time_in_minutes`: Minimum runner age before scale-down may terminate it. Null inherits the global value; if both are null, the operating-system default is selected.
+    - `multi_runner_config[].orchestration.webhook.lambda.scale.down.idle_config`: Time-based desired idle-runner configurations.
+    - `multi_runner_config[].orchestration.webhook.lambda.scale.down.idle_config[].cron`: Cron expression identifying when the idle configuration applies.
+    - `multi_runner_config[].orchestration.webhook.lambda.scale.down.idle_config[].timeZone`: IANA time zone used to evaluate `cron`.
+    - `multi_runner_config[].orchestration.webhook.lambda.scale.down.idle_config[].idleCount`: Number of idle runners to retain during the matching period.
+    - `multi_runner_config[].orchestration.webhook.lambda.scale.down.idle_config[].evictionStrategy`: Selection strategy used when excess idle runners are removed.
+    - `multi_runner_config[].orchestration.webhook.lambda.scale.down.tags`: Tags for scale-down resources. These override entry-level and shared Lambda and log-group tags within their resource scopes.
     - `multi_runner_config[].orchestration.webhook.lambda.pool.memory_size`: Memory allocated to the pool Lambda in MB.
     - `multi_runner_config[].orchestration.webhook.lambda.pool.timeout`: Pool Lambda timeout in seconds.
     - `multi_runner_config[].orchestration.webhook.lambda.pool.reserved_concurrent_executions`: Reserved concurrency for the pool Lambda. Use `-1` for unreserved concurrency.
@@ -459,15 +459,12 @@ variable "experimental" {
     runner = optional(object({
       os                     = optional(string, null)
       architecture           = optional(string, null)
-      boot_time_in_minutes   = optional(number, 5)
       disable_default_labels = optional(bool, false)
       extra_labels           = optional(list(string), [])
       group_name             = optional(string, "Default")
       name_prefix            = optional(string, "")
       run_as_root            = optional(bool, false)
       run_as                 = optional(string, "ec2-user")
-      ephemeral              = optional(bool, false)
-      jit_config_enabled     = optional(bool, null)
       auto_update_disabled   = optional(bool, false)
       tags                   = optional(map(string), {})
       hooks = optional(object({
@@ -511,7 +508,6 @@ variable "experimental" {
         installation_id     = optional(string)
         installation_id_ssm = optional(object({ arn = string, name = string }))
       })), [])
-      repository_white_list = optional(list(string), [])
       enterprise_server = optional(object({
         url        = optional(string, null)
         ssl_verify = optional(bool, true)
@@ -549,42 +545,49 @@ variable "experimental" {
         }), {})
         matcher_config_parameter_store_tier = optional(string, "Standard")
         runner = optional(object({
-          maximum_count = optional(number, null)
+          boot_time_in_minutes = optional(number, 5)
+          ephemeral            = optional(bool, false)
+          jit_config_enabled   = optional(bool, null)
+          maximum_count        = optional(number, null)
+        }), {})
+
+        github = optional(object({
+          repository_white_list = optional(list(string), [])
         }), {})
 
         lambda = optional(object({
+          artifact = optional(object({
+            zip = optional(string, null)
+            s3 = optional(object({
+              key            = string
+              object_version = optional(string, null)
+            }), null)
+          }), {})
           scale = optional(object({
-            artifact = optional(object({
-              zip = optional(string, null)
-              s3 = optional(object({
-                key            = string
-                object_version = optional(string, null)
-              }), null)
+            up = optional(object({
+              memory_size                    = optional(number, 512)
+              timeout                        = optional(number, 30)
+              reserved_concurrent_executions = optional(number, 1)
+              job_queued_check_enabled       = optional(bool, null)
+              event_source_mapping = optional(object({
+                batch_size                         = optional(number, 10)
+                maximum_batching_window_in_seconds = optional(number, 0)
+              }), {})
+              tags = optional(map(string), {})
             }), {})
-          }), {})
-          scale_up = optional(object({
-            memory_size                    = optional(number, 512)
-            timeout                        = optional(number, 30)
-            reserved_concurrent_executions = optional(number, 1)
-            job_queued_check_enabled       = optional(bool, null)
-            event_source_mapping = optional(object({
-              batch_size                         = optional(number, 10)
-              maximum_batching_window_in_seconds = optional(number, 0)
+            down = optional(object({
+              memory_size                     = optional(number, 512)
+              timeout                         = optional(number, 60)
+              schedule_expression             = optional(string, "cron(*/5 * * * ? *)")
+              minimum_running_time_in_minutes = optional(number, null)
+              idle_config = optional(list(object({
+                cron             = string
+                timeZone         = string
+                idleCount        = number
+                evictionStrategy = optional(string, "oldest_first")
+              })), [])
+              tags = optional(map(string), {})
             }), {})
-            tags = optional(map(string), {})
-          }), {})
-          scale_down = optional(object({
-            memory_size                     = optional(number, 512)
-            timeout                         = optional(number, 60)
-            schedule_expression             = optional(string, "cron(*/5 * * * ? *)")
-            minimum_running_time_in_minutes = optional(number, null)
-            idle_config = optional(list(object({
-              cron             = string
-              timeZone         = string
-              idleCount        = number
-              evictionStrategy = optional(string, "oldest_first")
-            })), [])
-            tags = optional(map(string), {})
           }), {})
           webhook = optional(object({
             artifact = optional(object({
@@ -830,15 +833,12 @@ variable "experimental" {
       runner = optional(object({
         os                     = optional(string, null)
         architecture           = optional(string, null)
-        boot_time_in_minutes   = optional(number, null)
         disable_default_labels = optional(bool, null)
         extra_labels           = optional(list(string), null)
         group_name             = optional(string, null)
         name_prefix            = optional(string, null)
         run_as_root            = optional(bool, null)
         run_as                 = optional(string, null)
-        ephemeral              = optional(bool, null)
-        jit_config_enabled     = optional(bool, null)
         auto_update_disabled   = optional(bool, null)
         tags                   = optional(map(string), {})
         hooks = optional(object({
@@ -871,7 +871,10 @@ variable "experimental" {
       orchestration = object({
         webhook = optional(object({
           runner = optional(object({
-            maximum_count = optional(number, null)
+            boot_time_in_minutes = optional(number, null)
+            ephemeral            = optional(bool, null)
+            jit_config_enabled   = optional(bool, null)
+            maximum_count        = optional(number, null)
           }), {})
 
           github = optional(object({
@@ -906,29 +909,31 @@ variable "experimental" {
           }), {})
 
           lambda = optional(object({
-            scale_up = optional(object({
-              memory_size                    = optional(number, null)
-              timeout                        = optional(number, null)
-              reserved_concurrent_executions = optional(number, null)
-              job_queued_check_enabled       = optional(bool, null)
-              event_source_mapping = optional(object({
-                batch_size                         = optional(number, null)
-                maximum_batching_window_in_seconds = optional(number, null)
+            scale = optional(object({
+              up = optional(object({
+                memory_size                    = optional(number, null)
+                timeout                        = optional(number, null)
+                reserved_concurrent_executions = optional(number, null)
+                job_queued_check_enabled       = optional(bool, null)
+                event_source_mapping = optional(object({
+                  batch_size                         = optional(number, null)
+                  maximum_batching_window_in_seconds = optional(number, null)
+                }), {})
+                tags = optional(map(string), {})
               }), {})
-              tags = optional(map(string), {})
-            }), {})
-            scale_down = optional(object({
-              memory_size                     = optional(number, null)
-              timeout                         = optional(number, null)
-              schedule_expression             = optional(string, null)
-              minimum_running_time_in_minutes = optional(number, null)
-              idle_config = optional(list(object({
-                cron             = string
-                timeZone         = string
-                idleCount        = number
-                evictionStrategy = optional(string, "oldest_first")
-              })), null)
-              tags = optional(map(string), {})
+              down = optional(object({
+                memory_size                     = optional(number, null)
+                timeout                         = optional(number, null)
+                schedule_expression             = optional(string, null)
+                minimum_running_time_in_minutes = optional(number, null)
+                idle_config = optional(list(object({
+                  cron             = string
+                  timeZone         = string
+                  idleCount        = number
+                  evictionStrategy = optional(string, "oldest_first")
+                })), null)
+                tags = optional(map(string), {})
+              }), {})
             }), {})
             pool = optional(object({
               memory_size                    = optional(number, null)
