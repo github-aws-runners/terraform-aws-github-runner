@@ -1,6 +1,4 @@
-data "aws_iam_policy_document" "deny_insecure_transport_build" {
-  for_each = local.webhook_runner_config
-
+data "aws_iam_policy_document" "deny_insecure_transport" {
   statement {
     sid = "DenyInsecureTransport"
 
@@ -15,7 +13,9 @@ data "aws_iam_policy_document" "deny_insecure_transport_build" {
       "sqs:*"
     ]
 
-    resources = [aws_sqs_queue.queued_builds[each.key].arn]
+    resources = [
+      "*"
+    ]
 
     condition {
       test     = "Bool"
@@ -50,7 +50,7 @@ resource "aws_sqs_queue" "queued_builds" {
 resource "aws_sqs_queue_policy" "build_queue_policy" {
   for_each  = local.webhook_runner_config
   queue_url = aws_sqs_queue.queued_builds[each.key].id
-  policy    = data.aws_iam_policy_document.deny_insecure_transport_build[each.key].json
+  policy    = data.aws_iam_policy_document.deny_insecure_transport.json
 }
 
 resource "aws_sqs_queue" "queued_builds_dlq" {
