@@ -19,6 +19,7 @@ module "scale_runners" {
       role = {
         path                 = local.lambda_role_path
         permissions_boundary = var.lambda.role.permissions_boundary
+        principals           = var.lambda.principals
       }
     }
     runner = var.runner
@@ -31,7 +32,7 @@ module "scale_runners" {
       token_path           = local.token_path
       config_path          = "${var.ssm.paths.root}/${var.ssm.paths.config}"
       config_path_arn      = local.arn_ssm_parameters_path_config
-      kms_key              = local.kms_key
+      kms_key_id           = local.kms_key_id
       parameter_store_tags = local.parameter_store_tags
     }
     observability = var.observability

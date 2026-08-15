@@ -19,6 +19,7 @@ variable "config" {
     - `lambda.vpc.security_group_ids`: Security groups used for Lambda VPC configuration.
     - `lambda.role.path`: IAM path used for the scaling Lambda roles.
     - `lambda.role.permissions_boundary`: Optional permissions boundary for the scaling Lambda roles.
+    - `lambda.role.principals`: Additional principals allowed to assume the scaling Lambda roles.
     - `runner.os`: Runner operating system used for the minimum-runtime default.
     - `runner.auto_update_disabled`: Disables the GitHub runner application's built-in updater.
     - `runner.ephemeral`: Registers runners in ephemeral mode.
@@ -40,7 +41,7 @@ variable "config" {
     - `ssm.token_path`: Parameter Store path used for registration tokens.
     - `ssm.config_path`: Parameter Store path used for persistent runner configuration.
     - `ssm.config_path_arn`: ARN of the persistent runner configuration path.
-    - `ssm.kms_key`: Optional KMS key used to decrypt shared parameters.
+    - `ssm.kms_key_id`: Optional KMS key ARN used to decrypt shared parameters. Its value may be unknown until apply.
     - `ssm.parameter_store_tags`: JSON-encoded tags applied to parameters created at runtime.
     - `observability.logs`: Shared logging level, retention, encryption, and log-class configuration.
     - `observability.tracing`: Lambda X-Ray and tracing-helper configuration.
@@ -81,6 +82,10 @@ variable "config" {
       role = object({
         path                 = string
         permissions_boundary = optional(string, null)
+        principals = optional(list(object({
+          type        = string
+          identifiers = list(string)
+        })), [])
       })
     })
     runner = object({
@@ -120,9 +125,7 @@ variable "config" {
       config_path          = string
       config_path_arn      = string
       parameter_store_tags = string
-      kms_key = optional(object({
-        arn = string
-      }), null)
+      kms_key_id           = optional(string, null)
     })
     observability = object({
       logs = object({

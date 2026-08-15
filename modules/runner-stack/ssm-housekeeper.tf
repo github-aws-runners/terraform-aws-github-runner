@@ -37,6 +37,7 @@ module "ssm_housekeeper" {
       role = {
         path                 = local.lambda_role_path
         permissions_boundary = var.lambda.role.permissions_boundary
+        principals           = var.lambda.principals
       }
     }
     observability = {

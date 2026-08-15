@@ -28,7 +28,7 @@ module "job_retry" {
       role = {
         path                 = local.lambda_role_path
         permissions_boundary = var.lambda.role.permissions_boundary
-        principals           = []
+        principals           = var.lambda.principals
       }
     }
     runner = {
@@ -48,7 +48,7 @@ module "job_retry" {
       }
     }
     ssm = {
-      kms_key = local.kms_key
+      kms_key_id = local.kms_key_id
     }
     observability = var.observability
     tags = {

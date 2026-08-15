@@ -41,15 +41,13 @@ data "aws_iam_policy_document" "pool_common" {
     )
   }
 
-  dynamic "statement" {
-    for_each = var.config.kms_key == null ? [] : [var.config.kms_key]
-
-    content {
-      effect = "Allow"
-
-      actions   = ["kms:Decrypt"]
-      resources = [statement.value.arn]
-    }
+  statement {
+    effect  = "Allow"
+    actions = ["kms:Decrypt"]
+    resources = [coalesce(
+      var.config.kms_key_id,
+      "arn:${var.aws_partition}:kms:*:000000000000:key/00000000-0000-0000-0000-000000000000",
+    )]
   }
 }
 

@@ -25,6 +25,10 @@ variables {
       zip                            = "runners.zip"
       subnet_ids                     = []
       parameter_store_tags           = "{}"
+      principals = [{
+        type        = "AWS"
+        identifiers = ["arn:aws:iam::123456789012:role/local-testing"]
+      }]
     }
     tags = {
       Environment = "pool-test"
@@ -78,11 +82,9 @@ variables {
       schedule_expression_timezone = "UTC"
       size                         = 2
     }]
-    include_busy_runners      = false
-    role_permissions_boundary = null
-    kms_key = {
-      arn = "arn:aws:kms:eu-west-1:123456789012:key/pool-test"
-    }
+    include_busy_runners           = false
+    role_permissions_boundary      = null
+    kms_key_id                     = "arn:aws:kms:eu-west-1:123456789012:key/pool-test"
     role_path                      = "/"
     ssm_token_path                 = "/github-runner/tokens"
     ssm_config_path                = "/github-runner/config"
@@ -111,6 +113,14 @@ variables {
 
 run "provider_supplies_only_compute_specific_pool_configuration" {
   command = plan
+
+  assert {
+    condition = (
+      length(data.aws_iam_policy_document.lambda_assume_role_policy.statement[0].principals) == 2 &&
+      contains(data.aws_iam_policy_document.lambda_assume_role_policy.statement[0].principals[*].type, "AWS")
+    )
+    error_message = "The pool Lambda trust policy must include configured additional principals."
+  }
 
   assert {
     condition     = toset(keys(output.pool)) == toset(["lambda", "log_group", "role"])
@@ -155,8 +165,11 @@ run "provider_supplies_only_compute_specific_pool_configuration" {
   }
 
   assert {
-    condition     = length(data.aws_iam_policy_document.pool_common.statement) == 4
-    error_message = "A present KMS key object must add the pool KMS policy statement."
+    condition = (
+      length(data.aws_iam_policy_document.pool_common.statement) == 4
+      && data.aws_iam_policy_document.pool_common.statement[3].resources == toset(["arn:aws:kms:eu-west-1:123456789012:key/pool-test"])
+    )
+    error_message = "The pool KMS policy statement must consume the scalar key ARN."
   }
 
   assert {

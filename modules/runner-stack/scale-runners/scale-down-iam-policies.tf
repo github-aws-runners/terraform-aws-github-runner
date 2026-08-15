@@ -12,14 +12,13 @@ data "aws_iam_policy_document" "scale_down_common" {
     )
   }
 
-  dynamic "statement" {
-    for_each = var.config.ssm.kms_key == null ? [] : [var.config.ssm.kms_key]
-
-    content {
-      effect    = "Allow"
-      actions   = ["kms:Decrypt"]
-      resources = [statement.value.arn]
-    }
+  statement {
+    effect  = "Allow"
+    actions = ["kms:Decrypt"]
+    resources = [coalesce(
+      var.config.ssm.kms_key_id,
+      "arn:${var.aws_partition}:kms:*:000000000000:key/00000000-0000-0000-0000-000000000000",
+    )]
   }
 }
 

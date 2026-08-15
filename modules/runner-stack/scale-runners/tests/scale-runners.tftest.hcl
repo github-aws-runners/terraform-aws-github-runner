@@ -35,6 +35,10 @@ variables {
       role = {
         path                 = "/scale-runners-test/"
         permissions_boundary = "arn:aws-us-gov:iam::123456789012:policy/permissions-boundary"
+        principals = [{
+          type        = "AWS"
+          identifiers = ["arn:aws-us-gov:iam::123456789012:role/local-testing"]
+        }]
       }
     }
     runner = {
@@ -101,9 +105,7 @@ variables {
         Key   = "Environment"
         Value = "test"
       }])
-      kms_key = {
-        arn = "arn:aws-us-gov:kms:us-gov-west-1:123456789012:key/scale-runners-test"
-      }
+      kms_key_id = "arn:aws-us-gov:kms:us-gov-west-1:123456789012:key/scale-runners-test"
     }
     observability = {
       logs = {
@@ -210,6 +212,14 @@ variables {
 
 run "assembles_provider_neutral_scaling_control_plane" {
   command = plan
+
+  assert {
+    condition = (
+      length(data.aws_iam_policy_document.lambda_assume_role.statement[0].principals) == 2 &&
+      contains(data.aws_iam_policy_document.lambda_assume_role.statement[0].principals[*].type, "AWS")
+    )
+    error_message = "The scaling Lambda trust policy must include configured additional principals."
+  }
 
   assert {
     condition = (
@@ -337,6 +347,8 @@ run "assembles_provider_neutral_scaling_control_plane" {
       && length(data.aws_iam_policy_document.scale_down.source_policy_documents) == 2
       && length(data.aws_iam_policy_document.scale_up_common.statement) == 4
       && length(data.aws_iam_policy_document.scale_down_common.statement) == 2
+      && data.aws_iam_policy_document.scale_up_common.statement[3].resources == toset(["arn:aws-us-gov:kms:us-gov-west-1:123456789012:key/scale-runners-test"])
+      && data.aws_iam_policy_document.scale_down_common.statement[1].resources == toset(["arn:aws-us-gov:kms:us-gov-west-1:123456789012:key/scale-runners-test"])
       && length(data.aws_iam_policy_document.scale_up_job_retry_publish) == 1
     )
     error_message = "Common, provider, KMS, and retry IAM policy fragments must retain their conditional plan shape."

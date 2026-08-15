@@ -19,6 +19,7 @@ variable "config" {
     - `lambda.zip`: Local path to the pool Lambda deployment package when S3 is not used.
     - `lambda.subnet_ids`: Subnet IDs in which the pool Lambda runs.
     - `lambda.parameter_store_tags`: JSON-encoded tags supplied to the pool Lambda for SSM parameters it creates.
+    - `lambda.principals`: Additional principals allowed to assume the pool Lambda role.
     - `tags`: Common tags added to pool resources.
     - `ghes`: GitHub Enterprise Server connection configuration.
     - `ghes.url`: GitHub Enterprise Server URL; null when using public GitHub.
@@ -43,8 +44,7 @@ variable "config" {
     - `pool[*].size`: Desired runner count for the scheduled pool target.
     - `include_busy_runners`: Whether busy runners count toward the desired pool size.
     - `role_permissions_boundary`: Permissions boundary applied to IAM roles created for the pool.
-    - `kms_key`: Optional customer-managed KMS key that the pool Lambda may use to decrypt encrypted parameters. Object presence controls whether the KMS statement exists.
-    - `kms_key.arn`: ARN of the customer-managed KMS key. The ARN may be unknown until apply.
+    - `kms_key_id`: Optional customer-managed KMS key ARN that the pool Lambda may use to decrypt encrypted parameters. The ARN may be unknown until apply; IAM policy shape remains static.
     - `role_path`: IAM path applied to roles created for the pool.
     - `ssm_token_path`: SSM path under which runner registration tokens are stored.
     - `ssm_config_path`: SSM path under which runner configuration is stored.
@@ -71,6 +71,10 @@ variable "config" {
       zip                            = string
       subnet_ids                     = list(string)
       parameter_store_tags           = string
+      principals = optional(list(object({
+        type        = string
+        identifiers = list(string)
+      })), [])
     })
     tags = map(string)
     ghes = object({
@@ -98,11 +102,9 @@ variable "config" {
       schedule_expression_timezone = string
       size                         = number
     }))
-    include_busy_runners      = bool
-    role_permissions_boundary = string
-    kms_key = optional(object({
-      arn = string
-    }), null)
+    include_busy_runners           = bool
+    role_permissions_boundary      = string
+    kms_key_id                     = optional(string, null)
     role_path                      = string
     ssm_token_path                 = string
     ssm_config_path                = string

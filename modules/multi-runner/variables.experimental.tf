@@ -865,9 +865,13 @@ variable "experimental" {
           job_started   = optional(string, null)
           job_completed = optional(string, null)
         }), {})
-        iam = optional(object({
-          role = optional(object({
-            arn = string
+      }), {})
+      scale = optional(object({
+        artifact = optional(object({
+          zip = optional(string, null)
+          s3 = optional(object({
+            key            = string
+            object_version = optional(string, null)
           }), null)
           managed_policy_arns          = optional(map(string), null)
           additional_trust_policy_json = optional(string, null)

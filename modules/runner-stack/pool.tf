@@ -12,7 +12,7 @@ module "pool" {
     user_agent            = var.github.user_agent
     github_app_parameters = var.github.app_parameters
     runners_maximum_count = var.runner.maximum_count
-    kms_key               = local.kms_key
+    kms_key_id            = local.kms_key_id
     lambda = {
       log_level                      = var.observability.logs.level
       logging_retention_in_days      = var.observability.logs.retention_in_days
@@ -30,6 +30,7 @@ module "pool" {
       timeout                        = var.pool.lambda.timeout
       zip                            = local.lambda_zip
       parameter_store_tags           = local.parameter_store_tags
+      principals                     = var.lambda.principals
     }
     pool                      = var.pool.config
     include_busy_runners      = var.pool.include_busy_runners
