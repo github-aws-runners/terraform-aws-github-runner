@@ -210,12 +210,12 @@ run "stable_v1_keeps_legacy_runner_module" {
           id = "incomplete-experimental-id"
         }
         additional_apps = [{ id = "incomplete-additional-app-id" }]
+        enterprise_server = {
+          url        = "https://experimental.example.com"
+          ssl_verify = true
+        }
+        user_agent = "experimental-user-agent"
       }
-      enterprise_server = {
-        url        = "https://experimental.example.com"
-        ssl_verify = true
-      }
-      user_agent = "experimental-user-agent"
       ssm = {
         paths = {
           root   = "relative-experimental-root"
@@ -299,8 +299,6 @@ run "stable_v1_keeps_legacy_runner_module" {
         "roles",
         "runner",
         "github",
-        "enterprise_server",
-        "user_agent",
         "webhook",
         "lambda",
         "queue",
@@ -308,6 +306,13 @@ run "stable_v1_keeps_legacy_runner_module" {
         "observability",
         "compute_provider",
         "multi_runner_config",
+      ])
+      && toset(keys(local.raw_translated_experimental.github)) == toset([
+        "app",
+        "additional_apps",
+        "repository_white_list",
+        "enterprise_server",
+        "user_agent",
       ])
       && toset(keys(local.raw_translated_experimental.multi_runner_config["linux"])) == toset([
         "tags",
@@ -374,9 +379,9 @@ run "stable_v1_keeps_legacy_runner_module" {
       && local.raw_translated_experimental.github.app == var.github_app
       && local.raw_translated_experimental.github.additional_apps == var.additional_github_apps
       && local.raw_translated_experimental.github.repository_white_list == var.repository_white_list
-      && local.raw_translated_experimental.enterprise_server.url == var.ghes_url
-      && local.raw_translated_experimental.enterprise_server.ssl_verify == var.ghes_ssl_verify
-      && local.raw_translated_experimental.user_agent == var.user_agent
+      && local.raw_translated_experimental.github.enterprise_server.url == var.ghes_url
+      && local.raw_translated_experimental.github.enterprise_server.ssl_verify == var.ghes_ssl_verify
+      && local.raw_translated_experimental.github.user_agent == var.user_agent
       && local.raw_translated_experimental.webhook.queue_selection_strategy == var.queue_selection_strategy
       && local.raw_translated_experimental.webhook.eventbridge == var.eventbridge
       && local.raw_translated_experimental.webhook.matcher_config_parameter_store_tier == var.matcher_config_parameter_store_tier
@@ -1140,11 +1145,11 @@ run "experimental_v2_routes_through_provider_stack" {
       local.translated_experimental.github.app == var.experimental.github.app
       && local.translated_experimental.github.additional_apps == var.experimental.github.additional_apps
       && length(local.translated_experimental.github.repository_white_list) == 0
-      && local.translated_experimental.enterprise_server == var.experimental.enterprise_server
-      && local.translated_experimental.user_agent == var.experimental.user_agent
-      && local.translated_experimental.enterprise_server.url == null
-      && local.translated_experimental.enterprise_server.ssl_verify
-      && local.translated_experimental.user_agent == "github-aws-runners"
+      && local.translated_experimental.github.enterprise_server == var.experimental.github.enterprise_server
+      && local.translated_experimental.github.user_agent == var.experimental.github.user_agent
+      && local.translated_experimental.github.enterprise_server.url == null
+      && local.translated_experimental.github.enterprise_server.ssl_verify
+      && local.translated_experimental.github.user_agent == "github-aws-runners"
       && module.runner_stacks["linux"].scale_up.lambda.environment[0].variables["GHES_URL"] == null
       && module.runner_stacks["linux"].scale_up.lambda.environment[0].variables["NODE_TLS_REJECT_UNAUTHORIZED"] == "1"
       && module.runner_stacks["linux"].scale_up.lambda.environment[0].variables["USER_AGENT"] == "github-aws-runners"
@@ -1498,12 +1503,12 @@ run "experimental_v2_applies_global_defaults_and_lane_overrides" {
           webhook_secret = "test-secret"
         }
         repository_white_list = ["nested-owner/nested-repository"]
+        enterprise_server = {
+          url        = "https://experimental-shared.example.com"
+          ssl_verify = false
+        }
+        user_agent = "experimental-runner-user-agent"
       }
-      enterprise_server = {
-        url        = "https://experimental-shared.example.com"
-        ssl_verify = false
-      }
-      user_agent = "experimental-runner-user-agent"
 
       webhook = {
         queue_selection_strategy = "all"
@@ -1845,11 +1850,11 @@ run "experimental_v2_applies_global_defaults_and_lane_overrides" {
     condition = (
       local.translated_experimental.github.app == var.experimental.github.app
       && local.translated_experimental.github.additional_apps == var.experimental.github.additional_apps
-      && local.translated_experimental.enterprise_server == var.experimental.enterprise_server
-      && local.translated_experimental.user_agent == var.experimental.user_agent
-      && local.translated_experimental.enterprise_server.url == "https://experimental-shared.example.com"
-      && !local.translated_experimental.enterprise_server.ssl_verify
-      && local.translated_experimental.user_agent == "experimental-runner-user-agent"
+      && local.translated_experimental.github.enterprise_server == var.experimental.github.enterprise_server
+      && local.translated_experimental.github.user_agent == var.experimental.github.user_agent
+      && local.translated_experimental.github.enterprise_server.url == "https://experimental-shared.example.com"
+      && !local.translated_experimental.github.enterprise_server.ssl_verify
+      && local.translated_experimental.github.user_agent == "experimental-runner-user-agent"
       && length(local.translated_experimental.github.additional_apps) == 0
       && local.translated_experimental.multi_runner_config["resolved"].job_retry.enabled
       && module.runner_stacks["resolved"].scale_up.lambda.environment[0].variables["GHES_URL"] == "https://experimental-shared.example.com"
@@ -1989,12 +1994,12 @@ run "experimental_v2_layers_observability_and_ssm" {
           key_base64     = "dGVzdA=="
           webhook_secret = "test-secret"
         }
+        enterprise_server = {
+          url        = "https://experimental-observability.example.com"
+          ssl_verify = false
+        }
+        user_agent = "experimental-observability-user-agent"
       }
-      enterprise_server = {
-        url        = "https://experimental-observability.example.com"
-        ssl_verify = false
-      }
-      user_agent = "experimental-observability-user-agent"
 
       lambda = {
         scale = {
@@ -2721,9 +2726,9 @@ run "experimental_v2_allows_mismatched_watcher_ghes_when_deregistration_disabled
           key_base64     = "dGVzdA=="
           webhook_secret = "test-secret"
         }
-      }
-      enterprise_server = {
-        url = "https://experimental-disabled-deregistration.example.com"
+        enterprise_server = {
+          url = "https://experimental-disabled-deregistration.example.com"
+        }
       }
       lambda = {
         scale = {
@@ -2802,9 +2807,9 @@ run "experimental_v2_termination_watcher_ignores_mismatched_flat_ghes_url" {
           key_base64     = "dGVzdA=="
           webhook_secret = "test-secret"
         }
-      }
-      enterprise_server = {
-        url = "https://experimental-watcher.example.com"
+        enterprise_server = {
+          url = "https://experimental-watcher.example.com"
+        }
       }
       lambda = {
         scale = {
