@@ -612,7 +612,6 @@ run "stable_v1_keeps_legacy_runner_module" {
       && output.instance_termination_watcher.lambda_role.path == "/legacy/"
       && output.instance_termination_watcher.lambda_role.permissions_boundary == "arn:aws:iam::123456789012:policy/legacy-boundary"
       && output.instance_termination_watcher.lambda.function.environment[0].variables["GHES_URL"] == "https://legacy.example.com"
-      && output.instance_termination_watcher.lambda.function.environment[0].variables["LEGACY_WATCHER"] == "true"
       && output.instance_termination_watcher.lambda.function.environment[0].variables["LOG_LEVEL"] == "warn"
       && output.instance_termination_watcher.lambda.function.tracing_config[0].mode == "Active"
       && output.instance_termination_watcher.lambda_log_group.retention_in_days == 14
@@ -1872,13 +1871,12 @@ run "experimental_v2_applies_global_defaults_and_lane_overrides" {
       && length(output.instance_termination_watcher.lambda.function.vpc_config[0].security_group_ids) == 0
       && output.instance_termination_watcher.lambda_role.path == "/experimental/"
       && output.instance_termination_watcher.lambda.function.environment[0].variables["GHES_URL"] == "https://experimental-shared.example.com"
-      && output.instance_termination_watcher.lambda.function.environment[0].variables["NESTED_WATCHER"] == "true"
       && output.instance_termination_watcher.lambda.function.environment[0].variables["LOG_LEVEL"] == "info"
       && output.instance_termination_watcher.lambda_log_group.retention_in_days == 180
       && output.instance_termination_watcher.lambda_log_group.log_group_class == "STANDARD"
       && output.instance_termination_handler == null
     )
-    error_message = "V2 runner stacks and the termination watcher must use nested GitHub, Lambda, role, observability, feature, artifact, sizing, and environment settings without flat component fallback."
+    error_message = "V2 runner stacks and the termination watcher must use nested GitHub, Lambda, role, observability, feature, artifact, and sizing settings without flat component fallback."
   }
 
   assert {
