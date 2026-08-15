@@ -17,7 +17,7 @@ variable "tags" {
 
 variable "config" {
   description = <<-EOT
-    Provider-owned webhook values supplied from `orchestration.webhook`. The parent resolves inherited input values before calling this module; this provider still resolves the documented JIT, artifact, and tag-precedence fallbacks.
+    Provider-owned webhook values supplied from `orchestration_provider.webhook`. The parent resolves inherited input values before calling this module; this provider still resolves the documented JIT, artifact, and tag-precedence fallbacks.
 
     - `runner`: Runner lifecycle, boot timeout, and capacity settings owned by webhook orchestration.
     - `runner.boot_time_in_minutes`: Expected runner boot duration used by scale-down and pool controls.
@@ -150,14 +150,6 @@ variable "config" {
     })
   })
   nullable = false
-
-  validation {
-    condition = !(
-      var.config.lambda.artifact.zip != null &&
-      var.config.lambda.artifact.s3 != null
-    )
-    error_message = "config.lambda.artifact must select at most one of zip or s3."
-  }
 }
 
 variable "runner" {

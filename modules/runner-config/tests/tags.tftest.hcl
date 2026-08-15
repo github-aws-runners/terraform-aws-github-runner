@@ -89,7 +89,7 @@ variables {
     }
   }
 
-  orchestration = {
+  orchestration_provider = {
     webhook = {
       github = {
         organization_runners = true

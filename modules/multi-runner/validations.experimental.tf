@@ -69,7 +69,7 @@ resource "terraform_data" "validate_experimental" {
       condition = alltrue([
         for runner_config in values(var.experimental.multi_runner_config) :
         length([
-          for orchestration_type, orchestration_config in runner_config.orchestration : orchestration_type
+          for orchestration_type, orchestration_config in runner_config.orchestration_provider : orchestration_type
           if orchestration_config != null
         ]) == 1
       ])
@@ -88,25 +88,25 @@ resource "terraform_data" "validate_experimental" {
     precondition {
       condition = alltrue([
         for runner_config in values(var.experimental.multi_runner_config) :
-        runner_config.orchestration.webhook == null ? true :
+        runner_config.orchestration_provider.webhook == null ? true :
         try(coalesce(
-          runner_config.orchestration.webhook.runner.boot_time_in_minutes,
-          var.experimental.orchestration.webhook.runner.boot_time_in_minutes,
+          runner_config.orchestration_provider.webhook.runner.boot_time_in_minutes,
+          var.experimental.orchestration_provider.webhook.runner.boot_time_in_minutes,
         ), null) != null
       ])
-      error_message = "Each experimental webhook runner configuration must resolve orchestration.webhook.runner.boot_time_in_minutes from the configuration or experimental global webhook defaults."
+      error_message = "Each experimental webhook runner configuration must resolve orchestration_provider.webhook.runner.boot_time_in_minutes from the configuration or experimental global webhook defaults."
     }
 
     precondition {
       condition = alltrue([
         for runner_config in values(var.experimental.multi_runner_config) :
-        runner_config.orchestration.webhook == null ? true :
+        runner_config.orchestration_provider.webhook == null ? true :
         try(coalesce(
-          runner_config.orchestration.webhook.runner.maximum_count,
-          var.experimental.orchestration.webhook.runner.maximum_count,
+          runner_config.orchestration_provider.webhook.runner.maximum_count,
+          var.experimental.orchestration_provider.webhook.runner.maximum_count,
         ), null) != null
       ])
-      error_message = "Each experimental webhook runner configuration must resolve orchestration.webhook.runner.maximum_count from the configuration or experimental global webhook defaults."
+      error_message = "Each experimental webhook runner configuration must resolve orchestration_provider.webhook.runner.maximum_count from the configuration or experimental global webhook defaults."
     }
 
     precondition {
@@ -123,42 +123,42 @@ resource "terraform_data" "validate_experimental" {
     precondition {
       condition = alltrue([
         for runner_config in values(var.experimental.multi_runner_config) :
-        runner_config.orchestration.webhook == null ? true : (
+        runner_config.orchestration_provider.webhook == null ? true : (
           coalesce(
-            runner_config.orchestration.webhook.queue.visibility_timeout_seconds,
-            var.experimental.orchestration.webhook.queue.visibility_timeout_seconds,
+            runner_config.orchestration_provider.webhook.queue.visibility_timeout_seconds,
+            var.experimental.orchestration_provider.webhook.queue.visibility_timeout_seconds,
             ) >= 6 * coalesce(
-            runner_config.orchestration.webhook.lambda.scale.up.timeout,
-            var.experimental.orchestration.webhook.lambda.scale.up.timeout,
+            runner_config.orchestration_provider.webhook.lambda.scale.up.timeout,
+            var.experimental.orchestration_provider.webhook.lambda.scale.up.timeout,
           )
         )
       ])
-      error_message = "Each experimental orchestration.webhook.queue.visibility_timeout_seconds must be at least six times the resolved orchestration.webhook.lambda.scale.up.timeout."
+      error_message = "Each experimental orchestration_provider.webhook.queue.visibility_timeout_seconds must be at least six times the resolved orchestration_provider.webhook.lambda.scale.up.timeout."
     }
 
     precondition {
       condition = !local.use_multi_runner_config_v2 || (
         (
-          var.experimental.orchestration.webhook.queue.encryption.sqs_managed_sse_enabled != null &&
-          var.experimental.orchestration.webhook.queue.encryption.kms_master_key_id == null &&
-          var.experimental.orchestration.webhook.queue.encryption.kms_data_key_reuse_period_seconds == null
+          var.experimental.orchestration_provider.webhook.queue.encryption.sqs_managed_sse_enabled != null &&
+          var.experimental.orchestration_provider.webhook.queue.encryption.kms_master_key_id == null &&
+          var.experimental.orchestration_provider.webhook.queue.encryption.kms_data_key_reuse_period_seconds == null
           ) || (
-          var.experimental.orchestration.webhook.queue.encryption.sqs_managed_sse_enabled == null &&
-          var.experimental.orchestration.webhook.queue.encryption.kms_master_key_id != null
+          var.experimental.orchestration_provider.webhook.queue.encryption.sqs_managed_sse_enabled == null &&
+          var.experimental.orchestration_provider.webhook.queue.encryption.kms_master_key_id != null
         )
       )
-      error_message = "Invalid experimental.orchestration.webhook.queue.encryption configuration for webhook orchestration. Use SQS-managed encryption, disable it, or configure a KMS key."
+      error_message = "Invalid experimental.orchestration_provider.webhook.queue.encryption configuration for webhook orchestration. Use SQS-managed encryption, disable it, or configure a KMS key."
     }
 
     precondition {
       condition = !local.use_multi_runner_config_v2 || (
-        var.experimental.orchestration.webhook.queue.encryption.kms_master_key_id == null ||
+        var.experimental.orchestration_provider.webhook.queue.encryption.kms_master_key_id == null ||
         can(regex(
           "^arn:[^:]+:kms:[^:]+:[0-9]{12}:key/.+$",
-          var.experimental.orchestration.webhook.queue.encryption.kms_master_key_id,
+          var.experimental.orchestration_provider.webhook.queue.encryption.kms_master_key_id,
         ))
       )
-      error_message = "experimental.orchestration.webhook.queue.encryption.kms_master_key_id must be a KMS key ARN; key IDs and aliases cannot be used in runner-config IAM policies."
+      error_message = "experimental.orchestration_provider.webhook.queue.encryption.kms_master_key_id must be a KMS key ARN; key IDs and aliases cannot be used in runner-config IAM policies."
     }
 
     precondition {
@@ -262,47 +262,47 @@ resource "terraform_data" "validate_experimental" {
     precondition {
       condition = !local.use_multi_runner_config_v2 || contains(
         ["first", "random", "all"],
-        var.experimental.orchestration.webhook.queue_selection_strategy,
+        var.experimental.orchestration_provider.webhook.queue_selection_strategy,
       )
-      error_message = "experimental.orchestration.webhook.queue_selection_strategy must be first, random, or all."
+      error_message = "experimental.orchestration_provider.webhook.queue_selection_strategy must be first, random, or all."
     }
 
     precondition {
       condition = !local.use_multi_runner_config_v2 || contains(
         ["Standard", "Advanced"],
-        var.experimental.orchestration.webhook.matcher_config_parameter_store_tier,
+        var.experimental.orchestration_provider.webhook.matcher_config_parameter_store_tier,
       )
-      error_message = "experimental.orchestration.webhook.matcher_config_parameter_store_tier must be Standard or Advanced."
+      error_message = "experimental.orchestration_provider.webhook.matcher_config_parameter_store_tier must be Standard or Advanced."
     }
 
     precondition {
       condition = !local.use_multi_runner_config_v2 || (
         !(
-          var.experimental.orchestration.webhook.lambda.artifact.zip != null &&
-          var.experimental.orchestration.webhook.lambda.artifact.s3 != null
+          var.experimental.orchestration_provider.webhook.lambda.artifact.zip != null &&
+          var.experimental.orchestration_provider.webhook.lambda.artifact.s3 != null
           ) && (
-          var.experimental.orchestration.webhook.lambda.artifact.s3 == null || (
+          var.experimental.orchestration_provider.webhook.lambda.artifact.s3 == null || (
             var.experimental.lambda.artifact.s3.bucket != null &&
-            try(var.experimental.orchestration.webhook.lambda.artifact.s3.key != null, false)
+            try(var.experimental.orchestration_provider.webhook.lambda.artifact.s3.key != null, false)
           )
         )
       )
-      error_message = "experimental.orchestration.webhook.lambda.artifact must set at most one of zip or s3; an s3 wrapper requires experimental.lambda.artifact.s3.bucket and a non-null key."
+      error_message = "experimental.orchestration_provider.webhook.lambda.artifact must set at most one of zip or s3; an s3 wrapper requires experimental.lambda.artifact.s3.bucket and a non-null key."
     }
 
     precondition {
       condition = !local.use_multi_runner_config_v2 || (
         !(
-          var.experimental.orchestration.webhook.lambda.webhook.artifact.zip != null &&
-          var.experimental.orchestration.webhook.lambda.webhook.artifact.s3 != null
+          var.experimental.orchestration_provider.webhook.lambda.webhook.artifact.zip != null &&
+          var.experimental.orchestration_provider.webhook.lambda.webhook.artifact.s3 != null
           ) && (
-          var.experimental.orchestration.webhook.lambda.webhook.artifact.s3 == null || (
+          var.experimental.orchestration_provider.webhook.lambda.webhook.artifact.s3 == null || (
             var.experimental.lambda.artifact.s3.bucket != null &&
-            try(var.experimental.orchestration.webhook.lambda.webhook.artifact.s3.key != null, false)
+            try(var.experimental.orchestration_provider.webhook.lambda.webhook.artifact.s3.key != null, false)
           )
         )
       )
-      error_message = "experimental.orchestration.webhook.lambda.webhook.artifact must set at most one of zip or s3; an s3 wrapper requires experimental.lambda.artifact.s3.bucket and a non-null key."
+      error_message = "experimental.orchestration_provider.webhook.lambda.webhook.artifact must set at most one of zip or s3; an s3 wrapper requires experimental.lambda.artifact.s3.bucket and a non-null key."
     }
 
     precondition {
@@ -405,14 +405,14 @@ resource "terraform_data" "validate_experimental" {
     precondition {
       condition = alltrue([
         for runner_config in values(local.translated_experimental_base.multi_runner_config) :
-        runner_config.orchestration.webhook == null ? true : (
-          !runner_config.orchestration.webhook.queue.redrive_build_queue.enabled || try(
-            runner_config.orchestration.webhook.queue.redrive_build_queue.maxReceiveCount > 0,
+        runner_config.orchestration_provider.webhook == null ? true : (
+          !runner_config.orchestration_provider.webhook.queue.redrive_build_queue.enabled || try(
+            runner_config.orchestration_provider.webhook.queue.redrive_build_queue.maxReceiveCount > 0,
             false,
           )
         )
       ])
-      error_message = "An enabled experimental orchestration.webhook.queue.redrive_build_queue requires maxReceiveCount greater than zero."
+      error_message = "An enabled experimental orchestration_provider.webhook.queue.redrive_build_queue requires maxReceiveCount greater than zero."
     }
 
     precondition {

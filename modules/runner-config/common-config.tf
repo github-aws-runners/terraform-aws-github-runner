@@ -41,14 +41,4 @@ locals {
   ])
 }
 
-data "aws_caller_identity" "current" {
-  lifecycle {
-    precondition {
-      condition = (
-        var.ssm.housekeeper.lambda.artifact.s3 == null ||
-        var.lambda.artifact.s3.bucket != null
-      )
-      error_message = "lambda.artifact.s3.bucket must be set when ssm.housekeeper.lambda.artifact.s3 is selected."
-    }
-  }
-}
+data "aws_caller_identity" "current" {}

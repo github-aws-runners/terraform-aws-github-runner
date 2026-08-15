@@ -41,7 +41,7 @@ module "multi_runner" {
       }
     }
 
-    orchestration = {
+    orchestration_provider = {
       webhook = {
         queue = {
           encryption = {
@@ -100,7 +100,7 @@ module "multi_runner" {
             }
           }
         }
-        orchestration = {
+        orchestration_provider = {
           webhook = {
             runner = {
               maximum_count = 2

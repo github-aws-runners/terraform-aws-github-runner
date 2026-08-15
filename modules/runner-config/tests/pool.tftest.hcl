@@ -85,7 +85,7 @@ variables {
     }
   }
 
-  orchestration = {
+  orchestration_provider = {
     webhook = {
       runner = {
         boot_time_in_minutes = 8
@@ -142,16 +142,16 @@ run "plan_with_pool_enabled" {
       && !contains(keys(var.runner), "boot_time_in_minutes")
       && !contains(keys(var.runner), "ephemeral")
       && !contains(keys(var.runner), "jit_config_enabled")
-      && var.orchestration.webhook.runner.boot_time_in_minutes == 8
-      && var.orchestration.webhook.runner.ephemeral
-      && var.orchestration.webhook.runner.jit_config_enabled == null
-      && var.orchestration.webhook.runner.maximum_count == 9
+      && var.orchestration_provider.webhook.runner.boot_time_in_minutes == 8
+      && var.orchestration_provider.webhook.runner.ephemeral
+      && var.orchestration_provider.webhook.runner.jit_config_enabled == null
+      && var.orchestration_provider.webhook.runner.maximum_count == 9
       && module.orchestration_webhook[0].scale_up.lambda.environment[0].variables["RUNNERS_MAXIMUM_COUNT"] == "9"
       && module.orchestration_webhook[0].scale_down.lambda.environment[0].variables["RUNNER_BOOT_TIME_IN_MINUTES"] == "8"
       && module.orchestration_webhook[0].pool.lambda.environment[0].variables["RUNNERS_MAXIMUM_COUNT"] == "9"
       && module.orchestration_webhook[0].pool.lambda.environment[0].variables["RUNNER_BOOT_TIME_IN_MINUTES"] == "8"
     )
-    error_message = "Runner capacity and boot time must be owned by orchestration.webhook.runner and routed to webhook controls, not retained in the common runner contract."
+    error_message = "Runner capacity and boot time must be owned by orchestration_provider.webhook.runner and routed to webhook controls, not retained in the common runner contract."
   }
 
   assert {
@@ -189,8 +189,8 @@ run "plan_with_pool_enabled" {
 
   assert {
     condition = (
-      length(module.ec2_trust_policy) == 1
-      && aws_iam_role.runner[0].assume_role_policy == module.ec2_trust_policy[0].assume_role_policy
+      length(module.compute_ec2_trust_policy) == 1
+      && aws_iam_role.runner[0].assume_role_policy == module.compute_ec2_trust_policy[0].assume_role_policy
     )
     error_message = "The common runner role must use the selected EC2 trust-policy submodule output."
   }
@@ -205,11 +205,11 @@ run "plan_with_pool_enabled" {
 
   assert {
     condition = (
-      toset(keys(output.orchestration)) == toset(["webhook"])
-      && output.orchestration.webhook != null
-      && output.orchestration.webhook.scale_up != null
-      && output.orchestration.webhook.scale_down != null
-      && output.orchestration.webhook.pool != null
+      toset(keys(output.orchestration_provider)) == toset(["webhook"])
+      && output.orchestration_provider.webhook != null
+      && output.orchestration_provider.webhook.scale_up != null
+      && output.orchestration_provider.webhook.scale_down != null
+      && output.orchestration_provider.webhook.pool != null
     )
     error_message = "The canonical orchestration output must group the existing webhook control-plane resources while flat aliases remain available."
   }
@@ -358,7 +358,11 @@ run "rejects_conflicting_housekeeper_artifacts" {
     }
   }
 
-  expect_failures = [var.ssm]
+  plan_options {
+    target = [terraform_data.validate_config]
+  }
+
+  expect_failures = [terraform_data.validate_config]
 }
 
 run "rejects_housekeeper_s3_without_common_bucket" {
@@ -390,19 +394,27 @@ run "rejects_housekeeper_s3_without_common_bucket" {
     }
   }
 
-  expect_failures = [data.aws_caller_identity.current]
+  plan_options {
+    target = [terraform_data.validate_config]
+  }
+
+  expect_failures = [terraform_data.validate_config]
 }
 
 run "rejects_missing_orchestration_provider" {
   command = plan
 
   variables {
-    orchestration = {
+    orchestration_provider = {
       webhook = null
     }
   }
 
-  expect_failures = [var.orchestration]
+  plan_options {
+    target = [terraform_data.validate_config]
+  }
+
+  expect_failures = [terraform_data.validate_config]
 }
 
 run "external_runner_role_is_not_managed_by_common" {
@@ -507,7 +519,11 @@ run "external_role_rejects_managed_policy_attachments" {
     }
   }
 
-  expect_failures = [var.runner]
+  plan_options {
+    target = [terraform_data.validate_config]
+  }
+
+  expect_failures = [terraform_data.validate_config]
 }
 
 run "external_role_rejects_trust_policy_extension" {
@@ -525,7 +541,11 @@ run "external_role_rejects_trust_policy_extension" {
     }
   }
 
-  expect_failures = [var.runner]
+  plan_options {
+    target = [terraform_data.validate_config]
+  }
+
+  expect_failures = [terraform_data.validate_config]
 }
 
 run "rejects_invalid_trust_policy_extension" {
@@ -540,7 +560,11 @@ run "rejects_invalid_trust_policy_extension" {
     }
   }
 
-  expect_failures = [var.runner]
+  plan_options {
+    target = [terraform_data.validate_config]
+  }
+
+  expect_failures = [terraform_data.validate_config]
 }
 
 run "rejects_empty_compute_provider" {
@@ -550,7 +574,11 @@ run "rejects_empty_compute_provider" {
     compute_provider = {}
   }
 
-  expect_failures = [var.compute_provider]
+  plan_options {
+    target = [terraform_data.validate_config]
+  }
+
+  expect_failures = [terraform_data.validate_config]
 }
 
 run "job_retry_uses_common_runner_configuration_identity" {
@@ -561,7 +589,7 @@ run "job_retry_uses_common_runner_configuration_identity" {
       labels      = ["self-hosted", "linux", "x64"]
       name_prefix = "provider-neutral-"
     }
-    orchestration = {
+    orchestration_provider = {
       webhook = {
         github = {
           organization_runners = true

@@ -246,3 +246,52 @@ run "omits_optional_kms_statement" {
     error_message = "A null Parameter Store key must omit the optional pool KMS statement."
   }
 }
+
+run "rejects_empty_compute_provider_type" {
+  command = plan
+
+  plan_options {
+    target = [terraform_data.validate_config]
+  }
+
+  variables {
+    runner_provider = merge(var.runner_provider, {
+      type = " "
+    })
+  }
+
+  expect_failures = [terraform_data.validate_config]
+}
+
+run "rejects_invalid_compute_provider_policy" {
+  command = plan
+
+  plan_options {
+    target = [terraform_data.validate_config]
+  }
+
+  variables {
+    runner_provider = merge(var.runner_provider, {
+      iam_policy_json = "not-json"
+    })
+  }
+
+  expect_failures = [terraform_data.validate_config]
+}
+
+run "requires_enabled_compute_provider_managed_policy_arn" {
+  command = plan
+
+  plan_options {
+    target = [terraform_data.validate_config]
+  }
+
+  variables {
+    runner_provider = merge(var.runner_provider, {
+      managed_policy_enabled = true
+      managed_policy_arn     = null
+    })
+  }
+
+  expect_failures = [terraform_data.validate_config]
+}

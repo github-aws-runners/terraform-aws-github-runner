@@ -39,13 +39,13 @@ We will introduce a typed orchestration-provider boundary in the experimental mu
 
 ### Provider selection is per runner configuration
 
-Every experimental runner configuration must contain an `orchestration` object with exactly one non-null typed provider block. In this phase the only supported block is `webhook`:
+Every experimental runner configuration must contain an `orchestration_provider` object with exactly one non-null typed provider block. In this phase the only supported block is `webhook`:
 
 ```hcl
 experimental = {
   multi_runner_config = {
     linux_arm64 = {
-      orchestration = {
+      orchestration_provider = {
         webhook = {
           runner = {
             boot_time_in_minutes = 5
@@ -80,7 +80,7 @@ Validation counts non-null provider blocks rather than naming one special case. 
 
 ### Global orchestration blocks provide defaults; they do not select providers
 
-`experimental.orchestration.webhook` is the global defaults and shared-component namespace for webhook orchestration. Its presence does not select webhook orchestration for every runner configuration. Selection remains under `experimental.multi_runner_config.<configuration>.orchestration`.
+`experimental.orchestration_provider.webhook` is the global defaults and shared-component namespace for webhook orchestration. Its presence does not select webhook orchestration for every runner configuration. Selection remains under `experimental.multi_runner_config.<configuration>.orchestration_provider`.
 
 The webhook global namespace owns:
 
@@ -97,18 +97,18 @@ The webhook global namespace owns:
 Job-retry remains a per-runner-configuration webhook setting in this phase; its
 typed block supplies its own defaults rather than inheriting a global block.
 
-Runner boot time, ephemeral mode, JIT configuration, and maximum runner count are webhook-provider settings rather than common runner identity. Their canonical paths live under `experimental.orchestration.webhook.runner`, with matching paths under `experimental.multi_runner_config.<configuration>.orchestration.webhook.runner` for runner-configuration overrides. Stable-v1 translation maps the existing lifecycle, boot-time, and capacity inputs into those provider paths, and the unchanged stable `modules/runners` call reads from the canonical provider block. No compatibility aliases are retained under the experimental common `runner` object. The webhook provider resolves a null JIT setting to the effective ephemeral mode, exposes that lifecycle contract to runner-config bootstrap, injects boot time into scale-down and pool, and keeps these settings out of compute-provider capabilities.
+Runner boot time, ephemeral mode, JIT configuration, and maximum runner count are webhook-provider settings rather than common runner identity. Their canonical paths live under `experimental.orchestration_provider.webhook.runner`, with matching paths under `experimental.multi_runner_config.<configuration>.orchestration_provider.webhook.runner` for runner-configuration overrides. Stable-v1 translation maps the existing lifecycle, boot-time, and capacity inputs into those provider paths, and the unchanged stable `modules/runners` call reads from the canonical provider block. No compatibility aliases are retained under the experimental common `runner` object. The webhook provider resolves a null JIT setting to the effective ephemeral mode, exposes that lifecycle contract to runner-config bootstrap, injects boot time into scale-down and pool, and keeps these settings out of compute-provider capabilities.
 
-The common `experimental.github` block continues to own credentials and GitHub API client settings shared across implementations, including `enterprise_server` and `user_agent`. Repository filtering belongs to the shared webhook at `experimental.orchestration.webhook.github.repository_white_list`; per-configuration `organization_runners` remains in the same provider-owned GitHub block.
+The common `experimental.github` block continues to own credentials and GitHub API client settings shared across implementations, including `enterprise_server` and `user_agent`. Repository filtering belongs to the shared webhook at `experimental.orchestration_provider.webhook.github.repository_white_list`; per-configuration `organization_runners` remains in the same provider-owned GitHub block.
 
 The common `experimental.lambda` block contains only provider-neutral Lambda substrate: runtime, architecture, networking, role settings, additional principals, tags, and an optional shared artifact bucket. It does not select a provider archive. Each component owner supplies its own local zip or S3 object key and version.
 
-The webhook provider owns one runner-control artifact at `orchestration.webhook.lambda.artifact`, shared by scale, pool, and job-retry. Its `lambda.scale` child contains only `up` and `down` configuration, while the ingress webhook retains its separate `lambda.webhook.artifact`. The provider-neutral SSM housekeeper owns its artifact selector under `ssm.housekeeper.lambda.artifact`. A runner-configuration selection overrides the global `experimental.ssm.housekeeper.lambda.artifact`; an S3 selection combines its key and optional object version with the common Lambda artifact bucket, a zip selection uses its local path, and no selection uses runner-config's packaged runner control-plane archive. This selector is independent of the webhook runner-control artifact. Stable-v1 translation maps the existing runner artifact into both canonical component contracts so the translated representation remains complete without changing the stable resource path.
+The webhook provider owns one runner-control artifact at `orchestration_provider.webhook.lambda.artifact`, shared by scale, pool, and job-retry. Its `lambda.scale` child contains only `up` and `down` configuration, while the ingress webhook retains its separate `lambda.webhook.artifact`. The provider-neutral SSM housekeeper owns its artifact selector under `ssm.housekeeper.lambda.artifact`. A runner-configuration selection overrides the global `experimental.ssm.housekeeper.lambda.artifact`; an S3 selection combines its key and optional object version with the common Lambda artifact bucket, a zip selection uses its local path, and no selection uses runner-config's packaged runner control-plane archive. This selector is independent of the webhook runner-control artifact. Stable-v1 translation maps the existing runner artifact into both canonical component contracts so the translated representation remains complete without changing the stable resource path.
 
 For a selected webhook provider, resolution follows:
 
 ```text
-runner-configuration override > experimental orchestration.webhook default
+runner-configuration override > experimental.orchestration_provider.webhook default
 ```
 
 Tag maps merge from broad to narrow. A runner-configuration override affects only that runner configuration; it does not configure a shared singleton.
@@ -166,19 +166,19 @@ A future scale-set controller may require a different subset or extension of the
 
 Stable inputs are translated into the same internal canonical representation so defaults and shared singleton values have one resolution path. Stable runner configurations continue to call the existing `modules/runners` implementation at their existing addresses. Opting into experimental v2 is module-wide: a non-empty `experimental.multi_runner_config` replaces, rather than merges with, the stable map.
 
-The experimental implementation preserves in-progress v2 state with declarative moves:
+The runner configuration uses one explicitly named, count-addressed module per concrete provider. Compute modules follow `module.compute_<type>[0]`, while orchestration modules follow `module.orchestration_<type>[0]`. This avoids duplicating the provider name in addresses such as `module.webhook["webhook"]` and gives future providers symmetric addresses such as `module.compute_microvm[0]` and `module.orchestration_scale_set[0]`.
 
-- `module.runner_stacks` moves to `module.runner_configs`;
-- EC2 compute resources move from `module.ec2[0]` to `module.compute_ec2[0]`;
-- scale-up/scale-down resources move beneath `module.orchestration_webhook[0].module.scale_runners`;
-- pool resources move beneath `module.orchestration_webhook[0].module.pool`; and
-- job-retry resources move beneath `module.orchestration_webhook[0].module.job_retry`.
+The experimental v2 implementation does not retain declarative moves from earlier unpublished module names. Those addresses are not part of the stable contract. An existing experimental deployment must migrate any affected state explicitly before upgrading or accept Terraform's proposed replacement actions.
 
-The runner configuration uses one explicitly named, count-addressed module per concrete provider. Compute modules follow `module.compute_<type>[0]`, while orchestration modules follow `module.orchestration_<type>[0]`. This avoids duplicating the provider name in addresses such as `module.webhook["webhook"]` and gives future providers symmetric addresses such as `module.compute_microvm[0]` and `module.orchestration_scale_set[0]`. Chained moves from the previously published module addresses preserve existing experimental state.
-
-The canonical v2 output groups resources under `orchestration.webhook`. Direct `scale_up`, `scale_down`, and `pool` outputs remain compatibility aliases during the experimental transition.
+The canonical v2 output groups resources under `orchestration_provider.webhook`. Direct `scale_up`, `scale_down`, and `pool` outputs remain compatibility aliases during the experimental transition.
 
 This ADR does not define an automatic stable-v1-to-v2 state migration. Existing deployments remain on the stable path until that migration is separately designed and documented.
+
+### Semantic validation lives beside module composition
+
+Internal runner-config, orchestration-provider, and compute-provider modules keep nested variable declarations focused on types, defaults, and documentation. Their semantic and cross-field checks live in `validations.tf` as lifecycle preconditions on one empty `terraform_data.validate_config` resource per module. The resource has no `input` or `triggers_replace`, so configuration values are not copied into state and ordinary value changes do not replace it.
+
+This convention requires Terraform 1.4 or newer and adds one state-only validation resource for each instantiated internal module. Known invalid values still fail during planning; unknown conditions may defer until apply, and targeted plans can omit a detached validation resource. Direct module tests therefore target and assert the validation resource explicitly.
 
 ### IAM and encryption follow resource ownership
 
@@ -228,13 +228,14 @@ The intended end state permits webhook and scale-set orchestration in the same m
 - Provider-owned queue, Lambda, artifact, IAM, and output settings have one discoverable namespace.
 - Exact-one validation prevents ambiguous ownership of a runner configuration.
 - Stable behavior and shared singleton addresses remain unchanged.
-- Moved blocks preserve the addresses already created by the experimental v2 work.
+- Provider module addresses follow one consistent compute and orchestration naming convention.
 
 ### Negative
 
 - The experimental input is more deeply nested than the existing flat interface.
 - Global webhook defaults and per-runner webhook selection use similarly named blocks with different purposes.
 - Internal modules have explicit adapter objects and capability contracts that require maintenance.
+- Module-level validation resources add state-only objects and are not evaluated by a targeted plan that excludes them.
 - Adding a stateful provider will still require new runtime, deployment, observability, and failure-recovery design; the Terraform boundary alone does not solve those concerns.
 - Compatibility aliases temporarily expose both canonical and historical v2 output paths.
 
@@ -256,7 +257,7 @@ This would keep fewer directories initially, but every provider would add resour
 
 Scale, pool, and retry are all webhook orchestration behavior. Leaving them under the common module would blur ownership and make a future provider appear to support components it does not use.
 
-**Decision**: Move the leaves under the webhook provider root and preserve state with moved blocks.
+**Decision**: Move the leaves under the webhook provider root. Earlier experimental addresses are not retained as an in-module state-migration contract.
 
 ### Add the scale-set schema and ECS service now
 
@@ -282,7 +283,7 @@ Implementation and review must verify the boundary at several levels.
 - Per-runner values override global webhook defaults, and omitted nullable values inherit them.
 - Shared singleton resources consume global values rather than arbitrary per-runner overrides.
 - Stable inputs preserve stable resource addresses and output shape.
-- The experimental module and child-module renames produce move operations rather than destroy/create operations.
+- Canonical runner-config, compute-provider, and orchestration-provider addresses are used consistently in fresh plans.
 - Canonical nested outputs and compatibility aliases reference the same resources.
 
 ### Provider and IAM tests
