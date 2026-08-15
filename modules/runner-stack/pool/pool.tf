@@ -121,6 +121,15 @@ data "aws_iam_policy_document" "lambda_assume_role_policy" {
       type        = "Service"
       identifiers = ["lambda.amazonaws.com"]
     }
+
+    dynamic "principals" {
+      for_each = var.config.lambda.principals
+
+      content {
+        type        = principals.value.type
+        identifiers = principals.value.identifiers
+      }
+    }
   }
 }
 

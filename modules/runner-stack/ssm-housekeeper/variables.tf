@@ -22,6 +22,7 @@ variable "config" {
     - `lambda.vpc.security_group_ids`: Security groups used for Lambda VPC configuration.
     - `lambda.role.path`: IAM path used for the housekeeper Lambda role.
     - `lambda.role.permissions_boundary`: Optional permissions boundary for the housekeeper role.
+    - `lambda.role.principals`: Additional principals allowed to assume the housekeeper Lambda role.
     - `observability.logs`: Logging level, retention, encryption, and log-class configuration.
     - `observability.tracing`: Lambda X-Ray and tracing-helper configuration.
     - `tags.resources`: Tags for the housekeeper role and EventBridge rule.
@@ -62,6 +63,10 @@ variable "config" {
       role = object({
         path                 = string
         permissions_boundary = optional(string, null)
+        principals = optional(list(object({
+          type        = string
+          identifiers = list(string)
+        })), [])
       })
     })
     observability = object({

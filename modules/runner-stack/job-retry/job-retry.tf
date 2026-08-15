@@ -23,6 +23,7 @@ locals {
     ENABLE_METRIC_JOB_RETRY                   = var.config.observability.metrics.enable && var.config.observability.metrics.metric.enable_job_retry
     ENABLE_METRIC_GITHUB_APP_RATE_LIMIT       = var.config.observability.metrics.enable && var.config.observability.metrics.metric.enable_github_app_rate_limit
     GHES_URL                                  = var.config.github.enterprise_server.url
+    NODE_TLS_REJECT_UNAUTHORIZED              = var.config.github.enterprise_server.url != null && !var.config.github.enterprise_server.ssl_verify ? 0 : 1
     USER_AGENT                                = var.config.github.user_agent
     JOB_QUEUE_SCALE_UP_URL                    = var.config.queue.build.url
     PARAMETER_GITHUB_APP_ID_NAME              = join(":", [for p in var.config.github.app_parameters.id : p.name])

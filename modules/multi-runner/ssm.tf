@@ -1,8 +1,13 @@
 module "ssm" {
-  source                 = "../ssm"
-  kms_key_arn            = var.kms_key_arn
-  path_prefix            = "${local.ssm_root_path}/${var.ssm_paths.app}"
-  github_app             = var.github_app
-  additional_github_apps = var.additional_github_apps
-  tags                   = local.tags
+  source = "../ssm"
+
+  kms_key_arn            = local.translated_experimental.ssm.kms_key_id
+  path_prefix            = "${trimsuffix(coalesce(local.translated_experimental.ssm.paths.root, "/github-action-runners/${var.prefix}"), "/")}/${local.translated_experimental.ssm.paths.app}"
+  github_app             = local.translated_experimental.github.app
+  additional_github_apps = local.translated_experimental.github.additional_apps
+  tags = merge(
+    local.translated_experimental.tags,
+    local.translated_experimental.ssm.tags,
+    { "ghr:environment" = var.prefix },
+  )
 }
