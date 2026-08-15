@@ -62,9 +62,9 @@ variable "experimental" {
     - `github.additional_apps[].installation_id_ssm.arn`: ARN of the existing installation-ID parameter.
     - `github.additional_apps[].installation_id_ssm.name`: Name of the existing installation-ID parameter.
     - `github.repository_white_list`: Repository full names allowed to use the shared webhook. The default is `[]`, which disables repository filtering.
-    - `enterprise_server.url`: GitHub Enterprise Server URL used by v2 runner-stack GitHub clients and the shared termination watcher. The default is null.
-    - `enterprise_server.ssl_verify`: Enables TLS certificate verification for v2 runner-stack GitHub clients. The default is `true`.
-    - `user_agent`: HTTP User-Agent used by v2 runner-stack GitHub clients. The default is `github-aws-runners`.
+    - `github.enterprise_server.url`: GitHub Enterprise Server URL used by v2 runner-stack GitHub clients and the shared termination watcher. The default is null.
+    - `github.enterprise_server.ssl_verify`: Enables TLS certificate verification for v2 runner-stack GitHub clients. The default is `true`.
+    - `github.user_agent`: HTTP User-Agent used by v2 runner-stack GitHub clients. The default is `github-aws-runners`.
     - `webhook.queue_selection_strategy`: Queue-selection strategy when multiple lanes match a job equally well. The default is `first`, which deterministically selects the first matching queue by priority. `random` spreads jobs across equally matched queues. `all` dispatches to every matching queue, favoring startup speed at the cost of multiple runner launches and registrations for one job.
     - `webhook.eventbridge.enable`: Routes accepted webhook events through EventBridge when true. The default is `true`, and the value must be known during planning because it selects the webhook implementation.
     - `webhook.eventbridge.accept_events`: EventBridge event types accepted by the shared webhook. The default is `[]`, which accepts all supported events.
@@ -499,14 +499,12 @@ variable "experimental" {
         installation_id_ssm = optional(object({ arn = string, name = string }))
       })), [])
       repository_white_list = optional(list(string), [])
+      enterprise_server = optional(object({
+        url        = optional(string, null)
+        ssl_verify = optional(bool, true)
+      }), {})
+      user_agent = optional(string, "github-aws-runners")
     }), {})
-
-    enterprise_server = optional(object({
-      url        = optional(string, null)
-      ssl_verify = optional(bool, true)
-    }), {})
-
-    user_agent = optional(string, "github-aws-runners")
 
     webhook = optional(object({
       queue_selection_strategy = optional(string, "first")
