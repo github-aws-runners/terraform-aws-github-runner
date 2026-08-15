@@ -17,14 +17,6 @@ mock_provider "null" {}
 
 variables {
   aws_region = "eu-west-1"
-  vpc_id     = "vpc-12345678"
-  subnet_ids = ["subnet-12345678"]
-
-  github_app = {
-    id             = "123456"
-    key_base64     = "dGVzdA=="
-    webhook_secret = "test-secret"
-  }
 
   lambda_s3_bucket      = "lambda-artifacts"
   webhook_lambda_s3_key = "webhook.zip"
@@ -35,6 +27,17 @@ variables {
 
 run "empty_runner_configurations_return_empty_output_maps" {
   command = plan
+
+  variables {
+    vpc_id     = "vpc-12345678"
+    subnet_ids = ["subnet-12345678"]
+
+    github_app = {
+      id             = "123456"
+      key_base64     = "dGVzdA=="
+      webhook_secret = "test-secret"
+    }
+  }
 
   assert {
     condition     = length(output.runners_map) == 0 && length(output.runners_map_v2) == 0
@@ -55,6 +58,15 @@ run "stable_v1_keeps_legacy_runner_module" {
   command = plan
 
   variables {
+    vpc_id     = "vpc-12345678"
+    subnet_ids = ["subnet-12345678"]
+
+    github_app = {
+      id             = "123456"
+      key_base64     = "dGVzdA=="
+      webhook_secret = "test-secret"
+    }
+
     tags = {
       StableGlobal = "global"
       Precedence   = "global"
@@ -724,6 +736,58 @@ run "stable_v1_keeps_legacy_runner_module" {
   }
 }
 
+run "stable_v1_requires_flat_github_app" {
+  command = plan
+
+  plan_options {
+    target = [terraform_data.validate_experimental]
+  }
+
+  variables {
+    vpc_id     = "vpc-12345678"
+    subnet_ids = ["subnet-12345678"]
+  }
+
+  expect_failures = [terraform_data.validate_experimental]
+}
+
+run "stable_v1_rejects_incomplete_flat_github_app" {
+  command = plan
+
+  plan_options {
+    target = [terraform_data.validate_experimental]
+  }
+
+  variables {
+    vpc_id     = "vpc-12345678"
+    subnet_ids = ["subnet-12345678"]
+
+    github_app = {
+      id = "123456"
+    }
+  }
+
+  expect_failures = [terraform_data.validate_experimental]
+}
+
+run "stable_v1_requires_flat_network_inputs" {
+  command = plan
+
+  plan_options {
+    target = [terraform_data.validate_experimental]
+  }
+
+  variables {
+    github_app = {
+      id             = "123456"
+      key_base64     = "dGVzdA=="
+      webhook_secret = "test-secret"
+    }
+  }
+
+  expect_failures = [terraform_data.validate_experimental]
+}
+
 run "experimental_v2_routes_through_provider_stack" {
   command = plan
 
@@ -1347,7 +1411,7 @@ run "experimental_v2_routes_through_provider_stack" {
     condition = (
       local.translated_experimental.github.app == var.experimental.github.app
       && local.translated_experimental.github.additional_apps == var.experimental.github.additional_apps
-      && local.translated_experimental.github.app == var.github_app
+      && var.github_app == null
       && local.translated_experimental.github.additional_apps == var.additional_github_apps
       && length(local.github_app_parameters.id) == 2
       && length(module.ssm.additional_app_parameters) == 1
@@ -2574,6 +2638,10 @@ run "experimental_v2_prefers_nested_primary_github_app_over_flat" {
   command = plan
 
   variables {
+    github_app = {
+      id = "flat-app-id"
+    }
+
     experimental = {
       github = {
         app = {
@@ -2625,7 +2693,7 @@ run "experimental_v2_prefers_nested_primary_github_app_over_flat" {
 
   assert {
     condition = (
-      var.github_app.id == "123456"
+      var.github_app.id == "flat-app-id"
       && local.translated_experimental.github.app.id == "different-app-id"
       && length(local.github_app_parameters.id) == 1
       && output.ssm_parameters.id.name == "/github-action-runners/github-actions/app/github_app_id"
