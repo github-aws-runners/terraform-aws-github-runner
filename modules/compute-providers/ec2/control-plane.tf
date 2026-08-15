@@ -205,13 +205,9 @@ locals {
     USE_DEDICATED_HOST                   = var.config.use_dedicated_host
   }
 
-  scale_down_environment_variables = {
-    RUNNER_BOOT_TIME_IN_MINUTES = var.runner.boot_time_in_minutes
-  }
+  scale_down_environment_variables = {}
 
-  pool_environment_variables = merge(local.scale_up_environment_variables, {
-    RUNNER_BOOT_TIME_IN_MINUTES = var.runner.boot_time_in_minutes
-  })
+  pool_environment_variables = local.scale_up_environment_variables
 
   scale_up_iam_policy_json        = data.aws_iam_policy_document.scale_up.json
   scale_down_iam_policy_json      = data.aws_iam_policy_document.scale_down.json
