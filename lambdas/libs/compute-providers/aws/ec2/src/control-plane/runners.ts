@@ -22,7 +22,7 @@ import { getTracedAWSV3Client, tracer } from '@aws-github-runner/aws-powertools-
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
 import moment from 'moment';
 
-import type { CreateRunnerResult, RunnerInfo } from '../../../../core';
+import type { CreateRunnerResult, RunnerInfo, ScaleSetRunnerState } from '../../../../core';
 import type { Ec2ListRunnerFilters, Ec2OverrideConfig, RunnerInputParameters } from './runners.d';
 
 const logger = createChildLogger('runners');
@@ -54,6 +54,18 @@ function constructFilters(filters?: Ec2ListRunnerFilters): Ec2Filter[][] {
     if (filters.runnerType && filters.runnerOwner) {
       ec2FiltersBase.push({ Name: `tag:ghr:Type`, Values: [filters.runnerType] });
       ec2FiltersBase.push({ Name: `tag:ghr:Owner`, Values: [filters.runnerOwner] });
+    }
+    if (filters.runnerName !== undefined) {
+      ec2FiltersBase.push({ Name: 'tag:ghr:runner_name', Values: [filters.runnerName] });
+    }
+    if (filters.scaleSetId !== undefined) {
+      ec2FiltersBase.push({ Name: 'tag:ghr:scale_set_id', Values: [String(filters.scaleSetId)] });
+    }
+    if (filters.source !== undefined) {
+      ec2FiltersBase.push({
+        Name: 'tag:ghr:created_by',
+        Values: Array.isArray(filters.source) ? filters.source : [filters.source],
+      });
     }
     if (filters.orphan) {
       ec2FiltersBase.push({ Name: 'tag:ghr:orphan', Values: ['true'] });
@@ -90,6 +102,7 @@ function getRunnerInfo(runningInstances: DescribeInstancesResult) {
     for (const r of runningInstances.Reservations) {
       if (r.Instances) {
         for (const i of r.Instances) {
+          const scaleSetState = i.Tags?.find((e) => e.Key === 'ghr:scale_set_state')?.Value;
           runners.push({
             id: i.InstanceId as string,
             launchTime: i.LaunchTime,
@@ -99,6 +112,8 @@ function getRunnerInfo(runningInstances: DescribeInstancesResult) {
             org: i.Tags?.find((e) => e.Key === 'ghr:Org')?.Value as string,
             orphan: i.Tags?.find((e) => e.Key === 'ghr:orphan')?.Value === 'true',
             githubRunnerId: i.Tags?.find((e) => e.Key === 'ghr:github_runner_id')?.Value as string,
+            runnerName: i.Tags?.find((e) => e.Key === 'ghr:runner_name')?.Value as string,
+            ...(scaleSetState ? { scaleSetState: scaleSetState as ScaleSetRunnerState } : {}),
             bypassRemoval: i.Tags?.find((e) => e.Key === 'ghr:bypass-removal')?.Value === 'true',
           });
         }
@@ -498,17 +513,7 @@ async function createInstances(
   amiIdOverride: string | undefined,
   ec2Client: EC2Client,
 ) {
-  const tags = [
-    { Key: 'ghr:Application', Value: 'github-action-runner' },
-    { Key: 'ghr:created_by', Value: runnerParameters.source },
-    { Key: 'ghr:Type', Value: runnerParameters.runnerType },
-    { Key: 'ghr:Owner', Value: runnerParameters.runnerOwner },
-  ];
-
-  if (runnerParameters.tracingEnabled) {
-    const traceId = tracer.getRootXrayTraceId();
-    tags.push({ Key: 'ghr:trace_id', Value: traceId! });
-  }
+  const tags = createRunnerTags(runnerParameters);
 
   const targetCapacityType = runnerParameters.ec2instanceCriteria.targetCapacityType;
   const allocationStrategy = sanitizeAllocationStrategy(
@@ -582,17 +587,7 @@ async function createInstancesWithRunInstances(
   amiIdOverride: string | undefined,
   ec2Client: EC2Client,
 ): Promise<CreateRunnerResult> {
-  const tags = [
-    { Key: 'ghr:Application', Value: 'github-action-runner' },
-    { Key: 'ghr:created_by', Value: runnerParameters.numberOfRunners === 1 ? 'scale-up-lambda' : 'pool-lambda' },
-    { Key: 'ghr:Type', Value: runnerParameters.runnerType },
-    { Key: 'ghr:Owner', Value: runnerParameters.runnerOwner },
-  ];
-
-  if (runnerParameters.tracingEnabled) {
-    const traceId = tracer.getRootXrayTraceId();
-    tags.push({ Key: 'ghr:trace_id', Value: traceId! });
-  }
+  const tags = createRunnerTags(runnerParameters);
 
   if (runnerParameters.ec2instanceCriteria.targetCapacityType === 'spot') {
     logger.warn(
@@ -634,6 +629,23 @@ async function createInstancesWithRunInstances(
     logger.warn('RunInstances request failed for dedicated host.', { error: error as Error, retryable });
     return failedCreateRunnerResult(runnerParameters.numberOfRunners, retryable);
   }
+}
+
+function createRunnerTags(runnerParameters: RunnerInputParameters): Tag[] {
+  const tags: Tag[] = [
+    { Key: 'ghr:Application', Value: 'github-action-runner' },
+    { Key: 'ghr:created_by', Value: runnerParameters.source },
+    { Key: 'ghr:Type', Value: runnerParameters.runnerType },
+    { Key: 'ghr:Owner', Value: runnerParameters.runnerOwner },
+    ...(runnerParameters.additionalTags ?? []),
+  ];
+
+  if (runnerParameters.tracingEnabled) {
+    const traceId = tracer.getRootXrayTraceId();
+    tags.push({ Key: 'ghr:trace_id', Value: traceId! });
+  }
+
+  return tags;
 }
 
 // If launchTime is undefined, this will return false

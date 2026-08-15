@@ -10,6 +10,7 @@ the code it uses. To enable a completed provider, add its compute-provider type 
 
 - `providers.config.webhook.ts`
 - `providers.config.control-plane.ts`
+- `providers.config.scale-set.ts`
 
 Each entry point exports its module as `provider`. Alias that export to the compute-provider
 name when enabling it, for example:
@@ -24,6 +25,8 @@ Implement every capability before registering the provider:
 - `scaleUp`: prepare compute-provider state, count current runners, and create runners.
 - `scaleDown`: list, inspect, mark, unmark, and terminate runners.
 - `dynamicLabels`: select a webhook dispatch target for supported labels.
+- `scaleSet`: reconcile stateful scale-set capacity, publish JIT configuration,
+  mark started runners, and terminate completed or safely cancelled runners.
 
 Provider-specific tests should remain beside the provider implementation. The
 generic orchestration contracts remain owned by the control-plane package.

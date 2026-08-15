@@ -318,10 +318,6 @@ locals {
           }
         }
 
-        github = {
-          organization_runners = v.runner_config.enable_organization_runners
-        }
-
         lambda = {
           runtime            = null
           architecture       = null
@@ -332,55 +328,69 @@ locals {
             path                 = null
             permissions_boundary = null
           }
-          scale_up = {
-            memory_size                    = null
-            timeout                        = null
-            reserved_concurrent_executions = v.runner_config.scale_up_reserved_concurrent_executions
-            job_queued_check_enabled       = v.runner_config.enable_job_queued_check
-            event_source_mapping = {
-              batch_size                         = v.runner_config.lambda_event_source_mapping_batch_size
-              maximum_batching_window_in_seconds = v.runner_config.lambda_event_source_mapping_maximum_batching_window_in_seconds
+        }
+
+        orchestration = {
+          webhook = {
+            github = {
+              organization_runners = v.runner_config.enable_organization_runners
             }
-            tags = {}
-          }
-          scale_down = {
-            memory_size                     = null
-            timeout                         = null
-            schedule_expression             = v.runner_config.scale_down_schedule_expression
-            minimum_running_time_in_minutes = v.runner_config.minimum_running_time_in_minutes
-            idle_config                     = v.runner_config.idle_config
-            tags                            = {}
-          }
-          pool = {
-            memory_size                    = null
-            timeout                        = null
-            reserved_concurrent_executions = null
-            config                         = v.runner_config.pool_config
-            include_busy_runners           = false
-            runner_owner                   = v.runner_config.pool_runner_owner
-            tags                           = {}
-          }
-        }
 
-        queue = {
-          delay_webhook_event            = v.runner_config.delay_webhook_event
-          job_queue_retention_in_seconds = v.runner_config.job_queue_retention_in_seconds
-          visibility_timeout_seconds     = var.runners_scale_up_lambda_timeout
-          redrive_build_queue            = v.redrive_build_queue
-          tags                           = {}
-        }
+            matcherConfig = v.matcherConfig
 
-        job_retry = {
-          enabled          = v.runner_config.job_retry.enable
-          delay_in_seconds = v.runner_config.job_retry.delay_in_seconds
-          delay_backoff    = v.runner_config.job_retry.delay_backoff
-          max_attempts     = v.runner_config.job_retry.max_attempts
-          tags             = {}
-          lambda = {
-            memory_size                    = v.runner_config.job_retry.lambda_memory_size
-            reserved_concurrent_executions = 1
-            timeout                        = v.runner_config.job_retry.lambda_timeout
+            lambda = {
+              scale_up = {
+                memory_size                    = null
+                timeout                        = null
+                reserved_concurrent_executions = v.runner_config.scale_up_reserved_concurrent_executions
+                job_queued_check_enabled       = v.runner_config.enable_job_queued_check
+                event_source_mapping = {
+                  batch_size                         = v.runner_config.lambda_event_source_mapping_batch_size
+                  maximum_batching_window_in_seconds = v.runner_config.lambda_event_source_mapping_maximum_batching_window_in_seconds
+                }
+                tags = {}
+              }
+              scale_down = {
+                memory_size                     = null
+                timeout                         = null
+                schedule_expression             = v.runner_config.scale_down_schedule_expression
+                minimum_running_time_in_minutes = v.runner_config.minimum_running_time_in_minutes
+                idle_config                     = v.runner_config.idle_config
+                tags                            = {}
+              }
+              pool = {
+                memory_size                    = null
+                timeout                        = null
+                reserved_concurrent_executions = null
+                config                         = v.runner_config.pool_config
+                include_busy_runners           = false
+                runner_owner                   = v.runner_config.pool_runner_owner
+                tags                           = {}
+              }
+            }
+
+            queue = {
+              delay_webhook_event            = v.runner_config.delay_webhook_event
+              job_queue_retention_in_seconds = v.runner_config.job_queue_retention_in_seconds
+              visibility_timeout_seconds     = var.runners_scale_up_lambda_timeout
+              redrive_build_queue            = v.redrive_build_queue
+              tags                           = {}
+            }
+
+            job_retry = {
+              enabled          = v.runner_config.job_retry.enable
+              delay_in_seconds = v.runner_config.job_retry.delay_in_seconds
+              delay_backoff    = v.runner_config.job_retry.delay_backoff
+              max_attempts     = v.runner_config.job_retry.max_attempts
+              tags             = {}
+              lambda = {
+                memory_size                    = v.runner_config.job_retry.lambda_memory_size
+                reserved_concurrent_executions = 1
+                timeout                        = v.runner_config.job_retry.lambda_timeout
+              }
+            }
           }
+          scale_set = null
         }
 
         ssm = {
@@ -497,8 +507,6 @@ locals {
             tags                                 = v.runner_config.runner_ec2_tags
           }
         }
-
-        matcherConfig = v.matcherConfig
       }
     }
   }
@@ -560,58 +568,71 @@ locals {
               local.raw_translated_experimental.roles.permissions_boundary,
             ), null)
           }
-          scale_up = merge(v.lambda.scale_up, {
-            memory_size                    = coalesce(v.lambda.scale_up.memory_size, local.raw_translated_experimental.lambda.scale_up.memory_size)
-            timeout                        = coalesce(v.lambda.scale_up.timeout, local.raw_translated_experimental.lambda.scale_up.timeout)
-            reserved_concurrent_executions = coalesce(v.lambda.scale_up.reserved_concurrent_executions, local.raw_translated_experimental.lambda.scale_up.reserved_concurrent_executions)
-            job_queued_check_enabled       = try(coalesce(v.lambda.scale_up.job_queued_check_enabled, local.raw_translated_experimental.lambda.scale_up.job_queued_check_enabled), null)
-            event_source_mapping = {
-              batch_size = coalesce(
-                v.lambda.scale_up.event_source_mapping.batch_size,
-                local.raw_translated_experimental.lambda.scale_up.event_source_mapping.batch_size,
-              )
-              maximum_batching_window_in_seconds = coalesce(
-                v.lambda.scale_up.event_source_mapping.maximum_batching_window_in_seconds,
-                local.raw_translated_experimental.lambda.scale_up.event_source_mapping.maximum_batching_window_in_seconds,
-              )
-            }
-            tags = merge(local.raw_translated_experimental.lambda.scale_up.tags, v.lambda.scale_up.tags)
-          })
-          scale_down = merge(v.lambda.scale_down, {
-            memory_size                     = coalesce(v.lambda.scale_down.memory_size, local.raw_translated_experimental.lambda.scale_down.memory_size)
-            timeout                         = coalesce(v.lambda.scale_down.timeout, local.raw_translated_experimental.lambda.scale_down.timeout)
-            schedule_expression             = coalesce(v.lambda.scale_down.schedule_expression, local.raw_translated_experimental.lambda.scale_down.schedule_expression)
-            minimum_running_time_in_minutes = try(coalesce(v.lambda.scale_down.minimum_running_time_in_minutes, local.raw_translated_experimental.lambda.scale_down.minimum_running_time_in_minutes), null)
-            idle_config                     = v.lambda.scale_down.idle_config != null ? v.lambda.scale_down.idle_config : local.raw_translated_experimental.lambda.scale_down.idle_config
-            tags                            = merge(local.raw_translated_experimental.lambda.scale_down.tags, v.lambda.scale_down.tags)
-          })
-          pool = merge(v.lambda.pool, {
-            memory_size                    = coalesce(v.lambda.pool.memory_size, local.raw_translated_experimental.lambda.pool.memory_size)
-            timeout                        = coalesce(v.lambda.pool.timeout, local.raw_translated_experimental.lambda.pool.timeout)
-            reserved_concurrent_executions = coalesce(v.lambda.pool.reserved_concurrent_executions, local.raw_translated_experimental.lambda.pool.reserved_concurrent_executions)
-            config                         = v.lambda.pool.config != null ? v.lambda.pool.config : local.raw_translated_experimental.lambda.pool.config
-            include_busy_runners           = coalesce(v.lambda.pool.include_busy_runners, local.raw_translated_experimental.lambda.pool.include_busy_runners)
-            runner_owner                   = try(coalesce(v.lambda.pool.runner_owner, local.raw_translated_experimental.lambda.pool.runner_owner), null)
-            tags                           = merge(local.raw_translated_experimental.lambda.pool.tags, v.lambda.pool.tags)
-          })
         })
 
-        queue = merge(v.queue, {
-          delay_webhook_event            = coalesce(v.queue.delay_webhook_event, local.raw_translated_experimental.queue.delay_webhook_event)
-          job_queue_retention_in_seconds = coalesce(v.queue.job_queue_retention_in_seconds, local.raw_translated_experimental.queue.job_queue_retention_in_seconds)
-          visibility_timeout_seconds     = coalesce(v.queue.visibility_timeout_seconds, local.raw_translated_experimental.queue.visibility_timeout_seconds)
-          redrive_build_queue = {
-            enabled = try(
-              coalesce(try(v.queue.redrive_build_queue.enabled, null), local.raw_translated_experimental.queue.redrive_build_queue.enabled),
-              local.raw_translated_experimental.queue.redrive_build_queue.enabled,
-            )
-            maxReceiveCount = try(
-              coalesce(try(v.queue.redrive_build_queue.maxReceiveCount, null), local.raw_translated_experimental.queue.redrive_build_queue.maxReceiveCount),
-              null,
-            )
-          }
-          tags = merge(local.raw_translated_experimental.queue.tags, v.queue.tags)
-        })
+        orchestration = {
+          webhook = v.orchestration.webhook == null ? null : merge(v.orchestration.webhook, {
+            lambda = merge(v.orchestration.webhook.lambda, {
+              scale_up = merge(v.orchestration.webhook.lambda.scale_up, {
+                memory_size                    = coalesce(v.orchestration.webhook.lambda.scale_up.memory_size, local.raw_translated_experimental.lambda.scale_up.memory_size)
+                timeout                        = coalesce(v.orchestration.webhook.lambda.scale_up.timeout, local.raw_translated_experimental.lambda.scale_up.timeout)
+                reserved_concurrent_executions = coalesce(v.orchestration.webhook.lambda.scale_up.reserved_concurrent_executions, local.raw_translated_experimental.lambda.scale_up.reserved_concurrent_executions)
+                job_queued_check_enabled       = try(coalesce(v.orchestration.webhook.lambda.scale_up.job_queued_check_enabled, local.raw_translated_experimental.lambda.scale_up.job_queued_check_enabled), null)
+                event_source_mapping = {
+                  batch_size = coalesce(
+                    v.orchestration.webhook.lambda.scale_up.event_source_mapping.batch_size,
+                    local.raw_translated_experimental.lambda.scale_up.event_source_mapping.batch_size,
+                  )
+                  maximum_batching_window_in_seconds = coalesce(
+                    v.orchestration.webhook.lambda.scale_up.event_source_mapping.maximum_batching_window_in_seconds,
+                    local.raw_translated_experimental.lambda.scale_up.event_source_mapping.maximum_batching_window_in_seconds,
+                  )
+                }
+                tags = merge(local.raw_translated_experimental.lambda.scale_up.tags, v.orchestration.webhook.lambda.scale_up.tags)
+              })
+              scale_down = merge(v.orchestration.webhook.lambda.scale_down, {
+                memory_size                     = coalesce(v.orchestration.webhook.lambda.scale_down.memory_size, local.raw_translated_experimental.lambda.scale_down.memory_size)
+                timeout                         = coalesce(v.orchestration.webhook.lambda.scale_down.timeout, local.raw_translated_experimental.lambda.scale_down.timeout)
+                schedule_expression             = coalesce(v.orchestration.webhook.lambda.scale_down.schedule_expression, local.raw_translated_experimental.lambda.scale_down.schedule_expression)
+                minimum_running_time_in_minutes = try(coalesce(v.orchestration.webhook.lambda.scale_down.minimum_running_time_in_minutes, local.raw_translated_experimental.lambda.scale_down.minimum_running_time_in_minutes), null)
+                idle_config                     = v.orchestration.webhook.lambda.scale_down.idle_config != null ? v.orchestration.webhook.lambda.scale_down.idle_config : local.raw_translated_experimental.lambda.scale_down.idle_config
+                tags                            = merge(local.raw_translated_experimental.lambda.scale_down.tags, v.orchestration.webhook.lambda.scale_down.tags)
+              })
+              pool = merge(v.orchestration.webhook.lambda.pool, {
+                memory_size                    = coalesce(v.orchestration.webhook.lambda.pool.memory_size, local.raw_translated_experimental.lambda.pool.memory_size)
+                timeout                        = coalesce(v.orchestration.webhook.lambda.pool.timeout, local.raw_translated_experimental.lambda.pool.timeout)
+                reserved_concurrent_executions = coalesce(v.orchestration.webhook.lambda.pool.reserved_concurrent_executions, local.raw_translated_experimental.lambda.pool.reserved_concurrent_executions)
+                config                         = v.orchestration.webhook.lambda.pool.config != null ? v.orchestration.webhook.lambda.pool.config : local.raw_translated_experimental.lambda.pool.config
+                include_busy_runners           = coalesce(v.orchestration.webhook.lambda.pool.include_busy_runners, local.raw_translated_experimental.lambda.pool.include_busy_runners)
+                runner_owner                   = try(coalesce(v.orchestration.webhook.lambda.pool.runner_owner, local.raw_translated_experimental.lambda.pool.runner_owner), null)
+                tags                           = merge(local.raw_translated_experimental.lambda.pool.tags, v.orchestration.webhook.lambda.pool.tags)
+              })
+            })
+
+            queue = merge(v.orchestration.webhook.queue, {
+              delay_webhook_event            = coalesce(v.orchestration.webhook.queue.delay_webhook_event, local.raw_translated_experimental.queue.delay_webhook_event)
+              job_queue_retention_in_seconds = coalesce(v.orchestration.webhook.queue.job_queue_retention_in_seconds, local.raw_translated_experimental.queue.job_queue_retention_in_seconds)
+              visibility_timeout_seconds     = coalesce(v.orchestration.webhook.queue.visibility_timeout_seconds, local.raw_translated_experimental.queue.visibility_timeout_seconds)
+              redrive_build_queue = {
+                enabled = try(
+                  coalesce(try(v.orchestration.webhook.queue.redrive_build_queue.enabled, null), local.raw_translated_experimental.queue.redrive_build_queue.enabled),
+                  local.raw_translated_experimental.queue.redrive_build_queue.enabled,
+                )
+                maxReceiveCount = try(
+                  coalesce(try(v.orchestration.webhook.queue.redrive_build_queue.maxReceiveCount, null), local.raw_translated_experimental.queue.redrive_build_queue.maxReceiveCount),
+                  null,
+                )
+              }
+              tags = merge(local.raw_translated_experimental.queue.tags, v.orchestration.webhook.queue.tags)
+            })
+          })
+          scale_set = v.orchestration.scale_set == null ? null : merge(v.orchestration.scale_set, {
+            iam = {
+              role_path            = try(coalesce(v.orchestration.scale_set.iam.role_path, local.raw_translated_experimental.roles.path), null)
+              permissions_boundary = try(coalesce(v.orchestration.scale_set.iam.permissions_boundary, local.raw_translated_experimental.roles.permissions_boundary), null)
+            }
+          })
+        }
 
         ssm = merge(v.ssm, {
           paths = {
@@ -713,19 +734,15 @@ locals {
               v.runner.os,
               v.runner.architecture,
             ]),
-            flatten(v.matcherConfig.labelMatchers),
+            v.orchestration.webhook == null ? [] : flatten(v.orchestration.webhook.matcherConfig.labelMatchers),
             compact(v.runner.extra_labels),
           ))
         })
 
-        github = merge(v.github, {
+        github = {
           enterprise_server = local.translated_experimental_base.enterprise_server
           user_agent        = local.translated_experimental_base.user_agent
-        })
-
-        queue = merge(v.queue, {
-          event_source_mapping = v.lambda.scale_up.event_source_mapping
-        })
+        }
 
         lambda = merge(v.lambda, {
           zip = local.translated_experimental_base.lambda.scale.artifact.zip
@@ -735,14 +752,26 @@ locals {
             object_version = try(local.translated_experimental_base.lambda.scale.artifact.s3.object_version, null)
           }
           principals = local.translated_experimental_base.lambda.principals
-          pool = merge(v.lambda.pool, {
-            lambda = {
-              memory_size                    = v.lambda.pool.memory_size
-              timeout                        = v.lambda.pool.timeout
-              reserved_concurrent_executions = v.lambda.pool.reserved_concurrent_executions
-            }
-          })
         })
+
+        orchestration = {
+          webhook = v.orchestration.webhook == null ? null : merge(v.orchestration.webhook, {
+            queue = merge(v.orchestration.webhook.queue, {
+              event_source_mapping = v.orchestration.webhook.lambda.scale_up.event_source_mapping
+            })
+
+            lambda = merge(v.orchestration.webhook.lambda, {
+              pool = merge(v.orchestration.webhook.lambda.pool, {
+                lambda = {
+                  memory_size                    = v.orchestration.webhook.lambda.pool.memory_size
+                  timeout                        = v.orchestration.webhook.lambda.pool.timeout
+                  reserved_concurrent_executions = v.orchestration.webhook.lambda.pool.reserved_concurrent_executions
+                }
+              })
+            })
+          })
+          scale_set = v.orchestration.scale_set
+        }
 
         ssm = merge(v.ssm, {
           kms_key_id = local.translated_experimental_base.ssm.kms_key_id

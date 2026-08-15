@@ -6,11 +6,15 @@ import {
   _InstanceType,
   Placement,
   FleetBlockDeviceMappingRequest,
+  Tag,
 } from '@aws-sdk/client-ec2';
 import type { LambdaRunnerSource, ListRunnerFilters, RunnerType } from '../../../../core';
 
 export interface Ec2ListRunnerFilters extends ListRunnerFilters {
   statuses?: string[];
+  runnerName?: string;
+  scaleSetId?: number;
+  source?: LambdaRunnerSource | LambdaRunnerSource[];
 }
 
 export interface Ec2OverrideConfig {
@@ -43,6 +47,7 @@ export interface RunnerInputParameters {
   ec2OverrideConfig?: Ec2OverrideConfig;
   numberOfRunners: number;
   source: LambdaRunnerSource;
+  additionalTags?: Tag[];
   amiIdSsmParameterName?: string;
   tracingEnabled?: boolean;
   onDemandFailoverOnError?: string[];

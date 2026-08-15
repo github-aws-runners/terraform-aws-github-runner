@@ -50,10 +50,29 @@ module "external_iam" {
     }
   }
 
-  queue = {
-    build = {
-      arn = "arn:aws:sqs:eu-west-1:123456789012:computed-external"
-      url = "https://sqs.eu-west-1.amazonaws.com/123456789012/computed-external"
+  orchestration = {
+    webhook = {
+      github = {
+        organization_runners = true
+      }
+      queue = {
+        build = {
+          arn = "arn:aws:sqs:eu-west-1:123456789012:computed-external"
+          url = "https://sqs.eu-west-1.amazonaws.com/123456789012/computed-external"
+        }
+      }
+
+      job_retry = {
+        enabled = true
+      }
+
+      pool = {
+        runner_owner = "example"
+        config = [{
+          schedule_expression = "cron(0 8 * * ? *)"
+          size                = 1
+        }]
+      }
     }
   }
 
@@ -64,20 +83,7 @@ module "external_iam" {
     }
   }
 
-  job_retry = {
-    enabled = true
-  }
-
-  pool = {
-    runner_owner = "example"
-    config = [{
-      schedule_expression = "cron(0 8 * * ? *)"
-      size                = 1
-    }]
-  }
-
   github = {
-    organization_runners = true
     app_parameters = {
       key_base64 = [{
         name = "/github-runner/key-base64"
@@ -130,10 +136,17 @@ module "generated_policy" {
     }
   }
 
-  queue = {
-    build = {
-      arn = "arn:aws:sqs:eu-west-1:123456789012:computed-policy"
-      url = "https://sqs.eu-west-1.amazonaws.com/123456789012/computed-policy"
+  orchestration = {
+    webhook = {
+      github = {
+        organization_runners = true
+      }
+      queue = {
+        build = {
+          arn = "arn:aws:sqs:eu-west-1:123456789012:computed-policy"
+          url = "https://sqs.eu-west-1.amazonaws.com/123456789012/computed-policy"
+        }
+      }
     }
   }
 
@@ -145,7 +158,6 @@ module "generated_policy" {
   }
 
   github = {
-    organization_runners = true
     app_parameters = {
       key_base64 = [{
         name = "/github-runner/key-base64"

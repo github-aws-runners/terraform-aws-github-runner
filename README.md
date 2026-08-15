@@ -17,6 +17,7 @@ This [Terraform](https://www.terraform.io/) module creates the required infrastr
 ## Features
 
 - Scaling: Scale up and down based on GitHub events
+- Scale sets: [Experimental v2 runner stacks](docs/scale-set.md) can reconcile GitHub scale-set demand with a singleton ECS/Fargate listener
 - Sustainability: Scale down to zero when no jobs are running
 - Security: Runners are created on-demand and terminated after use (ephemeral runners)
 - Cost optimization: Runners are created on spot instances

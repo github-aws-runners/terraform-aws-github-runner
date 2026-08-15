@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Terraform selects the controller mode; instance tags are lifecycle data only.
+scale_set_enabled="${scale_set_enabled}"
+
 # https://docs.aws.amazon.com/xray/latest/devguide/xray-api-sendingdata.html
 # https://docs.aws.amazon.com/xray/latest/devguide/scorekeep-scripts.html
 create_xray_start_segment() {
@@ -88,6 +91,21 @@ tag_instance_with_runner_id() {
   fi
 }
 
+tag_scale_set_runner_state() {
+  local state="$1"
+  echo "Tagging scale-set runner instance as $state"
+  if aws ec2 create-tags \
+    --region "$region" \
+    --resources "$instance_id" \
+    --tags Key=ghr:scale_set_state,Value="$state"; then
+    echo "Successfully tagged scale-set runner instance as $state"
+    return 0
+  else
+    echo "ERROR: Failed to tag scale-set runner instance as $state"
+    return 1
+  fi
+}
+
 cleanup() {
   local exit_code="$1"
   local error_location="$2"
@@ -96,6 +114,9 @@ cleanup() {
   if [ "$exit_code" -ne 0 ]; then
     echo "ERROR: runner-start-failed with exit code $exit_code occurred on $error_location"
     create_xray_error_segment "$SEGMENT" "runner-start-failed with exit code $exit_code occurred on $error_location - $error_lineno"
+    if [[ "$scale_set_enabled" == "true" ]]; then
+      tag_scale_set_runner_state "stopped" || true
+    fi
   fi
   # allows to flush the cloud watch logs and traces
   sleep 10
@@ -143,6 +164,7 @@ environment=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.16
 ssm_config_path=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/meta-data/tags/instance/ghr:ssm_config_path)
 runner_name_prefix=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/meta-data/tags/instance/ghr:runner_name_prefix || echo "")
 xray_trace_id=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/meta-data/tags/instance/ghr:trace_id || echo "")
+scale_set_state=$(curl -f -H "X-aws-ec2-metadata-token: $token" http://169.254.169.254/latest/meta-data/tags/instance/ghr:scale_set_state || echo "")
 
 %{ else }
 tags=$(aws ec2 describe-tags --region "$region" --filters "Name=resource-id,Values=$instance_id")
@@ -152,12 +174,14 @@ environment=$(echo "$tags" | jq -r '.Tags[]  | select(.Key == "ghr:environment")
 ssm_config_path=$(echo "$tags" | jq -r '.Tags[]  | select(.Key == "ghr:ssm_config_path") | .Value')
 runner_name_prefix=$(echo "$tags" | jq -r '.Tags[]  | select(.Key == "ghr:runner_name_prefix") | .Value' || echo "")
 xray_trace_id=$(echo "$tags" | jq -r '.Tags[]  | select(.Key == "ghr:trace_id") | .Value' || echo "")
+scale_set_state=$(echo "$tags" | jq -r '.Tags[]  | select(.Key == "ghr:scale_set_state") | .Value' || echo "")
 
 %{ endif }
 
 echo "Retrieved ghr:environment tag - ($environment)"
 echo "Retrieved ghr:ssm_config_path tag - ($ssm_config_path)"
 echo "Retrieved ghr:runner_name_prefix tag - ($runner_name_prefix)"
+echo "Retrieved ghr:scale_set_state tag - ($scale_set_state)"
 
 parameters=$(aws ssm get-parameters-by-path --path "$ssm_config_path" --region "$region" --query "Parameters[*].{Name:Name,Value:Value}")
 echo "Retrieved parameters from AWS SSM ($parameters)"
@@ -199,16 +223,60 @@ fi
 
 ## Configure the runner
 
+if [[ "$scale_set_enabled" == "true" ]]; then
+  if [[ "$enable_jit_config" != "true" || "$agent_mode" != "ephemeral" ]]; then
+    echo "ERROR: Scale-set runners require JIT configuration and ephemeral mode"
+    exit 1
+  fi
+
+  while [[ "$scale_set_state" != "config-published" ]]; do
+    echo "Waiting for scale-set runner config to be published"
+    sleep 1
+    scale_set_state=$(aws ec2 describe-tags \
+      --region "$region" \
+      --filters "Name=resource-id,Values=$instance_id" "Name=key,Values=ghr:scale_set_state" \
+      --query 'Tags[0].Value' \
+      --output text || echo "")
+    if [[ "$scale_set_state" == "None" ]]; then
+      scale_set_state=""
+    fi
+  done
+  echo "Scale-set runner config is published"
+fi
+
 echo "Get GH Runner config from AWS SSM"
-config=$(aws ssm get-parameter --name "$token_path"/"$instance_id" --with-decryption --region "$region" | jq -r ".Parameter | .Value")
-while [[ -z "$config" ]]; do
-  echo "Waiting for GH Runner config to become available in AWS SSM"
-  sleep 1
-  config=$(aws ssm get-parameter --name "$token_path"/"$instance_id" --with-decryption --region "$region" | jq -r ".Parameter | .Value")
-done
+if [[ "$scale_set_enabled" == "true" ]]; then
+  config=""
+  for attempt in {1..30}; do
+    config=$(aws ssm get-parameter --name "$token_path/$instance_id" --with-decryption --region "$region" 2>/dev/null | jq -r ".Parameter | .Value" 2>/dev/null || true)
+    if [[ -n "$config" && "$config" != "null" ]]; then
+      break
+    fi
+    echo "Waiting for GH Runner config to become available in AWS SSM ($attempt/30)"
+    sleep 1
+  done
+  if [[ -z "$config" || "$config" == "null" ]]; then
+    echo "ERROR: Failed to retrieve scale-set runner config from AWS SSM"
+    exit 1
+  fi
+else
+  config=$(aws ssm get-parameter --name "$token_path/$instance_id" --with-decryption --region "$region" | jq -r ".Parameter | .Value")
+  while [[ -z "$config" ]]; do
+    echo "Waiting for GH Runner config to become available in AWS SSM"
+    sleep 1
+    config=$(aws ssm get-parameter --name "$token_path/$instance_id" --with-decryption --region "$region" | jq -r ".Parameter | .Value")
+  done
+fi
 
 echo "Delete GH Runner token from AWS SSM"
-aws ssm delete-parameter --name "$token_path"/"$instance_id" --region "$region"
+if [[ "$scale_set_enabled" == "true" ]]; then
+  if ! aws ssm delete-parameter --name "$token_path"/"$instance_id" --region "$region"; then
+    echo "ERROR: Failed to delete scale-set runner config from AWS SSM"
+    exit 1
+  fi
+else
+  aws ssm delete-parameter --name "$token_path"/"$instance_id" --region "$region"
+fi
 
 if [ -z "$run_as" ]; then
   echo "No user specified, using default ec2-user account"
@@ -266,7 +334,17 @@ if [[ $agent_mode = "ephemeral" ]]; then
 
   if [[ "$enable_jit_config" == "true" ]]; then
     echo "Starting with JIT config"
+    if [[ "$scale_set_enabled" == "true" ]]; then
+      if ! tag_scale_set_runner_state "ready"; then
+        exit 1
+      fi
+    fi
     sudo --preserve-env=RUNNER_ALLOW_RUNASROOT -u "$run_as" -- ./run.sh --jitconfig $${config}
+    if [[ "$scale_set_enabled" == "true" ]]; then
+      if ! tag_scale_set_runner_state "stopped"; then
+        echo "ERROR: Failed to persist the stopped scale-set runner state before termination"
+      fi
+    fi
   else
     echo "Starting without JIT config"
     sudo --preserve-env=RUNNER_ALLOW_RUNASROOT -u "$run_as" -- ./run.sh

@@ -1,16 +1,34 @@
 locals {
+  # Wrapper presence selects demand orchestration per lane. This value remains
+  # plan-known because it depends only on the public object shape.
+  webhook_enabled = !local.use_multi_runner_config_v2 || anytrue([
+    for v in values(local.raw_translated_experimental.multi_runner_config) :
+    v.orchestration.webhook != null
+  ])
+
+  webhook_runner_config = {
+    for k, v in local.translated_experimental.multi_runner_config : k => v
+    if v.orchestration.webhook != null
+  }
+
   runner_matcher_config = {
-    for k, v in local.translated_experimental.multi_runner_config : k => {
+    for k, v in local.webhook_runner_config : k => {
       id              = aws_sqs_queue.queued_builds[k].id
       arn             = aws_sqs_queue.queued_builds[k].arn
       computeProvider = local.compute_provider_types[k]
-      matcherConfig   = v.matcherConfig
+      matcherConfig   = v.orchestration.webhook.matcherConfig
     }
   }
 }
 
+moved {
+  from = module.webhook
+  to   = module.webhook[0]
+}
+
 module "webhook" {
   source                              = "../webhook"
+  count                               = local.webhook_enabled ? 1 : 0
   prefix                              = var.prefix
   tags                                = merge(local.translated_experimental.tags, { "ghr:environment" = var.prefix })
   kms_key_arn                         = local.translated_experimental.ssm.kms_key_id

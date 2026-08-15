@@ -50,3 +50,25 @@ jobs:
           name: coverage-reports
           path: ./**/coverage
           retention-days: 5
+
+  scale-set-listener-container:
+    name: Build scale-set listener container
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Build listener image
+        run: >-
+          docker build
+          --platform linux/amd64
+          --file lambdas/functions/control-plane/Dockerfile.scale-set-listener
+          --tag terraform-aws-github-runner-scale-set-listener:test
+          lambdas

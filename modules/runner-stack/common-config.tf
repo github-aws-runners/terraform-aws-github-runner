@@ -1,28 +1,35 @@
 # Shared control-plane configuration: naming, paths, tags, and normalized values.
 locals {
+  webhook           = var.orchestration.webhook
+  scale_set         = var.orchestration.scale_set
+  webhook_enabled   = local.webhook != null
+  scale_set_enabled = local.scale_set != null
+
   common_tags            = var.tags
   runner_tags            = merge(local.common_tags, var.runner.tags)
   lambda_tags            = merge(local.common_tags, var.lambda.tags)
-  queue_tags             = merge(local.common_tags, var.queue.tags)
+  webhook_queue_tags     = merge(local.common_tags, try(local.webhook.queue.tags, {}))
   observability_log_tags = merge(local.common_tags, var.observability.logs.tags)
 
-  scale_up_tags        = merge(local.common_tags, var.scale_up.tags)
-  scale_up_lambda_tags = merge(local.lambda_tags, var.scale_up.tags)
-  scale_up_log_tags    = merge(local.observability_log_tags, var.scale_up.tags)
-  scale_up_queue_tags  = merge(local.queue_tags, var.scale_up.tags)
+  scale_up_tags        = merge(local.common_tags, try(local.webhook.scale_up.tags, {}))
+  scale_up_lambda_tags = merge(local.lambda_tags, try(local.webhook.scale_up.tags, {}))
+  scale_up_log_tags    = merge(local.observability_log_tags, try(local.webhook.scale_up.tags, {}))
+  scale_up_queue_tags  = merge(local.webhook_queue_tags, try(local.webhook.scale_up.tags, {}))
 
-  scale_down_tags        = merge(local.common_tags, var.scale_down.tags)
-  scale_down_lambda_tags = merge(local.lambda_tags, var.scale_down.tags)
-  scale_down_log_tags    = merge(local.observability_log_tags, var.scale_down.tags)
+  scale_down_tags        = merge(local.common_tags, try(local.webhook.scale_down.tags, {}))
+  scale_down_lambda_tags = merge(local.lambda_tags, try(local.webhook.scale_down.tags, {}))
+  scale_down_log_tags    = merge(local.observability_log_tags, try(local.webhook.scale_down.tags, {}))
 
-  pool_tags        = merge(local.common_tags, var.pool.tags)
-  pool_lambda_tags = merge(local.lambda_tags, var.pool.tags)
-  pool_log_tags    = merge(local.observability_log_tags, var.pool.tags)
+  pool_tags        = merge(local.common_tags, try(local.webhook.pool.tags, {}))
+  pool_lambda_tags = merge(local.lambda_tags, try(local.webhook.pool.tags, {}))
+  pool_log_tags    = merge(local.observability_log_tags, try(local.webhook.pool.tags, {}))
 
-  job_retry_tags        = merge(local.common_tags, var.job_retry.tags)
-  job_retry_lambda_tags = merge(local.lambda_tags, var.job_retry.tags)
-  job_retry_log_tags    = merge(local.observability_log_tags, var.job_retry.tags)
-  job_retry_queue_tags  = merge(local.queue_tags, var.job_retry.tags)
+  scale_set_tags = merge(local.common_tags, try(local.scale_set.tags, {}))
+
+  job_retry_tags        = merge(local.common_tags, try(local.webhook.job_retry.tags, {}))
+  job_retry_lambda_tags = merge(local.lambda_tags, try(local.webhook.job_retry.tags, {}))
+  job_retry_log_tags    = merge(local.observability_log_tags, try(local.webhook.job_retry.tags, {}))
+  job_retry_queue_tags  = merge(local.webhook_queue_tags, try(local.webhook.job_retry.tags, {}))
 
   ssm_tags                    = merge(local.common_tags, var.ssm.tags)
   ssm_parameter_tags          = merge(local.ssm_tags, var.ssm.parameters.tags)
@@ -34,7 +41,7 @@ locals {
   runner_role_path               = var.runner.iam.path == null ? "/${var.prefix}/" : var.runner.iam.path
   lambda_zip                     = var.lambda.zip == null ? "${path.module}/../../lambdas/functions/control-plane/runners.zip" : var.lambda.zip
   kms_key_id                     = var.ssm.kms_key_id
-  enable_job_queued_check        = var.scale_up.job_queued_check_enabled == null ? !var.runner.ephemeral : var.scale_up.job_queued_check_enabled
+  enable_job_queued_check        = try(local.webhook.scale_up.job_queued_check_enabled, null) == null ? !var.runner.ephemeral : local.webhook.scale_up.job_queued_check_enabled
   token_path                     = "${var.ssm.paths.root}/${var.ssm.paths.tokens}"
   arn_ssm_parameters_path_config = "arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.ssm.paths.root}/${var.ssm.paths.config}"
 

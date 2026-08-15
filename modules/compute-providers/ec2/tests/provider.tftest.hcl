@@ -162,7 +162,7 @@ run "separates_control_plane_contract_from_ec2_resources" {
   }
 
   assert {
-    condition     = toset(keys(output.provider.policies)) == toset(["runner", "scale_up", "scale_down", "pool"])
+    condition     = toset(keys(output.provider.policies)) == toset(["runner", "scale_up", "scale_down", "pool", "scale_set"])
     error_message = "The EC2 provider must expose policies grouped by their owning common component."
   }
 
@@ -194,6 +194,162 @@ run "separates_control_plane_contract_from_ec2_resources" {
     error_message = "The EC2 instance profile must use the common runner role name."
   }
 
+  assert {
+    condition = (
+      strcontains(local.user_data, "scale_set_enabled=\"false\"") &&
+      !strcontains(local.user_data, "ghr:created_by tag") &&
+      strcontains(local.user_data, "if [[ \"$scale_set_enabled\" == \"true\" ]]")
+    )
+    error_message = "Classic Linux bootstrap must render scale-set mode off and must not infer its controller from the ghr:created_by tag."
+  }
+
+}
+
+run "exports_scoped_scale_set_listener_contract" {
+  command = plan
+
+  override_data {
+    target = data.aws_iam_policy_document.scale_set[0]
+    values = {
+      json = "{\"Action\":\"ec2:CreateFleet\"}"
+    }
+  }
+
+  variables {
+    scale_set = {
+      id = 123
+    }
+  }
+
+  assert {
+    condition = (
+      output.provider.environment_variables.scale_set["COMPUTE_PROVIDER_TYPE"] == "ec2" &&
+      output.provider.environment_variables.scale_set["ENVIRONMENT"] == "provider-test" &&
+      output.provider.environment_variables.scale_set["INSTANCE_TYPES"] == "m5.large" &&
+      output.provider.environment_variables.scale_set["RUNNER_BOOT_TIME_IN_MINUTES"] == "5" &&
+      !contains(keys(output.provider.environment_variables.scale_set), "INSTANCE_TYPE_PRIORITIES")
+    )
+    error_message = "The scale-set listener must receive the complete EC2 environment without empty optional JSON values."
+  }
+
+  assert {
+    condition     = length(data.aws_iam_policy_document.scale_set) == 1
+    error_message = "A configured scale set must enable its dedicated EC2 provider policy."
+  }
+
+  assert {
+    condition = alltrue([
+      for statement in data.aws_iam_policy_document.scale_set[0].statement :
+      alltrue([
+        for required_condition in [
+          "ec2:ResourceTag/ghr:Application",
+          "ec2:ResourceTag/ghr:created_by",
+          "ec2:ResourceTag/ghr:environment",
+          "ec2:ResourceTag/ghr:scale_set_id",
+        ] : contains([for condition in statement.condition : condition.variable], required_condition)
+      ])
+      if contains(["TerminateOwnedRunners", "UpdateOwnedRunnerLifecycle"], statement.sid)
+    ])
+    error_message = "Every destructive scale-set lifecycle statement must combine all ownership conditions with AND semantics."
+  }
+
+  assert {
+    condition = contains(
+      one([
+        for condition in one([
+          for statement in data.aws_iam_policy_document.scale_set[0].statement : statement
+          if statement.sid == "UpdateOwnedRunnerLifecycle"
+        ]).condition : condition.values
+        if condition.variable == "aws:TagKeys"
+      ]),
+      "ghr:scale_set_state",
+    )
+    error_message = "The listener may update the scale-set lifecycle state only through the restricted lifecycle tag grant."
+  }
+
+  assert {
+    condition = (
+      contains(
+        one([
+          for condition in data.aws_iam_policy_document.create_tags.statement[0].condition : condition.values
+          if condition.variable == "aws:TagKeys"
+        ]),
+        "ghr:scale_set_state",
+      ) &&
+      !contains(
+        one([
+          for condition in data.aws_iam_policy_document.create_tags.statement[0].condition : condition.values
+          if condition.variable == "aws:TagKeys"
+        ]),
+        "ghr:github_runner_id",
+      )
+    )
+    error_message = "Scale-set bootstrap may self-tag lifecycle state but must not mutate controller-owned GitHub runner identity."
+  }
+
+  assert {
+    condition = (
+      strcontains(local.user_data, "scale_set_enabled=\"true\"") &&
+      !strcontains(local.user_data, "ghr:created_by tag") &&
+      strcontains(local.user_data, "if [[ \"$scale_set_enabled\" == \"true\" ]]")
+    )
+    error_message = "Scale-set Linux bootstrap must render scale-set mode on and use it as the authoritative lifecycle fence."
+  }
+}
+
+run "renders_static_scale_set_mode_for_macos" {
+  command = plan
+
+  variables {
+    scale_set = {
+      id = 123
+    }
+    runner = {
+      os           = "osx"
+      architecture = "x64"
+      iam = {
+        role = {
+          arn  = "arn:aws:iam::123456789012:role/provider-test-runner"
+          name = "provider-test-runner"
+        }
+      }
+    }
+  }
+
+  assert {
+    condition = (
+      strcontains(local.user_data, "scale_set_enabled=\"true\"") &&
+      !strcontains(local.user_data, "ghr:created_by tag") &&
+      strcontains(local.user_data, "if [[ \"$scale_set_enabled\" == \"true\" ]]")
+    )
+    error_message = "Scale-set macOS bootstrap must render scale-set mode on and use it as the authoritative lifecycle fence."
+  }
+}
+
+run "renders_static_classic_mode_for_windows" {
+  command = plan
+
+  variables {
+    runner = {
+      os           = "windows"
+      architecture = "x64"
+      iam = {
+        role = {
+          arn  = "arn:aws:iam::123456789012:role/provider-test-runner"
+          name = "provider-test-runner"
+        }
+      }
+    }
+  }
+
+  assert {
+    condition = (
+      strcontains(local.user_data, "$scaleSetEnabled = \"false\" -eq \"true\"") &&
+      !strcontains(local.user_data, "ghr:created_by tag") &&
+      strcontains(local.user_data, "if ($scaleSetEnabled)")
+    )
+    error_message = "Classic Windows bootstrap must render scale-set mode off and must not infer its controller from the ghr:created_by tag."
+  }
 }
 
 run "accepts_partial_typed_compute_options" {

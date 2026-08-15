@@ -1,10 +1,17 @@
+moved {
+  from = module.scale_runners
+  to   = module.scale_runners[0]
+}
+
 module "scale_runners" {
+  count  = local.webhook_enabled ? 1 : 0
   source = "./scale-runners"
 
   aws_partition = var.aws_partition
 
   config = {
-    prefix = var.prefix
+    prefix  = var.prefix
+    enabled = true
     lambda = {
       artifact = {
         zip = local.lambda_zip
@@ -23,10 +30,10 @@ module "scale_runners" {
       }
     }
     runner = var.runner
-    github = var.github
+    github = merge(var.github, local.webhook.github)
     queue = {
-      build                = var.queue.build
-      event_source_mapping = var.queue.event_source_mapping
+      build                = local.webhook.queue.build
+      event_source_mapping = local.webhook.queue.event_source_mapping
     }
     ssm = {
       token_path           = local.token_path
@@ -37,9 +44,9 @@ module "scale_runners" {
     }
     observability = var.observability
     scale_up = {
-      memory_size                    = var.scale_up.memory_size
-      timeout                        = var.scale_up.timeout
-      reserved_concurrent_executions = var.scale_up.reserved_concurrent_executions
+      memory_size                    = local.webhook.scale_up.memory_size
+      timeout                        = local.webhook.scale_up.timeout
+      reserved_concurrent_executions = local.webhook.scale_up.reserved_concurrent_executions
       job_queued_check_enabled       = local.enable_job_queued_check
       tags = {
         resources            = local.scale_up_tags
@@ -49,11 +56,11 @@ module "scale_runners" {
       }
     }
     scale_down = {
-      memory_size                     = var.scale_down.memory_size
-      timeout                         = var.scale_down.timeout
-      schedule_expression             = var.scale_down.schedule_expression
-      minimum_running_time_in_minutes = var.scale_down.minimum_running_time_in_minutes
-      idle_config                     = var.scale_down.idle_config
+      memory_size                     = local.webhook.scale_down.memory_size
+      timeout                         = local.webhook.scale_down.timeout
+      schedule_expression             = local.webhook.scale_down.schedule_expression
+      minimum_running_time_in_minutes = local.webhook.scale_down.minimum_running_time_in_minutes
+      idle_config                     = local.webhook.scale_down.idle_config
       tags = {
         resources = local.scale_down_tags
         lambda    = local.scale_down_lambda_tags
@@ -62,9 +69,9 @@ module "scale_runners" {
     }
     job_retry = {
       enabled          = local.job_retry_enabled
-      max_attempts     = var.job_retry.max_attempts
-      delay_in_seconds = var.job_retry.delay_in_seconds
-      delay_backoff    = var.job_retry.delay_backoff
+      max_attempts     = local.webhook.job_retry.max_attempts
+      delay_in_seconds = local.webhook.job_retry.delay_in_seconds
+      delay_backoff    = local.webhook.job_retry.delay_backoff
       queue            = one(module.job_retry[*].job_retry_check_queue)
     }
   }

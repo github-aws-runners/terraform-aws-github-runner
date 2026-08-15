@@ -22,6 +22,7 @@ async function listEc2PoolRunners({
     runnerOwner,
     runnerType,
     statuses: ['running'],
+    source: ['scale-up-lambda', 'pool-lambda'],
   });
 }
 

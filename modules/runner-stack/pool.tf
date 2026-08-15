@@ -1,5 +1,5 @@
 module "pool" {
-  count = length(var.pool.config) == 0 ? 0 : 1
+  count = local.webhook_enabled ? (length(local.webhook.pool.config) > 0 ? 1 : 0) : 0
 
   source = "./pool"
 
@@ -18,22 +18,22 @@ module "pool" {
       logging_retention_in_days      = var.observability.logs.retention_in_days
       logging_kms_key_id             = var.observability.logs.kms_key_id
       log_class                      = var.observability.logs.class
-      reserved_concurrent_executions = var.pool.lambda.reserved_concurrent_executions
+      reserved_concurrent_executions = local.webhook.pool.lambda.reserved_concurrent_executions
       s3_bucket                      = var.lambda.s3.bucket
       s3_key                         = var.lambda.s3.key
       s3_object_version              = var.lambda.s3.object_version
       security_group_ids             = var.lambda.security_group_ids
       subnet_ids                     = var.lambda.subnet_ids
       architecture                   = var.lambda.architecture
-      memory_size                    = var.pool.lambda.memory_size
+      memory_size                    = local.webhook.pool.lambda.memory_size
       runtime                        = var.lambda.runtime
-      timeout                        = var.pool.lambda.timeout
+      timeout                        = local.webhook.pool.lambda.timeout
       zip                            = local.lambda_zip
       parameter_store_tags           = local.parameter_store_tags
       principals                     = var.lambda.principals
     }
-    pool                      = var.pool.config
-    include_busy_runners      = var.pool.include_busy_runners
+    pool                      = local.webhook.pool.config
+    include_busy_runners      = local.webhook.pool.include_busy_runners
     role_path                 = local.lambda_role_path
     role_permissions_boundary = var.lambda.role.permissions_boundary
     runner = {
@@ -43,7 +43,7 @@ module "pool" {
       labels                    = var.runner.labels
       group_name                = var.runner.group_name
       name_prefix               = var.runner.name_prefix
-      pool_owner                = var.pool.runner_owner
+      pool_owner                = local.webhook.pool.runner_owner
     }
     ssm_token_path                 = "${var.ssm.paths.root}/${var.ssm.paths.tokens}"
     ssm_config_path                = "${var.ssm.paths.root}/${var.ssm.paths.config}"

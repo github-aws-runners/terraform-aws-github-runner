@@ -115,7 +115,9 @@ data "aws_iam_policy_document" "create_tags" {
     condition {
       test     = "ForAllValues:StringEquals"
       variable = "aws:TagKeys"
-      values   = ["ghr:github_runner_id"]
+      # Scale-set identity is controller-owned. JIT runners only need to publish
+      # their lifecycle state; legacy runners retain their self-ID tag behavior.
+      values = var.scale_set == null ? ["ghr:github_runner_id"] : ["ghr:scale_set_state"]
     }
 
     condition {

@@ -1,4 +1,5 @@
 import {
+  DeleteParameterCommand,
   GetParameterCommand,
   GetParameterCommandOutput,
   GetParametersCommand,
@@ -10,7 +11,15 @@ import 'aws-sdk-client-mock-jest/vitest';
 import { mockClient } from 'aws-sdk-client-mock';
 import nock from 'nock';
 
-import { getParameter, getParameters, putParameter, resetSSMClient, ssmClient, SSM_ADVANCED_TIER_THRESHOLD } from '.';
+import {
+  deleteParameter,
+  getParameter,
+  getParameters,
+  putParameter,
+  resetSSMClient,
+  ssmClient,
+  SSM_ADVANCED_TIER_THRESHOLD,
+} from '.';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 const mockSSMClient = mockClient(SSMClient);
@@ -25,6 +34,26 @@ beforeEach(() => {
 });
 
 describe('Test getParameter and putParameter', () => {
+  it('Deletes the exact parameter name', async () => {
+    mockSSMClient.on(DeleteParameterCommand).resolves({});
+
+    await expect(deleteParameter('/runner/config/i-123')).resolves.toBeUndefined();
+    expect(mockSSMClient).toHaveReceivedCommandWith(DeleteParameterCommand, {
+      Name: '/runner/config/i-123',
+    });
+  });
+
+  it('Propagates a missing parameter so callers can treat it as an ownership race', async () => {
+    const parameterNotFound = Object.assign(new Error('Parameter not found'), {
+      name: 'ParameterNotFound',
+    });
+    mockSSMClient.on(DeleteParameterCommand).rejects(parameterNotFound);
+
+    await expect(deleteParameter('/runner/config/i-claimed')).rejects.toMatchObject({
+      name: 'ParameterNotFound',
+    });
+  });
+
   it('Gets parameters and returns string', async () => {
     // Arrange
     const parameterValue = 'test';

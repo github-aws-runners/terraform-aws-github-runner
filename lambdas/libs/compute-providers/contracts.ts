@@ -3,6 +3,7 @@ import type {
   PoolComputeProvider,
   ComputeProviderPlugin,
   ScaleDownComputeProvider,
+  ScaleSetComputeProvider,
   ScaleUpComputeProvider,
 } from './core';
 import type { ComputeProviderType } from './provider-types';
@@ -52,6 +53,11 @@ export interface DynamicLabelProvider {
   getViolations(input: { queue: RunnerMatcherConfig; labels: string[] }): DynamicLabelViolation[];
 }
 
+export interface ScaleSetProviderCapabilities {
+  /** Compute lifecycle used by a GitHub runner scale-set listener. */
+  scaleSet: () => Omit<ScaleSetComputeProvider, 'type'>;
+}
+
 export interface ControlPlaneProviderCapabilities {
   pool: () => Omit<PoolComputeProvider, 'type'>;
   scaleUp: () => Omit<ScaleUpComputeProvider, 'type'>;
@@ -67,6 +73,11 @@ export interface ControlPlaneProviderModule<TType extends string = string> {
   createPlugin(
     createStartRunnerConfig: CreateStartRunnerConfig,
   ): ComputeProviderPlugin<ControlPlaneProviderCapabilities, TType>;
+}
+
+export interface ScaleSetProviderModule<TType extends string = string> {
+  type: TType;
+  createPlugin(): ComputeProviderPlugin<ScaleSetProviderCapabilities, TType>;
 }
 
 export interface WebhookProviderModule<TType extends string = string> {

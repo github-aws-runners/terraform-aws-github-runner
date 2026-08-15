@@ -57,14 +57,50 @@ variables {
     }
   }
 
-  queue = {
-    build = {
-      arn = "arn:aws:sqs:eu-west-1:123456789012:build-queue"
-      url = "https://sqs.eu-west-1.amazonaws.com/123456789012/build-queue"
-    }
-    tags = {
-      precedence = "queue"
-      queue      = "yes"
+  orchestration = {
+    webhook = {
+      github = {
+        organization_runners = true
+      }
+      queue = {
+        build = {
+          arn = "arn:aws:sqs:eu-west-1:123456789012:build-queue"
+          url = "https://sqs.eu-west-1.amazonaws.com/123456789012/build-queue"
+        }
+        tags = {
+          precedence = "queue"
+          queue      = "yes"
+        }
+      }
+      scale_up = {
+        tags = {
+          precedence = "scale-up"
+          scale_up   = "yes"
+        }
+      }
+      scale_down = {
+        tags = {
+          precedence = "scale-down"
+          scale_down = "yes"
+        }
+      }
+      pool = {
+        config = [{
+          schedule_expression = "cron(0 8 * * ? *)"
+          size                = 1
+        }]
+        tags = {
+          precedence = "pool"
+          pool       = "yes"
+        }
+      }
+      job_retry = {
+        enabled = true
+        tags = {
+          precedence = "job-retry"
+          job_retry  = "yes"
+        }
+      }
     }
   }
 
@@ -80,7 +116,6 @@ variables {
   }
 
   github = {
-    organization_runners = true
     app_parameters = {
       key_base64 = [{
         name = "/github-runner/key-base64"
@@ -91,39 +126,6 @@ variables {
         arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id"
       }]
       installation_id = [null]
-    }
-  }
-
-  scale_up = {
-    tags = {
-      precedence = "scale-up"
-      scale_up   = "yes"
-    }
-  }
-
-  scale_down = {
-    tags = {
-      precedence = "scale-down"
-      scale_down = "yes"
-    }
-  }
-
-  pool = {
-    config = [{
-      schedule_expression = "cron(0 8 * * ? *)"
-      size                = 1
-    }]
-    tags = {
-      precedence = "pool"
-      pool       = "yes"
-    }
-  }
-
-  job_retry = {
-    enabled = true
-    tags = {
-      precedence = "job-retry"
-      job_retry  = "yes"
     }
   }
 
@@ -166,22 +168,22 @@ run "layered_component_tags" {
   command = plan
 
   assert {
-    condition     = module.scale_runners.scale_up.lambda.environment[0].variables["LOG_LEVEL"] == "DEBUG"
+    condition     = module.scale_runners[0].scale_up.lambda.environment[0].variables["LOG_LEVEL"] == "DEBUG"
     error_message = "The nested observability.logs.level value must configure the control-plane functions."
   }
 
   assert {
-    condition = module.scale_runners.scale_up.lambda.tags == tomap({
+    condition = module.scale_runners[0].scale_up.lambda.tags == tomap({
       precedence = "scale-up"
       module     = "yes"
       lambda     = "yes"
       scale_up   = "yes"
-      }) && module.scale_runners.scale_up.log_group.tags == tomap({
+      }) && module.scale_runners[0].scale_up.log_group.tags == tomap({
       precedence = "scale-up"
       module     = "yes"
       log        = "yes"
       scale_up   = "yes"
-      }) && module.scale_runners.scale_up.role.tags == tomap({
+      }) && module.scale_runners[0].scale_up.role.tags == tomap({
       precedence = "scale-up"
       module     = "yes"
       scale_up   = "yes"
@@ -190,17 +192,17 @@ run "layered_component_tags" {
   }
 
   assert {
-    condition = module.scale_runners.scale_down.lambda.tags == tomap({
+    condition = module.scale_runners[0].scale_down.lambda.tags == tomap({
       precedence = "scale-down"
       module     = "yes"
       lambda     = "yes"
       scale_down = "yes"
-      }) && module.scale_runners.scale_down.log_group.tags == tomap({
+      }) && module.scale_runners[0].scale_down.log_group.tags == tomap({
       precedence = "scale-down"
       module     = "yes"
       log        = "yes"
       scale_down = "yes"
-      }) && module.scale_runners.scale_down.role.tags == tomap({
+      }) && module.scale_runners[0].scale_down.role.tags == tomap({
       precedence = "scale-down"
       module     = "yes"
       scale_down = "yes"
@@ -224,7 +226,7 @@ run "layered_component_tags" {
       ssm        = "yes"
       parameter  = "yes"
       }) && tomap({
-      for tag in jsondecode(module.scale_runners.scale_up.lambda.environment[0].variables["SSM_PARAMETER_STORE_TAGS"]) :
+      for tag in jsondecode(module.scale_runners[0].scale_up.lambda.environment[0].variables["SSM_PARAMETER_STORE_TAGS"]) :
       tag.Key => tag.Value
       }) == tomap({
       precedence = "ssm-parameter"

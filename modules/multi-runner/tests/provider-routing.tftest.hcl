@@ -49,6 +49,18 @@ run "empty_runner_configurations_return_empty_output_maps" {
     )
     error_message = "An empty stable and experimental configuration must translate to an empty raw lane map without selecting a v2 runner stack."
   }
+
+  assert {
+    condition = (
+      local.webhook_enabled
+      && length(module.webhook) == 1
+      && local.github_app_parameters.webhook_secret != null
+      && module.ssm.parameters.github_app_webhook_secret != null
+      && output.ssm_parameters.webhook_secret != null
+      && output.webhook != null
+    )
+    error_message = "Stable v1 must retain its shared webhook and webhook-secret parameter even when multi_runner_config is empty."
+  }
 }
 
 run "stable_v1_keeps_legacy_runner_module" {
@@ -312,14 +324,11 @@ run "stable_v1_keeps_legacy_runner_module" {
       && toset(keys(local.raw_translated_experimental.multi_runner_config["linux"])) == toset([
         "tags",
         "runner",
-        "github",
         "lambda",
-        "queue",
-        "job_retry",
+        "orchestration",
         "ssm",
         "observability",
         "compute_provider",
-        "matcherConfig",
       ])
       && toset(keys(local.raw_translated_experimental.multi_runner_config["linux"].lambda)) == toset([
         "runtime",
@@ -328,11 +337,24 @@ run "stable_v1_keeps_legacy_runner_module" {
         "security_group_ids",
         "tags",
         "role",
+      ])
+      && toset(keys(local.raw_translated_experimental.multi_runner_config["linux"].orchestration)) == toset([
+        "webhook",
+        "scale_set",
+      ])
+      && toset(keys(local.raw_translated_experimental.multi_runner_config["linux"].orchestration.webhook)) == toset([
+        "github",
+        "lambda",
+        "queue",
+        "job_retry",
+        "matcherConfig",
+      ])
+      && toset(keys(local.raw_translated_experimental.multi_runner_config["linux"].orchestration.webhook.lambda)) == toset([
         "scale_up",
         "scale_down",
         "pool",
       ])
-      && toset(keys(local.raw_translated_experimental.multi_runner_config["linux"].queue)) == toset([
+      && toset(keys(local.raw_translated_experimental.multi_runner_config["linux"].orchestration.webhook.queue)) == toset([
         "delay_webhook_event",
         "job_queue_retention_in_seconds",
         "visibility_timeout_seconds",
@@ -350,6 +372,7 @@ run "stable_v1_keeps_legacy_runner_module" {
       && toset(keys(local.raw_translated_experimental.multi_runner_config["linux"].compute_provider)) == toset(["ec2"])
       && toset(keys(local.raw_translated_experimental.multi_runner_config["linux"].compute_provider.ec2.binaries_syncer)) == toset(["enabled"])
       && !contains(keys(local.raw_translated_experimental.multi_runner_config["linux"].ssm), "kms_key_id")
+      && local.raw_translated_experimental.multi_runner_config["linux"].orchestration.scale_set == null
       && !contains(keys(local.raw_translated_experimental.multi_runner_config["linux"]), "scale_up")
     )
     error_message = "Stable v1 must translate into the exact raw experimental schema before defaults, queue event-source mappings, binary artifacts, or runner-stack component shapes are resolved."
@@ -450,14 +473,14 @@ run "stable_v1_keeps_legacy_runner_module" {
       && local.raw_translated_experimental.multi_runner_config["linux"].runner.os == var.multi_runner_config["linux"].runner_config.runner_os
       && local.raw_translated_experimental.multi_runner_config["linux"].runner.architecture == var.multi_runner_config["linux"].runner_config.runner_architecture
       && local.raw_translated_experimental.multi_runner_config["linux"].runner.maximum_count == var.multi_runner_config["linux"].runner_config.runners_maximum_count
-      && local.raw_translated_experimental.multi_runner_config["linux"].github.organization_runners == var.multi_runner_config["linux"].runner_config.enable_organization_runners
-      && local.raw_translated_experimental.multi_runner_config["linux"].lambda.scale_up.event_source_mapping.batch_size == var.multi_runner_config["linux"].runner_config.lambda_event_source_mapping_batch_size
-      && local.raw_translated_experimental.multi_runner_config["linux"].queue.delay_webhook_event == var.multi_runner_config["linux"].runner_config.delay_webhook_event
-      && local.raw_translated_experimental.multi_runner_config["linux"].queue.job_queue_retention_in_seconds == var.multi_runner_config["linux"].runner_config.job_queue_retention_in_seconds
-      && local.raw_translated_experimental.multi_runner_config["linux"].queue.visibility_timeout_seconds == var.runners_scale_up_lambda_timeout
-      && local.raw_translated_experimental.multi_runner_config["linux"].queue.redrive_build_queue == var.multi_runner_config["linux"].redrive_build_queue
+      && local.raw_translated_experimental.multi_runner_config["linux"].orchestration.webhook.github.organization_runners == var.multi_runner_config["linux"].runner_config.enable_organization_runners
+      && local.raw_translated_experimental.multi_runner_config["linux"].orchestration.webhook.lambda.scale_up.event_source_mapping.batch_size == var.multi_runner_config["linux"].runner_config.lambda_event_source_mapping_batch_size
+      && local.raw_translated_experimental.multi_runner_config["linux"].orchestration.webhook.queue.delay_webhook_event == var.multi_runner_config["linux"].runner_config.delay_webhook_event
+      && local.raw_translated_experimental.multi_runner_config["linux"].orchestration.webhook.queue.job_queue_retention_in_seconds == var.multi_runner_config["linux"].runner_config.job_queue_retention_in_seconds
+      && local.raw_translated_experimental.multi_runner_config["linux"].orchestration.webhook.queue.visibility_timeout_seconds == var.runners_scale_up_lambda_timeout
+      && local.raw_translated_experimental.multi_runner_config["linux"].orchestration.webhook.queue.redrive_build_queue == var.multi_runner_config["linux"].redrive_build_queue
       && local.raw_translated_experimental.multi_runner_config["linux"].compute_provider.ec2.binaries_syncer.enabled
-      && local.raw_translated_experimental.multi_runner_config["linux"].matcherConfig == var.multi_runner_config["linux"].matcherConfig
+      && local.raw_translated_experimental.multi_runner_config["linux"].orchestration.webhook.matcherConfig == var.multi_runner_config["linux"].matcherConfig
     )
     error_message = "Stable v1 flat and per-runner inputs must populate every raw translation family while conflicting experimental globals remain inactive."
   }
@@ -507,7 +530,7 @@ run "stable_v1_keeps_legacy_runner_module" {
     condition = (
       contains(keys(local.translated_experimental.multi_runner_config["linux"]), "compute_provider")
       && !contains(keys(local.translated_experimental.multi_runner_config["linux"]), "runner_config")
-      && local.translated_experimental.multi_runner_config["linux"].github.organization_runners
+      && local.translated_experimental.multi_runner_config["linux"].orchestration.webhook.github.organization_runners
     )
     error_message = "Stable module inputs must use the canonical translated lane while retaining stable module.runners ownership."
   }
@@ -953,45 +976,54 @@ run "experimental_v2_routes_through_provider_stack" {
               }
             }
           }
-          github = {
-            organization_runners = true
-          }
-          lambda = {
-            scale_down = {
-              idle_config = [{
-                cron      = "* * * * *"
-                timeZone  = "UTC"
-                idleCount = 1
-              }]
+
+          orchestration = {
+            webhook = {
+              github = {
+                organization_runners = true
+              }
+
+              lambda = {
+                scale_down = {
+                  idle_config = [{
+                    cron      = "* * * * *"
+                    timeZone  = "UTC"
+                    idleCount = 1
+                  }]
+                }
+
+                pool = {
+                  config = [{
+                    schedule_expression = "cron(0 8 * * ? *)"
+                    size                = 1
+                  }]
+                }
+              }
+
+              matcherConfig = {
+                labelMatchers       = [["self-hosted", "linux", "x64"]]
+                enableDynamicLabels = true
+                awsDynamicLabelsPolicy = {
+                  blocked_keys = ["image-id"]
+                  restricted_keys = {
+                    "instance-type" = {
+                      allowed = ["m5.*", "c5.*"]
+                      denied  = ["*.metal"]
+                    }
+                    "ebs-volume-size" = {
+                      max = 200
+                    }
+                  }
+                }
+              }
             }
-            pool = {
-              config = [{
-                schedule_expression = "cron(0 8 * * ? *)"
-                size                = 1
-              }]
-            }
           }
+
           compute_provider = {
             ec2 = {
               instance_types = ["m5.large"]
               binaries_syncer = {
                 enabled = true
-              }
-            }
-          }
-          matcherConfig = {
-            labelMatchers       = [["self-hosted", "linux", "x64"]]
-            enableDynamicLabels = true
-            awsDynamicLabelsPolicy = {
-              blocked_keys = ["image-id"]
-              restricted_keys = {
-                "instance-type" = {
-                  allowed = ["m5.*", "c5.*"]
-                  denied  = ["*.metal"]
-                }
-                "ebs-volume-size" = {
-                  max = 200
-                }
               }
             }
           }
@@ -1037,7 +1069,7 @@ run "experimental_v2_routes_through_provider_stack" {
   }
 
   assert {
-    condition     = toset(flatten(local.translated_experimental.multi_runner_config["linux"].matcherConfig.labelMatchers)) == toset(["self-hosted", "linux", "x64"])
+    condition     = toset(flatten(local.translated_experimental.multi_runner_config["linux"].orchestration.webhook.matcherConfig.labelMatchers)) == toset(["self-hosted", "linux", "x64"])
     error_message = "The canonical experimental lane must retain labels declared by its matcher configuration for the runner adapter."
   }
 
@@ -1094,35 +1126,35 @@ run "experimental_v2_routes_through_provider_stack" {
       && length(local.translated_experimental.multi_runner_config["linux"].lambda.tags) == 0
       && local.translated_experimental.multi_runner_config["linux"].lambda.role.path == null
       && local.translated_experimental.multi_runner_config["linux"].lambda.role.permissions_boundary == null
-      && module.runner_stacks["linux"].scale_up.lambda.runtime == "nodejs24.x"
-      && module.runner_stacks["linux"].scale_up.lambda.filename == "README.md"
-      && module.runner_stacks["linux"].scale_up.lambda.s3_bucket == null
-      && module.runner_stacks["linux"].scale_up.lambda.memory_size == 512
-      && module.runner_stacks["linux"].scale_up.lambda.timeout == 30
-      && local.translated_experimental.multi_runner_config["linux"].lambda.scale_up.reserved_concurrent_executions == 1
-      && local.translated_experimental.multi_runner_config["linux"].lambda.scale_up.job_queued_check_enabled == null
-      && local.translated_experimental.multi_runner_config["linux"].lambda.scale_up.event_source_mapping.batch_size == 10
-      && local.translated_experimental.multi_runner_config["linux"].lambda.scale_up.event_source_mapping.maximum_batching_window_in_seconds == 0
-      && module.runner_stacks["linux"].scale_down.lambda.memory_size == 512
-      && module.runner_stacks["linux"].scale_down.lambda.timeout == 60
-      && local.translated_experimental.multi_runner_config["linux"].lambda.scale_down.schedule_expression == "cron(*/5 * * * ? *)"
-      && local.translated_experimental.multi_runner_config["linux"].lambda.scale_down.minimum_running_time_in_minutes == null
-      && module.runner_stacks["linux"].pool.lambda.memory_size == 512
-      && module.runner_stacks["linux"].pool.lambda.timeout == 60
-      && local.translated_experimental.multi_runner_config["linux"].lambda.pool.reserved_concurrent_executions == 1
-      && !local.translated_experimental.multi_runner_config["linux"].lambda.pool.include_busy_runners
-      && local.translated_experimental.multi_runner_config["linux"].lambda.pool.runner_owner == null
+      && module.runner_stacks["linux"].orchestration.webhook.scale_up.lambda.runtime == "nodejs24.x"
+      && module.runner_stacks["linux"].orchestration.webhook.scale_up.lambda.filename == "README.md"
+      && module.runner_stacks["linux"].orchestration.webhook.scale_up.lambda.s3_bucket == null
+      && module.runner_stacks["linux"].orchestration.webhook.scale_up.lambda.memory_size == 512
+      && module.runner_stacks["linux"].orchestration.webhook.scale_up.lambda.timeout == 30
+      && local.translated_experimental.multi_runner_config["linux"].orchestration.webhook.lambda.scale_up.reserved_concurrent_executions == 1
+      && local.translated_experimental.multi_runner_config["linux"].orchestration.webhook.lambda.scale_up.job_queued_check_enabled == null
+      && local.translated_experimental.multi_runner_config["linux"].orchestration.webhook.lambda.scale_up.event_source_mapping.batch_size == 10
+      && local.translated_experimental.multi_runner_config["linux"].orchestration.webhook.lambda.scale_up.event_source_mapping.maximum_batching_window_in_seconds == 0
+      && module.runner_stacks["linux"].orchestration.webhook.scale_down.lambda.memory_size == 512
+      && module.runner_stacks["linux"].orchestration.webhook.scale_down.lambda.timeout == 60
+      && local.translated_experimental.multi_runner_config["linux"].orchestration.webhook.lambda.scale_down.schedule_expression == "cron(*/5 * * * ? *)"
+      && local.translated_experimental.multi_runner_config["linux"].orchestration.webhook.lambda.scale_down.minimum_running_time_in_minutes == null
+      && module.runner_stacks["linux"].orchestration.webhook.pool.lambda.memory_size == 512
+      && module.runner_stacks["linux"].orchestration.webhook.pool.lambda.timeout == 60
+      && local.translated_experimental.multi_runner_config["linux"].orchestration.webhook.lambda.pool.reserved_concurrent_executions == 1
+      && !local.translated_experimental.multi_runner_config["linux"].orchestration.webhook.lambda.pool.include_busy_runners
+      && local.translated_experimental.multi_runner_config["linux"].orchestration.webhook.lambda.pool.runner_owner == null
     )
     error_message = "Experimental v2 runner-stack Lambda components must inherit the concrete nested defaults and ignore every corresponding stable Lambda input."
   }
 
   assert {
     condition = (
-      local.translated_experimental.multi_runner_config["linux"].queue.delay_webhook_event == 30
-      && local.translated_experimental.multi_runner_config["linux"].queue.job_queue_retention_in_seconds == 86400
-      && local.translated_experimental.multi_runner_config["linux"].queue.visibility_timeout_seconds == 180
-      && !local.translated_experimental.multi_runner_config["linux"].queue.redrive_build_queue.enabled
-      && length(local.translated_experimental.multi_runner_config["linux"].queue.tags) == 0
+      local.translated_experimental.multi_runner_config["linux"].orchestration.webhook.queue.delay_webhook_event == 30
+      && local.translated_experimental.multi_runner_config["linux"].orchestration.webhook.queue.job_queue_retention_in_seconds == 86400
+      && local.translated_experimental.multi_runner_config["linux"].orchestration.webhook.queue.visibility_timeout_seconds == 180
+      && !local.translated_experimental.multi_runner_config["linux"].orchestration.webhook.queue.redrive_build_queue.enabled
+      && length(local.translated_experimental.multi_runner_config["linux"].orchestration.webhook.queue.tags) == 0
       && local.translated_experimental.queue.encryption == var.experimental.queue.encryption
       && local.translated_experimental.queue.encryption.sqs_managed_sse_enabled
       && local.translated_experimental.queue.encryption.kms_master_key_id == null
@@ -1146,11 +1178,11 @@ run "experimental_v2_routes_through_provider_stack" {
       && local.translated_experimental.enterprise_server.url == null
       && local.translated_experimental.enterprise_server.ssl_verify
       && local.translated_experimental.user_agent == "github-aws-runners"
-      && module.runner_stacks["linux"].scale_up.lambda.environment[0].variables["GHES_URL"] == null
-      && module.runner_stacks["linux"].scale_up.lambda.environment[0].variables["NODE_TLS_REJECT_UNAUTHORIZED"] == "1"
-      && module.runner_stacks["linux"].scale_up.lambda.environment[0].variables["USER_AGENT"] == "github-aws-runners"
-      && module.runner_stacks["linux"].scale_down.lambda.environment[0].variables["USER_AGENT"] == "github-aws-runners"
-      && module.runner_stacks["linux"].pool.lambda.environment[0].variables["USER_AGENT"] == "github-aws-runners"
+      && module.runner_stacks["linux"].orchestration.webhook.scale_up.lambda.environment[0].variables["GHES_URL"] == null
+      && module.runner_stacks["linux"].orchestration.webhook.scale_up.lambda.environment[0].variables["NODE_TLS_REJECT_UNAUTHORIZED"] == "1"
+      && module.runner_stacks["linux"].orchestration.webhook.scale_up.lambda.environment[0].variables["USER_AGENT"] == "github-aws-runners"
+      && module.runner_stacks["linux"].orchestration.webhook.scale_down.lambda.environment[0].variables["USER_AGENT"] == "github-aws-runners"
+      && module.runner_stacks["linux"].orchestration.webhook.pool.lambda.environment[0].variables["USER_AGENT"] == "github-aws-runners"
     )
     error_message = "V2 runner stacks must use concrete nested GitHub connection defaults rather than deliberately different flat GHES and user-agent inputs."
   }
@@ -1210,17 +1242,17 @@ run "experimental_v2_routes_through_provider_stack" {
 
   assert {
     condition = (
-      module.runner_stacks["linux"].scale_up.lambda.environment[0].variables["LOG_LEVEL"] == "INFO"
-      && module.runner_stacks["linux"].scale_up.lambda.environment[0].variables["POWERTOOLS_METRICS_NAMESPACE"] == "GitHub Runners"
-      && module.runner_stacks["linux"].scale_up.lambda.environment[0].variables["POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS"] == "false"
-      && module.runner_stacks["linux"].scale_up.lambda.environment[0].variables["POWERTOOLS_TRACER_CAPTURE_ERROR"] == "false"
-      && module.runner_stacks["linux"].scale_up.lambda.environment[0].variables["SSM_TOKEN_PATH"] == "/github-action-runners/github-actions/linux/runners/tokens"
-      && module.runner_stacks["linux"].scale_up.lambda.environment[0].variables["SSM_CONFIG_PATH"] == "/github-action-runners/github-actions/linux/runners/config"
-      && module.runner_stacks["linux"].scale_up.log_group.retention_in_days == 180
-      && module.runner_stacks["linux"].scale_up.log_group.kms_key_id == null
-      && module.runner_stacks["linux"].scale_up.log_group.log_group_class == "STANDARD"
-      && length(module.runner_stacks["linux"].scale_up.lambda.tracing_config) == 0
-      && jsondecode(module.runner_stacks["linux"].scale_up.lambda.environment[0].variables["SSM_PARAMETER_STORE_TAGS"]) == [{
+      module.runner_stacks["linux"].orchestration.webhook.scale_up.lambda.environment[0].variables["LOG_LEVEL"] == "INFO"
+      && module.runner_stacks["linux"].orchestration.webhook.scale_up.lambda.environment[0].variables["POWERTOOLS_METRICS_NAMESPACE"] == "GitHub Runners"
+      && module.runner_stacks["linux"].orchestration.webhook.scale_up.lambda.environment[0].variables["POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS"] == "false"
+      && module.runner_stacks["linux"].orchestration.webhook.scale_up.lambda.environment[0].variables["POWERTOOLS_TRACER_CAPTURE_ERROR"] == "false"
+      && module.runner_stacks["linux"].orchestration.webhook.scale_up.lambda.environment[0].variables["SSM_TOKEN_PATH"] == "/github-action-runners/github-actions/linux/runners/tokens"
+      && module.runner_stacks["linux"].orchestration.webhook.scale_up.lambda.environment[0].variables["SSM_CONFIG_PATH"] == "/github-action-runners/github-actions/linux/runners/config"
+      && module.runner_stacks["linux"].orchestration.webhook.scale_up.log_group.retention_in_days == 180
+      && module.runner_stacks["linux"].orchestration.webhook.scale_up.log_group.kms_key_id == null
+      && module.runner_stacks["linux"].orchestration.webhook.scale_up.log_group.log_group_class == "STANDARD"
+      && length(module.runner_stacks["linux"].orchestration.webhook.scale_up.lambda.tracing_config) == 0
+      && jsondecode(module.runner_stacks["linux"].orchestration.webhook.scale_up.lambda.environment[0].variables["SSM_PARAMETER_STORE_TAGS"]) == [{
         Key   = "ghr:environment"
         Value = "github-actions"
       }]
@@ -1348,9 +1380,9 @@ run "experimental_v2_routes_through_provider_stack" {
       && length(local.github_app_parameters.id) == 2
       && length(module.ssm.additional_app_parameters) == 1
       && module.ssm.additional_app_parameters[0].id.name == "/github-runner/additional-app-id"
-      && module.runner_stacks["linux"].scale_up.lambda.environment[0].variables["PARAMETER_GITHUB_APP_ID_NAME"] == join(":", [for p in local.github_app_parameters.id : p.name])
-      && module.runner_stacks["linux"].scale_down.lambda.environment[0].variables["PARAMETER_GITHUB_APP_KEY_BASE64_NAME"] == join(":", [for p in local.github_app_parameters.key_base64 : p.name])
-      && module.runner_stacks["linux"].pool.lambda.environment[0].variables["PARAMETER_GITHUB_APP_INSTALLATION_ID_NAME"] == join(":", [for p in local.github_app_parameters.installation_id : p != null ? p.name : ""])
+      && module.runner_stacks["linux"].orchestration.webhook.scale_up.lambda.environment[0].variables["PARAMETER_GITHUB_APP_ID_NAME"] == join(":", [for p in local.github_app_parameters.id : p.name])
+      && module.runner_stacks["linux"].orchestration.webhook.scale_down.lambda.environment[0].variables["PARAMETER_GITHUB_APP_KEY_BASE64_NAME"] == join(":", [for p in local.github_app_parameters.key_base64 : p.name])
+      && module.runner_stacks["linux"].orchestration.webhook.pool.lambda.environment[0].variables["PARAMETER_GITHUB_APP_INSTALLATION_ID_NAME"] == join(":", [for p in local.github_app_parameters.installation_id : p != null ? p.name : ""])
     )
     error_message = "Experimental v2 control-plane Lambdas must preserve the complete multi-app parameter lists from the shared multi-runner configuration."
   }
@@ -1375,22 +1407,28 @@ run "experimental_v2_routes_through_provider_stack" {
       [
         "provider",
         "runner",
+        "orchestration",
         "scale_up",
         "scale_down",
         "pool",
+        "scale_set",
       ]
     )
-    error_message = "Experimental v2 runners_map_v2 entries must group common and provider resources by owner."
+    error_message = "Experimental v2 runners_map_v2 entries must add canonical orchestration while retaining the existing component aliases."
   }
 
   assert {
     condition = (
       toset(keys(output.runners_map_v2["linux"].runner)) == toset(["role"])
-      && toset(keys(output.runners_map_v2["linux"].scale_up)) == toset(["lambda", "log_group", "role"])
-      && toset(keys(output.runners_map_v2["linux"].scale_down)) == toset(["lambda", "log_group", "role"])
-      && toset(keys(output.runners_map_v2["linux"].pool)) == toset(["lambda", "log_group", "role"])
+      && toset(keys(output.runners_map_v2["linux"].orchestration.webhook.scale_up)) == toset(["lambda", "log_group", "role"])
+      && toset(keys(output.runners_map_v2["linux"].orchestration.webhook.scale_down)) == toset(["lambda", "log_group", "role"])
+      && toset(keys(output.runners_map_v2["linux"].orchestration.webhook.pool)) == toset(["lambda", "log_group", "role"])
+      && output.runners_map_v2["linux"].scale_up == output.runners_map_v2["linux"].orchestration.webhook.scale_up
+      && output.runners_map_v2["linux"].scale_down == output.runners_map_v2["linux"].orchestration.webhook.scale_down
+      && output.runners_map_v2["linux"].pool == output.runners_map_v2["linux"].orchestration.webhook.pool
+      && output.runners_map_v2["linux"].scale_set == null
     )
-    error_message = "Experimental v2 common resources must use the nested runner, scale-up, scale-down, and pool contracts."
+    error_message = "Experimental v2 common resources must use the nested runner and orchestration contracts while preserving classic output aliases."
   }
 
   assert {
@@ -1417,7 +1455,7 @@ run "experimental_v2_routes_through_provider_stack" {
   }
 
   assert {
-    condition     = local.runner_config_by_provider.ec2["linux"].lambda.scale_down.idle_config[0].idleCount == 1
+    condition     = local.runner_config_by_provider.ec2["linux"].orchestration.webhook.lambda.scale_down.idle_config[0].idleCount == 1
     error_message = "Provider-neutral idle configuration must remain in the common runner contract."
   }
 
@@ -1433,6 +1471,640 @@ run "experimental_v2_routes_through_provider_stack" {
     )
     error_message = "Runner lifecycle hooks must remain in the common runner contract."
   }
+}
+
+run "experimental_v2_routes_scale_set_and_webhook_lanes_independently" {
+  command = plan
+
+  variables {
+    experimental = {
+      roles = {
+        path                 = "/global-role-path/"
+        permissions_boundary = "arn:aws:iam::123456789012:policy/global-boundary"
+      }
+
+      github = {
+        app = {
+          id             = "123456"
+          key_base64     = "dGVzdA=="
+          webhook_secret = "test-secret"
+        }
+      }
+
+      lambda = {
+        scale = {
+          artifact = { zip = "README.md" }
+        }
+        webhook = {
+          artifact = { zip = "README.md" }
+        }
+      }
+
+      compute_provider = {
+        ec2 = {
+          vpc_id     = "vpc-scale-set-test"
+          subnet_ids = ["subnet-scale-set-test"]
+          runner_binaries = {
+            enabled = false
+          }
+        }
+      }
+
+      ssm = {
+        kms_key_id = "arn:aws:kms:eu-west-1:123456789012:key/scale-set-credentials"
+      }
+
+      multi_runner_config = {
+        scale_set = {
+          runner = {
+            os                 = "linux"
+            architecture       = "x64"
+            maximum_count      = 4
+            ephemeral          = true
+            jit_config_enabled = true
+          }
+
+          orchestration = {
+            scale_set = {
+              id                = 101
+              github_config_url = "https://github.com/example"
+              container_image   = "ghcr.io/example/scale-set-listener@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+              min_runners       = 1
+              iam = {
+                role_path = "/scale-set-listener/"
+              }
+            }
+          }
+
+          compute_provider = {
+            ec2 = {
+              instance_types = ["m5.large"]
+            }
+          }
+        }
+
+        webhook = {
+          runner = {
+            os            = "linux"
+            architecture  = "x64"
+            maximum_count = 2
+          }
+
+          orchestration = {
+            webhook = {
+              matcherConfig = {
+                labelMatchers = [["self-hosted", "webhook"]]
+              }
+            }
+          }
+
+          compute_provider = {
+            ec2 = {
+              instance_types = ["m5.large"]
+            }
+          }
+        }
+      }
+    }
+  }
+
+  assert {
+    condition = (
+      keys(local.webhook_runner_config) == ["webhook"] &&
+      keys(local.runner_matcher_config) == ["webhook"]
+    )
+    error_message = "Only classic lanes may be published to the webhook matcher."
+  }
+
+  assert {
+    condition = (
+      keys(aws_sqs_queue.queued_builds) == ["webhook"] &&
+      keys(aws_sqs_queue_policy.build_queue_policy) == ["webhook"] &&
+      length(aws_sqs_queue.queued_builds_dlq) == 0 &&
+      length(aws_sqs_queue_policy.build_queue_dlq_policy) == 0 &&
+      length(module.webhook) == 1
+    )
+    error_message = "Only webhook-orchestrated lanes may create build queues, queue policies, or the shared webhook."
+  }
+
+  assert {
+    condition = (
+      module.runner_stacks["scale_set"].orchestration.scale_set != null &&
+      module.runner_stacks["scale_set"].orchestration.webhook == null &&
+      module.runner_stacks["webhook"].orchestration.scale_set == null &&
+      module.runner_stacks["webhook"].orchestration.webhook != null &&
+      local.translated_experimental.multi_runner_config["scale_set"].ssm.kms_key_id == "arn:aws:kms:eu-west-1:123456789012:key/scale-set-credentials" &&
+      local.translated_experimental.multi_runner_config["scale_set"].orchestration.scale_set.iam.role_path == "/scale-set-listener/" &&
+      local.translated_experimental.multi_runner_config["scale_set"].orchestration.scale_set.iam.permissions_boundary == "arn:aws:iam::123456789012:policy/global-boundary" &&
+      module.runner_stacks["scale_set"].orchestration.scale_set.task_role.path == "/scale-set-listener/" &&
+      module.runner_stacks["scale_set"].orchestration.scale_set.task_role.permissions_boundary == "arn:aws:iam::123456789012:policy/global-boundary"
+    )
+    error_message = "Each lane must select one demand controller, mixed lanes may coexist, and the scale-set listener must receive canonical SSM KMS and listener-owned IAM settings."
+  }
+
+  assert {
+    condition = (
+      output.runners_map_v2["scale_set"].orchestration.scale_set != null &&
+      output.runners_map_v2["scale_set"].orchestration.webhook == null &&
+      output.runners_map_v2["scale_set"].scale_set == output.runners_map_v2["scale_set"].orchestration.scale_set &&
+      output.runners_map_v2["scale_set"].scale_up == null &&
+      output.runners_map_v2["scale_set"].scale_down == null &&
+      output.runners_map_v2["scale_set"].pool == null &&
+      output.runners_map_v2["webhook"].orchestration.scale_set == null &&
+      output.runners_map_v2["webhook"].orchestration.webhook != null &&
+      output.runners_map_v2["webhook"].scale_set == null
+    )
+    error_message = "runners_map_v2 must expose the listener only for the scale-set lane."
+  }
+}
+
+run "experimental_v2_scale_set_only_omits_webhook_secret_queues_and_webhook" {
+  command = plan
+
+  variables {
+    experimental = {
+      webhook = {
+        queue_selection_strategy            = "invalid-unused-strategy"
+        matcher_config_parameter_store_tier = "InvalidUnusedTier"
+      }
+      lambda = {
+        scale = {
+          artifact = {
+            zip = "README.md"
+          }
+        }
+      }
+      github = {
+        app = {
+          id         = "123456"
+          key_base64 = "dGVzdA=="
+        }
+      }
+      compute_provider = {
+        ec2 = {
+          vpc_id     = "vpc-scale-set-only"
+          subnet_ids = ["subnet-scale-set-only"]
+          runner_binaries = {
+            enabled = false
+          }
+        }
+      }
+      multi_runner_config = {
+        scale_set = {
+          runner = {
+            os                 = "linux"
+            architecture       = "x64"
+            maximum_count      = 4
+            ephemeral          = true
+            jit_config_enabled = true
+          }
+          orchestration = {
+            scale_set = {
+              id                = 101
+              github_config_url = "https://github.com/example"
+              container_image   = "ghcr.io/example/scale-set-listener@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+            }
+          }
+          compute_provider = {
+            ec2 = {
+              instance_types = ["m5.large"]
+            }
+          }
+        }
+      }
+    }
+  }
+
+  assert {
+    condition = (
+      !local.webhook_enabled &&
+      length(module.webhook) == 0 &&
+      length(local.runner_matcher_config) == 0 &&
+      length(aws_sqs_queue.queued_builds) == 0 &&
+      length(aws_sqs_queue_policy.build_queue_policy) == 0 &&
+      length(aws_sqs_queue.queued_builds_dlq) == 0 &&
+      length(aws_sqs_queue_policy.build_queue_dlq_policy) == 0
+    )
+    error_message = "A scale-set-only deployment must create neither shared webhook resources nor classic build queues."
+  }
+
+  assert {
+    condition = (
+      local.github_app_parameters.webhook_secret == null &&
+      module.ssm.parameters.github_app_webhook_secret == null &&
+      output.ssm_parameters.webhook_secret == null &&
+      output.ssm_parameters.github_app_webhook_secret == null &&
+      output.webhook == null
+    )
+    error_message = "Scale-set-only deployments must not require or create a GitHub App webhook-secret parameter."
+  }
+
+  assert {
+    condition = (
+      module.runner_stacks["scale_set"].orchestration.webhook == null &&
+      module.runner_stacks["scale_set"].orchestration.scale_set != null
+    )
+    error_message = "The scale-set-only lane must instantiate only its scale-set orchestration branch."
+  }
+}
+
+run "experimental_v2_scale_set_rejects_invalid_enabled_runner_binary_versioning" {
+  command = plan
+
+  plan_options {
+    target = [terraform_data.validate_experimental]
+  }
+
+  variables {
+    experimental = {
+      github = {
+        app = {
+          id         = "123456"
+          key_base64 = "dGVzdA=="
+        }
+      }
+      compute_provider = {
+        ec2 = {
+          vpc_id     = "vpc-scale-set-binaries"
+          subnet_ids = ["subnet-scale-set-binaries"]
+          runner_binaries = {
+            enabled = true
+            s3 = {
+              versioning = "Invalid"
+            }
+          }
+        }
+      }
+      multi_runner_config = {
+        scale_set = {
+          runner = {
+            os                 = "linux"
+            architecture       = "x64"
+            maximum_count      = 4
+            ephemeral          = true
+            jit_config_enabled = true
+          }
+          orchestration = {
+            scale_set = {
+              id                = 101
+              github_config_url = "https://github.com/example"
+              container_image   = "ghcr.io/example/scale-set-listener@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+            }
+          }
+          compute_provider = {
+            ec2 = {
+              instance_types = ["m5.large"]
+            }
+          }
+        }
+      }
+    }
+  }
+
+  expect_failures = [terraform_data.validate_experimental]
+}
+
+run "experimental_v2_scale_set_rejects_invalid_enabled_runner_binary_schedule" {
+  command = plan
+
+  plan_options {
+    target = [terraform_data.validate_experimental]
+  }
+
+  variables {
+    experimental = {
+      github = {
+        app = {
+          id         = "123456"
+          key_base64 = "dGVzdA=="
+        }
+      }
+      compute_provider = {
+        ec2 = {
+          vpc_id     = "vpc-scale-set-binaries"
+          subnet_ids = ["subnet-scale-set-binaries"]
+          runner_binaries = {
+            enabled = true
+            syncer = {
+              schedule = {
+                state = "INVALID"
+              }
+            }
+          }
+        }
+      }
+      multi_runner_config = {
+        scale_set = {
+          runner = {
+            os                 = "linux"
+            architecture       = "x64"
+            maximum_count      = 4
+            ephemeral          = true
+            jit_config_enabled = true
+          }
+          orchestration = {
+            scale_set = {
+              id                = 101
+              github_config_url = "https://github.com/example"
+              container_image   = "ghcr.io/example/scale-set-listener@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+            }
+          }
+          compute_provider = {
+            ec2 = {
+              instance_types = ["m5.large"]
+            }
+          }
+        }
+      }
+    }
+  }
+
+  expect_failures = [terraform_data.validate_experimental]
+}
+
+run "experimental_v2_rejects_multiple_orchestration_blocks" {
+  command = plan
+
+  plan_options {
+    target = [terraform_data.validate_experimental]
+  }
+
+  variables {
+    experimental = {
+      github = {
+        app = {
+          id             = "123456"
+          key_base64     = "dGVzdA=="
+          webhook_secret = "test-secret"
+        }
+      }
+      compute_provider = {
+        ec2 = {
+          vpc_id     = "vpc-scale-set-test"
+          subnet_ids = ["subnet-scale-set-test"]
+        }
+      }
+      multi_runner_config = {
+        invalid = {
+          runner = {
+            os                 = "linux"
+            architecture       = "x64"
+            maximum_count      = 4
+            ephemeral          = true
+            jit_config_enabled = true
+          }
+
+          orchestration = {
+            webhook = {
+              matcherConfig = {
+                labelMatchers = [["self-hosted", "invalid"]]
+              }
+            }
+            scale_set = {
+              id                = 101
+              github_config_url = "https://github.com/example"
+              container_image   = "ghcr.io/example/scale-set-listener@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+            }
+          }
+
+          compute_provider = {
+            ec2 = {
+              instance_types = ["m5.large"]
+            }
+          }
+        }
+      }
+    }
+  }
+
+  expect_failures = [terraform_data.validate_experimental]
+}
+
+run "experimental_v2_rejects_missing_orchestration_block" {
+  command = plan
+
+  plan_options {
+    target = [terraform_data.validate_experimental]
+  }
+
+  variables {
+    experimental = {
+      github = {
+        app = {
+          id         = "123456"
+          key_base64 = "dGVzdA=="
+        }
+      }
+      compute_provider = {
+        ec2 = {
+          vpc_id     = "vpc-missing-orchestration"
+          subnet_ids = ["subnet-missing-orchestration"]
+        }
+      }
+      multi_runner_config = {
+        invalid = {
+          runner = {
+            os            = "linux"
+            architecture  = "x64"
+            maximum_count = 1
+          }
+          orchestration = {}
+          compute_provider = {
+            ec2 = {
+              instance_types = ["m5.large"]
+            }
+          }
+        }
+      }
+    }
+  }
+
+  expect_failures = [terraform_data.validate_experimental]
+}
+
+run "experimental_v2_rejects_duplicate_scale_set_ownership" {
+  command = plan
+
+  plan_options {
+    target = [terraform_data.validate_experimental]
+  }
+
+  variables {
+    experimental = {
+      github = {
+        app = {
+          id             = "123456"
+          key_base64     = "dGVzdA=="
+          webhook_secret = "test-secret"
+        }
+      }
+      compute_provider = {
+        ec2 = {
+          vpc_id     = "vpc-scale-set-test"
+          subnet_ids = ["subnet-scale-set-test"]
+        }
+      }
+      multi_runner_config = {
+        first = {
+          runner = {
+            os                 = "linux"
+            architecture       = "x64"
+            maximum_count      = 4
+            ephemeral          = true
+            jit_config_enabled = true
+          }
+
+          orchestration = {
+            scale_set = {
+              id                = 101
+              github_config_url = "https://github.com/example/"
+              container_image   = "ghcr.io/example/scale-set-listener@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+            }
+          }
+
+          compute_provider = {
+            ec2 = {
+              instance_types = ["m5.large"]
+            }
+          }
+        }
+        second = {
+          runner = {
+            os                 = "linux"
+            architecture       = "x64"
+            maximum_count      = 4
+            ephemeral          = true
+            jit_config_enabled = true
+          }
+
+          orchestration = {
+            scale_set = {
+              id                = 101
+              github_config_url = "https://www.github.com/example"
+              container_image   = "ghcr.io/example/scale-set-listener@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+            }
+          }
+
+          compute_provider = {
+            ec2 = {
+              instance_types = ["m5.large"]
+            }
+          }
+        }
+      }
+    }
+  }
+
+  expect_failures = [terraform_data.validate_experimental]
+}
+
+run "experimental_v2_rejects_ambiguous_default_https_port" {
+  command = plan
+
+  plan_options {
+    target = [terraform_data.validate_experimental]
+  }
+
+  variables {
+    experimental = {
+      github = {
+        app = {
+          id             = "123456"
+          key_base64     = "dGVzdA=="
+          webhook_secret = "test-secret"
+        }
+      }
+      compute_provider = {
+        ec2 = {
+          vpc_id     = "vpc-scale-set-test"
+          subnet_ids = ["subnet-scale-set-test"]
+        }
+      }
+      multi_runner_config = {
+        invalid = {
+          runner = {
+            os                 = "linux"
+            architecture       = "x64"
+            maximum_count      = 4
+            ephemeral          = true
+            jit_config_enabled = true
+          }
+
+          orchestration = {
+            scale_set = {
+              id                = 101
+              github_config_url = "https://github.com:0443/example"
+              container_image   = "ghcr.io/example/scale-set-listener@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+            }
+          }
+
+          compute_provider = {
+            ec2 = {
+              instance_types = ["m5.large"]
+            }
+          }
+        }
+      }
+    }
+  }
+
+  expect_failures = [terraform_data.validate_experimental]
+}
+
+run "experimental_v2_rejects_disabled_instance_metadata_endpoint" {
+  command = plan
+
+  plan_options {
+    target = [terraform_data.validate_experimental]
+  }
+
+  variables {
+    experimental = {
+      github = {
+        app = {
+          id             = "123456"
+          key_base64     = "dGVzdA=="
+          webhook_secret = "test-secret"
+        }
+      }
+      compute_provider = {
+        ec2 = {
+          vpc_id     = "vpc-scale-set-test"
+          subnet_ids = ["subnet-scale-set-test"]
+        }
+      }
+      multi_runner_config = {
+        invalid = {
+          runner = {
+            os                 = "linux"
+            architecture       = "x64"
+            maximum_count      = 4
+            ephemeral          = true
+            jit_config_enabled = true
+          }
+
+          orchestration = {
+            scale_set = {
+              id                = 101
+              github_config_url = "https://github.com/example"
+              container_image   = "ghcr.io/example/scale-set-listener@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+            }
+          }
+
+          compute_provider = {
+            ec2 = {
+              instance_types = ["m5.large"]
+              metadata_options = {
+                http_endpoint = "disabled"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  expect_failures = [terraform_data.validate_experimental]
 }
 
 run "experimental_v2_applies_global_defaults_and_lane_overrides" {
@@ -1675,31 +2347,47 @@ run "experimental_v2_applies_global_defaults_and_lane_overrides" {
             group_name    = "lane-group"
             maximum_count = 4
           }
+
           lambda = {
             role = {
               path = "/lane-lambda/"
             }
-            scale_up = {
-              memory_size = 896
-              event_source_mapping = {
-                batch_size = 50
+          }
+
+          orchestration = {
+            webhook = {
+              lambda = {
+                scale_up = {
+                  memory_size = 896
+                  event_source_mapping = {
+                    batch_size = 50
+                  }
+                }
+
+                pool = {
+                  memory_size = 448
+                }
+              }
+
+              queue = {
+                delay_webhook_event        = 11
+                visibility_timeout_seconds = 300
+                tags = {
+                  LaneQueue  = "lane"
+                  Precedence = "lane"
+                }
+              }
+
+              job_retry = {
+                enabled = true
+              }
+
+              matcherConfig = {
+                labelMatchers = [["self-hosted", "linux", "x64", "resolved"]]
               }
             }
-            pool = {
-              memory_size = 448
-            }
           }
-          job_retry = {
-            enabled = true
-          }
-          queue = {
-            delay_webhook_event        = 11
-            visibility_timeout_seconds = 300
-            tags = {
-              LaneQueue  = "lane"
-              Precedence = "lane"
-            }
-          }
+
           compute_provider = {
             ec2 = {
               instance_types = ["m5.large"]
@@ -1708,9 +2396,6 @@ run "experimental_v2_applies_global_defaults_and_lane_overrides" {
                 enabled = true
               }
             }
-          }
-          matcherConfig = {
-            labelMatchers = [["self-hosted", "linux", "x64", "resolved"]]
           }
         }
       }
@@ -1736,7 +2421,7 @@ run "experimental_v2_applies_global_defaults_and_lane_overrides" {
       && toset(keys(local.translated_experimental.multi_runner_config["resolved"].compute_provider.ec2.binaries_syncer)) == toset(["enabled", "s3"])
       && local.translated_experimental.multi_runner_config["resolved"].compute_provider.ec2.binaries_syncer.s3 != null
       && keys(output.binaries_syncer_map) == ["linux_x64"]
-      && module.runner_stacks["resolved"].scale_up.lambda.environment[0].variables["INSTANCE_TYPES"] == "m5.large"
+      && module.runner_stacks["resolved"].orchestration.webhook.scale_up.lambda.environment[0].variables["INSTANCE_TYPES"] == "m5.large"
     )
     error_message = "Global compute-provider defaults must merge into the required lane selector while lane values take precedence."
   }
@@ -1781,7 +2466,7 @@ run "experimental_v2_applies_global_defaults_and_lane_overrides" {
 
   assert {
     condition = (
-      module.runner_stacks["resolved"].scale_up.lambda.runtime == "nodejs22.x"
+      module.runner_stacks["resolved"].orchestration.webhook.scale_up.lambda.runtime == "nodejs22.x"
       && local.translated_experimental.lambda.scale.artifact.zip == null
       && local.translated_experimental.lambda.scale.artifact.s3.key == "nested-runners.zip"
       && local.translated_experimental.lambda.scale.artifact.s3.object_version == "nested-runners-version"
@@ -1794,28 +2479,28 @@ run "experimental_v2_applies_global_defaults_and_lane_overrides" {
         type        = "Service"
         identifiers = tolist(["states.amazonaws.com"])
       }])
-      && module.runner_stacks["resolved"].scale_up.lambda.s3_bucket == "experimental-lambda-artifacts"
-      && module.runner_stacks["resolved"].scale_up.lambda.s3_key == "nested-runners.zip"
-      && module.runner_stacks["resolved"].scale_up.lambda.s3_object_version == "nested-runners-version"
-      && module.runner_stacks["resolved"].scale_up.lambda.memory_size == 896
-      && module.runner_stacks["resolved"].scale_up.lambda.timeout == 40
-      && module.runner_stacks["resolved"].scale_down.lambda.timeout == 75
-      && module.runner_stacks["resolved"].pool.lambda.memory_size == 448
-      && local.translated_experimental.multi_runner_config["resolved"].lambda.scale_up.event_source_mapping.batch_size == 50
+      && module.runner_stacks["resolved"].orchestration.webhook.scale_up.lambda.s3_bucket == "experimental-lambda-artifacts"
+      && module.runner_stacks["resolved"].orchestration.webhook.scale_up.lambda.s3_key == "nested-runners.zip"
+      && module.runner_stacks["resolved"].orchestration.webhook.scale_up.lambda.s3_object_version == "nested-runners-version"
+      && module.runner_stacks["resolved"].orchestration.webhook.scale_up.lambda.memory_size == 896
+      && module.runner_stacks["resolved"].orchestration.webhook.scale_up.lambda.timeout == 40
+      && module.runner_stacks["resolved"].orchestration.webhook.scale_down.lambda.timeout == 75
+      && module.runner_stacks["resolved"].orchestration.webhook.pool.lambda.memory_size == 448
+      && local.translated_experimental.multi_runner_config["resolved"].orchestration.webhook.lambda.scale_up.event_source_mapping.batch_size == 50
       && module.runner_stacks["resolved"].runner.role.path == "/experimental/"
-      && module.runner_stacks["resolved"].scale_up.role.path == "/lane-lambda/"
+      && module.runner_stacks["resolved"].orchestration.webhook.scale_up.role.path == "/lane-lambda/"
     )
     error_message = "V2 values must resolve in lane-over-experimental-global precedence order without stable-input fallback."
   }
 
   assert {
     condition = (
-      local.translated_experimental.multi_runner_config["resolved"].queue.delay_webhook_event == 11
-      && local.translated_experimental.multi_runner_config["resolved"].queue.job_queue_retention_in_seconds == 172800
-      && local.translated_experimental.multi_runner_config["resolved"].queue.visibility_timeout_seconds == 300
-      && local.translated_experimental.multi_runner_config["resolved"].queue.redrive_build_queue.enabled
-      && local.translated_experimental.multi_runner_config["resolved"].queue.redrive_build_queue.maxReceiveCount == 7
-      && local.translated_experimental.multi_runner_config["resolved"].queue.tags == tomap({
+      local.translated_experimental.multi_runner_config["resolved"].orchestration.webhook.queue.delay_webhook_event == 11
+      && local.translated_experimental.multi_runner_config["resolved"].orchestration.webhook.queue.job_queue_retention_in_seconds == 172800
+      && local.translated_experimental.multi_runner_config["resolved"].orchestration.webhook.queue.visibility_timeout_seconds == 300
+      && local.translated_experimental.multi_runner_config["resolved"].orchestration.webhook.queue.redrive_build_queue.enabled
+      && local.translated_experimental.multi_runner_config["resolved"].orchestration.webhook.queue.redrive_build_queue.maxReceiveCount == 7
+      && local.translated_experimental.multi_runner_config["resolved"].orchestration.webhook.queue.tags == tomap({
         GlobalQueue = "global"
         LaneQueue   = "lane"
         Precedence  = "lane"
@@ -1852,13 +2537,13 @@ run "experimental_v2_applies_global_defaults_and_lane_overrides" {
       && !local.translated_experimental.enterprise_server.ssl_verify
       && local.translated_experimental.user_agent == "experimental-runner-user-agent"
       && length(local.translated_experimental.github.additional_apps) == 0
-      && local.translated_experimental.multi_runner_config["resolved"].job_retry.enabled
-      && module.runner_stacks["resolved"].scale_up.lambda.environment[0].variables["GHES_URL"] == "https://experimental-shared.example.com"
-      && module.runner_stacks["resolved"].scale_up.lambda.environment[0].variables["NODE_TLS_REJECT_UNAUTHORIZED"] == "0"
-      && module.runner_stacks["resolved"].scale_up.lambda.environment[0].variables["USER_AGENT"] == "experimental-runner-user-agent"
-      && module.runner_stacks["resolved"].scale_down.lambda.environment[0].variables["GHES_URL"] == "https://experimental-shared.example.com"
-      && module.runner_stacks["resolved"].pool.lambda.environment[0].variables["USER_AGENT"] == "experimental-runner-user-agent"
-      && module.runner_stacks["resolved"].scale_up.lambda.environment[0].variables["PARAMETER_GITHUB_APP_ID_NAME"] == module.ssm.parameters.github_app_id.name
+      && local.translated_experimental.multi_runner_config["resolved"].orchestration.webhook.job_retry.enabled
+      && module.runner_stacks["resolved"].orchestration.webhook.scale_up.lambda.environment[0].variables["GHES_URL"] == "https://experimental-shared.example.com"
+      && module.runner_stacks["resolved"].orchestration.webhook.scale_up.lambda.environment[0].variables["NODE_TLS_REJECT_UNAUTHORIZED"] == "0"
+      && module.runner_stacks["resolved"].orchestration.webhook.scale_up.lambda.environment[0].variables["USER_AGENT"] == "experimental-runner-user-agent"
+      && module.runner_stacks["resolved"].orchestration.webhook.scale_down.lambda.environment[0].variables["GHES_URL"] == "https://experimental-shared.example.com"
+      && module.runner_stacks["resolved"].orchestration.webhook.pool.lambda.environment[0].variables["USER_AGENT"] == "experimental-runner-user-agent"
+      && module.runner_stacks["resolved"].orchestration.webhook.scale_up.lambda.environment[0].variables["PARAMETER_GITHUB_APP_ID_NAME"] == module.ssm.parameters.github_app_id.name
       && local.translated_experimental.compute_provider.ec2.instance_termination_watcher.environment_variables["NESTED_WATCHER"] == "true"
       && output.instance_termination_watcher.lambda.function.runtime == "nodejs22.x"
       && output.instance_termination_watcher.lambda.function.architectures == tolist(["arm64"])
@@ -2100,6 +2785,15 @@ run "experimental_v2_layers_observability_and_ssm" {
             InheritedOnly = "inherited"
             Precedence    = "inherited"
           }
+
+          orchestration = {
+            webhook = {
+              matcherConfig = {
+                labelMatchers = [["self-hosted", "linux", "x64", "inherited"]]
+              }
+            }
+          }
+
           compute_provider = {
             ec2 = {
               instance_types = ["m5.large"]
@@ -2108,9 +2802,6 @@ run "experimental_v2_layers_observability_and_ssm" {
               }
             }
           }
-          matcherConfig = {
-            labelMatchers = [["self-hosted", "linux", "x64", "inherited"]]
-          }
         }
 
         overridden = {
@@ -2118,6 +2809,15 @@ run "experimental_v2_layers_observability_and_ssm" {
             OverriddenOnly = "overridden"
             Precedence     = "overridden"
           }
+
+          orchestration = {
+            webhook = {
+              matcherConfig = {
+                labelMatchers = [["self-hosted", "linux", "x64", "overridden"]]
+              }
+            }
+          }
+
           ssm = {
             paths = {
               root   = "/lane-ssm"
@@ -2152,6 +2852,7 @@ run "experimental_v2_layers_observability_and_ssm" {
               }
             }
           }
+
           observability = {
             logs = {
               level             = "warn"
@@ -2177,6 +2878,7 @@ run "experimental_v2_layers_observability_and_ssm" {
               }
             }
           }
+
           compute_provider = {
             ec2 = {
               instance_types = ["c5.large"]
@@ -2184,9 +2886,6 @@ run "experimental_v2_layers_observability_and_ssm" {
                 enabled = false
               }
             }
-          }
-          matcherConfig = {
-            labelMatchers = [["self-hosted", "linux", "x64", "overridden"]]
           }
         }
       }
@@ -2276,39 +2975,39 @@ run "experimental_v2_layers_observability_and_ssm" {
 
   assert {
     condition = (
-      module.runner_stacks["inherited"].scale_up.lambda.environment[0].variables["LOG_LEVEL"] == "DEBUG"
-      && module.runner_stacks["inherited"].scale_up.lambda.environment[0].variables["GHES_URL"] == "https://experimental-observability.example.com"
-      && module.runner_stacks["inherited"].scale_up.lambda.environment[0].variables["NODE_TLS_REJECT_UNAUTHORIZED"] == "0"
-      && module.runner_stacks["inherited"].scale_up.lambda.environment[0].variables["USER_AGENT"] == "experimental-observability-user-agent"
-      && module.runner_stacks["inherited"].scale_up.lambda.environment[0].variables["POWERTOOLS_METRICS_NAMESPACE"] == "GlobalMetrics"
-      && module.runner_stacks["inherited"].scale_up.lambda.environment[0].variables["ENABLE_METRIC_GITHUB_APP_RATE_LIMIT"] == "true"
-      && module.runner_stacks["inherited"].scale_up.lambda.environment[0].variables["POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS"] == "true"
-      && module.runner_stacks["inherited"].scale_up.lambda.environment[0].variables["POWERTOOLS_TRACER_CAPTURE_ERROR"] == "false"
-      && module.runner_stacks["inherited"].scale_up.lambda.tracing_config[0].mode == "Active"
-      && module.runner_stacks["inherited"].scale_up.log_group.retention_in_days == 30
-      && module.runner_stacks["inherited"].scale_up.log_group.kms_key_id == "arn:aws:kms:eu-west-1:123456789012:key/global-logs"
-      && module.runner_stacks["inherited"].scale_up.log_group.log_group_class == "INFREQUENT_ACCESS"
-      && module.runner_stacks["overridden"].scale_up.lambda.environment[0].variables["LOG_LEVEL"] == "WARN"
-      && module.runner_stacks["overridden"].scale_up.lambda.environment[0].variables["POWERTOOLS_METRICS_NAMESPACE"] == "LaneMetrics"
-      && module.runner_stacks["overridden"].scale_up.lambda.environment[0].variables["ENABLE_METRIC_GITHUB_APP_RATE_LIMIT"] == "false"
-      && module.runner_stacks["overridden"].scale_up.lambda.environment[0].variables["POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS"] == "false"
-      && module.runner_stacks["overridden"].scale_up.lambda.environment[0].variables["POWERTOOLS_TRACER_CAPTURE_ERROR"] == "true"
-      && module.runner_stacks["overridden"].scale_up.lambda.tracing_config[0].mode == "PassThrough"
-      && module.runner_stacks["overridden"].scale_up.log_group.retention_in_days == 7
-      && module.runner_stacks["overridden"].scale_up.log_group.kms_key_id == "arn:aws:kms:eu-west-1:123456789012:key/lane-logs"
-      && module.runner_stacks["overridden"].scale_up.log_group.log_group_class == "STANDARD"
+      module.runner_stacks["inherited"].orchestration.webhook.scale_up.lambda.environment[0].variables["LOG_LEVEL"] == "DEBUG"
+      && module.runner_stacks["inherited"].orchestration.webhook.scale_up.lambda.environment[0].variables["GHES_URL"] == "https://experimental-observability.example.com"
+      && module.runner_stacks["inherited"].orchestration.webhook.scale_up.lambda.environment[0].variables["NODE_TLS_REJECT_UNAUTHORIZED"] == "0"
+      && module.runner_stacks["inherited"].orchestration.webhook.scale_up.lambda.environment[0].variables["USER_AGENT"] == "experimental-observability-user-agent"
+      && module.runner_stacks["inherited"].orchestration.webhook.scale_up.lambda.environment[0].variables["POWERTOOLS_METRICS_NAMESPACE"] == "GlobalMetrics"
+      && module.runner_stacks["inherited"].orchestration.webhook.scale_up.lambda.environment[0].variables["ENABLE_METRIC_GITHUB_APP_RATE_LIMIT"] == "true"
+      && module.runner_stacks["inherited"].orchestration.webhook.scale_up.lambda.environment[0].variables["POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS"] == "true"
+      && module.runner_stacks["inherited"].orchestration.webhook.scale_up.lambda.environment[0].variables["POWERTOOLS_TRACER_CAPTURE_ERROR"] == "false"
+      && module.runner_stacks["inherited"].orchestration.webhook.scale_up.lambda.tracing_config[0].mode == "Active"
+      && module.runner_stacks["inherited"].orchestration.webhook.scale_up.log_group.retention_in_days == 30
+      && module.runner_stacks["inherited"].orchestration.webhook.scale_up.log_group.kms_key_id == "arn:aws:kms:eu-west-1:123456789012:key/global-logs"
+      && module.runner_stacks["inherited"].orchestration.webhook.scale_up.log_group.log_group_class == "INFREQUENT_ACCESS"
+      && module.runner_stacks["overridden"].orchestration.webhook.scale_up.lambda.environment[0].variables["LOG_LEVEL"] == "WARN"
+      && module.runner_stacks["overridden"].orchestration.webhook.scale_up.lambda.environment[0].variables["POWERTOOLS_METRICS_NAMESPACE"] == "LaneMetrics"
+      && module.runner_stacks["overridden"].orchestration.webhook.scale_up.lambda.environment[0].variables["ENABLE_METRIC_GITHUB_APP_RATE_LIMIT"] == "false"
+      && module.runner_stacks["overridden"].orchestration.webhook.scale_up.lambda.environment[0].variables["POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS"] == "false"
+      && module.runner_stacks["overridden"].orchestration.webhook.scale_up.lambda.environment[0].variables["POWERTOOLS_TRACER_CAPTURE_ERROR"] == "true"
+      && module.runner_stacks["overridden"].orchestration.webhook.scale_up.lambda.tracing_config[0].mode == "PassThrough"
+      && module.runner_stacks["overridden"].orchestration.webhook.scale_up.log_group.retention_in_days == 7
+      && module.runner_stacks["overridden"].orchestration.webhook.scale_up.log_group.kms_key_id == "arn:aws:kms:eu-west-1:123456789012:key/lane-logs"
+      && module.runner_stacks["overridden"].orchestration.webhook.scale_up.log_group.log_group_class == "STANDARD"
     )
     error_message = "Resolved global GitHub connection settings and global/lane observability must reach runner-stack Lambda and log-group resources."
   }
 
   assert {
     condition = (
-      module.runner_stacks["inherited"].scale_up.lambda.environment[0].variables["SSM_TOKEN_PATH"] == "/global-ssm/inherited/global-tokens"
-      && module.runner_stacks["inherited"].scale_up.lambda.environment[0].variables["SSM_CONFIG_PATH"] == "/global-ssm/inherited/global-config"
-      && module.runner_stacks["overridden"].scale_up.lambda.environment[0].variables["SSM_TOKEN_PATH"] == "/lane-ssm/overridden/lane-tokens"
-      && module.runner_stacks["overridden"].scale_up.lambda.environment[0].variables["SSM_CONFIG_PATH"] == "/lane-ssm/overridden/lane-config"
+      module.runner_stacks["inherited"].orchestration.webhook.scale_up.lambda.environment[0].variables["SSM_TOKEN_PATH"] == "/global-ssm/inherited/global-tokens"
+      && module.runner_stacks["inherited"].orchestration.webhook.scale_up.lambda.environment[0].variables["SSM_CONFIG_PATH"] == "/global-ssm/inherited/global-config"
+      && module.runner_stacks["overridden"].orchestration.webhook.scale_up.lambda.environment[0].variables["SSM_TOKEN_PATH"] == "/lane-ssm/overridden/lane-tokens"
+      && module.runner_stacks["overridden"].orchestration.webhook.scale_up.lambda.environment[0].variables["SSM_CONFIG_PATH"] == "/lane-ssm/overridden/lane-config"
       && tomap({
-        for tag in jsondecode(module.runner_stacks["inherited"].scale_up.lambda.environment[0].variables["SSM_PARAMETER_STORE_TAGS"]) :
+        for tag in jsondecode(module.runner_stacks["inherited"].orchestration.webhook.scale_up.lambda.environment[0].variables["SSM_PARAMETER_STORE_TAGS"]) :
         tag.Key => tag.Value
         }) == tomap({
         ExperimentalOnly    = "experimental"
@@ -2319,7 +3018,7 @@ run "experimental_v2_layers_observability_and_ssm" {
         "ghr:environment"   = "github-actions"
       })
       && tomap({
-        for tag in jsondecode(module.runner_stacks["overridden"].scale_up.lambda.environment[0].variables["SSM_PARAMETER_STORE_TAGS"]) :
+        for tag in jsondecode(module.runner_stacks["overridden"].orchestration.webhook.scale_up.lambda.environment[0].variables["SSM_PARAMETER_STORE_TAGS"]) :
         tag.Key => tag.Value
         }) == tomap({
         ExperimentalOnly    = "experimental"
@@ -2346,14 +3045,14 @@ run "experimental_v2_layers_observability_and_ssm" {
         LaneHousekeeperOnly   = "lane-housekeeper"
         Precedence            = "lane-housekeeper"
       })
-      && module.runner_stacks["inherited"].scale_up.log_group.tags == tomap({
+      && module.runner_stacks["inherited"].orchestration.webhook.scale_up.log_group.tags == tomap({
         ExperimentalOnly  = "experimental"
         InheritedOnly     = "inherited"
         GlobalLogOnly     = "global-log"
         Precedence        = "global-log"
         "ghr:environment" = "github-actions"
       })
-      && module.runner_stacks["overridden"].scale_up.log_group.tags == tomap({
+      && module.runner_stacks["overridden"].orchestration.webhook.scale_up.log_group.tags == tomap({
         ExperimentalOnly  = "experimental"
         OverriddenOnly    = "overridden"
         GlobalLogOnly     = "global-log"
@@ -2426,6 +3125,15 @@ run "experimental_v2_requires_global_github_app" {
             architecture  = "x64"
             maximum_count = 2
           }
+
+          orchestration = {
+            webhook = {
+              matcherConfig = {
+                labelMatchers = [["self-hosted", "linux", "x64", "missing-github-app"]]
+              }
+            }
+          }
+
           compute_provider = {
             ec2 = {
               instance_types = ["m5.large"]
@@ -2433,9 +3141,6 @@ run "experimental_v2_requires_global_github_app" {
                 enabled = false
               }
             }
-          }
-          matcherConfig = {
-            labelMatchers = [["self-hosted", "linux", "x64", "missing-github-app"]]
           }
         }
       }
@@ -2485,6 +3190,15 @@ run "experimental_v2_rejects_incomplete_global_github_app" {
             architecture  = "x64"
             maximum_count = 2
           }
+
+          orchestration = {
+            webhook = {
+              matcherConfig = {
+                labelMatchers = [["self-hosted", "linux", "x64", "incomplete-github-app"]]
+              }
+            }
+          }
+
           compute_provider = {
             ec2 = {
               instance_types = ["m5.large"]
@@ -2492,9 +3206,6 @@ run "experimental_v2_rejects_incomplete_global_github_app" {
                 enabled = false
               }
             }
-          }
-          matcherConfig = {
-            labelMatchers = [["self-hosted", "linux", "x64", "incomplete-github-app"]]
           }
         }
       }
@@ -2548,6 +3259,15 @@ run "experimental_v2_rejects_incomplete_additional_github_app" {
             architecture  = "x64"
             maximum_count = 2
           }
+
+          orchestration = {
+            webhook = {
+              matcherConfig = {
+                labelMatchers = [["self-hosted", "linux", "x64", "incomplete-additional-app"]]
+              }
+            }
+          }
+
           compute_provider = {
             ec2 = {
               instance_types = ["m5.large"]
@@ -2555,9 +3275,6 @@ run "experimental_v2_rejects_incomplete_additional_github_app" {
                 enabled = false
               }
             }
-          }
-          matcherConfig = {
-            labelMatchers = [["self-hosted", "linux", "x64", "incomplete-additional-app"]]
           }
         }
       }
@@ -2604,6 +3321,15 @@ run "experimental_v2_prefers_nested_primary_github_app_over_flat" {
             architecture  = "x64"
             maximum_count = 2
           }
+
+          orchestration = {
+            webhook = {
+              matcherConfig = {
+                labelMatchers = [["self-hosted", "linux", "x64", "mismatched-primary-app"]]
+              }
+            }
+          }
+
           compute_provider = {
             ec2 = {
               instance_types = ["m5.large"]
@@ -2611,9 +3337,6 @@ run "experimental_v2_prefers_nested_primary_github_app_over_flat" {
                 enabled = false
               }
             }
-          }
-          matcherConfig = {
-            labelMatchers = [["self-hosted", "linux", "x64", "mismatched-primary-app"]]
           }
         }
       }
@@ -2679,6 +3402,15 @@ run "experimental_v2_prefers_nested_additional_github_apps_over_flat" {
             architecture  = "x64"
             maximum_count = 2
           }
+
+          orchestration = {
+            webhook = {
+              matcherConfig = {
+                labelMatchers = [["self-hosted", "linux", "x64", "mismatched-additional-apps"]]
+              }
+            }
+          }
+
           compute_provider = {
             ec2 = {
               instance_types = ["m5.large"]
@@ -2686,9 +3418,6 @@ run "experimental_v2_prefers_nested_additional_github_apps_over_flat" {
                 enabled = false
               }
             }
-          }
-          matcherConfig = {
-            labelMatchers = [["self-hosted", "linux", "x64", "mismatched-additional-apps"]]
           }
         }
       }
@@ -2759,6 +3488,15 @@ run "experimental_v2_allows_mismatched_watcher_ghes_when_deregistration_disabled
             architecture  = "x64"
             maximum_count = 2
           }
+
+          orchestration = {
+            webhook = {
+              matcherConfig = {
+                labelMatchers = [["self-hosted", "linux", "x64", "disabled-deregistration"]]
+              }
+            }
+          }
+
           compute_provider = {
             ec2 = {
               instance_types = ["m5.large"]
@@ -2766,9 +3504,6 @@ run "experimental_v2_allows_mismatched_watcher_ghes_when_deregistration_disabled
                 enabled = false
               }
             }
-          }
-          matcherConfig = {
-            labelMatchers = [["self-hosted", "linux", "x64", "disabled-deregistration"]]
           }
         }
       }
@@ -2781,7 +3516,7 @@ run "experimental_v2_allows_mismatched_watcher_ghes_when_deregistration_disabled
       && local.translated_experimental.compute_provider.ec2.instance_termination_watcher.enabled
       && !local.translated_experimental.compute_provider.ec2.instance_termination_watcher.enable_runner_deregistration
       && output.instance_termination_watcher != null
-      && module.runner_stacks["disabled_deregistration"].scale_up.lambda.environment[0].variables["GHES_URL"] == "https://experimental-disabled-deregistration.example.com"
+      && module.runner_stacks["disabled_deregistration"].orchestration.webhook.scale_up.lambda.environment[0].variables["GHES_URL"] == "https://experimental-disabled-deregistration.example.com"
     )
     error_message = "The termination watcher must remain enabled while the v2 runner stack uses the translated enterprise-server URL when deregistration is disabled."
   }
@@ -2840,6 +3575,15 @@ run "experimental_v2_termination_watcher_ignores_mismatched_flat_ghes_url" {
             architecture  = "x64"
             maximum_count = 2
           }
+
+          orchestration = {
+            webhook = {
+              matcherConfig = {
+                labelMatchers = [["self-hosted", "linux", "x64", "mismatched-watcher-ghes"]]
+              }
+            }
+          }
+
           compute_provider = {
             ec2 = {
               instance_types = ["m5.large"]
@@ -2847,9 +3591,6 @@ run "experimental_v2_termination_watcher_ignores_mismatched_flat_ghes_url" {
                 enabled = false
               }
             }
-          }
-          matcherConfig = {
-            labelMatchers = [["self-hosted", "linux", "x64", "mismatched-watcher-ghes"]]
           }
         }
       }
@@ -2862,7 +3603,7 @@ run "experimental_v2_termination_watcher_ignores_mismatched_flat_ghes_url" {
       && local.translated_experimental.compute_provider.ec2.instance_termination_watcher.enabled
       && local.translated_experimental.compute_provider.ec2.instance_termination_watcher.enable_runner_deregistration
       && output.instance_termination_watcher.lambda.function.environment[0].variables["GHES_URL"] == "https://experimental-watcher.example.com"
-      && module.runner_stacks["mismatched_watcher_ghes"].scale_up.lambda.environment[0].variables["GHES_URL"] == "https://experimental-watcher.example.com"
+      && module.runner_stacks["mismatched_watcher_ghes"].orchestration.webhook.scale_up.lambda.environment[0].variables["GHES_URL"] == "https://experimental-watcher.example.com"
       && var.ghes_url == "https://flat-watcher.example.com"
     )
     error_message = "An enabled v2 termination watcher must use the translated enterprise-server URL instead of a deliberately different flat GHES URL."
@@ -2908,6 +3649,14 @@ run "experimental_v2_ignores_flat_only_shared_ssm_kms_key" {
       }
       multi_runner_config = {
         flat_only = {
+          orchestration = {
+            webhook = {
+              matcherConfig = {
+                labelMatchers = [["self-hosted", "linux", "x64", "flat-only-kms"]]
+              }
+            }
+          }
+
           compute_provider = {
             ec2 = {
               instance_types = ["m5.large"]
@@ -2915,9 +3664,6 @@ run "experimental_v2_ignores_flat_only_shared_ssm_kms_key" {
                 enabled = false
               }
             }
-          }
-          matcherConfig = {
-            labelMatchers = [["self-hosted", "linux", "x64", "flat-only-kms"]]
           }
         }
       }
@@ -2976,6 +3722,14 @@ run "experimental_v2_uses_experimental_only_shared_ssm_kms_key" {
       }
       multi_runner_config = {
         experimental_only = {
+          orchestration = {
+            webhook = {
+              matcherConfig = {
+                labelMatchers = [["self-hosted", "linux", "x64", "experimental-only-kms"]]
+              }
+            }
+          }
+
           compute_provider = {
             ec2 = {
               instance_types = ["m5.large"]
@@ -2983,9 +3737,6 @@ run "experimental_v2_uses_experimental_only_shared_ssm_kms_key" {
                 enabled = false
               }
             }
-          }
-          matcherConfig = {
-            labelMatchers = [["self-hosted", "linux", "x64", "experimental-only-kms"]]
           }
         }
       }
@@ -3044,6 +3795,14 @@ run "experimental_v2_prefers_nested_shared_ssm_kms_key_over_flat" {
       }
       multi_runner_config = {
         mismatched = {
+          orchestration = {
+            webhook = {
+              matcherConfig = {
+                labelMatchers = [["self-hosted", "linux", "x64", "mismatched-kms"]]
+              }
+            }
+          }
+
           compute_provider = {
             ec2 = {
               instance_types = ["m5.large"]
@@ -3051,9 +3810,6 @@ run "experimental_v2_prefers_nested_shared_ssm_kms_key_over_flat" {
                 enabled = false
               }
             }
-          }
-          matcherConfig = {
-            labelMatchers = [["self-hosted", "linux", "x64", "mismatched-kms"]]
           }
         }
       }
@@ -3124,6 +3880,15 @@ run "experimental_v2_external_role_ignores_global_iam_management" {
               }
             }
           }
+
+          orchestration = {
+            webhook = {
+              matcherConfig = {
+                labelMatchers = [["self-hosted", "linux", "x64", "external"]]
+              }
+            }
+          }
+
           compute_provider = {
             ec2 = {
               instance_types = ["m5.large"]
@@ -3131,9 +3896,6 @@ run "experimental_v2_external_role_ignores_global_iam_management" {
                 enabled = false
               }
             }
-          }
-          matcherConfig = {
-            labelMatchers = [["self-hosted", "linux", "x64", "external"]]
           }
         }
       }
@@ -3204,6 +3966,15 @@ run "experimental_v2_rejects_explicit_iam_management_with_external_role" {
               })
             }
           }
+
+          orchestration = {
+            webhook = {
+              matcherConfig = {
+                labelMatchers = [["self-hosted", "linux", "x64", "invalid"]]
+              }
+            }
+          }
+
           compute_provider = {
             ec2 = {
               instance_types = ["m5.large"]
@@ -3211,9 +3982,6 @@ run "experimental_v2_rejects_explicit_iam_management_with_external_role" {
                 enabled = false
               }
             }
-          }
-          matcherConfig = {
-            labelMatchers = [["self-hosted", "linux", "x64", "invalid"]]
           }
         }
       }
@@ -3297,28 +4065,40 @@ run "experimental_v2_layers_shared_and_component_tags" {
               ConfigLambdaOnly = "config-lambda"
               Precedence       = "config-lambda"
             }
-            scale_up = {
-              tags = {
-                ScaleUpOnly = "scale-up"
-                Precedence  = "scale-up"
-              }
-            }
-            scale_down = {
-              tags = {
-                ScaleDownOnly = "scale-down"
-                Precedence    = "scale-down"
-              }
-            }
           }
 
-          queue = {
-            redrive_build_queue = {
-              enabled         = true
-              maxReceiveCount = 3
-            }
-            tags = {
-              SharedQueueOnly = "shared-queue"
-              Precedence      = "shared-queue"
+          orchestration = {
+            webhook = {
+              lambda = {
+                scale_up = {
+                  tags = {
+                    ScaleUpOnly = "scale-up"
+                    Precedence  = "scale-up"
+                  }
+                }
+
+                scale_down = {
+                  tags = {
+                    ScaleDownOnly = "scale-down"
+                    Precedence    = "scale-down"
+                  }
+                }
+              }
+
+              queue = {
+                redrive_build_queue = {
+                  enabled         = true
+                  maxReceiveCount = 3
+                }
+                tags = {
+                  SharedQueueOnly = "shared-queue"
+                  Precedence      = "shared-queue"
+                }
+              }
+
+              matcherConfig = {
+                labelMatchers = [["self-hosted", "linux", "x64", "tagged"]]
+              }
             }
           }
 
@@ -3338,10 +4118,6 @@ run "experimental_v2_layers_shared_and_component_tags" {
                 enabled = false
               }
             }
-          }
-
-          matcherConfig = {
-            labelMatchers = [["self-hosted", "linux", "x64", "tagged"]]
           }
         }
       }
@@ -3369,7 +4145,7 @@ run "experimental_v2_layers_shared_and_component_tags" {
   }
 
   assert {
-    condition = module.runner_stacks["tagged"].scale_up.lambda.tags == tomap({
+    condition = module.runner_stacks["tagged"].orchestration.webhook.scale_up.lambda.tags == tomap({
       ExperimentalOnly       = "experimental"
       RunnerConfigOnly       = "runner-config"
       ExperimentalLambdaOnly = "experimental-lambda"
@@ -3382,7 +4158,7 @@ run "experimental_v2_layers_shared_and_component_tags" {
   }
 
   assert {
-    condition = module.runner_stacks["tagged"].scale_up.log_group.tags == tomap({
+    condition = module.runner_stacks["tagged"].orchestration.webhook.scale_up.log_group.tags == tomap({
       ExperimentalOnly  = "experimental"
       RunnerConfigOnly  = "runner-config"
       SharedLogOnly     = "shared-log"
@@ -3394,7 +4170,7 @@ run "experimental_v2_layers_shared_and_component_tags" {
   }
 
   assert {
-    condition = module.runner_stacks["tagged"].scale_up.role.tags == tomap({
+    condition = module.runner_stacks["tagged"].orchestration.webhook.scale_up.role.tags == tomap({
       ExperimentalOnly  = "experimental"
       RunnerConfigOnly  = "runner-config"
       ScaleUpOnly       = "scale-up"
@@ -3416,7 +4192,7 @@ run "experimental_v2_layers_shared_and_component_tags" {
   }
 
   assert {
-    condition = module.runner_stacks["tagged"].scale_down.lambda.tags == tomap({
+    condition = module.runner_stacks["tagged"].orchestration.webhook.scale_down.lambda.tags == tomap({
       ExperimentalOnly       = "experimental"
       RunnerConfigOnly       = "runner-config"
       ExperimentalLambdaOnly = "experimental-lambda"
@@ -3429,7 +4205,7 @@ run "experimental_v2_layers_shared_and_component_tags" {
   }
 
   assert {
-    condition = module.runner_stacks["tagged"].scale_down.log_group.tags == tomap({
+    condition = module.runner_stacks["tagged"].orchestration.webhook.scale_down.log_group.tags == tomap({
       ExperimentalOnly  = "experimental"
       RunnerConfigOnly  = "runner-config"
       SharedLogOnly     = "shared-log"
@@ -3441,7 +4217,7 @@ run "experimental_v2_layers_shared_and_component_tags" {
   }
 
   assert {
-    condition     = output.runners_map_v2["tagged"].pool == null
+    condition     = output.runners_map_v2["tagged"].orchestration.webhook.pool == null
     error_message = "Experimental v2 must expose a null pool object when no pool configuration is supplied."
   }
 }
@@ -3481,9 +4257,19 @@ run "experimental_v2_rejects_visibility_timeout_shorter_than_lambda_retry_window
             architecture  = "x64"
             maximum_count = 2
           }
-          queue = {
-            visibility_timeout_seconds = 239
+
+          orchestration = {
+            webhook = {
+              queue = {
+                visibility_timeout_seconds = 239
+              }
+
+              matcherConfig = {
+                labelMatchers = [["self-hosted", "linux", "x64"]]
+              }
+            }
           }
+
           compute_provider = {
             ec2 = {
               instance_types = ["m5.large"]
@@ -3491,9 +4277,6 @@ run "experimental_v2_rejects_visibility_timeout_shorter_than_lambda_retry_window
                 enabled = false
               }
             }
-          }
-          matcherConfig = {
-            labelMatchers = [["self-hosted", "linux", "x64"]]
           }
         }
       }
@@ -3540,13 +4323,19 @@ run "experimental_v2_rejects_conflicting_queue_encryption" {
             architecture  = "x64"
             maximum_count = 2
           }
+
+          orchestration = {
+            webhook = {
+              matcherConfig = {
+                labelMatchers = [["self-hosted", "linux", "x64"]]
+              }
+            }
+          }
+
           compute_provider = {
             ec2 = {
               instance_types = ["m5.large"]
             }
-          }
-          matcherConfig = {
-            labelMatchers = [["self-hosted", "linux", "x64"]]
           }
         }
       }
@@ -3590,6 +4379,15 @@ run "experimental_v2_rejects_redrive_without_max_receive_count" {
             architecture  = "x64"
             maximum_count = 2
           }
+
+          orchestration = {
+            webhook = {
+              matcherConfig = {
+                labelMatchers = [["self-hosted", "linux", "x64"]]
+              }
+            }
+          }
+
           compute_provider = {
             ec2 = {
               instance_types = ["m5.large"]
@@ -3597,9 +4395,6 @@ run "experimental_v2_rejects_redrive_without_max_receive_count" {
                 enabled = false
               }
             }
-          }
-          matcherConfig = {
-            labelMatchers = [["self-hosted", "linux", "x64"]]
           }
         }
       }
@@ -3638,12 +4433,22 @@ run "experimental_v2_rejects_nonpositive_redrive_max_receive_count" {
             architecture  = "x64"
             maximum_count = 2
           }
-          queue = {
-            redrive_build_queue = {
-              enabled         = true
-              maxReceiveCount = 0
+
+          orchestration = {
+            webhook = {
+              queue = {
+                redrive_build_queue = {
+                  enabled         = true
+                  maxReceiveCount = 0
+                }
+              }
+
+              matcherConfig = {
+                labelMatchers = [["self-hosted", "linux", "x64"]]
+              }
             }
           }
+
           compute_provider = {
             ec2 = {
               instance_types = ["m5.large"]
@@ -3651,9 +4456,6 @@ run "experimental_v2_rejects_nonpositive_redrive_max_receive_count" {
                 enabled = false
               }
             }
-          }
-          matcherConfig = {
-            labelMatchers = [["self-hosted", "linux", "x64"]]
           }
         }
       }
@@ -3707,13 +4509,19 @@ run "experimental_v2_rejects_runner_artifact_zip_and_s3" {
             architecture  = "x64"
             maximum_count = 2
           }
+
+          orchestration = {
+            webhook = {
+              matcherConfig = {
+                labelMatchers = [["self-hosted", "linux", "x64"]]
+              }
+            }
+          }
+
           compute_provider = {
             ec2 = {
               instance_types = ["m5.large"]
             }
-          }
-          matcherConfig = {
-            labelMatchers = [["self-hosted", "linux", "x64"]]
           }
         }
       }
@@ -3766,13 +4574,19 @@ run "experimental_v2_rejects_runner_artifact_bucket_without_key" {
             architecture  = "x64"
             maximum_count = 2
           }
+
+          orchestration = {
+            webhook = {
+              matcherConfig = {
+                labelMatchers = [["self-hosted", "linux", "x64"]]
+              }
+            }
+          }
+
           compute_provider = {
             ec2 = {
               instance_types = ["m5.large"]
             }
-          }
-          matcherConfig = {
-            labelMatchers = [["self-hosted", "linux", "x64"]]
           }
         }
       }
@@ -3820,13 +4634,19 @@ run "experimental_v2_rejects_runner_artifact_s3_without_bucket" {
             architecture  = "x64"
             maximum_count = 2
           }
+
+          orchestration = {
+            webhook = {
+              matcherConfig = {
+                labelMatchers = [["self-hosted", "linux", "x64"]]
+              }
+            }
+          }
+
           compute_provider = {
             ec2 = {
               instance_types = ["m5.large"]
             }
-          }
-          matcherConfig = {
-            labelMatchers = [["self-hosted", "linux", "x64"]]
           }
         }
       }
@@ -3882,6 +4702,15 @@ run "experimental_v2_rejects_runner_binaries_artifact_zip_and_s3" {
             architecture  = "x64"
             maximum_count = 2
           }
+
+          orchestration = {
+            webhook = {
+              matcherConfig = {
+                labelMatchers = [["self-hosted", "linux", "x64"]]
+              }
+            }
+          }
+
           compute_provider = {
             ec2 = {
               instance_types = ["m5.large"]
@@ -3889,9 +4718,6 @@ run "experimental_v2_rejects_runner_binaries_artifact_zip_and_s3" {
                 enabled = false
               }
             }
-          }
-          matcherConfig = {
-            labelMatchers = [["self-hosted", "linux", "x64"]]
           }
         }
       }
@@ -3937,6 +4763,15 @@ run "experimental_v2_rejects_runner_binaries_logging_prefix_without_bucket" {
             architecture  = "x64"
             maximum_count = 2
           }
+
+          orchestration = {
+            webhook = {
+              matcherConfig = {
+                labelMatchers = [["self-hosted", "linux", "x64"]]
+              }
+            }
+          }
+
           compute_provider = {
             ec2 = {
               instance_types = ["m5.large"]
@@ -3944,9 +4779,6 @@ run "experimental_v2_rejects_runner_binaries_logging_prefix_without_bucket" {
                 enabled = false
               }
             }
-          }
-          matcherConfig = {
-            labelMatchers = [["self-hosted", "linux", "x64"]]
           }
         }
       }
@@ -4006,6 +4838,15 @@ run "experimental_v2_accepts_distinct_queue_and_ssm_kms_keys" {
             architecture  = "x64"
             maximum_count = 2
           }
+
+          orchestration = {
+            webhook = {
+              matcherConfig = {
+                labelMatchers = [["self-hosted", "linux", "x64"]]
+              }
+            }
+          }
+
           compute_provider = {
             ec2 = {
               instance_types = ["m5.large"]
@@ -4013,9 +4854,6 @@ run "experimental_v2_accepts_distinct_queue_and_ssm_kms_keys" {
                 enabled = false
               }
             }
-          }
-          matcherConfig = {
-            labelMatchers = [["self-hosted", "linux", "x64"]]
           }
         }
       }
@@ -4062,10 +4900,16 @@ run "experimental_v2_rejects_empty_compute_provider" {
             architecture  = "x64"
             maximum_count = 2
           }
-          compute_provider = {}
-          matcherConfig = {
-            labelMatchers = [["self-hosted", "linux", "x64"]]
+
+          orchestration = {
+            webhook = {
+              matcherConfig = {
+                labelMatchers = [["self-hosted", "linux", "x64"]]
+              }
+            }
           }
+
+          compute_provider = {}
         }
       }
     }
@@ -4104,18 +4948,25 @@ run "experimental_v2_rejects_invalid_ssm_housekeeper_state" {
             architecture  = "x64"
             maximum_count = 2
           }
+
+          orchestration = {
+            webhook = {
+              matcherConfig = {
+                labelMatchers = [["self-hosted", "linux", "x64"]]
+              }
+            }
+          }
+
           ssm = {
             housekeeper = {
               state = "PAUSED"
             }
           }
+
           compute_provider = {
             ec2 = {
               instance_types = ["m5.large"]
             }
-          }
-          matcherConfig = {
-            labelMatchers = [["self-hosted", "linux", "x64"]]
           }
         }
       }

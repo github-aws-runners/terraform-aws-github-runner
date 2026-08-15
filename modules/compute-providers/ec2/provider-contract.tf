@@ -3,6 +3,7 @@ locals {
     scale_up   = local.scale_up_environment_variables
     scale_down = local.scale_down_environment_variables
     pool       = local.pool_environment_variables
+    scale_set  = local.scale_set_environment_variables
   }
 
   provider_policies = {
@@ -23,6 +24,9 @@ locals {
       iam_policy_json        = local.pool_iam_policy_json
       managed_policy_enabled = local.ami_id_ssm_external
       managed_policy_arn     = local.ami_id_ssm_external ? aws_iam_policy.ami_id_ssm_parameter_read[0].arn : null
+    }
+    scale_set = {
+      iam_policy_json = local.scale_set_iam_policy_json
     }
   }
 

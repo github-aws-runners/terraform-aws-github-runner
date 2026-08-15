@@ -63,7 +63,8 @@ variable "config" {
   EOT
 
   type = object({
-    prefix = string
+    prefix  = string
+    enabled = optional(bool, true)
     lambda = object({
       artifact = object({
         zip = string

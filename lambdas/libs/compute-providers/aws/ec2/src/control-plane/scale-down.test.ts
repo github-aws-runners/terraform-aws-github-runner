@@ -54,8 +54,13 @@ describe('Scale down runners', () => {
         expect(mockListRunners).toHaveBeenNthCalledWith(1, {
           environment: 'unit-test-environment',
           orphan: undefined,
+          source: ['scale-up-lambda', 'pool-lambda'],
         });
-        expect(mockListRunners).toHaveBeenNthCalledWith(2, { environment: 'unit-test-environment', orphan: true });
+        expect(mockListRunners).toHaveBeenNthCalledWith(2, {
+          environment: 'unit-test-environment',
+          orphan: true,
+          source: ['scale-up-lambda', 'pool-lambda'],
+        });
         expect(mockTerminateRunner).not.toHaveBeenCalled();
 
         await provider.markOrphan(runner.id);

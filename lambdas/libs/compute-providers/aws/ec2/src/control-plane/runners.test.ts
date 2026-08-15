@@ -71,6 +71,8 @@ const mockRunningInstancesJit: DescribeInstancesResult = {
             { Key: 'ghr:Type', Value: 'Org' },
             { Key: 'ghr:Owner', Value: 'CoderToCat' },
             { Key: 'ghr:github_runner_id', Value: '9876543210' },
+            { Key: 'ghr:runner_name', Value: 'scale-set-i-1234' },
+            { Key: 'ghr:scale_set_state', Value: 'ready' },
           ],
         },
       ],
@@ -109,6 +111,8 @@ describe('list instances', () => {
       owner: 'CoderToCat',
       orphan: false,
       githubRunnerId: '9876543210',
+      runnerName: 'scale-set-i-1234',
+      scaleSetState: 'ready',
       bypassRemoval: false,
     });
   });
@@ -197,6 +201,42 @@ describe('list instances', () => {
         { Name: 'instance-state-name', Values: ['running', 'pending'] },
         { Name: 'tag:ghr:environment', Values: [ENVIRONMENT] },
         { Name: 'tag:ghr:orphan', Values: ['true'] },
+        { Name: 'tag:ghr:Application', Values: ['github-action-runner'] },
+      ],
+    });
+  });
+
+  it('filters scale-set instances by owner, scale-set ID, source, and exact runner name', async () => {
+    mockEC2Client.on(DescribeInstancesCommand).resolves(mockRunningInstancesJit);
+    await listEC2Runners({
+      environment: ENVIRONMENT,
+      runnerType: 'Org',
+      runnerOwner: ORG_NAME,
+      runnerName: 'scale-set-i-1234',
+      scaleSetId: 123,
+      source: 'scale-set-lambda',
+    });
+    expect(mockEC2Client).toHaveReceivedCommandWith(DescribeInstancesCommand, {
+      Filters: [
+        { Name: 'instance-state-name', Values: ['running', 'pending'] },
+        { Name: 'tag:ghr:environment', Values: [ENVIRONMENT] },
+        { Name: 'tag:ghr:Type', Values: ['Org'] },
+        { Name: 'tag:ghr:Owner', Values: [ORG_NAME] },
+        { Name: 'tag:ghr:runner_name', Values: ['scale-set-i-1234'] },
+        { Name: 'tag:ghr:scale_set_id', Values: ['123'] },
+        { Name: 'tag:ghr:created_by', Values: ['scale-set-lambda'] },
+        { Name: 'tag:ghr:Application', Values: ['github-action-runner'] },
+      ],
+    });
+  });
+
+  it('filters instances by multiple legacy runner sources', async () => {
+    mockEC2Client.on(DescribeInstancesCommand).resolves(mockRunningInstances);
+    await listEC2Runners({ source: ['scale-up-lambda', 'pool-lambda'] });
+    expect(mockEC2Client).toHaveReceivedCommandWith(DescribeInstancesCommand, {
+      Filters: [
+        { Name: 'instance-state-name', Values: ['running', 'pending'] },
+        { Name: 'tag:ghr:created_by', Values: ['scale-up-lambda', 'pool-lambda'] },
         { Name: 'tag:ghr:Application', Values: ['github-action-runner'] },
       ],
     });
@@ -535,6 +575,20 @@ describe('create runner', () => {
         source: 'pool-lambda',
       }),
     });
+  });
+
+  it('applies additional provider tags in the EC2 launch request', async () => {
+    const additionalTag = { Key: 'ghr:scale_set_id', Value: '123' };
+    await createRunner({
+      ...createRunnerConfig({ ...defaultRunnerConfig, source: 'scale-set-lambda' }),
+      additionalTags: [additionalTag],
+    });
+
+    const request = mockEC2Client.commandCalls(CreateFleetCommand)[0].args[0].input;
+    expect(request.TagSpecifications).toHaveLength(3);
+    for (const specification of request.TagSpecifications ?? []) {
+      expect(specification.Tags).toContainEqual(additionalTag);
+    }
   });
 
   it('overrides SubnetId when specified in ec2OverrideConfig', async () => {
@@ -1320,6 +1374,7 @@ describe('create runner with useDedicatedHost', () => {
     capacityType: 'on-demand',
     type: 'Org',
     scaleErrors: [],
+    source: 'scale-up-lambda',
     useDedicatedHost: true,
   };
 
@@ -1417,7 +1472,7 @@ describe('create runner with useDedicatedHost', () => {
     });
 
     const result = await createRunner({
-      ...createRunnerConfig(dedicatedHostRunnerConfig),
+      ...createRunnerConfig({ ...dedicatedHostRunnerConfig, source: 'pool-lambda' }),
       numberOfRunners: 2,
     });
 

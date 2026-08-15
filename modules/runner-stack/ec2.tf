@@ -24,4 +24,5 @@ module "ec2" {
   github        = var.github
   ssm           = var.ssm
   observability = var.observability
+  scale_set     = local.scale_set == null ? null : { id = local.scale_set.id }
 }

@@ -17,7 +17,7 @@ resource "aws_ssm_parameter" "github_app_key_base64" {
 }
 
 resource "aws_ssm_parameter" "github_app_webhook_secret" {
-  count  = var.github_app.webhook_secret_ssm != null ? 0 : 1
+  count  = var.github_app.webhook_secret_required && var.github_app.webhook_secret_ssm == null ? 1 : 0
   name   = "${var.path_prefix}/github_app_webhook_secret"
   type   = "SecureString"
   value  = var.github_app.webhook_secret

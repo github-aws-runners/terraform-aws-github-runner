@@ -13,10 +13,10 @@ resource "terraform_data" "validate_experimental" {
         var.experimental.github.app == null ? true : (
           (var.experimental.github.app.key_base64 != null || var.experimental.github.app.key_base64_ssm != null) &&
           (var.experimental.github.app.id != null || var.experimental.github.app.id_ssm != null) &&
-          (var.experimental.github.app.webhook_secret != null || var.experimental.github.app.webhook_secret_ssm != null)
+          (!local.webhook_enabled || var.experimental.github.app.webhook_secret != null || var.experimental.github.app.webhook_secret_ssm != null)
         )
       )
-      error_message = "experimental.github.app must set one value from each pair: key_base64 or key_base64_ssm, id or id_ssm, and webhook_secret or webhook_secret_ssm."
+      error_message = "experimental.github.app must set key_base64 or key_base64_ssm and id or id_ssm; webhook lanes additionally require webhook_secret or webhook_secret_ssm."
     }
 
     precondition {
@@ -37,6 +37,17 @@ resource "terraform_data" "validate_experimental" {
         ]) == 1
       ])
       error_message = "Each experimental runner configuration must set exactly one compute-provider block. Supported compute-provider blocks: ec2."
+    }
+
+    precondition {
+      condition = alltrue([
+        for runner_config in values(var.experimental.multi_runner_config) :
+        length([
+          for orchestration_type, orchestration_config in runner_config.orchestration : orchestration_type
+          if orchestration_config != null
+        ]) == 1
+      ])
+      error_message = "Each experimental runner configuration must set exactly one orchestration block: webhook or scale_set."
     }
 
     precondition {
@@ -63,19 +74,21 @@ resource "terraform_data" "validate_experimental" {
     precondition {
       condition = alltrue([
         for runner_config in values(var.experimental.multi_runner_config) :
-        coalesce(
-          runner_config.queue.visibility_timeout_seconds,
-          var.experimental.queue.visibility_timeout_seconds,
-          ) >= 6 * coalesce(
-          runner_config.lambda.scale_up.timeout,
-          var.experimental.lambda.scale_up.timeout,
+        runner_config.orchestration.webhook == null ? true : (
+          coalesce(
+            runner_config.orchestration.webhook.queue.visibility_timeout_seconds,
+            var.experimental.queue.visibility_timeout_seconds,
+            ) >= 6 * coalesce(
+            runner_config.orchestration.webhook.lambda.scale_up.timeout,
+            var.experimental.lambda.scale_up.timeout,
+          )
         )
       ])
-      error_message = "Each experimental queue.visibility_timeout_seconds must be at least six times the resolved lambda.scale_up.timeout."
+      error_message = "Each experimental orchestration.webhook.queue.visibility_timeout_seconds must be at least six times the resolved orchestration.webhook.lambda.scale_up.timeout."
     }
 
     precondition {
-      condition = !local.use_multi_runner_config_v2 || (
+      condition = !local.webhook_enabled || (
         (
           var.experimental.queue.encryption.sqs_managed_sse_enabled != null &&
           var.experimental.queue.encryption.kms_master_key_id == null &&
@@ -85,7 +98,7 @@ resource "terraform_data" "validate_experimental" {
           var.experimental.queue.encryption.kms_master_key_id != null
         )
       )
-      error_message = "Invalid experimental.queue.encryption configuration. Use SQS-managed encryption, disable it, or configure a KMS key."
+      error_message = "Invalid experimental.queue.encryption configuration for webhook orchestration. Use SQS-managed encryption, disable it, or configure a KMS key."
     }
 
     precondition {
@@ -165,7 +178,10 @@ resource "terraform_data" "validate_experimental" {
     }
 
     precondition {
-      condition = !local.use_multi_runner_config_v2 || contains(
+      condition = !local.use_multi_runner_config_v2 || !anytrue([
+        for runner_config in values(local.translated_experimental_base.multi_runner_config) :
+        try(runner_config.compute_provider.ec2.binaries_syncer.enabled, false)
+        ]) || contains(
         ["Disabled", "Enabled", "Suspended"],
         var.experimental.compute_provider.ec2.runner_binaries.s3.versioning,
       )
@@ -173,7 +189,10 @@ resource "terraform_data" "validate_experimental" {
     }
 
     precondition {
-      condition = !local.use_multi_runner_config_v2 || contains(
+      condition = !local.use_multi_runner_config_v2 || !anytrue([
+        for runner_config in values(local.translated_experimental_base.multi_runner_config) :
+        try(runner_config.compute_provider.ec2.binaries_syncer.enabled, false)
+        ]) || contains(
         ["DISABLED", "ENABLED", "ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS"],
         var.experimental.compute_provider.ec2.runner_binaries.syncer.schedule.state,
       )
@@ -181,7 +200,7 @@ resource "terraform_data" "validate_experimental" {
     }
 
     precondition {
-      condition = !local.use_multi_runner_config_v2 || contains(
+      condition = !local.webhook_enabled || contains(
         ["first", "random", "all"],
         var.experimental.webhook.queue_selection_strategy,
       )
@@ -189,7 +208,7 @@ resource "terraform_data" "validate_experimental" {
     }
 
     precondition {
-      condition = !local.use_multi_runner_config_v2 || contains(
+      condition = !local.webhook_enabled || contains(
         ["Standard", "Advanced"],
         var.experimental.webhook.matcher_config_parameter_store_tier,
       )
@@ -212,7 +231,7 @@ resource "terraform_data" "validate_experimental" {
     }
 
     precondition {
-      condition = !local.use_multi_runner_config_v2 || (
+      condition = !local.webhook_enabled || (
         !(
           var.experimental.lambda.webhook.artifact.zip != null &&
           var.experimental.lambda.webhook.artifact.s3 != null
@@ -300,12 +319,14 @@ resource "terraform_data" "validate_experimental" {
     precondition {
       condition = alltrue([
         for runner_config in values(local.translated_experimental_base.multi_runner_config) :
-        !runner_config.queue.redrive_build_queue.enabled || try(
-          runner_config.queue.redrive_build_queue.maxReceiveCount > 0,
-          false,
+        runner_config.orchestration.webhook == null ? true : (
+          !runner_config.orchestration.webhook.queue.redrive_build_queue.enabled || try(
+            runner_config.orchestration.webhook.queue.redrive_build_queue.maxReceiveCount > 0,
+            false,
+          )
         )
       ])
-      error_message = "An enabled experimental queue.redrive_build_queue requires maxReceiveCount greater than zero."
+      error_message = "An enabled experimental orchestration.webhook.queue.redrive_build_queue requires maxReceiveCount greater than zero."
     }
 
     precondition {
@@ -343,6 +364,67 @@ resource "terraform_data" "validate_experimental" {
         ) == null
       ])
       error_message = "runner.iam.additional_trust_policy_json cannot be set with an external runner.iam.role because external roles are not managed by this module."
+    }
+
+    precondition {
+      condition = alltrue([
+        for runner_config in values(local.translated_experimental_base.multi_runner_config) :
+        runner_config.orchestration.scale_set == null ? true : (
+          runner_config.orchestration.scale_set.id > 0 &&
+          floor(runner_config.orchestration.scale_set.id) == runner_config.orchestration.scale_set.id &&
+          runner_config.orchestration.scale_set.github_app_index >= 0 &&
+          floor(runner_config.orchestration.scale_set.github_app_index) == runner_config.orchestration.scale_set.github_app_index &&
+          runner_config.orchestration.scale_set.github_app_index < 1 + length(local.translated_experimental_base.github.additional_apps) &&
+          runner_config.orchestration.scale_set.min_runners >= 0 &&
+          floor(runner_config.orchestration.scale_set.min_runners) == runner_config.orchestration.scale_set.min_runners &&
+          runner_config.orchestration.scale_set.min_runners <= runner_config.runner.maximum_count
+        )
+      ])
+      error_message = "Scale-set IDs and GitHub App indexes must be valid integers, the app index must select a configured app, and 0 <= min_runners <= runner.maximum_count."
+    }
+
+    precondition {
+      condition = length(distinct([
+        for runner_config in values(local.translated_experimental_base.multi_runner_config) :
+        "${replace(lower(trimsuffix(trimspace(runner_config.orchestration.scale_set.github_config_url), "/")), "https://www.github.com/", "https://github.com/")}#${runner_config.orchestration.scale_set.id}"
+        if runner_config.orchestration.scale_set != null
+        ])) == length([
+        for runner_config in values(local.translated_experimental_base.multi_runner_config) : runner_config
+        if runner_config.orchestration.scale_set != null
+      ])
+      error_message = "Every experimental scale-set lane must use a unique normalized github_config_url and scale_set.id pair."
+    }
+
+    precondition {
+      condition = alltrue([
+        for runner_config in values(local.translated_experimental_base.multi_runner_config) :
+        runner_config.orchestration.scale_set == null ? true : (
+          runner_config.compute_provider.ec2 == null ? false : (
+            runner_config.runner.ephemeral &&
+            coalesce(runner_config.runner.jit_config_enabled, runner_config.runner.ephemeral) &&
+            runner_config.compute_provider.ec2.user_data.enabled &&
+            runner_config.compute_provider.ec2.user_data.template == null &&
+            runner_config.compute_provider.ec2.user_data.content == null &&
+            runner_config.compute_provider.ec2.metadata_options.instance_metadata_tags == "enabled" &&
+            runner_config.compute_provider.ec2.metadata_options.http_endpoint == "enabled"
+          )
+        )
+      ])
+      error_message = "Scale-set lanes require ephemeral JIT EC2 runners, the default user-data bootstrap, and an enabled instance metadata endpoint with instance metadata tags."
+    }
+
+    precondition {
+      condition = alltrue([
+        for runner_config in values(local.translated_experimental_base.multi_runner_config) :
+        runner_config.orchestration.scale_set == null ? true : (
+          can(regex("^https://[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?(:([1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]))?/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)?/?$", trimspace(runner_config.orchestration.scale_set.github_config_url))) &&
+          !can(regex("^https://[^/]+:443/", lower(trimspace(runner_config.orchestration.scale_set.github_config_url)))) &&
+          !can(regex("^https://[^/]+/enterprises/", lower(trimspace(runner_config.orchestration.scale_set.github_config_url)))) &&
+          can(regex("^[^@ ]+@sha256:[0-9a-fA-F]{64}$", runner_config.orchestration.scale_set.container_image)) &&
+          contains(["arm64", "x86_64"], runner_config.orchestration.scale_set.ecs.architecture)
+        )
+      ])
+      error_message = "Scale-set lanes require a canonical HTTPS organization/repository github_config_url with an optional non-default port from 1 to 65535, an immutable container image digest, and an arm64 or x86_64 ECS architecture."
     }
 
   }

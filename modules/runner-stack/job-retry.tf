@@ -1,6 +1,6 @@
 
 locals {
-  job_retry_enabled = var.job_retry.enabled
+  job_retry_enabled = local.webhook_enabled ? local.webhook.job_retry.enabled : false
 }
 
 module "job_retry" {
@@ -17,9 +17,9 @@ module "job_retry" {
       }
       runtime                        = var.lambda.runtime
       architecture                   = var.lambda.architecture
-      memory_size                    = var.job_retry.lambda.memory_size
-      timeout                        = var.job_retry.lambda.timeout
-      reserved_concurrent_executions = var.job_retry.lambda.reserved_concurrent_executions
+      memory_size                    = local.webhook.job_retry.lambda.memory_size
+      timeout                        = local.webhook.job_retry.lambda.timeout
+      reserved_concurrent_executions = local.webhook.job_retry.lambda.reserved_concurrent_executions
       environment_variables          = {}
       vpc = {
         subnet_ids         = var.lambda.subnet_ids
@@ -34,12 +34,12 @@ module "job_retry" {
     runner = {
       name_prefix = var.runner.name_prefix
     }
-    github = var.github
+    github = merge(var.github, local.webhook.github)
     queue = {
-      build = var.queue.build
+      build = local.webhook.queue.build
       event_source_mapping = {
-        batch_size                         = var.queue.event_source_mapping.batch_size
-        maximum_batching_window_in_seconds = var.queue.event_source_mapping.maximum_batching_window_in_seconds
+        batch_size                         = local.webhook.queue.event_source_mapping.batch_size
+        maximum_batching_window_in_seconds = local.webhook.queue.event_source_mapping.maximum_batching_window_in_seconds
       }
       encryption = {
         sqs_managed_sse_enabled           = true

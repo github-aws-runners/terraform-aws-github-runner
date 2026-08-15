@@ -63,10 +63,23 @@ variables {
     }
   }
 
-  queue = {
-    build = {
-      arn = "arn:aws:sqs:eu-west-1:123456789012:build-queue"
-      url = "https://sqs.eu-west-1.amazonaws.com/123456789012/build-queue"
+  orchestration = {
+    webhook = {
+      github = {
+        organization_runners = true
+      }
+      queue = {
+        build = {
+          arn = "arn:aws:sqs:eu-west-1:123456789012:build-queue"
+          url = "https://sqs.eu-west-1.amazonaws.com/123456789012/build-queue"
+        }
+      }
+      pool = {
+        config = [{
+          schedule_expression = "cron(0 8 * * ? *)"
+          size                = 1
+        }]
+      }
     }
   }
 
@@ -79,7 +92,6 @@ variables {
   }
 
   github = {
-    organization_runners = true
     app_parameters = {
       key_base64      = [{ name = "/github-runner/key-base64", arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64" }]
       id              = [{ name = "/github-runner/app-id", arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id" }]
@@ -95,13 +107,6 @@ variables {
     }
   }
 
-  # Enable pool to exercise the pool module and its role type
-  pool = {
-    config = [{
-      schedule_expression = "cron(0 8 * * ? *)"
-      size                = 1
-    }]
-  }
 }
 
 run "plan_with_pool_enabled" {
@@ -137,14 +142,17 @@ run "plan_with_pool_enabled" {
 
   assert {
     condition = (
-      output.pool != null
-      && toset(keys(output.pool)) == toset(["lambda", "log_group", "role"])
+      output.orchestration.webhook.pool != null
+      && toset(keys(output.orchestration.webhook.pool)) == toset(["lambda", "log_group", "role"])
+      && output.pool == output.orchestration.webhook.pool
+      && output.scale_up == output.orchestration.webhook.scale_up
+      && output.scale_down == output.orchestration.webhook.scale_down
     )
-    error_message = "An enabled pool must expose its Lambda, log group, and role through the nested pool output."
+    error_message = "Webhook resources must remain available through both the nested orchestration output and compatibility aliases."
   }
 
   assert {
-    condition     = length(jsondecode(module.scale_runners.scale_up.lambda.environment[0].variables["SSM_PARAMETER_STORE_TAGS"])) == 0
+    condition     = length(jsondecode(module.scale_runners[0].scale_up.lambda.environment[0].variables["SSM_PARAMETER_STORE_TAGS"])) == 0
     error_message = "Runtime Parameter Store tags must remain empty when no module or SSM tags are configured; EC2 bootstrap tags must not leak into them."
   }
 
@@ -173,26 +181,26 @@ run "plan_with_pool_enabled" {
 
   assert {
     condition = (
-      module.scale_runners.scale_up.lambda.environment[0].variables["COMPUTE_PROVIDER_TYPE"] == "ec2"
-      && module.scale_runners.scale_down.lambda.environment[0].variables["COMPUTE_PROVIDER_TYPE"] == "ec2"
+      module.scale_runners[0].scale_up.lambda.environment[0].variables["COMPUTE_PROVIDER_TYPE"] == "ec2"
+      && module.scale_runners[0].scale_down.lambda.environment[0].variables["COMPUTE_PROVIDER_TYPE"] == "ec2"
     )
     error_message = "Scaling Lambdas must receive the provider type from the selected provider."
   }
 
   assert {
-    condition     = module.scale_runners.scale_up.lambda.environment[0].variables["INSTANCE_TYPES"] == "m5.large"
+    condition     = module.scale_runners[0].scale_up.lambda.environment[0].variables["INSTANCE_TYPES"] == "m5.large"
     error_message = "Scale-up must merge the EC2 environment fragment."
   }
 
   assert {
-    condition     = module.scale_runners.scale_down.lambda.environment[0].variables["RUNNER_BOOT_TIME_IN_MINUTES"] == "5"
+    condition     = module.scale_runners[0].scale_down.lambda.environment[0].variables["RUNNER_BOOT_TIME_IN_MINUTES"] == "5"
     error_message = "Scale-down must merge the EC2 environment fragment."
   }
 
   assert {
     condition = (
-      toset(keys(module.scale_runners.scale_up)) == toset(["lambda", "log_group", "role"])
-      && toset(keys(module.scale_runners.scale_down)) == toset(["lambda", "log_group", "role"])
+      toset(keys(module.scale_runners[0].scale_up)) == toset(["lambda", "log_group", "role"])
+      && toset(keys(module.scale_runners[0].scale_down)) == toset(["lambda", "log_group", "role"])
     )
     error_message = "The scale-runners child module must forward the nested scale-up and scale-down resource contracts."
   }
@@ -355,10 +363,23 @@ run "job_retry_uses_common_runner_configuration_identity" {
       labels      = ["self-hosted", "linux", "x64"]
       name_prefix = "provider-neutral-"
     }
-    job_retry = {
-      enabled = true
-      lambda = {
-        reserved_concurrent_executions = 2
+    orchestration = {
+      webhook = {
+        github = {
+          organization_runners = true
+        }
+        queue = {
+          build = {
+            arn = "arn:aws:sqs:eu-west-1:123456789012:build-queue"
+            url = "https://sqs.eu-west-1.amazonaws.com/123456789012/build-queue"
+          }
+        }
+        job_retry = {
+          enabled = true
+          lambda = {
+            reserved_concurrent_executions = 2
+          }
+        }
       }
     }
   }

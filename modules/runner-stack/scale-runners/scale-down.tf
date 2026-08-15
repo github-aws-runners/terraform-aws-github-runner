@@ -65,6 +65,7 @@ resource "aws_cloudwatch_log_group" "scale_down" {
 resource "aws_cloudwatch_event_rule" "scale_down" {
   name                = "${var.config.prefix}-scale-down-rule"
   schedule_expression = var.config.scale_down.schedule_expression
+  state               = var.config.enabled ? "ENABLED" : "DISABLED"
   tags                = var.config.scale_down.tags.resources
 }
 

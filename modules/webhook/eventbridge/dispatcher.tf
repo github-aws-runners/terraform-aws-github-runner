@@ -109,12 +109,19 @@ resource "aws_iam_role_policy_attachment" "dispatcher_vpc_execution_role" {
 }
 
 resource "aws_iam_role_policy" "dispatcher_sqs" {
+  count = length(var.config.sqs_job_queues_arns) > 0 ? 1 : 0
+
   name = "publish-sqs-policy"
   role = aws_iam_role.dispatcher_lambda.name
 
   policy = templatefile("${path.module}/../policies/lambda-publish-sqs-policy.json", {
     sqs_resource_arns = jsonencode(var.config.sqs_job_queues_arns)
   })
+}
+
+moved {
+  from = aws_iam_role_policy.dispatcher_sqs
+  to   = aws_iam_role_policy.dispatcher_sqs[0]
 }
 
 resource "aws_iam_role_policy" "dispatcher_kms" {

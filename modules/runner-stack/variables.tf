@@ -115,7 +115,6 @@ variable "github" {
     - `app_parameters.key_base64`: Ordered Parameter Store references for GitHub App private keys.
     - `app_parameters.id`: Ordered Parameter Store references for GitHub App IDs.
     - `app_parameters.installation_id`: Ordered optional Parameter Store references for GitHub App installation IDs.
-    - `organization_runners`: Registers runners at organization scope when true; otherwise repository-scoped registration is used.
     - `enterprise_server.url`: Optional GitHub Enterprise Server base URL. Null selects GitHub.com.
     - `enterprise_server.ssl_verify`: Enables TLS certificate verification for GitHub Enterprise Server requests.
     - `user_agent`: Optional User-Agent value added to GitHub API requests.
@@ -126,7 +125,6 @@ variable "github" {
       id              = list(map(string))
       installation_id = list(object({ name = string, arn = string }))
     })
-    organization_runners = bool
     enterprise_server = optional(object({
       url        = optional(string, null)
       ssl_verify = optional(bool, true)
@@ -135,55 +133,12 @@ variable "github" {
   })
 }
 
-variable "queue" {
-  description = <<-EOT
-    Build queue reference and queue-integrated Lambda configuration.
-
-    - `build.arn`: ARN of the externally managed build queue consumed by scale-up.
-    - `build.url`: URL of the externally managed build queue used when messages are published.
-    - `event_source_mapping.batch_size`: Maximum records delivered to a Lambda invocation.
-    - `event_source_mapping.maximum_batching_window_in_seconds`: Maximum time Lambda may buffer records before invocation.
-    - `tags`: Shared tags for queue-related resources created by this stack, including event-source mappings and the optional job-retry queue. These override module-level `tags`; component `tags` override this map when keys conflict. The referenced build queue is not managed or tagged by this module.
-  EOT
-  type = object({
-    build = object({
-      arn = string
-      url = string
-    })
-    event_source_mapping = optional(object({
-      batch_size                         = optional(number, 10)
-      maximum_batching_window_in_seconds = optional(number, 0)
-    }), {})
-    tags = optional(map(string), {})
-  })
-
-  validation {
-    condition     = var.queue.event_source_mapping.batch_size >= 1 && var.queue.event_source_mapping.batch_size <= 1000
-    error_message = "queue.event_source_mapping.batch_size must be between 1 and 1000."
-  }
-
-  validation {
-    condition     = var.queue.event_source_mapping.maximum_batching_window_in_seconds >= 0 && var.queue.event_source_mapping.maximum_batching_window_in_seconds <= 300
-    error_message = "queue.event_source_mapping.maximum_batching_window_in_seconds must be between 0 and 300."
-  }
-}
-
 variable "lambda" {
   description = <<-EOT
-    Configuration shared by the control-plane Lambda functions.
+    Common Lambda substrate that is independent of the selected demand orchestration provider.
 
-    - `zip`: Local control-plane archive. When null, the module's packaged runner archive is used.
-    - `s3.bucket`: Optional S3 bucket containing the Lambda archive. Setting this selects S3 instead of a local archive.
-    - `s3.key`: Object key of the Lambda archive in `s3.bucket`.
-    - `s3.object_version`: Optional version of the Lambda archive object.
-    - `runtime`: Runtime used by all control-plane Lambda functions.
-    - `architecture`: Instruction-set architecture used by all control-plane Lambda functions. Supported values are `arm64` and `x86_64`.
-    - `subnet_ids`: Subnets used for Lambda VPC configuration.
-    - `security_group_ids`: Security groups used for Lambda VPC configuration.
-    - `tags`: Shared tags applied to Lambda function resources only. These override module-level `tags`; component `tags` override this map when keys conflict.
-    - `principals`: Additional principals allowed to assume the control-plane Lambda roles.
-    - `role.path`: IAM path for module-managed Lambda execution roles. Defaults to a path derived from `prefix`.
-    - `role.permissions_boundary`: Permissions-boundary ARN applied to module-managed Lambda execution roles.
+    It configures the per-stack SSM housekeeper and provides the artifact, runtime, networking, and role defaults
+    used by classic webhook control-plane Lambdas. Component-specific sizing and tags belong to `orchestration.webhook`.
   EOT
   type = object({
     zip = optional(string, null)
@@ -214,120 +169,164 @@ variable "lambda" {
   }
 }
 
-variable "scale_up" {
+variable "orchestration" {
   description = <<-EOT
-    Scale-up component configuration.
+    Mutually exclusive demand-orchestration provider configuration. Exactly one of `webhook` or `scale_set` must be non-null.
 
-    - `memory_size`: Memory allocated to the scale-up Lambda in MB.
-    - `timeout`: Scale-up Lambda timeout in seconds.
-    - `reserved_concurrent_executions`: Reserved concurrency for the scale-up Lambda. Use `-1` for unreserved concurrency.
-    - `job_queued_check_enabled`: Enables the queued-job verification before scaling. When null, the default is enabled for persistent runners and disabled for ephemeral runners.
-    - `tags`: Tags for scale-up resources, including the Lambda function, log group, event-source mapping, and IAM role. These override module-level tags and the shared `lambda.tags`, `queue.tags`, and `observability.logs.tags` maps when keys conflict.
+    `webhook` owns the classic build queue plus scale-up, scale-down, scheduled pool, and job-retry controls.
+    `scale_set` owns the continuously running ECS listener. A scale-set lane creates no classic scaling Lambda, SQS, pool,
+    or job-retry resources. Wrapper presence selects the provider and must therefore be known during planning.
   EOT
   type = object({
-    memory_size                    = optional(number, 512)
-    timeout                        = optional(number, 60)
-    reserved_concurrent_executions = optional(number, 1)
-    job_queued_check_enabled       = optional(bool, null)
-    tags                           = optional(map(string), {})
+    webhook = optional(object({
+      github = object({
+        organization_runners = bool
+      })
+      queue = object({
+        build = object({
+          arn = string
+          url = string
+        })
+        event_source_mapping = optional(object({
+          batch_size                         = optional(number, 10)
+          maximum_batching_window_in_seconds = optional(number, 0)
+        }), {})
+        tags = optional(map(string), {})
+      })
+      scale_up = optional(object({
+        memory_size                    = optional(number, 512)
+        timeout                        = optional(number, 60)
+        reserved_concurrent_executions = optional(number, 1)
+        job_queued_check_enabled       = optional(bool, null)
+        tags                           = optional(map(string), {})
+      }), {})
+      scale_down = optional(object({
+        memory_size                     = optional(number, 512)
+        timeout                         = optional(number, 60)
+        schedule_expression             = optional(string, "cron(*/5 * * * ? *)")
+        minimum_running_time_in_minutes = optional(number, null)
+        tags                            = optional(map(string), {})
+        idle_config = optional(list(object({
+          cron             = string
+          timeZone         = string
+          idleCount        = number
+          evictionStrategy = optional(string, "oldest_first")
+        })), [])
+      }), {})
+      pool = optional(object({
+        config = optional(list(object({
+          schedule_expression          = string
+          schedule_expression_timezone = optional(string)
+          size                         = number
+        })), [])
+        include_busy_runners = optional(bool, false)
+        runner_owner         = optional(string, null)
+        tags                 = optional(map(string), {})
+        lambda = optional(object({
+          memory_size                    = optional(number, 512)
+          timeout                        = optional(number, 60)
+          reserved_concurrent_executions = optional(number, 1)
+        }), {})
+      }), {})
+      job_retry = optional(object({
+        enabled          = optional(bool, false)
+        delay_in_seconds = optional(number, 300)
+        delay_backoff    = optional(number, 2)
+        max_attempts     = optional(number, 1)
+        tags             = optional(map(string), {})
+        lambda = optional(object({
+          memory_size                    = optional(number, 256)
+          reserved_concurrent_executions = optional(number, 1)
+          timeout                        = optional(number, 30)
+        }), {})
+      }), {})
+    }), null)
+    scale_set = optional(object({
+      id                = number
+      github_config_url = string
+      github_app_index  = optional(number, 0)
+      min_runners       = optional(number, 0)
+      session_owner     = optional(string, null)
+      work_folder       = optional(string, "_work")
+      container_image   = string
+      tags              = optional(map(string), {})
+      ecs = object({
+        cluster = optional(object({
+          arn = string
+        }), null)
+        vpc_id                    = string
+        subnet_ids                = list(string)
+        security_group_ids        = optional(list(string), [])
+        create_security_group     = optional(bool, true)
+        egress_ipv4_cidr_blocks   = optional(list(string), ["0.0.0.0/0"])
+        egress_ipv6_cidr_blocks   = optional(list(string), [])
+        assign_public_ip          = optional(bool, false)
+        cpu                       = optional(number, 256)
+        memory                    = optional(number, 512)
+        architecture              = optional(string, "x86_64")
+        platform_version          = optional(string, "LATEST")
+        health_check_interval     = optional(number, 30)
+        health_check_timeout      = optional(number, 5)
+        health_check_retries      = optional(number, 3)
+        health_check_start_period = optional(number, 30)
+      })
+      iam = optional(object({
+        role_path            = optional(string, null)
+        permissions_boundary = optional(string, null)
+      }), {})
+      alarm = optional(object({
+        enabled    = optional(bool, false)
+        actions    = optional(list(string), [])
+        ok_actions = optional(list(string), [])
+      }), {})
+    }), null)
   })
-  default = {}
-}
-
-variable "scale_down" {
-  description = <<-EOT
-    Scale-down Lambda, schedule, and idle-runner configuration.
-
-    - `memory_size`: Memory allocated to the scale-down Lambda in MB.
-    - `timeout`: Scale-down Lambda timeout in seconds.
-    - `schedule_expression`: EventBridge schedule expression that invokes scale-down.
-    - `minimum_running_time_in_minutes`: Minimum runner age before scale-down may terminate it. Null selects the operating-system default.
-    - `tags`: Tags for scale-down resources, including the Lambda function, log group, EventBridge rule, and IAM role. These override module-level tags and the shared `lambda.tags` and `observability.logs.tags` maps when keys conflict.
-    - `idle_config`: Time-based desired idle-runner configurations.
-    - `idle_config[].cron`: Cron expression identifying when the configuration applies.
-    - `idle_config[].timeZone`: IANA time zone used to evaluate `cron`.
-    - `idle_config[].idleCount`: Number of idle runners to retain during the matching period.
-    - `idle_config[].evictionStrategy`: Selection strategy used when excess idle runners are removed.
-  EOT
-  type = object({
-    memory_size                     = optional(number, 512)
-    timeout                         = optional(number, 60)
-    schedule_expression             = optional(string, "cron(*/5 * * * ? *)")
-    minimum_running_time_in_minutes = optional(number, null)
-    tags                            = optional(map(string), {})
-    idle_config = optional(list(object({
-      cron             = string
-      timeZone         = string
-      idleCount        = number
-      evictionStrategy = optional(string, "oldest_first")
-    })), [])
-  })
-  default = {}
-}
-
-variable "pool" {
-  description = <<-EOT
-    Scheduled runner-pool configuration. The pool component is created only when `config` is non-empty.
-
-    - `config`: Scheduled target pool sizes.
-    - `config[].schedule_expression`: Scheduler expression that activates the target size.
-    - `config[].schedule_expression_timezone`: Optional IANA time zone used to evaluate the schedule.
-    - `config[].size`: Desired number of runners for the schedule.
-    - `include_busy_runners`: Includes busy runners when calculating the current pool size.
-    - `runner_owner`: Optional GitHub organization or repository owner used when creating pooled runners.
-    - `tags`: Tags for pool resources, including the Lambda function, log group, IAM roles, and scheduler group. These override module-level tags and the shared `lambda.tags` and `observability.logs.tags` maps when keys conflict.
-    - `lambda.memory_size`: Memory allocated to the pool Lambda in MB.
-    - `lambda.timeout`: Pool Lambda timeout in seconds.
-    - `lambda.reserved_concurrent_executions`: Reserved concurrency for the pool Lambda. Use `-1` for unreserved concurrency.
-  EOT
-  type = object({
-    config = optional(list(object({
-      schedule_expression          = string
-      schedule_expression_timezone = optional(string)
-      size                         = number
-    })), [])
-    include_busy_runners = optional(bool, false)
-    runner_owner         = optional(string, null)
-    tags                 = optional(map(string), {})
-    lambda = optional(object({
-      memory_size                    = optional(number, 512)
-      timeout                        = optional(number, 60)
-      reserved_concurrent_executions = optional(number, 1)
-    }), {})
-  })
-  default = {}
-}
-
-variable "job_retry" {
-  description = <<-EOT
-    Job-retry queue and Lambda configuration.
-
-    - `enabled`: Creates the retry queue, Lambda function, event-source mapping, and related IAM resources.
-    - `delay_in_seconds`: Initial delay before a queued-job retry check. AWS SQS limits this value to 900 seconds.
-    - `delay_backoff`: Multiplier applied to the delay after each unsuccessful check.
-    - `max_attempts`: Maximum retry-check attempts before the message is no longer republished.
-    - `tags`: Tags for job-retry resources, including the Lambda function, log group, IAM role, retry queue, and event-source mapping. These override module-level tags and the shared `lambda.tags`, `queue.tags`, and `observability.logs.tags` maps when keys conflict.
-    - `lambda.memory_size`: Memory allocated to the job-retry Lambda in MB.
-    - `lambda.reserved_concurrent_executions`: Reserved concurrency for the job-retry Lambda. Use `-1` for unreserved concurrency.
-    - `lambda.timeout`: Job-retry Lambda timeout in seconds and visibility timeout for its retry queue.
-  EOT
-  type = object({
-    enabled          = optional(bool, false)
-    delay_in_seconds = optional(number, 300)
-    delay_backoff    = optional(number, 2)
-    max_attempts     = optional(number, 1)
-    tags             = optional(map(string), {})
-    lambda = optional(object({
-      memory_size                    = optional(number, 256)
-      reserved_concurrent_executions = optional(number, 1)
-      timeout                        = optional(number, 30)
-    }), {})
-  })
-  default = {}
+  nullable = false
 
   validation {
-    condition     = !var.job_retry.enabled || var.job_retry.delay_in_seconds <= 900
-    error_message = "job_retry.delay_in_seconds cannot exceed the SQS maximum of 900 seconds."
+    condition     = (var.orchestration.webhook == null) != (var.orchestration.scale_set == null)
+    error_message = "Exactly one of orchestration.webhook or orchestration.scale_set must be configured."
+  }
+
+  validation {
+    condition = var.orchestration.webhook == null ? true : (
+      var.orchestration.webhook.queue.event_source_mapping.batch_size >= 1 &&
+      var.orchestration.webhook.queue.event_source_mapping.batch_size <= 1000 &&
+      var.orchestration.webhook.queue.event_source_mapping.maximum_batching_window_in_seconds >= 0 &&
+      var.orchestration.webhook.queue.event_source_mapping.maximum_batching_window_in_seconds <= 300
+    )
+    error_message = "orchestration.webhook.queue event-source mapping batch size must be between 1 and 1000 and its batching window between 0 and 300 seconds."
+  }
+
+  validation {
+    condition     = var.orchestration.webhook == null ? true : (!var.orchestration.webhook.job_retry.enabled || var.orchestration.webhook.job_retry.delay_in_seconds <= 900)
+    error_message = "orchestration.webhook.job_retry.delay_in_seconds cannot exceed the SQS maximum of 900 seconds."
+  }
+
+  validation {
+    condition = var.orchestration.scale_set == null ? true : (
+      var.orchestration.scale_set.id > 0 &&
+      floor(var.orchestration.scale_set.id) == var.orchestration.scale_set.id &&
+      var.orchestration.scale_set.github_app_index >= 0 &&
+      floor(var.orchestration.scale_set.github_app_index) == var.orchestration.scale_set.github_app_index &&
+      var.orchestration.scale_set.min_runners >= 0 &&
+      floor(var.orchestration.scale_set.min_runners) == var.orchestration.scale_set.min_runners
+    )
+    error_message = "orchestration.scale_set.id must be a positive integer, and github_app_index/min_runners must be non-negative integers."
+  }
+
+  validation {
+    condition = var.orchestration.scale_set == null ? true : (
+      can(regex("^https://[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?(:([1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]))?/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)?/?$", trimspace(var.orchestration.scale_set.github_config_url))) &&
+      !can(regex("^https://[^/]+:443/", lower(trimspace(var.orchestration.scale_set.github_config_url)))) &&
+      !can(regex("^https://[^/]+/enterprises/", lower(trimspace(var.orchestration.scale_set.github_config_url)))) &&
+      can(regex("^[^@ ]+@sha256:[0-9a-fA-F]{64}$", var.orchestration.scale_set.container_image)) &&
+      length(var.orchestration.scale_set.ecs.subnet_ids) > 0 &&
+      trimspace(var.orchestration.scale_set.ecs.vpc_id) != "" &&
+      contains(["arm64", "x86_64"], var.orchestration.scale_set.ecs.architecture) &&
+      (var.orchestration.scale_set.ecs.create_security_group || length(var.orchestration.scale_set.ecs.security_group_ids) > 0)
+    )
+    error_message = "orchestration.scale_set requires a canonical HTTPS organization/repository URL with an optional non-default port from 1 to 65535, immutable image digest, VPC/subnets, supported architecture, and at least one ECS security group."
   }
 }
 

@@ -78,6 +78,13 @@ module "multi_runner" {
             }
           }
         }
+        orchestration = {
+          webhook = {
+            matcherConfig = {
+              labelMatchers = [["self-hosted", "linux", "x64"]]
+            }
+          }
+        }
         compute_provider = {
           ec2 = {
             instance_types = ["m5.large"]
@@ -85,9 +92,6 @@ module "multi_runner" {
               enabled = false
             }
           }
-        }
-        matcherConfig = {
-          labelMatchers = [["self-hosted", "linux", "x64"]]
         }
       }
     }

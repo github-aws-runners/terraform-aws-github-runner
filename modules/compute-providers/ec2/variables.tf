@@ -365,3 +365,17 @@ variable "observability" {
   default  = {}
   nullable = false
 }
+
+variable "scale_set" {
+  description = "Optional GitHub Actions runner scale-set identity used to scope the EC2 listener policy."
+  type = object({
+    id = number
+  })
+  default  = null
+  nullable = true
+
+  validation {
+    condition     = var.scale_set == null ? true : (var.scale_set.id > 0 && floor(var.scale_set.id) == var.scale_set.id)
+    error_message = "scale_set.id must be a positive integer when scale_set is configured."
+  }
+}

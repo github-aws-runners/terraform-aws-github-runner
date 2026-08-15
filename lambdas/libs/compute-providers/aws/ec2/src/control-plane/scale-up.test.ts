@@ -111,6 +111,7 @@ async function expectCurrentRunners(runnerType: RunnerType, owner: string) {
     environment: 'unit-test-environment',
     runnerType,
     runnerOwner: owner,
+    source: ['scale-up-lambda', 'pool-lambda'],
   });
 }
 

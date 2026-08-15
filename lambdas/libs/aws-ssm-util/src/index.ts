@@ -1,4 +1,4 @@
-import { GetParametersCommand, PutParameterCommand, SSMClient, Tag } from '@aws-sdk/client-ssm';
+import { DeleteParameterCommand, GetParametersCommand, PutParameterCommand, SSMClient, Tag } from '@aws-sdk/client-ssm';
 import { getTracedAWSV3Client } from '@aws-github-runner/aws-powertools-util';
 import { SSMProvider } from '@aws-lambda-powertools/parameters/ssm';
 
@@ -104,6 +104,10 @@ export async function getParameters(parameter_names: string[]): Promise<Map<stri
 }
 
 export const SSM_ADVANCED_TIER_THRESHOLD = 4000;
+
+export async function deleteParameter(parameterName: string): Promise<void> {
+  await ssmClient().send(new DeleteParameterCommand({ Name: parameterName }));
+}
 
 export async function putParameter(
   parameter_name: string,

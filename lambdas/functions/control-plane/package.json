@@ -11,6 +11,7 @@
     "lint": "eslint src",
     "watch": "ts-node-dev --respawn --exit-child --files src/local-down.ts",
     "build": "ncc build src/lambda.ts -o dist",
+    "build:scale-set-listener": "ncc build src/scale-set/ecs-listener-main.ts -o dist/scale-set-listener",
     "dist": "yarn build && cp package.json dist/ && cd dist && zip ../runners.zip *",
     "format": "prettier --write \"**/*.ts\"",
     "format-check": "prettier --check \"**/*.ts\"",
@@ -33,6 +34,7 @@
     "@aws-github-runner/aws-powertools-util": "*",
     "@aws-github-runner/aws-ssm-util": "*",
     "@aws-github-runner/compute-providers": "*",
+    "@aws-github-runner/github-actions-scale-set": "*",
     "@aws-lambda-powertools/parameters": "^2.31.0",
     "@aws-sdk/client-ec2": "^3.1009.0",
     "@aws-sdk/client-sqs": "^3.1009.0",
@@ -47,6 +49,7 @@
   "nx": {
     "includedScripts": [
       "build",
+      "build:scale-set-listener",
       "dist",
       "format",
       "format-check",

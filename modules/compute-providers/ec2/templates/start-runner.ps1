@@ -1,6 +1,9 @@
 
 ## Retrieve instance metadata
 
+# Terraform selects the controller mode; instance tags are lifecycle data only.
+$scaleSetEnabled = "${scale_set_enabled}" -eq "true"
+
 function Tag-InstanceWithRunnerId {
     Write-Host "Checking for .runner file to extract agent ID"
 
@@ -35,6 +38,37 @@ function Tag-InstanceWithRunnerId {
         Write-Host "Warning: Error processing .runner file - $($_.Exception.Message)"
         return $true
     }
+}
+
+function Set-ScaleSetRunnerState {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$State
+    )
+
+    Write-Host "Tagging scale-set runner instance as $State"
+    $tagResult = aws ec2 create-tags --region "$Region" --resources "$InstanceId" --tags "Key=ghr:scale_set_state,Value=$State" 2>&1
+
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "Successfully tagged scale-set runner instance as $State"
+        return $true
+    }
+
+    Write-Error "Failed to tag scale-set runner instance as $State - $tagResult"
+    return $false
+}
+
+function Stop-ScaleSetRunnerStartup {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Reason
+    )
+
+    Write-Error $Reason
+    Set-ScaleSetRunnerState -State "stopped" | Out-Null
+    Write-Host "Terminating instance after scale-set runner startup failed"
+    aws ec2 terminate-instances --instance-ids "$InstanceId" --region "$Region"
+    exit 1
 }
 
 ## Retrieve instance metadata
@@ -77,6 +111,9 @@ Write-Host  "Retrieved ghr:runner_name_prefix tag - ($runner_name_prefix)"
 $ssm_config_path=$tags.Tags.where( {$_.Key -eq 'ghr:ssm_config_path'}).value
 Write-Host  "Retrieved ghr:ssm_config_path tag - ($ssm_config_path)"
 
+$scale_set_state=$tags.Tags.where( {$_.Key -eq 'ghr:scale_set_state'}).value
+Write-Host  "Retrieved ghr:scale_set_state tag - ($scale_set_state)"
+
 $parameters=$(aws ssm get-parameters-by-path --path "$ssm_config_path" --region "$Region" --query "Parameters[*].{Name:Name,Value:Value}") | ConvertFrom-Json
 Write-Host  "Retrieved parameters from AWS SSM"
 
@@ -107,6 +144,22 @@ if ($enable_cloudwatch_agent -eq "true")
 
 ## Configure the runner
 
+if ($scaleSetEnabled) {
+    if ($enable_jit_config -ne "true" -or $agent_mode -ne "ephemeral") {
+        Stop-ScaleSetRunnerStartup "Scale-set runners require JIT configuration and ephemeral mode"
+    }
+
+    while ($scale_set_state -ne "config-published") {
+        Write-Host "Waiting for scale-set runner config to be published"
+        Start-Sleep 1
+        $scale_set_state = aws ec2 describe-tags --region "$Region" --filters "Name=resource-id,Values=$InstanceId" "Name=key,Values=ghr:scale_set_state" --query "Tags[0].Value" --output text
+        if ($scale_set_state -eq "None") {
+            $scale_set_state = ""
+        }
+    }
+    Write-Host "Scale-set runner config is published"
+}
+
 Write-Host "Get GH Runner config from AWS SSM"
 $config = $null
 $i = 0
@@ -117,8 +170,20 @@ do {
     $i++
 } while (($null -eq $config) -and ($i -lt 30))
 
+if ($scaleSetEnabled -and $null -eq $config) {
+    Stop-ScaleSetRunnerStartup "Failed to retrieve scale-set runner config from AWS SSM"
+}
+
 Write-Host "Delete GH Runner token from AWS SSM"
-aws ssm delete-parameter --name "$token_path/$InstanceId" --region $Region
+if ($scaleSetEnabled) {
+    $deleteResult = aws ssm delete-parameter --name "$token_path/$InstanceId" --region $Region 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Stop-ScaleSetRunnerStartup "Failed to delete scale-set runner config from AWS SSM - $deleteResult"
+    }
+}
+else {
+    aws ssm delete-parameter --name "$token_path/$InstanceId" --region $Region
+}
 
 # Create or update user
 if (-not($run_as)) {
@@ -180,7 +245,13 @@ Write-Host "Starting runner after $(((get-date) - (gcim Win32_OperatingSystem).L
 if ($agent_mode -eq "ephemeral") {
     if ($enable_jit_config -eq "true") {
         Write-Host "Starting with jit config"
+        if ($scaleSetEnabled -and -not (Set-ScaleSetRunnerState -State "ready")) {
+            Stop-ScaleSetRunnerStartup "Failed to persist the required ready scale-set runner state"
+        }
         Invoke-Expression ".\run.cmd --jitconfig $${config}"
+        if ($scaleSetEnabled -and -not (Set-ScaleSetRunnerState -State "stopped")) {
+            Write-Error "Failed to persist the stopped scale-set runner state before termination"
+        }
     }
     else {
         Write-Host "Starting without jit config"

@@ -22,14 +22,19 @@ variable "github_app" {
       arn  = string
       name = string
     }))
+    webhook_secret_required = optional(bool, true)
   })
   validation {
-    condition     = (var.github_app.key_base64 != null || var.github_app.key_base64_ssm != null) && (var.github_app.id != null || var.github_app.id_ssm != null) && (var.github_app.webhook_secret != null || var.github_app.webhook_secret_ssm != null)
+    condition = (
+      (var.github_app.key_base64 != null || var.github_app.key_base64_ssm != null) &&
+      (var.github_app.id != null || var.github_app.id_ssm != null) &&
+      (!var.github_app.webhook_secret_required || var.github_app.webhook_secret != null || var.github_app.webhook_secret_ssm != null)
+    )
     error_message = <<EOF
-     You must set all of the following parameters, choosing one option from each pair:
+     You must set the GitHub App ID and key, choosing one option from each pair:
       - `key_base64` or `key_base64_ssm`
       - `id` or `id_ssm`
-      - `webhook_secret` or `webhook_secret_ssm`
+     When `github_app.webhook_secret_required` is true, also set `webhook_secret` or `webhook_secret_ssm`.
     EOF
   }
 }

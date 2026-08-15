@@ -76,6 +76,7 @@ resource "aws_cloudwatch_log_group" "scale_up" {
 }
 
 resource "aws_lambda_event_source_mapping" "scale_up" {
+  enabled                            = var.config.enabled
   event_source_arn                   = var.config.queue.build.arn
   function_name                      = aws_lambda_function.scale_up.arn
   function_response_types            = ["ReportBatchItemFailures"]

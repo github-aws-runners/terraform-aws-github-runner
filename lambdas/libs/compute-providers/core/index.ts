@@ -6,8 +6,9 @@ export interface ComputeProvider {
   type: ComputeProviderType;
 }
 
-export type LambdaRunnerSource = 'scale-up-lambda' | 'pool-lambda';
+export type LambdaRunnerSource = 'scale-up-lambda' | 'pool-lambda' | 'scale-set-lambda';
 export type RunnerType = 'Org' | 'Repo';
+export type ScaleSetRunnerState = 'provisioning' | 'publishing' | 'config-published' | 'ready' | 'retiring' | 'stopped';
 
 export interface CreateGitHubRunnerConfig {
   /** Index of the GitHub App selected for this flow; used to attribute rate-limit metrics per app. */
@@ -72,6 +73,84 @@ export interface ScaleUpComputeProvider<TState = unknown> extends ComputeProvide
   createRunners(input: CreateScaleUpRunnersInput<TState>): Promise<CreateRunnerResult>;
 }
 
+export interface ScaleSetRunnerScope extends CurrentRunnersInput {
+  scaleSetId: number;
+}
+
+export interface ScaleSetRunnerConfig extends ScaleSetRunnerScope {
+  runnerNamePrefix: string;
+  ssmTokenPath: string;
+  ssmParameterStoreTags: { Key: string; Value: string }[];
+}
+
+export interface GetCurrentScaleSetRunnersInput extends ScaleSetRunnerScope {
+  runnerNamePrefix: string;
+  ssmTokenPath: string;
+  /** Exact GitHub cleanup when safely reaping unpublished or stopped compute. */
+  removeJitRunner: RemoveScaleSetRunner;
+}
+
+export interface ScaleSetJitConfigInput {
+  runnerName: string;
+}
+
+export interface ScaleSetJitConfigResult {
+  encodedJitConfig: string;
+  runnerId: number;
+  runnerName: string;
+}
+
+export type GenerateScaleSetJitConfig = (input: ScaleSetJitConfigInput) => Promise<ScaleSetJitConfigResult>;
+export interface RemoveScaleSetRunnerInput {
+  runnerId: number;
+  runnerName: string;
+  scaleSetId: number;
+}
+
+export type RemoveScaleSetRunner = (input: RemoveScaleSetRunnerInput) => Promise<void>;
+
+export interface CreateScaleSetRunnersInput {
+  runnerConfig: ScaleSetRunnerConfig;
+  numberOfRunners: number;
+  generateJitConfig: GenerateScaleSetJitConfig;
+  /** Best-effort cleanup for a GitHub runner whose JIT config was not published. */
+  removeRunner: RemoveScaleSetRunner;
+}
+
+export interface TerminateSurplusScaleSetRunnersInput extends ScaleSetRunnerScope {
+  /** Prefix used to derive the immutable expected runner name from its compute ID. */
+  runnerNamePrefix: string;
+  /** Desired total capacity after reconciliation. */
+  desiredRunners: number;
+  /** Surplus observed by the orchestrator. Providers must not terminate more than this count. */
+  excessRunners: number;
+  /** Per-runner JIT configuration path used to claim idle compute before termination. */
+  ssmTokenPath: string;
+  /** Remove the exact GitHub runner before compute termination; non-idempotent failures must abort termination. */
+  removeRunner: RemoveScaleSetRunner;
+}
+
+export interface TerminateScaleSetRunnerInput extends ScaleSetRunnerScope {
+  runnerName: string;
+}
+
+export interface MarkScaleSetRunnerStartedInput extends ScaleSetRunnerScope {
+  runnerName: string;
+}
+
+export interface ScaleSetComputeProvider extends ComputeProvider {
+  /** Count this scale set's ready or still-provisioning runners. */
+  getCurrentRunners(input: GetCurrentScaleSetRunnersInput): Promise<number>;
+  /** Create compute and publish one GitHub-generated JIT config per runner. */
+  createRunners(input: CreateScaleSetRunnersInput): Promise<CreateRunnerResult>;
+  /** Remove up to the requested surplus without terminating running jobs. */
+  terminateSurplusRunners(input: TerminateSurplusScaleSetRunnersInput): Promise<number>;
+  /** Mark the exact compute named by a JobStarted message as fully bootstrapped. */
+  markRunnerStarted(input: MarkScaleSetRunnerStartedInput): Promise<void>;
+  /** Terminate the exact ephemeral compute named by a JobCompleted message. */
+  terminateCompletedRunner(input: TerminateScaleSetRunnerInput): Promise<void>;
+}
+
 export interface RunnerInfo {
   id: string;
   launchTime?: Date;
@@ -81,6 +160,8 @@ export interface RunnerInfo {
   org?: string;
   orphan?: boolean;
   githubRunnerId?: string;
+  runnerName?: string;
+  scaleSetState?: ScaleSetRunnerState;
   bypassRemoval?: boolean;
 }
 

@@ -15,7 +15,7 @@ locals {
       [null],
       [for p in module.ssm.additional_app_parameters : p.installation_id]
     )
-    webhook_secret = coalesce(local.translated_experimental.github.app.webhook_secret_ssm, module.ssm.parameters.github_app_webhook_secret)
+    webhook_secret = local.webhook_enabled ? coalesce(local.translated_experimental.github.app.webhook_secret_ssm, module.ssm.parameters.github_app_webhook_secret) : null
   }
 
   # Keep a concrete map type when unrelated configuration values are unknown until apply.

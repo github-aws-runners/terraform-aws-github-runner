@@ -23,13 +23,15 @@ output "runners_map" {
 }
 
 output "runners_map_v2" {
-  description = "Experimental v2 runner resources keyed by runner configuration and grouped by common or compute-provider ownership."
+  description = "Experimental v2 runner resources keyed by runner configuration. The orchestration object is canonical; scale_up, scale_down, pool, and scale_set remain compatibility aliases."
   value = { for runner_key, runner in module.runner_stacks : runner_key => {
-    runner     = runner.runner
-    scale_up   = runner.scale_up
-    scale_down = runner.scale_down
-    pool       = runner.pool
-    provider   = runner.provider
+    runner        = runner.runner
+    orchestration = runner.orchestration
+    scale_up      = runner.scale_up
+    scale_down    = runner.scale_down
+    pool          = runner.pool
+    scale_set     = runner.scale_set
+    provider      = runner.provider
     }
   }
 }
@@ -45,15 +47,15 @@ output "binaries_syncer_map" {
 }
 
 output "webhook" {
-  value = {
-    gateway          = module.webhook.gateway
-    lambda           = module.webhook.lambda
-    lambda_log_group = module.webhook.lambda_log_group
-    lambda_role      = module.webhook.role
-    endpoint         = "${module.webhook.gateway.api_endpoint}/${module.webhook.endpoint_relative_path}"
-    webhook          = module.webhook.webhook
-    dispatcher       = local.translated_experimental.webhook.eventbridge.enable ? module.webhook.dispatcher : null
-    eventbridge      = local.translated_experimental.webhook.eventbridge.enable ? module.webhook.eventbridge : null
+  value = !local.webhook_enabled ? null : {
+    gateway          = module.webhook[0].gateway
+    lambda           = module.webhook[0].lambda
+    lambda_log_group = module.webhook[0].lambda_log_group
+    lambda_role      = module.webhook[0].role
+    endpoint         = "${module.webhook[0].gateway.api_endpoint}/${module.webhook[0].endpoint_relative_path}"
+    webhook          = module.webhook[0].webhook
+    dispatcher       = local.translated_experimental.webhook.eventbridge.enable ? module.webhook[0].dispatcher : null
+    eventbridge      = local.translated_experimental.webhook.eventbridge.enable ? module.webhook[0].eventbridge : null
   }
 }
 
@@ -62,7 +64,7 @@ output "ssm_parameters" {
     {
       id             = { name = local.github_app_parameters.id[0].name, arn = local.github_app_parameters.id[0].arn }
       key_base64     = { name = local.github_app_parameters.key_base64[0].name, arn = local.github_app_parameters.key_base64[0].arn }
-      webhook_secret = { name = local.github_app_parameters.webhook_secret.name, arn = local.github_app_parameters.webhook_secret.arn }
+      webhook_secret = local.github_app_parameters.webhook_secret == null ? null : { name = local.github_app_parameters.webhook_secret.name, arn = local.github_app_parameters.webhook_secret.arn }
     },
     { for idx, v in local.github_app_parameters.id : "github_app_id_${idx}" => {
       name = v.name
@@ -72,7 +74,7 @@ output "ssm_parameters" {
       name = v.name
       arn  = v.arn
     } },
-    { "github_app_webhook_secret" = {
+    { "github_app_webhook_secret" = local.github_app_parameters.webhook_secret == null ? null : {
       name = local.github_app_parameters.webhook_secret.name
       arn  = local.github_app_parameters.webhook_secret.arn
     } },

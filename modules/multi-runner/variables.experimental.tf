@@ -245,7 +245,7 @@ variable "experimental" {
     - `multi_runner_config[].runner.architecture`: Runner distribution architecture.
     - `multi_runner_config[].runner.boot_time_in_minutes`: Expected boot duration used before a runner is considered stale.
     - `multi_runner_config[].runner.disable_default_labels`: Prevents GitHub default labels from being registered.
-    - `multi_runner_config[].runner.extra_labels`: Additional labels combined with `matcherConfig.labelMatchers`. Default self-hosted, operating-system, and architecture labels are also included unless `runner.disable_default_labels` is true.
+    - `multi_runner_config[].runner.extra_labels`: Additional labels combined with `orchestration.webhook.matcherConfig.labelMatchers` for webhook lanes. Default self-hosted, operating-system, and architecture labels are also included unless `runner.disable_default_labels` is true.
     - `multi_runner_config[].runner.group_name`: GitHub runner group used during registration.
     - `multi_runner_config[].runner.name_prefix`: Prefix added to registered runner names.
     - `multi_runner_config[].runner.run_as_root`: Runs the runner service as root when supported by the compute provider.
@@ -263,7 +263,22 @@ variable "experimental" {
     - `multi_runner_config[].runner.iam.additional_trust_policy_json`: Optional IAM policy document merged with the selected compute provider's default runner-role trust policy. Keep it null when the lane selects an external `runner.iam.role`.
     - `multi_runner_config[].runner.iam.path`: IAM path for the module-managed runner role.
     - `multi_runner_config[].runner.iam.permissions_boundary`: Permissions-boundary ARN for the module-managed runner role.
-    - `multi_runner_config[].github.organization_runners`: Registers runners at organization scope when true; otherwise repository-scoped registration is used.
+    - `multi_runner_config[].lambda`: Lambda runtime, architecture, networking, tags, and role substrate shared by orchestration and the lane SSM housekeeper. Scale function settings belong under `orchestration.webhook.lambda`.
+    - `multi_runner_config[].orchestration`: Demand-controller selection. Exactly one of `webhook` or `scale_set` must be non-null; different lanes may select different controllers in one deployment.
+    - `multi_runner_config[].orchestration.webhook`: Selects the classic workflow-job webhook, SQS build queue, scale-up, scheduled scale-down/pool, and optional job-retry control plane.
+    - `multi_runner_config[].orchestration.webhook.github.organization_runners`: Registers runners at organization scope when true; otherwise repository-scoped registration is used.
+    - `multi_runner_config[].orchestration.scale_set`: Selects stateful GitHub Actions runner scale-set demand for this lane. Scale-set lanes create no build queue or shared webhook resources unless another lane selects webhook orchestration.
+    - `multi_runner_config[].orchestration.scale_set.id`: Numeric ID of a pre-created GitHub Actions runner scale set.
+    - `multi_runner_config[].orchestration.scale_set.github_config_url`: HTTPS GitHub organization or repository URL that owns the scale set.
+    - `multi_runner_config[].orchestration.scale_set.github_app_index`: Zero-based GitHub App credential index used by the listener. The default is `0`.
+    - `multi_runner_config[].orchestration.scale_set.min_runners`: Warm runner floor. The default is `0`; `runner.maximum_count` remains the capacity ceiling.
+    - `multi_runner_config[].orchestration.scale_set.container_image`: Immutable ECS listener image reference ending in `@sha256:<digest>`.
+    - `multi_runner_config[].orchestration.scale_set.session_owner`: Optional stable Actions message-session owner. Null derives it from the ECS service.
+    - `multi_runner_config[].orchestration.scale_set.work_folder`: Runner work folder passed to JIT configuration. The default is `_work`.
+    - `multi_runner_config[].orchestration.scale_set.iam.role_path`: IAM path for scale-set listener task and execution roles. Null inherits `experimental.roles.path`.
+    - `multi_runner_config[].orchestration.scale_set.iam.permissions_boundary`: Permissions-boundary ARN for scale-set listener task and execution roles. Null inherits `experimental.roles.permissions_boundary`.
+    - `multi_runner_config[].orchestration.scale_set.ecs`: Fargate cluster, networking, sizing, architecture, and health-check settings for the singleton listener.
+    - `multi_runner_config[].orchestration.scale_set.alarm`: Optional missing-listener CloudWatch alarm configuration.
     - `multi_runner_config[].lambda.runtime`: Per-configuration runtime override for runner-stack Lambda functions.
     - `multi_runner_config[].lambda.architecture`: Per-configuration architecture override for runner-stack Lambda functions.
     - `multi_runner_config[].lambda.subnet_ids`: Per-configuration subnet override for runner-stack Lambda functions.
@@ -271,47 +286,47 @@ variable "experimental" {
     - `multi_runner_config[].lambda.tags`: Per-configuration tags for control-plane Lambda functions. Component tags override this map.
     - `multi_runner_config[].lambda.role.path`: Per-configuration IAM path for module-managed Lambda roles. Null inherits `experimental.lambda.role.path`, then `experimental.roles.path`.
     - `multi_runner_config[].lambda.role.permissions_boundary`: Per-configuration permissions-boundary ARN for module-managed Lambda roles. Null inherits `experimental.lambda.role.permissions_boundary`, then `experimental.roles.permissions_boundary`.
-    - `multi_runner_config[].queue.delay_webhook_event`: Delay in seconds applied to webhook job messages. Null inherits the global queue default.
-    - `multi_runner_config[].queue.job_queue_retention_in_seconds`: Build-queue message retention period in seconds. Null inherits the global queue default.
-    - `multi_runner_config[].queue.visibility_timeout_seconds`: Build-queue visibility timeout. Null inherits the global queue default; the resolved value must be at least six times the resolved `lambda.scale_up.timeout` so Lambda has enough time to retry throttled invocations.
-    - `multi_runner_config[].lambda.scale_up.event_source_mapping.batch_size`: Maximum build-queue records delivered to one scale-up Lambda invocation.
-    - `multi_runner_config[].lambda.scale_up.event_source_mapping.maximum_batching_window_in_seconds`: Maximum batching window for build-queue records.
-    - `multi_runner_config[].queue.redrive_build_queue.enabled`: Creates and attaches a dead-letter queue for the build queue. A null wrapper or null leaf inherits the corresponding global value.
-    - `multi_runner_config[].queue.redrive_build_queue.maxReceiveCount`: Number of receives before a build message moves to the dead-letter queue. A null wrapper or null leaf inherits the corresponding global value, and the resolved value must be greater than zero when redrive is enabled.
-    - `multi_runner_config[].queue.tags`: Tags for configuration-owned queue resources. These merge after global queue tags and entry-level `tags`; component tags override this map.
-    - `multi_runner_config[].lambda.scale_up.memory_size`: Memory allocated to the scale-up Lambda in MB.
-    - `multi_runner_config[].lambda.scale_up.timeout`: Scale-up Lambda timeout in seconds.
-    - `multi_runner_config[].lambda.scale_up.reserved_concurrent_executions`: Reserved concurrency for the scale-up Lambda. Use `-1` for unreserved concurrency.
-    - `multi_runner_config[].lambda.scale_up.job_queued_check_enabled`: Enables the queued-job verification before scaling. Null inherits the global value; if both are null, behavior follows the resolved runner mode.
-    - `multi_runner_config[].lambda.scale_up.tags`: Tags for scale-up resources. These override entry-level and shared Lambda, queue, and log-group tags within their resource scopes.
-    - `multi_runner_config[].lambda.scale_down.memory_size`: Memory allocated to the scale-down Lambda in MB.
-    - `multi_runner_config[].lambda.scale_down.timeout`: Scale-down Lambda timeout in seconds.
-    - `multi_runner_config[].lambda.scale_down.schedule_expression`: EventBridge schedule expression that invokes scale-down.
-    - `multi_runner_config[].lambda.scale_down.minimum_running_time_in_minutes`: Minimum runner age before scale-down may terminate it. Null inherits the global value; if both are null, the operating-system default is selected.
-    - `multi_runner_config[].lambda.scale_down.tags`: Tags for scale-down resources. These override entry-level and shared Lambda and log-group tags within their resource scopes.
-    - `multi_runner_config[].lambda.scale_down.idle_config`: Time-based desired idle-runner configurations.
-    - `multi_runner_config[].lambda.scale_down.idle_config[].cron`: Cron expression identifying when the idle configuration applies.
-    - `multi_runner_config[].lambda.scale_down.idle_config[].timeZone`: IANA time zone used to evaluate `cron`.
-    - `multi_runner_config[].lambda.scale_down.idle_config[].idleCount`: Number of idle runners to retain during the matching period.
-    - `multi_runner_config[].lambda.scale_down.idle_config[].evictionStrategy`: Selection strategy used when excess idle runners are removed.
-    - `multi_runner_config[].lambda.pool.memory_size`: Memory allocated to the pool Lambda in MB.
-    - `multi_runner_config[].lambda.pool.timeout`: Pool Lambda timeout in seconds.
-    - `multi_runner_config[].lambda.pool.reserved_concurrent_executions`: Reserved concurrency for the pool Lambda. Use `-1` for unreserved concurrency.
-    - `multi_runner_config[].lambda.pool.config`: Scheduled target pool sizes. An empty list disables the pool component.
-    - `multi_runner_config[].lambda.pool.config[].schedule_expression`: Scheduler expression that activates the target size.
-    - `multi_runner_config[].lambda.pool.config[].schedule_expression_timezone`: Optional IANA time zone used to evaluate the schedule.
-    - `multi_runner_config[].lambda.pool.config[].size`: Desired number of runners for the schedule.
-    - `multi_runner_config[].lambda.pool.runner_owner`: Optional GitHub organization or repository owner used when creating pooled runners.
-    - `multi_runner_config[].lambda.pool.include_busy_runners`: Includes busy runners when reconciling scheduled pool capacity.
-    - `multi_runner_config[].lambda.pool.tags`: Tags for pool resources. These override entry-level and shared Lambda and log-group tags within their resource scopes.
-    - `multi_runner_config[].job_retry.enabled`: Creates the retry queue, Lambda function, event-source mapping, and related IAM resources.
-    - `multi_runner_config[].job_retry.delay_in_seconds`: Initial delay before a queued-job retry check.
-    - `multi_runner_config[].job_retry.delay_backoff`: Multiplier applied to the delay after each unsuccessful check.
-    - `multi_runner_config[].job_retry.max_attempts`: Maximum retry-check attempts before the message is no longer republished.
-    - `multi_runner_config[].job_retry.tags`: Tags for job-retry resources. These override entry-level and shared Lambda, queue, and log-group tags within their resource scopes.
-    - `multi_runner_config[].job_retry.lambda.memory_size`: Memory allocated to the job-retry Lambda in MB.
-    - `multi_runner_config[].job_retry.lambda.reserved_concurrent_executions`: Reserved concurrency for the job-retry Lambda. Use `-1` for unreserved concurrency.
-    - `multi_runner_config[].job_retry.lambda.timeout`: Job-retry Lambda timeout in seconds and visibility timeout for its retry queue.
+    - `multi_runner_config[].orchestration.webhook.queue.delay_webhook_event`: Delay in seconds applied to webhook job messages. Null inherits the global queue default.
+    - `multi_runner_config[].orchestration.webhook.queue.job_queue_retention_in_seconds`: Build-queue message retention period in seconds. Null inherits the global queue default.
+    - `multi_runner_config[].orchestration.webhook.queue.visibility_timeout_seconds`: Build-queue visibility timeout. Null inherits the global queue default; the resolved value must be at least six times the resolved `lambda.scale_up.timeout` so Lambda has enough time to retry throttled invocations.
+    - `multi_runner_config[].orchestration.webhook.lambda.scale_up.event_source_mapping.batch_size`: Maximum build-queue records delivered to one scale-up Lambda invocation.
+    - `multi_runner_config[].orchestration.webhook.lambda.scale_up.event_source_mapping.maximum_batching_window_in_seconds`: Maximum batching window for build-queue records.
+    - `multi_runner_config[].orchestration.webhook.queue.redrive_build_queue.enabled`: Creates and attaches a dead-letter queue for the build queue. A null wrapper or null leaf inherits the corresponding global value.
+    - `multi_runner_config[].orchestration.webhook.queue.redrive_build_queue.maxReceiveCount`: Number of receives before a build message moves to the dead-letter queue. A null wrapper or null leaf inherits the corresponding global value, and the resolved value must be greater than zero when redrive is enabled.
+    - `multi_runner_config[].orchestration.webhook.queue.tags`: Tags for configuration-owned queue resources. These merge after global queue tags and entry-level `tags`; component tags override this map.
+    - `multi_runner_config[].orchestration.webhook.lambda.scale_up.memory_size`: Memory allocated to the scale-up Lambda in MB.
+    - `multi_runner_config[].orchestration.webhook.lambda.scale_up.timeout`: Scale-up Lambda timeout in seconds.
+    - `multi_runner_config[].orchestration.webhook.lambda.scale_up.reserved_concurrent_executions`: Reserved concurrency for the scale-up Lambda. Use `-1` for unreserved concurrency.
+    - `multi_runner_config[].orchestration.webhook.lambda.scale_up.job_queued_check_enabled`: Enables the queued-job verification before scaling. Null inherits the global value; if both are null, behavior follows the resolved runner mode.
+    - `multi_runner_config[].orchestration.webhook.lambda.scale_up.tags`: Tags for scale-up resources. These override entry-level and shared Lambda, queue, and log-group tags within their resource scopes.
+    - `multi_runner_config[].orchestration.webhook.lambda.scale_down.memory_size`: Memory allocated to the scale-down Lambda in MB.
+    - `multi_runner_config[].orchestration.webhook.lambda.scale_down.timeout`: Scale-down Lambda timeout in seconds.
+    - `multi_runner_config[].orchestration.webhook.lambda.scale_down.schedule_expression`: EventBridge schedule expression that invokes scale-down.
+    - `multi_runner_config[].orchestration.webhook.lambda.scale_down.minimum_running_time_in_minutes`: Minimum runner age before scale-down may terminate it. Null inherits the global value; if both are null, the operating-system default is selected.
+    - `multi_runner_config[].orchestration.webhook.lambda.scale_down.tags`: Tags for scale-down resources. These override entry-level and shared Lambda and log-group tags within their resource scopes.
+    - `multi_runner_config[].orchestration.webhook.lambda.scale_down.idle_config`: Time-based desired idle-runner configurations.
+    - `multi_runner_config[].orchestration.webhook.lambda.scale_down.idle_config[].cron`: Cron expression identifying when the idle configuration applies.
+    - `multi_runner_config[].orchestration.webhook.lambda.scale_down.idle_config[].timeZone`: IANA time zone used to evaluate `cron`.
+    - `multi_runner_config[].orchestration.webhook.lambda.scale_down.idle_config[].idleCount`: Number of idle runners to retain during the matching period.
+    - `multi_runner_config[].orchestration.webhook.lambda.scale_down.idle_config[].evictionStrategy`: Selection strategy used when excess idle runners are removed.
+    - `multi_runner_config[].orchestration.webhook.lambda.pool.memory_size`: Memory allocated to the pool Lambda in MB.
+    - `multi_runner_config[].orchestration.webhook.lambda.pool.timeout`: Pool Lambda timeout in seconds.
+    - `multi_runner_config[].orchestration.webhook.lambda.pool.reserved_concurrent_executions`: Reserved concurrency for the pool Lambda. Use `-1` for unreserved concurrency.
+    - `multi_runner_config[].orchestration.webhook.lambda.pool.config`: Scheduled target pool sizes. An empty list disables the pool component.
+    - `multi_runner_config[].orchestration.webhook.lambda.pool.config[].schedule_expression`: Scheduler expression that activates the target size.
+    - `multi_runner_config[].orchestration.webhook.lambda.pool.config[].schedule_expression_timezone`: Optional IANA time zone used to evaluate the schedule.
+    - `multi_runner_config[].orchestration.webhook.lambda.pool.config[].size`: Desired number of runners for the schedule.
+    - `multi_runner_config[].orchestration.webhook.lambda.pool.runner_owner`: Optional GitHub organization or repository owner used when creating pooled runners.
+    - `multi_runner_config[].orchestration.webhook.lambda.pool.include_busy_runners`: Includes busy runners when reconciling scheduled pool capacity.
+    - `multi_runner_config[].orchestration.webhook.lambda.pool.tags`: Tags for pool resources. These override entry-level and shared Lambda and log-group tags within their resource scopes.
+    - `multi_runner_config[].orchestration.webhook.job_retry.enabled`: Creates the retry queue, Lambda function, event-source mapping, and related IAM resources.
+    - `multi_runner_config[].orchestration.webhook.job_retry.delay_in_seconds`: Initial delay before a queued-job retry check.
+    - `multi_runner_config[].orchestration.webhook.job_retry.delay_backoff`: Multiplier applied to the delay after each unsuccessful check.
+    - `multi_runner_config[].orchestration.webhook.job_retry.max_attempts`: Maximum retry-check attempts before the message is no longer republished.
+    - `multi_runner_config[].orchestration.webhook.job_retry.tags`: Tags for job-retry resources. These override entry-level and shared Lambda, queue, and log-group tags within their resource scopes.
+    - `multi_runner_config[].orchestration.webhook.job_retry.lambda.memory_size`: Memory allocated to the job-retry Lambda in MB.
+    - `multi_runner_config[].orchestration.webhook.job_retry.lambda.reserved_concurrent_executions`: Reserved concurrency for the job-retry Lambda. Use `-1` for unreserved concurrency.
+    - `multi_runner_config[].orchestration.webhook.job_retry.lambda.timeout`: Job-retry Lambda timeout in seconds and visibility timeout for its retry queue.
     - `multi_runner_config[].ssm.paths.root`: Base Parameter Store root for this lane. The configuration key is always appended to preserve lane isolation. The omitted global root derives `/github-action-runners/<prefix>`.
     - `multi_runner_config[].ssm.paths.tokens`: Path segment below the lane root used for runner registration tokens and just-in-time configuration.
     - `multi_runner_config[].ssm.paths.config`: Path segment below the lane root used for persistent runner configuration.
@@ -421,17 +436,17 @@ variable "experimental" {
     - `multi_runner_config[].compute_provider.ec2.metadata_options.http_endpoint`: Enables or disables the Instance Metadata Service endpoint.
     - `multi_runner_config[].compute_provider.ec2.metadata_options.http_tokens`: Controls whether IMDSv2 session tokens are optional or required.
     - `multi_runner_config[].compute_provider.ec2.metadata_options.http_put_response_hop_limit`: Network hop limit for Instance Metadata Service token responses.
-    - `multi_runner_config[].matcherConfig.labelMatchers`: Groups of labels used to match webhook jobs to this configuration.
-    - `multi_runner_config[].matcherConfig.exactMatch`: Deprecated one-way match. When true, every workflow-job label must appear in a configured label group, but that group may contain additional labels.
-    - `multi_runner_config[].matcherConfig.bidirectionalLabelMatch`: Requires an exact two-way set match between workflow-job labels and a configured label group, with no extra or missing labels.
-    - `multi_runner_config[].matcherConfig.priority`: Ordering used when multiple configurations match the same job.
-    - `multi_runner_config[].matcherConfig.enableDynamicLabels`: Enables runtime interpretation of supported dynamic AWS labels.
-    - `multi_runner_config[].matcherConfig.awsDynamicLabelsPolicy`: Optional policy restricting values accepted from dynamic AWS labels.
-    - `multi_runner_config[].matcherConfig.awsDynamicLabelsPolicy.blocked_keys`: Dynamic-label keys rejected for this lane. The default is `[]`.
-    - `multi_runner_config[].matcherConfig.awsDynamicLabelsPolicy.restricted_keys`: Per-key allow, deny, and maximum-value restrictions. The default is `{}`.
-    - `multi_runner_config[].matcherConfig.awsDynamicLabelsPolicy.restricted_keys.<key>.allowed`: Values explicitly allowed for the dynamic-label key. The default is `[]`.
-    - `multi_runner_config[].matcherConfig.awsDynamicLabelsPolicy.restricted_keys.<key>.denied`: Values explicitly denied for the dynamic-label key. The default is `[]`.
-    - `multi_runner_config[].matcherConfig.awsDynamicLabelsPolicy.restricted_keys.<key>.max`: Optional maximum accepted value for the dynamic-label key. The default is null.
+    - `multi_runner_config[].orchestration.webhook.matcherConfig.labelMatchers`: Groups of labels used to match webhook jobs to this configuration.
+    - `multi_runner_config[].orchestration.webhook.matcherConfig.exactMatch`: Deprecated one-way match. When true, every workflow-job label must appear in a configured label group, but that group may contain additional labels.
+    - `multi_runner_config[].orchestration.webhook.matcherConfig.bidirectionalLabelMatch`: Requires an exact two-way set match between workflow-job labels and a configured label group, with no extra or missing labels.
+    - `multi_runner_config[].orchestration.webhook.matcherConfig.priority`: Ordering used when multiple configurations match the same job.
+    - `multi_runner_config[].orchestration.webhook.matcherConfig.enableDynamicLabels`: Enables runtime interpretation of supported dynamic AWS labels.
+    - `multi_runner_config[].orchestration.webhook.matcherConfig.awsDynamicLabelsPolicy`: Optional policy restricting values accepted from dynamic AWS labels.
+    - `multi_runner_config[].orchestration.webhook.matcherConfig.awsDynamicLabelsPolicy.blocked_keys`: Dynamic-label keys rejected for this lane. The default is `[]`.
+    - `multi_runner_config[].orchestration.webhook.matcherConfig.awsDynamicLabelsPolicy.restricted_keys`: Per-key allow, deny, and maximum-value restrictions. The default is `{}`.
+    - `multi_runner_config[].orchestration.webhook.matcherConfig.awsDynamicLabelsPolicy.restricted_keys.<key>.allowed`: Values explicitly allowed for the dynamic-label key. The default is `[]`.
+    - `multi_runner_config[].orchestration.webhook.matcherConfig.awsDynamicLabelsPolicy.restricted_keys.<key>.denied`: Values explicitly denied for the dynamic-label key. The default is `[]`.
+    - `multi_runner_config[].orchestration.webhook.matcherConfig.awsDynamicLabelsPolicy.restricted_keys.<key>.max`: Optional maximum accepted value for the dynamic-label key. The default is null.
   EOT
 
   type = object({
@@ -831,10 +846,6 @@ variable "experimental" {
         }), {})
       }), {})
 
-      github = optional(object({
-        organization_runners = optional(bool, false)
-      }), {})
-
       lambda = optional(object({
         runtime            = optional(string, null)
         architecture       = optional(string, null)
@@ -845,68 +856,135 @@ variable "experimental" {
           path                 = optional(string, null)
           permissions_boundary = optional(string, null)
         }), {})
-        scale_up = optional(object({
-          memory_size                    = optional(number, null)
-          timeout                        = optional(number, null)
-          reserved_concurrent_executions = optional(number, null)
-          job_queued_check_enabled       = optional(bool, null)
-          event_source_mapping = optional(object({
-            batch_size                         = optional(number, null)
-            maximum_batching_window_in_seconds = optional(number, null)
+      }), {})
+
+      orchestration = object({
+        webhook = optional(object({
+          github = optional(object({
+            organization_runners = optional(bool, false)
           }), {})
-          tags = optional(map(string), {})
-        }), {})
-        scale_down = optional(object({
-          memory_size                     = optional(number, null)
-          timeout                         = optional(number, null)
-          schedule_expression             = optional(string, null)
-          minimum_running_time_in_minutes = optional(number, null)
-          idle_config = optional(list(object({
-            cron             = string
-            timeZone         = string
-            idleCount        = number
-            evictionStrategy = optional(string, "oldest_first")
-          })), null)
-          tags = optional(map(string), {})
-        }), {})
-        pool = optional(object({
-          memory_size                    = optional(number, null)
-          timeout                        = optional(number, null)
-          reserved_concurrent_executions = optional(number, null)
-          config = optional(list(object({
-            schedule_expression          = string
-            schedule_expression_timezone = optional(string)
-            size                         = number
-          })), null)
-          include_busy_runners = optional(bool, null)
-          runner_owner         = optional(string, null)
-          tags                 = optional(map(string), {})
-        }), {})
-      }), {})
 
-      queue = optional(object({
-        delay_webhook_event            = optional(number, null)
-        job_queue_retention_in_seconds = optional(number, null)
-        visibility_timeout_seconds     = optional(number, null)
-        redrive_build_queue = optional(object({
-          enabled         = optional(bool, null)
-          maxReceiveCount = optional(number, null)
+          lambda = optional(object({
+            scale_up = optional(object({
+              memory_size                    = optional(number, null)
+              timeout                        = optional(number, null)
+              reserved_concurrent_executions = optional(number, null)
+              job_queued_check_enabled       = optional(bool, null)
+              event_source_mapping = optional(object({
+                batch_size                         = optional(number, null)
+                maximum_batching_window_in_seconds = optional(number, null)
+              }), {})
+              tags = optional(map(string), {})
+            }), {})
+            scale_down = optional(object({
+              memory_size                     = optional(number, null)
+              timeout                         = optional(number, null)
+              schedule_expression             = optional(string, null)
+              minimum_running_time_in_minutes = optional(number, null)
+              idle_config = optional(list(object({
+                cron             = string
+                timeZone         = string
+                idleCount        = number
+                evictionStrategy = optional(string, "oldest_first")
+              })), null)
+              tags = optional(map(string), {})
+            }), {})
+            pool = optional(object({
+              memory_size                    = optional(number, null)
+              timeout                        = optional(number, null)
+              reserved_concurrent_executions = optional(number, null)
+              config = optional(list(object({
+                schedule_expression          = string
+                schedule_expression_timezone = optional(string)
+                size                         = number
+              })), null)
+              include_busy_runners = optional(bool, null)
+              runner_owner         = optional(string, null)
+              tags                 = optional(map(string), {})
+            }), {})
+          }), {})
+
+          queue = optional(object({
+            delay_webhook_event            = optional(number, null)
+            job_queue_retention_in_seconds = optional(number, null)
+            visibility_timeout_seconds     = optional(number, null)
+            redrive_build_queue = optional(object({
+              enabled         = optional(bool, null)
+              maxReceiveCount = optional(number, null)
+            }), null)
+            tags = optional(map(string), {})
+          }), {})
+
+          job_retry = optional(object({
+            enabled          = optional(bool, false)
+            delay_in_seconds = optional(number, 300)
+            delay_backoff    = optional(number, 2)
+            max_attempts     = optional(number, 1)
+            tags             = optional(map(string), {})
+            lambda = optional(object({
+              memory_size                    = optional(number, 256)
+              reserved_concurrent_executions = optional(number, 1)
+              timeout                        = optional(number, 30)
+            }), {})
+          }), {})
+
+          matcherConfig = object({
+            labelMatchers           = list(list(string))
+            exactMatch              = optional(bool, false)
+            bidirectionalLabelMatch = optional(bool, false)
+            priority                = optional(number, 999)
+            enableDynamicLabels     = optional(bool, false)
+            awsDynamicLabelsPolicy = optional(object({
+              blocked_keys = optional(list(string), [])
+              restricted_keys = optional(map(object({
+                allowed = optional(list(string), [])
+                denied  = optional(list(string), [])
+                max     = optional(string, null)
+              })), {})
+            }), null)
+          })
         }), null)
-        tags = optional(map(string), {})
-      }), {})
 
-      job_retry = optional(object({
-        enabled          = optional(bool, false)
-        delay_in_seconds = optional(number, 300)
-        delay_backoff    = optional(number, 2)
-        max_attempts     = optional(number, 1)
-        tags             = optional(map(string), {})
-        lambda = optional(object({
-          memory_size                    = optional(number, 256)
-          reserved_concurrent_executions = optional(number, 1)
-          timeout                        = optional(number, 30)
-        }), {})
-      }), {})
+        scale_set = optional(object({
+          id                = number
+          github_config_url = string
+          github_app_index  = optional(number, 0)
+          min_runners       = optional(number, 0)
+          session_owner     = optional(string, null)
+          work_folder       = optional(string, "_work")
+          container_image   = string
+          tags              = optional(map(string), {})
+          iam = optional(object({
+            role_path            = optional(string, null)
+            permissions_boundary = optional(string, null)
+          }), {})
+          ecs = optional(object({
+            cluster = optional(object({
+              arn = string
+            }), null)
+            vpc_id                    = optional(string, null)
+            subnet_ids                = optional(list(string), null)
+            security_group_ids        = optional(list(string), [])
+            create_security_group     = optional(bool, true)
+            egress_ipv4_cidr_blocks   = optional(list(string), ["0.0.0.0/0"])
+            egress_ipv6_cidr_blocks   = optional(list(string), [])
+            assign_public_ip          = optional(bool, false)
+            cpu                       = optional(number, 256)
+            memory                    = optional(number, 512)
+            architecture              = optional(string, "x86_64")
+            platform_version          = optional(string, "LATEST")
+            health_check_interval     = optional(number, 30)
+            health_check_timeout      = optional(number, 5)
+            health_check_retries      = optional(number, 3)
+            health_check_start_period = optional(number, 30)
+          }), {})
+          alarm = optional(object({
+            enabled    = optional(bool, false)
+            actions    = optional(list(string), [])
+            ok_actions = optional(list(string), [])
+          }), {})
+        }), null)
+      })
 
       ssm = optional(object({
         paths = optional(object({
@@ -1079,21 +1157,6 @@ variable "experimental" {
         }), null)
       })
 
-      matcherConfig = object({
-        labelMatchers           = list(list(string))
-        exactMatch              = optional(bool, false)
-        bidirectionalLabelMatch = optional(bool, false)
-        priority                = optional(number, 999)
-        enableDynamicLabels     = optional(bool, false)
-        awsDynamicLabelsPolicy = optional(object({
-          blocked_keys = optional(list(string), [])
-          restricted_keys = optional(map(object({
-            allowed = optional(list(string), [])
-            denied  = optional(list(string), [])
-            max     = optional(string, null)
-          })), {})
-        }), null)
-      })
     })), {})
   })
   default = {}

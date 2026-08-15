@@ -5,6 +5,7 @@ import type {
   CreateStartRunnerConfig,
   GitHubRunnerMetadata,
   LambdaRunnerSource,
+  RunnerType,
   StartRunnerConfigOptions,
 } from '../../../../core';
 import { Octokit } from '@octokit/rest';
@@ -37,6 +38,28 @@ export interface CreateEC2RunnerConfig extends Ec2ProviderConfig {
   useDedicatedHost?: boolean;
 }
 
+interface RunnerProvisioningConfig {
+  runnerOwner: string;
+  runnerType: RunnerType;
+}
+
+export interface RunnerConfigurationFailure {
+  instanceId: string;
+  retryable: boolean;
+}
+
+export interface ConfigureRunnerInstancesResult {
+  failures: RunnerConfigurationFailure[];
+  preservedRetryableErrorCount?: number;
+  preservedNonRetryableErrorCount?: number;
+}
+
+export type ConfigureRunnerInstances<TConfig extends RunnerProvisioningConfig> = (
+  runnerConfig: TConfig,
+  runnerIds: string[],
+  options: StartRunnerConfigOptions,
+) => Promise<string[] | ConfigureRunnerInstancesResult>;
+
 export function loadEc2ProviderConfig(): Ec2ProviderConfig {
   return {
     environment: process.env.ENVIRONMENT,
@@ -68,13 +91,31 @@ export async function createRunners(
   createStartRunnerConfig: CreateStartRunnerConfig,
   source: LambdaRunnerSource = 'scale-up-lambda',
 ): Promise<CreateRunnerResult> {
+  return await createConfiguredRunners(
+    githubRunnerConfig,
+    ec2RunnerConfig,
+    numberOfRunners,
+    (runnerConfig, runnerIds, options) => createStartRunnerConfig(runnerConfig, runnerIds, ghClient, options),
+    source,
+  );
+}
+
+export async function createConfiguredRunners<TConfig extends RunnerProvisioningConfig>(
+  runnerConfig: TConfig,
+  ec2RunnerConfig: CreateEC2RunnerConfig,
+  numberOfRunners: number,
+  configureRunnerInstances: ConfigureRunnerInstances<TConfig>,
+  source: LambdaRunnerSource,
+  additionalTags: Tag[] = [],
+): Promise<CreateRunnerResult> {
   let result: CreateRunnerResult;
   try {
     result = await createRunner({
-      runnerType: githubRunnerConfig.runnerType,
-      runnerOwner: githubRunnerConfig.runnerOwner,
+      runnerType: runnerConfig.runnerType,
+      runnerOwner: runnerConfig.runnerOwner,
       numberOfRunners,
       source,
+      ...(additionalTags.length > 0 ? { additionalTags } : {}),
       ...ec2RunnerConfig,
     });
   } catch (error) {
@@ -87,14 +128,16 @@ export async function createRunners(
   }
 
   if (result.instances.length !== 0) {
-    let failedInstances: string[];
+    let configuration: ConfigureRunnerInstancesResult;
     try {
-      failedInstances = await createStartRunnerConfig(
-        githubRunnerConfig,
+      const configured = await configureRunnerInstances(
+        runnerConfig,
         result.instances,
-        ghClient,
         createEc2StartRunnerConfigOptions(),
       );
+      configuration = Array.isArray(configured)
+        ? { failures: configured.map((instanceId) => ({ instanceId, retryable: true })) }
+        : configured;
     } catch (error) {
       logger.error('Unexpected error while registering GitHub runners.', {
         error,
@@ -102,9 +145,12 @@ export async function createRunners(
         failedInstances: result.instances,
         failedInstanceCount: result.instances.length,
       });
-      failedInstances = result.instances;
+      configuration = {
+        failures: result.instances.map((instanceId) => ({ instanceId, retryable: true })),
+      };
     }
 
+    const failedInstances = configuration.failures.map(({ instanceId }) => instanceId);
     // Terminate instances that failed to get configured to avoid waste
     if (failedInstances.length > 0) {
       logger.warn('Terminating instances that failed to get configured', {
@@ -114,13 +160,19 @@ export async function createRunners(
       });
 
       await terminateFailedInstances(failedInstances);
-
-      return {
-        instances: result.instances.filter((id) => !failedInstances.includes(id)),
-        retryableErrorCount: result.retryableErrorCount + failedInstances.length,
-        nonRetryableErrorCount: result.nonRetryableErrorCount,
-      };
     }
+
+    return {
+      instances: result.instances.filter((id) => !failedInstances.includes(id)),
+      retryableErrorCount:
+        result.retryableErrorCount +
+        configuration.failures.filter(({ retryable }) => retryable).length +
+        (configuration.preservedRetryableErrorCount ?? 0),
+      nonRetryableErrorCount:
+        result.nonRetryableErrorCount +
+        configuration.failures.filter(({ retryable }) => !retryable).length +
+        (configuration.preservedNonRetryableErrorCount ?? 0),
+    };
   }
 
   return result;

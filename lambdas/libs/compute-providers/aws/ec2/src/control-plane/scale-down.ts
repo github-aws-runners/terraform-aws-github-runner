@@ -2,7 +2,13 @@ import type { RunnerInfo, ScaleDownComputeProvider } from '../../../../core';
 import { bootTimeExceeded, listEC2Runners, tag, terminateRunner, untag } from './runners';
 
 async function listEc2ScaleDownRunners(environment: string, orphan?: boolean): Promise<RunnerInfo[]> {
-  return await listEC2Runners({ environment, orphan });
+  return await listEC2Runners({
+    environment,
+    orphan,
+    // Scale-set runners are owned by their message listener and are terminated
+    // from JobCompleted events. The legacy cron scaler must not evict its warm capacity.
+    source: ['scale-up-lambda', 'pool-lambda'],
+  });
 }
 
 async function markEc2RunnerOrphan(id: string): Promise<void> {

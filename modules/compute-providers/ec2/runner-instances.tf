@@ -90,7 +90,8 @@ locals {
     hook_job_started   = var.runner.hooks.job_started
     hook_job_completed = var.runner.hooks.job_completed
     start_runner = templatefile(local.userdata_start_runner[var.runner.os], {
-      metadata_tags = var.config.metadata_options != null ? var.config.metadata_options.instance_metadata_tags : "enabled"
+      metadata_tags     = var.config.metadata_options != null ? var.config.metadata_options.instance_metadata_tags : "enabled"
+      scale_set_enabled = var.scale_set != null
     })
     ghes_url        = var.github.enterprise_server.url
     ghes_ssl_verify = var.github.enterprise_server.ssl_verify

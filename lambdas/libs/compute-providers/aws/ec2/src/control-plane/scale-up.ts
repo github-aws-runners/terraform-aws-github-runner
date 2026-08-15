@@ -59,7 +59,14 @@ async function getCurrentEc2Runners(
   _state: Ec2ScaleUpState,
   { runnerType, runnerOwner }: CurrentRunnersInput,
 ): Promise<number> {
-  return (await listEC2Runners({ environment: process.env.ENVIRONMENT, runnerType, runnerOwner })).length;
+  return (
+    await listEC2Runners({
+      environment: process.env.ENVIRONMENT,
+      runnerType,
+      runnerOwner,
+      source: ['scale-up-lambda', 'pool-lambda'],
+    })
+  ).length;
 }
 
 async function createEc2ScaleUpRunners(

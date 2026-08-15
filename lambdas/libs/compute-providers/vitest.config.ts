@@ -12,6 +12,7 @@ export default mergeConfig(defaultConfig, {
         'provider-types.ts',
         'providers.config.*.ts',
         'control-plane.ts',
+        'scale-set.ts',
         'webhook.ts',
         'core/**/*.ts',
         'aws/**/*.ts',

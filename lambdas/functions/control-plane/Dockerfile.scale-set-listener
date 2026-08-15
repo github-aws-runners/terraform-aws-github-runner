@@ -1,0 +1,33 @@
+FROM node:24-bookworm-slim@sha256:3638d9a6fe4030bd716be989438248074489337ba3275657f93595428be4fc03 AS build
+WORKDIR /workspace
+
+COPY package.json yarn.lock .yarnrc.yml ./
+COPY .yarn/releases .yarn/releases
+COPY functions/ami-housekeeper/package.json functions/ami-housekeeper/package.json
+COPY functions/control-plane/package.json functions/control-plane/package.json
+COPY functions/gh-agent-syncer/package.json functions/gh-agent-syncer/package.json
+COPY functions/termination-watcher/package.json functions/termination-watcher/package.json
+COPY functions/webhook/package.json functions/webhook/package.json
+COPY libs/aws-powertools-util/package.json libs/aws-powertools-util/package.json
+COPY libs/aws-ssm-util/package.json libs/aws-ssm-util/package.json
+COPY libs/compute-providers/package.json libs/compute-providers/package.json
+COPY libs/github-actions-scale-set/package.json libs/github-actions-scale-set/package.json
+RUN corepack enable && yarn install --immutable
+
+COPY functions functions
+COPY libs libs
+COPY tsconfig.json ./
+RUN yarn workspace @aws-github-runner/control-plane build:scale-set-listener
+
+FROM node:24-bookworm-slim@sha256:3638d9a6fe4030bd716be989438248074489337ba3275657f93595428be4fc03 AS runtime
+ENV NODE_ENV=production \
+    SCALE_SET_HEALTH_PORT=8080
+WORKDIR /app
+
+COPY --from=build --chown=node:node /workspace/functions/control-plane/dist/scale-set-listener/ ./
+COPY --from=build --chown=node:node /workspace/functions/control-plane/container/healthcheck.cjs ./healthcheck.cjs
+
+USER node
+EXPOSE 8080
+HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 CMD ["node", "/app/healthcheck.cjs"]
+ENTRYPOINT ["node", "/app/index.js"]

@@ -223,6 +223,7 @@ describe('Test simple pool.', () => {
         runnerOwner: ORG,
         runnerType: 'Org',
         statuses: ['running'],
+        source: ['scale-up-lambda', 'pool-lambda'],
       });
       expect(createRunners).toHaveBeenCalledWith(
         expect.anything(),
