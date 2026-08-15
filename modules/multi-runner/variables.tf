@@ -75,7 +75,7 @@ variable "prefix" {
 }
 
 variable "kms_key_arn" {
-  description = "Stable/v1 optional KMS key ARN for Parameter Store. Experimental v2 uses `experimental.ssm.kms_key_id`; this flat value only seeds stable-mode translation."
+  description = "Optional CMK Key ARN to be used for Parameter Store."
   type        = string
   default     = null
 }
@@ -411,7 +411,7 @@ variable "log_class" {
 }
 
 variable "lambda_s3_bucket" {
-  description = "Stable/v1 S3 bucket containing Lambda artifacts. A non-null value takes precedence over flat local-zip inputs during stable-mode translation. Experimental v2 uses the shared `experimental.lambda.artifact.s3.bucket`."
+  description = "S3 bucket from which to specify lambda functions. This is an alternative to providing local files directly."
   type        = string
   default     = null
 }
@@ -639,19 +639,19 @@ variable "runner_additional_security_group_ids" {
 }
 
 variable "runners_lambda_s3_key" {
-  description = "Stable/v1 S3 key for the scaling control-plane Lambda archive. Used when `lambda_s3_bucket` is set. Experimental v2 uses `experimental.lambda.scale.artifact.s3.key`."
+  description = "S3 key for runners lambda function. Required if using S3 bucket to specify lambdas."
   type        = string
   default     = null
 }
 
 variable "runners_lambda_s3_object_version" {
-  description = "Stable/v1 optional object version for the scaling control-plane Lambda archive. Experimental v2 uses `experimental.lambda.scale.artifact.s3.object_version`."
+  description = "S3 object version for runners lambda function. Useful if S3 versioning is enabled on source bucket."
   type        = string
   default     = null
 }
 
 variable "runners_lambda_zip" {
-  description = "Stable/v1 local scaling control-plane Lambda archive. A configured `lambda_s3_bucket` takes precedence. Experimental v2 uses `experimental.lambda.scale.artifact.zip`."
+  description = "File location of the lambda zip file for scaling runners."
   type        = string
   default     = null
 }
