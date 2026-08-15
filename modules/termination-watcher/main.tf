@@ -26,6 +26,7 @@ locals {
     metrics_namespace             = var.config.metrics.namespace
     _deregistration_env_vars      = local.deregistration_env_vars
     _ssm_parameter_arns           = local.ssm_parameter_arns
+    _ssm_kms_key_id               = coalesce(var.config.ssm_kms_key_id, "arn:${coalesce(var.config.aws_partition, "aws")}:kms:*:000000000000:key/00000000-0000-0000-0000-000000000000")
     _enable_runner_deregistration = local.enable_runner_deregistration
   })
 }

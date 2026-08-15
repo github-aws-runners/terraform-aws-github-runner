@@ -39,6 +39,7 @@ variables {
     }
 
     enable_runner_deregistration = true
+    ssm_kms_key_id               = "arn:aws:kms:eu-west-1:123456789012:key/termination-watcher-test"
     github_app_parameters = {
       id = {
         name = "/github-runner/app-id"
@@ -52,7 +53,7 @@ variables {
   }
 }
 
-run "preserves_component_environment_variables" {
+run "preserves_environment_and_configures_kms_access" {
   command = plan
 
   assert {
@@ -83,5 +84,36 @@ run "preserves_component_environment_variables" {
       output.deregister_retry.lambda.environment[0].variables["TAG_FILTERS"] == jsonencode(var.config.tag_filters),
     ])
     error_message = "Every termination-watcher Lambda must retain TAG_FILTERS."
+  }
+
+  assert {
+    condition     = local.config._ssm_kms_key_id == var.config.ssm_kms_key_id
+    error_message = "The configured Parameter Store KMS key must reach the canonical watcher configuration."
+  }
+
+  assert {
+    condition = anytrue([
+      for statement in jsondecode(aws_iam_role_policy.deregister_retry_ssm[0].policy).Statement :
+      contains(statement.Action, "kms:Decrypt")
+      && contains(statement.Resource, var.config.ssm_kms_key_id)
+    ])
+    error_message = "The deregistration-retry role must receive KMS decrypt access scoped to the configured key."
+  }
+}
+
+run "uses_inert_kms_arn_when_unset" {
+  command = plan
+
+  variables {
+    config = {
+      prefix    = "termination-watcher-no-kms"
+      s3_bucket = "lambda-artifacts"
+      s3_key    = "termination-watcher.zip"
+    }
+  }
+
+  assert {
+    condition     = local.config._ssm_kms_key_id == "arn:aws:kms:*:000000000000:key/00000000-0000-0000-0000-000000000000"
+    error_message = "An unset Parameter Store KMS key must retain a static, inert IAM resource shape."
   }
 }
