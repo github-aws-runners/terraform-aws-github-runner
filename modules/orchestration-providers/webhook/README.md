@@ -10,7 +10,7 @@ The scale-down lifecycle is documented in the [scale-down state diagram](./scale
 ## Requirements
 
 | Name | Version |
-| ---- | ------- |
+|------|---------|
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.3.0 |
 | <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 6.33 |
 
@@ -21,7 +21,7 @@ No providers.
 ## Modules
 
 | Name | Source | Version |
-| ---- | ------ | ------- |
+|------|--------|---------|
 | <a name="module_job_retry"></a> [job\_retry](#module\_job\_retry) | ./job-retry | n/a |
 | <a name="module_pool"></a> [pool](#module\_pool) | ./pool | n/a |
 | <a name="module_scale_runners"></a> [scale\_runners](#module\_scale\_runners) | ./scale-runners | n/a |
@@ -33,7 +33,7 @@ No resources.
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-| ---- | ----------- | ---- | ------- | :------: |
+|------|-------------|------|---------|:--------:|
 | <a name="input_aws_partition"></a> [aws\_partition](#input\_aws\_partition) | AWS partition used to construct ARNs. | `string` | `"aws"` | no |
 | <a name="input_config"></a> [config](#input\_config) | Resolved provider-owned values from orchestration.webhook, including runner lifecycle, boot timeout, and capacity limits used by scaling and pool controls. | <pre>object({<br/>    runner = object({<br/>      boot_time_in_minutes = number<br/>      ephemeral            = bool<br/>      jit_config_enabled   = optional(bool, null)<br/>      maximum_count        = number<br/>    })<br/>    github = object({<br/>      organization_runners = bool<br/>    })<br/>    queue = object({<br/>      build = object({<br/>        arn = string<br/>        url = string<br/>      })<br/>      kms_key_id = optional(string, null)<br/>      tags       = optional(map(string), {})<br/>    })<br/>    lambda = object({<br/>      artifact = object({<br/>        zip = optional(string, null)<br/>        s3 = optional(object({<br/>          key            = string<br/>          object_version = optional(string, null)<br/>        }), null)<br/>      })<br/>      scale = object({<br/>        up = object({<br/>          memory_size                    = number<br/>          timeout                        = number<br/>          reserved_concurrent_executions = number<br/>          job_queued_check_enabled       = optional(bool, null)<br/>          event_source_mapping = object({<br/>            batch_size                         = number<br/>            maximum_batching_window_in_seconds = number<br/>          })<br/>          tags = optional(map(string), {})<br/>        })<br/>        down = object({<br/>          memory_size                     = number<br/>          timeout                         = number<br/>          schedule_expression             = string<br/>          minimum_running_time_in_minutes = optional(number, null)<br/>          idle_config = list(object({<br/>            cron             = string<br/>            timeZone         = string<br/>            idleCount        = number<br/>            evictionStrategy = string<br/>          }))<br/>          tags = optional(map(string), {})<br/>        })<br/>      })<br/>      pool = object({<br/>        memory_size                    = number<br/>        timeout                        = number<br/>        reserved_concurrent_executions = number<br/>        config = list(object({<br/>          schedule_expression          = string<br/>          schedule_expression_timezone = optional(string)<br/>          size                         = number<br/>        }))<br/>        include_busy_runners = bool<br/>        runner_owner         = optional(string, null)<br/>        tags                 = optional(map(string), {})<br/>      })<br/>    })<br/>    job_retry = object({<br/>      enabled          = bool<br/>      delay_in_seconds = number<br/>      delay_backoff    = number<br/>      max_attempts     = number<br/>      tags             = optional(map(string), {})<br/>      lambda = object({<br/>        memory_size                    = number<br/>        reserved_concurrent_executions = number<br/>        timeout                        = number<br/>      })<br/>    })<br/>  })</pre> | n/a | yes |
 | <a name="input_github"></a> [github](#input\_github) | Common GitHub API client and GitHub App Parameter Store references. | <pre>object({<br/>    app_parameters = object({<br/>      key_base64      = list(map(string))<br/>      id              = list(map(string))<br/>      installation_id = list(object({ name = string, arn = string }))<br/>    })<br/>    enterprise_server = object({<br/>      url        = optional(string, null)<br/>      ssl_verify = bool<br/>    })<br/>    user_agent = optional(string, null)<br/>  })</pre> | n/a | yes |
@@ -48,7 +48,7 @@ No resources.
 ## Outputs
 
 | Name | Description |
-| ---- | ----------- |
+|------|-------------|
 | <a name="output_job_retry"></a> [job\_retry](#output\_job\_retry) | Job-retry resources. Null when job retry is disabled. |
 | <a name="output_pool"></a> [pool](#output\_pool) | Scheduled pool resources. Null when no pool schedule is configured. |
 | <a name="output_runner_lifecycle"></a> [runner\_lifecycle](#output\_runner\_lifecycle) | Effective webhook-owned runner lifecycle consumed by runner-config bootstrap parameters. |
