@@ -83,10 +83,10 @@ yarn run dist
 
 | Name | Source | Version |
 |------|--------|---------|
-| <a name="module_ec2"></a> [ec2](#module\_ec2) | ../compute-providers/ec2 | n/a |
+| <a name="module_compute_ec2"></a> [compute\_ec2](#module\_compute\_ec2) | ../compute-providers/ec2 | n/a |
 | <a name="module_ec2_trust_policy"></a> [ec2\_trust\_policy](#module\_ec2\_trust\_policy) | ../compute-providers/ec2/trust-policy | n/a |
+| <a name="module_orchestration_webhook"></a> [orchestration\_webhook](#module\_orchestration\_webhook) | ../orchestration-providers/webhook | n/a |
 | <a name="module_ssm_housekeeper"></a> [ssm\_housekeeper](#module\_ssm\_housekeeper) | ./ssm-housekeeper | n/a |
-| <a name="module_webhook"></a> [webhook](#module\_webhook) | ../orchestration-providers/webhook | n/a |
 
 ## Resources
 

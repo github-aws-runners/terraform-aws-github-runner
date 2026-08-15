@@ -132,7 +132,7 @@ run "plan_with_pool_enabled" {
   command = plan
 
   assert {
-    condition     = module.webhook["webhook"].pool != null
+    condition     = module.orchestration_webhook[0].pool != null
     error_message = "Pool module should be enabled when pool.config is non-empty"
   }
 
@@ -146,10 +146,10 @@ run "plan_with_pool_enabled" {
       && var.orchestration.webhook.runner.ephemeral
       && var.orchestration.webhook.runner.jit_config_enabled == null
       && var.orchestration.webhook.runner.maximum_count == 9
-      && module.webhook["webhook"].scale_up.lambda.environment[0].variables["RUNNERS_MAXIMUM_COUNT"] == "9"
-      && module.webhook["webhook"].scale_down.lambda.environment[0].variables["RUNNER_BOOT_TIME_IN_MINUTES"] == "8"
-      && module.webhook["webhook"].pool.lambda.environment[0].variables["RUNNERS_MAXIMUM_COUNT"] == "9"
-      && module.webhook["webhook"].pool.lambda.environment[0].variables["RUNNER_BOOT_TIME_IN_MINUTES"] == "8"
+      && module.orchestration_webhook[0].scale_up.lambda.environment[0].variables["RUNNERS_MAXIMUM_COUNT"] == "9"
+      && module.orchestration_webhook[0].scale_down.lambda.environment[0].variables["RUNNER_BOOT_TIME_IN_MINUTES"] == "8"
+      && module.orchestration_webhook[0].pool.lambda.environment[0].variables["RUNNERS_MAXIMUM_COUNT"] == "9"
+      && module.orchestration_webhook[0].pool.lambda.environment[0].variables["RUNNER_BOOT_TIME_IN_MINUTES"] == "8"
     )
     error_message = "Runner capacity and boot time must be owned by orchestration.webhook.runner and routed to webhook controls, not retained in the common runner contract."
   }
@@ -164,8 +164,8 @@ run "plan_with_pool_enabled" {
 
   assert {
     condition = (
-      module.webhook["webhook"].scale_up.lambda.s3_bucket == "my-lambda-bucket"
-      && module.webhook["webhook"].scale_up.lambda.s3_key == "runners.zip"
+      module.orchestration_webhook[0].scale_up.lambda.s3_bucket == "my-lambda-bucket"
+      && module.orchestration_webhook[0].scale_up.lambda.s3_key == "runners.zip"
       && local.ssm_housekeeper_artifact.s3.bucket == null
       && endswith(local.ssm_housekeeper_artifact.zip, "/lambdas/functions/control-plane/runners.zip")
     )
@@ -215,7 +215,7 @@ run "plan_with_pool_enabled" {
   }
 
   assert {
-    condition     = length(jsondecode(module.webhook["webhook"].scale_up.lambda.environment[0].variables["SSM_PARAMETER_STORE_TAGS"])) == 0
+    condition     = length(jsondecode(module.orchestration_webhook[0].scale_up.lambda.environment[0].variables["SSM_PARAMETER_STORE_TAGS"])) == 0
     error_message = "Runtime Parameter Store tags must remain empty when no module or SSM tags are configured; EC2 bootstrap tags must not leak into them."
   }
 
@@ -244,26 +244,26 @@ run "plan_with_pool_enabled" {
 
   assert {
     condition = (
-      module.webhook["webhook"].scale_up.lambda.environment[0].variables["COMPUTE_PROVIDER_TYPE"] == "ec2"
-      && module.webhook["webhook"].scale_down.lambda.environment[0].variables["COMPUTE_PROVIDER_TYPE"] == "ec2"
+      module.orchestration_webhook[0].scale_up.lambda.environment[0].variables["COMPUTE_PROVIDER_TYPE"] == "ec2"
+      && module.orchestration_webhook[0].scale_down.lambda.environment[0].variables["COMPUTE_PROVIDER_TYPE"] == "ec2"
     )
     error_message = "Scaling Lambdas must receive the provider type from the selected provider."
   }
 
   assert {
-    condition     = module.webhook["webhook"].scale_up.lambda.environment[0].variables["INSTANCE_TYPES"] == "m5.large"
+    condition     = module.orchestration_webhook[0].scale_up.lambda.environment[0].variables["INSTANCE_TYPES"] == "m5.large"
     error_message = "Scale-up must merge the EC2 environment fragment."
   }
 
   assert {
-    condition     = module.webhook["webhook"].scale_down.lambda.environment[0].variables["RUNNER_BOOT_TIME_IN_MINUTES"] == "8"
+    condition     = module.orchestration_webhook[0].scale_down.lambda.environment[0].variables["RUNNER_BOOT_TIME_IN_MINUTES"] == "8"
     error_message = "Scale-down must receive boot time from the webhook orchestration configuration."
   }
 
   assert {
     condition = (
-      toset(keys(module.webhook["webhook"].scale_up)) == toset(["lambda", "log_group", "role"])
-      && toset(keys(module.webhook["webhook"].scale_down)) == toset(["lambda", "log_group", "role"])
+      toset(keys(module.orchestration_webhook[0].scale_up)) == toset(["lambda", "log_group", "role"])
+      && toset(keys(module.orchestration_webhook[0].scale_down)) == toset(["lambda", "log_group", "role"])
     )
     error_message = "The scale-runners child module must forward the nested scale-up and scale-down resource contracts."
   }
@@ -590,12 +590,12 @@ run "job_retry_uses_common_runner_configuration_identity" {
   }
 
   assert {
-    condition     = module.webhook["webhook"].job_retry.lambda.function.environment[0].variables["RUNNER_NAME_PREFIX"] == "provider-neutral-"
+    condition     = module.orchestration_webhook[0].job_retry.lambda.function.environment[0].variables["RUNNER_NAME_PREFIX"] == "provider-neutral-"
     error_message = "Job retry must receive the common runner-configuration name prefix."
   }
 
   assert {
-    condition     = module.webhook["webhook"].job_retry.lambda.function.reserved_concurrent_executions == 2
+    condition     = module.orchestration_webhook[0].job_retry.lambda.function.reserved_concurrent_executions == 2
     error_message = "Job retry must apply its configured Lambda reserved concurrency."
   }
 }
