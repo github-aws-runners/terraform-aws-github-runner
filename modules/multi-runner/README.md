@@ -21,7 +21,7 @@ The module takes a configuration as input containing a matcher for the labels. T
 
 ## Provider boundary
 
-See [Experimental compute-provider refactor](https://github-aws-runners.github.io/terraform-aws-github-runner/modules/internal/compute-provider-refactor/) for the motivation, ownership contract, opt-in flow, state guarantees, and migration phases.
+See [Experimental orchestration- and compute-provider refactor](https://github-aws-runners.github.io/terraform-aws-github-runner/modules/internal/compute-provider-refactor/) for the motivation, ownership contract, opt-in flow, state guarantees, and migration phases.
 
 The multi-runner module owns provider-neutral runner-configuration normalization, queues, shared runner-binary discovery, and webhook routing. Stable `multi_runner_config` entries continue to use the existing `modules/runners` module at their historical `module.runners["configuration"]` addresses.
 
