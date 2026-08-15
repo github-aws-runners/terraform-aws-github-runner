@@ -102,6 +102,11 @@ resource "aws_iam_role_policy" "ssm_policy" {
         Effect   = "Allow"
         Action   = ["ssm:GetParameter"]
         Resource = var.config._ssm_parameter_arns
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["kms:Decrypt"]
+        Resource = [var.config._ssm_kms_key_id]
       }
     ]
   })
