@@ -1,5 +1,5 @@
 # EC2-specific IAM and environment fragments consumed by the common control
-# plane in runner-stack.
+# plane in runner-config.
 data "aws_iam_policy_document" "ami_id_ssm_parameter_read" {
   count = local.ami_id_ssm_external ? 1 : 0
 
