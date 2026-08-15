@@ -5,11 +5,6 @@ module "ec2_trust_policy" {
   additional_trust_policy_json = var.runner.iam.additional_trust_policy_json
 }
 
-moved {
-  from = module.ec2[0]
-  to   = module.compute_ec2[0]
-}
-
 module "compute_ec2" {
   count  = local.provider_type == "ec2" ? 1 : 0
   source = "../compute-providers/ec2"
