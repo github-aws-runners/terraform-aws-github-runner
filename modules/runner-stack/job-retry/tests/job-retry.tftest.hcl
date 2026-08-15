@@ -51,9 +51,10 @@ variables {
     github = {
       organization_runners = false
       enterprise_server = {
-        url = ""
+        url        = "https://experimental-job-retry.example.com"
+        ssl_verify = false
       }
-      user_agent = "job-retry-test"
+      user_agent = "experimental-job-retry-user-agent"
       app_parameters = {
         key_base64 = [
           {
@@ -98,9 +99,7 @@ variables {
       }
     }
     ssm = {
-      kms_key = {
-        arn = "arn:aws:kms:eu-west-1:123456789012:key/job-retry-test"
-      }
+      kms_key_id = "arn:aws:kms:eu-west-1:123456789012:key/job-retry-test"
     }
     observability = {
       logs = {
@@ -147,14 +146,17 @@ run "preserves_nested_job_retry_configuration" {
 
   assert {
     condition = (
-      output.lambda.function.environment[0].variables["PARAMETER_GITHUB_APP_ID_NAME"] == "/github-runner/app-id:/github-runner/app-id-2"
+      output.lambda.function.environment[0].variables["GHES_URL"] == "https://experimental-job-retry.example.com"
+      && output.lambda.function.environment[0].variables["NODE_TLS_REJECT_UNAUTHORIZED"] == "0"
+      && output.lambda.function.environment[0].variables["USER_AGENT"] == "experimental-job-retry-user-agent"
+      && output.lambda.function.environment[0].variables["PARAMETER_GITHUB_APP_ID_NAME"] == "/github-runner/app-id:/github-runner/app-id-2"
       && output.lambda.function.environment[0].variables["PARAMETER_GITHUB_APP_KEY_BASE64_NAME"] == "/github-runner/key-base64:/github-runner/key-base64-2"
       && output.lambda.function.environment[0].variables["PARAMETER_GITHUB_APP_INSTALLATION_ID_NAME"] == ":/github-runner/installation-id-2"
       && contains(data.aws_iam_policy_document.job_retry.statement[0].resources, "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id-2")
       && contains(data.aws_iam_policy_document.job_retry.statement[0].resources, "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64-2")
       && contains(data.aws_iam_policy_document.job_retry.statement[0].resources, "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/installation-id-2")
     )
-    error_message = "Job retry must pass every GitHub App parameter and grant access to every corresponding SSM ARN."
+    error_message = "Job retry must receive the nested GitHub connection settings, pass every app parameter, and grant access to every corresponding SSM ARN."
   }
 
   assert {
@@ -182,6 +184,7 @@ run "preserves_nested_job_retry_configuration" {
     condition = (
       output.lambda.log_group.log_group_class == "INFREQUENT_ACCESS"
       && length(data.aws_iam_policy_document.job_retry.statement) == 4
+      && data.aws_iam_policy_document.job_retry.statement[3].resources == toset(["arn:aws:kms:eu-west-1:123456789012:key/job-retry-test"])
       && length(aws_lambda_function.job_retry.vpc_config) == 1
       && length(aws_iam_role_policy_attachment.job_retry_vpc_execution_role) == 1
       && length(aws_iam_role_policy.job_retry_xray) == 1
@@ -286,7 +289,8 @@ run "does_not_enable_partial_vpc_configuration" {
     condition = (
       length(aws_lambda_function.job_retry.vpc_config) == 0
       && length(aws_iam_role_policy_attachment.job_retry_vpc_execution_role) == 0
+      && data.aws_iam_policy_document.job_retry.statement[3].resources == toset(["arn:aws:kms:*:000000000000:key/00000000-0000-0000-0000-000000000000"])
     )
-    error_message = "The VPC block and managed policy must both remain disabled until subnet and security-group lists are complete."
+    error_message = "Partial VPC inputs must stay disabled while a null KMS key keeps the static IAM statement on its inert sentinel ARN."
   }
 }

@@ -22,6 +22,7 @@ variable "config" {
     - `runner.name_prefix`: Prefix used to identify runners belonging to this runner configuration.
     - `github.organization_runners`: Enables organization runners.
     - `github.enterprise_server.url`: Optional GitHub Enterprise Server URL.
+    - `github.enterprise_server.ssl_verify`: Enables TLS certificate verification for GitHub Enterprise Server requests.
     - `github.user_agent`: Optional User-Agent sent to GitHub.
     - `github.app_parameters.key_base64`: Ordered Parameter Store references for GitHub App private keys.
     - `github.app_parameters.id`: Ordered Parameter Store references for GitHub App IDs.
@@ -30,7 +31,7 @@ variable "config" {
     - `queue.event_source_mapping.batch_size`: Maximum records delivered per job-retry invocation.
     - `queue.event_source_mapping.maximum_batching_window_in_seconds`: Maximum event batching window.
     - `queue.encryption`: Server-side encryption configuration for the retry queue.
-    - `ssm.kms_key`: Optional KMS key used by the job-retry IAM policy.
+    - `ssm.kms_key_id`: Optional KMS key ARN used by the job-retry IAM policy. Its value may be unknown until apply.
     - `observability.logs`: Logging level, retention, encryption, and log-class configuration.
     - `observability.tracing`: Lambda X-Ray and tracing-helper configuration.
     - `observability.metrics`: Metrics enablement, namespace, and job-retry metric configuration.
@@ -78,7 +79,8 @@ variable "config" {
     github = object({
       organization_runners = bool
       enterprise_server = object({
-        url = optional(string, null)
+        url        = optional(string, null)
+        ssl_verify = optional(bool, true)
       })
       user_agent = optional(string, null)
       app_parameters = object({
@@ -103,9 +105,7 @@ variable "config" {
       })
     })
     ssm = object({
-      kms_key = optional(object({
-        arn = string
-      }), null)
+      kms_key_id = optional(string, null)
     })
     observability = object({
       logs = object({
