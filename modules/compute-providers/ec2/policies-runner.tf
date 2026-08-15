@@ -1,4 +1,4 @@
-# EC2 runner permission documents returned to runner-stack for attachment to
+# EC2 runner permission documents returned to runner-config for attachment to
 # the common runner role.
 data "aws_caller_identity" "current" {}
 

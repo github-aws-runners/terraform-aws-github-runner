@@ -1,5 +1,5 @@
-# Keep the runner lane key, provider selection, and optional KMS scalar
-# caller-known while passing apply-time ARNs through the experimental configuration.
+# Keep the runner-configuration key, provider selection, and optional KMS scalar
+# caller-known while passing apply-time ARNs through the configuration.
 resource "random_id" "managed_policy" {
   byte_length = 4
 }
@@ -9,7 +9,15 @@ module "multi_runner" {
 
   aws_region  = "eu-west-1"
   prefix      = "computed-inputs"
+  vpc_id      = "vpc-12345678"
+  subnet_ids  = ["subnet-12345678"]
   kms_key_arn = "arn:aws:kms:eu-west-1:123456789012:key/generated-${random_id.managed_policy.hex}"
+
+  github_app = {
+    id             = "123456"
+    key_base64     = "dGVzdA=="
+    webhook_secret = "test-secret"
+  }
 
   lambda_s3_bucket      = "lambda-artifacts"
   webhook_lambda_s3_key = "webhook.zip"
@@ -31,17 +39,33 @@ module "multi_runner" {
           bucket = "nested-lambda-artifacts"
         }
       }
-      scale = {
-        artifact = {
-          s3 = {
-            key = "nested-runners.zip"
+    }
+
+    orchestration = {
+      webhook = {
+        queue = {
+          encryption = {
+            kms_data_key_reuse_period_seconds = 300
+            kms_master_key_id                 = "arn:aws:kms:eu-west-1:123456789012:key/generated-${random_id.managed_policy.hex}"
+            sqs_managed_sse_enabled           = null
           }
         }
-      }
-      webhook = {
-        artifact = {
-          s3 = {
-            key = "webhook.zip"
+
+        lambda = {
+          scale = {
+            artifact = {
+              s3 = {
+                key = "nested-runners.zip"
+              }
+            }
+          }
+
+          webhook = {
+            artifact = {
+              s3 = {
+                key = "webhook.zip"
+              }
+            }
           }
         }
       }
@@ -56,17 +80,36 @@ module "multi_runner" {
 
     ssm = {
       kms_key_id = "arn:aws:kms:eu-west-1:123456789012:key/generated-${random_id.managed_policy.hex}"
+      housekeeper = {
+        lambda = {
+          artifact = {
+            s3 = {
+              key = "nested-ssm-housekeeper.zip"
+            }
+          }
+        }
+      }
     }
 
     multi_runner_config = {
       linux = {
         runner = {
-          os            = "linux"
-          architecture  = "x64"
-          maximum_count = 2
+          os           = "linux"
+          architecture = "x64"
           iam = {
             managed_policy_arns = {
               generated = "arn:aws:iam::123456789012:policy/generated-${random_id.managed_policy.hex}"
+            }
+          }
+        }
+        orchestration = {
+          webhook = {
+            runner = {
+              maximum_count = 2
+            }
+
+            matcherConfig = {
+              labelMatchers = [["self-hosted", "linux", "x64"]]
             }
           }
         }
@@ -78,15 +121,12 @@ module "multi_runner" {
             }
           }
         }
-        matcherConfig = {
-          labelMatchers = [["self-hosted", "linux", "x64"]]
-        }
       }
     }
   }
 }
 
-output "runner_stack_keys" {
+output "runner_config_keys" {
   value = keys(module.multi_runner.runners_map_v2)
 }
 

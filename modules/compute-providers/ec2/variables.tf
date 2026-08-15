@@ -10,7 +10,7 @@ variable "aws_region" {
 }
 
 variable "prefix" {
-  description = "Prefix used to identify resources created for the runner stack."
+  description = "Prefix used to identify resources created for the runner configuration."
   type        = string
   default     = "github-actions"
 }
@@ -23,7 +23,7 @@ variable "tags" {
 
 variable "config" {
   description = <<-EOT
-    EC2 compute-provider configuration. Paths match `compute_provider.ec2` in the runner stack.
+    EC2 compute-provider configuration. Paths match `compute_provider.ec2` in the runner configuration.
 
     - `ami`: Optional AMI discovery and encryption configuration. Null selects defaults for `runner.os` and `runner.architecture`.
     - `ami.filter`: AMI filter names mapped to accepted values and merged over the provider defaults.
@@ -75,7 +75,7 @@ variable "config" {
     - `managed_security_group_enabled`: Creates and attaches the provider-managed security group.
     - `log_files`: Optional files collected by the CloudWatch agent. Null uses provider defaults.
     - `log_files[].log_group_name`: CloudWatch log-group name before optional prefixing.
-    - `log_files[].prefix_log_group`: Prefixes the log-group name with the runner stack path.
+    - `log_files[].prefix_log_group`: Prefixes the log-group name with the runner configuration path.
     - `log_files[].file_path`: File or glob read by the CloudWatch agent.
     - `log_files[].log_stream_name`: CloudWatch log-stream name template.
     - `log_files[].log_class`: CloudWatch log-group class for the collected file.
@@ -276,8 +276,8 @@ variable "runner" {
     - `hooks.job_completed`: Script installed as the runner job-completed hook.
     - `iam.role.arn`: Resolved runner-role ARN referenced by provider policies and resources.
     - `iam.role.name`: Resolved runner-role name used by provider resources.
-    - `iam.role.managed`: Whether runner-stack manages the resolved runner role.
-    - `iam.managed_policy_arns`: Common managed-policy ARNs returned with the provider-specific runner policies for attachment by runner-stack.
+    - `iam.role.managed`: Whether runner-config manages the resolved runner role.
+    - `iam.managed_policy_arns`: Common managed-policy ARNs returned with the provider-specific runner policies for attachment by runner-config.
     - `iam.path`: IAM path available to provider-managed IAM resources. Null derives the path from `prefix`.
   EOT
   type = object({
@@ -326,7 +326,7 @@ variable "ssm" {
   description = <<-EOT
     Parameter Store paths and tag scopes available to compute-provider bootstrap resources.
 
-    - `paths.root`: Root Parameter Store path for the runner stack.
+    - `paths.root`: Root Parameter Store path for the runner configuration.
     - `paths.tokens`: Path segment used for registration tokens and just-in-time configuration.
     - `paths.config`: Path segment used for persistent runner and provider configuration.
     - `tags`: Shared SSM tags that override module-level `tags`.
