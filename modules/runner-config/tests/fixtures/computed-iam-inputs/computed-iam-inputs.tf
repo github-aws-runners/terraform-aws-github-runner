@@ -88,11 +88,9 @@ module "external_iam" {
         kms_key_id = "arn:aws:kms:eu-west-1:123456789012:key/build-queue-${random_id.external.hex}"
       }
       lambda = {
-        scale = {
-          artifact = {
-            s3 = {
-              key = "runners.zip"
-            }
+        artifact = {
+          s3 = {
+            key = "runners.zip"
           }
         }
         pool = {
@@ -185,11 +183,9 @@ module "generated_policy" {
         }
       }
       lambda = {
-        scale = {
-          artifact = {
-            s3 = {
-              key = "runners.zip"
-            }
+        artifact = {
+          s3 = {
+            key = "runners.zip"
           }
         }
       }

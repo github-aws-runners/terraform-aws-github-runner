@@ -105,23 +105,23 @@ variables {
         }
       }
       lambda = {
+        artifact = {
+          s3 = {
+            key = "runners.zip"
+          }
+        }
         scale = {
-          artifact = {
-            s3 = {
-              key = "runners.zip"
+          up = {
+            tags = {
+              precedence = "scale-up"
+              scale_up   = "yes"
             }
           }
-        }
-        scale_up = {
-          tags = {
-            precedence = "scale-up"
-            scale_up   = "yes"
-          }
-        }
-        scale_down = {
-          tags = {
-            precedence = "scale-down"
-            scale_down = "yes"
+          down = {
+            tags = {
+              precedence = "scale-down"
+              scale_down = "yes"
+            }
           }
         }
         pool = {

@@ -9,6 +9,10 @@ locals {
   orchestration_provider_enabled = {
     webhook = local.orchestration_provider_type == "webhook"
   }
+
+  orchestration_provider_runner_lifecycle = {
+    webhook = one([for provider in values(module.webhook) : provider.runner_lifecycle])
+  }[local.orchestration_provider_type]
 }
 
 moved {

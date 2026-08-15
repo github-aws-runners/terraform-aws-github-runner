@@ -23,8 +23,6 @@ variables {
   runner = {
     os                   = "linux"
     auto_update_disabled = false
-    ephemeral            = true
-    jit_config_enabled   = true
     labels               = ["self-hosted", "linux"]
     group_name           = "default"
     name_prefix          = "webhook-test-"
@@ -101,7 +99,10 @@ variables {
 
   config = {
     runner = {
-      maximum_count = 10
+      boot_time_in_minutes = 11
+      ephemeral            = true
+      jit_config_enabled   = null
+      maximum_count        = 10
     }
     github = {
       organization_runners = true
@@ -117,35 +118,35 @@ variables {
       }
     }
     lambda = {
+      artifact = {
+        s3 = {
+          key = "runners.zip"
+        }
+      }
       scale = {
-        artifact = {
-          s3 = {
-            key = "runners.zip"
+        up = {
+          memory_size                    = 512
+          timeout                        = 60
+          reserved_concurrent_executions = 1
+          job_queued_check_enabled       = null
+          event_source_mapping = {
+            batch_size                         = 10
+            maximum_batching_window_in_seconds = 0
+          }
+          tags = {
+            ScaleUp    = "yes"
+            Precedence = "scale-up"
           }
         }
-      }
-      scale_up = {
-        memory_size                    = 512
-        timeout                        = 60
-        reserved_concurrent_executions = 1
-        job_queued_check_enabled       = null
-        event_source_mapping = {
-          batch_size                         = 10
-          maximum_batching_window_in_seconds = 0
-        }
-        tags = {
-          ScaleUp    = "yes"
-          Precedence = "scale-up"
-        }
-      }
-      scale_down = {
-        memory_size                     = 512
-        timeout                         = 60
-        schedule_expression             = "cron(*/5 * * * ? *)"
-        minimum_running_time_in_minutes = null
-        idle_config                     = []
-        tags = {
-          ScaleDown = "yes"
+        down = {
+          memory_size                     = 512
+          timeout                         = 60
+          schedule_expression             = "cron(*/5 * * * ? *)"
+          minimum_running_time_in_minutes = null
+          idle_config                     = []
+          tags = {
+            ScaleDown = "yes"
+          }
         }
       }
       pool = {
@@ -242,8 +243,20 @@ run "owns_webhook_control_plane" {
     condition = (
       output.scale_up.lambda.environment[0].variables["RUNNERS_MAXIMUM_COUNT"] == "10"
       && output.pool.lambda.environment[0].variables["RUNNERS_MAXIMUM_COUNT"] == "10"
+      && output.scale_down.lambda.environment[0].variables["RUNNER_BOOT_TIME_IN_MINUTES"] == "11"
+      && output.pool.lambda.environment[0].variables["RUNNER_BOOT_TIME_IN_MINUTES"] == "11"
+      && output.scale_up.lambda.environment[0].variables["ENABLE_JIT_CONFIG"] == "true"
+      && output.pool.lambda.environment[0].variables["ENABLE_JIT_CONFIG"] == "true"
     )
-    error_message = "The webhook provider must route its provider-owned runner capacity limit to scale-up and pool without reading it from common runner values."
+    error_message = "The webhook provider must route its provider-owned runner lifecycle, capacity, and boot-time values without reading them from common runner values."
+  }
+
+  assert {
+    condition = (
+      output.runner_lifecycle.ephemeral
+      && output.runner_lifecycle.jit_config_enabled
+    )
+    error_message = "The webhook provider must expose its resolved lifecycle contract and default JIT configuration to the effective ephemeral mode."
   }
 
   assert {
@@ -253,7 +266,7 @@ run "owns_webhook_control_plane" {
       && output.scale_down.lambda.s3_bucket == "lambda-artifacts"
       && output.pool.lambda.s3_key == "runners.zip"
     )
-    error_message = "The webhook provider must combine the common artifact bucket with its provider-owned scale artifact key."
+    error_message = "The webhook provider must combine the common artifact bucket with its shared runner-control artifact key for scale, pool, and job retry."
   }
 
   assert {

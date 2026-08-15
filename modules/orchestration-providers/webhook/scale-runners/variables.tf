@@ -27,6 +27,7 @@ variable "config" {
     - `runner.labels`: Labels supplied when a runner is registered.
     - `runner.group_name`: GitHub runner group used during registration.
     - `runner.name_prefix`: Prefix added to registered runner names.
+    - `runner.boot_time_in_minutes`: Webhook-provider runner boot timeout used by scale-down.
     - `runner.maximum_count`: Webhook-provider runner capacity limit for this runner configuration.
     - `github.organization_runners`: Registers organization runners when true.
     - `github.enterprise_server.url`: Optional GitHub Enterprise Server URL.
@@ -98,6 +99,7 @@ variable "config" {
       labels               = list(string)
       group_name           = string
       name_prefix          = string
+      boot_time_in_minutes = number
       maximum_count        = number
     })
     github = object({

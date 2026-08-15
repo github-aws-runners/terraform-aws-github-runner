@@ -16,10 +16,13 @@ variable "tags" {
 }
 
 variable "config" {
-  description = "Resolved provider-owned values from orchestration.webhook, including the runner capacity limit used by scaling and pool controls."
+  description = "Resolved provider-owned values from orchestration.webhook, including runner lifecycle, boot timeout, and capacity limits used by scaling and pool controls."
   type = object({
     runner = object({
-      maximum_count = number
+      boot_time_in_minutes = number
+      ephemeral            = bool
+      jit_config_enabled   = optional(bool, null)
+      maximum_count        = number
     })
     github = object({
       organization_runners = bool
@@ -33,38 +36,38 @@ variable "config" {
       tags       = optional(map(string), {})
     })
     lambda = object({
+      artifact = object({
+        zip = optional(string, null)
+        s3 = optional(object({
+          key            = string
+          object_version = optional(string, null)
+        }), null)
+      })
       scale = object({
-        artifact = object({
-          zip = optional(string, null)
-          s3 = optional(object({
-            key            = string
-            object_version = optional(string, null)
-          }), null)
+        up = object({
+          memory_size                    = number
+          timeout                        = number
+          reserved_concurrent_executions = number
+          job_queued_check_enabled       = optional(bool, null)
+          event_source_mapping = object({
+            batch_size                         = number
+            maximum_batching_window_in_seconds = number
+          })
+          tags = optional(map(string), {})
         })
-      })
-      scale_up = object({
-        memory_size                    = number
-        timeout                        = number
-        reserved_concurrent_executions = number
-        job_queued_check_enabled       = optional(bool, null)
-        event_source_mapping = object({
-          batch_size                         = number
-          maximum_batching_window_in_seconds = number
+        down = object({
+          memory_size                     = number
+          timeout                         = number
+          schedule_expression             = string
+          minimum_running_time_in_minutes = optional(number, null)
+          idle_config = list(object({
+            cron             = string
+            timeZone         = string
+            idleCount        = number
+            evictionStrategy = string
+          }))
+          tags = optional(map(string), {})
         })
-        tags = optional(map(string), {})
-      })
-      scale_down = object({
-        memory_size                     = number
-        timeout                         = number
-        schedule_expression             = string
-        minimum_running_time_in_minutes = optional(number, null)
-        idle_config = list(object({
-          cron             = string
-          timeZone         = string
-          idleCount        = number
-          evictionStrategy = string
-        }))
-        tags = optional(map(string), {})
       })
       pool = object({
         memory_size                    = number
@@ -97,20 +100,18 @@ variable "config" {
 
   validation {
     condition = !(
-      var.config.lambda.scale.artifact.zip != null &&
-      var.config.lambda.scale.artifact.s3 != null
+      var.config.lambda.artifact.zip != null &&
+      var.config.lambda.artifact.s3 != null
     )
-    error_message = "config.lambda.scale.artifact must select at most one of zip or s3."
+    error_message = "config.lambda.artifact must select at most one of zip or s3."
   }
 }
 
 variable "runner" {
-  description = "Common runner registration values consumed by webhook demand controls. Capacity remains provider-owned under config.runner."
+  description = "Common runner registration values consumed by webhook demand controls. Lifecycle, boot timeout, and capacity remain provider-owned under config.runner."
   type = object({
     os                   = string
     auto_update_disabled = bool
-    ephemeral            = bool
-    jit_config_enabled   = optional(bool, null)
     labels               = list(string)
     group_name           = string
     name_prefix          = string

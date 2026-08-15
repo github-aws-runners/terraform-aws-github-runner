@@ -49,6 +49,7 @@ variables {
       labels               = ["Self-Hosted", "MicroVM"]
       group_name           = "test-group"
       name_prefix          = "test-runner-"
+      boot_time_in_minutes = 12
       maximum_count        = 7
     }
     github = {
@@ -236,11 +237,12 @@ run "assembles_provider_neutral_scaling_control_plane" {
       aws_lambda_function.scale_up.environment[0].variables["COMPUTE_PROVIDER_TYPE"] == "microvm"
       && aws_lambda_function.scale_down.environment[0].variables["COMPUTE_PROVIDER_TYPE"] == "microvm"
       && aws_lambda_function.scale_up.environment[0].variables["RUNNERS_MAXIMUM_COUNT"] == "7"
+      && aws_lambda_function.scale_down.environment[0].variables["RUNNER_BOOT_TIME_IN_MINUTES"] == "12"
       && aws_lambda_function.scale_up.environment[0].variables["MICROVM_CLUSTER"] == "runner-cluster"
       && aws_lambda_function.scale_down.environment[0].variables["MICROVM_CLUSTER"] == "runner-cluster"
       && !contains(keys(aws_lambda_function.scale_up.environment[0].variables), "INSTANCE_TYPES")
     )
-    error_message = "The common scaling Lambdas must select the provider and merge only its environment fragments."
+    error_message = "The common scaling Lambdas must select the compute provider while injecting webhook-owned capacity and boot-time settings."
   }
 
   assert {

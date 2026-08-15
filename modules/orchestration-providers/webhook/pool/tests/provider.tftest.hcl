@@ -74,6 +74,7 @@ variables {
       group_name                = "default"
       name_prefix               = "microvm"
       pool_owner                = "example"
+      boot_time_in_minutes      = 13
     }
     runners_maximum_count = 10
     prefix                = "pool-test"
@@ -138,8 +139,9 @@ run "provider_supplies_only_compute_specific_pool_configuration" {
     condition = (
       aws_lambda_function.pool.environment[0].variables["RUNNER_OWNER"] == "example"
       && aws_lambda_function.pool.environment[0].variables["RUNNERS_MAXIMUM_COUNT"] == "10"
+      && aws_lambda_function.pool.environment[0].variables["RUNNER_BOOT_TIME_IN_MINUTES"] == "13"
     )
-    error_message = "The pool module must assemble common runner registration values and the webhook-provider capacity limit."
+    error_message = "The pool module must assemble common runner registration values and webhook-provider capacity and boot-time settings."
   }
 
   assert {
