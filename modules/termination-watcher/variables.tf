@@ -11,6 +11,7 @@ variable "config" {
     `log_level`: Logging level for lambda logging. Valid values are  'silly', 'trace', 'debug', 'info', 'warn', 'error', 'fatal'.
     `log_class`: The log class of the CloudWatch log group. Valid values are `STANDARD` or `INFREQUENT_ACCESS`.
     `logging_kms_key_id`: Specifies the kms key id to encrypt the logs with
+    `ssm_kms_key_id`: Optional KMS key ARN used to decrypt GitHub App parameters while deregistering runners. The ARN may be unknown until apply.
     `logging_retention_in_days`: Specifies the number of days you want to retain log events for the lambda log group. Possible values are: 0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, and 3653.
     `memory_size`: Memory size limit in MB of the lambda.
     `prefix`: The prefix used for naming resources.
@@ -43,6 +44,7 @@ variable "config" {
     log_level                 = optional(string, null)
     log_class                 = optional(string, "STANDARD")
     logging_kms_key_id        = optional(string, null)
+    ssm_kms_key_id            = optional(string, null)
     logging_retention_in_days = optional(number, null)
     memory_size               = optional(number, null)
     metrics = optional(object({
