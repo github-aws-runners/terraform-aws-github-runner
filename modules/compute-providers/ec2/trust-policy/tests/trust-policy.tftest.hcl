@@ -63,5 +63,9 @@ run "rejects_invalid_additional_trust_policy" {
     additional_trust_policy_json = "not-json"
   }
 
-  expect_failures = [var.additional_trust_policy_json]
+  plan_options {
+    target = [terraform_data.validate_config]
+  }
+
+  expect_failures = [terraform_data.validate_config]
 }

@@ -1,4 +1,4 @@
-module "ec2_trust_policy" {
+module "compute_ec2_trust_policy" {
   count  = local.provider_type == "ec2" ? 1 : 0
   source = "../compute-providers/ec2/trust-policy"
 
