@@ -1,6 +1,32 @@
 resource "terraform_data" "validate_experimental" {
   lifecycle {
     precondition {
+      condition     = local.use_multi_runner_config_v2 || var.github_app != null
+      error_message = "github_app is required when experimental.multi_runner_config is empty."
+    }
+
+    precondition {
+      condition = local.use_multi_runner_config_v2 ? true : (
+        var.github_app == null ? true : (
+          (try(var.github_app.key_base64, null) != null || try(var.github_app.key_base64_ssm, null) != null) &&
+          (try(var.github_app.id, null) != null || try(var.github_app.id_ssm, null) != null) &&
+          (try(var.github_app.webhook_secret, null) != null || try(var.github_app.webhook_secret_ssm, null) != null)
+        )
+      )
+      error_message = "github_app must set one value from each pair: key_base64 or key_base64_ssm, id or id_ssm, and webhook_secret or webhook_secret_ssm."
+    }
+
+    precondition {
+      condition     = local.use_multi_runner_config_v2 || var.vpc_id != null
+      error_message = "vpc_id is required when experimental.multi_runner_config is empty."
+    }
+
+    precondition {
+      condition     = local.use_multi_runner_config_v2 || var.subnet_ids != null
+      error_message = "subnet_ids is required when experimental.multi_runner_config is empty."
+    }
+
+    precondition {
       condition = (
         length(var.experimental.multi_runner_config) == 0 ||
         var.experimental.github.app != null
