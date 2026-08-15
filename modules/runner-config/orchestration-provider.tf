@@ -11,7 +11,7 @@ locals {
   }
 
   orchestration_provider_runner_lifecycle = {
-    webhook = one([for provider in values(module.webhook) : provider.runner_lifecycle])
+    webhook = one(module.orchestration_webhook[*].runner_lifecycle)
   }[local.orchestration_provider_type]
 }
 
@@ -30,18 +30,20 @@ moved {
   to   = module.webhook["webhook"].module.job_retry
 }
 
-module "webhook" {
+moved {
+  from = module.webhook["webhook"]
+  to   = module.orchestration_webhook[0]
+}
+
+module "orchestration_webhook" {
   source = "../orchestration-providers/webhook"
-  for_each = {
-    for provider_type, provider_config in local.orchestration_providers : provider_type => provider_config
-    if provider_type == "webhook"
-  }
+  count  = local.orchestration_provider_enabled.webhook ? 1 : 0
 
   aws_partition = var.aws_partition
   prefix        = var.prefix
   tags          = var.tags
 
-  config = each.value
+  config = var.orchestration.webhook
   runner = var.runner
   github = var.github
   lambda = {

@@ -101,7 +101,7 @@ The canonical object gives shared singleton resources one global representation 
 - The v1 translation wraps its existing registration scope, matcher, queue, scale, pool, and retry values under `orchestration.webhook`; the stable public input and resource behavior remain unchanged.
 - Stable queue tagging and the flat `runners_map` output remain unchanged.
 - When `experimental.multi_runner_config` is non-empty, every key in the experimental map calls `modules/runner-config` at `module.runner_configs["configuration"]`; stable-map entries are not dispatched.
-- Declarative `moved` blocks preserve the experimental call rename from `module.runner_stacks` to `module.runner_configs` and move the former runner-config scale, pool, and retry children directly beneath `module.webhook["webhook"]` without an intermediate state address.
+- Declarative `moved` blocks preserve historical runner-config and provider-child addresses, then converge compute and orchestration resources beneath `module.compute_ec2[0]` and `module.orchestration_webhook[0]`.
 - Experimental resources are exposed separately through the nested `runners_map_v2` output.
 - The maps are not combined. A non-empty v2 map has explicit priority over the stable map.
 
