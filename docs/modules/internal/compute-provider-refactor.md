@@ -247,8 +247,8 @@ module "multi_runner" {
       }
 
       # This ARN-valued scalar may be unknown until apply. It encrypts shared
-      # app parameters, configures the webhook and termination watcher, and
-      # grants runner-stack decrypt access.
+      # app parameters, configures the webhook, and grants runner-stack
+      # decrypt access.
       kms_key_id = aws_kms_key.github_app_parameters.arn
 
       parameters = {
@@ -486,7 +486,7 @@ compute_provider = {
 
 The populated `ec2` block tells both multi-runner routing and runner-stack dispatch which provider implementation exists and must therefore be known during planning. Canonical translation preserves that wrapper, and the `module.runner_stacks` input forwards it unchanged at the runner-stack boundary. Within the provider block, each ownership-wrapper object tells Terraform that the corresponding policy exists; its `arn` may safely be computed. `ssm.kms_key_id` and values such as `observability.logs.kms_key_id`, which configure existing static resource or policy shapes, remain nullable scalar inputs.
 
-For experimental multi-runner v2, global `experimental.ssm.kms_key_id` encrypts the shared GitHub App parameters, configures the webhook and termination watcher with the same key, and adds matching decrypt permissions to every runner stack so its control-plane functions can read those credentials. Its value may be unknown until apply because those IAM consumers retain a static statement shape. It does not select encryption for runtime-created lane runner parameters. Queue encryption is a separate global contract and may use a different CMK.
+For experimental multi-runner v2, global `experimental.ssm.kms_key_id` encrypts the shared GitHub App parameters, configures the webhook with the same key, and adds matching decrypt permissions to every runner stack so its control-plane functions can read those credentials. Its value may be unknown until apply because those IAM consumers retain a static statement shape. It does not select encryption for runtime-created lane runner parameters. Queue encryption is a separate global contract and may use a different CMK.
 
 ## Migration phases
 

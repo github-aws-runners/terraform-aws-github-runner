@@ -14,7 +14,6 @@ module "instance_termination_watcher" {
     log_level                    = local.translated_experimental.observability.logs.level
     log_class                    = local.translated_experimental.observability.logs.class
     logging_kms_key_id           = local.translated_experimental.observability.logs.kms_key_id
-    ssm_kms_key_id               = local.translated_experimental.ssm.kms_key_id
     logging_retention_in_days    = local.translated_experimental.observability.logs.retention_in_days
     role_path                    = try(coalesce(local.translated_experimental.lambda.role.path, local.translated_experimental.roles.path), null)
     role_permissions_boundary    = try(coalesce(local.translated_experimental.lambda.role.permissions_boundary, local.translated_experimental.roles.permissions_boundary), null)

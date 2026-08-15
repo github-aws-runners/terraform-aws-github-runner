@@ -18,15 +18,19 @@ locals {
     var.config.github_app_parameters.key_base64.arn,
   ] : []
 
+  environment_variables = {
+    ENABLE_METRICS_SPOT_WARNING = var.config.metrics != null ? var.config.metrics.enable && var.config.metrics.metric.enable_spot_termination_warning : false
+    TAG_FILTERS                 = jsonencode(var.config.tag_filters)
+  }
+
   config = merge(var.config, {
     name                          = local.name,
     handler                       = "index.interruptionWarning",
     zip                           = local.lambda_zip,
-    environment_variables         = var.config.environment_variables
+    environment_variables         = local.environment_variables
     metrics_namespace             = var.config.metrics.namespace
     _deregistration_env_vars      = local.deregistration_env_vars
     _ssm_parameter_arns           = local.ssm_parameter_arns
-    _ssm_kms_key_id               = coalesce(var.config.ssm_kms_key_id, "arn:${coalesce(var.config.aws_partition, "aws")}:kms:*:000000000000:key/00000000-0000-0000-0000-000000000000")
     _enable_runner_deregistration = local.enable_runner_deregistration
   })
 }
