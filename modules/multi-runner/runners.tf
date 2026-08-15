@@ -119,9 +119,9 @@ module "runners" {
     runner_role_arn           = try(each.value.runner.iam.role.arn, null)
   }
 
-  ghes_url        = local.translated_experimental.enterprise_server.url
-  ghes_ssl_verify = local.translated_experimental.enterprise_server.ssl_verify
-  user_agent      = local.translated_experimental.user_agent
+  ghes_url        = local.translated_experimental.github.enterprise_server.url
+  ghes_ssl_verify = local.translated_experimental.github.enterprise_server.ssl_verify
+  user_agent      = local.translated_experimental.github.user_agent
 
   kms_key_arn = local.translated_experimental.ssm.kms_key_id
 

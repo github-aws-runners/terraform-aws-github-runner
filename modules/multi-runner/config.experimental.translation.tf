@@ -48,14 +48,12 @@ locals {
       app                   = var.github_app
       additional_apps       = var.additional_github_apps
       repository_white_list = var.repository_white_list
+      enterprise_server = {
+        url        = var.ghes_url
+        ssl_verify = var.ghes_ssl_verify
+      }
+      user_agent = var.user_agent
     }
-
-    enterprise_server = {
-      url        = var.ghes_url
-      ssl_verify = var.ghes_ssl_verify
-    }
-
-    user_agent = var.user_agent
 
     webhook = {
       queue_selection_strategy            = var.queue_selection_strategy
@@ -719,8 +717,8 @@ locals {
         })
 
         github = merge(v.github, {
-          enterprise_server = local.translated_experimental_base.enterprise_server
-          user_agent        = local.translated_experimental_base.user_agent
+          enterprise_server = local.translated_experimental_base.github.enterprise_server
+          user_agent        = local.translated_experimental_base.github.user_agent
         })
 
         queue = merge(v.queue, {

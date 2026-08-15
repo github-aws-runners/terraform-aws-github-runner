@@ -32,7 +32,7 @@ module "instance_termination_watcher" {
       id         = local.github_app_parameters.id[0]
       key_base64 = local.github_app_parameters.key_base64[0]
     } : null
-    ghes_url              = local.translated_experimental.enterprise_server.url
+    ghes_url              = local.translated_experimental.github.enterprise_server.url
     environment_variables = local.translated_experimental.compute_provider.ec2.instance_termination_watcher.environment_variables
   }
 }
