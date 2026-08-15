@@ -310,6 +310,3 @@ Before an existing experimental deployment adopts the module rename, its plan mu
 
 - [Experimental compute-provider refactor](../modules/internal/compute-provider-refactor.md)
 - [GitHub Actions Runner Scale Set reference implementation](https://github.com/actions/scaleset)
-- [PR #5204 warm-pool proposal and ADR structure](https://github.com/github-aws-runners/terraform-aws-github-runner/pull/5204)
-- [ADR-001 warm-pool decision in PR #5204](https://github.com/github-aws-runners/terraform-aws-github-runner/blob/feature/warm-pool-hibernation/docs/adr/001-warm-pool-hibernation.md)
-- [ADR-001 warm-pool implementation plan in PR #5204](https://github.com/github-aws-runners/terraform-aws-github-runner/blob/feature/warm-pool-hibernation/docs/adr/001-warm-pool-implementation-plan.md)
