@@ -68,7 +68,7 @@ locals {
       }
     }
 
-    orchestration = {
+    orchestration_provider = {
       webhook = {
         queue_selection_strategy            = var.queue_selection_strategy
         eventbridge                         = var.eventbridge
@@ -338,7 +338,7 @@ locals {
           }
         }
 
-        orchestration = {
+        orchestration_provider = {
           webhook = {
             runner = {
               boot_time_in_minutes = v.runner_config.runner_boot_time_in_minutes
@@ -586,81 +586,81 @@ locals {
           }
         })
 
-        orchestration = {
-          webhook = v.orchestration.webhook == null ? null : merge(v.orchestration.webhook, {
+        orchestration_provider = {
+          webhook = v.orchestration_provider.webhook == null ? null : merge(v.orchestration_provider.webhook, {
             runner = {
               boot_time_in_minutes = coalesce(
-                v.orchestration.webhook.runner.boot_time_in_minutes,
-                local.raw_translated_experimental.orchestration.webhook.runner.boot_time_in_minutes,
+                v.orchestration_provider.webhook.runner.boot_time_in_minutes,
+                local.raw_translated_experimental.orchestration_provider.webhook.runner.boot_time_in_minutes,
               )
               ephemeral = coalesce(
-                v.orchestration.webhook.runner.ephemeral,
-                local.raw_translated_experimental.orchestration.webhook.runner.ephemeral,
+                v.orchestration_provider.webhook.runner.ephemeral,
+                local.raw_translated_experimental.orchestration_provider.webhook.runner.ephemeral,
               )
               jit_config_enabled = try(coalesce(
-                v.orchestration.webhook.runner.jit_config_enabled,
-                local.raw_translated_experimental.orchestration.webhook.runner.jit_config_enabled,
+                v.orchestration_provider.webhook.runner.jit_config_enabled,
+                local.raw_translated_experimental.orchestration_provider.webhook.runner.jit_config_enabled,
               ), null)
               maximum_count = try(coalesce(
-                v.orchestration.webhook.runner.maximum_count,
-                local.raw_translated_experimental.orchestration.webhook.runner.maximum_count,
+                v.orchestration_provider.webhook.runner.maximum_count,
+                local.raw_translated_experimental.orchestration_provider.webhook.runner.maximum_count,
               ), null)
             }
 
-            lambda = merge(v.orchestration.webhook.lambda, {
-              scale = merge(v.orchestration.webhook.lambda.scale, {
-                up = merge(v.orchestration.webhook.lambda.scale.up, {
-                  memory_size                    = coalesce(v.orchestration.webhook.lambda.scale.up.memory_size, local.raw_translated_experimental.orchestration.webhook.lambda.scale.up.memory_size)
-                  timeout                        = coalesce(v.orchestration.webhook.lambda.scale.up.timeout, local.raw_translated_experimental.orchestration.webhook.lambda.scale.up.timeout)
-                  reserved_concurrent_executions = coalesce(v.orchestration.webhook.lambda.scale.up.reserved_concurrent_executions, local.raw_translated_experimental.orchestration.webhook.lambda.scale.up.reserved_concurrent_executions)
-                  job_queued_check_enabled       = try(coalesce(v.orchestration.webhook.lambda.scale.up.job_queued_check_enabled, local.raw_translated_experimental.orchestration.webhook.lambda.scale.up.job_queued_check_enabled), null)
+            lambda = merge(v.orchestration_provider.webhook.lambda, {
+              scale = merge(v.orchestration_provider.webhook.lambda.scale, {
+                up = merge(v.orchestration_provider.webhook.lambda.scale.up, {
+                  memory_size                    = coalesce(v.orchestration_provider.webhook.lambda.scale.up.memory_size, local.raw_translated_experimental.orchestration_provider.webhook.lambda.scale.up.memory_size)
+                  timeout                        = coalesce(v.orchestration_provider.webhook.lambda.scale.up.timeout, local.raw_translated_experimental.orchestration_provider.webhook.lambda.scale.up.timeout)
+                  reserved_concurrent_executions = coalesce(v.orchestration_provider.webhook.lambda.scale.up.reserved_concurrent_executions, local.raw_translated_experimental.orchestration_provider.webhook.lambda.scale.up.reserved_concurrent_executions)
+                  job_queued_check_enabled       = try(coalesce(v.orchestration_provider.webhook.lambda.scale.up.job_queued_check_enabled, local.raw_translated_experimental.orchestration_provider.webhook.lambda.scale.up.job_queued_check_enabled), null)
                   event_source_mapping = {
                     batch_size = coalesce(
-                      v.orchestration.webhook.lambda.scale.up.event_source_mapping.batch_size,
-                      local.raw_translated_experimental.orchestration.webhook.lambda.scale.up.event_source_mapping.batch_size,
+                      v.orchestration_provider.webhook.lambda.scale.up.event_source_mapping.batch_size,
+                      local.raw_translated_experimental.orchestration_provider.webhook.lambda.scale.up.event_source_mapping.batch_size,
                     )
                     maximum_batching_window_in_seconds = coalesce(
-                      v.orchestration.webhook.lambda.scale.up.event_source_mapping.maximum_batching_window_in_seconds,
-                      local.raw_translated_experimental.orchestration.webhook.lambda.scale.up.event_source_mapping.maximum_batching_window_in_seconds,
+                      v.orchestration_provider.webhook.lambda.scale.up.event_source_mapping.maximum_batching_window_in_seconds,
+                      local.raw_translated_experimental.orchestration_provider.webhook.lambda.scale.up.event_source_mapping.maximum_batching_window_in_seconds,
                     )
                   }
-                  tags = merge(local.raw_translated_experimental.orchestration.webhook.lambda.scale.up.tags, v.orchestration.webhook.lambda.scale.up.tags)
+                  tags = merge(local.raw_translated_experimental.orchestration_provider.webhook.lambda.scale.up.tags, v.orchestration_provider.webhook.lambda.scale.up.tags)
                 })
-                down = merge(v.orchestration.webhook.lambda.scale.down, {
-                  memory_size                     = coalesce(v.orchestration.webhook.lambda.scale.down.memory_size, local.raw_translated_experimental.orchestration.webhook.lambda.scale.down.memory_size)
-                  timeout                         = coalesce(v.orchestration.webhook.lambda.scale.down.timeout, local.raw_translated_experimental.orchestration.webhook.lambda.scale.down.timeout)
-                  schedule_expression             = coalesce(v.orchestration.webhook.lambda.scale.down.schedule_expression, local.raw_translated_experimental.orchestration.webhook.lambda.scale.down.schedule_expression)
-                  minimum_running_time_in_minutes = try(coalesce(v.orchestration.webhook.lambda.scale.down.minimum_running_time_in_minutes, local.raw_translated_experimental.orchestration.webhook.lambda.scale.down.minimum_running_time_in_minutes), null)
-                  idle_config                     = v.orchestration.webhook.lambda.scale.down.idle_config != null ? v.orchestration.webhook.lambda.scale.down.idle_config : local.raw_translated_experimental.orchestration.webhook.lambda.scale.down.idle_config
-                  tags                            = merge(local.raw_translated_experimental.orchestration.webhook.lambda.scale.down.tags, v.orchestration.webhook.lambda.scale.down.tags)
+                down = merge(v.orchestration_provider.webhook.lambda.scale.down, {
+                  memory_size                     = coalesce(v.orchestration_provider.webhook.lambda.scale.down.memory_size, local.raw_translated_experimental.orchestration_provider.webhook.lambda.scale.down.memory_size)
+                  timeout                         = coalesce(v.orchestration_provider.webhook.lambda.scale.down.timeout, local.raw_translated_experimental.orchestration_provider.webhook.lambda.scale.down.timeout)
+                  schedule_expression             = coalesce(v.orchestration_provider.webhook.lambda.scale.down.schedule_expression, local.raw_translated_experimental.orchestration_provider.webhook.lambda.scale.down.schedule_expression)
+                  minimum_running_time_in_minutes = try(coalesce(v.orchestration_provider.webhook.lambda.scale.down.minimum_running_time_in_minutes, local.raw_translated_experimental.orchestration_provider.webhook.lambda.scale.down.minimum_running_time_in_minutes), null)
+                  idle_config                     = v.orchestration_provider.webhook.lambda.scale.down.idle_config != null ? v.orchestration_provider.webhook.lambda.scale.down.idle_config : local.raw_translated_experimental.orchestration_provider.webhook.lambda.scale.down.idle_config
+                  tags                            = merge(local.raw_translated_experimental.orchestration_provider.webhook.lambda.scale.down.tags, v.orchestration_provider.webhook.lambda.scale.down.tags)
                 })
               })
-              pool = merge(v.orchestration.webhook.lambda.pool, {
-                memory_size                    = coalesce(v.orchestration.webhook.lambda.pool.memory_size, local.raw_translated_experimental.orchestration.webhook.lambda.pool.memory_size)
-                timeout                        = coalesce(v.orchestration.webhook.lambda.pool.timeout, local.raw_translated_experimental.orchestration.webhook.lambda.pool.timeout)
-                reserved_concurrent_executions = coalesce(v.orchestration.webhook.lambda.pool.reserved_concurrent_executions, local.raw_translated_experimental.orchestration.webhook.lambda.pool.reserved_concurrent_executions)
-                config                         = v.orchestration.webhook.lambda.pool.config != null ? v.orchestration.webhook.lambda.pool.config : local.raw_translated_experimental.orchestration.webhook.lambda.pool.config
-                include_busy_runners           = coalesce(v.orchestration.webhook.lambda.pool.include_busy_runners, local.raw_translated_experimental.orchestration.webhook.lambda.pool.include_busy_runners)
-                runner_owner                   = try(coalesce(v.orchestration.webhook.lambda.pool.runner_owner, local.raw_translated_experimental.orchestration.webhook.lambda.pool.runner_owner), null)
-                tags                           = merge(local.raw_translated_experimental.orchestration.webhook.lambda.pool.tags, v.orchestration.webhook.lambda.pool.tags)
+              pool = merge(v.orchestration_provider.webhook.lambda.pool, {
+                memory_size                    = coalesce(v.orchestration_provider.webhook.lambda.pool.memory_size, local.raw_translated_experimental.orchestration_provider.webhook.lambda.pool.memory_size)
+                timeout                        = coalesce(v.orchestration_provider.webhook.lambda.pool.timeout, local.raw_translated_experimental.orchestration_provider.webhook.lambda.pool.timeout)
+                reserved_concurrent_executions = coalesce(v.orchestration_provider.webhook.lambda.pool.reserved_concurrent_executions, local.raw_translated_experimental.orchestration_provider.webhook.lambda.pool.reserved_concurrent_executions)
+                config                         = v.orchestration_provider.webhook.lambda.pool.config != null ? v.orchestration_provider.webhook.lambda.pool.config : local.raw_translated_experimental.orchestration_provider.webhook.lambda.pool.config
+                include_busy_runners           = coalesce(v.orchestration_provider.webhook.lambda.pool.include_busy_runners, local.raw_translated_experimental.orchestration_provider.webhook.lambda.pool.include_busy_runners)
+                runner_owner                   = try(coalesce(v.orchestration_provider.webhook.lambda.pool.runner_owner, local.raw_translated_experimental.orchestration_provider.webhook.lambda.pool.runner_owner), null)
+                tags                           = merge(local.raw_translated_experimental.orchestration_provider.webhook.lambda.pool.tags, v.orchestration_provider.webhook.lambda.pool.tags)
               })
             })
 
-            queue = merge(v.orchestration.webhook.queue, {
-              delay_webhook_event            = coalesce(v.orchestration.webhook.queue.delay_webhook_event, local.raw_translated_experimental.orchestration.webhook.queue.delay_webhook_event)
-              job_queue_retention_in_seconds = coalesce(v.orchestration.webhook.queue.job_queue_retention_in_seconds, local.raw_translated_experimental.orchestration.webhook.queue.job_queue_retention_in_seconds)
-              visibility_timeout_seconds     = coalesce(v.orchestration.webhook.queue.visibility_timeout_seconds, local.raw_translated_experimental.orchestration.webhook.queue.visibility_timeout_seconds)
+            queue = merge(v.orchestration_provider.webhook.queue, {
+              delay_webhook_event            = coalesce(v.orchestration_provider.webhook.queue.delay_webhook_event, local.raw_translated_experimental.orchestration_provider.webhook.queue.delay_webhook_event)
+              job_queue_retention_in_seconds = coalesce(v.orchestration_provider.webhook.queue.job_queue_retention_in_seconds, local.raw_translated_experimental.orchestration_provider.webhook.queue.job_queue_retention_in_seconds)
+              visibility_timeout_seconds     = coalesce(v.orchestration_provider.webhook.queue.visibility_timeout_seconds, local.raw_translated_experimental.orchestration_provider.webhook.queue.visibility_timeout_seconds)
               redrive_build_queue = {
                 enabled = try(
-                  coalesce(try(v.orchestration.webhook.queue.redrive_build_queue.enabled, null), local.raw_translated_experimental.orchestration.webhook.queue.redrive_build_queue.enabled),
-                  local.raw_translated_experimental.orchestration.webhook.queue.redrive_build_queue.enabled,
+                  coalesce(try(v.orchestration_provider.webhook.queue.redrive_build_queue.enabled, null), local.raw_translated_experimental.orchestration_provider.webhook.queue.redrive_build_queue.enabled),
+                  local.raw_translated_experimental.orchestration_provider.webhook.queue.redrive_build_queue.enabled,
                 )
                 maxReceiveCount = try(
-                  coalesce(try(v.orchestration.webhook.queue.redrive_build_queue.maxReceiveCount, null), local.raw_translated_experimental.orchestration.webhook.queue.redrive_build_queue.maxReceiveCount),
+                  coalesce(try(v.orchestration_provider.webhook.queue.redrive_build_queue.maxReceiveCount, null), local.raw_translated_experimental.orchestration_provider.webhook.queue.redrive_build_queue.maxReceiveCount),
                   null,
                 )
               }
-              tags = merge(local.raw_translated_experimental.orchestration.webhook.queue.tags, v.orchestration.webhook.queue.tags)
+              tags = merge(local.raw_translated_experimental.orchestration_provider.webhook.queue.tags, v.orchestration_provider.webhook.queue.tags)
             })
           })
         }
@@ -774,7 +774,7 @@ locals {
               v.runner.os,
               v.runner.architecture,
             ]),
-            v.orchestration.webhook == null ? [] : flatten(v.orchestration.webhook.matcherConfig.labelMatchers),
+            v.orchestration_provider.webhook == null ? [] : flatten(v.orchestration_provider.webhook.matcherConfig.labelMatchers),
             compact(v.runner.extra_labels),
           ))
         })
@@ -789,14 +789,14 @@ locals {
           principals = local.translated_experimental_base.lambda.principals
         })
 
-        orchestration = {
-          webhook = v.orchestration.webhook == null ? null : merge(v.orchestration.webhook, {
-            queue = merge(v.orchestration.webhook.queue, {
-              kms_key_id = local.translated_experimental_base.orchestration.webhook.queue.encryption.kms_master_key_id
+        orchestration_provider = {
+          webhook = v.orchestration_provider.webhook == null ? null : merge(v.orchestration_provider.webhook, {
+            queue = merge(v.orchestration_provider.webhook.queue, {
+              kms_key_id = local.translated_experimental_base.orchestration_provider.webhook.queue.encryption.kms_master_key_id
             })
 
-            lambda = merge(v.orchestration.webhook.lambda, {
-              artifact = local.translated_experimental_base.orchestration.webhook.lambda.artifact
+            lambda = merge(v.orchestration_provider.webhook.lambda, {
+              artifact = local.translated_experimental_base.orchestration_provider.webhook.lambda.artifact
             })
           })
         }

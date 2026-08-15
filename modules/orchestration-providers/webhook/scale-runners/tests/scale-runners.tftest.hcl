@@ -437,3 +437,22 @@ run "omits_optional_kms_statements" {
     error_message = "Null Parameter Store and build-queue keys must omit every optional scale-runner KMS statement."
   }
 }
+
+run "requires_job_retry_queue_when_enabled" {
+  command = plan
+
+  plan_options {
+    target = [terraform_data.validate_config]
+  }
+
+  variables {
+    config = merge(var.config, {
+      job_retry = merge(var.config.job_retry, {
+        enabled = true
+        queue   = null
+      })
+    })
+  }
+
+  expect_failures = [terraform_data.validate_config]
+}

@@ -330,3 +330,57 @@ run "does_not_enable_partial_vpc_configuration" {
     error_message = "Partial VPC inputs must stay disabled and a null KMS key must omit the KMS statement entirely."
   }
 }
+
+run "rejects_unsupported_lambda_architecture" {
+  command = plan
+
+  plan_options {
+    target = [terraform_data.validate_config]
+  }
+
+  variables {
+    config = merge(var.config, {
+      lambda = merge(var.config.lambda, {
+        architecture = "unsupported"
+      })
+    })
+  }
+
+  expect_failures = [terraform_data.validate_config]
+}
+
+run "rejects_unsupported_log_level" {
+  command = plan
+
+  plan_options {
+    target = [terraform_data.validate_config]
+  }
+
+  variables {
+    config = merge(var.config, {
+      observability = merge(var.config.observability, {
+        logs = merge(var.config.observability.logs, {
+          level = "verbose"
+        })
+      })
+    })
+  }
+
+  expect_failures = [terraform_data.validate_config]
+}
+
+run "rejects_resource_prefix_longer_than_aws_limit" {
+  command = plan
+
+  plan_options {
+    target = [terraform_data.validate_config]
+  }
+
+  variables {
+    config = merge(var.config, {
+      prefix = "1234567890123456789012345678901234567890123456789012345"
+    })
+  }
+
+  expect_failures = [terraform_data.validate_config]
+}

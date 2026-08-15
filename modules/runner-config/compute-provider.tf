@@ -5,7 +5,7 @@ locals {
   ])
 
   provider_assume_role_policies = {
-    ec2 = try(module.ec2_trust_policy[0].assume_role_policy, null)
+    ec2 = try(module.compute_ec2_trust_policy[0].assume_role_policy, null)
   }
 
   provider_assume_role_policy = local.provider_assume_role_policies[local.provider_type]

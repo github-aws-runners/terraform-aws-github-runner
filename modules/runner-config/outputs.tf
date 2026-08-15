@@ -20,7 +20,7 @@ output "pool" {
   value       = one(module.orchestration_webhook[*].pool)
 }
 
-output "orchestration" {
+output "orchestration_provider" {
   description = "Resources grouped under the selected runner orchestration provider."
   value = {
     webhook = local.orchestration_provider_enabled.webhook ? {

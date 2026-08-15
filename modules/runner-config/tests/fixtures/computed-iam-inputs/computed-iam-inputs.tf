@@ -72,7 +72,7 @@ module "external_iam" {
     }
   }
 
-  orchestration = {
+  orchestration_provider = {
     webhook = {
       runner = {
         maximum_count = 3
@@ -168,7 +168,7 @@ module "generated_policy" {
     }
   }
 
-  orchestration = {
+  orchestration_provider = {
     webhook = {
       runner = {
         maximum_count = 3

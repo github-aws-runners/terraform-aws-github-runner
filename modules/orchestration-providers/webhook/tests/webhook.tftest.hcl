@@ -289,3 +289,23 @@ run "owns_webhook_control_plane" {
     error_message = "Pool and job-retry leaf ownership must remain inside the webhook provider."
   }
 }
+
+run "rejects_conflicting_artifact_sources" {
+  command = plan
+
+  plan_options {
+    target = [terraform_data.validate_config]
+  }
+
+  variables {
+    config = merge(var.config, {
+      lambda = merge(var.config.lambda, {
+        artifact = merge(var.config.lambda.artifact, {
+          zip = "runners.zip"
+        })
+      })
+    })
+  }
+
+  expect_failures = [terraform_data.validate_config]
+}

@@ -1,5 +1,5 @@
 # Typed orchestration-provider input boundary between the common runner configuration and demand controllers.
-variable "orchestration" {
+variable "orchestration_provider" {
   description = <<-EOT
     Runner demand-orchestration provider configuration. Exactly one provider block must be non-null. Wrapper presence selects the provider and must therefore be known during planning; values inside the selected provider may remain unknown until apply.
 
@@ -138,34 +138,4 @@ variable "orchestration" {
   })
   nullable = false
 
-  validation {
-    condition = length([
-      for provider_name, provider_config in var.orchestration : provider_name
-      if provider_config != null
-    ]) == 1
-    error_message = "Exactly one orchestration provider must be configured. Supported providers: webhook."
-  }
-
-  validation {
-    condition = var.orchestration.webhook == null ? true : (
-      var.orchestration.webhook.lambda.scale.up.event_source_mapping.batch_size >= 1 &&
-      var.orchestration.webhook.lambda.scale.up.event_source_mapping.batch_size <= 1000 &&
-      var.orchestration.webhook.lambda.scale.up.event_source_mapping.maximum_batching_window_in_seconds >= 0 &&
-      var.orchestration.webhook.lambda.scale.up.event_source_mapping.maximum_batching_window_in_seconds <= 300
-    )
-    error_message = "orchestration.webhook.lambda.scale.up.event_source_mapping batch size must be between 1 and 1000 and its batching window between 0 and 300 seconds."
-  }
-
-  validation {
-    condition = var.orchestration.webhook == null ? true : !(
-      var.orchestration.webhook.lambda.artifact.zip != null &&
-      var.orchestration.webhook.lambda.artifact.s3 != null
-    )
-    error_message = "orchestration.webhook.lambda.artifact must select at most one of zip or s3."
-  }
-
-  validation {
-    condition     = var.orchestration.webhook == null ? true : (!var.orchestration.webhook.job_retry.enabled || var.orchestration.webhook.job_retry.delay_in_seconds <= 900)
-    error_message = "orchestration.webhook.job_retry.delay_in_seconds cannot exceed the SQS maximum of 900 seconds."
-  }
 }
