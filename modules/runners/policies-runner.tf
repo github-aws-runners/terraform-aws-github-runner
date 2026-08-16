@@ -1,9 +1,18 @@
 data "aws_caller_identity" "current" {}
 
+locals {
+  runner_role_trust_policy = jsondecode(file("${path.module}/policies/instance-role-trust-policy.json"))
+}
+
 resource "aws_iam_role" "runner" {
-  count                = var.iam_overrides["override_runner_role"] ? 0 : 1
-  name                 = "${substr("${var.prefix}-runner", 0, 54)}-${substr(md5("${var.prefix}-runner"), 0, 8)}"
-  assume_role_policy   = templatefile("${path.module}/policies/instance-role-trust-policy.json", {})
+  count = var.iam_overrides["override_runner_role"] ? 0 : 1
+  name  = "${substr("${var.prefix}-runner", 0, 54)}-${substr(md5("${var.prefix}-runner"), 0, 8)}"
+  assume_role_policy = jsonencode(merge(local.runner_role_trust_policy, {
+    Statement = concat(
+      local.runner_role_trust_policy.Statement,
+      var.runner_iam_role_additional_trust_policy_statements
+    )
+  }))
   path                 = local.role_path
   permissions_boundary = var.role_permissions_boundary
   tags                 = local.tags

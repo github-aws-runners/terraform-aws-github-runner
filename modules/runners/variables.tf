@@ -434,6 +434,17 @@ variable "runner_iam_role_managed_policy_arns" {
   default     = []
 }
 
+variable "runner_iam_role_additional_trust_policy_statements" {
+  description = "Additional statements appended to the trust policy (assume role policy) of the runner IAM role. Statements are in the IAM policy statement format. For example to allow the EC2 service to pass session tags add `[{ Effect = \"Allow\", Principal = { Service = \"ec2.amazonaws.com\" }, Action = \"sts:TagSession\" }]`."
+  type        = any
+  default     = []
+
+  validation {
+    condition     = can([for statement in var.runner_iam_role_additional_trust_policy_statements : statement])
+    error_message = "The variable `runner_iam_role_additional_trust_policy_statements` must be a list of IAM policy statements."
+  }
+}
+
 variable "enable_cloudwatch_agent" {
   description = "Enabling the cloudwatch agent on the ec2 runner instances, the runner contains default config. Configuration can be overridden via `cloudwatch_config`."
   type        = bool
