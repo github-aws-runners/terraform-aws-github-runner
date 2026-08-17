@@ -1,5 +1,14 @@
 # Changelog
 
+## [7.11.1](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v7.11.0...v7.11.1) (2026-08-17)
+
+
+### Bug Fixes
+
+* **lambda:** bump axios from 1.18.0 to 1.18.1 in /lambdas ([#5223](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5223)) ([21d27f1](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/21d27f14057931366da3009b54ca8effd48fd96a))
+* **lambda:** bump fast-uri from 3.1.2 to 3.1.5 in /lambdas ([#5242](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5242)) ([9c3e28c](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/9c3e28c17eeae644c67c9daccc142a1e3e23ea79))
+* **lambda:** bump js-yaml from 3.15.0 to 3.15.1 in /lambdas ([#5264](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5264)) ([a3116bd](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/a3116bd8796ab022b3504fe04ede905f972965f0))
+
 ## [7.11.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v7.10.2...v7.11.0) (2026-08-14)
 
 
