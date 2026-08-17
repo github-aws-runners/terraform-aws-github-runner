@@ -78,6 +78,14 @@ resource "terraform_data" "validate_config" {
     }
 
     precondition {
+      condition = var.compute_provider_key == null || try(
+        local.compute_providers[var.compute_provider_key] != null,
+        false,
+      )
+      error_message = "compute_provider_key must identify the non-null typed compute-provider block."
+    }
+
+    precondition {
       condition = length([
         for provider_name, provider_config in var.orchestration_provider : provider_name
         if provider_config != null

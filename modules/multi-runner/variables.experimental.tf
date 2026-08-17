@@ -170,6 +170,9 @@ variable "experimental" {
     - `observability.metrics.metric.enable_spot_termination`: Emits Spot termination metrics from the shared termination watcher when metrics are enabled. The default is `true`.
     - `observability.metrics.metric.enable_spot_termination_warning`: Emits Spot termination-warning metrics from the shared termination watcher when metrics are enabled. The default is `true`.
     - `compute_provider`: Shared compute-provider defaults grouped first by cloud and then by provider type. Global defaults do not select a provider for any runner configuration.
+    - `compute_provider.selections`: Optional plan-shaping map keyed by runner-configuration key. Each entry identifies the namespace and type of the configuration's selected compute-provider block. The default is null, which discovers selections from the typed provider blocks. Set this map when unrelated apply-time values make that discovery unknown; its keys and values must be known during planning and cover every runner configuration exactly once.
+    - `compute_provider.selections[].namespace`: Compute-provider namespace. The only currently supported value is `aws`.
+    - `compute_provider.selections[].type`: Compute-provider type within the namespace. The only currently supported value is `ec2`.
     - `compute_provider.aws`: Shared defaults for AWS compute providers.
     - `compute_provider.aws.ec2`: Shared defaults for AWS EC2 runner configurations.
     - `compute_provider.aws.ec2.vpc_id`: Shared VPC default for v2 EC2 runner configurations. The default is null; every EC2 runner configuration must resolve this field globally or locally.
@@ -223,6 +226,9 @@ variable "experimental" {
     - `compute_provider.aws.ec2.instance_termination_watcher.lambda.timeout`: Optional watcher Lambda timeout in seconds. The default is null, which delegates to the termination-watcher module.
     - `compute_provider.aws.ec2.runner_binaries`: Global configuration for the shared runner-distribution buckets and syncers, created once per unique enabled runner operating-system and architecture pair.
     - `compute_provider.aws.ec2.runner_binaries.enabled`: Default for whether EC2 runner configurations use the synchronized runner distribution. The default is `true`; a runner configuration may override it through `compute_provider.aws.ec2.binaries_syncer.enabled`. Every resolved enable value must be known during planning because it determines the syncer module instances.
+    - `compute_provider.aws.ec2.runner_binaries.targets`: Optional plan-shaping map of shared runner-distribution targets, keyed by `<os>_<architecture>`. The default is null, which discovers enabled targets from runner configurations. Set this map when unrelated apply-time values make that discovery unknown. An empty map creates no shared binary syncers; every enabled runner platform must have a corresponding entry.
+    - `compute_provider.aws.ec2.runner_binaries.targets[].os`: Runner operating system for the target. Valid values are `linux`, `osx`, and `windows`.
+    - `compute_provider.aws.ec2.runner_binaries.targets[].architecture`: Runner distribution architecture for the target. Valid values are `x64` and `arm64`.
     - `compute_provider.aws.ec2.runner_binaries.s3`: Settings for each shared runner-distribution bucket.
     - `compute_provider.aws.ec2.runner_binaries.s3.encryption`: Server-side encryption settings for each distribution bucket.
     - `compute_provider.aws.ec2.runner_binaries.s3.encryption.enabled`: Creates an explicit distribution-bucket encryption configuration when true. The default is `true`, and the value must be known during planning because it controls resource shape. Keep `kms_master_key_id` null when this is false.
@@ -711,6 +717,10 @@ variable "experimental" {
     }), {})
 
     compute_provider = optional(object({
+      selections = optional(map(object({
+        namespace = string
+        type      = string
+      })), null)
       aws = optional(object({
         ec2 = optional(object({
           vpc_id                         = optional(string, null)
@@ -797,6 +807,10 @@ variable "experimental" {
           }), {})
           runner_binaries = optional(object({
             enabled = optional(bool, true)
+            targets = optional(map(object({
+              os           = string
+              architecture = string
+            })), null)
             s3 = optional(object({
               encryption = optional(object({
                 enabled            = optional(bool, true)

@@ -1,3 +1,15 @@
+# Optional plan-known dispatch key supplied by the multi-runner topology layer.
+variable "compute_provider_key" {
+  description = "Optional plan-known compute-provider dispatch key. Null discovers the key from the exactly one populated compute_provider block."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.compute_provider_key == null ? true : contains(["aws_ec2"], var.compute_provider_key)
+    error_message = "compute_provider_key must be null or aws_ec2."
+  }
+}
+
 # Typed compute-provider input boundary between the common control plane and compute implementations.
 variable "compute_provider" {
   description = <<-EOT
