@@ -79,9 +79,9 @@ resource "terraform_data" "validate_experimental" {
     precondition {
       condition = var.experimental.compute_provider.selections == null ? true : alltrue([
         for selection in values(var.experimental.compute_provider.selections) :
-        selection.namespace == "aws" && selection.type == "ec2"
+        selection.namespace == "aws" && contains(["ec2", "microvm"], selection.type)
       ])
-      error_message = "experimental.compute_provider.selections supports only namespace = aws and type = ec2."
+      error_message = "experimental.compute_provider.selections supports only namespace = aws and type = ec2 or microvm."
     }
 
     precondition {

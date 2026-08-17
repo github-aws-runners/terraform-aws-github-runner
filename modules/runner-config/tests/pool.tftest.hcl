@@ -658,6 +658,7 @@ run "routes_lambda_microvm_provider" {
   command = plan
 
   variables {
+    compute_provider_key = "aws_microvm"
     runner = {
       os           = "linux"
       architecture = "arm64"

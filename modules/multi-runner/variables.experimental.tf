@@ -172,7 +172,7 @@ variable "experimental" {
     - `compute_provider`: Shared compute-provider defaults grouped first by cloud and then by provider type. Global defaults do not select a provider for any runner configuration.
     - `compute_provider.selections`: Optional plan-shaping map keyed by runner-configuration key. Each entry identifies the namespace and type of the configuration's selected compute-provider block. The default is null, which discovers selections from the typed provider blocks. Set this map when unrelated apply-time values make that discovery unknown; its keys and values must be known during planning and cover every runner configuration exactly once.
     - `compute_provider.selections[].namespace`: Compute-provider namespace. The only currently supported value is `aws`.
-    - `compute_provider.selections[].type`: Compute-provider type within the namespace. The only currently supported value is `ec2`.
+    - `compute_provider.selections[].type`: Compute-provider type within the namespace. Currently supported values are `ec2` and `microvm`.
     - `compute_provider.aws`: Shared defaults for AWS compute providers.
     - `compute_provider.aws.ec2`: Shared defaults for AWS EC2 runner configurations.
     - `compute_provider.aws.ec2.vpc_id`: Shared VPC default for v2 EC2 runner configurations. The default is null; every EC2 runner configuration must resolve this field globally or locally.

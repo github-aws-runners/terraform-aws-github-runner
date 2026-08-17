@@ -4629,7 +4629,18 @@ run "experimental_v2_routes_microvm_only_without_ec2_binary_discovery" {
         }
       }
       compute_provider = {
+        selections = {
+          micro = {
+            namespace = "aws"
+            type      = "microvm"
+          }
+        }
         aws = {
+          ec2 = {
+            runner_binaries = {
+              targets = {}
+            }
+          }
           microvm = {
             image_arn = "arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner"
           }

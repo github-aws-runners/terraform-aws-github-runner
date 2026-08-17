@@ -5,8 +5,8 @@ variable "compute_provider_key" {
   default     = null
 
   validation {
-    condition     = var.compute_provider_key == null ? true : contains(["aws_ec2"], var.compute_provider_key)
-    error_message = "compute_provider_key must be null or aws_ec2."
+    condition     = var.compute_provider_key == null ? true : contains(["aws_ec2", "aws_microvm"], var.compute_provider_key)
+    error_message = "compute_provider_key must be null, aws_ec2, or aws_microvm."
   }
 }
 

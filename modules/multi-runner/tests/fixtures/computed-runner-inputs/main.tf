@@ -80,6 +80,10 @@ module "multi_runner" {
           namespace = "aws"
           type      = "ec2"
         }
+        micro = {
+          namespace = "aws"
+          type      = "microvm"
+        }
       }
       aws = {
         ec2 = {

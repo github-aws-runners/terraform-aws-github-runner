@@ -10,14 +10,14 @@ The resolved provider-neutral `runner.iam.role` is passed to Lambda as the Micro
 ## Requirements
 
 | Name | Version |
-| ---- | ------- |
+|------|---------|
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.4.0 |
 | <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 6.33 |
 
 ## Providers
 
 | Name | Version |
-| ---- | ------- |
+|------|---------|
 | <a name="provider_aws"></a> [aws](#provider\_aws) | >= 6.33 |
 | <a name="provider_terraform"></a> [terraform](#provider\_terraform) | n/a |
 
@@ -28,7 +28,7 @@ No modules.
 ## Resources
 
 | Name | Type |
-| ---- | ---- |
+|------|------|
 | [aws_cloudwatch_log_group.runtime](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_log_group) | resource |
 | [terraform_data.validate_config](https://registry.terraform.io/providers/hashicorp/terraform/latest/docs/resources/data) | resource |
 | [terraform_data.validate_runner](https://registry.terraform.io/providers/hashicorp/terraform/latest/docs/resources/data) | resource |
@@ -41,7 +41,7 @@ No modules.
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-| ---- | ----------- | ---- | ------- | :------: |
+|------|-------------|------|---------|:--------:|
 | <a name="input_aws_partition"></a> [aws\_partition](#input\_aws\_partition) | AWS partition used to construct IAM ARNs. | `string` | `"aws"` | no |
 | <a name="input_aws_region"></a> [aws\_region](#input\_aws\_region) | AWS region used by compute-provider resources and policy documents. | `string` | n/a | yes |
 | <a name="input_config"></a> [config](#input\_config) | Lambda MicroVM compute-provider configuration. Paths match `compute_provider.aws.microvm` in runner-config.<br/><br/>- `image_arn`: ARN of the MicroVM image used to run GitHub runners.<br/>- `image_version`: Optional MicroVM image version.<br/>- `ingress_network_connectors`: Up to 10 Lambda network-connector ARNs passed to RunMicrovm.<br/>- `egress_network_connectors`: Up to 10 Lambda network-connector ARNs passed to RunMicrovm.<br/>- `maximum_duration_in_seconds`: Optional maximum MicroVM lifetime. Valid values are integers from 1 through 28,800 seconds.<br/>- `environment_variables`: Additional provider-specific Lambda environment variables merged into scale-up, scale-down, and pool.<br/>- `iam.resource_arns.images`: MicroVM image ARNs allowed by RunMicrovm. The default is `["*"]`.<br/>- `iam.resource_arns.microvms`: MicroVM instance ARNs allowed by tagging and termination actions. The default is `["*"]`. Provider-required list and connector permissions remain separately scoped to `*`.<br/>- `iam.additional_policy_json.scale_up`: Optional additional provider policy attached separately to the scale-up Lambda role.<br/>- `iam.managed_policies.scale_up`: Optional managed-policy wrapper attached to the scale-up Lambda role. Wrapper presence controls resource creation during planning.<br/>- `iam.managed_policies.scale_up.arn`: ARN of the scale-up managed policy. The ARN may remain unknown until apply.<br/>- `iam.managed_policies.pool`: Optional managed-policy wrapper attached to the pool Lambda role. Wrapper presence controls resource creation during planning.<br/>- `iam.managed_policies.pool.arn`: ARN of the pool managed policy. The ARN may remain unknown until apply. | <pre>object({<br/>    image_arn                   = string<br/>    image_version               = optional(string, null)<br/>    ingress_network_connectors  = optional(list(string), [])<br/>    egress_network_connectors   = optional(list(string), [])<br/>    maximum_duration_in_seconds = optional(number, null)<br/>    environment_variables       = optional(map(string), {})<br/>    iam = optional(object({<br/>      resource_arns = optional(object({<br/>        images   = optional(list(string), ["*"])<br/>        microvms = optional(list(string), ["*"])<br/>      }), {})<br/>      additional_policy_json = optional(object({<br/>        scale_up = optional(string, null)<br/>      }), {})<br/>      managed_policies = optional(object({<br/>        scale_up = optional(object({<br/>          arn = string<br/>        }), null)<br/>        pool = optional(object({<br/>          arn = string<br/>        }), null)<br/>      }), {})<br/>    }), {})<br/>  })</pre> | n/a | yes |
@@ -55,7 +55,7 @@ No modules.
 ## Outputs
 
 | Name | Description |
-| ---- | ----------- |
+|------|-------------|
 | <a name="output_environment_variables"></a> [environment\_variables](#output\_environment\_variables) | Provider-specific Lambda environment variable fragments consumed by runner-config. |
 | <a name="output_policies"></a> [policies](#output\_policies) | Provider-specific IAM policy fragments consumed by runner-config. |
 | <a name="output_provider"></a> [provider](#output\_provider) | Nested Lambda MicroVM compute-provider contract consumed by runner-config. |
