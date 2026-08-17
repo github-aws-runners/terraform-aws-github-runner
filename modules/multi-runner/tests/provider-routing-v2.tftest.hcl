@@ -37,6 +37,10 @@ run "experimental_v2_routes_through_provider_stack" {
   command = plan
 
   variables {
+    github_app = null
+    vpc_id     = null
+    subnet_ids = null
+
     additional_github_apps = [{
       id_ssm = {
         name = "/github-runner/additional-app-id"
@@ -251,13 +255,15 @@ run "experimental_v2_routes_through_provider_stack" {
       }
 
       compute_provider = {
-        ec2 = {
-          vpc_id     = "vpc-experimental-defaults"
-          subnet_ids = ["subnet-experimental-defaults"]
-          runner_binaries = {
-            syncer = {
-              artifact = {
-                zip = "README.md"
+        aws = {
+          ec2 = {
+            vpc_id     = "vpc-experimental-defaults"
+            subnet_ids = ["subnet-experimental-defaults"]
+            runner_binaries = {
+              syncer = {
+                artifact = {
+                  zip = "README.md"
+                }
               }
             }
           }
@@ -328,10 +334,12 @@ run "experimental_v2_routes_through_provider_stack" {
           }
 
           compute_provider = {
-            ec2 = {
-              instance_types = ["m5.large"]
-              binaries_syncer = {
-                enabled = true
+            aws = {
+              ec2 = {
+                instance_types = ["m5.large"]
+                binaries_syncer = {
+                  enabled = true
+                }
               }
             }
           }
@@ -349,7 +357,7 @@ run "experimental_v2_routes_through_provider_stack" {
   }
 
   assert {
-    condition     = keys(local.runner_config_by_provider.ec2) == ["linux"]
+    condition     = keys(local.runner_config_by_provider.aws_ec2) == ["linux"]
     error_message = "Experimental multi_runner_config entries must route to the EC2 provider."
   }
 
@@ -368,9 +376,9 @@ run "experimental_v2_routes_through_provider_stack" {
 
   assert {
     condition = (
-      toset(keys(local.translated_experimental_base.multi_runner_config["linux"].compute_provider.ec2.binaries_syncer)) == toset(["enabled"])
-      && toset(keys(local.translated_experimental.multi_runner_config["linux"].compute_provider.ec2.binaries_syncer)) == toset(["enabled", "s3"])
-      && local.translated_experimental.multi_runner_config["linux"].compute_provider.ec2.binaries_syncer.s3 != null
+      toset(keys(local.translated_experimental_base.multi_runner_config["linux"].compute_provider.aws.ec2.binaries_syncer)) == toset(["enabled"])
+      && toset(keys(local.translated_experimental.multi_runner_config["linux"].compute_provider.aws.ec2.binaries_syncer)) == toset(["enabled", "s3"])
+      && local.translated_experimental.multi_runner_config["linux"].compute_provider.aws.ec2.binaries_syncer.s3 != null
       && keys(output.binaries_syncer_map) == ["linux_x64"]
     )
     error_message = "V2 binary discovery must use the pure base runner configuration, enrich the final canonical configuration with S3, and create the corresponding shared syncer resources."
@@ -652,19 +660,19 @@ run "experimental_v2_routes_through_provider_stack" {
 
   assert {
     condition = (
-      local.translated_experimental.compute_provider.ec2.runner_binaries.enabled
-      && local.translated_experimental.compute_provider.ec2.runner_binaries.s3.encryption.enabled
-      && local.translated_experimental.compute_provider.ec2.runner_binaries.s3.encryption.sse_algorithm == "AES256"
-      && local.translated_experimental.compute_provider.ec2.runner_binaries.s3.encryption.kms_master_key_id == null
-      && local.translated_experimental.compute_provider.ec2.runner_binaries.s3.versioning == "Disabled"
-      && local.translated_experimental.compute_provider.ec2.runner_binaries.s3.logging.bucket == null
-      && local.translated_experimental.compute_provider.ec2.runner_binaries.s3.logging.prefix == null
-      && local.translated_experimental.compute_provider.ec2.runner_binaries.syncer.artifact.zip == "README.md"
-      && local.translated_experimental.compute_provider.ec2.runner_binaries.syncer.artifact.s3 == null
-      && local.translated_experimental.compute_provider.ec2.runner_binaries.syncer.lambda.memory_size == 256
-      && local.translated_experimental.compute_provider.ec2.runner_binaries.syncer.lambda.timeout == 300
-      && local.translated_experimental.compute_provider.ec2.runner_binaries.syncer.schedule.expression == "cron(27 * * * ? *)"
-      && local.translated_experimental.compute_provider.ec2.runner_binaries.syncer.schedule.state == "ENABLED"
+      local.translated_experimental.compute_provider.aws.ec2.runner_binaries.enabled
+      && local.translated_experimental.compute_provider.aws.ec2.runner_binaries.s3.encryption.enabled
+      && local.translated_experimental.compute_provider.aws.ec2.runner_binaries.s3.encryption.sse_algorithm == "AES256"
+      && local.translated_experimental.compute_provider.aws.ec2.runner_binaries.s3.encryption.kms_master_key_id == null
+      && local.translated_experimental.compute_provider.aws.ec2.runner_binaries.s3.versioning == "Disabled"
+      && local.translated_experimental.compute_provider.aws.ec2.runner_binaries.s3.logging.bucket == null
+      && local.translated_experimental.compute_provider.aws.ec2.runner_binaries.s3.logging.prefix == null
+      && local.translated_experimental.compute_provider.aws.ec2.runner_binaries.syncer.artifact.zip == "README.md"
+      && local.translated_experimental.compute_provider.aws.ec2.runner_binaries.syncer.artifact.s3 == null
+      && local.translated_experimental.compute_provider.aws.ec2.runner_binaries.syncer.lambda.memory_size == 256
+      && local.translated_experimental.compute_provider.aws.ec2.runner_binaries.syncer.lambda.timeout == 300
+      && local.translated_experimental.compute_provider.aws.ec2.runner_binaries.syncer.schedule.expression == "cron(27 * * * ? *)"
+      && local.translated_experimental.compute_provider.aws.ec2.runner_binaries.syncer.schedule.state == "ENABLED"
     )
     error_message = "The nested v2 runner-binary block must own concrete defaults independently of matching flat syncer and bucket inputs."
   }
@@ -698,21 +706,21 @@ run "experimental_v2_routes_through_provider_stack" {
 
   assert {
     condition = (
-      local.translated_experimental.multi_runner_config["linux"].compute_provider.ec2.vpc_id == "vpc-experimental-defaults"
-      && local.translated_experimental.multi_runner_config["linux"].compute_provider.ec2.subnet_ids == tolist(["subnet-experimental-defaults"])
-      && local.translated_experimental.multi_runner_config["linux"].compute_provider.ec2.managed_security_group_enabled
-      && length(local.translated_experimental.multi_runner_config["linux"].compute_provider.ec2.egress_rules) == 1
-      && local.translated_experimental.multi_runner_config["linux"].compute_provider.ec2.egress_rules[0].cidr_blocks == tolist(["0.0.0.0/0"])
-      && local.translated_experimental.multi_runner_config["linux"].compute_provider.ec2.egress_rules[0].ipv6_cidr_blocks == tolist(["::/0"])
-      && local.translated_experimental.multi_runner_config["linux"].compute_provider.ec2.egress_rules[0].protocol == "-1"
-      && length(local.translated_experimental.multi_runner_config["linux"].compute_provider.ec2.additional_security_group_ids) == 0
-      && local.translated_experimental.multi_runner_config["linux"].compute_provider.ec2.cloudwatch_agent.config == null
-      && local.translated_experimental.multi_runner_config["linux"].compute_provider.ec2.instance_profile_path == null
-      && local.translated_experimental.multi_runner_config["linux"].compute_provider.ec2.key_name == null
-      && !local.translated_experimental.multi_runner_config["linux"].compute_provider.ec2.associate_public_ipv4_address
-      && length(local.translated_experimental.multi_runner_config["linux"].compute_provider.ec2.tags) == 0
-      && !local.translated_experimental.compute_provider.ec2.ami.housekeeper.enabled
-      && !local.translated_experimental.compute_provider.ec2.instance_termination_watcher.enabled
+      local.translated_experimental.multi_runner_config["linux"].compute_provider.aws.ec2.vpc_id == "vpc-experimental-defaults"
+      && local.translated_experimental.multi_runner_config["linux"].compute_provider.aws.ec2.subnet_ids == tolist(["subnet-experimental-defaults"])
+      && local.translated_experimental.multi_runner_config["linux"].compute_provider.aws.ec2.managed_security_group_enabled
+      && length(local.translated_experimental.multi_runner_config["linux"].compute_provider.aws.ec2.egress_rules) == 1
+      && local.translated_experimental.multi_runner_config["linux"].compute_provider.aws.ec2.egress_rules[0].cidr_blocks == tolist(["0.0.0.0/0"])
+      && local.translated_experimental.multi_runner_config["linux"].compute_provider.aws.ec2.egress_rules[0].ipv6_cidr_blocks == tolist(["::/0"])
+      && local.translated_experimental.multi_runner_config["linux"].compute_provider.aws.ec2.egress_rules[0].protocol == "-1"
+      && length(local.translated_experimental.multi_runner_config["linux"].compute_provider.aws.ec2.additional_security_group_ids) == 0
+      && local.translated_experimental.multi_runner_config["linux"].compute_provider.aws.ec2.cloudwatch_agent.config == null
+      && local.translated_experimental.multi_runner_config["linux"].compute_provider.aws.ec2.instance_profile_path == null
+      && local.translated_experimental.multi_runner_config["linux"].compute_provider.aws.ec2.key_name == null
+      && !local.translated_experimental.multi_runner_config["linux"].compute_provider.aws.ec2.associate_public_ipv4_address
+      && length(local.translated_experimental.multi_runner_config["linux"].compute_provider.aws.ec2.tags) == 0
+      && !local.translated_experimental.compute_provider.aws.ec2.ami.housekeeper.enabled
+      && !local.translated_experimental.compute_provider.aws.ec2.instance_termination_watcher.enabled
       && length(module.ami_housekeeper) == 0
       && length(module.instance_termination_watcher) == 0
       && output.instance_termination_watcher == null
@@ -724,7 +732,9 @@ run "experimental_v2_routes_through_provider_stack" {
     condition = (
       local.translated_experimental.github.app == var.experimental.github.app
       && local.translated_experimental.github.additional_apps == var.experimental.github.additional_apps
-      && local.translated_experimental.github.app == var.github_app
+      && var.github_app == null
+      && var.vpc_id == null
+      && var.subnet_ids == null
       && local.translated_experimental.github.additional_apps == var.additional_github_apps
       && length(local.github_app_parameters.id) == 2
       && length(module.ssm.additional_app_parameters) == 1
@@ -733,7 +743,7 @@ run "experimental_v2_routes_through_provider_stack" {
       && module.runner_configs["linux"].orchestration_provider.webhook.scale_down.lambda.environment[0].variables["PARAMETER_GITHUB_APP_KEY_BASE64_NAME"] == join(":", [for p in local.github_app_parameters.key_base64 : p.name])
       && module.runner_configs["linux"].orchestration_provider.webhook.pool.lambda.environment[0].variables["PARAMETER_GITHUB_APP_INSTALLATION_ID_NAME"] == join(":", [for p in local.github_app_parameters.installation_id : p != null ? p.name : ""])
     )
-    error_message = "Experimental v2 control-plane Lambdas must preserve the complete multi-app parameter lists from the shared multi-runner configuration."
+    error_message = "Experimental v2 must use nested GitHub App and network inputs while preserving the complete multi-app parameter lists for control-plane Lambdas."
   }
 
   assert {
@@ -780,21 +790,22 @@ run "experimental_v2_routes_through_provider_stack" {
 
   assert {
     condition = (
-      toset(keys(output.runners_map_v2["linux"].provider)) == toset(["ec2"])
-      && toset(keys(output.runners_map_v2["linux"].provider.ec2)) == toset([
+      toset(keys(output.runners_map_v2["linux"].provider)) == toset(["aws"])
+      && toset(keys(output.runners_map_v2["linux"].provider.aws)) == toset(["ec2"])
+      && toset(keys(output.runners_map_v2["linux"].provider.aws.ec2)) == toset([
         "launch_template",
         "runners_log_groups",
         "logfiles",
       ])
     )
-    error_message = "Experimental v2 must expose only EC2-owned resources under runners_map_v2.<configuration>.provider.ec2."
+    error_message = "Experimental v2 must expose only EC2-owned resources under runners_map_v2.<configuration>.provider.aws.ec2."
   }
 
   assert {
     condition = (
       !contains(keys(output.runners_map_v2["linux"]), "launch_template_name")
       && output.runners_map_v2["linux"].runner.role != null
-      && !contains(keys(output.runners_map_v2["linux"].provider.ec2), "role_runner")
+      && !contains(keys(output.runners_map_v2["linux"].provider.aws.ec2), "role_runner")
       && !contains(keys(output.runners_map_v2["linux"]), "runners_log_groups")
       && !contains(keys(output.runners_map_v2["linux"]), "logfiles")
     )
@@ -802,19 +813,19 @@ run "experimental_v2_routes_through_provider_stack" {
   }
 
   assert {
-    condition     = local.runner_config_by_provider.ec2["linux"].orchestration_provider.webhook.lambda.scale.down.idle_config[0].idleCount == 1
+    condition     = local.runner_config_by_provider.aws_ec2["linux"].orchestration_provider.webhook.lambda.scale.down.idle_config[0].idleCount == 1
     error_message = "Webhook-owned idle configuration must remain in the orchestration provider input contract."
   }
 
   assert {
-    condition     = local.runner_config_by_provider.ec2["linux"].runner.iam.managed_policy_arns.readonly == "arn:aws:iam::aws:policy/ReadOnlyAccess"
+    condition     = local.runner_config_by_provider.aws_ec2["linux"].runner.iam.managed_policy_arns.readonly == "arn:aws:iam::aws:policy/ReadOnlyAccess"
     error_message = "Runner-role policies must remain in the common runner contract."
   }
 
   assert {
     condition = (
-      local.runner_config_by_provider.ec2["linux"].runner.hooks.job_started == "/opt/actions/job-started.sh"
-      && !contains(keys(local.runner_config_by_provider.ec2["linux"].compute_provider.ec2), "hooks")
+      local.runner_config_by_provider.aws_ec2["linux"].runner.hooks.job_started == "/opt/actions/job-started.sh"
+      && !contains(keys(local.runner_config_by_provider.aws_ec2["linux"].compute_provider.aws.ec2), "hooks")
     )
     error_message = "Runner lifecycle hooks must remain in the common runner contract."
   }
@@ -836,9 +847,11 @@ run "experimental_v2_rejects_missing_orchestration_provider" {
         }
       }
       compute_provider = {
-        ec2 = {
-          vpc_id     = "vpc-missing-orchestration-provider"
-          subnet_ids = ["subnet-missing-orchestration-provider"]
+        aws = {
+          ec2 = {
+            vpc_id     = "vpc-missing-orchestration-provider"
+            subnet_ids = ["subnet-missing-orchestration-provider"]
+          }
         }
       }
       multi_runner_config = {
@@ -849,8 +862,10 @@ run "experimental_v2_rejects_missing_orchestration_provider" {
           }
           orchestration_provider = {}
           compute_provider = {
-            ec2 = {
-              instance_types = ["m5.large"]
+            aws = {
+              ec2 = {
+                instance_types = ["m5.large"]
+              }
             }
           }
         }
@@ -878,9 +893,11 @@ run "experimental_v2_requires_webhook_maximum_count" {
         }
       }
       compute_provider = {
-        ec2 = {
-          vpc_id     = "vpc-missing-webhook-maximum"
-          subnet_ids = ["subnet-missing-webhook-maximum"]
+        aws = {
+          ec2 = {
+            vpc_id     = "vpc-missing-webhook-maximum"
+            subnet_ids = ["subnet-missing-webhook-maximum"]
+          }
         }
       }
       multi_runner_config = {
@@ -897,8 +914,10 @@ run "experimental_v2_requires_webhook_maximum_count" {
             }
           }
           compute_provider = {
-            ec2 = {
-              instance_types = ["m5.large"]
+            aws = {
+              ec2 = {
+                instance_types = ["m5.large"]
+              }
             }
           }
         }
@@ -1092,79 +1111,81 @@ run "experimental_v2_applies_global_defaults_and_configuration_overrides" {
       }
 
       compute_provider = {
-        ec2 = {
-          vpc_id     = "vpc-experimental"
-          subnet_ids = ["subnet-experimental"]
-          ami = {
-            housekeeper = {
+        aws = {
+          ec2 = {
+            vpc_id     = "vpc-experimental"
+            subnet_ids = ["subnet-experimental"]
+            ami = {
+              housekeeper = {
+                enabled = true
+                cleanup_config = {
+                  maxItems       = 5
+                  minimumDaysOld = 10
+                  dryRun         = true
+                }
+                artifact = {
+                  s3 = {
+                    key            = "nested-ami-housekeeper.zip"
+                    object_version = "nested-ami-housekeeper-version"
+                  }
+                }
+                lambda = {
+                  memory_size = 448
+                  timeout     = 120
+                }
+                schedule = {
+                  expression = "rate(3 days)"
+                }
+              }
+            }
+            instance_termination_watcher = {
               enabled = true
-              cleanup_config = {
-                maxItems       = 5
-                minimumDaysOld = 10
-                dryRun         = true
+              features = {
+                enable_spot_termination_handler              = false
+                enable_spot_termination_notification_watcher = true
+              }
+              enable_runner_deregistration = true
+              environment_variables = {
+                NESTED_WATCHER = "true"
               }
               artifact = {
                 s3 = {
-                  key            = "nested-ami-housekeeper.zip"
-                  object_version = "nested-ami-housekeeper-version"
+                  key            = "nested-termination-watcher.zip"
+                  object_version = "nested-watcher-version"
                 }
               }
               lambda = {
-                memory_size = 448
-                timeout     = 120
-              }
-              schedule = {
-                expression = "rate(3 days)"
+                memory_size = 432
+                timeout     = 41
               }
             }
-          }
-          instance_termination_watcher = {
-            enabled = true
-            features = {
-              enable_spot_termination_handler              = false
-              enable_spot_termination_notification_watcher = true
-            }
-            enable_runner_deregistration = true
-            environment_variables = {
-              NESTED_WATCHER = "true"
-            }
-            artifact = {
+            runner_binaries = {
+              enabled = false
               s3 = {
-                key            = "nested-termination-watcher.zip"
-                object_version = "nested-watcher-version"
-              }
-            }
-            lambda = {
-              memory_size = 432
-              timeout     = 41
-            }
-          }
-          runner_binaries = {
-            enabled = false
-            s3 = {
-              tags = {
-                BinaryBucket = "global"
-              }
-              versioning = "Enabled"
-              logging = {
-                bucket = "runner-binaries-access-logs"
-                prefix = "runner-binaries/"
-              }
-            }
-            syncer = {
-              artifact = {
-                s3 = {
-                  key            = "nested-runner-binaries-syncer.zip"
-                  object_version = "nested-version"
+                tags = {
+                  BinaryBucket = "global"
+                }
+                versioning = "Enabled"
+                logging = {
+                  bucket = "runner-binaries-access-logs"
+                  prefix = "runner-binaries/"
                 }
               }
-              lambda = {
-                memory_size = 384
-                timeout     = 240
-              }
-              schedule = {
-                expression = "rate(2 hours)"
-                state      = "DISABLED"
+              syncer = {
+                artifact = {
+                  s3 = {
+                    key            = "nested-runner-binaries-syncer.zip"
+                    object_version = "nested-version"
+                  }
+                }
+                lambda = {
+                  memory_size = 384
+                  timeout     = 240
+                }
+                schedule = {
+                  expression = "rate(2 hours)"
+                  state      = "DISABLED"
+                }
               }
             }
           }
@@ -1237,11 +1258,13 @@ run "experimental_v2_applies_global_defaults_and_configuration_overrides" {
           }
 
           compute_provider = {
-            ec2 = {
-              instance_types = ["m5.large"]
-              subnet_ids     = ["subnet-lane"]
-              binaries_syncer = {
-                enabled = true
+            aws = {
+              ec2 = {
+                instance_types = ["m5.large"]
+                subnet_ids     = ["subnet-lane"]
+                binaries_syncer = {
+                  enabled = true
+                }
               }
             }
           }
@@ -1271,12 +1294,12 @@ run "experimental_v2_applies_global_defaults_and_configuration_overrides" {
 
   assert {
     condition = (
-      local.translated_experimental.multi_runner_config["resolved"].compute_provider.ec2.vpc_id == "vpc-experimental"
-      && local.translated_experimental.multi_runner_config["resolved"].compute_provider.ec2.subnet_ids == tolist(["subnet-lane"])
-      && local.translated_experimental.multi_runner_config["resolved"].compute_provider.ec2.binaries_syncer.enabled
-      && toset(keys(local.translated_experimental_base.multi_runner_config["resolved"].compute_provider.ec2.binaries_syncer)) == toset(["enabled"])
-      && toset(keys(local.translated_experimental.multi_runner_config["resolved"].compute_provider.ec2.binaries_syncer)) == toset(["enabled", "s3"])
-      && local.translated_experimental.multi_runner_config["resolved"].compute_provider.ec2.binaries_syncer.s3 != null
+      local.translated_experimental.multi_runner_config["resolved"].compute_provider.aws.ec2.vpc_id == "vpc-experimental"
+      && local.translated_experimental.multi_runner_config["resolved"].compute_provider.aws.ec2.subnet_ids == tolist(["subnet-lane"])
+      && local.translated_experimental.multi_runner_config["resolved"].compute_provider.aws.ec2.binaries_syncer.enabled
+      && toset(keys(local.translated_experimental_base.multi_runner_config["resolved"].compute_provider.aws.ec2.binaries_syncer)) == toset(["enabled"])
+      && toset(keys(local.translated_experimental.multi_runner_config["resolved"].compute_provider.aws.ec2.binaries_syncer)) == toset(["enabled", "s3"])
+      && local.translated_experimental.multi_runner_config["resolved"].compute_provider.aws.ec2.binaries_syncer.s3 != null
       && keys(output.binaries_syncer_map) == ["linux_x64"]
       && module.runner_configs["resolved"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables["INSTANCE_TYPES"] == "m5.large"
     )
@@ -1285,15 +1308,15 @@ run "experimental_v2_applies_global_defaults_and_configuration_overrides" {
 
   assert {
     condition = (
-      !local.translated_experimental.compute_provider.ec2.runner_binaries.enabled
-      && local.translated_experimental.compute_provider.ec2.runner_binaries.s3.versioning == "Enabled"
-      && local.translated_experimental.compute_provider.ec2.runner_binaries.s3.logging.bucket == "runner-binaries-access-logs"
+      !local.translated_experimental.compute_provider.aws.ec2.runner_binaries.enabled
+      && local.translated_experimental.compute_provider.aws.ec2.runner_binaries.s3.versioning == "Enabled"
+      && local.translated_experimental.compute_provider.aws.ec2.runner_binaries.s3.logging.bucket == "runner-binaries-access-logs"
       && local.translated_experimental.lambda.artifact.s3.bucket == "experimental-lambda-artifacts"
-      && local.translated_experimental.compute_provider.ec2.runner_binaries.syncer.artifact.zip == null
-      && local.translated_experimental.compute_provider.ec2.runner_binaries.syncer.artifact.s3.key == "nested-runner-binaries-syncer.zip"
-      && local.translated_experimental.compute_provider.ec2.runner_binaries.syncer.artifact.s3.object_version == "nested-version"
-      && local.translated_experimental.compute_provider.ec2.runner_binaries.syncer.schedule.expression == "rate(2 hours)"
-      && local.translated_experimental.compute_provider.ec2.runner_binaries.syncer.schedule.state == "DISABLED"
+      && local.translated_experimental.compute_provider.aws.ec2.runner_binaries.syncer.artifact.zip == null
+      && local.translated_experimental.compute_provider.aws.ec2.runner_binaries.syncer.artifact.s3.key == "nested-runner-binaries-syncer.zip"
+      && local.translated_experimental.compute_provider.aws.ec2.runner_binaries.syncer.artifact.s3.object_version == "nested-version"
+      && local.translated_experimental.compute_provider.aws.ec2.runner_binaries.syncer.schedule.expression == "rate(2 hours)"
+      && local.translated_experimental.compute_provider.aws.ec2.runner_binaries.syncer.schedule.state == "DISABLED"
       && keys(output.binaries_syncer_map) == ["linux_x64"]
       && output.binaries_syncer_map["linux_x64"].lambda.s3_bucket == "experimental-lambda-artifacts"
       && output.binaries_syncer_map["linux_x64"].lambda.s3_key == "nested-runner-binaries-syncer.zip"
@@ -1307,16 +1330,16 @@ run "experimental_v2_applies_global_defaults_and_configuration_overrides" {
 
   assert {
     condition = (
-      length(local.translated_experimental.multi_runner_config["resolved"].compute_provider.ec2.egress_rules) == 1
-      && local.translated_experimental.multi_runner_config["resolved"].compute_provider.ec2.egress_rules[0].cidr_blocks == tolist(["0.0.0.0/0"])
-      && local.translated_experimental.multi_runner_config["resolved"].compute_provider.ec2.egress_rules[0].ipv6_cidr_blocks == tolist(["::/0"])
-      && local.translated_experimental.multi_runner_config["resolved"].compute_provider.ec2.egress_rules[0].prefix_list_ids == null
-      && local.translated_experimental.multi_runner_config["resolved"].compute_provider.ec2.egress_rules[0].from_port == 0
-      && local.translated_experimental.multi_runner_config["resolved"].compute_provider.ec2.egress_rules[0].protocol == "-1"
-      && local.translated_experimental.multi_runner_config["resolved"].compute_provider.ec2.egress_rules[0].security_groups == null
-      && local.translated_experimental.multi_runner_config["resolved"].compute_provider.ec2.egress_rules[0].self == null
-      && local.translated_experimental.multi_runner_config["resolved"].compute_provider.ec2.egress_rules[0].to_port == 0
-      && local.translated_experimental.multi_runner_config["resolved"].compute_provider.ec2.egress_rules[0].description == null
+      length(local.translated_experimental.multi_runner_config["resolved"].compute_provider.aws.ec2.egress_rules) == 1
+      && local.translated_experimental.multi_runner_config["resolved"].compute_provider.aws.ec2.egress_rules[0].cidr_blocks == tolist(["0.0.0.0/0"])
+      && local.translated_experimental.multi_runner_config["resolved"].compute_provider.aws.ec2.egress_rules[0].ipv6_cidr_blocks == tolist(["::/0"])
+      && local.translated_experimental.multi_runner_config["resolved"].compute_provider.aws.ec2.egress_rules[0].prefix_list_ids == null
+      && local.translated_experimental.multi_runner_config["resolved"].compute_provider.aws.ec2.egress_rules[0].from_port == 0
+      && local.translated_experimental.multi_runner_config["resolved"].compute_provider.aws.ec2.egress_rules[0].protocol == "-1"
+      && local.translated_experimental.multi_runner_config["resolved"].compute_provider.aws.ec2.egress_rules[0].security_groups == null
+      && local.translated_experimental.multi_runner_config["resolved"].compute_provider.aws.ec2.egress_rules[0].self == null
+      && local.translated_experimental.multi_runner_config["resolved"].compute_provider.aws.ec2.egress_rules[0].to_port == 0
+      && local.translated_experimental.multi_runner_config["resolved"].compute_provider.aws.ec2.egress_rules[0].description == null
     )
     error_message = "Omitted experimental EC2 egress rules must resolve to the concrete nested allow-all IPv4 and IPv6 default independently of the stable input."
   }
@@ -1406,7 +1429,7 @@ run "experimental_v2_applies_global_defaults_and_configuration_overrides" {
       && module.runner_configs["resolved"].orchestration_provider.webhook.scale_down.lambda.environment[0].variables["GHES_URL"] == "https://experimental-shared.example.com"
       && module.runner_configs["resolved"].orchestration_provider.webhook.pool.lambda.environment[0].variables["USER_AGENT"] == "experimental-runner-user-agent"
       && module.runner_configs["resolved"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables["PARAMETER_GITHUB_APP_ID_NAME"] == module.ssm.parameters.github_app_id.name
-      && local.translated_experimental.compute_provider.ec2.instance_termination_watcher.environment_variables["NESTED_WATCHER"] == "true"
+      && local.translated_experimental.compute_provider.aws.ec2.instance_termination_watcher.environment_variables["NESTED_WATCHER"] == "true"
       && output.instance_termination_watcher.lambda.function.runtime == "nodejs22.x"
       && output.instance_termination_watcher.lambda.function.architectures == tolist(["arm64"])
       && output.instance_termination_watcher.lambda.function.memory_size == 432
@@ -1429,7 +1452,7 @@ run "experimental_v2_applies_global_defaults_and_configuration_overrides" {
 
   assert {
     condition = (
-      local.translated_experimental.compute_provider.ec2.ami.housekeeper.enabled
+      local.translated_experimental.compute_provider.aws.ec2.ami.housekeeper.enabled
       && length(module.ami_housekeeper) == 1
       && module.ami_housekeeper[0].lambda.runtime == "nodejs22.x"
       && module.ami_housekeeper[0].lambda.architectures == tolist(["arm64"])
@@ -1643,9 +1666,11 @@ run "experimental_v2_layers_observability_and_ssm" {
       }
 
       compute_provider = {
-        ec2 = {
-          vpc_id     = "vpc-global-observability"
-          subnet_ids = ["subnet-global-observability"]
+        aws = {
+          ec2 = {
+            vpc_id     = "vpc-global-observability"
+            subnet_ids = ["subnet-global-observability"]
+          }
         }
       }
 
@@ -1665,10 +1690,12 @@ run "experimental_v2_layers_observability_and_ssm" {
           }
 
           compute_provider = {
-            ec2 = {
-              instance_types = ["m5.large"]
-              binaries_syncer = {
-                enabled = false
+            aws = {
+              ec2 = {
+                instance_types = ["m5.large"]
+                binaries_syncer = {
+                  enabled = false
+                }
               }
             }
           }
@@ -1750,10 +1777,12 @@ run "experimental_v2_layers_observability_and_ssm" {
           }
 
           compute_provider = {
-            ec2 = {
-              instance_types = ["c5.large"]
-              binaries_syncer = {
-                enabled = false
+            aws = {
+              ec2 = {
+                instance_types = ["c5.large"]
+                binaries_syncer = {
+                  enabled = false
+                }
               }
             }
           }
@@ -1764,10 +1793,10 @@ run "experimental_v2_layers_observability_and_ssm" {
 
   assert {
     condition = (
-      toset(keys(local.translated_experimental_base.multi_runner_config["inherited"].compute_provider.ec2.binaries_syncer)) == toset(["enabled"])
-      && toset(keys(local.translated_experimental.multi_runner_config["inherited"].compute_provider.ec2.binaries_syncer)) == toset(["enabled", "s3"])
-      && !local.translated_experimental.multi_runner_config["inherited"].compute_provider.ec2.binaries_syncer.enabled
-      && local.translated_experimental.multi_runner_config["inherited"].compute_provider.ec2.binaries_syncer.s3 == null
+      toset(keys(local.translated_experimental_base.multi_runner_config["inherited"].compute_provider.aws.ec2.binaries_syncer)) == toset(["enabled"])
+      && toset(keys(local.translated_experimental.multi_runner_config["inherited"].compute_provider.aws.ec2.binaries_syncer)) == toset(["enabled", "s3"])
+      && !local.translated_experimental.multi_runner_config["inherited"].compute_provider.aws.ec2.binaries_syncer.enabled
+      && local.translated_experimental.multi_runner_config["inherited"].compute_provider.aws.ec2.binaries_syncer.s3 == null
       && !contains(keys(output.binaries_syncer_map), "linux_x64")
     )
     error_message = "A disabled binary syncer must gain a known null S3 value only in the final canonical runner configuration and create no shared syncer resources."
@@ -1987,9 +2016,11 @@ run "experimental_v2_requires_global_github_app" {
   variables {
     experimental = {
       compute_provider = {
-        ec2 = {
-          vpc_id     = "vpc-missing-github-app"
-          subnet_ids = ["subnet-missing-github-app"]
+        aws = {
+          ec2 = {
+            vpc_id     = "vpc-missing-github-app"
+            subnet_ids = ["subnet-missing-github-app"]
+          }
         }
       }
       multi_runner_config = {
@@ -2012,10 +2043,12 @@ run "experimental_v2_requires_global_github_app" {
           }
 
           compute_provider = {
-            ec2 = {
-              instance_types = ["m5.large"]
-              binaries_syncer = {
-                enabled = false
+            aws = {
+              ec2 = {
+                instance_types = ["m5.large"]
+                binaries_syncer = {
+                  enabled = false
+                }
               }
             }
           }
@@ -2055,9 +2088,11 @@ run "experimental_v2_rejects_incomplete_global_github_app" {
         }
       }
       compute_provider = {
-        ec2 = {
-          vpc_id     = "vpc-incomplete-github-app"
-          subnet_ids = ["subnet-incomplete-github-app"]
+        aws = {
+          ec2 = {
+            vpc_id     = "vpc-incomplete-github-app"
+            subnet_ids = ["subnet-incomplete-github-app"]
+          }
         }
       }
       multi_runner_config = {
@@ -2080,10 +2115,12 @@ run "experimental_v2_rejects_incomplete_global_github_app" {
           }
 
           compute_provider = {
-            ec2 = {
-              instance_types = ["m5.large"]
-              binaries_syncer = {
-                enabled = false
+            aws = {
+              ec2 = {
+                instance_types = ["m5.large"]
+                binaries_syncer = {
+                  enabled = false
+                }
               }
             }
           }
@@ -2127,9 +2164,11 @@ run "experimental_v2_rejects_incomplete_additional_github_app" {
         }]
       }
       compute_provider = {
-        ec2 = {
-          vpc_id     = "vpc-incomplete-additional-app"
-          subnet_ids = ["subnet-incomplete-additional-app"]
+        aws = {
+          ec2 = {
+            vpc_id     = "vpc-incomplete-additional-app"
+            subnet_ids = ["subnet-incomplete-additional-app"]
+          }
         }
       }
       multi_runner_config = {
@@ -2152,10 +2191,12 @@ run "experimental_v2_rejects_incomplete_additional_github_app" {
           }
 
           compute_provider = {
-            ec2 = {
-              instance_types = ["m5.large"]
-              binaries_syncer = {
-                enabled = false
+            aws = {
+              ec2 = {
+                instance_types = ["m5.large"]
+                binaries_syncer = {
+                  enabled = false
+                }
               }
             }
           }
@@ -2195,9 +2236,11 @@ run "experimental_v2_prefers_nested_primary_github_app_over_flat" {
         }
       }
       compute_provider = {
-        ec2 = {
-          vpc_id     = "vpc-mismatched-primary-app"
-          subnet_ids = ["subnet-mismatched-primary-app"]
+        aws = {
+          ec2 = {
+            vpc_id     = "vpc-mismatched-primary-app"
+            subnet_ids = ["subnet-mismatched-primary-app"]
+          }
         }
       }
       multi_runner_config = {
@@ -2230,10 +2273,12 @@ run "experimental_v2_prefers_nested_primary_github_app_over_flat" {
           }
 
           compute_provider = {
-            ec2 = {
-              instance_types = ["m5.large"]
-              binaries_syncer = {
-                enabled = false
+            aws = {
+              ec2 = {
+                instance_types = ["m5.large"]
+                binaries_syncer = {
+                  enabled = false
+                }
               }
             }
           }
@@ -2292,9 +2337,11 @@ run "experimental_v2_prefers_nested_additional_github_apps_over_flat" {
         }
       }
       compute_provider = {
-        ec2 = {
-          vpc_id     = "vpc-mismatched-additional-apps"
-          subnet_ids = ["subnet-mismatched-additional-apps"]
+        aws = {
+          ec2 = {
+            vpc_id     = "vpc-mismatched-additional-apps"
+            subnet_ids = ["subnet-mismatched-additional-apps"]
+          }
         }
       }
       multi_runner_config = {
@@ -2327,10 +2374,12 @@ run "experimental_v2_prefers_nested_additional_github_apps_over_flat" {
           }
 
           compute_provider = {
-            ec2 = {
-              instance_types = ["m5.large"]
-              binaries_syncer = {
-                enabled = false
+            aws = {
+              ec2 = {
+                instance_types = ["m5.large"]
+                binaries_syncer = {
+                  enabled = false
+                }
               }
             }
           }
@@ -2387,14 +2436,16 @@ run "experimental_v2_allows_mismatched_watcher_ghes_when_deregistration_disabled
         }
       }
       compute_provider = {
-        ec2 = {
-          vpc_id     = "vpc-disabled-deregistration"
-          subnet_ids = ["subnet-disabled-deregistration"]
-          instance_termination_watcher = {
-            enabled                      = true
-            enable_runner_deregistration = false
-            artifact = {
-              zip = "README.md"
+        aws = {
+          ec2 = {
+            vpc_id     = "vpc-disabled-deregistration"
+            subnet_ids = ["subnet-disabled-deregistration"]
+            instance_termination_watcher = {
+              enabled                      = true
+              enable_runner_deregistration = false
+              artifact = {
+                zip = "README.md"
+              }
             }
           }
         }
@@ -2429,10 +2480,12 @@ run "experimental_v2_allows_mismatched_watcher_ghes_when_deregistration_disabled
           }
 
           compute_provider = {
-            ec2 = {
-              instance_types = ["m5.large"]
-              binaries_syncer = {
-                enabled = false
+            aws = {
+              ec2 = {
+                instance_types = ["m5.large"]
+                binaries_syncer = {
+                  enabled = false
+                }
               }
             }
           }
@@ -2444,8 +2497,8 @@ run "experimental_v2_allows_mismatched_watcher_ghes_when_deregistration_disabled
   assert {
     condition = (
       !var.instance_termination_watcher.enable
-      && local.translated_experimental.compute_provider.ec2.instance_termination_watcher.enabled
-      && !local.translated_experimental.compute_provider.ec2.instance_termination_watcher.enable_runner_deregistration
+      && local.translated_experimental.compute_provider.aws.ec2.instance_termination_watcher.enabled
+      && !local.translated_experimental.compute_provider.aws.ec2.instance_termination_watcher.enable_runner_deregistration
       && output.instance_termination_watcher != null
       && module.runner_configs["disabled_deregistration"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables["GHES_URL"] == "https://experimental-disabled-deregistration.example.com"
     )
@@ -2490,14 +2543,16 @@ run "experimental_v2_termination_watcher_ignores_mismatched_flat_ghes_url" {
         }
       }
       compute_provider = {
-        ec2 = {
-          vpc_id     = "vpc-mismatched-watcher-ghes"
-          subnet_ids = ["subnet-mismatched-watcher-ghes"]
-          instance_termination_watcher = {
-            enabled                      = true
-            enable_runner_deregistration = true
-            artifact = {
-              zip = "README.md"
+        aws = {
+          ec2 = {
+            vpc_id     = "vpc-mismatched-watcher-ghes"
+            subnet_ids = ["subnet-mismatched-watcher-ghes"]
+            instance_termination_watcher = {
+              enabled                      = true
+              enable_runner_deregistration = true
+              artifact = {
+                zip = "README.md"
+              }
             }
           }
         }
@@ -2532,10 +2587,12 @@ run "experimental_v2_termination_watcher_ignores_mismatched_flat_ghes_url" {
           }
 
           compute_provider = {
-            ec2 = {
-              instance_types = ["m5.large"]
-              binaries_syncer = {
-                enabled = false
+            aws = {
+              ec2 = {
+                instance_types = ["m5.large"]
+                binaries_syncer = {
+                  enabled = false
+                }
               }
             }
           }
@@ -2547,8 +2604,8 @@ run "experimental_v2_termination_watcher_ignores_mismatched_flat_ghes_url" {
   assert {
     condition = (
       !var.instance_termination_watcher.enable
-      && local.translated_experimental.compute_provider.ec2.instance_termination_watcher.enabled
-      && local.translated_experimental.compute_provider.ec2.instance_termination_watcher.enable_runner_deregistration
+      && local.translated_experimental.compute_provider.aws.ec2.instance_termination_watcher.enabled
+      && local.translated_experimental.compute_provider.aws.ec2.instance_termination_watcher.enable_runner_deregistration
       && output.instance_termination_watcher.lambda.function.environment[0].variables["GHES_URL"] == "https://experimental-watcher.example.com"
       && module.runner_configs["mismatched_watcher_ghes"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables["GHES_URL"] == "https://experimental-watcher.example.com"
       && var.ghes_url == "https://flat-watcher.example.com"
@@ -2595,9 +2652,11 @@ run "experimental_v2_ignores_flat_only_shared_ssm_kms_key" {
         architecture = "x64"
       }
       compute_provider = {
-        ec2 = {
-          vpc_id     = "vpc-flat-only-kms"
-          subnet_ids = ["subnet-flat-only-kms"]
+        aws = {
+          ec2 = {
+            vpc_id     = "vpc-flat-only-kms"
+            subnet_ids = ["subnet-flat-only-kms"]
+          }
         }
       }
       multi_runner_config = {
@@ -2621,10 +2680,12 @@ run "experimental_v2_ignores_flat_only_shared_ssm_kms_key" {
           }
 
           compute_provider = {
-            ec2 = {
-              instance_types = ["m5.large"]
-              binaries_syncer = {
-                enabled = false
+            aws = {
+              ec2 = {
+                instance_types = ["m5.large"]
+                binaries_syncer = {
+                  enabled = false
+                }
               }
             }
           }
@@ -2684,9 +2745,11 @@ run "experimental_v2_uses_experimental_only_shared_ssm_kms_key" {
         kms_key_id = "arn:aws:kms:eu-west-1:123456789012:key/experimental-only"
       }
       compute_provider = {
-        ec2 = {
-          vpc_id     = "vpc-experimental-only-kms"
-          subnet_ids = ["subnet-experimental-only-kms"]
+        aws = {
+          ec2 = {
+            vpc_id     = "vpc-experimental-only-kms"
+            subnet_ids = ["subnet-experimental-only-kms"]
+          }
         }
       }
       multi_runner_config = {
@@ -2710,10 +2773,12 @@ run "experimental_v2_uses_experimental_only_shared_ssm_kms_key" {
           }
 
           compute_provider = {
-            ec2 = {
-              instance_types = ["m5.large"]
-              binaries_syncer = {
-                enabled = false
+            aws = {
+              ec2 = {
+                instance_types = ["m5.large"]
+                binaries_syncer = {
+                  enabled = false
+                }
               }
             }
           }
@@ -2773,9 +2838,11 @@ run "experimental_v2_prefers_nested_shared_ssm_kms_key_over_flat" {
         kms_key_id = "arn:aws:kms:eu-west-1:123456789012:key/experimental-mismatch"
       }
       compute_provider = {
-        ec2 = {
-          vpc_id     = "vpc-mismatched-kms"
-          subnet_ids = ["subnet-mismatched-kms"]
+        aws = {
+          ec2 = {
+            vpc_id     = "vpc-mismatched-kms"
+            subnet_ids = ["subnet-mismatched-kms"]
+          }
         }
       }
       multi_runner_config = {
@@ -2799,10 +2866,12 @@ run "experimental_v2_prefers_nested_shared_ssm_kms_key_over_flat" {
           }
 
           compute_provider = {
-            ec2 = {
-              instance_types = ["m5.large"]
-              binaries_syncer = {
-                enabled = false
+            aws = {
+              ec2 = {
+                instance_types = ["m5.large"]
+                binaries_syncer = {
+                  enabled = false
+                }
               }
             }
           }
@@ -2860,9 +2929,11 @@ run "experimental_v2_external_role_ignores_global_iam_management" {
       }
 
       compute_provider = {
-        ec2 = {
-          vpc_id     = "vpc-external-role"
-          subnet_ids = ["subnet-external-role"]
+        aws = {
+          ec2 = {
+            vpc_id     = "vpc-external-role"
+            subnet_ids = ["subnet-external-role"]
+          }
         }
       }
 
@@ -2901,10 +2972,12 @@ run "experimental_v2_external_role_ignores_global_iam_management" {
           }
 
           compute_provider = {
-            ec2 = {
-              instance_types = ["m5.large"]
-              binaries_syncer = {
-                enabled = false
+            aws = {
+              ec2 = {
+                instance_types = ["m5.large"]
+                binaries_syncer = {
+                  enabled = false
+                }
               }
             }
           }
@@ -2952,9 +3025,11 @@ run "experimental_v2_rejects_explicit_iam_management_with_external_role" {
       }
 
       compute_provider = {
-        ec2 = {
-          vpc_id     = "vpc-invalid-external-role"
-          subnet_ids = ["subnet-invalid-external-role"]
+        aws = {
+          ec2 = {
+            vpc_id     = "vpc-invalid-external-role"
+            subnet_ids = ["subnet-invalid-external-role"]
+          }
         }
       }
 
@@ -2990,10 +3065,12 @@ run "experimental_v2_rejects_explicit_iam_management_with_external_role" {
           }
 
           compute_provider = {
-            ec2 = {
-              instance_types = ["m5.large"]
-              binaries_syncer = {
-                enabled = false
+            aws = {
+              ec2 = {
+                instance_types = ["m5.large"]
+                binaries_syncer = {
+                  enabled = false
+                }
               }
             }
           }
@@ -3057,9 +3134,11 @@ run "experimental_v2_layers_shared_and_component_tags" {
       }
 
       compute_provider = {
-        ec2 = {
-          vpc_id     = "vpc-tagged"
-          subnet_ids = ["subnet-tagged"]
+        aws = {
+          ec2 = {
+            vpc_id     = "vpc-tagged"
+            subnet_ids = ["subnet-tagged"]
+          }
         }
       }
 
@@ -3147,10 +3226,12 @@ run "experimental_v2_layers_shared_and_component_tags" {
           }
 
           compute_provider = {
-            ec2 = {
-              instance_types = ["m5.large"]
-              binaries_syncer = {
-                enabled = false
+            aws = {
+              ec2 = {
+                instance_types = ["m5.large"]
+                binaries_syncer = {
+                  enabled = false
+                }
               }
             }
           }
@@ -3285,9 +3366,11 @@ run "experimental_v2_rejects_visibility_timeout_shorter_than_lambda_retry_window
         }
       }
       compute_provider = {
-        ec2 = {
-          vpc_id     = "vpc-invalid-visibility"
-          subnet_ids = ["subnet-invalid-visibility"]
+        aws = {
+          ec2 = {
+            vpc_id     = "vpc-invalid-visibility"
+            subnet_ids = ["subnet-invalid-visibility"]
+          }
         }
       }
 
@@ -3325,10 +3408,12 @@ run "experimental_v2_rejects_visibility_timeout_shorter_than_lambda_retry_window
           }
 
           compute_provider = {
-            ec2 = {
-              instance_types = ["m5.large"]
-              binaries_syncer = {
-                enabled = false
+            aws = {
+              ec2 = {
+                instance_types = ["m5.large"]
+                binaries_syncer = {
+                  enabled = false
+                }
               }
             }
           }
@@ -3368,9 +3453,11 @@ run "experimental_v2_rejects_conflicting_queue_encryption" {
         }
       }
       compute_provider = {
-        ec2 = {
-          vpc_id     = "vpc-invalid-encryption"
-          subnet_ids = ["subnet-invalid-encryption"]
+        aws = {
+          ec2 = {
+            vpc_id     = "vpc-invalid-encryption"
+            subnet_ids = ["subnet-invalid-encryption"]
+          }
         }
       }
 
@@ -3394,8 +3481,10 @@ run "experimental_v2_rejects_conflicting_queue_encryption" {
           }
 
           compute_provider = {
-            ec2 = {
-              instance_types = ["m5.large"]
+            aws = {
+              ec2 = {
+                instance_types = ["m5.large"]
+              }
             }
           }
         }
@@ -3434,9 +3523,11 @@ run "experimental_v2_rejects_queue_kms_alias" {
         }
       }
       compute_provider = {
-        ec2 = {
-          vpc_id     = "vpc-invalid-queue-kms"
-          subnet_ids = ["subnet-invalid-queue-kms"]
+        aws = {
+          ec2 = {
+            vpc_id     = "vpc-invalid-queue-kms"
+            subnet_ids = ["subnet-invalid-queue-kms"]
+          }
         }
       }
 
@@ -3460,10 +3551,12 @@ run "experimental_v2_rejects_queue_kms_alias" {
           }
 
           compute_provider = {
-            ec2 = {
-              instance_types = ["m5.large"]
-              binaries_syncer = {
-                enabled = false
+            aws = {
+              ec2 = {
+                instance_types = ["m5.large"]
+                binaries_syncer = {
+                  enabled = false
+                }
               }
             }
           }
@@ -3503,9 +3596,11 @@ run "experimental_v2_rejects_queue_kms_key_id" {
         }
       }
       compute_provider = {
-        ec2 = {
-          vpc_id     = "vpc-invalid-queue-kms-key-id"
-          subnet_ids = ["subnet-invalid-queue-kms-key-id"]
+        aws = {
+          ec2 = {
+            vpc_id     = "vpc-invalid-queue-kms-key-id"
+            subnet_ids = ["subnet-invalid-queue-kms-key-id"]
+          }
         }
       }
 
@@ -3529,10 +3624,12 @@ run "experimental_v2_rejects_queue_kms_key_id" {
           }
 
           compute_provider = {
-            ec2 = {
-              instance_types = ["m5.large"]
-              binaries_syncer = {
-                enabled = false
+            aws = {
+              ec2 = {
+                instance_types = ["m5.large"]
+                binaries_syncer = {
+                  enabled = false
+                }
               }
             }
           }
@@ -3570,9 +3667,11 @@ run "experimental_v2_rejects_redrive_without_max_receive_count" {
         }
       }
       compute_provider = {
-        ec2 = {
-          vpc_id     = "vpc-missing-redrive-max"
-          subnet_ids = ["subnet-missing-redrive-max"]
+        aws = {
+          ec2 = {
+            vpc_id     = "vpc-missing-redrive-max"
+            subnet_ids = ["subnet-missing-redrive-max"]
+          }
         }
       }
       multi_runner_config = {
@@ -3595,10 +3694,12 @@ run "experimental_v2_rejects_redrive_without_max_receive_count" {
           }
 
           compute_provider = {
-            ec2 = {
-              instance_types = ["m5.large"]
-              binaries_syncer = {
-                enabled = false
+            aws = {
+              ec2 = {
+                instance_types = ["m5.large"]
+                binaries_syncer = {
+                  enabled = false
+                }
               }
             }
           }
@@ -3627,9 +3728,11 @@ run "experimental_v2_rejects_nonpositive_redrive_max_receive_count" {
         }
       }
       compute_provider = {
-        ec2 = {
-          vpc_id     = "vpc-nonpositive-redrive-max"
-          subnet_ids = ["subnet-nonpositive-redrive-max"]
+        aws = {
+          ec2 = {
+            vpc_id     = "vpc-nonpositive-redrive-max"
+            subnet_ids = ["subnet-nonpositive-redrive-max"]
+          }
         }
       }
       multi_runner_config = {
@@ -3659,10 +3762,12 @@ run "experimental_v2_rejects_nonpositive_redrive_max_receive_count" {
           }
 
           compute_provider = {
-            ec2 = {
-              instance_types = ["m5.large"]
-              binaries_syncer = {
-                enabled = false
+            aws = {
+              ec2 = {
+                instance_types = ["m5.large"]
+                binaries_syncer = {
+                  enabled = false
+                }
               }
             }
           }
@@ -3711,9 +3816,11 @@ run "experimental_v2_rejects_runner_artifact_zip_and_s3" {
         }
       }
       compute_provider = {
-        ec2 = {
-          vpc_id     = "vpc-conflicting-runner-artifact"
-          subnet_ids = ["subnet-conflicting-runner-artifact"]
+        aws = {
+          ec2 = {
+            vpc_id     = "vpc-conflicting-runner-artifact"
+            subnet_ids = ["subnet-conflicting-runner-artifact"]
+          }
         }
       }
       multi_runner_config = {
@@ -3736,8 +3843,10 @@ run "experimental_v2_rejects_runner_artifact_zip_and_s3" {
           }
 
           compute_provider = {
-            ec2 = {
-              instance_types = ["m5.large"]
+            aws = {
+              ec2 = {
+                instance_types = ["m5.large"]
+              }
             }
           }
         }
@@ -3784,9 +3893,11 @@ run "experimental_v2_rejects_runner_artifact_bucket_without_key" {
         }
       }
       compute_provider = {
-        ec2 = {
-          vpc_id     = "vpc-missing-runner-artifact-key"
-          subnet_ids = ["subnet-missing-runner-artifact-key"]
+        aws = {
+          ec2 = {
+            vpc_id     = "vpc-missing-runner-artifact-key"
+            subnet_ids = ["subnet-missing-runner-artifact-key"]
+          }
         }
       }
       multi_runner_config = {
@@ -3809,8 +3920,10 @@ run "experimental_v2_rejects_runner_artifact_bucket_without_key" {
           }
 
           compute_provider = {
-            ec2 = {
-              instance_types = ["m5.large"]
+            aws = {
+              ec2 = {
+                instance_types = ["m5.large"]
+              }
             }
           }
         }
@@ -3849,9 +3962,11 @@ run "experimental_v2_rejects_runner_artifact_s3_without_bucket" {
         }
       }
       compute_provider = {
-        ec2 = {
-          vpc_id     = "vpc-missing-runner-artifact-bucket"
-          subnet_ids = ["subnet-missing-runner-artifact-bucket"]
+        aws = {
+          ec2 = {
+            vpc_id     = "vpc-missing-runner-artifact-bucket"
+            subnet_ids = ["subnet-missing-runner-artifact-bucket"]
+          }
         }
       }
       multi_runner_config = {
@@ -3874,8 +3989,10 @@ run "experimental_v2_rejects_runner_artifact_s3_without_bucket" {
           }
 
           compute_provider = {
-            ec2 = {
-              instance_types = ["m5.large"]
+            aws = {
+              ec2 = {
+                instance_types = ["m5.large"]
+              }
             }
           }
         }
@@ -3922,9 +4039,11 @@ run "experimental_v2_rejects_ssm_housekeeper_artifact_zip_and_s3" {
         }
       }
       compute_provider = {
-        ec2 = {
-          vpc_id     = "vpc-conflicting-ssm-housekeeper-artifact"
-          subnet_ids = ["subnet-conflicting-ssm-housekeeper-artifact"]
+        aws = {
+          ec2 = {
+            vpc_id     = "vpc-conflicting-ssm-housekeeper-artifact"
+            subnet_ids = ["subnet-conflicting-ssm-housekeeper-artifact"]
+          }
         }
       }
       multi_runner_config = {
@@ -3945,8 +4064,10 @@ run "experimental_v2_rejects_ssm_housekeeper_artifact_zip_and_s3" {
             }
           }
           compute_provider = {
-            ec2 = {
-              instance_types = ["m5.large"]
+            aws = {
+              ec2 = {
+                instance_types = ["m5.large"]
+              }
             }
           }
         }
@@ -3985,9 +4106,11 @@ run "experimental_v2_rejects_ssm_housekeeper_artifact_s3_without_bucket" {
         }
       }
       compute_provider = {
-        ec2 = {
-          vpc_id     = "vpc-missing-ssm-housekeeper-artifact-bucket"
-          subnet_ids = ["subnet-missing-ssm-housekeeper-artifact-bucket"]
+        aws = {
+          ec2 = {
+            vpc_id     = "vpc-missing-ssm-housekeeper-artifact-bucket"
+            subnet_ids = ["subnet-missing-ssm-housekeeper-artifact-bucket"]
+          }
         }
       }
       multi_runner_config = {
@@ -4008,8 +4131,10 @@ run "experimental_v2_rejects_ssm_housekeeper_artifact_s3_without_bucket" {
             }
           }
           compute_provider = {
-            ec2 = {
-              instance_types = ["m5.large"]
+            aws = {
+              ec2 = {
+                instance_types = ["m5.large"]
+              }
             }
           }
         }
@@ -4055,9 +4180,11 @@ run "experimental_v2_rejects_ssm_housekeeper_artifact_s3_without_key" {
         }
       }
       compute_provider = {
-        ec2 = {
-          vpc_id     = "vpc-missing-ssm-housekeeper-artifact-key"
-          subnet_ids = ["subnet-missing-ssm-housekeeper-artifact-key"]
+        aws = {
+          ec2 = {
+            vpc_id     = "vpc-missing-ssm-housekeeper-artifact-key"
+            subnet_ids = ["subnet-missing-ssm-housekeeper-artifact-key"]
+          }
         }
       }
       multi_runner_config = {
@@ -4078,8 +4205,10 @@ run "experimental_v2_rejects_ssm_housekeeper_artifact_s3_without_key" {
             }
           }
           compute_provider = {
-            ec2 = {
-              instance_types = ["m5.large"]
+            aws = {
+              ec2 = {
+                instance_types = ["m5.large"]
+              }
             }
           }
         }
@@ -4114,15 +4243,17 @@ run "experimental_v2_rejects_runner_binaries_artifact_zip_and_s3" {
         }
       }
       compute_provider = {
-        ec2 = {
-          vpc_id     = "vpc-conflicting-binary-artifact"
-          subnet_ids = ["subnet-conflicting-binary-artifact"]
-          runner_binaries = {
-            syncer = {
-              artifact = {
-                zip = "runner-binaries-syncer.zip"
-                s3 = {
-                  key = "runner-binaries-syncer.zip"
+        aws = {
+          ec2 = {
+            vpc_id     = "vpc-conflicting-binary-artifact"
+            subnet_ids = ["subnet-conflicting-binary-artifact"]
+            runner_binaries = {
+              syncer = {
+                artifact = {
+                  zip = "runner-binaries-syncer.zip"
+                  s3 = {
+                    key = "runner-binaries-syncer.zip"
+                  }
                 }
               }
             }
@@ -4149,10 +4280,12 @@ run "experimental_v2_rejects_runner_binaries_artifact_zip_and_s3" {
           }
 
           compute_provider = {
-            ec2 = {
-              instance_types = ["m5.large"]
-              binaries_syncer = {
-                enabled = false
+            aws = {
+              ec2 = {
+                instance_types = ["m5.large"]
+                binaries_syncer = {
+                  enabled = false
+                }
               }
             }
           }
@@ -4181,13 +4314,15 @@ run "experimental_v2_rejects_runner_binaries_logging_prefix_without_bucket" {
         }
       }
       compute_provider = {
-        ec2 = {
-          vpc_id     = "vpc-binary-logging-prefix"
-          subnet_ids = ["subnet-binary-logging-prefix"]
-          runner_binaries = {
-            s3 = {
-              logging = {
-                prefix = "runner-binaries/"
+        aws = {
+          ec2 = {
+            vpc_id     = "vpc-binary-logging-prefix"
+            subnet_ids = ["subnet-binary-logging-prefix"]
+            runner_binaries = {
+              s3 = {
+                logging = {
+                  prefix = "runner-binaries/"
+                }
               }
             }
           }
@@ -4213,10 +4348,12 @@ run "experimental_v2_rejects_runner_binaries_logging_prefix_without_bucket" {
           }
 
           compute_provider = {
-            ec2 = {
-              instance_types = ["m5.large"]
-              binaries_syncer = {
-                enabled = false
+            aws = {
+              ec2 = {
+                instance_types = ["m5.large"]
+                binaries_syncer = {
+                  enabled = false
+                }
               }
             }
           }
@@ -4276,9 +4413,11 @@ run "experimental_v2_accepts_distinct_queue_and_ssm_kms_keys" {
         }
       }
       compute_provider = {
-        ec2 = {
-          vpc_id     = "vpc-mismatched-queue-kms"
-          subnet_ids = ["subnet-mismatched-queue-kms"]
+        aws = {
+          ec2 = {
+            vpc_id     = "vpc-mismatched-queue-kms"
+            subnet_ids = ["subnet-mismatched-queue-kms"]
+          }
         }
       }
 
@@ -4302,10 +4441,12 @@ run "experimental_v2_accepts_distinct_queue_and_ssm_kms_keys" {
           }
 
           compute_provider = {
-            ec2 = {
-              instance_types = ["m5.large"]
-              binaries_syncer = {
-                enabled = false
+            aws = {
+              ec2 = {
+                instance_types = ["m5.large"]
+                binaries_syncer = {
+                  enabled = false
+                }
               }
             }
           }
@@ -4342,9 +4483,11 @@ run "experimental_v2_rejects_empty_compute_provider" {
         }
       }
       compute_provider = {
-        ec2 = {
-          vpc_id     = "vpc-invalid-provider"
-          subnet_ids = ["subnet-invalid-provider"]
+        aws = {
+          ec2 = {
+            vpc_id     = "vpc-invalid-provider"
+            subnet_ids = ["subnet-invalid-provider"]
+          }
         }
       }
 
@@ -4393,9 +4536,11 @@ run "experimental_v2_rejects_invalid_ssm_housekeeper_state" {
         }
       }
       compute_provider = {
-        ec2 = {
-          vpc_id     = "vpc-invalid-housekeeper"
-          subnet_ids = ["subnet-invalid-housekeeper"]
+        aws = {
+          ec2 = {
+            vpc_id     = "vpc-invalid-housekeeper"
+            subnet_ids = ["subnet-invalid-housekeeper"]
+          }
         }
       }
 
@@ -4425,8 +4570,10 @@ run "experimental_v2_rejects_invalid_ssm_housekeeper_state" {
           }
 
           compute_provider = {
-            ec2 = {
-              instance_types = ["m5.large"]
+            aws = {
+              ec2 = {
+                instance_types = ["m5.large"]
+              }
             }
           }
         }

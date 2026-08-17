@@ -169,80 +169,83 @@ variable "experimental" {
     - `observability.metrics.metric.enable_job_retry`: Emits job-retry metrics when metrics are enabled. The default is `true`.
     - `observability.metrics.metric.enable_spot_termination`: Emits Spot termination metrics from the shared termination watcher when metrics are enabled. The default is `true`.
     - `observability.metrics.metric.enable_spot_termination_warning`: Emits Spot termination-warning metrics from the shared termination watcher when metrics are enabled. The default is `true`.
-    - `compute_provider.ec2.vpc_id`: Shared VPC default for v2 EC2 runner configurations. The default is null; every EC2 runner configuration must resolve this field globally or locally.
-    - `compute_provider.ec2.subnet_ids`: Shared subnet default for v2 EC2 runner configurations. The default is null; every EC2 runner configuration must resolve this field globally or locally.
-    - `compute_provider.ec2.managed_security_group_enabled`: Creates the module-managed runner security group by default. The default is `true`.
-    - `compute_provider.ec2.egress_rules`: Shared runner security-group egress rules. The default is one IPv4/IPv6 allow-all rule; v2 does not inherit flat `runner_egress_rules`.
-    - `compute_provider.ec2.egress_rules[].cidr_blocks`: IPv4 CIDR destinations for an egress rule.
-    - `compute_provider.ec2.egress_rules[].ipv6_cidr_blocks`: IPv6 CIDR destinations for an egress rule.
-    - `compute_provider.ec2.egress_rules[].prefix_list_ids`: Prefix-list destinations for an egress rule.
-    - `compute_provider.ec2.egress_rules[].from_port`: Start of the egress rule port range.
-    - `compute_provider.ec2.egress_rules[].protocol`: Egress rule protocol; `-1` allows every protocol.
-    - `compute_provider.ec2.egress_rules[].security_groups`: Destination security-group IDs for an egress rule.
-    - `compute_provider.ec2.egress_rules[].self`: Allows traffic to the managed security group itself when true.
-    - `compute_provider.ec2.egress_rules[].to_port`: End of the egress rule port range.
-    - `compute_provider.ec2.egress_rules[].description`: Optional egress rule description.
-    - `compute_provider.ec2.additional_security_group_ids`: Existing security groups attached to every v2 EC2 runner configuration unless overridden. The default is `[]`.
-    - `compute_provider.ec2.cloudwatch_agent.config`: Optional complete CloudWatch agent configuration inherited by v2 EC2 runner configurations. The default is null; enablement remains configuration-owned.
-    - `compute_provider.ec2.instance_profile_path`: IAM path for module-managed EC2 instance profiles. The default is null.
-    - `compute_provider.ec2.key_name`: Optional EC2 key-pair name inherited by v2 EC2 runner configurations. The default is null.
-    - `compute_provider.ec2.associate_public_ipv4_address`: Associates public IPv4 addresses with v2 EC2 runners unless overridden. The default is `false`.
-    - `compute_provider.ec2.tags`: Default tags for runtime EC2 resources. The default is `{}` and runner-configuration EC2 tags take precedence.
-    - `compute_provider.ec2.ami.housekeeper`: Global configuration for the shared AMI-housekeeper Lambda.
-    - `compute_provider.ec2.ami.housekeeper.enabled`: Creates the shared AMI housekeeper when true. The default is `false`, and the value must be known during planning because it controls the module instance.
-    - `compute_provider.ec2.ami.housekeeper.cleanup_config`: AMI cleanup selection and safety settings. The default is `{}`, which resolves the leaf defaults described below in the AMI-housekeeper module.
-    - `compute_provider.ec2.ami.housekeeper.cleanup_config.maxItems`: Optional maximum number of AMIs queried for cleanup. The default is null, which applies no maximum.
-    - `compute_provider.ec2.ami.housekeeper.cleanup_config.minimumDaysOld`: Minimum AMI age in days before cleanup. The effective default is `30`.
-    - `compute_provider.ec2.ami.housekeeper.cleanup_config.amiFilters`: AMI filters, each containing `Name` and `Values`. The effective default selects images with `state = available` and `image-type = machine`.
-    - `compute_provider.ec2.ami.housekeeper.cleanup_config.launchTemplateNames`: Optional launch-template names whose referenced AMIs are retained. The default is null, which selects no launch templates.
-    - `compute_provider.ec2.ami.housekeeper.cleanup_config.ssmParameterNames`: Optional Parameter Store names whose referenced AMIs are retained. The default is null, which selects no parameters.
-    - `compute_provider.ec2.ami.housekeeper.cleanup_config.dryRun`: Reports eligible AMIs without deregistering them when true. The effective default is `false`.
-    - `compute_provider.ec2.ami.housekeeper.artifact`: AMI-housekeeper artifact selection. Set at most one of `zip` or `s3`; when both are null, the packaged archive is used.
-    - `compute_provider.ec2.ami.housekeeper.artifact.zip`: Optional local path to the AMI-housekeeper Lambda archive. The default is null.
-    - `compute_provider.ec2.ami.housekeeper.artifact.s3`: Optional key and object version in the shared `lambda.artifact.s3.bucket`. Wrapper presence selects S3 and requires a non-null shared bucket and key.
-    - `compute_provider.ec2.ami.housekeeper.artifact.s3.key`: Object key of the AMI-housekeeper Lambda archive.
-    - `compute_provider.ec2.ami.housekeeper.artifact.s3.object_version`: Optional object version of the AMI-housekeeper Lambda archive. The default is null.
-    - `compute_provider.ec2.ami.housekeeper.lambda.memory_size`: AMI-housekeeper Lambda memory in MB. The default is `256`.
-    - `compute_provider.ec2.ami.housekeeper.lambda.timeout`: AMI-housekeeper Lambda timeout in seconds. The default is `300`.
-    - `compute_provider.ec2.ami.housekeeper.schedule.expression`: AMI-housekeeper EventBridge schedule expression. The default is `cron(11 7 * * ? *)`.
-    - `compute_provider.ec2.instance_termination_watcher`: Global configuration for the shared EC2 instance-termination watcher.
-    - `compute_provider.ec2.instance_termination_watcher.enabled`: Creates the shared EC2 termination watcher when true. The default is `false`, and the value must be known during planning because it controls the module instance.
-    - `compute_provider.ec2.instance_termination_watcher.features.enable_spot_termination_handler`: Enables the Spot termination-event handler. The default is `true`, and the value must be known during planning because it controls child resources.
-    - `compute_provider.ec2.instance_termination_watcher.features.enable_spot_termination_notification_watcher`: Enables the Spot interruption-warning watcher. The default is `true`, and the value must be known during planning because it controls child resources.
-    - `compute_provider.ec2.instance_termination_watcher.enable_runner_deregistration`: Deregisters terminated runners from GitHub when true. The default is `true`, and the value must be known during planning because it controls deregistration resources.
-    - `compute_provider.ec2.instance_termination_watcher.environment_variables`: Additional termination-watcher Lambda environment variables. The default is `{}`.
-    - `compute_provider.ec2.instance_termination_watcher.artifact`: Termination-watcher artifact selection. Set at most one of `zip` or `s3`; when both are null, the packaged archive is used.
-    - `compute_provider.ec2.instance_termination_watcher.artifact.zip`: Optional local path to the termination-watcher Lambda archive. The default is null.
-    - `compute_provider.ec2.instance_termination_watcher.artifact.s3`: Optional key and object version in the shared `lambda.artifact.s3.bucket`. Wrapper presence selects S3 and requires a non-null shared bucket and key.
-    - `compute_provider.ec2.instance_termination_watcher.artifact.s3.key`: Object key of the termination-watcher Lambda archive.
-    - `compute_provider.ec2.instance_termination_watcher.artifact.s3.object_version`: Optional object version of the termination-watcher Lambda archive. The default is null.
-    - `compute_provider.ec2.instance_termination_watcher.lambda.memory_size`: Optional watcher Lambda memory in MB. The default is null, which delegates to the termination-watcher module.
-    - `compute_provider.ec2.instance_termination_watcher.lambda.timeout`: Optional watcher Lambda timeout in seconds. The default is null, which delegates to the termination-watcher module.
-    - `compute_provider.ec2.runner_binaries`: Global configuration for the shared runner-distribution buckets and syncers, created once per unique enabled runner operating-system and architecture pair.
-    - `compute_provider.ec2.runner_binaries.enabled`: Default for whether EC2 runner configurations use the synchronized runner distribution. The default is `true`; a runner configuration may override it through `compute_provider.ec2.binaries_syncer.enabled`. Every resolved enable value must be known during planning because it determines the syncer module instances.
-    - `compute_provider.ec2.runner_binaries.s3`: Settings for each shared runner-distribution bucket.
-    - `compute_provider.ec2.runner_binaries.s3.encryption`: Server-side encryption settings for each distribution bucket.
-    - `compute_provider.ec2.runner_binaries.s3.encryption.enabled`: Creates an explicit distribution-bucket encryption configuration when true. The default is `true`, and the value must be known during planning because it controls resource shape. Keep `kms_master_key_id` null when this is false.
-    - `compute_provider.ec2.runner_binaries.s3.encryption.bucket_key_enabled`: Optional S3 Bucket Key setting. The default is null.
-    - `compute_provider.ec2.runner_binaries.s3.encryption.sse_algorithm`: Server-side encryption algorithm. The default is `AES256`; valid values are `AES256`, `aws:kms`, and `aws:kms:dsse`. When `kms_master_key_id` is set, use one of the KMS algorithms.
-    - `compute_provider.ec2.runner_binaries.s3.encryption.kms_master_key_id`: Optional KMS key identifier for the distribution bucket. The default is null, and its nullness must be known during planning because it controls the syncer KMS policy. The syncer receives KMS access, but runner roles do not derive `kms:Decrypt` from this field; grant runner roles decrypt access separately when using a CMK.
-    - `compute_provider.ec2.runner_binaries.s3.tags`: Additional tags for each distribution bucket. The default is `{}`; these merge after global `tags`.
-    - `compute_provider.ec2.runner_binaries.s3.versioning`: Distribution-bucket versioning state. The default is `Disabled`; valid values are `Disabled`, `Enabled`, and `Suspended`. After enabling versioning, Terraform cannot return the bucket to `Disabled`; use `Suspended` instead.
-    - `compute_provider.ec2.runner_binaries.s3.logging`: Optional access-logging settings for each distribution bucket.
-    - `compute_provider.ec2.runner_binaries.s3.logging.bucket`: Existing target bucket for access logs. The default is null, and its nullness must be known during planning because it controls the logging resource.
-    - `compute_provider.ec2.runner_binaries.s3.logging.prefix`: Optional access-log prefix. The default is null, which uses the distribution-bucket name when logging is enabled. A non-null prefix requires `logging.bucket`.
-    - `compute_provider.ec2.runner_binaries.syncer`: Component-specific settings for the shared runner-binary syncer Lambda.
-    - `compute_provider.ec2.runner_binaries.syncer.artifact`: Syncer Lambda artifact selection. Set at most one of `zip` or `s3`; when both are null, the packaged archive is used.
-    - `compute_provider.ec2.runner_binaries.syncer.artifact.zip`: Optional local path to the syncer Lambda archive. The default is null.
-    - `compute_provider.ec2.runner_binaries.syncer.artifact.s3`: Optional key and object version in the shared `lambda.artifact.s3.bucket`. Wrapper presence selects S3 and requires a non-null shared bucket and key.
-    - `compute_provider.ec2.runner_binaries.syncer.artifact.s3.key`: Object key of the syncer Lambda archive. Required when the `s3` wrapper is present.
-    - `compute_provider.ec2.runner_binaries.syncer.artifact.s3.object_version`: Optional object version of the syncer Lambda archive. The default is null.
-    - `compute_provider.ec2.runner_binaries.syncer.lambda`: Syncer Lambda sizing settings. Runtime, architecture, networking, role, tags, logging, and tracing come from their global experimental blocks.
-    - `compute_provider.ec2.runner_binaries.syncer.lambda.memory_size`: Memory allocated to the syncer Lambda in MB. The default is `256`.
-    - `compute_provider.ec2.runner_binaries.syncer.lambda.timeout`: Syncer Lambda timeout in seconds. The default is `300`.
-    - `compute_provider.ec2.runner_binaries.syncer.schedule`: EventBridge schedule settings for the syncer Lambda.
-    - `compute_provider.ec2.runner_binaries.syncer.schedule.expression`: EventBridge schedule expression. The default is `cron(27 * * * ? *)`.
-    - `compute_provider.ec2.runner_binaries.syncer.schedule.state`: EventBridge rule state. The default is `ENABLED`; valid values are `DISABLED`, `ENABLED`, and `ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS`.
+    - `compute_provider`: Shared compute-provider defaults grouped first by cloud and then by provider type. Global defaults do not select a provider for any runner configuration.
+    - `compute_provider.aws`: Shared defaults for AWS compute providers.
+    - `compute_provider.aws.ec2`: Shared defaults for AWS EC2 runner configurations.
+    - `compute_provider.aws.ec2.vpc_id`: Shared VPC default for v2 EC2 runner configurations. The default is null; every EC2 runner configuration must resolve this field globally or locally.
+    - `compute_provider.aws.ec2.subnet_ids`: Shared subnet default for v2 EC2 runner configurations. The default is null; every EC2 runner configuration must resolve this field globally or locally.
+    - `compute_provider.aws.ec2.managed_security_group_enabled`: Creates the module-managed runner security group by default. The default is `true`.
+    - `compute_provider.aws.ec2.egress_rules`: Shared runner security-group egress rules. The default is one IPv4/IPv6 allow-all rule; v2 does not inherit flat `runner_egress_rules`.
+    - `compute_provider.aws.ec2.egress_rules[].cidr_blocks`: IPv4 CIDR destinations for an egress rule.
+    - `compute_provider.aws.ec2.egress_rules[].ipv6_cidr_blocks`: IPv6 CIDR destinations for an egress rule.
+    - `compute_provider.aws.ec2.egress_rules[].prefix_list_ids`: Prefix-list destinations for an egress rule.
+    - `compute_provider.aws.ec2.egress_rules[].from_port`: Start of the egress rule port range.
+    - `compute_provider.aws.ec2.egress_rules[].protocol`: Egress rule protocol; `-1` allows every protocol.
+    - `compute_provider.aws.ec2.egress_rules[].security_groups`: Destination security-group IDs for an egress rule.
+    - `compute_provider.aws.ec2.egress_rules[].self`: Allows traffic to the managed security group itself when true.
+    - `compute_provider.aws.ec2.egress_rules[].to_port`: End of the egress rule port range.
+    - `compute_provider.aws.ec2.egress_rules[].description`: Optional egress rule description.
+    - `compute_provider.aws.ec2.additional_security_group_ids`: Existing security groups attached to every v2 EC2 runner configuration unless overridden. The default is `[]`.
+    - `compute_provider.aws.ec2.cloudwatch_agent.config`: Optional complete CloudWatch agent configuration inherited by v2 EC2 runner configurations. The default is null; enablement remains configuration-owned.
+    - `compute_provider.aws.ec2.instance_profile_path`: IAM path for module-managed EC2 instance profiles. The default is null.
+    - `compute_provider.aws.ec2.key_name`: Optional EC2 key-pair name inherited by v2 EC2 runner configurations. The default is null.
+    - `compute_provider.aws.ec2.associate_public_ipv4_address`: Associates public IPv4 addresses with v2 EC2 runners unless overridden. The default is `false`.
+    - `compute_provider.aws.ec2.tags`: Default tags for runtime EC2 resources. The default is `{}` and runner-configuration EC2 tags take precedence.
+    - `compute_provider.aws.ec2.ami.housekeeper`: Global configuration for the shared AMI-housekeeper Lambda.
+    - `compute_provider.aws.ec2.ami.housekeeper.enabled`: Creates the shared AMI housekeeper when true. The default is `false`, and the value must be known during planning because it controls the module instance.
+    - `compute_provider.aws.ec2.ami.housekeeper.cleanup_config`: AMI cleanup selection and safety settings. The default is `{}`, which resolves the leaf defaults described below in the AMI-housekeeper module.
+    - `compute_provider.aws.ec2.ami.housekeeper.cleanup_config.maxItems`: Optional maximum number of AMIs queried for cleanup. The default is null, which applies no maximum.
+    - `compute_provider.aws.ec2.ami.housekeeper.cleanup_config.minimumDaysOld`: Minimum AMI age in days before cleanup. The effective default is `30`.
+    - `compute_provider.aws.ec2.ami.housekeeper.cleanup_config.amiFilters`: AMI filters, each containing `Name` and `Values`. The effective default selects images with `state = available` and `image-type = machine`.
+    - `compute_provider.aws.ec2.ami.housekeeper.cleanup_config.launchTemplateNames`: Optional launch-template names whose referenced AMIs are retained. The default is null, which selects no launch templates.
+    - `compute_provider.aws.ec2.ami.housekeeper.cleanup_config.ssmParameterNames`: Optional Parameter Store names whose referenced AMIs are retained. The default is null, which selects no parameters.
+    - `compute_provider.aws.ec2.ami.housekeeper.cleanup_config.dryRun`: Reports eligible AMIs without deregistering them when true. The effective default is `false`.
+    - `compute_provider.aws.ec2.ami.housekeeper.artifact`: AMI-housekeeper artifact selection. Set at most one of `zip` or `s3`; when both are null, the packaged archive is used.
+    - `compute_provider.aws.ec2.ami.housekeeper.artifact.zip`: Optional local path to the AMI-housekeeper Lambda archive. The default is null.
+    - `compute_provider.aws.ec2.ami.housekeeper.artifact.s3`: Optional key and object version in the shared `lambda.artifact.s3.bucket`. Wrapper presence selects S3 and requires a non-null shared bucket and key.
+    - `compute_provider.aws.ec2.ami.housekeeper.artifact.s3.key`: Object key of the AMI-housekeeper Lambda archive.
+    - `compute_provider.aws.ec2.ami.housekeeper.artifact.s3.object_version`: Optional object version of the AMI-housekeeper Lambda archive. The default is null.
+    - `compute_provider.aws.ec2.ami.housekeeper.lambda.memory_size`: AMI-housekeeper Lambda memory in MB. The default is `256`.
+    - `compute_provider.aws.ec2.ami.housekeeper.lambda.timeout`: AMI-housekeeper Lambda timeout in seconds. The default is `300`.
+    - `compute_provider.aws.ec2.ami.housekeeper.schedule.expression`: AMI-housekeeper EventBridge schedule expression. The default is `cron(11 7 * * ? *)`.
+    - `compute_provider.aws.ec2.instance_termination_watcher`: Global configuration for the shared EC2 instance-termination watcher.
+    - `compute_provider.aws.ec2.instance_termination_watcher.enabled`: Creates the shared EC2 termination watcher when true. The default is `false`, and the value must be known during planning because it controls the module instance.
+    - `compute_provider.aws.ec2.instance_termination_watcher.features.enable_spot_termination_handler`: Enables the Spot termination-event handler. The default is `true`, and the value must be known during planning because it controls child resources.
+    - `compute_provider.aws.ec2.instance_termination_watcher.features.enable_spot_termination_notification_watcher`: Enables the Spot interruption-warning watcher. The default is `true`, and the value must be known during planning because it controls child resources.
+    - `compute_provider.aws.ec2.instance_termination_watcher.enable_runner_deregistration`: Deregisters terminated runners from GitHub when true. The default is `true`, and the value must be known during planning because it controls deregistration resources.
+    - `compute_provider.aws.ec2.instance_termination_watcher.environment_variables`: Additional termination-watcher Lambda environment variables. The default is `{}`.
+    - `compute_provider.aws.ec2.instance_termination_watcher.artifact`: Termination-watcher artifact selection. Set at most one of `zip` or `s3`; when both are null, the packaged archive is used.
+    - `compute_provider.aws.ec2.instance_termination_watcher.artifact.zip`: Optional local path to the termination-watcher Lambda archive. The default is null.
+    - `compute_provider.aws.ec2.instance_termination_watcher.artifact.s3`: Optional key and object version in the shared `lambda.artifact.s3.bucket`. Wrapper presence selects S3 and requires a non-null shared bucket and key.
+    - `compute_provider.aws.ec2.instance_termination_watcher.artifact.s3.key`: Object key of the termination-watcher Lambda archive.
+    - `compute_provider.aws.ec2.instance_termination_watcher.artifact.s3.object_version`: Optional object version of the termination-watcher Lambda archive. The default is null.
+    - `compute_provider.aws.ec2.instance_termination_watcher.lambda.memory_size`: Optional watcher Lambda memory in MB. The default is null, which delegates to the termination-watcher module.
+    - `compute_provider.aws.ec2.instance_termination_watcher.lambda.timeout`: Optional watcher Lambda timeout in seconds. The default is null, which delegates to the termination-watcher module.
+    - `compute_provider.aws.ec2.runner_binaries`: Global configuration for the shared runner-distribution buckets and syncers, created once per unique enabled runner operating-system and architecture pair.
+    - `compute_provider.aws.ec2.runner_binaries.enabled`: Default for whether EC2 runner configurations use the synchronized runner distribution. The default is `true`; a runner configuration may override it through `compute_provider.aws.ec2.binaries_syncer.enabled`. Every resolved enable value must be known during planning because it determines the syncer module instances.
+    - `compute_provider.aws.ec2.runner_binaries.s3`: Settings for each shared runner-distribution bucket.
+    - `compute_provider.aws.ec2.runner_binaries.s3.encryption`: Server-side encryption settings for each distribution bucket.
+    - `compute_provider.aws.ec2.runner_binaries.s3.encryption.enabled`: Creates an explicit distribution-bucket encryption configuration when true. The default is `true`, and the value must be known during planning because it controls resource shape. Keep `kms_master_key_id` null when this is false.
+    - `compute_provider.aws.ec2.runner_binaries.s3.encryption.bucket_key_enabled`: Optional S3 Bucket Key setting. The default is null.
+    - `compute_provider.aws.ec2.runner_binaries.s3.encryption.sse_algorithm`: Server-side encryption algorithm. The default is `AES256`; valid values are `AES256`, `aws:kms`, and `aws:kms:dsse`. When `kms_master_key_id` is set, use one of the KMS algorithms.
+    - `compute_provider.aws.ec2.runner_binaries.s3.encryption.kms_master_key_id`: Optional KMS key identifier for the distribution bucket. The default is null, and its nullness must be known during planning because it controls the syncer KMS policy. The syncer receives KMS access, but runner roles do not derive `kms:Decrypt` from this field; grant runner roles decrypt access separately when using a CMK.
+    - `compute_provider.aws.ec2.runner_binaries.s3.tags`: Additional tags for each distribution bucket. The default is `{}`; these merge after global `tags`.
+    - `compute_provider.aws.ec2.runner_binaries.s3.versioning`: Distribution-bucket versioning state. The default is `Disabled`; valid values are `Disabled`, `Enabled`, and `Suspended`. After enabling versioning, Terraform cannot return the bucket to `Disabled`; use `Suspended` instead.
+    - `compute_provider.aws.ec2.runner_binaries.s3.logging`: Optional access-logging settings for each distribution bucket.
+    - `compute_provider.aws.ec2.runner_binaries.s3.logging.bucket`: Existing target bucket for access logs. The default is null, and its nullness must be known during planning because it controls the logging resource.
+    - `compute_provider.aws.ec2.runner_binaries.s3.logging.prefix`: Optional access-log prefix. The default is null, which uses the distribution-bucket name when logging is enabled. A non-null prefix requires `logging.bucket`.
+    - `compute_provider.aws.ec2.runner_binaries.syncer`: Component-specific settings for the shared runner-binary syncer Lambda.
+    - `compute_provider.aws.ec2.runner_binaries.syncer.artifact`: Syncer Lambda artifact selection. Set at most one of `zip` or `s3`; when both are null, the packaged archive is used.
+    - `compute_provider.aws.ec2.runner_binaries.syncer.artifact.zip`: Optional local path to the syncer Lambda archive. The default is null.
+    - `compute_provider.aws.ec2.runner_binaries.syncer.artifact.s3`: Optional key and object version in the shared `lambda.artifact.s3.bucket`. Wrapper presence selects S3 and requires a non-null shared bucket and key.
+    - `compute_provider.aws.ec2.runner_binaries.syncer.artifact.s3.key`: Object key of the syncer Lambda archive. Required when the `s3` wrapper is present.
+    - `compute_provider.aws.ec2.runner_binaries.syncer.artifact.s3.object_version`: Optional object version of the syncer Lambda archive. The default is null.
+    - `compute_provider.aws.ec2.runner_binaries.syncer.lambda`: Syncer Lambda sizing settings. Runtime, architecture, networking, role, tags, logging, and tracing come from their global experimental blocks.
+    - `compute_provider.aws.ec2.runner_binaries.syncer.lambda.memory_size`: Memory allocated to the syncer Lambda in MB. The default is `256`.
+    - `compute_provider.aws.ec2.runner_binaries.syncer.lambda.timeout`: Syncer Lambda timeout in seconds. The default is `300`.
+    - `compute_provider.aws.ec2.runner_binaries.syncer.schedule`: EventBridge schedule settings for the syncer Lambda.
+    - `compute_provider.aws.ec2.runner_binaries.syncer.schedule.expression`: EventBridge schedule expression. The default is `cron(27 * * * ? *)`.
+    - `compute_provider.aws.ec2.runner_binaries.syncer.schedule.state`: EventBridge rule state. The default is `ENABLED`; valid values are `DISABLED`, `ENABLED`, and `ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS`.
 
     Each `experimental.multi_runner_config` entry supports the following nested fields:
 
@@ -362,90 +365,91 @@ variable "experimental" {
     - `multi_runner_config[].observability.metrics.namespace`: CloudWatch namespace used for emitted metrics.
     - `multi_runner_config[].observability.metrics.metric.enable_github_app_rate_limit`: Emits GitHub App rate-limit metrics.
     - `multi_runner_config[].observability.metrics.metric.enable_job_retry`: Emits job-retry metrics.
-    - `multi_runner_config[].compute_provider`: Typed compute-provider blocks. Exactly one block must be non-null, and the populated block selects the provider. Its presence must be known during planning; values inside it may remain unknown until apply.
-    - `multi_runner_config[].compute_provider.ec2`: EC2-specific configuration.
-    - `multi_runner_config[].compute_provider.ec2.metadata_options.instance_metadata_tags`: Exposes instance tags through Instance Metadata Service when enabled.
-    - `multi_runner_config[].compute_provider.ec2.metadata_options.http_endpoint`: Enables or disables the Instance Metadata Service endpoint.
-    - `multi_runner_config[].compute_provider.ec2.metadata_options.http_tokens`: Controls whether IMDSv2 session tokens are optional or required.
-    - `multi_runner_config[].compute_provider.ec2.metadata_options.http_put_response_hop_limit`: Network hop limit for Instance Metadata Service token responses.
-    - `multi_runner_config[].compute_provider.ec2.ami.filter`: EC2 AMI filters combined with the default AMI-name filter.
-    - `multi_runner_config[].compute_provider.ec2.ami.owners`: AWS account IDs or aliases allowed to own the selected AMI.
-    - `multi_runner_config[].compute_provider.ec2.ami.id_ssm_parameter`: Optional externally managed SSM parameter containing the AMI ID. The wrapper's presence selects external ownership at plan time.
-    - `multi_runner_config[].compute_provider.ec2.ami.id_ssm_parameter.arn`: ARN of the externally managed SSM parameter. The ARN may be unknown until apply.
-    - `multi_runner_config[].compute_provider.ec2.ami.kms_key`: Optional KMS key required to launch encrypted AMIs or snapshots. The wrapper's presence selects the KMS policy at plan time.
-    - `multi_runner_config[].compute_provider.ec2.ami.kms_key.arn`: ARN of the KMS key. The ARN may be unknown until apply.
-    - `multi_runner_config[].compute_provider.ec2.block_device_mappings`: EBS mappings added to the runner launch template.
-    - `multi_runner_config[].compute_provider.ec2.block_device_mappings[].delete_on_termination`: Deletes the volume when its runner instance terminates.
-    - `multi_runner_config[].compute_provider.ec2.block_device_mappings[].device_name`: Device name exposed to the runner instance.
-    - `multi_runner_config[].compute_provider.ec2.block_device_mappings[].encrypted`: Enables EBS encryption.
-    - `multi_runner_config[].compute_provider.ec2.block_device_mappings[].iops`: Provisioned IOPS for supported volume types.
-    - `multi_runner_config[].compute_provider.ec2.block_device_mappings[].kms_key_id`: KMS key ID or ARN used to encrypt the volume.
-    - `multi_runner_config[].compute_provider.ec2.block_device_mappings[].snapshot_id`: Snapshot used to initialize the volume.
-    - `multi_runner_config[].compute_provider.ec2.block_device_mappings[].throughput`: Provisioned throughput for supported volume types.
-    - `multi_runner_config[].compute_provider.ec2.block_device_mappings[].volume_initialization_rate`: Fixed initialization rate in MiB/s for supported snapshot-backed volumes.
-    - `multi_runner_config[].compute_provider.ec2.block_device_mappings[].volume_size`: Volume size in GiB.
-    - `multi_runner_config[].compute_provider.ec2.block_device_mappings[].volume_type`: EBS volume type.
-    - `multi_runner_config[].compute_provider.ec2.create_service_linked_role_spot`: Allows scale-up to create the EC2 Spot service-linked role.
-    - `multi_runner_config[].compute_provider.ec2.credit_specification`: CPU credit mode for burstable instance types.
-    - `multi_runner_config[].compute_provider.ec2.ebs_optimized`: Requests EBS-optimized runner instances.
-    - `multi_runner_config[].compute_provider.ec2.cloudwatch_agent.enabled`: Installs and configures the CloudWatch agent through the default bootstrap flow.
-    - `multi_runner_config[].compute_provider.ec2.cloudwatch_agent.config`: Optional complete CloudWatch agent configuration.
-    - `multi_runner_config[].compute_provider.ec2.binaries_syncer.enabled`: Enables use of the shared synchronized runner distribution from S3. Null inherits `experimental.compute_provider.ec2.runner_binaries.enabled`.
-    - `multi_runner_config[].compute_provider.ec2.detailed_monitoring_enabled`: Enables detailed EC2 monitoring for runner instances.
-    - `multi_runner_config[].compute_provider.ec2.ssm_enabled`: Attaches runner permissions and policies required for AWS Systems Manager access.
-    - `multi_runner_config[].compute_provider.ec2.user_data.enabled`: Enables launch-template user data.
-    - `multi_runner_config[].compute_provider.ec2.user_data.template`: Optional path to a custom user-data template.
-    - `multi_runner_config[].compute_provider.ec2.user_data.content`: Optional complete user-data content used instead of rendering a template.
-    - `multi_runner_config[].compute_provider.ec2.user_data.pre_install`: Script content inserted before runner installation in the default template.
-    - `multi_runner_config[].compute_provider.ec2.user_data.post_install`: Script content inserted after runner installation in the default template.
-    - `multi_runner_config[].compute_provider.ec2.user_data.debug_logging_enabled`: Enables verbose user-data tracing, which can expose secrets in logs.
-    - `multi_runner_config[].compute_provider.ec2.instance_allocation_strategy`: EC2 Fleet allocation strategy used to select capacity.
-    - `multi_runner_config[].compute_provider.ec2.instance_max_spot_price`: Optional maximum hourly Spot price.
-    - `multi_runner_config[].compute_provider.ec2.instance_target_capacity_type`: Primary capacity type, either `spot` or `on-demand`.
-    - `multi_runner_config[].compute_provider.ec2.instance_type_priorities`: Optional numeric priorities keyed by instance type.
-    - `multi_runner_config[].compute_provider.ec2.instance_types`: EC2 instance types available to the scale-up and pool functions.
-    - `multi_runner_config[].compute_provider.ec2.additional_security_group_ids`: Existing security groups attached to runner instances.
-    - `multi_runner_config[].compute_provider.ec2.managed_security_group_enabled`: Creates the module-managed runner security group when true.
-    - `multi_runner_config[].compute_provider.ec2.egress_rules`: Runner security-group egress rules. Null inherits `experimental.compute_provider.ec2.egress_rules`, whose default is the built-in IPv4/IPv6 allow-all rule. Flat `runner_egress_rules` is not inherited by v2.
-    - `multi_runner_config[].compute_provider.ec2.egress_rules[].cidr_blocks`: IPv4 CIDR destinations for the runner-configuration egress rule.
-    - `multi_runner_config[].compute_provider.ec2.egress_rules[].ipv6_cidr_blocks`: IPv6 CIDR destinations for the runner-configuration egress rule.
-    - `multi_runner_config[].compute_provider.ec2.egress_rules[].prefix_list_ids`: Prefix-list destinations for the runner-configuration egress rule.
-    - `multi_runner_config[].compute_provider.ec2.egress_rules[].from_port`: Start of the runner-configuration egress rule port range.
-    - `multi_runner_config[].compute_provider.ec2.egress_rules[].protocol`: Runner-configuration egress rule protocol; `-1` allows every protocol.
-    - `multi_runner_config[].compute_provider.ec2.egress_rules[].security_groups`: Destination security-group IDs for the runner-configuration egress rule.
-    - `multi_runner_config[].compute_provider.ec2.egress_rules[].self`: Allows traffic to the managed security group itself when true.
-    - `multi_runner_config[].compute_provider.ec2.egress_rules[].to_port`: End of the runner-configuration egress rule port range.
-    - `multi_runner_config[].compute_provider.ec2.egress_rules[].description`: Optional runner-configuration egress rule description.
-    - `multi_runner_config[].compute_provider.ec2.instance_profile_path`: IAM path for the module-managed EC2 instance profile.
-    - `multi_runner_config[].compute_provider.ec2.key_name`: Optional EC2 key-pair name for runner instances.
-    - `multi_runner_config[].compute_provider.ec2.associate_public_ipv4_address`: Associates a public IPv4 address with runner instances.
-    - `multi_runner_config[].compute_provider.ec2.instance_profile.name`: Name of an externally managed instance profile. Setting it also requires `runner.iam.role`.
-    - `multi_runner_config[].compute_provider.ec2.enable_on_demand_failover_for_errors`: EC2 error codes that trigger an on-demand fallback after a Spot launch failure.
-    - `multi_runner_config[].compute_provider.ec2.scale_errors`: EC2 error codes treated as retryable scale-up failures.
-    - `multi_runner_config[].compute_provider.ec2.subnet_ids`: Subnets from which scale-up may launch runners. A null configuration value inherits the experimental global value.
-    - `multi_runner_config[].compute_provider.ec2.vpc_id`: VPC in which runner networking resources are created. A null configuration value inherits the experimental global value.
-    - `multi_runner_config[].compute_provider.ec2.cpu_options.core_count`: Number of CPU cores exposed to the runner instance.
-    - `multi_runner_config[].compute_provider.ec2.cpu_options.threads_per_core`: Number of hardware threads exposed per CPU core.
-    - `multi_runner_config[].compute_provider.ec2.cpu_options.amd_sev_snp`: Enables or disables AMD SEV-SNP on supported instance types.
-    - `multi_runner_config[].compute_provider.ec2.cpu_options.nested_virtualization`: Enables or disables nested virtualization on supported instance types.
-    - `multi_runner_config[].compute_provider.ec2.placement.affinity`: Host affinity setting.
-    - `multi_runner_config[].compute_provider.ec2.placement.availability_zone`: Availability Zone in which the instance is placed.
-    - `multi_runner_config[].compute_provider.ec2.placement.group_id`: Placement-group ID.
-    - `multi_runner_config[].compute_provider.ec2.placement.group_name`: Placement-group name.
-    - `multi_runner_config[].compute_provider.ec2.placement.host_id`: Dedicated Host ID.
-    - `multi_runner_config[].compute_provider.ec2.placement.host_resource_group_arn`: ARN of the host resource group used for placement.
-    - `multi_runner_config[].compute_provider.ec2.placement.spread_domain`: Spread-domain placement value.
-    - `multi_runner_config[].compute_provider.ec2.placement.tenancy`: Instance tenancy.
-    - `multi_runner_config[].compute_provider.ec2.placement.partition_number`: Placement-group partition number.
-    - `multi_runner_config[].compute_provider.ec2.license_specifications[].license_configuration_arn`: ARN of a License Manager license configuration.
-    - `multi_runner_config[].compute_provider.ec2.use_dedicated_host`: Enables the dedicated-host launch path required for macOS runners.
-    - `multi_runner_config[].compute_provider.ec2.log_files`: Optional log files collected by the CloudWatch agent.
-    - `multi_runner_config[].compute_provider.ec2.log_files[].log_group_name`: CloudWatch log-group name before optional prefixing.
-    - `multi_runner_config[].compute_provider.ec2.log_files[].prefix_log_group`: Prefixes the log-group name with the runner configuration path when true.
-    - `multi_runner_config[].compute_provider.ec2.log_files[].file_path`: File or glob read by the CloudWatch agent.
-    - `multi_runner_config[].compute_provider.ec2.log_files[].log_stream_name`: CloudWatch log-stream name template.
-    - `multi_runner_config[].compute_provider.ec2.log_files[].log_class`: CloudWatch log-group class for the collected file.
-    - `multi_runner_config[].compute_provider.ec2.tags`: Tags for runtime EC2 instances, volumes, network interfaces, and eligible Spot requests. These override entry-level tags and the generated runner `Name`; provider-required bootstrap tags take final precedence.
+    - `multi_runner_config[].compute_provider`: Typed compute-provider namespaces. Exactly one nested provider block must be non-null, and that populated block selects the provider. Its presence must be known during planning; values inside it may remain unknown until apply.
+    - `multi_runner_config[].compute_provider.aws`: AWS compute-provider namespace. The namespace itself does not select a provider.
+    - `multi_runner_config[].compute_provider.aws.ec2`: AWS EC2-specific configuration. A non-null block selects AWS EC2 for this runner configuration.
+    - `multi_runner_config[].compute_provider.aws.ec2.metadata_options.instance_metadata_tags`: Exposes instance tags through Instance Metadata Service when enabled.
+    - `multi_runner_config[].compute_provider.aws.ec2.metadata_options.http_endpoint`: Enables or disables the Instance Metadata Service endpoint.
+    - `multi_runner_config[].compute_provider.aws.ec2.metadata_options.http_tokens`: Controls whether IMDSv2 session tokens are optional or required.
+    - `multi_runner_config[].compute_provider.aws.ec2.metadata_options.http_put_response_hop_limit`: Network hop limit for Instance Metadata Service token responses.
+    - `multi_runner_config[].compute_provider.aws.ec2.ami.filter`: EC2 AMI filters combined with the default AMI-name filter.
+    - `multi_runner_config[].compute_provider.aws.ec2.ami.owners`: AWS account IDs or aliases allowed to own the selected AMI.
+    - `multi_runner_config[].compute_provider.aws.ec2.ami.id_ssm_parameter`: Optional externally managed SSM parameter containing the AMI ID. The wrapper's presence selects external ownership at plan time.
+    - `multi_runner_config[].compute_provider.aws.ec2.ami.id_ssm_parameter.arn`: ARN of the externally managed SSM parameter. The ARN may be unknown until apply.
+    - `multi_runner_config[].compute_provider.aws.ec2.ami.kms_key`: Optional KMS key required to launch encrypted AMIs or snapshots. The wrapper's presence selects the KMS policy at plan time.
+    - `multi_runner_config[].compute_provider.aws.ec2.ami.kms_key.arn`: ARN of the KMS key. The ARN may be unknown until apply.
+    - `multi_runner_config[].compute_provider.aws.ec2.block_device_mappings`: EBS mappings added to the runner launch template.
+    - `multi_runner_config[].compute_provider.aws.ec2.block_device_mappings[].delete_on_termination`: Deletes the volume when its runner instance terminates.
+    - `multi_runner_config[].compute_provider.aws.ec2.block_device_mappings[].device_name`: Device name exposed to the runner instance.
+    - `multi_runner_config[].compute_provider.aws.ec2.block_device_mappings[].encrypted`: Enables EBS encryption.
+    - `multi_runner_config[].compute_provider.aws.ec2.block_device_mappings[].iops`: Provisioned IOPS for supported volume types.
+    - `multi_runner_config[].compute_provider.aws.ec2.block_device_mappings[].kms_key_id`: KMS key ID or ARN used to encrypt the volume.
+    - `multi_runner_config[].compute_provider.aws.ec2.block_device_mappings[].snapshot_id`: Snapshot used to initialize the volume.
+    - `multi_runner_config[].compute_provider.aws.ec2.block_device_mappings[].throughput`: Provisioned throughput for supported volume types.
+    - `multi_runner_config[].compute_provider.aws.ec2.block_device_mappings[].volume_initialization_rate`: Fixed initialization rate in MiB/s for supported snapshot-backed volumes.
+    - `multi_runner_config[].compute_provider.aws.ec2.block_device_mappings[].volume_size`: Volume size in GiB.
+    - `multi_runner_config[].compute_provider.aws.ec2.block_device_mappings[].volume_type`: EBS volume type.
+    - `multi_runner_config[].compute_provider.aws.ec2.create_service_linked_role_spot`: Allows scale-up to create the EC2 Spot service-linked role.
+    - `multi_runner_config[].compute_provider.aws.ec2.credit_specification`: CPU credit mode for burstable instance types.
+    - `multi_runner_config[].compute_provider.aws.ec2.ebs_optimized`: Requests EBS-optimized runner instances.
+    - `multi_runner_config[].compute_provider.aws.ec2.cloudwatch_agent.enabled`: Installs and configures the CloudWatch agent through the default bootstrap flow.
+    - `multi_runner_config[].compute_provider.aws.ec2.cloudwatch_agent.config`: Optional complete CloudWatch agent configuration.
+    - `multi_runner_config[].compute_provider.aws.ec2.binaries_syncer.enabled`: Enables use of the shared synchronized runner distribution from S3. Null inherits `experimental.compute_provider.aws.ec2.runner_binaries.enabled`.
+    - `multi_runner_config[].compute_provider.aws.ec2.detailed_monitoring_enabled`: Enables detailed EC2 monitoring for runner instances.
+    - `multi_runner_config[].compute_provider.aws.ec2.ssm_enabled`: Attaches runner permissions and policies required for AWS Systems Manager access.
+    - `multi_runner_config[].compute_provider.aws.ec2.user_data.enabled`: Enables launch-template user data.
+    - `multi_runner_config[].compute_provider.aws.ec2.user_data.template`: Optional path to a custom user-data template.
+    - `multi_runner_config[].compute_provider.aws.ec2.user_data.content`: Optional complete user-data content used instead of rendering a template.
+    - `multi_runner_config[].compute_provider.aws.ec2.user_data.pre_install`: Script content inserted before runner installation in the default template.
+    - `multi_runner_config[].compute_provider.aws.ec2.user_data.post_install`: Script content inserted after runner installation in the default template.
+    - `multi_runner_config[].compute_provider.aws.ec2.user_data.debug_logging_enabled`: Enables verbose user-data tracing, which can expose secrets in logs.
+    - `multi_runner_config[].compute_provider.aws.ec2.instance_allocation_strategy`: EC2 Fleet allocation strategy used to select capacity.
+    - `multi_runner_config[].compute_provider.aws.ec2.instance_max_spot_price`: Optional maximum hourly Spot price.
+    - `multi_runner_config[].compute_provider.aws.ec2.instance_target_capacity_type`: Primary capacity type, either `spot` or `on-demand`.
+    - `multi_runner_config[].compute_provider.aws.ec2.instance_type_priorities`: Optional numeric priorities keyed by instance type.
+    - `multi_runner_config[].compute_provider.aws.ec2.instance_types`: EC2 instance types available to the scale-up and pool functions.
+    - `multi_runner_config[].compute_provider.aws.ec2.additional_security_group_ids`: Existing security groups attached to runner instances.
+    - `multi_runner_config[].compute_provider.aws.ec2.managed_security_group_enabled`: Creates the module-managed runner security group when true.
+    - `multi_runner_config[].compute_provider.aws.ec2.egress_rules`: Runner security-group egress rules. Null inherits `experimental.compute_provider.aws.ec2.egress_rules`, whose default is the built-in IPv4/IPv6 allow-all rule. Flat `runner_egress_rules` is not inherited by v2.
+    - `multi_runner_config[].compute_provider.aws.ec2.egress_rules[].cidr_blocks`: IPv4 CIDR destinations for the runner-configuration egress rule.
+    - `multi_runner_config[].compute_provider.aws.ec2.egress_rules[].ipv6_cidr_blocks`: IPv6 CIDR destinations for the runner-configuration egress rule.
+    - `multi_runner_config[].compute_provider.aws.ec2.egress_rules[].prefix_list_ids`: Prefix-list destinations for the runner-configuration egress rule.
+    - `multi_runner_config[].compute_provider.aws.ec2.egress_rules[].from_port`: Start of the runner-configuration egress rule port range.
+    - `multi_runner_config[].compute_provider.aws.ec2.egress_rules[].protocol`: Runner-configuration egress rule protocol; `-1` allows every protocol.
+    - `multi_runner_config[].compute_provider.aws.ec2.egress_rules[].security_groups`: Destination security-group IDs for the runner-configuration egress rule.
+    - `multi_runner_config[].compute_provider.aws.ec2.egress_rules[].self`: Allows traffic to the managed security group itself when true.
+    - `multi_runner_config[].compute_provider.aws.ec2.egress_rules[].to_port`: End of the runner-configuration egress rule port range.
+    - `multi_runner_config[].compute_provider.aws.ec2.egress_rules[].description`: Optional runner-configuration egress rule description.
+    - `multi_runner_config[].compute_provider.aws.ec2.instance_profile_path`: IAM path for the module-managed EC2 instance profile.
+    - `multi_runner_config[].compute_provider.aws.ec2.key_name`: Optional EC2 key-pair name for runner instances.
+    - `multi_runner_config[].compute_provider.aws.ec2.associate_public_ipv4_address`: Associates a public IPv4 address with runner instances.
+    - `multi_runner_config[].compute_provider.aws.ec2.instance_profile.name`: Name of an externally managed instance profile. Setting it also requires `runner.iam.role`.
+    - `multi_runner_config[].compute_provider.aws.ec2.enable_on_demand_failover_for_errors`: EC2 error codes that trigger an on-demand fallback after a Spot launch failure.
+    - `multi_runner_config[].compute_provider.aws.ec2.scale_errors`: EC2 error codes treated as retryable scale-up failures.
+    - `multi_runner_config[].compute_provider.aws.ec2.subnet_ids`: Subnets from which scale-up may launch runners. A null configuration value inherits the experimental global value.
+    - `multi_runner_config[].compute_provider.aws.ec2.vpc_id`: VPC in which runner networking resources are created. A null configuration value inherits the experimental global value.
+    - `multi_runner_config[].compute_provider.aws.ec2.cpu_options.core_count`: Number of CPU cores exposed to the runner instance.
+    - `multi_runner_config[].compute_provider.aws.ec2.cpu_options.threads_per_core`: Number of hardware threads exposed per CPU core.
+    - `multi_runner_config[].compute_provider.aws.ec2.cpu_options.amd_sev_snp`: Enables or disables AMD SEV-SNP on supported instance types.
+    - `multi_runner_config[].compute_provider.aws.ec2.cpu_options.nested_virtualization`: Enables or disables nested virtualization on supported instance types.
+    - `multi_runner_config[].compute_provider.aws.ec2.placement.affinity`: Host affinity setting.
+    - `multi_runner_config[].compute_provider.aws.ec2.placement.availability_zone`: Availability Zone in which the instance is placed.
+    - `multi_runner_config[].compute_provider.aws.ec2.placement.group_id`: Placement-group ID.
+    - `multi_runner_config[].compute_provider.aws.ec2.placement.group_name`: Placement-group name.
+    - `multi_runner_config[].compute_provider.aws.ec2.placement.host_id`: Dedicated Host ID.
+    - `multi_runner_config[].compute_provider.aws.ec2.placement.host_resource_group_arn`: ARN of the host resource group used for placement.
+    - `multi_runner_config[].compute_provider.aws.ec2.placement.spread_domain`: Spread-domain placement value.
+    - `multi_runner_config[].compute_provider.aws.ec2.placement.tenancy`: Instance tenancy.
+    - `multi_runner_config[].compute_provider.aws.ec2.placement.partition_number`: Placement-group partition number.
+    - `multi_runner_config[].compute_provider.aws.ec2.license_specifications[].license_configuration_arn`: ARN of a License Manager license configuration.
+    - `multi_runner_config[].compute_provider.aws.ec2.use_dedicated_host`: Enables the dedicated-host launch path required for macOS runners.
+    - `multi_runner_config[].compute_provider.aws.ec2.log_files`: Optional log files collected by the CloudWatch agent.
+    - `multi_runner_config[].compute_provider.aws.ec2.log_files[].log_group_name`: CloudWatch log-group name before optional prefixing.
+    - `multi_runner_config[].compute_provider.aws.ec2.log_files[].prefix_log_group`: Prefixes the log-group name with the runner configuration path when true.
+    - `multi_runner_config[].compute_provider.aws.ec2.log_files[].file_path`: File or glob read by the CloudWatch agent.
+    - `multi_runner_config[].compute_provider.aws.ec2.log_files[].log_stream_name`: CloudWatch log-stream name template.
+    - `multi_runner_config[].compute_provider.aws.ec2.log_files[].log_class`: CloudWatch log-group class for the collected file.
+    - `multi_runner_config[].compute_provider.aws.ec2.tags`: Tags for runtime EC2 instances, volumes, network interfaces, and eligible Spot requests. These override entry-level tags and the generated runner `Name`; provider-required bootstrap tags take final precedence.
   EOT
 
   type = object({
@@ -707,53 +711,78 @@ variable "experimental" {
     }), {})
 
     compute_provider = optional(object({
-      ec2 = optional(object({
-        vpc_id                         = optional(string, null)
-        subnet_ids                     = optional(list(string), null)
-        managed_security_group_enabled = optional(bool, true)
-        egress_rules = optional(list(object({
-          cidr_blocks      = list(string)
-          ipv6_cidr_blocks = list(string)
-          prefix_list_ids  = list(string)
-          from_port        = number
-          protocol         = string
-          security_groups  = list(string)
-          self             = bool
-          to_port          = number
-          description      = string
-          })), [{
-          cidr_blocks      = ["0.0.0.0/0"]
-          ipv6_cidr_blocks = ["::/0"]
-          prefix_list_ids  = null
-          from_port        = 0
-          protocol         = "-1"
-          security_groups  = null
-          self             = null
-          to_port          = 0
-          description      = null
-        }])
-        additional_security_group_ids = optional(list(string), [])
-        cloudwatch_agent = optional(object({
-          config = optional(string, null)
-        }), {})
-        instance_profile_path         = optional(string, null)
-        key_name                      = optional(string, null)
-        associate_public_ipv4_address = optional(bool, false)
-        tags                          = optional(map(string), {})
-        ami = optional(object({
-          housekeeper = optional(object({
+      aws = optional(object({
+        ec2 = optional(object({
+          vpc_id                         = optional(string, null)
+          subnet_ids                     = optional(list(string), null)
+          managed_security_group_enabled = optional(bool, true)
+          egress_rules = optional(list(object({
+            cidr_blocks      = list(string)
+            ipv6_cidr_blocks = list(string)
+            prefix_list_ids  = list(string)
+            from_port        = number
+            protocol         = string
+            security_groups  = list(string)
+            self             = bool
+            to_port          = number
+            description      = string
+            })), [{
+            cidr_blocks      = ["0.0.0.0/0"]
+            ipv6_cidr_blocks = ["::/0"]
+            prefix_list_ids  = null
+            from_port        = 0
+            protocol         = "-1"
+            security_groups  = null
+            self             = null
+            to_port          = 0
+            description      = null
+          }])
+          additional_security_group_ids = optional(list(string), [])
+          cloudwatch_agent = optional(object({
+            config = optional(string, null)
+          }), {})
+          instance_profile_path         = optional(string, null)
+          key_name                      = optional(string, null)
+          associate_public_ipv4_address = optional(bool, false)
+          tags                          = optional(map(string), {})
+          ami = optional(object({
+            housekeeper = optional(object({
+              enabled = optional(bool, false)
+              cleanup_config = optional(object({
+                maxItems       = optional(number)
+                minimumDaysOld = optional(number)
+                amiFilters = optional(list(object({
+                  Name   = string
+                  Values = list(string)
+                })))
+                launchTemplateNames = optional(list(string))
+                ssmParameterNames   = optional(list(string))
+                dryRun              = optional(bool)
+              }), {})
+              artifact = optional(object({
+                zip = optional(string, null)
+                s3 = optional(object({
+                  key            = string
+                  object_version = optional(string, null)
+                }), null)
+              }), {})
+              lambda = optional(object({
+                memory_size = optional(number, 256)
+                timeout     = optional(number, 300)
+              }), {})
+              schedule = optional(object({
+                expression = optional(string, "cron(11 7 * * ? *)")
+              }), {})
+            }), {})
+          }), {})
+          instance_termination_watcher = optional(object({
             enabled = optional(bool, false)
-            cleanup_config = optional(object({
-              maxItems       = optional(number)
-              minimumDaysOld = optional(number)
-              amiFilters = optional(list(object({
-                Name   = string
-                Values = list(string)
-              })))
-              launchTemplateNames = optional(list(string))
-              ssmParameterNames   = optional(list(string))
-              dryRun              = optional(bool)
+            features = optional(object({
+              enable_spot_termination_handler              = optional(bool, true)
+              enable_spot_termination_notification_watcher = optional(bool, true)
             }), {})
+            enable_runner_deregistration = optional(bool, true)
+            environment_variables        = optional(map(string), {})
             artifact = optional(object({
               zip = optional(string, null)
               s3 = optional(object({
@@ -762,65 +791,42 @@ variable "experimental" {
               }), null)
             }), {})
             lambda = optional(object({
-              memory_size = optional(number, 256)
-              timeout     = optional(number, 300)
-            }), {})
-            schedule = optional(object({
-              expression = optional(string, "cron(11 7 * * ? *)")
+              memory_size = optional(number, null)
+              timeout     = optional(number, null)
             }), {})
           }), {})
-        }), {})
-        instance_termination_watcher = optional(object({
-          enabled = optional(bool, false)
-          features = optional(object({
-            enable_spot_termination_handler              = optional(bool, true)
-            enable_spot_termination_notification_watcher = optional(bool, true)
-          }), {})
-          enable_runner_deregistration = optional(bool, true)
-          environment_variables        = optional(map(string), {})
-          artifact = optional(object({
-            zip = optional(string, null)
+          runner_binaries = optional(object({
+            enabled = optional(bool, true)
             s3 = optional(object({
-              key            = string
-              object_version = optional(string, null)
-            }), null)
-          }), {})
-          lambda = optional(object({
-            memory_size = optional(number, null)
-            timeout     = optional(number, null)
-          }), {})
-        }), {})
-        runner_binaries = optional(object({
-          enabled = optional(bool, true)
-          s3 = optional(object({
-            encryption = optional(object({
-              enabled            = optional(bool, true)
-              bucket_key_enabled = optional(bool, null)
-              sse_algorithm      = optional(string, "AES256")
-              kms_master_key_id  = optional(string, null)
+              encryption = optional(object({
+                enabled            = optional(bool, true)
+                bucket_key_enabled = optional(bool, null)
+                sse_algorithm      = optional(string, "AES256")
+                kms_master_key_id  = optional(string, null)
+              }), {})
+              tags       = optional(map(string), {})
+              versioning = optional(string, "Disabled")
+              logging = optional(object({
+                bucket = optional(string, null)
+                prefix = optional(string, null)
+              }), {})
             }), {})
-            tags       = optional(map(string), {})
-            versioning = optional(string, "Disabled")
-            logging = optional(object({
-              bucket = optional(string, null)
-              prefix = optional(string, null)
-            }), {})
-          }), {})
-          syncer = optional(object({
-            artifact = optional(object({
-              zip = optional(string, null)
-              s3 = optional(object({
-                key            = string
-                object_version = optional(string, null)
-              }), null)
-            }), {})
-            lambda = optional(object({
-              memory_size = optional(number, 256)
-              timeout     = optional(number, 300)
-            }), {})
-            schedule = optional(object({
-              expression = optional(string, "cron(27 * * * ? *)")
-              state      = optional(string, "ENABLED")
+            syncer = optional(object({
+              artifact = optional(object({
+                zip = optional(string, null)
+                s3 = optional(object({
+                  key            = string
+                  object_version = optional(string, null)
+                }), null)
+              }), {})
+              lambda = optional(object({
+                memory_size = optional(number, 256)
+                timeout     = optional(number, 300)
+              }), {})
+              schedule = optional(object({
+                expression = optional(string, "cron(27 * * * ? *)")
+                state      = optional(string, "ENABLED")
+              }), {})
             }), {})
           }), {})
         }), {})
@@ -1024,125 +1030,127 @@ variable "experimental" {
       }), {})
 
       compute_provider = object({
-        ec2 = optional(object({
-          metadata_options = optional(object({
-            instance_metadata_tags      = optional(string, "enabled")
-            http_endpoint               = optional(string, "enabled")
-            http_tokens                 = optional(string, "required")
-            http_put_response_hop_limit = optional(number, 1)
-          }), {})
-          ami = optional(object({
-            filter = optional(map(list(string)), { state = ["available"] })
-            owners = optional(list(string), ["amazon"])
-            id_ssm_parameter = optional(object({
-              arn = string
+        aws = optional(object({
+          ec2 = optional(object({
+            metadata_options = optional(object({
+              instance_metadata_tags      = optional(string, "enabled")
+              http_endpoint               = optional(string, "enabled")
+              http_tokens                 = optional(string, "required")
+              http_put_response_hop_limit = optional(number, 1)
+            }), {})
+            ami = optional(object({
+              filter = optional(map(list(string)), { state = ["available"] })
+              owners = optional(list(string), ["amazon"])
+              id_ssm_parameter = optional(object({
+                arn = string
+              }), null)
+              kms_key = optional(object({
+                arn = string
+              }), null)
             }), null)
-            kms_key = optional(object({
-              arn = string
+            block_device_mappings = optional(list(object({
+              delete_on_termination      = optional(bool, true)
+              device_name                = optional(string, "/dev/xvda")
+              encrypted                  = optional(bool, true)
+              iops                       = optional(number)
+              kms_key_id                 = optional(string)
+              snapshot_id                = optional(string)
+              throughput                 = optional(number)
+              volume_initialization_rate = optional(number)
+              volume_size                = number
+              volume_type                = optional(string, "gp3")
+              })), [{
+              volume_size = 30
+            }])
+            create_service_linked_role_spot = optional(bool, false)
+            credit_specification            = optional(string, null)
+            ebs_optimized                   = optional(bool, false)
+            cloudwatch_agent = optional(object({
+              enabled = optional(bool, true)
+              config  = optional(string, null)
+            }), {})
+            binaries_syncer = optional(object({
+              enabled = optional(bool, null)
+            }), {})
+            detailed_monitoring_enabled = optional(bool, false)
+            ssm_enabled                 = optional(bool, false)
+            user_data = optional(object({
+              enabled               = optional(bool, true)
+              template              = optional(string, null)
+              content               = optional(string, null)
+              pre_install           = optional(string, "")
+              post_install          = optional(string, "")
+              debug_logging_enabled = optional(bool, false)
+            }), {})
+            instance_allocation_strategy   = optional(string, "lowest-price")
+            instance_max_spot_price        = optional(string, null)
+            instance_target_capacity_type  = optional(string, "spot")
+            instance_type_priorities       = optional(map(number), null)
+            instance_types                 = list(string)
+            additional_security_group_ids  = optional(list(string), null)
+            managed_security_group_enabled = optional(bool, null)
+            egress_rules = optional(list(object({
+              cidr_blocks      = list(string)
+              ipv6_cidr_blocks = list(string)
+              prefix_list_ids  = list(string)
+              from_port        = number
+              protocol         = string
+              security_groups  = list(string)
+              self             = bool
+              to_port          = number
+              description      = string
+            })), null)
+            instance_profile_path         = optional(string, null)
+            key_name                      = optional(string, null)
+            associate_public_ipv4_address = optional(bool, null)
+            instance_profile = optional(object({
+              name = string
             }), null)
+            enable_on_demand_failover_for_errors = optional(list(string), [])
+            scale_errors = optional(list(string), [
+              "UnfulfillableCapacity",
+              "MaxSpotInstanceCountExceeded",
+              "TargetCapacityLimitExceededException",
+              "RequestLimitExceeded",
+              "ResourceLimitExceeded",
+              "MaxSpotInstanceCountExceeded",
+              "MaxSpotFleetRequestCountExceeded",
+              "InsufficientInstanceCapacity",
+              "InsufficientCapacityOnHost",
+            ])
+            subnet_ids = optional(list(string), null)
+            vpc_id     = optional(string, null)
+            cpu_options = optional(object({
+              core_count            = optional(number)
+              threads_per_core      = optional(number)
+              amd_sev_snp           = optional(string)
+              nested_virtualization = optional(string)
+            }), null)
+            placement = optional(object({
+              affinity                = optional(string)
+              availability_zone       = optional(string)
+              group_id                = optional(string)
+              group_name              = optional(string)
+              host_id                 = optional(string)
+              host_resource_group_arn = optional(string)
+              spread_domain           = optional(string)
+              tenancy                 = optional(string)
+              partition_number        = optional(number)
+            }), null)
+            license_specifications = optional(list(object({
+              license_configuration_arn = string
+            })), [])
+            use_dedicated_host = optional(bool, false)
+            log_files = optional(list(object({
+              log_group_name   = string
+              prefix_log_group = bool
+              file_path        = string
+              log_stream_name  = string
+              log_class        = optional(string, "STANDARD")
+            })), null)
+            tags = optional(map(string), {})
           }), null)
-          block_device_mappings = optional(list(object({
-            delete_on_termination      = optional(bool, true)
-            device_name                = optional(string, "/dev/xvda")
-            encrypted                  = optional(bool, true)
-            iops                       = optional(number)
-            kms_key_id                 = optional(string)
-            snapshot_id                = optional(string)
-            throughput                 = optional(number)
-            volume_initialization_rate = optional(number)
-            volume_size                = number
-            volume_type                = optional(string, "gp3")
-            })), [{
-            volume_size = 30
-          }])
-          create_service_linked_role_spot = optional(bool, false)
-          credit_specification            = optional(string, null)
-          ebs_optimized                   = optional(bool, false)
-          cloudwatch_agent = optional(object({
-            enabled = optional(bool, true)
-            config  = optional(string, null)
-          }), {})
-          binaries_syncer = optional(object({
-            enabled = optional(bool, null)
-          }), {})
-          detailed_monitoring_enabled = optional(bool, false)
-          ssm_enabled                 = optional(bool, false)
-          user_data = optional(object({
-            enabled               = optional(bool, true)
-            template              = optional(string, null)
-            content               = optional(string, null)
-            pre_install           = optional(string, "")
-            post_install          = optional(string, "")
-            debug_logging_enabled = optional(bool, false)
-          }), {})
-          instance_allocation_strategy   = optional(string, "lowest-price")
-          instance_max_spot_price        = optional(string, null)
-          instance_target_capacity_type  = optional(string, "spot")
-          instance_type_priorities       = optional(map(number), null)
-          instance_types                 = list(string)
-          additional_security_group_ids  = optional(list(string), null)
-          managed_security_group_enabled = optional(bool, null)
-          egress_rules = optional(list(object({
-            cidr_blocks      = list(string)
-            ipv6_cidr_blocks = list(string)
-            prefix_list_ids  = list(string)
-            from_port        = number
-            protocol         = string
-            security_groups  = list(string)
-            self             = bool
-            to_port          = number
-            description      = string
-          })), null)
-          instance_profile_path         = optional(string, null)
-          key_name                      = optional(string, null)
-          associate_public_ipv4_address = optional(bool, null)
-          instance_profile = optional(object({
-            name = string
-          }), null)
-          enable_on_demand_failover_for_errors = optional(list(string), [])
-          scale_errors = optional(list(string), [
-            "UnfulfillableCapacity",
-            "MaxSpotInstanceCountExceeded",
-            "TargetCapacityLimitExceededException",
-            "RequestLimitExceeded",
-            "ResourceLimitExceeded",
-            "MaxSpotInstanceCountExceeded",
-            "MaxSpotFleetRequestCountExceeded",
-            "InsufficientInstanceCapacity",
-            "InsufficientCapacityOnHost",
-          ])
-          subnet_ids = optional(list(string), null)
-          vpc_id     = optional(string, null)
-          cpu_options = optional(object({
-            core_count            = optional(number)
-            threads_per_core      = optional(number)
-            amd_sev_snp           = optional(string)
-            nested_virtualization = optional(string)
-          }), null)
-          placement = optional(object({
-            affinity                = optional(string)
-            availability_zone       = optional(string)
-            group_id                = optional(string)
-            group_name              = optional(string)
-            host_id                 = optional(string)
-            host_resource_group_arn = optional(string)
-            spread_domain           = optional(string)
-            tenancy                 = optional(string)
-            partition_number        = optional(number)
-          }), null)
-          license_specifications = optional(list(object({
-            license_configuration_arn = string
-          })), [])
-          use_dedicated_host = optional(bool, false)
-          log_files = optional(list(object({
-            log_group_name   = string
-            prefix_log_group = bool
-            file_path        = string
-            log_stream_name  = string
-            log_class        = optional(string, "STANDARD")
-          })), null)
-          tags = optional(map(string), {})
-        }), null)
+        }), {})
       })
 
     })), {})

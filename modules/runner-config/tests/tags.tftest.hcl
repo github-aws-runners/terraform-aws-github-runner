@@ -33,23 +33,25 @@ variables {
   }
 
   compute_provider = {
-    ec2 = {
-      vpc_id         = "vpc-12345678"
-      subnet_ids     = ["subnet-12345678"]
-      instance_types = ["m5.large"]
-      ami = {
-        filter = { state = ["available"] }
-        owners = ["amazon"]
-        id_ssm_parameter = {
-          arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/external-ami-id"
+    aws = {
+      ec2 = {
+        vpc_id         = "vpc-12345678"
+        subnet_ids     = ["subnet-12345678"]
+        instance_types = ["m5.large"]
+        ami = {
+          filter = { state = ["available"] }
+          owners = ["amazon"]
+          id_ssm_parameter = {
+            arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/external-ami-id"
+          }
+          kms_key = null
         }
-        kms_key = null
-      }
-      binaries_syncer = {
-        s3 = {
-          arn = "arn:aws:s3:::my-bucket"
-          id  = "my-bucket"
-          key = "runners/linux/actions-runner.tar.gz"
+        binaries_syncer = {
+          s3 = {
+            arn = "arn:aws:s3:::my-bucket"
+            id  = "my-bucket"
+            key = "runners/linux/actions-runner.tar.gz"
+          }
         }
       }
     }

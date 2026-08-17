@@ -28,26 +28,28 @@ variables {
   aws_region = "eu-west-1"
 
   compute_provider = {
-    ec2 = {
-      vpc_id         = "vpc-12345678"
-      subnet_ids     = ["subnet-12345678"]
-      instance_types = ["m5.large"]
-      ami = {
-        filter = { state = ["available"] }
-        owners = ["amazon"]
-        id_ssm_parameter = {
-          arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/external-ami-id"
+    aws = {
+      ec2 = {
+        vpc_id         = "vpc-12345678"
+        subnet_ids     = ["subnet-12345678"]
+        instance_types = ["m5.large"]
+        ami = {
+          filter = { state = ["available"] }
+          owners = ["amazon"]
+          id_ssm_parameter = {
+            arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/external-ami-id"
+          }
+          kms_key = null
         }
-        kms_key = null
-      }
-      binaries_syncer = {
-        s3 = {
-          arn = "arn:aws:s3:::my-bucket"
-          id  = "my-bucket"
-          key = "runners/linux/actions-runner.tar.gz"
+        binaries_syncer = {
+          s3 = {
+            arn = "arn:aws:s3:::my-bucket"
+            id  = "my-bucket"
+            key = "runners/linux/actions-runner.tar.gz"
+          }
         }
+        ssm_enabled = true
       }
-      ssm_enabled = true
     }
   }
 
@@ -173,13 +175,16 @@ run "plan_with_pool_enabled" {
   }
 
   assert {
-    condition     = toset(keys(output.provider)) == toset(["ec2"])
-    error_message = "The runner configuration must expose resources only under the selected provider key."
+    condition = (
+      toset(keys(output.provider)) == toset(["aws"])
+      && toset(keys(output.provider.aws)) == toset(["ec2"])
+    )
+    error_message = "The runner configuration must expose resources under the selected provider namespace and type."
   }
 
   assert {
-    condition     = contains(keys(output.provider.ec2), "launch_template")
-    error_message = "The runner configuration must expose EC2 resources only under provider.ec2."
+    condition     = contains(keys(output.provider.aws.ec2), "launch_template")
+    error_message = "The runner configuration must expose EC2 resources only under provider.aws.ec2."
   }
 
   assert {
@@ -189,8 +194,8 @@ run "plan_with_pool_enabled" {
 
   assert {
     condition = (
-      length(module.compute_ec2_trust_policy) == 1
-      && aws_iam_role.runner[0].assume_role_policy == module.compute_ec2_trust_policy[0].assume_role_policy
+      length(module.compute_aws_ec2_trust_policy) == 1
+      && aws_iam_role.runner[0].assume_role_policy == module.compute_aws_ec2_trust_policy[0].assume_role_policy
     )
     error_message = "The common runner role must use the selected EC2 trust-policy submodule output."
   }
@@ -220,7 +225,7 @@ run "plan_with_pool_enabled" {
   }
 
   assert {
-    condition     = !contains(keys(output.provider.ec2), "role_runner")
+    condition     = !contains(keys(output.provider.aws.ec2), "role_runner")
     error_message = "The common runner role must not be duplicated in the EC2 resource output."
   }
 
@@ -443,7 +448,7 @@ run "external_runner_role_is_not_managed_by_common" {
 
 
   assert {
-    condition     = output.provider.ec2.launch_template.iam_instance_profile[0].name == "github-actions-runner-profile"
+    condition     = output.provider.aws.ec2.launch_template.iam_instance_profile[0].name == "github-actions-runner-profile"
     error_message = "EC2 must create an instance profile around an externally supplied runner role when no profile override is provided."
   }
 }
@@ -461,15 +466,17 @@ run "external_runner_role_and_profile_remain_external" {
       }
     }
     compute_provider = {
-      ec2 = {
-        vpc_id         = "vpc-12345678"
-        subnet_ids     = ["subnet-12345678"]
-        instance_types = ["m5.large"]
-        instance_profile = {
-          name = "external-runner-profile"
-        }
-        binaries_syncer = {
-          enabled = false
+      aws = {
+        ec2 = {
+          vpc_id         = "vpc-12345678"
+          subnet_ids     = ["subnet-12345678"]
+          instance_types = ["m5.large"]
+          instance_profile = {
+            name = "external-runner-profile"
+          }
+          binaries_syncer = {
+            enabled = false
+          }
         }
       }
     }
@@ -481,7 +488,7 @@ run "external_runner_role_and_profile_remain_external" {
   }
 
   assert {
-    condition     = output.provider.ec2.launch_template.iam_instance_profile[0].name == "external-runner-profile"
+    condition     = output.provider.aws.ec2.launch_template.iam_instance_profile[0].name == "external-runner-profile"
     error_message = "The EC2 launch template must use the external instance profile."
   }
 }
@@ -572,6 +579,22 @@ run "rejects_empty_compute_provider" {
 
   variables {
     compute_provider = {}
+  }
+
+  plan_options {
+    target = [terraform_data.validate_config]
+  }
+
+  expect_failures = [terraform_data.validate_config]
+}
+
+run "rejects_empty_aws_compute_provider_namespace" {
+  command = plan
+
+  variables {
+    compute_provider = {
+      aws = {}
+    }
   }
 
   plan_options {

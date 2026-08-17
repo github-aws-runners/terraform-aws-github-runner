@@ -23,7 +23,7 @@ variable "tags" {
 
 variable "config" {
   description = <<-EOT
-    EC2 compute-provider configuration. Paths match `compute_provider.ec2` in the runner configuration.
+    EC2 compute-provider configuration. Paths match `compute_provider.aws.ec2` in the runner configuration.
 
     - `ami`: Optional AMI discovery and encryption configuration. Null selects defaults for `runner.os` and `runner.architecture`.
     - `ami.filter`: AMI filter names mapped to accepted values and merged over the provider defaults.
