@@ -422,8 +422,9 @@ run "stable_v1_keeps_legacy_runner_module" {
         "tags",
         "encryption",
       ])
-      && toset(keys(local.raw_translated_experimental.multi_runner_config["linux"].compute_provider)) == toset(["ec2"])
-      && toset(keys(local.raw_translated_experimental.multi_runner_config["linux"].compute_provider.ec2.binaries_syncer)) == toset(["enabled"])
+      && toset(keys(local.raw_translated_experimental.multi_runner_config["linux"].compute_provider)) == toset(["aws"])
+      && toset(keys(local.raw_translated_experimental.multi_runner_config["linux"].compute_provider.aws)) == toset(["ec2"])
+      && toset(keys(local.raw_translated_experimental.multi_runner_config["linux"].compute_provider.aws.ec2.binaries_syncer)) == toset(["enabled"])
       && !contains(keys(local.raw_translated_experimental.multi_runner_config["linux"].ssm), "kms_key_id")
       && !contains(keys(local.raw_translated_experimental.runner), "boot_time_in_minutes")
       && !contains(keys(local.raw_translated_experimental.runner), "ephemeral")
@@ -441,11 +442,11 @@ run "stable_v1_keeps_legacy_runner_module" {
 
   assert {
     condition = (
-      toset(keys(local.translated_experimental_base.multi_runner_config["linux"].compute_provider.ec2.binaries_syncer)) == toset(["enabled"])
-      && toset(keys(local.translated_experimental.multi_runner_config["linux"].compute_provider.ec2.binaries_syncer)) == toset(["enabled", "s3"])
-      && local.translated_experimental.multi_runner_config["linux"].compute_provider.ec2.binaries_syncer.enabled
-      && local.translated_experimental.multi_runner_config["linux"].compute_provider.ec2.binaries_syncer.s3 != null
-      && toset(keys(local.translated_experimental.multi_runner_config["linux"].compute_provider.ec2.binaries_syncer.s3)) == toset(["arn", "id", "key"])
+      toset(keys(local.translated_experimental_base.multi_runner_config["linux"].compute_provider.aws.ec2.binaries_syncer)) == toset(["enabled"])
+      && toset(keys(local.translated_experimental.multi_runner_config["linux"].compute_provider.aws.ec2.binaries_syncer)) == toset(["enabled", "s3"])
+      && local.translated_experimental.multi_runner_config["linux"].compute_provider.aws.ec2.binaries_syncer.enabled
+      && local.translated_experimental.multi_runner_config["linux"].compute_provider.aws.ec2.binaries_syncer.s3 != null
+      && toset(keys(local.translated_experimental.multi_runner_config["linux"].compute_provider.aws.ec2.binaries_syncer.s3)) == toset(["arn", "id", "key"])
     )
     error_message = "Stable translation must discover binary-syncer runner configurations from the base object, then enrich the final canonical configuration with its resolved S3 distribution."
   }
@@ -507,35 +508,35 @@ run "stable_v1_keeps_legacy_runner_module" {
       && local.raw_translated_experimental.ssm.housekeeper.lambda.artifact.s3.object_version == var.runners_lambda_s3_object_version
       && local.translated_experimental.multi_runner_config["linux"].ssm.housekeeper.lambda.artifact.s3.key == var.runners_lambda_s3_key
       && local.translated_experimental.multi_runner_config["linux"].ssm.housekeeper.lambda.artifact.s3.object_version == var.runners_lambda_s3_object_version
-      && local.raw_translated_experimental.compute_provider.ec2.vpc_id == var.vpc_id
-      && local.raw_translated_experimental.compute_provider.ec2.subnet_ids == var.subnet_ids
-      && local.raw_translated_experimental.compute_provider.ec2.ami.housekeeper.enabled == var.enable_ami_housekeeper
-      && local.raw_translated_experimental.compute_provider.ec2.ami.housekeeper.cleanup_config == var.ami_housekeeper_cleanup_config
-      && local.raw_translated_experimental.compute_provider.ec2.ami.housekeeper.artifact.zip == null
-      && local.raw_translated_experimental.compute_provider.ec2.ami.housekeeper.artifact.s3.key == var.ami_housekeeper_lambda_s3_key
-      && local.raw_translated_experimental.compute_provider.ec2.ami.housekeeper.artifact.s3.object_version == var.ami_housekeeper_lambda_s3_object_version
-      && local.raw_translated_experimental.compute_provider.ec2.ami.housekeeper.lambda.memory_size == var.ami_housekeeper_lambda_memory_size
-      && local.raw_translated_experimental.compute_provider.ec2.ami.housekeeper.lambda.timeout == var.ami_housekeeper_lambda_timeout
-      && local.raw_translated_experimental.compute_provider.ec2.ami.housekeeper.schedule.expression == var.ami_housekeeper_lambda_schedule_expression
-      && local.raw_translated_experimental.compute_provider.ec2.instance_termination_watcher.enabled == var.instance_termination_watcher.enable
-      && local.raw_translated_experimental.compute_provider.ec2.instance_termination_watcher.features == var.instance_termination_watcher.features
-      && local.raw_translated_experimental.compute_provider.ec2.instance_termination_watcher.enable_runner_deregistration == var.instance_termination_watcher.enable_runner_deregistration
-      && local.raw_translated_experimental.compute_provider.ec2.instance_termination_watcher.environment_variables == var.instance_termination_watcher.environment_variables
-      && local.raw_translated_experimental.compute_provider.ec2.instance_termination_watcher.artifact.zip == null
-      && local.raw_translated_experimental.compute_provider.ec2.instance_termination_watcher.artifact.s3.key == var.instance_termination_watcher.s3_key
-      && local.raw_translated_experimental.compute_provider.ec2.instance_termination_watcher.artifact.s3.object_version == var.instance_termination_watcher.s3_object_version
-      && local.raw_translated_experimental.compute_provider.ec2.instance_termination_watcher.lambda.memory_size == var.instance_termination_watcher.memory_size
-      && local.raw_translated_experimental.compute_provider.ec2.instance_termination_watcher.lambda.timeout == var.instance_termination_watcher.timeout
-      && local.raw_translated_experimental.compute_provider.ec2.runner_binaries.enabled
-      && local.raw_translated_experimental.compute_provider.ec2.runner_binaries.s3.encryption.enabled
-      && local.raw_translated_experimental.compute_provider.ec2.runner_binaries.s3.encryption.sse_algorithm == var.runner_binaries_s3_sse_configuration.rule.apply_server_side_encryption_by_default.sse_algorithm
-      && local.raw_translated_experimental.compute_provider.ec2.runner_binaries.s3.tags == var.runner_binaries_s3_tags
-      && local.raw_translated_experimental.compute_provider.ec2.runner_binaries.s3.versioning == var.runner_binaries_s3_versioning
-      && local.raw_translated_experimental.compute_provider.ec2.runner_binaries.syncer.artifact.s3.key == var.syncer_lambda_s3_key
-      && local.raw_translated_experimental.compute_provider.ec2.runner_binaries.syncer.artifact.s3.object_version == var.syncer_lambda_s3_object_version
-      && local.raw_translated_experimental.compute_provider.ec2.runner_binaries.syncer.lambda.memory_size == var.runner_binaries_syncer_memory_size
-      && local.raw_translated_experimental.compute_provider.ec2.runner_binaries.syncer.lambda.timeout == var.runner_binaries_syncer_lambda_timeout
-      && local.raw_translated_experimental.compute_provider.ec2.runner_binaries.syncer.schedule.state == var.state_event_rule_binaries_syncer
+      && local.raw_translated_experimental.compute_provider.aws.ec2.vpc_id == var.vpc_id
+      && local.raw_translated_experimental.compute_provider.aws.ec2.subnet_ids == var.subnet_ids
+      && local.raw_translated_experimental.compute_provider.aws.ec2.ami.housekeeper.enabled == var.enable_ami_housekeeper
+      && local.raw_translated_experimental.compute_provider.aws.ec2.ami.housekeeper.cleanup_config == var.ami_housekeeper_cleanup_config
+      && local.raw_translated_experimental.compute_provider.aws.ec2.ami.housekeeper.artifact.zip == null
+      && local.raw_translated_experimental.compute_provider.aws.ec2.ami.housekeeper.artifact.s3.key == var.ami_housekeeper_lambda_s3_key
+      && local.raw_translated_experimental.compute_provider.aws.ec2.ami.housekeeper.artifact.s3.object_version == var.ami_housekeeper_lambda_s3_object_version
+      && local.raw_translated_experimental.compute_provider.aws.ec2.ami.housekeeper.lambda.memory_size == var.ami_housekeeper_lambda_memory_size
+      && local.raw_translated_experimental.compute_provider.aws.ec2.ami.housekeeper.lambda.timeout == var.ami_housekeeper_lambda_timeout
+      && local.raw_translated_experimental.compute_provider.aws.ec2.ami.housekeeper.schedule.expression == var.ami_housekeeper_lambda_schedule_expression
+      && local.raw_translated_experimental.compute_provider.aws.ec2.instance_termination_watcher.enabled == var.instance_termination_watcher.enable
+      && local.raw_translated_experimental.compute_provider.aws.ec2.instance_termination_watcher.features == var.instance_termination_watcher.features
+      && local.raw_translated_experimental.compute_provider.aws.ec2.instance_termination_watcher.enable_runner_deregistration == var.instance_termination_watcher.enable_runner_deregistration
+      && local.raw_translated_experimental.compute_provider.aws.ec2.instance_termination_watcher.environment_variables == var.instance_termination_watcher.environment_variables
+      && local.raw_translated_experimental.compute_provider.aws.ec2.instance_termination_watcher.artifact.zip == null
+      && local.raw_translated_experimental.compute_provider.aws.ec2.instance_termination_watcher.artifact.s3.key == var.instance_termination_watcher.s3_key
+      && local.raw_translated_experimental.compute_provider.aws.ec2.instance_termination_watcher.artifact.s3.object_version == var.instance_termination_watcher.s3_object_version
+      && local.raw_translated_experimental.compute_provider.aws.ec2.instance_termination_watcher.lambda.memory_size == var.instance_termination_watcher.memory_size
+      && local.raw_translated_experimental.compute_provider.aws.ec2.instance_termination_watcher.lambda.timeout == var.instance_termination_watcher.timeout
+      && local.raw_translated_experimental.compute_provider.aws.ec2.runner_binaries.enabled
+      && local.raw_translated_experimental.compute_provider.aws.ec2.runner_binaries.s3.encryption.enabled
+      && local.raw_translated_experimental.compute_provider.aws.ec2.runner_binaries.s3.encryption.sse_algorithm == var.runner_binaries_s3_sse_configuration.rule.apply_server_side_encryption_by_default.sse_algorithm
+      && local.raw_translated_experimental.compute_provider.aws.ec2.runner_binaries.s3.tags == var.runner_binaries_s3_tags
+      && local.raw_translated_experimental.compute_provider.aws.ec2.runner_binaries.s3.versioning == var.runner_binaries_s3_versioning
+      && local.raw_translated_experimental.compute_provider.aws.ec2.runner_binaries.syncer.artifact.s3.key == var.syncer_lambda_s3_key
+      && local.raw_translated_experimental.compute_provider.aws.ec2.runner_binaries.syncer.artifact.s3.object_version == var.syncer_lambda_s3_object_version
+      && local.raw_translated_experimental.compute_provider.aws.ec2.runner_binaries.syncer.lambda.memory_size == var.runner_binaries_syncer_memory_size
+      && local.raw_translated_experimental.compute_provider.aws.ec2.runner_binaries.syncer.lambda.timeout == var.runner_binaries_syncer_lambda_timeout
+      && local.raw_translated_experimental.compute_provider.aws.ec2.runner_binaries.syncer.schedule.state == var.state_event_rule_binaries_syncer
       && local.raw_translated_experimental.multi_runner_config["linux"].runner.os == var.multi_runner_config["linux"].runner_config.runner_os
       && local.raw_translated_experimental.multi_runner_config["linux"].runner.architecture == var.multi_runner_config["linux"].runner_config.runner_architecture
       && !contains(keys(local.raw_translated_experimental.multi_runner_config["linux"].runner), "boot_time_in_minutes")
@@ -551,7 +552,7 @@ run "stable_v1_keeps_legacy_runner_module" {
       && local.raw_translated_experimental.multi_runner_config["linux"].orchestration_provider.webhook.queue.job_queue_retention_in_seconds == var.multi_runner_config["linux"].runner_config.job_queue_retention_in_seconds
       && local.raw_translated_experimental.multi_runner_config["linux"].orchestration_provider.webhook.queue.visibility_timeout_seconds == var.runners_scale_up_lambda_timeout
       && local.raw_translated_experimental.multi_runner_config["linux"].orchestration_provider.webhook.queue.redrive_build_queue == var.multi_runner_config["linux"].redrive_build_queue
-      && local.raw_translated_experimental.multi_runner_config["linux"].compute_provider.ec2.binaries_syncer.enabled
+      && local.raw_translated_experimental.multi_runner_config["linux"].compute_provider.aws.ec2.binaries_syncer.enabled
       && local.raw_translated_experimental.multi_runner_config["linux"].orchestration_provider.webhook.matcherConfig == var.multi_runner_config["linux"].matcherConfig
     )
     error_message = "Stable v1 flat and per-runner inputs must populate every raw translation family while conflicting experimental globals remain inactive."
@@ -567,7 +568,7 @@ run "stable_v1_keeps_legacy_runner_module" {
   }
 
   assert {
-    condition     = keys(local.runner_config_by_provider.ec2) == ["linux"]
+    condition     = keys(local.runner_config_by_provider.aws_ec2) == ["linux"]
     error_message = "Stable multi_runner_config entries must route to the EC2 provider."
   }
 

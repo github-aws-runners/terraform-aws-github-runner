@@ -23,7 +23,7 @@ output "runners_map" {
 }
 
 output "runners_map_v2" {
-  description = "Experimental v2 runner resources keyed by runner configuration. The `orchestration_provider` object is canonical; `scale_up`, `scale_down`, and `pool` remain compatibility aliases."
+  description = "Experimental v2 runner resources keyed by runner configuration. Compute resources are grouped under `provider.<namespace>.<type>`, currently `provider.aws.ec2`. The `orchestration_provider` object is canonical; `scale_up`, `scale_down`, and `pool` remain compatibility aliases."
   value = { for runner_key, runner in module.runner_configs : runner_key => {
     runner                 = runner.runner
     orchestration_provider = runner.orchestration_provider
@@ -81,7 +81,7 @@ output "ssm_parameters" {
 }
 
 output "instance_termination_watcher" {
-  value = local.translated_experimental.compute_provider.ec2.instance_termination_watcher.enabled && local.translated_experimental.compute_provider.ec2.instance_termination_watcher.features.enable_spot_termination_notification_watcher ? {
+  value = local.translated_experimental.compute_provider.aws.ec2.instance_termination_watcher.enabled && local.translated_experimental.compute_provider.aws.ec2.instance_termination_watcher.features.enable_spot_termination_notification_watcher ? {
     lambda           = module.instance_termination_watcher[0].spot_termination_notification.lambda
     lambda_log_group = module.instance_termination_watcher[0].spot_termination_notification.lambda_log_group
     lambda_role      = module.instance_termination_watcher[0].spot_termination_notification.lambda_role
@@ -89,7 +89,7 @@ output "instance_termination_watcher" {
 }
 
 output "instance_termination_handler" {
-  value = local.translated_experimental.compute_provider.ec2.instance_termination_watcher.enabled && local.translated_experimental.compute_provider.ec2.instance_termination_watcher.features.enable_spot_termination_handler ? {
+  value = local.translated_experimental.compute_provider.aws.ec2.instance_termination_watcher.enabled && local.translated_experimental.compute_provider.aws.ec2.instance_termination_watcher.features.enable_spot_termination_handler ? {
     lambda           = module.instance_termination_watcher[0].spot_termination_handler.lambda
     lambda_log_group = module.instance_termination_watcher[0].spot_termination_handler.lambda_log_group
     lambda_role      = module.instance_termination_watcher[0].spot_termination_handler.lambda_role

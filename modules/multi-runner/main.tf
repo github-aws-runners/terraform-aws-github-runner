@@ -20,11 +20,11 @@ locals {
 
   # Keep a concrete map type when unrelated configuration values are unknown until apply.
   tmp_distinct_list_unique_os_and_arch = distinct([
-    for _, config in lookup(local.runner_config_by_provider, "ec2", {}) : {
+    for _, config in lookup(local.runner_config_by_provider, "aws_ec2", {}) : {
       "os_type" : config.runner.os,
       "architecture" : config.runner.architecture
     }
-    if config.compute_provider.ec2.binaries_syncer.enabled
+    if config.compute_provider.aws.ec2.binaries_syncer.enabled
   ])
   unique_os_and_arch = { for _, v in local.tmp_distinct_list_unique_os_and_arch : "${v.os_type}_${v.architecture}" => v }
 }

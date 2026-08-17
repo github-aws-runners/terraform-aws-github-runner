@@ -57,12 +57,15 @@ resource "terraform_data" "validate_experimental" {
     precondition {
       condition = alltrue([
         for runner_config in values(var.experimental.multi_runner_config) :
-        length([
-          for provider_type, provider_config in runner_config.compute_provider : provider_type
-          if provider_config != null
-        ]) == 1
+        length(flatten([
+          for provider_namespace, provider_configs in runner_config.compute_provider : [
+            for provider_type, provider_config in provider_configs :
+            "${provider_namespace}.${provider_type}"
+            if provider_config != null
+          ]
+        ])) == 1
       ])
-      error_message = "Each experimental runner configuration must set exactly one compute-provider block. Supported compute-provider blocks: ec2."
+      error_message = "Each experimental runner configuration must set exactly one compute-provider block. Supported compute-provider blocks: aws.ec2."
     }
 
     precondition {
@@ -112,12 +115,12 @@ resource "terraform_data" "validate_experimental" {
     precondition {
       condition = alltrue([
         for runner_config in values(var.experimental.multi_runner_config) :
-        runner_config.compute_provider.ec2 == null ? true : (
-          try(coalesce(runner_config.compute_provider.ec2.vpc_id, var.experimental.compute_provider.ec2.vpc_id), null) != null &&
-          try(coalesce(runner_config.compute_provider.ec2.subnet_ids, var.experimental.compute_provider.ec2.subnet_ids), null) != null
+        runner_config.compute_provider.aws.ec2 == null ? true : (
+          try(coalesce(runner_config.compute_provider.aws.ec2.vpc_id, var.experimental.compute_provider.aws.ec2.vpc_id), null) != null &&
+          try(coalesce(runner_config.compute_provider.aws.ec2.subnet_ids, var.experimental.compute_provider.aws.ec2.subnet_ids), null) != null
         )
       ])
-      error_message = "Each experimental EC2 runner configuration must resolve compute_provider.ec2.vpc_id and subnet_ids from the configuration or experimental global EC2 defaults. Flat v1 inputs are not inherited by v2."
+      error_message = "Each experimental EC2 runner configuration must resolve compute_provider.aws.ec2.vpc_id and subnet_ids from the configuration or experimental global EC2 defaults. Flat v1 inputs are not inherited by v2."
     }
 
     precondition {
@@ -240,23 +243,23 @@ resource "terraform_data" "validate_experimental" {
     precondition {
       condition = !local.use_multi_runner_config_v2 || !anytrue([
         for runner_config in values(local.translated_experimental_base.multi_runner_config) :
-        try(runner_config.compute_provider.ec2.binaries_syncer.enabled, false)
+        try(runner_config.compute_provider.aws.ec2.binaries_syncer.enabled, false)
         ]) || contains(
         ["Disabled", "Enabled", "Suspended"],
-        var.experimental.compute_provider.ec2.runner_binaries.s3.versioning,
+        var.experimental.compute_provider.aws.ec2.runner_binaries.s3.versioning,
       )
-      error_message = "experimental.compute_provider.ec2.runner_binaries.s3.versioning must be Disabled, Enabled, or Suspended."
+      error_message = "experimental.compute_provider.aws.ec2.runner_binaries.s3.versioning must be Disabled, Enabled, or Suspended."
     }
 
     precondition {
       condition = !local.use_multi_runner_config_v2 || !anytrue([
         for runner_config in values(local.translated_experimental_base.multi_runner_config) :
-        try(runner_config.compute_provider.ec2.binaries_syncer.enabled, false)
+        try(runner_config.compute_provider.aws.ec2.binaries_syncer.enabled, false)
         ]) || contains(
         ["DISABLED", "ENABLED", "ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS"],
-        var.experimental.compute_provider.ec2.runner_binaries.syncer.schedule.state,
+        var.experimental.compute_provider.aws.ec2.runner_binaries.syncer.schedule.state,
       )
-      error_message = "experimental.compute_provider.ec2.runner_binaries.syncer.schedule.state must be DISABLED, ENABLED, or ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS."
+      error_message = "experimental.compute_provider.aws.ec2.runner_binaries.syncer.schedule.state must be DISABLED, ENABLED, or ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS."
     }
 
     precondition {
@@ -334,72 +337,72 @@ resource "terraform_data" "validate_experimental" {
     precondition {
       condition = !local.use_multi_runner_config_v2 || (
         !(
-          var.experimental.compute_provider.ec2.instance_termination_watcher.artifact.zip != null &&
-          var.experimental.compute_provider.ec2.instance_termination_watcher.artifact.s3 != null
+          var.experimental.compute_provider.aws.ec2.instance_termination_watcher.artifact.zip != null &&
+          var.experimental.compute_provider.aws.ec2.instance_termination_watcher.artifact.s3 != null
           ) && (
-          var.experimental.compute_provider.ec2.instance_termination_watcher.artifact.s3 == null || (
+          var.experimental.compute_provider.aws.ec2.instance_termination_watcher.artifact.s3 == null || (
             var.experimental.lambda.artifact.s3.bucket != null &&
-            try(var.experimental.compute_provider.ec2.instance_termination_watcher.artifact.s3.key != null, false)
+            try(var.experimental.compute_provider.aws.ec2.instance_termination_watcher.artifact.s3.key != null, false)
           )
         )
       )
-      error_message = "experimental.compute_provider.ec2.instance_termination_watcher.artifact must set at most one of zip or s3; an s3 wrapper requires experimental.lambda.artifact.s3.bucket and a non-null key."
+      error_message = "experimental.compute_provider.aws.ec2.instance_termination_watcher.artifact must set at most one of zip or s3; an s3 wrapper requires experimental.lambda.artifact.s3.bucket and a non-null key."
     }
 
     precondition {
       condition = !local.use_multi_runner_config_v2 || (
         !(
-          var.experimental.compute_provider.ec2.ami.housekeeper.artifact.zip != null &&
-          var.experimental.compute_provider.ec2.ami.housekeeper.artifact.s3 != null
+          var.experimental.compute_provider.aws.ec2.ami.housekeeper.artifact.zip != null &&
+          var.experimental.compute_provider.aws.ec2.ami.housekeeper.artifact.s3 != null
           ) && (
-          var.experimental.compute_provider.ec2.ami.housekeeper.artifact.s3 == null || (
+          var.experimental.compute_provider.aws.ec2.ami.housekeeper.artifact.s3 == null || (
             var.experimental.lambda.artifact.s3.bucket != null &&
-            try(var.experimental.compute_provider.ec2.ami.housekeeper.artifact.s3.key != null, false)
+            try(var.experimental.compute_provider.aws.ec2.ami.housekeeper.artifact.s3.key != null, false)
           )
         )
       )
-      error_message = "experimental.compute_provider.ec2.ami.housekeeper.artifact must set at most one of zip or s3; an s3 wrapper requires experimental.lambda.artifact.s3.bucket and a non-null key."
+      error_message = "experimental.compute_provider.aws.ec2.ami.housekeeper.artifact must set at most one of zip or s3; an s3 wrapper requires experimental.lambda.artifact.s3.bucket and a non-null key."
     }
 
     precondition {
       condition = !local.use_multi_runner_config_v2 || !(
-        var.experimental.compute_provider.ec2.runner_binaries.syncer.artifact.zip != null &&
-        var.experimental.compute_provider.ec2.runner_binaries.syncer.artifact.s3 != null
+        var.experimental.compute_provider.aws.ec2.runner_binaries.syncer.artifact.zip != null &&
+        var.experimental.compute_provider.aws.ec2.runner_binaries.syncer.artifact.s3 != null
       )
-      error_message = "experimental.compute_provider.ec2.runner_binaries.syncer.artifact must set at most one of zip or s3."
+      error_message = "experimental.compute_provider.aws.ec2.runner_binaries.syncer.artifact must set at most one of zip or s3."
     }
 
     precondition {
       condition = !local.use_multi_runner_config_v2 || (
-        var.experimental.compute_provider.ec2.runner_binaries.syncer.artifact.s3 == null ? true : (
+        var.experimental.compute_provider.aws.ec2.runner_binaries.syncer.artifact.s3 == null ? true : (
           var.experimental.lambda.artifact.s3.bucket != null &&
-          var.experimental.compute_provider.ec2.runner_binaries.syncer.artifact.s3.key != null
+          var.experimental.compute_provider.aws.ec2.runner_binaries.syncer.artifact.s3.key != null
         )
       )
-      error_message = "experimental.compute_provider.ec2.runner_binaries.syncer.artifact.s3 requires experimental.lambda.artifact.s3.bucket and a non-null key."
+      error_message = "experimental.compute_provider.aws.ec2.runner_binaries.syncer.artifact.s3 requires experimental.lambda.artifact.s3.bucket and a non-null key."
     }
 
     precondition {
       condition = !local.use_multi_runner_config_v2 || contains(
         ["AES256", "aws:kms", "aws:kms:dsse"],
-        var.experimental.compute_provider.ec2.runner_binaries.s3.encryption.sse_algorithm,
+        var.experimental.compute_provider.aws.ec2.runner_binaries.s3.encryption.sse_algorithm,
       )
-      error_message = "experimental.compute_provider.ec2.runner_binaries.s3.encryption.sse_algorithm must be AES256, aws:kms, or aws:kms:dsse."
+      error_message = "experimental.compute_provider.aws.ec2.runner_binaries.s3.encryption.sse_algorithm must be AES256, aws:kms, or aws:kms:dsse."
     }
 
     precondition {
       condition = !local.use_multi_runner_config_v2 || (
-        !var.experimental.compute_provider.ec2.runner_binaries.s3.encryption.enabled ? (
-          var.experimental.compute_provider.ec2.runner_binaries.s3.encryption.kms_master_key_id == null
+        !var.experimental.compute_provider.aws.ec2.runner_binaries.s3.encryption.enabled ? (
+          var.experimental.compute_provider.aws.ec2.runner_binaries.s3.encryption.kms_master_key_id == null
           ) : (
-          var.experimental.compute_provider.ec2.runner_binaries.s3.encryption.kms_master_key_id == null ||
+          var.experimental.compute_provider.aws.ec2.runner_binaries.s3.encryption.kms_master_key_id == null ||
           contains(
             ["aws:kms", "aws:kms:dsse"],
-            var.experimental.compute_provider.ec2.runner_binaries.s3.encryption.sse_algorithm,
+            var.experimental.compute_provider.aws.ec2.runner_binaries.s3.encryption.sse_algorithm,
           )
         )
       )
-      error_message = "experimental.compute_provider.ec2.runner_binaries.s3.encryption.sse_algorithm must be aws:kms or aws:kms:dsse when kms_master_key_id is set."
+      error_message = "experimental.compute_provider.aws.ec2.runner_binaries.s3.encryption.sse_algorithm must be aws:kms or aws:kms:dsse when kms_master_key_id is set."
     }
 
     precondition {
@@ -417,10 +420,10 @@ resource "terraform_data" "validate_experimental" {
 
     precondition {
       condition = !local.use_multi_runner_config_v2 || (
-        var.experimental.compute_provider.ec2.runner_binaries.s3.logging.prefix == null ||
-        var.experimental.compute_provider.ec2.runner_binaries.s3.logging.bucket != null
+        var.experimental.compute_provider.aws.ec2.runner_binaries.s3.logging.prefix == null ||
+        var.experimental.compute_provider.aws.ec2.runner_binaries.s3.logging.bucket != null
       )
-      error_message = "experimental.compute_provider.ec2.runner_binaries.s3.logging.prefix requires logging.bucket."
+      error_message = "experimental.compute_provider.aws.ec2.runner_binaries.s3.logging.prefix requires logging.bucket."
     }
 
     precondition {

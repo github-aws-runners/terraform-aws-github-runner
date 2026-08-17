@@ -71,10 +71,10 @@ resource "terraform_data" "validate_config" {
 
     precondition {
       condition = length([
-        for provider_type, provider_config in var.compute_provider : provider_type
+        for provider_key, provider_config in local.compute_providers : provider_key
         if provider_config != null
       ]) == 1
-      error_message = "Exactly one compute-provider block must be set. Supported compute-provider blocks: ec2."
+      error_message = "Exactly one compute-provider block must be set. Supported compute-provider blocks: aws.ec2."
     }
 
     precondition {

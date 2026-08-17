@@ -206,87 +206,89 @@ locals {
     }
 
     compute_provider = {
-      ec2 = {
-        vpc_id                         = var.vpc_id
-        subnet_ids                     = var.subnet_ids
-        managed_security_group_enabled = var.enable_managed_runner_security_group
-        egress_rules                   = var.runner_egress_rules
-        additional_security_group_ids  = var.runner_additional_security_group_ids
-        cloudwatch_agent = {
-          config = var.cloudwatch_config
-        }
-        instance_profile_path         = var.instance_profile_path
-        key_name                      = var.key_name
-        associate_public_ipv4_address = var.associate_public_ipv4_address
-        tags                          = {}
-        ami = {
-          housekeeper = {
-            enabled        = var.enable_ami_housekeeper
-            cleanup_config = var.ami_housekeeper_cleanup_config
+      aws = {
+        ec2 = {
+          vpc_id                         = var.vpc_id
+          subnet_ids                     = var.subnet_ids
+          managed_security_group_enabled = var.enable_managed_runner_security_group
+          egress_rules                   = var.runner_egress_rules
+          additional_security_group_ids  = var.runner_additional_security_group_ids
+          cloudwatch_agent = {
+            config = var.cloudwatch_config
+          }
+          instance_profile_path         = var.instance_profile_path
+          key_name                      = var.key_name
+          associate_public_ipv4_address = var.associate_public_ipv4_address
+          tags                          = {}
+          ami = {
+            housekeeper = {
+              enabled        = var.enable_ami_housekeeper
+              cleanup_config = var.ami_housekeeper_cleanup_config
+              artifact = {
+                zip = var.lambda_s3_bucket == null ? var.ami_housekeeper_lambda_zip : null
+                s3 = var.lambda_s3_bucket == null ? null : {
+                  key            = var.ami_housekeeper_lambda_s3_key
+                  object_version = var.ami_housekeeper_lambda_s3_object_version
+                }
+              }
+              lambda = {
+                memory_size = var.ami_housekeeper_lambda_memory_size
+                timeout     = var.ami_housekeeper_lambda_timeout
+              }
+              schedule = {
+                expression = var.ami_housekeeper_lambda_schedule_expression
+              }
+            }
+          }
+          instance_termination_watcher = {
+            enabled                      = var.instance_termination_watcher.enable
+            features                     = var.instance_termination_watcher.features
+            enable_runner_deregistration = var.instance_termination_watcher.enable_runner_deregistration
+            environment_variables        = var.instance_termination_watcher.environment_variables
             artifact = {
-              zip = var.lambda_s3_bucket == null ? var.ami_housekeeper_lambda_zip : null
+              zip = var.lambda_s3_bucket == null ? var.instance_termination_watcher.zip : null
               s3 = var.lambda_s3_bucket == null ? null : {
-                key            = var.ami_housekeeper_lambda_s3_key
-                object_version = var.ami_housekeeper_lambda_s3_object_version
+                key            = var.instance_termination_watcher.s3_key
+                object_version = var.instance_termination_watcher.s3_object_version
               }
             }
             lambda = {
-              memory_size = var.ami_housekeeper_lambda_memory_size
-              timeout     = var.ami_housekeeper_lambda_timeout
-            }
-            schedule = {
-              expression = var.ami_housekeeper_lambda_schedule_expression
+              memory_size = var.instance_termination_watcher.memory_size
+              timeout     = var.instance_termination_watcher.timeout
             }
           }
-        }
-        instance_termination_watcher = {
-          enabled                      = var.instance_termination_watcher.enable
-          features                     = var.instance_termination_watcher.features
-          enable_runner_deregistration = var.instance_termination_watcher.enable_runner_deregistration
-          environment_variables        = var.instance_termination_watcher.environment_variables
-          artifact = {
-            zip = var.lambda_s3_bucket == null ? var.instance_termination_watcher.zip : null
-            s3 = var.lambda_s3_bucket == null ? null : {
-              key            = var.instance_termination_watcher.s3_key
-              object_version = var.instance_termination_watcher.s3_object_version
-            }
-          }
-          lambda = {
-            memory_size = var.instance_termination_watcher.memory_size
-            timeout     = var.instance_termination_watcher.timeout
-          }
-        }
-        runner_binaries = {
-          enabled = true
-          s3 = {
-            encryption = {
-              enabled            = var.runner_binaries_s3_sse_configuration != null
-              bucket_key_enabled = try(var.runner_binaries_s3_sse_configuration.rule.bucket_key_enabled, null)
-              sse_algorithm      = try(var.runner_binaries_s3_sse_configuration.rule.apply_server_side_encryption_by_default.sse_algorithm, "AES256")
-              kms_master_key_id  = try(var.runner_binaries_s3_sse_configuration.rule.apply_server_side_encryption_by_default.kms_master_key_id, null)
-            }
-            tags       = var.runner_binaries_s3_tags
-            versioning = var.runner_binaries_s3_versioning
-            logging = {
-              bucket = null
-              prefix = null
-            }
-          }
-          syncer = {
-            artifact = {
-              zip = var.lambda_s3_bucket == null ? var.runner_binaries_syncer_lambda_zip : null
-              s3 = var.lambda_s3_bucket == null ? null : {
-                key            = var.syncer_lambda_s3_key
-                object_version = var.syncer_lambda_s3_object_version
+          runner_binaries = {
+            enabled = true
+            s3 = {
+              encryption = {
+                enabled            = var.runner_binaries_s3_sse_configuration != null
+                bucket_key_enabled = try(var.runner_binaries_s3_sse_configuration.rule.bucket_key_enabled, null)
+                sse_algorithm      = try(var.runner_binaries_s3_sse_configuration.rule.apply_server_side_encryption_by_default.sse_algorithm, "AES256")
+                kms_master_key_id  = try(var.runner_binaries_s3_sse_configuration.rule.apply_server_side_encryption_by_default.kms_master_key_id, null)
+              }
+              tags       = var.runner_binaries_s3_tags
+              versioning = var.runner_binaries_s3_versioning
+              logging = {
+                bucket = null
+                prefix = null
               }
             }
-            lambda = {
-              memory_size = var.runner_binaries_syncer_memory_size
-              timeout     = var.runner_binaries_syncer_lambda_timeout
-            }
-            schedule = {
-              expression = "cron(27 * * * ? *)"
-              state      = var.state_event_rule_binaries_syncer
+            syncer = {
+              artifact = {
+                zip = var.lambda_s3_bucket == null ? var.runner_binaries_syncer_lambda_zip : null
+                s3 = var.lambda_s3_bucket == null ? null : {
+                  key            = var.syncer_lambda_s3_key
+                  object_version = var.syncer_lambda_s3_object_version
+                }
+              }
+              lambda = {
+                memory_size = var.runner_binaries_syncer_memory_size
+                timeout     = var.runner_binaries_syncer_lambda_timeout
+              }
+              schedule = {
+                expression = "cron(27 * * * ? *)"
+                state      = var.state_event_rule_binaries_syncer
+              }
             }
           }
         }
@@ -463,68 +465,70 @@ locals {
         }
 
         compute_provider = {
-          ec2 = {
-            metadata_options = {
-              instance_metadata_tags      = tostring(v.runner_config.runner_metadata_options["instance_metadata_tags"])
-              http_endpoint               = tostring(v.runner_config.runner_metadata_options["http_endpoint"])
-              http_tokens                 = tostring(v.runner_config.runner_metadata_options["http_tokens"])
-              http_put_response_hop_limit = tonumber(v.runner_config.runner_metadata_options["http_put_response_hop_limit"])
-            }
-            ami = v.runner_config.ami == null ? null : {
-              filter = v.runner_config.ami.filter
-              owners = v.runner_config.ami.owners
-              id_ssm_parameter = v.runner_config.ami.id_ssm_parameter_arn == null ? null : {
-                arn = v.runner_config.ami.id_ssm_parameter_arn
+          aws = {
+            ec2 = {
+              metadata_options = {
+                instance_metadata_tags      = tostring(v.runner_config.runner_metadata_options["instance_metadata_tags"])
+                http_endpoint               = tostring(v.runner_config.runner_metadata_options["http_endpoint"])
+                http_tokens                 = tostring(v.runner_config.runner_metadata_options["http_tokens"])
+                http_put_response_hop_limit = tonumber(v.runner_config.runner_metadata_options["http_put_response_hop_limit"])
               }
-              kms_key = v.runner_config.ami.kms_key_arn == null ? null : {
-                arn = v.runner_config.ami.kms_key_arn
+              ami = v.runner_config.ami == null ? null : {
+                filter = v.runner_config.ami.filter
+                owners = v.runner_config.ami.owners
+                id_ssm_parameter = v.runner_config.ami.id_ssm_parameter_arn == null ? null : {
+                  arn = v.runner_config.ami.id_ssm_parameter_arn
+                }
+                kms_key = v.runner_config.ami.kms_key_arn == null ? null : {
+                  arn = v.runner_config.ami.kms_key_arn
+                }
               }
+              block_device_mappings           = v.runner_config.block_device_mappings
+              create_service_linked_role_spot = v.runner_config.create_service_linked_role_spot
+              credit_specification            = v.runner_config.credit_specification
+              ebs_optimized                   = v.runner_config.ebs_optimized
+              cloudwatch_agent = {
+                enabled = v.runner_config.enable_cloudwatch_agent
+                config  = v.runner_config.cloudwatch_config
+              }
+              binaries_syncer = {
+                enabled = v.runner_config.enable_runner_binaries_syncer
+              }
+              detailed_monitoring_enabled = v.runner_config.enable_runner_detailed_monitoring
+              ssm_enabled                 = v.runner_config.enable_ssm_on_runners
+              user_data = {
+                enabled               = v.runner_config.enable_userdata
+                template              = v.runner_config.userdata_template
+                content               = v.runner_config.userdata_content
+                pre_install           = v.runner_config.userdata_pre_install
+                post_install          = v.runner_config.userdata_post_install
+                debug_logging_enabled = false
+              }
+              instance_allocation_strategy   = v.runner_config.instance_allocation_strategy
+              instance_max_spot_price        = v.runner_config.instance_max_spot_price
+              instance_target_capacity_type  = v.runner_config.instance_target_capacity_type
+              instance_type_priorities       = v.runner_config.instance_type_priorities
+              instance_types                 = v.runner_config.instance_types
+              additional_security_group_ids  = length(v.runner_config.runner_additional_security_group_ids) == 0 ? null : v.runner_config.runner_additional_security_group_ids
+              managed_security_group_enabled = null
+              egress_rules                   = null
+              instance_profile_path          = null
+              key_name                       = null
+              associate_public_ipv4_address  = null
+              instance_profile = v.runner_config.iam_overrides.override_instance_profile == true ? {
+                name = v.runner_config.iam_overrides.instance_profile_name
+              } : null
+              enable_on_demand_failover_for_errors = v.runner_config.enable_on_demand_failover_for_errors
+              scale_errors                         = v.runner_config.scale_errors
+              subnet_ids                           = v.runner_config.subnet_ids
+              vpc_id                               = v.runner_config.vpc_id
+              cpu_options                          = v.runner_config.cpu_options
+              placement                            = v.runner_config.placement
+              license_specifications               = v.runner_config.license_specifications
+              use_dedicated_host                   = v.runner_config.use_dedicated_host
+              log_files                            = v.runner_config.runner_log_files
+              tags                                 = v.runner_config.runner_ec2_tags
             }
-            block_device_mappings           = v.runner_config.block_device_mappings
-            create_service_linked_role_spot = v.runner_config.create_service_linked_role_spot
-            credit_specification            = v.runner_config.credit_specification
-            ebs_optimized                   = v.runner_config.ebs_optimized
-            cloudwatch_agent = {
-              enabled = v.runner_config.enable_cloudwatch_agent
-              config  = v.runner_config.cloudwatch_config
-            }
-            binaries_syncer = {
-              enabled = v.runner_config.enable_runner_binaries_syncer
-            }
-            detailed_monitoring_enabled = v.runner_config.enable_runner_detailed_monitoring
-            ssm_enabled                 = v.runner_config.enable_ssm_on_runners
-            user_data = {
-              enabled               = v.runner_config.enable_userdata
-              template              = v.runner_config.userdata_template
-              content               = v.runner_config.userdata_content
-              pre_install           = v.runner_config.userdata_pre_install
-              post_install          = v.runner_config.userdata_post_install
-              debug_logging_enabled = false
-            }
-            instance_allocation_strategy   = v.runner_config.instance_allocation_strategy
-            instance_max_spot_price        = v.runner_config.instance_max_spot_price
-            instance_target_capacity_type  = v.runner_config.instance_target_capacity_type
-            instance_type_priorities       = v.runner_config.instance_type_priorities
-            instance_types                 = v.runner_config.instance_types
-            additional_security_group_ids  = length(v.runner_config.runner_additional_security_group_ids) == 0 ? null : v.runner_config.runner_additional_security_group_ids
-            managed_security_group_enabled = null
-            egress_rules                   = null
-            instance_profile_path          = null
-            key_name                       = null
-            associate_public_ipv4_address  = null
-            instance_profile = v.runner_config.iam_overrides.override_instance_profile == true ? {
-              name = v.runner_config.iam_overrides.instance_profile_name
-            } : null
-            enable_on_demand_failover_for_errors = v.runner_config.enable_on_demand_failover_for_errors
-            scale_errors                         = v.runner_config.scale_errors
-            subnet_ids                           = v.runner_config.subnet_ids
-            vpc_id                               = v.runner_config.vpc_id
-            cpu_options                          = v.runner_config.cpu_options
-            placement                            = v.runner_config.placement
-            license_specifications               = v.runner_config.license_specifications
-            use_dedicated_host                   = v.runner_config.use_dedicated_host
-            log_files                            = v.runner_config.runner_log_files
-            tags                                 = v.runner_config.runner_ec2_tags
           }
         }
       }
@@ -740,23 +744,25 @@ locals {
         }
 
         compute_provider = {
-          ec2 = v.compute_provider.ec2 == null ? null : merge(v.compute_provider.ec2, {
-            vpc_id                         = try(coalesce(v.compute_provider.ec2.vpc_id, local.raw_translated_experimental.compute_provider.ec2.vpc_id), null)
-            subnet_ids                     = v.compute_provider.ec2.subnet_ids != null ? v.compute_provider.ec2.subnet_ids : local.raw_translated_experimental.compute_provider.ec2.subnet_ids
-            managed_security_group_enabled = coalesce(v.compute_provider.ec2.managed_security_group_enabled, local.raw_translated_experimental.compute_provider.ec2.managed_security_group_enabled)
-            egress_rules                   = v.compute_provider.ec2.egress_rules != null ? v.compute_provider.ec2.egress_rules : local.raw_translated_experimental.compute_provider.ec2.egress_rules
-            additional_security_group_ids  = v.compute_provider.ec2.additional_security_group_ids != null ? v.compute_provider.ec2.additional_security_group_ids : local.raw_translated_experimental.compute_provider.ec2.additional_security_group_ids
-            instance_profile_path          = try(coalesce(v.compute_provider.ec2.instance_profile_path, local.raw_translated_experimental.compute_provider.ec2.instance_profile_path), null)
-            key_name                       = try(coalesce(v.compute_provider.ec2.key_name, local.raw_translated_experimental.compute_provider.ec2.key_name), null)
-            associate_public_ipv4_address  = coalesce(v.compute_provider.ec2.associate_public_ipv4_address, local.raw_translated_experimental.compute_provider.ec2.associate_public_ipv4_address)
-            cloudwatch_agent = merge(v.compute_provider.ec2.cloudwatch_agent, {
-              config = try(coalesce(v.compute_provider.ec2.cloudwatch_agent.config, local.raw_translated_experimental.compute_provider.ec2.cloudwatch_agent.config), null)
+          aws = {
+            ec2 = v.compute_provider.aws.ec2 == null ? null : merge(v.compute_provider.aws.ec2, {
+              vpc_id                         = try(coalesce(v.compute_provider.aws.ec2.vpc_id, local.raw_translated_experimental.compute_provider.aws.ec2.vpc_id), null)
+              subnet_ids                     = v.compute_provider.aws.ec2.subnet_ids != null ? v.compute_provider.aws.ec2.subnet_ids : local.raw_translated_experimental.compute_provider.aws.ec2.subnet_ids
+              managed_security_group_enabled = coalesce(v.compute_provider.aws.ec2.managed_security_group_enabled, local.raw_translated_experimental.compute_provider.aws.ec2.managed_security_group_enabled)
+              egress_rules                   = v.compute_provider.aws.ec2.egress_rules != null ? v.compute_provider.aws.ec2.egress_rules : local.raw_translated_experimental.compute_provider.aws.ec2.egress_rules
+              additional_security_group_ids  = v.compute_provider.aws.ec2.additional_security_group_ids != null ? v.compute_provider.aws.ec2.additional_security_group_ids : local.raw_translated_experimental.compute_provider.aws.ec2.additional_security_group_ids
+              instance_profile_path          = try(coalesce(v.compute_provider.aws.ec2.instance_profile_path, local.raw_translated_experimental.compute_provider.aws.ec2.instance_profile_path), null)
+              key_name                       = try(coalesce(v.compute_provider.aws.ec2.key_name, local.raw_translated_experimental.compute_provider.aws.ec2.key_name), null)
+              associate_public_ipv4_address  = coalesce(v.compute_provider.aws.ec2.associate_public_ipv4_address, local.raw_translated_experimental.compute_provider.aws.ec2.associate_public_ipv4_address)
+              cloudwatch_agent = merge(v.compute_provider.aws.ec2.cloudwatch_agent, {
+                config = try(coalesce(v.compute_provider.aws.ec2.cloudwatch_agent.config, local.raw_translated_experimental.compute_provider.aws.ec2.cloudwatch_agent.config), null)
+              })
+              binaries_syncer = {
+                enabled = coalesce(v.compute_provider.aws.ec2.binaries_syncer.enabled, local.raw_translated_experimental.compute_provider.aws.ec2.runner_binaries.enabled)
+              }
+              tags = merge(local.raw_translated_experimental.compute_provider.aws.ec2.tags, v.compute_provider.aws.ec2.tags)
             })
-            binaries_syncer = {
-              enabled = coalesce(v.compute_provider.ec2.binaries_syncer.enabled, local.raw_translated_experimental.compute_provider.ec2.runner_binaries.enabled)
-            }
-            tags = merge(local.raw_translated_experimental.compute_provider.ec2.tags, v.compute_provider.ec2.tags)
-          })
+          }
         }
       })
     }
@@ -806,11 +812,13 @@ locals {
         })
 
         compute_provider = merge(v.compute_provider, {
-          ec2 = v.compute_provider.ec2 == null ? null : merge(v.compute_provider.ec2, {
-            binaries_syncer = merge(v.compute_provider.ec2.binaries_syncer, {
-              s3 = v.compute_provider.ec2.binaries_syncer.enabled ? local.runner_binaries_by_os_and_arch_map[
-                "${v.runner.os}_${v.runner.architecture}"
-              ] : null
+          aws = merge(v.compute_provider.aws, {
+            ec2 = v.compute_provider.aws.ec2 == null ? null : merge(v.compute_provider.aws.ec2, {
+              binaries_syncer = merge(v.compute_provider.aws.ec2.binaries_syncer, {
+                s3 = v.compute_provider.aws.ec2.binaries_syncer.enabled ? local.runner_binaries_by_os_and_arch_map[
+                  "${v.runner.os}_${v.runner.architecture}"
+                ] : null
+              })
             })
           })
         })

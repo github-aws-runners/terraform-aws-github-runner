@@ -9,15 +9,7 @@ module "multi_runner" {
 
   aws_region  = "eu-west-1"
   prefix      = "computed-inputs"
-  vpc_id      = "vpc-12345678"
-  subnet_ids  = ["subnet-12345678"]
   kms_key_arn = "arn:aws:kms:eu-west-1:123456789012:key/generated-${random_id.managed_policy.hex}"
-
-  github_app = {
-    id             = "123456"
-    key_base64     = "dGVzdA=="
-    webhook_secret = "test-secret"
-  }
 
   lambda_s3_bucket      = "lambda-artifacts"
   webhook_lambda_s3_key = "webhook.zip"
@@ -70,9 +62,11 @@ module "multi_runner" {
     }
 
     compute_provider = {
-      ec2 = {
-        vpc_id     = "vpc-nested-12345678"
-        subnet_ids = ["subnet-nested-12345678"]
+      aws = {
+        ec2 = {
+          vpc_id     = "vpc-nested-12345678"
+          subnet_ids = ["subnet-nested-12345678"]
+        }
       }
     }
 
@@ -112,10 +106,12 @@ module "multi_runner" {
           }
         }
         compute_provider = {
-          ec2 = {
-            instance_types = ["m5.large"]
-            binaries_syncer = {
-              enabled = false
+          aws = {
+            ec2 = {
+              instance_types = ["m5.large"]
+              binaries_syncer = {
+                enabled = false
+              }
             }
           }
         }

@@ -23,8 +23,8 @@ The implementation is split into common runner-config composition, orchestration
 | `orchestration-providers/webhook/pool` | Optional scheduled runner-pool resources and their Lambda and IAM wiring. |
 | `orchestration-providers/webhook/job-retry` | Optional queued-job retry resources and their Lambda and IAM wiring. |
 | `runner-config/ssm-housekeeper` | Parameter Store cleanup Lambda, schedule, logging, and IAM resources. |
-| `compute-providers/<provider>/trust-policy` | Provider-specific default runner-role trust, merged with the optional caller-provided trust document before the common role is created. |
-| `compute-providers/<provider>` | Provider-specific resources, permission requirements, and the IAM and environment-variable fragments consumed by the common control plane after the runner role is resolved. |
+| `compute-providers/<namespace>/<provider>/trust-policy` | Provider-specific default runner-role trust, merged with the optional caller-provided trust document before the common role is created. |
+| `compute-providers/<namespace>/<provider>` | Provider-specific resources, permission requirements, and the IAM and environment-variable fragments consumed by the common control plane after the runner role is resolved. |
 
 The EC2 provider owns the instance profile, launch template, security group, AMI and EC2-specific bootstrap parameters, runner log groups, EC2 policy statements, and EC2 Lambda environment variables. EC2 is the only implemented Terraform compute provider in this phase.
 
@@ -32,11 +32,11 @@ Runner-config, the root orchestration and compute providers, and their leaf modu
 
 Each external v2 runner config selects demand orchestration separately from its compute provider. The required `orchestration_provider` wrapper has one supported provider today: `experimental.multi_runner_config.<runner_config>.orchestration_provider.webhook`. It owns the runner config's lifecycle and maximum runner count, registration scope, matcher, build-queue overrides, scale-up, scale-down, pool, and job-retry settings. The wrapper is intentionally typed as a provider boundary so later orchestration implementations can be added as mutually exclusive siblings without moving common settings again.
 
-The runner config also populates exactly one typed compute-provider block, such as `experimental.multi_runner_config.<runner_config>.compute_provider.ec2`; that block's presence must be known during planning because it determines capacity routing. Multi-runner resource preconditions enforce both selections and the public contract's cross-scope and plan-shaping rules, while each provider implementation validates its resolved internal contract.
+The runner config also populates exactly one typed compute-provider leaf, such as `experimental.multi_runner_config.<runner_config>.compute_provider.aws.ec2`; that leaf's presence must be known during planning because it determines capacity routing. Multi-runner resource preconditions enforce both selections and the public contract's cross-scope and plan-shaping rules, while each provider implementation validates its resolved internal contract.
 
-After resolving global `experimental.compute_provider.ec2` values with the selected runner config's `compute_provider.ec2` overrides, `multi-runner` preserves the typed wrapper expected by `runner-config`. The direct contract is `compute_provider = { ec2 = { ... } }`, not a flat EC2 object. Runner-config validates that exactly one compute-provider block is non-null, derives the provider type from that block, and passes `compute_provider.<provider>` to the selected provider module as its nested `config` object. It independently validates the exact-one `orchestration_provider = { webhook = { ... } }` wrapper and invokes the selected root orchestration provider with provider-neutral common objects such as `runner`, the Lambda substrate, SSM, observability, and the selected compute-provider capabilities.
+After resolving global `experimental.compute_provider.aws.ec2` values with the selected runner config's `compute_provider.aws.ec2` overrides, `multi-runner` preserves the namespaced typed wrapper expected by `runner-config`. The direct contract is `compute_provider = { aws = { ec2 = { ... } } }`, not a flat EC2 object. Runner-config flattens each populated namespace and provider leaf into an internal dispatch key such as `aws_ec2`, validates that exactly one leaf is non-null, and passes `compute_provider.aws.ec2` to `module.compute_aws_ec2[0]` as its nested `config` object. The webhook runtime registry still receives the provider type `ec2`; the namespace is part of Terraform dispatch so different clouds can expose similarly named services without colliding. Runner-config independently validates the exact-one `orchestration_provider = { webhook = { ... } }` wrapper and invokes the selected root orchestration provider with provider-neutral common objects such as `runner`, the Lambda substrate, SSM, observability, and the selected compute-provider capabilities.
 
-Binary discovery is completed before the runner-config call. `config.experimental.translation.tf` enriches the final canonical runner config at `compute_provider.ec2.binaries_syncer.s3`, leaving `s3` null when synchronization is disabled. The `module.runner_configs` call then passes that runner config's wrapped `compute_provider` object unchanged. Runner-config and the EC2 provider therefore receive the typed provider-owned shape; neither expects a bare `{ arn, id, key }` object directly at `compute_provider.ec2.binaries_syncer`.
+Binary discovery is completed before the runner-config call. `config.experimental.translation.tf` enriches the final canonical runner config at `compute_provider.aws.ec2.binaries_syncer.s3`, leaving `s3` null when synchronization is disabled. The `module.runner_configs` call then passes that runner config's wrapped `compute_provider` object unchanged. Runner-config and the EC2 provider therefore receive the typed provider-owned shape; neither expects a bare `{ arn, id, key }` object directly at `compute_provider.aws.ec2.binaries_syncer`.
 
 Runner-config creates or selects the runner IAM role, but the current EC2 provider owns the role's default trust-policy document. Each provider implementation supplies a small `trust-policy` submodule that accepts `additional_trust_policy_json` and returns the final `assume_role_policy`. The full provider separately returns its nested `provider` contract containing `policies.runner`, `policies.scale_up`, `policies.scale_down`, and `policies.pool`, component environment variables, and provider resources. When runner-config creates the runner role, it uses the isolated trust-policy output and attaches the returned runner policies. An external role bypasses both operations, so its caller owns trust and permissions. Runner-config passes the scale-up, scale-down, and pool capabilities to the selected orchestration provider in either case. A provider never creates or attaches the common runner IAM role.
 
@@ -44,7 +44,7 @@ The trust relationship is deliberately rendered by an isolated provider submodul
 
 1. `multi-runner` validates the runner config's typed orchestration- and compute-provider selections, resolves its global and per-runner-config values, and invokes `runner-config` with both wrapped provider configs.
 2. `runner-config` independently derives the orchestration and compute providers from their single non-null typed blocks.
-3. `compute-providers/<provider>/trust-policy` combines the provider default with `runner.iam.additional_trust_policy_json` without referencing the runner-role input.
+3. `compute-providers/<namespace>/<provider>/trust-policy` combines the provider default with `runner.iam.additional_trust_policy_json` without referencing the runner-role input.
 4. `runner-config` creates the common runner role from the returned `assume_role_policy`, or selects an external role without applying that trust policy.
 5. The full compute provider receives the resolved role so it can create resources such as the EC2 instance profile and render `iam:PassRole` statements.
 6. The provider returns its nested policy, environment-variable, and resource contract.
@@ -58,7 +58,7 @@ Multi-runner produces one canonical consumer representation for both input modes
 
 1. `config.experimental.translation.tf` selects the module mode and builds `local.raw_translated_experimental`. A non-empty experimental runner-config map selects the nested `var.experimental` input for v2; otherwise the file projects flat module globals and stable `multi_runner_config` entries into the same schema for v1.
 2. The same translation file then derives `local.translated_experimental_base`. It applies schema defaults and global/runner-config precedence, merges tags, resolves IAM ownership and paths, and normalizes observability, `orchestration_provider.webhook`, and compute-provider values. Provider selection, plan-shaping validation, and the shared runner-binary syncer and discovery consume this fully resolved base.
-3. After runner-binary discovery, the translation file derives the final `local.translated_experimental`. It completes runner labels, GitHub enterprise and User-Agent settings, shared Lambda artifacts and principals, the internal build-queue KMS projection and runner-control artifact, SSM KMS, and each enabled EC2 runner config's `compute_provider.ec2.binaries_syncer.s3`. Webhook event-source mapping and pool resolution are already complete in the base object. The remaining shared components, webhook queues, and runner implementations consume the final canonical object.
+3. After runner-binary discovery, the translation file derives the final `local.translated_experimental`. It completes runner labels, GitHub enterprise and User-Agent settings, shared Lambda artifacts and principals, the internal build-queue KMS projection and runner-control artifact, SSM KMS, and each enabled EC2 runner config's `compute_provider.aws.ec2.binaries_syncer.s3`. Webhook event-source mapping and pool resolution are already complete in the base object. The remaining shared components, webhook queues, and runner implementations consume the final canonical object.
 
 Stable translation always emits `orchestration_provider.webhook`, but stable runner configs remain on `module.runners["<runner_config>"]`: `runners.tf` adapts each final canonical runner config back to the existing `modules/runners` input contract, preserving Terraform addresses without maintaining a separate config source. This is not the phase-2 implementation migration to `runner-config`. For v2, `module.runner_configs` directly iterates the gated final runner-config map. Its adapter passes environment-augmented tags, GitHub settings with live App references, and the resolved Lambda, SSM, and observability inputs at the runner-config top level. It injects the live build queue into the webhook orchestration input, forwards the provider-owned fields accepted by runner-config, and omits `matcherConfig` because the shared webhook consumes it. The wrapped compute-provider object is forwarded unchanged. Binary output enrichment and all other derived config shaping are already complete in canonical translation.
 
@@ -75,7 +75,7 @@ flowchart TD
   V1 --> Base["translated_experimental_base: defaults and global/runner-config resolution"]
   V2 --> Base
   Base --> Discovery["Provider selection, runner-binary syncer, and discovery"]
-  Discovery --> Final["translated_experimental: enrich EC2 binaries_syncer.s3"]
+  Discovery --> Final["translated_experimental: enrich aws.ec2 binaries_syncer.s3"]
   Final --> Singleton["Shared SSM, webhook, termination watcher, and AMI housekeeper"]
   Final --> Shared["Webhook build queues and matching"]
   Final -->|v1 legacy-argument adapter| Legacy["module.runners[key]"]
@@ -85,10 +85,10 @@ flowchart TD
   Orchestration --> Pool["orchestration-providers/webhook/pool"]
   Orchestration --> Retry["orchestration-providers/webhook/job-retry"]
   RunnerConfig --> Housekeeper["runner-config/ssm-housekeeper"]
-  RunnerConfig --> Trust["compute-providers/<provider>/trust-policy"]
+  RunnerConfig --> Trust["compute-providers/<namespace>/<provider>/trust-policy"]
   Trust --> Role["common runner role"]
   Role --> Provider
-  RunnerConfig --> Provider["compute-providers/<provider>"]
+  RunnerConfig --> Provider["compute-providers/<namespace>/<provider>"]
   Provider --> Contract["compute-provider capability contract"]
   Contract --> Adapter["runner-config capability adapter"]
   Adapter --> Orchestration
@@ -102,11 +102,11 @@ The canonical object gives shared singleton resources one global representation 
 - The v1 translation wraps its existing registration scope, matcher, queue, scale, pool, and retry values under `orchestration_provider.webhook`; the stable public input and resource behavior remain unchanged.
 - Stable queue tagging and the flat `runners_map` output remain unchanged.
 - When `experimental.multi_runner_config` is non-empty, every key in the experimental map calls `modules/runner-config` at `module.runner_configs["<runner_config>"]`; stable-map entries are not dispatched.
-- Experimental v2 uses `module.runner_configs["<runner_config>"]`; within each entry, the canonical provider child addresses are `module.runner_configs["<runner_config>"].module.compute_ec2_trust_policy[0]`, `module.runner_configs["<runner_config>"].module.compute_ec2[0]`, and `module.runner_configs["<runner_config>"].module.orchestration_webhook[0]`. Earlier experimental addresses are not migrated automatically.
+- Experimental v2 uses `module.runner_configs["<runner_config>"]`; within each entry, the canonical provider child addresses are `module.runner_configs["<runner_config>"].module.compute_aws_ec2_trust_policy[0]`, `module.runner_configs["<runner_config>"].module.compute_aws_ec2[0]`, and `module.runner_configs["<runner_config>"].module.orchestration_webhook[0]`. Moved blocks inside `runner-config` preserve existing experimental state from the earlier `module.compute_ec2_trust_policy[0]` and `module.compute_ec2[0]` child labels when upgrading to these namespaced labels.
 - Experimental resources are exposed separately through the nested `runners_map_v2` output.
 - The maps are not combined. A non-empty v2 map has explicit priority over the stable map.
 
-No v1-to-v2 state move is included in phase 1. Enabling v2 for a module instance that already manages v1 runners changes its implementation addresses; phase 1 does not migrate that state. Existing deployments should keep v2 empty until the documented state-migration phase. The current v2 path is intended for new or explicitly experimental deployments.
+The provider-label moves are limited to the existing v2 child modules. No v1-to-v2 state move is included in phase 1. Enabling v2 for a module instance that already manages v1 runners changes its implementation addresses; phase 1 does not migrate that state. Moved blocks also cannot update Terraform expression references, so consumers must change the experimental output path from `provider.ec2` to `provider.aws.ec2`. Existing deployments should keep v2 empty until the documented state-migration phase. The current v2 path is intended for new or explicitly experimental deployments.
 
 ## Opting in
 
@@ -312,84 +312,86 @@ module "multi_runner" {
     # required provider fields. Runner-binary settings are global because each
     # syncer is shared by runner configs with the same OS and architecture.
     compute_provider = {
-      ec2 = {
-        vpc_id     = var.vpc_id
-        subnet_ids = var.subnet_ids
+      aws = {
+        ec2 = {
+          vpc_id     = var.vpc_id
+          subnet_ids = var.subnet_ids
 
-        ami = {
-          housekeeper = {
-            enabled = true
-            cleanup_config = {
-              minimumDaysOld = 30
-              dryRun         = true
+          ami = {
+            housekeeper = {
+              enabled = true
+              cleanup_config = {
+                minimumDaysOld = 30
+                dryRun         = true
+              }
+              artifact = {
+                zip = null
+                s3 = {
+                  key            = "ami-housekeeper.zip"
+                  object_version = null
+                }
+              }
+              lambda = {
+                memory_size = 256
+                timeout     = 300
+              }
+              schedule = {
+                expression = "cron(11 7 * * ? *)"
+              }
             }
+          }
+
+          instance_termination_watcher = {
+            enabled = true
+            features = {
+              enable_spot_termination_handler              = true
+              enable_spot_termination_notification_watcher = true
+            }
+            enable_runner_deregistration = true
+            environment_variables        = {}
             artifact = {
               zip = null
               s3 = {
-                key            = "ami-housekeeper.zip"
+                key            = "termination-watcher.zip"
                 object_version = null
               }
             }
             lambda = {
-              memory_size = 256
-              timeout     = 300
-            }
-            schedule = {
-              expression = "cron(11 7 * * ? *)"
+              memory_size = 512
+              timeout     = 30
             }
           }
-        }
 
-        instance_termination_watcher = {
-          enabled = true
-          features = {
-            enable_spot_termination_handler              = true
-            enable_spot_termination_notification_watcher = true
-          }
-          enable_runner_deregistration = true
-          environment_variables        = {}
-          artifact = {
-            zip = null
+          runner_binaries = {
+            enabled = true
             s3 = {
-              key            = "termination-watcher.zip"
-              object_version = null
+              encryption = {
+                enabled            = true
+                bucket_key_enabled = null
+                sse_algorithm      = "AES256"
+                kms_master_key_id  = null
+              }
+              tags       = {}
+              versioning = "Disabled"
+              logging = {
+                bucket = null
+                prefix = null
+              }
             }
-          }
-          lambda = {
-            memory_size = 512
-            timeout     = 30
-          }
-        }
-
-        runner_binaries = {
-          enabled = true
-          s3 = {
-            encryption = {
-              enabled            = true
-              bucket_key_enabled = null
-              sse_algorithm      = "AES256"
-              kms_master_key_id  = null
-            }
-            tags       = {}
-            versioning = "Disabled"
-            logging = {
-              bucket = null
-              prefix = null
-            }
-          }
-          syncer = {
-            # Both null selects the packaged syncer archive. Set at most one.
-            artifact = {
-              zip = null
-              s3  = null
-            }
-            lambda = {
-              memory_size = 256
-              timeout     = 300
-            }
-            schedule = {
-              expression = "cron(27 * * * ? *)"
-              state      = "ENABLED"
+            syncer = {
+              # Both null selects the packaged syncer archive. Set at most one.
+              artifact = {
+                zip = null
+                s3  = null
+              }
+              lambda = {
+                memory_size = 256
+                timeout     = 300
+              }
+              schedule = {
+                expression = "cron(27 * * * ? *)"
+                state      = "ENABLED"
+              }
             }
           }
         }
@@ -456,8 +458,10 @@ module "multi_runner" {
         # Each runner config also selects exactly one compute provider and supplies its
         # provider-specific values here.
         compute_provider = {
-          ec2 = {
-            instance_types = ["m7g.large"]
+          aws = {
+            ec2 = {
+              instance_types = ["m7g.large"]
+            }
           }
         }
       }
@@ -468,9 +472,9 @@ module "multi_runner" {
 
 ## Inputs, tags, and outputs
 
-The `experimental` object has global siblings for `tags`, `roles`, `runner`, `github`, `lambda`, `orchestration_provider`, `ssm`, `observability`, and `compute_provider`, in addition to its runner-config map at `multi_runner_config`. Root `experimental.lambda` contains only provider-neutral shared Lambda substrate: the artifact bucket, runtime, architecture, principals, networking, role, and tag values. These settings configure v2 runner configs and shared consumers beyond webhook orchestration, including the runner-binary syncer, termination watcher, AMI housekeeper, and per-runner-config SSM housekeepers. `lambda.principals` configures v2 runner-config, runner-binary-syncer, termination-watcher, and AMI-housekeeper roles, but not the shared webhook role. Global webhook-specific defaults are grouped under `experimental.orchestration_provider.webhook`: runner lifecycle, boot time, and maximum count; repository filtering; shared routing and matcher storage; queue defaults and encryption; the runner-control artifact shared by scale, pool, and job-retry; and the ingress webhook, scale, and pool Lambda component settings. The global orchestration block is a defaults namespace, while each runner config's separate `orchestration_provider` wrapper is the exact-one provider selector. The termination watcher, AMI housekeeper, and runner-binary syncer retain their nested component owners under `compute_provider.ec2`. The active flat-only settings are `prefix`, `aws_partition`, and `aws_region`; legacy `iam_overrides` remains in the schema without an active consumer.
+The `experimental` object has global siblings for `tags`, `roles`, `runner`, `github`, `lambda`, `orchestration_provider`, `ssm`, `observability`, and `compute_provider`, in addition to its runner-config map at `multi_runner_config`. Root `experimental.lambda` contains only provider-neutral shared Lambda substrate: the artifact bucket, runtime, architecture, principals, networking, role, and tag values. These settings configure v2 runner configs and shared consumers beyond webhook orchestration, including the runner-binary syncer, termination watcher, AMI housekeeper, and per-runner-config SSM housekeepers. `lambda.principals` configures v2 runner-config, runner-binary-syncer, termination-watcher, and AMI-housekeeper roles, but not the shared webhook role. Global webhook-specific defaults are grouped under `experimental.orchestration_provider.webhook`: runner lifecycle, boot time, and maximum count; repository filtering; shared routing and matcher storage; queue defaults and encryption; the runner-control artifact shared by scale, pool, and job-retry; and the ingress webhook, scale, and pool Lambda component settings. The global orchestration block is a defaults namespace, while each runner config's separate `orchestration_provider` wrapper is the exact-one provider selector. The termination watcher, AMI housekeeper, and runner-binary syncer retain their nested component owners under `compute_provider.aws.ec2`. The active flat-only settings are `prefix`, `aws_partition`, and `aws_region`; legacy `iam_overrides` remains in the schema without an active consumer.
 
-Each v2 runner config groups common provider-neutral settings by owner under `runner`, `lambda`, `ssm`, and `observability`; backend settings live under `compute_provider.<provider>`. Demand-control settings live under a separate `orchestration_provider` wrapper. Its sole supported block today is `orchestration_provider.webhook`, containing provider-owned runner lifecycle, boot-time, and capacity settings, `github.organization_runners`, `matcherConfig`, `queue`, `lambda.scale.up`, `lambda.scale.down`, `lambda.pool`, and `job_retry`. A nullable per-runner-config field inherits its corresponding experimental global when omitted or null, except that an external runner role suppresses inherited IAM management inputs. Precedence within a runner config is therefore a non-null runner-config override followed by the global nested value, including that field's nested schema default. Per-runner-config precedence does not replace singleton-owned global settings: the shared GitHub App Parameter Store module, webhook implementation and routing, runner-binary syncer settings, termination watcher, and AMI housekeeper use translated globals. The shared webhook nevertheless aggregates each webhook runner config's matcher, build queue, and compute-provider route. A runner config's resolved binary-syncer enablement and OS/architecture determine whether its pair participates in the shared syncer set; all syncer and distribution-bucket settings remain global.
+Each v2 runner config groups common provider-neutral settings by owner under `runner`, `lambda`, `ssm`, and `observability`; backend settings live under `compute_provider.<namespace>.<provider>`. Demand-control settings live under a separate `orchestration_provider` wrapper. Its sole supported block today is `orchestration_provider.webhook`, containing provider-owned runner lifecycle, boot-time, and capacity settings, `github.organization_runners`, `matcherConfig`, `queue`, `lambda.scale.up`, `lambda.scale.down`, `lambda.pool`, and `job_retry`. A nullable per-runner-config field inherits its corresponding experimental global when omitted or null, except that an external runner role suppresses inherited IAM management inputs. Precedence within a runner config is therefore a non-null runner-config override followed by the global nested value, including that field's nested schema default. Per-runner-config precedence does not replace singleton-owned global settings: the shared GitHub App Parameter Store module, webhook implementation and routing, runner-binary syncer settings, termination watcher, and AMI housekeeper use translated globals. The shared webhook nevertheless aggregates each webhook runner config's matcher, build queue, and compute-provider route. A runner config's resolved binary-syncer enablement and OS/architecture determine whether its pair participates in the shared syncer set; all syncer and distribution-bucket settings remain global.
 
 Global `experimental.orchestration_provider.webhook.queue` owns v2 build-queue defaults. `delay_webhook_event` defaults to `30`, `job_queue_retention_in_seconds` to `86400`, `visibility_timeout_seconds` to `180`, and `tags` to `{}`. `redrive_build_queue.enabled` defaults to `false`, while `redrive_build_queue.maxReceiveCount` defaults to null. A null per-runner-config redrive wrapper or leaf inherits its corresponding global value, and an enabled result requires a resolved `maxReceiveCount` greater than zero. Fields under `experimental.multi_runner_config[].orchestration_provider.webhook.queue` override those global defaults, and runner-config queue tags merge over global queue tags. Build-queue visibility is independent from Lambda config: `experimental.multi_runner_config[].orchestration_provider.webhook.lambda.scale.up.timeout` controls the function only, while `experimental.multi_runner_config[].orchestration_provider.webhook.queue.visibility_timeout_seconds` controls SQS and must be at least six times the resolved scale-up timeout.
 
@@ -486,17 +490,17 @@ Global `ssm.paths.root` is the base for shared GitHub App and webhook parameters
 
 Global `observability` values provide defaults for every runner config and configure the applicable shared singleton consumers. Log level, retention, KMS key, class, and tracing configure the webhook, runner-binary syncer, termination watcher, and AMI housekeeper; metrics also configure the termination watcher. The nested defaults preserve established behavior: logs use level `info`, 180-day retention, no customer-managed KMS key, and class `STANDARD`; tracing defaults to no mode with HTTP and error capture disabled; metrics default to disabled in the `GitHub Runners` namespace while the rate-limit, job-retry, Spot-termination, and Spot-warning switches default to enabled. The two Spot switches are global termination-watcher settings and have no per-runner-config override. Other nullable runner-config observability fields inherit the global value. `observability.logs.tags` remains specific to runner-config-owned log groups; shared singleton functions receive global `tags` and `lambda.tags`. The nullness of `observability.tracing.mode` must be known during planning because it selects X-Ray IAM statements and tracing blocks in runner-config consumers.
 
-The global `experimental.compute_provider` block owns v2 defaults for EC2 settings such as VPC and subnet IDs, managed-security-group behavior, egress rules, additional security groups, CloudWatch agent config, instance-profile path, key name, public IPv4 association, and tags. It also owns the shared AMI housekeeper, instance-termination watcher, and runner-binary distribution. It does not fall back to corresponding flat module inputs. VPC and subnet values must therefore be supplied through the global or per-runner-config EC2 block when needed. Global values should be set only when they are shared across every applicable runner config. The global block never selects a provider and does not contain provider-specific required runner-config fields. Every runner config must still populate exactly one typed provider block; that per-runner-config block selects the provider, supplies required fields such as EC2 `instance_types`, and preserves the per-runner selection point needed for future mixed-provider maps.
+The global `experimental.compute_provider.aws.ec2` block owns v2 defaults for EC2 settings such as VPC and subnet IDs, managed-security-group behavior, egress rules, additional security groups, CloudWatch agent config, instance-profile path, key name, public IPv4 association, and tags. It also owns the shared AMI housekeeper, instance-termination watcher, and runner-binary distribution. It does not fall back to corresponding flat module inputs. VPC and subnet values must therefore be supplied through the global or per-runner-config `compute_provider.aws.ec2` block when needed. Global values should be set only when they are shared across every applicable runner config. The global `experimental.compute_provider` wrapper never selects a provider and does not contain provider-specific required runner-config fields outside its namespace leaves. Every runner config must still populate exactly one typed provider leaf; that per-runner-config leaf selects the provider, supplies required fields such as EC2 `instance_types`, and preserves the per-runner selection point needed for future mixed-provider maps.
 
-`experimental.compute_provider.ec2.runner_binaries` owns whether EC2 runner configs use the shared binary distribution by default, distribution-bucket encryption, tags, versioning and access logging, and syncer artifact, Lambda sizing, and schedule. A nullable per-runner-config `compute_provider.ec2.binaries_syncer.enabled` overrides only the global enable default. The resolved enable value, `runner_binaries.s3.encryption.enabled`, the nullness of its `kms_master_key_id`, and the nullness of `runner_binaries.s3.logging.bucket` must be known during planning because they control module or resource shape. KMS encryption grants the syncer access to the distribution key, but runner roles do not derive `kms:Decrypt` from that field; callers must attach decrypt permission to the module-managed or external runner roles separately.
+`experimental.compute_provider.aws.ec2.runner_binaries` owns whether EC2 runner configs use the shared binary distribution by default, distribution-bucket encryption, tags, versioning and access logging, and syncer artifact, Lambda sizing, and schedule. A nullable per-runner-config `compute_provider.aws.ec2.binaries_syncer.enabled` overrides only the global enable default. The resolved enable value, `runner_binaries.s3.encryption.enabled`, the nullness of its `kms_master_key_id`, and the nullness of `runner_binaries.s3.logging.bucket` must be known during planning because they control module or resource shape. KMS encryption grants the syncer access to the distribution key, but runner roles do not derive `kms:Decrypt` from that field; callers must attach decrypt permission to the module-managed or external runner roles separately.
 
-Webhook-orchestration runner-control artifacts are selected globally through `experimental.orchestration_provider.webhook.lambda.artifact.zip` or `experimental.orchestration_provider.webhook.lambda.artifact.s3.{key,object_version}` and shared by scale, pool, and job-retry. The S3 wrapper selects an object from the shared `experimental.lambda.artifact.s3.bucket`; null zip and S3 wrappers use the packaged runner archive. V2 validation rejects simultaneous zip and S3 selection and requires a non-null shared bucket and key when the S3 wrapper is present. Stable-mode translation preserves the old S3-wins rule by clearing the translated zip and creating the runner artifact's S3 wrapper whenever the flat `lambda_s3_bucket` is set. The shared bucket alone selects no component. Every artifact-capable singleton uses its own `artifact.s3` wrapper to supply that component's key and optional object version. Runner-config's common SSM housekeeper independently resolves `experimental.multi_runner_config[].ssm.housekeeper.lambda.artifact` over the global `experimental.ssm.housekeeper.lambda.artifact`; S3 combines the component key and version with the shared artifact bucket, zip uses the selected local path, and no selection uses the packaged control-plane archive. Stable translation maps the existing runner artifact into this separate canonical component contract. The ingress webhook artifact remains separate under `experimental.orchestration_provider.webhook.lambda.webhook.artifact`; the runner-binary syncer uses the parallel `experimental.compute_provider.ec2.runner_binaries.syncer.artifact.{zip,s3}` selector, whose S3 key and optional object version resolve against the same shared bucket. `experimental.compute_provider.ec2.instance_termination_watcher` owns watcher enablement, feature flags, runner deregistration, environment, artifact, and sizing. `experimental.compute_provider.ec2.ami.housekeeper` owns enablement, cleanup behavior, artifact, sizing, and schedule. Watcher enablement and feature flags, runner-deregistration enablement, and AMI-housekeeper enablement must be known during planning because they control child resource shape.
+Webhook-orchestration runner-control artifacts are selected globally through `experimental.orchestration_provider.webhook.lambda.artifact.zip` or `experimental.orchestration_provider.webhook.lambda.artifact.s3.{key,object_version}` and shared by scale, pool, and job-retry. The S3 wrapper selects an object from the shared `experimental.lambda.artifact.s3.bucket`; null zip and S3 wrappers use the packaged runner archive. V2 validation rejects simultaneous zip and S3 selection and requires a non-null shared bucket and key when the S3 wrapper is present. Stable-mode translation preserves the old S3-wins rule by clearing the translated zip and creating the runner artifact's S3 wrapper whenever the flat `lambda_s3_bucket` is set. The shared bucket alone selects no component. Every artifact-capable singleton uses its own `artifact.s3` wrapper to supply that component's key and optional object version. Runner-config's common SSM housekeeper independently resolves `experimental.multi_runner_config[].ssm.housekeeper.lambda.artifact` over the global `experimental.ssm.housekeeper.lambda.artifact`; S3 combines the component key and version with the shared artifact bucket, zip uses the selected local path, and no selection uses the packaged control-plane archive. Stable translation maps the existing runner artifact into this separate canonical component contract. The ingress webhook artifact remains separate under `experimental.orchestration_provider.webhook.lambda.webhook.artifact`; the runner-binary syncer uses the parallel `experimental.compute_provider.aws.ec2.runner_binaries.syncer.artifact.{zip,s3}` selector, whose S3 key and optional object version resolve against the same shared bucket. `experimental.compute_provider.aws.ec2.instance_termination_watcher` owns watcher enablement, feature flags, runner deregistration, environment, artifact, and sizing. `experimental.compute_provider.aws.ec2.ami.housekeeper` owns enablement, cleanup behavior, artifact, sizing, and schedule. Watcher enablement and feature flags, runner-deregistration enablement, and AMI-housekeeper enablement must be known during planning because they control child resource shape.
 
-Tags follow the same ownership model but merge rather than replace. Within v2 webhook queue and runner-config scopes, experimental global tags merge with runner-config tags and then with orchestration component or subcomponent tags from broad to narrow; a narrower value wins for a duplicate key. Singleton shared resources use only global scopes. Shared SSM merges `experimental.tags`, `ssm.tags`, and the forced `ghr:environment` tag. The webhook base resources merge `experimental.tags` with that environment tag; its Lambda additionally merges `experimental.lambda.tags` with `experimental.orchestration_provider.webhook.lambda.webhook.tags`. The runner-binary syncer, termination watcher, and AMI housekeeper receive global `tags`, the environment tag, and `lambda.tags`. Distribution buckets additionally merge `compute_provider.ec2.runner_binaries.s3.tags`. EC2 global provider tags merge with per-runner-config `compute_provider.ec2.tags`. EC2 runtime tags belong under `compute_provider.ec2.tags`; bootstrap tags required by the runner are reserved inside the provider and are not propagated to common resources.
+Tags follow the same ownership model but merge rather than replace. Within v2 webhook queue and runner-config scopes, experimental global tags merge with runner-config tags and then with orchestration component or subcomponent tags from broad to narrow; a narrower value wins for a duplicate key. Singleton shared resources use only global scopes. Shared SSM merges `experimental.tags`, `ssm.tags`, and the forced `ghr:environment` tag. The webhook base resources merge `experimental.tags` with that environment tag; its Lambda additionally merges `experimental.lambda.tags` with `experimental.orchestration_provider.webhook.lambda.webhook.tags`. The runner-binary syncer, termination watcher, and AMI housekeeper receive global `tags`, the environment tag, and `lambda.tags`. Distribution buckets additionally merge `compute_provider.aws.ec2.runner_binaries.s3.tags`. EC2 global provider tags merge with per-runner-config `compute_provider.aws.ec2.tags`. EC2 runtime tags belong under `compute_provider.aws.ec2.tags`; bootstrap tags required by the runner are reserved inside the provider and are not propagated to common resources.
 
 Application logging settings stay together under `observability.logs`, including `level`, retention, encryption, class, and runner-config log-group tags. Tracing stays under `observability.tracing`, and metrics enablement, namespace, and individual metric switches stay under `observability.metrics`.
 
-In v1 mode, entries remain exclusively in `runners_map` and retain their flat output fields; `runners_map_v2` is empty. In v2 mode, entries are exposed exclusively through `runners_map_v2` and `runners_map` is empty. Common resources are grouped under `runner`, demand-control resources under `orchestration_provider.webhook`, and provider-specific resources under `provider.<provider>`. The provider key is derived from the selected typed compute-provider block. For example, a module-managed common runner role is available at `runners_map_v2["<runner_config>"].runner.role`; the value is null when the caller selects an external role. Scale-up resources are available at `runners_map_v2["<runner_config>"].orchestration_provider.webhook.scale_up`, and launch-template and runner-log artifacts are under `runners_map_v2["<runner_config>"].provider.ec2`. The top-level `scale_up`, `scale_down`, and `pool` fields remain compatibility aliases for their webhook-provider counterparts. The webhook `pool` value is null when no pool config is supplied.
+In v1 mode, entries remain exclusively in `runners_map` and retain their flat output fields; `runners_map_v2` is empty. In v2 mode, entries are exposed exclusively through `runners_map_v2` and `runners_map` is empty. Common resources are grouped under `runner`, demand-control resources under `orchestration_provider.webhook`, and provider-specific resources under `provider.<namespace>.<provider>`. The provider namespace and type are derived from the selected typed compute-provider leaf. For example, a module-managed common runner role is available at `runners_map_v2["<runner_config>"].runner.role`; the value is null when the caller selects an external role. Scale-up resources are available at `runners_map_v2["<runner_config>"].orchestration_provider.webhook.scale_up`, and launch-template and runner-log artifacts are under `runners_map_v2["<runner_config>"].provider.aws.ec2`. The top-level `scale_up`, `scale_down`, and `pool` fields remain compatibility aliases for their webhook-provider counterparts. The webhook `pool` value is null when no pool config is supplied. Output references are configuration expressions rather than state addresses, so moved blocks cannot rewrite the former experimental `provider.ec2` path for consumers.
 
 ## Plan-time provider selection and IAM shape
 
@@ -508,20 +512,22 @@ ssm = {
 }
 
 compute_provider = {
-  ec2 = {
-    ami = {
-      id_ssm_parameter = {
-        arn = aws_ssm_parameter.runner_ami.arn
-      }
-      kms_key = {
-        arn = aws_kms_key.runner_ami.arn
+  aws = {
+    ec2 = {
+      ami = {
+        id_ssm_parameter = {
+          arn = aws_ssm_parameter.runner_ami.arn
+        }
+        kms_key = {
+          arn = aws_kms_key.runner_ami.arn
+        }
       }
     }
   }
 }
 ```
 
-The populated `ec2` block tells both multi-runner routing and runner-config dispatch which provider implementation exists and must therefore be known during planning. Canonical translation preserves that wrapper, and the `module.runner_configs` input forwards it unchanged at the runner-config boundary. The `orchestration_provider` wrapper follows the same exact-one rule. Within the compute block, each ownership-wrapper object tells Terraform that the corresponding policy exists; its `arn` may safely be computed. At this internal boundary, `ssm.kms_key_id`, the derived `orchestration_provider.webhook.queue.kms_key_id`, and values such as `observability.logs.kms_key_id` remain nullable scalar inputs even when their ARNs are unknown until apply. The public source of the derived queue key is `experimental.orchestration_provider.webhook.queue.encryption.kms_master_key_id`.
+The populated `aws.ec2` leaf tells both multi-runner routing and runner-config dispatch which provider implementation exists and must therefore be known during planning. Canonical translation preserves both namespace levels, and the `module.runner_configs` input forwards the wrapper unchanged at the runner-config boundary. The `orchestration_provider` wrapper follows the same exact-one rule. Within the compute block, each ownership-wrapper object tells Terraform that the corresponding policy exists; its `arn` may safely be computed. At this internal boundary, `ssm.kms_key_id`, the derived `orchestration_provider.webhook.queue.kms_key_id`, and values such as `observability.logs.kms_key_id` remain nullable scalar inputs even when their ARNs are unknown until apply. The public source of the derived queue key is `experimental.orchestration_provider.webhook.queue.encryption.kms_master_key_id`.
 
 For experimental multi-runner v2, global `experimental.ssm.kms_key_id` encrypts shared GitHub App parameters created by the module, configures the webhook with the same key, and adds matching decrypt permissions to every runner config so its control-plane functions can read those credentials. Parameters selected through existing `*_ssm` references retain their external encryption and access requirements. The global key's value may be unknown until apply. It does not select encryption for runtime-created runner parameters. Queue encryption is a separate global contract, may use a different CMK, and reaches only the scale-up consumer and job-retry publisher policies inside the webhook orchestration provider.
 
@@ -532,6 +538,6 @@ For experimental multi-runner v2, global `experimental.ssm.kms_key_id` encrypts 
 3. **Phase 3 — remove legacy variables and migrate state:** In a breaking release, remove the deprecated inputs and flat output adapter, route the remaining canonical configuration through `runner-config`, and ship tested `moved` blocks plus commands for addresses Terraform cannot move declaratively.
 4. **Phase 4 — remove `modules/runners`:** After direct consumers have had a separate deprecation and migration window, delete the legacy module.
 
-A future compute provider must add a typed external input block, multi-runner normalization and routing, a provider-specific `trust-policy` submodule, runner-config dispatch, and an integration that returns the same nested environment-variable, policy, and resource contract before it can be selected in Terraform. Today the typed schema exposes only `ec2`, so unsupported provider attributes fail input-schema validation. When another implemented block is added, the exact-one selection preconditions will reject runner configs that populate more than one supported compute provider.
+A future compute provider must add a typed external namespace and provider leaf, multi-runner normalization and routing, a provider-specific `trust-policy` submodule, runner-config dispatch, and an integration that returns the same nested environment-variable, policy, and resource contract before it can be selected in Terraform. Today the typed schema exposes only `aws.ec2`, so unsupported namespace or provider attributes fail input-schema validation. When another implemented leaf is added, the exact-one selection preconditions will reject runner configs that populate more than one supported compute provider.
 
 A future orchestration provider must add a typed global-default block where shared settings are needed, a typed per-runner-config selector block, runner-config dispatch, a capability adapter for each supported compute provider, provider-grouped outputs, and focused routing and coexistence tests. Once a second typed orchestration provider exists, validation must also reject a runner config that selects more than one provider.
