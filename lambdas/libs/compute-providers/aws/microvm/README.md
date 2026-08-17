@@ -2,6 +2,8 @@
 
 This provider manages a compatible AWS Lambda MicroVM image through the control-plane Lambda. It currently supports ephemeral JIT runners only.
 
+Terraform selects it with `experimental.multi_runner_config[].compute_provider.aws.microvm`, optionally resolving defaults from `experimental.compute_provider.aws.microvm`. The implementation lives at `modules/compute-providers/aws/microvm`, publishes metadata under `provider.aws.microvm`, and requires a Linux ARM64 lane with ephemeral webhook orchestration and JIT configuration enabled. Runner-config derives the environment below from the resolved MicroVM block and uses the common `runner.iam.role` as `MICROVM_EXECUTION_ROLE_ARN`.
+
 The MicroVM image `/run` hook receives this `runHookPayload`:
 
 ```json
@@ -94,11 +96,12 @@ Lambda MicroVM does not expose CPU or memory as `RunMicrovm` inputs. Select an
 image and version with the required resources instead. Labels such as
 `ghr-microvm-memory` are rejected.
 
-Execution roles, ingress network connectors, logging, idle policy, run hook
-payloads, and client tokens remain deployment-controlled. Image ARN, image
-version, and egress connector overrides change executable code or the network
-boundary, so they are rejected unless `awsDynamicLabelsPolicy` supplies an
-explicit `allowed` list for the corresponding key.
+Execution roles, ingress network connectors, and logging remain
+deployment-controlled. The control plane generates the run-hook payload and
+client token for each runner; idle policy is not currently exposed. Image ARN,
+image version, and egress connector overrides change executable code or the
+network boundary, so they are rejected unless `awsDynamicLabelsPolicy` supplies
+an explicit `allowed` list for the corresponding key.
 
 Use the matcher's `awsDynamicLabelsPolicy` to restrict values accepted from
 workflow jobs. The MicroVM policy keys are `egress-network-connectors`,
