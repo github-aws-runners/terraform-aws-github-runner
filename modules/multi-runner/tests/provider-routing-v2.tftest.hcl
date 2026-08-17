@@ -4743,9 +4743,6 @@ run "experimental_v2_resolves_mixed_aws_provider_lanes" {
             egress_network_connectors = [
               "arn:aws:lambda:eu-west-1:aws:network-connector:aws-network-connector:INTERNET_EGRESS",
             ]
-            logging = {
-              log_group = "/aws/lambda-microvms/global"
-            }
             maximum_duration_in_seconds = 3600
             environment_variables = {
               MICROVM_GLOBAL   = "global"
@@ -4811,9 +4808,6 @@ run "experimental_v2_resolves_mixed_aws_provider_lanes" {
             aws = {
               microvm = {
                 image_version = "9"
-                logging = {
-                  log_group = null
-                }
                 environment_variables = {
                   MICROVM_LANE     = "lane"
                   MICROVM_OVERRIDE = "lane"
@@ -4850,7 +4844,6 @@ run "experimental_v2_resolves_mixed_aws_provider_lanes" {
       && local.translated_experimental.multi_runner_config["micro"].compute_provider.aws.ec2 == null
       && local.translated_experimental.multi_runner_config["micro"].compute_provider.aws.microvm.image_arn == "arn:aws:lambda:eu-west-1:123456789012:microvm-image:global-runner"
       && local.translated_experimental.multi_runner_config["micro"].compute_provider.aws.microvm.image_version == "9"
-      && local.translated_experimental.multi_runner_config["micro"].compute_provider.aws.microvm.logging == null
       && local.translated_experimental.multi_runner_config["micro"].compute_provider.aws.microvm.maximum_duration_in_seconds == 3600
       && local.translated_experimental.multi_runner_config["micro"].compute_provider.aws.microvm.environment_variables["MICROVM_GLOBAL"] == "global"
       && local.translated_experimental.multi_runner_config["micro"].compute_provider.aws.microvm.environment_variables["MICROVM_OVERRIDE"] == "lane"
@@ -4866,7 +4859,7 @@ run "experimental_v2_resolves_mixed_aws_provider_lanes" {
       module.runner_configs["ec2"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables["COMPUTE_PROVIDER_TYPE"] == "ec2"
       && module.runner_configs["micro"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables["COMPUTE_PROVIDER_TYPE"] == "microvm"
       && module.runner_configs["micro"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables["MICROVM_IMAGE_ARN"] == "arn:aws:lambda:eu-west-1:123456789012:microvm-image:global-runner"
-      && module.runner_configs["micro"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables["MICROVM_LOG_GROUP"] == ""
+      && module.runner_configs["micro"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables["MICROVM_LOG_GROUP"] == "/github-self-hosted-runners/github-actions-micro/microvm"
       && module.runner_configs["micro"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables["MICROVM_GLOBAL"] == "global"
       && module.runner_configs["micro"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables["MICROVM_LANE"] == "lane"
       && !contains(keys(module.runner_configs["micro"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables), "INSTANCE_TYPES")
@@ -4874,7 +4867,7 @@ run "experimental_v2_resolves_mixed_aws_provider_lanes" {
       && !contains(keys(module.runner_configs["micro"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables), "MICROVM_TAGS")
       && length(module.runner_binaries) == 0
     )
-    error_message = "Each mixed lane must receive only its selected provider fragment, with an explicit MicroVM logging clear and no EC2 binary discovery."
+    error_message = "Each mixed lane must receive only its selected provider fragment, its provider-managed MicroVM log group, and no EC2 binary discovery."
   }
 
   assert {
@@ -4883,6 +4876,7 @@ run "experimental_v2_resolves_mixed_aws_provider_lanes" {
       && output.runners_map_v2["ec2"].provider.aws.microvm == null
       && output.runners_map_v2["micro"].provider.aws.ec2 == null
       && output.runners_map_v2["micro"].provider.aws.microvm.image_arn == "arn:aws:lambda:eu-west-1:123456789012:microvm-image:global-runner"
+      && output.runners_map_v2["micro"].provider.aws.microvm.runners_log_groups[0].name == "/github-self-hosted-runners/github-actions-micro/microvm"
     )
     error_message = "Mixed provider outputs must preserve both AWS provider leaves and set the inactive leaf to null."
   }

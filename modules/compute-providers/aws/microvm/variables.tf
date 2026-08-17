@@ -33,8 +33,6 @@ variable "config" {
     - `image_version`: Optional MicroVM image version.
     - `ingress_network_connectors`: Up to 10 Lambda network-connector ARNs passed to RunMicrovm.
     - `egress_network_connectors`: Up to 10 Lambda network-connector ARNs passed to RunMicrovm.
-    - `logging`: Optional CloudWatch logging configuration. Null omits a custom log group and uses the service default.
-    - `logging.log_group`: CloudWatch Logs log group used by MicroVM runtime logs.
     - `maximum_duration_in_seconds`: Optional maximum MicroVM lifetime. Valid values are integers from 1 through 28,800 seconds.
     - `environment_variables`: Additional provider-specific Lambda environment variables merged into scale-up, scale-down, and pool.
     - `iam.resource_arns.images`: MicroVM image ARNs allowed by RunMicrovm. The default is `["*"]`.
@@ -47,13 +45,10 @@ variable "config" {
   EOT
 
   type = object({
-    image_arn                  = string
-    image_version              = optional(string, null)
-    ingress_network_connectors = optional(list(string), [])
-    egress_network_connectors  = optional(list(string), [])
-    logging = optional(object({
-      log_group = optional(string, null)
-    }), null)
+    image_arn                   = string
+    image_version               = optional(string, null)
+    ingress_network_connectors  = optional(list(string), [])
+    egress_network_connectors   = optional(list(string), [])
     maximum_duration_in_seconds = optional(number, null)
     environment_variables       = optional(map(string), {})
     iam = optional(object({
@@ -91,7 +86,7 @@ variable "runner" {
     - `hooks.job_completed`: Script installed as the runner job-completed hook.
     - `iam.role.arn`: Resolved runner-role ARN used as the MicroVM execution role and referenced by provider policies.
     - `iam.role.name`: Resolved runner-role name used by provider resources.
-    - `iam.role.managed`: Whether runner-config manages the resolved runner role. Callers own an external role and must grant it `ssm:GetParameter` and `ssm:DeleteParameter` on the lane token path plus `logs:CreateLogGroup`, `logs:CreateLogStream`, and `logs:PutLogEvents` on the runtime log destination.
+    - `iam.role.managed`: Whether runner-config manages the resolved runner role. Callers own an external role and must grant it `ssm:GetParameter` and `ssm:DeleteParameter` on the lane token path plus `logs:CreateLogStream` and `logs:PutLogEvents` on the provider-managed runtime log group.
     - `iam.managed_policy_arns`: Common managed-policy ARNs returned with the provider-specific runner policies for attachment by runner-config.
     - `iam.path`: IAM path available to provider-managed IAM resources. Null derives the path from `prefix`.
   EOT
@@ -163,19 +158,20 @@ variable "ssm" {
   nullable = false
 }
 
-# tflint-ignore: terraform_unused_declarations
 variable "observability" {
   description = <<-EOT
-    Provider-neutral observability context reserved for compute-provider integrations. The MicroVM provider does not currently create or configure log groups; `config.logging.log_group` only selects the runtime service's log destination.
+    Provider-neutral observability settings applied to the provider-managed MicroVM runtime log group.
 
-    - `logs.retention_in_days`: Reserved common log-retention setting.
-    - `logs.kms_key_id`: Reserved common log-encryption setting.
-    - `logs.tags`: Reserved common log-group tags.
+    - `logs.retention_in_days`: CloudWatch Logs retention period.
+    - `logs.kms_key_id`: Optional KMS key ID or ARN used to encrypt the log group.
+    - `logs.class`: CloudWatch log-group class.
+    - `logs.tags`: Tags merged after module-level tags on the log group.
   EOT
   type = object({
     logs = optional(object({
       retention_in_days = optional(number, 180)
       kms_key_id        = optional(string, null)
+      class             = optional(string, "STANDARD")
       tags              = optional(map(string), {})
     }), {})
   })

@@ -299,7 +299,6 @@ locals {
           image_version               = null
           ingress_network_connectors  = []
           egress_network_connectors   = []
-          logging                     = null
           maximum_duration_in_seconds = null
           environment_variables       = {}
           iam = {
@@ -796,9 +795,6 @@ locals {
               egress_network_connectors = v.compute_provider.aws.microvm.egress_network_connectors != null ? (
                 v.compute_provider.aws.microvm.egress_network_connectors
               ) : local.raw_translated_experimental.compute_provider.aws.microvm.egress_network_connectors
-              logging = v.compute_provider.aws.microvm.logging != null ? (
-                v.compute_provider.aws.microvm.logging.log_group == null ? null : v.compute_provider.aws.microvm.logging
-              ) : local.raw_translated_experimental.compute_provider.aws.microvm.logging
               maximum_duration_in_seconds = try(coalesce(
                 v.compute_provider.aws.microvm.maximum_duration_in_seconds,
                 local.raw_translated_experimental.compute_provider.aws.microvm.maximum_duration_in_seconds,

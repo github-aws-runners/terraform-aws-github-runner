@@ -15,11 +15,6 @@ resource "terraform_data" "validate_config" {
     }
 
     precondition {
-      condition     = try(var.config.logging.log_group, null) == null ? true : trimspace(var.config.logging.log_group) != ""
-      error_message = "compute_provider.aws.microvm.logging.log_group must be null or a non-empty string."
-    }
-
-    precondition {
       condition = (
         length(var.config.ingress_network_connectors) <= 10 &&
         alltrue([

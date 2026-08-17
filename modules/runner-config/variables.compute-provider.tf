@@ -122,8 +122,6 @@ variable "compute_provider" {
     - `aws.microvm.image_version`: Optional MicroVM image version.
     - `aws.microvm.ingress_network_connectors`: Up to 10 Lambda network-connector ARNs passed to RunMicrovm.
     - `aws.microvm.egress_network_connectors`: Up to 10 Lambda network-connector ARNs passed to RunMicrovm.
-    - `aws.microvm.logging`: Optional CloudWatch logging configuration. Null omits a custom log group and uses the service default.
-    - `aws.microvm.logging.log_group`: CloudWatch Logs log group used by MicroVM runtime logs.
     - `aws.microvm.maximum_duration_in_seconds`: Optional maximum MicroVM lifetime. Valid values are integers from 1 through 28,800 seconds.
     - `aws.microvm.environment_variables`: Additional provider-specific Lambda environment variables merged into scale-up, scale-down, and pool.
     - `aws.microvm.iam.resource_arns.images`: MicroVM image ARNs allowed by RunMicrovm.
@@ -274,13 +272,10 @@ variable "compute_provider" {
         use_dedicated_host = optional(bool, false)
       }), null)
       microvm = optional(object({
-        image_arn                  = string
-        image_version              = optional(string, null)
-        ingress_network_connectors = optional(list(string), [])
-        egress_network_connectors  = optional(list(string), [])
-        logging = optional(object({
-          log_group = optional(string, null)
-        }), null)
+        image_arn                   = string
+        image_version               = optional(string, null)
+        ingress_network_connectors  = optional(list(string), [])
+        egress_network_connectors   = optional(list(string), [])
         maximum_duration_in_seconds = optional(number, null)
         environment_variables       = optional(map(string), {})
         iam = optional(object({

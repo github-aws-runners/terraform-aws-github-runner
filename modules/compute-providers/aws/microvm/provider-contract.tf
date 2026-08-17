@@ -30,5 +30,6 @@ locals {
     image_arn          = var.config.image_arn
     image_version      = var.config.image_version
     execution_role_arn = var.runner.iam.role.arn
+    runners_log_groups = [aws_cloudwatch_log_group.runtime]
   }
 }

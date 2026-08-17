@@ -26,7 +26,7 @@ The implementation is split into common runner-config composition, orchestration
 | `compute-providers/<namespace>/<provider>/trust-policy` | Provider-specific default runner-role trust, merged with the optional caller-provided trust document before the common role is created. |
 | `compute-providers/<namespace>/<provider>` | Provider-specific resources, permission requirements, and the IAM and environment-variable fragments consumed by the common control plane after the runner role is resolved. |
 
-The EC2 provider owns the instance profile, launch template, security group, AMI and EC2-specific bootstrap parameters, runner log groups, EC2 policy statements, and EC2 Lambda environment variables. The Lambda MicroVM provider owns `RunMicrovm` control-plane permissions, MicroVM runtime environment variables, and selected image metadata. Both are implemented under the AWS namespace.
+The EC2 provider owns the instance profile, launch template, security group, AMI and EC2-specific bootstrap parameters, runner log groups, EC2 policy statements, and EC2 Lambda environment variables. The Lambda MicroVM provider owns `RunMicrovm` control-plane permissions, MicroVM runtime environment variables, its lane-scoped runtime log group, and selected image metadata. Both are implemented under the AWS namespace.
 
 Runner-config, the root orchestration and compute providers, and their leaf modules are internal implementation boundaries rather than standalone public modules. Callers opt into the experimental interface through `experimental.multi_runner_config`; `multi-runner` calls `runner-config`, which selects the provider modules. Their direct input and output contracts may change while v2 remains experimental.
 
@@ -401,9 +401,6 @@ module "multi_runner" {
             aws_lambda_network_connector.private_ingress.arn,
           ]
           maximum_duration_in_seconds = 3600
-          logging = {
-            log_group = "/aws/lambda-microvms/github-runners"
-          }
         }
       }
     }
@@ -499,7 +496,7 @@ module "multi_runner" {
         }
 
         # The non-null lane leaf selects MicroVM and inherits the global image,
-        # connector, duration, and logging defaults above.
+        # connector, and duration defaults above.
         compute_provider = {
           aws = {
             microvm = {}
@@ -533,7 +530,7 @@ Global `observability` values provide defaults for every runner config and confi
 
 The global `experimental.compute_provider.aws.ec2` block owns v2 defaults for EC2 settings such as VPC and subnet IDs, managed-security-group behavior, egress rules, additional security groups, CloudWatch agent config, instance-profile path, key name, public IPv4 association, and tags. It also owns the shared AMI housekeeper, instance-termination watcher, and runner-binary distribution. It does not fall back to corresponding flat module inputs. VPC and subnet values must therefore be supplied through the global or per-runner-config `compute_provider.aws.ec2` block when needed.
 
-The global `experimental.compute_provider.aws.microvm` block owns defaults for the MicroVM image ARN and version, ingress and egress network connectors, logging group, maximum duration, provider environment variables, resource allowlists, and optional managed-policy wrappers. A selected lane's non-null `compute_provider.aws.microvm` block inherits nullable values from that global leaf and may override them; `{ logging = { log_group = null } }` explicitly clears a global custom log group. Global defaults alone never select MicroVM.
+The global `experimental.compute_provider.aws.microvm` block owns defaults for the MicroVM image ARN and version, ingress and egress network connectors, maximum duration, provider environment variables, resource allowlists, and optional managed-policy wrappers. A selected lane's non-null `compute_provider.aws.microvm` block inherits nullable values from that global leaf and may override them. Global defaults alone never select MicroVM. Each selected lane creates its own `/github-self-hosted-runners/<runner-config-prefix>/microvm` log group from the common `observability.logs` retention, encryption, class, and tag settings.
 
 Global provider values should be set only when they are shared across every applicable runner config. The global `experimental.compute_provider` wrapper never selects a provider. Every runner config must still populate exactly one typed provider leaf; that per-runner-config leaf selects EC2 or MicroVM, supplies required lane fields, and supports mixed-provider maps in one module instance.
 
@@ -545,7 +542,7 @@ Tags follow the same ownership model but merge rather than replace. Within v2 we
 
 Application logging settings stay together under `observability.logs`, including `level`, retention, encryption, class, and runner-config log-group tags. Tracing stays under `observability.tracing`, and metrics enablement, namespace, and individual metric switches stay under `observability.metrics`.
 
-In v1 mode, entries remain exclusively in `runners_map` and retain their flat output fields; `runners_map_v2` is empty. In v2 mode, entries are exposed exclusively through `runners_map_v2` and `runners_map` is empty. Common resources are grouped under `runner`, demand-control resources under `orchestration_provider.webhook`, and provider-specific resources under `provider.<namespace>.<provider>`. The provider namespace and type are derived from the selected typed compute-provider leaf. For example, a module-managed common runner role is available at `runners_map_v2["<runner_config>"].runner.role`; the value is null when the caller selects an external role. Scale-up resources are available at `runners_map_v2["<runner_config>"].orchestration_provider.webhook.scale_up`. EC2 launch-template and runner-log artifacts are under `runners_map_v2["<runner_config>"].provider.aws.ec2`, while MicroVM image ARN, version, and execution-role metadata are under `.provider.aws.microvm`. The top-level `scale_up`, `scale_down`, and `pool` fields remain compatibility aliases for their webhook-provider counterparts. The webhook `pool` value is null when no pool config is supplied. Output references are configuration expressions rather than state addresses, so moved blocks cannot rewrite the former experimental `provider.ec2` path for EC2 consumers.
+In v1 mode, entries remain exclusively in `runners_map` and retain their flat output fields; `runners_map_v2` is empty. In v2 mode, entries are exposed exclusively through `runners_map_v2` and `runners_map` is empty. Common resources are grouped under `runner`, demand-control resources under `orchestration_provider.webhook`, and provider-specific resources under `provider.<namespace>.<provider>`. The provider namespace and type are derived from the selected typed compute-provider leaf. For example, a module-managed common runner role is available at `runners_map_v2["<runner_config>"].runner.role`; the value is null when the caller selects an external role. Scale-up resources are available at `runners_map_v2["<runner_config>"].orchestration_provider.webhook.scale_up`. EC2 launch-template and runner-log artifacts are under `runners_map_v2["<runner_config>"].provider.aws.ec2`, while MicroVM image ARN, version, execution-role metadata, and runtime log group are under `.provider.aws.microvm`. The top-level `scale_up`, `scale_down`, and `pool` fields remain compatibility aliases for their webhook-provider counterparts. The webhook `pool` value is null when no pool config is supplied. Output references are configuration expressions rather than state addresses, so moved blocks cannot rewrite the former experimental `provider.ec2` path for EC2 consumers.
 
 ## Plan-time provider selection and IAM shape
 

@@ -10,6 +10,12 @@ mock_provider "aws" {
       json = "{}"
     }
   }
+
+  mock_resource "aws_cloudwatch_log_group" {
+    defaults = {
+      arn = "arn:aws:logs:eu-west-1:123456789012:log-group:/github-self-hosted-runners/microvm-test/microvm"
+    }
+  }
 }
 
 variables {
@@ -29,9 +35,6 @@ variables {
     egress_network_connectors = [
       "arn:aws:lambda:eu-west-1:123456789012:network-connector:egress",
     ]
-    logging = {
-      log_group = "/aws/lambda-microvms/runner"
-    }
     maximum_duration_in_seconds = 3600
     environment_variables = {
       MICROVM_CLUSTER   = "runner-cluster"
@@ -59,10 +62,22 @@ variables {
       config = "config"
     }
   }
+
+  observability = {
+    logs = {
+      retention_in_days = 30
+      kms_key_id        = "arn:aws:kms:eu-west-1:123456789012:key/runtime-logs"
+      class             = "INFREQUENT_ACCESS"
+      tags = {
+        Name    = "microvm-runtime-logs"
+        LogOnly = "runtime"
+      }
+    }
+  }
 }
 
 run "exposes_microvm_control_plane_contract" {
-  command = plan
+  command = apply
 
   assert {
     condition     = toset(keys(output.provider)) == toset(["environment_variables", "policies", "resources"])
@@ -78,7 +93,7 @@ run "exposes_microvm_control_plane_contract" {
       && jsondecode(output.provider.environment_variables.scale_up["MICROVM_INGRESS_NETWORK_CONNECTORS"])[0] == "arn:aws:lambda:eu-west-1:123456789012:network-connector:ingress"
       && jsondecode(output.provider.environment_variables.scale_up["MICROVM_EGRESS_NETWORK_CONNECTORS"])[0] == "arn:aws:lambda:eu-west-1:123456789012:network-connector:egress"
       && output.provider.environment_variables.scale_up["MICROVM_MAXIMUM_DURATION_IN_SECONDS"] == "3600"
-      && output.provider.environment_variables.scale_up["MICROVM_LOG_GROUP"] == "/aws/lambda-microvms/runner"
+      && output.provider.environment_variables.scale_up["MICROVM_LOG_GROUP"] == "/github-self-hosted-runners/microvm-test/microvm"
     )
     error_message = "The MicroVM provider must map every configured runtime input to the canonical Lambda environment contract."
   }
@@ -139,21 +154,38 @@ run "exposes_microvm_control_plane_contract" {
     condition = (
       data.aws_iam_policy_document.runner_ssm_jit.statement[0].actions == toset(["ssm:DeleteParameter", "ssm:GetParameter"])
       && data.aws_iam_policy_document.runner_ssm_jit.statement[0].resources == toset(["arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/tokens/*"])
-      && data.aws_iam_policy_document.runner_runtime_logs.statement[0].actions == toset(["logs:CreateLogGroup"])
-      && data.aws_iam_policy_document.runner_runtime_logs.statement[0].resources == toset(["arn:aws:logs:eu-west-1:123456789012:log-group:/aws/lambda-microvms/runner"])
-      && data.aws_iam_policy_document.runner_runtime_logs.statement[1].actions == toset(["logs:CreateLogStream", "logs:PutLogEvents"])
-      && data.aws_iam_policy_document.runner_runtime_logs.statement[1].resources == toset(["arn:aws:logs:eu-west-1:123456789012:log-group:/aws/lambda-microvms/runner:*"])
+      && length(data.aws_iam_policy_document.runner_runtime_logs.statement) == 1
+      && data.aws_iam_policy_document.runner_runtime_logs.statement[0].actions == toset(["logs:CreateLogStream", "logs:PutLogEvents"])
+      && data.aws_iam_policy_document.runner_runtime_logs.statement[0].resources == toset(["arn:aws:logs:eu-west-1:123456789012:log-group:/github-self-hosted-runners/microvm-test/microvm:*"])
     )
-    error_message = "Managed MicroVM runners must receive only lane-token JIT access and the configured runtime log-group permissions."
+    error_message = "Managed MicroVM runners must receive only lane-token JIT access and stream-write permissions on the provider-managed runtime log group."
   }
 
   assert {
-    condition = output.provider.resources == {
-      image_arn          = "arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner"
-      image_version      = "3"
-      execution_role_arn = "arn:aws:iam::123456789012:role/microvm-test-runner"
-    }
-    error_message = "The MicroVM provider must expose its selected image and execution role as provider resources."
+    condition = (
+      toset(keys(output.provider.resources)) == toset(["execution_role_arn", "image_arn", "image_version", "runners_log_groups"])
+      && output.provider.resources.image_arn == "arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner"
+      && output.provider.resources.image_version == "3"
+      && output.provider.resources.execution_role_arn == "arn:aws:iam::123456789012:role/microvm-test-runner"
+      && length(output.provider.resources.runners_log_groups) == 1
+      && output.provider.resources.runners_log_groups[0].name == "/github-self-hosted-runners/microvm-test/microvm"
+    )
+    error_message = "The MicroVM provider must expose its selected image, execution role, and runtime log group as provider resources."
+  }
+
+  assert {
+    condition = (
+      aws_cloudwatch_log_group.runtime.name == "/github-self-hosted-runners/microvm-test/microvm"
+      && aws_cloudwatch_log_group.runtime.retention_in_days == 30
+      && aws_cloudwatch_log_group.runtime.kms_key_id == "arn:aws:kms:eu-west-1:123456789012:key/runtime-logs"
+      && aws_cloudwatch_log_group.runtime.log_group_class == "INFREQUENT_ACCESS"
+      && aws_cloudwatch_log_group.runtime.tags == tomap({
+        Name    = "microvm-runtime-logs"
+        Module  = "runner"
+        LogOnly = "runtime"
+      })
+    )
+    error_message = "The MicroVM provider must own its lane-scoped log group and apply the common observability lifecycle and tag scopes."
   }
 }
 
@@ -197,7 +229,7 @@ run "accepts_external_runner_role_and_policy_overrides" {
       output.provider.environment_variables.scale_up["MICROVM_EXECUTION_ROLE_ARN"] == "arn:aws:iam::123456789012:role/external-microvm-runner"
       && output.provider.environment_variables.scale_up["MICROVM_INGRESS_NETWORK_CONNECTORS"] == ""
       && output.provider.environment_variables.scale_up["MICROVM_EGRESS_NETWORK_CONNECTORS"] == ""
-      && output.provider.environment_variables.scale_up["MICROVM_LOG_GROUP"] == ""
+      && output.provider.environment_variables.scale_up["MICROVM_LOG_GROUP"] == "/github-self-hosted-runners/microvm-test/microvm"
       && output.provider.environment_variables.scale_up["MICROVM_MAXIMUM_DURATION_IN_SECONDS"] == ""
       && data.aws_iam_policy_document.scale_up.statement[0].resources == toset(["*"])
       && data.aws_iam_policy_document.scale_up.statement[1].resources == toset(["arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner-*"])
@@ -224,10 +256,10 @@ run "accepts_external_runner_role_and_policy_overrides" {
   assert {
     condition = (
       toset(keys(output.provider.policies.runner.inline_policies)) == toset(["runtime_logs", "ssm_jit"])
-      && data.aws_iam_policy_document.runner_runtime_logs.statement[0].resources == toset(["arn:aws:logs:eu-west-1:123456789012:log-group:/aws/lambda/microvms/*"])
-      && data.aws_iam_policy_document.runner_runtime_logs.statement[1].resources == toset(["arn:aws:logs:eu-west-1:123456789012:log-group:/aws/lambda/microvms/*:*"])
+      && length(data.aws_iam_policy_document.runner_runtime_logs.statement) == 1
+      && data.aws_iam_policy_document.runner_runtime_logs.statement[0].resources == toset(["arn:aws:logs:eu-west-1:123456789012:log-group:/github-self-hosted-runners/microvm-test/microvm:*"])
     )
-    error_message = "The provider contract must keep plan-known runner-policy keys and scope default runtime logging to Lambda MicroVM log groups."
+    error_message = "The provider contract must keep plan-known runner-policy keys and scope runtime logging to its provider-managed group."
   }
 }
 
@@ -250,21 +282,6 @@ run "rejects_fractional_maximum_duration" {
     config = {
       image_arn                   = "arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner"
       maximum_duration_in_seconds = 1.5
-    }
-  }
-
-  expect_failures = [terraform_data.validate_config]
-}
-
-run "rejects_blank_log_group" {
-  command = plan
-
-  variables {
-    config = {
-      image_arn = "arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner"
-      logging = {
-        log_group = " "
-      }
     }
   }
 

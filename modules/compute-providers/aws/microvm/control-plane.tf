@@ -57,7 +57,7 @@ locals {
     MICROVM_IMAGE_ARN                   = var.config.image_arn
     MICROVM_IMAGE_VERSION               = var.config.image_version == null ? "" : var.config.image_version
     MICROVM_INGRESS_NETWORK_CONNECTORS  = length(var.config.ingress_network_connectors) == 0 ? "" : jsonencode(var.config.ingress_network_connectors)
-    MICROVM_LOG_GROUP                   = try(var.config.logging.log_group, null) == null ? "" : var.config.logging.log_group
+    MICROVM_LOG_GROUP                   = aws_cloudwatch_log_group.runtime.name
     MICROVM_MAXIMUM_DURATION_IN_SECONDS = var.config.maximum_duration_in_seconds == null ? "" : tostring(var.config.maximum_duration_in_seconds)
   })
 

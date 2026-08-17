@@ -257,8 +257,6 @@ variable "experimental" {
     - `compute_provider.aws.microvm.image_version`: Optional default MicroVM image version. The default is null.
     - `compute_provider.aws.microvm.ingress_network_connectors`: Default ingress Lambda network-connector ARNs passed to RunMicrovm. The default is `[]`; at most 10 may be configured.
     - `compute_provider.aws.microvm.egress_network_connectors`: Default egress Lambda network-connector ARNs passed to RunMicrovm. The default is `[]`; at most 10 may be configured.
-    - `compute_provider.aws.microvm.logging`: Optional default CloudWatch logging configuration. The default is null, which omits a custom log group and uses the service default.
-    - `compute_provider.aws.microvm.logging.log_group`: CloudWatch Logs log group used by MicroVM runtime logs.
     - `compute_provider.aws.microvm.maximum_duration_in_seconds`: Optional default maximum MicroVM lifetime. The default is null; valid non-null values are integers from 1 through 28,800 seconds.
     - `compute_provider.aws.microvm.environment_variables`: Default provider-specific control-plane environment variables. The default is `{}` and runner-configuration values take precedence.
     - `compute_provider.aws.microvm.iam.resource_arns.images`: Default MicroVM image ARNs allowed by RunMicrovm. The default is `["*"]`.
@@ -477,8 +475,6 @@ variable "experimental" {
     - `multi_runner_config[].compute_provider.aws.microvm.image_version`: Optional MicroVM image-version override. Null inherits the global value.
     - `multi_runner_config[].compute_provider.aws.microvm.ingress_network_connectors`: Up to 10 ingress Lambda network-connector ARNs passed to RunMicrovm. Null inherits the global list.
     - `multi_runner_config[].compute_provider.aws.microvm.egress_network_connectors`: Up to 10 egress Lambda network-connector ARNs passed to RunMicrovm. Null inherits the global list.
-    - `multi_runner_config[].compute_provider.aws.microvm.logging`: Optional CloudWatch logging override. Null inherits the global value; `{ log_group = null }` explicitly clears a global custom log group and uses the service default.
-    - `multi_runner_config[].compute_provider.aws.microvm.logging.log_group`: CloudWatch Logs log group used by MicroVM runtime logs. A non-null value must not be blank.
     - `multi_runner_config[].compute_provider.aws.microvm.maximum_duration_in_seconds`: Optional integer maximum MicroVM lifetime from 1 through 28,800 seconds. Null inherits the global value.
     - `multi_runner_config[].compute_provider.aws.microvm.environment_variables`: Provider-specific control-plane environment variables merged after the global map.
     - `multi_runner_config[].compute_provider.aws.microvm.iam.resource_arns.images`: MicroVM image ARNs allowed by RunMicrovm. Null inherits the global list.
@@ -877,13 +873,10 @@ variable "experimental" {
           }), {})
         }), {})
         microvm = optional(object({
-          image_arn                  = optional(string, null)
-          image_version              = optional(string, null)
-          ingress_network_connectors = optional(list(string), [])
-          egress_network_connectors  = optional(list(string), [])
-          logging = optional(object({
-            log_group = optional(string, null)
-          }), null)
+          image_arn                   = optional(string, null)
+          image_version               = optional(string, null)
+          ingress_network_connectors  = optional(list(string), [])
+          egress_network_connectors   = optional(list(string), [])
           maximum_duration_in_seconds = optional(number, null)
           environment_variables       = optional(map(string), {})
           iam = optional(object({
@@ -1225,13 +1218,10 @@ variable "experimental" {
             tags = optional(map(string), {})
           }), null)
           microvm = optional(object({
-            image_arn                  = optional(string, null)
-            image_version              = optional(string, null)
-            ingress_network_connectors = optional(list(string), null)
-            egress_network_connectors  = optional(list(string), null)
-            logging = optional(object({
-              log_group = optional(string, null)
-            }), null)
+            image_arn                   = optional(string, null)
+            image_version               = optional(string, null)
+            ingress_network_connectors  = optional(list(string), null)
+            egress_network_connectors   = optional(list(string), null)
             maximum_duration_in_seconds = optional(number, null)
             environment_variables       = optional(map(string), {})
             iam = optional(object({

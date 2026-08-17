@@ -675,9 +675,6 @@ run "routes_lambda_microvm_provider" {
             "arn:aws:lambda:eu-west-1:aws:network-connector:aws-network-connector:INTERNET_EGRESS",
           ]
           maximum_duration_in_seconds = 1800
-          logging = {
-            log_group = "/aws/lambda-microvms/runner"
-          }
         }
       }
     }
@@ -728,6 +725,7 @@ run "routes_lambda_microvm_provider" {
       && output.provider.aws.microvm.image_arn == "arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner"
       && output.provider.aws.microvm.image_version == "7"
       && contains(keys(output.provider.aws.microvm), "execution_role_arn")
+      && output.provider.aws.microvm.runners_log_groups[0].name == "/github-self-hosted-runners/github-actions/microvm"
     )
     error_message = "The selected MicroVM resources must be exposed only under provider.aws.microvm."
   }
@@ -738,7 +736,7 @@ run "routes_lambda_microvm_provider" {
       && module.orchestration_webhook[0].scale_down.lambda.environment[0].variables["COMPUTE_PROVIDER_TYPE"] == "microvm"
       && module.orchestration_webhook[0].scale_up.lambda.environment[0].variables["MICROVM_IMAGE_ARN"] == "arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner"
       && contains(keys(module.orchestration_webhook[0].scale_up.lambda.environment[0].variables), "MICROVM_EXECUTION_ROLE_ARN")
-      && module.orchestration_webhook[0].scale_up.lambda.environment[0].variables["MICROVM_LOG_GROUP"] == "/aws/lambda-microvms/runner"
+      && module.orchestration_webhook[0].scale_up.lambda.environment[0].variables["MICROVM_LOG_GROUP"] == "/github-self-hosted-runners/github-actions/microvm"
       && module.orchestration_webhook[0].scale_down.lambda.environment[0].variables["RUNNER_BOOT_TIME_IN_MINUTES"] == "5"
       && !contains(keys(module.orchestration_webhook[0].scale_up.lambda.environment[0].variables), "MICROVM_RUN_CONFIG")
       && !contains(keys(module.orchestration_webhook[0].scale_up.lambda.environment[0].variables), "MICROVM_TAGS")
