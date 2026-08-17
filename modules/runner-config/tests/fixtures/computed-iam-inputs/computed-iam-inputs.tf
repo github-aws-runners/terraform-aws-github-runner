@@ -17,26 +17,28 @@ module "external_iam" {
   prefix     = "computed-external"
 
   compute_provider = {
-    ec2 = {
-      vpc_id         = "vpc-12345678"
-      subnet_ids     = ["subnet-12345678"]
-      instance_types = ["m5.large"]
-      ami = {
-        id_ssm_parameter = {
-          arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/external-ami-${random_id.external.hex}"
+    aws = {
+      ec2 = {
+        vpc_id         = "vpc-12345678"
+        subnet_ids     = ["subnet-12345678"]
+        instance_types = ["m5.large"]
+        ami = {
+          id_ssm_parameter = {
+            arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/external-ami-${random_id.external.hex}"
+          }
+          kms_key = {
+            arn = "arn:aws:kms:eu-west-1:123456789012:key/${random_id.external.hex}"
+          }
         }
-        kms_key = {
-          arn = "arn:aws:kms:eu-west-1:123456789012:key/${random_id.external.hex}"
+        instance_profile = {
+          name = "external-runner-${random_id.external.hex}"
         }
-      }
-      instance_profile = {
-        name = "external-runner-${random_id.external.hex}"
-      }
-      cloudwatch_agent = {
-        enabled = false
-      }
-      binaries_syncer = {
-        enabled = false
+        cloudwatch_agent = {
+          enabled = false
+        }
+        binaries_syncer = {
+          enabled = false
+        }
       }
     }
   }
@@ -124,15 +126,17 @@ module "generated_policy" {
   prefix     = "computed-policy"
 
   compute_provider = {
-    ec2 = {
-      vpc_id         = "vpc-12345678"
-      subnet_ids     = ["subnet-12345678"]
-      instance_types = ["m5.large"]
-      cloudwatch_agent = {
-        enabled = false
-      }
-      binaries_syncer = {
-        enabled = false
+    aws = {
+      ec2 = {
+        vpc_id         = "vpc-12345678"
+        subnet_ids     = ["subnet-12345678"]
+        instance_types = ["m5.large"]
+        cloudwatch_agent = {
+          enabled = false
+        }
+        binaries_syncer = {
+          enabled = false
+        }
       }
     }
   }

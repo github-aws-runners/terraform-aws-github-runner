@@ -1,18 +1,28 @@
 locals {
-  provider_type = one([
-    for provider_type, provider_config in var.compute_provider : provider_type
+  compute_providers = {
+    aws_ec2 = var.compute_provider.aws.ec2
+  }
+
+  provider_key = one([
+    for provider_key, provider_config in local.compute_providers : provider_key
     if provider_config != null
   ])
 
-  provider_assume_role_policies = {
-    ec2 = try(module.compute_ec2_trust_policy[0].assume_role_policy, null)
+  provider_types = {
+    aws_ec2 = "ec2"
   }
 
-  provider_assume_role_policy = local.provider_assume_role_policies[local.provider_type]
+  provider_type = local.provider_types[local.provider_key]
+
+  provider_assume_role_policies = {
+    aws_ec2 = try(module.compute_aws_ec2_trust_policy[0].assume_role_policy, null)
+  }
+
+  provider_assume_role_policy = local.provider_assume_role_policies[local.provider_key]
 
   provider_contracts = {
-    ec2 = one(module.compute_ec2[*].provider)
+    aws_ec2 = one(module.compute_aws_ec2[*].provider)
   }
 
-  provider_contract = local.provider_contracts[local.provider_type]
+  provider_contract = local.provider_contracts[local.provider_key]
 }

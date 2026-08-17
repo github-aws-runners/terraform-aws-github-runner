@@ -65,8 +65,10 @@ experimental = {
       }
 
       compute_provider = {
-        ec2 = {
-          instance_types = ["m7g.large"]
+        aws = {
+          ec2 = {
+            instance_types = ["m7g.large"]
+          }
         }
       }
     }
@@ -126,8 +128,8 @@ The Terraform implementation is split as follows:
 | `modules/orchestration-providers/webhook/pool` | Owns optional scheduled pool resources and IAM. |
 | `modules/orchestration-providers/webhook/job-retry` | Owns optional queued-job retry resources and IAM. |
 | `modules/runner-config/ssm-housekeeper` | Owns provider-neutral cleanup of runner token and configuration parameters, including its component-specific Lambda artifact. |
-| `modules/compute-providers/<provider>/trust-policy` | Produces the provider-specific runner-role trust policy before the common runner role is resolved. |
-| `modules/compute-providers/<provider>` | Owns capacity resources and returns policy, environment-variable, managed-policy, and resource capabilities. |
+| `modules/compute-providers/<namespace>/<provider>/trust-policy` | Produces the provider-specific runner-role trust policy before the common runner role is resolved. |
+| `modules/compute-providers/<namespace>/<provider>` | Owns capacity resources and returns policy, environment-variable, managed-policy, and resource capabilities. |
 
 The former `modules/runner-stack` name becomes `modules/runner-config`. “Runner config” describes the module's purpose without implying a specific deployment topology.
 
@@ -138,9 +140,9 @@ flowchart TD
   Selector --> Webhook["orchestration-providers/webhook"]
   Selector -. future .-> ScaleSet["orchestration-providers/scale-set"]
   Config --> ComputeSelector{"exactly one compute provider"}
-  ComputeSelector --> Trust["compute-providers/ec2/trust-policy"]
+  ComputeSelector --> Trust["compute-providers/aws/ec2/trust-policy"]
   Trust --> Role["runner role"]
-  Role --> EC2["compute-providers/ec2"]
+  Role --> EC2["compute-providers/aws/ec2"]
   EC2 --> Capabilities["compute capabilities"]
   Capabilities --> Adapter["runner-config capability adapter"]
   Adapter --> Webhook
@@ -170,11 +172,11 @@ A future scale-set controller may require a different subset or extension of the
 
 Stable inputs are translated into the same internal canonical representation so defaults and shared singleton values have one resolution path. Stable runner configs continue to call the existing `modules/runners` implementation at their existing addresses. Opting into experimental v2 is module-wide: a non-empty `experimental.multi_runner_config` replaces, rather than merges with, the stable map.
 
-The runner config uses one explicitly named, count-addressed module per concrete provider. Compute modules follow `module.compute_<type>[0]`, while orchestration modules follow `module.orchestration_<type>[0]`.
+The runner config uses one explicitly named, count-addressed module per concrete provider. Compute modules follow `module.compute_<namespace>_<type>[0]`, while orchestration modules follow `module.orchestration_<type>[0]`. The AWS EC2 modules therefore use `module.compute_aws_ec2_trust_policy[0]` and `module.compute_aws_ec2[0]`.
 
-The experimental v2 implementation does not retain declarative moves from earlier unpublished module names. Those addresses are not part of the stable contract. An existing experimental deployment must migrate any affected state explicitly before upgrading or accept Terraform's proposed replacement actions.
+Declarative moved blocks preserve existing experimental state for the AWS namespace rename: `module.compute_ec2_trust_policy[0]` moves to `module.compute_aws_ec2_trust_policy[0]`, and `module.compute_ec2[0]` moves to `module.compute_aws_ec2[0]`. These moves are scoped to those v2 child modules; unrelated earlier experimental addresses remain outside the stable contract and require explicit migration when affected.
 
-The canonical v2 output groups resources under `orchestration_provider.webhook`. Direct `scale_up`, `scale_down`, and `pool` outputs remain compatibility aliases during the experimental transition.
+The canonical v2 output groups demand-control resources under `orchestration_provider.webhook` and compute resources under the selected namespace and provider, currently `provider.aws.ec2`. Direct `scale_up`, `scale_down`, and `pool` outputs remain compatibility aliases during the experimental transition. Moved blocks preserve resource state addresses but cannot rewrite configuration expressions, so consumers must update references from the former experimental `provider.ec2` path.
 
 This ADR does not define an automatic stable-v1-to-v2 state migration. Existing deployments remain on the stable path until that migration is separately designed and documented.
 
@@ -273,7 +275,7 @@ Implementation and review must verify the boundary at several levels.
 - Per-runner values override global webhook defaults, and omitted nullable values inherit them.
 - Shared singleton resources consume global values rather than arbitrary per-runner overrides.
 - Stable inputs preserve stable resource addresses and output shape.
-- Canonical runner-config, compute-provider, and orchestration-provider addresses are used consistently in fresh plans.
+- Fresh plans use the canonical `module.compute_aws_ec2_trust_policy[0]` and `module.compute_aws_ec2[0]` runner-config addresses, with declarative moved blocks mapping the prior v2 child labels.
 - Canonical nested outputs and compatibility aliases reference the same resources.
 
 ### Provider integration tests

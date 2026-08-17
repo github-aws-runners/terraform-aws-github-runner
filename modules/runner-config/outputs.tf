@@ -33,8 +33,10 @@ output "orchestration_provider" {
 }
 
 output "provider" {
-  description = "Provider-specific resources grouped under the selected provider key."
+  description = "Provider-specific resources grouped under the selected provider namespace and type."
   value = {
-    (local.provider_type) = local.provider_contract.resources
+    aws = {
+      ec2 = local.provider_key == "aws_ec2" ? local.provider_contract.resources : null
+    }
   }
 }

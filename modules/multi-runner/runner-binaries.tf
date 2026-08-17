@@ -10,35 +10,35 @@ module "runner_binaries" {
   runner_os           = each.value.os_type
   runner_architecture = each.value.architecture
 
-  lambda_s3_bucket                 = local.translated_experimental_base.compute_provider.ec2.runner_binaries.syncer.artifact.s3 == null ? null : local.translated_experimental_base.lambda.artifact.s3.bucket
-  syncer_lambda_s3_key             = try(local.translated_experimental_base.compute_provider.ec2.runner_binaries.syncer.artifact.s3.key, null)
-  syncer_lambda_s3_object_version  = try(local.translated_experimental_base.compute_provider.ec2.runner_binaries.syncer.artifact.s3.object_version, null)
+  lambda_s3_bucket                 = local.translated_experimental_base.compute_provider.aws.ec2.runner_binaries.syncer.artifact.s3 == null ? null : local.translated_experimental_base.lambda.artifact.s3.bucket
+  syncer_lambda_s3_key             = try(local.translated_experimental_base.compute_provider.aws.ec2.runner_binaries.syncer.artifact.s3.key, null)
+  syncer_lambda_s3_object_version  = try(local.translated_experimental_base.compute_provider.aws.ec2.runner_binaries.syncer.artifact.s3.object_version, null)
   lambda_runtime                   = local.translated_experimental_base.lambda.runtime
   lambda_architecture              = local.translated_experimental_base.lambda.architecture
-  lambda_zip                       = local.translated_experimental_base.compute_provider.ec2.runner_binaries.syncer.artifact.zip
-  lambda_memory_size               = local.translated_experimental_base.compute_provider.ec2.runner_binaries.syncer.lambda.memory_size
-  lambda_timeout                   = local.translated_experimental_base.compute_provider.ec2.runner_binaries.syncer.lambda.timeout
+  lambda_zip                       = local.translated_experimental_base.compute_provider.aws.ec2.runner_binaries.syncer.artifact.zip
+  lambda_memory_size               = local.translated_experimental_base.compute_provider.aws.ec2.runner_binaries.syncer.lambda.memory_size
+  lambda_timeout                   = local.translated_experimental_base.compute_provider.aws.ec2.runner_binaries.syncer.lambda.timeout
   lambda_tags                      = local.translated_experimental_base.lambda.tags
   tracing_config                   = local.translated_experimental_base.observability.tracing
   logging_retention_in_days        = local.translated_experimental_base.observability.logs.retention_in_days
   logging_kms_key_id               = local.translated_experimental_base.observability.logs.kms_key_id
   log_class                        = local.translated_experimental_base.observability.logs.class
-  state_event_rule_binaries_syncer = local.translated_experimental_base.compute_provider.ec2.runner_binaries.syncer.schedule.state
-  lambda_schedule_expression       = local.translated_experimental_base.compute_provider.ec2.runner_binaries.syncer.schedule.expression
+  state_event_rule_binaries_syncer = local.translated_experimental_base.compute_provider.aws.ec2.runner_binaries.syncer.schedule.state
+  lambda_schedule_expression       = local.translated_experimental_base.compute_provider.aws.ec2.runner_binaries.syncer.schedule.expression
 
-  server_side_encryption_configuration = local.translated_experimental_base.compute_provider.ec2.runner_binaries.s3.encryption.enabled ? {
+  server_side_encryption_configuration = local.translated_experimental_base.compute_provider.aws.ec2.runner_binaries.s3.encryption.enabled ? {
     rule = {
-      bucket_key_enabled = local.translated_experimental_base.compute_provider.ec2.runner_binaries.s3.encryption.bucket_key_enabled
+      bucket_key_enabled = local.translated_experimental_base.compute_provider.aws.ec2.runner_binaries.s3.encryption.bucket_key_enabled
       apply_server_side_encryption_by_default = {
-        sse_algorithm     = local.translated_experimental_base.compute_provider.ec2.runner_binaries.s3.encryption.sse_algorithm
-        kms_master_key_id = local.translated_experimental_base.compute_provider.ec2.runner_binaries.s3.encryption.kms_master_key_id
+        sse_algorithm     = local.translated_experimental_base.compute_provider.aws.ec2.runner_binaries.s3.encryption.sse_algorithm
+        kms_master_key_id = local.translated_experimental_base.compute_provider.aws.ec2.runner_binaries.s3.encryption.kms_master_key_id
       }
     }
   } : null
-  s3_tags                  = local.translated_experimental_base.compute_provider.ec2.runner_binaries.s3.tags
-  s3_versioning            = local.translated_experimental_base.compute_provider.ec2.runner_binaries.s3.versioning
-  s3_logging_bucket        = local.translated_experimental_base.compute_provider.ec2.runner_binaries.s3.logging.bucket
-  s3_logging_bucket_prefix = local.translated_experimental_base.compute_provider.ec2.runner_binaries.s3.logging.prefix
+  s3_tags                  = local.translated_experimental_base.compute_provider.aws.ec2.runner_binaries.s3.tags
+  s3_versioning            = local.translated_experimental_base.compute_provider.aws.ec2.runner_binaries.s3.versioning
+  s3_logging_bucket        = local.translated_experimental_base.compute_provider.aws.ec2.runner_binaries.s3.logging.bucket
+  s3_logging_bucket_prefix = local.translated_experimental_base.compute_provider.aws.ec2.runner_binaries.s3.logging.prefix
 
   role_path                 = try(coalesce(local.translated_experimental_base.lambda.role.path, local.translated_experimental_base.roles.path), null)
   role_permissions_boundary = try(coalesce(local.translated_experimental_base.lambda.role.permissions_boundary, local.translated_experimental_base.roles.permissions_boundary), null)
