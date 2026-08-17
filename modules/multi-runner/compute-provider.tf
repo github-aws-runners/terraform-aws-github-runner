@@ -1,5 +1,7 @@
 locals {
-  compute_provider_selections = {
+  configured_compute_provider_selections = local.use_multi_runner_config_v2 ? var.experimental.compute_provider.selections : null
+
+  discovered_compute_provider_selections = {
     for runner_key, runner_config in local.translated_experimental_base.multi_runner_config : runner_key => try(one(flatten([
       for provider_namespace, provider_configs in runner_config.compute_provider : [
         for provider_type, provider_config in provider_configs : {
@@ -11,6 +13,14 @@ locals {
       ]
     ])), null)
   }
+
+  compute_provider_selections = local.configured_compute_provider_selections != null ? {
+    for runner_key, selection in local.configured_compute_provider_selections : runner_key => {
+      namespace = selection.namespace
+      type      = selection.type
+      key       = "${selection.namespace}_${selection.type}"
+    }
+  } : local.discovered_compute_provider_selections
 
   compute_provider_keys = {
     for runner_key, selection in local.compute_provider_selections :

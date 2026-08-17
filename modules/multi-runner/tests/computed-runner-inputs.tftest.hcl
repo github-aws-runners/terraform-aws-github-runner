@@ -65,3 +65,31 @@ run "computed_lane_values_keep_binary_syncer_instances_plannable" {
     error_message = "A runner configuration with the binary syncer disabled must not create a binary-syncer module instance."
   }
 }
+
+run "computed_lane_values_keep_enabled_binary_syncer_instances_plannable" {
+  command = plan
+
+  module {
+    source = "./tests/fixtures/computed-runner-inputs"
+  }
+
+  variables {
+    enable_runner_binaries_syncer = true
+    runner_binary_targets = {
+      linux_x64 = {
+        os           = "linux"
+        architecture = "x64"
+      }
+    }
+  }
+
+  assert {
+    condition     = output.runner_config_keys == ["linux"]
+    error_message = "The explicit provider selection must keep runner-config dispatch plannable when unrelated lane values are known only after apply."
+  }
+
+  assert {
+    condition     = output.binaries_syncer_keys == ["linux_x64"]
+    error_message = "The explicit runner-binary target must create the enabled binary-syncer instance with a plan-known key."
+  }
+}

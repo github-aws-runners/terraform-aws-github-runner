@@ -206,6 +206,7 @@ locals {
     }
 
     compute_provider = {
+      selections = null
       aws = {
         ec2 = {
           vpc_id                         = var.vpc_id
@@ -259,6 +260,7 @@ locals {
           }
           runner_binaries = {
             enabled = true
+            targets = null
             s3 = {
               encryption = {
                 enabled            = var.runner_binaries_s3_sse_configuration != null
