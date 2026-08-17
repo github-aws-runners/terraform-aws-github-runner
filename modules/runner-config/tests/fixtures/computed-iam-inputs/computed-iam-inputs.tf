@@ -10,6 +10,10 @@ resource "random_id" "generated_policy" {
   byte_length = 4
 }
 
+resource "random_id" "microvm" {
+  byte_length = 4
+}
+
 module "external_iam" {
   source = "../../.."
 
@@ -205,10 +209,106 @@ module "generated_policy" {
   }
 }
 
+module "computed_microvm" {
+  source = "../../.."
+
+  aws_region = "eu-west-1"
+  prefix     = "computed-microvm"
+
+  compute_provider = {
+    aws = {
+      microvm = {
+        image_arn = "arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner-${random_id.microvm.hex}"
+        iam = {
+          managed_policies = {
+            scale_up = {
+              arn = "arn:aws:iam::123456789012:policy/microvm-scale-up-${random_id.microvm.hex}"
+            }
+            pool = {
+              arn = "arn:aws:iam::123456789012:policy/microvm-pool-${random_id.microvm.hex}"
+            }
+          }
+        }
+      }
+    }
+  }
+
+  runner = {
+    os           = "linux"
+    architecture = "arm64"
+    labels       = ["self-hosted", "linux", "arm64", "microvm"]
+  }
+
+  lambda = {
+    artifact = {
+      s3 = {
+        bucket = "lambda-artifacts"
+      }
+    }
+  }
+
+  github = {
+    app_parameters = {
+      key_base64 = [{
+        name = "/github-runner/key-base64"
+        arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64"
+      }]
+      id = [{
+        name = "/github-runner/app-id"
+        arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id"
+      }]
+      installation_id = [null]
+    }
+  }
+
+  orchestration_provider = {
+    webhook = {
+      runner = {
+        ephemeral = true
+      }
+      github = {
+        organization_runners = true
+      }
+      queue = {
+        build = {
+          arn = "arn:aws:sqs:eu-west-1:123456789012:computed-microvm"
+          url = "https://sqs.eu-west-1.amazonaws.com/123456789012/computed-microvm"
+        }
+      }
+      lambda = {
+        artifact = {
+          s3 = {
+            key = "runners.zip"
+          }
+        }
+        pool = {
+          runner_owner = "example"
+          config = [{
+            schedule_expression = "cron(0 8 * * ? *)"
+            size                = 1
+          }]
+        }
+      }
+    }
+  }
+
+  ssm = {
+    paths = {
+      root   = "/github-runner/computed-microvm"
+      tokens = "tokens"
+      config = "config"
+    }
+  }
+}
+
 output "external_role_runner_count" {
   value = module.external_iam.runner.role == null ? 0 : 1
 }
 
 output "generated_policy_role_runner_count" {
   value = module.generated_policy.runner.role == null ? 0 : 1
+}
+
+output "computed_microvm_role_runner_count" {
+  value = module.computed_microvm.runner.role == null ? 0 : 1
 }

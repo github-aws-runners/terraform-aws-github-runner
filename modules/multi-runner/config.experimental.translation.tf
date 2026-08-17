@@ -294,6 +294,28 @@ locals {
             }
           }
         }
+        microvm = {
+          image_arn                   = null
+          image_version               = null
+          ingress_network_connectors  = []
+          egress_network_connectors   = []
+          logging                     = null
+          maximum_duration_in_seconds = null
+          environment_variables       = {}
+          iam = {
+            resource_arns = {
+              images   = ["*"]
+              microvms = ["*"]
+            }
+            additional_policy_json = {
+              scale_up = null
+            }
+            managed_policies = {
+              scale_up = null
+              pool     = null
+            }
+          }
+        }
       }
     }
 
@@ -531,6 +553,7 @@ locals {
               log_files                            = v.runner_config.runner_log_files
               tags                                 = v.runner_config.runner_ec2_tags
             }
+            microvm = null
           }
         }
       }
@@ -763,6 +786,51 @@ locals {
                 enabled = coalesce(v.compute_provider.aws.ec2.binaries_syncer.enabled, local.raw_translated_experimental.compute_provider.aws.ec2.runner_binaries.enabled)
               }
               tags = merge(local.raw_translated_experimental.compute_provider.aws.ec2.tags, v.compute_provider.aws.ec2.tags)
+            })
+            microvm = v.compute_provider.aws.microvm == null ? null : merge(v.compute_provider.aws.microvm, {
+              image_arn     = try(coalesce(v.compute_provider.aws.microvm.image_arn, local.raw_translated_experimental.compute_provider.aws.microvm.image_arn), null)
+              image_version = try(coalesce(v.compute_provider.aws.microvm.image_version, local.raw_translated_experimental.compute_provider.aws.microvm.image_version), null)
+              ingress_network_connectors = v.compute_provider.aws.microvm.ingress_network_connectors != null ? (
+                v.compute_provider.aws.microvm.ingress_network_connectors
+              ) : local.raw_translated_experimental.compute_provider.aws.microvm.ingress_network_connectors
+              egress_network_connectors = v.compute_provider.aws.microvm.egress_network_connectors != null ? (
+                v.compute_provider.aws.microvm.egress_network_connectors
+              ) : local.raw_translated_experimental.compute_provider.aws.microvm.egress_network_connectors
+              logging = v.compute_provider.aws.microvm.logging != null ? (
+                v.compute_provider.aws.microvm.logging.log_group == null ? null : v.compute_provider.aws.microvm.logging
+              ) : local.raw_translated_experimental.compute_provider.aws.microvm.logging
+              maximum_duration_in_seconds = try(coalesce(
+                v.compute_provider.aws.microvm.maximum_duration_in_seconds,
+                local.raw_translated_experimental.compute_provider.aws.microvm.maximum_duration_in_seconds,
+              ), null)
+              environment_variables = merge(
+                local.raw_translated_experimental.compute_provider.aws.microvm.environment_variables,
+                v.compute_provider.aws.microvm.environment_variables,
+              )
+              iam = {
+                resource_arns = {
+                  images = v.compute_provider.aws.microvm.iam.resource_arns.images != null ? (
+                    v.compute_provider.aws.microvm.iam.resource_arns.images
+                  ) : local.raw_translated_experimental.compute_provider.aws.microvm.iam.resource_arns.images
+                  microvms = v.compute_provider.aws.microvm.iam.resource_arns.microvms != null ? (
+                    v.compute_provider.aws.microvm.iam.resource_arns.microvms
+                  ) : local.raw_translated_experimental.compute_provider.aws.microvm.iam.resource_arns.microvms
+                }
+                additional_policy_json = {
+                  scale_up = try(coalesce(
+                    v.compute_provider.aws.microvm.iam.additional_policy_json.scale_up,
+                    local.raw_translated_experimental.compute_provider.aws.microvm.iam.additional_policy_json.scale_up,
+                  ), null)
+                }
+                managed_policies = {
+                  scale_up = v.compute_provider.aws.microvm.iam.managed_policies.scale_up != null ? (
+                    v.compute_provider.aws.microvm.iam.managed_policies.scale_up
+                  ) : local.raw_translated_experimental.compute_provider.aws.microvm.iam.managed_policies.scale_up
+                  pool = v.compute_provider.aws.microvm.iam.managed_policies.pool != null ? (
+                    v.compute_provider.aws.microvm.iam.managed_policies.pool
+                  ) : local.raw_translated_experimental.compute_provider.aws.microvm.iam.managed_policies.pool
+                }
+              }
             })
           }
         }

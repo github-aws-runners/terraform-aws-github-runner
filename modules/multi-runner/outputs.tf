@@ -23,7 +23,7 @@ output "runners_map" {
 }
 
 output "runners_map_v2" {
-  description = "Experimental v2 runner resources keyed by runner configuration. Compute resources are grouped under `provider.<namespace>.<type>`, currently `provider.aws.ec2`. The `orchestration_provider` object is canonical; `scale_up`, `scale_down`, and `pool` remain compatibility aliases."
+  description = "Experimental v2 runner resources keyed by runner configuration. Compute resources are grouped under `provider.<namespace>.<type>`, including `provider.aws.ec2` and `provider.aws.microvm`. The `orchestration_provider` object is canonical; `scale_up`, `scale_down`, and `pool` remain compatibility aliases."
   value = { for runner_key, runner in module.runner_configs : runner_key => {
     runner                 = runner.runner
     orchestration_provider = runner.orchestration_provider

@@ -177,7 +177,8 @@ run "plan_with_pool_enabled" {
   assert {
     condition = (
       toset(keys(output.provider)) == toset(["aws"])
-      && toset(keys(output.provider.aws)) == toset(["ec2"])
+      && toset(keys(output.provider.aws)) == toset(["ec2", "microvm"])
+      && output.provider.aws.microvm == null
     )
     error_message = "The runner configuration must expose resources under the selected provider namespace and type."
   }
@@ -195,6 +196,8 @@ run "plan_with_pool_enabled" {
   assert {
     condition = (
       length(module.compute_aws_ec2_trust_policy) == 1
+      && length(module.compute_aws_microvm_trust_policy) == 0
+      && length(module.compute_aws_microvm) == 0
       && aws_iam_role.runner[0].assume_role_policy == module.compute_aws_ec2_trust_policy[0].assume_role_policy
     )
     error_message = "The common runner role must use the selected EC2 trust-policy submodule output."
@@ -649,4 +652,312 @@ run "job_retry_uses_common_runner_configuration_identity" {
     condition     = module.orchestration_webhook[0].job_retry.lambda.function.reserved_concurrent_executions == 2
     error_message = "Job retry must apply its configured Lambda reserved concurrency."
   }
+}
+
+run "routes_lambda_microvm_provider" {
+  command = plan
+
+  variables {
+    runner = {
+      os           = "linux"
+      architecture = "arm64"
+      labels       = ["self-hosted", "linux", "arm64", "microvm"]
+    }
+    compute_provider = {
+      aws = {
+        microvm = {
+          image_arn     = "arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner"
+          image_version = "7"
+          ingress_network_connectors = [
+            "arn:aws:lambda:eu-west-1:123456789012:network-connector:private-ingress",
+          ]
+          egress_network_connectors = [
+            "arn:aws:lambda:eu-west-1:aws:network-connector:aws-network-connector:INTERNET_EGRESS",
+          ]
+          maximum_duration_in_seconds = 1800
+          logging = {
+            log_group = "/aws/lambda-microvms/runner"
+          }
+        }
+      }
+    }
+    orchestration_provider = {
+      webhook = {
+        runner = {
+          ephemeral          = true
+          jit_config_enabled = null
+        }
+        github = {
+          organization_runners = true
+        }
+        queue = {
+          build = {
+            arn = "arn:aws:sqs:eu-west-1:123456789012:build-queue"
+            url = "https://sqs.eu-west-1.amazonaws.com/123456789012/build-queue"
+          }
+        }
+        lambda = {
+          artifact = {
+            s3 = {
+              key = "runners.zip"
+            }
+          }
+        }
+      }
+    }
+  }
+
+  assert {
+    condition = (
+      length(module.compute_aws_ec2) == 0
+      && length(module.compute_aws_ec2_trust_policy) == 0
+      && length(module.compute_aws_microvm) == 1
+      && length(module.compute_aws_microvm_trust_policy) == 1
+      && aws_iam_role.runner[0].assume_role_policy == module.compute_aws_microvm_trust_policy[0].assume_role_policy
+      && toset(keys(aws_iam_role_policy.runner_provider)) == toset(["runtime_logs", "ssm_jit"])
+      && aws_iam_role_policy.runner_provider["runtime_logs"].name == "runner-microvm-runtime-logs"
+      && aws_iam_role_policy.runner_provider["ssm_jit"].name == "runner-microvm-ssm-jit"
+    )
+    error_message = "The aws.microvm leaf must dispatch only to the namespaced provider modules and attach both required policies to its managed runner role."
+  }
+
+  assert {
+    condition = (
+      toset(keys(output.provider.aws)) == toset(["ec2", "microvm"])
+      && output.provider.aws.ec2 == null
+      && output.provider.aws.microvm.image_arn == "arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner"
+      && output.provider.aws.microvm.image_version == "7"
+      && contains(keys(output.provider.aws.microvm), "execution_role_arn")
+    )
+    error_message = "The selected MicroVM resources must be exposed only under provider.aws.microvm."
+  }
+
+  assert {
+    condition = (
+      module.orchestration_webhook[0].scale_up.lambda.environment[0].variables["COMPUTE_PROVIDER_TYPE"] == "microvm"
+      && module.orchestration_webhook[0].scale_down.lambda.environment[0].variables["COMPUTE_PROVIDER_TYPE"] == "microvm"
+      && module.orchestration_webhook[0].scale_up.lambda.environment[0].variables["MICROVM_IMAGE_ARN"] == "arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner"
+      && contains(keys(module.orchestration_webhook[0].scale_up.lambda.environment[0].variables), "MICROVM_EXECUTION_ROLE_ARN")
+      && module.orchestration_webhook[0].scale_up.lambda.environment[0].variables["MICROVM_LOG_GROUP"] == "/aws/lambda-microvms/runner"
+      && module.orchestration_webhook[0].scale_down.lambda.environment[0].variables["RUNNER_BOOT_TIME_IN_MINUTES"] == "5"
+      && !contains(keys(module.orchestration_webhook[0].scale_up.lambda.environment[0].variables), "MICROVM_RUN_CONFIG")
+      && !contains(keys(module.orchestration_webhook[0].scale_up.lambda.environment[0].variables), "MICROVM_TAGS")
+    )
+    error_message = "Runner-config must preserve the runtime provider type and merge the canonical MicroVM environment with webhook-owned lifecycle values."
+  }
+}
+
+run "external_microvm_runner_role_remains_unmanaged" {
+  command = plan
+
+  variables {
+    runner = {
+      os           = "linux"
+      architecture = "arm64"
+      labels       = ["self-hosted", "linux", "arm64", "microvm"]
+      iam = {
+        role = {
+          arn = "arn:aws:iam::123456789012:role/external/microvm-runner"
+        }
+      }
+    }
+    compute_provider = {
+      aws = {
+        microvm = {
+          image_arn = "arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner"
+        }
+      }
+    }
+    orchestration_provider = {
+      webhook = {
+        runner = {
+          ephemeral = true
+        }
+        github = {
+          organization_runners = true
+        }
+        queue = {
+          build = {
+            arn = "arn:aws:sqs:eu-west-1:123456789012:build-queue"
+            url = "https://sqs.eu-west-1.amazonaws.com/123456789012/build-queue"
+          }
+        }
+        lambda = {
+          artifact = {
+            s3 = {
+              key = "runners.zip"
+            }
+          }
+        }
+      }
+    }
+  }
+
+  assert {
+    condition = (
+      length(aws_iam_role.runner) == 0
+      && length(aws_iam_role_policy.runner_provider) == 0
+      && length(aws_iam_role_policy_attachment.runner) == 0
+      && output.provider.aws.microvm.execution_role_arn == "arn:aws:iam::123456789012:role/external/microvm-runner"
+    )
+    error_message = "An external provider-neutral runner role must remain caller-owned while serving as the MicroVM execution role."
+  }
+}
+
+run "rejects_multiple_aws_compute_providers" {
+  command = plan
+
+  variables {
+    compute_provider = {
+      aws = {
+        ec2 = {
+          vpc_id         = "vpc-12345678"
+          subnet_ids     = ["subnet-12345678"]
+          instance_types = ["m5.large"]
+        }
+        microvm = {
+          image_arn = "arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner"
+        }
+      }
+    }
+  }
+
+  plan_options {
+    target = [terraform_data.validate_config]
+  }
+
+  expect_failures = [terraform_data.validate_config]
+}
+
+run "rejects_non_ephemeral_microvm_runner" {
+  command = plan
+
+  variables {
+    runner = {
+      os           = "linux"
+      architecture = "arm64"
+      labels       = ["self-hosted", "linux", "arm64", "microvm"]
+    }
+    compute_provider = {
+      aws = {
+        microvm = {
+          image_arn = "arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner"
+        }
+      }
+    }
+    orchestration_provider = {
+      webhook = {
+        runner = {
+          ephemeral = false
+        }
+        github = {
+          organization_runners = true
+        }
+        queue = {
+          build = {
+            arn = "arn:aws:sqs:eu-west-1:123456789012:build-queue"
+            url = "https://sqs.eu-west-1.amazonaws.com/123456789012/build-queue"
+          }
+        }
+      }
+    }
+  }
+
+  plan_options {
+    target = [terraform_data.validate_config]
+  }
+
+  expect_failures = [terraform_data.validate_config]
+}
+
+run "rejects_microvm_runner_with_jit_disabled" {
+  command = plan
+
+  variables {
+    runner = {
+      os           = "linux"
+      architecture = "arm64"
+      labels       = ["self-hosted", "linux", "arm64", "microvm"]
+    }
+    compute_provider = {
+      aws = {
+        microvm = {
+          image_arn = "arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner"
+        }
+      }
+    }
+    orchestration_provider = {
+      webhook = {
+        runner = {
+          ephemeral          = true
+          jit_config_enabled = false
+        }
+        github = {
+          organization_runners = true
+        }
+        queue = {
+          build = {
+            arn = "arn:aws:sqs:eu-west-1:123456789012:build-queue"
+            url = "https://sqs.eu-west-1.amazonaws.com/123456789012/build-queue"
+          }
+        }
+      }
+    }
+  }
+
+  plan_options {
+    target = [terraform_data.validate_config]
+  }
+
+  expect_failures = [terraform_data.validate_config]
+}
+
+run "rejects_non_arm64_microvm_runner" {
+  command = plan
+
+  variables {
+    runner = {
+      os           = "linux"
+      architecture = "x64"
+      labels       = ["self-hosted", "linux", "x64", "microvm"]
+    }
+    compute_provider = {
+      aws = {
+        microvm = {
+          image_arn = "arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner"
+        }
+      }
+    }
+  }
+
+  plan_options {
+    target = [terraform_data.validate_config]
+  }
+
+  expect_failures = [terraform_data.validate_config]
+}
+
+run "rejects_non_linux_microvm_runner" {
+  command = plan
+
+  variables {
+    runner = {
+      os           = "windows"
+      architecture = "arm64"
+      labels       = ["self-hosted", "windows", "arm64", "microvm"]
+    }
+    compute_provider = {
+      aws = {
+        microvm = {
+          image_arn = "arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner"
+        }
+      }
+    }
+  }
+
+  plan_options {
+    target = [terraform_data.validate_config]
+  }
+
+  expect_failures = [terraform_data.validate_config]
 }

@@ -96,6 +96,19 @@ module "multi_runner" {
             }
           }
         }
+        microvm = {
+          image_arn = "arn:aws:lambda:eu-west-1:123456789012:microvm-image:computed-${random_id.managed_policy.hex}"
+          iam = {
+            managed_policies = {
+              scale_up = {
+                arn = "arn:aws:iam::123456789012:policy/computed-microvm-scale-up-${random_id.managed_policy.hex}"
+              }
+              pool = {
+                arn = "arn:aws:iam::123456789012:policy/computed-microvm-pool-${random_id.managed_policy.hex}"
+              }
+            }
+          }
+        }
       }
     }
 
@@ -142,6 +155,29 @@ module "multi_runner" {
                 enabled = var.enable_runner_binaries_syncer
               }
             }
+          }
+        }
+      }
+      micro = {
+        runner = {
+          os           = "linux"
+          architecture = "arm64"
+        }
+        orchestration_provider = {
+          webhook = {
+            runner = {
+              ephemeral     = true
+              maximum_count = 2
+            }
+
+            matcherConfig = {
+              labelMatchers = [["self-hosted", "linux", "arm64", "microvm"]]
+            }
+          }
+        }
+        compute_provider = {
+          aws = {
+            microvm = {}
           }
         }
       }
