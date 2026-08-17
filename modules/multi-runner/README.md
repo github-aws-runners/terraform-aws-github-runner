@@ -159,7 +159,7 @@ module "multi-runner" {
 ## Requirements
 
 | Name | Version |
-| ---- | ------- |
+|------|---------|
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.4.0 |
 | <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 6.33 |
 | <a name="requirement_random"></a> [random](#requirement\_random) | ~> 3.0 |
@@ -167,7 +167,7 @@ module "multi-runner" {
 ## Providers
 
 | Name | Version |
-| ---- | ------- |
+|------|---------|
 | <a name="provider_aws"></a> [aws](#provider\_aws) | >= 6.33 |
 | <a name="provider_random"></a> [random](#provider\_random) | ~> 3.0 |
 | <a name="provider_terraform"></a> [terraform](#provider\_terraform) | n/a |
@@ -175,7 +175,7 @@ module "multi-runner" {
 ## Modules
 
 | Name | Source | Version |
-| ---- | ------ | ------- |
+|------|--------|---------|
 | <a name="module_ami_housekeeper"></a> [ami\_housekeeper](#module\_ami\_housekeeper) | ../ami-housekeeper | n/a |
 | <a name="module_instance_termination_watcher"></a> [instance\_termination\_watcher](#module\_instance\_termination\_watcher) | ../termination-watcher | n/a |
 | <a name="module_runner_binaries"></a> [runner\_binaries](#module\_runner\_binaries) | ../runner-binaries-syncer | n/a |
@@ -187,7 +187,7 @@ module "multi-runner" {
 ## Resources
 
 | Name | Type |
-| ---- | ---- |
+|------|------|
 | [aws_sqs_queue.queued_builds](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sqs_queue) | resource |
 | [aws_sqs_queue.queued_builds_dlq](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sqs_queue) | resource |
 | [aws_sqs_queue_policy.build_queue_dlq_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sqs_queue_policy) | resource |
@@ -199,7 +199,7 @@ module "multi-runner" {
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-| ---- | ----------- | ---- | ------- | :------: |
+|------|-------------|------|---------|:--------:|
 | <a name="input_additional_github_apps"></a> [additional\_github\_apps](#input\_additional\_github\_apps) | Additional GitHub Apps for random API rate limit distribution.<br/><br/>The primary app (var.github\_app) is always included and is the one whose<br/>webhook secret is used for incoming webhook signature validation. Only the<br/>primary app needs a webhook configured in GitHub.<br/><br/>Additional apps listed here are used exclusively by the control-plane<br/>lambdas (scale-up, scale-down, pool, job-retry) which randomly select an<br/>app for each GitHub API call. Each additional app must be installed on the<br/>same repositories/organizations as the primary app. | <pre>list(object({<br/>    key_base64          = optional(string)<br/>    key_base64_ssm      = optional(object({ arn = string, name = string }))<br/>    id                  = optional(string)<br/>    id_ssm              = optional(object({ arn = string, name = string }))<br/>    installation_id     = optional(string)<br/>    installation_id_ssm = optional(object({ arn = string, name = string }))<br/>  }))</pre> | `[]` | no |
 | <a name="input_ami_housekeeper_cleanup_config"></a> [ami\_housekeeper\_cleanup\_config](#input\_ami\_housekeeper\_cleanup\_config) | Configuration for AMI cleanup. | <pre>object({<br/>    maxItems       = optional(number)<br/>    minimumDaysOld = optional(number)<br/>    amiFilters = optional(list(object({<br/>      Name   = string<br/>      Values = list(string)<br/>    })))<br/>    launchTemplateNames = optional(list(string))<br/>    ssmParameterNames   = optional(list(string))<br/>    dryRun              = optional(bool)<br/>  })</pre> | `{}` | no |
 | <a name="input_ami_housekeeper_lambda_memory_size"></a> [ami\_housekeeper\_lambda\_memory\_size](#input\_ami\_housekeeper\_lambda\_memory\_size) | Memory size limit in MB of the lambda. | `number` | `256` | no |
@@ -284,7 +284,7 @@ module "multi-runner" {
 ## Outputs
 
 | Name | Description |
-| ---- | ----------- |
+|------|-------------|
 | <a name="output_binaries_syncer_map"></a> [binaries\_syncer\_map](#output\_binaries\_syncer\_map) | n/a |
 | <a name="output_instance_termination_handler"></a> [instance\_termination\_handler](#output\_instance\_termination\_handler) | n/a |
 | <a name="output_instance_termination_watcher"></a> [instance\_termination\_watcher](#output\_instance\_termination\_watcher) | n/a |
