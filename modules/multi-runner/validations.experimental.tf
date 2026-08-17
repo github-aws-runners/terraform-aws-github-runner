@@ -69,6 +69,30 @@ resource "terraform_data" "validate_experimental" {
     }
 
     precondition {
+      condition = var.experimental.compute_provider.selections == null ? true : (
+        toset(keys(var.experimental.compute_provider.selections)) ==
+        toset(keys(var.experimental.multi_runner_config))
+      )
+      error_message = "experimental.compute_provider.selections must contain exactly the same keys as experimental.multi_runner_config when set."
+    }
+
+    precondition {
+      condition = var.experimental.compute_provider.selections == null ? true : alltrue([
+        for selection in values(var.experimental.compute_provider.selections) :
+        selection.namespace == "aws" && selection.type == "ec2"
+      ])
+      error_message = "experimental.compute_provider.selections supports only namespace = aws and type = ec2."
+    }
+
+    precondition {
+      condition = var.experimental.compute_provider.selections == null ? true : alltrue([
+        for runner_key, selection in var.experimental.compute_provider.selections :
+        try(var.experimental.multi_runner_config[runner_key].compute_provider[selection.namespace][selection.type] != null, false)
+      ])
+      error_message = "Each experimental.compute_provider.selections entry must identify the non-null typed compute-provider block selected by the matching runner configuration."
+    }
+
+    precondition {
       condition = alltrue([
         for runner_config in values(var.experimental.multi_runner_config) :
         length([
@@ -260,6 +284,16 @@ resource "terraform_data" "validate_experimental" {
         var.experimental.compute_provider.aws.ec2.runner_binaries.syncer.schedule.state,
       )
       error_message = "experimental.compute_provider.aws.ec2.runner_binaries.syncer.schedule.state must be DISABLED, ENABLED, or ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS."
+    }
+
+    precondition {
+      condition = var.experimental.compute_provider.aws.ec2.runner_binaries.targets == null ? true : alltrue([
+        for key, target in var.experimental.compute_provider.aws.ec2.runner_binaries.targets :
+        key == "${target.os}_${target.architecture}" &&
+        contains(["linux", "osx", "windows"], target.os) &&
+        contains(["x64", "arm64"], target.architecture)
+      ])
+      error_message = "experimental.compute_provider.aws.ec2.runner_binaries.targets keys must use <os>_<architecture> and values must use a supported runner OS and architecture."
     }
 
     precondition {

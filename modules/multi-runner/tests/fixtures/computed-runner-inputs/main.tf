@@ -4,6 +4,19 @@ resource "random_id" "managed_policy" {
   byte_length = 4
 }
 
+variable "enable_runner_binaries_syncer" {
+  type    = bool
+  default = false
+}
+
+variable "runner_binary_targets" {
+  type = map(object({
+    os           = string
+    architecture = string
+  }))
+  default = {}
+}
+
 module "multi_runner" {
   source = "../../.."
 
@@ -62,10 +75,26 @@ module "multi_runner" {
     }
 
     compute_provider = {
+      selections = {
+        linux = {
+          namespace = "aws"
+          type      = "ec2"
+        }
+      }
       aws = {
         ec2 = {
           vpc_id     = "vpc-nested-12345678"
           subnet_ids = ["subnet-nested-12345678"]
+          runner_binaries = {
+            targets = var.runner_binary_targets
+            syncer = {
+              artifact = {
+                s3 = {
+                  key = "runner-binaries-syncer.zip"
+                }
+              }
+            }
+          }
         }
       }
     }
@@ -110,7 +139,7 @@ module "multi_runner" {
             ec2 = {
               instance_types = ["m5.large"]
               binaries_syncer = {
-                enabled = false
+                enabled = var.enable_runner_binaries_syncer
               }
             }
           }
