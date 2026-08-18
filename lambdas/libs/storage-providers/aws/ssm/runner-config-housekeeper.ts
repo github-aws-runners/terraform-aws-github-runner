@@ -1,13 +1,13 @@
 import { DeleteParameterCommand, GetParametersByPathCommand, SSMClient } from '@aws-sdk/client-ssm';
 import { getTracedAWSV3Client, logger } from '@aws-github-runner/aws-powertools-util';
 
-export interface SsmRunnerConfigCleanupOptions {
+export interface SSMCleanupOptions {
   dryRun: boolean;
   minimumDaysOld: number;
   tokenPath: string;
 }
 
-function validateOptions(options: SsmRunnerConfigCleanupOptions): void {
+function validateOptions(options: SSMCleanupOptions): void {
   const errorMessages: string[] = [];
   if (!options.minimumDaysOld || options.minimumDaysOld < 1) {
     errorMessages.push(`minimumDaysOld must be greater then 0, value is set to "${options.minimumDaysOld}"`);
@@ -20,7 +20,7 @@ function validateOptions(options: SsmRunnerConfigCleanupOptions): void {
   }
 }
 
-export async function cleanSsmRunnerConfigs(options: SsmRunnerConfigCleanupOptions): Promise<void> {
+export async function cleanSSMTokens(options: SSMCleanupOptions): Promise<void> {
   logger.info(`Cleaning tokens / JIT config older then ${options.minimumDaysOld} days, dryRun: ${options.dryRun}`);
   logger.debug('Cleaning with options', { options });
   validateOptions(options);
