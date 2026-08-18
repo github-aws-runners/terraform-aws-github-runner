@@ -1,5 +1,10 @@
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import { getParameter, putParameter } from '@aws-github-runner/aws-ssm-util';
+import {
+  getRunnerConfigStore,
+  type RunnerConfigMetadataTag,
+  type RunnerConfigStore,
+} from '@aws-github-runner/storage-providers';
 import { Octokit } from '@octokit/rest';
 
 import { getStoredInstallationId } from '../github/auth';
@@ -14,7 +19,7 @@ export interface GitHubRunnerMetadata {
 }
 
 export interface StartRunnerConfigOptions {
-  getSsmParameterTags?: (runnerId: string) => { Key: string; Value: string }[];
+  getRunnerConfigMetadataTags?: (runnerId: string) => RunnerConfigMetadataTag[];
   onJitConfigCreated?: (runnerId: string, metadata: GitHubRunnerMetadata) => Promise<void>;
 }
 
@@ -250,18 +255,20 @@ export async function createStartRunnerConfig(
   ghClient: Octokit,
   options: StartRunnerConfigOptions = {},
 ): Promise<string[]> {
+  const runnerConfigStore = getRunnerConfigStore();
   if (githubRunnerConfig.enableJitConfig && githubRunnerConfig.ephemeral) {
-    return await createJitConfig(githubRunnerConfig, runnerIds, ghClient, options);
+    return await createJitConfig(githubRunnerConfig, runnerIds, ghClient, runnerConfigStore, options);
   } else {
-    return await createRegistrationTokenConfig(githubRunnerConfig, runnerIds, ghClient, options);
+    return await createRegistrationTokenConfig(githubRunnerConfig, runnerIds, ghClient, runnerConfigStore, options);
   }
 }
 
-function addDelay(runnerIds: string[]) {
+function addDelay(runnerIds: string[], runnerConfigStore: RunnerConfigStore) {
   const delay = async (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-  const ssmParameterStoreMaxThroughput = 40;
-  const isDelay = runnerIds.length >= ssmParameterStoreMaxThroughput;
-  return { isDelay, delay };
+  const maxWritesPerSecond = runnerConfigStore.maxWritesPerSecond;
+  const isDelay = maxWritesPerSecond !== undefined && runnerIds.length >= maxWritesPerSecond;
+  const delayMilliseconds = maxWritesPerSecond === undefined ? 0 : 1000 / maxWritesPerSecond;
+  return { isDelay, delay, delayMilliseconds };
 }
 
 /**
@@ -273,9 +280,10 @@ async function createRegistrationTokenConfig(
   githubRunnerConfig: CreateGitHubRunnerConfig,
   runnerIds: string[],
   ghClient: Octokit,
+  runnerConfigStore: RunnerConfigStore,
   options: StartRunnerConfigOptions,
 ): Promise<string[]> {
-  const { isDelay, delay } = addDelay(runnerIds);
+  const { isDelay, delay, delayMilliseconds } = addDelay(runnerIds, runnerConfigStore);
   const token = await getGithubRunnerRegistrationToken(githubRunnerConfig, ghClient);
   const runnerServiceConfig = generateRunnerServiceConfig(githubRunnerConfig, token);
 
@@ -284,12 +292,13 @@ async function createRegistrationTokenConfig(
   });
 
   for (const runnerId of runnerIds) {
-    await putParameter(`${githubRunnerConfig.ssmTokenPath}/${runnerId}`, runnerServiceConfig.join(' '), true, {
-      tags: [...(options.getSsmParameterTags?.(runnerId) ?? []), ...githubRunnerConfig.ssmParameterStoreTags],
-    });
+    await runnerConfigStore.create(
+      { runnerId, value: runnerServiceConfig.join(' ') },
+      { metadataTags: options.getRunnerConfigMetadataTags?.(runnerId) },
+    );
     if (isDelay) {
-      // Delay to prevent AWS ssm rate limits by being within the max throughput limit
-      await delay(25);
+      // Delay to stay within the selected store's maximum write throughput.
+      await delay(delayMilliseconds);
     }
   }
 
@@ -306,10 +315,11 @@ async function createJitConfig(
   githubRunnerConfig: CreateGitHubRunnerConfig,
   runnerIds: string[],
   ghClient: Octokit,
+  runnerConfigStore: RunnerConfigStore,
   options: StartRunnerConfigOptions,
 ): Promise<string[]> {
   const runnerGroupId = await getRunnerGroupId(githubRunnerConfig, ghClient);
-  const { isDelay, delay } = addDelay(runnerIds);
+  const { isDelay, delay, delayMilliseconds } = addDelay(runnerIds, runnerConfigStore);
   const runnerLabels = githubRunnerConfig.runnerLabels.split(',');
   const failedRunnerIds: string[] = [];
 
@@ -347,16 +357,16 @@ async function createJitConfig(
         runnerLabels,
       });
 
-      // store jit config in ssm parameter store
       logger.debug('Runner JIT config for ephemeral runner generated.', {
         instance: runnerId,
       });
-      await putParameter(`${githubRunnerConfig.ssmTokenPath}/${runnerId}`, runnerConfig.data.encoded_jit_config, true, {
-        tags: [...(options.getSsmParameterTags?.(runnerId) ?? []), ...githubRunnerConfig.ssmParameterStoreTags],
-      });
+      await runnerConfigStore.create(
+        { runnerId, value: runnerConfig.data.encoded_jit_config },
+        { metadataTags: options.getRunnerConfigMetadataTags?.(runnerId) },
+      );
       if (isDelay) {
-        // Delay to prevent AWS ssm rate limits by being within the max throughput limit
-        await delay(25);
+        // Delay to stay within the selected store's maximum write throughput.
+        await delay(delayMilliseconds);
       }
     } catch (error) {
       failedRunnerIds.push(runnerId);

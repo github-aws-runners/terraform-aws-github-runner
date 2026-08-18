@@ -1,5 +1,6 @@
 import type { Octokit } from '@octokit/rest';
 import type { ComputeProviderType } from '@aws-github-runner/compute-providers/provider-types';
+import { resetRunnerConfigStore } from '@aws-github-runner/storage-providers';
 import { beforeEach, vi } from 'vitest';
 
 import { definePoolContractTests } from '../test/compute-provider-contracts/pool';
@@ -48,6 +49,8 @@ const computeProviders = providerTypes.map((type) => ({
 beforeEach(() => {
   vi.clearAllMocks();
   process.env = { ...cleanEnv };
+  process.env.SSM_TOKEN_PATH = '/github-action-runners/default/runners/tokens';
+  resetRunnerConfigStore();
 
   mockedAppAuth.mockResolvedValue({ type: 'app', token: 'app-token', appId: 1, expiresAt: 'some-date' });
   mockedInstallationAuth.mockResolvedValue({
