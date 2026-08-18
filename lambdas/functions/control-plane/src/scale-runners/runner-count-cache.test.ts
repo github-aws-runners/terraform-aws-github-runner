@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { ec2RunnerCountCache, dynamoDbRunnerCountCache } from './cache';
+import { ec2RunnerCountCache, dynamoDbRunnerCountCache } from './runner-count-cache';
 import { DynamoDBClient, GetItemCommand } from '@aws-sdk/client-dynamodb';
 import { mockClient } from 'aws-sdk-client-mock';
 
