@@ -60,7 +60,7 @@ describe('runner config store selection', () => {
     const firstStore = stubStore();
     expect(getRunnerConfigStore()).toBe(firstStore);
 
-    const secondStore = { create: vi.fn() } satisfies RunnerConfigStore;
+    const secondStore = { create: vi.fn(), houseKeeper: vi.fn() } satisfies RunnerConfigStore;
     createAwsSsmRunnerConfigStoreMock.mockReturnValue(secondStore);
     resetRunnerConfigStore();
 
@@ -78,7 +78,7 @@ function setProvider(provider: string | undefined): void {
 }
 
 function stubStore(): RunnerConfigStore {
-  const store = { create: vi.fn() } satisfies RunnerConfigStore;
+  const store = { create: vi.fn(), houseKeeper: vi.fn() } satisfies RunnerConfigStore;
   createAwsSsmRunnerConfigStoreMock.mockReturnValue(store);
   return store;
 }
