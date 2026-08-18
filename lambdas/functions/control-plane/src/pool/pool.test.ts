@@ -1,5 +1,6 @@
 import type { Octokit } from '@octokit/rest';
 import { defaultComputeProvider } from '@aws-github-runner/compute-providers/provider-types';
+import { resetRunnerConfigStore } from '@aws-github-runner/storage-providers';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import * as ghAuth from '../github/auth';
@@ -90,6 +91,7 @@ const githubRunnersRegistered = [
 beforeEach(() => {
   vi.clearAllMocks();
   process.env = { ...cleanEnv };
+  resetRunnerConfigStore();
   process.env.RUNNERS_MAXIMUM_COUNT = '-1';
   process.env.ENVIRONMENT = 'unit-test-environment';
   process.env.SSM_TOKEN_PATH = '/github-action-runners/default/runners/tokens';
@@ -165,6 +167,17 @@ describe('pool adjustment', () => {
       await adjust({ poolSize: 1 });
 
       expect(poolProvider.createRunners).not.toHaveBeenCalled();
+    });
+
+    it('rejects an unsupported runner config store before GitHub or runner lookups', async () => {
+      process.env.RUNNER_CONFIG_STORAGE_PROVIDER = 'unsupported-provider';
+
+      await expect(adjust({ poolSize: 10 })).rejects.toThrow(
+        "Unsupported runner config storage provider 'unsupported-provider'",
+      );
+
+      expect(mockedAppAuth).not.toHaveBeenCalled();
+      expect(poolProvider.listRunners).not.toHaveBeenCalled();
     });
   });
 
