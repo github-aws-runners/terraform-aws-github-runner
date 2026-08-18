@@ -51,8 +51,6 @@ function runnerConfig(overrides: Partial<CreateGitHubRunnerConfig> = {}): Create
     runnerOwner,
     runnerType: 'Org',
     disableAutoUpdate: false,
-    ssmConfigPath: '/github-action-runners/default/runners/config',
-    ssmParameterStoreTags: [],
     ...overrides,
   };
 }
@@ -174,7 +172,7 @@ describe('scaleUp with GHES', () => {
         { Key: 'ghr:runner_labels', Value: 'label1,label2' },
       ]);
       const [, , , options] = mockCreateStartRunnerConfig.mock.calls[0];
-      expect(options?.getRunnerConfigMetadataTags?.('i-12345')).toEqual([{ key: 'InstanceId', value: 'i-12345' }]);
+      expect(options?.getRunnerConfigMetadata?.('i-12345')).toEqual([{ key: 'InstanceId', value: 'i-12345' }]);
     });
 
     it('chunks comma-joined GitHub runner labels by the EC2 tag value max length', async () => {

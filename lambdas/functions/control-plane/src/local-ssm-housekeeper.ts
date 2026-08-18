@@ -1,11 +1,14 @@
-import { cleanSSMTokens } from './scale-runners/ssm-housekeeper';
+import { getRunnerConfigStore } from '@aws-github-runner/storage-providers';
 
 export function run(): void {
-  cleanSSMTokens({
+  process.env.SSM_CLEANUP_CONFIG = JSON.stringify({
     dryRun: true,
     minimumDaysOld: 3,
     tokenPath: '/ghr/my-env/runners/tokens',
-  })
+  });
+
+  getRunnerConfigStore()
+    .houseKeeper()
     .then()
     .catch((e) => {
       console.log(e);

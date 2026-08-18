@@ -1,6 +1,5 @@
 import { addPersistentContextToChildLogger, createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import { resolveComputeProviderType } from '@aws-github-runner/compute-providers/provider-types';
-import { getRunnerConfigStore } from '@aws-github-runner/storage-providers';
 import { Octokit } from '@octokit/rest';
 import yn from 'yn';
 
@@ -12,7 +11,6 @@ import {
   resolveInstallationId,
   isJobQueued,
   UnsupportedEventError,
-  validateSsmParameterStoreTags,
 } from './github-runner';
 import { publishRetryMessage } from './job-retry';
 import type {
@@ -86,12 +84,6 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
   const disableAutoUpdate = yn(process.env.DISABLE_RUNNER_AUTOUPDATE, { default: false });
   const enableJobQueuedCheck = yn(process.env.ENABLE_JOB_QUEUED_CHECK, { default: true });
   const runnerNamePrefix = process.env.RUNNER_NAME_PREFIX || '';
-  const ssmConfigPath = process.env.SSM_CONFIG_PATH || '';
-  const ssmParameterStoreTags: { Key: string; Value: string }[] =
-    process.env.SSM_PARAMETER_STORE_TAGS && process.env.SSM_PARAMETER_STORE_TAGS.trim() !== ''
-      ? validateSsmParameterStoreTags(process.env.SSM_PARAMETER_STORE_TAGS)
-      : [];
-  getRunnerConfigStore();
   const computeProviderType = resolveComputeProviderType(process.env.COMPUTE_PROVIDER_TYPE);
   const computeProvider = {
     ...controlPlaneProviderRegistry.capability(computeProviderType, 'scaleUp')(),
@@ -319,8 +311,6 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       runnerOwner: runnerOwner,
       runnerType,
       disableAutoUpdate,
-      ssmConfigPath,
-      ssmParameterStoreTags,
     };
 
     let createRunnersResult: CreateRunnerResult;

@@ -1,13 +1,13 @@
 import middy from '@middy/core';
 import { logger, setContext } from '@aws-github-runner/aws-powertools-util';
 import { captureLambdaHandler, tracer } from '@aws-github-runner/aws-powertools-util';
+import { getRunnerConfigStore } from '@aws-github-runner/storage-providers';
 import { Context, type SQSBatchItemFailure, type SQSBatchResponse, SQSEvent } from 'aws-lambda';
 
 import { PoolEvent, adjust } from './pool/pool';
 import { scaleDown } from './scale-runners/scale-down';
 import { scaleUp } from './scale-runners/scale-up';
 import type { ActionRequestMessage, ActionRequestMessageSQS } from './scale-runners/types';
-import { SSMCleanupOptions, cleanSSMTokens } from './scale-runners/ssm-housekeeper';
 import { checkAndRetryJob } from './scale-runners/job-retry';
 
 export async function scaleUpHandler(event: SQSEvent, context: Context): Promise<SQSBatchResponse> {
@@ -121,10 +121,10 @@ addMiddleware();
 export async function ssmHousekeeper(event: unknown, context: Context): Promise<void> {
   setContext(context, 'lambda.ts');
   logger.logEventIfEnabled(event);
-  const config = JSON.parse(process.env.SSM_CLEANUP_CONFIG) as SSMCleanupOptions;
+  const runnerConfigStore = getRunnerConfigStore();
 
   try {
-    await cleanSSMTokens(config);
+    await runnerConfigStore.houseKeeper();
   } catch (e) {
     logger.error(`${(e as Error).message}`, { error: e as Error });
   }

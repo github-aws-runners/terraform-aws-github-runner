@@ -18,7 +18,6 @@ declare namespace NodeJS {
     RUNNER_OWNER: string;
     COMPUTE_PROVIDER_TYPE?: string;
     SCALE_DOWN_CONFIG: string;
-    SSM_CLEANUP_CONFIG: string;
     SUBNET_IDS: string;
     INSTANCE_TYPES: string;
     INSTANCE_TARGET_CAPACITY_TYPE: 'on-demand' | 'spot';

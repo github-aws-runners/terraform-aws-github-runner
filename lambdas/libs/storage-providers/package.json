@@ -15,8 +15,14 @@
     "format-check": "prettier --check \"**/*.ts\"",
     "all": "yarn format && yarn lint && yarn test"
   },
+  "devDependencies": {
+    "aws-sdk-client-mock": "^4.1.0",
+    "aws-sdk-client-mock-jest": "^4.1.0"
+  },
   "dependencies": {
-    "@aws-github-runner/aws-ssm-util": "*"
+    "@aws-github-runner/aws-powertools-util": "*",
+    "@aws-github-runner/aws-ssm-util": "*",
+    "@aws-sdk/client-ssm": "^3.1009.0"
   },
   "nx": {
     "includedScripts": [
