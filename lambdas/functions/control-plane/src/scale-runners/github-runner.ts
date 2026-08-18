@@ -1,8 +1,8 @@
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
-import { getParameter, putParameter } from '@aws-github-runner/aws-ssm-util';
 import {
+  getRunnerGroupCacheStore,
   getRunnerConfigStore,
-  type RunnerConfigMetadataTag,
+  type RunnerConfigMetadata,
   type RunnerConfigStore,
 } from '@aws-github-runner/storage-providers';
 import { Octokit } from '@octokit/rest';
@@ -19,7 +19,7 @@ export interface GitHubRunnerMetadata {
 }
 
 export interface StartRunnerConfigOptions {
-  getRunnerConfigMetadataTags?: (runnerId: string) => RunnerConfigMetadataTag[];
+  getRunnerConfigMetadata?: (runnerId: string) => RunnerConfigMetadata[];
   onJitConfigCreated?: (runnerId: string, metadata: GitHubRunnerMetadata) => Promise<void>;
 }
 
@@ -54,37 +54,6 @@ function quoteRunnerLabelsForShell(labels: string): string {
 
 function quoteShellArg(value: string): string {
   return `'${value.replace(/'/g, `'\\''`)}'`;
-}
-
-export function validateSsmParameterStoreTags(tagsJson: string): { Key: string; Value: string }[] {
-  try {
-    const tags = JSON.parse(tagsJson);
-
-    if (!Array.isArray(tags)) {
-      throw new Error('Tags must be an array');
-    }
-
-    if (tags.length === 0) {
-      return [];
-    }
-
-    tags.forEach((tag, index) => {
-      if (typeof tag !== 'object' || tag === null) {
-        throw new Error(`Tag at index ${index} must be an object`);
-      }
-      if (!tag.Key || typeof tag.Key !== 'string' || tag.Key.trim() === '') {
-        throw new Error(`Tag at index ${index} has missing or invalid 'Key' property`);
-      }
-      if (!Object.prototype.hasOwnProperty.call(tag, 'Value') || typeof tag.Value !== 'string') {
-        throw new Error(`Tag at index ${index} has missing or invalid 'Value' property`);
-      }
-    });
-
-    return tags;
-  } catch (err) {
-    logger.error('Invalid SSM_PARAMETER_STORE_TAGS format', { error: err });
-    throw new Error(`Failed to parse SSM_PARAMETER_STORE_TAGS: ${(err as Error).message}`);
-  }
 }
 
 async function getGithubRunnerRegistrationToken(githubRunnerConfig: CreateGitHubRunnerConfig, ghClient: Octokit) {
@@ -191,39 +160,30 @@ export async function getRunnerGroupId(
   // if the runnerType is Repo, then runnerGroupId is default to 1
   let runnerGroupId: number | undefined = 1;
   if (githubRunnerConfig.runnerType === 'Org' && githubRunnerConfig.runnerGroup !== undefined) {
-    let runnerGroup: string | undefined;
-    // check if runner group id is already stored in SSM Parameter Store and
-    // use it if it exists to avoid API call to GitHub
+    const runnerGroupCacheStore = getRunnerGroupCacheStore();
+    let cachedRunnerGroupId: number | undefined;
+    // Use a cached runner group id when available to avoid an API call to GitHub.
     try {
-      runnerGroup = await getParameter(
-        `${githubRunnerConfig.ssmConfigPath}/runner-group/${githubRunnerConfig.runnerGroup}`,
-      );
+      cachedRunnerGroupId = await runnerGroupCacheStore.get(githubRunnerConfig.runnerGroup);
     } catch (err) {
       logger.debug('Handling error:', err as Error);
-      logger.warn(
-        `SSM Parameter "${githubRunnerConfig.ssmConfigPath}/runner-group/${githubRunnerConfig.runnerGroup}"
-         for Runner group ${githubRunnerConfig.runnerGroup} does not exist`,
-      );
+      logger.warn(`Cached id for runner group ${githubRunnerConfig.runnerGroup} does not exist`);
     }
-    if (runnerGroup === undefined) {
+    if (cachedRunnerGroupId === undefined) {
       // get runner group id from GitHub
       runnerGroupId = await getRunnerGroupByName(ghClient, githubRunnerConfig);
-      // store runner group id in SSM
+      // cache the runner group id
       try {
-        await putParameter(
-          `${githubRunnerConfig.ssmConfigPath}/runner-group/${githubRunnerConfig.runnerGroup}`,
-          runnerGroupId.toString(),
-          false,
-          {
-            tags: githubRunnerConfig.ssmParameterStoreTags,
-          },
-        );
+        await runnerGroupCacheStore.create({
+          runnerGroupName: githubRunnerConfig.runnerGroup,
+          runnerGroupId,
+        });
       } catch (err) {
-        logger.debug('Error storing runner group id in SSM Parameter Store', err as Error);
+        logger.debug('Error storing runner group id in cache', err as Error);
         throw err;
       }
     } else {
-      runnerGroupId = parseInt(runnerGroup);
+      runnerGroupId = cachedRunnerGroupId;
     }
   }
   return runnerGroupId;
@@ -294,7 +254,7 @@ async function createRegistrationTokenConfig(
   for (const runnerId of runnerIds) {
     await runnerConfigStore.create(
       { runnerId, value: runnerServiceConfig.join(' ') },
-      { metadataTags: options.getRunnerConfigMetadataTags?.(runnerId) },
+      { metadata: options.getRunnerConfigMetadata?.(runnerId) },
     );
     if (isDelay) {
       // Delay to stay within the selected store's maximum write throughput.
@@ -362,7 +322,7 @@ async function createJitConfig(
       });
       await runnerConfigStore.create(
         { runnerId, value: runnerConfig.data.encoded_jit_config },
-        { metadataTags: options.getRunnerConfigMetadataTags?.(runnerId) },
+        { metadata: options.getRunnerConfigMetadata?.(runnerId) },
       );
       if (isDelay) {
         // Delay to stay within the selected store's maximum write throughput.

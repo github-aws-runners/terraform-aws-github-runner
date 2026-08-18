@@ -1,14 +1,13 @@
 import { DeleteParameterCommand, GetParametersByPathCommand, SSMClient } from '@aws-sdk/client-ssm';
-import { logger } from '@aws-github-runner/aws-powertools-util';
-import { getTracedAWSV3Client } from '@aws-github-runner/aws-powertools-util';
+import { getTracedAWSV3Client, logger } from '@aws-github-runner/aws-powertools-util';
 
-export interface SSMCleanupOptions {
+export interface SsmRunnerConfigCleanupOptions {
   dryRun: boolean;
   minimumDaysOld: number;
   tokenPath: string;
 }
 
-function validateOptions(options: SSMCleanupOptions): void {
+function validateOptions(options: SsmRunnerConfigCleanupOptions): void {
   const errorMessages: string[] = [];
   if (!options.minimumDaysOld || options.minimumDaysOld < 1) {
     errorMessages.push(`minimumDaysOld must be greater then 0, value is set to "${options.minimumDaysOld}"`);
@@ -21,7 +20,7 @@ function validateOptions(options: SSMCleanupOptions): void {
   }
 }
 
-export async function cleanSSMTokens(options: SSMCleanupOptions): Promise<void> {
+export async function cleanSsmRunnerConfigs(options: SsmRunnerConfigCleanupOptions): Promise<void> {
   logger.info(`Cleaning tokens / JIT config older then ${options.minimumDaysOld} days, dryRun: ${options.dryRun}`);
   logger.debug('Cleaning with options', { options });
   validateOptions(options);
@@ -36,7 +35,6 @@ export async function cleanSSMTokens(options: SSMCleanupOptions): Promise<void> 
     parameters.NextToken = nextParameters.NextToken;
   }
   logger.info(`Found #${parameters.Parameters?.length} parameters in path ${options.tokenPath}`);
-  logger.debug('Found parameters', { parameters });
 
   // minimumDate = today - minimumDaysOld
   const minimumDate = new Date();
@@ -47,7 +45,7 @@ export async function cleanSSMTokens(options: SSMCleanupOptions): Promise<void> 
       logger.info(`Deleting parameter ${parameter.Name} with last modified date ${parameter.LastModifiedDate}`);
       try {
         if (!options.dryRun) {
-          // sleep 50ms to avoid rait limit
+          // sleep 50ms to avoid rate limit
           await new Promise((resolve) => setTimeout(resolve, 50));
           await client.send(new DeleteParameterCommand({ Name: parameter.Name }));
         }

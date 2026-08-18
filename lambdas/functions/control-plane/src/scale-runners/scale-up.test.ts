@@ -17,7 +17,7 @@ import type {
   ScaleUpComputeProvider,
 } from './types';
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
-import { resetRunnerConfigStore } from '@aws-github-runner/storage-providers';
+import { resetRunnerConfigStore, resetRunnerGroupCacheStore } from '@aws-github-runner/storage-providers';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Octokit } from '@octokit/rest';
 
@@ -148,6 +148,7 @@ function setDefaults() {
   process.env.GITHUB_APP_CLIENT_SECRET = 'TEST_CLIENT_SECRET';
   process.env.RUNNERS_MAXIMUM_COUNT = '3';
   process.env.ENVIRONMENT = EXPECTED_RUNNER_PARAMS.environment;
+  process.env.SSM_CONFIG_PATH = '/github-action-runners/default/runners/config';
   process.env.SSM_TOKEN_PATH = '/github-action-runners/default/runners/config';
 }
 
@@ -170,7 +171,7 @@ async function createTestProviderRunners(input: CreateScaleUpRunnersInput<unknow
       result.instances,
       input.githubInstallationClient,
       {
-        getRunnerConfigMetadataTags: (runnerId) => [{ key: 'RunnerId', value: runnerId }],
+        getRunnerConfigMetadata: (runnerId) => [{ key: 'RunnerId', value: runnerId }],
       },
     );
   } catch {
@@ -190,6 +191,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   setDefaults();
   resetRunnerConfigStore();
+  resetRunnerGroupCacheStore();
 
   defaultSSMGetParameterMockImpl();
   defaultOctokitMockImpl();
@@ -1198,6 +1200,7 @@ describe('scaleUp with public GH', () => {
     it('creates a ephemeral runner with JIT config.', async () => {
       process.env.ENABLE_EPHEMERAL_RUNNERS = 'true';
       process.env.ENABLE_JOB_QUEUED_CHECK = 'false';
+      delete process.env.SSM_CONFIG_PATH;
       process.env.SSM_TOKEN_PATH = '/github-action-runners/default/runners/config';
       await scaleUpModule.scaleUp(TEST_DATA);
       expect(mockOctokit.actions.getJobForWorkflowRun).not.toBeCalled();
@@ -1243,6 +1246,7 @@ describe('scaleUp with public GH', () => {
       process.env.ENABLE_JIT_CONFIG = 'true';
       process.env.ENABLE_JOB_QUEUED_CHECK = 'false';
       process.env.RUNNER_LABELS = 'jit';
+      delete process.env.SSM_CONFIG_PATH;
       process.env.SSM_TOKEN_PATH = '/github-action-runners/default/runners/config';
       await scaleUpModule.scaleUp(TEST_DATA);
       expect(mockOctokit.actions.getJobForWorkflowRun).not.toBeCalled();
@@ -2165,19 +2169,6 @@ describe('compute provider selection', () => {
     await expect(scaleUpModule.scaleUp(TEST_DATA)).rejects.toThrow(
       "Unsupported compute provider type 'unsupported-provider'",
     );
-    expect(mockedAppAuth).not.toHaveBeenCalled();
-  });
-});
-
-describe('runner config store preflight', () => {
-  it('rejects an unsupported store before resolving compute or GitHub providers', async () => {
-    process.env.RUNNER_CONFIG_STORAGE_PROVIDER = 'unsupported-provider';
-
-    await expect(scaleUpModule.scaleUp(TEST_DATA)).rejects.toThrow(
-      "Unsupported runner config storage provider 'unsupported-provider'",
-    );
-
-    expect(mockedResolveCapability).not.toHaveBeenCalled();
     expect(mockedAppAuth).not.toHaveBeenCalled();
   });
 });

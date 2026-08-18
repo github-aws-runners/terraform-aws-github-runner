@@ -1,6 +1,5 @@
 import type { Octokit } from '@octokit/rest';
 import type { ComputeProviderType } from '@aws-github-runner/compute-providers/provider-types';
-import { resetRunnerConfigStore } from '@aws-github-runner/storage-providers';
 import { beforeEach, vi } from 'vitest';
 
 import { definePoolContractTests } from '../test/compute-provider-contracts/pool';
@@ -21,7 +20,6 @@ vi.mock('../github/auth', () => ({
 vi.mock('../scale-runners/github-runner', () => ({
   createStartRunnerConfig: vi.fn(),
   getGitHubEnterpriseApiUrl: vi.fn(),
-  validateSsmParameterStoreTags: vi.fn(),
 }));
 
 const mockedAppAuth = vi.mocked(ghAuth.createGithubAppAuth);
@@ -49,9 +47,6 @@ const computeProviders = providerTypes.map((type) => ({
 beforeEach(() => {
   vi.clearAllMocks();
   process.env = { ...cleanEnv };
-  process.env.SSM_TOKEN_PATH = '/github-action-runners/default/runners/tokens';
-  resetRunnerConfigStore();
-
   mockedAppAuth.mockResolvedValue({ type: 'app', token: 'app-token', appId: 1, expiresAt: 'some-date' });
   mockedInstallationAuth.mockResolvedValue({
     type: 'token',
@@ -65,7 +60,6 @@ beforeEach(() => {
   });
   mockedCreateClient.mockResolvedValue(githubClient);
   vi.mocked(githubRunner.getGitHubEnterpriseApiUrl).mockReturnValue({ ghesApiUrl: '', ghesBaseUrl: '' });
-  vi.mocked(githubRunner.validateSsmParameterStoreTags).mockReturnValue([]);
   vi.mocked(githubClient.apps.getOrgInstallation).mockResolvedValue({ data: { id: 2 } } as never);
   vi.mocked(githubClient.paginate).mockResolvedValue([]);
 });
