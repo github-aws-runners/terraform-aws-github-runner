@@ -1,4 +1,4 @@
-import { getRunnerConfigStore } from '@aws-github-runner/storage-providers';
+import { createAwsSsmRunnerConfigStore } from './runner-config-store';
 
 export function run(): void {
   process.env.SSM_CLEANUP_CONFIG = JSON.stringify({
@@ -7,7 +7,7 @@ export function run(): void {
     tokenPath: '/ghr/my-env/runners/tokens',
   });
 
-  getRunnerConfigStore()
+  createAwsSsmRunnerConfigStore()
     .houseKeeper()
     .then()
     .catch((e) => {
