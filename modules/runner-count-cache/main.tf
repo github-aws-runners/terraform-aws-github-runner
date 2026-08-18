@@ -67,6 +67,64 @@ resource "aws_cloudwatch_event_rule" "ec2_state_change" {
 resource "aws_cloudwatch_event_target" "counter_lambda" {
   rule = aws_cloudwatch_event_rule.ec2_state_change.name
   arn  = aws_lambda_function.counter.arn
+
+  # EventBridge delivery is at-least-once but not guaranteed. If the counter
+  # Lambda fails through the whole retry window (e.g. a sustained DynamoDB
+  # error), the event is dead-lettered rather than dropped silently, which would
+  # otherwise drift the counter until the read-side staleness fallback corrects it.
+  retry_policy {
+    maximum_event_age_in_seconds = 3600 # 1h; older events are reconciled against the provider
+    maximum_retry_attempts       = 10
+  }
+
+  dead_letter_config {
+    arn = aws_sqs_queue.counter_dlq.arn
+  }
+}
+
+# Dead-letter queue for state-change events that fail delivery to the counter Lambda.
+# Captures the silent-loss failure mode (retry exhaustion) for investigation/replay.
+resource "aws_sqs_queue" "counter_dlq" {
+  name                      = "${var.prefix}-runner-count-dlq"
+  message_retention_seconds = 1209600 # 14 days
+  sqs_managed_sse_enabled   = true
+  tags                      = local.tags
+}
+
+# Allow the state-change rule to write failed deliveries to the DLQ.
+resource "aws_sqs_queue_policy" "counter_dlq" {
+  queue_url = aws_sqs_queue.counter_dlq.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.counter_dlq.arn
+      Condition = {
+        ArnEquals = { "aws:SourceArn" = aws_cloudwatch_event_rule.ec2_state_change.arn }
+      }
+    }]
+  })
+}
+
+# Alarm when the DLQ is non-empty: state-change events failed all delivery
+# attempts, so the counter may be drifting and the messages need replay.
+resource "aws_cloudwatch_metric_alarm" "counter_dlq_not_empty" {
+  alarm_name          = "${var.prefix}-runner-count-dlq-not-empty"
+  alarm_description   = "EC2 state-change events failed delivery to the runner count Lambda and landed in the DLQ."
+  namespace           = "AWS/SQS"
+  metric_name         = "ApproximateNumberOfMessagesVisible"
+  statistic           = "Maximum"
+  period              = 300
+  evaluation_periods  = 1
+  threshold           = 0
+  comparison_operator = "GreaterThanThreshold"
+  treat_missing_data  = "notBreaching"
+  dimensions = {
+    QueueName = aws_sqs_queue.counter_dlq.name
+  }
+  tags = local.tags
 }
 
 # Permission for EventBridge to invoke the Lambda
