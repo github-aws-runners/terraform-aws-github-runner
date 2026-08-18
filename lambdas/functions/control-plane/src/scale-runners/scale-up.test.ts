@@ -17,6 +17,7 @@ import type {
   ScaleUpComputeProvider,
 } from './types';
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
+import { resetRunnerConfigStore } from '@aws-github-runner/storage-providers';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Octokit } from '@octokit/rest';
 
@@ -147,6 +148,7 @@ function setDefaults() {
   process.env.GITHUB_APP_CLIENT_SECRET = 'TEST_CLIENT_SECRET';
   process.env.RUNNERS_MAXIMUM_COUNT = '3';
   process.env.ENVIRONMENT = EXPECTED_RUNNER_PARAMS.environment;
+  process.env.SSM_TOKEN_PATH = '/github-action-runners/default/runners/config';
 }
 
 async function createTestProviderRunners(input: CreateScaleUpRunnersInput<unknown>): Promise<CreateRunnerResult> {
@@ -168,7 +170,7 @@ async function createTestProviderRunners(input: CreateScaleUpRunnersInput<unknow
       result.instances,
       input.githubInstallationClient,
       {
-        getSsmParameterTags: (runnerId) => [{ Key: 'RunnerId', Value: runnerId }],
+        getRunnerConfigMetadataTags: (runnerId) => [{ key: 'RunnerId', value: runnerId }],
       },
     );
   } catch {
@@ -187,6 +189,7 @@ beforeEach(() => {
   vi.resetModules();
   vi.clearAllMocks();
   setDefaults();
+  resetRunnerConfigStore();
 
   defaultSSMGetParameterMockImpl();
   defaultOctokitMockImpl();
@@ -2162,6 +2165,19 @@ describe('compute provider selection', () => {
     await expect(scaleUpModule.scaleUp(TEST_DATA)).rejects.toThrow(
       "Unsupported compute provider type 'unsupported-provider'",
     );
+    expect(mockedAppAuth).not.toHaveBeenCalled();
+  });
+});
+
+describe('runner config store preflight', () => {
+  it('rejects an unsupported store before resolving compute or GitHub providers', async () => {
+    process.env.RUNNER_CONFIG_STORAGE_PROVIDER = 'unsupported-provider';
+
+    await expect(scaleUpModule.scaleUp(TEST_DATA)).rejects.toThrow(
+      "Unsupported runner config storage provider 'unsupported-provider'",
+    );
+
+    expect(mockedResolveCapability).not.toHaveBeenCalled();
     expect(mockedAppAuth).not.toHaveBeenCalled();
   });
 });
