@@ -14,11 +14,12 @@ describe('aws_ssm runner config store', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env = { ...cleanEnv };
+    delete process.env.SSM_CLEANUP_CONFIG;
     delete process.env.SSM_PARAMETER_STORE_TAGS;
     process.env.SSM_TOKEN_PATH = '/runner/tokens';
   });
 
-  it('creates a secure parameter at the legacy path with metadata tags before configured tags', async () => {
+  it('maps metadata to tags before configured SSM tags', async () => {
     process.env.SSM_PARAMETER_STORE_TAGS = JSON.stringify([
       { Key: 'Environment', Value: 'test' },
       { Key: 'Team', Value: 'actions' },
@@ -27,7 +28,7 @@ describe('aws_ssm runner config store', () => {
 
     await store.create(
       { runnerId: 'i-123', value: 'encoded-jit-config' },
-      { metadataTags: [{ key: 'InstanceId', value: 'i-123' }] },
+      { metadata: [{ key: 'InstanceId', value: 'i-123' }] },
     );
 
     expect(store.maxWritesPerSecond).toBe(40);
@@ -76,6 +77,12 @@ describe('aws_ssm runner config store', () => {
     await store.create({ runnerId: 'runner-1', value: 'jit-config' });
 
     expect(putParameterMock).toHaveBeenCalledWith('/runner/tokens/runner-1', 'jit-config', true, { tags: [] });
+  });
+
+  it.each(['', '{invalid-json'])('parses cleanup configuration %j during provider construction', (config) => {
+    process.env.SSM_CLEANUP_CONFIG = config;
+
+    expect(() => createAwsSsmRunnerConfigStore()).toThrow();
   });
 });
 

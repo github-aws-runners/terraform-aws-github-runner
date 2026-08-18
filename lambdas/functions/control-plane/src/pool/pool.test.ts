@@ -4,7 +4,6 @@ import * as nock from 'nock';
 
 import { createRunners } from '@aws-github-runner/compute-providers/aws/ec2/control-plane/runner-config';
 import { listEC2Runners } from '@aws-github-runner/compute-providers/aws/ec2/control-plane/runners';
-import { resetRunnerConfigStore } from '@aws-github-runner/storage-providers';
 import * as ghAuth from '../github/auth';
 import { getGitHubEnterpriseApiUrl } from '../scale-runners/github-runner';
 import { adjust } from './pool';
@@ -52,7 +51,6 @@ vi.mock('../scale-runners/github-runner', async () => ({
     ghesApiUrl: '',
     ghesBaseUrl: '',
   }),
-  validateSsmParameterStoreTags: vi.fn().mockReturnValue([]),
 }));
 
 const mocktokit = Octokit as MockedClass<typeof Octokit>;
@@ -135,7 +133,6 @@ beforeEach(() => {
   vi.resetModules();
   vi.clearAllMocks();
   process.env = { ...cleanEnv };
-  resetRunnerConfigStore();
   process.env.GITHUB_APP_KEY_BASE64 = 'TEST_CERTIFICATE_DATA';
   process.env.GITHUB_APP_ID = '1337';
   process.env.GITHUB_APP_CLIENT_ID = 'TEST_CLIENT_ID';
@@ -145,7 +142,6 @@ beforeEach(() => {
   process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
   process.env.LAUNCH_TEMPLATE_NAME = 'lt-1';
   process.env.SUBNET_IDS = 'subnet-123';
-  process.env.SSM_TOKEN_PATH = '/github-action-runners/default/runners/tokens';
   process.env.INSTANCE_TYPES = 'm5.large';
   process.env.INSTANCE_TARGET_CAPACITY_TYPE = 'spot';
   process.env.RUNNER_OWNER = ORG;
@@ -252,17 +248,6 @@ describe('Test simple pool.', () => {
       await expect(adjust({ poolSize: 10, type: 'unsupported-provider' })).rejects.toThrow(
         "Unsupported compute provider type 'unsupported-provider'",
       );
-      expect(mockListRunners).not.toHaveBeenCalled();
-    });
-
-    it('Rejects an unsupported runner config store before GitHub or runner lookups.', async () => {
-      process.env.RUNNER_CONFIG_STORAGE_PROVIDER = 'unsupported-provider';
-
-      await expect(adjust({ poolSize: 10, type: 'ec2' })).rejects.toThrow(
-        "Unsupported runner config storage provider 'unsupported-provider'",
-      );
-
-      expect(mockedAppAuth).not.toHaveBeenCalled();
       expect(mockListRunners).not.toHaveBeenCalled();
     });
 

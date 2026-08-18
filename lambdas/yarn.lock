@@ -214,7 +214,11 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@aws-github-runner/storage-providers@workspace:libs/storage-providers"
   dependencies:
+    "@aws-github-runner/aws-powertools-util": "npm:*"
     "@aws-github-runner/aws-ssm-util": "npm:*"
+    "@aws-sdk/client-ssm": "npm:^3.1009.0"
+    aws-sdk-client-mock: "npm:^4.1.0"
+    aws-sdk-client-mock-jest: "npm:^4.1.0"
   languageName: unknown
   linkType: soft
 
