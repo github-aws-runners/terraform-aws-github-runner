@@ -1,6 +1,7 @@
 import { Octokit } from '@octokit/rest';
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import { resolveComputeProviderType } from '@aws-github-runner/compute-providers/provider-types';
+import { getRunnerConfigStore } from '@aws-github-runner/storage-providers';
 import yn from 'yn';
 
 import {
@@ -31,7 +32,6 @@ export async function adjust(event: PoolEvent): Promise<void> {
   const runnerGroup = process.env.RUNNER_GROUP_NAME || '';
   const runnerNamePrefix = process.env.RUNNER_NAME_PREFIX || '';
   const environment = process.env.ENVIRONMENT;
-  const ssmTokenPath = process.env.SSM_TOKEN_PATH;
   const ssmConfigPath = process.env.SSM_CONFIG_PATH || '';
   const ephemeral = yn(process.env.ENABLE_EPHEMERAL_RUNNERS, { default: false });
   const enableJitConfig = yn(process.env.ENABLE_JIT_CONFIG, { default: ephemeral });
@@ -41,6 +41,7 @@ export async function adjust(event: PoolEvent): Promise<void> {
     process.env.SSM_PARAMETER_STORE_TAGS && process.env.SSM_PARAMETER_STORE_TAGS.trim() !== ''
       ? validateSsmParameterStoreTags(process.env.SSM_PARAMETER_STORE_TAGS)
       : [];
+  getRunnerConfigStore();
   // -1 disables the maximum check, matching the scale-up lambda's semantics. Defaults to unlimited
   // when unset so the pool keeps its previous behavior on stacks that do not provide the variable.
   const maximumRunners = parseInt(process.env.RUNNERS_MAXIMUM_COUNT || '-1');
@@ -103,7 +104,6 @@ export async function adjust(event: PoolEvent): Promise<void> {
         runnerNamePrefix,
         runnerType: 'Org',
         disableAutoUpdate: disableAutoUpdate,
-        ssmTokenPath,
         ssmConfigPath,
         ssmParameterStoreTags,
       },
