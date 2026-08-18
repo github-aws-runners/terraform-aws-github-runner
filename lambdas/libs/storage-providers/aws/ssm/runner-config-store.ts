@@ -3,19 +3,19 @@ import { putParameter } from '@aws-github-runner/aws-ssm-util';
 import type { RunnerConfigMetadata, RunnerConfigRecord, RunnerConfigStore } from '../../core';
 import type {} from './environment';
 import { loadSsmParameterStoreTagsFromEnvironment } from './parameter-store-tags';
-import { cleanSsmRunnerConfigs, type SsmRunnerConfigCleanupOptions } from './runner-config-housekeeper';
+import { cleanSSMTokens, type SSMCleanupOptions } from './runner-config-housekeeper';
 
 interface AwsSsmRunnerConfigStoreConfig {
   tokenPath?: string;
   parameterStoreTags: { Key: string; Value: string }[];
-  cleanupOptions?: SsmRunnerConfigCleanupOptions;
+  cleanupOptions?: SSMCleanupOptions;
 }
 
 export function createAwsSsmRunnerConfigStore(): RunnerConfigStore {
   const tokenPath = process.env.SSM_TOKEN_PATH;
   const cleanupOptions =
     process.env.SSM_CLEANUP_CONFIG !== undefined
-      ? (JSON.parse(process.env.SSM_CLEANUP_CONFIG) as SsmRunnerConfigCleanupOptions)
+      ? (JSON.parse(process.env.SSM_CLEANUP_CONFIG) as SSMCleanupOptions)
       : undefined;
   const hasWriterConfig = tokenPath !== undefined && tokenPath.trim() !== '';
 
@@ -53,6 +53,6 @@ class AwsSsmRunnerConfigStore implements RunnerConfigStore {
       throw new Error('Environment variable SSM_CLEANUP_CONFIG is not set');
     }
 
-    await cleanSsmRunnerConfigs(this.config.cleanupOptions);
+    await cleanSSMTokens(this.config.cleanupOptions);
   }
 }
