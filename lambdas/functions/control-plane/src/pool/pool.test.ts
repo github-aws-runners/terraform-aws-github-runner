@@ -4,6 +4,7 @@ import * as nock from 'nock';
 
 import { createRunners } from '@aws-github-runner/compute-providers/aws/ec2/control-plane/runner-config';
 import { listEC2Runners } from '@aws-github-runner/compute-providers/aws/ec2/control-plane/runners';
+import { resetRunnerConfigStore } from '@aws-github-runner/storage-providers';
 import * as ghAuth from '../github/auth';
 import { getGitHubEnterpriseApiUrl } from '../scale-runners/github-runner';
 import { adjust } from './pool';
@@ -134,6 +135,7 @@ beforeEach(() => {
   vi.resetModules();
   vi.clearAllMocks();
   process.env = { ...cleanEnv };
+  resetRunnerConfigStore();
   process.env.GITHUB_APP_KEY_BASE64 = 'TEST_CERTIFICATE_DATA';
   process.env.GITHUB_APP_ID = '1337';
   process.env.GITHUB_APP_CLIENT_ID = 'TEST_CLIENT_ID';
@@ -250,6 +252,17 @@ describe('Test simple pool.', () => {
       await expect(adjust({ poolSize: 10, type: 'microvm' })).rejects.toThrow(
         "Unsupported compute provider type 'microvm'",
       );
+      expect(mockListRunners).not.toHaveBeenCalled();
+    });
+
+    it('Rejects an unsupported runner config store before GitHub or runner lookups.', async () => {
+      process.env.RUNNER_CONFIG_STORAGE_PROVIDER = 'unsupported-provider';
+
+      await expect(adjust({ poolSize: 10, type: 'ec2' })).rejects.toThrow(
+        "Unsupported runner config storage provider 'unsupported-provider'",
+      );
+
+      expect(mockedAppAuth).not.toHaveBeenCalled();
       expect(mockListRunners).not.toHaveBeenCalled();
     });
 
