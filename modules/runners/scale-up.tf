@@ -66,6 +66,8 @@ resource "aws_lambda_function" "scale_up" {
       SCALE_ERRORS                              = jsonencode(var.scale_errors)
       JOB_RETRY_CONFIG                          = jsonencode(local.job_retry_config)
       USE_DEDICATED_HOST                        = var.use_dedicated_host
+      RUNNER_COUNT_CACHE_TABLE_NAME             = try(var.runner_count_cache.table_name, "")
+      RUNNER_COUNT_CACHE_STALE_THRESHOLD_MS     = try(var.runner_count_cache.stale_threshold_ms, 60000)
     }
   }
 
@@ -134,6 +136,20 @@ resource "aws_iam_role_policy" "scale_up" {
     kms_key_arn              = local.kms_key_arn
     ami_kms_key_arn          = local.ami_kms_key_arn
     ssm_ami_id_parameter_arn = local.ami_id_ssm_module_managed ? aws_ssm_parameter.runner_ami_id[0].arn : var.ami.id_ssm_parameter_arn
+  })
+}
+
+resource "aws_iam_role_policy" "scale_up_runner_count_cache" {
+  count = var.runner_count_cache != null ? 1 : 0
+  name  = "runner-count-cache-policy"
+  role  = aws_iam_role.scale_up.name
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["dynamodb:GetItem"]
+      Resource = "arn:${var.aws_partition}:dynamodb:${var.aws_region}:${data.aws_caller_identity.current.account_id}:table/${var.runner_count_cache.table_name}"
+    }]
   })
 }
 
