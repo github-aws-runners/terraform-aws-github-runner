@@ -19,19 +19,24 @@ locals {
       }
     }
   }
+
+  webhook_storage_kms_key_arn = local.storage_provider_type == "aws_ssm" ? local.effective_config.ssm.kms_key_id : null
 }
 
 module "webhook" {
   source      = "../webhook"
   prefix      = var.prefix
   tags        = local.tags
-  kms_key_arn = local.effective_config.ssm.kms_key_id
+  kms_key_arn = local.webhook_storage_kms_key_arn
   eventbridge = {
     enable        = local.effective_config.orchestration_provider.webhook.eventbridge.enabled
     accept_events = local.effective_config.orchestration_provider.webhook.eventbridge.accept_events
   }
   runner_matcher_config               = local.runner_matcher_config
   matcher_config_parameter_store_tier = local.effective_config.orchestration_provider.webhook.matcher_config_parameter_store_tier
+  storage_provider = merge(local.storage_provider_capabilities.webhook, {
+    type = local.storage_provider_type
+  })
 
   ssm_paths = {
     root    = local.ssm_root_path

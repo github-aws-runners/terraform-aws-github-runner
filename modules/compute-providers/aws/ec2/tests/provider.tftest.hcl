@@ -367,11 +367,11 @@ run "separates_provider_runner_and_ssm_tags" {
 
   assert {
     condition = (
-      aws_ssm_parameter.runner_config_run_as.tags["Name"] == "ssm-name"
-      && aws_ssm_parameter.runner_config_run_as.tags["Scope"] == "ssm"
-      && aws_ssm_parameter.runner_config_run_as.tags["SsmOnly"] == "ssm"
-      && !contains(keys(aws_ssm_parameter.runner_config_run_as.tags), "RunnerOnly")
-      && !contains(keys(aws_ssm_parameter.runner_config_run_as.tags), "ghr:environment")
+      aws_ssm_parameter.runner_config_run_as[0].tags["Name"] == "ssm-name"
+      && aws_ssm_parameter.runner_config_run_as[0].tags["Scope"] == "ssm"
+      && aws_ssm_parameter.runner_config_run_as[0].tags["SsmOnly"] == "ssm"
+      && !contains(keys(aws_ssm_parameter.runner_config_run_as[0].tags), "RunnerOnly")
+      && !contains(keys(aws_ssm_parameter.runner_config_run_as[0].tags), "ghr:environment")
     )
     error_message = "EC2 SSM parameters must merge SSM component tags over provider tags."
   }
@@ -448,4 +448,78 @@ run "requires_distribution_object_when_sync_is_enabled" {
   }
 
   expect_failures = [terraform_data.validate_config]
+}
+
+run "dynamodb_bootstrap_is_opt_in_and_compute_scoped" {
+  command = plan
+
+  variables {
+    config = {
+      vpc_id         = "vpc-12345678"
+      subnet_ids     = ["subnet-12345678"]
+      instance_types = ["m5.large"]
+      ami = {
+        filter = { state = ["available"] }
+        owners = ["amazon"]
+        id_ssm_parameter = {
+          arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/ami-id"
+        }
+        kms_key = null
+      }
+      binaries_syncer = {
+        enabled = false
+      }
+      cloudwatch_agent = {
+        enabled = false
+      }
+      managed_security_group_enabled = true
+    }
+
+    runner = {
+      os           = "windows"
+      architecture = "x64"
+      iam = {
+        role = {
+          arn  = "arn:aws:iam::123456789012:role/provider-test-runner"
+          name = "provider-test-runner"
+        }
+      }
+    }
+
+    storage_provider = {
+      type = "aws_dynamodb"
+      runner = {
+        config_table_name       = "provider-test-config"
+        runner_state_table_name = "provider-test-runner-state"
+        scope                   = "entry#unsafe-$(value)#bootstrap"
+        iam_policy_json         = jsonencode({ Version = "2012-10-17", Statement = [] })
+      }
+    }
+  }
+
+  assert {
+    condition = (
+      length(aws_ssm_parameter.runner_config_run_as) == 0
+      && length(aws_ssm_parameter.runner_enable_cloudwatch) == 0
+      && contains(keys(output.provider.policies.runner.inline_policies), "runner_config_storage")
+      && !contains(keys(output.provider.policies.runner.inline_policies), "ssm_parameters")
+      && output.provider.environment_variables.scale_up["EC2_INSTANCE_ARN_PREFIX"] == "arn:aws:ec2:eu-west-1:123456789012:instance/"
+      && output.provider.environment_variables.pool["EC2_INSTANCE_ARN_PREFIX"] == "arn:aws:ec2:eu-west-1:123456789012:instance/"
+    )
+    error_message = "DynamoDB-selected EC2 runners must replace SSM bootstrap resources and expose the matching compute-resource ARN prefix."
+  }
+
+  assert {
+    condition = (
+      strcontains(base64decode(aws_launch_template.runner.user_data), base64encode("provider-test-config"))
+      && strcontains(base64decode(aws_launch_template.runner.user_data), base64encode("entry#unsafe-$(value)#bootstrap"))
+      && strcontains(base64decode(aws_launch_template.runner.user_data), base64encode("arn:aws:ec2:eu-west-1:123456789012:instance/"))
+      && !strcontains(base64decode(aws_launch_template.runner.user_data), "entry#unsafe-$(value)#bootstrap")
+      && strcontains(base64decode(aws_launch_template.runner.user_data), "aws dynamodb delete-item")
+      && strcontains(base64decode(aws_launch_template.runner.user_data), "attribute_exists(#expires_at) AND #expires_at > :now")
+      && strcontains(base64decode(aws_launch_template.runner.user_data), "--return-values ALL_OLD")
+      && !strcontains(base64decode(aws_launch_template.runner.user_data), "aws ssm get-parameters --names")
+    )
+    error_message = "DynamoDB bootstrap must base64-embed user-controlled locators and atomically consume only an unexpired per-instance record."
+  }
 }

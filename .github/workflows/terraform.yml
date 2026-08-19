@@ -27,6 +27,7 @@ env:
     modules/orchestration-providers/webhook/job-retry
     modules/orchestration-providers/webhook/pool
     modules/orchestration-providers/webhook/scale-runners
+    modules/storage-providers/aws/dynamodb
     modules/runner-binaries-syncer
     modules/runner-config
     modules/runner-config/ssm-housekeeper

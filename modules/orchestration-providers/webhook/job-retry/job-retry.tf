@@ -26,16 +26,21 @@ locals {
     NODE_TLS_REJECT_UNAUTHORIZED         = var.config.github.enterprise_server.url != null && !var.config.github.enterprise_server.ssl_verify ? 0 : 1
     USER_AGENT                           = var.config.github.user_agent
     JOB_QUEUE_SCALE_UP_URL               = var.config.queue.build.url
+    RUNNER_NAME_PREFIX                   = var.config.runner.name_prefix
+  }
+
+  ssm_environment_variables = {
     PARAMETER_GITHUB_APP_ID_NAME         = var.config.github.app_parameters.id.name
     PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.config.github.app_parameters.key_base64.name
     PARAMETER_GITHUB_APPS_MANIFEST_NAME  = var.config.github.app_parameters.additional_apps_manifest != null ? var.config.github.app_parameters.additional_apps_manifest.name : ""
-    RUNNER_NAME_PREFIX                   = var.config.runner.name_prefix
   }
 
   environment_variables = merge(
     local.lambda_environment_variables,
     var.config.lambda.environment_variables,
     local.job_retry_environment_variables,
+    var.storage_provider.type == "aws_ssm" ? local.ssm_environment_variables : {},
+    var.storage_provider.environment_variables,
   )
 }
 
