@@ -15,14 +15,12 @@ describe('parseMicrovmDynamicLabels', () => {
         `ghr-microvm-egress-network-connectors:${internetEgressConnectorArn}`,
         `ghr-microvm-image-arn:${imageArn}`,
         'ghr-microvm-image-version:3.0',
-        'ghr-microvm-maximum-duration-in-seconds:7200',
       ]),
     ).toEqual({
       overrides: {
         egressNetworkConnectors: [egressConnectorArn, internetEgressConnectorArn],
         imageIdentifier: imageArn,
         imageVersion: '3.0',
-        maximumDurationInSeconds: 7200,
       },
       violations: [],
     });
@@ -40,8 +38,10 @@ describe('parseMicrovmDynamicLabels', () => {
     ],
     ['ghr-microvm-image-arn:not-an-arn', 'is not a valid customer MicroVM image ARN'],
     ['ghr-microvm-image-version:', "key 'image-version' requires a value"],
-    ['ghr-microvm-maximum-duration-in-seconds:0', 'maximum duration must be an integer between 1 and 28800'],
-    ['ghr-microvm-maximum-duration-in-seconds:28801', 'maximum duration must be an integer between 1 and 28800'],
+    [
+      'ghr-microvm-maximum-duration-in-seconds:7200',
+      "key 'maximum-duration-in-seconds' is not a supported MicroVM override",
+    ],
   ])('rejects invalid override %s', (label, reason) => {
     const result = parseMicrovmDynamicLabels([label]);
 

@@ -50,32 +50,33 @@ describe('createMicrovmScaleUpProvider', () => {
         `ghr-microvm-egress-network-connectors:${overrideEgressConnectorArn}`,
         `ghr-microvm-image-arn:${overrideImageArn}`,
         'ghr-microvm-image-version:3.0',
-        'ghr-microvm-maximum-duration-in-seconds:7200',
       ]),
     ).resolves.toEqual({
       runnerLabels: [
         `ghr-microvm-egress-network-connectors:${overrideEgressConnectorArn}`,
         `ghr-microvm-image-arn:${overrideImageArn}`,
         'ghr-microvm-image-version:3.0',
-        'ghr-microvm-maximum-duration-in-seconds:7200',
       ],
       state: {
         overrides: {
           egressNetworkConnectors: [overrideEgressConnectorArn],
           imageIdentifier: overrideImageArn,
           imageVersion: '3.0',
-          maximumDurationInSeconds: 7200,
         },
       },
     });
   });
 
-  it('rejects unsupported MicroVM override labels at the control-plane boundary', async () => {
+  it.each([
+    ['ghr-microvm-memory:8192', "key 'memory' is not a supported MicroVM override"],
+    [
+      'ghr-microvm-maximum-duration-in-seconds:7200',
+      "key 'maximum-duration-in-seconds' is not a supported MicroVM override",
+    ],
+  ])('rejects unsupported MicroVM override label %s at the control-plane boundary', async (label, reason) => {
     const provider = createMicrovmScaleUpProvider(createStartRunnerConfig);
 
-    await expect(provider.resolveLabelsForRunners(['ghr-microvm-memory:8192'])).rejects.toThrow(
-      "key 'memory' is not a supported MicroVM override",
-    );
+    await expect(provider.resolveLabelsForRunners([label])).rejects.toThrow(reason);
   });
 
   it('counts managed MicroVMs for the runner owner', async () => {

@@ -1,6 +1,5 @@
 export const MICROVM_DYNAMIC_LABEL_PREFIX = 'ghr-microvm-';
 
-const MAXIMUM_DURATION_IN_SECONDS = 28_800;
 const MAXIMUM_EGRESS_NETWORK_CONNECTORS = 10;
 const MICROVM_IMAGE_ARN_PATTERN = /^arn:[^:]+:lambda:[^:]+:[0-9]{12}:microvm-image:.+$/;
 const MICROVM_NETWORK_CONNECTOR_ARN_PATTERN =
@@ -10,7 +9,6 @@ export interface MicrovmDynamicLabelOverrides {
   egressNetworkConnectors?: string[];
   imageIdentifier?: string;
   imageVersion?: string;
-  maximumDurationInSeconds?: number;
 }
 
 export interface MicrovmDynamicLabelViolation {
@@ -69,18 +67,6 @@ export function parseMicrovmDynamicLabels(labels: string[]): {
       case 'image-version':
         overrides.imageVersion = value;
         break;
-      case 'maximum-duration-in-seconds': {
-        const duration = Number(value);
-        if (!Number.isInteger(duration) || duration < 1 || duration > MAXIMUM_DURATION_IN_SECONDS) {
-          violations.push({
-            label,
-            reason: `maximum duration must be an integer between 1 and ${MAXIMUM_DURATION_IN_SECONDS}`,
-          });
-        } else {
-          overrides.maximumDurationInSeconds = duration;
-        }
-        break;
-      }
       default:
         violations.push({ label, reason: `key '${key}' is not a supported MicroVM override` });
     }
