@@ -5,7 +5,7 @@ data "aws_region" "current" {}
 data "aws_caller_identity" "current" {}
 
 locals {
-  lambda_zip = "${path.module}/../../lambdas/functions/runner-count-cache/dist/runner-count-cache.zip"
+  lambda_zip = "${path.module}/../../lambdas/functions/runner-count-cache/runner-count-cache.zip"
 }
 
 resource "aws_lambda_function" "counter" {
