@@ -86,9 +86,9 @@ describe('runner-count-cache handler', () => {
   });
 
   it('ignores non-runner instances', async () => {
-    ec2Mock.on(DescribeInstancesCommand).resolves(
-      runnerInstance([{ Key: 'ghr:Application', Value: 'something-else' }]),
-    );
+    ec2Mock
+      .on(DescribeInstancesCommand)
+      .resolves(runnerInstance([{ Key: 'ghr:Application', Value: 'something-else' }]));
     await handler(event('i-1', 'pending'), ctx);
     expect(transactions()).toHaveLength(0);
   });
@@ -108,9 +108,9 @@ describe('runner-count-cache handler', () => {
   });
 
   it('skips instances missing required tags', async () => {
-    ec2Mock.on(DescribeInstancesCommand).resolves(
-      runnerInstance([{ Key: 'ghr:Application', Value: 'github-action-runner' }]),
-    );
+    ec2Mock
+      .on(DescribeInstancesCommand)
+      .resolves(runnerInstance([{ Key: 'ghr:Application', Value: 'github-action-runner' }]));
     await handler(event('i-1', 'pending'), ctx);
     expect(transactions()).toHaveLength(0);
   });
@@ -121,9 +121,9 @@ describe('runner-count-cache handler', () => {
   });
 
   it('rethrows non-cancellation errors so EventBridge retries / DLQs', async () => {
-    ddbMock.on(TransactWriteItemsCommand).rejects(
-      Object.assign(new Error('throttled'), { name: 'ProvisionedThroughputExceededException' }),
-    );
+    ddbMock
+      .on(TransactWriteItemsCommand)
+      .rejects(Object.assign(new Error('throttled'), { name: 'ProvisionedThroughputExceededException' }));
     await expect(handler(event('i-1', 'pending'), ctx)).rejects.toThrow('throttled');
   });
 });

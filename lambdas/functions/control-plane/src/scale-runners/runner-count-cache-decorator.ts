@@ -36,9 +36,7 @@ function ensureInitialized(tableName: string): void {
  * backend. When the cache table is not configured it is a transparent
  * pass-through, so the feature stays fully opt-in.
  */
-export function withRunnerCountCache<TState>(
-  provider: ScaleUpComputeProvider<TState>,
-): ScaleUpComputeProvider<TState> {
+export function withRunnerCountCache<TState>(provider: ScaleUpComputeProvider<TState>): ScaleUpComputeProvider<TState> {
   const tableName = cacheTableName();
   if (!tableName) {
     return provider; // feature disabled -> no behavioural change
