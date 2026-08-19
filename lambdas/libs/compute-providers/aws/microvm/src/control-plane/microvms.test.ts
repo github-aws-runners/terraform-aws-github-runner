@@ -1,11 +1,8 @@
 import {
   LambdaMicrovmsClient,
   ListMicrovmsCommand,
-  ListTagsCommand,
   RunMicrovmCommand,
-  TagResourceCommand,
   TerminateMicrovmCommand,
-  UntagResourceCommand,
 } from '@aws-sdk/client-lambda-microvms';
 import { mockClient } from 'aws-sdk-client-mock';
 import 'aws-sdk-client-mock-jest/vitest';
@@ -15,49 +12,69 @@ import type { MicrovmProviderConfig } from './config';
 import {
   isRetryableMicrovmError,
   listMicrovmRunners,
-  microvmArn,
   microvmBootTimeExceeded,
   runMicrovmRunner,
-  tagMicrovm,
   terminateMicrovm,
-  untagMicrovm,
 } from './microvms';
+import {
+  createMicrovmRunnerMetadata,
+  deleteMicrovmRunnerMetadata,
+  listMicrovmRunnerMetadata,
+  markMicrovmCleanupPending,
+  type MicrovmRunnerMetadata,
+} from './runner-metadata';
+
+vi.mock('./runner-metadata', () => ({
+  createMicrovmRunnerMetadata: vi.fn(),
+  deleteMicrovmRunnerMetadata: vi.fn(),
+  listMicrovmRunnerMetadata: vi.fn(),
+  markMicrovmCleanupPending: vi.fn(),
+}));
 
 const mockMicrovmClient = mockClient(LambdaMicrovmsClient);
 const imageArn = 'arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner';
+const metadataSsmPath = '/github-action-runners/unit-test/microvm-metadata';
 const config: MicrovmProviderConfig = {
   imageIdentifier: imageArn,
   imageVersion: '3.0',
   executionRoleArn: 'arn:aws:iam::123456789012:role/microvm-runner',
   egressNetworkConnectors: ['arn:egress'],
   maximumDurationInSeconds: 1200,
+  metadataSsmPath,
   logging: { cloudWatch: { logGroup: '/aws/lambda-microvms/runner' } },
 };
 
+function metadata(overrides: Partial<MicrovmRunnerMetadata> = {}): MicrovmRunnerMetadata {
+  return {
+    version: 1,
+    microvmId: 'mvm-managed',
+    environment: 'unit-test',
+    runnerOwner: 'Codertocat',
+    runnerType: 'Org',
+    source: 'scale-up-lambda',
+    imageArn,
+    imageVersion: '3.0',
+    createdAt: '2026-08-06T10:00:00.000Z',
+    expiresAt: '2026-08-06T11:00:00.000Z',
+    ...overrides,
+  };
+}
+
 beforeEach(() => {
   mockMicrovmClient.reset();
+  vi.clearAllMocks();
   vi.useRealTimers();
   process.env.AWS_REGION = 'eu-west-1';
   process.env.RUNNER_BOOT_TIME_IN_MINUTES = '5';
-});
-
-describe('microvmArn', () => {
-  it('derives the MicroVM resource ARN from its image ARN', () => {
-    expect(microvmArn(imageArn, 'mvm-123')).toBe('arn:aws:lambda:eu-west-1:123456789012:microvm:mvm-123');
-    expect(microvmArn(imageArn.replace('arn:aws:', 'arn:aws-us-gov:'), 'mvm-456')).toContain('arn:aws-us-gov:lambda:');
-  });
-
-  it('rejects image names that cannot identify a customer MicroVM resource', () => {
-    expect(() => microvmArn('runner', 'mvm-123')).toThrow(
-      'MICROVM_IMAGE_ARN is not a valid customer MicroVM image ARN',
-    );
-  });
+  vi.mocked(createMicrovmRunnerMetadata).mockResolvedValue();
+  vi.mocked(deleteMicrovmRunnerMetadata).mockResolvedValue();
+  vi.mocked(listMicrovmRunnerMetadata).mockResolvedValue({ cleanupMicrovmIds: [], metadataById: new Map() });
+  vi.mocked(markMicrovmCleanupPending).mockResolvedValue();
 });
 
 describe('runMicrovmRunner', () => {
-  it('launches and tags a managed runner', async () => {
-    mockMicrovmClient.on(RunMicrovmCommand).resolves({ microvmId: 'mvm-123' });
-    mockMicrovmClient.on(TagResourceCommand).resolves({});
+  it('launches a runner and records durable ownership metadata', async () => {
+    mockMicrovmClient.on(RunMicrovmCommand).resolves({ microvmId: 'mvm-123', imageArn });
 
     await expect(
       runMicrovmRunner({
@@ -80,15 +97,15 @@ describe('runMicrovmRunner', () => {
       runHookPayload: '{"version":1}',
       clientToken: expect.any(String),
     });
-    expect(mockMicrovmClient).toHaveReceivedCommandWith(TagResourceCommand, {
-      Resource: microvmArn(imageArn, 'mvm-123'),
-      Tags: {
-        'ghr:Application': 'github-action-runner',
-        'ghr:created_by': 'scale-up-lambda',
-        'ghr:environment': 'unit-test',
-        'ghr:Owner': 'Codertocat',
-        'ghr:Type': 'Org',
-      },
+    expect(createMicrovmRunnerMetadata).toHaveBeenCalledWith(metadataSsmPath, {
+      microvmId: 'mvm-123',
+      environment: 'unit-test',
+      runnerOwner: 'Codertocat',
+      runnerType: 'Org',
+      source: 'scale-up-lambda',
+      imageArn,
+      imageVersion: '3.0',
+      maximumDurationInSeconds: 1200,
     });
   });
 
@@ -107,11 +124,10 @@ describe('runMicrovmRunner', () => {
     ).rejects.toThrow('RunMicrovm returned no microvmId');
   });
 
-  it('terminates a new runner when required tags cannot be applied', async () => {
-    const tagError = new Error('tag failed');
-    mockMicrovmClient.on(RunMicrovmCommand).resolves({ microvmId: 'mvm-untagged' });
-    mockMicrovmClient.on(TagResourceCommand).rejects(tagError);
+  it('terminates a new runner when required metadata cannot be recorded', async () => {
+    mockMicrovmClient.on(RunMicrovmCommand).resolves({ microvmId: 'mvm-untracked', imageArn });
     mockMicrovmClient.on(TerminateMicrovmCommand).resolves({});
+    vi.mocked(createMicrovmRunnerMetadata).mockRejectedValue(new Error('metadata failed'));
 
     await expect(
       runMicrovmRunner({
@@ -122,17 +138,17 @@ describe('runMicrovmRunner', () => {
         runnerType: 'Org',
         source: 'scale-up-lambda',
       }),
-    ).rejects.toThrow('tag failed');
+    ).rejects.toThrow('metadata failed');
 
     expect(mockMicrovmClient).toHaveReceivedCommandWith(TerminateMicrovmCommand, {
-      microvmIdentifier: 'mvm-untagged',
+      microvmIdentifier: 'mvm-untracked',
     });
   });
 
-  it('preserves the tag error when cleanup also fails', async () => {
-    mockMicrovmClient.on(RunMicrovmCommand).resolves({ microvmId: 'mvm-untagged' });
-    mockMicrovmClient.on(TagResourceCommand).rejects(new Error('tag failed'));
+  it('preserves the metadata error when termination also fails', async () => {
+    mockMicrovmClient.on(RunMicrovmCommand).resolves({ microvmId: 'mvm-untracked', imageArn });
     mockMicrovmClient.on(TerminateMicrovmCommand).rejects(new Error('terminate failed'));
+    vi.mocked(createMicrovmRunnerMetadata).mockRejectedValue(new Error('metadata failed'));
 
     await expect(
       runMicrovmRunner({
@@ -143,12 +159,13 @@ describe('runMicrovmRunner', () => {
         runnerType: 'Org',
         source: 'scale-up-lambda',
       }),
-    ).rejects.toThrow('tag failed');
+    ).rejects.toThrow('metadata failed');
+    expect(markMicrovmCleanupPending).toHaveBeenCalledWith(metadataSsmPath, 'mvm-untracked');
   });
 });
 
 describe('listMicrovmRunners', () => {
-  it('paginates active MicroVMs and filters them by management tags', async () => {
+  it('paginates active MicroVMs and filters them by durable metadata', async () => {
     const startedAt = new Date('2026-08-06T10:00:00.000Z');
     mockMicrovmClient
       .on(ListMicrovmsCommand)
@@ -162,26 +179,23 @@ describe('listMicrovmRunners', () => {
       .resolvesOnce({
         items: [{ microvmId: 'mvm-other', imageArn, imageVersion: '3.0', startedAt, state: 'PENDING' }],
       });
-    mockMicrovmClient
-      .on(ListTagsCommand)
-      .resolvesOnce({
-        Tags: {
-          'ghr:Application': 'github-action-runner',
-          'ghr:environment': 'unit-test',
-          'ghr:Owner': 'Codertocat',
-          'ghr:Type': 'Org',
-          'ghr:github_runner_id': '42',
-          'ghr:bypass-removal': 'true',
-        },
-      })
-      .resolvesOnce({ Tags: { 'ghr:Application': 'another-application' } });
+    vi.mocked(listMicrovmRunnerMetadata).mockResolvedValue({
+      cleanupMicrovmIds: [],
+      metadataById: new Map([
+        ['mvm-managed', metadata({ githubRunnerId: '42', bypassRemoval: true })],
+        ['mvm-other', metadata({ microvmId: 'mvm-other', runnerOwner: 'Other' })],
+      ]),
+    });
 
     await expect(
-      listMicrovmRunners({
-        environment: 'unit-test',
-        runnerOwner: 'Codertocat',
-        runnerType: 'Org',
-      }),
+      listMicrovmRunners(
+        {
+          environment: 'unit-test',
+          runnerOwner: 'Codertocat',
+          runnerType: 'Org',
+        },
+        metadataSsmPath,
+      ),
     ).resolves.toEqual([
       {
         id: 'mvm-managed',
@@ -200,9 +214,17 @@ describe('listMicrovmRunners', () => {
       maxResults: 50,
       nextToken: 'page-2',
     });
+    expect(listMicrovmRunnerMetadata).toHaveBeenCalledWith(
+      metadataSsmPath,
+      new Map([
+        ['mvm-managed', 'RUNNING'],
+        ['mvm-terminated', 'TERMINATED'],
+        ['mvm-other', 'PENDING'],
+      ]),
+    );
   });
 
-  it('applies environment, owner, type, and orphan filters after loading tags', async () => {
+  it('applies environment, owner, type, and orphan filters after loading metadata', async () => {
     mockMicrovmClient.on(ListMicrovmsCommand).resolves({
       items: [
         {
@@ -214,62 +236,98 @@ describe('listMicrovmRunners', () => {
         },
       ],
     });
-    mockMicrovmClient.on(ListTagsCommand).resolves({
-      Tags: {
-        'ghr:Application': 'github-action-runner',
-        'ghr:environment': 'other',
-        'ghr:Owner': 'Other',
-        'ghr:Type': 'Repo',
-      },
+    vi.mocked(listMicrovmRunnerMetadata).mockResolvedValue({
+      cleanupMicrovmIds: [],
+      metadataById: new Map([
+        [
+          'mvm-filtered',
+          metadata({ microvmId: 'mvm-filtered', environment: 'other', runnerOwner: 'Other', runnerType: 'Repo' }),
+        ],
+      ]),
     });
 
-    await expect(listMicrovmRunners({ environment: 'unit-test' })).resolves.toEqual([]);
-    await expect(listMicrovmRunners({ runnerOwner: 'Codertocat' })).resolves.toEqual([]);
-    await expect(listMicrovmRunners({ runnerType: 'Org' })).resolves.toEqual([]);
-    await expect(listMicrovmRunners({ orphan: true })).resolves.toEqual([]);
+    await expect(listMicrovmRunners({ environment: 'unit-test' }, metadataSsmPath)).resolves.toEqual([]);
+    await expect(listMicrovmRunners({ runnerOwner: 'Codertocat' }, metadataSsmPath)).resolves.toEqual([]);
+    await expect(listMicrovmRunners({ runnerType: 'Org' }, metadataSsmPath)).resolves.toEqual([]);
+    await expect(listMicrovmRunners({ orphan: true }, metadataSsmPath)).resolves.toEqual([]);
   });
 
-  it('skips a MicroVM that terminates before its tags can be read', async () => {
-    const resourceNotFound = Object.assign(new Error('gone'), { name: 'ResourceNotFoundException' });
+  it('fails closed for an image mismatch while ignoring unowned MicroVMs', async () => {
     mockMicrovmClient.on(ListMicrovmsCommand).resolves({
-      items: [{ microvmId: 'mvm-gone', imageArn, imageVersion: '3.0', startedAt: new Date(), state: 'RUNNING' }],
+      items: [
+        { microvmId: 'mvm-missing', imageArn, imageVersion: '3.0', state: 'RUNNING' },
+        { microvmId: 'mvm-mismatch', imageArn, imageVersion: '3.0', state: 'RUNNING' },
+      ],
     });
-    mockMicrovmClient.on(ListTagsCommand).rejects(resourceNotFound);
+    vi.mocked(listMicrovmRunnerMetadata).mockResolvedValue({
+      cleanupMicrovmIds: [],
+      metadataById: new Map([
+        ['mvm-mismatch', metadata({ microvmId: 'mvm-mismatch', imageArn: imageArn.replace(':runner', ':other') })],
+      ]),
+    });
 
-    await expect(listMicrovmRunners()).resolves.toEqual([]);
+    await expect(listMicrovmRunners({}, metadataSsmPath)).rejects.toThrow('does not match its metadata');
   });
 
-  it('surfaces unexpected tag lookup failures', async () => {
+  it('attempts every pending cleanup and fails inventory closed when a retry fails', async () => {
+    const cleanupFailure = new Error('cleanup failed');
     mockMicrovmClient.on(ListMicrovmsCommand).resolves({
-      items: [{ microvmId: 'mvm-error', imageArn, imageVersion: '3.0', startedAt: new Date(), state: 'RUNNING' }],
+      items: [
+        { microvmId: 'mvm-first', imageArn, imageVersion: '3.0', state: 'RUNNING' },
+        { microvmId: 'mvm-second', imageArn, imageVersion: '3.0', state: 'PENDING' },
+      ],
     });
-    mockMicrovmClient.on(ListTagsCommand).rejects(new Error('list tags failed'));
+    mockMicrovmClient.on(TerminateMicrovmCommand, { microvmIdentifier: 'mvm-first' }).rejects(cleanupFailure);
+    mockMicrovmClient.on(TerminateMicrovmCommand, { microvmIdentifier: 'mvm-second' }).resolves({});
+    vi.mocked(listMicrovmRunnerMetadata).mockResolvedValue({
+      cleanupMicrovmIds: ['mvm-first', 'mvm-second'],
+      metadataById: new Map(),
+    });
 
-    await expect(listMicrovmRunners()).rejects.toThrow('list tags failed');
+    await expect(listMicrovmRunners({}, metadataSsmPath)).rejects.toThrow('cleanup failed');
+    expect(mockMicrovmClient).toHaveReceivedCommandWith(TerminateMicrovmCommand, {
+      microvmIdentifier: 'mvm-first',
+    });
+    expect(mockMicrovmClient).toHaveReceivedCommandWith(TerminateMicrovmCommand, {
+      microvmIdentifier: 'mvm-second',
+    });
+    expect(markMicrovmCleanupPending).toHaveBeenCalledTimes(2);
+  });
+
+  it('surfaces metadata lookup failures instead of reporting zero runners', async () => {
+    mockMicrovmClient.on(ListMicrovmsCommand).resolves({
+      items: [{ microvmId: 'mvm-error', imageArn, imageVersion: '3.0', state: 'RUNNING' }],
+    });
+    vi.mocked(listMicrovmRunnerMetadata).mockRejectedValue(new Error('AccessDenied'));
+
+    await expect(listMicrovmRunners({}, metadataSsmPath)).rejects.toThrow('AccessDenied');
   });
 });
 
 describe('MicroVM lifecycle helpers', () => {
-  it('tags, untags, and terminates a MicroVM', async () => {
-    mockMicrovmClient.on(TagResourceCommand).resolves({});
-    mockMicrovmClient.on(UntagResourceCommand).resolves({});
+  it('retains metadata until inventory observes a terminated MicroVM', async () => {
     mockMicrovmClient.on(TerminateMicrovmCommand).resolves({});
 
-    await tagMicrovm(imageArn, 'mvm-123', { key: 'value' });
-    await untagMicrovm(imageArn, 'mvm-123', ['key']);
-    await terminateMicrovm('mvm-123');
+    await terminateMicrovm('mvm-123', metadataSsmPath);
 
-    expect(mockMicrovmClient).toHaveReceivedCommandWith(TagResourceCommand, {
-      Resource: microvmArn(imageArn, 'mvm-123'),
-      Tags: { key: 'value' },
-    });
-    expect(mockMicrovmClient).toHaveReceivedCommandWith(UntagResourceCommand, {
-      Resource: microvmArn(imageArn, 'mvm-123'),
-      TagKeys: ['key'],
-    });
-    expect(mockMicrovmClient).toHaveReceivedCommandWith(TerminateMicrovmCommand, {
-      microvmIdentifier: 'mvm-123',
-    });
+    expect(markMicrovmCleanupPending).toHaveBeenCalledWith(metadataSsmPath, 'mvm-123');
+    expect(deleteMicrovmRunnerMetadata).not.toHaveBeenCalled();
+  });
+
+  it('treats an already terminated MicroVM as successful cleanup', async () => {
+    const notFound = Object.assign(new Error('gone'), { name: 'ResourceNotFoundException' });
+    mockMicrovmClient.on(TerminateMicrovmCommand).rejects(notFound);
+
+    await expect(terminateMicrovm('mvm-gone', metadataSsmPath)).resolves.toBeUndefined();
+    expect(deleteMicrovmRunnerMetadata).toHaveBeenCalledWith(metadataSsmPath, 'mvm-gone');
+  });
+
+  it('retains metadata and marks cleanup pending when termination fails', async () => {
+    mockMicrovmClient.on(TerminateMicrovmCommand).rejects(new Error('terminate failed'));
+
+    await expect(terminateMicrovm('mvm-123', metadataSsmPath)).rejects.toThrow('terminate failed');
+    expect(markMicrovmCleanupPending).toHaveBeenCalledWith(metadataSsmPath, 'mvm-123');
+    expect(deleteMicrovmRunnerMetadata).not.toHaveBeenCalled();
   });
 
   it('evaluates the configured boot window', () => {
@@ -283,12 +341,15 @@ describe('MicroVM lifecycle helpers', () => {
 });
 
 describe('isRetryableMicrovmError', () => {
-  it.each(['ConflictException', 'InternalServerException', 'ServiceQuotaExceededException', 'ThrottlingException'])(
-    'classifies %s as retryable',
-    (name) => {
-      expect(isRetryableMicrovmError(Object.assign(new Error(name), { name }))).toBe(true);
-    },
-  );
+  it.each([
+    'ConflictException',
+    'InternalServerException',
+    'ServiceQuotaExceededException',
+    'ThrottlingException',
+    'TooManyUpdates',
+  ])('classifies %s as retryable', (name) => {
+    expect(isRetryableMicrovmError(Object.assign(new Error(name), { name }))).toBe(true);
+  });
 
   it('classifies server, throttling, network, and nested failures as retryable', () => {
     expect(isRetryableMicrovmError(Object.assign(new Error('server'), { $fault: 'server' }))).toBe(true);
