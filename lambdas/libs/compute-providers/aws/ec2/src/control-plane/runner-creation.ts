@@ -1,4 +1,8 @@
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
+import type { Tag } from '@aws-sdk/client-ec2';
+import { Octokit } from '@octokit/rest';
+import yn from 'yn';
+
 import type {
   CreateGitHubRunnerConfig,
   CreateRunnerResult,
@@ -7,10 +11,6 @@ import type {
   RunnerSource,
   StartRunnerConfigOptions,
 } from '../../../../core';
-import { Octokit } from '@octokit/rest';
-import type { Tag } from '@aws-sdk/client-ec2';
-import yn from 'yn';
-
 import type { Ec2RunnerResourceOperations } from '../runners';
 import type { RunnerInputParameters } from '../runners.d';
 import { toControlPlaneCreateRunnerResult } from './create-result';
@@ -149,8 +149,7 @@ async function terminateFailedInstances(
 function createEc2StartRunnerConfigOptions(ec2Operations: Ec2RunnerResourceOperations): StartRunnerConfigOptions {
   return {
     getRunnerConfigMetadata: (instanceId) => [{ key: 'InstanceId', value: instanceId }],
-    onJitConfigCreated: async (instanceId, metadata) =>
-      await tagEc2RunnerMetadata(ec2Operations, instanceId, metadata),
+    onJitConfigCreated: async (instanceId, metadata) => await tagEc2RunnerMetadata(ec2Operations, instanceId, metadata),
   };
 }
 

@@ -1,9 +1,9 @@
 import { defaultComputeProvider } from '@aws-github-runner/compute-providers/provider-types';
 import {
-  getRunnerConfigStore,
-  getRunnerGroupCacheStore,
   type RunnerConfigStore,
   type RunnerGroupCacheStore,
+  getRunnerConfigStore,
+  getRunnerGroupCacheStore,
 } from '@aws-github-runner/storage-providers';
 import type { Octokit } from '@octokit/rest';
 import nock from 'nock';
@@ -147,7 +147,6 @@ let expectedRunnerParams = { ...EXPECTED_RUNNER_PARAMS };
 
 function setDefaults() {
   process.env = { ...cleanEnv };
-  process.env.PARAMETER_GITHUB_APP_ID_NAME = 'github-app-id';
   process.env.GITHUB_APP_KEY_BASE64 = 'TEST_CERTIFICATE_DATA';
   process.env.GITHUB_APP_ID = '1337';
   process.env.GITHUB_APP_CLIENT_ID = 'TEST_CLIENT_ID';

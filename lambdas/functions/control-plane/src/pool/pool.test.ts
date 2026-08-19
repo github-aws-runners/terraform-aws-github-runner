@@ -1,9 +1,9 @@
-import type { Octokit } from '@octokit/rest';
 import { defaultComputeProvider } from '@aws-github-runner/compute-providers/provider-types';
+import type { Octokit } from '@octokit/rest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import * as ghAuth from '../github/auth';
 import { controlPlaneProviderRegistry } from '../control-plane-providers';
+import * as ghAuth from '../github/auth';
 import * as githubRunner from '../scale-runners/github-runner';
 import { adjust } from './pool';
 import type { PoolComputeProvider } from './pool-provider';
@@ -165,7 +165,6 @@ describe('pool adjustment', () => {
 
       expect(poolProvider.createRunners).not.toHaveBeenCalled();
     });
-
   });
 
   describe('With GHES', () => {
