@@ -238,7 +238,7 @@ run "layered_component_tags" {
   }
 
   assert {
-    condition = aws_ssm_parameter.runner_agent_mode.tags == tomap({
+    condition = aws_ssm_parameter.runner_agent_mode[0].tags == tomap({
       precedence = "ssm-parameter"
       module     = "yes"
       ssm        = "yes"

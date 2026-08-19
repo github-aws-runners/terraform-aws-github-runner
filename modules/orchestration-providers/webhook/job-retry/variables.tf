@@ -141,3 +141,17 @@ variable "config" {
 
   nullable = false
 }
+
+variable "storage_provider" {
+  description = "Opaque runner-configuration storage capability used by the job-retry Lambda."
+  type = object({
+    type                  = string
+    environment_variables = map(string)
+    iam_policy_json       = optional(string, null)
+  })
+  default = {
+    type                  = "aws_ssm"
+    environment_variables = {}
+    iam_policy_json       = null
+  }
+}

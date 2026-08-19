@@ -7,6 +7,7 @@ locals {
 
 module "ssm_housekeeper" {
   source = "./ssm-housekeeper"
+  count  = var.storage_provider.type == "aws_ssm" ? 1 : 0
 
   config = {
     prefix        = var.prefix
@@ -54,4 +55,9 @@ module "ssm_housekeeper" {
       log_group = local.ssm_housekeeper_log_tags
     }
   }
+}
+
+moved {
+  from = module.ssm_housekeeper
+  to   = module.ssm_housekeeper[0]
 }

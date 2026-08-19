@@ -319,6 +319,7 @@ run "stable_v1_keeps_legacy_runner_module" {
         "github",
         "lambda",
         "orchestration_provider",
+        "storage_provider",
         "ssm",
         "observability",
         "compute_provider",
@@ -425,6 +426,10 @@ run "stable_v1_keeps_legacy_runner_module" {
       && toset(keys(local.raw_translated_experimental.multi_runner_config["linux"].compute_provider)) == toset(["aws"])
       && toset(keys(local.raw_translated_experimental.multi_runner_config["linux"].compute_provider.aws)) == toset(["ec2"])
       && toset(keys(local.raw_translated_experimental.multi_runner_config["linux"].compute_provider.aws.ec2.binaries_syncer)) == toset(["enabled"])
+      && local.raw_translated_experimental.storage_provider.aws.dynamodb == null
+      && local.raw_translated_experimental.storage_provider.aws.ssm != null
+      && local.storage_provider_type == "aws_ssm"
+      && length(module.storage_aws_dynamodb) == 0
       && !contains(keys(local.raw_translated_experimental.multi_runner_config["linux"].ssm), "kms_key_id")
       && !contains(keys(local.raw_translated_experimental.runner), "boot_time_in_minutes")
       && !contains(keys(local.raw_translated_experimental.runner), "ephemeral")

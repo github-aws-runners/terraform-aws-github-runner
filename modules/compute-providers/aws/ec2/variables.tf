@@ -345,6 +345,43 @@ variable "ssm" {
   nullable = false
 }
 
+variable "storage_provider" {
+  description = "Runner-side storage locator and opaque IAM policy supplied by runner-config. The default preserves the existing SSM bootstrap path."
+  type = object({
+    type = string
+    runner = object({
+      config_table_name       = optional(string, null)
+      runner_state_table_name = optional(string, null)
+      scope                   = optional(string, null)
+      iam_policy_json         = optional(string, null)
+    })
+  })
+  default = {
+    type = "aws_ssm"
+    runner = {
+      config_table_name       = null
+      runner_state_table_name = null
+      scope                   = null
+      iam_policy_json         = null
+    }
+  }
+
+  validation {
+    condition     = contains(["aws_ssm", "aws_dynamodb"], var.storage_provider.type)
+    error_message = "storage_provider.type must be aws_ssm or aws_dynamodb."
+  }
+
+  validation {
+    condition = var.storage_provider.type != "aws_dynamodb" || (
+      var.storage_provider.runner.config_table_name != null &&
+      var.storage_provider.runner.runner_state_table_name != null &&
+      var.storage_provider.runner.scope != null &&
+      var.storage_provider.runner.iam_policy_json != null
+    )
+    error_message = "aws_dynamodb storage requires non-null runner config table, runner-state table, bootstrap scope, and IAM policy capabilities."
+  }
+}
+
 variable "observability" {
   description = <<-EOT
     CloudWatch Logs settings available to compute-provider runner log groups.

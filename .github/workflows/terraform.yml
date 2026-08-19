@@ -88,6 +88,7 @@ jobs:
             "compute-providers/aws/ec2",
             "compute-providers/aws/ec2/trust-policy",
             "runner-binaries-syncer",
+            "storage-providers/aws/dynamodb",
             "orchestration-providers/webhook",
             "orchestration-providers/webhook/job-retry",
             "orchestration-providers/webhook/pool",
@@ -229,6 +230,7 @@ jobs:
           - modules/orchestration-providers/webhook/scale-runners
           - modules/runner-config
           - modules/runner-config/ssm-housekeeper
+          - modules/storage-providers/aws/dynamodb
           - modules/compute-providers/aws/ec2
           - modules/compute-providers/aws/ec2/trust-policy
     defaults:

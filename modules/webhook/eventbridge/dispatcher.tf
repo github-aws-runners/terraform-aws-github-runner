@@ -35,7 +35,7 @@ resource "aws_lambda_function" "dispatcher" {
   architectures     = [var.config.lambda_architecture]
 
   environment {
-    variables = {
+    variables = merge({
       for k, v in {
         LOG_LEVEL                                = upper(var.config.log_level)
         POWERTOOLS_LOGGER_LOG_EVENT              = var.config.log_level == "debug" ? "true" : "false"
@@ -44,12 +44,12 @@ resource "aws_lambda_function" "dispatcher" {
         POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.config.tracing_config.capture_http_requests
         POWERTOOLS_TRACER_CAPTURE_ERROR          = var.config.tracing_config.capture_error
         # Parameters required for lambda configuration
-        PARAMETER_RUNNER_MATCHER_CONFIG_PATH = join(":", [for p in var.config.ssm_parameter_runner_matcher_config : p.name])
-        PARAMETER_RUNNER_MATCHER_VERSION     = join(":", [for p in var.config.ssm_parameter_runner_matcher_config : p.version]) # enforce cold start after Changes in SSM parameter
+        PARAMETER_RUNNER_MATCHER_CONFIG_PATH = var.config.storage_provider.type == "aws_ssm" ? join(":", [for p in var.config.ssm_parameter_runner_matcher_config : p.name]) : null
+        PARAMETER_RUNNER_MATCHER_VERSION     = var.config.storage_provider.type == "aws_ssm" ? join(":", [for p in var.config.ssm_parameter_runner_matcher_config : p.version]) : null # enforce cold start after Changes in SSM parameter
         REPOSITORY_ALLOW_LIST                = jsonencode(var.config.repository_white_list)
         QUEUE_SELECTION_STRATEGY             = var.config.queue_selection_strategy
       } : k => v if v != null
-    }
+    }, var.config.storage_provider.dispatcher.environment_variables)
   }
 
   dynamic "vpc_config" {
@@ -118,6 +118,8 @@ resource "aws_iam_role_policy" "dispatcher_sqs" {
 }
 
 resource "aws_iam_role_policy" "dispatcher_kms" {
+  count = var.config.storage_provider.type == "aws_ssm" ? 1 : 0
+
   name = "kms-policy"
   role = aws_iam_role.dispatcher_lambda.name
 
@@ -126,17 +128,22 @@ resource "aws_iam_role_policy" "dispatcher_kms" {
   })
 }
 
+moved {
+  from = aws_iam_role_policy.dispatcher_kms
+  to   = aws_iam_role_policy.dispatcher_kms[0]
+}
+
 resource "aws_iam_role_policy" "dispatcher_ssm" {
   name = "publish-ssm-policy"
   role = aws_iam_role.dispatcher_lambda.name
 
-  policy = templatefile("${path.module}/../policies/lambda-ssm.json", {
+  policy = var.config.storage_provider.type == "aws_ssm" ? templatefile("${path.module}/../policies/lambda-ssm.json", {
     resource_arns = jsonencode(
       concat(
         [for p in var.config.ssm_parameter_runner_matcher_config : p.arn]
       )
     )
-  })
+  }) : var.config.storage_provider.dispatcher.iam_policy_json
 }
 
 resource "aws_iam_role_policy" "dispatcher_xray" {

@@ -234,6 +234,49 @@ variable "matcher_config_parameter_store_tier" {
   }
 }
 
+variable "storage_provider" {
+  description = "Selected storage-provider type and opaque capabilities used by the webhook and optional dispatcher Lambdas."
+  type = object({
+    type = optional(string, "aws_ssm")
+    direct = object({
+      environment_variables = map(string)
+      iam_policy_json       = optional(string, null)
+    })
+    eventbridge = object({
+      webhook = object({
+        environment_variables = map(string)
+        iam_policy_json       = optional(string, null)
+      })
+      dispatcher = object({
+        environment_variables = map(string)
+        iam_policy_json       = optional(string, null)
+      })
+    })
+  })
+  default = {
+    type = "aws_ssm"
+    direct = {
+      environment_variables = {}
+      iam_policy_json       = null
+    }
+    eventbridge = {
+      webhook = {
+        environment_variables = {}
+        iam_policy_json       = null
+      }
+      dispatcher = {
+        environment_variables = {}
+        iam_policy_json       = null
+      }
+    }
+  }
+
+  validation {
+    condition     = contains(["aws_ssm", "aws_dynamodb"], var.storage_provider.type)
+    error_message = "storage_provider.type must be aws_ssm or aws_dynamodb."
+  }
+}
+
 variable "eventbridge" {
   description = <<EOF
     Enable the use of EventBridge by the module. By enabling this feature events will be put on the EventBridge by the webhook instead of directly dispatching to queues for scaling.

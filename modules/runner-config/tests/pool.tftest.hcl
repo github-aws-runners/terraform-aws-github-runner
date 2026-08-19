@@ -158,8 +158,8 @@ run "plan_with_pool_enabled" {
 
   assert {
     condition = (
-      aws_ssm_parameter.runner_agent_mode.value == "ephemeral"
-      && aws_ssm_parameter.jit_config_enabled.value == "true"
+      aws_ssm_parameter.runner_agent_mode[0].value == "ephemeral"
+      && aws_ssm_parameter.jit_config_enabled[0].value == "true"
     )
     error_message = "Runner-config must serialize the webhook provider's resolved lifecycle contract without duplicating its JIT fallback."
   }

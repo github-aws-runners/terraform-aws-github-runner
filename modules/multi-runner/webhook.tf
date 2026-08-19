@@ -12,16 +12,21 @@ locals {
       matcherConfig   = v.orchestration_provider.webhook.matcherConfig
     }
   }
+
+  webhook_storage_kms_key_arn = local.storage_provider_type == "aws_ssm" ? local.translated_experimental.ssm.kms_key_id : null
 }
 
 module "webhook" {
   source                              = "../webhook"
   prefix                              = var.prefix
   tags                                = merge(local.translated_experimental.tags, { "ghr:environment" = var.prefix })
-  kms_key_arn                         = local.translated_experimental.ssm.kms_key_id
+  kms_key_arn                         = local.webhook_storage_kms_key_arn
   eventbridge                         = local.translated_experimental.orchestration_provider.webhook.eventbridge
   runner_matcher_config               = local.runner_matcher_config
   matcher_config_parameter_store_tier = local.translated_experimental.orchestration_provider.webhook.matcher_config_parameter_store_tier
+  storage_provider = merge(local.storage_provider_capabilities.webhook, {
+    type = local.storage_provider_type
+  })
 
   ssm_paths = {
     root    = trimsuffix(coalesce(local.translated_experimental.ssm.paths.root, "/github-action-runners/${var.prefix}"), "/")

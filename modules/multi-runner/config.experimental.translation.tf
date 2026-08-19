@@ -68,6 +68,13 @@ locals {
       }
     }
 
+    storage_provider = {
+      aws = {
+        dynamodb = null
+        ssm      = {}
+      }
+    }
+
     orchestration_provider = {
       webhook = {
         queue_selection_strategy            = var.queue_selection_strategy

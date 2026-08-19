@@ -21,8 +21,12 @@ module "compute_aws_ec2" {
       managed_policy_arns = local.common_runner_managed_policy_arns
     })
   })
-  github        = var.github
-  ssm           = var.ssm
+  github = var.github
+  ssm    = var.ssm
+  storage_provider = {
+    type   = var.storage_provider.type
+    runner = var.storage_provider.runner
+  }
   observability = var.observability
 }
 
