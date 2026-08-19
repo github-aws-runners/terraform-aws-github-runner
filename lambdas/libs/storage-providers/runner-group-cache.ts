@@ -1,3 +1,4 @@
+import { createAwsDynamoDbRunnerGroupCacheStore } from './aws/dynamodb/runner-group-cache-store';
 import { createAwsSsmRunnerGroupCacheStore } from './aws/ssm/runner-group-cache-store';
 import type { RunnerGroupCacheStore } from './core';
 import type {} from './environment';
@@ -7,6 +8,7 @@ type RunnerGroupCacheStoreFactory = () => RunnerGroupCacheStore;
 
 const providerFactories = {
   aws_ssm: createAwsSsmRunnerGroupCacheStore,
+  aws_dynamodb: createAwsDynamoDbRunnerGroupCacheStore,
 } as const satisfies Record<RunnerConfigStorageProvider, RunnerGroupCacheStoreFactory>;
 
 let runnerGroupCacheStore: RunnerGroupCacheStore | undefined;

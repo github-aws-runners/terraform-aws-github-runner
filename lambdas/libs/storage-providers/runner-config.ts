@@ -1,3 +1,4 @@
+import { createAwsDynamoDbRunnerConfigStore } from './aws/dynamodb/runner-config-store';
 import { createAwsSsmRunnerConfigStore } from './aws/ssm/runner-config-store';
 import type { RunnerConfigStore } from './core';
 import type {} from './environment';
@@ -7,6 +8,7 @@ type RunnerConfigStoreFactory = () => RunnerConfigStore;
 
 const providerFactories = {
   aws_ssm: createAwsSsmRunnerConfigStore,
+  aws_dynamodb: createAwsDynamoDbRunnerConfigStore,
 } as const satisfies Record<RunnerConfigStorageProvider, RunnerConfigStoreFactory>;
 
 let runnerConfigStore: RunnerConfigStore | undefined;

@@ -1,19 +1,11 @@
 import { createAwsSsmGitHubAppCredentialsStore } from './aws/ssm/github-app-credentials-store';
 import type { GitHubAppCredentialsStore } from './core';
-import type {} from './environment';
-import { resolveRunnerConfigStorageProvider, type RunnerConfigStorageProvider } from './provider';
-
-type GitHubAppCredentialsStoreFactory = () => GitHubAppCredentialsStore;
-
-const providerFactories = {
-  aws_ssm: createAwsSsmGitHubAppCredentialsStore,
-} as const satisfies Record<RunnerConfigStorageProvider, GitHubAppCredentialsStoreFactory>;
 
 let githubAppCredentialsStore: GitHubAppCredentialsStore | undefined;
 
 export function getGitHubAppCredentialsStore(): GitHubAppCredentialsStore {
-  githubAppCredentialsStore ??=
-    providerFactories[resolveRunnerConfigStorageProvider(process.env.RUNNER_CONFIG_STORAGE_PROVIDER)]();
+  // GitHub App credentials remain in SSM independently of runner config storage selection.
+  githubAppCredentialsStore ??= createAwsSsmGitHubAppCredentialsStore();
   return githubAppCredentialsStore;
 }
 
