@@ -11,7 +11,7 @@ This module updates the GitHub App webhook with the endpoint and secret and can 
 
 | Name | Version |
 |------|---------|
-| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.3.0 |
+| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.4.0 |
 | <a name="requirement_null"></a> [null](#requirement\_null) | ~> 3 |
 
 ## Providers
