@@ -3,6 +3,7 @@ export {};
 declare global {
   namespace NodeJS {
     interface ProcessEnv {
+      PARAMETER_RUNNER_MATCHER_CONFIG_PATH?: string;
       SSM_PARAMETER_STORE_TAGS?: string;
       SSM_CONFIG_PATH?: string;
       SSM_TOKEN_PATH?: string;
