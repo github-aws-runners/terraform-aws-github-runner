@@ -243,3 +243,42 @@ run "storage_version_tracks_entry_record_changes" {
     error_message = "A durable entry-record update must publish the replacement storage resource ID to every Lambda capability."
   }
 }
+
+run "rejects_missing_runner_config_access_scope_prefix" {
+  command = plan
+
+  variables {
+    runner_config_access_scope_prefixes = {
+      linux = "arn:aws:ec2:eu-west-1:123456789012:instance/"
+    }
+  }
+
+  expect_failures = [terraform_data.config_version]
+}
+
+run "rejects_runner_state_ttl_not_greater_than_runner_config_ttl" {
+  command = plan
+
+  variables {
+    runner_state_ttl_seconds = 3600
+  }
+
+  expect_failures = [terraform_data.config_version]
+}
+
+run "rejects_missing_entry_record" {
+  command = plan
+
+  variables {
+    entry_records = {
+      linux = {
+        run_as                 = "runner"
+        agent_mode             = "ephemeral"
+        disable_default_labels = false
+        enable_jit_config      = true
+      }
+    }
+  }
+
+  expect_failures = [terraform_data.config_version]
+}
