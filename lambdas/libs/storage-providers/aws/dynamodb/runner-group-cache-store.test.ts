@@ -16,7 +16,7 @@ describe('aws_dynamodb runner group cache store', () => {
     process.env = { ...cleanEnv };
     process.env.AWS_REGION = 'eu-west-1';
     process.env.RUNNER_CONFIG_DYNAMODB_CONFIG_TABLE_NAME = 'runner-configuration';
-    process.env.RUNNER_CONFIG_DYNAMODB_CONFIG_KEY_PREFIX = 'config#';
+    process.env.RUNNER_CONFIG_DYNAMODB_ENTRY_ID = 'linux-x64';
   });
 
   it('gets a runner group id with a strongly consistent projected read', async () => {
@@ -27,7 +27,8 @@ describe('aws_dynamodb runner group cache store', () => {
     expect(mockDynamoDbClient).toHaveReceivedCommandWith(GetItemCommand, {
       TableName: 'runner-configuration',
       Key: {
-        id: { S: 'config#runner-group#Default' },
+        scope: { S: 'entry#linux-x64#runner-group' },
+        id: { S: 'runner-group#Default' },
       },
       ConsistentRead: true,
       ProjectionExpression: '#value',
@@ -53,7 +54,7 @@ describe('aws_dynamodb runner group cache store', () => {
     const store = createAwsDynamoDbRunnerGroupCacheStore();
 
     await expect(store.get('Default')).rejects.toThrow(
-      "Runner group cache item 'config#runner-group#Default' has an invalid value",
+      "Runner group cache item 'entry#linux-x64#runner-group/runner-group#Default' has an invalid value",
     );
   });
 
@@ -65,17 +66,19 @@ describe('aws_dynamodb runner group cache store', () => {
     expect(mockDynamoDbClient).toHaveReceivedCommandWith(PutItemCommand, {
       TableName: 'runner-configuration',
       Item: {
-        id: { S: 'config#runner-group#Default' },
+        scope: { S: 'entry#linux-x64#runner-group' },
+        id: { S: 'runner-group#Default' },
         value: { S: '42' },
       },
-      ConditionExpression: 'attribute_not_exists(#id)',
+      ConditionExpression: 'attribute_not_exists(#scope) AND attribute_not_exists(#id)',
       ExpressionAttributeNames: {
+        '#scope': 'scope',
         '#id': 'id',
       },
     });
   });
 
-  it.each(['RUNNER_CONFIG_DYNAMODB_CONFIG_TABLE_NAME', 'RUNNER_CONFIG_DYNAMODB_CONFIG_KEY_PREFIX'] as const)(
+  it.each(['RUNNER_CONFIG_DYNAMODB_CONFIG_TABLE_NAME', 'RUNNER_CONFIG_DYNAMODB_ENTRY_ID'] as const)(
     'rejects a missing or blank %s',
     (name) => {
       delete process.env[name];

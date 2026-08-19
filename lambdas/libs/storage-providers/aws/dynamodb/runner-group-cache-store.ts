@@ -3,20 +3,23 @@ import { GetItemCommand, PutItemCommand } from '@aws-sdk/client-dynamodb';
 import type { RunnerGroupCacheRecord, RunnerGroupCacheStore } from '../../core';
 import { getDynamoDbClient } from './client';
 import { requiredEnvironmentValue } from './environment';
-
-const ID_ATTRIBUTE = 'id';
-const VALUE_ATTRIBUTE = 'value';
-const RUNNER_GROUP_KEY = 'runner-group#';
+import {
+  ID_ATTRIBUTE,
+  runnerGroupId as runnerGroupItemId,
+  runnerGroupScope,
+  SCOPE_ATTRIBUTE,
+  VALUE_ATTRIBUTE,
+} from './keys';
 
 interface AwsDynamoDbRunnerGroupCacheStoreConfig {
   tableName: string;
-  configKeyPrefix: string;
+  scope: string;
 }
 
 export function createAwsDynamoDbRunnerGroupCacheStore(): RunnerGroupCacheStore {
   return new AwsDynamoDbRunnerGroupCacheStore({
     tableName: requiredEnvironmentValue('RUNNER_CONFIG_DYNAMODB_CONFIG_TABLE_NAME'),
-    configKeyPrefix: requiredEnvironmentValue('RUNNER_CONFIG_DYNAMODB_CONFIG_KEY_PREFIX'),
+    scope: runnerGroupScope(requiredEnvironmentValue('RUNNER_CONFIG_DYNAMODB_ENTRY_ID')),
   });
 }
 
@@ -24,11 +27,12 @@ class AwsDynamoDbRunnerGroupCacheStore implements RunnerGroupCacheStore {
   constructor(private readonly config: AwsDynamoDbRunnerGroupCacheStoreConfig) {}
 
   async get(runnerGroupName: string): Promise<number | undefined> {
-    const id = this.itemId(runnerGroupName);
+    const id = runnerGroupItemId(runnerGroupName);
     const result = await getDynamoDbClient().send(
       new GetItemCommand({
         TableName: this.config.tableName,
         Key: {
+          [SCOPE_ATTRIBUTE]: { S: this.config.scope },
           [ID_ATTRIBUTE]: { S: id },
         },
         ConsistentRead: true,
@@ -45,12 +49,12 @@ class AwsDynamoDbRunnerGroupCacheStore implements RunnerGroupCacheStore {
 
     const value = result.Item[VALUE_ATTRIBUTE]?.S;
     if (value === undefined || !/^\d+$/.test(value)) {
-      throw new Error(`Runner group cache item '${id}' has an invalid value`);
+      throw new Error(`Runner group cache item '${this.config.scope}/${id}' has an invalid value`);
     }
 
     const runnerGroupId = Number(value);
     if (!Number.isSafeInteger(runnerGroupId)) {
-      throw new Error(`Runner group cache item '${id}' has an invalid value`);
+      throw new Error(`Runner group cache item '${this.config.scope}/${id}' has an invalid value`);
     }
 
     return runnerGroupId;
@@ -61,18 +65,16 @@ class AwsDynamoDbRunnerGroupCacheStore implements RunnerGroupCacheStore {
       new PutItemCommand({
         TableName: this.config.tableName,
         Item: {
-          [ID_ATTRIBUTE]: { S: this.itemId(record.runnerGroupName) },
+          [SCOPE_ATTRIBUTE]: { S: this.config.scope },
+          [ID_ATTRIBUTE]: { S: runnerGroupItemId(record.runnerGroupName) },
           [VALUE_ATTRIBUTE]: { S: record.runnerGroupId.toString() },
         },
-        ConditionExpression: 'attribute_not_exists(#id)',
+        ConditionExpression: 'attribute_not_exists(#scope) AND attribute_not_exists(#id)',
         ExpressionAttributeNames: {
+          '#scope': SCOPE_ATTRIBUTE,
           '#id': ID_ATTRIBUTE,
         },
       }),
     );
-  }
-
-  private itemId(runnerGroupName: string): string {
-    return `${this.config.configKeyPrefix}${RUNNER_GROUP_KEY}${runnerGroupName}`;
   }
 }
