@@ -34,19 +34,19 @@ variable "runner_matcher_config" {
       bidirectionalLabelMatch = optional(bool, false)
       priority                = optional(number, 999)
       enableDynamicLabels     = optional(bool, false)
-      awsDynamicLabelsPolicy  = optional(any, null)
+      awsDynamicLabelsPolicy = optional(object({
+        blocked_keys = optional(list(string), [])
+        restricted_keys = optional(map(object({
+          allowed = optional(list(string), [])
+          denied  = optional(list(string), [])
+          max     = optional(string, null)
+        })), {})
+      }), null)
     })
   }))
   validation {
     condition     = try(var.runner_matcher_config.matcherConfig.priority, 999) >= 0 && try(var.runner_matcher_config.matcherConfig.priority, 999) < 1000
     error_message = "The priority of the matcher must be between 0 and 999."
-  }
-  validation {
-    condition = alltrue([
-      for config in values(var.runner_matcher_config) :
-      lower(trimspace(config.computeProvider)) == "ec2"
-    ])
-    error_message = "computeProvider must be ec2."
   }
 }
 

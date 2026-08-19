@@ -23,18 +23,8 @@ variable "github_app" {
       name = string
     }))
   })
-
-  validation {
-    condition     = (var.github_app.key_base64 != null || var.github_app.key_base64_ssm != null) && (var.github_app.id != null || var.github_app.id_ssm != null) && (var.github_app.webhook_secret != null || var.github_app.webhook_secret_ssm != null)
-    error_message = <<EOF
-     You must set all of the following parameters, choosing one option from each pair:
-      - `key_base64` or `key_base64_ssm`
-      - `id` or `id_ssm`
-      - `webhook_secret` or `webhook_secret_ssm`
-    EOF
-  }
+  default = null
 }
-
 
 variable "additional_github_apps" {
   description = <<-EOF
@@ -240,7 +230,14 @@ variable "multi_runner_config" {
       bidirectionalLabelMatch = optional(bool, false)
       priority                = optional(number, 999)
       enableDynamicLabels     = optional(bool, false)
-      awsDynamicLabelsPolicy  = optional(any, null)
+      awsDynamicLabelsPolicy = optional(object({
+        blocked_keys = optional(list(string), [])
+        restricted_keys = optional(map(object({
+          allowed = optional(list(string), [])
+          denied  = optional(list(string), [])
+          max     = optional(string, null)
+        })), {})
+      }), null)
     })
     redrive_build_queue = optional(object({
       enabled         = bool
@@ -324,8 +321,8 @@ variable "multi_runner_config" {
       redrive_build_queue: "Set options to attach (optional) a dead letter queue to the build queue, the queue between the webhook and the scale up lambda. You have the following options. 1. Disable by setting `enabled` to false. 2. Enable by setting `enabled` to `true`, `maxReceiveCount` to a number of max retries."
     }
   EOT
+  default     = {}
 }
-
 variable "scale_up_lambda_memory_size" {
   description = "Memory size limit in MB for scale_up lambda."
   type        = number
@@ -586,11 +583,13 @@ variable "aws_region" {
 variable "vpc_id" {
   description = "The VPC for security groups of the action runners."
   type        = string
+  default     = null
 }
 
 variable "subnet_ids" {
   description = "List of subnets in which the action runners will be launched, the subnets needs to be subnets in the `vpc_id`."
   type        = list(string)
+  default     = null
 }
 
 variable "enable_managed_runner_security_group" {
@@ -832,6 +831,8 @@ variable "user_agent" {
   default     = "github-aws-runners"
 }
 
+# TODO: Remove this standalone multi-runner input in a future breaking cleanup; per-configuration runner_config.iam_overrides is the value used by EC2 runner modules.
+# tflint-ignore: terraform_unused_declarations
 variable "iam_overrides" {
   description = "This map provides the possibility to override some IAM defaults. The following attributes are supported: `instance_profile_name` overrides the instance profile name used in the launch template. `runner_role_arn` overrides the IAM role ARN used for the runner instances."
   type = object({

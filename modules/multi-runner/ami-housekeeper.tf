@@ -1,35 +1,35 @@
 
 module "ami_housekeeper" {
-  count  = var.enable_ami_housekeeper ? 1 : 0
+  count  = try(local.translated_experimental.compute_provider.aws.ec2.ami.housekeeper.enabled, false) ? 1 : 0
   source = "../ami-housekeeper"
 
   prefix        = var.prefix
-  tags          = local.tags
+  tags          = merge(local.translated_experimental.tags, { "ghr:environment" = var.prefix })
   aws_partition = var.aws_partition
 
-  lambda_zip               = var.ami_housekeeper_lambda_zip
-  lambda_s3_bucket         = var.lambda_s3_bucket
-  lambda_s3_key            = var.ami_housekeeper_lambda_s3_key
-  lambda_s3_object_version = var.ami_housekeeper_lambda_s3_object_version
+  lambda_zip               = local.translated_experimental.compute_provider.aws.ec2.ami.housekeeper.artifact.zip
+  lambda_s3_bucket         = local.translated_experimental.compute_provider.aws.ec2.ami.housekeeper.artifact.s3 == null ? null : local.translated_experimental.lambda.artifact.s3.bucket
+  lambda_s3_key            = try(local.translated_experimental.compute_provider.aws.ec2.ami.housekeeper.artifact.s3.key, null)
+  lambda_s3_object_version = try(local.translated_experimental.compute_provider.aws.ec2.ami.housekeeper.artifact.s3.object_version, null)
 
-  lambda_architecture       = var.lambda_architecture
-  lambda_principals         = var.lambda_principals
-  lambda_runtime            = var.lambda_runtime
-  lambda_security_group_ids = var.lambda_security_group_ids
-  lambda_subnet_ids         = var.lambda_subnet_ids
-  lambda_memory_size        = var.ami_housekeeper_lambda_memory_size
-  lambda_timeout            = var.ami_housekeeper_lambda_timeout
-  lambda_tags               = var.lambda_tags
-  tracing_config            = var.tracing_config
+  lambda_architecture       = local.translated_experimental.lambda.architecture
+  lambda_principals         = local.translated_experimental.lambda.principals
+  lambda_runtime            = local.translated_experimental.lambda.runtime
+  lambda_security_group_ids = local.translated_experimental.lambda.security_group_ids
+  lambda_subnet_ids         = local.translated_experimental.lambda.subnet_ids
+  lambda_memory_size        = local.translated_experimental.compute_provider.aws.ec2.ami.housekeeper.lambda.memory_size
+  lambda_timeout            = local.translated_experimental.compute_provider.aws.ec2.ami.housekeeper.lambda.timeout
+  lambda_tags               = local.translated_experimental.lambda.tags
+  tracing_config            = local.translated_experimental.observability.tracing
 
-  logging_retention_in_days = var.logging_retention_in_days
-  logging_kms_key_id        = var.logging_kms_key_id
-  log_class                 = var.log_class
-  log_level                 = var.log_level
+  logging_retention_in_days = local.translated_experimental.observability.logs.retention_in_days
+  logging_kms_key_id        = local.translated_experimental.observability.logs.kms_key_id
+  log_class                 = local.translated_experimental.observability.logs.class
+  log_level                 = local.translated_experimental.observability.logs.level
 
-  role_path                 = var.role_path
-  role_permissions_boundary = var.role_permissions_boundary
+  role_path                 = try(coalesce(local.translated_experimental.lambda.role.path, local.translated_experimental.roles.path), null)
+  role_permissions_boundary = try(coalesce(local.translated_experimental.lambda.role.permissions_boundary, local.translated_experimental.roles.permissions_boundary), null)
 
-  cleanup_config             = var.ami_housekeeper_cleanup_config
-  lambda_schedule_expression = var.ami_housekeeper_lambda_schedule_expression
+  cleanup_config             = local.translated_experimental.compute_provider.aws.ec2.ami.housekeeper.cleanup_config
+  lambda_schedule_expression = local.translated_experimental.compute_provider.aws.ec2.ami.housekeeper.schedule.expression
 }
