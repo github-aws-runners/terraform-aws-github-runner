@@ -29,7 +29,6 @@
   },
   "dependencies": {
     "@aws-github-runner/aws-powertools-util": "*",
-    "@aws-github-runner/aws-ssm-util": "*",
     "@aws-github-runner/compute-providers": "*",
     "@aws-github-runner/storage-providers": "*",
     "@aws-sdk/client-sqs": "^3.1009.0",
