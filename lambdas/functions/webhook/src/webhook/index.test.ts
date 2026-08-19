@@ -1,6 +1,10 @@
 import { Webhooks } from '@octokit/webhooks';
-import { getParameter } from '@aws-github-runner/aws-ssm-util';
-import { getRunnerMatcherConfigStore, type RunnerMatcherConfigStore } from '@aws-github-runner/storage-providers';
+import {
+  getGitHubWebhookSecretStore,
+  getRunnerMatcherConfigStore,
+  type GitHubWebhookSecretStore,
+  type RunnerMatcherConfigStore,
+} from '@aws-github-runner/storage-providers';
 
 import nock from 'nock';
 
@@ -16,10 +20,12 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 vi.mock('../sqs');
 vi.mock('../eventbridge');
 vi.mock('../runners/dispatch');
-vi.mock('@aws-github-runner/aws-ssm-util');
 vi.mock('@aws-github-runner/storage-providers');
 
 const GITHUB_APP_WEBHOOK_SECRET = 'TEST_SECRET';
+const githubWebhookSecretStore = {
+  get: vi.fn(),
+} satisfies GitHubWebhookSecretStore;
 const runnerMatcherConfigStore = {
   get: vi.fn(),
 } satisfies RunnerMatcherConfigStore;
@@ -290,7 +296,6 @@ describe('Check message size (checkBodySize)', () => {
 });
 
 function mockConfigResponse() {
-  process.env.PARAMETER_GITHUB_APP_WEBHOOK_SECRET = '/path/to/webhook/secret';
   const matcherConfig = [
     {
       id: '1',
@@ -301,7 +306,8 @@ function mockConfigResponse() {
       },
     },
   ];
+  vi.mocked(getGitHubWebhookSecretStore).mockReturnValue(githubWebhookSecretStore);
   vi.mocked(getRunnerMatcherConfigStore).mockReturnValue(runnerMatcherConfigStore);
+  githubWebhookSecretStore.get.mockResolvedValue(GITHUB_APP_WEBHOOK_SECRET);
   runnerMatcherConfigStore.get.mockResolvedValue(JSON.stringify(matcherConfig));
-  vi.mocked(getParameter).mockResolvedValue(GITHUB_APP_WEBHOOK_SECRET);
 }

@@ -13,6 +13,7 @@ export default mergeConfig(defaultConfig, {
         'runner-config-consumer.ts',
         'storage-providers.ts',
         'provider.ts',
+        'github-webhook-secret.ts',
         'runner-matcher-config.ts',
         'core/**/*.ts',
         'aws/**/*.ts',
