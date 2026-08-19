@@ -2,22 +2,8 @@ import { ResponseHeaders } from '@octokit/types';
 import { createSingleMetric, logger } from '@aws-github-runner/aws-powertools-util';
 import { MetricUnit } from '@aws-lambda-powertools/metrics';
 import yn from 'yn';
-import { getParameter } from '@aws-github-runner/aws-ssm-util';
 
-// Cache the app ID per app index to avoid repeated SSM calls across Lambda invocations.
-// In multi-app mode PARAMETER_GITHUB_APP_ID_NAME is a ':'-joined list of SSM param names,
-// one per app in app-index order; index 0 is the primary app.
-const appIdPromises = new Map<number, Promise<string>>();
-
-async function getAppId(appIndex = 0): Promise<string> {
-  let cached = appIdPromises.get(appIndex);
-  if (!cached) {
-    const paramName = process.env.PARAMETER_GITHUB_APP_ID_NAME.split(':')[appIndex];
-    cached = getParameter(paramName);
-    appIdPromises.set(appIndex, cached);
-  }
-  return cached;
-}
+import { getAppId } from './auth';
 
 export async function metricGitHubAppRateLimit(headers: ResponseHeaders, appIndex?: number): Promise<void> {
   try {
