@@ -145,11 +145,9 @@ run "exposes_microvm_control_plane_contract" {
     condition = (
       data.aws_iam_policy_document.scale_up.statement[3].actions == toset(["iam:PassRole"])
       && data.aws_iam_policy_document.scale_up.statement[3].resources == toset(["arn:aws:iam::123456789012:role/microvm-test-runner"])
-      && toset([for condition in data.aws_iam_policy_document.scale_up.statement[3].condition : condition.test]) == toset(["StringEquals"])
-      && toset([for condition in data.aws_iam_policy_document.scale_up.statement[3].condition : condition.variable]) == toset(["iam:PassedToService"])
-      && toset(flatten([for condition in data.aws_iam_policy_document.scale_up.statement[3].condition : condition.values])) == toset(["lambda.amazonaws.com"])
+      && length(data.aws_iam_policy_document.scale_up.statement[3].condition) == 0
     )
-    error_message = "Scale-up and pool must receive an exact Lambda-bound PassRole grant."
+    error_message = "Scale-up and pool must receive an unconditional PassRole grant scoped to the exact runner role ARN."
   }
 
   assert {

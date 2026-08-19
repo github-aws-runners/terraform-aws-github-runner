@@ -27,16 +27,12 @@ data "aws_iam_policy_document" "scale_up" {
     resources = [local.microvm_metadata_path_arn]
   }
 
+  # RunMicrovm does not support iam:PassedToService for its dependent PassRole
+  # check, so the exact runner role ARN remains the least-privilege boundary.
   statement {
     effect    = "Allow"
     actions   = ["iam:PassRole"]
     resources = [var.runner.iam.role.arn]
-
-    condition {
-      test     = "StringEquals"
-      variable = "iam:PassedToService"
-      values   = ["lambda.amazonaws.com"]
-    }
   }
 }
 
