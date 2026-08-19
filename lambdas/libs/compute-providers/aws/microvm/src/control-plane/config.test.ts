@@ -8,6 +8,7 @@ beforeEach(() => {
   process.env = { ...cleanEnv };
   process.env.MICROVM_IMAGE_ARN = 'arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner';
   process.env.MICROVM_EXECUTION_ROLE_ARN = 'arn:aws:iam::123456789012:role/microvm-runner';
+  process.env.MICROVM_METADATA_SSM_PATH = '/github-action-runners/unit-test/microvm-metadata/';
   delete process.env.MICROVM_IMAGE_VERSION;
   delete process.env.MICROVM_INGRESS_NETWORK_CONNECTORS;
   delete process.env.MICROVM_EGRESS_NETWORK_CONNECTORS;
@@ -24,6 +25,7 @@ describe('loadMicrovmProviderConfig', () => {
       ingressNetworkConnectors: undefined,
       egressNetworkConnectors: undefined,
       maximumDurationInSeconds: 3600,
+      metadataSsmPath: '/github-action-runners/unit-test/microvm-metadata',
       logging: undefined,
     });
   });
@@ -47,6 +49,7 @@ describe('loadMicrovmProviderConfig', () => {
   it.each([
     ['MICROVM_IMAGE_ARN', 'MICROVM_IMAGE_ARN'],
     ['MICROVM_EXECUTION_ROLE_ARN', 'MICROVM_EXECUTION_ROLE_ARN'],
+    ['MICROVM_METADATA_SSM_PATH', 'MICROVM_METADATA_SSM_PATH'],
   ])('requires %s', (environmentVariable, expectedName) => {
     delete process.env[environmentVariable];
 
@@ -68,4 +71,15 @@ describe('loadMicrovmProviderConfig', () => {
 
     expect(() => loadMicrovmProviderConfig()).toThrow(/MICROVM_EGRESS_NETWORK_CONNECTORS must/);
   });
+
+  it.each(['metadata', '/', '/metadata//nested', '/metadata/has space'])(
+    'rejects malformed metadata SSM path %s',
+    (metadataPath) => {
+      process.env.MICROVM_METADATA_SSM_PATH = metadataPath;
+
+      expect(() => loadMicrovmProviderConfig()).toThrow(
+        'MICROVM_METADATA_SSM_PATH must be a valid absolute SSM parameter path',
+      );
+    },
+  );
 });
