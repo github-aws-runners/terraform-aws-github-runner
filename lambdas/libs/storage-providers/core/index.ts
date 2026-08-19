@@ -29,6 +29,33 @@ export interface RunnerConfigStore {
   houseKeeper(): Promise<void>;
 }
 
+export interface AwsSsmRunnerConfigStorageEnvironment {
+  RUNNER_CONFIG_STORAGE_PROVIDER: 'aws_ssm';
+  SSM_TOKEN_PATH: string;
+}
+
+export interface AwsDynamoDbRunnerConfigStorageEnvironment {
+  RUNNER_CONFIG_STORAGE_PROVIDER: 'aws_dynamodb';
+  RUNNER_CONFIG_DYNAMODB_RUNNER_STATE_TABLE_NAME: string;
+}
+
+export type RunnerConfigStorageEnvironment =
+  | AwsSsmRunnerConfigStorageEnvironment
+  | AwsDynamoDbRunnerConfigStorageEnvironment;
+
+/** Exact environment-variable map accepted from `runHookPayload.context.storage`. */
+export type RunnerConfigStorageContext = RunnerConfigStorageEnvironment;
+
+export interface RunnerConfigConsumeOptions {
+  /** Absolute Unix time in milliseconds after which the operation must stop. */
+  deadlineMs: number;
+  signal: AbortSignal;
+}
+
+export interface RunnerConfigConsumer {
+  consume(runnerId: string, options: RunnerConfigConsumeOptions): Promise<string>;
+}
+
 export interface RunnerGroupCacheRecord {
   runnerGroupName: string;
   runnerGroupId: number;
