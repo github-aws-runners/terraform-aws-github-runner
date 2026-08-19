@@ -37,8 +37,9 @@ variables {
     ]
     maximum_duration_in_seconds = 3600
     environment_variables = {
-      MICROVM_CLUSTER   = "runner-cluster"
-      MICROVM_IMAGE_ARN = "caller-cannot-override-provider-contract"
+      MICROVM_CLUSTER           = "runner-cluster"
+      MICROVM_IMAGE_ARN         = "caller-cannot-override-provider-contract"
+      MICROVM_METADATA_SSM_PATH = "/caller/cannot/override/provider-contract"
     }
   }
 
@@ -94,6 +95,7 @@ run "exposes_microvm_control_plane_contract" {
       && jsondecode(output.provider.environment_variables.scale_up["MICROVM_EGRESS_NETWORK_CONNECTORS"])[0] == "arn:aws:lambda:eu-west-1:123456789012:network-connector:egress"
       && output.provider.environment_variables.scale_up["MICROVM_MAXIMUM_DURATION_IN_SECONDS"] == "3600"
       && output.provider.environment_variables.scale_up["MICROVM_LOG_GROUP"] == "/github-self-hosted-runners/microvm-test/microvm"
+      && output.provider.environment_variables.scale_up["MICROVM_METADATA_SSM_PATH"] == "/github-action-runners/config/microvm-metadata"
     )
     error_message = "The MicroVM provider must map every configured runtime input to the canonical Lambda environment contract."
   }
@@ -109,6 +111,7 @@ run "exposes_microvm_control_plane_contract" {
         "MICROVM_INGRESS_NETWORK_CONNECTORS",
         "MICROVM_LOG_GROUP",
         "MICROVM_MAXIMUM_DURATION_IN_SECONDS",
+        "MICROVM_METADATA_SSM_PATH",
       ])
       && output.provider.environment_variables.scale_up == output.provider.environment_variables.scale_down
       && output.provider.environment_variables.scale_up == output.provider.environment_variables.pool
@@ -124,17 +127,49 @@ run "exposes_microvm_control_plane_contract" {
     condition = (
       data.aws_iam_policy_document.scale_up.statement[0].actions == toset(["lambda:ListMicrovms", "lambda:PassNetworkConnector"])
       && data.aws_iam_policy_document.scale_up.statement[0].resources == toset(["*"])
-      && data.aws_iam_policy_document.scale_up.statement[1].actions == toset(["lambda:RunMicrovm"])
-      && data.aws_iam_policy_document.scale_up.statement[1].resources == toset(["*"])
-      && data.aws_iam_policy_document.scale_up.statement[2].actions == toset(["lambda:ListTags", "lambda:TagResource", "lambda:TerminateMicrovm"])
-      && data.aws_iam_policy_document.scale_up.statement[2].resources == toset(["*"])
-      && data.aws_iam_policy_document.scale_up.statement[3].actions == toset(["iam:PassRole"])
-      && data.aws_iam_policy_document.scale_up.statement[3].resources == toset(["arn:aws:iam::123456789012:role/microvm-test-runner"])
-      && data.aws_iam_policy_document.scale_down.statement[0].actions == toset(["lambda:ListMicrovms"])
-      && data.aws_iam_policy_document.scale_down.statement[0].resources == toset(["*"])
-      && data.aws_iam_policy_document.scale_down.statement[1].actions == toset(["lambda:ListTags", "lambda:TagResource", "lambda:TerminateMicrovm", "lambda:UntagResource"])
+      && data.aws_iam_policy_document.scale_up.statement[1].actions == toset(["lambda:RunMicrovm", "lambda:TerminateMicrovm"])
+      && data.aws_iam_policy_document.scale_up.statement[1].resources == toset(["arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner"])
     )
-    error_message = "The MicroVM provider must own every control-plane action used by scale-up, pool, scale-down, and connector overrides."
+    error_message = "Scale-up and pool must receive the MicroVM inventory, connector, launch, and cleanup permissions."
+  }
+
+  assert {
+    condition = (
+      data.aws_iam_policy_document.scale_up.statement[2].actions == toset(["ssm:DeleteParameter", "ssm:GetParametersByPath", "ssm:PutParameter"])
+      && data.aws_iam_policy_document.scale_up.statement[2].resources == toset(["arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/config/microvm-metadata/*"])
+    )
+    error_message = "Scale-up and pool must receive lane-scoped metadata access."
+  }
+
+  assert {
+    condition = (
+      data.aws_iam_policy_document.scale_up.statement[3].actions == toset(["iam:PassRole"])
+      && data.aws_iam_policy_document.scale_up.statement[3].resources == toset(["arn:aws:iam::123456789012:role/microvm-test-runner"])
+      && toset([for condition in data.aws_iam_policy_document.scale_up.statement[3].condition : condition.test]) == toset(["StringEquals"])
+      && toset([for condition in data.aws_iam_policy_document.scale_up.statement[3].condition : condition.variable]) == toset(["iam:PassedToService"])
+      && toset(flatten([for condition in data.aws_iam_policy_document.scale_up.statement[3].condition : condition.values])) == toset(["lambda.amazonaws.com"])
+    )
+    error_message = "Scale-up and pool must receive an exact Lambda-bound PassRole grant."
+  }
+
+  assert {
+    condition = (
+      data.aws_iam_policy_document.scale_down.statement[0].actions == toset(["lambda:ListMicrovms"])
+      && data.aws_iam_policy_document.scale_down.statement[0].resources == toset(["*"])
+      && data.aws_iam_policy_document.scale_down.statement[1].actions == toset(["lambda:TerminateMicrovm"])
+      && data.aws_iam_policy_document.scale_down.statement[1].resources == toset(["arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner"])
+      && data.aws_iam_policy_document.scale_down.statement[2].actions == toset(["ssm:DeleteParameter", "ssm:GetParametersByPath", "ssm:PutParameter"])
+      && data.aws_iam_policy_document.scale_down.statement[2].resources == toset(["arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/config/microvm-metadata/*"])
+    )
+    error_message = "Scale-down must receive inventory, termination, and lane-scoped metadata permissions."
+  }
+
+  assert {
+    condition = (
+      length(setintersection(toset(flatten(data.aws_iam_policy_document.scale_up.statement[*].actions)), toset(["lambda:ListTags", "lambda:TagResource", "lambda:UntagResource"]))) == 0
+      && length(setintersection(toset(flatten(data.aws_iam_policy_document.scale_down.statement[*].actions)), toset(["lambda:ListTags", "lambda:TagResource", "lambda:UntagResource"]))) == 0
+    )
+    error_message = "The MicroVM provider must not grant unsupported runtime tagging actions."
   }
 
   assert {
@@ -206,8 +241,7 @@ run "accepts_external_runner_role_and_policy_overrides" {
       image_arn = "arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner-override"
       iam = {
         resource_arns = {
-          images   = ["arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner-*"]
-          microvms = ["arn:aws:lambda:eu-west-1:123456789012:microvm:*"]
+          images = ["arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner-*"]
         }
         additional_policy_json = {
           scale_up = "{\"Version\":\"2012-10-17\",\"Statement\":[]}"
@@ -233,12 +267,13 @@ run "accepts_external_runner_role_and_policy_overrides" {
       && output.provider.environment_variables.scale_up["MICROVM_MAXIMUM_DURATION_IN_SECONDS"] == ""
       && data.aws_iam_policy_document.scale_up.statement[0].resources == toset(["*"])
       && data.aws_iam_policy_document.scale_up.statement[1].resources == toset(["arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner-*"])
-      && data.aws_iam_policy_document.scale_up.statement[2].resources == toset(["arn:aws:lambda:eu-west-1:123456789012:microvm:*"])
+      && data.aws_iam_policy_document.scale_up.statement[2].resources == toset(["arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/config/microvm-metadata/*"])
       && data.aws_iam_policy_document.scale_up.statement[3].resources == toset(["arn:aws:iam::123456789012:role/external-microvm-runner"])
       && data.aws_iam_policy_document.scale_down.statement[0].resources == toset(["*"])
-      && data.aws_iam_policy_document.scale_down.statement[1].resources == toset(["arn:aws:lambda:eu-west-1:123456789012:microvm:*"])
+      && data.aws_iam_policy_document.scale_down.statement[1].resources == toset(["arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner-*"])
+      && data.aws_iam_policy_document.scale_down.statement[2].resources == toset(["arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/config/microvm-metadata/*"])
     )
-    error_message = "The provider-neutral external runner role and split image/MicroVM allowlists must reach their scoped statements without narrowing required list or connector permissions."
+    error_message = "The provider-neutral external runner role and image allowlist must reach their scoped statements without narrowing required list, connector, or metadata permissions."
   }
 
   assert {
@@ -269,6 +304,55 @@ run "rejects_invalid_image_arn" {
   variables {
     config = {
       image_arn = "not-a-microvm-image-arn"
+    }
+  }
+
+  expect_failures = [terraform_data.validate_config]
+}
+
+run "rejects_metadata_path_overlapping_jit_path" {
+  command = plan
+
+  variables {
+    ssm = {
+      paths = {
+        root   = "/github-action-runners"
+        tokens = "config/microvm-metadata"
+        config = "config"
+      }
+    }
+  }
+
+  expect_failures = [terraform_data.validate_config]
+}
+
+run "rejects_invalid_metadata_path" {
+  command = plan
+
+  variables {
+    ssm = {
+      paths = {
+        root   = "/github-action-runners"
+        tokens = "tokens"
+        config = "invalid config"
+      }
+    }
+  }
+
+  expect_failures = [terraform_data.validate_config]
+}
+
+run "rejects_invalid_image_resource_allowlist" {
+  command = plan
+
+  variables {
+    config = {
+      image_arn = "arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner"
+      iam = {
+        resource_arns = {
+          images = []
+        }
+      }
     }
   }
 

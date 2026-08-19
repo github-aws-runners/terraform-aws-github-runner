@@ -35,8 +35,7 @@ variable "config" {
     - `egress_network_connectors`: Up to 10 Lambda network-connector ARNs passed to RunMicrovm.
     - `maximum_duration_in_seconds`: Optional maximum MicroVM lifetime. Valid values are integers from 1 through 28,800 seconds.
     - `environment_variables`: Additional provider-specific Lambda environment variables merged into scale-up, scale-down, and pool.
-    - `iam.resource_arns.images`: MicroVM image ARNs allowed by RunMicrovm. The default is `["*"]`.
-    - `iam.resource_arns.microvms`: MicroVM instance ARNs allowed by tagging and termination actions. The default is `["*"]`. Provider-required list and connector permissions remain separately scoped to `*`.
+    - `iam.resource_arns.images`: Optional MicroVM image ARN allowlist for RunMicrovm and TerminateMicrovm. Null restricts both actions to `image_arn`; set an explicit list when dynamic image overrides are enabled. Provider-required list and connector permissions remain separately scoped to `*`.
     - `iam.additional_policy_json.scale_up`: Optional additional provider policy attached separately to the scale-up Lambda role.
     - `iam.managed_policies.scale_up`: Optional managed-policy wrapper attached to the scale-up Lambda role. Wrapper presence controls resource creation during planning.
     - `iam.managed_policies.scale_up.arn`: ARN of the scale-up managed policy. The ARN may remain unknown until apply.
@@ -53,8 +52,7 @@ variable "config" {
     environment_variables       = optional(map(string), {})
     iam = optional(object({
       resource_arns = optional(object({
-        images   = optional(list(string), ["*"])
-        microvms = optional(list(string), ["*"])
+        images = optional(list(string), null)
       }), {})
       additional_policy_json = optional(object({
         scale_up = optional(string, null)
@@ -139,7 +137,7 @@ variable "ssm" {
 
     - `paths.root`: Root Parameter Store path for the runner configuration.
     - `paths.tokens`: Path segment used for registration tokens and just-in-time configuration.
-    - `paths.config`: Path segment used for persistent runner and provider configuration.
+    - `paths.config`: Path segment used for persistent runner and provider configuration. MicroVM control-plane metadata is stored under its `microvm-metadata` child prefix.
     - `tags`: Shared SSM tags that override module-level `tags`.
     - `parameters.tags`: Parameter-specific tags that override module-level and shared SSM tags.
   EOT

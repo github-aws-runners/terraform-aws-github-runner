@@ -6,6 +6,17 @@ resource "terraform_data" "validate_config" {
     }
 
     precondition {
+      condition = var.config.iam.resource_arns.images == null ? true : (
+        length(var.config.iam.resource_arns.images) > 0 &&
+        alltrue([
+          for image_arn in var.config.iam.resource_arns.images :
+          image_arn == "*" || can(regex("^arn:[^:]+:lambda:[^:]+:[0-9]{12}:microvm-image:.+$", image_arn))
+        ])
+      )
+      error_message = "compute_provider.aws.microvm.iam.resource_arns.images must be null or a non-empty list containing only * or Lambda MicroVM image ARN patterns."
+    }
+
+    precondition {
       condition = var.config.maximum_duration_in_seconds == null ? true : (
         floor(var.config.maximum_duration_in_seconds) == var.config.maximum_duration_in_seconds &&
         var.config.maximum_duration_in_seconds >= 1 &&
@@ -39,6 +50,26 @@ resource "terraform_data" "validate_config" {
     precondition {
       condition     = try(var.config.iam.additional_policy_json.scale_up, null) == null ? true : can(jsondecode(var.config.iam.additional_policy_json.scale_up))
       error_message = "compute_provider.aws.microvm.iam.additional_policy_json.scale_up must be valid JSON when set."
+    }
+
+    precondition {
+      condition = !(
+        local.microvm_metadata_ssm_path == local.runner_jit_ssm_path ||
+        startswith(local.microvm_metadata_ssm_path, "${local.runner_jit_ssm_path}/") ||
+        startswith(local.runner_jit_ssm_path, "${local.microvm_metadata_ssm_path}/")
+      )
+      error_message = "The MicroVM metadata Parameter Store path must be separate from the runner JIT configuration path."
+    }
+
+    precondition {
+      condition = (
+        startswith(var.ssm.paths.root, "/") &&
+        trim(var.ssm.paths.root, "/") != "" &&
+        trim(var.ssm.paths.config, "/") != "" &&
+        can(regex("^/[A-Za-z0-9_./-]+$", local.microvm_metadata_ssm_path)) &&
+        !strcontains(local.microvm_metadata_ssm_path, "//")
+      )
+      error_message = "The derived MicroVM metadata Parameter Store path must be an absolute path containing only letters, numbers, dot, underscore, hyphen, and slash."
     }
   }
 }

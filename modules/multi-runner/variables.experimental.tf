@@ -259,8 +259,7 @@ variable "experimental" {
     - `compute_provider.aws.microvm.egress_network_connectors`: Default egress Lambda network-connector ARNs passed to RunMicrovm. The default is `[]`; at most 10 may be configured.
     - `compute_provider.aws.microvm.maximum_duration_in_seconds`: Optional default maximum MicroVM lifetime. The default is null; valid non-null values are integers from 1 through 28,800 seconds.
     - `compute_provider.aws.microvm.environment_variables`: Default provider-specific control-plane environment variables. The default is `{}` and runner-configuration values take precedence.
-    - `compute_provider.aws.microvm.iam.resource_arns.images`: Default MicroVM image ARNs allowed by RunMicrovm. The default is `["*"]`.
-    - `compute_provider.aws.microvm.iam.resource_arns.microvms`: Default MicroVM instance ARNs allowed by tagging and termination. The default is `["*"]`; required list and connector permissions remain separately scoped to `*`.
+    - `compute_provider.aws.microvm.iam.resource_arns.images`: Optional default MicroVM image ARN allowlist for RunMicrovm and TerminateMicrovm. Null restricts both actions to the resolved `image_arn`; set an explicit list when dynamic image overrides are enabled. Required list and connector permissions remain separately scoped to `*`.
     - `compute_provider.aws.microvm.iam.additional_policy_json.scale_up`: Optional default additional provider policy attached separately to the scale-up Lambda role.
     - `compute_provider.aws.microvm.iam.managed_policies.scale_up`: Optional plan-known managed-policy wrapper attached to the scale-up Lambda role.
     - `compute_provider.aws.microvm.iam.managed_policies.scale_up.arn`: Managed-policy ARN; it may remain unknown until apply.
@@ -477,8 +476,7 @@ variable "experimental" {
     - `multi_runner_config[].compute_provider.aws.microvm.egress_network_connectors`: Up to 10 egress Lambda network-connector ARNs passed to RunMicrovm. Null inherits the global list.
     - `multi_runner_config[].compute_provider.aws.microvm.maximum_duration_in_seconds`: Optional integer maximum MicroVM lifetime from 1 through 28,800 seconds. Null inherits the global value.
     - `multi_runner_config[].compute_provider.aws.microvm.environment_variables`: Provider-specific control-plane environment variables merged after the global map.
-    - `multi_runner_config[].compute_provider.aws.microvm.iam.resource_arns.images`: MicroVM image ARNs allowed by RunMicrovm. Null inherits the global list.
-    - `multi_runner_config[].compute_provider.aws.microvm.iam.resource_arns.microvms`: MicroVM instance ARNs allowed by tagging and termination. Null inherits the global list.
+    - `multi_runner_config[].compute_provider.aws.microvm.iam.resource_arns.images`: MicroVM image ARN allowlist for RunMicrovm and TerminateMicrovm. Null inherits the global list, after which a remaining null restricts both actions to the resolved `image_arn`.
     - `multi_runner_config[].compute_provider.aws.microvm.iam.additional_policy_json.scale_up`: Optional additional provider policy for scale-up. Null inherits the global policy.
     - `multi_runner_config[].compute_provider.aws.microvm.iam.managed_policies.scale_up`: Optional plan-known managed-policy wrapper for scale-up. Null inherits the global wrapper.
     - `multi_runner_config[].compute_provider.aws.microvm.iam.managed_policies.scale_up.arn`: Managed-policy ARN; it may remain unknown until apply.
@@ -881,8 +879,7 @@ variable "experimental" {
           environment_variables       = optional(map(string), {})
           iam = optional(object({
             resource_arns = optional(object({
-              images   = optional(list(string), ["*"])
-              microvms = optional(list(string), ["*"])
+              images = optional(list(string), null)
             }), {})
             additional_policy_json = optional(object({
               scale_up = optional(string, null)
@@ -1226,8 +1223,7 @@ variable "experimental" {
             environment_variables       = optional(map(string), {})
             iam = optional(object({
               resource_arns = optional(object({
-                images   = optional(list(string), null)
-                microvms = optional(list(string), null)
+                images = optional(list(string), null)
               }), {})
               additional_policy_json = optional(object({
                 scale_up = optional(string, null)

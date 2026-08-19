@@ -124,8 +124,7 @@ variable "compute_provider" {
     - `aws.microvm.egress_network_connectors`: Up to 10 Lambda network-connector ARNs passed to RunMicrovm.
     - `aws.microvm.maximum_duration_in_seconds`: Optional maximum MicroVM lifetime. Valid values are integers from 1 through 28,800 seconds.
     - `aws.microvm.environment_variables`: Additional provider-specific Lambda environment variables merged into scale-up, scale-down, and pool.
-    - `aws.microvm.iam.resource_arns.images`: MicroVM image ARNs allowed by RunMicrovm.
-    - `aws.microvm.iam.resource_arns.microvms`: MicroVM instance ARNs allowed by tagging and termination actions.
+    - `aws.microvm.iam.resource_arns.images`: Optional MicroVM image ARN allowlist for RunMicrovm and TerminateMicrovm. Null restricts both actions to `image_arn`; set an explicit list when dynamic image overrides are enabled.
     - `aws.microvm.iam.additional_policy_json.scale_up`: Optional additional provider policy attached separately to the scale-up Lambda role.
     - `aws.microvm.iam.managed_policies.scale_up`: Optional plan-known managed-policy wrapper attached to the scale-up Lambda role.
     - `aws.microvm.iam.managed_policies.scale_up.arn`: Managed-policy ARN; it may remain unknown until apply.
@@ -280,8 +279,7 @@ variable "compute_provider" {
         environment_variables       = optional(map(string), {})
         iam = optional(object({
           resource_arns = optional(object({
-            images   = optional(list(string), ["*"])
-            microvms = optional(list(string), ["*"])
+            images = optional(list(string), null)
           }), {})
           additional_policy_json = optional(object({
             scale_up = optional(string, null)

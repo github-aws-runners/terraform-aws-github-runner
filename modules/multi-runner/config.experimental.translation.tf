@@ -303,8 +303,7 @@ locals {
           environment_variables       = {}
           iam = {
             resource_arns = {
-              images   = ["*"]
-              microvms = ["*"]
+              images = null
             }
             additional_policy_json = {
               scale_up = null
@@ -808,9 +807,6 @@ locals {
                   images = v.compute_provider.aws.microvm.iam.resource_arns.images != null ? (
                     v.compute_provider.aws.microvm.iam.resource_arns.images
                   ) : local.raw_translated_experimental.compute_provider.aws.microvm.iam.resource_arns.images
-                  microvms = v.compute_provider.aws.microvm.iam.resource_arns.microvms != null ? (
-                    v.compute_provider.aws.microvm.iam.resource_arns.microvms
-                  ) : local.raw_translated_experimental.compute_provider.aws.microvm.iam.resource_arns.microvms
                 }
                 additional_policy_json = {
                   scale_up = try(coalesce(

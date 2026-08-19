@@ -4689,6 +4689,7 @@ run "experimental_v2_routes_microvm_only_without_ec2_binary_discovery" {
       keys(module.runner_configs) == ["micro"]
       && module.runner_configs["micro"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables["COMPUTE_PROVIDER_TYPE"] == "microvm"
       && module.runner_configs["micro"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables["MICROVM_IMAGE_ARN"] == "arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner"
+      && module.runner_configs["micro"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables["MICROVM_METADATA_SSM_PATH"] == "/github-action-runners/github-actions/micro/runners/config/microvm-metadata"
       && !contains(keys(module.runner_configs["micro"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables), "INSTANCE_TYPES")
       && output.runners_map_v2["micro"].provider.aws.ec2 == null
       && output.runners_map_v2["micro"].provider.aws.microvm.image_arn == "arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner"
@@ -4761,8 +4762,7 @@ run "experimental_v2_resolves_mixed_aws_provider_lanes" {
             }
             iam = {
               resource_arns = {
-                images   = ["arn:aws:lambda:eu-west-1:123456789012:microvm-image:*"]
-                microvms = ["arn:aws:lambda:eu-west-1:123456789012:microvm:*"]
+                images = ["arn:aws:lambda:eu-west-1:123456789012:microvm-image:*"]
               }
               managed_policies = {
                 scale_up = {
@@ -4823,11 +4823,6 @@ run "experimental_v2_resolves_mixed_aws_provider_lanes" {
                   MICROVM_LANE     = "lane"
                   MICROVM_OVERRIDE = "lane"
                 }
-                iam = {
-                  resource_arns = {
-                    microvms = ["arn:aws:lambda:eu-west-1:123456789012:microvm:lane-*"]
-                  }
-                }
               }
             }
           }
@@ -4859,7 +4854,6 @@ run "experimental_v2_resolves_mixed_aws_provider_lanes" {
       && local.translated_experimental.multi_runner_config["micro"].compute_provider.aws.microvm.environment_variables["MICROVM_GLOBAL"] == "global"
       && local.translated_experimental.multi_runner_config["micro"].compute_provider.aws.microvm.environment_variables["MICROVM_OVERRIDE"] == "lane"
       && local.translated_experimental.multi_runner_config["micro"].compute_provider.aws.microvm.iam.resource_arns.images == tolist(["arn:aws:lambda:eu-west-1:123456789012:microvm-image:*"])
-      && local.translated_experimental.multi_runner_config["micro"].compute_provider.aws.microvm.iam.resource_arns.microvms == tolist(["arn:aws:lambda:eu-west-1:123456789012:microvm:lane-*"])
       && local.translated_experimental.multi_runner_config["micro"].compute_provider.aws.microvm.iam.managed_policies.scale_up.arn == "arn:aws:iam::123456789012:policy/global-microvm-scale-up"
     )
     error_message = "MicroVM lanes must resolve nested lane overrides over global defaults while global defaults alone do not select the provider."
@@ -4871,6 +4865,7 @@ run "experimental_v2_resolves_mixed_aws_provider_lanes" {
       && module.runner_configs["micro"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables["COMPUTE_PROVIDER_TYPE"] == "microvm"
       && module.runner_configs["micro"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables["MICROVM_IMAGE_ARN"] == "arn:aws:lambda:eu-west-1:123456789012:microvm-image:global-runner"
       && module.runner_configs["micro"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables["MICROVM_LOG_GROUP"] == "/github-self-hosted-runners/github-actions-micro/microvm"
+      && module.runner_configs["micro"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables["MICROVM_METADATA_SSM_PATH"] == "/github-action-runners/github-actions/micro/runners/config/microvm-metadata"
       && module.runner_configs["micro"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables["MICROVM_GLOBAL"] == "global"
       && module.runner_configs["micro"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables["MICROVM_LANE"] == "lane"
       && !contains(keys(module.runner_configs["micro"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables), "INSTANCE_TYPES")

@@ -9,25 +9,34 @@ data "aws_iam_policy_document" "scale_up" {
   }
 
   statement {
-    effect    = "Allow"
-    actions   = ["lambda:RunMicrovm"]
-    resources = var.config.iam.resource_arns.images
+    effect = "Allow"
+    actions = [
+      "lambda:RunMicrovm",
+      "lambda:TerminateMicrovm",
+    ]
+    resources = local.microvm_image_resource_arns
   }
 
   statement {
     effect = "Allow"
     actions = [
-      "lambda:ListTags",
-      "lambda:TagResource",
-      "lambda:TerminateMicrovm",
+      "ssm:DeleteParameter",
+      "ssm:GetParametersByPath",
+      "ssm:PutParameter",
     ]
-    resources = var.config.iam.resource_arns.microvms
+    resources = [local.microvm_metadata_path_arn]
   }
 
   statement {
     effect    = "Allow"
     actions   = ["iam:PassRole"]
     resources = [var.runner.iam.role.arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "iam:PassedToService"
+      values   = ["lambda.amazonaws.com"]
+    }
   }
 }
 
@@ -39,18 +48,31 @@ data "aws_iam_policy_document" "scale_down" {
   }
 
   statement {
+    effect    = "Allow"
+    actions   = ["lambda:TerminateMicrovm"]
+    resources = local.microvm_image_resource_arns
+  }
+
+  statement {
     effect = "Allow"
     actions = [
-      "lambda:ListTags",
-      "lambda:TagResource",
-      "lambda:TerminateMicrovm",
-      "lambda:UntagResource",
+      "ssm:DeleteParameter",
+      "ssm:GetParametersByPath",
+      "ssm:PutParameter",
     ]
-    resources = var.config.iam.resource_arns.microvms
+    resources = [local.microvm_metadata_path_arn]
   }
 }
 
 locals {
+  microvm_metadata_ssm_path = "${trimsuffix(var.ssm.paths.root, "/")}/${trim(var.ssm.paths.config, "/")}/microvm-metadata"
+  microvm_metadata_path_arn = "${local.ssm_parameter_arn_prefix}${local.microvm_metadata_ssm_path}/*"
+  microvm_image_resource_arns = coalesce(
+    var.config.iam.resource_arns.images,
+    [var.config.image_arn],
+  )
+  runner_jit_ssm_path = "${trimsuffix(var.ssm.paths.root, "/")}/${trim(var.ssm.paths.tokens, "/")}"
+
   microvm_environment_variables = merge(var.config.environment_variables, {
     MICROVM_EGRESS_NETWORK_CONNECTORS   = length(var.config.egress_network_connectors) == 0 ? "" : jsonencode(var.config.egress_network_connectors)
     MICROVM_EXECUTION_ROLE_ARN          = var.runner.iam.role.arn
@@ -59,6 +81,7 @@ locals {
     MICROVM_INGRESS_NETWORK_CONNECTORS  = length(var.config.ingress_network_connectors) == 0 ? "" : jsonencode(var.config.ingress_network_connectors)
     MICROVM_LOG_GROUP                   = aws_cloudwatch_log_group.runtime.name
     MICROVM_MAXIMUM_DURATION_IN_SECONDS = var.config.maximum_duration_in_seconds == null ? "" : tostring(var.config.maximum_duration_in_seconds)
+    MICROVM_METADATA_SSM_PATH           = local.microvm_metadata_ssm_path
   })
 
   scale_up_environment_variables   = local.microvm_environment_variables

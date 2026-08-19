@@ -738,6 +738,8 @@ run "routes_lambda_microvm_provider" {
       && module.orchestration_webhook[0].scale_up.lambda.environment[0].variables["MICROVM_IMAGE_ARN"] == "arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner"
       && contains(keys(module.orchestration_webhook[0].scale_up.lambda.environment[0].variables), "MICROVM_EXECUTION_ROLE_ARN")
       && module.orchestration_webhook[0].scale_up.lambda.environment[0].variables["MICROVM_LOG_GROUP"] == "/github-self-hosted-runners/github-actions/microvm"
+      && module.orchestration_webhook[0].scale_up.lambda.environment[0].variables["MICROVM_METADATA_SSM_PATH"] == "/github-runner/config/microvm-metadata"
+      && module.orchestration_webhook[0].scale_down.lambda.environment[0].variables["MICROVM_METADATA_SSM_PATH"] == "/github-runner/config/microvm-metadata"
       && module.orchestration_webhook[0].scale_down.lambda.environment[0].variables["RUNNER_BOOT_TIME_IN_MINUTES"] == "5"
       && !contains(keys(module.orchestration_webhook[0].scale_up.lambda.environment[0].variables), "MICROVM_RUN_CONFIG")
       && !contains(keys(module.orchestration_webhook[0].scale_up.lambda.environment[0].variables), "MICROVM_TAGS")
