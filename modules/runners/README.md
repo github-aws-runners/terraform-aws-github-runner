@@ -51,27 +51,27 @@ yarn run dist
 ## Requirements
 
 | Name | Version |
-|------|---------|
+| ---- | ------- |
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.3.0 |
 | <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 6.33 |
 
 ## Providers
 
 | Name | Version |
-|------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | >= 6.33 |
+| ---- | ------- |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.60.0 |
 
 ## Modules
 
 | Name | Source | Version |
-|------|--------|---------|
+| ---- | ------ | ------- |
 | <a name="module_job_retry"></a> [job\_retry](#module\_job\_retry) | ./job-retry | n/a |
 | <a name="module_pool"></a> [pool](#module\_pool) | ./pool | n/a |
 
 ## Resources
 
 | Name | Type |
-|------|------|
+| ---- | ---- |
 | [aws_cloudwatch_event_rule.scale_down](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_event_rule) | resource |
 | [aws_cloudwatch_event_rule.ssm_housekeeper](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_event_rule) | resource |
 | [aws_cloudwatch_event_target.scale_down](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_event_target) | resource |
@@ -135,7 +135,7 @@ yarn run dist
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
+| ---- | ----------- | ---- | ------- | :------: |
 | <a name="input_ami"></a> [ami](#input\_ami) | AMI configuration for the action runner instances. This object allows you to specify all AMI-related settings in one place.<br/><br/>Parameters:<br/>- `filter`: Map of lists to filter AMIs by various criteria (e.g., { name = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-*"], state = ["available"] })<br/>- `owners`: List of AMI owners to limit the search. Common values: ["amazon"], ["self"], or specific AWS account IDs<br/>- `id_ssm_parameter_name`: Name of an SSM parameter containing the AMI ID. If specified, this overrides the AMI filter<br/>- `id_ssm_parameter_arn`: ARN of an SSM parameter containing the AMI ID. If specified, this overrides both AMI filter and parameter name<br/>- `kms_key_arn`: Optional KMS key ARN if the AMI is encrypted with a customer managed key<br/><br/>Defaults to null, in which case the module falls back to individual AMI variables (deprecated). | <pre>object({<br/>    filter               = optional(map(list(string)), { state = ["available"] })<br/>    owners               = optional(list(string), ["amazon"])<br/>    id_ssm_parameter_arn = optional(string, null)<br/>    kms_key_arn          = optional(string, null)<br/>  })</pre> | `null` | no |
 | <a name="input_associate_public_ipv4_address"></a> [associate\_public\_ipv4\_address](#input\_associate\_public\_ipv4\_address) | Associate public IPv4 with the runner. Only tested with IPv4 | `bool` | `false` | no |
 | <a name="input_aws_partition"></a> [aws\_partition](#input\_aws\_partition) | (optional) partition for the base arn if not 'aws' | `string` | `"aws"` | no |
@@ -162,7 +162,7 @@ yarn run dist
 | <a name="input_enable_userdata"></a> [enable\_userdata](#input\_enable\_userdata) | Should the userdata script be enabled for the runner. Set this to false if you are using your own prebuilt AMI | `bool` | `true` | no |
 | <a name="input_ghes_ssl_verify"></a> [ghes\_ssl\_verify](#input\_ghes\_ssl\_verify) | GitHub Enterprise SSL verification. Set to 'false' when custom certificate (chains) is used for GitHub Enterprise Server (insecure). | `bool` | `true` | no |
 | <a name="input_ghes_url"></a> [ghes\_url](#input\_ghes\_url) | GitHub Enterprise Server URL. DO NOT SET IF USING PUBLIC GITHUB..However if you are using GitHub Enterprise Cloud with data-residency (ghe.com), set the endpoint here. Example - https://companyname.ghe.com\| | `string` | `null` | no |
-| <a name="input_github_app_parameters"></a> [github\_app\_parameters](#input\_github\_app\_parameters) | Parameter Store for GitHub App Parameters.<br/><br/>Supports multiple GitHub Apps for random API rate limit distribution.<br/>Each list element corresponds to one GitHub App and is a map containing<br/>`name` and `arn` keys referencing SSM parameters. The first element is the<br/>primary app (the one whose webhook secret is used for incoming webhook<br/>validation). All apps must be installed on the same repositories/organizations.<br/><br/>The control-plane lambdas (scale-up, scale-down, pool, job-retry) randomly<br/>select an app from the list for each GitHub API call, distributing rate<br/>limit consumption across all configured apps. | <pre>object({<br/>    key_base64      = list(map(string))<br/>    id              = list(map(string))<br/>    installation_id = list(object({ name = string, arn = string }))<br/>  })</pre> | n/a | yes |
+| <a name="input_github_app_parameters"></a> [github\_app\_parameters](#input\_github\_app\_parameters) | Parameter Store for GitHub App Parameters.<br/><br/>Supports multiple GitHub Apps for API rate limit distribution. `id` and<br/>`key_base64` reference the primary app (the one whose webhook secret is<br/>used for incoming webhook validation). Additional apps are delivered to<br/>the lambdas via `additional_apps_manifest`, an SSM parameter whose value<br/>lists the per-app credential parameter names, keeping the lambda<br/>environment size constant regardless of app count.<br/>`additional_app_parameter_arns` carries the ARNs of every additional app<br/>credential parameter for the lambda IAM policies. All apps must be<br/>installed on the same repositories/organizations as the primary app. | <pre>object({<br/>    key_base64 = map(string)<br/>    id         = map(string)<br/>    additional_apps_manifest = optional(object({<br/>      name = string<br/>      arn  = string<br/>    }), null)<br/>    additional_app_parameter_arns = optional(list(string), [])<br/>  })</pre> | n/a | yes |
 | <a name="input_iam_overrides"></a> [iam\_overrides](#input\_iam\_overrides) | This map provides the possibility to override some IAM defaults. The following attributes are supported: `instance_profile_name` overrides the instance profile name used in the launch template. `runner_role_arn` overrides the IAM role ARN used for the runner instances. | <pre>object({<br/>    override_instance_profile = optional(bool, null)<br/>    instance_profile_name     = optional(string, null)<br/>    override_runner_role      = optional(bool, null)<br/>    runner_role_arn           = optional(string, null)<br/>  })</pre> | <pre>{<br/>  "instance_profile_name": null,<br/>  "override_instance_profile": false,<br/>  "override_runner_role": false,<br/>  "runner_role_arn": null<br/>}</pre> | no |
 | <a name="input_idle_config"></a> [idle\_config](#input\_idle\_config) | List of time period that can be defined as cron expression to keep a minimum amount of runners active instead of scaling down to 0. By defining this list you can ensure that in time periods that match the cron expression within 5 seconds a runner is kept idle. | <pre>list(object({<br/>    cron             = string<br/>    timeZone         = string<br/>    idleCount        = number<br/>    evictionStrategy = optional(string, "oldest_first")<br/>  }))</pre> | `[]` | no |
 | <a name="input_instance_allocation_strategy"></a> [instance\_allocation\_strategy](#input\_instance\_allocation\_strategy) | The allocation strategy for creating instances. For spot, AWS recommends `price-capacity-optimized`; for on-demand, use `lowest-price` or `prioritized`. The AWS default is `lowest-price`. | `string` | `"lowest-price"` | no |
@@ -246,7 +246,7 @@ yarn run dist
 ## Outputs
 
 | Name | Description |
-|------|-------------|
+| ---- | ----------- |
 | <a name="output_lambda_pool"></a> [lambda\_pool](#output\_lambda\_pool) | n/a |
 | <a name="output_lambda_pool_log_group"></a> [lambda\_pool\_log\_group](#output\_lambda\_pool\_log\_group) | n/a |
 | <a name="output_lambda_scale_down"></a> [lambda\_scale\_down](#output\_lambda\_scale\_down) | n/a |
