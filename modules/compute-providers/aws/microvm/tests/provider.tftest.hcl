@@ -135,17 +135,22 @@ run "exposes_microvm_control_plane_contract" {
 
   assert {
     condition = (
-      data.aws_iam_policy_document.scale_up.statement[2].actions == toset(["ssm:DeleteParameter", "ssm:GetParametersByPath", "ssm:PutParameter"])
+      data.aws_iam_policy_document.scale_up.statement[2].actions == toset(["ssm:DeleteParameter", "ssm:PutParameter"])
       && data.aws_iam_policy_document.scale_up.statement[2].resources == toset(["arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/config/microvm-metadata/*"])
+      && data.aws_iam_policy_document.scale_up.statement[3].actions == toset(["ssm:GetParametersByPath"])
+      && data.aws_iam_policy_document.scale_up.statement[3].resources == toset([
+        "arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/config/microvm-metadata",
+        "arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/config/microvm-metadata/*",
+      ])
     )
-    error_message = "Scale-up and pool must receive lane-scoped metadata access."
+    error_message = "Scale-up and pool must read the metadata hierarchy while keeping metadata writes child-scoped."
   }
 
   assert {
     condition = (
-      data.aws_iam_policy_document.scale_up.statement[3].actions == toset(["iam:PassRole"])
-      && data.aws_iam_policy_document.scale_up.statement[3].resources == toset(["arn:aws:iam::123456789012:role/microvm-test-runner"])
-      && length(data.aws_iam_policy_document.scale_up.statement[3].condition) == 0
+      data.aws_iam_policy_document.scale_up.statement[4].actions == toset(["iam:PassRole"])
+      && data.aws_iam_policy_document.scale_up.statement[4].resources == toset(["arn:aws:iam::123456789012:role/microvm-test-runner"])
+      && length(data.aws_iam_policy_document.scale_up.statement[4].condition) == 0
     )
     error_message = "Scale-up and pool must receive an unconditional PassRole grant scoped to the exact runner role ARN."
   }
@@ -156,10 +161,15 @@ run "exposes_microvm_control_plane_contract" {
       && data.aws_iam_policy_document.scale_down.statement[0].resources == toset(["*"])
       && data.aws_iam_policy_document.scale_down.statement[1].actions == toset(["lambda:TerminateMicrovm"])
       && data.aws_iam_policy_document.scale_down.statement[1].resources == toset(["arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner"])
-      && data.aws_iam_policy_document.scale_down.statement[2].actions == toset(["ssm:DeleteParameter", "ssm:GetParametersByPath", "ssm:PutParameter"])
+      && data.aws_iam_policy_document.scale_down.statement[2].actions == toset(["ssm:DeleteParameter", "ssm:PutParameter"])
       && data.aws_iam_policy_document.scale_down.statement[2].resources == toset(["arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/config/microvm-metadata/*"])
+      && data.aws_iam_policy_document.scale_down.statement[3].actions == toset(["ssm:GetParametersByPath"])
+      && data.aws_iam_policy_document.scale_down.statement[3].resources == toset([
+        "arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/config/microvm-metadata",
+        "arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/config/microvm-metadata/*",
+      ])
     )
-    error_message = "Scale-down must receive inventory, termination, and lane-scoped metadata permissions."
+    error_message = "Scale-down must receive inventory and termination access plus hierarchy-read and child-write metadata permissions."
   }
 
   assert {
@@ -266,10 +276,18 @@ run "accepts_external_runner_role_and_policy_overrides" {
       && data.aws_iam_policy_document.scale_up.statement[0].resources == toset(["*"])
       && data.aws_iam_policy_document.scale_up.statement[1].resources == toset(["arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner-*"])
       && data.aws_iam_policy_document.scale_up.statement[2].resources == toset(["arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/config/microvm-metadata/*"])
-      && data.aws_iam_policy_document.scale_up.statement[3].resources == toset(["arn:aws:iam::123456789012:role/external-microvm-runner"])
+      && data.aws_iam_policy_document.scale_up.statement[3].resources == toset([
+        "arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/config/microvm-metadata",
+        "arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/config/microvm-metadata/*",
+      ])
+      && data.aws_iam_policy_document.scale_up.statement[4].resources == toset(["arn:aws:iam::123456789012:role/external-microvm-runner"])
       && data.aws_iam_policy_document.scale_down.statement[0].resources == toset(["*"])
       && data.aws_iam_policy_document.scale_down.statement[1].resources == toset(["arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner-*"])
       && data.aws_iam_policy_document.scale_down.statement[2].resources == toset(["arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/config/microvm-metadata/*"])
+      && data.aws_iam_policy_document.scale_down.statement[3].resources == toset([
+        "arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/config/microvm-metadata",
+        "arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/config/microvm-metadata/*",
+      ])
     )
     error_message = "The provider-neutral external runner role and image allowlist must reach their scoped statements without narrowing required list, connector, or metadata permissions."
   }

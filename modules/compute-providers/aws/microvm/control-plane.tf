@@ -21,10 +21,15 @@ data "aws_iam_policy_document" "scale_up" {
     effect = "Allow"
     actions = [
       "ssm:DeleteParameter",
-      "ssm:GetParametersByPath",
       "ssm:PutParameter",
     ]
-    resources = [local.microvm_metadata_path_arn]
+    resources = [local.microvm_metadata_parameter_arn]
+  }
+
+  statement {
+    effect    = "Allow"
+    actions   = ["ssm:GetParametersByPath"]
+    resources = [local.microvm_metadata_path_arn, local.microvm_metadata_parameter_arn]
   }
 
   statement {
@@ -51,16 +56,22 @@ data "aws_iam_policy_document" "scale_down" {
     effect = "Allow"
     actions = [
       "ssm:DeleteParameter",
-      "ssm:GetParametersByPath",
       "ssm:PutParameter",
     ]
-    resources = [local.microvm_metadata_path_arn]
+    resources = [local.microvm_metadata_parameter_arn]
+  }
+
+  statement {
+    effect    = "Allow"
+    actions   = ["ssm:GetParametersByPath"]
+    resources = [local.microvm_metadata_path_arn, local.microvm_metadata_parameter_arn]
   }
 }
 
 locals {
-  microvm_metadata_ssm_path = "${trimsuffix(var.ssm.paths.root, "/")}/${trim(var.ssm.paths.config, "/")}/microvm-metadata"
-  microvm_metadata_path_arn = "${local.ssm_parameter_arn_prefix}${local.microvm_metadata_ssm_path}/*"
+  microvm_metadata_ssm_path      = "${trimsuffix(var.ssm.paths.root, "/")}/${trim(var.ssm.paths.config, "/")}/microvm-metadata"
+  microvm_metadata_path_arn      = "${local.ssm_parameter_arn_prefix}${local.microvm_metadata_ssm_path}"
+  microvm_metadata_parameter_arn = "${local.microvm_metadata_path_arn}/*"
   microvm_image_resource_arns = coalesce(
     var.config.iam.resource_arns.images,
     [var.config.image_arn],
