@@ -88,6 +88,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+function isParameterNotFound(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    (error.name === 'ParameterNotFound' || ('__type' in error && error.__type === 'ParameterNotFound'))
+  );
+}
+
 function optionalString(value: unknown): value is string | undefined {
   return value === undefined || (typeof value === 'string' && value.length > 0);
 }
@@ -342,7 +349,7 @@ export async function deleteMicrovmRunnerMetadata(metadataSsmPath: string, micro
     try {
       await deleteParameter(parameterName);
     } catch (error) {
-      if (!(error instanceof Error && error.name === 'ParameterNotFound')) throw error;
+      if (!isParameterNotFound(error)) throw error;
     }
   }
 }

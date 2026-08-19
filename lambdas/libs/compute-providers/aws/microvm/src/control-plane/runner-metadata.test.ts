@@ -175,6 +175,38 @@ describe('MicroVM metadata lifecycle', () => {
     ]);
   });
 
+  it('continues deleting metadata when optional parameters are already absent', async () => {
+    vi.mocked(deleteParameter)
+      .mockRejectedValueOnce(
+        Object.assign(new Error('ParameterNotFound'), {
+          __type: 'ParameterNotFound',
+          $fault: 'client',
+          $metadata: { httpStatusCode: 400 },
+        }),
+      )
+      .mockRejectedValueOnce(Object.assign(new Error('missing parameter'), { name: 'ParameterNotFound' }));
+
+    await expect(deleteMicrovmRunnerMetadata(metadataSsmPath, 'mvm-1')).resolves.toBeUndefined();
+    expect(vi.mocked(deleteParameter).mock.calls.map(([name]) => name)).toEqual([
+      `${metadataSsmPath}/mvm-1.github-runner-id`,
+      `${metadataSsmPath}/mvm-1.orphan`,
+      `${metadataSsmPath}/mvm-1.cleanup-requested-at`,
+      `${metadataSsmPath}/mvm-1`,
+    ]);
+  });
+
+  it('propagates metadata deletion failures other than missing parameters', async () => {
+    const error = Object.assign(new Error('AccessDeniedException'), {
+      __type: 'AccessDeniedException',
+      $fault: 'client',
+      $metadata: { httpStatusCode: 400 },
+    });
+    vi.mocked(deleteParameter).mockRejectedValueOnce(error);
+
+    await expect(deleteMicrovmRunnerMetadata(metadataSsmPath, 'mvm-1')).rejects.toBe(error);
+    expect(deleteParameter).toHaveBeenCalledTimes(1);
+  });
+
   it('returns tracked and state-only active cleanup requests for termination retry', async () => {
     vi.mocked(getParametersByPath).mockResolvedValue(
       new Map([
