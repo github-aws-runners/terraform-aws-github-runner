@@ -360,14 +360,17 @@ variable "storage_provider" {
   description = <<-EOT
     Storage-provider configuration available to compute-provider bootstrap resources.
 
-    - `aws.ssm`: AWS Systems Manager Parameter Store configuration, when SSM is selected.
+    - `type`: Selected runner-config storage provider, `aws_ssm` (default) or `aws_dynamodb`.
+    - `aws.ssm`: AWS Systems Manager Parameter Store configuration, used when `type` is `aws_ssm`.
     - `aws.ssm.paths.root`: Root Parameter Store path for the runner configuration.
     - `aws.ssm.paths.tokens`: Path segment used for registration tokens and just-in-time configuration.
     - `aws.ssm.paths.config`: Path segment used for persistent runner and provider configuration.
     - `aws.ssm.tags`: Shared SSM tags that override module-level `tags`.
     - `aws.ssm.parameters.tags`: Parameter-specific tags that override module-level and shared SSM tags.
+    - `runner`: Runner-side DynamoDB locators and the opaque IAM policy supplied by runner-config, required when `type` is `aws_dynamodb`.
   EOT
   type = object({
+    type = optional(string, "aws_ssm")
     aws = object({
       ssm = object({
         paths = object({
@@ -381,9 +384,30 @@ variable "storage_provider" {
         }), {})
       })
     })
+    runner = optional(object({
+      config_table_name       = optional(string, null)
+      runner_state_table_name = optional(string, null)
+      scope                   = optional(string, null)
+      iam_policy_json         = optional(string, null)
+    }), {})
   })
 
   nullable = false
+
+  validation {
+    condition     = contains(["aws_ssm", "aws_dynamodb"], var.storage_provider.type)
+    error_message = "storage_provider.type must be aws_ssm or aws_dynamodb."
+  }
+
+  validation {
+    condition = var.storage_provider.type != "aws_dynamodb" || (
+      var.storage_provider.runner.config_table_name != null &&
+      var.storage_provider.runner.runner_state_table_name != null &&
+      var.storage_provider.runner.scope != null &&
+      var.storage_provider.runner.iam_policy_json != null
+    )
+    error_message = "aws_dynamodb storage requires non-null runner config table, runner-state table, bootstrap scope, and IAM policy capabilities."
+  }
 }
 
 variable "observability" {

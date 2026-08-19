@@ -52,7 +52,7 @@ data "aws_region" "current" {}
 
 # New names per config version, so the Lambdas switch before old chunks are deleted.
 resource "aws_ssm_parameter" "runner_matcher_config" {
-  count = local.total_chunks
+  count = var.storage_provider.type == "aws_ssm" ? local.total_chunks : 0
 
   name  = "${local.matcher_config_path}-${local.matcher_config_hash}-${count.index}"
   type  = "String"
@@ -89,21 +89,14 @@ module "direct" {
     lambda_apigateway_access_log_settings = var.webhook_lambda_apigateway_access_log_settings,
     repository_white_list                 = var.repository_white_list,
     queue_selection_strategy              = var.queue_selection_strategy,
-    storage_provider = {
-      aws = {
-        ssm = {
-          kms_key_id = var.storage_provider.aws.kms_key_id
-        }
-      }
-    }
-    log_level             = var.log_level,
-    lambda_runtime        = var.lambda_runtime,
-    aws_partition         = var.aws_partition,
-    lambda_architecture   = var.lambda_architecture,
-    github_app_parameters = var.github_app_parameters,
-    tracing_config        = var.tracing_config,
-    lambda_tags           = var.lambda_tags,
-    api_gw_source_arn     = "${aws_apigatewayv2_api.webhook.execution_arn}/*/*/${local.webhook_endpoint}"
+    log_level                             = var.log_level,
+    lambda_runtime                        = var.lambda_runtime,
+    aws_partition                         = var.aws_partition,
+    lambda_architecture                   = var.lambda_architecture,
+    github_app_parameters                 = var.github_app_parameters,
+    tracing_config                        = var.tracing_config,
+    lambda_tags                           = var.lambda_tags,
+    api_gw_source_arn                     = "${aws_apigatewayv2_api.webhook.execution_arn}/*/*/${local.webhook_endpoint}"
     ssm_parameter_runner_matcher_config = [
       for p in aws_ssm_parameter.runner_matcher_config : {
         name    = p.name
@@ -112,6 +105,14 @@ module "direct" {
       }
     ]
     ssm_parameter_runner_matcher_config_arn_pattern = local.matcher_config_arn_pattern
+    storage_provider = merge(var.storage_provider.direct, {
+      type = var.storage_provider.type
+      aws = {
+        ssm = {
+          kms_key_id = var.storage_provider.aws.kms_key_id
+        }
+      }
+    })
   }
 }
 
@@ -139,21 +140,14 @@ module "eventbridge" {
     lambda_apigateway_access_log_settings = var.webhook_lambda_apigateway_access_log_settings,
     repository_white_list                 = var.repository_white_list,
     queue_selection_strategy              = var.queue_selection_strategy,
-    storage_provider = {
-      aws = {
-        ssm = {
-          kms_key_id = var.storage_provider.aws.kms_key_id
-        }
-      }
-    }
-    log_level             = var.log_level,
-    lambda_runtime        = var.lambda_runtime,
-    aws_partition         = var.aws_partition,
-    lambda_architecture   = var.lambda_architecture,
-    github_app_parameters = var.github_app_parameters,
-    tracing_config        = var.tracing_config,
-    lambda_tags           = var.lambda_tags,
-    api_gw_source_arn     = "${aws_apigatewayv2_api.webhook.execution_arn}/*/*/${local.webhook_endpoint}"
+    log_level                             = var.log_level,
+    lambda_runtime                        = var.lambda_runtime,
+    aws_partition                         = var.aws_partition,
+    lambda_architecture                   = var.lambda_architecture,
+    github_app_parameters                 = var.github_app_parameters,
+    tracing_config                        = var.tracing_config,
+    lambda_tags                           = var.lambda_tags,
+    api_gw_source_arn                     = "${aws_apigatewayv2_api.webhook.execution_arn}/*/*/${local.webhook_endpoint}"
     ssm_parameter_runner_matcher_config = [
       for p in aws_ssm_parameter.runner_matcher_config : {
         name    = p.name
@@ -163,6 +157,15 @@ module "eventbridge" {
     ]
     ssm_parameter_runner_matcher_config_arn_pattern = local.matcher_config_arn_pattern
     accept_events                                   = var.eventbridge.accept_events
+    storage_provider = merge(var.storage_provider.eventbridge, {
+      type = var.storage_provider.type
+      aws = {
+        ssm = {
+          kms_key_id = var.storage_provider.aws.kms_key_id
+        }
+      }
+    })
+    accept_events = var.eventbridge.accept_events
   }
 
 }

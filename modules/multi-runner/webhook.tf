@@ -20,14 +20,15 @@ locals {
     }
   }
 
-  webhook_storage_kms_key_arn = local.effective_config.storage_provider.aws.ssm.kms_key_id
+  webhook_storage_kms_key_arn = local.storage_provider_type == "aws_ssm" ? local.effective_config.storage_provider.aws.ssm.kms_key_id : null
 }
 
 module "webhook" {
   source = "../webhook"
   prefix = var.prefix
   tags   = local.tags
-  storage_provider = {
+  storage_provider = merge(local.storage_provider_capabilities.webhook, {
+    type = local.storage_provider_type
     aws = {
       kms_key_id = local.webhook_storage_kms_key_arn
       ssm = {
@@ -37,7 +38,7 @@ module "webhook" {
         }
       }
     }
-  }
+  })
   eventbridge = {
     enable        = local.effective_config.orchestration_provider.webhook.eventbridge.enabled
     accept_events = local.effective_config.orchestration_provider.webhook.eventbridge.accept_events
