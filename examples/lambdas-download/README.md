@@ -12,7 +12,7 @@ terraform apply -var=module_version=<VERSION>
 
 | Name | Version |
 |------|---------|
-| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1 |
+| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.4.0 |
 
 ## Providers
 
