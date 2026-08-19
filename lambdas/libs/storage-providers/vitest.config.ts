@@ -13,6 +13,7 @@ export default mergeConfig(defaultConfig, {
         'github-app-credentials.ts',
         'runner-config.ts',
         'runner-group-cache.ts',
+        'runner-matcher-config.ts',
         'core/**/*.ts',
         'aws/**/*.ts',
       ],
