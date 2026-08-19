@@ -52,7 +52,7 @@ Without a token cache, each runner also costs a `POST /app/installations/{id}/ac
 
 ### Distributing load across multiple GitHub Apps
 
-Rate limits are per App installation and cannot be raised. To scale beyond one App's budget, configure extra Apps with `additional_github_apps`. The control-plane lambdas select one App per invocation, making the effective limit N × the per-App limit.
+Rate limits are per App installation and cannot be raised. To scale beyond one App's budget, configure extra Apps with `additional_github_apps`. The control-plane lambdas select one App per invocation, making the effective limit N × the per-App limit. Selection prefers the App with the most rate-limit budget remaining, based on the `x-ratelimit-remaining` headers observed by the running Lambda container; Apps that hit a secondary rate limit are skipped for 60 seconds.
 
 > [!IMPORTANT]
 > Every additional App must be installed on the same organizations or repositories as the primary App. The module cannot verify this. A missing installation surfaces at runtime as installation lookup 404s on the fraction of invocations that select the misconfigured App, which is hard to trace back to the installation.
