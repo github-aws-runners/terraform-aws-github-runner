@@ -3,10 +3,10 @@ import type { ComputeProviderPlugin } from '../../core';
 import type { DynamicLabelProvider, WebhookProviderCapabilities, WebhookProviderModule } from '../../contracts';
 
 export const templateDynamicLabelProvider: DynamicLabelProvider = {
-  selectQueue: (input) => {
+  getViolations: (input) => {
     void input;
-    // Return a dispatch target when this provider accepts the requested dynamic labels.
-    return undefined;
+    // Return violations for dynamic labels this provider does not accept.
+    return [];
   },
 };
 
