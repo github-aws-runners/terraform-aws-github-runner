@@ -4,6 +4,11 @@ import * as nock from 'nock';
 
 import { createRunners } from '@aws-github-runner/compute-providers/aws/ec2/control-plane/runner-config';
 import { listEC2Runners } from '@aws-github-runner/compute-providers/aws/ec2/control-plane/runners';
+import {
+  getRunnerStateStore,
+  type RunnerStateRecord,
+  type RunnerStateStore,
+} from '@aws-github-runner/storage-providers';
 import * as ghAuth from '../github/auth';
 import { getGitHubEnterpriseApiUrl } from '../scale-runners/github-runner';
 import { adjust } from './pool';
@@ -45,6 +50,10 @@ vi.mock('@aws-github-runner/compute-providers/aws/ec2/control-plane/runner-confi
   createRunners: vi.fn(),
 }));
 
+vi.mock('@aws-github-runner/storage-providers', () => ({
+  getRunnerStateStore: vi.fn(),
+}));
+
 vi.mock('../scale-runners/github-runner', async () => ({
   createStartRunnerConfig: vi.fn(),
   getGitHubEnterpriseApiUrl: vi.fn().mockReturnValue({
@@ -58,6 +67,18 @@ const mockedAppAuth = vi.mocked(ghAuth.createGithubAppAuth);
 const mockedInstallationAuth = vi.mocked(ghAuth.createGithubInstallationAuth);
 const mockCreateClient = vi.mocked(ghAuth.createOctokitClient);
 const mockListRunners = vi.mocked(listEC2Runners);
+const mockGetRunnerStateStore = vi.mocked(getRunnerStateStore);
+const mockRunnerStateStore: RunnerStateStore = {
+  create: vi.fn(),
+  recordGitHubIdentity: vi.fn(),
+  activate: vi.fn(),
+  list: vi.fn(),
+  markOrphan: vi.fn(),
+  unmarkOrphan: vi.fn(),
+  beginTermination: vi.fn(),
+  cancelTermination: vi.fn(),
+  delete: vi.fn(),
+};
 
 const cleanEnv = process.env;
 
@@ -159,6 +180,8 @@ beforeEach(() => {
   mockOctokit.paginate.mockImplementation(() => githubRunnersRegistered);
 
   mockListRunners.mockImplementation(async () => ec2InstancesRegistered);
+  mockGetRunnerStateStore.mockReturnValue(undefined);
+  vi.mocked(mockRunnerStateStore.list).mockResolvedValue([]);
   vi.mocked(createRunners).mockResolvedValue({
     instances: [],
     retryableErrorCount: 0,
@@ -570,3 +593,68 @@ describe('Test simple pool.', () => {
     });
   });
 });
+
+describe('durable runner inventory', () => {
+  beforeEach(() => {
+    mockGetRunnerStateStore.mockReturnValue(mockRunnerStateStore);
+  });
+
+  it('uses stored inventory for pool availability and maximum headroom', async () => {
+    process.env.RUNNERS_MAXIMUM_COUNT = '5';
+    vi.mocked(mockRunnerStateStore.list).mockResolvedValue(ec2InstancesRegistered.map(runnerStateRecord));
+
+    await adjust({ poolSize: 10, type: 'ec2' });
+
+    expect(mockRunnerStateStore.list).toHaveBeenCalledWith({ computeProvider: 'ec2' });
+    expect(createRunners).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      1,
+      expect.anything(),
+      expect.anything(),
+      'pool-lambda',
+    );
+  });
+
+  it('includes provider-discovered resources missing from inventory as recovery', async () => {
+    process.env.RUNNERS_MAXIMUM_COUNT = '4';
+    vi.mocked(mockRunnerStateStore.list).mockResolvedValue([runnerStateRecord(ec2InstancesRegistered[0])]);
+
+    await adjust({ poolSize: 10, type: 'ec2' });
+
+    expect(createRunners).not.toHaveBeenCalled();
+  });
+
+  it('does not count orphan inventory records as available pool capacity', async () => {
+    process.env.RUNNERS_MAXIMUM_COUNT = '5';
+    mockListRunners.mockResolvedValue([]);
+    vi.mocked(mockRunnerStateStore.list).mockResolvedValue([
+      { ...runnerStateRecord(ec2InstancesRegistered[0]), state: 'orphan' },
+    ]);
+
+    await adjust({ poolSize: 1, type: 'ec2' });
+
+    expect(createRunners).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      1,
+      expect.anything(),
+      expect.anything(),
+      'pool-lambda',
+    );
+  });
+});
+
+function runnerStateRecord(runner: (typeof ec2InstancesRegistered)[number]): RunnerStateRecord {
+  const timestamp = runner.launchTime.toISOString();
+  return {
+    runnerId: runner.id,
+    computeProvider: 'ec2',
+    computeResourceId: runner.id,
+    runnerOwner: ORG,
+    runnerType: 'Org',
+    state: 'active',
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+}

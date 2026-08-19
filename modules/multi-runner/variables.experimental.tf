@@ -71,6 +71,13 @@ variable "experimental" {
     - `lambda.tags`: Default tags for v2 runner-config functions and the shared webhook, runner-binary syncer, termination watcher, and AMI housekeeper. The default is `{}`.
     - `lambda.role.path`: IAM path for module-managed v2 Lambda roles and the shared webhook, runner-binary syncer, termination-watcher, and AMI-housekeeper roles. The default is null, which falls back to `roles.path`.
     - `lambda.role.permissions_boundary`: Permissions-boundary ARN for module-managed v2 Lambda roles and the shared webhook, runner-binary syncer, termination-watcher, and AMI-housekeeper roles. The default is null, which falls back to `roles.permissions_boundary`.
+    - `storage_provider`: Global runner-configuration storage selection. It applies to every v2 runner entry and cannot be overridden per entry. When omitted, the existing SSM provider remains selected.
+    - `storage_provider.aws.dynamodb`: Selects two shared DynamoDB tables for the whole multi-runner deployment: `<prefix>-config` for durable global and entry configuration, and `<prefix>-runner-state` for TTL-backed runner configuration and lifecycle records.
+    - `storage_provider.aws.dynamodb.config`: Durable table encryption, point-in-time recovery, deletion protection, and tags.
+    - `storage_provider.aws.dynamodb.runner_state`: Ephemeral table encryption, recovery, deletion protection, TTL durations, and tags.
+    - `storage_provider.aws.dynamodb.runner_state.runner_config_ttl_seconds`: Lifetime for one-time runner registration and JIT configuration records. The default is 86400 seconds.
+    - `storage_provider.aws.dynamodb.runner_state.runner_state_ttl_seconds`: Safety retention applied only to stale provisioning and terminating lifecycle records. Active and orphan inventory does not expire. The default is 604800 seconds.
+    - `storage_provider.aws.ssm`: Retains the existing Parameter Store storage backend for v2. Select this when GitHub App inputs reference externally managed `*_ssm` parameters.
     - `orchestration_provider.webhook`: Global defaults for the workflow-job webhook control plane. This is a defaults namespace; every runner configuration still selects its demand controller independently under `multi_runner_config[].orchestration_provider`, where exactly one typed provider block must be non-null.
     - `orchestration_provider.webhook.queue_selection_strategy`: Queue-selection strategy when multiple runner configurations match a job equally well. The default is `first`, which deterministically selects the first matching queue by priority. `random` spreads jobs across equally matched queues. `all` dispatches to every matching queue, favoring startup speed at the cost of multiple runner launches and registrations for one job.
     - `orchestration_provider.webhook.eventbridge.enable`: Routes accepted webhook events through EventBridge when true. The default is `true`, and the value must be known during planning because it selects the webhook implementation.
@@ -543,6 +550,28 @@ variable "experimental" {
       role = optional(object({
         path                 = optional(string, null)
         permissions_boundary = optional(string, null)
+      }), {})
+    }), {})
+
+    storage_provider = optional(object({
+      aws = optional(object({
+        dynamodb = optional(object({
+          config = optional(object({
+            kms_key_arn                    = optional(string, null)
+            point_in_time_recovery_enabled = optional(bool, true)
+            deletion_protection_enabled    = optional(bool, false)
+            tags                           = optional(map(string), {})
+          }), {})
+          runner_state = optional(object({
+            kms_key_arn                    = optional(string, null)
+            point_in_time_recovery_enabled = optional(bool, false)
+            deletion_protection_enabled    = optional(bool, false)
+            runner_config_ttl_seconds      = optional(number, 86400)
+            runner_state_ttl_seconds       = optional(number, 604800)
+            tags                           = optional(map(string), {})
+          }), {})
+        }), null)
+        ssm = optional(object({}), null)
       }), {})
     }), {})
 
@@ -1170,4 +1199,63 @@ variable "experimental" {
     })), {})
   })
   default = {}
+
+  validation {
+    condition = (
+      (try(var.experimental.storage_provider.aws.dynamodb, null) != null ? 1 : 0) +
+      (try(var.experimental.storage_provider.aws.ssm, null) != null ? 1 : 0)
+    ) <= 1
+    error_message = "experimental.storage_provider must select at most one typed provider: aws.dynamodb or aws.ssm. An omitted provider retains aws.ssm."
+  }
+
+  validation {
+    condition = (
+      length(var.experimental.multi_runner_config) == 0 ||
+      try(var.experimental.storage_provider.aws.dynamodb, null) == null ||
+      (
+        try(var.experimental.github.app.id_ssm, null) == null &&
+        try(var.experimental.github.app.key_base64_ssm, null) == null &&
+        try(var.experimental.github.app.webhook_secret_ssm, null) == null &&
+        alltrue([
+          for app in var.experimental.github.additional_apps :
+          app.id_ssm == null && app.key_base64_ssm == null && app.installation_id_ssm == null
+        ])
+      )
+    )
+    error_message = "experimental.storage_provider.aws.dynamodb requires direct GitHub App values; it will not copy externally managed *_ssm SecureString values into Terraform state. Omit storage_provider or select experimental.storage_provider.aws.ssm to retain external Parameter Store references."
+  }
+
+  validation {
+    condition = (
+      length(var.experimental.multi_runner_config) == 0 ||
+      try(var.experimental.storage_provider.aws.dynamodb, null) == null ||
+      (
+        coalesce(try(tonumber(var.experimental.github.app.id), null), 0) > 0 &&
+        floor(coalesce(try(tonumber(var.experimental.github.app.id), null), 0)) == coalesce(try(tonumber(var.experimental.github.app.id), null), 0) &&
+        alltrue([
+          for app in var.experimental.github.additional_apps :
+          coalesce(try(tonumber(app.id), null), 0) > 0 &&
+          floor(coalesce(try(tonumber(app.id), null), 0)) == coalesce(try(tonumber(app.id), null), 0) &&
+          (
+            app.installation_id == null ||
+            (
+              coalesce(try(tonumber(app.installation_id), null), 0) > 0 &&
+              floor(coalesce(try(tonumber(app.installation_id), null), 0)) == coalesce(try(tonumber(app.installation_id), null), 0)
+            )
+          )
+        ])
+      )
+    )
+    error_message = "experimental.storage_provider.aws.dynamodb requires positive integer direct GitHub App IDs and installation IDs."
+  }
+
+  validation {
+    condition = (
+      try(var.experimental.storage_provider.aws.dynamodb.runner_state.runner_config_ttl_seconds, 86400) > 0 &&
+      floor(try(var.experimental.storage_provider.aws.dynamodb.runner_state.runner_config_ttl_seconds, 86400)) == try(var.experimental.storage_provider.aws.dynamodb.runner_state.runner_config_ttl_seconds, 86400) &&
+      try(var.experimental.storage_provider.aws.dynamodb.runner_state.runner_state_ttl_seconds, 604800) > try(var.experimental.storage_provider.aws.dynamodb.runner_state.runner_config_ttl_seconds, 86400) &&
+      floor(try(var.experimental.storage_provider.aws.dynamodb.runner_state.runner_state_ttl_seconds, 604800)) == try(var.experimental.storage_provider.aws.dynamodb.runner_state.runner_state_ttl_seconds, 604800)
+    )
+    error_message = "DynamoDB TTL values must be positive integers, and runner_state_ttl_seconds must be greater than runner_config_ttl_seconds."
+  }
 }

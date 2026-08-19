@@ -229,3 +229,29 @@ variable "runner_provider" {
 
   nullable = false
 }
+
+variable "storage_provider" {
+  description = "Opaque storage-provider capabilities for scale-up and scale-down."
+  type = object({
+    type = string
+    scale_up = object({
+      environment_variables = map(string)
+      iam_policy_json       = optional(string, null)
+    })
+    scale_down = object({
+      environment_variables = map(string)
+      iam_policy_json       = optional(string, null)
+    })
+  })
+  default = {
+    type = "aws_ssm"
+    scale_up = {
+      environment_variables = {}
+      iam_policy_json       = null
+    }
+    scale_down = {
+      environment_variables = {}
+      iam_policy_json       = null
+    }
+  }
+}

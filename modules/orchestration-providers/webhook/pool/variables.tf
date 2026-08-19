@@ -138,6 +138,20 @@ variable "runner_provider" {
   })
 }
 
+variable "storage_provider" {
+  description = "Opaque runner-configuration storage capability used by the pool Lambda."
+  type = object({
+    type                  = string
+    environment_variables = map(string)
+    iam_policy_json       = optional(string, null)
+  })
+  default = {
+    type                  = "aws_ssm"
+    environment_variables = {}
+    iam_policy_json       = null
+  }
+}
+
 variable "aws_partition" {
   description = "(optional) partition for the arn if not 'aws'"
   type        = string

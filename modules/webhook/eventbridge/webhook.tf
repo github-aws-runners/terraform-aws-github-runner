@@ -19,7 +19,7 @@ resource "aws_lambda_function" "webhook" {
   architectures     = [var.config.lambda_architecture]
 
   environment {
-    variables = {
+    variables = merge({
       for k, v in {
         LOG_LEVEL                                = upper(var.config.log_level)
         POWERTOOLS_LOGGER_LOG_EVENT              = var.config.log_level == "debug" ? "true" : "false"
@@ -30,10 +30,10 @@ resource "aws_lambda_function" "webhook" {
         # Parameters required for lambda configuration
         ACCEPT_EVENTS                        = jsonencode(var.config.accept_events)
         EVENT_BUS_NAME                       = aws_cloudwatch_event_bus.main.name
-        PARAMETER_GITHUB_APP_WEBHOOK_SECRET  = var.config.github_app_parameters.webhook_secret.name
-        PARAMETER_RUNNER_MATCHER_CONFIG_PATH = join(":", [for p in var.config.ssm_parameter_runner_matcher_config : p.name])
+        PARAMETER_GITHUB_APP_WEBHOOK_SECRET  = var.config.storage_provider.type == "aws_ssm" ? var.config.github_app_parameters.webhook_secret.name : null
+        PARAMETER_RUNNER_MATCHER_CONFIG_PATH = var.config.storage_provider.type == "aws_ssm" ? join(":", [for p in var.config.ssm_parameter_runner_matcher_config : p.name]) : null
       } : k => v if v != null
-    }
+    }, var.config.storage_provider.webhook.environment_variables)
   }
 
   dynamic "vpc_config" {
@@ -124,18 +124,25 @@ resource "aws_iam_role_policy" "webhook_ssm" {
   name = "publish-ssm-policy"
   role = aws_iam_role.webhook_lambda.name
 
-  policy = templatefile("${path.module}/../policies/lambda-ssm.json", {
+  policy = var.config.storage_provider.type == "aws_ssm" ? templatefile("${path.module}/../policies/lambda-ssm.json", {
     resource_arns = jsonencode([var.config.github_app_parameters.webhook_secret.arn])
-  })
+  }) : var.config.storage_provider.webhook.iam_policy_json
 }
 
 resource "aws_iam_role_policy" "webhook_kms" {
+  count = var.config.storage_provider.type == "aws_ssm" ? 1 : 0
+
   name = "kms-policy"
   role = aws_iam_role.webhook_lambda.name
 
   policy = templatefile("${path.module}/../policies/lambda-kms.json", {
     kms_key_arn = var.config.kms_key_arn != null ? var.config.kms_key_arn : "arn:${var.config.aws_partition}:kms:::CMK_NOT_IN_USE"
   })
+}
+
+moved {
+  from = aws_iam_role_policy.webhook_kms
+  to   = aws_iam_role_policy.webhook_kms[0]
 }
 
 resource "aws_iam_role_policy" "xray" {

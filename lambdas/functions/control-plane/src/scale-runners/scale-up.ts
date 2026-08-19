@@ -1,5 +1,6 @@
 import { addPersistentContextToChildLogger, createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import { resolveComputeProviderType } from '@aws-github-runner/compute-providers/provider-types';
+import { getRunnerStateStore } from '@aws-github-runner/storage-providers';
 import { Octokit } from '@octokit/rest';
 import yn from 'yn';
 
@@ -253,7 +254,13 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
     const currentRunners =
       maximumRunners === -1
         ? 0
-        : await computeProvider.getCurrentRunners(runnerLabelResolution.state, { runnerType, runnerOwner });
+        : await getCurrentRunnerCount(
+            computeProvider.type,
+            runnerType,
+            runnerOwner,
+            async () =>
+              await computeProvider.getCurrentRunners(runnerLabelResolution.state, { runnerType, runnerOwner }),
+          );
 
     logger.info('Current runners', {
       currentRunners,
@@ -361,6 +368,31 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
   }
 
   return Array.from(retryMessageIds);
+}
+
+async function getCurrentRunnerCount(
+  computeProvider: string,
+  runnerType: 'Org' | 'Repo',
+  runnerOwner: string,
+  getProviderRunnerIds: () => Promise<string[]>,
+): Promise<number> {
+  const runnerStateStore = getRunnerStateStore();
+  if (!runnerStateStore) {
+    return (await getProviderRunnerIds()).length;
+  }
+
+  const records = await runnerStateStore.list({ computeProvider });
+  const runnerIds = new Set(
+    records
+      .filter((record) => record.runnerType === runnerType && record.runnerOwner === runnerOwner)
+      .map((record) => record.computeResourceId),
+  );
+  // Durable inventory is canonical. Provider discovery remains a conservative
+  // recovery source for resources launched before their inventory record was written.
+  for (const runnerId of await getProviderRunnerIds()) {
+    runnerIds.add(runnerId);
+  }
+  return runnerIds.size;
 }
 
 function isValidRepoOwnerTypeIfOrgLevelEnabled(payload: ActionRequestMessage, enableOrgLevel: boolean): boolean {

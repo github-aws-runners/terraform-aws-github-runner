@@ -141,6 +141,9 @@ async function terminateFailedInstances(instanceIds: string[]): Promise<void> {
 
 function createEc2StartRunnerConfigOptions(): StartRunnerConfigOptions {
   return {
+    computeProvider: 'ec2',
+    getRunnerConfigAccessScope: (instanceId) =>
+      process.env.EC2_INSTANCE_ARN_PREFIX ? `${process.env.EC2_INSTANCE_ARN_PREFIX}${instanceId}` : undefined,
     getRunnerConfigMetadata: (instanceId) => [{ key: 'InstanceId', value: instanceId }],
     onJitConfigCreated: async (instanceId, metadata) => await tagEc2RunnerMetadata(instanceId, metadata),
   };

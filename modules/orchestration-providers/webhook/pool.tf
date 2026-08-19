@@ -56,6 +56,10 @@ module "pool" {
 
   aws_partition  = var.aws_partition
   tracing_config = local.resolved_config.observability.tracing
+  storage_provider = merge(
+    { type = local.resolved_config.storage_provider.type },
+    local.resolved_config.storage_provider.pool,
+  )
   runner_provider = {
     type                   = var.runner_provider.type
     environment_variables  = var.runner_provider.pool.environment_variables

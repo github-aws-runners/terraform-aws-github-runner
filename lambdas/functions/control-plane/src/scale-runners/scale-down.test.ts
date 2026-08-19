@@ -1,5 +1,10 @@
 import type { Octokit } from '@octokit/rest';
 import { RequestError } from '@octokit/request-error';
+import {
+  getRunnerStateStore,
+  type RunnerStateRecord,
+  type RunnerStateStore,
+} from '@aws-github-runner/storage-providers';
 import moment from 'moment';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -14,6 +19,10 @@ vi.mock('../github/auth', () => ({
   createGithubInstallationAuth: vi.fn(),
   createOctokitClient: vi.fn(),
   getStoredInstallationId: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('@aws-github-runner/storage-providers', () => ({
+  getRunnerStateStore: vi.fn(),
 }));
 
 const mockOctokit = {
@@ -50,6 +59,18 @@ const mockBootTimeExceeded = vi.mocked(mockComputeProvider.bootTimeExceeded);
 const mockMarkOrphan = vi.mocked(mockComputeProvider.markOrphan);
 const mockUnmarkOrphan = vi.mocked(mockComputeProvider.unmarkOrphan);
 const mockTerminateRunners = vi.mocked(mockComputeProvider.terminate);
+const mockGetRunnerStateStore = vi.mocked(getRunnerStateStore);
+const mockRunnerStateStore: RunnerStateStore = {
+  create: vi.fn(),
+  recordGitHubIdentity: vi.fn(),
+  activate: vi.fn(),
+  list: vi.fn(),
+  markOrphan: vi.fn(),
+  unmarkOrphan: vi.fn(),
+  beginTermination: vi.fn(),
+  cancelTermination: vi.fn(),
+  delete: vi.fn(),
+};
 
 const cleanEnv = process.env;
 
@@ -191,6 +212,14 @@ describe('Scale down runners', () => {
     mockMarkOrphan.mockResolvedValue();
     mockUnmarkOrphan.mockResolvedValue();
     mockTerminateRunners.mockResolvedValue();
+    mockGetRunnerStateStore.mockReturnValue(undefined);
+    vi.mocked(mockRunnerStateStore.list).mockResolvedValue([]);
+    vi.mocked(mockRunnerStateStore.markOrphan).mockResolvedValue();
+    vi.mocked(mockRunnerStateStore.unmarkOrphan).mockResolvedValue();
+    vi.mocked(mockRunnerStateStore.activate).mockResolvedValue();
+    vi.mocked(mockRunnerStateStore.beginTermination).mockResolvedValue('active');
+    vi.mocked(mockRunnerStateStore.cancelTermination).mockResolvedValue();
+    vi.mocked(mockRunnerStateStore.delete).mockResolvedValue();
 
     mockOctokit.apps.getOrgInstallation.mockImplementation(() => ({
       data: {
@@ -691,6 +720,309 @@ describe('Scale down runners', () => {
       });
     });
   });
+
+  describe('with durable runner inventory', () => {
+    beforeEach(() => {
+      mockGetRunnerStateStore.mockReturnValue(mockRunnerStateStore);
+      mockOctokit.actions.getSelfHostedRunnerForOrg.mockResolvedValue({
+        data: { id: 101, name: 'runner', busy: false, status: 'online' },
+      });
+      mockOctokit.actions.deleteSelfHostedRunnerFromOrg.mockResolvedValue({ status: 204 });
+    });
+
+    it('reconciles stored-only runners without terminating compute and preserves provider-only bypass removal', async () => {
+      const providerRunner = createRunnerTestData(
+        'provider-only',
+        'Org',
+        MINIMUM_TIME_RUNNING_IN_MINUTES + 1,
+        true,
+        false,
+        false,
+      );
+      providerRunner.bypassRemoval = true;
+      const storedRecord = createRunnerStateRecord('i-stored-only-org', 'active', {
+        githubRunnerId: '101',
+      });
+
+      mockProviderRunners([providerRunner]);
+      vi.mocked(mockRunnerStateStore.list).mockResolvedValueOnce([storedRecord]).mockResolvedValueOnce([]);
+      await scaleDown();
+
+      expect(mockTerminateRunners).not.toHaveBeenCalledWith(storedRecord.computeResourceId);
+      expect(mockTerminateRunners).not.toHaveBeenCalledWith(providerRunner.id);
+      expect(mockOctokit.actions.deleteSelfHostedRunnerFromOrg).toHaveBeenCalledWith({
+        org: storedRecord.runnerOwner,
+        runner_id: 101,
+      });
+      expect(mockRunnerStateStore.delete).toHaveBeenCalledWith(storedRecord.runnerId);
+    });
+
+    it('keeps inventory lifecycle canonical when a tracked provider resource has a stale orphan tag', async () => {
+      const providerRunner = createRunnerTestData('tracked-active', 'Org', MINIMUM_BOOT_TIME - 1, false, true, false);
+      const storedRecord = createRunnerStateRecord(providerRunner.id, 'active');
+
+      mockProviderRunners([providerRunner]);
+      vi.mocked(mockRunnerStateStore.list).mockResolvedValue([storedRecord]);
+      mockOctokit.paginate.mockResolvedValue([]);
+
+      await scaleDown();
+
+      expect(mockTerminateRunners).not.toHaveBeenCalled();
+      expect(mockUnmarkOrphan).not.toHaveBeenCalled();
+      expect(mockRunnerStateStore.beginTermination).not.toHaveBeenCalled();
+    });
+
+    it('claims provider-absent active state before GitHub cleanup and deletes it without compute calls', async () => {
+      const storedRecord = createRunnerStateRecord('i-active-org', 'active', { githubRunnerId: '101' });
+      mockProviderRunners([]);
+      vi.mocked(mockRunnerStateStore.list).mockResolvedValueOnce([storedRecord]).mockResolvedValueOnce([]);
+      vi.mocked(mockRunnerStateStore.beginTermination).mockResolvedValueOnce('active');
+      await scaleDown();
+
+      expect(mockRunnerStateStore.beginTermination).toHaveBeenCalledWith(storedRecord.runnerId);
+      expect(mockTerminateRunners).not.toHaveBeenCalled();
+      expect(mockRunnerStateStore.delete).toHaveBeenCalledWith(storedRecord.runnerId);
+      expect(vi.mocked(mockRunnerStateStore.beginTermination).mock.invocationCallOrder[0]).toBeLessThan(
+        mockOctokit.actions.deleteSelfHostedRunnerFromOrg.mock.invocationCallOrder[0],
+      );
+      expect(mockOctokit.actions.deleteSelfHostedRunnerFromOrg.mock.invocationCallOrder[0]).toBeLessThan(
+        vi.mocked(mockRunnerStateStore.delete).mock.invocationCallOrder[0],
+      );
+    });
+
+    it('treats a GitHub 404 as successful cleanup for provider-absent inventory', async () => {
+      const storedRecord = createRunnerStateRecord('i-missing-github-runner-org', 'provisioning', {
+        githubRunnerId: '101',
+      });
+      const error404 = new RequestError('Runner not found', 404, {
+        request: {
+          method: 'DELETE',
+          url: 'https://api.github.com/test',
+          headers: {},
+        },
+      });
+      mockProviderRunners([]);
+      vi.mocked(mockRunnerStateStore.list).mockResolvedValueOnce([storedRecord]).mockResolvedValueOnce([]);
+      vi.mocked(mockRunnerStateStore.beginTermination).mockResolvedValueOnce('provisioning');
+      mockOctokit.actions.deleteSelfHostedRunnerFromOrg.mockRejectedValueOnce(error404);
+
+      await scaleDown();
+
+      expect(mockRunnerStateStore.delete).toHaveBeenCalledWith(storedRecord.runnerId);
+      expect(mockRunnerStateStore.cancelTermination).not.toHaveBeenCalled();
+      expect(mockTerminateRunners).not.toHaveBeenCalled();
+      expect(mockUnmarkOrphan).not.toHaveBeenCalled();
+      expect(mockOctokit.actions.getSelfHostedRunnerForOrg).not.toHaveBeenCalled();
+    });
+
+    it('skips cleanup when another invocation owns the termination claim', async () => {
+      const storedRecord = createRunnerStateRecord('i-contended-org', 'active', { githubRunnerId: '101' });
+      mockProviderRunners([]);
+      vi.mocked(mockRunnerStateStore.list).mockResolvedValue([storedRecord]);
+      vi.mocked(mockRunnerStateStore.beginTermination).mockResolvedValueOnce(undefined);
+      mockOctokit.paginate.mockResolvedValue([{ id: 101, name: storedRecord.computeResourceId }]);
+
+      await scaleDown();
+
+      expect(mockOctokit.actions.deleteSelfHostedRunnerFromOrg).not.toHaveBeenCalled();
+      expect(mockTerminateRunners).not.toHaveBeenCalled();
+      expect(mockRunnerStateStore.delete).not.toHaveBeenCalled();
+    });
+
+    it('reclaims a stale terminating provider-absent record without calling compute', async () => {
+      const terminatingRecord = createRunnerStateRecord('i-stale-terminating-org', 'terminating');
+      mockProviderRunners([]);
+      vi.mocked(mockRunnerStateStore.list).mockResolvedValueOnce([terminatingRecord]).mockResolvedValueOnce([]);
+      vi.mocked(mockRunnerStateStore.beginTermination).mockResolvedValueOnce('terminating');
+
+      await scaleDown();
+
+      expect(mockRunnerStateStore.beginTermination).toHaveBeenCalledWith(terminatingRecord.runnerId);
+      expect(mockTerminateRunners).not.toHaveBeenCalled();
+      expect(mockRunnerStateStore.delete).toHaveBeenCalledWith(terminatingRecord.runnerId);
+      expect(mockRunnerStateStore.cancelTermination).not.toHaveBeenCalled();
+    });
+
+    it('leaves a reclaimed provider-absent record terminating when state deletion fails', async () => {
+      const terminatingRecord = createRunnerStateRecord('i-terminating-retry-failure-org', 'terminating');
+      mockProviderRunners([]);
+      vi.mocked(mockRunnerStateStore.list).mockResolvedValue([terminatingRecord]);
+      vi.mocked(mockRunnerStateStore.beginTermination).mockResolvedValueOnce('terminating');
+      vi.mocked(mockRunnerStateStore.delete).mockRejectedValueOnce(new Error('state deletion failed'));
+
+      await scaleDown();
+
+      expect(mockRunnerStateStore.cancelTermination).not.toHaveBeenCalled();
+      expect(mockRunnerStateStore.delete).toHaveBeenCalledWith(terminatingRecord.runnerId);
+      expect(mockTerminateRunners).not.toHaveBeenCalled();
+    });
+
+    it('restores the exact prior lifecycle state when compute termination fails', async () => {
+      const providerRunner = createRunnerTestData(
+        'stale-provisioning',
+        'Org',
+        MINIMUM_BOOT_TIME + 1,
+        false,
+        false,
+        false,
+      );
+      const staleProvisioning = createRunnerStateRecord(providerRunner.id, 'provisioning');
+      mockProviderRunners([providerRunner]);
+      vi.mocked(mockRunnerStateStore.list).mockResolvedValue([staleProvisioning]);
+      vi.mocked(mockRunnerStateStore.beginTermination).mockResolvedValueOnce('provisioning');
+      mockTerminateRunners.mockRejectedValueOnce(new Error('termination failed'));
+
+      await scaleDown();
+
+      expect(mockRunnerStateStore.beginTermination).toHaveBeenCalledWith(staleProvisioning.runnerId);
+      expect(mockRunnerStateStore.cancelTermination).toHaveBeenCalledWith(staleProvisioning.runnerId, 'provisioning');
+      expect(mockRunnerStateStore.delete).not.toHaveBeenCalled();
+    });
+
+    it('de-registers a stored orphan before terminating compute and deleting state', async () => {
+      const providerRunner = createRunnerTestData(
+        'orphan-with-github-runner',
+        'Org',
+        MINIMUM_BOOT_TIME + 1,
+        false,
+        true,
+        true,
+      );
+      const storedOrphan = createRunnerStateRecord(providerRunner.id, 'orphan', {
+        githubRunnerId: '101',
+      });
+      mockProviderRunners([providerRunner]);
+      vi.mocked(mockRunnerStateStore.list).mockResolvedValueOnce([storedOrphan]).mockResolvedValueOnce([]);
+      vi.mocked(mockRunnerStateStore.beginTermination).mockResolvedValueOnce('orphan');
+      mockOctokit.actions.getSelfHostedRunnerForOrg.mockResolvedValueOnce({
+        data: { id: 101, name: storedOrphan.computeResourceId, busy: true, status: 'offline' },
+      });
+
+      await scaleDown();
+
+      expect(mockOctokit.actions.deleteSelfHostedRunnerFromOrg).toHaveBeenCalledWith({
+        org: storedOrphan.runnerOwner,
+        runner_id: 101,
+      });
+      expect(mockTerminateRunners).toHaveBeenCalledWith(storedOrphan.computeResourceId);
+      expect(mockRunnerStateStore.delete).toHaveBeenCalledWith(storedOrphan.runnerId);
+      expect(mockOctokit.actions.deleteSelfHostedRunnerFromOrg.mock.invocationCallOrder[0]).toBeLessThan(
+        mockTerminateRunners.mock.invocationCallOrder[0],
+      );
+      expect(mockTerminateRunners.mock.invocationCallOrder[0]).toBeLessThan(
+        vi.mocked(mockRunnerStateStore.delete).mock.invocationCallOrder[0],
+      );
+    });
+
+    it('restores an orphan claim when GitHub cleanup fails', async () => {
+      const storedOrphan = createRunnerStateRecord('i-orphan-cleanup-failure-org', 'orphan', {
+        githubRunnerId: '101',
+      });
+      mockProviderRunners([]);
+      vi.mocked(mockRunnerStateStore.list).mockResolvedValue([storedOrphan]);
+      vi.mocked(mockRunnerStateStore.beginTermination).mockResolvedValueOnce('orphan');
+      mockOctokit.actions.deleteSelfHostedRunnerFromOrg.mockResolvedValueOnce({ status: 500 });
+
+      await scaleDown();
+
+      expect(mockRunnerStateStore.cancelTermination).toHaveBeenCalledWith(storedOrphan.runnerId, 'orphan');
+      expect(mockTerminateRunners).not.toHaveBeenCalled();
+      expect(mockRunnerStateStore.delete).not.toHaveBeenCalled();
+    });
+
+    it('does not restore state when deletion fails after compute termination succeeds', async () => {
+      const providerRunner = createRunnerTestData(
+        'delete-failure',
+        'Org',
+        MINIMUM_TIME_RUNNING_IN_MINUTES + 1,
+        true,
+        false,
+        true,
+      );
+      const storedRecord = createRunnerStateRecord(providerRunner.id, 'active', { githubRunnerId: '101' });
+      mockProviderRunners([providerRunner]);
+      vi.mocked(mockRunnerStateStore.list).mockResolvedValue([storedRecord]);
+      vi.mocked(mockRunnerStateStore.beginTermination).mockResolvedValueOnce('active');
+      vi.mocked(mockRunnerStateStore.delete).mockRejectedValueOnce(new Error('delete failed'));
+      mockOctokit.paginate.mockResolvedValue([{ id: 101, name: storedRecord.computeResourceId }]);
+
+      await expect(scaleDown()).resolves.not.toThrow();
+
+      expect(mockTerminateRunners).toHaveBeenCalledWith(providerRunner.id);
+      expect(mockRunnerStateStore.cancelTermination).not.toHaveBeenCalled();
+    });
+
+    it('updates durable lifecycle only after provider orphan removal succeeds', async () => {
+      const providerRunner = createRunnerTestData(
+        'tracked-orphan',
+        'Org',
+        MINIMUM_BOOT_TIME + 1,
+        false,
+        true,
+        false,
+        undefined,
+        101,
+      );
+      const storedOrphan = createRunnerStateRecord(providerRunner.id, 'orphan', { githubRunnerId: '101' });
+      mockProviderRunners([providerRunner]);
+      vi.mocked(mockRunnerStateStore.list).mockResolvedValue([storedOrphan]);
+      mockOctokit.actions.getSelfHostedRunnerForOrg.mockResolvedValueOnce({
+        data: { id: 101, name: providerRunner.id, busy: false, status: 'online' },
+      });
+
+      await scaleDown();
+
+      expect(mockUnmarkOrphan).toHaveBeenCalledWith(providerRunner.id);
+      expect(mockRunnerStateStore.unmarkOrphan).toHaveBeenCalledWith(storedOrphan.runnerId);
+      expect(mockUnmarkOrphan.mock.invocationCallOrder[0]).toBeLessThan(
+        vi.mocked(mockRunnerStateStore.unmarkOrphan).mock.invocationCallOrder[0],
+      );
+      expect(mockTerminateRunners).not.toHaveBeenCalled();
+    });
+
+    it('retains durable orphan state when provider orphan removal fails', async () => {
+      const providerRunner = createRunnerTestData(
+        'tracked-orphan-failure',
+        'Org',
+        MINIMUM_BOOT_TIME + 1,
+        false,
+        true,
+        false,
+        undefined,
+        101,
+      );
+      const storedOrphan = createRunnerStateRecord(providerRunner.id, 'orphan', { githubRunnerId: '101' });
+      mockProviderRunners([providerRunner]);
+      vi.mocked(mockRunnerStateStore.list).mockResolvedValue([storedOrphan]);
+      mockOctokit.actions.getSelfHostedRunnerForOrg.mockResolvedValueOnce({
+        data: { id: 101, name: providerRunner.id, busy: false, status: 'online' },
+      });
+      mockUnmarkOrphan.mockRejectedValueOnce(new Error('provider unmark failed'));
+
+      await scaleDown();
+
+      expect(mockRunnerStateStore.unmarkOrphan).not.toHaveBeenCalled();
+      expect(mockRunnerStateStore.activate).not.toHaveBeenCalled();
+      expect(mockTerminateRunners).not.toHaveBeenCalled();
+    });
+
+    it('reconciles expired provisioning records but leaves fresh provisioning records alone', async () => {
+      const staleProvisioning = createRunnerStateRecord('i-stale-provisioning-org', 'provisioning');
+      const freshProvisioning = createRunnerStateRecord('i-fresh-provisioning-org', 'provisioning', {
+        createdAt: new Date().toISOString(),
+      });
+      mockProviderRunners([]);
+      vi.mocked(mockRunnerStateStore.list).mockResolvedValue([staleProvisioning, freshProvisioning]);
+      vi.mocked(mockRunnerStateStore.beginTermination).mockResolvedValueOnce('provisioning');
+
+      await scaleDown();
+
+      expect(mockRunnerStateStore.beginTermination).toHaveBeenCalledTimes(1);
+      expect(mockRunnerStateStore.beginTermination).toHaveBeenCalledWith(staleProvisioning.runnerId);
+      expect(mockTerminateRunners).not.toHaveBeenCalled();
+      expect(mockRunnerStateStore.delete).toHaveBeenCalledWith(staleProvisioning.runnerId);
+    });
+  });
 });
 
 function mockProviderRunners(runners: RunnerTestItem[]) {
@@ -749,5 +1081,26 @@ function createRunnerTestData(
     shouldBeTerminated,
     githubRunnerId: runnerId !== undefined ? String(runnerId) : undefined,
     bypassRemoval: false,
+  };
+}
+
+function createRunnerStateRecord(
+  runnerId: string,
+  state: RunnerStateRecord['state'],
+  overrides: Partial<RunnerStateRecord> = {},
+): RunnerStateRecord {
+  const timestamp = moment(new Date())
+    .subtract(MINIMUM_TIME_RUNNING_IN_MINUTES + 1, 'minutes')
+    .toISOString();
+  return {
+    runnerId,
+    computeProvider: 'ec2',
+    computeResourceId: runnerId,
+    runnerOwner: TEST_DATA.repositoryOwner,
+    runnerType: 'Org',
+    state,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    ...overrides,
   };
 }

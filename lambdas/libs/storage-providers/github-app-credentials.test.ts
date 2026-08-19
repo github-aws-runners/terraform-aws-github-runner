@@ -1,14 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { createAwsDynamoDbGitHubAppCredentialsStore } from './aws/dynamodb/github-app-credentials-store';
 import { createAwsSsmGitHubAppCredentialsStore } from './aws/ssm/github-app-credentials-store';
 import type { GitHubAppCredentialsStore } from './core';
 import { getGitHubAppCredentialsStore, resetGitHubAppCredentialsStore } from './github-app-credentials';
 
+vi.mock('./aws/dynamodb/github-app-credentials-store', () => ({
+  createAwsDynamoDbGitHubAppCredentialsStore: vi.fn(),
+}));
 vi.mock('./aws/ssm/github-app-credentials-store', () => ({
   createAwsSsmGitHubAppCredentialsStore: vi.fn(),
 }));
 
-const createAwsSsmGitHubAppCredentialsStoreMock = vi.mocked(createAwsSsmGitHubAppCredentialsStore);
+const createAwsDynamoDbStoreMock = vi.mocked(createAwsDynamoDbGitHubAppCredentialsStore);
+const createAwsSsmStoreMock = vi.mocked(createAwsSsmGitHubAppCredentialsStore);
 const cleanEnv = process.env;
 
 describe('GitHub App credentials store selection', () => {
@@ -19,52 +24,55 @@ describe('GitHub App credentials store selection', () => {
     resetGitHubAppCredentialsStore();
   });
 
-  it.each([undefined, '', '   '])('uses aws_ssm for default selector input %j', (provider) => {
+  it.each([undefined, '', '   ', 'aws_ssm', ' AWS_SSM '])('uses aws_ssm for selector input %j', (provider) => {
     setProvider(provider);
-    const store = stubStore();
+    const store = stubSsmStore();
 
     expect(getGitHubAppCredentialsStore()).toBe(store);
-    expect(createAwsSsmGitHubAppCredentialsStoreMock).toHaveBeenCalledOnce();
+    expect(createAwsSsmStoreMock).toHaveBeenCalledOnce();
+    expect(createAwsDynamoDbStoreMock).not.toHaveBeenCalled();
   });
 
-  it.each(['aws_ssm', ' AWS_SSM '])('uses aws_ssm for explicit selector input %j', (provider) => {
-    process.env.RUNNER_CONFIG_STORAGE_PROVIDER = provider;
-    const store = stubStore();
+  it.each(['aws_dynamodb', ' AWS_DYNAMODB '])('uses aws_dynamodb for selector input %j', (provider) => {
+    setProvider(provider);
+    const store = stubDynamoDbStore();
 
     expect(getGitHubAppCredentialsStore()).toBe(store);
-    expect(createAwsSsmGitHubAppCredentialsStoreMock).toHaveBeenCalledOnce();
+    expect(createAwsDynamoDbStoreMock).toHaveBeenCalledOnce();
+    expect(createAwsSsmStoreMock).not.toHaveBeenCalled();
   });
 
-  it('rejects an unsupported provider on first use', () => {
-    process.env.RUNNER_CONFIG_STORAGE_PROVIDER = 'not-registered';
+  it('rejects an unsupported provider before creating a store', () => {
+    setProvider('not-registered');
 
     expect(() => getGitHubAppCredentialsStore()).toThrow("Unsupported runner config storage provider 'not-registered'");
-    expect(createAwsSsmGitHubAppCredentialsStoreMock).not.toHaveBeenCalled();
+    expect(createAwsSsmStoreMock).not.toHaveBeenCalled();
+    expect(createAwsDynamoDbStoreMock).not.toHaveBeenCalled();
   });
 
-  it('selects lazily and caches the created store', () => {
-    const store = stubStore();
+  it('creates the selected store lazily and caches it', () => {
+    const store = stubSsmStore();
 
-    expect(createAwsSsmGitHubAppCredentialsStoreMock).not.toHaveBeenCalled();
+    expect(createAwsSsmStoreMock).not.toHaveBeenCalled();
     const first = getGitHubAppCredentialsStore();
-    process.env.RUNNER_CONFIG_STORAGE_PROVIDER = 'not-registered';
+    setProvider('not-registered');
     const second = getGitHubAppCredentialsStore();
 
     expect(first).toBe(store);
     expect(second).toBe(store);
-    expect(createAwsSsmGitHubAppCredentialsStoreMock).toHaveBeenCalledOnce();
+    expect(createAwsSsmStoreMock).toHaveBeenCalledOnce();
   });
 
   it('selects again after the test reset', () => {
-    const firstStore = stubStore();
+    const firstStore = stubSsmStore();
     expect(getGitHubAppCredentialsStore()).toBe(firstStore);
 
     const secondStore = { get: vi.fn() } satisfies GitHubAppCredentialsStore;
-    createAwsSsmGitHubAppCredentialsStoreMock.mockReturnValue(secondStore);
+    createAwsSsmStoreMock.mockReturnValue(secondStore);
     resetGitHubAppCredentialsStore();
 
     expect(getGitHubAppCredentialsStore()).toBe(secondStore);
-    expect(createAwsSsmGitHubAppCredentialsStoreMock).toHaveBeenCalledTimes(2);
+    expect(createAwsSsmStoreMock).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -76,8 +84,14 @@ function setProvider(provider: string | undefined): void {
   }
 }
 
-function stubStore(): GitHubAppCredentialsStore {
+function stubSsmStore(): GitHubAppCredentialsStore {
   const store = { get: vi.fn() } satisfies GitHubAppCredentialsStore;
-  createAwsSsmGitHubAppCredentialsStoreMock.mockReturnValue(store);
+  createAwsSsmStoreMock.mockReturnValue(store);
+  return store;
+}
+
+function stubDynamoDbStore(): GitHubAppCredentialsStore {
+  const store = { get: vi.fn() } satisfies GitHubAppCredentialsStore;
+  createAwsDynamoDbStoreMock.mockReturnValue(store);
   return store;
 }

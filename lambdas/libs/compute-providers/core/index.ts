@@ -29,6 +29,10 @@ export interface GitHubRunnerMetadata {
 }
 
 export interface StartRunnerConfigOptions {
+  /** Compute provider that owns the runner IDs. Used by provider-neutral runner inventory. */
+  computeProvider?: ComputeProviderType;
+  /** Access scope used by secret stores to isolate one runner's bootstrap configuration. */
+  getRunnerConfigAccessScope?: (runnerId: string) => string | undefined;
   getRunnerConfigMetadata?: (runnerId: string) => { key: string; value: string }[];
   onJitConfigCreated?: (runnerId: string, metadata: GitHubRunnerMetadata) => Promise<void>;
 }
@@ -65,7 +69,8 @@ export interface CreateRunnerResult {
 
 export interface ScaleUpComputeProvider<TState = unknown> extends ComputeProvider {
   resolveLabelsForRunners(messageLabels: string[]): Promise<RunnerLabelResolution<TState>>;
-  getCurrentRunners(state: TState, input: CurrentRunnersInput): Promise<number>;
+  /** Compute resource IDs currently owned by this runner entry. */
+  getCurrentRunners(state: TState, input: CurrentRunnersInput): Promise<string[]>;
   createRunners(input: CreateScaleUpRunnersInput<TState>): Promise<CreateRunnerResult>;
 }
 
@@ -113,7 +118,7 @@ export interface CreatePoolRunnersInput {
   githubInstallationClient: Octokit;
 }
 
-export interface PoolComputeProvider<TRunner = unknown> extends ComputeProvider {
+export interface PoolComputeProvider<TRunner extends { id: string } = { id: string }> extends ComputeProvider {
   listRunners(input: ListPoolRunnersInput): Promise<TRunner[]>;
   countAvailableRunners(
     runners: TRunner[],

@@ -3,6 +3,11 @@ import { Endpoints } from '@octokit/types';
 import { RequestError } from '@octokit/request-error';
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import { resolveComputeProviderType } from '@aws-github-runner/compute-providers/provider-types';
+import {
+  getRunnerStateStore,
+  type RunnerStateRecord,
+  type RunnerStateStore,
+} from '@aws-github-runner/storage-providers';
 import moment from 'moment';
 
 import {
@@ -22,7 +27,19 @@ const logger = createChildLogger('scale-down');
 
 type OrgRunnerList = Endpoints['GET /orgs/{org}/actions/runners']['response']['data']['runners'];
 type RepoRunnerList = Endpoints['GET /repos/{owner}/{repo}/actions/runners']['response']['data']['runners'];
-type RunnerState = OrgRunnerList[number] | RepoRunnerList[number];
+type GitHubRunnerState = OrgRunnerList[number] | RepoRunnerList[number];
+
+interface InventoryRunnerInfo extends RunnerInfo {
+  inventory?: RunnerStateRecord;
+  providerPresent?: boolean;
+}
+
+type RestorableRunnerState = Parameters<RunnerStateStore['cancelTermination']>[1];
+
+interface TerminationClaim {
+  runnerStateId?: string;
+  restoreState?: RestorableRunnerState;
+}
 
 async function getOrCreateOctokit(runner: RunnerInfo): Promise<Octokit> {
   const key = runner.owner;
@@ -67,7 +84,7 @@ async function getGitHubSelfHostedRunnerState(
   client: Octokit,
   runner: RunnerInfo,
   runnerId: number,
-): Promise<RunnerState | null> {
+): Promise<GitHubRunnerState | null> {
   try {
     const state =
       runner.type === 'Org'
@@ -161,6 +178,12 @@ async function deleteGitHubRunner(
     }
     return { ghRunnerId, status: response.status, success: response.status === 204 };
   } catch (error) {
+    if (error instanceof RequestError && error.status === 404) {
+      logger.info(
+        `GitHub runner ${ghRunnerId} for runner '${runner.id}' is already de-registered; treating cleanup as complete.`,
+      );
+      return { ghRunnerId, status: error.status, success: true };
+    }
     logger.error(
       `Failed to de-register GitHub runner ${ghRunnerId} for runner '${runner.id}'. ` +
         `Error: ${error instanceof Error ? error.message : String(error)}`,
@@ -171,11 +194,12 @@ async function deleteGitHubRunner(
 }
 
 async function removeRunner(
-  runner: RunnerInfo,
+  runner: InventoryRunnerInfo,
   ghRunnerIds: number[],
   computeProvider: ScaleDownComputeProvider,
 ): Promise<void> {
-  const githubInstallationClient = await getOrCreateOctokit(runner);
+  let terminationClaim: TerminationClaim | undefined;
+  let computeTerminated = false;
   try {
     if (runner.bypassRemoval) {
       logger.info(
@@ -184,6 +208,7 @@ async function removeRunner(
       return;
     }
 
+    const githubInstallationClient = await getOrCreateOctokit(runner);
     const states = await Promise.all(
       ghRunnerIds.map(async (ghRunnerId) => {
         // Get busy state instead of using the output of listGitHubRunners(...) to minimize to race condition.
@@ -192,6 +217,13 @@ async function removeRunner(
     );
 
     if (states.every((busy) => busy === false)) {
+      const claim = await beginRunnerTermination(runner);
+      if (claim === undefined) {
+        logger.info(`Runner '${runner.id}' is already being reconciled; skipping this scale-down cycle.`);
+        return;
+      }
+      terminationClaim = claim;
+
       const results = await Promise.all(
         ghRunnerIds.map((ghRunnerId) => deleteGitHubRunner(githubInstallationClient, runner, ghRunnerId)),
       );
@@ -201,10 +233,15 @@ async function removeRunner(
 
       if (allSucceeded) {
         await computeProvider.terminate(runner.id);
+        computeTerminated = true;
+        await completeRunnerTermination(terminationClaim);
+        terminationClaim = undefined;
         logger.info(
           `${computeProvider.type.toUpperCase()} runner '${runner.id}' is terminated and GitHub runner is de-registered.`,
         );
       } else {
+        await restoreRunnerTermination(terminationClaim);
+        terminationClaim = undefined;
         // Only terminate the provider runner if it was successfully de-registered from GitHub.
         logger.error(
           `Failed to de-register ${failedRunners.length} GitHub runner(s) for runner '${runner.id}'. ` +
@@ -216,6 +253,9 @@ async function removeRunner(
       logger.info(`Runner '${runner.id}' cannot be de-registered, because it is still busy.`);
     }
   } catch (e) {
+    if (terminationClaim && !computeTerminated) {
+      await restoreRunnerTermination(terminationClaim);
+    }
     logger.error(
       `Runner '${runner.id}' cannot be de-registered. Error: ${e instanceof Error ? e.message : String(e)}`,
       { error: e },
@@ -224,7 +264,7 @@ async function removeRunner(
 }
 
 async function evaluateAndRemoveRunners(
-  runners: RunnerInfo[],
+  runners: InventoryRunnerInfo[],
   scaleDownConfigs: ScalingDownConfigList,
   computeProvider: ScaleDownComputeProvider,
 ): Promise<void> {
@@ -237,14 +277,27 @@ async function evaluateAndRemoveRunners(
       .filter((runner) => runner.owner === ownerTag)
       .sort(evictionStrategy === 'oldest_first' ? oldestFirstStrategy : newestFirstStrategy);
     logger.debug(`Found: '${ownerRunners.length}' active GitHub runners with owner tag: '${ownerTag}'`);
-    logger.debug(`Active GitHub runners with owner tag: '${ownerTag}': ${JSON.stringify(ownerRunners)}`);
+    if (ownerRunners.some((runner) => runner.inventory)) {
+      logger.debug(`Active GitHub runner inventory with owner tag: '${ownerTag}'`, {
+        runners: ownerRunners.map((runner) => ({
+          computeResourceId: runner.id,
+          lifecycleState: runner.inventory?.state,
+        })),
+      });
+    } else {
+      logger.debug(`Active GitHub runners with owner tag: '${ownerTag}': ${JSON.stringify(ownerRunners)}`);
+    }
     for (const runner of ownerRunners) {
       if (runner.bypassRemoval) {
         logger.debug(`Runner '${runner.id}' has bypass-removal tag set, skipping evaluation.`);
         continue;
       }
       const ghRunners = await listGitHubRunners(runner);
-      const ghRunnersFiltered = ghRunners.filter((ghRunner: { name: string }) => ghRunner.name.endsWith(runner.id));
+      const ghRunnersFiltered = ghRunners.filter((ghRunner: { id: number; name: string }) =>
+        runner.inventory?.githubRunnerId
+          ? ghRunner.id.toString() === runner.inventory.githubRunnerId
+          : ghRunner.name.endsWith(runner.id),
+      );
       logger.debug(`Found: '${ghRunnersFiltered.length}' GitHub runners for runner: '${runner.id}'`);
       logger.debug(`GitHub runners for runner: '${runner.id}': ${JSON.stringify(ghRunnersFiltered)}`);
       if (ghRunnersFiltered.length) {
@@ -262,7 +315,7 @@ async function evaluateAndRemoveRunners(
           }
         }
       } else if (computeProvider.bootTimeExceeded(runner)) {
-        await markOrphan(runner.id, computeProvider);
+        await markOrphan(runner, computeProvider);
       } else {
         logger.debug(`Runner ${runner.id} has not yet booted.`);
       }
@@ -270,25 +323,46 @@ async function evaluateAndRemoveRunners(
   }
 }
 
-async function markOrphan(id: string, computeProvider: ScaleDownComputeProvider): Promise<void> {
+async function markOrphan(runner: InventoryRunnerInfo, computeProvider: ScaleDownComputeProvider): Promise<void> {
   try {
-    await computeProvider.markOrphan(id);
-    logger.info(`Runner '${id}' tagged as orphan.`);
+    if (runner.inventory) {
+      await getRunnerStateStore()?.markOrphan(runner.inventory.runnerId);
+    }
+    await computeProvider.markOrphan(runner.id);
+    logger.info(`Runner '${runner.id}' tagged as orphan.`);
   } catch (e) {
-    logger.error(`Failed to tag runner '${id}' as orphan.`, { error: e });
+    logger.error(`Failed to tag runner '${runner.id}' as orphan.`, { error: e });
   }
 }
 
-async function unMarkOrphan(id: string, computeProvider: ScaleDownComputeProvider): Promise<void> {
+async function unMarkOrphan(runner: InventoryRunnerInfo, computeProvider: ScaleDownComputeProvider): Promise<void> {
   try {
-    await computeProvider.unmarkOrphan(id);
-    logger.info(`Runner '${id}' untagged as orphan.`);
+    // Keep the durable lifecycle unchanged if the provider mutation fails. In
+    // particular, activating a provisioning record removes its safety TTL.
+    await computeProvider.unmarkOrphan(runner.id);
+    const runnerStateStore = getRunnerStateStore();
+    if (runnerStateStore && runner.inventory?.state === 'orphan') {
+      await runnerStateStore.unmarkOrphan(runner.inventory.runnerId);
+    } else if (runnerStateStore && runner.inventory?.state === 'provisioning') {
+      await runnerStateStore.activate(runner.inventory.runnerId, {
+        githubRunnerId: runner.githubRunnerId,
+        runnerLabels: runner.inventory.runnerLabels,
+        runnerName: runner.inventory.runnerName,
+        metadata: runner.inventory.metadata,
+      });
+    }
+    logger.info(`Runner '${runner.id}' untagged as orphan.`);
   } catch (e) {
-    logger.error(`Failed to un-tag runner '${id}' as orphan.`, { error: e });
+    logger.error(`Failed to un-tag runner '${runner.id}' as orphan.`, { error: e });
   }
 }
 
-async function lastChanceCheckOrphanRunner(runner: RunnerInfo): Promise<boolean> {
+interface OrphanEvaluation {
+  isOrphan: boolean;
+  githubRunnerExists: boolean;
+}
+
+async function lastChanceCheckOrphanRunner(runner: InventoryRunnerInfo): Promise<OrphanEvaluation> {
   const client = await getOrCreateOctokit(runner);
   const runnerId = parseInt(runner.githubRunnerId || '0');
   const state = await getGitHubSelfHostedRunnerState(client, runner, runnerId);
@@ -305,34 +379,186 @@ async function lastChanceCheckOrphanRunner(runner: RunnerInfo): Promise<boolean>
     }
   }
   logger.info(`Runner '${runner.id}' is judged to ${isOrphan ? 'be' : 'not be'} orphaned.`);
-  return isOrphan;
+  return { isOrphan, githubRunnerExists: state !== null };
 }
 
-async function terminateOrphan(environment: string, computeProvider: ScaleDownComputeProvider): Promise<void> {
+async function terminateOrphan(
+  environment: string,
+  computeProvider: ScaleDownComputeProvider,
+  runners?: InventoryRunnerInfo[],
+): Promise<void> {
   try {
-    const orphanRunners = await computeProvider.list(environment, true);
+    const orphanRunners: InventoryRunnerInfo[] = runners ?? (await computeProvider.list(environment, true));
 
     for (const runner of orphanRunners) {
       if (runner.bypassRemoval) {
         logger.info(`Orphan runner '${runner.id}' has bypass-removal tag set, skipping termination.`);
         continue;
       }
+      if (runner.inventory?.state === 'provisioning' && !computeProvider.bootTimeExceeded(runner)) {
+        logger.debug(`Runner '${runner.id}' is still provisioning; skipping reconciliation until boot time expires.`);
+        continue;
+      }
       if (runner.githubRunnerId) {
-        const isOrphan = await lastChanceCheckOrphanRunner(runner);
-        if (isOrphan) {
-          await computeProvider.terminate(runner.id);
+        const orphanEvaluation = await lastChanceCheckOrphanRunner(runner);
+        if (orphanEvaluation.isOrphan) {
+          if (runner.inventory) {
+            await terminateClaimedRunner(
+              runner,
+              computeProvider,
+              orphanEvaluation.githubRunnerExists ? parseInt(runner.githubRunnerId) : undefined,
+            );
+          } else {
+            // Preserve the provider-only recovery behavior used by the legacy path.
+            await computeProvider.terminate(runner.id);
+          }
         } else {
-          await unMarkOrphan(runner.id, computeProvider);
+          await unMarkOrphan(runner, computeProvider);
         }
       } else {
         logger.info(`Terminating orphan runner '${runner.id}'`);
-        await computeProvider.terminate(runner.id).catch((e) => {
-          logger.error(`Failed to terminate orphan runner '${runner.id}'`, { error: e });
-        });
+        if (runner.inventory) {
+          await terminateClaimedRunner(runner, computeProvider);
+        } else {
+          // Preserve the provider-only recovery behavior used by the legacy path.
+          await computeProvider.terminate(runner.id).catch((error) => {
+            logger.error(`Failed to terminate orphan runner '${runner.id}'`, { error });
+          });
+        }
       }
     }
   } catch (e) {
     logger.warn(`Failure during orphan termination processing.`, { error: e });
+  }
+}
+
+async function terminateClaimedRunner(
+  runner: InventoryRunnerInfo,
+  computeProvider: ScaleDownComputeProvider,
+  githubRunnerId?: number,
+): Promise<void> {
+  const claim = await beginRunnerTermination(runner);
+  if (claim === undefined) {
+    logger.info(`Runner '${runner.id}' is already being reconciled; skipping this scale-down cycle.`);
+    return;
+  }
+
+  try {
+    if (githubRunnerId !== undefined) {
+      const githubInstallationClient = await getOrCreateOctokit(runner);
+      const result = await deleteGitHubRunner(githubInstallationClient, runner, githubRunnerId);
+      if (!result.success) {
+        await restoreRunnerTermination(claim);
+        logger.error(
+          `Failed to de-register GitHub runner '${githubRunnerId}' for orphan runner '${runner.id}'. ` +
+            `Runner will NOT be terminated to allow retry on next scale-down cycle.`,
+        );
+        return;
+      }
+    }
+    await computeProvider.terminate(runner.id);
+  } catch (error) {
+    await restoreRunnerTermination(claim);
+    logger.error(`Failed to clean up orphan runner '${runner.id}'`, { error });
+    return;
+  }
+
+  try {
+    await completeRunnerTermination(claim);
+  } catch (error) {
+    logger.error(`Failed to delete runner state for terminated runner '${runner.id}'`, { error });
+  }
+}
+
+async function reconcileProviderAbsentRunner(
+  runner: InventoryRunnerInfo,
+  computeProvider: ScaleDownComputeProvider,
+): Promise<void> {
+  if (!runner.inventory || runner.providerPresent !== false) {
+    return;
+  }
+
+  // Provider discovery can lag immediately after launch. Retain the inventory
+  // until the normal boot grace has elapsed before declaring compute absent.
+  if (!computeProvider.bootTimeExceeded(runner)) {
+    logger.debug(`Runner '${runner.id}' is absent from provider discovery but remains inside its boot grace.`);
+    return;
+  }
+
+  const claim = await beginRunnerTermination(runner);
+  if (claim === undefined) {
+    logger.info(`Runner '${runner.id}' is already being reconciled; skipping this scale-down cycle.`);
+    return;
+  }
+
+  try {
+    if (runner.githubRunnerId) {
+      const githubInstallationClient = await getOrCreateOctokit(runner);
+      const result = await deleteGitHubRunner(githubInstallationClient, runner, parseInt(runner.githubRunnerId, 10));
+      if (!result.success) {
+        await restoreRunnerTermination(claim);
+        logger.error(
+          `Failed to de-register GitHub runner '${runner.githubRunnerId}' for provider-absent runner ` +
+            `'${runner.id}'. Runner state will be retained for retry.`,
+        );
+        return;
+      }
+    }
+  } catch (error) {
+    await restoreRunnerTermination(claim);
+    logger.error(`Failed to reconcile GitHub state for provider-absent runner '${runner.id}'`, { error });
+    return;
+  }
+
+  // Provider discovery already established that the compute resource is gone;
+  // avoid tag/terminate calls that would turn idempotent cleanup into a retry loop.
+  try {
+    await completeRunnerTermination(claim);
+    logger.info(`Removed durable state for provider-absent runner '${runner.id}'.`);
+  } catch (error) {
+    // GitHub cleanup is committed at this point. Leave the terminating claim in
+    // place so its lease/TTL makes state deletion retryable without resurrection.
+    logger.error(`Failed to delete runner state for provider-absent runner '${runner.id}'`, { error });
+  }
+}
+
+async function beginRunnerTermination(runner: InventoryRunnerInfo): Promise<TerminationClaim | undefined> {
+  if (!runner.inventory) {
+    return {};
+  }
+
+  const runnerStateStore = getRunnerStateStore();
+  if (!runnerStateStore) {
+    return {};
+  }
+
+  const previousState = await runnerStateStore.beginTermination(runner.inventory.runnerId);
+  if (previousState === undefined) {
+    return undefined;
+  }
+  return {
+    runnerStateId: runner.inventory.runnerId,
+    // A reclaimed terminating record has no known pre-claim lifecycle state.
+    // Leave it terminating on failure so the lease can make it retryable again.
+    ...(previousState === 'terminating' ? {} : { restoreState: previousState }),
+  };
+}
+
+async function restoreRunnerTermination(claim: TerminationClaim): Promise<void> {
+  if (!claim.runnerStateId || !claim.restoreState) {
+    return;
+  }
+
+  try {
+    await getRunnerStateStore()?.cancelTermination(claim.runnerStateId, claim.restoreState);
+  } catch (error) {
+    logger.error(`Failed to restore runner state for '${claim.runnerStateId}' after termination failure.`, { error });
+  }
+}
+
+async function completeRunnerTermination(claim: TerminationClaim): Promise<void> {
+  if (claim.runnerStateId) {
+    await getRunnerStateStore()?.delete(claim.runnerStateId);
   }
 }
 
@@ -352,10 +578,50 @@ async function listRunners(environment: string, computeProvider: ScaleDownComput
   return await computeProvider.list(environment);
 }
 
-function filterRunners(runners: RunnerInfo[]): RunnerInfo[] {
+function filterRunners(runners: InventoryRunnerInfo[]): InventoryRunnerInfo[] {
   // Managed runners are launched with owner and type tags together. Exclude incomplete records because both
   // values are required to select the GitHub owner and runner API used during scale-down.
   return runners.filter((runner) => runner.owner && runner.type && !runner.orphan);
+}
+
+function mergeRunnerInventory(records: RunnerStateRecord[], providerRunners: RunnerInfo[]): InventoryRunnerInfo[] {
+  const runnersByComputeResource = new Map<string, InventoryRunnerInfo>();
+  for (const record of records) {
+    runnersByComputeResource.set(record.computeResourceId, {
+      id: record.computeResourceId,
+      launchTime: new Date(record.createdAt),
+      owner: record.runnerOwner,
+      type: record.runnerType,
+      orphan: record.state !== 'active',
+      githubRunnerId: record.githubRunnerId,
+      inventory: record,
+      providerPresent: false,
+    });
+  }
+
+  for (const providerRunner of providerRunners) {
+    const storedRunner = runnersByComputeResource.get(providerRunner.id);
+    if (!storedRunner) {
+      runnersByComputeResource.set(providerRunner.id, { ...providerRunner, providerPresent: true });
+      continue;
+    }
+
+    runnersByComputeResource.set(providerRunner.id, {
+      ...storedRunner,
+      ...providerRunner,
+      id: storedRunner.id,
+      owner: storedRunner.owner,
+      type: storedRunner.type,
+      // Lifecycle state is canonical for tracked resources. Provider tags are
+      // retained as recovery data only for resources missing from inventory.
+      orphan: storedRunner.orphan,
+      githubRunnerId: storedRunner.githubRunnerId ?? providerRunner.githubRunnerId,
+      inventory: storedRunner.inventory,
+      providerPresent: true,
+    });
+  }
+
+  return Array.from(runnersByComputeResource.values());
 }
 
 export async function scaleDown(): Promise<void> {
@@ -367,28 +633,70 @@ export async function scaleDown(): Promise<void> {
     ...controlPlaneProviderRegistry.capability(computeProviderType, 'scaleDown')(),
     type: computeProviderType,
   };
+  const runnerStateStore = getRunnerStateStore();
+  let managedRunners: InventoryRunnerInfo[];
+  let runnersToEvaluate: InventoryRunnerInfo[];
 
-  // first runners marked to be orphan.
-  await terminateOrphan(environment, computeProvider);
+  if (!runnerStateStore) {
+    // Preserve the legacy SSM-backed lifecycle. EC2 remains the source of truth
+    // when no durable runner inventory is configured.
+    await terminateOrphan(environment, computeProvider);
+    managedRunners = await listRunners(environment, computeProvider);
+    runnersToEvaluate = managedRunners;
+  } else {
+    const providerRunners = await listRunners(environment, computeProvider);
+    const inventoryRecords = await runnerStateStore.list({ computeProvider: computeProvider.type });
+    managedRunners = mergeRunnerInventory(inventoryRecords, providerRunners);
 
-  // next scale down idle runners with respect to config and mark potential orphans
-  const providerRunners = await listRunners(environment, computeProvider);
-  const activeProviderRunnersCount = providerRunners.length;
+    const providerAbsentRunners = managedRunners.filter(
+      (runner) => runner.inventory !== undefined && runner.providerPresent === false,
+    );
+    for (const runner of providerAbsentRunners) {
+      await reconcileProviderAbsentRunner(runner, computeProvider);
+    }
+    runnersToEvaluate = managedRunners.filter(
+      (runner) => runner.inventory === undefined || runner.providerPresent !== false,
+    );
+
+    // Reconcile stale provisioning and orphan records first. Provider tags remain
+    // a recovery signal for resources that predate the durable inventory.
+    await terminateOrphan(
+      environment,
+      computeProvider,
+      runnersToEvaluate.filter((runner) => runner.orphan),
+    );
+  }
+
+  const runnerCountLabel = runnerStateStore ? 'managed' : 'active';
+  const managedRunnerCount = managedRunners.length;
   logger.info(
-    `Found: '${activeProviderRunnersCount}' active ${computeProvider.type.toUpperCase()} runners before clean-up.`,
+    `Found: '${managedRunnerCount}' ${runnerCountLabel} ${computeProvider.type.toUpperCase()} runners before clean-up.`,
   );
-  logger.debug(`Active ${computeProvider.type.toUpperCase()} runners: ${JSON.stringify(providerRunners)}`);
+  if (runnerStateStore) {
+    logger.debug(`Active ${computeProvider.type.toUpperCase()} runner inventory`, {
+      runners: managedRunners.map((runner) => ({
+        computeResourceId: runner.id,
+        lifecycleState: runner.inventory?.state,
+      })),
+    });
+  } else {
+    logger.debug(`Active ${computeProvider.type.toUpperCase()} runners: ${JSON.stringify(managedRunners)}`);
+  }
 
-  if (activeProviderRunnersCount === 0) {
-    logger.debug(`No active runners found for environment: '${environment}'`);
+  if (managedRunnerCount === 0) {
+    logger.debug(`No ${runnerCountLabel} runners found for environment: '${environment}'`);
     return;
   }
 
-  const runners = filterRunners(providerRunners);
+  const runners = filterRunners(runnersToEvaluate);
   await evaluateAndRemoveRunners(runners, scaleDownConfigs, computeProvider);
 
-  const activeProviderRunnersCountAfter = (await listRunners(environment, computeProvider)).length;
+  const providerRunnersAfter = await listRunners(environment, computeProvider);
+  const managedRunnerCountAfter = runnerStateStore
+    ? mergeRunnerInventory(await runnerStateStore.list({ computeProvider: computeProvider.type }), providerRunnersAfter)
+        .length
+    : providerRunnersAfter.length;
   logger.info(
-    `Found: '${activeProviderRunnersCountAfter}' active ${computeProvider.type.toUpperCase()} runners after clean-up.`,
+    `Found: '${managedRunnerCountAfter}' ${runnerCountLabel} ${computeProvider.type.toUpperCase()} runners after clean-up.`,
   );
 }

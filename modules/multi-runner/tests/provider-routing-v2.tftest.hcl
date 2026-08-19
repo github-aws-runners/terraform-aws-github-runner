@@ -577,7 +577,9 @@ run "experimental_v2_routes_through_provider_stack" {
 
   assert {
     condition = (
-      local.translated_experimental.multi_runner_config["linux"].ssm.paths.root == "/github-action-runners/github-actions/linux"
+      local.storage_provider_type == "aws_ssm"
+      && length(module.storage_aws_dynamodb) == 0
+      && local.translated_experimental.multi_runner_config["linux"].ssm.paths.root == "/github-action-runners/github-actions/linux"
       && local.translated_experimental.multi_runner_config["linux"].ssm.paths.tokens == "runners/tokens"
       && local.translated_experimental.multi_runner_config["linux"].ssm.paths.config == "runners/config"
       && var.kms_key_arn == null
@@ -4582,4 +4584,166 @@ run "experimental_v2_rejects_invalid_ssm_housekeeper_state" {
   }
 
   expect_failures = [terraform_data.validate_experimental]
+}
+
+run "experimental_v2_wires_opt_in_dynamodb_storage" {
+  command = plan
+
+  variables {
+    experimental = {
+      storage_provider = {
+        aws = {
+          dynamodb = {
+            runner_state = {
+              runner_config_ttl_seconds = 3600
+              runner_state_ttl_seconds  = 604800
+            }
+          }
+        }
+      }
+
+      github = {
+        app = {
+          id             = "123456"
+          key_base64     = "dGVzdA=="
+          webhook_secret = "test-secret"
+        }
+      }
+
+      ssm = {
+        kms_key_id = "arn:aws:kms:eu-west-1:123456789012:key/ssm-only"
+      }
+
+      orchestration_provider = {
+        webhook = {
+          runner = {
+            maximum_count = 2
+          }
+          lambda = {
+            artifact = {
+              zip = "README.md"
+            }
+            webhook = {
+              artifact = {
+                zip = "README.md"
+              }
+            }
+            pool = {
+              config = [{
+                schedule_expression = "cron(0 * * * ? *)"
+                size                = 1
+              }]
+              runner_owner = "octo-org"
+            }
+          }
+        }
+      }
+
+      compute_provider = {
+        aws = {
+          ec2 = {
+            vpc_id     = "vpc-dynamodb"
+            subnet_ids = ["subnet-dynamodb"]
+            runner_binaries = {
+              enabled = false
+            }
+          }
+        }
+      }
+
+      multi_runner_config = {
+        windows = {
+          runner = {
+            os           = "windows"
+            architecture = "x64"
+          }
+          orchestration_provider = {
+            webhook = {
+              runner = {
+                ephemeral = true
+              }
+              matcherConfig = {
+                labelMatchers = [["self-hosted", "windows", "x64", "dynamodb"]]
+                priority      = 10
+              }
+              job_retry = {
+                enabled = true
+              }
+            }
+          }
+          compute_provider = {
+            aws = {
+              ec2 = {
+                instance_types = ["m5.large"]
+                binaries_syncer = {
+                  enabled = false
+                }
+                cloudwatch_agent = {
+                  enabled = false
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  assert {
+    condition = (
+      local.storage_provider_type == "aws_dynamodb"
+      && local.translated_experimental.ssm.kms_key_id == "arn:aws:kms:eu-west-1:123456789012:key/ssm-only"
+      && local.webhook_storage_kms_key_arn == null
+      && length(module.storage_aws_dynamodb) == 1
+      && module.storage_aws_dynamodb[0].config_table.name == "github-actions-config"
+      && module.storage_aws_dynamodb[0].runner_state_table.name == "github-actions-runner-state"
+      && contains(keys(module.storage_aws_dynamodb[0].capabilities.entries["windows"].scale_up.environment_variables), "RUNNER_CONFIG_STORAGE_PROVIDER")
+      && contains(keys(module.storage_aws_dynamodb[0].capabilities.entries["windows"].scale_up.environment_variables), "RUNNER_CONFIG_STORAGE_VERSION")
+      && contains(keys(local.storage_provider_capabilities.entries["windows"].scale_up.environment_variables), "RUNNER_CONFIG_STORAGE_PROVIDER")
+    )
+    error_message = "Explicit aws.dynamodb selection must create exactly one shared two-table storage-provider module."
+  }
+
+  assert {
+    condition = (
+      module.runner_configs["windows"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables["RUNNER_CONFIG_STORAGE_PROVIDER"] == "aws_dynamodb"
+      && contains(keys(module.runner_configs["windows"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables), "RUNNER_CONFIG_STORAGE_VERSION")
+      && module.runner_configs["windows"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables["RUNNER_CONFIG_DYNAMODB_ENTRY_ID"] == "windows"
+      && module.runner_configs["windows"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables["EC2_INSTANCE_ARN_PREFIX"] == "arn:aws:ec2:eu-west-1:123456789012:instance/"
+      && !contains(keys(module.runner_configs["windows"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables), "SSM_TOKEN_PATH")
+      && !contains(keys(module.runner_configs["windows"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables), "SSM_CONFIG_PATH")
+      && !contains(keys(module.runner_configs["windows"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables), "SSM_PARAMETER_STORE_TAGS")
+      && !contains(keys(module.runner_configs["windows"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables), "PARAMETER_GITHUB_APP_ID_NAME")
+      && module.runner_configs["windows"].orchestration_provider.webhook.pool.lambda.environment[0].variables["EC2_INSTANCE_ARN_PREFIX"] == "arn:aws:ec2:eu-west-1:123456789012:instance/"
+      && !contains(keys(module.runner_configs["windows"].orchestration_provider.webhook.pool.lambda.environment[0].variables), "PARAMETER_GITHUB_APP_KEY_BASE64_NAME")
+      && !contains(keys(module.runner_configs["windows"].orchestration_provider.webhook.job_retry.lambda.function.environment[0].variables), "PARAMETER_GITHUB_APP_INSTALLATION_ID_NAME")
+    )
+    error_message = "DynamoDB control-plane Lambdas must receive the opaque provider and EC2 access-scope contract without legacy SSM environment variables."
+  }
+
+  assert {
+    condition = (
+      output.webhook.lambda.environment[0].variables["RUNNER_CONFIG_STORAGE_PROVIDER"] == "aws_dynamodb"
+      && contains(keys(output.webhook.lambda.environment[0].variables), "RUNNER_CONFIG_STORAGE_VERSION")
+      && !contains(keys(output.webhook.lambda.environment[0].variables), "PARAMETER_GITHUB_APP_WEBHOOK_SECRET")
+      && !contains(keys(output.webhook.lambda.environment[0].variables), "PARAMETER_RUNNER_MATCHER_CONFIG_PATH")
+      && !contains(keys(output.webhook.lambda.environment[0].variables), "RUNNER_MATCHER_CONFIG_VERSION")
+      && contains(keys(output.webhook.dispatcher.lambda.environment[0].variables), "RUNNER_CONFIG_STORAGE_VERSION")
+      && contains(keys(output.webhook.dispatcher.lambda.environment[0].variables), "RUNNER_MATCHER_CONFIG_VERSION")
+      && !contains(keys(output.webhook.dispatcher.lambda.environment[0].variables), "PARAMETER_RUNNER_MATCHER_CONFIG_PATH")
+    )
+    error_message = "EventBridge ingress and dispatcher must receive isolated DynamoDB capabilities without SSM secret or matcher locators."
+  }
+
+  assert {
+    condition = (
+      strcontains(base64decode(module.runner_configs["windows"].provider.aws.ec2.launch_template.user_data), "aws dynamodb delete-item")
+      && strcontains(base64decode(module.runner_configs["windows"].provider.aws.ec2.launch_template.user_data), "attribute_exists(#expires_at) AND #expires_at > :now")
+      && strcontains(base64decode(module.runner_configs["windows"].provider.aws.ec2.launch_template.user_data), "--return-values ALL_OLD")
+      && strcontains(base64decode(module.runner_configs["windows"].provider.aws.ec2.launch_template.user_data), "compute-resource")
+      && strcontains(base64decode(module.runner_configs["windows"].provider.aws.ec2.launch_template.user_data), base64encode("arn:aws:ec2:eu-west-1:123456789012:instance/"))
+      && !strcontains(base64decode(module.runner_configs["windows"].provider.aws.ec2.launch_template.user_data), "aws ssm get-parameter --name")
+    )
+    error_message = "DynamoDB-selected Windows runners must atomically consume only their unexpired compute-scoped configuration without embedding raw user-controlled locators."
+  }
 }

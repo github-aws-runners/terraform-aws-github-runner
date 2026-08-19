@@ -48,5 +48,14 @@ variable "config" {
       arn     = string
       version = string
     }))
+    storage_provider = optional(object({
+      type                  = optional(string, "aws_ssm")
+      environment_variables = map(string)
+      iam_policy_json       = optional(string, null)
+      }), {
+      type                  = "aws_ssm"
+      environment_variables = {}
+      iam_policy_json       = null
+    })
   })
 }

@@ -1,3 +1,4 @@
+import { createAwsDynamoDbGitHubAppCredentialsStore } from './aws/dynamodb/github-app-credentials-store';
 import { createAwsSsmGitHubAppCredentialsStore } from './aws/ssm/github-app-credentials-store';
 import type { GitHubAppCredentialsStore } from './core';
 import type {} from './environment';
@@ -7,6 +8,7 @@ type GitHubAppCredentialsStoreFactory = () => GitHubAppCredentialsStore;
 
 const providerFactories = {
   aws_ssm: createAwsSsmGitHubAppCredentialsStore,
+  aws_dynamodb: createAwsDynamoDbGitHubAppCredentialsStore,
 } as const satisfies Record<RunnerConfigStorageProvider, GitHubAppCredentialsStoreFactory>;
 
 let githubAppCredentialsStore: GitHubAppCredentialsStore | undefined;

@@ -18,6 +18,14 @@ module "runner_configs" {
     app_parameters = local.github_app_parameters
   })
   lambda = each.value.lambda
+  storage_provider = {
+    type       = local.storage_provider_type
+    scale_up   = local.storage_provider_capabilities.entries[each.key].scale_up
+    scale_down = local.storage_provider_capabilities.entries[each.key].scale_down
+    pool       = local.storage_provider_capabilities.entries[each.key].pool
+    job_retry  = local.storage_provider_capabilities.entries[each.key].job_retry
+    runner     = local.storage_provider_capabilities.entries[each.key].runner
+  }
   orchestration_provider = {
     webhook = each.value.orchestration_provider.webhook == null ? null : {
       runner = each.value.orchestration_provider.webhook.runner

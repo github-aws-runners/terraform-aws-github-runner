@@ -52,20 +52,26 @@ data "aws_iam_policy_document" "lambda_xray" {
 }
 
 data "aws_iam_policy_document" "job_retry" {
-  statement {
-    sid    = "WebhookJobRetryReadGitHubAppParameters"
-    effect = "Allow"
+  source_policy_documents = compact([var.storage_provider.iam_policy_json])
 
-    actions = [
-      "ssm:GetParameter",
-      "ssm:GetParameters",
-    ]
+  dynamic "statement" {
+    for_each = var.storage_provider.type == "aws_ssm" ? [true] : []
 
-    resources = concat(
-      [for p in var.config.github.app_parameters.id : p.arn],
-      [for p in var.config.github.app_parameters.key_base64 : p.arn],
-      [for p in var.config.github.app_parameters.installation_id : p.arn if p != null],
-    )
+    content {
+      sid    = "WebhookJobRetryReadGitHubAppParameters"
+      effect = "Allow"
+
+      actions = [
+        "ssm:GetParameter",
+        "ssm:GetParameters",
+      ]
+
+      resources = concat(
+        [for p in var.config.github.app_parameters.id : p.arn],
+        [for p in var.config.github.app_parameters.key_base64 : p.arn],
+        [for p in var.config.github.app_parameters.installation_id : p.arn if p != null],
+      )
+    }
   }
 
   statement {
@@ -94,7 +100,7 @@ data "aws_iam_policy_document" "job_retry" {
   }
 
   dynamic "statement" {
-    for_each = var.config.ssm.kms_key_id == null ? [] : [var.config.ssm.kms_key_id]
+    for_each = var.storage_provider.type == "aws_ssm" && var.config.ssm.kms_key_id != null ? [var.config.ssm.kms_key_id] : []
     iterator = kms_key
 
     content {

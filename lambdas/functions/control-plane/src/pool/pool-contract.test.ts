@@ -17,6 +17,10 @@ vi.mock('../github/auth', () => ({
   getStoredInstallationId: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock('@aws-github-runner/storage-providers', () => ({
+  getRunnerStateStore: vi.fn().mockReturnValue(undefined),
+}));
+
 vi.mock('../scale-runners/github-runner', () => ({
   createStartRunnerConfig: vi.fn(),
   getGitHubEnterpriseApiUrl: vi.fn(),

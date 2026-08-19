@@ -15,6 +15,7 @@ export default mergeConfig(defaultConfig, {
         'runner-config.ts',
         'runner-group-cache.ts',
         'runner-matcher-config.ts',
+        'runner-state.ts',
         'core/**/*.ts',
         'aws/**/*.ts',
       ],

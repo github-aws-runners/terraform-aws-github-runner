@@ -58,8 +58,10 @@ async function resolveEc2LabelsForRunners(messageLabels: string[]): Promise<Runn
 async function getCurrentEc2Runners(
   _state: Ec2ScaleUpState,
   { runnerType, runnerOwner }: CurrentRunnersInput,
-): Promise<number> {
-  return (await listEC2Runners({ environment: process.env.ENVIRONMENT, runnerType, runnerOwner })).length;
+): Promise<string[]> {
+  return (await listEC2Runners({ environment: process.env.ENVIRONMENT, runnerType, runnerOwner })).map(
+    (runner) => runner.id,
+  );
 }
 
 async function createEc2ScaleUpRunners(
