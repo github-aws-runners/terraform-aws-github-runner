@@ -77,6 +77,66 @@ interface GitHubAppCredential {
 
 let appCredentialsPromise: Promise<GitHubAppCredential[]> | null = null;
 
+interface AppRateLimitState {
+  remaining: number;
+  cooldownUntil: number;
+}
+
+// Last known primary rate limit remaining and secondary rate limit cooldown
+// per app index. Fed by response headers and throttling callbacks; persists
+// across invocations in a warm lambda so selection converges quickly.
+const appRateLimitStates = new Map<number, AppRateLimitState>();
+const SECONDARY_RATE_LIMIT_COOLDOWN_MS = 60_000;
+
+export function reportAppRateLimit(appIndex: number, remaining: number): void {
+  const state = appRateLimitStates.get(appIndex) ?? { remaining, cooldownUntil: 0 };
+  state.remaining = remaining;
+  appRateLimitStates.set(appIndex, state);
+}
+
+export function reportAppSecondaryRateLimit(appIndex: number): void {
+  const state = appRateLimitStates.get(appIndex) ?? { remaining: 0, cooldownUntil: 0 };
+  state.cooldownUntil = Date.now() + SECONDARY_RATE_LIMIT_COOLDOWN_MS;
+  appRateLimitStates.set(appIndex, state);
+  logger.warn(`GitHub App index ${appIndex} put in secondary rate limit cooldown`);
+}
+
+// Select the app with the most primary rate limit budget remaining, skipping
+// apps cooling down after a secondary rate limit. Apps with no observed state
+// are assumed full. Iteration starts at a random offset so concurrent
+// cold-started lambdas do not all converge on the same app.
+async function selectAppIndex(): Promise<number> {
+  const credentials = await getAppCredentials();
+  if (credentials.length === 1) return 0;
+  const now = Date.now();
+  const offset = Math.floor(Math.random() * credentials.length);
+  let best = -1;
+  let bestRemaining = -1;
+  for (let n = 0; n < credentials.length; n++) {
+    const i = (offset + n) % credentials.length;
+    const state = appRateLimitStates.get(i);
+    if (state && state.cooldownUntil > now) continue;
+    const remaining = state?.remaining ?? Number.MAX_SAFE_INTEGER;
+    if (remaining > bestRemaining) {
+      bestRemaining = remaining;
+      best = i;
+    }
+  }
+  if (best === -1) {
+    // Every app is cooling down; pick the one with the most remaining anyway.
+    for (let i = 0; i < credentials.length; i++) {
+      const remaining = appRateLimitStates.get(i)?.remaining ?? Number.MAX_SAFE_INTEGER;
+      if (remaining > bestRemaining) {
+        bestRemaining = remaining;
+        best = i;
+      }
+    }
+  }
+  // Info so the app selection distribution is observable at default log level.
+  logger.info(`Selected GitHub App index ${best} with ${bestRemaining} rate limit remaining`);
+  return best;
+}
+
 // One entry per additional app in the manifest parameter. The manifest keeps
 // the lambda environment size constant regardless of the number of apps: the
 // environment carries only the manifest's parameter name, and the manifest
@@ -158,6 +218,7 @@ export async function getAppCount(): Promise<number> {
 
 export function resetAppCredentialsCache(): void {
   appCredentialsPromise = null;
+  appRateLimitStates.clear();
 }
 
 export async function getStoredInstallationId(appIndex: number): Promise<number | undefined> {
@@ -165,7 +226,7 @@ export async function getStoredInstallationId(appIndex: number): Promise<number 
   return credentials[appIndex]?.installationId;
 }
 
-export async function createOctokitClient(token: string, ghesApiUrl = ''): Promise<Octokit> {
+export async function createOctokitClient(token: string, ghesApiUrl = '', appIndex?: number): Promise<Octokit> {
   const CustomOctokit = Octokit.plugin(retry, throttling);
   const ocktokitOptions: OctokitOptions = {
     auth: token,
@@ -190,8 +251,29 @@ export async function createOctokitClient(token: string, ghesApiUrl = ''): Promi
       },
     },
     throttle: {
-      onRateLimit,
-      onSecondaryRateLimit,
+      onRateLimit: (
+        retryAfter: number,
+        options: Required<EndpointDefaults>,
+        octokit: CoreOctokit,
+        retryCount: number,
+      ) => {
+        if (appIndex !== undefined) {
+          // Primary budget exhausted for this app; steer new flows elsewhere.
+          reportAppRateLimit(appIndex, 0);
+        }
+        return onRateLimit(retryAfter, options, octokit, retryCount);
+      },
+      onSecondaryRateLimit: (
+        retryAfter: number,
+        options: Required<EndpointDefaults>,
+        octokit: CoreOctokit,
+        retryCount: number,
+      ) => {
+        if (appIndex !== undefined) {
+          reportAppSecondaryRateLimit(appIndex);
+        }
+        return onSecondaryRateLimit(retryAfter, options, octokit, retryCount);
+      },
     },
   });
 }
@@ -201,8 +283,7 @@ export async function createGithubAppAuth(
   ghesApiUrl = '',
   appIndex?: number,
 ): Promise<AppAuthentication & { appIndex: number }> {
-  const credentials = await getAppCredentials();
-  const idx = appIndex ?? Math.floor(Math.random() * credentials.length);
+  const idx = appIndex ?? (await selectAppIndex());
   const auth = await createAuth(installationId, ghesApiUrl, idx);
   const result = await auth({ type: 'app' });
   return { ...result, appIndex: idx };
@@ -213,8 +294,7 @@ export async function createGithubInstallationAuth(
   ghesApiUrl = '',
   appIndex?: number,
 ): Promise<InstallationAccessTokenAuthentication> {
-  const credentials = await getAppCredentials();
-  const idx = appIndex ?? Math.floor(Math.random() * credentials.length);
+  const idx = appIndex ?? (await selectAppIndex());
   const auth = await createAuth(installationId, ghesApiUrl, idx);
   return auth({ type: 'installation', installationId });
 }
@@ -233,8 +313,7 @@ async function createAuth(
   appIndex?: number,
 ): Promise<AuthInterface> {
   const credentials = await getAppCredentials();
-  const selected =
-    appIndex !== undefined ? credentials[appIndex] : credentials[Math.floor(Math.random() * credentials.length)];
+  const selected = credentials[appIndex ?? (await selectAppIndex())];
 
   logger.debug(`Selected GitHub App ${selected.appId} for authentication`);
 

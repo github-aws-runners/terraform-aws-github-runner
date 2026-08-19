@@ -3,7 +3,7 @@ import { createSingleMetric, logger } from '@aws-github-runner/aws-powertools-ut
 import { MetricUnit } from '@aws-lambda-powertools/metrics';
 import yn from 'yn';
 
-import { getLoadedAppId } from './auth';
+import { getLoadedAppId, reportAppRateLimit } from './auth';
 
 // App ids come from the credentials already loaded by the auth module, so no
 // additional SSM reads are needed here. Index 0 is the primary app.
@@ -18,6 +18,12 @@ export async function metricGitHubAppRateLimit(headers: ResponseHeaders, appInde
     const limit = parseInt(headers['x-ratelimit-limit'] as string);
 
     logger.debug(`Rate limit remaining: ${remaining}, limit: ${limit}`);
+
+    // Feed the app selector so new auth flows prefer the app with the most
+    // budget left. Headers without an appIndex belong to the primary app.
+    if (!isNaN(remaining)) {
+      reportAppRateLimit(appIndex ?? 0, remaining);
+    }
 
     const updateMetric = yn(process.env.ENABLE_METRIC_GITHUB_APP_RATE_LIMIT);
     if (updateMetric) {
