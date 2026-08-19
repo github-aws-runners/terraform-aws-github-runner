@@ -1,10 +1,9 @@
-import { getParameter } from '@aws-github-runner/aws-ssm-util';
-import { getRunnerMatcherConfigStore } from '@aws-github-runner/storage-providers';
+import { getGitHubWebhookSecretStore, getRunnerMatcherConfigStore } from '@aws-github-runner/storage-providers';
 import { RunnerMatcherConfig } from './sqs';
 import { logger } from '@aws-github-runner/aws-powertools-util';
 
 /**
- * Base class for loading configuration from environment variables and SSM parameters.
+ * Base class for loading configuration from environment variables and configuration stores.
  *
  * @remarks
  * To avoid usages or checking values can be undefined we assume that configuration is
@@ -55,16 +54,12 @@ abstract class BaseConfig {
     }
   }
 
-  protected async loadParameter(paramPath: string, propertyName: keyof this): Promise<void> {
-    logger.debug(`Loading parameter for ${String(propertyName)} from path ${paramPath}`);
-    await getParameter(paramPath)
-      .then((value) => {
-        this.loadProperty(propertyName, value);
-      })
-      .catch((error) => {
-        const errorMessage = `Failed to load parameter for ${String(propertyName)} from path ${paramPath}: ${(error as Error).message}`;
-        this.configLoadingErrors.push(errorMessage);
-      });
+  protected async loadStoredProperty(propertyName: keyof this, getValue: () => Promise<string>): Promise<void> {
+    try {
+      this.loadProperty(propertyName, await getValue());
+    } catch (error) {
+      this.configLoadingErrors.push((error as Error).message);
+    }
   }
 
   protected loadProperty(propertyName: keyof this, value: string) {
@@ -117,7 +112,7 @@ export class ConfigWebhook extends MatcherAwareConfig {
 
     await Promise.all([
       this.loadMatcherConfig(),
-      this.loadParameter(process.env.PARAMETER_GITHUB_APP_WEBHOOK_SECRET, 'webhookSecret'),
+      this.loadStoredProperty('webhookSecret', () => getGitHubWebhookSecretStore().get()),
     ]);
 
     validateWebhookSecret(this);
@@ -134,7 +129,7 @@ export class ConfigWebhookEventBridge extends BaseConfig {
   async loadConfig(): Promise<void> {
     this.loadEnvVar(process.env.ACCEPT_EVENTS, 'allowedEvents', []);
     this.loadEnvVar(process.env.EVENT_BUS_NAME, 'eventBusName');
-    await this.loadParameter(process.env.PARAMETER_GITHUB_APP_WEBHOOK_SECRET, 'webhookSecret');
+    await this.loadStoredProperty('webhookSecret', () => getGitHubWebhookSecretStore().get());
 
     validateEventBusName(this);
     validateWebhookSecret(this);
