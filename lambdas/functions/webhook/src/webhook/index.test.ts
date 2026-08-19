@@ -1,5 +1,6 @@
 import { Webhooks } from '@octokit/webhooks';
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
+import { getRunnerMatcherConfigStore, type RunnerMatcherConfigStore } from '@aws-github-runner/storage-providers';
 
 import nock from 'nock';
 
@@ -16,8 +17,12 @@ vi.mock('../sqs');
 vi.mock('../eventbridge');
 vi.mock('../runners/dispatch');
 vi.mock('@aws-github-runner/aws-ssm-util');
+vi.mock('@aws-github-runner/storage-providers');
 
 const GITHUB_APP_WEBHOOK_SECRET = 'TEST_SECRET';
+const runnerMatcherConfigStore = {
+  get: vi.fn(),
+} satisfies RunnerMatcherConfigStore;
 
 const cleanEnv = process.env;
 
@@ -32,7 +37,7 @@ describe('handle GitHub webhook events', () => {
     nock.disableNetConnect();
     vi.clearAllMocks();
 
-    mockSSMResponse();
+    mockConfigResponse();
   });
 
   describe('handle and dispatch webhook events to build queues', () => {
@@ -284,8 +289,7 @@ describe('Check message size (checkBodySize)', () => {
   });
 });
 
-function mockSSMResponse() {
-  process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH = '/path/to/matcher/config';
+function mockConfigResponse() {
   process.env.PARAMETER_GITHUB_APP_WEBHOOK_SECRET = '/path/to/webhook/secret';
   const matcherConfig = [
     {
@@ -297,13 +301,7 @@ function mockSSMResponse() {
       },
     },
   ];
-  vi.mocked(getParameter).mockImplementation(async (paramPath: string) => {
-    if (paramPath === '/path/to/matcher/config') {
-      return JSON.stringify(matcherConfig);
-    }
-    if (paramPath === '/path/to/webhook/secret') {
-      return GITHUB_APP_WEBHOOK_SECRET;
-    }
-    throw new Error('Parameter not found');
-  });
+  vi.mocked(getRunnerMatcherConfigStore).mockReturnValue(runnerMatcherConfigStore);
+  runnerMatcherConfigStore.get.mockResolvedValue(JSON.stringify(matcherConfig));
+  vi.mocked(getParameter).mockResolvedValue(GITHUB_APP_WEBHOOK_SECRET);
 }
