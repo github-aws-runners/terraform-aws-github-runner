@@ -889,3 +889,19 @@ variable "use_dedicated_host" {
   type        = bool
   default     = false
 }
+
+variable "runner_count_cache" {
+  description = <<-EOF
+    Configuration for the runner count cache feature that reduces the compute provider's
+    runner listing calls (e.g. EC2 DescribeInstances) during scale-up. Passed from the root
+    module when the feature is enabled; null disables it (scale-up reads the count directly).
+
+    `table_name`: DynamoDB table holding the per-(environment#type#owner) counter.
+    `stale_threshold_ms`: age after which a cached count is treated as stale and re-read.
+  EOF
+  type = object({
+    table_name         = string
+    stale_threshold_ms = number
+  })
+  default = null
+}

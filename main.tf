@@ -231,6 +231,11 @@ module "runners" {
   license_specifications               = var.runner_license_specifications
   use_dedicated_host                   = var.use_dedicated_host
 
+  runner_count_cache = var.runner_count_cache.enable ? {
+    table_name         = module.runner_count_cache[0].dynamodb_table.name
+    stale_threshold_ms = var.runner_count_cache.stale_threshold_ms
+  } : null
+
   enable_runner_binaries_syncer                                  = var.enable_runner_binaries_syncer
   lambda_s3_bucket                                               = var.lambda_s3_bucket
   runners_lambda_s3_key                                          = var.runners_lambda_s3_key
@@ -418,4 +423,25 @@ module "instance_termination_watcher" {
   count  = var.instance_termination_watcher.enable ? 1 : 0
 
   config = merge(local.lambda_instance_termination_watcher, var.instance_termination_watcher)
+}
+
+module "runner_count_cache" {
+  source = "./modules/runner-count-cache"
+  count  = var.runner_count_cache.enable ? 1 : 0
+
+  prefix             = var.prefix
+  tags               = local.tags
+  environment_filter = var.prefix
+
+  lambda_runtime      = var.lambda_runtime
+  lambda_architecture = var.lambda_architecture
+  lambda_s3_bucket    = var.lambda_s3_bucket
+
+  counter_lambda_s3_key            = var.runner_count_cache.lambda_s3_key
+  counter_lambda_s3_object_version = var.runner_count_cache.lambda_s3_object_version
+  counter_lambda_memory_size       = var.runner_count_cache.lambda_memory_size
+  counter_lambda_timeout           = var.runner_count_cache.lambda_timeout
+
+  ttl_seconds              = var.runner_count_cache.ttl_seconds
+  cache_stale_threshold_ms = var.runner_count_cache.stale_threshold_ms
 }
