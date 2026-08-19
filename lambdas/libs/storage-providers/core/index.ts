@@ -1,3 +1,6 @@
+export interface GitHubWebhookSecretStore {
+  get(): Promise<string>;
+}
 export interface RunnerConfigMetadata {
   key: string;
   value: string;
