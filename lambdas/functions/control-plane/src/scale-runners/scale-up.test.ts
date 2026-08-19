@@ -1,8 +1,11 @@
 import {
   getRunnerConfigStore,
   getRunnerGroupCacheStore,
+  getRunnerStateStore,
   type RunnerConfigStore,
   type RunnerGroupCacheStore,
+  type RunnerStateRecord,
+  type RunnerStateStore,
 } from '@aws-github-runner/storage-providers';
 import type { Octokit } from '@octokit/rest';
 import nock from 'nock';
@@ -15,6 +18,7 @@ import { publishRetryMessage } from './job-retry';
 import * as scaleUpModule from './scale-up';
 import type {
   ActionRequestMessageSQS,
+  CreateGitHubRunnerConfig,
   CreateRunnerResult,
   CreateScaleUpRunnersInput,
   ScaleUpComputeProvider,
@@ -29,6 +33,8 @@ const mockOctokit = {
     getJobForWorkflowRun: vi.fn(),
     generateRunnerJitconfigForOrg: vi.fn(),
     generateRunnerJitconfigForRepo: vi.fn(),
+    deleteSelfHostedRunnerFromOrg: vi.fn(),
+    deleteSelfHostedRunnerFromRepo: vi.fn(),
   },
   apps: {
     getOrgInstallation: vi.fn(),
@@ -50,11 +56,12 @@ interface TestRunnerLookupInput {
 }
 
 const createRunner = vi.fn<(input: TestRunnerCreationInput) => Promise<CreateRunnerResult>>();
-const listRunners = vi.fn<(input: TestRunnerLookupInput) => Promise<unknown[]>>();
+const listRunners = vi.fn<(input: TestRunnerLookupInput) => Promise<{ id: string }[]>>();
 const mockCreateRunner = vi.mocked(createRunner);
 const mockListRunners = vi.mocked(listRunners);
 const mockGetRunnerConfigStore = vi.mocked(getRunnerConfigStore);
 const mockGetRunnerGroupCacheStore = vi.mocked(getRunnerGroupCacheStore);
+const mockGetRunnerStateStore = vi.mocked(getRunnerStateStore);
 const mockRunnerConfigCreate = vi.fn<RunnerConfigStore['create']>();
 const mockRunnerConfigHouseKeeper = vi.fn<RunnerConfigStore['houseKeeper']>();
 const mockRunnerGroupCacheGet = vi.fn<RunnerGroupCacheStore['get']>();
@@ -67,6 +74,17 @@ const mockRunnerConfigStore: RunnerConfigStore = {
 const mockRunnerGroupCacheStore: RunnerGroupCacheStore = {
   get: mockRunnerGroupCacheGet,
   create: mockRunnerGroupCacheCreate,
+};
+const mockRunnerStateStore: RunnerStateStore = {
+  create: vi.fn(),
+  recordGitHubIdentity: vi.fn(),
+  activate: vi.fn(),
+  list: vi.fn(),
+  markOrphan: vi.fn(),
+  unmarkOrphan: vi.fn(),
+  beginTermination: vi.fn(),
+  cancelTermination: vi.fn(),
+  delete: vi.fn(),
 };
 const mockPublishRetryMessage = vi.mocked(publishRetryMessage);
 const testProviderState = { provider: 'test' };
@@ -102,6 +120,7 @@ vi.mock('../github/auth', async () => ({
 vi.mock('@aws-github-runner/storage-providers', () => ({
   getRunnerConfigStore: vi.fn(),
   getRunnerGroupCacheStore: vi.fn(),
+  getRunnerStateStore: vi.fn(),
 }));
 
 vi.mock('./job-retry', () => ({
@@ -153,6 +172,7 @@ function setDefaults() {
   process.env.GITHUB_APP_CLIENT_SECRET = 'TEST_CLIENT_SECRET';
   process.env.RUNNERS_MAXIMUM_COUNT = '3';
   process.env.ENVIRONMENT = EXPECTED_RUNNER_PARAMS.environment;
+  delete process.env.EC2_INSTANCE_ARN_PREFIX;
 }
 
 async function createTestProviderRunners(input: CreateScaleUpRunnersInput<unknown>): Promise<CreateRunnerResult> {
@@ -174,6 +194,9 @@ async function createTestProviderRunners(input: CreateScaleUpRunnersInput<unknow
       result.instances,
       input.githubInstallationClient,
       {
+        computeProvider: 'ec2',
+        getRunnerConfigAccessScope: (runnerId) =>
+          process.env.EC2_INSTANCE_ARN_PREFIX ? `${process.env.EC2_INSTANCE_ARN_PREFIX}${runnerId}` : undefined,
         getRunnerConfigMetadata: (runnerId) => [{ key: 'RunnerId', value: runnerId }],
       },
     );
@@ -195,10 +218,15 @@ beforeEach(() => {
   setDefaults();
   mockGetRunnerConfigStore.mockReturnValue(mockRunnerConfigStore);
   mockGetRunnerGroupCacheStore.mockReturnValue(mockRunnerGroupCacheStore);
+  mockGetRunnerStateStore.mockReturnValue(undefined);
   mockRunnerConfigCreate.mockResolvedValue();
   mockRunnerConfigHouseKeeper.mockResolvedValue();
   mockRunnerGroupCacheGet.mockResolvedValue(1);
   mockRunnerGroupCacheCreate.mockResolvedValue();
+  vi.mocked(mockRunnerStateStore.create).mockResolvedValue();
+  vi.mocked(mockRunnerStateStore.recordGitHubIdentity).mockResolvedValue();
+  vi.mocked(mockRunnerStateStore.activate).mockResolvedValue();
+  vi.mocked(mockRunnerStateStore.list).mockResolvedValue([]);
   defaultOctokitMockImpl();
 
   mockedResolveCapability.mockReturnValue(() => mockComputeProvider);
@@ -213,7 +241,7 @@ beforeEach(() => {
         runnerType: input.runnerType,
         runnerOwner: input.runnerOwner,
       })
-    ).length;
+    ).map((runner) => runner.id);
   });
   mockCreateRunners.mockImplementation(createTestProviderRunners);
 
@@ -648,7 +676,7 @@ describe('scaleUp with GHES', () => {
         runnerLabels: labels.filter((label) => label.startsWith('ghr-')),
         state: testProviderState,
       }));
-      mockGetCurrentRunners.mockResolvedValue(0);
+      mockGetCurrentRunners.mockResolvedValue([]);
       mockCreateRunners.mockResolvedValue({
         instances: ['runner'],
         retryableErrorCount: 0,
@@ -2071,6 +2099,247 @@ describe('compute provider selection', () => {
   });
 });
 
+describe('durable runner inventory', () => {
+  it('keeps the provider count path when durable state storage is unavailable', async () => {
+    process.env.RUNNERS_MAXIMUM_COUNT = '1';
+
+    await scaleUpModule.scaleUp(TEST_DATA);
+
+    expect(mockGetCurrentRunners).toHaveBeenCalled();
+    expect(mockRunnerStateStore.list).not.toHaveBeenCalled();
+    expect(mockCreateRunners).not.toHaveBeenCalled();
+  });
+
+  it('keeps the legacy runner config record shape when no access scope is configured', async () => {
+    process.env.ENABLE_EPHEMERAL_RUNNERS = 'false';
+
+    await scaleUpModule.scaleUp(TEST_DATA);
+
+    const [record] = mockRunnerConfigCreate.mock.calls[0];
+    expect(record).toEqual({
+      runnerId: 'i-12345',
+      value: expect.any(String),
+    });
+    expect(record).not.toHaveProperty('accessScope');
+    expect(mockRunnerStateStore.create).not.toHaveBeenCalled();
+  });
+
+  it('preserves all-or-nothing config writes when durable state storage is unavailable', async () => {
+    mockRunnerConfigCreate.mockImplementation(async (record) => {
+      if (record.runnerId === 'i-failed') throw new Error('config write failed');
+    });
+
+    await expect(
+      createStartRunnerConfig(
+        nonJitRunnerConfig(),
+        ['i-success-before', 'i-failed', 'i-not-attempted'],
+        mockOctokit as unknown as Octokit,
+      ),
+    ).rejects.toThrow('config write failed');
+
+    expect(mockRunnerConfigCreate.mock.calls.map(([record]) => record.runnerId)).toEqual([
+      'i-success-before',
+      'i-failed',
+    ]);
+    expect(mockRunnerStateStore.create).not.toHaveBeenCalled();
+  });
+
+  it('isolates non-JIT config failures per runner when durable state storage is enabled', async () => {
+    mockGetRunnerStateStore.mockReturnValue(mockRunnerStateStore);
+    mockRunnerConfigCreate.mockImplementation(async (record) => {
+      if (record.runnerId === 'i-failed') throw new Error('config write failed');
+    });
+
+    await expect(
+      createStartRunnerConfig(
+        nonJitRunnerConfig(),
+        ['i-success-before', 'i-failed', 'i-success-after'],
+        mockOctokit as unknown as Octokit,
+        { computeProvider: 'ec2' },
+      ),
+    ).resolves.toEqual(['i-failed']);
+
+    expect(vi.mocked(mockRunnerStateStore.create).mock.calls.map(([record]) => record.runnerId)).toEqual([
+      'i-success-before',
+      'i-failed',
+      'i-success-after',
+    ]);
+    expect(mockRunnerConfigCreate.mock.calls.map(([record]) => record.runnerId)).toEqual([
+      'i-success-before',
+      'i-failed',
+      'i-success-after',
+    ]);
+    expect(vi.mocked(mockRunnerStateStore.activate).mock.calls.map(([runnerId]) => runnerId)).toEqual([
+      'i-success-before',
+      'i-success-after',
+    ]);
+  });
+
+  it('counts the union of stored and provider-discovered resources for maximum headroom', async () => {
+    process.env.RUNNERS_MAXIMUM_COUNT = '3';
+    mockGetRunnerStateStore.mockReturnValue(mockRunnerStateStore);
+    vi.mocked(mockRunnerStateStore.list).mockResolvedValue([
+      runnerStateRecord('i-shared'),
+      runnerStateRecord('i-stored-only'),
+    ]);
+    mockListRunners.mockResolvedValue([{ id: 'i-shared' }, { id: 'i-provider-only' }]);
+
+    await scaleUpModule.scaleUp(TEST_DATA);
+
+    expect(mockRunnerStateStore.list).toHaveBeenCalledWith({ computeProvider: 'ec2' });
+    expect(mockGetCurrentRunners).toHaveBeenCalled();
+    expect(mockCreateRunners).not.toHaveBeenCalled();
+  });
+
+  it('keeps provider discovery as recovery when a resource has no state record', async () => {
+    process.env.RUNNERS_MAXIMUM_COUNT = '3';
+    mockGetRunnerStateStore.mockReturnValue(mockRunnerStateStore);
+    vi.mocked(mockRunnerStateStore.list).mockResolvedValue([]);
+    mockListRunners.mockResolvedValue([{ id: 'i-1' }, { id: 'i-2' }, { id: 'i-3' }]);
+
+    await scaleUpModule.scaleUp(TEST_DATA);
+
+    expect(mockCreateRunners).not.toHaveBeenCalled();
+  });
+
+  it('creates provisioning state before config and activates it after success', async () => {
+    process.env.ENABLE_EPHEMERAL_RUNNERS = 'false';
+    process.env.EC2_INSTANCE_ARN_PREFIX = 'arn:aws:ec2:eu-west-1:123456789012:instance/';
+    mockGetRunnerStateStore.mockReturnValue(mockRunnerStateStore);
+
+    await scaleUpModule.scaleUp(TEST_DATA);
+
+    expect(mockRunnerStateStore.create).toHaveBeenCalledWith({
+      runnerId: 'i-12345',
+      computeProvider: 'ec2',
+      computeResourceId: 'i-12345',
+      runnerOwner: TEST_DATA_SINGLE.repositoryOwner,
+      runnerType: 'Org',
+      runnerName: undefined,
+      runnerLabels: undefined,
+      metadata: [{ key: 'RunnerId', value: 'i-12345' }],
+    });
+    expect(mockRunnerStateStore.activate).toHaveBeenCalledWith('i-12345', {
+      metadata: [{ key: 'RunnerId', value: 'i-12345' }],
+    });
+    expect(mockRunnerConfigCreate).toHaveBeenCalledWith(
+      {
+        runnerId: 'i-12345',
+        value: expect.any(String),
+        accessScope: 'arn:aws:ec2:eu-west-1:123456789012:instance/i-12345',
+      },
+      { metadata: [{ key: 'RunnerId', value: 'i-12345' }] },
+    );
+    expect(vi.mocked(mockRunnerStateStore.create).mock.invocationCallOrder[0]).toBeLessThan(
+      mockRunnerConfigCreate.mock.invocationCallOrder[0],
+    );
+    expect(mockRunnerConfigCreate.mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(mockRunnerStateStore.activate).mock.invocationCallOrder[0],
+    );
+  });
+
+  it('records JIT GitHub identity while provisioning before a config write failure', async () => {
+    process.env.ENABLE_EPHEMERAL_RUNNERS = 'true';
+    process.env.RUNNER_NAME_PREFIX = 'unit-test-';
+    process.env.RUNNER_LABELS = 'label1,label2';
+    mockGetRunnerStateStore.mockReturnValue(mockRunnerStateStore);
+    mockRunnerConfigCreate.mockRejectedValueOnce(new Error('config write failed'));
+
+    await expect(scaleUpModule.scaleUp(TEST_DATA)).resolves.toEqual(['foobar']);
+
+    expect(mockRunnerStateStore.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        runnerId: 'i-12345',
+        runnerName: 'unit-test-i-12345',
+        runnerLabels: ['label1', 'label2'],
+      }),
+    );
+    expect(mockRunnerStateStore.recordGitHubIdentity).toHaveBeenCalledWith('i-12345', {
+      githubRunnerId: '9876543210',
+      runnerLabels: ['label1', 'label2'],
+      runnerName: 'unit-test-i-12345',
+      metadata: [{ key: 'RunnerId', value: 'i-12345' }],
+    });
+    expect(vi.mocked(mockRunnerStateStore.recordGitHubIdentity).mock.invocationCallOrder[0]).toBeLessThan(
+      mockRunnerConfigCreate.mock.invocationCallOrder[0],
+    );
+    expect(mockRunnerStateStore.activate).not.toHaveBeenCalled();
+  });
+
+  it('de-registers an org JIT runner when its GitHub identity cannot be persisted', async () => {
+    process.env.ENABLE_EPHEMERAL_RUNNERS = 'true';
+    process.env.RUNNER_NAME_PREFIX = 'unit-test-';
+    mockGetRunnerStateStore.mockReturnValue(mockRunnerStateStore);
+    vi.mocked(mockRunnerStateStore.recordGitHubIdentity).mockRejectedValueOnce(new Error('identity write failed'));
+
+    await expect(scaleUpModule.scaleUp(TEST_DATA)).resolves.toEqual(['foobar']);
+
+    expect(mockOctokit.actions.deleteSelfHostedRunnerFromOrg).toHaveBeenCalledWith({
+      org: TEST_DATA_SINGLE.repositoryOwner,
+      runner_id: 9876543210,
+    });
+    expect(mockRunnerConfigCreate).not.toHaveBeenCalled();
+    expect(mockRunnerStateStore.activate).not.toHaveBeenCalled();
+  });
+
+  it('keeps a repo JIT identity-write failure retryable when immediate de-registration also fails', async () => {
+    process.env.ENABLE_ORGANIZATION_RUNNERS = 'false';
+    process.env.ENABLE_EPHEMERAL_RUNNERS = 'true';
+    process.env.RUNNER_NAME_PREFIX = 'unit-test-';
+    mockGetRunnerStateStore.mockReturnValue(mockRunnerStateStore);
+    vi.mocked(mockRunnerStateStore.recordGitHubIdentity).mockRejectedValueOnce(new Error('identity write failed'));
+    mockOctokit.actions.deleteSelfHostedRunnerFromRepo.mockRejectedValueOnce(new Error('GitHub delete failed'));
+
+    await expect(scaleUpModule.scaleUp(TEST_DATA)).resolves.toEqual(['foobar']);
+
+    expect(mockOctokit.actions.deleteSelfHostedRunnerFromRepo).toHaveBeenCalledWith({
+      owner: TEST_DATA_SINGLE.repositoryOwner,
+      repo: TEST_DATA_SINGLE.repositoryName,
+      runner_id: 9876543210,
+    });
+    expect(mockRunnerConfigCreate).not.toHaveBeenCalled();
+    expect(mockRunnerStateStore.activate).not.toHaveBeenCalled();
+  });
+
+  it('activates successful JIT state with its GitHub identity, labels, and isolated config scope', async () => {
+    process.env.ENABLE_EPHEMERAL_RUNNERS = 'true';
+    process.env.RUNNER_NAME_PREFIX = 'unit-test-';
+    process.env.RUNNER_LABELS = 'label1,label2';
+    process.env.RUNNER_GROUP_NAME = 'Default';
+    process.env.EC2_INSTANCE_ARN_PREFIX = 'arn:aws:ec2:eu-west-1:123456789012:instance/';
+    mockGetRunnerStateStore.mockReturnValue(mockRunnerStateStore);
+
+    await scaleUpModule.scaleUp(TEST_DATA);
+
+    expect(mockRunnerConfigCreate).toHaveBeenCalledWith(
+      {
+        runnerId: 'i-12345',
+        value: 'TEST_JIT_CONFIG_ORG',
+        accessScope: 'arn:aws:ec2:eu-west-1:123456789012:instance/i-12345',
+      },
+      { metadata: [{ key: 'RunnerId', value: 'i-12345' }] },
+    );
+    expect(mockRunnerStateStore.recordGitHubIdentity).toHaveBeenCalledWith('i-12345', {
+      githubRunnerId: '9876543210',
+      runnerLabels: ['label1', 'label2'],
+      runnerName: 'unit-test-i-12345',
+      metadata: [{ key: 'RunnerId', value: 'i-12345' }],
+    });
+    expect(mockRunnerStateStore.activate).toHaveBeenCalledWith('i-12345', {
+      githubRunnerId: '9876543210',
+      runnerLabels: ['label1', 'label2'],
+      runnerName: 'unit-test-i-12345',
+      metadata: [{ key: 'RunnerId', value: 'i-12345' }],
+    });
+    expect(vi.mocked(mockRunnerStateStore.recordGitHubIdentity).mock.invocationCallOrder[0]).toBeLessThan(
+      mockRunnerConfigCreate.mock.invocationCallOrder[0],
+    );
+    expect(mockRunnerConfigCreate.mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(mockRunnerStateStore.activate).mock.invocationCallOrder[0],
+    );
+  });
+});
+
 describe('Multi-app round-robin', () => {
   const mockedGetAppCount = vi.mocked(ghAuth.getAppCount);
   const mockedGetStoredInstallationId = vi.mocked(ghAuth.getStoredInstallationId);
@@ -2234,6 +2503,34 @@ function defaultOctokitMockImpl() {
 
   mockOctokit.actions.createRegistrationTokenForOrg.mockImplementation(() => mockTokenReturnValue);
   mockOctokit.actions.createRegistrationTokenForRepo.mockImplementation(() => mockTokenReturnValue);
+  mockOctokit.actions.deleteSelfHostedRunnerFromOrg.mockResolvedValue({ status: 204 });
+  mockOctokit.actions.deleteSelfHostedRunnerFromRepo.mockResolvedValue({ status: 204 });
   mockOctokit.apps.getOrgInstallation.mockImplementation(() => mockInstallationIdReturnValueOrgs);
   mockOctokit.apps.getRepoInstallation.mockImplementation(() => mockInstallationIdReturnValueRepos);
+}
+
+function runnerStateRecord(runnerId: string): RunnerStateRecord {
+  return {
+    runnerId,
+    computeProvider: 'ec2',
+    computeResourceId: runnerId,
+    runnerOwner: TEST_DATA_SINGLE.repositoryOwner,
+    runnerType: 'Org',
+    state: 'active',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function nonJitRunnerConfig(): CreateGitHubRunnerConfig {
+  return {
+    ephemeral: false,
+    enableJitConfig: false,
+    runnerLabels: '',
+    runnerGroup: 'Default',
+    runnerNamePrefix: '',
+    runnerOwner: TEST_DATA_SINGLE.repositoryOwner,
+    runnerType: 'Org',
+    disableAutoUpdate: false,
+  };
 }

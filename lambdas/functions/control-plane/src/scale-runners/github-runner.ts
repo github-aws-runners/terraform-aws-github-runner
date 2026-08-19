@@ -2,9 +2,13 @@ import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import {
   getRunnerGroupCacheStore,
   getRunnerConfigStore,
+  getRunnerStateStore,
   type RunnerConfigMetadata,
+  type RunnerConfigRecord,
   type RunnerConfigStore,
+  type RunnerStateStore,
 } from '@aws-github-runner/storage-providers';
+import type { ComputeProviderType } from '@aws-github-runner/compute-providers/provider-types';
 import { Octokit } from '@octokit/rest';
 
 import { getStoredInstallationId } from '../github/auth';
@@ -19,6 +23,8 @@ export interface GitHubRunnerMetadata {
 }
 
 export interface StartRunnerConfigOptions {
+  computeProvider?: ComputeProviderType;
+  getRunnerConfigAccessScope?: (runnerId: string) => string | undefined;
   getRunnerConfigMetadata?: (runnerId: string) => RunnerConfigMetadata[];
   onJitConfigCreated?: (runnerId: string, metadata: GitHubRunnerMetadata) => Promise<void>;
 }
@@ -216,10 +222,21 @@ export async function createStartRunnerConfig(
   options: StartRunnerConfigOptions = {},
 ): Promise<string[]> {
   const runnerConfigStore = getRunnerConfigStore();
+  const runnerStateStore = getRunnerStateStore();
+  if (runnerStateStore && options.computeProvider === undefined) {
+    throw new Error('A compute provider is required when runner state storage is enabled');
+  }
   if (githubRunnerConfig.enableJitConfig && githubRunnerConfig.ephemeral) {
-    return await createJitConfig(githubRunnerConfig, runnerIds, ghClient, runnerConfigStore, options);
+    return await createJitConfig(githubRunnerConfig, runnerIds, ghClient, runnerConfigStore, runnerStateStore, options);
   } else {
-    return await createRegistrationTokenConfig(githubRunnerConfig, runnerIds, ghClient, runnerConfigStore, options);
+    return await createRegistrationTokenConfig(
+      githubRunnerConfig,
+      runnerIds,
+      ghClient,
+      runnerConfigStore,
+      runnerStateStore,
+      options,
+    );
   }
 }
 
@@ -234,13 +251,15 @@ function addDelay(runnerIds: string[], runnerConfigStore: RunnerConfigStore) {
 /**
  * Creates registration token configuration for non-ephemeral runners.
  *
- * @returns Empty array (this configuration method does not have failure cases)
+ * @returns Runner IDs whose durable configuration failed. The legacy SSM path
+ * still throws on the first failure so existing all-or-nothing cleanup is preserved.
  */
 async function createRegistrationTokenConfig(
   githubRunnerConfig: CreateGitHubRunnerConfig,
   runnerIds: string[],
   ghClient: Octokit,
   runnerConfigStore: RunnerConfigStore,
+  runnerStateStore: RunnerStateStore | undefined,
   options: StartRunnerConfigOptions,
 ): Promise<string[]> {
   const { isDelay, delay, delayMilliseconds } = addDelay(runnerIds, runnerConfigStore);
@@ -251,18 +270,53 @@ async function createRegistrationTokenConfig(
     runner_service_config: removeTokenFromLogging(runnerServiceConfig),
   });
 
+  if (!runnerStateStore) {
+    for (const runnerId of runnerIds) {
+      const metadata = options.getRunnerConfigMetadata?.(runnerId);
+      await runnerConfigStore.create(createRunnerConfigRecord(runnerId, runnerServiceConfig.join(' '), options), {
+        metadata,
+      });
+      if (isDelay) {
+        // Delay to stay within the selected store's maximum write throughput.
+        await delay(delayMilliseconds);
+      }
+    }
+    return [];
+  }
+
+  const failedRunnerIds: string[] = [];
   for (const runnerId of runnerIds) {
-    await runnerConfigStore.create(
-      { runnerId, value: runnerServiceConfig.join(' ') },
-      { metadata: options.getRunnerConfigMetadata?.(runnerId) },
-    );
-    if (isDelay) {
-      // Delay to stay within the selected store's maximum write throughput.
-      await delay(delayMilliseconds);
+    try {
+      const metadata = options.getRunnerConfigMetadata?.(runnerId);
+      await createProvisioningRunnerState(runnerStateStore, githubRunnerConfig, runnerId, options, metadata);
+      await runnerConfigStore.create(createRunnerConfigRecord(runnerId, runnerServiceConfig.join(' '), options), {
+        metadata,
+      });
+      await runnerStateStore.activate(runnerId, { metadata });
+      if (isDelay) {
+        // Delay to stay within the selected store's maximum write throughput.
+        await delay(delayMilliseconds);
+      }
+    } catch (error) {
+      failedRunnerIds.push(runnerId);
+      logger.warn('Failed to configure runner, continuing with remaining instances', {
+        instance: runnerId,
+        error: error instanceof Error ? error.message : String(error),
+        retryable: true,
+      });
     }
   }
 
-  return [];
+  if (failedRunnerIds.length > 0) {
+    logger.error('Failed to configure some runner instances', {
+      failedInstances: failedRunnerIds,
+      totalInstances: runnerIds.length,
+      successfulInstances: runnerIds.length - failedRunnerIds.length,
+      retryable: true,
+    });
+  }
+
+  return failedRunnerIds;
 }
 
 /**
@@ -276,6 +330,7 @@ async function createJitConfig(
   runnerIds: string[],
   ghClient: Octokit,
   runnerConfigStore: RunnerConfigStore,
+  runnerStateStore: RunnerStateStore | undefined,
   options: StartRunnerConfigOptions,
 ): Promise<string[]> {
   const runnerGroupId = await getRunnerGroupId(githubRunnerConfig, ghClient);
@@ -293,6 +348,17 @@ async function createJitConfig(
         runnerGroupId: runnerGroupId,
         runnerLabels: runnerLabels,
       };
+      // Durable inventory needs metadata before JIT creation so failures leave a
+      // complete provisioning record. The legacy path retains its original timing.
+      let metadata = runnerStateStore ? options.getRunnerConfigMetadata?.(runnerId) : undefined;
+      await createProvisioningRunnerState(
+        runnerStateStore,
+        githubRunnerConfig,
+        runnerId,
+        options,
+        metadata,
+        ephemeralRunnerConfig,
+      );
       logger.debug(`Runner name: ${ephemeralRunnerConfig.runnerName}`);
       const runnerConfig =
         githubRunnerConfig.runnerType === 'Org'
@@ -312,18 +378,47 @@ async function createJitConfig(
 
       metricGitHubAppRateLimit(runnerConfig.headers, githubRunnerConfig.appIndex);
 
-      await options.onJitConfigCreated?.(runnerId, {
+      const githubRunnerMetadata = {
         githubRunnerId: runnerConfig.data.runner.id.toString(),
         runnerLabels,
-      });
+      };
+      if (runnerStateStore) {
+        try {
+          await runnerStateStore.recordGitHubIdentity(runnerId, {
+            ...githubRunnerMetadata,
+            runnerName: ephemeralRunnerConfig.runnerName,
+            metadata,
+          });
+        } catch (error) {
+          await deregisterJitRunnerAfterIdentityWriteFailure(
+            githubRunnerConfig,
+            ghClient,
+            runnerConfig.data.runner.id,
+            runnerId,
+          );
+          throw error;
+        }
+      }
+      await options.onJitConfigCreated?.(runnerId, githubRunnerMetadata);
 
       logger.debug('Runner JIT config for ephemeral runner generated.', {
         instance: runnerId,
       });
+      if (!runnerStateStore) {
+        metadata = options.getRunnerConfigMetadata?.(runnerId);
+      }
       await runnerConfigStore.create(
-        { runnerId, value: runnerConfig.data.encoded_jit_config },
-        { metadata: options.getRunnerConfigMetadata?.(runnerId) },
+        createRunnerConfigRecord(runnerId, runnerConfig.data.encoded_jit_config, options),
+        {
+          metadata,
+        },
       );
+      await runnerStateStore?.activate(runnerId, {
+        githubRunnerId: githubRunnerMetadata.githubRunnerId,
+        runnerLabels,
+        runnerName: ephemeralRunnerConfig.runnerName,
+        metadata,
+      });
       if (isDelay) {
         // Delay to stay within the selected store's maximum write throughput.
         await delay(delayMilliseconds);
@@ -348,6 +443,73 @@ async function createJitConfig(
   }
 
   return failedRunnerIds;
+}
+
+async function deregisterJitRunnerAfterIdentityWriteFailure(
+  githubRunnerConfig: CreateGitHubRunnerConfig,
+  ghClient: Octokit,
+  githubRunnerId: number,
+  runnerId: string,
+): Promise<void> {
+  try {
+    if (githubRunnerConfig.runnerType === 'Org') {
+      await ghClient.actions.deleteSelfHostedRunnerFromOrg({
+        org: githubRunnerConfig.runnerOwner,
+        runner_id: githubRunnerId,
+      });
+    } else {
+      const [owner, repo] = githubRunnerConfig.runnerOwner.split('/');
+      await ghClient.actions.deleteSelfHostedRunnerFromRepo({ owner, repo, runner_id: githubRunnerId });
+    }
+    logger.info('De-registered JIT GitHub runner after its inventory identity could not be stored', {
+      instance: runnerId,
+      githubRunnerId,
+    });
+  } catch (cleanupError) {
+    logger.error('Failed to de-register JIT GitHub runner after its inventory identity could not be stored', {
+      instance: runnerId,
+      githubRunnerId,
+      error: cleanupError instanceof Error ? cleanupError.message : String(cleanupError),
+      retryable: true,
+    });
+  }
+}
+
+function createRunnerConfigRecord(
+  runnerId: string,
+  value: string,
+  options: StartRunnerConfigOptions,
+): RunnerConfigRecord {
+  const accessScope = options.getRunnerConfigAccessScope?.(runnerId);
+  return {
+    runnerId,
+    value,
+    ...(accessScope === undefined ? {} : { accessScope }),
+  };
+}
+
+async function createProvisioningRunnerState(
+  runnerStateStore: RunnerStateStore | undefined,
+  githubRunnerConfig: CreateGitHubRunnerConfig,
+  runnerId: string,
+  options: StartRunnerConfigOptions,
+  metadata: RunnerConfigMetadata[] | undefined,
+  jitConfig?: EphemeralRunnerConfig,
+): Promise<void> {
+  if (!runnerStateStore) {
+    return;
+  }
+
+  await runnerStateStore.create({
+    runnerId,
+    computeProvider: options.computeProvider!,
+    computeResourceId: runnerId,
+    runnerOwner: githubRunnerConfig.runnerOwner,
+    runnerType: githubRunnerConfig.runnerType,
+    runnerName: jitConfig?.runnerName,
+    runnerLabels: jitConfig?.runnerLabels,
+    metadata,
+  });
 }
 
 export function getGitHubEnterpriseApiUrl() {

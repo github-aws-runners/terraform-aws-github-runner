@@ -16,7 +16,6 @@ describe('aws_dynamodb runner matcher config store', () => {
     process.env = { ...cleanEnv };
     process.env.AWS_REGION = 'eu-west-1';
     process.env.RUNNER_CONFIG_DYNAMODB_CONFIG_TABLE_NAME = 'runner-configuration';
-    process.env.RUNNER_CONFIG_DYNAMODB_CONFIG_KEY_PREFIX = 'config#';
   });
 
   it('gets the matcher config with a strongly consistent projected read', async () => {
@@ -27,7 +26,8 @@ describe('aws_dynamodb runner matcher config store', () => {
     expect(mockDynamoDbClient).toHaveReceivedCommandWith(GetItemCommand, {
       TableName: 'runner-configuration',
       Key: {
-        id: { S: 'config#runner-matcher-config' },
+        scope: { S: 'global#matcher' },
+        id: { S: 'runner-matcher-config' },
       },
       ConsistentRead: true,
       ProjectionExpression: '#value',
@@ -49,7 +49,7 @@ describe('aws_dynamodb runner matcher config store', () => {
     const store = createAwsDynamoDbRunnerMatcherConfigStore();
 
     await expect(store.get()).rejects.toThrow(
-      "Runner matcher config item 'config#runner-matcher-config' was not found",
+      "Runner matcher config item 'global#matcher/runner-matcher-config' was not found",
     );
   });
 
@@ -58,21 +58,22 @@ describe('aws_dynamodb runner matcher config store', () => {
     const store = createAwsDynamoDbRunnerMatcherConfigStore();
 
     await expect(store.get()).rejects.toThrow(
-      "Runner matcher config item 'config#runner-matcher-config' does not contain a string value",
+      "Runner matcher config item 'global#matcher/runner-matcher-config' does not contain a string value",
     );
   });
 
-  it.each(['RUNNER_CONFIG_DYNAMODB_CONFIG_TABLE_NAME', 'RUNNER_CONFIG_DYNAMODB_CONFIG_KEY_PREFIX'] as const)(
-    'rejects a missing or blank %s',
-    (name) => {
-      delete process.env[name];
-      expect(() => createAwsDynamoDbRunnerMatcherConfigStore()).toThrow(`Environment variable ${name} is not set`);
+  it('rejects a missing or blank durable table name', () => {
+    delete process.env.RUNNER_CONFIG_DYNAMODB_CONFIG_TABLE_NAME;
+    expect(() => createAwsDynamoDbRunnerMatcherConfigStore()).toThrow(
+      'Environment variable RUNNER_CONFIG_DYNAMODB_CONFIG_TABLE_NAME is not set',
+    );
 
-      process.env[name] = '   ';
-      expect(() => createAwsDynamoDbRunnerMatcherConfigStore()).toThrow(`Environment variable ${name} is not set`);
-      expect(mockDynamoDbClient.calls()).toHaveLength(0);
-    },
-  );
+    process.env.RUNNER_CONFIG_DYNAMODB_CONFIG_TABLE_NAME = '   ';
+    expect(() => createAwsDynamoDbRunnerMatcherConfigStore()).toThrow(
+      'Environment variable RUNNER_CONFIG_DYNAMODB_CONFIG_TABLE_NAME is not set',
+    );
+    expect(mockDynamoDbClient.calls()).toHaveLength(0);
+  });
 
   it('propagates DynamoDB read errors', async () => {
     const error = new Error('read failed');

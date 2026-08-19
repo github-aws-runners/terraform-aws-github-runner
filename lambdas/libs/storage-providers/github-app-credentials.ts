@@ -1,11 +1,21 @@
+import { createAwsDynamoDbGitHubAppCredentialsStore } from './aws/dynamodb/github-app-credentials-store';
 import { createAwsSsmGitHubAppCredentialsStore } from './aws/ssm/github-app-credentials-store';
 import type { GitHubAppCredentialsStore } from './core';
+import type {} from './environment';
+import { resolveRunnerConfigStorageProvider, type RunnerConfigStorageProvider } from './provider';
+
+type GitHubAppCredentialsStoreFactory = () => GitHubAppCredentialsStore;
+
+const providerFactories = {
+  aws_ssm: createAwsSsmGitHubAppCredentialsStore,
+  aws_dynamodb: createAwsDynamoDbGitHubAppCredentialsStore,
+} as const satisfies Record<RunnerConfigStorageProvider, GitHubAppCredentialsStoreFactory>;
 
 let githubAppCredentialsStore: GitHubAppCredentialsStore | undefined;
 
 export function getGitHubAppCredentialsStore(): GitHubAppCredentialsStore {
-  // GitHub App credentials remain in SSM independently of runner config storage selection.
-  githubAppCredentialsStore ??= createAwsSsmGitHubAppCredentialsStore();
+  githubAppCredentialsStore ??=
+    providerFactories[resolveRunnerConfigStorageProvider(process.env.RUNNER_CONFIG_STORAGE_PROVIDER)]();
   return githubAppCredentialsStore;
 }
 

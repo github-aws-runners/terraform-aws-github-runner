@@ -7,6 +7,10 @@ import { controlPlaneProviderRegistry } from '../control-plane-providers';
 import { scaleDown } from './scale-down';
 import type { ScaleDownComputeProvider } from './types';
 
+vi.mock('@aws-github-runner/storage-providers', () => ({
+  getRunnerStateStore: vi.fn().mockReturnValue(undefined),
+}));
+
 const mockedResolveCapability = vi.spyOn(controlPlaneProviderRegistry, 'capability');
 
 const cleanEnv = process.env;

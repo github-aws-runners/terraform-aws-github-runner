@@ -1,6 +1,7 @@
 import { Octokit } from '@octokit/rest';
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import { resolveComputeProviderType } from '@aws-github-runner/compute-providers/provider-types';
+import { getRunnerStateStore, type RunnerStateRecord } from '@aws-github-runner/storage-providers';
 import yn from 'yn';
 
 import {
@@ -58,26 +59,43 @@ export async function adjust(event: PoolEvent): Promise<void> {
     runnerNamePrefix,
   );
 
-  // Look up the managed provider runners, but running does not mean idle.
-  const poolRunners = await computeProvider.listRunners({
+  const runnerStateStore = getRunnerStateStore();
+  let currentRunnerCount: number;
+  let numberOfRunnersInPool: number;
+  const providerRunners = await computeProvider.listRunners({
     environment,
     runnerOwner,
     runnerType: 'Org',
   });
-
-  const numberOfRunnersInPool = computeProvider.countAvailableRunners(poolRunners, runnerStatusses, includeBusyRunners);
+  if (runnerStateStore) {
+    const runnerStates = (await runnerStateStore.list({ computeProvider: computeProvider.type })).filter(
+      (record) => record.runnerOwner === runnerOwner && record.runnerType === 'Org',
+    );
+    const storedComputeResourceIds = new Set(runnerStates.map((record) => record.computeResourceId));
+    const untrackedProviderRunners = providerRunners.filter((runner) => !storedComputeResourceIds.has(runner.id));
+    // Inventory is canonical for tracked resources. Provider discovery contributes
+    // only untracked resources so a launch-before-state crash cannot over-provision.
+    currentRunnerCount = runnerStates.length + untrackedProviderRunners.length;
+    numberOfRunnersInPool =
+      countAvailableStoredRunners(runnerStates, runnerStatusses, includeBusyRunners) +
+      computeProvider.countAvailableRunners(untrackedProviderRunners, runnerStatusses, includeBusyRunners);
+  } else {
+    // Look up the managed provider runners, but running does not mean idle.
+    currentRunnerCount = providerRunners.length;
+    numberOfRunnersInPool = computeProvider.countAvailableRunners(providerRunners, runnerStatusses, includeBusyRunners);
+  }
   let topUp = event.poolSize - numberOfRunnersInPool;
 
   // The pool must never push the total number of runners (busy + idle) past the configured maximum.
-  // poolRunners contains every running runner for this type, so its length is the current total and no
-  // extra API call is needed. Without this clamp the pool keeps topping up against idle-only counts and
-  // can overshoot runners_maximum_count, while the scale-up lambda correctly refuses to launch.
+  // currentRunnerCount includes both canonical inventory and untracked provider recovery records. Without
+  // this clamp the pool keeps topping up against idle-only counts and can overshoot runners_maximum_count,
+  // while the scale-up lambda correctly refuses to launch.
   if (maximumRunners !== -1 && topUp > 0) {
-    const headroom = maximumRunners - poolRunners.length;
+    const headroom = maximumRunners - currentRunnerCount;
     if (topUp > headroom) {
       logger.info(
         `Capping pool top-up from ${topUp} to ${Math.max(headroom, 0)} to respect the maximum of ` +
-          `${maximumRunners} runners (currently ${poolRunners.length} running).`,
+          `${maximumRunners} runners (currently ${currentRunnerCount} running).`,
       );
       topUp = headroom;
     }
@@ -104,6 +122,33 @@ export async function adjust(event: PoolEvent): Promise<void> {
   } else {
     logger.info(`Pool will not be topped up. Found ${numberOfRunnersInPool} managed idle runners.`);
   }
+}
+
+function countAvailableStoredRunners(
+  runnerStates: RunnerStateRecord[],
+  runnerStatuses: Map<string, RunnerStatus>,
+  includeBusyRunners: boolean,
+): number {
+  let available = 0;
+  for (const runner of runnerStates) {
+    if (runner.state === 'orphan' || runner.state === 'terminating') {
+      continue;
+    }
+
+    const status = runnerStatuses.get(runner.computeResourceId);
+    if ((status?.busy === false || includeBusyRunners) && status?.status === 'online') {
+      available++;
+    } else if (status === undefined && !runnerBootTimeExceeded(runner.createdAt)) {
+      available++;
+    }
+  }
+  return available;
+}
+
+function runnerBootTimeExceeded(createdAt: string): boolean {
+  const bootTimeMinutes = Number(process.env.RUNNER_BOOT_TIME_IN_MINUTES);
+  const launchTime = new Date(createdAt).getTime();
+  return launchTime + bootTimeMinutes * 60_000 < Date.now();
 }
 
 async function getInstallationId(appToken: string, ghesApiUrl: string, org: string, appIndex: number): Promise<number> {

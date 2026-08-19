@@ -103,7 +103,7 @@ async function expectCurrentRunners(runnerType: RunnerType, owner: string) {
 
   await expect(
     provider.getCurrentRunners(runnerLabelResolution.state, { runnerType, runnerOwner: owner }),
-  ).resolves.toBe(1);
+  ).resolves.toEqual(['i-1234']);
   expect(mockListRunners).toHaveBeenCalledWith({
     environment: 'unit-test-environment',
     runnerType,
@@ -128,6 +128,7 @@ beforeEach(() => {
   delete process.env.POWERTOOLS_TRACE_ENABLED;
   delete process.env.ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS;
   delete process.env.USE_DEDICATED_HOST;
+  delete process.env.EC2_INSTANCE_ARN_PREFIX;
 
   mockEC2Client.reset();
   mockEC2Client.on(DescribeLaunchTemplateVersionsCommand).resolves({
@@ -180,6 +181,17 @@ describe('scaleUp with GHES', () => {
       ]);
       const [, , , options] = mockCreateStartRunnerConfig.mock.calls[0];
       expect(options?.getRunnerConfigMetadata?.('i-12345')).toEqual([{ key: 'InstanceId', value: 'i-12345' }]);
+    });
+
+    it('builds a runner-specific config access scope from the EC2 instance ARN prefix', async () => {
+      process.env.EC2_INSTANCE_ARN_PREFIX = 'arn:aws:ec2:eu-west-1:123456789012:instance/';
+
+      await createProviderRunners();
+
+      const [, , , options] = mockCreateStartRunnerConfig.mock.calls[0];
+      expect(options?.getRunnerConfigAccessScope?.('i-12345')).toBe(
+        'arn:aws:ec2:eu-west-1:123456789012:instance/i-12345',
+      );
     });
 
     it('chunks comma-joined GitHub runner labels by the EC2 tag value max length', async () => {
@@ -236,6 +248,19 @@ describe('scaleUp with GHES', () => {
         nonRetryableErrorCount: 0,
       });
       expect(mockTerminateRunner).toHaveBeenCalledWith('i-12345');
+    });
+
+    it('terminates only runner instances whose configuration failed', async () => {
+      mockCreateRunner.mockResolvedValueOnce(createRunnerResult(['i-success-before', 'i-failed', 'i-success-after']));
+      mockCreateStartRunnerConfig.mockResolvedValueOnce(['i-failed']);
+
+      await expect(createProviderRunners()).resolves.toEqual({
+        instances: ['i-success-before', 'i-success-after'],
+        retryableErrorCount: 1,
+        nonRetryableErrorCount: 0,
+      });
+      expect(mockTerminateRunner).toHaveBeenCalledTimes(1);
+      expect(mockTerminateRunner).toHaveBeenCalledWith('i-failed');
     });
   });
 
