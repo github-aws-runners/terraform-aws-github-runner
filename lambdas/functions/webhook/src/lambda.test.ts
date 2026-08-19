@@ -7,6 +7,7 @@ import { dispatchToRunners, eventBridgeWebhook, directWebhook } from './lambda';
 import { publishForRunners, publishOnEventBridge } from './webhook';
 import ValidationError from './ValidationError';
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
+import { getRunnerMatcherConfigStore, type RunnerMatcherConfigStore } from '@aws-github-runner/storage-providers';
 import { dispatch } from './runners/dispatch';
 import { EventWrapper } from './types';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -80,14 +81,20 @@ const context: Context = {
 vi.mock('./runners/dispatch');
 vi.mock('./webhook');
 vi.mock('@aws-github-runner/aws-ssm-util');
+vi.mock('@aws-github-runner/storage-providers');
+
+const runnerMatcherConfigStore = {
+  get: vi.fn(),
+} satisfies RunnerMatcherConfigStore;
 
 describe('Test webhook lambda wrapper.', () => {
   beforeEach(() => {
-    // We mock all SSM request to resolve to a non empty array. Since we mock all implemeantions
-    // relying on the config object that is enough to test the handlers.
-    const mockedGet = vi.mocked(getParameter);
-    mockedGet.mockResolvedValue('["abc"]');
     vi.clearAllMocks();
+    // The handlers only need non-empty config values because their downstream
+    // implementations are mocked in this wrapper test.
+    vi.mocked(getParameter).mockResolvedValue('["abc"]');
+    vi.mocked(getRunnerMatcherConfigStore).mockReturnValue(runnerMatcherConfigStore);
+    runnerMatcherConfigStore.get.mockResolvedValue('["abc"]');
   });
 
   describe('Test webhook lambda wrapper.', () => {
