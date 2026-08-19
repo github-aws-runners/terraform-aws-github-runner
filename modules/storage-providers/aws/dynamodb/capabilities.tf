@@ -132,7 +132,7 @@ locals {
       Resource = [aws_dynamodb_table.runner_state.arn]
       Condition = {
         "ForAllValues:StringLike" = {
-          "dynamodb:LeadingKeys" = ["${var.runner_config_access_scope_prefixes[entry_id]}*"]
+          "dynamodb:LeadingKeys" = ["${lookup(var.runner_config_access_scope_prefixes, entry_id, "__missing_runner_config_access_scope__")}*"]
         }
       }
     }

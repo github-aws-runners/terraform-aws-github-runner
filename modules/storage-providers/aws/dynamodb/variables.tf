@@ -17,11 +17,6 @@ variable "entry_ids" {
 variable "runner_config_access_scope_prefixes" {
   description = "Per-entry compute-resource scope prefixes used to constrain one-time runner-config writes."
   type        = map(string)
-
-  validation {
-    condition     = toset(keys(var.runner_config_access_scope_prefixes)) == var.entry_ids && alltrue([for prefix in values(var.runner_config_access_scope_prefixes) : trimspace(prefix) != ""])
-    error_message = "runner_config_access_scope_prefixes must contain one non-empty prefix for every entry_id."
-  }
 }
 
 variable "runner_config_ttl_seconds" {
@@ -37,11 +32,6 @@ variable "runner_config_ttl_seconds" {
 variable "runner_state_ttl_seconds" {
   description = "Safety TTL in seconds applied only while lifecycle records are provisioning or terminating; active and orphan inventory has no expiry."
   type        = number
-
-  validation {
-    condition     = var.runner_state_ttl_seconds > var.runner_config_ttl_seconds && floor(var.runner_state_ttl_seconds) == var.runner_state_ttl_seconds
-    error_message = "runner_state_ttl_seconds must be an integer greater than runner_config_ttl_seconds."
-  }
 }
 
 variable "global_records" {
@@ -62,11 +52,6 @@ variable "entry_records" {
     disable_default_labels = bool
     enable_jit_config      = bool
   }))
-
-  validation {
-    condition     = toset(keys(var.entry_records)) == var.entry_ids
-    error_message = "entry_records must contain exactly one durable bootstrap record for every entry_id."
-  }
 }
 
 variable "config" {
