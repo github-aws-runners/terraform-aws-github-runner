@@ -1,48 +1,32 @@
-import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
-
-import type { DynamicLabelDispatchTarget, DynamicLabelProvider, RunnerMatcherConfig } from '../../../../contracts';
+import type { DynamicLabelProvider } from '../../../../contracts';
+import { violationsAgainstAwsDynamicLabelsPolicy } from '../../../dynamic-labels-policy';
 import { MICROVM_DYNAMIC_LABEL_PREFIX, parseMicrovmDynamicLabels } from '../dynamic-labels';
-import { violationsAgainstAwsDynamicLabelsPolicy } from './dynamic-labels-policy';
 
-const logger = createChildLogger('handler');
+const RESOURCE_BOUNDARY_KEYS = new Set(['egress-network-connectors', 'image-arn', 'image-version']);
 
-export function selectMicrovmDynamicLabelQueue(
-  matches: RunnerMatcherConfig[],
-  nonGhrLabels: string[],
-  sanitizedGhrLabels: string[],
-): DynamicLabelDispatchTarget | undefined {
-  for (const queue of matches) {
-    if (!queue.matcherConfig.enableDynamicLabels) {
-      logger.warn(`Queue ${queue.id} matches non-dynamic labels but does not allow dynamic labels; trying next match`);
-      continue;
-    }
+function resourceBoundaryViolations(
+  labels: string[],
+  policy: Parameters<typeof violationsAgainstAwsDynamicLabelsPolicy>[1],
+) {
+  return labels.flatMap((label) => {
+    if (!label.startsWith(MICROVM_DYNAMIC_LABEL_PREFIX)) return [];
 
-    const parsedLabels = parseMicrovmDynamicLabels(sanitizedGhrLabels);
-    const policyViolations = violationsAgainstAwsDynamicLabelsPolicy(
-      sanitizedGhrLabels,
-      queue.matcherConfig.awsDynamicLabelsPolicy,
-      MICROVM_DYNAMIC_LABEL_PREFIX,
-    );
-    const violations = [...parsedLabels.violations, ...policyViolations];
+    const key = label.slice(MICROVM_DYNAMIC_LABEL_PREFIX.length).split(':', 1)[0];
+    if (!RESOURCE_BOUNDARY_KEYS.has(key) || policy?.blocked_keys?.includes(key)) return [];
 
-    if (violations.length === 0) {
-      return {
-        queue,
-        labels: [...nonGhrLabels, ...sanitizedGhrLabels],
-      };
-    }
-
-    for (const violation of violations) {
-      logger.warn(
-        `Queue ${queue.id}: dynamic label '${violation.label}' is not accepted (${violation.reason}); trying next match`,
-      );
-    }
-  }
-
-  return undefined;
+    const allowed = policy?.restricted_keys?.[key]?.allowed;
+    return allowed && allowed.length > 0 ? [] : [{ label, reason: `key '${key}' requires an explicit allowed list` }];
+  });
 }
 
 export const microvmDynamicLabelProvider: DynamicLabelProvider = {
-  selectQueue: ({ queue, nonGhrLabels, sanitizedGhrLabels }) =>
-    selectMicrovmDynamicLabelQueue([queue], nonGhrLabels, sanitizedGhrLabels),
+  getViolations: ({ queue, labels }) => [
+    ...parseMicrovmDynamicLabels(labels).violations,
+    ...resourceBoundaryViolations(labels, queue.matcherConfig.awsDynamicLabelsPolicy),
+    ...violationsAgainstAwsDynamicLabelsPolicy(
+      labels,
+      queue.matcherConfig.awsDynamicLabelsPolicy,
+      MICROVM_DYNAMIC_LABEL_PREFIX,
+    ),
+  ],
 };

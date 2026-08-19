@@ -9,7 +9,8 @@ import type {
 } from '../../../../core';
 import type { MicrovmDynamicLabelOverrides } from '../dynamic-labels';
 import { loadMicrovmProviderConfig } from './config';
-import { isRetryableMicrovmError, runMicrovmRunner, tagMicrovm, terminateMicrovm } from './microvms';
+import { isRetryableMicrovmError, runMicrovmRunner, terminateMicrovm } from './microvms';
+import { assertSeparatedMicrovmMetadataPath, setMicrovmGithubRunnerId } from './runner-metadata';
 
 const logger = createChildLogger('microvm-runner-config');
 
@@ -46,6 +47,7 @@ export async function createMicrovmRunners(
   let config;
   try {
     config = { ...loadMicrovmProviderConfig(), ...overrides };
+    assertSeparatedMicrovmMetadataPath(config.metadataSsmPath, githubRunnerConfig.ssmTokenPath);
   } catch (error) {
     logger.error('Invalid Lambda MicroVM provider configuration', { error });
     return { instances: [], retryableErrorCount: 0, nonRetryableErrorCount: numberOfRunners };
@@ -73,14 +75,12 @@ export async function createMicrovmRunners(
       const failedRunnerIds = await createStartRunnerConfig(githubRunnerConfig, [microvmId], githubInstallationClient, {
         getSsmParameterTags: (runnerId) => [{ Key: 'MicrovmId', Value: runnerId }],
         onJitConfigCreated: async (runnerId, metadata) => {
-          await tagMicrovm(config.imageIdentifier, runnerId, {
-            'ghr:github_runner_id': metadata.githubRunnerId,
-          });
+          await setMicrovmGithubRunnerId(config.metadataSsmPath, runnerId, metadata.githubRunnerId);
         },
       });
 
       if (failedRunnerIds.includes(microvmId)) {
-        await terminateMicrovm(microvmId).catch((terminationError) => {
+        await terminateMicrovm(microvmId, config.metadataSsmPath).catch((terminationError) => {
           logger.error(`Failed to terminate MicroVM runner '${microvmId}' after JIT configuration failed`, {
             error: terminationError,
           });
@@ -91,7 +91,7 @@ export async function createMicrovmRunners(
       }
     } catch (error) {
       if (microvmId) {
-        await terminateMicrovm(microvmId).catch((terminationError) => {
+        await terminateMicrovm(microvmId, config.metadataSsmPath).catch((terminationError) => {
           logger.error(`Failed to terminate MicroVM runner '${microvmId}' after setup failed`, {
             error: terminationError,
           });

@@ -11,6 +11,7 @@ export interface MicrovmProviderConfig {
   ingressNetworkConnectors?: string[];
   logging?: Logging;
   maximumDurationInSeconds: number;
+  metadataSsmPath: string;
 }
 
 function requiredEnvironmentValue(name: string, value: string | undefined): string {
@@ -24,6 +25,14 @@ function requiredEnvironmentValue(name: string, value: string | undefined): stri
 function optionalEnvironmentValue(value: string | undefined): string | undefined {
   const trimmed = value?.trim();
   return trimmed ? trimmed : undefined;
+}
+
+function parseMetadataSsmPath(value: string | undefined): string {
+  const path = requiredEnvironmentValue('MICROVM_METADATA_SSM_PATH', value).replace(/\/+$/, '');
+  if (path === '' || !/^\/[A-Za-z0-9_.\-/]+$/.test(path) || path.includes('//')) {
+    throw new Error('MICROVM_METADATA_SSM_PATH must be a valid absolute SSM parameter path');
+  }
+  return path;
 }
 
 function parseNetworkConnectors(name: string, value: string | undefined): string[] | undefined {
@@ -83,6 +92,7 @@ export function loadMicrovmProviderConfig(): MicrovmProviderConfig {
       process.env.MICROVM_EGRESS_NETWORK_CONNECTORS,
     ),
     maximumDurationInSeconds: parseMaximumDuration(process.env.MICROVM_MAXIMUM_DURATION_IN_SECONDS),
+    metadataSsmPath: parseMetadataSsmPath(process.env.MICROVM_METADATA_SSM_PATH),
     logging: logGroup ? ({ cloudWatch: { logGroup } } satisfies RunMicrovmCommandInput['logging']) : undefined,
   };
 }

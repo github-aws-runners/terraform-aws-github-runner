@@ -1,4 +1,11 @@
-import { GetParametersCommand, PutParameterCommand, SSMClient, Tag } from '@aws-sdk/client-ssm';
+import {
+  DeleteParameterCommand,
+  GetParametersByPathCommand,
+  GetParametersCommand,
+  PutParameterCommand,
+  SSMClient,
+  Tag,
+} from '@aws-sdk/client-ssm';
 import { getTracedAWSV3Client } from '@aws-github-runner/aws-powertools-util';
 import { SSMProvider } from '@aws-lambda-powertools/parameters/ssm';
 
@@ -103,14 +110,56 @@ export async function getParameters(parameter_names: string[]): Promise<Map<stri
   return result;
 }
 
+/**
+ * Retrieves every direct child of an SSM Parameter Store path.
+ *
+ * Values are returned without decryption because this helper is intended for
+ * non-secret provider metadata. API failures are propagated so callers do not
+ * mistake an authorization or throttling failure for an empty path.
+ */
+export async function getParametersByPath(parameter_path: string): Promise<Map<string, string>> {
+  const result = new Map<string, string>();
+  let nextToken: string | undefined;
+
+  do {
+    const response = await ssmClient().send(
+      new GetParametersByPathCommand({
+        Path: parameter_path,
+        Recursive: false,
+        WithDecryption: false,
+        NextToken: nextToken,
+      }),
+    );
+
+    for (const parameter of response.Parameters ?? []) {
+      if (parameter.Name && parameter.Value) {
+        result.set(parameter.Name, parameter.Value);
+      }
+    }
+    nextToken = response.NextToken;
+  } while (nextToken);
+
+  return result;
+}
+
+export async function deleteParameter(parameter_name: string): Promise<void> {
+  await ssmClient().send(new DeleteParameterCommand({ Name: parameter_name }));
+}
+
 export const SSM_ADVANCED_TIER_THRESHOLD = 4000;
+
+type PutParameterOptions = { overwrite: true; tags?: never } | { overwrite?: false | undefined; tags?: Tag[] };
 
 export async function putParameter(
   parameter_name: string,
   parameter_value: string,
   secure: boolean,
-  options: { tags?: Tag[] } = {},
+  options: PutParameterOptions = {},
 ): Promise<void> {
+  if (options.overwrite && options.tags !== undefined) {
+    throw new Error('SSM parameter tags cannot be supplied when overwriting an existing parameter');
+  }
+
   const client = ssmClient();
 
   // Determine tier based on parameter_value size
@@ -121,6 +170,7 @@ export async function putParameter(
       Name: parameter_name,
       Value: parameter_value,
       Type: secure ? 'SecureString' : 'String',
+      Overwrite: options.overwrite,
       Tags: options.tags,
       Tier: valueSizeBytes >= SSM_ADVANCED_TIER_THRESHOLD ? 'Advanced' : 'Standard',
     }),

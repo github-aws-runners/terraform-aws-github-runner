@@ -1,28 +1,21 @@
 import type { ScaleDownComputeProvider } from '../../../../core';
 import { loadMicrovmProviderConfig } from './config';
 import type { MicrovmRunnerInfo } from './microvms';
-import { listMicrovmRunners, microvmBootTimeExceeded, tagMicrovm, terminateMicrovm, untagMicrovm } from './microvms';
+import { listMicrovmRunners, microvmBootTimeExceeded, terminateMicrovm } from './microvms';
+import { setMicrovmOrphan } from './runner-metadata';
 
 export function createMicrovmScaleDownProvider(): Omit<ScaleDownComputeProvider, 'type'> {
-  const imageArnByRunnerId = new Map<string, string>();
+  const metadataSsmPath = () => loadMicrovmProviderConfig().metadataSsmPath;
 
   async function list(environment: string, orphan?: boolean): Promise<MicrovmRunnerInfo[]> {
-    const runners = await listMicrovmRunners({ environment, orphan });
-    for (const runner of runners) {
-      if (runner.imageArn) imageArnByRunnerId.set(runner.id, runner.imageArn);
-    }
-    return runners;
-  }
-
-  function imageArnForRunner(id: string): string {
-    return imageArnByRunnerId.get(id) ?? loadMicrovmProviderConfig().imageIdentifier;
+    return await listMicrovmRunners({ environment, orphan }, metadataSsmPath());
   }
 
   return {
     list,
     bootTimeExceeded: microvmBootTimeExceeded,
-    markOrphan: async (id) => await tagMicrovm(imageArnForRunner(id), id, { 'ghr:orphan': 'true' }),
-    unmarkOrphan: async (id) => await untagMicrovm(imageArnForRunner(id), id, ['ghr:orphan']),
-    terminate: terminateMicrovm,
+    markOrphan: async (id) => await setMicrovmOrphan(metadataSsmPath(), id, true),
+    unmarkOrphan: async (id) => await setMicrovmOrphan(metadataSsmPath(), id, false),
+    terminate: async (id) => await terminateMicrovm(id, metadataSsmPath()),
   };
 }
