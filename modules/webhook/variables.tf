@@ -238,8 +238,16 @@ variable "matcher_config_parameter_store_tier" {
 }
 
 variable "storage_provider" {
-  description = "Storage-provider configuration used by the webhook resources."
+  description = <<-EOT
+    Storage-provider configuration used by the webhook resources.
+
+    - `type`: Selected runner-config storage provider, `aws_ssm` (default) or `aws_dynamodb`.
+    - `aws.kms_key_id` / `aws.ssm.paths`: Parameter Store settings used when `type` is `aws_ssm`.
+    - `direct`: Environment variables and optional IAM policy for the direct webhook Lambda.
+    - `eventbridge`: Environment variables and optional IAM policies for the EventBridge webhook and dispatcher Lambdas.
+  EOT
   type = object({
+    type = optional(string, "aws_ssm")
     aws = object({
       kms_key_id = optional(string, null)
       ssm = object({
@@ -249,8 +257,27 @@ variable "storage_provider" {
         })
       })
     })
+    direct = optional(object({
+      environment_variables = optional(map(string), {})
+      iam_policy_json       = optional(string, null)
+    }), {})
+    eventbridge = optional(object({
+      webhook = optional(object({
+        environment_variables = optional(map(string), {})
+        iam_policy_json       = optional(string, null)
+      }), {})
+      dispatcher = optional(object({
+        environment_variables = optional(map(string), {})
+        iam_policy_json       = optional(string, null)
+      }), {})
+    }), {})
   })
   nullable = false
+
+  validation {
+    condition     = contains(["aws_ssm", "aws_dynamodb"], var.storage_provider.type)
+    error_message = "storage_provider.type must be aws_ssm or aws_dynamodb."
+  }
 }
 
 variable "eventbridge" {

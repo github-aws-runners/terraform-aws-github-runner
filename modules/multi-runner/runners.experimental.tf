@@ -39,8 +39,15 @@ module "runner_configs" {
     }
     scale_set = each.value.orchestration_provider.scale_set
   }
-  storage_provider = each.value.storage_provider
-  observability    = each.value.observability
+  storage_provider = merge(each.value.storage_provider, {
+    type       = local.storage_provider_type
+    scale_up   = local.storage_provider_capabilities.entries[each.key].scale_up
+    scale_down = local.storage_provider_capabilities.entries[each.key].scale_down
+    pool       = local.storage_provider_capabilities.entries[each.key].pool
+    job_retry  = local.storage_provider_capabilities.entries[each.key].job_retry
+    runner     = local.storage_provider_capabilities.entries[each.key].runner
+  })
+  observability = each.value.observability
   compute_provider = merge(each.value.compute_provider, {
     aws = merge(each.value.compute_provider.aws, {
       ec2 = each.value.compute_provider.aws.ec2 == null ? null : merge(each.value.compute_provider.aws.ec2, {
