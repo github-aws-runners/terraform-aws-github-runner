@@ -8,15 +8,16 @@ The durable table isolates GitHub App credentials, webhook secrets, matcher conf
 ## Requirements
 
 | Name | Version |
-| ---- | ------- |
+|------|---------|
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.4.0 |
 | <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 6.33 |
 
 ## Providers
 
 | Name | Version |
-| ---- | ------- |
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.60.0 |
+|------|---------|
+| <a name="provider_aws"></a> [aws](#provider\_aws) | >= 6.33 |
+| <a name="provider_terraform"></a> [terraform](#provider\_terraform) | n/a |
 
 ## Modules
 
@@ -25,18 +26,19 @@ No modules.
 ## Resources
 
 | Name | Type |
-| ---- | ---- |
+|------|------|
 | [aws_dynamodb_table.config](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/dynamodb_table) | resource |
 | [aws_dynamodb_table.runner_state](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/dynamodb_table) | resource |
 | [aws_dynamodb_table_item.github_app_credentials](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/dynamodb_table_item) | resource |
 | [aws_dynamodb_table_item.github_webhook_secret](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/dynamodb_table_item) | resource |
 | [aws_dynamodb_table_item.runner_config](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/dynamodb_table_item) | resource |
 | [aws_dynamodb_table_item.runner_matcher_config](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/dynamodb_table_item) | resource |
+| [terraform_data.config_version](https://registry.terraform.io/providers/hashicorp/terraform/latest/docs/resources/data) | resource |
 
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-| ---- | ----------- | ---- | ------- | :------: |
+|------|-------------|------|---------|:--------:|
 | <a name="input_config"></a> [config](#input\_config) | Settings for the shared durable configuration table and ephemeral runner-state table.<br/><br/>- `config.kms_key_arn`: Optional customer-managed KMS key ARN for durable configuration encryption. Null uses the AWS-owned DynamoDB key.<br/>- `config.point_in_time_recovery_enabled`: Enables point-in-time recovery for durable configuration.<br/>- `config.deletion_protection_enabled`: Enables deletion protection for the durable table.<br/>- `config.tags`: Tags applied after the shared tag map.<br/>- `runner_state.kms_key_arn`: Optional customer-managed KMS key ARN for runner-state encryption. Null uses the AWS-owned DynamoDB key.<br/>- `runner_state.point_in_time_recovery_enabled`: Enables point-in-time recovery for ephemeral runner state.<br/>- `runner_state.deletion_protection_enabled`: Enables deletion protection for the runner-state table.<br/>- `runner_state.tags`: Tags applied after the shared tag map. | <pre>object({<br/>    config = object({<br/>      kms_key_arn                    = optional(string, null)<br/>      point_in_time_recovery_enabled = optional(bool, true)<br/>      deletion_protection_enabled    = optional(bool, false)<br/>      tags                           = optional(map(string), {})<br/>    })<br/>    runner_state = object({<br/>      kms_key_arn                    = optional(string, null)<br/>      point_in_time_recovery_enabled = optional(bool, false)<br/>      deletion_protection_enabled    = optional(bool, false)<br/>      tags                           = optional(map(string), {})<br/>    })<br/>  })</pre> | n/a | yes |
 | <a name="input_entry_ids"></a> [entry\_ids](#input\_entry\_ids) | Runner-entry identifiers used to build entry-scoped Lambda capabilities. | `set(string)` | n/a | yes |
 | <a name="input_entry_records"></a> [entry\_records](#input\_entry\_records) | Resolved durable runner bootstrap configuration keyed by runner-entry identifier. | <pre>map(object({<br/>    run_as                 = string<br/>    agent_mode             = string<br/>    disable_default_labels = bool<br/>    enable_jit_config      = bool<br/>  }))</pre> | n/a | yes |
@@ -50,7 +52,7 @@ No modules.
 ## Outputs
 
 | Name | Description |
-| ---- | ----------- |
+|------|-------------|
 | <a name="output_capabilities"></a> [capabilities](#output\_capabilities) | Opaque environment and least-privilege IAM additions consumed by the shared webhook and each runner entry's control-plane functions. |
 | <a name="output_config_table"></a> [config\_table](#output\_config\_table) | Shared durable configuration table. Global and runner-entry records are separated by the `scope` partition key. |
 | <a name="output_runner_state_table"></a> [runner\_state\_table](#output\_runner\_state\_table) | Shared TTL-backed table containing ephemeral runner configuration and provider-neutral runner lifecycle records. |
