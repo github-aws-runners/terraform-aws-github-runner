@@ -2,13 +2,19 @@ import { createAppAuth } from '@octokit/auth-app';
 import { StrategyOptions } from '@octokit/auth-app/dist-types/types';
 import { request } from '@octokit/request';
 import { RequestInterface, RequestParameters } from '@octokit/types';
-import { getParameters } from '@aws-github-runner/aws-ssm-util';
+import {
+  getGitHubAppCredentialsStore,
+  type GitHubAppCredential,
+  type GitHubAppCredentialsStore,
+} from '@aws-github-runner/storage-providers';
 import { generateKeyPairSync } from 'node:crypto';
 import * as nock from 'nock';
 
 import {
   createGithubAppAuth,
   createOctokitClient,
+  getAppCount,
+  getAppId,
   getStoredInstallationId,
   onRateLimit,
   onSecondaryRateLimit,
@@ -25,24 +31,27 @@ type MockProxy<T> = T & {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mock = <T>(implementation?: any): MockProxy<T> => vi.fn(implementation) as any;
 
-vi.mock('@aws-github-runner/aws-ssm-util');
+vi.mock('@aws-github-runner/storage-providers', () => ({
+  getGitHubAppCredentialsStore: vi.fn(),
+}));
 vi.mock('@octokit/auth-app');
 
 const cleanEnv = process.env;
-const ENVIRONMENT = 'dev';
-const GITHUB_APP_ID = '1';
-const PARAMETER_GITHUB_APP_ID_NAME = `/actions-runner/${ENVIRONMENT}/github_app_id`;
-const PARAMETER_GITHUB_APP_KEY_BASE64_NAME = `/actions-runner/${ENVIRONMENT}/github_app_key_base64`;
+const GITHUB_APP_ID = 1;
 
-const mockedGetParameters = vi.mocked(getParameters);
+const mockedGetGitHubAppCredentialsStore = vi.mocked(getGitHubAppCredentialsStore);
+const mockCredentialsGet = vi.fn<GitHubAppCredentialsStore['get']>();
+const credentialsStore = {
+  get: mockCredentialsGet,
+} satisfies GitHubAppCredentialsStore;
 
 beforeEach(() => {
   vi.resetModules();
   vi.clearAllMocks();
+  mockCredentialsGet.mockReset();
   resetAppCredentialsCache();
   process.env = { ...cleanEnv };
-  process.env.PARAMETER_GITHUB_APP_ID_NAME = PARAMETER_GITHUB_APP_ID_NAME;
-  process.env.PARAMETER_GITHUB_APP_KEY_BASE64_NAME = PARAMETER_GITHUB_APP_KEY_BASE64_NAME;
+  mockedGetGitHubAppCredentialsStore.mockReturnValue(credentialsStore);
   nock.disableNetConnect();
 });
 
@@ -80,38 +89,18 @@ describe('Test createGithubAppAuth', () => {
   const authType = 'app';
   const token = '123456';
   const decryptedValue = 'decryptedValue';
-  const b64 = Buffer.from(decryptedValue, 'binary').toString('base64');
 
-  beforeEach(() => {
-    process.env.ENVIRONMENT = ENVIRONMENT;
-  });
+  it('Propagates errors from the credential store', async () => {
+    const error = new Error('Unable to load GitHub App credentials');
+    mockCredentialsGet.mockRejectedValueOnce(error);
 
-  it('Throws early when PARAMETER_GITHUB_APP_ID_NAME is not set', async () => {
-    delete process.env.PARAMETER_GITHUB_APP_ID_NAME;
-
-    await expect(createGithubAppAuth(installationId)).rejects.toThrow(
-      'Environment variable PARAMETER_GITHUB_APP_ID_NAME is not set',
-    );
-    expect(mockedGetParameters).not.toHaveBeenCalled();
-  });
-
-  it('Throws early when PARAMETER_GITHUB_APP_KEY_BASE64_NAME is not set', async () => {
-    delete process.env.PARAMETER_GITHUB_APP_KEY_BASE64_NAME;
-
-    await expect(createGithubAppAuth(installationId)).rejects.toThrow(
-      'Environment variable PARAMETER_GITHUB_APP_KEY_BASE64_NAME is not set',
-    );
-    expect(mockedGetParameters).not.toHaveBeenCalled();
+    await expect(createGithubAppAuth(installationId)).rejects.toBe(error);
+    expect(mockCredentialsGet).toHaveBeenCalledOnce();
   });
 
   it('Creates auth object with createJwt callback including jti claim', async () => {
     // Arrange
-    mockedGetParameters.mockResolvedValueOnce(
-      new Map([
-        [PARAMETER_GITHUB_APP_ID_NAME, GITHUB_APP_ID],
-        [PARAMETER_GITHUB_APP_KEY_BASE64_NAME, b64],
-      ]),
-    );
+    mockCredentialsGet.mockResolvedValueOnce([{ appId: GITHUB_APP_ID, privateKey: decryptedValue }]);
 
     const mockedAuth = vi.fn();
     mockedAuth.mockResolvedValue({ token });
@@ -124,7 +113,7 @@ describe('Test createGithubAppAuth', () => {
     // Assert
     expect(mockedCreatAppAuth).toBeCalledTimes(1);
     const callArgs = mockedCreatAppAuth.mock.calls[0][0] as Record<string, unknown>;
-    expect(callArgs.appId).toBe(parseInt(GITHUB_APP_ID));
+    expect(callArgs.appId).toBe(GITHUB_APP_ID);
     expect(callArgs.createJwt).toBeTypeOf('function');
     expect(callArgs).not.toHaveProperty('privateKey');
     expect(callArgs.installationId).toBe(installationId);
@@ -137,14 +126,7 @@ describe('Test createGithubAppAuth', () => {
       privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
       publicKeyEncoding: { type: 'spki', format: 'pem' },
     });
-    const b64Key = Buffer.from(privateKey as string).toString('base64');
-
-    mockedGetParameters.mockResolvedValueOnce(
-      new Map([
-        [PARAMETER_GITHUB_APP_ID_NAME, GITHUB_APP_ID],
-        [PARAMETER_GITHUB_APP_KEY_BASE64_NAME, b64Key],
-      ]),
-    );
+    mockCredentialsGet.mockResolvedValueOnce([{ appId: GITHUB_APP_ID, privateKey: privateKey as string }]);
 
     let capturedCreateJwt: (appId: string | number, timeDifference?: number) => Promise<{ jwt: string }>;
     mockedCreatAppAuth.mockImplementation((opts: StrategyOptions) => {
@@ -173,41 +155,9 @@ describe('Test createGithubAppAuth', () => {
     expect(payload).toHaveProperty('iss');
   });
 
-  it('Creates auth object with line breaks in SSH key.', async () => {
-    // Arrange
-    const b64PrivateKeyWithLineBreaks = Buffer.from(decryptedValue + '\n' + decryptedValue, 'binary').toString(
-      'base64',
-    );
-    mockedGetParameters.mockResolvedValueOnce(
-      new Map([
-        [PARAMETER_GITHUB_APP_ID_NAME, GITHUB_APP_ID],
-        [PARAMETER_GITHUB_APP_KEY_BASE64_NAME, b64PrivateKeyWithLineBreaks],
-      ]),
-    );
-
-    const mockedAuth = vi.fn();
-    mockedAuth.mockResolvedValue({ token });
-    const mockWithHook = Object.assign(mockedAuth, { hook: vi.fn() });
-    mockedCreatAppAuth.mockReturnValue(mockWithHook);
-
-    // Act
-    const result = await createGithubAppAuth(installationId);
-
-    // Assert
-    expect(getParameters).toBeCalledWith([PARAMETER_GITHUB_APP_ID_NAME, PARAMETER_GITHUB_APP_KEY_BASE64_NAME]);
-    expect(mockedCreatAppAuth).toBeCalledTimes(1);
-    expect(mockedAuth).toBeCalledWith({ type: authType });
-    expect(result.token).toBe(token);
-  });
-
   it('Creates auth object for public GitHub', async () => {
     // Arrange
-    mockedGetParameters.mockResolvedValueOnce(
-      new Map([
-        [PARAMETER_GITHUB_APP_ID_NAME, GITHUB_APP_ID],
-        [PARAMETER_GITHUB_APP_KEY_BASE64_NAME, b64],
-      ]),
-    );
+    mockCredentialsGet.mockResolvedValueOnce([{ appId: GITHUB_APP_ID, privateKey: decryptedValue }]);
 
     const mockedAuth = vi.fn();
     mockedAuth.mockResolvedValue({ token });
@@ -218,11 +168,9 @@ describe('Test createGithubAppAuth', () => {
     const result = await createGithubAppAuth(installationId);
 
     // Assert
-    expect(getParameters).toBeCalledWith([PARAMETER_GITHUB_APP_ID_NAME, PARAMETER_GITHUB_APP_KEY_BASE64_NAME]);
-
     expect(mockedCreatAppAuth).toBeCalledTimes(1);
     const callArgs = mockedCreatAppAuth.mock.calls[0][0] as Record<string, unknown>;
-    expect(callArgs.appId).toBe(parseInt(GITHUB_APP_ID));
+    expect(callArgs.appId).toBe(GITHUB_APP_ID);
     expect(callArgs.createJwt).toBeTypeOf('function');
     expect(callArgs.installationId).toBe(installationId);
     expect(mockedAuth).toBeCalledWith({ type: authType });
@@ -238,12 +186,7 @@ describe('Test createGithubAppAuth', () => {
       () => mockedRequestInterface as RequestInterface<object & RequestParameters>,
     );
 
-    mockedGetParameters.mockResolvedValueOnce(
-      new Map([
-        [PARAMETER_GITHUB_APP_ID_NAME, GITHUB_APP_ID],
-        [PARAMETER_GITHUB_APP_KEY_BASE64_NAME, b64],
-      ]),
-    );
+    mockCredentialsGet.mockResolvedValueOnce([{ appId: GITHUB_APP_ID, privateKey: decryptedValue }]);
     const mockedAuth = vi.fn();
     mockedAuth.mockResolvedValue({ token });
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -255,11 +198,9 @@ describe('Test createGithubAppAuth', () => {
     const result = await createGithubAppAuth(installationId, githubServerUrl);
 
     // Assert
-    expect(getParameters).toBeCalledWith([PARAMETER_GITHUB_APP_ID_NAME, PARAMETER_GITHUB_APP_KEY_BASE64_NAME]);
-
     expect(mockedCreatAppAuth).toBeCalledTimes(1);
     const callArgs = mockedCreatAppAuth.mock.calls[0][0] as Record<string, unknown>;
-    expect(callArgs.appId).toBe(parseInt(GITHUB_APP_ID));
+    expect(callArgs.appId).toBe(GITHUB_APP_ID);
     expect(callArgs.createJwt).toBeTypeOf('function');
     expect(callArgs.installationId).toBe(installationId);
     expect(callArgs.request).toBeDefined();
@@ -278,12 +219,7 @@ describe('Test createGithubAppAuth', () => {
 
     const installationId = undefined;
 
-    mockedGetParameters.mockResolvedValueOnce(
-      new Map([
-        [PARAMETER_GITHUB_APP_ID_NAME, GITHUB_APP_ID],
-        [PARAMETER_GITHUB_APP_KEY_BASE64_NAME, b64],
-      ]),
-    );
+    mockCredentialsGet.mockResolvedValueOnce([{ appId: GITHUB_APP_ID, privateKey: decryptedValue }]);
     const mockedAuth = vi.fn();
     mockedAuth.mockResolvedValue({ token });
     const mockWithHook = Object.assign(mockedAuth, { hook: vi.fn() });
@@ -293,11 +229,9 @@ describe('Test createGithubAppAuth', () => {
     const result = await createGithubAppAuth(installationId, githubServerUrl);
 
     // Assert
-    expect(getParameters).toBeCalledWith([PARAMETER_GITHUB_APP_ID_NAME, PARAMETER_GITHUB_APP_KEY_BASE64_NAME]);
-
     expect(mockedCreatAppAuth).toBeCalledTimes(1);
     const callArgs = mockedCreatAppAuth.mock.calls[0][0] as Record<string, unknown>;
-    expect(callArgs.appId).toBe(parseInt(GITHUB_APP_ID));
+    expect(callArgs.appId).toBe(GITHUB_APP_ID);
     expect(callArgs.createJwt).toBeTypeOf('function');
     expect(callArgs).not.toHaveProperty('installationId');
     expect(callArgs.request).toBeDefined();
@@ -330,98 +264,48 @@ describe('Test throttling retry caps', () => {
   });
 });
 
-describe('Test getStoredInstallationId', () => {
-  const decryptedValue = 'decryptedValue';
-  const b64 = Buffer.from(decryptedValue, 'binary').toString('base64');
-
-  beforeEach(() => {
-    const mockedAuth = vi.fn();
-    mockedAuth.mockResolvedValue({ token: 'token' });
-    const mockWithHook = Object.assign(mockedAuth, { hook: vi.fn() });
-    vi.mocked(createAppAuth).mockReturnValue(mockWithHook);
-  });
-
+describe('Test GitHub App credential accessors', () => {
   it('returns stored installation ID when configured', async () => {
-    const installationIdParam = `/actions-runner/${ENVIRONMENT}/github_app_installation_id`;
-    process.env.PARAMETER_GITHUB_APP_INSTALLATION_ID_NAME = installationIdParam;
-    mockedGetParameters.mockResolvedValueOnce(
-      new Map([
-        [PARAMETER_GITHUB_APP_ID_NAME, GITHUB_APP_ID],
-        [PARAMETER_GITHUB_APP_KEY_BASE64_NAME, b64],
-        [installationIdParam, '12345'],
-      ]),
-    );
+    mockCredentialsGet.mockResolvedValueOnce([
+      { appId: GITHUB_APP_ID, privateKey: 'private-key', installationId: 12345 },
+    ]);
 
     const result = await getStoredInstallationId(0);
     expect(result).toBe(12345);
   });
 
-  it('returns undefined when installation ID param is empty', async () => {
-    process.env.PARAMETER_GITHUB_APP_INSTALLATION_ID_NAME = '';
-    mockedGetParameters.mockResolvedValueOnce(
-      new Map([
-        [PARAMETER_GITHUB_APP_ID_NAME, GITHUB_APP_ID],
-        [PARAMETER_GITHUB_APP_KEY_BASE64_NAME, b64],
-      ]),
-    );
-
-    const result = await getStoredInstallationId(0);
-    expect(result).toBeUndefined();
-  });
-
-  it('returns undefined when env var is not set', async () => {
-    delete process.env.PARAMETER_GITHUB_APP_INSTALLATION_ID_NAME;
-    mockedGetParameters.mockResolvedValueOnce(
-      new Map([
-        [PARAMETER_GITHUB_APP_ID_NAME, GITHUB_APP_ID],
-        [PARAMETER_GITHUB_APP_KEY_BASE64_NAME, b64],
-      ]),
-    );
+  it('returns undefined when the credential has no installation ID', async () => {
+    mockCredentialsGet.mockResolvedValueOnce([{ appId: GITHUB_APP_ID, privateKey: 'private-key' }]);
 
     const result = await getStoredInstallationId(0);
     expect(result).toBeUndefined();
   });
 
   it('returns undefined for out-of-bounds appIndex', async () => {
-    process.env.PARAMETER_GITHUB_APP_INSTALLATION_ID_NAME = '';
-    mockedGetParameters.mockResolvedValueOnce(
-      new Map([
-        [PARAMETER_GITHUB_APP_ID_NAME, GITHUB_APP_ID],
-        [PARAMETER_GITHUB_APP_KEY_BASE64_NAME, b64],
-      ]),
-    );
+    mockCredentialsGet.mockResolvedValueOnce([{ appId: GITHUB_APP_ID, privateKey: 'private-key' }]);
 
     const result = await getStoredInstallationId(99);
     expect(result).toBeUndefined();
   });
 
-  it('loads installation IDs for multi-app setup', async () => {
-    const app1IdParam = `/actions-runner/${ENVIRONMENT}/github_app_id`;
-    const app2IdParam = `/actions-runner/${ENVIRONMENT}/additional_github_app_0_id`;
-    const app1KeyParam = `/actions-runner/${ENVIRONMENT}/github_app_key_base64`;
-    const app2KeyParam = `/actions-runner/${ENVIRONMENT}/additional_github_app_0_key_base64`;
-    const app2InstallParam = `/actions-runner/${ENVIRONMENT}/additional_github_app_0_installation_id`;
+  it('loads multi-app credentials once and exposes values by index', async () => {
+    const credentials: GitHubAppCredential[] = [
+      { appId: 1, privateKey: 'private-key-1' },
+      { appId: 2, privateKey: 'private-key-2', installationId: 67890 },
+    ];
+    mockCredentialsGet.mockResolvedValueOnce(credentials);
 
-    process.env.PARAMETER_GITHUB_APP_ID_NAME = `${app1IdParam}:${app2IdParam}`;
-    process.env.PARAMETER_GITHUB_APP_KEY_BASE64_NAME = `${app1KeyParam}:${app2KeyParam}`;
-    process.env.PARAMETER_GITHUB_APP_INSTALLATION_ID_NAME = `:${app2InstallParam}`;
+    await expect(getAppCount()).resolves.toBe(2);
+    await expect(getAppId()).resolves.toBe('1');
+    await expect(getAppId(1)).resolves.toBe('2');
+    await expect(getStoredInstallationId(0)).resolves.toBeUndefined();
+    await expect(getStoredInstallationId(1)).resolves.toBe(67890);
+    expect(mockCredentialsGet).toHaveBeenCalledOnce();
+  });
 
-    mockedGetParameters.mockResolvedValueOnce(
-      new Map([
-        [app1IdParam, '1'],
-        [app1KeyParam, b64],
-        [app2IdParam, '2'],
-        [app2KeyParam, b64],
-        [app2InstallParam, '67890'],
-      ]),
-    );
+  it('throws a clear error for an out-of-bounds app ID index', async () => {
+    mockCredentialsGet.mockResolvedValueOnce([{ appId: GITHUB_APP_ID, privateKey: 'private-key' }]);
 
-    // Primary app (index 0) has no stored installation ID
-    const result0 = await getStoredInstallationId(0);
-    expect(result0).toBeUndefined();
-
-    // Additional app (index 1) has stored installation ID
-    const result1 = await getStoredInstallationId(1);
-    expect(result1).toBe(67890);
+    await expect(getAppId(99)).rejects.toThrow('GitHub App credential at index 99 not found');
   });
 });

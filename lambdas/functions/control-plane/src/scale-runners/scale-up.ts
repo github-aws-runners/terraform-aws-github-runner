@@ -11,7 +11,6 @@ import {
   resolveInstallationId,
   isJobQueued,
   UnsupportedEventError,
-  validateSsmParameterStoreTags,
 } from './github-runner';
 import { publishRetryMessage } from './job-retry';
 import type {
@@ -80,17 +79,11 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
   const maximumRunners = parseInt(process.env.RUNNERS_MAXIMUM_COUNT || '3');
   const runnerLabels = process.env.RUNNER_LABELS || '';
   const runnerGroup = process.env.RUNNER_GROUP_NAME || 'Default';
-  const ssmTokenPath = process.env.SSM_TOKEN_PATH;
   const ephemeralEnabled = yn(process.env.ENABLE_EPHEMERAL_RUNNERS, { default: false });
   const enableJitConfig = yn(process.env.ENABLE_JIT_CONFIG, { default: ephemeralEnabled });
   const disableAutoUpdate = yn(process.env.DISABLE_RUNNER_AUTOUPDATE, { default: false });
   const enableJobQueuedCheck = yn(process.env.ENABLE_JOB_QUEUED_CHECK, { default: true });
   const runnerNamePrefix = process.env.RUNNER_NAME_PREFIX || '';
-  const ssmConfigPath = process.env.SSM_CONFIG_PATH || '';
-  const ssmParameterStoreTags: { Key: string; Value: string }[] =
-    process.env.SSM_PARAMETER_STORE_TAGS && process.env.SSM_PARAMETER_STORE_TAGS.trim() !== ''
-      ? validateSsmParameterStoreTags(process.env.SSM_PARAMETER_STORE_TAGS)
-      : [];
   const computeProviderType = resolveComputeProviderType(process.env.COMPUTE_PROVIDER_TYPE);
   const computeProvider = {
     ...controlPlaneProviderRegistry.capability(computeProviderType, 'scaleUp')(),
@@ -318,9 +311,6 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       runnerOwner: runnerOwner,
       runnerType,
       disableAutoUpdate,
-      ssmTokenPath,
-      ssmConfigPath,
-      ssmParameterStoreTags,
     };
 
     let createRunnersResult: CreateRunnerResult;

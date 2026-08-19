@@ -127,6 +127,27 @@ describe('Test getParameter and putParameter', () => {
     });
   });
 
+  it('passes tags to the PutParameter command', async () => {
+    const parameterValue = 'test';
+    const parameterName = 'testParam';
+    const tags = [{ Key: 'InstanceId', Value: 'i-123' }];
+    const output: PutParameterCommandOutput = {
+      $metadata: {
+        httpStatusCode: 200,
+      },
+    };
+    mockSSMClient.on(PutParameterCommand).resolves(output);
+
+    await putParameter(parameterName, parameterValue, true, { tags });
+
+    expect(mockSSMClient).toHaveReceivedCommandWith(PutParameterCommand, {
+      Name: parameterName,
+      Value: parameterValue,
+      Type: 'SecureString',
+      Tags: tags,
+    });
+  });
+
   it('Gets invalid parameters and returns string', async () => {
     // Arrange
     const parameterName = 'invalid';

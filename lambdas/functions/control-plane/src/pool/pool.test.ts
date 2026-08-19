@@ -51,7 +51,6 @@ vi.mock('../scale-runners/github-runner', async () => ({
     ghesApiUrl: '',
     ghesBaseUrl: '',
   }),
-  validateSsmParameterStoreTags: vi.fn().mockReturnValue([]),
 }));
 
 const mocktokit = Octokit as MockedClass<typeof Octokit>;
@@ -143,7 +142,6 @@ beforeEach(() => {
   process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
   process.env.LAUNCH_TEMPLATE_NAME = 'lt-1';
   process.env.SUBNET_IDS = 'subnet-123';
-  process.env.SSM_TOKEN_PATH = '/github-action-runners/default/runners/tokens';
   process.env.INSTANCE_TYPES = 'm5.large';
   process.env.INSTANCE_TARGET_CAPACITY_TYPE = 'spot';
   process.env.RUNNER_OWNER = ORG;
