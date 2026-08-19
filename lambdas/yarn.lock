@@ -162,7 +162,6 @@ __metadata:
   resolution: "@aws-github-runner/control-plane@workspace:functions/control-plane"
   dependencies:
     "@aws-github-runner/aws-powertools-util": "npm:*"
-    "@aws-github-runner/aws-ssm-util": "npm:*"
     "@aws-github-runner/compute-providers": "npm:*"
     "@aws-github-runner/storage-providers": "npm:*"
     "@aws-lambda-powertools/parameters": "npm:^2.31.0"

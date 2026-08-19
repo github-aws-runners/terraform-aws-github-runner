@@ -66,7 +66,6 @@ vi.mock('./scale-runners/scale-down');
 vi.mock('./scale-runners/scale-up');
 vi.mock('./scale-runners/job-retry');
 vi.mock('@aws-github-runner/aws-powertools-util');
-vi.mock('@aws-github-runner/aws-ssm-util');
 vi.mock('@aws-github-runner/storage-providers', () => ({
   getRunnerConfigStore: vi.fn(),
 }));

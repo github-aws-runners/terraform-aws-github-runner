@@ -1,3 +1,13 @@
+export interface GitHubAppCredential {
+  appId: number;
+  privateKey: string;
+  installationId?: number;
+}
+
+export interface GitHubAppCredentialsStore {
+  get(): Promise<GitHubAppCredential[]>;
+}
+
 export interface RunnerConfigMetadata {
   key: string;
   value: string;
