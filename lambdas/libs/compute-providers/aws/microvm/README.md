@@ -60,12 +60,11 @@ separate roles, prefixes, and provider deployments.
 When a runner matcher enables dynamic labels, workflow jobs can override the
 following `RunMicrovm` inputs:
 
-| Label                                               | Override                                       |
-| --------------------------------------------------- | ---------------------------------------------- |
-| `ghr-microvm-egress-network-connectors:<arn>`       | One egress network connector ARN               |
-| `ghr-microvm-image-arn:<arn>`                       | MicroVM image ARN                              |
-| `ghr-microvm-image-version:<version>`               | MicroVM image version                          |
-| `ghr-microvm-maximum-duration-in-seconds:<seconds>` | Maximum lifetime from 1 through 28,800 seconds |
+| Label                                         | Override                         |
+| --------------------------------------------- | -------------------------------- |
+| `ghr-microvm-egress-network-connectors:<arn>` | One egress network connector ARN |
+| `ghr-microvm-image-arn:<arn>`                 | MicroVM image ARN                |
+| `ghr-microvm-image-version:<version>`         | MicroVM image version            |
 
 Repeat `ghr-microvm-egress-network-connectors:<arn>` to attach multiple
 connectors. Specify one ARN per label; `RunMicrovm` accepts at most 10. These
@@ -84,7 +83,7 @@ explicit `allowed` list for the corresponding key.
 
 Use the matcher's `awsDynamicLabelsPolicy` to restrict values accepted from
 workflow jobs. The MicroVM policy keys are `egress-network-connectors`,
-`image-arn`, `image-version`, and `maximum-duration-in-seconds`. For example:
+`image-arn`, and `image-version`. For example:
 
 ```json
 {
@@ -97,9 +96,6 @@ workflow jobs. The MicroVM policy keys are `egress-network-connectors`,
     },
     "image-version": {
       "allowed": ["3.*"]
-    },
-    "maximum-duration-in-seconds": {
-      "max": 3600
     }
   }
 }

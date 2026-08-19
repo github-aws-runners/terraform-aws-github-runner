@@ -20,7 +20,6 @@ describe('microvmDynamicLabelProvider', () => {
       `ghr-microvm-egress-network-connectors:${egressConnectorArn}`,
       `ghr-microvm-image-arn:${imageArn}`,
       'ghr-microvm-image-version:3.0',
-      'ghr-microvm-maximum-duration-in-seconds:7200',
     ];
 
     expect(getViolations(queue, dynamicLabels)).toEqual([]);
@@ -32,7 +31,6 @@ describe('microvmDynamicLabelProvider', () => {
         `ghr-microvm-egress-network-connectors:${egressConnectorArn}`,
         `ghr-microvm-image-arn:${imageArn}`,
         'ghr-microvm-image-version:3.0',
-        'ghr-microvm-maximum-duration-in-seconds:3600',
       ]),
     ).toEqual([
       {
@@ -50,11 +48,17 @@ describe('microvmDynamicLabelProvider', () => {
     ]);
   });
 
-  it('preserves violations from the MicroVM label parser', () => {
-    expect(getViolations(microvmQueue(), ['ghr-microvm-memory:8192'])).toEqual([
+  it.each([
+    ['ghr-microvm-memory:8192', "key 'memory' is not a supported MicroVM override"],
+    [
+      'ghr-microvm-maximum-duration-in-seconds:7200',
+      "key 'maximum-duration-in-seconds' is not a supported MicroVM override",
+    ],
+  ])('preserves the parser violation for %s', (label, reason) => {
+    expect(getViolations(microvmQueue(), [label])).toEqual([
       {
-        label: 'ghr-microvm-memory:8192',
-        reason: "key 'memory' is not a supported MicroVM override",
+        label,
+        reason,
       },
     ]);
   });
@@ -62,13 +66,13 @@ describe('microvmDynamicLabelProvider', () => {
   it('enforces the AWS dynamic-label policy', () => {
     const queue = microvmQueue();
     queue.matcherConfig.awsDynamicLabelsPolicy = {
-      restricted_keys: { 'maximum-duration-in-seconds': { max: 3600 } },
+      restricted_keys: { 'image-version': { allowed: ['2.*'] } },
     };
 
-    expect(getViolations(queue, ['ghr-microvm-maximum-duration-in-seconds:7200'])).toEqual([
+    expect(getViolations(queue, ['ghr-microvm-image-version:3.0'])).toEqual([
       {
-        label: 'ghr-microvm-maximum-duration-in-seconds:7200',
-        reason: "value '7200' exceeds max '3600'",
+        label: 'ghr-microvm-image-version:3.0',
+        reason: "value '3.0' not in allowed list",
       },
     ]);
   });

@@ -3,13 +3,20 @@ import { provider } from './webhook';
 
 defineWebhookProviderContractTests({
   provider,
-  acceptedDynamicLabels: ['ghr-microvm-maximum-duration-in-seconds:3600'],
+  acceptedDynamicLabels: ['ghr-microvm-image-version:3.0'],
+  configureQueue: (queue) => {
+    queue.matcherConfig.awsDynamicLabelsPolicy = {
+      restricted_keys: {
+        'image-version': { allowed: ['3.0'] },
+      },
+    };
+  },
   rejectingPolicies: [
     {
       name: 'blocked keys',
       apply: (queue) => {
         queue.matcherConfig.awsDynamicLabelsPolicy = {
-          blocked_keys: ['maximum-duration-in-seconds'],
+          blocked_keys: ['image-version'],
         };
       },
     },
@@ -18,7 +25,7 @@ defineWebhookProviderContractTests({
       apply: (queue) => {
         queue.matcherConfig.awsDynamicLabelsPolicy = {
           restricted_keys: {
-            'maximum-duration-in-seconds': { max: 1800 },
+            'image-version': { allowed: ['2.*'] },
           },
         };
       },
