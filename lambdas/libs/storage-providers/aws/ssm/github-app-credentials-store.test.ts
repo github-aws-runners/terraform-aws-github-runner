@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { getParameters } from '@aws-github-runner/aws-ssm-util';
+import { getParameter, getParameters } from '@aws-github-runner/aws-ssm-util';
 
 import { createAwsSsmGitHubAppCredentialsStore } from './github-app-credentials-store';
 
 vi.mock('@aws-github-runner/aws-ssm-util', () => ({
+  getParameter: vi.fn(),
   getParameters: vi.fn(),
 }));
 
@@ -28,7 +29,7 @@ describe('aws_ssm GitHub App credentials store', () => {
     vi.clearAllMocks();
     process.env.PARAMETER_GITHUB_APP_ID_NAME = 'app-id';
     process.env.PARAMETER_GITHUB_APP_KEY_BASE64_NAME = 'app-key';
-    delete process.env.PARAMETER_GITHUB_APP_INSTALLATION_ID_NAME;
+    delete process.env.PARAMETER_GITHUB_APPS_MANIFEST_NAME;
   });
 
   it('loads batched credentials and decodes escaped newlines', async () => {
@@ -47,9 +48,12 @@ describe('aws_ssm GitHub App credentials store', () => {
   });
 
   it('loads per-app installation IDs in the same order as app IDs', async () => {
-    process.env.PARAMETER_GITHUB_APP_ID_NAME = 'id-0:id-1';
-    process.env.PARAMETER_GITHUB_APP_KEY_BASE64_NAME = 'key-0:key-1';
-    process.env.PARAMETER_GITHUB_APP_INSTALLATION_ID_NAME = ':installation-1';
+    process.env.PARAMETER_GITHUB_APP_ID_NAME = 'id-0';
+    process.env.PARAMETER_GITHUB_APP_KEY_BASE64_NAME = 'key-0';
+    process.env.PARAMETER_GITHUB_APPS_MANIFEST_NAME = 'manifest';
+    vi.mocked(getParameter).mockResolvedValue(
+      JSON.stringify([{ idParamName: 'id-1', keyParamName: 'key-1', installationIdParamName: 'installation-1' }]),
+    );
     getParametersMock.mockResolvedValue(
       new Map([
         ['id-0', '123'],
@@ -71,9 +75,11 @@ describe('aws_ssm GitHub App credentials store', () => {
     expect(() => createAwsSsmGitHubAppCredentialsStore()).toThrow(`Environment variable ${name} is not set`);
   });
 
-  it('rejects mismatched app and key parameter lists', () => {
-    process.env.PARAMETER_GITHUB_APP_ID_NAME = 'id-0:id-1';
-    expect(() => createAwsSsmGitHubAppCredentialsStore()).toThrow('parameter count mismatch');
+  it('rejects malformed manifest JSON', async () => {
+    process.env.PARAMETER_GITHUB_APPS_MANIFEST_NAME = 'manifest';
+    vi.mocked(getParameter).mockResolvedValue('invalid-json');
+    await expect(createAwsSsmGitHubAppCredentialsStore().get()).rejects.toThrow();
+    expect(getParametersMock).not.toHaveBeenCalled();
   });
 
   it('logs safe context when a credential parameter is missing', async () => {

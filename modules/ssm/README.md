@@ -8,15 +8,15 @@ This module is used for storing configuration of runners, registration tokens an
 ## Requirements
 
 | Name | Version |
-|------|---------|
+| ---- | ------- |
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.3.0 |
 | <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 6.21 |
 
 ## Providers
 
 | Name | Version |
-|------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | >= 6.21 |
+| ---- | ------- |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.60.0 |
 
 ## Modules
 
@@ -25,10 +25,11 @@ No modules.
 ## Resources
 
 | Name | Type |
-|------|------|
+| ---- | ---- |
 | [aws_ssm_parameter.additional_github_app_id](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_parameter) | resource |
 | [aws_ssm_parameter.additional_github_app_installation_id](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_parameter) | resource |
 | [aws_ssm_parameter.additional_github_app_key_base64](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_parameter) | resource |
+| [aws_ssm_parameter.additional_github_apps_manifest](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_parameter) | resource |
 | [aws_ssm_parameter.github_app_id](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_parameter) | resource |
 | [aws_ssm_parameter.github_app_key_base64](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_parameter) | resource |
 | [aws_ssm_parameter.github_app_webhook_secret](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_parameter) | resource |
@@ -36,7 +37,7 @@ No modules.
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
+| ---- | ----------- | ---- | ------- | :------: |
 | <a name="input_additional_github_apps"></a> [additional\_github\_apps](#input\_additional\_github\_apps) | Additional GitHub Apps for distributing API rate limit usage. | <pre>list(object({<br/>    key_base64          = optional(string)<br/>    key_base64_ssm      = optional(object({ arn = string, name = string }))<br/>    id                  = optional(string)<br/>    id_ssm              = optional(object({ arn = string, name = string }))<br/>    installation_id     = optional(string)<br/>    installation_id_ssm = optional(object({ arn = string, name = string }))<br/>  }))</pre> | `[]` | no |
 | <a name="input_github_app"></a> [github\_app](#input\_github\_app) | GitHub app parameters, see your github app. <br/>  You can optionally create the SSM parameters yourself and provide the ARN and name here, through the `*_ssm` attributes.<br/>  If you chose to provide the configuration values directly here, <br/>  please ensure the key is the base64-encoded `.pem` file (the output of `base64 app.private-key.pem`, not the content of `private-key.pem`).<br/>  Note: the provided SSM parameters arn and name have a precedence over the actual value (i.e `key_base64_ssm` has a precedence over `key_base64` etc). | <pre>object({<br/>    key_base64 = optional(string)<br/>    key_base64_ssm = optional(object({<br/>      arn  = string<br/>      name = string<br/>    }))<br/>    id = optional(string)<br/>    id_ssm = optional(object({<br/>      arn  = string<br/>      name = string<br/>    }))<br/>    webhook_secret = optional(string)<br/>    webhook_secret_ssm = optional(object({<br/>      arn  = string<br/>      name = string<br/>    }))<br/>  })</pre> | n/a | yes |
 | <a name="input_kms_key_arn"></a> [kms\_key\_arn](#input\_kms\_key\_arn) | Optional CMK Key ARN to be used for Parameter Store. | `string` | `null` | no |
@@ -46,7 +47,8 @@ No modules.
 ## Outputs
 
 | Name | Description |
-|------|-------------|
+| ---- | ----------- |
 | <a name="output_additional_app_parameters"></a> [additional\_app\_parameters](#output\_additional\_app\_parameters) | n/a |
+| <a name="output_additional_apps_manifest"></a> [additional\_apps\_manifest](#output\_additional\_apps\_manifest) | n/a |
 | <a name="output_parameters"></a> [parameters](#output\_parameters) | n/a |
 <!-- END_TF_DOCS -->
