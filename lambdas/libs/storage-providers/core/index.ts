@@ -58,3 +58,7 @@ export interface RunnerGroupCacheStore {
   get(runnerGroupName: string): Promise<number | undefined>;
   create(record: RunnerGroupCacheRecord): Promise<void>;
 }
+
+export interface RunnerMatcherConfigStore {
+  get(): Promise<string>;
+}
