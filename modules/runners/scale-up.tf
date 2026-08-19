@@ -25,47 +25,47 @@ resource "aws_lambda_function" "scale_up" {
   architectures                  = [var.lambda_architecture]
   environment {
     variables = {
-      AMI_ID_SSM_PARAMETER_NAME                 = local.ami_id_ssm_parameter_name
-      DISABLE_RUNNER_AUTOUPDATE                 = var.disable_runner_autoupdate
-      ENABLE_EPHEMERAL_RUNNERS                  = var.enable_ephemeral_runners
-      ENABLE_JIT_CONFIG                         = var.enable_jit_config
-      ENABLE_JOB_QUEUED_CHECK                   = local.enable_job_queued_check
-      ENABLE_METRIC_GITHUB_APP_RATE_LIMIT       = var.metrics.enable && var.metrics.metric.enable_github_app_rate_limit
-      ENABLE_ORGANIZATION_RUNNERS               = var.enable_organization_runners
-      ENVIRONMENT                               = var.prefix
-      GHES_URL                                  = var.ghes_url
-      USER_AGENT                                = var.user_agent
-      INSTANCE_ALLOCATION_STRATEGY              = var.instance_allocation_strategy
-      INSTANCE_MAX_SPOT_PRICE                   = var.instance_max_spot_price
-      INSTANCE_TARGET_CAPACITY_TYPE             = var.instance_target_capacity_type
-      INSTANCE_TYPE_PRIORITIES                  = var.instance_type_priorities != null ? jsonencode(var.instance_type_priorities) : ""
-      INSTANCE_TYPES                            = join(",", var.instance_types)
-      LAUNCH_TEMPLATE_NAME                      = aws_launch_template.runner.name
-      LOG_LEVEL                                 = upper(var.log_level)
-      MINIMUM_RUNNING_TIME_IN_MINUTES           = coalesce(var.minimum_running_time_in_minutes, local.min_runtime_defaults[var.runner_os])
-      NODE_TLS_REJECT_UNAUTHORIZED              = var.ghes_url != null && !var.ghes_ssl_verify ? 0 : 1
-      PARAMETER_GITHUB_APP_ID_NAME              = join(":", [for p in var.github_app_parameters.id : p.name])
-      PARAMETER_GITHUB_APP_KEY_BASE64_NAME      = join(":", [for p in var.github_app_parameters.key_base64 : p.name])
-      PARAMETER_GITHUB_APP_INSTALLATION_ID_NAME = join(":", [for p in var.github_app_parameters.installation_id : p != null ? p.name : ""])
-      POWERTOOLS_LOGGER_LOG_EVENT               = var.log_level == "debug" ? "true" : "false"
-      POWERTOOLS_METRICS_NAMESPACE              = var.metrics.namespace
-      POWERTOOLS_TRACE_ENABLED                  = var.tracing_config.mode != null ? true : false
-      POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS  = var.tracing_config.capture_http_requests
-      POWERTOOLS_TRACER_CAPTURE_ERROR           = var.tracing_config.capture_error
-      RUNNER_LABELS                             = lower(join(",", var.runner_labels))
-      RUNNER_GROUP_NAME                         = var.runner_group_name
-      RUNNER_NAME_PREFIX                        = var.runner_name_prefix
-      COMPUTE_PROVIDER_TYPE                     = "ec2"
-      RUNNERS_MAXIMUM_COUNT                     = var.runners_maximum_count
-      POWERTOOLS_SERVICE_NAME                   = "${var.prefix}-scale-up"
-      SSM_TOKEN_PATH                            = local.token_path
-      SSM_CONFIG_PATH                           = "${var.ssm_paths.root}/${var.ssm_paths.config}"
-      SSM_PARAMETER_STORE_TAGS                  = local.parameter_store_tags
-      SUBNET_IDS                                = join(",", var.subnet_ids)
-      ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS      = jsonencode(var.enable_on_demand_failover_for_errors)
-      SCALE_ERRORS                              = jsonencode(var.scale_errors)
-      JOB_RETRY_CONFIG                          = jsonencode(local.job_retry_config)
-      USE_DEDICATED_HOST                        = var.use_dedicated_host
+      AMI_ID_SSM_PARAMETER_NAME                = local.ami_id_ssm_parameter_name
+      DISABLE_RUNNER_AUTOUPDATE                = var.disable_runner_autoupdate
+      ENABLE_EPHEMERAL_RUNNERS                 = var.enable_ephemeral_runners
+      ENABLE_JIT_CONFIG                        = var.enable_jit_config
+      ENABLE_JOB_QUEUED_CHECK                  = local.enable_job_queued_check
+      ENABLE_METRIC_GITHUB_APP_RATE_LIMIT      = var.metrics.enable && var.metrics.metric.enable_github_app_rate_limit
+      ENABLE_ORGANIZATION_RUNNERS              = var.enable_organization_runners
+      ENVIRONMENT                              = var.prefix
+      GHES_URL                                 = var.ghes_url
+      USER_AGENT                               = var.user_agent
+      INSTANCE_ALLOCATION_STRATEGY             = var.instance_allocation_strategy
+      INSTANCE_MAX_SPOT_PRICE                  = var.instance_max_spot_price
+      INSTANCE_TARGET_CAPACITY_TYPE            = var.instance_target_capacity_type
+      INSTANCE_TYPE_PRIORITIES                 = var.instance_type_priorities != null ? jsonencode(var.instance_type_priorities) : ""
+      INSTANCE_TYPES                           = join(",", var.instance_types)
+      LAUNCH_TEMPLATE_NAME                     = aws_launch_template.runner.name
+      LOG_LEVEL                                = upper(var.log_level)
+      MINIMUM_RUNNING_TIME_IN_MINUTES          = coalesce(var.minimum_running_time_in_minutes, local.min_runtime_defaults[var.runner_os])
+      NODE_TLS_REJECT_UNAUTHORIZED             = var.ghes_url != null && !var.ghes_ssl_verify ? 0 : 1
+      PARAMETER_GITHUB_APP_ID_NAME             = var.github_app_parameters.id.name
+      PARAMETER_GITHUB_APP_KEY_BASE64_NAME     = var.github_app_parameters.key_base64.name
+      PARAMETER_GITHUB_APPS_MANIFEST_NAME      = var.github_app_parameters.additional_apps_manifest != null ? var.github_app_parameters.additional_apps_manifest.name : ""
+      POWERTOOLS_LOGGER_LOG_EVENT              = var.log_level == "debug" ? "true" : "false"
+      POWERTOOLS_METRICS_NAMESPACE             = var.metrics.namespace
+      POWERTOOLS_TRACE_ENABLED                 = var.tracing_config.mode != null ? true : false
+      POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.tracing_config.capture_http_requests
+      POWERTOOLS_TRACER_CAPTURE_ERROR          = var.tracing_config.capture_error
+      RUNNER_LABELS                            = lower(join(",", var.runner_labels))
+      RUNNER_GROUP_NAME                        = var.runner_group_name
+      RUNNER_NAME_PREFIX                       = var.runner_name_prefix
+      COMPUTE_PROVIDER_TYPE                    = "ec2"
+      RUNNERS_MAXIMUM_COUNT                    = var.runners_maximum_count
+      POWERTOOLS_SERVICE_NAME                  = "${var.prefix}-scale-up"
+      SSM_TOKEN_PATH                           = local.token_path
+      SSM_CONFIG_PATH                          = "${var.ssm_paths.root}/${var.ssm_paths.config}"
+      SSM_PARAMETER_STORE_TAGS                 = local.parameter_store_tags
+      SUBNET_IDS                               = join(",", var.subnet_ids)
+      ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS     = jsonencode(var.enable_on_demand_failover_for_errors)
+      SCALE_ERRORS                             = jsonencode(var.scale_errors)
+      JOB_RETRY_CONFIG                         = jsonencode(local.job_retry_config)
+      USE_DEDICATED_HOST                       = var.use_dedicated_host
     }
   }
 
@@ -126,9 +126,9 @@ resource "aws_iam_role_policy" "scale_up" {
     environment              = var.prefix
     sqs_arn                  = var.sqs_build_queue.arn
     github_app_parameter_arns = jsonencode(concat(
-      [for p in var.github_app_parameters.id : p.arn],
-      [for p in var.github_app_parameters.key_base64 : p.arn],
-      [for p in var.github_app_parameters.installation_id : p.arn if p != null],
+      [var.github_app_parameters.id.arn, var.github_app_parameters.key_base64.arn],
+      var.github_app_parameters.additional_app_parameter_arns,
+      var.github_app_parameters.additional_apps_manifest != null ? [var.github_app_parameters.additional_apps_manifest.arn] : [],
       ["arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.ssm_paths.root}/${var.ssm_paths.config}/*"]
     ))
     kms_key_arn              = local.kms_key_arn
