@@ -80,12 +80,11 @@ describe('MicroVM metadata lifecycle', () => {
       source: 'scale-up-lambda',
       imageArn: 'arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner',
       imageVersion: '3.0',
-      maximumDurationInSeconds: 1200,
     });
 
     expect(putParameter).toHaveBeenCalledWith(
       `${metadataSsmPath}/mvm-1`,
-      JSON.stringify(metadata({ expiresAt: '2026-08-19T10:25:00.000Z' })),
+      JSON.stringify(metadata({ expiresAt: '2026-08-19T18:05:00.000Z' })),
       false,
     );
   });

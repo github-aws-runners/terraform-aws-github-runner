@@ -39,7 +39,6 @@ const config: MicrovmProviderConfig = {
   imageVersion: '3.0',
   executionRoleArn: 'arn:aws:iam::123456789012:role/microvm-runner',
   egressNetworkConnectors: ['arn:egress'],
-  maximumDurationInSeconds: 1200,
   metadataSsmPath,
   logging: { cloudWatch: { logGroup: '/aws/lambda-microvms/runner' } },
 };
@@ -64,6 +63,7 @@ beforeEach(() => {
   mockMicrovmClient.reset();
   vi.clearAllMocks();
   vi.useRealTimers();
+  delete process.env.MICROVM_MAXIMUM_DURATION_IN_SECONDS;
   process.env.AWS_REGION = 'eu-west-1';
   process.env.RUNNER_BOOT_TIME_IN_MINUTES = '5';
   vi.mocked(createMicrovmRunnerMetadata).mockResolvedValue();
@@ -73,7 +73,8 @@ beforeEach(() => {
 });
 
 describe('runMicrovmRunner', () => {
-  it('launches a runner and records durable ownership metadata', async () => {
+  it('launches a runner for the fixed lifetime and records durable ownership metadata', async () => {
+    process.env.MICROVM_MAXIMUM_DURATION_IN_SECONDS = '1200';
     mockMicrovmClient.on(RunMicrovmCommand).resolves({ microvmId: 'mvm-123', imageArn });
 
     await expect(
@@ -92,7 +93,7 @@ describe('runMicrovmRunner', () => {
       imageVersion: '3.0',
       executionRoleArn: config.executionRoleArn,
       egressNetworkConnectors: ['arn:egress'],
-      maximumDurationInSeconds: 1200,
+      maximumDurationInSeconds: 28_800,
       logging: config.logging,
       runHookPayload: '{"version":1}',
       clientToken: expect.any(String),
@@ -105,7 +106,6 @@ describe('runMicrovmRunner', () => {
       source: 'scale-up-lambda',
       imageArn,
       imageVersion: '3.0',
-      maximumDurationInSeconds: 1200,
     });
   });
 

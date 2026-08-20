@@ -3,6 +3,7 @@ import { deleteParameter, getParametersByPath, putParameter } from '@aws-github-
 import type { MicrovmState } from '@aws-sdk/client-lambda-microvms';
 
 import type { LambdaRunnerSource, RunnerType } from '../../../../core';
+import { MICROVM_LIFETIME_IN_SECONDS } from './lifetime';
 
 const logger = createChildLogger('microvm-runner-metadata');
 
@@ -40,7 +41,6 @@ export interface CreateMicrovmRunnerMetadataInput {
   environment: string;
   imageArn: string;
   imageVersion?: string;
-  maximumDurationInSeconds: number;
   microvmId: string;
   runnerOwner: string;
   runnerType: RunnerType;
@@ -166,7 +166,7 @@ export async function createMicrovmRunnerMetadata(
     imageVersion: input.imageVersion,
     createdAt: createdAt.toISOString(),
     expiresAt: new Date(
-      createdAt.getTime() + (input.maximumDurationInSeconds + EXPIRATION_GRACE_IN_SECONDS) * 1000,
+      createdAt.getTime() + (MICROVM_LIFETIME_IN_SECONDS + EXPIRATION_GRACE_IN_SECONDS) * 1000,
     ).toISOString(),
   };
 
