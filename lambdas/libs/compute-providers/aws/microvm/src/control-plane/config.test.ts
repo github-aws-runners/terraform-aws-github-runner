@@ -12,7 +12,6 @@ beforeEach(() => {
   delete process.env.MICROVM_IMAGE_VERSION;
   delete process.env.MICROVM_INGRESS_NETWORK_CONNECTORS;
   delete process.env.MICROVM_EGRESS_NETWORK_CONNECTORS;
-  delete process.env.MICROVM_MAXIMUM_DURATION_IN_SECONDS;
   delete process.env.MICROVM_LOG_GROUP;
 });
 
@@ -24,24 +23,21 @@ describe('loadMicrovmProviderConfig', () => {
       executionRoleArn: process.env.MICROVM_EXECUTION_ROLE_ARN,
       ingressNetworkConnectors: undefined,
       egressNetworkConnectors: undefined,
-      maximumDurationInSeconds: 3600,
       metadataSsmPath: '/github-action-runners/unit-test/microvm-metadata',
       logging: undefined,
     });
   });
 
-  it('loads versions, logging, duration, and either connector list format', () => {
+  it('loads versions, logging, and either connector list format', () => {
     process.env.MICROVM_IMAGE_VERSION = ' 3.0 ';
     process.env.MICROVM_INGRESS_NETWORK_CONNECTORS = '["arn:ingress:one","arn:ingress:two"]';
     process.env.MICROVM_EGRESS_NETWORK_CONNECTORS = 'arn:egress:one, arn:egress:two';
-    process.env.MICROVM_MAXIMUM_DURATION_IN_SECONDS = '1200';
     process.env.MICROVM_LOG_GROUP = ' /aws/lambda-microvms/runner ';
 
     expect(loadMicrovmProviderConfig()).toMatchObject({
       imageVersion: '3.0',
       ingressNetworkConnectors: ['arn:ingress:one', 'arn:ingress:two'],
       egressNetworkConnectors: ['arn:egress:one', 'arn:egress:two'],
-      maximumDurationInSeconds: 1200,
       logging: { cloudWatch: { logGroup: '/aws/lambda-microvms/runner' } },
     });
   });
@@ -55,14 +51,6 @@ describe('loadMicrovmProviderConfig', () => {
 
     expect(() => loadMicrovmProviderConfig()).toThrow(
       `${expectedName} must be configured for the MicroVM compute provider`,
-    );
-  });
-
-  it.each(['0', '28801', '1.5', 'invalid'])('rejects invalid maximum duration %s', (duration) => {
-    process.env.MICROVM_MAXIMUM_DURATION_IN_SECONDS = duration;
-
-    expect(() => loadMicrovmProviderConfig()).toThrow(
-      'MICROVM_MAXIMUM_DURATION_IN_SECONDS must be an integer between 1 and 28800',
     );
   });
 

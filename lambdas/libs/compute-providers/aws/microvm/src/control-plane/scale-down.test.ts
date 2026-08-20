@@ -18,7 +18,6 @@ const metadataSsmPath = '/github-action-runners/unit-test/microvm-metadata';
 const providerConfig = {
   imageIdentifier: imageArn,
   executionRoleArn: 'arn:aws:iam::123456789012:role/microvm-runner',
-  maximumDurationInSeconds: 1200,
   metadataSsmPath,
 };
 
