@@ -11,6 +11,7 @@ import type { MicrovmItem, MicrovmState, RunMicrovmCommandInput } from '@aws-sdk
 
 import type { LambdaRunnerSource, ListRunnerFilters, RunnerInfo, RunnerType } from '../../../../core';
 import { loadMicrovmProviderConfig, type MicrovmProviderConfig } from './config';
+import { MICROVM_LIFETIME_IN_SECONDS } from './lifetime';
 import {
   createMicrovmRunnerMetadata,
   deleteMicrovmRunnerMetadata,
@@ -77,7 +78,7 @@ export async function runMicrovmRunner(input: RunMicrovmRunnerInput): Promise<st
     executionRoleArn: input.config.executionRoleArn,
     ingressNetworkConnectors: input.config.ingressNetworkConnectors,
     egressNetworkConnectors: input.config.egressNetworkConnectors,
-    maximumDurationInSeconds: input.config.maximumDurationInSeconds,
+    maximumDurationInSeconds: MICROVM_LIFETIME_IN_SECONDS,
     logging: input.config.logging,
     runHookPayload: input.runHookPayload,
     clientToken: randomUUID(),
@@ -103,7 +104,6 @@ export async function runMicrovmRunner(input: RunMicrovmRunnerInput): Promise<st
       source: input.source,
       imageArn: response.imageArn ?? input.config.imageIdentifier,
       imageVersion: input.config.imageVersion,
-      maximumDurationInSeconds: input.config.maximumDurationInSeconds,
     });
   } catch (error) {
     logger.error(`Failed to record metadata for new MicroVM runner '${response.microvmId}', terminating it`, {

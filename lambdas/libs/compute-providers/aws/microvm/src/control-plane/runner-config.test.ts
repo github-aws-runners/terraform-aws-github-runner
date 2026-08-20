@@ -46,7 +46,6 @@ beforeEach(() => {
   vi.mocked(loadMicrovmProviderConfig).mockReturnValue({
     imageIdentifier: imageArn,
     executionRoleArn: 'arn:aws:iam::123456789012:role/microvm-runner',
-    maximumDurationInSeconds: 1200,
     metadataSsmPath,
   });
   vi.mocked(runMicrovmRunner).mockResolvedValue('mvm-1');
@@ -93,7 +92,6 @@ describe('createMicrovmRunners', () => {
     vi.mocked(loadMicrovmProviderConfig).mockReturnValue({
       imageIdentifier: imageArn,
       executionRoleArn: 'arn:aws:iam::123456789012:role/microvm-runner',
-      maximumDurationInSeconds: 1200,
       metadataSsmPath: '/github-action-runners/unit-test/token/metadata',
     });
 
@@ -138,7 +136,7 @@ describe('createMicrovmRunners', () => {
     expect(setMicrovmGithubRunnerId).toHaveBeenNthCalledWith(1, metadataSsmPath, 'mvm-1', 'github-mvm-1');
   });
 
-  it('applies dynamic labels without overriding the deployment-controlled duration', async () => {
+  it('applies supported dynamic labels to the provider configuration', async () => {
     const overrideImageArn = 'arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner-large';
     const overrideEgressConnectorArn =
       'arn:aws:lambda:eu-west-1:123456789012:network-connector:github-runner-private-egress';
@@ -159,7 +157,6 @@ describe('createMicrovmRunners', () => {
         imageIdentifier: overrideImageArn,
         imageVersion: '3.0',
         executionRoleArn: 'arn:aws:iam::123456789012:role/microvm-runner',
-        maximumDurationInSeconds: 1200,
         metadataSsmPath,
       },
       environment: 'unit-test',
