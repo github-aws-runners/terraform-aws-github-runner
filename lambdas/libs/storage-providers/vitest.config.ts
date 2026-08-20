@@ -12,6 +12,8 @@ export default mergeConfig(defaultConfig, {
         'provider.ts',
         'github-app-credentials.ts',
         'github-webhook-secret.ts',
+        'runner-config-consumer.ts',
+        'runner-config-consumer-common.ts',
         'runner-config.ts',
         'runner-group-cache.ts',
         'runner-matcher-config.ts',

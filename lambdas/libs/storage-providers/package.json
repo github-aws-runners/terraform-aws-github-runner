@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "main": "index.ts",
   "exports": {
-    ".": "./index.ts"
+    ".": "./index.ts",
+    "./runner-config-consumer": "./runner-config-consumer.ts"
   },
   "type": "module",
   "license": "MIT",
