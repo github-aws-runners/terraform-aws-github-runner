@@ -1,7 +1,15 @@
 import type { AddressInfo } from 'node:net';
 
 import type { Logger } from './contracts';
-import { createHookServer, type HookLifecycle, HOOK_PREFIX, parsePositiveInteger, shutdownHookServer } from './server';
+import {
+  createHookExitRequester,
+  createHookServer,
+  type HookLifecycle,
+  HOOK_PREFIX,
+  parsePositiveInteger,
+  shutdownHookServer,
+  watchRunnerCompletion,
+} from './server';
 
 const quietLogger: Logger = {
   error: () => undefined,
@@ -159,5 +167,44 @@ describe('hook server', () => {
     finishCleanup();
     await shutdown;
     expect(events).toEqual(['stop-accepting', 'cleanup-started', 'cleanup-finished', 'close-connections']);
+  });
+
+  it.each([
+    { expectedExitCode: 0, runnerExitCode: 0 },
+    { expectedExitCode: 1, runnerExitCode: 7 },
+    { expectedExitCode: 1, runnerExitCode: null },
+  ])('requests hook exit $expectedExitCode after runner status $runnerExitCode', async (testCase) => {
+    const requestExit = vi.fn();
+
+    watchRunnerCompletion({ completion: Promise.resolve(testCase.runnerExitCode) }, quietLogger, requestExit);
+
+    await Promise.resolve();
+    expect(requestExit).not.toHaveBeenCalled();
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(requestExit).toHaveBeenCalledOnce();
+    expect(requestExit).toHaveBeenCalledWith(testCase.expectedExitCode);
+  });
+
+  it('closes the hook exactly once before publishing its process exit code', async () => {
+    const events: string[] = [];
+    const requestExit = createHookExitRequester(
+      {
+        close: () => events.push('stop-accepting'),
+        closeAllConnections: () => events.push('close-connections'),
+      },
+      {
+        async stop(): Promise<void> {
+          events.push('stop-runner');
+        },
+      },
+      quietLogger,
+      (exitCode) => events.push(`exit:${exitCode}`),
+    );
+
+    requestExit(0);
+    requestExit(1);
+    await new Promise((resolve) => setImmediate(resolve));
+
+    expect(events).toEqual(['stop-accepting', 'stop-runner', 'close-connections', 'exit:0']);
   });
 });

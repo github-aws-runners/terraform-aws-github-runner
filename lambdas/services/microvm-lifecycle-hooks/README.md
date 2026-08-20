@@ -112,6 +112,8 @@ On `/run`, the hook starts `${RUNNER_ENTRYPOINT:-/opt/microvm/entrypoint.sh} run
 
 The entrypoint must write exactly `ready\n` to file descriptor 3 after the runner is ready. The JIT configuration, storage context, and AWS credential environment variables are not passed to the child process. `/terminate` sends `SIGTERM` to the detached process group and escalates to `SIGKILL` after the grace period.
 
+After the runner entrypoint exits on its own, the hook closes its HTTP server and exits with status `0` only when the runner exited cleanly. In the documented s6-overlay image layout above, that makes the foreground container command exit so s6 can stop the remaining image services and shut down the application container's PID 1. This path does not require `lambda:TerminateMicrovm` in the runner role. AWS documents only explicit termination and maximum duration as MicroVM termination triggers, so retain trusted control-plane cleanup and the maximum duration as failure backstops, and verify the container-exit behavior against a restored MicroVM before relying on it operationally.
+
 Useful environment variables are:
 
 | Variable                          | Default                      | Purpose                                       |

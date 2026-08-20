@@ -70,9 +70,28 @@ describe('RunnerLifecycle', () => {
     expect(events).toEqual([`consume:aws_ssm:${MICROVM_ID}`, `launch:${MICROVM_ID}:encoded-jit`]);
 
     processHandle.finish(0);
-    await new Promise((resolve) => setImmediate(resolve));
+    await expect(lifecycle.completion).resolves.toBe(0);
     await lifecycle.stop();
     expect(processHandle.exited).toBe(true);
+  });
+
+  it('does not report an externally requested stop as runner self-completion', async () => {
+    const processHandle = new DeferredProcess();
+    const lifecycle = new RunnerLifecycle(
+      { consume: async () => ({ jitConfig: 'encoded-jit' }) },
+      { launch: () => processHandle },
+      quietLogger,
+    );
+
+    await lifecycle.start(runRequest());
+    await lifecycle.stop();
+
+    await expect(
+      Promise.race([
+        lifecycle.completion.then(() => 'completed'),
+        new Promise<string>((resolve) => setImmediate(() => resolve('pending'))),
+      ]),
+    ).resolves.toBe('pending');
   });
 
   it('reserves the runner startup budget before consuming configuration', async () => {

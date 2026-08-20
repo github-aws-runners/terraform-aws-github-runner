@@ -19,6 +19,10 @@ export class RunnerLifecycle {
   private startAbort?: AbortController;
   private startPromise?: Promise<void>;
   private runner?: ManagedProcess;
+  private resolveCompletion!: (exitCode: number | null) => void;
+  public readonly completion = new Promise<number | null>((resolve) => {
+    this.resolveCompletion = resolve;
+  });
 
   public constructor(
     private readonly jitConfigSource: JitConfigSource,
@@ -122,10 +126,10 @@ export class RunnerLifecycle {
 
   private async monitorRunner(processHandle: ManagedProcess): Promise<void> {
     const exitCode = await processHandle.exit;
-    this.logger.info('GitHub Actions runner exited with status %s', exitCode ?? 'signal');
     if (this.runner === processHandle) {
       this.runner = undefined;
       this.state = 'stopped';
+      this.resolveCompletion(exitCode);
     }
   }
 

@@ -206,28 +206,62 @@ export async function shutdownHookServer(server: ClosableServer, lifecycle: Stop
   }
 }
 
+function hookExitCode(runnerExitCode: number | null): number {
+  return runnerExitCode === 0 ? 0 : 1;
+}
+
+export function watchRunnerCompletion(
+  lifecycle: Pick<RunnerLifecycle, 'completion'>,
+  logger: Logger,
+  requestExit: (exitCode: number) => void,
+): void {
+  void lifecycle.completion.then((runnerExitCode) => {
+    const exitCode = hookExitCode(runnerExitCode);
+    if (exitCode === 0) {
+      logger.info('GitHub Actions runner exited with status %s', runnerExitCode);
+    } else {
+      logger.error('GitHub Actions runner exited unexpectedly with status %s', runnerExitCode ?? 'signal');
+    }
+    // Let the /run handler flush its acknowledgement if the runner exits immediately after readiness.
+    setImmediate(() => requestExit(exitCode));
+  });
+}
+
+export function createHookExitRequester(
+  server: ClosableServer,
+  lifecycle: StoppableLifecycle,
+  logger: Logger,
+  setExitCode: (exitCode: number) => void = (exitCode) => {
+    // Let Node exit naturally after lifecycle cleanup and log streams have drained.
+    process.exitCode = exitCode;
+  },
+): (exitCode: number) => void {
+  let exiting = false;
+  return (exitCode: number): void => {
+    if (exiting) {
+      return;
+    }
+    exiting = true;
+    void shutdownHookServer(server, lifecycle).then(
+      () => setExitCode(exitCode),
+      () => {
+        logger.error('Lifecycle hook shutdown failed');
+        setExitCode(1);
+      },
+    );
+  };
+}
+
 export async function main(): Promise<void> {
   const logger = consoleLogger;
   const lifecycle = createDefaultLifecycle(logger);
   const server = createHookServer(lifecycle, logger);
   const port = parsePositiveInteger(process.env.HOOK_PORT, 8080, 65_535);
 
-  let shuttingDown = false;
-  const shutdown = (): void => {
-    if (shuttingDown) {
-      return;
-    }
-    shuttingDown = true;
-    void shutdownHookServer(server, lifecycle).then(
-      () => process.exit(0),
-      () => {
-        logger.error('Lifecycle hook shutdown failed');
-        process.exit(1);
-      },
-    );
-  };
-  process.once('SIGINT', shutdown);
-  process.once('SIGTERM', shutdown);
+  const requestExit = createHookExitRequester(server, lifecycle, logger);
+  process.once('SIGINT', () => requestExit(0));
+  process.once('SIGTERM', () => requestExit(0));
+  watchRunnerCompletion(lifecycle, logger, requestExit);
 
   await new Promise<void>((resolve, reject) => {
     const onError = (): void => reject(new Error('lifecycle hook server could not listen'));
