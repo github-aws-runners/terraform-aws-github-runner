@@ -84,7 +84,7 @@ variable "runner" {
     - `hooks.job_completed`: Script installed as the runner job-completed hook.
     - `iam.role.arn`: Resolved runner-role ARN used as the MicroVM execution role and referenced by provider policies.
     - `iam.role.name`: Resolved runner-role name used by provider resources.
-    - `iam.role.managed`: Whether runner-config manages the resolved runner role. Callers own an external role and must grant it `ssm:GetParameter` and `ssm:DeleteParameter` on the lane token path plus `logs:CreateLogStream` and `logs:PutLogEvents` on the provider-managed runtime log group.
+    - `iam.role.managed`: Whether runner-config manages the resolved runner role. Callers own an external role and must grant it `ssm:GetParameter` and `ssm:DeleteParameter` on the lane token path, `logs:CreateLogStream` and `logs:PutLogEvents` on the provider-managed runtime log group, and `lambda:TerminateMicrovm` on the approved image ARN or image allowlist for self-termination.
     - `iam.managed_policy_arns`: Common managed-policy ARNs returned with the provider-specific runner policies for attachment by runner-config.
     - `iam.path`: IAM path available to provider-managed IAM resources. Null derives the path from `prefix`.
   EOT

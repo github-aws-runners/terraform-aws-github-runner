@@ -5,6 +5,10 @@ locals {
   runner_token_path_arn    = "${local.ssm_parameter_arn_prefix}${var.ssm.paths.root}/${var.ssm.paths.tokens}/*"
 
   runner_inline_policies = {
+    terminate_self = {
+      name        = "runner-microvm-terminate-self"
+      policy_json = data.aws_iam_policy_document.runner_terminate_self.json
+    }
     ssm_jit = {
       name        = "runner-microvm-ssm-jit"
       policy_json = data.aws_iam_policy_document.runner_ssm_jit.json
@@ -13,6 +17,15 @@ locals {
       name        = "runner-microvm-runtime-logs"
       policy_json = data.aws_iam_policy_document.runner_runtime_logs.json
     }
+  }
+}
+
+data "aws_iam_policy_document" "runner_terminate_self" {
+  statement {
+    sid       = "SelfTerminate"
+    effect    = "Allow"
+    actions   = ["lambda:TerminateMicrovm"]
+    resources = local.microvm_image_resource_arns
   }
 }
 

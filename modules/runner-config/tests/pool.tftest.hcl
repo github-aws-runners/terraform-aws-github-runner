@@ -712,11 +712,12 @@ run "routes_lambda_microvm_provider" {
       && length(module.compute_aws_microvm) == 1
       && length(module.compute_aws_microvm_trust_policy) == 1
       && aws_iam_role.runner[0].assume_role_policy == module.compute_aws_microvm_trust_policy[0].assume_role_policy
-      && toset(keys(aws_iam_role_policy.runner_provider)) == toset(["runtime_logs", "ssm_jit"])
+      && toset(keys(aws_iam_role_policy.runner_provider)) == toset(["runtime_logs", "ssm_jit", "terminate_self"])
       && aws_iam_role_policy.runner_provider["runtime_logs"].name == "runner-microvm-runtime-logs"
       && aws_iam_role_policy.runner_provider["ssm_jit"].name == "runner-microvm-ssm-jit"
+      && aws_iam_role_policy.runner_provider["terminate_self"].name == "runner-microvm-terminate-self"
     )
-    error_message = "The aws.microvm leaf must dispatch only to the namespaced provider modules and attach both required policies to its managed runner role."
+    error_message = "The aws.microvm leaf must dispatch only to the namespaced provider modules and attach all three required policies to its managed runner role."
   }
 
   assert {

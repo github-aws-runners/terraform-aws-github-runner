@@ -183,7 +183,8 @@ run "exposes_microvm_control_plane_contract" {
   assert {
     condition = (
       toset(keys(output.provider.policies)) == toset(["runner", "scale_up", "scale_down", "pool"])
-      && toset(keys(output.provider.policies.runner.inline_policies)) == toset(["runtime_logs", "ssm_jit"])
+      && toset(keys(output.provider.policies.runner.inline_policies)) == toset(["runtime_logs", "ssm_jit", "terminate_self"])
+      && output.provider.policies.runner.inline_policies.terminate_self.name == "runner-microvm-terminate-self"
       && output.provider.policies.runner.inline_policies.ssm_jit.name == "runner-microvm-ssm-jit"
       && output.provider.policies.runner.inline_policies.runtime_logs.name == "runner-microvm-runtime-logs"
       && output.provider.policies.runner.managed_policy_arns["readonly"] == "arn:aws:iam::aws:policy/ReadOnlyAccess"
@@ -195,13 +196,17 @@ run "exposes_microvm_control_plane_contract" {
 
   assert {
     condition = (
-      data.aws_iam_policy_document.runner_ssm_jit.statement[0].actions == toset(["ssm:DeleteParameter", "ssm:GetParameter"])
+      data.aws_iam_policy_document.runner_terminate_self.statement[0].sid == "SelfTerminate"
+      && data.aws_iam_policy_document.runner_terminate_self.statement[0].effect == "Allow"
+      && data.aws_iam_policy_document.runner_terminate_self.statement[0].actions == toset(["lambda:TerminateMicrovm"])
+      && data.aws_iam_policy_document.runner_terminate_self.statement[0].resources == toset(["arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner"])
+      && data.aws_iam_policy_document.runner_ssm_jit.statement[0].actions == toset(["ssm:DeleteParameter", "ssm:GetParameter"])
       && data.aws_iam_policy_document.runner_ssm_jit.statement[0].resources == toset(["arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/tokens/*"])
       && length(data.aws_iam_policy_document.runner_runtime_logs.statement) == 1
       && data.aws_iam_policy_document.runner_runtime_logs.statement[0].actions == toset(["logs:CreateLogStream", "logs:PutLogEvents"])
       && data.aws_iam_policy_document.runner_runtime_logs.statement[0].resources == toset(["arn:aws:logs:eu-west-1:123456789012:log-group:/github-self-hosted-runners/microvm-test/microvm:*"])
     )
-    error_message = "Managed MicroVM runners must receive only lane-token JIT access and stream-write permissions on the provider-managed runtime log group."
+    error_message = "Managed MicroVM runners must receive self-termination, lane-token JIT access, and stream-write permissions on the provider-managed runtime log group."
   }
 
   assert {
@@ -306,7 +311,10 @@ run "accepts_external_runner_role_and_policy_overrides" {
 
   assert {
     condition = (
-      toset(keys(output.provider.policies.runner.inline_policies)) == toset(["runtime_logs", "ssm_jit"])
+      toset(keys(output.provider.policies.runner.inline_policies)) == toset(["runtime_logs", "ssm_jit", "terminate_self"])
+      && data.aws_iam_policy_document.runner_terminate_self.statement[0].resources == toset([
+        "arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner-*",
+      ])
       && length(data.aws_iam_policy_document.runner_runtime_logs.statement) == 1
       && data.aws_iam_policy_document.runner_runtime_logs.statement[0].resources == toset(["arn:aws:logs:eu-west-1:123456789012:log-group:/github-self-hosted-runners/microvm-test/microvm:*"])
     )
