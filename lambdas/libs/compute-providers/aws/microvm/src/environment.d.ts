@@ -9,7 +9,6 @@ declare global {
       MICROVM_IMAGE_VERSION: string | undefined;
       MICROVM_INGRESS_NETWORK_CONNECTORS: string | undefined;
       MICROVM_LOG_GROUP: string | undefined;
-      MICROVM_MAXIMUM_DURATION_IN_SECONDS: string | undefined;
       MICROVM_METADATA_SSM_PATH: string;
     }
   }

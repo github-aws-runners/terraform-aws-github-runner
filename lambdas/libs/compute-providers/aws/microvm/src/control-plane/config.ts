@@ -1,8 +1,5 @@
 import type { Logging, RunMicrovmCommandInput } from '@aws-sdk/client-lambda-microvms';
 
-const DEFAULT_MAXIMUM_DURATION_IN_SECONDS = 3600;
-const MAXIMUM_DURATION_IN_SECONDS = 28800;
-
 export interface MicrovmProviderConfig {
   egressNetworkConnectors?: string[];
   executionRoleArn: string;
@@ -10,7 +7,6 @@ export interface MicrovmProviderConfig {
   imageVersion?: string;
   ingressNetworkConnectors?: string[];
   logging?: Logging;
-  maximumDurationInSeconds: number;
   metadataSsmPath: string;
 }
 
@@ -59,23 +55,6 @@ function parseNetworkConnectors(name: string, value: string | undefined): string
   return connectors.map((connector) => connector.trim());
 }
 
-function parseMaximumDuration(value: string | undefined): number {
-  if (!optionalEnvironmentValue(value)) return DEFAULT_MAXIMUM_DURATION_IN_SECONDS;
-
-  const maximumDurationInSeconds = Number(value);
-  if (
-    !Number.isInteger(maximumDurationInSeconds) ||
-    maximumDurationInSeconds < 1 ||
-    maximumDurationInSeconds > MAXIMUM_DURATION_IN_SECONDS
-  ) {
-    throw new Error(
-      `MICROVM_MAXIMUM_DURATION_IN_SECONDS must be an integer between 1 and ${MAXIMUM_DURATION_IN_SECONDS}`,
-    );
-  }
-
-  return maximumDurationInSeconds;
-}
-
 export function loadMicrovmProviderConfig(): MicrovmProviderConfig {
   const logGroup = optionalEnvironmentValue(process.env.MICROVM_LOG_GROUP);
 
@@ -91,7 +70,6 @@ export function loadMicrovmProviderConfig(): MicrovmProviderConfig {
       'MICROVM_EGRESS_NETWORK_CONNECTORS',
       process.env.MICROVM_EGRESS_NETWORK_CONNECTORS,
     ),
-    maximumDurationInSeconds: parseMaximumDuration(process.env.MICROVM_MAXIMUM_DURATION_IN_SECONDS),
     metadataSsmPath: parseMetadataSsmPath(process.env.MICROVM_METADATA_SSM_PATH),
     logging: logGroup ? ({ cloudWatch: { logGroup } } satisfies RunMicrovmCommandInput['logging']) : undefined,
   };

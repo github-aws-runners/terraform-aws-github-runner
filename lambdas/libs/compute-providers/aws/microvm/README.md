@@ -29,9 +29,10 @@ The control-plane Lambda requires these provider environment variables:
 - `MICROVM_IMAGE_VERSION` (optional)
 - `MICROVM_INGRESS_NETWORK_CONNECTORS` (optional JSON array or comma-separated list)
 - `MICROVM_EGRESS_NETWORK_CONNECTORS` (optional JSON array or comma-separated list)
-- `MICROVM_MAXIMUM_DURATION_IN_SECONDS` (optional, defaults to 3600)
 - `MICROVM_METADATA_SSM_PATH` (dedicated SSM path for control-plane metadata)
 - `MICROVM_LOG_GROUP` (optional)
+
+Each runner is launched with a fixed lifetime of 28,800 seconds (8 hours).
 
 The control-plane role requires `ssm:GetParametersByPath`, `ssm:PutParameter`,
 and `ssm:DeleteParameter` on the dedicated metadata prefix, plus
