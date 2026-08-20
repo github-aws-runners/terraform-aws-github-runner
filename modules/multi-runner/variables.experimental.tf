@@ -257,7 +257,6 @@ variable "experimental" {
     - `compute_provider.aws.microvm.image_version`: Optional default MicroVM image version. The default is null.
     - `compute_provider.aws.microvm.ingress_network_connectors`: Default ingress Lambda network-connector ARNs passed to RunMicrovm. The default is `[]`; at most 10 may be configured.
     - `compute_provider.aws.microvm.egress_network_connectors`: Default egress Lambda network-connector ARNs passed to RunMicrovm. The default is `[]`; at most 10 may be configured.
-    - `compute_provider.aws.microvm.maximum_duration_in_seconds`: Optional default maximum MicroVM lifetime. The default is null; valid non-null values are integers from 1 through 28,800 seconds.
     - `compute_provider.aws.microvm.environment_variables`: Default provider-specific control-plane environment variables. The default is `{}` and runner-configuration values take precedence.
     - `compute_provider.aws.microvm.iam.resource_arns.images`: Optional default MicroVM image ARN allowlist for RunMicrovm and TerminateMicrovm. Null restricts both actions to the resolved `image_arn`; set an explicit list when dynamic image overrides are enabled. Required list and connector permissions remain separately scoped to `*`.
     - `compute_provider.aws.microvm.iam.additional_policy_json.scale_up`: Optional default additional provider policy attached separately to the scale-up Lambda role.
@@ -474,7 +473,6 @@ variable "experimental" {
     - `multi_runner_config[].compute_provider.aws.microvm.image_version`: Optional MicroVM image-version override. Null inherits the global value.
     - `multi_runner_config[].compute_provider.aws.microvm.ingress_network_connectors`: Up to 10 ingress Lambda network-connector ARNs passed to RunMicrovm. Null inherits the global list.
     - `multi_runner_config[].compute_provider.aws.microvm.egress_network_connectors`: Up to 10 egress Lambda network-connector ARNs passed to RunMicrovm. Null inherits the global list.
-    - `multi_runner_config[].compute_provider.aws.microvm.maximum_duration_in_seconds`: Optional integer maximum MicroVM lifetime from 1 through 28,800 seconds. Null inherits the global value.
     - `multi_runner_config[].compute_provider.aws.microvm.environment_variables`: Provider-specific control-plane environment variables merged after the global map.
     - `multi_runner_config[].compute_provider.aws.microvm.iam.resource_arns.images`: MicroVM image ARN allowlist for RunMicrovm and TerminateMicrovm. Null inherits the global list, after which a remaining null restricts both actions to the resolved `image_arn`.
     - `multi_runner_config[].compute_provider.aws.microvm.iam.additional_policy_json.scale_up`: Optional additional provider policy for scale-up. Null inherits the global policy.
@@ -871,12 +869,11 @@ variable "experimental" {
           }), {})
         }), {})
         microvm = optional(object({
-          image_arn                   = optional(string, null)
-          image_version               = optional(string, null)
-          ingress_network_connectors  = optional(list(string), [])
-          egress_network_connectors   = optional(list(string), [])
-          maximum_duration_in_seconds = optional(number, null)
-          environment_variables       = optional(map(string), {})
+          image_arn                  = optional(string, null)
+          image_version              = optional(string, null)
+          ingress_network_connectors = optional(list(string), [])
+          egress_network_connectors  = optional(list(string), [])
+          environment_variables      = optional(map(string), {})
           iam = optional(object({
             resource_arns = optional(object({
               images = optional(list(string), null)
@@ -1215,12 +1212,11 @@ variable "experimental" {
             tags = optional(map(string), {})
           }), null)
           microvm = optional(object({
-            image_arn                   = optional(string, null)
-            image_version               = optional(string, null)
-            ingress_network_connectors  = optional(list(string), null)
-            egress_network_connectors   = optional(list(string), null)
-            maximum_duration_in_seconds = optional(number, null)
-            environment_variables       = optional(map(string), {})
+            image_arn                  = optional(string, null)
+            image_version              = optional(string, null)
+            ingress_network_connectors = optional(list(string), null)
+            egress_network_connectors  = optional(list(string), null)
+            environment_variables      = optional(map(string), {})
             iam = optional(object({
               resource_arns = optional(object({
                 images = optional(list(string), null)

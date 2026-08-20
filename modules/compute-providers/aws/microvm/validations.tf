@@ -17,15 +17,6 @@ resource "terraform_data" "validate_config" {
     }
 
     precondition {
-      condition = var.config.maximum_duration_in_seconds == null ? true : (
-        floor(var.config.maximum_duration_in_seconds) == var.config.maximum_duration_in_seconds &&
-        var.config.maximum_duration_in_seconds >= 1 &&
-        var.config.maximum_duration_in_seconds <= 28800
-      )
-      error_message = "compute_provider.aws.microvm.maximum_duration_in_seconds must be null or an integer between 1 and 28800."
-    }
-
-    precondition {
       condition = (
         length(var.config.ingress_network_connectors) <= 10 &&
         alltrue([

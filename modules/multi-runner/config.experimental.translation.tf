@@ -295,12 +295,11 @@ locals {
           }
         }
         microvm = {
-          image_arn                   = null
-          image_version               = null
-          ingress_network_connectors  = []
-          egress_network_connectors   = []
-          maximum_duration_in_seconds = null
-          environment_variables       = {}
+          image_arn                  = null
+          image_version              = null
+          ingress_network_connectors = []
+          egress_network_connectors  = []
+          environment_variables      = {}
           iam = {
             resource_arns = {
               images = null
@@ -794,10 +793,6 @@ locals {
               egress_network_connectors = v.compute_provider.aws.microvm.egress_network_connectors != null ? (
                 v.compute_provider.aws.microvm.egress_network_connectors
               ) : local.raw_translated_experimental.compute_provider.aws.microvm.egress_network_connectors
-              maximum_duration_in_seconds = try(coalesce(
-                v.compute_provider.aws.microvm.maximum_duration_in_seconds,
-                local.raw_translated_experimental.compute_provider.aws.microvm.maximum_duration_in_seconds,
-              ), null)
               environment_variables = merge(
                 local.raw_translated_experimental.compute_provider.aws.microvm.environment_variables,
                 v.compute_provider.aws.microvm.environment_variables,

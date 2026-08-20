@@ -4755,7 +4755,6 @@ run "experimental_v2_resolves_mixed_aws_provider_lanes" {
             egress_network_connectors = [
               "arn:aws:lambda:eu-west-1:aws:network-connector:aws-network-connector:INTERNET_EGRESS",
             ]
-            maximum_duration_in_seconds = 3600
             environment_variables = {
               MICROVM_GLOBAL   = "global"
               MICROVM_OVERRIDE = "global"
@@ -4850,7 +4849,7 @@ run "experimental_v2_resolves_mixed_aws_provider_lanes" {
       && local.translated_experimental.multi_runner_config["micro"].compute_provider.aws.ec2 == null
       && local.translated_experimental.multi_runner_config["micro"].compute_provider.aws.microvm.image_arn == "arn:aws:lambda:eu-west-1:123456789012:microvm-image:global-runner"
       && local.translated_experimental.multi_runner_config["micro"].compute_provider.aws.microvm.image_version == "9"
-      && local.translated_experimental.multi_runner_config["micro"].compute_provider.aws.microvm.maximum_duration_in_seconds == 3600
+      && !contains(keys(local.translated_experimental.multi_runner_config["micro"].compute_provider.aws.microvm), "maximum_duration_in_seconds")
       && local.translated_experimental.multi_runner_config["micro"].compute_provider.aws.microvm.environment_variables["MICROVM_GLOBAL"] == "global"
       && local.translated_experimental.multi_runner_config["micro"].compute_provider.aws.microvm.environment_variables["MICROVM_OVERRIDE"] == "lane"
       && local.translated_experimental.multi_runner_config["micro"].compute_provider.aws.microvm.iam.resource_arns.images == tolist(["arn:aws:lambda:eu-west-1:123456789012:microvm-image:*"])

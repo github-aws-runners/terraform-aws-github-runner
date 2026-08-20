@@ -35,7 +35,6 @@ variables {
     egress_network_connectors = [
       "arn:aws:lambda:eu-west-1:123456789012:network-connector:egress",
     ]
-    maximum_duration_in_seconds = 3600
     environment_variables = {
       MICROVM_CLUSTER           = "runner-cluster"
       MICROVM_IMAGE_ARN         = "caller-cannot-override-provider-contract"
@@ -93,7 +92,6 @@ run "exposes_microvm_control_plane_contract" {
       && output.provider.environment_variables.scale_up["MICROVM_EXECUTION_ROLE_ARN"] == "arn:aws:iam::123456789012:role/microvm-test-runner"
       && jsondecode(output.provider.environment_variables.scale_up["MICROVM_INGRESS_NETWORK_CONNECTORS"])[0] == "arn:aws:lambda:eu-west-1:123456789012:network-connector:ingress"
       && jsondecode(output.provider.environment_variables.scale_up["MICROVM_EGRESS_NETWORK_CONNECTORS"])[0] == "arn:aws:lambda:eu-west-1:123456789012:network-connector:egress"
-      && output.provider.environment_variables.scale_up["MICROVM_MAXIMUM_DURATION_IN_SECONDS"] == "3600"
       && output.provider.environment_variables.scale_up["MICROVM_LOG_GROUP"] == "/github-self-hosted-runners/microvm-test/microvm"
       && output.provider.environment_variables.scale_up["MICROVM_METADATA_SSM_PATH"] == "/github-action-runners/config/microvm-metadata"
     )
@@ -110,13 +108,13 @@ run "exposes_microvm_control_plane_contract" {
         "MICROVM_IMAGE_VERSION",
         "MICROVM_INGRESS_NETWORK_CONNECTORS",
         "MICROVM_LOG_GROUP",
-        "MICROVM_MAXIMUM_DURATION_IN_SECONDS",
         "MICROVM_METADATA_SSM_PATH",
       ])
       && output.provider.environment_variables.scale_up == output.provider.environment_variables.scale_down
       && output.provider.environment_variables.scale_up == output.provider.environment_variables.pool
       && !contains(keys(output.provider.environment_variables.scale_up), "RUNNER_BOOT_TIME_IN_MINUTES")
       && !contains(keys(output.provider.environment_variables.scale_up), "MICROVM_IMAGE_IDENTIFIER")
+      && !contains(keys(output.provider.environment_variables.scale_up), "MICROVM_MAXIMUM_DURATION_IN_SECONDS")
       && !contains(keys(output.provider.environment_variables.scale_up), "MICROVM_RUN_CONFIG")
       && !contains(keys(output.provider.environment_variables.scale_up), "MICROVM_TAGS")
     )
@@ -277,7 +275,6 @@ run "accepts_external_runner_role_and_policy_overrides" {
       && output.provider.environment_variables.scale_up["MICROVM_INGRESS_NETWORK_CONNECTORS"] == ""
       && output.provider.environment_variables.scale_up["MICROVM_EGRESS_NETWORK_CONNECTORS"] == ""
       && output.provider.environment_variables.scale_up["MICROVM_LOG_GROUP"] == "/github-self-hosted-runners/microvm-test/microvm"
-      && output.provider.environment_variables.scale_up["MICROVM_MAXIMUM_DURATION_IN_SECONDS"] == ""
       && data.aws_iam_policy_document.scale_up.statement[0].resources == toset(["*"])
       && data.aws_iam_policy_document.scale_up.statement[1].resources == toset(["arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner-*"])
       && data.aws_iam_policy_document.scale_up.statement[2].resources == toset(["arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/config/microvm-metadata/*"])
@@ -377,19 +374,6 @@ run "rejects_invalid_image_resource_allowlist" {
           images = []
         }
       }
-    }
-  }
-
-  expect_failures = [terraform_data.validate_config]
-}
-
-run "rejects_fractional_maximum_duration" {
-  command = plan
-
-  variables {
-    config = {
-      image_arn                   = "arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner"
-      maximum_duration_in_seconds = 1.5
     }
   }
 

@@ -79,14 +79,13 @@ locals {
   runner_jit_ssm_path = "${trimsuffix(var.ssm.paths.root, "/")}/${trim(var.ssm.paths.tokens, "/")}"
 
   microvm_environment_variables = merge(var.config.environment_variables, {
-    MICROVM_EGRESS_NETWORK_CONNECTORS   = length(var.config.egress_network_connectors) == 0 ? "" : jsonencode(var.config.egress_network_connectors)
-    MICROVM_EXECUTION_ROLE_ARN          = var.runner.iam.role.arn
-    MICROVM_IMAGE_ARN                   = var.config.image_arn
-    MICROVM_IMAGE_VERSION               = var.config.image_version == null ? "" : var.config.image_version
-    MICROVM_INGRESS_NETWORK_CONNECTORS  = length(var.config.ingress_network_connectors) == 0 ? "" : jsonencode(var.config.ingress_network_connectors)
-    MICROVM_LOG_GROUP                   = aws_cloudwatch_log_group.runtime.name
-    MICROVM_MAXIMUM_DURATION_IN_SECONDS = var.config.maximum_duration_in_seconds == null ? "" : tostring(var.config.maximum_duration_in_seconds)
-    MICROVM_METADATA_SSM_PATH           = local.microvm_metadata_ssm_path
+    MICROVM_EGRESS_NETWORK_CONNECTORS  = length(var.config.egress_network_connectors) == 0 ? "" : jsonencode(var.config.egress_network_connectors)
+    MICROVM_EXECUTION_ROLE_ARN         = var.runner.iam.role.arn
+    MICROVM_IMAGE_ARN                  = var.config.image_arn
+    MICROVM_IMAGE_VERSION              = var.config.image_version == null ? "" : var.config.image_version
+    MICROVM_INGRESS_NETWORK_CONNECTORS = length(var.config.ingress_network_connectors) == 0 ? "" : jsonencode(var.config.ingress_network_connectors)
+    MICROVM_LOG_GROUP                  = aws_cloudwatch_log_group.runtime.name
+    MICROVM_METADATA_SSM_PATH          = local.microvm_metadata_ssm_path
   })
 
   scale_up_environment_variables   = local.microvm_environment_variables

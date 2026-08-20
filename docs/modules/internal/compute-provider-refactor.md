@@ -400,7 +400,6 @@ module "multi_runner" {
           ingress_network_connectors = [
             aws_lambda_network_connector.private_ingress.arn,
           ]
-          maximum_duration_in_seconds = 3600
         }
       }
     }

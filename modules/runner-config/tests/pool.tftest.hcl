@@ -675,7 +675,6 @@ run "routes_lambda_microvm_provider" {
           egress_network_connectors = [
             "arn:aws:lambda:eu-west-1:aws:network-connector:aws-network-connector:INTERNET_EGRESS",
           ]
-          maximum_duration_in_seconds = 1800
         }
       }
     }
