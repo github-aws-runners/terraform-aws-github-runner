@@ -29,5 +29,5 @@ it('exposes every compute provider capability from its compute-provider entry po
     terminate: expect.any(Function),
   });
   expect(webhookPlugin.type).toBe(webhookProvider.type);
-  expect(webhookPlugin.capabilities.dynamicLabels.selectQueue).toEqual(expect.any(Function));
+  expect(webhookPlugin.capabilities.dynamicLabels.getViolations).toEqual(expect.any(Function));
 });

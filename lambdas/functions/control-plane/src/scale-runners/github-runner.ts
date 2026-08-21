@@ -264,6 +264,15 @@ function addDelay(runnerIds: string[]) {
   return { isDelay, delay };
 }
 
+function mergeSsmParameterTags(
+  configuredTags: CreateGitHubRunnerConfig['ssmParameterStoreTags'],
+  providerTags: CreateGitHubRunnerConfig['ssmParameterStoreTags'],
+): CreateGitHubRunnerConfig['ssmParameterStoreTags'] {
+  const tagsByKey = new Map(configuredTags.map(({ Key, Value }) => [Key, Value]));
+  for (const { Key, Value } of providerTags) tagsByKey.set(Key, Value);
+  return [...tagsByKey].map(([Key, Value]) => ({ Key, Value }));
+}
+
 /**
  * Creates registration token configuration for non-ephemeral runners.
  *
@@ -285,7 +294,10 @@ async function createRegistrationTokenConfig(
 
   for (const runnerId of runnerIds) {
     await putParameter(`${githubRunnerConfig.ssmTokenPath}/${runnerId}`, runnerServiceConfig.join(' '), true, {
-      tags: [...(options.getSsmParameterTags?.(runnerId) ?? []), ...githubRunnerConfig.ssmParameterStoreTags],
+      tags: mergeSsmParameterTags(
+        githubRunnerConfig.ssmParameterStoreTags,
+        options.getSsmParameterTags?.(runnerId) ?? [],
+      ),
     });
     if (isDelay) {
       // Delay to prevent AWS ssm rate limits by being within the max throughput limit
@@ -342,17 +354,19 @@ async function createJitConfig(
 
       metricGitHubAppRateLimit(runnerConfig.headers, githubRunnerConfig.appIndex);
 
-      await options.onJitConfigCreated?.(runnerId, {
-        githubRunnerId: runnerConfig.data.runner.id.toString(),
-        runnerLabels,
-      });
-
       // store jit config in ssm parameter store
       logger.debug('Runner JIT config for ephemeral runner generated.', {
         instance: runnerId,
       });
       await putParameter(`${githubRunnerConfig.ssmTokenPath}/${runnerId}`, runnerConfig.data.encoded_jit_config, true, {
-        tags: [...(options.getSsmParameterTags?.(runnerId) ?? []), ...githubRunnerConfig.ssmParameterStoreTags],
+        tags: mergeSsmParameterTags(
+          githubRunnerConfig.ssmParameterStoreTags,
+          options.getSsmParameterTags?.(runnerId) ?? [],
+        ),
+      });
+      await options.onJitConfigCreated?.(runnerId, {
+        githubRunnerId: runnerConfig.data.runner.id.toString(),
+        runnerLabels,
       });
       if (isDelay) {
         // Delay to prevent AWS ssm rate limits by being within the max throughput limit

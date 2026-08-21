@@ -11,7 +11,9 @@
     "./aws/ec2/webhook": "./aws/ec2/webhook.ts",
     "./aws/ec2/control-plane": "./aws/ec2/control-plane.ts",
     "./aws/ec2/control-plane/runners": "./aws/ec2/src/control-plane/runners.ts",
-    "./aws/ec2/control-plane/runner-config": "./aws/ec2/src/control-plane/runner-config.ts"
+    "./aws/ec2/control-plane/runner-config": "./aws/ec2/src/control-plane/runner-config.ts",
+    "./aws/microvm/webhook": "./aws/microvm/webhook.ts",
+    "./aws/microvm/control-plane": "./aws/microvm/control-plane.ts"
   },
   "type": "module",
   "license": "MIT",
@@ -27,6 +29,7 @@
     "@aws-github-runner/aws-powertools-util": "*",
     "@aws-github-runner/aws-ssm-util": "*",
     "@aws-sdk/client-ec2": "^3.1009.0",
+    "@aws-sdk/client-lambda-microvms": "^3.1074.0",
     "@octokit/rest": "22.0.1",
     "moment": "2.29.4",
     "yn": "3.1.1"
