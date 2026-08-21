@@ -40,8 +40,8 @@ variables {
       MICROVM_CLUSTER               = "runner-cluster"
       MICROVM_IMAGE_ARN             = "caller-cannot-override-provider-contract"
       MICROVM_METADATA_SSM_PATH     = "/caller/cannot/override/provider-contract"
-      MICROVM_METADATA_TAGS         = "caller-cannot-override-provider-contract"
-      MICROVM_RUNNER_CONFIG_SSM_ARN = "caller-cannot-override-provider-contract"
+      MICROVM_METADATA_TAGS         = "retired-provider-contract"
+      MICROVM_RUNNER_CONFIG_SSM_ARN = "retired-provider-contract"
     }
   }
 
@@ -112,16 +112,6 @@ run "exposes_microvm_control_plane_contract" {
       && jsondecode(output.provider.environment_variables.scale_up["MICROVM_EGRESS_NETWORK_CONNECTORS"])[0] == "arn:aws:lambda:eu-west-1:123456789012:network-connector:egress"
       && output.provider.environment_variables.scale_up["MICROVM_LOG_GROUP"] == "/github-self-hosted-runners/microvm-test/microvm"
       && output.provider.environment_variables.scale_up["MICROVM_METADATA_SSM_PATH"] == "/github-action-runners/config/microvm-metadata"
-      && output.provider.environment_variables.scale_up["MICROVM_RUNNER_CONFIG_SSM_ARN"] == "arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/config"
-      && tomap({
-        for tag in jsondecode(output.provider.environment_variables.scale_up["MICROVM_METADATA_TAGS"]) :
-        tag.Key => tag.Value
-        }) == tomap({
-        Name                     = "parameter"
-        "ghr:environment"        = "microvm-test"
-        "ghr:runner_name_prefix" = "microvm-"
-        "ghr:ssm_config_path"    = "/github-action-runners/config"
-      })
     )
     error_message = "The MicroVM provider must map every configured runtime input to the canonical Lambda environment contract."
   }
@@ -137,8 +127,6 @@ run "exposes_microvm_control_plane_contract" {
         "MICROVM_INGRESS_NETWORK_CONNECTORS",
         "MICROVM_LOG_GROUP",
         "MICROVM_METADATA_SSM_PATH",
-        "MICROVM_METADATA_TAGS",
-        "MICROVM_RUNNER_CONFIG_SSM_ARN",
       ])
       && output.provider.environment_variables.scale_up == output.provider.environment_variables.scale_down
       && output.provider.environment_variables.scale_up == output.provider.environment_variables.pool
@@ -147,6 +135,8 @@ run "exposes_microvm_control_plane_contract" {
       && !contains(keys(output.provider.environment_variables.scale_up), "MICROVM_MAXIMUM_DURATION_IN_SECONDS")
       && !contains(keys(output.provider.environment_variables.scale_up), "MICROVM_RUN_CONFIG")
       && !contains(keys(output.provider.environment_variables.scale_up), "MICROVM_TAGS")
+      && !contains(keys(output.provider.environment_variables.scale_up), "MICROVM_METADATA_TAGS")
+      && !contains(keys(output.provider.environment_variables.scale_up), "MICROVM_RUNNER_CONFIG_SSM_ARN")
     )
     error_message = "All three control-plane fragments must match the runtime key inventory and omit stale or webhook-owned keys."
   }
@@ -227,7 +217,7 @@ run "exposes_microvm_control_plane_contract" {
       data.aws_iam_policy_document.runner_ssm_jit.statement[0].actions == toset(["ssm:DeleteParameter", "ssm:GetParameter"])
       && data.aws_iam_policy_document.runner_ssm_jit.statement[0].resources == toset(["arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/tokens/*"])
       && data.aws_iam_policy_document.runner_metadata.statement[0].actions == toset(["ssm:GetParameter"])
-      && data.aws_iam_policy_document.runner_metadata.statement[0].resources == toset(["${output.provider.environment_variables.scale_up["MICROVM_RUNNER_CONFIG_SSM_ARN"]}/microvm-metadata/*"])
+      && data.aws_iam_policy_document.runner_metadata.statement[0].resources == toset(["arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/config/microvm-metadata/*"])
       && length(data.aws_iam_policy_document.runner_runtime_logs.statement) == 1
       && data.aws_iam_policy_document.runner_runtime_logs.statement[0].actions == toset(["logs:CreateLogStream", "logs:PutLogEvents"])
       && data.aws_iam_policy_document.runner_runtime_logs.statement[0].resources == toset(["arn:aws:logs:eu-west-1:123456789012:log-group:/github-self-hosted-runners/microvm-test/microvm:*"])
@@ -279,7 +269,6 @@ run "normalizes_ssm_paths_and_arns" {
   assert {
     condition = (
       output.provider.environment_variables.scale_up["MICROVM_METADATA_SSM_PATH"] == "/github-action-runners/config/microvm-metadata"
-      && output.provider.environment_variables.scale_up["MICROVM_RUNNER_CONFIG_SSM_ARN"] == "arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/config"
       && data.aws_iam_policy_document.runner_ssm_jit.statement[0].resources == toset(["arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/tokens/*"])
       && data.aws_iam_policy_document.runner_metadata.statement[0].resources == toset(["arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/config/microvm-metadata/*"])
     )
@@ -361,7 +350,7 @@ run "accepts_external_runner_role_and_policy_overrides" {
   assert {
     condition = (
       toset(keys(output.provider.policies.runner.inline_policies)) == toset(["runner_metadata", "runtime_logs", "ssm_jit"])
-      && data.aws_iam_policy_document.runner_metadata.statement[0].resources == toset(["${output.provider.environment_variables.scale_up["MICROVM_RUNNER_CONFIG_SSM_ARN"]}/microvm-metadata/*"])
+      && data.aws_iam_policy_document.runner_metadata.statement[0].resources == toset(["arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/config/microvm-metadata/*"])
       && length(data.aws_iam_policy_document.runner_runtime_logs.statement) == 1
       && data.aws_iam_policy_document.runner_runtime_logs.statement[0].resources == toset(["arn:aws:logs:eu-west-1:123456789012:log-group:/github-self-hosted-runners/microvm-test/microvm:*"])
     )

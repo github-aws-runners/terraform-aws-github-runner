@@ -4690,16 +4690,11 @@ run "experimental_v2_routes_microvm_only_without_ec2_binary_discovery" {
       && module.runner_configs["micro"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables["COMPUTE_PROVIDER_TYPE"] == "microvm"
       && module.runner_configs["micro"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables["MICROVM_IMAGE_ARN"] == "arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner"
       && module.runner_configs["micro"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables["MICROVM_METADATA_SSM_PATH"] == "/github-action-runners/github-actions/micro/runners/config/microvm-metadata"
-      && module.runner_configs["micro"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables["MICROVM_RUNNER_CONFIG_SSM_ARN"] == "arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/github-actions/micro/runners/config"
-      && tomap({
-        for tag in jsondecode(module.runner_configs["micro"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables["MICROVM_METADATA_TAGS"]) :
-        tag.Key => tag.Value
-        }) == tomap({
-        Name                     = "github-actions-micro-action-runner"
-        "ghr:environment"        = "github-actions-micro"
-        "ghr:runner_name_prefix" = ""
-        "ghr:ssm_config_path"    = "/github-action-runners/github-actions/micro/runners/config"
-      })
+      && module.runner_configs["micro"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables["SSM_CONFIG_PATH"] == "/github-action-runners/github-actions/micro/runners/config"
+      && module.runner_configs["micro"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables["ENVIRONMENT"] == "github-actions-micro"
+      && module.runner_configs["micro"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables["RUNNER_NAME_PREFIX"] == ""
+      && !contains(keys(module.runner_configs["micro"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables), "MICROVM_METADATA_TAGS")
+      && !contains(keys(module.runner_configs["micro"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables), "MICROVM_RUNNER_CONFIG_SSM_ARN")
       && !contains(keys(module.runner_configs["micro"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables), "INSTANCE_TYPES")
       && output.runners_map_v2["micro"].provider.aws.ec2 == null
       && output.runners_map_v2["micro"].provider.aws.microvm.image_arn == "arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner"

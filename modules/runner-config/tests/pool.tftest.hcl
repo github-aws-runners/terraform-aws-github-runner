@@ -745,22 +745,15 @@ run "routes_lambda_microvm_provider" {
       && contains(keys(module.orchestration_webhook[0].scale_up.lambda.environment[0].variables), "MICROVM_EXECUTION_ROLE_ARN")
       && module.orchestration_webhook[0].scale_up.lambda.environment[0].variables["MICROVM_LOG_GROUP"] == "/github-self-hosted-runners/github-actions/microvm"
       && module.orchestration_webhook[0].scale_up.lambda.environment[0].variables["MICROVM_METADATA_SSM_PATH"] == "/github-runner/config/microvm-metadata"
-      && module.orchestration_webhook[0].scale_up.lambda.environment[0].variables["MICROVM_RUNNER_CONFIG_SSM_ARN"] == "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/config"
-      && tomap({
-        for tag in jsondecode(module.orchestration_webhook[0].scale_up.lambda.environment[0].variables["MICROVM_METADATA_TAGS"]) :
-        tag.Key => tag.Value
-        }) == tomap({
-        Name                     = "github-actions-action-runner"
-        "ghr:environment"        = "github-actions"
-        "ghr:runner_name_prefix" = ""
-        "ghr:ssm_config_path"    = "/github-runner/config"
-      })
+      && module.orchestration_webhook[0].scale_up.lambda.environment[0].variables["SSM_CONFIG_PATH"] == "/github-runner/config"
+      && module.orchestration_webhook[0].scale_up.lambda.environment[0].variables["ENVIRONMENT"] == "github-actions"
+      && module.orchestration_webhook[0].scale_up.lambda.environment[0].variables["RUNNER_NAME_PREFIX"] == ""
       && module.orchestration_webhook[0].scale_down.lambda.environment[0].variables["MICROVM_METADATA_SSM_PATH"] == "/github-runner/config/microvm-metadata"
-      && module.orchestration_webhook[0].scale_down.lambda.environment[0].variables["MICROVM_RUNNER_CONFIG_SSM_ARN"] == "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/config"
-      && module.orchestration_webhook[0].scale_down.lambda.environment[0].variables["MICROVM_METADATA_TAGS"] == module.orchestration_webhook[0].scale_up.lambda.environment[0].variables["MICROVM_METADATA_TAGS"]
       && module.orchestration_webhook[0].scale_down.lambda.environment[0].variables["RUNNER_BOOT_TIME_IN_MINUTES"] == "5"
       && !contains(keys(module.orchestration_webhook[0].scale_up.lambda.environment[0].variables), "MICROVM_RUN_CONFIG")
       && !contains(keys(module.orchestration_webhook[0].scale_up.lambda.environment[0].variables), "MICROVM_TAGS")
+      && !contains(keys(module.orchestration_webhook[0].scale_up.lambda.environment[0].variables), "MICROVM_METADATA_TAGS")
+      && !contains(keys(module.orchestration_webhook[0].scale_up.lambda.environment[0].variables), "MICROVM_RUNNER_CONFIG_SSM_ARN")
     )
     error_message = "Runner-config must preserve the runtime provider type and merge the canonical MicroVM environment with webhook-owned lifecycle values."
   }

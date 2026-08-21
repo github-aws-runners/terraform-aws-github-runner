@@ -73,23 +73,17 @@ locals {
   microvm_metadata_ssm_path      = "/${trim(var.ssm.paths.root, "/")}/${trim(var.ssm.paths.config, "/")}/microvm-metadata"
   microvm_metadata_path_arn      = "${local.ssm_parameter_arn_prefix}${local.microvm_metadata_ssm_path}"
   microvm_metadata_parameter_arn = "${local.microvm_metadata_path_arn}/*"
-  microvm_metadata_tags = {
-    "Name" = lookup(
-      merge(var.ssm.tags, var.ssm.parameters.tags),
-      "Name",
-      local.provider_tags["Name"],
-    )
-    "ghr:environment"        = var.prefix
-    "ghr:ssm_config_path"    = "/${trim(var.ssm.paths.root, "/")}/${trim(var.ssm.paths.config, "/")}"
-    "ghr:runner_name_prefix" = var.runner.name_prefix
-  }
   microvm_image_resource_arns = coalesce(
     var.config.iam.resource_arns.images,
     [var.config.image_arn],
   )
   runner_jit_ssm_path = "/${trim(var.ssm.paths.root, "/")}/${trim(var.ssm.paths.tokens, "/")}"
 
-  microvm_environment_variables = merge(var.config.environment_variables, {
+  microvm_custom_environment_variables = {
+    for key, value in var.config.environment_variables : key => value
+    if !contains(["MICROVM_METADATA_TAGS", "MICROVM_RUNNER_CONFIG_SSM_ARN"], key)
+  }
+  microvm_environment_variables = merge(local.microvm_custom_environment_variables, {
     MICROVM_EGRESS_NETWORK_CONNECTORS  = length(var.config.egress_network_connectors) == 0 ? "" : jsonencode(var.config.egress_network_connectors)
     MICROVM_EXECUTION_ROLE_ARN         = var.runner.iam.role.arn
     MICROVM_IMAGE_ARN                  = var.config.image_arn
@@ -97,13 +91,6 @@ locals {
     MICROVM_INGRESS_NETWORK_CONNECTORS = length(var.config.ingress_network_connectors) == 0 ? "" : jsonencode(var.config.ingress_network_connectors)
     MICROVM_LOG_GROUP                  = aws_cloudwatch_log_group.runtime.name
     MICROVM_METADATA_SSM_PATH          = local.microvm_metadata_ssm_path
-    MICROVM_RUNNER_CONFIG_SSM_ARN      = local.ssm_config_arn
-    MICROVM_METADATA_TAGS = jsonencode([
-      for key, value in local.microvm_metadata_tags : {
-        Key   = key
-        Value = value
-      }
-    ])
   })
 
   scale_up_environment_variables   = local.microvm_environment_variables
