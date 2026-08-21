@@ -5,7 +5,6 @@ import yn from 'yn';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
 import { controlPlaneProviderRegistry } from '../control-plane-providers';
-import { withRunnerCountCache } from './runner-count-cache-decorator';
 import {
   getGitHubEnterpriseApiUrl,
   getInstallationId,
@@ -93,10 +92,10 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       ? validateSsmParameterStoreTags(process.env.SSM_PARAMETER_STORE_TAGS)
       : [];
   const computeProviderType = resolveComputeProviderType(process.env.COMPUTE_PROVIDER_TYPE);
-  const computeProvider = withRunnerCountCache({
+  const computeProvider = {
     ...controlPlaneProviderRegistry.capability(computeProviderType, 'scaleUp')(),
     type: computeProviderType,
-  });
+  };
 
   const { ghesApiUrl, ghesBaseUrl } = getGitHubEnterpriseApiUrl();
 

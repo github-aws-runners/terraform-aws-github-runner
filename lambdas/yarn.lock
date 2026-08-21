@@ -147,6 +147,7 @@ __metadata:
   dependencies:
     "@aws-github-runner/aws-powertools-util": "npm:*"
     "@aws-github-runner/aws-ssm-util": "npm:*"
+    "@aws-sdk/client-dynamodb": "npm:^3.1009.0"
     "@aws-sdk/client-ec2": "npm:^3.1009.0"
     "@octokit/rest": "npm:22.0.1"
     aws-sdk-client-mock: "npm:^4.1.0"
@@ -355,6 +356,24 @@ __metadata:
     "@middy/core":
       optional: true
   checksum: 10c0/c17b43c193af263b49852e14eeb2d8aab55ca2351d52a6fa4844dbc74ec5b0a9299442a9b82cf682e82fd99ef49146321f18d7cb47797007d548b78776d9b630
+  languageName: node
+  linkType: hard
+
+"@aws-sdk/client-dynamodb@npm:^3.1009.0":
+  version: 3.1110.0
+  resolution: "@aws-sdk/client-dynamodb@npm:3.1110.0"
+  dependencies:
+    "@aws-sdk/core": "npm:^3.977.7"
+    "@aws-sdk/credential-provider-node": "npm:^3.972.79"
+    "@aws-sdk/dynamodb-codec": "npm:^3.973.42"
+    "@aws-sdk/middleware-endpoint-discovery": "npm:^3.972.28"
+    "@aws-sdk/types": "npm:^3.974.3"
+    "@smithy/core": "npm:^3.31.1"
+    "@smithy/fetch-http-handler": "npm:^5.6.13"
+    "@smithy/node-http-handler": "npm:^4.9.13"
+    "@smithy/types": "npm:^4.16.1"
+    tslib: "npm:^2.6.2"
+  checksum: 10c0/03360588d6f24961f5fabe6799c3a5426ab587b045333f7f4d989417ec51ccc7a14efcee6b46d3dd0e27412cbf6b0d3c48754326436c396de46ce1cd9edf54a3
   languageName: node
   linkType: hard
 
