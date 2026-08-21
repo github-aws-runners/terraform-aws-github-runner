@@ -70,7 +70,7 @@ data "aws_iam_policy_document" "scale_down" {
 }
 
 locals {
-  microvm_metadata_ssm_path      = "${trimsuffix(var.ssm.paths.root, "/")}/${trim(var.ssm.paths.config, "/")}/microvm-metadata"
+  microvm_metadata_ssm_path      = "/${trim(var.ssm.paths.root, "/")}/${trim(var.ssm.paths.config, "/")}/microvm-metadata"
   microvm_metadata_path_arn      = "${local.ssm_parameter_arn_prefix}${local.microvm_metadata_ssm_path}"
   microvm_metadata_parameter_arn = "${local.microvm_metadata_path_arn}/*"
   microvm_metadata_tags = {
@@ -80,14 +80,14 @@ locals {
       local.provider_tags["Name"],
     )
     "ghr:environment"        = var.prefix
-    "ghr:ssm_config_path"    = "${trimsuffix(var.ssm.paths.root, "/")}/${trim(var.ssm.paths.config, "/")}"
+    "ghr:ssm_config_path"    = "/${trim(var.ssm.paths.root, "/")}/${trim(var.ssm.paths.config, "/")}"
     "ghr:runner_name_prefix" = var.runner.name_prefix
   }
   microvm_image_resource_arns = coalesce(
     var.config.iam.resource_arns.images,
     [var.config.image_arn],
   )
-  runner_jit_ssm_path = "${trimsuffix(var.ssm.paths.root, "/")}/${trim(var.ssm.paths.tokens, "/")}"
+  runner_jit_ssm_path = "/${trim(var.ssm.paths.root, "/")}/${trim(var.ssm.paths.tokens, "/")}"
 
   microvm_environment_variables = merge(var.config.environment_variables, {
     MICROVM_EGRESS_NETWORK_CONNECTORS  = length(var.config.egress_network_connectors) == 0 ? "" : jsonencode(var.config.egress_network_connectors)
@@ -97,6 +97,7 @@ locals {
     MICROVM_INGRESS_NETWORK_CONNECTORS = length(var.config.ingress_network_connectors) == 0 ? "" : jsonencode(var.config.ingress_network_connectors)
     MICROVM_LOG_GROUP                  = aws_cloudwatch_log_group.runtime.name
     MICROVM_METADATA_SSM_PATH          = local.microvm_metadata_ssm_path
+    MICROVM_RUNNER_CONFIG_SSM_ARN      = local.ssm_config_arn
     MICROVM_METADATA_TAGS = jsonencode([
       for key, value in local.microvm_metadata_tags : {
         Key   = key

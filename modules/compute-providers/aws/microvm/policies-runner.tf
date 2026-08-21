@@ -2,9 +2,8 @@ data "aws_caller_identity" "current" {}
 
 locals {
   ssm_parameter_arn_prefix = "arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter"
-  runner_token_path_arn    = "${local.ssm_parameter_arn_prefix}${var.ssm.paths.root}/${var.ssm.paths.tokens}/*"
-  ssm_config_arn           = "${local.ssm_parameter_arn_prefix}${var.ssm.paths.root}/${var.ssm.paths.config}"
-
+  runner_token_path_arn    = "${local.ssm_parameter_arn_prefix}/${trim(var.ssm.paths.root, "/")}/${trim(var.ssm.paths.tokens, "/")}/*"
+  ssm_config_arn           = "${local.ssm_parameter_arn_prefix}/${trim(var.ssm.paths.root, "/")}/${trim(var.ssm.paths.config, "/")}"
 
   runner_inline_policies = {
     ssm_jit = {
@@ -35,16 +34,9 @@ data "aws_iam_policy_document" "runner_ssm_jit" {
 
 data "aws_iam_policy_document" "runner_metadata" {
   statement {
-    effect = "Allow"
-    actions = [
-      "ssm:GetParameter",
-      "ssm:GetParameters",
-      "ssm:GetParametersByPath",
-    ]
-    resources = [
-      local.ssm_config_arn,
-      "${local.ssm_config_arn}/*",
-    ]
+    effect    = "Allow"
+    actions   = ["ssm:GetParameter"]
+    resources = [local.microvm_metadata_parameter_arn]
   }
 }
 

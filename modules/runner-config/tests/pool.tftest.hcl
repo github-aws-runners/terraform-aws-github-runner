@@ -1,4 +1,10 @@
 mock_provider "aws" {
+  mock_data "aws_caller_identity" {
+    defaults = {
+      account_id = "123456789012"
+    }
+  }
+
   mock_data "aws_iam_policy_document" {
     defaults = {
       json = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"lambda.amazonaws.com\"},\"Action\":\"sts:AssumeRole\"}]}"
@@ -711,11 +717,12 @@ run "routes_lambda_microvm_provider" {
       && length(module.compute_aws_microvm) == 1
       && length(module.compute_aws_microvm_trust_policy) == 1
       && aws_iam_role.runner[0].assume_role_policy == module.compute_aws_microvm_trust_policy[0].assume_role_policy
-      && toset(keys(aws_iam_role_policy.runner_provider)) == toset(["runtime_logs", "ssm_jit"])
+      && toset(keys(aws_iam_role_policy.runner_provider)) == toset(["runner_metadata", "runtime_logs", "ssm_jit"])
+      && aws_iam_role_policy.runner_provider["runner_metadata"].name == "runner-microvm-metadata"
       && aws_iam_role_policy.runner_provider["runtime_logs"].name == "runner-microvm-runtime-logs"
       && aws_iam_role_policy.runner_provider["ssm_jit"].name == "runner-microvm-ssm-jit"
     )
-    error_message = "The aws.microvm leaf must dispatch only to the namespaced provider modules and attach both required policies to its managed runner role."
+    error_message = "The aws.microvm leaf must dispatch only to the namespaced provider modules and attach all three required policies to its managed runner role."
   }
 
   assert {
@@ -738,6 +745,7 @@ run "routes_lambda_microvm_provider" {
       && contains(keys(module.orchestration_webhook[0].scale_up.lambda.environment[0].variables), "MICROVM_EXECUTION_ROLE_ARN")
       && module.orchestration_webhook[0].scale_up.lambda.environment[0].variables["MICROVM_LOG_GROUP"] == "/github-self-hosted-runners/github-actions/microvm"
       && module.orchestration_webhook[0].scale_up.lambda.environment[0].variables["MICROVM_METADATA_SSM_PATH"] == "/github-runner/config/microvm-metadata"
+      && module.orchestration_webhook[0].scale_up.lambda.environment[0].variables["MICROVM_RUNNER_CONFIG_SSM_ARN"] == "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/config"
       && tomap({
         for tag in jsondecode(module.orchestration_webhook[0].scale_up.lambda.environment[0].variables["MICROVM_METADATA_TAGS"]) :
         tag.Key => tag.Value
@@ -748,6 +756,7 @@ run "routes_lambda_microvm_provider" {
         "ghr:ssm_config_path"    = "/github-runner/config"
       })
       && module.orchestration_webhook[0].scale_down.lambda.environment[0].variables["MICROVM_METADATA_SSM_PATH"] == "/github-runner/config/microvm-metadata"
+      && module.orchestration_webhook[0].scale_down.lambda.environment[0].variables["MICROVM_RUNNER_CONFIG_SSM_ARN"] == "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/config"
       && module.orchestration_webhook[0].scale_down.lambda.environment[0].variables["MICROVM_METADATA_TAGS"] == module.orchestration_webhook[0].scale_up.lambda.environment[0].variables["MICROVM_METADATA_TAGS"]
       && module.orchestration_webhook[0].scale_down.lambda.environment[0].variables["RUNNER_BOOT_TIME_IN_MINUTES"] == "5"
       && !contains(keys(module.orchestration_webhook[0].scale_up.lambda.environment[0].variables), "MICROVM_RUN_CONFIG")
