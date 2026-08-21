@@ -88,7 +88,6 @@ export async function runMicrovmRunner(input: RunMicrovmRunnerInput): Promise<st
     source: input.source,
     imageArn: input.config.imageIdentifier,
     imageVersion: input.config.imageVersion ?? 'version-validation',
-    metadataTags: input.config.metadataTags,
     ssmParameterStoreTags: input.ssmParameterStoreTags,
   });
 
@@ -127,7 +126,6 @@ export async function runMicrovmRunner(input: RunMicrovmRunnerInput): Promise<st
       source: input.source,
       imageArn,
       imageVersion,
-      metadataTags: input.config.metadataTags,
       ssmParameterStoreTags: input.ssmParameterStoreTags,
     });
   } catch (error) {

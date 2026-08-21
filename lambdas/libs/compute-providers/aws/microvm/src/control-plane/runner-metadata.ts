@@ -2,8 +2,7 @@ import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import { addParameterTags, deleteParameter, getParametersByPath, putParameter } from '@aws-github-runner/aws-ssm-util';
 import type { MicrovmState } from '@aws-sdk/client-lambda-microvms';
 
-import type { GitHubRunnerMetadata, LambdaRunnerSource, RunnerType } from '../../../../core';
-import type { MicrovmMetadataTag } from './config';
+import type { CreateGitHubRunnerConfig, GitHubRunnerMetadata, LambdaRunnerSource, RunnerType } from '../../../../core';
 import { MICROVM_LIFETIME_IN_SECONDS } from './lifetime';
 
 const logger = createChildLogger('microvm-runner-metadata');
@@ -22,6 +21,7 @@ const GITHUB_RUNNER_ID_SUFFIX = '.github-runner-id';
 const ORPHAN_SUFFIX = '.orphan';
 const CLEANUP_REQUESTED_AT_SUFFIX = '.cleanup-requested-at';
 const ACTIVE_STATES = new Set<MicrovmState>(['PENDING', 'RUNNING', 'SUSPENDING', 'SUSPENDED']);
+type MicrovmMetadataTag = CreateGitHubRunnerConfig['ssmParameterStoreTags'][number];
 
 export interface MicrovmRunnerMetadata {
   bypassRemoval?: boolean;
@@ -48,7 +48,6 @@ export interface CreateMicrovmRunnerMetadataInput {
   environment: string;
   imageArn: string;
   imageVersion?: string;
-  metadataTags: MicrovmMetadataTag[];
   microvmId: string;
   runnerOwner: string;
   runnerType: RunnerType;
@@ -91,8 +90,8 @@ function mergeParameterTags(...tagSets: MicrovmMetadataTag[][]): MicrovmMetadata
 }
 
 function createMetadataParameterTags(input: CreateMicrovmRunnerMetadataInput): MicrovmMetadataTag[] {
-  const configuredTags = mergeParameterTags(input.ssmParameterStoreTags, input.metadataTags).filter(
-    (tag) => !isProviderOwnedLateTag(tag.Key) && tag.Key !== 'ghr:microvm_image_version',
+  const configuredTags = mergeParameterTags(input.ssmParameterStoreTags).filter(
+    (tag) => !isProviderOwnedLateTag(tag.Key) && tag.Key !== 'ghr:microvm_image_version' && tag.Key !== 'Name',
   );
   const providerTags: MicrovmMetadataTag[] = [
     { Key: 'ghr:Application', Value: 'github-action-runner' },
