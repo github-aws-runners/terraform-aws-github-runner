@@ -11,6 +11,7 @@ declare global {
       MICROVM_LOG_GROUP: string | undefined;
       MICROVM_METADATA_SSM_PATH: string;
       MICROVM_METADATA_TAGS: string | undefined;
+      MICROVM_RUNNER_CONFIG_SSM_ARN: string;
     }
   }
 }
