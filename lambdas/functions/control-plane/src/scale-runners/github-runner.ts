@@ -354,11 +354,6 @@ async function createJitConfig(
 
       metricGitHubAppRateLimit(runnerConfig.headers, githubRunnerConfig.appIndex);
 
-      await options.onJitConfigCreated?.(runnerId, {
-        githubRunnerId: runnerConfig.data.runner.id.toString(),
-        runnerLabels,
-      });
-
       // store jit config in ssm parameter store
       logger.debug('Runner JIT config for ephemeral runner generated.', {
         instance: runnerId,
@@ -368,6 +363,10 @@ async function createJitConfig(
           githubRunnerConfig.ssmParameterStoreTags,
           options.getSsmParameterTags?.(runnerId) ?? [],
         ),
+      });
+      await options.onJitConfigCreated?.(runnerId, {
+        githubRunnerId: runnerConfig.data.runner.id.toString(),
+        runnerLabels,
       });
       if (isDelay) {
         // Delay to prevent AWS ssm rate limits by being within the max throughput limit

@@ -5,17 +5,17 @@ import { listMicrovmRunners, microvmBootTimeExceeded, terminateMicrovm } from '.
 import { setMicrovmOrphan } from './runner-metadata';
 
 export function createMicrovmScaleDownProvider(): Omit<ScaleDownComputeProvider, 'type'> {
-  const metadataSsmPath = () => loadMicrovmProviderConfig().metadataSsmPath;
+  const ssmPaths = () => loadMicrovmProviderConfig();
 
   async function list(environment: string, orphan?: boolean): Promise<MicrovmRunnerInfo[]> {
-    return await listMicrovmRunners({ environment, orphan }, metadataSsmPath());
+    return await listMicrovmRunners({ environment, orphan }, ssmPaths());
   }
 
   return {
     list,
     bootTimeExceeded: microvmBootTimeExceeded,
-    markOrphan: async (id) => await setMicrovmOrphan(metadataSsmPath(), id, true),
-    unmarkOrphan: async (id) => await setMicrovmOrphan(metadataSsmPath(), id, false),
-    terminate: async (id) => await terminateMicrovm(id, metadataSsmPath()),
+    markOrphan: async (id) => await setMicrovmOrphan(ssmPaths().metadataSsmPath, id, true),
+    unmarkOrphan: async (id) => await setMicrovmOrphan(ssmPaths().metadataSsmPath, id, false),
+    terminate: async (id) => await terminateMicrovm(id, ssmPaths()),
   };
 }
