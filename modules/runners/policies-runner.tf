@@ -10,7 +10,7 @@ resource "aws_iam_role" "runner" {
   assume_role_policy = jsonencode(merge(local.runner_role_trust_policy, {
     Statement = concat(
       local.runner_role_trust_policy.Statement,
-      var.runner_iam_role_additional_trust_policy_statements
+      tolist(var.runner_iam_role_additional_trust_policy_statements)
     )
   }))
   path                 = local.role_path

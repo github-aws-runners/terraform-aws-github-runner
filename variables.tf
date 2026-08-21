@@ -538,7 +538,7 @@ variable "runner_iam_role_additional_trust_policy_statements" {
   default     = []
 
   validation {
-    condition     = can([for statement in var.runner_iam_role_additional_trust_policy_statements : statement])
+    condition     = can(tolist(var.runner_iam_role_additional_trust_policy_statements))
     error_message = "The variable `runner_iam_role_additional_trust_policy_statements` must be a list of IAM policy statements."
   }
 }
