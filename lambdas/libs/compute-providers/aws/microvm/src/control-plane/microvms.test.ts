@@ -42,6 +42,7 @@ const config: MicrovmProviderConfig = {
   egressNetworkConnectors: ['arn:egress'],
   metadataSsmPath,
   metadataTags: [{ Key: 'Name', Value: 'unit-test-runner' }],
+  runnerConfigSsmArn: 'arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/unit-test/config',
   logging: { cloudWatch: { logGroup: '/aws/lambda-microvms/runner' } },
 };
 const ssmParameterStoreTags = [{ Key: 'CostCenter', Value: '1234' }];
