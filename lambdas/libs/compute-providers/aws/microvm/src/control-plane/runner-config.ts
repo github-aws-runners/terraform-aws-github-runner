@@ -15,14 +15,16 @@ import { assertSeparatedMicrovmMetadataPath, setMicrovmGithubRunnerMetadata } fr
 const logger = createChildLogger('microvm-runner-config');
 
 export interface MicrovmRunHookPayloadV1 {
-  runnerConfigSsmPath: string;
+  runnerConfigSsmArn: string;
+  runnerTokenSsmPath: string;
   version: 1;
 }
 
-export function createMicrovmRunHookPayload(ssmTokenPath: string): string {
+export function createMicrovmRunHookPayload(paths: Omit<MicrovmRunHookPayloadV1, 'version'>): string {
   return JSON.stringify({
     version: 1,
-    runnerConfigSsmPath: ssmTokenPath,
+    runnerConfigSsmArn: paths.runnerConfigSsmArn,
+    runnerTokenSsmPath: paths.runnerTokenSsmPath,
   } satisfies MicrovmRunHookPayloadV1);
 }
 
@@ -43,7 +45,6 @@ export async function createMicrovmRunners(
     logger.error('Lambda MicroVM runners require SSM_TOKEN_PATH to deliver JIT configuration');
     return { instances: [], retryableErrorCount: 0, nonRetryableErrorCount: numberOfRunners };
   }
-
   let config;
   try {
     config = { ...loadMicrovmProviderConfig(), ...overrides };
@@ -58,7 +59,10 @@ export async function createMicrovmRunners(
     retryableErrorCount: 0,
     nonRetryableErrorCount: 0,
   };
-  const runHookPayload = createMicrovmRunHookPayload(githubRunnerConfig.ssmTokenPath);
+  const runHookPayload = createMicrovmRunHookPayload({
+    runnerConfigSsmArn: config.runnerConfigSsmArn,
+    runnerTokenSsmPath: githubRunnerConfig.ssmTokenPath,
+  });
 
   for (let runnerIndex = 0; runnerIndex < numberOfRunners; runnerIndex++) {
     let microvmId: string | undefined;

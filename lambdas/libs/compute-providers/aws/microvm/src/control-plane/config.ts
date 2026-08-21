@@ -14,6 +14,7 @@ export interface MicrovmProviderConfig {
   logging?: Logging;
   metadataSsmPath: string;
   metadataTags: MicrovmMetadataTag[];
+  runnerConfigSsmArn: string;
 }
 
 function requiredEnvironmentValue(name: string, value: string | undefined): string {
@@ -35,6 +36,18 @@ function parseMetadataSsmPath(value: string | undefined): string {
     throw new Error('MICROVM_METADATA_SSM_PATH must be a valid absolute SSM parameter path');
   }
   return path;
+}
+
+function parseRunnerConfigSsmArn(value: string | undefined): string {
+  const arn = requiredEnvironmentValue('MICROVM_RUNNER_CONFIG_SSM_ARN', value);
+  if (
+    !/^arn:aws(?:-[a-z0-9-]+)?:ssm:[A-Za-z0-9-]+:\d{12}:parameter\/[A-Za-z0-9_.\-/]+$/.test(arn) ||
+    arn.includes('//') ||
+    arn.split('/').includes('..')
+  ) {
+    throw new Error('MICROVM_RUNNER_CONFIG_SSM_ARN must be a valid SSM parameter ARN prefix');
+  }
+  return arn;
 }
 
 function parseNetworkConnectors(name: string, value: string | undefined): string[] | undefined {
@@ -113,6 +126,7 @@ export function loadMicrovmProviderConfig(): MicrovmProviderConfig {
     ),
     metadataSsmPath: parseMetadataSsmPath(process.env.MICROVM_METADATA_SSM_PATH),
     metadataTags: parseMetadataTags(process.env.MICROVM_METADATA_TAGS),
+    runnerConfigSsmArn: parseRunnerConfigSsmArn(process.env.MICROVM_RUNNER_CONFIG_SSM_ARN),
     logging: logGroup ? ({ cloudWatch: { logGroup } } satisfies RunMicrovmCommandInput['logging']) : undefined,
   };
 }
