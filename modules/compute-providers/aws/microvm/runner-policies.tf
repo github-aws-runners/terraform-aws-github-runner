@@ -22,7 +22,6 @@ data "aws_iam_policy_document" "runner_ssm_jit" {
     actions = [
       "ssm:DeleteParameter",
       "ssm:GetParameter",
-      "ssm:ListTagsForResource",
     ]
     resources = [local.runner_token_path_arn]
   }

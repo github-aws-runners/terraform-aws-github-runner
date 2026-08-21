@@ -24,6 +24,7 @@ variables {
 
   tags = {
     Module = "runner"
+    Name   = "module"
   }
 
   config = {
@@ -39,6 +40,7 @@ variables {
       MICROVM_CLUSTER           = "runner-cluster"
       MICROVM_IMAGE_ARN         = "caller-cannot-override-provider-contract"
       MICROVM_METADATA_SSM_PATH = "/caller/cannot/override/provider-contract"
+      MICROVM_METADATA_TAGS     = "caller-cannot-override-provider-contract"
     }
   }
 
@@ -60,6 +62,21 @@ variables {
       root   = "/github-action-runners"
       tokens = "tokens"
       config = "config"
+    }
+    tags = {
+      Name       = "ssm"
+      Precedence = "ssm"
+      Ssm        = "shared"
+    }
+    parameters = {
+      tags = {
+        Name                     = "parameter"
+        Parameter                = "metadata"
+        Precedence               = "parameter"
+        "ghr:environment"        = "caller-cannot-override"
+        "ghr:runner_name_prefix" = "caller-cannot-override"
+        "ghr:ssm_config_path"    = "caller-cannot-override"
+      }
     }
   }
 
@@ -94,6 +111,15 @@ run "exposes_microvm_control_plane_contract" {
       && jsondecode(output.provider.environment_variables.scale_up["MICROVM_EGRESS_NETWORK_CONNECTORS"])[0] == "arn:aws:lambda:eu-west-1:123456789012:network-connector:egress"
       && output.provider.environment_variables.scale_up["MICROVM_LOG_GROUP"] == "/github-self-hosted-runners/microvm-test/microvm"
       && output.provider.environment_variables.scale_up["MICROVM_METADATA_SSM_PATH"] == "/github-action-runners/config/microvm-metadata"
+      && tomap({
+        for tag in jsondecode(output.provider.environment_variables.scale_up["MICROVM_METADATA_TAGS"]) :
+        tag.Key => tag.Value
+        }) == tomap({
+        Name                     = "parameter"
+        "ghr:environment"        = "microvm-test"
+        "ghr:runner_name_prefix" = "microvm-"
+        "ghr:ssm_config_path"    = "/github-action-runners/config"
+      })
     )
     error_message = "The MicroVM provider must map every configured runtime input to the canonical Lambda environment contract."
   }
@@ -109,6 +135,7 @@ run "exposes_microvm_control_plane_contract" {
         "MICROVM_INGRESS_NETWORK_CONNECTORS",
         "MICROVM_LOG_GROUP",
         "MICROVM_METADATA_SSM_PATH",
+        "MICROVM_METADATA_TAGS",
       ])
       && output.provider.environment_variables.scale_up == output.provider.environment_variables.scale_down
       && output.provider.environment_variables.scale_up == output.provider.environment_variables.pool
@@ -133,7 +160,7 @@ run "exposes_microvm_control_plane_contract" {
 
   assert {
     condition = (
-      data.aws_iam_policy_document.scale_up.statement[2].actions == toset(["ssm:DeleteParameter", "ssm:PutParameter"])
+      data.aws_iam_policy_document.scale_up.statement[2].actions == toset(["ssm:AddTagsToResource", "ssm:DeleteParameter", "ssm:PutParameter"])
       && data.aws_iam_policy_document.scale_up.statement[2].resources == toset(["arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/config/microvm-metadata/*"])
       && data.aws_iam_policy_document.scale_up.statement[3].actions == toset(["ssm:GetParametersByPath"])
       && data.aws_iam_policy_document.scale_up.statement[3].resources == toset([
@@ -193,7 +220,7 @@ run "exposes_microvm_control_plane_contract" {
 
   assert {
     condition = (
-      data.aws_iam_policy_document.runner_ssm_jit.statement[0].actions == toset(["ssm:DeleteParameter", "ssm:GetParameter", "ssm:ListTagsForResource"])
+      data.aws_iam_policy_document.runner_ssm_jit.statement[0].actions == toset(["ssm:DeleteParameter", "ssm:GetParameter"])
       && data.aws_iam_policy_document.runner_ssm_jit.statement[0].resources == toset(["arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/tokens/*"])
       && length(data.aws_iam_policy_document.runner_runtime_logs.statement) == 1
       && data.aws_iam_policy_document.runner_runtime_logs.statement[0].actions == toset(["logs:CreateLogStream", "logs:PutLogEvents"])

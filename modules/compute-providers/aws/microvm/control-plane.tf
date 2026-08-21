@@ -20,6 +20,7 @@ data "aws_iam_policy_document" "scale_up" {
   statement {
     effect = "Allow"
     actions = [
+      "ssm:AddTagsToResource",
       "ssm:DeleteParameter",
       "ssm:PutParameter",
     ]
@@ -72,6 +73,16 @@ locals {
   microvm_metadata_ssm_path      = "${trimsuffix(var.ssm.paths.root, "/")}/${trim(var.ssm.paths.config, "/")}/microvm-metadata"
   microvm_metadata_path_arn      = "${local.ssm_parameter_arn_prefix}${local.microvm_metadata_ssm_path}"
   microvm_metadata_parameter_arn = "${local.microvm_metadata_path_arn}/*"
+  microvm_metadata_tags = {
+    "Name" = lookup(
+      merge(var.ssm.tags, var.ssm.parameters.tags),
+      "Name",
+      local.provider_tags["Name"],
+    )
+    "ghr:environment"        = var.prefix
+    "ghr:ssm_config_path"    = "${trimsuffix(var.ssm.paths.root, "/")}/${trim(var.ssm.paths.config, "/")}"
+    "ghr:runner_name_prefix" = var.runner.name_prefix
+  }
   microvm_image_resource_arns = coalesce(
     var.config.iam.resource_arns.images,
     [var.config.image_arn],
@@ -86,6 +97,12 @@ locals {
     MICROVM_INGRESS_NETWORK_CONNECTORS = length(var.config.ingress_network_connectors) == 0 ? "" : jsonencode(var.config.ingress_network_connectors)
     MICROVM_LOG_GROUP                  = aws_cloudwatch_log_group.runtime.name
     MICROVM_METADATA_SSM_PATH          = local.microvm_metadata_ssm_path
+    MICROVM_METADATA_TAGS = jsonencode([
+      for key, value in local.microvm_metadata_tags : {
+        Key   = key
+        Value = value
+      }
+    ])
   })
 
   scale_up_environment_variables   = local.microvm_environment_variables
