@@ -1,4 +1,4 @@
-import { deleteParameter, getParametersByPath, putParameter } from '@aws-github-runner/aws-ssm-util';
+import { addParameterTags, deleteParameter, getParametersByPath, putParameter } from '@aws-github-runner/aws-ssm-util';
 import type { MicrovmState } from '@aws-sdk/client-lambda-microvms';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -9,12 +9,13 @@ import {
   listMicrovmRunnerMetadata,
   markMicrovmCleanupPending,
   microvmMetadataParameterName,
-  setMicrovmGithubRunnerId,
+  setMicrovmGithubRunnerMetadata,
   setMicrovmOrphan,
   type MicrovmRunnerMetadata,
 } from './runner-metadata';
 
 vi.mock('@aws-github-runner/aws-ssm-util', () => ({
+  addParameterTags: vi.fn(),
   deleteParameter: vi.fn(),
   getParametersByPath: vi.fn(),
   putParameter: vi.fn(),
@@ -46,6 +47,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.useRealTimers();
   vi.mocked(deleteParameter).mockResolvedValue();
+  vi.mocked(addParameterTags).mockResolvedValue();
   vi.mocked(getParametersByPath).mockResolvedValue(new Map());
   vi.mocked(putParameter).mockResolvedValue();
 });
@@ -80,13 +82,69 @@ describe('MicroVM metadata lifecycle', () => {
       source: 'scale-up-lambda',
       imageArn: 'arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner',
       imageVersion: '3.0',
+      metadataTags: [
+        { Key: 'Name', Value: 'unit-test-runner' },
+        { Key: 'ghr:Owner', Value: 'configured-owner-cannot-win' },
+        { Key: 'ghr:github_runner_id', Value: 'configured-id-is-not-launch-metadata' },
+        { Key: 'ghr:runner_labels', Value: 'configured-labels-are-not-launch-metadata' },
+      ],
+      ssmParameterStoreTags: [
+        { Key: 'CostCenter', Value: '1234' },
+        { Key: 'Name', Value: 'ssm-name-cannot-win' },
+        { Key: 'ghr:created_by', Value: 'configured-source-cannot-win' },
+      ],
     });
 
     expect(putParameter).toHaveBeenCalledWith(
       `${metadataSsmPath}/mvm-1`,
       JSON.stringify(metadata({ expiresAt: '2026-08-19T18:05:00.000Z' })),
       false,
+      {
+        tags: [
+          { Key: 'CostCenter', Value: '1234' },
+          { Key: 'Name', Value: 'unit-test-runner' },
+          { Key: 'ghr:created_by', Value: 'scale-up-lambda' },
+          { Key: 'ghr:Owner', Value: 'Codertocat' },
+          { Key: 'ghr:Application', Value: 'github-action-runner' },
+          { Key: 'ghr:environment', Value: 'unit-test' },
+          { Key: 'ghr:Type', Value: 'Org' },
+          { Key: 'ghr:microvm_id', Value: 'mvm-1' },
+          {
+            Key: 'ghr:microvm_image_arn',
+            Value: 'arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner',
+          },
+          { Key: 'ghr:microvm_image_version', Value: '3.0' },
+        ],
+      },
     );
+  });
+
+  it('rejects reserved tag keys and preserves room for late GitHub metadata', async () => {
+    const input = {
+      microvmId: 'mvm-1',
+      environment: 'unit-test',
+      runnerOwner: 'Codertocat',
+      runnerType: 'Org' as const,
+      source: 'scale-up-lambda' as const,
+      imageArn: 'arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner',
+      imageVersion: '3.0',
+      ssmParameterStoreTags: [],
+    };
+
+    await expect(
+      createMicrovmRunnerMetadata(metadataSsmPath, {
+        ...input,
+        metadataTags: [{ Key: 'aws:microvm:image-arn', Value: input.imageArn }],
+      }),
+    ).rejects.toThrow('AWS-reserved tag prefix');
+
+    await expect(
+      createMicrovmRunnerMetadata(metadataSsmPath, {
+        ...input,
+        metadataTags: Array.from({ length: 37 }, (_, index) => ({ Key: `Custom${index}`, Value: 'value' })),
+      }),
+    ).rejects.toThrow('cannot have more than 44 launch tags');
+    expect(putParameter).not.toHaveBeenCalled();
   });
 
   it('loads active metadata with independent state and cleans expired inactive records', async () => {
@@ -141,12 +199,71 @@ describe('MicroVM metadata lifecycle', () => {
     );
   });
 
-  it('updates GitHub and orphan state without a shared read-modify-write record', async () => {
-    await setMicrovmGithubRunnerId(metadataSsmPath, 'mvm-1', 'github-42');
+  it('updates GitHub state and adds late GitHub metadata tags to the base parameter', async () => {
+    const runnerLabels = ['self-hosted', 'linux', 'env:unit-test'];
+    await setMicrovmGithubRunnerMetadata(metadataSsmPath, 'mvm-1', {
+      githubRunnerId: 'github-42',
+      runnerLabels,
+    });
     expect(putParameter).toHaveBeenLastCalledWith(`${metadataSsmPath}/mvm-1.github-runner-id`, 'github-42', false, {
       overwrite: true,
     });
+    expect(addParameterTags).toHaveBeenCalledWith(`${metadataSsmPath}/mvm-1`, [
+      { Key: 'ghr:github_runner_id', Value: 'github-42' },
+      {
+        Key: 'ghr:runner_labels',
+        Value: `base64url:${Buffer.from(JSON.stringify(runnerLabels), 'utf8').toString('base64url')}`,
+      },
+    ]);
+  });
 
+  it('splits encoded runner labels into SSM-safe tag values', async () => {
+    const runnerLabels = [`label-${'a'.repeat(140)}`, `label-${'b'.repeat(140)}`];
+
+    await setMicrovmGithubRunnerMetadata(metadataSsmPath, 'mvm-1', {
+      githubRunnerId: 'github-42',
+      runnerLabels,
+    });
+
+    expect(addParameterTags).toHaveBeenCalledWith(`${metadataSsmPath}/mvm-1`, [
+      { Key: 'ghr:github_runner_id', Value: 'github-42' },
+      {
+        Key: 'ghr:runner_labels',
+        Value: `base64url:${Buffer.from(JSON.stringify([runnerLabels[0]]), 'utf8').toString('base64url')}`,
+      },
+      {
+        Key: 'ghr:runner_labels:2',
+        Value: `base64url:${Buffer.from(JSON.stringify([runnerLabels[1]]), 'utf8').toString('base64url')}`,
+      },
+    ]);
+  });
+
+  it('keeps the GitHub runner ID tag when a runner label is too large', async () => {
+    await setMicrovmGithubRunnerMetadata(metadataSsmPath, 'mvm-1', {
+      githubRunnerId: 'github-42',
+      runnerLabels: ['x'.repeat(300)],
+    });
+
+    expect(addParameterTags).toHaveBeenCalledWith(`${metadataSsmPath}/mvm-1`, [
+      { Key: 'ghr:github_runner_id', Value: 'github-42' },
+    ]);
+  });
+
+  it('keeps the durable GitHub runner ID when late metadata tagging fails', async () => {
+    vi.mocked(addParameterTags).mockRejectedValue(new Error('AccessDenied'));
+
+    await expect(
+      setMicrovmGithubRunnerMetadata(metadataSsmPath, 'mvm-1', {
+        githubRunnerId: 'github-42',
+        runnerLabels: [],
+      }),
+    ).resolves.toBeUndefined();
+    expect(putParameter).toHaveBeenCalledWith(`${metadataSsmPath}/mvm-1.github-runner-id`, 'github-42', false, {
+      overwrite: true,
+    });
+  });
+
+  it('updates orphan state without a shared read-modify-write record', async () => {
     await setMicrovmOrphan(metadataSsmPath, 'mvm-1', true);
     expect(putParameter).toHaveBeenLastCalledWith(`${metadataSsmPath}/mvm-1.orphan`, 'true', false, {
       overwrite: true,
