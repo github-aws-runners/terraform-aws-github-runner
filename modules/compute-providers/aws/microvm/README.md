@@ -12,14 +12,14 @@ The resolved provider-neutral `runner.iam.role` is passed to Lambda as the Micro
 ## Requirements
 
 | Name | Version |
-| ---- | ------- |
+|------|---------|
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.4.0 |
 | <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 6.33 |
 
 ## Providers
 
 | Name | Version |
-| ---- | ------- |
+|------|---------|
 | <a name="provider_aws"></a> [aws](#provider\_aws) | >= 6.33 |
 | <a name="provider_terraform"></a> [terraform](#provider\_terraform) | n/a |
 
@@ -30,7 +30,7 @@ No modules.
 ## Resources
 
 | Name | Type |
-| ---- | ---- |
+|------|------|
 | [aws_cloudwatch_log_group.gh_runners](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_log_group) | resource |
 | [aws_cloudwatch_log_group.runtime](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_log_group) | resource |
 | [aws_ssm_parameter.cloudwatch_agent_config_runner](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_parameter) | resource |
@@ -48,7 +48,7 @@ No modules.
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-| ---- | ----------- | ---- | ------- | :------: |
+|------|-------------|------|---------|:--------:|
 | <a name="input_aws_partition"></a> [aws\_partition](#input\_aws\_partition) | AWS partition used to construct IAM ARNs. | `string` | `"aws"` | no |
 | <a name="input_aws_region"></a> [aws\_region](#input\_aws\_region) | AWS region used by compute-provider resources and policy documents. | `string` | n/a | yes |
 | <a name="input_config"></a> [config](#input\_config) | Lambda MicroVM compute-provider configuration. Paths match `compute_provider.aws.microvm` in runner-config.<br/><br/>- `image_arn`: ARN of the MicroVM image used to run GitHub runners.<br/>- `image_version`: Optional MicroVM image version.<br/>- `ingress_network_connectors`: Up to 10 Lambda network-connector ARNs passed to RunMicrovm.<br/>- `egress_network_connectors`: Up to 10 Lambda network-connector ARNs passed to RunMicrovm.<br/>- `cloudwatch_agent.enabled`: Enables the image CloudWatch agent through the shared runner configuration path.<br/>- `cloudwatch_agent.config`: Optional complete CloudWatch agent configuration. Null renders the provider default from `log_files`. Custom log destinations must also be declared in `log_files` so Terraform creates their groups and IAM permissions.<br/>- `log_files`: Optional files collected by the CloudWatch agent. Null uses the MicroVM defaults.<br/>- `log_files[].log_group_name`: CloudWatch log-group name before optional prefixing.<br/>- `log_files[].prefix_log_group`: Prefixes the log-group name with the runner configuration path.<br/>- `log_files[].file_path`: File or glob read by the CloudWatch agent.<br/>- `log_files[].log_stream_name`: Log-stream template. The image replaces `{microvm_id}` with the current MicroVM identifier.<br/>- `log_files[].log_class`: CloudWatch log-group class for the collected file.<br/>- `environment_variables`: Additional provider-specific Lambda environment variables merged into scale-up, scale-down, and pool.<br/>- `iam.resource_arns.images`: Optional MicroVM image ARN allowlist for RunMicrovm and TerminateMicrovm. Null restricts both actions to `image_arn`; set an explicit list when dynamic image overrides are enabled. Provider-required list and connector permissions remain separately scoped to `*`.<br/>- `iam.additional_policy_json.scale_up`: Optional additional provider policy attached separately to the scale-up Lambda role.<br/>- `iam.managed_policies.scale_up`: Optional managed-policy wrapper attached to the scale-up Lambda role. Wrapper presence controls resource creation during planning.<br/>- `iam.managed_policies.scale_up.arn`: ARN of the scale-up managed policy. The ARN may remain unknown until apply.<br/>- `iam.managed_policies.pool`: Optional managed-policy wrapper attached to the pool Lambda role. Wrapper presence controls resource creation during planning.<br/>- `iam.managed_policies.pool.arn`: ARN of the pool managed policy. The ARN may remain unknown until apply. | <pre>object({<br/>    image_arn                  = string<br/>    image_version              = optional(string, null)<br/>    ingress_network_connectors = optional(list(string), [])<br/>    egress_network_connectors  = optional(list(string), [])<br/>    cloudwatch_agent = optional(object({<br/>      enabled = optional(bool, true)<br/>      config  = optional(string, null)<br/>    }), {})<br/>    log_files = optional(list(object({<br/>      log_group_name   = string<br/>      prefix_log_group = bool<br/>      file_path        = string<br/>      log_stream_name  = string<br/>      log_class        = optional(string, "STANDARD")<br/>    })), null)<br/>    environment_variables = optional(map(string), {})<br/>    iam = optional(object({<br/>      resource_arns = optional(object({<br/>        images = optional(list(string), null)<br/>      }), {})<br/>      additional_policy_json = optional(object({<br/>        scale_up = optional(string, null)<br/>      }), {})<br/>      managed_policies = optional(object({<br/>        scale_up = optional(object({<br/>          arn = string<br/>        }), null)<br/>        pool = optional(object({<br/>          arn = string<br/>        }), null)<br/>      }), {})<br/>    }), {})<br/>  })</pre> | n/a | yes |
@@ -62,7 +62,7 @@ No modules.
 ## Outputs
 
 | Name | Description |
-| ---- | ----------- |
+|------|-------------|
 | <a name="output_environment_variables"></a> [environment\_variables](#output\_environment\_variables) | Provider-specific Lambda environment variable fragments consumed by runner-config. |
 | <a name="output_policies"></a> [policies](#output\_policies) | Provider-specific IAM policy fragments consumed by runner-config. |
 | <a name="output_provider"></a> [provider](#output\_provider) | Nested Lambda MicroVM compute-provider contract consumed by runner-config. |
