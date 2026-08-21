@@ -18,7 +18,7 @@
   },
   "devDependencies": {
     "@aws-sdk/types": "^3.973.6",
-    "@octokit/types": "^16.0.0",
+    "@octokit/types": "^17.0.0",
     "@types/aws-lambda": "^8.10.159",
     "@types/node": "^22.19.3",
     "@vercel/ncc": "^0.38.4",
@@ -37,10 +37,10 @@
     "@aws-sdk/client-ec2": "^3.1009.0",
     "@aws-sdk/client-sqs": "^3.1009.0",
     "@middy/core": "^6.4.5",
-    "@octokit/auth-app": "8.2.0",
-    "@octokit/core": "7.0.6",
-    "@octokit/plugin-retry": "8.0.3",
-    "@octokit/plugin-throttling": "11.0.3",
+    "@octokit/auth-app": "8.3.0",
+    "@octokit/core": "7.0.7",
+    "@octokit/plugin-retry": "8.1.1",
+    "@octokit/plugin-throttling": "11.0.5",
     "@octokit/rest": "22.0.1",
     "cron-parser": "^5.4.0"
   },
