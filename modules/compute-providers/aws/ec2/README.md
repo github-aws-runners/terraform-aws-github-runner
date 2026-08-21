@@ -4,7 +4,7 @@ This internal module owns the EC2 compute implementation used by the common runn
 
 The module returns one nested `provider` contract. It groups EC2-specific Lambda settings under `environment_variables`, permission requirements under `policies.runner`, `policies.scale_up`, `policies.scale_down`, and `policies.pool`, and EC2 artifacts under `resources`. The parent runner configuration owns the shared runner role, provider-policy attachments, Lambda functions, execution roles, schedules, queues, retry flow, and SSM housekeeper.
 
-EC2 is the only active compute provider. The parent runner configuration selects it when `aws.ec2` is the one populated typed leaf under `compute_provider`; no separate namespace or type input is required. Runner-config dispatches this module at `module.compute_aws_ec2[0]` from the `modules/compute-providers/aws/ec2` source and publishes its resources under `provider.aws.ec2`. A future provider must add its own typed namespace and provider leaf and implement the same contracts before it can be selected.
+EC2 is one supported leaf in the AWS compute-provider namespace. The parent selects it when `compute_provider.aws.ec2` is the one populated leaf, dispatches this module with the Terraform key `aws_ec2`, preserves the runtime provider type `ec2`, and publishes its resources under `provider.aws.ec2`. The sibling [`aws.microvm`](../microvm) leaf implements Lambda MicroVM capacity; another AWS service would add a leaf under `aws`, while another cloud would add its own namespace.
 
 <!-- BEGIN_TF_DOCS -->
 ## Requirements

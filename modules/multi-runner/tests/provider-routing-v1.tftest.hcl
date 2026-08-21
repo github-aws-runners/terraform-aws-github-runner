@@ -423,7 +423,8 @@ run "stable_v1_keeps_legacy_runner_module" {
         "encryption",
       ])
       && toset(keys(local.raw_translated_experimental.multi_runner_config["linux"].compute_provider)) == toset(["aws"])
-      && toset(keys(local.raw_translated_experimental.multi_runner_config["linux"].compute_provider.aws)) == toset(["ec2"])
+      && toset(keys(local.raw_translated_experimental.multi_runner_config["linux"].compute_provider.aws)) == toset(["ec2", "microvm"])
+      && local.raw_translated_experimental.multi_runner_config["linux"].compute_provider.aws.microvm == null
       && toset(keys(local.raw_translated_experimental.multi_runner_config["linux"].compute_provider.aws.ec2.binaries_syncer)) == toset(["enabled"])
       && !contains(keys(local.raw_translated_experimental.multi_runner_config["linux"].ssm), "kms_key_id")
       && !contains(keys(local.raw_translated_experimental.runner), "boot_time_in_minutes")

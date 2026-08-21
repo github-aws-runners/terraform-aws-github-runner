@@ -172,7 +172,7 @@ variable "experimental" {
     - `compute_provider`: Shared compute-provider defaults grouped first by cloud and then by provider type. Global defaults do not select a provider for any runner configuration.
     - `compute_provider.selections`: Optional plan-shaping map keyed by runner-configuration key. Each entry identifies the namespace and type of the configuration's selected compute-provider block. The default is null, which discovers selections from the typed provider blocks. Set this map when unrelated apply-time values make that discovery unknown; its keys and values must be known during planning and cover every runner configuration exactly once.
     - `compute_provider.selections[].namespace`: Compute-provider namespace. The only currently supported value is `aws`.
-    - `compute_provider.selections[].type`: Compute-provider type within the namespace. The only currently supported value is `ec2`.
+    - `compute_provider.selections[].type`: Compute-provider type within the namespace. Currently supported values are `ec2` and `microvm`.
     - `compute_provider.aws`: Shared defaults for AWS compute providers.
     - `compute_provider.aws.ec2`: Shared defaults for AWS EC2 runner configurations.
     - `compute_provider.aws.ec2.vpc_id`: Shared VPC default for v2 EC2 runner configurations. The default is null; every EC2 runner configuration must resolve this field globally or locally.
@@ -252,6 +252,21 @@ variable "experimental" {
     - `compute_provider.aws.ec2.runner_binaries.syncer.schedule`: EventBridge schedule settings for the syncer Lambda.
     - `compute_provider.aws.ec2.runner_binaries.syncer.schedule.expression`: EventBridge schedule expression. The default is `cron(27 * * * ? *)`.
     - `compute_provider.aws.ec2.runner_binaries.syncer.schedule.state`: EventBridge rule state. The default is `ENABLED`; valid values are `DISABLED`, `ENABLED`, and `ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS`.
+    - `compute_provider.aws.microvm`: Global defaults for AWS Lambda MicroVM runner configurations. This block supplies defaults and does not select MicroVM for any runner configuration.
+    - `compute_provider.aws.microvm.image_arn`: Default Lambda MicroVM image ARN. The default is null; every selected MicroVM configuration must resolve a valid image ARN globally or locally.
+    - `compute_provider.aws.microvm.image_version`: Optional default MicroVM image version. The default is null.
+    - `compute_provider.aws.microvm.ingress_network_connectors`: Default ingress Lambda network-connector ARNs passed to RunMicrovm. The default is `[]`; at most 10 may be configured.
+    - `compute_provider.aws.microvm.egress_network_connectors`: Default egress Lambda network-connector ARNs passed to RunMicrovm. The default is `[]`; at most 10 may be configured.
+    - `compute_provider.aws.microvm.cloudwatch_agent.enabled`: Enables the image CloudWatch agent by default. The default is `true`.
+    - `compute_provider.aws.microvm.cloudwatch_agent.config`: Optional complete default CloudWatch agent configuration. Null renders the provider default from `log_files`. Custom log destinations must also be declared in `log_files` so Terraform creates their groups and IAM permissions.
+    - `compute_provider.aws.microvm.log_files`: Optional default files collected by the CloudWatch agent. Null uses the MicroVM defaults.
+    - `compute_provider.aws.microvm.environment_variables`: Default provider-specific control-plane environment variables. The default is `{}` and runner-configuration values take precedence.
+    - `compute_provider.aws.microvm.iam.resource_arns.images`: Optional default MicroVM image ARN allowlist for RunMicrovm and TerminateMicrovm. Null restricts both actions to the resolved `image_arn`; set an explicit list when dynamic image overrides are enabled. Required list and connector permissions remain separately scoped to `*`.
+    - `compute_provider.aws.microvm.iam.additional_policy_json.scale_up`: Optional default additional provider policy attached separately to the scale-up Lambda role.
+    - `compute_provider.aws.microvm.iam.managed_policies.scale_up`: Optional plan-known managed-policy wrapper attached to the scale-up Lambda role.
+    - `compute_provider.aws.microvm.iam.managed_policies.scale_up.arn`: Managed-policy ARN; it may remain unknown until apply.
+    - `compute_provider.aws.microvm.iam.managed_policies.pool`: Optional plan-known managed-policy wrapper attached to the pool Lambda role.
+    - `compute_provider.aws.microvm.iam.managed_policies.pool.arn`: Managed-policy ARN; it may remain unknown until apply.
 
     Each `experimental.multi_runner_config` entry supports the following nested fields:
 
@@ -456,6 +471,21 @@ variable "experimental" {
     - `multi_runner_config[].compute_provider.aws.ec2.log_files[].log_stream_name`: CloudWatch log-stream name template.
     - `multi_runner_config[].compute_provider.aws.ec2.log_files[].log_class`: CloudWatch log-group class for the collected file.
     - `multi_runner_config[].compute_provider.aws.ec2.tags`: Tags for runtime EC2 instances, volumes, network interfaces, and eligible Spot requests. These override entry-level tags and the generated runner `Name`; provider-required bootstrap tags take final precedence.
+    - `multi_runner_config[].compute_provider.aws.microvm`: AWS Lambda MicroVM configuration. A non-null block selects MicroVM for this runner configuration and requires a Linux ARM64 runner plus ephemeral webhook orchestration with JIT configuration enabled. The resolved `runner.iam.role` is used as the MicroVM execution role.
+    - `multi_runner_config[].compute_provider.aws.microvm.image_arn`: Lambda MicroVM image ARN. Null inherits `experimental.compute_provider.aws.microvm.image_arn`.
+    - `multi_runner_config[].compute_provider.aws.microvm.image_version`: Optional MicroVM image-version override. Null inherits the global value.
+    - `multi_runner_config[].compute_provider.aws.microvm.ingress_network_connectors`: Up to 10 ingress Lambda network-connector ARNs passed to RunMicrovm. Null inherits the global list.
+    - `multi_runner_config[].compute_provider.aws.microvm.egress_network_connectors`: Up to 10 egress Lambda network-connector ARNs passed to RunMicrovm. Null inherits the global list.
+    - `multi_runner_config[].compute_provider.aws.microvm.cloudwatch_agent.enabled`: Enables the image CloudWatch agent. Null inherits the global value.
+    - `multi_runner_config[].compute_provider.aws.microvm.cloudwatch_agent.config`: Optional complete CloudWatch agent configuration. Null inherits the global value. Custom log destinations must also be declared in `log_files` so Terraform creates their groups and IAM permissions.
+    - `multi_runner_config[].compute_provider.aws.microvm.log_files`: Optional files collected by the CloudWatch agent. Null inherits the global value.
+    - `multi_runner_config[].compute_provider.aws.microvm.environment_variables`: Provider-specific control-plane environment variables merged after the global map.
+    - `multi_runner_config[].compute_provider.aws.microvm.iam.resource_arns.images`: MicroVM image ARN allowlist for RunMicrovm and TerminateMicrovm. Null inherits the global list, after which a remaining null restricts both actions to the resolved `image_arn`.
+    - `multi_runner_config[].compute_provider.aws.microvm.iam.additional_policy_json.scale_up`: Optional additional provider policy for scale-up. Null inherits the global policy.
+    - `multi_runner_config[].compute_provider.aws.microvm.iam.managed_policies.scale_up`: Optional plan-known managed-policy wrapper for scale-up. Null inherits the global wrapper.
+    - `multi_runner_config[].compute_provider.aws.microvm.iam.managed_policies.scale_up.arn`: Managed-policy ARN; it may remain unknown until apply.
+    - `multi_runner_config[].compute_provider.aws.microvm.iam.managed_policies.pool`: Optional plan-known managed-policy wrapper for pool. Null inherits the global wrapper.
+    - `multi_runner_config[].compute_provider.aws.microvm.iam.managed_policies.pool.arn`: Managed-policy ARN; it may remain unknown until apply.
   EOT
 
   type = object({
@@ -844,6 +874,40 @@ variable "experimental" {
             }), {})
           }), {})
         }), {})
+        microvm = optional(object({
+          image_arn                  = optional(string, null)
+          image_version              = optional(string, null)
+          ingress_network_connectors = optional(list(string), [])
+          egress_network_connectors  = optional(list(string), [])
+          cloudwatch_agent = optional(object({
+            enabled = optional(bool, true)
+            config  = optional(string, null)
+          }), {})
+          log_files = optional(list(object({
+            log_group_name   = string
+            prefix_log_group = bool
+            file_path        = string
+            log_stream_name  = string
+            log_class        = optional(string, "STANDARD")
+          })), null)
+          environment_variables = optional(map(string), {})
+          iam = optional(object({
+            resource_arns = optional(object({
+              images = optional(list(string), null)
+            }), {})
+            additional_policy_json = optional(object({
+              scale_up = optional(string, null)
+            }), {})
+            managed_policies = optional(object({
+              scale_up = optional(object({
+                arn = string
+              }), null)
+              pool = optional(object({
+                arn = string
+              }), null)
+            }), {})
+          }), {})
+        }), {})
       }), {})
     }), {})
 
@@ -1163,6 +1227,40 @@ variable "experimental" {
               log_class        = optional(string, "STANDARD")
             })), null)
             tags = optional(map(string), {})
+          }), null)
+          microvm = optional(object({
+            image_arn                  = optional(string, null)
+            image_version              = optional(string, null)
+            ingress_network_connectors = optional(list(string), null)
+            egress_network_connectors  = optional(list(string), null)
+            cloudwatch_agent = optional(object({
+              enabled = optional(bool, null)
+              config  = optional(string, null)
+            }), {})
+            log_files = optional(list(object({
+              log_group_name   = string
+              prefix_log_group = bool
+              file_path        = string
+              log_stream_name  = string
+              log_class        = optional(string, "STANDARD")
+            })), null)
+            environment_variables = optional(map(string), {})
+            iam = optional(object({
+              resource_arns = optional(object({
+                images = optional(list(string), null)
+              }), {})
+              additional_policy_json = optional(object({
+                scale_up = optional(string, null)
+              }), {})
+              managed_policies = optional(object({
+                scale_up = optional(object({
+                  arn = string
+                }), null)
+                pool = optional(object({
+                  arn = string
+                }), null)
+              }), {})
+            }), {})
           }), null)
         }), {})
       })

@@ -65,7 +65,7 @@ resource "terraform_data" "validate_experimental" {
           ]
         ])) == 1
       ])
-      error_message = "Each experimental runner configuration must set exactly one compute-provider block. Supported compute-provider blocks: aws.ec2."
+      error_message = "Each experimental runner configuration must set exactly one compute-provider block. Supported compute-provider blocks: aws.ec2, aws.microvm."
     }
 
     precondition {
@@ -79,9 +79,9 @@ resource "terraform_data" "validate_experimental" {
     precondition {
       condition = var.experimental.compute_provider.selections == null ? true : alltrue([
         for selection in values(var.experimental.compute_provider.selections) :
-        selection.namespace == "aws" && selection.type == "ec2"
+        selection.namespace == "aws" && contains(["ec2", "microvm"], selection.type)
       ])
-      error_message = "experimental.compute_provider.selections supports only namespace = aws and type = ec2."
+      error_message = "experimental.compute_provider.selections supports only namespace = aws and type = ec2 or microvm."
     }
 
     precondition {
@@ -145,6 +145,55 @@ resource "terraform_data" "validate_experimental" {
         )
       ])
       error_message = "Each experimental EC2 runner configuration must resolve compute_provider.aws.ec2.vpc_id and subnet_ids from the configuration or experimental global EC2 defaults. Flat v1 inputs are not inherited by v2."
+    }
+
+    precondition {
+      condition = alltrue([
+        for runner_config in values(var.experimental.multi_runner_config) :
+        runner_config.compute_provider.aws.microvm == null ? true : (
+          try(coalesce(runner_config.runner.os, var.experimental.runner.os), null) == "linux" &&
+          try(coalesce(runner_config.runner.architecture, var.experimental.runner.architecture), null) == "arm64"
+        )
+      ])
+      error_message = "Each experimental Lambda MicroVM runner configuration must resolve runner.os = linux and runner.architecture = arm64."
+    }
+
+    precondition {
+      condition = alltrue([
+        for runner_config in values(var.experimental.multi_runner_config) :
+        runner_config.compute_provider.aws.microvm == null ? true : try(
+          runner_config.orchestration_provider.webhook != null &&
+          coalesce(
+            runner_config.orchestration_provider.webhook.runner.ephemeral,
+            var.experimental.orchestration_provider.webhook.runner.ephemeral,
+          ) &&
+          coalesce(
+            runner_config.orchestration_provider.webhook.runner.jit_config_enabled,
+            var.experimental.orchestration_provider.webhook.runner.jit_config_enabled,
+            runner_config.orchestration_provider.webhook.runner.ephemeral,
+            var.experimental.orchestration_provider.webhook.runner.ephemeral,
+          ),
+          false,
+        )
+      ])
+      error_message = "Each experimental Lambda MicroVM runner configuration must select webhook orchestration with ephemeral and JIT runner configuration enabled."
+    }
+
+    precondition {
+      condition = alltrue([
+        for runner_config in values(var.experimental.multi_runner_config) :
+        runner_config.compute_provider.aws.microvm == null ? true : try(
+          can(regex(
+            "^arn:[^:]+:lambda:[^:]+:[0-9]{12}:microvm-image:.+$",
+            coalesce(
+              runner_config.compute_provider.aws.microvm.image_arn,
+              var.experimental.compute_provider.aws.microvm.image_arn,
+            ),
+          )),
+          false,
+        )
+      ])
+      error_message = "Each experimental Lambda MicroVM runner configuration must resolve a valid compute_provider.aws.microvm.image_arn from the configuration or experimental global MicroVM defaults."
     }
 
     precondition {

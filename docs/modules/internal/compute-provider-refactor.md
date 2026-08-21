@@ -8,7 +8,7 @@
 
 The scale-up, scale-down, pool, job-retry, queue, SSM housekeeping, and GitHub registration workflows are not inherently EC2-specific. The legacy `runners` module combines webhook demand orchestration with EC2 launch templates, instance profiles, bootstrap parameters, log groups, IAM permissions, and Lambda environment variables. Adding another orchestration or compute provider in that structure would require copying common behavior or adding provider conditionals throughout the module.
 
-The refactor introduces two typed boundaries. An orchestration provider owns the demand-control model and its components; a compute provider owns runner capacity and exports capabilities consumed by that orchestration. A future scale-set controller or MicroVM backend can therefore be added without moving public provider-owned settings or scattering provider conditionals through leaf modules; the central typed schema, normalization, routing, and dispatch still require extension.
+The refactor introduces two typed boundaries. An orchestration provider owns the demand-control model and its components; a compute provider owns runner capacity and exports capabilities consumed by that orchestration. Lambda MicroVM is the second compute implementation and demonstrates that a provider can be added without moving public provider-owned settings or scattering conditionals through leaf modules. Future scale-set controllers, compute services, or cloud namespaces still require deliberate schema, normalization, routing, and dispatch extensions.
 
 ## Ownership model
 
@@ -26,19 +26,19 @@ The implementation is split into common runner-config composition, orchestration
 | `compute-providers/<namespace>/<provider>/trust-policy` | Provider-specific default runner-role trust, merged with the optional caller-provided trust document before the common role is created. |
 | `compute-providers/<namespace>/<provider>` | Provider-specific resources, permission requirements, and the IAM and environment-variable fragments consumed by the common control plane after the runner role is resolved. |
 
-The EC2 provider owns the instance profile, launch template, security group, AMI and EC2-specific bootstrap parameters, runner log groups, EC2 policy statements, and EC2 Lambda environment variables. EC2 is the only implemented Terraform compute provider in this phase.
+The EC2 provider owns the instance profile, launch template, security group, AMI and EC2-specific bootstrap parameters, runner log groups, EC2 policy statements, and EC2 Lambda environment variables. The Lambda MicroVM provider owns `RunMicrovm` and `TerminateMicrovm` control-plane permissions, MicroVM runtime environment variables, its native and CloudWatch-agent log groups, selected image metadata, and non-secret ownership and lifecycle state under a dedicated child of the lane's persistent SSM config path. Control-plane roles manage the complete metadata prefix; the MicroVM execution role can read only `*.tags` records from that prefix, along with its separate one-time JIT parameter and CloudWatch configuration. Both providers are implemented under the AWS namespace.
 
 Runner-config, the root orchestration and compute providers, and their leaf modules are internal implementation boundaries rather than standalone public modules. Callers opt into the experimental interface through `experimental.multi_runner_config`; `multi-runner` calls `runner-config`, which selects the provider modules. Their direct input and output contracts may change while v2 remains experimental.
 
 Each external v2 runner config selects demand orchestration separately from its compute provider. The required `orchestration_provider` wrapper has one supported provider today: `experimental.multi_runner_config.<runner_config>.orchestration_provider.webhook`. It owns the runner config's lifecycle and maximum runner count, registration scope, matcher, build-queue overrides, scale-up, scale-down, pool, and job-retry settings. The wrapper is intentionally typed as a provider boundary so later orchestration implementations can be added as mutually exclusive siblings without moving common settings again.
 
-The runner config also populates exactly one typed compute-provider leaf, such as `experimental.multi_runner_config.<runner_config>.compute_provider.aws.ec2`; that leaf's presence must be known during planning because it determines capacity routing. Multi-runner resource preconditions enforce both selections and the public contract's cross-scope and plan-shaping rules, while each provider implementation validates its resolved internal contract.
+The runner config also populates exactly one typed compute-provider leaf: `experimental.multi_runner_config.<runner_config>.compute_provider.aws.ec2` or `.aws.microvm`. That leaf's presence must be known during planning because it determines capacity routing. Multi-runner resource preconditions enforce both selections and the public contract's cross-scope and plan-shaping rules, while each provider implementation validates its resolved internal contract.
 
-After resolving global `experimental.compute_provider.aws.ec2` values with the selected runner config's `compute_provider.aws.ec2` overrides, `multi-runner` preserves the namespaced typed wrapper expected by `runner-config`. The direct contract is `compute_provider = { aws = { ec2 = { ... } } }`, not a flat EC2 object. Runner-config flattens each populated namespace and provider leaf into an internal dispatch key such as `aws_ec2`, validates that exactly one leaf is non-null, and passes `compute_provider.aws.ec2` to `module.compute_aws_ec2[0]` as its nested `config` object. The webhook runtime registry still receives the provider type `ec2`; the namespace is part of Terraform dispatch so different clouds can expose similarly named services without colliding. Runner-config independently validates the exact-one `orchestration_provider = { webhook = { ... } }` wrapper and invokes the selected root orchestration provider with provider-neutral common objects such as `runner`, the Lambda substrate, SSM, observability, and the selected compute-provider capabilities.
+After resolving the selected leaf's global defaults and runner-config overrides, `multi-runner` preserves the namespaced wrapper expected by `runner-config`: `compute_provider = { aws = { ec2 = ..., microvm = ... } }`, with exactly one non-null leaf. Runner-config flattens the populated namespace and provider leaf only for internal dispatch, validates the exact-one invariant, and invokes `module.compute_aws_ec2[0]` or `module.compute_aws_microvm[0]`. Terraform dispatch keys are `aws_ec2` and `aws_microvm`; the webhook runtime registry continues to receive `ec2` and `microvm`. The namespace prevents similarly named services in different clouds from colliding. Runner-config independently validates the exact-one `orchestration_provider = { webhook = { ... } }` wrapper and invokes the selected root orchestration provider with provider-neutral common objects such as `runner`, the Lambda substrate, SSM, observability, and selected compute-provider capabilities.
 
-Binary discovery is completed before the runner-config call. `config.experimental.translation.tf` enriches the final canonical runner config at `compute_provider.aws.ec2.binaries_syncer.s3`, leaving `s3` null when synchronization is disabled. The `module.runner_configs` call then passes that runner config's wrapped `compute_provider` object unchanged. Runner-config and the EC2 provider therefore receive the typed provider-owned shape; neither expects a bare `{ arn, id, key }` object directly at `compute_provider.aws.ec2.binaries_syncer`.
+Binary discovery is completed before the runner-config call. `config.experimental.translation.tf` enriches an EC2 lane at `compute_provider.aws.ec2.binaries_syncer.s3`, leaving `s3` null when synchronization is disabled. MicroVM lanes bypass EC2 binary discovery and retain their resolved MicroVM object. The `module.runner_configs` call then passes each wrapped `compute_provider` object unchanged. Runner-config and the selected provider therefore receive the typed provider-owned shape; the EC2 boundary never expects a bare `{ arn, id, key }` object directly at `compute_provider.aws.ec2.binaries_syncer`.
 
-Runner-config creates or selects the runner IAM role, but the current EC2 provider owns the role's default trust-policy document. Each provider implementation supplies a small `trust-policy` submodule that accepts `additional_trust_policy_json` and returns the final `assume_role_policy`. The full provider separately returns its nested `provider` contract containing `policies.runner`, `policies.scale_up`, `policies.scale_down`, and `policies.pool`, component environment variables, and provider resources. When runner-config creates the runner role, it uses the isolated trust-policy output and attaches the returned runner policies. An external role bypasses both operations, so its caller owns trust and permissions. Runner-config passes the scale-up, scale-down, and pool capabilities to the selected orchestration provider in either case. A provider never creates or attaches the common runner IAM role.
+Runner-config creates or selects the runner IAM role, while each compute provider owns that role's default trust-policy document. EC2 trusts the EC2 service; MicroVM trusts the Lambda service and uses the resolved common role as its execution role. Each provider supplies a small `trust-policy` submodule that accepts `additional_trust_policy_json` and returns the final `assume_role_policy`. The full provider separately returns its nested `provider` contract containing `policies.runner`, `policies.scale_up`, `policies.scale_down`, and `policies.pool`, component environment variables, and provider resources. When runner-config creates the role, it uses the isolated trust-policy output and attaches the returned runner policies. An external role bypasses both operations, so its caller owns trust and permissions. Runner-config passes the scale-up, scale-down, and pool capabilities to the selected orchestration provider in either case. A provider never creates or attaches the common runner IAM role.
 
 The trust relationship is deliberately rendered by an isolated provider submodule:
 
@@ -46,7 +46,7 @@ The trust relationship is deliberately rendered by an isolated provider submodul
 2. `runner-config` independently derives the orchestration and compute providers from their single non-null typed blocks.
 3. `compute-providers/<namespace>/<provider>/trust-policy` combines the provider default with `runner.iam.additional_trust_policy_json` without referencing the runner-role input.
 4. `runner-config` creates the common runner role from the returned `assume_role_policy`, or selects an external role without applying that trust policy.
-5. The full compute provider receives the resolved role so it can create resources such as the EC2 instance profile and render `iam:PassRole` statements.
+5. The full compute provider receives the resolved role so it can create provider resources such as the EC2 instance profile or render permissions such as MicroVM `iam:PassRole`.
 6. The provider returns its nested policy, environment-variable, and resource contract.
 7. Runner-config attaches runner policies only to a module-managed runner role, while `orchestration-providers/webhook` attaches scale-up, scale-down, and pool policy fragments to the roles it owns through its leaves.
 
@@ -58,7 +58,7 @@ Multi-runner produces one canonical consumer representation for both input modes
 
 1. `config.experimental.translation.tf` selects the module mode and builds `local.raw_translated_experimental`. A non-empty experimental runner-config map selects the nested `var.experimental` input for v2; otherwise the file projects flat module globals and stable `multi_runner_config` entries into the same schema for v1.
 2. The same translation file then derives `local.translated_experimental_base`. It applies schema defaults and global/runner-config precedence, merges tags, resolves IAM ownership and paths, and normalizes observability, `orchestration_provider.webhook`, and compute-provider values. Provider selection, plan-shaping validation, and the shared runner-binary syncer and discovery consume this fully resolved base.
-3. After runner-binary discovery, the translation file derives the final `local.translated_experimental`. It completes runner labels, GitHub enterprise and User-Agent settings, shared Lambda artifacts and principals, the internal build-queue KMS projection and runner-control artifact, SSM KMS, and each enabled EC2 runner config's `compute_provider.aws.ec2.binaries_syncer.s3`. Webhook event-source mapping and pool resolution are already complete in the base object. The remaining shared components, webhook queues, and runner implementations consume the final canonical object.
+3. After runner-binary discovery, the translation file derives the final `local.translated_experimental`. It completes runner labels, GitHub enterprise and User-Agent settings, shared Lambda artifacts and principals, the internal build-queue KMS projection and runner-control artifact, SSM KMS, and each enabled EC2 runner config's `compute_provider.aws.ec2.binaries_syncer.s3`. MicroVM configs bypass that EC2-only enrichment. Webhook event-source mapping and pool resolution are already complete in the base object. The remaining shared components, webhook queues, and runner implementations consume the final canonical object.
 
 Stable translation always emits `orchestration_provider.webhook`, but stable runner configs remain on `module.runners["<runner_config>"]`: `runners.tf` adapts each final canonical runner config back to the existing `modules/runners` input contract, preserving Terraform addresses without maintaining a separate config source. This is not the phase-2 implementation migration to `runner-config`. For v2, `module.runner_configs` directly iterates the gated final runner-config map. Its adapter passes environment-augmented tags, GitHub settings with live App references, and the resolved Lambda, SSM, and observability inputs at the runner-config top level. It injects the live build queue into the webhook orchestration input, forwards the provider-owned fields accepted by runner-config, and omits `matcherConfig` because the shared webhook consumes it. The wrapped compute-provider object is forwarded unchanged. Binary output enrichment and all other derived config shaping are already complete in canonical translation.
 
@@ -75,7 +75,7 @@ flowchart TD
   V1 --> Base["translated_experimental_base: defaults and global/runner-config resolution"]
   V2 --> Base
   Base --> Discovery["Provider selection, runner-binary syncer, and discovery"]
-  Discovery --> Final["translated_experimental: enrich aws.ec2 binaries_syncer.s3"]
+  Discovery --> Final["translated_experimental: enrich EC2 binaries; retain MicroVM config"]
   Final --> Singleton["Shared SSM, webhook, termination watcher, and AMI housekeeper"]
   Final --> Shared["Webhook build queues and matching"]
   Final -->|v1 legacy-argument adapter| Legacy["module.runners[key]"]
@@ -102,15 +102,15 @@ The canonical object gives shared singleton resources one global representation 
 - The v1 translation wraps its existing registration scope, matcher, queue, scale, pool, and retry values under `orchestration_provider.webhook`; the stable public input and resource behavior remain unchanged.
 - Stable queue tagging and the flat `runners_map` output remain unchanged.
 - When `experimental.multi_runner_config` is non-empty, every key in the experimental map calls `modules/runner-config` at `module.runner_configs["<runner_config>"]`; stable-map entries are not dispatched.
-- Experimental v2 uses `module.runner_configs["<runner_config>"]`; within each entry, the canonical provider child addresses are `module.runner_configs["<runner_config>"].module.compute_aws_ec2_trust_policy[0]`, `module.runner_configs["<runner_config>"].module.compute_aws_ec2[0]`, and `module.runner_configs["<runner_config>"].module.orchestration_webhook[0]`. Moved blocks inside `runner-config` preserve existing experimental state from the earlier `module.compute_ec2_trust_policy[0]` and `module.compute_ec2[0]` child labels when upgrading to these namespaced labels.
+- Experimental v2 uses `module.runner_configs["<runner_config>"]`; within each entry, the canonical compute children are `module.compute_aws_ec2_trust_policy[0]` and `module.compute_aws_ec2[0]` for EC2, or `module.compute_aws_microvm_trust_policy[0]` and `module.compute_aws_microvm[0]` for MicroVM. The orchestration child remains `module.orchestration_webhook[0]`. Moved blocks inside `runner-config` preserve existing EC2 experimental state from the earlier `module.compute_ec2_trust_policy[0]` and `module.compute_ec2[0]` labels; MicroVM was introduced directly at its namespaced labels.
 - Experimental resources are exposed separately through the nested `runners_map_v2` output.
 - The maps are not combined. A non-empty v2 map has explicit priority over the stable map.
 
-The provider-label moves are limited to the existing v2 child modules. No v1-to-v2 state move is included in phase 1. Enabling v2 for a module instance that already manages v1 runners changes its implementation addresses; phase 1 does not migrate that state. Moved blocks also cannot update Terraform expression references, so consumers must change the experimental output path from `provider.ec2` to `provider.aws.ec2`. Existing deployments should keep v2 empty until the documented state-migration phase. The current v2 path is intended for new or explicitly experimental deployments.
+The provider-label moves are limited to the existing EC2 v2 child modules. No v1-to-v2 state move is included in phase 1, and the newly introduced MicroVM modules have no earlier state address. Enabling v2 for a module instance that already manages v1 runners changes its implementation addresses; phase 1 does not migrate that state. Moved blocks also cannot update Terraform expression references, so consumers must change the former EC2 output path from `provider.ec2` to `provider.aws.ec2`. Existing deployments should keep v2 empty until the documented state-migration phase. The current v2 path is intended for new or explicitly experimental deployments.
 
 ## Opting in
 
-Nested global settings are the source of defaults for v2 runner configs and the applicable singleton shared components. The GitHub App Parameter Store module, webhook, runner-binary syncer, termination watcher, and AMI housekeeper consume translated globals. Every v2 runner config must currently select `orchestration_provider.webhook`; no other orchestration provider is implemented. The wrapper is the durable provider boundary for future mutually exclusive siblings. Migrated v2 consumers do not fall back to matching flat inputs; those values seed the stable-mode translation only. The singleton-specific webhook, binary-syncer, termination-watcher, and AMI-housekeeper settings all have nested owners. Only module naming (`prefix`), `aws_partition`, and `aws_region` remain active flat-only inputs; legacy `iam_overrides` remains in the input schema but has no active consumer. Per-runner-config values override globals only inside that runner config and do not replace singleton-owned global settings. Each webhook runner config nevertheless contributes matcher, build-queue, and compute-provider routing data to the shared webhook, while its resolved binary-syncer enablement and OS/architecture determine shared syncer membership. Nested defaults mirror established v1 behavior, while nullable runner-config fields inherit the corresponding global when omitted or set to null. Set a global override only when the value is genuinely shared by every runner config, and put runner-specific differences in that config. An external `runner.iam.role` is the exception to normal inheritance: inherited managed policies and additional trust policy JSON are suppressed because the module does not manage that role.
+Nested global settings are the source of defaults for v2 runner configs and the applicable singleton shared components. The GitHub App Parameter Store module, webhook, runner-binary syncer, termination watcher, and AMI housekeeper consume translated globals. Every v2 runner config must currently select `orchestration_provider.webhook`; no other orchestration provider is implemented. The wrapper is the durable provider boundary for future mutually exclusive siblings. A selected MicroVM lane additionally requires Linux on ARM64 and ephemeral webhook orchestration with JIT configuration enabled. Migrated v2 consumers do not fall back to matching flat inputs; those values seed the stable-mode translation only. The singleton-specific webhook, binary-syncer, termination-watcher, and AMI-housekeeper settings all have nested owners. Only module naming (`prefix`), `aws_partition`, and `aws_region` remain active flat-only inputs; legacy `iam_overrides` remains in the input schema but has no active consumer. Per-runner-config values override globals only inside that runner config and do not replace singleton-owned global settings. Each webhook runner config nevertheless contributes matcher, build-queue, and compute-provider routing data to the shared webhook, while only an EC2 lane's resolved binary-syncer enablement and OS/architecture determine shared syncer membership. Nested defaults mirror established v1 behavior, while nullable runner-config fields inherit the corresponding global when omitted or set to null. Set a global override only when the value is genuinely shared by every runner config, and put runner-specific differences in that config. An external `runner.iam.role` is the exception to normal inheritance: inherited managed policies and additional trust policy JSON are suppressed because the module does not manage that role.
 
 ```hcl
 module "multi_runner" {
@@ -308,9 +308,8 @@ module "multi_runner" {
       }
     }
 
-    # Shared v2 EC2 defaults. This block neither selects EC2 nor supplies
-    # required provider fields. Runner-binary settings are global because each
-    # syncer is shared by runner configs with the same OS and architecture.
+    # Shared v2 provider defaults. Neither global leaf selects a provider;
+    # each runner config still populates exactly one provider leaf below.
     compute_provider = {
       aws = {
         ec2 = {
@@ -395,6 +394,13 @@ module "multi_runner" {
             }
           }
         }
+
+        microvm = {
+          image_arn = var.microvm_image_arn
+          ingress_network_connectors = [
+            aws_lambda_network_connector.private_ingress.arn,
+          ]
+        }
       }
     }
 
@@ -465,6 +471,37 @@ module "multi_runner" {
           }
         }
       }
+
+      microvm = {
+        runner = {
+          os           = "linux"
+          architecture = "arm64"
+        }
+
+        orchestration_provider = {
+          webhook = {
+            runner = {
+              ephemeral          = true
+              jit_config_enabled = true
+              maximum_count      = 8
+            }
+            github = {
+              organization_runners = true
+            }
+            matcherConfig = {
+              labelMatchers = [["self-hosted", "linux", "arm64", "microvm"]]
+            }
+          }
+        }
+
+        # The non-null lane leaf selects MicroVM and inherits the global image,
+        # connector, and duration defaults above.
+        compute_provider = {
+          aws = {
+            microvm = {}
+          }
+        }
+      }
     }
   }
 }
@@ -490,7 +527,11 @@ Global `ssm.paths.root` is the base for shared GitHub App and webhook parameters
 
 Global `observability` values provide defaults for every runner config and configure the applicable shared singleton consumers. Log level, retention, KMS key, class, and tracing configure the webhook, runner-binary syncer, termination watcher, and AMI housekeeper; metrics also configure the termination watcher. The nested defaults preserve established behavior: logs use level `info`, 180-day retention, no customer-managed KMS key, and class `STANDARD`; tracing defaults to no mode with HTTP and error capture disabled; metrics default to disabled in the `GitHub Runners` namespace while the rate-limit, job-retry, Spot-termination, and Spot-warning switches default to enabled. The two Spot switches are global termination-watcher settings and have no per-runner-config override. Other nullable runner-config observability fields inherit the global value. `observability.logs.tags` remains specific to runner-config-owned log groups; shared singleton functions receive global `tags` and `lambda.tags`. The nullness of `observability.tracing.mode` must be known during planning because it selects X-Ray IAM statements and tracing blocks in runner-config consumers.
 
-The global `experimental.compute_provider.aws.ec2` block owns v2 defaults for EC2 settings such as VPC and subnet IDs, managed-security-group behavior, egress rules, additional security groups, CloudWatch agent config, instance-profile path, key name, public IPv4 association, and tags. It also owns the shared AMI housekeeper, instance-termination watcher, and runner-binary distribution. It does not fall back to corresponding flat module inputs. VPC and subnet values must therefore be supplied through the global or per-runner-config `compute_provider.aws.ec2` block when needed. Global values should be set only when they are shared across every applicable runner config. The global `experimental.compute_provider` wrapper never selects a provider and does not contain provider-specific required runner-config fields outside its namespace leaves. Every runner config must still populate exactly one typed provider leaf; that per-runner-config leaf selects the provider, supplies required fields such as EC2 `instance_types`, and preserves the per-runner selection point needed for future mixed-provider maps.
+The global `experimental.compute_provider.aws.ec2` block owns v2 defaults for EC2 settings such as VPC and subnet IDs, managed-security-group behavior, egress rules, additional security groups, CloudWatch agent config, instance-profile path, key name, public IPv4 association, and tags. It also owns the shared AMI housekeeper, instance-termination watcher, and runner-binary distribution. It does not fall back to corresponding flat module inputs. VPC and subnet values must therefore be supplied through the global or per-runner-config `compute_provider.aws.ec2` block when needed.
+
+The global `experimental.compute_provider.aws.microvm` block owns defaults for the MicroVM image ARN and version, ingress and egress network connectors, CloudWatch agent configuration and collected files, provider environment variables, resource allowlists, and optional managed-policy wrappers. A selected lane's non-null `compute_provider.aws.microvm` block inherits nullable values from that global leaf and may override them. Global defaults alone never select MicroVM. Each selected lane always creates its native `/github-self-hosted-runners/<runner-config-prefix>/microvm` lifecycle log group. When the CloudWatch agent is enabled, the provider also creates the groups derived from `log_files` and publishes `enable_cloudwatch` plus `cloudwatch_agent_config_runner` beneath the lane's runner configuration path. All provider-owned groups use the common `observability.logs` retention, encryption, class, and tag settings.
+
+Global provider values should be set only when they are shared across every applicable runner config. The global `experimental.compute_provider` wrapper never selects a provider. Every runner config must still populate exactly one typed provider leaf; that per-runner-config leaf selects EC2 or MicroVM, supplies required lane fields, and supports mixed-provider maps in one module instance.
 
 `experimental.compute_provider.aws.ec2.runner_binaries` owns whether EC2 runner configs use the shared binary distribution by default, distribution-bucket encryption, tags, versioning and access logging, and syncer artifact, Lambda sizing, and schedule. A nullable per-runner-config `compute_provider.aws.ec2.binaries_syncer.enabled` overrides only the global enable default. The resolved enable value, `runner_binaries.s3.encryption.enabled`, the nullness of its `kms_master_key_id`, and the nullness of `runner_binaries.s3.logging.bucket` must be known during planning because they control module or resource shape. KMS encryption grants the syncer access to the distribution key, but runner roles do not derive `kms:Decrypt` from that field; callers must attach decrypt permission to the module-managed or external runner roles separately.
 
@@ -500,7 +541,7 @@ Tags follow the same ownership model but merge rather than replace. Within v2 we
 
 Application logging settings stay together under `observability.logs`, including `level`, retention, encryption, class, and runner-config log-group tags. Tracing stays under `observability.tracing`, and metrics enablement, namespace, and individual metric switches stay under `observability.metrics`.
 
-In v1 mode, entries remain exclusively in `runners_map` and retain their flat output fields; `runners_map_v2` is empty. In v2 mode, entries are exposed exclusively through `runners_map_v2` and `runners_map` is empty. Common resources are grouped under `runner`, demand-control resources under `orchestration_provider.webhook`, and provider-specific resources under `provider.<namespace>.<provider>`. The provider namespace and type are derived from the selected typed compute-provider leaf. For example, a module-managed common runner role is available at `runners_map_v2["<runner_config>"].runner.role`; the value is null when the caller selects an external role. Scale-up resources are available at `runners_map_v2["<runner_config>"].orchestration_provider.webhook.scale_up`, and launch-template and runner-log artifacts are under `runners_map_v2["<runner_config>"].provider.aws.ec2`. The top-level `scale_up`, `scale_down`, and `pool` fields remain compatibility aliases for their webhook-provider counterparts. The webhook `pool` value is null when no pool config is supplied. Output references are configuration expressions rather than state addresses, so moved blocks cannot rewrite the former experimental `provider.ec2` path for consumers.
+In v1 mode, entries remain exclusively in `runners_map` and retain their flat output fields; `runners_map_v2` is empty. In v2 mode, entries are exposed exclusively through `runners_map_v2` and `runners_map` is empty. Common resources are grouped under `runner`, demand-control resources under `orchestration_provider.webhook`, and provider-specific resources under `provider.<namespace>.<provider>`. The provider namespace and type are derived from the selected typed compute-provider leaf. For example, a module-managed common runner role is available at `runners_map_v2["<runner_config>"].runner.role`; the value is null when the caller selects an external role. Scale-up resources are available at `runners_map_v2["<runner_config>"].orchestration_provider.webhook.scale_up`. EC2 launch-template and runner-log artifacts are under `runners_map_v2["<runner_config>"].provider.aws.ec2`, while MicroVM image ARN, version, execution-role metadata, native and agent log groups, and resolved `logfiles` are under `.provider.aws.microvm`. The top-level `scale_up`, `scale_down`, and `pool` fields remain compatibility aliases for their webhook-provider counterparts. The webhook `pool` value is null when no pool config is supplied. Output references are configuration expressions rather than state addresses, so moved blocks cannot rewrite the former experimental `provider.ec2` path for EC2 consumers.
 
 ## Plan-time provider selection and IAM shape
 
@@ -527,7 +568,29 @@ compute_provider = {
 }
 ```
 
-The populated `aws.ec2` leaf tells both multi-runner routing and runner-config dispatch which provider implementation exists and must therefore be known during planning. Canonical translation preserves both namespace levels, and the `module.runner_configs` input forwards the wrapper unchanged at the runner-config boundary. The `orchestration_provider` wrapper follows the same exact-one rule. Within the compute block, each ownership-wrapper object tells Terraform that the corresponding policy exists; its `arn` may safely be computed. At this internal boundary, `ssm.kms_key_id`, the derived `orchestration_provider.webhook.queue.kms_key_id`, and values such as `observability.logs.kms_key_id` remain nullable scalar inputs even when their ARNs are unknown until apply. The public source of the derived queue key is `experimental.orchestration_provider.webhook.queue.encryption.kms_master_key_id`.
+A separate MicroVM runner configuration can keep the provider and policy-attachment shape known while its ARNs remain computed:
+
+```hcl
+compute_provider = {
+  aws = {
+    microvm = {
+      image_arn = module.microvm_image.image_arn
+      iam = {
+        managed_policies = {
+          scale_up = {
+            arn = aws_iam_policy.microvm_scale_up.arn
+          }
+          pool = {
+            arn = aws_iam_policy.microvm_pool.arn
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+The populated `aws.ec2` or `aws.microvm` leaf tells both multi-runner routing and runner-config dispatch which implementation exists and must therefore be known during planning. Canonical translation preserves both namespace levels, and the `module.runner_configs` input forwards the wrapper unchanged at the runner-config boundary. The `orchestration_provider` wrapper follows the same exact-one rule. Within either compute block, each ownership-wrapper object tells Terraform that the corresponding policy exists; its `arn` may safely be computed. At this internal boundary, `ssm.kms_key_id`, the derived `orchestration_provider.webhook.queue.kms_key_id`, and values such as `observability.logs.kms_key_id` remain nullable scalar inputs even when their ARNs are unknown until apply. The public source of the derived queue key is `experimental.orchestration_provider.webhook.queue.encryption.kms_master_key_id`.
 
 For experimental multi-runner v2, global `experimental.ssm.kms_key_id` encrypts shared GitHub App parameters created by the module, configures the webhook with the same key, and adds matching decrypt permissions to every runner config so its control-plane functions can read those credentials. Parameters selected through existing `*_ssm` references retain their external encryption and access requirements. The global key's value may be unknown until apply. It does not select encryption for runtime-created runner parameters. Queue encryption is a separate global contract, may use a different CMK, and reaches only the scale-up consumer and job-retry publisher policies inside the webhook orchestration provider.
 
@@ -538,6 +601,6 @@ For experimental multi-runner v2, global `experimental.ssm.kms_key_id` encrypts 
 3. **Phase 3 — remove legacy variables and migrate state:** In a breaking release, remove the deprecated inputs and flat output adapter, route the remaining canonical configuration through `runner-config`, and ship tested `moved` blocks plus commands for addresses Terraform cannot move declaratively.
 4. **Phase 4 — remove `modules/runners`:** After direct consumers have had a separate deprecation and migration window, delete the legacy module.
 
-A future compute provider must add a typed external namespace and provider leaf, multi-runner normalization and routing, a provider-specific `trust-policy` submodule, runner-config dispatch, and an integration that returns the same nested environment-variable, policy, and resource contract before it can be selected in Terraform. Today the typed schema exposes only `aws.ec2`, so unsupported namespace or provider attributes fail input-schema validation. When another implemented leaf is added, the exact-one selection preconditions will reject runner configs that populate more than one supported compute provider.
+The typed schema currently exposes `aws.ec2` and `aws.microvm`; unsupported namespace or provider attributes fail input-schema validation, and exact-one preconditions reject a runner config that populates both leaves. A third compute provider must add a typed namespace and provider leaf, multi-runner normalization and routing, a provider-specific `trust-policy` submodule, runner-config dispatch, and an integration that returns the same nested environment-variable, policy, and resource contract before it can be selected in Terraform.
 
 A future orchestration provider must add a typed global-default block where shared settings are needed, a typed per-runner-config selector block, runner-config dispatch, a capability adapter for each supported compute provider, provider-grouped outputs, and focused routing and coexistence tests. Once a second typed orchestration provider exists, validation must also reject a runner config that selects more than one provider.

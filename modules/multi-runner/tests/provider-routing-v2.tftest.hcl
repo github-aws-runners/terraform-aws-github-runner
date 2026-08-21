@@ -791,7 +791,8 @@ run "experimental_v2_routes_through_provider_stack" {
   assert {
     condition = (
       toset(keys(output.runners_map_v2["linux"].provider)) == toset(["aws"])
-      && toset(keys(output.runners_map_v2["linux"].provider.aws)) == toset(["ec2"])
+      && toset(keys(output.runners_map_v2["linux"].provider.aws)) == toset(["ec2", "microvm"])
+      && output.runners_map_v2["linux"].provider.aws.microvm == null
       && toset(keys(output.runners_map_v2["linux"].provider.aws.ec2)) == toset([
         "launch_template",
         "runners_log_groups",
@@ -4573,6 +4574,625 @@ run "experimental_v2_rejects_invalid_ssm_housekeeper_state" {
             aws = {
               ec2 = {
                 instance_types = ["m5.large"]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  expect_failures = [terraform_data.validate_experimental]
+}
+
+run "experimental_v2_routes_microvm_only_without_ec2_binary_discovery" {
+  command = plan
+
+  variables {
+    github_app = null
+    vpc_id     = null
+    subnet_ids = null
+
+    experimental = {
+      github = {
+        app = {
+          id             = "123456"
+          key_base64     = "dGVzdA=="
+          webhook_secret = "test-secret"
+        }
+      }
+      orchestration_provider = {
+        webhook = {
+          runner = {
+            ephemeral     = true
+            maximum_count = 3
+          }
+          lambda = {
+            artifact = {
+              zip = "README.md"
+            }
+            webhook = {
+              artifact = {
+                zip = "README.md"
+              }
+            }
+          }
+        }
+      }
+      ssm = {
+        housekeeper = {
+          lambda = {
+            artifact = {
+              zip = "README.md"
+            }
+          }
+        }
+      }
+      compute_provider = {
+        selections = {
+          micro = {
+            namespace = "aws"
+            type      = "microvm"
+          }
+        }
+        aws = {
+          ec2 = {
+            runner_binaries = {
+              targets = {}
+            }
+          }
+          microvm = {
+            image_arn = "arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner"
+          }
+        }
+      }
+      multi_runner_config = {
+        micro = {
+          runner = {
+            os           = "linux"
+            architecture = "arm64"
+          }
+          orchestration_provider = {
+            webhook = {
+              github = {
+                organization_runners = true
+              }
+              matcherConfig = {
+                labelMatchers = [["self-hosted", "linux", "arm64", "microvm"]]
+              }
+            }
+          }
+          compute_provider = {
+            aws = {
+              microvm = {}
+            }
+          }
+        }
+      }
+    }
+  }
+
+  assert {
+    condition = (
+      keys(local.runner_config_by_provider) == ["aws_microvm"]
+      && keys(local.runner_config_by_provider.aws_microvm) == ["micro"]
+      && local.compute_provider_types["micro"] == "microvm"
+      && local.runner_matcher_config["micro"].computeProvider == "microvm"
+      && length(local.unique_os_and_arch) == 0
+      && length(module.runner_binaries) == 0
+    )
+    error_message = "A MicroVM-only v2 map must route through aws_microvm and must not dereference or discover EC2 runner binaries."
+  }
+
+  assert {
+    condition = (
+      keys(module.runner_configs) == ["micro"]
+      && module.runner_configs["micro"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables["COMPUTE_PROVIDER_TYPE"] == "microvm"
+      && module.runner_configs["micro"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables["MICROVM_IMAGE_ARN"] == "arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner"
+      && module.runner_configs["micro"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables["MICROVM_METADATA_SSM_PATH"] == "/github-action-runners/github-actions/micro/runners/config/microvm-metadata"
+      && module.runner_configs["micro"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables["SSM_CONFIG_PATH"] == "/github-action-runners/github-actions/micro/runners/config"
+      && module.runner_configs["micro"].orchestration_provider.webhook.scale_down.lambda.environment[0].variables["SSM_TOKEN_PATH"] == "/github-action-runners/github-actions/micro/runners/tokens"
+      && module.runner_configs["micro"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables["ENVIRONMENT"] == "github-actions-micro"
+      && module.runner_configs["micro"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables["RUNNER_NAME_PREFIX"] == ""
+      && !contains(keys(module.runner_configs["micro"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables), "MICROVM_METADATA_TAGS")
+      && !contains(keys(module.runner_configs["micro"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables), "MICROVM_RUNNER_CONFIG_SSM_ARN")
+      && !contains(keys(module.runner_configs["micro"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables), "INSTANCE_TYPES")
+      && output.runners_map_v2["micro"].provider.aws.ec2 == null
+      && output.runners_map_v2["micro"].provider.aws.microvm.image_arn == "arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner"
+      && toset(slice(output.runners_map_v2["micro"].provider.aws.microvm.runners_log_groups[*].name, 1, 4)) == toset([
+        "/github-self-hosted-runners/github-actions-micro/internal_service",
+        "/github-self-hosted-runners/github-actions-micro/run",
+        "/github-self-hosted-runners/github-actions-micro/runner",
+      ])
+      && output.runners_map_v2["micro"].provider.aws.microvm.logfiles[2].file_path == "/opt/actions-runner/_diag/Runner_**.log"
+    )
+    error_message = "The MicroVM-only lane must reach the runtime and output contracts without EC2 provider data."
+  }
+}
+
+run "experimental_v2_resolves_mixed_aws_provider_lanes" {
+  command = plan
+
+  variables {
+    github_app = null
+    vpc_id     = null
+    subnet_ids = null
+
+    experimental = {
+      github = {
+        app = {
+          id             = "123456"
+          key_base64     = "dGVzdA=="
+          webhook_secret = "test-secret"
+        }
+      }
+      orchestration_provider = {
+        webhook = {
+          runner = {
+            ephemeral     = true
+            maximum_count = 3
+          }
+          lambda = {
+            artifact = {
+              zip = "README.md"
+            }
+            webhook = {
+              artifact = {
+                zip = "README.md"
+              }
+            }
+          }
+        }
+      }
+      ssm = {
+        housekeeper = {
+          lambda = {
+            artifact = {
+              zip = "README.md"
+            }
+          }
+        }
+      }
+      compute_provider = {
+        aws = {
+          ec2 = {
+            vpc_id     = "vpc-global"
+            subnet_ids = ["subnet-global"]
+          }
+          microvm = {
+            image_arn = "arn:aws:lambda:eu-west-1:123456789012:microvm-image:global-runner"
+            ingress_network_connectors = [
+              "arn:aws:lambda:eu-west-1:123456789012:network-connector:global-ingress",
+            ]
+            egress_network_connectors = [
+              "arn:aws:lambda:eu-west-1:aws:network-connector:aws-network-connector:INTERNET_EGRESS",
+            ]
+            cloudwatch_agent = {
+              enabled = false
+              config  = "{\"global\":true}"
+            }
+            log_files = [{
+              log_group_name   = "global"
+              prefix_log_group = true
+              file_path        = "/var/log/global.log"
+              log_stream_name  = "{microvm_id}"
+            }]
+            environment_variables = {
+              MICROVM_GLOBAL   = "global"
+              MICROVM_OVERRIDE = "global"
+            }
+            iam = {
+              resource_arns = {
+                images = ["arn:aws:lambda:eu-west-1:123456789012:microvm-image:*"]
+              }
+              managed_policies = {
+                scale_up = {
+                  arn = "arn:aws:iam::123456789012:policy/global-microvm-scale-up"
+                }
+              }
+            }
+          }
+        }
+      }
+      multi_runner_config = {
+        ec2 = {
+          runner = {
+            os           = "linux"
+            architecture = "x64"
+          }
+          orchestration_provider = {
+            webhook = {
+              github = {
+                organization_runners = true
+              }
+              matcherConfig = {
+                labelMatchers = [["self-hosted", "linux", "x64", "ec2"]]
+              }
+            }
+          }
+          compute_provider = {
+            aws = {
+              ec2 = {
+                instance_types = ["m5.large"]
+                binaries_syncer = {
+                  enabled = false
+                }
+              }
+            }
+          }
+        }
+        micro = {
+          runner = {
+            os           = "linux"
+            architecture = "arm64"
+          }
+          orchestration_provider = {
+            webhook = {
+              github = {
+                organization_runners = true
+              }
+              matcherConfig = {
+                labelMatchers = [["self-hosted", "linux", "arm64", "microvm"]]
+              }
+            }
+          }
+          compute_provider = {
+            aws = {
+              microvm = {
+                image_version = "9"
+                cloudwatch_agent = {
+                  enabled = true
+                  config  = "{\"lane\":true}"
+                }
+                log_files = [{
+                  log_group_name   = "lane"
+                  prefix_log_group = false
+                  file_path        = "/var/log/lane.log"
+                  log_stream_name  = "{microvm_id}/lane"
+                  log_class        = "INFREQUENT_ACCESS"
+                }]
+                environment_variables = {
+                  MICROVM_LANE     = "lane"
+                  MICROVM_OVERRIDE = "lane"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  assert {
+    condition = (
+      toset(keys(local.runner_config_by_provider)) == toset(["aws_ec2", "aws_microvm"])
+      && keys(local.runner_config_by_provider.aws_ec2) == ["ec2"]
+      && keys(local.runner_config_by_provider.aws_microvm) == ["micro"]
+      && local.compute_provider_types == { ec2 = "ec2", micro = "microvm" }
+      && local.runner_matcher_config["ec2"].computeProvider == "ec2"
+      && local.runner_matcher_config["micro"].computeProvider == "microvm"
+    )
+    error_message = "Mixed AWS provider lanes must retain namespaced Terraform dispatch keys and runtime provider types."
+  }
+
+  assert {
+    condition = (
+      local.translated_experimental.multi_runner_config["ec2"].compute_provider.aws.microvm == null
+      && local.translated_experimental.multi_runner_config["ec2"].compute_provider.aws.ec2.vpc_id == "vpc-global"
+      && local.translated_experimental.multi_runner_config["micro"].compute_provider.aws.ec2 == null
+      && local.translated_experimental.multi_runner_config["micro"].compute_provider.aws.microvm.image_arn == "arn:aws:lambda:eu-west-1:123456789012:microvm-image:global-runner"
+      && local.translated_experimental.multi_runner_config["micro"].compute_provider.aws.microvm.image_version == "9"
+      && local.translated_experimental.multi_runner_config["micro"].compute_provider.aws.microvm.cloudwatch_agent.enabled
+      && local.translated_experimental.multi_runner_config["micro"].compute_provider.aws.microvm.cloudwatch_agent.config == "{\"lane\":true}"
+      && local.translated_experimental.multi_runner_config["micro"].compute_provider.aws.microvm.log_files[0].log_group_name == "lane"
+      && local.translated_experimental.multi_runner_config["micro"].compute_provider.aws.microvm.log_files[0].log_class == "INFREQUENT_ACCESS"
+      && !contains(keys(local.translated_experimental.multi_runner_config["micro"].compute_provider.aws.microvm), "maximum_duration_in_seconds")
+      && local.translated_experimental.multi_runner_config["micro"].compute_provider.aws.microvm.environment_variables["MICROVM_GLOBAL"] == "global"
+      && local.translated_experimental.multi_runner_config["micro"].compute_provider.aws.microvm.environment_variables["MICROVM_OVERRIDE"] == "lane"
+      && local.translated_experimental.multi_runner_config["micro"].compute_provider.aws.microvm.iam.resource_arns.images == tolist(["arn:aws:lambda:eu-west-1:123456789012:microvm-image:*"])
+      && local.translated_experimental.multi_runner_config["micro"].compute_provider.aws.microvm.iam.managed_policies.scale_up.arn == "arn:aws:iam::123456789012:policy/global-microvm-scale-up"
+    )
+    error_message = "MicroVM lanes must resolve nested lane overrides over global defaults while global defaults alone do not select the provider."
+  }
+
+  assert {
+    condition = (
+      module.runner_configs["ec2"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables["COMPUTE_PROVIDER_TYPE"] == "ec2"
+      && module.runner_configs["micro"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables["COMPUTE_PROVIDER_TYPE"] == "microvm"
+      && module.runner_configs["micro"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables["MICROVM_IMAGE_ARN"] == "arn:aws:lambda:eu-west-1:123456789012:microvm-image:global-runner"
+      && module.runner_configs["micro"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables["MICROVM_LOG_GROUP"] == "/github-self-hosted-runners/github-actions-micro/microvm"
+      && module.runner_configs["micro"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables["MICROVM_METADATA_SSM_PATH"] == "/github-action-runners/github-actions/micro/runners/config/microvm-metadata"
+      && module.runner_configs["micro"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables["MICROVM_GLOBAL"] == "global"
+      && module.runner_configs["micro"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables["MICROVM_LANE"] == "lane"
+      && !contains(keys(module.runner_configs["micro"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables), "INSTANCE_TYPES")
+      && !contains(keys(module.runner_configs["micro"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables), "MICROVM_RUN_CONFIG")
+      && !contains(keys(module.runner_configs["micro"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables), "MICROVM_TAGS")
+      && length(module.runner_binaries) == 0
+    )
+    error_message = "Each mixed lane must receive only its selected provider fragment, its provider-managed MicroVM log group, and no EC2 binary discovery."
+  }
+
+  assert {
+    condition = (
+      toset(keys(output.runners_map_v2["ec2"].provider.aws)) == toset(["ec2", "microvm"])
+      && output.runners_map_v2["ec2"].provider.aws.microvm == null
+      && output.runners_map_v2["micro"].provider.aws.ec2 == null
+      && output.runners_map_v2["micro"].provider.aws.microvm.image_arn == "arn:aws:lambda:eu-west-1:123456789012:microvm-image:global-runner"
+      && output.runners_map_v2["micro"].provider.aws.microvm.runners_log_groups[0].name == "/github-self-hosted-runners/github-actions-micro/microvm"
+      && output.runners_map_v2["micro"].provider.aws.microvm.runners_log_groups[1].name == "/lane"
+      && output.runners_map_v2["micro"].provider.aws.microvm.logfiles[0].file_path == "/var/log/lane.log"
+    )
+    error_message = "Mixed provider outputs must preserve both AWS provider leaves and set the inactive leaf to null."
+  }
+}
+
+run "experimental_v2_rejects_non_ephemeral_microvm_lane" {
+  command = plan
+
+  plan_options {
+    target = [terraform_data.validate_experimental]
+  }
+
+  variables {
+    experimental = {
+      github = {
+        app = {
+          id             = "123456"
+          key_base64     = "dGVzdA=="
+          webhook_secret = "test-secret"
+        }
+      }
+      multi_runner_config = {
+        invalid = {
+          runner = {
+            os           = "linux"
+            architecture = "arm64"
+          }
+          orchestration_provider = {
+            webhook = {
+              runner = {
+                ephemeral = false
+              }
+              github = {
+                organization_runners = true
+              }
+              matcherConfig = {
+                labelMatchers = [["self-hosted", "linux", "arm64", "microvm"]]
+              }
+            }
+          }
+          compute_provider = {
+            aws = {
+              microvm = {
+                image_arn = "arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  expect_failures = [terraform_data.validate_experimental]
+}
+
+run "experimental_v2_rejects_microvm_lane_with_jit_disabled" {
+  command = plan
+
+  plan_options {
+    target = [terraform_data.validate_experimental]
+  }
+
+  variables {
+    experimental = {
+      github = {
+        app = {
+          id             = "123456"
+          key_base64     = "dGVzdA=="
+          webhook_secret = "test-secret"
+        }
+      }
+      orchestration_provider = {
+        webhook = {
+          runner = {
+            ephemeral          = true
+            jit_config_enabled = false
+          }
+        }
+      }
+      multi_runner_config = {
+        invalid = {
+          runner = {
+            os           = "linux"
+            architecture = "arm64"
+          }
+          orchestration_provider = {
+            webhook = {
+              github = {
+                organization_runners = true
+              }
+              matcherConfig = {
+                labelMatchers = [["self-hosted", "linux", "arm64", "microvm"]]
+              }
+            }
+          }
+          compute_provider = {
+            aws = {
+              microvm = {
+                image_arn = "arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  expect_failures = [terraform_data.validate_experimental]
+}
+
+run "experimental_v2_rejects_non_arm64_microvm_lane" {
+  command = plan
+
+  plan_options {
+    target = [terraform_data.validate_experimental]
+  }
+
+  variables {
+    experimental = {
+      github = {
+        app = {
+          id             = "123456"
+          key_base64     = "dGVzdA=="
+          webhook_secret = "test-secret"
+        }
+      }
+      orchestration_provider = {
+        webhook = {
+          runner = {
+            ephemeral = true
+          }
+        }
+      }
+      multi_runner_config = {
+        invalid = {
+          runner = {
+            os           = "linux"
+            architecture = "x64"
+          }
+          orchestration_provider = {
+            webhook = {
+              github = {
+                organization_runners = true
+              }
+              matcherConfig = {
+                labelMatchers = [["self-hosted", "linux", "x64", "microvm"]]
+              }
+            }
+          }
+          compute_provider = {
+            aws = {
+              microvm = {
+                image_arn = "arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  expect_failures = [terraform_data.validate_experimental]
+}
+
+run "experimental_v2_rejects_non_linux_microvm_lane" {
+  command = plan
+
+  plan_options {
+    target = [terraform_data.validate_experimental]
+  }
+
+  variables {
+    experimental = {
+      github = {
+        app = {
+          id             = "123456"
+          key_base64     = "dGVzdA=="
+          webhook_secret = "test-secret"
+        }
+      }
+      orchestration_provider = {
+        webhook = {
+          runner = {
+            ephemeral = true
+          }
+        }
+      }
+      multi_runner_config = {
+        invalid = {
+          runner = {
+            os           = "windows"
+            architecture = "arm64"
+          }
+          orchestration_provider = {
+            webhook = {
+              github = {
+                organization_runners = true
+              }
+              matcherConfig = {
+                labelMatchers = [["self-hosted", "windows", "arm64", "microvm"]]
+              }
+            }
+          }
+          compute_provider = {
+            aws = {
+              microvm = {
+                image_arn = "arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  expect_failures = [terraform_data.validate_experimental]
+}
+
+run "experimental_v2_rejects_multiple_aws_provider_leaves" {
+  command = plan
+
+  plan_options {
+    target = [terraform_data.validate_experimental]
+  }
+
+  variables {
+    experimental = {
+      github = {
+        app = {
+          id             = "123456"
+          key_base64     = "dGVzdA=="
+          webhook_secret = "test-secret"
+        }
+      }
+      orchestration_provider = {
+        webhook = {
+          runner = {
+            ephemeral = true
+          }
+        }
+      }
+      compute_provider = {
+        aws = {
+          ec2 = {
+            vpc_id     = "vpc-global"
+            subnet_ids = ["subnet-global"]
+          }
+        }
+      }
+      multi_runner_config = {
+        invalid = {
+          runner = {
+            os           = "linux"
+            architecture = "arm64"
+          }
+          orchestration_provider = {
+            webhook = {
+              github = {
+                organization_runners = true
+              }
+              matcherConfig = {
+                labelMatchers = [["self-hosted", "linux", "arm64"]]
+              }
+            }
+          }
+          compute_provider = {
+            aws = {
+              ec2 = {
+                instance_types = ["m5.large"]
+              }
+              microvm = {
+                image_arn = "arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner"
               }
             }
           }

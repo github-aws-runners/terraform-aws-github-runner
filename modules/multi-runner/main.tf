@@ -24,7 +24,7 @@ locals {
       "os_type" : config.runner.os,
       "architecture" : config.runner.architecture
     }
-    if config.compute_provider.aws.ec2.binaries_syncer.enabled
+    if try(config.compute_provider.aws.ec2.binaries_syncer.enabled, false)
   ])
   configured_runner_binary_targets = local.use_multi_runner_config_v2 ? var.experimental.compute_provider.aws.ec2.runner_binaries.targets : null
   unique_os_and_arch = local.configured_runner_binary_targets != null ? {

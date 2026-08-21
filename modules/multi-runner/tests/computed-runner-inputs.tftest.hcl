@@ -56,8 +56,8 @@ run "computed_lane_values_keep_binary_syncer_instances_plannable" {
   }
 
   assert {
-    condition     = output.runner_config_keys == ["linux"]
-    error_message = "Apply-time values inside a statically keyed runner configuration must not make binary-syncer module instances unknown."
+    condition     = output.runner_config_keys == ["linux", "micro"]
+    error_message = "Apply-time EC2 and MicroVM values inside statically keyed runner configurations must not make provider dispatch or binary-syncer instances unknown."
   }
 
   assert {
@@ -84,7 +84,7 @@ run "computed_lane_values_keep_enabled_binary_syncer_instances_plannable" {
   }
 
   assert {
-    condition     = output.runner_config_keys == ["linux"]
+    condition     = output.runner_config_keys == ["linux", "micro"]
     error_message = "The explicit provider selection must keep runner-config dispatch plannable when unrelated lane values are known only after apply."
   }
 
