@@ -10,7 +10,7 @@ import type {
 import type { MicrovmDynamicLabelOverrides } from '../dynamic-labels';
 import { loadMicrovmProviderConfig } from './config';
 import { isRetryableMicrovmError, runMicrovmRunner, terminateMicrovm } from './microvms';
-import { assertSeparatedMicrovmMetadataPath, setMicrovmGithubRunnerId } from './runner-metadata';
+import { assertSeparatedMicrovmMetadataPath, setMicrovmGithubRunnerMetadata } from './runner-metadata';
 
 const logger = createChildLogger('microvm-runner-config');
 
@@ -69,13 +69,14 @@ export async function createMicrovmRunners(
         runHookPayload,
         runnerOwner: githubRunnerConfig.runnerOwner,
         runnerType: githubRunnerConfig.runnerType,
+        ssmParameterStoreTags: githubRunnerConfig.ssmParameterStoreTags,
         source,
       });
 
       const failedRunnerIds = await createStartRunnerConfig(githubRunnerConfig, [microvmId], githubInstallationClient, {
         getSsmParameterTags: (runnerId) => [{ Key: 'MicrovmId', Value: runnerId }],
         onJitConfigCreated: async (runnerId, metadata) => {
-          await setMicrovmGithubRunnerId(config.metadataSsmPath, runnerId, metadata.githubRunnerId);
+          await setMicrovmGithubRunnerMetadata(config.metadataSsmPath, runnerId, metadata);
         },
       });
 

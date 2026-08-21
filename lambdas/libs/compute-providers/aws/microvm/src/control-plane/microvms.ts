@@ -9,10 +9,17 @@ import {
 } from '@aws-sdk/client-lambda-microvms';
 import type { MicrovmItem, MicrovmState, RunMicrovmCommandInput } from '@aws-sdk/client-lambda-microvms';
 
-import type { LambdaRunnerSource, ListRunnerFilters, RunnerInfo, RunnerType } from '../../../../core';
+import type {
+  CreateGitHubRunnerConfig,
+  LambdaRunnerSource,
+  ListRunnerFilters,
+  RunnerInfo,
+  RunnerType,
+} from '../../../../core';
 import { loadMicrovmProviderConfig, type MicrovmProviderConfig } from './config';
 import { MICROVM_LIFETIME_IN_SECONDS } from './lifetime';
 import {
+  assertValidMicrovmMetadataTags,
   createMicrovmRunnerMetadata,
   deleteMicrovmRunnerMetadata,
   listMicrovmRunnerMetadata,
@@ -34,6 +41,7 @@ export interface RunMicrovmRunnerInput {
   runHookPayload: string;
   runnerOwner: string;
   runnerType: RunnerType;
+  ssmParameterStoreTags: CreateGitHubRunnerConfig['ssmParameterStoreTags'];
   source: LambdaRunnerSource;
 }
 
@@ -72,6 +80,18 @@ function microvmClient(): LambdaMicrovmsClient {
 }
 
 export async function runMicrovmRunner(input: RunMicrovmRunnerInput): Promise<string> {
+  assertValidMicrovmMetadataTags({
+    microvmId: 'microvm-validation',
+    environment: input.environment,
+    runnerOwner: input.runnerOwner,
+    runnerType: input.runnerType,
+    source: input.source,
+    imageArn: input.config.imageIdentifier,
+    imageVersion: input.config.imageVersion ?? 'version-validation',
+    metadataTags: input.config.metadataTags,
+    ssmParameterStoreTags: input.ssmParameterStoreTags,
+  });
+
   const commandInput: RunMicrovmCommandInput = {
     imageIdentifier: input.config.imageIdentifier,
     imageVersion: input.config.imageVersion,
@@ -95,6 +115,9 @@ export async function runMicrovmRunner(input: RunMicrovmRunnerInput): Promise<st
     throw new Error('RunMicrovm returned no microvmId');
   }
 
+  const imageArn = response.imageArn ?? input.config.imageIdentifier;
+  const imageVersion = response.imageVersion ?? input.config.imageVersion;
+
   try {
     await createMicrovmRunnerMetadata(input.config.metadataSsmPath, {
       microvmId: response.microvmId,
@@ -102,8 +125,10 @@ export async function runMicrovmRunner(input: RunMicrovmRunnerInput): Promise<st
       runnerOwner: input.runnerOwner,
       runnerType: input.runnerType,
       source: input.source,
-      imageArn: response.imageArn ?? input.config.imageIdentifier,
-      imageVersion: input.config.imageVersion,
+      imageArn,
+      imageVersion,
+      metadataTags: input.config.metadataTags,
+      ssmParameterStoreTags: input.ssmParameterStoreTags,
     });
   } catch (error) {
     logger.error(`Failed to record metadata for new MicroVM runner '${response.microvmId}', terminating it`, {
