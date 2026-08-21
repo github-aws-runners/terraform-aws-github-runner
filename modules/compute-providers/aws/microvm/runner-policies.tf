@@ -3,6 +3,8 @@ data "aws_caller_identity" "current" {}
 locals {
   ssm_parameter_arn_prefix = "arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter"
   runner_token_path_arn    = "${local.ssm_parameter_arn_prefix}${var.ssm.paths.root}/${var.ssm.paths.tokens}/*"
+  ssm_config_arn           = "${local.ssm_parameter_arn_prefix}${var.ssm.paths.root}/${var.ssm.paths.config}"
+
 
   runner_inline_policies = {
     ssm_jit = {
@@ -12,6 +14,10 @@ locals {
     runtime_logs = {
       name        = "runner-microvm-runtime-logs"
       policy_json = data.aws_iam_policy_document.runner_runtime_logs.json
+    }
+    runner_metadata = {
+      name        = "runner-microvm-metadata"
+      policy_json = data.aws_iam_policy_document.runner_metadata.json
     }
   }
 }
@@ -24,6 +30,21 @@ data "aws_iam_policy_document" "runner_ssm_jit" {
       "ssm:GetParameter",
     ]
     resources = [local.runner_token_path_arn]
+  }
+}
+
+data "aws_iam_policy_document" "runner_metadata" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "ssm:GetParameter",
+      "ssm:GetParameters",
+      "ssm:GetParametersByPath",
+    ]
+    resources = [
+      local.ssm_config_arn,
+      "${local.ssm_config_arn}/*",
+    ]
   }
 }
 
