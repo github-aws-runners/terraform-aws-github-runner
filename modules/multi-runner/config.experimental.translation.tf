@@ -299,7 +299,12 @@ locals {
           image_version              = null
           ingress_network_connectors = []
           egress_network_connectors  = []
-          environment_variables      = {}
+          cloudwatch_agent = {
+            enabled = true
+            config  = null
+          }
+          log_files             = null
+          environment_variables = {}
           iam = {
             resource_arns = {
               images = null
@@ -793,6 +798,19 @@ locals {
               egress_network_connectors = v.compute_provider.aws.microvm.egress_network_connectors != null ? (
                 v.compute_provider.aws.microvm.egress_network_connectors
               ) : local.raw_translated_experimental.compute_provider.aws.microvm.egress_network_connectors
+              cloudwatch_agent = {
+                enabled = coalesce(
+                  v.compute_provider.aws.microvm.cloudwatch_agent.enabled,
+                  local.raw_translated_experimental.compute_provider.aws.microvm.cloudwatch_agent.enabled,
+                )
+                config = try(coalesce(
+                  v.compute_provider.aws.microvm.cloudwatch_agent.config,
+                  local.raw_translated_experimental.compute_provider.aws.microvm.cloudwatch_agent.config,
+                ), null)
+              }
+              log_files = v.compute_provider.aws.microvm.log_files != null ? (
+                v.compute_provider.aws.microvm.log_files
+              ) : local.raw_translated_experimental.compute_provider.aws.microvm.log_files
               environment_variables = merge(
                 local.raw_translated_experimental.compute_provider.aws.microvm.environment_variables,
                 v.compute_provider.aws.microvm.environment_variables,

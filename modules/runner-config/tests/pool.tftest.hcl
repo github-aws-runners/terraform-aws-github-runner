@@ -717,12 +717,13 @@ run "routes_lambda_microvm_provider" {
       && length(module.compute_aws_microvm) == 1
       && length(module.compute_aws_microvm_trust_policy) == 1
       && aws_iam_role.runner[0].assume_role_policy == module.compute_aws_microvm_trust_policy[0].assume_role_policy
-      && toset(keys(aws_iam_role_policy.runner_provider)) == toset(["runner_metadata", "runtime_logs", "ssm_jit"])
+      && toset(keys(aws_iam_role_policy.runner_provider)) == toset(["cloudwatch", "runner_metadata", "runtime_logs", "ssm_jit"])
+      && aws_iam_role_policy.runner_provider["cloudwatch"].name == "runner-microvm-cloudwatch"
       && aws_iam_role_policy.runner_provider["runner_metadata"].name == "runner-microvm-metadata"
       && aws_iam_role_policy.runner_provider["runtime_logs"].name == "runner-microvm-runtime-logs"
       && aws_iam_role_policy.runner_provider["ssm_jit"].name == "runner-microvm-ssm-jit"
     )
-    error_message = "The aws.microvm leaf must dispatch only to the namespaced provider modules and attach all three required policies to its managed runner role."
+    error_message = "The aws.microvm leaf must dispatch only to the namespaced provider modules and attach all required policies to its managed runner role."
   }
 
   assert {
@@ -733,6 +734,12 @@ run "routes_lambda_microvm_provider" {
       && output.provider.aws.microvm.image_version == "7"
       && contains(keys(output.provider.aws.microvm), "execution_role_arn")
       && output.provider.aws.microvm.runners_log_groups[0].name == "/github-self-hosted-runners/github-actions/microvm"
+      && toset(slice(output.provider.aws.microvm.runners_log_groups[*].name, 1, 4)) == toset([
+        "/github-self-hosted-runners/github-actions/internal_service",
+        "/github-self-hosted-runners/github-actions/run",
+        "/github-self-hosted-runners/github-actions/runner",
+      ])
+      && output.provider.aws.microvm.logfiles[2].file_path == "/opt/actions-runner/_diag/Runner_**.log"
     )
     error_message = "The selected MicroVM resources must be exposed only under provider.aws.microvm."
   }
@@ -749,6 +756,7 @@ run "routes_lambda_microvm_provider" {
       && module.orchestration_webhook[0].scale_up.lambda.environment[0].variables["ENVIRONMENT"] == "github-actions"
       && module.orchestration_webhook[0].scale_up.lambda.environment[0].variables["RUNNER_NAME_PREFIX"] == ""
       && module.orchestration_webhook[0].scale_down.lambda.environment[0].variables["MICROVM_METADATA_SSM_PATH"] == "/github-runner/config/microvm-metadata"
+      && module.orchestration_webhook[0].scale_down.lambda.environment[0].variables["SSM_TOKEN_PATH"] == "/github-runner/tokens"
       && module.orchestration_webhook[0].scale_down.lambda.environment[0].variables["RUNNER_BOOT_TIME_IN_MINUTES"] == "5"
       && !contains(keys(module.orchestration_webhook[0].scale_up.lambda.environment[0].variables), "MICROVM_RUN_CONFIG")
       && !contains(keys(module.orchestration_webhook[0].scale_up.lambda.environment[0].variables), "MICROVM_TAGS")

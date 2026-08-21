@@ -122,6 +122,14 @@ variable "compute_provider" {
     - `aws.microvm.image_version`: Optional MicroVM image version.
     - `aws.microvm.ingress_network_connectors`: Up to 10 Lambda network-connector ARNs passed to RunMicrovm.
     - `aws.microvm.egress_network_connectors`: Up to 10 Lambda network-connector ARNs passed to RunMicrovm.
+    - `aws.microvm.cloudwatch_agent.enabled`: Enables the image CloudWatch agent through the shared runner configuration path.
+    - `aws.microvm.cloudwatch_agent.config`: Optional complete CloudWatch agent configuration. Null renders the provider default from `log_files`. Custom log destinations must also be declared in `log_files` so Terraform creates their groups and IAM permissions.
+    - `aws.microvm.log_files`: Optional files collected by the CloudWatch agent. Null uses the MicroVM defaults.
+    - `aws.microvm.log_files[].log_group_name`: CloudWatch log-group name before optional prefixing.
+    - `aws.microvm.log_files[].prefix_log_group`: Prefixes the log-group name with the runner configuration path.
+    - `aws.microvm.log_files[].file_path`: File or glob read by the CloudWatch agent.
+    - `aws.microvm.log_files[].log_stream_name`: Log-stream template. The image replaces `{microvm_id}` with the current MicroVM identifier.
+    - `aws.microvm.log_files[].log_class`: CloudWatch log-group class for the collected file.
     - `aws.microvm.environment_variables`: Additional provider-specific Lambda environment variables merged into scale-up, scale-down, and pool.
     - `aws.microvm.iam.resource_arns.images`: Optional MicroVM image ARN allowlist for RunMicrovm and TerminateMicrovm. Null restricts both actions to `image_arn`; set an explicit list when dynamic image overrides are enabled.
     - `aws.microvm.iam.additional_policy_json.scale_up`: Optional additional provider policy attached separately to the scale-up Lambda role.
@@ -274,7 +282,18 @@ variable "compute_provider" {
         image_version              = optional(string, null)
         ingress_network_connectors = optional(list(string), [])
         egress_network_connectors  = optional(list(string), [])
-        environment_variables      = optional(map(string), {})
+        cloudwatch_agent = optional(object({
+          enabled = optional(bool, true)
+          config  = optional(string, null)
+        }), {})
+        log_files = optional(list(object({
+          log_group_name   = string
+          prefix_log_group = bool
+          file_path        = string
+          log_stream_name  = string
+          log_class        = optional(string, "STANDARD")
+        })), null)
+        environment_variables = optional(map(string), {})
         iam = optional(object({
           resource_arns = optional(object({
             images = optional(list(string), null)

@@ -35,8 +35,20 @@ data "aws_iam_policy_document" "scale_up" {
 
   statement {
     effect    = "Allow"
+    actions   = ["ssm:GetParameters"]
+    resources = [local.microvm_metadata_parameter_arn]
+  }
+
+  statement {
+    effect    = "Allow"
     actions   = ["iam:PassRole"]
     resources = [var.runner.iam.role.arn]
+  }
+
+  statement {
+    effect    = "Allow"
+    actions   = ["ssm:DeleteParameter"]
+    resources = [local.runner_token_path_arn]
   }
 }
 
@@ -67,10 +79,16 @@ data "aws_iam_policy_document" "scale_down" {
     actions   = ["ssm:GetParametersByPath"]
     resources = [local.microvm_metadata_path_arn, local.microvm_metadata_parameter_arn]
   }
+
+  statement {
+    effect    = "Allow"
+    actions   = ["ssm:DeleteParameter"]
+    resources = [local.runner_token_path_arn]
+  }
 }
 
 locals {
-  microvm_metadata_ssm_path      = "/${trim(var.ssm.paths.root, "/")}/${trim(var.ssm.paths.config, "/")}/microvm-metadata"
+  microvm_metadata_ssm_path      = "${local.ssm_config_ssm_path}/microvm-metadata"
   microvm_metadata_path_arn      = "${local.ssm_parameter_arn_prefix}${local.microvm_metadata_ssm_path}"
   microvm_metadata_parameter_arn = "${local.microvm_metadata_path_arn}/*"
   microvm_image_resource_arns = coalesce(
@@ -91,6 +109,7 @@ locals {
     MICROVM_INGRESS_NETWORK_CONNECTORS = length(var.config.ingress_network_connectors) == 0 ? "" : jsonencode(var.config.ingress_network_connectors)
     MICROVM_LOG_GROUP                  = aws_cloudwatch_log_group.runtime.name
     MICROVM_METADATA_SSM_PATH          = local.microvm_metadata_ssm_path
+    SSM_TOKEN_PATH                     = local.runner_jit_ssm_path
   })
 
   scale_up_environment_variables   = local.microvm_environment_variables

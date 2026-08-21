@@ -33,6 +33,14 @@ variable "config" {
     - `image_version`: Optional MicroVM image version.
     - `ingress_network_connectors`: Up to 10 Lambda network-connector ARNs passed to RunMicrovm.
     - `egress_network_connectors`: Up to 10 Lambda network-connector ARNs passed to RunMicrovm.
+    - `cloudwatch_agent.enabled`: Enables the image CloudWatch agent through the shared runner configuration path.
+    - `cloudwatch_agent.config`: Optional complete CloudWatch agent configuration. Null renders the provider default from `log_files`. Custom log destinations must also be declared in `log_files` so Terraform creates their groups and IAM permissions.
+    - `log_files`: Optional files collected by the CloudWatch agent. Null uses the MicroVM defaults.
+    - `log_files[].log_group_name`: CloudWatch log-group name before optional prefixing.
+    - `log_files[].prefix_log_group`: Prefixes the log-group name with the runner configuration path.
+    - `log_files[].file_path`: File or glob read by the CloudWatch agent.
+    - `log_files[].log_stream_name`: Log-stream template. The image replaces `{microvm_id}` with the current MicroVM identifier.
+    - `log_files[].log_class`: CloudWatch log-group class for the collected file.
     - `environment_variables`: Additional provider-specific Lambda environment variables merged into scale-up, scale-down, and pool.
     - `iam.resource_arns.images`: Optional MicroVM image ARN allowlist for RunMicrovm and TerminateMicrovm. Null restricts both actions to `image_arn`; set an explicit list when dynamic image overrides are enabled. Provider-required list and connector permissions remain separately scoped to `*`.
     - `iam.additional_policy_json.scale_up`: Optional additional provider policy attached separately to the scale-up Lambda role.
@@ -47,7 +55,18 @@ variable "config" {
     image_version              = optional(string, null)
     ingress_network_connectors = optional(list(string), [])
     egress_network_connectors  = optional(list(string), [])
-    environment_variables      = optional(map(string), {})
+    cloudwatch_agent = optional(object({
+      enabled = optional(bool, true)
+      config  = optional(string, null)
+    }), {})
+    log_files = optional(list(object({
+      log_group_name   = string
+      prefix_log_group = bool
+      file_path        = string
+      log_stream_name  = string
+      log_class        = optional(string, "STANDARD")
+    })), null)
+    environment_variables = optional(map(string), {})
     iam = optional(object({
       resource_arns = optional(object({
         images = optional(list(string), null)
@@ -82,7 +101,7 @@ variable "runner" {
     - `hooks.job_completed`: Script installed as the runner job-completed hook.
     - `iam.role.arn`: Resolved runner-role ARN used as the MicroVM execution role and referenced by provider policies.
     - `iam.role.name`: Resolved runner-role name used by provider resources.
-    - `iam.role.managed`: Whether runner-config manages the resolved runner role. Callers own an external role and must grant it `ssm:GetParameter` on the lane metadata child prefix, `ssm:GetParameter` and `ssm:DeleteParameter` on the lane token path, plus `logs:CreateLogStream` and `logs:PutLogEvents` on the provider-managed runtime log group.
+    - `iam.role.managed`: Whether runner-config manages the resolved runner role. Callers own an external role and must grant it `ssm:GetParameter` on the lane's `microvm-metadata/*.tags` and `enable_cloudwatch` parameters, `ssm:GetParameter` and `ssm:DeleteParameter` on the lane token path, plus `logs:CreateLogStream` and `logs:PutLogEvents` on the provider-managed runtime log group. When the CloudWatch agent is enabled, it also needs `ssm:GetParameter` on `cloudwatch_agent_config_runner` and stream access to the configured runner log groups.
     - `iam.managed_policy_arns`: Common managed-policy ARNs returned with the provider-specific runner policies for attachment by runner-config.
     - `iam.path`: IAM path available to provider-managed IAM resources. Null derives the path from `prefix`.
   EOT
