@@ -20,10 +20,22 @@ vi.mock('./runner-metadata', async (importOriginal) => ({
 
 const imageArn = 'arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner';
 const metadataSsmPath = '/github-action-runners/unit-test/microvm-metadata';
-const runnerConfigSsmArn = 'arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/unit-test/config';
+const runnerConfigSsmPath = '/github-action-runners/unit-test/config';
 const githubClient = {} as Octokit;
 const createStartRunnerConfig = vi.fn<CreateStartRunnerConfig>();
-const ssmParameterStoreTags = [{ Key: 'CostCenter', Value: '1234' }];
+const ssmParameterStoreTags = [
+  { Key: 'CostCenter', Value: '1234' },
+  { Key: 'Name', Value: 'not-used-for-microvm-metadata' },
+  { Key: 'ghr:environment', Value: 'caller-cannot-override' },
+  { Key: 'ghr:runner_name_prefix', Value: 'caller-cannot-override' },
+  { Key: 'ghr:ssm_config_path', Value: 'caller-cannot-override' },
+];
+const microvmMetadataTags = [
+  { Key: 'CostCenter', Value: '1234' },
+  { Key: 'ghr:environment', Value: 'unit-test' },
+  { Key: 'ghr:runner_name_prefix', Value: 'unit-test-' },
+  { Key: 'ghr:ssm_config_path', Value: runnerConfigSsmPath },
+];
 
 function runnerConfig(overrides: Partial<CreateGitHubRunnerConfig> = {}): CreateGitHubRunnerConfig {
   return {
@@ -49,8 +61,6 @@ beforeEach(() => {
     imageIdentifier: imageArn,
     executionRoleArn: 'arn:aws:iam::123456789012:role/microvm-runner',
     metadataSsmPath,
-    metadataTags: [{ Key: 'Name', Value: 'unit-test-runner' }],
-    runnerConfigSsmArn,
   });
   vi.mocked(runMicrovmRunner).mockResolvedValue('mvm-1');
   vi.mocked(setMicrovmGithubRunnerMetadata).mockResolvedValue();
@@ -60,17 +70,17 @@ beforeEach(() => {
 });
 
 describe('createMicrovmRunHookPayload', () => {
-  it('contains the versioned runner token path and configuration ARN', () => {
+  it('contains the versioned runner token and configuration paths', () => {
     expect(
       JSON.parse(
         createMicrovmRunHookPayload({
-          runnerConfigSsmArn,
+          runnerConfigSsmPath,
           runnerTokenSsmPath: '/runner/token',
         }),
       ),
     ).toEqual({
       version: 1,
-      runnerConfigSsmArn,
+      runnerConfigSsmPath,
       runnerTokenSsmPath: '/runner/token',
     });
   });
@@ -102,13 +112,25 @@ describe('createMicrovmRunners', () => {
     expect(runMicrovmRunner).not.toHaveBeenCalled();
   });
 
+  it('requires an SSM config path', async () => {
+    await expect(
+      createMicrovmRunners(
+        runnerConfig({ ssmConfigPath: '' }),
+        1,
+        githubClient,
+        createStartRunnerConfig,
+        'scale-up-lambda',
+      ),
+    ).resolves.toEqual({ instances: [], retryableErrorCount: 0, nonRetryableErrorCount: 1 });
+
+    expect(runMicrovmRunner).not.toHaveBeenCalled();
+  });
+
   it('rejects a metadata path that overlaps the JIT token path', async () => {
     vi.mocked(loadMicrovmProviderConfig).mockReturnValue({
       imageIdentifier: imageArn,
       executionRoleArn: 'arn:aws:iam::123456789012:role/microvm-runner',
       metadataSsmPath: '/github-action-runners/unit-test/token/metadata',
-      metadataTags: [],
-      runnerConfigSsmArn,
     });
 
     await expect(
@@ -145,12 +167,12 @@ describe('createMicrovmRunners', () => {
       config: expect.objectContaining({ imageIdentifier: imageArn }),
       environment: 'unit-test',
       runHookPayload: createMicrovmRunHookPayload({
-        runnerConfigSsmArn,
+        runnerConfigSsmPath,
         runnerTokenSsmPath: '/github-action-runners/unit-test/token',
       }),
       runnerOwner: 'Codertocat',
       runnerType: 'Org',
-      ssmParameterStoreTags,
+      ssmParameterStoreTags: microvmMetadataTags,
       source: 'pool-lambda',
     });
     expect(createStartRunnerConfig).toHaveBeenCalledTimes(2);
@@ -184,17 +206,15 @@ describe('createMicrovmRunners', () => {
         imageVersion: '3.0',
         executionRoleArn: 'arn:aws:iam::123456789012:role/microvm-runner',
         metadataSsmPath,
-        metadataTags: [{ Key: 'Name', Value: 'unit-test-runner' }],
-        runnerConfigSsmArn,
       },
       environment: 'unit-test',
       runHookPayload: createMicrovmRunHookPayload({
-        runnerConfigSsmArn,
+        runnerConfigSsmPath,
         runnerTokenSsmPath: '/github-action-runners/unit-test/token',
       }),
       runnerOwner: 'Codertocat',
       runnerType: 'Org',
-      ssmParameterStoreTags,
+      ssmParameterStoreTags: microvmMetadataTags,
       source: 'scale-up-lambda',
     });
     expect(setMicrovmGithubRunnerMetadata).toHaveBeenCalledWith(metadataSsmPath, 'mvm-1', {
