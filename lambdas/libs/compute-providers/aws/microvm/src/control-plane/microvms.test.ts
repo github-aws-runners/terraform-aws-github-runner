@@ -18,7 +18,7 @@ import {
 } from './microvms';
 import {
   createMicrovmRunnerMetadata,
-  deleteMicrovmRunnerMetadata,
+  deleteMicrovmRunnerJitConfig,
   listMicrovmRunnerMetadata,
   markMicrovmCleanupPending,
   type MicrovmRunnerMetadata,
@@ -27,7 +27,7 @@ import {
 vi.mock('./runner-metadata', async (importOriginal) => ({
   ...(await importOriginal<typeof import('./runner-metadata')>()),
   createMicrovmRunnerMetadata: vi.fn(),
-  deleteMicrovmRunnerMetadata: vi.fn(),
+  deleteMicrovmRunnerJitConfig: vi.fn(),
   listMicrovmRunnerMetadata: vi.fn(),
   markMicrovmCleanupPending: vi.fn(),
 }));
@@ -35,12 +35,15 @@ vi.mock('./runner-metadata', async (importOriginal) => ({
 const mockMicrovmClient = mockClient(LambdaMicrovmsClient);
 const imageArn = 'arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner';
 const metadataSsmPath = '/github-action-runners/unit-test/microvm-metadata';
+const runnerTokenSsmPath = '/github-action-runners/unit-test/token';
+const ssmPaths = { metadataSsmPath, runnerTokenSsmPath };
 const config: MicrovmProviderConfig = {
   imageIdentifier: imageArn,
   imageVersion: '3.0',
   executionRoleArn: 'arn:aws:iam::123456789012:role/microvm-runner',
   egressNetworkConnectors: ['arn:egress'],
   metadataSsmPath,
+  runnerTokenSsmPath,
   logging: { cloudWatch: { logGroup: '/aws/lambda-microvms/runner' } },
 };
 const ssmParameterStoreTags = [{ Key: 'CostCenter', Value: '1234' }];
@@ -68,8 +71,8 @@ beforeEach(() => {
   delete process.env.MICROVM_MAXIMUM_DURATION_IN_SECONDS;
   process.env.AWS_REGION = 'eu-west-1';
   process.env.RUNNER_BOOT_TIME_IN_MINUTES = '5';
-  vi.mocked(createMicrovmRunnerMetadata).mockResolvedValue();
-  vi.mocked(deleteMicrovmRunnerMetadata).mockResolvedValue();
+  vi.mocked(createMicrovmRunnerMetadata).mockResolvedValue(ssmParameterStoreTags);
+  vi.mocked(deleteMicrovmRunnerJitConfig).mockResolvedValue();
   vi.mocked(listMicrovmRunnerMetadata).mockResolvedValue({ cleanupMicrovmIds: [], metadataById: new Map() });
   vi.mocked(markMicrovmCleanupPending).mockResolvedValue();
 });
@@ -89,7 +92,7 @@ describe('runMicrovmRunner', () => {
         ssmParameterStoreTags,
         source: 'scale-up-lambda',
       }),
-    ).resolves.toBe('mvm-123');
+    ).resolves.toEqual({ microvmId: 'mvm-123', metadataTags: ssmParameterStoreTags });
 
     expect(mockMicrovmClient).toHaveReceivedCommandWith(RunMicrovmCommand, {
       imageIdentifier: imageArn,
@@ -216,7 +219,7 @@ describe('listMicrovmRunners', () => {
           runnerOwner: 'Codertocat',
           runnerType: 'Org',
         },
-        metadataSsmPath,
+        ssmPaths,
       ),
     ).resolves.toEqual([
       {
@@ -237,7 +240,7 @@ describe('listMicrovmRunners', () => {
       nextToken: 'page-2',
     });
     expect(listMicrovmRunnerMetadata).toHaveBeenCalledWith(
-      metadataSsmPath,
+      ssmPaths,
       new Map([
         ['mvm-managed', 'RUNNING'],
         ['mvm-terminated', 'TERMINATED'],
@@ -268,10 +271,10 @@ describe('listMicrovmRunners', () => {
       ]),
     });
 
-    await expect(listMicrovmRunners({ environment: 'unit-test' }, metadataSsmPath)).resolves.toEqual([]);
-    await expect(listMicrovmRunners({ runnerOwner: 'Codertocat' }, metadataSsmPath)).resolves.toEqual([]);
-    await expect(listMicrovmRunners({ runnerType: 'Org' }, metadataSsmPath)).resolves.toEqual([]);
-    await expect(listMicrovmRunners({ orphan: true }, metadataSsmPath)).resolves.toEqual([]);
+    await expect(listMicrovmRunners({ environment: 'unit-test' }, ssmPaths)).resolves.toEqual([]);
+    await expect(listMicrovmRunners({ runnerOwner: 'Codertocat' }, ssmPaths)).resolves.toEqual([]);
+    await expect(listMicrovmRunners({ runnerType: 'Org' }, ssmPaths)).resolves.toEqual([]);
+    await expect(listMicrovmRunners({ orphan: true }, ssmPaths)).resolves.toEqual([]);
   });
 
   it('fails closed for an image mismatch while ignoring unowned MicroVMs', async () => {
@@ -288,7 +291,7 @@ describe('listMicrovmRunners', () => {
       ]),
     });
 
-    await expect(listMicrovmRunners({}, metadataSsmPath)).rejects.toThrow('does not match its metadata');
+    await expect(listMicrovmRunners({}, ssmPaths)).rejects.toThrow('does not match its metadata');
   });
 
   it('attempts every pending cleanup and fails inventory closed when a retry fails', async () => {
@@ -306,7 +309,7 @@ describe('listMicrovmRunners', () => {
       metadataById: new Map(),
     });
 
-    await expect(listMicrovmRunners({}, metadataSsmPath)).rejects.toThrow('cleanup failed');
+    await expect(listMicrovmRunners({}, ssmPaths)).rejects.toThrow('cleanup failed');
     expect(mockMicrovmClient).toHaveReceivedCommandWith(TerminateMicrovmCommand, {
       microvmIdentifier: 'mvm-first',
     });
@@ -322,7 +325,7 @@ describe('listMicrovmRunners', () => {
     });
     vi.mocked(listMicrovmRunnerMetadata).mockRejectedValue(new Error('AccessDenied'));
 
-    await expect(listMicrovmRunners({}, metadataSsmPath)).rejects.toThrow('AccessDenied');
+    await expect(listMicrovmRunners({}, ssmPaths)).rejects.toThrow('AccessDenied');
   });
 });
 
@@ -330,26 +333,47 @@ describe('MicroVM lifecycle helpers', () => {
   it('retains metadata until inventory observes a terminated MicroVM', async () => {
     mockMicrovmClient.on(TerminateMicrovmCommand).resolves({});
 
-    await terminateMicrovm('mvm-123', metadataSsmPath);
+    await terminateMicrovm('mvm-123', ssmPaths);
 
+    expect(deleteMicrovmRunnerJitConfig).toHaveBeenCalledWith(runnerTokenSsmPath, 'mvm-123');
     expect(markMicrovmCleanupPending).toHaveBeenCalledWith(metadataSsmPath, 'mvm-123');
-    expect(deleteMicrovmRunnerMetadata).not.toHaveBeenCalled();
   });
 
-  it('treats an already terminated MicroVM as successful cleanup', async () => {
+  it('retains the tombstone when the MicroVM is already terminated so a late JIT write can be revoked', async () => {
     const notFound = Object.assign(new Error('gone'), { name: 'ResourceNotFoundException' });
     mockMicrovmClient.on(TerminateMicrovmCommand).rejects(notFound);
 
-    await expect(terminateMicrovm('mvm-gone', metadataSsmPath)).resolves.toBeUndefined();
-    expect(deleteMicrovmRunnerMetadata).toHaveBeenCalledWith(metadataSsmPath, 'mvm-gone');
+    await expect(terminateMicrovm('mvm-gone', ssmPaths)).resolves.toBeUndefined();
+    expect(markMicrovmCleanupPending).toHaveBeenCalledWith(metadataSsmPath, 'mvm-gone');
+    expect(deleteMicrovmRunnerJitConfig).toHaveBeenCalledWith(runnerTokenSsmPath, 'mvm-gone');
   });
 
   it('retains metadata and marks cleanup pending when termination fails', async () => {
     mockMicrovmClient.on(TerminateMicrovmCommand).rejects(new Error('terminate failed'));
 
-    await expect(terminateMicrovm('mvm-123', metadataSsmPath)).rejects.toThrow('terminate failed');
+    await expect(terminateMicrovm('mvm-123', ssmPaths)).rejects.toThrow('terminate failed');
     expect(markMicrovmCleanupPending).toHaveBeenCalledWith(metadataSsmPath, 'mvm-123');
-    expect(deleteMicrovmRunnerMetadata).not.toHaveBeenCalled();
+  });
+
+  it('retains the cleanup marker and reports a JIT deletion failure after termination succeeds', async () => {
+    const error = new Error('JIT cleanup failed');
+    vi.mocked(deleteMicrovmRunnerJitConfig).mockRejectedValue(error);
+    mockMicrovmClient.on(TerminateMicrovmCommand).resolves({});
+
+    await expect(terminateMicrovm('mvm-123', ssmPaths)).rejects.toBe(error);
+    expect(markMicrovmCleanupPending).toHaveBeenCalledWith(metadataSsmPath, 'mvm-123');
+  });
+
+  it('still terminates and reports a cleanup-marker failure for retry', async () => {
+    const error = new Error('metadata cleanup marker failed');
+    vi.mocked(markMicrovmCleanupPending).mockRejectedValue(error);
+    mockMicrovmClient.on(TerminateMicrovmCommand).resolves({});
+
+    await expect(terminateMicrovm('mvm-123', ssmPaths)).rejects.toBe(error);
+    expect(deleteMicrovmRunnerJitConfig).toHaveBeenCalledWith(runnerTokenSsmPath, 'mvm-123');
+    expect(mockMicrovmClient).toHaveReceivedCommandWith(TerminateMicrovmCommand, {
+      microvmIdentifier: 'mvm-123',
+    });
   });
 
   it('evaluates the configured boot window', () => {

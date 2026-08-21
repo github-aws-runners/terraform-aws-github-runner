@@ -1,14 +1,23 @@
-import { addParameterTags, deleteParameter, getParametersByPath, putParameter } from '@aws-github-runner/aws-ssm-util';
+import {
+  addParameterTags,
+  deleteParameter,
+  getParameters,
+  getParametersByPath,
+  putParameter,
+} from '@aws-github-runner/aws-ssm-util';
 import type { MicrovmState } from '@aws-sdk/client-lambda-microvms';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  assertMatchingMicrovmRunnerTokenPath,
   assertSeparatedMicrovmMetadataPath,
   createMicrovmRunnerMetadata,
-  deleteMicrovmRunnerMetadata,
+  deleteMicrovmRunnerJitConfig,
+  deleteMicrovmRunnerSsmState,
   listMicrovmRunnerMetadata,
   markMicrovmCleanupPending,
   microvmMetadataParameterName,
+  microvmRunnerJitParameterName,
   setMicrovmGithubRunnerMetadata,
   setMicrovmOrphan,
   type MicrovmRunnerMetadata,
@@ -17,11 +26,19 @@ import {
 vi.mock('@aws-github-runner/aws-ssm-util', () => ({
   addParameterTags: vi.fn(),
   deleteParameter: vi.fn(),
+  getParameters: vi.fn(),
   getParametersByPath: vi.fn(),
   putParameter: vi.fn(),
 }));
 
 const metadataSsmPath = '/github-action-runners/unit-test/microvm-metadata';
+const runnerTokenSsmPath = '/github-action-runners/unit-test/token';
+const ssmPaths = { metadataSsmPath, runnerTokenSsmPath };
+const launchTags = [
+  { Key: 'CostCenter', Value: '1234' },
+  { Key: 'ghr:Application', Value: 'github-action-runner' },
+  { Key: 'ghr:microvm_id', Value: 'mvm-1' },
+];
 
 function metadata(overrides: Partial<MicrovmRunnerMetadata> = {}): MicrovmRunnerMetadata {
   return {
@@ -48,6 +65,7 @@ beforeEach(() => {
   vi.useRealTimers();
   vi.mocked(deleteParameter).mockResolvedValue();
   vi.mocked(addParameterTags).mockResolvedValue();
+  vi.mocked(getParameters).mockImplementation(async (names) => new Map([[names[0], '{}']]));
   vi.mocked(getParametersByPath).mockResolvedValue(new Map());
   vi.mocked(putParameter).mockResolvedValue();
 });
@@ -56,6 +74,10 @@ describe('MicroVM metadata paths', () => {
   it('uses one base parameter per validated MicroVM ID', () => {
     expect(microvmMetadataParameterName(`${metadataSsmPath}/`, 'microvm-123')).toBe(`${metadataSsmPath}/microvm-123`);
     expect(() => microvmMetadataParameterName(metadataSsmPath, '../other')).toThrow('Invalid MicroVM identifier');
+    expect(microvmRunnerJitParameterName(`${runnerTokenSsmPath}/`, 'microvm-123')).toBe(
+      `${runnerTokenSsmPath}/microvm-123`,
+    );
+    expect(() => microvmRunnerJitParameterName(runnerTokenSsmPath, '../other')).toThrow('Invalid MicroVM identifier');
   });
 
   it('requires metadata to use a prefix separate from JIT configuration', () => {
@@ -66,6 +88,10 @@ describe('MicroVM metadata paths', () => {
       'must be separate',
     );
     expect(() => assertSeparatedMicrovmMetadataPath('/runner', '/runner/token')).toThrow('must be separate');
+    expect(() => assertMatchingMicrovmRunnerTokenPath(`${runnerTokenSsmPath}/`, runnerTokenSsmPath)).not.toThrow();
+    expect(() => assertMatchingMicrovmRunnerTokenPath('/runner/other-token', runnerTokenSsmPath)).toThrow(
+      'must match the runner JIT token path',
+    );
   });
 });
 
@@ -74,7 +100,7 @@ describe('MicroVM metadata lifecycle', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-08-19T10:00:00.000Z'));
 
-    await createMicrovmRunnerMetadata(metadataSsmPath, {
+    const createdTags = await createMicrovmRunnerMetadata(metadataSsmPath, {
       microvmId: 'mvm-1',
       environment: 'unit-test',
       runnerOwner: 'Codertocat',
@@ -118,6 +144,7 @@ describe('MicroVM metadata lifecycle', () => {
         ],
       },
     );
+    expect(createdTags).toEqual(vi.mocked(putParameter).mock.calls[0][3]?.tags);
   });
 
   it('rejects reserved tag keys and preserves room for late GitHub metadata', async () => {
@@ -151,7 +178,26 @@ describe('MicroVM metadata lifecycle', () => {
     expect(putParameter).not.toHaveBeenCalled();
   });
 
-  it('loads active metadata with independent state and cleans expired inactive records', async () => {
+  it('rejects launch tags whose complete serialized metadata could exceed the Parameter Store value limit', async () => {
+    await expect(
+      createMicrovmRunnerMetadata(metadataSsmPath, {
+        microvmId: 'mvm-1',
+        environment: 'unit-test',
+        runnerOwner: 'Codertocat',
+        runnerType: 'Org',
+        source: 'scale-up-lambda',
+        imageArn: 'arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner',
+        imageVersion: '3.0',
+        ssmParameterStoreTags: Array.from({ length: 20 }, (_, index) => ({
+          Key: `Custom${index}${'k'.repeat(100)}`,
+          Value: 'v'.repeat(256),
+        })),
+      }),
+    ).rejects.toThrow('cannot exceed 8192 bytes when serialized');
+    expect(putParameter).not.toHaveBeenCalled();
+  });
+
+  it('loads active metadata and schedules expired or invalid inactive records for two-phase cleanup', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-08-19T12:00:00.000Z'));
     const active = metadata({ expiresAt: '2026-08-19T12:30:00.000Z' });
@@ -168,49 +214,65 @@ describe('MicroVM metadata lifecycle', () => {
       ]),
     );
 
-    await expect(listMicrovmRunnerMetadata(metadataSsmPath, states([['mvm-1', 'RUNNING']]))).resolves.toEqual({
-      cleanupMicrovmIds: [],
+    await expect(listMicrovmRunnerMetadata(ssmPaths, states([['mvm-1', 'RUNNING']]))).resolves.toEqual({
+      cleanupMicrovmIds: ['mvm-old', 'mvm-invalid'],
       metadataById: new Map([['mvm-1', { ...active, githubRunnerId: 'github-42', orphan: true }]]),
     });
     expect(getParametersByPath).toHaveBeenCalledWith(metadataSsmPath);
-    expect(deleteParameter).toHaveBeenCalledTimes(4);
-    expect(deleteParameter).toHaveBeenLastCalledWith(`${metadataSsmPath}/mvm-old`);
+    expect(deleteParameter).not.toHaveBeenCalled();
     expect(deleteParameter).not.toHaveBeenCalledWith(`${metadataSsmPath}/mvm-new`);
   });
 
-  it('fails closed for invalid metadata or state belonging to an active MicroVM', async () => {
+  it('fails closed for invalid ownership metadata belonging to an active MicroVM', async () => {
     vi.mocked(getParametersByPath).mockResolvedValue(new Map([[`${metadataSsmPath}/mvm-1`, '{not-json']]));
-    await expect(listMicrovmRunnerMetadata(metadataSsmPath, states([['mvm-1', 'RUNNING']]))).rejects.toThrow(
+    await expect(listMicrovmRunnerMetadata(ssmPaths, states([['mvm-1', 'RUNNING']]))).rejects.toThrow(
       'invalid ownership metadata',
     );
+  });
 
+  it('schedules provider-owned metadata with invalid orphan state for two-phase cleanup', async () => {
     vi.mocked(getParametersByPath).mockResolvedValue(
       new Map([
         [`${metadataSsmPath}/mvm-1`, JSON.stringify(metadata())],
         [`${metadataSsmPath}/mvm-1.orphan`, 'invalid'],
       ]),
     );
-    await expect(listMicrovmRunnerMetadata(metadataSsmPath, states([['mvm-1', 'RUNNING']]))).rejects.toThrow(
-      'invalid orphan state',
-    );
+    await expect(listMicrovmRunnerMetadata(ssmPaths, states([['mvm-1', 'RUNNING']]))).resolves.toEqual({
+      cleanupMicrovmIds: ['mvm-1'],
+      metadataById: new Map(),
+    });
   });
 
   it('propagates metadata path lookup errors so inventory fails closed', async () => {
     vi.mocked(getParametersByPath).mockRejectedValue(new Error('AccessDenied'));
 
-    await expect(listMicrovmRunnerMetadata(metadataSsmPath, states([['mvm-1', 'RUNNING']]))).rejects.toThrow(
-      'AccessDenied',
-    );
+    await expect(listMicrovmRunnerMetadata(ssmPaths, states([['mvm-1', 'RUNNING']]))).rejects.toThrow('AccessDenied');
   });
 
   it('updates GitHub state and adds late GitHub metadata tags to the base parameter', async () => {
     const runnerLabels = ['self-hosted', 'linux', 'env:unit-test'];
-    await setMicrovmGithubRunnerMetadata(metadataSsmPath, 'mvm-1', {
-      githubRunnerId: 'github-42',
-      runnerLabels,
-    });
-    expect(putParameter).toHaveBeenLastCalledWith(`${metadataSsmPath}/mvm-1.github-runner-id`, 'github-42', false, {
+    await setMicrovmGithubRunnerMetadata(
+      ssmPaths,
+      'mvm-1',
+      {
+        githubRunnerId: 'github-42',
+        runnerLabels,
+      },
+      launchTags,
+    );
+    expect(putParameter).toHaveBeenCalledWith(`${metadataSsmPath}/mvm-1.github-runner-id`, 'github-42', false, {
       overwrite: true,
+    });
+    expect(putParameter).toHaveBeenCalledWith(`${metadataSsmPath}/mvm-1.tags`, expect.any(String), false, {
+      overwrite: true,
+    });
+    const tagsValue = vi.mocked(putParameter).mock.calls.find(([name]) => name.endsWith('.tags'))?.[1];
+    expect(JSON.parse(tagsValue ?? '{}')).toEqual({
+      CostCenter: '1234',
+      'ghr:Application': 'github-action-runner',
+      'ghr:github_runner_id': 'github-42',
+      'ghr:microvm_id': 'mvm-1',
+      'ghr:runner_labels': `base64url:${Buffer.from(JSON.stringify(runnerLabels), 'utf8').toString('base64url')}`,
     });
     expect(addParameterTags).toHaveBeenCalledWith(`${metadataSsmPath}/mvm-1`, [
       { Key: 'ghr:github_runner_id', Value: 'github-42' },
@@ -221,13 +283,53 @@ describe('MicroVM metadata lifecycle', () => {
     ]);
   });
 
+  it('revokes JIT configuration when cleanup starts before late metadata is recorded', async () => {
+    vi.mocked(getParameters).mockResolvedValue(
+      new Map([
+        [`${metadataSsmPath}/mvm-1`, '{}'],
+        [`${metadataSsmPath}/mvm-1.cleanup-requested-at`, '2026-08-19T12:00:00.000Z'],
+      ]),
+    );
+
+    await expect(
+      setMicrovmGithubRunnerMetadata(ssmPaths, 'mvm-1', { githubRunnerId: 'github-42', runnerLabels: [] }, launchTags),
+    ).rejects.toThrow('no longer accepting JIT configuration');
+    expect(deleteParameter).toHaveBeenCalledWith(`${runnerTokenSsmPath}/mvm-1`);
+    expect(putParameter).not.toHaveBeenCalled();
+  });
+
+  it('revokes JIT configuration when ownership metadata is already absent', async () => {
+    vi.mocked(getParameters).mockResolvedValue(new Map());
+
+    await expect(
+      setMicrovmGithubRunnerMetadata(ssmPaths, 'mvm-1', { githubRunnerId: 'github-42', runnerLabels: [] }, launchTags),
+    ).rejects.toThrow('no longer accepting JIT configuration');
+    expect(deleteParameter).toHaveBeenCalledWith(`${runnerTokenSsmPath}/mvm-1`);
+    expect(putParameter).not.toHaveBeenCalled();
+  });
+
+  it('revokes JIT configuration when the post-write ownership fence cannot be read', async () => {
+    vi.mocked(getParameters).mockRejectedValue(new Error('AccessDenied'));
+
+    await expect(
+      setMicrovmGithubRunnerMetadata(ssmPaths, 'mvm-1', { githubRunnerId: 'github-42', runnerLabels: [] }, launchTags),
+    ).rejects.toThrow('AccessDenied');
+    expect(deleteParameter).toHaveBeenCalledWith(`${runnerTokenSsmPath}/mvm-1`);
+    expect(putParameter).not.toHaveBeenCalled();
+  });
+
   it('splits encoded runner labels into SSM-safe tag values', async () => {
     const runnerLabels = [`label-${'a'.repeat(140)}`, `label-${'b'.repeat(140)}`];
 
-    await setMicrovmGithubRunnerMetadata(metadataSsmPath, 'mvm-1', {
-      githubRunnerId: 'github-42',
-      runnerLabels,
-    });
+    await setMicrovmGithubRunnerMetadata(
+      ssmPaths,
+      'mvm-1',
+      {
+        githubRunnerId: 'github-42',
+        runnerLabels,
+      },
+      launchTags,
+    );
 
     expect(addParameterTags).toHaveBeenCalledWith(`${metadataSsmPath}/mvm-1`, [
       { Key: 'ghr:github_runner_id', Value: 'github-42' },
@@ -243,10 +345,15 @@ describe('MicroVM metadata lifecycle', () => {
   });
 
   it('keeps the GitHub runner ID tag when a runner label is too large', async () => {
-    await setMicrovmGithubRunnerMetadata(metadataSsmPath, 'mvm-1', {
-      githubRunnerId: 'github-42',
-      runnerLabels: ['x'.repeat(300)],
-    });
+    await setMicrovmGithubRunnerMetadata(
+      ssmPaths,
+      'mvm-1',
+      {
+        githubRunnerId: 'github-42',
+        runnerLabels: ['x'.repeat(300)],
+      },
+      launchTags,
+    );
 
     expect(addParameterTags).toHaveBeenCalledWith(`${metadataSsmPath}/mvm-1`, [
       { Key: 'ghr:github_runner_id', Value: 'github-42' },
@@ -257,14 +364,30 @@ describe('MicroVM metadata lifecycle', () => {
     vi.mocked(addParameterTags).mockRejectedValue(new Error('AccessDenied'));
 
     await expect(
-      setMicrovmGithubRunnerMetadata(metadataSsmPath, 'mvm-1', {
-        githubRunnerId: 'github-42',
-        runnerLabels: [],
-      }),
+      setMicrovmGithubRunnerMetadata(
+        ssmPaths,
+        'mvm-1',
+        {
+          githubRunnerId: 'github-42',
+          runnerLabels: [],
+        },
+        launchTags,
+      ),
     ).resolves.toBeUndefined();
     expect(putParameter).toHaveBeenCalledWith(`${metadataSsmPath}/mvm-1.github-runner-id`, 'github-42', false, {
       overwrite: true,
     });
+  });
+
+  it('fails JIT setup when the canonical tag-value parameter cannot be written', async () => {
+    vi.mocked(putParameter).mockImplementation(async (name) => {
+      if (name.endsWith('.tags')) throw new Error('AccessDenied');
+    });
+
+    await expect(
+      setMicrovmGithubRunnerMetadata(ssmPaths, 'mvm-1', { githubRunnerId: 'github-42', runnerLabels: [] }, launchTags),
+    ).rejects.toThrow('AccessDenied');
+    expect(addParameterTags).not.toHaveBeenCalled();
   });
 
   it('updates orphan state without a shared read-modify-write record', async () => {
@@ -274,7 +397,7 @@ describe('MicroVM metadata lifecycle', () => {
     });
   });
 
-  it('marks cleanup independently and deletes state before ownership metadata', async () => {
+  it('marks cleanup independently and deletes JIT plus metadata while retaining the tombstone until last', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-08-19T12:00:00.000Z'));
 
@@ -283,16 +406,26 @@ describe('MicroVM metadata lifecycle', () => {
       `${metadataSsmPath}/mvm-1.cleanup-requested-at`,
       '2026-08-19T12:00:00.000Z',
       false,
-      { overwrite: true },
     );
 
-    await deleteMicrovmRunnerMetadata(metadataSsmPath, 'mvm-1');
+    await deleteMicrovmRunnerSsmState(ssmPaths, 'mvm-1');
     expect(vi.mocked(deleteParameter).mock.calls.map(([name]) => name)).toEqual([
+      `${runnerTokenSsmPath}/mvm-1`,
       `${metadataSsmPath}/mvm-1.github-runner-id`,
       `${metadataSsmPath}/mvm-1.orphan`,
-      `${metadataSsmPath}/mvm-1.cleanup-requested-at`,
+      `${metadataSsmPath}/mvm-1.tags`,
       `${metadataSsmPath}/mvm-1`,
+      `${metadataSsmPath}/mvm-1.cleanup-requested-at`,
     ]);
+  });
+
+  it('does not reset the cleanup grace window when its tombstone already exists', async () => {
+    vi.mocked(putParameter).mockRejectedValueOnce(
+      Object.assign(new Error('ParameterAlreadyExists'), { __type: 'ParameterAlreadyExists' }),
+    );
+
+    await expect(markMicrovmCleanupPending(metadataSsmPath, 'mvm-1')).resolves.toBeUndefined();
+    expect(putParameter).toHaveBeenCalledOnce();
   });
 
   it('continues deleting metadata when optional parameters are already absent', async () => {
@@ -306,12 +439,14 @@ describe('MicroVM metadata lifecycle', () => {
       )
       .mockRejectedValueOnce(Object.assign(new Error('missing parameter'), { name: 'ParameterNotFound' }));
 
-    await expect(deleteMicrovmRunnerMetadata(metadataSsmPath, 'mvm-1')).resolves.toBeUndefined();
+    await expect(deleteMicrovmRunnerSsmState(ssmPaths, 'mvm-1')).resolves.toBeUndefined();
     expect(vi.mocked(deleteParameter).mock.calls.map(([name]) => name)).toEqual([
+      `${runnerTokenSsmPath}/mvm-1`,
       `${metadataSsmPath}/mvm-1.github-runner-id`,
       `${metadataSsmPath}/mvm-1.orphan`,
-      `${metadataSsmPath}/mvm-1.cleanup-requested-at`,
+      `${metadataSsmPath}/mvm-1.tags`,
       `${metadataSsmPath}/mvm-1`,
+      `${metadataSsmPath}/mvm-1.cleanup-requested-at`,
     ]);
   });
 
@@ -323,8 +458,15 @@ describe('MicroVM metadata lifecycle', () => {
     });
     vi.mocked(deleteParameter).mockRejectedValueOnce(error);
 
-    await expect(deleteMicrovmRunnerMetadata(metadataSsmPath, 'mvm-1')).rejects.toBe(error);
+    await expect(deleteMicrovmRunnerSsmState(ssmPaths, 'mvm-1')).rejects.toBe(error);
     expect(deleteParameter).toHaveBeenCalledTimes(1);
+  });
+
+  it('deletes only the lane JIT parameter when revoking pending runner configuration', async () => {
+    await deleteMicrovmRunnerJitConfig(runnerTokenSsmPath, 'mvm-1');
+
+    expect(deleteParameter).toHaveBeenCalledOnce();
+    expect(deleteParameter).toHaveBeenCalledWith(`${runnerTokenSsmPath}/mvm-1`);
   });
 
   it('returns tracked and state-only active cleanup requests for termination retry', async () => {
@@ -340,7 +482,7 @@ describe('MicroVM metadata lifecycle', () => {
 
     await expect(
       listMicrovmRunnerMetadata(
-        metadataSsmPath,
+        ssmPaths,
         states([
           ['mvm-1', 'RUNNING'],
           ['mvm-untracked', 'PENDING'],
@@ -367,30 +509,114 @@ describe('MicroVM metadata lifecycle', () => {
 
     await expect(
       listMicrovmRunnerMetadata(
-        metadataSsmPath,
+        ssmPaths,
         states(cleanupIds.map((microvmId): [string, MicrovmState] => [microvmId, 'RUNNING'])),
       ),
     ).resolves.toEqual({ cleanupMicrovmIds: cleanupIds, metadataById: new Map() });
   });
 
-  it('cleans terminal state-only records and aged markers after inventory no longer sees the MicroVM', async () => {
+  it('keeps cleanup discoverable through the grace window before deleting JIT and every metadata record', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-08-19T12:00:00.000Z'));
     vi.mocked(getParametersByPath).mockResolvedValue(
       new Map([
         [`${metadataSsmPath}/mvm-terminal.github-runner-id`, 'github-42'],
         [`${metadataSsmPath}/mvm-missing.cleanup-requested-at`, '2026-08-19T11:54:59.000Z'],
+        [`${metadataSsmPath}/mvm-missing.tags`, '{"ghr:microvm_id":"mvm-missing"}'],
         [`${metadataSsmPath}/mvm-recent.cleanup-requested-at`, '2026-08-19T11:59:00.000Z'],
+        [`${metadataSsmPath}/mvm-recent.tags`, '{"ghr:microvm_id":"mvm-recent"}'],
       ]),
     );
 
-    await expect(listMicrovmRunnerMetadata(metadataSsmPath, states([['mvm-terminal', 'TERMINATED']]))).resolves.toEqual(
-      { cleanupMicrovmIds: [], metadataById: new Map() },
-    );
-    expect(deleteParameter).toHaveBeenCalledTimes(8);
-    expect(deleteParameter).toHaveBeenCalledWith(`${metadataSsmPath}/mvm-terminal`);
+    await expect(listMicrovmRunnerMetadata(ssmPaths, states([['mvm-terminal', 'TERMINATED']]))).resolves.toEqual({
+      cleanupMicrovmIds: ['mvm-terminal', 'mvm-recent'],
+      metadataById: new Map(),
+    });
+    expect(deleteParameter).toHaveBeenCalledTimes(6);
+    expect(deleteParameter).toHaveBeenCalledWith(`${runnerTokenSsmPath}/mvm-missing`);
     expect(deleteParameter).toHaveBeenCalledWith(`${metadataSsmPath}/mvm-missing`);
+    expect(deleteParameter).toHaveBeenCalledWith(`${metadataSsmPath}/mvm-missing.tags`);
+    expect(deleteParameter).toHaveBeenLastCalledWith(`${metadataSsmPath}/mvm-missing.cleanup-requested-at`);
+    expect(deleteParameter).not.toHaveBeenCalledWith(`${runnerTokenSsmPath}/mvm-terminal`);
+    expect(deleteParameter).not.toHaveBeenCalledWith(`${runnerTokenSsmPath}/mvm-recent`);
     expect(deleteParameter).not.toHaveBeenCalledWith(`${metadataSsmPath}/mvm-recent`);
+  });
+
+  it('deletes invalid ownership metadata after its valid cleanup tombstone ages', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-19T12:00:00.000Z'));
+    vi.mocked(getParametersByPath).mockResolvedValue(
+      new Map([
+        [`${metadataSsmPath}/mvm-invalid`, '{not-json'],
+        [`${metadataSsmPath}/mvm-invalid.cleanup-requested-at`, '2026-08-19T11:54:59.000Z'],
+      ]),
+    );
+
+    await expect(listMicrovmRunnerMetadata(ssmPaths, new Map())).resolves.toEqual({
+      cleanupMicrovmIds: [],
+      metadataById: new Map(),
+    });
+    expect(vi.mocked(deleteParameter).mock.calls.map(([name]) => name)).toEqual([
+      `${runnerTokenSsmPath}/mvm-invalid`,
+      `${metadataSsmPath}/mvm-invalid.github-runner-id`,
+      `${metadataSsmPath}/mvm-invalid.orphan`,
+      `${metadataSsmPath}/mvm-invalid.tags`,
+      `${metadataSsmPath}/mvm-invalid`,
+      `${metadataSsmPath}/mvm-invalid.cleanup-requested-at`,
+    ]);
+  });
+
+  it('repairs an invalid cleanup timestamp before recreating the two-phase cleanup marker', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-19T12:00:00.000Z'));
+    vi.mocked(getParametersByPath).mockResolvedValue(
+      new Map([
+        [`${metadataSsmPath}/mvm-1`, JSON.stringify(metadata())],
+        [`${metadataSsmPath}/mvm-1.cleanup-requested-at`, 'not-a-timestamp'],
+      ]),
+    );
+
+    await expect(listMicrovmRunnerMetadata(ssmPaths, states([['mvm-1', 'TERMINATED']]))).resolves.toEqual({
+      cleanupMicrovmIds: ['mvm-1'],
+      metadataById: new Map(),
+    });
+    expect(deleteParameter).toHaveBeenCalledOnce();
+    expect(deleteParameter).toHaveBeenCalledWith(`${metadataSsmPath}/mvm-1.cleanup-requested-at`);
+
+    await markMicrovmCleanupPending(metadataSsmPath, 'mvm-1');
+    expect(putParameter).toHaveBeenCalledWith(
+      `${metadataSsmPath}/mvm-1.cleanup-requested-at`,
+      '2026-08-19T12:00:00.000Z',
+      false,
+    );
+
+    vi.clearAllMocks();
+    vi.setSystemTime(new Date('2026-08-19T12:06:00.000Z'));
+    vi.mocked(deleteParameter).mockResolvedValue();
+    vi.mocked(getParametersByPath).mockResolvedValue(
+      new Map([
+        [`${metadataSsmPath}/mvm-1`, JSON.stringify(metadata())],
+        [`${metadataSsmPath}/mvm-1.cleanup-requested-at`, '2026-08-19T12:00:00.000Z'],
+      ]),
+    );
+
+    await expect(listMicrovmRunnerMetadata(ssmPaths, states([['mvm-1', 'TERMINATED']]))).resolves.toEqual({
+      cleanupMicrovmIds: [],
+      metadataById: new Map(),
+    });
+    expect(deleteParameter).toHaveBeenCalledTimes(6);
+  });
+
+  it('marks a terminal tags-only companion for two-phase cleanup instead of deleting it immediately', async () => {
+    vi.mocked(getParametersByPath).mockResolvedValue(
+      new Map([[`${metadataSsmPath}/mvm-tags-only.tags`, '{"ghr:microvm_id":"mvm-tags-only"}']]),
+    );
+
+    await expect(listMicrovmRunnerMetadata(ssmPaths, states([['mvm-tags-only', 'TERMINATED']]))).resolves.toEqual({
+      cleanupMicrovmIds: ['mvm-tags-only'],
+      metadataById: new Map(),
+    });
+    expect(deleteParameter).not.toHaveBeenCalled();
   });
 
   it('fails closed for active state metadata without ownership or a cleanup request', async () => {
@@ -398,7 +624,7 @@ describe('MicroVM metadata lifecycle', () => {
       new Map([[`${metadataSsmPath}/mvm-1.github-runner-id`, 'github-42']]),
     );
 
-    await expect(listMicrovmRunnerMetadata(metadataSsmPath, states([['mvm-1', 'RUNNING']]))).rejects.toThrow(
+    await expect(listMicrovmRunnerMetadata(ssmPaths, states([['mvm-1', 'RUNNING']]))).rejects.toThrow(
       'state metadata but no ownership metadata',
     );
   });
