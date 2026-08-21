@@ -10,7 +10,12 @@ import type {
 import type { MicrovmDynamicLabelOverrides } from '../dynamic-labels';
 import { loadMicrovmProviderConfig } from './config';
 import { isRetryableMicrovmError, runMicrovmRunner, terminateMicrovm } from './microvms';
-import { assertSeparatedMicrovmMetadataPath, setMicrovmGithubRunnerMetadata } from './runner-metadata';
+import {
+  assertMatchingMicrovmRunnerTokenPath,
+  assertSeparatedMicrovmMetadataPath,
+  normalizeMicrovmSsmPath,
+  setMicrovmGithubRunnerMetadata,
+} from './runner-metadata';
 
 const logger = createChildLogger('microvm-runner-config');
 const MICROVM_METADATA_CONTEXT_TAG_KEYS = new Set([
@@ -21,16 +26,30 @@ const MICROVM_METADATA_CONTEXT_TAG_KEYS = new Set([
 ]);
 
 export interface MicrovmRunHookPayloadV1 {
+  imageArn?: string;
+  imageVersion?: string;
   runnerConfigSsmPath: string;
   runnerTokenSsmPath: string;
   version: 1;
 }
 
-export function createMicrovmRunHookPayload(paths: Omit<MicrovmRunHookPayloadV1, 'version'>): string {
+export function createMicrovmRunHookPayload(payload: Omit<MicrovmRunHookPayloadV1, 'version'>): string {
+  const hasImageArn = payload.imageArn !== undefined;
+  const hasImageVersion = payload.imageVersion !== undefined;
+  if (hasImageArn !== hasImageVersion) {
+    throw new Error('MicroVM hook payload image ARN and version must be provided together');
+  }
+
   return JSON.stringify({
     version: 1,
-    runnerConfigSsmPath: paths.runnerConfigSsmPath,
-    runnerTokenSsmPath: paths.runnerTokenSsmPath,
+    ...(hasImageArn
+      ? {
+          imageArn: payload.imageArn,
+          imageVersion: payload.imageVersion,
+        }
+      : {}),
+    runnerConfigSsmPath: payload.runnerConfigSsmPath,
+    runnerTokenSsmPath: payload.runnerTokenSsmPath,
   } satisfies MicrovmRunHookPayloadV1);
 }
 
@@ -68,9 +87,16 @@ export async function createMicrovmRunners(
     return { instances: [], retryableErrorCount: 0, nonRetryableErrorCount: numberOfRunners };
   }
   let config;
+  let normalizedGithubRunnerConfig: CreateGitHubRunnerConfig;
   try {
     config = { ...loadMicrovmProviderConfig(), ...overrides };
-    assertSeparatedMicrovmMetadataPath(config.metadataSsmPath, githubRunnerConfig.ssmTokenPath);
+    assertMatchingMicrovmRunnerTokenPath(config.runnerTokenSsmPath, githubRunnerConfig.ssmTokenPath);
+    assertSeparatedMicrovmMetadataPath(config.metadataSsmPath, config.runnerTokenSsmPath);
+    normalizedGithubRunnerConfig = {
+      ...githubRunnerConfig,
+      ssmConfigPath: normalizeMicrovmSsmPath(githubRunnerConfig.ssmConfigPath),
+      ssmTokenPath: config.runnerTokenSsmPath,
+    };
   } catch (error) {
     logger.error('Invalid Lambda MicroVM provider configuration', { error });
     return { instances: [], retryableErrorCount: 0, nonRetryableErrorCount: numberOfRunners };
@@ -82,34 +108,46 @@ export async function createMicrovmRunners(
     nonRetryableErrorCount: 0,
   };
   const runHookPayload = createMicrovmRunHookPayload({
-    runnerConfigSsmPath: githubRunnerConfig.ssmConfigPath,
-    runnerTokenSsmPath: githubRunnerConfig.ssmTokenPath,
+    ...(config.imageVersion !== undefined
+      ? {
+          imageArn: config.imageIdentifier,
+          imageVersion: config.imageVersion,
+        }
+      : {}),
+    runnerConfigSsmPath: normalizedGithubRunnerConfig.ssmConfigPath,
+    runnerTokenSsmPath: normalizedGithubRunnerConfig.ssmTokenPath,
   });
   const environment = process.env.ENVIRONMENT;
-  const metadataTags = createMicrovmMetadataTags(githubRunnerConfig, environment);
+  const metadataTags = createMicrovmMetadataTags(normalizedGithubRunnerConfig, environment);
 
   for (let runnerIndex = 0; runnerIndex < numberOfRunners; runnerIndex++) {
     let microvmId: string | undefined;
     try {
-      microvmId = await runMicrovmRunner({
+      const runner = await runMicrovmRunner({
         config,
         environment,
         runHookPayload,
-        runnerOwner: githubRunnerConfig.runnerOwner,
-        runnerType: githubRunnerConfig.runnerType,
+        runnerOwner: normalizedGithubRunnerConfig.runnerOwner,
+        runnerType: normalizedGithubRunnerConfig.runnerType,
         ssmParameterStoreTags: metadataTags,
         source,
       });
+      microvmId = runner.microvmId;
 
-      const failedRunnerIds = await createStartRunnerConfig(githubRunnerConfig, [microvmId], githubInstallationClient, {
-        getRunnerConfigMetadata: (runnerId) => [{ key: 'MicrovmId', value: runnerId }],
-        onJitConfigCreated: async (runnerId, metadata) => {
-          await setMicrovmGithubRunnerMetadata(config.metadataSsmPath, runnerId, metadata);
+      const failedRunnerIds = await createStartRunnerConfig(
+        normalizedGithubRunnerConfig,
+        [microvmId],
+        githubInstallationClient,
+        {
+          getRunnerConfigMetadata: (runnerId) => [{ key: 'MicrovmId', value: runnerId }],
+          onJitConfigCreated: async (runnerId, metadata) => {
+            await setMicrovmGithubRunnerMetadata(config, runnerId, metadata, runner.metadataTags);
+          },
         },
-      });
+      );
 
       if (failedRunnerIds.includes(microvmId)) {
-        await terminateMicrovm(microvmId, config.metadataSsmPath).catch((terminationError) => {
+        await terminateMicrovm(microvmId, config).catch((terminationError) => {
           logger.error(`Failed to terminate MicroVM runner '${microvmId}' after JIT configuration failed`, {
             error: terminationError,
           });
@@ -120,7 +158,7 @@ export async function createMicrovmRunners(
       }
     } catch (error) {
       if (microvmId) {
-        await terminateMicrovm(microvmId, config.metadataSsmPath).catch((terminationError) => {
+        await terminateMicrovm(microvmId, config).catch((terminationError) => {
           logger.error(`Failed to terminate MicroVM runner '${microvmId}' after setup failed`, {
             error: terminationError,
           });

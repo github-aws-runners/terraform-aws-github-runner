@@ -15,10 +15,12 @@ vi.mock('./runner-metadata', () => ({ setMicrovmOrphan: vi.fn() }));
 
 const imageArn = 'arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner';
 const metadataSsmPath = '/github-action-runners/unit-test/microvm-metadata';
+const runnerTokenSsmPath = '/github-action-runners/unit-test/token';
 const providerConfig = {
   imageIdentifier: imageArn,
   executionRoleArn: 'arn:aws:iam::123456789012:role/microvm-runner',
   metadataSsmPath,
+  runnerTokenSsmPath,
 };
 
 beforeEach(() => {
@@ -43,7 +45,7 @@ describe('createMicrovmScaleDownProvider', () => {
         environment: 'unit-test',
         orphan: undefined,
       },
-      metadataSsmPath,
+      providerConfig,
     );
     expect(listMicrovmRunners).toHaveBeenNthCalledWith(
       2,
@@ -51,7 +53,7 @@ describe('createMicrovmScaleDownProvider', () => {
         environment: 'unit-test',
         orphan: true,
       },
-      metadataSsmPath,
+      providerConfig,
     );
   });
 
@@ -64,7 +66,7 @@ describe('createMicrovmScaleDownProvider', () => {
 
     expect(setMicrovmOrphan).toHaveBeenNthCalledWith(1, metadataSsmPath, 'mvm-1', true);
     expect(setMicrovmOrphan).toHaveBeenNthCalledWith(2, metadataSsmPath, 'mvm-1', false);
-    expect(terminateMicrovm).toHaveBeenCalledWith('mvm-1', metadataSsmPath);
+    expect(terminateMicrovm).toHaveBeenCalledWith('mvm-1', providerConfig);
   });
 
   it('uses the MicroVM boot-time policy', () => {

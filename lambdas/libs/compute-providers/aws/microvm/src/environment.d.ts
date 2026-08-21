@@ -10,6 +10,7 @@ declare global {
       MICROVM_INGRESS_NETWORK_CONNECTORS: string | undefined;
       MICROVM_LOG_GROUP: string | undefined;
       MICROVM_METADATA_SSM_PATH: string;
+      SSM_TOKEN_PATH: string;
     }
   }
 }
