@@ -1,5 +1,10 @@
 import type { Logging, RunMicrovmCommandInput } from '@aws-sdk/client-lambda-microvms';
 
+export interface MicrovmMetadataTag {
+  Key: string;
+  Value: string;
+}
+
 export interface MicrovmProviderConfig {
   egressNetworkConnectors?: string[];
   executionRoleArn: string;
@@ -8,6 +13,7 @@ export interface MicrovmProviderConfig {
   ingressNetworkConnectors?: string[];
   logging?: Logging;
   metadataSsmPath: string;
+  metadataTags: MicrovmMetadataTag[];
 }
 
 function requiredEnvironmentValue(name: string, value: string | undefined): string {
@@ -55,6 +61,41 @@ function parseNetworkConnectors(name: string, value: string | undefined): string
   return connectors.map((connector) => connector.trim());
 }
 
+function parseMetadataTags(value: string | undefined): MicrovmMetadataTag[] {
+  const configuredValue = optionalEnvironmentValue(value);
+  if (!configuredValue) return [];
+
+  let tags: unknown;
+  try {
+    tags = JSON.parse(configuredValue);
+  } catch (error) {
+    throw new Error('MICROVM_METADATA_TAGS must be a JSON array of SSM tag objects', { cause: error });
+  }
+
+  if (
+    !Array.isArray(tags) ||
+    tags.some(
+      (tag) =>
+        typeof tag !== 'object' ||
+        tag === null ||
+        !('Key' in tag) ||
+        typeof tag.Key !== 'string' ||
+        tag.Key.length === 0 ||
+        !('Value' in tag) ||
+        typeof tag.Value !== 'string',
+    )
+  ) {
+    throw new Error('MICROVM_METADATA_TAGS must be a JSON array of SSM tag objects');
+  }
+
+  const typedTags = tags as MicrovmMetadataTag[];
+  if (new Set(typedTags.map((tag) => tag.Key)).size !== typedTags.length) {
+    throw new Error('MICROVM_METADATA_TAGS must not contain duplicate tag keys');
+  }
+
+  return typedTags;
+}
+
 export function loadMicrovmProviderConfig(): MicrovmProviderConfig {
   const logGroup = optionalEnvironmentValue(process.env.MICROVM_LOG_GROUP);
 
@@ -71,6 +112,7 @@ export function loadMicrovmProviderConfig(): MicrovmProviderConfig {
       process.env.MICROVM_EGRESS_NETWORK_CONNECTORS,
     ),
     metadataSsmPath: parseMetadataSsmPath(process.env.MICROVM_METADATA_SSM_PATH),
+    metadataTags: parseMetadataTags(process.env.MICROVM_METADATA_TAGS),
     logging: logGroup ? ({ cloudWatch: { logGroup } } satisfies RunMicrovmCommandInput['logging']) : undefined,
   };
 }
