@@ -21,9 +21,10 @@ import { MICROVM_LIFETIME_IN_SECONDS } from './lifetime';
 import {
   assertValidMicrovmMetadataTags,
   createMicrovmRunnerMetadata,
-  deleteMicrovmRunnerMetadata,
+  deleteMicrovmRunnerJitConfig,
   listMicrovmRunnerMetadata,
   markMicrovmCleanupPending,
+  type MicrovmSsmPaths,
 } from './runner-metadata';
 
 const logger = createChildLogger('microvm-runners');
@@ -43,6 +44,11 @@ export interface RunMicrovmRunnerInput {
   runnerType: RunnerType;
   ssmParameterStoreTags: CreateGitHubRunnerConfig['ssmParameterStoreTags'];
   source: LambdaRunnerSource;
+}
+
+export interface RunMicrovmRunnerResult {
+  metadataTags: CreateGitHubRunnerConfig['ssmParameterStoreTags'];
+  microvmId: string;
 }
 
 interface AwsErrorLike extends Error {
@@ -79,7 +85,7 @@ function microvmClient(): LambdaMicrovmsClient {
   return getTracedAWSV3Client(new LambdaMicrovmsClient({ region: process.env.AWS_REGION }));
 }
 
-export async function runMicrovmRunner(input: RunMicrovmRunnerInput): Promise<string> {
+export async function runMicrovmRunner(input: RunMicrovmRunnerInput): Promise<RunMicrovmRunnerResult> {
   assertValidMicrovmMetadataTags({
     microvmId: 'microvm-validation',
     environment: input.environment,
@@ -118,7 +124,7 @@ export async function runMicrovmRunner(input: RunMicrovmRunnerInput): Promise<st
   const imageVersion = response.imageVersion ?? input.config.imageVersion;
 
   try {
-    await createMicrovmRunnerMetadata(input.config.metadataSsmPath, {
+    const metadataTags = await createMicrovmRunnerMetadata(input.config.metadataSsmPath, {
       microvmId: response.microvmId,
       environment: input.environment,
       runnerOwner: input.runnerOwner,
@@ -128,24 +134,23 @@ export async function runMicrovmRunner(input: RunMicrovmRunnerInput): Promise<st
       imageVersion,
       ssmParameterStoreTags: input.ssmParameterStoreTags,
     });
+    return { microvmId: response.microvmId, metadataTags };
   } catch (error) {
     logger.error(`Failed to record metadata for new MicroVM runner '${response.microvmId}', terminating it`, {
       error,
     });
-    await terminateMicrovm(response.microvmId, input.config.metadataSsmPath).catch((terminationError) => {
+    await terminateMicrovm(response.microvmId, input.config).catch((terminationError) => {
       logger.error(`Failed to terminate untracked MicroVM runner '${response.microvmId}'`, {
         error: terminationError,
       });
     });
     throw error;
   }
-
-  return response.microvmId;
 }
 
 export async function listMicrovmRunners(
   filters: ListRunnerFilters = {},
-  metadataSsmPath = loadMicrovmProviderConfig().metadataSsmPath,
+  paths: MicrovmSsmPaths = loadMicrovmProviderConfig(),
 ): Promise<MicrovmRunnerInfo[]> {
   const client = microvmClient();
   const items: MicrovmItem[] = [];
@@ -169,13 +174,13 @@ export async function listMicrovmRunners(
   const microvmStates = new Map(
     items.flatMap((item) => (item.microvmId && item.state ? [[item.microvmId, item.state] as const] : [])),
   );
-  const { cleanupMicrovmIds, metadataById } = await listMicrovmRunnerMetadata(metadataSsmPath, microvmStates);
+  const { cleanupMicrovmIds, metadataById } = await listMicrovmRunnerMetadata(paths, microvmStates);
 
   let cleanupError: unknown;
   for (const microvmId of cleanupMicrovmIds) {
     logger.warn(`Retrying cleanup of MicroVM runner '${microvmId}'`);
     try {
-      await terminateMicrovm(microvmId, metadataSsmPath);
+      await terminateMicrovm(microvmId, paths);
     } catch (error) {
       cleanupError ??= error;
       logger.error(`Failed to retry cleanup of MicroVM runner '${microvmId}'`, { error });
@@ -213,22 +218,34 @@ export async function listMicrovmRunners(
   return runners;
 }
 
-export async function terminateMicrovm(microvmId: string, metadataSsmPath: string): Promise<void> {
+export async function terminateMicrovm(microvmId: string, paths: MicrovmSsmPaths): Promise<void> {
+  let cleanupPreparationError: unknown;
+  try {
+    await markMicrovmCleanupPending(paths.metadataSsmPath, microvmId);
+  } catch (error) {
+    cleanupPreparationError = error;
+    logger.error(`Failed to mark MicroVM runner '${microvmId}' for cleanup`, { error });
+  }
+
+  try {
+    await deleteMicrovmRunnerJitConfig(paths.runnerTokenSsmPath, microvmId);
+  } catch (error) {
+    cleanupPreparationError ??= error;
+    logger.error(`Failed to delete JIT configuration for MicroVM runner '${microvmId}'`, { error });
+  }
+
   try {
     await microvmClient().send(new TerminateMicrovmCommand({ microvmIdentifier: microvmId }));
   } catch (error) {
     if (error instanceof Error && error.name === 'ResourceNotFoundException') {
-      await deleteMicrovmRunnerMetadata(metadataSsmPath, microvmId);
+      if (cleanupPreparationError !== undefined) throw cleanupPreparationError;
       return;
     }
 
-    await markMicrovmCleanupPending(metadataSsmPath, microvmId).catch((metadataError) => {
-      logger.error(`Failed to mark MicroVM runner '${microvmId}' for cleanup`, { error: metadataError });
-    });
     throw error;
   }
 
-  await markMicrovmCleanupPending(metadataSsmPath, microvmId);
+  if (cleanupPreparationError !== undefined) throw cleanupPreparationError;
 }
 
 export function microvmBootTimeExceeded(runner: { launchTime?: Date }): boolean {

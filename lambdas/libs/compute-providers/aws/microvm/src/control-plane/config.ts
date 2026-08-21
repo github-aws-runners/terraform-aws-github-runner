@@ -8,6 +8,7 @@ export interface MicrovmProviderConfig {
   ingressNetworkConnectors?: string[];
   logging?: Logging;
   metadataSsmPath: string;
+  runnerTokenSsmPath: string;
 }
 
 function requiredEnvironmentValue(name: string, value: string | undefined): string {
@@ -23,10 +24,10 @@ function optionalEnvironmentValue(value: string | undefined): string | undefined
   return trimmed ? trimmed : undefined;
 }
 
-function parseMetadataSsmPath(value: string | undefined): string {
-  const path = requiredEnvironmentValue('MICROVM_METADATA_SSM_PATH', value).replace(/\/+$/, '');
-  if (path === '' || !/^\/[A-Za-z0-9_.\-/]+$/.test(path) || path.includes('//')) {
-    throw new Error('MICROVM_METADATA_SSM_PATH must be a valid absolute SSM parameter path');
+function parseSsmPath(name: string, value: string | undefined): string {
+  const path = requiredEnvironmentValue(name, value).replace(/\/+$/, '');
+  if (path === '' || !/^\/[A-Za-z0-9_.\-/]+$/.test(path) || path.includes('//') || path.split('/').includes('..')) {
+    throw new Error(`${name} must be a valid absolute SSM parameter path`);
   }
   return path;
 }
@@ -70,7 +71,8 @@ export function loadMicrovmProviderConfig(): MicrovmProviderConfig {
       'MICROVM_EGRESS_NETWORK_CONNECTORS',
       process.env.MICROVM_EGRESS_NETWORK_CONNECTORS,
     ),
-    metadataSsmPath: parseMetadataSsmPath(process.env.MICROVM_METADATA_SSM_PATH),
+    metadataSsmPath: parseSsmPath('MICROVM_METADATA_SSM_PATH', process.env.MICROVM_METADATA_SSM_PATH),
+    runnerTokenSsmPath: parseSsmPath('SSM_TOKEN_PATH', process.env.SSM_TOKEN_PATH),
     logging: logGroup ? ({ cloudWatch: { logGroup } } satisfies RunMicrovmCommandInput['logging']) : undefined,
   };
 }
