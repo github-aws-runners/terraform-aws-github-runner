@@ -5,7 +5,7 @@ import type { CreateGitHubRunnerConfig, CreateStartRunnerConfig } from '../../..
 import { loadMicrovmProviderConfig } from './config';
 import { isRetryableMicrovmError, runMicrovmRunner, terminateMicrovm } from './microvms';
 import { createMicrovmRunHookPayload, createMicrovmRunners } from './runner-config';
-import { setMicrovmGithubRunnerId } from './runner-metadata';
+import { setMicrovmGithubRunnerMetadata } from './runner-metadata';
 
 vi.mock('./config', () => ({ loadMicrovmProviderConfig: vi.fn() }));
 vi.mock('./microvms', () => ({
@@ -15,13 +15,14 @@ vi.mock('./microvms', () => ({
 }));
 vi.mock('./runner-metadata', async (importOriginal) => ({
   ...(await importOriginal<typeof import('./runner-metadata')>()),
-  setMicrovmGithubRunnerId: vi.fn(),
+  setMicrovmGithubRunnerMetadata: vi.fn(),
 }));
 
 const imageArn = 'arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner';
 const metadataSsmPath = '/github-action-runners/unit-test/microvm-metadata';
 const githubClient = {} as Octokit;
 const createStartRunnerConfig = vi.fn<CreateStartRunnerConfig>();
+const ssmParameterStoreTags = [{ Key: 'CostCenter', Value: '1234' }];
 
 function runnerConfig(overrides: Partial<CreateGitHubRunnerConfig> = {}): CreateGitHubRunnerConfig {
   return {
@@ -35,7 +36,7 @@ function runnerConfig(overrides: Partial<CreateGitHubRunnerConfig> = {}): Create
     disableAutoUpdate: true,
     ssmTokenPath: '/github-action-runners/unit-test/token',
     ssmConfigPath: '/github-action-runners/unit-test/config',
-    ssmParameterStoreTags: [],
+    ssmParameterStoreTags,
     ...overrides,
   };
 }
@@ -47,9 +48,10 @@ beforeEach(() => {
     imageIdentifier: imageArn,
     executionRoleArn: 'arn:aws:iam::123456789012:role/microvm-runner',
     metadataSsmPath,
+    metadataTags: [{ Key: 'Name', Value: 'unit-test-runner' }],
   });
   vi.mocked(runMicrovmRunner).mockResolvedValue('mvm-1');
-  vi.mocked(setMicrovmGithubRunnerId).mockResolvedValue();
+  vi.mocked(setMicrovmGithubRunnerMetadata).mockResolvedValue();
   vi.mocked(terminateMicrovm).mockResolvedValue();
   vi.mocked(isRetryableMicrovmError).mockReturnValue(false);
   createStartRunnerConfig.mockResolvedValue([]);
@@ -93,6 +95,7 @@ describe('createMicrovmRunners', () => {
       imageIdentifier: imageArn,
       executionRoleArn: 'arn:aws:iam::123456789012:role/microvm-runner',
       metadataSsmPath: '/github-action-runners/unit-test/token/metadata',
+      metadataTags: [],
     });
 
     await expect(
@@ -114,7 +117,10 @@ describe('createMicrovmRunners', () => {
   it('launches each MicroVM and delivers its JIT configuration', async () => {
     vi.mocked(runMicrovmRunner).mockResolvedValueOnce('mvm-1').mockResolvedValueOnce('mvm-2');
     createStartRunnerConfig.mockImplementation(async (_config, runnerIds, _client, options) => {
-      await options?.onJitConfigCreated?.(runnerIds[0], { githubRunnerId: `github-${runnerIds[0]}`, runnerLabels: [] });
+      await options?.onJitConfigCreated?.(runnerIds[0], {
+        githubRunnerId: `github-${runnerIds[0]}`,
+        runnerLabels: ['self-hosted', 'microvm'],
+      });
       return [];
     });
 
@@ -128,12 +134,16 @@ describe('createMicrovmRunners', () => {
       runHookPayload: createMicrovmRunHookPayload('/github-action-runners/unit-test/token'),
       runnerOwner: 'Codertocat',
       runnerType: 'Org',
+      ssmParameterStoreTags,
       source: 'pool-lambda',
     });
     expect(createStartRunnerConfig).toHaveBeenCalledTimes(2);
     const options = createStartRunnerConfig.mock.calls[0][3];
-    expect(options?.getSsmParameterTags?.('mvm-1')).toEqual([{ Key: 'MicrovmId', Value: 'mvm-1' }]);
-    expect(setMicrovmGithubRunnerId).toHaveBeenNthCalledWith(1, metadataSsmPath, 'mvm-1', 'github-mvm-1');
+    expect(options?.getRunnerConfigMetadata?.('mvm-1')).toEqual([{ key: 'MicrovmId', value: 'mvm-1' }]);
+    expect(setMicrovmGithubRunnerMetadata).toHaveBeenNthCalledWith(1, metadataSsmPath, 'mvm-1', {
+      githubRunnerId: 'github-mvm-1',
+      runnerLabels: ['self-hosted', 'microvm'],
+    });
   });
 
   it('applies supported dynamic labels to the provider configuration', async () => {
@@ -158,14 +168,19 @@ describe('createMicrovmRunners', () => {
         imageVersion: '3.0',
         executionRoleArn: 'arn:aws:iam::123456789012:role/microvm-runner',
         metadataSsmPath,
+        metadataTags: [{ Key: 'Name', Value: 'unit-test-runner' }],
       },
       environment: 'unit-test',
       runHookPayload: createMicrovmRunHookPayload('/github-action-runners/unit-test/token'),
       runnerOwner: 'Codertocat',
       runnerType: 'Org',
+      ssmParameterStoreTags,
       source: 'scale-up-lambda',
     });
-    expect(setMicrovmGithubRunnerId).toHaveBeenCalledWith(metadataSsmPath, 'mvm-1', 'github-mvm-1');
+    expect(setMicrovmGithubRunnerMetadata).toHaveBeenCalledWith(metadataSsmPath, 'mvm-1', {
+      githubRunnerId: 'github-mvm-1',
+      runnerLabels: [],
+    });
   });
 
   it('retries a JIT setup failure even when runner cleanup fails', async () => {

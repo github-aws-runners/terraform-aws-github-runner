@@ -11,7 +11,7 @@ The MicroVM image `/run` hook receives this `runHookPayload`:
 }
 ```
 
-Lambda adds `microvmId` beside that payload. The image must poll the SecureString parameter at `<runnerConfigSsmPath>/<microvmId>`, start the GitHub runner with its encoded JIT configuration, delete the parameter after reading it, and terminate the MicroVM after the job completes.
+Lambda adds `microvmId` beside that payload. The image must poll the SecureString parameter at `<runnerConfigSsmPath>/<microvmId>`, start the GitHub runner with its encoded JIT configuration, delete the parameter after reading it, and exit its lifecycle entrypoint after the job completes. Trusted control-plane cleanup and the fixed lifetime remain termination backstops.
 
 Runner ownership and lifecycle state are stored separately as non-secret `String`
 parameters under `<MICROVM_METADATA_SSM_PATH>/<microvmId>`. The immutable base
@@ -22,6 +22,19 @@ overlap the JIT path, and do not grant the MicroVM execution role access to it.
 The control plane retries pending cleanup, removes metadata after termination,
 and reconciles expired records during inventory.
 
+The immutable base metadata parameter is also the canonical tag surface for a
+runner. It merges `SSM_PARAMETER_STORE_TAGS` with the Terraform-generated
+`MICROVM_METADATA_TAGS`. Terraform supplies `Name`, `ghr:environment`,
+`ghr:ssm_config_path`, and `ghr:runner_name_prefix`; the Lambda then adds
+authoritative runtime tags:
+`ghr:Application`, `ghr:created_by`, `ghr:environment`, `ghr:Owner`,
+`ghr:Type`, `ghr:microvm_id`, `ghr:microvm_image_arn`, and, when available,
+`ghr:microvm_image_version`. After JIT registration, the control plane adds
+`ghr:github_runner_id` and base64url-encoded runner-label groups under
+`ghr:runner_labels` through `ghr:runner_labels:5`. Runtime-owned values override
+configured collisions. The `aws:` tag prefix is reserved and cannot be used for
+these SSM parameters.
+
 The control-plane Lambda requires these provider environment variables:
 
 - `MICROVM_IMAGE_ARN`
@@ -30,31 +43,33 @@ The control-plane Lambda requires these provider environment variables:
 - `MICROVM_INGRESS_NETWORK_CONNECTORS` (optional JSON array or comma-separated list)
 - `MICROVM_EGRESS_NETWORK_CONNECTORS` (optional JSON array or comma-separated list)
 - `MICROVM_METADATA_SSM_PATH` (dedicated SSM path for control-plane metadata)
+- `MICROVM_METADATA_TAGS` (optional JSON array of base tags for the canonical metadata parameter)
 - `MICROVM_LOG_GROUP` (optional)
 
 Each runner is launched with a fixed lifetime of 28,800 seconds (8 hours).
 
 The control-plane role requires `ssm:GetParametersByPath`, `ssm:PutParameter`,
-and `ssm:DeleteParameter` on the dedicated metadata prefix, plus
-`lambda:ListMicrovms`, `lambda:RunMicrovm`, and `lambda:TerminateMicrovm` for
-inventory and lifecycle reconciliation. Restrict `lambda:RunMicrovm` and
-`lambda:TerminateMicrovm` to approved image resources; `lambda:ListMicrovms`
-does not support resource-level permissions.
+`ssm:AddTagsToResource`, and `ssm:DeleteParameter` on the dedicated metadata
+prefix, plus `lambda:ListMicrovms`, `lambda:RunMicrovm`, and
+`lambda:TerminateMicrovm` for inventory and lifecycle reconciliation. Restrict
+`lambda:RunMicrovm` and `lambda:TerminateMicrovm` to approved image resources;
+`lambda:ListMicrovms` does not support resource-level permissions.
 
 The MicroVM execution role must trust `lambda.amazonaws.com` for both
 `sts:AssumeRole` and `sts:TagSession`. Restrict `iam:PassRole` to that exact role
-with `iam:PassedToService=lambda.amazonaws.com`. Egress connectors also require
-`lambda:PassNetworkConnector`; because that action does not currently support
-resource-level permissions, enforce the connector boundary with the explicit
-dynamic-label allowlist described below.
+ARN. Network connectors also require `lambda:PassNetworkConnector`; because
+that action does not currently support resource-level permissions, enforce the
+connector boundary with the explicit dynamic-label allowlist described below.
 
 All MicroVMs using one execution role and JIT prefix share a trust boundary.
-Grant that role only `ssm:GetParameter` and `ssm:DeleteParameter` on the JIT
-prefix; do not grant parameter-listing APIs or access to the metadata prefix.
-The `MicrovmId` tag on each JIT parameter supports operations but is not a
-documented binding to the calling MicroVM's session identity. Only allow trusted
-images and workloads within a shared role, or isolate trust domains with
-separate roles, prefixes, and provider deployments.
+Grant that role only `ssm:GetParameter` and `ssm:DeleteParameter` on the
+lane-scoped JIT prefix. The image must use the
+exact `<runnerConfigSsmPath>/<microvmId>` parameter name and must not receive
+access to the metadata prefix or path-listing APIs. The `MicrovmId` tag on each
+JIT parameter supports operations but is not a documented binding to the
+calling MicroVM's session identity. Only allow trusted images and workloads
+within a shared role, or isolate trust domains with separate roles, prefixes,
+and provider deployments.
 
 ## Dynamic labels
 

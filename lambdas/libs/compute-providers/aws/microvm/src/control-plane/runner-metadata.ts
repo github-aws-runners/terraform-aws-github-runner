@@ -1,8 +1,9 @@
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
-import { deleteParameter, getParametersByPath, putParameter } from '@aws-github-runner/aws-ssm-util';
+import { addParameterTags, deleteParameter, getParametersByPath, putParameter } from '@aws-github-runner/aws-ssm-util';
 import type { MicrovmState } from '@aws-sdk/client-lambda-microvms';
 
-import type { LambdaRunnerSource, RunnerType } from '../../../../core';
+import type { GitHubRunnerMetadata, LambdaRunnerSource, RunnerType } from '../../../../core';
+import type { MicrovmMetadataTag } from './config';
 import { MICROVM_LIFETIME_IN_SECONDS } from './lifetime';
 
 const logger = createChildLogger('microvm-runner-metadata');
@@ -10,6 +11,12 @@ const logger = createChildLogger('microvm-runner-metadata');
 const METADATA_VERSION = 1;
 const EXPIRATION_GRACE_IN_SECONDS = 300;
 const MAX_RECONCILED_RUNNERS = 10;
+const MAX_PARAMETER_TAGS = 50;
+const MAX_RUNNER_LABEL_TAGS = 5;
+const MAX_BASE_PARAMETER_TAGS = MAX_PARAMETER_TAGS - MAX_RUNNER_LABEL_TAGS - 1;
+const MAX_TAG_KEY_LENGTH = 128;
+const MAX_TAG_VALUE_LENGTH = 256;
+const SSM_TAG_VALUE_PATTERN = /^[\p{L}\p{Z}\p{N}_.:/=+\-@]*$/u;
 const MICROVM_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
 const GITHUB_RUNNER_ID_SUFFIX = '.github-runner-id';
 const ORPHAN_SUFFIX = '.orphan';
@@ -41,10 +48,125 @@ export interface CreateMicrovmRunnerMetadataInput {
   environment: string;
   imageArn: string;
   imageVersion?: string;
+  metadataTags: MicrovmMetadataTag[];
   microvmId: string;
   runnerOwner: string;
   runnerType: RunnerType;
+  ssmParameterStoreTags: MicrovmMetadataTag[];
   source: LambdaRunnerSource;
+}
+
+function isProviderOwnedLateTag(key: string): boolean {
+  return key === 'ghr:github_runner_id' || key === 'ghr:runner_labels' || key.startsWith('ghr:runner_labels:');
+}
+
+function assertValidParameterTags(tags: MicrovmMetadataTag[]): void {
+  if (tags.length > MAX_PARAMETER_TAGS) {
+    throw new Error(`MicroVM metadata cannot have more than ${MAX_PARAMETER_TAGS} tags`);
+  }
+
+  for (const tag of tags) {
+    if (
+      Array.from(tag.Key).length === 0 ||
+      Array.from(tag.Key).length > MAX_TAG_KEY_LENGTH ||
+      Array.from(tag.Value).length > MAX_TAG_VALUE_LENGTH ||
+      !SSM_TAG_VALUE_PATTERN.test(tag.Key) ||
+      !SSM_TAG_VALUE_PATTERN.test(tag.Value)
+    ) {
+      throw new Error(`MicroVM metadata tag '${tag.Key}' does not satisfy SSM tag constraints`);
+    }
+    if (tag.Key.toLowerCase().startsWith('aws:')) {
+      throw new Error(`MicroVM metadata tag '${tag.Key}' uses the AWS-reserved tag prefix`);
+    }
+  }
+}
+
+function mergeParameterTags(...tagSets: MicrovmMetadataTag[][]): MicrovmMetadataTag[] {
+  const tagsByKey = new Map<string, string>();
+  for (const tags of tagSets) {
+    for (const tag of tags) tagsByKey.set(tag.Key, tag.Value);
+  }
+
+  return [...tagsByKey].map(([Key, Value]) => ({ Key, Value }));
+}
+
+function createMetadataParameterTags(input: CreateMicrovmRunnerMetadataInput): MicrovmMetadataTag[] {
+  const configuredTags = mergeParameterTags(input.ssmParameterStoreTags, input.metadataTags).filter(
+    (tag) => !isProviderOwnedLateTag(tag.Key) && tag.Key !== 'ghr:microvm_image_version',
+  );
+  const providerTags: MicrovmMetadataTag[] = [
+    { Key: 'ghr:Application', Value: 'github-action-runner' },
+    { Key: 'ghr:created_by', Value: input.source },
+    { Key: 'ghr:environment', Value: input.environment },
+    { Key: 'ghr:Owner', Value: input.runnerOwner },
+    { Key: 'ghr:Type', Value: input.runnerType },
+    { Key: 'ghr:microvm_id', Value: input.microvmId },
+    { Key: 'ghr:microvm_image_arn', Value: input.imageArn },
+  ];
+  if (input.imageVersion !== undefined) {
+    providerTags.push({ Key: 'ghr:microvm_image_version', Value: input.imageVersion });
+  }
+
+  const tags = mergeParameterTags(configuredTags, providerTags);
+  assertValidParameterTags(tags);
+  if (tags.length > MAX_BASE_PARAMETER_TAGS) {
+    throw new Error(
+      `MicroVM metadata cannot have more than ${MAX_BASE_PARAMETER_TAGS} launch tags because ${MAX_RUNNER_LABEL_TAGS + 1} tags are reserved for GitHub runner metadata`,
+    );
+  }
+  return tags;
+}
+
+export function assertValidMicrovmMetadataTags(input: CreateMicrovmRunnerMetadataInput): void {
+  createMetadataParameterTags(input);
+}
+
+function encodeRunnerLabelGroups(labels: string[]): string[] {
+  const encodedGroups: string[] = [];
+  let group: string[] = [];
+  const encode = (values: string[]) => `base64url:${Buffer.from(JSON.stringify(values), 'utf8').toString('base64url')}`;
+
+  for (const label of labels) {
+    const candidate = [...group, label];
+    if (Array.from(encode(candidate)).length <= MAX_TAG_VALUE_LENGTH) {
+      group = candidate;
+      continue;
+    }
+    if (group.length === 0) {
+      logger.warn('A GitHub runner label was omitted because its encoded value exceeds the SSM tag limit', {
+        labelLength: Array.from(label).length,
+      });
+      continue;
+    }
+    encodedGroups.push(encode(group));
+    group = [label];
+    if (Array.from(encode(group)).length > MAX_TAG_VALUE_LENGTH) {
+      logger.warn('A GitHub runner label was omitted because its encoded value exceeds the SSM tag limit', {
+        labelLength: Array.from(label).length,
+      });
+      group = [];
+    }
+  }
+  if (group.length > 0) encodedGroups.push(encode(group));
+
+  if (encodedGroups.length > MAX_RUNNER_LABEL_TAGS) {
+    logger.warn('GitHub runner label SSM tags were truncated to avoid exceeding the metadata tag budget', {
+      maxRunnerLabelsTagCount: MAX_RUNNER_LABEL_TAGS,
+    });
+  }
+  return encodedGroups.slice(0, MAX_RUNNER_LABEL_TAGS);
+}
+
+function createGitHubRunnerMetadataTags(metadata: GitHubRunnerMetadata): MicrovmMetadataTag[] {
+  const tags: MicrovmMetadataTag[] = [{ Key: 'ghr:github_runner_id', Value: metadata.githubRunnerId }];
+  tags.push(
+    ...encodeRunnerLabelGroups(metadata.runnerLabels).map((Value, index) => ({
+      Key: index === 0 ? 'ghr:runner_labels' : `ghr:runner_labels:${index + 1}`,
+      Value,
+    })),
+  );
+  assertValidParameterTags(tags);
+  return tags;
 }
 
 function normalizedPath(path: string): string {
@@ -170,7 +292,9 @@ export async function createMicrovmRunnerMetadata(
     ).toISOString(),
   };
 
-  await putParameter(microvmMetadataParameterName(metadataSsmPath, input.microvmId), JSON.stringify(metadata), false);
+  await putParameter(microvmMetadataParameterName(metadataSsmPath, input.microvmId), JSON.stringify(metadata), false, {
+    tags: createMetadataParameterTags(input),
+  });
 }
 
 function invalidStateReason(parameters: Map<string, string>, baseName: string): string | undefined {
@@ -318,15 +442,28 @@ export async function listMicrovmRunnerMetadata(
   };
 }
 
-export async function setMicrovmGithubRunnerId(
+export async function setMicrovmGithubRunnerMetadata(
   metadataSsmPath: string,
   microvmId: string,
-  githubRunnerId: string,
+  metadata: GitHubRunnerMetadata,
 ): Promise<void> {
-  if (!githubRunnerId) throw new Error('GitHub runner ID must not be empty');
-  await putParameter(stateParameterName(metadataSsmPath, microvmId, GITHUB_RUNNER_ID_SUFFIX), githubRunnerId, false, {
-    overwrite: true,
-  });
+  if (!metadata.githubRunnerId) throw new Error('GitHub runner ID must not be empty');
+  await putParameter(
+    stateParameterName(metadataSsmPath, microvmId, GITHUB_RUNNER_ID_SUFFIX),
+    metadata.githubRunnerId,
+    false,
+    {
+      overwrite: true,
+    },
+  );
+  try {
+    await addParameterTags(
+      microvmMetadataParameterName(metadataSsmPath, microvmId),
+      createGitHubRunnerMetadataTags(metadata),
+    );
+  } catch (error) {
+    logger.error(`Failed to tag MicroVM runner '${microvmId}' with GitHub runner metadata`, { error });
+  }
 }
 
 export async function setMicrovmOrphan(metadataSsmPath: string, microvmId: string, orphan: boolean): Promise<void> {

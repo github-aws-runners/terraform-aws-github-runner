@@ -1,4 +1,5 @@
 import {
+  AddTagsToResourceCommand,
   DeleteParameterCommand,
   GetParametersByPathCommand,
   GetParametersCommand,
@@ -144,6 +145,18 @@ export async function getParametersByPath(parameter_path: string): Promise<Map<s
 
 export async function deleteParameter(parameter_name: string): Promise<void> {
   await ssmClient().send(new DeleteParameterCommand({ Name: parameter_name }));
+}
+
+export async function addParameterTags(parameter_name: string, tags: Tag[]): Promise<void> {
+  if (tags.length === 0) return;
+
+  await ssmClient().send(
+    new AddTagsToResourceCommand({
+      ResourceType: 'Parameter',
+      ResourceId: parameter_name,
+      Tags: tags,
+    }),
+  );
 }
 
 export const SSM_ADVANCED_TIER_THRESHOLD = 4000;

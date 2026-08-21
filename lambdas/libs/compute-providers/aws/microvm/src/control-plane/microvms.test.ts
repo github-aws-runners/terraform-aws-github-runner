@@ -24,7 +24,8 @@ import {
   type MicrovmRunnerMetadata,
 } from './runner-metadata';
 
-vi.mock('./runner-metadata', () => ({
+vi.mock('./runner-metadata', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./runner-metadata')>()),
   createMicrovmRunnerMetadata: vi.fn(),
   deleteMicrovmRunnerMetadata: vi.fn(),
   listMicrovmRunnerMetadata: vi.fn(),
@@ -40,8 +41,10 @@ const config: MicrovmProviderConfig = {
   executionRoleArn: 'arn:aws:iam::123456789012:role/microvm-runner',
   egressNetworkConnectors: ['arn:egress'],
   metadataSsmPath,
+  metadataTags: [{ Key: 'Name', Value: 'unit-test-runner' }],
   logging: { cloudWatch: { logGroup: '/aws/lambda-microvms/runner' } },
 };
+const ssmParameterStoreTags = [{ Key: 'CostCenter', Value: '1234' }];
 
 function metadata(overrides: Partial<MicrovmRunnerMetadata> = {}): MicrovmRunnerMetadata {
   return {
@@ -75,7 +78,7 @@ beforeEach(() => {
 describe('runMicrovmRunner', () => {
   it('launches a runner for the fixed lifetime and records durable ownership metadata', async () => {
     process.env.MICROVM_MAXIMUM_DURATION_IN_SECONDS = '1200';
-    mockMicrovmClient.on(RunMicrovmCommand).resolves({ microvmId: 'mvm-123', imageArn });
+    mockMicrovmClient.on(RunMicrovmCommand).resolves({ microvmId: 'mvm-123', imageArn, imageVersion: '3.1' });
 
     await expect(
       runMicrovmRunner({
@@ -84,6 +87,7 @@ describe('runMicrovmRunner', () => {
         runHookPayload: '{"version":1}',
         runnerOwner: 'Codertocat',
         runnerType: 'Org',
+        ssmParameterStoreTags,
         source: 'scale-up-lambda',
       }),
     ).resolves.toBe('mvm-123');
@@ -105,8 +109,28 @@ describe('runMicrovmRunner', () => {
       runnerType: 'Org',
       source: 'scale-up-lambda',
       imageArn,
-      imageVersion: '3.0',
+      imageVersion: '3.1',
+      metadataTags: [{ Key: 'Name', Value: 'unit-test-runner' }],
+      ssmParameterStoreTags,
     });
+  });
+
+  it('rejects invalid metadata tags before launching a MicroVM', async () => {
+    await expect(
+      runMicrovmRunner({
+        config: {
+          ...config,
+          metadataTags: [{ Key: 'aws:microvm:image-arn', Value: imageArn }],
+        },
+        environment: 'unit-test',
+        runHookPayload: '{}',
+        runnerOwner: 'Codertocat',
+        runnerType: 'Org',
+        ssmParameterStoreTags: [],
+        source: 'scale-up-lambda',
+      }),
+    ).rejects.toThrow('AWS-reserved tag prefix');
+    expect(mockMicrovmClient).not.toHaveReceivedCommand(RunMicrovmCommand);
   });
 
   it('rejects a launch response without an ID', async () => {
@@ -119,6 +143,7 @@ describe('runMicrovmRunner', () => {
         runHookPayload: '{}',
         runnerOwner: 'Codertocat',
         runnerType: 'Org',
+        ssmParameterStoreTags: [],
         source: 'pool-lambda',
       }),
     ).rejects.toThrow('RunMicrovm returned no microvmId');
@@ -136,6 +161,7 @@ describe('runMicrovmRunner', () => {
         runHookPayload: '{}',
         runnerOwner: 'Codertocat',
         runnerType: 'Org',
+        ssmParameterStoreTags: [],
         source: 'scale-up-lambda',
       }),
     ).rejects.toThrow('metadata failed');
@@ -157,6 +183,7 @@ describe('runMicrovmRunner', () => {
         runHookPayload: '{}',
         runnerOwner: 'Codertocat',
         runnerType: 'Org',
+        ssmParameterStoreTags: [],
         source: 'scale-up-lambda',
       }),
     ).rejects.toThrow('metadata failed');

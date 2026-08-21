@@ -19,6 +19,7 @@ const providerConfig = {
   imageIdentifier: imageArn,
   executionRoleArn: 'arn:aws:iam::123456789012:role/microvm-runner',
   metadataSsmPath,
+  metadataTags: [],
 };
 
 beforeEach(() => {

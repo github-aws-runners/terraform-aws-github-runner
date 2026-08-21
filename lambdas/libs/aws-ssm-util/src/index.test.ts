@@ -1,4 +1,5 @@
 import {
+  AddTagsToResourceCommand,
   DeleteParameterCommand,
   GetParameterCommand,
   GetParameterCommandOutput,
@@ -13,6 +14,7 @@ import { mockClient } from 'aws-sdk-client-mock';
 import nock from 'nock';
 
 import {
+  addParameterTags,
   deleteParameter,
   getParameter,
   getParameters,
@@ -328,6 +330,30 @@ describe('Test direct parameter path operations', () => {
     await deleteParameter('/metadata/one');
 
     expect(mockSSMClient).toHaveReceivedCommandWith(DeleteParameterCommand, { Name: '/metadata/one' });
+  });
+
+  it('adds tags to an exact parameter name', async () => {
+    mockSSMClient.on(AddTagsToResourceCommand).resolves({});
+
+    await addParameterTags('/metadata/one', [{ Key: 'ghr:environment', Value: 'unit-test' }]);
+
+    expect(mockSSMClient).toHaveReceivedCommandWith(AddTagsToResourceCommand, {
+      ResourceType: 'Parameter',
+      ResourceId: '/metadata/one',
+      Tags: [{ Key: 'ghr:environment', Value: 'unit-test' }],
+    });
+  });
+
+  it('does not call SSM when there are no parameter tags to add', async () => {
+    await addParameterTags('/metadata/one', []);
+
+    expect(mockSSMClient).not.toHaveReceivedCommand(AddTagsToResourceCommand);
+  });
+
+  it('propagates failures when adding parameter tags', async () => {
+    mockSSMClient.on(AddTagsToResourceCommand).rejects(new Error('AccessDenied'));
+
+    await expect(addParameterTags('/metadata/one', [{ Key: 'Name', Value: 'runner' }])).rejects.toThrow('AccessDenied');
   });
 });
 
