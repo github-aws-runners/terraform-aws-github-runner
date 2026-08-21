@@ -82,6 +82,12 @@ export interface RunnerInfo {
   orphan?: boolean;
   githubRunnerId?: string;
   bypassRemoval?: boolean;
+  /**
+   * When the provider first observed this runner reporting idle, as an ISO-8601 string.
+   * Set and cleared via `markIdle` / `unmarkIdle`; absent when the provider does not
+   * implement the idle-confirmation window.
+   */
+  idleDetectedAt?: string;
 }
 
 export interface ListRunnerFilters {
@@ -97,6 +103,17 @@ export interface ScaleDownComputeProvider extends ComputeProvider {
   markOrphan(id: string): Promise<void>;
   unmarkOrphan(id: string): Promise<void>;
   terminate(id: string): Promise<void>;
+  /**
+   * Record that the runner was observed idle at `at` (ISO-8601), so a later cycle can tell
+   * how long it has read idle. Surfaces back on `RunnerInfo.idleDetectedAt`.
+   *
+   * OPTIONAL on purpose: a provider with nowhere to persist per-runner state stays valid
+   * against this interface, and scale-down simply skips the confirmation window for it
+   * rather than failing. Only providers implementing BOTH halves get the behaviour.
+   */
+  markIdle?(id: string, at: string): Promise<void>;
+  /** Clear the idle marker — the runner was seen busy again, so the window restarts. */
+  unmarkIdle?(id: string): Promise<void>;
 }
 
 export interface RunnerStatus {
