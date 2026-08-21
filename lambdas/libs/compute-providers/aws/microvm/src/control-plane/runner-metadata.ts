@@ -194,15 +194,15 @@ function metadataParameterNames(metadataSsmPath: string, microvmId: string): str
   ];
 }
 
-export function assertSeparatedMicrovmMetadataPath(metadataSsmPath: string, runnerConfigSsmPath: string): void {
+export function assertSeparatedMicrovmMetadataPath(metadataSsmPath: string, runnerTokenSsmPath: string): void {
   const metadataPath = normalizedPath(metadataSsmPath);
-  const runnerConfigPath = normalizedPath(runnerConfigSsmPath);
+  const runnerTokenPath = normalizedPath(runnerTokenSsmPath);
   if (
-    metadataPath === runnerConfigPath ||
-    metadataPath.startsWith(`${runnerConfigPath}/`) ||
-    runnerConfigPath.startsWith(`${metadataPath}/`)
+    metadataPath === runnerTokenPath ||
+    metadataPath.startsWith(`${runnerTokenPath}/`) ||
+    runnerTokenPath.startsWith(`${metadataPath}/`)
   ) {
-    throw new Error('MICROVM_METADATA_SSM_PATH must be separate from the runner JIT configuration path');
+    throw new Error('MICROVM_METADATA_SSM_PATH must be separate from the runner JIT token path');
   }
 }
 
