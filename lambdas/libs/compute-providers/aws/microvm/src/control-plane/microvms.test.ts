@@ -41,8 +41,6 @@ const config: MicrovmProviderConfig = {
   executionRoleArn: 'arn:aws:iam::123456789012:role/microvm-runner',
   egressNetworkConnectors: ['arn:egress'],
   metadataSsmPath,
-  metadataTags: [{ Key: 'Name', Value: 'unit-test-runner' }],
-  runnerConfigSsmArn: 'arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/unit-test/config',
   logging: { cloudWatch: { logGroup: '/aws/lambda-microvms/runner' } },
 };
 const ssmParameterStoreTags = [{ Key: 'CostCenter', Value: '1234' }];
@@ -111,7 +109,6 @@ describe('runMicrovmRunner', () => {
       source: 'scale-up-lambda',
       imageArn,
       imageVersion: '3.1',
-      metadataTags: [{ Key: 'Name', Value: 'unit-test-runner' }],
       ssmParameterStoreTags,
     });
   });
@@ -119,15 +116,12 @@ describe('runMicrovmRunner', () => {
   it('rejects invalid metadata tags before launching a MicroVM', async () => {
     await expect(
       runMicrovmRunner({
-        config: {
-          ...config,
-          metadataTags: [{ Key: 'aws:microvm:image-arn', Value: imageArn }],
-        },
+        config,
         environment: 'unit-test',
         runHookPayload: '{}',
         runnerOwner: 'Codertocat',
         runnerType: 'Org',
-        ssmParameterStoreTags: [],
+        ssmParameterStoreTags: [{ Key: 'aws:microvm:image-arn', Value: imageArn }],
         source: 'scale-up-lambda',
       }),
     ).rejects.toThrow('AWS-reserved tag prefix');

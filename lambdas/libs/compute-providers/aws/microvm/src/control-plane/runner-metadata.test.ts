@@ -82,16 +82,16 @@ describe('MicroVM metadata lifecycle', () => {
       source: 'scale-up-lambda',
       imageArn: 'arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner',
       imageVersion: '3.0',
-      metadataTags: [
-        { Key: 'Name', Value: 'unit-test-runner' },
-        { Key: 'ghr:Owner', Value: 'configured-owner-cannot-win' },
-        { Key: 'ghr:github_runner_id', Value: 'configured-id-is-not-launch-metadata' },
-        { Key: 'ghr:runner_labels', Value: 'configured-labels-are-not-launch-metadata' },
-      ],
       ssmParameterStoreTags: [
         { Key: 'CostCenter', Value: '1234' },
-        { Key: 'Name', Value: 'ssm-name-cannot-win' },
+        { Key: 'Name', Value: 'not-used-for-microvm-metadata' },
+        { Key: 'ghr:Owner', Value: 'configured-owner-cannot-win' },
         { Key: 'ghr:created_by', Value: 'configured-source-cannot-win' },
+        { Key: 'ghr:environment', Value: 'unit-test' },
+        { Key: 'ghr:runner_name_prefix', Value: 'unit-test-' },
+        { Key: 'ghr:ssm_config_path', Value: '/github-action-runners/unit-test/config' },
+        { Key: 'ghr:github_runner_id', Value: 'configured-id-is-not-launch-metadata' },
+        { Key: 'ghr:runner_labels', Value: 'configured-labels-are-not-launch-metadata' },
       ],
     });
 
@@ -102,11 +102,12 @@ describe('MicroVM metadata lifecycle', () => {
       {
         tags: [
           { Key: 'CostCenter', Value: '1234' },
-          { Key: 'Name', Value: 'unit-test-runner' },
-          { Key: 'ghr:created_by', Value: 'scale-up-lambda' },
           { Key: 'ghr:Owner', Value: 'Codertocat' },
-          { Key: 'ghr:Application', Value: 'github-action-runner' },
+          { Key: 'ghr:created_by', Value: 'scale-up-lambda' },
           { Key: 'ghr:environment', Value: 'unit-test' },
+          { Key: 'ghr:runner_name_prefix', Value: 'unit-test-' },
+          { Key: 'ghr:ssm_config_path', Value: '/github-action-runners/unit-test/config' },
+          { Key: 'ghr:Application', Value: 'github-action-runner' },
           { Key: 'ghr:Type', Value: 'Org' },
           { Key: 'ghr:microvm_id', Value: 'mvm-1' },
           {
@@ -134,14 +135,17 @@ describe('MicroVM metadata lifecycle', () => {
     await expect(
       createMicrovmRunnerMetadata(metadataSsmPath, {
         ...input,
-        metadataTags: [{ Key: 'aws:microvm:image-arn', Value: input.imageArn }],
+        ssmParameterStoreTags: [{ Key: 'aws:microvm:image-arn', Value: input.imageArn }],
       }),
     ).rejects.toThrow('AWS-reserved tag prefix');
 
     await expect(
       createMicrovmRunnerMetadata(metadataSsmPath, {
         ...input,
-        metadataTags: Array.from({ length: 37 }, (_, index) => ({ Key: `Custom${index}`, Value: 'value' })),
+        ssmParameterStoreTags: Array.from({ length: 37 }, (_, index) => ({
+          Key: `Custom${index}`,
+          Value: 'value',
+        })),
       }),
     ).rejects.toThrow('cannot have more than 44 launch tags');
     expect(putParameter).not.toHaveBeenCalled();

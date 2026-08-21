@@ -19,8 +19,6 @@ const providerConfig = {
   imageIdentifier: imageArn,
   executionRoleArn: 'arn:aws:iam::123456789012:role/microvm-runner',
   metadataSsmPath,
-  metadataTags: [],
-  runnerConfigSsmArn: 'arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/unit-test/config',
 };
 
 beforeEach(() => {
