@@ -55,6 +55,8 @@ resource "aws_lambda_function" "scale_up" {
       RUNNER_LABELS                             = lower(join(",", var.runner_labels))
       RUNNER_GROUP_NAME                         = var.runner_group_name
       RUNNER_NAME_PREFIX                        = var.runner_name_prefix
+      RUNNER_BOOTSTRAP_STORAGE_PROVIDER_TYPE    = "aws_ssm"
+      RUNNER_GROUP_CACHE_STORAGE_PROVIDER_TYPE  = "aws_ssm"
       COMPUTE_PROVIDER_TYPE                     = "ec2"
       RUNNERS_MAXIMUM_COUNT                     = var.runners_maximum_count
       POWERTOOLS_SERVICE_NAME                   = "${var.prefix}-scale-up"

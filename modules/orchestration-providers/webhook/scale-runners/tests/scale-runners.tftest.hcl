@@ -10,6 +10,18 @@ mock_provider "aws" {
       arn = "arn:aws:iam::123456789012:role/scale-runners-test"
     }
   }
+
+  mock_resource "aws_lambda_function" {
+    defaults = {
+      arn = "arn:aws-us-gov:lambda:us-gov-west-1:123456789012:function:scale-runners-test"
+    }
+  }
+
+  mock_resource "aws_cloudwatch_event_rule" {
+    defaults = {
+      arn = "arn:aws-us-gov:events:us-gov-west-1:123456789012:rule/scale-runners-test"
+    }
+  }
 }
 
 variables {
@@ -255,6 +267,14 @@ run "assembles_provider_neutral_scaling_control_plane" {
       && jsondecode(aws_lambda_function.scale_up.environment[0].variables["SSM_PARAMETER_STORE_TAGS"])[0].Value == "test"
     )
     error_message = "Scale runners must assemble shared runner, logging, TLS, lifetime, and Parameter Store environment variables."
+  }
+
+  assert {
+    condition = (
+      aws_lambda_function.scale_up.environment[0].variables["RUNNER_BOOTSTRAP_STORAGE_PROVIDER_TYPE"] == "aws_ssm"
+      && aws_lambda_function.scale_up.environment[0].variables["RUNNER_GROUP_CACHE_STORAGE_PROVIDER_TYPE"] == "aws_ssm"
+    )
+    error_message = "Scale-up must select SSM independently for runner-bootstrap handoff and runner-group caching."
   }
 
   assert {
