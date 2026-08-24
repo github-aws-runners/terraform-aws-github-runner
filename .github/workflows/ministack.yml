@@ -75,6 +75,10 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Mark repository as safe
+        shell: sh
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
       - id: prepare
         name: Prepare isolated fixture
         env:
