@@ -22,6 +22,7 @@ updates:
         patterns:
           - "actions/*"
           - "github/"
+          - "github/codeql-action/*"
 
   - package-ecosystem: "npm"
     directory: "/lambdas"
