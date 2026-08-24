@@ -1,0 +1,77 @@
+name: "MiniStack Terraform apply"
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/ministack.yml"
+      - "modules/lambda/**"
+      - "modules/setup-iam-permissions/**"
+      - "modules/ssm/**"
+      - "tests/ministack/**"
+  pull_request:
+    paths:
+      - ".github/workflows/ministack.yml"
+      - "modules/lambda/**"
+      - "modules/setup-iam-permissions/**"
+      - "modules/ssm/**"
+      - "tests/ministack/**"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  AWS_DEFAULT_REGION: eu-west-1
+  AWS_EC2_METADATA_DISABLED: "true"
+  AWS_ENDPOINT_URL: http://ministack:4566
+  AWS_REGION: eu-west-1
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+  TF_VAR_ministack_endpoint: http://ministack:4566
+
+jobs:
+  terraform_apply:
+    name: Apply modules against MiniStack
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container:
+      image: hashicorp/terraform@sha256:1d10ec4073f4ddbdf34a28540a3b9250852ab500cb1c53f68c8bd17d82f474d8 # 1.14
+    services:
+      ministack:
+        image: ghcr.io/ministackorg/ministack:1.5.0@sha256:ba48c20747780605a4287a950e7bb1758ddc3b55ec92409a0c47677cbe26bbb9
+        env:
+          MINISTACK_ACCOUNT_ID: "000000000000"
+          MINISTACK_REGION: eu-west-1
+    defaults:
+      run:
+        working-directory: tests/ministack
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Terraform init
+        run: terraform init -backend=false -input=false
+
+      - name: Terraform validate
+        run: terraform validate
+
+      - name: Terraform apply
+        id: apply
+        run: terraform apply -auto-approve -input=false
+
+      - name: Terraform destroy
+        if: ${{ always() && steps.apply.outcome != 'skipped' }}
+        run: terraform destroy -auto-approve -input=false
