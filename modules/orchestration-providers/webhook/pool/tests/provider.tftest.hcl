@@ -4,6 +4,18 @@ mock_provider "aws" {
       json = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":\"logs:CreateLogStream\",\"Resource\":\"*\"}]}"
     }
   }
+
+  mock_resource "aws_iam_role" {
+    defaults = {
+      arn = "arn:aws:iam::123456789012:role/pool-test"
+    }
+  }
+
+  mock_resource "aws_lambda_function" {
+    defaults = {
+      arn = "arn:aws:lambda:eu-west-1:123456789012:function:pool-test"
+    }
+  }
 }
 
 variables {
@@ -140,8 +152,10 @@ run "provider_supplies_only_compute_specific_pool_configuration" {
       aws_lambda_function.pool.environment[0].variables["RUNNER_OWNER"] == "example"
       && aws_lambda_function.pool.environment[0].variables["RUNNERS_MAXIMUM_COUNT"] == "10"
       && aws_lambda_function.pool.environment[0].variables["RUNNER_BOOT_TIME_IN_MINUTES"] == "13"
+      && aws_lambda_function.pool.environment[0].variables["RUNNER_BOOTSTRAP_STORAGE_PROVIDER_TYPE"] == "aws_ssm"
+      && aws_lambda_function.pool.environment[0].variables["RUNNER_GROUP_CACHE_STORAGE_PROVIDER_TYPE"] == "aws_ssm"
     )
-    error_message = "The pool module must assemble common runner registration values and webhook-provider capacity and boot-time settings."
+    error_message = "The pool module must assemble runner settings and independently select SSM for bootstrap handoff and runner-group caching."
   }
 
   assert {

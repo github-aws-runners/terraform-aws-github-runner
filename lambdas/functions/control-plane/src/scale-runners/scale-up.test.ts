@@ -168,7 +168,7 @@ async function createTestProviderRunners(input: CreateScaleUpRunnersInput<unknow
       result.instances,
       input.githubInstallationClient,
       {
-        getSsmParameterTags: (runnerId) => [{ Key: 'RunnerId', Value: runnerId }],
+        getStorageMetadataTags: (runnerId) => [{ key: 'RunnerId', value: runnerId }],
       },
     );
   } catch {

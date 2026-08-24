@@ -1,5 +1,9 @@
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
-import { getParameter, putParameter } from '@aws-github-runner/aws-ssm-util';
+import {
+  createRunnerBootstrapStoreFromEnvironment,
+  createRunnerGroupCacheStoreFromEnvironment,
+} from '@aws-github-runner/storage-providers';
+import type { RunnerBootstrapStore, RunnerGroupCacheStore } from '@aws-github-runner/storage-providers';
 import { Octokit } from '@octokit/rest';
 
 import { getStoredInstallationId } from '../github/auth';
@@ -14,7 +18,7 @@ export interface GitHubRunnerMetadata {
 }
 
 export interface StartRunnerConfigOptions {
-  getSsmParameterTags?: (runnerId: string) => { Key: string; Value: string }[];
+  getStorageMetadataTags?: (runnerId: string) => { key: string; value: string }[];
   onJitConfigCreated?: (runnerId: string, metadata: GitHubRunnerMetadata) => Promise<void>;
 }
 
@@ -182,39 +186,27 @@ export async function isJobQueued(
 export async function getRunnerGroupId(
   githubRunnerConfig: CreateGitHubRunnerConfig,
   ghClient: Octokit,
+  runnerGroupCacheStore: RunnerGroupCacheStore = createRunnerGroupCacheStore(githubRunnerConfig),
 ): Promise<number> {
   // if the runnerType is Repo, then runnerGroupId is default to 1
   let runnerGroupId: number | undefined = 1;
   if (githubRunnerConfig.runnerType === 'Org' && githubRunnerConfig.runnerGroup !== undefined) {
     let runnerGroup: string | undefined;
-    // check if runner group id is already stored in SSM Parameter Store and
-    // use it if it exists to avoid API call to GitHub
+    const identity = { kind: 'runner_group_cache' as const, groupName: githubRunnerConfig.runnerGroup };
+    // Use the cached runner-group ID when available to avoid a GitHub API call.
     try {
-      runnerGroup = await getParameter(
-        `${githubRunnerConfig.ssmConfigPath}/runner-group/${githubRunnerConfig.runnerGroup}`,
-      );
+      runnerGroup = (await runnerGroupCacheStore.get(identity))?.payload;
     } catch (err) {
       logger.debug('Handling error:', err as Error);
-      logger.warn(
-        `SSM Parameter "${githubRunnerConfig.ssmConfigPath}/runner-group/${githubRunnerConfig.runnerGroup}"
-         for Runner group ${githubRunnerConfig.runnerGroup} does not exist`,
-      );
+      logger.warn(`Cached ID for runner group ${githubRunnerConfig.runnerGroup} does not exist`);
     }
     if (runnerGroup === undefined) {
       // get runner group id from GitHub
       runnerGroupId = await getRunnerGroupByName(ghClient, githubRunnerConfig);
-      // store runner group id in SSM
       try {
-        await putParameter(
-          `${githubRunnerConfig.ssmConfigPath}/runner-group/${githubRunnerConfig.runnerGroup}`,
-          runnerGroupId.toString(),
-          false,
-          {
-            tags: githubRunnerConfig.ssmParameterStoreTags,
-          },
-        );
+        await runnerGroupCacheStore.put({ identity, payload: runnerGroupId.toString() });
       } catch (err) {
-        logger.debug('Error storing runner group id in SSM Parameter Store', err as Error);
+        logger.debug('Error storing runner group ID in the cache', err as Error);
         throw err;
       }
     } else {
@@ -250,18 +242,45 @@ export async function createStartRunnerConfig(
   ghClient: Octokit,
   options: StartRunnerConfigOptions = {},
 ): Promise<string[]> {
+  const runnerBootstrapStore = createRunnerBootstrapStore(githubRunnerConfig);
   if (githubRunnerConfig.enableJitConfig && githubRunnerConfig.ephemeral) {
-    return await createJitConfig(githubRunnerConfig, runnerIds, ghClient, options);
+    return await createJitConfig(
+      githubRunnerConfig,
+      runnerIds,
+      ghClient,
+      options,
+      runnerBootstrapStore,
+      createRunnerGroupCacheStore(githubRunnerConfig),
+    );
   } else {
-    return await createRegistrationTokenConfig(githubRunnerConfig, runnerIds, ghClient, options);
+    return await createRegistrationTokenConfig(githubRunnerConfig, runnerIds, ghClient, options, runnerBootstrapStore);
   }
 }
 
-function addDelay(runnerIds: string[]) {
+function createRunnerBootstrapStore(githubRunnerConfig: CreateGitHubRunnerConfig): RunnerBootstrapStore {
+  return createRunnerBootstrapStoreFromEnvironment({
+    locator: githubRunnerConfig.ssmTokenPath,
+    metadataTags: githubRunnerConfig.ssmParameterStoreTags.map(({ Key, Value }) => ({ key: Key, value: Value })),
+  });
+}
+
+function createRunnerGroupCacheStore(githubRunnerConfig: CreateGitHubRunnerConfig): RunnerGroupCacheStore {
+  return createRunnerGroupCacheStoreFromEnvironment({
+    locator: githubRunnerConfig.ssmConfigPath,
+    metadataTags: githubRunnerConfig.ssmParameterStoreTags.map(({ Key, Value }) => ({ key: Key, value: Value })),
+  });
+}
+
+function addDelay(runnerIds: string[], runnerBootstrapStore: RunnerBootstrapStore) {
   const delay = async (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-  const ssmParameterStoreMaxThroughput = 40;
-  const isDelay = runnerIds.length >= ssmParameterStoreMaxThroughput;
-  return { isDelay, delay };
+  const maxWritesPerSecond = runnerBootstrapStore.maxWritesPerSecond;
+  const isDelay = maxWritesPerSecond !== undefined && runnerIds.length >= maxWritesPerSecond;
+  const delayMs = maxWritesPerSecond === undefined ? 0 : 1000 / maxWritesPerSecond;
+  return { isDelay, delay, delayMs };
+}
+
+function getRunnerBootstrapMetadataTags(options: StartRunnerConfigOptions, runnerId: string) {
+  return options.getStorageMetadataTags?.(runnerId) ?? [];
 }
 
 /**
@@ -274,8 +293,9 @@ async function createRegistrationTokenConfig(
   runnerIds: string[],
   ghClient: Octokit,
   options: StartRunnerConfigOptions,
+  runnerBootstrapStore: RunnerBootstrapStore,
 ): Promise<string[]> {
-  const { isDelay, delay } = addDelay(runnerIds);
+  const { isDelay, delay, delayMs } = addDelay(runnerIds, runnerBootstrapStore);
   const token = await getGithubRunnerRegistrationToken(githubRunnerConfig, ghClient);
   const runnerServiceConfig = generateRunnerServiceConfig(githubRunnerConfig, token);
 
@@ -284,12 +304,13 @@ async function createRegistrationTokenConfig(
   });
 
   for (const runnerId of runnerIds) {
-    await putParameter(`${githubRunnerConfig.ssmTokenPath}/${runnerId}`, runnerServiceConfig.join(' '), true, {
-      tags: [...(options.getSsmParameterTags?.(runnerId) ?? []), ...githubRunnerConfig.ssmParameterStoreTags],
-    });
+    await runnerBootstrapStore.put(
+      { identity: { kind: 'runner_bootstrap', runnerId }, payload: runnerServiceConfig.join(' ') },
+      { metadataTags: getRunnerBootstrapMetadataTags(options, runnerId) },
+    );
     if (isDelay) {
       // Delay to prevent AWS ssm rate limits by being within the max throughput limit
-      await delay(25);
+      await delay(delayMs);
     }
   }
 
@@ -307,9 +328,11 @@ async function createJitConfig(
   runnerIds: string[],
   ghClient: Octokit,
   options: StartRunnerConfigOptions,
+  runnerBootstrapStore: RunnerBootstrapStore,
+  runnerGroupCacheStore: RunnerGroupCacheStore,
 ): Promise<string[]> {
-  const runnerGroupId = await getRunnerGroupId(githubRunnerConfig, ghClient);
-  const { isDelay, delay } = addDelay(runnerIds);
+  const runnerGroupId = await getRunnerGroupId(githubRunnerConfig, ghClient, runnerGroupCacheStore);
+  const { isDelay, delay, delayMs } = addDelay(runnerIds, runnerBootstrapStore);
   const runnerLabels = githubRunnerConfig.runnerLabels.split(',');
   const failedRunnerIds: string[] = [];
 
@@ -347,16 +370,16 @@ async function createJitConfig(
         runnerLabels,
       });
 
-      // store jit config in ssm parameter store
       logger.debug('Runner JIT config for ephemeral runner generated.', {
         instance: runnerId,
       });
-      await putParameter(`${githubRunnerConfig.ssmTokenPath}/${runnerId}`, runnerConfig.data.encoded_jit_config, true, {
-        tags: [...(options.getSsmParameterTags?.(runnerId) ?? []), ...githubRunnerConfig.ssmParameterStoreTags],
-      });
+      await runnerBootstrapStore.put(
+        { identity: { kind: 'runner_bootstrap', runnerId }, payload: runnerConfig.data.encoded_jit_config },
+        { metadataTags: getRunnerBootstrapMetadataTags(options, runnerId) },
+      );
       if (isDelay) {
         // Delay to prevent AWS ssm rate limits by being within the max throughput limit
-        await delay(25);
+        await delay(delayMs);
       }
     } catch (error) {
       failedRunnerIds.push(runnerId);

@@ -22,6 +22,8 @@ locals {
     RUNNER_LABELS                             = lower(join(",", var.config.runner.labels))
     RUNNER_GROUP_NAME                         = var.config.runner.group_name
     RUNNER_NAME_PREFIX                        = var.config.runner.name_prefix
+    RUNNER_BOOTSTRAP_STORAGE_PROVIDER_TYPE    = "aws_ssm"
+    RUNNER_GROUP_CACHE_STORAGE_PROVIDER_TYPE  = "aws_ssm"
     RUNNER_OWNER                              = var.config.runner.pool_owner
     RUNNER_BOOT_TIME_IN_MINUTES               = var.config.runner.boot_time_in_minutes
     RUNNERS_MAXIMUM_COUNT                     = var.config.runners_maximum_count

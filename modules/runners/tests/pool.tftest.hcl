@@ -4,6 +4,24 @@ mock_provider "aws" {
       json = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"lambda.amazonaws.com\"},\"Action\":\"sts:AssumeRole\"}]}"
     }
   }
+
+  mock_resource "aws_iam_role" {
+    defaults = {
+      arn = "arn:aws:iam::123456789012:role/runners-test"
+    }
+  }
+
+  mock_resource "aws_lambda_function" {
+    defaults = {
+      arn = "arn:aws:lambda:eu-west-1:123456789012:function:runners-test"
+    }
+  }
+
+  mock_resource "aws_cloudwatch_event_rule" {
+    defaults = {
+      arn = "arn:aws:events:eu-west-1:123456789012:rule/runners-test"
+    }
+  }
 }
 
 variables {
@@ -57,5 +75,13 @@ run "plan_with_pool_enabled" {
   assert {
     condition     = length(module.pool) == 1
     error_message = "Pool module should be enabled when pool_config is non-empty"
+  }
+
+  assert {
+    condition = (
+      module.pool[0].lambda.environment[0].variables["RUNNER_BOOTSTRAP_STORAGE_PROVIDER_TYPE"] == "aws_ssm"
+      && module.pool[0].lambda.environment[0].variables["RUNNER_GROUP_CACHE_STORAGE_PROVIDER_TYPE"] == "aws_ssm"
+    )
+    error_message = "Stable pool must preserve SSM while selecting bootstrap handoff and runner-group cache independently."
   }
 }
