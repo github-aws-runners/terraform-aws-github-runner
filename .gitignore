@@ -7,7 +7,6 @@
 # lock files
 **/.terraform.lock.hcl
 !examples/**/.terraform.lock.hcl
-!tests/ministack/.terraform.lock.hcl
 
 
 # keys

@@ -6,17 +6,31 @@ on:
       - main
     paths:
       - ".github/workflows/ministack.yml"
+      - "*.tf"
+      - "policies/**"
+      - "examples/base/**"
+      - "examples/default/**"
+      - "modules/ami-housekeeper/**"
       - "modules/lambda/**"
-      - "modules/setup-iam-permissions/**"
+      - "modules/runner-binaries-syncer/**"
+      - "modules/runners/**"
       - "modules/ssm/**"
-      - "tests/ministack/**"
+      - "modules/termination-watcher/**"
+      - "modules/webhook/**"
   pull_request:
     paths:
       - ".github/workflows/ministack.yml"
+      - "*.tf"
+      - "policies/**"
+      - "examples/base/**"
+      - "examples/default/**"
+      - "modules/ami-housekeeper/**"
       - "modules/lambda/**"
-      - "modules/setup-iam-permissions/**"
+      - "modules/runner-binaries-syncer/**"
+      - "modules/runners/**"
       - "modules/ssm/**"
-      - "tests/ministack/**"
+      - "modules/termination-watcher/**"
+      - "modules/webhook/**"
   workflow_dispatch:
 
 concurrency:
@@ -27,17 +41,18 @@ permissions:
   contents: read
 
 env:
+  AWS_ACCESS_KEY_ID: "000000000000"
   AWS_DEFAULT_REGION: eu-west-1
   AWS_EC2_METADATA_DISABLED: "true"
   AWS_ENDPOINT_URL: http://ministack:4566
   AWS_REGION: eu-west-1
+  AWS_SECRET_ACCESS_KEY: test-only
   TF_IN_AUTOMATION: "true"
   TF_INPUT: "false"
-  TF_VAR_ministack_endpoint: http://ministack:4566
 
 jobs:
   terraform_apply:
-    name: Apply modules against MiniStack
+    name: Apply default example against MiniStack
     runs-on: ubuntu-latest
     timeout-minutes: 15
     container:
@@ -50,7 +65,7 @@ jobs:
           MINISTACK_REGION: eu-west-1
     defaults:
       run:
-        working-directory: tests/ministack
+        working-directory: examples/default
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
@@ -65,13 +80,5 @@ jobs:
       - name: Terraform init
         run: terraform init -backend=false -input=false
 
-      - name: Terraform validate
-        run: terraform validate
-
-      - name: Terraform apply
-        id: apply
-        run: terraform apply -auto-approve -input=false
-
-      - name: Terraform destroy
-        if: ${{ always() && steps.apply.outcome != 'skipped' }}
-        run: terraform destroy -auto-approve -input=false
+      - name: Terraform apply test
+        run: terraform test -filter=tests/ministack.tftest.hcl
