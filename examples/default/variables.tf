@@ -20,16 +20,3 @@ variable "aws_region" {
   type    = string
   default = "eu-west-1"
 }
-
-variable "lambda_zip_overrides" {
-  description = "Optional local Lambda archive paths passed to the runner module."
-
-  type = object({
-    ami_housekeeper        = optional(string)
-    runner_binaries_syncer = optional(string)
-    runners                = optional(string)
-    termination_watcher    = optional(string)
-    webhook                = optional(string)
-  })
-  default = {}
-}

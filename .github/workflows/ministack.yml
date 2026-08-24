@@ -1,4 +1,4 @@
-name: "MiniStack Terraform apply"
+name: "MiniStack Terraform lifecycle"
 
 on:
   push:
@@ -6,31 +6,19 @@ on:
       - main
     paths:
       - ".github/workflows/ministack.yml"
+      - "tests/ministack/**"
       - "*.tf"
       - "policies/**"
-      - "examples/base/**"
-      - "examples/default/**"
-      - "modules/ami-housekeeper/**"
-      - "modules/lambda/**"
-      - "modules/runner-binaries-syncer/**"
-      - "modules/runners/**"
-      - "modules/ssm/**"
-      - "modules/termination-watcher/**"
-      - "modules/webhook/**"
+      - "examples/**"
+      - "modules/**"
   pull_request:
     paths:
       - ".github/workflows/ministack.yml"
+      - "tests/ministack/**"
       - "*.tf"
       - "policies/**"
-      - "examples/base/**"
-      - "examples/default/**"
-      - "modules/ami-housekeeper/**"
-      - "modules/lambda/**"
-      - "modules/runner-binaries-syncer/**"
-      - "modules/runners/**"
-      - "modules/ssm/**"
-      - "modules/termination-watcher/**"
-      - "modules/webhook/**"
+      - "examples/**"
+      - "modules/**"
   workflow_dispatch:
 
 concurrency:
@@ -51,10 +39,23 @@ env:
   TF_INPUT: "false"
 
 jobs:
-  terraform_apply:
-    name: Apply default example against MiniStack
+  terraform_lifecycle:
+    name: Apply/destroy ${{ matrix.example }} against MiniStack
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        example:
+          - base
+          - default
+          - ephemeral
+          - external-managed-ssm-secrets
+          - multi-runner
+          - permissions-boundary
+          - prebuilt
+          - termination-watcher
     container:
       image: hashicorp/terraform@sha256:1d10ec4073f4ddbdf34a28540a3b9250852ab500cb1c53f68c8bd17d82f474d8 # 1.14
     services:
@@ -63,9 +64,6 @@ jobs:
         env:
           MINISTACK_ACCOUNT_ID: "000000000000"
           MINISTACK_REGION: eu-west-1
-    defaults:
-      run:
-        working-directory: examples/default
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
@@ -77,8 +75,51 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Terraform init
-        run: terraform init -backend=false -input=false
+      - id: prepare
+        name: Prepare isolated fixture
+        env:
+          EXAMPLE: ${{ matrix.example }}
+        run: tests/ministack/run-example.sh prepare "$EXAMPLE"
 
-      - name: Terraform apply test
-        run: terraform test -filter=tests/ministack.tftest.hcl
+      - id: fixture
+        name: Apply shared fixture
+        env:
+          EXAMPLE: ${{ matrix.example }}
+        run: tests/ministack/run-example.sh fixture-apply "$EXAMPLE"
+
+      - id: setup
+        name: Apply permissions-boundary prerequisite
+        if: matrix.example == 'permissions-boundary'
+        env:
+          EXAMPLE: ${{ matrix.example }}
+        run: tests/ministack/run-example.sh setup-apply "$EXAMPLE"
+
+      - id: init
+        name: Terraform init
+        env:
+          EXAMPLE: ${{ matrix.example }}
+        run: tests/ministack/run-example.sh init "$EXAMPLE"
+
+      - id: apply
+        name: Terraform apply
+        env:
+          EXAMPLE: ${{ matrix.example }}
+        run: tests/ministack/run-example.sh apply "$EXAMPLE"
+
+      - name: Terraform destroy
+        if: always() && steps.init.outcome == 'success'
+        env:
+          EXAMPLE: ${{ matrix.example }}
+        run: tests/ministack/run-example.sh destroy "$EXAMPLE"
+
+      - name: Destroy permissions-boundary prerequisite
+        if: always() && matrix.example == 'permissions-boundary' && steps.setup.outcome != 'skipped'
+        env:
+          EXAMPLE: ${{ matrix.example }}
+        run: tests/ministack/run-example.sh setup-destroy "$EXAMPLE"
+
+      - name: Destroy shared fixture
+        if: always() && steps.prepare.outcome == 'success' && steps.fixture.outcome != 'skipped'
+        env:
+          EXAMPLE: ${{ matrix.example }}
+        run: tests/ministack/run-example.sh fixture-destroy "$EXAMPLE"

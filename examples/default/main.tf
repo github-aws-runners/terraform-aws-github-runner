@@ -49,9 +49,6 @@ module "runners" {
   # webhook_lambda_zip                = "../lambdas-download/webhook.zip"
   # runner_binaries_syncer_lambda_zip = "../lambdas-download/runner-binaries-syncer.zip"
   # runners_lambda_zip                = "../lambdas-download/runners.zip"
-  webhook_lambda_zip                = var.lambda_zip_overrides.webhook
-  runner_binaries_syncer_lambda_zip = var.lambda_zip_overrides.runner_binaries_syncer
-  runners_lambda_zip                = var.lambda_zip_overrides.runners
 
   enable_organization_runners = true
   # Note: labels starting with `ghr-` are ignored during webhook label matching
@@ -111,8 +108,7 @@ module "runners" {
   #   capture_http_requests = true
   # }
 
-  enable_ami_housekeeper     = true
-  ami_housekeeper_lambda_zip = var.lambda_zip_overrides.ami_housekeeper
+  enable_ami_housekeeper = true
   ami_housekeeper_cleanup_config = {
     ssmParameterNames = ["*/ami-id"]
     minimumDaysOld    = 10
@@ -126,7 +122,6 @@ module "runners" {
 
   instance_termination_watcher = {
     enable = true
-    zip    = var.lambda_zip_overrides.termination_watcher
   }
 
   # enable metric creation  (experimental)

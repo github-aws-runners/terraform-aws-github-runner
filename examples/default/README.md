@@ -28,30 +28,6 @@ The example will try to update the webhook of your GitHub. In case the update fa
 terraform output -raw webhook_secret
 ```
 
-## MiniStack apply test
-
-The MiniStack test applies this example with synthetic GitHub App values and
-inert Lambda archives. It overrides the GitHub App webhook updater and AMI
-lookup, while all AWS resources are created through the local MiniStack API.
-Terraform test destroys the resources and keeps the generated inert archive
-isolated in the ignored `.terraform/ministack/` cache.
-
-With Terraform 1.10 or newer, start MiniStack locally, route the AWS provider
-to it, and run the focused test:
-
-```bash
-docker run --detach --rm --name terraform-aws-github-runner-ministack \
-  --publish 127.0.0.1:4566:4566 \
-  --env MINISTACK_ACCOUNT_ID=000000000000 \
-  --env MINISTACK_REGION=eu-west-1 \
-  ghcr.io/ministackorg/ministack:1.5.0@sha256:ba48c20747780605a4287a950e7bb1758ddc3b55ec92409a0c47677cbe26bbb9
-
-export AWS_ENDPOINT_URL=http://127.0.0.1:4566
-terraform init -backend=false -input=false
-terraform test -filter=tests/ministack.tftest.hcl
-docker stop terraform-aws-github-runner-ministack
-```
-
 <!-- BEGIN_TF_DOCS -->
 ## Requirements
 
@@ -89,7 +65,6 @@ docker stop terraform-aws-github-runner-ministack
 | <a name="input_aws_region"></a> [aws\_region](#input\_aws\_region) | AWS region. | `string` | `"eu-west-1"` | no |
 | <a name="input_environment"></a> [environment](#input\_environment) | Environment name, used as prefix. | `string` | `null` | no |
 | <a name="input_github_app"></a> [github\_app](#input\_github\_app) | GitHub for API usages. | <pre>object({<br/>    id         = string<br/>    key_base64 = string<br/>  })</pre> | n/a | yes |
-| <a name="input_lambda_zip_overrides"></a> [lambda\_zip\_overrides](#input\_lambda\_zip\_overrides) | Optional local Lambda archive paths passed to the runner module. | <pre>object({<br/>    ami_housekeeper        = optional(string)<br/>    runner_binaries_syncer = optional(string)<br/>    runners                = optional(string)<br/>    termination_watcher    = optional(string)<br/>    webhook                = optional(string)<br/>  })</pre> | `{}` | no |
 
 ## Outputs
 
