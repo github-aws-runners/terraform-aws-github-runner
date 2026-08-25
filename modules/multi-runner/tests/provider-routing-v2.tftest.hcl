@@ -842,8 +842,9 @@ run "experimental_v2_rejects_missing_orchestration_provider" {
     experimental = {
       github = {
         app = {
-          id         = "123456"
-          key_base64 = "dGVzdA=="
+          id             = "123456"
+          key_base64     = "dGVzdA=="
+          webhook_secret = "test-secret"
         }
       }
       compute_provider = {
@@ -851,6 +852,9 @@ run "experimental_v2_rejects_missing_orchestration_provider" {
           ec2 = {
             vpc_id     = "vpc-missing-orchestration-provider"
             subnet_ids = ["subnet-missing-orchestration-provider"]
+            runner_binaries = {
+              enabled = false
+            }
           }
         }
       }
@@ -897,6 +901,9 @@ run "experimental_v2_requires_webhook_maximum_count" {
           ec2 = {
             vpc_id     = "vpc-missing-webhook-maximum"
             subnet_ids = ["subnet-missing-webhook-maximum"]
+            runner_binaries = {
+              enabled = false
+            }
           }
         }
       }
@@ -3457,6 +3464,9 @@ run "experimental_v2_rejects_conflicting_queue_encryption" {
           ec2 = {
             vpc_id     = "vpc-invalid-encryption"
             subnet_ids = ["subnet-invalid-encryption"]
+            runner_binaries = {
+              enabled = false
+            }
           }
         }
       }
@@ -3820,6 +3830,9 @@ run "experimental_v2_rejects_runner_artifact_zip_and_s3" {
           ec2 = {
             vpc_id     = "vpc-conflicting-runner-artifact"
             subnet_ids = ["subnet-conflicting-runner-artifact"]
+            runner_binaries = {
+              enabled = false
+            }
           }
         }
       }
@@ -3897,6 +3910,9 @@ run "experimental_v2_rejects_runner_artifact_bucket_without_key" {
           ec2 = {
             vpc_id     = "vpc-missing-runner-artifact-key"
             subnet_ids = ["subnet-missing-runner-artifact-key"]
+            runner_binaries = {
+              enabled = false
+            }
           }
         }
       }
@@ -3966,6 +3982,9 @@ run "experimental_v2_rejects_runner_artifact_s3_without_bucket" {
           ec2 = {
             vpc_id     = "vpc-missing-runner-artifact-bucket"
             subnet_ids = ["subnet-missing-runner-artifact-bucket"]
+            runner_binaries = {
+              enabled = false
+            }
           }
         }
       }
@@ -4043,6 +4062,9 @@ run "experimental_v2_rejects_ssm_housekeeper_artifact_zip_and_s3" {
           ec2 = {
             vpc_id     = "vpc-conflicting-ssm-housekeeper-artifact"
             subnet_ids = ["subnet-conflicting-ssm-housekeeper-artifact"]
+            runner_binaries = {
+              enabled = false
+            }
           }
         }
       }
@@ -4110,6 +4132,9 @@ run "experimental_v2_rejects_ssm_housekeeper_artifact_s3_without_bucket" {
           ec2 = {
             vpc_id     = "vpc-missing-ssm-housekeeper-artifact-bucket"
             subnet_ids = ["subnet-missing-ssm-housekeeper-artifact-bucket"]
+            runner_binaries = {
+              enabled = false
+            }
           }
         }
       }
@@ -4184,6 +4209,9 @@ run "experimental_v2_rejects_ssm_housekeeper_artifact_s3_without_key" {
           ec2 = {
             vpc_id     = "vpc-missing-ssm-housekeeper-artifact-key"
             subnet_ids = ["subnet-missing-ssm-housekeeper-artifact-key"]
+            runner_binaries = {
+              enabled = false
+            }
           }
         }
       }
@@ -4540,6 +4568,9 @@ run "experimental_v2_rejects_invalid_ssm_housekeeper_state" {
           ec2 = {
             vpc_id     = "vpc-invalid-housekeeper"
             subnet_ids = ["subnet-invalid-housekeeper"]
+            runner_binaries = {
+              enabled = false
+            }
           }
         }
       }

@@ -21,7 +21,7 @@ import { mockClient } from 'aws-sdk-client-mock';
 import 'aws-sdk-client-mock-jest/vitest';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { LambdaRunnerSource, RunnerInfo, RunnerType } from '../../../../core';
+import type { RunnerInfo, RunnerSource, RunnerType } from '../../../core';
 import { createRunner, listEC2Runners, tag, terminateRunner, untag } from './runners';
 import type { Ec2OverrideConfig, RunnerInputParameters } from './runners.d';
 
@@ -1170,7 +1170,7 @@ interface RunnerConfig {
   tracingEnabled?: boolean;
   onDemandFailoverOnError?: string[];
   scaleErrors: string[];
-  source: LambdaRunnerSource;
+  source: RunnerSource;
   useDedicatedHost?: boolean;
   ec2OverrideConfig?: Ec2OverrideConfig;
 }
@@ -1209,7 +1209,7 @@ interface ExpectedFleetRequestValues {
   totalTargetCapacity: number;
   imageId?: string;
   tracingEnabled?: boolean;
-  source: LambdaRunnerSource;
+  source: RunnerSource;
 }
 
 function expectedCreateFleetRequest(expectedValues: ExpectedFleetRequestValues): CreateFleetCommandInput {

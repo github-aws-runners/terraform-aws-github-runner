@@ -30,7 +30,7 @@ variable "runner" {
     - `disable_default_labels`: Prevents GitHub's default self-hosted, operating-system, and architecture labels from being registered.
     - `labels`: Complete set of labels supplied to the control-plane functions.
     - `group_name`: GitHub runner group used during registration.
-    - `name_prefix`: Prefix added to registered runner names.
+    - `name_prefix`: Prefix added to registered runner names. EC2 scale-set orchestration additionally requires at most 45 ASCII letters, digits, dots, underscores, or hyphens.
     - `run_as_root`: Runs the runner service as root when supported by the compute provider.
     - `run_as`: Operating-system user used when `run_as_root` is false.
     - `auto_update_disabled`: Disables the GitHub runner application's built-in updater.
@@ -142,8 +142,8 @@ variable "ssm" {
     - `paths.tokens`: Path segment under `paths.root` used for registration tokens and just-in-time configuration.
     - `paths.config`: Path segment under `paths.root` used for persistent runner configuration.
     - `kms_key_id`: Optional customer-managed KMS key ARN used by control-plane IAM policies to decrypt shared GitHub App parameters. The ARN may be unknown until apply; null omits the provider-owned KMS statements. It does not select encryption for runtime-created runner parameters.
-    - `tags`: Shared tags for SSM-related resources. These override module-level `tags` and are inherited by parameter and housekeeper resources.
-    - `parameters.tags`: Tags for Terraform-managed runner configuration parameters and temporary parameters created by the scale-up and pool Lambdas. These override module-level and `ssm.tags` values with the same key.
+    - `tags`: Shared tags for SSM-related resources. These override module-level `tags` and are inherited by parameter and housekeeper resources. When EC2 scale-set orchestration is selected, the effective Parameter Store tag map must contain at most 45 runtime-compatible keys and values.
+    - `parameters.tags`: Tags for Terraform-managed runner configuration parameters and temporary parameters created by webhook controls or the scale-set reconciler. These override module-level and `ssm.tags` values with the same key and participate in the EC2 scale-set runtime tag limit.
     - `housekeeper.schedule_expression`: EventBridge schedule expression that invokes the SSM housekeeper.
     - `housekeeper.state`: EventBridge rule state, such as `ENABLED` or `DISABLED`.
     - `housekeeper.tags`: Tags for housekeeper resources, including the Lambda function, log group, EventBridge rule, and IAM role. These override module-level, `ssm.tags`, shared Lambda, and shared log tags when keys conflict.

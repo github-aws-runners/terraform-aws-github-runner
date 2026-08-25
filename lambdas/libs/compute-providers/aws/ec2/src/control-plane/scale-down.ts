@@ -1,5 +1,5 @@
 import type { RunnerInfo, ScaleDownComputeProvider } from '../../../../core';
-import { bootTimeExceeded, listEC2Runners, tag, terminateRunner, untag } from './runners';
+import { bootTimeExceeded, listEC2Runners, tag, terminateRunner, untag } from '../runners';
 
 async function listEc2ScaleDownRunners(environment: string, orphan?: boolean): Promise<RunnerInfo[]> {
   return await listEC2Runners({ environment, orphan });

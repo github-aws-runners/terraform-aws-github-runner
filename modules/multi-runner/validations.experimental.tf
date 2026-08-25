@@ -100,7 +100,54 @@ resource "terraform_data" "validate_experimental" {
           if orchestration_config != null
         ]) == 1
       ])
-      error_message = "Each experimental runner configuration must set exactly one orchestration block. Supported orchestration blocks: webhook."
+      error_message = "Each experimental runner configuration must set exactly one orchestration block. Supported orchestration blocks: webhook and scale_set."
+    }
+
+    precondition {
+      condition = alltrue([
+        for runner_config in values(var.experimental.multi_runner_config) :
+        runner_config.orchestration_provider.scale_set == null ? true : (
+          runner_config.orchestration_provider.scale_set.boot_time_in_minutes >= 1 &&
+          runner_config.orchestration_provider.scale_set.boot_time_in_minutes <= 120 &&
+          floor(runner_config.orchestration_provider.scale_set.boot_time_in_minutes) == runner_config.orchestration_provider.scale_set.boot_time_in_minutes
+        )
+      ])
+      error_message = "Each experimental scale_set boot_time_in_minutes must be an integer between 1 and 120."
+    }
+
+    precondition {
+      condition = length(local.scale_set_runner_config) == 0 ? true : (
+        try(length(trimspace(var.experimental.orchestration_provider.scale_set.network.vpc_id)) > 0, false) &&
+        try(length(var.experimental.orchestration_provider.scale_set.network.subnet_ids) > 0, false)
+      )
+      error_message = "experimental.orchestration_provider.scale_set.network.vpc_id and subnet_ids are required when a runner configuration selects scale_set."
+    }
+
+    precondition {
+      condition = length(local.scale_set_runner_config) == 0 ? true : (
+        !var.experimental.compute_provider.aws.ec2.instance_termination_watcher.enabled ||
+        !var.experimental.compute_provider.aws.ec2.instance_termination_watcher.enable_runner_deregistration
+      )
+      error_message = "experimental.compute_provider.aws.ec2.instance_termination_watcher.enable_runner_deregistration must be false when a runner configuration selects scale_set; the scale-set reconciler owns GitHub runner deregistration."
+    }
+
+    precondition {
+      condition = alltrue([
+        for runner_config in values(var.experimental.multi_runner_config) :
+        runner_config.orchestration_provider.scale_set == null ? true : (
+          can(regex("^https://", runner_config.orchestration_provider.scale_set.github.config_url)) &&
+          length(trimspace(runner_config.orchestration_provider.scale_set.github.installation_id_ssm.name)) > 0 &&
+          length(trimspace(runner_config.orchestration_provider.scale_set.github.installation_id_ssm.arn)) > 0 &&
+          (
+            runner_config.orchestration_provider.scale_set.github.installation_id_ssm.kms_key_arn == null ||
+            can(regex(
+              "^arn:[^:]+:kms:[^:]+:[0-9]{12}:key/.+$",
+              runner_config.orchestration_provider.scale_set.github.installation_id_ssm.kms_key_arn,
+            ))
+          )
+        )
+      ])
+      error_message = "Each experimental scale_set selection must use an HTTPS github.config_url, a non-empty installation_id_ssm name and ARN, and a KMS key ARN when installation_id_ssm.kms_key_arn is set."
     }
 
     precondition {

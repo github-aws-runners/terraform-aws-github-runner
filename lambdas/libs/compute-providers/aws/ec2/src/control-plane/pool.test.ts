@@ -1,9 +1,9 @@
 import type { RunnerInfo } from '../../../../core';
-import { bootTimeExceeded } from './runners';
+import { bootTimeExceeded } from '../runners';
 import { calculateEc2PoolSize } from './pool';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('./runners', () => ({
+vi.mock('../runners', () => ({
   bootTimeExceeded: vi.fn(),
 }));
 

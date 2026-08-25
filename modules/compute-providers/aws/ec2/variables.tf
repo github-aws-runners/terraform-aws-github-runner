@@ -251,7 +251,6 @@ variable "config" {
       "TargetCapacityLimitExceededException",
       "RequestLimitExceeded",
       "ResourceLimitExceeded",
-      "MaxSpotInstanceCountExceeded",
       "MaxSpotFleetRequestCountExceeded",
       "InsufficientInstanceCapacity",
       "InsufficientCapacityOnHost",

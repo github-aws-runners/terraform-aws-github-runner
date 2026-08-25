@@ -6,8 +6,9 @@ import {
   _InstanceType,
   Placement,
   FleetBlockDeviceMappingRequest,
+  Tag,
 } from '@aws-sdk/client-ec2';
-import type { LambdaRunnerSource, ListRunnerFilters, RunnerType } from '../../../../core';
+import type { ListRunnerFilters, RunnerSource, RunnerType } from '../../../core';
 
 export interface Ec2ListRunnerFilters extends ListRunnerFilters {
   statuses?: string[];
@@ -42,10 +43,12 @@ export interface RunnerInputParameters {
   };
   ec2OverrideConfig?: Ec2OverrideConfig;
   numberOfRunners: number;
-  source: LambdaRunnerSource;
+  source: RunnerSource;
   amiIdSsmParameterName?: string;
   tracingEnabled?: boolean;
   onDemandFailoverOnError?: string[];
   scaleErrors: string[];
   useDedicatedHost?: boolean;
+  /** Additional provider-owned tags applied to instances, volumes, and fleets. */
+  additionalTags?: Tag[];
 }

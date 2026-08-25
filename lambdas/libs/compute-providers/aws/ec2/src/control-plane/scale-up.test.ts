@@ -7,11 +7,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { parseEc2OverrideConfig } from './dynamic-labels';
 import { EC2_TAG_VALUE_MAX_LENGTH, RUNNER_LABELS_TAG_MAX_COUNT } from './runner-config';
-import { createRunner, listEC2Runners, tag, terminateRunner } from './runners';
-import type { RunnerInputParameters } from './runners.d';
+import { createRunner, listEC2Runners, tag, terminateRunner } from '../runners';
+import type { RunnerInputParameters } from '../runners.d';
 import { createEc2ScaleUpProvider } from './scale-up';
 
-vi.mock('./runners', () => ({
+vi.mock('../runners', () => ({
   createRunner: vi.fn(),
   listEC2Runners: vi.fn(),
   tag: vi.fn(),

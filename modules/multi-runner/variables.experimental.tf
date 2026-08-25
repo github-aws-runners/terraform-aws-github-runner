@@ -10,7 +10,7 @@ variable "experimental" {
 
     Global experimental fields support the following nested properties. These values apply directly when `experimental.multi_runner_config` is non-empty; in stable mode, flat inputs are translated into the same global shape.
 
-    - `tags`: Base tags for v2 build queues, runner configurations, the shared GitHub App Parameter Store module, webhook, runner-binary syncer, termination watcher, and AMI housekeeper. The default is `{}`.
+    - `tags`: Base tags for v2 build queues, runner configurations, the shared GitHub App Parameter Store module, webhook, runner-binary syncer, termination watcher, and AMI housekeeper. The default is `{}`. When any runner selects EC2 scale-set orchestration, values inherited into its effective Parameter Store tag map participate in that runtime's tag limits and validation.
     - `roles.path`: Default IAM path for module-managed v2 runner and Lambda roles and for the shared webhook, runner-binary syncer, termination-watcher, and AMI-housekeeper Lambda roles. The default is null.
     - `roles.permissions_boundary`: Default permissions-boundary ARN for module-managed v2 runner and Lambda roles and for the shared webhook, runner-binary syncer, termination-watcher, and AMI-housekeeper Lambda roles. The default is null.
     - `runner.os`: Default runner operating system. The default is null; every runner configuration must resolve this field globally or locally.
@@ -18,7 +18,7 @@ variable "experimental" {
     - `runner.disable_default_labels`: Omits the default self-hosted, operating-system, and architecture labels when true. The default is `false`.
     - `runner.extra_labels`: Default additional labels combined with each runner configuration's matcher labels. The default is `[]`.
     - `runner.group_name`: Default GitHub runner group. The default is `Default`.
-    - `runner.name_prefix`: Default prefix added to registered runner names. The default is an empty string.
+    - `runner.name_prefix`: Default prefix added to registered runner names. The default is an empty string. EC2 scale-set orchestration requires at most 45 ASCII letters, digits, dots, underscores, or hyphens.
     - `runner.run_as_root`: Runs the runner service as root when supported by the provider. The default is `false`.
     - `runner.run_as`: Default operating-system user when `run_as_root` is false. The default is `ec2-user`.
     - `runner.auto_update_disabled`: Disables the GitHub runner application's built-in updater. The default is `false`.
@@ -58,8 +58,8 @@ variable "experimental" {
     - `github.additional_apps[].installation_id_ssm.arn`: ARN of the existing installation-ID parameter.
     - `github.additional_apps[].installation_id_ssm.name`: Name of the existing installation-ID parameter.
     - `github.enterprise_server.url`: GitHub Enterprise Server URL used by v2 runner-config GitHub clients and the shared termination watcher. The default is null.
-    - `github.enterprise_server.ssl_verify`: Enables TLS certificate verification for v2 runner-config GitHub clients. The default is `true`.
-    - `github.user_agent`: HTTP User-Agent used by v2 runner-config GitHub clients. The default is `github-aws-runners`.
+    - `github.enterprise_server.ssl_verify`: Enables TLS certificate verification for v2 runner-config GitHub clients. Scale-set controllers apply a disabled value to that reconciler's GitHub App and scale-set requests without changing process-global TLS behavior. The default is `true`.
+    - `github.user_agent`: Client identity used by v2 runner-config GitHub clients. Scale-set controllers preserve the required structured protocol User-Agent and place this value in its `system` field. The default is `github-aws-runners`.
     - `lambda.artifact.s3.bucket`: Optional shared S3 bucket containing Lambda deployment artifacts for v2 runner configurations and their SSM housekeepers, the webhook, runner-binary syncer, termination watcher, and AMI housekeeper. The default is null. A component selects an object from this bucket only when its own `artifact.s3` wrapper is present.
     - `lambda.runtime`: Runtime for v2 runner-config functions and the shared webhook, runner-binary syncer, termination watcher, and AMI housekeeper. The default is `nodejs24.x`.
     - `lambda.architecture`: Architecture for v2 runner-config functions and the shared webhook, runner-binary syncer, termination watcher, and AMI housekeeper. The default is `arm64`.
@@ -134,14 +134,59 @@ variable "experimental" {
     - `orchestration_provider.webhook.queue.encryption.kms_data_key_reuse_period_seconds`: KMS data-key reuse period in seconds. This key is required syntactically in an explicit `queue.encryption` object but may be null; it is used only with `kms_master_key_id`.
     - `orchestration_provider.webhook.queue.encryption.kms_master_key_id`: KMS key ARN used for queue encryption. This AWS-facing field name is retained for compatibility, but non-null values must be key ARNs because runner-config IAM policies cannot use key IDs or aliases as resources. The field is required syntactically in an explicit `queue.encryption` object but may be null, and a computed ARN may remain unknown until apply. It is independent from `ssm.kms_key_id` and is forwarded separately to each webhook runner configuration so runner-config scale-up and job-retry roles receive only the build-queue KMS permissions they require.
     - `orchestration_provider.webhook.queue.encryption.sqs_managed_sse_enabled`: Selects the non-KMS mode: `true` enables SQS-managed encryption and `false` explicitly disables queue encryption. This key is required syntactically in an explicit `queue.encryption` object and must be null when `kms_master_key_id` is set. Omitting the whole encryption block defaults it to `true`.
+    - `orchestration_provider.scale_set`: Shared scale-set controller topology and runtime defaults. Multi-runner creates this provider once when at least one runner config selects `scale_set`; the provider then packs the selected reconcilers into controller groups.
+    - `orchestration_provider.scale_set.grouping.strategy`: Controller grouping strategy. `compute_provider` (the default) creates one controller group per compute-provider type, `runner_config` creates one group per runner config, and `custom` uses the explicit group map.
+    - `orchestration_provider.scale_set.grouping.custom`: Explicit controller groups. This must be non-null only when the strategy is `custom`, and membership must cover every selected scale-set runner config exactly once.
+    - `orchestration_provider.scale_set.grouping.custom.groups`: Controller groups keyed by stable group name.
+    - `orchestration_provider.scale_set.grouping.custom.groups.<group>.runner_configs`: Set of scale-set runner-config keys assigned to the group.
+    - `orchestration_provider.scale_set.container.image`: Controller image reference. The default is null, which selects the release's official scale-set service image; callers can override it with a compatible image.
+    - `orchestration_provider.scale_set.container.user`: Numeric user and optional group used by the hardened Fargate container. The default is `10001:10001`.
+    - `orchestration_provider.scale_set.container.health_port`: Loopback HTTP health-listener port. The default is `8080`.
+    - `orchestration_provider.scale_set.container.health_path`: ECS liveness endpoint. The only supported value is `/healthz`.
+    - `orchestration_provider.scale_set.container.health_check_command`: Optional ECS container health-check command. Null uses the built-in Node probe against `/healthz`.
+    - `orchestration_provider.scale_set.container.health_check_interval`: ECS health-check interval in seconds. The default is `30`.
+    - `orchestration_provider.scale_set.container.health_check_timeout`: ECS health-check timeout in seconds. The default is `5`.
+    - `orchestration_provider.scale_set.container.health_check_retries`: Consecutive failed checks before ECS marks the task unhealthy. The default is `3`.
+    - `orchestration_provider.scale_set.container.health_check_start_period`: Startup grace period for ECS health checks in seconds. The default is `30`.
+    - `orchestration_provider.scale_set.container.health_stale_after_seconds`: Maximum allowed age of a successful controller reconciliation before liveness fails. The default is `180`.
+    - `orchestration_provider.scale_set.container.shutdown_timeout_seconds`: Maximum controller shutdown-drain period. The default is `110`.
+    - `orchestration_provider.scale_set.container.session_close_timeout_seconds`: Maximum wait for a GitHub scale-set session to close during shutdown. The default is `10`.
+    - `orchestration_provider.scale_set.container.reconnect_initial_backoff_seconds`: Initial reconnect delay after a transient session failure. The default is `1`.
+    - `orchestration_provider.scale_set.container.reconnect_max_backoff_seconds`: Maximum transient-session reconnect delay. The default is `30`.
+    - `orchestration_provider.scale_set.container.stop_timeout_seconds`: ECS stop timeout. The default is `120` and must leave enough time for the configured controller shutdown.
+    - `orchestration_provider.scale_set.container.ecr_repository`: Optional private-ECR repository wrapper. Its presence adds narrowly scoped image-pull permissions to the execution role.
+    - `orchestration_provider.scale_set.container.ecr_repository.arn`: ARN of the private ECR repository containing the selected image.
+    - `orchestration_provider.scale_set.config_store.path_prefix`: SSM path prefix for non-secret reconciler manifests. Null derives `/<prefix>/scale-set-controller`.
+    - `orchestration_provider.scale_set.config_store.tier`: Parameter Store tier for reconciler manifests. The default is `Standard`; `Advanced` permits larger manifests.
+    - `orchestration_provider.scale_set.config_store.tags`: Tags applied to reconciler manifest parameters. The default is `{}`.
+    - `orchestration_provider.scale_set.ecs.cluster.mode`: ECS cluster ownership mode. `managed` (the default) creates a cluster; `external` uses `cluster.arn`.
+    - `orchestration_provider.scale_set.ecs.cluster.arn`: Existing ECS cluster ARN required in external mode.
+    - `orchestration_provider.scale_set.ecs.cluster.name`: Optional name for a managed ECS cluster. Null derives a stable name.
+    - `orchestration_provider.scale_set.ecs.cluster.container_insights`: Enables Container Insights on a managed cluster. The default is `true`.
+    - `orchestration_provider.scale_set.ecs.task.cpu`: Fargate task CPU units per controller group. The default is `512`.
+    - `orchestration_provider.scale_set.ecs.task.memory`: Fargate task memory in MiB per controller group. The default is `1024`.
+    - `orchestration_provider.scale_set.ecs.task.cpu_architecture`: Fargate CPU architecture. The default is `X86_64`; `ARM64` is also supported when the selected image is compatible.
+    - `orchestration_provider.scale_set.ecs.task.ephemeral_storage.size_in_gib`: Optional Fargate ephemeral-storage size in GiB. Null uses the AWS default.
+    - `orchestration_provider.scale_set.ecs.service.platform_version`: Fargate platform version. The default is `LATEST`.
+    - `orchestration_provider.scale_set.ecs.iam.path`: IAM path for controller task and execution roles. The default is `/`.
+    - `orchestration_provider.scale_set.ecs.iam.permissions_boundary`: Optional permissions-boundary ARN for controller task and execution roles. The default is null.
+    - `orchestration_provider.scale_set.network.vpc_id`: VPC for private Fargate controller tasks. It is required when any runner config selects `scale_set`.
+    - `orchestration_provider.scale_set.network.subnet_ids`: Private subnets for Fargate controller tasks. At least one is required when any runner config selects `scale_set`; tasks never receive public IP addresses.
+    - `orchestration_provider.scale_set.network.https_egress.ipv4_cidrs`: IPv4 CIDRs allowed for outbound HTTPS. The default is `0.0.0.0/0`; use controlled NAT, firewall, or proxy routing when required.
+    - `orchestration_provider.scale_set.network.https_egress.ipv6_cidrs`: IPv6 CIDRs allowed for outbound HTTPS. The default is `[]`.
+    - `orchestration_provider.scale_set.logging.retention_in_days`: CloudWatch Logs retention period for controller groups. The default is `30`.
+    - `orchestration_provider.scale_set.logging.kms_key_arn`: Optional customer-managed KMS key ARN for controller log groups. The default is null.
+    - `orchestration_provider.scale_set.logging.log_group_class`: Controller log-group class. The default is `STANDARD`.
+    - `orchestration_provider.scale_set.logging.tags`: Tags applied to controller log groups. The default is `{}`.
+    - `orchestration_provider.scale_set.tags`: Tags applied to shared scale-set controller resources after global experimental tags. The default is `{}`.
     - `ssm.paths.root`: Base Parameter Store path for shared GitHub App and webhook parameters and for all v2 runner configurations. The schema default is null, which derives `/github-action-runners/<prefix>`; normalization appends the configuration key only for configuration-owned paths.
     - `ssm.paths.app`: Shared GitHub App credential path segment below `ssm.paths.root`. The default is `app`.
     - `ssm.paths.webhook`: Shared webhook matcher-configuration path segment below `ssm.paths.root`. The default is `webhook`.
     - `ssm.paths.tokens`: Runner registration-token and JIT-configuration path segment below each runner-configuration root. The default is `runners/tokens`.
     - `ssm.paths.config`: Persistent runner-configuration path segment below each runner-configuration root. The default is `runners/config`.
     - `ssm.kms_key_id`: Optional global KMS key ARN that encrypts shared GitHub App parameters, configures the webhook and termination watcher, and adds matching decrypt permissions to every v2 runner configuration. The default is null and its value may be unknown until apply. It does not select encryption for runtime-created runner-configuration parameters.
-    - `ssm.tags`: Default tags for the shared GitHub App Parameter Store module and runner-configuration-owned SSM resources. The default is `{}`.
-    - `ssm.parameters.tags`: Default tags for Terraform-managed and runtime-created runner-configuration parameters. The default is `{}`.
+    - `ssm.tags`: Default tags for the shared GitHub App Parameter Store module and runner-configuration-owned SSM resources. The default is `{}`. For EC2 scale-set orchestration, inherited values participate in the effective 45-tag runtime limit and key/value validation.
+    - `ssm.parameters.tags`: Default tags for Terraform-managed and runtime-created runner-configuration parameters. The default is `{}` and inherited values participate in the EC2 scale-set runtime tag limit.
     - `ssm.housekeeper.schedule_expression`: Default EventBridge schedule for each runner-configuration SSM housekeeper. The default is `rate(1 day)`.
     - `ssm.housekeeper.state`: Default EventBridge rule state for each runner-configuration SSM housekeeper. The default is `ENABLED`.
     - `ssm.housekeeper.tags`: Default tags for SSM housekeeper resources. The default is `{}`.
@@ -212,10 +257,10 @@ variable "experimental" {
     - `compute_provider.aws.ec2.ami.housekeeper.lambda.timeout`: AMI-housekeeper Lambda timeout in seconds. The default is `300`.
     - `compute_provider.aws.ec2.ami.housekeeper.schedule.expression`: AMI-housekeeper EventBridge schedule expression. The default is `cron(11 7 * * ? *)`.
     - `compute_provider.aws.ec2.instance_termination_watcher`: Global configuration for the shared EC2 instance-termination watcher.
-    - `compute_provider.aws.ec2.instance_termination_watcher.enabled`: Creates the shared EC2 termination watcher when true. The default is `false`, and the value must be known during planning because it controls the module instance.
+    - `compute_provider.aws.ec2.instance_termination_watcher.enabled`: Creates the shared EC2 termination watcher when true. The default is `false`, and the value must be known during planning because it controls the module instance. Scale-set runner configs may use the watcher for logging and metrics only, with runner deregistration disabled.
     - `compute_provider.aws.ec2.instance_termination_watcher.features.enable_spot_termination_handler`: Enables the Spot termination-event handler. The default is `true`, and the value must be known during planning because it controls child resources.
     - `compute_provider.aws.ec2.instance_termination_watcher.features.enable_spot_termination_notification_watcher`: Enables the Spot interruption-warning watcher. The default is `true`, and the value must be known during planning because it controls child resources.
-    - `compute_provider.aws.ec2.instance_termination_watcher.enable_runner_deregistration`: Deregisters terminated runners from GitHub when true. The default is `true`, and the value must be known during planning because it controls deregistration resources.
+    - `compute_provider.aws.ec2.instance_termination_watcher.enable_runner_deregistration`: Deregisters terminated runners from GitHub when true. The default is `true`, and the value must be known during planning because it controls deregistration resources. This must be false when any runner config selects scale-set orchestration because the scale-set reconciler owns GitHub runner deregistration.
     - `compute_provider.aws.ec2.instance_termination_watcher.environment_variables`: Additional termination-watcher Lambda environment variables. The default is `{}`.
     - `compute_provider.aws.ec2.instance_termination_watcher.artifact`: Termination-watcher artifact selection. Set at most one of `zip` or `s3`; when both are null, the packaged archive is used.
     - `compute_provider.aws.ec2.instance_termination_watcher.artifact.zip`: Optional local path to the termination-watcher Lambda archive. The default is null.
@@ -261,7 +306,7 @@ variable "experimental" {
     - `multi_runner_config[].runner.disable_default_labels`: Prevents GitHub default labels from being registered.
     - `multi_runner_config[].runner.extra_labels`: Additional labels combined with `orchestration_provider.webhook.matcherConfig.labelMatchers` for webhook runner configurations. Default self-hosted, operating-system, and architecture labels are also included unless `runner.disable_default_labels` is true.
     - `multi_runner_config[].runner.group_name`: GitHub runner group used during registration.
-    - `multi_runner_config[].runner.name_prefix`: Prefix added to registered runner names.
+    - `multi_runner_config[].runner.name_prefix`: Prefix added to registered runner names. EC2 scale-set orchestration requires at most 45 ASCII letters, digits, dots, underscores, or hyphens.
     - `multi_runner_config[].runner.run_as_root`: Runs the runner service as root when supported by the compute provider.
     - `multi_runner_config[].runner.run_as`: Operating-system user used when `run_as_root` is false.
     - `multi_runner_config[].runner.auto_update_disabled`: Disables the GitHub runner application's built-in updater.
@@ -282,7 +327,22 @@ variable "experimental" {
     - `multi_runner_config[].lambda.tags`: Per-configuration tags for control-plane Lambda functions. Component tags override this map.
     - `multi_runner_config[].lambda.role.path`: Per-configuration IAM path for module-managed Lambda roles. Null inherits `experimental.lambda.role.path`, then `experimental.roles.path`.
     - `multi_runner_config[].lambda.role.permissions_boundary`: Per-configuration permissions-boundary ARN for module-managed Lambda roles. Null inherits `experimental.lambda.role.permissions_boundary`, then `experimental.roles.permissions_boundary`.
-    - `multi_runner_config[].orchestration_provider`: Demand-controller selection. Exactly one typed provider block must be non-null. Only `webhook` is supported today; additional providers can be added without moving the webhook contract.
+    - `multi_runner_config[].orchestration_provider`: Demand-controller selection. Exactly one of the typed `webhook` or `scale_set` blocks must be non-null, and the selected wrapper must be known during planning.
+    - `multi_runner_config[].orchestration_provider.scale_set`: Selects stateful GitHub Actions runner scale-set orchestration. Runner-config applies fixed ephemeral JIT lifecycle settings, while multi-runner aggregates all selected runner configs into the shared controller topology.
+    - `multi_runner_config[].orchestration_provider.scale_set.github.config_url`: HTTPS GitHub organization, repository, or enterprise scope URL owned by this scale set.
+    - `multi_runner_config[].orchestration_provider.scale_set.github.installation_id_ssm`: Existing Parameter Store reference containing the GitHub App installation ID for this runner config's GitHub scope. The manifest contains only the parameter name, never the credential value.
+    - `multi_runner_config[].orchestration_provider.scale_set.github.installation_id_ssm.name`: Absolute Parameter Store name containing the installation ID.
+    - `multi_runner_config[].orchestration_provider.scale_set.github.installation_id_ssm.arn`: Exact same-account, same-region ARN of the installation-ID parameter.
+    - `multi_runner_config[].orchestration_provider.scale_set.github.installation_id_ssm.kms_key_arn`: Optional KMS key ARN needed to decrypt the installation-ID parameter. The default is null and is independent from global `ssm.kms_key_id`.
+    - `multi_runner_config[].orchestration_provider.scale_set.github.force_ghes`: Optional explicit GitHub Enterprise Server mode. Null enables it when global `github.enterprise_server.url` is set and otherwise uses GitHub.com behavior.
+    - `multi_runner_config[].orchestration_provider.scale_set.name`: Expected GitHub runner scale-set name used to verify controller ownership.
+    - `multi_runner_config[].orchestration_provider.scale_set.id`: Existing GitHub runner scale-set numeric ID. The controller does not create or discover scale sets in this foundation.
+    - `multi_runner_config[].orchestration_provider.scale_set.runner_group_id`: Optional expected GitHub runner-group ID. The default is null.
+    - `multi_runner_config[].orchestration_provider.scale_set.min_runners`: Minimum desired runner count reconciled for the scale set. The default is `0`.
+    - `multi_runner_config[].orchestration_provider.scale_set.max_runners`: Maximum desired runner count reconciled for the scale set. The default is `10`.
+    - `multi_runner_config[].orchestration_provider.scale_set.boot_time_in_minutes`: Expected compute boot time used to expire stale pending runner requests. The default is `10`; valid values are integers from `1` through `120`.
+    - `multi_runner_config[].orchestration_provider.scale_set.session_owner`: Optional stable owner used for the GitHub message session. Null derives one from the controller group and runner-config key.
+    - `multi_runner_config[].orchestration_provider.scale_set.work_folder`: Optional relative runner work folder. The default is null, which lets the compute provider use its default.
     - `multi_runner_config[].orchestration_provider.webhook`: Selects the workflow-job webhook control plane, including its SQS build queue, scale-up, scheduled scale-down/pool, and optional job-retry resources.
     - `multi_runner_config[].orchestration_provider.webhook.runner.boot_time_in_minutes`: Expected runner boot duration used by webhook scale-down and pool controls. Null inherits `experimental.orchestration_provider.webhook.runner.boot_time_in_minutes`.
     - `multi_runner_config[].orchestration_provider.webhook.runner.ephemeral`: Registers webhook-orchestrated runners in ephemeral mode. Null inherits `experimental.orchestration_provider.webhook.runner.ephemeral`.
@@ -344,8 +404,8 @@ variable "experimental" {
     - `multi_runner_config[].ssm.paths.root`: Base Parameter Store root for this runner configuration. The configuration key is always appended to preserve configuration isolation. The omitted global root derives `/github-action-runners/<prefix>`.
     - `multi_runner_config[].ssm.paths.tokens`: Path segment below the runner-configuration root used for runner registration tokens and just-in-time configuration.
     - `multi_runner_config[].ssm.paths.config`: Path segment below the runner-configuration root used for persistent runner configuration.
-    - `multi_runner_config[].ssm.tags`: Shared tags for runner-configuration-owned SSM resources. These override entry-level `tags`.
-    - `multi_runner_config[].ssm.parameters.tags`: Tags for Terraform-managed and runtime-created runner configuration parameters. These override `ssm.tags`.
+    - `multi_runner_config[].ssm.tags`: Shared tags for runner-configuration-owned SSM resources. These override entry-level `tags`. For EC2 scale-set orchestration, the effective Parameter Store tag map contains at most 45 runtime-compatible keys and values.
+    - `multi_runner_config[].ssm.parameters.tags`: Tags for Terraform-managed and runtime-created runner configuration parameters. These override `ssm.tags` and participate in the EC2 scale-set runtime tag limit.
     - `multi_runner_config[].ssm.housekeeper.schedule_expression`: EventBridge schedule expression that invokes the runner-configuration SSM housekeeper.
     - `multi_runner_config[].ssm.housekeeper.state`: EventBridge rule state for the runner-configuration SSM housekeeper. Valid values are `DISABLED`, `ENABLED`, and `ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS`.
     - `multi_runner_config[].ssm.housekeeper.tags`: Tags for SSM housekeeper resources. These override entry-level, shared Lambda, shared log, and `ssm.tags` values.
@@ -381,7 +441,7 @@ variable "experimental" {
     - `multi_runner_config[].compute_provider.aws.ec2.ami.filter`: EC2 AMI filters combined with the default AMI-name filter.
     - `multi_runner_config[].compute_provider.aws.ec2.ami.owners`: AWS account IDs or aliases allowed to own the selected AMI.
     - `multi_runner_config[].compute_provider.aws.ec2.ami.id_ssm_parameter`: Optional externally managed SSM parameter containing the AMI ID. The wrapper's presence selects external ownership at plan time.
-    - `multi_runner_config[].compute_provider.aws.ec2.ami.id_ssm_parameter.arn`: ARN of the externally managed SSM parameter. The ARN may be unknown until apply.
+    - `multi_runner_config[].compute_provider.aws.ec2.ami.id_ssm_parameter.arn`: ARN of the externally managed SSM parameter. The ARN may be unknown until apply. Scale-set selections require an exact same-account, same-region ARN whose extracted absolute name matches the EC2 runtime grammar.
     - `multi_runner_config[].compute_provider.aws.ec2.ami.kms_key`: Optional KMS key required to launch encrypted AMIs or snapshots. The wrapper's presence selects the KMS policy at plan time.
     - `multi_runner_config[].compute_provider.aws.ec2.ami.kms_key.arn`: ARN of the KMS key. The ARN may be unknown until apply.
     - `multi_runner_config[].compute_provider.aws.ec2.block_device_mappings`: EBS mappings added to the runner launch template.
@@ -409,7 +469,7 @@ variable "experimental" {
     - `multi_runner_config[].compute_provider.aws.ec2.user_data.pre_install`: Script content inserted before runner installation in the default template.
     - `multi_runner_config[].compute_provider.aws.ec2.user_data.post_install`: Script content inserted after runner installation in the default template.
     - `multi_runner_config[].compute_provider.aws.ec2.user_data.debug_logging_enabled`: Enables verbose user-data tracing, which can expose secrets in logs.
-    - `multi_runner_config[].compute_provider.aws.ec2.instance_allocation_strategy`: EC2 Fleet allocation strategy used to select capacity.
+    - `multi_runner_config[].compute_provider.aws.ec2.instance_allocation_strategy`: EC2 Fleet allocation strategy used to select capacity. Scale-set selections allow only `lowest-price` or `prioritized` with `on-demand`; Spot supports the complete EC2 provider strategy set.
     - `multi_runner_config[].compute_provider.aws.ec2.instance_max_spot_price`: Optional maximum hourly Spot price.
     - `multi_runner_config[].compute_provider.aws.ec2.instance_target_capacity_type`: Primary capacity type, either `spot` or `on-demand`.
     - `multi_runner_config[].compute_provider.aws.ec2.instance_type_priorities`: Optional numeric priorities keyed by instance type.
@@ -455,7 +515,7 @@ variable "experimental" {
     - `multi_runner_config[].compute_provider.aws.ec2.log_files[].file_path`: File or glob read by the CloudWatch agent.
     - `multi_runner_config[].compute_provider.aws.ec2.log_files[].log_stream_name`: CloudWatch log-stream name template.
     - `multi_runner_config[].compute_provider.aws.ec2.log_files[].log_class`: CloudWatch log-group class for the collected file.
-    - `multi_runner_config[].compute_provider.aws.ec2.tags`: Tags for runtime EC2 instances, volumes, network interfaces, and eligible Spot requests. These override entry-level tags and the generated runner `Name`; provider-required bootstrap tags take final precedence.
+    - `multi_runner_config[].compute_provider.aws.ec2.tags`: Tags for runtime EC2 instances, volumes, network interfaces, and eligible Spot requests. These override entry-level tags and the generated runner `Name`; provider-required bootstrap tags take final precedence. Scale-set selections reject caller values for scale-set ownership and lifecycle keys.
   EOT
 
   type = object({
@@ -652,6 +712,79 @@ variable "experimental" {
             sqs_managed_sse_enabled           = true
           })
         }), {})
+      }), {})
+      scale_set = optional(object({
+        grouping = optional(object({
+          strategy = optional(string, "compute_provider")
+          custom = optional(object({
+            groups = map(object({
+              runner_configs = set(string)
+            }))
+          }), null)
+        }), {})
+        container = optional(object({
+          image                             = optional(string, null)
+          user                              = optional(string, "10001:10001")
+          health_port                       = optional(number, 8080)
+          health_path                       = optional(string, "/healthz")
+          health_check_command              = optional(list(string), null)
+          health_check_interval             = optional(number, 30)
+          health_check_timeout              = optional(number, 5)
+          health_check_retries              = optional(number, 3)
+          health_check_start_period         = optional(number, 30)
+          health_stale_after_seconds        = optional(number, 180)
+          shutdown_timeout_seconds          = optional(number, 110)
+          session_close_timeout_seconds     = optional(number, 10)
+          reconnect_initial_backoff_seconds = optional(number, 1)
+          reconnect_max_backoff_seconds     = optional(number, 30)
+          stop_timeout_seconds              = optional(number, 120)
+          ecr_repository = optional(object({
+            arn = string
+          }), null)
+        }), {})
+        config_store = optional(object({
+          path_prefix = optional(string, null)
+          tier        = optional(string, "Standard")
+          tags        = optional(map(string), {})
+        }), {})
+        ecs = optional(object({
+          cluster = optional(object({
+            mode               = optional(string, "managed")
+            arn                = optional(string, null)
+            name               = optional(string, null)
+            container_insights = optional(bool, true)
+          }), {})
+          task = optional(object({
+            cpu              = optional(number, 512)
+            memory           = optional(number, 1024)
+            cpu_architecture = optional(string, "X86_64")
+            ephemeral_storage = optional(object({
+              size_in_gib = number
+            }), null)
+          }), {})
+          service = optional(object({
+            platform_version = optional(string, "LATEST")
+          }), {})
+          iam = optional(object({
+            path                 = optional(string, "/")
+            permissions_boundary = optional(string, null)
+          }), {})
+        }), {})
+        network = optional(object({
+          vpc_id     = optional(string, null)
+          subnet_ids = optional(set(string), null)
+          https_egress = optional(object({
+            ipv4_cidrs = optional(set(string), ["0.0.0.0/0"])
+            ipv6_cidrs = optional(set(string), [])
+          }), {})
+        }), {})
+        logging = optional(object({
+          retention_in_days = optional(number, 30)
+          kms_key_arn       = optional(string, null)
+          log_group_class   = optional(string, "STANDARD")
+          tags              = optional(map(string), {})
+        }), {})
+        tags = optional(map(string), {})
       }), {})
     }), {})
 
@@ -985,6 +1118,26 @@ variable "experimental" {
 
         }), null)
 
+        scale_set = optional(object({
+          github = object({
+            config_url = string
+            installation_id_ssm = object({
+              name        = string
+              arn         = string
+              kms_key_arn = optional(string, null)
+            })
+            force_ghes = optional(bool, null)
+          })
+          name                 = string
+          id                   = number
+          runner_group_id      = optional(number, null)
+          min_runners          = optional(number, 0)
+          max_runners          = optional(number, 10)
+          boot_time_in_minutes = optional(number, 10)
+          session_owner        = optional(string, null)
+          work_folder          = optional(string, null)
+        }), null)
+
       })
 
       ssm = optional(object({
@@ -1127,7 +1280,6 @@ variable "experimental" {
               "TargetCapacityLimitExceededException",
               "RequestLimitExceeded",
               "ResourceLimitExceeded",
-              "MaxSpotInstanceCountExceeded",
               "MaxSpotFleetRequestCountExceeded",
               "InsufficientInstanceCapacity",
               "InsufficientCapacityOnHost",

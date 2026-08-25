@@ -57,6 +57,7 @@ nav:
   - Configuration: configuration.md
   - Getting started: getting-started.md
   - Security: security.md
+  - Runner scale sets: scale-set.md
   - Architecture decisions:
     - ADR-002 Runner orchestration provider boundary: adr/002-runner-orchestration-provider-boundary.md
   - Modules:

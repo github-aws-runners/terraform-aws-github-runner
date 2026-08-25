@@ -91,8 +91,112 @@ run "separates_control_plane_contract_from_ec2_resources" {
   command = plan
 
   assert {
-    condition     = toset(keys(output.provider)) == toset(["environment_variables", "policies", "resources"])
-    error_message = "The EC2 provider contract must expose only integration and resource data; its module identity must not be repeated in the output."
+    condition     = toset(keys(output.provider)) == toset(["type", "capabilities", "environment_variables", "policies", "resources"])
+    error_message = "The EC2 provider contract must preserve webhook fragments and expose its additive typed capabilities."
+  }
+
+  assert {
+    condition     = output.provider.type == "ec2"
+    error_message = "The scale-set runtime registry requires the canonical EC2 provider type."
+  }
+
+  assert {
+    condition = toset(keys(jsondecode(output.provider.capabilities.scale_set.configuration_json))) == toset([
+      "amiIdSsmParameterName",
+      "ec2instanceCriteria",
+      "environment",
+      "jitConfigParameterPath",
+      "launchTemplateName",
+      "onDemandFailoverOnError",
+      "region",
+      "runnerNamePrefix",
+      "scaleErrors",
+      "ssmParameterTags",
+      "subnets",
+      "useDedicatedHost",
+    ])
+    error_message = "The EC2 scale-set payload must contain only provider-owned, non-secret runtime configuration."
+  }
+
+  assert {
+    condition = (
+      jsondecode(output.provider.capabilities.scale_set.configuration_json).runnerNamePrefix == ""
+      && jsondecode(output.provider.capabilities.scale_set.configuration_json).jitConfigParameterPath == "/github-runner/provider-test/tokens"
+      && jsondecode(output.provider.capabilities.scale_set.configuration_json).amiIdSsmParameterName == "/github-runner/ami-id"
+      && jsondecode(output.provider.capabilities.scale_set.configuration_json).ec2instanceCriteria.instanceTypes == ["m5.large"]
+      && !strcontains(output.provider.capabilities.scale_set.configuration_json, "bootTimeout")
+      && !strcontains(output.provider.capabilities.scale_set.configuration_json, "privateKey")
+      && length(output.provider.capabilities.scale_set.environment_variables) == 0
+    )
+    error_message = "The scale-set capability must route resolved EC2 inputs without orchestration settings, credentials, or process-global overrides."
+  }
+
+  assert {
+    condition = (
+      output.provider.capabilities.scale_set.iam_statements.pass_runner_role.resources == toset(["arn:aws:iam::123456789012:role/provider-test-runner"])
+      && output.provider.capabilities.scale_set.iam_statements.pass_runner_role.conditions[0].variable == "iam:PassedToService"
+      && output.provider.capabilities.scale_set.iam_statements.publish_runner_jit_configuration.resources == toset(["arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/provider-test/tokens/*"])
+      && output.provider.capabilities.scale_set.iam_statements.terminate_owned_runners.resources == toset(["arn:aws:ec2:eu-west-1:123456789012:instance/*"])
+      && toset([
+        for condition in output.provider.capabilities.scale_set.iam_statements.terminate_owned_runners.conditions : condition.variable
+        ]) == toset([
+        "ec2:ResourceTag/ghr:Application",
+        "ec2:ResourceTag/ghr:created_by",
+        "ec2:ResourceTag/ghr:environment",
+      ])
+    )
+    error_message = "The scale-set task IAM contract must scope JIT publication, PassRole, and destructive EC2 operations."
+  }
+
+  assert {
+    condition = (
+      output.provider.capabilities.scale_set.iam_statements.create_owned_fleet_capacity.resources == toset([
+        "arn:aws:ec2:eu-west-1:123456789012:fleet/*",
+        "arn:aws:ec2:eu-west-1:123456789012:instance/*",
+        "arn:aws:ec2:eu-west-1:123456789012:volume/*",
+      ])
+      && output.provider.capabilities.scale_set.iam_statements.run_owned_instances.resources == toset([
+        "arn:aws:ec2:eu-west-1:123456789012:instance/*",
+        "arn:aws:ec2:eu-west-1:123456789012:volume/*",
+      ])
+      && toset([
+        for condition in output.provider.capabilities.scale_set.iam_statements.create_owned_fleet_capacity.conditions : condition.variable
+        ]) == toset([
+        "aws:RequestTag/ghr:Application",
+        "aws:RequestTag/ghr:created_by",
+        "aws:RequestTag/ghr:environment",
+      ])
+      && toset([
+        for condition in output.provider.capabilities.scale_set.iam_statements.run_owned_instances.conditions : condition.variable
+        ]) == toset([
+        "aws:RequestTag/ghr:Application",
+        "aws:RequestTag/ghr:created_by",
+        "aws:RequestTag/ghr:environment",
+      ])
+    )
+    error_message = "Fleet and instance creation must require controller-owned request tags on every created resource."
+  }
+
+  assert {
+    condition = (
+      contains(
+        output.provider.capabilities.scale_set.iam_statements.create_fleet_dependencies.resources,
+        "arn:aws:ec2:eu-west-1:123456789012:subnet/subnet-12345678",
+      )
+      && contains(
+        output.provider.capabilities.scale_set.iam_statements.run_instances_dependencies.resources,
+        "arn:aws:ec2:eu-west-1:123456789012:subnet/subnet-12345678",
+      )
+      && !contains(
+        output.provider.capabilities.scale_set.iam_statements.create_owned_fleet_capacity.resources,
+        "*",
+      )
+      && !contains(
+        output.provider.capabilities.scale_set.iam_statements.run_owned_instances.resources,
+        "*",
+      )
+    )
+    error_message = "EC2 launch dependency access must name the selected launch resources and created-capacity statements must not use a global resource wildcard."
   }
 
   assert {
@@ -131,6 +235,23 @@ run "separates_control_plane_contract_from_ec2_resources" {
   assert {
     condition     = output.provider.policies.scale_up.managed_policy_enabled
     error_message = "An external AMI SSM parameter must enable the scale-up managed policy attachment at plan time."
+  }
+
+  assert {
+    condition = (
+      contains(flatten([
+        for statement in data.aws_iam_policy_document.ssm_parameters.statement : statement.actions
+      ]), "ssm:DeleteParameter")
+      && contains(flatten([
+        for statement in data.aws_iam_policy_document.ssm_parameters.statement : statement.resources
+      ]), "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/provider-test/tokens/*")
+      && contains(flatten([
+        for statement in data.aws_iam_policy_document.ssm_parameters.statement : [
+          for condition in statement.condition : condition.variable
+        ]
+      ]), "ec2:SourceInstanceARN")
+    )
+    error_message = "The runner role must read and delete only its own exact JIT parameter path, fenced by source-instance identity."
   }
 
   assert {
@@ -255,6 +376,44 @@ run "accepts_partial_typed_compute_options" {
       "terminate_self",
     ])
     error_message = "Disabled optional EC2 features must remove only their corresponding runner policies."
+  }
+}
+
+run "scopes_optional_scale_set_kms_and_service_role_permissions" {
+  command = plan
+
+  variables {
+    config = {
+      vpc_id         = "vpc-12345678"
+      subnet_ids     = ["subnet-12345678"]
+      instance_types = ["m5.large"]
+      ami = {
+        filter           = { state = ["available"] }
+        owners           = ["amazon"]
+        id_ssm_parameter = null
+        kms_key = {
+          arn = "arn:aws:kms:eu-west-1:123456789012:key/11111111-2222-3333-4444-555555555555"
+        }
+      }
+      binaries_syncer = {
+        enabled = false
+      }
+      create_service_linked_role_spot = true
+    }
+  }
+
+  assert {
+    condition = (
+      output.provider.capabilities.scale_set.iam_statements.use_ami_kms_key.resources == toset(["arn:aws:kms:eu-west-1:123456789012:key/11111111-2222-3333-4444-555555555555"])
+      && output.provider.capabilities.scale_set.iam_statements.create_ami_kms_grant.conditions[0].variable == "kms:GrantIsForAWSResource"
+      && output.provider.capabilities.scale_set.iam_statements.create_spot_service_linked_role.resources == toset(["arn:aws:iam::123456789012:role/aws-service-role/spot.amazonaws.com/AWSServiceRoleForEC2Spot"])
+      && alltrue(flatten([
+        for statement in values(output.provider.capabilities.scale_set.iam_statements) : [
+          for action in statement.actions : !strcontains(action, "*")
+        ]
+      ]))
+    )
+    error_message = "Optional scale-set KMS and service-linked-role permissions must remain exact and contain no wildcard actions."
   }
 }
 

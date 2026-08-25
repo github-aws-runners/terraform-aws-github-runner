@@ -45,10 +45,13 @@ run "empty_runner_configurations_return_empty_output_maps" {
       length(local.raw_translated_experimental.multi_runner_config) == 0
       && length(local.translated_experimental.multi_runner_config) == 0
       && length(local.webhook_runner_config) == 0
+      && length(local.scale_set_runner_config) == 0
       && length(local.runner_matcher_config) == 0
       && length(module.runner_configs) == 0
+      && length(module.orchestration_scale_set) == 0
+      && output.scale_set == null
     )
-    error_message = "An empty stable and experimental configuration must translate to an empty raw runner-configuration map without selecting a v2 runner configuration."
+    error_message = "An empty stable and experimental configuration must not select v2 runner or scale-set orchestration resources."
   }
 
   assert {
@@ -342,6 +345,7 @@ run "stable_v1_keeps_legacy_runner_module" {
       ])
       && toset(keys(local.raw_translated_experimental.orchestration_provider)) == toset([
         "webhook",
+        "scale_set",
       ])
       && toset(keys(local.raw_translated_experimental.orchestration_provider.webhook)) == toset([
         "queue_selection_strategy",
@@ -390,6 +394,7 @@ run "stable_v1_keeps_legacy_runner_module" {
       ])
       && toset(keys(local.raw_translated_experimental.multi_runner_config["linux"].orchestration_provider)) == toset([
         "webhook",
+        "scale_set",
       ])
       && toset(keys(local.raw_translated_experimental.multi_runner_config["linux"].orchestration_provider.webhook)) == toset([
         "runner",
@@ -788,6 +793,15 @@ run "stable_v1_keeps_legacy_runner_module" {
   assert {
     condition     = length(output.runners_map_v2) == 0
     error_message = "Stable multi_runner_config must not add entries to the experimental runners_map_v2 output."
+  }
+
+  assert {
+    condition = (
+      length(local.scale_set_runner_config) == 0
+      && length(module.orchestration_scale_set) == 0
+      && output.scale_set == null
+    )
+    error_message = "Stable v1 must not select, instantiate, or expose the experimental scale-set orchestration provider."
   }
 
   assert {

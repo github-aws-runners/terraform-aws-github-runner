@@ -146,6 +146,71 @@ locals {
           encryption = var.queue_encryption
         }
       }
+      scale_set = {
+        grouping = {
+          strategy = "compute_provider"
+          custom   = null
+        }
+        container = {
+          image                             = null
+          user                              = "10001:10001"
+          health_port                       = 8080
+          health_path                       = "/healthz"
+          health_check_command              = null
+          health_check_interval             = 30
+          health_check_timeout              = 5
+          health_check_retries              = 3
+          health_check_start_period         = 30
+          health_stale_after_seconds        = 180
+          shutdown_timeout_seconds          = 110
+          session_close_timeout_seconds     = 10
+          reconnect_initial_backoff_seconds = 1
+          reconnect_max_backoff_seconds     = 30
+          stop_timeout_seconds              = 120
+          ecr_repository                    = null
+        }
+        config_store = {
+          path_prefix = null
+          tier        = "Standard"
+          tags        = {}
+        }
+        ecs = {
+          cluster = {
+            mode               = "managed"
+            arn                = null
+            name               = null
+            container_insights = true
+          }
+          task = {
+            cpu               = 512
+            memory            = 1024
+            cpu_architecture  = "X86_64"
+            ephemeral_storage = null
+          }
+          service = {
+            platform_version = "LATEST"
+          }
+          iam = {
+            path                 = "/"
+            permissions_boundary = null
+          }
+        }
+        network = {
+          vpc_id     = null
+          subnet_ids = null
+          https_egress = {
+            ipv4_cidrs = ["0.0.0.0/0"]
+            ipv6_cidrs = []
+          }
+        }
+        logging = {
+          retention_in_days = 30
+          kms_key_arn       = null
+          log_group_class   = "STANDARD"
+          tags              = {}
+        }
+        tags = {}
+      }
     }
 
     ssm = {
@@ -411,6 +476,7 @@ locals {
               }
             }
           }
+          scale_set = null
         }
 
         ssm = {
@@ -669,6 +735,7 @@ locals {
               tags = merge(local.raw_translated_experimental.orchestration_provider.webhook.queue.tags, v.orchestration_provider.webhook.queue.tags)
             })
           })
+          scale_set = v.orchestration_provider.scale_set
         }
 
         ssm = merge(v.ssm, {
@@ -807,6 +874,7 @@ locals {
               artifact = local.translated_experimental_base.orchestration_provider.webhook.lambda.artifact
             })
           })
+          scale_set = v.orchestration_provider.scale_set
         }
 
         ssm = merge(v.ssm, {

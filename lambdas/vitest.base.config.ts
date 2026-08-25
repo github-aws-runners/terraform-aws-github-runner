@@ -1,6 +1,6 @@
-import { defineConfig } from 'vitest/config';
+import type { ViteUserConfig } from 'vitest/config';
 
-const defaultConfig = defineConfig({
+const defaultConfig: ViteUserConfig = {
   test: {
     environment: 'node',
     coverage: {
@@ -8,12 +8,11 @@ const defaultConfig = defineConfig({
       reporter: ['text', 'lcov', 'html'],
       include: ['**/src/**/*.ts'],
       exclude: ['**/*local*.ts', '**/*.d.ts', '**/*.test.ts', '**/node_modules/**'],
-      all: true,
       reportsDirectory: './coverage',
     },
     globals: true,
     watch: false,
   },
-});
+};
 
 export default defaultConfig;

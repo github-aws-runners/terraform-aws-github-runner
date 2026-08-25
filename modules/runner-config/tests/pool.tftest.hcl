@@ -1,4 +1,10 @@
 mock_provider "aws" {
+  mock_data "aws_caller_identity" {
+    defaults = {
+      account_id = "123456789012"
+    }
+  }
+
   mock_data "aws_iam_policy_document" {
     defaults = {
       json = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"lambda.amazonaws.com\"},\"Action\":\"sts:AssumeRole\"}]}"
@@ -210,8 +216,9 @@ run "plan_with_pool_enabled" {
 
   assert {
     condition = (
-      toset(keys(output.orchestration_provider)) == toset(["webhook"])
+      toset(keys(output.orchestration_provider)) == toset(["webhook", "scale_set"])
       && output.orchestration_provider.webhook != null
+      && output.orchestration_provider.scale_set == null
       && output.orchestration_provider.webhook.scale_up != null
       && output.orchestration_provider.webhook.scale_down != null
       && output.orchestration_provider.webhook.pool != null
@@ -422,6 +429,454 @@ run "rejects_missing_orchestration_provider" {
   expect_failures = [terraform_data.validate_config]
 }
 
+run "scale_set_selects_jit_lifecycle_without_per_runner_controller" {
+  command = plan
+
+  variables {
+    orchestration_provider = {
+      scale_set = {}
+    }
+  }
+
+  assert {
+    condition = (
+      length(module.orchestration_webhook) == 0 &&
+      aws_ssm_parameter.runner_agent_mode.value == "ephemeral" &&
+      aws_ssm_parameter.jit_config_enabled.value == "true" &&
+      output.scale_up == null &&
+      output.scale_down == null &&
+      output.pool == null &&
+      output.orchestration_provider.webhook == null &&
+      output.orchestration_provider.scale_set != null
+    )
+    error_message = "Scale-set selection must use fixed ephemeral JIT lifecycle, keep webhook aliases null, and create no per-runner orchestration controller."
+  }
+
+  assert {
+    condition = (
+      output.compute_provider_contract.type == "ec2" &&
+      output.compute_provider_contract.capabilities.scale_set != null
+    )
+    error_message = "Runner-config must expose the selected compute provider's scale-set capability for topology-level aggregation."
+  }
+}
+
+run "webhook_preserves_existing_runner_tag_contract" {
+  command = plan
+
+  variables {
+    tags = {
+      "ghr:github_scope_hash" = "legacy-caller-value"
+    }
+  }
+
+  assert {
+    condition     = output.orchestration_provider.webhook != null
+    error_message = "Scale-set ownership-tag restrictions must not change the existing webhook runner tag contract."
+  }
+}
+
+run "webhook_preserves_existing_ec2_runtime_input_contract" {
+  command = plan
+
+  variables {
+    runner = {
+      labels      = ["self-hosted", "linux", "x64"]
+      name_prefix = "legacy prefix"
+    }
+    ssm = {
+      paths = {
+        root   = "/github-runner"
+        tokens = "tokens"
+        config = "config"
+      }
+      tags = {
+        "aws:legacy" = "allowed-for-webhook"
+      }
+    }
+    compute_provider = {
+      aws = {
+        ec2 = {
+          vpc_id                        = "vpc-12345678"
+          subnet_ids                    = concat([for index in range(101) : format("subnet-%08x", index)], ["subnet-00000000"])
+          instance_types                = concat([for index in range(101) : "m5.${index}large"], ["m5.0large"])
+          instance_type_priorities      = { "m5.large" = 1001.5 }
+          instance_target_capacity_type = "on-demand"
+          instance_allocation_strategy  = "diversified"
+          enable_on_demand_failover_for_errors = concat(
+            [for index in range(101) : "FailoverError${index}"],
+            ["FailoverError0"],
+          )
+          scale_errors = concat(
+            [for index in range(101) : "ScaleError${index}"],
+            ["ScaleError0"],
+          )
+          binaries_syncer = {
+            enabled = false
+          }
+        }
+      }
+    }
+  }
+
+  assert {
+    condition     = output.orchestration_provider.webhook != null
+    error_message = "Scale-set runtime parser restrictions must not change existing webhook-only EC2 inputs."
+  }
+}
+
+run "scale_set_rejects_duplicate_ec2_runtime_lists" {
+  command = plan
+
+  variables {
+    orchestration_provider = {
+      scale_set = {}
+    }
+    compute_provider = {
+      aws = {
+        ec2 = {
+          vpc_id                               = "vpc-12345678"
+          subnet_ids                           = ["subnet-12345678", "subnet-12345678"]
+          instance_types                       = ["m5.large", "m5.large"]
+          enable_on_demand_failover_for_errors = ["RequestLimitExceeded", "RequestLimitExceeded"]
+          scale_errors                         = ["InsufficientInstanceCapacity", "InsufficientInstanceCapacity"]
+          binaries_syncer = {
+            enabled = false
+          }
+        }
+      }
+    }
+  }
+
+  plan_options {
+    target = [terraform_data.validate_config]
+  }
+
+  expect_failures = [terraform_data.validate_config]
+}
+
+run "scale_set_rejects_oversized_ec2_runtime_lists" {
+  command = plan
+
+  variables {
+    orchestration_provider = {
+      scale_set = {}
+    }
+    compute_provider = {
+      aws = {
+        ec2 = {
+          vpc_id         = "vpc-12345678"
+          subnet_ids     = [for index in range(101) : format("subnet-%08x", index)]
+          instance_types = [for index in range(101) : "m5.${index}large"]
+          enable_on_demand_failover_for_errors = [
+            for index in range(101) : "FailoverError${index}"
+          ]
+          scale_errors = [for index in range(101) : "ScaleError${index}"]
+          binaries_syncer = {
+            enabled = false
+          }
+        }
+      }
+    }
+  }
+
+  plan_options {
+    target = [terraform_data.validate_config]
+  }
+
+  expect_failures = [terraform_data.validate_config]
+}
+
+run "scale_set_rejects_fractional_ec2_instance_type_priority" {
+  command = plan
+
+  variables {
+    orchestration_provider = {
+      scale_set = {}
+    }
+    compute_provider = {
+      aws = {
+        ec2 = {
+          vpc_id         = "vpc-12345678"
+          subnet_ids     = ["subnet-12345678"]
+          instance_types = ["m5.large"]
+          instance_type_priorities = {
+            "m5.large" = 1.5
+          }
+          binaries_syncer = {
+            enabled = false
+          }
+        }
+      }
+    }
+  }
+
+  plan_options {
+    target = [terraform_data.validate_config]
+  }
+
+  expect_failures = [terraform_data.validate_config]
+}
+
+run "scale_set_rejects_out_of_range_ec2_instance_type_priorities" {
+  command = plan
+
+  variables {
+    orchestration_provider = {
+      scale_set = {}
+    }
+    compute_provider = {
+      aws = {
+        ec2 = {
+          vpc_id         = "vpc-12345678"
+          subnet_ids     = ["subnet-12345678"]
+          instance_types = ["m5.large", "c5.large"]
+          instance_type_priorities = {
+            "m5.large" = -1
+            "c5.large" = 1001
+          }
+          binaries_syncer = {
+            enabled = false
+          }
+        }
+      }
+    }
+  }
+
+  plan_options {
+    target = [terraform_data.validate_config]
+  }
+
+  expect_failures = [terraform_data.validate_config]
+}
+
+run "scale_set_accepts_ec2_runtime_boundaries" {
+  command = plan
+
+  variables {
+    orchestration_provider = {
+      scale_set = {}
+    }
+    compute_provider = {
+      aws = {
+        ec2 = {
+          vpc_id         = "vpc-12345678"
+          subnet_ids     = [for index in range(100) : format("subnet-%08x", index)]
+          instance_types = [for index in range(100) : "m5.${index}large"]
+          instance_type_priorities = {
+            "m5.0large"  = 0
+            "m5.99large" = 1000
+          }
+          enable_on_demand_failover_for_errors = [
+            for index in range(100) : "FailoverError${index}"
+          ]
+          scale_errors = [for index in range(100) : "ScaleError${index}"]
+          binaries_syncer = {
+            enabled = false
+          }
+        }
+      }
+    }
+  }
+
+  plan_options {
+    target = [terraform_data.validate_config]
+  }
+}
+
+run "scale_set_rejects_provider_owned_runner_tags" {
+  command = plan
+
+  variables {
+    orchestration_provider = {
+      scale_set = {}
+    }
+    compute_provider = {
+      aws = {
+        ec2 = {
+          vpc_id         = "vpc-12345678"
+          subnet_ids     = ["subnet-12345678"]
+          instance_types = ["m5.large"]
+          binaries_syncer = {
+            enabled = false
+          }
+          tags = {
+            "ghr:github_scope_hash" = "caller-controlled"
+          }
+        }
+      }
+    }
+  }
+
+  plan_options {
+    target = [terraform_data.validate_config]
+  }
+
+  expect_failures = [terraform_data.validate_config]
+}
+
+run "scale_set_rejects_unsafe_ec2_runner_name_prefix" {
+  command = plan
+
+  variables {
+    orchestration_provider = {
+      scale_set = {}
+    }
+    runner = {
+      labels      = ["self-hosted", "linux", "x64"]
+      name_prefix = "unsafe prefix"
+    }
+  }
+
+  plan_options {
+    target = [terraform_data.validate_config]
+  }
+
+  expect_failures = [terraform_data.validate_config]
+}
+
+run "scale_set_rejects_incompatible_ec2_capacity_strategy" {
+  command = plan
+
+  variables {
+    orchestration_provider = {
+      scale_set = {}
+    }
+    compute_provider = {
+      aws = {
+        ec2 = {
+          vpc_id                        = "vpc-12345678"
+          subnet_ids                    = ["subnet-12345678"]
+          instance_types                = ["m5.large"]
+          instance_target_capacity_type = "on-demand"
+          instance_allocation_strategy  = "diversified"
+          binaries_syncer = {
+            enabled = false
+          }
+        }
+      }
+    }
+  }
+
+  plan_options {
+    target = [terraform_data.validate_config]
+  }
+
+  expect_failures = [terraform_data.validate_config]
+}
+
+run "scale_set_rejects_runtime_incompatible_ssm_tags" {
+  command = plan
+
+  variables {
+    orchestration_provider = {
+      scale_set = {}
+    }
+    ssm = {
+      paths = {
+        root   = "/github-runner"
+        tokens = "tokens"
+        config = "config"
+      }
+      tags = {
+        "aws:reserved" = "not-valid-for-runtime-created-parameters"
+      }
+    }
+  }
+
+  plan_options {
+    target = [terraform_data.validate_config]
+  }
+
+  expect_failures = [terraform_data.validate_config]
+}
+
+run "scale_set_rejects_too_many_ssm_tags" {
+  command = plan
+
+  variables {
+    orchestration_provider = {
+      scale_set = {}
+    }
+    ssm = {
+      paths = {
+        root   = "/github-runner"
+        tokens = "tokens"
+        config = "config"
+      }
+      tags = {
+        for index in range(45) : "Tag${index}" => "value"
+      }
+    }
+  }
+
+  plan_options {
+    target = [terraform_data.validate_config]
+  }
+
+  expect_failures = [terraform_data.validate_config]
+}
+
+run "scale_set_rejects_invalid_external_ami_parameter_arn" {
+  command = plan
+
+  variables {
+    orchestration_provider = {
+      scale_set = {}
+    }
+    compute_provider = {
+      aws = {
+        ec2 = {
+          vpc_id         = "vpc-12345678"
+          subnet_ids     = ["subnet-12345678"]
+          instance_types = ["m5.large"]
+          ami = {
+            id_ssm_parameter = {
+              arn = "arn:aws:ssm:us-east-1:123456789012:parameter/github-runner/external-ami-id"
+            }
+          }
+          binaries_syncer = {
+            enabled = false
+          }
+        }
+      }
+    }
+  }
+
+  plan_options {
+    target = [terraform_data.validate_config]
+  }
+
+  expect_failures = [terraform_data.validate_config]
+}
+
+run "rejects_multiple_orchestration_providers" {
+  command = plan
+
+  variables {
+    orchestration_provider = {
+      webhook = {
+        github = {
+          organization_runners = true
+        }
+        queue = {
+          build = {
+            arn = "arn:aws:sqs:eu-west-1:123456789012:build-queue"
+            url = "https://sqs.eu-west-1.amazonaws.com/123456789012/build-queue"
+          }
+        }
+      }
+      scale_set = {}
+    }
+  }
+
+  plan_options {
+    target = [terraform_data.validate_config]
+  }
+
+  expect_failures = [terraform_data.validate_config]
+}
+
 run "external_runner_role_is_not_managed_by_common" {
   command = plan
 
@@ -544,25 +999,6 @@ run "external_role_rejects_trust_policy_extension" {
           arn = "arn:aws:iam::123456789012:role/external/runner-role"
         }
         additional_trust_policy_json = "{\"Version\":\"2012-10-17\",\"Statement\":[]}"
-      }
-    }
-  }
-
-  plan_options {
-    target = [terraform_data.validate_config]
-  }
-
-  expect_failures = [terraform_data.validate_config]
-}
-
-run "rejects_invalid_trust_policy_extension" {
-  command = plan
-
-  variables {
-    runner = {
-      labels = ["self-hosted", "linux", "x64"]
-      iam = {
-        additional_trust_policy_json = "{"
       }
     }
   }

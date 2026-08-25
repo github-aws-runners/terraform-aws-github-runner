@@ -23,7 +23,7 @@ variable "compute_provider" {
     - `aws.ec2.ami.filter`: EC2 AMI filters combined with the provider's default AMI-name filter.
     - `aws.ec2.ami.owners`: AWS account IDs or aliases allowed to own the selected AMI.
     - `aws.ec2.ami.id_ssm_parameter`: Optional externally managed SSM parameter containing the AMI ID. Null creates a provider-managed AMI-ID parameter. The wrapper's presence is the plan-time ownership discriminator, so keep the object literal even when its ARN comes from another resource.
-    - `aws.ec2.ami.id_ssm_parameter.arn`: ARN of the externally managed SSM parameter. The ARN may be unknown until apply.
+    - `aws.ec2.ami.id_ssm_parameter.arn`: ARN of the externally managed SSM parameter. The ARN may be unknown until apply. EC2 scale-set orchestration requires an exact same-account, same-region ARN whose extracted absolute parameter name matches the runtime grammar.
     - `aws.ec2.ami.kms_key`: Optional KMS key required to launch encrypted AMIs or snapshots. The wrapper's presence is the plan-time policy discriminator.
     - `aws.ec2.ami.kms_key.arn`: ARN of the KMS key. The ARN may be unknown until apply.
     - `aws.ec2.vpc_id`: VPC in which runner networking resources are created.
@@ -53,7 +53,7 @@ variable "compute_provider" {
     - `aws.ec2.block_device_mappings[].volume_type`: EBS volume type.
     - `aws.ec2.ebs_optimized`: Requests EBS-optimized runner instances.
     - `aws.ec2.instance_target_capacity_type`: Primary capacity type, either `spot` or `on-demand`.
-    - `aws.ec2.instance_allocation_strategy`: EC2 Fleet allocation strategy used to select instance capacity.
+    - `aws.ec2.instance_allocation_strategy`: EC2 Fleet allocation strategy used to select instance capacity. EC2 scale-set orchestration allows only `lowest-price` or `prioritized` with `on-demand`; Spot supports the provider's complete strategy set.
     - `aws.ec2.instance_type_priorities`: Optional numeric priorities keyed by instance type.
     - `aws.ec2.instance_max_spot_price`: Optional maximum hourly Spot price.
     - `aws.ec2.instance_types`: EC2 instance types available to the scale-up and pool functions.
@@ -89,7 +89,7 @@ variable "compute_provider" {
     - `aws.ec2.egress_rules[].self`: Allows traffic to the managed security group itself when true.
     - `aws.ec2.egress_rules[].to_port`: Last destination port in the permitted range.
     - `aws.ec2.egress_rules[].description`: Optional rule description.
-    - `aws.ec2.tags`: Additional tags for runner instances, EBS volumes, network interfaces, and eligible Spot instance requests created from the launch template. They override module-level tags and the generated runner `Name`; the provider-managed `ghr:environment`, `ghr:ssm_config_path`, and `ghr:runner_name_prefix` bootstrap tags take final precedence. These tags do not apply to static provider resources such as the launch template, security group, IAM resources, SSM parameters, or log groups.
+    - `aws.ec2.tags`: Additional tags for runner instances, EBS volumes, network interfaces, and eligible Spot instance requests created from the launch template. They override module-level tags and the generated runner `Name`; the provider-managed `ghr:environment`, `ghr:ssm_config_path`, and `ghr:runner_name_prefix` bootstrap tags take final precedence. These tags do not apply to static provider resources such as the launch template, security group, IAM resources, SSM parameters, or log groups. EC2 scale-set orchestration rejects caller values for its ownership and lifecycle tag keys.
     - `aws.ec2.metadata_options`: Instance Metadata Service configuration in the launch template.
     - `aws.ec2.metadata_options.instance_metadata_tags`: Exposes instance tags through Instance Metadata Service when `enabled`.
     - `aws.ec2.metadata_options.http_endpoint`: Enables or disables the Instance Metadata Service endpoint.
@@ -250,7 +250,6 @@ variable "compute_provider" {
           "TargetCapacityLimitExceededException",
           "RequestLimitExceeded",
           "ResourceLimitExceeded",
-          "MaxSpotInstanceCountExceeded",
           "MaxSpotFleetRequestCountExceeded",
           "InsufficientInstanceCapacity",
           "InsufficientCapacityOnHost",

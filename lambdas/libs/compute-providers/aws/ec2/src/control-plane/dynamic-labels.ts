@@ -32,7 +32,7 @@ import {
 } from '@aws-sdk/client-ec2';
 import { getTracedAWSV3Client } from '@aws-github-runner/aws-powertools-util';
 
-import { Ec2OverrideConfig } from './runners.d';
+import { Ec2OverrideConfig } from '../runners.d';
 
 const EC2_OVERRIDE_LIST_VALUE_SEPARATOR = ';';
 

@@ -8,7 +8,7 @@ import type {
   RunnerStatus,
 } from '../../../../core';
 import { createRunners, loadEc2ProviderConfig } from './runner-config';
-import { bootTimeExceeded, listEC2Runners } from './runners';
+import { bootTimeExceeded, listEC2Runners } from '../runners';
 
 const logger = createChildLogger('pool');
 
