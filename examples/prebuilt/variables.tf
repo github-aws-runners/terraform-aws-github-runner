@@ -34,3 +34,33 @@ variable "ami_name_filter" {
   type    = string
   default = "github-runner-al2023-x86_64-*"
 }
+
+variable "configure_github_app" {
+  description = "Whether to update the GitHub App webhook after deploying the runners."
+  type        = bool
+  default     = true
+}
+
+variable "aws_s3_use_path_style" {
+  description = "Whether the AWS provider should use path-style S3 addressing."
+  type        = bool
+  default     = false
+}
+
+variable "webhook_lambda_zip" {
+  description = "Path to the webhook Lambda archive. Uses the module default when unset."
+  type        = string
+  default     = null
+}
+
+variable "runners_lambda_zip" {
+  description = "Path to the runners Lambda archive. Uses the module default when unset."
+  type        = string
+  default     = null
+}
+
+variable "ami_housekeeper_lambda_zip" {
+  description = "Path to the AMI housekeeper Lambda archive. Uses the module default when unset."
+  type        = string
+  default     = null
+}

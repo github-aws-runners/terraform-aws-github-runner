@@ -21,71 +21,162 @@ case "$action" in
     ;;
 esac
 
+ministack_endpoint="${AWS_ENDPOINT_URL:-http://127.0.0.1:4566}"
+case "$ministack_endpoint" in
+  http://127.0.0.1:4566)
+    # S3 Control prefixes the account ID to the endpoint hostname. The
+    # account-prefixed localhost name resolves locally, while 127.0.0.1 does not.
+    ministack_endpoint="http://localhost:4566"
+    ;;
+  http://localhost:4566 | http://ministack:4566) ;;
+  *)
+    echo "Refusing to run against non-MiniStack endpoint: $ministack_endpoint" >&2
+    exit 65
+    ;;
+esac
+
+service_endpoint_variables=$(
+  env | awk -F= '
+    $1 ~ /^AWS_ENDPOINT_URL_/ || $1 ~ /^AWS_[A-Z0-9_]+_ENDPOINT$/ { print $1 }
+  '
+)
+if [ -n "$service_endpoint_variables" ]; then
+  echo "Refusing to run with service-specific AWS endpoint variables:" >&2
+  printf '%s\n' "$service_endpoint_variables" >&2
+  exit 65
+fi
+
+# Always use synthetic credentials and route every AWS client to MiniStack.
+export AWS_ACCESS_KEY_ID="000000000000"
+export AWS_CONFIG_FILE="/dev/null"
+export AWS_DEFAULT_REGION="eu-west-1"
+export AWS_EC2_METADATA_DISABLED="true"
+export AWS_ENDPOINT_URL="$ministack_endpoint"
+export AWS_IGNORE_CONFIGURED_ENDPOINT_URLS="false"
+export AWS_REGION="eu-west-1"
+export AWS_SECRET_ACCESS_KEY="ministack-test-only"
+export AWS_SHARED_CREDENTIALS_FILE="/dev/null"
+unset AWS_ACCESS_KEY AWS_DEFAULT_PROFILE AWS_PROFILE AWS_SECRET_KEY AWS_SECURITY_TOKEN AWS_SESSION_TOKEN
+
+ministack_no_proxy="localhost,127.0.0.1,ministack,.ministack,000000000000.ministack"
+export NO_PROXY="${NO_PROXY:+$NO_PROXY,}$ministack_no_proxy"
+export no_proxy="${no_proxy:+$no_proxy,}$ministack_no_proxy"
+
 script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 source_root="${GITHUB_WORKSPACE:-$(CDPATH='' cd -- "$script_dir/../.." && pwd)}"
 temporary_root="${RUNNER_TEMP:-${TMPDIR:-/tmp}}"
-worktree="$temporary_root/terraform-aws-github-runner-ministack-$example"
-example_root="$worktree/examples/$example"
-fixture_root="$worktree/tests/ministack/setup"
-lambda_archive="$fixture_root/.terraform/ministack/lambda.zip"
+runtime_root="$temporary_root/terraform-aws-github-runner-ministack-$example"
+example_root="$source_root/examples/$example"
+fixture_root="$source_root/tests/ministack/setup"
+input_file="$source_root/tests/ministack/inputs/$example.tfvars"
+
+fixture_data_dir="$runtime_root/fixture-data"
+fixture_state="$runtime_root/fixture.tfstate"
+lambda_archive="$runtime_root/lambda.zip"
+example_data_dir="$runtime_root/example-data"
+example_state="$runtime_root/example.tfstate"
+permissions_data_dir="$runtime_root/permissions-data"
+permissions_state="$runtime_root/permissions.tfstate"
+
+terraform_fixture() {
+  subcommand="$1"
+  shift
+  TF_DATA_DIR="$fixture_data_dir" terraform -chdir="$fixture_root" "$subcommand" "$@" \
+    -state="$fixture_state" \
+    -var="lambda_archive_path=$lambda_archive"
+}
+
+terraform_permissions() {
+  subcommand="$1"
+  shift
+  TF_DATA_DIR="$permissions_data_dir" terraform -chdir="$example_root/setup" "$subcommand" "$@" \
+    -state="$permissions_state"
+}
 
 terraform_example() {
-  terraform -chdir="$example_root" "$@" -var="ministack_lambda_archive=$lambda_archive"
+  subcommand="$1"
+  shift
+  set -- "$subcommand" "$@" "-state=$example_state"
+
+  if [ -f "$input_file" ]; then
+    set -- "$@" "-var-file=$input_file"
+  fi
+
+  case "$example" in
+    default)
+      set -- "$@" \
+        "-var=webhook_lambda_zip=$lambda_archive" \
+        "-var=runners_lambda_zip=$lambda_archive" \
+        "-var=runner_binaries_syncer_lambda_zip=$lambda_archive" \
+        "-var=ami_housekeeper_lambda_zip=$lambda_archive" \
+        "-var=termination_watcher_lambda_zip=$lambda_archive"
+      ;;
+    ephemeral | external-managed-ssm-secrets | multi-runner)
+      set -- "$@" \
+        "-var=webhook_lambda_zip=$lambda_archive" \
+        "-var=runners_lambda_zip=$lambda_archive" \
+        "-var=runner_binaries_syncer_lambda_zip=$lambda_archive"
+      ;;
+    permissions-boundary)
+      set -- "$@" \
+        "-var=webhook_lambda_zip=$lambda_archive" \
+        "-var=runners_lambda_zip=$lambda_archive" \
+        "-var=runner_binaries_syncer_lambda_zip=$lambda_archive" \
+        "-var=iam_state_path=$permissions_state"
+      ;;
+    prebuilt)
+      set -- "$@" \
+        "-var=webhook_lambda_zip=$lambda_archive" \
+        "-var=runners_lambda_zip=$lambda_archive" \
+        "-var=ami_housekeeper_lambda_zip=$lambda_archive"
+      ;;
+    termination-watcher)
+      set -- "$@" "-var=termination_watcher_lambda_zip=$lambda_archive"
+      ;;
+  esac
+
+  TF_DATA_DIR="$example_data_dir" terraform -chdir="$example_root" "$@"
 }
 
 case "$action" in
   prepare)
-    if [ -e "$worktree" ]; then
-      echo "Refusing to overwrite existing MiniStack worktree: $worktree" >&2
+    if [ -e "$runtime_root" ]; then
+      echo "Refusing to overwrite existing MiniStack runtime: $runtime_root" >&2
       exit 73
     fi
 
-    mkdir -p "$worktree"
-    git -C "$source_root" archive --format=tar "${MINISTACK_SOURCE_REF:-${GITHUB_SHA:-HEAD}}" | tar -xf - -C "$worktree"
-
     if [ ! -f "$example_root/main.tf" ]; then
-      echo "The isolated worktree does not contain examples/$example/main.tf" >&2
+      echo "The repository does not contain examples/$example/main.tf" >&2
       exit 66
     fi
 
-    cp "$worktree/tests/ministack/overrides/common.tf" "$example_root/ministack_common.tf"
-    cp "$worktree/tests/ministack/overrides/${example}_override.tf" "$example_root/ministack_example_override.tf"
-    cp "$worktree/tests/ministack/overrides/versions_override.tf" "$example_root/ministack_versions_override.tf"
-
-    case "$example" in
-      base | termination-watcher)
-        cp "$worktree/tests/ministack/overrides/provider.tf" "$example_root/ministack_provider.tf"
-        ;;
-      permissions-boundary)
-        cp "$worktree/tests/ministack/overrides/provider.tf" "$example_root/ministack_provider.tf"
-        cp "$worktree/tests/ministack/overrides/permissions-boundary-provider_override.tf" "$example_root/ministack_permissions_provider_override.tf"
-        ;;
-      *)
-        cp "$worktree/tests/ministack/overrides/provider.tf" "$example_root/ministack_provider_override.tf"
-        ;;
-    esac
-
+    mkdir -p "$runtime_root"
     ;;
   fixture-apply)
-    terraform -chdir="$fixture_root" init -backend=false -input=false -lockfile=readonly
-    terraform -chdir="$fixture_root" apply -auto-approve -input=false
+    TF_DATA_DIR="$fixture_data_dir" terraform -chdir="$fixture_root" init -backend=false -input=false -lockfile=readonly
+    terraform_fixture apply -auto-approve -input=false
+
+    if [ ! -f "$lambda_archive" ]; then
+      echo "The shared fixture did not create the inert Lambda archive." >&2
+      exit 74
+    fi
     ;;
   setup-apply)
     if [ "$example" != "permissions-boundary" ]; then
       exit 0
     fi
 
-    terraform -chdir="$example_root/setup" init -backend=false -input=false -lockfile=readonly
-    terraform -chdir="$example_root/setup" apply -auto-approve -input=false
+    TF_DATA_DIR="$permissions_data_dir" terraform -chdir="$example_root/setup" init -backend=false -input=false -lockfile=readonly
+    terraform_permissions apply -auto-approve -input=false
     ;;
   init)
-    terraform -chdir="$example_root" init -backend=false -input=false -lockfile=readonly
+    TF_DATA_DIR="$example_data_dir" terraform -chdir="$example_root" init -backend=false -input=false -lockfile=readonly
     ;;
   apply)
     terraform_example apply -auto-approve -input=false
     ;;
   destroy)
-    terraform -chdir="$example_root" init -backend=false -input=false -lockfile=readonly
+    TF_DATA_DIR="$example_data_dir" terraform -chdir="$example_root" init -backend=false -input=false -lockfile=readonly
     terraform_example destroy -auto-approve -input=false
     ;;
   setup-destroy)
@@ -93,11 +184,11 @@ case "$action" in
       exit 0
     fi
 
-    terraform -chdir="$example_root/setup" init -backend=false -input=false -lockfile=readonly
-    terraform -chdir="$example_root/setup" destroy -auto-approve -input=false
+    TF_DATA_DIR="$permissions_data_dir" terraform -chdir="$example_root/setup" init -backend=false -input=false -lockfile=readonly
+    terraform_permissions destroy -auto-approve -input=false
     ;;
   fixture-destroy)
-    terraform -chdir="$fixture_root" init -backend=false -input=false -lockfile=readonly
-    terraform -chdir="$fixture_root" destroy -auto-approve -input=false
+    TF_DATA_DIR="$fixture_data_dir" terraform -chdir="$fixture_root" init -backend=false -input=false -lockfile=readonly
+    terraform_fixture destroy -auto-approve -input=false
     ;;
 esac

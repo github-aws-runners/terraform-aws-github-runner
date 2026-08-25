@@ -103,9 +103,14 @@ No resources.
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
+| <a name="input_ami"></a> [ami](#input\_ami) | AMI configuration for the action runner instances. Uses the module default when unset. | <pre>object({<br/>    filter               = optional(map(list(string)), { state = ["available"] })<br/>    owners               = optional(list(string), ["amazon"])<br/>    id_ssm_parameter_arn = optional(string, null)<br/>    kms_key_arn          = optional(string, null)<br/>  })</pre> | `null` | no |
 | <a name="input_aws_region"></a> [aws\_region](#input\_aws\_region) | AWS region. | `string` | `"eu-west-1"` | no |
+| <a name="input_aws_s3_use_path_style"></a> [aws\_s3\_use\_path\_style](#input\_aws\_s3\_use\_path\_style) | Whether the AWS provider should use path-style S3 addressing. | `bool` | `false` | no |
 | <a name="input_environment"></a> [environment](#input\_environment) | Environment name, used as prefix. | `string` | `null` | no |
 | <a name="input_github_app_ssm_parameters"></a> [github\_app\_ssm\_parameters](#input\_github\_app\_ssm\_parameters) | SSM parameters details for the GitHub App, that you've created manually on AWS. | <pre>object({<br/>    key_base64 = optional(object({<br/>      arn  = string<br/>      name = string<br/>    }))<br/>    id = optional(object({<br/>      arn  = string<br/>      name = string<br/>    }))<br/>    webhook_secret = optional(object({<br/>      arn  = string<br/>      name = string<br/>    }))<br/>  })</pre> | `{}` | no |
+| <a name="input_runner_binaries_syncer_lambda_zip"></a> [runner\_binaries\_syncer\_lambda\_zip](#input\_runner\_binaries\_syncer\_lambda\_zip) | Path to the runner binaries syncer Lambda archive. Uses the module default when unset. | `string` | `null` | no |
+| <a name="input_runners_lambda_zip"></a> [runners\_lambda\_zip](#input\_runners\_lambda\_zip) | Path to the runners Lambda archive. Uses the module default when unset. | `string` | `null` | no |
+| <a name="input_webhook_lambda_zip"></a> [webhook\_lambda\_zip](#input\_webhook\_lambda\_zip) | Path to the webhook Lambda archive. Uses the module default when unset. | `string` | `null` | no |
 
 ## Outputs
 

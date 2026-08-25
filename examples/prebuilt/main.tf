@@ -32,6 +32,10 @@ module "runners" {
     webhook_secret = random_id.random.hex
   }
 
+  webhook_lambda_zip         = var.webhook_lambda_zip
+  runners_lambda_zip         = var.runners_lambda_zip
+  ami_housekeeper_lambda_zip = var.ami_housekeeper_lambda_zip
+
   # link to downloaded lambda zip files.
   # When not explicitly set lambda zip files are grabbed from the module requiring lambda build.
   #
@@ -104,6 +108,7 @@ module "runners" {
 module "webhook_github_app" {
   source     = "../../modules/webhook-github-app"
   depends_on = [module.runners]
+  enabled    = var.configure_github_app
 
   github_app = {
     key_base64     = var.github_app.key_base64
