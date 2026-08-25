@@ -148,15 +148,15 @@ Inner values such as scale-set IDs, SSM/KMS ARNs, provider configuration values,
 ## Requirements
 
 | Name | Version |
-| ---- | ------- |
+|------|---------|
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.4.0 |
 | <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 6.33 |
 
 ## Providers
 
 | Name | Version |
-| ---- | ------- |
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.61.0 |
+|------|---------|
+| <a name="provider_aws"></a> [aws](#provider\_aws) | >= 6.33 |
 | <a name="provider_terraform"></a> [terraform](#provider\_terraform) | n/a |
 
 ## Modules
@@ -166,7 +166,7 @@ No modules.
 ## Resources
 
 | Name | Type |
-| ---- | ---- |
+|------|------|
 | [aws_cloudwatch_log_group.controller](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_log_group) | resource |
 | [aws_ecs_cluster.controller](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ecs_cluster) | resource |
 | [aws_ecs_service.controller](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ecs_service) | resource |
@@ -192,7 +192,7 @@ No modules.
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-| ---- | ----------- | ---- | ------- | :------: |
+|------|-------------|------|---------|:--------:|
 | <a name="input_compute_provider_contracts"></a> [compute\_provider\_contracts](#input\_compute\_provider\_contracts) | Provider-neutral, scale-set capability fragments keyed exactly like `runner_configs`.<br/><br/>`type` is the plan-known provider discriminator used by the default grouping implementation and the runtime adapter registry. `configuration_json` is provider-owned, valid JSON and must contain no secrets. `environment_variables` contains non-secret provider process settings shared by every reconciler in the same controller group; conflicting values are rejected. IAM statement map keys and optional condition shapes must be known during planning; their action, resource, and condition values may be computed. | <pre>map(object({<br/>    type = string<br/>    capabilities = object({<br/>      scale_set = object({<br/>        configuration_json    = optional(string, "{}")<br/>        environment_variables = optional(map(string), {})<br/>        iam_statements = optional(map(object({<br/>          actions   = set(string)<br/>          resources = set(string)<br/>          conditions = optional(list(object({<br/>            test     = string<br/>            variable = string<br/>            values   = set(string)<br/>          })), [])<br/>        })), {})<br/>      })<br/>    })<br/>  }))</pre> | n/a | yes |
 | <a name="input_config_store"></a> [config\_store](#input\_config\_store) | Non-secret controller configuration storage. The module writes one SSM String parameter per reconciler below `path_prefix/<controller-group>/<runner-config>`. The task receives only its group path and a SHA-256 revision, then loads the group with `GetParametersByPath`.<br/><br/>Standard parameters are limited to 4096 encoded bytes and Advanced parameters to 8192 encoded bytes. Null `path_prefix` resolves to `/<prefix>/scale-set-controller`. | <pre>object({<br/>    path_prefix = optional(string, null)<br/>    tier        = optional(string, "Standard")<br/>    tags        = optional(map(string), {})<br/>  })</pre> | `{}` | no |
 | <a name="input_container"></a> [container](#input\_container) | Scale-set controller image and runtime settings. A null image uses the internal official convenience image; production callers should use the release digest. Filesystem and Linux capability hardening are enforced by the module; health\_path is fixed at /healthz, the ECS liveness endpoint. | <pre>object({<br/>    image                             = optional(string, null)<br/>    user                              = optional(string, "10001:10001")<br/>    health_port                       = optional(number, 8080)<br/>    health_path                       = optional(string, "/healthz")<br/>    health_check_command              = optional(list(string), null)<br/>    health_check_interval             = optional(number, 30)<br/>    health_check_timeout              = optional(number, 5)<br/>    health_check_retries              = optional(number, 3)<br/>    health_check_start_period         = optional(number, 30)<br/>    health_stale_after_seconds        = optional(number, 180)<br/>    shutdown_timeout_seconds          = optional(number, 110)<br/>    session_close_timeout_seconds     = optional(number, 10)<br/>    reconnect_initial_backoff_seconds = optional(number, 1)<br/>    reconnect_max_backoff_seconds     = optional(number, 30)<br/>    stop_timeout_seconds              = optional(number, 120)<br/>    ecr_repository = optional(object({<br/>      arn = string<br/>    }), null)<br/>  })</pre> | `{}` | no |
@@ -207,7 +207,7 @@ No modules.
 ## Outputs
 
 | Name | Description |
-| ---- | ----------- |
+|------|-------------|
 | <a name="output_cluster"></a> [cluster](#output\_cluster) | Managed or external ECS cluster selected for all controller groups. |
 | <a name="output_controller_groups"></a> [controller\_groups](#output\_controller\_groups) | Controller-group resources keyed by stable resolved group name. |
 | <a name="output_reconciler_config_parameters"></a> [reconciler\_config\_parameters](#output\_reconciler\_config\_parameters) | Non-secret SSM controller configuration parameters keyed by `<controller-group>/<runner-config>`. Values are intentionally not exposed. |
