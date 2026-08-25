@@ -141,7 +141,7 @@ async function terminateFailedInstances(instanceIds: string[]): Promise<void> {
 
 function createEc2StartRunnerConfigOptions(): StartRunnerConfigOptions {
   return {
-    getSsmParameterTags: (instanceId) => [{ Key: 'InstanceId', Value: instanceId }],
+    getStorageMetadataTags: (instanceId) => [{ key: 'InstanceId', value: instanceId }],
     onJitConfigCreated: async (instanceId, metadata) => await tagEc2RunnerMetadata(instanceId, metadata),
   };
 }

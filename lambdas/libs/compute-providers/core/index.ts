@@ -32,7 +32,7 @@ export interface GitHubRunnerMetadata {
 }
 
 export interface StartRunnerConfigOptions {
-  getSsmParameterTags?: (runnerId: string) => { Key: string; Value: string }[];
+  getStorageMetadataTags?: (runnerId: string) => { key: string; value: string }[];
   onJitConfigCreated?: (runnerId: string, metadata: GitHubRunnerMetadata) => Promise<void>;
 }
 

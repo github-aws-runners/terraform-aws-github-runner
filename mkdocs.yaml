@@ -59,6 +59,7 @@ nav:
   - Security: security.md
   - Architecture decisions:
     - ADR-002 Runner orchestration provider boundary: adr/002-runner-orchestration-provider-boundary.md
+    - ADR-003 Runner storage provider boundary: adr/003-runner-storage-provider-boundary.md
   - Modules:
     - Runners (main): modules/runners.md
     - Submodules (public):
