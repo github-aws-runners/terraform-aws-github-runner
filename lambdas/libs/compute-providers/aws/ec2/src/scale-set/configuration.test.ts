@@ -16,7 +16,7 @@ describe('EC2 scale-set provider configuration', () => {
   });
 
   it.each([
-    [{ ...config, region: '$(credential)' }],
+    [{ ...config, region: 'eu-west-one' }],
     [{ ...config, subnets: ['subnet-12345678', 'subnet-12345678'] }],
     [{ ...config, ec2instanceCriteria: { ...config.ec2instanceCriteria, instanceAllocationStrategy: 'diversified' } }],
     [{ ...config, ec2OverrideConfig: { UserData: 'untrusted' } }],
