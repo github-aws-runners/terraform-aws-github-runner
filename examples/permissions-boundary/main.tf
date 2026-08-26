@@ -11,7 +11,7 @@ data "terraform_remote_state" "iam" {
   backend = "local"
 
   config = {
-    path = var.iam_state_path != null ? var.iam_state_path : "${path.module}/setup/terraform.tfstate"
+    path = "${path.module}/setup/terraform.tfstate"
   }
 }
 
@@ -40,7 +40,6 @@ module "runners" {
   vpc_id      = module.base.vpc.vpc_id
   subnet_ids  = module.base.vpc.private_subnets
   kms_key_arn = aws_kms_key.github.key_id
-  ami         = var.ami
 
   prefix = local.environment
   tags = {
@@ -53,9 +52,9 @@ module "runners" {
     webhook_secret = random_id.random.hex
   }
 
-  webhook_lambda_zip                = var.webhook_lambda_zip
-  runner_binaries_syncer_lambda_zip = var.runner_binaries_syncer_lambda_zip
-  runners_lambda_zip                = var.runners_lambda_zip
+  webhook_lambda_zip                = "../lambdas-download/webhook.zip"
+  runner_binaries_syncer_lambda_zip = "../lambdas-download/runner-binaries-syncer.zip"
+  runners_lambda_zip                = "../lambdas-download/runners.zip"
   enable_organization_runners       = false
   runner_extra_labels               = ["default", "example"]
 

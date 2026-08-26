@@ -20,7 +20,6 @@ module "runners" {
   aws_region                      = local.aws_region
   vpc_id                          = module.base.vpc.vpc_id
   subnet_ids                      = module.base.vpc.private_subnets
-  ami                             = var.ami
 
   prefix = local.environment
   tags = {
@@ -32,11 +31,6 @@ module "runners" {
     id             = var.github_app.id
     webhook_secret = random_id.random.hex
   }
-
-  webhook_lambda_zip                = var.webhook_lambda_zip
-  runners_lambda_zip                = var.runners_lambda_zip
-  runner_binaries_syncer_lambda_zip = var.runner_binaries_syncer_lambda_zip
-  ami_housekeeper_lambda_zip        = var.ami_housekeeper_lambda_zip
 
   # configure the block device mappings, default for Amazon Linux2
   # block_device_mappings = [{
@@ -128,7 +122,6 @@ module "runners" {
 
   instance_termination_watcher = {
     enable = true
-    zip    = var.termination_watcher_lambda_zip
   }
 
   # enable metric creation  (experimental)

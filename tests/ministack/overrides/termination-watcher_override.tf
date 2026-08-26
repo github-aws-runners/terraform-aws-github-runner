@@ -1,6 +1,4 @@
 module "spot_termination_watchter" {
-  source = "../../modules/termination-watcher"
-
   config = {
     metrics = {
       enable = true
@@ -12,5 +10,6 @@ module "spot_termination_watchter" {
     tag_filters = {
       "ghr:Application" = "github-action-runner"
     }
+    zip = var.ministack_lambda_archive
   }
 }
