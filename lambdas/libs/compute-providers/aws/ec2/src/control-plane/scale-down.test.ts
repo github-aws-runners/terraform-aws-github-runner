@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RunnerInfo, RunnerType } from '../../../../core';
 import { createEc2ScaleDownProvider } from './scale-down';
 import { listEC2Runners, tag, terminateRunner, untag } from '../runners';
+import type { Ec2RunnerOperations } from '../runners';
 
 vi.mock('../runners', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../runners')>();
@@ -19,6 +20,13 @@ const mockListRunners = vi.mocked(listEC2Runners);
 const mockTagRunner = vi.mocked(tag);
 const mockTerminateRunner = vi.mocked(terminateRunner);
 const mockUntagRunner = vi.mocked(untag);
+const runnerOperations: Ec2RunnerOperations = {
+  list: mockListRunners,
+  create: vi.fn(),
+  terminate: mockTerminateRunner,
+  tag: mockTagRunner,
+  untag: mockUntagRunner,
+};
 
 describe('Scale down runners', () => {
   beforeEach(() => {
@@ -47,7 +55,7 @@ describe('Scale down runners', () => {
         mockListRunners.mockResolvedValueOnce([]).mockResolvedValueOnce([runner]);
         mockTagRunner.mockResolvedValue();
         mockUntagRunner.mockResolvedValue();
-        const provider = createEc2ScaleDownProvider();
+        const provider = createEc2ScaleDownProvider(runnerOperations);
 
         await expect(provider.list('unit-test-environment')).resolves.toEqual([]);
         await expect(provider.list('unit-test-environment', true)).resolves.toEqual([runner]);
@@ -71,7 +79,7 @@ describe('Scale down runners', () => {
           launchTime: new Date(),
         };
         process.env.RUNNER_BOOT_TIME_IN_MINUTES = '5';
-        const provider = createEc2ScaleDownProvider();
+        const provider = createEc2ScaleDownProvider(runnerOperations);
 
         expect(provider.bootTimeExceeded(scaleDownRunner)).toBe(false);
         expect(mockTerminateRunner).not.toHaveBeenCalled();

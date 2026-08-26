@@ -12,7 +12,7 @@ import {
   CpuManufacturer,
   CpuPerformanceFactorRequest,
   DescribeLaunchTemplateVersionsCommand,
-  EC2Client,
+  type EC2Client,
   FleetBlockDeviceMappingRequest,
   FleetEbsBlockDeviceRequest,
   InstanceGeneration,
@@ -30,7 +30,6 @@ import {
   VCpuCountRangeRequest,
   VolumeType,
 } from '@aws-sdk/client-ec2';
-import { getTracedAWSV3Client } from '@aws-github-runner/aws-powertools-util';
 
 import { Ec2OverrideConfig } from '../runners.d';
 
@@ -366,8 +365,10 @@ export function shouldLoadLaunchTemplateBlockDeviceName(labels: string[]): boole
   return hasBlockDeviceOverride && !hasBlockDeviceName;
 }
 
-export async function getDefaultBlockDeviceNameFromLaunchTemplate(launchTemplateName: string): Promise<string> {
-  const ec2Client = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
+export async function getDefaultBlockDeviceNameFromLaunchTemplate(
+  ec2Client: EC2Client,
+  launchTemplateName: string,
+): Promise<string> {
   const launchTemplateVersions = await ec2Client.send(
     new DescribeLaunchTemplateVersionsCommand({
       LaunchTemplateName: launchTemplateName,

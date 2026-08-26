@@ -22,7 +22,7 @@ import 'aws-sdk-client-mock-jest/vitest';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RunnerInfo, RunnerSource, RunnerType } from '../../../core';
-import { createRunner, listEC2Runners, tag, terminateRunner, untag } from './runners';
+import { createEc2RunnerClient, createRunner, listEC2Runners, tag, terminateRunner, untag } from './runners';
 import type { Ec2OverrideConfig, RunnerInputParameters } from './runners.d';
 
 process.env.AWS_REGION = 'eu-east-1';
@@ -502,6 +502,33 @@ describe('create runner', () => {
       Name: 'my-ami-id-param',
     });
   });
+
+  it('keeps cancellation request-scoped and rejects before calling AWS', async () => {
+    const abortController = new AbortController();
+    const abortReason = new Error('service stopping');
+    const runners = createEc2RunnerClient(new EC2Client({})).forRequest({
+      signal: abortController.signal,
+    });
+    abortController.abort(abortReason);
+
+    await expect(runners.create(createRunnerConfig(defaultRunnerConfig))).rejects.toThrow('service stopping');
+    expect(mockEC2Client).not.toHaveReceivedCommand(CreateFleetCommand);
+    expect(mockSSMClient).not.toHaveReceivedCommand(GetParameterCommand);
+  });
+
+  it('keeps another request usable when a request sharing the same clients is cancelled', async () => {
+    const abortController = new AbortController();
+    const client = createEc2RunnerClient(new EC2Client({}));
+    const cancelledRequest = client.forRequest({ signal: abortController.signal });
+    const activeRequest = client.forRequest({ signal: undefined });
+    mockEC2Client.on(DescribeInstancesCommand).resolves({ Reservations: [] });
+    abortController.abort(new Error('service stopping'));
+
+    await expect(cancelledRequest.list()).rejects.toThrow('service stopping');
+    await expect(activeRequest.list()).resolves.toEqual([]);
+    expect(mockEC2Client).toHaveReceivedCommandTimes(DescribeInstancesCommand, 1);
+  });
+
   it('calls create fleet of 1 instance with runner tracing enabled', async () => {
     tracer.getRootXrayTraceId = vi.fn().mockReturnValue('123');
 

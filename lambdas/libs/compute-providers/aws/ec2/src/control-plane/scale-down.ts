@@ -1,24 +1,28 @@
 import type { RunnerInfo, ScaleDownComputeProvider } from '../../../../core';
-import { bootTimeExceeded, listEC2Runners, tag, terminateRunner, untag } from '../runners';
+import { bootTimeExceeded, type Ec2RunnerOperations } from '../runners';
 
-async function listEc2ScaleDownRunners(environment: string, orphan?: boolean): Promise<RunnerInfo[]> {
-  return await listEC2Runners({ environment, orphan });
+async function listEc2ScaleDownRunners(
+  runners: Ec2RunnerOperations,
+  environment: string,
+  orphan?: boolean,
+): Promise<RunnerInfo[]> {
+  return await runners.list({ environment, orphan });
 }
 
-async function markEc2RunnerOrphan(id: string): Promise<void> {
-  await tag(id, [{ Key: 'ghr:orphan', Value: 'true' }]);
+async function markEc2RunnerOrphan(runners: Ec2RunnerOperations, id: string): Promise<void> {
+  await runners.tag(id, [{ Key: 'ghr:orphan', Value: 'true' }]);
 }
 
-async function unmarkEc2RunnerOrphan(id: string): Promise<void> {
-  await untag(id, [{ Key: 'ghr:orphan', Value: 'true' }]);
+async function unmarkEc2RunnerOrphan(runners: Ec2RunnerOperations, id: string): Promise<void> {
+  await runners.untag(id, [{ Key: 'ghr:orphan', Value: 'true' }]);
 }
 
-export function createEc2ScaleDownProvider(): Omit<ScaleDownComputeProvider, 'type'> {
+export function createEc2ScaleDownProvider(runners: Ec2RunnerOperations): Omit<ScaleDownComputeProvider, 'type'> {
   return {
-    list: listEc2ScaleDownRunners,
+    list: (environment, orphan) => listEc2ScaleDownRunners(runners, environment, orphan),
     bootTimeExceeded,
-    markOrphan: markEc2RunnerOrphan,
-    unmarkOrphan: unmarkEc2RunnerOrphan,
-    terminate: terminateRunner,
+    markOrphan: (id) => markEc2RunnerOrphan(runners, id),
+    unmarkOrphan: (id) => unmarkEc2RunnerOrphan(runners, id),
+    terminate: (id) => runners.terminate(id),
   };
 }

@@ -1,4 +1,5 @@
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
+import type { EC2Client } from '@aws-sdk/client-ec2';
 import type {
   CreateRunnerResult,
   CreateScaleUpRunnersInput,
@@ -9,7 +10,7 @@ import type {
 } from '../../../../core';
 import yn from 'yn';
 
-import { listEC2Runners } from '../runners';
+import type { Ec2RunnerOperations } from '../runners';
 import type { Ec2OverrideConfig } from '../runners.d';
 import {
   getDefaultBlockDeviceNameFromLaunchTemplate,
@@ -32,7 +33,10 @@ function loadEc2ScaleUpProviderConfig(): CreateEC2RunnerConfig {
   };
 }
 
-async function resolveEc2LabelsForRunners(messageLabels: string[]): Promise<RunnerLabelResolution<Ec2ScaleUpState>> {
+async function resolveEc2LabelsForRunners(
+  ec2Client: EC2Client,
+  messageLabels: string[],
+): Promise<RunnerLabelResolution<Ec2ScaleUpState>> {
   const trimmedLabels = messageLabels.map((label) => label.trim());
   const dynamicEC2Labels = trimmedLabels.filter((label) => label.startsWith('ghr-ec2-'));
   const nonEc2DynamicLabels = trimmedLabels.filter(
@@ -43,7 +47,7 @@ async function resolveEc2LabelsForRunners(messageLabels: string[]): Promise<Runn
 
   if (dynamicEC2Labels.length > 0) {
     const defaultBlockDeviceName = shouldLoadLaunchTemplateBlockDeviceName(dynamicEC2Labels)
-      ? await getDefaultBlockDeviceNameFromLaunchTemplate(process.env.LAUNCH_TEMPLATE_NAME)
+      ? await getDefaultBlockDeviceNameFromLaunchTemplate(ec2Client, process.env.LAUNCH_TEMPLATE_NAME)
       : undefined;
 
     ec2OverrideConfig = parseEc2OverrideConfig(dynamicEC2Labels, defaultBlockDeviceName);
@@ -56,19 +60,22 @@ async function resolveEc2LabelsForRunners(messageLabels: string[]): Promise<Runn
 }
 
 async function getCurrentEc2Runners(
+  runners: Ec2RunnerOperations,
   _state: Ec2ScaleUpState,
   { runnerType, runnerOwner }: CurrentRunnersInput,
 ): Promise<number> {
-  return (await listEC2Runners({ environment: process.env.ENVIRONMENT, runnerType, runnerOwner })).length;
+  return (await runners.list({ environment: process.env.ENVIRONMENT, runnerType, runnerOwner })).length;
 }
 
 async function createEc2ScaleUpRunners(
   { githubRunnerConfig, numberOfRunners, githubInstallationClient, state }: CreateScaleUpRunnersInput<Ec2ScaleUpState>,
   createStartRunnerConfig: CreateStartRunnerConfig,
+  runners: Ec2RunnerOperations,
 ): Promise<CreateRunnerResult> {
   const config = loadEc2ScaleUpProviderConfig();
 
   return await createRunners(
+    runners,
     githubRunnerConfig,
     {
       ...config,
@@ -83,10 +90,12 @@ async function createEc2ScaleUpRunners(
 
 export function createEc2ScaleUpProvider(
   createStartRunnerConfig: CreateStartRunnerConfig,
+  runners: Ec2RunnerOperations,
+  ec2Client: EC2Client,
 ): Omit<ScaleUpComputeProvider<Ec2ScaleUpState>, 'type'> {
   return {
-    resolveLabelsForRunners: resolveEc2LabelsForRunners,
-    getCurrentRunners: getCurrentEc2Runners,
-    createRunners: (input) => createEc2ScaleUpRunners(input, createStartRunnerConfig),
+    resolveLabelsForRunners: (labels) => resolveEc2LabelsForRunners(ec2Client, labels),
+    getCurrentRunners: (state, input) => getCurrentEc2Runners(runners, state, input),
+    createRunners: (input) => createEc2ScaleUpRunners(input, createStartRunnerConfig, runners),
   };
 }

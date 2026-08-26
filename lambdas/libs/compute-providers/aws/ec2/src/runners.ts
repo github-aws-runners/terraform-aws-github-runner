@@ -32,13 +32,68 @@ interface Ec2Filter {
   Values: string[];
 }
 
+export interface Ec2RunnerRequestContext {
+  readonly signal: AbortSignal | undefined;
+}
+
+export interface Ec2RunnerOperations {
+  list(filters?: Ec2ListRunnerFilters): Promise<RunnerInfo[]>;
+  create(runnerParameters: RunnerInputParameters): Promise<CreateRunnerResult>;
+  terminate(instanceId: string): Promise<void>;
+  tag(instanceId: string, tags: Tag[]): Promise<void>;
+  untag(instanceId: string, tags: Tag[]): Promise<void>;
+}
+
+export interface Ec2RunnerClient {
+  forRequest(context: Ec2RunnerRequestContext): Ec2RunnerOperations;
+}
+
+async function runWithRequestSignal<TResult>(
+  signal: AbortSignal | undefined,
+  operation: () => Promise<TResult>,
+): Promise<TResult> {
+  signal?.throwIfAborted();
+  return await operation();
+}
+
+export function createEc2RunnerClient(ec2Client: EC2Client): Ec2RunnerClient {
+  return {
+    forRequest: ({ signal }) => ({
+      list: (filters) => runWithRequestSignal(signal, () => listRunners(ec2Client, filters, signal)),
+      create: (runnerParameters) =>
+        runWithRequestSignal(signal, () => createEc2Runner(runnerParameters, ec2Client, signal)),
+      terminate: (instanceId) => runWithRequestSignal(signal, () => terminateEc2Runner(ec2Client, instanceId, signal)),
+      tag: (instanceId, tags) => runWithRequestSignal(signal, () => tagEc2Runner(ec2Client, instanceId, tags, signal)),
+      untag: (instanceId, tags) =>
+        runWithRequestSignal(signal, () => untagEc2Runner(ec2Client, instanceId, tags, signal)),
+    }),
+  };
+}
+
+let defaultRunnerOperations: Ec2RunnerOperations | undefined;
+
+function getDefaultRunnerOperations(): Ec2RunnerOperations {
+  defaultRunnerOperations ??= createEc2RunnerClient(
+    getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION })),
+  ).forRequest({ signal: undefined });
+  return defaultRunnerOperations;
+}
+
 type FleetError = NonNullable<CreateFleetResult['Errors']>[number];
 
 export async function listEC2Runners(filters: Ec2ListRunnerFilters | undefined = undefined): Promise<RunnerInfo[]> {
+  return await getDefaultRunnerOperations().list(filters);
+}
+
+async function listRunners(
+  ec2Client: EC2Client,
+  filters: Ec2ListRunnerFilters | undefined,
+  signal: AbortSignal | undefined,
+): Promise<RunnerInfo[]> {
   const ec2Filters = constructFilters(filters);
   const runners: RunnerInfo[] = [];
   for (const filter of ec2Filters) {
-    runners.push(...(await getRunners(filter)));
+    runners.push(...(await getRunners(ec2Client, filter, signal)));
   }
   return runners;
 }
@@ -68,14 +123,18 @@ function constructFilters(filters?: Ec2ListRunnerFilters): Ec2Filter[][] {
   return ec2Filters;
 }
 
-async function getRunners(ec2Filters: Ec2Filter[]): Promise<RunnerInfo[]> {
-  const ec2 = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
+async function getRunners(
+  ec2Client: EC2Client,
+  ec2Filters: Ec2Filter[],
+  signal: AbortSignal | undefined,
+): Promise<RunnerInfo[]> {
   const runners: RunnerInfo[] = [];
   let nextToken;
   let hasNext = true;
   while (hasNext) {
-    const instances: DescribeInstancesResult = await ec2.send(
+    const instances: DescribeInstancesResult = await ec2Client.send(
       new DescribeInstancesCommand({ Filters: ec2Filters, NextToken: nextToken }),
+      { abortSignal: signal },
     );
     hasNext = instances.NextToken ? true : false;
     nextToken = instances.NextToken;
@@ -109,22 +168,45 @@ function getRunnerInfo(runningInstances: DescribeInstancesResult) {
 }
 
 export async function terminateRunner(instanceId: string): Promise<void> {
+  await getDefaultRunnerOperations().terminate(instanceId);
+}
+
+async function terminateEc2Runner(
+  ec2Client: EC2Client,
+  instanceId: string,
+  signal: AbortSignal | undefined,
+): Promise<void> {
   logger.debug(`Runner '${instanceId}' will be terminated.`);
-  const ec2 = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
-  await ec2.send(new TerminateInstancesCommand({ InstanceIds: [instanceId] }));
+  await ec2Client.send(new TerminateInstancesCommand({ InstanceIds: [instanceId] }), { abortSignal: signal });
   logger.debug(`Runner ${instanceId} has been terminated.`);
 }
 
 export async function tag(instanceId: string, tags: Tag[]): Promise<void> {
+  await getDefaultRunnerOperations().tag(instanceId, tags);
+}
+
+async function tagEc2Runner(
+  ec2Client: EC2Client,
+  instanceId: string,
+  tags: Tag[],
+  signal: AbortSignal | undefined,
+): Promise<void> {
   logger.debug(`Tagging '${instanceId}'`, { tags });
-  const ec2 = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
-  await ec2.send(new CreateTagsCommand({ Resources: [instanceId], Tags: tags }));
+  await ec2Client.send(new CreateTagsCommand({ Resources: [instanceId], Tags: tags }), { abortSignal: signal });
 }
 
 export async function untag(instanceId: string, tags: Tag[]): Promise<void> {
+  await getDefaultRunnerOperations().untag(instanceId, tags);
+}
+
+async function untagEc2Runner(
+  ec2Client: EC2Client,
+  instanceId: string,
+  tags: Tag[],
+  signal: AbortSignal | undefined,
+): Promise<void> {
   logger.debug(`Untagging '${instanceId}'`, { tags });
-  const ec2 = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
-  await ec2.send(new DeleteTagsCommand({ Resources: [instanceId], Tags: tags }));
+  await ec2Client.send(new DeleteTagsCommand({ Resources: [instanceId], Tags: tags }), { abortSignal: signal });
 }
 
 const SPOT_ALLOCATION_STRATEGIES = [
@@ -299,6 +381,14 @@ function buildRunInstancesOverrides(
 }
 
 export async function createRunner(runnerParameters: RunnerInputParameters): Promise<CreateRunnerResult> {
+  return await getDefaultRunnerOperations().create(runnerParameters);
+}
+
+async function createEc2Runner(
+  runnerParameters: RunnerInputParameters,
+  ec2Client: EC2Client,
+  signal: AbortSignal | undefined,
+): Promise<CreateRunnerResult> {
   logger.debug('Runner configuration.', {
     runner: {
       configuration: {
@@ -307,11 +397,11 @@ export async function createRunner(runnerParameters: RunnerInputParameters): Pro
     },
   });
 
-  const ec2Client = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
   let amiIdOverride: string | undefined;
   try {
     amiIdOverride = await getAmiIdOverride(runnerParameters);
   } catch (error) {
+    throwIfAborted(signal, error);
     const retryable = isRetryableAwsError(error, runnerParameters.scaleErrors);
     logger.warn('Runner creation failed before an EC2 request could be made.', {
       error: error as Error,
@@ -325,21 +415,22 @@ export async function createRunner(runnerParameters: RunnerInputParameters): Pro
   // for instance types like mac*.metal. Use RunInstances directly instead.
   if (runnerParameters.useDedicatedHost) {
     logger.info('Using RunInstances for dedicated host placement (CreateFleet does not support dedicated hosts).');
-    const result = await createInstancesWithRunInstances(runnerParameters, amiIdOverride, ec2Client);
+    const result = await createInstancesWithRunInstances(runnerParameters, amiIdOverride, ec2Client, signal);
     logger.info(`Created instance(s) via RunInstances: ${result.instances.join(',')}`);
     return result;
   }
 
   let fleet: CreateFleetResult;
   try {
-    fleet = await createInstances(runnerParameters, amiIdOverride, ec2Client);
+    fleet = await createInstances(runnerParameters, amiIdOverride, ec2Client, signal);
   } catch (error) {
+    throwIfAborted(signal, error);
     const retryable = isRetryableAwsError(error, runnerParameters.scaleErrors);
     logger.warn('Create fleet request failed.', { error: error as Error, retryable });
     return failedCreateRunnerResult(runnerParameters.numberOfRunners, retryable);
   }
 
-  const result = await processFleetResult(fleet, runnerParameters);
+  const result = await processFleetResult(fleet, runnerParameters, ec2Client, signal);
 
   logger.info(`Created instance(s): ${result.instances.join(',')}`);
 
@@ -349,6 +440,8 @@ export async function createRunner(runnerParameters: RunnerInputParameters): Pro
 async function processFleetResult(
   fleet: CreateFleetResult,
   runnerParameters: RunnerInputParameters,
+  ec2Client: EC2Client,
+  signal: AbortSignal | undefined,
 ): Promise<CreateRunnerResult> {
   const instances: string[] = fleet.Instances?.flatMap((i) => i.InstanceIds?.flatMap((j) => j) || []) || [];
 
@@ -376,16 +469,20 @@ async function processFleetResult(
       runnerParameters.ec2instanceCriteria.instanceAllocationStrategy,
       'on-demand',
     );
-    const onDemandResult = await createRunner({
-      ...runnerParameters,
-      numberOfRunners: numberOfInstances,
-      onDemandFailoverOnError: ['InsufficientInstanceCapacity'],
-      ec2instanceCriteria: {
-        ...runnerParameters.ec2instanceCriteria,
-        targetCapacityType: 'on-demand',
-        instanceAllocationStrategy: failoverAllocationStrategy,
+    const onDemandResult = await createEc2Runner(
+      {
+        ...runnerParameters,
+        numberOfRunners: numberOfInstances,
+        onDemandFailoverOnError: ['InsufficientInstanceCapacity'],
+        ec2instanceCriteria: {
+          ...runnerParameters.ec2instanceCriteria,
+          targetCapacityType: 'on-demand',
+          instanceAllocationStrategy: failoverAllocationStrategy,
+        },
       },
-    });
+      ec2Client,
+      signal,
+    );
     instances.push(...onDemandResult.instances);
     return {
       instances,
@@ -474,6 +571,11 @@ function failedCreateRunnerResult(failedInstanceCount: number, isRetryable: bool
   };
 }
 
+function throwIfAborted(signal: AbortSignal | undefined, error: unknown): void {
+  if (signal?.aborted) signal.throwIfAborted();
+  if (error instanceof Error && error.name === 'AbortError') throw error;
+}
+
 async function getAmiIdOverride(runnerParameters: RunnerInputParameters): Promise<string | undefined> {
   if (!runnerParameters.amiIdSsmParameterName) {
     return undefined;
@@ -497,6 +599,7 @@ async function createInstances(
   runnerParameters: RunnerInputParameters,
   amiIdOverride: string | undefined,
   ec2Client: EC2Client,
+  signal: AbortSignal | undefined,
 ) {
   const tags = [
     { Key: 'ghr:Application', Value: 'github-action-runner' },
@@ -569,7 +672,7 @@ async function createInstances(
       Type: 'instant',
     });
     logger.debug('CreateFleet request payload.', { payload: createFleetCommand.input });
-    fleet = await ec2Client.send(createFleetCommand);
+    fleet = await ec2Client.send(createFleetCommand, { abortSignal: signal });
   } catch (e) {
     logger.warn('Create fleet request failed.', { error: e as Error });
     throw e;
@@ -581,6 +684,7 @@ async function createInstancesWithRunInstances(
   runnerParameters: RunnerInputParameters,
   amiIdOverride: string | undefined,
   ec2Client: EC2Client,
+  signal: AbortSignal | undefined,
 ): Promise<CreateRunnerResult> {
   const tags = [
     { Key: 'ghr:Application', Value: 'github-action-runner' },
@@ -627,9 +731,10 @@ async function createInstancesWithRunInstances(
     });
 
     logger.debug('RunInstances request payload.', { payload: runInstancesCommand.input });
-    const result = await ec2Client.send(runInstancesCommand);
+    const result = await ec2Client.send(runInstancesCommand, { abortSignal: signal });
     return processRunInstanceResult(result, runnerParameters);
   } catch (error) {
+    throwIfAborted(signal, error);
     const retryable = isRetryableAwsError(error, runnerParameters.scaleErrors);
     logger.warn('RunInstances request failed for dedicated host.', { error: error as Error, retryable });
     return failedCreateRunnerResult(runnerParameters.numberOfRunners, retryable);
