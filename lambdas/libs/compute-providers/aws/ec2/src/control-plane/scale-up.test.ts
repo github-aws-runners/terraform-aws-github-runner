@@ -78,7 +78,7 @@ function expectedRunnerParams(
     tracingEnabled: false,
     onDemandFailoverOnError: [],
     scaleErrors: ['UnfulfillableCapacity', 'MaxSpotInstanceCountExceeded', 'TargetCapacityLimitExceededException'],
-    source: 'lambda',
+    source: 'scale-up-lambda',
     useDedicatedHost: false,
     ec2OverrideConfig: undefined,
     ...overrides,

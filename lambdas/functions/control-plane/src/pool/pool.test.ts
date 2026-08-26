@@ -212,7 +212,7 @@ describe('Test simple pool.', () => {
         1,
         expect.anything(),
         expect.anything(),
-        'pool',
+        'pool-lambda',
       );
     });
 
@@ -230,7 +230,7 @@ describe('Test simple pool.', () => {
         8,
         expect.anything(),
         expect.anything(),
-        'pool',
+        'pool-lambda',
       );
     });
 
@@ -242,7 +242,7 @@ describe('Test simple pool.', () => {
         8,
         expect.anything(),
         expect.anything(),
-        'pool',
+        'pool-lambda',
       );
     });
 
@@ -332,7 +332,7 @@ describe('Test simple pool.', () => {
         3,
         expect.anything(),
         expect.anything(),
-        'pool',
+        'pool-lambda',
       );
     });
   });
@@ -354,7 +354,7 @@ describe('Test simple pool.', () => {
         3,
         expect.anything(),
         expect.anything(),
-        'pool',
+        'pool-lambda',
       );
     });
   });
@@ -411,7 +411,7 @@ describe('Test simple pool.', () => {
         1,
         expect.anything(),
         expect.anything(),
-        'pool',
+        'pool-lambda',
       );
     });
   });
@@ -449,7 +449,7 @@ describe('Test simple pool.', () => {
         2,
         expect.anything(),
         expect.anything(),
-        'pool',
+        'pool-lambda',
       );
     });
 
@@ -464,7 +464,7 @@ describe('Test simple pool.', () => {
         1,
         expect.anything(),
         expect.anything(),
-        'pool',
+        'pool-lambda',
       );
     });
 
@@ -478,7 +478,7 @@ describe('Test simple pool.', () => {
         8,
         expect.anything(),
         expect.anything(),
-        'pool',
+        'pool-lambda',
       );
     });
   });
@@ -503,7 +503,7 @@ describe('Test simple pool.', () => {
         2,
         expect.anything(),
         expect.anything(),
-        'pool',
+        'pool-lambda',
       );
     });
   });
@@ -567,7 +567,7 @@ describe('Test simple pool.', () => {
         expect.any(Number),
         expect.anything(),
         expect.anything(),
-        'pool',
+        'pool-lambda',
       );
     });
   });

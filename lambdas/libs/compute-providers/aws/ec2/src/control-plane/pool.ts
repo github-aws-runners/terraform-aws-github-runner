@@ -46,7 +46,7 @@ async function createEc2PoolRunners(
     numberOfRunners,
     githubInstallationClient,
     createStartRunnerConfig,
-    'pool',
+    'pool-lambda',
   );
   return instances;
 }

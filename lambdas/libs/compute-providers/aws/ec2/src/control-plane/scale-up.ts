@@ -77,7 +77,7 @@ async function createEc2ScaleUpRunners(
     numberOfRunners,
     githubInstallationClient,
     createStartRunnerConfig,
-    'lambda',
+    'scale-up-lambda',
   );
 }
 
