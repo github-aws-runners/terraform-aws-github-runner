@@ -22,7 +22,7 @@ import { getTracedAWSV3Client, tracer } from '@aws-github-runner/aws-powertools-
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
 import moment from 'moment';
 
-import type { CreateRunnerResult, RunnerInfo } from '../../../../core';
+import type { CreateRunnerResult, RunnerInfo } from '../../../core';
 import type { Ec2ListRunnerFilters, Ec2OverrideConfig, RunnerInputParameters } from './runners.d';
 
 const logger = createChildLogger('runners');
@@ -584,7 +584,7 @@ async function createInstancesWithRunInstances(
 ): Promise<CreateRunnerResult> {
   const tags = [
     { Key: 'ghr:Application', Value: 'github-action-runner' },
-    { Key: 'ghr:created_by', Value: runnerParameters.numberOfRunners === 1 ? 'scale-up-lambda' : 'pool-lambda' },
+    { Key: 'ghr:created_by', Value: runnerParameters.source },
     { Key: 'ghr:Type', Value: runnerParameters.runnerType },
     { Key: 'ghr:Owner', Value: runnerParameters.runnerOwner },
   ];

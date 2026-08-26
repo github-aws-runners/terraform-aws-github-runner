@@ -9,8 +9,8 @@ import type {
 } from '../../../../core';
 import yn from 'yn';
 
-import { listEC2Runners } from './runners';
-import type { Ec2OverrideConfig } from './runners.d';
+import { listEC2Runners } from '../runners';
+import type { Ec2OverrideConfig } from '../runners.d';
 import {
   getDefaultBlockDeviceNameFromLaunchTemplate,
   parseEc2OverrideConfig,
@@ -77,7 +77,7 @@ async function createEc2ScaleUpRunners(
     numberOfRunners,
     githubInstallationClient,
     createStartRunnerConfig,
-    'scale-up-lambda',
+    'lambda',
   );
 }
 

@@ -10,7 +10,7 @@
     "./control-plane": "./control-plane.ts",
     "./aws/ec2/webhook": "./aws/ec2/webhook.ts",
     "./aws/ec2/control-plane": "./aws/ec2/control-plane.ts",
-    "./aws/ec2/control-plane/runners": "./aws/ec2/src/control-plane/runners.ts",
+    "./aws/ec2/runners": "./aws/ec2/src/runners.ts",
     "./aws/ec2/control-plane/runner-config": "./aws/ec2/src/control-plane/runner-config.ts"
   },
   "type": "module",

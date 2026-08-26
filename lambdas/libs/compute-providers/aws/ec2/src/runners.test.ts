@@ -21,7 +21,7 @@ import { mockClient } from 'aws-sdk-client-mock';
 import 'aws-sdk-client-mock-jest/vitest';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { LambdaRunnerSource, RunnerInfo, RunnerType } from '../../../../core';
+import type { RunnerInfo, RunnerSource, RunnerType } from '../../../core';
 import { createRunner, listEC2Runners, tag, terminateRunner, untag } from './runners';
 import type { Ec2OverrideConfig, RunnerInputParameters } from './runners.d';
 
@@ -48,7 +48,7 @@ const mockRunningInstances: DescribeInstancesResult = {
           Tags: [
             { Key: 'ghr:Application', Value: 'github-action-runner' },
             { Key: 'ghr:runner_name_prefix', Value: RUNNER_NAME_PREFIX },
-            { Key: 'ghr:created_by', Value: 'scale-up-lambda' },
+            { Key: 'ghr:created_by', Value: 'lambda' },
             { Key: 'ghr:Type', Value: 'Org' },
             { Key: 'ghr:Owner', Value: 'CoderToCat' },
           ],
@@ -67,7 +67,7 @@ const mockRunningInstancesJit: DescribeInstancesResult = {
           Tags: [
             { Key: 'ghr:Application', Value: 'github-action-runner' },
             { Key: 'ghr:runner_name_prefix', Value: RUNNER_NAME_PREFIX },
-            { Key: 'ghr:created_by', Value: 'scale-up-lambda' },
+            { Key: 'ghr:created_by', Value: 'lambda' },
             { Key: 'ghr:Type', Value: 'Org' },
             { Key: 'ghr:Owner', Value: 'CoderToCat' },
             { Key: 'ghr:github_runner_id', Value: '9876543210' },
@@ -322,7 +322,7 @@ describe('create runner', () => {
     capacityType: 'spot',
     type: 'Org',
     scaleErrors: ['UnfulfillableCapacity', 'MaxSpotInstanceCountExceeded'],
-    source: 'scale-up-lambda',
+    source: 'lambda',
   };
 
   const defaultExpectedFleetRequestValues: ExpectedFleetRequestValues = {
@@ -330,7 +330,7 @@ describe('create runner', () => {
     capacityType: 'spot',
     allocationStrategy: SpotAllocationStrategy.CAPACITY_OPTIMIZED,
     totalTargetCapacity: 1,
-    source: 'scale-up-lambda',
+    source: 'lambda',
   };
 
   beforeEach(() => {
@@ -371,13 +371,13 @@ describe('create runner', () => {
     });
   });
 
-  it('calls create fleet of multiple instances with pool-lambda source when specified', async () => {
+  it('calls create fleet of multiple instances with pool source when specified', async () => {
     const instances = [{ InstanceIds: ['i-1234', 'i-5678', 'i-9012'] }];
 
     mockEC2Client.on(CreateFleetCommand).resolves({ Instances: instances });
 
     await createRunner({
-      ...createRunnerConfig({ ...defaultRunnerConfig, source: 'pool-lambda' }),
+      ...createRunnerConfig({ ...defaultRunnerConfig, source: 'pool' }),
       numberOfRunners: 3,
     });
 
@@ -385,7 +385,7 @@ describe('create runner', () => {
       ...expectedCreateFleetRequest({
         ...defaultExpectedFleetRequestValues,
         totalTargetCapacity: 3,
-        source: 'pool-lambda',
+        source: 'pool',
       }),
     });
   });
@@ -515,24 +515,24 @@ describe('create runner', () => {
     });
   });
 
-  it('calls create fleet with source set to scale-up-lambda when source is specified', async () => {
-    await createRunner(createRunnerConfig({ ...defaultRunnerConfig, source: 'scale-up-lambda' }));
+  it('calls create fleet with source set to lambda when source is specified', async () => {
+    await createRunner(createRunnerConfig({ ...defaultRunnerConfig, source: 'lambda' }));
 
     expect(mockEC2Client).toHaveReceivedCommandWith(CreateFleetCommand, {
       ...expectedCreateFleetRequest({
         ...defaultExpectedFleetRequestValues,
-        source: 'scale-up-lambda',
+        source: 'lambda',
       }),
     });
   });
 
-  it('calls create fleet with source set to pool-lambda when source is specified', async () => {
-    await createRunner(createRunnerConfig({ ...defaultRunnerConfig, source: 'pool-lambda' }));
+  it('calls create fleet with source set to pool when source is specified', async () => {
+    await createRunner(createRunnerConfig({ ...defaultRunnerConfig, source: 'pool' }));
 
     expect(mockEC2Client).toHaveReceivedCommandWith(CreateFleetCommand, {
       ...expectedCreateFleetRequest({
         ...defaultExpectedFleetRequestValues,
-        source: 'pool-lambda',
+        source: 'pool',
       }),
     });
   });
@@ -753,14 +753,14 @@ describe('create runner with errors', () => {
     capacityType: 'spot',
     type: 'Repo',
     scaleErrors: ['UnfulfillableCapacity', 'MaxSpotInstanceCountExceeded'],
-    source: 'scale-up-lambda',
+    source: 'lambda',
   };
   const defaultExpectedFleetRequestValues: ExpectedFleetRequestValues = {
     type: 'Repo',
     capacityType: 'spot',
     allocationStrategy: SpotAllocationStrategy.CAPACITY_OPTIMIZED,
     totalTargetCapacity: 1,
-    source: 'scale-up-lambda',
+    source: 'lambda',
   };
   beforeEach(() => {
     vi.clearAllMocks();
@@ -999,14 +999,14 @@ describe('create runner with errors fail over to OnDemand', () => {
     type: 'Repo',
     onDemandFailoverOnError: ['InsufficientInstanceCapacity'],
     scaleErrors: ['UnfulfillableCapacity', 'MaxSpotInstanceCountExceeded'],
-    source: 'scale-up-lambda',
+    source: 'lambda',
   };
   const defaultExpectedFleetRequestValues: ExpectedFleetRequestValues = {
     type: 'Repo',
     capacityType: 'spot',
     allocationStrategy: SpotAllocationStrategy.CAPACITY_OPTIMIZED,
     totalTargetCapacity: 1,
-    source: 'scale-up-lambda',
+    source: 'lambda',
   };
   beforeEach(() => {
     vi.clearAllMocks();
@@ -1170,7 +1170,7 @@ interface RunnerConfig {
   tracingEnabled?: boolean;
   onDemandFailoverOnError?: string[];
   scaleErrors: string[];
-  source: LambdaRunnerSource;
+  source: RunnerSource;
   useDedicatedHost?: boolean;
   ec2OverrideConfig?: Ec2OverrideConfig;
 }
@@ -1209,7 +1209,7 @@ interface ExpectedFleetRequestValues {
   totalTargetCapacity: number;
   imageId?: string;
   tracingEnabled?: boolean;
-  source: LambdaRunnerSource;
+  source: RunnerSource;
 }
 
 function expectedCreateFleetRequest(expectedValues: ExpectedFleetRequestValues): CreateFleetCommandInput {
@@ -1318,6 +1318,7 @@ describe('create runner with useDedicatedHost', () => {
   const dedicatedHostRunnerConfig: RunnerConfig = {
     allocationStrategy: SpotAllocationStrategy.CAPACITY_OPTIMIZED,
     capacityType: 'on-demand',
+    source: 'lambda',
     type: 'Org',
     scaleErrors: [],
     useDedicatedHost: true,
@@ -1393,7 +1394,7 @@ describe('create runner with useDedicatedHost', () => {
           ResourceType: 'instance',
           Tags: [
             { Key: 'ghr:Application', Value: 'github-action-runner' },
-            { Key: 'ghr:created_by', Value: 'scale-up-lambda' },
+            { Key: 'ghr:created_by', Value: 'lambda' },
             { Key: 'ghr:Type', Value: 'Org' },
             { Key: 'ghr:Owner', Value: REPO_NAME },
           ],
@@ -1402,7 +1403,7 @@ describe('create runner with useDedicatedHost', () => {
           ResourceType: 'volume',
           Tags: [
             { Key: 'ghr:Application', Value: 'github-action-runner' },
-            { Key: 'ghr:created_by', Value: 'scale-up-lambda' },
+            { Key: 'ghr:created_by', Value: 'lambda' },
             { Key: 'ghr:Type', Value: 'Org' },
             { Key: 'ghr:Owner', Value: REPO_NAME },
           ],
@@ -1411,7 +1412,7 @@ describe('create runner with useDedicatedHost', () => {
     });
   });
 
-  it('creates multiple instances via RunInstances', async () => {
+  it('creates multiple instances via RunInstances and preserves the caller source', async () => {
     mockEC2Client.on(RunInstancesCommand).resolves({
       Instances: [{ InstanceId: 'i-dedicated-1' }, { InstanceId: 'i-dedicated-2' }],
     });
@@ -1419,6 +1420,7 @@ describe('create runner with useDedicatedHost', () => {
     const result = await createRunner({
       ...createRunnerConfig(dedicatedHostRunnerConfig),
       numberOfRunners: 2,
+      source: 'lambda',
     });
 
     expect(result).toEqual({
@@ -1440,7 +1442,7 @@ describe('create runner with useDedicatedHost', () => {
           ResourceType: 'instance',
           Tags: [
             { Key: 'ghr:Application', Value: 'github-action-runner' },
-            { Key: 'ghr:created_by', Value: 'pool-lambda' },
+            { Key: 'ghr:created_by', Value: 'lambda' },
             { Key: 'ghr:Type', Value: 'Org' },
             { Key: 'ghr:Owner', Value: REPO_NAME },
           ],
@@ -1449,7 +1451,7 @@ describe('create runner with useDedicatedHost', () => {
           ResourceType: 'volume',
           Tags: [
             { Key: 'ghr:Application', Value: 'github-action-runner' },
-            { Key: 'ghr:created_by', Value: 'pool-lambda' },
+            { Key: 'ghr:created_by', Value: 'lambda' },
             { Key: 'ghr:Type', Value: 'Org' },
             { Key: 'ghr:Owner', Value: REPO_NAME },
           ],
@@ -1574,7 +1576,7 @@ describe('create runner with useDedicatedHost', () => {
           ResourceType: 'instance',
           Tags: [
             { Key: 'ghr:Application', Value: 'github-action-runner' },
-            { Key: 'ghr:created_by', Value: 'scale-up-lambda' },
+            { Key: 'ghr:created_by', Value: 'lambda' },
             { Key: 'ghr:Type', Value: 'Org' },
             { Key: 'ghr:Owner', Value: REPO_NAME },
           ],
@@ -1583,7 +1585,7 @@ describe('create runner with useDedicatedHost', () => {
           ResourceType: 'volume',
           Tags: [
             { Key: 'ghr:Application', Value: 'github-action-runner' },
-            { Key: 'ghr:created_by', Value: 'scale-up-lambda' },
+            { Key: 'ghr:created_by', Value: 'lambda' },
             { Key: 'ghr:Type', Value: 'Org' },
             { Key: 'ghr:Owner', Value: REPO_NAME },
           ],

@@ -2,10 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { RunnerInfo, RunnerType } from '../../../../core';
 import { createEc2ScaleDownProvider } from './scale-down';
-import { listEC2Runners, tag, terminateRunner, untag } from './runners';
+import { listEC2Runners, tag, terminateRunner, untag } from '../runners';
 
-vi.mock('./runners', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('./runners')>();
+vi.mock('../runners', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../runners')>();
   return {
     ...actual,
     listEC2Runners: vi.fn(),

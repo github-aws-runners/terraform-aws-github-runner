@@ -3,7 +3,7 @@ import moment from 'moment-timezone';
 import * as nock from 'nock';
 
 import { createRunners } from '@aws-github-runner/compute-providers/aws/ec2/control-plane/runner-config';
-import { listEC2Runners } from '@aws-github-runner/compute-providers/aws/ec2/control-plane/runners';
+import { listEC2Runners } from '@aws-github-runner/compute-providers/aws/ec2/runners';
 import * as ghAuth from '../github/auth';
 import { getGitHubEnterpriseApiUrl } from '../scale-runners/github-runner';
 import { adjust } from './pool';
@@ -26,7 +26,7 @@ vi.mock('@octokit/rest', () => ({
   }),
 }));
 
-vi.mock('@aws-github-runner/compute-providers/aws/ec2/control-plane/runners', async () => ({
+vi.mock('@aws-github-runner/compute-providers/aws/ec2/runners', async () => ({
   listEC2Runners: vi.fn(),
   // Include any other functions from the module that might be used
   bootTimeExceeded: vi.fn(),
@@ -212,7 +212,7 @@ describe('Test simple pool.', () => {
         1,
         expect.anything(),
         expect.anything(),
-        'pool-lambda',
+        'pool',
       );
     });
 
@@ -230,7 +230,7 @@ describe('Test simple pool.', () => {
         8,
         expect.anything(),
         expect.anything(),
-        'pool-lambda',
+        'pool',
       );
     });
 
@@ -242,7 +242,7 @@ describe('Test simple pool.', () => {
         8,
         expect.anything(),
         expect.anything(),
-        'pool-lambda',
+        'pool',
       );
     });
 
@@ -332,7 +332,7 @@ describe('Test simple pool.', () => {
         3,
         expect.anything(),
         expect.anything(),
-        'pool-lambda',
+        'pool',
       );
     });
   });
@@ -354,7 +354,7 @@ describe('Test simple pool.', () => {
         3,
         expect.anything(),
         expect.anything(),
-        'pool-lambda',
+        'pool',
       );
     });
   });
@@ -411,7 +411,7 @@ describe('Test simple pool.', () => {
         1,
         expect.anything(),
         expect.anything(),
-        'pool-lambda',
+        'pool',
       );
     });
   });
@@ -449,7 +449,7 @@ describe('Test simple pool.', () => {
         2,
         expect.anything(),
         expect.anything(),
-        'pool-lambda',
+        'pool',
       );
     });
 
@@ -464,7 +464,7 @@ describe('Test simple pool.', () => {
         1,
         expect.anything(),
         expect.anything(),
-        'pool-lambda',
+        'pool',
       );
     });
 
@@ -478,7 +478,7 @@ describe('Test simple pool.', () => {
         8,
         expect.anything(),
         expect.anything(),
-        'pool-lambda',
+        'pool',
       );
     });
   });
@@ -503,7 +503,7 @@ describe('Test simple pool.', () => {
         2,
         expect.anything(),
         expect.anything(),
-        'pool-lambda',
+        'pool',
       );
     });
   });
@@ -567,7 +567,7 @@ describe('Test simple pool.', () => {
         expect.any(Number),
         expect.anything(),
         expect.anything(),
-        'pool-lambda',
+        'pool',
       );
     });
   });

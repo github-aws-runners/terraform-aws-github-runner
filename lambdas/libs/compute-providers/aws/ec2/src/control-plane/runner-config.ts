@@ -4,15 +4,15 @@ import type {
   CreateRunnerResult,
   CreateStartRunnerConfig,
   GitHubRunnerMetadata,
-  LambdaRunnerSource,
+  RunnerSource,
   StartRunnerConfigOptions,
 } from '../../../../core';
 import { Octokit } from '@octokit/rest';
 import type { Tag } from '@aws-sdk/client-ec2';
 import yn from 'yn';
 
-import { createRunner, tag, terminateRunner } from './runners';
-import type { RunnerInputParameters } from './runners.d';
+import { createRunner, tag, terminateRunner } from '../runners';
+import type { RunnerInputParameters } from '../runners.d';
 
 const logger = createChildLogger('ec2-runners');
 const RUNNER_LABELS_TAG_KEY = 'ghr:runner_labels';
@@ -66,7 +66,7 @@ export async function createRunners(
   numberOfRunners: number,
   ghClient: Octokit,
   createStartRunnerConfig: CreateStartRunnerConfig,
-  source: LambdaRunnerSource = 'scale-up-lambda',
+  source: RunnerSource,
 ): Promise<CreateRunnerResult> {
   let result: CreateRunnerResult;
   try {
