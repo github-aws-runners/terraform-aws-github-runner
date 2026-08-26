@@ -108,11 +108,15 @@ terraform output webhook_secret
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
+| <a name="input_ami_housekeeper_lambda_zip"></a> [ami\_housekeeper\_lambda\_zip](#input\_ami\_housekeeper\_lambda\_zip) | Path to the AMI housekeeper Lambda archive. Uses the module default when unset. | `string` | `null` | no |
 | <a name="input_ami_name_filter"></a> [ami\_name\_filter](#input\_ami\_name\_filter) | AMI name filter for the action runner AMI. By default amazon linux 2 is used. | `string` | `"github-runner-al2023-x86_64-*"` | no |
 | <a name="input_aws_region"></a> [aws\_region](#input\_aws\_region) | AWS region. | `string` | `"eu-west-1"` | no |
+| <a name="input_aws_s3_use_path_style"></a> [aws\_s3\_use\_path\_style](#input\_aws\_s3\_use\_path\_style) | Whether the AWS provider should use path-style S3 addressing. | `bool` | `false` | no |
 | <a name="input_environment"></a> [environment](#input\_environment) | Environment name, used as prefix. | `string` | `null` | no |
 | <a name="input_github_app"></a> [github\_app](#input\_github\_app) | GitHub for API usages. | <pre>object({<br/>    id         = string<br/>    key_base64 = string<br/>  })</pre> | n/a | yes |
 | <a name="input_runner_os"></a> [runner\_os](#input\_runner\_os) | The EC2 Operating System type to use for action runner instances (linux, osx, windows). | `string` | `"linux"` | no |
+| <a name="input_runners_lambda_zip"></a> [runners\_lambda\_zip](#input\_runners\_lambda\_zip) | Path to the runners Lambda archive. Uses the module default when unset. | `string` | `null` | no |
+| <a name="input_webhook_lambda_zip"></a> [webhook\_lambda\_zip](#input\_webhook\_lambda\_zip) | Path to the webhook Lambda archive. Uses the module default when unset. | `string` | `null` | no |
 
 ## Outputs
 

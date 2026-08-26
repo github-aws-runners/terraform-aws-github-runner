@@ -61,6 +61,7 @@ jobs:
     services:
       ministack:
         image: ghcr.io/ministackorg/ministack:1.5.0@sha256:ba48c20747780605a4287a950e7bb1758ddc3b55ec92409a0c47677cbe26bbb9
+        options: --network-alias 000000000000.ministack
         env:
           MINISTACK_ACCOUNT_ID: "000000000000"
           MINISTACK_REGION: eu-west-1
@@ -80,7 +81,7 @@ jobs:
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - id: prepare
-        name: Prepare isolated fixture
+        name: Prepare test runtime
         env:
           EXAMPLE: ${{ matrix.example }}
         run: tests/ministack/run-example.sh prepare "$EXAMPLE"

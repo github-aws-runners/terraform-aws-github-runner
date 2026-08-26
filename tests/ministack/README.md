@@ -1,14 +1,23 @@
 # MiniStack example lifecycle tests
 
 The MiniStack workflow runs explicit `terraform apply` and `terraform destroy`
-commands against the repository's runnable AWS examples. Every matrix entry gets
-an isolated source tree, Terraform state, and MiniStack service.
+commands from each checked-in `examples/<name>` root. MiniStack-specific values
+are supplied through ordinary example inputs in `tests/ministack/inputs`; no
+Terraform configuration is copied into or layered over an example.
 
-The fixture creates synthetic SSM values through MiniStack and an inert Lambda
-archive under its ignored `.terraform/` directory. Test-only Terraform override
-files route each example to that archive and a MiniStack AMI. They also disable
-the `webhook-github-app` local-exec module, which would otherwise update a real
-GitHub App. The production example configurations are not changed.
+Terraform data, state, and the inert Lambda archive live under the runner's
+temporary directory. The small `tests/ministack/setup` root is a prerequisite,
+not the code under test: it creates the inert archive and seeds the external SSM
+parameters consumed by the external-secrets and multi-runner examples. The
+archive prevents scheduled or S3-triggered Lambda functions from making GitHub
+calls. The GitHub App updater is outside this AWS-only lifecycle test and is
+excluded with a Terraform target.
+
+The runner accepts only `http://127.0.0.1:4566`, `http://localhost:4566`, or
+`http://ministack:4566` as the AWS endpoint and always replaces ambient AWS
+credentials with synthetic MiniStack identifiers. It also rejects
+service-specific endpoint variables and ignores ambient AWS profile files so
+they cannot bypass the validated global endpoint.
 
 | Example | Lifecycle coverage |
 | --- | --- |

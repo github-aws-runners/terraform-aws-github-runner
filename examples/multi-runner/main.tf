@@ -54,7 +54,7 @@ locals {
             subnet_ids = lookup(v.runner_config, "subnet_ids", null) != null ? [module.base.vpc.private_subnets[0]] : null
             vpc_id     = lookup(v.runner_config, "vpc_id", null) != null ? module.base.vpc.vpc_id : null
             ami = contains(keys(v.runner_config), "ami") ? merge(
-              v.runner_config.ami,
+              merge(concat([v.runner_config.ami], var.ami[*])...),
               {
                 id_ssm_parameter_arn = lookup(local.ssm_ami_arns, k, null) != null ? local.ssm_ami_arns[k] : null
               }
@@ -116,6 +116,10 @@ module "runners" {
     id             = var.github_app.id
     webhook_secret = random_id.random.hex
   }
+
+  webhook_lambda_zip                = var.webhook_lambda_zip
+  runners_lambda_zip                = var.runners_lambda_zip
+  runner_binaries_syncer_lambda_zip = var.runner_binaries_syncer_lambda_zip
 
   # Uncomment to distribute GitHub API rate limit usage across multiple GitHub Apps.
   # Each additional app must be installed on the same repos/orgs as the primary app.

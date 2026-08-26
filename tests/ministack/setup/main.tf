@@ -27,22 +27,32 @@ provider "aws" {
   s3_use_path_style           = true
 }
 
+variable "lambda_archive_path" {
+  description = "Path where the inert Lambda archive is created."
+  type        = string
+  default     = null
+}
+
+locals {
+  lambda_archive_path = var.lambda_archive_path != null ? var.lambda_archive_path : "${path.module}/.terraform/ministack/lambda.zip"
+}
+
 data "archive_file" "lambda" {
   type        = "zip"
   source_file = "${path.module}/index.mjs"
-  output_path = "${path.module}/.terraform/ministack/lambda.zip"
+  output_path = local.lambda_archive_path
 }
 
 resource "aws_ssm_parameter" "al2023_x64" {
   name  = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64"
   type  = "String"
-  value = "ami-0a1b2c3d4e5f67890"
+  value = "ami-0abcdef1234567890"
 }
 
 resource "aws_ssm_parameter" "al2023_arm64" {
   name  = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-arm64"
   type  = "String"
-  value = "ami-0a1b2c3d4e5f67890"
+  value = "ami-0abcdef1234567890"
 }
 
 resource "aws_ssm_parameter" "github_app_id" {
