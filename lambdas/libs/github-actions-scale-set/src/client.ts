@@ -17,6 +17,7 @@ import {
   ScaleSetRequestOptions,
   SystemInfo,
 } from './types';
+import { trimTrailingSlashes } from './url';
 
 const ADMIN_TOKEN_REFRESH_SKEW_MS = 60_000;
 const SUCCESS_STATUSES = Array.from({ length: 100 }, (_, index) => index + 200);
@@ -67,16 +68,17 @@ interface ActionsRequestOptions extends ScaleSetRequestOptions {
 }
 
 function joinUrlPath(base: string, path: string): string {
-  if (base === '') {
+  const normalizedBase = trimTrailingSlashes(base);
+  if (normalizedBase === '') {
     if (path === '') {
       return '';
     }
     return path.startsWith('/') ? path : `/${path}`;
   }
   if (path === '') {
-    return base.replace(/\/+$/, '');
+    return normalizedBase;
   }
-  return `${base.replace(/\/+$/, '')}${path.startsWith('/') ? '' : '/'}${path}`;
+  return `${normalizedBase}${path.startsWith('/') ? '' : '/'}${path}`;
 }
 
 export function actionsServiceUrl(
@@ -661,6 +663,6 @@ export class GitHubActionsScaleSetClient {
         'Actions service admin connection url must be HTTPS and contain no credentials, query, or fragment',
       );
     }
-    return { url: actionsServiceUrl.toString().replace(/\/$/, ''), token: response.token };
+    return { url: trimTrailingSlashes(actionsServiceUrl.toString()), token: response.token };
   }
 }
