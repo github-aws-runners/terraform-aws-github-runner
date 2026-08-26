@@ -165,10 +165,20 @@ if ($enable_jit_config -eq "false" -or $agent_mode -ne "ephemeral") {
   Tag-InstanceWithRunnerId
 }
 
+$operatingSystem = Get-CimInstance -ClassName Win32_OperatingSystem
+
 $jsonBody = @(
+    @{
+        group='Operating System'
+        detail="Distribution: $($operatingSystem.Caption)`nVersion: $($operatingSystem.Version)`nArchitecture: $($operatingSystem.OSArchitecture)"
+    },
     @{
         group='Runner Image'
         detail="AMI id: $ami_id"
+    },
+    @{
+        group='EC2'
+        detail="Instance type: $($metadata.instanceType)`nAvailability zone: $($metadata.availabilityZone)"
     }
 )
 ConvertTo-Json -InputObject $jsonBody | Set-Content -Path "$pwd\.setup_info"
