@@ -1,3 +1,5 @@
+import { trimSurroundingSlashes, trimTrailingSlashes } from './url';
+
 export const GITHUB_SCOPES = {
   enterprise: 'enterprise',
   organization: 'organization',
@@ -44,7 +46,7 @@ function isHostedGitHubUrl(configUrl: URL, forceGhes?: boolean): boolean {
 export function parseGitHubConfigUrl(configUrl: string, forceGhes?: boolean): ParsedGitHubConfig {
   let parsedUrl: URL;
   try {
-    parsedUrl = new URL(configUrl.trim().replace(/\/+$/, ''));
+    parsedUrl = new URL(trimTrailingSlashes(configUrl.trim()));
   } catch (error) {
     throw new InvalidGitHubConfigUrlError(configUrl, { cause: error });
   }
@@ -53,7 +55,7 @@ export function parseGitHubConfigUrl(configUrl: string, forceGhes?: boolean): Pa
     throw new InvalidGitHubConfigUrlError(configUrl);
   }
 
-  const pathParts = parsedUrl.pathname.replace(/^\/+|\/+$/g, '').split('/');
+  const pathParts = trimSurroundingSlashes(parsedUrl.pathname).split('/');
   const isHosted = isHostedGitHubUrl(parsedUrl, forceGhes);
 
   if (pathParts.length === 1 && pathParts[0] !== '') {

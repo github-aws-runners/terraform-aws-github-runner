@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { GitHubActionsScaleSetClient } from './client';
+import { actionsServiceUrl, GitHubActionsScaleSetClient } from './client';
 import { SCALE_SET_ERROR_CODES, ScaleSetHttpError, ScaleSetProtocolError } from './errors';
 import { ScaleSetFetch } from './types';
 
@@ -65,6 +65,20 @@ function clientFixture(serviceHandler: ServiceHandler, options: { adminToken?: (
     serviceRequests,
   };
 }
+
+describe('actionsServiceUrl', () => {
+  it('normalizes a long trailing slash sequence before joining the request path', () => {
+    const base = `https://actions.example/tenant/123${'/'.repeat(10_000)}`;
+
+    expect(actionsServiceUrl(base, '').pathname).toBe('/tenant/123');
+    expect(actionsServiceUrl(base, '_apis/runtime/runnerscalesets').pathname).toBe(
+      '/tenant/123/_apis/runtime/runnerscalesets',
+    );
+    const url = actionsServiceUrl(base, '/_apis/runtime/runnerscalesets');
+    expect(url.pathname).toBe('/tenant/123/_apis/runtime/runnerscalesets');
+    expect(url.searchParams.get('api-version')).toBe('6.0-preview');
+  });
+});
 
 describe('GitHubActionsScaleSetClient', () => {
   beforeEach(() => {
