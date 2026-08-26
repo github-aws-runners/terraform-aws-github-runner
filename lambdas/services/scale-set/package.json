@@ -1,0 +1,42 @@
+{
+  "name": "@aws-github-runner/scale-set-service",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "build": "ncc build src/main.ts -o dist --minify",
+    "typecheck": "tsc --noEmit",
+    "test": "NODE_ENV=test nx test",
+    "test:watch": "NODE_ENV=test nx test --watch",
+    "lint": "eslint src",
+    "format": "prettier --write \"**/*.ts\"",
+    "format-check": "prettier --check \"**/*.ts\"",
+    "all": "yarn typecheck && yarn build && yarn format-check && yarn lint && yarn test"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.3",
+    "@vercel/ncc": "0.38.4",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@aws-github-runner/aws-ssm-util": "*",
+    "@aws-github-runner/compute-providers": "*",
+    "@aws-github-runner/github-actions-scale-set": "*",
+    "@aws-sdk/client-ssm": "^3.1009.0",
+    "@octokit/auth-app": "8.2.0",
+    "@octokit/request": "^9.2.2",
+    "undici": "^6.19.2"
+  },
+  "nx": {
+    "includedScripts": [
+      "build",
+      "typecheck",
+      "format",
+      "format-check",
+      "lint",
+      "all"
+    ]
+  }
+}
