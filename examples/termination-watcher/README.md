@@ -45,9 +45,7 @@ No resources.
 
 ## Inputs
 
-| Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
-| <a name="input_termination_watcher_lambda_zip"></a> [termination\_watcher\_lambda\_zip](#input\_termination\_watcher\_lambda\_zip) | Path to the termination watcher Lambda archive. Uses the module default when unset. | `string` | `null` | no |
+No inputs.
 
 ## Outputs
 

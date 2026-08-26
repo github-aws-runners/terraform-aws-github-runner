@@ -12,6 +12,5 @@ module "spot_termination_watchter" {
     tag_filters = {
       "ghr:Application" = "github-action-runner"
     }
-    zip = var.termination_watcher_lambda_zip
   }
 }

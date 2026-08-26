@@ -62,17 +62,9 @@ terraform output -raw webhook_secret
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_ami"></a> [ami](#input\_ami) | AMI configuration for the action runner instances. Uses the module default when unset. | <pre>object({<br/>    filter               = optional(map(list(string)), { state = ["available"] })<br/>    owners               = optional(list(string), ["amazon"])<br/>    id_ssm_parameter_arn = optional(string, null)<br/>    kms_key_arn          = optional(string, null)<br/>  })</pre> | `null` | no |
-| <a name="input_ami_housekeeper_lambda_zip"></a> [ami\_housekeeper\_lambda\_zip](#input\_ami\_housekeeper\_lambda\_zip) | Path to the AMI housekeeper Lambda archive. Uses the module default when unset. | `string` | `null` | no |
 | <a name="input_aws_region"></a> [aws\_region](#input\_aws\_region) | AWS region. | `string` | `"eu-west-1"` | no |
-| <a name="input_aws_s3_use_path_style"></a> [aws\_s3\_use\_path\_style](#input\_aws\_s3\_use\_path\_style) | Whether the AWS provider should use path-style S3 addressing. | `bool` | `false` | no |
-| <a name="input_configure_github_app"></a> [configure\_github\_app](#input\_configure\_github\_app) | Whether to update the GitHub App webhook after deploying the runners. | `bool` | `true` | no |
 | <a name="input_environment"></a> [environment](#input\_environment) | Environment name, used as prefix. | `string` | `null` | no |
 | <a name="input_github_app"></a> [github\_app](#input\_github\_app) | GitHub for API usages. | <pre>object({<br/>    id         = string<br/>    key_base64 = string<br/>  })</pre> | n/a | yes |
-| <a name="input_runner_binaries_syncer_lambda_zip"></a> [runner\_binaries\_syncer\_lambda\_zip](#input\_runner\_binaries\_syncer\_lambda\_zip) | Path to the runner binaries syncer Lambda archive. Uses the module default when unset. | `string` | `null` | no |
-| <a name="input_runners_lambda_zip"></a> [runners\_lambda\_zip](#input\_runners\_lambda\_zip) | Path to the runners Lambda archive. Uses the module default when unset. | `string` | `null` | no |
-| <a name="input_termination_watcher_lambda_zip"></a> [termination\_watcher\_lambda\_zip](#input\_termination\_watcher\_lambda\_zip) | Path to the termination watcher Lambda archive. Uses the module default when unset. | `string` | `null` | no |
-| <a name="input_webhook_lambda_zip"></a> [webhook\_lambda\_zip](#input\_webhook\_lambda\_zip) | Path to the webhook Lambda archive. Uses the module default when unset. | `string` | `null` | no |
 
 ## Outputs
 

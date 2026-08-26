@@ -12,9 +12,3 @@ variable "webhook_endpoint" {
   description = "The endpoint to use for the webhook, defaults to the endpoint of the runners module."
   type        = string
 }
-
-variable "enabled" {
-  description = "Whether to update the GitHub App webhook."
-  type        = bool
-  default     = true
-}

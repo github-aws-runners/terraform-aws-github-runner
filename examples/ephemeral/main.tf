@@ -20,7 +20,6 @@ module "runners" {
   aws_region                      = local.aws_region
   vpc_id                          = module.base.vpc.vpc_id
   subnet_ids                      = module.base.vpc.private_subnets
-  ami                             = var.ami
 
   prefix = local.environment
   tags = {
@@ -32,10 +31,6 @@ module "runners" {
     id             = var.github_app.id
     webhook_secret = random_id.random.hex
   }
-
-  webhook_lambda_zip                = var.webhook_lambda_zip
-  runners_lambda_zip                = var.runners_lambda_zip
-  runner_binaries_syncer_lambda_zip = var.runner_binaries_syncer_lambda_zip
 
   # When not explicitly set lambda zip files are grapped from the module requiring lambda build.
   # Alternatively you can set the path to the lambda zip files here.
@@ -117,7 +112,6 @@ module "runners" {
 module "webhook_github_app" {
   source     = "../../modules/webhook-github-app"
   depends_on = [module.runners]
-  enabled    = var.configure_github_app
 
   github_app = {
     key_base64     = var.github_app.key_base64

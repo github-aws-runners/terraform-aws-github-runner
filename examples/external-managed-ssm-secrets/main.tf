@@ -16,7 +16,6 @@ module "runners" {
   aws_region                      = local.aws_region
   vpc_id                          = module.base.vpc.vpc_id
   subnet_ids                      = module.base.vpc.private_subnets
-  ami                             = var.ami
 
   prefix = local.environment
   tags = {
@@ -28,10 +27,6 @@ module "runners" {
     id_ssm             = var.github_app_ssm_parameters.id
     webhook_secret_ssm = var.github_app_ssm_parameters.webhook_secret
   }
-
-  webhook_lambda_zip                = var.webhook_lambda_zip
-  runners_lambda_zip                = var.runners_lambda_zip
-  runner_binaries_syncer_lambda_zip = var.runner_binaries_syncer_lambda_zip
 
   enable_organization_runners = true
   runner_extra_labels         = ["default", "example"]
