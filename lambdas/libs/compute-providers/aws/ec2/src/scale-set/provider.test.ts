@@ -8,7 +8,7 @@ import {
   TerminateInstancesCommand,
   type Instance,
 } from '@aws-sdk/client-ec2';
-import { DeleteParameterCommand, PutParameterCommand, SSMClient } from '@aws-sdk/client-ssm';
+import { DeleteParameterCommand, GetParameterCommand, PutParameterCommand, SSMClient } from '@aws-sdk/client-ssm';
 import { mockClient } from 'aws-sdk-client-mock';
 import 'aws-sdk-client-mock-jest/vitest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -127,13 +127,15 @@ function createRequest(overrides: Partial<ScaleSetReconcileRequest> = {}): Scale
   };
 }
 
-function provider(options: { githubScope?: string; now?: () => number } = {}) {
+function provider(
+  options: { githubScope?: string; now?: () => number; configuration?: Ec2ScaleSetProviderConfig } = {},
+) {
   return createEc2ScaleSetProvider(
     {
       runnerConfigName: 'linux',
       scaleSetId: 42,
       githubScope: options.githubScope ?? githubScope,
-      configuration: config,
+      configuration: options.configuration ?? config,
     },
     {
       ec2Client,
@@ -176,13 +178,13 @@ describe('EC2 scale-set provider configuration', () => {
   });
 
   it('does not expose configurable EC2 ownership or lifecycle tags', () => {
-    expect(Object.keys(config)).not.toContain('additionalTags');
+    expect(Object.keys(config)).not.toContain('orchestrationTags');
     expect(() =>
       parseEc2ScaleSetProviderConfig({
         ...config,
-        additionalTags: [{ Key: EC2_SCALE_SET_ID_TAG, Value: 'another-scale-set' }],
+        orchestrationTags: [{ Key: EC2_SCALE_SET_ID_TAG, Value: 'another-scale-set' }],
       }),
-    ).toThrow("Unsupported EC2 scale-set configuration field 'configuration.additionalTags'");
+    ).toThrow("Unsupported EC2 scale-set configuration field 'configuration.orchestrationTags'");
   });
 
   it('rejects non-canonical GitHub ownership scopes before creating clients', () => {
@@ -217,6 +219,9 @@ describe('EC2 scale-set reconciliation', () => {
     expect(result).toMatchObject({ status: 'converged', desiredRunners: 1, currentRunners: 1 });
     expect(ec2Mock).toHaveReceivedCommandWith(DescribeInstancesCommand, {
       Filters: expect.arrayContaining([
+        { Name: 'tag:ghr:Application', Values: ['github-action-runner'] },
+        { Name: 'tag:ghr:created_by', Values: ['scale-set-service'] },
+        { Name: 'tag:ghr:environment', Values: ['unit-test'] },
         { Name: `tag:${EC2_RUNNER_CONFIG_TAG}`, Values: ['linux'] },
         { Name: `tag:${EC2_SCALE_SET_ID_TAG}`, Values: ['42'] },
         { Name: `tag:${EC2_GITHUB_SCOPE_HASH_TAG}`, Values: [githubScopeHash] },
@@ -449,6 +454,8 @@ describe('EC2 scale-set reconciliation', () => {
         expect.objectContaining({
           ResourceType: 'instance',
           Tags: expect.arrayContaining([
+            { Key: 'ghr:created_by', Value: 'scale-set-service' },
+            { Key: 'ghr:environment', Value: 'unit-test' },
             { Key: 'ghr:Owner', Value: 'example' },
             { Key: 'ghr:Type', Value: 'Org' },
             { Key: EC2_RUNNER_CONFIG_TAG, Value: 'linux' },
@@ -470,6 +477,24 @@ describe('EC2 scale-set reconciliation', () => {
         { Key: EC2_SCALE_SET_ID_TAG, Value: '42' },
         { Key: EC2_GITHUB_SCOPE_HASH_TAG, Value: githubScopeHash },
       ]),
+    });
+  });
+
+  it('resolves an AMI parameter through the provider-owned SSM client', async () => {
+    const instanceId = 'i-1234567890abcdef0';
+    const amiIdSsmParameterName = '/github-action-runners/unit-test/ami';
+    ec2Mock.on(DescribeInstancesCommand).resolves({});
+    ec2Mock.on(CreateFleetCommand).resolves({ Instances: [{ InstanceIds: [instanceId] }] });
+    ssmMock.on(GetParameterCommand).resolves({ Parameter: { Value: 'ami-0123456789abcdef0' } });
+
+    const result = await provider({
+      configuration: { ...config, amiIdSsmParameterName },
+    }).reconcile(createRequest());
+
+    expect(result.actions.launched).toBe(1);
+    expect(ssmMock).toHaveReceivedCommandWith(GetParameterCommand, {
+      Name: amiIdSsmParameterName,
+      WithDecryption: true,
     });
   });
 
