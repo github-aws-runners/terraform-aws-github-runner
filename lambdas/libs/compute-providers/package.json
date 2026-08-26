@@ -8,8 +8,10 @@
     "./provider-types": "./provider-types.ts",
     "./webhook": "./webhook.ts",
     "./control-plane": "./control-plane.ts",
+    "./scale-set": "./scale-set.ts",
     "./aws/ec2/webhook": "./aws/ec2/webhook.ts",
     "./aws/ec2/control-plane": "./aws/ec2/control-plane.ts",
+    "./aws/ec2/scale-set": "./aws/ec2/scale-set.ts",
     "./aws/ec2/runners": "./aws/ec2/src/runners.ts",
     "./aws/ec2/control-plane/runner-creation": "./aws/ec2/src/control-plane/runner-creation.ts"
   },
@@ -27,6 +29,7 @@
     "@aws-github-runner/aws-powertools-util": "*",
     "@aws-github-runner/aws-ssm-util": "*",
     "@aws-sdk/client-ec2": "^3.1009.0",
+    "@aws-sdk/client-ssm": "^3.1009.0",
     "@octokit/rest": "22.0.1",
     "moment": "2.29.4",
     "yn": "3.1.1"

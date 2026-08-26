@@ -423,6 +423,29 @@ describe('create runner', () => {
     });
   });
 
+  it.each([
+    ['a provider-owned tag', [{ Key: 'ghr:Owner', Value: 'another-owner' }]],
+    [
+      'a duplicate orchestration tag',
+      [
+        { Key: 'ghr:scale_set_id', Value: '42' },
+        { Key: 'ghr:scale_set_id', Value: '43' },
+      ],
+    ],
+  ])('rejects %s before creating a Fleet', async (_description, orchestrationTags) => {
+    await expect(
+      ec2Operations.create({
+        ...createRunnerConfig(defaultRunnerConfig),
+        orchestrationTags,
+      }),
+    ).resolves.toEqual({
+      instances: [],
+      failedInstanceCount: 1,
+      failureCodes: ['aws-name:Error'],
+    });
+    expect(mockEC2Client).not.toHaveReceivedCommand(CreateFleetCommand);
+  });
+
   it('calls create fleet of 1 instance with the on-demand capacity', async () => {
     await ec2Operations.create(
       createRunnerConfig({ ...defaultRunnerConfig, capacityType: 'on-demand', allocationStrategy: 'lowest-price' }),
@@ -1489,6 +1512,25 @@ describe('create runner with useDedicatedHost', () => {
             { Key: 'ghr:Owner', Value: REPO_NAME },
           ],
         },
+      ],
+    });
+  });
+
+  it('passes orchestration tags to RunInstances resources', async () => {
+    const orchestrationTags = [
+      { Key: 'ghr:environment', Value: 'unit-test' },
+      { Key: 'ghr:scale_set_id', Value: '42' },
+    ];
+
+    await ec2Operations.create({
+      ...createRunnerConfig(dedicatedHostRunnerConfig),
+      orchestrationTags,
+    });
+
+    expect(mockEC2Client).toHaveReceivedCommandWith(RunInstancesCommand, {
+      TagSpecifications: [
+        { ResourceType: 'instance', Tags: expect.arrayContaining(orchestrationTags) },
+        { ResourceType: 'volume', Tags: expect.arrayContaining(orchestrationTags) },
       ],
     });
   });
