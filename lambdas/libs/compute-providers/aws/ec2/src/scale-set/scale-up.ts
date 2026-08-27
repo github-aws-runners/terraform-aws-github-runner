@@ -1,7 +1,7 @@
 import { DeleteParameterCommand, PutParameterCommand, type SSMClient, type Tag as SsmTag } from '@aws-sdk/client-ssm';
 
 import type { GenerateScaleSetJitConfigurationResult, ScaleSetReconcileRequest } from '../../../../scale-set';
-import type { Ec2RunnerOperations } from '../runners';
+import type { Ec2RunnerResourceOperations } from '../runners';
 import type { CreateEc2ScaleSetProviderInput, Ec2ScaleSetProviderConfig } from './configuration';
 import {
   EC2_GITHUB_RUNNER_ID_TAG,
@@ -17,7 +17,7 @@ import {
   SCALE_SET_RUNNER_SOURCE,
 } from './inventory';
 import {
-  NonRetryableScaleSetError,
+  Ec2ScaleSetValidationError,
   retainUnknown,
   safeError,
   throwIfAborted,
@@ -51,7 +51,7 @@ async function publishJitConfiguration(
 ): Promise<void> {
   const valueSize = Buffer.byteLength(encodedJitConfiguration, 'utf8');
   if (valueSize === 0 || valueSize > SSM_ADVANCED_TIER_MAX_BYTES) {
-    throw new NonRetryableScaleSetError('JIT configuration must be between 1 and 8192 bytes');
+    throw new Ec2ScaleSetValidationError('JIT configuration must be between 1 and 8192 bytes');
   }
 
   await ssmClient.send(
@@ -94,18 +94,18 @@ function validateJitResult(
     result.runnerName !== expectedRunnerName ||
     result.scaleSetId !== scaleSetId
   ) {
-    throw new NonRetryableScaleSetError('JIT configuration returned an unexpected runner identity');
+    throw new Ec2ScaleSetValidationError('JIT configuration returned an unexpected runner identity');
   }
   const valueSize = Buffer.byteLength(result.encodedJitConfiguration, 'utf8');
   if (valueSize === 0 || valueSize > SSM_ADVANCED_TIER_MAX_BYTES) {
-    throw new NonRetryableScaleSetError('JIT configuration has an invalid size');
+    throw new Ec2ScaleSetValidationError('JIT configuration has an invalid size');
   }
 }
 
 async function terminateUnpublishedRunner(
   instanceId: string,
   state: MutableReconcileState,
-  runners: Ec2RunnerOperations,
+  runners: Ec2RunnerResourceOperations,
   signal: AbortSignal,
 ): Promise<void> {
   try {
@@ -142,7 +142,7 @@ async function configureLaunchedRunner(
   instanceId: string,
   request: ScaleSetReconcileRequest,
   state: MutableReconcileState,
-  runners: Ec2RunnerOperations,
+  runners: Ec2RunnerResourceOperations,
   ssmClient: SSMClient,
 ): Promise<void> {
   const runnerName = `${input.configuration.runnerNamePrefix}${instanceId}`;
@@ -150,7 +150,6 @@ async function configureLaunchedRunner(
     state.errors.push({
       operation: 'generate_jit_configuration',
       code: 'RUNNER_NAME_TOO_LONG',
-      retryable: false,
       resourceId: instanceId,
     });
     await terminateUnpublishedRunner(instanceId, state, runners, request.signal);
@@ -211,7 +210,7 @@ export async function scaleUp(
   count: number,
   request: ScaleSetReconcileRequest,
   state: MutableReconcileState,
-  runners: Ec2RunnerOperations,
+  runners: Ec2RunnerResourceOperations,
   ssmClient: SSMClient,
 ): Promise<void> {
   const runnerIdentity = runnerIdentityFromGitHubScope(input.githubScope);
@@ -230,7 +229,6 @@ export async function scaleUp(
       amiIdSsmParameterName: input.configuration.amiIdSsmParameterName,
       tracingEnabled: input.configuration.tracingEnabled,
       onDemandFailoverOnError: input.configuration.onDemandFailoverOnError,
-      scaleErrors: input.configuration.scaleErrors,
       useDedicatedHost: input.configuration.useDedicatedHost,
       orchestrationTags: ownershipTags(input),
     });
@@ -241,11 +239,8 @@ export async function scaleUp(
   }
 
   state.currentRunners += createResult.instances.length;
-  if (createResult.retryableErrorCount > 0) {
-    state.errors.push({ operation: 'launch', code: 'EC2_LAUNCH_RETRYABLE', retryable: true });
-  }
-  if (createResult.nonRetryableErrorCount > 0) {
-    state.errors.push({ operation: 'launch', code: 'EC2_LAUNCH_NON_RETRYABLE', retryable: false });
+  if (createResult.failedInstanceCount > 0) {
+    state.errors.push({ operation: 'launch', code: 'EC2_LAUNCH_FAILED' });
   }
 
   for (const instanceId of createResult.instances) {

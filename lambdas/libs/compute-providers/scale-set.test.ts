@@ -19,7 +19,6 @@ const configuration = {
     targetCapacityType: 'on-demand',
     instanceAllocationStrategy: 'lowest-price',
   },
-  scaleErrors: [],
 };
 
 describe('scale-set compute-provider registry', () => {

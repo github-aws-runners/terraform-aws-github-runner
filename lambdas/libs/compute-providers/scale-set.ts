@@ -62,7 +62,7 @@ export interface ScaleSetReconcileRequest {
   removeRunner: RemoveScaleSetRunner;
 }
 
-export type ScaleSetReconcileStatus = 'converged' | 'retained' | 'retryable_error' | 'non_retryable_error';
+export type ScaleSetReconcileStatus = 'converged' | 'retained' | 'error';
 
 export type ScaleSetReconcileOperation =
   | 'validate'
@@ -78,7 +78,6 @@ export type ScaleSetReconcileOperation =
 export interface ScaleSetReconcileError {
   operation: ScaleSetReconcileOperation;
   code: string;
-  retryable: boolean;
   runnerName?: string;
   resourceId?: string;
 }

@@ -57,7 +57,6 @@ The service reads every direct child under the SSM path with paginated `GetParam
         "instanceAllocationStrategy": "price-capacity-optimized"
       },
       "onDemandFailoverOnError": [],
-      "scaleErrors": [],
       "useDedicatedHost": false,
       "ssmParameterTags": []
     }
@@ -88,7 +87,7 @@ Demand is calculated as `max(totalAssignedJobs, min(maxRunners, minRunners + tot
 
 The public GitHub runner inventory is not fetched on ordinary steady-state or scale-up polls. A compute provider explicitly requests one bounded, owner-scope inventory refresh when it needs to verify old handed-off capacity or perform safe scale-down; owner inventory is briefly shared across reconcilers. The first provider pass is marked lifecycle-only and the second is explicitly marked inventory-complete, so the provider cannot mistake a post-restart gap for an authoritative absence. Runner deletion executes inside the serialized reconcile loop, re-fetches the Actions identity by name, and then performs a fresh public GitHub lookup to verify the exact ID/name and confirm the runner is not busy before issuing the delete.
 
-Message acknowledgement is last: acquire available jobs, update lifecycle state, complete the idempotent compute reconciliation, then delete the message. A failure leaves the message available for redelivery. A typed busy/unknown retention is processed and acknowledged without closing the session; it is not treated as an API failure.
+Messages follow the upstream scale-set listener order: acknowledge first, then acquire available jobs, update lifecycle state, and reconcile compute. Provider failures therefore stop that reconciler after the message has been acknowledged; provider results expose one error outcome rather than the control-plane scaling retry classification. A typed busy/unknown retention remains a successful reconciliation. Session and transport failures are handled separately by bounded client retries or session recreation.
 
 The EC2 provider counts a `config-published` instance as serving only during the orchestration request's boot window (`bootTimeoutMinutes`, default `10`) or after an exact online or `JobStarted` identity is observed. After the window, offline or unknown capacity is retained rather than terminated, and the complete inventory pass allows it to stop suppressing a replacement. Instances left in an earlier or unknown publication state are also retained for operator recovery and never terminated speculatively. EC2 ownership includes a SHA-256 hash of the canonical GitHub configuration scope, preventing the same runner-config name and numeric scale-set ID in another GitHub scope from colliding. A bounded one-instance physical surge may replace ambiguous capacity; once that ceiling is reached, the provider reports retained capacity instead of creating an unbounded replacement loop.
 

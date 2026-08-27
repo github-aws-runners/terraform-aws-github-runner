@@ -12,6 +12,7 @@ import {
 import type {
   ScaleSetComputeProvider,
   ScaleSetComputeProviderFactoryInput,
+  ScaleSetReconcileRequest,
   ScaleSetReconcileResult,
   ScaleSetRunnerLifecycle,
   ScaleSetRunnerState,
@@ -89,10 +90,15 @@ interface LifecycleObservation {
 
 export class ScaleSetProviderReconciliationError extends Error {
   constructor(
-    readonly result: ScaleSetReconcileResult,
-    readonly retryable: boolean,
+    readonly result?: ScaleSetReconcileResult,
+    options?: ErrorOptions,
   ) {
-    super(`scale-set compute provider returned ${result.status}`);
+    super(
+      result === undefined
+        ? 'scale-set compute provider reconciliation failed'
+        : `scale-set compute provider returned ${result.status}`,
+      options,
+    );
     this.name = 'ScaleSetProviderReconciliationError';
   }
 }
@@ -171,13 +177,11 @@ export class ScaleSetReconciler {
             }
             latestStatistics = message.statistics;
             lastMessageId = message.messageId;
+            await session.deleteMessage(message.messageId, { signal });
             const requestIds = uniqueRequestIds(message);
             if (requestIds.length > 0) await session.acquireJobs(requestIds, { signal });
             this.observeLifecycle(message);
             await this.reconcile(client, provider, latestStatistics, signal);
-            // Acknowledge only after the idempotent provider reconciliation has
-            // succeeded. Failures intentionally leave the message for redelivery.
-            await session.deleteMessage(message.messageId, { signal });
             this.pruneCompletedLifecycle(message);
           }
           madeProgress = true;
@@ -299,7 +303,7 @@ export class ScaleSetReconciler {
         return { status: 'removed' as const };
       },
     };
-    let result = await provider.reconcile({
+    let result = await this.reconcileProvider(provider, {
       desiredRunners,
       bootTimeoutMinutes: this.config.bootTimeoutMinutes,
       runnerInventoryComplete: false,
@@ -307,9 +311,10 @@ export class ScaleSetReconciler {
       ...callbacks,
     });
     validateProviderResult(result, desiredRunners);
+    throwIfProviderError(result);
     if (result.needsRunnerInventory) {
       const inventory = await this.loadScaleSetInventory(client, signal);
-      result = await provider.reconcile({
+      result = await this.reconcileProvider(provider, {
         desiredRunners,
         bootTimeoutMinutes: this.config.bootTimeoutMinutes,
         runnerInventoryComplete: true,
@@ -317,6 +322,7 @@ export class ScaleSetReconciler {
         ...callbacks,
       });
       validateProviderResult(result, desiredRunners);
+      throwIfProviderError(result);
       if (result.needsRunnerInventory) {
         throw new ScaleSetProtocolError(
           'scale-set compute provider requested inventory after a complete inventory pass',
@@ -339,8 +345,17 @@ export class ScaleSetReconciler {
       });
       return;
     }
-    if (result.status !== 'converged') {
-      throw new ScaleSetProviderReconciliationError(result, result.status === 'retryable_error');
+  }
+
+  private async reconcileProvider(
+    provider: ScaleSetComputeProvider,
+    request: ScaleSetReconcileRequest,
+  ): Promise<ScaleSetReconcileResult> {
+    try {
+      return await provider.reconcile(request);
+    } catch (error) {
+      request.signal.throwIfAborted();
+      throw new ScaleSetProviderReconciliationError(undefined, { cause: error });
     }
   }
 
@@ -497,7 +512,18 @@ export function validateProviderResult(result: ScaleSetReconcileResult, desiredR
     throw new ScaleSetProtocolError('scale-set compute provider returned an invalid reconciliation result');
   }
   const record = value as Record<string, unknown>;
-  const statuses = new Set(['converged', 'retained', 'retryable_error', 'non_retryable_error']);
+  const resultFields = new Set([
+    'status',
+    'desiredRunners',
+    'currentRunners',
+    'needsRunnerInventory',
+    'actions',
+    'errors',
+  ]);
+  if (Object.keys(record).some((key) => !resultFields.has(key))) {
+    throw new ScaleSetProtocolError('scale-set compute provider returned an invalid reconciliation result');
+  }
+  const statuses = new Set(['converged', 'retained', 'error']);
   if (!statuses.has(record.status as string)) {
     throw new ScaleSetProtocolError('scale-set compute provider returned an invalid status');
   }
@@ -510,6 +536,10 @@ export function validateProviderResult(result: ScaleSetReconcileResult, desiredR
   const actions = record.actions;
   if (typeof actions !== 'object' || actions === null || Array.isArray(actions)) {
     throw new ScaleSetProtocolError('scale-set compute provider returned invalid actions');
+  }
+  const actionFields = new Set(['launched', 'terminated', 'retainedBusy', 'retainedUnknown']);
+  if (Object.keys(actions).some((key) => !actionFields.has(key))) {
+    throw new ScaleSetProtocolError('scale-set compute provider returned invalid action counts');
   }
   for (const key of ['launched', 'terminated', 'retainedBusy', 'retainedUnknown']) {
     if (!boundedCount((actions as Record<string, unknown>)[key])) {
@@ -529,14 +559,15 @@ export function validateProviderResult(result: ScaleSetReconcileResult, desiredR
     'remove_runner',
     'terminate',
   ]);
+  const errorFields = new Set(['operation', 'code', 'runnerName', 'resourceId']);
   for (const error of record.errors) {
     if (typeof error !== 'object' || error === null || Array.isArray(error)) {
       throw new ScaleSetProtocolError('scale-set compute provider returned invalid error metadata');
     }
     const metadata = error as Record<string, unknown>;
     if (
+      Object.keys(metadata).some((key) => !errorFields.has(key)) ||
       !operations.has(metadata.operation as string) ||
-      typeof metadata.retryable !== 'boolean' ||
       typeof metadata.code !== 'string' ||
       !/^[A-Za-z][A-Za-z0-9._-]{0,127}$/.test(metadata.code) ||
       !optionalBoundedMetadata(metadata.runnerName) ||
@@ -544,6 +575,24 @@ export function validateProviderResult(result: ScaleSetReconcileResult, desiredR
     ) {
       throw new ScaleSetProtocolError('scale-set compute provider returned invalid error metadata');
     }
+  }
+  if ((record.status === 'error') !== record.errors.length > 0) {
+    throw new ScaleSetProtocolError('scale-set compute provider returned invalid error status');
+  }
+  let expectedStatus: ScaleSetReconcileResult['status'] = 'converged';
+  if (record.errors.length > 0 || (record.currentRunners as number) < desiredRunners) {
+    expectedStatus = 'error';
+  } else if (record.needsRunnerInventory || (record.currentRunners as number) > desiredRunners) {
+    expectedStatus = 'retained';
+  }
+  if (record.status !== expectedStatus) {
+    throw new ScaleSetProtocolError('scale-set compute provider returned invalid reconciliation status');
+  }
+}
+
+function throwIfProviderError(result: ScaleSetReconcileResult): void {
+  if (result.status === 'error') {
+    throw new ScaleSetProviderReconciliationError(result);
   }
 }
 
@@ -564,7 +613,7 @@ function hasAsciiControlCharacter(value: string): boolean {
 
 function isFatalReconcilerError(error: unknown): boolean {
   if (error instanceof ScaleSetConfigurationError || error instanceof ScaleSetProtocolError) return true;
-  if (error instanceof ScaleSetProviderReconciliationError) return !error.retryable;
+  if (error instanceof ScaleSetProviderReconciliationError) return true;
   if (!isScaleSetHttpError(error)) return false;
   return error.status >= 400 && error.status < 500 && ![408, 409, 425, 429].includes(error.status);
 }

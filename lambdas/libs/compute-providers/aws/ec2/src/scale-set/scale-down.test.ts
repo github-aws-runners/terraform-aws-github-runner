@@ -203,11 +203,18 @@ describe('EC2 scale-set scale down', () => {
     );
 
     expect(result).toMatchObject({
-      status: 'retryable_error',
+      status: 'error',
       currentRunners: 1,
       actions: { terminated: 0, retainedUnknown: 1 },
-      errors: expect.arrayContaining([expect.objectContaining({ operation: 'remove_runner', retryable: true })]),
     });
+    expect(result.errors).toEqual([
+      {
+        operation: 'remove_runner',
+        code: 'ServiceUnavailable',
+        runnerName: 'runner-idle',
+        resourceId: 'i-idle',
+      },
+    ]);
     expect(JSON.stringify(result)).not.toContain('must not leak');
     expect(ec2Mock).not.toHaveReceivedCommand(TerminateInstancesCommand);
   });

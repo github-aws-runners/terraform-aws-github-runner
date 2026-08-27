@@ -49,20 +49,20 @@ const session = await client.createMessageSessionClient(scaleSet.id!, 'listener-
 try {
   const message = await session.getMessage(0, 20);
   if (message) {
+    await session.deleteMessage(message.messageId);
+
     const availableIds = message.jobAvailableMessages.map((job) => job.runnerRequestId);
     await session.acquireJobs(availableIds);
 
     // Reconcile compute from message.statistics.totalAssignedJobs and use
     // client.generateJitRunnerConfig(...) for every runner being created.
-
-    await session.deleteMessage(message.messageId);
   }
 } finally {
   await session.close();
 }
 ```
 
-Treat encoded JIT configurations and all access tokens as secrets. A message should be acknowledged only after its compute and completion handling succeeds so it can be redelivered after a failure.
+Treat encoded JIT configurations and all access tokens as secrets. The upstream Go listener acknowledges a message before job acquisition and scaling callbacks; a later callback failure is returned from the listener and does not cause message redelivery.
 
 The retry values shown above are the defaults. Automatic transport retries apply only to idempotent methods (`GET`, `HEAD`, `OPTIONS`, `PUT`, and `DELETE`). Non-idempotent `POST` and `PATCH` operations, including JIT generation, session creation, and job acquisition, are attempted once so a lost response cannot cause the operation to be replayed. `Retry-After` is honored for eligible 429/5xx responses and capped by `maxBackoffMs`. Caller cancellation interrupts both an active request and retry backoff.
 

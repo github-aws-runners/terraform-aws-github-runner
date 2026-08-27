@@ -15,10 +15,10 @@ export interface MutableReconcileState {
   errors: ScaleSetReconcileError[];
 }
 
-export class NonRetryableScaleSetError extends Error {
+export class Ec2ScaleSetValidationError extends Error {
   constructor(message: string) {
     super(message);
-    this.name = 'NonRetryableScaleSetError';
+    this.name = 'Ec2ScaleSetValidationError';
   }
 }
 
@@ -34,13 +34,12 @@ export function safeError(
   return {
     operation,
     code: safeErrorCode(error),
-    retryable: isRetryableError(error),
     ...details,
   };
 }
 
 function safeErrorCode(error: unknown): string {
-  if (error instanceof NonRetryableScaleSetError) return 'INVALID_CONFIGURATION';
+  if (error instanceof Ec2ScaleSetValidationError) return 'INVALID_CONFIGURATION';
   if (!isRecord(error)) return 'UNEXPECTED_ERROR';
   for (const candidate of [error.name, error.code]) {
     if (typeof candidate === 'string' && /^[A-Za-z][A-Za-z0-9._-]{0,127}$/.test(candidate)) {
@@ -48,31 +47,6 @@ function safeErrorCode(error: unknown): string {
     }
   }
   return 'UNEXPECTED_ERROR';
-}
-
-function isRetryableError(error: unknown): boolean {
-  if (error instanceof NonRetryableScaleSetError) return false;
-  if (!isRecord(error)) return true;
-
-  const identity = [error.name, error.code]
-    .filter((candidate): candidate is string => typeof candidate === 'string')
-    .join(' ')
-    .toLowerCase();
-  if (/accessdenied|unauthor|forbidden|permission|validation|invalid|malformed|unsupported/.test(identity)) {
-    return false;
-  }
-  if (/throttl|timeout|temporar|serviceunavailable|internalserver|network|econn|socket|slowdown/.test(identity)) {
-    return true;
-  }
-
-  const metadata = isRecord(error.$metadata) ? error.$metadata : undefined;
-  const status = [error.status, error.statusCode, metadata?.httpStatusCode].find(
-    (candidate): candidate is number => typeof candidate === 'number',
-  );
-  if (status !== undefined) {
-    return status >= 500 || [408, 409, 425, 429].includes(status);
-  }
-  return true;
 }
 
 export function throwIfAborted(signal: AbortSignal, error?: unknown): void {
@@ -88,8 +62,7 @@ function resultStatus(
   desired: number,
   needsRunnerInventory: boolean,
 ) {
-  if (errors.some((error) => !error.retryable)) return 'non_retryable_error' as const;
-  if (errors.length > 0 || current < desired) return 'retryable_error' as const;
+  if (errors.length > 0 || current < desired) return 'error' as const;
   if (needsRunnerInventory) return 'retained' as const;
   if (current > desired) return 'retained' as const;
   return 'converged' as const;
@@ -100,7 +73,6 @@ export function finish(state: MutableReconcileState, desiredRunners: number): Sc
     state.errors.push({
       operation: 'reconcile',
       code: 'CAPACITY_NOT_PROVISIONED',
-      retryable: true,
     });
   }
   return {
@@ -138,7 +110,6 @@ export function validateDesiredRunners(desiredRunners: number): ScaleSetReconcil
     return {
       operation: 'validate',
       code: 'INVALID_DESIRED_RUNNER_COUNT',
-      retryable: false,
     };
   }
   return undefined;
@@ -153,7 +124,6 @@ export function validateBootTimeout(bootTimeoutMinutes: number): ScaleSetReconci
     return {
       operation: 'validate',
       code: 'INVALID_BOOT_TIMEOUT',
-      retryable: false,
     };
   }
   return undefined;
@@ -164,7 +134,6 @@ export function validateInventorySignal(runnerInventoryComplete: unknown): Scale
     return {
       operation: 'validate',
       code: 'INVALID_RUNNER_INVENTORY_SIGNAL',
-      retryable: false,
     };
   }
   return undefined;

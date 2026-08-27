@@ -20,6 +20,7 @@ describe('EC2 scale-set provider configuration', () => {
     [{ ...config, subnets: ['subnet-12345678', 'subnet-12345678'] }],
     [{ ...config, ec2instanceCriteria: { ...config.ec2instanceCriteria, instanceAllocationStrategy: 'diversified' } }],
     [{ ...config, ec2OverrideConfig: { UserData: 'untrusted' } }],
+    [{ ...config, scaleErrors: ['ThrottlingException'] }],
     [{ ...config, ssmParameterTags: [{ Key: 'aws:owner', Value: 'untrusted' }] }],
     [{ ...config, runnerNamePrefix: 'r'.repeat(46) }],
     [{ ...config, bootTimeoutMinutes: 10 }],

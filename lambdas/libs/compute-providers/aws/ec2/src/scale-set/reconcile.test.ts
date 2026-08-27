@@ -11,11 +11,11 @@ describe('EC2 scale-set reconciliation validation', () => {
     const result = await createTestProvider().reconcile(createRequest({ desiredRunners: -1 }));
 
     expect(result).toMatchObject({
-      status: 'non_retryable_error',
+      status: 'error',
       desiredRunners: -1,
       currentRunners: 0,
-      errors: [{ operation: 'validate', code: 'INVALID_DESIRED_RUNNER_COUNT', retryable: false }],
     });
+    expect(result.errors).toEqual([{ operation: 'validate', code: 'INVALID_DESIRED_RUNNER_COUNT' }]);
     expect(ec2Mock).not.toHaveReceivedCommand(DescribeInstancesCommand);
   });
 
@@ -23,10 +23,10 @@ describe('EC2 scale-set reconciliation validation', () => {
     const result = await createTestProvider().reconcile(createRequest({ bootTimeoutMinutes: value }));
 
     expect(result).toMatchObject({
-      status: 'non_retryable_error',
+      status: 'error',
       currentRunners: 0,
-      errors: [{ operation: 'validate', code: 'INVALID_BOOT_TIMEOUT', retryable: false }],
     });
+    expect(result.errors).toEqual([{ operation: 'validate', code: 'INVALID_BOOT_TIMEOUT' }]);
     expect(ec2Mock).not.toHaveReceivedCommand(DescribeInstancesCommand);
   });
 });

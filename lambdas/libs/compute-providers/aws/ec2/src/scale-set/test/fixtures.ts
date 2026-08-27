@@ -34,7 +34,6 @@ export const config: Ec2ScaleSetProviderConfig = {
     targetCapacityType: 'on-demand',
     instanceAllocationStrategy: 'lowest-price',
   },
-  scaleErrors: ['InsufficientInstanceCapacity'],
   ssmParameterTags: [{ Key: 'Project', Value: 'runner-tests' }],
 };
 

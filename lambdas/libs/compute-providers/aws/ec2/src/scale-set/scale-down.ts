@@ -1,5 +1,5 @@
 import type { ScaleSetReconcileRequest, ScaleSetRunnerState } from '../../../../scale-set';
-import type { Ec2RunnerOperations } from '../runners';
+import type { Ec2RunnerResourceOperations } from '../runners';
 import type { CreateEc2ScaleSetProviderInput } from './configuration';
 import {
   indexRunnerStates,
@@ -15,7 +15,7 @@ async function terminateKnownIdleRunner(
   githubState: ScaleSetRunnerState,
   request: ScaleSetReconcileRequest,
   state: MutableReconcileState,
-  runnerOperations: Ec2RunnerOperations,
+  runnerOperations: Ec2RunnerResourceOperations,
 ): Promise<boolean> {
   let removalResult;
   try {
@@ -65,7 +65,7 @@ export async function scaleDown(
   count: number,
   request: ScaleSetReconcileRequest,
   state: MutableReconcileState,
-  runnerOperations: Ec2RunnerOperations,
+  runnerOperations: Ec2RunnerResourceOperations,
 ): Promise<void> {
   const runnerStateIndex = indexRunnerStates(request.runnerStates, input.scaleSetId);
   const candidates: { runner: OwnedEc2Runner; githubState: ScaleSetRunnerState }[] = [];
