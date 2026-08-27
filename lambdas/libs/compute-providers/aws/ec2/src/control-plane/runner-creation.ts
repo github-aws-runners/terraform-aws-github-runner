@@ -13,6 +13,7 @@ import yn from 'yn';
 
 import type { Ec2RunnerResourceOperations } from '../runners';
 import type { RunnerInputParameters } from '../runners.d';
+import { toControlPlaneCreateRunnerResult } from './create-result';
 
 const logger = createChildLogger('ec2-runners');
 const RUNNER_LABELS_TAG_KEY = 'ghr:runner_labels';
@@ -71,13 +72,15 @@ export async function createRunners(
 ): Promise<CreateRunnerResult> {
   let result: CreateRunnerResult;
   try {
-    result = await ec2Operations.create({
+    const { scaleErrors, ...ec2CreateConfig } = ec2RunnerConfig;
+    const ec2Result = await ec2Operations.create({
+      ...ec2CreateConfig,
       runnerType: githubRunnerConfig.runnerType,
       runnerOwner: githubRunnerConfig.runnerOwner,
       numberOfRunners,
       source,
-      ...ec2RunnerConfig,
     });
+    result = toControlPlaneCreateRunnerResult(ec2Result, scaleErrors);
   } catch (error) {
     logger.error('Unexpected error while creating EC2 runner instances.', {
       error,

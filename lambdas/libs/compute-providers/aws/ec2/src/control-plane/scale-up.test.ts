@@ -37,8 +37,8 @@ interface CreateProviderRunnersOptions {
   githubRunnerConfig?: Partial<CreateGitHubRunnerConfig>;
 }
 
-function createRunnerResult(instances: string[], retryableErrorCount = 0, nonRetryableErrorCount = 0) {
-  return { instances, retryableErrorCount, nonRetryableErrorCount };
+function createRunnerResult(instances: string[], failedInstanceCount = 0, failureCodes: string[] = []) {
+  return { instances, failedInstanceCount, failureCodes };
 }
 
 function runnerConfig(overrides: Partial<CreateGitHubRunnerConfig> = {}): CreateGitHubRunnerConfig {
@@ -77,7 +77,6 @@ function expectedRunnerParams(
     subnets: ['subnet-123'],
     tracingEnabled: false,
     onDemandFailoverOnError: [],
-    scaleErrors: ['UnfulfillableCapacity', 'MaxSpotInstanceCountExceeded', 'TargetCapacityLimitExceededException'],
     source: 'scale-up-lambda',
     useDedicatedHost: false,
     ec2OverrideConfig: undefined,
@@ -532,14 +531,15 @@ describe('scaleUp with public GH', () => {
       );
     });
 
-    it('creates a runner with correct config and labels and custom scale errors enabled.', async () => {
+    it('converts configured EC2 failures to the control-plane create result', async () => {
       process.env.SCALE_ERRORS = '["RequestLimitExceeded"]';
-      await createProviderRunners({
-        githubRunnerConfig: { runnerType: 'Repo', runnerOwner: repositoryRunnerOwner },
-      });
-      expect(mockCreateRunner).toHaveBeenCalledWith(
-        expectedRunnerParams('Repo', repositoryRunnerOwner, { scaleErrors: ['RequestLimitExceeded'] }),
-      );
+      mockCreateRunner.mockResolvedValueOnce(createRunnerResult([], 1, ['aws-name:RequestLimitExceeded']));
+      await expect(
+        createProviderRunners({
+          githubRunnerConfig: { runnerType: 'Repo', runnerOwner: repositoryRunnerOwner },
+        }),
+      ).resolves.toEqual({ instances: [], retryableErrorCount: 1, nonRetryableErrorCount: 0 });
+      expect(mockCreateRunner).toHaveBeenCalledWith(expectedRunnerParams('Repo', repositoryRunnerOwner));
     });
   });
 });
