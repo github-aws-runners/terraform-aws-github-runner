@@ -506,12 +506,12 @@ describe('create runner', () => {
   it('keeps cancellation request-scoped and rejects before calling AWS', async () => {
     const abortController = new AbortController();
     const abortReason = new Error('service stopping');
-    const runners = createEc2RunnerClient(new EC2Client({})).forRequest({
+    const runnerOperations = createEc2RunnerClient(new EC2Client({})).forRequest({
       signal: abortController.signal,
     });
     abortController.abort(abortReason);
 
-    await expect(runners.create(createRunnerConfig(defaultRunnerConfig))).rejects.toThrow('service stopping');
+    await expect(runnerOperations.create(createRunnerConfig(defaultRunnerConfig))).rejects.toThrow('service stopping');
     expect(mockEC2Client).not.toHaveReceivedCommand(CreateFleetCommand);
     expect(mockSSMClient).not.toHaveReceivedCommand(GetParameterCommand);
   });

@@ -13,10 +13,10 @@ import { createRunners, loadEc2ProviderConfig } from './runner-config';
 const logger = createChildLogger('pool');
 
 async function listEc2PoolRunners(
-  runners: Ec2RunnerOperations,
+  runnerOperations: Ec2RunnerOperations,
   { environment, runnerOwner, runnerType }: ListPoolRunnersInput,
 ): Promise<RunnerInfo[]> {
-  return await runners.list({
+  return await runnerOperations.list({
     environment,
     runnerOwner,
     runnerType,
@@ -27,12 +27,12 @@ async function listEc2PoolRunners(
 async function createEc2PoolRunners(
   { githubRunnerConfig, numberOfRunners, githubInstallationClient }: CreatePoolRunnersInput,
   createStartRunnerConfig: CreateStartRunnerConfig,
-  runners: Ec2RunnerOperations,
+  runnerOperations: Ec2RunnerOperations,
 ): Promise<string[]> {
   const config = loadEc2ProviderConfig();
 
   const { instances } = await createRunners(
-    runners,
+    runnerOperations,
     githubRunnerConfig,
     {
       ec2instanceCriteria: config.ec2instanceCriteria,
@@ -54,12 +54,12 @@ async function createEc2PoolRunners(
 
 export function createEc2PoolProvider(
   createStartRunnerConfig: CreateStartRunnerConfig,
-  runners: Ec2RunnerOperations,
+  runnerOperations: Ec2RunnerOperations,
 ): Omit<PoolComputeProvider<RunnerInfo>, 'type'> {
   return {
-    listRunners: (input) => listEc2PoolRunners(runners, input),
+    listRunners: (input) => listEc2PoolRunners(runnerOperations, input),
     countAvailableRunners: calculateEc2PoolSize,
-    createRunners: (input) => createEc2PoolRunners(input, createStartRunnerConfig, runners),
+    createRunners: (input) => createEc2PoolRunners(input, createStartRunnerConfig, runnerOperations),
   };
 }
 

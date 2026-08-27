@@ -61,7 +61,7 @@ export function loadEc2ProviderConfig(): Ec2ProviderConfig {
 }
 
 export async function createRunners(
-  runners: Ec2RunnerOperations,
+  runnerOperations: Ec2RunnerOperations,
   githubRunnerConfig: CreateGitHubRunnerConfig,
   ec2RunnerConfig: CreateEC2RunnerConfig,
   numberOfRunners: number,
@@ -71,7 +71,7 @@ export async function createRunners(
 ): Promise<CreateRunnerResult> {
   let result: CreateRunnerResult;
   try {
-    result = await runners.create({
+    result = await runnerOperations.create({
       runnerType: githubRunnerConfig.runnerType,
       runnerOwner: githubRunnerConfig.runnerOwner,
       numberOfRunners,
@@ -94,7 +94,7 @@ export async function createRunners(
         githubRunnerConfig,
         result.instances,
         ghClient,
-        createEc2StartRunnerConfigOptions(runners),
+        createEc2StartRunnerConfigOptions(runnerOperations),
       );
     } catch (error) {
       logger.error('Unexpected error while registering GitHub runners.', {
@@ -114,7 +114,7 @@ export async function createRunners(
         retryable: true,
       });
 
-      await terminateFailedInstances(runners, failedInstances);
+      await terminateFailedInstances(runnerOperations, failedInstances);
 
       return {
         instances: result.instances.filter((id) => !failedInstances.includes(id)),
@@ -127,10 +127,10 @@ export async function createRunners(
   return result;
 }
 
-async function terminateFailedInstances(runners: Ec2RunnerOperations, instanceIds: string[]): Promise<void> {
+async function terminateFailedInstances(runnerOperations: Ec2RunnerOperations, instanceIds: string[]): Promise<void> {
   for (const instanceId of instanceIds) {
     try {
-      await runners.terminate(instanceId);
+      await runnerOperations.terminate(instanceId);
     } catch (error) {
       logger.error('Failed to terminate instance', {
         instanceId,
@@ -140,15 +140,16 @@ async function terminateFailedInstances(runners: Ec2RunnerOperations, instanceId
   }
 }
 
-function createEc2StartRunnerConfigOptions(runners: Ec2RunnerOperations): StartRunnerConfigOptions {
+function createEc2StartRunnerConfigOptions(runnerOperations: Ec2RunnerOperations): StartRunnerConfigOptions {
   return {
     getSsmParameterTags: (instanceId) => [{ Key: 'InstanceId', Value: instanceId }],
-    onJitConfigCreated: async (instanceId, metadata) => await tagEc2RunnerMetadata(runners, instanceId, metadata),
+    onJitConfigCreated: async (instanceId, metadata) =>
+      await tagEc2RunnerMetadata(runnerOperations, instanceId, metadata),
   };
 }
 
 async function tagEc2RunnerMetadata(
-  runners: Ec2RunnerOperations,
+  runnerOperations: Ec2RunnerOperations,
   instanceId: string,
   metadata: GitHubRunnerMetadata,
 ): Promise<void> {
@@ -158,7 +159,7 @@ async function tagEc2RunnerMetadata(
   ];
 
   try {
-    await runners.tag(instanceId, tags);
+    await runnerOperations.tag(instanceId, tags);
   } catch (e) {
     logger.error(`Failed to mark EC2 runner '${instanceId}' with GitHub runner metadata.`, { error: e });
   }

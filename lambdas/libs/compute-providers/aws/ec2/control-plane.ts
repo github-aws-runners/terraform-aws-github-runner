@@ -9,30 +9,30 @@ import { createEc2ScaleDownProvider } from './src/control-plane/scale-down';
 import { createEc2ScaleUpProvider } from './src/control-plane/scale-up';
 import { createEc2RunnerClient, type Ec2RunnerOperations } from './src/runners';
 
-export function createEc2ControlPlanePlugin(
+export function createEc2ControlPlanePluginWithDependencies(
   createStartRunnerConfig: CreateStartRunnerConfig,
-  runners: Ec2RunnerOperations,
+  runnerOperations: Ec2RunnerOperations,
   ec2Client: EC2Client,
 ): ComputeProviderPlugin<ControlPlaneProviderCapabilities, 'ec2'> {
   return {
     type: 'ec2',
     capabilities: {
-      pool: () => createEc2PoolProvider(createStartRunnerConfig, runners),
-      scaleUp: () => createEc2ScaleUpProvider(createStartRunnerConfig, runners, ec2Client),
-      scaleDown: () => createEc2ScaleDownProvider(runners),
+      pool: () => createEc2PoolProvider(createStartRunnerConfig, runnerOperations),
+      scaleUp: () => createEc2ScaleUpProvider(createStartRunnerConfig, runnerOperations, ec2Client),
+      scaleDown: () => createEc2ScaleDownProvider(runnerOperations),
     },
   };
 }
 
-function createProductionEc2ControlPlanePlugin(
+function createEc2ControlPlanePlugin(
   createStartRunnerConfig: CreateStartRunnerConfig,
 ): ComputeProviderPlugin<ControlPlaneProviderCapabilities, 'ec2'> {
   const ec2Client = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
-  const runners = createEc2RunnerClient(ec2Client).forRequest({ signal: undefined });
-  return createEc2ControlPlanePlugin(createStartRunnerConfig, runners, ec2Client);
+  const runnerOperations = createEc2RunnerClient(ec2Client).forRequest({ signal: undefined });
+  return createEc2ControlPlanePluginWithDependencies(createStartRunnerConfig, runnerOperations, ec2Client);
 }
 
 export const provider = {
   type: 'ec2',
-  createPlugin: createProductionEc2ControlPlanePlugin,
+  createPlugin: createEc2ControlPlanePlugin,
 } satisfies ControlPlaneProviderModule<'ec2'>;

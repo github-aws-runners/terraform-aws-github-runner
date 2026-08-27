@@ -60,22 +60,22 @@ async function resolveEc2LabelsForRunners(
 }
 
 async function getCurrentEc2Runners(
-  runners: Ec2RunnerOperations,
+  runnerOperations: Ec2RunnerOperations,
   _state: Ec2ScaleUpState,
   { runnerType, runnerOwner }: CurrentRunnersInput,
 ): Promise<number> {
-  return (await runners.list({ environment: process.env.ENVIRONMENT, runnerType, runnerOwner })).length;
+  return (await runnerOperations.list({ environment: process.env.ENVIRONMENT, runnerType, runnerOwner })).length;
 }
 
 async function createEc2ScaleUpRunners(
   { githubRunnerConfig, numberOfRunners, githubInstallationClient, state }: CreateScaleUpRunnersInput<Ec2ScaleUpState>,
   createStartRunnerConfig: CreateStartRunnerConfig,
-  runners: Ec2RunnerOperations,
+  runnerOperations: Ec2RunnerOperations,
 ): Promise<CreateRunnerResult> {
   const config = loadEc2ScaleUpProviderConfig();
 
   return await createRunners(
-    runners,
+    runnerOperations,
     githubRunnerConfig,
     {
       ...config,
@@ -90,12 +90,12 @@ async function createEc2ScaleUpRunners(
 
 export function createEc2ScaleUpProvider(
   createStartRunnerConfig: CreateStartRunnerConfig,
-  runners: Ec2RunnerOperations,
+  runnerOperations: Ec2RunnerOperations,
   ec2Client: EC2Client,
 ): Omit<ScaleUpComputeProvider<Ec2ScaleUpState>, 'type'> {
   return {
     resolveLabelsForRunners: (labels) => resolveEc2LabelsForRunners(ec2Client, labels),
-    getCurrentRunners: (state, input) => getCurrentEc2Runners(runners, state, input),
-    createRunners: (input) => createEc2ScaleUpRunners(input, createStartRunnerConfig, runners),
+    getCurrentRunners: (state, input) => getCurrentEc2Runners(runnerOperations, state, input),
+    createRunners: (input) => createEc2ScaleUpRunners(input, createStartRunnerConfig, runnerOperations),
   };
 }
