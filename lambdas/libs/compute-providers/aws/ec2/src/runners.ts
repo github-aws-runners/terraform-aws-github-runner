@@ -61,7 +61,7 @@ export function createEc2RunnerClient(ec2Client: EC2Client): Ec2RunnerClient {
     forRequest: ({ signal }) => ({
       list: (filters) => runWithRequestSignal(signal, () => listRunners(ec2Client, filters, signal)),
       create: (runnerParameters) =>
-        runWithRequestSignal(signal, () => createEc2Runner(runnerParameters, ec2Client, signal)),
+        runWithRequestSignal(signal, () => createEc2Runner(ec2Client, runnerParameters, signal)),
       terminate: (instanceId) => runWithRequestSignal(signal, () => terminateEc2Runner(ec2Client, instanceId, signal)),
       tag: (instanceId, tags) => runWithRequestSignal(signal, () => tagEc2Runner(ec2Client, instanceId, tags, signal)),
       untag: (instanceId, tags) =>
@@ -385,8 +385,8 @@ export async function createRunner(runnerParameters: RunnerInputParameters): Pro
 }
 
 async function createEc2Runner(
-  runnerParameters: RunnerInputParameters,
   ec2Client: EC2Client,
+  runnerParameters: RunnerInputParameters,
   signal: AbortSignal | undefined,
 ): Promise<CreateRunnerResult> {
   logger.debug('Runner configuration.', {
@@ -470,6 +470,7 @@ async function processFleetResult(
       'on-demand',
     );
     const onDemandResult = await createEc2Runner(
+      ec2Client,
       {
         ...runnerParameters,
         numberOfRunners: numberOfInstances,
@@ -480,7 +481,6 @@ async function processFleetResult(
           instanceAllocationStrategy: failoverAllocationStrategy,
         },
       },
-      ec2Client,
       signal,
     );
     instances.push(...onDemandResult.instances);
